@@ -23160,6 +23160,11 @@
         const i = (usbCam.camera && usbCam.camera.info) || {};
         return /sony|\bILC[AEX]|\bILME|\bZV-|\bDSC-|α/i.test([usbCam.name, i.name, i.brand, i.vendor, i.maker].join(' '));
       }
+      function camIsCanon() {
+        const i = (usbCam.camera && usbCam.camera.info) || {};
+        if (i.brand) return i.brand === 'canon';
+        return /canon|\bEOS\b/i.test([usbCam.name, i.name, i.vendor, i.maker].join(' '));
+      }
       function usbSetupStep() { const t = document.querySelector('#stepBar .step-tab.on'); return t && t.dataset ? String(t.dataset.step) : ''; }
       // The guest's "Get ready" screen (waiting for Start), not the layout editor's preview of it.
       function camReadyWaiting() { return readyOverlay.classList.contains('ready-active') && !readyOverlay.classList.contains('hands') && !readyOverlay.classList.contains('edit-preview'); }
@@ -23169,7 +23174,9 @@
         // "Get ready" waiting for the guest to press Start (the session is already 'capturing' here): the camera rests after
         // USB_IDLE_SLEEP_MS. A touch on the screen keeps it on / wakes it, and pressing Start brings the picture back before the
         // countdown. Wave / smile to start needs the picture, so it stays on then.
-        if (camReadyWaiting()) return false;
+        // Not a Canon: an older EOS (60D) fired right after its live view came back can accept the shutter command and
+        // take no photo, so a Canon stays in live view from "Get ready" to the last photo, as it did before this rest existed.
+        if (camReadyWaiting() && !(currentDeviceId === USB_CAM_ID && camIsCanon())) return false;
         if (state === 'capturing') return !usbCam.shotsDone;
         if (document.hidden) return false;
         // Start screen splash: definitely idle
@@ -24222,6 +24229,7 @@
       const USB_CAPTURE_MAX_MS = 25000;   // longest wait for the camera's photo before the live view frame is used (a photo this late is the wrong moment anyway)
       const USB_GRACE_MS = 45000;         // after a photo, live view may take this long to come back without "Reconnecting" (a Canon saving a big file can take a while; a real unplug is still noticed at once)
       const USB_LEAD_MAX = 2500;          // the shutter is fired at most this much before "Pose" (a Nikon focuses first: about 1.5 s from command to photo)
+      const USB_LEAD_CANON_MAX = 1500;    // Canon: the limit from before the Nikon change (see usbShutterLead)
       const USB_SHOT_MAX = 3000;   // longest side in px: a full 4R box at 300 dpi even after the box's crop
       // After a photo (helper cameras): hide any "Reconnecting" for a while, ask for live view again at once (a Canon leaves
       // it after every photo) and learn how long the camera took from the shutter command to the exposure.
@@ -24256,7 +24264,10 @@
       function usbShutterLead() {
         if (!(usbCam.viaHelper && usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return 0;
         if (!usbCam.shutterLagMs && usbCam.name) usbLagLoad();
-        return Math.max(0, Math.min(USB_LEAD_MAX, usbCam.shutterLagMs - 200));
+        // A Canon keeps the 1.5 s limit it always had: its measured delay includes saving the photo, and a shutter command
+        // sent sooner after the previous photo reaches an older EOS (60D) before it is ready for it.
+        const max = camIsCanon() ? Math.min(USB_LEAD_MAX, USB_LEAD_CANON_MAX) : USB_LEAD_MAX;
+        return Math.max(0, Math.min(max, usbCam.shutterLagMs - 200));
       }
       // USB webcam set to "Max resolution" photos: the full-size still replaces the live-view frame
       // (app webcam: /uvc/capture switches the webcam to its biggest mode for the shot; Android-listed webcam: ImageCapture).
@@ -29026,6 +29037,18 @@
         const name = printSize ? printerFor(printSize) : '';
         const connected = helperOn && helper.ok;
         const sizeName = printSize ? paperFor(printSize).name : 'this size';
+        const andUA = /Android/i.test(navigator.userAgent || '');
+        // Android app (defined further down, so guarded): the printers it lists, the one for this paper size, and whether a print on it worked.
+        let andNet = false, andList = [], andP = null, andHere = false, andOk = false;
+        try {
+          andNet = wifiNetAvailable();
+          if (andNet) {
+            andList = (wifiList().printers || []).filter(q => !q.needsPermission && !q.noDriver);
+            andP = printSize ? wifiForSize(printSize) : wifiPrinter;
+            andHere = !!andP && (!!andP.dialog || andList.some(q => q.ip === andP.ip));
+            andOk = !!andP && !!printSize && printOkHas(andP, paperFor(printSize));
+          }
+        } catch (e) { andNet = false; }
         let steps;
         if (useStation()) steps = [
           { done: station.online, t: 'Open the print station on the laptop', s: station.online ? 'The laptop is ready.' : 'On the laptop next to the printer, open <a href="/print-station/" target="_blank" rel="noopener">photobooth4u.netlify.app/print-station</a> and sign in with your code.' },
@@ -29036,10 +29059,16 @@
           { done: !!(window._btThermal && window._btThermal.btPrinter.connected), t: 'Connect the Bluetooth thermal printer', s: (window._btThermal && window._btThermal.btPrinter.connected) ? '\u2713 Connected: ' + window._btThermal.btPrinter.name : 'Tap <b>Connect Bluetooth Printer</b> below. Ensure printer is powered on and paired in Bluetooth settings.' },
           { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> — the receipt prints directly without a dialog.' }
         ];
+        else if (andNet) steps = [
+          // Android app: the printers the app found itself (USB cable or Wi-Fi), the one chosen for this paper size, and a print that worked.
+          { done: andList.length > 0 || !!(andP && andP.dialog), t: 'Connect the printer', s: andList.length ? andList.length + ' printer' + (andList.length === 1 ? '' : 's') + ' found.' : 'Plug the printer into the tablet with a USB cable, or join it to the same Wi-Fi as the tablet. It then shows in the list above.' },
+          { done: andHere, t: 'Choose the printer for this paper size', s: andP ? sizeName + ' → ' + escHtml(andP.dialog ? 'Android print screen' : andP.name) + (andHere ? '' : '. It is not found right now: check it is turned on and connected.') : 'Tap a paper size, then tap its printer in the list above.' },
+          { done: andHere && andOk, t: 'Test a print', s: andHere && andOk ? 'A print on this printer and paper size worked.' : 'Tap <b>Test print</b>, or tap <b>' + escHtml(printTxt('txtPrint')) + '</b> after a photo session.' }
+        ];
         else if (isMobileOS()) steps = [
           { done: false, t: 'Turn on the printer and join the same Wi-Fi', s: 'Compatible network printers appear automatically. Dye-sublimation stations require a connected print station.' + (isBtThermalAvailable() && printSize && isReceiptPaper(printSize) ? ' For Bluetooth thermal printing, enable <b>Bluetooth thermal receipt printer</b> below.' : '') },
-          { done: false, t: 'Print once and pick the printer', s: 'Press <b>Print</b>, choose the printer in the AirPrint sheet. The iPad remembers it.' + (navigator.standalone ? ' <b>Home Screen app:</b> if no sheet appears, open the booth in a Safari tab instead, or use a laptop print station.' : '') },
-          { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> and choose the printer in the AirPrint sheet.' }
+          { done: false, t: 'Print once and pick the printer', s: andUA ? 'Press <b>Print</b>, then choose the printer on the Android print screen. The tablet remembers it.' : 'Press <b>Print</b>, choose the printer in the AirPrint sheet. The iPad remembers it.' + (navigator.standalone ? ' <b>Home Screen app:</b> if no sheet appears, open the booth in a Safari tab instead, or use a laptop print station.' : '') },
+          { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> and choose the printer ' + (andUA ? 'on the Android print screen.' : 'in the AirPrint sheet.') }
         ];
         else if (!DESKTOP && !helperOn) steps = [
           { done: false, t: 'Test a print', s: 'Tap <b>Print</b>, then choose the printer in your browser or system dialog.' }
@@ -30287,8 +30316,13 @@
               sp.ip = same[0].ip; sp.vid = same[0].vid || sp.vid; sp.pid = same[0].pid || sp.pid; changed = true;
             }
           };
-          Object.keys(wifiSizeMap).forEach(k => fix(wifiSizeMap[k]));
-          fix(wifiDefault); fix(wifiPrinter);
+          // A Wi-Fi Epson photo printer (L805…) saved by an older app version as a receipt printer: the app now prints photos on it.
+          const fixNet = (sp) => {
+            if (!sp || sp.usb || sp.dialog || sp.escpr || sp.forcedRaw) return;
+            if (list.some(q => !q.usb && q.ip === sp.ip && q.escpr)) { sp.escpr = true; sp.raw = false; changed = true; }
+          };
+          Object.keys(wifiSizeMap).forEach(k => { fix(wifiSizeMap[k]); fixNet(wifiSizeMap[k]); });
+          fix(wifiDefault); fix(wifiPrinter); fixNet(wifiDefault); fixNet(wifiPrinter);
           if (changed) {
             try { localStorage.setItem(WIFI_SIZE_MAP_KEY, JSON.stringify(wifiSizeMap)); } catch (e) { }
             try { if (wifiDefault) localStorage.setItem(WIFI_PRINTER_KEY, JSON.stringify(wifiDefault)); } catch (e) { }
@@ -30402,7 +30436,7 @@
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
           const sel = wifiPrinter && wifiPrinter.ip === p.ip && !(p.ipp && wifiPrinter.epsonLForced);
-          var tag = p.needsPermission ? ' · Tap to allow USB access' : p.noDriver ? (p.usb ? (wifiPrinter && wifiPrinter.forcedRaw && wifiPrinter.ip === p.ip ? ' · Receipt (tried manually)' : ' · Unknown model · tap to try as a thermal printer') : ' · No driver') : p.raw ? ' · Receipt' : p.dnp ? ' · Photo (DNP' + (p.dnpModel ? ' ' + p.dnpModel : '') + ')' : p.escp2 ? ' · Photo (' + (p.epsonModel ? 'Epson ' + p.epsonModel : 'Photo') + ')' : p.epsonL ? ' · Photo (' + (p.epsonModel || 'Photo') + ')' : p.selphy ? ' · Photo (SELPHY)' : p.canon ? ' · Photo (' + (p.canonModel ? 'Canon ' + p.canonModel : 'Canon') + ')' : (p.ipp || p.escpr) ? ' · Photo' : '';
+          var tag = p.needsPermission ? ' · Tap to allow USB access' : p.noDriver ? (p.usb ? (wifiPrinter && wifiPrinter.forcedRaw && wifiPrinter.ip === p.ip ? ' · Receipt (tried manually)' : ' · Unknown model · tap to try as a thermal printer') : ' · No driver') : (p.raw && !(p.ipp && !p.usb)) ? ' · Receipt' : p.dnp ? ' · Photo (DNP' + (p.dnpModel ? ' ' + p.dnpModel : '') + ')' : p.escp2 ? ' · Photo (' + (p.epsonModel ? 'Epson ' + p.epsonModel : 'Photo') + ')' : p.epsonL ? ' · Photo (' + (p.epsonModel || 'Photo') + ')' : p.selphy ? ' · Photo (SELPHY)' : p.canon ? ' · Photo (' + (p.canonModel ? 'Canon ' + p.canonModel : 'Canon') + ')' : (p.ipp || p.escpr) ? ' · Photo' : '';
           var connTag = (p.name && p.name.indexOf('(USB)') >= 0) ? '' : (p.usb ? ' · USB' : (p.ip ? ' · Wi-Fi' : ''));
           b.textContent = (sel ? '✓ ' : '') + p.name + connTag + tag;
           b.addEventListener('click', () => {
@@ -30771,11 +30805,25 @@
           showToast(cb.checked ? 'Printer diagnostics on.' : 'Printer diagnostics off. Nothing will be sent.', 3000);
         });
       })();
+      // Prints that worked, by printer and paper size, so "Test a print" in the setup checklist can be ticked (kept on this tablet).
+      const PRINT_OK_KEY = 'pb_print_ok';
+      function printOkKeyFor(p, paper) { return wifiPKey(p) + '|' + Math.round((paper && paper.w) || 0) + 'x' + Math.round((paper && paper.h) || 0); }
+      function printOkMap() { try { return JSON.parse(localStorage.getItem(PRINT_OK_KEY) || '{}') || {}; } catch (e) { return {}; } }
+      function printOkHas(p, paper) { return !!(p && paper && printOkMap()[printOkKeyFor(p, paper)]); }
+      function printOkMark(p, paper) {
+        try {
+          if (!p || !paper) return;
+          const m = printOkMap(), k = printOkKeyFor(p, paper);
+          if (!m[k]) { m[k] = 1; localStorage.setItem(PRINT_OK_KEY, JSON.stringify(m)); }
+          renderPrintSteps();
+        } catch (e) { }
+      }
       async function printViaWifi(all, paper, printer, wopts) {
         const p = printer || wifiPrinter;
         const wo = wopts || wifiOpts(p);
         try {
           await printViaWifiRaw(all, paper, printer, wopts);
+          printOkMark(p, paper);
           if (p && !p.dialog) pdiagSend('print', p, { ok: true, paper: { w: paper && paper.w, h: paper && paper.h, name: paper && paper.name }, opts: { quality: wo && wo.quality, color: wo && wo.color, media: wo && wo.media, borderless: wo && wo.borderless } });
         } catch (e) {
           if (p && !p.dialog) pdiagSend('print', p, { ok: false, error: e && e.message, paper: { w: paper && paper.w, h: paper && paper.h, name: paper && paper.name }, opts: { quality: wo && wo.quality, color: wo && wo.color, media: wo && wo.media, borderless: wo && wo.borderless } });
@@ -30853,7 +30901,7 @@
           return;
         }
         if (p.escpr) {
-          // Epson ESC/P-R path (Epson L120 / L210 and similar over USB): plain colour, 3 mm borders.
+          // Epson ESC/P-R path (Epson L120 / L210 / L805 and similar, over USB or Wi-Fi): plain colour, 3 mm borders.
           const pics = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
           await wifiJob(id => window.__PBNet.printEscpr(id, p.ip, paper.w, paper.h, 1, JSON.stringify(pics), JSON.stringify(wo)));
           return;

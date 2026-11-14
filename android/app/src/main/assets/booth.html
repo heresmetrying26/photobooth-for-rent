@@ -16459,7 +16459,7 @@
               <p class="panel-hint" id="borderlessHint" style="margin:2px 0 8px;"></p>
               <div id="edgeAdjBox">
                 <p class="sub-label" style="margin:10px 0 6px;">Edges (this printer)</p>
-                <div id="edgeAdjGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 12px;max-width:380px;"></div>
+                <div id="edgeAdjGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:8px 16px;max-width:520px;"></div>
                 <p class="panel-hint" id="edgeAdjHint" style="margin:4px 0 6px;"></p>
                 <button type="button" class="action-btn" id="edgeTestBtn" style="width:auto;margin:0 0 6px;">Print edge test</button>
               </div>
@@ -29785,6 +29785,13 @@
         let hint = 'Prints edge-to-edge without margins or scaling on supported photo printers.';
         try { if (wifiPrinter && (wifiPrinter.escp2 || wifiPrinter.canon)) hint = 'This printer requires standard page margins; borderless mode is not supported by this model.'; } catch (e) { }
         try {
+          if (wifiPrinter && epsonEscprBorderlessModel(wifiPrinter)) {
+            hint = epsonEscprBorderlessOk(paper)
+              ? 'This Epson prints borderless on this paper size (photo paper settings are used). If a side is cut off or a white line shows, use Print edge test below.'
+              : 'This Epson prints borderless only on 3.5×5 in, 4×6 in, 5×7 in, 8×10 in, A4, 16:9 wide (102×181 mm) and 100×148 mm paper. ' + (paper ? paper.name : 'This paper') + ' will print with a normal border.';
+          }
+        } catch (e) { }
+        try {
           if (wifiPrinter && epsonLBorderlessModel(wifiPrinter)) {
             hint = epsonLBorderlessOk(printSize)
               ? 'This Epson can print borderless on this paper size.'
@@ -29805,7 +29812,7 @@
         if (!grid.children.length) {
           EDGE_SIDES.forEach(([k, name]) => {
             const row = document.createElement('div');
-            row.style.cssText = 'display:flex;align-items:center;gap:6px;';
+            row.style.cssText = 'display:flex;align-items:center;gap:6px;min-width:0;';
             row.innerHTML = '<span style="flex:1;min-width:52px;">' + name + '</span>'
               + '<button type="button" class="print-size-btn" data-edge="' + k + '" data-step="-0.5" aria-label="' + name + ': picture out by 0.5 mm" style="min-width:38px;margin:0;">−</button>'
               + '<span data-edgeval="' + k + '" style="min-width:64px;text-align:center;font-variant-numeric:tabular-nums;"></span>'
@@ -29820,7 +29827,7 @@
         EDGE_SIDES.forEach(([k]) => { const s = grid.querySelector('[data-edgeval="' + k + '"]'); if (s) s.textContent = fmt(e[k]); });
         const reset = document.getElementById('edgeAdjReset');
         if (reset) reset.hidden = !(e.t || e.b || e.l || e.r);
-        document.getElementById('edgeAdjHint').textContent = 'The preview shows the page the app sends. A borderless printer then enlarges it a little, which the preview cannot show, so use Print edge test: it prints a scale on every side, and the first bar you can see on a side is the number to set there. A side cut off: press +. A thin white line: press −. Each press is 0.5 mm.';
+        document.getElementById('edgeAdjHint').textContent = 'The preview shows the page the app sends. A borderless printer then enlarges it a little, which the preview cannot show, so use Print edge test: it prints a scale on every side, and the first bar you can see on a side is the number to set there. A side cut off: press +. A thin white line: press −. Each press is 0.5 mm. The edge test is always printed without these Edges, so its numbers stay true: print a photo to see the change. Edges cannot remove a border the printer keeps by itself (about 3 mm of white on every side): turn Borderless on for that.';
       }
       // Edge test sheet: on every side a row of bars, each 0.5 mm longer than the one before, starting at the paper edge.
       // The printer trims some of them; the first bar still visible on a side carries the Edges value for that side.
@@ -30471,6 +30478,15 @@
         const a = Math.min(pp.w, pp.h), b = Math.max(pp.w, pp.h);
         return EPSON_L_BORDERLESS.some(([w, h]) => Math.abs(a - w) <= 2 && Math.abs(b - h) <= 2);
       }
+      // Epson ink-tank printers the app drives itself with ESC/P-R over Wi-Fi or USB (L805, L210...): borderless only on photo
+      // paper sizes, and not on the 1xx models (L120, L130...), which have no borderless mode.
+      const EPSON_ESCPR_BORDERLESS = EPSON_L_BORDERLESS.concat([[127, 178], [203, 254], [210, 297]]);
+      function epsonEscprBorderlessModel(p) { return !!(p && p.escpr && /\bL\s?(2\d\d|3\d\d|5\d\d|8\d\d|[1-8]\d{3}|18050)\b/i.test(p.name || '')); }
+      function epsonEscprBorderlessOk(pp) {
+        if (!pp) return false;
+        const a = Math.min(pp.w, pp.h), b = Math.max(pp.w, pp.h);
+        return EPSON_ESCPR_BORDERLESS.some(([w, h]) => Math.abs(a - w) <= 2 && Math.abs(b - h) <= 2);
+      }
       function wifiPKey(p) { return p ? String(p.name || p.ip || '') : ''; }
       function wifiOptsFor(p) { return Object.assign({}, wifiOptsShared, (p && (wifiOptsMap[wifiPKey(p)] || wifiOptsMap[p.ip])) || {}); }
       function wifiOptsSet(p, key, val) {
@@ -31120,9 +31136,11 @@
           return;
         }
         if (p.escpr) {
-          // Epson ESC/P-R path (Epson L120 / L210 / L805 and similar, over USB or Wi-Fi): plain colour, 3 mm borders.
+          // Epson ESC/P-R path (Epson L210 / L805 and similar, over USB or Wi-Fi): colour, 3 mm borders, or borderless on photo
+          // paper when the Borderless switch is on and this model and paper size can do it.
           const pics = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
-          await wifiJob(id => window.__PBNet.printEscpr(id, p.ip, paper.w, paper.h, 1, JSON.stringify(pics), JSON.stringify(wo)));
+          const escprOpts = Object.assign({}, wo, { borderless: !!(wo.borderless && epsonEscprBorderlessModel(p) && epsonEscprBorderlessOk(paper)) });
+          await wifiJob(id => window.__PBNet.printEscpr(id, p.ip, paper.w, paper.h, 1, JSON.stringify(pics), JSON.stringify(escprOpts)));
           return;
         }
         if (!p.ipp) throw new Error(p.name + ' only takes receipts. Pick a photo printer.');

@@ -1204,6 +1204,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 }
                 val optJson = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
                 val adj = PrintColorAdj.from(optJson)
+                // Borderless (L805, L210 and similar): no 3 mm border, photo paper. The booth page only sets it for a
+                // model and paper size the printer can do borderless; otherwise the job stays as before (border, plain).
+                val borderless = optJson.optBoolean("borderless", false)
                 val arr = JSONArray(pagesJson)
                 for (c in 0 until copies.coerceIn(1, 20)) {
                     for (i in 0 until arr.length()) {
@@ -1211,7 +1214,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
                         try {
-                            val data = EscprJob.build(bmp, widthMm, heightMm, false, adj = adj)
+                            val data = EscprJob.build(bmp, widthMm, heightMm, false, borderless = borderless, photoMedia = borderless, adj = adj)
                             if (net) netRawJob(id, data) else usbRaw(id, data)
                         } finally {
                             try { bmp.recycle() } catch (_: Exception) {}

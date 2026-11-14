@@ -218,6 +218,19 @@ export async function checkin(fetchFn, force) {
   return 'offline';
 }
 
+// Camera diagnostics (netlify/functions/camdiag.mjs): the booth's report of a photo the camera didn't take goes out
+// signed with this laptop's licence. Throws when photobooth4u can't be reached (the booth keeps the report for later).
+export async function sendCamDiag(fetchFn, report) {
+  if (!state.lic) return { status: 401 };
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 15000);
+  try {
+    const body = { ...report, licence: state.lic, mid: machineId(), app: ver, platform: osKey() };
+    const r = await fetchFn(SERVER + '/api/camdiag', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal });
+    return { status: r.status };
+  } finally { clearTimeout(t); }
+}
+
 // The newest app version photobooth4u offers (sent with every check-in): the booth shows "Update available".
 function noteLatest(a) {
   if (a && typeof a.version === 'string' && /^\d+\.\d+\.\d+$/.test(a.version)) { state.latest = a.version; save(); }

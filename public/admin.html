@@ -1278,6 +1278,19 @@
           <div id="printerDiagList" style="margin-top:10px;overflow-x:auto;"></div>
         </details>
 
+        <details class="card" id="camDiagCard">
+          <summary>
+            <h2>Camera reports (missed photos)</h2>
+          </summary>
+          <div class="meta">What a booth reports when a USB camera (DSLR / mirrorless) doesn't take a guest's photo and its
+            "Send camera diagnostics" switch is on (it is on by default and the renter can turn it off). One row per
+            camera model: how many photos it missed, the newest error and the last reports with the camera log. A booth
+            with no internet sends its reports later, so "Happened" can be earlier than "Received". No photos or guest
+            details are sent.</div>
+          <button class="small" id="camDiagRefresh">Refresh</button>
+          <div id="camDiagList" style="margin-top:10px;overflow-x:auto;"></div>
+        </details>
+
       </div>
 
       <div class="tabpane" data-pane="tools">
@@ -2488,6 +2501,32 @@
       }
       $('printerDiagCard').addEventListener('toggle', function () { if (this.open) printerDiagLoad(); });
       $('printerDiagRefresh').addEventListener('click', printerDiagLoad);
+      // Camera reports: photos a USB camera didn't take (functions/camdiag.mjs).
+      async function camDiagLoad() {
+        var box = $('camDiagList');
+        box.textContent = 'Loading…';
+        try {
+          var r = await api({ action: 'camdiag' });
+          if (!r.cameras.length) { box.textContent = 'No reports yet.'; return; }
+          var th = function (t) { return '<th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--line,#ccc);">' + t + '</th>'; };
+          var td = function (v, extra) { return '<td style="padding:4px 8px;vertical-align:top;border-bottom:1px solid var(--line,#eee);' + (extra || '') + '">' + v + '</td>'; };
+          var pre = function (t) { return '<pre style="white-space:pre-wrap;word-break:break-word;font-size:11px;max-height:260px;overflow:auto;margin:4px 0 8px;padding:6px;border:1px solid var(--line,#ddd);border-radius:6px;">' + esc(t) + '</pre>'; };
+          var h = '<table style="border-collapse:collapse;font-size:13px;width:100%;"><thead><tr>' + ['Camera', 'Missed photos', 'Newest error', 'Last report', 'App', 'Codes'].map(th).join('') + '</tr></thead><tbody>';
+          r.cameras.forEach(function (d) {
+            h += '<tr>' + td('<b>' + esc(d.name) + '</b>' + (d.brand ? '<br>' + esc(d.brand) : '')) + td(d.fail || 0, 'color:#b3261e;') + td(esc(d.lastError || '—')) +
+              td(new Date(d.lastAt).toLocaleString()) + td(esc(Object.keys(d.apps || {}).join(', '))) + td(esc(Object.keys(d.codes || {}).join(', '))) + '</tr>';
+            var rec = (d.recent || []).map(function (x) {
+              return '<details style="margin:2px 0;"><summary style="cursor:pointer;">' + esc(new Date(x.at).toLocaleString()) + ' · ' + esc(x.app || '') + ' · ' + esc(x.code || '') + ' · ' + esc(x.error || '') + '</summary>' +
+                '<div><small>Happened ' + esc(new Date(x.at).toLocaleString()) + ', received ' + esc(new Date(x.got || x.at).toLocaleString()) + '</small>' +
+                (x.workerLog ? '<div><b>App camera.log</b></div>' + pre(x.workerLog) : '') + (x.log ? '<div><b>Booth camera log</b></div>' + pre(x.log) : '') + '</div></details>';
+            }).join('');
+            h += '<tr><td colspan="6" style="padding:2px 8px 10px;border-bottom:1px solid var(--line,#ccc);">' + rec + '</td></tr>';
+          });
+          box.innerHTML = h + '</tbody></table>';
+        } catch (err) { box.textContent = ''; if (err.message !== 'auth') toast(err.message, true); }
+      }
+      $('camDiagCard').addEventListener('toggle', function () { if (this.open) camDiagLoad(); });
+      $('camDiagRefresh').addEventListener('click', camDiagLoad);
       $('backupDriveBtn').addEventListener('click', async function () {
         this.disabled = true;
         try { var r = await api({ action: 'backupdrive' }); backupShow(r); toast(r.ok ? 'Backup saved to Drive' : r.error, !r.ok); }

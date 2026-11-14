@@ -128,6 +128,26 @@ async function serveRoot() {
   return htmlRes(r.html);
 }
 
+// Camera diagnostics: the booth reports a photo the camera didn't take (Setup > Camera switch, on by default). It is sent
+// to photobooth4u with this laptop's licence, together with the end of camera.log (the camera's own answers). With no
+// internet the answer says so and hands the log lines back, so the booth can keep the report and send it later.
+async function camDiagForward(req) {
+  let b = null;
+  try { b = JSON.parse(await req.text()); } catch { b = null; }
+  if (!b || typeof b !== 'object') return jsonRes({ error: 'Bad request' }, 400);
+  let workerLog = typeof b.workerLog === 'string' ? b.workerLog : '';
+  if (!workerLog) {
+    try { const t = readFileSync(join(dataDir(), 'camera.log'), 'utf8'); workerLog = t.slice(-6000); } catch { workerLog = ''; }
+  }
+  const report = { camera: b.camera, error: b.error, at: b.at, log: b.log, workerLog };
+  try {
+    const r = await L.sendCamDiag(net.fetch.bind(net), report);
+    if (r.status === 200) return jsonRes({ ok: true });
+    if (r.status >= 500) return jsonRes({ ok: false, offline: true, workerLog }, 503);
+    return jsonRes({ ok: false }, r.status);
+  } catch { return jsonRes({ ok: false, offline: true, workerLog }, 503); }
+}
+
 async function handle(req) {
   const url = new URL(req.url);
   if (url.host !== 'booth') return new Response('Not found', { status: 404 });
@@ -138,6 +158,7 @@ async function handle(req) {
     if (p.startsWith('/app/')) return fileResponse(PAGES, p.slice(5));
     if (p.startsWith('/api/')) {
       if (!L.status().ok) return jsonRes({ error: 'locked', reason: 'invalid' }, 401);
+      if (p === '/api/camdiag' && req.method === 'POST') return await camDiagForward(req);
       return await handleApi(req, p);
     }
     if (p === '/local/drive' && req.method === 'POST') {

@@ -7,7 +7,7 @@ import { timingSafeEqual, createHash, randomBytes } from 'node:crypto';
 import { setupsStore, setupKeyFor } from '../lib/core.mjs';
 import { ownerId, eventKeyOf, getAcct, acctPublic, acctKey, payStore, unseal, pm, listJSON, usedMap, batchView, createBatch, batchKey, KEY_RE } from '../lib/pay.mjs';
 import { cleanEventName, sendMail, codeEmail, EMAIL_RE, logEmailChange, REVOKE_REASONS, eventsStore, getShutdown, setShutdown, trashDriveFolder, isDriveUrl, AGREEMENT_VERSION, SUBHOOK_EVENTS } from '../lib/core.mjs';
-import { printerDiagStore } from '../lib/core.mjs';
+import { printerDiagStore, camDiagStore } from '../lib/core.mjs';
 import { replaceLifetimeCode } from '../lib/replace.mjs';
 import { buildBackup, backupName, runDriveBackup } from '../lib/backup.mjs';
 import { licenceFor, activateOn, saveMap, dropMap, licenceReady, MID_RE } from '../lib/license.mjs';
@@ -666,6 +666,14 @@ export default safe(async (req, context) => {
       const rows = (await Promise.all(blobs.slice(0, 300).map((x) => st.get(x.key, { type: 'json' })))).filter(Boolean);
       rows.sort((a, c) => (c.lastAt || 0) - (a.lastAt || 0));
       return json({ ok: true, printers: rows });
+    }
+
+    case 'camdiag': { // photos a USB camera didn't take, as the booths reported them (functions/camdiag.mjs), newest first
+      const st = camDiagStore();
+      const { blobs } = await st.list();
+      const rows = (await Promise.all(blobs.slice(0, 300).map((x) => st.get(x.key, { type: 'json' })))).filter(Boolean);
+      rows.sort((a, c) => (c.lastAt || 0) - (a.lastAt || 0));
+      return json({ ok: true, cameras: rows });
     }
 
     case 'backupstatus':

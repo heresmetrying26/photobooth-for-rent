@@ -14739,6 +14739,12 @@
           </div>
           <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
           <p class="panel-hint" id="usbWhyNote" style="display:none; font-weight:600;"></p>
+          <label id="cdiagRow" style="display:none;gap:8px;align-items:flex-start;margin:10px 0 0;font-size:13px;">
+            <input type="checkbox" id="cdiagToggle" style="margin-top:3px;">
+            <span>Send camera diagnostics to help fix camera problems<br>
+              <span class="panel-hint" style="font-size:12px;">When the camera misses a photo, sends the camera's name, the
+                error and the camera log. No photos, no guest details. Needs internet; waits and sends later if there is none.</span></span>
+          </label>
           <button type="button" class="action-btn" id="usbLogBtn" style="display:none; width:auto; margin:6px 0 0;">Copy
             camera log</button>
           <button type="button" class="action-btn" id="usbCheckBtn"
@@ -14754,13 +14760,9 @@
           <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos
             match the preview.</p>
           <div id="camSaveRow" style="display:none; margin-top:10px;">
-            <label class="switch-row">
-              <span>Save camera battery &amp; heat (camera idle when not in use)</span>
-              <input type="checkbox" id="camSaveToggle" checked>
-            </label>
-            <p class="panel-hint" id="camSaveHint">Keeps the camera sensor, light and mirror idle when not in use to save power and prevent heating.
-              On: the camera runs only during a guest's session and on this Camera step, and stays idle on the welcome screen (wakes in about a second
-              when a guest taps Start). The preview here pauses after 2 minutes without a touch; touch the screen to resume. Off: always on.</p>
+            <p class="panel-hint" id="camSaveHint">The camera sensor, light and mirror rest when not in use, to save battery and prevent heating.
+              The camera runs only during a guest's session and on this Camera step, and stays idle on the welcome screen (wakes in about a second
+              when a guest taps Start). The preview here pauses after 2 minutes without a touch; touch the screen to resume.</p>
             <label class="switch-row" id="sonyDeepRow" style="display:none;">
               <span>Sony: disconnect after 10 idle minutes</span>
               <input type="checkbox" id="sonyDeepToggle" checked>
@@ -22549,6 +22551,88 @@
         return { error: String(err.message || err.name || err).slice(0, 200), errName: String(err.name || ''), errCode: err.code != null ? String(err.code) : '', critical: usbIsCritical(err) };
       }
       window.pbCameraLog = function () { return usbLogBuf.map(e => JSON.stringify(e)).join('\n'); };
+
+      // ---- Camera diagnostics (on by default, switch under Setup > Camera) ----
+      // When a USB camera doesn't take a guest's photo, the booth sends photobooth4u the camera's name, the error message
+      // and the last lines of this camera log (the Windows / Mac app adds the end of its camera.log). No photos, no guest
+      // details. Received by netlify/functions/camdiag.mjs, shown in Admin > Camera reports. Described in the Agreement.
+      // With no internet the report waits on this device (the newest few) and goes out when the internet is back.
+      const CDIAG_KEY = 'pb_cam_diag', CDIAG_SEEN_KEY = 'pb_cam_diag_seen', CDIAG_NOTICE_KEY = 'pb_cam_diag_notice', CDIAG_Q_KEY = 'pb_cam_diag_q';
+      const CDIAG_PER_DAY = 3, CDIAG_Q_MAX = 5;
+      function cdiagOn() { try { return localStorage.getItem(CDIAG_KEY) !== '0'; } catch (e) { return true; } }
+      function cdiagQueue() { try { const q = JSON.parse(localStorage.getItem(CDIAG_Q_KEY) || '[]'); return Array.isArray(q) ? q : []; } catch (e) { return []; } }
+      function cdiagSaveQueue(q) { try { localStorage.setItem(CDIAG_Q_KEY, JSON.stringify(q.slice(-CDIAG_Q_MAX))); } catch (e) { } }
+      // 'ok' = received, 'later' = no internet (keep it), 'drop' = refused (don't ask again).
+      async function cdiagPost(item) {
+        let token = null, deviceId = null;
+        try { token = localStorage.getItem('pb_token'); deviceId = localStorage.getItem('pb_device'); } catch (e) { }
+        if (!token || !deviceId) return 'drop';
+        const ver = String((window.__PB && window.__PB.desktop && window.__PB.desktop.v) || (/PB4uAndroid\/?([\d.]*)/.exec(navigator.userAgent || '') || [])[1] || '');
+        const body = Object.assign({ token: token, deviceId: deviceId, app: ver, platform: ANDROID_APP ? 'android' : 'web' }, item);
+        let r;
+        try { r = await fetch('/api/camdiag', { method: 'POST', cache: 'no-store', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) }); }
+        catch (e) { return 'later'; }
+        if (r.ok) return 'ok';
+        if (r.status >= 500) {
+          // The app couldn't reach photobooth4u: it hands back its camera.log lines, so they are kept as they were at the failure.
+          try { const j = await r.json(); if (j && typeof j.workerLog === 'string' && !item.workerLog) item.workerLog = j.workerLog.slice(-6000); } catch (e) { }
+          return 'later';
+        }
+        return 'drop';
+      }
+      let cdiagBusy = false;
+      async function cdiagFlush() {
+        if (cdiagBusy || !cdiagOn()) return;
+        cdiagBusy = true;
+        try {
+          let q = cdiagQueue();
+          while (q.length) {
+            const res = await cdiagPost(q[0]);
+            if (res === 'later') { const now = cdiagQueue(); if (now.length && now[0].at === q[0].at) { now[0] = q[0]; cdiagSaveQueue(now); } break; }
+            q = cdiagQueue().filter(x => x.at !== q[0].at);
+            cdiagSaveQueue(q);
+          }
+        } catch (e) { }
+        finally { cdiagBusy = false; }
+      }
+      function cdiagReport(err) {
+        try {
+          if (!cdiagOn() || LANREMOTE || !usbCam.name) return;
+          const name = String(usbCam.name).slice(0, 120);
+          const day = new Date().toISOString().slice(0, 10);
+          let seen = {};
+          try { seen = JSON.parse(localStorage.getItem(CDIAG_SEEN_KEY) || '{}') || {}; } catch (e) { seen = {}; }
+          const key = name + '|' + day;
+          if ((seen[key] || 0) >= CDIAG_PER_DAY) return;     // a few per camera per day is enough to see what went wrong
+          seen[key] = (seen[key] || 0) + 1;
+          const ks = Object.keys(seen); if (ks.length > 30) ks.slice(0, ks.length - 30).forEach(k => delete seen[k]);
+          try { localStorage.setItem(CDIAG_SEEN_KEY, JSON.stringify(seen)); } catch (e) { }
+          if (!localStorage.getItem(CDIAG_NOTICE_KEY)) {
+            try { localStorage.setItem(CDIAG_NOTICE_KEY, '1'); } catch (e) { }
+            setTimeout(function () { try { showToast('Camera diagnostics are on: when the camera misses a photo, its name, the error and the camera log are sent to photobooth4u to fix camera problems. No photos or guest details. You can turn this off under Setup > Camera.', 14000); } catch (e) { } }, 7000);
+          }
+          const info = (usbCam.camera && usbCam.camera.info) || {};
+          const item = {
+            at: Date.now(),
+            camera: { name: name, brand: String(info.brand || '').slice(0, 20) },
+            error: String((err && (err.helperMsg || err.message)) || err || 'Photo failed').slice(0, 300),
+            log: usbLogBuf.slice(-25).map(e => JSON.stringify(e)).join('\n').slice(-6000)
+          };
+          const q = cdiagQueue(); q.push(item); cdiagSaveQueue(q);
+          setTimeout(cdiagFlush, 1500);
+        } catch (e) { }
+      }
+      (function () {
+        const cb = document.getElementById('cdiagToggle');
+        if (!cb) return;
+        cb.checked = cdiagOn();
+        cb.addEventListener('change', () => {
+          try { localStorage.setItem(CDIAG_KEY, cb.checked ? '1' : '0'); if (!cb.checked) localStorage.removeItem(CDIAG_Q_KEY); } catch (e) { }
+          showToast(cb.checked ? 'Camera diagnostics on.' : 'Camera diagnostics off. Nothing will be sent.', 3000);
+        });
+      })();
+      window.addEventListener('online', function () { setTimeout(cdiagFlush, 3000); });
+      setTimeout(cdiagFlush, 30000);   // reports kept from an event without internet
       function usbLogButton() {
         const b = document.getElementById('usbLogBtn');
         if (!b) return;
@@ -23138,8 +23222,8 @@
       // shows the live camera (attractMode === 'camera' or hands-free wave/smile). Everywhere else the camera is really idle
       // and asleep (webcam stream tracks stopped, DSLR mirror down). Wakes up instantly when needed. Turn off in Setup > Camera.
       const USB_IDLE_SLEEP_MS = 2000;      // not needed for this long: switch live view off
-      const USB_SAVE_KEY = 'pb_cam_save';
-      function usbSaveOn() { try { return localStorage.getItem(USB_SAVE_KEY) !== 'off'; } catch (e) { return true; } }
+      // Always on (there is no switch any more): a booth that had it turned off before is rested like every other.
+      function usbSaveOn() { return true; }
       let usbWantAt = Date.now(), usbPowerBusy = false, usbKeepAt = 0, usbTouchAt = Date.now();
       const USB_SETUP_LIVE_MS = 2 * 60 * 1000;    // Setup > Camera step: the preview pauses after this long without a touch (touch anything to resume)
       const USB_SCREEN_LIVE_MS = 5 * 60 * 1000;   // a welcome screen that shows the camera: same, after this long without a touch
@@ -23342,9 +23426,7 @@
           if (row) row.style.display = hasCam ? '' : 'none';
           const stEl = document.getElementById('camSaveState');
           if (stEl && row && row.style.display !== 'none') {
-            stEl.textContent = !usbSaveOn()
-              ? 'Saver off: camera always on.'
-              : camDeep
+            stEl.textContent = camDeep
                 ? 'Camera: disconnected to rest (reconnects when needed).'
                 : camSleeping
                   ? 'Camera: asleep (idle).'
@@ -23357,6 +23439,8 @@
           }
           const focusBox = document.getElementById('usbCamFocusBox');
           if (focusBox) focusBox.style.display = currentDeviceId === USB_CAM_ID ? 'block' : 'none';
+          const cdRow = document.getElementById('cdiagRow');
+          if (cdRow) cdRow.style.display = (currentDeviceId === USB_CAM_ID && !LANREMOTE) ? 'flex' : 'none';
           if (usbPowerBusy) return;
           const want = camWantLive();
           if (want) {
@@ -23382,15 +23466,6 @@
           }
         } catch (e) { }
       }, 500);
-      (function () {
-        const t = document.getElementById('camSaveToggle');
-        if (!t) return;
-        t.checked = usbSaveOn();
-        t.addEventListener('change', function () {
-          try { localStorage.setItem(USB_SAVE_KEY, t.checked ? 'on' : 'off'); } catch (e) { }
-          if (!t.checked && camSleeping) camLiveWake();
-        });
-      })();
       (function () {
         const t = document.getElementById('sonyDeepToggle');
         if (!t) return;
@@ -24430,6 +24505,7 @@
           console.error('USB shot failed:', err);
           usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); usbAfterShot();
           usbLog('shot-fail', usbErrInfo(err));
+          cdiagReport(err);   // camera diagnostics (see cdiagReport)
           showToast(err && err.helperMsg ? err.helperMsg + ' Live view frame captured instead.' : 'Camera capture timed out. Live view frame captured instead.', 6000);
           if (usbIsCritical(err)) usbDead(err);
         }
@@ -28731,10 +28807,21 @@
             label.textContent = (p.name || 'Printer') + ' · ' + p.ip + (p.ipp ? '' : ' · receipt/raw only') + (p.installed ? ' · on this computer as “' + p.installed + '”' : '');
             const b = document.createElement('button');
             b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;';
-            b.textContent = p.installed ? 'Use this printer' : (p.ipp ? 'Add to this computer' : 'Add in system settings');
+            // A Canon SELPHY on Wi-Fi is always used with no Windows / Mac driver: the app sends the photo straight to it.
+            const selphyDirect = !!(p.ipp && /selphy/i.test(p.name || ''));
+            b.textContent = (p.installed || selphyDirect) ? 'Use this printer' : (p.ipp ? 'Add to this computer' : 'Add in system settings');
             b.addEventListener('click', async function () {
               b.disabled = true;
               try {
+                if (selphyDirect) {
+                  st.textContent = 'Connecting to ' + (p.name || p.ip) + '…';
+                  const dr = await fetch(HELPER_URL + '/printer/add', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ip: p.ip, port: p.port, path: p.path, name: p.name, direct: true }) });
+                  let dj = null; try { dj = await dr.json(); } catch (e) { }
+                  if (!dj || !dj.ok) { st.textContent = (dj && dj.error) || 'Could not connect to the printer. Update the app and try again.'; return; }
+                  await pickInstalled(dj.printer);
+                  st.textContent = 'Ready: photos go straight to ' + (p.name || p.ip) + '. Choose Postcard 100×148 mm paper, then print a test.';
+                  return;
+                }
                 if (p.installed) { await pickInstalled(p.installed); return; }
                 st.textContent = 'Adding ' + (p.name || p.ip) + '… this can take a little while.';
                 const rr = await fetch(HELPER_URL + '/printer/add', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ip: p.ip, port: p.port, path: p.path, name: p.name }) });
@@ -28745,27 +28832,7 @@
               } catch (e) { st.textContent = 'Could not add the printer: ' + (e.message || e); }
               finally { b.disabled = false; }
             });
-            row.appendChild(label);
-            // A Canon SELPHY on Wi-Fi can be used with no Windows / Mac driver: the app sends the photo straight to it.
-            if (p.ipp && /selphy/i.test(p.name || '')) {
-              const d = document.createElement('button');
-              d.type = 'button'; d.className = 'action-btn primary'; d.style.cssText = 'width:auto;margin:0;';
-              d.textContent = 'Use without a driver (recommended)';
-              d.addEventListener('click', async function () {
-                d.disabled = true; b.disabled = true;
-                try {
-                  st.textContent = 'Connecting to ' + (p.name || p.ip) + '…';
-                  const rr = await fetch(HELPER_URL + '/printer/add', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ip: p.ip, port: p.port, path: p.path, name: p.name, direct: true }) });
-                  let jj = null; try { jj = await rr.json(); } catch (e) { }
-                  if (!jj || !jj.ok) { st.textContent = (jj && jj.error) || 'Could not connect to the printer. Update the app and try again.'; return; }
-                  await pickInstalled(jj.printer);
-                  st.textContent = 'Ready: photos go straight to ' + (p.name || p.ip) + ' with no driver. Choose Postcard 100×148 mm paper, then print a test.';
-                } catch (e) { st.textContent = 'Could not connect to the printer: ' + (e.message || e); }
-                finally { d.disabled = false; b.disabled = false; }
-              });
-              row.appendChild(d);
-            }
-            row.appendChild(b); list.appendChild(row);
+            row.appendChild(label); row.appendChild(b); list.appendChild(row);
           });
         };
         const search = async function (ip) {

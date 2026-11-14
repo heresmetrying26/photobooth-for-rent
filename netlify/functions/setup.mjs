@@ -43,8 +43,17 @@ export default safe(async (req) => {
 
   switch (b.action) {
     case 'get': {
-      const doc = await store.get(id, { type: 'json' });
-      const image = doc && doc.hasImage ? await store.get(id + '_img') : null;
+      let doc = await store.get(id, { type: 'json' });
+      let docId = id;
+      // A rental / tester code upgraded to Lifetime: its setup was saved under the code alone, but a Lifetime code looks
+      // under "code + event name". Until an event name is typed, show the pre-upgrade design instead of a blank booth
+      // (the booth then carries it over to the first event by itself). Only read, never copied, so nothing can be lost.
+      if (!doc && lic.folderPrefix && scope === owner + '|_') {
+        const legacyId = keyFor(owner);
+        const legacy = await store.get(legacyId, { type: 'json' });
+        if (legacy) { doc = legacy; docId = legacyId; }
+      }
+      const image = doc && doc.hasImage ? await store.get(docId + '_img') : null;
       const ownerRec = owner === p.k ? rec : await licenses().get(owner, { type: 'json' });   // a frame Admin made for this renter
       const sf = ownerRec && ownerRec.startFrame;
       return json({ ok: true, settings: doc ? doc.settings : null, updatedAt: doc ? doc.updatedAt : 0, image: image || null, startFrame: sf ? { id: sf.id, name: sf.name } : null });

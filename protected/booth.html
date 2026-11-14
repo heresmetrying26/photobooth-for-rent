@@ -15294,6 +15294,8 @@
             </div>
             <label class="toggle-row" style="margin-top:8px;"><input type="checkbox" id="gbLookPick" checked> Let guests choose a look</label>
             <p class="panel-hint" style="margin:4px 0 0;">Guests see a row of looks before they record. The look is part of the saved video.</p>
+            <label class="toggle-row" style="margin-top:8px;"><input type="checkbox" id="gbMirror" checked> Save the video mirrored, like the preview</label>
+            <p class="panel-hint" style="margin:4px 0 0;">When the camera is shown as a mirror (Setup &gt; Camera &gt; Mirror), the saved video matches what the guest saw. Untick to save it the true way round, so writing on a sign reads correctly.</p>
           </div>
           <label class="sub-label" for="gbEvent" style="display:block;margin:10px 0 4px;">Event name on the screen (optional)</label>
           <input type="text" id="gbEvent" maxlength="50" placeholder="e.g. Anna &amp; Ben&rsquo;s Wedding" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font:600 14px 'Manrope',sans-serif;">
@@ -30100,14 +30102,14 @@
       // look: the starting look for video messages ('none' = natural, 'booth' = same as the photos, or one of GB_LOOK_KEYS);
       // pick: guests may choose a look themselves before recording.
       var GB_LOOK_KEYS = ['none', 'booth', 'beauty', 'glow', 'golden', 'pastel', 'rose', 'mint', 'cinema', 'neon', 'camcorder', 'noir', 'film', 'bw', 'warm', 'cool'];
-      var gbPrefs = { questions: [], length: 30, event: '', title: '', thanks: '', look: 'none', pick: true };
+      var gbPrefs = { questions: [], length: 30, event: '', title: '', thanks: '', look: 'none', pick: true, mirror: true };
       function cleanGbPrefs(p) {
         p = p && typeof p === 'object' ? p : {};
         var txt = function (v, n) { return typeof v === 'string' ? v.replace(/[<>]/g, '').trim().slice(0, n) : ''; };
         var qs = (Array.isArray(p.questions) ? p.questions : []).map(function (q) { return txt(q, 120); }).filter(Boolean).slice(0, 5);
         var len = Math.floor(Number(p.length) || 30);
         return { questions: qs, length: GB_LENGTHS.indexOf(len) >= 0 ? len : 30, event: txt(p.event, 50), title: txt(p.title, 50), thanks: txt(p.thanks, 60),
-          look: GB_LOOK_KEYS.indexOf(p.look) >= 0 ? p.look : 'none', pick: p.pick !== false };
+          look: GB_LOOK_KEYS.indexOf(p.look) >= 0 ? p.look : 'none', pick: p.pick !== false, mirror: p.mirror !== false };
       }
       function gbCardRefresh() {
         var card = document.getElementById('gbSetupCard'); if (!card) return;
@@ -30120,6 +30122,7 @@
         set('gbLook', gbPrefs.look);
         try { set('gbQuality', vgQuality()); } catch (e) { }          // (this device's own choice; not part of the saved setup)
         var pk = document.getElementById('gbLookPick'); if (pk && pk.checked !== gbPrefs.pick) pk.checked = gbPrefs.pick;
+        var mk = document.getElementById('gbMirror'); if (mk && mk.checked !== gbPrefs.mirror) mk.checked = gbPrefs.mirror;
         // Looks need canvas filters (Chrome / Android / Edge); without them the options are not shown.
         var lb = document.getElementById('gbLookBox'), can = false;
         try { can = typeof vgCanFilter === 'function' && vgCanFilter(); } catch (e) { }     // (this can run before the guestbook code below has loaded)
@@ -37039,10 +37042,21 @@
       }
       // Draw when the camera delivers a new picture (not on every screen refresh), where the browser can tell us.
       function vgSched() {
-        if (typeof vgVideo.requestVideoFrameCallback === 'function') vgFx.vf = vgVideo.requestVideoFrameCallback(vgFrame);
+        if (!vgFx.useRaf && typeof vgVideo.requestVideoFrameCallback === 'function') vgFx.vf = vgVideo.requestVideoFrameCallback(vgFrame);
         else vgFx.raf = requestAnimationFrame(vgFrame);
+        if (!vgFx.wd) { vgFx.lastT = performance.now(); vgFx.wd = setTimeout(vgWatch, 800); }
+      }
+      // If the browser never calls back for camera frames (some older WebViews), draw on every screen refresh instead, for good.
+      function vgWatch() {
+        vgFx.wd = 0;
+        if (!vgFx.on) return;
+        if (!vgFx.useRaf && performance.now() - (vgFx.lastT || 0) > 700 && vgVideo.readyState >= 2 && !vgVideo.paused) {
+          vgFx.useRaf = true; vgUnsched(); vgSched();
+        }
+        if (!vgFx.wd) vgFx.wd = setTimeout(vgWatch, 800);
       }
       function vgUnsched() {
+        if (vgFx.wd) { clearTimeout(vgFx.wd); vgFx.wd = 0; }
         if (vgFx.vf) { try { vgVideo.cancelVideoFrameCallback(vgFx.vf); } catch (e) { } vgFx.vf = 0; }
         if (vgFx.raf) { cancelAnimationFrame(vgFx.raf); vgFx.raf = 0; }
       }
@@ -37089,7 +37103,7 @@
         x.restore();
       }
       function vgFrame(ts) {
-        vgFx.raf = 0; vgFx.vf = 0;
+        vgFx.raf = 0; vgFx.vf = 0; vgFx.lastT = performance.now();
         if (!vgFx.on) return;
         vgSched();
         if (ts - vgFx.last < 28) return;          // about 30 pictures a second is plenty
@@ -37106,14 +37120,16 @@
           if ((cv.width !== w || cv.height !== h) && vg.state !== 'recording') { cv.width = w; cv.height = h; }   // never resize while recording
           w = cv.width; h = cv.height;
           var x = vgFx.ctx;
-          x.filter = d.css || 'none'; x.drawImage(v, 0, 0, w, h); x.filter = 'none';
+          x.filter = d.css || 'none';
+          if (vgFx.flip) { x.save(); x.translate(w, 0); x.scale(-1, 1); x.drawImage(v, 0, 0, w, h); x.restore(); } else x.drawImage(v, 0, 0, w, h);
+          x.filter = 'none';
           (d.fx || []).forEach(function (t) { vgLayer(x, w, h, t); });
           // Is the phone keeping up? Averaged over ~20 pictures, before recording only (never changed while recording).
           vgFx.ms = vgFx.ms ? vgFx.ms * 0.9 + (performance.now() - t0) * 0.1 : (performance.now() - t0); vgFx.n++;
           if (vgFx.n >= 20 && vg.state !== 'recording' && vgFx.ms > 22 && !Q) {      // only on Auto: a quality chosen in Setup is kept
             vgFx.n = 0; vgFx.ms = 0;
             if ((vgFx.cap || 960) > 520) vgFx.cap = Math.max(520, Math.round((vgFx.cap || 960) * 0.8));
-            else { vgFx.forceOff = true; showToast('Look switched off so the video stays smooth on this device.', 4000); setTimeout(function () { try { vgLooksUi(); vgLookApply(); } catch (e) { } }, 0); }
+            else if (vgLookHas(d)) { vgFx.forceOff = true; showToast('Look switched off so the video stays smooth on this device.', 4000); setTimeout(function () { try { vgLooksUi(); vgLookApply(); } catch (e) { } }, 0); }
           }
         } catch (e) { }
       }
@@ -37122,11 +37138,13 @@
         var cv = vgFx.cv || (vgFx.cv = vgEl('vgCanvas')); if (!cv) return;
         var d = vgCanFilter() && !vgFx.forceOff ? vgLookDef(vgCurLook()) : null;
         var live = !vgOverlay.hidden && (vg.state === 'idle' || vg.state === 'counting' || vg.state === 'recording') && !!vgVideo.srcObject;
-        var on = !!(live && vgLookHas(d));
+        // The picture goes through the canvas when there is a look, or when the video must be saved mirrored (the camera itself is never mirrored).
+        var flip = !!(gbPrefs.mirror && vgCanFilter() && vgMirror());
+        var on = !!(live && (vgLookHas(d) || flip));
         if (vg.state === 'recording' && vgFx.on !== on) return;      // never switch the picture while recording
-        vgFx.def = on ? d : null; vgFx.on = on;
+        vgFx.def = on ? (d || {}) : null; vgFx.on = on; vgFx.flip = flip;
         cv.hidden = !on;
-        cv.style.transform = on && vgMirror() ? 'scaleX(-1)' : '';
+        cv.style.transform = on && vgMirror() && !flip ? 'scaleX(-1)' : '';      // flipped in the picture itself, or only on screen
         if (on && !vgFx.raf && !vgFx.vf) vgSched();
         if (!on) vgUnsched();
       }
@@ -37180,6 +37198,7 @@
       vgEl('gbLook').addEventListener('change', function () { gbPrefs.look = this.value; gbChanged(); });
       vgEl('gbQuality').addEventListener('change', function () { try { localStorage.setItem(VG_Q_KEY, this.value); } catch (e) { } showToast('Video quality: ' + this.options[this.selectedIndex].textContent + '. Used the next time the guestbook opens.', 3000); });
       vgEl('gbLookPick').addEventListener('change', function () { gbPrefs.pick = this.checked; gbChanged(); });
+      vgEl('gbMirror').addEventListener('change', function () { gbPrefs.mirror = this.checked; gbChanged(); });
       [['gbEvent', 'event'], ['gbTitle', 'title'], ['gbThanks', 'thanks']].forEach(function (k) {
         vgEl(k[0]).addEventListener('input', function () { gbPrefs[k[1]] = this.value.replace(/[<>]/g, ''); gbChanged(); });
       });

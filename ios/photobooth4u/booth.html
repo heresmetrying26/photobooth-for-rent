@@ -28745,7 +28745,27 @@
               } catch (e) { st.textContent = 'Could not add the printer: ' + (e.message || e); }
               finally { b.disabled = false; }
             });
-            row.appendChild(label); row.appendChild(b); list.appendChild(row);
+            row.appendChild(label);
+            // A Canon SELPHY on Wi-Fi can be used with no Windows / Mac driver: the app sends the photo straight to it.
+            if (p.ipp && /selphy/i.test(p.name || '')) {
+              const d = document.createElement('button');
+              d.type = 'button'; d.className = 'action-btn primary'; d.style.cssText = 'width:auto;margin:0;';
+              d.textContent = 'Use without a driver (recommended)';
+              d.addEventListener('click', async function () {
+                d.disabled = true; b.disabled = true;
+                try {
+                  st.textContent = 'Connecting to ' + (p.name || p.ip) + '…';
+                  const rr = await fetch(HELPER_URL + '/printer/add', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ip: p.ip, port: p.port, path: p.path, name: p.name, direct: true }) });
+                  let jj = null; try { jj = await rr.json(); } catch (e) { }
+                  if (!jj || !jj.ok) { st.textContent = (jj && jj.error) || 'Could not connect to the printer. Update the app and try again.'; return; }
+                  await pickInstalled(jj.printer);
+                  st.textContent = 'Ready: photos go straight to ' + (p.name || p.ip) + ' with no driver. Choose Postcard 100×148 mm paper, then print a test.';
+                } catch (e) { st.textContent = 'Could not connect to the printer: ' + (e.message || e); }
+                finally { d.disabled = false; b.disabled = false; }
+              });
+              row.appendChild(d);
+            }
+            row.appendChild(b); list.appendChild(row);
           });
         };
         const search = async function (ip) {

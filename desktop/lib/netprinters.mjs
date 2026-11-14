@@ -159,3 +159,123 @@ export async function discoverNetworkPrinters({ timeoutMs = 900, concurrency = 9
     printers: [...found.values()].sort((a, b) => (!!b.name - !!a.name) || ipToLong(a.ip) - ipToLong(b.ip))
   };
 }
+
+// ---- Direct IPP printing: one photo sent straight to a printer, no Windows / Mac driver ----
+// Used for the Canon SELPHY (CP1300 and the other Wi-Fi models), which accepts a JPEG over IPP / AirPrint.
+// Same idea as the Android app (NetPrintBridge.kt): name the paper the printer itself lists, ask it not to leave a border.
+const ippU16 = (v) => { const b = Buffer.alloc(2); b.writeUInt16BE(v & 0xffff); return b; };
+const ippU32 = (v) => { const b = Buffer.alloc(4); b.writeUInt32BE(v >>> 0); return b; };
+const ippStr = (s) => { const v = Buffer.from(s, 'utf8'); return Buffer.concat([ippU16(v.length), v]); };
+const ippTagged = (tag, name, value) => Buffer.concat([Buffer.from([tag]), ippStr(name), ippStr(value)]);
+
+/** Get-Printer-Attributes for the settings a direct print needs: file types, paper loaded / supported, model. */
+export function ippCapsRequest(uri) {
+  const wanted = ['printer-make-and-model', 'document-format-supported', 'media-ready', 'media-supported', 'media-default'];
+  return Buffer.concat([
+    Buffer.from([0x02, 0x00, 0x00, 0x0b, 0, 0, 0, 1, 0x01]),
+    ippTagged(0x47, 'attributes-charset', 'utf-8'),
+    ippTagged(0x48, 'attributes-natural-language', 'en'),
+    ippTagged(0x45, 'printer-uri', uri),
+    ...wanted.map((w, i) => ippTagged(0x44, i === 0 ? 'requested-attributes' : '', w)),
+    Buffer.from([0x03])
+  ]);
+}
+
+/**
+ * Print-Job (RFC 8011 operation 0x0002). `mediaName` names a paper the printer lists ("jpn_hagaki_100x148mm");
+ * otherwise `wMm` x `hMm` is asked for as a custom size with zero margins (the standard way to ask for no border).
+ * `scaling` is a print-scaling value ("fill", "none") or '' to leave it out.
+ */
+export function ippPrintJobRequest({ uri, jobName = 'photobooth4u', format = 'image/jpeg', doc, wMm = 0, hMm = 0, mediaName = '', scaling = 'fill' }) {
+  const memberName = (n) => Buffer.concat([Buffer.from([0x4a]), ippU16(0), ippStr(n)]);
+  const memberInt = (n, v) => Buffer.concat([memberName(n), Buffer.from([0x21]), ippU16(0), ippU16(4), ippU32(v)]);
+  const begCol = Buffer.from([0x34, 0, 0, 0, 0]), endCol = Buffer.from([0x37, 0, 0, 0, 0]);
+  const parts = [
+    Buffer.from([0x02, 0x00, 0x00, 0x02, 0, 0, 0, 1, 0x01]),
+    ippTagged(0x47, 'attributes-charset', 'utf-8'),
+    ippTagged(0x48, 'attributes-natural-language', 'en'),
+    ippTagged(0x45, 'printer-uri', uri),
+    ippTagged(0x42, 'requesting-user-name', 'photobooth'),
+    ippTagged(0x42, 'job-name', jobName),
+    ippTagged(0x49, 'document-format', format),
+    Buffer.from([0x02])
+  ];
+  if (mediaName) parts.push(ippTagged(0x44, 'media', mediaName));
+  else if (wMm > 0 && hMm > 0) {
+    parts.push(Buffer.concat([Buffer.from([0x34]), ippStr('media-col'), ippU16(0)]),
+      memberName('media-size'), begCol,
+      memberInt('x-dimension', Math.round(Math.min(wMm, hMm) * 100)), memberInt('y-dimension', Math.round(Math.max(wMm, hMm) * 100)),
+      endCol,
+      memberInt('media-top-margin', 0), memberInt('media-bottom-margin', 0), memberInt('media-left-margin', 0), memberInt('media-right-margin', 0),
+      endCol);
+  }
+  if (scaling) parts.push(ippTagged(0x44, 'print-scaling', scaling));
+  parts.push(Buffer.from([0x03]), Buffer.from(doc || []));
+  return Buffer.concat(parts);
+}
+
+/** The paper (from the printer's own list; loaded paper first) closest to wMm x hMm, within 6 mm, or ''. */
+export function pickMediaName(caps, wMm, hMm) {
+  if (!(wMm > 0 && hMm > 0) || !caps) return '';
+  const want = [Math.min(wMm, hMm), Math.max(wMm, hMm)];
+  const re = /_(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)(mm|in)$/;
+  const pick = (names) => {
+    let best = '', bestDiff = 6;
+    for (const n of names || []) {
+      const m = re.exec(n); if (!m) continue;
+      const k = m[3] === 'in' ? 25.4 : 1, a = Number(m[1]) * k, b = Number(m[2]) * k;
+      const d = Math.max(Math.abs(Math.min(a, b) - want[0]), Math.abs(Math.max(a, b) - want[1]));
+      if (d <= bestDiff) { bestDiff = d; best = n; }
+    }
+    return best;
+  };
+  return pick(caps.mediaReady) || pick(caps.mediaSupported);
+}
+
+/** Asks a printer what it can take. Returns { path, model, formats, mediaReady, mediaSupported } or null. */
+export async function ippCaps(ip, port = 631, path = '', timeoutMs = 4000) {
+  for (const p of [...new Set([path, '/ipp/print', '/ipp', '/'].filter(Boolean))]) {
+    const r = await ippPost(ip, port, p, ippCapsRequest(`ipp://${ip}:${port}${p}`), timeoutMs);
+    if (!r || r.http !== 200) continue;
+    const { status, attrs } = parseIpp(r.body);
+    if (status < 0 || status > 2) continue;
+    return {
+      path: p, model: (attrs['printer-make-and-model'] || [])[0] || '',
+      formats: (attrs['document-format-supported'] || []).map((s) => s.toLowerCase()),
+      mediaReady: attrs['media-ready'] || [], mediaSupported: attrs['media-supported'] || []
+    };
+  }
+  return null;
+}
+
+/**
+ * Sends one JPEG to the printer. Tries the paper the printer names itself first, then a custom size with no margins, then
+ * nothing at all, and stops at the first one the printer accepts. Throws an Error with a reason a person can act on.
+ */
+export async function ippPrintDirect({ ip, port = 631, path = '', jpeg, widthMm = 0, heightMm = 0, jobName = 'photobooth4u', timeoutMs = 90000 }) {
+  const caps = await ippCaps(ip, port, path);
+  if (!caps) throw new Error('The printer at ' + ip + ' did not answer. Is it on and on the same Wi-Fi as this computer? If it joined the Wi-Fi again it may have a new address: choose Find printers and use it again.');
+  const accepted = caps.formats.length === 0 || caps.formats.includes('image/jpeg');
+  if (!accepted) throw new Error((caps.model || 'This printer') + ' can’t take photos straight from the app (it accepts: ' + caps.formats.filter((f) => /^(image|application)\//.test(f)).slice(0, 5).join(', ') + ').');
+  const named = pickMediaName(caps, widthMm, heightMm);
+  const attempts = [
+    ...(named ? [{ mediaName: named, scaling: 'fill' }, { mediaName: named, scaling: '' }] : []),
+    ...(widthMm > 0 && heightMm > 0 ? [{ wMm: widthMm, hMm: heightMm, scaling: 'fill' }] : []),
+    { scaling: '' }
+  ];
+  let lastErr = 'The printer didn’t accept the photo.', drops = 0;
+  for (const a of attempts) {
+    for (const p of [...new Set([caps.path, '/ipp/print', '/ipp', '/'])]) {
+      const body = ippPrintJobRequest({ uri: `ipp://${ip}:${port}${p}`, jobName, doc: jpeg, ...a });
+      const r = await ippPost(ip, port, p, body, timeoutMs);
+      if (!r) { if (++drops >= 3) throw new Error('Lost the printer while sending the photo. Check it is on and still on the same Wi-Fi, then print again.'); lastErr = 'The printer dropped the connection.'; continue; }
+      if (r.http === 200) {
+        const { status } = parseIpp(r.body);
+        if (status >= 0 && status <= 2) return { media: a.mediaName || (a.wMm ? 'custom' : 'default'), scaling: a.scaling };
+        lastErr = 'The printer refused the photo (code 0x' + status.toString(16) + ').';
+      } else if (r.http === 426 || r.http === 301 || r.http === 302) lastErr = 'This printer only accepts secure printing, which the app doesn’t support yet.';
+      else if (r.http !== 404) lastErr = 'The printer answered with HTTP ' + r.http + '.';
+    }
+  }
+  throw new Error(lastErr);
+}

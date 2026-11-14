@@ -18,7 +18,7 @@ import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
 import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinConnectInfo, spinLookOfferSet, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
-import { makeShrinkPage } from './lib/pageshrink.mjs';
+import { makeShrinkPage, makePngToJpeg } from './lib/pageshrink.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { detectWifi } from './lib/wifi.mjs';
 import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetup, hotspotSetCreds, hotspotWake, hotspotSuspend, hotspotResume } from './lib/hotspot.mjs';
@@ -556,6 +556,8 @@ app.whenReady().then(async () => {
   initHelper({
     workerPath: join(BUILD, 'camera-worker.ps1'),
     shrinkPage: makeShrinkPage(nativeImage),
+    toJpeg: makePngToJpeg(nativeImage),
+    directPrintersFile: join(dataDir(), 'direct-printers.json'),
     logger: (m) => {
       console.log('[helper] ' + m);
       try {

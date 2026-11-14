@@ -60,3 +60,71 @@ srv.close();
 assert.equal(await portOpen('127.0.0.1', port, 500), false);
 assert.equal(await ippIdentify('127.0.0.1', port, 500), null);
 console.log('✓ Passed: a printer is found open, named over IPP, and a closed port is reported as not a printer');
+
+// ---- printing straight to a printer (a Canon SELPHY with no driver) ----
+{
+  const { ippPrintJobRequest, ippPrintDirect, pickMediaName, ippCaps } = await import('../lib/netprinters.mjs');
+  const jobReq = ippPrintJobRequest({ uri: 'ipp://10.0.0.5:631/ipp/print', doc: Buffer.from([0xff, 0xd8, 0xff, 0xd9]), mediaName: 'jpn_hagaki_100x148mm', scaling: 'fill' });
+  assert.equal(jobReq.readUInt16BE(2), 0x0002);                              // Print-Job
+  assert.ok(jobReq.includes(Buffer.from('jpn_hagaki_100x148mm')) && jobReq.includes(Buffer.from('print-scaling')) && jobReq.includes(Buffer.from('image/jpeg')));
+  assert.deepEqual([...jobReq.subarray(jobReq.length - 4)], [0xff, 0xd8, 0xff, 0xd9]);   // the photo comes right after the end-of-attributes tag
+  const colReq = ippPrintJobRequest({ uri: 'ipp://x/', doc: Buffer.from([1]), wMm: 100, hMm: 148, scaling: '' });
+  assert.ok(colReq.includes(Buffer.from('media-col')) && colReq.includes(Buffer.from('media-top-margin')) && !colReq.includes(Buffer.from('print-scaling')));
+  assert.equal(pickMediaName({ mediaReady: ['na_index-4x6_4x6in'], mediaSupported: ['jpn_hagaki_100x148mm', 'na_index-4x6_4x6in', 'iso_a4_210x297mm'] }, 100, 148), 'na_index-4x6_4x6in');
+  assert.equal(pickMediaName({ mediaReady: [], mediaSupported: ['jpn_hagaki_100x148mm', 'om_card_54x86mm'] }, 100, 148), 'jpn_hagaki_100x148mm');
+  assert.equal(pickMediaName({ mediaReady: [], mediaSupported: ['jpn_hagaki_100x148mm', 'om_card_54x86mm'] }, 54, 86), 'om_card_54x86mm');
+  assert.equal(pickMediaName({ mediaReady: [], mediaSupported: ['iso_a4_210x297mm'] }, 100, 148), '');
+  console.log('✓ Passed: the direct print request carries the paper name, the photo, and no border settings it was not asked for');
+
+  const multi = (head, attrs) => {
+    const parts = [Buffer.from(head)];
+    for (const [name, vals] of attrs) vals.forEach((val, i) => {
+      const n = Buffer.from(i === 0 ? name : ''), v = Buffer.from(val);
+      const h = Buffer.alloc(3 + n.length + 2); h[0] = 0x44; h.writeUInt16BE(n.length, 1); n.copy(h, 3); h.writeUInt16BE(v.length, 3 + n.length);
+      parts.push(h, v);
+    });
+    parts.push(Buffer.from([0x03])); return Buffer.concat(parts);
+  };
+  const OK = [0x02, 0x00, 0x00, 0x00, 0, 0, 0, 1, 0x04];
+  const seen = [];
+  let refuseNamed = false;
+  const sp = http.createServer((rq, rs) => {
+    const ch = []; rq.on('data', (d) => ch.push(d));
+    rq.on('end', () => {
+      const body = Buffer.concat(ch);
+      if (rq.url !== '/ipp/print') { rs.writeHead(404).end(); return; }
+      if (body.readUInt16BE(2) === 0x000b) {
+        rs.writeHead(200, { 'content-type': 'application/ipp' }).end(multi(OK, [['printer-make-and-model', ['Canon SELPHY CP1300']],
+          ['document-format-supported', ['application/octet-stream', 'image/jpeg', 'image/urf']], ['media-ready', ['jpn_hagaki_100x148mm']],
+          ['media-supported', ['jpn_hagaki_100x148mm', 'om_card_54x86mm']]]));
+        return;
+      }
+      seen.push(body);
+      const named = body.includes(Buffer.from('jpn_hagaki_100x148mm')) && body.includes(Buffer.from('print-scaling'));
+      const status = refuseNamed && named ? [0x02, 0x00, 0x04, 0x00, 0, 0, 0, 1, 0x03] : [0x02, 0x00, 0x00, 0x00, 0, 0, 0, 1, 0x03];
+      rs.writeHead(200, { 'content-type': 'application/ipp' }).end(Buffer.from(status));
+    });
+  });
+  await new Promise((r) => sp.listen(0, '127.0.0.1', r));
+  const pp = sp.address().port;
+  const caps = await ippCaps('127.0.0.1', pp);
+  assert.equal(caps.model, 'Canon SELPHY CP1300');
+  assert.deepEqual(caps.mediaReady, ['jpn_hagaki_100x148mm']);
+  assert.ok(caps.formats.includes('image/jpeg'));
+  const jpeg = Buffer.from([0xff, 0xd8, 0x01, 0x02, 0xff, 0xd9]);
+  let r1 = await ippPrintDirect({ ip: '127.0.0.1', port: pp, jpeg, widthMm: 100, heightMm: 148 });
+  assert.equal(r1.media, 'jpn_hagaki_100x148mm');
+  assert.equal(r1.scaling, 'fill');
+  assert.equal(seen.length, 1);
+  assert.deepEqual([...seen[0].subarray(seen[0].length - jpeg.length)], [...jpeg]);
+  // The printer refuses the first way of asking: the next way is tried, and the job still goes through.
+  refuseNamed = true; seen.length = 0;
+  let r2 = await ippPrintDirect({ ip: '127.0.0.1', port: pp, jpeg, widthMm: 100, heightMm: 148 });
+  assert.equal(r2.media, 'jpn_hagaki_100x148mm');
+  assert.equal(r2.scaling, '');
+  assert.equal(seen.length, 2);
+  console.log('✓ Passed: a photo reaches the printer on its own named paper, and the next way is tried when the printer refuses one');
+  sp.close();
+  await assert.rejects(() => ippPrintDirect({ ip: '127.0.0.1', port: pp, jpeg, widthMm: 100, heightMm: 148 }), /did not answer/);
+  console.log('✓ Passed: a printer that is off gives a clear message');
+}

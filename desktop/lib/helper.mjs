@@ -6,10 +6,10 @@
 import { tmpdir, platform, release as osRelease } from 'node:os';
 import { join } from 'node:path';
 import { writeFile, rm, mkdtemp, mkdir, readFile } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
-import { discoverNetworkPrinters } from './netprinters.mjs';
+import { discoverNetworkPrinters, ippCaps, ippPrintDirect, pickMediaName } from './netprinters.mjs';
 
 export const HELPER_VERSION = '1.1.11-app';
 const IS_WIN = platform() === 'win32';
@@ -19,9 +19,28 @@ let WORKER_PS = '';
 let log = (m) => console.log('[helper] ' + m);
 let shrinkPage = null;   // (png Buffer, scale) -> png Buffer of the same size, the picture smaller in the middle on white. Given by the app (Electron).
 
-export function initHelper({ workerPath, logger, shrinkPage: shrink }) {
+let toJpeg = null;       // (png Buffer) -> jpeg Buffer. Given by the app (Electron). Needed for printing straight to a printer over IPP.
+let directFile = '';     // where the printers used without a driver are remembered between runs
+
+// Printers used straight over IPP (a Canon SELPHY on the same Wi-Fi), with no Windows / Mac driver. They show up in the
+// printer list under a name like "Canon SELPHY CP1300 (direct 192.168.137.5)" and the booth picks them like any other.
+const direct = new Map();   // name -> { ip, port, path }
+function loadDirect() {
+  try {
+    const a = JSON.parse(readFileSync(directFile, 'utf8'));
+    for (const d of Array.isArray(a) ? a : []) if (d && d.name && /^\d{1,3}(\.\d{1,3}){3}$/.test(d.ip || '')) direct.set(String(d.name), { ip: d.ip, port: Number(d.port) || 631, path: String(d.path || '') });
+  } catch { /* none saved yet */ }
+}
+function saveDirect() {
+  if (!directFile) return;
+  try { writeFileSync(directFile, JSON.stringify([...direct].map(([name, v]) => ({ name, ...v })))); } catch { /* ignore */ }
+}
+
+export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, directPrintersFile }) {
   if (logger) log = logger;
   if (typeof shrink === 'function') shrinkPage = shrink;
+  if (typeof jpeg === 'function') toJpeg = jpeg;
+  if (directPrintersFile) { directFile = directPrintersFile; loadDirect(); }
   try { WORKER_PS = readFileSync(workerPath, 'utf8'); } catch { WORKER_PS = ''; }
   refreshPrinters();
   if (IS_WIN && WORKER_PS) camStart().catch((e) => log(String(e && e.message || e)));
@@ -60,11 +79,32 @@ function refreshPrinters() {
     .catch(() => printersCache.list).finally(() => { printersCache.loading = null; });
   return printersCache.loading;
 }
-async function printers(force) {
+async function systemPrinters(force) {
   if (force) return refreshPrinters();
   if (!printersCache.at) { await Promise.race([refreshPrinters(), new Promise((r) => setTimeout(r, 6000))]); return printersCache.list; }
   if (Date.now() - printersCache.at > 10000) refreshPrinters();
   return printersCache.list;
+}
+// The computer's own printers, then the ones used straight over IPP.
+async function printers(force) {
+  const list = await systemPrinters(force);
+  return direct.size ? [...list, ...[...direct.keys()].filter((n) => !list.includes(n))] : list;
+}
+
+// Remembers a printer to print to straight over IPP. Asks it first, so a wrong address is caught here and not at the event.
+async function addDirectPrinter({ ip, port, path, name }) {
+  if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip || '')) return { ok: false, error: 'Bad printer address.' };
+  const p = Number(port) || 631, rp = /^\/[\w\-./]*$/.test(path || '') ? path : '';
+  const caps = await ippCaps(ip, p, rp);
+  if (!caps) return { ok: false, error: 'The printer at ' + ip + ' did not answer. Is it on and on the same Wi-Fi as this computer?' };
+  if (caps.formats.length && !caps.formats.includes('image/jpeg')) return { ok: false, error: (caps.model || name || 'This printer') + ' can’t take photos straight from the app. Use “Add to this computer” instead.' };
+  const label = (String(name || caps.model || 'Photo printer').replace(/\s*\(direct[^)]*\)\s*$/i, '').replace(/[^\w .\-+]/g, ' ').replace(/\s+/g, ' ').trim() || 'Photo printer').slice(0, 48);
+  const full = label + ' (direct ' + ip + ')';
+  for (const [n, v] of [...direct]) if (v.ip === ip && n !== full) direct.delete(n);
+  direct.set(full, { ip, port: p, path: caps.path });
+  saveDirect();
+  log('Direct printer: ' + full + ' (' + (caps.model || 'unknown model') + ')');
+  return { ok: true, printer: full, direct: true };
 }
 
 async function cupsPrinterOptions(printer) {
@@ -740,6 +780,7 @@ export async function handleHelper(req, path, search) {
     try { body = await req.json(); } catch { return json({ ok: false, error: 'Bad request' }, 400); }
     const name = String(body.printer || '').trim();
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);
+    if (direct.has(name)) return json({ ok: true, message: 'This printer is used straight from the app, with no driver, so there are no Windows settings to change. Choose the paper in the app (for a SELPHY: Postcard 100×148 mm) and load the matching paper and ink cassette.' });
     return json(await openPrinterSettings(name));
   }
   if (path === '/printer/bluetooth' && method === 'POST') return json(await openBluetoothSettings());
@@ -751,12 +792,16 @@ export async function handleHelper(req, path, search) {
   if (path === '/printer/add' && method === 'POST') {
     let body;
     try { body = await req.json(); } catch { return json({ ok: false, error: 'Bad request' }, 400); }
-    try { return json(await addNetworkPrinter({ ip: String(body.ip || ''), port: body.port, path: String(body.path || ''), name: String(body.name || '') })); }
+    try {
+      if (body.direct === true) return json(await addDirectPrinter({ ip: String(body.ip || ''), port: body.port, path: String(body.path || ''), name: String(body.name || '') }));
+      return json(await addNetworkPrinter({ ip: String(body.ip || ''), port: body.port, path: String(body.path || ''), name: String(body.name || '') }));
+    }
     catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
   }
   if (path === '/printer/options' && method === 'GET') {
     const name = String(search.get('printer') || '').trim();
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);
+    if (direct.has(name)) return json({ ok: true, options: [] });
     if (IS_WIN) return json({ ok: true, platformDialog: true, options: [] });
     try { return json({ ok: true, options: await cupsPrinterOptions(name) }); }
     catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
@@ -766,6 +811,7 @@ export async function handleHelper(req, path, search) {
     try { body = await req.json(); } catch { return json({ ok: false, error: 'Bad request' }, 400); }
     const name = String(body.printer || '').trim();
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);
+    if (direct.has(name)) return json({ ok: true });
     if (IS_WIN) return json(await openPrinterSettings(name));
     const selected = body.options && typeof body.options === 'object' ? body.options : {};
     try {
@@ -818,6 +864,13 @@ export async function handleHelper(req, path, search) {
   if (method === 'GET' && path === '/paper') {
     const name = String(search.get('printer') || '').trim();
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404);
+    if (direct.has(name)) {
+      // A printer used straight over IPP names its own papers: say which one this booth size will go on.
+      const d = direct.get(name), caps = await ippCaps(d.ip, d.port, d.path, 3000);
+      if (!caps) return json({ ok: true, known: false });
+      const media = pickMediaName(caps, Number(search.get('w')) || 0, Number(search.get('h')) || 0);
+      return json({ ok: true, known: true, match: media ? { name: media + ' (sent straight to the printer)', borderless: true, isDefault: false } : null, def: '', sizes: caps.mediaSupported.slice(0, 40) });
+    }
     const info = await paperSizes(name), pick = await pickPaper(name, Number(search.get('w')) || 0, Number(search.get('h')) || 0);
     const def = info.def && info.sizes.find((x) => x.key === info.def);
     return json({ ok: true, known: info.sizes.length > 0, match: pick ? { name: pick.name, borderless: !!pick.borderless, isDefault: !!pick.keep } : null, def: def ? def.name : (info.def || ''), sizes: info.sizes.slice(0, 40).map((x) => x.name) });
@@ -841,7 +894,18 @@ export async function handleHelper(req, path, search) {
     const fit = body.fit === 'width' ? 'width' : '';
     const prev = getPrintQueue(name);
     const quality = ['draft', 'normal', 'best'].includes(body.quality) ? body.quality : '';
-    const job = prev.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0, quality, body.custom === true));
+    const dp = direct.get(name);
+    const job = dp
+      ? prev.then(async () => {
+        // No driver: each page goes to the printer as a JPEG over IPP, on the paper the printer names itself.
+        for (const png of buffers) {
+          const jpeg = toJpeg ? toJpeg(png) : null;
+          if (!jpeg || !jpeg.length) throw new Error('Could not prepare the photo for the printer.');
+          const r = await ippPrintDirect({ ip: dp.ip, port: dp.port, path: dp.path, jpeg, widthMm: Number(body.widthMm) || 0, heightMm: Number(body.heightMm) || 0 });
+          log('Direct print on ' + name + ': paper ' + r.media + ', scaling ' + (r.scaling || 'printer default'));
+        }
+      })
+      : prev.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0, quality, body.custom === true));
     printQueues.set(name, job.catch(() => { }));
     try { await job; log('Printed ' + buffers.length + ' page(s) on ' + name); return json({ ok: true }); }
     catch (e) { log('Print failed on ' + name + ': ' + (e && e.message || e)); return json({ ok: false, error: String(e && e.message || e) }, 500); }

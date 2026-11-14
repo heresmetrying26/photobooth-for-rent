@@ -1209,7 +1209,6 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 // Borderless (L805, L210 and similar): no 3 mm border, photo paper. The booth page only sets it for a
                 // model and paper size the printer can do borderless; otherwise the job stays as before (border, plain).
                 val borderless = optJson.optBoolean("borderless", false)
-                val method = optJson.optInt("method", 0)         // borderless test variant (Admin debug option); 0 = normal
                 val arr = JSONArray(pagesJson)
                 for (c in 0 until copies.coerceIn(1, 20)) {
                     for (i in 0 until arr.length()) {
@@ -1217,9 +1216,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
                         try {
-                            val data = EscprJob.build(bmp, widthMm, heightMm, false, borderless = borderless, photoMedia = borderless, adj = adj, epsonBorderless = true, method = method)
+                            val data = EscprJob.build(bmp, widthMm, heightMm, false, borderless = borderless, photoMedia = borderless, adj = adj, epsonBorderless = true)
                             if (net) netRawJob(id, data) else usbRaw(id, data)
-                            if (net) found[id]?.lastSent = (if (borderless) "borderless, Premium Glossy photo paper, " else "3 mm border, plain paper, ") + Math.round(minOf(widthMm, heightMm)) + "x" + Math.round(maxOf(widthMm, heightMm)) + " mm" + (if (borderless && method != 0) ", method " + method else "")
+                            if (net) found[id]?.lastSent = (if (borderless) "borderless, Premium Glossy photo paper, " else "3 mm border, plain paper, ") + Math.round(minOf(widthMm, heightMm)) + "x" + Math.round(maxOf(widthMm, heightMm)) + " mm"
                         } finally {
                             try { bmp.recycle() } catch (_: Exception) {}
                         }

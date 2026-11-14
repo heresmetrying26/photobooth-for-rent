@@ -218,6 +218,13 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-14', title: 'Android 1.1.68: Epson L805 prints borderless edge to edge over Wi-Fi; the Lock button asks first', for: ['website'],
+    items: [
+      'A Wi-Fi Epson L805 (and similar) now prints borderless to the edge of the paper. Tried on an L805 with four variants of the job: the two commands Epson’s Linux driver sends before the job (seti and chku) were what was missing, so the printer had been ignoring the start position and printing the picture about 3 mm inside the sheet. Borderless is sent as Premium Glossy photo paper, so load glossy photo paper; it covers 3.5x5 in (3R), 4x6 in, 5x7 in, 8x10 in, 100x148 mm, 16:9 wide, A4 and Letter. The 1.1.67 test picker is gone. Print the edge test once on the paper in use and use Edges for any side that is still a fraction of a millimetre off.',
+      'The Lock button on the dock now asks “Lock the booth?” first, so a stray tap during a session does not lock it.'
+    ]
+  },
+  {
     date: '2026-11-14', title: 'Android 1.1.67: borderless test methods for the Wi-Fi Epson L805', for: ['website'],
     items: [
       'The Wi-Fi Epson L805 still printed borderless with the picture about 3 mm inside the sheet. Epson’s own Windows driver sends the printer a different job for borderless, with a full-bleed marker this app did not send. With the Admin debug option on, Print settings now has a Borderless test method (0 to 4) under Print edge test that adds those commands in different ways; the Printer report shows the method used. Normal use is unchanged (method 0). Once one works it will be built in.'

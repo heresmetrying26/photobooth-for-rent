@@ -51,8 +51,7 @@ object EscprJob {
         photoMedia: Boolean = false,
         draft: Boolean = false,
         adj: PrintColorAdj = PrintColorAdj(),
-        epsonBorderless: Boolean = false,
-        method: Int = 0
+        epsonBorderless: Boolean = false
     ): ByteArray {
         // Borderless the way Epson's own driver sends it (epson-inkjet-printer-escpr, lib/epson-escpr-media.h, 360 dpi): the sheet size
         // is the table's size, the page area starts 36 px left of and 42 px above the sheet (negative margins) and is 72 px wider and
@@ -61,15 +60,10 @@ object EscprJob {
         val ep = if (borderless && epsonBorderless) epsonBorderlessPaper(widthMm, heightMm) else null
         val (paperW, paperH) = ep ?: paperPixels(widthMm, heightMm)
         val border = if (borderless) 0 else BORDER
-        // [method] picks what is sent on top of that, to find what the L805 accepts as borderless (Admin debug option, per tablet):
-        //   0 as before; 1 + the remote commands Epson's Windows driver sends for borderless (media MI, full-bleed FP);
-        //   2 like 1 but with the sheet-sized page area and zero margins; 3 + the seti / chku commands of Epson's Linux driver; 4 = 1 + 3.
-        val m = if (ep != null) method else 0
-        val bigArea = ep != null && m != 2
-        val areaW = if (bigArea) paperW + BL_EXTRA_W else if (ep != null) paperW else paperW - 2 * border
-        val areaH = if (bigArea) paperH + BL_EXTRA_H else if (ep != null) paperH else paperH - 2 * border
-        val marginTop = if (bigArea) -BL_TOP else if (ep != null) 0 else border
-        val marginLeft = if (bigArea) -BL_LEFT else if (ep != null) 0 else border
+        val areaW = if (ep != null) paperW + BL_EXTRA_W else paperW - 2 * border
+        val areaH = if (ep != null) paperH + BL_EXTRA_H else paperH - 2 * border
+        val marginTop = if (ep != null) -BL_TOP else border
+        val marginLeft = if (ep != null) -BL_LEFT else border
         require(areaW > 0 && areaH > 0) { "Sheet too small" }
 
         // Turn a landscape picture to match the portrait feed, then fit it to the printable area.
@@ -83,7 +77,7 @@ object EscprJob {
             rotatedSrc = src
             shouldRecycleRotated = false
         }
-        val bmp = if (bigArea) {
+        val bmp = if (ep != null) {
             epsonBleedPage(rotatedSrc, paperW, paperH, areaW, areaH)
         } else if (rotatedSrc.width == areaW && rotatedSrc.height == areaH) {
             rotatedSrc
@@ -106,10 +100,6 @@ object EscprJob {
         out.put(bytes(0x4A, 0x53, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00))                          // JS: job start
         out.put(bytes(0x4A, 0x48, 0x0E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00), ascii("ESCPRLib")) // JH
         out.put(bytes(0x48, 0x44, 0x03, 0x00, 0x00, 0x03, 0x04))                                // HD: host (linux)
-        if (m == 1 || m == 2 || m == 4) {
-            out.put(bytes(0x4D, 0x49, 0x04, 0x00, 0x00, 0x01, MEDIA_PREMIUM_GLOSSY, 0x0F))      // MI: media, as the Windows driver sends it (Premium Glossy)
-            out.put(bytes(0x46, 0x50, 0x03, 0x00, 0x00, 0xB0, 0xFF))                            // FP: full bleed (-80), as the Windows driver sends for borderless
-        }
         out.put(bytes(0x50, 0x50, 0x03, 0x00, 0x00, 0x01, 0xFF))                                // PP: any paper source
         out.put(bytes(0x1B, 0x00, 0x00, 0x00))                                                  // leave remote mode
         out.put(bytes(0x1B, 0x28, 0x52, 0x06, 0x00, 0x00), ascii("ESCPR"))                      // ESC/P-R mode
@@ -122,9 +112,12 @@ object EscprJob {
         val quality = if (draft) 0x00 else 0x01
         out.put(bytes(0x1B, 0x71, 0x09, 0x00, 0x00, 0x00), ascii("setq"),
             bytes(media, quality, if (mono) 1 else 0, 0, 0, 0, 0x00, 0x00, 0x00))
-        if (m == 3 || m == 4) {
-            out.put(bytes(0x1B, 0x71, 0x0A, 0x00, 0x00, 0x00), ascii("seti"), ByteArray(10))     // seti, as Epson's Linux driver sends
-            out.put(bytes(0x1B, 0x75, 0x02, 0x00, 0x00, 0x00), ascii("chku"), bytes(0x01, 0x01)) // chku
+        if (ep != null) {
+            // seti and chku, as Epson's Linux driver sends them before the job. Without them the L805 ignored the negative margins and
+            // started the picture 3 mm inside the sheet (tried on an L805 with 4 variants: the full-bleed / media remote commands of
+            // Epson's Windows driver changed nothing, these two put the picture on the sheet edge to edge).
+            out.put(bytes(0x1B, 0x71, 0x0A, 0x00, 0x00, 0x00), ascii("seti"), ByteArray(10))
+            out.put(bytes(0x1B, 0x75, 0x02, 0x00, 0x00, 0x00), ascii("chku"), bytes(0x01, 0x01))
         }
         // job: page size and printable area, 360 dpi, bidirectional
         out.put(bytes(0x1B, 0x6A, 0x16, 0x00, 0x00, 0x00), ascii("setj"),

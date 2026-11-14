@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.45', date: '2026-11-14' },
   { version: '1.1.44', date: '2026-11-14' },
   { version: '1.1.43', date: '2026-11-14' },
   { version: '1.1.42', date: '2026-11-14' },
@@ -216,6 +217,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-14', title: 'Desktop 1.1.45: Canon SELPHY on Wi-Fi asked for the borderless page first, one photo per job on a SELPHY', for: ['website', 'app'], app: '1.1.45',
+    items: [
+      'On a Canon SELPHY (CP1500 and the other CP models) that prints through the computer’s printer driver, several photos are now sent as one print job each, one after the other. A CP1500 can stop halfway, print only yellow or freeze the print service when it gets several photos in one job.',
+      'A Canon SELPHY lists each paper twice, with a border and without. The app now asks for the page with zero margins first (that is the borderless one), and only then for the paper by its name, which gets the bordered one. This is an attempt at the white border some SELPHY prints had; it could not be tried on a printer here.'
+    ]
+  },
   {
     date: '2026-11-14', title: 'Android 1.1.65: Epson L805 borderless now sent the way Epson’s own driver sends it', for: ['website'],
     items: [

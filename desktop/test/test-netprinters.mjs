@@ -113,8 +113,8 @@ console.log('✓ Passed: a printer is found open, named over IPP, and a closed p
         return;
       }
       seen.push(body);
-      const named = body.includes(Buffer.from('jpn_hagaki_100x148mm')) && body.includes(Buffer.from('print-scaling'));
-      const status = refuseNamed && named ? [0x02, 0x00, 0x04, 0x00, 0, 0, 0, 1, 0x03] : [0x02, 0x00, 0x00, 0x00, 0, 0, 0, 1, 0x03];
+      const zeroMargin = body.includes(Buffer.from('media-col'));      // the page asked for as a size with all margins 0 (the borderless way)
+      const status = refuseNamed && zeroMargin ? [0x02, 0x00, 0x04, 0x00, 0, 0, 0, 1, 0x03] : [0x02, 0x00, 0x00, 0x00, 0, 0, 0, 1, 0x03];
       rs.writeHead(200, { 'content-type': 'application/ipp' }).end(Buffer.from(status));
     });
   });
@@ -126,17 +126,20 @@ console.log('✓ Passed: a printer is found open, named over IPP, and a closed p
   assert.ok(caps.formats.includes('image/jpeg'));
   const jpeg = Buffer.from([0xff, 0xd8, 0x01, 0x02, 0xff, 0xd9]);
   let r1 = await ippPrintDirect({ ip: '127.0.0.1', port: pp, jpeg, widthMm: 100, heightMm: 148 });
-  assert.equal(r1.media, 'jpn_hagaki_100x148mm');
+  // First try: the printer's own paper (100 x 148 mm) asked for as a page with all four margins 0, which is how a SELPHY is asked for no border.
+  assert.equal(r1.media, 'page 100x148 mm, zero margins');
   assert.equal(r1.scaling, 'fill');
   assert.equal(seen.length, 1);
+  assert.ok(seen[0].includes(Buffer.from('media-col')) && seen[0].includes(Buffer.from('media-top-margin')) && !seen[0].includes(Buffer.from('jpn_hagaki_100x148mm')));
+  assert.ok(seen[0].includes(Buffer.from([0x00, 0x00, 0x27, 0x10])) && seen[0].includes(Buffer.from([0x00, 0x00, 0x39, 0xd0])));   // 10000 and 14800 (hundredths of a mm)
   assert.deepEqual([...seen[0].subarray(seen[0].length - jpeg.length)], [...jpeg]);
-  // The printer refuses the first way of asking: the next way is tried, and the job still goes through.
+  // The printer refuses the zero-margin page: the paper's name is tried next, and the job still goes through.
   refuseNamed = true; seen.length = 0;
   let r2 = await ippPrintDirect({ ip: '127.0.0.1', port: pp, jpeg, widthMm: 100, heightMm: 148 });
   assert.equal(r2.media, 'jpn_hagaki_100x148mm');
-  assert.equal(r2.scaling, '');
-  assert.equal(seen.length, 2);
-  console.log('✓ Passed: a photo reaches the printer on its own named paper, and the next way is tried when the printer refuses one');
+  assert.equal(r2.scaling, 'fill');
+  assert.equal(seen.length, 3);                                         // zero margin + fill, zero margin, then the name + fill
+  console.log('✓ Passed: a photo asks for the zero-margin page first, then the paper name when the printer refuses it');
   sp.close();
   await assert.rejects(() => ippPrintDirect({ ip: '127.0.0.1', port: pp, jpeg, widthMm: 100, heightMm: 148 }), /did not answer/);
   console.log('✓ Passed: a printer that is off gives a clear message');

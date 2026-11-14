@@ -905,7 +905,16 @@ export async function handleHelper(req, path, search) {
           log('Direct print on ' + name + ': paper ' + r.media + ', scaling ' + (r.scaling || 'printer default'));
         }
       })
-      : prev.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0, quality, body.custom === true));
+      : prev.then(async () => {
+        const wMm = Number(body.widthMm) || 0, hMm = Number(body.heightMm) || 0;
+        // A Canon SELPHY CP1500 can stop halfway, print only yellow or freeze the Windows print service when several photos reach it
+        // in one print job, so on a SELPHY each page goes as its own job, one after the other.
+        if (buffers.length > 1 && /selphy|canon.*\bCP\s?1[0-9]{3}\b/i.test(name)) {
+          for (const png of buffers) await printPages(name, [png], fit, wMm, hMm, quality, body.custom === true);
+          return;
+        }
+        await printPages(name, buffers, fit, wMm, hMm, quality, body.custom === true);
+      });
     printQueues.set(name, job.catch(() => { }));
     try { await job; log('Printed ' + buffers.length + ' page(s) on ' + name); return json({ ok: true }); }
     catch (e) { log('Print failed on ' + name + ': ' + (e && e.message || e)); return json({ ok: false, error: String(e && e.message || e) }, 500); }

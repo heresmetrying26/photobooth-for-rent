@@ -247,6 +247,14 @@ export function pickMediaName(caps, wMm, hMm, borderless = true) {
   return pick(caps.mediaSupported);
 }
 
+/** The size in mm that a paper name carries ("jpn_hagaki_100x148mm" -> [100, 148], "na_index-4x6_4x6in" -> [101.6, 152.4]), or null. */
+export function mediaSizeMm(name) {
+  const m = /_(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)(mm|in)(?:[-_.]?(?:borderless|full-?bleed))?$/i.exec(String(name || ''));
+  if (!m) return null;
+  const k = m[3].toLowerCase() === 'in' ? 25.4 : 1;
+  return [Math.round(Number(m[1]) * k * 100) / 100, Math.round(Number(m[2]) * k * 100) / 100];
+}
+
 /** The JPEG with 300 dpi written into its header, so a printer that prints it at its own size (no scaling) still gets the sheet's size. */
 export function jpegAt300Dpi(buf) {
   const j = Buffer.from(buf);
@@ -282,8 +290,13 @@ export async function ippPrintDirect({ ip, port = 631, path = '', jpeg, widthMm 
   const accepted = caps.formats.length === 0 || caps.formats.includes('image/jpeg');
   if (!accepted) throw new Error((caps.model || 'This printer') + ' can’t take photos straight from the app (it accepts: ' + caps.formats.filter((f) => /^(image|application)\//.test(f)).slice(0, 5).join(', ') + ').');
   const named = pickMediaName(caps, widthMm, heightMm, true);
+  const dims = named ? mediaSizeMm(named) : null;
   jpeg = jpegAt300Dpi(jpeg);
+  // A Canon SELPHY lists every paper twice: with its normal margins (a few mm of border) and as a "fullbleed" paper with zero margins.
+  // Over IPP the fullbleed one is not a different name: it is the same paper asked for as a page size with all four margins 0. Asking by
+  // name alone gets the bordered one, so the zero-margin page (sized as the printer's own paper) goes first and the name after it.
   const attempts = [
+    ...(dims ? [{ wMm: dims[0], hMm: dims[1], scaling: 'fill' }, { wMm: dims[0], hMm: dims[1], scaling: '' }] : []),
     ...(named ? [{ mediaName: named, scaling: 'fill' }, { mediaName: named, scaling: '' }] : []),
     ...(widthMm > 0 && heightMm > 0 ? [{ wMm: widthMm, hMm: heightMm, scaling: 'fill' }] : []),
     { scaling: '' }
@@ -296,7 +309,7 @@ export async function ippPrintDirect({ ip, port = 631, path = '', jpeg, widthMm 
       if (!r) { if (++drops >= 3) throw new Error('Lost the printer while sending the photo. Check it is on and still on the same Wi-Fi, then print again.'); lastErr = 'The printer dropped the connection.'; continue; }
       if (r.http === 200) {
         const { status } = parseIpp(r.body);
-        if (status >= 0 && status <= 2) return { media: a.mediaName || (a.wMm ? 'custom' : 'default'), scaling: a.scaling };
+        if (status >= 0 && status <= 2) return { media: a.mediaName || (a.wMm ? 'page ' + Math.round(a.wMm * 10) / 10 + 'x' + Math.round(a.hMm * 10) / 10 + ' mm, zero margins' : 'default'), scaling: a.scaling };
         lastErr = 'The printer refused the photo (code 0x' + status.toString(16) + ').';
       } else if (r.http === 426 || r.http === 301 || r.http === 302) lastErr = 'This printer only accepts secure printing, which the app doesn’t support yet.';
       else if (r.http !== 404) lastErr = 'The printer answered with HTTP ' + r.http + '.';

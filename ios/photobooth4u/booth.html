@@ -36742,6 +36742,7 @@
       var vg = { state: 'idle', rec: null, chunks: [], timer: null, tick: null, audio: null, blob: null, url: '', mime: '', qi: 0 };
       function vgAvailable() { return extraOn('video') && !!window.MediaRecorder && (driveReady() || LOCALSHARE); }
       function vgEl(id) { return document.getElementById(id); }
+      function vgIsOpen() { return !!(vgOverlay && !vgOverlay.hidden); }
       function vgText(title, sub) { vgEl('vgTitle').textContent = title; vgEl('vgSub').textContent = sub || ''; }
       function vgUi() {
         var st = vg.state, main = vgEl('vgMain'), second = vgEl('vgSecond');
@@ -36783,6 +36784,7 @@
         try { await camEnsureLive(); } catch (e) { }        // the camera may be resting (battery saver): wake it before showing the picture
         try { await vgEnsureCamera(); } catch (e) { }
         if (!streamActive) { var ok = await initCamera(cameraSelect.value || null); if (!ok) return; }
+        try { await vgTuneCamera(); } catch (e) { }
         vg.state = 'idle'; vgClearBlob(); vgBig('');
         vgText(vgIdleTitle(), vgIdleSub());
         var ev = vgEl('vgEvent'); ev.textContent = gbPrefs.event; ev.hidden = !gbPrefs.event;
@@ -36796,7 +36798,9 @@
         vg.state = 'idle'; vg.busy = false; vgBig(''); vgOverlay.hidden = true;
         try { vgLookApply(); } catch (e) { }
         // The guestbook may have switched cameras (Flip camera): the booth goes back to the camera it was set to.
-        if (vgCamBefore !== null) { var b = vgCamBefore; vgCamBefore = null; if (b && b !== cameraSelect.value) { cameraSelect.value = b; initCamera(b); } }
+        if (vgCamBefore !== null) { var b = vgCamBefore; vgCamBefore = null; vgCamSaved = null; if (b && b !== cameraSelect.value) { cameraSelect.value = b; initCamera(b); } }
+        vgUntuneCamera();
+        try { if (typeof startBgLive === 'function') startBgLive(); } catch (e) { }      // the live green-screen picture was paused while this screen was open
       }
       function vgMime() {
         var c = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
@@ -36822,7 +36826,8 @@
         // With a look on, the video is the filtered picture from the canvas (so the look is in the saved file), not the raw camera.
         if (vgFx.on && vgFx.cv && vgFx.cv.width) { try { var cs = vgFx.cv.captureStream(30); if (cs.getVideoTracks().length) vt = cs.getVideoTracks(); } catch (e) { } }
         var tracks = vt.slice(0, 1).concat(vg.audio ? vg.audio.getAudioTracks() : []), mime = vgMime();
-        var opts = { videoBitsPerSecond: vgMaxS() > 30 ? 1500000 : 2500000, audioBitsPerSecond: 64000 };      // 60 s uses a lower rate so it stays under the size cap if (mime) opts.mimeType = mime;
+        // Bitrate: lower on ordinary phones (the encoder is the part that lags), and lower for a 60 s message (size cap).
+        var low = vgLowPower(), opts = { videoBitsPerSecond: vgMaxS() > 30 ? (low ? 1000000 : 1500000) : (low ? 1600000 : 2500000), audioBitsPerSecond: 64000 };      // 60 s uses a lower rate so it stays under the size cap if (mime) opts.mimeType = mime;
         var rec;
         try { rec = new MediaRecorder(new MediaStream(tracks), opts); }
         catch (e) { vg.state = 'idle'; vgText('This device cannot record video here', ''); vgUi(); return; }
@@ -36905,6 +36910,24 @@
         if (!ok) { try { await initCamera(cameraSelect.value || currentDeviceId || null); } catch (e) { } }
         return streamActive;
       }
+      // A message is recorded at 720p / 30 fps at most: a 1080p+ camera picture (or a "Max" setting) makes an ordinary phone
+      // stutter while it records. The booth's own camera setting is put back when the guestbook closes.
+      var vgCamSaved = null;
+      async function vgTuneCamera() {
+        vgCamSaved = null;
+        if (currentDeviceId === USB_CAM_ID) return;
+        var st = currentStream || video.srcObject, t = st && st.getVideoTracks && st.getVideoTracks()[0];
+        if (!t || !t.getSettings || !t.applyConstraints) return;
+        var s = t.getSettings();
+        if (!(s.width > 1300 || s.height > 740 || s.frameRate > 31)) return;
+        vgCamSaved = { width: { ideal: s.width }, height: { ideal: s.height }, frameRate: { ideal: s.frameRate || 30 } };
+        try { await t.applyConstraints({ width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 } }); }
+        catch (e) { vgCamSaved = null; }
+      }
+      function vgUntuneCamera() {
+        var c = vgCamSaved; vgCamSaved = null; if (!c) return;
+        try { var st = currentStream || video.srcObject, t = st && st.getVideoTracks && st.getVideoTracks()[0]; if (t && t.applyConstraints) t.applyConstraints(c).catch(function () { }); } catch (e) { }
+      }
       // Front <-> back (or the next camera). Only for the guestbook: the booth goes back to its own camera when it closes.
       async function vgFlip() {
         if (vg.state !== 'idle' || vg.busy) return;
@@ -36950,7 +36973,26 @@
         cool: { n: 'Cool', css: 'saturate(.92) brightness(1.05) hue-rotate(10deg)' }
       };
       var VG_LOOK_ORDER = ['none', 'beauty', 'glow', 'golden', 'pastel', 'rose', 'mint', 'cinema', 'neon', 'camcorder', 'noir', 'film', 'bw', 'warm', 'cool'];
-      var vgFx = { on: false, raf: 0, last: 0, def: null, cv: null, ctx: null, small: null, lines: null, can: undefined };
+      var vgFx = { on: false, raf: 0, vf: 0, last: 0, def: null, cv: null, ctx: null, small: null, lines: null, can: undefined, cap: 0, ms: 0, n: 0, forceOff: false };
+      // A phone or tablet that is not a powerful one (most Androids): smaller picture, lower bitrate, fewer frames.
+      function vgLowPower() {
+        try {
+          if (typeof IS_ANDROID_APP !== 'undefined' && IS_ANDROID_APP) return true;
+          if (/Android/i.test(navigator.userAgent || '')) return true;
+          if (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) return true;
+          if (navigator.deviceMemory && navigator.deviceMemory <= 4) return true;
+        } catch (e) { }
+        return false;
+      }
+      // Draw when the camera delivers a new picture (not on every screen refresh), where the browser can tell us.
+      function vgSched() {
+        if (typeof vgVideo.requestVideoFrameCallback === 'function') vgFx.vf = vgVideo.requestVideoFrameCallback(vgFrame);
+        else vgFx.raf = requestAnimationFrame(vgFrame);
+      }
+      function vgUnsched() {
+        if (vgFx.vf) { try { vgVideo.cancelVideoFrameCallback(vgFx.vf); } catch (e) { } vgFx.vf = 0; }
+        if (vgFx.raf) { cancelAnimationFrame(vgFx.raf); vgFx.raf = 0; }
+      }
       // "Same as the photos": whatever Look / Soft skin the booth is set to for photos.
       function vgBoothLook() {
         var fx = [], v = (typeof VINTAGE_FX !== 'undefined') ? VINTAGE_FX[filterKey] : null;
@@ -36972,7 +37014,8 @@
         x.save();
         if (t.op) x.globalCompositeOperation = t.op;
         if (t.t === 'soft') {
-          var s = vgFx.small || (vgFx.small = document.createElement('canvas')), sw = Math.max(1, Math.round(w / 9)), sh = Math.max(1, Math.round(h / 9));
+          var dv = vgLowPower() ? 14 : 9;
+          var s = vgFx.small || (vgFx.small = document.createElement('canvas')), sw = Math.max(1, Math.round(w / dv)), sh = Math.max(1, Math.round(h / dv));
           if (s.width !== sw || s.height !== sh) { s.width = sw; s.height = sh; }
           s.getContext('2d').drawImage(x.canvas, 0, 0, sw, sh);
           x.globalAlpha = t.a; x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(s, 0, 0, w, h);
@@ -36993,35 +37036,45 @@
         x.restore();
       }
       function vgFrame(ts) {
-        vgFx.raf = 0;
+        vgFx.raf = 0; vgFx.vf = 0;
         if (!vgFx.on) return;
-        vgFx.raf = requestAnimationFrame(vgFrame);
-        if (ts - vgFx.last < 30) return;          // about 30 pictures a second is plenty
+        vgSched();
+        if (ts - vgFx.last < 28) return;          // about 30 pictures a second is plenty
         vgFx.last = ts;
         try {
+          var t0 = performance.now();
           var v = vgVideo, d = vgFx.def, cv = vgFx.cv, w0 = v.videoWidth, h0 = v.videoHeight;
           if (!d || !w0 || !h0 || v.readyState < 2) return;
           if (!vgFx.ctx) vgFx.ctx = cv.getContext('2d');
-          var k = Math.min(1, 960 / Math.max(w0, h0)), w = Math.round(w0 * k), h = Math.round(h0 * k);
+          // Picture size for the look: a smaller one on ordinary phones, and smaller still if the phone is found to be slow.
+          var cap = vgFx.cap || (vgLowPower() ? 640 : 960);
+          var k = Math.min(1, cap / Math.max(w0, h0)), w = Math.round(w0 * k), h = Math.round(h0 * k);
           if ((cv.width !== w || cv.height !== h) && vg.state !== 'recording') { cv.width = w; cv.height = h; }   // never resize while recording
           w = cv.width; h = cv.height;
           var x = vgFx.ctx;
           x.filter = d.css || 'none'; x.drawImage(v, 0, 0, w, h); x.filter = 'none';
           (d.fx || []).forEach(function (t) { vgLayer(x, w, h, t); });
+          // Is the phone keeping up? Averaged over ~20 pictures, before recording only (never changed while recording).
+          vgFx.ms = vgFx.ms ? vgFx.ms * 0.9 + (performance.now() - t0) * 0.1 : (performance.now() - t0); vgFx.n++;
+          if (vgFx.n >= 20 && vg.state !== 'recording' && vgFx.ms > 22) {
+            vgFx.n = 0; vgFx.ms = 0;
+            if ((vgFx.cap || (vgLowPower() ? 640 : 960)) > 400) vgFx.cap = Math.max(400, Math.round((vgFx.cap || (vgLowPower() ? 640 : 960)) * 0.75));
+            else { vgFx.forceOff = true; showToast('Look switched off so the video stays smooth on this device.', 4000); setTimeout(function () { try { vgLooksUi(); vgLookApply(); } catch (e) { } }, 0); }
+          }
         } catch (e) { }
       }
       // Show the look (and start drawing) while the guest is looking at themselves or recording; stop for review, saving, done.
       function vgLookApply() {
         var cv = vgFx.cv || (vgFx.cv = vgEl('vgCanvas')); if (!cv) return;
-        var d = vgCanFilter() ? vgLookDef(vgCurLook()) : null;
+        var d = vgCanFilter() && !vgFx.forceOff ? vgLookDef(vgCurLook()) : null;
         var live = !vgOverlay.hidden && (vg.state === 'idle' || vg.state === 'counting' || vg.state === 'recording') && !!vgVideo.srcObject;
         var on = !!(live && vgLookHas(d));
         if (vg.state === 'recording' && vgFx.on !== on) return;      // never switch the picture while recording
         vgFx.def = on ? d : null; vgFx.on = on;
         cv.hidden = !on;
         cv.style.transform = on && mirrorPreview() ? 'scaleX(-1)' : '';
-        if (on && !vgFx.raf) vgFx.raf = requestAnimationFrame(vgFrame);
-        if (!on && vgFx.raf) { cancelAnimationFrame(vgFx.raf); vgFx.raf = 0; }
+        if (on && !vgFx.raf && !vgFx.vf) vgSched();
+        if (!on) vgUnsched();
       }
       // The row of looks shown before recording, and the Flip camera button.
       function vgLooksBuild() {
@@ -37038,7 +37091,7 @@
         var box = vgEl('vgLooks'), fl = vgEl('vgFlip'), st = vg.state;
         if (fl) fl.hidden = !(st === 'idle' && vgCamOptions().length > 1);
         if (!box) return;
-        var show = !!gbPrefs.pick && vgCanFilter() && st === 'idle';
+        var show = !!gbPrefs.pick && vgCanFilter() && !vgFx.forceOff && st === 'idle';
         if (show && !box.children.length) vgLooksBuild();
         var cur = vgCurLook(), btn = vgEl('vgLookBtn');
         // Collapsed: one small "Look" button. Tapping it opens the row; choosing a look closes it again.
@@ -43891,6 +43944,7 @@
         bgLive.canvas = c;
       })();
       function bgLiveWanted() {
+        if (typeof vgIsOpen === 'function' && vgIsOpen()) return false;      // the video guestbook is open: nothing else should be using the phone's processor
         return bgRep.mode !== 'off' && bgRep.live && streamActive && state !== 'result' && video.style.display !== 'none' &&
           !!video.videoWidth && (bgRep.mode === 'green' || segReady()) && !document.hidden;
       }
@@ -44312,6 +44366,7 @@
       }
       function hfWanted() {
         if (fx.hands === 'off' || document.hidden || !streamActive || !video.videoWidth) return false;
+        if (typeof vgIsOpen === 'function' && vgIsOpen()) return false;     // the video guestbook is open: no wave / smile detection (it would also start a photo session by mistake)
         if (hfMeterOn()) return true;
         if (document.body.classList.contains('in-session') && readyOverlay.classList.contains('ready-active') && readyOverlay.classList.contains('hands'))
           return Date.now() - (hf.readyAt || 0) > 1200 && Date.now() - hf.lastFire > 2500;

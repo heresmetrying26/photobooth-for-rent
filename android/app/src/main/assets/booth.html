@@ -23361,6 +23361,13 @@
         if (i.brand) return i.brand === 'canon';
         return /canon|\bEOS\b/i.test([usbCam.name, i.name, i.vendor, i.maker].join(' '));
       }
+      // Any Nikon (D5300, D5600, D7200, Z-series...) over USB. Its live view starts quickly, and its mirror going up on the
+      // Touch to Start screen is what clients notice, so the booth never wakes it early there (see the touch handler below).
+      function camIsNikon() {
+        const i = (usbCam.camera && usbCam.camera.info) || {};
+        if (i.brand) return i.brand === 'nikon';
+        return /nikon|\bD\d{3,4}[A-Z]?\b|\bZ ?(?:fc|\d{1,2})\b/i.test([usbCam.name, i.name, i.vendor, i.maker].join(' '));
+      }
       function usbSetupStep() { const t = document.querySelector('#stepBar .step-tab.on'); return t && t.dataset ? String(t.dataset.step) : ''; }
       // The guest's "Get ready" screen (waiting for Start), not the layout editor's preview of it.
       function camReadyWaiting() { return readyOverlay.classList.contains('ready-active') && !readyOverlay.classList.contains('hands') && !readyOverlay.classList.contains('edit-preview'); }
@@ -23512,6 +23519,9 @@
           if (camReadyWaiting()) usbWantAt = Date.now();   // a touch on Get ready keeps the picture on for 2 s more
           if (!(camDeep || camSleeping) || camWaking || reconnectTimer || usbPowerBusy) return;
           if (!camDeep && !camPrewarmOk()) return;
+          // A Nikon keeps its mirror down on the Touch to Start / welcome screen, whoever touches it: it is woken when the guest
+          // presses Start (the session wakes it, and camEnsureLive waits for the picture before the countdown).
+          if (currentDeviceId === USB_CAM_ID && camIsNikon() && !camReadyWaiting()) return;
           if (!cameraSelect || !cameraSelect.value) return;
           // Stay awake ~15 s for the guest to press Start (on the Get ready screen only the usual 2 s after the touch).
           usbWantAt = Date.now() + (camReadyWaiting() ? 0 : 15000);

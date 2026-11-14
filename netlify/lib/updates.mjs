@@ -217,6 +217,13 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-14', title: 'Android 1.1.64: Epson L805 prints borderless over Wi-Fi, tidier Edges settings', for: ['website'],
+    items: [
+      'A Wi-Fi Epson ink-tank photo printer (L805, L850 and similar, L2xx and up) now prints borderless on photo paper when Borderless is ticked in Print settings, on 3.5x5 (3R), 4x6, 5x7, 8x10, A4, 16:9 and 100x148 mm paper. Before, the Borderless tick was ignored for these printers and every print had a 3 mm white border. On any other paper size the print keeps its border. It could not be tried on an L805 here: print the edge test once and use Edges if a side is trimmed or a white line shows.',
+      'Print settings: the Edges rows (Top, Bottom, Left, Right) no longer run into each other, and the hint now says the edge test is printed without your Edges and that Edges cannot remove a border the printer keeps by itself.'
+    ]
+  },
+  {
     date: '2026-11-14', title: 'Desktop 1.1.44 + Android 1.1.63: Canon SELPHY borderless attempt and a printer report', for: ['website', 'app'], app: '1.1.44',
     items: [
       'A Canon SELPHY on Wi-Fi: if the printer lists a borderless version of the loaded paper, the app now uses it when Borderless is on, and the photo carries its 300 dpi size so a printer that prints it at its own size no longer shrinks it. This is an attempt at the white border some SELPHY prints had; it could not be tried on a printer here.',

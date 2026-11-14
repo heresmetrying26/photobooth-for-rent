@@ -213,6 +213,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-14', title: 'Android 1.1.58: video guestbook records the full length, with sound', for: ['website'],
+    items: [
+      'Video guestbook messages are no longer cut short (a 30-second message could stop at about 10 seconds), and the camera picture no longer goes black while a guest is recording. The booth now keeps the camera on for as long as the guestbook screen is open, and the screen saver no longer dims the screen during a message.',
+      'The Android app now asks for microphone permission, so video guestbook messages have sound. Tap Allow when the tablet asks after the update.',
+      'If a recording ever does stop by itself, the guest sees "Stopped early" and can retake it.'
+    ]
+  },
+  {
     date: '2026-11-14', title: 'Android 1.1.57: Epson L805 photos over Wi-Fi and a printer checklist that ticks', for: ['website'],
     items: [
       'A Wi-Fi Epson ink-tank photo printer without AirPrint (L805, L800, L810, L850 and similar) is now listed as a photo printer, not a receipt printer, and prints photos over Wi-Fi the same way it does over a USB cable. If you had already picked it, open Print settings once so the app updates it.',

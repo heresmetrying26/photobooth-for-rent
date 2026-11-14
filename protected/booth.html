@@ -23255,6 +23255,9 @@
       function camWantLive() {
         if (!usbSaveOn()) return true;
         if (usbCam.shooting) return true;
+        // The video guestbook screen is open: the guest is looking at themselves and recording. If the camera rested here the
+        // picture would go black, and a recording would stop by itself when the camera's track ends (cut at ~10 s, not 30).
+        var vgo = document.getElementById('vgOverlay'); if (vgo && !vgo.hidden) return true;
         // "Get ready" waiting for the guest to press Start (the session is already 'capturing' here): the camera rests after
         // USB_IDLE_SLEEP_MS. A touch on the screen keeps it on / wakes it, and pressing Start brings the picture back before the
         // countdown. Wave / smile to start needs the picture, so it stays on then.
@@ -36680,6 +36683,7 @@
       async function openVg() {
         if (!vgAvailable()) return;
         if (state === 'capturing') { showToast('Finish the session first.', 3000); return; }
+        try { await camEnsureLive(); } catch (e) { }        // the camera may be resting (battery saver): wake it before showing the picture
         if (!streamActive) { var ok = await initCamera(cameraSelect.value || null); if (!ok) return; }
         vg.state = 'idle'; vgClearBlob(); vgBig('');
         vgText(vgIdleTitle(), vgIdleSub());
@@ -36701,8 +36705,12 @@
       async function vgCountdown() {
         vg.state = 'counting'; vgUi(); vgText('Get ready…', '');
         // the microphone is asked for once, here, so the message has sound
+        // (a microphone kept from the last guest is dropped if it has ended, e.g. another app took it: a recorder with a dead track stops at once)
+        if (vg.audio && vg.audio.getAudioTracks().every(function (t) { return t.readyState !== 'live'; })) { try { vg.audio.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { } vg.audio = null; }
         if (!vg.audio) { try { vg.audio = await navigator.mediaDevices.getUserMedia({ audio: true, video: false }); } catch (e) { vg.audio = null; } }
         for (var n = 3; n >= 1; n--) { if (vg.state !== 'counting') return; vgBig(String(n)); await new Promise(function (r) { setTimeout(r, 1000); }); }
+        if (vg.state !== 'counting') return;
+        try { await camEnsureLive(); } catch (e) { }          // the picture must be live right now, not resting
         if (vg.state !== 'counting') return;
         vgBig(''); vgRecord();
       }
@@ -36715,12 +36723,23 @@
         try { rec = new MediaRecorder(new MediaStream(tracks), opts); }
         catch (e) { vg.state = 'idle'; vgText('This device cannot record video here', ''); vgUi(); return; }
         vg.chunks = []; vg.rec = rec; vg.mime = rec.mimeType || mime || 'video/webm'; vg.state = 'recording';
+        vg.t0 = Date.now(); vg.stopBy = ''; vg.cut = false;
         rec.ondataavailable = function (e) { if (e.data && e.data.size) vg.chunks.push(e.data); };
-        rec.onstop = function () { clearTimeout(vg.timer); clearInterval(vg.tick); vgBig(''); vgReview(); };
+        // Stopped by something other than the guest's Stop or the time limit (the camera or microphone went away, the recorder failed):
+        // keep what was recorded, and tell the guest it was cut short so they can retake instead of finding a short clip later.
+        rec.onstop = function () {
+          clearTimeout(vg.timer); clearInterval(vg.tick); vgBig('');
+          var secs = Math.round((Date.now() - vg.t0) / 1000);
+          vg.cut = !vg.stopBy && secs < vgMaxS() - 2; vg.cutSecs = secs;
+          if (vg.cut) console.error('Video guestbook: recording stopped by itself after ' + secs + ' s of ' + vgMaxS());
+          vgReview();
+        };
+        rec.onerror = function () { vg.stopBy = ''; try { if (rec.state !== 'inactive') rec.stop(); } catch (e) { } };
+        tracks.forEach(function (t) { t.addEventListener('ended', function () { try { if (vg.rec === rec && rec.state !== 'inactive') rec.stop(); } catch (e) { } }); });
         rec.start(500);
         var left = vgMaxS(); vgBig('REC ' + left, true); vgText('Recording…', vg.audio ? 'Tap Stop when you are done.' : 'No microphone: this message will have no sound.'); vgUi();
         vg.tick = setInterval(function () { left--; if (left >= 0) vgBig('REC ' + left, true); }, 1000);
-        vg.timer = setTimeout(function () { try { rec.stop(); } catch (e) { } }, vgMaxS() * 1000);
+        vg.timer = setTimeout(function () { vg.stopBy = 'timer'; try { rec.stop(); } catch (e) { } }, vgMaxS() * 1000);
       }
       async function vgReview() {
         var blob = new Blob(vg.chunks, { type: String(vg.mime).split(';')[0] }); vg.chunks = [];      // "video/mp4" (the upload accepts only the plain type)
@@ -36729,7 +36748,7 @@
         vg.blob = blob; vg.url = URL.createObjectURL(blob); vg.state = 'review';
         vgVideo.srcObject = null; vgVideo.style.transform = ''; vgVideo.src = vg.url; vgVideo.muted = false; vgVideo.controls = true; vgVideo.loop = true;
         try { await vgVideo.play(); } catch (e) { }
-        vgText('Happy with it?', 'Watch your message, then save it or record it again.'); vgUi();
+        vgText(vg.cut ? 'Stopped early (' + vg.cutSecs + ' s)' : 'Happy with it?', vg.cut ? 'The recording stopped by itself. Save it as it is, or tap Retake.' : 'Watch your message, then save it or record it again.'); vgUi();
       }
       async function vgSave() {
         if (!vg.blob) return;
@@ -36749,7 +36768,7 @@
       }
       async function vgMainClick() {
         if (vg.state === 'idle') return vgCountdown();
-        if (vg.state === 'recording') { try { vg.rec.stop(); } catch (e) { } return; }
+        if (vg.state === 'recording') { vg.stopBy = 'user'; try { vg.rec.stop(); } catch (e) { } return; }
         if (vg.state === 'review' || vg.state === 'failed') return vgSave();
         if (vg.state === 'done') { vgClearBlob(); vg.qi++; vg.state = 'idle'; vgText(vgIdleTitle(), vgIdleSub()); await vgLive(); vgUi(); }
       }
@@ -41577,6 +41596,7 @@
       }
       function saverTick() {
         var waiting = welcomeOverlay.classList.contains('on') && !welcomeDismissing;
+        var vgOpenNow = document.getElementById('vgOverlay'); if (vgOpenNow && !vgOpenNow.hidden) waiting = false;   // a guest is leaving a video message: never dim or black the screen on them (a 60 s message outlasts a 1-minute dim)
         if (!waiting) { saverIdleSince = Date.now(); if (saverStage) saverSet(0); return; }
         if (saverVeil.classList.contains('fade')) return;
         var mins = (Date.now() - saverIdleSince) / 60000;

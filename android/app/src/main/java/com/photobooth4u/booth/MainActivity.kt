@@ -879,7 +879,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkAndRequestPermissions() {
-        val permissions = mutableListOf(Manifest.permission.CAMERA)
+        // RECORD_AUDIO too: declared in the manifest is not enough on Android 6+. Without it the page's microphone request fails
+        // silently and a video guestbook message is recorded with no sound.
+        val permissions = mutableListOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions.add(Manifest.permission.POST_NOTIFICATIONS)
         }

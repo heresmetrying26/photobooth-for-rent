@@ -218,6 +218,12 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-14', title: 'Android 1.1.67: borderless test methods for the Wi-Fi Epson L805', for: ['website'],
+    items: [
+      'The Wi-Fi Epson L805 still printed borderless with the picture about 3 mm inside the sheet. Epson’s own Windows driver sends the printer a different job for borderless, with a full-bleed marker this app did not send. With the Admin debug option on, Print settings now has a Borderless test method (0 to 4) under Print edge test that adds those commands in different ways; the Printer report shows the method used. Normal use is unchanged (method 0). Once one works it will be built in.'
+    ]
+  },
+  {
     date: '2026-11-14', title: 'Android 1.1.66: Epson L805 borderless is sent as Premium Glossy photo paper', for: ['website'],
     items: [
       'A Wi-Fi Epson L805 (and similar) still started the picture about 3 mm inside the sheet in 1.1.65. The cause: the job named a paper type this printer does not have, and it does not print borderless on plain paper, so it stayed in its bordered mode. Borderless is now sent with the printer’s Premium Glossy photo paper setting, so load glossy photo paper. It could not be tried on a printer here: print the edge test once on the paper in use.',

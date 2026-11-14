@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.44', date: '2026-11-14' },
   { version: '1.1.43', date: '2026-11-14' },
   { version: '1.1.42', date: '2026-11-14' },
   { version: '1.1.41', date: '2026-11-14' },
@@ -215,6 +216,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-14', title: 'Desktop 1.1.44 + Android 1.1.63: Canon SELPHY borderless attempt and a printer report', for: ['website', 'app'], app: '1.1.44',
+    items: [
+      'A Canon SELPHY on Wi-Fi: if the printer lists a borderless version of the loaded paper, the app now uses it when Borderless is on, and the photo carries its 300 dpi size so a printer that prints it at its own size no longer shrinks it. This is an attempt at the white border some SELPHY prints had; it could not be tried on a printer here.',
+      'Print settings (Android app) has a new Printer report button for a Wi-Fi printer. It shows the paper sizes the printer lists and how it last accepted a photo, and copies them, so support can see why a printer adds a border.',
+      'The video guestbook saves the video mirrored, like the preview, and has a switch for it under Setup > Extras.'
+    ]
+  },
   {
     date: '2026-11-14', title: 'Desktop 1.1.43 + Android 1.1.62: choose the video guestbook quality, sharper video, a more reliable Flip camera', for: ['website', 'app'], app: '1.1.43',
     items: [

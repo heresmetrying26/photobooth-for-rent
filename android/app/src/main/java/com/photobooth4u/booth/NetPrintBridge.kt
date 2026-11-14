@@ -78,6 +78,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         @Volatile var pwgRes: List<Int> = emptyList()          // pwg-raster-document-resolution-supported (dpi)
         @Volatile var pwgTypes: List<String> = emptyList()     // pwg-raster-document-type-supported: srgb_8, sgray_8...
         @Volatile var usbDev: UsbDevice? = null                // set for a printer on the USB port
+        @Volatile var lastSent: String = ""                    // how the printer last accepted a photo (paper name, scaling), for the printer report
     }
 
     private val found = ConcurrentHashMap<String, Entry>()
@@ -200,6 +201,25 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             } else addNote = "Nothing at $clean answered on the printing ports (631, 9100). Check the address, and that the tablet and printer are on the same Wi-Fi."
         }
         return "ok"
+    }
+
+    /**
+     * A short text about a Wi-Fi printer for the "Copy printer report" button in Print settings: what it takes, the paper it says is
+     * loaded and every paper it lists, and how it last accepted a photo. Sent to support to see why a printer adds a white border.
+     */
+    @JavascriptInterface
+    fun printerReport(ip: String): String {
+        val e = found[ip] ?: return "Printer $ip is not in the list. Choose Find printers, then try again."
+        if (e.usbDev != null) return "This printer is on the USB cable, so it has no Wi-Fi paper list."
+        fetchAttrs(e)
+        fun list(l: List<String>) = if (l.isEmpty()) "(none given)" else l.joinToString(", ")
+        return "Printer: " + e.model.ifBlank { e.name } + " (" + e.ip + ")\n" +
+            "Takes: " + list(e.formats) + "\n" +
+            "Paper loaded now: " + list(e.mediaReady) + "\n" +
+            "Papers it lists: " + list(e.mediaSupported) + "\n" +
+            "Paper types: " + list(e.mediaTypes) + "\n" +
+            "Last photo accepted as: " + (if (e.lastSent.isEmpty()) "no photo sent yet since the app opened" else e.lastSent) + "\n" +
+            "App: " + (try { activity.packageManager.getPackageInfo(activity.packageName, 0).versionName } catch (_: Exception) { "?" })
     }
 
     /**
@@ -1630,7 +1650,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     /** One way of asking the printer for a job: with the page size, with the quality / colour / paper-type settings, the paper's own name, and how to scale. */
     private data class IppAttempt(val withMedia: Boolean, val withOpts: Boolean, val mediaName: String, val scaling: String)
 
-    private fun sendIppJob(e: Entry, job: String, jpeg: ByteArray, wMm: Double, hMm: Double, opts: Opts) {
+    private fun sendIppJob(e: Entry, job: String, jpegIn: ByteArray, wMm: Double, hMm: Double, opts: Opts) {
+        val jpeg = jpegAt300Dpi(jpegIn)
         fetchAttrs(e)
         // Only ask for settings this printer says it supports (quality, colour mode, paper type).
         val q = when (opts.quality) { "draft" -> 3; "normal" -> 4; "high" -> 5; else -> 0 }
@@ -1663,12 +1684,15 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         val base = if (hasOpts) listOf(true to true, false to true, true to false, false to false) else listOf(true to false, false to false)
         // A Canon SELPHY has only a few fixed papers (postcard, L, card) and often refuses a custom size such as 101.6 x 152.4 mm,
         // so name the loaded paper itself first ("jpn_hagaki_100x148mm") and fall back to the custom size after that.
-        val named = if (isSelphy(e)) selphyMedia(e, wMm, hMm) else null
+        val selphy = isSelphy(e)
+        val named = if (selphy) selphyMedia(e, wMm, hMm, opts.borderless) else null
         val ownScaling = if (opts.borderless) "none" else "fill"
         // The page already has the paper's own shape, so a SELPHY is asked to scale it to the whole sheet ("fill") first. "none" prints
         // it at its own size, which can leave a white border all round; it stays as the next try for a printer that refuses "fill".
+        // After the paper's own name comes the page size with zero margins (the standard way to ask for no border), also with "fill".
         val attempts = (if (named != null) listOf(IppAttempt(true, true, named, "fill"), IppAttempt(true, true, named, ownScaling),
             IppAttempt(true, false, named, "fill"), IppAttempt(true, false, named, ownScaling)) else emptyList()) +
+            (if (selphy) listOf(IppAttempt(true, true, "", "fill"), IppAttempt(true, false, "", "fill")) else emptyList()) +
             base.map { IppAttempt(it.first, it.second, "", ownScaling) }
         var drops = 0
         for ((format, make) in candidates) {
@@ -1684,7 +1708,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         continue
                     }
                     when {
-                        r.http == 200 && r.ipp in 0..2 -> return
+                        r.http == 200 && r.ipp in 0..2 -> {
+                            e.lastSent = (if (at.mediaName.isNotEmpty()) "paper " + at.mediaName else if (at.withMedia) "custom page size, zero margins" else "no paper named") +
+                                ", scaling " + (if (at.scaling.isEmpty()) "not set" else at.scaling) + (if (at.withOpts) ", with quality/colour options" else "") + ", " + format + ", path " + path
+                            return
+                        }
                         r.http == 200 && r.ipp == 0x406 -> lastErr = "The printer says it has no print queue at the addresses tried (" +
                             ippPaths(e).joinToString(", ") + "; code 0x406). Add it by its IP address again, or check it has IPP / AirPrint turned on."
                         r.http == 200 -> lastErr = "The printer refused the photo (code 0x" + Integer.toHexString(r.ipp) + ")."
@@ -1704,24 +1732,52 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
      * The paper the SELPHY names (loaded paper first, then everything it supports) that is closest to the sheet asked for,
      * or null when none is within 6 mm. Names carry their own size: "jpn_hagaki_100x148mm", "na_index-4x6_4x6in".
      */
-    private fun selphyMedia(e: Entry, wMm: Double, hMm: Double): String? {
+    private fun selphyMedia(e: Entry, wMm: Double, hMm: Double, borderless: Boolean = false): String? {
         if (wMm <= 0 || hMm <= 0) return null
         val want = listOf(minOf(wMm, hMm), maxOf(wMm, hMm))
-        val re = Regex("_(\\d+(?:\\.\\d+)?)x(\\d+(?:\\.\\d+)?)(mm|in)$")
+        // A printer may list a separate borderless version of a paper ("jpn_hagaki_100x148mm_borderless"): the name then ends in a tag
+        // after the size. Those are read too, and the one that matches the Borderless choice wins when two have the same size.
+        val re = Regex("_(\\d+(?:\\.\\d+)?)x(\\d+(?:\\.\\d+)?)(mm|in)(?:[-_.]?(borderless|full-?bleed))?$", RegexOption.IGNORE_CASE)
         fun pick(names: List<String>): String? {
             var best: String? = null
             var bestDiff = 6.0
+            var bestMatchesChoice = false
             for (n in names) {
                 val m = re.find(n) ?: continue
                 val k = if (m.groupValues[3] == "in") 25.4 else 1.0
                 val a = m.groupValues[1].toDouble() * k
                 val b = m.groupValues[2].toDouble() * k
                 val d = maxOf(Math.abs(minOf(a, b) - want[0]), Math.abs(maxOf(a, b) - want[1]))
-                if (d <= bestDiff) { bestDiff = d; best = n }
+                val matchesChoice = (m.groupValues[4].isNotEmpty()) == borderless
+                if (d < bestDiff - 0.01 || (Math.abs(d - bestDiff) <= 0.01 && matchesChoice && !bestMatchesChoice) || (d <= bestDiff && best == null)) {
+                    bestDiff = d; best = n; bestMatchesChoice = matchesChoice
+                }
             }
             return best
         }
-        return pick(e.mediaReady) ?: pick(e.mediaSupported)
+        val tag = Regex("[-_.]?(borderless|full-?bleed)$", RegexOption.IGNORE_CASE)
+        val ready = pick(e.mediaReady)
+        if (ready != null) {
+            // The paper that is loaded wins; if the printer lists the same paper in the version that matches the Borderless choice, that version is used.
+            if (tag.containsMatchIn(ready) != borderless) {
+                val alt = e.mediaSupported.firstOrNull { it.replace(tag, "") == ready.replace(tag, "") && tag.containsMatchIn(it) == borderless }
+                if (alt != null) return alt
+            }
+            return ready
+        }
+        return pick(e.mediaSupported)
+    }
+
+    /** The JPEG with 300 dpi written into its header, so a printer that prints it at its own size (no scaling) still gets the sheet's size. */
+    private fun jpegAt300Dpi(j: ByteArray): ByteArray {
+        // JFIF header: FF D8 FF E0 len(2) 'J' 'F' 'I' 'F' 0 ver(2) units(1) Xdensity(2) Ydensity(2)
+        if (j.size < 20 || j[0] != 0xFF.toByte() || j[1] != 0xD8.toByte() || j[2] != 0xFF.toByte() || j[3] != 0xE0.toByte()) return j
+        if (j[6] != 0x4A.toByte() || j[7] != 0x46.toByte() || j[8] != 0x49.toByte() || j[9] != 0x46.toByte()) return j   // "JFIF"
+        val out = j.copyOf()
+        out[13] = 1                                       // dots per inch
+        out[14] = (300 shr 8).toByte(); out[15] = (300 and 0xFF).toByte()
+        out[16] = (300 shr 8).toByte(); out[17] = (300 and 0xFF).toByte()
+        return out
     }
 
     /** One PWG Raster page for printers that list image/pwg-raster: 300 dpi when offered, colour unless grey is asked for or all they list. */

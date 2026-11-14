@@ -74,6 +74,19 @@ console.log('✓ Passed: a printer is found open, named over IPP, and a closed p
   assert.equal(pickMediaName({ mediaReady: [], mediaSupported: ['jpn_hagaki_100x148mm', 'om_card_54x86mm'] }, 100, 148), 'jpn_hagaki_100x148mm');
   assert.equal(pickMediaName({ mediaReady: [], mediaSupported: ['jpn_hagaki_100x148mm', 'om_card_54x86mm'] }, 54, 86), 'om_card_54x86mm');
   assert.equal(pickMediaName({ mediaReady: [], mediaSupported: ['iso_a4_210x297mm'] }, 100, 148), '');
+  // A printer that lists a borderless version of the paper: it is read, and used when borderless is wanted.
+  const both = { mediaReady: ['jpn_hagaki_100x148mm'], mediaSupported: ['jpn_hagaki_100x148mm', 'jpn_hagaki_100x148mm_borderless', 'om_card_54x86mm'] };
+  assert.equal(pickMediaName(both, 100, 148, true), 'jpn_hagaki_100x148mm_borderless');
+  assert.equal(pickMediaName(both, 100, 148, false), 'jpn_hagaki_100x148mm');
+  assert.equal(pickMediaName({ mediaReady: [], mediaSupported: ['na_index-4x6_4x6in-borderless'] }, 101.6, 152.4, true), 'na_index-4x6_4x6in-borderless');
+  const { jpegAt300Dpi } = await import('../lib/netprinters.mjs');
+  const jfif = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xd9]);
+  const dpi = jpegAt300Dpi(jfif);
+  assert.equal(dpi[13], 1); assert.equal(dpi.readUInt16BE(14), 300); assert.equal(dpi.readUInt16BE(16), 300);
+  assert.equal(jfif[13], 0, 'the original bytes are left alone');
+  const notJfif = Buffer.from([0xff, 0xd8, 0xff, 0xdb, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+  assert.deepEqual([...jpegAt300Dpi(notJfif)], [...notJfif]);
+  console.log('✓ Passed: a borderless version of the paper is preferred when asked for, and the photo carries 300 dpi');
   console.log('✓ Passed: the direct print request carries the paper name, the photo, and no border settings it was not asked for');
 
   const multi = (head, attrs) => {

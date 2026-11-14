@@ -214,22 +214,46 @@ export function ippPrintJobRequest({ uri, jobName = 'photobooth4u', format = 'im
   return Buffer.concat(parts);
 }
 
-/** The paper (from the printer's own list; loaded paper first) closest to wMm x hMm, within 6 mm, or ''. */
-export function pickMediaName(caps, wMm, hMm) {
+/**
+ * The paper (from the printer's own list; loaded paper first) closest to wMm x hMm, within 6 mm, or ''.
+ * A printer may list a separate borderless version of a paper ("jpn_hagaki_100x148mm_borderless"): those names are read too,
+ * and the one that matches `borderless` wins when two have the same size.
+ */
+export function pickMediaName(caps, wMm, hMm, borderless = true) {
   if (!(wMm > 0 && hMm > 0) || !caps) return '';
   const want = [Math.min(wMm, hMm), Math.max(wMm, hMm)];
-  const re = /_(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)(mm|in)$/;
+  const re = /_(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)(mm|in)(?:[-_.]?(borderless|full-?bleed))?$/i;
   const pick = (names) => {
-    let best = '', bestDiff = 6;
+    let best = '', bestDiff = 6, bestMatches = false;
     for (const n of names || []) {
       const m = re.exec(n); if (!m) continue;
       const k = m[3] === 'in' ? 25.4 : 1, a = Number(m[1]) * k, b = Number(m[2]) * k;
       const d = Math.max(Math.abs(Math.min(a, b) - want[0]), Math.abs(Math.max(a, b) - want[1]));
-      if (d <= bestDiff) { bestDiff = d; best = n; }
+      const matches = !!m[4] === !!borderless;
+      if (!best ? d <= bestDiff : (d < bestDiff - 0.01 || (Math.abs(d - bestDiff) <= 0.01 && matches && !bestMatches))) { bestDiff = d; best = n; bestMatches = matches; }
     }
     return best;
   };
-  return pick(caps.mediaReady) || pick(caps.mediaSupported);
+  const tag = /[-_.]?(borderless|full-?bleed)$/i;
+  const ready = pick(caps.mediaReady);
+  if (ready) {
+    // The paper that is loaded wins; if the printer lists the same paper in the version that matches `borderless`, that version is used.
+    if (tag.test(ready) !== !!borderless) {
+      const alt = (caps.mediaSupported || []).find((n) => n.replace(tag, '') === ready.replace(tag, '') && tag.test(n) === !!borderless);
+      if (alt) return alt;
+    }
+    return ready;
+  }
+  return pick(caps.mediaSupported);
+}
+
+/** The JPEG with 300 dpi written into its header, so a printer that prints it at its own size (no scaling) still gets the sheet's size. */
+export function jpegAt300Dpi(buf) {
+  const j = Buffer.from(buf);
+  if (j.length < 20 || j[0] !== 0xff || j[1] !== 0xd8 || j[2] !== 0xff || j[3] !== 0xe0 || j.toString('latin1', 6, 10) !== 'JFIF') return j;
+  j[13] = 1;                    // dots per inch
+  j.writeUInt16BE(300, 14); j.writeUInt16BE(300, 16);
+  return j;
 }
 
 /** Asks a printer what it can take. Returns { path, model, formats, mediaReady, mediaSupported } or null. */
@@ -257,7 +281,8 @@ export async function ippPrintDirect({ ip, port = 631, path = '', jpeg, widthMm 
   if (!caps) throw new Error('The printer at ' + ip + ' did not answer. Is it on and on the same Wi-Fi as this computer? If it joined the Wi-Fi again it may have a new address: choose Find printers and use it again.');
   const accepted = caps.formats.length === 0 || caps.formats.includes('image/jpeg');
   if (!accepted) throw new Error((caps.model || 'This printer') + ' can’t take photos straight from the app (it accepts: ' + caps.formats.filter((f) => /^(image|application)\//.test(f)).slice(0, 5).join(', ') + ').');
-  const named = pickMediaName(caps, widthMm, heightMm);
+  const named = pickMediaName(caps, widthMm, heightMm, true);
+  jpeg = jpegAt300Dpi(jpeg);
   const attempts = [
     ...(named ? [{ mediaName: named, scaling: 'fill' }, { mediaName: named, scaling: '' }] : []),
     ...(widthMm > 0 && heightMm > 0 ? [{ wMm: widthMm, hMm: heightMm, scaling: 'fill' }] : []),

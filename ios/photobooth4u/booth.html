@@ -16689,7 +16689,10 @@
                 style="display:none;width:auto;margin:0 8px 8px 0;">Forget</button>
               <button type="button" class="action-btn" id="wifiPrinterSettingsBtn"
                 style="display:none;width:auto;margin:0 8px 8px 0;">Open Android print settings</button>
+              <button type="button" class="action-btn" id="wifiPrinterReportBtn"
+                style="display:none;width:auto;margin:0 8px 8px 0;">Printer report</button>
               <p class="panel-hint" id="wifiPrinterStatus" style="margin:4px 0 6px;"></p>
+              <pre id="wifiPrinterReport" style="display:none;white-space:pre-wrap;word-break:break-word;user-select:text;-webkit-user-select:text;font-size:12px;line-height:1.45;margin:0 0 8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;max-height:240px;overflow:auto;"></pre>
               <details id="wifiDiag" style="display:none;margin:0 0 8px;">
                 <summary>Colour diagnostics (advanced)</summary>
                 <p class="panel-hint" style="margin:4px 0 6px;">Prints diagnostic test patterns to calibrate color
@@ -30729,6 +30732,11 @@
         if (tst) tst.style.display = wifiPrinter ? '' : 'none';
         const pset = document.getElementById('wifiPrinterSettingsBtn');
         if (pset) pset.style.display = window.__PBPrint && typeof window.__PBPrint.openPrintSettings === 'function' ? '' : 'none';
+        // The printer report (Android app): the paper sizes the printer lists and how it last accepted a photo, to copy and send to support.
+        const rep = document.getElementById('wifiPrinterReportBtn'), repBox = document.getElementById('wifiPrinterReport');
+        const repOk = !!(wifiPrinter && !wifiPrinter.usb && window.__PBNet && typeof window.__PBNet.printerReport === 'function');
+        if (rep) rep.style.display = repOk ? '' : 'none';
+        if (repBox && !repOk) repBox.style.display = 'none';
         try { wifiOptsUI(); } catch (e) { }
         const dg = document.getElementById('wifiDiag');
         if (dg) dg.style.display = pbDebug() && wifiPrinter && wifiPrinter.escp2 ? '' : 'none';
@@ -30743,6 +30751,16 @@
         if (t) t.addEventListener('click', wifiTestPrint);
         const ps = document.getElementById('wifiPrinterSettingsBtn');
         if (ps) ps.addEventListener('click', () => { try { window.__PBPrint.openPrintSettings(); } catch (e) { } });
+        const rb = document.getElementById('wifiPrinterReportBtn');
+        if (rb) rb.addEventListener('click', async () => {
+          const box = document.getElementById('wifiPrinterReport');
+          let txt = '';
+          try { txt = String(window.__PBNet.printerReport(wifiPrinter.ip) || ''); } catch (e) { txt = 'Could not read the printer report: ' + (e.message || e); }
+          if (box) { box.textContent = txt; box.style.display = 'block'; }
+          // Copied for pasting into a message; if the tablet will not copy, the text stays on screen to take a screenshot of.
+          try { await navigator.clipboard.writeText(txt); showToast('Printer report copied. Paste it into your message to support.', 4500); }
+          catch (e) { showToast('Take a screenshot of the printer report and send it to support.', 4500); }
+        });
         [['wifiCalM', 'm', parseInt], ['wifiCalC', 'c', parseInt], ['wifiCalK', 'k', parseInt], ['wifiCalN', 'n', parseInt], ['wifiCalG', 'g', parseFloat]].forEach(([id, key, parse]) => {
           const el = document.getElementById(id);
           if (el) el.addEventListener('change', () => { const v = parse(el.value); if (!isNaN(v)) { wifiCal[key] = v; wifiCalSave(); } });

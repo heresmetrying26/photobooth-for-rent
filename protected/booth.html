@@ -15262,6 +15262,15 @@
               <option value="60">60 seconds</option>
             </select>
           </div>
+          <div class="fb-row" style="margin-top:10px;"><span class="lbl">Video quality</span>
+            <select id="gbQuality" class="pillify" aria-label="Video quality on this device">
+              <option value="auto" selected>Auto (recommended)</option>
+              <option value="smooth">Smooth (480p, lightest)</option>
+              <option value="sd">Standard (720p)</option>
+              <option value="hd">High (1080p)</option>
+            </select>
+          </div>
+          <p class="panel-hint" style="margin:4px 0 0;">Applies to this device only. If messages stutter or lag, choose Smooth. Choose High only on a strong tablet or laptop.</p>
           <div id="gbLookBox">
             <div class="fb-row" style="margin-top:10px;"><span class="lbl">Starting look</span>
               <select id="gbLook" class="pillify" aria-label="Starting look for video messages">
@@ -22543,11 +22552,18 @@
         const gum = video => navigator.mediaDevices.getUserMedia({ video, audio: false });
         const stop = e => e && (e.uvcMsg || e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e.name === 'SecurityError');
         let lastErr = null;
+        // The video guestbook's Flip camera asks for a side (front / back) by name when the phone does not list its cameras separately.
+        const ff = (!deviceId && typeof vgForceFacing === 'string' && vgForceFacing) ? vgForceFacing : '';
         const tries = deviceId
           ? [
               Object.assign({ deviceId: { exact: deviceId } }, sizeWithFps),
               Object.assign({ deviceId: { exact: deviceId } }, baseSize),
               { deviceId: { exact: deviceId } }
+            ]
+          : ff ? [
+              Object.assign({ facingMode: { exact: ff } }, baseSize),
+              { facingMode: { exact: ff } },
+              Object.assign({ facingMode: { ideal: ff } }, baseSize)
             ]
           : [
               Object.assign({ facingMode: 'user' }, sizeWithFps),
@@ -30102,6 +30118,7 @@
         set('gbQuestions', gbPrefs.questions.join('\n')); set('gbLength', String(gbPrefs.length));
         set('gbEvent', gbPrefs.event); set('gbTitle', gbPrefs.title); set('gbThanks', gbPrefs.thanks);
         set('gbLook', gbPrefs.look);
+        try { set('gbQuality', vgQuality()); } catch (e) { }          // (this device's own choice; not part of the saved setup)
         var pk = document.getElementById('gbLookPick'); if (pk && pk.checked !== gbPrefs.pick) pk.checked = gbPrefs.pick;
         // Looks need canvas filters (Chrome / Android / Edge); without them the options are not shown.
         var lb = document.getElementById('gbLookBox'), can = false;
@@ -36771,7 +36788,7 @@
       function vgClearBlob() { if (vg.url) { try { URL.revokeObjectURL(vg.url); } catch (e) { } } vg.url = ''; vg.blob = null; }
       async function vgLive() {        // back to the live camera
         vgVideo.pause(); vgVideo.removeAttribute('src'); vgVideo.controls = false; vgVideo.muted = true; vgVideo.loop = false;
-        vgVideo.srcObject = currentStream || video.srcObject; vgVideo.style.transform = mirrorPreview() ? 'scaleX(-1)' : '';
+        vgVideo.srcObject = currentStream || video.srcObject; vgVideo.style.transform = vgMirror() ? 'scaleX(-1)' : '';
         try { await vgVideo.play(); } catch (e) { }
         try { vgLookApply(); } catch (e) { }
       }
@@ -36827,7 +36844,8 @@
         if (vgFx.on && vgFx.cv && vgFx.cv.width) { try { var cs = vgFx.cv.captureStream(30); if (cs.getVideoTracks().length) vt = cs.getVideoTracks(); } catch (e) { } }
         var tracks = vt.slice(0, 1).concat(vg.audio ? vg.audio.getAudioTracks() : []), mime = vgMime();
         // Bitrate: lower on ordinary phones (the encoder is the part that lags), and lower for a 60 s message (size cap).
-        var low = vgLowPower(), opts = { videoBitsPerSecond: vgMaxS() > 30 ? (low ? 1000000 : 1500000) : (low ? 1600000 : 2500000), audioBitsPerSecond: 64000 };      // 60 s uses a lower rate so it stays under the size cap if (mime) opts.mimeType = mime;
+        var low = vgLowPower(), QB = VG_Q[vgQuality()], baseBr = QB ? QB.br : (low ? 2200000 : 3000000);
+        var opts = { videoBitsPerSecond: vgMaxS() > 30 ? Math.round(baseBr * 0.6) : baseBr, audioBitsPerSecond: 64000 };      // 60 s uses a lower rate so it stays under the size cap if (mime) opts.mimeType = mime;
         var rec;
         try { rec = new MediaRecorder(new MediaStream(tracks), opts); }
         catch (e) { vg.state = 'idle'; vgText('This device cannot record video here', ''); vgUi(); return; }
@@ -36919,9 +36937,13 @@
         var st = currentStream || video.srcObject, t = st && st.getVideoTracks && st.getVideoTracks()[0];
         if (!t || !t.getSettings || !t.applyConstraints) return;
         var s = t.getSettings();
-        if (!(s.width > 1300 || s.height > 740 || s.frameRate > 31)) return;
+        // Ordinary phones and tablets: 720p. Laptops and other strong devices keep up to 1080p. Anything bigger (a "Max" / 4K setting) comes down.
+        var QQ = VG_Q[vgQuality()];
+        var tw = QQ ? QQ.w : (vgLowPower() ? 1280 : 1920), th = QQ ? QQ.h : (vgLowPower() ? 720 : 1080);
+        var differs = QQ ? (Math.abs(s.width - tw) > 20 || Math.abs(s.height - th) > 20) : (s.width > tw + 20 || s.height > th + 20);      // a chosen quality also raises the picture; Auto only lowers it
+        if (!(differs || s.frameRate > 31)) return;
         vgCamSaved = { width: { ideal: s.width }, height: { ideal: s.height }, frameRate: { ideal: s.frameRate || 30 } };
-        try { await t.applyConstraints({ width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 } }); }
+        try { await t.applyConstraints({ width: { ideal: tw }, height: { ideal: th }, frameRate: { ideal: 30, max: 30 } }); }
         catch (e) { vgCamSaved = null; }
       }
       function vgUntuneCamera() {
@@ -36932,23 +36954,48 @@
       async function vgFlip() {
         if (vg.state !== 'idle' || vg.busy) return;
         var opts = vgCamOptions();
-        if (opts.length < 2) { showToast('This device has only one camera.', 2500); return; }
-        var st = currentStream || video.srcObject, t = st && st.getVideoTracks && st.getVideoTracks()[0], fm = '';
-        try { fm = (t && t.getSettings().facingMode) || ''; } catch (e) { }
-        var cur = opts.find(function (o) { return o.value === cameraSelect.value; }), curL = cur ? cur.textContent : '';
-        var toBack = fm ? fm === 'user' : /front|user/i.test(curL);
-        var re = toBack ? /back|rear|environment/i : /front|user/i;
-        var next = opts.find(function (o) { return o.value !== cameraSelect.value && re.test(o.textContent); });
-        if (!next) { var i = opts.findIndex(function (o) { return o.value === cameraSelect.value; }); next = opts[(i + 1) % opts.length]; }
+        var before = vgFacing(), toBack = before !== 'environment';          // not known: try the back camera
         if (vgCamBefore === null) vgCamBefore = cameraSelect.value;
-        vg.busy = true; vgText('Switching camera…', '');
+        vg.busy = true; vgText('Switching camera…', ''); vgUi();
+        var ok = false, why = '';
         try {
-          cameraSelect.value = next.value;
-          var ok = await initCamera(next.value);
-          if (!ok) { cameraSelect.value = vgCamBefore; await initCamera(vgCamBefore); }
+          // 1) By camera: the phone lists its cameras, so take the one on the other side (or simply the next one).
+          if (opts.length > 1) {
+            var re = toBack ? /back|rear|environment/i : /front|user/i;
+            var next = opts.find(function (o) { return o.value !== cameraSelect.value && re.test(o.textContent); });
+            if (!next) { var i = opts.findIndex(function (o) { return o.value === cameraSelect.value; }); next = opts[(i + 1) % opts.length]; }
+            cameraSelect.value = next.value;
+            ok = await initCamera(next.value);
+            var after = vgFacing(); if (ok && before && after && after === before && opts.length === 2) ok = false;      // opened, but still the same side
+            if (!ok) why = 'list';
+          }
+          // 2) By side: some phones list one camera only, or will not open the other one by its name, but do open it by side.
+          if (!ok) {
+            vgForceFacing = toBack ? 'environment' : 'user';
+            try { ok = await initCamera(null); } finally { vgForceFacing = ''; }
+            var after2 = vgFacing(); if (ok && before && after2 && after2 === before) ok = false;
+            if (!ok) why = why || 'side';
+          }
+          if (!ok) { cameraSelect.value = vgCamBefore; await initCamera(vgCamBefore || null); }   // put the first camera back
+          if (ok) { try { await vgTuneCamera(); } catch (e) { } }
           await vgLive();
-        } catch (e) { }
+        } catch (e) { console.error('Video guestbook flip camera:', e); ok = false; }
         vg.busy = false; vgText(vgIdleTitle(), vgIdleSub()); vgUi();
+        if (!ok) showToast('This phone would not switch cameras. It may not let the app use the ' + (toBack ? 'back' : 'front') + ' camera, or it is busy in another app.', 5000);
+      }
+      var vgForceFacing = '';
+      // The picture is shown as in a mirror (selfie) unless it is the back camera on "Auto": the back camera is not mirrored.
+      function vgMirror() { try { if (mirrorPref() === 'auto' && vgFacing() === 'environment') return false; } catch (e) { } return mirrorPreview(); }
+      // Which side the camera in use is on: 'user' (front), 'environment' (back) or '' (not known).
+      function vgFacing() {
+        try {
+          var st = currentStream || video.srcObject, t = st && st.getVideoTracks && st.getVideoTracks()[0], fm = t && t.getSettings ? t.getSettings().facingMode : '';
+          if (fm === 'user' || fm === 'environment') return fm;
+          var o = cameraSelect.options[cameraSelect.selectedIndex], l = o ? o.textContent : '';
+          if (/back|rear|environment/i.test(l)) return 'environment';
+          if (/front|user/i.test(l)) return 'user';
+        } catch (e) { }
+        return '';
       }
 
       // ---- Looks (filters) for the guestbook ----
@@ -36973,6 +37020,12 @@
         cool: { n: 'Cool', css: 'saturate(.92) brightness(1.05) hue-rotate(10deg)' }
       };
       var VG_LOOK_ORDER = ['none', 'beauty', 'glow', 'golden', 'pastel', 'rose', 'mint', 'cinema', 'neon', 'camcorder', 'noir', 'film', 'bw', 'warm', 'cool'];
+      // Video quality, chosen in Setup > Video guestbook and kept on this device only (how smooth it is depends on the phone):
+      // auto = by device (720p on ordinary phones, up to 1080p on strong devices, and a look steps down by itself if slow).
+      // Otherwise the camera size w x h, the look's picture size (cap, px), and the video bitrate (30 s or less; 60 s uses 60 % of it).
+      var VG_Q_KEY = 'pb_vg_quality';
+      var VG_Q = { smooth: { w: 854, h: 480, cap: 640, br: 1200000 }, sd: { w: 1280, h: 720, cap: 960, br: 2200000 }, hd: { w: 1920, h: 1080, cap: 1280, br: 3500000 } };
+      function vgQuality() { try { var q = localStorage.getItem(VG_Q_KEY); return VG_Q[q] ? q : 'auto'; } catch (e) { return 'auto'; } }
       var vgFx = { on: false, raf: 0, vf: 0, last: 0, def: null, cv: null, ctx: null, small: null, lines: null, can: undefined, cap: 0, ms: 0, n: 0, forceOff: false };
       // A phone or tablet that is not a powerful one (most Androids): smaller picture, lower bitrate, fewer frames.
       function vgLowPower() {
@@ -37047,7 +37100,8 @@
           if (!d || !w0 || !h0 || v.readyState < 2) return;
           if (!vgFx.ctx) vgFx.ctx = cv.getContext('2d');
           // Picture size for the look: a smaller one on ordinary phones, and smaller still if the phone is found to be slow.
-          var cap = vgFx.cap || (vgLowPower() ? 640 : 960);
+          var Q = VG_Q[vgQuality()];
+          var cap = Q ? Q.cap : (vgFx.cap || 960);          // Auto: starts at 960 px and steps down by itself only if this device is found to be slow (below)
           var k = Math.min(1, cap / Math.max(w0, h0)), w = Math.round(w0 * k), h = Math.round(h0 * k);
           if ((cv.width !== w || cv.height !== h) && vg.state !== 'recording') { cv.width = w; cv.height = h; }   // never resize while recording
           w = cv.width; h = cv.height;
@@ -37056,9 +37110,9 @@
           (d.fx || []).forEach(function (t) { vgLayer(x, w, h, t); });
           // Is the phone keeping up? Averaged over ~20 pictures, before recording only (never changed while recording).
           vgFx.ms = vgFx.ms ? vgFx.ms * 0.9 + (performance.now() - t0) * 0.1 : (performance.now() - t0); vgFx.n++;
-          if (vgFx.n >= 20 && vg.state !== 'recording' && vgFx.ms > 22) {
+          if (vgFx.n >= 20 && vg.state !== 'recording' && vgFx.ms > 22 && !Q) {      // only on Auto: a quality chosen in Setup is kept
             vgFx.n = 0; vgFx.ms = 0;
-            if ((vgFx.cap || (vgLowPower() ? 640 : 960)) > 400) vgFx.cap = Math.max(400, Math.round((vgFx.cap || (vgLowPower() ? 640 : 960)) * 0.75));
+            if ((vgFx.cap || 960) > 520) vgFx.cap = Math.max(520, Math.round((vgFx.cap || 960) * 0.8));
             else { vgFx.forceOff = true; showToast('Look switched off so the video stays smooth on this device.', 4000); setTimeout(function () { try { vgLooksUi(); vgLookApply(); } catch (e) { } }, 0); }
           }
         } catch (e) { }
@@ -37072,7 +37126,7 @@
         if (vg.state === 'recording' && vgFx.on !== on) return;      // never switch the picture while recording
         vgFx.def = on ? d : null; vgFx.on = on;
         cv.hidden = !on;
-        cv.style.transform = on && mirrorPreview() ? 'scaleX(-1)' : '';
+        cv.style.transform = on && vgMirror() ? 'scaleX(-1)' : '';
         if (on && !vgFx.raf && !vgFx.vf) vgSched();
         if (!on) vgUnsched();
       }
@@ -37089,7 +37143,9 @@
       }
       function vgLooksUi() {
         var box = vgEl('vgLooks'), fl = vgEl('vgFlip'), st = vg.state;
-        if (fl) fl.hidden = !(st === 'idle' && vgCamOptions().length > 1);
+        // Shown when the phone lists more than one camera, and on any phone or tablet (some list a single camera but open the other by side)
+        var phone = false; try { phone = (typeof IS_ANDROID_APP !== 'undefined' && IS_ANDROID_APP) || /Android|iPhone|iPad/i.test(navigator.userAgent || ''); } catch (e) { }
+        if (fl) fl.hidden = !(st === 'idle' && currentDeviceId !== USB_CAM_ID && (vgCamOptions().length > 1 || phone));
         if (!box) return;
         var show = !!gbPrefs.pick && vgCanFilter() && !vgFx.forceOff && st === 'idle';
         if (show && !box.children.length) vgLooksBuild();
@@ -37122,6 +37178,7 @@
       vgEl('gbQuestions').addEventListener('input', function () { gbPrefs.questions = this.value.split(/\r?\n/); gbChanged(); vg.qi = 0; vgQUi(); });
       vgEl('gbLength').addEventListener('change', function () { gbPrefs.length = Number(this.value); gbChanged(); });
       vgEl('gbLook').addEventListener('change', function () { gbPrefs.look = this.value; gbChanged(); });
+      vgEl('gbQuality').addEventListener('change', function () { try { localStorage.setItem(VG_Q_KEY, this.value); } catch (e) { } showToast('Video quality: ' + this.options[this.selectedIndex].textContent + '. Used the next time the guestbook opens.', 3000); });
       vgEl('gbLookPick').addEventListener('change', function () { gbPrefs.pick = this.checked; gbChanged(); });
       [['gbEvent', 'event'], ['gbTitle', 'title'], ['gbThanks', 'thanks']].forEach(function (k) {
         vgEl(k[0]).addEventListener('input', function () { gbPrefs[k[1]] = this.value.replace(/[<>]/g, ''); gbChanged(); });

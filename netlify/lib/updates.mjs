@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.43', date: '2026-11-14' },
   { version: '1.1.42', date: '2026-11-14' },
   { version: '1.1.41', date: '2026-11-14' },
   { version: '1.1.40', date: '2026-11-14' },
@@ -214,6 +215,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-14', title: 'Desktop 1.1.43 + Android 1.1.62: choose the video guestbook quality, sharper video, a more reliable Flip camera', for: ['website', 'app'], app: '1.1.43',
+    items: [
+      'New "Video quality" choice in Setup > Extras > Video guestbook: Auto, Smooth (480p, the lightest), Standard (720p) or High (1080p). If messages stutter on a phone or tablet, choose Smooth. It is saved on that device only, so a strong laptop on the same code can stay on High.',
+      'Sharper video on Auto: looks start at a bigger picture, the video rate is higher, and a strong laptop or tablet keeps up to 1080p. A look still steps down by itself, or switches off, on a device that cannot keep up.',
+      'Flip camera is more reliable: it tries the phone’s camera list first, then asks for the back or front camera by name, and says so clearly if the phone will not switch. The back camera is no longer shown mirrored.'
+    ]
+  },
   {
     date: '2026-11-14', title: 'Android 1.1.61: Canon SELPHY Wi-Fi prints fill the whole postcard', for: ['website'],
     items: [

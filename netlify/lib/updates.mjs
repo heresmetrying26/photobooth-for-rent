@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.42', date: '2026-11-14' },
   { version: '1.1.41', date: '2026-11-14' },
   { version: '1.1.40', date: '2026-11-14' },
   { version: '1.1.39', date: '2026-11-14' },
@@ -213,6 +214,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-14', title: 'Desktop 1.1.42 + Android 1.1.60: smoother video guestbook on ordinary phones and tablets', for: ['website', 'app'], app: '1.1.42',
+    items: [
+      'Video guestbook messages are recorded at 720p and 30 frames a second at most, with a lower video rate on ordinary Android phones and tablets, so recording no longer stutters. The booth’s own camera setting is put back when the guestbook closes.',
+      'Looks draw on a smaller picture and only when the camera sends a new frame. On a device that cannot keep up, the picture shrinks further, and if that is still not enough the look switches itself off so the message stays smooth.',
+      'While the guestbook is open the booth pauses its live green-screen picture and its wave / smile detection, so nothing else slows the recording (and a wave can no longer start a photo session by accident).'
+    ]
+  },
   {
     date: '2026-11-14', title: 'Desktop 1.1.41 + Android 1.1.59: video guestbook looks (beauty and more), flip camera, steadier camera and microphone', for: ['website', 'app'], app: '1.1.41',
     items: [

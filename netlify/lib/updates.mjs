@@ -215,6 +215,12 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-14', title: 'Android 1.1.61: Canon SELPHY Wi-Fi prints fill the whole postcard', for: ['website'],
+    items: [
+      'On a Canon SELPHY over Wi-Fi the app now asks the printer to scale the page to the whole postcard first, so the photo no longer comes out smaller than the paper with a white border all round. If the printer refuses, the app falls back to the way it asked before.'
+    ]
+  },
+  {
     date: '2026-11-14', title: 'Desktop 1.1.42 + Android 1.1.60: smoother video guestbook on ordinary phones and tablets', for: ['website', 'app'], app: '1.1.42',
     items: [
       'Video guestbook messages are recorded at 720p and 30 frames a second at most, with a lower video rate on ordinary Android phones and tablets, so recording no longer stutters. The booth’s own camera setting is put back when the guestbook closes.',

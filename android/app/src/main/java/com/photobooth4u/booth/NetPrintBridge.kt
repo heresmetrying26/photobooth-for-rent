@@ -1627,6 +1627,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     private class Opts(val quality: String, val color: String, val media: String, val borderless: Boolean = false)
 
+    /** One way of asking the printer for a job: with the page size, with the quality / colour / paper-type settings, the paper's own name, and how to scale. */
+    private data class IppAttempt(val withMedia: Boolean, val withOpts: Boolean, val mediaName: String, val scaling: String)
+
     private fun sendIppJob(e: Entry, job: String, jpeg: ByteArray, wMm: Double, hMm: Double, opts: Opts) {
         fetchAttrs(e)
         // Only ask for settings this printer says it supports (quality, colour mode, paper type).
@@ -1661,15 +1664,19 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         // A Canon SELPHY has only a few fixed papers (postcard, L, card) and often refuses a custom size such as 101.6 x 152.4 mm,
         // so name the loaded paper itself first ("jpn_hagaki_100x148mm") and fall back to the custom size after that.
         val named = if (isSelphy(e)) selphyMedia(e, wMm, hMm) else null
-        val attempts = (if (named != null) listOf(Triple(true, true, named), Triple(true, false, named)) else emptyList()) +
-            base.map { Triple(it.first, it.second, "") }
+        val ownScaling = if (opts.borderless) "none" else "fill"
+        // The page already has the paper's own shape, so a SELPHY is asked to scale it to the whole sheet ("fill") first. "none" prints
+        // it at its own size, which can leave a white border all round; it stays as the next try for a printer that refuses "fill".
+        val attempts = (if (named != null) listOf(IppAttempt(true, true, named, "fill"), IppAttempt(true, true, named, ownScaling),
+            IppAttempt(true, false, named, "fill"), IppAttempt(true, false, named, ownScaling)) else emptyList()) +
+            base.map { IppAttempt(it.first, it.second, "", ownScaling) }
         var drops = 0
         for ((format, make) in candidates) {
             val data = try { make() } catch (ex: Exception) { lastErr = ex.message ?: lastErr; continue }
-            for ((withMedia, withOpts, mediaName) in attempts) {
+            for (at in attempts.distinct()) {
                 for (path in ippPaths(e)) {
-                    val body = ippPrintJob(ippUri(e, path), job, format, data, if (withMedia) wMm else 0.0, hMm,
-                        if (withOpts) qv else 0, if (withOpts) cm else "", if (withOpts) mt else "", if (opts.borderless) "none" else "fill", mediaName)
+                    val body = ippPrintJob(ippUri(e, path), job, format, data, if (at.withMedia) wMm else 0.0, hMm,
+                        if (at.withOpts) qv else 0, if (at.withOpts) cm else "", if (at.withOpts) mt else "", at.scaling, at.mediaName)
                     val r = try { doPost(e, path, body) } catch (nf: NetFail) {
                         // Can't connect at all: stop now. Connected but dropped mid-job: try the next settings, up to 3 times.
                         if (!nf.connected || ++drops >= 3) throw nf

@@ -1176,14 +1176,39 @@ namespace Pb4uCam
             var files = new List<uint[]>();
             var ew = Stopwatch.StartNew();
             long firstAt = -1;
-            while (ew.ElapsedMilliseconds < 15000)
+            // Older EOS (60D...): a photo that is going to come reports itself within a few seconds, so don't leave the guest
+            // waiting 15 s. If the camera said OK but never fired (live view focus lost on a moving guest), end live view and
+            // press the shutter once more: out of live view the camera focuses with its fast viewfinder sensor.
+            bool oldEos = !ops.Contains(0x9128), retried = false;
+            while (true)
             {
-                CanonPoll();
-                foreach (var o in canonNew) if (o[2] != 0x3001) files.Add(o);   // not folders
-                canonNew.Clear();
-                if (files.Count > 0 && firstAt < 0) { firstAt = ew.ElapsedMilliseconds; lastShutterMs = (int)Math.Min(sw.ElapsedMilliseconds, 10000); Log("Shutter lag " + lastShutterMs + " ms"); }
-                if (firstAt >= 0 && ew.ElapsedMilliseconds - firstAt > 350) break;
-                Thread.Sleep(80);
+                int limit = retried ? 8000 : (oldEos ? 6000 : 15000);
+                while (ew.ElapsedMilliseconds < limit)
+                {
+                    CanonPoll();
+                    foreach (var o in canonNew) if (o[2] != 0x3001) files.Add(o);   // not folders
+                    canonNew.Clear();
+                    // A retried photo's time includes the wait for the first try: it is not the camera's real delay, never learn it.
+                    if (files.Count > 0 && firstAt < 0) { firstAt = ew.ElapsedMilliseconds; if (!retried) { lastShutterMs = (int)Math.Min(sw.ElapsedMilliseconds, 10000); Log("Shutter lag " + lastShutterMs + " ms"); } }
+                    if (firstAt >= 0 && ew.ElapsedMilliseconds - firstAt > 350) break;
+                    Thread.Sleep(80);
+                }
+                if (files.Count > 0 || !oldEos || retried) break;
+                retried = true;
+                Log("Older EOS: no photo " + ew.ElapsedMilliseconds + " ms after the shutter. Ending live view and pressing the shutter once more");
+                try { SetEos(0xD1B0, 0); if (Has(0x9152)) ptp.Op(0x9152); }
+                catch (GoneException) { throw; }
+                catch { }
+                live = false;
+                Thread.Sleep(500);
+                CanonPoll(); canonNew.Clear();
+                uint[] ans2;
+                uint r2 = ptp.OpP(0x910F, out ans2);
+                if (r2 == Ptp.BUSY || r2 == NOTREADY) { Thread.Sleep(400); r2 = ptp.OpP(0x910F, out ans2); }
+                uint res2 = ans2.Length > 0 ? ans2[0] : 0;
+                Log("RemoteRelease (second try): " + H(r2) + ", result " + res2);
+                if (r2 != Ptp.OK || res2 != 0) throw CanonShotError(r2, res2);
+                ew.Restart();
             }
             if (files.Count == 0)
                 throw new CamException("FOCUS The camera didn't take a photo. It may not have focused: point it at something with detail, or set the lens to MF (manual focus). Also check there's an SD card in the camera and it isn't full or locked.");

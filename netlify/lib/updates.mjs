@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.41', date: '2026-11-14' },
   { version: '1.1.40', date: '2026-11-14' },
   { version: '1.1.39', date: '2026-11-14' },
   { version: '1.1.38', date: '2026-11-14' },
@@ -212,6 +213,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-14', title: 'Desktop 1.1.41 + Android 1.1.59: video guestbook looks (beauty and more), flip camera, steadier camera and microphone', for: ['website', 'app'], app: '1.1.41',
+    items: [
+      'Video guestbook looks: guests tap a small "Look" button and pick Beauty (soft skin), Dreamy glow, Golden hour, Pastel, Rosé, Fresh mint, Cinema, Neon night, Camcorder, Noir, Film, B&W, Warm or Cool. The look is part of the saved video. In Setup > Video guestbook, choose the starting look (or "Same as the photos"), or untick "Let guests choose a look" to hide the button.',
+      'A Flip camera button on the guestbook screen switches between the front and back camera of a phone or tablet. The booth goes back to its own camera when the guestbook closes.',
+      'The guestbook checks that the camera is really live before recording and opens it again if another app or a permission box took it, and the microphone no longer holds the screen if its permission box is not answered.',
+      'Mac: the app now asks for microphone permission, so guestbook messages have sound. Windows and Android already did (Android since 1.1.58).'
+    ]
+  },
   {
     date: '2026-11-14', title: 'Android 1.1.58: video guestbook records the full length, with sound', for: ['website'],
     items: [

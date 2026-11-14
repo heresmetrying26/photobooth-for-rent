@@ -29787,8 +29787,8 @@
         try {
           if (wifiPrinter && epsonEscprBorderlessModel(wifiPrinter)) {
             hint = epsonEscprBorderlessOk(paper)
-              ? 'This Epson prints borderless on this paper size (photo paper settings are used). If a side is cut off or a white line shows, use Print edge test below.'
-              : 'This Epson prints borderless only on 3.5×5 in (3R), 4×6 in, 5×7 in and A4 paper. ' + (paper ? paper.name : 'This paper') + ' will print with a normal border.';
+              ? 'This Epson prints borderless on this paper size. Load glossy photo paper: borderless is sent with the printer’s Premium Glossy setting (this printer does not print borderless on plain paper). If a side is cut off or a white line shows, use Print edge test below.'
+              : 'This Epson prints borderless only on 3.5×5 in (3R), 4×6 in, 5×7 in, 8×10 in, 100×148 mm, 16:9 wide, A4 and Letter paper. ' + (paper ? paper.name : 'This paper') + ' will print with a normal border.';
           }
         } catch (e) { }
         try {
@@ -30480,7 +30480,7 @@
       }
       // Epson ink-tank printers the app drives itself with ESC/P-R over Wi-Fi or USB (L805, L210...): borderless only on photo
       // paper sizes, and not on the 1xx models (L120, L130...), which have no borderless mode.
-      const EPSON_ESCPR_BORDERLESS = [[88.9, 127], [101.6, 152.4], [127, 177.8], [210, 297]];       // the sizes the L805's own Epson driver file lists for borderless: 3R (3.5x5), 4x6, 5x7, A4
+      const EPSON_ESCPR_BORDERLESS = [[88.9, 127], [100, 148], [101.6, 152.4], [101.6, 180.6], [127, 177.8], [203.2, 254], [210, 297], [215.9, 279.4]];       // the sizes the L805's own Epson driver file lists for borderless: 3R (3.5x5), 100x148, 4x6, 16:9 wide, 5x7, 8x10, A4, Letter
       function epsonEscprBorderlessModel(p) { return !!(p && p.escpr && /\bL\s?(2\d\d|3\d\d|5\d\d|8\d\d|[1-8]\d{3}|18050)\b/i.test(p.name || '')); }
       function epsonEscprBorderlessOk(pp) {
         if (!pp) return false;

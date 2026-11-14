@@ -1218,7 +1218,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         try {
                             val data = EscprJob.build(bmp, widthMm, heightMm, false, borderless = borderless, photoMedia = borderless, adj = adj, epsonBorderless = true)
                             if (net) netRawJob(id, data) else usbRaw(id, data)
-                            if (net) found[id]?.lastSent = (if (borderless) "borderless, photo paper, " else "3 mm border, plain paper, ") + Math.round(minOf(widthMm, heightMm)) + "x" + Math.round(maxOf(widthMm, heightMm)) + " mm"
+                            if (net) found[id]?.lastSent = (if (borderless) "borderless, Premium Glossy photo paper, " else "3 mm border, plain paper, ") + Math.round(minOf(widthMm, heightMm)) + "x" + Math.round(maxOf(widthMm, heightMm)) + " mm"
                         } finally {
                             try { bmp.recycle() } catch (_: Exception) {}
                         }

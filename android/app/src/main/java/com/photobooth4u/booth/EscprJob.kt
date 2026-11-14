@@ -103,8 +103,12 @@ object EscprJob {
         out.put(bytes(0x50, 0x50, 0x03, 0x00, 0x00, 0x01, 0xFF))                                // PP: any paper source
         out.put(bytes(0x1B, 0x00, 0x00, 0x00))                                                  // leave remote mode
         out.put(bytes(0x1B, 0x28, 0x52, 0x06, 0x00, 0x00), ascii("ESCPR"))                      // ESC/P-R mode
-        // print quality: media (0x01 photo paper when borderless/photo, else 0x00 plain), quality (0x00 draft, 0x01 normal), colour/mono
-        val media = if (photoMedia || borderless) 0x01 else 0x00
+        // print quality: media type, quality (0x00 draft, 0x01 normal), colour/mono.
+        // Media type ids are Epson's (lib/epson-escpr-media.h): 0x00 plain, 0x0B Premium Glossy Photo Paper. The L805's own driver file
+        // allows borderless only on its photo papers (not plain), and 0x01 ("360 dpi ink jet paper", sent before) is not a paper it has:
+        // with it the printer stayed in its bordered mode and started the picture 3 mm inside the sheet whatever the margins said.
+        // The Epson borderless job therefore goes out as Premium Glossy. Other jobs keep the earlier values.
+        val media = if (ep != null) MEDIA_PREMIUM_GLOSSY else if (photoMedia || borderless) 0x01 else 0x00
         val quality = if (draft) 0x00 else 0x01
         out.put(bytes(0x1B, 0x71, 0x09, 0x00, 0x00, 0x00), ascii("setq"),
             bytes(media, quality, if (mono) 1 else 0, 0, 0, 0, 0x00, 0x00, 0x00))
@@ -158,6 +162,7 @@ object EscprJob {
         return out.toByteArray()
     }
 
+    private const val MEDIA_PREMIUM_GLOSSY = 0x0B     // EPS_MTID_PGPHOTO
     private const val BL_LEFT = 36                    // borderless: the page area starts this far left of the sheet (360 dpi)
     private const val BL_TOP = 42                     // ... and this far above it
     private const val BL_EXTRA_W = 72                 // ... and is this much wider than the sheet (36 each side)
@@ -168,11 +173,16 @@ object EscprJob {
         val a = minOf(widthMm, heightMm)
         val b = maxOf(widthMm, heightMm)
         fun near(x: Double, y: Double) = Math.abs(a - x) <= 1.5 && Math.abs(b - y) <= 1.5
+        // The sizes the L805's Epson driver file lists as borderless, in 1/360 inch (its points x 5; the same as Epson's media table).
         return when {
             near(88.9, 127.0) -> 1261 to 1800        // L / 3R (3.5 x 5 in)
+            near(100.0, 148.0) -> 1417 to 2098       // 100 x 148 mm
             near(101.6, 152.4) -> 1440 to 2160       // 4 x 6 in
-            near(127.0, 177.8) -> 1800 to 2522       // 5 x 7 in (the L805's own list has it; 360.00 x 504.40 pt x 5)
+            near(101.6, 180.6) -> 1440 to 2560       // 16:9 wide (102 x 181 mm)
+            near(127.0, 177.8) -> 1800 to 2522       // 5 x 7 in
+            near(203.2, 254.0) -> 2880 to 3600       // 8 x 10 in
             near(210.0, 297.0) -> 2976 to 4209       // A4
+            near(215.9, 279.4) -> 3060 to 3960       // Letter
             else -> null
         }
     }

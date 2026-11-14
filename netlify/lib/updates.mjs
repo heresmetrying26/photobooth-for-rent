@@ -218,6 +218,13 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-14', title: 'Android 1.1.66: Epson L805 borderless is sent as Premium Glossy photo paper', for: ['website'],
+    items: [
+      'A Wi-Fi Epson L805 (and similar) still started the picture about 3 mm inside the sheet in 1.1.65. The cause: the job named a paper type this printer does not have, and it does not print borderless on plain paper, so it stayed in its bordered mode. Borderless is now sent with the printer’s Premium Glossy photo paper setting, so load glossy photo paper. It could not be tried on a printer here: print the edge test once on the paper in use.',
+      'Borderless on these printers now covers every size the L805’s Epson driver lists for it: 3.5x5 in (3R), 4x6 in, 5x7 in, 8x10 in, 100x148 mm, 16:9 wide, A4 and Letter. Other sizes print with the normal border.'
+    ]
+  },
+  {
     date: '2026-11-14', title: 'Desktop 1.1.45: Canon SELPHY on Wi-Fi asked for the borderless page first, one photo per job on a SELPHY', for: ['website', 'app'], app: '1.1.45',
     items: [
       'On a Canon SELPHY (CP1500 and the other CP models) that prints through the computer’s printer driver, several photos are now sent as one print job each, one after the other. A CP1500 can stop halfway, print only yellow or freeze the print service when it gets several photos in one job.',

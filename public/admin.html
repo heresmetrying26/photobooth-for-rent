@@ -2097,9 +2097,9 @@
             toast('Device limit set to ' + dv); refresh(); return;
           }
           if (a === 'makelifetime') {
-            if (!confirm('Make ' + code + ' lifetime? It will never expire, and the booth will ask for an event name so each event gets its own Drive folder.')) return;
-            await api({ action: 'makelifetime', code: code });
-            toast(code + ' is now lifetime'); refresh(); return;
+            if (!confirm('Make ' + code + ' lifetime? It will never expire, and the booth will ask for an event name so each event gets its own Drive folder. It can be used on up to 5 devices (raised if lower, never lowered).' + (LIC[code] && LIC[code].email ? '\n\nA thank-you email goes to ' + LIC[code].email + '.' : '\n\nNo email on file, so nothing is emailed.'))) return;
+            var lj = await api({ action: 'makelifetime', code: code });
+            toast(code + ' is now lifetime. ' + emailNote(lj), lj.email === 'failed'); refresh(); return;
           }
           if (a === 'schedopen') {
             var sb = b.closest('.actions').parentNode.querySelector('[data-sched-edit]');
@@ -2389,13 +2389,13 @@
             var cur5 = LIC[code]; if (!cur5) { toast('Open the code row first so it loads', true); return; }
             var live = cur5.status === 'active', base5 = Math.max(cur5.expiresAt || 0, Date.now());
             var endTxt = live ? 'It will then run until ' + new Date(base5 + addD * DAY).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) + '.' : 'The ' + addD + ' days are added to its length.';
-            if (!confirm('Upgrade ' + code + ' to ' + plan + '? This adds ' + addD + ' days' + (live && (cur5.expiresAt || 0) < Date.now() ? ' from today (it already ended)' : '') + '. ' + endTxt + '\n\nTheir setup, frames and photos stay as they are.')) return;
+            if (!confirm('Upgrade ' + code + ' to ' + plan + '? This adds ' + addD + ' days' + (live && (cur5.expiresAt || 0) < Date.now() ? ' from today (it already ended)' : '') + '. ' + endTxt + '\n\nTheir setup, frames and photos stay as they are, and the code can be used on up to ' + (plan === 'yearly' ? 3 : 2) + ' devices (raised if lower, never lowered).' + (cur5.email ? '\n\nA thank-you email goes to ' + cur5.email + '.' : '\n\nNo email on file, so nothing is emailed.'))) return;
             var uj = await api({ action: 'upgrade', code: code, plan: plan });
-            var after = Object.assign({}, cur5, { upgrade: { plan: plan, days: addD, at: Date.now() } });
+            var after = Object.assign({}, cur5, { upgrade: { plan: plan, days: addD, at: Date.now() }, maxDevices: Math.max(cur5.maxDevices || 1, plan === 'yearly' ? 3 : 2) });
             if (live) after.expiresAt = uj.expiresAt || base5 + addD * DAY; else after.days = (cur5.days || 0) + addD;
             LIC[code] = after;
             var copied = await copyUpgradeMessage({ code: after.code, name: after.label || after.code, rec: after }, true);
-            toast(copied ? 'Upgraded to ' + plan + '. Message copied: paste it to the customer' : 'Upgraded to ' + plan + '. Use “Copy upgrade message” to get the message');
+            toast('Upgraded to ' + plan + '. ' + emailNote(uj) + (copied ? ' Message copied too.' : ' Use “Copy upgrade message” for a chat message.'), uj.email === 'failed');
             refresh(); return;
           }
           if (a === 'upgradepdf' || a === 'upgrademsg') {
@@ -2988,6 +2988,12 @@
         w.document.open(); w.document.write(html); w.document.close();
       }
 
+      // What happened to the automatic "your account is upgraded" email (the server sends it when the renter has an email on file).
+      function emailNote(r) {
+        if (r && r.email === 'sent') return 'Thank-you email sent to ' + (r.to || 'the renter') + '.';
+        if (r && r.email === 'failed') return 'The thank-you email could not be sent' + (r.to ? ' to ' + r.to : '') + ': send the message yourself.';
+        return 'No email on file, so no email was sent (use Add email).';
+      }
       // The short thank-you for an upgraded code (Upgrade to monthly / yearly). Returns true when it reached the clipboard.
       function upgradeMessageText(info) {
         var origin = location.origin, f = handoutFacts(info), code = f.code;
@@ -2997,6 +3003,7 @@
           '',
           'Your account is upgraded to *' + f.upgrade.label + '* (' + f.upgrade.days + ' days added).',
           '🔑 *Access Code:* ' + code + ' (same code, nothing to change)',
+          '📱 Your ' + f.upgrade.label + ' plan can be used on up to ' + f.devices + ' devices at once.',
           '⏳ *' + (f.endsOn ? 'Valid until:* ' + f.endsOn : 'Valid:* ' + f.days + ' days from first use'),
           '✅ Your saved setup, frames and photos stay exactly as they are.',
           f.offlineOpt ? '💻 Offline app: connect to the internet once (or reopen the app while online) so it picks up the new dates.' : '',

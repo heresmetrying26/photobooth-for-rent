@@ -1,17 +1,24 @@
 import {
   safe, json, licenses, meta, getSettings, sign, verifyToken, sha,
   newCode, displayCode, normCode, throttle, recordFail, clearFail, normPrint, extrasOf, normExtras, EXTRA_KEYS, DAY, MIN, BONUS_SUBFOLDER,
-  LIFETIME_EXP, MAX_DEVICES, devicesOf, setDevices, printsStore
+  LIFETIME_EXP, MAX_DEVICES, maxDevicesOf, devicesOf, setDevices, printsStore
 , putLicense, delLicense, readIndex, rebuildIndex, windowEnd } from '../lib/core.mjs';
 import { timingSafeEqual, createHash, randomBytes } from 'node:crypto';
 import { setupsStore, setupKeyFor } from '../lib/core.mjs';
 import { ownerId, eventKeyOf, getAcct, acctPublic, acctKey, payStore, unseal, pm, listJSON, usedMap, batchView, createBatch, batchKey, KEY_RE } from '../lib/pay.mjs';
-import { cleanEventName, sendMail, codeEmail, EMAIL_RE, logEmailChange, REVOKE_REASONS, eventsStore, getShutdown, setShutdown, trashDriveFolder, isDriveUrl, AGREEMENT_VERSION, SUBHOOK_EVENTS } from '../lib/core.mjs';
+import { cleanEventName, sendMail, codeEmail, upgradeEmail, PLAN_DEVICES, EMAIL_RE, logEmailChange, REVOKE_REASONS, eventsStore, getShutdown, setShutdown, trashDriveFolder, isDriveUrl, AGREEMENT_VERSION, SUBHOOK_EVENTS } from '../lib/core.mjs';
 import { printerDiagStore, camDiagStore } from '../lib/core.mjs';
 import { replaceLifetimeCode } from '../lib/replace.mjs';
 import { buildBackup, backupName, runDriveBackup } from '../lib/backup.mjs';
 import { licenceFor, activateOn, saveMap, dropMap, licenceReady, MID_RE } from '../lib/license.mjs';
 import { ALL_PLANS, fulfillPlanPayment, getPlanDeliverables } from '../lib/plans.mjs';
+
+// Thank-you email after an upgrade. Never blocks or fails the upgrade: 'sent' | 'noemail' | 'failed'.
+async function mailUpgrade(rec, plan, req) {
+  if (!rec.email) return 'noemail';
+  try { await sendMail(Object.assign({ to: rec.email }, upgradeEmail(rec, plan, process.env.URL || new URL(req.url).origin))); return 'sent'; }
+  catch { return 'failed'; }
+}
 
 function passwordOk(input) {
   const real = process.env.ADMIN_PASSWORD;
@@ -386,9 +393,10 @@ export default safe(async (req, context) => {
       if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
       if (rec.lifetime) return json({ error: 'This code is already lifetime.' }, 400);
       rec.lifetime = true;
+      rec.maxDevices = Math.max(maxDevicesOf(rec), PLAN_DEVICES.lifetime);   // lifetime: up to 5 devices (raised, never lowered)
       if (rec.status === 'active') rec.expiresAt = LIFETIME_EXP;
       await putLicense(store, key, rec);
-      return json({ ok: true });
+      return json({ ok: true, email: await mailUpgrade(rec, 'lifetime', req), to: rec.email || null });
     }
 
     case 'extend': {
@@ -417,8 +425,9 @@ export default safe(async (req, context) => {
       else if (rec.status === 'unused') rec.days += add;
       else return json({ error: 'Restore this code before upgrading it.' }, 400);
       rec.upgrade = { plan, days: add, at: Date.now() };   // the Upgrade handout / message read this
+      rec.maxDevices = Math.max(maxDevicesOf(rec), PLAN_DEVICES[plan]);   // monthly 2, yearly 3 devices (raised, never lowered)
       await putLicense(store, key, rec);
-      return json({ ok: true, plan, expiresAt: rec.status === 'active' ? rec.expiresAt : null });
+      return json({ ok: true, plan, expiresAt: rec.status === 'active' ? rec.expiresAt : null, email: await mailUpgrade(rec, plan, req), to: rec.email || null });
     }
 
     case 'shorten': { // take days off a code (e.g. a month was set by mistake instead of a few days)

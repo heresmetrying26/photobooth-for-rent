@@ -31,6 +31,8 @@ export function fmtWhen(ms) {
 // gets its own Drive folder: "<Drive folder name> · <event name>".
 export const LIFETIME_EXP = 253402300799000;
 export const MAX_DEVICES = 50;
+// Devices at once an upgraded code gets (Admin: Upgrade to monthly / yearly, Make lifetime). Raised to this, never lowered.
+export const PLAN_DEVICES = { monthly: 2, yearly: 3, lifetime: 5 };
 
 // Devices a code is bound to: [{ id, no, at }]. "no" is the device number shown
 // in admin and added to file names (…_cam2.png) when a code allows several
@@ -261,6 +263,37 @@ export function codeEmail(recs, origin) {
     (hasLifetime ? '<p><a href="' + site + '/agreement/" style="color:#c93d27;font-weight:bold">Lifetime Access Agreement</a> &nbsp;·&nbsp; <a href="' + site + '/faq/" style="color:#c93d27;font-weight:bold">Lifetime FAQ</a></p>' : '') +
     '<p style="font-size:13px;color:#6b666c">Keep your code private. If you didn\u2019t ask for this email, you can ignore it.</p></div>';
   return { subject: 'Your photobooth4u code', text, html };
+}
+
+// "Thank you, your account is upgraded" email, sent by Admin when a code goes monthly / yearly / lifetime.
+// plan: 'monthly' | 'yearly' | 'lifetime'. Same code, so it only confirms the new term and what stays the same.
+export function upgradeEmail(rec, plan, origin) {
+  const site = String(origin || 'https://photobooth4u.netlify.app').replace(/\/+$/, '');
+  const name = rec.label || '';
+  const life = plan === 'lifetime';
+  const label = life ? 'Lifetime' : plan === 'yearly' ? 'Yearly' : 'Monthly';
+  const endsOn = !life && rec.status === 'active' && rec.expiresAt
+    ? new Date(rec.expiresAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' }) : '';
+  const term = life ? 'It never expires.' : endsOn ? 'It is valid until ' + endsOn + '.' : 'It is valid for ' + (rec.days || (plan === 'yearly' ? 365 : 30)) + ' days from first use.';
+  const devs = Math.max(PLAN_DEVICES[plan] || 1, Math.floor(Number(rec.maxDevices) || 1));   // what the code really allows (never less than the plan)
+  const devLine = 'Your ' + label + ' plan can be used on up to ' + devs + ' devices at once.';
+  const stays = 'Your code stays the same, and your saved setup, frames and photos are unchanged.';
+  const offline = rec.offlineOpt ? 'Offline app: connect the laptop or tablet to the internet once (or reopen the app while online) so it picks up the new dates, then it works with no internet again.' : '';
+  const lifeNote = life ? 'The booth now asks for an event name, so each event gets its own folder. A laptop with the offline app should go online every few weeks to renew its licence.' : '';
+  const links = [['Open the booth', site + '/?code=' + encodeURIComponent(rec.code)], ['My Events', site + '/lifetime/#' + encodeURIComponent(rec.code)]];
+  if (life) links.push(['Lifetime Access Agreement', site + '/agreement/'], ['Lifetime FAQ', site + '/faq/']);
+  const text = 'Hi' + (name ? ' ' + name : '') + ',\n\nThank you for availing photobooth4u! Your account is upgraded to ' + label + '. ' + term +
+    '\n\nAccess code: ' + rec.code + '\n' + devLine + '\n' + stays + (offline ? '\n' + offline : '') + (lifeNote ? '\n' + lifeNote : '') +
+    '\n\n' + links.map((l) => l[0] + ': ' + l[1]).join('\n') + '\n\nMessage us anytime if you need help.\n\nphotobooth4u';
+  const html = '<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#1c1a1e;max-width:520px">' +
+    '<p style="font-size:20px;font-weight:bold;margin:0 0 12px">photobooth<span style="background:#c93d27;color:#fff;border-radius:4px;padding:0 4px;font-size:12px;vertical-align:top">4u</span></p>' +
+    '<p>Hi' + (name ? ' ' + escHtml(name) : '') + ',</p>' +
+    '<p>Thank you for availing photobooth4u! Your account is upgraded to <b>' + label + '</b>. ' + escHtml(term) + '</p>' +
+    '<p style="margin:8px 0;padding:12px 14px;background:#f5f1ea;border-radius:10px">Access code<br><b style="font-size:20px;letter-spacing:1px">' + escHtml(rec.code) + '</b></p>' +
+    '<p><b>' + escHtml(devLine) + '</b></p><p>' + escHtml(stays) + '</p>' + (offline ? '<p>' + escHtml(offline) + '</p>' : '') + (lifeNote ? '<p>' + escHtml(lifeNote) + '</p>' : '') +
+    '<p>' + links.map((l) => '<a href="' + escHtml(l[1]) + '" style="color:#c93d27;font-weight:bold">' + escHtml(l[0]) + '</a>').join(' &nbsp;·&nbsp; ') + '</p>' +
+    '<p style="font-size:13px;color:#6b666c">Message us anytime if you need help.</p></div>';
+  return { subject: 'Your photobooth4u account is upgraded to ' + label, text, html };
 }
 
 // Same rule as the booth: letters, numbers, spaces and basic punctuation only,

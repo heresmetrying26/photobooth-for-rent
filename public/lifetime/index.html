@@ -576,7 +576,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     });
     $('csAdd').addEventListener('click', function(){
       var w = Number($('csW').value), h = Number($('csH').value), u = $('csU').value;
-      var lo = u === 'in' ? 1 : 25, hi = u === 'in' ? 20 : 500;
+      var lo = u === 'in' ? 1 : 25, hi = u === 'in' ? 30 : 760;
       if(!(w >= lo && w <= hi && h >= lo && h <= hi)){ $('printMsg').textContent = u === 'in' ? 'Use 1 to 20 inches.' : 'Use 25 to 500 mm.'; return; }
       var k = (+w.toFixed(2)) + 'x' + (+h.toFixed(2)) + u;
       if(pcustom.length >= 6 && pcustom.indexOf(k) < 0){ $('printMsg').textContent = 'Up to 6 custom sizes.'; return; }

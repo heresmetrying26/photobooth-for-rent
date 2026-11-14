@@ -29302,7 +29302,7 @@
           return false;
         }
         try {
-          const body = JSON.stringify({ printer: name, quality: helperQualityFor(name), widthMm: paper.w, heightMm: paper.h, fit: paper.receipt ? 'width' : undefined, custom: ownSizes().some(k => { const op = paperFor(k); return !!op && Math.abs(op.w - paper.w) < 0.6 && Math.abs(op.h - paper.h) < 0.6; }), pages: pages.map(c => c.toDataURL('image/png')) });
+          const body = JSON.stringify({ printer: name, quality: helperQualityFor(name), widthMm: paper.w, heightMm: paper.h, fit: paper.receipt ? 'width' : undefined, custom: ownSizes().some(k => { const op = paperFor(k); return !!op && Math.abs(op.w - paper.w) < 0.6 && Math.abs(op.h - paper.h) < 0.6; }) || !Object.keys(PAPER).some(k => Math.abs(PAPER[k].w - paper.w) < 0.6 && Math.abs(PAPER[k].h - paper.h) < 0.6), pages: pages.map(c => c.toDataURL('image/png')) });
           const r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
           const j = await r.json().catch(() => ({}));
           if (r.ok && j.ok) return true;
@@ -29569,7 +29569,7 @@
       });
       document.getElementById('csAdd').addEventListener('click', () => {
         const w = Number(document.getElementById('csW').value), h = Number(document.getElementById('csH').value), u = document.getElementById('csU').value;
-        const lo = u === 'in' ? 1 : 25, hi = u === 'in' ? 20 : 500;
+        const lo = u === 'in' ? 1 : 25, hi = u === 'in' ? 30 : 760;
         if (!(w >= lo && w <= hi && h >= lo && h <= hi)) { showToast('Own size must be ' + lo + '–' + hi + ' ' + u + ' on each side.', 4000); return; }
         const key = (Math.round(w * 100) / 100) + 'x' + (Math.round(h * 100) / 100) + u;
         const cur = ownSizes();

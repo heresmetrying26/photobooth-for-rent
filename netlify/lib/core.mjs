@@ -425,7 +425,7 @@ const CUSTOM_RE = /^(\d{1,3}(?:\.\d{1,2})?)x(\d{1,3}(?:\.\d{1,2})?)(in|mm)$/;
 export function customPaperOk(key) {
   const m = CUSTOM_RE.exec(String(key));
   if (!m) return false;
-  const [lo, hi] = m[3] === 'in' ? [1, 20] : [25, 500];
+  const [lo, hi] = m[3] === 'in' ? [1, 30] : [25, 760];
   const w = Number(m[1]), h = Number(m[2]);
   return w >= lo && w <= hi && h >= lo && h <= hi;
 }

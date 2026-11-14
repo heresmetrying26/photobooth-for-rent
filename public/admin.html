@@ -1519,7 +1519,7 @@
         box.querySelector('.cs-add').addEventListener('click', function () {
           var w = Number(box.querySelector('.cs-w').value), h = Number(box.querySelector('.cs-h').value);
           var u = box.querySelector('.cs-u').value;
-          var lo = u === 'in' ? 1 : 25, hi = u === 'in' ? 20 : 500;
+          var lo = u === 'in' ? 1 : 25, hi = u === 'in' ? 30 : 760;
           if (!(w >= lo && w <= hi && h >= lo && h <= hi)) {
             toast('Custom size must be ' + lo + '–' + hi + ' ' + u + ' on each side.', true); return;
           }
@@ -2709,7 +2709,8 @@
         copyCustomerMessage(SIM_RES);
       });
 
-      printPicker($('newPrint'), { enabled: true, sizes: PAPER.map(function (p) { return p[0]; }) }, 'Allow printing for these codes');
+      // New codes start with every built-in size plus the two long ones (4x12 in and 8x24 in) ticked.
+      printPicker($('newPrint'), { enabled: true, sizes: PAPER.map(function (p) { return p[0]; }).concat(['4x12in', '8x24in']) }, 'Allow printing for these codes');
       $('newTheme').innerHTML = themeOptions('');
       // Remember whether the Trial / QR / PayMongo cards are open.
       ['trialCard', 'qrCard', 'paymongoCard'].forEach(function (id) {

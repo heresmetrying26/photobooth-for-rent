@@ -1860,6 +1860,8 @@
         } else {
           if (st !== 'revoked' && !l.lifetime) acts += '<button class="small" data-a="extend" data-c="' + c + '">+ Add days</button>';
           if (st !== 'revoked' && !l.lifetime) acts += '<button class="small" data-a="shorten" data-c="' + c + '">− Remove days</button>';
+          if (st !== 'revoked' && !l.lifetime) acts += '<button class="small" data-a="upgrade" data-plan="monthly" data-c="' + c + '" title="Adds 30 days (counted from today if the code already ended), then copies a thank-you message for the customer">⬆ Upgrade to monthly (+30 days)</button>';
+          if (st !== 'revoked' && !l.lifetime) acts += '<button class="small" data-a="upgrade" data-plan="yearly" data-c="' + c + '" title="Adds 365 days (counted from today if the code already ended), then copies a thank-you message for the customer">⬆ Upgrade to yearly (+365 days)</button>';
           if (st !== 'revoked' && !l.lifetime) acts += '<button class="small" data-a="makelifetime" data-c="' + c + '">Make lifetime</button>';
           if (unusedish || (st === 'expired' && !l.redeemedAt)) acts += '<button class="small" data-a="schedopen" data-c="' + c + '">' + (l.startsAt ? 'Change date' : 'Set date') + '</button>';
         }
@@ -1881,6 +1883,10 @@
         if (!bonus) {
           acts += '<button class="small" data-a="voucherpdf" data-c="' + c + '" title="Open / print 1-page Customer Voucher PDF with access codes, QR code &amp; all guides">📄 Customer Handout (PDF)</button>';
           acts += '<button class="small" data-a="vouchermsg" data-c="' + c + '" title="Copy formatted text message for Messenger / WhatsApp">📋 Copy Message</button>';
+          if (l.upgrade && !l.lifetime) {
+            acts += '<button class="small" data-a="upgradepdf" data-c="' + c + '" title="1-page upgrade confirmation to send to the customer">📄 Upgrade handout (PDF)</button>';
+            acts += '<button class="small" data-a="upgrademsg" data-c="' + c + '" title="Copy the thank-you / upgrade message for Messenger / WhatsApp">📋 Copy upgrade message</button>';
+          }
           acts += '<button class="small" data-a="setemail" data-c="' + c + '">' + (l.email ? 'Change email' : 'Add email') + '</button>';
           if (l.email) acts += '<button class="small" data-a="sendcode" data-c="' + c + '">Email code to renter</button>';
           acts += '<button class="small" data-a="payopt" data-c="' + c + '">' + (l.payOpt ? 'Hide guest payments' : 'Give guest payments') + '</button>';
@@ -2378,6 +2384,27 @@
             copyCustomerMessage({ code: rec3.code, name: rec3.label || rec3.code, rec: rec3 });
             return;
           }
+          if (a === 'upgrade') {
+            var plan = b.dataset.plan === 'yearly' ? 'yearly' : 'monthly', addD = plan === 'yearly' ? 365 : 30;
+            var cur5 = LIC[code]; if (!cur5) { toast('Open the code row first so it loads', true); return; }
+            var live = cur5.status === 'active', base5 = Math.max(cur5.expiresAt || 0, Date.now());
+            var endTxt = live ? 'It will then run until ' + new Date(base5 + addD * DAY).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) + '.' : 'The ' + addD + ' days are added to its length.';
+            if (!confirm('Upgrade ' + code + ' to ' + plan + '? This adds ' + addD + ' days' + (live && (cur5.expiresAt || 0) < Date.now() ? ' from today (it already ended)' : '') + '. ' + endTxt + '\n\nTheir setup, frames and photos stay as they are.')) return;
+            var uj = await api({ action: 'upgrade', code: code, plan: plan });
+            var after = Object.assign({}, cur5, { upgrade: { plan: plan, days: addD, at: Date.now() } });
+            if (live) after.expiresAt = uj.expiresAt || base5 + addD * DAY; else after.days = (cur5.days || 0) + addD;
+            LIC[code] = after;
+            var copied = await copyUpgradeMessage({ code: after.code, name: after.label || after.code, rec: after }, true);
+            toast(copied ? 'Upgraded to ' + plan + '. Message copied: paste it to the customer' : 'Upgraded to ' + plan + '. Use “Copy upgrade message” to get the message');
+            refresh(); return;
+          }
+          if (a === 'upgradepdf' || a === 'upgrademsg') {
+            var rec9 = LIC[code];
+            if (!rec9) { toast('Open the code row first so it loads', true); return; }
+            var inf = { code: rec9.code, name: rec9.label || rec9.code, rec: rec9 };
+            if (a === 'upgradepdf') openCustomerHandout(inf); else copyUpgradeMessage(inf);
+            return;
+          }
           if (a === 'mode') {
             var on = !(LIC[code] && LIC[code].traditional);
             await api({ action: 'traditional', code: code, traditional: on });
@@ -2789,11 +2816,20 @@
         f.online = !f.offlineOnly;
         f.android = f.offlineOnly && !f.traditional;
         f.valid = f.lifetime ? 'Lifetime · never expires' : f.opens ? f.days + ' day' + (f.days === 1 ? '' : 's') + ' from ' + fmtDate(f.opens) : f.days + ' day' + (f.days === 1 ? '' : 's') + ' from first use';
+        // An upgraded code (Admin: Upgrade to monthly / yearly): say so, and give the real end date.
+        if (r && r.upgrade && !r.lifetime) {
+          var yearly = r.upgrade.plan === 'yearly';
+          f.upgrade = { plan: yearly ? 'yearly' : 'monthly', label: yearly ? 'Yearly' : 'Monthly', days: r.upgrade.days || (yearly ? 365 : 30) };
+          var model2 = f.offlineOnly ? (f.traditional ? 'Offline (Laptop App)' : 'Offline (Android Tablet App)') : f.offlineOpt ? 'Online + Offline' : (f.traditional ? 'Online (Laptop)' : 'Online (Tablet)');
+          f.title = f.upgrade.label + ' ' + model2;
+          f.endsOn = r.status === 'active' && r.expiresAt ? new Date(r.expiresAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+          f.valid = f.endsOn ? 'Valid until ' + f.endsOn : f.days + ' days from first use';
+        }
         return f;
       }
       // The handout's tab title is the file name the browser suggests when saving as PDF.
       function handoutFileName(f) {
-        return ('photobooth4u - ' + (f.name || f.code) + ' - ' + f.title).replace(/[\\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim();
+        return ('photobooth4u - ' + (f.name || f.code) + ' - ' + f.title + (f.upgrade ? ' Upgrade' : '')).replace(/[\\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim();
       }
       function handoutFeatures(f) {
         var a = [];
@@ -2834,6 +2870,15 @@
         steps.push('<b>Customize</b> &mdash; Change overlay, countdown &amp; print layout in <b>Setup &rarr; Design</b>.' + (f.online ? ' Your photos save to the Drive folder named in <b>Setup &rarr; Share</b>.' : ' Photos save on the ' + (f.android ? 'tablet' : 'laptop') + ' and guests scan a QR over the booth Wi-Fi.'));
         if (f.online) steps.push('<b>Guest Gallery &amp; Sharing</b> &mdash; Guests scan the QR on their photo to view &amp; download. Visit <b>My Events</b> to manage galleries and guest access.');
         if (f.print) steps.push('<b>Printing</b> &mdash; Pick a paper size in the print panel' + (f.lifetime ? ' (or add your own size)' : '') + ', then connect a printer (see the Printer Guide).');
+        if (f.upgrade) {
+          // An upgrade confirmation: they already know the booth, so say what changed and what stays the same.
+          steps = [
+            '<b>Same Access Code</b> &mdash; Keep using the code above. Nothing to reinstall or re-enter.',
+            '<b>Your setup stays</b> &mdash; Your saved design, frames, themes and photos are unchanged.',
+            f.online ? '<b>Online booth &amp; tablet</b> &mdash; Reload the booth page and the new dates apply right away.' : '',
+            f.offlineOpt ? '<b>Offline app</b> &mdash; Connect the ' + (f.android ? 'tablet' : 'laptop') + ' to the internet once (or reopen the app while online). It picks up the new dates by itself, then works with no internet again.' : ''
+          ].filter(Boolean);
+        }
         var stepsHtml = steps.map(function (s, i) { return '<div class="step"><div class="step-num">' + (i + 1) + '</div><div class="step-body">' + s + '</div></div>'; }).join('');
 
         var links = [];
@@ -2881,6 +2926,7 @@
           + '.code-value{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:800;font-size:20px;letter-spacing:.5px;color:#1C1A1E;word-break:break-all;}'
           + '.code-hint{font-size:11px;color:#6B666C;margin-top:4px;}'
           + '.incl{margin-bottom:18px;}.incl .valid{font-size:12px;font-weight:700;margin-bottom:6px;}'
+          + '.up-banner{background:#E8F6EC;border:1.5px solid #b9e0c4;border-radius:11px;padding:11px 14px;margin-bottom:14px;font-size:13.5px;color:#14502a;}'
           + '.feat{display:inline-block;margin:0 5px 5px 0;padding:2px 10px;border:1.5px solid #E4DCCF;border-radius:99px;font-size:11px;font-weight:700;color:#3a363c;}'
           + '.section{margin-bottom:16px;}'
           + '.section-title{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#6B666C;margin-bottom:9px;padding-bottom:4px;border-bottom:1px solid #E4DCCF;}'
@@ -2902,13 +2948,14 @@
           + '<div class="header">'
           + '<div>'
           + '<h1>photobooth<em>4u</em></h1>'
-          + '<div class="subtitle">' + esc(f.title) + ' &middot; Customer Voucher</div>'
+          + '<div class="subtitle">' + esc(f.title) + ' &middot; ' + (f.upgrade ? 'Upgrade Confirmation' : 'Customer Voucher') + '</div>'
           + (f.name ? '<div class="cust">' + esc(f.name) + '</div>' : '')
           + '<div class="issued">Issued: ' + today + '</div>'
           + '</div>'
           + (qrDataUrl ? '<div class="qr-wrap"><img src="' + qrDataUrl + '" alt="QR code"><div class="qr-label">' + (f.online ? 'Scan to launch' : 'Scan for the app') + '</div></div>' : '')
           + '</div>'
 
+          + (f.upgrade ? '<div class="up-banner"><b>Thank you for availing photobooth4u!</b><br>Your account is upgraded to <b>' + esc(f.upgrade.label) + '</b> (' + f.upgrade.days + ' days added)' + (f.endsOn ? ' &mdash; valid until <b>' + esc(f.endsOn) + '</b>' : '') + '.</div>' : '')
           + '<div class="codes-grid">'
           + '<div class="code-box">'
           + '<div class="code-label">🔑 Access Code</div>'
@@ -2923,7 +2970,7 @@
           + '</div>'
 
           + '<div class="section">'
-          + '<div class="section-title">Quick Setup Guide</div>'
+          + '<div class="section-title">' + (f.upgrade ? 'What happens next' : 'Quick Setup Guide') + '</div>'
           + stepsHtml
           + '</div>'
 
@@ -2939,6 +2986,34 @@
         var w = window.open('', '_blank', 'width=760,height=940');
         if (!w) { toast('Allow pop-ups to open the handout', true); return; }
         w.document.open(); w.document.write(html); w.document.close();
+      }
+
+      // The short thank-you for an upgraded code (Upgrade to monthly / yearly). Returns true when it reached the clipboard.
+      function upgradeMessageText(info) {
+        var origin = location.origin, f = handoutFacts(info), code = f.code;
+        if (!f.upgrade) return '';
+        var lines = [
+          '📸 *photobooth4u* — Thank you for availing photobooth4u app! 🎉',
+          '',
+          'Your account is upgraded to *' + f.upgrade.label + '* (' + f.upgrade.days + ' days added).',
+          '🔑 *Access Code:* ' + code + ' (same code, nothing to change)',
+          '⏳ *' + (f.endsOn ? 'Valid until:* ' + f.endsOn : 'Valid:* ' + f.days + ' days from first use'),
+          '✅ Your saved setup, frames and photos stay exactly as they are.',
+          f.offlineOpt ? '💻 Offline app: connect to the internet once (or reopen the app while online) so it picks up the new dates.' : '',
+          f.online ? '🚀 *Launch Booth:* ' + origin + '/?code=' + code : '',
+          f.online ? '📁 *My Events Portal:* ' + origin + '/lifetime/#' + code : '',
+          '',
+          'Message us anytime if you need help. Enjoy your events! 🙌'
+        ].filter(function (l, i, a) { return l !== '' || (i > 0 && a[i - 1] !== ''); });
+        return lines.join('\n');
+      }
+      function copyUpgradeMessage(info, silent) {
+        var text = upgradeMessageText(info);
+        if (!text) { toast('This code has no upgrade yet', true); return Promise.resolve(false); }
+        return navigator.clipboard.writeText(text).then(function () {
+          if (!silent) toast('Upgrade message copied — paste into Messenger or WhatsApp');
+          return true;
+        }).catch(function () { if (!silent) toast('Could not copy. Code: ' + info.code, true); return false; });
       }
 
       function copyCustomerMessage(info) {

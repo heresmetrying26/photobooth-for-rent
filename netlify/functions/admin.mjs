@@ -405,6 +405,22 @@ export default safe(async (req, context) => {
       return json({ ok: true });
     }
 
+    case 'upgrade': { // a tester / short code goes monthly (+30 days) or yearly (+365 days); same rules as "extend"
+      const plan = b.plan === 'yearly' ? 'yearly' : b.plan === 'monthly' ? 'monthly' : '';
+      if (!plan) return json({ error: 'Pick monthly or yearly.' }, 400);
+      const add = plan === 'yearly' ? 365 : 30;
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      if (rec.kind === 'bonus') return json({ error: 'A bonus code cannot be upgraded. Upgrade the main booking.' }, 400);
+      if (rec.lifetime) return json({ error: 'Lifetime codes never expire.' }, 400);
+      if (rec.status === 'active') rec.expiresAt = Math.max(rec.expiresAt, Date.now()) + add * DAY;
+      else if (rec.status === 'unused') rec.days += add;
+      else return json({ error: 'Restore this code before upgrading it.' }, 400);
+      rec.upgrade = { plan, days: add, at: Date.now() };   // the Upgrade handout / message read this
+      await putLicense(store, key, rec);
+      return json({ ok: true, plan, expiresAt: rec.status === 'active' ? rec.expiresAt : null });
+    }
+
     case 'shorten': { // take days off a code (e.g. a month was set by mistake instead of a few days)
       const sub = intIn(b.days, 1, 365);
       if (!sub) return json({ error: 'Days must be between 1 and 365.' }, 400);

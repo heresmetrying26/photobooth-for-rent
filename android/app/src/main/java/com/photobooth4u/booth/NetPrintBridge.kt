@@ -165,12 +165,16 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             .filter { it.ippPort > 0 || it.rawPort > 0 }
             .sortedWith(compareByDescending<Entry> { it.name.isNotBlank() }.thenBy { it.ip })
             .forEach {
+                // An Epson ink-tank photo printer with no IPP (L805, L120 on a print server…) is not a receipt printer:
+                // it takes the same ESC/P-R job over port 9100 that it takes over USB (see printEscpr).
+                val escprNet = it.ippPort == 0 && it.rawPort > 0 && (epsonLSeries(it.name) || epsonLSeries(it.model))
                 arr.put(JSONObject()
                     .put("id", it.ip)
                     .put("name", it.name.ifBlank { "Printer at ${it.ip}" })
                     .put("ip", it.ip)
                     .put("ipp", it.ippPort > 0)
-                    .put("raw", it.rawPort > 0)
+                    .put("raw", it.rawPort > 0 && !escprNet)
+                    .put("escpr", escprNet)
                     .put("qualities", JSONArray(it.qualities))
                     .put("colorModes", JSONArray(it.colorModes))
                     .put("mediaTypes", JSONArray(it.mediaTypes)))
@@ -277,6 +281,26 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             deliver(r)
         }
         return "started"
+    }
+
+    /**
+     * Sends one whole photo job to a Wi-Fi printer's port 9100. An inkjet answers with status bytes while it prints;
+     * closing with those unread can make Android reset the connection and the printer drop the end of the page, so the
+     * sending side is closed first and the answers are read until the printer hangs up (or goes quiet).
+     */
+    private fun netRawJob(ip: String, data: ByteArray) {
+        newSocket(ip).use { s ->
+            s.connect(InetSocketAddress(ip, found[ip]?.rawPort?.takeIf { it > 0 } ?: 9100), 6000)
+            s.getOutputStream().apply { write(data); flush() }
+            try {
+                s.shutdownOutput()
+                s.soTimeout = 3000
+                val buf = ByteArray(512)
+                val until = System.currentTimeMillis() + 20_000
+                val inp = s.getInputStream()
+                while (System.currentTimeMillis() < until && inp.read(buf) >= 0) { /* status bytes, not needed */ }
+            } catch (_: Exception) {}
+        }
     }
 
     private fun deliver(r: JSONObject) {
@@ -796,14 +820,15 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     private val usbIds = ConcurrentHashMap<String, String>()
 
     /**
-     * Epson ink-tank models that speak ESC/P-R over USB: the L120 / L210 era (L1xx, L2xx, L3xx, L5xx) and the newer
+     * Epson ink-tank models that speak ESC/P-R over USB: the L120 / L210 era (L1xx, L2xx, L3xx, L5xx), the 6-ink photo
+     * L8xx (L800, L805, L810, L850) and the newer
      * four-digit names (L3210, L3250, L3276, L4260, L5290, L8050…), plus the A3+ L18050 (sold as ET-18100 elsewhere),
      * which shares the L8050's 6-ink ESC/P-R platform. Other five-digit A3 models (L14150) are not matched.
      * Only a name fallback: its USB product id is not hardcoded in [EpsonLModels] yet (read it from the
      * "epson usb 04b8:xxxx" PBNet log line with the printer plugged in).
      */
     private fun epsonLSeries(name: String?): Boolean =
-        name != null && Regex("""(?i)\b(L\s?(1\d\d|2\d\d|3\d\d|5\d\d|[1-8]\d{3}|18050)|ET-?18100)\b""").containsMatchIn(name)
+        name != null && Regex("""(?i)\b(L\s?(1\d\d|2\d\d|3\d\d|5\d\d|8\d\d|[1-8]\d{3}|18050)|ET-?18100)\b""").containsMatchIn(name)
 
     /** True when the printer says it speaks Epson's ESC/P-R language (the family the L120 / L210 belong to). */
     private fun usbIsEscpr(d: UsbDevice): Boolean {
@@ -1150,9 +1175,13 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         pool.execute {
             val r = JSONObject().put("job", job)
             try {
-                val d = usbFind(id)
-                usbEnsure(d)
-                if (!usbIsEscpr(d)) throw IllegalStateException("Printer does not support ESC/P-R raster commands.")
+                // A Wi-Fi printer (an address, not "usb:…") gets the same job over port 9100.
+                val net = !id.startsWith("usb:")
+                if (!net) {
+                    val d = usbFind(id)
+                    usbEnsure(d)
+                    if (!usbIsEscpr(d)) throw IllegalStateException("Printer does not support ESC/P-R raster commands.")
+                }
                 val optJson = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
                 val adj = PrintColorAdj.from(optJson)
                 val arr = JSONArray(pagesJson)
@@ -1162,7 +1191,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
                         try {
-                            usbRaw(id, EscprJob.build(bmp, widthMm, heightMm, false, adj = adj))
+                            val data = EscprJob.build(bmp, widthMm, heightMm, false, adj = adj)
+                            if (net) netRawJob(id, data) else usbRaw(id, data)
                         } finally {
                             try { bmp.recycle() } catch (_: Exception) {}
                         }

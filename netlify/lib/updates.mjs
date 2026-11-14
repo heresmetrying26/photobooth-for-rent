@@ -209,6 +209,13 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-14', title: 'Android 1.1.57: Epson L805 photos over Wi-Fi and a printer checklist that ticks', for: ['website'],
+    items: [
+      'A Wi-Fi Epson ink-tank photo printer without AirPrint (L805, L800, L810, L850 and similar) is now listed as a photo printer, not a receipt printer, and prints photos over Wi-Fi the same way it does over a USB cable. If you had already picked it, open Print settings once so the app updates it.',
+      'The printer setup checklist in Print settings now works on the Android app: it ticks when a printer is found, when one is chosen for the paper size, and after a print or test print works. It no longer mentions AirPrint or the iPad on a tablet.'
+    ]
+  },
+  {
     date: '2026-11-13', title: 'Android 1.1.56: easier-to-tap tick boxes and clearer setup wording', for: ['website'],
     items: [
       'Every tick box row in Setup is now at least 40 px tall with the same box size, so switches are easier to hit on a tablet. Nothing moved and every option is where it was.',

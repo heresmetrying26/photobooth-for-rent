@@ -836,21 +836,22 @@ export async function handleHelper(req, path, search) {
       if (e.code === 'GONE' || e.code === 'NOCAMERA') cam.open = null;
       return json({ ok: false, code: e.code, error: e.error }, e.code === 'GONE' ? 410 : e.code === 'NOCAMERA' ? 404 : 409);
     };
+    const classic = search.get('classic') === '1' ? 'classic' : '';   // booth setting "Classic Nikon behaviour": the camera part keeps its old JPEG / autofocus behaviour
     const jpeg = (body) => new Response(body, { status: 200, headers: { 'content-type': 'image/jpeg', 'cache-control': 'no-store' } });
     try {
       if (method === 'GET' && path === '/camera/diag' && IS_MAC) { const r = await camCall('diag', '', 8000); return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) })); }
       if (method === 'GET' && path === '/camera') { const r = await camCall('list', '', 20000); return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) })); }
       if (method === 'POST' && path === '/camera/open') {
         if (search.get('fresh') === '1') cam.recover = true;   // the booth lost the picture: start a clean camera session
-        const r = await camCall('open', cam.recover ? 'recover' : '', 60000);
+        const r = await camCall('open', [cam.recover ? 'recover' : '', classic].filter(Boolean).join(' '), 60000);
         cam.recover = false;
         return send(r, () => { cam.open = JSON.parse(r.body.toString('utf8')); log('Camera connected: ' + cam.open.name); return json({ ok: true, ...cam.open }); });
       }
-      if (method === 'POST' && path === '/camera/af') { const r = await camCall('af', '', 15000); return send(r, () => json({ ok: true })); }
+      if (method === 'POST' && path === '/camera/af') { const r = await camCall('af', classic, 15000); return send(r, () => json({ ok: true })); }
       if (method === 'POST' && path === '/camera/live') { const on = search.get('on') !== '0'; const r = await camCall('live', on ? 'on' : 'off', 20000); return send(r, () => json({ ok: true })); }
       if (method === 'GET' && path === '/camera/frame') { const r = await camCall('frame', '', 10000); return send(r, () => (r.kind === 'B' ? jpeg(r.body) : new Response(null, { status: 204 }))); }
       if (method === 'POST' && path === '/camera/capture') {
-        const t0 = Date.now(); const r = await camCall('capture', '', 45000);
+        const t0 = Date.now(); const r = await camCall('capture', classic, 45000);
         return send(r, () => {
           const miss = Array.isArray(r.flags) && r.flags.includes('focus-miss');   // a Nikon photo taken without a focus lock
           log('Photo taken (' + Math.round(r.body.length / 1024) + ' KB, ' + (Date.now() - t0) + ' ms)' + (miss ? ', NOT focused' : ''));

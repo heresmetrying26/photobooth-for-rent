@@ -392,7 +392,7 @@ export async function call(cmd, arg) {
     if (cmd === 'ping') return reply('OK', 'J', '{"ok":true}');
     if (cmd === 'list') return reply('OK', 'J', listJson());
     if (cmd === 'diag') return reply('OK', 'J', diagJson());
-    if (cmd === 'open') return reply('OK', 'J', await open(arg === 'recover'));
+    if (cmd === 'open') return reply('OK', 'J', await open(String(arg || '').split(' ').includes('recover')));
     if (!s.ptp) throw new GoneError('NOCAMERA The camera isn’t connected.');
     if (cmd === 'info') return reply('OK', 'J', infoJson());
     if (cmd === 'battery') { if (s.drv) s.battery = await s.drv.battery(); else if (s.brand === 'canon') s.battery = await canonBattery(); return reply('OK', 'J', JSON.stringify({ battery: s.battery })); }

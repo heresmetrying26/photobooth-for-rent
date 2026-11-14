@@ -14840,15 +14840,26 @@
               <button type="button" class="action-btn" id="usbCamAfBtn" style="flex:1; min-width:130px; margin:0; padding:8px 12px; font-size:13px; font-weight:700;">🔍 Auto-Focus Lens</button>
               <button type="button" class="action-btn" id="usbCamTestShotBtn" style="flex:1; min-width:130px; margin:0; padding:8px 12px; font-size:13px; font-weight:700; background:var(--ink); color:#fff;">📸 Take Test Shot</button>
             </div>
-            <div id="nikonCleanRow" style="display:none; margin-top:10px; align-items:center; gap:8px; flex-wrap:wrap;">
-              <label for="nikonCleanSel" style="font-size:12px; font-weight:700; color:var(--ink);">Nikon photo clean-up</label>
-              <select id="nikonCleanSel" style="padding:5px 8px; font-size:12.5px; border-radius:6px; border:1px solid var(--line);">
-                <option value="off">Off</option>
-                <option value="auto" selected>Auto (light)</option>
-                <option value="strong">Strong</option>
-              </select>
-              <span class="panel-hint" style="margin:0; font-size:11px; flex-basis:100%;">Reduces grain and sharpens Nikon photos at the size they are printed. Auto suits most events; Strong is for dim rooms (it can soften skin).</span>
-            </div>
+            <details id="nikonCleanRow" style="display:none; margin-top:10px; font-size:12px; color:var(--ink-dim); background:#f8f9fa; border-radius:8px; padding:8px 10px; border:1px solid var(--line);">
+              <summary style="font-weight:700; cursor:pointer; color:var(--ink);">Nikon photo options</summary>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                <label for="nikonCleanSel" style="font-size:12px; font-weight:700; color:var(--ink);">Photo clean-up</label>
+                <select id="nikonCleanSel" style="padding:5px 8px; font-size:12.5px; border-radius:6px; border:1px solid var(--line);">
+                  <option value="off">Off</option>
+                  <option value="auto" selected>Auto (light)</option>
+                  <option value="strong">Strong</option>
+                </select>
+                <span class="panel-hint" style="margin:0; font-size:11px; flex-basis:100%;">Reduces grain and sharpens Nikon photos at the size they are printed. Auto suits most events; Strong is for dim rooms (it can soften skin).</span>
+              </div>
+              <label style="display:flex; gap:8px; align-items:flex-start; margin-top:8px; font-size:12px; color:var(--ink); cursor:pointer;">
+                <input type="checkbox" id="nikonTipsChk" style="margin-top:2px;">
+                <span><b>Show Nikon photo tips</b><br><span class="panel-hint" style="margin:0; font-size:11px;">Warns about a high ISO, a slow shutter or a photo with no focus lock, and shows a 100% focus crop in the test shot. Switch it on to find out why a photo looks bad.</span></span>
+              </label>
+              <label style="display:flex; gap:8px; align-items:flex-start; margin-top:8px; font-size:12px; color:var(--ink); cursor:pointer;">
+                <input type="checkbox" id="nikonClassicChk" style="margin-top:2px;">
+                <span><b>Classic Nikon behaviour</b><br><span class="panel-hint" style="margin:0; font-size:11px;">Turns all the Nikon photo improvements off (clean-up, sharper shrink, new autofocus wait) and goes back to how the Nikon worked before. Use it if shots feel slower or different.</span></span>
+              </label>
+            </details>
             <div id="usbTestShotBox" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <span style="font-size:12px; font-weight:700; color:var(--ink);" id="usbTestShotTitle">Test Shot Result</span>
@@ -22835,7 +22846,7 @@
         async connect() {
           // After a drop the camera may still be listed by Windows with a dead session (it went to sleep): ask for a clean one.
           const fresh = usbCam.freshNext; usbCam.freshNext = false;
-          const r = await this.req('/camera/open' + (fresh ? '?fresh=1' : ''), { method: 'POST' }, 70000);
+          const r = await this.req('/camera/open' + (fresh ? '?fresh=1' : '') + this.classicQ(fresh ? '&' : '?'), { method: 'POST' }, 70000);
           this.info = await r.json();
           this.name = this.info.name || 'USB camera';
           try { localStorage.setItem(CAM_HELPER_SEEN_KEY, '1'); } catch (e) { }
@@ -22853,11 +22864,13 @@
           if (r.status === 204) throw new Error('no live view frame yet');
           return await r.blob();
         }
+        // "Classic Nikon behaviour" (Camera menu): tells the camera program to use its old JPEG / autofocus behaviour.
+        classicQ(sep) { try { return localStorage.getItem('pb_nikon_classic') === '1' ? sep + 'classic=1' : ''; } catch (e) { return ''; } }
         async autoFocus() {
-          await this.req('/camera/af', { method: 'POST' }, 20000);
+          await this.req('/camera/af' + this.classicQ('?'), { method: 'POST' }, 20000);
         }
         async captureImageAsFile() {
-          const r = await this.req('/camera/capture', { method: 'POST' }, 50000);
+          const r = await this.req('/camera/capture' + this.classicQ('?'), { method: 'POST' }, 50000);
           const f = new File([await r.blob()], 'photo.jpg', { type: 'image/jpeg' });
           if (r.headers.get('x-pb-focus') === 'miss') f._focusMiss = true;   // a Nikon photo taken without a focus lock
           return f;
@@ -23684,8 +23697,8 @@
               const warnEl = document.getElementById('usbTestShotWarn'), cropWrap = document.getElementById('usbTestShotCropWrap'), cropCv = document.getElementById('usbTestShotCrop');
               if (warnEl) warnEl.style.display = 'none';
               if (cropWrap) cropWrap.style.display = 'none';
-              if (usbIsNikon()) {
-                // Nikon: show ISO / shutter, warn about grain, motion blur or no focus lock, and a 100% crop of the centre to judge focus.
+              if (usbIsNikon() && nikonTips()) {
+                // Nikon (Show Nikon photo tips on): show ISO / shutter, warn about grain, motion blur or no focus lock, and a 100% crop of the centre to judge focus.
                 const ex = await pbReadExif(file);
                 if (ex && (ex.iso || ex.shutter)) extra = ' · ' + [ex.iso ? 'ISO ' + ex.iso : '', ex.shutter ? pbShutterText(ex.shutter) : '', ex.f ? 'f/' + (Math.round(ex.f * 10) / 10) : ''].filter(Boolean).join(' · ');
                 const warns = nikonPhotoWarnings(ex, !!file._focusMiss);
@@ -24630,19 +24643,38 @@
       // A laptop too slow for the clean-up (one box taking over 1.5 s) drops it for the rest of the session, so guests never wait;
       // the stepwise shrink stays. Logged in the camera log; the Camera menu note says so.
       let nikonTooSlow = false;
-      function nikonCleanMode() { if (nikonTooSlow) return 'off'; try { const v = localStorage.getItem(NIKON_CLEAN_KEY); return (v === 'off' || v === 'strong') ? v : 'auto'; } catch (e) { return 'auto'; } }
+      // "Classic Nikon behaviour": everything below is skipped here, and the camera program is told to use its old JPEG / autofocus
+      // behaviour (the "classic" word on the camera calls). "Photo tips": the warnings, the test shot's focus crop and the between-photo prep.
+      const NIKON_CLASSIC_KEY = 'pb_nikon_classic', NIKON_TIPS_KEY = 'pb_nikon_tips';
+      function nikonClassic() { try { return localStorage.getItem(NIKON_CLASSIC_KEY) === '1'; } catch (e) { return false; } }
+      function nikonTips() { try { return !nikonClassic() && localStorage.getItem(NIKON_TIPS_KEY) === '1'; } catch (e) { return false; } }
+      function nikonCleanMode() { if (nikonTooSlow || nikonClassic()) return 'off'; try { const v = localStorage.getItem(NIKON_CLEAN_KEY); return (v === 'off' || v === 'strong') ? v : 'auto'; } catch (e) { return 'auto'; } }
       function usbIsNikon() { return /nikon/i.test(usbCam.name || ''); }
       function nikonUiSync() {
         const row = document.getElementById('nikonCleanRow'), sel = document.getElementById('nikonCleanSel');
         if (!row || !sel) return;
-        row.style.display = usbIsNikon() ? 'flex' : 'none';
-        sel.value = nikonCleanMode();
+        row.style.display = usbIsNikon() ? '' : 'none';
+        const tips = document.getElementById('nikonTipsChk'), classic = document.getElementById('nikonClassicChk');
+        let stored = 'auto'; try { const v = localStorage.getItem(NIKON_CLEAN_KEY); if (v === 'off' || v === 'strong') stored = v; } catch (e) { }
+        sel.value = stored;
+        if (tips) tips.checked = nikonTips() || (function () { try { return localStorage.getItem(NIKON_TIPS_KEY) === '1'; } catch (e) { return false; } })();
+        if (classic) classic.checked = nikonClassic();
+        const redraw = function () {
+          if (Array.isArray(shotCanvases)) shotCanvases.forEach(function (s) { if (s) s._nkCache = null; });
+          try { if (state === 'result') renderComposite(); } catch (e) { }
+        };
         if (!sel._pbBound) {
           sel._pbBound = true;
-          sel.addEventListener('change', function () {
-            try { localStorage.setItem(NIKON_CLEAN_KEY, sel.value); } catch (e) { }
-            if (Array.isArray(shotCanvases)) shotCanvases.forEach(function (s) { if (s) s._nkCache = null; });
-            try { if (state === 'result') renderComposite(); } catch (e) { }
+          sel.addEventListener('change', function () { try { localStorage.setItem(NIKON_CLEAN_KEY, sel.value); } catch (e) { } redraw(); });
+          if (tips) tips.addEventListener('change', function () {
+            try { localStorage.setItem(NIKON_TIPS_KEY, tips.checked ? '1' : '0'); } catch (e) { }
+            if (!tips.checked) { const n = document.getElementById('nikonWarnNote'); if (n) n.style.display = 'none'; }
+          });
+          if (classic) classic.addEventListener('change', function () {
+            try { localStorage.setItem(NIKON_CLASSIC_KEY, classic.checked ? '1' : '0'); } catch (e) { }
+            nikonTooSlow = false; redraw();
+            try { usbLog('nikon-classic', { on: classic.checked }); } catch (e) { }
+            showToast(classic.checked ? 'Classic Nikon behaviour on: photos and autofocus work as before.' : 'Nikon photo improvements on.', 4000);
           });
         }
       }
@@ -24680,6 +24712,7 @@
       }
       // The part of a photo that goes in one box, shrunk to the box's own pixel size (halving steps) and cleaned. Cached per shot.
       function nikonTile(ctx, img, sx, sy, sw, sh, w, h) {
+        if (nikonClassic()) return null;
         const mode = nikonCleanMode();
         let k = 1; try { const m = ctx.getTransform(); k = Math.hypot(m.a, m.b) || 1; } catch (e) { }
         const tw = Math.max(1, Math.round(w * k)), th = Math.max(1, Math.round(h * k));
@@ -24786,7 +24819,7 @@
           const ex = await pbReadExif(file), w = nikonPhotoWarnings(ex, !!file._focusMiss);
           usbLog('nikon-shot', { iso: ex && ex.iso, shutter: ex && ex.shutter, f: ex && ex.f, focusMiss: !!file._focusMiss });
           const el = document.getElementById('nikonWarnNote');
-          if (el) {
+          if (el && nikonTips()) {
             if (w.length) { el.textContent = '⚠ Last photo: ' + w.join(' '); el.style.display = ''; }
             else el.style.display = 'none';
           }
@@ -24795,7 +24828,7 @@
       // Between photos the layout is drawn once off-screen, so each photo's clean-up (cached) is done while the guests pose
       // for the next one, not while the result screen waits. The last photo is left: the result screen draws it right away.
       function nikonPrewarm(finalShot) {
-        if (finalShot || !usbIsNikon() || nikonCleanMode() === 'off') return;
+        if (finalShot || !usbIsNikon() || !nikonTips() || nikonCleanMode() === 'off') return;
         setTimeout(function () {
           try {
             if (!Array.isArray(shotCanvases) || !shotCanvases.some(function (s) { return s && s._nikon; })) return;

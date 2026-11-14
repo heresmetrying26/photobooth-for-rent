@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.47', date: '2026-11-15' },
   { version: '1.1.46', date: '2026-11-15' },
   { version: '1.1.45', date: '2026-11-14' },
   { version: '1.1.44', date: '2026-11-14' },
@@ -218,6 +219,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-15', title: 'Desktop 1.1.47: Nikon photo tips are optional, and a Classic Nikon behaviour switch', for: ['website', 'app'], app: '1.1.47',
+    items: [
+      'The Nikon photo improvements from 1.1.46 (sharper shrink, clean-up, JPEG Fine, autofocus wait) work quietly in the background. The warnings, the test shot’s 100% focus crop and the between-photo preparation are now off until you tick “Show Nikon photo tips” under Setup > Camera > Nikon photo options (shown only while a Nikon is connected).',
+      'New “Classic Nikon behaviour” switch in the same place: it turns all the Nikon photo improvements off, including the autofocus timing, and the Nikon works as it did before 1.1.46. Use it if shots feel slower or different. It applies from the next photo.'
+    ]
+  },
   {
     date: '2026-11-15', title: 'Desktop 1.1.46: sharper, less grainy Nikon photos; a Nikon keeps its mirror down on the start screen', for: ['website', 'app'], app: '1.1.46',
     items: [

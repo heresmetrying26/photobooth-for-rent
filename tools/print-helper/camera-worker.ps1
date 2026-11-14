@@ -662,7 +662,7 @@ namespace Pb4uCam
                         int cur; int.TryParse(q.Current, out cur);
                         // Nikon: 0 Basic, 1 Normal, 2 Fine (JPEG); higher values include RAW.
                         // Basic and Normal squeeze the JPEG hard: at a high ISO that shows as blocky, pixelated detail. Always use Fine.
-                        if (cur != 2 && q.Choices.Contains("2") && SetProp(0x5004, q.Type, "2")) { setupNote += "Set to JPEG Fine. "; Log("Image quality was " + (cur > 2 ? "RAW" : cur == 1 ? "JPEG Normal" : "JPEG Basic") + "; set to JPEG Fine"); }
+                        if ((classicNikon ? cur > 2 : cur != 2) && q.Choices.Contains("2") && SetProp(0x5004, q.Type, "2")) { setupNote += "Set to JPEG Fine. "; Log("Image quality was " + (cur > 2 ? "RAW" : cur == 1 ? "JPEG Normal" : "JPEG Basic") + "; set to JPEG Fine"); }
                     }
                 }
                 if (props.Contains(0x5003))
@@ -785,6 +785,8 @@ namespace Pb4uCam
         // ---------- photo ----------
         // "miss" when the last Nikon photo was taken without a focus lock (sent to the booth with the photo).
         static string shotFocus = "";
+        // The booth's "Classic Nikon behaviour" switch (sent with open / af / capture): the Nikon keeps its old JPEG and autofocus behaviour.
+        static bool classicNikon;
         // Nikon live view autofocus: start it and wait until the camera says it is ready again (not a fixed 1.2 s: a D5300 in
         // dim light needs longer), but never more than ~2 s in all (the booth fires the shutter earlier by the camera's whole
         // delay, and that has a limit). One more try if it reported no focus and there is time. true = focused (or not reported).
@@ -825,7 +827,21 @@ namespace Pb4uCam
             shotFocus = "";
             // Focus first while in live view (contrast AF). It waits for the camera to finish focusing and tries once more
             // if the first try missed; a miss still takes the photo, but the booth is told (shotFocus) so it can warn.
-            if (live && Has(0x90C1))
+            if (live && Has(0x90C1) && classicNikon)
+            {
+                // Classic: focus, then a fixed 1.2 s wait; a miss is fine, the shot decides.
+                try
+                {
+                    r = ptp.Op(0x90C1);
+                    if (r == Ptp.OK)
+                    {
+                        var afSw = Stopwatch.StartNew();
+                        while (afSw.ElapsedMilliseconds < 1200) { Thread.Sleep(80); DrainEvents(); }
+                    }
+                }
+                catch (GoneException) { throw; } catch { }
+            }
+            else if (live && Has(0x90C1))
             {
                 try { if (!NikonAf()) shotFocus = "miss"; }
                 catch (GoneException) { throw; } catch { }
@@ -835,7 +851,7 @@ namespace Pb4uCam
             else r = ptp.Op(0x100E, 0, 0);
             if (r == 0xA002 && Has(0x9207))
             {
-                shotFocus = "miss";
+                if (!classicNikon) shotFocus = "miss";
                 Log("Out of focus; shooting without autofocus");
                 r = ptp.Op(0x9207, 0xFFFFFFFF, 1);    // InitiateCaptureRecInMedia, no AF, to SDRAM
                 if (r != Ptp.OK) r = ptp.Op(0x9207, 0xFFFFFFFF, 0);
@@ -1585,6 +1601,7 @@ namespace Pb4uCam
                 string[] parts = line.Split(new char[] { ' ' }, 3);
                 string id = parts[0], cmd = parts.Length > 1 ? parts[1] : "", arg = parts.Length > 2 ? parts[2] : "";
                 string status = "OK", kind = "N";
+                if (cmd == "open" || cmd == "af" || cmd == "capture") classicNikon = arg.IndexOf("classic") >= 0;
                 byte[] body = new byte[0];
                 try
                 {
@@ -1592,7 +1609,7 @@ namespace Pb4uCam
                     {
                         case "ping": kind = "J"; body = Encoding.UTF8.GetBytes("{\"ok\":true}"); break;
                         case "list": kind = "J"; body = Encoding.UTF8.GetBytes(ListJson()); break;
-                        case "open": recoverNext = arg == "recover"; kind = "J"; body = Encoding.UTF8.GetBytes(Open()); break;
+                        case "open": recoverNext = arg.IndexOf("recover") >= 0; kind = "J"; body = Encoding.UTF8.GetBytes(Open()); break;
                         case "info": Need(); kind = "J"; body = Encoding.UTF8.GetBytes(InfoJson()); break;
                         case "battery": Need(); kind = "J"; body = Encoding.UTF8.GetBytes("{\"battery\":" + Battery() + "}"); break;
                         case "af":
@@ -1600,7 +1617,15 @@ namespace Pb4uCam
                             if (nikon)
                             {
                                 if (!live) StartLive();
-                                bool afOk = Has(0x90C1) ? NikonAf() : true;
+                                bool afOk = true;
+                                if (Has(0x90C1) && classicNikon)
+                                {
+                                    uint afR = ptp.Op(0x90C1);
+                                    var afSw = Stopwatch.StartNew();
+                                    while (afSw.ElapsedMilliseconds < 1400) { Thread.Sleep(80); DrainEvents(); }
+                                    afOk = afR == Ptp.OK;
+                                }
+                                else if (Has(0x90C1)) afOk = NikonAf();
                                 kind = "J"; body = Encoding.UTF8.GetBytes("{\"ok\":" + (afOk ? "true" : "false") + "}");
                             }
                             else if (canon)

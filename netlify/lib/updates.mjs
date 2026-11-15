@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.53', date: '2026-11-15' },
   { version: '1.1.52', date: '2026-11-15' },
   { version: '1.1.51', date: '2026-11-15' },
   { version: '1.1.50', date: '2026-11-15' },
@@ -224,6 +225,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-15', title: 'Desktop 1.1.53: Canon DSLRs (6D, 70D, 5D...) on Windows take the photo instead of "The camera didn\'t take a photo"', for: ['website', 'app'], app: '1.1.53',
+    items: [
+      'On Windows, a Canon DSLR such as the EOS 6D is now shot the way Canon\'s own remote tools do it (half press, let it focus, full press, release). Before, one combined press could return "OK" without the camera taking a photo.',
+      'If a Canon still does not take the photo, the app now tries again by itself: first with live view off (the camera focuses with its viewfinder sensor), then without waiting for autofocus, instead of failing after one try. The shutter is always released afterwards so the next photo is not refused.',
+      'Older Canon (60D...) that answer "mirror still up" now end live view and shoot again; a write-protected SD card is named as such. Newer Canon models that hand the photo over from camera memory are recognised too.'
+    ]
+  },
   {
     date: '2026-11-15', title: 'Desktop 1.1.52: Insta360 Ace Pro and USB webcams open cleanly on Windows without "camera is busy" errors', for: ['website', 'app'], app: '1.1.52',
     items: [

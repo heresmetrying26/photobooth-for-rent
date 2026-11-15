@@ -22116,7 +22116,7 @@
         const l = String(label || '');
         if (/facetime|macbook|imac|built-in|integrated|isight|facing (front|back)|\b(front|back|rear) camera\b/i.test(l)) return false;
         if (IS_ANDROID_APP && window.__pbUvcInfo && window.__pbUvcInfo.native) return true;
-        return /facing external|\busb\b|\buvc\b|webcam|logitech|brio|c270|c920|c922|elgato|capture/i.test(l);
+        return /facing external|\busb\b|\buvc\b|webcam|logitech|brio|c270|c920|c922|elgato|capture|insta\s*360|2e1a|ace\s*pro/i.test(l);
       }
       (function uvcShim() {
         const md = navigator.mediaDevices;
@@ -22385,6 +22385,7 @@
             // Need permission first to get labels
             const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
             tempStream.getTracks().forEach(t => t.stop());
+            await wait(300);
           } catch (e) { /* permission denied — labels won't show */ }
           devices = await navigator.mediaDevices.enumerateDevices();
           videoDevices = devices.filter(d => d.kind === 'videoinput');
@@ -22428,6 +22429,7 @@
         const pick = usbPick || byId(previous)
           || (saved && (byId(saved.id) || (saved.label && videoDevices.find(d => d.label === saved.label))))
           || (ANDROID_APP && videoDevices.find(d => d.deviceId === UVC_ID || /external|usb webcam/i.test(d.label || '')))   // tablet app: a plugged-in USB webcam beats the tablet's own cameras
+          || videoDevices.find(d => /insta\s*360/i.test(d.label || ''))   // Insta360 in webcam mode: prefer it over built-ins
           || videoDevices.find(d => BUILTIN.test(lbl(d)))
           || videoDevices.find(d => d.label && !AVOID.test(lbl(d)));
         if (pick) cameraSelect.value = pick.deviceId;
@@ -22568,7 +22570,12 @@
             : 'The camera is blocked. Allow the camera for this site (camera icon in the address bar), then tap Try Again.';
         }
         if (name === 'NotReadableError' || name === 'TrackStartError' || name === 'AbortError') {
-          return 'The camera is busy in another app. Close Zoom, FaceTime, Teams, Photo Booth or any other tab using the camera, then tap Try Again.';
+          const selOpt = cameraSelect && cameraSelect.options[cameraSelect.selectedIndex];
+          const selLabel = selOpt ? (selOpt.textContent || '') : '';
+          const isInsta = /insta\s*360/i.test(selLabel);
+          return isInsta
+            ? 'The Insta360 Ace Pro is busy. Close Insta360 Studio and Insta360 Link Controller, then unplug and replug the camera (make sure it is in Webcam mode: camera screen \u203a Settings \u203a USB mode \u203a Webcam), then tap Try Again.'
+            : 'The camera is busy in another app. Close Zoom, FaceTime, Teams, Photo Booth or any other tab using the camera, then tap Try Again.';
         }
         if (name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError') {
           return 'No camera found. Plug in or switch on the camera, then tap Try Again.';
@@ -22622,8 +22629,15 @@
           catch (e) {
             lastErr = e;
             if (e && (e.name === 'NotReadableError' || e.name === 'TrackStartError')) {
-              await wait(350);
-              try { return await gum(v); } catch (e2) { lastErr = e2; }
+              // Insta360 in webcam mode releases slowly — retry up to 3× with growing delays
+              const isInsta360 = selOpt && /insta\s*360/i.test(selOpt.textContent || '');
+              const delays = isInsta360 ? [600, 1200, 2000] : [350];
+              let ok = false;
+              for (const ms of delays) {
+                await wait(ms);
+                try { return await gum(v); } catch (e2) { lastErr = e2; if (!e2 || (e2.name !== 'NotReadableError' && e2.name !== 'TrackStartError')) break; }
+              }
+              if (ok) return;
             }
             if (stop(e)) throw e;
           }
@@ -23956,6 +23970,31 @@
         } catch (err) {
           console.error('Camera failed:', err);
           streamActive = false;
+          // On the desktop app (Windows/Mac), if the webcam is busy try to free it once and retry.
+          // This covers the Insta360 Ace Pro in webcam mode when Insta360 Studio is still running.
+          if (DESKTOP && err && (err.name === 'NotReadableError' || err.name === 'TrackStartError') && !err.__freed) {
+            try {
+              if (window.pb4u && window.pb4u.freeCamera) {
+                await window.pb4u.freeCamera();
+                await wait(1200);
+                const retryErr = Object.assign(Object.create(err), { __freed: true });
+                try {
+                  const stream = await openCameraStream(deviceId);
+                  currentStream = stream;
+                  watchTrack(stream);
+                  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+                  video.srcObject = stream;
+                  await video.play();
+                  listenVideoFrames(video);
+                  streamActive = true;
+                  cameraError.style.display = 'none';
+                  recDot.style.display = 'flex';
+                  camSleeping = false;
+                  return true;
+                } catch (retryErr2) { err = retryErr2; }
+              }
+            } catch (freeErr) { /* ignore */ }
+          }
           showCameraError(err);
           return false;
         }

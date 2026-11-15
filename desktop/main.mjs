@@ -59,7 +59,7 @@ app.on('child-process-gone', (e, d) => {
   } catch { /* ignore */ }
 });
 app.commandLine.appendSwitch('force-color-profile', 'srgb');
-app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,MediaFoundationVideoCapture');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
 
@@ -268,7 +268,7 @@ function setupSession() {
   // The booth only needs the camera. Left open to every USB device, the page also saw the laptop's own camera, keyboard,
   // Bluetooth and any hub, and the camera library failed with "Unknown model". The handler is only told the device's vendor and
   // class (not its interfaces), so a camera is recognised by its maker (Sony, Nikon, Canon, Fujifilm, Olympus, Panasonic, Pentax).
-  const CAM_VENDORS = [0x054c, 0x04b0, 0x04a9, 0x04cb, 0x07b4, 0x04da, 0x0a17];
+  const CAM_VENDORS = [0x054c, 0x04b0, 0x04a9, 0x04cb, 0x07b4, 0x04da, 0x0a17, 0x2e1a];
   const pickedVendors = new Set();                  // a camera of another maker that was chosen in the picker
   const camLike = (dev) => !dev || CAM_VENDORS.includes(dev.vendorId) || pickedVendors.has(dev.vendorId) || dev.deviceClass === 6;
   ses.setDevicePermissionHandler((d) => ((d.deviceType === 'usb' && camLike(d.device)) || d.deviceType === 'hid') && (!d.origin || isOurs(d.origin) || d.origin === 'null'));
@@ -278,7 +278,7 @@ function setupSession() {
     event.preventDefault();
     guardCamera(10000);   // Mac: stop macOS holding the camera while the booth connects
     const list = details.deviceList || [];
-    const cam = list.find((d) => /nikon|canon|sony|fuji|olympus|panasonic|camera|eos|pentax|leica|ricoh/i.test((d.manufacturerName || '') + ' ' + (d.productName || ''))) || list[0];
+    const cam = list.find((d) => /nikon|canon|sony|fuji|olympus|panasonic|camera|eos|pentax|leica|ricoh|insta\s*360/i.test((d.manufacturerName || '') + ' ' + (d.productName || ''))) || list[0];
     if (cam && cam.vendorId) pickedVendors.add(cam.vendorId);
     cb(cam ? cam.deviceId : '');
   });

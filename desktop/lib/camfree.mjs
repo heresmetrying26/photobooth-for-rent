@@ -20,9 +20,20 @@ function killall(bin, args) {
   });
 }
 
+const WIN_APPS = ['Insta360 Studio.exe', 'Insta360LinkController.exe'];
+
 // opts (for tests): { platform, killall }
 export async function freeCamera(opts = {}) {
   const platform = opts.platform || process.platform;
+  if (platform === 'win32') {
+    const stopped = [];
+    for (const app of WIN_APPS) {
+      const r = await killall('taskkill.exe', ['/F', '/IM', app]);
+      if (r.stopped) stopped.push(app);
+    }
+    if (stopped.length && !opts.quiet) console.log('[camera] Freed the camera: stopped ' + stopped.join(', '));
+    return { ok: true, mac: false, win: true, stopped, denied: [] };
+  }
   const bin = opts.killall || '/usr/bin/killall';
   if (platform !== 'darwin') return { ok: true, mac: false, stopped: [], denied: [] };
   const stopped = [], denied = [];

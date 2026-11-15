@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.52', date: '2026-11-15' },
   { version: '1.1.51', date: '2026-11-15' },
   { version: '1.1.50', date: '2026-11-15' },
   { version: '1.1.49', date: '2026-11-15' },
@@ -223,6 +224,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-15', title: 'Desktop 1.1.52: Insta360 Ace Pro and USB webcams open cleanly on Windows without "camera is busy" errors', for: ['website', 'app'], app: '1.1.52',
+    items: [
+      'On Windows, the laptop app now uses DirectShow instead of MediaFoundation for USB webcams, preventing the "The camera is busy in another app" lock on Insta360 Ace Pro and other UVC cameras.',
+      'Insta360 Ace Pro (2e1a:0002) is now recognised as a USB webcam, automatically closes conflicting Insta360 background utilities (Insta360 Studio / Link Controller) if the camera is held, and retries with longer wake-up delays.'
+    ]
+  },
   {
     date: '2026-11-15', title: 'Desktop 1.1.51: Mac prints on an Epson L8050 balanced per-side (no white line, footer details and unicorn feet kept)', for: ['website', 'app'], app: '1.1.51',
     items: [

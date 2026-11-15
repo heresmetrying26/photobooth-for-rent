@@ -32890,7 +32890,8 @@
       const startScreen = document.getElementById('startScreen');
       function refreshStartScreen() {
         const pb = window.__PB || {};
-        const ev = (labelInput.value || '').trim() || (pb.type === 'rental' && pb.folderKey ? pb.folderKey : '');
+        // No print label typed: show the name from My Events (a rename there keeps the old folder name).
+        const ev = (labelInput.value || '').trim() || (pb.type === 'rental' && pb.folderKey ? (pb.label || pb.folderKey) : '');
         document.getElementById('ssEvent').textContent = ev;
         document.getElementById('ssDate').textContent = currentDateLabel() || (pb.type === 'trial' ? 'TRIAL' : '');
         document.getElementById('ssStatus').textContent = 'Ready';

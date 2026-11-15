@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.50', date: '2026-11-15' },
   { version: '1.1.49', date: '2026-11-15' },
   { version: '1.1.48', date: '2026-11-15' },
   { version: '1.1.47', date: '2026-11-15' },
@@ -221,6 +222,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-15', title: 'Desktop 1.1.50: the start screen shows the name you set in My Events', for: ['website', 'app'], app: '1.1.50',
+    items: [
+      'If you changed your name in My Events, the start screen still showed the old one (the name of your photo folder). It now shows the name from My Events. Your photo folder keeps its name, so photos stay in the same place.',
+      'A name typed for the print in Setup is still shown first. The laptop app picks up a new name the next time it is opened with internet.'
+    ]
+  },
   {
     date: '2026-11-15', title: 'Desktop 1.1.49: Mac prints on an Epson L8050 now reach the paper edge (no thin white line)', for: ['website', 'app'], app: '1.1.49',
     items: [

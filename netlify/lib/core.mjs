@@ -633,6 +633,8 @@ export async function checkLicense(token, deviceId) {
     // "<folderPrefix> · <event name>".
     folderKey: rec.lifetime ? null : ((rec.folderName || rec.label || '').trim() || null),
     folderPrefix: rec.lifetime ? ((rec.folderName || rec.label || rec.code || '').trim() || null) : null,
+    // The name shown on My Events. A rename there changes this, never the folder name.
+    label: bonus ? null : (String(rec.label || '').trim() || null),
     lifetime: !!rec.lifetime,
     deviceNo: me.no || 1,
     defaultTheme: rec.defaultTheme || null,

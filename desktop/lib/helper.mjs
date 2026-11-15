@@ -360,8 +360,11 @@ async function airPrintQualityOptions(printer, want) {
 const MAC_BORDERLESS_SCALE = 0.98;
 // An Epson (L8050, L3210 ...) enlarges a borderless page more than the Canon does, and on a Mac it may be added with Epson's own
 // driver instead of AirPrint, which the 98% above never reached: an L8050 trimmed the top strip and the right photos. So an Epson
-// gets its own, smaller scale (about 3% enlargement a side on a 4x6), whatever kind of queue it is. Edges fine-tunes it per printer.
-const MAC_EPSON_BORDERLESS_SCALE = 0.94;
+// gets its own, smaller scale, whatever kind of queue it is. Edges fine-tunes it per printer.
+// Measured on an L8050 (Epson driver queue, 4x6) with the edge test: at 94% nothing was trimmed but about 0.6-0.8 mm of white
+// was left on the top, bottom and left (right: 0.5 mm trimmed). 96.5% puts about 0.7 mm past the top and bottom edges and
+// about 1.2 mm past the left; the right loses about 2.5 mm.
+const MAC_EPSON_BORDERLESS_SCALE = 0.965;
 const EPSON = /epson|(?<![a-z0-9-])l[1-9]\d{2,3}(?![0-9])/i;
 const DYE_SUB = /selphy|(?<![a-z])cp[\s_-]?d?\d{2,4}(?![0-9])|(?<![a-z])dnp(?![a-z])|(?<![a-z])ds[\s_-]?(?:rx|\d)|hiti|mitsubishi|kodak|citizen|sinfonia|shinko|dye/i;
 async function macBorderlessScale(printer, pick) {
@@ -615,7 +618,7 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm, quality, 
         for (let i = 0; i < files.length; i++) {
           try { const b = await shrinkPage(pngBuffers[i], scale); if (b && b.length) { await writeFile(files[i], b); done++; } } catch (e) { log('Borderless shrink failed: ' + (e && e.message || e)); }
         }
-        if (done) log('Borderless: page sent at ' + Math.round(scale * 100) + '% so the printer\'s enlargement does not trim the edges');
+        if (done) log('Borderless: page sent at ' + Math.round(scale * 1000) / 10 + '% so the printer\'s enlargement does not trim the edges');
       }
       const media = fit === 'width' && widthMm > 0 && heightMm > 0 ? ['-o', 'media=Custom.' + Math.round(widthMm) + 'x' + Math.round(heightMm) + 'mm']
         : pick && !pick.keep ? ['-o', (pick.opt === 'media' ? 'media=' : 'PageSize=') + pick.key]

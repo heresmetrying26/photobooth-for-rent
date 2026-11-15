@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.49', date: '2026-11-15' },
   { version: '1.1.48', date: '2026-11-15' },
   { version: '1.1.47', date: '2026-11-15' },
   { version: '1.1.46', date: '2026-11-15' },
@@ -220,6 +221,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-15', title: 'Desktop 1.1.49: Mac prints on an Epson L8050 now reach the paper edge (no thin white line)', for: ['website', 'app'], app: '1.1.49',
+    items: [
+      'On a Mac, 1.1.48 stopped an Epson L8050 from cutting the layout off, but an edge test on an L8050 showed the page then stopped a little short of the paper: about 0.6 to 0.8 mm of white on the top, bottom and left. Epson printers on a Mac are now sent the page at 96.5% (it was 94%), so the picture runs slightly past those edges. Canon G-series printers and Windows are unchanged.',
+      'If you set Edges for this printer while on 1.1.48, set them back to 0 after updating (Print settings > Edges > Reset to 0), then print one photo to check. Use Edges only if a side still shows white (press −) or is trimmed (press +).'
+    ]
+  },
   {
     date: '2026-11-15', title: 'Desktop 1.1.48: Mac prints on an Epson L8050 (and other Epson L-series) are no longer cut off at the top and right', for: ['website', 'app'], app: '1.1.48',
     items: [

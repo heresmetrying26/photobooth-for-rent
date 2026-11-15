@@ -15,7 +15,17 @@ public; a Netlify Function only sends it to someone with a valid trial or rental
 4. Open `https://photobooth4u.netlify.app/admin.html` to create rental codes.
 
 ## Updating the booth
-Edit `protected/booth.html` and redeploy. (The build step re-bundles it automatically.)
+`protected/booth.html` is **generated**. Edit `protected/src/booth.src.html` (the page) or a part file it pulls in with a
+`/*@include camera/xxx.js*/` line, then run `npm run build` and commit both the sources and the regenerated
+`protected/booth.html` (the desktop app, Android, iOS, the tests and the Netlify build all read that file).
+`node scripts/assemble-booth.mjs --check` fails if the two are out of step.
+
+**Camera photo quality is split by brand** (`protected/src/camera/`): `photo-quality.js` is the shared pipeline (shrink in steps,
+clean-up, print sharpen, EXIF warnings, the Camera menu box) and `brand-nikon.js`, `brand-canon.js`, `brand-sony.js` each hold
+that brand's settings keys and tuning numbers. To fix or tune one brand's photos, edit only its file, then run
+`node scripts/test-camera-quality.mjs`. A brand file may not mention another brand (the test checks). Moving more code out of
+the big page works the same way: cut a block into `protected/src/<area>/x.js`, put an include line where it was, rebuild, and
+check `protected/booth.html` is byte-identical before changing anything in it.
 
 ## How it works
 - **Trial password** – reusable, unlocks for N minutes (default 15). Change/disable in Admin.

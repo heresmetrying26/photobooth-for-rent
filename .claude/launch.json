@@ -6,6 +6,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["--yes", "serve", "public", "-l", "3999"],
       "port": 3999
+    },
+    {
+      "name": "booth-page",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "serve", "protected", "-l", "3998"],
+      "port": 3998
     }
   ]
 }

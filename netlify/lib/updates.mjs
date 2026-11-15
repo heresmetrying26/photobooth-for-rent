@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.51', date: '2026-11-15' },
   { version: '1.1.50', date: '2026-11-15' },
   { version: '1.1.49', date: '2026-11-15' },
   { version: '1.1.48', date: '2026-11-15' },
@@ -222,6 +223,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-15', title: 'Desktop 1.1.51: Mac prints on an Epson L8050 balanced per-side (no white line, footer details and unicorn feet kept)', for: ['website', 'app'], app: '1.1.51',
+    items: [
+      'On a Mac, an Epson L8050 printing 4x6 borderless now uses measured per-side scaling and offset instead of a uniform shrink. This leaves about 0.5 mm of picture past every edge, keeping bottom details (like unicorn feet and hearts) intact without showing white lines.',
+      'If you adjusted Edges for this printer previously, keep or reset them to 0 (Print settings > Edges > Reset to 0) after updating. Fine-tune with Edges only if an individual printer feed varies.'
+    ]
+  },
   {
     date: '2026-11-15', title: 'Desktop 1.1.50: the start screen shows the name you set in My Events', for: ['website', 'app'], app: '1.1.50',
     items: [

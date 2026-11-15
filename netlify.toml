@@ -1,6 +1,6 @@
 [build]
   # Re-bundles protected/booth.html into the server function every deploy,
-  # so you only ever edit protected/booth.html.
+  # so you only ever edit protected/src/booth.src.html and its part files (protected/booth.html is generated from them).
   command = "node scripts/build-booth.mjs && node scripts/build-rush.mjs"
   publish = "public"
   functions = "netlify/functions"

@@ -105,6 +105,9 @@ Desktop v1.0.90 and v1.0.91 never opened a window. `setup.mjs` imported a new fi
 5. After the GitHub Actions run, check that the release has all 3 installers and that `https://photobooth4u.netlify.app/api/updates` reports the new `app.version`.
 6. Mac builds can't be checked on this laptop. Say so in the summary to the user, and ask them to open the `.dmg` build on a Mac if the release touched start-up code (`main.mjs`, `preload.cjs`, `lib/`, `prepare.mjs`).
 
+## Editing the booth page
+`protected/booth.html` is generated. Edit `protected/src/booth.src.html` or the part files in `protected/src/camera/`, run `npm run build`, and commit the sources AND the regenerated `protected/booth.html`. Before any release tag run `node scripts/assemble-booth.mjs --check` (must print OK) and `node scripts/test-camera-quality.mjs` (must pass). A hand edit to `protected/booth.html` is overwritten by the next build.
+
 ## Website and Android (`android-v*` tag)
 - After a Netlify deploy: `/` returns 200, and `POST /api/setup` returns 401, not 5xx. A 5xx means a server function fails to load.
 - Rush ID station (`/rush/`, source in `rush-id/`, see `rush-id/README.md`): also check `/rush/` returns 200 and `GET /api/rush` with no code returns 401 (not 5xx). It runs on the booth page (`window.__PBHW` section in `protected/booth.html`), so after any change to camera or print code, open `/rush/` once with a code that has "Rush ID station" on. Its Android app is a separate workflow (`rushid-android.yml`, tag `rushid-v*`) that patches a CI copy and never changes the booth's build files.

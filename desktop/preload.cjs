@@ -86,6 +86,8 @@ contextBridge.exposeInMainWorld('pb4u', {
   quit: () => ipcRenderer.invoke('pb4u:quit'),
   freeCamera: () => ipcRenderer.invoke('pb4u:freeCamera'),
   usbScan: () => ipcRenderer.invoke('pb4u:usbScan'),
+  // Reconnects an Instax printer set up before (Bluetooth), by its name: { ok, name } / { ok:false, error }
+  bluetoothReconnect: (name) => ipcRenderer.invoke('pb4u:bluetoothReconnect', String(name || '')),
   update: {
     info: () => ipcRenderer.invoke('pb4u:update'),
     check: () => ipcRenderer.invoke('pb4u:updateCheck'),

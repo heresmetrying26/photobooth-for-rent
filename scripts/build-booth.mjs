@@ -2,6 +2,16 @@
 // only to people holding a valid license. The app itself is never in /public,
 // so nobody can read it without unlocking.
 import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
+import { assemble } from './assemble-booth.mjs';
+
+// protected/booth.html is GENERATED from protected/src/booth.src.html + the part files it includes (see assemble-booth.mjs).
+// Edit those, not protected/booth.html. Everything below (Netlify, Android, iOS, the desktop app, the tests) keeps reading
+// protected/booth.html, so nothing else had to change.
+const built = assemble();
+if (built) {
+  writeFileSync(new URL('../protected/booth.html', import.meta.url), built.html);
+  console.log('Assembled protected/booth.html from protected/src (' + built.used.length + ' part files).');
+}
 
 const src = new URL('../protected/booth.html', import.meta.url);
 const out = new URL('../netlify/lib/booth.mjs', import.meta.url);

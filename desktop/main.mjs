@@ -209,7 +209,41 @@ function createWindow() {
   win.on('closed', () => { win = null; });
 }
 
+let btAuto = null;                   // an Instax printer being reconnected by name: { name, cb, timer }
 function wireContents(wc) {
+  // Instax Link printers (Web Bluetooth). Electron shows no picker of its own, so the booth's request is answered here:
+  // the printers nearby are collected for about 3 seconds, one is taken at once, several are offered in a small dialog.
+  // Only devices named INSTAX are ever offered.
+  // The page asks for Instax printers by name, or (when it says "show all") for every device, so what arrives here is what
+  // the page asked for. One printer nearby is taken at once; if anything that is not an Instax is in the list, the operator chooses.
+  // A printer set up before is reconnected by name with no question (see pb4u:bluetoothReconnect).
+  let btSel = null;
+  wc.on('select-bluetooth-device', (event, devices, cb) => {
+    event.preventDefault();
+    if (btAuto) {
+      btAuto.cb = cb;
+      const hit = (devices || []).find((d) => d.deviceName === btAuto.name);
+      if (hit) { cb(hit.deviceId); return; }
+      if (!btAuto.timer) btAuto.timer = setTimeout(() => { try { if (btAuto && btAuto.cb) btAuto.cb(''); } catch { /* ignore */ } }, 12000);
+      return;
+    }
+    if (btSel) { btSel.cb = cb; btSel.devices = devices; return; }
+    btSel = { cb, devices, start: Date.now() };
+    const tick = async () => {
+      const s = btSel; if (!s) return;
+      const list = (s.devices || []).filter((d) => d.deviceName);
+      if (!list.length && Date.now() - s.start < 15000) { setTimeout(tick, 1000); return; }
+      btSel = null;
+      if (!list.length) { s.cb(''); return; }
+      if (list.length === 1 && /instax/i.test(list[0].deviceName)) { s.cb(list[0].deviceId); return; }
+      try {
+        const shown = list.slice(0, 10), opts = { type: 'question', title: 'Bluetooth device', message: 'Which one is the Instax printer?', buttons: shown.map((d) => d.deviceName).concat('Cancel'), defaultId: 0, cancelId: shown.length, noLink: true };
+        const r = win && !win.isDestroyed() ? await dialog.showMessageBox(win, opts) : await dialog.showMessageBox(opts);
+        s.cb(r.response < shown.length ? shown[r.response].deviceId : '');
+      } catch { s.cb(''); }
+    };
+    setTimeout(tick, 3000);
+  });
   wc.on('will-navigate', (e, u) => { if (!isLocalPage(u)) { e.preventDefault(); openOutside(u); } });
   wc.setWindowOpenHandler(({ url, frameName }) => {
     // The guest screen (opened empty, then filled by the booth) and printable voucher tickets.
@@ -270,6 +304,23 @@ function buildMenu() {
 // ---------- IPC (preload.cjs) ----------
 function wireIpc() {
   ipcMain.on('pb4u:lan', (e) => { e.returnValue = shareBase(); });
+  // Reconnect an Instax printer that was set up before. Chromium only opens the Bluetooth chooser for a tap, so the booth
+  // asks here and the app runs the request "as a tap" itself; the printer is taken by its name and the operator is not asked.
+  ipcMain.handle('pb4u:bluetoothReconnect', async (e, name) => {
+    name = String(name || '').slice(0, 80);
+    if (!name) return { ok: false, error: 'No printer name.' };
+    if (btAuto) return { ok: false, error: 'Already looking for a printer.' };
+    btAuto = { name, cb: null, timer: null };
+    try {
+      const code = 'window._instax && window._instax._autoPair ? window._instax._autoPair(' + JSON.stringify(name) + ').then(function (n) { return { ok: true, name: n }; }, function (x) { return { ok: false, error: String((x && x.message) || x) }; }) : { ok: false, error: "The Instax driver is not loaded." }';
+      return await e.sender.executeJavaScript(code, true);
+    } catch (err) {
+      return { ok: false, error: String((err && err.message) || err) };
+    } finally {
+      if (btAuto && btAuto.timer) clearTimeout(btAuto.timer);
+      btAuto = null;
+    }
+  });
   ipcMain.handle('pb4u:wifi', async (e, force) => {
     const w = await detectWifi(!!force);
     if (w && w.ssid) setExternalWifi(w.ssid, w.pass);

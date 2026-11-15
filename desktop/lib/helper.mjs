@@ -365,16 +365,29 @@ const MAC_BORDERLESS_SCALE = 0.98;
 // was left on the top, bottom and left (right: 0.5 mm trimmed). 96.5% puts about 0.7 mm past the top and bottom edges and
 // about 1.2 mm past the left; the right loses about 2.5 mm.
 const MAC_EPSON_BORDERLESS_SCALE = 0.965;
+// The L8050 on 4x6, measured side by side. A real layout printed at 96.5% was matched to its on-screen preview (13 points, fit
+// within 0.4 mm): the page as sent (portrait, a sideways layout turned clockwise) lost 0.8 mm at its top, 2.4 mm at its bottom,
+// 0.95 mm on its left and 0.6 mm on its right. With the 94% edge test that gives the printer's enlargement: 5.1% across the short
+// side, 6.0% along the long side, and the picture about 0.7 mm toward the bottom of the page. The values below undo that and
+// leave about 0.5 mm past every edge (less shows white on some sheets: the feed varies about 0.3 mm). See shrinkBox for the fields.
+const MAC_EPSON_L8050_4X6 = { x: 0.9608, y: 0.9496, dx: 0.001, dy: -0.0045 };
+const EPSON_L8050 = /(?<![a-z0-9-])l[\s_-]?8050(?![0-9])/i;
 const EPSON = /epson|(?<![a-z0-9-])l[1-9]\d{2,3}(?![0-9])/i;
 const DYE_SUB = /selphy|(?<![a-z])cp[\s_-]?d?\d{2,4}(?![0-9])|(?<![a-z])dnp(?![a-z])|(?<![a-z])ds[\s_-]?(?:rx|\d)|hiti|mitsubishi|kodak|citizen|sinfonia|shinko|dye/i;
 async function macBorderlessScale(printer, pick) {
   if (!shrinkPage || !pick || !pick.borderless || DYE_SUB.test(printer)) return 1;
+  if (EPSON_L8050.test(printer) && near(pick, 101.6, 152.4)) return MAC_EPSON_L8050_4X6;
   if (EPSON.test(printer)) return MAC_EPSON_BORDERLESS_SCALE;
   try { return (await isAirPrintQueue(printer)) ? MAC_BORDERLESS_SCALE : 1; } catch { return 1; }
 }
 
+// Epson L3210 on Windows, borderless: the driver enlarges the page past the paper edge, so a picture sent at 100% loses its edges
+// (a strip's frame and the text on the border). Hardcoded: the picture is drawn at this fraction of the sheet, centred. The value
+// is the one measured for the L8050 (see MAC_EPSON_BORDERLESS_SCALE); the booth's Print settings > Edges moves each side from here.
+const WIN_EPSON_L3210_SCALE = 0.965;
+
 const WIN_PRINT_PS = String.raw`
-param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [switch]$Borderless, [int]$CustomW = 0, [int]$CustomH = 0, [int]$ActualW = 0, [int]$ActualH = 0)
+param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [switch]$Borderless, [int]$CustomW = 0, [int]$CustomH = 0, [int]$ActualW = 0, [int]$ActualH = 0, [double]$EpsonScale = 0)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $files = @(Get-Content -LiteralPath $ListFile -Encoding UTF8 | Where-Object { $_ })
@@ -382,6 +395,16 @@ if ($files.Count -eq 0) { throw "No pages to print" }
 $doc = New-Object System.Drawing.Printing.PrintDocument
 $doc.PrinterSettings.PrinterName = $Printer
 if (-not $doc.PrinterSettings.IsValid) { throw "Printer not found: $Printer" }
+# Epson L3210 (also when the queue is a shared or renamed one: the driver's name counts too). Its Windows driver enlarges a
+# Borderless page past the paper edge by its own "Expansion" setting, which the app cannot change, so the picture is
+# drawn a little smaller to land edge to edge instead of trimmed. Used only in the Borderless (whole sheet) case below.
+$edgeScale = 1.0
+if ($EpsonScale -gt 0 -and $EpsonScale -lt 1) {
+  $dn = ''
+  try { Add-Type -AssemblyName System.Printing; $dn = (New-Object System.Printing.LocalPrintServer).GetPrintQueue($Printer).QueueDriver.Name } catch { }
+  if (-not $dn) { try { $dn = (Get-Printer -Name $Printer -ErrorAction Stop).DriverName } catch { } }
+  if (("$Printer $dn") -match '(?<![a-z0-9])L[\s_-]?3210(?![0-9])') { $edgeScale = $EpsonScale }
+}
 # Print quality: the driver's best quality, applied on top of the printer's own saved settings (its paper,
 # Borderless and orientation stay as they are set). If the driver has no such option, nothing changes.
 try {
@@ -554,12 +577,14 @@ $doc.add_PrintPage({
       # How far the driver enlarges it past the edge is its own setting (Epson: Borderless > Settings >
       # Expansion), so the app does not add a margin of its own: move that slider if a white line or a
       # trimmed edge shows.
+      if ($edgeScale -lt 1) { [Console]::Out.WriteLine(('info|Epson L3210 borderless: picture drawn at {0}% so the driver''s enlargement does not trim the edges' -f [Math]::Round($edgeScale * 100, 1))) }
       if ($aw -le 0 -and [Math]::Abs(($page.Width / $page.Height) / ($img.Width / $img.Height) - 1) -le 0.04) {
-        $e.Graphics.DrawImage($img, [single](-$hx), [single](-$hy), [single]$page.Width, [single]$page.Height)
+        $bw = [single]($page.Width * $edgeScale); $bh = [single]($page.Height * $edgeScale)
+        $e.Graphics.DrawImage($img, [single](-$hx + ($page.Width - $bw) / 2), [single](-$hy + ($page.Height - $bh) / 2), $bw, $bh)
       } else {
         # A different shape or size from this sheet: never stretch it. Real size, centred (smaller only if it would not fit).
-        if ($aw -gt 0) { $rs = [Math]::Min([Math]::Min($page.Width / $aw, $page.Height / $ah), 1.0); $w = [single]($aw * $rs); $h = [single]($ah * $rs) }
-        else { $rs = [Math]::Min($page.Width / $img.Width, $page.Height / $img.Height); $w = [single]($img.Width * $rs); $h = [single]($img.Height * $rs) }
+        if ($aw -gt 0) { $rs = [Math]::Min([Math]::Min($page.Width / $aw, $page.Height / $ah) * $edgeScale, 1.0); $w = [single]($aw * $rs); $h = [single]($ah * $rs) }
+        else { $rs = [Math]::Min($page.Width / $img.Width, $page.Height / $img.Height) * $edgeScale; $w = [single]($img.Width * $rs); $h = [single]($img.Height * $rs) }
         $e.Graphics.DrawImage($img, [single](-$hx + ($page.Width - $w) / 2), [single](-$hy + ($page.Height - $h) / 2), $w, $h)
       }
     } else {
@@ -608,17 +633,19 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm, quality, 
       // Only when no paper of the driver matched at all (a matched paper, including a strip on a 2x wider cut sheet, keeps its own handling).
       const actual = !pick && fit !== 'width' && widthMm > 0 && heightMm > 0
         ? ['-ActualW', String(Math.round(Math.min(widthMm, heightMm) / 25.4 * 100)), '-ActualH', String(Math.round(Math.max(widthMm, heightMm) / 25.4 * 100))] : [];
-      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && !pick.keep ? ['-PaperName', pick.key] : []), ...(pick || cust.length ? ['-Borderless'] : []), ...cust, ...actual]);
+      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && !pick.keep ? ['-PaperName', pick.key] : []), ...(pick || cust.length ? ['-Borderless'] : []), '-EpsonScale', String(WIN_EPSON_L3210_SCALE), ...cust, ...actual]);
     } else {
       const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
       if (pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
       const scale = fit === 'width' ? 1 : await macBorderlessScale(printer, pick);
-      if (scale < 1) {
+      const perSide = !!scale && typeof scale === 'object';
+      const pct = (v) => Math.round(v * 1000) / 10 + '%';
+      if (perSide || scale < 1) {
         let done = 0;
         for (let i = 0; i < files.length; i++) {
           try { const b = await shrinkPage(pngBuffers[i], scale); if (b && b.length) { await writeFile(files[i], b); done++; } } catch (e) { log('Borderless shrink failed: ' + (e && e.message || e)); }
         }
-        if (done) log('Borderless: page sent at ' + Math.round(scale * 1000) / 10 + '% so the printer\'s enlargement does not trim the edges');
+        if (done) log('Borderless: page sent at ' + (perSide ? pct(scale.x) + ' across and ' + pct(scale.y) + ' along the sheet (measured for this printer)' : pct(scale)) + ' so the printer\'s enlargement does not trim the edges');
       }
       const media = fit === 'width' && widthMm > 0 && heightMm > 0 ? ['-o', 'media=Custom.' + Math.round(widthMm) + 'x' + Math.round(heightMm) + 'mm']
         : pick && !pick.keep ? ['-o', (pick.opt === 'media' ? 'media=' : 'PageSize=') + pick.key]

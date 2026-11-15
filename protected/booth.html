@@ -14792,7 +14792,7 @@
             <p class="panel-hint" id="shotTimingNote" style="margin-top:4px;">Auto checks how far the live picture is behind the real scene and lines the photo up with "Pose". If photos are still blurred because guests have already moved when the camera takes the picture, choose a time to take the photo earlier: try 0.4 s, then raise it until photos are sharp.</p>
           </div>
           <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
-          <p class="panel-hint" id="nikonWarnNote" style="display:none; margin-top:6px; padding:6px 8px; border-radius:6px; background:#fff3cd; color:#7a5200; font-weight:700; line-height:1.45;"></p>
+          <p class="panel-hint" id="camQWarnNote" style="display:none; margin-top:6px; padding:6px 8px; border-radius:6px; background:#fff3cd; color:#7a5200; font-weight:700; line-height:1.45;"></p>
           <p class="panel-hint" id="usbWhyNote" style="display:none; font-weight:600;"></p>
           <label id="cdiagRow" style="display:none;gap:8px;align-items:flex-start;margin:10px 0 0;font-size:13px;">
             <input type="checkbox" id="cdiagToggle" style="margin-top:3px;">
@@ -14840,24 +14840,24 @@
               <button type="button" class="action-btn" id="usbCamAfBtn" style="flex:1; min-width:130px; margin:0; padding:8px 12px; font-size:13px; font-weight:700;">🔍 Auto-Focus Lens</button>
               <button type="button" class="action-btn" id="usbCamTestShotBtn" style="flex:1; min-width:130px; margin:0; padding:8px 12px; font-size:13px; font-weight:700; background:var(--ink); color:#fff;">📸 Take Test Shot</button>
             </div>
-            <details id="nikonCleanRow" style="display:none; margin-top:10px; font-size:12px; color:var(--ink-dim); background:#f8f9fa; border-radius:8px; padding:8px 10px; border:1px solid var(--line);">
-              <summary style="font-weight:700; cursor:pointer; color:var(--ink);">Nikon photo options</summary>
+            <details id="camQRow" style="display:none; margin-top:10px; font-size:12px; color:var(--ink-dim); background:#f8f9fa; border-radius:8px; padding:8px 10px; border:1px solid var(--line);">
+              <summary id="camQTitle" style="font-weight:700; cursor:pointer; color:var(--ink);">Photo options</summary>
               <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px;">
-                <label for="nikonCleanSel" style="font-size:12px; font-weight:700; color:var(--ink);">Photo clean-up</label>
-                <select id="nikonCleanSel" style="padding:5px 8px; font-size:12.5px; border-radius:6px; border:1px solid var(--line);">
+                <label for="camQCleanSel" style="font-size:12px; font-weight:700; color:var(--ink);">Photo clean-up</label>
+                <select id="camQCleanSel" style="padding:5px 8px; font-size:12.5px; border-radius:6px; border:1px solid var(--line);">
                   <option value="off">Off</option>
                   <option value="auto" selected>Auto (light)</option>
                   <option value="strong">Strong</option>
                 </select>
-                <span class="panel-hint" style="margin:0; font-size:11px; flex-basis:100%;">Reduces grain and sharpens Nikon photos at the size they are printed. Auto suits most events; Strong is for dim rooms (it can soften skin).</span>
+                <span class="panel-hint" id="camQCleanHint" style="margin:0; font-size:11px; flex-basis:100%;">Reduces grain and sharpens photos at the size they are printed. Auto suits most events; Strong is for dim rooms (it can soften skin).</span>
               </div>
               <label style="display:flex; gap:8px; align-items:flex-start; margin-top:8px; font-size:12px; color:var(--ink); cursor:pointer;">
-                <input type="checkbox" id="nikonTipsChk" style="margin-top:2px;">
-                <span><b>Show Nikon photo tips</b><br><span class="panel-hint" style="margin:0; font-size:11px;">Warns about a high ISO, a slow shutter or a photo with no focus lock, and shows a 100% focus crop in the test shot. Switch it on to find out why a photo looks bad.</span></span>
+                <input type="checkbox" id="camQTipsChk" style="margin-top:2px;">
+                <span><b id="camQTipsName">Show photo tips</b><br><span class="panel-hint" style="margin:0; font-size:11px;">Warns about a high ISO, a slow shutter or a photo with no focus lock, and shows a 100% focus crop in the test shot. Switch it on to find out why a photo looks bad.</span></span>
               </label>
               <label style="display:flex; gap:8px; align-items:flex-start; margin-top:8px; font-size:12px; color:var(--ink); cursor:pointer;">
-                <input type="checkbox" id="nikonClassicChk" style="margin-top:2px;">
-                <span><b>Classic Nikon behaviour</b><br><span class="panel-hint" style="margin:0; font-size:11px;">Turns all the Nikon photo improvements off (clean-up, sharper shrink, new autofocus wait) and goes back to how the Nikon worked before. Use it if shots feel slower or different.</span></span>
+                <input type="checkbox" id="camQClassicChk" style="margin-top:2px;">
+                <span><b id="camQClassicName">Classic behaviour</b><br><span class="panel-hint" id="camQClassicHint" style="margin:0; font-size:11px;">Turns all the Nikon photo improvements off (clean-up, sharper shrink, new autofocus wait) and goes back to how the Nikon worked before. Use it if shots feel slower or different.</span></span>
               </label>
             </details>
             <div id="usbTestShotBox" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
@@ -16612,6 +16612,11 @@
                 style="display:none;width:auto;margin:8px 0 0;">Refresh printer list</button>
               <button type="button" class="action-btn" id="findNetPrintersBtn"
                 style="display:none;width:auto;margin:8px 8px 0 0;">Find Wi-Fi / network printers</button>
+              <button type="button" class="action-btn" id="instaxPrinterBtn"
+                style="display:none;width:auto;margin:8px 8px 0 0;">Connect Instax printer</button>
+              <button type="button" class="action-btn" id="instaxAllBtn"
+                style="display:none;width:auto;margin:8px 8px 0 0;">Instax not listed? Show all Bluetooth devices</button>
+              <p class="panel-hint" id="instaxHint" style="display:none;margin:6px 0 0;"></p>
               <div id="netPrinterBox" style="display:none;margin-top:8px;">
                 <p class="panel-hint" id="netPrinterStatus" style="margin:0 0 6px;"></p>
                 <div id="netPrinterList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px;"></div>
@@ -23113,7 +23118,7 @@
           usbCam.camera = hc;
           usbCam.vfOn = false;
           usbCam.name = hc.name;
-          try { nikonUiSync(); } catch (e) { }
+          try { camQUiSync(); } catch (e) { }
           usbCam.helperSees = true; usbCam.helperUp = true;
           const hopt = Array.from(cameraSelect.options).find(o => o.value === USB_CAM_ID);
           if (hopt) hopt.textContent = usbOptionLabel();
@@ -23697,11 +23702,12 @@
               const warnEl = document.getElementById('usbTestShotWarn'), cropWrap = document.getElementById('usbTestShotCropWrap'), cropCv = document.getElementById('usbTestShotCrop');
               if (warnEl) warnEl.style.display = 'none';
               if (cropWrap) cropWrap.style.display = 'none';
-              if (usbIsNikon() && nikonTips()) {
-                // Nikon (Show Nikon photo tips on): show ISO / shutter, warn about grain, motion blur or no focus lock, and a 100% crop of the centre to judge focus.
+              const qp = camQProfile();
+              if (qp && qp.tips()) {
+                // Any brand with its photo tips on: show ISO / shutter, warn about grain, motion blur or no focus lock, and a 100% crop of the centre to judge focus.
                 const ex = await pbReadExif(file);
                 if (ex && (ex.iso || ex.shutter)) extra = ' · ' + [ex.iso ? 'ISO ' + ex.iso : '', ex.shutter ? pbShutterText(ex.shutter) : '', ex.f ? 'f/' + (Math.round(ex.f * 10) / 10) : ''].filter(Boolean).join(' · ');
-                const warns = nikonPhotoWarnings(ex, !!file._focusMiss);
+                const warns = camQWarnings(qp, ex, !!file._focusMiss);
                 if (warnEl && warns.length) { warnEl.innerHTML = ''; warns.forEach(function (t) { const d = document.createElement('div'); d.textContent = '⚠ ' + t; warnEl.appendChild(d); }); warnEl.style.display = 'block'; }
                 try {
                   const bm = await createImageBitmap(file);
@@ -24635,142 +24641,36 @@
           try { usbLog('webcam-max-fail', { error: String(err && err.message || err) }); } catch (e) { }
         }
       }
-      // ---- Nikon photo quality (Nikon cameras only) ----
-      // A Nikon's photo (D5300: 24 MP, noisy at a high ISO) is shrunk into its box in halving steps (the browser's one-step
-      // shrink skips pixels: grainy, jagged), then lightly denoised and sharpened at the size it is printed. The printed page
-      // gets a final light sharpen (paper softens a picture). Setting: Camera menu -> Nikon photo clean-up (Off / Auto / Strong).
-      const NIKON_CLEAN_KEY = 'pb_nikon_clean';
-      // A laptop too slow for the clean-up (one box taking over 1.5 s) drops it for the rest of the session, so guests never wait;
-      // the stepwise shrink stays. Logged in the camera log; the Camera menu note says so.
-      let nikonTooSlow = false;
-      // "Classic Nikon behaviour": everything below is skipped here, and the camera program is told to use its old JPEG / autofocus
-      // behaviour (the "classic" word on the camera calls). "Photo tips": the warnings, the test shot's focus crop and the between-photo prep.
-      const NIKON_CLASSIC_KEY = 'pb_nikon_classic', NIKON_TIPS_KEY = 'pb_nikon_tips';
-      function nikonClassic() { try { return localStorage.getItem(NIKON_CLASSIC_KEY) === '1'; } catch (e) { return false; } }
-      function nikonTips() { try { return !nikonClassic() && localStorage.getItem(NIKON_TIPS_KEY) === '1'; } catch (e) { return false; } }
-      function nikonCleanMode() { if (nikonTooSlow || nikonClassic()) return 'off'; try { const v = localStorage.getItem(NIKON_CLEAN_KEY); return (v === 'off' || v === 'strong') ? v : 'auto'; } catch (e) { return 'auto'; } }
-      function usbIsNikon() { return /nikon/i.test(usbCam.name || ''); }
-      function nikonUiSync() {
-        const row = document.getElementById('nikonCleanRow'), sel = document.getElementById('nikonCleanSel');
-        if (!row || !sel) return;
-        row.style.display = usbIsNikon() ? '' : 'none';
-        const tips = document.getElementById('nikonTipsChk'), classic = document.getElementById('nikonClassicChk');
-        let stored = 'auto'; try { const v = localStorage.getItem(NIKON_CLEAN_KEY); if (v === 'off' || v === 'strong') stored = v; } catch (e) { }
-        sel.value = stored;
-        if (tips) tips.checked = nikonTips() || (function () { try { return localStorage.getItem(NIKON_TIPS_KEY) === '1'; } catch (e) { return false; } })();
-        if (classic) classic.checked = nikonClassic();
-        const redraw = function () {
-          if (Array.isArray(shotCanvases)) shotCanvases.forEach(function (s) { if (s) s._nkCache = null; });
-          try { if (state === 'result') renderComposite(); } catch (e) { }
+      // ---- Photo quality for cameras over USB: the part every brand shares ----
+      // A camera's photo (e.g. 24 MP, noisy at a high ISO) is shrunk into its box in halving steps (the browser's one-step shrink
+      // skips pixels: grainy, jagged), then lightly denoised and sharpened at the size it is printed. The printed page gets a final
+      // light sharpen (paper softens a picture).
+      //
+      // Each brand has its OWN profile in camera/brand-<name>.js (its settings keys, how strong the clean-up is, what it warns about).
+      // To change how one brand's photos look, edit only that brand's file. Nothing here knows a brand's name.
+      // A profile is made with camQMakeProfile({...}) and added to CAM_Q. The shot path (captureShot), the layout drawing and the
+      // print step only ever call the camQ* functions below, with the profile of the camera that is connected right now.
+      const CAM_Q = {};
+      function camQProfile() { for (const id in CAM_Q) { try { if (CAM_Q[id].is()) return CAM_Q[id]; } catch (e) { } } return null; }
+      function camQStore(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+      function camQSave(key, v) { try { localStorage.setItem(key, v); } catch (e) { } }
+      // Default numbers: [auto, strong]. A brand overrides any of them in its own file.
+      //   denoise: how much a pixel's brightness may differ from its neighbours and still be averaged with them
+      //   sharpen: unsharp-mask amount for each box        page: the same, once more on the whole printed page
+      const CAM_Q_TUNE = { denoise: [16, 30], sharpen: [0.6, 0.9], page: [0.35, 0.5] };
+      function camQMakeProfile(o) {
+        const p = Object.assign({ tooSlow: false, defaultClean: 'auto', isoWarn: 1600, slowShutter: 1 / 60 }, o);
+        p.tune = Object.assign({}, CAM_Q_TUNE, o.tune || {});
+        p.classic = function () { return camQStore(p.keys.classic) === '1'; };
+        p.tips = function () { return !p.classic() && camQStore(p.keys.tips) === '1'; };
+        p.cleanMode = function () {
+          if (p.tooSlow || p.classic()) return 'off';
+          const v = camQStore(p.keys.clean);
+          return (v === 'off' || v === 'strong' || v === 'auto') ? v : p.defaultClean;
         };
-        if (!sel._pbBound) {
-          sel._pbBound = true;
-          sel.addEventListener('change', function () { try { localStorage.setItem(NIKON_CLEAN_KEY, sel.value); } catch (e) { } redraw(); });
-          if (tips) tips.addEventListener('change', function () {
-            try { localStorage.setItem(NIKON_TIPS_KEY, tips.checked ? '1' : '0'); } catch (e) { }
-            if (!tips.checked) { const n = document.getElementById('nikonWarnNote'); if (n) n.style.display = 'none'; }
-          });
-          if (classic) classic.addEventListener('change', function () {
-            try { localStorage.setItem(NIKON_CLASSIC_KEY, classic.checked ? '1' : '0'); } catch (e) { }
-            nikonTooSlow = false; redraw();
-            try { usbLog('nikon-classic', { on: classic.checked }); } catch (e) { }
-            showToast(classic.checked ? 'Classic Nikon behaviour on: photos and autofocus work as before.' : 'Nikon photo improvements on.', 4000);
-          });
-        }
+        return p;
       }
-      // Edge-preserving denoise (3x3, weights fall off with the brightness difference) then a fine unsharp mask, in place.
-      function nikonCleanPixels(d, w, h, mode, denoise) {
-        const strong = mode === 'strong', n = w * h;
-        const amt = strong ? 0.9 : 0.6;
-        let src = d;
-        if (denoise) {
-          const T = strong ? 30 : 16, inv = 1 / (T * T), lum = new Uint8Array(n);
-          for (let i = 0, p = 0; i < n; i++, p += 4) lum[i] = (d[p] * 77 + d[p + 1] * 150 + d[p + 2] * 29) >> 8;
-          src = new Uint8ClampedArray(d.length); src.set(d);
-          for (let y = 1; y < h - 1; y++) {
-            for (let x = 1; x < w - 1; x++) {
-              const i = y * w + x, l0 = lum[i]; let sr = 0, sg = 0, sb = 0, sw = 0;
-              for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                  const j = i + dy * w + dx, df = lum[j] - l0, wt = 1 / (1 + df * df * inv), q = j * 4;
-                  sr += d[q] * wt; sg += d[q + 1] * wt; sb += d[q + 2] * wt; sw += wt;
-                }
-              }
-              const p = i * 4; src[p] = sr / sw; src[p + 1] = sg / sw; src[p + 2] = sb / sw;
-            }
-          }
-        }
-        for (let y = 1; y < h - 1; y++) {
-          for (let x = 1; x < w - 1; x++) {
-            const p = (y * w + x) * 4;
-            for (let c = 0; c < 3; c++) {
-              const o = p + c, m = (src[o - 4 - w * 4] + src[o - w * 4] + src[o + 4 - w * 4] + src[o - 4] + src[o] + src[o + 4] + src[o - 4 + w * 4] + src[o + w * 4] + src[o + 4 + w * 4]) / 9;
-              d[o] = src[o] + amt * (src[o] - m);   // Uint8ClampedArray clamps + rounds
-            }
-          }
-        }
-      }
-      // The part of a photo that goes in one box, shrunk to the box's own pixel size (halving steps) and cleaned. Cached per shot.
-      function nikonTile(ctx, img, sx, sy, sw, sh, w, h) {
-        if (nikonClassic()) return null;
-        const mode = nikonCleanMode();
-        let k = 1; try { const m = ctx.getTransform(); k = Math.hypot(m.a, m.b) || 1; } catch (e) { }
-        const tw = Math.max(1, Math.round(w * k)), th = Math.max(1, Math.round(h * k));
-        const ratio = Math.max(sw / tw, sh / th);
-        if (ratio < 1.5 && mode === 'off') return null;
-        const key = [Math.round(sx), Math.round(sy), Math.round(sw), Math.round(sh), tw, th, mode].join(',');
-        const cache = img._nkCache || (img._nkCache = new Map());
-        if (cache.has(key)) return cache.get(key);
-        let cur = img, cx = sx, cy = sy, cw = sw, ch = sh;
-        while (cw > tw * 2 || ch > th * 2) {
-          const nw = Math.max(tw, Math.ceil(cw / 2)), nh = Math.max(th, Math.ceil(ch / 2));
-          const t = document.createElement('canvas'); t.width = nw; t.height = nh;
-          const tx = t.getContext('2d'); tx.imageSmoothingEnabled = true; tx.imageSmoothingQuality = 'high';
-          tx.drawImage(cur, cx, cy, cw, ch, 0, 0, nw, nh);
-          cur = t; cx = 0; cy = 0; cw = nw; ch = nh;
-        }
-        const out = document.createElement('canvas'); out.width = tw; out.height = th;
-        const ox = out.getContext('2d', { willReadFrequently: true }); ox.imageSmoothingEnabled = true; ox.imageSmoothingQuality = 'high';
-        ox.drawImage(cur, cx, cy, cw, ch, 0, 0, tw, th);
-        if (mode !== 'off' && tw * th <= 4500000 && tw > 8 && th > 8) {
-          try {
-            const c0 = performance.now(), id = ox.getImageData(0, 0, tw, th);
-            nikonCleanPixels(id.data, tw, th, mode, true); ox.putImageData(id, 0, 0);
-            const ms = Math.round(performance.now() - c0);
-            if (ms > 1500 && !nikonTooSlow) {
-              nikonTooSlow = true;
-              try { usbLog('nikon-clean-slow', { ms: ms, w: tw, h: th }); } catch (e2) { }
-              const el = document.getElementById('nikonWarnNote');
-              if (el) { el.textContent = '⚠ Photo clean-up is too slow on this computer (' + ms + ' ms for one photo), so it is switched off for now. Photos still print sharp.'; el.style.display = ''; }
-            }
-          } catch (e) { }
-        }
-        if (cache.size >= 8) cache.delete(cache.keys().next().value);
-        cache.set(key, out);
-        return out;
-      }
-      // Printed page: a last light sharpen when the page holds a Nikon photo.
-      function nikonPrintSharpen(c) {
-        if (!c || c._pbSharp || c.width < 900 || c.height < 900 || c.width * c.height > 16000000) return;
-        const mode = nikonCleanMode();
-        if (mode === 'off' || !Array.isArray(shotCanvases) || !shotCanvases.some(function (s) { return s && s._nikon; })) return;
-        c._pbSharp = true;
-        const ctx = c.getContext('2d'), id = ctx.getImageData(0, 0, c.width, c.height);
-        nikonSharpenPage(id.data, c.width, c.height, mode === 'strong' ? 0.5 : 0.35);
-        ctx.putImageData(id, 0, 0);
-      }
-      function nikonSharpenPage(d, w, h, amt) {
-        const src = new Uint8ClampedArray(d.length); src.set(d);
-        for (let y = 1; y < h - 1; y++) {
-          for (let x = 1; x < w - 1; x++) {
-            const p = (y * w + x) * 4;
-            for (let c = 0; c < 3; c++) {
-              const o = p + c, m = (src[o - 4 - w * 4] + src[o - w * 4] + src[o + 4 - w * 4] + src[o - 4] + src[o] + src[o + 4] + src[o - 4 + w * 4] + src[o + w * 4] + src[o + 4 + w * 4]) / 9;
-              d[o] = src[o] + amt * (src[o] - m);
-            }
-          }
-        }
-      }
+
       // ISO / shutter / aperture from the JPEG's EXIF block. null when not found.
       async function pbReadExif(blob) {
         try {
@@ -24805,39 +24705,236 @@
         return null;
       }
       function pbShutterText(s) { return !s ? '' : (s >= 0.5 ? (Math.round(s * 10) / 10) + ' s' : '1/' + Math.round(1 / s) + ' s'); }
-      // What to tell the operator about a Nikon photo: grain, motion blur, no focus lock.
-      function nikonPhotoWarnings(ex, focusMiss) {
+
+      // What to tell the operator about a photo: grain, motion blur, no focus lock. A brand can add its own lines (p.extraWarnings).
+      function camQWarnings(p, ex, focusMiss) {
         const w = [];
-        if (focusMiss) w.push('The camera could not lock focus on this photo. Check the lens switch is on AF, add light, and point at something with detail.');
-        if (ex && ex.iso >= 1600) w.push('ISO ' + ex.iso + ' adds visible grain. Add light, use the flash, or open the aperture, so the camera can use a lower ISO.');
-        if (ex && ex.shutter > 1 / 60) w.push('Shutter ' + pbShutterText(ex.shutter) + ' is slow: moving guests will blur. Add light or flash, or allow a higher ISO.');
+        if (focusMiss) w.push(p.focusMissText || 'The camera could not lock focus on this photo. Check the lens switch is on AF, add light, and point at something with detail.');
+        if (ex && ex.iso >= p.isoWarn) w.push('ISO ' + ex.iso + ' adds visible grain. Add light, use the flash, or open the aperture, so the camera can use a lower ISO.');
+        if (ex && ex.shutter > p.slowShutter) w.push('Shutter ' + pbShutterText(ex.shutter) + ' is slow: moving guests will blur. Add light or flash, or allow a higher ISO.');
+        if (typeof p.extraWarnings === 'function') { try { p.extraWarnings(ex, focusMiss).forEach(function (t) { w.push(t); }); } catch (e) { } }
         return w;
       }
+
+      // Edge-preserving denoise (3x3, weights fall off with the brightness difference) then a fine unsharp mask, in place.
+      // d = RGBA bytes. tune = { denoise: [auto, strong], sharpen: [auto, strong] } (see CAM_Q_TUNE).
+      function pbCleanPixels(d, w, h, mode, denoise, tune) {
+        tune = tune || CAM_Q_TUNE;
+        const strong = mode === 'strong', n = w * h, si = strong ? 1 : 0;
+        const amt = tune.sharpen[si];
+        let src = d;
+        if (denoise) {
+          const T = tune.denoise[si], inv = 1 / (T * T), lum = new Uint8Array(n);
+          for (let i = 0, p = 0; i < n; i++, p += 4) lum[i] = (d[p] * 77 + d[p + 1] * 150 + d[p + 2] * 29) >> 8;
+          src = new Uint8ClampedArray(d.length); src.set(d);
+          for (let y = 1; y < h - 1; y++) {
+            for (let x = 1; x < w - 1; x++) {
+              const i = y * w + x, l0 = lum[i]; let sr = 0, sg = 0, sb = 0, sw = 0;
+              for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                  const j = i + dy * w + dx, df = lum[j] - l0, wt = 1 / (1 + df * df * inv), q = j * 4;
+                  sr += d[q] * wt; sg += d[q + 1] * wt; sb += d[q + 2] * wt; sw += wt;
+                }
+              }
+              const p = i * 4; src[p] = sr / sw; src[p + 1] = sg / sw; src[p + 2] = sb / sw;
+            }
+          }
+        }
+        for (let y = 1; y < h - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            const p = (y * w + x) * 4;
+            for (let c = 0; c < 3; c++) {
+              const o = p + c, m = (src[o - 4 - w * 4] + src[o - w * 4] + src[o + 4 - w * 4] + src[o - 4] + src[o] + src[o + 4] + src[o - 4 + w * 4] + src[o + w * 4] + src[o + 4 + w * 4]) / 9;
+              d[o] = src[o] + amt * (src[o] - m);   // Uint8ClampedArray clamps + rounds
+            }
+          }
+        }
+      }
+      function pbSharpenPage(d, w, h, amt) {
+        const src = new Uint8ClampedArray(d.length); src.set(d);
+        for (let y = 1; y < h - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            const p = (y * w + x) * 4;
+            for (let c = 0; c < 3; c++) {
+              const o = p + c, m = (src[o - 4 - w * 4] + src[o - w * 4] + src[o + 4 - w * 4] + src[o - 4] + src[o] + src[o + 4] + src[o - 4 + w * 4] + src[o + w * 4] + src[o + 4 + w * 4]) / 9;
+              d[o] = src[o] + amt * (src[o] - m);
+            }
+          }
+        }
+      }
+
+      // The part of a photo that goes in one box, shrunk to the box's own pixel size (halving steps) and cleaned. Cached per shot.
+      // Returns null when the photo should be drawn the ordinary way (classic mode, or nothing to gain).
+      function camQTile(p, ctx, img, sx, sy, sw, sh, w, h) {
+        if (p.classic()) return null;
+        const mode = p.cleanMode();
+        let k = 1; try { const m = ctx.getTransform(); k = Math.hypot(m.a, m.b) || 1; } catch (e) { }
+        const tw = Math.max(1, Math.round(w * k)), th = Math.max(1, Math.round(h * k));
+        const ratio = Math.max(sw / tw, sh / th);
+        if (ratio < 1.5 && mode === 'off') return null;
+        const key = [Math.round(sx), Math.round(sy), Math.round(sw), Math.round(sh), tw, th, mode].join(',');
+        const cache = img._cqCache || (img._cqCache = new Map());
+        if (cache.has(key)) return cache.get(key);
+        let cur = img, cx = sx, cy = sy, cw = sw, ch = sh;
+        while (cw > tw * 2 || ch > th * 2) {
+          const nw = Math.max(tw, Math.ceil(cw / 2)), nh = Math.max(th, Math.ceil(ch / 2));
+          const t = document.createElement('canvas'); t.width = nw; t.height = nh;
+          const tx = t.getContext('2d'); tx.imageSmoothingEnabled = true; tx.imageSmoothingQuality = 'high';
+          tx.drawImage(cur, cx, cy, cw, ch, 0, 0, nw, nh);
+          cur = t; cx = 0; cy = 0; cw = nw; ch = nh;
+        }
+        const out = document.createElement('canvas'); out.width = tw; out.height = th;
+        const ox = out.getContext('2d', { willReadFrequently: true }); ox.imageSmoothingEnabled = true; ox.imageSmoothingQuality = 'high';
+        ox.drawImage(cur, cx, cy, cw, ch, 0, 0, tw, th);
+        if (mode !== 'off' && tw * th <= 4500000 && tw > 8 && th > 8) {
+          try {
+            const c0 = performance.now(), id = ox.getImageData(0, 0, tw, th);
+            pbCleanPixels(id.data, tw, th, mode, true, p.tune); ox.putImageData(id, 0, 0);
+            const ms = Math.round(performance.now() - c0);
+            // A laptop too slow for the clean-up (one box taking over 1.5 s) drops it for the rest of the session, so guests never
+            // wait; the stepwise shrink stays. Logged in the camera log; the Camera menu note says so.
+            if (ms > 1500 && !p.tooSlow) {
+              p.tooSlow = true;
+              try { usbLog(p.id + '-clean-slow', { ms: ms, w: tw, h: th }); } catch (e2) { }
+              const el = document.getElementById('camQWarnNote');
+              if (el) { el.textContent = '⚠ Photo clean-up is too slow on this computer (' + ms + ' ms for one photo), so it is switched off for now. Photos still print sharp.'; el.style.display = ''; }
+            }
+          } catch (e) { }
+        }
+        if (cache.size >= 8) cache.delete(cache.keys().next().value);
+        cache.set(key, out);
+        return out;
+      }
+
+      // Printed page: a last light sharpen when the page holds a photo from one of these cameras.
+      function camQPrintSharpen(c) {
+        if (!c || c._pbSharp || c.width < 900 || c.height < 900 || c.width * c.height > 16000000) return;
+        if (!Array.isArray(shotCanvases)) return;
+        const shot = shotCanvases.find(function (s) { return s && s._cq && CAM_Q[s._cq]; });
+        if (!shot) return;
+        const p = CAM_Q[shot._cq], mode = p.cleanMode();
+        if (mode === 'off') return;
+        c._pbSharp = true;
+        const ctx = c.getContext('2d'), id = ctx.getImageData(0, 0, c.width, c.height);
+        pbSharpenPage(id.data, c.width, c.height, p.tune.page[mode === 'strong' ? 1 : 0]);
+        ctx.putImageData(id, 0, 0);
+      }
+
       // During a session the warning goes to the operator only (Camera menu + camera log), never onto the guest's screen.
-      async function nikonShotNote(file) {
+      async function camQShotNote(p, file) {
         try {
-          const ex = await pbReadExif(file), w = nikonPhotoWarnings(ex, !!file._focusMiss);
-          usbLog('nikon-shot', { iso: ex && ex.iso, shutter: ex && ex.shutter, f: ex && ex.f, focusMiss: !!file._focusMiss });
-          const el = document.getElementById('nikonWarnNote');
-          if (el && nikonTips()) {
+          const ex = await pbReadExif(file), w = camQWarnings(p, ex, !!file._focusMiss);
+          usbLog(p.id + '-shot', { iso: ex && ex.iso, shutter: ex && ex.shutter, f: ex && ex.f, focusMiss: !!file._focusMiss });
+          const el = document.getElementById('camQWarnNote');
+          if (el && p.tips()) {
             if (w.length) { el.textContent = '⚠ Last photo: ' + w.join(' '); el.style.display = ''; }
             else el.style.display = 'none';
           }
         } catch (e) { }
       }
+
       // Between photos the layout is drawn once off-screen, so each photo's clean-up (cached) is done while the guests pose
       // for the next one, not while the result screen waits. The last photo is left: the result screen draws it right away.
-      function nikonPrewarm(finalShot) {
-        if (finalShot || !usbIsNikon() || !nikonTips() || nikonCleanMode() === 'off') return;
+      function camQPrewarm(p, finalShot) {
+        if (finalShot || !p || !p.tips() || p.cleanMode() === 'off') return;
         setTimeout(function () {
           try {
-            if (!Array.isArray(shotCanvases) || !shotCanvases.some(function (s) { return s && s._nikon; })) return;
+            if (!Array.isArray(shotCanvases) || !shotCanvases.some(function (s) { return s && s._cq === p.id; })) return;
             const t0 = performance.now(), cv = document.createElement('canvas');
             composeCanvas(currentLayout, cv, shotCanvases);
-            usbLog('nikon-prewarm', { ms: Math.round(performance.now() - t0), w: cv.width, h: cv.height });
+            usbLog(p.id + '-prewarm', { ms: Math.round(performance.now() - t0), w: cv.width, h: cv.height });
           } catch (e) { }
         }, 120);
       }
+
+      // The shot path calls this once per photo: marks the canvas so the layout drawing and the print step know whose profile applies.
+      function camQOnShot(file, canvas) {
+        const p = camQProfile();
+        if (!p) return null;
+        canvas._cq = p.id;
+        camQShotNote(p, file);   // warned about ISO / shutter / focus (operator only)
+        return p;
+      }
+
+      // The "<Brand> photo options" box in the Camera menu: shown only while that brand is connected.
+      function camQUiSync() {
+        const row = document.getElementById('camQRow'), sel = document.getElementById('camQCleanSel');
+        if (!row || !sel) return;
+        const p = camQProfile();
+        row.style.display = p ? '' : 'none';
+        if (!p) return;
+        const set = function (id, text) { const e = document.getElementById(id); if (e) e.textContent = text; };
+        set('camQTitle', p.label + ' photo options');
+        set('camQCleanHint', 'Reduces grain and sharpens ' + p.label + ' photos at the size they are printed. Auto suits most events; Strong is for dim rooms (it can soften skin).');
+        set('camQTipsName', 'Show ' + p.label + ' photo tips');
+        set('camQClassicName', 'Classic ' + p.label + ' behaviour');
+        set('camQClassicHint', p.classicHint || ('Turns all the ' + p.label + ' photo improvements off (clean-up and sharper shrink) and goes back to how the photos looked before. Use it if shots look different or feel slower.'));
+        const tips = document.getElementById('camQTipsChk'), classic = document.getElementById('camQClassicChk');
+        const stored = camQStore(p.keys.clean);
+        sel.value = (stored === 'off' || stored === 'strong' || stored === 'auto') ? stored : p.defaultClean;
+        if (tips) tips.checked = camQStore(p.keys.tips) === '1';
+        if (classic) classic.checked = p.classic();
+        const redraw = function () {
+          if (Array.isArray(shotCanvases)) shotCanvases.forEach(function (s) { if (s) s._cqCache = null; });
+          try { if (state === 'result') renderComposite(); } catch (e) { }
+        };
+        if (!sel._pbBound) {
+          sel._pbBound = true;
+          sel.addEventListener('change', function () { const q = camQProfile(); if (!q) return; camQSave(q.keys.clean, sel.value); redraw(); });
+          if (tips) tips.addEventListener('change', function () {
+            const q = camQProfile(); if (!q) return;
+            camQSave(q.keys.tips, tips.checked ? '1' : '0');
+            if (!tips.checked) { const n = document.getElementById('camQWarnNote'); if (n) n.style.display = 'none'; }
+          });
+          if (classic) classic.addEventListener('change', function () {
+            const q = camQProfile(); if (!q) return;
+            camQSave(q.keys.classic, classic.checked ? '1' : '0');
+            q.tooSlow = false; redraw();
+            try { usbLog(q.id + '-classic', { on: classic.checked }); } catch (e) { }
+            showToast(classic.checked ? (q.classicOnToast || ('Classic ' + q.label + ' behaviour on: photos look as before.')) : q.label + ' photo improvements on.', 4000);
+          });
+        }
+      }
+      // ---- Nikon photo quality (Nikon cameras only). Everything Nikon-specific about the photo is in this file. ----
+      // Settings (Camera menu -> Nikon photo options): clean-up Off / Auto / Strong, photo tips, "Classic Nikon behaviour".
+      // Classic also tells the camera program to use its old JPEG / autofocus behaviour (the "classic" word on the camera calls:
+      // see classicQ in the helper client, which reads pb_nikon_classic). Photo tips: the warnings, the test shot's focus crop and
+      // the between-photo prep.
+      CAM_Q.nikon = camQMakeProfile({
+        id: 'nikon', label: 'Nikon',
+        is: function () { return /nikon/i.test(usbCam.name || ''); },
+        keys: { clean: 'pb_nikon_clean', tips: 'pb_nikon_tips', classic: 'pb_nikon_classic' },
+        classicHint: 'Turns all the Nikon photo improvements off (clean-up, sharper shrink, new autofocus wait) and goes back to how the Nikon worked before. Use it if shots feel slower or different.',
+        classicOnToast: 'Classic Nikon behaviour on: photos and autofocus work as before.'
+        // tune: the default numbers (see CAM_Q_TUNE) are the ones tuned on a D5300 / D5600
+      });
+      // ---- Canon photo quality (Canon EOS only). Everything Canon-specific about the photo is in this file. ----
+      // Same pipeline as the other brands (see photo-quality.js): shrink in halving steps, light clean-up, print sharpen.
+      // Settings (Camera menu -> Canon photo options): clean-up Off / Auto / Strong, photo tips, "Classic Canon behaviour".
+      // Canon's camera-side settings are left as the camera has them (RAW + JPEG: the JPEG is used). The shutter timing for older
+      // EOS bodies (60D) is NOT here: it is usbShutterLead / USB_LEAD_CANON_MAX in the shot timing code.
+      // To change only how Canon photos look, change the numbers in tune below.
+      CAM_Q.canon = camQMakeProfile({
+        id: 'canon', label: 'Canon',
+        is: function () { return camIsCanon(); },
+        keys: { clean: 'pb_canon_clean', tips: 'pb_canon_tips', classic: 'pb_canon_classic' },
+        // Starts with the same numbers as the other brands. NOT yet tuned on real Canon photos: compare a test shot with the
+        // clean-up Off and Auto, then change the numbers here (each is [auto, strong]).
+        tune: { denoise: [16, 30], sharpen: [0.6, 0.9], page: [0.35, 0.5] },
+        focusMissText: 'The camera could not lock focus on this photo. Check the lens switch is on AF, add light, and point at something with detail.'
+      });
+      // ---- Sony photo quality (Sony Alpha only). Everything Sony-specific about the photo is in this file. ----
+      // Same pipeline as the other brands (see photo-quality.js): shrink in halving steps, light clean-up, print sharpen.
+      // Settings (Camera menu -> Sony photo options): clean-up Off / Auto / Strong, photo tips, "Classic Sony behaviour".
+      // A Sony has no separate focus command over USB: it focuses by itself at each shot, so there is no "focus missed" note.
+      // Its camera-side behaviour (PC Remote, Save Dest.: PC only, deep sleep) is NOT here: see usbSonyPcOnly and sonyDeepOn.
+      // To change only how Sony photos look, change the numbers in tune below.
+      CAM_Q.sony = camQMakeProfile({
+        id: 'sony', label: 'Sony',
+        is: function () { return camIsSony(); },
+        keys: { clean: 'pb_sony_clean', tips: 'pb_sony_tips', classic: 'pb_sony_classic' },
+        tune: { denoise: [16, 30], sharpen: [0.6, 0.9], page: [0.35, 0.5] }
+      });
       async function captureShot(index) {
         await usbEnsureLive();
         // Auto shot timing: a webcam frame shows the scene as it was a moment ago (camera + tablet delay). Wait that long so
@@ -24868,7 +24965,7 @@
           const k = Math.min(1, USB_SHOT_MAX / Math.max(sw, sh));
           const c = document.createElement('canvas');
           c.width = Math.round(sw * k); c.height = Math.round(sh * k);
-          if (usbIsNikon()) { c._nikon = true; nikonShotNote(file); }   // Nikon: shrunk in steps + cleaned in its box, warned about ISO / shutter / focus
+          const qp = camQOnShot(file, c);   // the connected brand's profile: shrunk in steps + cleaned in its box, warned about ISO / shutter / focus
           const ctx = c.getContext('2d');
           ctx.imageSmoothingQuality = 'high';
           if (mirrorPreview()) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }   // match the live view
@@ -24882,7 +24979,7 @@
           c._raw = rawCopy;
           applyFilterToCanvas(c);
           c._isShot = true;
-          if (shotCanvases === shots) { shotCanvases[index] = c; updateFilmTrack(); if (c._nikon) nikonPrewarm(finalShot); }
+          if (shotCanvases === shots) { shotCanvases[index] = c; updateFilmTrack(); if (qp) camQPrewarm(qp, finalShot); }
         } catch (err) {
           console.error('USB shot failed:', err);
           usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); usbAfterShot();
@@ -27216,8 +27313,8 @@
         if (img && typeof img._shotIndex === 'number' && !BOX_PROBE && ctx.canvas === previewCanvas) {
           recordShotSlotBox(img._shotIndex, ctx, x, y, w, h);
         }
-        if (img && img._nikon && !BOX_PROBE) {
-          var nt = null; try { nt = nikonTile(ctx, img, sx, sy, sw, sh, w, h); } catch (e) { nt = null; }
+        if (img && img._cq && CAM_Q[img._cq] && !BOX_PROBE) {
+          var nt = null; try { nt = camQTile(CAM_Q[img._cq], ctx, img, sx, sy, sw, sh, w, h); } catch (e) { nt = null; }
           if (nt) { ctx.drawImage(nt, 0, 0, nt.width, nt.height, x, y, w, h); return; }
         }
         ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
@@ -29045,6 +29142,549 @@
         }, 'image/png');
       });
 
+/*
+ * printer/instax.js: Fujifilm INSTAX Link (WIDE) instant-film printers over Bluetooth LE.
+ *
+ * One paste-in part of booth.src.html (see scripts/assemble-booth.mjs). It exposes window._instax.
+ *
+ * What it does
+ *   - frames the printer's own protocol (header, length, opcode, checksum) and sends a JPEG in chunks
+ *   - turns a print page (canvas) into the JPEG the printer wants: its own size, under its own byte limit
+ *   - talks to the printer through ONE of two links:
+ *       Web Bluetooth     the laptop app (Electron) and Chrome/Edge
+ *       window.__InstaxBridge   the Android tablet app (InstaxBridge.kt), because Android's WebView has no Web Bluetooth
+ *   - keeps one link per printer, and one job at a time per printer, so two Instax printers can print at the same time
+ *
+ * The protocol was worked out by others (javl/InstaxBLE, linssenste/instax-link-web, paorin/InstaxLink); this is a
+ * re-implementation from the byte layout, not a copy of their code.
+ *
+ * Tested without a printer (scripts/test-instax.mjs); NOT yet tried on a real INSTAX Link WIDE.
+ */
+(function (G) {
+  'use strict';
+
+  var SVC = '70954782-2d83-473d-9e5f-81e1d02d5273';
+  var CH_WRITE = '70954783-2d83-473d-9e5f-81e1d02d5273';
+  var CH_NOTIFY = '70954784-2d83-473d-9e5f-81e1d02d5273';
+  var OPTIONAL_SERVICES = [SVC, '0000180a-0000-1000-8000-00805f9b34fb', '00001800-0000-1000-8000-00805f9b34fb', '0000e0ff-3c17-d293-8e48-14fe2e4da212'];
+  // The printer names itself INSTAX-xxxxxxxx(IOS). Web Bluetooth prefixes are case-sensitive, so the other spellings are listed
+  // too, and a printer that advertises the Instax service is found whatever it is called.
+  var NAME_FILTERS = [{ namePrefix: 'INSTAX' }, { namePrefix: 'Instax' }, { namePrefix: 'instax' }, { services: [SVC] }];
+  var VIRTUAL = 'Instax: ';                  // how a printer is named in the booth's printer lists
+  var KNOWN_KEY = 'pb_instax_known';
+  var DEFAULT_CHUNK = 900;                   // data bytes per packet (WIDE and mini); SQUARE uses 1808
+  var MAX_JPEG = 105 * 1024;                 // the picture is kept under this even when the printer allows more: BLE is slow (about 1 s per KB), so a bigger file only makes the sheet slower and a long upload is more likely to drop
+  var BLE_WRITE = 182;                       // bytes per Bluetooth write (a 185-byte ATT payload minus its header)
+
+  // Printer result codes worth a plain sentence.
+  var RESULT_TEXT = {
+    1: 'The Instax printer is busy.',
+    130: 'The Instax printer lost track of the picture. Switch it off and on, then try again.',
+    133: 'The Instax printer is stuck. Switch it off and on, then try again.',
+    144: 'The Instax printer battery is too low. Charge it.',
+    145: 'The Instax printer has no battery.',
+    146: 'The Instax printer battery is too hot.',
+    176: 'The Instax printer cover is open. Close it.',
+    177: 'The Instax printer is out of film. Load a new pack.',
+    178: 'The Instax printer is out of film. Load a new pack.',
+    179: 'The Instax printer did not accept the picture.',
+    180: 'The film is jammed in the Instax printer.',
+    181: 'The Instax printer could not print. Check the film.',
+    192: 'The Instax printer memory is full. Switch it off and on.',
+    194: 'The Instax printer is still printing.'
+  };
+
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  // Rejects when p takes longer than ms (a Bluetooth connect can hang for a long time).
+  function withTimeout(p, ms, msg) {
+    return new Promise(function (resolve, reject) {
+      var t = setTimeout(function () { reject(new Error(msg || 'The Instax printer did not answer.')); }, ms);
+      Promise.resolve(p).then(function (v) { clearTimeout(t); resolve(v); }, function (e) { clearTimeout(t); reject(e); });
+    });
+  }
+
+  // ---------------------------------------------------------------- frames
+  // Booth to printer: 41 62 | length (2, whole frame, big-endian) | op1 op2 | payload | checksum
+  // Printer to booth: 61 42 | length (2)                           | op1 op2 | result | data | checksum
+  // checksum = 255 - (sum of every earlier byte & 255)
+  function checksumOf(u8, end) {
+    var s = 0;
+    for (var i = 0; i < end; i++) s = (s + u8[i]) & 255;
+    return (255 - s) & 255;
+  }
+  function buildFrame(op1, op2, payload) {
+    var p = payload || [], n = 7 + p.length, f = new Uint8Array(n);
+    f[0] = 0x41; f[1] = 0x62; f[2] = (n >> 8) & 255; f[3] = n & 255; f[4] = op1; f[5] = op2;
+    for (var i = 0; i < p.length; i++) f[6 + i] = p[i];
+    f[n - 1] = checksumOf(f, n - 1);
+    return f;
+  }
+  // One whole inbound frame, or null when it is not one (wrong header, short, bad checksum).
+  function parseFrame(u8) {
+    if (!u8 || u8.length < 8 || u8[0] !== 0x61 || u8[1] !== 0x42) return null;
+    var len = (u8[2] << 8) | u8[3];
+    if (len < 8 || len > u8.length) return null;
+    if (checksumOf(u8, len - 1) !== u8[len - 1]) return null;
+    return { op1: u8[4], op2: u8[5], result: u8[6], data: u8.subarray(7, len - 1), len: len };
+  }
+  // Notifications normally carry one whole frame each; this also copes with a frame split over two, or two in one.
+  function FrameReader() { this.buf = new Uint8Array(0); }
+  FrameReader.prototype.push = function (chunk) {
+    var out = [], b = new Uint8Array(this.buf.length + chunk.length);
+    b.set(this.buf, 0); b.set(chunk, this.buf.length);
+    for (; ;) {
+      var i = 0;
+      while (i + 1 < b.length && !(b[i] === 0x61 && b[i + 1] === 0x42)) i++;      // skip to the next header
+      if (i > 0) b = b.subarray(i);
+      if (b.length < 4) break;
+      var len = (b[2] << 8) | b[3];
+      if (len < 8) { b = b.subarray(2); continue; }
+      if (b.length < len) break;
+      var f = parseFrame(b.subarray(0, len));
+      if (f) { out.push(f); b = b.subarray(len); } else b = b.subarray(2);          // damaged: look for the next header
+    }
+    this.buf = new Uint8Array(b);
+    return out;
+  };
+  function u32at(d, i) { return ((d[i] * 16777216) + (d[i + 1] << 16) + (d[i + 2] << 8) + d[i + 3]) >>> 0; }
+  function u32bytes(n) { return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]; }
+
+  // 0x00 0x02 with [0]: the picture the printer takes. [width u16][height u16][type][option][max bytes u32]
+  function parseImageInfo(d) {
+    if (!d || d.length < 11) return null;
+    return { width: (d[1] << 8) | d[2], height: (d[3] << 8) | d[4], maxSize: u32at(d, 7) };
+  }
+  // 0x00 0x02 with [2]: film left, flags, what the printer is doing.
+  function parseFunctionInfo(d) {
+    if (!d || d.length < 5) return null;
+    return { film: d[1] & 15, battery: (d[1] >> 4) & 7, charging: !!(d[1] & 128), coverOpen: !!(d[2] & 1), result: d[3] };
+  }
+  function resultText(code) { return RESULT_TEXT[code] || ('The Instax printer reported error ' + code + '.'); }
+
+  // ---------------------------------------------------------------- the picture
+  function hasWide(info) { return info.width === 1260 && info.height === 840; }
+  function chunkFor(info) { return info && info.width === 800 && info.height === 800 ? 1808 : DEFAULT_CHUNK; }
+
+  // The page (a canvas, already colour-adjusted) as a JPEG the printer takes.
+  // The page is portrait like every other paper in the booth; the film is landscape, so it is turned back here.
+  async function renderJpeg(src, info) {
+    var W = info.width || 1260, H = info.height || 840;
+    var c = document.createElement('canvas'); c.width = W; c.height = H;
+    var g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+    var a = src;
+    if ((a.width >= a.height) !== (W >= H)) {               // turn it 90 degrees (the booth turned landscape pages clockwise)
+      var r = document.createElement('canvas'); r.width = src.height; r.height = src.width;
+      var rg = r.getContext('2d'); rg.translate(0, r.height); rg.rotate(-Math.PI / 2); rg.drawImage(src, 0, 0);
+      a = r;
+    }
+    // The WIDE prints its picture inside a white margin: 12 px left and right, 32 px top and bottom.
+    var mx = hasWide(info) ? 12 : 0, my = hasWide(info) ? 32 : 0;
+    var rw = W - 2 * mx, rh = H - 2 * my, k = Math.max(rw / a.width, rh / a.height);
+    var dw = a.width * k, dh = a.height * k;
+    g.save(); g.beginPath(); g.rect(mx, my, rw, rh); g.clip();
+    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    g.drawImage(a, mx + (rw - dw) / 2, my + (rh - dh) / 2, dw, dh);
+    g.restore();
+    var limit = Math.min(info.maxSize > 0 ? info.maxSize : MAX_JPEG, MAX_JPEG);
+    var steps = [0.92, 0.85, 0.78, 0.7, 0.64, 0.58, 0.52, 0.46, 0.4, 0.34, 0.28];
+    for (var i = 0; i < steps.length; i++) {
+      var blob = await new Promise(function (res) { c.toBlob(res, 'image/jpeg', steps[i]); });
+      if (!blob) throw new Error('Could not make the picture for the Instax printer.');
+      if (blob.size <= limit || i === steps.length - 1) {
+        if (blob.size > limit) throw new Error('The picture is too big for the Instax printer (' + blob.size + ' bytes, it takes ' + limit + ').');
+        return new Uint8Array(await blob.arrayBuffer());
+      }
+    }
+    throw new Error('Could not make the picture for the Instax printer.');
+  }
+
+  // ---------------------------------------------------------------- the printer (protocol over a transport)
+  // A transport has: write(u8) -> Promise, onData = function (u8), onClose = function (), connected, close().
+  function Printer(transport) {
+    this.t = transport; this.reader = new FrameReader(); this.waiter = null; this.info = null; this.film = null;
+    var self = this;
+    transport.onData = function (u8) {
+      var frames = self.reader.push(u8);
+      for (var i = 0; i < frames.length; i++) {
+        var w = self.waiter, f = frames[i];
+        if (w && w.op1 === f.op1 && w.op2 === f.op2) { self.waiter = null; clearTimeout(w.timer); w.resolve(f); }
+      }
+    };
+    var prevClose = transport.onClose;
+    transport.onClose = function () {
+      if (self.waiter) { var w = self.waiter; self.waiter = null; clearTimeout(w.timer); w.reject(new Error('The Instax printer disconnected.')); }
+      self.info = null;
+      if (prevClose) prevClose();
+    };
+  }
+  // Sends one command and waits for its answer. Only one at a time.
+  Printer.prototype.request = function (op1, op2, payload, timeoutMs) {
+    var self = this;
+    return new Promise(function (resolve, reject) {
+      if (self.waiter) return reject(new Error('The Instax printer is still answering.'));
+      var w = { op1: op1, op2: op2, resolve: resolve, reject: reject };
+      w.timer = setTimeout(function () { if (self.waiter === w) { self.waiter = null; reject(new Error('The Instax printer did not answer.')); } }, timeoutMs || 3000);
+      self.waiter = w;
+      Promise.resolve(self.t.write(buildFrame(op1, op2, payload))).catch(function (e) {
+        if (self.waiter === w) { self.waiter = null; clearTimeout(w.timer); reject(e); }
+      });
+    });
+  };
+  // A question about the printer (op 0x00): if it does not answer, ask once more before giving up.
+  Printer.prototype.ask = async function (op1, op2, payload, timeoutMs) {
+    try { return await this.request(op1, op2, payload, timeoutMs); }
+    catch (e) {
+      if (op1 !== 0 || !/did not answer/i.test((e && e.message) || '') || !this.t.connected) throw e;
+      await sleep(300);
+      return this.request(op1, op2, payload, timeoutMs);
+    }
+  };
+  Printer.prototype.getInfo = async function () {
+    if (this.info) return this.info;
+    var f = await this.ask(0x00, 0x02, [0]);
+    var inf = f.result === 0 ? parseImageInfo(f.data) : null;
+    if (!inf || !inf.width || !inf.height) throw new Error('This does not look like an Instax Link printer (it gave no picture size).');
+    inf.chunk = chunkFor(inf);
+    return (this.info = inf);
+  };
+  Printer.prototype.status = async function () {
+    var f = await this.ask(0x00, 0x02, [2]);
+    var s = f.result === 0 ? parseFunctionInfo(f.data) : null;
+    if (s) this.film = s;
+    return s;
+  };
+  // Prints one JPEG (Uint8Array). Resolves when the printer has finished, rejects with a sentence for the operator.
+  // this.printSent turns true the moment the print command goes out: from then on the job must never be sent again
+  // (a lost answer does not mean the sheet was not made), so a failure after that point carries .uncertain = true.
+  Printer.prototype.printJpeg = async function (jpeg, opt) {
+    opt = opt || {};
+    this.printSent = false;
+    var info = await this.getInfo(), n = jpeg.length, chunk = info.chunk;
+    // Look first: no point sending a picture to a printer with its cover open or no film.
+    var s0 = null;
+    try { s0 = await this.status(); } catch (e0) { s0 = null; }
+    if (s0) {
+      if (s0.result === 1) throw new Error(resultText(176));
+      if (s0.result === 2 || s0.film === 0) throw new Error(resultText(177));
+    }
+    var start = null, stuck = 0;
+    for (var tries = 0; tries < 40; tries++) {
+      start = await this.request(0x10, 0x00, [2, 0, 0, 0].concat(u32bytes(n)), 5000);
+      if (start.result === 1 || start.result === 194) { await sleep(2500); continue; }          // the last sheet is still being made
+      if ((start.result === 133 || start.result === 130) && stuck++ < 2) {                        // left over from a broken upload: cancel it, then again
+        try { await this.request(0x10, 0x03, [], 2000); } catch (e1) { }
+        await sleep(1000);
+        continue;
+      }
+      break;
+    }
+    if (start.result !== 0) throw new Error(resultText(start.result));
+    var fs = start.data && start.data.length >= 4 ? u32at(start.data, 0) : 0;
+    if (fs >= 64 && fs <= 2048) chunk = fs;
+    var total = Math.ceil(n / chunk);
+    try {
+      for (var i = 0; i < total; i++) {
+        var pl = new Uint8Array(4 + chunk);
+        pl.set(u32bytes(i), 0); pl.set(jpeg.subarray(i * chunk, (i + 1) * chunk), 4);          // the last one stays zero-padded
+        var r = await this.request(0x10, 0x01, pl, 6000);
+        if (r.result !== 0) throw new Error(resultText(r.result));
+        if (opt.onProgress) opt.onProgress(i + 1, total);
+      }
+      var e = await this.request(0x10, 0x02, [], 15000);
+      if (e.result !== 0) throw new Error(resultText(e.result));
+    } catch (up) {
+      // Free the printer, so the next try does not meet a half-finished upload.
+      try { if (this.t.connected) await this.request(0x10, 0x03, [], 2000); } catch (e2) { }
+      throw up;
+    }
+    await sleep(opt.prePrintMs == null ? 1000 : opt.prePrintMs);          // the printer wants a moment between the last data and the print command
+    this.printSent = true;
+    var p;
+    try { p = await this.request(0x10, 0x80, [], 15000); }
+    catch (pe) {
+      var u = new Error('The connection dropped just as the Instax printer was starting. The sheet may still print: check the printer before printing again.');
+      u.uncertain = true; throw u;
+    }
+    if (p.result !== 0) throw new Error(resultText(p.result));
+    // The sheet is being made. Ask until the printer says it is done (127 = still working).
+    await sleep(opt.firstWaitMs == null ? 1500 : opt.firstWaitMs);
+    var until = Date.now() + (opt.maxWaitMs || 150000), fails = 0;
+    for (; ;) {
+      var st = null;
+      try { st = await this.status(); fails = 0; } catch (err) { st = null; fails++; }
+      if (st && st.result !== 127) {
+        if (st.result === 1) throw new Error(resultText(176));
+        if (st.result === 2) throw new Error(resultText(177));
+        if (st.result === 240) throw new Error('The Instax printer reported an error. Switch it off and on.');
+        return true;
+      }
+      // The printer took the print command and carries on by itself, even if the link has dropped or it stops answering.
+      if (!this.t.connected || fails >= 5) return true;
+      if (Date.now() > until) throw new Error('The Instax printer took too long. Check it, then try again.');
+      await sleep(opt.pollMs == null ? 1000 : opt.pollMs);
+    }
+  };
+
+  // ---------------------------------------------------------------- link 1: Web Bluetooth (laptop app, Chrome, Edge)
+  function WebTransport(device) { this.device = device; this.wc = null; this.nc = null; this.size = BLE_WRITE; this.delay = 4; this.connected = false; this.onData = null; this.onClose = null; }
+  WebTransport.prototype.connect = async function () {
+    var self = this, d = this.device;
+    if (!this._bound) {
+      this._bound = true;
+      d.addEventListener('gattserverdisconnected', function () { self.connected = false; if (self.onClose) self.onClose(); });
+    }
+    var server = await d.gatt.connect();
+    var svc = await server.getPrimaryService(SVC);
+    var chars = await svc.getCharacteristics(), i;
+    this.wc = null; this.nc = null;
+    for (i = 0; i < chars.length; i++) { if (chars[i].uuid === CH_WRITE) this.wc = chars[i]; if (chars[i].uuid === CH_NOTIFY) this.nc = chars[i]; }
+    if (!this.wc || !this.nc) throw new Error('This Bluetooth device is not an Instax Link printer.');
+    await this.nc.startNotifications();
+    this.nc.addEventListener('characteristicvaluechanged', function (ev) {
+      var v = ev.target.value; if (!v || !self.onData) return;
+      self.onData(new Uint8Array(v.buffer.slice(v.byteOffset, v.byteOffset + v.byteLength)));
+    });
+    this.connected = true;
+  };
+  WebTransport.prototype.write = async function (u8) {
+    for (var off = 0; off < u8.length;) {
+      var part = u8.subarray(off, off + this.size), ok = false, fails = 0;
+      while (!ok) {
+        if (!this.connected) throw new Error('The Instax printer disconnected.');
+        try {
+          if (this.wc.writeValueWithoutResponse) await this.wc.writeValueWithoutResponse(part); else await this.wc.writeValue(part);
+          ok = true;
+        } catch (e) {
+          fails++; this.delay = Math.min(200, this.delay * 2);
+          if (fails === 4 && this.size > 128) { this.size = 128; part = u8.subarray(off, off + this.size); }
+          else if (fails === 8 && this.size > 20) { this.size = 20; part = u8.subarray(off, off + this.size); }
+          else if (fails > 12) throw e;
+          await sleep(this.delay);
+        }
+      }
+      off += part.length;
+      await sleep(this.delay);
+      if (this.delay > 4) this.delay = Math.max(4, Math.floor(this.delay * 0.8));
+    }
+  };
+  WebTransport.prototype.close = function () { try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (e) { } this.connected = false; };
+
+  // ---------------------------------------------------------------- link 2: the Android app (InstaxBridge.kt)
+  // Events come back through window.__InstaxEvent({ type, address, ... }).
+  var bridgeLinks = {}, bridgeWaiters = [];
+  function bridge() { return G.__InstaxBridge || null; }
+  function b64(u8) { var s = ''; for (var i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return btoa(s); }
+  function unb64(s) { var bin = atob(s), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+  G.__InstaxEvent = function (ev) {
+    if (!ev) return;
+    if (ev.type === 'data') { var l = bridgeLinks[ev.address]; if (l && l.onData) l.onData(unb64(ev.b64 || '')); return; }
+    if (ev.type === 'closed') { var l2 = bridgeLinks[ev.address]; if (l2) { l2.connected = false; if (l2.onClose) l2.onClose(); } }
+    for (var i = bridgeWaiters.length - 1; i >= 0; i--) {                      // an answer someone is waiting for
+      var w = bridgeWaiters[i];
+      if (w.types.indexOf(ev.type) >= 0 && (!w.address || w.address === ev.address)) { bridgeWaiters.splice(i, 1); clearTimeout(w.timer); if (ev.type === 'error') w.reject(new Error(ev.message || 'Bluetooth error')); else w.resolve(ev); }
+    }
+  };
+  function bridgeWait(types, address, ms) {
+    return new Promise(function (resolve, reject) {
+      var w = { types: types.concat(['error']), address: address, resolve: resolve, reject: reject };
+      w.timer = setTimeout(function () { var k = bridgeWaiters.indexOf(w); if (k >= 0) bridgeWaiters.splice(k, 1); reject(new Error('The Instax printer did not answer.')); }, ms);
+      bridgeWaiters.push(w);
+    });
+  }
+  function BridgeTransport(address) { this.address = address; this.connected = false; this.onData = null; this.onClose = null; bridgeLinks[address] = this; }
+  BridgeTransport.prototype.connect = async function () {
+    var wait = bridgeWait(['connected'], this.address, 25000);
+    var r = JSON.parse(bridge().connect(this.address) || '{}');
+    if (!r.ok) { bridgeWaiters.pop(); throw new Error(r.error || 'Could not connect to the Instax printer.'); }
+    await wait; this.connected = true;
+  };
+  BridgeTransport.prototype.write = async function (u8) {
+    var r = JSON.parse(bridge().write(this.address, b64(u8)) || '{}');
+    if (!r.ok) throw new Error(r.error || 'Could not send to the Instax printer.');
+  };
+  BridgeTransport.prototype.close = function () { try { bridge().disconnect(this.address); } catch (e) { } this.connected = false; };
+
+  // ---------------------------------------------------------------- the printers this booth knows
+  // links[name] = { name, address, t (transport), p (Printer) }; jobs[name] = the promise that ends when its last print ends
+  var links = {}, jobs = {}, active = {}, listeners = [];
+  function changed() { for (var i = 0; i < listeners.length; i++) { try { listeners[i](); } catch (e) { } } }
+  function known() { try { var a = JSON.parse(localStorage.getItem(KNOWN_KEY) || '[]'); return Array.isArray(a) ? a.filter(function (x) { return x && typeof x.name === 'string'; }) : []; } catch (e) { return []; } }
+  function remember(name, address) {
+    try {
+      var k = known().filter(function (x) { return x.name !== name; });
+      k.push({ name: name, address: address || '' });
+      localStorage.setItem(KNOWN_KEY, JSON.stringify(k.slice(-6)));
+    } catch (e) { }
+  }
+  function forget(vname) {
+    try { localStorage.setItem(KNOWN_KEY, JSON.stringify(known().filter(function (x) { return VIRTUAL + x.name !== vname; }))); } catch (e) { }
+    var l = links[vname]; if (l) { try { l.t.close(); } catch (e) { } delete links[vname]; }
+    changed();
+  }
+  function isInstaxName(n) { return typeof n === 'string' && n.indexOf(VIRTUAL) === 0; }
+  function names() { return known().map(function (x) { return VIRTUAL + x.name; }); }
+  function available() {
+    var b = bridge();
+    if (b) { try { return !!b.isAvailable(); } catch (e) { return false; } }
+    return !!(G.navigator && G.navigator.bluetooth);
+  }
+  function isAndroidApp() { return !!bridge(); }
+  function connectedNow(vname) { var l = links[vname]; return !!(l && l.t.connected); }
+
+  function adopt(name, address, t) {
+    var v = VIRTUAL + name, l = links[v];
+    if (l && l.t !== t) { try { l.t.close(); } catch (e) { } }
+    l = { name: v, address: address, t: t, p: new Printer(t) };
+    var prev = t.onClose;
+    t.onClose = function () { if (prev) prev(); changed(); };
+    links[v] = l;
+    remember(name, address);
+    changed();
+    return l;
+  }
+
+  // Picks a printer (the operator taps the button: Bluetooth needs a tap) and connects to it. Resolves with the booth's name for it.
+  // opts.all: list every Bluetooth device, not only the ones that call themselves INSTAX (for a printer that shows under another name).
+  async function pair(opts) {
+    var all = !!(opts && opts.all);
+    if (bridge()) {
+      var wait = bridgeWait(['picked'], '', 90000);
+      var b = bridge();
+      var r = JSON.parse((all && typeof b.pickAll === 'function' ? b.pickAll() : b.pick()) || '{}');
+      if (!r.ok) { bridgeWaiters.pop(); throw new Error(r.error || 'Could not look for Instax printers.'); }
+      var ev = await wait;
+      var tb = new BridgeTransport(ev.address);
+      await tb.connect();
+      var lb = adopt(ev.name || 'INSTAX', ev.address, tb);
+      await lb.p.getInfo();
+      return lb.name;
+    }
+    if (!G.navigator || !G.navigator.bluetooth) throw new Error('This browser cannot use Bluetooth. Use the photobooth4u app, or Chrome / Edge.');
+    var dev = await G.navigator.bluetooth.requestDevice(all ? { acceptAllDevices: true, optionalServices: OPTIONAL_SERVICES } : { filters: NAME_FILTERS, optionalServices: OPTIONAL_SERVICES });
+    var tw = new WebTransport(dev);
+    await tw.connect();
+    var lw = adopt(dev.name || 'INSTAX', dev.id || '', tw);
+    await lw.p.getInfo();
+    return lw.name;
+  }
+
+  // Used by the laptop app only: it runs this "as a tap" (Chromium opens the Bluetooth chooser only for one) and takes the
+  // printer with this exact name without asking anyone. See pb4u:bluetoothReconnect in desktop/main.mjs.
+  async function autoPair(name) {
+    if (!G.navigator || !G.navigator.bluetooth) throw new Error('No Bluetooth here.');
+    var dev = await G.navigator.bluetooth.requestDevice({ filters: [{ name: String(name) }], optionalServices: OPTIONAL_SERVICES });
+    var t = new WebTransport(dev);
+    await t.connect();
+    var l = adopt(dev.name || name, dev.id || '', t);
+    await l.p.getInfo();
+    return l.name;
+  }
+
+  async function findDevice(k) {
+    var nav = G.navigator;
+    if (!nav || !nav.bluetooth || !nav.bluetooth.getDevices) return null;
+    var devs = []; try { devs = await nav.bluetooth.getDevices(); } catch (e) { }
+    return devs.filter(function (d) { return d.name === k.name || d.id === k.address; })[0] || null;
+  }
+
+  // Makes sure the link to a known printer is up, with no tap from the operator:
+  //   Android app           links straight to the saved address
+  //   Web Bluetooth         re-opens a printer this window already knows, or one the browser remembers (getDevices)
+  //   laptop app            asks the app to find it again by name (the app runs the request as a tap)
+  var ensuring = {};
+  function ensure(vname) {
+    if (ensuring[vname]) return ensuring[vname];                     // two callers (a print and the background reconnect) share one attempt
+    var pr = ensureOnce(vname);
+    ensuring[vname] = pr;
+    var done = function () { if (ensuring[vname] === pr) delete ensuring[vname]; };
+    pr.then(done, done);
+    return pr;
+  }
+  async function ensureOnce(vname) {
+    var l = links[vname];
+    if (l && l.t.connected) return l;
+    var k = known().filter(function (x) { return VIRTUAL + x.name === vname; })[0];
+    var nm = l ? l.name.slice(VIRTUAL.length) : (k ? k.name : '');
+    if (!l) {
+      if (!k) throw new Error('The Instax printer is not set up. Open Printer settings and tap Connect Instax printer.');
+      if (bridge()) l = adopt(k.name, k.address, new BridgeTransport(k.address));
+      else { var dv = await findDevice(k); if (dv) l = adopt(k.name, k.address, new WebTransport(dv)); }
+    }
+    var lastErr = null;
+    if (l) {
+      // Up to 3 tries, a second apart: a link that is still closing from the last time, or a printer that is slow to wake, often answers the second time.
+      for (var at = 0; at < 3; at++) {
+        try { await withTimeout(l.t.connect(), 20000, 'The Instax printer took too long to connect.'); l.p.info = null; changed(); return l; }
+        catch (e) { lastErr = e; try { l.t.close(); } catch (e3) { } if (at < 2) await sleep(1000 * (at + 1)); }
+      }
+    }
+    if (!bridge() && nm && G.pb4u && typeof G.pb4u.bluetoothReconnect === 'function') {
+      var rr = null;
+      try { rr = await G.pb4u.bluetoothReconnect(nm); } catch (e) { rr = null; }
+      if (rr && rr.ok && links[vname] && links[vname].t.connected) { changed(); return links[vname]; }
+      throw new Error('Could not find ' + nm + '. Switch it on and keep it close.' + (rr && rr.error ? ' (' + rr.error + ')' : ''));
+    }
+    if (lastErr) throw new Error('Could not reach ' + nm + '. Switch it on and keep it close, or tap Connect Instax printer. (' + ((lastErr && lastErr.message) || lastErr) + ')');
+    throw new Error(nm + ' is not connected. Open Printer settings and tap Connect Instax printer.');
+  }
+
+  // Tries to bring every printer set up before back on its own (the booth calls this when it opens). Never throws.
+  var reconnecting = false;
+  async function autoReconnect() {
+    if (reconnecting) return;
+    reconnecting = true;
+    try {
+      var ns = names();
+      for (var i = 0; i < ns.length; i++) { if (!connectedNow(ns[i]) && !active[ns[i]]) { try { await ensure(ns[i]); } catch (e) { } } }
+    } finally { reconnecting = false; changed(); }
+  }
+
+  // Prints every page (canvases) on one printer. One job at a time per printer; two printers run side by side.
+  function print(pages, paper, vname, opt) {
+    opt = opt || {};
+    var run = function () {
+      return ensure(vname).then(async function (link) {
+        var info = await link.p.getInfo();
+        for (var i = 0; i < pages.length; i++) {
+          var jpeg = await renderJpeg(pages[i], info);
+          try { await link.p.printJpeg(jpeg, opt); }
+          catch (e) {                                           // one retry on a dropped link
+            if (link.p.printSent || e.uncertain || !/disconnect|did not answer/i.test((e && e.message) || '')) throw e;          // never send a job again once its print command went out
+            link.t.close(); link = await ensure(vname); await link.p.getInfo();
+            await link.p.printJpeg(jpeg, opt);
+          }
+          if (opt.onPage) opt.onPage(i + 1, pages.length);
+        }
+        return true;
+      });
+    };
+    active[vname] = (active[vname] || 0) + 1;
+    var job = (jobs[vname] || Promise.resolve()).catch(function () { }).then(run);
+    var left = function () { active[vname] = Math.max(0, (active[vname] || 1) - 1); };
+    job.then(left, left);
+    jobs[vname] = job.catch(function () { });
+    return job;
+  }
+
+  // For the printer settings screen.
+  async function status(vname) {
+    var l = links[vname];
+    if (!l || !l.t.connected) return { connected: false };
+    try {
+      var s = await l.p.status(), i = await l.p.getInfo();
+      return { connected: true, film: s ? s.film : null, battery: s ? s.battery : null, width: i.width, height: i.height };
+    } catch (e) { return { connected: l.t.connected, error: (e && e.message) || String(e) }; }
+  }
+
+  G._instax = {
+    VIRTUAL: VIRTUAL, available: available, isAndroidApp: isAndroidApp, isInstaxName: isInstaxName, names: names,
+    pair: pair, print: print, status: status, forget: forget, connectedNow: connectedNow, autoReconnect: autoReconnect, _autoPair: autoPair,
+    onChange: function (fn) { listeners.push(fn); },
+    // for the tests
+    _t: { buildFrame: buildFrame, parseFrame: parseFrame, FrameReader: FrameReader, Printer: Printer, renderJpeg: renderJpeg, parseImageInfo: parseImageInfo, parseFunctionInfo: parseFunctionInfo, checksumOf: checksumOf, u32bytes: u32bytes, resultText: resultText }
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
       // ---- Printing ----
       // Only shown when this rental (or the trial) allows printing — the lock
       // screen passes { enabled, sizes } in window.__PB.print, and the 5-minute
@@ -29123,6 +29763,8 @@
         try { localStorage.setItem(PRINTER_MAP_KEY, JSON.stringify(printerMap)); } catch (e) { }
         try { if (typeof printPreviewOk !== 'undefined') delete printPreviewOk[printPreviewKey()]; printPrefs.preview = true; } catch (e) { }
       }
+      function instaxNames() { try { return window._instax ? window._instax.names() : []; } catch (e) { return []; } }
+      function isInstaxPrinter(n) { try { return !!(window._instax && window._instax.isInstaxName(n)); } catch (e) { return false; } }
       async function checkHelper(force) {
         if (!helperOn) { helper = { ok: false, printers: [], checked: 0 }; refreshPrinterHint(); return helper; }
         if (!force && helper.checked && Date.now() - helper.checked < 15000) return helper;
@@ -29133,7 +29775,8 @@
           const r = await fetch(HELPER_URL + '/status' + (force ? '?refresh=1' : ''), { signal: ctl.signal, cache: 'no-store' });
           clearTimeout(t);
           const j = await r.json();
-          helper = { ok: !!j.ok, printers: Array.isArray(j.printers) ? j.printers.slice(0, 60).map(String) : [], checked: Date.now(), version: String(j.version || '') };
+          // Instax Link printers (Bluetooth) are listed beside the printers of this computer; the booth prints to them itself.
+          helper = { ok: !!j.ok, printers: (Array.isArray(j.printers) ? j.printers.slice(0, 60).map(String) : []).concat(instaxNames()), checked: Date.now(), version: String(j.version || '') };
         } catch (e) {
           helper = { ok: false, printers: [], checked: Date.now(), err: e && e.name === 'AbortError' ? 'timeout' : 'blocked' };
         }
@@ -29244,10 +29887,66 @@
           search(ipIn.value.trim());
         });
       }
+      // ---- Instax Link printers (Bluetooth) ----
+      // The operator picks the printer once (Bluetooth needs a tap). It then shows in the printer list as "Instax: <its name>"
+      // and works like any other printer: per paper size, as the second printer, linked to a voucher. Its film takes a
+      // 62 x 99 mm picture, so that size is added as an own size and linked to the printer.
+      const INSTAX_SIZE = '62x99mm';
+      async function instaxConnect(opts) {
+        const ix = window._instax;
+        if (!ix || !ix.available()) { showToast('Bluetooth is not available here. Use the photobooth4u app, or Chrome / Edge.', 5000); return null; }
+        let name;
+        try { name = await ix.pair(opts); }
+        catch (e) {
+          if (e && (e.name === 'NotFoundError' || /cancel|user gesture|chose/i.test(String(e.message || '')))) return null;       // the picker was closed
+          showToast('Could not connect to the Instax printer: ' + ((e && e.message) || e) + (opts && opts.all ? '' : ' If it is on and close, tap "Instax not listed?" to see every Bluetooth device.'), 8000);
+          return null;
+        }
+        const cur = ownSizes();
+        if (!cur.includes(INSTAX_SIZE) && cur.length < OWN_MAX) saveOwnSizes(cur.concat(INSTAX_SIZE));
+        if (helperOn) {
+          try { await checkHelper(true); } catch (e) { }
+          if (!printerFor(INSTAX_SIZE)) { printerMap[printerKey(INSTAX_SIZE)] = name; savePrinterMap(); }
+        } else if (typeof instaxLinkAndroid === 'function') {
+          try { instaxLinkAndroid(name); } catch (e) { }
+        }
+        try { fillPrinterSelect(); } catch (e) { }
+        try { refreshPrintUI(); } catch (e) { }
+        showToast(name.slice(ix.VIRTUAL.length) + ' is connected. Choose the 62×99 mm size to print on it.', 6000);
+        return name;
+      }
+      const instaxPrinterBtn = document.getElementById('instaxPrinterBtn');
+      if (instaxPrinterBtn) {
+        const showInstax = () => {
+          const ix = window._instax, hint = document.getElementById('instaxHint');
+          instaxPrinterBtn.style.display = ix && ix.available() && (DESKTOP || helperOn) ? '' : 'none';
+          const allBtn = document.getElementById('instaxAllBtn'); if (allBtn) allBtn.style.display = instaxPrinterBtn.style.display;
+          if (!hint) return;
+          const n = ix ? ix.names() : [];
+          hint.style.display = instaxPrinterBtn.style.display === 'none' ? 'none' : '';
+          hint.textContent = n.length ? n.map(x => x.slice(ix.VIRTUAL.length) + (ix.connectedNow(x) ? ' ✓ connected' : ' (not connected: tap Connect Instax printer)')).join(' · ') + '. Film size: 62×99 mm. Each sheet takes about a minute.' : 'Switch the Instax Link printer on, then tap Connect.';
+        };
+        showInstax();
+        if (window._instax) window._instax.onChange(showInstax);
+        instaxPrinterBtn.addEventListener('click', async function () {
+          instaxPrinterBtn.disabled = true;
+          try { await instaxConnect(); } finally { instaxPrinterBtn.disabled = false; showInstax(); }
+        });
+        const instaxAllBtn = document.getElementById('instaxAllBtn');
+        if (instaxAllBtn) instaxAllBtn.addEventListener('click', async function () {
+          instaxAllBtn.disabled = true;
+          try { await instaxConnect({ all: true }); } finally { instaxAllBtn.disabled = false; showInstax(); }
+        });
+        // A printer set up before comes back by itself when the booth opens (and again at print time if it was off).
+        if (window._instax && window._instax.names().length) setTimeout(() => { try { window._instax.autoReconnect(); } catch (e) { } }, 4000);
+        // A printer that switched itself off (they do after about 5 minutes idle) comes back by itself once it is switched on again.
+        setInterval(() => { try { if (!document.hidden && window._instax && window._instax.names().length) window._instax.autoReconnect(); } catch (e) { } }, 90000);
+      }
       if (printerSetupBtn) {
         printerSetupBtn.style.display = DESKTOP ? '' : 'none';
         printerSetupBtn.addEventListener('click', async function () {
           const name = printerFor(printSize); if (!name) return showToast('Choose a printer first.', 3000);
+          if (isInstaxPrinter(name)) { printerOptionsBox.style.display = 'block'; printerOptionsBox.textContent = 'An Instax printer has no driver settings. Its film size is fixed; use Connect Instax printer if it lost the link.'; return; }
           printerSetupBtn.disabled = true; printerOptionsBox.style.display = 'block'; printerOptionsBox.textContent = 'Loading printer settings\u2026';
           try {
             const rr = await fetch(HELPER_URL + '/printer/configure', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name }) }); const jj = await rr.json();
@@ -29408,6 +30107,7 @@
           add('', '\u2014 Choose a printer \u2014');
           helper.printers.forEach(n => add(n, n));
           if (cur && !helper.printers.includes(cur)) add(cur, cur + ' (not found)');
+          if (window._instax && window._instax.available()) add('__instax_connect__', '+ Connect an Instax printer (Bluetooth)…');
         }
         if (!live && cur) add(cur, cur);
         printerSelect.value = cur && [...printerSelect.options].some(o => o.value === cur) ? cur : '';
@@ -29417,13 +30117,18 @@
       if (printerSelect) printerSelect.addEventListener('change', () => {
         if (!printSize) return;
         const v = printerSelect.value, k = printerKey(printSize);
+        if (v === '__instax_connect__') {                          // the "connect an Instax printer" entry is an action, not a printer
+          fillPrinterSelect();
+          instaxConnect().finally(() => { try { fillPrinterSelect(); } catch (e) { } });
+          return;
+        }
         if (v) printerMap[k] = v; else delete printerMap[k];
         printerNameInput.value = v;
         savePrinterMap();
         refreshPrinterHint();
         // In the desktop app, selecting a printer is also the setup step: open its
         // driver preferences (Windows) or the helper's available driver options (Mac).
-        if (DESKTOP && v && printerSetupBtn) printerSetupBtn.click();
+        if (DESKTOP && v && printerSetupBtn && !isInstaxPrinter(v)) printerSetupBtn.click();
       });
       function refreshPrinterHint() {
         const name = printerFor(printSize);
@@ -29483,7 +30188,7 @@
       function paperCheckKey(name, paper) { return name + '|' + Math.round(paper.w) + 'x' + Math.round(paper.h); }
       async function checkPaper(name, paper) {
         const k = paperCheckKey(name, paper);
-        if (paperChecks[k]) return;
+        if (paperChecks[k] || isInstaxPrinter(name)) return;
         paperChecks[k] = { state: 'loading' };
         try {
           const r = await fetch(HELPER_URL + '/paper?printer=' + encodeURIComponent(name) + '&w=' + paper.w.toFixed(1) + '&h=' + paper.h.toFixed(1), { cache: 'no-store' });
@@ -29673,7 +30378,19 @@
           return ok((printOptsMap[name] || {}).printerQuality);
         } catch (e) { return 'best'; }
       }
+      // An Instax Link printer is not a system printer: the booth sends the picture to it over Bluetooth itself.
+      async function printViaInstax(pages, paper, name) {
+        try {
+          showToast('Sending to ' + name.slice(window._instax.VIRTUAL.length) + ' (an Instax sheet takes about a minute)…', 5000);
+          await window._instax.print(pages, paper, name);
+          return true;
+        } catch (e) {
+          showToast((e && e.message) || 'The Instax printer did not print.', 7000);
+          return false;
+        }
+      }
       async function printViaHelper(pages, paper, name) {
+        if (isInstaxPrinter(name)) return printViaInstax(pages, paper, name);
         let h = await checkHelper(true);
         // The built-in helper can be slow to list printers right after the app starts: ask again before giving up.
         for (let i = 0; DESKTOP && i < 3 && (!h.ok || !(h.printers || []).includes(name)); i++) {
@@ -30910,6 +31627,19 @@
         if (p && p.borderless) { printPrefs.borderless = true; try { borderlessToggle.checked = true; } catch (e) { } }
         try { printPrefsChanged(); } catch (e) { }
       }
+      // An Instax Link printer as the tablet's printer for a paper size (it is not found by the Wi-Fi / USB scan).
+      function instaxWifiObj(name) {
+        return { ip: 'instax:' + name, name: name, instax: true, ipp: false, raw: false, usb: false, escpr: false, escp2: false, canon: false, canonModel: '', selphy: false, dnp: false, dnpModel: '', epsonL: false, epsonModel: '', borderless: false, info: '', vid: 0, pid: 0, qualities: [], colorModes: [], mediaTypes: [] };
+      }
+      // After connecting one: the 62 x 99 mm size prints on it unless that size already has a printer.
+      function instaxLinkAndroid(name) {
+        const k = String(printerKey(INSTAX_SIZE));
+        if (!wifiSizeMap[k]) {
+          wifiSizeMap[k] = instaxWifiObj(name);
+          try { localStorage.setItem(WIFI_SIZE_MAP_KEY, JSON.stringify(wifiSizeMap)); } catch (e) { }
+        }
+        try { wifiSyncForSize(); } catch (e) { }
+      }
       function wifiList() {
         try { return JSON.parse(window.__PBNet.list()) || { printers: [], scanning: false }; } catch (e) { return { printers: [], scanning: false }; }
       }
@@ -30929,6 +31659,38 @@
             refreshPrintUI();
           });
           box.appendChild(bd);
+        }
+        // Instax Link printers (Bluetooth): the ones set up before, and a button to connect one.
+        if (window._instax && window._instax.available()) {
+          window._instax.names().forEach(n => {
+            const bi = document.createElement('button');
+            bi.type = 'button'; bi.className = 'action-btn'; bi.style.cssText = 'width:auto;margin:0;text-align:left;';
+            const on = !!(wifiPrinter && wifiPrinter.instax && wifiPrinter.name === n);
+            bi.textContent = (on ? '✓ ' : '') + n + ' · Photo (Instax film 62×99 mm)' + (window._instax.connectedNow(n) ? ' · connected' : '');
+            bi.addEventListener('click', () => {
+              wifiSave(instaxWifiObj(n));
+              showToast('Printer selected: ' + n.slice(window._instax.VIRTUAL.length) + '. Choose the 62×99 mm size to print on it.', 5000);
+              wifiRenderList(wifiList());
+              refreshPrintUI();
+            });
+            box.appendChild(bi);
+          });
+          const bc = document.createElement('button');
+          bc.type = 'button'; bc.className = 'action-btn'; bc.style.cssText = 'width:auto;margin:0;text-align:left;';
+          bc.textContent = 'Connect an Instax printer (Bluetooth)…';
+          bc.addEventListener('click', async () => {
+            bc.disabled = true;
+            try { await instaxConnect(); } finally { bc.disabled = false; try { wifiRenderList(wifiList()); } catch (e) { } }
+          });
+          box.appendChild(bc);
+          const ba = document.createElement('button');
+          ba.type = 'button'; ba.className = 'action-btn'; ba.style.cssText = 'width:auto;margin:0;text-align:left;';
+          ba.textContent = 'Instax not listed? Show all Bluetooth devices…';
+          ba.addEventListener('click', async () => {
+            ba.disabled = true;
+            try { await instaxConnect({ all: true }); } finally { ba.disabled = false; try { wifiRenderList(wifiList()); } catch (e) { } }
+          });
+          box.appendChild(ba);
         }
         d.printers.forEach(p => {
           if (p.usb && !p.needsPermission) { try { pdiagSend('detect', p); } catch (e) { } }      // printer diagnostics (see pdiagSend)
@@ -31336,6 +32098,7 @@
       }
       async function printViaWifi(all, paper, printer, wopts) {
         const p = printer || wifiPrinter;
+        if (p && p.instax) { await window._instax.print(all, paper, p.name); return; }          // an Instax Link printer (Bluetooth)
         const wo = wopts || wifiOpts(p);
         try {
           await printViaWifiRaw(all, paper, printer, wopts);
@@ -33101,7 +33864,7 @@
       // Every page is a fresh canvas, so it is changed in place. The camera, the screen and the digital copies are untouched.
       function printAdjust(c) {
         try { edgeAdjust(c); } catch (e) { }
-        try { nikonPrintSharpen(c); } catch (e) { }
+        try { camQPrintSharpen(c); } catch (e) { }
         if (!c || c._pbToneDone || !hasColorAdj()) return c;
         var ctx = c.getContext('2d'), w = c.width, h = c.height;
         if (!w || !h) return c;
@@ -33147,7 +33910,7 @@
             ctx.clearRect(0, 0, c.width, c.height);
             ctx.drawImage(c._raw, 0, 0);
             applyFilterToCanvas(c);
-            c._nkCache = null;   // Nikon tiles were made from the old pixels
+            c._cqCache = null;   // photo-quality tiles were made from the old pixels
           }
         });
         if (state === 'result') {

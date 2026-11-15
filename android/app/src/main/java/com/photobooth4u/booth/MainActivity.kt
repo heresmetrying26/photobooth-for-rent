@@ -255,6 +255,8 @@ class MainActivity : AppCompatActivity() {
         // 5. Inject BTBridge into JavaScript context (window.__BTBridge)
         btBridge = BTBridge(this, webView)
         webView.addJavascriptInterface(btBridge, "__BTBridge")
+        // 5-instax. Fujifilm INSTAX Link photo printers over Bluetooth LE (window.__InstaxBridge); the protocol lives in the page
+        webView.addJavascriptInterface(InstaxBridge(this, webView), "__InstaxBridge")
         // 5a. Every other printer (Epson, Canon, HP, Brother, Wi-Fi/Mopria…): Android's own print system (window.__PBPrint)
         webView.addJavascriptInterface(PrintBridge(this), "__PBPrint")
         // Wi-Fi printers found and printed to by the app itself, like NokoPrint (window.__PBNet)

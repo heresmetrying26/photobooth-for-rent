@@ -47,6 +47,9 @@ function makeSandbox() {
     document: { createElement: () => mkCanvas(), getElementById: () => null },
     performance: { now: () => Date.now() },
     setTimeout: () => 0,
+    clearTimeout: () => 0,
+    USB_CAM_ID: 'usb-remote',
+    currentDeviceId: 'webcam-1',
     usbCam: { name: '', camera: { info: {} } },
     usbLog: (kind, info) => log.push([kind, info]),
     showToast: () => { },
@@ -55,7 +58,7 @@ function makeSandbox() {
   };
   vm.createContext(sb);
   vm.runInContext(pageFunction('camIsCanon') + '\n' + pageFunction('camIsSony'), sb);
-  for (const f of ['photo-quality.js', 'brand-nikon.js', 'brand-canon.js', 'brand-sony.js']) vm.runInContext(part(f), sb, { filename: f });
+  for (const f of ['photo-quality.js', 'brand-nikon.js', 'brand-canon.js', 'brand-sony.js', 'webcam-pro.js']) vm.runInContext(part(f), sb, { filename: f });
   // const bindings from the parts are not properties of the sandbox: read them through the context
   sb.get = expr => vm.runInContext(expr, sb);
   sb.store = store; sb.log = log; sb.drawn = drawn; sb.mkCanvas = mkCanvas;
@@ -226,6 +229,58 @@ await testAsync('reads ISO, shutter and aperture from a JPEG\'s EXIF block', asy
 test('each brand file mentions only its own brand, and the shared file mentions none', () => {
   const brands = { 'brand-nikon.js': /\b(canon|sony)\b/i, 'brand-canon.js': /\b(nikon|sony)\b/i, 'brand-sony.js': /\b(nikon|canon)\b/i, 'photo-quality.js': /\b(nikon|canon|sony)\b/i };
   for (const [f, bad] of Object.entries(brands)) { const m = bad.exec(part(f)); assert(!m, f + ' mentions "' + (m && m[0]) + '"'); }
+});
+
+// ---- webcam improvements ----
+test('isUsbWebcamOption identifies external USB webcams and rejects built-in, IR and virtual cameras', () => {
+  const sb = makeSandbox();
+  sb.UVC_ID = 'pb-uvc-webcam'; sb.IS_ANDROID_APP = false; sb.window = {};
+  vm.runInContext(pageFunction('isUsbWebcamOption'), sb);
+  const check = (id, label) => sb.get('isUsbWebcamOption')(id, label);
+  for (const ext of ['Logitech BRIO', 'HD Pro Webcam C920', 'Razer Kiyo Pro', 'Elgato Facecam', 'OBSBOT Tiny 2', 'Anker PowerConf C200', 'USB Video Capture HDMI']) {
+    assert.equal(check('dev-1', ext), true, 'expected external webcam: ' + ext);
+  }
+  for (const skip of ['Microsoft Camera Front', 'Surface Camera Rear', 'Microsoft IR Camera Front', 'Windows Hello IR', 'Integrated Webcam', 'FaceTime HD Camera', 'OBS Virtual Camera']) {
+    assert.equal(check('dev-2', skip), false, 'expected built-in/IR/virtual rejected: ' + skip);
+  }
+});
+test('CAM_Q.webcam + webcamMarkShot marks webcam shots for clean-up and print sharpen while keeping camQProfile null', () => {
+  const sb = makeSandbox();
+  withCamera(sb, 'Logitech BRIO', '');
+  assert.equal(sb.get('camQProfile()'), null, 'camQProfile stays null for webcams');
+  const cvAuto = {};
+  assert.equal(sb.get('webcamMarkShot')(cvAuto).id, 'webcam');
+  assert.equal(cvAuto._cq, 'webcam');
+  const tile = sb.get('(function(ctx, img){ return camQTile(CAM_Q.webcam, ctx, img, 0, 0, 1280, 720, 640, 360); })')({ getTransform: () => ({ a: 1, b: 0 }) }, { width: 1280, height: 720 });
+  assert(tile && tile.width === 640 && tile.height === 360, 'webcam shot runs through camQTile');
+  let sharpened = 0;
+  const pageCv = { width: 1000, height: 1000, getContext: () => ({ getImageData: () => ({ data: new Uint8ClampedArray(1000 * 1000 * 4) }), putImageData: () => { sharpened++; } }) };
+  sb.shotCanvases.push(cvAuto);
+  sb.get('camQPrintSharpen')(pageCv);
+  assert.equal(sharpened, 1, 'marked webcam shot triggers camQPrintSharpen');
+  sb.store.set('pb_webcam_clean', 'off');
+  const cvOff = {};
+  assert.equal(sb.get('webcamMarkShot')(cvOff), null);
+  assert.equal(cvOff._cq, undefined);
+  sb.store.set('pb_webcam_clean', 'auto');
+  sb.currentDeviceId = 'usb-remote';
+  const cvUsb = {};
+  assert.equal(sb.get('webcamMarkShot')(cvUsb), null, 'webcamMarkShot skips USB DSLR mode');
+  assert.equal(cvUsb._cq, undefined);
+});
+test('webcamBlendFrames lowers stationary noise without ghosting moving pixels', () => {
+  const sb = makeSandbox(), w = 32, h = 32;
+  const cur = noisyFlat(w, h, 120, 8, 11);
+  const p1 = noisyFlat(w, h, 120, 8, 22);
+  const p2 = noisyFlat(w, h, 120, 8, 33);
+  const beforeVar = variance(cur, w, h);
+  // Put a high-contrast moving pixel on row 0 (outside flat interior variance) with diff >= 38 vs p1/p2
+  const moveIdx = 4 * 4;
+  cur[moveIdx] = 240; cur[moveIdx + 1] = 240; cur[moveIdx + 2] = 240;
+  const did = sb.get('webcamBlendFrames')(cur, [p1, p2], w, h);
+  assert.equal(did, true);
+  assert(variance(cur, w, h) < beforeVar * 0.7, 'stationary noise variance dropped: ' + beforeVar.toFixed(1) + ' -> ' + variance(cur, w, h).toFixed(1));
+  assert.deepEqual([cur[moveIdx], cur[moveIdx + 1], cur[moveIdx + 2]], [240, 240, 240], 'moving pixel stayed 100% intact');
 });
 
 // ---- the committed page is what the sources make ----

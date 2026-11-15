@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.54', date: '2026-11-15' },
   { version: '1.1.53', date: '2026-11-15' },
   { version: '1.1.52', date: '2026-11-15' },
   { version: '1.1.51', date: '2026-11-15' },
@@ -165,7 +166,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-09', url: 'https://photobooth4u.netlify.app/downloads/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-15', url: 'https://photobooth4u.netlify.app/downloads/photobooth4u-kiosk-android.apk' };
 
 // The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
 // /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new
@@ -225,6 +226,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-15', title: 'Desktop 1.1.54 + Android 1.1.69: smarter USB webcam connection, low-light stacking, photo clean-up and webcam controls', for: ['website', 'app'], app: '1.1.54',
+    items: [
+      'Plugging in a USB webcam or HDMI capture card now moves it ahead of built-in laptop/tablet cameras and switches automatically when not shooting. On Android tablets, external UVC webcams also take priority even if the tablet camera was saved before.',
+      'Webcam captures now run photo clean-up (noise reduction, edge-safe sharpening, highlight protection and skin-tone balance) and optional low-light multi-frame stacking (Off, Auto in dim light or Always).',
+      'Setup now includes a Pro controls panel for UVC cameras (brightness, contrast, saturation, autofocus/manual focus and auto/manual exposure where supported) plus a live preview FPS warning when dim lighting slows the feed below 15 fps.',
+      'Windows laptop app: closing a busy camera now also stops Windows Camera (WindowsCamera.exe) and Logitech Capture (LogiCapture.exe) if they are holding the webcam.'
+    ]
+  },
   {
     date: '2026-11-15', title: 'Desktop 1.1.53: Canon DSLRs (6D, 70D, 5D...) on Windows take the photo instead of "The camera didn\'t take a photo"', for: ['website', 'app'], app: '1.1.53',
     items: [

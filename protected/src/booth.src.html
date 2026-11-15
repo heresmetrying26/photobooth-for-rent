@@ -14775,6 +14775,29 @@
               <option value="preview">Fast capture from viewfinder (instant)</option>
             </select>
             <p class="panel-hint" id="webcamResNote"></p>
+            <details id="webcamProBox" style="margin-top:10px; font-size:12px; color:var(--ink-dim); background:#f8f9fa; border-radius:8px; padding:8px 10px; border:1px solid var(--line);">
+              <summary style="font-weight:700; cursor:pointer; color:var(--ink);">🎛️ Webcam Image &amp; Focus Controls</summary>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                <label for="webcamCleanSel" style="font-size:12px; font-weight:700; color:var(--ink);">Photo clean-up</label>
+                <select id="webcamCleanSel" style="padding:5px 8px; font-size:12.5px; border-radius:6px; border:1px solid var(--line);">
+                  <option value="auto" selected>Auto (denoise + print sharpen)</option>
+                  <option value="strong">Strong (dim venues)</option>
+                  <option value="off">Off</option>
+                </select>
+                <span class="panel-hint" style="margin:0; font-size:11px; flex-basis:100%;">Reduces webcam grain and sharpens photos at print size. Strong helps in dark reception halls.</span>
+              </div>
+              <label style="display:flex; gap:8px; align-items:flex-start; margin-top:8px; font-size:12px; color:var(--ink); cursor:pointer;">
+                <input type="checkbox" id="webcamStackToggle" checked style="margin-top:2px;">
+                <span><b>Multi-frame low-light stacking</b><br><span class="panel-hint" style="margin:0; font-size:11px;">Blends stationary pixels from recent frames to cut dim-room noise without blurring moving guests.</span></span>
+              </label>
+              <label style="display:flex; gap:8px; align-items:flex-start; margin-top:8px; font-size:12px; color:var(--ink); cursor:pointer;">
+                <input type="checkbox" id="webcamTipsToggle" checked style="margin-top:2px;">
+                <span><b>Low-light motion-blur warning</b><br><span class="panel-hint" style="margin:0; font-size:11px;">Alerts you when a dark room forces your webcam below 18 fps so you can add light or Screen Flash.</span></span>
+              </label>
+              <div id="webcamUvcControls" style="margin-top:4px;"></div>
+              <p class="panel-hint" id="webcamUvcEmptyHint" style="display:none; margin:6px 0 0; font-size:11px;">This camera does not expose focus or exposure sliders in this browser.</p>
+              <button type="button" class="action-btn" id="webcamUvcResetBtn" style="display:none; width:auto; margin:8px 0 0; padding:5px 10px; font-size:11.5px;">Reset webcam controls</button>
+            </details>
           </div>
           <div id="shotTimingBox" style="margin-top:8px;">
             <p class="panel-label" style="margin-top:6px;">Shot timing</p>
@@ -22114,9 +22137,10 @@
         if (!id || id === 'usb-remote') return false;
         if (id === UVC_ID) return true;
         const l = String(label || '');
-        if (/facetime|macbook|imac|built-in|integrated|isight|facing (front|back)|\b(front|back|rear) camera\b/i.test(l)) return false;
+        if (/facetime|macbook|imac|built-in|integrated|isight|internal|surface camera|microsoft camera|ir camera|windows hello|depth|facing (front|back)|\b(front|back|rear) camera\b/i.test(l)) return false;
+        if (/virtual|\bobs\b|teams|zoom|snap camera|mmhmm|manycam|xsplit|\bndi\b|desk view|iphone|ipad|vcam|camo|iriun|droidcam|epoccam/i.test(l)) return false;
         if (IS_ANDROID_APP && window.__pbUvcInfo && window.__pbUvcInfo.native) return true;
-        return /facing external|\busb\b|\buvc\b|webcam|logitech|brio|c270|c920|c922|elgato|capture|insta\s*360|2e1a|ace\s*pro/i.test(l);
+        return /facing external|\busb\b|\buvc\b|webcam|logitech|logi\b|brio|c270|c310|c505|c615|c920|c922|c925|c930|streamcam|razer|kiyo|elgato|facecam|cam link|capture|hdmi|obsbot|tiny|meet|tail|insta\s*360|2e1a|ace\s*pro|anker|powerconf|nexigo|emeet|a4tech|aukey|papalook|depstech|creative|ausdom|vitade|svpro|arducam|aver|magewell|acasis|ugreen/i.test(l);
       }
       (function uvcShim() {
         const md = navigator.mediaDevices;
@@ -22272,10 +22296,11 @@
       function isBuiltInCamera() {
         const o = cameraSelect && cameraSelect.options[cameraSelect.selectedIndex];
         const l = String(o ? o.textContent : '').toLowerCase();
-        if (/facetime|macbook|imac|built-in|integrated|isight|facing (front|back)|\b(front|back|rear) camera\b/i.test(l)) return true;
+        if (/facetime|macbook|imac|built-in|integrated|isight|internal|surface camera|microsoft camera|ir camera|windows hello|depth|facing (front|back)|\b(front|back|rear) camera\b/i.test(l)) return true;
         const trk = currentStream && currentStream.getVideoTracks()[0];
         const fm = trk && trk.getSettings ? trk.getSettings().facingMode : null;
         if (fm === 'user' || fm === 'environment') return true;
+        if (ANDROID_APP && currentDeviceId && currentDeviceId !== UVC_ID && currentDeviceId !== USB_CAM_ID && !isUsbWebcamOption(currentDeviceId, l)) return true;
         return false;
       }
       function isMaxWebcamShotEligible() {
@@ -22295,7 +22320,8 @@
         const info = window.__pbUvcInfo;
         const vw = (typeof video !== 'undefined' && video && video.videoWidth) ? video.videoWidth : 0;
         const vh = (typeof video !== 'undefined' && video && video.videoHeight) ? video.videoHeight : 0;
-        const now = vw ? vw + ' × ' + vh : '';
+        const fps = (typeof webcamLiveFps === 'number' && webcamLiveFps > 0) ? (' @ ' + webcamLiveFps + ' fps') : '';
+        const now = vw ? vw + ' × ' + vh + fps : '';
         const isDownsized = webcamRes.preview === '720' || webcamRes.preview === '480' || (vh > 0 && vh <= 720 && webcamRes.preview !== 'auto' && webcamRes.preview !== '1080' && webcamRes.preview !== 'max');
         let noteText = (now ? 'Viewfinder: ' + now + '. ' : '') + (info && info.max ? 'Camera max: ' + info.max + '. ' : '');
         if (isDownsized || (IS_ANDROID_APP && (webcamRes.preview === 'auto' || webcamRes.preview === '720'))) {
@@ -22421,16 +22447,18 @@
         // Virtual cameras (OBS, Teams, Zoom…), Continuity iPhone and Desk View often
         // show a black or cropped picture, so they're only used when picked.
         const lbl = d => (d.label || '').toLowerCase();
-        const BUILTIN = /front|facetime|macbook|imac|built-in|integrated|isight/;
-        const AVOID = /virtual|\bobs\b|teams|zoom|snap camera|mmhmm|manycam|xsplit|\bndi\b|desk view|iphone|ipad/;
+        const BUILTIN = /front|facetime|macbook|imac|built-in|integrated|isight|surface camera|microsoft camera/;
+        const AVOID = /virtual|\bobs\b|teams|zoom|snap camera|mmhmm|manycam|xsplit|\bndi\b|desk view|iphone|ipad|ir camera|windows hello|depth|vcam|camo|iriun|droidcam|epoccam/;
         // A camera plugged in through the Windows helper is picked when nothing
         // else was chosen in this visit (it's plugged in, so it's meant to be used).
         const usbPick = usbCam.supported && (previous === USB_CAM_ID || (!previous && saved && saved.id === USB_CAM_ID) || (!previous && usbCam.viaHelper && usbCam.helperSees)) ? { deviceId: USB_CAM_ID } : null;
+        const usbWebcamPick = videoDevices.find(d => !AVOID.test(lbl(d)) && isUsbWebcamOption(d.deviceId, d.label));
         const pick = usbPick || byId(previous)
           || (saved && (byId(saved.id) || (saved.label && videoDevices.find(d => d.label === saved.label))))
           || (ANDROID_APP && videoDevices.find(d => d.deviceId === UVC_ID || /external|usb webcam/i.test(d.label || '')))   // tablet app: a plugged-in USB webcam beats the tablet's own cameras
           || videoDevices.find(d => /insta\s*360/i.test(d.label || ''))   // Insta360 in webcam mode: prefer it over built-ins
-          || videoDevices.find(d => BUILTIN.test(lbl(d)))
+          || usbWebcamPick
+          || videoDevices.find(d => BUILTIN.test(lbl(d)) && !AVOID.test(lbl(d)))
           || videoDevices.find(d => d.label && !AVOID.test(lbl(d)));
         if (pick) cameraSelect.value = pick.deviceId;
 
@@ -22499,6 +22527,7 @@
         camLat.length = 0;
         const cb = (now, meta) => {
           rvfcCount++;
+          try { if (typeof webcamPushFrame === 'function') webcamPushFrame(v); } catch (e) { }
           try {
             if (meta && typeof meta.captureTime === 'number') {
               const lat = now - meta.captureTime;
@@ -22513,6 +22542,7 @@
       }
       let wcFrames = -1, wcAt = Date.now();
       setInterval(function () {
+        try { if (typeof webcamFpsTick === 'function') webcamFpsTick(); } catch (e) { }
         try {
           if (!streamActive || !currentStream || currentDeviceId === USB_CAM_ID || document.hidden || reconnectTimer || video.paused || !video.videoWidth || state === 'result' || video.style.display === 'none' || video.offsetParent === null) { wcAt = Date.now(); wcFrames = -1; return; }
           const curOpt = cameraSelect.options[cameraSelect.selectedIndex];
@@ -22550,8 +22580,17 @@
             if (preferred && preferred.value !== before && state !== 'capturing') {
               cameraSelect.value = preferred.value;
               initCamera(preferred.value);
-            } else if (before && cameraSelect.value !== before && Array.from(cameraSelect.options).some(o => o.value === before)) {
-              cameraSelect.value = before;                     // keep showing the camera in use
+            } else {
+              const extOpt = Array.from(cameraSelect.options).find(o => o.value !== before && isUsbWebcamOption(o.value, o.textContent));
+              const forceAndroidUsb = ANDROID_APP && extOpt && (extOpt.value === UVC_ID || /facing external/i.test(extOpt.textContent));
+              const savedBuiltIn = saved && extOpt && isBuiltInCamera() && Array.from(cameraSelect.options).some(o => (o.value === saved.id || o.textContent === saved.label) && o.value === before);
+              if (extOpt && before !== USB_CAM_ID && isBuiltInCamera() && (!savedBuiltIn || forceAndroidUsb) && state !== 'capturing') {
+                cameraSelect.value = extOpt.value;
+                await initCamera(extOpt.value);
+                try { showToast('Switched to USB webcam: ' + extOpt.textContent, 3500); } catch (e) { }
+              } else if (before && cameraSelect.value !== before && Array.from(cameraSelect.options).some(o => o.value === before)) {
+                cameraSelect.value = before;                     // keep showing the camera in use
+              }
             }
           }, 700);
         });
@@ -23885,6 +23924,7 @@
           cameraError.style.display = 'none';
           recDot.style.display = 'flex';
           camSleeping = false;
+          try { if (typeof webcamClearFpsWarning === 'function') webcamClearFpsWarning(); } catch (e) { }
           if (!camWantLive() && !camWaking) { try { camLiveSleep(); } catch (e) { } }
           return true;
         } catch (err) {
@@ -23965,6 +24005,7 @@
           cameraError.style.display = 'none';
           recDot.style.display = 'flex';
           camSleeping = false;
+          try { if (typeof webcamOnStreamReady === 'function') await webcamOnStreamReady(stream); } catch (e) { }
           if (!camWantLive() && !camWaking) { try { camLiveSleep(); } catch (e) { } }
           return true;
         } catch (err) {
@@ -23987,9 +24028,13 @@
                   await video.play();
                   listenVideoFrames(video);
                   streamActive = true;
+                  const openedRetry = (stream.getVideoTracks()[0] && stream.getVideoTracks()[0].getSettings().deviceId) || deviceId || null;
+                  currentDeviceId = openedRetry;
+                  if (openedRetry && Array.from(cameraSelect.options).some(o => o.value === openedRetry)) cameraSelect.value = openedRetry;
                   cameraError.style.display = 'none';
                   recDot.style.display = 'flex';
                   camSleeping = false;
+                  try { if (typeof webcamOnStreamReady === 'function') await webcamOnStreamReady(stream); } catch (e) { }
                   return true;
                 } catch (retryErr2) { err = retryErr2; }
               }
@@ -24510,6 +24555,8 @@
         if (mirrorPreview()) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
         ctx.drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
+        try { if (typeof webcamApplyStack === 'function') webcamApplyStack(ctx, c.width, c.height); } catch (e) { }
+        try { if (typeof webcamMarkShot === 'function') webcamMarkShot(c); } catch (e) { }
         applyBgReplace(c);
         var rawCopy = document.createElement('canvas');
         rawCopy.width = c.width; rawCopy.height = c.height;
@@ -24667,6 +24714,7 @@
           }
 
           ctx.setTransform(1, 0, 0, 1, 0, 0);
+          try { if (typeof webcamMarkShot === 'function') webcamMarkShot(c); } catch (e) { }
           applyBgReplace(c);
           var rawW = document.createElement('canvas');
           rawW.width = c.width; rawW.height = c.height;
@@ -24684,6 +24732,7 @@
       /*@include camera/brand-nikon.js*/
       /*@include camera/brand-canon.js*/
       /*@include camera/brand-sony.js*/
+      /*@include camera/webcam-pro.js*/
       async function captureShot(index) {
         await usbEnsureLive();
         // Auto shot timing: a webcam frame shows the scene as it was a moment ago (camera + tablet delay). Wait that long so

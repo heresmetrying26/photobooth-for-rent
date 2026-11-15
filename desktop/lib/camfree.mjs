@@ -20,7 +20,7 @@ function killall(bin, args) {
   });
 }
 
-const WIN_APPS = ['Insta360 Studio.exe', 'Insta360LinkController.exe'];
+const WIN_APPS = ['Insta360 Studio.exe', 'Insta360LinkController.exe', 'WindowsCamera.exe', 'LogiCapture.exe'];
 
 // opts (for tests): { platform, killall }
 export async function freeCamera(opts = {}) {

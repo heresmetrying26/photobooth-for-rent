@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.48', date: '2026-11-15' },
   { version: '1.1.47', date: '2026-11-15' },
   { version: '1.1.46', date: '2026-11-15' },
   { version: '1.1.45', date: '2026-11-14' },
@@ -219,6 +220,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-15', title: 'Desktop 1.1.48: Mac prints on an Epson L8050 (and other Epson L-series) are no longer cut off at the top and right', for: ['website', 'app'], app: '1.1.48',
+    items: [
+      'On a Mac, an Epson L8050 (and similar Epson printers) printing borderless enlarged the page past the paper and trimmed the top strip, the footer and the right-hand photos. Epson printers now get their own, smaller page size on a Mac (94%), whether the printer was added over AirPrint or with Epson’s driver. Canon G-series printers keep their 98% setting, and Windows is unchanged.',
+      'It was worked out from photos, not measured on an L8050 here. Print the edge test once on a fresh sheet and use Print settings > Edges for any side that is still trimmed (press +) or shows a thin white line (press −).'
+    ]
+  },
   {
     date: '2026-11-15', title: 'Desktop 1.1.47: Nikon photo tips are optional, and a Classic Nikon behaviour switch', for: ['website', 'app'], app: '1.1.47',
     items: [

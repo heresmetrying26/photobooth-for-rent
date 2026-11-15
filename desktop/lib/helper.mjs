@@ -358,9 +358,15 @@ async function airPrintQualityOptions(printer, want) {
 // moves each side in or out from there.
 // Dye-sub printers (SELPHY, DNP, HiTi ...) print borderless without enlarging, so their pages are left as they are.
 const MAC_BORDERLESS_SCALE = 0.98;
+// An Epson (L8050, L3210 ...) enlarges a borderless page more than the Canon does, and on a Mac it may be added with Epson's own
+// driver instead of AirPrint, which the 98% above never reached: an L8050 trimmed the top strip and the right photos. So an Epson
+// gets its own, smaller scale (about 3% enlargement a side on a 4x6), whatever kind of queue it is. Edges fine-tunes it per printer.
+const MAC_EPSON_BORDERLESS_SCALE = 0.94;
+const EPSON = /epson|(?<![a-z0-9-])l[1-9]\d{2,3}(?![0-9])/i;
 const DYE_SUB = /selphy|(?<![a-z])cp[\s_-]?d?\d{2,4}(?![0-9])|(?<![a-z])dnp(?![a-z])|(?<![a-z])ds[\s_-]?(?:rx|\d)|hiti|mitsubishi|kodak|citizen|sinfonia|shinko|dye/i;
 async function macBorderlessScale(printer, pick) {
   if (!shrinkPage || !pick || !pick.borderless || DYE_SUB.test(printer)) return 1;
+  if (EPSON.test(printer)) return MAC_EPSON_BORDERLESS_SCALE;
   try { return (await isAirPrintQueue(printer)) ? MAC_BORDERLESS_SCALE : 1; } catch { return 1; }
 }
 

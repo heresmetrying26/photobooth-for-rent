@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>iPad Offline App &amp; USB DSLR Guide · photobooth4u</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500..700;1,500..700&family=Manrope:wght@400..800&display=swap">
+<style>
+  :root{ --bg:#f6f1ea; --card:#fffdf9; --ink:#1f1a1d; --dim:#5d555b; --line:#e4ddd3; --red:#c8402a; --red-soft:#fbeee9; --dark:#1f1a1d; --green:#21764d; --green-soft:#eef6ef; }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;}
+  a{color:var(--red);}
+  .wrap{max-width:860px; margin:0 auto; padding:0 16px;}
+  header.hero{background:var(--dark); color:#f6f1ea; padding:44px 0 48px;}
+  .brand{display:flex; align-items:center; gap:10px; font:600 22px 'Fraunces',Georgia,serif; color:#f6f1ea; text-decoration:none;}
+  .brand .mark{display:grid; grid-template-columns:repeat(2,9px); gap:3px;}
+  .brand .mark i{width:9px; height:9px; border-radius:2px; background:#f6f1ea;} .brand .mark i:nth-child(2){background:var(--red);}
+  .eyebrow{font-size:13px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:#e8715a; margin:28px 0 8px;}
+  h1{font:600 clamp(32px,6.5vw,52px)/1.06 'Fraunces',Georgia,serif; margin:0 0 14px;}
+  h1 em{color:#e8715a; font-style:italic;}
+  .lead{color:#d9cfc6; font-size:17px; max-width:660px; margin:0 0 22px;}
+  .hero-actions{display:flex; flex-wrap:wrap; gap:12px; align-items:center;}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:46px; padding:11px 20px; border-radius:999px; font-weight:800; font-size:15px; text-decoration:none; background:var(--red); color:#fff;}
+  .btn.alt{background:transparent; border:1.5px solid #6b615b; color:#f6f1ea;}
+  nav.toc{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:-24px 0 8px; position:relative;}
+  nav.toc a{display:block; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; text-decoration:none; color:var(--ink); box-shadow:0 8px 20px rgba(70,45,25,.08);}
+  nav.toc b{display:block; color:var(--red); font-size:11px; letter-spacing:.14em; text-transform:uppercase;} nav.toc span{font-weight:700; font-size:14px;}
+  section.part{padding:34px 0 6px; scroll-margin-top:14px;}
+  section.part h2{font:600 clamp(25px,4.2vw,33px)/1.15 'Fraunces',Georgia,serif; margin:0 0 6px;}
+  .part .kicker{font-size:12px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:var(--red); margin:0 0 4px;}
+  .part .why{color:var(--dim); margin:0 0 14px;}
+  ol.steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
+  ol.steps li{display:grid; grid-template-columns:40px 1fr; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  ol.steps .n{width:40px; height:40px; border-radius:50%; background:var(--red); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center;}
+  ol.steps h3{margin:4px 0 3px; font-size:17px;}
+  ol.steps p{margin:0; color:var(--dim);}
+  ol.steps ul{margin:6px 0 0; padding-left:18px; color:var(--dim);}
+  ol.steps li li{display:list-item; border:0; padding:2px 0; background:transparent;}
+  code{font:600 13.5px ui-monospace,'SF Mono',Menlo,Consolas,monospace; background:#efe7dd; border-radius:6px; padding:1px 6px; color:var(--ink); word-break:break-all;}
+  table{width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; font-size:15px;}
+  th, td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); background:#f3ece3;}
+  tr:last-child td{border-bottom:0;}
+  td:first-child{font-weight:700; width:30%;}
+  .callout{background:var(--red-soft); border:1px solid #f1cfc5; border-radius:16px; padding:16px 18px; margin-top:14px;}
+  .callout h3{margin:0 0 4px; font-size:16px;} .callout p{margin:0; color:var(--dim);}
+  .callout.ok{background:var(--green-soft); border-color:#cfe5d2;}
+  .callout.ok h3{color:var(--green);}
+  .wiring{background:#1f1a1d; color:#f6f1ea; border-radius:16px; padding:18px 20px; font:600 14px/1.6 ui-monospace,'SF Mono',Menlo,Consolas,monospace; margin:12px 0;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  .card h3{margin:0 0 6px; font-size:17px;}
+  .card p, .card ul{margin:0; color:var(--dim); font-size:14.5px;}
+  .card ul{padding-left:18px; margin-top:6px;}
+  footer{padding:40px 0 60px; color:var(--dim); font-size:14px;}
+  .help{display:flex; align-items:center; justify-content:space-between; gap:16px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px; margin-bottom:18px;}
+  .help h3{margin:0 0 2px;} .help p{margin:0;}
+  @media (max-width:720px){ nav.toc{grid-template-columns:1fr 1fr;} .grid2{grid-template-columns:1fr;} td:first-child{width:auto;} .help{flex-direction:column; align-items:flex-start;} }
+</style>
+</head>
+<body>
+<header class="hero"><div class="wrap">
+  <a class="brand" href="/"><span class="mark"><i></i><i></i><i></i><i></i></span>photobooth4u</a>
+  <p class="eyebrow">iPad Offline App · Setup Guide</p>
+  <h1>Run <em>photobooth4u</em> Offline on iPad + USB DSLR</h1>
+  <p class="lead">Install the native iPad offline app to run full events with zero internet, direct USB DSLR &amp; mirrorless camera tethering (real shutter &amp; flash), AirPrint, and local Wi-Fi QR downloads for guests.</p>
+  <div class="hero-actions">
+    <a class="btn" id="ipaBtn" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/ios-v1.0.3/photobooth4u-kiosk-ipad.ipa">Download iPad App (.ipa) · <span id="ipaVer">v1.0.3</span></a>
+    <a class="btn alt" href="https://sideloadly.io/" target="_blank" rel="noopener">Get Sideloadly (Free Installer)</a>
+    <a class="btn alt" href="/how-to-ipad-offline/photobooth4u-ipad-dslr-guide.pdf" download>Download PDF Guide</a>
+  </div>
+</div></header>
+
+<main class="wrap">
+  <nav class="toc">
+    <a href="#checklist"><b>Step 0</b><span>What You Need</span></a>
+    <a href="#install"><b>Part 1</b><span>Install via Sideloadly</span></a>
+    <a href="#dslr"><b>Part 2</b><span>Connect Your DSLR</span></a>
+    <a href="#event"><b>Part 3</b><span>Offline QR, Print &amp; Kiosk</span></a>
+  </nav>
+
+  <section class="part" id="checklist">
+    <p class="kicker">Before you start</p>
+    <h2>What you need</h2>
+    <p class="why">Because the iPad app is not yet on the public App Store, it is installed once from a Windows PC or Mac using Sideloadly (100% free, takes ~5 minutes).</p>
+    <div class="grid2">
+      <div class="card">
+        <h3>For Installing the App (Once)</h3>
+        <ul>
+          <li><b>iPad</b> running <b>iPadOS 15.0 or newer</b>.</li>
+          <li><b>Windows PC or Mac</b> + USB cable to connect the iPad.</li>
+          <li><b><a href="https://sideloadly.io/" target="_blank" rel="noopener">Sideloadly</a></b> installed on your computer (on Windows, also install Apple's non-Microsoft-Store iTunes if asked).</li>
+          <li>Your <b>Apple ID</b> (a free regular Apple ID works).</li>
+          <li>An active <b>photobooth4u rental code</b> with the <b>Offline App</b> add-on enabled.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>For Running a DSLR Booth</h3>
+        <ul>
+          <li><b>Canon EOS, Nikon, or Sony Alpha</b> camera + its USB data cable.</li>
+          <li><b>Powered USB-C Hub</b> (with wall charger / Power Delivery) so the iPad stays charged while running the camera. <i>(Lightning iPads need the official Apple Lightning to USB 3 Camera Adapter with power.)</i></li>
+          <li><b>Pocket Wi-Fi router or phone hotspot</b> (no internet load needed) if guests will scan QR codes to download photos.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="part" id="install">
+    <p class="kicker">Part 1 · ~5 Minutes</p>
+    <h2>Install the iPad Offline App using Sideloadly</h2>
+    <p class="why">Follow these steps on your Windows PC or Mac to put photobooth4u on your iPad.</p>
+    <ol class="steps">
+      <li><span class="n">1</span><div>
+        <h3>Download the .ipa file on your computer</h3>
+        <p>Click <b>Download iPad App (.ipa)</b> at the top of this page to save <code>photobooth4u-kiosk-ipad.ipa</code> to your computer. <b>Do not unzip or extract the .ipa file.</b></p>
+      </div></li>
+      <li><span class="n">2</span><div>
+        <h3>Connect your iPad to your computer</h3>
+        <p>Plug the iPad into your Windows PC or Mac using a USB cable. Unlock the iPad and tap <b>Trust This Computer</b> if a pop-up appears.</p>
+      </div></li>
+      <li><span class="n">3</span><div>
+        <h3>Install with Sideloadly</h3>
+        <p>Open <b>Sideloadly</b> on your computer. Check that your iPad name appears under <b>iDevice</b>, drag <code>photobooth4u-kiosk-ipad.ipa</code> into the <b>IPA</b> box, type your <b>Apple ID</b>, and click <b>Start</b>. Enter your Apple ID password and 2FA code if prompted.</p>
+      </div></li>
+      <li><span class="n">4</span><div>
+        <h3>Trust your Apple ID on the iPad</h3>
+        <p>Once installed, open iPad <b>Settings &rarr; General &rarr; VPN &amp; Device Management</b>. Tap your Apple ID under <i>Developer App</i>, then tap <b>Trust</b>.</p>
+      </div></li>
+      <li><span class="n">5</span><div>
+        <h3>Turn on Developer Mode (iPadOS 16+)</h3>
+        <p>Open iPad <b>Settings &rarr; Privacy &amp; Security &rarr; Developer Mode</b> and switch it <b>ON</b>. Your iPad will restart; after rebooting, tap <b>Turn On</b> when asked.</p>
+      </div></li>
+      <li><span class="n">6</span><div>
+        <h3>Activate your rental code</h3>
+        <p>Connect the iPad to Wi-Fi once, open <b>photobooth4u</b>, enter your <code>PB-XXXX-XXXX-XXXX</code> code, and tap <b>Activate iPad</b>. After activation, the booth works completely offline.</p>
+      </div></li>
+    </ol>
+
+    <div class="callout">
+      <h3>Important: Free Apple ID 7-Day Refresh</h3>
+      <p>Apps installed with a free Apple ID stay active for <b>7 days</b>. Before a weekend event, open Sideloadly on your computer (over Wi-Fi or USB) and click <b>Start</b> again (~30 seconds) to reset the 7-day timer — all your frames, designs, and saved photos stay intact. <i>(Want 1-year validity without a computer? Ask us about TestFlight or a 1-year device certificate.)</i></p>
+    </div>
+  </section>
+
+  <section class="part" id="dslr">
+    <p class="kicker">Part 2</p>
+    <h2>Connect your DSLR or Mirrorless Camera</h2>
+    <p class="why">Plug your camera straight into the iPad through a powered USB-C hub for live view, real shutter control, and external flash/strobe sync.</p>
+
+    <div class="wiring">[DSLR / Mirrorless Camera] &lt;-- USB Data Cable --&gt; [Powered USB-C Hub + Charger] &lt;--&gt; [iPad]</div>
+
+    <table>
+      <tr><th>Camera Brand</th><th>Required Camera Settings Before Plugging In</th></tr>
+      <tr><td>Canon EOS<br><small>(DSLRs, M &amp; R series)</small></td><td>Mode dial on <b>M, Av, Tv, or P</b> (not Auto/Video). Image quality set to <b>JPEG</b> (L/M/S or RAW+JPEG). In menu: <b>Live View shoot: Enable</b>, <b>Wi-Fi: Off</b>, Auto Power Off: Off or long.</td></tr>
+      <tr><td>Nikon<br><small>(D-series &amp; Z-series)</small></td><td>Mode dial on <b>M, A, S, or P</b>. Set USB mode to <b>MTP/PTP</b> (Setup menu). Image quality: <b>JPEG Fine</b> (or Normal). Turn <b>Wi-Fi / Airplane mode</b> properly off for USB.</td></tr>
+      <tr><td>Sony Alpha<br><small>(A7, A6xxx, ZV series)</small></td><td>Go to <b>MENU &rarr; Setup &rarr; USB &rarr; USB Connection &rarr; PC Remote</b>. Set <b>Still Img. Save Dest.</b> to <b>PC Only</b> (or PC+Camera) and <b>Release w/o Card: Enable</b>. File Format: <b>JPEG</b>.</td></tr>
+      <tr><td>Olympus / Other PTP</td><td>Set USB mode to <b>Tether / Control / PTP</b> and JPEG format. <i>(Note: Cameras that do not stream live view over USB PTP can use an HDMI capture card or the iPad's built-in camera.)</i></td></tr>
+    </table>
+
+    <ol class="steps" style="margin-top:14px;">
+      <li><span class="n">1</span><div>
+        <h3>Plug in and power on the camera</h3>
+        <p>Turn the camera on first, then connect it to the powered USB-C hub plugged into your iPad. If iPadOS asks to allow <b>photobooth4u</b> to access the USB camera, tap <b>Allow</b>.</p>
+      </div></li>
+      <li><span class="n">2</span><div>
+        <h3>Pick the DSLR in Setup</h3>
+        <p>In the booth, go to <b>Setup &rarr; 4 Camera</b> and choose <b>DSLR / Mirrorless camera (USB)</b>. Live view from your camera will appear on the iPad screen.</p>
+      </div></li>
+      <li><span class="n">3</span><div>
+        <h3>Take a test shot with your flash</h3>
+        <p>Run a test session to confirm autofocus, flash/strobe firing, and photo transfer speed. Use a dummy battery or AC adapter on the DSLR for long events.</p>
+      </div></li>
+    </ol>
+  </section>
+
+  <section class="part" id="event">
+    <p class="kicker">Part 3</p>
+    <h2>Offline Guest QR Sharing, Printing &amp; Kiosk Lock</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3>📡 Offline Guest QR Downloads</h3>
+        <p>No internet needed at the venue:</p>
+        <ul>
+          <li>Connect the iPad to a <b>pocket Wi-Fi router</b> or a <b>phone hotspot</b> (data/SIM can be off).</li>
+          <li>In <b>Setup &rarr; 6 Share</b>, type that Wi-Fi name and password so guests get a <b>Join Wi-Fi QR</b>.</li>
+          <li>Guests scan the Wi-Fi QR first, then scan their <b>Photo QR</b> to save pictures straight from the iPad!</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>🖨️ AirPrint &amp; Photo Backup</h3>
+        <ul>
+          <li><b>AirPrint:</b> Print directly from the iPad to any AirPrint printer (Canon SELPHY CP1300/CP1500, Epson, Canon, HP, Brother) — supports Auto-print.</li>
+          <li><b>Photo Backup:</b> Every strip and shot saves in <b>Files &rarr; On My iPad &rarr; photobooth4u</b> and copies to the iPad <b>Photos</b> app.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout ok">
+      <h3>🔒 Lock the iPad for Guests (Guided Access)</h3>
+      <p>Turn on <b>Settings &rarr; Accessibility &rarr; Guided Access</b> and set a passcode. Once your booth is ready on the Welcome screen, <b>triple-click the iPad's Top/Side button</b> to start Guided Access so guests cannot exit the app or open Settings.</p>
+    </div>
+  </section>
+
+  <section class="part" id="fix">
+    <p class="kicker">Troubleshooting</p>
+    <h2>If something doesn't work</h2>
+    <table>
+      <tr><th>Problem</th><th>What to try</th></tr>
+      <tr><td>Sideloadly doesn't see my iPad (Windows)</td><td>Install Apple's non-Microsoft-Store <b>iTunes</b> from the link on <a href="https://sideloadly.io/" target="_blank" rel="noopener">sideloadly.io</a>, use another USB cable, and tap <b>Trust This Computer</b> on the iPad.</td></tr>
+      <tr><td>"Untrusted Developer" or "Developer Mode Required"</td><td>Go to <b>Settings &rarr; General &rarr; VPN &amp; Device Management &rarr; Trust</b>, then turn ON <b>Settings &rarr; Privacy &amp; Security &rarr; Developer Mode</b>.</td></tr>
+      <tr><td>App won't open after 7 days</td><td>Your free Apple ID 7-day certificate expired. Re-run Sideloadly (30 seconds) with the same Apple ID — do not delete the app so your saved frames and photos stay.</td></tr>
+      <tr><td>DSLR not detected on USB</td><td>Make sure you are using a <b>data USB cable</b> (not charge-only) and a <b>powered USB-C hub</b>. Switch the camera off and on, close any other camera apps, and tap <b>Try Again</b>.</td></tr>
+      <tr><td>Sony shows "PC Remote" error</td><td>Check <b>MENU &rarr; Setup &rarr; USB &rarr; USB Connection</b> is set to <b>PC Remote</b> (not Mass Storage or MTP).</td></tr>
+      <tr><td>Guest phone can't open the Photo QR</td><td>Check that the guest's phone is connected to the <b>same Wi-Fi</b> as the iPad (turn off mobile data on the guest phone if it stays on 4G/5G), and disable "AP/Client Isolation" on your pocket router.</td></tr>
+    </table>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="help"><div><h3>Need help setting up your iPad?</h3><p>Message us your iPad model, iPadOS version, and camera model.</p></div><a class="btn" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener">Message us</a></div>
+  photobooth4u &middot; <a href="/how-to-ipad/">iPad + Laptop / HDMI Guide</a> &middot; <a href="/downloads/">Downloads</a> &middot; <a href="/printers/">Printers</a>
+</footer>
+
+<script>
+  (function () {
+    fetch('https://api.github.com/repos/heresmetrying26/photobooth-for-rent/releases?per_page=20')
+      .then(function (r) { return r.json(); })
+      .then(function (rs) {
+        if (!Array.isArray(rs)) return;
+        var rel = rs.filter(function (x) { return /^ios-v/.test(x.tag_name) && !x.draft; })[0];
+        var asset = rel && (rel.assets || []).filter(function (a) { return /\.ipa$/i.test(a.name); })[0];
+        if (asset) {
+          var btn = document.getElementById('ipaBtn');
+          var ver = document.getElementById('ipaVer');
+          if (btn) btn.href = asset.browser_download_url;
+          if (ver) ver.textContent = rel.tag_name.replace(/^ios-/, '');
+        }
+      })
+      .catch(function () { });
+  })();
+</script>
+</body>
+</html>

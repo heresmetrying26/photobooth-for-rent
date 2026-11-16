@@ -289,7 +289,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
         <span>&bull; Mode dial on <b>P, A/Av, S/Tv or M</b>; save as <b>JPEG</b> (or RAW + JPEG).</span>
         <span>&bull; <b>Auto power off</b>: disable. Use a <b>dummy battery</b> for long events.</span>
         <span>&bull; SD card in the camera.</span>
-        <span>&bull; Webcams and HDMI capture cards work too (no flash).</span>
+        <span>&bull; USB webcams (Insta360 Ace Pro, Logitech Brio/C920 with auto-priority &amp; low-light cleanup) and HDMI capture cards work too.</span>
       </div>
     </div>
   </div>
@@ -312,9 +312,9 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
         <h5>Good to know</h5>
         <ul class="dots">
           <li>The <b>Print Helper</b> isn't needed: it's built into the app.</li>
-          <li>Same printer for two sizes? Add it to the laptop <b>twice</b>, each with its own defaults and name.</li>
-          <li>The paper sizes in your package appear in Print settings.</li>
-          <li><b>Thermal receipt printers</b> (80 / 58 mm): see the Thermal printing guide at photobooth4u.netlify.app/how-to-print-thermal/.</li>
+          <li><b>Per-layout paper switching:</b> pick different printers/sizes for 4R, 2&times;6 strips, <b>XL strips</b>, and <b>2.5&times;7.5&Prime; keychains</b> (or add the same printer twice).</li>
+          <li><b>Borderless &amp; Instax:</b> Epson L8050/L3210/L805 &amp; Canon SELPHY borderless support, plus <b>Fujifilm Instax Link Wide</b> and 58/80 mm thermal receipt printers (see <code>/how-to-print-thermal/</code>).</li>
+          <li><b>More guides:</b> Roving DSLR (<code>/photobooth4u-roving-dslr-guide.pdf</code>) &amp; 360 Booth (<code>/photobooth4u-360-guide.pdf</code>).</li>
         </ul>
       </div>
     </div>
@@ -334,7 +334,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
         <li><span class="n">1</span><h4>One Wi-Fi for laptop and guests</h4><p>The laptop can host its own booth Wi-Fi directly: in <b>Setup &rarr; Share &amp; start</b>, switch on <b>“Make this laptop the booth Wi-Fi”</b> (Windows &amp; Mac). Or connect the laptop to a small router at the booth (no SIM or internet needed) or a second phone's hotspot. The laptop must be on the booth Wi-Fi, or there is no photo QR.</p></li>
         <li><span class="n">2</span><h4>Check Share &amp; start</h4><p><b>Guests' phones</b> shows the address guests open, with a ✓. If it says the laptop isn't on a Wi-Fi network, switch on the booth Wi-Fi or join one first.</p></li>
         <li><span class="n">3</span><h4>Join Wi-Fi QR</h4><p>Under <b>Booth Wi-Fi for guests</b> the app fills in the name and password automatically (when hosting the booth Wi-Fi, or from the network the laptop joined). The <b>Wi-Fi</b> button in the bottom bar, beside <b>Extras</b> and <b>Lock booth</b>, shows the same QR on the booth screen: guests scan it to join, then scan their photo QR.</p></li>
-        <li><span class="n">4</span><h4>Print the Wi-Fi sign</h4><p>Tap <b>Download WIFI QR Sign</b> and print it (A5 or bigger) for the booth table. After each session guests get their <b>photo</b> and <b>GIF</b> QR codes; the <b>All photos</b> QR is behind the <b>All photos</b> button in the bottom bar.</p></li>
+        <li><span class="n">4</span><h4>Print the Wi-Fi sign &amp; gallery tabs</h4><p>Tap <b>Download WIFI QR Sign</b> and print it for the booth table. After each session guests get their <b>photo</b> and <b>GIF</b> QR codes. The local gallery also has <b>Solo Photos</b> and <b>Guestbook</b> tabs, and you can tick <b>Let guests ask for a print from their phone</b> in Print settings (<b>Print requests</b> dock).</p></li>
       </ol>
       <div>
         <div class="card cream">
@@ -439,7 +439,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
         <li><span class="n">1</span><h4>Download the app</h4><p>On the tablet open <b>photobooth4u.netlify.app/downloads</b> and tap <b>Download APK</b>. Open the file; when Android asks, allow <b>Install unknown apps</b> for your browser, then <b>Install</b>.</p></li>
         <li><span class="n">2</span><h4>Activate with your code</h4><p>Open photobooth4u and type your access code on the <b>Activate this tablet</b> screen. It needs internet this one time.</p></li>
         <li><span class="n">3</span><h4>Tablet makes its own booth Wi-Fi</h4><p>In <b>Setup &rarr; Share &amp; start</b>, turn on <b>“Make this tablet the booth Wi-Fi”</b> (no router needed). The tablet creates its own Wi-Fi network directly. Android 13+ asks for “Nearby devices”; older Android asks for Location. Guests scan the Join QR and download their photos offline!</p></li>
-        <li><span class="n">4</span><h4>Print: Wi-Fi, USB or Bluetooth</h4><p>In <b>Print settings &rarr; Wi-Fi printer</b> tap <b>Find Wi-Fi printers</b> (or plug the printer into the tablet&rsquo;s USB port with an OTG cable), pick it, choose colour / quality / paper if offered, then <b>Test print</b>. Works with AirPrint / Mopria printers (Epson, Canon, HP, Brother), driverless-USB printers, receipt printers (Bluetooth: pair in Android Settings first) and some Epson ink-tank models over USB. Any other printer: pick <b>Android print dialog</b> (one tap per print). Printers that need their own driver, such as DNP, HiTi and many older USB-only inkjets, use the laptop app.</p></li>
+        <li><span class="n">4</span><h4>Print: Wi-Fi, USB or Bluetooth</h4><p>In <b>Print settings &rarr; Wi-Fi printer</b> tap <b>Find Wi-Fi printers</b> (or plug in via USB OTG), then <b>Test print</b>. Prints directly without pop-ups to <b>DNP dye-sub (DS-RX1, DS620, DS40 over USB)</b>, <b>Epson L8050/L805/L3210/L120 borderless (Wi-Fi &amp; USB)</b>, <b>Canon SELPHY (Wi-Fi)</b>, <b>AirPrint/Mopria</b> printers, <b>Fujifilm Instax Link Wide</b>, and <b>Bluetooth 58/80 mm thermal receipt printers</b>. Any other printer uses <b>Android print dialog</b>; only HiTi &amp; Windows-only USB inkjets need a laptop.</p></li>
       </ol>
       <div>
         <div class="card green">
@@ -450,9 +450,13 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
           <h5>"App not installed"?</h5>
           <p style="margin:0">Android only installs an update signed by the same key. If it refuses, <b>copy your photos off the tablet first</b>, uninstall photobooth4u, install the new file and enter your code again.</p>
         </div>
-        <div class="card cream" style="margin-top:12px">
+        <div class="card cream" style="margin-top:10px">
+          <h5>Kiosk Home &amp; Auto-Open</h5>
+          <p style="margin:0">Long-press the locked screen (2s) to open the <b>Operator Menu</b>: set <b>Kiosk Home App: Always</b> and <b>Auto-Open on Boot</b>.</p>
+        </div>
+        <div class="card cream" style="margin-top:10px">
           <h5>Not in the Android app</h5>
-          <p style="margin:0">GCash / Maya QR payments (vouchers work), the online gallery and My Events. Use the website booth for those.</p>
+          <p style="margin:0">GCash / Maya QR payments (vouchers work), online gallery &amp; My Events (use website for those).</p>
         </div>
       </div>
     </div>

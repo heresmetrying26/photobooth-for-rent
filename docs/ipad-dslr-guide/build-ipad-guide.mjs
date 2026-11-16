@@ -1,7 +1,7 @@
 // Builds the iPad + DSLR Photobooth Guide to PDF using headless Chrome/Edge.
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { copyFileSync, unlinkSync, existsSync } from 'node:fs';
+import { copyFileSync, unlinkSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
@@ -27,8 +27,7 @@ function findBrowser() {
 const browser = process.argv[2] || findBrowser();
 const htmlFile = path.join(dir, 'ipad-dslr-guide.html');
 const outPdf1 = path.join(dir, 'photobooth4u-ipad-dslr-guide.pdf');
-const outPdf2 = path.join(dir, '..', '..', 'public', 'photobooth4u-ipad-dslr-guide.pdf');
-const outPdf3 = path.join(dir, '..', '..', 'public', 'lifetime', 'photobooth4u-ipad-dslr-guide.pdf');
+const outPdf2 = path.join(dir, '..', '..', 'public', 'how-to-ipad-offline', 'photobooth4u-ipad-dslr-guide.pdf');
 const tmpOut = outPdf1 + '.tmp';
 
 console.log('Using browser:', browser);
@@ -44,12 +43,11 @@ execFileSync(browser, [
 ], { stdio: 'inherit' });
 
 copyFileSync(tmpOut, outPdf1);
+mkdirSync(path.dirname(outPdf2), { recursive: true });
 copyFileSync(tmpOut, outPdf2);
-copyFileSync(tmpOut, outPdf3);
 try { unlinkSync(tmpOut); } catch {}
 
 console.log('Successfully generated iPad + DSLR Guide PDF:');
 console.log('  1. ' + outPdf1);
 console.log('  2. ' + outPdf2);
-console.log('  3. ' + outPdf3);
 

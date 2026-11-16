@@ -397,7 +397,7 @@
       </div>
       <div class="flow-arrow">➔</div>
       <div class="flow-step">
-        <div class="flow-icon">🖨️</div>
+        <div class="flow-icon">&#128424;</div>
         <div class="flow-name">Dye-Sub Printer</div>
         <div class="flow-detail">DNP / HiTi / SELPHY</div>
       </div>
@@ -410,9 +410,9 @@
         <ul class="clean-list" style="font-size:10px;">
           <li><b>1. DSLR / Mirrorless Body:</b> Canon EOS (Rebel, 60D, 70D, 80D, 5D, R-series), Nikon (D3000, D5000, D7000, Z-series), or Sony Alpha (A6000, A7-series in PC Remote).</li>
           <li><b>2. USB OTG Cable or Adapter:</b> USB-C to Camera Mini-USB/Micro-USB or USB-C. Ensure the <i>Host/OTG</i> side plugs into the Android phone.</li>
-          <li><b>3. Android Phone (Transmitter):</b> Any phone running Android 7.0 or newer with USB OTG. Free standalone <b>Roving DSLR Bridge</b> app (zero license fee, no booth code needed).</li>
-          <li><b>4. Laptop Base Station:</b> Windows 10/11 or macOS running photobooth4u (v1.0.110+).</li>
-          <li><b>5. Venue Wi-Fi or Pocket Router:</b> 5GHz Wi-Fi router or the laptop's built-in Mobile Hotspot. <b>100% offline</b>: no internet connection required.</li>
+          <li><b>3. Android Phone (Transmitter):</b> Any phone running Android 7.0 or newer with USB OTG. Free standalone <b>Roving DSLR Bridge v1.1.1+</b> app (<code>roving-dslr-bridge-android.apk</code> — zero license fee, no booth code needed).</li>
+          <li><b>4. Base Station (Laptop or Tablet):</b> Windows 10/11 or macOS running <b>photobooth4u Desktop (v1.1.55+)</b>, or an Android tablet running the <b>photobooth4u Offline App (v1.1.70+)</b>.</li>
+          <li><b>5. Built-in Booth Wi-Fi or Router:</b> Turn on <b>“Make this laptop/tablet the booth Wi-Fi”</b> in <b>Setup &rarr; Share &amp; start</b>, or use a 5GHz router / OS Mobile Hotspot. <b>100% offline</b>: no internet needed.</li>
         </ul>
       </div>
 
@@ -503,9 +503,8 @@
         <h4 class="card-title"><span class="step-num">1</span> Install &amp; Launch Standalone Bridge</h4>
         <p style="margin:0 0 6px;">Install the dedicated <b>Roving DSLR Bridge</b> app on the photographer's Android phone:</p>
         <ul class="clean-list" style="font-size:10px;">
-          <li><b>Scan &amp; Install:</b> Scan the download QR code on the laptop Downloads page (<code>/downloads/#roving-bridge</code>) or download <code>roving-dslr-bridge-android.apk</code>.</li>
-          <li>Tap the downloaded APK on the phone and choose <b>Install</b>.</li>
-          <li>Open the app: tap <b>"📷 Roving DSLR Bridge"</b> on your home screen or app drawer.</li>
+          <li><b>Scan &amp; Install:</b> Scan the download QR on <code>/downloads/#roving-bridge</code> for <code>roving-dslr-bridge-android.apk</code> (v1.1.1+), or launch it straight from the <b>photobooth4u Android app</b> (App Drawer, Extras dock, Camera setup, or Photographer Desk).</li>
+          <li>Tap the downloaded APK on the phone and choose <b>Install</b>, then open <b>"📷 Roving DSLR Bridge"</b>.</li>
           <li>Opens directly to the bridge transmitter—<b>no rental code, no kiosk lock, no license fees!</b></li>
         </ul>
         <div class="callout green" style="margin:6px 0 0;font-size:9.5px;">
@@ -535,7 +534,7 @@
           <li>Turn on your camera body.</li>
           <li>If Android shows a popup asking <i>"Open Roving DSLR Bridge when this USB device is connected?"</i>, check <b>"Always allow"</b> and tap <b>OK</b>.</li>
           <li>The Camera Status Card immediately updates from <code>● WAITING</code> to <code>● READY</code> with camera model and battery percentage.</li>
-          <li>Tap <b>"📸 Test Shutter"</b> to verify camera firing and transmission.</li>
+          <li>Tap <b>"Test Shutter"</b> to verify camera firing and transmission.</li>
         </ul>
       </div>
 
@@ -576,19 +575,19 @@
 
     <!-- UI CHEAT SHEET DIAGRAM -->
     <div class="card blue" style="margin-top:12px;">
-      <h4 class="card-title" style="color:var(--blue);">📱 Android Bridge UI Indicator Quick Reference</h4>
-      <div class="grid-3" style="font-size:9.5px;margin-top:4px;">
+      <h4 class="card-title" style="color:var(--blue);">📱 Android Bridge UI &amp; Controls Quick Reference (v1.1.1)</h4>
+      <div class="grid-3" style="font-size:9.3px;margin-top:4px;">
         <div>
-          <span class="badge green">● READY</span><br>
-          DSLR is connected, recognized, and shutter polling is live. Ready to shoot.
+          <span class="badge green">● READY</span> / <span class="badge red">● DISCONNECTED</span><br>
+          Live USB shutter status + benchmark timer (<code>Last photo sent 480ms</code>).
         </div>
         <div>
-          <span class="badge red">● DISCONNECTED</span><br>
-          Camera is powered off, cable unplugged, or USB OTG permission needed.
+          <span class="badge purple">📷 Sent Photos Gallery</span><br>
+          Tap the card or button for a 3-column grid with <code>✓</code>/<code>✗</code> badges and fullscreen preview (timestamp &amp; MB).
         </div>
         <div>
-          <span class="badge blue">Last photo sent (480ms)</span><br>
-          Live round-trip benchmark showing millisecond upload time to laptop.
+          <span class="badge blue">💻 Queue · 📖 Guide · ✨ Updates</span><br>
+          Open base station queue (<code>&lt;url&gt;/photos</code>) in browser, view this PDF, or run <b>Check Online</b> for APK updates.
         </div>
       </div>
     </div>
@@ -619,7 +618,7 @@
     <div class="grid-2">
       <!-- PHOTOGRAPHER DESK OVERVIEW -->
       <div class="card white">
-        <h4 class="card-title">🖥️ Accessing the Photographer Desk</h4>
+        <h4 class="card-title">💻 Accessing the Photographer Desk</h4>
         <p style="font-size:10px;margin:0 0 6px;">The Photographer Desk is the command center at your base station laptop:</p>
         <ul class="clean-list" style="font-size:10px;">
           <li>In the desktop booth app, look for the floating camera button (<code>deskFab</code>) at the top or open the side menu and click <b>Photographer Desk</b>.</li>
@@ -630,7 +629,7 @@
 
       <!-- QUEUE VS AUTO-PRINT PHILOSOPHY -->
       <div class="card cream">
-        <h4 class="card-title">🛡️ Why Photos Are Queued (Not Auto-Printed)</h4>
+        <h4 class="card-title">✓ Why Photos Are Queued (Not Auto-Printed)</h4>
         <p style="font-size:10px;margin:0 0 6px;">Unlike fixed kiosk booths that auto-print immediately, roving crowd photography requires quality control:</p>
         <ul class="clean-list" style="font-size:10px;">
           <li><b>Zero Paper Waste:</b> If a guest blinked, turned away, or if you took test shots while walking, unwanted photos will never be printed.</li>
@@ -649,12 +648,12 @@
         <p style="font-size:9.5px;color:var(--dim);margin:4px 0 0;">New photos appear in chronological order in the Photographer Desk grid. Click any thumbnail to expand high-resolution preview.</p>
       </div>
       <div class="card">
-        <div style="font-size:18px;margin-bottom:4px;">🖼️</div>
+        <div style="font-size:18px;margin-bottom:4px;">📷</div>
         <b style="font-size:11px;">Step 2: Choose Solo or Strip</b>
         <p style="font-size:9.5px;color:var(--dim);margin:4px 0 0;">Toggle <b>"One photo per print (Solo layout)"</b>. Roving portraits fit beautifully as full 4x6 or 2x6 single shots even if the booth uses 3-photo strips.</p>
       </div>
       <div class="card">
-        <div style="font-size:18px;margin-bottom:4px;">🖨️</div>
+        <div style="font-size:18px;margin-bottom:4px;">&#128424;</div>
         <b style="font-size:11px;">Step 3: Print On Demand</b>
         <p style="font-size:9.5px;color:var(--dim);margin:4px 0 0;">Click <b>"Print"</b>. The app composites your custom event frame, overlay graphics, and branding, then sends it to the dye-sub spooler.</p>
       </div>
@@ -663,23 +662,21 @@
     <!-- PRINTER INTEGRATION & SIZING -->
     <div class="grid-2" style="margin-top:12px;">
       <div class="card green">
-        <h4 class="card-title" style="color:var(--green);">🖨️ Dye-Sub &amp; Inkjet Printer Support</h4>
-        <p style="font-size:9.5px;margin:0 0 6px;">photobooth4u prints silently to any Windows or macOS printer driver:</p>
-        <ul class="clean-list" style="font-size:9.5px;">
-          <li><b>DNP Dye-Sub:</b> DS-RX1HS, DS620A, DS40, QW410 with native 2x6 dual cut or full 4x6 / 6x8.</li>
-          <li><b>HiTi Commercial:</b> P525L, P510S, P720L with ultra-high-speed roll printing.</li>
-          <li><b>Canon SELPHY:</b> CP1300, CP1500 compact dye-sub printers via USB or Wi-Fi.</li>
-          <li><b>Epson / HP Inkjet:</b> L8050, PictureMate PM-520, or standard borderless 4R photo paper.</li>
+        <h4 class="card-title" style="color:var(--green);">&#128424; Dye-Sub, Instax &amp; Tablet Printing</h4>
+        <p style="font-size:9.3px;margin:0 0 5px;">Silent printing on Windows/macOS &amp; <b>Android Tablet Direct Printing</b>:</p>
+        <ul class="clean-list" style="font-size:9.3px;">
+          <li><b>DNP &amp; HiTi Dye-Sub:</b> DS-RX1HS, DS620A, DS40, QW410 (Windows/Mac + direct USB on Android) and HiTi P525L/P510S/P720L with 2&times;6 strips, <b>XL strips</b>, 4&times;6, or 6&times;8.</li>
+          <li><b>Canon SELPHY &amp; Epson:</b> CP1300/CP1500 &amp; Epson L8050/L805/L3210 borderless via Wi-Fi or USB.</li>
+          <li><b>Instax &amp; Thermal:</b> <b>Fujifilm Instax Link Wide</b> and 58/80 mm Bluetooth thermal receipt rolls.</li>
         </ul>
       </div>
 
       <div class="card blue">
-        <h4 class="card-title" style="color:var(--blue);">📲 Instant Local QR Sharing for Guests</h4>
-        <p style="font-size:9.5px;margin:0 0 6px;">Guests don't have to wait for prints to get their photos on their phones:</p>
-        <ul class="clean-list" style="font-size:9.5px;">
-          <li>Every roving photo uploaded to the desk is automatically served on the local gallery server (port <code>47777</code>).</li>
-          <li>Display the <b>QR Sharing Screen</b> on an iPad or secondary tablet at your booth table.</li>
-          <li>Guests scan the QR code to view and download their high-res roving photo instantly over the booth Wi-Fi with <b>zero data plan needed</b>.</li>
+        <h4 class="card-title" style="color:var(--blue);">📲 Instant Local QR Sharing &amp; Print Requests</h4>
+        <p style="font-size:9.3px;margin:0 0 5px;">Guests get photos on their phones with zero internet:</p>
+        <ul class="clean-list" style="font-size:9.3px;">
+          <li>Uploaded shots and solo prints appear in a dedicated <b>Solo Photos</b> tab on the local gallery (port <code>47777</code>) with badges and direct save buttons.</li>
+          <li>Display the <b>QR Sharing Screen</b> on an iPad or tablet at your table, or turn on <b>Let guests ask for a print from their phone</b> (queued in <b>Print requests</b>).</li>
         </ul>
       </div>
     </div>
@@ -725,12 +722,12 @@
       </div>
 
       <div class="card white">
-        <h4 class="card-title">📶 5GHz Wi-Fi Range Optimization</h4>
+        <h4 class="card-title">📶 Built-In Booth Wi-Fi &amp; 5GHz Range</h4>
         <ul class="clean-list" style="font-size:9.5px;">
-          <li><b>Always Use 5GHz Band:</b> Crowded hotel ballrooms and convention centers are flooded with 2.4GHz interference. 5GHz provides clear channels with sub-second speeds.</li>
-          <li><b>Dedicated Pocket Router:</b> Place a pocket router (GL.iNet GL-MT3000 or TP-Link AC750) elevated on a light stand at your booth base station for 40+ meter range.</li>
-          <li><b>Laptop Mobile Hotspot:</b> If you don't have an external router, turn on Windows 10/11 or macOS <i>Mobile Hotspot</i> on 5GHz. Connect the roving phone directly to the laptop.</li>
-          <li><b>100% Offline:</b> The router requires NO internet or SIM card. All photo streaming is local LAN.</li>
+          <li><b>1-Switch Built-In Booth Wi-Fi:</b> Turn on <b>“Make this laptop/tablet the booth Wi-Fi”</b> in <b>Setup &rarr; Share &amp; start</b> (Windows, Mac &amp; Android) to host your own offline network without any external router.</li>
+          <li><b>Dedicated 5GHz Router:</b> In crowded ballrooms, a pocket router (GL.iNet GL-MT3000 or TP-Link AC750) elevated on a light stand gives 40+ meter 5GHz range.</li>
+          <li><b>OS Mobile Hotspot:</b> Windows 10/11 or macOS 5GHz <i>Mobile Hotspot</i> also connects the roving phone directly.</li>
+          <li><b>100% Offline:</b> No internet or SIM card required. All photo streaming stays on local LAN.</li>
         </ul>
       </div>
     </div>

@@ -28,6 +28,7 @@ const browser = process.argv[2] || findBrowser();
 const htmlFile = path.join(dir, 'platform-comparison.html');
 const outPdf1 = path.join(dir, 'photobooth4u-full-platform-comparison.pdf');
 const outPdf2 = path.join(dir, '..', '..', 'public', 'photobooth4u-platform-comparison.pdf');
+const outPdf3 = path.join(dir, '..', '..', 'public', 'lifetime', 'photobooth4u-platform-comparison.pdf');
 const tmpOut = outPdf1 + '.tmp';
 
 console.log('Using browser:', browser);
@@ -44,9 +45,11 @@ execFileSync(browser, [
 
 copyFileSync(tmpOut, outPdf1);
 copyFileSync(tmpOut, outPdf2);
+copyFileSync(tmpOut, outPdf3);
 try { unlinkSync(tmpOut); } catch {}
 
 console.log('Successfully generated:');
 console.log('  1. ' + outPdf1);
 console.log('  2. ' + outPdf2);
+console.log('  3. ' + outPdf3);
 

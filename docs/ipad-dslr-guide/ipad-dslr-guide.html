@@ -293,8 +293,7 @@
       justify-content: center;
     }
     .step-content { flex: 1; }
-    .step-content b { display: block; font-size: 11.5px; margin-bottom: 1px; }
-    .install .step-content b { display: inline; font-size: inherit; margin: 0; }
+    .step-content b { display: inline; font-size: inherit; margin: 0; }
     .install .step-item { margin-bottom: 5px; }
 
     /* Callout */
@@ -348,17 +347,17 @@
         <h3 class="card-title" style="margin:0;">Step 1: Install the photobooth4u iPad app</h3>
         <span class="badge purple">iPadOS 15 or newer</span>
       </div>
-      <p style="margin:0 0 6px;font-size:11px;">After you download <b>photobooth4u-kiosk-ipad.ipa</b> from our Downloads page, it must be put onto the iPad from a computer (a Windows PC or a Mac). Do this once, before your event:</p>
+      <p style="margin:0 0 6px;font-size:11px;">After you download <b>photobooth4u-kiosk-ipad.ipa (v1.0.3)</b> from the offline iPad guide page, install it onto the iPad from a Windows PC or Mac. Do this once before your event:</p>
       <ol class="step-list">
-        <li class="step-item"><span class="step-num">1</span><div class="step-content">On the computer, install <b>Sideloadly</b> (free, from sideloadly.io).</div></li>
+        <li class="step-item"><span class="step-num">1</span><div class="step-content">On the computer, install <b>Sideloadly</b> (free, from sideloadly.io; on Windows also install Apple's non-Store iTunes if asked).</div></li>
         <li class="step-item"><span class="step-num">2</span><div class="step-content">Plug the iPad into the computer with a cable. If the iPad asks, tap <b>Trust</b>.</div></li>
         <li class="step-item"><span class="step-num">3</span><div class="step-content">Open Sideloadly, drag the <b>.ipa</b> file into it, type your Apple ID email, then click <b>Start</b>.</div></li>
         <li class="step-item"><span class="step-num">4</span><div class="step-content">On the iPad open <b>Settings → General → VPN &amp; Device Management</b>, tap your Apple ID, then tap <b>Trust</b>.</div></li>
         <li class="step-item"><span class="step-num">5</span><div class="step-content">If you see <b>Developer Mode</b> under <b>Settings → Privacy &amp; Security</b>, turn it <b>On</b> and let the iPad restart.</div></li>
-        <li class="step-item"><span class="step-num">6</span><div class="step-content">Open the <b>photobooth4u</b> app on the iPad and enter your code. Done!</div></li>
+        <li class="step-item"><span class="step-num">6</span><div class="step-content">Connect to Wi-Fi once, open <b>photobooth4u</b>, enter your <code>PB-XXXX-XXXX-XXXX</code> code and tap <b>Activate iPad</b>.</div></li>
       </ol>
       <div class="callout" style="margin:6px 0 0;">
-        <b>Good to know:</b> with a free Apple ID the app stops opening after 7 days, so re-install it (steps 2 and 3) the week of your event. A paid Apple Developer account lasts one year.
+        <b>Good to know (7-day refresh):</b> with a free Apple ID the app expires after 7 days. Before an event, re-run Sideloadly (~30s over USB or Wi-Fi) <b>without deleting the app</b> — all your frames, designs, and saved photos stay intact! (A paid Apple Developer cert lasts 1 year.)
       </div>
     </div>
 
@@ -434,9 +433,9 @@
         <h3 style="font-size:14px;margin:0 0 6px;">Canon EOS DSLRs &amp; Mirrorless</h3>
         <p style="font-size:10px;color:var(--dim);margin:0 0 8px;">EOS R, R5, R6, R8, R10, R50, RP, 5D IV, 6D II, 90D, 80D, 200D/250D, M50 II</p>
         <ul style="margin:0;padding-left:14px;font-size:10.5px;line-height:1.5;">
-          <li><b>Dial:</b> Set top dial to <b>Manual (M)</b> mode.</li>
-          <li><b>Exposure:</b> Shutter 1/125s, f/5.6 – f/8, ISO 200–400 (with strobe).</li>
-          <li><b>USB Mode:</b> Set to <b>PC Remote</b> or <b>Computer</b>.</li>
+          <li><b>Dial:</b> Set top dial to <b>M, Av, Tv, or P</b> (not Auto/Video).</li>
+          <li><b>Quality:</b> Set to <b>JPEG</b> (L/M/S or RAW+JPEG).</li>
+          <li><b>Live View &amp; USB:</b> <b>Live View shoot: Enable</b>; USB mode to <b>PC Remote / Computer</b>.</li>
           <li><b>Wi-Fi/Bluetooth:</b> Turn <b>OFF</b> in the camera menu (avoids port lockout).</li>
           <li><b>Auto Power Off:</b> Set to <b>Disable</b> so camera never sleeps.</li>
           <li><b>SD Card:</b> Keep a formatted SD card inside camera.</li>
@@ -464,19 +463,19 @@
         <h3 style="font-size:14px;margin:0 0 6px;">Sony Alpha Mirrorless</h3>
         <p style="font-size:10px;color:var(--dim);margin:0 0 8px;">A7 III, A7 IV, A7C, A7R, A6000, A6100, A6400, A6600, A6700, ZV-E10</p>
         <ul style="margin:0;padding-left:14px;font-size:10.5px;line-height:1.5;">
-          <li><b>Dial:</b> Set mode dial to <b>Manual (M)</b>.</li>
+          <li><b>Dial &amp; Format:</b> Mode dial to <b>M, A, or S</b>; File Format to <b>JPEG</b>.</li>
           <li><b>USB Connection:</b> MENU → Setup → <b>PC Remote</b> (Crucial!).</li>
-          <li><b>USB LUN Setting:</b> Set to <b>Multi</b>.</li>
-          <li><b>PC Remote Settings:</b> Save Destination → <b>PC + Camera</b> (keeps SD backup).</li>
-          <li><b>Smartphone Control:</b> Set to <b>OFF</b> (required to allow USB tethering).</li>
+          <li><b>Release w/o Card:</b> Set to <b>Enable</b>; USB LUN to <b>Multi</b>.</li>
+          <li><b>PC Remote Settings:</b> Still Img. Save Dest. → <b>PC Only</b> (or PC+Camera).</li>
+          <li><b>Smartphone Control:</b> Set to <b>OFF</b> (required for USB tethering).</li>
           <li><b>Power Save Start Time:</b> Set to <b>30 Min</b> or Off.</li>
         </ul>
       </div>
     </div>
 
     <div class="card green" style="margin-top:14px;">
-      <h4 class="card-title" style="color:var(--green);margin:0 0 4px;">Studio Lighting &amp; Strobe Flash Synchronization</h4>
-      <p style="margin:0;font-size:11px;">Because the iPad triggers the physical shutter of your DSLR via PTP, you get <b>true hot-shoe flash synchronization</b>. Mount a Godox, Neewer, or Flashpoint wireless radio trigger (e.g., Godox Xpro or X2T) onto your camera's hot-shoe. When the countdown finishes on the iPad screen, the camera shutter fires and triggers your studio softboxes or beauty dishes with zero shutter lag.</p>
+      <h4 class="card-title" style="color:var(--green);margin:0 0 4px;">Olympus &amp; Other PTP Cameras + Strobe Flash Sync (v1.0.3)</h4>
+      <p style="margin:0;font-size:11px;"><b>v1.0.3</b> also supports <b>Olympus &amp; other PTP USB cameras</b> (set USB mode to Tether/Control/PTP &amp; JPEG; cameras without USB PTP live view can use an HDMI capture card or iPad camera). Because the iPad triggers the real DSLR shutter, hot-shoe radio triggers (Godox Xpro/X2T) fire studio strobes with zero shutter lag.</p>
     </div>
 
     <div class="card white" style="margin-top:14px;">
@@ -601,7 +600,7 @@
         </div>
         <div>
           <b style="font-size:12px;">Step B: Select Camera</b>
-          <p style="font-size:10.5px;color:var(--dim);margin:4px 0 0;">In the booth top bar, tap the Camera icon. Your attached Canon, Nikon, or Sony DSLR will appear in the list. Tap it to start Live View.</p>
+          <p style="font-size:10.5px;color:var(--dim);margin:4px 0 0;">In the booth, go to <b>Setup → 4 Camera</b> and choose <b>DSLR / Mirrorless camera (USB)</b> (or tap the Camera icon in the top bar) to start Live View.</p>
         </div>
         <div>
           <b style="font-size:12px;">Step C: Test Capture</b>
@@ -616,8 +615,8 @@
       <div class="grid-2" style="margin:0;">
         <div style="background:var(--cream);padding:10px;border-radius:8px;">
           <b>1. In-App Event Storage</b>
-          <span style="display:block;font-size:10px;color:var(--dim);font-family:var(--mono);margin-top:2px;">Documents/Pictures/photobooth4u/&lt;Event&gt;/</span>
-          <span style="display:block;font-size:10px;margin-top:4px;">Full-resolution originals and finished formatted photo strips (2x6 or 4R).</span>
+          <span style="display:block;font-size:10px;color:var(--dim);font-family:var(--mono);margin-top:2px;">Files → On My iPad → photobooth4u</span>
+          <span style="display:block;font-size:10px;margin-top:4px;">Full-resolution originals and finished strips saved inside <code>Documents/Pictures/photobooth4u/&lt;Event&gt;/</code>.</span>
         </div>
         <div style="background:var(--cream);padding:10px;border-radius:8px;">
           <b>2. iPad Photo Library (Camera Roll)</b>
@@ -652,7 +651,7 @@
         <h4 class="card-title">How Local QR Downloads Work</h4>
         <p style="font-size:11px;margin:0 0 8px;">The iPad app runs an embedded read-only HTTP server on <b>port 47777</b> (<code>LocalShareServer.swift</code>):</p>
         <ul style="margin:0;padding-left:14px;font-size:11px;line-height:1.5;">
-          <li><b>Step 1 (Join Wi-Fi):</b> Guests connect their smartphones to the same local Wi-Fi or pocket router as the iPad.</li>
+          <li><b>Step 1 (Join Wi-Fi):</b> Connect the iPad to a pocket router or phone hotspot (no data needed). Type its Wi-Fi name &amp; password in <b>Setup → 6 Share</b> so guests get a <b>Join Wi-Fi QR</b>.</li>
           <li><b>Step 2 (Scan Result QR):</b> At the end of each session, the screen displays a QR code linking to:
             <code style="display:block;margin:4px 0;padding:4px;background:var(--cream);border-radius:4px;font-size:10px;">http://&lt;ipad-ip&gt;:47777/e/&lt;event&gt;/</code>
           </li>

@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>360 Video Booth &amp; Ready-Edit Guide · photobooth4u</title>
+  <!--
+    photobooth4u 360 Video Booth & Ready-Edit Setup Guide
+    Covers:
+    - 360 Arm Hardware, 60fps/120fps Recording & 3 Wireless/Inbox Capture Paths
+    - Ready-Made Edits ("Ready Edit"): Where to Find & Use the 30 Built-In Presets + Auto Mode
+    - Custom Canva PNG Frames, Drag-and-Drop Text, Music Beat-Drop Sync, Stingers & Guest Choice
+    - 2-Step Offline Wi-Fi + Download QR, Spin & Print, Sharing Station, Live Wall & Troubleshooting
+  -->
+  <style>
+    @font-face {
+      font-family: 'Fraunces';
+      src: url(../setup-guide/fonts/fraunces-latin-600-normal.woff2) format('woff2');
+      font-weight: 600;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Fraunces';
+      src: url(../setup-guide/fonts/fraunces-latin-500-italic.woff2) format('woff2');
+      font-weight: 500;
+      font-style: italic;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url(../setup-guide/fonts/manrope-latin-400-normal.woff2) format('woff2');
+      font-weight: 400;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url(../setup-guide/fonts/manrope-latin-500-normal.woff2) format('woff2');
+      font-weight: 500;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url(../setup-guide/fonts/manrope-latin-600-normal.woff2) format('woff2');
+      font-weight: 600;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url(../setup-guide/fonts/manrope-latin-700-normal.woff2) format('woff2');
+      font-weight: 700;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url(../setup-guide/fonts/manrope-latin-800-normal.woff2) format('woff2');
+      font-weight: 800;
+    }
+
+    :root {
+      --cream: #f6f2ea;
+      --ink: #1a171c;
+      --body: #423d44;
+      --dim: #6e6670;
+      --red: #c83924;
+      --red-soft: #fbeee9;
+      --line: #e2dad0;
+      --card: #ffffff;
+      --purple: #583ca3;
+      --purple-bg: #ede7f7;
+      --green: #1b7358;
+      --green-bg: #e6f4ef;
+      --amber: #b86c12;
+      --amber-bg: #fef5e7;
+      --blue: #1d6fa5;
+      --blue-bg: #eaf3fa;
+      --mono: 'SF Mono', Consolas, Menlo, monospace;
+    }
+
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #fff; }
+    body {
+      font-family: 'Manrope', -apple-system, system-ui, sans-serif;
+      color: var(--body);
+      font-size: 10.8px;
+      line-height: 1.46;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    b, strong { color: var(--ink); font-weight: 700; }
+    h1, h2, h3, h4 { color: var(--ink); font-family: 'Fraunces', Georgia, serif; letter-spacing: -.02em; }
+
+    .page {
+      width: 210mm;
+      height: 297mm;
+      position: relative;
+      overflow: hidden;
+      padding: 36px 44px 36px;
+      background: #fff;
+      page-break-after: always;
+      break-after: page;
+    }
+    .page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+
+    /* Top bar */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-mark {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5px;
+      width: 18px;
+      height: 18px;
+    }
+    .brand-mark i {
+      background: var(--ink);
+      border-radius: 2.5px;
+    }
+    .brand-mark i:nth-child(2) {
+      background: var(--red);
+    }
+    .brand-word {
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -.03em;
+      color: var(--ink);
+    }
+    .brand-word em {
+      display: inline-block;
+      margin-left: 3px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: var(--red);
+      color: #fff;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 800;
+      font-size: 8px;
+      font-style: normal;
+      transform: rotate(-5deg);
+    }
+    .top-tag {
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: .15em;
+      color: var(--dim);
+      text-transform: uppercase;
+    }
+
+    /* Footer */
+    .foot {
+      position: absolute;
+      left: 44px;
+      right: 44px;
+      bottom: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      color: var(--dim);
+      text-transform: uppercase;
+      border-top: 1px solid var(--line);
+      padding-top: 7px;
+    }
+
+    /* Headings */
+    .title-group { margin-bottom: 11px; }
+    .kicker {
+      font-size: 8.5px;
+      font-weight: 800;
+      letter-spacing: .16em;
+      color: var(--red);
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    h1.hero-title {
+      font-size: 23.5px;
+      line-height: 1.14;
+      margin: 0 0 5px;
+      font-weight: 600;
+    }
+    .hero-sub {
+      font-size: 11px;
+      color: var(--dim);
+      margin: 0;
+      line-height: 1.44;
+    }
+
+    /* Layout Grids */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 9px; }
+
+    /* Cards */
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 13px;
+      background: var(--card);
+    }
+    .card.cream { background: var(--cream); border-color: #dfd7cc; }
+    .card.green { background: var(--green-bg); border-color: #b9e0d2; }
+    .card.blue { background: var(--blue-bg); border-color: #bfe0f2; }
+    .card.purple { background: var(--purple-bg); border-color: #d8ccee; }
+    .card.amber { background: var(--amber-bg); border-color: #f7dfbe; }
+    .card.red { background: var(--red-soft); border-color: #f1cfc5; }
+
+    .card-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      margin: 0 0 5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Architecture / Flow diagram */
+    .flow-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--cream);
+      border: 1px solid #dfd7cc;
+      border-radius: 10px;
+      padding: 9px 12px;
+      margin: 10px 0 12px;
+    }
+    .flow-step { text-align: center; flex: 1; }
+    .flow-icon { font-size: 18px; margin-bottom: 2px; }
+    .flow-name { font-weight: 800; font-size: 10px; color: var(--ink); }
+    .flow-detail { font-size: 8.2px; color: var(--dim); }
+    .flow-arrow { color: var(--red); font-size: 13px; font-weight: 800; padding: 0 3px; }
+
+    /* Badges & Pills */
+    .badge {
+      display: inline-block;
+      padding: 1.5px 6px;
+      border-radius: 4px;
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .badge.red { background: var(--red-soft); color: var(--red); }
+    .badge.green { background: var(--green-bg); color: var(--green); }
+    .badge.blue { background: var(--blue-bg); color: var(--blue); }
+    .badge.purple { background: var(--purple-bg); color: var(--purple); }
+
+    /* Tables */
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.2px;
+      margin: 6px 0;
+    }
+    table.data-table th, table.data-table td {
+      padding: 5.5px 8px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    table.data-table th {
+      background: var(--cream);
+      color: var(--ink);
+      font-weight: 800;
+    }
+    table.data-table tr:nth-child(even) td { background: #faf8f5; }
+
+    code {
+      font-family: var(--mono);
+      font-size: 9px;
+      background: #f0ebe2;
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: var(--ink);
+    }
+
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 17px;
+      height: 17px;
+      background: var(--red);
+      color: #fff;
+      font-size: 9.5px;
+      font-weight: 800;
+      border-radius: 50%;
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+
+    ul.clean-list { margin: 3px 0; padding-left: 15px; }
+    ul.clean-list li { margin-bottom: 3.5px; }
+
+    .callout {
+      border-left: 3px solid var(--red);
+      background: var(--red-soft);
+      padding: 7px 11px;
+      border-radius: 0 6px 6px 0;
+      margin: 8px 0;
+      font-size: 9.6px;
+    }
+    .callout.green { border-color: var(--green); background: var(--green-bg); }
+    .callout.blue { border-color: var(--blue); background: var(--blue-bg); }
+    .callout.amber { border-color: var(--amber); background: var(--amber-bg); }
+
+    .nav-mock {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      background: #1a171c;
+      padding: 6px 8px;
+      border-radius: 7px;
+      margin: 6px 0 8px;
+    }
+    .nav-mock span {
+      font-size: 8.5px;
+      font-weight: 700;
+      color: #c9c2bb;
+      padding: 3px 7px;
+      border-radius: 5px;
+      background: rgba(255,255,255,.08);
+    }
+    .nav-mock span.active {
+      background: var(--red);
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================================================================= PAGE 1 -->
+  <section class="page">
+    <div class="top-bar">
+      <div class="brand">
+        <div class="brand-mark"><i></i><i></i><i></i><i></i></div>
+        <div class="brand-word">photobooth4u<em>360</em></div>
+      </div>
+      <div class="top-tag">Hardware, Capture &amp; Inbox Guide</div>
+    </div>
+
+    <div class="title-group">
+      <div class="kicker">360 Video Booth System Architecture</div>
+      <h1 class="hero-title">Run a 360 Video Booth with photobooth4u</h1>
+      <p class="hero-sub">Record the spin with the camera on your 360 arm, beam it wirelessly to the laptop 360 Studio for instant slow motion, ready-made designer edits, and music, then deliver to guests via 2-step QR, TV Live Wall, or Spin &amp; Print.</p>
+    </div>
+
+    <div class="flow-bar">
+      <div class="flow-step">
+        <div class="flow-icon">📱</div>
+        <div class="flow-name">360 Arm Camera</div>
+        <div class="flow-detail">iPhone / Android / Cam</div>
+      </div>
+      <div class="flow-arrow">➔</div>
+      <div class="flow-step">
+        <div class="flow-icon">📡</div>
+        <div class="flow-name">QR Send / Record 360</div>
+        <div class="flow-detail">Instant Wireless or Inbox</div>
+      </div>
+      <div class="flow-arrow">➔</div>
+      <div class="flow-step">
+        <div class="flow-icon">📶</div>
+        <div class="flow-name">Local 5GHz Wi-Fi</div>
+        <div class="flow-detail">100% Offline Ready</div>
+      </div>
+      <div class="flow-arrow">➔</div>
+      <div class="flow-step">
+        <div class="flow-icon">💻</div>
+        <div class="flow-name">Laptop 360 Studio</div>
+        <div class="flow-detail">Auto-Edit &amp; Presets</div>
+      </div>
+      <div class="flow-arrow">➔</div>
+      <div class="flow-step">
+        <div class="flow-icon">📲</div>
+        <div class="flow-name">Share + Print</div>
+        <div class="flow-detail">2-Step QR / Wall / Strip</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card cream">
+        <h4 class="card-title">📦 Required Hardware Checklist</h4>
+        <ul class="clean-list" style="font-size:9.8px;">
+          <li><b>1. 360 Platform &amp; Arm:</b> Any motorized or manual 360 spinner carrying an iPhone, Android phone, iPad, or camera. Start the arm with its own remote or switch.</li>
+          <li><b>2. Laptop Base Station:</b> Windows 10/11 or macOS running the <b>photobooth4u Desktop App</b>. <i>(All ready edits, slow-mo rendering, frames, and music run inside the laptop app; the website shares clips as recorded up to 28 MB.)</i></li>
+          <li><b>3. Built-in 5GHz Booth Wi-Fi:</b> Turn on <b>“Make this laptop the booth Wi-Fi”</b> in <b>Setup &rarr; Share &amp; start</b> (Windows &amp; Mac), or use a compact 5GHz booth router / OS Mobile Hotspot (no internet needed).</li>
+          <li><b>4. Optional Crowd Screens &amp; Printer:</b> Spare iPad/tablet for the <b>Sharing Station</b>, TV/projector for the <b>Live Wall</b>, dye-sub/thermal printer for <b>Spin &amp; Print</b>, and a Bluetooth selfie clicker.</li>
+        </ul>
+      </div>
+
+      <div class="card green">
+        <h4 class="card-title" style="color:var(--green);">🎥 Recording &amp; Frame Rate Settings</h4>
+        <ul class="clean-list" style="font-size:9.8px;">
+          <li><b>Best Quality &amp; FPS:</b> Set the recording phone/camera to <b>1080p at 60 fps</b> (smooth 0.5&times; slow-mo) or <b>120 fps</b> (0.25&times; super slow-mo). High-FPS clips render real slow-motion frames fast with no interpolation wait.</li>
+          <li><b>Hold Portrait (9:16):</b> Mount the phone upright for TikTok, Reels, and Stories. The studio can also crop to Square (<code>1:1</code>) or Landscape (<code>16:9</code>).</li>
+          <li><b>Lock Focus &amp; Exposure:</b> Tap and hold on the guest in the center of the platform before spinning so brightness does not flicker.</li>
+          <li><b>Clip Duration (8–15 s):</b> One full rotation is ideal. Shorter clips render in seconds and save guest download time.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="font-size:13px;margin:12px 0 5px;">3 Ways to Get 360 Clips Into the Laptop 360 Desk</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:26%;">Capture Method</th>
+          <th style="width:36%;">How to Set It Up</th>
+          <th style="width:38%;">Best For &amp; Pro Tip</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>1. Phone QR Send Page</b><br><span class="badge red">Recommended</span></td>
+          <td>Open <b>360 desk</b> on the laptop and scan the QR code with the arm's iPhone/Android (on booth Wi-Fi). Tap <b>Record now</b> or <b>Choose a video</b>.</td>
+          <td>Save the send page to the phone's Home Screen (<b>360 Send</b>) for 2-tap recording all event. Supports Guest Look Choice directly on the phone after upload.</td>
+        </tr>
+        <tr>
+          <td><b>2. Record 360 Dock Screen</b><br><span class="badge blue">Android &amp; Laptop App</span></td>
+          <td>Open <b>Extras &rarr; Record 360</b>. On an arm-mounted Android phone/tablet, tap <b>Scan QR</b> to pair with the 360 Desk in 1 second (address stays steady across restarts). Pick <b>6–15 s</b> and start trigger.</td>
+          <td>Supports <b>With the button</b>, <b>When the arm moves</b> (accelerometer Low/Med/High), <b>When someone steps in</b>, or a <b>Bluetooth clicker</b>, plus <b>Insta360 Ace Pro</b>, UVC webcams &amp; HDMI capture cards on laptop.</td>
+        </tr>
+        <tr>
+          <td><b>3. 360 Inbox Folder Watcher</b><br><span class="badge green">AirDrop / Cable / FTP</span></td>
+          <td>Save or drop MP4/MOV clips into <code>Pictures\photobooth4u\360 inbox</code> (or drag onto the desk / pick another folder via <b>Change folder</b>).</td>
+          <td><b>Smart Inbox Watcher</b> verifies file size stability before queueing so slow SD card transfers, AirDrop, or camera Wi-Fi FTP never cause cut-off renders.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout blue" style="margin-top:8px;">
+      <b>🔌 Always Check 🔌 Connect First:</b> At the top of the 360 Desk, click <b>Test</b> inside the <b>Connect</b> panel. It verifies the video editor, inbox folder &amp; free disk space, local Wi-Fi IP address, guest Wi-Fi QR, and last received clip in one click.
+    </div>
+
+    <div class="foot">
+      <span>photobooth4u · 360 Video Booth &amp; Ready-Edit Guide</span>
+      <span>Page 1 of 4 · Architecture, Hardware &amp; Capture</span>
+    </div>
+  </section>
+
+
+  <!-- ================================================================= PAGE 2 -->
+  <section class="page">
+    <div class="top-bar">
+      <div class="brand">
+        <div class="brand-mark"><i></i><i></i><i></i><i></i></div>
+        <div class="brand-word">photobooth4u<em>360</em></div>
+      </div>
+      <div class="top-tag">Ready-Made Edits &amp; Auto Mode</div>
+    </div>
+
+    <div class="title-group">
+      <div class="kicker">Quick Answer · Where to Find "Ready Edit"</div>
+      <h1 class="hero-title">Ready-Made Edits (✨ Presets) &amp; One-Switch Auto Mode</h1>
+      <p class="hero-sub">Yes — photobooth4u comes with <b>30 built-in Designer Presets</b> (complete ready-made looks with frame, animated effects, typography, speed, and color grade) plus <b>8 motion presets</b> ready out of the box.</p>
+    </div>
+
+    <div class="card red" style="padding:10px 14px;margin-bottom:10px;">
+      <h4 class="card-title" style="color:var(--red);margin-bottom:4px;">📍 Where to See &amp; Use the Ready Edits (Step-by-Step)</h4>
+      <div class="nav-mock">
+        <span>🎬 Videos &amp; Queue</span>
+        <span class="active">✨ Presets  &larr; READY EDITS HERE</span>
+        <span>🎨 Look &amp; Frame</span>
+        <span>✍️ Text &amp; Branding</span>
+        <span>🎵 Audio &amp; FX</span>
+        <span>Live Preview</span>
+      </div>
+      <div class="grid-4" style="font-size:9.3px;">
+        <div><span class="step-num">1</span><b>Open 360 Desk</b><br>In the laptop app's <b>Photo Session</b>, tap <b>Extras</b> (bottom dock) &rarr; <b>360 desk</b>.</div>
+        <div><span class="step-num">2</span><b>Click ✨ Presets</b><br>Tap <b>✨ Presets</b> in the top header bar and filter by event category.</div>
+        <div><span class="step-num">3</span><b>Preview Live</b><br>Watch the <b>Sample Demo</b> (or your selected clip) update live on the right panel.</div>
+        <div><span class="step-num">4</span><b>Switch ⚡ Auto Mode</b><br>Turn on <b>⚡ Auto mode</b> so every new video auto-edits &amp; generates its QR automatically.</div>
+      </div>
+    </div>
+
+    <h3 style="font-size:12.5px;margin:8px 0 4px;">Complete Catalog: 30 Built-In Ready-Edit Designer Presets (6 Category Tabs)</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:22%;">Category Tab</th>
+          <th style="width:78%;">Included Ready-Made Presets (Frame + Animated FX + Text Style + Motion + Grade)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Wedding &amp; Debut</b><br><span style="color:var(--dim);font-size:8.5px;">5 presets</span></td>
+          <td>🌸 <b>Wedding Floral &amp; Gold</b> · 🤍 <b>White Petals Romance</b> · 👑 <b>Debut Rose Gold</b> · 👑 <b>Quincea&ntilde;era Princess</b> · 💍 <b>Anniversary Gold</b></td>
+        </tr>
+        <tr>
+          <td><b>Birthday &amp; Family</b><br><span style="color:var(--dim);font-size:8.5px;">6 presets</span></td>
+          <td>🎂 <b>Birthday Confetti Pop</b> · 🎈 <b>Kids Party Balloons</b> · ✨ <b>Christening Soft Blue</b> · 💖 <b>Sweet 16 Sparkle</b> · 🍼 <b>Baby Shower Pastel</b> · 🎀 <b>Gender Reveal</b></td>
+        </tr>
+        <tr>
+          <td><b>Corporate &amp; School</b><br><span style="color:var(--dim);font-size:8.5px;">8 presets</span></td>
+          <td>✨ <b>VIP Gala Art Deco</b> · 🏅 <b>Classic Gold &amp; Ribbon Band</b> · 🎓 <b>Graduation Gold</b> · 💼 <b>Corporate Clean</b> · 🎬 <b>Clean Minimalist</b> · 🏆 <b>Team Spirit</b> · 🚀 <b>Product Launch</b> · 🥂 <b>Retirement Toast</b></td>
+        </tr>
+        <tr>
+          <td><b>Holidays &amp; Seasons</b><br><span style="color:var(--dim);font-size:8.5px;">6 presets</span></td>
+          <td>🎄 <b>Christmas Snow</b> · 🎆 <b>New Year Countdown</b> · 🎃 <b>Halloween Night</b> · ❤️ <b>Valentine's Romance</b> · ☀️ <b>Summer Beach</b> · 💐 <b>Mother's Day Blooms</b></td>
+        </tr>
+        <tr>
+          <td><b>Nightlife &amp; Party</b><br><span style="color:var(--dim);font-size:8.5px;">5 presets</span></td>
+          <td>⚡ <b>Neon Cyberpunk Club</b> · 🪩 <b>Retro Disco</b> · 🖤 <b>Hollywood Glam B&amp;W</b> · 💸 <b>Hype Money Rain</b> · 🌟 <b>Prom Night</b></td>
+        </tr>
+        <tr>
+          <td><b>⭐ My presets</b><br><span style="color:var(--dim);font-size:8.5px;">Unlimited custom</span></td>
+          <td>Edit any frame, font, effect, or speed, then click <b>💾 Save As Preset</b> to store your own reusable ready-edit template (or click <b>🎲 Surprise me</b> to try a random look).</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="grid-2" style="margin-top:8px;">
+      <div class="card blue">
+        <h4 class="card-title" style="color:var(--blue);">⚡ 8 Built-In Motion Speed Presets</h4>
+        <ul class="clean-list" style="font-size:9.3px;">
+          <li><b>Classic slow-mo:</b> Smooth 0.5&times; half speed with your frame &amp; music.</li>
+          <li><b>Speed ramp:</b> Fast entry, slow-mo hero center, fast exit.</li>
+          <li><b>Boomerang:</b> First 5 seconds played forward then backward (720p).</li>
+          <li><b>Original speed:</b> 1&times; normal speed with frame &amp; original sound.</li>
+          <li><b>Super slow-mo (0.25&times;):</b> Quarter speed (best with 60/120 fps video).</li>
+          <li><b>Fast, then slow:</b> First half at 2&times;, second half at 0.5&times;.</li>
+          <li><b>Fast, slow, fast:</b> Three beats at 2&times;, 0.5&times;, and 2&times;.</li>
+          <li><b>Slow-mo roller:</b> 1&times;, 0.25&times;, 2&times;, 0.5&times; then reversed (use clips &le;8 s).</li>
+        </ul>
+      </div>
+
+      <div class="card purple">
+        <h4 class="card-title" style="color:var(--purple);">🎬 Color Grades &amp; ⚡ Auto Mode Controls</h4>
+        <p style="margin:0 0 4px;font-size:9.3px;"><b>6 Cinematic 3D LUT Color Grades:</b></p>
+        <p style="margin:0 0 6px;font-size:9px;color:var(--dim);">Natural · Glamour B&amp;W (Kardashian style) · Blockbuster Teal &amp; Orange · Golden Hour Warm Glow · Vibrant Pop · Vintage Film</p>
+        <p style="margin:0 0 4px;font-size:9.3px;"><b>Inside ⚡ Auto Mode (Top of ✨ Presets):</b></p>
+        <ul class="clean-list" style="font-size:9.2px;">
+          <li><b>Look:</b> <i>Same look</i>, <i>Different each time</i>, or <i>Guest chooses</i>.</li>
+          <li><b>Text on video:</b> <i>None</i>, <i>My text</i>, or <i>Guest's name</i> only.</li>
+          <li><b>Extras:</b> Tick <b>Also make a GIF for each shared video</b>.</li>
+          <li><b>Manual 1-Tap:</b> Use <b>⚡ Auto-edit this video</b>, <b>⚡ Auto-edit all videos</b>, or tick <b>One-tap</b> so clicking any tile renders immediately.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>photobooth4u · 360 Video Booth &amp; Ready-Edit Guide</span>
+      <span>Page 2 of 4 · Ready-Made Edits &amp; Presets</span>
+    </div>
+  </section>
+
+
+  <!-- ================================================================= PAGE 3 -->
+  <section class="page">
+    <div class="top-bar">
+      <div class="brand">
+        <div class="brand-mark"><i></i><i></i><i></i><i></i></div>
+        <div class="brand-word">photobooth4u<em>360</em></div>
+      </div>
+      <div class="top-tag">Studio Customization &amp; Guest Choice</div>
+    </div>
+
+    <div class="title-group">
+      <div class="kicker">Personalize Any Ready-Made Look</div>
+      <h1 class="hero-title">Custom Canva Frames, Drag Text, Music &amp; Guest Choice</h1>
+      <p class="hero-sub">Tweak any preset without leaving the Presets tab, upload custom transparent PNG overlays from Canva, synchronize slow-mo ramps to music beat drops, or let guests choose their own look.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card cream">
+        <h4 class="card-title">✨ Quick Customise (Right Under ✨ Presets)</h4>
+        <ul class="clean-list" style="font-size:9.5px;">
+          <li><b>Accent colour:</b> Tap any of the 8 color swatches (Gold, White, Blush, Hot Pink, Cyan, Lime, Orange) or pick any custom hex via <b>Own</b>.</li>
+          <li><b>Motion chips:</b> Switch speed style in one click (🐢 Slow-mo, 🧊 Super slow, ⚡ Speed ramp, 🎢 Fast-slow-fast, 🔁 Boomerang, ▶ Original).</li>
+          <li><b>Text quick-adjust:</b> Snap text to <b>⬆ Top</b>, <b>↕ Middle</b>, or <b>⬇ Bottom</b>, and resize with <b>A&minus;</b> / <b>A+</b>.</li>
+          <li><b>Effect intensity:</b> Toggle <b>Off</b>, <b>Subtle</b>, <b>Normal</b>, <b>Bold</b>, or click <b>🎲 Shuffle effect</b> to try another particle animation.</li>
+          <li><b>Keep your own speed:</b> Untick <i>"Presets also set the speed and colour grade"</i> to browse frames/effects without changing your motion settings.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4 class="card-title">🎨 Look &amp; Frame Tab (Custom PNG &amp; Live Physics)</h4>
+        <ul class="clean-list" style="font-size:9.5px;">
+          <li><b>Designer frames:</b> Pick <i>Wedding Floral &amp; Gold</i>, <i>Gilded Art Deco / Gala</i>, <i>Neon Club / Cyberpunk</i>, <i>Classic Frame &amp; Label Band</i> (adjustable border color, band color &amp; opacity), or <i>None</i>.</li>
+          <li><b>Upload Custom Frame PNG:</b> Export a transparent PNG/WebP overlay in Canva (<code>1080&times;1920</code> for 9:16 portrait, <code>1080&times;1080</code> square, or <code>1920&times;1080</code> landscape) and click <b>Upload Custom PNG</b>.</li>
+          <li><b>Effect Movement &amp; Physics:</b> Choose Trajectory (<i>🌀 Vortex Orbit</i>, <i>⬇️ Falling Cascade</i>, <i>⬆️ Rising Float</i>, <i>💥 Radial Burst</i>, <i>🎵 Beat Pulse</i>, <i>💨 Wind Drift</i>), Location, Speed, Opacity, Size, and Wobble.</li>
+          <li><b>Format &amp; Quality:</b> Portrait <code>9:16</code>, Square <code>1:1</code>, or Landscape <code>16:9</code>; export at <code>1080p</code>, <code>720p</code>, or <code>540p Light</code>.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top:10px;">
+      <div class="card">
+        <h4 class="card-title">✍️ Text &amp; Event Branding (Drag-to-Position)</h4>
+        <ul class="clean-list" style="font-size:9.5px;">
+          <li><b>2 Independent Lines:</b> Line 1 (Heading / Couple Names) and Line 2 (Subtitle / Date / Hashtag), with emoji support.</li>
+          <li><b>8 Built-In Fonts:</b> Alex Brush, Dancing Script, Cinzel, Playfair Display, Montserrat, Bebas Neue, Oswald, and Courier Typewriter.</li>
+          <li><b>WYSIWYG Canvas Control:</b> Drag text anywhere directly on the <b>Live 360 Studio Preview</b> and pull the corner handle (<code>⇲</code>) to resize, or choose presets (Top, Upper/Lower Third, Center, Bottom) and <b>Always on</b> vs. <b>Fade in / out</b>.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4 class="card-title">🎵 Music, Beat-Drop Sync &amp; Video Stingers</h4>
+        <ul class="clean-list" style="font-size:9.5px;">
+          <li><b>Sound Track:</b> Select <b>Music</b>, <b>Original video sound</b>, or <b>Mute</b>. Click <b>Choose music track</b> for a default song, or <b>＋ Add tracks</b> to assign a dedicated song to each preset look.</li>
+          <li><b>Beat-Drop Sync:</b> Enter a <b>Beat drop (s)</b> timestamp (or leave <code>Auto</code>) so the speed ramp, <b>Dynamic zoom</b> punch-in, and optical <b>Beat flash</b> hit on the drop.</li>
+          <li><b>Intro / Outro Stingers:</b> Click <b>＋ Add intro/outro clips</b> to load short sponsor or logo MP4 clips, then set <b>Opens with</b> / <b>Ends with</b> inside <b>✨ Presets</b>.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card blue" style="margin-top:10px;">
+      <h4 class="card-title" style="color:var(--blue);">🙋 Guest Choice &amp; Rotating Looks (Automatic Variety)</h4>
+      <div class="grid-2" style="font-size:9.4px;gap:12px;">
+        <div>
+          <b>Give Each Guest a Different Look:</b> Open <i>🙋 Guest choice &amp; rotating looks</i> in <b>✨ Presets</b> and tick <b>Give each new video a different look</b>. Choose <i>Shuffled, no repeats</i> or <i>In list order</i> and toggle which preset chips are included.
+        </div>
+        <div>
+          <b>Let Guests Pick on Screen or Phone:</b> Tick <b>Ask the guest to pick a look when their video arrives</b> (10 s / 20 s / 30 s / No limit). Guests see live-rendered tiles on the booth screen—or right on the phone <b>360 Send</b> page, where they can also type their name onto the video!
+        </div>
+      </div>
+    </div>
+
+    <div class="callout amber" style="margin-top:9px;">
+      <b>⚡ Fast Rendering Tip:</b> When your camera records at <b>60 fps</b> or <b>120 fps</b>, leave <b>Smoother slow motion</b> unticked—slow-mo renders directly from real frames in seconds. Tick <b>Faster video export</b> (when shown) to use GPU hardware encoding, and use <b>540p Light</b> on crowded booth Wi-Fi so guests download videos up to 6&times; faster.
+    </div>
+
+    <div class="foot">
+      <span>photobooth4u · 360 Video Booth &amp; Ready-Edit Guide</span>
+      <span>Page 3 of 4 · Customization, Audio &amp; Guest Choice</span>
+    </div>
+  </section>
+
+
+  <!-- ================================================================= PAGE 4 -->
+  <section class="page">
+    <div class="top-bar">
+      <div class="brand">
+        <div class="brand-mark"><i></i><i></i><i></i><i></i></div>
+        <div class="brand-word">photobooth4u<em>360</em></div>
+      </div>
+      <div class="top-tag">Delivery, Secondary Screens &amp; Field Help</div>
+    </div>
+
+    <div class="title-group">
+      <div class="kicker">Event Operations &amp; Field Reference</div>
+      <h1 class="hero-title">2-Step QR Sharing, Spin &amp; Print, Live Wall &amp; Troubleshooting</h1>
+      <p class="hero-sub">Share finished 360 videos with zero venue internet, print photo strips &amp; keychains with embedded 360 video QR codes, run a separate Sharing Station &amp; TV Live Wall, and fix common issues fast.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card green">
+        <h4 class="card-title" style="color:var(--green);">📲 2-Step Offline QR &amp; Online Sharing</h4>
+        <ul class="clean-list" style="font-size:9.4px;">
+          <li><b>2-Step Booth Wi-Fi QR:</b> Enter your booth Wi-Fi name &amp; password once in <b>Setup &rarr; 6 Share</b>. <b>Share + QR</b> shows <b>Step 1: Network</b> (auto-joins Wi-Fi with no typing) and <b>Step 2: Download</b> (opens the video immediately).</li>
+          <li><b>Dual Online &amp; Offline:</b> With internet, guests use their phone's native Share sheet (TikTok, IG, WhatsApp, AirDrop). Offline, guests tap <b>Save video</b> (iPhone Safari: tap the download arrow / Share &rarr; <b>Save Video</b>).</li>
+          <li><b>One-Tap GIF &amp; Square:</b> Click <b>GIF</b> (~5 s loop) or <b>Square</b> beside Share + QR to attach social-ready versions to the guest's gallery.</li>
+        </ul>
+      </div>
+
+      <div class="card purple">
+        <h4 class="card-title" style="color:var(--purple);">&#128424; Spin &amp; Print (Strips &amp; Keychains from 360)</h4>
+        <ul class="clean-list" style="font-size:9.4px;">
+          <li><b>Instant Physical Keepsakes:</b> Click <b>Spin &amp; Print</b> on the 360 Desk to extract frames from any 360 spin and print branded 2&times;6 strips, 4R prints, or <b>2.5&times;7.5&Prime; keychains</b>.</li>
+          <li><b>Print Mode:</b> Choose <b>Multi-angle sequence</b> (fills 3-photo strips with different spin angles) or <b>Solo</b> (1 hero frame).</li>
+          <li><b>Video QR on the Print:</b> Each printed strip includes a scannable QR code linking right back to the guest's 360 video! Tick <b>and auto-print strip / keychain</b> in <b>Audio &amp; FX</b> for automatic printing.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top:9px;">
+      <div class="card blue">
+        <h4 class="card-title" style="color:var(--blue);">📱 Sharing Station (Separate iPad / Tablet)</h4>
+        <p style="margin:0;font-size:9.3px;">Connect an iPad or tablet to the booth Wi-Fi and open <code>http://&lt;laptop-ip&gt;:47777/station</code>. Guests step away from the 360 arm, browse finished spins (with the preset name badge shown), tap their clip, and scan their personal QR code. Resets automatically after 35 s.</p>
+      </div>
+
+      <div class="card cream">
+        <h4 class="card-title">📺 Live Wall &amp; Crowd Sync (TV / Projector)</h4>
+        <p style="margin:0;font-size:9.3px;">Connect a TV/projector browser to the booth Wi-Fi and open <code>http://&lt;laptop-ip&gt;:47777/wall</code>. Displays live countdown cues (<i>"3... 2... 1... JUMP! 🎬"</i>) during recording, then pops up a celebration replay banner (<i>"✨ New 360 Spin Ready!"</i>) with an on-screen QR code as soon as each render finishes.</p>
+      </div>
+    </div>
+
+    <h3 style="font-size:12.5px;margin:10px 0 4px;">Field Troubleshooting Quick Matrix</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:27%;">Symptom</th>
+          <th style="width:28%;">Cause</th>
+          <th style="width:45%;">Quick Fix</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Can't see Presets / No Edit controls</b></td>
+          <td>Using the website booth or an older build without video engine.</td>
+          <td>Open the <b>photobooth4u Laptop App</b> &rarr; <b>Extras &rarr; 360 desk &rarr; ✨ Presets</b> (reinstall latest app from <code>/downloads/</code> if needed).</td>
+        </tr>
+        <tr>
+          <td><b>Phone / Station / Wall can't reach laptop</b></td>
+          <td>Different Wi-Fi networks or macOS/Windows firewall blocking port 47777.</td>
+          <td>Turn on <b>Make this laptop the booth Wi-Fi</b> in <b>Setup &rarr; Share &amp; start</b> (or join the same booth Wi-Fi); tap <b>Scan QR</b> in <b>Record 360</b> and run <b>🔌 Connect &rarr; Test</b>. Allow firewall access on Mac/Win.</td>
+        </tr>
+        <tr>
+          <td><b>Slow-mo is choppy or slow to render</b></td>
+          <td>Phone recorded at 30 fps or <i>Smoother slow motion</i> is on for 60 fps clips.</td>
+          <td>Set arm camera to <b>1080p @ 60 fps</b>, untick <b>Smoother slow motion</b>, keep clips 8–12 s, and use <b>720p</b> or <b>540p Light</b>.</td>
+        </tr>
+        <tr>
+          <td><b>iPhone clip shows black preview in Desk</b></td>
+          <td>HEVC (<code>.mov</code>) codec preview on some laptops.</td>
+          <td>Wait 2–3 seconds—the desk auto-creates a lightweight preview copy while still rendering the final MP4 from the full original.</td>
+        </tr>
+        <tr>
+          <td><b>Guest phone drops booth Wi-Fi</b></td>
+          <td>Phone switched back to mobile data because booth Wi-Fi has no internet.</td>
+          <td>Tell Android guests to tap <b>Stay connected</b> on the "No internet" prompt, then scan the <b>Step 2</b> QR again.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="card" style="border:1.5px solid var(--ink);padding:8px 12px;margin-top:8px;">
+      <div class="grid-2" style="margin:0;gap:10px;">
+        <div>
+          <b style="font-size:10px;color:var(--red);">360 Pre-Flight Checklist (Laptop &amp; Ready Edits):</b>
+          <ul class="clean-list" style="font-size:9px;margin-top:2px;">
+            <li>[ ] 5GHz booth router or Laptop Hotspot on &amp; Wi-Fi QR configured</li>
+            <li>[ ] <b>360 desk &rarr; 🔌 Connect &rarr; Test</b> shows all green checks</li>
+            <li>[ ] <b>✨ Presets</b> selected + Event text/music + <b>⚡ Auto mode</b> ON</li>
+          </ul>
+        </div>
+        <div>
+          <b style="font-size:10px;color:var(--red);">360 Pre-Flight Checklist (Arm, Screens &amp; Remote):</b>
+          <ul class="clean-list" style="font-size:9px;margin-top:2px;">
+            <li>[ ] Arm phone at <b>1080p 60fps</b>, AE/AF locked, <b>360 Send</b> saved to Home Screen</li>
+            <li>[ ] One test spin sent, auto-edited, and scanned with a guest phone</li>
+            <li>[ ] Optional <code>/station</code> iPad, <code>/wall</code> TV, &amp; Bluetooth clicker verified</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>photobooth4u · 360 Video Booth &amp; Ready-Edit Guide</span>
+      <span>Page 4 of 4 · Delivery, Screens &amp; Troubleshooting</span>
+    </div>
+  </section>
+
+</body>
+</html>

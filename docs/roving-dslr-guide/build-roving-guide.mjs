@@ -30,6 +30,7 @@ const outPdf1 = path.join(dir, 'photobooth4u-roving-dslr-guide.pdf');
 const outPdf2 = path.join(dir, '..', '..', 'public', 'photobooth4u-roving-dslr-guide.pdf');
 const outPdf3 = path.join(dir, '..', '..', 'public', 'downloads', 'photobooth4u-roving-dslr-guide.pdf');
 const outPdf4 = path.join(dir, '..', '..', 'public', 'lifetime', 'photobooth4u-roving-dslr-guide.pdf');
+const outPdf5 = path.join(dir, '..', '..', 'desktop', 'build', 'public', 'photobooth4u-roving-dslr-guide.pdf');
 const tmpOut = outPdf1 + '.tmp';
 
 console.log('Using browser:', browser);
@@ -53,6 +54,10 @@ copyFileSync(tmpOut, outPdf3);
 mkdirSync(path.dirname(outPdf4), { recursive: true });
 copyFileSync(tmpOut, outPdf4);
 
+if (existsSync(path.dirname(outPdf5))) {
+  copyFileSync(tmpOut, outPdf5);
+}
+
 try { unlinkSync(tmpOut); } catch {}
 
 console.log('Successfully generated Roving DSLR Guide PDF:');
@@ -60,3 +65,6 @@ console.log('  1. ' + outPdf1);
 console.log('  2. ' + outPdf2);
 console.log('  3. ' + outPdf3);
 console.log('  4. ' + outPdf4);
+if (existsSync(outPdf5)) {
+  console.log('  5. ' + outPdf5);
+}

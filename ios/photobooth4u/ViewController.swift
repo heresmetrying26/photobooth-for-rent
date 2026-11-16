@@ -2,6 +2,7 @@ import UIKit
 import WebKit
 import AVFoundation
 import CryptoKit
+import Network
 
 /**
  * photobooth4u — iOS / iPadOS Main View Controller
@@ -10,7 +11,7 @@ import CryptoKit
  * served from http://localhost:17321/booth (a WebKit Secure Context so built-in
  * camera, UVC capture cards, and same-origin USB DSLR calls all work cleanly).
  */
-class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
+class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, UITextFieldDelegate {
 
     private var webView: WKWebView!
     private var backToBoothBtn: UIButton?
@@ -23,8 +24,14 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     private var activePayload: [String: Any]?
     private var checkinTimer: Timer?
     private var updateBusy = false
+    private var loadedViaOta = false
+    private var airPrintBusy = false
+    private var airPrintQueue: [(jobName: String, ptW: Double, ptH: Double, pdfData: Data)] = []
     private let otaHashKey = "pb4u_ota_hash"
     private let otaBundledHashKey = "pb4u_ota_bundled_hash"
+    private let airprintUrlKey = "pb4u_airprint_url"
+    private let airprintNameKey = "pb4u_airprint_name"
+    private let tcpPrintersKey = "pb4u_tcp_printers"
 
     override var prefersStatusBarHidden: Bool { return true }
     override var prefersHomeIndicatorAutoHidden: Bool { return true }
@@ -92,6 +99,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         userContent.add(self, name: "pbPrintWebView")
         userContent.add(self, name: "pbUpdateCheck")
         userContent.add(self, name: "pbUpdateStart")
+        userContent.add(self, name: "pbPickAirPrint")
+        userContent.add(self, name: "pbClearAirPrint")
+        userContent.add(self, name: "pbPrintRawTcp")
 
         let bridgeJs = """
         (function(){
@@ -158,6 +168,51 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
               });
               var res = prompt('__PBPrint_sync__', payload);
               return res || '{"ok":false,"error":"Print failed"}';
+            },
+            pickAirPrint: function() {
+              try { window.webkit.messageHandlers.pbPickAirPrint.postMessage({}); } catch (e) {}
+            },
+            clearAirPrint: function() {
+              try { window.webkit.messageHandlers.pbClearAirPrint.postMessage({}); } catch (e) {}
+            },
+            savedAirPrint: function() {
+              var res = prompt('__PBPrint_saved_sync__', '');
+              return res || '{}';
+            }
+          };
+
+          window.__PBNet = {
+            list: function() {
+              var res = prompt('__PBNet_list_sync__', '');
+              return res || '{"printers":[],"scanning":false}';
+            },
+            scan: function() {},
+            addByIp: function(ip) {
+              var res = prompt('__PBNet_addByIp_sync__', String(ip || ''));
+              return res || 'Invalid IP';
+            },
+            forgetIp: function(ip) {
+              try { prompt('__PBNet_forget_sync__', String(ip || '')); } catch (e) {}
+            },
+            printRaw: function(jobId, ip, b64) {
+              try {
+                window.webkit.messageHandlers.pbPrintRawTcp.postMessage({
+                  job: String(jobId || ''),
+                  ip: String(ip || ''),
+                  b64: String(b64 || ''),
+                  paced: false
+                });
+              } catch (e) {}
+            },
+            printRawPaced: function(jobId, ip, b64) {
+              try {
+                window.webkit.messageHandlers.pbPrintRawTcp.postMessage({
+                  job: String(jobId || ''),
+                  ip: String(ip || ''),
+                  b64: String(b64 || ''),
+                  paced: true
+                });
+              } catch (e) {}
             }
           };
 
@@ -188,6 +243,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         userContent.addUserScript(script)
         config.userContentController = userContent
         config.allowsInlineMediaPlayback = true
+        config.allowsPictureInPictureMediaPlayback = false
+        config.allowsAirPlayForMediaPlayback = false
         config.mediaTypesRequiringUserActionForPlayback = []
 
         webView = WKWebView(frame: view.bounds, configuration: config)
@@ -331,7 +388,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         return (raw, sha256Prefix16(data))
     }
 
-    private func activeBoothSource() -> (raw: String, hash: String, bundleHash: String)? {
+    private func activeBoothSource() -> (raw: String, hash: String, bundleHash: String, isOta: Bool)? {
         guard let bundled = readBundleBooth() else { return nil }
         let defaults = UserDefaults.standard
         let savedBundledHash = defaults.string(forKey: otaBundledHashKey) ?? ""
@@ -340,17 +397,19 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
            let otaRaw = String(data: otaData, encoding: .utf8),
            otaRaw.contains("</body>"),
            otaRaw.contains("window.__PB") {
-            return (otaRaw, sha256Prefix16(otaData), bundled.hash)
+            return (otaRaw, sha256Prefix16(otaData), bundled.hash, true)
         }
-        // New native IPA bundle installed or invalid OTA file: clean up stale OTA cache
+        clearOtaCache()
+        return (bundled.raw, bundled.hash, bundled.hash, false)
+    }
+
+    private func clearOtaCache() {
+        let defaults = UserDefaults.standard
         if FileManager.default.fileExists(atPath: otaFileUrl.path) {
             try? FileManager.default.removeItem(at: otaFileUrl)
         }
-        if !savedBundledHash.isEmpty {
-            defaults.removeObject(forKey: otaHashKey)
-            defaults.removeObject(forKey: otaBundledHashKey)
-        }
-        return (bundled.raw, bundled.hash, bundled.hash)
+        defaults.removeObject(forKey: otaHashKey)
+        defaults.removeObject(forKey: otaBundledHashKey)
     }
 
     private func loadBooth() {
@@ -362,6 +421,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             showActivationScreen(st: errSt)
             return
         }
+        loadedViaOta = src.isOta
+
+        IccCameraHelper.shared.ensureListening()
+        LocalShareServer.shared.ensureListening()
 
         let pbConfig = buildPbConfigScript()
         let injected: String
@@ -538,6 +601,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         let container = UIView(frame: view.bounds)
         container.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         container.backgroundColor = UIColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0)
+        container.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(dismissGateKeyboard)))
 
         let title = UILabel()
         title.text = "photobooth4u"
@@ -564,6 +628,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         tf.backgroundColor = .white
         tf.autocapitalizationType = .allCharacters
         tf.autocorrectionType = .no
+        tf.returnKeyType = .go
+        tf.delegate = self
         tf.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(tf)
         self.codeField = tf
@@ -613,6 +679,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             mid.topAnchor.constraint(equalTo: btn.bottomAnchor, constant: 20),
             mid.centerXAnchor.constraint(equalTo: container.centerXAnchor)
         ])
+    }
+
+    @objc private func dismissGateKeyboard() {
+        view.endEditing(true)
+    }
+
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        didTapActivate()
+        return true
     }
 
     @objc private func didTapActivate() {
@@ -703,23 +778,264 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         let pdfData = renderer.pdfData { ctx in
             for img in images {
                 ctx.beginPage()
-                img.draw(in: pageBounds)
+                let iw = max(1.0, Double(img.size.width))
+                let ih = max(1.0, Double(img.size.height))
+                let imgRatio = iw / ih
+                let pageRatio = ptW / ptH
+                if abs(imgRatio - pageRatio) < 0.04 {
+                    img.draw(in: pageBounds)
+                } else {
+                    let scale = min(ptW / iw, ptH / ih)
+                    let dw = iw * scale, dh = ih * scale
+                    let rect = CGRect(x: (ptW - dw) / 2.0, y: (ptH - dh) / 2.0, width: dw, height: dh)
+                    img.draw(in: rect)
+                }
             }
         }
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            let controller = UIPrintInteractionController.shared
-            let info = UIPrintInfo(dictionary: nil)
-            info.jobName = jobName
-            info.outputType = .photo
-            info.orientation = (ptW > ptH) ? .landscape : .portrait
-            controller.printInfo = info
-            controller.printingItem = pdfData
-            let anchor = CGRect(x: self.view.bounds.midX, y: self.view.bounds.maxY - 80, width: 1, height: 1)
-            controller.present(from: anchor, in: self.view, animated: true, completionHandler: nil)
+            self.airPrintQueue.append((jobName: jobName, ptW: ptW, ptH: ptH, pdfData: pdfData))
+            self.drainAirPrintQueue()
         }
         return "{\"ok\":true}"
+    }
+
+    private func drainAirPrintQueue() {
+        guard !airPrintBusy, !airPrintQueue.isEmpty else { return }
+        airPrintBusy = true
+        let next = airPrintQueue.removeFirst()
+
+        let controller = UIPrintInteractionController.shared
+        let info = UIPrintInfo(dictionary: nil)
+        info.jobName = next.jobName
+        info.outputType = .photo
+        info.orientation = (next.ptW > next.ptH) ? .landscape : .portrait
+        controller.printInfo = info
+        controller.printingItem = next.pdfData
+
+        let finishJob: () -> Void = { [weak self] in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.airPrintBusy = false
+                self.drainAirPrintQueue()
+            }
+        }
+
+        if let savedUrlStr = UserDefaults.standard.string(forKey: airprintUrlKey),
+           !savedUrlStr.isEmpty,
+           let savedUrl = URL(string: savedUrlStr) {
+            let targetPrinter = UIPrinter(url: savedUrl)
+            targetPrinter.contactPrinter { [weak self] available in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    if available {
+                        controller.print(to: targetPrinter) { [weak self] _, completed, err in
+                            if !completed && err != nil {
+                                DispatchQueue.main.async {
+                                    self?.presentPrintController(controller, completion: finishJob)
+                                }
+                            } else {
+                                finishJob()
+                            }
+                        }
+                    } else {
+                        self.presentPrintController(controller, completion: finishJob)
+                    }
+                }
+            }
+        } else {
+            presentPrintController(controller, completion: finishJob)
+        }
+    }
+
+    private func presentPrintController(_ controller: UIPrintInteractionController, completion: (() -> Void)? = nil) {
+        let doneHandler: UIPrintInteractionController.CompletionHandler = { _, _, _ in
+            completion?()
+        }
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            controller.present(animated: true, completionHandler: doneHandler)
+        } else {
+            let anchor = CGRect(x: view.bounds.midX, y: view.bounds.maxY - 80, width: 1, height: 1)
+            controller.present(from: anchor, in: view, animated: true, completionHandler: doneHandler)
+        }
+    }
+
+    private func savedAirPrintJson() -> String {
+        let defaults = UserDefaults.standard
+        let url = defaults.string(forKey: airprintUrlKey) ?? ""
+        let name = defaults.string(forKey: airprintNameKey) ?? ""
+        let obj: [String: Any] = ["url": url, "name": name]
+        guard let d = try? JSONSerialization.data(withJSONObject: obj, options: []),
+              let s = String(data: d, encoding: .utf8) else { return "{}" }
+        return s
+    }
+
+    private func emitAirPrintEvent(name: String, url: String) {
+        let obj: [String: Any] = ["name": name, "url": url]
+        guard let d = try? JSONSerialization.data(withJSONObject: obj, options: []),
+              let json = String(data: d, encoding: .utf8) else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.webView?.evaluateJavaScript("window.__PBAirPrintEvent&&window.__PBAirPrintEvent(\(json));", completionHandler: nil)
+        }
+    }
+
+    private func pickSavedAirPrint() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            let initial: UIPrinter? = UserDefaults.standard.string(forKey: self.airprintUrlKey)
+                .flatMap(URL.init(string:))
+                .map(UIPrinter.init(url:))
+            let picker = UIPrinterPickerController(initiallySelectedPrinter: initial)
+            let done: UIPrinterPickerController.CompletionHandler = { [weak self] pk, selected, _ in
+                guard let self = self, selected, let p = pk.selectedPrinter else { return }
+                let u = p.url.absoluteString
+                let n = p.displayName
+                UserDefaults.standard.set(u, forKey: self.airprintUrlKey)
+                UserDefaults.standard.set(n, forKey: self.airprintNameKey)
+                self.emitAirPrintEvent(name: n, url: u)
+            }
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                picker.present(animated: true, completionHandler: done)
+            } else {
+                let anchor = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 1, height: 1)
+                picker.present(from: anchor, in: self.view, animated: true, completionHandler: done)
+            }
+        }
+    }
+
+    private func clearSavedAirPrint() {
+        UserDefaults.standard.removeObject(forKey: airprintUrlKey)
+        UserDefaults.standard.removeObject(forKey: airprintNameKey)
+        emitAirPrintEvent(name: "", url: "")
+    }
+
+    // MARK: - Raw TCP (:9100) LAN Receipt Printers
+
+    private func loadTcpPrinters() -> [[String: Any]] {
+        guard let raw = UserDefaults.standard.string(forKey: tcpPrintersKey),
+              let data = raw.data(using: .utf8),
+              let arr = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [[String: Any]] else {
+            return []
+        }
+        return arr
+    }
+
+    private func saveTcpPrinters(_ list: [[String: Any]]) {
+        if let data = try? JSONSerialization.data(withJSONObject: list, options: []),
+           let str = String(data: data, encoding: .utf8) {
+            UserDefaults.standard.set(str, forKey: tcpPrintersKey)
+        }
+    }
+
+    private func tcpPrintersListJson() -> String {
+        let obj: [String: Any] = ["printers": loadTcpPrinters(), "scanning": false]
+        guard let data = try? JSONSerialization.data(withJSONObject: obj, options: []),
+              let str = String(data: data, encoding: .utf8) else {
+            return "{\"printers\":[],\"scanning\":false}"
+        }
+        return str
+    }
+
+    private func addTcpPrinterByIp(_ rawIp: String) -> String {
+        let trimmed = rawIp.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.range(of: "^\\d{1,3}(?:\\.\\d{1,3}){3}(?::\\d{1,5})?$", options: .regularExpression) != nil else {
+            return "bad"
+        }
+        let parts = trimmed.split(separator: ":", maxSplits: 1)
+        let octets = parts[0].split(separator: ".").compactMap { Int($0) }
+        guard octets.count == 4, octets.allSatisfy({ $0 >= 0 && $0 <= 255 }) else { return "bad" }
+        var list = loadTcpPrinters().filter { ($0["ip"] as? String) != trimmed }
+        list.insert([
+            "ip": trimmed,
+            "name": "Receipt (\(trimmed))",
+            "raw": true,
+            "usb": false
+        ], at: 0)
+        saveTcpPrinters(list)
+        return "ok"
+    }
+
+    private func forgetTcpPrinter(_ rawIp: String) {
+        let trimmed = rawIp.trimmingCharacters(in: .whitespacesAndNewlines)
+        let list = loadTcpPrinters().filter { ($0["ip"] as? String) != trimmed }
+        saveTcpPrinters(list)
+    }
+
+    private func emitNetResult(job: String, ok: Bool, error: String? = nil) {
+        var obj: [String: Any] = ["job": job, "ok": ok]
+        if let e = error { obj["error"] = e }
+        guard let d = try? JSONSerialization.data(withJSONObject: obj, options: []),
+              let json = String(data: d, encoding: .utf8) else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.webView?.evaluateJavaScript("window.__PBNetResult&&window.__PBNetResult(\(json));", completionHandler: nil)
+        }
+    }
+
+    private func sendRawTcpPrint(job: String, ipPort: String, b64: String, paced: Bool) {
+        guard !job.isEmpty,
+              let payload = Data(base64Encoded: b64, options: .ignoreUnknownCharacters),
+              !payload.isEmpty else {
+            emitNetResult(job: job, ok: false, error: "Empty print data.")
+            return
+        }
+        let parts = ipPort.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: ":", maxSplits: 1)
+        let host = String(parts[0])
+        let portNum: UInt16 = (parts.count > 1 ? UInt16(parts[1]) : nil) ?? 9100
+        guard let nwPort = NWEndpoint.Port(rawValue: portNum), !host.isEmpty else {
+            emitNetResult(job: job, ok: false, error: "Invalid printer address.")
+            return
+        }
+
+        let conn = NWConnection(host: NWEndpoint.Host(host), port: nwPort, using: .tcp)
+        let q = DispatchQueue(label: "com.photobooth4u.rawtcp.\(job)")
+        var finished = false
+        let lock = NSLock()
+        func finish(_ ok: Bool, _ errMsg: String? = nil) {
+            lock.lock()
+            let already = finished
+            finished = true
+            lock.unlock()
+            guard !already else { return }
+            conn.cancel()
+            emitNetResult(job: job, ok: ok, error: errMsg)
+        }
+
+        q.asyncAfter(deadline: .now() + 12.0) {
+            finish(false, "Receipt printer did not respond at \(host):\(portNum).")
+        }
+
+        conn.stateUpdateHandler = { state in
+            switch state {
+            case .ready:
+                let chunkSize = paced ? 2048 : 16384
+                func sendNext(_ offset: Int) {
+                    if offset >= payload.count {
+                        finish(true)
+                        return
+                    }
+                    let end = min(payload.count, offset + chunkSize)
+                    let slice = payload.subdata(in: offset..<end)
+                    conn.send(content: slice, completion: .contentProcessed { sendErr in
+                        if let se = sendErr {
+                            finish(false, se.localizedDescription)
+                            return
+                        }
+                        if paced && end < payload.count {
+                            q.asyncAfter(deadline: .now() + 0.018) { sendNext(end) }
+                        } else {
+                            sendNext(end)
+                        }
+                    })
+                }
+                sendNext(0)
+            case .failed(let e):
+                finish(false, e.localizedDescription)
+            default:
+                break
+            }
+        }
+        conn.start(queue: q)
     }
 
     private func printWebViewFallback() {
@@ -730,8 +1046,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         info.outputType = .photo
         controller.printInfo = info
         controller.printFormatter = webView.viewPrintFormatter()
-        let anchor = CGRect(x: view.bounds.midX, y: view.bounds.maxY - 80, width: 1, height: 1)
-        controller.present(from: anchor, in: view, animated: true, completionHandler: nil)
+        presentPrintController(controller)
     }
 
     // MARK: - WKScriptMessageHandler & Sync Prompts
@@ -756,6 +1071,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             performIosUpdate(download: false)
         } else if message.name == "pbUpdateStart" {
             performIosUpdate(download: true)
+        } else if message.name == "pbPickAirPrint" {
+            pickSavedAirPrint()
+        } else if message.name == "pbClearAirPrint" {
+            clearSavedAirPrint()
+        } else if message.name == "pbPrintRawTcp", let dict = message.body as? [String: Any] {
+            let job = (dict["job"] as? String) ?? ""
+            let ip = (dict["ip"] as? String) ?? ""
+            let b64 = (dict["b64"] as? String) ?? ""
+            let paced = (dict["paced"] as? Bool) ?? false
+            sendRawTcpPrint(job: job, ipPort: ip, b64: b64, paced: paced)
         }
     }
 
@@ -782,6 +1107,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             completionHandler(VoiceBridge.shared.voicesJson(lang: defaultText ?? "en"))
         case "__PBPrint_sync__":
             completionHandler(handleNativePrint(payloadJson: defaultText ?? "{}"))
+        case "__PBPrint_saved_sync__":
+            completionHandler(savedAirPrintJson())
+        case "__PBNet_list_sync__":
+            completionHandler(tcpPrintersListJson())
+        case "__PBNet_addByIp_sync__":
+            completionHandler(addTcpPrinterByIp(defaultText ?? ""))
+        case "__PBNet_forget_sync__":
+            forgetTcpPrinter(defaultText ?? "")
+            completionHandler("ok")
         default:
             let alert = UIAlertController(title: nil, message: prompt, preferredStyle: .alert)
             alert.addTextField { $0.text = defaultText }
@@ -844,5 +1178,27 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         }
 
         decisionHandler(.allow)
+    }
+
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        loadBooth()
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        recoverIfOtaFailed(error: error)
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        recoverIfOtaFailed(error: error)
+    }
+
+    private func recoverIfOtaFailed(error: Error) {
+        let nsErr = error as NSError
+        if nsErr.domain == NSURLErrorDomain && nsErr.code == NSURLErrorCancelled { return }
+        IccCameraHelper.shared.ensureListening()
+        if loadedViaOta {
+            clearOtaCache()
+            loadBooth()
+        }
     }
 }

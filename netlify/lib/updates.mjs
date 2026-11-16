@@ -195,7 +195,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.0.4', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.0.4/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.0.5', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.0.5/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;

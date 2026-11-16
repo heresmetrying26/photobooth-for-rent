@@ -313,15 +313,8 @@ class PBLocal {
 
         noteGuestFile(code: dict["guestCode"] as? String, slug: folder.slug, file: candidate)
 
-        // Save image files to iPad Photos Library for convenience
-        let lower = candidate.lowercased()
-        if lower.hasSuffix(".jpg") || lower.hasSuffix(".jpeg") || lower.hasSuffix(".png") {
-            if let image = UIImage(data: imgData) {
-                DispatchQueue.main.async {
-                    UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
-                }
-            }
-        }
+        // Save photos, animated GIFs, and videos directly to Apple Photos Library
+        saveToPhotosLibrary(fileUrl: destFile, rawData: imgData)
 
         return jsonStr([
             "ok": true,
@@ -344,10 +337,55 @@ class PBLocal {
         }
         let dest = rootDir.appendingPathComponent(name)
         try? data.write(to: dest)
-        DispatchQueue.main.async {
-            UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
-        }
+        saveToPhotosLibrary(fileUrl: dest, rawData: data)
         return jsonStr(["ok": true, "dir": "Photos & Files"])
+    }
+
+    private func saveToPhotosLibrary(fileUrl: URL, rawData: Data) {
+        let ext = fileUrl.pathExtension.lowercased()
+        let isVideo = (ext == "mp4" || ext == "mov")
+        let isImage = (ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "gif" || ext == "webp")
+        guard isVideo || isImage else { return }
+
+        let performSave: () -> Void = {
+            PHPhotoLibrary.shared().performChanges({
+                if isVideo {
+                    PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: fileUrl)
+                } else {
+                    PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: fileUrl)
+                }
+            }) { ok, _ in
+                if !ok && !isVideo && ext != "gif", let img = UIImage(data: rawData) {
+                    DispatchQueue.main.async {
+                        UIImageWriteToSavedPhotosAlbum(img, nil, nil, nil)
+                    }
+                }
+            }
+        }
+
+        let status: PHAuthorizationStatus
+        if #available(iOS 14, *) {
+            status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+        } else {
+            status = PHPhotoLibrary.authorizationStatus()
+        }
+        if status == .authorized || status == .limited {
+            performSave()
+        } else if status == .notDetermined {
+            if #available(iOS 14, *) {
+                PHPhotoLibrary.requestAuthorization(for: .addOnly) { newStatus in
+                    if newStatus == .authorized || newStatus == .limited {
+                        performSave()
+                    }
+                }
+            } else {
+                PHPhotoLibrary.requestAuthorization { newStatus in
+                    if newStatus == .authorized {
+                        performSave()
+                    }
+                }
+            }
+        }
     }
 
     func guestViewSet(_ mode: String) {

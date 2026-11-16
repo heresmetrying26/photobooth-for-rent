@@ -46,6 +46,39 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     private let logLock = NSLock()
     private var logBuf: [String] = []
 
+    // Non-blocking status/capture guard so live-view frame polls skip cleanly while shooting
+    private let stateLock = NSLock()
+    private var capturingNow = false
+    private var cachedOpen = false
+    private var cachedName = ""
+
+    private func setCapturing(_ on: Bool) {
+        stateLock.lock()
+        capturingNow = on
+        stateLock.unlock()
+    }
+
+    private func isCapturing() -> Bool {
+        stateLock.lock()
+        let v = capturingNow
+        stateLock.unlock()
+        return v
+    }
+
+    private func setCachedCamera(open: Bool, name: String) {
+        stateLock.lock()
+        cachedOpen = open
+        cachedName = name
+        stateLock.unlock()
+    }
+
+    private func getCachedCamera() -> (open: Bool, name: String) {
+        stateLock.lock()
+        let v = (cachedOpen, cachedName)
+        stateLock.unlock()
+        return v
+    }
+
     // ---- Open camera state (accessed only on camQueue) ----
     private enum Brand: String {
         case none = ""
@@ -208,6 +241,28 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         if serverSock6 >= 0 { close(serverSock6); serverSock6 = -1 }
         camQueue.async { [weak self] in
             self?.closeCamera()
+        }
+    }
+
+    func ensureListening() {
+        guard isRunning else {
+            start()
+            return
+        }
+        var restartNeeded = false
+        for s in [serverSock4, serverSock6] where s >= 0 {
+            var err: Int32 = 0
+            var len = socklen_t(MemoryLayout<Int32>.size)
+            if getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &len) != 0 || err != 0 {
+                restartNeeded = true
+            }
+        }
+        if serverSock4 < 0 && serverSock6 < 0 { restartNeeded = true }
+        if restartNeeded {
+            if serverSock4 >= 0 { close(serverSock4); serverSock4 = -1 }
+            if serverSock6 >= 0 { close(serverSock6); serverSock6 = -1 }
+            startHttpServers()
+            log("Restarted local booth HTTP listeners after background suspend")
         }
     }
 
@@ -588,6 +643,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         gotFrame = false
         sonyAt = 0
         shotFocus = ""
+        setCachedCamera(open: false, name: "")
     }
 
     private func closeCamera() {
@@ -629,13 +685,19 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         var openFlag = false
         var openName = ""
         var lag = 0
-        camQueue.sync {
-            if let ac = activeCamera, isCameraStillPresent(ac) {
-                openFlag = true
-                openName = camName
-                lag = lastShutterMs
-            } else if activeCamera != nil {
-                resetCameraState()
+        if isCapturing() {
+            let cached = getCachedCamera()
+            openFlag = cached.open
+            openName = cached.name
+        } else {
+            camQueue.sync {
+                if let ac = activeCamera, isCameraStillPresent(ac) {
+                    openFlag = true
+                    openName = camName
+                    lag = lastShutterMs
+                } else if activeCamera != nil {
+                    resetCameraState()
+                }
             }
         }
 
@@ -743,6 +805,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             log("Opened \(camName) (generic PTP)")
             try prepareGeneric()
         }
+        setCachedCamera(open: true, name: camName)
         return infoJson()
     }
 
@@ -1968,6 +2031,10 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         defer { close(clientSock) }
         var noSigPipe: Int32 = 1
         setsockopt(clientSock, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, socklen_t(MemoryLayout<Int32>.size))
+        var rcvTv = timeval(tv_sec: 5, tv_usec: 0)
+        setsockopt(clientSock, SOL_SOCKET, SO_RCVTIMEO, &rcvTv, socklen_t(MemoryLayout<timeval>.size))
+        var sndTv = timeval(tv_sec: 15, tv_usec: 0)
+        setsockopt(clientSock, SOL_SOCKET, SO_SNDTIMEO, &sndTv, socklen_t(MemoryLayout<timeval>.size))
 
         var reqData = Data()
         var chunk = [UInt8](repeating: 0, count: 8192)
@@ -2060,9 +2127,15 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         case ("GET", "/status"):
             var camOpen = false
             var camTitle = ""
-            camQueue.sync {
-                camOpen = (activeCamera != nil)
-                camTitle = camName
+            if isCapturing() {
+                let cached = getCachedCamera()
+                camOpen = cached.open
+                camTitle = cached.name
+            } else {
+                camQueue.sync {
+                    camOpen = (activeCamera != nil)
+                    camTitle = camName
+                }
             }
             sendJson(clientSock, json: [
                 "ok": true,
@@ -2126,6 +2199,10 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             }
 
         case ("GET", "/camera/frame"):
+            if isCapturing() {
+                sendResponse(clientSock, status: 204, type: "image/jpeg", body: Data())
+                return
+            }
             do {
                 let frame = try camQueue.sync { try self.fetchFrame() }
                 if let f = frame, !f.isEmpty {
@@ -2141,6 +2218,8 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
 
         case ("POST", "/camera/capture"):
             let classic = query.contains("classic=1")
+            setCapturing(true)
+            defer { setCapturing(false) }
             do {
                 var focusState = ""
                 let img = try camQueue.sync { () -> Data in
@@ -2207,7 +2286,12 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     }
 
     private func serveCachedRemote(clientSock: Int32, path: String, query: String) {
-        let cacheRoot = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("pb_static")
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        var cacheRoot = appSupport.appendingPathComponent("pb_static")
+        try? FileManager.default.createDirectory(at: cacheRoot, withIntermediateDirectories: true)
+        var rsrc = URLResourceValues()
+        rsrc.isExcludedFromBackup = true
+        try? cacheRoot.setResourceValues(rsrc)
         let rel = path.trimmingCharacters(in: CharacterSet(charactersIn: "/")).replacingOccurrences(of: "..", with: "")
         let fileUrl = cacheRoot.appendingPathComponent(rel)
 

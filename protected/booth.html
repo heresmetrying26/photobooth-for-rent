@@ -22192,7 +22192,7 @@
         if (/facetime|macbook|imac|built-in|integrated|isight|internal|surface camera|microsoft camera|ir camera|windows hello|depth|facing (front|back)|\b(front|back|rear) camera\b/i.test(l)) return false;
         if (/virtual|\bobs\b|teams|zoom|snap camera|mmhmm|manycam|xsplit|\bndi\b|desk view|iphone|ipad|vcam|camo|iriun|droidcam|epoccam/i.test(l)) return false;
         if (IS_ANDROID_APP && window.__pbUvcInfo && window.__pbUvcInfo.native) return true;
-        return /facing external|\busb\b|\buvc\b|webcam|logitech|logi\b|brio|c270|c310|c505|c615|c920|c922|c925|c930|streamcam|razer|kiyo|elgato|facecam|cam link|capture|hdmi|obsbot|tiny|meet|tail|insta\s*360|2e1a|ace\s*pro|anker|powerconf|nexigo|emeet|a4tech|aukey|papalook|depstech|creative|ausdom|vitade|svpro|arducam|aver|magewell|acasis|ugreen/i.test(l);
+        return /facing external|\bexternal\b|\busb\b|\buvc\b|video capture|webcam|logitech|logi\b|brio|c270|c310|c505|c615|c920|c922|c925|c930|streamcam|razer|kiyo|elgato|facecam|cam link|capture|hdmi|obsbot|tiny|meet|tail|insta\s*360|2e1a|ace\s*pro|anker|powerconf|nexigo|emeet|a4tech|aukey|papalook|depstech|creative|ausdom|vitade|svpro|arducam|aver|magewell|acasis|ugreen/i.test(l);
       }
       (function uvcShim() {
         const md = navigator.mediaDevices;
@@ -22510,7 +22510,7 @@
         const usbWebcamPick = videoDevices.find(d => !AVOID.test(lbl(d)) && isUsbWebcamOption(d.deviceId, d.label));
         const pick = usbPick || byId(previous)
           || (saved && (byId(saved.id) || (saved.label && videoDevices.find(d => d.label === saved.label))))
-          || (ANDROID_APP && videoDevices.find(d => d.deviceId === UVC_ID || /external|usb webcam/i.test(d.label || '')))   // tablet app: a plugged-in USB webcam beats the tablet's own cameras
+          || ((ANDROID_APP || IS_IOS_APP) && videoDevices.find(d => d.deviceId === UVC_ID || /external|usb webcam/i.test(d.label || '')))   // tablet app: a plugged-in USB webcam/HDMI capture beats the tablet's own cameras
           || videoDevices.find(d => /insta\s*360/i.test(d.label || ''))   // Insta360 in webcam mode: prefer it over built-ins
           || usbWebcamPick
           || videoDevices.find(d => BUILTIN.test(lbl(d)) && !AVOID.test(lbl(d)))
@@ -31031,6 +31031,14 @@
           { done: !!(window._btThermal && window._btThermal.btPrinter.connected), t: 'Connect the Bluetooth thermal printer', s: (window._btThermal && window._btThermal.btPrinter.connected) ? '\u2713 Connected: ' + window._btThermal.btPrinter.name : 'Tap <b>Connect Bluetooth Printer</b> below. Ensure printer is powered on and paired in Bluetooth settings.' },
           { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> — the receipt prints directly without a dialog.' }
         ];
+        else if (IOS_APP) {
+          const apInfo = (() => { try { return (window.__PBPrint && typeof window.__PBPrint.savedAirPrint === 'function') ? JSON.parse(window.__PBPrint.savedAirPrint() || '{}') : {}; } catch (e) { return {}; } })();
+          const tcpSelected = !!(wifiPrinter && !wifiPrinter.dialog && wifiPrinter.raw);
+          steps = [
+            { done: tcpSelected || !!(apInfo && apInfo.name), t: 'Choose your printer in Printers below', s: tcpSelected ? 'LAN receipt printer ready: <b>' + escHtml(wifiPrinter.name) + '</b>.' : (apInfo && apInfo.name ? 'Silent AirPrint ready: <b>' + escHtml(apInfo.name) + '</b> (zero pop-ups).' : 'Tap <b>Pick Silent AirPrint printer</b> below for zero-popup Auto-Print, or add a LAN thermal printer IP.') },
+            { done: andHere && andOk, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> after a photo session (or Test print below).' }
+          ];
+        }
         else if (andNet) steps = [
           // Android app: the printers the app found itself (USB cable or Wi-Fi), the one chosen for this paper size, and a print that worked.
           { done: andList.length > 0 || !!(andP && andP.dialog), t: 'Connect the printer', s: andList.length ? andList.length + ' printer' + (andList.length === 1 ? '' : 's') + ' found.' : 'Plug the printer into the tablet with a USB cable, or join it to the same Wi-Fi as the tablet. It then shows in the list above.' },
@@ -32598,16 +32606,45 @@
         wifiRelink(d);
         box.textContent = '';
         if (window.__PBPrint && typeof window.__PBPrint.print === 'function') {
+          const apInfo = (() => { try { return (IOS_APP && typeof window.__PBPrint.savedAirPrint === 'function') ? JSON.parse(window.__PBPrint.savedAirPrint() || '{}') : {}; } catch (e) { return {}; } })();
           const bd = document.createElement('button');
           bd.type = 'button'; bd.className = 'action-btn'; bd.style.cssText = 'width:auto;margin:0;text-align:left;';
-          bd.textContent = (wifiPrinter && wifiPrinter.dialog ? '\u2713 ' : '') + 'Android print screen · any printer';
+          bd.textContent = (wifiPrinter && wifiPrinter.dialog ? '\u2713 ' : '') + (IOS_APP ? (apInfo && apInfo.name ? 'AirPrint (Silent): ' + apInfo.name : 'AirPrint \u00b7 wireless photo printer') : 'Android print screen \u00b7 any printer');
           bd.addEventListener('click', () => {
-            wifiSave({ ip: 'android:dialog', name: 'Android print dialog', dialog: true });
-            showToast('Prints will open the Android print screen.', 3500);
+            wifiSave({ ip: IOS_APP ? 'ios:airprint' : 'android:dialog', name: IOS_APP ? (apInfo && apInfo.name ? 'AirPrint (' + apInfo.name + ')' : 'AirPrint') : 'Android print dialog', dialog: true });
+            showToast(IOS_APP ? (apInfo && apInfo.name ? 'Prints will send silently to ' + apInfo.name + '.' : 'Prints will open the AirPrint sheet.') : 'Prints will open the Android print screen.', 3500);
             wifiRenderList(wifiList());
             refreshPrintUI();
           });
           box.appendChild(bd);
+          if (IOS_APP && typeof window.__PBPrint.pickAirPrint === 'function') {
+            const bp = document.createElement('button');
+            bp.type = 'button'; bp.className = 'action-btn'; bp.style.cssText = 'width:auto;margin:0;text-align:left;';
+            bp.textContent = apInfo && apInfo.name ? 'Change saved Silent AirPrint printer (' + apInfo.name + ')\u2026' : 'Pick Silent AirPrint printer (zero pop-ups)\u2026';
+            bp.addEventListener('click', () => {
+              window.__PBAirPrintEvent = (ev) => {
+                if (ev && ev.name) {
+                  wifiSave({ ip: 'ios:airprint', name: 'AirPrint (' + ev.name + ')', dialog: true });
+                  showToast('Saved Silent AirPrint printer: ' + ev.name + ' \u2713', 4500);
+                }
+                wifiRenderList(wifiList());
+                refreshPrintUI();
+              };
+              window.__PBPrint.pickAirPrint();
+            });
+            box.appendChild(bp);
+            if (apInfo && apInfo.name && typeof window.__PBPrint.clearAirPrint === 'function') {
+              const bc = document.createElement('button');
+              bc.type = 'button'; bc.className = 'action-btn'; bc.style.cssText = 'width:auto;margin:0;text-align:left;';
+              bc.textContent = 'Clear saved AirPrint printer (ask every print)';
+              bc.addEventListener('click', () => {
+                window.__PBAirPrintEvent = () => { wifiRenderList(wifiList()); refreshPrintUI(); };
+                window.__PBPrint.clearAirPrint();
+                showToast('Cleared saved AirPrint printer.', 3000);
+              });
+              box.appendChild(bc);
+            }
+          }
         }
         // Instax Link printers (Bluetooth): the ones set up before, and a button to connect one.
         if (window._instax && window._instax.available()) {
@@ -32704,9 +32741,11 @@
         });
         if (st && !wifiPrinter) {
           const prog = d.total ? ' ' + Math.min(d.checked || 0, d.total) + ' of ' + d.total + ' addresses checked.' : '';
-          st.textContent = d.scanning ? 'Scanning for printers…' + (d.printers.length ? ' Select a printer below.' : '')
-            : d.printers.length ? 'Select a printer below.'
-              : 'No printers found. Ensure Wi-Fi printers are on the same network or USB printers are connected via USB-OTG.';
+          st.textContent = IOS_APP
+            ? (d.printers.length ? 'Pick AirPrint above or tap a saved LAN receipt printer below.' : 'Pick an AirPrint wireless photo printer above (supports Silent Auto-Print), or add a LAN thermal receipt printer IP below.')
+            : (d.scanning ? 'Scanning for printers…' + (d.printers.length ? ' Select a printer below.' : '')
+              : d.printers.length ? 'Select a printer below.'
+                : 'No printers found. Ensure Wi-Fi printers are on the same network or USB printers are connected via USB-OTG.');
         }
         if (st && d.addNote) st.textContent = d.addNote;
       }
@@ -32748,7 +32787,20 @@
         try { wifiOptsUI(); } catch (e) { }
         const dg = document.getElementById('wifiDiag');
         if (dg) dg.style.display = pbDebug() && wifiPrinter && wifiPrinter.escp2 ? '' : 'none';
-        if (st && wifiPrinter && wifiPrinter.dialog) st.textContent = 'Android opens its own print screen: pick the printer there. For a thermal receipt printer, use Bluetooth or the printer marked Receipt instead: the print screen gives rough photos.';
+        const fb = document.getElementById('wifiPrinterFindBtn');
+        if (fb) fb.style.display = IOS_APP ? 'none' : '';
+        if (IOS_APP) {
+          const wLbl = row.querySelector('.sub-label');
+          const wHint = row.querySelector('.panel-hint');
+          if (wLbl) wLbl.textContent = 'AirPrint & LAN Receipt Printers';
+          if (wHint && wHint.id !== 'wifiPrinterStatus') wHint.textContent = 'Pick a wireless AirPrint photo printer (supports Silent Auto-Print) or add a LAN thermal receipt printer by IP.';
+        }
+        if (st && wifiPrinter && wifiPrinter.dialog) {
+          const apInfo = (() => { try { return (IOS_APP && typeof window.__PBPrint.savedAirPrint === 'function') ? JSON.parse(window.__PBPrint.savedAirPrint() || '{}') : {}; } catch (e) { return {}; } })();
+          st.textContent = IOS_APP
+            ? (apInfo && apInfo.name ? 'Silent AirPrint active: ' + apInfo.name + ' \u2713 Auto-print runs without pop-up dialogs. For 58/80mm LAN receipt printers, add the printer IP below.' : 'AirPrint opens the iPad print sheet. Tap "Pick Silent AirPrint printer" below to skip the pop-up every session.')
+            : 'Android opens its own print screen: pick the printer there. For a thermal receipt printer, use Bluetooth or the printer marked Receipt instead: the print screen gives rough photos.';
+        }
         else if (st && wifiPrinter) st.textContent = 'Printing ' + (printSize && paperFor(printSize) ? paperFor(printSize).name + ' ' : '') + 'to: ' + wifiPrinter.name + (wifiPrinter.usb ? ' [USB connected]' : ' [Wi-Fi ' + wifiPrinter.ip + ']') + '. Pick a different paper size above to use another printer for it. Quality and colour below are saved for this printer only.';
         else if (st && !wifiScanTimer) st.textContent = '';
       }
@@ -32788,11 +32840,12 @@
           const row = document.getElementById('wifiPrinterRow');
           if (row && row.style.display !== 'none' && wifiNetAvailable() && !wifiScanTimer) wifiRenderList(wifiList());
         }, 3000);
-        if (g) g.addEventListener('click', () => { wifiSave(null); wifiRenderList(wifiList()); refreshPrintUI(); });
+        if (g) g.addEventListener('click', () => { if (IOS_APP && wifiPrinter && wifiPrinter.raw && window.__PBNet && typeof window.__PBNet.forgetIp === 'function') { try { window.__PBNet.forgetIp(wifiPrinter.ip); } catch (e) { } } wifiSave(null); wifiRenderList(wifiList()); refreshPrintUI(); });
         if (a) a.addEventListener('click', () => {
           const inp = document.getElementById('wifiPrinterIp');
           if (!inp || !wifiNetAvailable()) return;
           if (window.__PBNet.addByIp(inp.value) !== 'ok') { showToast('Invalid IP address. Format: 192.168.1.50', 4000); return; }
+          if (IOS_APP) { inp.value = ''; wifiRenderList(wifiList()); refreshPrintUI(); showToast('Added LAN receipt printer ✓ Tap it above to select.', 3500); return; }
           const st = document.getElementById('wifiPrinterStatus'); if (st) st.textContent = 'Checking ' + inp.value.trim() + '…';
           setTimeout(() => wifiRenderList(wifiList()), 1500);
           setTimeout(() => wifiRenderList(wifiList()), 3500);
@@ -33062,10 +33115,10 @@
         const p = printer || wifiPrinter;
         const wo = wopts || wifiOpts(p);               // the printer's own colour / quality / paper type
         if (p.dialog) {
-          // The Android print dialog: the tablet lists every printer its print services can reach.
+          // Android / iOS native print system: AirPrint on iPad, Android print dialog on Android.
           const dlg = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
           const dr = JSON.parse(window.__PBPrint.print('Photobooth ' + (paper.name || ''), paper.w, paper.h, JSON.stringify(dlg)) || '{}');
-          if (!dr.ok) throw new Error(dr.error || 'The Android print dialog did not open.');
+          if (!dr.ok) throw new Error(dr.error || (IOS_APP ? 'AirPrint did not open.' : 'The Android print dialog did not open.'));
           return;
         }
         if (paper.receipt && p.raw && window._btThermal && window._btThermal.EscPosEncoder) {
@@ -33351,9 +33404,9 @@
         run.then(done, done);
         return run;
       }
-      // A queued print that failed: say so, and open Android's own print screen so the sheet is not lost.
+      // A queued print that failed: say so, and open system print (AirPrint / Android) so the sheet is not lost.
       function queuedPrintFailed(why, all, paper) {
-        showToast(why + ' Opening the Android print screen instead.', 6500);
+        showToast(why + (IOS_APP ? ' Opening AirPrint instead.' : ' Opening the Android print screen instead.'), 6500);
         try {
           if (window.__PBPrint && typeof window.__PBPrint.print === 'function') {
             window.__PBPrint.print('Photobooth ' + (paper.name || ''), paper.w, paper.h, JSON.stringify(all.map(cv => cv.toDataURL('image/jpeg', 0.92))));
@@ -33856,7 +33909,10 @@
               const imgs = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
               const r = JSON.parse(window.__PBPrint.print('Photobooth ' + paper.name, paper.w, paper.h, JSON.stringify(imgs)) || '{}');
               if (r.ok) {
-                showToast((auto === true ? 'Auto-printing (' : 'Choose your printer to print (') + label + ').');
+                const apName = (() => { try { return (IOS_APP && typeof window.__PBPrint.savedAirPrint === 'function') ? (JSON.parse(window.__PBPrint.savedAirPrint() || '{}').name || '') : ''; } catch (e) { return ''; } })();
+                showToast(IOS_APP
+                  ? (apName ? (auto === true ? 'Auto-printing silently on ' : 'Printing on ') + apName + ' (' + label + ').' : (auto === true ? 'Auto-printing via AirPrint (' : 'Choose your AirPrint printer (') + label + ').')
+                  : ((auto === true ? 'Auto-printing (' : 'Choose your printer to print (') + label + ').'));
                 armAutoPrintAfterFirst(auto === true);
                 return true;
               }
@@ -34078,7 +34134,13 @@
         if (useStation()) return 'Each session goes to the laptop print station by itself.';
         if (helperOn && helper.ok && printSize && helper.printers.includes(printerFor(printSize))) return 'Each session sends a job to the selected printer with no dialog.';
         if (DESKTOP) return printSize && printerFor(printSize) ? 'The app is still looking for “' + printerFor(printSize) + '”. Tap Refresh printer list below. It will never open the Windows print dialog.' : 'Pick a printer for this paper size below and each session prints with no dialog.';
-        if (isMobileOS()) return 'After each session the AirPrint sheet opens by itself, so the guest just taps Print. A web page can’t skip that sheet; for no pop-up at all, send prints to a laptop print station.';
+        if (IOS_APP) {
+          const apInfo = (() => { try { return (window.__PBPrint && typeof window.__PBPrint.savedAirPrint === 'function') ? JSON.parse(window.__PBPrint.savedAirPrint() || '{}') : {}; } catch (e) { return {}; } })();
+          return apInfo && apInfo.name
+            ? 'Silent AirPrint active (' + apInfo.name + '): each session prints automatically with zero pop-ups.'
+            : 'After each session AirPrint opens. Tap "Pick Silent AirPrint printer" below to skip pop-ups completely.';
+        }
+        if (isMobileOS()) return 'After each session the AirPrint sheet opens by itself, so the guest just taps Print. A web page can\u2019t skip that sheet; for no pop-up at all, send prints to a laptop print station.';
         return 'Each session opens the print dialog by itself. To skip the dialog, use the Print Helper or start Chrome with --kiosk-printing.' + (isTraditional() ? ' Turns on after your first print, on the same paper.' : '');
       }
       function updateAutoPrintUI() {
@@ -40084,7 +40146,7 @@
             var note = p.needsPermission ? ' \u00b7 tap to allow USB' : p.noDriver ? ' \u00b7 needs Setup' : p.dnp ? ' \u00b7 DNP' : p.selphy ? ' \u00b7 SELPHY' : '';
             return { id: p.ip, name: p.name + conn + note, selected: !!(wifiPrinter && wifiPrinter.ip === p.ip), kind: p.needsPermission ? 'permission' : p.noDriver ? 'nodriver' : 'ok' };
           });
-          if (window.__PBPrint && typeof window.__PBPrint.print === 'function') items.unshift({ id: 'android:dialog', name: 'Android print screen \u00b7 any printer', selected: !!(wifiPrinter && wifiPrinter.dialog), kind: 'ok' });
+          if (window.__PBPrint && typeof window.__PBPrint.print === 'function') items.unshift({ id: 'android:dialog', name: IOS_APP ? 'AirPrint \u00b7 wireless photo printer' : 'Android print screen \u00b7 any printer', selected: !!(wifiPrinter && wifiPrinter.dialog), kind: 'ok' });
           return { ok: true, items: items, scanning: !!d.scanning };
         },
         scanPrinters: function () { try { wifiScan(); } catch (e) { } },
@@ -40092,7 +40154,7 @@
           var old = printSize; printSize = key;
           try {
             try { wifiSyncForSize(); } catch (e) { }
-            if (id === 'android:dialog') { wifiSave({ ip: 'android:dialog', name: 'Android print dialog', dialog: true }); return { ok: true, msg: 'Prints will open the Android print screen.' }; }
+            if (id === 'android:dialog') { wifiSave({ ip: IOS_APP ? 'ios:airprint' : 'android:dialog', name: IOS_APP ? 'AirPrint' : 'Android print dialog', dialog: true }); return { ok: true, msg: IOS_APP ? 'Prints will use AirPrint.' : 'Prints will open the Android print screen.' }; }
             var p = wifiList().printers.filter(function (x) { return x.ip === id; })[0];
             if (!p) return { ok: false, msg: 'That printer is not listed any more. Tap Find printers.' };
             if (p.needsPermission) { try { window.__PBNet.usbAllow(p.id); } catch (e) { } return { ok: false, msg: 'Allow USB access in the prompt, then tap the printer again.' }; }
@@ -53053,7 +53115,10 @@
           if (!first) { try { if (rawFolderKey()) resolveDriveFolder(); } catch (e) { } }
         }
         renderLan();
-        setInterval(renderLan, 5000);
+        setInterval(function () {
+          if (document.hidden || state === 'capturing') return;
+          renderLan();
+        }, 5000);
         var wn = document.getElementById('deskWifiName'), wp = document.getElementById('deskWifiPass');
         var w0 = wifiInfo(); if (w0) { wn.value = w0.ssid; wp.value = w0.pass; }
         function saveWifi() { saveWifiInfo(wn.value.trim(), wp.value); }

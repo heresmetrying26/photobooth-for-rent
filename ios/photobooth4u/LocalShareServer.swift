@@ -53,6 +53,19 @@ class LocalShareServer {
         activePort = 0
     }
 
+    func ensureListening() {
+        guard isRunning, serverSocket >= 0 else {
+            _ = start()
+            return
+        }
+        var err: Int32 = 0
+        var len = socklen_t(MemoryLayout<Int32>.size)
+        if getsockopt(serverSocket, SOL_SOCKET, SO_ERROR, &err, &len) != 0 || err != 0 {
+            stop()
+            _ = start()
+        }
+    }
+
     private func bindAndListen(port: UInt16) -> Bool {
         let sock = socket(AF_INET, SOCK_STREAM, 0)
         guard sock >= 0 else { return false }
@@ -106,15 +119,31 @@ class LocalShareServer {
         defer { close(sock) }
         var noSigPipe: Int32 = 1
         setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, socklen_t(MemoryLayout<Int32>.size))
+        var rcvTv = timeval(tv_sec: 5, tv_usec: 0)
+        setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &rcvTv, socklen_t(MemoryLayout<timeval>.size))
+        var sndTv = timeval(tv_sec: 15, tv_usec: 0)
+        setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &sndTv, socklen_t(MemoryLayout<timeval>.size))
 
         var buffer = [UInt8](repeating: 0, count: 4096)
         let bytesRead = read(sock, &buffer, buffer.count)
         guard bytesRead > 0 else { return }
 
         let req = String(bytes: buffer[0..<bytesRead], encoding: .utf8) ?? ""
-        guard let line = req.components(separatedBy: "\r\n").first else { return }
+        let reqLines = req.components(separatedBy: "\r\n")
+        guard let line = reqLines.first else { return }
         let parts = line.components(separatedBy: " ")
         guard parts.count >= 2 else { return }
+
+        var rangeHeader: String? = nil
+        for h in reqLines.dropFirst() where !h.isEmpty {
+            if let colon = h.firstIndex(of: ":") {
+                let k = h[..<colon].trimmingCharacters(in: .whitespaces).lowercased()
+                if k == "range" {
+                    rangeHeader = h[h.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+                    break
+                }
+            }
+        }
 
         let method = parts[0]
         let rawTarget = parts[1]
@@ -127,10 +156,10 @@ class LocalShareServer {
             return
         }
 
-        route(sock: sock, path: path, query: query, headOnly: method == "HEAD")
+        route(sock: sock, path: path, query: query, rangeHeader: rangeHeader, headOnly: method == "HEAD")
     }
 
-    private func route(sock: Int32, path: String, query: String, headOnly: Bool) {
+    private func route(sock: Int32, path: String, query: String, rangeHeader: String?, headOnly: Bool) {
         let components = path.split(separator: "/").map { String($0).removingPercentEncoding ?? String($0) }
 
         // Guest own-photos link: /o/<code>
@@ -191,16 +220,22 @@ class LocalShareServer {
             return
         }
 
-        // /e/<slug>/f/<filename> -> Direct raw image/video
+        // /e/<slug>/f/<filename> -> Direct raw image/video (supports HTTP 206 Range for Safari video playback)
         if action == "f" {
             if let data = try? Data(contentsOf: fileUrl) {
                 let mime = mimeTypeFor(path: filename)
-                var extra: [String] = []
+                var extra: [String] = ["Accept-Ranges: bytes"]
                 if query.contains("dl=1") {
                     let safeFile = filename.replacingOccurrences(of: "\"", with: "_")
                     extra.append("Content-Disposition: attachment; filename=\"\(safeFile)\"")
                 }
-                sendResponse(sock, status: 200, type: mime, body: data, extraHeaders: extra, headOnly: headOnly)
+                if !query.contains("dl=1"), let rng = parseByteRange(rangeHeader, total: data.count) {
+                    let slice = data.subdata(in: rng.start..<(rng.end + 1))
+                    extra.append("Content-Range: bytes \(rng.start)-\(rng.end)/\(data.count)")
+                    sendResponse(sock, status: 206, type: mime, body: slice, extraHeaders: extra, headOnly: headOnly)
+                } else {
+                    sendResponse(sock, status: 200, type: mime, body: data, extraHeaders: extra, headOnly: headOnly)
+                }
             } else {
                 sendResponse(sock, status: 500, type: "text/plain", body: Data("Read Error".utf8), headOnly: headOnly)
             }
@@ -230,6 +265,23 @@ class LocalShareServer {
         return s.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? s
     }
 
+    private func parseByteRange(_ header: String?, total: Int) -> (start: Int, end: Int)? {
+        guard total > 0, let h = header?.lowercased(), h.hasPrefix("bytes=") else { return nil }
+        let spec = h.dropFirst(6).split(separator: ",", maxSplits: 1)[0].trimmingCharacters(in: .whitespaces)
+        let parts = spec.split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false)
+        guard parts.count == 2 else { return nil }
+        let sStr = String(parts[0]), eStr = String(parts[1])
+        if sStr.isEmpty {
+            guard let suffix = Int(eStr), suffix > 0 else { return nil }
+            let start = max(0, total - suffix)
+            return (start, total - 1)
+        }
+        guard let start = Int(sStr), start >= 0, start < total else { return nil }
+        let end = eStr.isEmpty ? (total - 1) : min(total - 1, Int(eStr) ?? (total - 1))
+        guard end >= start else { return nil }
+        return (start, end)
+    }
+
     private func mimeTypeFor(path: String) -> String {
         let lower = path.lowercased()
         if lower.hasSuffix(".jpg") || lower.hasSuffix(".jpeg") { return "image/jpeg" }
@@ -237,6 +289,7 @@ class LocalShareServer {
         if lower.hasSuffix(".webp") { return "image/webp" }
         if lower.hasSuffix(".gif") { return "image/gif" }
         if lower.hasSuffix(".mp4") { return "video/mp4" }
+        if lower.hasSuffix(".mov") { return "video/quicktime" }
         if lower.hasSuffix(".webm") { return "video/webm" }
         return "application/octet-stream"
     }
@@ -368,7 +421,14 @@ class LocalShareServer {
     }
 
     private func sendResponse(_ sock: Int32, status: Int, type: String, body: Data, extraHeaders: [String] = [], headOnly: Bool = false) {
-        let reason = (status == 200) ? "OK" : (status == 404 ? "Not Found" : (status == 405 ? "Method Not Allowed" : "Error"))
+        let reason: String
+        switch status {
+        case 200: reason = "OK"
+        case 206: reason = "Partial Content"
+        case 404: reason = "Not Found"
+        case 405: reason = "Method Not Allowed"
+        default: reason = "Error"
+        }
         let extra = extraHeaders.isEmpty ? "" : (extraHeaders.joined(separator: "\r\n") + "\r\n")
         let header = "HTTP/1.1 \(status) \(reason)\r\n" +
             "Content-Type: \(type)\r\n" +

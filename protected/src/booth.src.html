@@ -18294,23 +18294,25 @@
         })();
       } catch (e) { }
       const DESKTOP = !!(window.pb4u && window.pb4u.desktop && window.__PB && window.__PB.desktop);
-      // Android tablet app (android/): an offline kiosk. Photos are saved on the tablet through the app (window.__PBLocal)
-      // and guests on the same Wi-Fi open them from the tablet, like the laptop app does.
+      // Android & iPad tablet apps (android/ and ios/): offline kiosks. Photos are saved on the tablet through the app
+      // (window.__PBLocal) and guests on the same Wi-Fi open them from the tablet, like the laptop app does.
       const ANDROID_LOCAL = !!(window.__PBLocal && typeof window.__PBLocal.drive === 'function' && window.__PB && window.__PB.android);
-      // Photos stay on this device and guests reach them over the booth Wi-Fi (laptop app and Android tablet app).
+      const IOS_LOCAL = !!(window.__PBLocal && typeof window.__PBLocal.drive === 'function' && window.__PB && window.__PB.ios);
+      const TABLET_LOCAL = ANDROID_LOCAL || IOS_LOCAL;
+      // Photos stay on this device and guests reach them over the booth Wi-Fi (laptop app and tablet apps).
       // An iPad / tablet that opened the booth from the laptop app over the booth Wi-Fi (http://<laptop>:47777/ipad/<PIN>): the
       // laptop does the camera, the photo folder and the licence; this page only shows the booth (desktop/lib/lan.mjs).
       const LANREMOTE = !DESKTOP && !!(window.__PB && window.__PB.lanRemote && window.__PB.lanRemote.base);
-      const LOCALSHARE = DESKTOP || ANDROID_LOCAL || LANREMOTE;
+      const LOCALSHARE = DESKTOP || TABLET_LOCAL || LANREMOTE;
       // The laptop's address on the booth Wi-Fi, as the guests' phones reach it ('' when unknown).
       function lanBaseNow() {
         try {
           if (LANREMOTE) return String(window.__PB.lanRemote.base || '');
-          return (ANDROID_LOCAL ? window.__PBLocal.lanBase() : window.pb4u.lanBase()) || '';
+          return (TABLET_LOCAL ? window.__PBLocal.lanBase() : window.pb4u.lanBase()) || '';
         } catch (e) { return ''; }
       }
       if (LOCALSHARE) document.documentElement.classList.add('pb-desktop');   // hides the online-only options (web-only)
-      const LOCAL_DEVICE = ANDROID_LOCAL ? 'tablet' : 'laptop';
+      const LOCAL_DEVICE = TABLET_LOCAL ? 'tablet' : 'laptop';
       // Line icons from the SVG sprite at the top of the page.
       function ICON(name) { return '<svg class="ic" aria-hidden="true"><use href="#i-' + name + '"/></svg>'; }
       const video = document.getElementById('video');
@@ -18723,10 +18725,10 @@
       function driveScriptUrl() {
         return LOCALSHARE ? '/local/drive' : DRIVE_SCRIPT_URL;
       }
-      // Android: a web page can't write to the tablet's storage, so the save goes through the app (window.__PBLocal.drive),
+      // Tablet app: a web page can't write to the tablet's storage, so the save goes through the app (window.__PBLocal.drive),
       // which answers with the same JSON the Drive script / laptop app would.
       function driveFetch(init) {
-        if (!ANDROID_LOCAL) return fetch(driveScriptUrl(), init);
+        if (!TABLET_LOCAL) return fetch(driveScriptUrl(), init);
         return new Promise(function (resolve, reject) {
           setTimeout(function () {
             try {
@@ -20179,7 +20181,7 @@
       }
       function localBaseNow() {
         try {
-          if (ANDROID_LOCAL && window.__PBLocal && window.__PBLocal.localBase) {
+          if (TABLET_LOCAL && window.__PBLocal && window.__PBLocal.localBase) {
             return window.__PBLocal.localBase() || '';
           }
           return '';
@@ -20301,11 +20303,11 @@
         if (viewUrl) {
           open.href = viewUrl;
           open.textContent = 'Open gallery';
-          if (ANDROID_LOCAL) open.removeAttribute('target');
+          if (TABLET_LOCAL) open.removeAttribute('target');
         }
         document.getElementById('driveFolderCopy').style.display = url ? '' : 'none';
         var dl = document.getElementById('driveFolderDrive');
-        if (dl) { dl.href = '#'; dl.textContent = 'Open folder'; dl.style.display = ANDROID_LOCAL ? 'none' : ''; }
+        if (dl) { dl.href = '#'; dl.textContent = 'Open folder'; dl.style.display = TABLET_LOCAL ? 'none' : ''; }
         document.getElementById('driveFolderAll').style.display = 'none';
         document.getElementById('driveFolderQrCaption').textContent = url ? 'All photos (same Wi-Fi)' : 'No Wi-Fi yet: connect this ' + LOCAL_DEVICE + ' to the booth Wi-Fi (a pocket router or phone hotspot works, no internet needed) to show the guests\u2019 QR.';
         driveFolderStatus.style.display = 'block';
@@ -20390,11 +20392,11 @@
         // Android app: its WebView cannot download a blob: link (nothing was saved, though it said so); the app puts it
         // in the Gallery instead (Pictures > photobooth4u).
         const PL = window.__PBLocal;
-        if (PL && (typeof PL.saveImage === 'function' || /PB4uAndroid/.test(navigator.userAgent || '') || window.__PBNet)) {      // not the iOS app: its share sheet saves
+        if (PL && (typeof PL.saveImage === 'function' || /PB4uAndroid|PB4uIOS/.test(navigator.userAgent || '') || window.__PBNet)) {
           if (typeof PL.saveImage === 'function') {
             try {
               const r = JSON.parse(PL.saveImage(file, await blobToBase64(blob)) || '{}');
-              if (r.ok) { showToast(title + ' saved in the Gallery (Pictures › photobooth4u). Print it on A5 or bigger.', 6000); return; }
+              if (r.ok) { showToast(title + ' saved to ' + (r.dir || 'Pictures › photobooth4u') + '. Print it on A5 or bigger.', 6000); return; }
               showToast(r.error === 'old-android' ? 'This tablet’s Android is too old to save into the Gallery. Make the sign on a laptop or phone instead.' : ('Not saved: ' + (r.error || 'the Gallery did not accept it.')), 6500);
             } catch (e) { showToast('Not saved: ' + ((e && e.message) || e), 5000); }
           } else {
@@ -20728,7 +20730,7 @@
         if ((guestUrl || opUrl) && !hide) {
           link.href = opUrl || guestUrl;
           link.textContent = guestUrl || opUrl;
-          if (ANDROID_LOCAL) link.removeAttribute('target');
+          if (TABLET_LOCAL) link.removeAttribute('target');
           if (guestUrl) qr.src = qrImageUrl(guestUrl); else qr.removeAttribute('src');
         } else {
           link.href = '#'; link.textContent = ''; qr.removeAttribute('src'); closeGalleryPop();
@@ -20977,7 +20979,7 @@
       var GV_CODE_RE = /^[A-Za-z0-9_-]{16,40}$/;
       // The website: a rental code, and also the free trial (its own photos stay private too).
       function gvServer() { var pb = window.__PB; return !!(pb && (pb.type === 'rental' || pb.type === 'trial')); }
-      function gvAvailable() { return LOCALSHARE ? !!(LANREMOTE || (window.pb4u && typeof window.pb4u.guestViewSet === 'function') || (ANDROID_LOCAL && typeof window.__PBLocal.guestViewSet === 'function')) : gvServer(); }
+      function gvAvailable() { return LOCALSHARE ? !!(LANREMOTE || (window.pb4u && typeof window.pb4u.guestViewSet === 'function') || (TABLET_LOCAL && typeof window.__PBLocal.guestViewSet === 'function')) : gvServer(); }
       function gvActive() { return gvAvailable() && gvMode !== 'all'; }
       function gvPrivate() { return gvAvailable() && gvMode === 'only'; }
       function gvStore(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
@@ -21016,7 +21018,7 @@
         if (!gvAvailable()) return;
         try {
           if (LOCALSHARE) {
-            if (ANDROID_LOCAL) window.__PBLocal.guestViewSet(gvMode);
+            if (TABLET_LOCAL) window.__PBLocal.guestViewSet(gvMode);
             else if (LANREMOTE) await fetch('/local/guestview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: gvMode }) });
             else await window.pb4u.guestViewSet(gvMode);
             return;
@@ -22746,14 +22748,15 @@
       // photobooth4u Helper (the same app that prints) controls the camera and
       // the booth talks to it on this computer (127.0.0.1). No driver switch.
       const USB_WIN = /Win/i.test(navigator.platform || '') || /Windows NT/i.test(navigator.userAgent || '');
-      // Android tablet app: its WebView has no WebUSB, so the app itself controls the camera and answers on the
-      // same address as the Windows Helper (127.0.0.1:17321), using the same calls.
+      // Android & iPad tablet apps: their WebViews have no WebUSB, so each app controls the camera natively and answers on
+      // port 17321 (same calls as the Windows Helper).
       const ANDROID_APP = /PB4uAndroid/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.android);
-      const CAM_HELPER = (DESKTOP || LANREMOTE) ? '/helper' : 'http://127.0.0.1:17321';
+      const IOS_APP = /PB4uIOS/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.ios);
+      const CAM_HELPER = (DESKTOP || LANREMOTE) ? '/helper' : IOS_APP ? 'http://localhost:17321' : 'http://127.0.0.1:17321';
       const CAM_HELPER_SEEN_KEY = 'pb_cam_helper';
       const usbCam = {
-        supported: (USB_WIN || LANREMOTE || ANDROID_APP) ? !!window.fetch : (('usb' in navigator) && !!window.crossOriginIsolated),
-        viaHelper: USB_WIN || LANREMOTE || ANDROID_APP,          // an iPad on the laptop's Wi-Fi uses the laptop's camera the same way
+        supported: (USB_WIN || LANREMOTE || ANDROID_APP || IOS_APP) ? !!window.fetch : (('usb' in navigator) && !!window.crossOriginIsolated),
+        viaHelper: USB_WIN || LANREMOTE || ANDROID_APP || IOS_APP,          // an iPad on the laptop's Wi-Fi uses the laptop's camera the same way
         helperSees: false, helperName: '', helperUp: false,
         camera: null, name: '', active: false, gen: 0, libGen: 0, vfOn: false, initing: null,
         canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null,
@@ -22799,8 +22802,8 @@
         let token = null, deviceId = null;
         try { token = localStorage.getItem('pb_token'); deviceId = localStorage.getItem('pb_device'); } catch (e) { }
         if (!token || !deviceId) return 'drop';
-        const ver = String((window.__PB && window.__PB.desktop && window.__PB.desktop.v) || (/PB4uAndroid\/?([\d.]*)/.exec(navigator.userAgent || '') || [])[1] || '');
-        const body = Object.assign({ token: token, deviceId: deviceId, app: ver, platform: ANDROID_APP ? 'android' : 'web' }, item);
+        const ver = String((window.__PB && window.__PB.desktop && window.__PB.desktop.v) || (/PB4u(?:Android|IOS)\/?([\d.]*)/.exec(navigator.userAgent || '') || [])[1] || '');
+        const body = Object.assign({ token: token, deviceId: deviceId, app: ver, platform: ANDROID_APP ? 'android' : IOS_APP ? 'ios' : 'web' }, item);
         let r;
         try { r = await fetch('/api/camdiag', { method: 'POST', cache: 'no-store', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) }); }
         catch (e) { return 'later'; }
@@ -22975,7 +22978,7 @@
       // was picked before, or it connected before.
       function camHelperProbeOk() {
         if (!usbCam.viaHelper) return false;
-        if (DESKTOP || LANREMOTE || ANDROID_APP) return true;   // built into the app / the laptop the iPad is connected to / the tablet app
+        if (DESKTOP || LANREMOTE || ANDROID_APP || IOS_APP) return true;   // built into the app / the laptop the iPad is connected to / the tablet app
         try {
           if (localStorage.getItem(CAM_HELPER_SEEN_KEY) === '1' || localStorage.getItem('pb_print_helper') === '1') return true;
           const sv = JSON.parse(localStorage.getItem(CAM_PREF_KEY) || 'null');
@@ -23000,7 +23003,7 @@
       }
       function usbOptionLabel() {
         if (usbCam.name) return usbCam.name + (usbCam.viaHelper ? ' (USB)' : ' (USB remote)');
-        if (usbCam.viaHelper) return usbCam.helperName ? usbCam.helperName + ' (USB)' : ANDROID_APP ? 'DSLR / Mirrorless camera (USB)' : 'DSLR / Mirrorless camera (USB Helper)';
+        if (usbCam.viaHelper) return usbCam.helperName ? usbCam.helperName + ' (USB)' : (ANDROID_APP || IOS_APP) ? 'DSLR / Mirrorless camera (USB)' : 'DSLR / Mirrorless camera (USB Helper)';
         return 'DSLR / mirrorless over USB (remote control)';
       }
 
@@ -23060,7 +23063,7 @@
         if (usbCam.viaHelper) {
           const code = err && err.code;
           if (DESKTOP && (code === 'NOHELPER' || code === 'TIMEOUT')) return 'The camera part of the app isn\u2019t answering.' + (auto ? ' It keeps trying.' : ' Tap Try Again, or close and reopen the app.');
-          if (ANDROID_APP && (code === 'NOHELPER' || code === 'TIMEOUT')) return 'Camera connection timed out.' + (auto ? ' Reconnecting…' : ' Tap Try Again, or reconnect the camera.');
+          if ((ANDROID_APP || IOS_APP) && (code === 'NOHELPER' || code === 'TIMEOUT')) return 'Camera connection timed out.' + (auto ? ' Reconnecting…' : ' Tap Try Again, or reconnect the camera.');
           if (code === 'NOHELPER' || code === 'TIMEOUT') return 'Can\u2019t reach the photobooth4u Helper. Open it on this laptop (download it from photobooth4u.netlify.app/downloads). If Chrome asks to let this site reach apps on this device, choose Allow.' + (auto ? ' The camera connects by itself once the helper is open.' : ' Then tap Try Again.');
           if (err && err.name === 'UsbNoLiveView' && usbCam.lastErr && usbCam.lastErr.helperMsg) return usbCam.lastErr.helperMsg + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');
           if (err && err.name === 'UsbNoLiveView') return 'The camera connected but live view didn\u2019t start. Close the camera\u2019s menu, take the lens cap off and check the battery.' + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');
@@ -44298,10 +44301,10 @@
       // the code; cached here so a locked booth still unlocks offline).
       // Trials: the PIN and the lock belong to that trial only (its expiry time).
       var PIN_CACHE_KEY = 'pb4u.lockPin.code';
-      // Android offline app: no web session (no pb_token) and often no internet, so its PIN lives on the tablet only, like a trial's.
-      function isAndroidKioskLock() { return !!(window.__PB && window.__PB.android && window.__PB.offline); }
+      // Tablet offline app (Android / iPad): no web session (no pb_token) and often no internet, so its PIN lives on the tablet only, like a trial's.
+      function isAndroidKioskLock() { return !!(window.__PB && (window.__PB.android || window.__PB.ios) && window.__PB.offline); }
       function isTrialLock() { return !!(window.__PB && (window.__PB.type === 'trial' || isAndroidKioskLock())); }
-      function trialTag() { return isAndroidKioskLock() ? 'android' : (window.__PB ? String(window.__PB.exp || '') : ''); }   // the tablet keeps its PIN when the code is renewed
+      function trialTag() { return isAndroidKioskLock() ? (window.__PB && window.__PB.ios ? 'ios' : 'android') : (window.__PB ? String(window.__PB.exp || '') : ''); }   // the tablet keeps its PIN when the code is renewed
       var codePin = isTrialLock() ? null : lockRead(PIN_CACHE_KEY);
       if (codePin && !codePin.h) codePin = null;
       var seenReset = ((lockRead(PIN_CACHE_KEY) || {}).reset) || 0;
@@ -51637,9 +51640,9 @@
       if (!dfHelp.textContent) dfHelp.textContent = 'Each event gets its own folder. Two devices? Type the same name on both.';
       driveFolderKeyInput.addEventListener('input', scheduleSetupNav);
 
-      // ---- Android tablet app: where the photos are, the address guests open, the booth Wi-Fi ----
+      // ---- Tablet app (Android / iPad): where the photos are, the address guests open, the booth Wi-Fi ----
       (function () {
-        if (!ANDROID_LOCAL) return;
+        if (!TABLET_LOCAL) return;
         var box = document.getElementById('deskBox');
         if (!box) return;
         box.hidden = false;
@@ -51648,7 +51651,7 @@
         var signHint = document.getElementById('driveFolderSignHint');
         if (signHint) signHint.textContent = 'Print the sign and put it by the booth. Guests’ phones must be on the same Wi-Fi as this tablet to open the photos; add the Wi-Fi below so the sign and each guest’s QR show how to join.';
         if (!(window.__PB && window.__PB.folderPrefix)) driveFolderKeyInput.placeholder = 'Event name';
-        try { document.getElementById('deskPhotos').textContent = window.__PBLocal.photosPath() + ' (a copy of each photo is also in Pictures/photobooth4u)'; } catch (e) { }
+        try { document.getElementById('deskPhotos').textContent = window.__PBLocal.photosPath() + (IOS_LOCAL ? ' (a copy of each photo is also in Photos)' : ' (a copy of each photo is also in Pictures/photobooth4u)'); } catch (e) { }
         var lan = document.getElementById('deskLan'), lastBase = null;
         function renderLan() {
           var base = ''; try { base = window.__PBLocal.lanBase(); } catch (e) { }

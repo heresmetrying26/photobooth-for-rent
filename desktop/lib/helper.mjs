@@ -194,7 +194,7 @@ async function addNetworkPrinter({ ip, port, path, name }) {
     const added = r.out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)[0];
     if (r.code === 0 && added) { await printers(true); return { ok: true, printer: added }; }
     // Older Windows builds, or a printer that wants its own driver: hand over to Windows' own "Add a printer".
-    launchDetached('cmd.exe', ['/c', 'start', '', 'ms-settings:printers']).catch(() => {});
+    launchDetached('cmd.exe', ['/c', 'start', '', 'ms-settings:printers']).catch(() => { });
     return { ok: false, opened: true, error: 'Windows could not add it by itself, so Printers & scanners was opened. Choose Add device and pick ' + (name || ip) + ' there, then come back and refresh.' };
   }
   const queue = (String(name || '').replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'Network_Printer_' + ip.replace(/\./g, '_')).slice(0, 60);
@@ -209,6 +209,65 @@ async function addNetworkPrinter({ ip, port, path, name }) {
 // so a 4R photo came out on A4. We look up the paper sizes the printer offers
 // and pick the one that matches the booth's paper size (borderless if it has it).
 const PAPER_CACHE = new Map();
+const CAPS_CACHE = new Map();
+function formatCapsLabel(val, disp) {
+  if (disp && String(disp).trim()) return String(disp).trim();
+  const s = String(val || '').replace(/^[a-z0-9]+:/i, '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim();
+  return s || String(val || '');
+}
+const WIN_CAPS_PS = String.raw`
+param([string]$Printer)
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+Add-Type -AssemblyName System.Printing
+Add-Type -AssemblyName ReachFramework
+$pq = (New-Object System.Printing.LocalPrintServer).GetPrintQueue($Printer)
+$tx = [xml]([IO.StreamReader]::new($pq.UserPrintTicket.GetXmlStream()).ReadToEnd())
+$cx = [xml]([IO.StreamReader]::new($pq.GetPrintCapabilitiesAsXml()).ReadToEnd())
+$curNode = $tx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageMediaType']/*[local-name()='Option']")
+$cur = if ($curNode) { $curNode.GetAttribute('name') } else { '' }
+$opts = @($cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageMediaType']/*[local-name()='Option']"))
+foreach ($o in $opts) {
+  $nm = $o.GetAttribute('name')
+  if (-not $nm) { continue }
+  $dn = $o.SelectSingleNode("*[local-name()='Property' and @name='psf:DisplayName']/*[local-name()='Value']")
+  $label = if ($dn) { $dn.InnerText } else { '' }
+  $sel = if ($nm -eq $cur) { '1' } else { '0' }
+  '{0}|{1}|{2}' -f $nm, $label, $sel
+}
+`;
+async function winPrinterCaps(printer) {
+  const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
+  try {
+    const ps1 = join(dir, 'caps.ps1');
+    await writeFile(ps1, '﻿' + WIN_CAPS_PS, 'utf8');
+    const r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer]);
+    const mediaTypes = [];
+    for (const line of r.out.split(/\r?\n/)) {
+      const m = /^([^|]+)\|([^|]*)\|([01])\s*$/.exec(line);
+      if (!m) continue;
+      const value = m[1].trim();
+      mediaTypes.push({ value, label: formatCapsLabel(value, m[2]), selected: m[3] === '1' });
+    }
+    return { mediaTypes };
+  } finally { rm(dir, { recursive: true, force: true }).catch(() => { }); }
+}
+async function printerCaps(printer) {
+  const c = CAPS_CACHE.get(printer);
+  if (c && Date.now() - c.at < 120000) return c.caps;
+  let caps = { mediaTypes: [] };
+  try {
+    if (IS_WIN) {
+      caps = await winPrinterCaps(printer);
+    } else {
+      const opts = await cupsPrinterOptions(printer);
+      const mt = opts.find((o) => /^media-?type$/i.test(o.key));
+      if (mt) caps = { mediaKey: mt.key, mediaTypes: mt.choices.map((ch) => ({ value: ch.value, label: formatCapsLabel(ch.value), selected: !!ch.selected })) };
+    }
+  } catch { caps = { mediaTypes: [] }; }
+  CAPS_CACHE.set(printer, { at: Date.now(), caps });
+  return caps;
+}
 const PAPER_NAMES = {
   a3: [297, 420], a4: [210, 297], a5: [148, 210], a6: [105, 148], letter: [215.9, 279.4], legal: [215.9, 355.6],
   postcard: [100, 148], hagaki: [100, 148], l: [89, 127], '2l': [127, 178], kg: [102, 152], '4r': [102, 152], '5r': [127, 178], '6r': [152, 203], '8r': [203, 254], '3r': [89, 127],
@@ -304,12 +363,13 @@ async function paperSizes(printer) {
 // When the printer's default paper already is that size it's kept (keep: true), so its own
 // settings (borderless, cutting) stay. A strip on a sheet twice as wide (cut in two) counts too.
 const near = (s, a, b) => { const sa = Math.min(s.w, s.h), sb = Math.max(s.w, s.h); return Math.abs(sa - a) <= 3 && Math.abs(sb - b) <= 3; };
-async function pickPaper(printer, widthMm, heightMm) {
+async function pickPaper(printer, widthMm, heightMm, twoUp) {
   if (!(widthMm > 0 && heightMm > 0)) return null;
   const a = Math.min(widthMm, heightMm), b = Math.max(widthMm, heightMm);
+  const allowTwoUp = twoUp !== false && (twoUp === true || a <= 60);
   const { sizes, def } = await paperSizes(printer);
   const d = def && sizes.find((s) => s.key === def);
-  if (d && (near(d, a, b) || (a / b < 0.45 && near(d, a * 2, b)))) return { ...d, keep: true };
+  if (d && (near(d, a, b) || (allowTwoUp && a / b < 0.45 && near(d, a * 2, b)))) return { ...d, keep: true };
   let best = null;
   for (const s of sizes) {
     const sa = Math.min(s.w, s.h), sb = Math.max(s.w, s.h);
@@ -387,7 +447,7 @@ async function macBorderlessScale(printer, pick) {
 const WIN_EPSON_L3210_SCALE = 0.965;
 
 const WIN_PRINT_PS = String.raw`
-param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [switch]$Borderless, [int]$CustomW = 0, [int]$CustomH = 0, [int]$ActualW = 0, [int]$ActualH = 0, [double]$EpsonScale = 0)
+param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [string]$MediaType = '', [switch]$Borderless, [int]$CustomW = 0, [int]$CustomH = 0, [int]$ActualW = 0, [int]$ActualH = 0, [double]$EpsonScale = 0)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $files = @(Get-Content -LiteralPath $ListFile -Encoding UTF8 | Where-Object { $_ })
@@ -432,6 +492,42 @@ try {
       $doc.PrinterSettings.SetHdevmode($hd); $doc.DefaultPageSettings.SetHdevmode($hd)
       [Runtime.InteropServices.Marshal]::FreeHGlobal($hd)
       [Console]::Out.WriteLine('info|quality ' + $best)
+    }
+  }
+  if ($MediaType) {
+    $mhas = $cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageMediaType']/*[local-name()='Option']") | Where-Object { $_.GetAttribute('name') -eq $MediaType } | Select-Object -First 1
+    if ($mhas) {
+      $mconv = New-Object System.Printing.Interop.PrintTicketConverter($Printer, $pq.ClientPrintSchemaVersion)
+      $mh0 = $doc.PrinterSettings.GetHdevmode($doc.DefaultPageSettings)
+      if (-not ('PB4U.K32' -as [type])) {
+        Add-Type -MemberDefinition @'
+[DllImport("kernel32.dll")] public static extern IntPtr GlobalLock(IntPtr h);
+[DllImport("kernel32.dll")] public static extern bool GlobalUnlock(IntPtr h);
+[DllImport("kernel32.dll")] public static extern UIntPtr GlobalSize(IntPtr h);
+[DllImport("kernel32.dll")] public static extern IntPtr GlobalFree(IntPtr h);
+'@ -Name K32 -Namespace PB4U
+      }
+      $mp = [PB4U.K32]::GlobalLock($mh0); $mn = ([PB4U.K32]::GlobalSize($mh0)).ToUInt32()
+      $mb = New-Object byte[] $mn
+      [Runtime.InteropServices.Marshal]::Copy($mp, $mb, 0, $mn)
+      [void][PB4U.K32]::GlobalUnlock($mh0); [void][PB4U.K32]::GlobalFree($mh0)
+      $mt0 = $mconv.ConvertDevModeToPrintTicket($mb)
+      $mx = [xml]([IO.StreamReader]::new($mt0.GetXmlStream()).ReadToEnd())
+      $mf = $mx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageMediaType']/*[local-name()='Option']")
+      if ($mf -and $mf.GetAttribute('name') -ne $MediaType) {
+        $mf.SetAttribute('name', $MediaType)
+        $mvt = $pq.MergeAndValidatePrintTicket($mt0, (New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($mx.OuterXml)))))).ValidatedPrintTicket
+        $mvx = [xml]([IO.StreamReader]::new($mvt.GetXmlStream()).ReadToEnd())
+        $mvo = $mvx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageMediaType']/*[local-name()='Option']")
+        if ($mvo -and $mvo.GetAttribute('name') -eq $MediaType) {
+          $mdm = $mconv.ConvertPrintTicketToDevMode($mvt, [System.Printing.Interop.BaseDevModeType]::UserDefault)
+          $mhd = [Runtime.InteropServices.Marshal]::AllocHGlobal($mdm.Length)
+          [Runtime.InteropServices.Marshal]::Copy($mdm, 0, $mhd, $mdm.Length)
+          $doc.PrinterSettings.SetHdevmode($mhd); $doc.DefaultPageSettings.SetHdevmode($mhd)
+          [Runtime.InteropServices.Marshal]::FreeHGlobal($mhd)
+          [Console]::Out.WriteLine('info|mediaType ' + $MediaType)
+        } else { [Console]::Out.WriteLine('warn|Printer driver did not accept paper type "' + $MediaType + '".') }
+      }
     }
   }
 } catch { }
@@ -487,8 +583,8 @@ if ($CustomW -gt 0 -and $CustomH -gt 0 -and -not $PaperName) {
       $doc.DefaultPageSettings.PaperSize = $np
       $customApplied = $true
       [Console]::Out.WriteLine('info|custom paper ' + $CustomW + 'x' + $CustomH + ' (1/100 in) set on the driver')
-    } else { [Console]::Out.WriteLine('info|driver did not take the custom paper size; the printer''s own paper is used') }
-  } catch { [Console]::Out.WriteLine('info|custom paper not set: ' + $_.Exception.Message) }
+    } else { [Console]::Out.WriteLine('warn|Printer driver did not accept custom paper size (' + [Math]::Round($CustomW / 100, 2) + 'x' + [Math]::Round($CustomH / 100, 2) + ' in); printed using "' + $doc.DefaultPageSettings.PaperSize.PaperName + '". Set up this custom size in Configure printer if needed.') }
+  } catch { [Console]::Out.WriteLine('warn|Custom paper size could not be applied: ' + $_.Exception.Message) }
 }
 # Borderless: when the booth's paper matched one of the printer's papers, ask the driver for its Borderless mode on
 # that paper (Epson L-series keep it as a separate switch, off unless someone ticked it in the printer's preferences,
@@ -613,18 +709,34 @@ $doc.add_PrintPage({
 $doc.Print()
 'ok'
 `;
-async function printPages(printer, pngBuffers, fit, widthMm, heightMm, quality, custom) {
+async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, custom, opts) {
+  opts = opts || {};
+  const twoUp = typeof opts.twoUp === 'boolean' ? opts.twoUp : undefined;
+  const reqPaperName = typeof opts.paperName === 'string' ? opts.paperName.trim() : '';
+  const reqMediaType = typeof opts.mediaType === 'string' ? opts.mediaType.trim() : '';
+  const warnings = [];
+  const items = pageItems.map((p) => (Buffer.isBuffer(p) ? { buf: p, ext: 'png' } : p));
   const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
   try {
     const files = [];
-    for (let i = 0; i < pngBuffers.length; i++) { const f = join(dir, 'page' + (i + 1) + '.png'); await writeFile(f, pngBuffers[i]); files.push(f); }
+    for (let i = 0; i < items.length; i++) { const f = join(dir, 'page' + (i + 1) + '.' + (items[i].ext || 'png')); await writeFile(f, items[i].buf); files.push(f); }
     let r;
+    const resolvePick = async () => {
+      if (fit === 'width') return null;
+      if (reqPaperName) {
+        const info = await paperSizes(printer);
+        const found = info.sizes.find((s) => s.key === reqPaperName || s.name === reqPaperName);
+        if (found) return { ...found, keep: found.key === info.def && !reqPaperName, explicit: true };
+        return { key: reqPaperName, name: reqPaperName, borderless: isBorderlessName(reqPaperName), explicit: true };
+      }
+      return pickPaper(printer, widthMm, heightMm, twoUp);
+    };
+    const pick = await resolvePick();
+    if (pick) log('Paper: ' + pick.name + (pick.explicit ? ' (selected by operator)' : pick.keep ? ' (the printer\'s default)' : ''));
     if (IS_WIN) {
       const ps1 = join(dir, 'print.ps1'), list = join(dir, 'pages.txt');
       await writeFile(ps1, '﻿' + WIN_PRINT_PS, 'utf8');
       await writeFile(list, files.join('\r\n'), 'utf8');
-      const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
-      if (pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
       // A renter's own size with no matching paper in the driver: ask for it as a custom size (hundredths of an inch).
       const cust = custom && !pick && fit !== 'width' && widthMm > 0 && heightMm > 0
         ? ['-CustomW', String(Math.round(Math.min(widthMm, heightMm) / 25.4 * 100)), '-CustomH', String(Math.round(Math.max(widthMm, heightMm) / 25.4 * 100))] : [];
@@ -633,28 +745,41 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm, quality, 
       // Only when no paper of the driver matched at all (a matched paper, including a strip on a 2x wider cut sheet, keeps its own handling).
       const actual = !pick && fit !== 'width' && widthMm > 0 && heightMm > 0
         ? ['-ActualW', String(Math.round(Math.min(widthMm, heightMm) / 25.4 * 100)), '-ActualH', String(Math.round(Math.max(widthMm, heightMm) / 25.4 * 100))] : [];
-      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && !pick.keep ? ['-PaperName', pick.key] : []), ...(pick || cust.length ? ['-Borderless'] : []), '-EpsonScale', String(WIN_EPSON_L3210_SCALE), ...cust, ...actual]);
+      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(reqMediaType ? ['-MediaType', reqMediaType] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && (!pick.keep || pick.explicit) ? ['-PaperName', pick.key] : []), ...((pick && (pick.borderless || !pick.explicit)) || cust.length ? ['-Borderless'] : []), '-EpsonScale', String(WIN_EPSON_L3210_SCALE), ...cust, ...actual]);
     } else {
-      const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
-      if (pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
       const scale = fit === 'width' ? 1 : await macBorderlessScale(printer, pick);
       const perSide = !!scale && typeof scale === 'object';
       const pct = (v) => Math.round(v * 1000) / 10 + '%';
       if (perSide || scale < 1) {
         let done = 0;
         for (let i = 0; i < files.length; i++) {
-          try { const b = await shrinkPage(pngBuffers[i], scale); if (b && b.length) { await writeFile(files[i], b); done++; } } catch (e) { log('Borderless shrink failed: ' + (e && e.message || e)); }
+          try { const b = await shrinkPage(items[i].buf, scale); if (b && b.length) { await writeFile(files[i], b); done++; } } catch (e) { log('Borderless shrink failed: ' + (e && e.message || e)); }
         }
         if (done) log('Borderless: page sent at ' + (perSide ? pct(scale.x) + ' across and ' + pct(scale.y) + ' along the sheet (measured for this printer)' : pct(scale)) + ' so the printer\'s enlargement does not trim the edges');
       }
       const media = fit === 'width' && widthMm > 0 && heightMm > 0 ? ['-o', 'media=Custom.' + Math.round(widthMm) + 'x' + Math.round(heightMm) + 'mm']
-        : pick && !pick.keep ? ['-o', (pick.opt === 'media' ? 'media=' : 'PageSize=') + pick.key]
+        : pick && (!pick.keep || pick.explicit) ? ['-o', (pick.opt === 'media' ? 'media=' : 'PageSize=') + pick.key]
           : custom && !pick && widthMm > 0 && heightMm > 0 ? ['-o', 'media=Custom.' + Math.round(Math.min(widthMm, heightMm)) + 'x' + Math.round(Math.max(widthMm, heightMm)) + 'mm'] : [];
+      const mopts = [];
+      if (reqMediaType) {
+        try {
+          const caps = await printerCaps(printer);
+          const mkey = caps.mediaKey || 'media-type';
+          if (caps.mediaTypes && caps.mediaTypes.some((m) => m.value === reqMediaType)) {
+            mopts.push('-o', mkey + '=' + reqMediaType);
+            log('Media type: ' + mkey + '=' + reqMediaType);
+          }
+        } catch { }
+      }
       const qopts = await airPrintQualityOptions(printer, quality);
-      r = await run('lp', ['-d', printer, ...media, ...qopts, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
+      r = await run('lp', ['-d', printer, ...media, ...mopts, ...qopts, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
     }
     if (r.code !== 0) throw new Error((r.err || r.out || ('exit ' + r.code)).trim().slice(0, 300));
-    for (const line of String(r.out || '').split(/\r?\n/)) if (line.startsWith('info|')) log('Page: ' + line.slice(5));
+    for (const line of String(r.out || '').split(/\r?\n/)) {
+      if (line.startsWith('info|')) log('Page: ' + line.slice(5));
+      else if (line.startsWith('warn|')) { const w = line.slice(5).trim(); if (w) { warnings.push(w); log('Warn: ' + w); } }
+    }
+    return { warnings };
   } finally {
     setTimeout(() => rm(dir, { recursive: true, force: true }).catch(() => { }), 60000);
   }
@@ -806,10 +931,18 @@ function getPrintQueue(name) {
 export async function handleHelper(req, path, search) {
   const method = req.method;
   if (method === 'GET' && path === '/status') {
+    const refresh = search.get('refresh') === '1';
+    if (refresh) { PAPER_CACHE.clear(); CAPS_CACHE.clear(); }
     return json({
-      ok: true, app: 'photobooth4u-print-helper', builtIn: true, version: HELPER_VERSION, printers: await printers(search.get('refresh') === '1'),
+      ok: true, app: 'photobooth4u-print-helper', builtIn: true, version: HELPER_VERSION, printers: await printers(refresh),
       camera: { supported: camOk(), open: !!cam.open, name: cam.open ? cam.open.name : '' }
     });
+  }
+  if (method === 'GET' && path === '/printer/caps') {
+    const name = String(search.get('printer') || '').trim();
+    if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404);
+    if (direct.has(name)) return json({ ok: true, mediaTypes: [] });
+    return json({ ok: true, ...(await printerCaps(name)) });
   }
   if (path === '/printer/configure' && method === 'POST') {
     let body;
@@ -907,16 +1040,18 @@ export async function handleHelper(req, path, search) {
   if (method === 'GET' && path === '/paper') {
     const name = String(search.get('printer') || '').trim();
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404);
+    const twoUpQ = search.get('twoUp');
+    const twoUp = twoUpQ === '1' ? true : twoUpQ === '0' ? false : undefined;
     if (direct.has(name)) {
       // A printer used straight over IPP names its own papers: say which one this booth size will go on.
       const d = direct.get(name), caps = await ippCaps(d.ip, d.port, d.path, 3000);
       if (!caps) return json({ ok: true, known: false });
       const media = pickMediaName(caps, Number(search.get('w')) || 0, Number(search.get('h')) || 0);
-      return json({ ok: true, known: true, match: media ? { name: media + ' (sent straight to the printer)', borderless: true, isDefault: false } : null, def: '', sizes: caps.mediaSupported.slice(0, 40) });
+      return json({ ok: true, known: true, match: media ? { name: media + ' (sent straight to the printer)', borderless: true, isDefault: false } : null, def: '', sizes: caps.mediaSupported.slice(0, 40), paperList: caps.mediaSupported.slice(0, 80).map((s) => ({ key: s, name: s })) });
     }
-    const info = await paperSizes(name), pick = await pickPaper(name, Number(search.get('w')) || 0, Number(search.get('h')) || 0);
+    const info = await paperSizes(name), pick = await pickPaper(name, Number(search.get('w')) || 0, Number(search.get('h')) || 0, twoUp);
     const def = info.def && info.sizes.find((x) => x.key === info.def);
-    return json({ ok: true, known: info.sizes.length > 0, match: pick ? { name: pick.name, borderless: !!pick.borderless, isDefault: !!pick.keep } : null, def: def ? def.name : (info.def || ''), sizes: info.sizes.slice(0, 40).map((x) => x.name) });
+    return json({ ok: true, known: info.sizes.length > 0, match: pick ? { name: pick.name, borderless: !!pick.borderless, isDefault: !!pick.keep } : null, def: def ? def.name : (info.def || ''), sizes: info.sizes.slice(0, 40).map((x) => x.name), paperList: info.sizes.slice(0, 80).map((x) => ({ key: x.key, name: x.name, w: Math.round(x.w * 10) / 10, h: Math.round(x.h * 10) / 10, borderless: !!x.borderless })) });
   }
   if (method === 'POST' && path === '/print') {
     let body;
@@ -930,19 +1065,25 @@ export async function handleHelper(req, path, search) {
     if (!list.includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404);
     const buffers = [];
     for (const p of pages) {
-      const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(String(p));
-      if (!m) return json({ ok: false, error: 'Pages must be PNG images' }, 400);
-      buffers.push(Buffer.from(m[1], 'base64'));
+      const m = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(String(p));
+      if (!m) return json({ ok: false, error: 'Pages must be PNG or JPEG images' }, 400);
+      buffers.push({ buf: Buffer.from(m[2], 'base64'), ext: m[1] === 'jpeg' ? 'jpg' : 'png' });
     }
     const fit = body.fit === 'width' ? 'width' : '';
     const prev = getPrintQueue(name);
     const quality = ['draft', 'normal', 'best'].includes(body.quality) ? body.quality : '';
+    const opts = {
+      twoUp: typeof body.twoUp === 'boolean' ? body.twoUp : undefined,
+      paperName: typeof body.paperName === 'string' ? body.paperName.slice(0, 120) : '',
+      mediaType: typeof body.mediaType === 'string' ? body.mediaType.slice(0, 120) : ''
+    };
     const dp = direct.get(name);
+    const warnings = [];
     const job = dp
       ? prev.then(async () => {
         // No driver: each page goes to the printer as a JPEG over IPP, on the paper the printer names itself.
-        for (const png of buffers) {
-          const jpeg = toJpeg ? toJpeg(png) : null;
+        for (const it of buffers) {
+          const jpeg = it.ext === 'jpg' ? it.buf : (toJpeg ? toJpeg(it.buf) : null);
           if (!jpeg || !jpeg.length) throw new Error('Could not prepare the photo for the printer.');
           const r = await ippPrintDirect({ ip: dp.ip, port: dp.port, path: dp.path, jpeg, widthMm: Number(body.widthMm) || 0, heightMm: Number(body.heightMm) || 0 });
           log('Direct print on ' + name + ': paper ' + r.media + ', scaling ' + (r.scaling || 'printer default'));
@@ -953,13 +1094,14 @@ export async function handleHelper(req, path, search) {
         // A Canon SELPHY CP1500 can stop halfway, print only yellow or freeze the Windows print service when several photos reach it
         // in one print job, so on a SELPHY each page goes as its own job, one after the other.
         if (buffers.length > 1 && /selphy|canon.*\bCP\s?1[0-9]{3}\b/i.test(name)) {
-          for (const png of buffers) await printPages(name, [png], fit, wMm, hMm, quality, body.custom === true);
+          for (const it of buffers) { const res = await printPages(name, [it], fit, wMm, hMm, quality, body.custom === true, opts); if (res && res.warnings) warnings.push(...res.warnings); }
           return;
         }
-        await printPages(name, buffers, fit, wMm, hMm, quality, body.custom === true);
+        const res = await printPages(name, buffers, fit, wMm, hMm, quality, body.custom === true, opts);
+        if (res && res.warnings) warnings.push(...res.warnings);
       });
     printQueues.set(name, job.catch(() => { }));
-    try { await job; log('Printed ' + buffers.length + ' page(s) on ' + name); return json({ ok: true }); }
+    try { await job; log('Printed ' + buffers.length + ' page(s) on ' + name); return json({ ok: true, ...(warnings.length ? { warnings: Array.from(new Set(warnings)) } : {}) }); }
     catch (e) { log('Print failed on ' + name + ': ' + (e && e.message || e)); return json({ ok: false, error: String(e && e.message || e) }, 500); }
   }
   return json({ ok: false, error: 'Not found' }, 404);
@@ -968,3 +1110,4 @@ export function stopHelper() {
   try { cam.proc && cam.proc.kill(); } catch { /* gone */ }
   if (macCamP) macCamP.then((m) => m.reset()).catch(() => { });
 }
+export const _helperTest = { pickPaper, sizeFromName, formatCapsLabel, PAPER_CACHE, CAPS_CACHE };

@@ -14707,6 +14707,12 @@
           </div>
           <div class="lay-ctx" id="layoutCtx">
             <p class="panel-hint" id="layoutHint" style="margin:0;"></p>
+            <div class="layout-paper-row" id="layoutPaperRow" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;">
+              <label for="layoutPaperSelect" style="font-size:12px;color:var(--ink-soft,#6b5f52);">Paper size for this layout</label>
+              <select id="layoutPaperSelect" class="printer-input" style="width:auto;min-width:170px;padding:4px 8px;font-size:12px;">
+                <option value="">Keep current paper</option>
+              </select>
+            </div>
           </div>
           <div class="sub-group" id="ownFrameBox">
             <input type="file" id="overlayInput" accept="image/png,image/webp,image/jpeg,image/*" multiple hidden>
@@ -16457,6 +16463,12 @@
               </select>
               <button type="button" id="csAdd">Add</button>
             </div>
+            <div class="print-size-row hidden" id="xlPresetRow" style="margin:4px 0 6px;">
+              <span style="font-size:11px;color:var(--ink-soft,#6b5f52);align-self:center;margin-right:2px;">XL strip presets:</span>
+              <button type="button" class="print-size-btn" data-xlpreset="4x12in">+ 4&times;12 in</button>
+              <button type="button" class="print-size-btn" data-xlpreset="8x24in">+ 8&times;24 in</button>
+              <button type="button" class="print-size-btn" data-xlpreset="8x32in">+ 8&times;32 in</button>
+            </div>
             <label class="switch-row hidden" id="keychainRow" style="margin:4px 0 10px;">
               <span>Keychain strips at real size (2.5×7.5 in)</span>
               <input type="checkbox" id="keychainToggle">
@@ -16498,11 +16510,30 @@
                 <button type="button" class="print-size-btn" data-pq="draft">Draft</button>
               </div>
               <p class="panel-hint" id="printerQualityHint" style="margin:2px 0 6px;"></p>
+              <div id="printerMediaWrap" style="margin:8px 0 4px;">
+                <label class="sub-label" for="printerMediaSelect" style="display:block;margin:0 0 4px;">Paper / media type (this printer)</label>
+                <select id="printerMediaSelect" class="printer-input"></select>
+                <p class="panel-hint" id="printerMediaHint" style="margin:3px 0 4px;"></p>
+              </div>
+              <div id="driverPaperWrap" style="margin:8px 0 4px;">
+                <label class="sub-label" for="driverPaperSelect" style="display:block;margin:0 0 4px;">Driver paper size / slot (this booth size)</label>
+                <select id="driverPaperSelect" class="printer-input"></select>
+                <p class="panel-hint" id="driverPaperHint" style="margin:3px 0 4px;"></p>
+              </div>
             </div>
             <div id="photoFitBox">
               <p class="sub-label" style="margin:10px 0 6px;">Photo size on the paper</p>
               <div class="print-size-row" id="photoSizeRow"></div>
               <p class="panel-hint" id="photoFitHint" style="margin:2px 0 6px;"></p>
+              <label class="switch-row hidden" id="singleStripRow" style="margin:8px 0 2px;"><span>1 strip per sheet (full size, don’t pair 2 side-by-side)</span><input type="checkbox" id="singleStripToggle"></label>
+              <div id="posterDpiBox" class="hidden" style="margin:8px 0 4px;">
+                <p class="sub-label" style="margin:6px 0 4px;">Large / XL sheet resolution</p>
+                <div class="print-size-row" id="posterDpiRow">
+                  <button type="button" class="print-size-btn" data-pdpi="0">300 DPI PNG (default)</button>
+                  <button type="button" class="print-size-btn" data-pdpi="200">200 DPI JPEG (faster XL)</button>
+                </div>
+                <p class="panel-hint" id="posterDpiHint" style="margin:2px 0 4px;"></p>
+              </div>
               <label class="switch-row" id="borderlessRow" style="margin:8px 0 2px;"><span>Borderless, no
                   trimming</span><input type="checkbox" id="borderlessToggle"></label>
               <p class="panel-hint" id="borderlessHint" style="margin:2px 0 8px;"></p>
@@ -18850,6 +18881,9 @@
       // squares so it stays close to a 2x6 strip's shape.
       const STRIP4_PHOTO = 400;
       const STRIP4_CONTENT_H = STRIP_MARGIN * 2 + STRIP4_PHOTO * 4 + STRIP_GAP * 3;
+      // XL Strip 4: 4 larger stacked squares tuned for 1:4 XL strips (e.g. 8×32 in).
+      const STRIPXL_PHOTO = 520;
+      const STRIPXL_CONTENT_H = STRIP_MARGIN * 2 + STRIPXL_PHOTO * 4 + STRIP_GAP * 3;
 
       // ---- Sheet layouts: every one is a 4R (4x6) portrait sheet ----
       // Rows of cells, as relative heights; each row has 1+ columns. The shot
@@ -18892,6 +18926,7 @@
       const LAYOUT_DEFS = {
         strip: { name: 'Classic strip', shots: 3, kind: 'strip', bandOk: true, hint: '3 shots in a tall strip. Prints 2 strips on 4R, cut down the middle.' },
         strip4: { name: 'Strip 4', shots: 4, kind: 'strip', bandOk: true, hint: '4 shots in a tall strip. Prints 2 strips on 4R, cut down the middle.' },
+        stripxl: { name: 'XL Strip 4', shots: 4, kind: 'strip', bandOk: true, hint: '4 large stacked shots (1:4 tall) for 4×12, 8×24, or 8×32 in XL strip paper.' },
         grid: { name: 'Polaroid 4', shots: 4, kind: 'polaroid', bandOk: true, hint: '4 polaroids. Every shot in full, nothing cropped.' },
         grid4: { name: 'Grid 4', shots: 4, kind: 'sheet', hint: '4 even shots on one 4R sheet.' },
         hero: { name: 'Hero 1+3', shots: 4, kind: 'sheet', hint: '1 big shot on top, 3 small below.' },
@@ -18927,7 +18962,7 @@
           hint: 'Two or more of your frames together on one sheet. Tick them below, choose the sheet size and an arrangement, then drag them in the preview.'
         }
       };
-      const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'feature', 'film6', 'land2', 'land2t', 'land3', 'land4', 'receipt', 'receipt1', 'receipt2', 'receipt4', 'receiptc', 'receipt1c', 'receipt2c', 'receipt4c'];
+      const LAYOUT_ORDER = ['strip', 'strip4', 'stripxl', 'grid', 'grid4', 'hero', 'solo', 'duo', 'feature', 'film6', 'land2', 'land2t', 'land3', 'land4', 'receipt', 'receipt1', 'receipt2', 'receipt4', 'receiptc', 'receipt1c', 'receipt2c', 'receipt4c'];
       // The built-in layouts, plus your frames once at least one is uploaded.
       function layoutOrder() {
         var has = typeof myFrames !== 'undefined' && myFrames && myFrames.length;
@@ -18947,6 +18982,7 @@
       const LAYOUTS = {
         strip: { w: STRIP_W, contentH: STRIP_CONTENT_H, render: (ctx, shots, W, H) => renderStrip(ctx, shots, W, H, 3, STRIP_PHOTO) },
         strip4: { w: STRIP_W, contentH: STRIP4_CONTENT_H, render: (ctx, shots, W, H) => renderStrip(ctx, shots, W, H, 4, STRIP4_PHOTO) },
+        stripxl: { w: STRIP_W, contentH: STRIPXL_CONTENT_H, render: (ctx, shots, W, H) => renderStrip(ctx, shots, W, H, 4, STRIPXL_PHOTO) },
         grid: { w: GRID_W, contentH: GRID_H, render: renderGrid }
       };
       function shotsNeeded(layoutKey) {
@@ -26858,7 +26894,7 @@
       // card per uploaded frame (+ Frame collage, + Add frame); it comes first once
       // there are frames. With "Let guests choose" on, every card shows a tick.
       const LAYOUT_GROUPS = [
-        { t: 'Strips', s: '2×6, or 2 strips on 4R', keys: ['strip', 'strip4'] },
+        { t: 'Strips', s: '2×6, XL 1:4, or 2 strips on 4R', keys: ['strip', 'strip4', 'stripxl'] },
         { t: '4R sheet', s: '4×6 photo paper', keys: ['grid', 'grid4', 'hero', 'solo', 'duo', 'feature', 'film6'] },
         { t: 'Landscape', s: '4R turned sideways', keys: ['land2', 'land2t', 'land3', 'land4'] },
         { t: 'Receipt & Thermal', s: 'Thermal receipt printer (80/58 mm), or photo paper', keys: ['receipt', 'receipt1', 'receipt2', 'receipt4', 'receiptc', 'receipt1c', 'receipt2c', 'receipt4c'] }
@@ -26991,6 +27027,44 @@
         if (typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
         if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
       });
+      // Optional per-layout paper override (e.g. XL Strip 4 -> 8×32 in, Polaroid -> 62×99 mm).
+      // Unset layouts keep whichever paper size the booth already had selected.
+      const LAYOUT_PAPER_KEY = 'pb_layout_paper_map';
+      let layoutPaperMap = {};
+      try { layoutPaperMap = JSON.parse(localStorage.getItem(LAYOUT_PAPER_KEY) || '{}') || {}; } catch (e) { layoutPaperMap = {}; }
+      function saveLayoutPaperMap() { try { localStorage.setItem(LAYOUT_PAPER_KEY, JSON.stringify(layoutPaperMap)); } catch (e) { } }
+      function refreshLayoutPaperSelect() {
+        const sel = document.getElementById('layoutPaperSelect');
+        if (!sel || typeof printSettings !== 'function' || typeof paperFor !== 'function') return;
+        const ak = layoutCardKey(), cur = (layoutPaperMap && layoutPaperMap[ak]) || '';
+        const sizes = printSettings() || [];
+        sel.innerHTML = '';
+        const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
+        add('', 'Keep current paper');
+        sizes.forEach(pk => {
+          const p = paperFor(pk);
+          if (!p) return;
+          const fits = typeof sizeFitsLayout !== 'function' || sizeFitsLayout(pk);
+          if (fits || cur === pk) add(pk, p.name + (fits ? '' : ' (incompatible)'));
+        });
+        if (cur && !sizes.includes(cur)) add(cur, (paperFor(cur) ? paperFor(cur).name : cur) + ' (removed)');
+        sel.value = cur && [...sel.options].some(o => o.value === cur) ? cur : '';
+      }
+      (function () {
+        const sel = document.getElementById('layoutPaperSelect');
+        if (!sel) return;
+        sel.addEventListener('change', () => {
+          const ak = layoutCardKey(), v = sel.value;
+          if (v) layoutPaperMap[ak] = v; else delete layoutPaperMap[ak];
+          saveLayoutPaperMap();
+          if (v && typeof paperFor === 'function' && paperFor(v)) {
+            printSize = v;
+            try { localStorage.setItem('pb_print_paper', v); } catch (e) { }
+            if (typeof refreshPrintUI === 'function') refreshPrintUI();
+          }
+        });
+      })();
+
       // Switches the layout everywhere (Setup grid, shot count, previews). Used by
       // the Setup grid, a restored saved setup, and the guests' layout picker.
       let setupLayout = 'strip', setupActiveFrameId = null;
@@ -27023,6 +27097,11 @@
         updateReadySub();
         renderComposite();
         renderSetupPreview();
+        const mappedPaper = layoutPaperMap && layoutPaperMap[activeKey];
+        if (mappedPaper && typeof paperFor === 'function' && paperFor(mappedPaper) && (typeof printSettings !== 'function' || (printSettings() || []).includes(mappedPaper))) {
+          printSize = mappedPaper;
+          try { localStorage.setItem('pb_print_paper', printSize); } catch (e) { }
+        }
         var fObj = (/^frame:/.test(key) && typeof frameById === 'function') ? frameById(key.slice(6)) : (key === 'myframe' && typeof activeFrame === 'function' ? activeFrame() : null);
         var isRc = (fObj && fObj.tier === 'receipt') || (!fObj && layoutDef(key).kind === 'receipt');
         if (isRc) {
@@ -28040,14 +28119,15 @@
         // Always reserve a little breathing room at the bottom, even with no
         // event name or date typed in yet, instead of shots running to the edge.
         const minBottomMargin = Math.round(layout.w * 0.05);
+        const stripH = layoutKey === 'stripxl' ? STRIP_W * 4 : STRIP_W * 3;
         const bandH = layout.templateStrip
-          ? Math.round(STRIP_W * 3 * ({ wedding: 0.2, turns: 0.19, blocks: 0.21, monogram: 0.25, bignum: 0.21 }[titleStyle] || 0.2) * Math.min(1.25, growth))
+          ? Math.round(stripH * ({ wedding: 0.2, turns: 0.19, blocks: 0.21, monogram: 0.25, bignum: 0.21 }[titleStyle] || 0.2) * Math.min(1.25, growth))
           : hasBand ? Math.round(layout.w * (dateText ? LABEL_BAND_RATIO * 1.35 : LABEL_BAND_RATIO) * growth * styleBandFactor()) : minBottomMargin;
         // Theme artwork across the top (an awning) gets its own room above the shots.
         const artTop = bandPlacement ? 0 : themeArtTop(layout.w);
         // Sheets are always exactly 4R: the shots get whatever the label band leaves.
         if (isSheet) layout.contentH = SHEET_H - bandH - artTop;
-        if (layout.templateStrip) layout.contentH = STRIP_W * 3 - bandH - artTop;
+        if (layout.templateStrip) layout.contentH = stripH - bandH - artTop;
 
         // Strip + a custom uploaded photo (band placement): the photo becomes a
         // band above the shots, and the rest of the strip fills with a textured
@@ -29021,9 +29101,33 @@
       }
       function instaxNames() { try { return window._instax ? window._instax.names() : []; } catch (e) { return []; } }
       function isInstaxPrinter(n) { try { return !!(window._instax && window._instax.isInstaxName(n)); } catch (e) { return false; } }
+      const DRIVER_PAPER_KEY = 'pb_driver_paper_map';
+      let driverPaperMap = {};
+      try { driverPaperMap = JSON.parse(localStorage.getItem(DRIVER_PAPER_KEY) || '{}') || {}; } catch (e) { driverPaperMap = {}; }
+      function driverPaperKey(name, sizeKey) { return name && sizeKey ? name + '|' + sizeKey : ''; }
+      function driverPaperFor(name, sizeKey) { const k = driverPaperKey(name, sizeKey); return k ? (driverPaperMap[k] || '') : ''; }
+      function saveDriverPaperMap() { try { localStorage.setItem(DRIVER_PAPER_KEY, JSON.stringify(driverPaperMap)); } catch (e) { } }
+      const capsChecks = {};
+      async function fetchPrinterCaps(name) {
+        if (!name || !helperOn || isInstaxPrinter(name) || capsChecks[name]) return capsChecks[name] || null;
+        capsChecks[name] = { state: 'loading' };
+        try {
+          const r = await fetch(HELPER_URL + '/printer/caps?printer=' + encodeURIComponent(name), { cache: 'no-store' });
+          const j = r.ok ? await r.json().catch(() => null) : null;
+          capsChecks[name] = j && j.ok && j.known
+            ? { state: 'ok', mediaTypes: Array.isArray(j.mediaTypes) ? j.mediaTypes : [], mediaLabels: j.mediaLabels || {}, mediaDefault: j.mediaDefault || '' }
+            : { state: 'unknown' };
+        } catch (e) { capsChecks[name] = { state: 'unknown' }; }
+        try { refreshPhotoFitUI(); } catch (e) { }
+        return capsChecks[name];
+      }
       async function checkHelper(force) {
         if (!helperOn) { helper = { ok: false, printers: [], checked: 0 }; refreshPrinterHint(); return helper; }
         if (!force && helper.checked && Date.now() - helper.checked < 15000) return helper;
+        if (force) {
+          Object.keys(capsChecks).forEach(k => delete capsChecks[k]);
+          if (typeof paperChecks === 'object' && paperChecks) Object.keys(paperChecks).forEach(k => delete paperChecks[k]);
+        }
         helper.checked = Date.now();
         try {
           const ctl = new AbortController();
@@ -29040,6 +29144,7 @@
         helper.printers.forEach(n => { const o = document.createElement('option'); o.value = n; printerList.appendChild(o); });
         fillPrinterSelect();
         refreshPrinterHint();
+        try { refreshPhotoFitUI(); } catch (e) { }
         return helper;
       }
       // The printers come from the Print Helper, so they're picked, not typed.
@@ -29148,6 +29253,22 @@
       // and works like any other printer: per paper size, as the second printer, linked to a voucher. Its film takes a
       // 62 x 99 mm picture, so that size is added as an own size and linked to the printer.
       const INSTAX_SIZE = '62x99mm';
+      const instaxMeta = {};
+      async function pollInstaxStatus(vname, force) {
+        const ix = window._instax;
+        if (!ix || !vname || !ix.connectedNow(vname) || (typeof printing !== 'undefined' && printing)) return;
+        const prev = instaxMeta[vname];
+        if (!force && prev && Date.now() - prev.ts < 12000) return;
+        if (prev && prev.loading) return;
+        instaxMeta[vname] = Object.assign({}, prev || {}, { loading: true, ts: Date.now() });
+        try {
+          const s = await ix.status(vname);
+          instaxMeta[vname] = Object.assign({ ts: Date.now(), loading: false }, s || {});
+        } catch (e) {
+          instaxMeta[vname] = Object.assign({}, instaxMeta[vname] || {}, { loading: false, ts: Date.now() });
+        }
+        try { if (window._refreshInstaxHint) window._refreshInstaxHint(true); } catch (e) { }
+      }
       async function instaxConnect(opts) {
         const ix = window._instax;
         if (!ix || !ix.available()) { showToast('Bluetooth is not available here. Use the photobooth4u app, or Chrome / Edge.', 5000); return null; }
@@ -29160,30 +29281,42 @@
         }
         const cur = ownSizes();
         if (!cur.includes(INSTAX_SIZE) && cur.length < OWN_MAX) saveOwnSizes(cur.concat(INSTAX_SIZE));
-        if (helperOn) {
-          try { await checkHelper(true); } catch (e) { }
-          if (!printerFor(INSTAX_SIZE)) { printerMap[printerKey(INSTAX_SIZE)] = name; savePrinterMap(); }
-        } else if (typeof instaxLinkAndroid === 'function') {
-          try { instaxLinkAndroid(name); } catch (e) { }
-        }
+        if (helperOn) { try { await checkHelper(true); } catch (e) { } }
+        if (!printerFor(INSTAX_SIZE)) { printerMap[printerKey(INSTAX_SIZE)] = name; savePrinterMap(); }
+        if (typeof instaxLinkAndroid === 'function') { try { instaxLinkAndroid(name); } catch (e) { } }
         try { fillPrinterSelect(); } catch (e) { }
         try { refreshPrintUI(); } catch (e) { }
+        try { pollInstaxStatus(name, true); } catch (e) { }
         showToast(name.slice(ix.VIRTUAL.length) + ' is connected. Choose the 62×99 mm size to print on it.', 6000);
         return name;
       }
       const instaxPrinterBtn = document.getElementById('instaxPrinterBtn');
       if (instaxPrinterBtn) {
-        const showInstax = () => {
+        const showInstax = (skipPoll) => {
           const ix = window._instax, hint = document.getElementById('instaxHint');
-          instaxPrinterBtn.style.display = ix && ix.available() && (DESKTOP || helperOn) ? '' : 'none';
+          instaxPrinterBtn.style.display = ix && ix.available() ? '' : 'none';
           const allBtn = document.getElementById('instaxAllBtn'); if (allBtn) allBtn.style.display = instaxPrinterBtn.style.display;
           if (!hint) return;
           const n = ix ? ix.names() : [];
           hint.style.display = instaxPrinterBtn.style.display === 'none' ? 'none' : '';
-          hint.textContent = n.length ? n.map(x => x.slice(ix.VIRTUAL.length) + (ix.connectedNow(x) ? ' ✓ connected' : ' (not connected: tap Connect Instax printer)')).join(' · ') + '. Film size: 62×99 mm. Each sheet takes about a minute.' : 'Switch the Instax Link printer on, then tap Connect.';
+          if (n.length) {
+            if (!skipPoll) n.forEach(x => { if (ix.connectedNow(x)) pollInstaxStatus(x, false); });
+            hint.textContent = n.map(x => {
+              const nm = x.slice(ix.VIRTUAL.length);
+              if (!ix.connectedNow(x)) return nm + ' (not connected: tap Connect Instax printer)';
+              const st = instaxMeta[x];
+              const parts = [];
+              if (st && st.film != null) parts.push(st.film + '/10 film' + (st.film === 0 ? ' — OUT OF FILM' : st.film <= 2 ? ' — low' : ''));
+              if (st && st.battery != null) parts.push(st.battery + '% battery');
+              return nm + ' ✓ connected' + (parts.length ? ' (' + parts.join(', ') + ')' : '');
+            }).join(' · ') + '. Film size: 62×99 mm. Each sheet takes about a minute.';
+          } else {
+            hint.textContent = 'Switch the Instax Link printer on, then tap Connect.';
+          }
         };
+        window._refreshInstaxHint = showInstax;
         showInstax();
-        if (window._instax) window._instax.onChange(showInstax);
+        if (window._instax) window._instax.onChange(() => showInstax(false));
         instaxPrinterBtn.addEventListener('click', async function () {
           instaxPrinterBtn.disabled = true;
           try { await instaxConnect(); } finally { instaxPrinterBtn.disabled = false; showInstax(); }
@@ -29354,16 +29487,25 @@
       function fillPrinterSelect() {
         if (!printerSelect) return;
         const cur = printSize ? (printerMap[printerKey(printSize)] || '') : '';
-        const live = helperOn && helper.ok;
+        const ixAvail = !!(window._instax && window._instax.available());
+        const ixList = instaxNames();
+        const live = (helperOn && helper.ok) || (ixAvail && ixList.length > 0);
         printerSelect.innerHTML = '';
         const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; printerSelect.appendChild(o); return o; };
-        if (!helperOn) add('', 'Turn on the Print Helper to choose a printer');
-        else if (!helper.ok) add('', helper.checked ? 'Print Helper not found' : 'Looking for the Print Helper\u2026');
-        else {
+        if (helperOn && helper.ok) {
           add('', '\u2014 Choose a printer \u2014');
           helper.printers.forEach(n => add(n, n));
           if (cur && !helper.printers.includes(cur)) add(cur, cur + ' (not found)');
-          if (window._instax && window._instax.available()) add('__instax_connect__', '+ Connect an Instax printer (Bluetooth)…');
+          if (ixAvail) add('__instax_connect__', '+ Connect an Instax printer (Bluetooth)…');
+        } else if (ixAvail && ixList.length > 0) {
+          add('', '\u2014 Choose a printer \u2014');
+          ixList.forEach(n => add(n, n));
+          if (cur && !ixList.includes(cur)) add(cur, cur);
+          add('__instax_connect__', '+ Connect an Instax printer (Bluetooth)…');
+        } else if (!helperOn) {
+          add('', 'Turn on the Print Helper to choose a printer');
+        } else {
+          add('', helper.checked ? 'Print Helper not found' : 'Looking for the Print Helper\u2026');
         }
         if (!live && cur) add(cur, cur);
         printerSelect.value = cur && [...printerSelect.options].some(o => o.value === cur) ? cur : '';
@@ -29441,26 +29583,32 @@
       // Which of the printer's own paper sizes the helper will use for this booth size
       // (Print Helper 1.1.6+ / the app). Without one the printer falls back to its default paper.
       const paperChecks = {};
-      function paperCheckKey(name, paper) { return name + '|' + Math.round(paper.w) + 'x' + Math.round(paper.h); }
-      async function checkPaper(name, paper) {
-        const k = paperCheckKey(name, paper);
-        if (paperChecks[k] || isInstaxPrinter(name)) return;
+      function paperCheckKey(name, paper, twoUp) { return name + '|' + Math.round(paper.w) + 'x' + Math.round(paper.h) + (twoUp === false ? '|1up' : '|2up'); }
+      async function checkPaper(name, paper, twoUp) {
+        const allowTwoUp = twoUp !== false;
+        const k = paperCheckKey(name, paper, allowTwoUp);
+        if (paperChecks[k] || isInstaxPrinter(name)) return paperChecks[k] || null;
         paperChecks[k] = { state: 'loading' };
         try {
-          const r = await fetch(HELPER_URL + '/paper?printer=' + encodeURIComponent(name) + '&w=' + paper.w.toFixed(1) + '&h=' + paper.h.toFixed(1), { cache: 'no-store' });
+          const r = await fetch(HELPER_URL + '/paper?printer=' + encodeURIComponent(name) + '&w=' + paper.w.toFixed(1) + '&h=' + paper.h.toFixed(1) + '&twoUp=' + (allowTwoUp ? '1' : '0'), { cache: 'no-store' });
           const j = r.ok ? await r.json() : null;
           if (!j || !j.ok || !j.known) paperChecks[k] = { state: 'unknown' };
-          else if (j.match) paperChecks[k] = { state: 'ok', name: j.match.name, borderless: j.match.borderless, isDefault: j.match.isDefault };
-          else paperChecks[k] = { state: 'none', def: j.def || '' };
+          else if (j.match) paperChecks[k] = { state: 'ok', name: j.match.name, borderless: j.match.borderless, isDefault: j.match.isDefault, paperList: Array.isArray(j.paperList) ? j.paperList : [] };
+          else paperChecks[k] = { state: 'none', def: j.def || '', paperList: Array.isArray(j.paperList) ? j.paperList : [] };
         } catch (e) { paperChecks[k] = { state: 'unknown' }; }
         renderPrintSteps();
+        try { refreshPhotoFitUI(); } catch (e) { }
+        return paperChecks[k];
       }
       function paperLine(name, paper, sizeName) {
-        if (!name || !paper || paper.receipt) return '';
-        const c = paperChecks[paperCheckKey(name, paper)];
-        if (!c) { checkPaper(name, paper); return ''; }
+        if (!name || !paper || paper.receipt || isInstaxPrinter(name)) return '';
+        const explicit = driverPaperFor(name, printSize);
+        if (explicit) return '<span class="paper-ok">Driver slot: ' + escHtml(explicit) + ' \u2713</span>';
+        const allowTwoUp = typeof stripTwoUp !== 'function' || typeof sizedPhoto !== 'function' ? true : (stripTwoUp(printSize) && !sizedPhoto());
+        const c = paperChecks[paperCheckKey(name, paper, allowTwoUp)];
+        if (!c) { checkPaper(name, paper, allowTwoUp); return ''; }
         if (c.state === 'ok') return '<span class="paper-ok">Paper: ' + escHtml(c.name) + ' \u2713</span>';
-        if (c.state === 'none' && paper.w / paper.h >= 0.45) return '<span class="paper-bad">This printer has no ' + escHtml(sizeName) + ' paper size, so it would print on ' + (c.def ? '\u201c' + escHtml(c.def) + '\u201d' : 'its default paper') + '. Add the size in the printer\u2019s settings (or install its full driver), or choose another printer.</span>';
+        if (c.state === 'none' && paper.w / paper.h >= 0.45) return '<span class="paper-bad">This printer has no ' + escHtml(sizeName) + ' paper size, so it would print on ' + (c.def ? '\u201c' + escHtml(c.def) + '\u201d' : 'its default paper') + '. Add the size in the printer\u2019s settings (or pick a Driver paper slot below), or choose another printer.</span>';
         return '';
       }
       // A 3-step checklist at the top of the Print pop-up.
@@ -29581,7 +29729,7 @@
           let ep = paperFor(sec.size);
           const c = printAdjust(buildPrintCanvas(sec.size));
           if (ep.receipt) ep = Object.assign({}, ep, { h: Math.round(c.height / RECEIPT_DPI * 254) / 10 });
-          const ok = await printViaHelper([c], ep, sec.name);
+          const ok = await printViaHelper([c], ep, sec.name, { sizeKey: sec.size, twoUp: stripTwoUp(sec.size) });
           if (!ok) showToast('The second printer (' + sec.name + ') did not print.', 5000);
           return ok;
         } catch (e) { return false; }
@@ -29634,18 +29782,37 @@
           return ok((printOptsMap[name] || {}).printerQuality);
         } catch (e) { return 'best'; }
       }
+      // The media type chosen for this printer (empty = driver default).
+      function helperMediaTypeFor(name) {
+        try {
+          if (name === liveKey()) return typeof printPrefs.mediaType === 'string' ? printPrefs.mediaType : '';
+          return typeof (printOptsMap[name] || {}).mediaType === 'string' ? printOptsMap[name].mediaType : '';
+        } catch (e) { return ''; }
+      }
       // An Instax Link printer is not a system printer: the booth sends the picture to it over Bluetooth itself.
       async function printViaInstax(pages, paper, name) {
+        const shortName = name.slice(window._instax.VIRTUAL.length);
+        let lastPct = -1;
         try {
-          showToast('Sending to ' + name.slice(window._instax.VIRTUAL.length) + ' (an Instax sheet takes about a minute)…', 5000);
-          await window._instax.print(pages, paper, name);
+          showToast('Sending to ' + shortName + ' (an Instax sheet takes about a minute)…', 5000);
+          await window._instax.print(pages, paper, name, {
+            onProgress: (done, total) => {
+              if (!total) return;
+              const pct = Math.round(done * 100 / total);
+              if (pct >= lastPct + 25 || pct === 100) {
+                lastPct = pct;
+                showToast('Sending to ' + shortName + ': ' + pct + '%…', 3500);
+              }
+            }
+          });
+          setTimeout(() => { try { pollInstaxStatus(name, true); } catch (e) { } }, 1500);
           return true;
         } catch (e) {
           showToast((e && e.message) || 'The Instax printer did not print.', 7000);
           return false;
         }
       }
-      async function printViaHelper(pages, paper, name) {
+      async function printViaHelper(pages, paper, name, opt) {
         if (isInstaxPrinter(name)) return printViaInstax(pages, paper, name);
         let h = await checkHelper(true);
         // The built-in helper can be slow to list printers right after the app starts: ask again before giving up.
@@ -29661,10 +29828,29 @@
           return false;
         }
         try {
-          const body = JSON.stringify({ printer: name, quality: helperQualityFor(name), widthMm: paper.w, heightMm: paper.h, fit: paper.receipt ? 'width' : undefined, custom: ownSizes().some(k => { const op = paperFor(k); return !!op && Math.abs(op.w - paper.w) < 0.6 && Math.abs(op.h - paper.h) < 0.6; }) || !Object.keys(PAPER).some(k => Math.abs(PAPER[k].w - paper.w) < 0.6 && Math.abs(PAPER[k].h - paper.h) < 0.6), pages: pages.map(c => c.toDataURL('image/png')) });
+          const sizeKey = (opt && opt.sizeKey) || printSize;
+          const twoUpFlag = opt && typeof opt.twoUp === 'boolean' ? opt.twoUp : (typeof stripTwoUp === 'function' && stripTwoUp(sizeKey) && (typeof sizedPhoto !== 'function' || !sizedPhoto()));
+          const explicitPaper = (opt && opt.paperName) || driverPaperFor(name, sizeKey) || undefined;
+          const mediaType = (opt && opt.mediaType) || helperMediaTypeFor(name) || undefined;
+          const isCustom = ownSizes().some(k => { const op = paperFor(k); return !!op && Math.abs(op.w - paper.w) < 0.6 && Math.abs(op.h - paper.h) < 0.6; }) || !Object.keys(PAPER).some(k => Math.abs(PAPER[k].w - paper.w) < 0.6 && Math.abs(PAPER[k].h - paper.h) < 0.6);
+          const body = JSON.stringify({
+            printer: name,
+            quality: helperQualityFor(name),
+            mediaType,
+            paperName: explicitPaper,
+            twoUp: !!twoUpFlag,
+            widthMm: paper.w,
+            heightMm: paper.h,
+            fit: paper.receipt ? 'width' : undefined,
+            custom: isCustom,
+            pages: pages.map(c => c && c._pbJpeg ? c.toDataURL('image/jpeg', 0.94) : c.toDataURL('image/png'))
+          });
           const r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
           const j = await r.json().catch(() => ({}));
-          if (r.ok && j.ok) return true;
+          if (r.ok && j.ok) {
+            if (Array.isArray(j.warnings) && j.warnings.length) showToast(j.warnings.join(' '), 7500);
+            return true;
+          }
           showToast((DESKTOP ? 'Couldn’t print on ' + name : 'Print Helper couldn’t print') + ' (' + (j.error || ('error ' + r.status)) + ').' + (DESKTOP ? ' Check the printer is on and has paper, then print again.' : dlg), 6500);
         } catch (e) {
           showToast((DESKTOP ? 'Lost the printing service.' : 'Lost the Print Helper.') + dlg, 4500);
@@ -29672,10 +29858,10 @@
         return false;
       }
 
-      // Custom sizes set in Admin look like "4x4in" / "100x148mm"; always printed portrait.
+      // Custom sizes set in Admin look like "4x4in" / "100x148mm" / "203x813mm" / "203x1220mm"; always printed portrait.
       function paperFor(key) {
         if (PAPER[key]) return PAPER[key];
-        const m = /^(\d{1,3}(?:\.\d{1,2})?)x(\d{1,3}(?:\.\d{1,2})?)(in|mm)$/.exec(key);
+        const m = /^(\d{1,4}(?:\.\d{1,2})?)x(\d{1,4}(?:\.\d{1,2})?)(in|mm)$/.exec(key);
         if (!m) return null;
         const k = m[3] === 'in' ? 25.4 : 1;
         const a = Number(m[1]) * k, b = Number(m[2]) * k;
@@ -29771,10 +29957,11 @@
         const p = paperFor(key);
         return currentLayout === 'framesheet' && p.w / p.h < 0.45 && sheetStripItems().length > 0;
       }
-      // Wider sheets get two strips side by side, to cut down the middle.
+      // Wider sheets get two strips side by side, to cut down the middle (unless 1-strip-per-sheet is enabled).
       function stripTwoUp(key) {
+        if (printPrefs && printPrefs.singleStrip) return false;
         const p = paperFor(key);
-        return (isStripLayout() || layoutDef().kind === 'receipt') && !isReceiptPaper(key) && p.w / p.h >= 0.5;
+        return !!p && (isStripLayout() || layoutDef().kind === 'receipt') && !isReceiptPaper(key) && p.w / p.h >= 0.5;
       }
       // Print settings live in a pop-up (floating button) so the live view keeps the room.
       const printModal = document.getElementById('printModal'), printFab = document.getElementById('printFab');
@@ -29858,6 +30045,9 @@
         }
         printSizeRow.innerHTML = '';
         document.getElementById('customSizeRow').classList.toggle('hidden', !ownSizesAllowed());
+        const xlRow = document.getElementById('xlPresetRow');
+        if (xlRow) xlRow.classList.toggle('hidden', !ownSizesAllowed());
+        try { if (typeof refreshLayoutPaperSelect === 'function') refreshLayoutPaperSelect(); } catch (e) { }
         const own = ownSizes();
         sizes.forEach(key => {
           const b = document.createElement('button');
@@ -29926,14 +30116,11 @@
         try { localStorage.setItem('pb_print_paper', printSize); } catch (e) { }
         refreshPrintUI();
       });
-      document.getElementById('csAdd').addEventListener('click', () => {
-        const w = Number(document.getElementById('csW').value), h = Number(document.getElementById('csH').value), u = document.getElementById('csU').value;
-        const lo = u === 'in' ? 1 : 25, hi = u === 'in' ? 30 : 760;
-        if (!(w >= lo && w <= hi && h >= lo && h <= hi)) { showToast('Own size must be ' + lo + '–' + hi + ' ' + u + ' on each side.', 4000); return; }
-        const key = (Math.round(w * 100) / 100) + 'x' + (Math.round(h * 100) / 100) + u;
+      function addOwnPaperKey(key) {
+        if (!key || !paperFor(key)) return false;
         const cur = ownSizes();
         if (!cur.includes(key)) {
-          if (cur.length >= OWN_MAX) { showToast('Up to ' + OWN_MAX + ' own sizes. Remove one first.', 4000); return; }
+          if (cur.length >= OWN_MAX) { showToast('Up to ' + OWN_MAX + ' own sizes. Remove one first.', 4000); return false; }
           saveOwnSizes(cur.concat(key));
         }
         // The new size becomes the booth's paper for the next sessions, and prints on the same printer as the size used until now,
@@ -29943,21 +30130,33 @@
         try { localStorage.setItem('pb_print_paper', key); } catch (e) { }
         if (prevPrinter && !printerFor(key)) { printerMap[printerKey(key)] = prevPrinter; savePrinterMap(); }
         showToast(paperFor(key).name + ' is now the print size' + (prevPrinter ? ' on ' + prevPrinter : '') + '.' + (prevPrinter ? '' : ' Pick its printer below.'), 4500);
-        document.getElementById('csW').value = ''; document.getElementById('csH').value = '';
         refreshPrintUI();
+        return true;
+      }
+      document.getElementById('csAdd').addEventListener('click', () => {
+        const w = Number(document.getElementById('csW').value), h = Number(document.getElementById('csH').value), u = document.getElementById('csU').value;
+        const lo = u === 'in' ? 1 : 25, hi = u === 'in' ? 48 : 1220;
+        if (!(w >= lo && w <= hi && h >= lo && h <= hi)) { showToast('Own size must be ' + lo + '–' + hi + ' ' + u + ' on each side.', 4000); return; }
+        const key = (Math.round(w * 100) / 100) + 'x' + (Math.round(h * 100) / 100) + u;
+        if (addOwnPaperKey(key)) { document.getElementById('csW').value = ''; document.getElementById('csH').value = ''; }
+      });
+      const xlPresetRow = document.getElementById('xlPresetRow');
+      if (xlPresetRow) xlPresetRow.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-xlpreset]');
+        if (b && b.dataset.xlpreset) addOwnPaperKey(b.dataset.xlpreset);
       });
       window.addEventListener('pb-print-change', refreshPrintUI);
 
       // ---- Photo on the sheet: automatic / whole photo / fill / a chosen size, borderless, preview on demand ----
-      // Where the photo goes on the sheet (the pixels are in the print canvas, PRINT_DPI).
-      function drawPhotoOnSheet(ctx, src, w, h) {
-        const m = printPrefs.fit || 'auto';
+      // Where the photo goes on the sheet (the pixels are in the print canvas, dpi defaults to PRINT_DPI).
+      function drawPhotoOnSheet(ctx, src, w, h, dpi) {
+        const m = printPrefs.fit || 'auto', d = dpi || PRINT_DPI;
         if (m === 'contain') { drawFitted(ctx, src, 0, 0, w, h, 'contain'); return; }
         if (m === 'fill') { drawFitted(ctx, src, 0, 0, w, h, 'cover'); return; }
         if (m === 'size' && sizedPhoto()) {
           const ps = paperFor(printPrefs.photoSize);
           if (ps) {
-            let bw = ps.w / 25.4 * PRINT_DPI, bh = ps.h / 25.4 * PRINT_DPI;
+            let bw = ps.w / 25.4 * d, bh = ps.h / 25.4 * d;
             if ((w > h) !== (bw > bh)) { const t = bw; bw = bh; bh = t; }
             bw = Math.min(bw, w); bh = Math.min(bh, h);
             drawFitted(ctx, src, (w - bw) / 2, (h - bh) / 2, bw, bh);
@@ -30000,11 +30199,12 @@
             try { thermalSmoothUI(); } catch (e) { }
           }
         } catch (e) { }
+        const pname = printSize ? printerFor(printSize) : '';
+        const usesHelper = !!(paper && helperOn && pname && !isInstaxPrinter(pname));
         try {
-          // Windows / Mac laptop app: the driver's own quality setting for the printer chosen for this paper size.
+          // Windows / Mac laptop app: the driver's own quality, media type & paper slot for the printer chosen for this paper size.
           const pqBox = document.getElementById('printerQualityBox');
           if (pqBox) {
-            const usesHelper = !!(paper && helperOn && printerFor(printSize));
             pqBox.classList.toggle('hidden', !usesHelper);
             const pq = printPrefs.printerQuality || 'best';
             [...document.querySelectorAll('#printerQualityRow [data-pq]')].forEach(b => b.classList.toggle('active', b.dataset.pq === pq));
@@ -30013,6 +30213,51 @@
               normal: 'The driver’s normal quality: faster and uses less ink.',
               draft: 'The driver’s draft quality: quickest and lightest. Good for tests.'
             }[pq] + ' Used only if the printer’s driver offers it.';
+            const mediaSel = document.getElementById('printerMediaSelect'), mediaHint = document.getElementById('printerMediaHint');
+            if (usesHelper && mediaSel) {
+              const caps = capsChecks[pname];
+              if (!caps) fetchPrinterCaps(pname);
+              const curMt = printPrefs.mediaType || '';
+              if (document.activeElement !== mediaSel) {
+                mediaSel.innerHTML = '';
+                const addM = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; mediaSel.appendChild(o); };
+                addM('', 'Driver default (recommended)');
+                if (caps && caps.state === 'ok' && Array.isArray(caps.mediaTypes)) {
+                  caps.mediaTypes.forEach(mt => addM(mt, (caps.mediaLabels && caps.mediaLabels[mt]) || mt));
+                }
+                if (curMt && ![...mediaSel.options].some(o => o.value === curMt)) addM(curMt, curMt);
+                mediaSel.value = curMt;
+              }
+              if (mediaHint) {
+                mediaHint.textContent = caps && caps.state === 'loading' ? 'Checking media types supported by ' + pname + '…'
+                  : (caps && caps.state === 'ok' && caps.mediaTypes && caps.mediaTypes.length)
+                    ? 'Applies to this printer (Glossy, Matte, Plain, etc.) across Epson L8050, L3210, Canon & more.'
+                    : 'Optional driver media type. Keep Driver default unless the printer expects Glossy or Matte.';
+              }
+            }
+            const dpSel = document.getElementById('driverPaperSelect'), dpHint = document.getElementById('driverPaperHint');
+            if (usesHelper && dpSel && paper) {
+              const allowTwoUp = typeof stripTwoUp === 'function' ? (stripTwoUp(printSize) && !sizedPhoto()) : true;
+              const pk = paperCheckKey(pname, paper, allowTwoUp);
+              const pChk = paperChecks[pk];
+              if (!pChk) checkPaper(pname, paper, allowTwoUp);
+              const curDp = driverPaperFor(pname, printSize);
+              if (document.activeElement !== dpSel) {
+                dpSel.innerHTML = '';
+                const addP = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; dpSel.appendChild(o); };
+                addP('', pChk && pChk.state === 'ok' ? 'Auto match (' + pChk.name + ')' : 'Auto match (by dimensions)');
+                if (pChk && Array.isArray(pChk.paperList)) {
+                  pChk.paperList.forEach(ps => addP(ps.name, ps.name + ' (' + Math.round(ps.w) + '×' + Math.round(ps.h) + ' mm)'));
+                }
+                if (curDp && ![...dpSel.options].some(o => o.value === curDp)) addP(curDp, curDp + ' (saved)');
+                dpSel.value = curDp;
+              }
+              if (dpHint) {
+                dpHint.textContent = curDp
+                  ? 'Sending exact driver paper slot “' + curDp + '” for ' + paper.name + '.'
+                  : 'Leave on Auto match, or pick your saved User-Defined driver preset (e.g. for 4×12 or 8×32 XL strips).';
+              }
+            }
           }
         } catch (e) { }
         box.classList.toggle('hidden', !show);
@@ -30030,6 +30275,23 @@
         photoFitHint.textContent = cur === 'fill' ? 'The photo covers the whole page. The edges may be cut off.'
           : cur.indexOf('size:') === 0 ? 'The photo prints at real ' + paperFor(printPrefs.photoSize).name + ' size, in the middle of the ' + paper.name + ' paper. The rest of the paper stays white.'
             : 'The photo is as big as the paper allows. Nothing is cut off; if the shapes differ there are white borders.';
+        const ssRow = document.getElementById('singleStripRow'), ssTog = document.getElementById('singleStripToggle');
+        if (ssRow && ssTog) {
+          const stripOnWide = !!(paper && (isStripLayout() || layoutDef().kind === 'receipt') && paper.w / paper.h >= 0.5);
+          ssRow.classList.toggle('hidden', !stripOnWide);
+          ssTog.checked = !!(printPrefs && printPrefs.singleStrip);
+        }
+        const pdBox = document.getElementById('posterDpiBox');
+        if (pdBox) {
+          const isLarge = !!(usesHelper && paper && Math.max(paper.w, paper.h) >= 300);
+          pdBox.classList.toggle('hidden', !isLarge);
+          const pd = Number(printPrefs.posterDpi) === 200 ? '200' : '0';
+          [...document.querySelectorAll('#posterDpiRow [data-pdpi]')].forEach(b => b.classList.toggle('active', b.dataset.pdpi === pd));
+          const pdHint = document.getElementById('posterDpiHint');
+          if (pdHint) pdHint.textContent = pd === '200'
+            ? 'Sends 200 DPI JPEG for faster uploads and spooling on 12–32 in XL sheets.'
+            : 'Default 300 DPI lossless PNG (sharpest detail; larger file on long sheets).';
+        }
         // Borderless is sent by the Android app to Wi-Fi / driverless USB printers. On the website and the laptop app the
         // printer driver decides the margins, so the switch is hidden there.
         const bl = !!(window.__PBNet && typeof window.__PBNet.scan === 'function');
@@ -30191,6 +30453,40 @@
         printPrefs.printerQuality = b.dataset.pq;
         printPrefsChanged();
       });
+      const printerMediaSel = document.getElementById('printerMediaSelect');
+      if (printerMediaSel) printerMediaSel.addEventListener('change', () => {
+        printPrefs.mediaType = printerMediaSel.value || '';
+        printPrefsChanged();
+      });
+      const driverPaperSel = document.getElementById('driverPaperSelect');
+      if (driverPaperSel) driverPaperSel.addEventListener('change', () => {
+        const pname = printSize ? printerFor(printSize) : '';
+        const k = driverPaperKey(pname, printSize);
+        if (k) {
+          if (driverPaperSel.value) driverPaperMap[k] = driverPaperSel.value;
+          else delete driverPaperMap[k];
+          saveDriverPaperMap();
+        }
+        refreshPrinterHint();
+        refreshPhotoFitUI();
+      });
+      const singleStripTog = document.getElementById('singleStripToggle');
+      if (singleStripTog) singleStripTog.addEventListener('change', () => {
+        const prevP = printSize ? printerFor(printSize) : '';
+        printPrefs.singleStrip = singleStripTog.checked;
+        if (printSize && prevP && !printerFor(printSize)) {
+          printerMap[printerKey(printSize)] = prevP;
+          savePrinterMap();
+        }
+        printPrefsChanged();
+      });
+      const posterDpiRow = document.getElementById('posterDpiRow');
+      if (posterDpiRow) posterDpiRow.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-pdpi]');
+        if (!b) return;
+        printPrefs.posterDpi = Number(b.dataset.pdpi) === 200 ? 200 : 0;
+        printPrefsChanged();
+      });
       borderlessToggle.addEventListener('change', () => { printPrefs.borderless = borderlessToggle.checked; printPrefsChanged(); });
       // Printer margins: only the Windows Print Helper / laptop app draws the page itself, so only there can this be set.
       document.getElementById('printPreviewBtn').addEventListener('click', () => showPrintPreview(false, opCopies || 1, true));
@@ -30296,9 +30592,13 @@
           const rx = r.getContext('2d'); rx.translate(r.width, 0); rx.rotate(Math.PI / 2); rx.drawImage(src, 0, 0);
           src = r;
         }
+        const useFastPoster = !!(helperOn && printPrefs && Number(printPrefs.posterDpi) === 200 && Math.max(paper.w, paper.h) >= 300 && !paper.receipt);
+        const dpi = useFastPoster ? 200 : PRINT_DPI;
         const c = document.createElement('canvas');
-        c.width = Math.round(paper.w / 25.4 * PRINT_DPI);
-        c.height = Math.round(paper.h / 25.4 * PRINT_DPI);
+        c.width = Math.round(paper.w / 25.4 * dpi);
+        c.height = Math.round(paper.h / 25.4 * dpi);
+        c._pbDpi = dpi;
+        c._pbJpeg = useFastPoster;
         c._pbTurned = turned;           // turned 90° clockwise: the Edges settings follow the picture, not the sheet
         const ctx = c.getContext('2d');
         ctx.fillStyle = '#ffffff';
@@ -30310,7 +30610,7 @@
           drawFitted(ctx, src, 0, 0, half, c.height);
           drawFitted(ctx, src, half, 0, c.width - half, c.height);
         } else {
-          drawPhotoOnSheet(ctx, src, c.width, c.height);
+          drawPhotoOnSheet(ctx, src, c.width, c.height, dpi);
         }
         return c;
       }
@@ -30336,7 +30636,7 @@
       const MAX_COPIES = 10;
       const PRINT_TXT = { txtPrint: 'Print', txtPrinting: 'Printing, please hold…', txtCopies: 'How many copies?', txtLimit: 'That’s all the prints for this session' };
       // Saved with the setup (every device on the code gets them).
-      let printPrefs = { guestBtn: true, auto: false, printFirst: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'normal', printerQuality: 'best', edges: { t: 0, b: 0, l: 0, r: 0 }, voucherPrinter: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
+      let printPrefs = { guestBtn: true, auto: false, printFirst: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'normal', printerQuality: 'best', mediaType: '', singleStrip: false, posterDpi: 0, edges: { t: 0, b: 0, l: 0, r: 0 }, voucherPrinter: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
       // Edges (per printer), in mm: + moves the picture in from that edge (for a printer that cuts it off), − moves it out (for a white line).
       const EDGE_MAX = 10, EDGE_MIN = -5;
       function cleanEdges(e) {
@@ -30355,6 +30655,9 @@
           photoSize: typeof p.photoSize === 'string' && /^[0-9A-Za-z.]{1,12}$/.test(p.photoSize) ? p.photoSize : '', borderless: !!p.borderless,
           thermalQuality: ['best', 'normal', 'draft'].includes(p.thermalQuality) ? p.thermalQuality : 'normal',
           printerQuality: ['best', 'normal', 'draft'].includes(p.printerQuality) ? p.printerQuality : 'best',
+          mediaType: typeof p.mediaType === 'string' ? p.mediaType.replace(/[<>]/g, '').slice(0, 80) : '',
+          singleStrip: !!p.singleStrip,
+          posterDpi: Number(p.posterDpi) === 200 ? 200 : 0,
           edges: cleanEdges(p.edges),
           voucherPrinter: !!p.voucherPrinter,
           txtPrint: txt(p.txtPrint, 24), txtPrinting: txt(p.txtPrinting, 60), txtCopies: txt(p.txtCopies, 40), txtLimit: txt(p.txtLimit, 70)
@@ -32079,6 +32382,14 @@
           }
 
           const pname = fpHelper ? fp : printerFor(printSize);
+          if (pname && isInstaxPrinter(pname) && !helperOn && !fpBt && !fpWifi) {
+            const sentIx = await printViaInstax(all, paper, pname);
+            if (sentIx) {
+              showToast((auto === true ? 'Auto-printing on ' : 'Printing on ') + pname.slice(window._instax.VIRTUAL.length) + ' (' + label + ').');
+              armAutoPrintAfterFirst(auto === true);
+              return true;
+            }
+          }
           if (helperOn && pname && !fpBt && !fpWifi) {
             let sent = true;
             const sec = fp ? null : secondPrinter();       // a linked printer prints on its own
@@ -33253,16 +33564,29 @@
       function savePrintOptsForPrinter() {
         try {
           var k = liveKey();
-          printOptsMap[k] = { fit: printPrefs.fit || 'auto', photoSize: printPrefs.photoSize || '', borderless: !!printPrefs.borderless, thermalQuality: printPrefs.thermalQuality || 'normal', printerQuality: printPrefs.printerQuality || 'best', edges: cleanEdges(printPrefs.edges) };
+          printOptsMap[k] = {
+            fit: printPrefs.fit || 'auto',
+            photoSize: printPrefs.photoSize || '',
+            borderless: !!printPrefs.borderless,
+            thermalQuality: printPrefs.thermalQuality || 'normal',
+            printerQuality: printPrefs.printerQuality || 'best',
+            mediaType: typeof printPrefs.mediaType === 'string' ? printPrefs.mediaType : '',
+            singleStrip: !!printPrefs.singleStrip,
+            posterDpi: Number(printPrefs.posterDpi) === 200 ? 200 : 0,
+            edges: cleanEdges(printPrefs.edges)
+          };
           saveProfileMaps();
         } catch (e) { }
       }
       function loadPrintOptsForPrinter(k) {
         try {
-          var o = printOptsMap[k] || { fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'normal', printerQuality: 'best' };
+          var o = printOptsMap[k] || { fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'normal', printerQuality: 'best', mediaType: '', singleStrip: false, posterDpi: 0 };
           printPrefs.fit = o.fit || 'auto'; printPrefs.photoSize = o.photoSize || ''; printPrefs.borderless = !!o.borderless;
           printPrefs.thermalQuality = ['best', 'normal', 'draft'].indexOf(o.thermalQuality) >= 0 ? o.thermalQuality : 'normal';
           printPrefs.printerQuality = ['best', 'normal', 'draft'].indexOf(o.printerQuality) >= 0 ? o.printerQuality : 'best';
+          printPrefs.mediaType = typeof o.mediaType === 'string' ? o.mediaType : '';
+          printPrefs.singleStrip = !!o.singleStrip;
+          printPrefs.posterDpi = Number(o.posterDpi) === 200 ? 200 : 0;
           printPrefs.edges = cleanEdges(o.edges);
           refreshPhotoFitUI();
         } catch (e) { }
@@ -48318,6 +48642,7 @@
         var d = {};
         try { if (printSize) d.paper = String(printSize); } catch (e) { }
         try { var os = ownSizes(); if (os.length) d.ownSizes = os.slice(0, OWN_MAX); } catch (e) { }
+        try { if (layoutPaperMap && Object.keys(layoutPaperMap).length) d.layoutPaperMap = Object.assign({}, layoutPaperMap); } catch (e) { }
         try { d.keychain = !!keychainOn; } catch (e) { }
         try { d.deskSolo = !!deskSoloOn; } catch (e) { }
         return d;
@@ -48328,6 +48653,15 @@
           if (Array.isArray(d.ownSizes) && ownSizesAllowed()) {
             var cur = ownSizes();
             saveOwnSizes(cur.concat(d.ownSizes.filter(function (k) { return typeof k === 'string' && cur.indexOf(k) < 0; })).slice(0, OWN_MAX));
+          }
+        } catch (e) { }
+        try {
+          if (d.layoutPaperMap && typeof d.layoutPaperMap === 'object') {
+            Object.keys(d.layoutPaperMap).forEach(function (lk) {
+              var pv = d.layoutPaperMap[lk];
+              if (typeof pv === 'string' && pv) layoutPaperMap[lk] = pv;
+            });
+            saveLayoutPaperMap();
           }
         } catch (e) { }
         try { if (typeof d.keychain === 'boolean') { keychainOn = d.keychain; localStorage.setItem('pb_keychain_print', keychainOn ? '1' : '0'); } } catch (e) { }

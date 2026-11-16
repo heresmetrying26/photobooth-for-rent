@@ -29,6 +29,8 @@ import androidx.core.content.ContextCompat
 import org.json.JSONObject
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 
@@ -72,6 +74,7 @@ class InstaxBridge(
     }
 
     private val links = ConcurrentHashMap<String, Link>()
+    private val writeExec: ExecutorService = Executors.newCachedThreadPool()
 
     // ---- helpers ----
     private fun emit(o: JSONObject) {
@@ -193,11 +196,32 @@ class InstaxBridge(
     /** Sends bytes to the printer, in pieces that fit one Bluetooth write. Returns when all of them are out. */
     @JavascriptInterface
     fun write(address: String, base64Data: String): String {
+        val data: ByteArray = try { Base64.decode(base64Data, Base64.DEFAULT) } catch (e: Exception) { return fail("Bad data.") }
+        val errMsg = writeBytes(address, data)
+        return if (errMsg == null) ok() else fail(errMsg)
+    }
+
+    /** Non-blocking version of write(): returns at once and emits a 'written' event when finished. */
+    @JavascriptInterface
+    fun writeAsync(address: String, base64Data: String, reqId: String): String {
+        val data: ByteArray = try { Base64.decode(base64Data, Base64.DEFAULT) } catch (e: Exception) { return fail("Bad data.") }
         val link = links[address] ?: return fail("The Instax printer is not connected.")
+        if (!link.ready || link.writeCh == null || link.gatt == null) return fail("The Instax printer is not connected.")
+        writeExec.execute {
+            val errMsg = writeBytes(address, data)
+            emit(
+                JSONObject().put("type", "written").put("address", address).put("id", reqId)
+                    .put("ok", errMsg == null).apply { if (errMsg != null) put("error", errMsg) }
+            )
+        }
+        return ok()
+    }
+
+    private fun writeBytes(address: String, data: ByteArray): String? {
+        val link = links[address] ?: return "The Instax printer is not connected."
         val ch = link.writeCh
         val g = link.gatt
-        if (!link.ready || ch == null || g == null) return fail("The Instax printer is not connected.")
-        val data: ByteArray = try { Base64.decode(base64Data, Base64.DEFAULT) } catch (e: Exception) { return fail("Bad data.") }
+        if (!link.ready || ch == null || g == null) return "The Instax printer is not connected."
         synchronized(link.lock) {
             var off = 0
             while (off < data.size) {
@@ -213,13 +237,13 @@ class InstaxBridge(
                         try { Thread.sleep(5) } catch (_: InterruptedException) {}
                     }
                 }
-                if (!sent) return fail("Could not send to the Instax printer.")
-                if (!link.writeDone.tryAcquire(2, TimeUnit.SECONDS)) return fail("The Instax printer stopped answering.")
-                if (!link.ready) return fail("The Instax printer disconnected.")
+                if (!sent) return "Could not send to the Instax printer."
+                if (!link.writeDone.tryAcquire(2, TimeUnit.SECONDS)) return "The Instax printer stopped answering."
+                if (!link.ready) return "The Instax printer disconnected."
                 off = end
             }
         }
-        return ok()
+        return null
     }
 
     @JavascriptInterface
@@ -343,5 +367,6 @@ class InstaxBridge(
 
     fun shutdown() {
         for (a in links.keys.toList()) closeLink(a)
+        try { writeExec.shutdownNow() } catch (_: Exception) {}
     }
 }

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.55', date: '2026-11-16' },
   { version: '1.1.54', date: '2026-11-15' },
   { version: '1.1.53', date: '2026-11-15' },
   { version: '1.1.52', date: '2026-11-15' },
@@ -166,7 +167,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-15', url: 'https://photobooth4u.netlify.app/downloads/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-16', url: 'https://photobooth4u.netlify.app/downloads/photobooth4u-kiosk-android.apk' };
 
 // The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
 // /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new
@@ -226,6 +227,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-16', title: 'Desktop 1.1.55 + Android 1.1.70: XL strips (4x12, 8x24, 8x32), Epson/generic driver media & paper slots, per-layout paper switching & Instax Link Wide upgrades', for: ['website', 'app'], app: '1.1.55',
+    items: [
+      'XL strips up to 48 inches (1220 mm): added the XL Strip 4 (1:4 tall) layout, 1-tap XL presets (4x12, 8x24, 8x32 in), an optional 200 DPI JPEG mode for faster large-sheet spooling, and fixed 4x12 strips falsely matching 8x12 sheets.',
+      'Generic Windows & Mac printer options (including Epson L8050 and L3210): pick Paper / media type (Glossy, Matte, Plain), bind an exact Driver paper slot / User-Defined preset per size, toggle 1 strip per sheet (no 2-up pairing), and see driver custom-size warnings.',
+      'Per-layout paper size mapping in Setup lets switching layouts (or using the guest layout picker) automatically switch paper size and its assigned printer queue.',
+      'Instax Link Wide improvements: serialized multi-printer Bluetooth reconnect, live film & battery readout, transfer % progress, cover-open pre-check, Chrome/Edge Web Bluetooth printing without Print Helper, and off-UI-thread Android BLE writes.'
+    ]
+  },
   {
     date: '2026-11-15', title: 'Desktop 1.1.54 + Android 1.1.69: smarter USB webcam connection, low-light stacking, photo clean-up and webcam controls', for: ['website', 'app'], app: '1.1.54',
     items: [

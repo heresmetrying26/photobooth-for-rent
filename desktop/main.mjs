@@ -224,7 +224,7 @@ function wireContents(wc) {
       btAuto.cb = cb;
       const hit = (devices || []).find((d) => d.deviceName === btAuto.name);
       if (hit) { cb(hit.deviceId); return; }
-      if (!btAuto.timer) btAuto.timer = setTimeout(() => { try { if (btAuto && btAuto.cb) btAuto.cb(''); } catch { /* ignore */ } }, 12000);
+      if (!btAuto.timer) btAuto.timer = setTimeout(() => { try { if (btAuto && btAuto.cb) btAuto.cb(''); } catch { /* ignore */ } }, 8000);
       return;
     }
     if (btSel) { btSel.cb = cb; btSel.devices = devices; return; }
@@ -306,20 +306,25 @@ function wireIpc() {
   ipcMain.on('pb4u:lan', (e) => { e.returnValue = shareBase(); });
   // Reconnect an Instax printer that was set up before. Chromium only opens the Bluetooth chooser for a tap, so the booth
   // asks here and the app runs the request "as a tap" itself; the printer is taken by its name and the operator is not asked.
-  ipcMain.handle('pb4u:bluetoothReconnect', async (e, name) => {
+  let btQueue = Promise.resolve();
+  ipcMain.handle('pb4u:bluetoothReconnect', (e, name) => {
     name = String(name || '').slice(0, 80);
-    if (!name) return { ok: false, error: 'No printer name.' };
-    if (btAuto) return { ok: false, error: 'Already looking for a printer.' };
-    btAuto = { name, cb: null, timer: null };
-    try {
-      const code = 'window._instax && window._instax._autoPair ? window._instax._autoPair(' + JSON.stringify(name) + ').then(function (n) { return { ok: true, name: n }; }, function (x) { return { ok: false, error: String((x && x.message) || x) }; }) : { ok: false, error: "The Instax driver is not loaded." }';
-      return await e.sender.executeJavaScript(code, true);
-    } catch (err) {
-      return { ok: false, error: String((err && err.message) || err) };
-    } finally {
-      if (btAuto && btAuto.timer) clearTimeout(btAuto.timer);
-      btAuto = null;
-    }
+    if (!name) return Promise.resolve({ ok: false, error: 'No printer name.' });
+    const run = async () => {
+      btAuto = { name, cb: null, timer: null };
+      try {
+        const code = 'window._instax && window._instax._autoPair ? window._instax._autoPair(' + JSON.stringify(name) + ').then(function (n) { return { ok: true, name: n }; }, function (x) { return { ok: false, error: String((x && x.message) || x) }; }) : { ok: false, error: "The Instax driver is not loaded." }';
+        return await e.sender.executeJavaScript(code, true);
+      } catch (err) {
+        return { ok: false, error: String((err && err.message) || err) };
+      } finally {
+        if (btAuto && btAuto.timer) clearTimeout(btAuto.timer);
+        btAuto = null;
+      }
+    };
+    const next = btQueue.then(run, run);
+    btQueue = next.catch(() => { });
+    return next;
   });
   ipcMain.handle('pb4u:wifi', async (e, force) => {
     const w = await detectWifi(!!force);
@@ -544,7 +549,7 @@ function wireIpc() {
     const p = join(d, n);
     if (existsSync(p)) { try { unlinkSync(p); } catch (err) { return { ok: false, error: String(err) }; } }
     const ed = join(spinEditedDir(), n);
-    if (existsSync(ed)) { try { unlinkSync(ed); } catch {} }
+    if (existsSync(ed)) { try { unlinkSync(ed); } catch { } }
     return { ok: true };
   });
   ipcMain.handle('pb4u:setWallCue', (e, action, text, durationMs) => {

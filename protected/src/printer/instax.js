@@ -221,7 +221,7 @@
     var s0 = null;
     try { s0 = await this.status(); } catch (e0) { s0 = null; }
     if (s0) {
-      if (s0.result === 1) throw new Error(resultText(176));
+      if (s0.coverOpen || s0.result === 1) throw new Error(resultText(176));
       if (s0.result === 2 || s0.film === 0) throw new Error(resultText(177));
     }
     var start = null, stuck = 0;
@@ -338,12 +338,13 @@
     if (ev.type === 'closed') { var l2 = bridgeLinks[ev.address]; if (l2) { l2.connected = false; if (l2.onClose) l2.onClose(); } }
     for (var i = bridgeWaiters.length - 1; i >= 0; i--) {                      // an answer someone is waiting for
       var w = bridgeWaiters[i];
-      if (w.types.indexOf(ev.type) >= 0 && (!w.address || w.address === ev.address)) { bridgeWaiters.splice(i, 1); clearTimeout(w.timer); if (ev.type === 'error') w.reject(new Error(ev.message || 'Bluetooth error')); else w.resolve(ev); }
+      if (w.types.indexOf(ev.type) >= 0 && (!w.address || w.address === ev.address) && (!w.id || w.id === ev.id)) { bridgeWaiters.splice(i, 1); clearTimeout(w.timer); if (ev.type === 'error' || ev.ok === false) w.reject(new Error(ev.error || ev.message || 'Bluetooth error')); else w.resolve(ev); }
     }
   };
-  function bridgeWait(types, address, ms) {
+  var bridgeSeq = 0;
+  function bridgeWait(types, address, ms, id) {
     return new Promise(function (resolve, reject) {
-      var w = { types: types.concat(['error']), address: address, resolve: resolve, reject: reject };
+      var w = { types: types.concat(['error']), address: address, id: id || '', resolve: resolve, reject: reject };
       w.timer = setTimeout(function () { var k = bridgeWaiters.indexOf(w); if (k >= 0) bridgeWaiters.splice(k, 1); reject(new Error('The Instax printer did not answer.')); }, ms);
       bridgeWaiters.push(w);
     });
@@ -356,7 +357,20 @@
     await wait; this.connected = true;
   };
   BridgeTransport.prototype.write = async function (u8) {
-    var r = JSON.parse(bridge().write(this.address, b64(u8)) || '{}');
+    var b = bridge();
+    if (b && typeof b.writeAsync === 'function') {
+      var id = 'w' + (++bridgeSeq);
+      var wait = bridgeWait(['written'], this.address, 30000, id);
+      var ra = JSON.parse(b.writeAsync(this.address, b64(u8), id) || '{}');
+      if (!ra.ok) {
+        var idx = bridgeWaiters.findIndex(function (x) { return x.id === id; });
+        if (idx >= 0) { clearTimeout(bridgeWaiters[idx].timer); bridgeWaiters.splice(idx, 1); }
+        throw new Error(ra.error || 'Could not send to the Instax printer.');
+      }
+      await wait;
+      return;
+    }
+    var r = JSON.parse(b.write(this.address, b64(u8)) || '{}');
     if (!r.ok) throw new Error(r.error || 'Could not send to the Instax printer.');
   };
   BridgeTransport.prototype.close = function () { try { bridge().disconnect(this.address); } catch (e) { } this.connected = false; };

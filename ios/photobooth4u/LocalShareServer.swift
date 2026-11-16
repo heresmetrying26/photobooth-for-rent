@@ -6,13 +6,14 @@ import UIKit
  *
  * Runs an embedded HTTP server on port 47777 (or fallback ports 47778..47797)
  * serving event photo galleries and direct downloads to guests scanning the QR code
- * over the local Wi-Fi.
+ * over local Wi-Fi.
  *
  * Endpoints:
  *   /e/<slug>/          -> Event gallery page
  *   /e/<slug>/p/<file>  -> Single photo viewing page with Save button
- *   /e/<slug>/f/<file>  -> Direct file download (JPEG / MP4 / GIF)
+ *   /e/<slug>/f/<file>  -> Direct file download (JPEG / PNG / GIF / MP4 / WebM)
  *   /e/<slug>/list.json -> JSON array of items in event
+ *   /o/<code>           -> Guest's own session page
  */
 class LocalShareServer {
 
@@ -75,7 +76,7 @@ class LocalShareServer {
             return false
         }
 
-        if listen(sock, 20) < 0 {
+        if listen(sock, 32) < 0 {
             close(sock)
             return false
         }
@@ -103,6 +104,8 @@ class LocalShareServer {
 
     private func handleRequest(_ sock: Int32) {
         defer { close(sock) }
+        var noSigPipe: Int32 = 1
+        setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, socklen_t(MemoryLayout<Int32>.size))
 
         var buffer = [UInt8](repeating: 0, count: 4096)
         let bytesRead = read(sock, &buffer, buffer.count)
@@ -114,28 +117,46 @@ class LocalShareServer {
         guard parts.count >= 2 else { return }
 
         let method = parts[0]
-        let rawPath = parts[1]
-        let path = rawPath.components(separatedBy: "?").first ?? "/"
+        let rawTarget = parts[1]
+        let comps = rawTarget.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
+        let path = String(comps[0])
+        let query = comps.count > 1 ? String(comps[1]) : ""
 
         if method != "GET" && method != "HEAD" {
             sendResponse(sock, status: 405, type: "text/plain", body: Data("Method Not Allowed".utf8))
             return
         }
 
-        route(sock: sock, path: path)
+        route(sock: sock, path: path, query: query, headOnly: method == "HEAD")
     }
 
-    private func route(sock: Int32, path: String) {
-        // Match /e/<slug>/...
-        let components = path.split(separator: "/").map(String.init)
+    private func route(sock: Int32, path: String, query: String, headOnly: Bool) {
+        let components = path.split(separator: "/").map { String($0).removingPercentEncoding ?? String($0) }
+
+        // Guest own-photos link: /o/<code>
+        if components.count >= 2 && components[0] == "o" {
+            let code = components[1]
+            guard let gc = PBLocal.shared.guestCode(code),
+                  let folder = PBLocal.shared.folderBySlug(gc.slug) else {
+                sendResponse(sock, status: 404, type: "text/html; charset=utf-8", body: Data(renderErrorHtml(title: "Photos Not Found", message: "Check the QR code or link.").utf8), headOnly: headOnly)
+                return
+            }
+            let dir = PBLocal.shared.dirOf(folder: folder)
+            let files = gc.files.compactMap { PBLocal.shared.findFile(in: dir, name: $0) }
+            let showAll = PBLocal.shared.guestView != "only"
+            let html = renderGalleryHtml(folder: folder, files: files, showAllLink: showAll, headOnlyTitle: "Your Photos — \(PBLocal.shared.galleryTitle(folder: folder))")
+            sendResponse(sock, status: 200, type: "text/html; charset=utf-8", body: Data(html.utf8), headOnly: headOnly)
+            return
+        }
+
         guard components.count >= 2, components[0] == "e" else {
-            sendResponse(sock, status: 404, type: "text/plain", body: Data("Not Found".utf8))
+            sendResponse(sock, status: 404, type: "text/plain", body: Data("Not Found".utf8), headOnly: headOnly)
             return
         }
 
         let slug = components[1]
         guard let folder = PBLocal.shared.folderBySlug(slug) else {
-            sendResponse(sock, status: 404, type: "text/html", body: Data(renderErrorHtml(title: "Event Not Found", message: "Check the QR code or link.").utf8))
+            sendResponse(sock, status: 404, type: "text/html; charset=utf-8", body: Data(renderErrorHtml(title: "Event Not Found", message: "Check the QR code or link.").utf8), headOnly: headOnly)
             return
         }
 
@@ -143,8 +164,9 @@ class LocalShareServer {
 
         // /e/<slug>/ or /e/<slug>
         if components.count == 2 {
-            let html = renderGalleryHtml(folder: folder, dir: dir)
-            sendResponse(sock, status: 200, type: "text/html; charset=utf-8", body: Data(html.utf8))
+            let files = PBLocal.shared.photosIn(dir: dir)
+            let html = renderGalleryHtml(folder: folder, files: files, showAllLink: false, headOnlyTitle: nil)
+            sendResponse(sock, status: 200, type: "text/html; charset=utf-8", body: Data(html.utf8), headOnly: headOnly)
             return
         }
 
@@ -154,20 +176,18 @@ class LocalShareServer {
         if action == "list.json" {
             let files = PBLocal.shared.photosIn(dir: dir).map { $0.lastPathComponent }
             let json = try? JSONSerialization.data(withJSONObject: ["ok": true, "files": files], options: [])
-            sendResponse(sock, status: 200, type: "application/json", body: json ?? Data())
+            sendResponse(sock, status: 200, type: "application/json", body: json ?? Data(), headOnly: headOnly)
             return
         }
 
         guard components.count >= 4 else {
-            sendResponse(sock, status: 404, type: "text/plain", body: Data("Not Found".utf8))
+            sendResponse(sock, status: 404, type: "text/plain", body: Data("Not Found".utf8), headOnly: headOnly)
             return
         }
 
         let filename = components[3]
-        let fileUrl = dir.appendingPathComponent(filename)
-
-        guard FileManager.default.fileExists(atPath: fileUrl.path) else {
-            sendResponse(sock, status: 404, type: "text/plain", body: Data("File Not Found".utf8))
+        guard let fileUrl = PBLocal.shared.findFile(in: dir, name: filename) else {
+            sendResponse(sock, status: 404, type: "text/plain", body: Data("File Not Found".utf8), headOnly: headOnly)
             return
         }
 
@@ -175,53 +195,73 @@ class LocalShareServer {
         if action == "f" {
             if let data = try? Data(contentsOf: fileUrl) {
                 let mime = mimeTypeFor(path: filename)
-                sendResponse(sock, status: 200, type: mime, body: data)
+                var extra: [String] = []
+                if query.contains("dl=1") {
+                    let safeFile = filename.replacingOccurrences(of: "\"", with: "_")
+                    extra.append("Content-Disposition: attachment; filename=\"\(safeFile)\"")
+                }
+                sendResponse(sock, status: 200, type: mime, body: data, extraHeaders: extra, headOnly: headOnly)
             } else {
-                sendResponse(sock, status: 500, type: "text/plain", body: Data("Read Error".utf8))
+                sendResponse(sock, status: 500, type: "text/plain", body: Data("Read Error".utf8), headOnly: headOnly)
             }
             return
         }
 
         // /e/<slug>/p/<filename> -> Single item display page with Save button
         if action == "p" {
-            let html = renderPhotoPageHtml(slug: slug, filename: filename, eventName: folder.name)
-            sendResponse(sock, status: 200, type: "text/html; charset=utf-8", body: Data(html.utf8))
+            let html = renderPhotoPageHtml(slug: slug, filename: filename, eventName: PBLocal.shared.galleryTitle(folder: folder))
+            sendResponse(sock, status: 200, type: "text/html; charset=utf-8", body: Data(html.utf8), headOnly: headOnly)
             return
         }
 
-        sendResponse(sock, status: 404, type: "text/plain", body: Data("Not Found".utf8))
+        sendResponse(sock, status: 404, type: "text/plain", body: Data("Not Found".utf8), headOnly: headOnly)
+    }
+
+    private func esc(_ s: String) -> String {
+        return s
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&#39;")
+    }
+
+    private func urlEsc(_ s: String) -> String {
+        return s.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? s
     }
 
     private func mimeTypeFor(path: String) -> String {
         let lower = path.lowercased()
         if lower.hasSuffix(".jpg") || lower.hasSuffix(".jpeg") { return "image/jpeg" }
         if lower.hasSuffix(".png") { return "image/png" }
+        if lower.hasSuffix(".webp") { return "image/webp" }
         if lower.hasSuffix(".gif") { return "image/gif" }
         if lower.hasSuffix(".mp4") { return "video/mp4" }
         if lower.hasSuffix(".webm") { return "video/webm" }
         return "application/octet-stream"
     }
 
-    private func renderGalleryHtml(folder: PBLocal.Folder, dir: URL) -> String {
-        let photos = PBLocal.shared.photosIn(dir: dir)
+    private func renderGalleryHtml(folder: PBLocal.Folder, files: [URL], showAllLink: Bool, headOnlyTitle: String?) -> String {
+        let title = PBLocal.shared.galleryTitle(folder: folder)
         var itemsHtml = ""
 
-        for photo in photos {
+        for photo in files {
             let name = photo.lastPathComponent
+            let encName = urlEsc(name)
             let isVideo = name.lowercased().hasSuffix(".mp4") || name.lowercased().hasSuffix(".webm")
             if isVideo {
                 itemsHtml += """
                 <div class="card">
-                    <a href="/e/\(folder.slug)/p/\(name)">
-                        <video src="/e/\(folder.slug)/f/\(name)" preload="metadata" muted playsinline></video>
+                    <a href="/e/\(folder.slug)/p/\(encName)">
+                        <video src="/e/\(folder.slug)/f/\(encName)" preload="metadata" muted playsinline></video>
                     </a>
                 </div>
                 """
             } else {
                 itemsHtml += """
                 <div class="card">
-                    <a href="/e/\(folder.slug)/p/\(name)">
-                        <img src="/e/\(folder.slug)/f/\(name)" loading="lazy" alt="Photo" />
+                    <a href="/e/\(folder.slug)/p/\(encName)">
+                        <img src="/e/\(folder.slug)/f/\(encName)" loading="lazy" alt="Photo" />
                     </a>
                 </div>
                 """
@@ -232,19 +272,23 @@ class LocalShareServer {
             itemsHtml = "<p class='empty'>No photos taken yet for this event.</p>"
         }
 
+        let allBtn = showAllLink ? "<p style='margin-top:10px'><a class='pill' href='/e/\(folder.slug)/'>See all event photos</a></p>" : ""
+        let pageTitle = esc(headOnlyTitle ?? title)
+
         return """
         <!doctype html>
         <html lang="en">
         <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>\(folder.name) — photobooth4u</title>
+            <title>\(pageTitle) — photobooth4u</title>
             <style>
                 * { box-sizing: border-box; }
                 body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #F5F1EA; color: #1C1A1E; }
                 header { padding: 28px 16px 14px; text-align: center; }
                 h1 { margin: 0 0 6px; font-size: 22px; font-weight: 800; }
                 .sub { color: #6B666C; font-size: 13px; margin: 0; }
+                .pill { display: inline-block; padding: 8px 16px; border-radius: 999px; background: #fff; border: 1px solid #E4DCCF; color: #1C1A1E; text-decoration: none; font-weight: 700; font-size: 13px; }
                 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding: 16px; max-width: 900px; margin: 0 auto; }
                 .card { border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
                 .card img, .card video { width: 100%; height: 180px; object-fit: cover; display: block; }
@@ -253,8 +297,9 @@ class LocalShareServer {
         </head>
         <body>
             <header>
-                <h1>\(folder.name)</h1>
+                <h1>\(esc(title))</h1>
                 <p class="sub">photobooth4u Live Event Gallery</p>
+                \(allBtn)
             </header>
             <div class="grid">
                 \(itemsHtml)
@@ -265,10 +310,12 @@ class LocalShareServer {
     }
 
     private func renderPhotoPageHtml(slug: String, filename: String, eventName: String) -> String {
+        let encName = urlEsc(filename)
+        let safeFile = esc(filename)
         let isVideo = filename.lowercased().hasSuffix(".mp4") || filename.lowercased().hasSuffix(".webm")
         let mediaTag = isVideo ?
-            "<video src='/e/\(slug)/f/\(filename)' controls autoplay playsinline loop></video>" :
-            "<img src='/e/\(slug)/f/\(filename)' alt='Photo' />"
+            "<video src='/e/\(slug)/f/\(encName)' controls autoplay playsinline loop></video>" :
+            "<img src='/e/\(slug)/f/\(encName)' alt='Photo' />"
 
         return """
         <!doctype html>
@@ -276,13 +323,13 @@ class LocalShareServer {
         <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>\(eventName) — Photo</title>
+            <title>\(esc(eventName)) — Photo</title>
             <style>
                 * { box-sizing: border-box; }
                 body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #F5F1EA; color: #1C1A1E; text-align: center; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: 20px; }
                 .box { max-width: 500px; margin: 0 auto; width: 100%; }
                 img, video { max-width: 100%; max-height: 72vh; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); display: block; margin: 0 auto; }
-                .actions { margin-top: 20px; display: flex; gap: 10px; justify-content: center; }
+                .actions { margin-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
                 .btn { display: inline-block; padding: 14px 24px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 15px; background: #C93D27; color: #fff; border: 0; }
                 .btn.alt { background: #fff; color: #1C1A1E; border: 1.5px solid #E4DCCF; }
             </style>
@@ -291,7 +338,7 @@ class LocalShareServer {
             <div class="box">
                 \(mediaTag)
                 <div class="actions">
-                    <a class="btn" href="/e/\(slug)/f/\(filename)?dl=1" download="\(filename)">Save Photo</a>
+                    <a class="btn" href="/e/\(slug)/f/\(encName)?dl=1" download="\(safeFile)">Save Photo</a>
                     <a class="btn alt" href="/e/\(slug)/">All Photos</a>
                 </div>
             </div>
@@ -303,25 +350,39 @@ class LocalShareServer {
     private func renderErrorHtml(title: String, message: String) -> String {
         return """
         <!doctype html><html><body style="font-family:sans-serif;text-align:center;padding:50px;background:#F5F1EA;">
-        <h2>\(title)</h2><p style="color:#666;">\(message)</p>
+        <h2>\(esc(title))</h2><p style="color:#666;">\(esc(message))</p>
         </body></html>
         """
     }
 
-    private func sendResponse(_ sock: Int32, status: Int, type: String, body: Data) {
-        let reason = (status == 200) ? "OK" : (status == 404 ? "Not Found" : "Error")
+    private func writeAll(_ sock: Int32, data: Data) {
+        data.withUnsafeBytes { rawBuf in
+            guard let base = rawBuf.baseAddress else { return }
+            var sent = 0
+            while sent < data.count {
+                let n = Darwin.write(sock, base.advanced(by: sent), data.count - sent)
+                if n <= 0 { break }
+                sent += n
+            }
+        }
+    }
+
+    private func sendResponse(_ sock: Int32, status: Int, type: String, body: Data, extraHeaders: [String] = [], headOnly: Bool = false) {
+        let reason = (status == 200) ? "OK" : (status == 404 ? "Not Found" : (status == 405 ? "Method Not Allowed" : "Error"))
+        let extra = extraHeaders.isEmpty ? "" : (extraHeaders.joined(separator: "\r\n") + "\r\n")
         let header = "HTTP/1.1 \(status) \(reason)\r\n" +
             "Content-Type: \(type)\r\n" +
             "Content-Length: \(body.count)\r\n" +
+            "Cache-Control: no-store\r\n" +
             "Access-Control-Allow-Origin: *\r\n" +
+            extra +
             "Connection: close\r\n\r\n"
 
         if let headerData = header.data(using: .utf8) {
-            _ = headerData.withUnsafeBytes { write(sock, $0.baseAddress, headerData.count) }
+            writeAll(sock, data: headerData)
         }
-        if !body.isEmpty {
-            _ = body.withUnsafeBytes { write(sock, $0.baseAddress, body.count) }
+        if !headOnly && !body.isEmpty {
+            writeAll(sock, data: body)
         }
     }
 }
-

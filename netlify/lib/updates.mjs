@@ -194,6 +194,27 @@ export async function liveRush() {
   return liveR.v;
 }
 
+// The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
+export const IOS_FALLBACK = { version: '1.0.4', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.0.4/photobooth4u-kiosk-ipad.ipa' };
+let liveI = { at: 0, ttl: 0, v: null };
+export async function liveIos() {
+  if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
+  try {
+    const r = await fetch('https://api.github.com/repos/' + REPO + '/releases?per_page=30', { headers: { accept: 'application/vnd.github+json', 'user-agent': 'photobooth4u-site' }, signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      let best = null;
+      for (const rel of await r.json()) {
+        const m = /^ios-v(\d+(?:\.\d+)*)$/.exec(rel.tag_name || ''); if (!m || rel.draft) continue;
+        const a = (rel.assets || []).find((x) => x.name === 'photobooth4u-kiosk-ipad.ipa'); if (!a || !/^https:\/\//.test(a.browser_download_url || '')) continue;
+        if (!best || verNewer(m[1], best.version)) best = { version: m[1], url: a.browser_download_url };
+      }
+      if (best) { liveI = { at: Date.now(), ttl: 10 * 60000, v: best }; return best; }
+    }
+  } catch { /* offline / rate limited: keep what we had */ }
+  liveI = { at: Date.now(), ttl: 2 * 60000, v: liveI.v || IOS_FALLBACK };
+  return liveI.v;
+}
+
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
   return {

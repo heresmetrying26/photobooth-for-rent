@@ -52,7 +52,7 @@ class VoiceBridge: NSObject {
         utterance.pitchMultiplier = 1.02
         utterance.volume = max(0.05, min(1.0, volume))
 
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.duckOthers])
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers, .duckOthers])
         try? AVAudioSession.sharedInstance().setActive(true)
 
         synthesizer.speak(utterance)

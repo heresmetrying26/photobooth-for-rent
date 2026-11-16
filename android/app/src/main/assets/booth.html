@@ -11845,9 +11845,12 @@
       }
 
       .start-prev,
-      .preview-fab,
       .see-prev-btn {
         display: flex !important;
+      }
+
+      .preview-fab {
+        display: none !important;
       }
 
       /* In portrait, welcome media scales to fit the tablet according to selected fit (cover/contain/fill) */
@@ -18393,6 +18396,13 @@
         tabSession.classList.toggle('hidden', !toSession);
         document.body.classList.toggle('in-session', toSession);   // smaller header: the camera gets the room
         try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
+        if (toSession && IS_IOS_APP && currentStream && currentDeviceId !== USB_CAM_ID) {
+          try {
+            if (video.srcObject !== currentStream) video.srcObject = currentStream;
+            if (video.paused) { var vp = video.play(); if (vp && vp.catch) vp.catch(function () { }); }
+            if (typeof listenVideoFrames === 'function') listenVideoFrames(video);
+          } catch (e) { }
+        }
         window.scrollTo(0, 0);
         if (toSession && typeof applyStageAspect === 'function') requestAnimationFrame(function () { applyStageAspect(); });
         try { refreshPrintFab(); refreshPanelSolo(); } catch (e) { }
@@ -22114,6 +22124,10 @@
       // in the booth works unchanged.
       const UVC_ID = 'pb-uvc-webcam';
       const IS_ANDROID_APP = /PB4uAndroid/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.android);
+      const IS_IOS_APP = /PB4uIOS/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.ios);
+      function activeCamVideo() {
+        return (IS_IOS_APP && typeof scpVideo !== 'undefined' && scpVideo && scpVideo.srcObject && typeof curStep !== 'undefined' && curStep === 4 && tabSetup && !tabSetup.classList.contains('hidden')) ? scpVideo : video;
+      }
       // Webcam resolution settings (remembered per device): preview auto | max | 1080 | 720 | 480; photo preview | max.
       const WEBCAM_RES_KEY = 'pb4u.webcamRes';
       const webcamRes = (function () {
@@ -22138,9 +22152,9 @@
         if (p === '1080') return { width: { ideal: 1920 }, height: { ideal: 1080 } };
         if (p === '720') return { width: { ideal: 1280 }, height: { ideal: 720 } };
         if (p === '480') return { width: { ideal: 640 }, height: { ideal: 480 } };
-        // Default ('auto'): On Android tablets (especially budget models like VOVE Pad 9 Ultra),
-        // 720p provides a smooth 30fps viewfinder without ISP overload or thermal frame drops.
-        if (IS_ANDROID_APP) return { width: { ideal: 1280 }, height: { ideal: 720 } };
+        // Default ('auto'): On Android & iPad tablets, 720p provides a smooth 30fps viewfinder
+        // without WebKit GPU/ISP overload or thermal frame drops.
+        if (IS_ANDROID_APP || IS_IOS_APP) return { width: { ideal: 1280 }, height: { ideal: 720 } };
         return { width: { ideal: 1920 }, height: { ideal: 1080 } };
       }
       // "Exact size" menu: the sizes the app reported for the webcam (kept in this browser so the menu is there before the webcam opens).
@@ -22356,13 +22370,14 @@
         webcamPhotoRes.value = webcamRes.photo;
         const note = document.getElementById('webcamResNote');
         const info = window.__pbUvcInfo;
-        const vw = (typeof video !== 'undefined' && video && video.videoWidth) ? video.videoWidth : 0;
-        const vh = (typeof video !== 'undefined' && video && video.videoHeight) ? video.videoHeight : 0;
+        const vid = (typeof activeCamVideo === 'function' ? activeCamVideo() : video) || video;
+        const vw = (vid && vid.videoWidth) ? vid.videoWidth : 0;
+        const vh = (vid && vid.videoHeight) ? vid.videoHeight : 0;
         const fps = (typeof webcamLiveFps === 'number' && webcamLiveFps > 0) ? (' @ ' + webcamLiveFps + ' fps') : '';
         const now = vw ? vw + ' × ' + vh + fps : '';
         const isDownsized = webcamRes.preview === '720' || webcamRes.preview === '480' || (vh > 0 && vh <= 720 && webcamRes.preview !== 'auto' && webcamRes.preview !== '1080' && webcamRes.preview !== 'max');
         let noteText = (now ? 'Viewfinder: ' + now + '. ' : '') + (info && info.max ? 'Camera max: ' + info.max + '. ' : '');
-        if (isDownsized || (IS_ANDROID_APP && (webcamRes.preview === 'auto' || webcamRes.preview === '720'))) {
+        if (isDownsized || ((IS_ANDROID_APP || IS_IOS_APP) && (webcamRes.preview === 'auto' || webcamRes.preview === '720'))) {
           noteText += 'Viewfinder optimized (720p) for smoother performance on tablet.';
         } else {
           noteText += 'Viewfinder running at full resolution. If live view lags on slower tablets, select "Downsize viewfinder: 720p".';
@@ -22486,7 +22501,9 @@
         // show a black or cropped picture, so they're only used when picked.
         const lbl = d => (d.label || '').toLowerCase();
         const BUILTIN = /front|facetime|macbook|imac|built-in|integrated|isight|surface camera|microsoft camera/;
-        const AVOID = /virtual|\bobs\b|teams|zoom|snap camera|mmhmm|manycam|xsplit|\bndi\b|desk view|iphone|ipad|ir camera|windows hello|depth|vcam|camo|iriun|droidcam|epoccam/;
+        const AVOID = IS_IOS_APP
+          ? /virtual|\bobs\b|teams|zoom|snap camera|mmhmm|manycam|xsplit|\bndi\b|desk view|ir camera|windows hello|depth|vcam|camo|iriun|droidcam|epoccam/
+          : /virtual|\bobs\b|teams|zoom|snap camera|mmhmm|manycam|xsplit|\bndi\b|desk view|iphone|ipad|ir camera|windows hello|depth|vcam|camo|iriun|droidcam|epoccam/;
         // A camera plugged in through the Windows helper is picked when nothing
         // else was chosen in this visit (it's plugged in, so it's meant to be used).
         const usbPick = usbCam.supported && (previous === USB_CAM_ID || (!previous && saved && saved.id === USB_CAM_ID) || (!previous && usbCam.viaHelper && usbCam.helperSees)) ? { deviceId: USB_CAM_ID } : null;
@@ -22582,19 +22599,26 @@
       setInterval(function () {
         try { if (typeof webcamFpsTick === 'function') webcamFpsTick(); } catch (e) { }
         try {
-          if (!streamActive || !currentStream || currentDeviceId === USB_CAM_ID || document.hidden || reconnectTimer || video.paused || !video.videoWidth || state === 'result' || video.style.display === 'none' || video.offsetParent === null) { wcAt = Date.now(); wcFrames = -1; return; }
+          const av = (typeof activeCamVideo === 'function' ? activeCamVideo() : video) || video;
+          if (!streamActive || !currentStream || currentDeviceId === USB_CAM_ID || document.hidden || reconnectTimer || !av || state === 'result' || av.style.display === 'none' || av.offsetParent === null) { wcAt = Date.now(); wcFrames = -1; return; }
+          if (av.paused && !camSleeping) {
+            try { var pr = av.play(); if (pr && pr.catch) pr.catch(function () { }); } catch (e) { }
+            wcAt = Date.now(); wcFrames = -1; return;
+          }
+          if (av.paused || !av.videoWidth) { wcAt = Date.now(); wcFrames = -1; return; }
           const curOpt = cameraSelect.options[cameraSelect.selectedIndex];
           const curLabel = (curOpt ? curOpt.textContent : '').toLowerCase();
           const trk = currentStream.getVideoTracks()[0];
           const trkSet = trk && trk.getSettings ? trk.getSettings() : {};
-          if (ANDROID_APP || trkSet.facingMode || /front|back|rear|user|environment|built-in|integrated|facetime|tablet/i.test(curLabel)) {
+          if (!IS_IOS_APP && (ANDROID_APP || trkSet.facingMode || /front|back|rear|user|environment|built-in|integrated|facetime|tablet/i.test(curLabel))) {
             wcAt = Date.now(); wcFrames = -1; return;
           }
-          const q = video.getVideoPlaybackQuality ? video.getVideoPlaybackQuality() : null;
-          const n = rvfcCount > 0 ? rvfcCount : (q && typeof q.totalVideoFrames === 'number' && q.totalVideoFrames > 0 ? q.totalVideoFrames : Math.round(video.currentTime * 100));
+          const q = av.getVideoPlaybackQuality ? av.getVideoPlaybackQuality() : null;
+          const n = rvfcCount > 0 ? rvfcCount : (q && typeof q.totalVideoFrames === 'number' && q.totalVideoFrames > 0 ? q.totalVideoFrames : Math.round(av.currentTime * 100));
           if (n !== wcFrames) { wcFrames = n; wcAt = Date.now(); return; }
-          if (n === 0 && video.readyState >= 2 && !video.paused) { wcAt = Date.now(); return; }
-          if (Date.now() - wcAt > 8000) {
+          if (IS_IOS_APP && rvfcCount === 0 && av.readyState >= 2 && !av.paused) { wcAt = Date.now(); return; }
+          if (n === 0 && av.readyState >= 2 && !av.paused) { wcAt = Date.now(); return; }
+          if (Date.now() - wcAt > (IS_IOS_APP ? 6000 : 8000)) {
             usbLog('webcam-stall', { frames: n, label: (cameraSelect.options[cameraSelect.selectedIndex] || {}).textContent || '' });
             wcAt = Date.now(); wcFrames = -1;
             cameraLost();
@@ -22678,7 +22702,7 @@
       async function openCameraStream(deviceId) {
         const selOpt = deviceId && Array.from(cameraSelect.options).find(o => o.value === deviceId);
         const baseSize = webcamGumSize();
-        const sizeWithFps = Object.assign({}, baseSize, { frameRate: { ideal: 30, min: 20 } });
+        const sizeWithFps = Object.assign({}, baseSize, { frameRate: IS_IOS_APP ? { ideal: 30 } : { ideal: 30, min: 20 } });
         const gum = video => navigator.mediaDevices.getUserMedia({ video, audio: false });
         const stop = e => e && (e.uvcMsg || e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e.name === 'SecurityError');
         let lastErr = null;
@@ -23564,6 +23588,10 @@
               try { video.pause(); } catch (e) { }
               video.srcObject = null;
             }
+            if (typeof scpVideo !== 'undefined' && scpVideo && scpVideo.srcObject) {
+              try { scpVideo.pause(); } catch (e) { }
+              scpVideo.srcObject = null;
+            }
           }
           if (recDot) recDot.style.display = 'none';
         } catch (e) {
@@ -24007,14 +24035,20 @@
           currentStream = stream;
           watchTrack(stream);
           if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
-          video.srcObject = stream;
-          await video.play();
-          listenVideoFrames(video);
+          const setupCamStep = IS_IOS_APP && typeof curStep !== 'undefined' && curStep === 4 && tabSetup && !tabSetup.classList.contains('hidden') && typeof scpVideo !== 'undefined' && scpVideo;
+          const playVid = setupCamStep ? scpVideo : video;
+          if (setupCamStep && video.srcObject) {
+            try { video.pause(); } catch (e) { }
+            video.srcObject = null;
+          }
+          playVid.srcObject = stream;
+          await playVid.play();
+          listenVideoFrames(playVid);
           // Safari can resolve play() before the first frame; give it a moment.
-          if (!video.videoWidth) {
+          if (!playVid.videoWidth) {
             await new Promise(r => {
               const t = setTimeout(r, 3000);
-              video.addEventListener('loadeddata', () => { clearTimeout(t); r(); }, { once: true });
+              playVid.addEventListener('loadeddata', () => { clearTimeout(t); r(); }, { once: true });
             });
           }
           if (currentStream !== stream) return false;   // another camera was picked meanwhile
@@ -24035,7 +24069,7 @@
           applyMirror();
           applyLiveFilter();
           guestCall('camera');
-          if (!video.videoWidth) {
+          if (!playVid.videoWidth) {
             showCameraError({ name: 'NoPicture' });
             cameraSection.classList.remove('hidden');
             cameraSelect.style.display = cameraSelect.options.length > 1 ? '' : 'none';
@@ -24145,7 +24179,8 @@
       }
       var stageShot = 0;   // which shot the live view is framing right now
       function camAspect() {
-        var w = video.videoWidth, h = video.videoHeight;
+        var v = (typeof activeCamVideo === 'function' ? activeCamVideo() : video) || video;
+        var w = v.videoWidth || video.videoWidth, h = v.videoHeight || video.videoHeight;
         return (w && h) ? w / h : 4 / 3;
       }
       // Largest centred box of the photo's shape inside the camera picture, in %.
@@ -25106,6 +25141,7 @@
 
       function webcamPushFrame(v) {
         if (typeof state === 'undefined' || state !== 'capturing') return;
+        if ((typeof IOS_APP !== 'undefined' && IOS_APP) || (typeof window !== 'undefined' && window.__PB && window.__PB.ios)) return;
         if (!webcamStackOn()) return;
         if (typeof USB_CAM_ID !== 'undefined' && typeof currentDeviceId !== 'undefined' && currentDeviceId === USB_CAM_ID) return;
         if (!v || !v.videoWidth || !v.videoHeight) return;
@@ -25215,12 +25251,13 @@
       function webcamFpsTick() {
         const now = Date.now();
         const hasUsb = (typeof USB_CAM_ID !== 'undefined' && typeof currentDeviceId !== 'undefined' && currentDeviceId === USB_CAM_ID);
+        const vEl = (typeof activeCamVideo === 'function' ? activeCamVideo() : null) || (typeof video !== 'undefined' ? video : null);
         const active = (typeof streamActive !== 'undefined' && streamActive)
           && !hasUsb
           && !document.hidden
           && !(typeof camSleeping !== 'undefined' && camSleeping)
           && !(typeof reconnectTimer !== 'undefined' && reconnectTimer)
-          && typeof video !== 'undefined' && video && !video.paused && video.videoWidth > 0;
+          && vEl && !vEl.paused && vEl.videoWidth > 0;
         const curCount = typeof rvfcCount === 'number' ? rvfcCount : 0;
         if (!active) {
           webcamLastRvfc = curCount;
@@ -29758,13 +29795,15 @@
       }
       // A frame from the live camera, without the filter (the preview adds it).
       function grabCameraSample() {
-        var vw = video.videoWidth, vh = video.videoHeight;
+        var v = (typeof activeCamVideo === 'function' ? activeCamVideo() : video) || video;
+        if (!v.videoWidth && video.videoWidth) v = video;
+        var vw = v.videoWidth, vh = v.videoHeight;
         if (!vw || !vh) return null;
         var c = document.createElement('canvas');
         var scale = Math.min(1, 900 / Math.max(vw, vh));
         c.width = Math.round(vw * scale); c.height = Math.round(vh * scale);
         var x = c.getContext('2d');
-        x.drawImage(video, 0, 0, c.width, c.height);
+        x.drawImage(v, 0, 0, c.width, c.height);
         return c;
       }
 
@@ -53081,10 +53120,10 @@
         })();
       })();
 
-      // ---- Android tablet app: Setup → App updates (check by hand, also after "Later") ----
+      // ---- Android & iPad tablet apps: Setup → App updates (check by hand, also after "Later") ----
       (function () {
         var bridge = window.__PBUpdate;
-        if (!ANDROID_LOCAL || !bridge || typeof bridge.check !== 'function') return;
+        if ((!ANDROID_LOCAL && !IOS_LOCAL) || !bridge || typeof bridge.check !== 'function') return;
         var box = document.getElementById('appUpdBox');
         if (!box) return;
         box.hidden = false;
@@ -53098,27 +53137,44 @@
           });
         }
         var cur = ''; try { cur = String(bridge.version() || ''); } catch (e) { }
-        var base = function () { return 'This tablet has version ' + (cur || '?') + '.'; };
+        var devWord = IOS_LOCAL ? 'iPad' : 'tablet';
+        var base = function () { return 'This ' + devWord + ' has version ' + (cur || '?') + '.'; };
         var ready = function () { chk.disabled = false; chk.textContent = 'Check for updates'; };
+        var pendingNativeUrl = '';
         txt.textContent = base();
         window.__PBUpdateEvent = function (r) {
           r = r || {}; if (r.current) cur = r.current;
           go.style.display = 'none';
-          if (r.state === 'checking') { txt.textContent = 'Checking for a new version…'; return; }
+          pendingNativeUrl = '';
+          if (r.state === 'checking') { txt.textContent = 'Checking for updates…'; return; }
+          if (r.state === 'downloading') { chk.disabled = true; txt.textContent = 'Downloading booth update… Please wait.'; return; }
+          if (r.state === 'installed') { txt.textContent = 'Booth software updated! Reloading…'; return; }
           ready();
           if (r.state === 'available') {
-            txt.textContent = 'Version ' + r.latest + ' is out. ' + base() + ' Tap Update now, then Update and Open when Android asks.';
-            go.textContent = 'Update now'; go.style.display = ''; go.disabled = false;
-          } else if (r.state === 'latest') txt.textContent = base() + ' It’s the newest version.';
-          else if (r.state === 'offline') txt.textContent = 'No internet. Connect the tablet to Wi-Fi and check again. ' + base();
-          else txt.textContent = 'Couldn’t check for updates. Try again in a minute. ' + base();
+            if (IOS_LOCAL && r.mode === 'ota') {
+              txt.textContent = 'Booth update available! ' + base() + ' Tap Update now (no PC or Sideloadly needed).';
+              go.textContent = 'Update now'; go.style.display = ''; go.disabled = false;
+            } else if (IOS_LOCAL && r.mode === 'native') {
+              txt.textContent = 'Native iPad app v' + r.latest + ' is out (' + base() + ') — download the new .ipa from the iPad offline guide when ready.';
+              if (r.url) { pendingNativeUrl = 'https://photobooth4u.netlify.app/how-to-ipad-offline/'; go.textContent = 'Open guide'; go.style.display = ''; go.disabled = false; }
+            } else {
+              txt.textContent = 'Version ' + r.latest + ' is out. ' + base() + ' Tap Update now, then Update and Open when Android asks.';
+              go.textContent = 'Update now'; go.style.display = ''; go.disabled = false;
+            }
+          } else if (r.state === 'latest') txt.textContent = base() + ' It\u2019s the newest version.';
+          else if (r.state === 'offline') txt.textContent = 'No internet. Connect the ' + devWord + ' to Wi-Fi and check again. ' + base();
+          else txt.textContent = (r.error ? r.error + ' ' : 'Couldn\u2019t check for updates. Try again in a minute. ') + base();
         };
         chk.addEventListener('click', function () {
           chk.disabled = true; chk.textContent = 'Checking…';
           try { bridge.check(); } catch (e) { ready(); }
-          setTimeout(function () { if (chk.disabled) { ready(); txt.textContent = 'Couldn’t check for updates. Try again in a minute. ' + base(); } }, 25000);
+          setTimeout(function () { if (chk.disabled) { ready(); txt.textContent = 'Couldn\u2019t check for updates. Try again in a minute. ' + base(); } }, 25000);
         });
-        go.addEventListener('click', function () { try { bridge.start(); } catch (e) { } });
+        go.addEventListener('click', function () {
+          if (pendingNativeUrl) { try { window.open(pendingNativeUrl, '_blank'); } catch (e) { } return; }
+          go.disabled = true;
+          try { bridge.start(); } catch (e) { go.disabled = false; }
+        });
       })();
 
       // ---- Windows / Mac app: this laptop (photos folder, guests' Wi-Fi, licence) ----
@@ -53434,8 +53490,17 @@
       function scpRefresh() {
         if (!scpVideo) return;
         var show = curStep === 4 && !tabSetup.classList.contains('hidden');
-        var stream = show ? (currentStream || video.srcObject) : null;
-        if (scpVideo.srcObject !== stream) scpVideo.srcObject = stream;
+        var stream = show ? (currentStream || video.srcObject || scpVideo.srcObject) : null;
+        if (IS_IOS_APP && show && stream && currentDeviceId !== USB_CAM_ID) {
+          if (video.srcObject === stream) { try { video.pause(); } catch (e) { } video.srcObject = null; }
+        }
+        if (scpVideo.srcObject !== stream) {
+          if (!stream) { try { scpVideo.pause(); } catch (e) { } }
+          scpVideo.srcObject = stream;
+          if (stream && IS_IOS_APP && currentDeviceId !== USB_CAM_ID && typeof listenVideoFrames === 'function') {
+            listenVideoFrames(scpVideo);
+          }
+        }
         if (!show) return;
         if (stream && scpVideo.paused) { try { var pr = scpVideo.play(); if (pr && pr.catch) pr.catch(function () { }); } catch (e) { } }
         scpVideo.style.transform = video.style.transform || '';
@@ -53444,13 +53509,14 @@
         if (layout) { try { a = currentBoxAspect(); } catch (e) { } }
         scpFrame.style.setProperty('--scp-aspect', a.toFixed(4));
         scpFrame.classList.toggle('crop', layout);
-        var live = !!stream && !!video.videoWidth && streamActive, err = cameraError.style.display === 'flex';
+        var vw = scpVideo.videoWidth || video.videoWidth, vh = scpVideo.videoHeight || video.videoHeight;
+        var live = !!stream && !!vw && streamActive, err = cameraError.style.display === 'flex';
         scpEmpty.hidden = live && !err;
         scpEmpty.textContent = err ? cameraErrorText.textContent : 'Waiting for the camera…';
         var isDslr = currentDeviceId === USB_CAM_ID;
         var infoText = live ? (isDslr
-          ? 'Live view: ' + video.videoWidth + ' × ' + video.videoHeight + ' (DSLR viewfinder) · Photos: full DSLR resolution (up to 3000px HD)'
-          : video.videoWidth + ' × ' + video.videoHeight + (layout ? ' · cropped to layout' : ' · full camera frame') + (webcamRes.photo === 'max' ? ' · Photos: full camera resolution' : '')) : '';
+          ? 'Live view: ' + vw + ' × ' + vh + ' (DSLR viewfinder) · Photos: full DSLR resolution (up to 3000px HD)'
+          : vw + ' × ' + vh + (layout ? ' · cropped to layout' : ' · full camera frame') + (webcamRes.photo === 'max' ? ' · Photos: full camera resolution' : '')) : '';
         scpInfo.textContent = infoText;
         [].forEach.call(document.querySelectorAll('#scpFitChips .chip'), function (c) { c.classList.toggle('active', c.dataset.fit === scpFit); });
       }

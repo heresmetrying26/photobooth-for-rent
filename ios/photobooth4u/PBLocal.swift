@@ -40,6 +40,7 @@ class PBLocal {
 
     private let pathMonitor = NWPathMonitor()
     private var onlineNow = true
+    var onOnlineChange: ((Bool) -> Void)?
 
     private init() {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -52,9 +53,16 @@ class PBLocal {
         loadCodes()
 
         pathMonitor.pathUpdateHandler = { [weak self] path in
+            let online = (path.status == .satisfied)
             self?.lock.lock()
-            self?.onlineNow = (path.status == .satisfied)
+            let changed = (self?.onlineNow != online)
+            self?.onlineNow = online
             self?.lock.unlock()
+            if changed {
+                DispatchQueue.main.async {
+                    self?.onOnlineChange?(online)
+                }
+            }
         }
         pathMonitor.start(queue: DispatchQueue(label: "com.photobooth4u.netmon"))
     }

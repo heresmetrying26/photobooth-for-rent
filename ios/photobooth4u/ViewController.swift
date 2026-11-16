@@ -1,6 +1,7 @@
 import UIKit
 import WebKit
 import AVFoundation
+import CryptoKit
 
 /**
  * photobooth4u — iOS / iPadOS Main View Controller
@@ -21,6 +22,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
     private var activePayload: [String: Any]?
     private var checkinTimer: Timer?
+    private var updateBusy = false
+    private let otaHashKey = "pb4u_ota_hash"
+    private let otaBundledHashKey = "pb4u_ota_bundled_hash"
 
     override var prefersStatusBarHidden: Bool { return true }
     override var prefersHomeIndicatorAutoHidden: Bool { return true }
@@ -33,14 +37,18 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         IccCameraHelper.shared.start()
         _ = LocalShareServer.shared.start()
 
-        // 2. Request native camera/mic permissions upfront
-        requestMediaPermissionsIfNeeded()
-
-        // 3. Setup WKWebView
+        // 2. Setup WKWebView
         setupWebView()
 
-        // 4. Verify licence or show activation gate
-        bootWithLicence()
+        // 3. Push network state asynchronously to JS (avoids synchronous prompt IPC in navigator.onLine)
+        PBLocal.shared.onOnlineChange = { [weak self] online in
+            let flag = online ? "true" : "false"
+            let ev = online ? "online" : "offline"
+            self?.webView?.evaluateJavaScript("window.__pbIosOnline=\(flag);window.dispatchEvent(new Event('\(ev)'));", completionHandler: nil)
+        }
+
+        // 4. Request native camera/mic permissions upfront, then boot UI after camera grant settles
+        requestMediaPermissionsAndBoot()
 
         // 5. Periodic 10-minute background licence check-in when online
         checkinTimer = Timer.scheduledTimer(withTimeInterval: 600.0, repeats: true) { [weak self] _ in
@@ -57,12 +65,18 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         checkinTimer?.invalidate()
     }
 
-    private func requestMediaPermissionsIfNeeded() {
-        if AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined {
-            AVCaptureDevice.requestAccess(for: .video) { _ in }
-        }
+    private func requestMediaPermissionsAndBoot() {
         if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
             AVCaptureDevice.requestAccess(for: .audio) { _ in }
+        }
+        if AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined {
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] _ in
+                DispatchQueue.main.async {
+                    self?.bootWithLicence()
+                }
+            }
+        } else {
+            bootWithLicence()
         }
     }
 
@@ -76,6 +90,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         userContent.add(self, name: "pbVoiceStop")
         userContent.add(self, name: "pbGuestViewSet")
         userContent.add(self, name: "pbPrintWebView")
+        userContent.add(self, name: "pbUpdateCheck")
+        userContent.add(self, name: "pbUpdateStart")
 
         let bridgeJs = """
         (function(){
@@ -105,7 +121,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
               try { window.webkit.messageHandlers.pbGuestViewSet.postMessage(String(mode || 'all')); } catch (e) {}
             },
             isOnline: function() {
-              return prompt('__PBLocal_isOnline_sync__', '') === '1';
+              if (typeof window.__pbIosOnline === 'boolean') return window.__pbIosOnline;
+              var v = (prompt('__PBLocal_isOnline_sync__', '') === '1');
+              window.__pbIosOnline = v;
+              return v;
             }
           };
 
@@ -144,6 +163,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
           window.print = function() {
             try { window.webkit.messageHandlers.pbPrintWebView.postMessage({}); } catch (e) {}
+          };
+
+          window.__PBUpdate = {
+            version: function() { return window.__pbIosAppVer || '1.0.4'; },
+            check: function() {
+              try { window.webkit.messageHandlers.pbUpdateCheck.postMessage({}); } catch (e) {}
+            },
+            start: function() {
+              try { window.webkit.messageHandlers.pbUpdateStart.postMessage({}); } catch (e) {}
+            }
           };
 
           try {
@@ -277,17 +306,58 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         window.__PB.multiDevice=\(multiDevice ? "true" : "false");
         window.__PB.watermark=false;
         window.__PB.exp=\(expMs);
+        window.__pbIosOnline=\(PBLocal.shared.isOnline() ? "true" : "false");
+        window.__pbIosAppVer=\(jsonStr(AppLicence.shared.appVersion()));
         window.__PB.print={enabled:\(printEnabled ? "true" : "false"),sizes:[\(sizesJs)]};
         </script>
         """
+    }
+
+    private var otaFileUrl: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("booth-ota.html")
+    }
+
+    private func sha256Prefix16(_ data: Data) -> String {
+        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined().prefix(16).lowercased()
+    }
+
+    private func readBundleBooth() -> (raw: String, hash: String)? {
+        guard let htmlPath = Bundle.main.path(forResource: "booth", ofType: "html"),
+              let raw = try? String(contentsOfFile: htmlPath, encoding: .utf8),
+              let data = raw.data(using: .utf8) else {
+            return nil
+        }
+        return (raw, sha256Prefix16(data))
+    }
+
+    private func activeBoothSource() -> (raw: String, hash: String, bundleHash: String)? {
+        guard let bundled = readBundleBooth() else { return nil }
+        let defaults = UserDefaults.standard
+        let savedBundledHash = defaults.string(forKey: otaBundledHashKey) ?? ""
+        if savedBundledHash == bundled.hash,
+           let otaData = try? Data(contentsOf: otaFileUrl),
+           let otaRaw = String(data: otaData, encoding: .utf8),
+           otaRaw.contains("</body>"),
+           otaRaw.contains("window.__PB") {
+            return (otaRaw, sha256Prefix16(otaData), bundled.hash)
+        }
+        // New native IPA bundle installed or invalid OTA file: clean up stale OTA cache
+        if FileManager.default.fileExists(atPath: otaFileUrl.path) {
+            try? FileManager.default.removeItem(at: otaFileUrl)
+        }
+        if !savedBundledHash.isEmpty {
+            defaults.removeObject(forKey: otaHashKey)
+            defaults.removeObject(forKey: otaBundledHashKey)
+        }
+        return (bundled.raw, bundled.hash, bundled.hash)
     }
 
     private func loadBooth() {
         gateContainer?.removeFromSuperview()
         gateContainer = nil
 
-        guard let htmlPath = Bundle.main.path(forResource: "booth", ofType: "html"),
-              let raw = try? String(contentsOfFile: htmlPath, encoding: .utf8) else {
+        guard let src = activeBoothSource() else {
             let errSt = AppLicence.Status(ok: false, reason: "none", message: "Missing booth.html in app bundle.", payload: nil, warn: "")
             showActivationScreen(st: errSt)
             return
@@ -295,15 +365,143 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
         let pbConfig = buildPbConfigScript()
         let injected: String
-        if let headRange = raw.range(of: "</head>", options: .caseInsensitive) {
-            injected = raw.replacingCharacters(in: headRange, with: "\(pbConfig)\n</head>")
+        if let headRange = src.raw.range(of: "</head>", options: .caseInsensitive) {
+            injected = src.raw.replacingCharacters(in: headRange, with: "\(pbConfig)\n</head>")
         } else {
-            injected = pbConfig + raw
+            injected = pbConfig + src.raw
         }
 
         IccCameraHelper.shared.setBoothHtml(injected)
         if let url = URL(string: "http://localhost:\(IccCameraHelper.port)/booth") {
             webView.load(URLRequest(url: url))
+        }
+    }
+
+    private func isVersionNewer(_ remote: String, than local: String) -> Bool {
+        let a = remote.split(separator: ".").map { Int($0) ?? 0 }
+        let b = local.split(separator: ".").map { Int($0) ?? 0 }
+        let n = max(a.count, b.count)
+        for i in 0..<n {
+            let x = i < a.count ? a[i] : 0
+            let y = i < b.count ? b[i] : 0
+            if x != y { return x > y }
+        }
+        return false
+    }
+
+    private func emitUpdateEvent(_ obj: [String: Any]) {
+        guard let data = try? JSONSerialization.data(withJSONObject: obj, options: []),
+              let json = String(data: data, encoding: .utf8) else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.webView?.evaluateJavaScript("window.__PBUpdateEvent&&window.__PBUpdateEvent(\(json));", completionHandler: nil)
+        }
+    }
+
+    private func performIosUpdate(download: Bool) {
+        let curVer = AppLicence.shared.appVersion()
+        if !PBLocal.shared.isOnline() {
+            emitUpdateEvent(["state": "offline", "current": curVer])
+            return
+        }
+        guard let lic = AppLicence.shared.currentLicenceString(), !lic.isEmpty else {
+            emitUpdateEvent(["state": "error", "current": curVer, "error": "Activate your rental code first."])
+            return
+        }
+        if updateBusy { return }
+        updateBusy = true
+        emitUpdateEvent(["state": download ? "downloading" : "checking", "current": curVer])
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            let src = self.activeBoothSource()
+            let curHash = src?.hash ?? ""
+            let bundleHash = src?.bundleHash ?? ""
+            guard let url = URL(string: "\(AppLicence.serverUrl)/api/ios-booth") else {
+                self.updateBusy = false
+                self.emitUpdateEvent(["state": "error", "current": curVer])
+                return
+            }
+
+            var req = URLRequest(url: url)
+            req.httpMethod = "POST"
+            req.timeoutInterval = download ? 30.0 : 12.0
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            let bodyObj: [String: Any] = [
+                "licence": lic,
+                "mid": AppLicence.shared.machineId(),
+                "hash": curHash,
+                "checkOnly": !download
+            ]
+            req.httpBody = try? JSONSerialization.data(withJSONObject: bodyObj, options: [])
+
+            let task = URLSession.shared.dataTask(with: req) { data, _, err in
+                defer { self.updateBusy = false }
+                guard err == nil,
+                      let data = data,
+                      let obj = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: Any],
+                      (obj["ok"] as? Bool) == true else {
+                    self.emitUpdateEvent(["state": PBLocal.shared.isOnline() ? "error" : "offline", "current": curVer])
+                    return
+                }
+
+                let serverHash = (obj["hash"] as? String) ?? ""
+                let upToDate = (obj["upToDate"] as? Bool) ?? true
+                let iosInfo = obj["ios"] as? [String: Any]
+                let latestNative = (iosInfo?["version"] as? String) ?? ""
+                let nativeUrl = (iosInfo?["url"] as? String) ?? ""
+                let nativeNewer = !latestNative.isEmpty && self.isVersionNewer(latestNative, than: curVer)
+
+                if !download {
+                    if !upToDate && !serverHash.isEmpty {
+                        self.emitUpdateEvent([
+                            "state": "available",
+                            "mode": "ota",
+                            "current": curVer,
+                            "latest": latestNative.isEmpty ? curVer : latestNative,
+                            "nativeNewer": nativeNewer,
+                            "hash": serverHash
+                        ])
+                    } else if nativeNewer {
+                        self.emitUpdateEvent([
+                            "state": "available",
+                            "mode": "native",
+                            "current": curVer,
+                            "latest": latestNative,
+                            "url": nativeUrl
+                        ])
+                    } else {
+                        self.emitUpdateEvent(["state": "latest", "current": curVer])
+                    }
+                    return
+                }
+
+                guard let html = obj["html"] as? String,
+                      html.contains("</body>"),
+                      html.contains("window.__PB"),
+                      let htmlData = html.data(using: .utf8) else {
+                    self.emitUpdateEvent(["state": "error", "current": curVer, "error": "Invalid update bundle received."])
+                    return
+                }
+
+                let downloadedHash = self.sha256Prefix16(htmlData)
+                if !serverHash.isEmpty && downloadedHash != serverHash {
+                    self.emitUpdateEvent(["state": "error", "current": curVer, "error": "Update verification failed."])
+                    return
+                }
+
+                do {
+                    try htmlData.write(to: self.otaFileUrl, options: .atomic)
+                    UserDefaults.standard.set(downloadedHash, forKey: self.otaHashKey)
+                    UserDefaults.standard.set(bundleHash, forKey: self.otaBundledHashKey)
+                    self.emitUpdateEvent(["state": "installed", "current": curVer, "hash": downloadedHash])
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                        self.loadBooth()
+                    }
+                } catch {
+                    self.emitUpdateEvent(["state": "error", "current": curVer, "error": "Could not save update."])
+                }
+            }
+            task.resume()
         }
     }
 
@@ -554,6 +752,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             PBLocal.shared.guestViewSet(mode)
         } else if message.name == "pbPrintWebView" {
             printWebViewFallback()
+        } else if message.name == "pbUpdateCheck" {
+            performIosUpdate(download: false)
+        } else if message.name == "pbUpdateStart" {
+            performIosUpdate(download: true)
         }
     }
 

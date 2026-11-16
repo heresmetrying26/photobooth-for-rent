@@ -43,6 +43,7 @@
 
       function webcamPushFrame(v) {
         if (typeof state === 'undefined' || state !== 'capturing') return;
+        if ((typeof IOS_APP !== 'undefined' && IOS_APP) || (typeof window !== 'undefined' && window.__PB && window.__PB.ios)) return;
         if (!webcamStackOn()) return;
         if (typeof USB_CAM_ID !== 'undefined' && typeof currentDeviceId !== 'undefined' && currentDeviceId === USB_CAM_ID) return;
         if (!v || !v.videoWidth || !v.videoHeight) return;
@@ -152,12 +153,13 @@
       function webcamFpsTick() {
         const now = Date.now();
         const hasUsb = (typeof USB_CAM_ID !== 'undefined' && typeof currentDeviceId !== 'undefined' && currentDeviceId === USB_CAM_ID);
+        const vEl = (typeof activeCamVideo === 'function' ? activeCamVideo() : null) || (typeof video !== 'undefined' ? video : null);
         const active = (typeof streamActive !== 'undefined' && streamActive)
           && !hasUsb
           && !document.hidden
           && !(typeof camSleeping !== 'undefined' && camSleeping)
           && !(typeof reconnectTimer !== 'undefined' && reconnectTimer)
-          && typeof video !== 'undefined' && video && !video.paused && video.videoWidth > 0;
+          && vEl && !vEl.paused && vEl.videoWidth > 0;
         const curCount = typeof rvfcCount === 'number' ? rvfcCount : 0;
         if (!active) {
           webcamLastRvfc = curCount;

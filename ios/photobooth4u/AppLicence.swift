@@ -13,7 +13,7 @@ class AppLicence {
 
     static let shared = AppLicence()
 
-    static let appVersion = "1.0.3"
+    static let appVersion = "1.0.4"
     static let serverUrl = "https://photobooth4u.netlify.app"
     private static let prefix = "PB4U-LIC1"
     private static let checkEveryMs: Int64 = 10 * 60_000
@@ -99,6 +99,13 @@ class AppLicence {
             return v
         }
         return AppLicence.appVersion
+    }
+
+    func currentLicenceString() -> String? {
+        stateLock.lock()
+        let v = lic
+        stateLock.unlock()
+        return v
     }
 
     private func deviceName() -> String {

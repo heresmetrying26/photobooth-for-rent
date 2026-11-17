@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.57', date: '2026-11-17' },
   { version: '1.1.56', date: '2026-11-17' },
   { version: '1.1.55', date: '2026-11-16' },
   { version: '1.1.54', date: '2026-11-15' },
@@ -249,6 +250,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-17', title: 'Desktop 1.1.57 + Android 1.1.72: revamped Extras & Welcome setup, full-screen Guest view default, webcam reset fix & Printer 1/2/3 cards', for: ['website', 'app'], app: '1.1.57',
+    items: [
+      'Setup step 5 (Extras) revamped into 3 clear cards (Output mode, Decor & Stickers / Filters / Green screen, and Video guestbook) with visual filter swatches and clean switches.',
+      'Step 7 Welcome preview now syncs Stretch / Fit / Crop right away without black bars or lag, and the external Guest screen now defaults to clean full-screen Photo Session mode from start to finish.',
+      'Webcam Controls: Reset webcam controls now restores the camera\'s true opening defaults instead of snapping Brightness and Contrast to 1 and 1.',
+      'Printer setup redesigned into collapsible Printer 1 -> + Add Printer 2 / 3... cards with per-printer quality, media, driver paper slot, edges, colour correction, Copy settings from Printer 1, round-robin sharing across all Share printers, and parallel Extra-size printing.',
+      'Desktop app: "Let an iPad use this laptop\'s camera" is now off by default (Admin opt-in per code).'
+    ]
+  },
   {
     date: '2026-11-17', title: 'Desktop 1.1.56 + Android 1.1.71: cleaner guest screen between guests and a simpler Setup step 7', for: ['website', 'app'], app: '1.1.56',
     items: [

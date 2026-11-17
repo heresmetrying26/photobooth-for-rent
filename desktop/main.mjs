@@ -301,6 +301,10 @@ function buildMenu() {
   ]));
 }
 
+// iPad using this laptop's camera over the booth Wi-Fi (see lib/lan.mjs)
+// Off by default; Admin can turn this on per code (the licence's feat.ipadOpt === true).
+const ipadAllowed = () => { const s = L.status(); return !!(s.p && s.p.feat && s.p.feat.ipadOpt === true); };
+
 // ---------- IPC (preload.cjs) ----------
 function wireIpc() {
   ipcMain.on('pb4u:lan', (e) => { e.returnValue = shareBase(); });
@@ -647,6 +651,7 @@ app.whenReady().then(async () => {
   if (!validPin(settings.ipadPin)) { settings.ipadPin = newPin(); saveSettings(); }
   setLanHandler(createLanHandler({
     state: () => { const s = L.status(); return { on: !!settings.ipadOn && s.ok && !(s.p && s.p.feat && s.p.feat.ipadOpt === false), pin: settings.ipadPin }; },
+    state: () => { const s = L.status(); return { on: !!settings.ipadOn && s.ok && ipadAllowed(), pin: settings.ipadPin }; },
     boothPage: ({ extraHead }) => boothPage({ deviceId: L.deviceId(), extraHead }),
     handleWeb: (webReq) => handle(webReq),
     setGuestView

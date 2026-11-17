@@ -1035,6 +1035,61 @@
       pointer-events: none;
       z-index: 1;
     }
+    .card-modal-sample-strip {
+      position: relative;
+      z-index: 2;
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+      display: flex;
+      flex-direction: column;
+      padding: 8px;
+      gap: 6px;
+      transition: all 0.2s ease;
+      box-sizing: border-box;
+    }
+    .card-modal-sample-strip.strip-mode {
+      width: 104px;
+      height: 290px;
+    }
+    .card-modal-sample-strip.grid-mode {
+      width: 154px;
+      height: 210px;
+      display: grid !important;
+      grid-template-columns: 1fr 1fr;
+      padding: 8px;
+      gap: 6px;
+    }
+    .card-modal-sample-strip.solo-mode {
+      width: 154px;
+      height: 210px;
+    }
+    .card-modal-sample-strip .sample-cell {
+      background: linear-gradient(135deg, #fce7f3 0%, #ede9fe 100%);
+      border-radius: 6px;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(0,0,0,0.3);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .card-modal-sample-strip.grid-mode .sample-cell {
+      height: 90px;
+    }
+    .card-modal-sample-strip .sample-brand {
+      text-align: center;
+      font-size: 8.5px;
+      font-weight: 700;
+      color: #71717a;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .card-preview-box {
       position: relative;
       z-index: 2;
@@ -1629,6 +1684,7 @@
       <div class="card-modal-body" id="cardModalViewport">
         <div id="cardModalScreen" class="card-preview-screen landscape">
           <canvas id="cardModalDecoCanvas" class="card-modal-canvas"></canvas>
+          <div id="cardModalSampleStrip" class="card-modal-sample-strip" style="display:none;"></div>
           <div id="cardModalOuterCard" class="card-preview-box">
             <div id="cardModalBadge" class="card-preview-badge">
               <img id="cardModalBadgeImg" src="/assets/charm-up-clean-badge.png" alt="Logo">
@@ -2114,7 +2170,7 @@
             '<input type="file" class="hidden" accept="image/png,image/jpeg,image/webp" data-slogo-for="' + c + '">' +
             '&nbsp; Client name <button class="small" data-a="sname" data-c="' + c + '" title="Pre-set event or client brand name (client can still change it in Setup).">' + (l.startName ? esc(l.startName) + ' &middot; change' : 'Set name') + '</button>' +
             (l.startName ? '<button class="small" data-a="snameoff" data-c="' + c + '">Clear</button>' : '') +
-            '&nbsp; Welcome card <button class="small" data-a="scard" data-c="' + c + '" title="Toggle starting welcome card look: Card only (Centered) or With photo strip sample">' + (l.startCardOnly ? 'Card only' : 'With strip') + '</button>' +
+            '&nbsp; Welcome card <button class="small" data-a="scard" data-c="' + c + '" title="Cycle welcome card look: Card only, With 2×6 strip, With 4R grid, or With 1-photo frame">' + (l.startCardOnly ? 'Card only' : (l.startSampleLayout === 'grid4' ? 'With 4R grid' : l.startSampleLayout === 'solo' ? 'With 1-photo' : 'With 2×6 strip')) + '</button>' +
             '&nbsp; Decoration <button class="small" data-a="sdeco" data-c="' + c + '" title="Cycle starting decoration style (Waves, Aura, Coquette, Pop 3D, Scrapbook, Curtains, None)">' + esc(l.startDecoLabel || (l.startDeco === 'ribbon-waves' ? 'Waves' : (l.startDeco || 'Waves'))) + '</button>' +
             '&nbsp; Palette <button class="small" data-a="spalette" data-c="' + c + '" title="Cycle starting color palette (Charm Blush, Sweet Berry, Matcha, Midnight Gold, Lilac, Peach, Monochrome)">' + esc(l.startPaletteLabel || (l.startPalette === 'charm-pink' ? 'Charm Blush' : (l.startPalette || 'Charm Blush'))) + '</button>' + '</div>') +
           '<div class="printbox hidden" data-print-edit></div>' +
@@ -2307,9 +2363,28 @@
             toast('Starting name cleared'); refresh(); return;
           }
           if (a === 'scard') {
-            var nextCardOnly = !(LIC[code] && LIC[code].startCardOnly);
-            await api({ action: 'startcard', code: code, cardOnly: nextCardOnly });
-            toast(nextCardOnly ? 'Starting card set to: Card only (Centered)' : 'Starting card set to: With photo strip');
+            var curCardOnly = !!(LIC[code] && LIC[code].startCardOnly);
+            var curSampleLay = (LIC[code] && LIC[code].startSampleLayout) || 'strip';
+            var nextCardOnly, nextSampleLay, msg;
+            if (curCardOnly) {
+              nextCardOnly = false;
+              nextSampleLay = 'strip';
+              msg = 'With 2×6 photo strip';
+            } else if (curSampleLay === 'strip') {
+              nextCardOnly = false;
+              nextSampleLay = 'grid4';
+              msg = 'With 4R grid (4 shots)';
+            } else if (curSampleLay === 'grid4') {
+              nextCardOnly = false;
+              nextSampleLay = 'solo';
+              msg = 'With single frame';
+            } else {
+              nextCardOnly = true;
+              nextSampleLay = 'strip';
+              msg = 'Card only (Centered aesthetic)';
+            }
+            await api({ action: 'startcard', code: code, cardOnly: nextCardOnly, sampleLayout: nextSampleLay });
+            toast('Welcome look set to: ' + msg);
             refresh();
             return;
           }
@@ -3406,6 +3481,27 @@
             card.style.border = '1px solid rgba(212,175,55,0.3)';
           } else {
             card.style.border = 'none';
+          }
+        }
+
+        var sampleStrip = $('cardModalSampleStrip');
+        var isCardOnly = !!l.startCardOnly;
+        var sLayout = l.startSampleLayout || 'strip';
+        if (sampleStrip) {
+          if (isCardOnly) {
+            sampleStrip.style.display = 'none';
+          } else {
+            sampleStrip.style.display = 'flex';
+            if (sLayout === 'grid4') {
+              sampleStrip.className = 'card-modal-sample-strip grid-mode';
+              sampleStrip.innerHTML = '<div class="sample-cell">1</div><div class="sample-cell">2</div><div class="sample-cell">3</div><div class="sample-cell">4</div>';
+            } else if (sLayout === 'solo') {
+              sampleStrip.className = 'card-modal-sample-strip solo-mode';
+              sampleStrip.innerHTML = '<div class="sample-cell" style="height:175px;">Photo</div><div class="sample-brand">' + esc(name) + '</div>';
+            } else {
+              sampleStrip.className = 'card-modal-sample-strip strip-mode';
+              sampleStrip.innerHTML = '<div class="sample-cell">1</div><div class="sample-cell">2</div><div class="sample-cell">3</div><div class="sample-brand">' + esc(name) + '</div>';
+            }
           }
         }
 

@@ -16900,10 +16900,27 @@
                   <p class="sub-label" style="margin:0 0 6px;">Welcome card layout</p>
                   <div class="chip-row" id="welcomeSampleChips" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
                     <button type="button" class="chip" data-sample="card-only">Card only (Centered aesthetic)</button>
-                    <button type="button" class="chip active" data-sample="with-strip">With photo strip sample</button>
+                    <button type="button" class="chip active" data-sample="with-strip">With layout sample</button>
                   </div>
                   <input type="checkbox" id="welcomeSampleToggle" checked style="display:none;">
-                  <p class="panel-hint" style="margin:6px 0 0;"><b>Card only:</b> clean, perfectly centered aesthetic card (not tied to your layout). <b>With photo strip sample:</b> displays a sample strip of your layout beside the card.</p>
+                  <p class="panel-hint" style="margin:6px 0 0;"><b>Card only:</b> clean, centered aesthetic card. <b>With layout sample:</b> displays a sample print beside the card.</p>
+
+                  <div id="welcomeSampleLayoutBox" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
+                    <p class="sub-label" style="margin:0 0 6px;">Sample layout beside card (independent)</p>
+                    <div class="chip-row" id="welcomeSampleLayoutChips">
+                      <button type="button" class="chip active" data-sample-layout="strip">2×6 Photo strip</button>
+                      <button type="button" class="chip" data-sample-layout="grid4">4R Grid (4 shots)</button>
+                      <button type="button" class="chip" data-sample-layout="solo">Single frame</button>
+                      <button type="button" class="chip" data-sample-layout="active">Match 3 Layout</button>
+                    </div>
+                    <p class="panel-hint" style="margin:4px 0 0;">Choose which sample print is shown beside the welcome card. Independent from 3 Layout.</p>
+                  </div>
+                </div>
+
+                <div class="fb-card" style="margin-top:10px;">
+                  <p class="sub-label" style="margin:0 0 4px;">Welcome card headline / Event name</p>
+                  <input type="text" class="label-input" id="welcomeTitleInputCard" placeholder="Charm Up" maxlength="60" style="font-family:'Manrope',sans-serif; font-size:14px; margin-top:4px;">
+                  <p class="panel-hint" style="margin:4px 0 0;">Custom headline on the welcome card (independent from 2 Text prints).</p>
                 </div>
 
                 <div class="fb-card" style="margin-top:10px;">
@@ -36718,6 +36735,7 @@
       var guestWelcomeStyle = 'full';       // guest screen between guests (laptop + guest screen): full = picture only | panel = with logo & welcome text
       var welcomeBtnOn = true;
       var welcomeSampleOn = true;
+      var welcomeSampleLayout = 'strip';    // strip | grid4 | solo | active
       var welcomeCardBg = '#ffffff';
       var welcomeCardFontColor = '';
       var welcomeCardRadius = 32;
@@ -45370,6 +45388,19 @@
         }
         var toggle = document.getElementById('welcomeSampleToggle');
         if (toggle) toggle.checked = welcomeSampleOn;
+        var layBox = document.getElementById('welcomeSampleLayoutBox');
+        if (layBox) layBox.style.display = welcomeSampleOn ? '' : 'none';
+      }
+
+      function setWelcomeSampleLayoutUI(lay) {
+        var allowed = ['strip', 'grid4', 'solo', 'active'];
+        welcomeSampleLayout = allowed.indexOf(lay) >= 0 ? lay : 'strip';
+        var chips = document.getElementById('welcomeSampleLayoutChips');
+        if (chips) {
+          [].forEach.call(chips.querySelectorAll('.chip'), function (c) {
+            c.classList.toggle('active', c.dataset.sampleLayout === welcomeSampleLayout);
+          });
+        }
       }
 
       function setWelcomeCardBgUI(bg) {
@@ -45465,6 +45496,15 @@
           if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
         });
       }
+      var welcomeSampleLayoutChips = document.getElementById('welcomeSampleLayoutChips');
+      if (welcomeSampleLayoutChips) {
+        welcomeSampleLayoutChips.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-sample-layout]'); if (!b) return;
+          setWelcomeSampleLayoutUI(b.dataset.sampleLayout);
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
       var welcomeCardBgChips = document.getElementById('welcomeCardBgChips');
       if (welcomeCardBgChips) {
         welcomeCardBgChips.addEventListener('click', function (e) {
@@ -45548,6 +45588,7 @@
       var welcomeCustomToggle = document.getElementById('welcomeCustomToggle');
       var welcomeGreetingInput = document.getElementById('welcomeGreetingInput');
       var welcomeTitleInput = document.getElementById('welcomeTitleInput');
+      var welcomeTitleInputCard = document.getElementById('welcomeTitleInputCard');
       var welcomeFontDropdownBtn = document.getElementById('welcomeFontDropdownBtn');
       var welcomeFontDropdownList = document.getElementById('welcomeFontDropdownList');
       var welcomeSubInput = document.getElementById('welcomeSubInput');
@@ -45555,6 +45596,15 @@
       var welcomeStep1Input = document.getElementById('welcomeStep1Input');
       var welcomeStep2Input = document.getElementById('welcomeStep2Input');
       var welcomeStep3Input = document.getElementById('welcomeStep3Input');
+
+      if (welcomeTitleInputCard) {
+        welcomeTitleInputCard.addEventListener('input', function () {
+          welcomeTitle = this.value;
+          if (welcomeTitleInput) welcomeTitleInput.value = this.value;
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
 
       if (welcomeCustomToggle) {
         welcomeCustomToggle.addEventListener('change', function () {
@@ -45570,6 +45620,7 @@
         inp.addEventListener('input', function () {
           welcomeGreeting = welcomeGreetingInput ? welcomeGreetingInput.value : '';
           welcomeTitle = welcomeTitleInput ? welcomeTitleInput.value : '';
+          if (welcomeTitleInputCard) welcomeTitleInputCard.value = welcomeTitle;
           welcomeSub = welcomeSubInput ? welcomeSubInput.value : '';
           welcomeStep1 = welcomeStep1Input ? welcomeStep1Input.value : '';
           welcomeStep2 = welcomeStep2Input ? welcomeStep2Input.value : '';
@@ -46227,10 +46278,13 @@
           var sample = null;
           if (showSample) {
             sample = document.createElement('canvas');
-            try { composeCanvas(currentLayout, sample, buildPlaceholderShots(300, shotsNeeded(currentLayout))); } catch (e) { sample = null; }
+            var sLayKey = welcomeSampleLayout || 'strip';
+            var tLayKey = sLayKey === 'active' ? currentLayout : (LAYOUT_DEFS[sLayKey] ? sLayKey : 'strip');
+            var tShots = (typeof shotsNeeded === 'function' && shotsNeeded(tLayKey)) || (LAYOUT_DEFS[tLayKey] ? LAYOUT_DEFS[tLayKey].shots : 3);
+            try { composeCanvas(tLayKey, sample, buildPlaceholderShots(300, tShots)); } catch (e) { sample = null; }
             // A frame whose strips all repeat the same photos: show one strip, not the whole sheet of copies.
             try {
-              var cf = sample && currentLayout === 'myframe' ? activeFrame() : null, cr = cf && frameFirstStripCrop(cf);
+              var cf = sample && tLayKey === 'myframe' ? activeFrame() : null, cr = cf && frameFirstStripCrop(cf);
               if (cr) {
                 var sc = document.createElement('canvas'); sc.width = Math.max(1, Math.round(sample.width * cr.w)); sc.height = Math.max(1, Math.round(sample.height * cr.h));
                 sc.getContext('2d').drawImage(sample, Math.round(sample.width * cr.x), 0, sc.width, sc.height, 0, 0, sc.width, sc.height);
@@ -46262,14 +46316,13 @@
           var dt = currentDateLabel();
 
           var isCustom = !!welcomeCustomOn;
-          var name = (labelInput.value || '').trim();
-          var cardGreeting = isCustom ? (welcomeGreeting != null ? welcomeGreeting : (name ? 'Welcome to' : 'Welcome to our')) : (name ? 'Welcome to' : 'Welcome to our');
+          var cardGreeting = (welcomeGreeting != null && welcomeGreeting !== '') ? welcomeGreeting : 'Welcome to';
           var hasGreeting = Boolean(cardGreeting && cardGreeting.trim());
-          var cardTitle = isCustom && (welcomeTitle || '').trim() ? (welcomeTitle || '').trim() : (name || 'photo booth');
-          var cardFont = isCustom && welcomeFont ? welcomeFont : currentFont;
-          var cardSub = isCustom ? (welcomeSub !== '' ? welcomeSub : '') : dt;
+          var cardTitle = (welcomeTitle || '').trim() || 'Charm Up';
+          var cardFont = isCustom && welcomeFont ? welcomeFont : (welcomeFont ? welcomeFont : "'Dancing Script', cursive");
+          var cardSub = isCustom ? (welcomeSub !== '' ? welcomeSub : '') : (welcomeSub !== '' ? welcomeSub : '');
           var cardSubFont = isCustom && welcomeFont ? welcomeFont : currentDateFont;
-          var showSteps = (!isCustom || welcomeStepsOn !== false) && welcomeStepStyle !== 'none';
+          var showSteps = welcomeStepsOn !== false && welcomeStepStyle !== 'none';
 
           var defaultSteps = [hfMode === 'wave' ? 'Wave at the camera' : hfMode === 'smile' ? 'Smile at the camera' : 'Tap the screen', 'Strike a pose', 'Scan the QR for your photos'];
           var steps = [];
@@ -50598,6 +50651,7 @@
           saverDimMin: saverDimMin, saverOffMin: saverOffMin,
           welcomeBtnOn: welcomeBtnOn,
           welcomeSampleOn: welcomeSampleOn,
+          welcomeSampleLayout: welcomeSampleLayout || 'strip',
           welcomeCardBg: welcomeCardBg || '#ffffff',
           welcomeCardFontColor: welcomeCardFontColor || '',
           welcomeCardRadius: welcomeCardRadius || 32,
@@ -50817,6 +50871,10 @@
             if (typeof setWelcomeSampleUI === 'function') setWelcomeSampleUI(s.welcomeSampleOn);
             else { welcomeSampleOn = s.welcomeSampleOn; if (welcomeSampleToggle) welcomeSampleToggle.checked = welcomeSampleOn; }
           }
+          if (typeof s.welcomeSampleLayout === 'string') {
+            welcomeSampleLayout = s.welcomeSampleLayout;
+            if (typeof setWelcomeSampleLayoutUI === 'function') setWelcomeSampleLayoutUI(welcomeSampleLayout);
+          }
           if (typeof s.welcomeCardBg === 'string') {
             if (typeof setWelcomeCardBgUI === 'function') setWelcomeCardBgUI(s.welcomeCardBg);
             else welcomeCardBg = s.welcomeCardBg;
@@ -50854,6 +50912,8 @@
           if (typeof s.welcomeTitle === 'string') {
             welcomeTitle = s.welcomeTitle;
             if (welcomeTitleInput) welcomeTitleInput.value = welcomeTitle;
+            var wTitleCard = document.getElementById('welcomeTitleInputCard');
+            if (wTitleCard) wTitleCard.value = welcomeTitle;
           }
           if (typeof s.welcomeFont === 'string') {
             selectWelcomeFontUI(s.welcomeFont);
@@ -51168,20 +51228,33 @@
             snOffer = j.startName || null;
             var scOffer = j.startCardOnly;
             sfFresh = !j.settings && !local;
+            var localAdminTs = Number(localStorage.getItem(key + '#adminPresetTs') || 0);
+            var serverAdminTs = Number(j.adminPresetUpdatedAt || 0);
+            var adminIsNewer = serverAdminTs > 0 && serverAdminTs > localAdminTs;
+
             if (sfFresh && snOffer && (!labelInput.value.trim() || labelInput.value === 'Your Event')) {
               labelInput.value = snOffer;
-              welcomeTitle = snOffer;
-              welcomeCustomOn = true;
-              welcomeGreeting = 'Welcome to';
             }
-            if (sfFresh && typeof scOffer === 'boolean') {
+            if ((sfFresh || adminIsNewer) && snOffer) {
+              welcomeTitle = snOffer;
+              if (welcomeTitleInput) welcomeTitleInput.value = snOffer;
+              var wInpCard = document.getElementById('welcomeTitleInputCard');
+              if (wInpCard) wInpCard.value = snOffer;
+            }
+            if ((sfFresh || adminIsNewer) && typeof scOffer === 'boolean') {
               setWelcomeSampleUI(!scOffer);
             }
-            if (sfFresh && j.startDeco) {
+            if ((sfFresh || adminIsNewer) && j.startSampleLayout) {
+              setWelcomeSampleLayoutUI(j.startSampleLayout);
+            }
+            if ((sfFresh || adminIsNewer) && j.startDeco) {
               setWelcomeDecoStyleUI(j.startDeco);
             }
-            if (sfFresh && j.startPalette) {
+            if ((sfFresh || adminIsNewer) && j.startPalette) {
               setWelcomePaletteUI(j.startPalette);
+            }
+            if (adminIsNewer) {
+              localStorage.setItem(key + '#adminPresetTs', String(serverAdminTs));
             }
             var isCharm = /charm/i.test((snOffer || '') + ' ' + (labelInput.value || '') + ' ' + ((window.__PB && window.__PB.label) || ''));
             if (isCharm) {
@@ -51243,8 +51316,10 @@
         if (slOffer && setupLoadedKey === key) await applyStartLogo(slOffer, sfFresh);
         var isCharmFinal = /charm/i.test((snOffer || '') + ' ' + (welcomeTitle || '') + ' ' + (labelInput.value || '') + ' ' + ((window.__PB && window.__PB.label) || ''));
         if (isCharmFinal) {
-          welcomeSampleOn = false;
-          if (typeof setWelcomeSampleUI === 'function') setWelcomeSampleUI(false);
+          if (typeof (j && j.startCardOnly) !== 'boolean' && (!local || !local.settings || typeof local.settings.welcomeSampleOn !== 'boolean')) {
+            welcomeSampleOn = false;
+            if (typeof setWelcomeSampleUI === 'function') setWelcomeSampleUI(false);
+          }
           if (!welcomeDecoStyle || welcomeDecoStyle === 'none') {
             welcomeDecoStyle = 'ribbon-waves';
             if (typeof setWelcomeDecoStyleUI === 'function') setWelcomeDecoStyleUI('ribbon-waves');
@@ -51253,23 +51328,65 @@
             welcomePalette = 'charm-pink';
             if (typeof setWelcomePaletteUI === 'function') setWelcomePaletteUI('charm-pink');
           }
-          if (welcomeTitle === 'Charm Up PH') {
+          if (!welcomeTitle || welcomeTitle === 'Charm Up PH') {
             welcomeTitle = 'Charm Up';
             if (welcomeTitleInput) welcomeTitleInput.value = 'Charm Up';
+            var wInpCard = document.getElementById('welcomeTitleInputCard');
+            if (wInpCard) wInpCard.value = 'Charm Up';
           }
           if (typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
         }
-        if (j && j.startCardOnly) {
-          welcomeSampleOn = false;
-          if (typeof setWelcomeSampleUI === 'function') setWelcomeSampleUI(false);
+        if (j && typeof j.startCardOnly === 'boolean' && (adminIsNewer || sfFresh)) {
+          setWelcomeSampleUI(!j.startCardOnly);
         }
-        if (j && j.startDeco && (!welcomeDecoStyle || welcomeDecoStyle === 'none')) {
+        if (j && j.startSampleLayout && (adminIsNewer || sfFresh)) {
+          setWelcomeSampleLayoutUI(j.startSampleLayout);
+        }
+        if (j && j.startDeco && (adminIsNewer || sfFresh || !welcomeDecoStyle || welcomeDecoStyle === 'none')) {
           setWelcomeDecoStyleUI(j.startDeco);
         }
-        if (j && j.startPalette && !welcomePalette) {
+        if (j && j.startPalette && (adminIsNewer || sfFresh || !welcomePalette)) {
           setWelcomePaletteUI(j.startPalette);
         }
+        if (adminIsNewer) {
+          saveLocalCopy(key, snapshotSetup(), Date.now(), localImg, true);
+          if (typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
+        }
       }
+
+      async function syncAdminPresetIfChanged() {
+        if (!canSyncServer()) return;
+        try {
+          var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'get' }) });
+          var j = await r.json().catch(function () { return {}; });
+          if (!r.ok || !j) return;
+          var key = localSetupKey();
+          var localAdminTs = Number(localStorage.getItem(key + '#adminPresetTs') || 0);
+          var serverAdminTs = Number(j.adminPresetUpdatedAt || 0);
+          if (serverAdminTs > 0 && serverAdminTs > localAdminTs) {
+            if (typeof j.startCardOnly === 'boolean') setWelcomeSampleUI(!j.startCardOnly);
+            if (j.startSampleLayout) setWelcomeSampleLayoutUI(j.startSampleLayout);
+            if (j.startDeco) setWelcomeDecoStyleUI(j.startDeco);
+            if (j.startPalette) setWelcomePaletteUI(j.startPalette);
+            if (j.startName) {
+              welcomeTitle = j.startName;
+              if (welcomeTitleInput) welcomeTitleInput.value = j.startName;
+              var wInpCard = document.getElementById('welcomeTitleInputCard');
+              if (wInpCard) wInpCard.value = j.startName;
+            }
+            localStorage.setItem(key + '#adminPresetTs', String(serverAdminTs));
+            saveLocalCopy(key, snapshotSetup(), Date.now(), null, true);
+            if (typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
+          }
+        } catch (e) { }
+      }
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') syncAdminPresetIfChanged();
+      });
+      window.addEventListener('focus', function () {
+        syncAdminPresetIfChanged();
+      });
+      setInterval(syncAdminPresetIfChanged, 25000);
       // A frame Admin made for this renter: added once to Your frames (and used as the layout on a brand-new setup).
       // The renter can delete it; it is not added again because the setup remembers it (sfDone).
       async function applyStartFrame(sf, fresh) {
@@ -52748,7 +52865,7 @@
           brandEls.pwr.hidden = !cImg;
           var isCustomW = typeof welcomeCustomOn !== 'undefined' && welcomeCustomOn;
           col.querySelector('.bpv-msg').textContent = isCustomW && (welcomeGreeting != null && welcomeGreeting !== '') ? welcomeGreeting : 'Welcome!';
-          brandEls.ev.textContent = isCustomW && (welcomeTitle || '').trim() ? welcomeTitle.trim() : ((labelInput.value || '').trim() || 'Your event');
+          brandEls.ev.textContent = (welcomeTitle || '').trim() || 'Charm Up';
           brandEls.dt.textContent = isCustomW && welcomeSub !== '' ? welcomeSub : ((typeof currentDateLabel === 'function' && currentDateLabel()) || '');
           brandEls.chip.style.cssText = 'font-size:' + px(0.85) + ';left:' + (brandPvGeo.colR) + 'px;top:' + padY + 'px;transform:translateX(-50%);';
         }

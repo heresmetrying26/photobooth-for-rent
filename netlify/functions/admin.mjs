@@ -274,16 +274,19 @@ export default safe(async (req, context) => {
       if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
       const name = String(b.name || '').trim().slice(0, 60);
       rec.startName = name || null;
+      rec.adminPresetUpdatedAt = Date.now();
       await putLicense(store, key, rec);
-      return json({ ok: true, name: rec.startName });
+      return json({ ok: true, name: rec.startName, adminPresetUpdatedAt: rec.adminPresetUpdatedAt });
     }
 
-    case 'startcard': { // starting welcome card style: cardOnly true/false
+    case 'startcard': { // starting welcome card style: cardOnly true/false, sampleLayout: 'strip'|'grid4'|'solo'|'active'
       const { key, rec } = await getRec();
       if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
       rec.startCardOnly = !!b.cardOnly;
+      if (b.sampleLayout) rec.startSampleLayout = String(b.sampleLayout).slice(0, 30);
+      rec.adminPresetUpdatedAt = Date.now();
       await putLicense(store, key, rec);
-      return json({ ok: true, startCardOnly: rec.startCardOnly });
+      return json({ ok: true, startCardOnly: rec.startCardOnly, startSampleLayout: rec.startSampleLayout, adminPresetUpdatedAt: rec.adminPresetUpdatedAt });
     }
 
     case 'startdeco': { // starting welcome decoration style
@@ -291,8 +294,9 @@ export default safe(async (req, context) => {
       if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
       rec.startDeco = b.deco ? String(b.deco).slice(0, 30) : null;
       rec.startDecoLabel = b.label ? String(b.label).slice(0, 30) : null;
+      rec.adminPresetUpdatedAt = Date.now();
       await putLicense(store, key, rec);
-      return json({ ok: true, startDeco: rec.startDeco, startDecoLabel: rec.startDecoLabel });
+      return json({ ok: true, startDeco: rec.startDeco, startDecoLabel: rec.startDecoLabel, adminPresetUpdatedAt: rec.adminPresetUpdatedAt });
     }
 
     case 'startpalette': { // starting welcome color palette
@@ -300,8 +304,9 @@ export default safe(async (req, context) => {
       if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
       rec.startPalette = b.palette ? String(b.palette).slice(0, 30) : null;
       rec.startPaletteLabel = b.label ? String(b.label).slice(0, 30) : null;
+      rec.adminPresetUpdatedAt = Date.now();
       await putLicense(store, key, rec);
-      return json({ ok: true, startPalette: rec.startPalette, startPaletteLabel: rec.startPaletteLabel });
+      return json({ ok: true, startPalette: rec.startPalette, startPaletteLabel: rec.startPaletteLabel, adminPresetUpdatedAt: rec.adminPresetUpdatedAt });
     }
 
     case 'create': {

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.63', date: '2026-11-17' },
   { version: '1.1.62', date: '2026-11-17' },
   { version: '1.1.61', date: '2026-11-17' },
   { version: '1.1.60', date: '2026-11-17' },
@@ -255,6 +256,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-17', title: 'Desktop 1.1.63: cleaner, more seamless green screen, and GoPro cameras', for: ['website', 'app'], app: '1.1.63',
+    items: [
+      'Green screen is cleaner. White shirts, black hair and skin used to be slightly see-through, so the new background ghosted through them; they are now solid. A shadow or fold in the cloth, or a bright wrinkle, no longer shows through either.',
+      'Edges are softer and have no green rim: the cloth’s green is pulled off the guest hardest at the edge, the edge is feathered about a pixel, thin flyaway hairs are kept, and a little of the new background glows onto the edge so the guest sits in the scene.',
+      'The live view is steadier (no shimmer along the edge, and a moving guest leaves no trail). On a slower laptop the live picture is worked on at a smaller size so it stays smooth; the photos themselves are always full quality.',
+      'For the best result: stretch the cloth wrinkle-free, light it separately and evenly, and keep guests about a metre (3 ft) in front of it so green light doesn’t bounce onto their skin.',
+      'GoPro cameras can be used as the booth camera (Open GoPro). This has not been tried on a real GoPro yet, so test it before an event.'
+    ]
+  },
   {
     date: '2026-11-17', title: 'Desktop 1.1.62: Record 360 removed, 360 phone page is the way to record', for: ['website', 'app'], app: '1.1.62',
     items: [

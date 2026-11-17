@@ -341,6 +341,18 @@ class PBLocal {
         return jsonStr(["ok": true, "dir": "Photos & Files"])
     }
 
+    /// Asks for permission to add photos to the Photos app when the app starts, so the iPad's permission box does not
+    /// pop up over the camera during the first guest's photo. Does nothing once the question has been answered.
+    func requestPhotosAccess() {
+        if #available(iOS 14, *) {
+            if PHPhotoLibrary.authorizationStatus(for: .addOnly) == .notDetermined {
+                PHPhotoLibrary.requestAuthorization(for: .addOnly) { _ in }
+            }
+        } else if PHPhotoLibrary.authorizationStatus() == .notDetermined {
+            PHPhotoLibrary.requestAuthorization { _ in }
+        }
+    }
+
     private func saveToPhotosLibrary(fileUrl: URL, rawData: Data) {
         let ext = fileUrl.pathExtension.lowercased()
         let isVideo = (ext == "mp4" || ext == "mov")

@@ -27,9 +27,15 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&family=Dancing+Script:wght@600;700&family=Pacifico&family=Great+Vibes&family=Sacramento&family=Alex+Brush&family=Satisfy&family=Parisienne&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Cinzel:wght@600;700&family=Marck+Script&family=Tangerine:wght@700&family=Allura&family=Cookie&family=Italianno&family=Petit+Formal+Script&family=Lobster&family=Josefin+Sans:wght@600;700&family=Montserrat:wght@600;700&family=Poppins:wght@600;700&family=Raleway:wght@600;700&family=Merriweather:wght@700&family=Abril+Fatface&family=Bebas+Neue&family=Caveat:wght@600;700&family=Amatic+SC:wght@700&family=EB+Garamond:ital,wght@0,600;1,600&family=Quicksand:wght@600;700&family=Comfortaa:wght@600;700&family=Fredoka:wght@600;700&display=swap"
-    rel="stylesheet">
+  <script>
+    // The Google Fonts style sheet blocks the first picture of the page until it arrives. On a venue Wi-Fi with no internet (a
+    // printer's own Wi-Fi, a hotspot with no signal) that can take many seconds, so the iPad app loads it without blocking:
+    // the page shows at once and the fonts follow if the internet is there. Everywhere else it loads as before.
+    (function () {
+      var ios = false; try { ios = /PB4uIOS/.test(navigator.userAgent || ''); } catch (e) { }
+      document.write('<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&family=Dancing+Script:wght@600;700&family=Pacifico&family=Great+Vibes&family=Sacramento&family=Alex+Brush&family=Satisfy&family=Parisienne&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Cinzel:wght@600;700&family=Marck+Script&family=Tangerine:wght@700&family=Allura&family=Cookie&family=Italianno&family=Petit+Formal+Script&family=Lobster&family=Josefin+Sans:wght@600;700&family=Montserrat:wght@600;700&family=Poppins:wght@600;700&family=Raleway:wght@600;700&family=Merriweather:wght@700&family=Abril+Fatface&family=Bebas+Neue&family=Caveat:wght@600;700&family=Amatic+SC:wght@700&family=EB+Garamond:ital,wght@0,600;1,600&family=Quicksand:wght@600;700&family=Comfortaa:wght@600;700&family=Fredoka:wght@600;700&display=swap" rel="stylesheet"' + (ios ? ' media="print" onload="this.media=\'all\'"' : '') + '>');
+    })();
+  </script>
   <style>
     /* viewport height that follows the browser bar on tablets and the Android WebView */
     :root {
@@ -27578,7 +27584,7 @@
           video.style.display = 'none'; previewCanvas.style.display = 'block';
           countdownOverlay.style.display = 'none'; recDot.style.display = 'none';
           setTimeout(applyStageAspect, 0);
-          try { guestCall('review', previewCanvas.toDataURL('image/jpeg', 0.85)); } catch (e) { }
+          try { if (guestOpen()) guestCall('review', previewCanvas.toDataURL('image/jpeg', 0.85)); } catch (e) { }   // encode the whole strip only when a guest screen will show it
           retakeBtn.textContent = '\u21BA Retake photo ' + (sess.pick + 1);
           retakeBtn.hidden = !retakesAllowed(); doneBtn.hidden = false; reviewHint.hidden = shotCanvases.length < 2 || !retakesAllowed();
           doneBtn.textContent = '\u2713 Done \u2014 save my photo';

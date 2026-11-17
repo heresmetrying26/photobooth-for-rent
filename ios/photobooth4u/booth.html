@@ -26244,6 +26244,9 @@
         label: 'Webcam',
         is: function () { return false; },
         keys: { clean: 'pb_webcam_clean', tips: 'pb_webcam_tips', classic: 'pb_webcam_classic' },
+        // Photo clean-up (denoise + sharpen) runs pixel by pixel on every shot, right while the next countdown starts. The
+        // built-in iPad camera is clean without it, so on the iPad app it is off until the operator turns it on.
+        defaultClean: /PB4uIOS/.test(typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '') ? 'off' : 'auto',
         tune: { denoise: [20, 34], sharpen: [0.65, 0.95], page: [0.35, 0.5] }
       });
 

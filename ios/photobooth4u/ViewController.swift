@@ -257,7 +257,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
           };
 
           window.__PBUpdate = {
-            version: function() { return window.__pbIosAppVer || '1.0.7'; },
+            version: function() { return window.__pbIosAppVer || '1.0.8'; },
             check: function() {
               try { window.webkit.messageHandlers.pbUpdateCheck.postMessage({}); } catch (e) {}
             },

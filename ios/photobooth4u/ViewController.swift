@@ -11,7 +11,10 @@ import Network
  * served from http://localhost:17321/booth (a WebKit Secure Context so built-in
  * camera, UVC capture cards, and same-origin USB DSLR calls all work cleanly).
  */
-class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, UITextFieldDelegate, WKDownloadDelegate {
+class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, UITextFieldDelegate, WKDownloadDelegate, UIPrintInteractionControllerDelegate {
+
+    // The page size (in points) of the AirPrint job being sent, so the printer's paper can be matched to it.
+    private var airPrintPageSize = CGSize(width: 288, height: 432)
 
     // Files the page asks to download (backups, photos, profile exports): saved to a temporary folder, then handed to the
     // iPad's share sheet (Save to Files, AirDrop, Photos...). Kept here while a download is running.
@@ -866,6 +869,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         info.orientation = (next.ptW > next.ptH) ? .landscape : .portrait
         controller.printInfo = info
         controller.printingItem = next.pdfData
+        airPrintPageSize = CGSize(width: next.ptW, height: next.ptH)
+        controller.delegate = self
 
         let finishJob: () -> Void = { [weak self] in
             DispatchQueue.main.async {
@@ -900,6 +905,27 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         } else {
             presentPrintController(controller, completion: finishJob)
         }
+    }
+
+    // MARK: - AirPrint paper choice
+
+    // A photo printer such as the Epson L8050 lists several papers (A4, Letter, 4x6, 5x7 ...). Left alone, iPadOS may pick a
+    // big sheet and the 4x6 photo ends up small in the middle of it. This picks the paper closest to the size of the page the
+    // booth made (the page is already the size of the paper chosen in Print settings). Among papers of that size it prefers
+    // the one that prints edge to edge (a "borderless" entry), so the border is as thin as the printer allows.
+    func printInteractionController(_ printInteractionController: UIPrintInteractionController, choosePaper paperList: [UIPrintPaper]) -> UIPrintPaper {
+        let w = airPrintPageSize.width
+        let h = airPrintPageSize.height
+        func score(_ paper: UIPrintPaper) -> CGFloat {
+            let pw = paper.paperSize.width
+            let ph = paper.paperSize.height
+            let straight = abs(pw - w) + abs(ph - h)
+            let turned = abs(pw - h) + abs(ph - w)
+            let sizeGap = min(straight, turned)                          // how far the paper is from the page (a turned paper is fine)
+            let unprintable = (pw * ph) - (paper.printableRect.width * paper.printableRect.height)
+            return sizeGap * 100000 + unprintable                        // size first, then the thinnest unprintable border
+        }
+        return paperList.min { score($0) < score($1) } ?? paperList[0]      // iPadOS never sends an empty list
     }
 
     private func presentPrintController(_ controller: UIPrintInteractionController, completion: (() -> Void)? = nil) {

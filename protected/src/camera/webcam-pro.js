@@ -44,12 +44,13 @@
 
       function webcamPushFrame(v) {
         if (typeof state === 'undefined' || state !== 'capturing') return;
+        if (typeof countingDown === 'undefined' || !countingDown) return;
         if ((typeof IOS_APP !== 'undefined' && IOS_APP) || (typeof window !== 'undefined' && window.__PB && window.__PB.ios)) return;
         if (!webcamStackOn()) return;
         if (typeof USB_CAM_ID !== 'undefined' && typeof currentDeviceId !== 'undefined' && currentDeviceId === USB_CAM_ID) return;
         if (!v || !v.videoWidth || !v.videoHeight) return;
         const now = Date.now();
-        if (now - webcamLastRingAt < 40) return;
+        if (now - webcamLastRingAt < 90) return;
         webcamLastRingAt = now;
         const pool = webcamEnsureRingPool();
         const slot = pool[webcamRingNext];

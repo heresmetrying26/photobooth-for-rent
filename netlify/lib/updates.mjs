@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.61', date: '2026-11-17' },
   { version: '1.1.60', date: '2026-11-17' },
   { version: '1.1.59', date: '2026-11-17' },
   { version: '1.1.58', date: '2026-11-17' },
@@ -253,6 +254,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-17', title: 'Desktop 1.1.61 + Android 1.1.75: Fix button clipping at large scale, eliminate webcam lag, and top-level uploaded frames', for: ['website', 'app'], app: '1.1.61',
+    items: [
+      'Fixed Cancel, Look, Mirror, and filter swatches getting cut off when scaling up display/button sizes on the Get Ready screen.',
+      'Fixed built-in laptop & external webcam hanging/lagging: stopped background full-res stacking canvas readbacks outside countdowns, batched filter swatch redraws onto a single 72px buffer, dropped strict min-20fps lock, and defaulted built-in laptop cameras to smooth 720p viewfinder.',
+      'Guest Design Picker now shows Uploaded Frames (Frame 1, Frame 2...) right alongside Design 1 / Design 2 as standalone choices — tapping a frame goes straight to capture, while tapping a Ready Design opens its ticked standard layouts.'
+    ]
+  },
   {
     date: '2026-11-17', title: 'Desktop 1.1.60: more Bluetooth pocket printers, and the 360 send page with more controls', for: ['website', 'app'], app: '1.1.60',
     items: [

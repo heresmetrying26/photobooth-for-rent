@@ -1909,8 +1909,8 @@
     .app-shell.getting-ready .session-controls,
     body.stage-full .app-shell.getting-ready .session-controls {
       position: fixed !important;
-      left: max(16px, env(safe-area-inset-left)) !important;
-      bottom: max(18px, env(safe-area-inset-bottom)) !important;
+      left: max(12px, env(safe-area-inset-left)) !important;
+      bottom: max(16px, env(safe-area-inset-bottom)) !important;
       right: auto !important;
       top: auto !important;
       transform: none !important;
@@ -1919,19 +1919,22 @@
       flex-direction: column !important;
       align-items: center !important;
       gap: 8px !important;
-      width: auto !important;
-      max-width: 115px !important;
+      width: max-content !important;
+      min-width: 112px;
+      max-width: min(260px, calc(100vw - 24px)) !important;
+      box-sizing: border-box !important;
       margin: 0 !important;
-      padding: 10px 8px !important;
-      background: rgba(18, 14, 22, 0.78) !important;
+      padding: 10px 10px !important;
+      background: rgba(18, 14, 22, 0.82) !important;
       -webkit-backdrop-filter: blur(14px);
       backdrop-filter: blur(14px);
       border: 1px solid rgba(255, 255, 255, 0.22);
-      border-radius: 26px;
+      border-radius: 22px;
       box-shadow: 0 14px 34px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .15);
-      max-height: calc(var(--vh) - 36px);
-      max-height: calc(100dvh - 36px);
+      max-height: calc(var(--vh) - 32px);
+      max-height: calc(100dvh - 32px);
       overflow-y: auto;
+      overflow-x: hidden;
       scrollbar-width: none;
     }
 
@@ -1941,15 +1944,15 @@
 
     .app-shell.getting-ready .session-controls .sc-filters {
       order: 1 !important;
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      gap: 7px !important;
+      display: grid !important;
+      grid-template-columns: repeat(2, auto) !important;
+      justify-content: center !important;
+      gap: 8px 10px !important;
       position: static !important;
       width: auto !important;
       max-width: none !important;
       margin: 0 !important;
-      padding: 0 !important;
+      padding: 2px 2px 0 !important;
       background: none !important;
       border: none !important;
       box-shadow: none !important;
@@ -13463,9 +13466,11 @@
       padding: calc(7px * var(--ui-btn-scale, 1)) calc(16px * var(--ui-btn-scale, 1)) !important;
     }
     body.stage-full .app-shell .session-controls .sc-btn {
-      font-size: calc(14px * var(--ui-btn-scale, 1)) !important;
-      min-height: calc(44px * var(--ui-btn-scale, 1)) !important;
-      padding: calc(8px * var(--ui-btn-scale, 1)) calc(18px * var(--ui-btn-scale, 1)) !important;
+      font-size: calc(13.5px * min(var(--ui-btn-scale, 1), 1.35)) !important;
+      min-height: calc(38px * min(var(--ui-btn-scale, 1), 1.35)) !important;
+      padding: calc(7px * min(var(--ui-btn-scale, 1), 1.3)) calc(14px * min(var(--ui-btn-scale, 1), 1.3)) !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
     }
 
     /* Scalable side photos per session (Film Track) */
@@ -15157,6 +15162,10 @@
               </div>
             </div>
             <div class="guest-design-slots" id="guestDesignSlots"></div>
+            <label class="toggle-row" id="gdFramesRow" style="display:none; margin:2px 0 0; font-size:12px;">
+              <input type="checkbox" id="gdIncludeFramesToggle" checked>
+              <span>Show uploaded frames right alongside these designs (Frame 1, Frame 2…)</span>
+            </label>
             <p class="panel-hint" id="guestDesignHint" style="margin:0; font-size:11.5px;">Add Design 2+ if you want guests to choose between different designs (each design keeps its own colours, text and ticked layouts).</p>
           </div>
           <div class="step-head">
@@ -23186,7 +23195,7 @@
       })();
       function saveWebcamRes() { try { localStorage.setItem(WEBCAM_RES_KEY, JSON.stringify(webcamRes)); } catch (e) { } }
       // getUserMedia size for any webcam or built-in camera
-      function webcamGumSize() {
+      function webcamGumSize(deviceId) {
         const p = webcamRes.preview;
         const ex = /^x:(\d+):(\d+):(\d+):(\d+)$/.exec(String(p));
         if (ex) return { width: { ideal: +ex[2] }, height: { ideal: +ex[3] } };
@@ -23194,9 +23203,12 @@
         if (p === '1080') return { width: { ideal: 1920 }, height: { ideal: 1080 } };
         if (p === '720') return { width: { ideal: 1280 }, height: { ideal: 720 } };
         if (p === '480') return { width: { ideal: 640 }, height: { ideal: 480 } };
-        // Default ('auto'): On Android & iPad tablets, 720p provides a smooth 30fps viewfinder
-        // without WebKit GPU/ISP overload or thermal frame drops.
-        if (IS_ANDROID_APP || IS_IOS_APP) return { width: { ideal: 1280 }, height: { ideal: 720 } };
+        // Default ('auto'): 720p for tablets and built-in laptop webcams keeps live view silky 30fps without YUY2/GPU lag.
+        const opt = deviceId && typeof cameraSelect !== 'undefined' && cameraSelect && cameraSelect.options
+          ? Array.from(cameraSelect.options).find(o => o.value === deviceId) : null;
+        const optLabel = opt ? String(opt.textContent || '') : '';
+        const isBuiltIn = !deviceId || (typeof isUsbWebcamOption === 'function' ? (!isUsbWebcamOption(deviceId, optLabel) && /built-in|integrated|facetime|macbook|imac|isight|internal|surface|ir camera|front|back|rear|user|environment/i.test(optLabel)) : false);
+        if (IS_ANDROID_APP || IS_IOS_APP || isBuiltIn) return { width: { ideal: 1280 }, height: { ideal: 720 } };
         return { width: { ideal: 1920 }, height: { ideal: 1080 } };
       }
       // "Exact size" menu: the sizes the app reported for the webcam (kept in this browser so the menu is there before the webcam opens).
@@ -23743,8 +23755,8 @@
       // A busy or blocked camera is never swapped for a different one.
       async function openCameraStream(deviceId) {
         const selOpt = deviceId && Array.from(cameraSelect.options).find(o => o.value === deviceId);
-        const baseSize = webcamGumSize();
-        const sizeWithFps = Object.assign({}, baseSize, { frameRate: IS_IOS_APP ? { ideal: 30 } : { ideal: 30, min: 20 } });
+        const baseSize = webcamGumSize(deviceId);
+        const sizeWithFps = Object.assign({}, baseSize, { frameRate: { ideal: 30 } });
         const gum = video => navigator.mediaDevices.getUserMedia({ video, audio: false });
         const stop = e => e && (e.uvcMsg || e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e.name === 'SecurityError');
         let lastErr = null;
@@ -34808,7 +34820,7 @@
           G.pk.classList.toggle('hide', !pickOpen);
           if (!pickOpen) { G.pkSig = ''; return; }
           const pkt = G.pk.querySelector('.pkt'); if (pkt) pkt.textContent = pickTitleText();
-          const pksb = G.pk.querySelector('.pksb'); if (pksb) pksb.textContent = pickDesignMode ? 'Pick a design style first' : 'Tap a design to start your session';
+          const pksb = G.pk.querySelector('.pksb'); if (pksb) pksb.textContent = pickDesignMode ? 'Pick a design or frame first' : 'Tap a layout to start your session';
           const sig = pickKeys.join(',');
           if (G.pkSig !== sig) {
             G.pkSig = sig;
@@ -34818,13 +34830,13 @@
               const im = G.d.createElement('img');
               const sp = G.d.createElement('span'); sp.className = 'pkn';
               const sh = G.d.createElement('span'); sh.className = 'pks';
-              if (/^gd:/.test(k)) {
+              if (pickDesignMode) {
                 const srcBtn = pickGrid.children[i];
-                const sl = pickDesignsList[i] || {};
+                const nmEl = srcBtn && srcBtn.querySelector('.pick-name');
+                const shEl = srcBtn && srcBtn.querySelector('.pick-shots');
                 im.src = (srcBtn && srcBtn.querySelector('img') && srcBtn.querySelector('img').src) || '';
-                sp.textContent = sl.name || ('Design ' + (i + 1));
-                const nLay = sl.guestPick ? Math.max(1, (sl.guestLayouts || []).length + (sl.chooseIds || []).length + 1) : 1;
-                sh.textContent = nLay > 1 ? (nLay + ' layouts') : (LAYOUT_DEFS[sl.layout] ? LAYOUT_DEFS[sl.layout].name : 'Ready');
+                sp.textContent = (nmEl && nmEl.textContent) || (pickDesignsList[i] && pickDesignsList[i].name) || ('Design ' + (i + 1));
+                sh.textContent = (shEl && shEl.textContent) || 'Ready';
               } else {
                 im.src = layoutThumbUrl(k);
                 sp.textContent = pickName(k);
@@ -35557,23 +35569,26 @@
           i.style.filter = 'none'; i.appendChild(cv);
         });
       });
-      var filterThumbTimer = null;
+      var filterThumbTimer = null, filterThumbScratch = null;
       function drawFilterThumbs() {
         var rows = [quickFilters, readyFilters].filter(function (r) { return r.offsetParent !== null; });
-        if (!rows.length || !video.videoWidth || video.style.display === 'none') return;
+        if (!rows.length || !video.videoWidth || video.readyState < 2 || video.style.display === 'none') return;
+        if (!filterThumbScratch) { filterThumbScratch = document.createElement('canvas'); filterThumbScratch.width = 72; filterThumbScratch.height = 72; }
         var vw = video.videoWidth, vh = video.videoHeight, side = Math.min(vw, vh) * 0.8;
         var sx = (vw - side) / 2, sy = (vh - side) / 2, mir = mirrorPreview();
+        var scx = filterThumbScratch.getContext('2d');
+        scx.save();
+        scx.setTransform(1, 0, 0, 1, 0, 0);
+        if (mir) { scx.translate(72, 0); scx.scale(-1, 1); }
+        try { scx.drawImage(video, sx, sy, side, side, 0, 0, 72, 72); } catch (e) { }
+        scx.restore();
         rows.forEach(function (r) {
           r.querySelectorAll('canvas').forEach(function (cv) {
-            var x = cv.getContext('2d');
-            x.save();
-            if (mir) { x.translate(cv.width, 0); x.scale(-1, 1); }
-            try { x.drawImage(video, sx, sy, side, side, 0, 0, cv.width, cv.height); } catch (e) { }
-            x.restore();
+            try { cv.getContext('2d').drawImage(filterThumbScratch, 0, 0, cv.width, cv.height); } catch (e) { }
           });
         });
       }
-      filterThumbTimer = setInterval(drawFilterThumbs, 160);
+      filterThumbTimer = setInterval(drawFilterThumbs, 300);
       function markQuickFilters() { [quickFilters, readyFilters].forEach(function (row) { [...row.children].forEach(function (c) { c.classList.toggle('on', c.dataset.filter === filterKey); }); }); }
       function onQuickFilter(e) {
         var c = e.target.closest('.sc-filter'); if (!c) return;
@@ -44879,9 +44894,22 @@
         'filter', 'softSkin', 'dateStamp', 'overlay', 'logo', 'decor', 'myProps', 'titleStyle', 'kicker', 'upper', 'art', 'artPal', 'label', 'dateOn', 'date'];
       var guestDesigns = [];
       var activeDesignIdx = 0;
+      var includeFramesInDesignPick = true;
       var pickDesignMode = false;
       var pickDesignsList = [];
 
+      function framesStandAlongsideDesigns() {
+        if (!includeFramesInDesignPick || !(typeof myFrames !== 'undefined' && myFrames && myFrames.length)) return false;
+        if (guestDesigns.length >= 2) return true;
+        var sl = guestDesigns[0];
+        if (!sl) return setupLayout !== 'myframe' || (guestLayoutSet && guestLayoutSet.some(function (k) { return !/^frame:/.test(k); }));
+        return (sl.layout && sl.layout !== 'myframe') || (Array.isArray(sl.guestLayouts) && sl.guestLayouts.some(function (k) { return !/^frame:/.test(k); }));
+      }
+      function designSlotFallbackLayout(slot) {
+        if (slot && slot.layout && slot.layout !== 'myframe' && LAYOUT_DEFS[slot.layout]) return slot.layout;
+        var gl = slot && Array.isArray(slot.guestLayouts) ? slot.guestLayouts.find(function (k) { return LAYOUT_DEFS[k] && k !== 'myframe'; }) : null;
+        return gl || 'strip';
+      }
       function captureCurrentDesignSlot(existing) {
         var s = snapshotSetup({ skipDesignSync: true });
         var st = {};
@@ -44889,11 +44917,13 @@
         if (s.backdropPreset === 'custom' && bgImageDataUrl && typeof addAsset === 'function' && !st.bgAssetId) {
           st.bgAssetUrl = bgImageDataUrl;
         }
+        var lay = setupLayout;
+        if (lay === 'myframe' && existing && existing.layout && existing.layout !== 'myframe') lay = existing.layout;
         return {
           id: (existing && existing.id) || ('gd-' + Math.random().toString(36).slice(2, 8)),
           name: (existing && existing.name) || ('Design ' + (guestDesigns.length + 1)),
           settings: st,
-          layout: setupLayout,
+          layout: lay,
           guestPick: !!guestPickOn,
           guestLayouts: guestLayoutSet.slice(),
           chooseIds: chooseList(),
@@ -44926,21 +44956,32 @@
         }
         var bg = (st.bgAssetId && typeof ASSETS !== 'undefined' && ASSETS[st.bgAssetId]) ? ASSETS[st.bgAssetId].url : (st.bgAssetUrl || null);
         var base = snapshotSetup({ skipDesignSync: true });
+        var targetLayout = (forGuest && framesStandAlongsideDesigns()) ? designSlotFallbackLayout(slot) : (slot.layout || base.layout);
         var next = Object.assign({}, base, st, {
-          layout: slot.layout || base.layout,
+          layout: targetLayout,
           guestPick: !!slot.guestPick,
           guestLayouts: Array.isArray(slot.guestLayouts) ? slot.guestLayouts.slice() : [],
           chooseIds: Array.isArray(slot.chooseIds) ? slot.chooseIds.slice() : [],
           activeFrame: slot.activeFrameId || base.activeFrame || '',
           guestDesigns: guestDesigns,
-          activeDesignIdx: activeDesignIdx
+          activeDesignIdx: activeDesignIdx,
+          includeFramesInDesignPick: includeFramesInDesignPick
         });
         applySetup(next, bg, { skipDesignSync: true });
         if (!forGuest) renderGuestDesignBar();
       }
+      function designSlotChoiceCount(slot, idx) {
+        if (idx === activeDesignIdx) return guestChoiceKeys().length;
+        if (!slot || !slot.guestPick) return 1;
+        var stdCount = (slot.guestLayouts || []).filter(function (k) { return !/^frame:/.test(k); }).length + 1;
+        if (framesStandAlongsideDesigns()) return stdCount;
+        return stdCount + (slot.chooseIds || []).length;
+      }
       function renderGuestDesignBar() {
         var bar = document.getElementById('guestDesignSlots');
         var remBtn = document.getElementById('gdRemoveBtn');
+        var frRow = document.getElementById('gdFramesRow');
+        var frChk = document.getElementById('gdIncludeFramesToggle');
         if (!bar) return;
         ensureGuestDesigns();
         bar.innerHTML = '';
@@ -44948,10 +44989,9 @@
           var b = document.createElement('button');
           b.type = 'button';
           b.className = 'gd-slot' + (i === activeDesignIdx ? ' on' : '');
-          var curGuestCount = (i === activeDesignIdx)
-            ? guestChoiceKeys().length
-            : (slot.guestPick ? Math.max(1, (slot.guestLayouts || []).length + (slot.chooseIds || []).length + 1) : 1);
-          var badgeText = curGuestCount > 1 ? (curGuestCount + ' layouts') : (LAYOUT_DEFS[slot.layout] ? LAYOUT_DEFS[slot.layout].name : '1 layout');
+          var curGuestCount = designSlotChoiceCount(slot, i);
+          var badgeLay = framesStandAlongsideDesigns() ? designSlotFallbackLayout(slot) : slot.layout;
+          var badgeText = curGuestCount > 1 ? (curGuestCount + ' layouts') : (LAYOUT_DEFS[badgeLay] ? LAYOUT_DEFS[badgeLay].name : '1 layout');
           b.innerHTML = '<span></span><small></small>';
           b.firstChild.textContent = slot.name || ('Design ' + (i + 1));
           b.lastChild.textContent = badgeText;
@@ -44963,6 +45003,15 @@
           });
           bar.appendChild(b);
         });
+        if (framesStandAlongsideDesigns() && typeof myFrames !== 'undefined' && myFrames.length) {
+          myFrames.forEach(function (f, fi) {
+            var sp = document.createElement('span');
+            sp.className = 'gd-slot';
+            sp.style.cssText = 'cursor:default; border-style:dashed; opacity:.88;';
+            sp.textContent = (f.name || ('Uploaded Frame ' + (fi + 1))) + ' (frame)';
+            bar.appendChild(sp);
+          });
+        }
         if (guestDesigns.length < 6) {
           var add = document.createElement('button');
           add.type = 'button';
@@ -44974,6 +45023,7 @@
             var cloned = JSON.parse(JSON.stringify(guestDesigns[activeDesignIdx]));
             cloned.id = 'gd-' + Math.random().toString(36).slice(2, 8);
             cloned.name = 'Design ' + (guestDesigns.length + 1);
+            if (cloned.layout === 'myframe') cloned.layout = designSlotFallbackLayout(cloned);
             guestDesigns.push(cloned);
             activeDesignIdx = guestDesigns.length - 1;
             renderGuestDesignBar();
@@ -44983,10 +45033,21 @@
           bar.appendChild(add);
         }
         if (remBtn) remBtn.hidden = guestDesigns.length <= 1;
+        if (frRow) frRow.style.display = (typeof myFrames !== 'undefined' && myFrames && myFrames.length) ? '' : 'none';
+        if (frChk) frChk.checked = !!includeFramesInDesignPick;
       }
       (function () {
         var ren = document.getElementById('gdRenameBtn');
         var rem = document.getElementById('gdRemoveBtn');
+        var frChk = document.getElementById('gdIncludeFramesToggle');
+        if (frChk) {
+          frChk.addEventListener('change', function () {
+            includeFramesInDesignPick = !!frChk.checked;
+            refreshGuestLayoutChoices();
+            renderGuestDesignBar();
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
         if (ren) {
           ren.addEventListener('click', async function () {
             ensureGuestDesigns();
@@ -45016,17 +45077,22 @@
       var tickAllLayoutsBtn = document.getElementById('tickAllLayoutsBtn');
       // The renter's main layout as a card key ("frame:<id>" for one of their frames).
       function mainLayoutKey() {
+        if (framesStandAlongsideDesigns() && setupLayout === 'myframe') return designSlotFallbackLayout(guestDesigns[activeDesignIdx]);
         if (setupLayout === 'myframe' && activeFrameId) return 'frame:' + activeFrameId;
         if (setupLayout === 'framesheet' && typeof sheetPresets !== 'undefined' && sheetPresets.length > 1 && activeSheetPresetId) return 'sheet:' + activeSheetPresetId;
         return setupLayout;
       }
       function isGuestKey(k) {
         if (k === mainLayoutKey()) return true;
-        if (/^frame:/.test(k)) return chooseIds.indexOf(k.slice(6)) >= 0;
+        if (/^frame:/.test(k)) return !framesStandAlongsideDesigns() && chooseIds.indexOf(k.slice(6)) >= 0;
         return guestLayoutSet.indexOf(k) >= 0;
       }
       function allSelectableLayoutKeys() {
-        return [].map.call(layoutGrid.querySelectorAll('[data-tick]'), function (t) { return t.dataset.tick; }).filter(Boolean);
+        return [].map.call(layoutGrid.querySelectorAll('[data-tick]'), function (t) { return t.dataset.tick; }).filter(function (k) {
+          if (!k) return false;
+          if (framesStandAlongsideDesigns() && /^frame:/.test(k)) return false;
+          return true;
+        });
       }
       function allLayoutsTicked() {
         var all = allSelectableLayoutKeys();
@@ -45059,11 +45125,11 @@
         }
         if (guestDesigns.length) renderGuestDesignBar();
         if (!guestPickOn) {
-          var selName = (setupLayout === 'myframe' && activeFrameId)
-            ? (function () { var f = (myFrames || []).find(function (fr) { return fr.id === activeFrameId; }); return f ? 'Frame ' + ((myFrames.indexOf(f)) + 1) : 'Your frame'; })()
+          var selName = (main === 'myframe' || /^frame:/.test(main))
+            ? (function () { var fid = /^frame:/.test(main) ? main.slice(6) : activeFrameId; var f = (myFrames || []).find(function (fr) { return fr.id === fid; }); return f ? (f.name || ('Frame ' + ((myFrames.indexOf(f)) + 1))) : 'Your frame'; })()
             : (setupLayout === 'framesheet' && typeof presetById === 'function' && activeSheetPresetId && presetById(activeSheetPresetId))
               ? presetById(activeSheetPresetId).name
-              : (LAYOUT_DEFS[setupLayout] ? LAYOUT_DEFS[setupLayout].name : setupLayout);
+              : (LAYOUT_DEFS[main] ? LAYOUT_DEFS[main].name : main);
           guestPickHint.innerHTML = '<b>Single layout locked (' + selName + ')</b>. Guests start directly with this layout without a choice screen. Turn on <b>Let guests choose layout</b> (or click <b>Tick all layouts</b>) to offer multiple options.';
           return;
         }
@@ -45075,7 +45141,7 @@
           var main = mainLayoutKey();
           if (allLayoutsTicked()) {
             guestLayoutSet = [];
-            chooseIds = (/^frame:/.test(main)) ? [main.slice(6)] : [];
+            if (!framesStandAlongsideDesigns()) chooseIds = (/^frame:/.test(main)) ? [main.slice(6)] : [];
           } else {
             guestPickOn = true;
             guestPickToggle.checked = true;
@@ -45096,14 +45162,17 @@
       }
       guestPickToggle.addEventListener('change', function () {
         guestPickOn = guestPickToggle.checked;
-        if (guestPickOn && setupLayout === 'myframe' && activeFrameId && chooseIds.indexOf(activeFrameId) < 0) chooseIds.push(activeFrameId);
+        if (guestPickOn && setupLayout === 'myframe' && activeFrameId && !framesStandAlongsideDesigns() && chooseIds.indexOf(activeFrameId) < 0) chooseIds.push(activeFrameId);
         refreshGuestLayoutChoices();
         if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
       });
       function guestChoiceKeys() {
+        var standAlone = framesStandAlongsideDesigns();
         if (!guestPickOn) return [mainLayoutKey()];
         var main = mainLayoutKey(), keys = [];
-        (myFrames || []).forEach(function (f) { var k = 'frame:' + f.id; if (k === main || chooseIds.indexOf(f.id) >= 0) keys.push(k); });
+        if (!standAlone) {
+          (myFrames || []).forEach(function (f) { var k = 'frame:' + f.id; if (k === main || chooseIds.indexOf(f.id) >= 0) keys.push(k); });
+        }
         if (typeof sheetPresets !== 'undefined' && sheetPresets.length > 1) {
           sheetPresets.forEach(function (p) {
             var k = 'sheet:' + p.id;
@@ -45200,39 +45269,81 @@
         return pickThumbs.urls[key];
       }
       async function designThumbUrl(slot, idx) {
-        if (slot && slot._thumbUrl && slot._thumbSig === JSON.stringify(slot.settings)) return slot._thumbUrl;
+        var lay = designSlotFallbackLayout(slot);
+        var sig = JSON.stringify(slot.settings) + '|' + lay;
+        if (slot && slot._thumbUrl && slot._thumbSig === sig) return slot._thumbUrl;
         var prevSlot = captureCurrentDesignSlot(guestDesigns[activeDesignIdx]);
         var prevIdx = activeDesignIdx;
         await applyDesignSlot(slot, idx, true);
-        var url = layoutThumbUrl(mainLayoutKey());
+        var url = layoutThumbUrl(lay);
         slot._thumbUrl = url;
-        slot._thumbSig = JSON.stringify(slot.settings);
+        slot._thumbSig = sig;
         await applyDesignSlot(prevSlot, prevIdx, true);
         return url;
       }
-      async function pickDesign(designs) {
+      function guestTopDesignOptions() {
+        ensureGuestDesigns();
+        var opts = [];
+        var standAloneFrames = framesStandAlongsideDesigns();
+        var frames = (typeof myFrames !== 'undefined' && Array.isArray(myFrames)) ? myFrames : [];
+        var filteredFrames = standAloneFrames ? frames.filter(function (f) {
+          if (!(typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && sessionTier)) return true;
+          if (sessionTier === 'receipt') return f && (f.tier === 'receipt' || f.tier === 'all');
+          return !f || f.tier === 'photo' || f.tier === 'all' || !f.tier;
+        }) : [];
+        var includeDesigns = guestDesigns.length >= 2 || (standAloneFrames && filteredFrames.length > 0);
+        if (includeDesigns) {
+          guestDesigns.forEach(function (sl, i) {
+            opts.push({
+              key: 'gd:' + i,
+              kind: 'design',
+              idx: i,
+              slot: sl,
+              name: sl.name || ('Design ' + (i + 1))
+            });
+          });
+        }
+        filteredFrames.forEach(function (f, fi) {
+          opts.push({
+            key: 'frame:' + f.id,
+            kind: 'frame',
+            frame: f,
+            frameId: f.id,
+            name: f.name || ('Uploaded Frame ' + (fi + 1))
+          });
+        });
+        return opts;
+      }
+      async function pickTopOptions(opts) {
         var urls = [];
-        for (var i = 0; i < designs.length; i++) {
-          urls.push(await designThumbUrl(designs[i], i));
+        for (var i = 0; i < opts.length; i++) {
+          var o = opts[i];
+          urls.push(o.kind === 'design' ? await designThumbUrl(o.slot, o.idx) : layoutThumbUrl(o.key));
         }
         return new Promise(function (resolve) {
           pickDesignMode = true;
-          pickDesignsList = designs;
+          pickDesignsList = opts;
           pickOpen = true; pickResolve = resolve;
-          pickKeys = designs.map(function (_, i) { return 'gd:' + i; });
+          pickKeys = opts.map(function (o) { return o.key; });
           var pt = document.getElementById('pickTitle'); if (pt) pt.textContent = 'Choose your design';
-          var ps = document.getElementById('pickSub'); if (ps) ps.textContent = 'Pick a design style first';
+          var ps = document.getElementById('pickSub'); if (ps) ps.textContent = 'Pick a design or frame first';
           pickIdx = -1;
           pickGrid.innerHTML = '';
-          designs.forEach(function (sl, i) {
+          opts.forEach(function (o, i) {
             var b = document.createElement('button'); b.type = 'button'; b.className = 'pick-btn';
             var im = document.createElement('img'); im.alt = ''; im.src = urls[i] || '';
-            var sp = document.createElement('span'); sp.className = 'pick-name'; sp.textContent = sl.name || ('Design ' + (i + 1));
-            var nLay = sl.guestPick ? Math.max(1, (sl.guestLayouts || []).length + (sl.chooseIds || []).length + 1) : 1;
+            var sp = document.createElement('span'); sp.className = 'pick-name'; sp.textContent = o.name;
             var shBadge = document.createElement('span'); shBadge.className = 'pick-shots';
-            shBadge.textContent = nLay > 1 ? (nLay + ' layouts') : (LAYOUT_DEFS[sl.layout] ? LAYOUT_DEFS[sl.layout].name : 'Ready');
+            if (o.kind === 'design') {
+              var nLay = designSlotChoiceCount(o.slot, o.idx);
+              var fbLay = designSlotFallbackLayout(o.slot);
+              shBadge.textContent = nLay > 1 ? (nLay + ' layouts') : (LAYOUT_DEFS[fbLay] ? LAYOUT_DEFS[fbLay].name : 'Ready');
+            } else {
+              var shots = typeof frameShotCount === 'function' ? frameShotCount(o.frame) : 4;
+              shBadge.textContent = shots + (shots === 1 ? ' shot' : ' shots');
+            }
             b.append(im, sp, shBadge);
-            b.addEventListener('click', function (e) { e.stopPropagation(); finishPick(i); });
+            b.addEventListener('click', function (e) { e.stopPropagation(); finishPick(o); });
             pickGrid.appendChild(b);
           });
           markPick();
@@ -45248,7 +45359,7 @@
           pickDesignMode = false;
           pickOpen = true; pickResolve = resolve; pickKeys = keys;
           var pt = document.getElementById('pickTitle'); if (pt) pt.textContent = pickTitleText();
-          var ps = document.getElementById('pickSub'); if (ps) ps.textContent = 'Tap a design to start your session';
+          var ps = document.getElementById('pickSub'); if (ps) ps.textContent = 'Tap a layout to start your session';
           pickIdx = -1;      // nothing chosen yet: guests tap a card (a clicker / arrow key shows the highlight)
           pickGrid.innerHTML = '';
           keys.forEach(function (k, i) {
@@ -45295,6 +45406,7 @@
       function finishPick(k) {
         if (!pickOpen) return;
         var wasDesign = pickDesignMode;
+        var listRef = pickDesignsList;
         pickOpen = false;
         pickDesignMode = false;
         pickOverlay.classList.remove('on');
@@ -45303,7 +45415,13 @@
         try { refreshPrintFab(); } catch (e) { }
         var r = pickResolve; pickResolve = null;
         guestRender();
-        if (r) r(wasDesign && typeof k === 'string' && /^gd:/.test(k) ? Number(k.slice(3)) : k);
+        if (!r) return;
+        if (wasDesign && typeof k === 'string') {
+          var found = listRef.find(function (o) { return o.key === k; }) || null;
+          r(found);
+          return;
+        }
+        r(k);
       }
       var pickCancelBtn = document.getElementById('pickCancelBtn');
       if (pickCancelBtn) {
@@ -45321,7 +45439,7 @@
           finishPick(null);
         }
       }, true);
-      // Starts the next guest's turn: (optional design picker -> layout picker) -> countdown.
+      // Starts the next guest's turn: (optional design/frame picker -> layout picker) -> countdown.
       var flowBusy = false;
       var flowStartedAt = 0;
       async function beginGuestFlow(skipReady) {
@@ -45345,19 +45463,30 @@
           resetForNextGuest();   // always clean state before picking/session
           // Guest payment (QR or voucher) before anything else; a paid session waits here if the tablet restarted.
           if (!(await payGate())) return;
-          var didPickDesign = false;
-          if (boothType === 'photo' && Array.isArray(guestDesigns) && guestDesigns.length > 1) {
+          var didPickTop = false;
+          var key = null;
+          var keys = [];
+          if (boothType === 'photo') {
             syncActiveDesignSlot();
-            var dIdx = await pickDesign(guestDesigns);
-            if (dIdx === null || dIdx === undefined) {
-              resetForNextGuest();
-              return;
+            var topOpts = guestTopDesignOptions();
+            if (topOpts.length >= 2) {
+              var chosenOpt = await pickTopOptions(topOpts);
+              if (!chosenOpt) {
+                resetForNextGuest();
+                return;
+              }
+              didPickTop = true;
+              if (chosenOpt.kind === 'frame') {
+                key = 'frame:' + chosenOpt.frameId;
+              } else {
+                await applyDesignSlot(chosenOpt.slot, chosenOpt.idx, true);
+              }
             }
-            didPickDesign = true;
-            await applyDesignSlot(guestDesigns[dIdx], dIdx, true);
           }
-          var keys = guestChoiceKeys();
-          var key = keys.length > 1 ? await pickLayout(keys) : (keys[0] || setupLayout);
+          if (!key) {
+            keys = guestChoiceKeys();
+            key = keys.length > 1 ? await pickLayout(keys) : (keys[0] || setupLayout);
+          }
           if (!key) {
             resetForNextGuest();
             return;
@@ -45373,7 +45502,7 @@
           if (boothType !== 'photo' && (!(await askGuestDesign()) || !(await askGuestDetails()))) return;
           // After picking a design or layout there's always a "Get ready" screen (summary,
           // filters, Start) — the countdown never starts straight from the picker.
-          await startSession((didPickDesign || keys.length > 1) ? false : skipReady);
+          await startSession((didPickTop || keys.length > 1) ? false : skipReady);
         } catch (err) {
           // Something broke mid-session: go back to the welcome screen instead of staying "capturing" forever.
           console.error('Guest session failed:', err);
@@ -48343,7 +48472,7 @@
           themeId: themeId,
           layout: setupLayout,
           guestPick: guestPickOn, guestLayouts: guestLayoutSet.slice(),
-          guestDesigns: cleanDesigns, activeDesignIdx: activeDesignIdx,
+          guestDesigns: cleanDesigns, activeDesignIdx: activeDesignIdx, includeFramesInDesignPick: includeFramesInDesignPick,
           boothType: boothType, btCfg: JSON.parse(JSON.stringify(btCfg)), tpls: tplsSnapshot(),
           timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
           reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake, qrPop: qrPopOn, hideQr: hideQrOn, qrPopDelay: qrPopDelay,
@@ -48780,6 +48909,7 @@
           if (typeof markThemeCards === 'function') markThemeCards();
           refreshDecorUI();
           if (!(opts && opts.skipDesignSync)) {
+            includeFramesInDesignPick = typeof s.includeFramesInDesignPick === 'boolean' ? s.includeFramesInDesignPick : true;
             if (Array.isArray(s.guestDesigns) && s.guestDesigns.length) {
               guestDesigns = s.guestDesigns.slice(0, 6).map(function (sl, idx) {
                 return {

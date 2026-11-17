@@ -138,7 +138,7 @@ async function openPrinterSettings(printer) {
     const pane = modern ? 'x-apple.systempreferences:com.apple.Print-Scan-Settings.extension' : '/System/Library/PreferencePanes/PrintAndFax.prefPane';
     let r = await run('open', [pane]);
     if (r.code !== 0) r = await run('open', ['-a', app]);
-    return r.code === 0 ? { ok: true, message: app + ' opened. Select “Printers & Scanners”, then choose “' + printer + '” to review its available settings.' } : { ok: false, error: 'Could not open ' + app + '.' };
+    return r.code === 0 ? { ok: true, message: app + ' opened. Select “Printers & Scanners”, then choose “' + printer + '” to review its available settings. If it shows no paper or quality choices, the Mac is using Apple\u2019s generic driver: install the printer maker\u2019s driver for macOS, then press Configure printer again.' } : { ok: false, error: 'Could not open ' + app + '.' };
   }
   return { ok: false, error: 'Opening printer settings is supported on Windows and Mac.' };
 }
@@ -989,6 +989,10 @@ export async function handleHelper(req, path, search) {
     const name = String(body.printer || '').trim();
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);
     if (direct.has(name)) return json({ ok: true, message: 'This printer is used straight from the app, with no driver, so there are no Windows settings to change. Choose the paper in the app (for a SELPHY: Postcard 100×148 mm) and load the matching paper and ink cassette.' });
+    if (platform() === 'darwin') {
+      // macOS has no per-printer preferences window like Windows: hand the driver's own options (paper, media type, quality...) to the app to show.
+      try { const options = await cupsPrinterOptions(name); if (options.length) return json({ ok: true, options }); } catch { /* fall back to System Settings */ }
+    }
     return json(await openPrinterSettings(name));
   }
   if (path === '/printer/bluetooth' && method === 'POST') return json(await openBluetoothSettings());

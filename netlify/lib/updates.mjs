@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.64', date: '2026-11-17' },
   { version: '1.1.63', date: '2026-11-17' },
   { version: '1.1.62', date: '2026-11-17' },
   { version: '1.1.61', date: '2026-11-17' },
@@ -256,6 +257,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-17', title: 'Desktop 1.1.64 + Android 1.1.76: Branded welcome cards, aesthetics, and 1-click color palettes', for: ['website', 'app'], app: '1.1.64',
+    items: [
+      '🎀 Branded welcome card aesthetics: choose from 6 designer decoration styles including Luxe Corner Waves, Aura & Sparkles, Coquette Stitched, Pop Retro 3D, and Scrapbook Doodles.',
+      '🎨 1-Click color palette harmonies: curated color combinations (Charm Blush & Navy, Sweet Berry, Matcha & Cream, Midnight Gold, Lilac Dream, Peach Sunset, and Studio Monochrome) coordinating card background, typography, button, and decorative accents.',
+      '✨ Decoupled standalone cards: welcome cards can now be centered symmetrically without a side photo strip sample for a luxury billboard look.',
+      '💼 Admin pre-customization: pre-set client brand names, logos, card styles, decorations, and color palettes right from the Admin dashboard before deployment.',
+      '🖨️ macOS printer driver settings: inspect CUPS printer driver options directly for color matching and print quality.'
+    ]
+  },
   {
     date: '2026-11-17', title: 'Desktop 1.1.63: cleaner, more seamless green screen, and GoPro cameras', for: ['website', 'app'], app: '1.1.63',
     items: [

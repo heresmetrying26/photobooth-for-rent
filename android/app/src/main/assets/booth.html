@@ -16944,6 +16944,55 @@
                   </div>
                   <p class="panel-hint" style="margin:4px 0 0;"><b>Minimalist:</b> hides the 3 steps entirely, creating a clean editorial billboard with just your logo, title, and start button.</p>
                 </div>
+
+                <div class="fb-card" style="margin-top:10px;">
+                  <p class="sub-label" style="margin:0 0 6px;">Card decorations &amp; aesthetics</p>
+                  <div class="chip-row" id="welcomeDecoStyleChips">
+                    <button type="button" class="chip active" data-deco="ribbon-waves">🎀 Luxe Corner Waves</button>
+                    <button type="button" class="chip" data-deco="aurora-sparkles">✨ Aura &amp; Sparkles</button>
+                    <button type="button" class="chip" data-deco="coquette-stitch">🪡 Coquette Stitched</button>
+                    <button type="button" class="chip" data-deco="pop-retro">🎈 Pop Retro 3D</button>
+                    <button type="button" class="chip" data-deco="scrapbook-doodle">📷 Scrapbook Doodles</button>
+                    <button type="button" class="chip" data-deco="theatre-curtains">🎭 Stage Curtains</button>
+                    <button type="button" class="chip" data-deco="none">◽ Minimalist (None)</button>
+                  </div>
+                  <p class="panel-hint" style="margin:4px 0 0;"><b>Luxe Corner Waves:</b> sweeping designer corner ribbons with gold star sparkles and title swoosh (client favorite). <b>Aura &amp; Sparkles:</b> dreamy glowing pastel gradient with twinkle stars.</p>
+                </div>
+
+                <div class="fb-card" style="margin-top:10px;">
+                  <p class="sub-label" style="margin:0 0 6px;">Color palette combinations</p>
+                  <div class="chip-row" id="welcomePaletteChips">
+                    <button type="button" class="chip active" data-palette="charm-pink" style="display:inline-flex; align-items:center; gap:6px;">
+                      <span style="display:inline-flex; width:16px; height:16px; border-radius:50%; overflow:hidden; border:1px solid rgba(0,0,0,.15);"><i style="width:50%; background:#1C233C; display:inline-block;"></i><i style="width:50%; background:#F28DA0; display:inline-block;"></i></span>
+                      Charm Blush &amp; Navy
+                    </button>
+                    <button type="button" class="chip" data-palette="sweet-berry" style="display:inline-flex; align-items:center; gap:6px;">
+                      <span style="display:inline-flex; width:16px; height:16px; border-radius:50%; overflow:hidden; border:1px solid rgba(0,0,0,.15);"><i style="width:50%; background:#FFF0F5; display:inline-block;"></i><i style="width:50%; background:#E11D48; display:inline-block;"></i></span>
+                      Sweet Berry
+                    </button>
+                    <button type="button" class="chip" data-palette="matcha" style="display:inline-flex; align-items:center; gap:6px;">
+                      <span style="display:inline-flex; width:16px; height:16px; border-radius:50%; overflow:hidden; border:1px solid rgba(0,0,0,.15);"><i style="width:50%; background:#FAF8F5; display:inline-block;"></i><i style="width:50%; background:#4A7C59; display:inline-block;"></i></span>
+                      Matcha &amp; Cream
+                    </button>
+                    <button type="button" class="chip" data-palette="midnight-gold" style="display:inline-flex; align-items:center; gap:6px;">
+                      <span style="display:inline-flex; width:16px; height:16px; border-radius:50%; overflow:hidden; border:1px solid rgba(255,255,255,.2);"><i style="width:50%; background:#18181B; display:inline-block;"></i><i style="width:50%; background:#D4AF37; display:inline-block;"></i></span>
+                      Midnight Gold
+                    </button>
+                    <button type="button" class="chip" data-palette="lilac" style="display:inline-flex; align-items:center; gap:6px;">
+                      <span style="display:inline-flex; width:16px; height:16px; border-radius:50%; overflow:hidden; border:1px solid rgba(0,0,0,.15);"><i style="width:50%; background:#FAF5FF; display:inline-block;"></i><i style="width:50%; background:#9333EA; display:inline-block;"></i></span>
+                      Lilac Dream
+                    </button>
+                    <button type="button" class="chip" data-palette="peach" style="display:inline-flex; align-items:center; gap:6px;">
+                      <span style="display:inline-flex; width:16px; height:16px; border-radius:50%; overflow:hidden; border:1px solid rgba(0,0,0,.15);"><i style="width:50%; background:#FFF7ED; display:inline-block;"></i><i style="width:50%; background:#F97316; display:inline-block;"></i></span>
+                      Peach Sunset
+                    </button>
+                    <button type="button" class="chip" data-palette="monochrome" style="display:inline-flex; align-items:center; gap:6px;">
+                      <span style="display:inline-flex; width:16px; height:16px; border-radius:50%; overflow:hidden; border:1px solid rgba(0,0,0,.15);"><i style="width:50%; background:#FFFFFF; display:inline-block;"></i><i style="width:50%; background:#111827; display:inline-block;"></i></span>
+                      Studio Monochrome
+                    </button>
+                  </div>
+                  <p class="panel-hint" style="margin:4px 0 0;">One-click color harmonies setting matching card background, text, button, and decorative accents.</p>
+                </div>
               </div>
 
               <div id="attractPosterRow" style="display:none; margin-top:12px;">
@@ -17813,7 +17862,19 @@
                           <b id="valAdjBlue" style="color:#1d4ed8;">0</b>
                         </div>
                         <input type="range" id="sliderAdjBlue" min="-100" max="100" value="0" style="width:100%; cursor:pointer; accent-color:#1d4ed8;">
+                      </div><div><div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;"><span style="color:#a21caf;">Magenta / Hue shift <span style="font-weight:400;">(+ pushes red toward pink)</span></span><b id="valAdjHue" style="color:#a21caf;">0</b></div><input type="range" id="sliderAdjHue" min="-100" max="100" value="0" style="width:100%; cursor:pointer; accent-color:#a21caf;"></div><div><div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;"><span>Saturation <span style="font-weight:400;">(&minus; calms strong colours)</span></span><b id="valAdjSat">0</b></div><input type="range" id="sliderAdjSat" min="-100" max="100" value="0" style="width:100%; cursor:pointer;"></div>
+                    </div>
+                    <div id="colorPresetRow" style="margin-top:12px; padding-top:10px; border-top:1px dashed var(--line);">
+                      <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Colour presets</div>
+                      <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                        <input type="text" id="colorPresetName" maxlength="40" placeholder="Name, e.g. Cuyi pink fix" style="flex:1; min-width:140px; padding:5px 8px; font-size:12.5px; border-radius:6px; border:1px solid var(--line);">
+                        <button type="button" class="action-btn" id="btnSaveColorPreset" style="width:auto; margin:0;">Save as new preset</button>
                       </div>
+                      <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:6px;">
+                        <select id="colorPresetSel" style="flex:1; min-width:140px; padding:5px 8px; font-size:12.5px; border-radius:6px; border:1px solid var(--line);"></select>
+                        <button type="button" class="link-btn" id="btnDelColorPreset" style="font-size:12px; color:var(--ink-dim); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0;">Delete</button>
+                      </div>
+                      <p class="panel-hint" id="colorPresetNote" style="margin:4px 0 0; font-size:11.5px;"></p>
                     </div>
                     <button type="button" class="link-btn" id="btnCopyColorAdj"
                       style="margin-top:10px; font-size:12px; color:var(--ink-dim); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0;" hidden></button>
@@ -32008,6 +32069,7 @@
           try {
             const rr = await fetch(HELPER_URL + '/printer/configure', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name }) }); const jj = await rr.json();
             if (!rr.ok || !jj.ok) throw new Error(jj.error || 'Could not open printer settings.');
+            if (jj.options && jj.options.length) { pbCupsOptionsUI(printerOptionsBox, name, jj.options); return; }
             printerOptionsBox.textContent = jj.message || 'Printer settings opened. Choose the loaded paper and desired print quality, then save or apply.';
           } catch (e) { printerOptionsBox.textContent = e.message || 'Could not open printer settings.'; }
           finally { printerSetupBtn.disabled = false; }
@@ -32441,12 +32503,14 @@
           brightness: Number(a.brightness) || 0,
           red: Number(a.red) || 0,
           green: Number(a.green) || 0,
-          blue: Number(a.blue) || 0
+          blue: Number(a.blue) || 0,
+          hue: Number(a.hue) || 0,
+          sat: Number(a.sat) || 0
         };
       }
       function saveColorForPrinter(name, a) {
         if (!name || typeof colorAdjMap === 'undefined') return;
-        colorAdjMap[name] = Object.assign({ brightness: 0, red: 0, green: 0, blue: 0 }, a || {});
+        colorAdjMap[name] = Object.assign({ brightness: 0, red: 0, green: 0, blue: 0, hue: 0, sat: 0 }, a || {});
         if (typeof saveProfileMaps === 'function') saveProfileMaps();
         if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
       }
@@ -32515,7 +32579,7 @@
         const c1 = colorOfPrinter(p1Name), c2 = colorOfPrinter(p2Name);
         return o1.fit !== o2.fit || o1.photoSize !== o2.photoSize || o1.singleStrip !== o2.singleStrip
           || o1.posterDpi !== o2.posterDpi || JSON.stringify(o1.edges) !== JSON.stringify(o2.edges)
-          || c1.brightness !== c2.brightness || c1.red !== c2.red || c1.green !== c2.green || c1.blue !== c2.blue;
+          || c1.brightness !== c2.brightness || c1.red !== c2.red || c1.green !== c2.green || c1.blue !== c2.blue || c1.hue !== c2.hue || c1.sat !== c2.sat;
       }
       function renderPrinterPagesForIndices(printerName, paper, indices) {
         if (!indices.length) return [];
@@ -32581,12 +32645,14 @@
         extra: 'Also prints on this printer on the paper size chosen below after every session. Does not count against the print limit.'
       };
       function colorAdjSummaryText(col) {
-        if (!(col.brightness || col.red || col.green || col.blue)) return 'No adjustments';
+        if (!(col.brightness || col.red || col.green || col.blue || col.hue || col.sat)) return 'No adjustments';
         const bits = [], sg = n => (n > 0 ? '+' : '') + n;
         if (col.brightness) bits.push('Light ' + sg(col.brightness));
         if (col.red) bits.push('R ' + sg(col.red));
         if (col.green) bits.push('G ' + sg(col.green));
         if (col.blue) bits.push('B ' + sg(col.blue));
+        if (col.hue) bits.push('Hue ' + sg(col.hue));
+        if (col.sat) bits.push('Sat ' + sg(col.sat));
         return bits.join(', ');
       }
       // Shared option panel renderer for any extra printer card (Printer 2, Printer 3, ...).
@@ -32614,7 +32680,7 @@
         const stripOnWide = !!(!isReceipt && (isStripLayout() || layoutDef().kind === 'receipt') && paper.w / paper.h >= 0.5);
         const isLarge = !!(!isIx && Math.max(paper.w, paper.h) >= 300);
         const adjTxt = colorAdjSummaryText(col);
-        const hasAdj = !!(col.brightness || col.red || col.green || col.blue);
+        const hasAdj = !!(col.brightness || col.red || col.green || col.blue || col.hue || col.sat);
         const e = opts.edges || { t: 0, b: 0, l: 0, r: 0 };
         const eSet = !!(e.t || e.b || e.l || e.r);
         const fmtMm = v => (v > 0 ? '+' : v < 0 ? '\u2212' : '') + Math.abs(v).toFixed(1) + ' mm';
@@ -32776,7 +32842,7 @@
         cDot.style.cssText = 'width:8px; height:8px; border-radius:50%; background:#d97706; display:inline-block;';
         const cRst = document.createElement('button'); cRst.type = 'button'; cRst.className = 'link-btn'; cRst.textContent = 'Reset';
         cRst.style.cssText = 'font-size:12px; color:var(--ink-dim); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0;';
-        cRst.addEventListener('click', () => { saveColorForPrinter(pName, { brightness: 0, red: 0, green: 0, blue: 0 }); refreshAll(); });
+        cRst.addEventListener('click', () => { saveColorForPrinter(pName, { brightness: 0, red: 0, green: 0, blue: 0, hue: 0, sat: 0 }); refreshAll(); });
         cHead.append(cTog, cDot, cRst);
 
         const cBody = document.createElement('div'); cBody.hidden = !isColOpen; cBody.style.marginTop = '8px';
@@ -32788,7 +32854,7 @@
         });
 
         const cSliders = document.createElement('div'); cSliders.style.cssText = 'display:flex; flex-direction:column; gap:8px;';
-        [['brightness', 'Lightness / Exposure', ''], ['red', 'Red balance', '#b91c1c'], ['green', 'Green balance', '#15803d'], ['blue', 'Blue balance', '#1d4ed8']].forEach(([ck, clbl, accent]) => {
+        [['brightness', 'Lightness / Exposure', ''], ['red', 'Red balance', '#b91c1c'], ['green', 'Green balance', '#15803d'], ['blue', 'Blue balance', '#1d4ed8'], ['hue', 'Magenta / Hue shift (+ pushes red toward pink)', '#a21caf'], ['sat', 'Saturation', '']].forEach(([ck, clbl, accent]) => {
           const wrap = document.createElement('div');
           const row = document.createElement('div'); row.style.cssText = 'display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;';
           const ls = document.createElement('span'); ls.textContent = clbl; if (accent) ls.style.color = accent;
@@ -32801,7 +32867,7 @@
             cur[ck] = parseInt(rng.value, 10) || 0;
             vs.textContent = (cur[ck] > 0 ? '+' : '') + cur[ck];
             saveColorForPrinter(pName, cur);
-            cDot.hidden = !(cur.brightness || cur.red || cur.green || cur.blue);
+            cDot.hidden = !(cur.brightness || cur.red || cur.green || cur.blue || cur.hue || cur.sat);
             cSub.textContent = colorAdjSummaryText(cur);
           };
           rng.addEventListener('input', applySlide);
@@ -32917,6 +32983,7 @@
                 const rr = await fetch(HELPER_URL + '/printer/configure', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: sel.value }) });
                 const jj = await rr.json();
                 if (!rr.ok || !jj.ok) throw new Error(jj.error || 'Could not open printer settings.');
+                if (jj.options && jj.options.length) { pbCupsOptionsUI(stHint, sel.value, jj.options); return; }
                 stHint.textContent = jj.message || 'Printer settings opened. Save or apply when done.';
               } catch (err) { stHint.textContent = (err && err.message) || 'Could not open printer settings.'; }
               finally { cfgBtn.disabled = false; }
@@ -34365,7 +34432,7 @@
         o.cal = wifiCal;
         o.borderless = !!(printPrefs && printPrefs.borderless && window.__PBNet) && !(epsonLBorderlessModel(p) && !epsonLBorderlessOk(printSize));   // not on paper this Epson cannot print borderless
         // Lightness / colour correction is already in the page (printAdjust); the printer code must not add it again.
-        o.brightness = 0; o.red = 0; o.green = 0; o.blue = 0;
+        o.brightness = 0; o.red = 0; o.green = 0; o.blue = 0; o.hue = 0; o.sat = 0;
         // Two 2x6 strips side by side on the sheet: a DNP cuts it in half (2-inch cut).
         try { o.stripCut = !!(printSize && stripTwoUp(printSize) && !sizedPhoto()); } catch (e) { o.stripCut = false; }
         return o;
@@ -36644,6 +36711,8 @@
       var welcomeCardFontColor = '';
       var welcomeCardRadius = 32;
       var welcomeStepStyle = 'numbers';
+      var welcomeDecoStyle = 'none';        // none | ribbon-waves | aurora-sparkles | coquette-stitch | pop-retro | scrapbook-doodle | theatre-curtains
+      var welcomePalette = 'charm-pink';    // charm-pink | sweet-berry | matcha | midnight-gold | lilac | peach | monochrome | custom
       var welcomeCustomOn = false;
       var welcomeGreeting = '';
       var welcomeTitle = '';
@@ -36703,11 +36772,20 @@
       if (!extraOn('vintage')) VINTAGE_KEYS.forEach(function (k) { delete FILTERS[k]; });
       // Colour adjustment (Exposure / Lightness and RGB channels)
       var COLOR_ADJ_KEY = 'pb_color_adj';
-      var colorAdj = { brightness: 0, red: 0, green: 0, blue: 0 };
+      var colorAdj = { brightness: 0, red: 0, green: 0, blue: 0, hue: 0, sat: 0 };
       try { colorAdj = Object.assign(colorAdj, JSON.parse(localStorage.getItem(COLOR_ADJ_KEY) || '{}')); } catch (e) { }
       window._colorAdj = colorAdj;
       function hasColorAdj() {
-        return !!(colorAdj.brightness || colorAdj.red || colorAdj.green || colorAdj.blue);
+        return !!(colorAdj.brightness || colorAdj.red || colorAdj.green || colorAdj.blue || colorAdj.hue || colorAdj.sat);
+      }
+      // Hue shift (+ turns red toward pink/purple, up to 30 degrees) and saturation, as one 3x3 colour matrix (luminance kept).
+      function pbColorMatrix(a) {
+        var th = -(Number(a.hue) || 0) * 0.3 * Math.PI / 180, c = Math.cos(th), n = Math.sin(th), sv = Math.max(0, 1 + (Number(a.sat) || 0) / 100);
+        var S = [0.213 + 0.787 * sv, 0.715 - 0.715 * sv, 0.072 - 0.072 * sv, 0.213 - 0.213 * sv, 0.715 + 0.285 * sv, 0.072 - 0.072 * sv, 0.213 - 0.213 * sv, 0.715 - 0.715 * sv, 0.072 + 0.928 * sv];
+        var H = [0.213 + c * 0.787 - n * 0.213, 0.715 - c * 0.715 - n * 0.715, 0.072 - c * 0.072 + n * 0.928, 0.213 - c * 0.213 + n * 0.143, 0.715 + c * 0.285 + n * 0.140, 0.072 - c * 0.072 - n * 0.283, 0.213 - c * 0.213 - n * 0.787, 0.715 - c * 0.715 + n * 0.715, 0.072 + c * 0.928 + n * 0.072];
+        var M = [], r, k, q;
+        for (r = 0; r < 3; r++) for (k = 0; k < 3; k++) { M[r * 3 + k] = 0; for (q = 0; q < 3; q++) M[r * 3 + k] += H[r * 3 + q] * S[q * 3 + k]; }
+        return M;
       }
 
       function liveFilterCss() {
@@ -36821,7 +36899,12 @@
         var img = ctx.getImageData(0, 0, w, h), d = img.data, i;
         var bOff = (colorAdj.brightness || 0) * 2.55;
         var rOff = bOff + (colorAdj.red || 0) * 2.55, gOff = bOff + (colorAdj.green || 0) * 2.55, uOff = bOff + (colorAdj.blue || 0) * 2.55;
-        for (i = 0; i < d.length; i += 4) { d[i] += rOff; d[i + 1] += gOff; d[i + 2] += uOff; }   // Uint8ClampedArray clamps + rounds
+        var useM = !!(colorAdj.hue || colorAdj.sat), M = useM ? pbColorMatrix(colorAdj) : null, pr, pg, pb;
+        for (i = 0; i < d.length; i += 4) {
+          pr = d[i]; pg = d[i + 1]; pb = d[i + 2];
+          if (useM) { d[i] = M[0] * pr + M[1] * pg + M[2] * pb + rOff; d[i + 1] = M[3] * pr + M[4] * pg + M[5] * pb + gOff; d[i + 2] = M[6] * pr + M[7] * pg + M[8] * pb + uOff; }
+          else { d[i] = pr + rOff; d[i + 1] = pg + gOff; d[i + 2] = pb + uOff; }   // Uint8ClampedArray clamps + rounds
+        }
         ctx.putImageData(img, 0, 0);
         return c;
       }
@@ -36868,8 +36951,39 @@
         }
       }
 
-      function zeroAdj() { return { brightness: 0, red: 0, green: 0, blue: 0 }; }
-      function adjIsSet(a) { return !!(a && (a.brightness || a.red || a.green || a.blue)); }
+      // Mac: the driver's paper / media / quality choices shown inside the app (macOS has no Windows-style preferences window).
+      function pbCupsOptionsUI(box, name, options) {
+        var pri = ['PageSize', 'MediaType', 'Resolution', 'cupsPrintQuality', 'ColorModel', 'print-color-mode', 'InputSlot'];
+        var rank = function (o) { var i = pri.indexOf(o.key); return i < 0 ? 99 : i; };
+        var list = options.slice().sort(function (a, b) { return rank(a) - rank(b); }), changed = {};
+        box.textContent = ''; box.style.display = 'block';
+        var h = document.createElement('div'); h.style.cssText = 'font-weight:700;margin-bottom:6px;'; h.textContent = 'Printer settings for ' + name; box.appendChild(h);
+        var more = document.createElement('details'), ms = document.createElement('summary'); ms.textContent = 'More options'; ms.style.cssText = 'cursor:pointer;margin-top:6px;'; more.appendChild(ms);
+        list.forEach(function (o) {
+          var row = document.createElement('label'); row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0;font-size:12.5px;';
+          var t = document.createElement('span'); t.textContent = o.label || o.key;
+          var sel = document.createElement('select'); sel.style.cssText = 'padding:4px 6px;border-radius:6px;border:1px solid var(--line);max-width:55%;';
+          o.choices.forEach(function (c) { var op = document.createElement('option'); op.value = c.value; op.textContent = c.value; if (c.selected) op.selected = true; sel.appendChild(op); });
+          sel.addEventListener('change', function () { changed[o.key] = sel.value; });
+          row.append(t, sel); (rank(o) < 99 ? box : more).appendChild(row);
+        });
+        if (more.children.length > 1) box.appendChild(more);
+        var save = document.createElement('button'); save.type = 'button'; save.className = 'action-btn'; save.style.cssText = 'width:auto;margin:8px 0 0;'; save.textContent = 'Save printer settings';
+        var note = document.createElement('p'); note.className = 'panel-hint'; note.style.cssText = 'margin:6px 0 0;font-size:11.5px;'; note.textContent = 'Set the paper that is loaded (e.g. 4x6 / Postcard), the media type (Glossy photo paper) and Quality = High. The booth still picks the page size for each print.';
+        save.addEventListener('click', async function () {
+          if (!Object.keys(changed).length) { showToast('Nothing changed.', 2000); return; }
+          save.disabled = true;
+          try {
+            var rr = await fetch(HELPER_URL + '/printer/options', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name, options: changed }) });
+            var jj = await rr.json(); if (!rr.ok || !jj.ok) throw new Error(jj.error || 'Could not save');
+            changed = {}; showToast('Printer settings saved.', 2500);
+          } catch (e) { showToast('Could not save printer settings: ' + (e.message || e), 4000); }
+          finally { save.disabled = false; }
+        });
+        box.append(save, note);
+      }
+      function zeroAdj() { return { brightness: 0, red: 0, green: 0, blue: 0, hue: 0, sat: 0 }; }
+      function adjIsSet(a) { return !!(a && (a.brightness || a.red || a.green || a.blue || a.hue || a.sat)); }
       function adjSummary(a) {
         if (!adjIsSet(a)) return 'No adjustments';
         var s = [], sg = function (n) { return (n > 0 ? '+' : '') + n; };
@@ -36877,6 +36991,8 @@
         if (a.red) s.push('R ' + sg(a.red));
         if (a.green) s.push('G ' + sg(a.green));
         if (a.blue) s.push('B ' + sg(a.blue));
+        if (a.hue) s.push('Hue ' + sg(a.hue));
+        if (a.sat) s.push('Sat ' + sg(a.sat));
         return s.join(', ');
       }
 
@@ -36985,6 +37101,8 @@
         set('sliderAdjRed', 'valAdjRed', a.red);
         set('sliderAdjGreen', 'valAdjGreen', a.green);
         set('sliderAdjBlue', 'valAdjBlue', a.blue);
+        set('sliderAdjHue', 'valAdjHue', a.hue);
+        set('sliderAdjSat', 'valAdjSat', a.sat);
         var sub = document.getElementById('colorAdjSub'), dot = document.getElementById('colorAdjDot');
         if (sub) sub.textContent = adjSummary(a);
         if (dot) dot.hidden = !adjIsSet(a);
@@ -37027,18 +37145,60 @@
         if (viewingLive()) liveRefresh();
         if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
       }
+      // Named colour presets (kept on this device). Pick one to apply its values to the printer being edited.
+      var COLOR_PRESET_KEY = 'pb_color_presets';
+      function loadColorPresets() { try { var a = JSON.parse(localStorage.getItem(COLOR_PRESET_KEY) || '[]'); return Array.isArray(a) ? a.filter(function (p) { return p && p.name && p.adj; }) : []; } catch (e) { return []; } }
+      function storeColorPresets(a) { try { localStorage.setItem(COLOR_PRESET_KEY, JSON.stringify(a.slice(0, 30))); } catch (e) { } }
+      function colorPresetLabel(p) { return p.name + ' (' + adjSummary(Object.assign(zeroAdj(), p.adj)) + ')'; }
+      function renderColorPresets(selectName) {
+        var sel = document.getElementById('colorPresetSel'); if (!sel) return;
+        var list = loadColorPresets(); sel.innerHTML = '';
+        var first = document.createElement('option'); first.value = ''; first.textContent = list.length ? 'Apply a saved preset\u2026' : 'No saved presets yet'; sel.appendChild(first);
+        list.forEach(function (p) { var o = document.createElement('option'); o.value = p.name; o.textContent = colorPresetLabel(p); sel.appendChild(o); });
+        if (selectName) sel.value = selectName;
+      }
+      function setupColorPresetListeners() {
+        var nameEl = document.getElementById('colorPresetName'), sel = document.getElementById('colorPresetSel'), note = document.getElementById('colorPresetNote');
+        var say = function (t) { if (note) note.textContent = t; };
+        renderColorPresets();
+        var save = document.getElementById('btnSaveColorPreset');
+        if (save) save.addEventListener('click', function () {
+          var name = (nameEl.value || '').trim().slice(0, 40);
+          if (!name) { say('Type a name for the preset first.'); return; }
+          var a = Object.assign(zeroAdj(), viewAdj());
+          if (!adjIsSet(a)) { say('Adjust the colours first, then save.'); return; }
+          var list = loadColorPresets().filter(function (p) { return p.name.toLowerCase() !== name.toLowerCase(); });   // same name = replaced
+          list.unshift({ name: name, adj: a }); storeColorPresets(list);
+          nameEl.value = ''; renderColorPresets(name); say('Saved preset \u201c' + name + '\u201d.');
+        });
+        if (sel) sel.addEventListener('change', function () {
+          var p = loadColorPresets().filter(function (x) { return x.name === sel.value; })[0];
+          if (!p) return;
+          commitViewAdj(p.adj); say('Applied \u201c' + p.name + '\u201d.');
+        });
+        var del = document.getElementById('btnDelColorPreset');
+        if (del) del.addEventListener('click', function () {
+          if (!sel || !sel.value) { say('Pick a preset to delete.'); return; }
+          var gone = sel.value; storeColorPresets(loadColorPresets().filter(function (p) { return p.name !== gone; }));
+          renderColorPresets(); say('Deleted \u201c' + gone + '\u201d.');
+        });
+      }
       function setupColorAdjListeners() {
+        setupColorPresetListeners();
         var sB = document.getElementById('sliderAdjBrightness');
         var sR = document.getElementById('sliderAdjRed');
         var sG = document.getElementById('sliderAdjGreen');
         var sU = document.getElementById('sliderAdjBlue');
+        var sH = document.getElementById('sliderAdjHue');
+        var sS = document.getElementById('sliderAdjSat');
         var onInput = function () {
           commitViewAdj({
             brightness: parseInt(sB.value, 10) || 0, red: parseInt(sR.value, 10) || 0,
-            green: parseInt(sG.value, 10) || 0, blue: parseInt(sU.value, 10) || 0
+            green: parseInt(sG.value, 10) || 0, blue: parseInt(sU.value, 10) || 0,
+            hue: sH ? parseInt(sH.value, 10) || 0 : 0, sat: sS ? parseInt(sS.value, 10) || 0 : 0
           });
         };
-        [sB, sR, sG, sU].forEach(function (el) {
+        [sB, sR, sG, sU, sH, sS].forEach(function (el) {
           if (el) { el.addEventListener('input', onInput); el.addEventListener('change', onInput); }
         });
         var btnReset = document.getElementById('btnResetColorAdj');
@@ -45245,6 +45405,46 @@
         }
       }
 
+      var WELCOME_PALETTES = {
+        'charm-pink': { name: 'Charm Blush & Navy', cardBg: '#ffffff', fontColor: '#111827', btnColor: '#F28DA0', decoPrimary: '#1C233C', decoSecondary: '#F28DA0', decoAccent: '#DDA59A' },
+        'sweet-berry': { name: 'Sweet Berry', cardBg: '#FFF5F8', fontColor: '#3B1E2B', btnColor: '#E11D48', decoPrimary: '#4A1525', decoSecondary: '#F472B6', decoAccent: '#FDA4AF' },
+        'matcha': { name: 'Matcha & Cream', cardBg: '#FAF8F5', fontColor: '#1C2E24', btnColor: '#4A7C59', decoPrimary: '#2D4A3E', decoSecondary: '#86B294', decoAccent: '#D8E2DC' },
+        'midnight-gold': { name: 'Midnight Gold', cardBg: '#18181B', fontColor: '#FFFFFF', btnColor: '#D4AF37', decoPrimary: '#0F0F12', decoSecondary: '#D4AF37', decoAccent: '#F5E6AB' },
+        'lilac': { name: 'Lilac Dream', cardBg: '#FAF5FF', fontColor: '#2E1065', btnColor: '#9333EA', decoPrimary: '#3B0764', decoSecondary: '#C084FC', decoAccent: '#E9D5FF' },
+        'peach': { name: 'Peach Sunset', cardBg: '#FFF7ED', fontColor: '#431407', btnColor: '#F97316', decoPrimary: '#7C2D12', decoSecondary: '#FB923C', decoAccent: '#FED7AA' },
+        'monochrome': { name: 'Studio Monochrome', cardBg: '#FFFFFF', fontColor: '#111827', btnColor: '#111827', decoPrimary: '#111827', decoSecondary: '#4B5563', decoAccent: '#9CA3AF' }
+      };
+
+      function setWelcomePaletteUI(palKey) {
+        welcomePalette = palKey || 'charm-pink';
+        var pal = WELCOME_PALETTES[welcomePalette];
+        if (pal) {
+          welcomeCardBg = pal.cardBg;
+          welcomeCardFontColor = pal.fontColor;
+          welcomeBtnColor = pal.btnColor;
+          if (typeof setWelcomeCardBgUI === 'function') setWelcomeCardBgUI(welcomeCardBg);
+          if (typeof setWelcomeCardFontColorUI === 'function') setWelcomeCardFontColorUI(welcomeCardFontColor);
+          if (typeof setWelcomeBtnColorUI === 'function') setWelcomeBtnColorUI(welcomeBtnColor);
+        }
+        var chips = document.getElementById('welcomePaletteChips');
+        if (chips) {
+          [].forEach.call(chips.querySelectorAll('.chip'), function (c) {
+            c.classList.toggle('active', c.dataset.palette === welcomePalette);
+          });
+        }
+      }
+
+      function setWelcomeDecoStyleUI(dec) {
+        var valid = ['none', 'ribbon-waves', 'aurora-sparkles', 'coquette-stitch', 'pop-retro', 'scrapbook-doodle', 'theatre-curtains'];
+        welcomeDecoStyle = valid.indexOf(dec) !== -1 ? dec : 'none';
+        var chips = document.getElementById('welcomeDecoStyleChips');
+        if (chips) {
+          [].forEach.call(chips.querySelectorAll('.chip'), function (c) {
+            c.classList.toggle('active', c.dataset.deco === welcomeDecoStyle);
+          });
+        }
+      }
+
       var welcomeSampleChips = document.getElementById('welcomeSampleChips');
       if (welcomeSampleChips) {
         welcomeSampleChips.addEventListener('click', function (e) {
@@ -45302,6 +45502,24 @@
         welcomeStepStyleChips.addEventListener('click', function (e) {
           var b = e.target.closest('[data-step-style]'); if (!b) return;
           setWelcomeStepStyleUI(b.dataset.stepStyle);
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      var welcomeDecoStyleChips = document.getElementById('welcomeDecoStyleChips');
+      if (welcomeDecoStyleChips) {
+        welcomeDecoStyleChips.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-deco]'); if (!b) return;
+          setWelcomeDecoStyleUI(b.dataset.deco);
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      var welcomePaletteChips = document.getElementById('welcomePaletteChips');
+      if (welcomePaletteChips) {
+        welcomePaletteChips.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-palette]'); if (!b) return;
+          setWelcomePaletteUI(b.dataset.palette);
           scheduleWelcomeRender();
           if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
         });
@@ -45888,6 +46106,111 @@
           vg.addColorStop(0, 'rgba(28,26,30,0)'); vg.addColorStop(1, 'rgba(28,26,30,.42)');
           ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
 
+          // Optional Background Aura & Aesthetics
+          var pal = (typeof WELCOME_PALETTES !== 'undefined' && WELCOME_PALETTES[welcomePalette]) || (typeof WELCOME_PALETTES !== 'undefined' ? WELCOME_PALETTES['charm-pink'] : { decoPrimary: '#1C233C', decoSecondary: '#F28DA0', decoAccent: '#DDA59A' });
+          var decoPrimary = pal.decoPrimary || '#1C233C';
+          var decoSecondary = pal.decoSecondary || '#F28DA0';
+          var decoAccent = pal.decoAccent || '#DDA59A';
+
+          if (welcomeDecoStyle === 'aurora-sparkles') {
+            var aura = ctx.createLinearGradient(0, 0, W, H);
+            aura.addColorStop(0, '#FFE8F0');
+            aura.addColorStop(0.5, '#F3E8FF');
+            aura.addColorStop(1, '#FFF2EA');
+            ctx.fillStyle = aura;
+            ctx.fillRect(0, 0, W, H);
+          } else if (welcomeDecoStyle === 'ribbon-waves') {
+            ctx.save();
+            // Top-Left Wave
+            ctx.fillStyle = decoPrimary;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, H * 0.32);
+            ctx.bezierCurveTo(W * 0.08, H * 0.22, W * 0.18, H * 0.08, W * 0.40, 0);
+            ctx.closePath(); ctx.fill();
+
+            ctx.fillStyle = decoSecondary;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, H * 0.46);
+            ctx.bezierCurveTo(W * 0.06, H * 0.32, W * 0.18, H * 0.16, W * 0.34, 0);
+            ctx.closePath(); ctx.fill();
+
+            ctx.strokeStyle = decoAccent;
+            ctx.lineWidth = Math.max(2.5, Math.round(W * 0.0025));
+            ctx.beginPath(); ctx.moveTo(0, H * 0.50);
+            ctx.bezierCurveTo(W * 0.08, H * 0.36, W * 0.22, H * 0.18, W * 0.38, 0);
+            ctx.stroke();
+
+            ctx.strokeStyle = decoSecondary; ctx.globalAlpha = 0.55;
+            ctx.lineWidth = Math.max(1.5, Math.round(W * 0.0018));
+            ctx.beginPath(); ctx.moveTo(0, H * 0.54);
+            ctx.bezierCurveTo(W * 0.06, H * 0.46, W * 0.18, H * 0.44, W * 0.22, H * 0.56);
+            ctx.stroke();
+
+            // Bottom-Right Wave
+            ctx.globalAlpha = 1.0;
+            ctx.fillStyle = decoPrimary;
+            ctx.beginPath(); ctx.moveTo(W, H); ctx.lineTo(W * 0.60, H);
+            ctx.bezierCurveTo(W * 0.82, H * 0.92, W * 0.92, H * 0.78, W, H * 0.70);
+            ctx.closePath(); ctx.fill();
+
+            ctx.fillStyle = decoSecondary;
+            ctx.beginPath(); ctx.moveTo(W, H); ctx.lineTo(W * 0.66, H);
+            ctx.bezierCurveTo(W * 0.80, H * 0.84, W * 0.94, H * 0.68, W, H * 0.54);
+            ctx.closePath(); ctx.fill();
+
+            ctx.strokeStyle = decoAccent;
+            ctx.lineWidth = Math.max(2.5, Math.round(W * 0.0025));
+            ctx.beginPath(); ctx.moveTo(W * 0.62, H);
+            ctx.bezierCurveTo(W * 0.76, H * 0.80, W * 0.92, H * 0.64, W, H * 0.50);
+            ctx.stroke();
+
+            // Curls
+            ctx.strokeStyle = decoSecondary; ctx.globalAlpha = 0.55;
+            ctx.lineWidth = Math.max(1.5, Math.round(W * 0.0018));
+            ctx.beginPath(); ctx.moveTo(W * 0.12, H * 0.88);
+            ctx.bezierCurveTo(W * 0.20, H * 0.96, W * 0.40, H * 0.94, W * 0.52, H);
+            ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(W * 0.74, 0);
+            ctx.bezierCurveTo(W * 0.82, H * 0.12, W * 0.94, H * 0.18, W, H * 0.16);
+            ctx.stroke();
+
+            // Sparkle stars
+            ctx.globalAlpha = 1.0;
+            var drawStar = function (cx, cy, ro, ri, col) {
+              ctx.save(); ctx.fillStyle = col; ctx.beginPath();
+              for (var si = 0; si < 8; si++) {
+                var sa = si * Math.PI / 4, sr = (si % 2 === 0) ? ro : ri;
+                var spx = cx + sr * Math.cos(sa), spy = cy + sr * Math.sin(sa);
+                if (si === 0) ctx.moveTo(spx, spy); else ctx.lineTo(spx, spy);
+              }
+              ctx.closePath(); ctx.fill(); ctx.restore();
+            };
+            drawStar(W * 0.14, H * 0.32, 18, 5, decoSecondary);
+            drawStar(W * 0.10, H * 0.37, 10, 3, decoAccent);
+            drawStar(W * 0.88, H * 0.22, 20, 6, decoPrimary);
+            drawStar(W * 0.92, H * 0.28, 10, 3, decoSecondary);
+            drawStar(W * 0.84, H * 0.80, 18, 5, decoPrimary);
+            drawStar(W * 0.80, H * 0.85, 9, 3, decoSecondary);
+            ctx.restore();
+          } else if (welcomeDecoStyle === 'theatre-curtains') {
+            ctx.save();
+            var cwLeft = Math.round(W * 0.16);
+            var gL = ctx.createLinearGradient(0, 0, cwLeft, 0);
+            gL.addColorStop(0, '#B91C1C'); gL.addColorStop(0.5, '#DC2626'); gL.addColorStop(1, '#991B1B');
+            ctx.fillStyle = gL;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(cwLeft, 0);
+            ctx.bezierCurveTo(cwLeft * 0.7, H * 0.45, cwLeft * 0.4, H * 0.55, cwLeft * 0.9, H);
+            ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#D4AF37'; ctx.fillRect(cwLeft * 0.35, H * 0.48, cwLeft * 0.30, 14);
+
+            var gR = ctx.createLinearGradient(W - cwLeft, 0, W, 0);
+            gR.addColorStop(0, '#991B1B'); gR.addColorStop(0.5, '#DC2626'); gR.addColorStop(1, '#B91C1C');
+            ctx.fillStyle = gR;
+            ctx.beginPath(); ctx.moveTo(W, 0); ctx.lineTo(W - cwLeft, 0);
+            ctx.bezierCurveTo(W - cwLeft * 0.7, H * 0.45, W - cwLeft * 0.4, H * 0.55, W - cwLeft * 0.9, H);
+            ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#D4AF37'; ctx.fillRect(W - cwLeft * 0.65, H * 0.48, cwLeft * 0.30, 14);
+            ctx.restore();
+          }
+
           // Sample print of their layout (drawn people, never a real guest's photo)
           var showSample = welcomeSampleOn !== false;
           var sample = null;
@@ -46044,6 +46367,14 @@
 
           // Draw branded details card (trendy aesthetic styling with soft shadow and subtle border)
           var cardRadius = Number(welcomeCardRadius) || 32;
+          if (welcomeDecoStyle === 'pop-retro') {
+            ctx.save();
+            ctx.fillStyle = decoSecondary || '#F28DA0';
+            roundRectPath(ctx, cx + 14, cy + 14, cw, ch, cardRadius);
+            ctx.fill();
+            ctx.lineWidth = 3; ctx.strokeStyle = '#18181B'; ctx.stroke();
+            ctx.restore();
+          }
           ctx.save();
           if (isDarkCard) {
             ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 54; ctx.shadowOffsetY = 18;
@@ -46053,6 +46384,24 @@
           roundRectPath(ctx, cx, cy, cw, ch, cardRadius);
           ctx.globalAlpha = isGlass ? 0.84 : 0.98; ctx.fillStyle = fillCardColor; ctx.fill();
           ctx.restore();
+
+          if (welcomeDecoStyle === 'coquette-stitch') {
+            ctx.save();
+            ctx.strokeStyle = decoSecondary || '#F28DA0';
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([10, 8]);
+            roundRectPath(ctx, cx + 14, cy + 14, cw - 28, ch - 28, Math.max(12, cardRadius - 8));
+            ctx.stroke();
+            ctx.restore();
+          }
+          if (welcomeDecoStyle === 'scrapbook-doodle') {
+            ctx.save();
+            ctx.fillStyle = 'rgba(242, 141, 160, 0.75)';
+            ctx.translate(cx + cw / 2, cy);
+            ctx.rotate(-4 * Math.PI / 180);
+            ctx.fillRect(-70, -14, 140, 28);
+            ctx.restore();
+          }
 
           ctx.save();
           roundRectPath(ctx, cx, cy, cw, ch, cardRadius);
@@ -46076,6 +46425,17 @@
           var ts = fitFont(ctx, cardTitle, cardFont, box.titleSize || (land ? 96 : 78), cw - 70, 32);
           ctx.font = fontString(cardFont, ts);
           ctx.fillText(cardTitle, mid, yy);
+          if (welcomeDecoStyle === 'ribbon-waves' || welcomeDecoStyle === 'scrapbook-doodle') {
+            ctx.save();
+            ctx.strokeStyle = decoSecondary || '#F28DA0';
+            ctx.lineWidth = Math.max(3, Math.round(W * 0.0028));
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(mid - 110, yy + 14);
+            ctx.bezierCurveTo(mid - 40, yy + 26, mid + 50, yy + 16, mid + 110, yy + 18);
+            ctx.stroke();
+            ctx.restore();
+          }
           if (cardSub) { yy += land ? 54 : 40; ctx.fillStyle = soft; ctx.font = fontString(cardSubFont, land ? 38 : 28); ctx.fillText(cardSub, mid, yy); }
 
           if (showSteps && steps.length) {
@@ -50231,6 +50591,8 @@
           welcomeCardFontColor: welcomeCardFontColor || '',
           welcomeCardRadius: welcomeCardRadius || 32,
           welcomeStepStyle: welcomeStepStyle || 'numbers',
+          welcomeDecoStyle: welcomeDecoStyle || 'none',
+          welcomePalette: welcomePalette || 'charm-pink',
           welcomeCustomOn: welcomeCustomOn,
           welcomeGreeting: welcomeGreeting,
           welcomeTitle: welcomeTitle,
@@ -50359,7 +50721,9 @@
               brightness: Math.max(-100, Math.min(100, Number(s.colorAdj.brightness) || 0)),
               red: Math.max(-100, Math.min(100, Number(s.colorAdj.red) || 0)),
               green: Math.max(-100, Math.min(100, Number(s.colorAdj.green) || 0)),
-              blue: Math.max(-100, Math.min(100, Number(s.colorAdj.blue) || 0))
+              blue: Math.max(-100, Math.min(100, Number(s.colorAdj.blue) || 0)),
+              hue: Math.max(-100, Math.min(100, Number(s.colorAdj.hue) || 0)),
+              sat: Math.max(-100, Math.min(100, Number(s.colorAdj.sat) || 0))
             };
             window._colorAdj = colorAdj;
             if (typeof updateColorAdjUI === 'function') updateColorAdjUI();
@@ -50457,6 +50821,14 @@
           if (typeof s.welcomeStepStyle === 'string') {
             if (typeof setWelcomeStepStyleUI === 'function') setWelcomeStepStyleUI(s.welcomeStepStyle);
             else welcomeStepStyle = s.welcomeStepStyle;
+          }
+          if (typeof s.welcomeDecoStyle === 'string') {
+            if (typeof setWelcomeDecoStyleUI === 'function') setWelcomeDecoStyleUI(s.welcomeDecoStyle);
+            else welcomeDecoStyle = s.welcomeDecoStyle;
+          }
+          if (typeof s.welcomePalette === 'string') {
+            if (typeof setWelcomePaletteUI === 'function') setWelcomePaletteUI(s.welcomePalette);
+            else welcomePalette = s.welcomePalette;
           }
           if (typeof s.welcomeCustomOn === 'boolean') {
             welcomeCustomOn = s.welcomeCustomOn;
@@ -50794,6 +51166,12 @@
             if (sfFresh && typeof scOffer === 'boolean') {
               setWelcomeSampleUI(!scOffer);
             }
+            if (sfFresh && j.startDeco) {
+              setWelcomeDecoStyleUI(j.startDeco);
+            }
+            if (sfFresh && j.startPalette) {
+              setWelcomePaletteUI(j.startPalette);
+            }
             var isCharm = /charm/i.test((snOffer || '') + ' ' + (labelInput.value || '') + ' ' + ((window.__PB && window.__PB.label) || ''));
             if (isCharm) {
               welcomeSampleOn = false;
@@ -50809,10 +51187,14 @@
                 if (typeof setWelcomeCardRadiusUI === 'function') setWelcomeCardRadiusUI(32);
                 welcomeStepStyle = 'numbers';
                 if (typeof setWelcomeStepStyleUI === 'function') setWelcomeStepStyleUI('numbers');
+                welcomeDecoStyle = 'ribbon-waves';
+                if (typeof setWelcomeDecoStyleUI === 'function') setWelcomeDecoStyleUI('ribbon-waves');
+                welcomePalette = 'charm-pink';
+                if (typeof setWelcomePaletteUI === 'function') setWelcomePaletteUI('charm-pink');
                 welcomeFont = "'Dancing Script', cursive";
                 if (typeof selectWelcomeFontUI === 'function') selectWelcomeFontUI(welcomeFont);
                 welcomeGreeting = 'Welcome to';
-                welcomeTitle = snOffer || 'Charm Up PH';
+                welcomeTitle = snOffer || 'Charm Up';
                 welcomeCustomOn = true;
                 if (welcomeGreetingInput) welcomeGreetingInput.value = 'Welcome to';
                 if (welcomeTitleInput) welcomeTitleInput.value = welcomeTitle;
@@ -50890,13 +51272,17 @@
             if (typeof setWelcomeCardRadiusUI === 'function') setWelcomeCardRadiusUI(32);
             welcomeStepStyle = 'numbers';
             if (typeof setWelcomeStepStyleUI === 'function') setWelcomeStepStyleUI('numbers');
+            welcomeDecoStyle = 'ribbon-waves';
+            if (typeof setWelcomeDecoStyleUI === 'function') setWelcomeDecoStyleUI('ribbon-waves');
+            welcomePalette = 'charm-pink';
+            if (typeof setWelcomePaletteUI === 'function') setWelcomePaletteUI('charm-pink');
             welcomeFont = "'Dancing Script', cursive";
             if (typeof selectWelcomeFontUI === 'function') selectWelcomeFontUI(welcomeFont);
             welcomeGreeting = 'Welcome to';
-            welcomeTitle = 'Charm Up PH';
+            welcomeTitle = 'Charm Up';
             welcomeCustomOn = true;
             if (welcomeGreetingInput) welcomeGreetingInput.value = 'Welcome to';
-            if (welcomeTitleInput) welcomeTitleInput.value = 'Charm Up PH';
+            if (welcomeTitleInput) welcomeTitleInput.value = 'Charm Up';
           }
           if (typeof syncBrandUI === 'function') syncBrandUI();
           if (typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
@@ -50964,7 +51350,7 @@
       // style; everything can still be fine-tuned afterwards.
       var THEME_CATS = ['All', 'Receipt', 'Wedding', 'Birthday', 'Debut', 'Kids Party', 'Baby Shower', 'Graduation', 'Christening', 'Christmas', 'New Year', 'Summer', 'Anniversary', 'Prom', 'Corporate'];
       var THEMES = [
-        { id: 'charm-up-ph', name: 'Charm Up PH (Cute Aesthetic)', cats: ['Birthday', 'Debut', 'Wedding', 'Corporate'], tags: 'charm up ph blush pink cute aesthetic pastel ribbon chic', preset: 'blush', color: '#FFF5F7', frame: '#ffffff', text: '#111827', font: "'Dancing Script', cursive", dateFont: "'Quicksand', sans-serif", titleBg: false, welcomeSampleOn: false, welcomeCardBg: '#ffffff', welcomeCardFontColor: '#111827', welcomeBtnColor: '#F28DA0', welcomeFont: "'Dancing Script', cursive" },
+        { id: 'charm-up', name: 'Charm Up (Cute Aesthetic)', cats: ['Birthday', 'Debut', 'Wedding', 'Corporate'], tags: 'charm up blush pink cute aesthetic pastel ribbon chic', preset: 'blush', color: '#FFF5F7', frame: '#ffffff', text: '#111827', font: "'Dancing Script', cursive", dateFont: "'Quicksand', sans-serif", titleBg: false, welcomeSampleOn: false, welcomeCardBg: '#ffffff', welcomeCardFontColor: '#111827', welcomeBtnColor: '#F28DA0', welcomeFont: "'Dancing Script', cursive", welcomeDecoStyle: 'ribbon-waves', welcomePalette: 'charm-pink' },
         { id: 'cafe-receipt', name: 'Classic Cafe Receipt', cats: ['Receipt', 'Corporate'], tags: 'receipt thermal coffee cafe minimalist b&w retro barcode pos', layout: 'receipt', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Courier New', monospace", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'COFFEE & GOOD VIBES' },
         { id: 'wedding-receipt', name: 'Wedding Love Receipt', cats: ['Receipt', 'Wedding'], tags: 'receipt thermal wedding love eternal vows couple the wedding of', layout: 'receipt', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Cinzel', serif", dateFont: "'Cinzel', serif", titleStyle: 'wedding', kicker: 'The wedding of' },
         { id: 'cinema-ticket', name: 'Vintage Cinema Ticket', cats: ['Receipt', 'Birthday', 'Corporate'], tags: 'receipt thermal ticket admit one retro movie cinema barcode 1 shot', layout: 'receipt1', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Courier New', monospace", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'ADMIT ONE · VIP ACCESS' },
@@ -51301,6 +51687,8 @@
         if (t.welcomeFont && typeof selectWelcomeFontUI === 'function') selectWelcomeFontUI(t.welcomeFont);
         if (t.welcomeCardRadius && typeof setWelcomeCardRadiusUI === 'function') setWelcomeCardRadiusUI(t.welcomeCardRadius);
         if (t.welcomeStepStyle && typeof setWelcomeStepStyleUI === 'function') setWelcomeStepStyleUI(t.welcomeStepStyle);
+        if (t.welcomeDecoStyle && typeof setWelcomeDecoStyleUI === 'function') setWelcomeDecoStyleUI(t.welcomeDecoStyle);
+        if (t.welcomePalette && typeof setWelcomePaletteUI === 'function') setWelcomePaletteUI(t.welcomePalette);
         refreshTitleUI();
         // opts.layout: the layout picked in the design preview (keep mine / the design's); else the design's own.
         var tl = opts && opts.layout !== undefined ? opts.layout : (t.layout && LAYOUT_DEFS[t.layout] ? t.layout : null);

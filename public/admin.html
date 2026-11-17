@@ -1928,7 +1928,9 @@
             '<input type="file" class="hidden" accept="image/png,image/jpeg,image/webp" data-slogo-for="' + c + '">' +
             '&nbsp; Client name <button class="small" data-a="sname" data-c="' + c + '" title="Pre-set event or client brand name (client can still change it in Setup).">' + (l.startName ? esc(l.startName) + ' &middot; change' : 'Set name') + '</button>' +
             (l.startName ? '<button class="small" data-a="snameoff" data-c="' + c + '">Clear</button>' : '') +
-            '&nbsp; Welcome card <button class="small" data-a="scard" data-c="' + c + '" title="Toggle starting welcome card look: Card only (Centered) or With photo strip sample">' + (l.startCardOnly ? 'Card only' : 'With strip') + '</button>' + '</div>') +
+            '&nbsp; Welcome card <button class="small" data-a="scard" data-c="' + c + '" title="Toggle starting welcome card look: Card only (Centered) or With photo strip sample">' + (l.startCardOnly ? 'Card only' : 'With strip') + '</button>' +
+            '&nbsp; Decoration <button class="small" data-a="sdeco" data-c="' + c + '" title="Cycle starting decoration style (Waves, Aura, Coquette, Pop 3D, Scrapbook, Curtains, None)">' + esc(l.startDecoLabel || (l.startDeco === 'ribbon-waves' ? 'Waves' : (l.startDeco || 'Waves'))) + '</button>' +
+            '&nbsp; Palette <button class="small" data-a="spalette" data-c="' + c + '" title="Cycle starting color palette (Charm Blush, Sweet Berry, Matcha, Midnight Gold, Lilac, Peach, Monochrome)">' + esc(l.startPaletteLabel || (l.startPalette === 'charm-pink' ? 'Charm Blush' : (l.startPalette || 'Charm Blush'))) + '</button>' + '</div>') +
           '<div class="printbox hidden" data-print-edit></div>' +
           '<div class="printbox hidden" data-pay-box></div>' +
           '<div class="printbox hidden" data-offkey-box></div>' +
@@ -2122,6 +2124,28 @@
             var nextCardOnly = !(LIC[code] && LIC[code].startCardOnly);
             await api({ action: 'startcard', code: code, cardOnly: nextCardOnly });
             toast(nextCardOnly ? 'Starting card set to: Card only (Centered)' : 'Starting card set to: With photo strip');
+            refresh();
+            return;
+          }
+          if (a === 'sdeco') {
+            var order = ['Waves', 'Aura', 'Coquette', 'Pop 3D', 'Scrapbook', 'Curtains', 'None'];
+            var decoMap = { 'Waves': 'ribbon-waves', 'Aura': 'aurora-sparkles', 'Coquette': 'coquette-stitch', 'Pop 3D': 'pop-retro', 'Scrapbook': 'scrapbook-doodle', 'Curtains': 'theatre-curtains', 'None': 'none' };
+            var cur = LIC[code] && (LIC[code].startDecoLabel || 'Waves');
+            var idx = order.indexOf(cur);
+            var next = order[(idx + 1) % order.length];
+            await api({ action: 'startdeco', code: code, deco: decoMap[next], label: next });
+            toast('Starting decoration set to: ' + next);
+            refresh();
+            return;
+          }
+          if (a === 'spalette') {
+            var palOrder = ['Charm Blush', 'Sweet Berry', 'Matcha', 'Midnight Gold', 'Lilac', 'Peach', 'Monochrome'];
+            var palMap = { 'Charm Blush': 'charm-pink', 'Sweet Berry': 'sweet-berry', 'Matcha': 'matcha', 'Midnight Gold': 'midnight-gold', 'Lilac': 'lilac', 'Peach': 'peach', 'Monochrome': 'monochrome' };
+            var cur = LIC[code] && (LIC[code].startPaletteLabel || 'Charm Blush');
+            var idx = palOrder.indexOf(cur);
+            var next = palOrder[(idx + 1) % palOrder.length];
+            await api({ action: 'startpalette', code: code, palette: palMap[next], label: next });
+            toast('Starting palette set to: ' + next);
             refresh();
             return;
           }

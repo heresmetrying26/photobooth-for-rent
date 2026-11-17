@@ -286,6 +286,24 @@ export default safe(async (req, context) => {
       return json({ ok: true, startCardOnly: rec.startCardOnly });
     }
 
+    case 'startdeco': { // starting welcome decoration style
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      rec.startDeco = b.deco ? String(b.deco).slice(0, 30) : null;
+      rec.startDecoLabel = b.label ? String(b.label).slice(0, 30) : null;
+      await putLicense(store, key, rec);
+      return json({ ok: true, startDeco: rec.startDeco, startDecoLabel: rec.startDecoLabel });
+    }
+
+    case 'startpalette': { // starting welcome color palette
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      rec.startPalette = b.palette ? String(b.palette).slice(0, 30) : null;
+      rec.startPaletteLabel = b.label ? String(b.label).slice(0, 30) : null;
+      await putLicense(store, key, rec);
+      return json({ ok: true, startPalette: rec.startPalette, startPaletteLabel: rec.startPaletteLabel });
+    }
+
     case 'create': {
       const lifetime = !!b.lifetime;
       const days = lifetime ? (intIn(b.days, 1, 365) || 1) : intIn(b.days, 1, 365);

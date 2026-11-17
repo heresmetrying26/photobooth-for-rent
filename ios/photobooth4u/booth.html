@@ -23249,13 +23249,18 @@
       const webcamRes = (function () {
         let v = null; try { v = JSON.parse(localStorage.getItem(WEBCAM_RES_KEY) || 'null'); } catch (e) { }
         v = v || {};
+        // iPad app, once: Shot timing starts on Auto (it used to start Off), so every iPad that already saved a setting is
+        // moved to it too. After that the operator's own choice is kept.
+        if (IS_IOS_APP) {
+          try { if (!localStorage.getItem('pb4u.iosShotTimingV1')) { localStorage.setItem('pb4u.iosShotTimingV1', '1'); v.leadMs = 'auto'; } } catch (e) { }
+        }
         return {
           preview: (['auto', 'max', 'yuyv', '1080', '720', '480'].includes(v.preview) || /^x:\d+:\d+:\d+:\d+$/.test(String(v.preview))) ? v.preview : 'auto',
           photo: (['preview', 'max'].includes(v.photo)) ? v.photo : (IS_ANDROID_APP ? 'preview' : 'max'),
           // Shot timing: 'auto' = measure the camera's own delay and sync the photo to the "Pose" cue;
           // a number = take the photo that many ms earlier than "Pose + 0.6 s" (for cameras that capture late and blur).
-          // Auto is the default on the Android app only (tablets are where the lag is); everywhere else it is Off until the operator picks it.
-          leadMs: (v.leadMs === undefined || v.leadMs === null) ? (IS_ANDROID_APP ? 'auto' : 0) : v.leadMs === 'auto' ? 'auto' : Math.max(0, Math.min(1500, Math.round(Number(v.leadMs) / 50) * 50 || 0))
+          // Auto is the default on the Android and iPad apps (tablets are where the lag is); everywhere else it is Off until the operator picks it.
+          leadMs: (v.leadMs === undefined || v.leadMs === null) ? ((IS_ANDROID_APP || IS_IOS_APP) ? 'auto' : 0) : v.leadMs === 'auto' ? 'auto' : Math.max(0, Math.min(1500, Math.round(Number(v.leadMs) / 50) * 50 || 0))
         };
       })();
       function saveWebcamRes() { try { localStorage.setItem(WEBCAM_RES_KEY, JSON.stringify(webcamRes)); } catch (e) { } }
@@ -23505,7 +23510,7 @@
       }
       const shotTimingSel = document.getElementById('shotTimingSel');
       if (shotTimingSel) {
-        if (!Array.from(shotTimingSel.options).some(o => o.value === String(webcamRes.leadMs))) webcamRes.leadMs = IS_ANDROID_APP ? 'auto' : 0;
+        if (!Array.from(shotTimingSel.options).some(o => o.value === String(webcamRes.leadMs))) webcamRes.leadMs = (IS_ANDROID_APP || IS_IOS_APP) ? 'auto' : 0;
         shotTimingSel.value = String(webcamRes.leadMs);
         shotTimingSel.addEventListener('change', () => { webcamRes.leadMs = shotTimingSel.value === 'auto' ? 'auto' : (Number(shotTimingSel.value) || 0); saveWebcamRes(); showShotTimingNote(); });
         // Show what the app measured, so the operator can see it working on the real tablet.
@@ -23523,7 +23528,9 @@
               : 'The app learns this camera\'s delay from its first photo: take one test shot before the event so even guest #1 is on time. ') + shotTimingHint;
             return;
           }
-          const m = webcamRes.leadMs === 'auto'
+          const m = webcamRes.leadMs === 'auto' && IS_IOS_APP && camLat.length < 8
+            ? 'The iPad cannot measure its camera delay, so Auto assumes about ' + IOS_ASSUMED_DELAY_MS + ' ms: the photo waits that long after "Pose" so it shows the right moment. '
+            : webcamRes.leadMs === 'auto'
             ? (d > 0 ? 'Measured camera delay: about ' + d + ' ms. The photo waits that long after "Pose" so it shows the right moment. ' : 'This camera does not report its delay, so Auto does nothing here. Choose a time below if photos are blurred. ')
             : '';
           shotTimingNote.textContent = m + shotTimingHint;
@@ -23691,8 +23698,11 @@
       // How far behind the real scene the live picture is: the browser reports when the camera captured each frame, so
       // "now minus capture time" is the delay. Median of the latest frames; 0 until enough frames, or if the camera doesn't say.
       const camLat = [];
+      // Safari / the iPad app's web view does not tell the page when the camera took each picture, so the delay cannot be
+      // measured there. The iPad app assumes this fixed delay instead (a typical built-in camera + web view delay).
+      const IOS_ASSUMED_DELAY_MS = 200;
       function camDelayMs() {
-        if (camLat.length < 8) return 0;
+        if (camLat.length < 8) return IS_IOS_APP ? IOS_ASSUMED_DELAY_MS : 0;
         const s = camLat.slice().sort((a, b) => a - b);
         return Math.round(s[s.length >> 1]);
       }

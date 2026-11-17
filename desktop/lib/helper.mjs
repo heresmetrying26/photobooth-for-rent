@@ -10,6 +10,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { discoverNetworkPrinters, ippCaps, ippPrintDirect, pickMediaName } from './netprinters.mjs';
+import * as gopro from './cam-gopro.mjs';
 
 export const HELPER_VERSION = '1.1.11-app';
 const IS_WIN = platform() === 'win32';
@@ -37,7 +38,7 @@ function saveDirect() {
 }
 
 export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, directPrintersFile }) {
-  if (logger) log = logger;
+  if (logger) { log = logger; gopro.setLogger((m) => log('GoPro: ' + m)); }
   if (typeof shrink === 'function') shrinkPage = shrink;
   if (typeof jpeg === 'function') toJpeg = jpeg;
   if (directPrintersFile) { directFile = directPrintersFile; loadDirect(); }
@@ -867,8 +868,48 @@ async function camStart() {
   })().finally(() => { cam.starting = null; });
   return cam.starting;
 }
+// A GoPro (Open GoPro over USB or its Wi-Fi, lib/cam-gopro.mjs) answers the same commands as the DSLR camera part. A DSLR / mirrorless
+// camera is used when one is plugged in; the GoPro when that is the camera found. Windows can list a GoPro as a picture-transfer
+// device (MTP), so a device named like a GoPro never counts as a DSLR here.
+const isGoproDev = (d) => /gopro|\bhero\s?\d/i.test(String((d && d.name) || '') + ' ' + String((d && d.maker) || ''));
+const goproJson = (r) => { try { return r && r.status === 'OK' ? JSON.parse(r.body.toString('utf8')) : null; } catch { return null; } };
+const dslrPresent = (j) => !!(j && (j.open || (j.devices || []).some((d) => d.camera && !isGoproDev(d))));
+async function camDispatch(cmd, arg, timeoutMs) {
+  if (cmd === 'diag') return camRaw(cmd, arg, timeoutMs);
+  if (gopro.isOpen()) {
+    if (cmd === 'open' && /\brecover\b/.test(arg || '')) await gopro.reset();   // the booth lost the picture: connect again from scratch
+    else return gopro.call(cmd, arg);
+  }
+  if (cmd === 'list') {
+    let r = null;
+    let rawErr = null;
+    try { r = await camRaw(cmd, arg, timeoutMs); } catch (e) { rawErr = e; }   // the DSLR part failed: a GoPro may still be there
+    const j = goproJson(r);
+    if (dslrPresent(j)) return r;
+    const g = await gopro.detect().catch(() => null);
+    if (!g) { if (r) return r; throw rawErr; }
+    const out = j || { devices: [] };
+    out.devices = (out.devices || []).filter((d) => !isGoproDev(d)).concat([{ name: g.name, maker: 'GoPro', camera: true, gopro: true }]);
+    return { status: 'OK', kind: 'J', body: Buffer.from(JSON.stringify(out), 'utf8'), flags: [] };
+  }
+  if (cmd === 'open') {
+    const g = await gopro.detect().catch(() => null);
+    if (g) {
+      let present = false;
+      try { present = dslrPresent(goproJson(await camRaw('list', '', 20000))); } catch { /* no DSLR part: the GoPro it is */ }
+      if (!present) return gopro.call('open', arg);
+    }
+  }
+  return camRaw(cmd, arg, timeoutMs);
+}
 function camCall(cmd, arg, timeoutMs) {
-  const job = cam.queue.then(async () => {
+  const job = cam.queue.then(() => camDispatch(cmd, arg, timeoutMs));
+  cam.queue = job.catch(() => { });
+  return job;
+}
+// The DSLR camera part: the in-app code on a Mac, the PowerShell worker on Windows.
+async function camRaw(cmd, arg, timeoutMs) {
+  {
     if (IS_MAC) return camCallMac(cmd, arg, timeoutMs);
     await camStart();
     const id = String(++cam.seq);
@@ -887,9 +928,7 @@ function camCall(cmd, arg, timeoutMs) {
       }
       throw e;
     } finally { clearTimeout(timer); }
-  });
-  cam.queue = job.catch(() => { });
-  return job;
+  }
 }
 // Mac: the same call, answered by the in-app Canon code instead of a separate worker program.
 async function camCallMac(cmd, arg, timeoutMs) {
@@ -1108,6 +1147,7 @@ export async function handleHelper(req, path, search) {
 }
 export function stopHelper() {
   try { cam.proc && cam.proc.kill(); } catch { /* gone */ }
+  gopro.reset().catch(() => { });
   if (macCamP) macCamP.then((m) => m.reset()).catch(() => { });
 }
 export const _helperTest = { pickPaper, sizeFromName, formatCapsLabel, PAPER_CACHE, CAPS_CACHE };

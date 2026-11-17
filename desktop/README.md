@@ -12,6 +12,7 @@ anything in this folder, and Netlify never builds it.
   the Windows helper (`lib/camera-mac.mjs`, `lib/cam-nikon.mjs`, `lib/cam-sony.mjs`; tests: `node test/fake-canon.mjs`,
   `node test/fake-nikon-sony.mjs`), and the app lets go of the camera macOS grabs when it is plugged in
   (`lib/camfree.mjs`: stops macOS' camera service and Image Capture, then the booth connects by itself). Webcams and HDMI capture as before.
+- **GoPro** (HERO9 Black and newer): through the Open GoPro API, no extra program. Plug it in with a USB-C data cable (it shows up as a network adapter, camera at `172.2X.1YZ.51`) or join the laptop to its Wi-Fi (`10.5.5.9`). `lib/cam-gopro.mjs` starts the camera's webcam mode (1080p, Linear lens), receives its UDP video in the app, and ffmpeg turns it into the live view; a photo is the first 1080p frame after the shutter. `lib/helper.mjs` uses it when no DSLR is plugged in. Test with a simulated camera: `node test/test-gopro.mjs`. The installer adds a Firewall rule for it (`photobooth4u GoPro`).
 - **Silent printing** to a named printer per paper size (built in; no Print Helper to install).
 - **Print an earlier photo**: on the laptop, *All photos* → a photo → *Print photo* prints it at once on the chosen printer
   (the gallery page asks the app; `printNowTake` / `printNowDone` hand the job to the booth). Laptop only, never a guest's phone.

@@ -2,7 +2,7 @@
 // mode: macOS can't see a camera at all" apart from "macOS sees it but the booth can't use it". Mac only; elsewhere it says so and does nothing.
 import { execFile } from 'node:child_process';
 
-const CAMERA_VENDORS = [0x054c, 0x04b0, 0x04a9, 0x04cb, 0x07b4, 0x04da, 0x0a17, 0x2e1a];   // Sony, Nikon, Canon, Fujifilm, Olympus, Panasonic, Pentax, Insta360
+const CAMERA_VENDORS = [0x054c, 0x04b0, 0x04a9, 0x04cb, 0x07b4, 0x04da, 0x0a17, 0x2e1a, 0x2672];   // Sony, Nikon, Canon, Fujifilm, Olympus, Panasonic, Pentax, Insta360, GoPro
 
 function run(bin, args, ms) {
   return new Promise((resolve) => {

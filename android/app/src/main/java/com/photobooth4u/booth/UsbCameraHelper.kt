@@ -52,6 +52,7 @@ class UsbCameraHelper(private val ctx: Context) {
         private const val VENDOR_CANON = 0x04a9
         private const val VENDOR_SONY = 0x054c
         private const val VENDOR_INSTA360 = 0x2e1a
+        private const val VENDOR_GOPRO = 0x2672   // a GoPro is driven over its network (see GoProCamera), never as a PTP camera
         private const val INSTA360_HINT = "Insta360: on the camera set the USB mode to Webcam (camera screen > Settings > USB mode), then unplug and replug it. The Camera menu will then list it as \"USB webcam\"."
         private val CAMERA_VENDORS = intArrayOf(VENDOR_NIKON, VENDOR_CANON, VENDOR_SONY, 0x04cb, 0x07b4, 0x04da, 0x0a17, 0x05ca)   // + Fujifilm, Olympus, Panasonic, Pentax, Ricoh
 
@@ -88,6 +89,7 @@ class UsbCameraHelper(private val ctx: Context) {
     private val usb = ctx.getSystemService(Context.USB_SERVICE) as UsbManager
     private val lock = Any()
     private val uvc = UvcWebcam(ctx)
+    private val gopro = GoProCamera(ctx)
     var printBridge: NetPrintBridge? = null
 
     // ---- the open camera (all guarded by lock) ----
@@ -164,6 +166,7 @@ class UsbCameraHelper(private val ctx: Context) {
         server = null
         synchronized(lock) { closeCamera() }
         uvc.release()
+        gopro.release()
     }
 
     private fun handle(s: Socket) {
@@ -253,17 +256,21 @@ class UsbCameraHelper(private val ctx: Context) {
             method == "POST" && path == "/printer/bluetooth" -> json(out, printerBluetoothJson())
             method == "GET" && path == "/printer/discover" -> json(out, printerDiscoverJson())
             method == "POST" && path == "/print" -> printJson(out, body)
-            method == "GET" && path == "/camera" -> json(out, listJson())
-            method == "POST" && path == "/camera/open" -> json(out, openCamera(query.contains("fresh=1")))
-            method == "POST" && path == "/camera/live" -> { setLive(!query.contains("on=0")); json(out, JSONObject()) }
+            method == "GET" && path == "/camera" -> json(out, listAny())
+            method == "POST" && path == "/camera/open" -> json(out, openAny(query.contains("fresh=1")))
+            method == "POST" && path == "/camera/live" -> {
+                val on = !query.contains("on=0")
+                if (gopro.isOpen()) goTry { gopro.live(on) } else setLive(on)
+                json(out, JSONObject())
+            }
             method == "GET" && path == "/camera/frame" -> {
-                val f = frame()
+                val f = if (gopro.isOpen()) goTry { gopro.frame() } else frame()
                 if (f == null) reply(out, 204, "image/jpeg", ByteArray(0)) else reply(out, 200, "image/jpeg", f)
             }
-            method == "POST" && path == "/camera/capture" -> reply(out, 200, "image/jpeg", capture())
-            method == "POST" && path == "/camera/af" -> json(out, autoFocus())
-            method == "GET" && path == "/camera/battery" -> json(out, JSONObject().put("battery", battery()))
-            method == "POST" && path == "/camera/close" -> { synchronized(lock) { closeCamera() }; json(out, JSONObject()) }
+            method == "POST" && path == "/camera/capture" -> reply(out, 200, "image/jpeg", if (gopro.isOpen()) goTry { gopro.capture() } else capture())
+            method == "POST" && path == "/camera/af" -> json(out, if (gopro.isOpen()) JSONObject() else autoFocus())   // a GoPro focuses by itself
+            method == "GET" && path == "/camera/battery" -> json(out, JSONObject().put("battery", if (gopro.isOpen()) gopro.batteryNow() else battery()))
+            method == "POST" && path == "/camera/close" -> { gopro.close(); synchronized(lock) { closeCamera() }; json(out, JSONObject()) }
             method == "POST" && path == "/camera/free" -> json(out, JSONObject())
             else -> reply(out, 404, "application/json", err("NOTFOUND", "Not found").toByteArray())
         }
@@ -282,8 +289,8 @@ class UsbCameraHelper(private val ctx: Context) {
         o.put("printers", printersArr)
         val camObj = JSONObject()
         camObj.put("supported", true)
-        camObj.put("open", conn != null)
-        camObj.put("name", dev?.let { it.productName ?: "Camera" } ?: "")
+        camObj.put("open", conn != null || gopro.isOpen())
+        camObj.put("name", if (gopro.isOpen()) gopro.name() else dev?.let { it.productName ?: "Camera" } ?: "")
         camObj.put("free", false)
         o.put("camera", camObj)
         return o
@@ -374,7 +381,48 @@ class UsbCameraHelper(private val ctx: Context) {
 
     /** A still-image (PTP) device; or a camera maker's device showing as a USB drive (Sony without PC Remote). */
     private fun isCamera(d: UsbDevice): Boolean =
-        hasInterfaceClass(d, 6) || (CAMERA_VENDORS.contains(d.vendorId) && hasInterfaceClass(d, 8))
+        d.vendorId != VENDOR_GOPRO && (hasInterfaceClass(d, 6) || (CAMERA_VENDORS.contains(d.vendorId) && hasInterfaceClass(d, 8)))
+
+    // ---- GoPro: used when no DSLR / mirrorless camera is plugged in (see GoProCamera) ----
+
+    private fun goErr(e: GoProCamera.GoErr): CamErr = CamErr(e.code, e.message ?: "GoPro problem")
+
+    private fun <T> goTry(f: () -> T): T = try { f() } catch (e: GoProCamera.GoErr) { throw goErr(e) }
+
+    private fun dslrPlugged(): Boolean {
+        if (synchronized(lock) { conn != null }) return true
+        for (d in usb.deviceList.values) if (isCamera(d)) return true
+        return false
+    }
+
+    /** The camera list: the USB cameras, plus the GoPro when it is the camera found. */
+    private fun listAny(): JSONObject {
+        val o = listJson()
+        if (gopro.isOpen()) {
+            val g = JSONObject().put("name", gopro.name()).put("maker", "GoPro").put("camera", true).put("gopro", true)
+            return JSONObject().put("devices", JSONArray().put(g)).put("open", true).put("name", gopro.name())
+        }
+        if (!dslrPlugged()) {
+            val f = try { gopro.detect() } catch (_: Exception) { null }
+            if (f != null) {
+                val arr = o.optJSONArray("devices") ?: JSONArray()
+                arr.put(JSONObject().put("name", f.name).put("maker", "GoPro").put("camera", true).put("gopro", true))
+                o.put("devices", arr)
+            }
+        }
+        return o
+    }
+
+    private fun openAny(fresh: Boolean): JSONObject {
+        if (gopro.isOpen()) {
+            if (fresh) gopro.close() else return goTry { gopro.open() }
+        }
+        if (!dslrPlugged()) {
+            val f = try { gopro.detect() } catch (_: Exception) { null }
+            if (f != null) return goTry { gopro.open() }
+        }
+        return openCamera(fresh)
+    }
 
     private fun listJson(): JSONObject {
         synchronized(lock) {

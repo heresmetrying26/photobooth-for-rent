@@ -52,8 +52,13 @@ class VoiceBridge: NSObject {
         utterance.pitchMultiplier = 1.02
         utterance.volume = max(0.05, min(1.0, volume))
 
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers, .duckOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
+        // play-and-record, not play-only: switching the audio session to play-only while the camera / microphone is open
+        // (video guestbook) cuts the microphone and can stall the camera picture.
+        let session = AVAudioSession.sharedInstance()
+        if session.category != .playAndRecord {
+            try? session.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .defaultToSpeaker, .allowBluetooth])
+        }
+        try? session.setActive(true)
 
         synthesizer.speak(utterance)
     }

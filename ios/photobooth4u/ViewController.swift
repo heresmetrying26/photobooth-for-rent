@@ -11,7 +11,12 @@ import Network
  * served from http://localhost:17321/booth (a WebKit Secure Context so built-in
  * camera, UVC capture cards, and same-origin USB DSLR calls all work cleanly).
  */
-class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, UITextFieldDelegate {
+class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, UITextFieldDelegate, WKDownloadDelegate {
+
+    // Files the page asks to download (backups, photos, profile exports): saved to a temporary folder, then handed to the
+    // iPad's share sheet (Save to Files, AirDrop, Photos...). Kept here while a download is running.
+    private var activeDownloads: [WKDownload] = []
+    private var downloadFiles: [ObjectIdentifier: URL] = [:]
 
     private var webView: WKWebView!
     private var backToBoothBtn: UIButton?
@@ -252,8 +257,14 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         webView.customUserAgent = (webView.value(forKey: "userAgent") as? String ?? "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)") + " PB4uIOS/\(AppLicence.shared.appVersion())"
         webView.navigationDelegate = self
         webView.uiDelegate = self
-        webView.scrollView.isScrollEnabled = false
+        // The setup pages (Design, Layout, Text...) are taller than the screen and scroll as a normal web page, so scrolling
+        // must stay on. Only the rubber-band bounce is off, and taps are not held back waiting for a possible scroll.
+        webView.scrollView.isScrollEnabled = true
         webView.scrollView.bounces = false
+        webView.scrollView.alwaysBounceVertical = false
+        webView.scrollView.alwaysBounceHorizontal = false
+        webView.scrollView.delaysContentTouches = false
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
         view.addSubview(webView)
 
         setupBackToBoothButton()
@@ -281,7 +292,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
     @objc private func didTapBackToBooth() {
         backToBoothBtn?.isHidden = true
-        webView.scrollView.isScrollEnabled = false
+        webView.scrollView.isScrollEnabled = true
         if let url = URL(string: "http://localhost:\(IccCameraHelper.port)/booth") {
             webView.load(URLRequest(url: url))
         }
@@ -1156,6 +1167,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     // MARK: - WKNavigationDelegate
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        // A link with a "download" name (a backup file, a saved photo, an exported list): download it, then offer the share sheet.
+        if navigationAction.shouldPerformDownload {
+            decisionHandler(.download)
+            return
+        }
         guard let url = navigationAction.request.url else {
             decisionHandler(.allow)
             return
@@ -1166,7 +1182,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         if host == "localhost" || host == "127.0.0.1" {
             let isGallery = path.hasPrefix("/e/") || path.hasPrefix("/o/")
             backToBoothBtn?.isHidden = !isGallery
-            webView.scrollView.isScrollEnabled = isGallery
+            webView.scrollView.isScrollEnabled = true
             decisionHandler(.allow)
             return
         }
@@ -1178,6 +1194,102 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         }
 
         decisionHandler(.allow)
+    }
+
+    // A response the web view cannot show (a zip, a PDF it was told to save) or one marked "attachment" is downloaded too.
+    func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse, decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
+        if let http = navigationResponse.response as? HTTPURLResponse,
+           let disposition = http.value(forHTTPHeaderField: "Content-Disposition")?.lowercased(),
+           disposition.contains("attachment") {
+            decisionHandler(.download)
+            return
+        }
+        decisionHandler(navigationResponse.canShowMIMEType ? .allow : .download)
+    }
+
+    // MARK: - Downloads (WKDownload) -> share sheet
+
+    func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
+        download.delegate = self
+        activeDownloads.append(download)
+    }
+
+    func webView(_ webView: WKWebView, navigationResponse: WKNavigationResponse, didBecome download: WKDownload) {
+        download.delegate = self
+        activeDownloads.append(download)
+    }
+
+    func download(_ download: WKDownload, decideDestinationUsing response: URLResponse, suggestedFilename: String, completionHandler: @escaping (URL?) -> Void) {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("pb4u-download-\(UUID().uuidString)", isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        } catch {
+            completionHandler(nil)
+            return
+        }
+        // Only the file name part, never a path the page could steer outside the folder.
+        var name = (suggestedFilename as NSString).lastPathComponent.trimmingCharacters(in: .whitespacesAndNewlines)
+        if name.isEmpty || name == "." || name == ".." { name = "photobooth4u-file" }
+        let dest = folder.appendingPathComponent(name)
+        downloadFiles[ObjectIdentifier(download)] = dest
+        completionHandler(dest)
+    }
+
+    func downloadDidFinish(_ download: WKDownload) {
+        activeDownloads.removeAll { $0 === download }
+        guard let file = downloadFiles.removeValue(forKey: ObjectIdentifier(download)) else { return }
+        presentShareSheet(for: file)
+    }
+
+    func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
+        activeDownloads.removeAll { $0 === download }
+        if let file = downloadFiles.removeValue(forKey: ObjectIdentifier(download)) {
+            try? FileManager.default.removeItem(at: file.deletingLastPathComponent())
+        }
+        let alert = UIAlertController(title: "Could not save the file", message: "The file could not be downloaded. Please try again.", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        (presentedViewController ?? self).present(alert, animated: true)
+    }
+
+    private func presentShareSheet(for file: URL) {
+        let sheet = UIActivityViewController(activityItems: [file], applicationActivities: nil)
+        sheet.completionWithItemsHandler = { _, _, _, _ in
+            try? FileManager.default.removeItem(at: file.deletingLastPathComponent())
+        }
+        // On an iPad the share sheet is a pop-over: anchor it in the middle of the screen.
+        if let pop = sheet.popoverPresentationController {
+            pop.sourceView = view
+            pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
+            pop.permittedArrowDirections = []
+        }
+        (presentedViewController ?? self).present(sheet, animated: true)
+    }
+
+    // MARK: - Pop-up links (window.open)
+
+    // The page opens a few links in a new window (the pay-tickets page, the lifetime-code page, other websites). A web view
+    // has no extra windows, so nothing happened. Websites now open in Safari; the booth's own website pages (the iPad only
+    // serves the booth itself) open from the real website.
+    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+        guard let url = navigationAction.request.url else { return nil }
+        let scheme = (url.scheme ?? "").lowercased()
+        guard scheme == "http" || scheme == "https" else { return nil }
+        let host = (url.host ?? "").lowercased()
+        if host == "localhost" || host == "127.0.0.1" {
+            let path = url.path
+            if path.hasPrefix("/e/") || path.hasPrefix("/o/") {
+                webView.load(navigationAction.request)      // a photo gallery: show it in this window (it has the Back to Booth button)
+                return nil
+            }
+            if var parts = URLComponents(string: AppLicence.serverUrl) {
+                parts.path = path
+                parts.query = url.query
+                if let site = parts.url { UIApplication.shared.open(site, options: [:], completionHandler: nil) }
+            }
+            return nil
+        }
+        UIApplication.shared.open(url, options: [:], completionHandler: nil)
+        return nil
     }
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {

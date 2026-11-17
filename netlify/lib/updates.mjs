@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.58', date: '2026-11-17' },
   { version: '1.1.57', date: '2026-11-17' },
   { version: '1.1.56', date: '2026-11-17' },
   { version: '1.1.55', date: '2026-11-16' },
@@ -250,6 +251,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-17', title: 'Desktop 1.1.58 + Android 1.1.73: Consolidated QR hub, hover guides, multi-design Ready designs, and clean Photo Session', for: ['website', 'app'], app: '1.1.58',
+    items: [
+      'QR & after-session consolidated into one hub (Step 7 tab 4): Side-by-side + QR, LumaShare Pop-up + QR, LumaShare Pop-up No QR, Side panel No QR, and Sharing Station, along with synced Print first, gallery privacy, and Solo photos controls.',
+      'Mouse hover & focus (?) help guides added across Setup and Printer Settings so secondary explanations stay out of the way until hovered or tapped.',
+      'Ready Designs multi-design lineup (Design 1, Design 2...) with per-design colours/fonts/branding plus a one-click Tick all layouts button so guests can pick a design first and then pick any ticked layout in that style.',
+      'Cleaner Photo Session screen: Camera, Printer, Backup, All photos, Wi-Fi, Resize UI, and add-ons live inside one compact Tools menu beside Lock, and filters/mirror fold into a single Look toggle.'
+    ]
+  },
   {
     date: '2026-11-17', title: 'Desktop 1.1.57 + Android 1.1.72: revamped Extras & Welcome setup, full-screen Guest view default, webcam reset fix & Printer 1/2/3 cards', for: ['website', 'app'], app: '1.1.57',
     items: [

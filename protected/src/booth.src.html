@@ -13841,6 +13841,218 @@
       z-index: 5;
     }
 
+    /* ---- Feature 1: Consolidated QR & After-Session Chips ---- */
+    .after-mode-chips {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 8px;
+      margin: 6px 0 12px;
+    }
+    .after-mode-chip {
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1.5px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font: 700 12.5px/1.3 'Manrope', sans-serif;
+      transition: border-color .15s, background .15s, box-shadow .15s;
+    }
+    .after-mode-chip small {
+      font: 500 11px/1.35 'Manrope', sans-serif;
+      color: var(--ink-dim);
+    }
+    .after-mode-chip.on {
+      border-color: var(--brand, #c93d27);
+      background: #fff5f2;
+      box-shadow: 0 4px 12px rgba(201, 61, 39, .12);
+    }
+    .after-mode-chip.on small { color: #7a2a1d; }
+    .setup-tools-drawer {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel-2, #f7f4ee);
+    }
+    .setup-tools-drawer > summary {
+      cursor: pointer;
+      font: 700 12.5px 'Manrope', sans-serif;
+      color: var(--ink-dim);
+      list-style: none;
+    }
+    .setup-tools-drawer > summary::-webkit-details-marker { display: none; }
+    .setup-tools-drawer[open] > summary { color: var(--ink); margin-bottom: 8px; }
+    #qrPopOv #qrSection.qr-off .panel-label { font-size: clamp(22px, 3vw, 28px) !important; margin-bottom: 14px !important; }
+    #qrPopOv #qrSection.qr-off .result-actions { justify-content: center; gap: 12px; }
+
+    /* ---- Feature 2: Mouse Hover (?) Guides ---- */
+    .pb-tip-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 17px;
+      height: 17px;
+      margin-left: 6px;
+      padding: 0;
+      border-radius: 50%;
+      border: 1.5px solid var(--line-dark, #cfc6ba);
+      background: rgba(255, 255, 255, .92);
+      color: var(--ink-dim, #6e645b);
+      font: 800 10.5px/1 'Manrope', sans-serif;
+      vertical-align: middle;
+      cursor: help;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .pb-tip-btn:hover,
+    .pb-tip-btn:focus-visible,
+    .pb-tip-btn.open {
+      background: var(--brand, #c93d27);
+      border-color: var(--brand, #c93d27);
+      color: #fff;
+      outline: none;
+    }
+    .panel-hint.pb-tip-converted:not(.pb-tip-open) { display: none !important; }
+    #pbTipPop {
+      position: fixed;
+      z-index: 12000;
+      max-width: min(300px, calc(100vw - 24px));
+      padding: 9px 12px;
+      border-radius: 10px;
+      background: #1c1a1e;
+      color: #fff;
+      font: 500 12px/1.45 'Manrope', sans-serif;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, .35);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(3px);
+      transition: opacity .12s ease, transform .12s ease;
+    }
+    #pbTipPop.on { opacity: 1; transform: none; }
+
+    /* ---- Feature 3: Multi-Design Lineup & Tick All Layouts ---- */
+    .guest-design-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel-2, #f7f4ee);
+    }
+    .guest-design-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .guest-design-slots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .gd-slot {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 11px;
+      border-radius: 999px;
+      border: 1.5px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      font: 700 12px 'Manrope', sans-serif;
+      cursor: pointer;
+    }
+    .gd-slot.on {
+      border-color: var(--brand, #c93d27);
+      background: var(--brand, #c93d27);
+      color: #fff;
+    }
+    .gd-slot small { font-weight: 600; opacity: .82; font-size: 10.5px; }
+    .gd-add-btn {
+      padding: 6px 11px;
+      border-radius: 999px;
+      border: 1.5px dashed var(--line-dark, #c4b8aa);
+      background: transparent;
+      color: var(--ink);
+      font: 700 12px 'Manrope', sans-serif;
+      cursor: pointer;
+    }
+    .gd-add-btn:hover { border-color: var(--brand, #c93d27); color: var(--brand, #c93d27); }
+    .gd-actions { display: flex; gap: 8px; align-items: center; }
+    .lay-head-acts {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .lay-tick-all-btn {
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      font: 700 11.5px 'Manrope', sans-serif;
+      cursor: pointer;
+    }
+    .lay-tick-all-btn:hover { border-color: var(--brand, #c93d27); color: var(--brand, #c93d27); }
+
+    /* ---- Feature 4: Clean Photo Session Chrome ---- */
+    body.in-session .rec-dot { display: none !important; }
+    body.in-session .brandbar.topbar {
+      opacity: .72;
+      transition: opacity .2s ease;
+    }
+    body.in-session .brandbar.topbar:hover { opacity: 1; }
+    body.in-session.shooting .brandbar.topbar {
+      visibility: hidden;
+      pointer-events: none;
+    }
+    body.in-session .op-dock {
+      left: max(12px, env(safe-area-inset-left));
+      bottom: max(12px, env(safe-area-inset-bottom));
+      padding: 4px;
+      border-radius: 999px;
+      background: rgba(18, 16, 22, .62);
+      border: 1px solid rgba(255, 255, 255, .14);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+    }
+    body.in-session .op-dock .dock-btn {
+      min-height: 34px;
+      padding: 6px 12px;
+      font-size: 12px;
+      background: transparent;
+      border-color: transparent;
+    }
+    body.in-session .op-dock .dock-btn:hover { background: rgba(255, 255, 255, .12); }
+    .extras-pop {
+      width: min(400px, calc(100vw - 24px));
+      max-height: min(72vh, 520px);
+      overflow-y: auto;
+    }
+    .extras-pop .dock-btn {
+      min-height: 44px;
+      background: var(--panel-2, #f7f4ee) !important;
+      color: var(--ink, #1c1a1e) !important;
+      border-color: var(--line, #e4ddd3) !important;
+    }
+    .extras-pop .dock-btn:hover { background: #ede6dc !important; }
+    .app-shell.getting-ready .session-controls:not(.look-open) #mirrorQuickBtn,
+    .app-shell.getting-ready .session-controls:not(.look-open) #quickFilters {
+      display: none !important;
+    }
+    .app-shell:not(.getting-ready) #stageLookBtn {
+      display: none !important;
+    }
+
   </style>
   <script>/* qrcode-generator 1.4.4 (MIT) — QR codes are made on this device, no outside service. */
     // Copyright (c) 2009 Kazuhiko Arase
@@ -14778,6 +14990,17 @@
             </svg> Colours &amp; background<small id="backdropSum"></small></button>
         </div>
         <div class="panel-section d1-pane on" id="themeSection" data-d1="designs">
+          <div class="guest-design-bar" id="guestDesignBar">
+            <div class="guest-design-top">
+              <span class="sub-label" style="margin:0;">Guest design lineup</span>
+              <div class="gd-actions">
+                <button type="button" class="link-btn" id="gdRenameBtn" style="font-size:11.5px;">Rename</button>
+                <button type="button" class="link-btn" id="gdRemoveBtn" style="font-size:11.5px; color:#c0392b;" hidden>Remove</button>
+              </div>
+            </div>
+            <div class="guest-design-slots" id="guestDesignSlots"></div>
+            <p class="panel-hint" id="guestDesignHint" style="margin:0; font-size:11.5px;">Add Design 2+ if you want guests to choose between different designs (each design keeps its own colours, text and ticked layouts).</p>
+          </div>
           <div class="step-head">
             <p class="panel-label">Pick a design</p>
             <button type="button" class="link-btn" id="saveThemeBtn"><svg class="ic" aria-hidden="true">
@@ -15098,8 +15321,11 @@
         <div class="panel-section" id="formatSection">
           <div class="lay-head">
             <p class="panel-label" style="margin:0;">Layout</p>
-            <label class="lay-guest-toggle"><input type="checkbox" id="guestPickToggle"> <span>Let guests choose
-                layout</span></label>
+            <div class="lay-head-acts">
+              <button type="button" class="lay-tick-all-btn" id="tickAllLayoutsBtn" data-tip="Turn all available layouts on or reset back to just your main layout for this design.">Tick all layouts</button>
+              <label class="lay-guest-toggle"><input type="checkbox" id="guestPickToggle"> <span>Let guests choose
+                  layout</span></label>
+            </div>
           </div>
           <p class="panel-hint step-lead" id="guestPickHint">Tap a layout to use it.</p>
           <div class="lay-groups" id="layoutGrid"></div>
@@ -15328,20 +15554,25 @@
           <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
           <p class="panel-hint" id="camQWarnNote" style="display:none; margin-top:6px; padding:6px 8px; border-radius:6px; background:#fff3cd; color:#7a5200; font-weight:700; line-height:1.45;"></p>
           <p class="panel-hint" id="usbWhyNote" style="display:none; font-weight:600;"></p>
-          <label id="cdiagRow" style="display:none;gap:8px;align-items:flex-start;margin:10px 0 0;font-size:13px;">
-            <input type="checkbox" id="cdiagToggle" style="margin-top:3px;">
-            <span>Send camera diagnostics to help fix camera problems<br>
-              <span class="panel-hint" style="font-size:12px;">When the camera misses a photo, sends the camera's name, the
-                error and the camera log. No photos, no guest details. Needs internet; waits and sends later if there is none.</span></span>
-          </label>
-          <button type="button" class="action-btn" id="usbLogBtn" style="display:none; width:auto; margin:6px 0 0;">Copy
-            camera log</button>
-          <button type="button" class="action-btn" id="usbCheckBtn"
-            style="display:none; width:auto; margin:6px 0 0;">Camera check</button>
-          <pre id="usbCheckOut"
-            style="display:none; white-space:pre-wrap; font:12px/1.5 ui-monospace,Menlo,monospace; background:#f6f3ee; border:1px solid #ddd; border-radius:8px; padding:10px; margin:8px 0 0; max-height:260px; overflow:auto;"></pre>
-          <button type="button" class="action-btn" id="usbCheckCopy"
-            style="display:none; width:auto; margin:6px 0 0;">Copy check result</button>
+          <details class="setup-tools-drawer" id="camDiagDrawer">
+            <summary>Camera troubleshooting &amp; diagnostics</summary>
+            <label id="cdiagRow" style="display:none;gap:8px;align-items:flex-start;margin:4px 0 0;font-size:13px;">
+              <input type="checkbox" id="cdiagToggle" style="margin-top:3px;">
+              <span>Send camera diagnostics to help fix camera problems<br>
+                <span class="panel-hint" style="font-size:12px;">When the camera misses a photo, sends the camera's name, the
+                  error and the camera log. No photos, no guest details. Needs internet; waits and sends later if there is none.</span></span>
+            </label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
+              <button type="button" class="action-btn" id="usbLogBtn" style="display:none; width:auto; margin:0;">Copy
+                camera log</button>
+              <button type="button" class="action-btn" id="usbCheckBtn"
+                style="display:none; width:auto; margin:0;">Camera check</button>
+              <button type="button" class="action-btn" id="usbCheckCopy"
+                style="display:none; width:auto; margin:0;">Copy check result</button>
+            </div>
+            <pre id="usbCheckOut"
+              style="display:none; white-space:pre-wrap; font:12px/1.5 ui-monospace,Menlo,monospace; background:#f6f3ee; border:1px solid #ddd; border-radius:8px; padding:10px; margin:8px 0 0; max-height:260px; overflow:auto;"></pre>
+          </details>
           <label class="switch-row" id="mirrorRow">
             <span>Mirror the live view</span>
             <input type="checkbox" id="mirrorToggle">
@@ -15957,20 +16188,6 @@
               this gallery once it's back online.</p>
           </div>
           <p class="panel-hint" id="driveFolderHelp"></p>
-          <div class="sub-group" id="gvBox" style="display:none;">
-            <p class="sub-label">After guests scan their QR</p>
-            <select class="mini-select pillify" id="gvSelect" aria-label="What guests see after scanning">
-              <option value="all" selected>Everyone&rsquo;s photos</option>
-              <option value="mine">Mine first</option>
-              <option value="only">Only their own</option>
-            </select>
-            <p class="panel-hint" id="gvHint" style="margin-top:6px;"></p>
-          </div>
-          <div class="sub-group" id="soloBox">
-            <p class="sub-label">Solo photos & roving</p>
-            <label class="switch-row"><span>Include solo shots in gallery</span><input type="checkbox" id="saveSoloToggle" checked></label>
-            <p class="panel-hint" style="margin-top:6px;">Saves high-quality individual raw shots without template design into the event folder for booth sessions and roving photoman, and displays them in the gallery under the Solo Photos tab. For roving photoman, the version with template design is also uploaded.</p>
-          </div>
           <div class="sub-group web-only" id="backupBox">
             <p class="sub-label">Backup on this computer</p>
             <p class="panel-hint" id="backupStatus" style="margin:0;"></p>
@@ -16053,30 +16270,36 @@
               <button type="button" class="action-btn" id="wifiSignBtn"
                 style="width:auto; margin:10px auto 0; padding:9px 16px;">Download WIFI QR Sign</button>
             </div>
-            <p class="sub-label" id="deskLicLabel" style="margin-top:14px;">This laptop&rsquo;s licence</p>
-            <p class="panel-hint" id="deskLic" style="margin:0;"></p>
-            <div class="desk-row" id="deskLicRow">
-              <button type="button" class="action-btn" id="deskCheckBtn" style="width:auto; margin:0;">Check for
-                changes</button>
-              <button type="button" class="action-btn" id="deskNewsBtn" style="width:auto; margin:0;">What's
-                new</button>
-              <button type="button" class="action-btn" id="deskDeactBtn" style="width:auto; margin:0;">Deactivate this
-                laptop</button>
-            </div>
+            <details class="setup-tools-drawer" id="deskLicDrawer" style="margin-top:12px;">
+              <summary id="deskLicSummary">This laptop&rsquo;s licence &amp; diagnostics</summary>
+              <p class="sub-label" id="deskLicLabel" style="margin-top:6px;">This laptop&rsquo;s licence</p>
+              <p class="panel-hint" id="deskLic" style="margin:0;"></p>
+              <div class="desk-row" id="deskLicRow">
+                <button type="button" class="action-btn" id="deskCheckBtn" style="width:auto; margin:0;">Check for
+                  changes</button>
+                <button type="button" class="action-btn" id="deskNewsBtn" style="width:auto; margin:0;">What's
+                  new</button>
+                <button type="button" class="action-btn" id="deskDeactBtn" style="width:auto; margin:0;">Deactivate this
+                  laptop</button>
+              </div>
+            </details>
           </div>
           <!-- Laptop and tablet apps: check for a new version by hand (also after "Later" or "Close") -->
           <div class="sub-group" id="appUpdBox" hidden>
-            <p class="sub-label">App updates</p>
-            <p class="panel-hint" id="appUpdText" style="margin:0;"></p>
-            <div class="app-upd-bar" id="appUpdBar" hidden><i></i></div>
-            <div class="desk-row">
-              <button type="button" class="action-btn" id="appUpdCheck" style="width:auto; margin:0;">Check for
-                updates</button>
-              <button type="button" class="action-btn primary" id="appUpdGo"
-                style="width:auto; margin:0; display:none;"></button>
-            </div>
-            <label class="switch-row" id="appUpdAutoPopupRow" style="display:none; margin-top:8px;"><span>Pop up automatically when an update is available</span><input type="checkbox" id="appUpdAutoPopup"></label>
-            <p class="panel-hint" style="margin:6px 0 0;">Needs the internet. Update before the event, not during a session. Your activation, designs and photos stay.</p>
+            <details class="setup-tools-drawer" id="appUpdDrawer" style="margin-top:0;">
+              <summary>App updates &amp; version checks</summary>
+              <p class="sub-label" style="margin-top:4px;">App updates</p>
+              <p class="panel-hint" id="appUpdText" style="margin:0;"></p>
+              <div class="app-upd-bar" id="appUpdBar" hidden><i></i></div>
+              <div class="desk-row">
+                <button type="button" class="action-btn" id="appUpdCheck" style="width:auto; margin:0;">Check for
+                  updates</button>
+                <button type="button" class="action-btn primary" id="appUpdGo"
+                  style="width:auto; margin:0; display:none;"></button>
+              </div>
+              <label class="switch-row" id="appUpdAutoPopupRow" style="display:none; margin-top:8px;"><span>Pop up automatically when an update is available</span><input type="checkbox" id="appUpdAutoPopup"></label>
+              <p class="panel-hint" style="margin:6px 0 0;">Needs the internet. Update before the event, not during a session. Your activation, designs and photos stay.</p>
+            </details>
           </div>
         </div>
         <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="5">← Back</button><button
@@ -16151,53 +16374,23 @@
               <option value="0" selected>Until tap</option>
             </select>
           </details>
-          <p class="sub-label" style="margin-top:16px;">Display &amp; monitor size</p>
-          <p class="panel-hint" style="margin:2px 0 8px;">Adapt buttons, countdown visibility for guests, and side session photos for small (11.5") or large monitors.</p>
-          <div class="chip-row" id="uiScaleChips" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
-            <button type="button" class="chip" data-scale="compact">Compact (11.5")</button>
-            <button type="button" class="chip active" data-scale="normal">Standard</button>
-            <button type="button" class="chip" data-scale="large">Large / TV</button>
-          </div>
-          <details class="more" id="uiScaleDetails" style="margin-top:8px;">
-            <summary>Fine-tune sizes &amp; side photos</summary>
-            <div class="opt-row">
-              <span class="lbl">Countdown size for guests</span>
-              <select class="mini-select pillify" id="uiCdScaleSelect">
-                <option value="1">Standard</option>
-                <option value="1.25">Large</option>
-                <option value="1.5">Extra Large (High visibility)</option>
-                <option value="1.8">Hero / Giant</option>
-              </select>
-            </div>
-            <div class="opt-row" style="margin-top:8px;">
-              <span class="lbl">Buttons size</span>
-              <select class="mini-select pillify" id="uiBtnScaleSelect">
-                <option value="0.88">Compact (Saves vertical space)</option>
-                <option value="1" selected>Standard</option>
-                <option value="1.15">Large</option>
-              </select>
-            </div>
-            <div class="opt-row" style="margin-top:8px;">
-              <span class="lbl">Side photos per session</span>
-              <select class="mini-select pillify" id="uiFilmScaleSelect">
-                <option value="0.85">Compact fit</option>
-                <option value="1" selected>Auto-fit (All visible)</option>
-                <option value="1.25">Large preview</option>
-                <option value="1.6">Extra large</option>
-                <option value="2.0">Maximum size</option>
-              </select>
-            </div>
-          </details>
-          <button type="button" class="action-btn" id="openLiveScaleBtn" style="margin-top:10px; width:100%;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:6px;" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v6h6"/><path d="M9 21v-6H3"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>Resize on the guest screen (live)</button>
         </div>
         <div class="panel-section d7-pane" data-d7="share" id="afterSection">
-          <p class="panel-label">QR &amp; sharing</p>
-          <p class="panel-hint step-lead">What guests get after the last photo: the QR code, a pop-up, or a separate Sharing Station.</p>
-          <label class="toggle-row" style="margin-top:4px;"><input type="checkbox" id="hideQrToggle"> No QR code for guests (photo, Print and Done only)</label>
-          <p class="panel-hint" id="hideQrHint" style="margin:2px 0 6px;">Photos are still saved. Turn this on when guests only receive prints.</p>
-          <label class="toggle-row" style="margin-top:4px;"><input type="checkbox" id="qrPopToggle"> Show the QR
-            code in a pop-up</label>
-          <p class="panel-hint" id="qrPopOffNote" style="display:none;margin:0 0 6px;">Greyed out because <b>No QR code for guests</b> is on. Untick it to use this.</p>
+          <p class="panel-label">QR &amp; after-session</p>
+          <p class="panel-hint step-lead">One place for how guests get photos after the last shot — QR code, LumaShare pop-up, No QR (prints only), or a separate Sharing Station.</p>
+          <p class="sub-label" style="margin:6px 0 4px;">Guest result &amp; QR mode</p>
+          <div class="after-mode-chips" id="afterModeChips" role="radiogroup" aria-label="Guest result and QR mode">
+            <button type="button" class="after-mode-chip" data-after-mode="side-qr">Side-by-side + QR<small>Photo next to the scan QR card</small></button>
+            <button type="button" class="after-mode-chip" data-after-mode="popup-qr">LumaShare Pop-up + QR<small>Big finished photo first, then QR pop-up</small></button>
+            <button type="button" class="after-mode-chip" data-after-mode="popup-noqr">LumaShare Pop-up &middot; No QR<small>Big photo, then Print &amp; Done pop-up (no QR)</small></button>
+            <button type="button" class="after-mode-chip" data-after-mode="side-noqr">Side panel &middot; No QR<small>Photo, Print and Done only (prints only)</small></button>
+            <button type="button" class="after-mode-chip" data-after-mode="station">Sharing Station<small>Booth stays free; guests scan QR on 2nd screen</small></button>
+          </div>
+          <div id="afterCompatToggles" hidden>
+            <input type="checkbox" id="hideQrToggle">
+            <input type="checkbox" id="qrPopToggle">
+            <input type="checkbox" id="shareStationToggle">
+          </div>
           <div class="opt-row" id="qrPopDelayRow">
             <span class="lbl">Show the photo first for</span>
             <select class="mini-select pillify" id="qrPopDelaySelect">
@@ -16209,13 +16402,12 @@
               <option value="8">8s</option>
             </select>
           </div>
-          <p class="panel-hint" id="qrPopHint" style="margin:2px 0 0;">After the last photo the finished picture is
-            shown on its own (almost the whole screen when the screen is upright), then a pop-up shows a big QR code.
-            With <b>Print first before showing QR</b> (step 4) on, the pop-up says Printing and the QR code appears
-            when the print is done.</p>
-
-          <label class="toggle-row" style="margin-top:14px;"><input type="checkbox" id="shareStationToggle"> Show QR on a separate Sharing Station</label>
-          <p class="panel-hint" id="shareStationNoQrNote" style="display:none;margin:2px 0 0;">The booth screen shows no QR code (see above), but guests still get theirs on the Sharing Station.</p>
+          <p class="panel-hint" id="qrPopHint" style="margin:2px 0 8px;">Shows the finished picture on its own first, then opens a big pop-up with the QR code (or Print &amp; Done when No QR is chosen).</p>
+          <label class="switch-row" id="afterPrintFirstRow" style="margin-top:6px;">
+            <span>Print first before showing QR pop-up</span>
+            <input type="checkbox" id="afterPrintFirstToggle">
+          </label>
+          <p class="panel-hint" id="afterPrintFirstHint" style="margin:2px 0 8px;">Synced with Step 4 Printing. Waits until auto-print finishes before revealing the download QR (or switches Print &amp; Done straight to Ready).</p>
           <div id="shareStationOptions" style="display:none;margin-top:8px;">
             <div class="opt-row">
               <span class="lbl">Booth screen after photos</span>
@@ -16242,6 +16434,20 @@
               <span>Pair Sharing Station (Scan QR)</span>
             </button>
             <p class="panel-hint" style="margin:6px 0 0;">Mount a separate phone or tablet on a stand. Guests scan their QR and save photos there, freeing the booth to start the next session immediately.</p>
+          </div>
+          <div class="sub-group" id="gvBox" style="display:none; margin-top:12px;">
+            <p class="sub-label">After guests scan their QR</p>
+            <select class="mini-select pillify" id="gvSelect" aria-label="What guests see after scanning">
+              <option value="all" selected>Everyone&rsquo;s photos</option>
+              <option value="mine">Mine first</option>
+              <option value="only">Only their own</option>
+            </select>
+            <p class="panel-hint" id="gvHint" style="margin-top:6px;"></p>
+          </div>
+          <div class="sub-group" id="soloBox" style="margin-top:12px;">
+            <p class="sub-label">Solo photos &amp; roving</p>
+            <label class="switch-row"><span>Include solo shots in gallery</span><input type="checkbox" id="saveSoloToggle" checked></label>
+            <p class="panel-hint" style="margin-top:6px;">Saves high-quality individual raw shots without template design into the event folder for booth sessions and roving photoman, and displays them in the gallery under the Solo Photos tab. For roving photoman, the version with template design is also uploaded.</p>
           </div>
         </div>
         <div class="panel-section d7-pane" data-d7="flow" id="paySection" style="display:none;">
@@ -16379,6 +16585,46 @@
             <div class="fx-track"><b id="fxMeterBar"></b><i id="fxMeterMark"></i></div>
             <p class="panel-hint" id="fxMeterTxt" style="margin:6px 0 0;"></p>
           </div>
+        </div>
+        <div class="panel-section d7-pane" data-d7="screen" id="displayScaleSection">
+          <p class="panel-label">Display &amp; monitor size</p>
+          <p class="panel-hint step-lead">Adapt buttons, countdown visibility for guests, and side session photos for small (11.5") or large monitors.</p>
+          <div class="chip-row" id="uiScaleChips" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+            <button type="button" class="chip" data-scale="compact">Compact (11.5")</button>
+            <button type="button" class="chip active" data-scale="normal">Standard</button>
+            <button type="button" class="chip" data-scale="large">Large / TV</button>
+          </div>
+          <details class="more" id="uiScaleDetails" style="margin-top:8px;">
+            <summary>Fine-tune sizes &amp; side photos</summary>
+            <div class="opt-row">
+              <span class="lbl">Countdown size for guests</span>
+              <select class="mini-select pillify" id="uiCdScaleSelect">
+                <option value="1">Standard</option>
+                <option value="1.25">Large</option>
+                <option value="1.5">Extra Large (High visibility)</option>
+                <option value="1.8">Hero / Giant</option>
+              </select>
+            </div>
+            <div class="opt-row" style="margin-top:8px;">
+              <span class="lbl">Buttons size</span>
+              <select class="mini-select pillify" id="uiBtnScaleSelect">
+                <option value="0.88">Compact (Saves vertical space)</option>
+                <option value="1" selected>Standard</option>
+                <option value="1.15">Large</option>
+              </select>
+            </div>
+            <div class="opt-row" style="margin-top:8px;">
+              <span class="lbl">Side photos per session</span>
+              <select class="mini-select pillify" id="uiFilmScaleSelect">
+                <option value="0.85">Compact fit</option>
+                <option value="1" selected>Auto-fit (All visible)</option>
+                <option value="1.25">Large preview</option>
+                <option value="1.6">Extra large</option>
+                <option value="2.0">Maximum size</option>
+              </select>
+            </div>
+          </details>
+          <button type="button" class="action-btn" id="openLiveScaleBtn" style="margin-top:10px; width:100%;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:6px;" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v6h6"/><path d="M9 21v-6H3"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>Resize on the guest screen (live)</button>
         </div>
         <div class="panel-section d7-pane" data-d7="screen" id="orientationSection" style="display:none;">
           <p class="panel-label">Screen orientation</p>
@@ -16989,6 +17235,7 @@
             <button type="button" class="sc-btn sc-danger" id="cancelSessionBtn" hidden>&#10005; Cancel</button>
             <button type="button" class="sc-btn sc-strong" id="retakeBtn" hidden>&#8634; Retake</button>
             <button type="button" class="sc-btn sc-done" id="doneBtn" hidden>Done</button>
+            <button type="button" class="sc-btn" id="stageLookBtn">&#10024; Look &#9662;</button>
             <button type="button" class="sc-btn" id="mirrorQuickBtn">Mirror: On</button>
           </div>
           <p class="sc-hint sc-hint-big" id="reviewHint" hidden><svg class="ic" aria-hidden="true">
@@ -17637,6 +17884,22 @@
   <div class="op-dock" id="opDock" hidden>
     <span class="dock-chip-slot" id="dockChipSlot"></span>
     <div class="dock-row">
+      <button type="button" class="dock-btn" id="extrasFab" aria-label="Booth tools" aria-expanded="false"
+        aria-controls="extrasPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="4" y="4" width="6" height="6" rx="1.5" />
+          <rect x="14" y="4" width="6" height="6" rx="1.5" />
+          <rect x="4" y="14" width="6" height="6" rx="1.5" />
+          <rect x="14" y="14" width="6" height="6" rx="1.5" />
+        </svg><span>Tools</span></button>
+      <button type="button" class="dock-btn" id="lockFab" hidden aria-label="Lock booth"><svg viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          aria-hidden="true">
+          <rect x="4" y="10" width="16" height="11" rx="2" />
+          <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+        </svg><span>Lock</span></button>
+    </div>
+    <div class="extras-pop" id="extrasPop" hidden>
       <button type="button" class="dock-btn" id="camFab" hidden aria-label="Camera"><svg viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
@@ -17664,14 +17927,6 @@
           <rect x="3" y="14" width="7" height="7" />
           <path d="M14 14h3v3h-3zm0 6h3m3-6v3m0 3h.01" />
         </svg><span>All photos</span></button>
-      <button type="button" class="dock-btn" id="extrasFab" hidden aria-label="Extras" aria-expanded="false"
-        aria-controls="extrasPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="4" y="4" width="6" height="6" rx="1.5" />
-          <rect x="14" y="4" width="6" height="6" rx="1.5" />
-          <rect x="4" y="14" width="6" height="6" rx="1.5" />
-          <rect x="14" y="14" width="6" height="6" rx="1.5" />
-        </svg><span>Extras</span></button>
       <button type="button" class="dock-btn" id="wifiFab" hidden aria-label="Booth Wi-Fi" aria-expanded="false"
         aria-controls="wifiPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -17685,14 +17940,6 @@
           <rect x="3" y="3" width="18" height="18" rx="2"/>
           <path d="M15 3v6h6"/><path d="M9 21v-6H3"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/>
         </svg><span>Resize UI</span></button>
-      <button type="button" class="dock-btn" id="lockFab" hidden aria-label="Lock booth"><svg viewBox="0 0 24 24"
-          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-          aria-hidden="true">
-          <rect x="4" y="10" width="16" height="11" rx="2" />
-          <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-        </svg><span>Lock booth</span></button>
-    </div>
-    <div class="extras-pop" id="extrasPop" hidden>
       <button type="button" class="dock-btn" id="deskFab" hidden aria-label="Photographer desk"><svg viewBox="0 0 24 24"
           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
           aria-hidden="true">
@@ -17905,6 +18152,30 @@
             <div class="spin-connect-warn" id="spinConnectWarn" hidden></div>
           </div>
 
+          <div class="spin-connect" id="spinSendCard">
+            <div class="spin-connect-head"><span>📱 Phone send page &amp; spin timer</span><span class="spin-pill" id="sendGuideTxt"></span></div>
+            <div class="spin-row" style="gap:8px 14px;flex-wrap:wrap;align-items:center;font-size:12px;margin-top:6px;">
+              <label>Spin takes <input type="number" id="sendSpinSec" min="2" max="60" step="0.5" style="width:56px"> s</label>
+              <label>Spins <select id="sendSpins"><option value="1">1</option><option value="1.5">1½</option><option value="2">2</option><option value="3">3</option></select></label>
+              <label>Arm starts after <input type="number" id="sendArmDelay" min="0" max="30" step="0.5" style="width:52px"> s</label>
+              <label>Keep before <input type="number" id="sendLead" min="0" max="10" step="0.5" style="width:48px"> s</label>
+              <label>Tail <input type="number" id="sendTail" min="0" max="20" step="0.5" style="width:48px"> s</label>
+              <label>Countdown <input type="number" id="sendCd" min="0" max="10" step="1" style="width:44px"> s</label>
+            </div>
+            <div class="spin-row" style="gap:8px 14px;flex-wrap:wrap;align-items:center;font-size:12px;margin-top:6px;">
+              <label class="chk"><input type="checkbox" id="sendTrim"> Cut each new video to the spin</label>
+              <label class="chk"><input type="checkbox" id="sendSound"> Timer sound</label>
+              <button type="button" class="desk-btn" id="sendTimerBtn">⏱ Start spin timer</button>
+            </div>
+            <div class="spin-row" style="gap:8px 12px;flex-wrap:wrap;align-items:center;font-size:12px;margin-top:6px;"><span>Phones may choose:</span>
+              <label class="chk"><input type="checkbox" data-sendch="look"> Look</label>
+              <label class="chk"><input type="checkbox" data-sendch="music"> Music</label>
+              <label class="chk"><input type="checkbox" data-sendch="speed"> Speed</label>
+              <label class="chk"><input type="checkbox" data-sendch="text"> Name on video</label>
+              <label class="chk"><input type="checkbox" data-sendch="gif"> GIF</label>
+            </div>
+            <div class="desk-hint" style="margin-top:6px;">Choices and the cut are used when Auto mode edits a new video. The phone page shows these settings.</div>
+          </div>
           <div class="desk-drop" id="spinDrop">Drop the 360 videos here, or <button type="button" class="desk-btn"
               id="spinPick">Choose videos</button> <button type="button" class="desk-btn" id="spinPickDir">Choose
               folder</button><input type="file" id="spinFile" accept="video/*" multiple hidden><input type="file"
@@ -27162,7 +27433,7 @@
           showQRForCurrentPhoto();
         }
         var willPrint = willAutoPrint();
-        if (printPrefs.printFirst && willPrint) {
+        if (printPrefs.printFirst && willPrint && !hideQrOn) {
           printFirstHolding = true;
           var hold = document.getElementById('printFirstHold');
           if (hold) hold.style.display = 'block';
@@ -33926,7 +34197,7 @@
         const pq = document.getElementById('printQuickBtn');
         if (!pq) return;
         // QR pop-up + "Print first before showing QR": the photo is printed by itself before the QR shows, so no Print button.
-        const printedFirst = qrPopOn && printPrefs.printFirst && willAutoPrint();
+        const printedFirst = qrPopOn && !hideQrOn && printPrefs.printFirst && willAutoPrint();
         const on = state === 'result' && !printSection.classList.contains('hidden') && printPrefs.guestBtn && !!printSize && !(typeof noPrintSession === 'function' && noPrintSession()) && !printedFirst;
         pq.hidden = !on;
         if (!on) { copiesSheet.hidden = true; return; }
@@ -34366,21 +34637,33 @@
           G.pk.classList.toggle('hide', !pickOpen);
           if (!pickOpen) { G.pkSig = ''; return; }
           const pkt = G.pk.querySelector('.pkt'); if (pkt) pkt.textContent = pickTitleText();
-          const pksb = G.pk.querySelector('.pksb'); if (pksb) pksb.textContent = 'Tap a design to start your session';
+          const pksb = G.pk.querySelector('.pksb'); if (pksb) pksb.textContent = pickDesignMode ? 'Pick a design style first' : 'Tap a design to start your session';
           const sig = pickKeys.join(',');
           if (G.pkSig !== sig) {
             G.pkSig = sig;
             G.pkg.innerHTML = '';
-            pickKeys.forEach((k) => {
+            pickKeys.forEach((k, i) => {
               const b = G.d.createElement('button'); b.type = 'button'; b.className = 'pkb';
-              const im = G.d.createElement('img'); im.src = layoutThumbUrl(k);
-              const sp = G.d.createElement('span'); sp.className = 'pkn'; sp.textContent = pickName(k);
-              const isFr = /^frame:/.test(k);
-              const isPr = /^sheet:/.test(k);
-              const fObj = isFr && typeof frameById === 'function' ? frameById(k.slice(6)) : null;
-              const prObj = isPr && typeof presetById === 'function' ? presetById(k.slice(6)) : null;
-              const shots = isFr ? frameShotCount(fObj) : (isPr ? presetShotCount(prObj) : (LAYOUT_DEFS[k] ? LAYOUT_DEFS[k].shots : 4));
-              const sh = G.d.createElement('span'); sh.className = 'pks'; sh.textContent = shots + (shots === 1 ? ' shot' : ' shots');
+              const im = G.d.createElement('img');
+              const sp = G.d.createElement('span'); sp.className = 'pkn';
+              const sh = G.d.createElement('span'); sh.className = 'pks';
+              if (/^gd:/.test(k)) {
+                const srcBtn = pickGrid.children[i];
+                const sl = pickDesignsList[i] || {};
+                im.src = (srcBtn && srcBtn.querySelector('img') && srcBtn.querySelector('img').src) || '';
+                sp.textContent = sl.name || ('Design ' + (i + 1));
+                const nLay = sl.guestPick ? Math.max(1, (sl.guestLayouts || []).length + (sl.chooseIds || []).length + 1) : 1;
+                sh.textContent = nLay > 1 ? (nLay + ' layouts') : (LAYOUT_DEFS[sl.layout] ? LAYOUT_DEFS[sl.layout].name : 'Ready');
+              } else {
+                im.src = layoutThumbUrl(k);
+                sp.textContent = pickName(k);
+                const isFr = /^frame:/.test(k);
+                const isPr = /^sheet:/.test(k);
+                const fObj = isFr && typeof frameById === 'function' ? frameById(k.slice(6)) : null;
+                const prObj = isPr && typeof presetById === 'function' ? presetById(k.slice(6)) : null;
+                const shots = isFr ? frameShotCount(fObj) : (isPr ? presetShotCount(prObj) : (LAYOUT_DEFS[k] ? LAYOUT_DEFS[k].shots : 4));
+                sh.textContent = shots + (shots === 1 ? ' shot' : ' shots');
+              }
               b.append(im, sp, sh);
               b.addEventListener('click', (e) => { e.stopPropagation(); finishPick(k); });
               G.pkg.appendChild(b);
@@ -35241,6 +35524,20 @@
       });
       document.getElementById('mirrorToggle').addEventListener('change', markMirrorQuick);
       markMirrorQuick();
+      var stageLookBtn = document.getElementById('stageLookBtn'), sessionCtrlsEl = document.getElementById('sessionControls');
+      if (stageLookBtn && sessionCtrlsEl) {
+        stageLookBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var open = sessionCtrlsEl.classList.toggle('look-open');
+          stageLookBtn.innerHTML = open ? '&#10024; Look &#9652;' : '&#10024; Look &#9662;';
+        });
+        document.addEventListener('click', function (e) {
+          if (sessionCtrlsEl.classList.contains('look-open') && !e.target.closest('#sessionControls')) {
+            sessionCtrlsEl.classList.remove('look-open');
+            stageLookBtn.innerHTML = '&#10024; Look &#9662;';
+          }
+        });
+      }
       var softSkinToggle = document.getElementById('softSkinToggle');
       softSkinToggle.addEventListener('change', function () { softSkin = softSkinToggle.checked; applyLiveFilter(); renderSetupPreview(); });
       var dateStampToggle = document.getElementById('dateStampToggle');
@@ -35254,14 +35551,55 @@
       resultReviewSelect.addEventListener('change', function () { resultReviewSec = Number(resultReviewSelect.value) || 0; });
       var qrPopToggle = document.getElementById('qrPopToggle'), qrPopDelaySelect = document.getElementById('qrPopDelaySelect');
       var hideQrToggle = document.getElementById('hideQrToggle');
+      var afterModeChips = document.getElementById('afterModeChips');
+      var afterPrintFirstToggle = document.getElementById('afterPrintFirstToggle');
+      function afterModeNow() {
+        if (typeof shareStationOn !== 'undefined' && shareStationOn) return 'station';
+        if (qrPopOn) return hideQrOn ? 'popup-noqr' : 'popup-qr';
+        return hideQrOn ? 'side-noqr' : 'side-qr';
+      }
       function refreshQrPopUI() {
         hideQrToggle.checked = hideQrOn;
-        qrPopToggle.checked = qrPopOn && !hideQrOn;
-        qrPopToggle.disabled = hideQrOn;
-        document.getElementById('qrPopDelayRow').style.display = qrPopOn && !hideQrOn ? '' : 'none';
+        qrPopToggle.checked = qrPopOn;
+        var st = typeof shareStationOn !== 'undefined' && shareStationOn;
+        var mode = afterModeNow();
+        if (afterModeChips) {
+          [].forEach.call(afterModeChips.querySelectorAll('[data-after-mode]'), function (b) {
+            b.classList.toggle('on', b.dataset.afterMode === mode);
+          });
+        }
+        var dRow = document.getElementById('qrPopDelayRow');
+        if (dRow) dRow.style.display = (qrPopOn && !st) ? '' : 'none';
+        var qHint = document.getElementById('qrPopHint');
+        if (qHint) qHint.style.display = (qrPopOn && !st) ? '' : 'none';
+        var pfRow = document.getElementById('afterPrintFirstRow'), pfHint = document.getElementById('afterPrintFirstHint');
+        if (pfRow) pfRow.style.display = (!hideQrOn && !st) ? '' : 'none';
+        if (pfHint) pfHint.style.display = (!hideQrOn && !st) ? '' : 'none';
+        if (afterPrintFirstToggle && typeof printPrefs !== 'undefined') afterPrintFirstToggle.checked = !!printPrefs.printFirst;
         try { qrSection.classList.toggle('qr-off', hideQrOn); } catch (e) { }
-        var offNote = document.getElementById('qrPopOffNote'); if (offNote) offNote.style.display = hideQrOn ? '' : 'none';
-        var stNote = document.getElementById('shareStationNoQrNote'); if (stNote) stNote.style.display = (hideQrOn && typeof shareStationOn !== 'undefined' && shareStationOn) ? '' : 'none';
+      }
+      if (afterModeChips) {
+        afterModeChips.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-after-mode]'); if (!b) return;
+          var m = b.dataset.afterMode;
+          if (m === 'side-qr') { hideQrOn = false; qrPopOn = false; shareStationOn = false; }
+          else if (m === 'popup-qr') { hideQrOn = false; qrPopOn = true; shareStationOn = false; }
+          else if (m === 'popup-noqr') { hideQrOn = true; qrPopOn = true; shareStationOn = false; }
+          else if (m === 'side-noqr') { hideQrOn = true; qrPopOn = false; shareStationOn = false; }
+          else if (m === 'station') { shareStationOn = true; qrPopOn = false; }
+          refreshQrPopUI();
+          refreshShareStationUI();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      if (afterPrintFirstToggle) {
+        afterPrintFirstToggle.addEventListener('change', function () {
+          var ppPf = document.getElementById('ppPrintFirst');
+          if (ppPf) {
+            ppPf.checked = afterPrintFirstToggle.checked;
+            ppPf.dispatchEvent(new Event('change'));
+          }
+        });
       }
       hideQrToggle.addEventListener('change', function () { hideQrOn = hideQrToggle.checked; refreshQrPopUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
       qrPopToggle.addEventListener('change', function () { qrPopOn = qrPopToggle.checked; refreshQrPopUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
@@ -35283,7 +35621,7 @@
       function refreshShareStationUI() {
         if (shareStationToggle) shareStationToggle.checked = shareStationOn;
         if (shareStationOptions) shareStationOptions.style.display = shareStationOn ? 'block' : 'none';
-        var stNote = document.getElementById('shareStationNoQrNote'); if (stNote) stNote.style.display = (hideQrOn && shareStationOn) ? '' : 'none';
+        refreshQrPopUI();
       }
       if (shareStationToggle) {
         shareStationToggle.addEventListener('change', function () {
@@ -35452,7 +35790,7 @@
       }
       function qrPopBegin() {
         qrPopEnd();
-        if (!qrPopOn || hideQrOn || state !== 'result') return;
+        if (!qrPopOn || state !== 'result') return;
         var ov = document.getElementById('qrPopOv');
         qrPop.phase = 'wait';
         clearTimeout(resultTimer); runResultTimerBar(0);     // the "next guest" timer starts with the pop-up
@@ -36332,8 +36670,8 @@
       var deskQueue = [], deskSel = [], deskSeq = 0, deskReturn = false, deskTimer = null, deskSeen = {}, deskFirstScan = true, deskPrev = {};
       var deskOverlay = document.getElementById('deskOverlay'), deskGrid = document.getElementById('deskGrid');
       var deskFab = document.getElementById('deskFab'), deskMakeBtn = document.getElementById('deskMake'), deskOrigBtn = document.getElementById('deskOrig');
-      // ---- the Extras menu: the dock keeps Camera, Printer, All photos and Lock; every extra is one tap away in here ----
-      var EXTRA_IDS = ['deskFab', 'spinFab', 'capFab', 'reqFab', 'studioFab', 'vgFab', 'roveBridgeFab'];
+      // ---- the Tools menu: the dock stays compact (Tools + Lock); every tool and extra sits one tap inside here ----
+      var EXTRA_IDS = ['camFab', 'printFab', 'pstatFab', 'backupFab', 'galleryFab', 'wifiFab', 'scaleFab', 'deskFab', 'spinFab', 'capFab', 'reqFab', 'studioFab', 'vgFab', 'roveBridgeFab'];
       var extrasFab = document.getElementById('extrasFab'), extrasPop = document.getElementById('extrasPop');
       function closeExtras() { extrasPop.hidden = true; extrasFab.setAttribute('aria-expanded', 'false'); }
       function refreshExtrasBtn() {
@@ -38616,6 +38954,7 @@
         if (Date.now() - spinStatsAt > 15000) spinStatsUpdate();
         if (++spinConnTick % 4 === 1) spinConnectRefresh(false);      // about every 10 seconds, also with the desk closed, so a missing video is noticed
         spinCollectPicks();
+        try { spinSendTick(); } catch (e) { }
         try {
           var list = await PBX.spinScan(), fresh = [];
           if (list.length) spinNewest = { name: list[0].name, mtime: list[0].mtime };       // the newest file in the inbox (the list is newest first)
@@ -38625,7 +38964,7 @@
             var prev = spinPrev[key]; spinPrev[key] = f.size;
             if (prev !== f.size || f.size < 1024) continue;           // still being copied: wait for the next look
             spinSeen[key] = true;
-            var it = { id: ++spinSeq, src: 'inbox', name: f.name, size: f.size, key: key, status: 'new', url: '', arrived: Date.now() };
+            var it = { id: ++spinSeq, src: 'inbox', name: f.name, size: f.size, key: key, status: 'new', url: '', arrived: Date.now() }; spinSendTrim(it);
             var rec = spinDoneAll()[key];
             if (rec) {
               if (!spinInfo || !spinInfo.previewBase) try { spinInfo = await window.pb4u.spinInfo(); } catch (e2) { }
@@ -40502,7 +40841,12 @@
       ['capLen', 'capMode', 'capSens'].forEach(function (id) { capEl(id).addEventListener('change', function () { capPrefsSave(); capRefresh(); }); });
       window.addEventListener('pb-extras-change', function () { try { refreshDeskBtn(); } catch (e) { } });
       // Edit (and, if asked, share) a new clip by itself, so the QR is ready when the guest comes over.
+      // The phone's choices for this clip are applied for this one clip only, then put back.
       async function spinAuto(it) {
+        var undo = spinSendApply(it);
+        try { await spinAutoCore(it); } finally { undo(); }
+      }
+      async function spinAutoCore(it) {
         it.noText = spinAutoNoText(it);
         if (!it.targetFname) it.targetFname = filePrefix() + nextSessionNumber() + '_360' + deviceTag() + '.mp4';
         var curFUrl = getCachedFolderUrl();
@@ -42663,18 +43007,153 @@
         if (!window.pb4u || !window.pb4u.spinPicks || !spinLook.guestPick) return;
         try { (await window.pb4u.spinPicks() || []).forEach(function (p) { spinPhonePicks[p.name] = p; }); } catch (e) { }
       }
+      // ---- Phone send page: settings on the desk, clip status for the phone, what the phone asked for, trim and the spin timer ----
+      var SPIN_SEND_KEY = 'pb_spin_send', spinSendPicks = {}, spinSendCfgLast = '', spinSendClipsLast = '', spinTimerEl = null, spinTimerRun = 0;
+      function spinSendGet() {
+        var d = { spinSec: 8, spins: 1, armDelay: 2, lead: 1, tail: 1.5, cd: 3, sound: true, trimOn: false, choices: { look: false, music: false, speed: false, text: false, gif: false } }, sv = {};
+        try { sv = JSON.parse(localStorage.getItem(SPIN_SEND_KEY) || '{}') || {}; } catch (e) { }
+        var o = Object.assign({}, d, sv); o.choices = Object.assign({}, d.choices, sv.choices || {});
+        ['spinSec', 'spins', 'armDelay', 'lead', 'tail', 'cd'].forEach(function (k) { var n = Number(o[k]); o[k] = isFinite(n) ? n : d[k]; });
+        return o;
+      }
+      function spinSendRecordSec(s) { return Math.round((s.armDelay + s.spinSec * s.spins + s.tail) * 10) / 10; }
+      function spinSendCfgBuild() {
+        var s = spinSendGet(), music = [];
+        try { ((spinEnv && spinEnv.musicList) || []).forEach(function (n) { if (typeof n === 'string') music.push({ key: n, title: n.replace(/\.[a-z0-9]+$/i, '') }); }); } catch (e) { }
+        return {
+          guide: { spinSec: s.spinSec, spins: s.spins, recordSec: spinSendRecordSec(s), trigger: 'Press record, then the arm starts about ' + s.armDelay + ' s later.', note: s.trimOn ? 'The laptop trims the video to the spin for you.' : '' },
+          choices: s.choices, music: music,
+          speeds: [{ key: 'normal', title: 'Normal' }, { key: 'slow', title: 'Slow motion' }, { key: 'ramp', title: 'Speed ramp' }, { key: 'boomerang', title: 'Boomerang' }], laptop: ''
+        };
+      }
+      // The clip is cut to the spin: from a little before the arm starts to a little after it stops. (The render caps the end at the clip's length.)
+      function spinSendTrim(it) {
+        var s = spinSendGet(); if (!s.trimOn || it.trimA || it.trimB) return;
+        var a = Math.max(0, s.armDelay - s.lead), b = s.armDelay + s.spinSec * s.spins + s.tail;
+        if (b > a + 1) { it.trimA = a; it.trimB = b; }
+      }
+      // The phone's choices (look, music, speed, name, GIF) for one clip. Put back after the clip is made.
+      function spinSendApply(it) {
+        var pk = spinSendPicks[it.name]; delete spinSendPicks[it.name];
+        if (!pk) return function () { };
+        if (pk.look) { try { spinApplyDesignPreset(pk.look, { quiet: true }); } catch (e) { } }
+        var snap = { music: spinLook.music, speed: spinLook.speed, rates: spinLook.rates, reverse: spinLook.reverse, alsoGif: spinLook.alsoGif };
+        if (pk.music) spinLook.music = pk.music;
+        if (pk.speed) { spinLook.speed = pk.speed; spinLook.rates = []; spinLook.reverse = false; }
+        if (pk.gif) spinLook.alsoGif = true;
+        if (pk.text) { it.text1 = pk.text; it.guestName = pk.text; }
+        return function () { spinLook.music = snap.music; spinLook.speed = snap.speed; spinLook.rates = snap.rates; spinLook.reverse = snap.reverse; spinLook.alsoGif = snap.alsoGif; };
+      }
+      function spinSendPushClips() {
+        if (!window.pb4u || !window.pb4u.spinClipsSet) return;
+        var list = spinQueue.filter(function (it) { return it.src === 'inbox'; }).slice(0, 12).map(function (it) {
+          var ready = it.status === 'shared';
+          return { name: it.name, status: ready ? 'ready' : it.status, pct: Math.round(it.pct || 0), url: ready && /^https?:\/\//.test(it.url || '') ? it.url : '', look: it.lookName || '' };
+        });
+        var sig = JSON.stringify(list); if (sig === spinSendClipsLast) return;
+        spinSendClipsLast = sig; window.pb4u.spinClipsSet(list).catch(function () { });
+      }
+      function spinSendAct(x) {
+        var it = spinQueue.filter(function (q) { return q.name === x.name; })[0];
+        if (x.do === 'delete') { if (it) { var i = spinQueue.indexOf(it); if (i >= 0) spinQueue.splice(i, 1); try { spinRender(); } catch (e) { } } return; }
+        if (!it || it.status === 'editing' || it.status === 'sharing') return;
+        var done = it.status === 'edited' || it.status === 'shared';
+        if (x.do === 'reedit') spinAutoWithLook(it);
+        else if (x.do === 'share') { if (done) spinDoShare(it).catch(function () { }); else spinAutoWithLook(it); }
+        else if (x.do === 'print' && done) spinPrintItem(it, { auto: true });
+      }
+      async function spinSendCollect() {
+        if (!window.pb4u || !window.pb4u.spinSendTake) return;
+        var q = []; try { q = (await window.pb4u.spinSendTake()) || []; } catch (e) { return; }
+        q.forEach(function (x) {
+          if (x.type === 'choice') spinSendPicks[x.name] = x;
+          else if (x.type === 'cmd' && x.do === 'countdown') spinTimerStart();
+          else if (x.type === 'act') spinSendAct(x);
+        });
+      }
+      async function spinSendTick() {
+        if (!spinDesktop() || !window.pb4u || !window.pb4u.spinSendSet) return;
+        var cfg = spinSendCfgBuild(), sig = JSON.stringify(cfg);
+        if (sig !== spinSendCfgLast) { spinSendCfgLast = sig; window.pb4u.spinSendSet(cfg).catch(function () { }); }
+        spinSendPushClips();
+        await spinSendCollect();
+      }
+      // The spin timer: 3-2-1, GO (press record on the phone), the arm starts, the spin, STOP. Big enough to read from the platform.
+      function spinBeep(f, ms) {
+        if (!spinSendGet().sound) return;
+        try {
+          var A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+          var c = spinBeep.c || (spinBeep.c = new A()), o = c.createOscillator(), g = c.createGain();
+          o.frequency.value = f; g.gain.value = 0.2; o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + ms / 1000);
+        } catch (e) { }
+      }
+      function spinTimerStop() { spinTimerRun++; if (spinTimerEl) { spinTimerEl.remove(); spinTimerEl = null; } }
+      async function spinTimerStart() {
+        if (spinTimerEl) return;
+        var s = spinSendGet(), run = ++spinTimerRun;
+        var el = document.createElement('div'); el.id = 'spinTimerOv'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Spin timer');
+        el.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#14121a;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui,sans-serif;text-align:center;cursor:pointer';
+        var big = document.createElement('div'); big.style.cssText = 'font-size:min(38vw,340px);font-weight:900;line-height:1';
+        var sub = document.createElement('div'); sub.style.cssText = 'font-size:30px;margin-top:14px;opacity:.9';
+        var bar = document.createElement('div'); bar.style.cssText = 'width:min(80vw,700px);height:18px;border-radius:9px;background:rgba(255,255,255,.2);margin-top:30px;overflow:hidden';
+        var fill = document.createElement('i'); fill.style.cssText = 'display:block;height:100%;width:0;background:#2EA66B'; bar.appendChild(fill);
+        var hint = document.createElement('div'); hint.style.cssText = 'position:absolute;bottom:18px;font-size:14px;opacity:.5'; hint.textContent = 'Click or press Esc to close';
+        el.appendChild(big); el.appendChild(sub); el.appendChild(bar); el.appendChild(hint);
+        document.body.appendChild(el); spinTimerEl = el; el.addEventListener('click', spinTimerStop);
+        var alive = function () { return run === spinTimerRun && spinTimerEl === el; };
+        sub.textContent = 'Get ready. Press record on the phone at GO.';
+        for (var n = Math.round(s.cd); n >= 1; n--) { if (!alive()) return; big.textContent = String(n); spinBeep(660, 120); await wait(1000); }
+        if (!alive()) return;
+        big.textContent = 'GO!'; spinBeep(990, 400);
+        var t0 = Date.now(), armAt = s.armDelay * 1000, spinMs = s.spinSec * s.spins * 1000, endAt = armAt + spinMs, stopAt = endAt + s.tail * 1000, armed = false, stopBeeped = false;
+        while (alive()) {
+          var t = Date.now() - t0;
+          if (t < armAt) { sub.textContent = 'Recording. The arm starts in ' + Math.ceil((armAt - t) / 1000) + ' s'; }
+          else if (t < endAt) {
+            if (!armed) { armed = true; big.textContent = 'SPIN'; spinBeep(880, 300); }
+            sub.textContent = 'Arm turning. ' + Math.ceil((endAt - t) / 1000) + ' s left'; fill.style.width = Math.min(100, (t - armAt) / spinMs * 100) + '%';
+          } else if (t < stopAt) { big.textContent = 'DONE'; fill.style.width = '100%'; sub.textContent = 'Stop the recording in ' + Math.ceil((stopAt - t) / 1000) + ' s'; }
+          else { if (!stopBeeped) { stopBeeped = true; big.textContent = 'STOP'; sub.textContent = 'Stop the recording on the phone'; spinBeep(520, 250); setTimeout(function () { spinBeep(520, 250); }, 350); } if (t > stopAt + 4500) break; }
+          await wait(100);
+        }
+        if (alive()) spinTimerStop();
+      }
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && spinTimerEl) spinTimerStop(); });
+      // The desk's settings card
+      function spinSendUI() {
+        var g = function (id) { return document.getElementById(id); }; if (!g('sendSpinSec')) return;
+        var s = spinSendGet();
+        g('sendSpinSec').value = s.spinSec; g('sendSpins').value = String(s.spins); g('sendArmDelay').value = s.armDelay; g('sendLead').value = s.lead; g('sendTail').value = s.tail; g('sendCd').value = s.cd;
+        g('sendTrim').checked = !!s.trimOn; g('sendSound').checked = !!s.sound;
+        [].forEach.call(document.querySelectorAll('[data-sendch]'), function (c) { c.checked = !!s.choices[c.dataset.sendch]; });
+        g('sendGuideTxt').textContent = 'Phones are told to record about ' + spinSendRecordSec(s) + ' s.';
+      }
+      function spinSendFromUI() {
+        var g = function (id) { return document.getElementById(id); }, num = function (id, lo, hi, d) { var n = Number(g(id).value); return isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+        var s = { spinSec: num('sendSpinSec', 2, 60, 8), spins: num('sendSpins', 0.5, 10, 1), armDelay: num('sendArmDelay', 0, 30, 2), lead: num('sendLead', 0, 10, 1), tail: num('sendTail', 0, 20, 1.5), cd: num('sendCd', 0, 10, 3), sound: g('sendSound').checked, trimOn: g('sendTrim').checked, choices: {} };
+        [].forEach.call(document.querySelectorAll('[data-sendch]'), function (c) { s.choices[c.dataset.sendch] = c.checked; });
+        try { localStorage.setItem(SPIN_SEND_KEY, JSON.stringify(s)); } catch (e) { }
+        spinSendUI(); try { spinPushOffer(); } catch (e) { } try { spinSendTick(); } catch (e) { }
+      }
+      (function () {
+        if (!document.getElementById('sendSpinSec')) return;
+        ['sendSpinSec', 'sendSpins', 'sendArmDelay', 'sendLead', 'sendTail', 'sendCd', 'sendTrim', 'sendSound'].forEach(function (id) { document.getElementById(id).addEventListener('change', spinSendFromUI); });
+        [].forEach.call(document.querySelectorAll('[data-sendch]'), function (c) { c.addEventListener('change', spinSendFromUI); });
+        document.getElementById('sendTimerBtn').addEventListener('click', spinTimerStart);
+        spinSendUI();
+      })();
       // Tell the laptop which looks a phone may choose from (nothing when guest choice is off).
       function spinPushOffer() {
         if (!window.pb4u || !window.pb4u.spinLookOffer) return;
         var looks = [];
-        if (spinLook.guestPick && spinEnv.ffmpeg) {
+        if ((spinLook.guestPick || spinSendGet().choices.look) && spinEnv.ffmpeg) {
           spinGuestKeys().forEach(function (k) {
             var p = spinPresetGet(k); if (!p) return;
             var pt = spinPresetParts(k, p, k.indexOf('custom:') !== 0), sw = p.sw || [p.classicBandColor || '#2b282c', p.text1Color || '#8a7f70'];
             looks.push({ key: k, title: pt.title, icon: pt.icon, c1: sw[0], c2: sw[1] });
           });
         }
-        var payload = { on: looks.length > 0, looks: looks }, sig = JSON.stringify(payload);
+        var payload = { on: looks.length > 0 && !!spinLook.guestPick, looks: looks }, sig = JSON.stringify(payload);
         if (sig === spinOfferLast) return;
         spinOfferLast = sig;
         window.pb4u.spinLookOffer(payload).catch(function () { });
@@ -44223,10 +44702,147 @@
       });
       setInterval(resumeWelcomeVideoIfNeeded, 2500);
 
-      // ---- Guests choose the layout ----
+      // ---- Guests choose the layout & multi-design guest lineup ----
+      var GUEST_SLOT_KEYS = ['themeId', 'backdropPreset', 'backdropColor', 'elementsChoice', 'accent', 'frameColorChoice', 'photoPlacement', 'cropFocus',
+        'textColor', 'font', 'dateFont', 'titleSize', 'titleBg', 'titleBgColor', 'outline', 'outlineColor', 'shadow',
+        'filter', 'softSkin', 'dateStamp', 'overlay', 'logo', 'decor', 'myProps', 'titleStyle', 'kicker', 'upper', 'art', 'artPal', 'label', 'dateOn', 'date'];
+      var guestDesigns = [];
+      var activeDesignIdx = 0;
+      var pickDesignMode = false;
+      var pickDesignsList = [];
+
+      function captureCurrentDesignSlot(existing) {
+        var s = snapshotSetup({ skipDesignSync: true });
+        var st = {};
+        GUEST_SLOT_KEYS.forEach(function (k) { if (k in s) st[k] = s[k]; });
+        if (s.backdropPreset === 'custom' && bgImageDataUrl && typeof addAsset === 'function' && !st.bgAssetId) {
+          st.bgAssetUrl = bgImageDataUrl;
+        }
+        return {
+          id: (existing && existing.id) || ('gd-' + Math.random().toString(36).slice(2, 8)),
+          name: (existing && existing.name) || ('Design ' + (guestDesigns.length + 1)),
+          settings: st,
+          layout: setupLayout,
+          guestPick: !!guestPickOn,
+          guestLayouts: guestLayoutSet.slice(),
+          chooseIds: chooseList(),
+          activeFrameId: activeFrameId || ''
+        };
+      }
+      function ensureGuestDesigns() {
+        if (!Array.isArray(guestDesigns) || !guestDesigns.length) {
+          guestDesigns = [captureCurrentDesignSlot({ id: 'gd-1', name: 'Design 1' })];
+          activeDesignIdx = 0;
+        }
+        if (activeDesignIdx < 0 || activeDesignIdx >= guestDesigns.length) activeDesignIdx = 0;
+      }
+      function syncActiveDesignSlot() {
+        ensureGuestDesigns();
+        guestDesigns[activeDesignIdx] = captureCurrentDesignSlot(guestDesigns[activeDesignIdx]);
+      }
+      async function applyDesignSlot(slot, idx, forGuest) {
+        if (!slot) return;
+        if (typeof idx === 'number') activeDesignIdx = Math.max(0, Math.min(guestDesigns.length - 1, idx));
+        var st = slot.settings || {};
+        var ids = [];
+        if (st.overlay && st.overlay.id) ids.push(st.overlay.id);
+        if (st.logo && st.logo.id) ids.push(st.logo.id);
+        (st.decor || []).forEach(function (d) { if (d.src && d.src.indexOf('a:') === 0) ids.push(d.src.slice(2)); });
+        (st.myProps || []).forEach(function (id) { ids.push(id); });
+        if (st.bgAssetId) ids.push(st.bgAssetId);
+        if (ids.length && typeof ensureAssets === 'function') {
+          try { await ensureAssets(ids); } catch (e) { }
+        }
+        var bg = (st.bgAssetId && typeof ASSETS !== 'undefined' && ASSETS[st.bgAssetId]) ? ASSETS[st.bgAssetId].url : (st.bgAssetUrl || null);
+        var base = snapshotSetup({ skipDesignSync: true });
+        var next = Object.assign({}, base, st, {
+          layout: slot.layout || base.layout,
+          guestPick: !!slot.guestPick,
+          guestLayouts: Array.isArray(slot.guestLayouts) ? slot.guestLayouts.slice() : [],
+          chooseIds: Array.isArray(slot.chooseIds) ? slot.chooseIds.slice() : [],
+          activeFrame: slot.activeFrameId || base.activeFrame || '',
+          guestDesigns: guestDesigns,
+          activeDesignIdx: activeDesignIdx
+        });
+        applySetup(next, bg, { skipDesignSync: true });
+        if (!forGuest) renderGuestDesignBar();
+      }
+      function renderGuestDesignBar() {
+        var bar = document.getElementById('guestDesignSlots');
+        var remBtn = document.getElementById('gdRemoveBtn');
+        if (!bar) return;
+        ensureGuestDesigns();
+        bar.innerHTML = '';
+        guestDesigns.forEach(function (slot, i) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'gd-slot' + (i === activeDesignIdx ? ' on' : '');
+          var curGuestCount = (i === activeDesignIdx)
+            ? guestChoiceKeys().length
+            : (slot.guestPick ? Math.max(1, (slot.guestLayouts || []).length + (slot.chooseIds || []).length + 1) : 1);
+          var badgeText = curGuestCount > 1 ? (curGuestCount + ' layouts') : (LAYOUT_DEFS[slot.layout] ? LAYOUT_DEFS[slot.layout].name : '1 layout');
+          b.innerHTML = '<span></span><small></small>';
+          b.firstChild.textContent = slot.name || ('Design ' + (i + 1));
+          b.lastChild.textContent = badgeText;
+          b.addEventListener('click', async function () {
+            if (i === activeDesignIdx) return;
+            syncActiveDesignSlot();
+            await applyDesignSlot(guestDesigns[i], i, false);
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+          bar.appendChild(b);
+        });
+        if (guestDesigns.length < 6) {
+          var add = document.createElement('button');
+          add.type = 'button';
+          add.className = 'gd-add-btn';
+          add.id = 'gdAddBtn';
+          add.textContent = '+ Add Design ' + (guestDesigns.length + 1);
+          add.addEventListener('click', async function () {
+            syncActiveDesignSlot();
+            var cloned = JSON.parse(JSON.stringify(guestDesigns[activeDesignIdx]));
+            cloned.id = 'gd-' + Math.random().toString(36).slice(2, 8);
+            cloned.name = 'Design ' + (guestDesigns.length + 1);
+            guestDesigns.push(cloned);
+            activeDesignIdx = guestDesigns.length - 1;
+            renderGuestDesignBar();
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+            showToast(cloned.name + ' added — edit its colours or Ready design now.');
+          });
+          bar.appendChild(add);
+        }
+        if (remBtn) remBtn.hidden = guestDesigns.length <= 1;
+      }
+      (function () {
+        var ren = document.getElementById('gdRenameBtn');
+        var rem = document.getElementById('gdRemoveBtn');
+        if (ren) {
+          ren.addEventListener('click', async function () {
+            ensureGuestDesigns();
+            var cur = guestDesigns[activeDesignIdx];
+            var nm = await askText({ title: 'Rename guest design', placeholder: cur.name || 'Design 1', initial: cur.name || '', ok: 'Save name', max: 28 });
+            if (!nm || !nm.trim()) return;
+            cur.name = nm.trim().slice(0, 28);
+            renderGuestDesignBar();
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
+        if (rem) {
+          rem.addEventListener('click', async function () {
+            ensureGuestDesigns();
+            if (guestDesigns.length <= 1) return;
+            guestDesigns.splice(activeDesignIdx, 1);
+            activeDesignIdx = Math.max(0, Math.min(activeDesignIdx, guestDesigns.length - 1));
+            await applyDesignSlot(guestDesigns[activeDesignIdx], activeDesignIdx, false);
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
+      })();
+
       var guestPickToggle = document.getElementById('guestPickToggle');
       var guestLayoutsEl = document.getElementById('guestLayouts');
       var guestPickHint = document.getElementById('guestPickHint');
+      var tickAllLayoutsBtn = document.getElementById('tickAllLayoutsBtn');
       // The renter's main layout as a card key ("frame:<id>" for one of their frames).
       function mainLayoutKey() {
         if (setupLayout === 'myframe' && activeFrameId) return 'frame:' + activeFrameId;
@@ -44237,6 +44853,13 @@
         if (k === mainLayoutKey()) return true;
         if (/^frame:/.test(k)) return chooseIds.indexOf(k.slice(6)) >= 0;
         return guestLayoutSet.indexOf(k) >= 0;
+      }
+      function allSelectableLayoutKeys() {
+        return [].map.call(layoutGrid.querySelectorAll('[data-tick]'), function (t) { return t.dataset.tick; }).filter(Boolean);
+      }
+      function allLayoutsTicked() {
+        var all = allSelectableLayoutKeys();
+        return guestPickOn && all.length > 1 && all.every(function (k) { return isGuestKey(k); });
       }
       function toggleGuestKey(k) {
         if (k === mainLayoutKey()) { showToast('That’s your main layout, so guests always have it. Tap another card to change the main one.', 4500); return; }
@@ -44258,17 +44881,47 @@
           t.classList.toggle('on', on); t.classList.toggle('locked', t.dataset.tick === main);
           t.setAttribute('aria-checked', on ? 'true' : 'false');
         });
+        if (tickAllLayoutsBtn) {
+          var hasMany = allSelectableLayoutKeys().length > 1;
+          tickAllLayoutsBtn.hidden = !hasMany;
+          tickAllLayoutsBtn.textContent = allLayoutsTicked() ? 'Only main layout' : 'Tick all layouts';
+        }
+        if (guestDesigns.length) renderGuestDesignBar();
         if (!guestPickOn) {
           var selName = (setupLayout === 'myframe' && activeFrameId)
             ? (function () { var f = (myFrames || []).find(function (fr) { return fr.id === activeFrameId; }); return f ? 'Frame ' + ((myFrames.indexOf(f)) + 1) : 'Your frame'; })()
             : (setupLayout === 'framesheet' && typeof presetById === 'function' && activeSheetPresetId && presetById(activeSheetPresetId))
               ? presetById(activeSheetPresetId).name
               : (LAYOUT_DEFS[setupLayout] ? LAYOUT_DEFS[setupLayout].name : setupLayout);
-          guestPickHint.innerHTML = '<b>Single layout locked (' + selName + ')</b>. Guests start directly with this layout without a choice screen. Turn on <b>Let guests choose layout</b> to offer multiple options.';
+          guestPickHint.innerHTML = '<b>Single layout locked (' + selName + ')</b>. Guests start directly with this layout without a choice screen. Turn on <b>Let guests choose layout</b> (or click <b>Tick all layouts</b>) to offer multiple options.';
           return;
         }
         var n = guestChoiceKeys().length;
         guestPickHint.innerHTML = 'Tap a card to make it default. Tick ✓ other cards to let guests pick: <b>' + n + ' to choose from</b>' + (n < 2 ? ' (tick at least one more)' : '') + '.';
+      }
+      if (tickAllLayoutsBtn) {
+        tickAllLayoutsBtn.addEventListener('click', function () {
+          var main = mainLayoutKey();
+          if (allLayoutsTicked()) {
+            guestLayoutSet = [];
+            chooseIds = (/^frame:/.test(main)) ? [main.slice(6)] : [];
+          } else {
+            guestPickOn = true;
+            guestPickToggle.checked = true;
+            allSelectableLayoutKeys().forEach(function (k) {
+              if (k === main) return;
+              if (/^frame:/.test(k)) {
+                var fid = k.slice(6);
+                if (chooseIds.indexOf(fid) < 0) chooseIds.push(fid);
+              } else if (guestLayoutSet.indexOf(k) < 0) {
+                guestLayoutSet.push(k);
+              }
+            });
+          }
+          refreshGuestLayoutChoices();
+          syncActiveDesignSlot();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
       }
       guestPickToggle.addEventListener('change', function () {
         guestPickOn = guestPickToggle.checked;
@@ -44319,8 +44972,11 @@
         }
         return keys.length ? keys : [mainLayoutKey()];
       }
-      // "Choose your design" when choices are custom frames or collage sheets.
-      function pickTitleText() { return pickKeys.length && pickKeys.every(function (k) { return /^frame:/.test(k) || /^sheet:/.test(k); }) ? 'Choose your design' : 'Choose your layout'; }
+      // "Choose your design" when picking from multiple guest designs, custom frames or collage sheets.
+      function pickTitleText() {
+        if (pickDesignMode) return 'Choose your design';
+        return pickKeys.length && pickKeys.every(function (k) { return /^frame:/.test(k) || /^sheet:/.test(k); }) ? 'Choose your design' : 'Choose your layout';
+      }
       function pickName(k) {
         if (/^frame:/.test(k)) {
           var fid = k.slice(6);
@@ -44342,7 +44998,7 @@
       var pickOpen = false, pickResolve = null, pickKeys = [], pickIdx = 0;
       var pickThumbs = { sig: '', urls: {} };
       function layoutThumbUrl(key) {
-        var sig = JSON.stringify(Object.assign({}, snapshotSetup(), { activeFrame: null })) + (backgroundImg ? backgroundImg.src.length : 0);
+        var sig = JSON.stringify(Object.assign({}, snapshotSetup({ skipDesignSync: true }), { activeFrame: null, guestDesigns: null })) + (backgroundImg ? backgroundImg.src.length : 0);
         if (pickThumbs.sig !== sig) pickThumbs = { sig: sig, urls: {} };
         if (!pickThumbs.urls[key]) {
           var big = document.createElement('canvas');
@@ -44372,10 +45028,56 @@
         }
         return pickThumbs.urls[key];
       }
+      async function designThumbUrl(slot, idx) {
+        if (slot && slot._thumbUrl && slot._thumbSig === JSON.stringify(slot.settings)) return slot._thumbUrl;
+        var prevSlot = captureCurrentDesignSlot(guestDesigns[activeDesignIdx]);
+        var prevIdx = activeDesignIdx;
+        await applyDesignSlot(slot, idx, true);
+        var url = layoutThumbUrl(mainLayoutKey());
+        slot._thumbUrl = url;
+        slot._thumbSig = JSON.stringify(slot.settings);
+        await applyDesignSlot(prevSlot, prevIdx, true);
+        return url;
+      }
+      async function pickDesign(designs) {
+        var urls = [];
+        for (var i = 0; i < designs.length; i++) {
+          urls.push(await designThumbUrl(designs[i], i));
+        }
+        return new Promise(function (resolve) {
+          pickDesignMode = true;
+          pickDesignsList = designs;
+          pickOpen = true; pickResolve = resolve;
+          pickKeys = designs.map(function (_, i) { return 'gd:' + i; });
+          var pt = document.getElementById('pickTitle'); if (pt) pt.textContent = 'Choose your design';
+          var ps = document.getElementById('pickSub'); if (ps) ps.textContent = 'Pick a design style first';
+          pickIdx = -1;
+          pickGrid.innerHTML = '';
+          designs.forEach(function (sl, i) {
+            var b = document.createElement('button'); b.type = 'button'; b.className = 'pick-btn';
+            var im = document.createElement('img'); im.alt = ''; im.src = urls[i] || '';
+            var sp = document.createElement('span'); sp.className = 'pick-name'; sp.textContent = sl.name || ('Design ' + (i + 1));
+            var nLay = sl.guestPick ? Math.max(1, (sl.guestLayouts || []).length + (sl.chooseIds || []).length + 1) : 1;
+            var shBadge = document.createElement('span'); shBadge.className = 'pick-shots';
+            shBadge.textContent = nLay > 1 ? (nLay + ' layouts') : (LAYOUT_DEFS[sl.layout] ? LAYOUT_DEFS[sl.layout].name : 'Ready');
+            b.append(im, sp, shBadge);
+            b.addEventListener('click', function (e) { e.stopPropagation(); finishPick(i); });
+            pickGrid.appendChild(b);
+          });
+          markPick();
+          pickOverlay.classList.add('on');
+          document.body.classList.add('shooting', 'picking');
+          try { refreshPrintFab(); } catch (e) { }
+          refreshWelcome();
+          guestRender();
+        });
+      }
       function pickLayout(keys) {
         return new Promise(function (resolve) {
+          pickDesignMode = false;
           pickOpen = true; pickResolve = resolve; pickKeys = keys;
           var pt = document.getElementById('pickTitle'); if (pt) pt.textContent = pickTitleText();
+          var ps = document.getElementById('pickSub'); if (ps) ps.textContent = 'Tap a design to start your session';
           pickIdx = -1;      // nothing chosen yet: guests tap a card (a clicker / arrow key shows the highlight)
           pickGrid.innerHTML = '';
           keys.forEach(function (k, i) {
@@ -44413,7 +45115,7 @@
         [...pickGrid.children].forEach(function (b, i) { b.classList.toggle('sel', i === pickIdx); });
         guestPickRender();
       }
-      function pickStart() { return Math.max(0, pickKeys.indexOf(setupLayout), pickKeys.indexOf('frame:' + activeFrameId)); }
+      function pickStart() { return pickDesignMode ? Math.max(0, activeDesignIdx) : Math.max(0, pickKeys.indexOf(setupLayout), pickKeys.indexOf('frame:' + activeFrameId)); }
       function movePick(step) {
         if (!pickOpen) return;
         pickIdx = pickIdx < 0 ? pickStart() : (pickIdx + step + pickKeys.length) % pickKeys.length;   // first press: show the highlight
@@ -44421,14 +45123,16 @@
       }
       function finishPick(k) {
         if (!pickOpen) return;
+        var wasDesign = pickDesignMode;
         pickOpen = false;
+        pickDesignMode = false;
         pickOverlay.classList.remove('on');
         document.body.classList.remove('picking');
         if (state !== 'capturing') document.body.classList.remove('shooting');
         try { refreshPrintFab(); } catch (e) { }
         var r = pickResolve; pickResolve = null;
         guestRender();
-        if (r) r(k);
+        if (r) r(wasDesign && typeof k === 'string' && /^gd:/.test(k) ? Number(k.slice(3)) : k);
       }
       var pickCancelBtn = document.getElementById('pickCancelBtn');
       if (pickCancelBtn) {
@@ -44446,7 +45150,7 @@
           finishPick(null);
         }
       }, true);
-      // Starts the next guest's turn: (layout picker) -> countdown.
+      // Starts the next guest's turn: (optional design picker -> layout picker) -> countdown.
       var flowBusy = false;
       var flowStartedAt = 0;
       async function beginGuestFlow(skipReady) {
@@ -44470,6 +45174,17 @@
           resetForNextGuest();   // always clean state before picking/session
           // Guest payment (QR or voucher) before anything else; a paid session waits here if the tablet restarted.
           if (!(await payGate())) return;
+          var didPickDesign = false;
+          if (boothType === 'photo' && Array.isArray(guestDesigns) && guestDesigns.length > 1) {
+            syncActiveDesignSlot();
+            var dIdx = await pickDesign(guestDesigns);
+            if (dIdx === null || dIdx === undefined) {
+              resetForNextGuest();
+              return;
+            }
+            didPickDesign = true;
+            await applyDesignSlot(guestDesigns[dIdx], dIdx, true);
+          }
           var keys = guestChoiceKeys();
           var key = keys.length > 1 ? await pickLayout(keys) : (keys[0] || setupLayout);
           if (!key) {
@@ -44485,9 +45200,9 @@
           else if (key !== currentLayout) setLayout(key);
           // Trading card / certificate booth: the guest types their name (and a title) first.
           if (boothType !== 'photo' && (!(await askGuestDesign()) || !(await askGuestDetails()))) return;
-          // After picking a layout there's always a "Get ready" screen (summary,
+          // After picking a design or layout there's always a "Get ready" screen (summary,
           // filters, Start) — the countdown never starts straight from the picker.
-          await startSession(keys.length > 1 ? false : skipReady);
+          await startSession((didPickDesign || keys.length > 1) ? false : skipReady);
         } catch (err) {
           // Something broke mid-session: go back to the welcome screen instead of staying "capturing" forever.
           console.error('Guest session failed:', err);
@@ -47434,12 +48149,30 @@
         if (ss) { ss.textContent = text || ''; ss.className = 'start-save' + (kind ? ' ' + kind : ''); }
       }
       function isHex(v) { return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v); }
-      function snapshotSetup() {
+      function snapshotSetup(opts) {
+        if (!(opts && opts.skipDesignSync) && !setupApplying && typeof syncActiveDesignSlot === 'function' && Array.isArray(guestDesigns) && guestDesigns.length) {
+          syncActiveDesignSlot();
+        }
+        var cleanDesigns = Array.isArray(guestDesigns) && guestDesigns.length
+          ? guestDesigns.map(function (sl) {
+            return {
+              id: sl.id,
+              name: sl.name,
+              settings: sl.settings ? JSON.parse(JSON.stringify(sl.settings)) : {},
+              layout: sl.layout,
+              guestPick: !!sl.guestPick,
+              guestLayouts: Array.isArray(sl.guestLayouts) ? sl.guestLayouts.slice() : [],
+              chooseIds: Array.isArray(sl.chooseIds) ? sl.chooseIds.slice() : [],
+              activeFrameId: sl.activeFrameId || ''
+            };
+          })
+          : [];
         return {
           v: 1,
           themeId: themeId,
           layout: setupLayout,
           guestPick: guestPickOn, guestLayouts: guestLayoutSet.slice(),
+          guestDesigns: cleanDesigns, activeDesignIdx: activeDesignIdx,
           boothType: boothType, btCfg: JSON.parse(JSON.stringify(btCfg)), tpls: tplsSnapshot(),
           timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
           reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake, qrPop: qrPopOn, hideQr: hideQrOn, qrPopDelay: qrPopDelay,
@@ -47553,7 +48286,7 @@
       }
       // Applies a saved setup to every control and redraws. imageUrl = the saved
       // custom backdrop photo (data URL) or null.
-      function applySetup(s, imageUrl) {
+      function applySetup(s, imageUrl, opts) {
         if (!s || typeof s !== 'object') return;
         setupApplying = true;
         try {
@@ -47859,7 +48592,7 @@
           if (LAYOUT_DEFS[s.layout]) setupLayout = (s.layout === 'trio' ? 'strip' : s.layout);   // Trio was removed
           if (boothType !== 'photo') setupLayout = boothType; else if (setupLayout === 'card' || setupLayout === 'cert') setupLayout = 'strip';
           guestPickOn = !!s.guestPick; guestPickToggle.checked = guestPickOn;
-          guestLayoutSet = Array.isArray(s.guestLayouts) ? s.guestLayouts.filter(function (k) { return LAYOUT_DEFS[k]; }) : [];
+          guestLayoutSet = Array.isArray(s.guestLayouts) ? s.guestLayouts.filter(function (k) { return LAYOUT_DEFS[k] || /^sheet:/.test(k); }) : [];
           // Older setups: several frames ticked with "Guests choose one" = guests choose, now with the cards ticked.
           if (s.guestPick === undefined && setupLayout === 'myframe' && frameMode === 'choose' && chooseIds.length > 1) { guestPickOn = true; guestPickToggle.checked = true; guestLayoutSet = []; }
           frameMode = 'choose';
@@ -47875,9 +48608,30 @@
           updateBandPositionVisibility();
           if (typeof markThemeCards === 'function') markThemeCards();
           refreshDecorUI();
+          if (!(opts && opts.skipDesignSync)) {
+            if (Array.isArray(s.guestDesigns) && s.guestDesigns.length) {
+              guestDesigns = s.guestDesigns.slice(0, 6).map(function (sl, idx) {
+                return {
+                  id: (sl && sl.id) || ('gd-' + (idx + 1)),
+                  name: (sl && sl.name) || ('Design ' + (idx + 1)),
+                  settings: (sl && sl.settings && typeof sl.settings === 'object') ? JSON.parse(JSON.stringify(sl.settings)) : {},
+                  layout: (sl && LAYOUT_DEFS[sl.layout]) ? sl.layout : setupLayout,
+                  guestPick: !!(sl && sl.guestPick),
+                  guestLayouts: Array.isArray(sl && sl.guestLayouts) ? sl.guestLayouts.slice() : [],
+                  chooseIds: Array.isArray(sl && sl.chooseIds) ? sl.chooseIds.slice() : [],
+                  activeFrameId: (sl && sl.activeFrameId) || ''
+                };
+              });
+              activeDesignIdx = Math.max(0, Math.min(guestDesigns.length - 1, Number(s.activeDesignIdx) || 0));
+            } else {
+              guestDesigns = [];
+              activeDesignIdx = 0;
+            }
+          }
         } finally {
           setupApplying = false;
         }
+        if (!(opts && opts.skipDesignSync) && typeof renderGuestDesignBar === 'function') renderGuestDesignBar();
         renderComposite(); renderSetupPreview(); refreshStartScreen(); guestRender(); scheduleWelcomeRender(); refreshWelcome();
       }
 
@@ -52916,8 +53670,8 @@
       // ---- Step 3: layout cards show your design ----
       var ltCache = { sig: '', urls: {} }, ltQueue = [], ltDirty = true, ltTimer = null, ltBusy = false;
       function layoutDesignSig() {
-        var s = snapshotSetup();
-        ['layout', 'activeFrame', 'chooseIds', 'frameMode', 'guestPick', 'guestLayouts', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview', 'allowRetake', 'qrPop', 'qrPopDelay', 'shareStation', 'shareStationHandoff', 'shareStationPrivacy'].forEach(function (k) { delete s[k]; });
+        var s = snapshotSetup({ skipDesignSync: true });
+        ['layout', 'activeFrame', 'chooseIds', 'frameMode', 'guestPick', 'guestLayouts', 'guestDesigns', 'activeDesignIdx', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview', 'allowRetake', 'qrPop', 'qrPopDelay', 'shareStation', 'shareStationHandoff', 'shareStationPrivacy'].forEach(function (k) { delete s[k]; });
         return JSON.stringify(s) + '|' + (backgroundImg ? backgroundImg.src.length : 0) + '|' + labelInput.value;
       }
       function setLayoutThumb(btn, url) {
@@ -53143,6 +53897,8 @@
         document.getElementById('ppAuto').checked = autoPrint;
         var ppPf = document.getElementById('ppPrintFirst');
         if (ppPf) ppPf.checked = !!printPrefs.printFirst;
+        var aPf = document.getElementById('afterPrintFirstToggle');
+        if (aPf) aPf.checked = !!printPrefs.printFirst;
         document.getElementById('ppGuestCopies').checked = printPrefs.guestCopies;
         document.getElementById('ppGuestReq').checked = !!printPrefs.guestReq;
         var vpCard = document.getElementById('ppVoucherCard'), vpIn = document.getElementById('ppVoucherPrinter');
@@ -53208,7 +53964,7 @@
         var box = document.getElementById('deskBox');
         if (!box) return;
         box.hidden = false;
-        ['deskPhotoRow', 'deskLicLabel', 'deskLic', 'deskLicRow'].forEach(function (id) { var e = document.getElementById(id); if (e) e.style.display = 'none'; });
+        ['deskPhotoRow', 'deskLicLabel', 'deskLic', 'deskLicRow', 'deskLicDrawer'].forEach(function (id) { var e = document.getElementById(id); if (e) e.style.display = 'none'; });
         var pl = document.getElementById('deskPhotosLabel'); if (pl) pl.textContent = 'Photos on this tablet';
         var signHint = document.getElementById('driveFolderSignHint');
         if (signHint) signHint.textContent = 'Print the sign and put it by the booth. Guests’ phones must be on the same Wi-Fi as this tablet to open the photos; add the Wi-Fi below so the sign and each guest’s QR show how to join.';
@@ -53716,9 +54472,11 @@
         var saved = 0; try { saved = Number(sessionStorage.getItem('pb_step')) || 0; } catch (e) { }
         goStep(saved >= 1 && saved <= 7 ? saved : 1, { noScroll: true });
         afterSetupPreview();
+        if (typeof renderGuestDesignBar === 'function') renderGuestDesignBar();
         setupLoadPromise.then(function () {
           // A returning renter with the design done but no folder yet: go straight to Share.
           if (!saved && labelInput.value.trim() && !rawFolderKey()) goStep(6, { noScroll: true });
+          if (typeof renderGuestDesignBar === 'function') renderGuestDesignBar();
           refreshSetupNav();
         });
       })();
@@ -53786,6 +54544,116 @@
       function later() { clearTimeout(t); t = setTimeout(nameControls, 600); }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', later); else later();
       try { var setupTab = document.getElementById('tabSetup'); if (setupTab) new MutationObserver(later).observe(setupTab, { childList: true, subtree: true }); } catch (e) { }
+    })();
+  </script>
+  <script>
+    // Feature 2: Mouse hover / focus / tap (?) help guides across Setup & Printer Settings.
+    (function () {
+      var CURATED_TIPS = {
+        cameraSelect: 'Switch between connected webcams, HDMI capture cards, and USB Canon/Nikon/Sony cameras before starting.',
+        shotTimingSel: 'Auto aligns shutter timing with camera preview delay. Choose an earlier offset if guests move slightly before capture.',
+        mirrorToggle: 'When On, guests see themselves mirrored like a bathroom mirror while saved/printed photos keep natural framing.',
+        guestPickToggle: 'Lets guests choose between the ticked layouts (or all layouts when Tick all layouts is clicked) before their session.',
+        afterPrintFirstToggle: 'Holds the download QR code until automatic printing finishes — useful when prints should finish before guests walk away.',
+        allowRetakeToggle: 'Allows guests to tap a shot during review and retake it before printing/saving.',
+        saveSoloToggle: 'Saves clean raw individual shots (without frame design) alongside the finished collage inside your gallery Solo Photos tab.',
+        gvSelect: 'Controls whether guests scanning their personal QR see Everyone’s photos, Mine first, or Only their own session.',
+        fxFlash: 'Flashes the screen bright white as each photo fires to illuminate faces in dark indoor venues.',
+        ppGuestBtn: 'Shows a Print button for guests after their photos finish.',
+        ppAuto: 'Automatically sends every completed session to your active printer without waiting for a button press.',
+        ppPrintFirst: 'Synced with QR & after-session: waits until the automatic print completes before showing the download QR code.',
+        welcomeToggle: 'Displays the attract / Tap to start welcome screen between guests when idle.',
+        softSkinToggle: 'Applies a subtle smoothing glow to live camera & captured photos.',
+        dateStampToggle: 'Prints a vintage amber camera date stamp onto the corner of each shot.'
+      };
+      var pop = null, activeBtn = null;
+      function ensurePop() {
+        if (pop) return pop;
+        pop = document.createElement('div');
+        pop.id = 'pbTipPop';
+        pop.setAttribute('role', 'tooltip');
+        document.body.appendChild(pop);
+        return pop;
+      }
+      function hideTip() {
+        if (activeBtn) { activeBtn.classList.remove('open'); activeBtn = null; }
+        if (pop) pop.classList.remove('on');
+      }
+      function showTip(btn, text) {
+        if (!btn || !text) return;
+        var p = ensurePop();
+        if (activeBtn && activeBtn !== btn) activeBtn.classList.remove('open');
+        activeBtn = btn;
+        btn.classList.add('open');
+        p.textContent = text;
+        p.classList.add('on');
+        var r = btn.getBoundingClientRect();
+        var pw = p.offsetWidth || 260, ph = p.offsetHeight || 60;
+        var left = Math.max(12, Math.min(window.innerWidth - pw - 12, r.left + r.width / 2 - pw / 2));
+        var top = r.top - ph - 8;
+        if (top < 12) top = Math.min(window.innerHeight - ph - 12, r.bottom + 8);
+        p.style.left = Math.round(left) + 'px';
+        p.style.top = Math.round(top) + 'px';
+      }
+      function attachTipBtn(host, text) {
+        if (!host || !text || host.querySelector('.pb-tip-btn')) return;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pb-tip-btn';
+        btn.textContent = '?';
+        btn.setAttribute('aria-label', 'Help: ' + text.slice(0, 80));
+        btn.dataset.pbTipText = text;
+        var target = host.matches('label.switch-row, label.toggle-row, .opt-row, .stepper') ? (host.querySelector('span:not(.ctl):not(.stepper), .lbl, .sub-label') || host) : host;
+        if (target === host && host.querySelector('input[type=checkbox]')) host.insertBefore(btn, host.querySelector('input[type=checkbox]'));
+        else target.appendChild(btn);
+      }
+      function initHoverTips() {
+        try {
+          Object.keys(CURATED_TIPS).forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            var host = el.closest('.switch-row, .toggle-row, .opt-row, .lay-head-acts') || (el.parentElement && el.parentElement.querySelector('.panel-label, .sub-label'));
+            if (host) attachTipBtn(host, CURATED_TIPS[id]);
+          });
+          document.querySelectorAll('#tabSetup [data-tip], #printSection [data-tip]').forEach(function (el) {
+            attachTipBtn(el.parentElement || el, el.dataset.tip);
+          });
+          document.querySelectorAll('#tabSetup .panel-hint:not([id]):not(.step-lead):not(.pb-tip-converted), #printSection .panel-hint:not([id]):not(.step-lead):not(.pb-tip-converted)').forEach(function (hint) {
+            var txt = (hint.textContent || '').replace(/\s+/g, ' ').trim();
+            if (!txt || txt.length < 28 || hint.closest('.print-guide, button, .setup-tools-drawer')) return;
+            var prev = hint.previousElementSibling;
+            if (!prev || (!prev.matches('.switch-row, .toggle-row, .opt-row, .stepper, .panel-label, .sub-label, details'))) return;
+            if (!prev.querySelector('.pb-tip-btn')) attachTipBtn(prev, txt);
+            hint.classList.add('pb-tip-converted');
+          });
+        } catch (e) { }
+      }
+      document.addEventListener('mouseover', function (e) {
+        var b = e.target && e.target.closest ? e.target.closest('.pb-tip-btn') : null;
+        if (b) showTip(b, b.dataset.pbTipText);
+        else if (activeBtn && !activeBtn.matches(':focus')) hideTip();
+      });
+      document.addEventListener('focusin', function (e) {
+        var b = e.target && e.target.closest ? e.target.closest('.pb-tip-btn') : null;
+        if (b) showTip(b, b.dataset.pbTipText);
+      });
+      document.addEventListener('focusout', function () { setTimeout(function () { if (activeBtn && document.activeElement !== activeBtn) hideTip(); }, 50); });
+      document.addEventListener('click', function (e) {
+        var b = e.target && e.target.closest ? e.target.closest('.pb-tip-btn') : null;
+        if (b) {
+          e.preventDefault(); e.stopPropagation();
+          if (activeBtn === b && pop && pop.classList.contains('on')) hideTip();
+          else showTip(b, b.dataset.pbTipText);
+          return;
+        }
+        hideTip();
+      });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hideTip(); });
+      window.addEventListener('scroll', hideTip, { passive: true });
+      var timer = 0;
+      function scheduleTips() { clearTimeout(timer); timer = setTimeout(initHoverTips, 500); }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scheduleTips); else scheduleTips();
+      try { var tabSetup = document.getElementById('tabSetup'); if (tabSetup) new MutationObserver(scheduleTips).observe(tabSetup, { childList: true, subtree: true }); } catch (e) { }
     })();
   </script>
 </body>

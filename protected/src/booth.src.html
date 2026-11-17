@@ -19847,8 +19847,12 @@
         return new Promise(function (resolve, reject) {
           setTimeout(function () {
             try {
-              const text = window.__PBLocal.drive(String((init && init.body) || '{}'));
-              resolve(new Response(text, { status: 200, headers: { 'Content-Type': 'application/json' } }));
+              // The iPad app answers asynchronously (driveAsync: the file is written in the background, so the screen and the
+              // camera keep moving); the Android app answers at once. Promise.resolve handles both.
+              const L = window.__PBLocal, body = String((init && init.body) || '{}');
+              Promise.resolve(typeof L.driveAsync === 'function' ? L.driveAsync(body) : L.drive(body)).then(function (text) {
+                resolve(new Response(text, { status: 200, headers: { 'Content-Type': 'application/json' } }));
+              }, reject);
             } catch (e) { reject(e); }
           }, 0);
         });
@@ -21510,7 +21514,8 @@
         if (PL && (typeof PL.saveImage === 'function' || /PB4uAndroid|PB4uIOS/.test(navigator.userAgent || '') || window.__PBNet)) {
           if (typeof PL.saveImage === 'function') {
             try {
-              const r = JSON.parse(PL.saveImage(file, await blobToBase64(blob)) || '{}');
+              const b64 = await blobToBase64(blob);
+              const r = JSON.parse((await Promise.resolve(typeof PL.saveImageAsync === 'function' ? PL.saveImageAsync(file, b64) : PL.saveImage(file, b64))) || '{}');
               if (r.ok) { showToast(title + ' saved to ' + (r.dir || 'Pictures › photobooth4u') + '. Print it on A5 or bigger.', 6000); return; }
               showToast(r.error === 'old-android' ? 'This tablet’s Android is too old to save into the Gallery. Make the sign on a laptop or phone instead.' : ('Not saved: ' + (r.error || 'the Gallery did not accept it.')), 6500);
             } catch (e) { showToast('Not saved: ' + ((e && e.message) || e), 5000); }

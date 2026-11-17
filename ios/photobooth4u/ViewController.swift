@@ -35,6 +35,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     private var loadedViaOta = false
     private var airPrintBusy = false
     private var airPrintQueue: [(jobName: String, ptW: Double, ptH: Double, pdfData: Data)] = []
+    // Photo saves run here, one at a time and off the main thread, so the camera picture and the screen keep moving.
+    private let saveQueue = DispatchQueue(label: "com.photobooth4u.save", qos: .userInitiated)
     private let otaHashKey = "pb4u_ota_hash"
     private let otaBundledHashKey = "pb4u_ota_bundled_hash"
     private let airprintUrlKey = "pb4u_airprint_url"
@@ -112,13 +114,36 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         userContent.add(self, name: "pbClearAirPrint")
         userContent.add(self, name: "pbPrintRawTcp")
         userContent.add(self, name: "pbBt")
+        userContent.add(self, name: "pbSave")
 
         let bridgeJs = """
         (function(){
           if (window.__pbIosBridgeReady) return;
           window.__pbIosBridgeReady = true;
 
+          // Saving a photo sends the whole picture to the app. The blocking calls below froze the iPad until the file was
+          // written, so the page uses these asynchronous ones (the app writes the file in the background and answers later).
+          var savePend = {}, saveSeq = 0;
+          function callSave(op, a, b) {
+            return new Promise(function(resolve) {
+              var id = ++saveSeq;
+              savePend[id] = resolve;
+              try {
+                window.webkit.messageHandlers.pbSave.postMessage({ id: id, op: op, a: a, b: b });
+              } catch (e) {
+                delete savePend[id];
+                var res = op === 'drive'
+                  ? prompt('__PBLocal_drive_sync__', a)
+                  : prompt('__PBLocal_saveImage_sync__', JSON.stringify({ fileName: a, base64: b }));
+                resolve(res || '{}');
+              }
+            });
+          }
+          window.__pbSaveResolve = function(id, json) { var f = savePend[id]; if (f) { delete savePend[id]; f(json); } };
+
           window.__PBLocal = {
+            driveAsync: function(body) { return callSave('drive', String(body || '{}'), ''); },
+            saveImageAsync: function(fileName, base64) { return callSave('saveImage', String(fileName || ''), String(base64 || '')); },
             drive: function(body) {
               var res = prompt('__PBLocal_drive_sync__', String(body || '{}'));
               return res || '{}';
@@ -1161,6 +1186,28 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             let b64 = (dict["b64"] as? String) ?? ""
             let paced = (dict["paced"] as? Bool) ?? false
             sendRawTcpPrint(job: job, ipPort: ip, b64: b64, paced: paced)
+        } else if message.name == "pbSave", let dict = message.body as? [String: Any] {
+            // window.__PBLocal.driveAsync / saveImageAsync: write the file in the background, answer through window.__pbSaveResolve
+            let id = (dict["id"] as? NSNumber)?.intValue ?? 0
+            let op = (dict["op"] as? String) ?? ""
+            let a = (dict["a"] as? String) ?? ""
+            let b = (dict["b"] as? String) ?? ""
+            saveQueue.async { [weak self] in
+                let result: String
+                if op == "drive" {
+                    result = PBLocal.shared.drive(body: a)
+                } else if op == "saveImage" {
+                    result = PBLocal.shared.saveImage(fileName: a, base64: b)
+                } else {
+                    result = "{\"ok\":false,\"error\":\"Unknown request\"}"
+                }
+                DispatchQueue.main.async {
+                    guard let self = self, id != 0 else { return }
+                    let literal = (try? JSONSerialization.data(withJSONObject: [result], options: []))
+                        .flatMap { String(data: $0, encoding: .utf8) } ?? "[\"{}\"]"
+                    self.webView?.evaluateJavaScript("window.__pbSaveResolve && window.__pbSaveResolve(\(id), (\(literal))[0]);", completionHandler: nil)
+                }
+            }
         } else if message.name == "pbBt", let dict = message.body as? [String: Any] {
             // Bluetooth LE receipt printer (window.__BTBridge): answered later through window.__pbBtResolve
             BtPrinterBridge.shared.handle(

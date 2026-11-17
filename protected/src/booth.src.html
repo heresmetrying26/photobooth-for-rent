@@ -5,6 +5,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>photobooth4u</title>
+  <script>
+    // Older iPads (iPadOS 15) and older browsers have no AbortSignal.timeout(): the booth uses it for the camera, printer and
+    // network calls, so without it those calls fail at once. Same behaviour, built from AbortController.
+    (function () {
+      try {
+        if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout !== 'function' && typeof AbortController === 'function') {
+          AbortSignal.timeout = function (ms) {
+            var c = new AbortController();
+            setTimeout(function () {
+              try { c.abort(typeof DOMException === 'function' ? new DOMException('The operation timed out.', 'TimeoutError') : undefined); } catch (e) { try { c.abort(); } catch (e2) { } }
+            }, ms);
+            return c.signal;
+          };
+        }
+      } catch (e) { }
+      // Marks the page as running inside the iPad / iPhone app, so the style sheet can switch off effects the iPad cannot
+      // draw smoothly on top of a live camera picture (see "html.pb-ios" in the style sheet).
+      try { if (/PB4uIOS/.test(navigator.userAgent || '')) document.documentElement.classList.add('pb-ios'); } catch (e) { }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -20,6 +40,20 @@
       :root {
         --vh: 100dvh;
       }
+    }
+
+    /* iPad / iPhone app: a blurred "glass" layer over the live camera picture (the dock, the countdown, the film strip,
+       the control buttons) makes the iPad re-blur every camera frame, and the picture stutters. The same layers stay as
+       plain translucent panels, which look almost the same and cost nothing. Endless glow animations are off too. */
+    html.pb-ios *,
+    html.pb-ios *::before,
+    html.pb-ios *::after {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+
+    html.pb-ios .marquee-bulbs span {
+      animation: none !important;
     }
 
     /* touch: bigger hit areas for small controls (no change on laptop with a mouse) */
@@ -23102,10 +23136,14 @@
           }
           showToast('Backup folder not available. Saved to Downloads instead.', 5000);
         }
+        // A blob link, not a data: link: the iPad app can save a blob download (it opens the share sheet), a data: one is not reliable.
+        const dlBlob = await new Promise(res => previewCanvas.toBlob(res, 'image/png'));
         const link = document.createElement('a');
         link.download = 'photo-booth-' + currentLayout + '-' + Date.now() + '.png';
-        link.href = previewCanvas.toDataURL('image/png');
+        link.href = dlBlob ? URL.createObjectURL(dlBlob) : previewCanvas.toDataURL('image/png');
+        document.body.appendChild(link);
         link.click();
+        setTimeout(() => { try { if (dlBlob) URL.revokeObjectURL(link.href); link.remove(); } catch (e) { } }, 60000);
         showToast(driveReady() ? 'Saved to your device (already backed up to Drive).' : 'Saved to your device.');
       }
 
@@ -23135,6 +23173,7 @@
       const IS_ANDROID_APP = /PB4uAndroid/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.android);
       const IS_IOS_APP = /PB4uIOS/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.ios);
       function activeCamVideo() {
+        if (IS_IOS_APP) { const gv = document.getElementById('vgVideo'), go = document.getElementById('vgOverlay'); if (gv && go && !go.hidden && gv.srcObject) return gv; }
         return (IS_IOS_APP && typeof scpVideo !== 'undefined' && scpVideo && scpVideo.srcObject && typeof curStep !== 'undefined' && curStep === 4 && tabSetup && !tabSetup.classList.contains('hidden')) ? scpVideo : video;
       }
       // Webcam resolution settings (remembered per device): preview auto | max | 1080 | 720 | 480; photo preview | max.
@@ -24537,6 +24576,9 @@
       function camReadyWaiting() { return readyOverlay.classList.contains('ready-active') && !readyOverlay.classList.contains('hands') && !readyOverlay.classList.contains('edit-preview'); }
       function camWantLive() {
         if (!usbSaveOn()) return true;
+        // iPad app, built-in camera: never let go of it between guests. Letting go and opening it again is what made the
+        // picture arrive late (or stay frozen) when a guest pressed Start. The iPad is on a charger and its screen stays on.
+        if (IS_IOS_APP && currentDeviceId !== USB_CAM_ID && (streamActive || camSleeping)) return true;
         if (usbCam.shooting) return true;
         // The video guestbook screen is open: the guest is looking at themselves and recording. If the camera rested here the
         // picture would go black, and a recording would stop by itself when the camera's track ends (cut at ~10 s, not 30).
@@ -24576,6 +24618,7 @@
 
       async function camLiveSleep() {
         if (camSleeping || usbCam.shooting || usbPowerBusy) return;
+        if (IS_IOS_APP && currentDeviceId !== USB_CAM_ID) return;   // iPad app: the built-in camera stays open (see camWantLive)
         usbPowerBusy = true;
         try {
           camSleeping = true;
@@ -30071,8 +30114,10 @@
           } else {
             const link = document.createElement('a');
             link.download = 'photo-booth-' + Date.now() + '.png';
-            link.href = previewCanvas.toDataURL('image/png');
+            link.href = URL.createObjectURL(blob);
+            document.body.appendChild(link);
             link.click();
+            setTimeout(() => { try { URL.revokeObjectURL(link.href); link.remove(); } catch (e) { } }, 60000);
             showToast('Sharing isn\'t supported here, so the photo was saved instead.', 4200);
           }
         }, 'image/png');
@@ -39280,9 +39325,27 @@
       function vgClearBlob() { if (vg.url) { try { URL.revokeObjectURL(vg.url); } catch (e) { } } vg.url = ''; vg.blob = null; }
       async function vgLive() {        // back to the live camera
         vgVideo.pause(); vgVideo.removeAttribute('src'); vgVideo.controls = false; vgVideo.muted = true; vgVideo.loop = false;
-        vgVideo.srcObject = currentStream || video.srcObject; vgVideo.style.transform = vgMirror() ? 'scaleX(-1)' : '';
+        var vgSrc = currentStream || video.srcObject;
+        // iPad / iPhone app: WebKit shows a camera picture in one <video> at a time. The booth's own <video> and the Setup
+        // camera preview still holding the same stream is what froze this screen, so let go of them while it is open.
+        var vgIos = false; try { vgIos = /PB4uIOS/.test(navigator.userAgent || '') && !!vgSrc && currentDeviceId !== USB_CAM_ID; } catch (e) { }
+        if (vgIos) {
+          [video, document.getElementById('setupCamVideo')].forEach(function (el) { try { if (el && el.srcObject) { el.pause(); el.srcObject = null; } } catch (e) { } });
+        }
+        vgVideo.srcObject = vgSrc; vgVideo.style.transform = vgMirror() ? 'scaleX(-1)' : '';
         try { await vgVideo.play(); } catch (e) { }
+        if (vgIos) { try { if (typeof listenVideoFrames === 'function') listenVideoFrames(vgVideo); } catch (e) { } }
         try { vgLookApply(); } catch (e) { }
+      }
+      // Back from the guestbook on the iPad / iPhone app: the booth's own <video> gets the camera picture again.
+      function vgIosRelease() {
+        try {
+          if (!/PB4uIOS/.test(navigator.userAgent || '') || !currentStream || currentDeviceId === USB_CAM_ID || video.srcObject) return;
+          video.srcObject = currentStream;
+          var pp = video.play(); if (pp && pp.catch) pp.catch(function () { });
+          if (typeof listenVideoFrames === 'function') listenVideoFrames(video);
+          if (typeof scpRefresh === 'function') scpRefresh();
+        } catch (e) { }
       }
       async function openVg() {
         if (!vgAvailable()) return;
@@ -39306,6 +39369,7 @@
         vgVideo.pause(); vgVideo.removeAttribute('src'); vgVideo.srcObject = null; vgClearBlob();
         vg.state = 'idle'; vg.busy = false; vgBig(''); vgOverlay.hidden = true;
         try { vgLookApply(); } catch (e) { }
+        vgIosRelease();
         // The guestbook may have switched cameras (Flip camera): the booth goes back to the camera it was set to.
         if (vgCamBefore !== null) { var b = vgCamBefore; vgCamBefore = null; vgCamSaved = null; if (b && b !== cameraSelect.value) { cameraSelect.value = b; initCamera(b); } }
         vgUntuneCamera();

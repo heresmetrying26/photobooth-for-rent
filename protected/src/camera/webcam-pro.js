@@ -14,7 +14,17 @@
       const WEBCAM_FPS_WARN_KEY = 'pb_webcam_fps_warn';
       const WEBCAM_UVC_PREFIX = 'pb4u.webcamUvc.';
       const WEBCAM_UVC_DEF_PREFIX = 'pb4u.webcamUvcDef.';
-      function webcamStackOn() { return camQStore(WEBCAM_STACK_KEY) !== '0'; }
+      // Stacking copies a full camera picture to a CPU canvas about 25 times a second during the countdown and then blends
+      // them pixel by pixel when the photo is taken. That is worth it for a dim-room USB webcam, but on the iPad app it makes
+      // the live picture stutter while the guest is posing, and the built-in iPad camera is clean without it. So on the
+      // iPad app it is off until the operator ticks it.
+      function webcamStackOn() {
+        const v = camQStore(WEBCAM_STACK_KEY);
+        if (v === '1') return true;
+        if (v === '0') return false;
+        try { if (/PB4uIOS/.test(navigator.userAgent || '')) return false; } catch (e) { }
+        return true;
+      }
       function webcamTipsOn() { return camQStore(WEBCAM_FPS_WARN_KEY) !== '0'; }
 
       function webcamMarkShot(canvas) {

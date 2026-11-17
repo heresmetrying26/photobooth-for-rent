@@ -237,7 +237,7 @@ function wireContents(wc) {
       if (!list.length) { s.cb(''); return; }
       if (list.length === 1 && /instax/i.test(list[0].deviceName)) { s.cb(list[0].deviceId); return; }
       try {
-        const shown = list.slice(0, 10), opts = { type: 'question', title: 'Bluetooth device', message: 'Which one is the Instax printer?', buttons: shown.map((d) => d.deviceName).concat('Cancel'), defaultId: 0, cancelId: shown.length, noLink: true };
+        const shown = list.slice(0, 10), opts = { type: 'question', title: 'Bluetooth device', message: 'Select the Bluetooth printer to connect:', buttons: shown.map((d) => d.deviceName).concat('Cancel'), defaultId: 0, cancelId: shown.length, noLink: true };
         const r = win && !win.isDestroyed() ? await dialog.showMessageBox(win, opts) : await dialog.showMessageBox(opts);
         s.cb(r.response < shown.length ? shown[r.response].deviceId : '');
       } catch { s.cb(''); }

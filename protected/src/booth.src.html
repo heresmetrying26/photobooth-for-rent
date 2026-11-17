@@ -14194,10 +14194,100 @@
         return this;
       };
 
+      // WalkPrint / Luck Jingle (10 FF) pocket printer wrapper around 384-dot ESC/POS raster.
+      EscPosEncoder.prototype.imageLuck = function (canvas, maxBandHeight, feed) {
+        for (var i = 0; i < 12; i++) this._buf.push(0x00);
+        this._byte(0x10, 0xFF, 0xF1, 0x03);
+        this._byte(0x10, 0xFF, 0x10, 0x00, 0x01);
+        this.image(canvas, maxBandHeight || 64);
+        var feedDots = Math.min(255, Math.max(40, (feed != null ? feed : 3) * 24));
+        this._byte(ESC, 0x4A, feedDots);
+        return this._byte(0x10, 0xFF, 0xF1, 0x45);
+      };
+
       EscPosEncoder.prototype.getBuffer = function () {
         return new Uint8Array(this._buf);
       };
       EscPosEncoder.prototype.getMarks = function () { return this._marks || []; };
+
+      // ── LIOTOG C19 / FunPrint / Cat Printer (0x51 0x78) BLE encoder ──────────
+      // Pocket 58mm printers using the FunPrint / iPrint protocol ignore ESC/POS
+      // and expect 384-dot (48-byte, LSB-first) raster lines framed with CRC-8.
+      var CAT_CRC8_TABLE = (function () {
+        var t = new Uint8Array(256);
+        for (var i = 0; i < 256; i++) {
+          var c = i;
+          for (var b = 0; b < 8; b++) c = (c & 0x80) ? ((c << 1) ^ 0x07) & 0xFF : (c << 1) & 0xFF;
+          t[i] = c;
+        }
+        return t;
+      }());
+      function catCrc8(payload) {
+        var c = 0;
+        for (var i = 0; i < payload.length; i++) c = CAT_CRC8_TABLE[(c ^ payload[i]) & 0xFF];
+        return c;
+      }
+      function isCatDevice(name, svcUuid, proto) {
+        if (proto === 'cat') return true;
+        var s = String(svcUuid || '').toLowerCase();
+        if (s.indexOf('ae30') >= 0 || s.indexOf('ae00') >= 0) return true;
+        return /^(C19|LIOTOG|MX\d|GB0|GT0|YT0|PD01)/i.test(String(name || '').trim());
+      }
+      function CatPrinterEncoder(paperWidth) {
+        this._w = 384;
+        this._buf = [];
+        this._marks = [];
+      }
+      CatPrinterEncoder.prototype._frame = function (cmd, payload) {
+        var len = payload.length;
+        this._buf.push(0x51, 0x78, cmd & 0xFF, 0x00, len & 0xFF, (len >> 8) & 0xFF);
+        for (var i = 0; i < len; i++) this._buf.push(payload[i] & 0xFF);
+        this._buf.push(catCrc8(payload), 0xFF);
+        return this;
+      };
+      CatPrinterEncoder.prototype.encode = function (canvas, maxBandHeight, feed) {
+        var ctx = canvas.getContext('2d');
+        var W = canvas.width, H = canvas.height;
+        var byteW = 48;
+        var bandStep = Math.max(1, maxBandHeight || 64);
+        var imgData = ctx.getImageData(0, 0, W, H).data;
+
+        this._frame(0xA4, [0x33]);                                                              // quality = 3
+        this._frame(0xAF, [0xE0, 0x2E]);                                                        // energy = 12000 (LE)
+        this._frame(0xBE, [0x00]);                                                              // drawing mode = image
+        this._frame(0xA6, [0xAA, 0x55, 0x17, 0x38, 0x44, 0x5F, 0x5F, 0x5F, 0x44, 0x38, 0x2C]); // lattice start
+
+        var row = new Uint8Array(byteW);
+        var bandRows = 0, bandBlack = 0;
+        for (var y = 0; y < H; y++) {
+          for (var bx = 0; bx < byteW; bx++) {
+            var byte = 0;
+            for (var bit = 0; bit < 8; bit++) {
+              var x = bx * 8 + bit;
+              if (x < W) {
+                var idx = (y * W + x) * 4;
+                var lum = 0.299 * imgData[idx] + 0.587 * imgData[idx + 1] + 0.114 * imgData[idx + 2];
+                if (lum < 128) { byte |= (1 << bit); bandBlack++; }
+              }
+            }
+            row[bx] = byte;
+          }
+          this._frame(0xA2, row);
+          bandRows++;
+          if (bandRows >= bandStep || y === H - 1) {
+            this._marks.push({ end: this._buf.length, rows: bandRows, black: bandBlack, dots: bandRows * 384 });
+            bandRows = 0;
+            bandBlack = 0;
+          }
+        }
+
+        var steps = Math.min(255, Math.max(24, (feed != null ? feed : 3) * 20));
+        this._frame(0xA1, [steps & 0xFF, (steps >> 8) & 0xFF]);                               // feed paper
+        this._frame(0xA6, [0xAA, 0x55, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17]); // lattice end
+        return this;
+      };
+      CatPrinterEncoder.prototype.getBuffer = function () { return new Uint8Array(this._buf); };
+      CatPrinterEncoder.prototype.getMarks = function () { return this._marks; };
 
       // How a job is sent over Bluetooth. A small mobile printer (58mm) has a tiny buffer and no flow control over
       // Bluetooth serial: a job sent in one burst overruns it, bytes go missing, and the rest of the picture is read as
@@ -14208,7 +14298,7 @@
         try {
           var j = JSON.parse(localStorage.getItem(BT_PROFILE_KEY) || '{}');
           if (j && (j.speed === 'safe' || j.speed === 'fast')) p.speed = j.speed;
-          if (j && j.cmd === 'star') p.cmd = 'star';
+          if (j && (j.cmd === 'star' || j.cmd === 'cat' || j.cmd === 'luck')) p.cmd = j.cmd;
         } catch (_) { }
         return p;
       }
@@ -14375,17 +14465,22 @@
       }
 
       var WELL_KNOWN_SERVICES = [
+        '0000ae30-0000-1000-8000-00805f9b34fb',
+        '0000ae00-0000-1000-8000-00805f9b34fb',
         '000018f0-0000-1000-8000-00805f9b34fb',
         '0000e781-0000-1000-8000-00805f9b34fb',
         '49535343-fe7d-4ae5-8fa9-9fafd205e455',
         '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
         '0000ff00-0000-1000-8000-00805f9b34fb',
         '0000fff0-0000-1000-8000-00805f9b34fb',
+        '0000ffe0-0000-1000-8000-00805f9b34fb',
         'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
         '00001101-0000-1000-8000-00805f9b34fb'
       ];
 
       var PRINTER_FILTERS = [
+        { namePrefix: 'C19' }, { namePrefix: 'LIOTOG' }, { namePrefix: 'Liotog' },
+        { namePrefix: 'MX' }, { namePrefix: 'GB' }, { namePrefix: 'GT' }, { namePrefix: 'YT' }, { namePrefix: 'PD' },
         { namePrefix: 'XP' }, { namePrefix: 'Xprinter' },
         { namePrefix: 'T80' }, { namePrefix: 'T80A' }, { namePrefix: 'T58' }, { namePrefix: 'T' },
         { namePrefix: 'TM' }, { namePrefix: 'Epson' }, { namePrefix: 'EPSON' },
@@ -14408,12 +14503,21 @@
         this._char = null;
         this._mode = null;
         this._name = '';
+        this._serviceUuid = '';
+        this._proto = '';
         this.onDisconnect = null;
       }
 
       Object.defineProperty(BtThermal.prototype, 'connected', { get: function () { return this._mode !== null; } });
       Object.defineProperty(BtThermal.prototype, 'name', { get: function () { return this._name; } });
       Object.defineProperty(BtThermal.prototype, 'mode', { get: function () { return this._mode; } });
+
+      BtThermal.prototype.effectiveCmd = function () {
+        var prof = btProfile();
+        if (prof.cmd === 'cat' || prof.cmd === 'luck' || prof.cmd === 'star') return prof.cmd;
+        if (isCatDevice(this._name, this._serviceUuid, this._proto)) return 'cat';
+        return 'raster';
+      };
 
       BtThermal.available = function () {
         if (global.__BTBridge && typeof global.__BTBridge.connect === 'function') return 'bridge';
@@ -14443,6 +14547,8 @@
             }
             self._mode = 'bridge';
             self._name = (r && r.name) || 'Bluetooth Printer';
+            self._serviceUuid = '';
+            self._proto = (r && r.proto) || '';
             return self._name;
           });
       };
@@ -14459,6 +14565,8 @@
           .then(function (device) {
             self._device = device;
             self._name = device.name || 'Bluetooth Printer';
+            self._serviceUuid = '';
+            self._proto = '';
             device.addEventListener('gattserverdisconnected', function () { self._onDisconnect(); });
             return device.gatt.connect();
           })
@@ -14478,11 +14586,25 @@
         var self = this;
         function searchService(svc) {
           return svc.getCharacteristics().then(function (chars) {
+            var writeChar = null, notifyChar = null;
             for (var i = 0; i < chars.length; i++) {
               var c = chars[i];
-              if (c.properties.writeWithoutResponse || c.properties.write) return c;
+              var u = String(c.uuid || '').toLowerCase();
+              if (c.properties && c.properties.notify && (u.indexOf('ae02') >= 0 || u.indexOf('ff01') >= 0 || u.indexOf('ff03') >= 0)) {
+                notifyChar = c;
+              }
+              if (c.properties && (c.properties.writeWithoutResponse || c.properties.write)) {
+                if (!writeChar || u.indexOf('ae01') >= 0 || u.indexOf('ff02') >= 0) {
+                  writeChar = c;
+                }
+              }
             }
-            return null;
+            if (!writeChar) return null;
+            self._serviceUuid = String(svc.uuid || '').toLowerCase();
+            if (notifyChar && typeof notifyChar.startNotifications === 'function') {
+              return Promise.resolve(notifyChar.startNotifications()).catch(function () { }).then(function () { return writeChar; });
+            }
+            return writeChar;
           }).catch(function () { return null; });
         }
 
@@ -14521,7 +14643,7 @@
 
       // keepPrinter: close the link but remember which printer was chosen (a failed print must not make the tablet forget it).
       BtThermal.prototype.disconnect = function (keepPrinter) {
-        this._mode = null; this._char = null;
+        this._mode = null; this._char = null; this._serviceUuid = ''; this._proto = '';
         try { if (this._server && this._server.connected) this._server.disconnect(); } catch (_) { }
         try {
           var B = global.__BTBridge;
@@ -14555,7 +14677,7 @@
         try {
           if (!ev) return;
           if (ev.type === 'reconnect') {
-            if (ev.ok) { btPrinter._mode = 'bridge'; btPrinter._name = ev.name || btPrinter._name || 'Bluetooth Printer'; }
+            if (ev.ok) { btPrinter._mode = 'bridge'; btPrinter._name = ev.name || btPrinter._name || 'Bluetooth Printer'; btPrinter._serviceUuid = ''; btPrinter._proto = ev.proto || ''; }
             btReconnectWaiters.splice(0).forEach(function (f) { try { f(ev); } catch (_) { } });
           } else if ((ev.type === 'link' || ev.type === 'adapter') && ev.on === false) {
             if (btPrinter._mode === 'bridge') btPrinter._onDisconnect();
@@ -14570,7 +14692,7 @@
         if (B && typeof B.connectSaved === 'function') {
           var r;
           try { r = JSON.parse(B.connectSaved() || '{}'); } catch (e) { r = { ok: false, error: String((e && e.message) || e) }; }
-          if (r.connected) { self._mode = 'bridge'; self._name = r.name || self._name || 'Bluetooth Printer'; return Promise.resolve(self._name); }
+          if (r.connected) { self._mode = 'bridge'; self._name = r.name || self._name || 'Bluetooth Printer'; self._serviceUuid = ''; self._proto = r.proto || ''; return Promise.resolve(self._name); }
           if (!r.ok) return Promise.reject(btErr(r.none ? 'No Bluetooth printer chosen yet' : (r.error || 'Could not connect'), { none: !!r.none }));
           return new Promise(function (res, rej) {
             var cb = function (ev) {
@@ -14598,6 +14720,7 @@
           });
         })();
         return findDevice.then(function (d) {
+          self._serviceUuid = ''; self._proto = '';
           var link = d.gatt.connect();
           var slow = new Promise(function (_, rej) { setTimeout(function () { rej(btErr('The printer did not answer')); }, 20000); });
           return Promise.race([link, slow]);
@@ -14611,7 +14734,7 @@
       };
 
       BtThermal.prototype._onDisconnect = function () {
-        this._mode = null; this._char = null; this._server = null;
+        this._mode = null; this._char = null; this._server = null; this._serviceUuid = ''; this._proto = '';
         if (typeof this.onDisconnect === 'function') this.onDisconnect();
       };
 
@@ -14648,7 +14771,7 @@
         }
 
         var self = this;
-        var CHUNK = this._mode === 'le' ? 100 : 512;
+        var CHUNK = this._mode === 'le' ? Math.min(100, (pace && pace.chunk) || 100) : 512;
         var off = 0;
 
         function next() {
@@ -14673,17 +14796,35 @@
         var feed = opts.feed != null ? opts.feed : 3;
         if (!this._mode) return Promise.reject(new Error('Printer not connected'));
 
-        var prof = btProfile(), pace = opts.pace || btPaceFor(this);   // opts.pace: the smooth-print test strip
-        var mono = toReceiptCanvas(canvas, this._paperWidth, opts.brightness, opts.quality);
-        var enc = new EscPosEncoder(this._paperWidth);
-        enc.initialize();
-        if (pace.slow) enc.slowPrint();
-        if (prof.cmd === 'star') enc.imageStar(mono); else enc.image(mono, pace.band);
-        enc.feed(feed);
-        // 58mm mobile printers have no cutter: skip the cut command (some read it as text) and leave room to tear.
-        if (cut && this._paperWidth > 384) enc.cut(); else if (cut) enc.feed(2);
-        var data = enc.getBuffer(), marks = enc.getMarks();
-        if (this._paperWidth > 384 || prof.speed === 'fast' || !marks.length) return this.write(data, pace);
+        var prof = btProfile(), cmd = this.effectiveCmd();
+        var effW = (cmd === 'cat' || cmd === 'luck') ? 384 : this._paperWidth;
+        var origW = this._paperWidth;
+        this._paperWidth = effW;
+        var pace = opts.pace || btPaceFor(this);   // opts.pace: the smooth-print test strip
+        this._paperWidth = origW;
+        var mono = toReceiptCanvas(canvas, effW, opts.brightness, opts.quality);
+        var data, marks;
+        if (cmd === 'cat') {
+          var catEnc = new CatPrinterEncoder(effW);
+          catEnc.encode(mono, pace.band, feed);
+          data = catEnc.getBuffer();
+          marks = catEnc.getMarks();
+        } else {
+          var enc = new EscPosEncoder(effW);
+          if (cmd === 'luck') {
+            enc.imageLuck(mono, pace.band, feed);
+          } else {
+            enc.initialize();
+            if (pace.slow) enc.slowPrint();
+            if (cmd === 'star') enc.imageStar(mono); else enc.image(mono, pace.band);
+            enc.feed(feed);
+            // 58mm mobile printers have no cutter: skip the cut command (some read it as text) and leave room to tear.
+            if (cut && effW > 384) enc.cut(); else if (cut) enc.feed(2);
+          }
+          data = enc.getBuffer();
+          marks = enc.getMarks();
+        }
+        if (effW > 384 || prof.speed === 'fast' || !marks.length) return this.write(data, pace);
 
         // 58mm: send band by band and let the printer catch up after dark ones (see BT_LEAD_MS).
         var self = this, scale = btLoadScale(this, pace), pos = 0, i = 0, t0 = 0, due = 0;
@@ -14705,6 +14846,18 @@
       // Step 1 of the printer check: plain text only. If this prints, the link and the printer are fine.
       BtThermal.prototype.testText = function () {
         if (!this._mode) return Promise.reject(new Error('Printer not connected'));
+        var cmd = this.effectiveCmd();
+        if (cmd === 'cat' || cmd === 'luck') {
+          var dotW = 384, cvs = document.createElement('canvas');
+          cvs.width = dotW; cvs.height = 96;
+          var ctx = cvs.getContext('2d');
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, dotW, 96);
+          ctx.fillStyle = '#000000'; ctx.textAlign = 'center';
+          ctx.font = 'bold 24px sans-serif'; ctx.fillText('PHOTOBOOTH4U', dotW / 2, 30);
+          ctx.font = '18px sans-serif'; ctx.fillText('Text test OK', dotW / 2, 58);
+          ctx.font = '14px sans-serif'; ctx.fillText(this._name || 'Bluetooth printer', dotW / 2, 82);
+          return this.printCanvas(cvs, { feed: 3, cut: false, quality: 'normal' });
+        }
         var enc = new EscPosEncoder(this._paperWidth);
         enc.initialize().text('PHOTOBOOTH4U\nText test OK\n' + (this._name || 'Bluetooth printer') + '\n').feed(3);
         return this.write(enc.getBuffer(), btPaceFor(this));
@@ -14712,7 +14865,8 @@
 
       // Step 2: a short picture (64 rows). If text works but this garbles, the printer needs the Compatibility image mode.
       BtThermal.prototype.testSmall = function () {
-        var dotW = this._paperWidth || 576;
+        var cmd = this.effectiveCmd();
+        var dotW = (cmd === 'cat' || cmd === 'luck') ? 384 : (this._paperWidth || 576);
         var cvs = document.createElement('canvas');
         cvs.width = dotW; cvs.height = 64;
         var ctx = cvs.getContext('2d');
@@ -14726,6 +14880,8 @@
       };
 
       BtThermal.prototype.testPrint = function (paper) {
+        var cmd = this.effectiveCmd();
+        if (cmd === 'cat' || cmd === 'luck') paper = '58mm';
         var dotW = PAPER_WIDTHS[paper || '80mm'] || 576;
         this._paperWidth = dotW;          // the job must be as wide as this paper (a 58mm printer fed 80mm rows prints garbage)
         var cvs = document.createElement('canvas');
@@ -14798,6 +14954,8 @@
       global._btThermal = {
         BtThermal: BtThermal,
         EscPosEncoder: EscPosEncoder,
+        CatPrinterEncoder: CatPrinterEncoder,
+        isCatDevice: isCatDevice,
         PAPER_WIDTHS: PAPER_WIDTHS,
         toReceiptCanvas: toReceiptCanvas,
         btPrinter: btPrinter,
@@ -17600,8 +17758,10 @@
                   </label>
                   <label style="font-size:12px;">Picture mode
                     <select class="mini-select" id="btProfCmd">
-                      <option value="raster">Standard</option>
-                      <option value="star">Compatibility</option>
+                      <option value="raster">Standard (ESC/POS)</option>
+                      <option value="star">Compatibility (ESC *)</option>
+                      <option value="cat">Pocket / FunPrint (C19)</option>
+                      <option value="luck">Pocket / WalkPrint</option>
                     </select>
                   </label>
                 </div>
@@ -29993,6 +30153,13 @@
       function isBtThermalAvailable() {
         return typeof window._btThermal !== 'undefined' && window._btThermal.isBtAvailable();
       }
+      function isBtThermalRoute() {
+        if (!btThermalOn || !isBtThermalAvailable()) return false;
+        if (isMobileOS() || !helperOn) return true;
+        var bp = window._btThermal && window._btThermal.btPrinter;
+        if (bp && (bp.connected || (typeof bp.canReconnect === 'function' && bp.canReconnect()))) return true;
+        return !!(printSize && isReceiptPaper(printSize) && !printerFor(printSize));
+      }
       function setBtThermalOn(v) {
         btThermalOn = !!v;
         try { localStorage.setItem(BT_THERMAL_KEY, btThermalOn ? '1' : '0'); } catch (e) { }
@@ -30574,7 +30741,7 @@
           { done: station.online, t: 'Choose the printers there', s: 'Pick a printer for each paper size on the laptop (with the Print Helper running).' },
           { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> after a photo session.' }
         ];
-        else if (isMobileOS() && btThermalOn && printSize && isReceiptPaper(printSize)) steps = [
+        else if (isBtThermalRoute() && printSize && isReceiptPaper(printSize)) steps = [
           { done: !!(window._btThermal && window._btThermal.btPrinter.connected), t: 'Connect the Bluetooth thermal printer', s: (window._btThermal && window._btThermal.btPrinter.connected) ? '\u2713 Connected: ' + window._btThermal.btPrinter.name : 'Tap <b>Connect Bluetooth Printer</b> below. Ensure printer is powered on and paired in Bluetooth settings.' },
           { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> — the receipt prints directly without a dialog.' }
         ];
@@ -32389,6 +32556,7 @@
         if (/58/.test(s)) return true;
         if (/\b(p50|mp210|pt-?210|pt-?280|mtp-?ii|mtp-?2)\b/.test(s)) return true;
         if (/^mp\b/.test(s) && !/80/.test(s)) return true;
+        if (/^(c19|liotog|mx\d|gb0|gt0|yt0|pd01)/.test(s)) return true;
         if (window._btThermal && window._btThermal.btPrinter && window._btThermal.btPrinter.connected && window._btThermal.btPrinter._paperWidth <= 384) return true;
         return false;
       }
@@ -33379,7 +33547,7 @@
           const paper = Object.assign({}, paperFor(printSize), { h: Math.round(cv.height / RECEIPT_DPI * 254) / 10 });
           const rollW = (paper.w && paper.w <= 55) ? '58mm' : '80mm';
           showToast('Printing the darkness test strip…', 4000);
-          if ((isMobileOS() || !helperOn) && btThermalOn && isBtThermalAvailable()) {
+          if (isBtThermalRoute()) {
             await window._btThermal.printViaBluetooth(cv, rollW, { brightness: 0, quality: printPrefs.thermalQuality || 'normal' });
           } else if (wifiPrinter && !wifiPrinter.dialog && wifiNetAvailable()) {
             await printViaWifi([cv], paper, wifiPrinter, wifiOpts(wifiPrinter));
@@ -33410,7 +33578,7 @@
       // than the printer prints. One strip prints the same picture in the 4 tune choices (see btTunePacing / rawTuneBand);
       // the operator taps the cleanest one and it is saved for that printer only.
       function thermalTarget() {
-        if ((isMobileOS() || !helperOn) && btThermalOn && isBtThermalAvailable()) return { kind: 'bt' };
+        if (isBtThermalRoute()) return { kind: 'bt' };
         if (wifiPrinter && !wifiPrinter.dialog && wifiPrinter.raw && wifiNetAvailable()) return { kind: 'raw', p: wifiPrinter };
         return null;
       }
@@ -33873,7 +34041,7 @@
           const fpHelper = !!fp && helperOn && !!helper && Array.isArray(helper.printers) && helper.printers.includes(fp);
           const fpBt = !!fp && !fpHelper && btThermalOn && fp === btProfileName();
           const fpWifi = (fp && !fpHelper && !fpBt) ? wifiByName(fp) : null;
-          if ((isMobileOS() || !helperOn) && btThermalOn && paper.receipt && isBtThermalAvailable() && (!fp || fpBt)) {
+          if (isBtThermalRoute() && paper.receipt && (!fp || fpBt)) {
             try {
               const rollW = (paper.w && paper.w <= 55) ? '58mm' : '80mm';
               const btOpts = { brightness: 0, quality: printPrefs.thermalQuality || 'normal' };          // colour already in the page (printAdjust)
@@ -34105,7 +34273,7 @@
         const btWarn = document.getElementById('btThermalWarnHint');
         const btPaperHint = document.getElementById('btThermalPaperHint');
         if (btRow) {
-          const showBt = (isMobileOS() || !helperOn || (window._btThermal && window._btThermal.isNativeAndroid()))
+          const showBt = (isMobileOS() || !helperOn || isReceiptPaper(printSize) || btThermalOn || (window._btThermal && window._btThermal.isNativeAndroid()))
             && isBtThermalAvailable() && !useStation();
           btRow.style.display = showBt ? '' : 'none';
           if (btToggle) btToggle.checked = btThermalOn;
@@ -34145,8 +34313,11 @@
           if (btTestBtn) btTestBtn.style.display = conn ? '' : 'none';
           if (btDiscBtn) btDiscBtn.style.display = conn ? '' : 'none';
           if (btStatus) {
+            const btCmd = (window._btThermal && window._btThermal.btPrinter && typeof window._btThermal.btPrinter.effectiveCmd === 'function')
+              ? window._btThermal.btPrinter.effectiveCmd() : 'raster';
+            const btModeLabel = btCmd === 'cat' ? 'FunPrint / C19 BLE' : btCmd === 'luck' ? 'WalkPrint BLE' : btCmd === 'star' ? 'ESC * Compatibility' : 'ESC/POS';
             btStatus.textContent = conn
-              ? 'Connected: ' + (window._btThermal.btPrinter.name || 'Bluetooth Printer') + ' (ESC/POS).'
+              ? 'Connected: ' + (window._btThermal.btPrinter.name || 'Bluetooth Printer') + ' (' + btModeLabel + ').'
               : (!btEnabled
                 ? 'Bluetooth is disabled. Turn on Bluetooth in Settings, pair your printer, then tap Connect.'
                 : (window._btThermal && window._btThermal.isNativeAndroid()
@@ -35153,7 +35324,7 @@
         try {
           if (!size) return '';
           var paper = paperFor(size);
-          if ((isMobileOS() || !helperOn) && btThermalOn && paper && paper.receipt && isBtThermalAvailable()) return btProfileName();
+          if (isBtThermalRoute() && paper && paper.receipt) return btProfileName();
           if (wifiNetAvailable()) { var wp = wifiForSize(size); if (wp && wp.name) return wp.name; }
         } catch (e) { }
         return '';

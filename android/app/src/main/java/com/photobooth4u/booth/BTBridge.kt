@@ -1,19 +1,31 @@
 package com.photobooth4u.booth
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothSocket
+import android.bluetooth.BluetoothStatusCodes
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.util.Base64
 import android.webkit.JavascriptInterface
@@ -27,6 +39,7 @@ import java.io.OutputStream
 import java.util.UUID
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -55,6 +68,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * ⚠ Star TSP143III note: ships in Star Line / Raster mode. Enable ESC/POS routing via the
  *   Star futurePRNT Configuration Utility (Windows) → "Enable ESC/POS Routing", then save.
  */
+@SuppressLint("MissingPermission")
 class BTBridge(
     private val activity: Activity,
     private val webView: WebView
@@ -66,9 +80,29 @@ class BTBridge(
 
     // Standard SPP UUID for Serial Port Profile
     private val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")
+    private val CCCD_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+
+    // BLE thermal printer service UUIDs (FunPrint / LIOTOG C19, WalkPrint, POS BLE)
+    private val BLE_SERVICE_UUIDS = listOf(
+        UUID.fromString("0000ae30-0000-1000-8000-00805f9b34fb"),
+        UUID.fromString("0000ae00-0000-1000-8000-00805f9b34fb"),
+        UUID.fromString("0000ff00-0000-1000-8000-00805f9b34fb"),
+        UUID.fromString("000018f0-0000-1000-8000-00805f9b34fb"),
+        UUID.fromString("0000e781-0000-1000-8000-00805f9b34fb"),
+        UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb"),
+        UUID.fromString("0000fff0-0000-1000-8000-00805f9b34fb"),
+        UUID.fromString("49535343-fe7d-4ae5-8fa9-9fafd205e455"),
+        UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e"),
+        UUID.fromString("e7810a71-73ae-499d-8c15-faa9aef0c3f2")
+    )
+    private val CAT_SERVICE_UUIDS = setOf(
+        "0000ae30-0000-1000-8000-00805f9b34fb",
+        "0000ae00-0000-1000-8000-00805f9b34fb"
+    )
 
     // Common thermal printer name prefixes (NOTE: NEVER include "Bluetooth" here because keyboards/speakers start with "Bluetooth")
     private val PRINTER_PREFIXES = arrayOf(
+        "C19", "LIOTOG", "MX0", "MX1", "GB0", "GT0", "YT0", "PD01",
         "T80", "T80A", "T58", "T-80", "T-58", "T9",
         "XP", "Xprinter", "TM", "Epson", "EPSON", "POS", "Receipt",
         "Thermal", "RPP", "Bixolon", "BIXOLON", "Star", "MP", "BP",
@@ -91,8 +125,15 @@ class BTBridge(
 
     private var activeSocket: BluetoothSocket? = null
     private var activeOutputStream: OutputStream? = null
+    private var activeGatt: BluetoothGatt? = null
+    private var activeWriteChar: BluetoothGattCharacteristic? = null
+    @Volatile private var gattReady: Boolean = false
+    @Volatile private var gattChunkSize: Int = 20
+    private val gattWriteDone = Semaphore(0)
+    private val gattWriteLock = Any()
     private var connectedDeviceName: String? = null
     private var connectedDeviceAddress: String? = null
+    private var connectedProto: String = ""
 
     // Quiet reconnect (the page asks for it in the background): one attempt at a time, off the page's thread.
     private val reconnecting = AtomicBoolean(false)
@@ -237,14 +278,37 @@ class BTBridge(
         false
     }
 
+    private fun isCatPrinterName(name: String?): Boolean {
+        if (name.isNullOrBlank()) return false
+        val n = name.trim()
+        return n.startsWith("C19", ignoreCase = true) ||
+            n.startsWith("LIOTOG", ignoreCase = true) ||
+            n.startsWith("MX0", ignoreCase = true) ||
+            n.startsWith("MX1", ignoreCase = true) ||
+            n.startsWith("GB0", ignoreCase = true) ||
+            n.startsWith("GT0", ignoreCase = true) ||
+            n.startsWith("YT0", ignoreCase = true) ||
+            n.startsWith("PD01", ignoreCase = true)
+    }
+
     /**
      * Checks if runtime Bluetooth permissions are granted.
      */
     private fun hasBluetoothPermission(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
         } else {
             ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun hasBleScanPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
         }
     }
 
@@ -300,6 +364,49 @@ class BTBridge(
         return connect(null)
     }
 
+    private fun scanBlePrinters(ms: Long = 3000L): Pair<Map<String, Pair<BluetoothDevice, String>>, Map<String, Pair<BluetoothDevice, String>>> {
+        val likely = LinkedHashMap<String, Pair<BluetoothDevice, String>>()
+        val others = LinkedHashMap<String, Pair<BluetoothDevice, String>>()
+        val ad = bluetoothAdapter ?: return Pair(likely, others)
+        if (!hasBleScanPermission()) return Pair(likely, others)
+        if (!activity.packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) return Pair(likely, others)
+        val scanner = try { ad.bluetoothLeScanner } catch (_: Exception) { null } ?: return Pair(likely, others)
+
+        val latch = CountDownLatch(1)
+        val mainHandler = Handler(Looper.getMainLooper())
+        val cb = object : ScanCallback() {
+            override fun onScanResult(callbackType: Int, result: ScanResult) {
+                val dev = result.device ?: return
+                val addr = dev.address ?: return
+                val n = (try { dev.name ?: result.scanRecord?.deviceName } catch (_: Exception) { null })?.trim() ?: ""
+                if (isNonPrinter(dev)) return
+                val hasSvc = try { result.scanRecord?.serviceUuids?.any { BLE_SERVICE_UUIDS.contains(it.uuid) } == true } catch (_: Exception) { false }
+                val nameMatch = n.isNotBlank() && PRINTER_PREFIXES.any { n.startsWith(it, ignoreCase = true) }
+                if (hasSvc || nameMatch) {
+                    val label = if (n.isNotBlank()) n else "BLE Printer"
+                    synchronized(likely) { likely[addr] = Pair(dev, label) }
+                } else if (n.isNotBlank()) {
+                    synchronized(others) { others[addr] = Pair(dev, n) }
+                }
+            }
+
+            override fun onScanFailed(errorCode: Int) {
+                latch.countDown()
+            }
+        }
+        try {
+            scanner.startScan(null, ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(), cb)
+            mainHandler.postDelayed({
+                try { scanner.stopScan(cb) } catch (_: Exception) {}
+                latch.countDown()
+            }, ms)
+            latch.await(ms + 1000L, TimeUnit.MILLISECONDS)
+        } catch (_: Exception) {
+            try { scanner.stopScan(cb) } catch (_: Exception) {}
+        }
+        return Pair(likely, others)
+    }
+
     @JavascriptInterface
     fun connect(targetAddress: String?): String {
         if (!hasBluetoothPermission()) {
@@ -330,33 +437,36 @@ class BTBridge(
             emptySet()
         }
 
-        if (bondedDevices.isEmpty()) {
-            val res = JSONObject()
-            res.put("ok", false)
-            res.put("error", "No paired Bluetooth devices found. Pair your thermal printer in tablet Bluetooth Settings first.")
-            return res.toString()
-        }
+        val prefs = try { activity.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE) } catch (_: Exception) { null }
 
-        // 1. If explicit address given, connect directly
+        // 1. If explicit address given, connect directly (paired or BLE remote address)
         if (!targetAddress.isNullOrBlank()) {
             val device = bondedDevices.find { it.address.equals(targetAddress, ignoreCase = true) }
+                ?: try {
+                    val norm = targetAddress.trim().uppercase()
+                    if (BluetoothAdapter.checkBluetoothAddress(norm)) adapter.getRemoteDevice(norm) else null
+                } catch (_: Exception) { null }
             return if (device != null) {
                 connectToDevice(device)
             } else {
                 val res = JSONObject()
                 res.put("ok", false)
-                res.put("error", "Device with address $targetAddress is not paired.")
+                res.put("error", "Invalid or unpaired Bluetooth address: $targetAddress.")
                 res.toString()
             }
         }
 
-        // 2. Check if a previously selected printer is saved and still paired
-        val prefs = try { activity.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE) } catch (_: Exception) { null }
+        // 2. Check if a previously selected printer is saved (paired Classic or remembered BLE)
         val lastAddr = prefs?.getString("last_printer_address", null)
+        val lastBle = prefs?.getBoolean("last_printer_ble", false) == true
+        val lastName = prefs?.getString("last_printer_name", null)
         if (!lastAddr.isNullOrBlank()) {
             val savedDevice = bondedDevices.find { it.address.equals(lastAddr, ignoreCase = true) }
+                ?: if (lastBle && BluetoothAdapter.checkBluetoothAddress(lastAddr)) {
+                    try { adapter.getRemoteDevice(lastAddr) } catch (_: Exception) { null }
+                } else null
             if (savedDevice != null && !isNonPrinter(savedDevice)) {
-                val connRes = connectToDevice(savedDevice)
+                val connRes = connectToDevice(savedDevice, lastName)
                 val isOk = try { JSONObject(connRes).optBoolean("ok", false) } catch (_: Exception) { false }
                 if (isOk) return connRes
                 // The saved printer did not answer (probably switched off). Keep it remembered and show the picker,
@@ -364,29 +474,63 @@ class BTBridge(
             }
         }
 
-        // 3. Likely printers first; keyboards, headphones and the like never show up
-        val likely = bondedDevices.filter { isLikelyPrinter(it) }
-        val others = bondedDevices.filter { !isNonPrinter(it) && !isLikelyPrinter(it) }
+        // 3. Likely classic paired printers first
+        val likelyClassic = bondedDevices.filter { isLikelyPrinter(it) }
+        val otherClassic = bondedDevices.filter { !isNonPrinter(it) && !isLikelyPrinter(it) }
 
-        // Exactly one likely printer: connect straight away
-        if (likely.size == 1) {
-            return connectToDevice(likely.first())
+        if (likelyClassic.size == 1 && !lastBle) {
+            val singleRes = connectToDevice(likelyClassic.first())
+            val singleOk = try { JSONObject(singleRes).optBoolean("ok", false) } catch (_: Exception) { false }
+            if (singleOk) return singleRes
+            // If that single paired printer is off and BLE scan is available, continue to BLE discovery.
         }
 
-        // 4. Otherwise show a picker. Unrecognised devices sit behind "Other paired devices" so a printer
-        //    with an odd name can still be chosen. If nothing is recognised, the list is those devices.
+        // 4. Also scan nearby BLE thermal printers (e.g. LIOTOG C19 / FunPrint, which do not use Android PIN pairing)
+        val bleNames = HashMap<String, String>()
+        val bleLikely = ArrayList<BluetoothDevice>()
+        val bleOthers = ArrayList<BluetoothDevice>()
+        if (hasBleScanPermission()) {
+            val (bLikely, bOthers) = scanBlePrinters(3000L)
+            for ((addr, pair) in bLikely) {
+                bleNames[addr] = pair.second
+                if (likelyClassic.none { it.address.equals(addr, ignoreCase = true) }) bleLikely.add(pair.first)
+            }
+            for ((addr, pair) in bOthers) {
+                bleNames[addr] = pair.second
+                if (bondedDevices.none { it.address.equals(addr, ignoreCase = true) } && bLikely[addr] == null) bleOthers.add(pair.first)
+            }
+        } else if (likelyClassic.isEmpty()) {
+            activity.runOnUiThread { requestBluetoothPermission() }
+        }
+
+        val likely = likelyClassic + bleLikely
+        val others = otherClassic + bleOthers.filter { o -> likely.none { it.address.equals(o.address, ignoreCase = true) } }
+
+        if (likely.isEmpty() && others.isEmpty()) {
+            val res = JSONObject()
+            res.put("ok", false)
+            res.put("error", "No Bluetooth printers found. Turn on your thermal printer (for Classic BT, pair in tablet Bluetooth Settings first) and try again.")
+            return res.toString()
+        }
+
+        if (likely.size == 1 && bleLikely.size == 1 && likelyClassic.isEmpty()) {
+            val d = likely.first()
+            return connectToDevice(d, bleNames[d.address])
+        }
+
+        // 5. Show a picker with likely printers first and other devices behind "Other devices…"
         val latch = CountDownLatch(1)
         var selectedDevice: BluetoothDevice? = null
 
         fun label(d: BluetoothDevice): String {
-            val n = try { d.name ?: "Unknown" } catch (_: SecurityException) { "Unknown" }
+            val n = bleNames[d.address] ?: (try { d.name ?: "Unknown" } catch (_: SecurityException) { "Unknown" })
             return "$n (${d.address})"
         }
 
         fun showPicker(devices: List<BluetoothDevice>, withOthers: Boolean) {
-            val items = devices.map { label(it) } + (if (withOthers) listOf("Other paired devices…") else emptyList())
+            val items = devices.map { label(it) } + (if (withOthers) listOf("Other devices…") else emptyList())
             AlertDialog.Builder(activity)
-                .setTitle(if (withOthers || devices === likely) "Select Bluetooth Thermal Printer" else "Other paired devices")
+                .setTitle(if (withOthers || devices === likely) "Select Bluetooth Thermal Printer" else "Other Bluetooth devices")
                 .setItems(items.toTypedArray()) { _, which ->
                     if (which < devices.size) {
                         selectedDevice = devices[which]
@@ -414,7 +558,8 @@ class BTBridge(
         } catch (_: InterruptedException) {}
 
         return if (selectedDevice != null) {
-            connectToDevice(selectedDevice!!)
+            val d = selectedDevice!!
+            connectToDevice(d, bleNames[d.address])
         } else {
             val res = JSONObject()
             res.put("ok", false)
@@ -423,7 +568,54 @@ class BTBridge(
         }
     }
 
-    private fun connectToDevice(device: BluetoothDevice): String {
+    private fun connectToDevice(device: BluetoothDevice, hintName: String? = null): String {
+        val devName = hintName?.takeIf { it.isNotBlank() }
+            ?: (try { device.name } catch (_: SecurityException) { null })
+            ?: "Bluetooth Printer"
+        val devType = try { device.type } catch (_: SecurityException) { BluetoothDevice.DEVICE_TYPE_UNKNOWN }
+        val preferBle = devType == BluetoothDevice.DEVICE_TYPE_LE || isCatPrinterName(devName)
+
+        if (preferBle) {
+            val bleErr = connectGattDevice(device, devName)
+            if (bleErr == null) return connectedJson()
+            if (devType == BluetoothDevice.DEVICE_TYPE_DUAL) {
+                val sppErr = connectSppDevice(device, devName)
+                if (sppErr == null) return connectedJson()
+            }
+            return JSONObject().put("ok", false).put("error", "Could not connect to $devName: $bleErr").toString()
+        }
+
+        val sppErr = connectSppDevice(device, devName)
+        if (sppErr == null) return connectedJson()
+
+        if (devType == BluetoothDevice.DEVICE_TYPE_DUAL || devType == BluetoothDevice.DEVICE_TYPE_UNKNOWN) {
+            val bleErr = connectGattDevice(device, devName)
+            if (bleErr == null) return connectedJson()
+        }
+        return JSONObject().put("ok", false).put("error", "Could not connect to $devName: $sppErr").toString()
+    }
+
+    private fun connectedJson(): String {
+        return JSONObject()
+            .put("ok", true)
+            .put("name", connectedDeviceName)
+            .put("address", connectedDeviceAddress)
+            .put("proto", connectedProto)
+            .toString()
+    }
+
+    private fun saveConnectedPrefs(address: String, name: String, isBle: Boolean) {
+        try {
+            activity.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE)
+                .edit()
+                .putString("last_printer_address", address)
+                .putString("last_printer_name", name)
+                .putBoolean("last_printer_ble", isBle)
+                .apply()
+        } catch (_: Exception) {}
+    }
+
+    private fun connectSppDevice(device: BluetoothDevice, devName: String): String? {
         closeConnection() // Close existing connection first (the saved printer stays remembered)
 
         // Always cancel discovery before connecting (critical for RFCOMM SPP reliability)
@@ -469,27 +661,220 @@ class BTBridge(
         if (socket != null && socket.isConnected) {
             activeSocket = socket
             activeOutputStream = socket.outputStream
-            connectedDeviceName = try { device.name ?: "Bluetooth Printer" } catch (_: SecurityException) { "Bluetooth Printer" }
+            connectedDeviceName = devName
             connectedDeviceAddress = device.address
+            connectedProto = ""
+            saveConnectedPrefs(device.address, devName, false)
+            return null
+        }
+        return lastErr?.message ?: "timeout"
+    }
 
-            // Save last successful printer address
+    private fun connectGattDevice(device: BluetoothDevice, devName: String): String? {
+        closeConnection()
+        try { bluetoothAdapter?.cancelDiscovery() } catch (_: SecurityException) {}
+
+        val latch = CountDownLatch(1)
+        var errMsg: String? = null
+        gattReady = false
+        gattChunkSize = 20
+
+        val cb = object : BluetoothGattCallback() {
+            override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
+                if (newState == BluetoothProfile.STATE_CONNECTED && status == BluetoothGatt.GATT_SUCCESS) {
+                    if (!g.requestMtu(185)) g.discoverServices()
+                } else if (newState == BluetoothProfile.STATE_DISCONNECTED || status != BluetoothGatt.GATT_SUCCESS) {
+                    if (!gattReady) {
+                        errMsg = "BLE connection failed (status $status)"
+                        try { g.close() } catch (_: Exception) {}
+                        if (activeGatt === g) activeGatt = null
+                        latch.countDown()
+                    } else {
+                        val addr = device.address
+                        closeConnection()
+                        if (addr != null) emit(JSONObject().put("type", "link").put("on", false).put("address", addr))
+                    }
+                }
+            }
+
+            override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
+                if (status == BluetoothGatt.GATT_SUCCESS && mtu > 23) {
+                    gattChunkSize = maxOf(20, minOf(182, mtu - 3))
+                }
+                g.discoverServices()
+            }
+
+            override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
+                if (status != BluetoothGatt.GATT_SUCCESS) {
+                    errMsg = "BLE service discovery failed ($status)"
+                    try { g.disconnect() } catch (_: Exception) {}
+                    latch.countDown()
+                    return
+                }
+                var writeChar: BluetoothGattCharacteristic? = null
+                var notifyChar: BluetoothGattCharacteristic? = null
+                var matchedSvcUuid = ""
+
+                fun pickFromService(svc: android.bluetooth.BluetoothGattService): Boolean {
+                    var w: BluetoothGattCharacteristic? = null
+                    var n: BluetoothGattCharacteristic? = null
+                    for (c in svc.characteristics) {
+                        val u = c.uuid.toString().lowercase()
+                        val props = c.properties
+                        if ((props and BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0 &&
+                            (u.contains("ae02") || u.contains("ff01") || u.contains("ff03"))
+                        ) {
+                            n = c
+                        }
+                        if ((props and (BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE or BluetoothGattCharacteristic.PROPERTY_WRITE)) != 0) {
+                            if (w == null || u.contains("ae01") || u.contains("ff02")) {
+                                w = c
+                            }
+                        }
+                    }
+                    if (w != null) {
+                        writeChar = w
+                        notifyChar = n
+                        matchedSvcUuid = svc.uuid.toString().lowercase()
+                        return true
+                    }
+                    return false
+                }
+
+                var found = false
+                for (u in BLE_SERVICE_UUIDS) {
+                    val svc = g.getService(u) ?: continue
+                    if (pickFromService(svc)) { found = true; break }
+                }
+                if (!found) {
+                    for (svc in g.services) {
+                        if (pickFromService(svc)) { found = true; break }
+                    }
+                }
+
+                if (!found || writeChar == null) {
+                    errMsg = "No writable BLE characteristic found"
+                    try { g.disconnect() } catch (_: Exception) {}
+                    latch.countDown()
+                    return
+                }
+
+                activeWriteChar = writeChar
+                connectedProto = if (matchedSvcUuid in CAT_SERVICE_UUIDS || isCatPrinterName(devName)) "cat" else ""
+
+                val nc = notifyChar
+                val desc = nc?.getDescriptor(CCCD_UUID)
+                if (nc != null && desc != null) {
+                    g.setCharacteristicNotification(nc, true)
+                    val okDesc = try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            g.writeDescriptor(desc, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE) == BluetoothStatusCodes.SUCCESS
+                        } else {
+                            @Suppress("DEPRECATION")
+                            run {
+                                desc.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                                g.writeDescriptor(desc)
+                            }
+                        }
+                    } catch (_: Exception) { false }
+                    if (!okDesc) {
+                        gattReady = true
+                        latch.countDown()
+                    }
+                } else {
+                    gattReady = true
+                    latch.countDown()
+                }
+            }
+
+            override fun onDescriptorWrite(g: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
+                gattReady = true
+                latch.countDown()
+            }
+
+            override fun onCharacteristicWrite(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
+                gattWriteDone.release()
+            }
+        }
+
+        activity.runOnUiThread {
             try {
-                activity.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE)
-                    .edit()
-                    .putString("last_printer_address", device.address)
-                    .apply()
-            } catch (_: Exception) {}
+                activeGatt = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    device.connectGatt(activity, false, cb, BluetoothDevice.TRANSPORT_LE)
+                } else {
+                    device.connectGatt(activity, false, cb)
+                }
+            } catch (e: Exception) {
+                errMsg = e.message ?: "Could not open BLE link"
+                latch.countDown()
+            }
+        }
 
-            val res = JSONObject()
-            res.put("ok", true)
-            res.put("name", connectedDeviceName)
-            res.put("address", connectedDeviceAddress)
-            return res.toString()
-        } else {
-            val res = JSONObject()
-            res.put("ok", false)
-            res.put("error", "Could not connect to ${device.name ?: device.address}: ${lastErr?.message ?: "timeout"}")
-            return res.toString()
+        try {
+            latch.await(12, TimeUnit.SECONDS)
+        } catch (_: InterruptedException) {}
+
+        if (!gattReady || activeGatt == null || activeWriteChar == null) {
+            closeConnection()
+            return errMsg ?: "BLE timeout"
+        }
+
+        connectedDeviceName = devName
+        connectedDeviceAddress = device.address
+        saveConnectedPrefs(device.address, devName, true)
+        return null
+    }
+
+    private fun writeOnceGatt(g: BluetoothGatt, ch: BluetoothGattCharacteristic, part: ByteArray, writeType: Int): Boolean {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                g.writeCharacteristic(ch, part, writeType) == BluetoothStatusCodes.SUCCESS
+            } else {
+                @Suppress("DEPRECATION")
+                run {
+                    ch.writeType = writeType
+                    ch.value = part
+                    g.writeCharacteristic(ch)
+                }
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun writeGattBytes(bytes: ByteArray, chunkLimit: Int, delayMs: Long) {
+        val g = activeGatt ?: throw IOException("Printer not connected.")
+        val ch = activeWriteChar ?: throw IOException("Printer not connected.")
+        if (!gattReady) throw IOException("Printer not connected.")
+        val writeType = if ((ch.properties and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0)
+            BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE else BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+        synchronized(gattWriteLock) {
+            var off = 0
+            var sincePause = 0
+            while (off < bytes.size) {
+                val step = minOf(gattChunkSize, chunkLimit.coerceAtLeast(20), bytes.size - off)
+                val part = bytes.copyOfRange(off, off + step)
+                gattWriteDone.drainPermits()
+                var sent = false
+                var tries = 0
+                while (!sent && tries < 300) {
+                    sent = writeOnceGatt(g, ch, part, writeType)
+                    if (!sent) {
+                        tries++
+                        try { Thread.sleep(5) } catch (_: InterruptedException) {}
+                    }
+                }
+                if (!sent) throw IOException("Could not send to BLE printer.")
+                if (!gattWriteDone.tryAcquire(2, TimeUnit.SECONDS)) throw IOException("BLE printer stopped answering.")
+                if (!gattReady) throw IOException("BLE printer disconnected.")
+                off += step
+                sincePause += step
+                if (delayMs > 0 && off < bytes.size && sincePause >= chunkLimit) {
+                    Thread.sleep(delayMs)
+                    sincePause = 0
+                }
+            }
+            if (delayMs > 0) Thread.sleep(delayMs * 4)
         }
     }
 
@@ -498,7 +883,9 @@ class BTBridge(
      */
     @JavascriptInterface
     fun write(base64Data: String): String {
-        val out = activeOutputStream ?: run {
+        val out = activeOutputStream
+        val useGatt = gattReady && activeGatt != null && activeWriteChar != null
+        if (out == null && !useGatt) {
             val res = JSONObject()
             res.put("ok", false)
             res.put("error", "Printer not connected.")
@@ -507,8 +894,12 @@ class BTBridge(
 
         return try {
             val bytes = Base64.decode(base64Data, Base64.DEFAULT)
-            out.write(bytes)
-            out.flush()
+            if (useGatt) {
+                writeGattBytes(bytes, gattChunkSize, 0)
+            } else {
+                out!!.write(bytes)
+                out.flush()
+            }
 
             val res = JSONObject()
             res.put("ok", true)
@@ -530,7 +921,9 @@ class BTBridge(
      */
     @JavascriptInterface
     fun writePaced(base64Data: String, chunkSize: Int, delayMs: Int): String {
-        val out = activeOutputStream ?: run {
+        val out = activeOutputStream
+        val useGatt = gattReady && activeGatt != null && activeWriteChar != null
+        if (out == null && !useGatt) {
             val res = JSONObject()
             res.put("ok", false)
             res.put("error", "Printer not connected.")
@@ -541,16 +934,20 @@ class BTBridge(
             val bytes = Base64.decode(base64Data, Base64.DEFAULT)
             val piece = chunkSize.coerceIn(16, 4096)
             val pause = delayMs.coerceIn(0, 500).toLong()
-            var off = 0
-            while (off < bytes.size) {
-                val n = minOf(piece, bytes.size - off)
-                out.write(bytes, off, n)
-                out.flush()
-                off += n
-                if (pause > 0 && off < bytes.size) Thread.sleep(pause)
+            if (useGatt) {
+                writeGattBytes(bytes, piece, pause)
+            } else {
+                var off = 0
+                while (off < bytes.size) {
+                    val n = minOf(piece, bytes.size - off)
+                    out!!.write(bytes, off, n)
+                    out.flush()
+                    off += n
+                    if (pause > 0 && off < bytes.size) Thread.sleep(pause)
+                }
+                // Let the printer finish taking the last piece before the page asks for anything else.
+                if (pause > 0) Thread.sleep(pause * 4)
             }
-            // Let the printer finish taking the last piece before the page asks for anything else.
-            if (pause > 0) Thread.sleep(pause * 4)
 
             val res = JSONObject()
             res.put("ok", true)
@@ -576,17 +973,28 @@ class BTBridge(
     }
 
     private fun closeConnection() {
+        gattReady = false
+        gattWriteDone.release()
         try {
             activeOutputStream?.close()
         } catch (_: Exception) {}
         try {
             activeSocket?.close()
         } catch (_: Exception) {}
+        try {
+            activeGatt?.disconnect()
+        } catch (_: Exception) {}
+        try {
+            activeGatt?.close()
+        } catch (_: Exception) {}
 
         activeOutputStream = null
         activeSocket = null
+        activeGatt = null
+        activeWriteChar = null
         connectedDeviceName = null
         connectedDeviceAddress = null
+        connectedProto = ""
     }
 
     /**
@@ -601,6 +1009,8 @@ class BTBridge(
             activity.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE)
                 .edit()
                 .remove("last_printer_address")
+                .remove("last_printer_name")
+                .remove("last_printer_ble")
                 .apply()
         } catch (_: Exception) {}
 
@@ -616,7 +1026,9 @@ class BTBridge(
 
     /** True while a link to the printer is open. */
     @JavascriptInterface
-    fun isConnected(): Boolean = activeSocket?.isConnected == true && activeOutputStream != null
+    fun isConnected(): Boolean =
+        (activeSocket?.isConnected == true && activeOutputStream != null) ||
+            (gattReady && activeGatt != null && activeWriteChar != null)
 
     /** The remembered printer: { address, name, connected } (address is "" when none was chosen yet). */
     @JavascriptInterface
@@ -628,6 +1040,11 @@ class BTBridge(
                 val d = bluetoothAdapter?.bondedDevices?.find { it.address.equals(addr, true) }
                 name = d?.name ?: ""
             } catch (_: SecurityException) {}
+            if (name.isEmpty()) {
+                name = try {
+                    activity.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE).getString("last_printer_name", "") ?: ""
+                } catch (_: Exception) { "" }
+            }
         }
         return JSONObject().put("address", addr).put("name", name)
             .put("connected", isConnected() && addr.equals(connectedDeviceAddress, true)).toString()
@@ -643,7 +1060,11 @@ class BTBridge(
         val addr = savedAddress()
         if (addr.isNullOrBlank()) return JSONObject().put("ok", false).put("none", true).toString()
         if (isConnected() && addr.equals(connectedDeviceAddress, true)) {
-            return JSONObject().put("ok", true).put("connected", true).put("name", connectedDeviceName ?: "").put("address", addr).toString()
+            return JSONObject().put("ok", true).put("connected", true)
+                .put("name", connectedDeviceName ?: "")
+                .put("address", addr)
+                .put("proto", connectedProto)
+                .toString()
         }
         if (!reconnecting.compareAndSet(false, true)) return JSONObject().put("ok", true).put("busy", true).toString()
         try {
@@ -664,9 +1085,15 @@ class BTBridge(
         if (!hasBluetoothPermission()) return JSONObject().put("ok", false).put("error", "Bluetooth permission needed")
         val adapter = bluetoothAdapter ?: return JSONObject().put("ok", false).put("error", "No Bluetooth on this device")
         if (!adapter.isEnabled) return JSONObject().put("ok", false).put("adapterOff", true).put("error", "Bluetooth is turned off")
+        val prefs = try { activity.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE) } catch (_: Exception) { null }
+        val isBle = prefs?.getBoolean("last_printer_ble", false) == true
+        val savedName = prefs?.getString("last_printer_name", null)
         val device = try { adapter.bondedDevices?.find { it.address.equals(addr, true) } } catch (_: SecurityException) { null }
+            ?: if (isBle && BluetoothAdapter.checkBluetoothAddress(addr)) {
+                try { adapter.getRemoteDevice(addr) } catch (_: Exception) { null }
+            } else null
             ?: return JSONObject().put("ok", false).put("unpaired", true).put("error", "The printer is no longer paired")
-        return try { JSONObject(connectToDevice(device)) } catch (_: Exception) { JSONObject().put("ok", false).put("error", "Could not connect") }
+        return try { JSONObject(connectToDevice(device, savedName)) } catch (_: Exception) { JSONObject().put("ok", false).put("error", "Could not connect") }
     }
 
     /** App closing: close the link and stop listening, but keep the chosen printer for next time. */

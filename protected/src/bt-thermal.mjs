@@ -87,7 +87,86 @@
     return this;
   };
 
+  EscPosEncoder.prototype.imageLuck = function(canvas, maxBandHeight, feed) {
+    for (var i = 0; i < 12; i++) this._buf.push(0x00);
+    this._byte(0x10, 0xFF, 0xF1, 0x03);
+    this._byte(0x10, 0xFF, 0x10, 0x00, 0x01);
+    this.image(canvas, maxBandHeight || 64);
+    var feedDots = Math.min(255, Math.max(40, (feed != null ? feed : 3) * 24));
+    this._byte(ESC, 0x4A, feedDots);
+    return this._byte(0x10, 0xFF, 0xF1, 0x45);
+  };
+
   EscPosEncoder.prototype.getBuffer = function() {
+    return new Uint8Array(this._buf);
+  };
+
+  // ── LIOTOG C19 / FunPrint / Cat Printer (0x51 0x78) BLE encoder ───────────
+  var CAT_CRC8_TABLE = (function() {
+    var t = new Uint8Array(256);
+    for (var i = 0; i < 256; i++) {
+      var c = i;
+      for (var b = 0; b < 8; b++) c = (c & 0x80) ? ((c << 1) ^ 0x07) & 0xFF : (c << 1) & 0xFF;
+      t[i] = c;
+    }
+    return t;
+  }());
+  function catCrc8(payload) {
+    var c = 0;
+    for (var i = 0; i < payload.length; i++) c = CAT_CRC8_TABLE[(c ^ payload[i]) & 0xFF];
+    return c;
+  }
+  function isCatDevice(name, svcUuid, proto) {
+    if (proto === 'cat') return true;
+    var s = String(svcUuid || '').toLowerCase();
+    if (s.indexOf('ae30') >= 0 || s.indexOf('ae00') >= 0) return true;
+    return /^(C19|LIOTOG|MX\d|GB0|GT0|YT0|PD01)/i.test(String(name || '').trim());
+  }
+  function CatPrinterEncoder() {
+    this._w   = 384;
+    this._buf = [];
+  }
+  CatPrinterEncoder.prototype._frame = function(cmd, payload) {
+    var len = payload.length;
+    this._buf.push(0x51, 0x78, cmd & 0xFF, 0x00, len & 0xFF, (len >> 8) & 0xFF);
+    for (var i = 0; i < len; i++) this._buf.push(payload[i] & 0xFF);
+    this._buf.push(catCrc8(payload), 0xFF);
+    return this;
+  };
+  CatPrinterEncoder.prototype.encode = function(canvas, feed) {
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height;
+    var byteW = 48;
+    var imgData = ctx.getImageData(0, 0, W, H).data;
+
+    this._frame(0xA4, [0x33]);
+    this._frame(0xAF, [0xE0, 0x2E]);
+    this._frame(0xBE, [0x00]);
+    this._frame(0xA6, [0xAA, 0x55, 0x17, 0x38, 0x44, 0x5F, 0x5F, 0x5F, 0x44, 0x38, 0x2C]);
+
+    var row = new Uint8Array(byteW);
+    for (var y = 0; y < H; y++) {
+      for (var bx = 0; bx < byteW; bx++) {
+        var byte = 0;
+        for (var bit = 0; bit < 8; bit++) {
+          var x = bx * 8 + bit;
+          if (x < W) {
+            var idx = (y * W + x) * 4;
+            var lum = 0.299 * imgData[idx] + 0.587 * imgData[idx + 1] + 0.114 * imgData[idx + 2];
+            if (lum < 128) byte |= (1 << bit);
+          }
+        }
+        row[bx] = byte;
+      }
+      this._frame(0xA2, row);
+    }
+
+    var steps = Math.min(255, Math.max(24, (feed != null ? feed : 3) * 20));
+    this._frame(0xA1, [steps & 0xFF, (steps >> 8) & 0xFF]);
+    this._frame(0xA6, [0xAA, 0x55, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17]);
+    return this;
+  };
+  CatPrinterEncoder.prototype.getBuffer = function() {
     return new Uint8Array(this._buf);
   };
 
@@ -148,17 +227,22 @@
 
   // ── Well-known thermal printer Bluetooth services ─────────────────────────
   var WELL_KNOWN_SERVICES = [
+    '0000ae30-0000-1000-8000-00805f9b34fb',  // FunPrint / LIOTOG C19 BLE
+    '0000ae00-0000-1000-8000-00805f9b34fb',  // FunPrint alt BLE
     '000018f0-0000-1000-8000-00805f9b34fb',  // Generic BLE Serial / Epson
     '0000e781-0000-1000-8000-00805f9b34fb',  // ISSC / Chinese thermal
     '49535343-fe7d-4ae5-8fa9-9fafd205e455',  // ISSC alternative
     '6e400001-b5a3-f393-e0a9-e50e24dcca9e',  // Nordic UART Service (NUS)
     '0000ff00-0000-1000-8000-00805f9b34fb',  // POS custom FF00
     '0000fff0-0000-1000-8000-00805f9b34fb',  // POS custom FFF0
+    '0000ffe0-0000-1000-8000-00805f9b34fb',  // FunnyPrint / BLE UART
     'e7810a71-73ae-499d-8c15-faa9aef0c3f2',  // Star / Chinese POS
     '00001101-0000-1000-8000-00805f9b34fb'   // Classic RFCOMM SPP
   ];
 
   var PRINTER_FILTERS = [
+    { namePrefix: 'C19' }, { namePrefix: 'LIOTOG' }, { namePrefix: 'Liotog' },
+    { namePrefix: 'MX' }, { namePrefix: 'GB' }, { namePrefix: 'GT' }, { namePrefix: 'YT' }, { namePrefix: 'PD' },
     { namePrefix: 'XP' }, { namePrefix: 'Xprinter' },
     { namePrefix: 'TM' }, { namePrefix: 'Epson' }, { namePrefix: 'EPSON' },
     { namePrefix: 'POS' }, { namePrefix: 'Receipt' }, { namePrefix: 'Thermal' },
@@ -177,12 +261,22 @@
     this._char    = null;
     this._mode    = null;   // 'bridge' | 'spp' | 'le' | null
     this._name    = '';
+    this._serviceUuid = '';
+    this._proto   = '';
     this.onDisconnect = null;
   }
 
   Object.defineProperty(BtThermal.prototype, 'connected', { get: function() { return this._mode !== null; } });
   Object.defineProperty(BtThermal.prototype, 'name',      { get: function() { return this._name; } });
   Object.defineProperty(BtThermal.prototype, 'mode',      { get: function() { return this._mode; } });
+
+  BtThermal.prototype.effectiveCmd = function() {
+    var prof = {};
+    try { prof = JSON.parse((typeof localStorage !== 'undefined' && localStorage.getItem('pb_bt_profile')) || '{}') || {}; } catch(_) {}
+    if (prof.cmd === 'cat' || prof.cmd === 'luck' || prof.cmd === 'star') return prof.cmd;
+    if (isCatDevice(this._name, this._serviceUuid, this._proto)) return 'cat';
+    return 'raster';
+  };
 
   /** Returns 'bridge' | 'web' | null */
   BtThermal.available = function() {
@@ -200,7 +294,7 @@
     return this._connectWebBt();
   };
 
-  // Native Android bridge (RFCOMM SPP via Java/Kotlin wrapper) ───────────────
+  // Native Android bridge (RFCOMM SPP / BLE GATT via Java/Kotlin wrapper) ────
   BtThermal.prototype._connectBridge = function() {
     var self = this;
     return Promise.resolve(global.__BTBridge.connect())
@@ -214,6 +308,8 @@
         }
         self._mode = 'bridge';
         self._name = (r && r.name) || 'Bluetooth Printer';
+        self._serviceUuid = '';
+        self._proto = (r && r.proto) || '';
         return self._name;
       });
   };
@@ -245,6 +341,8 @@
       .then(function(device) {
         self._device = device;
         self._name   = device.name || 'Bluetooth Printer';
+        self._serviceUuid = '';
+        self._proto = '';
         device.addEventListener('gattserverdisconnected', function() { self._onDisconnect(); });
         return device.gatt.connect();
       })
@@ -262,14 +360,28 @@
   BtThermal.prototype._findWritableChar = function(server) {
     var self = this;
 
-    // Helper: inspect a service's characteristics for write capability
+    // Helper: inspect a service's characteristics for write capability (prefer ae01 / ff02)
     function searchService(svc) {
       return svc.getCharacteristics().then(function(chars) {
+        var writeChar = null, notifyChar = null;
         for (var i = 0; i < chars.length; i++) {
           var c = chars[i];
-          if (c.properties.writeWithoutResponse || c.properties.write) return c;
+          var u = String(c.uuid || '').toLowerCase();
+          if (c.properties && c.properties.notify && (u.indexOf('ae02') >= 0 || u.indexOf('ff01') >= 0 || u.indexOf('ff03') >= 0)) {
+            notifyChar = c;
+          }
+          if (c.properties && (c.properties.writeWithoutResponse || c.properties.write)) {
+            if (!writeChar || u.indexOf('ae01') >= 0 || u.indexOf('ff02') >= 0) {
+              writeChar = c;
+            }
+          }
         }
-        return null;
+        if (!writeChar) return null;
+        self._serviceUuid = String(svc.uuid || '').toLowerCase();
+        if (notifyChar && typeof notifyChar.startNotifications === 'function') {
+          return Promise.resolve(notifyChar.startNotifications()).catch(function() {}).then(function() { return writeChar; });
+        }
+        return writeChar;
       }).catch(function() { return null; });
     }
 
@@ -309,7 +421,7 @@
   };
 
   BtThermal.prototype.disconnect = function() {
-    this._mode = null; this._char = null;
+    this._mode = null; this._char = null; this._serviceUuid = ''; this._proto = '';
     try { if (this._server && this._server.connected) this._server.disconnect(); } catch(_) {}
     try { if (global.__BTBridge && typeof global.__BTBridge.disconnect === 'function') global.__BTBridge.disconnect(); } catch(_) {}
     this._server = null; this._device = null;
@@ -317,7 +429,7 @@
   };
 
   BtThermal.prototype._onDisconnect = function() {
-    this._mode = null; this._char = null; this._server = null;
+    this._mode = null; this._char = null; this._server = null; this._serviceUuid = ''; this._proto = '';
     if (typeof this.onDisconnect === 'function') this.onDisconnect();
   };
 
@@ -366,15 +478,28 @@
     var feed = opts.feed != null ? opts.feed : 3;
     if (!this._mode) return Promise.reject(new Error('Printer not connected'));
 
-    var mono = toReceiptCanvas(canvas, this._paperWidth);
-    var enc  = new EscPosEncoder(this._paperWidth);
-    enc.initialize().image(mono).feed(feed);
-    if (cut) enc.cut();
+    var cmd  = this.effectiveCmd();
+    var effW = (cmd === 'cat' || cmd === 'luck') ? 384 : this._paperWidth;
+    var mono = toReceiptCanvas(canvas, effW);
+    if (cmd === 'cat') {
+      var catEnc = new CatPrinterEncoder();
+      catEnc.encode(mono, feed);
+      return this.write(catEnc.getBuffer());
+    }
+    var enc  = new EscPosEncoder(effW);
+    if (cmd === 'luck') {
+      enc.imageLuck(mono, 64, feed);
+    } else {
+      enc.initialize().image(mono).feed(feed);
+      if (cut && effW > 384) enc.cut(); else if (cut) enc.feed(2);
+    }
     return this.write(enc.getBuffer());
   };
 
   // Quick test print verification ────────────────────────────────────────────
   BtThermal.prototype.testPrint = function(paper) {
+    var cmd = this.effectiveCmd();
+    if (cmd === 'cat' || cmd === 'luck') paper = '58mm';
     var dotW = PAPER_WIDTHS[paper || '80mm'] || 576;
     var cvs = document.createElement('canvas');
     cvs.width = dotW;
@@ -431,6 +556,8 @@
   global._btThermal = {
     BtThermal        : BtThermal,
     EscPosEncoder    : EscPosEncoder,
+    CatPrinterEncoder: CatPrinterEncoder,
+    isCatDevice      : isCatDevice,
     PAPER_WIDTHS     : PAPER_WIDTHS,
     toReceiptCanvas  : toReceiptCanvas,
     btPrinter        : btPrinter,

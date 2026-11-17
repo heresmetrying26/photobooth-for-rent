@@ -266,17 +266,41 @@
         return def;
       }
 
-      function webcamCaptureDefaults(caps, sets) {
-        const def = webcamNeutralDefaults(caps);
-        const minLockedBoth = !!(
-          caps.brightness && caps.contrast &&
-          typeof caps.brightness.min === 'number' && typeof caps.contrast.min === 'number' &&
-          sets.brightness === caps.brightness.min && sets.contrast === caps.contrast.min
-        );
+      function webcamIsPoisonedPair(caps, obj) {
+        if (!caps || !obj || !caps.brightness || !caps.contrast) return false;
+        const bCap = caps.brightness, cCap = caps.contrast;
+        if (typeof bCap.min !== 'number' || typeof bCap.max !== 'number' || bCap.max <= bCap.min) return false;
+        if (typeof cCap.min !== 'number' || typeof cCap.max !== 'number' || cCap.max <= cCap.min) return false;
+        const b = Number(obj.brightness), c = Number(obj.contrast);
+        if (isNaN(b) || isNaN(c)) return false;
+        const bLow = b <= bCap.min || (b <= 1 && (bCap.max - bCap.min) >= 20);
+        const cLow = c <= cCap.min || (c <= 1 && (cCap.max - cCap.min) >= 20);
+        return bLow && cLow;
+      }
+
+      function webcamCleanDef(caps, candidate) {
+        const neutral = webcamNeutralDefaults(caps);
+        const out = Object.assign({}, neutral, candidate || {});
+        if (webcamIsPoisonedPair(caps, out)) {
+          if (typeof neutral.brightness === 'number') out.brightness = neutral.brightness;
+          if (typeof neutral.contrast === 'number') out.contrast = neutral.contrast;
+        }
         WEBCAM_NUM_PROPS.forEach(function (k) {
           const cap = caps[k];
           if (!cap || typeof cap.min !== 'number' || typeof cap.max !== 'number' || cap.max <= cap.min) return;
-          if (minLockedBoth && (k === 'brightness' || k === 'contrast')) return;
+          if (typeof out[k] !== 'number' || isNaN(out[k])) out[k] = neutral[k];
+          else out[k] = Math.max(cap.min, Math.min(cap.max, out[k]));
+        });
+        return out;
+      }
+
+      function webcamCaptureDefaults(caps, sets) {
+        const def = webcamNeutralDefaults(caps);
+        const poisoned = webcamIsPoisonedPair(caps, sets);
+        WEBCAM_NUM_PROPS.forEach(function (k) {
+          const cap = caps[k];
+          if (!cap || typeof cap.min !== 'number' || typeof cap.max !== 'number' || cap.max <= cap.min) return;
+          if (poisoned && (k === 'brightness' || k === 'contrast')) return;
           if (typeof sets[k] === 'number' && !isNaN(sets[k])) {
             def[k] = Math.max(cap.min, Math.min(cap.max, sets[k]));
           }
@@ -333,36 +357,44 @@
         webcamUvcDefaults = null;
 
         const track = stream && stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
+        let syncedVals = null;
         if (track && typeof track.getCapabilities === 'function') {
           let caps = {}, sets = {};
           try { caps = track.getCapabilities() || {}; } catch (e) { caps = {}; }
           try { sets = (typeof track.getSettings === 'function' ? track.getSettings() : {}) || {}; } catch (e) { sets = {}; }
-          const saved = webcamLoadUvc();
+          let saved = webcamLoadUvc();
           const hasSaved = !!(saved && Object.keys(saved).length);
           const storedDef = webcamLoadUvcDef();
+          const base = hasSaved ? webcamNeutralDefaults(caps) : webcamCaptureDefaults(caps, sets);
           if (storedDef && typeof storedDef === 'object' && Object.keys(storedDef).length) {
-            const base = hasSaved ? webcamNeutralDefaults(caps) : webcamCaptureDefaults(caps, sets);
-            // Replace any legacy poisoned baseline where both brightness & contrast were frozen at cap.min
-            if (
-              caps.brightness && caps.contrast &&
-              storedDef.brightness === caps.brightness.min && storedDef.contrast === caps.contrast.min &&
-              base.brightness !== caps.brightness.min && base.contrast !== caps.contrast.min
-            ) {
-              storedDef.brightness = base.brightness;
-              storedDef.contrast = base.contrast;
-              webcamSaveUvcDef(storedDef);
+            const cleaned = webcamCleanDef(caps, Object.assign({}, base, storedDef));
+            if (cleaned.brightness !== storedDef.brightness || cleaned.contrast !== storedDef.contrast) {
+              webcamSaveUvcDef(cleaned);
             }
-            webcamUvcDefaults = Object.assign({}, base, storedDef);
+            webcamUvcDefaults = cleaned;
           } else {
-            webcamUvcDefaults = hasSaved ? webcamNeutralDefaults(caps) : webcamCaptureDefaults(caps, sets);
+            webcamUvcDefaults = webcamCleanDef(caps, base);
             webcamSaveUvcDef(webcamUvcDefaults);
           }
-          const toApply = webcamSanitizeApplyObj(caps, saved);
+          // Heal legacy saved constraints if the Windows/UVC driver had previously snapshotted a 1/1 pair.
+          if (hasSaved && webcamIsPoisonedPair(caps, saved)) {
+            saved = Object.assign({}, saved, {
+              brightness: webcamUvcDefaults.brightness,
+              contrast: webcamUvcDefaults.contrast
+            });
+            webcamSaveUvc(saved);
+          }
+          let toApply = webcamSanitizeApplyObj(caps, saved);
+          if (!Object.keys(toApply).length && webcamIsPoisonedPair(caps, sets)) {
+            toApply = webcamSanitizeApplyObj(caps, webcamUvcDefaults);
+            if (Object.keys(toApply).length) webcamSaveUvc(toApply);
+          }
           if (Object.keys(toApply).length) {
             await webcamApplyConstraintsObj(track, toApply);
+            syncedVals = toApply;
           }
         }
-        webcamSyncUvcUI();
+        webcamSyncUvcUI(syncedVals);
       }
 
       async function webcamResetUvc() {
@@ -370,15 +402,17 @@
         webcamUvcTimer = null;
         webcamUvcPending = null;
         const key = webcamCamKey();
-        try { localStorage.removeItem(WEBCAM_UVC_PREFIX + key); } catch (e) { }
         const track = (typeof currentStream !== 'undefined' && currentStream && currentStream.getVideoTracks) ? currentStream.getVideoTracks()[0] : null;
         let caps = {};
         if (track && typeof track.getCapabilities === 'function') {
           try { caps = track.getCapabilities() || {}; } catch (e) { caps = {}; }
         }
-        const def = Object.assign({}, webcamNeutralDefaults(caps), webcamUvcDefaults || webcamLoadUvcDef(key) || {});
+        const def = webcamCleanDef(caps, webcamUvcDefaults || webcamLoadUvcDef(key) || {});
         webcamUvcDefaults = def;
+        webcamSaveUvcDef(def, key);
         const applyDef = webcamSanitizeApplyObj(caps, def);
+        if (Object.keys(applyDef).length) webcamSaveUvc(applyDef, key);
+        else { try { localStorage.removeItem(WEBCAM_UVC_PREFIX + key); } catch (e) { } }
         if (track && Object.keys(applyDef).length) {
           await webcamApplyConstraintsObj(track, applyDef);
         }

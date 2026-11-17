@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.59', date: '2026-11-17' },
   { version: '1.1.58', date: '2026-11-17' },
   { version: '1.1.57', date: '2026-11-17' },
   { version: '1.1.56', date: '2026-11-17' },
@@ -251,6 +252,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-17', title: 'Desktop 1.1.59 + Android 1.1.74: Keep reset webcam defaults across Photo Session start & camera wake', for: ['website', 'app'], app: '1.1.59',
+    items: [
+      'Fixed clicking Reset webcam controls reverting back to 1 Brightness and 1 Contrast when entering Photo Session or waking the camera stream.',
+      'Clean reset defaults now persist across camera stream restarts and heal poisoned (1, 1) UVC driver baselines automatically.'
+    ]
+  },
   {
     date: '2026-11-17', title: 'Desktop 1.1.58 + Android 1.1.73: Consolidated QR hub, hover guides, multi-design Ready designs, and clean Photo Session', for: ['website', 'app'], app: '1.1.58',
     items: [

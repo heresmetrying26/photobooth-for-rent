@@ -137,7 +137,7 @@ input[type=range]{accent-color:var(--red);width:140px}
 <body>
 <h1>360 Arm Phone: how it would work</h1>
 <p class="sub">An interactive simulation of the proposed flow. The iPhone sits on the 360 arm, scans the QR on the 360 desk, and records using the settings from the desk.</p>
-<div class="banner"><b>Simulation only, nothing here is built yet.</b> Today the QR on the desk only opens a "Record now / Choose a video" page, the length and trigger are set on the Android "Record 360" screen, and nothing controls the arm. Press <b>Auto-play the whole flow</b>, or tap through it yourself.</div>
+<div class="banner"><b>Simulation only, nothing here is built yet.</b> Today the QR on the desk only opens a "Record now / Choose a video" page, the booth app no longer has a Record 360 screen, and nothing controls the arm. Press <b>Auto-play the whole flow</b>, or tap through it yourself.</div>
 
 <div class="top">
   <button class="btn pri" id="auto">▶ Auto-play the whole flow</button>
@@ -280,13 +280,13 @@ input[type=range]{accent-color:var(--red);width:140px}
 <div class="cols">
   <div class="col g"><h3>✅ Works today</h3><ul>
     <li>Desk QR → phone opens a page to <b>Record now</b> / <b>Choose a video</b> and sends it to the desk.</li>
-    <li>Android tablet "Record 360": scans the desk QR, records 6–15 s, can start when <b>the arm moves</b> or <b>a guest steps in</b>.</li>
+    <li>Phone send page v2 (released in Desktop 1.1.59/1.1.60): recording guide, look/music/speed/name/GIF choices, live status with the guest QR, re-edit/share/print/delete, and a laptop spin timer.</li>
     <li>Desk <b>Auto mode</b>: edits every new video and makes its QR.</li></ul></div>
   <div class="col a"><h3>🛠 Software to build</h3><ul>
     <li>The desk <b>holds the recording settings</b> and the phone reads them live (nothing typed on the phone).</li>
     <li>A <b>Start</b> command from the desk to the phone.</li>
     <li><b>Follow the arm</b>: stop when the phone senses the arm has stopped.</li>
-    <li><b>iPhone path.</b> Safari on a plain Wi-Fi address can't open the live camera or motion sensor. The realistic route is the iOS app (it already drives the camera). Record 360 is currently off in iOS.</li></ul></div>
+    <li><b>iPhone path.</b> Safari on a plain Wi-Fi address can't open the live camera or motion sensor. The realistic route is the iOS app (it already drives the camera).</li></ul></div>
   <div class="col r"><h3>🔧 Needs hardware / your answer</h3><ul>
     <li><b>Turning the arm</b> can't be done by software alone. The arm has its own motor controller.</li>
     <li>What is the <b>arm's brand / model</b>? If it has Bluetooth/Wi-Fi control, or a remote we can wire a small Wi-Fi relay across, the desk can start and stop it.</li>

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.62', date: '2026-11-17' },
   { version: '1.1.61', date: '2026-11-17' },
   { version: '1.1.60', date: '2026-11-17' },
   { version: '1.1.59', date: '2026-11-17' },
@@ -254,6 +255,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-17', title: 'Desktop 1.1.62: Record 360 removed, 360 phone page is the way to record', for: ['website', 'app'], app: '1.1.62',
+    items: [
+      'The Record 360 screen is gone from the laptop app (Extras menu). A cable from a camera on a turning arm winds up, so the phone on the arm records with its own camera and sends the video from the 360 desk QR page. Nothing to install on the phone.',
+      'The 360 phone page shows how long to record, lets you pick a look, music, speed, a name or a GIF, shows each video as it is edited with its guest QR, and can start the spin timer on the laptop.',
+      'The 360 guide, How to 360 page and other docs now describe the phone page instead of Record 360.'
+    ]
+  },
   {
     date: '2026-11-17', title: 'Desktop 1.1.61 + Android 1.1.75: Fix button clipping at large scale, eliminate webcam lag, and top-level uploaded frames', for: ['website', 'app'], app: '1.1.61',
     items: [

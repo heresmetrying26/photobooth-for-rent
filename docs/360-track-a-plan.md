@@ -53,8 +53,8 @@ Nothing here is committed, versioned or released.
 - [ ] If Auto mode is off, phone choices and actions only apply when a clip is edited by the Auto path.
 
 ## Later tracks (not started)
-- Track B: Record 360 inside the 360 desk (laptop camera). Remove the separate Record 360 dock button.
-- Track C: in-app hands-free recording with auto-pair (Android first, iPhone after). Android hides Record 360 and the 360 desk today; find out why first.
+- Track B: dropped. Record 360 (the laptop-camera recorder) was removed in Desktop 1.1.62 because a wired camera cannot ride a rotating arm; phones record with their own camera.
+- Track C: in-app hands-free recording with auto-pair (Android first, iPhone after). Android hides the 360 desk today; find out why first.
 - Track D: arm link over Bluetooth from the laptop (needs the controller model and its protocol).
 
 ## Open questions

@@ -18123,12 +18123,6 @@
           <path d="M21 4v5h-5" />
           <circle cx="12" cy="12" r="2.5" />
         </svg><span>360 desk</span></button>
-      <button type="button" class="dock-btn" id="capFab" hidden aria-label="Record 360"><svg viewBox="0 0 24 24"
-          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-          aria-hidden="true">
-          <circle cx="12" cy="12" r="9" />
-          <circle cx="12" cy="12" r="3.5" fill="currentColor" />
-        </svg><span>Record 360</span></button>
       <button type="button" class="dock-btn" id="reqFab" hidden aria-label="Print requests"><svg viewBox="0 0 24 24"
           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
           aria-hidden="true">
@@ -19092,42 +19086,6 @@
       <div class="vg-qr" id="vgQr" hidden></div>
       <div class="vg-row"><button type="button" class="cap-go" id="vgMain">Record a message</button><button
           type="button" class="cap-go alt" id="vgSecond" hidden>Retake</button></div>
-    </div>
-  </div>
-  <div class="qs-ov cap-ov" id="capOverlay" hidden role="dialog" aria-label="360 capture">
-    <video id="capVideo" autoplay muted playsinline></video>
-    <div class="qs-top"><button type="button" class="qs-btn" id="capClose">Close</button><span class="qs-count"
-        id="capInfo"></span><button type="button" class="qs-btn" id="capFlip">Flip camera</button></div>
-    <div class="cap-big" id="capBig" hidden></div>
-    <div class="cap-panel" id="capPanel">
-      <p class="cap-warn" id="capWarn" hidden></p>
-      <div class="cap-row">
-        <label>Length <select id="capLen">
-            <option value="6">6 s</option>
-            <option value="8" selected>8 s</option>
-            <option value="10">10 s</option>
-            <option value="12">12 s</option>
-            <option value="15">15 s</option>
-          </select></label>
-        <label>Start <select id="capMode">
-            <option value="button">With the button</option>
-            <option value="motion">When the arm moves</option>
-            <option value="person">When someone steps in</option>
-          </select></label>
-        <label id="capSensRow" hidden>Sensitivity <select id="capSens">
-            <option value="low">Low</option>
-            <option value="mid" selected>Medium</option>
-            <option value="high">High</option>
-          </select></label>
-      </div>
-      <div class="cap-row" id="capLaptopRow" hidden>
-        <label>Laptop address <input type="text" id="capLaptop" placeholder="192.168.1.20:47777/send/..."
-            autocomplete="off" autocapitalize="off" spellcheck="false"></label>
-        <button type="button" class="desk-btn" id="capScan">📷 Scan QR</button>
-        <button type="button" class="desk-btn" id="capTest">Test</button><span class="cap-msg" id="capLaptopMsg"></span>
-      </div>
-      <p class="cap-status" id="capStatus"></p>
-      <button type="button" class="cap-go" id="capGo">Record</button>
     </div>
   </div>
   <div class="desk-ov" id="deskOverlay" hidden role="dialog" aria-label="Photographer desk">
@@ -25359,7 +25317,7 @@
         var chip = document.getElementById('pbTimeChip');
         var chipOn = !!(chip && chip.parentNode && chip.parentNode.id === 'dockChipSlot' && chip.style.display !== 'none');
         return (document.getElementById('scaleFab') && !document.getElementById('scaleFab').hidden) || !document.getElementById('camFab').hidden || !document.getElementById('printFab').hidden || !document.getElementById('pstatFab').hidden || !document.getElementById('backupFab').hidden ||
-          !document.getElementById('galleryFab').hidden || !document.getElementById('wifiFab').hidden || !document.getElementById('lockFab').hidden || !document.getElementById('deskFab').hidden || !document.getElementById('spinFab').hidden || !document.getElementById('capFab').hidden || !document.getElementById('reqFab').hidden || !document.getElementById('vgFab').hidden ||
+          !document.getElementById('galleryFab').hidden || !document.getElementById('wifiFab').hidden || !document.getElementById('lockFab').hidden || !document.getElementById('deskFab').hidden || !document.getElementById('spinFab').hidden || !document.getElementById('reqFab').hidden || !document.getElementById('vgFab').hidden ||
           !document.getElementById('dockPwr').hidden || chipOn;
       }
       // Everything guests and the operator need to see or tap in Photo Session.
@@ -38312,7 +38270,7 @@
       var deskOverlay = document.getElementById('deskOverlay'), deskGrid = document.getElementById('deskGrid');
       var deskFab = document.getElementById('deskFab'), deskMakeBtn = document.getElementById('deskMake'), deskOrigBtn = document.getElementById('deskOrig');
       // ---- the Tools menu: the dock stays compact (Tools + Lock); every tool and extra sits one tap inside here ----
-      var EXTRA_IDS = ['camFab', 'printFab', 'pstatFab', 'backupFab', 'galleryFab', 'wifiFab', 'scaleFab', 'deskFab', 'spinFab', 'capFab', 'reqFab', 'studioFab', 'vgFab', 'roveBridgeFab'];
+      var EXTRA_IDS = ['camFab', 'printFab', 'pstatFab', 'backupFab', 'galleryFab', 'wifiFab', 'scaleFab', 'deskFab', 'spinFab', 'reqFab', 'studioFab', 'vgFab', 'roveBridgeFab'];
       var extrasFab = document.getElementById('extrasFab'), extrasPop = document.getElementById('extrasPop');
       function closeExtras() { extrasPop.hidden = true; extrasFab.setAttribute('aria-expanded', 'false'); }
       function refreshExtrasBtn() {
@@ -38330,13 +38288,11 @@
       function refreshDeskBtn() {
         var off = !extraOn('roving') || state === 'capturing';
         if (deskFab) deskFab.hidden = off;
-        // The Android app (phones and tablets) doesn't get Record 360 or the 360 desk: they are for the laptop app and the website.
+        // The Android app (phones and tablets) doesn't get the 360 desk: it is for the laptop app and the website.
         var onPhone = false;
         try { onPhone = /PB4uAndroid/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.android); } catch (e) { }
         var spinFab = document.getElementById('spinFab');
         if (spinFab) spinFab.hidden = onPhone || !extraOn('spin360') || state === 'capturing';
-        var capFab = document.getElementById('capFab');
-        if (capFab) capFab.hidden = onPhone || !capAvailable() || state === 'capturing';
         var reqFab = document.getElementById('reqFab');
         if (reqFab) reqFab.hidden = !reqOn() || state === 'capturing';
         var studioFab = document.getElementById('studioFab');
@@ -40539,7 +40495,7 @@
         var wf = null; try { wf = wifiInfo(); } catch (e3) { }
         rows.push(wf ? { ok: true, t: 'Wi-Fi QR for guests', d: 'Network “' + wf.ssid + '”' } : { ok: null, t: 'Wi-Fi QR for guests (optional)', d: 'Set the booth Wi-Fi in Setup → Share so guests can join by scanning.' });
         if (c.helloAt && c.now - c.helloAt < 90000) rows.push({ ok: true, t: 'Recorder connected', d: 'seen ' + spinAgoMs(c.now - c.helloAt) });
-        else rows.push({ ok: null, t: 'Recorder not seen yet', d: c.helloAt ? 'last seen ' + spinAgoMs(c.now - c.helloAt) + '. Open Record 360 on the tablet.' : 'Open Record 360 on the tablet and scan the QR below.' });
+        else rows.push({ ok: null, t: 'Recorder not seen yet', d: c.helloAt ? 'last seen ' + spinAgoMs(c.now - c.helloAt) + '. Open the send page on the phone.' : 'Open the send page on the phone: scan the QR below.' });
         var newest = Math.max(spinNewest ? spinNewest.mtime : 0, c.uploadAt || 0);
         rows.push(newest ? { ok: true, t: 'Last video received ' + spinAgoMs(Date.now() - newest), d: spinNewest && spinNewest.mtime >= (c.uploadAt || 0) ? spinNewest.name : '' } : { ok: null, t: 'No video received yet', d: 'Record one, or send a test from a phone.' });
         list.textContent = '';
@@ -40583,13 +40539,6 @@
         spinLookToUI(); try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e2) { }
         showToast('Auto mode is on: new videos edit themselves.', 3500);
       }
-      // The recorder (tablet or this laptop's Record 360) tells the laptop it is there and when a recording starts.
-      function capPing(kind) {
-        var base = DESKTOP ? (spinInfo && spinInfo.previewBase) : capLaptopBase();
-        if (!base) return;
-        try { fetch(base + '/hello?r=' + kind, { cache: 'no-store' }).catch(function () { }); } catch (e) { }
-      }
-
       async function spinPoll() {
         if (!spinDesktop()) return;
         if (Date.now() - spinStatsAt > 15000) spinStatsUpdate();
@@ -42213,273 +42162,6 @@
       // The arm still turns by its own motor (or by hand); this screen only records. It starts with the button, or by itself
       // when the device starts to move. The clip goes to the laptop's 360 inbox, where it is edited and shared like any other.
       var spinNew = 0;
-      var capOverlay = document.getElementById('capOverlay'), capVideo = document.getElementById('capVideo');
-      var cap = { state: 'idle', rec: null, chunks: [], timer: null, tick: null, motion: null, sensor: null, last: null };
-      var CAP_PREFS_KEY = 'pb_cap_prefs', CAP_LAPTOP_KEY = 'pb_spin_laptop';
-      function capAvailable() { return extraOn('spin360') && (DESKTOP || ANDROID_LOCAL); }     // not on the website
-      function capEl(id) { return document.getElementById(id); }
-      function capSet(t) { capEl('capStatus').textContent = t || ''; }
-      function capTrack() { var st = currentStream || video.srcObject; return st && st.getVideoTracks ? (st.getVideoTracks()[0] || null) : null; }
-      function capSettings() { var t = capTrack(); try { return t && t.getSettings ? t.getSettings() : {}; } catch (e) { return {}; } }
-      function capUsb() { return typeof USB_CAM_ID !== 'undefined' && currentDeviceId === USB_CAM_ID; }
-      function capInfo() {
-        var s = capSettings(), w = s.width || video.videoWidth || 0, h = s.height || video.videoHeight || 0, f = Math.round(s.frameRate || 0);
-        return w ? (w + '×' + h + (f ? ' · ' + f + ' fps' : '')) + (capUsb() ? ' · USB live view' : '') : 'Waiting for the camera…';
-      }
-      // What to tell the operator about this camera (slow motion needs a sharp picture and a high frame rate).
-      function capWarning() {
-        var s = capSettings(), w = s.width || video.videoWidth || 0, f = Math.round(s.frameRate || 0);
-        if (capUsb()) return 'A USB camera usually sends only a small live picture here. For a sharp 360 video, switch the camera to webcam mode (it then appears as an ordinary camera in the camera menu) or use the tablet camera.';
-        if (w && w < 1280) return 'This camera gives a small picture (' + w + ' px wide), so the video will look soft.';
-        if (f && f < 30) return 'This camera records only ' + f + ' frames a second, so slow motion will look jerky.';
-        return '';
-      }
-      async function capBoost() {      // ask for the best the camera can do: 1080p, 60 frames a second (it keeps what it cannot)
-        var t = capTrack(); if (!t || !t.applyConstraints) return;
-        try { await t.applyConstraints({ width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } }); } catch (e) { }
-      }
-      function capPrefsLoad() {
-        var p = {}; try { p = JSON.parse(localStorage.getItem(CAP_PREFS_KEY) || '{}') || {}; } catch (e) { }
-        if ([6, 8, 10, 12, 15].indexOf(Number(p.len)) >= 0) capEl('capLen').value = String(p.len);
-        if (p.mode === 'motion' || p.mode === 'button' || p.mode === 'person') capEl('capMode').value = p.mode;
-        if (['low', 'mid', 'high'].indexOf(p.sens) >= 0) capEl('capSens').value = p.sens;
-        var lap = ''; try { lap = localStorage.getItem(CAP_LAPTOP_KEY) || ''; } catch (e) { }
-        capEl('capLaptop').value = lap;
-      }
-      function capPrefsSave() { try { localStorage.setItem(CAP_PREFS_KEY, JSON.stringify({ len: capEl('capLen').value, mode: capEl('capMode').value, sens: capEl('capSens').value })); } catch (e) { } }
-      // "192.168.1.20:47777/send/abc123" (with or without http://) -> "http://192.168.1.20:47777/send/abc123", or '' when it is not a laptop address
-      function capLaptopBase() {
-        var v = String(capEl('capLaptop').value || '').trim();
-        if (!v) return '';
-        if (!/^https?:\/\//i.test(v)) v = 'http://' + v;
-        v = v.replace(/\/+$/, '').replace(/\/(photos|upload|hello)$/i, '');
-        return /^http:\/\/[^\/\s]+\/send\/[A-Za-z0-9]+$/.test(v) ? v : '';
-      }
-      function capRefresh() {
-        capEl('capInfo').textContent = capInfo();
-        var warn = capWarning(), w = capEl('capWarn'); w.textContent = warn; w.hidden = !warn;
-        capEl('capSensRow').hidden = capEl('capMode').value !== 'motion' && capEl('capMode').value !== 'person';
-        capEl('capLaptopRow').hidden = !ANDROID_LOCAL;
-        var go = capEl('capGo'), motion = capEl('capMode').value === 'motion', person = capEl('capMode').value === 'person';
-        go.classList.toggle('armed', cap.state === 'armed');
-        go.disabled = cap.state === 'recording' || cap.state === 'counting' || cap.state === 'sending';
-        go.textContent = cap.state === 'armed' ? (person ? 'Waiting for a guest… (tap to cancel)' : 'Waiting for the arm to move… (tap to cancel)') : cap.state === 'recording' ? 'Recording…' : cap.state === 'counting' ? 'Get ready…'
-          : cap.state === 'sending' ? 'Sending…' : cap.state === 'failed' ? 'Send again' : motion ? 'Arm: record when the arm moves' : person ? 'Start: record when a guest steps in' : 'Record (3, 2, 1)';
-      }
-      function capBig(text, rec) { var b = capEl('capBig'); b.hidden = !text; b.textContent = text || ''; b.classList.toggle('rec', !!rec); }
-      async function openCap() {
-        if (!capAvailable()) return;
-        if (state === 'capturing') { showToast('Finish the session first.', 3000); return; }
-        if (!streamActive) { var ok = await initCamera(cameraSelect.value || null); if (!ok) return; }
-        capVideo.srcObject = currentStream || video.srcObject;
-        try { await capVideo.play(); } catch (e) { }
-        await capBoost();
-        capPrefsLoad(); cap.state = 'idle'; cap.last = null; capSet(''); capBig('');
-        capPing('1'); clearInterval(cap.hb); cap.hb = setInterval(function () { capPing('1'); }, 20000);      // "the recorder is here", for the 360 desk's Connect panel
-        capOverlay.hidden = false; capRefresh();
-        setTimeout(capRefresh, 800);          // the camera reports its real size a moment after it starts
-      }
-      function capDisarm() {
-        if (cap.motion) { window.removeEventListener('devicemotion', cap.motion); cap.motion = null; }
-        clearTimeout(cap.sensor); cap.sensor = null;
-        if (cap.pres) { clearInterval(cap.pres); cap.pres = null; }
-        if (cap.state === 'armed') cap.state = 'idle';
-      }
-      function closeCap() {
-        if (cap.state === 'recording') { try { cap.rec.onstop = null; cap.rec.stop(); } catch (e) { } clearTimeout(cap.timer); clearInterval(cap.tick); }
-        capDisarm(); cap.state = 'idle'; capBig(''); capOverlay.hidden = true; capVideo.srcObject = null; clearInterval(cap.hb); cap.hb = null;
-      }
-      function capMime() {
-        // mp4 first: an iPhone can play it even if the clip is shared without editing
-        var c = ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
-        for (var i = 0; i < c.length; i++) { try { if (window.MediaRecorder && MediaRecorder.isTypeSupported(c[i])) return c[i]; } catch (e) { } }
-        return '';
-      }
-      function capStamp() { var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); }; return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()); }
-      function capRecord() {
-        if (cap.state === 'recording') return;
-        var stream = currentStream || video.srcObject, vt = stream && stream.getVideoTracks ? stream.getVideoTracks() : [];
-        if (!vt.length) { cap.state = 'idle'; capSet('The camera has no picture yet.'); capRefresh(); return; }
-        var len = Number(capEl('capLen').value) || 8, mime = capMime(), opts = { videoBitsPerSecond: 8000000 };
-        if (mime) opts.mimeType = mime;
-        var rec;
-        try { rec = new MediaRecorder(new MediaStream(vt), opts); }
-        catch (e) { cap.state = 'idle'; capSet('This device cannot record video here.'); capRefresh(); return; }
-        cap.chunks = []; cap.rec = rec; cap.state = 'recording'; capPing('rec');      // the laptop notes that a video should be coming
-        rec.ondataavailable = function (e) { if (e.data && e.data.size) cap.chunks.push(e.data); };
-        rec.onstop = function () { clearInterval(cap.tick); capBig(''); capFinish(rec.mimeType || mime || 'video/webm'); };
-        rec.start(500);
-        var left = len; capBig('REC ' + left, true); capSet('Recording…'); capRefresh();
-        cap.tick = setInterval(function () { left--; if (left >= 0) capBig('REC ' + left, true); }, 1000);
-        cap.timer = setTimeout(function () { try { rec.stop(); } catch (e) { } }, len * 1000);
-      }
-      async function capCountdown() {
-        cap.state = 'counting'; capRefresh(); capSet('');
-        for (var n = 3; n >= 1; n--) { if (cap.state !== 'counting') return; capBig(String(n)); await new Promise(function (r) { setTimeout(r, 1000); }); }
-        if (cap.state !== 'counting') return;
-        capBig(''); capRecord();
-      }
-      function capArm() {
-        cap.state = 'armed'; capRefresh(); capSet('Start the arm. Recording begins as soon as this device moves.');
-        var th = { low: 45, mid: 22, high: 11 }[capEl('capSens').value] || 22, base = null, baseSum = 0, baseN = 0, hits = 0, seen = false;
-        cap.motion = function (e) {
-          var rr = e.rotationRate || {}, a = e.accelerationIncludingGravity || {}, sq = function (v) { return (Number(v) || 0) * (Number(v) || 0); };
-          // A computer without a motion sensor still fires one empty event: that is not a sensor.
-          if (rr.alpha == null && rr.beta == null && rr.gamma == null && a.x == null && a.y == null && a.z == null) return;
-          seen = true;
-          var rot = Math.sqrt(sq(rr.alpha) + sq(rr.beta) + sq(rr.gamma));          // degrees a second
-          var acc = Math.sqrt(sq(a.x) + sq(a.y) + sq(a.z));
-          if (base === null) { baseSum += acc; if (++baseN >= 3) base = baseSum / baseN; return; }   // the first readings are the device at rest
-          var move = Math.max(rot, Math.abs(acc - base) * 6);
-          hits = move > th ? hits + 1 : Math.max(0, hits - 1);
-          if (hits >= 3) { capDisarm(); capRecord(); }
-        };
-        window.addEventListener('devicemotion', cap.motion);
-        cap.sensor = setTimeout(function () {
-          if (!seen) { capDisarm(); capSet('This device has no motion sensor. Start with the button instead.'); capRefresh(); }
-        }, 2500);
-      }
-      // "When someone steps in": watch the camera and start the 3-2-1 when a guest walks into view, then arm again once they have left.
-      // Frames are shrunk to 64x36 and compared with a picture of the empty platform. A change in the light overall is ignored, and the
-      // picture of the empty platform slowly follows daylight or shadows, but not a person walking in.
-      // Frames are r,g,b triples. Colour is compared (not only brightness), after taking away the overall change in light.
-      function capFrameDiff(a, b) {
-        var oR = a.mean[0] - b.mean[0], oG = a.mean[1] - b.mean[1], oB = a.mean[2] - b.mean[2], n = 0, px = a.length / 3;
-        for (var i = 0; i < a.length; i += 3) {
-          if (Math.abs(a[i] - b[i] - oR) + Math.abs(a[i + 1] - b[i + 1] - oG) + Math.abs(a[i + 2] - b[i + 2] - oB) > 66) n++;
-        }
-        return n / px;
-      }
-      function capArmPerson(afterRecording) {
-        cap.state = 'armed'; capRefresh();
-        var cv = document.createElement('canvas'); cv.width = 64; cv.height = 36;
-        var cx = cv.getContext('2d', { willReadFrequently: true });
-        var covTh = { low: 0.22, mid: 0.12, high: 0.06 }[capEl('capSens').value] || 0.12;
-        var prev = null, bg = null, quiet = 0, hits = 0, needQuiet = afterRecording ? 15 : 8, phase = 'settle';
-        function grab() {
-          if (!capVideo.videoWidth) return null;
-          try { cx.drawImage(capVideo, 0, 0, 64, 36); } catch (e) { return null; }
-          var d = cx.getImageData(0, 0, 64, 36).data, g = new Float32Array(64 * 36 * 3), sr = 0, sg = 0, sb = 0;
-          for (var i = 0, j = 0; i < d.length; i += 4, j += 3) { g[j] = d[i]; g[j + 1] = d[i + 1]; g[j + 2] = d[i + 2]; sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; }
-          var np = g.length / 3;
-          g.mean = [sr / np, sg / np, sb / np];
-          return g;
-        }
-        capSet(afterRecording ? 'Waiting for the platform to be clear…' : 'Getting ready…');
-        cap.pres = setInterval(function () {
-          if (cap.state !== 'armed') return;
-          var g = grab(); if (!g) return;
-          if (phase === 'settle') {
-            if (prev && capFrameDiff(g, prev) < 0.02) quiet++; else quiet = 0;
-            prev = g;
-            if (quiet >= needQuiet) { bg = g; phase = 'watch'; capSet('Waiting for a guest to step in… (tap to cancel)'); }
-            return;
-          }
-          var cov = capFrameDiff(g, bg);
-          if (cov < covTh * 0.5) { for (var i = 0; i < bg.length; i++) bg[i] += (g[i] - bg[i]) * 0.03; for (var c = 0; c < 3; c++) bg.mean[c] += (g.mean[c] - bg.mean[c]) * 0.03; }
-          hits = cov > covTh ? hits + 1 : Math.max(0, hits - 1);
-          if (hits >= 4) { capDisarm(); capCountdown(); }      // a guest is there: 3, 2, 1, record
-        }, 200);
-      }
-      function capGoClick() {
-        if (cap.state === 'armed') { capDisarm(); capSet(''); capRefresh(); return; }
-        if (cap.state === 'failed' && cap.last) { capDeliver(cap.last.blob, cap.last.name); return; }
-        if (cap.state !== 'idle' && cap.state !== 'failed') return;
-        capPrefsSave(); cap.state = 'idle';
-        var cm = capEl('capMode').value;
-        if (cm === 'motion') capArm(); else if (cm === 'person') capArmPerson(false); else capCountdown();
-      }
-      function capFinish(mime) {
-        var blob = new Blob(cap.chunks, { type: String(mime).split(';')[0] }), ext = /mp4/.test(mime) ? 'mp4' : 'webm';
-        cap.chunks = [];
-        if (!blob.size) { cap.state = 'failed'; capSet('Nothing was recorded. Try again.'); cap.last = null; capRefresh(); return; }
-        cap.last = { blob: blob, name: '360_' + capStamp() + '.' + ext };
-        capDeliver(cap.last.blob, cap.last.name);
-      }
-      async function capDeliver(blob, name) {
-        cap.state = 'sending'; capSet('Sending the video… (' + Math.round(blob.size / 104857.6) / 10 + ' MB)'); capRefresh();
-        var done = function (t) {
-          cap.state = 'idle'; cap.last = null; capSet('✓ ' + t); capRefresh();
-          // "When someone steps in": get ready for the next guest once this one has left the platform
-          if (capEl('capMode').value === 'person' && !capOverlay.hidden) setTimeout(function () { if (cap.state === 'idle' && !capOverlay.hidden) capArmPerson(true); }, 1500);
-        };
-        try {
-          if (DESKTOP) {
-            if (!spinInfo || !spinInfo.previewBase) spinInfo = await PBX.spinInfo();
-            var r = await fetch(spinInfo.previewBase + '/upload?name=' + encodeURIComponent(name), { method: 'POST', headers: { 'content-type': 'text/plain' }, body: blob });
-            if (!r.ok) throw new Error('error ' + r.status);
-            try { spinPoll(); } catch (e) { }
-            return done('Saved in the 360 inbox on this laptop. It appears on the 360 desk.');
-          }
-          var base = capLaptopBase(), lastErr = null;
-          if (base) {
-            try {
-              var r2 = await fetch(base + '/upload?name=' + encodeURIComponent(name), { method: 'POST', headers: { 'content-type': 'text/plain' }, body: blob });
-              if (!r2.ok) throw new Error('error ' + r2.status);
-              return done('Sent to the laptop. It appears on its 360 desk.');
-            } catch (e) { lastErr = e; }
-          }
-          // No laptop paired, or it could not be reached: keep the clip on this tablet so it is not lost.
-          var res = await uploadToDrive(blob, filePrefix() + nextSessionNumber() + '_360' + deviceTag() + '.' + (/\.mp4$/.test(name) ? 'mp4' : 'webm'), { folderKey: rawFolderKey(), subfolder: driveSubfolder() });
-          done((lastErr ? 'The laptop could not be reached (' + (lastErr.message || lastErr) + '). ' : '') + 'Saved on this tablet in the event folder (' + (res.fileId || 'ok') + '). Type the laptop’s address above to send clips there to be edited.');
-        } catch (e) {
-          cap.state = 'failed'; capSet('Could not send the video (' + ((e && e.message) || e) + '). Your recording is kept: tap Send again.'); capRefresh();
-        }
-      }
-      async function capTestLaptop() {
-        var base = capLaptopBase(), m = capEl('capLaptopMsg');
-        if (!base) { m.textContent = 'Type the address shown on the laptop’s 360 desk.'; return; }
-        m.textContent = 'Checking…';
-        try {
-          var r = await fetch(base + '/hello'), j = await r.json();
-          if (!j || !j.ok) throw new Error('not the booth laptop');
-          try { localStorage.setItem(CAP_LAPTOP_KEY, capEl('capLaptop').value.trim()); } catch (e) { }
-          m.textContent = '✓ Connected to the laptop.';
-        } catch (e) { m.textContent = 'Could not reach it. Same Wi-Fi? Address typed right? If the laptop was reinstalled, scan its QR again.'; }
-      }
-      // Scan the QR on the laptop's 360 desk with this tablet's camera (the one already showing in the Record 360 screen), so nothing is typed.
-      var capScanning = false;
-      async function capScanLaptop() {
-        var m = capEl('capLaptopMsg');
-        if (capScanning) { capScanning = false; return; }
-        if (!('BarcodeDetector' in window)) { m.textContent = 'This device cannot read QR codes here. Type the address under the QR on the laptop.'; return; }
-        var det; try { det = new BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { m.textContent = 'This device cannot read QR codes here. Type the address under the QR on the laptop.'; return; }
-        capScanning = true; capEl('capScan').textContent = '✕ Stop';
-        m.textContent = 'Point the camera at the QR code on the laptop’s 360 desk…';
-        var found = '';
-        for (var n = 0; capScanning && n < 240 && !found; n++) {      // about a minute
-          try {
-            if (capVideo.videoWidth) {
-              var codes = await det.detect(capVideo);
-              for (var i = 0; i < codes.length; i++) { var t = String(codes[i].rawValue || ''); if (/\/send\/[A-Za-z0-9]+/.test(t)) { found = t; break; } }
-            }
-          } catch (e) { }
-          if (!found) await wait(250);
-        }
-        capScanning = false; capEl('capScan').textContent = '📷 Scan QR';
-        if (!found) { m.textContent = 'No laptop QR found. Try again, or type the address.'; return; }
-        capEl('capLaptop').value = found.replace(/^https?:\/\//i, '');
-        await capTestLaptop();
-      }
-      async function capFlip() {
-        var opts = Array.from(cameraSelect.options).filter(function (o) { return o.value && o.value !== USB_CAM_ID; });
-        if (opts.length < 2) { showToast('This device has only one camera.', 2500); return; }
-        var i = opts.findIndex(function (o) { return o.value === cameraSelect.value; });
-        cameraSelect.value = opts[(i + 1) % opts.length].value;
-        var before = currentStream;
-        cameraSelect.dispatchEvent(new Event('change'));
-        for (var n = 0; n < 30 && (currentStream === before || !video.videoWidth); n++) await wait(100);
-        capVideo.srcObject = currentStream || video.srcObject;
-        try { await capVideo.play(); } catch (e) { }
-        await capBoost(); capRefresh(); setTimeout(capRefresh, 800);
-      }
-      capEl('capFab').addEventListener('click', openCap);
-      capEl('capClose').addEventListener('click', closeCap);
-      capEl('capGo').addEventListener('click', capGoClick);
-      capEl('capFlip').addEventListener('click', capFlip);
-      capEl('capTest').addEventListener('click', capTestLaptop);
-      capEl('capScan').addEventListener('click', capScanLaptop);
-      ['capLen', 'capMode', 'capSens'].forEach(function (id) { capEl(id).addEventListener('change', function () { capPrefsSave(); capRefresh(); }); });
       window.addEventListener('pb-extras-change', function () { try { refreshDeskBtn(); } catch (e) { } });
       // Edit (and, if asked, share) a new clip by itself, so the QR is ready when the guest comes over.
       // The phone's choices for this clip are applied for this one clip only, then put back.

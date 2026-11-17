@@ -49137,11 +49137,24 @@
         try { const V = window.__PBVoice; return V && typeof V.speak === 'function' && typeof V.voices === 'function' ? V : null; } catch (e) { return null; }
       }
       function voiceEngine() { return voiceNative() ? 'native' : voiceSynth() ? 'web' : ''; }
+      // The app's voice list is asked for once per language and kept. Asking is a blocking call into the app (on the iPad it
+      // lists every voice installed on the device), and every spoken countdown number asked several times, so the camera
+      // picture stalled each time the countdown counted down.
+      const voiceNativeCache = {};
       function voicesFor(lang) {
         let all = [];
         const V = voiceNative();
         if (V) {
-          try { all = JSON.parse(V.voices(lang === 'fil' ? 'fil' : 'en') || '[]').map(function (v) { return { name: String(v.name), lang: String(v.lang || ''), localService: !!v.local }; }); } catch (e) { }
+          const key = lang === 'fil' ? 'fil' : 'en';
+          if (!voiceNativeCache[key]) {
+            try {
+              const got = JSON.parse(V.voices(key) || '[]').map(function (v) { return { name: String(v.name), lang: String(v.lang || ''), localService: !!v.local }; });
+              if (got.length) voiceNativeCache[key] = got;     // an empty answer (voices not loaded yet) is not kept
+              all = got;
+            } catch (e) { }
+          } else {
+            all = voiceNativeCache[key];
+          }
         } else {
           const ss = voiceSynth(); if (!ss) return [];
           try { all = ss.getVoices() || []; } catch (e) { }

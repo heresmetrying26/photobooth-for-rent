@@ -13,6 +13,7 @@
       const WEBCAM_STACK_KEY = 'pb_webcam_stack';
       const WEBCAM_FPS_WARN_KEY = 'pb_webcam_fps_warn';
       const WEBCAM_UVC_PREFIX = 'pb4u.webcamUvc.';
+      const WEBCAM_UVC_DEF_PREFIX = 'pb4u.webcamUvcDef.';
       function webcamStackOn() { return camQStore(WEBCAM_STACK_KEY) !== '0'; }
       function webcamTipsOn() { return camQStore(WEBCAM_FPS_WARN_KEY) !== '0'; }
 
@@ -238,18 +239,70 @@
         try { localStorage.setItem(WEBCAM_UVC_PREFIX + (key || webcamCamKey()), JSON.stringify(obj || {})); } catch (e) { }
       }
 
-      function webcamCaptureDefaults(caps, sets) {
+      function webcamLoadUvcDef(key) {
+        try {
+          const raw = localStorage.getItem(WEBCAM_UVC_DEF_PREFIX + (key || webcamCamKey()));
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+      }
+
+      function webcamSaveUvcDef(obj, key) {
+        try { localStorage.setItem(WEBCAM_UVC_DEF_PREFIX + (key || webcamCamKey()), JSON.stringify(obj || {})); } catch (e) { }
+      }
+
+      const WEBCAM_NUM_PROPS = ['focusDistance', 'brightness', 'exposureCompensation', 'contrast', 'colorTemperature', 'zoom'];
+
+      function webcamNeutralDefaults(caps) {
         const def = {};
         if (Array.isArray(caps.focusMode) && caps.focusMode.indexOf('continuous') >= 0) def.focusMode = 'continuous';
         if (Array.isArray(caps.whiteBalanceMode) && caps.whiteBalanceMode.indexOf('continuous') >= 0) def.whiteBalanceMode = 'continuous';
-        ['focusDistance', 'brightness', 'exposureCompensation', 'contrast', 'colorTemperature', 'zoom'].forEach(function (k) {
-          if (!caps[k] || typeof caps[k].min !== 'number' || caps[k].max <= caps[k].min) return;
-          if (typeof sets[k] === 'number' && !isNaN(sets[k])) def[k] = sets[k];
-          else if (k === 'exposureCompensation' && caps[k].min <= 0 && caps[k].max >= 0) def[k] = 0;
-          else if (k === 'zoom') def[k] = caps[k].min;
-          else def[k] = Math.round(((caps[k].min + caps[k].max) / 2) * 100) / 100;
+        WEBCAM_NUM_PROPS.forEach(function (k) {
+          const cap = caps[k];
+          if (!cap || typeof cap.min !== 'number' || typeof cap.max !== 'number' || cap.max <= cap.min) return;
+          if (k === 'exposureCompensation' && cap.min <= 0 && cap.max >= 0) def[k] = 0;
+          else if (k === 'zoom') def[k] = cap.min;
+          else def[k] = Math.round(((cap.min + cap.max) / 2) * 100) / 100;
         });
         return def;
+      }
+
+      function webcamCaptureDefaults(caps, sets) {
+        const def = webcamNeutralDefaults(caps);
+        const minLockedBoth = !!(
+          caps.brightness && caps.contrast &&
+          typeof caps.brightness.min === 'number' && typeof caps.contrast.min === 'number' &&
+          sets.brightness === caps.brightness.min && sets.contrast === caps.contrast.min
+        );
+        WEBCAM_NUM_PROPS.forEach(function (k) {
+          const cap = caps[k];
+          if (!cap || typeof cap.min !== 'number' || typeof cap.max !== 'number' || cap.max <= cap.min) return;
+          if (minLockedBoth && (k === 'brightness' || k === 'contrast')) return;
+          if (typeof sets[k] === 'number' && !isNaN(sets[k])) {
+            def[k] = Math.max(cap.min, Math.min(cap.max, sets[k]));
+          }
+        });
+        return def;
+      }
+
+      function webcamSanitizeApplyObj(caps, src) {
+        const out = {};
+        if (!src || !caps) return out;
+        if (src.focusMode && Array.isArray(caps.focusMode) && caps.focusMode.indexOf(src.focusMode) >= 0) {
+          out.focusMode = src.focusMode;
+        }
+        if (src.whiteBalanceMode && Array.isArray(caps.whiteBalanceMode) && caps.whiteBalanceMode.indexOf(src.whiteBalanceMode) >= 0) {
+          out.whiteBalanceMode = src.whiteBalanceMode;
+        }
+        WEBCAM_NUM_PROPS.forEach(function (k) {
+          if (k === 'focusDistance' && out.focusMode === 'continuous') return;
+          if (k === 'colorTemperature' && out.whiteBalanceMode === 'continuous') return;
+          const cap = caps[k];
+          const val = Number(src[k]);
+          if (cap && typeof cap.min === 'number' && typeof cap.max === 'number' && cap.max > cap.min && !isNaN(val)) {
+            out[k] = Math.max(cap.min, Math.min(cap.max, val));
+          }
+        });
+        return out;
       }
 
       async function webcamApplyConstraintsObj(track, obj) {
@@ -284,22 +337,27 @@
           let caps = {}, sets = {};
           try { caps = track.getCapabilities() || {}; } catch (e) { caps = {}; }
           try { sets = (typeof track.getSettings === 'function' ? track.getSettings() : {}) || {}; } catch (e) { sets = {}; }
-          webcamUvcDefaults = webcamCaptureDefaults(caps, sets);
           const saved = webcamLoadUvc();
-          const toApply = {};
-          if (saved.focusMode && Array.isArray(caps.focusMode) && caps.focusMode.indexOf(saved.focusMode) >= 0) {
-            toApply.focusMode = saved.focusMode;
-          }
-          if (saved.whiteBalanceMode && Array.isArray(caps.whiteBalanceMode) && caps.whiteBalanceMode.indexOf(saved.whiteBalanceMode) >= 0) {
-            toApply.whiteBalanceMode = saved.whiteBalanceMode;
-          }
-          ['focusDistance', 'brightness', 'exposureCompensation', 'contrast', 'colorTemperature', 'zoom'].forEach(function (k) {
-            const cap = caps[k];
-            const val = Number(saved[k]);
-            if (cap && typeof cap.min === 'number' && cap.max > cap.min && !isNaN(val)) {
-              toApply[k] = Math.max(cap.min, Math.min(cap.max, val));
+          const hasSaved = !!(saved && Object.keys(saved).length);
+          const storedDef = webcamLoadUvcDef();
+          if (storedDef && typeof storedDef === 'object' && Object.keys(storedDef).length) {
+            const base = hasSaved ? webcamNeutralDefaults(caps) : webcamCaptureDefaults(caps, sets);
+            // Replace any legacy poisoned baseline where both brightness & contrast were frozen at cap.min
+            if (
+              caps.brightness && caps.contrast &&
+              storedDef.brightness === caps.brightness.min && storedDef.contrast === caps.contrast.min &&
+              base.brightness !== caps.brightness.min && base.contrast !== caps.contrast.min
+            ) {
+              storedDef.brightness = base.brightness;
+              storedDef.contrast = base.contrast;
+              webcamSaveUvcDef(storedDef);
             }
-          });
+            webcamUvcDefaults = Object.assign({}, base, storedDef);
+          } else {
+            webcamUvcDefaults = hasSaved ? webcamNeutralDefaults(caps) : webcamCaptureDefaults(caps, sets);
+            webcamSaveUvcDef(webcamUvcDefaults);
+          }
+          const toApply = webcamSanitizeApplyObj(caps, saved);
           if (Object.keys(toApply).length) {
             await webcamApplyConstraintsObj(track, toApply);
           }
@@ -308,13 +366,23 @@
       }
 
       async function webcamResetUvc() {
+        clearTimeout(webcamUvcTimer);
+        webcamUvcTimer = null;
+        webcamUvcPending = null;
         const key = webcamCamKey();
         try { localStorage.removeItem(WEBCAM_UVC_PREFIX + key); } catch (e) { }
         const track = (typeof currentStream !== 'undefined' && currentStream && currentStream.getVideoTracks) ? currentStream.getVideoTracks()[0] : null;
-        if (track && webcamUvcDefaults) {
-          await webcamApplyConstraintsObj(track, webcamUvcDefaults);
+        let caps = {};
+        if (track && typeof track.getCapabilities === 'function') {
+          try { caps = track.getCapabilities() || {}; } catch (e) { caps = {}; }
         }
-        webcamSyncUvcUI();
+        const def = Object.assign({}, webcamNeutralDefaults(caps), webcamUvcDefaults || webcamLoadUvcDef(key) || {});
+        webcamUvcDefaults = def;
+        const applyDef = webcamSanitizeApplyObj(caps, def);
+        if (track && Object.keys(applyDef).length) {
+          await webcamApplyConstraintsObj(track, applyDef);
+        }
+        webcamSyncUvcUI(def);
         if (typeof showToast === 'function') showToast('Webcam controls reset to defaults.', 2500);
       }
 
@@ -324,7 +392,7 @@
         webcamUvcTimer = setTimeout(function () { webcamFlushUvc(track); }, delayMs || 0);
       }
 
-      function webcamSyncUvcUI() {
+      function webcamSyncUvcUI(forcedVals) {
         webcamBindStaticProUI();
         const box = document.getElementById('webcamUvcControls');
         const empty = document.getElementById('webcamUvcEmptyHint');
@@ -349,6 +417,7 @@
         try { caps = track.getCapabilities() || {}; } catch (e) { caps = {}; }
         try { sets = (typeof track.getSettings === 'function' ? track.getSettings() : {}) || {}; } catch (e) { sets = {}; }
         const saved = webcamLoadUvc();
+        const fv = forcedVals && typeof forcedVals === 'object' ? forcedVals : null;
         let count = 0;
 
         function addToggle(label, checked, onChange) {
@@ -372,7 +441,8 @@
           if (!cap || typeof cap.min !== 'number' || typeof cap.max !== 'number' || cap.max <= cap.min) return null;
           count++;
           const step = (typeof cap.step === 'number' && cap.step > 0) ? cap.step : ((cap.max - cap.min) > 20 ? 1 : 0.1);
-          const cur = (typeof saved[prop] === 'number' && !isNaN(saved[prop])) ? saved[prop]
+          const cur = (fv && typeof fv[prop] === 'number' && !isNaN(fv[prop])) ? fv[prop]
+            : (typeof saved[prop] === 'number' && !isNaN(saved[prop])) ? saved[prop]
             : (typeof sets[prop] === 'number' && !isNaN(sets[prop])) ? sets[prop]
             : (prop === 'exposureCompensation' && cap.min <= 0 && cap.max >= 0) ? 0
             : (prop === 'zoom' ? cap.min : Math.round(((cap.min + cap.max) / 2) * 100) / 100);
@@ -423,7 +493,7 @@
         let lockFocusChk = null;
         if (Array.isArray(caps.focusMode) && caps.focusMode.indexOf('continuous') >= 0 && (caps.focusMode.indexOf('manual') >= 0 || caps.focusMode.indexOf('single-shot') >= 0)) {
           const manualMode = caps.focusMode.indexOf('manual') >= 0 ? 'manual' : 'single-shot';
-          const curFocus = saved.focusMode || sets.focusMode || 'continuous';
+          const curFocus = (fv && fv.focusMode) || saved.focusMode || sets.focusMode || 'continuous';
           lockFocusChk = addToggle('Lock Focus (stop autofocus hunting)', curFocus !== 'continuous', function (locked) {
             webcamQueueUvcApply(track, { focusMode: locked ? manualMode : 'continuous' }, 0);
           });
@@ -440,7 +510,7 @@
 
         let autoWbChk = null;
         if (Array.isArray(caps.whiteBalanceMode) && caps.whiteBalanceMode.indexOf('continuous') >= 0 && caps.whiteBalanceMode.indexOf('manual') >= 0) {
-          const curWb = saved.whiteBalanceMode || sets.whiteBalanceMode || 'continuous';
+          const curWb = (fv && fv.whiteBalanceMode) || saved.whiteBalanceMode || sets.whiteBalanceMode || 'continuous';
           autoWbChk = addToggle('Auto White Balance', curWb === 'continuous', function (autoOn) {
             webcamQueueUvcApply(track, { whiteBalanceMode: autoOn ? 'continuous' : 'manual' }, 0);
           });

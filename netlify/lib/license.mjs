@@ -65,6 +65,7 @@ export function featuresOf(rec, deviceNo) {
     orientation: rec.orientation || 'landscape',
     gifOpt: rec.gifOpt !== false,
     ipadOpt: rec.ipadOpt !== false,               // an iPad may use this laptop's camera over Wi-Fi (on unless Admin turns it off)
+    ipadOpt: !!rec.ipadOpt,                      // an iPad may use this laptop's camera over Wi-Fi (off by default unless Admin turns it on)
     extras: extrasOf(rec),
     vouchers: !!rec.payOpt,                       // offline: vouchers only (QR payments need internet)
     folderKey: rec.lifetime ? null : ((rec.folderName || rec.label || '').trim() || null),

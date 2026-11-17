@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>360 Arm Phone Simulation</title>
+<style>
+:root{--red:#C93D27;--cream:#F6F1EA;--ink:#1C1A1E;--mute:#6B666C;--blue:#1F3A52;--green:#2EA66B;--amber:#E0A21B;--line:#E4DCCF;--card:#fff}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--cream);color:var(--ink);padding:18px}
+h1{font-size:20px;margin:0 0 2px}
+.sub{color:var(--mute);margin:0 0 12px}
+.banner{background:#fff;border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:10px;padding:9px 12px;margin-bottom:14px;font-size:13px}
+.banner b{color:var(--red)}
+.top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 12px;font:inherit;font-weight:600;cursor:pointer;color:var(--ink)}
+.btn:hover:not(:disabled){border-color:var(--red)}
+.btn.pri{background:var(--red);border-color:var(--red);color:#fff}
+.btn.blue{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+select.btn{padding:6px 8px}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;align-items:start}
+@media(max-width:980px){.main{grid-template-columns:1fr}}
+.main>*,.lower>*,.armcard>*,.dbody>*{min-width:0}
+.laptop{overflow:hidden}
+.row input[type=range]{max-width:100%}
+@media(max-width:560px){.conn{grid-template-columns:1fr}.phone{width:100%;max-width:316px}body{padding:12px}}
+/* laptop */
+.laptop{background:#2a2730;border-radius:14px;padding:8px 8px 14px;box-shadow:0 8px 28px rgba(0,0,0,.18)}
+.lt-bar{display:flex;gap:6px;align-items:center;padding:2px 6px 8px;color:#bbb;font-size:12px}
+.lt-bar i{width:10px;height:10px;border-radius:50%;background:#ff5f56;display:inline-block}
+.lt-bar i:nth-child(2){background:#ffbd2e}.lt-bar i:nth-child(3){background:#27c93f}
+.screen{background:#f3efe8;border-radius:8px;overflow:hidden}
+.deskhead{background:#1C1A1E;color:#fff;padding:9px 14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.deskhead b{font-size:15px}.deskhead span{font-size:12px;opacity:.7}
+.tabs{display:flex;gap:6px;padding:8px 12px;background:#ece6db;flex-wrap:wrap}
+.tab{font-size:12px;padding:4px 9px;border-radius:7px;background:#fff;color:#555}
+.tab.act{background:var(--red);color:#fff}
+.dbody{padding:12px;display:grid;gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.card h3{margin:0 0 8px;font-size:14px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pill{font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 9px;background:#eee;color:#555;white-space:nowrap}
+.pill.amber{background:#fbeccb;color:#855400}.pill.green{background:#d6f1e2;color:#16683f}.pill.red{background:#f9d8d2;color:#8e2312}.pill.blue{background:#d7e3ef;color:#1F3A52}
+.new{font-size:10.5px;background:var(--red);color:#fff;border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:1px}
+.conn{list-style:none;margin:0;padding:0;font-size:12.5px;display:grid;grid-template-columns:1fr 1fr;gap:3px 12px}
+.armcard{display:grid;grid-template-columns:150px 1fr;gap:14px}
+@media(max-width:700px){.armcard{grid-template-columns:1fr}}
+.qrbox{text-align:center}
+.qrbox svg{width:140px;height:140px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px}
+.qrbox small{display:block;color:var(--mute);font-size:11px;margin-top:4px}
+.set{display:grid;gap:9px}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.row>label.t{font-weight:700;font-size:12px;min-width:92px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:#fff;padding:5px 10px;font:inherit;font-size:12.5px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--ink);color:#fff}
+input[type=range]{accent-color:var(--red);width:140px}
+.val{font-weight:700;min-width:44px}
+.hint{font-size:12px;color:var(--mute)}
+.warn{font-size:12.5px;background:#fdecea;border:1px solid #f3b9b1;color:#8e2312;border-radius:8px;padding:6px 9px}
+.okmsg{font-size:12.5px;background:#e6f6ed;border:1px solid #b6e2c8;color:#16683f;border-radius:8px;padding:6px 9px}
+.dim{opacity:.45;pointer-events:none}
+.sw{display:flex;gap:8px;align-items:flex-start;font-size:12.5px}
+.sw input{margin-top:3px}
+.queue{display:grid;gap:6px}
+.clip{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:9px;padding:6px 9px;font-size:12.5px;background:#fff}
+.clip .th{width:42px;height:28px;border-radius:5px;background:linear-gradient(135deg,#C93D27,#E0A21B)}
+.clip .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.miniqr{width:30px;height:30px}
+/* phone */
+.phonewrap{position:sticky;top:12px}
+.phone{width:316px;margin:0 auto;background:#0b0b0d;border-radius:44px;padding:11px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.pscr{position:relative;height:620px;background:#fff;border-radius:34px;overflow:hidden}
+.notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:92px;height:24px;background:#000;border-radius:14px;z-index:30}
+.sb{position:absolute;top:0;left:0;right:0;height:40px;z-index:25;display:flex;justify-content:space-between;align-items:flex-end;padding:0 22px 4px;font-size:12px;font-weight:700;color:#fff;mix-blend-mode:normal}
+.scr{position:absolute;inset:0;display:none}
+.scr.on{display:block}
+.vf{position:absolute;inset:0;width:100%;height:100%;display:block}
+.scanframe{position:absolute;left:50%;top:44%;width:170px;height:170px;transform:translate(-50%,-50%);border:3px solid #ffd60a;border-radius:18px}
+.scanqr{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%) rotate(-3deg);width:150px;height:150px;background:#fff;border-radius:6px;padding:4px}
+.scanqr svg{width:100%;height:100%}
+.ibanner{position:absolute;left:14px;right:14px;top:56px;background:rgba(240,240,240,.96);border-radius:16px;padding:11px 13px;font-size:13px;color:#111;cursor:pointer;display:none;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.ibanner.on{display:block}
+.ibanner b{display:block}
+.pbot{position:absolute;left:0;right:0;bottom:0;padding:14px 16px 22px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.75));text-align:center;font-size:12.5px}
+.pbtn{display:inline-block;border:0;border-radius:12px;padding:11px 18px;font:inherit;font-weight:700;background:var(--red);color:#fff;cursor:pointer}
+.pbtn.ghost{background:rgba(255,255,255,.2)}
+/* safari page */
+.safari{background:#F6F1EA;color:var(--ink);padding:46px 14px 14px;height:100%;overflow:auto}
+.url{background:#e6e1d8;border-radius:10px;padding:5px 9px;font-size:11px;color:#555;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.safari h2{font-size:18px;margin:2px 0 4px}
+.sumrow{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:5px 0;border-bottom:1px solid var(--line)}
+.sumrow b{text-align:right}
+.perm{position:absolute;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:40}
+.perm.on{display:flex}
+.permbox{width:240px;background:#f2f2f2;border-radius:16px;text-align:center;overflow:hidden}
+.permbox p{margin:0;padding:16px 14px;font-size:13px}
+.permbox div{display:flex;border-top:1px solid #ccc}
+.permbox button{flex:1;border:0;background:none;padding:11px;font:inherit;color:#0a84ff;font-size:14px;cursor:pointer}
+.permbox button+button{border-left:1px solid #ccc;font-weight:700}
+/* ready overlays */
+.chip{position:absolute;left:12px;right:12px;top:46px;z-index:20;display:flex;justify-content:space-between;align-items:center;gap:6px}
+.chip span{background:rgba(0,0,0,.6);color:#fff;border-radius:99px;padding:5px 11px;font-size:12px;font-weight:700}
+.chip .rec{background:#d92d20}
+.big{position:absolute;inset:0;z-index:15;display:none;align-items:center;justify-content:center;font-size:120px;font-weight:800;color:#fff;text-shadow:0 4px 24px rgba(0,0,0,.6)}
+.big.on{display:flex}
+.prog{height:8px;border-radius:5px;background:rgba(255,255,255,.3);overflow:hidden;margin:8px 0}
+.prog i{display:block;height:100%;width:0;background:#ff453a}
+.gy{height:6px;background:rgba(255,255,255,.25);border-radius:4px;overflow:hidden;margin:6px 0 2px}
+.gy i{display:block;height:100%;width:0;background:#5ac8fa}
+.plabel{font-size:12px;opacity:.9}
+.sync{position:absolute;top:80px;left:50%;transform:translateX(-50%);z-index:22;background:#2EA66B;color:#fff;font-size:11.5px;font-weight:700;border-radius:99px;padding:4px 11px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+.sync.on{opacity:1}
+/* lower */
+.lower{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;margin-top:18px}
+@media(max-width:800px){.lower{grid-template-columns:1fr}}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+.panel h3{margin:0 0 8px;font-size:14px}
+.booth{width:100%;max-width:270px;display:block;margin:0 auto}
+.tl{position:relative;margin-top:6px}
+.tlr{display:grid;grid-template-columns:96px 1fr;align-items:center;gap:8px;margin:5px 0;font-size:12px}
+.tlt{position:relative;height:18px;background:#f0ebe2;border-radius:5px;overflow:hidden}
+.tlt i{position:absolute;top:0;bottom:0;border-radius:5px}
+.tlmark{position:absolute;top:0;bottom:0;width:2px;background:#000;z-index:3;left:0}
+.tlwrap{position:relative}
+.tlwrap .tlmark{left:calc(96px + 8px)}
+.simctl{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.col{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;font-size:13px}
+.col h3{margin:0 0 6px;font-size:14px}
+.col.g{border-top:4px solid var(--green)}.col.a{border-top:4px solid var(--amber)}.col.r{border-top:4px solid var(--red)}
+.col ul{margin:0;padding-left:18px}.col li{margin:3px 0}
+</style>
+</head>
+<body>
+<h1>360 Arm Phone: how it would work</h1>
+<p class="sub">An interactive simulation of the proposed flow. The iPhone sits on the 360 arm, scans the QR on the 360 desk, and records using the settings from the desk.</p>
+<div class="banner"><b>Simulation only, nothing here is built yet.</b> Today the QR on the desk only opens a "Record now / Choose a video" page, the length and trigger are set on the Android "Record 360" screen, and nothing controls the arm. Press <b>Auto-play the whole flow</b>, or tap through it yourself.</div>
+
+<div class="top">
+  <button class="btn pri" id="auto">▶ Auto-play the whole flow</button>
+  <button class="btn" id="reset">↺ Reset</button>
+  <label class="hint">Simulation speed
+    <select class="btn" id="speed"><option value="1">×1 (real time)</option><option value="2" selected>×2</option><option value="4">×4</option></select></label>
+</div>
+
+<div class="main">
+  <!-- LAPTOP -->
+  <div class="laptop">
+    <div class="lt-bar"><i></i><i></i><i></i><span style="margin-left:8px">photobooth4u — booth laptop</span></div>
+    <div class="screen">
+      <div class="deskhead"><b>🎥 360 Video Studio &amp; Desk</b><span id="headStatus">Full-Page Live Preview &amp; Processing Studio</span></div>
+      <div class="tabs"><span class="tab act">🎬 Videos &amp; Queue</span><span class="tab">✨ Presets</span><span class="tab">🎨 Look &amp; Frame</span><span class="tab">✍️ Text</span><span class="tab">🎵 Audio &amp; FX</span></div>
+      <div class="dbody">
+        <div class="card">
+          <h3><span>🔌 Connect</span><span class="pill green">All ready</span></h3>
+          <ul class="conn">
+            <li>✅ Video editor ready</li><li>✅ 360 inbox folder, 212 GB free</li>
+            <li>✅ Wi-Fi address 192.168.1.20</li><li id="connPhone">⏳ Arm phone: not connected</li>
+          </ul>
+        </div>
+
+        <div class="card" style="border-color:#e6b9b1">
+          <h3><span>📱 Arm phone <span class="new">NEW</span></span><span class="pill amber" id="deskPill">Waiting for the phone</span></h3>
+          <div class="armcard">
+            <div class="qrbox"><div id="deskQr"></div><small>Scan with the iPhone on the arm<br>(sample QR, same booth Wi-Fi)</small></div>
+            <div class="set">
+              <div class="row"><label class="t">Start when</label>
+                <div class="seg" id="segTrigger">
+                  <button data-v="arm" class="on">Arm moves</button><button data-v="guest">Guest steps in</button><button data-v="desk">I press Start</button></div></div>
+              <div class="row"><label class="t">Video length</label>
+                <div class="seg" id="segLen"><button data-v="follow" class="on">Follow the arm</button><button data-v="fixed">Fixed</button></div>
+                <span id="fixedWrap" class="row" style="display:none"><input type="range" id="fixed" min="4" max="30" step="1" value="10"><span class="val" id="fixedV">10 s</span></span></div>
+              <div class="row"><label class="t">One spin takes</label><input type="range" id="spinTime" min="4" max="20" step="0.5" value="8"><span class="val" id="spinTimeV">8 s</span></div>
+              <div class="row"><label class="t">Spins</label>
+                <div class="seg" id="segSpins"><button data-v="1" class="on">1</button><button data-v="1.5">1½</button><button data-v="2">2</button><button data-v="3">3</button></div>
+                <span class="hint" id="armTotal"></span></div>
+              <div class="row"><label class="t">Lead-in / tail</label><input type="range" id="lead" min="0" max="3" step="0.5" value="1"><span class="val" id="leadV">1 s</span>
+                <input type="range" id="tail" min="0" max="4" step="0.5" value="1.5"><span class="val" id="tailV">1.5 s</span></div>
+              <label class="sw"><input type="checkbox" id="armLink"><span><b>Arm controller link</b> <span class="pill">needs hardware</span><br><span class="hint">When linked, the desk also turns the arm for exactly this long. Not available until we know how your arm is controlled.</span></span></label>
+              <div id="summary"></div>
+              <div class="row"><button class="btn blue" id="deskStart" disabled>▶ Start on the iPhone</button><span class="hint" id="deskStartHint"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3><span>🎬 360 Video Queue</span><span class="pill" id="qBadge">0 videos</span></h3>
+          <div class="queue" id="queue"><div class="hint">No videos yet. They appear here when the iPhone sends them.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHONE -->
+  <div class="phonewrap">
+    <div class="phone"><div class="pscr">
+      <div class="notch"></div>
+      <div class="sb"><span id="clock">12:04</span><span>5G ▮▮▮</span></div>
+
+      <!-- 1: camera app scanning the desk QR -->
+      <div class="scr on" id="s-scan">
+        <canvas class="vf" id="vfScan" width="288" height="600"></canvas>
+        <div class="scanqr" id="scanQr"></div>
+        <div class="scanframe"></div>
+        <div class="ibanner" id="banner"><b>🔗 Open “192.168.1.20” in Safari</b>photobooth4u 360 desk</div>
+        <div class="pbot"><div class="plabel" id="scanMsg">Point the iPhone camera at the QR on the 360 desk</div><br><button class="pbtn" id="doScan">Scan the QR</button></div>
+      </div>
+
+      <!-- 2: the page that opens after scanning -->
+      <div class="scr" id="s-page">
+        <div class="safari">
+          <div class="url">🔒 192.168.1.20:47777/send/xK3…/arm</div>
+          <h2>📱 360 Arm Phone</h2>
+          <div class="row" style="margin-bottom:6px"><span class="pill green">Connected to the desk ✓</span><span class="pill blue" id="liveTag">Settings are live</span></div>
+          <div class="hint" style="margin-bottom:6px">These come from the 360 desk. Change them on the laptop and this phone follows.</div>
+          <div class="sumrow"><span>Starts when</span><b id="pgTrig"></b></div>
+          <div class="sumrow"><span>Arm spin</span><b id="pgArm"></b></div>
+          <div class="sumrow"><span>Video length</span><b id="pgLen"></b></div>
+          <div class="sumrow"><span>Then</span><b>Sent to the desk, edited, QR made</b></div>
+          <div style="margin:14px 0 6px"><button class="pbtn" id="allow" style="width:100%">Allow camera &amp; motion</button></div>
+          <div class="hint">iPhone asks once. Keep this screen on and the phone plugged in. Tip: Share → Add to Home Screen to reopen it in one tap.</div>
+        </div>
+        <div class="perm" id="perm"><div class="permbox"><p><b>“Safari” Would Like to Access the Camera and Motion</b></p><div><button id="permNo">Don’t Allow</button><button id="permYes">Allow</button></div></div></div>
+      </div>
+
+      <!-- 3: ready / recording -->
+      <div class="scr" id="s-ready">
+        <canvas class="vf" id="vfRun" width="288" height="600"></canvas>
+        <div class="chip"><span id="chipState">● Ready</span><span id="chipTime">00:00</span></div>
+        <div class="sync" id="syncTag">Settings updated from the desk ✓</div>
+        <div class="big" id="big"></div>
+        <div class="pbot">
+          <div class="plabel" id="readyMsg"></div>
+          <div class="prog"><i id="recBar"></i></div>
+          <div class="plabel">Arm movement sensed by the phone</div>
+          <div class="gy"><i id="gyBar"></i></div>
+          <div class="plabel" id="gyTxt">0°/s</div>
+          <div style="margin-top:10px"><button class="pbtn ghost">🔄 Flip</button> <button class="pbtn ghost">🔒 Lock screen</button></div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<div class="lower">
+  <div class="panel">
+    <h3>Top view of the booth</h3>
+    <svg class="booth" viewBox="0 0 260 260" id="boothSvg">
+      <circle cx="130" cy="130" r="118" fill="#f0ebe2" stroke="#ddd3c2"/>
+      <circle cx="130" cy="130" r="40" fill="#fff" stroke="#ddd3c2"/>
+      <g id="guestG" style="display:none"><circle cx="130" cy="130" r="13" fill="#C93D27"/><circle cx="130" cy="130" r="5" fill="#fff"/></g>
+      <g id="armG">
+        <line x1="130" y1="130" x2="130" y2="26" stroke="#1F3A52" stroke-width="7" stroke-linecap="round"/>
+        <polygon points="130,38 104,84 156,84" fill="rgba(201,61,39,.18)" id="fov"/>
+        <rect x="119" y="14" width="22" height="34" rx="5" fill="#111" stroke="#fff" stroke-width="2"/>
+        <circle cx="130" cy="22" r="3" fill="#5ac8fa"/>
+      </g>
+      <circle cx="130" cy="130" r="6" fill="#1F3A52"/>
+    </svg>
+    <div class="hint" style="text-align:center" id="boothTxt">Arm stopped</div>
+    <div class="simctl">
+      <button class="btn" id="simArm" disabled>🕹 Operator starts the arm</button>
+      <button class="btn" id="simGuest" disabled>🚶 Guest steps on the platform</button>
+    </div>
+    <div class="hint" style="margin-top:6px">These two buttons stand in for real life. “I press Start” is the Start button on the desk.</div>
+  </div>
+  <div class="panel">
+    <h3>What happens, second by second</h3>
+    <div class="tlwrap" id="tlwrap">
+      <div class="tlmark" id="tlmark"></div>
+      <div class="tl" id="tl"></div>
+    </div>
+    <div class="hint" style="margin-top:8px" id="tlnote"></div>
+  </div>
+</div>
+
+<div class="cols">
+  <div class="col g"><h3>✅ Works today</h3><ul>
+    <li>Desk QR → phone opens a page to <b>Record now</b> / <b>Choose a video</b> and sends it to the desk.</li>
+    <li>Android tablet "Record 360": scans the desk QR, records 6–15 s, can start when <b>the arm moves</b> or <b>a guest steps in</b>.</li>
+    <li>Desk <b>Auto mode</b>: edits every new video and makes its QR.</li></ul></div>
+  <div class="col a"><h3>🛠 Software to build</h3><ul>
+    <li>The desk <b>holds the recording settings</b> and the phone reads them live (nothing typed on the phone).</li>
+    <li>A <b>Start</b> command from the desk to the phone.</li>
+    <li><b>Follow the arm</b>: stop when the phone senses the arm has stopped.</li>
+    <li><b>iPhone path.</b> Safari on a plain Wi-Fi address can't open the live camera or motion sensor. The realistic route is the iOS app (it already drives the camera). Record 360 is currently off in iOS.</li></ul></div>
+  <div class="col r"><h3>🔧 Needs hardware / your answer</h3><ul>
+    <li><b>Turning the arm</b> can't be done by software alone. The arm has its own motor controller.</li>
+    <li>What is the <b>arm's brand / model</b>? If it has Bluetooth/Wi-Fi control, or a remote we can wire a small Wi-Fi relay across, the desk can start and stop it.</li>
+    <li>Until then: the desk <b>matches the video to the arm's spin time</b>. The phone senses start and stop.</li></ul></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var $=function(s){return document.querySelector(s)};
+var S={trigger:'arm',lenMode:'follow',fixed:10,spinTime:8,spins:1,lead:1,tail:1.5,armLink:false,speed:2};
+var P={screen:'scan',detected:false,paired:false,ready:false};   // phone
+var cyc=null, guest=false, clips=[], ang=0, gyro=0, clipN=0;
+
+function fmt(n){return (Math.round(n*10)/10)+' s'}
+function trigText(t){return {arm:'the arm starts moving',guest:'a guest steps on the platform',desk:'you press Start on the desk'}[t||S.trigger]}
+function trigShort(){return {arm:'Arm moves',guest:'Guest steps in',desk:'Desk Start button'}[S.trigger]}
+function derive(){
+  var armDur=S.spinTime*S.spins, lead=S.trigger==='arm'?0:S.lead, follow=lead+armDur+S.tail;
+  var len=S.lenMode==='follow'?follow:S.fixed;
+  return {armDur:armDur,lead:lead,follow:follow,len:len,cuts:S.lenMode==='fixed'&&S.fixed<lead+armDur,spare:S.lenMode==='fixed'&&S.fixed>follow+0.01};
+}
+function schedule(){
+  var d=derive(), cd=S.trigger==='arm'?0:3, recStart,armStart,armEnd,recEnd;
+  if(S.trigger==='arm'){armStart=0;recStart=0.3;armEnd=d.armDur}
+  else{recStart=cd;armStart=recStart+d.lead;armEnd=armStart+d.armDur}
+  recEnd=S.lenMode==='follow'?armEnd+S.tail:recStart+S.fixed;
+  var sendEnd=recEnd+2.5, editEnd=sendEnd+3;
+  return {cd:cd,recStart:recStart,armStart:armStart,armEnd:armEnd,recEnd:recEnd,sendEnd:sendEnd,editEnd:editEnd};
+}
+
+/* ---------- QR (a made-up pattern) ---------- */
+function qrSvg(px){
+  var n=25, seed=7, r=function(){seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff};
+  var out='<svg viewBox="0 0 '+n+' '+n+'" shape-rendering="crispEdges"><rect width="'+n+'" height="'+n+'" fill="#fff"/>';
+  function finder(x,y){out+='<rect x="'+x+'" y="'+y+'" width="7" height="7" fill="#000"/><rect x="'+(x+1)+'" y="'+(y+1)+'" width="5" height="5" fill="#fff"/><rect x="'+(x+2)+'" y="'+(y+2)+'" width="3" height="3" fill="#000"/>'}
+  for(var y=0;y<n;y++)for(var x=0;x<n;x++){
+    var inF=(x<8&&y<8)||(x>n-9&&y<8)||(x<8&&y>n-9); if(inF)continue;
+    if(r()>0.52)out+='<rect x="'+x+'" y="'+y+'" width="1" height="1" fill="#000"/>';
+  }
+  finder(0,0);finder(n-7,0);finder(0,n-7);
+  return out+'</svg>';
+}
+$('#deskQr').innerHTML=qrSvg();
+$('#scanQr').innerHTML=qrSvg();
+
+/* ---------- desk controls ---------- */
+function seg(id,key,conv){
+  $(id).addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
+    S[key]=conv?conv(b.dataset.v):b.dataset.v;
+    [].forEach.call($(id).children,function(c){c.classList.toggle('on',c===b)});
+    changed();});
+}
+seg('#segTrigger','trigger');seg('#segLen','lenMode');seg('#segSpins','spins',Number);
+function rng(id,key,vid){$(id).addEventListener('input',function(){S[key]=Number($(id).value);$(vid).textContent=fmt(S[key]);changed()})}
+rng('#fixed','fixed','#fixedV');rng('#spinTime','spinTime','#spinTimeV');rng('#lead','lead','#leadV');rng('#tail','tail','#tailV');
+$('#armLink').addEventListener('change',function(){S.armLink=this.checked;changed()});
+$('#speed').addEventListener('change',function(){S.speed=Number(this.value)});
+var changeTimer=null;
+function changed(){
+  if(cyc){return}
+  render();
+  if(P.paired){var t=$('#syncTag');t.classList.add('on');clearTimeout(changeTimer);changeTimer=setTimeout(function(){t.classList.remove('on')},1800)}
+}
+function render(){
+  var d=derive();
+  $('#fixedWrap').style.display=S.lenMode==='fixed'?'flex':'none';
+  $('#segLen').nextElementSibling;
+  $('#armTotal').textContent='= arm turns '+fmt(d.armDur)+' in total';
+  $('#lead').parentElement.style.display=S.trigger==='arm'?'none':'flex';
+  var h='';
+  if(d.cuts)h='<div class="warn">⚠ The video ends after '+fmt(S.fixed)+' but the arm needs '+fmt(d.lead+d.armDur)+'. The last part of the spin would be cut off. Switch to “Follow the arm” or raise the length.</div>';
+  else if(S.lenMode==='follow')h='<div class="okmsg">✓ Video will be about <b>'+fmt(schedule().recEnd-schedule().recStart)+'</b>: the arm turn'+(S.trigger==='arm'?'':' + '+fmt(d.lead)+' lead-in')+' + '+fmt(S.tail)+' tail. It stops by itself when the arm stops.</div>';
+  else h='<div class="okmsg">✓ Fixed '+fmt(S.fixed)+' video covers the whole spin.'+(d.spare?' (about '+fmt(S.fixed-d.follow)+' of calm footage at the end)':'')+'</div>';
+  $('#summary').innerHTML=h;
+  var link=S.armLink;
+  $('#deskStart').disabled=!(P.ready&&!cyc&&(S.trigger==='desk'));
+  $('#deskStart').textContent=link?'▶ Start spin + recording':'▶ Start on the iPhone';
+  $('#deskStartHint').textContent=S.trigger==='desk'?(link?'The desk starts the arm and the phone together.':'The phone starts; the operator presses the arm remote at GO.'):'Only used when “I press Start” is picked.';
+  $('#simArm').textContent=link?'🕹 Desk turns the arm':'🕹 Operator starts the arm';
+  $('#simArm').disabled=!(P.ready&&!cyc&&S.trigger==='arm');
+  $('#simGuest').disabled=!(P.ready&&!cyc&&S.trigger==='guest');
+  // phone text
+  $('#pgTrig').textContent=trigShort();
+  $('#pgArm').textContent=fmt(S.spinTime)+' × '+S.spins+(S.armLink?' (desk turns it)':'');
+  $('#pgLen').textContent=S.lenMode==='follow'?'Follows the arm (~'+fmt(schedule().recEnd-schedule().recStart)+')':'Fixed '+fmt(S.fixed);
+  if(!cyc)$('#readyMsg').textContent='Ready. Recording starts when '+trigText()+'.';
+  buildTimeline(null);
+  deskPill();
+}
+function deskPill(){
+  var p=$('#deskPill'),t='Waiting for the phone',c='amber';
+  if(P.paired){t='iPhone connected';c='green'}
+  if(cyc){var ph=cyc.phase;
+    if(ph==='countdown'||ph==='detect'){t='Starting…';c='blue'}
+    else if(ph==='rec'){t='Recording on the iPhone';c='red'}
+    else if(ph==='send'){t='Receiving video…';c='blue'}
+    else if(ph==='edit'){t='Editing + making QR…';c='blue'}}
+  p.textContent=t;p.className='pill '+c;
+  $('#connPhone').textContent=P.paired?'✅ Arm phone: iPhone connected':'⏳ Arm phone: not connected';
+}
+
+/* ---------- timeline ---------- */
+function buildTimeline(sch){
+  sch=sch||schedule();
+  var T=sch.editEnd, pct=function(x){return (x/T*100)+'%'};
+  function bar(a,b,col,lbl){return '<i style="left:'+pct(a)+';width:'+pct(Math.max(b-a,0.05))+';background:'+col+'" title="'+lbl+'"></i>'}
+  var rows=[];
+  if(sch.cd>0)rows.push(['Countdown 3-2-1',bar(0,sch.cd,'#E0A21B','Countdown')]);
+  rows.push(['Arm turns',bar(sch.armStart,sch.armEnd,'#1F3A52','Arm turning')]);
+  var cutAt=Math.min(sch.recEnd,sch.armEnd), d=derive();
+  var v=bar(sch.recStart,sch.recEnd,'#C93D27','Video');
+  if(d.cuts)v+=bar(sch.recEnd,sch.armEnd,'repeating-linear-gradient(45deg,#fff,#fff 3px,#f3b9b1 3px,#f3b9b1 6px)','Arm turning after the video ended');
+  rows.push(['iPhone records',v]);
+  rows.push(['Upload to desk',bar(sch.recEnd,sch.sendEnd,'#6B8CA8','Upload')]);
+  rows.push(['Edit + QR',bar(sch.sendEnd,sch.editEnd,'#2EA66B','Edit')]);
+  $('#tl').innerHTML=rows.map(function(r){return '<div class="tlr"><span>'+r[0]+'</span><div class="tlt">'+r[1]+'</div></div>'}).join('');
+  $('#tlnote').textContent='Total about '+fmt(sch.editEnd)+' from the start to a finished QR. Video: '+fmt(sch.recEnd-sch.recStart)+'.'+(d.cuts?' The striped part is the arm still turning after the video has ended.':'');
+  $('#tlwrap').dataset.total=T;
+}
+function moveMark(tc){var T=Number($('#tlwrap').dataset.total)||1;var w=$('#tl').offsetWidth-104;$('#tlmark').style.left=(104+Math.max(0,Math.min(1,tc/T))*Math.max(w,1))+'px'}
+
+/* ---------- phone flow ---------- */
+function show(s){P.screen=s;['scan','page','ready'].forEach(function(n){$('#s-'+n).classList.toggle('on',n===s)})}
+function doScan(){
+  if(P.screen!=='scan'||P.detected)return;
+  P.detected=true;$('#scanMsg').textContent='QR found';$('#banner').classList.add('on');$('#doScan').style.display='none';
+}
+$('#doScan').addEventListener('click',doScan);
+function openPage(){
+  if(!P.detected||P.screen!=='scan')return;
+  show('page');P.paired=true;render();
+}
+$('#banner').addEventListener('click',openPage);
+$('#allow').addEventListener('click',function(){$('#perm').classList.add('on')});
+$('#permNo').addEventListener('click',function(){$('#perm').classList.remove('on')});
+function allow(){$('#perm').classList.remove('on');show('ready');P.ready=true;render()}
+$('#permYes').addEventListener('click',allow);
+
+/* ---------- start a cycle ---------- */
+function startCycle(){
+  if(!P.ready||cyc)return;
+  var sch=schedule();
+  cyc={tc:0,sch:sch,phase:S.trigger==='arm'?'detect':'countdown',clip:null};
+  buildTimeline(sch);render();
+}
+$('#simArm').addEventListener('click',function(){if(S.trigger==='arm')startCycle()});
+$('#simGuest').addEventListener('click',function(){
+  if(S.trigger!=='guest'||!P.ready||cyc)return;
+  guest=true;$('#readyMsg').textContent='Guest detected…';$('#simGuest').disabled=true;
+  setTimeout(startCycle,1000/S.speed);
+});
+$('#deskStart').addEventListener('click',function(){if(S.trigger==='desk')startCycle()});
+
+function trap(p){var r=0.12,v=1/(1-r);p=Math.max(0,Math.min(1,p));
+  if(p<r)return v*p*p/(2*r);if(p>1-r)return 1-v*(1-p)*(1-p)/(2*r);return v*(p-r/2)}
+
+function addClip(){
+  clipN++;var n=new Date();
+  var name='360_20261117_12'+String(4+clipN).padStart(2,'0')+'00.mp4';
+  var c={name:name,state:'receiving'};clips.unshift(c);clips=clips.slice(0,4);return c;
+}
+function renderQueue(){
+  if(!clips.length){$('#queue').innerHTML='<div class="hint">No videos yet. They appear here when the iPhone sends them.</div>';$('#qBadge').textContent='0 videos';return}
+  $('#qBadge').textContent=clips.length+' video'+(clips.length>1?'s':'');
+  $('#queue').innerHTML=clips.map(function(c){
+    var st={receiving:'<span class="pill blue">Receiving…</span>',editing:'<span class="pill blue">Editing…</span>',ready:'<span class="pill green">Ready ✓ QR</span>'}[c.state];
+    return '<div class="clip"><div class="th"></div><div class="nm">'+c.name+'</div>'+st+(c.state==='ready'?'<span class="miniqr">'+qrSvg()+'</span>':'')+'</div>'}).join('');
+}
+
+/* ---------- viewfinder drawing ---------- */
+var cvR=$('#vfRun').getContext('2d'), cvS=$('#vfScan').getContext('2d');
+function drawScene(cx,W,H,a,withGuest,tint){
+  var g=cx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1a1730');g.addColorStop(1,'#0d0c14');cx.fillStyle=g;cx.fillRect(0,0,W,H);
+  var cols=['#C93D27','#E0A21B','#2EA66B','#5ac8fa','#af52de'];
+  for(var i=0;i<10;i++){
+    var x=((i*62-a*2.2)%620+620)%620-60;cx.fillStyle=cols[i%5];cx.globalAlpha=.28;
+    cx.fillRect(x,60,26,H*.5);
+  }
+  cx.globalAlpha=1;
+  cx.fillStyle='#2a2736';cx.beginPath();cx.ellipse(W/2,H*.7,150,46,0,0,7);cx.fill();
+  if(withGuest){
+    cx.fillStyle='#f1c9a5';cx.beginPath();cx.arc(W/2,H*.4,26,0,7);cx.fill();
+    var bg=cx.createLinearGradient(0,H*.45,0,H*.7);bg.addColorStop(0,'#C93D27');bg.addColorStop(1,'#7a2216');
+    cx.fillStyle=bg;cx.beginPath();cx.roundRect?cx.roundRect(W/2-34,H*.45,68,H*.25,18):cx.rect(W/2-34,H*.45,68,H*.25);cx.fill();
+  }
+  if(tint){cx.fillStyle=tint;cx.fillRect(0,0,W,H)}
+}
+function drawScan(){
+  var W=288,H=600,cx=cvS;cx.fillStyle='#14120f';cx.fillRect(0,0,W,H);
+  var g=cx.createLinearGradient(0,0,W,H);g.addColorStop(0,'#3a342c');g.addColorStop(1,'#1a1713');cx.fillStyle=g;cx.fillRect(0,0,W,H);
+  cx.fillStyle='rgba(255,255,255,.06)';cx.fillRect(20,90,W-40,260);
+}
+
+/* ---------- main loop ---------- */
+var last=performance.now();
+function loop(now){
+  var dt=(now-last)/1000;last=now;if(dt>0.1)dt=0.1;
+  var armAngle=0, rec=false, bigTxt='', chip='● Ready', chipT='00:00', msg=null, bar=0;
+  if(cyc){
+    cyc.tc+=dt*S.speed;var tc=cyc.tc,s=cyc.sch;
+    var phase=tc>=s.editEnd?'done':tc>=s.sendEnd?'edit':tc>=s.recEnd?'send':tc>=s.recStart?'rec':(S.trigger==='arm'?'detect':'countdown');
+    if(phase!==cyc.phase){cyc.phase=phase;deskPill();
+      if(phase==='rec'){cyc.clip=null}
+      if(phase==='send'){cyc.clip=addClip();renderQueue()}
+      if(phase==='edit'&&cyc.clip){cyc.clip.state='editing';renderQueue()}
+      if(phase==='done'){if(cyc.clip){cyc.clip.state='ready';renderQueue()}cyc=null;guest=false;ang=0;render();}
+    }
+    if(cyc){
+      if(tc>=s.armStart&&tc<s.armEnd){armAngle=360*S.spins*trap((tc-s.armStart)/(s.armEnd-s.armStart))}
+      var w=S.trigger==='arm'?0:0;
+      if(phase==='countdown'){var n=Math.ceil(s.cd-tc);bigTxt=String(Math.max(n,1));chip='Get ready…';msg='Countdown… the operator presses the arm remote at GO.'}
+      else if(phase==='detect'){chip='Waiting…';msg='Arm is starting…'}
+      else if(phase==='rec'){rec=true;var el=tc-s.recStart,tot=s.recEnd-s.recStart;chip='● REC';chipT=Math.floor(el/60).toString().padStart(2,'0')+':'+String(Math.floor(el%60)).padStart(2,'0');bar=el/tot;
+        msg=tc<s.armStart?'Recording… lead-in':tc<s.armEnd?(S.armLink?'Recording. The desk is turning the arm.':'Recording. The arm is turning.'):(S.lenMode==='follow'?'Arm stopped. Finishing the tail…':'Recording…');
+        if(tc>=s.armEnd&&S.lenMode==='fixed'&&tc<s.recEnd)msg='Arm stopped. Recording to the set length…';}
+      else if(phase==='send'){chip='Sending…';bar=(tc-s.recEnd)/(s.sendEnd-s.recEnd);msg='Sending the video to the desk… '+Math.round(bar*100)+'%'}
+      else if(phase==='edit'){chip='✓ Sent';bar=1;msg='Sent. The desk is editing it and making the QR.'}
+      // fixed length shorter than the arm: the arm keeps going after REC ends
+    }
+  }
+  var dAng=armAngle-ang; ang=armAngle;
+  var targetGyro=cyc&&dt>0?Math.abs(dAng)/Math.max(dt*S.speed,0.001):0; if(targetGyro>400)targetGyro=0;
+  gyro+=(targetGyro-gyro)*0.25;
+  // phone
+  if(P.screen==='ready'){
+    drawScene(cvR,288,600,armAngle,guest||!!cyc,rec?'rgba(217,45,32,.08)':null);
+    $('#chipState').textContent=chip;$('#chipState').className=rec?'rec':'';$('#chipTime').textContent=chipT;
+    var b=$('#big');b.classList.toggle('on',!!bigTxt);b.textContent=bigTxt;
+    $('#recBar').style.width=(bar*100)+'%';
+    $('#gyBar').style.width=Math.min(100,gyro/60*100)+'%';$('#gyTxt').textContent=Math.round(gyro)+'°/s'+(gyro>8?'  · moving':'  · still');
+    if(msg)$('#readyMsg').textContent=msg;
+  }
+  if(P.screen==='scan')drawScan();
+  // booth svg
+  $('#armG').setAttribute('transform','rotate('+armAngle+' 130 130)');
+  $('#guestG').style.display=(guest||cyc)?'block':'none';
+  var bt='Arm stopped';
+  if(cyc){var tc2=cyc.tc,s2=cyc.sch;if(tc2>=s2.armStart&&tc2<s2.armEnd){var turned=armAngle/360;bt='Arm turning · '+turned.toFixed(2)+' of '+S.spins+' spin'+(S.spins>1?'s':'')+' · '+(S.armLink?'moved by the desk':'moved by the arm remote')}else if(cyc.phase==='countdown')bt='Arm waiting for GO';}
+  $('#boothTxt').textContent=bt;
+  if(cyc)moveMark(cyc.tc);else moveMark(0);
+  $('#clock').textContent='12:04';
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ---------- auto play / reset ---------- */
+var token=0;
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms/S.speed)})}
+async function autoplay(){
+  reset();var my=++token;
+  await sleep(900);if(my!==token)return;
+  doScan();await sleep(1400);if(my!==token)return;
+  openPage();await sleep(2000);if(my!==token)return;
+  $('#perm').classList.add('on');await sleep(1200);if(my!==token)return;
+  allow();await sleep(1400);if(my!==token)return;
+  if(S.trigger==='arm')startCycle();
+  else if(S.trigger==='guest'){$('#simGuest').click()}
+  else startCycle();
+}
+function reset(){
+  token++;cyc=null;guest=false;ang=0;gyro=0;clips=[];clipN=0;
+  P={screen:'scan',detected:false,paired:false,ready:false};
+  show('scan');$('#banner').classList.remove('on');$('#doScan').style.display='';$('#scanMsg').textContent='Point the iPhone camera at the QR on the 360 desk';
+  $('#perm').classList.remove('on');$('#big').classList.remove('on');
+  renderQueue();render();
+}
+$('#auto').addEventListener('click',autoplay);
+$('#reset').addEventListener('click',reset);
+window.__sim={S:S,P:function(){return P},cyc:function(){return cyc},derive:derive,schedule:schedule,startCycle:startCycle,doScan:doScan,openPage:openPage,allow:allow,reset:reset};
+reset();
+})();
+</script>
+</body>
+</html>

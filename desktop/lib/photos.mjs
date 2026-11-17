@@ -552,21 +552,180 @@ export function spinStatsFor(folderKey, subfolder) {
   const f = folderFor(folderKey, subfolder);
   return { event: getStats(f && f.slug), totals: (getStats() || {}).totals || {} };
 }
-const SEND_PAGE = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#C93D27"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="360 Send"><link rel="manifest" href="/send/__T__/manifest"><link rel="apple-touch-icon" href="/send/__T__/icon/180"><title>Send a video</title>' +
-  '<style>body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#F6F1EA;color:#1C1A1E;padding:24px 18px;text-align:center}h1{font-size:22px;margin:6px 0}p{color:#6B666C}' +
-  'label.pick{display:block;max-width:420px;margin:14px auto;padding:24px 20px;border-radius:18px;background:#C93D27;color:#fff;font-weight:800;font-size:21px}label.alt{background:#1F3A52}input{display:none}.looks{margin-top:10px;padding:10px;border-radius:12px;background:#fff;text-align:center}.hint{display:none;margin:22px auto 0;max-width:420px;font-size:13px;color:#6B666C;background:#fff;border-radius:12px;padding:10px 12px;text-align:left}' +
-  '.bar{height:10px;border-radius:6px;background:#E4DCCF;overflow:hidden;margin:14px auto;max-width:420px}.bar i{display:block;height:100%;width:0;background:#2EA66B}.row{margin:6px auto;max-width:420px;text-align:left;font-size:14px}</style></head><body>' +
-  '<h1>Send a 360 video</h1><p>Pick the clip you just recorded. It goes straight to the booth laptop.</p>' +
-  '<label class="alt pick" for="r">🎥 Record now</label><input id="r" type="file" accept="video/*" capture="environment"><label class="pick" for="f">Choose a video</label><input id="f" type="file" accept="video/*" multiple><div id="list"></div><div id="hint" class="hint"></div>' +
-  '<script>var T=location.pathname.replace(/[/]+$/,"");["f","r"].forEach(function(id){document.getElementById(id).addEventListener("change",function(e){Array.prototype.forEach.call(e.target.files,send);e.target.value=""})});' +
-  'function offer(row,name){fetch(T+"/looks").then(function(r){return r.json()}).then(function(j){if(!j.on)return;var box=document.createElement("div");box.className="looks";var h=document.createElement("b");h.textContent="Choose your look";box.appendChild(h);var inp=document.createElement("input");inp.type="text";inp.placeholder="Your name (optional)";inp.maxLength=40;inp.style.cssText="display:block;width:100%;box-sizing:border-box;margin:6px 0;padding:10px;border-radius:10px;border:1px solid #ccc;font-size:16px";box.appendChild(inp);j.looks.forEach(function(l){var b=document.createElement("button");b.type="button";b.textContent=l.icon+" "+l.title;b.style.cssText="margin:3px;padding:10px 14px;border-radius:12px;border:0;color:#fff;font-weight:700;font-size:14px;background:linear-gradient(135deg,"+l.c1+","+l.c2+")";b.onclick=function(){fetch(T+"/look?name="+encodeURIComponent(name)+"&key="+encodeURIComponent(l.key)+"&who="+encodeURIComponent(inp.value),{method:"POST"}).then(function(r){box.textContent=r.ok?"Look chosen. Your video is being made!":"Could not send your choice."})};box.appendChild(b)});row.appendChild(box)}).catch(function(){})}' +
-  'function send(file){var row=document.createElement("div");row.className="row";row.innerHTML="<b></b><div class=bar><i></i></div><span></span>";row.querySelector("b").textContent=file.name;document.getElementById("list").appendChild(row);' +
-  'var x=new XMLHttpRequest();x.open("POST",T+"/upload?name="+encodeURIComponent(file.name));x.setRequestHeader("content-type","application/octet-stream");' +
-  'x.upload.onprogress=function(p){if(p.lengthComputable)row.querySelector("i").style.width=Math.round(p.loaded/p.total*100)+"%"};' +
-  'x.onload=function(){var ok=x.status===200;row.querySelector("span").textContent=ok?"Sent. It is on the laptop now.":"Could not send ("+x.status+"). Try again.";if(ok){row.querySelector("i").style.width="100%";try{offer(row,JSON.parse(x.responseText).name)}catch(e){}}};' +
-  'x.onerror=function(){row.querySelector("span").textContent="No connection to the laptop. Are you on the booth Wi-Fi?"};x.send(file)}' +
-  '(function(){var h=document.getElementById("hint");var sa=navigator.standalone||(window.matchMedia&&matchMedia("(display-mode: standalone)").matches);if(sa)return;var ios=/iPhone|iPad|iPod/.test(navigator.userAgent);h.textContent=ios?"Tip: tap the Share button, then Add to Home Screen. Next time you are two taps from sending: open it, tap Record now.":"Tip: open the browser menu, then Add to Home screen. Next time you are two taps from sending: open it, tap Record now.";h.style.display="block"})();' +
-  '</script></body></html>';
+// ---- Send page v2: what to record, what to offer, how each clip is doing ----
+// The desk tells the phone page what to record and which choices to offer. The booth page tells it how each clip is doing.
+// What the phone asks for (a choice, a re-edit, a countdown) waits here until the booth page collects it. Nothing from the phone is
+// trusted: the clip must be in the inbox, and every choice must be on the list the desk offered.
+const SEND_CHOICES = ['look', 'music', 'speed', 'text', 'gif'];
+const SEND_ACTS = ['reedit', 'share', 'print', 'delete'];
+const SEND_STATES = ['new', 'editing', 'edited', 'sharing', 'ready', 'error'];
+const SEND_Q_MAX = 100;
+const defaultSendCfg = () => ({ guide: { spinSec: 0, spins: 1, recordSec: 0, trigger: '', note: '' }, choices: { look: false, music: false, speed: false, text: false, gif: false }, music: [], speeds: [], laptop: '' });
+let sendCfg = defaultSendCfg();
+let clipStatus = [];
+let sendQueue = [];
+let cmdAt = 0;
+const numIn = (v, lo, hi, d) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+const optList = (a) => (Array.isArray(a) ? a : []).slice(0, 40).map((o) => ({ key: cleanText(o && o.key, 80), title: cleanText(o && o.title, 40) })).filter((o) => o.key && o.title);
+export function spinSendCfgSet(c) {
+  const g = (c && c.guide) || {}, ch = (c && c.choices) || {};
+  sendCfg = {
+    guide: { spinSec: numIn(g.spinSec, 0, 120, 0), spins: numIn(g.spins, 0.5, 10, 1), recordSec: numIn(g.recordSec, 0, 600, 0), trigger: cleanText(g.trigger, 80), note: cleanText(g.note, 200) },
+    choices: Object.fromEntries(SEND_CHOICES.map((k) => [k, !!ch[k]])),
+    music: optList(c && c.music), speeds: optList(c && c.speeds), laptop: cleanText(c && c.laptop, 40)
+  };
+  return true;
+}
+export function spinClipsSet(list) {
+  clipStatus = (Array.isArray(list) ? list : []).slice(0, 12).map((x) => ({
+    name: cleanText(x && x.name, 120),
+    status: SEND_STATES.includes(x && x.status) ? x.status : 'new',
+    pct: numIn(x && x.pct, 0, 100, 0),
+    url: /^https?:\/\/[^\s<>"']{1,300}$/.test(String((x && x.url) || '')) ? String(x.url) : '',
+    look: cleanText(x && x.look, 40)
+  })).filter((x) => x.name);
+  return clipStatus.length;
+}
+export const spinSendCfgNow = () => sendCfg;
+export const spinClipsNow = () => clipStatus;
+export function spinSendTake() { const out = sendQueue; sendQueue = []; return out; }
+function sendPush(item) {
+  if (item.type === 'choice') sendQueue = sendQueue.filter((q) => !(q.type === 'choice' && q.name === item.name));      // the newest choice for a clip wins
+  if (sendQueue.length >= SEND_Q_MAX) sendQueue.shift();
+  sendQueue.push({ ...item, at: Date.now() });
+}
+// The clip a phone names must be a video that is in the inbox right now.
+function inboxClip(raw) {
+  const dd = spinDirNow(), n = basename(String(raw || ''));
+  if (!dd || !n || n.startsWith('.') || !VIDEO_RE.test(n) || !existsSync(join(dd, n))) return '';
+  return n;
+}
+function handleSendV2(req, res, url, sm) {
+  const cors = { 'access-control-allow-origin': '*' };
+  const kind = sm[2];
+  if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': kind === 'config' || kind === 'clips' ? 'GET' : 'POST', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
+  const json = (code, o) => send(res, code, 'application/json', JSON.stringify(o), cors);
+  if (kind === 'config') {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'Method not allowed', cors);
+    return json(200, { ok: true, ...sendCfg, lookOffer: lookOffer.looks });
+  }
+  if (kind === 'clips') {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'Method not allowed', cors);
+    return json(200, { ok: true, clips: clipStatus });
+  }
+  if (req.method !== 'POST') return send(res, 405, 'text/plain', 'Method not allowed', cors);
+  const q = url.searchParams;
+  if (kind === 'cmd') {
+    if (q.get('do') !== 'countdown') return json(400, { ok: false });
+    const now = Date.now();
+    if (now - cmdAt < 2000) return json(429, { ok: false, error: 'Too fast' });
+    cmdAt = now; sendPush({ type: 'cmd', do: 'countdown' });
+    return json(200, { ok: true });
+  }
+  const name = inboxClip(q.get('name'));
+  if (!name) return json(400, { ok: false, error: 'No such video' });
+  if (kind === 'act') {
+    const act = String(q.get('do') || '');
+    if (!SEND_ACTS.includes(act)) return json(400, { ok: false });
+    if (act === 'delete') {
+      // Never really deleted: it moves to a "deleted" folder in the inbox.
+      try {
+        const dd = spinDirNow(), bin = join(dd, 'deleted'); mkdirSync(bin, { recursive: true });
+        let out = name, i = 2; while (existsSync(join(bin, out))) { out = name.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
+        renameSync(join(dd, name), join(bin, out));
+      } catch { return json(500, { ok: false, error: 'Could not delete' }); }
+    }
+    sendPush({ type: 'act', name, do: act });
+    return json(200, { ok: true });
+  }
+  if (kind === 'choice') {
+    const c = sendCfg.choices, pick = {};
+    const look = String(q.get('look') || ''), music = String(q.get('music') || ''), speed = String(q.get('speed') || '');
+    if (c.look && look && lookOffer.looks.some((l) => l.key === look)) pick.look = look;
+    if (c.music && music && sendCfg.music.some((m) => m.key === music)) pick.music = music;
+    if (c.speed && speed && sendCfg.speeds.some((s) => s.key === speed)) pick.speed = speed;
+    if (c.text) { const t = cleanText(q.get('text'), 40); if (t) pick.text = t; }
+    if (c.gif && q.get('gif') === '1') pick.gif = true;
+    if (!Object.keys(pick).length) return json(200, { ok: true, queued: false });
+    sendPush({ type: 'choice', name, ...pick });
+    return json(200, { ok: true, queued: true });
+  }
+  return json(400, { ok: false });
+}
+const SEND_PAGE = String.raw`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#C93D27"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="360 Send"><link rel="manifest" href="/send/__T__/manifest"><link rel="apple-touch-icon" href="/send/__T__/icon/180"><title>360 Arm Phone</title>
+<style>
+body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#F6F1EA;color:#1C1A1E;padding:20px 16px 40px;text-align:center}
+h1{font-size:22px;margin:4px 0}p{color:#6B666C;margin:4px 0}
+.st{display:inline-block;font-size:13px;font-weight:700;border-radius:99px;padding:3px 12px;background:#E4DCCF;color:#444;margin:6px 0 10px}.st.ok{background:#d6f1e2;color:#16683f}.st.bad{background:#f9d8d2;color:#8e2312}
+.card{max-width:420px;margin:10px auto;background:#fff;border-radius:14px;padding:12px 14px;text-align:left;font-size:14px}
+.card .h{display:block;margin-bottom:4px;font-weight:800}
+label.pick,button.pick{display:block;width:100%;max-width:420px;margin:12px auto;padding:22px 20px;border-radius:18px;background:#C93D27;color:#fff;font-weight:800;font-size:21px;border:0;font-family:inherit;cursor:pointer;box-sizing:border-box}
+label.alt{background:#1F3A52}button.ghost{background:#1C1A1E;font-size:16px;padding:14px 20px}button.pick:disabled{opacity:.6}
+input[type=file]{display:none}
+.row{margin:6px auto;max-width:420px;text-align:left;font-size:14px}
+.bar{height:10px;border-radius:6px;background:#E4DCCF;overflow:hidden;margin:6px 0}.bar i{display:block;height:100%;width:0;background:#2EA66B}
+.looks{margin-top:10px;padding:10px;border-radius:12px;background:#fff;text-align:center}
+.card select,.card input[type=text]{width:100%;box-sizing:border-box;margin:3px 0 8px;padding:10px;border-radius:10px;border:1px solid #ccc;font-size:16px;font-family:inherit;background:#fff}
+.chk{display:flex;gap:8px;align-items:center;font-size:15px}
+.clip{border-top:1px solid #eee;padding:8px 0}.clip:first-child{border-top:0}
+.clip .nm{font-weight:700;font-size:13px;word-break:break-all}.clip .qr{margin:6px 0}.clip .qr img{width:150px;height:150px;image-rendering:pixelated}
+.clip button{font:inherit;font-size:13px;font-weight:700;border:1px solid #ccc;background:#fff;border-radius:9px;padding:6px 10px;margin:4px 4px 0 0}
+.hint{display:none;margin:20px auto 0;max-width:420px;font-size:13px;color:#6B666C;background:#fff;border-radius:12px;padding:10px 12px;text-align:left}
+</style></head><body>
+<h1>360 Arm Phone</h1>
+<div class="st" id="conn">Connecting to the laptop…</div>
+<div class="card" id="guide" hidden></div>
+<div class="card" id="choices" hidden></div>
+<label class="alt pick" for="r">🎥 Record now</label><input id="r" type="file" accept="video/*" capture="environment">
+<label class="pick" for="f">Choose a video</label><input id="f" type="file" accept="video/*" multiple>
+<button class="pick ghost" id="cd" type="button">⏱ Start the countdown on the laptop</button>
+<div id="list"></div>
+<div class="card" id="recent" hidden><b class="h">Recent videos</b><div id="clips"></div></div>
+<div id="hint" class="hint"></div>
+<script>
+var T=location.pathname.replace(/[/]+$/,""),cfg=null,cfgSig="",lastSig="",KEY="pb360send",sel={look:"",music:"",speed:"",text:"",gif:false},qrLoaded=false;
+function $(i){return document.getElementById(i)}
+function jget(p){return fetch(T+p,{cache:"no-store"}).then(function(r){return r.json()})}
+function jpost(p){return fetch(T+p,{method:"POST"}).then(function(r){return r.json().catch(function(){return{}})})}
+function esc(t){var d=document.createElement("div");d.textContent=t;return d.innerHTML}
+function loadSel(){try{var s=JSON.parse(localStorage.getItem(KEY)||"{}");for(var k in sel)if(s[k]!=null)sel[k]=s[k]}catch(e){}}
+function saveSel(){try{localStorage.setItem(KEY,JSON.stringify(sel))}catch(e){}}
+function ping(){fetch(T+"/hello?r=1",{cache:"no-store"}).then(function(r){return r.json()}).then(function(){var c=$("conn");c.className="st ok";c.textContent="✓ Connected to "+((cfg&&cfg.laptop)||"the laptop")}).catch(function(){var c=$("conn");c.className="st bad";c.textContent="No connection to the laptop. Are you on the booth Wi-Fi?"})}
+function drawGuide(){var g=cfg.guide||{},b=[];if(g.recordSec)b.push("Record about <b>"+g.recordSec+" s</b>.");if(g.spinSec)b.push("The arm turns "+g.spins+" × "+g.spinSec+" s.");if(g.trigger)b.push(esc(g.trigger));if(g.note)b.push(esc(g.note));var el=$("guide");el.hidden=!b.length;el.innerHTML=b.length?"<b class=h>Set on the laptop</b>"+b.join("<br>"):""}
+function mkSel(label,list,cur,onch){var l=document.createElement("label");l.textContent=label;var s=document.createElement("select");var o0=document.createElement("option");o0.value="";o0.textContent="Desk's choice";s.appendChild(o0);list.forEach(function(o){var op=document.createElement("option");op.value=o.key;op.textContent=o.title;if(o.key===cur)op.selected=true;s.appendChild(op)});s.onchange=function(){onch(s.value);saveSel()};l.appendChild(s);return l}
+function drawChoices(){var c=cfg.choices||{},box=$("choices"),n=0;box.innerHTML="";var h=document.createElement("b");h.className="h";h.textContent="Your choices (optional)";box.appendChild(h);
+ if(c.look&&cfg.lookOffer&&cfg.lookOffer.length){n++;box.appendChild(mkSel("Look",cfg.lookOffer.map(function(l){return{key:l.key,title:(l.icon||"")+" "+l.title}}),sel.look,function(v){sel.look=v}))}
+ if(c.music&&cfg.music&&cfg.music.length){n++;box.appendChild(mkSel("Music",cfg.music,sel.music,function(v){sel.music=v}))}
+ if(c.speed&&cfg.speeds&&cfg.speeds.length){n++;box.appendChild(mkSel("Speed",cfg.speeds,sel.speed,function(v){sel.speed=v}))}
+ if(c.text){n++;var l=document.createElement("label");l.textContent="Name on the video";var i=document.createElement("input");i.type="text";i.maxLength=40;i.value=sel.text;i.oninput=function(){sel.text=i.value;saveSel()};l.appendChild(i);box.appendChild(l)}
+ if(c.gif){n++;var g=document.createElement("label");g.className="chk";var cb=document.createElement("input");cb.type="checkbox";cb.checked=!!sel.gif;cb.onchange=function(){sel.gif=cb.checked;saveSel()};g.appendChild(cb);g.appendChild(document.createTextNode(" Also make a GIF"));box.appendChild(g)}
+ box.hidden=!n}
+function loadCfg(){jget("/config").then(function(j){if(!j||!j.ok)return;var s=JSON.stringify(j);if(s===cfgSig)return;cfgSig=s;cfg=j;drawGuide();drawChoices()}).catch(function(){})}
+function qrImg(u){try{if(typeof qrcode!=="function"){if(!qrLoaded){qrLoaded=true;var s=document.createElement("script");s.src="/qr.js";s.onload=function(){lastSig="";poll()};document.head.appendChild(s)}return null}var q=qrcode(0,"M");q.addData(u);q.make();var im=new Image();im.src=q.createDataURL(4,2);return im}catch(e){return null}}
+var STX={"new":"Waiting…",editing:"Editing…",edited:"Edited",sharing:"Making the link…",ready:"Ready ✓",error:"Problem"};
+function poll(){jget("/clips").then(function(j){drawClips(j.clips||[])}).catch(function(){})}
+function drawClips(list){var box=$("clips"),card=$("recent");if(!list.length){card.hidden=true;return}card.hidden=false;var sig=JSON.stringify(list);if(sig===lastSig)return;lastSig=sig;box.innerHTML="";
+ list.forEach(function(c){var d=document.createElement("div");d.className="clip";var n=document.createElement("div");n.className="nm";n.textContent=c.name;d.appendChild(n);
+  var s=document.createElement("div");s.textContent=(STX[c.status]||c.status)+(c.status==="editing"&&c.pct?" "+c.pct+"%":"")+(c.look?" · "+c.look:"");d.appendChild(s);
+  if(c.url){var q=document.createElement("div");q.className="qr";var img=qrImg(c.url);if(img)q.appendChild(img);var lk=document.createElement("a");lk.href=c.url;lk.textContent=c.url.replace(/^https?:[/][/]/,"");lk.style.fontSize="12px";q.appendChild(document.createElement("br"));q.appendChild(lk);d.appendChild(q)}
+  [["reedit","Re-edit"],["share","Share"],["print","Print"],["delete","Delete"]].forEach(function(a){var b=document.createElement("button");b.type="button";b.textContent=a[1];b.onclick=function(){if(a[0]==="delete"&&!confirm("Delete this video from the inbox? It is kept in the deleted folder."))return;jpost("/act?name="+encodeURIComponent(c.name)+"&do="+a[0]).then(function(){poll()})};d.appendChild(b)});
+  box.appendChild(d)})}
+function offer(row,name){fetch(T+"/looks").then(function(r){return r.json()}).then(function(j){if(!j.on)return;var box=document.createElement("div");box.className="looks";var h=document.createElement("b");h.textContent="Choose your look";box.appendChild(h);var inp=document.createElement("input");inp.type="text";inp.placeholder="Your name (optional)";inp.maxLength=40;inp.style.cssText="display:block;width:100%;box-sizing:border-box;margin:6px 0;padding:10px;border-radius:10px;border:1px solid #ccc;font-size:16px";box.appendChild(inp);j.looks.forEach(function(l){var b=document.createElement("button");b.type="button";b.textContent=l.icon+" "+l.title;b.style.cssText="margin:3px;padding:10px 14px;border-radius:12px;border:0;color:#fff;font-weight:700;font-size:14px;background:linear-gradient(135deg,"+l.c1+","+l.c2+")";b.onclick=function(){fetch(T+"/look?name="+encodeURIComponent(name)+"&key="+encodeURIComponent(l.key)+"&who="+encodeURIComponent(inp.value),{method:"POST"}).then(function(r){box.textContent=r.ok?"Look chosen. Your video is being made!":"Could not send your choice."})};box.appendChild(b)});row.appendChild(box)}).catch(function(){})}
+function after(row,nm){var q="/choice?name="+encodeURIComponent(nm),any=false;["look","music","speed","text"].forEach(function(k){if(sel[k]){q+="&"+k+"="+encodeURIComponent(sel[k]);any=true}});if(sel.gif){q+="&gif=1";any=true}
+ if(any)jpost(q).catch(function(){});if(!sel.look)offer(row,nm);setTimeout(poll,800)}
+function attempt(file,row,n){var x=new XMLHttpRequest();x.open("POST",T+"/upload?name="+encodeURIComponent(file.name));x.setRequestHeader("content-type","application/octet-stream");
+ var sp=row.querySelector("span");
+ x.upload.onprogress=function(p){if(p.lengthComputable)row.querySelector("i").style.width=Math.round(p.loaded/p.total*100)+"%"};
+ function again(msg){if(n<3){sp.textContent=msg+" Trying again ("+(n+1)+"/3)…";setTimeout(function(){attempt(file,row,n+1)},[2000,5000,10000][n])}else sp.textContent=msg+" Tap Choose a video to try again."}
+ x.onload=function(){if(x.status===200){row.querySelector("i").style.width="100%";sp.textContent="Sent. It is on the laptop now.";var nm="";try{nm=JSON.parse(x.responseText).name}catch(e){}if(nm)after(row,nm)}else if(x.status>=500)again("Could not send ("+x.status+").");else sp.textContent="Could not send ("+x.status+")."};
+ x.onerror=function(){again("No connection to the laptop.")};x.send(file)}
+function send(file){var row=document.createElement("div");row.className="row";row.innerHTML="<b></b><div class=bar><i></i></div><span></span>";row.querySelector("b").textContent=file.name;$("list").insertBefore(row,$("list").firstChild);attempt(file,row,0)}
+["f","r"].forEach(function(id){$(id).addEventListener("change",function(e){Array.prototype.forEach.call(e.target.files,send);e.target.value=""})});
+$("cd").onclick=function(){var b=$("cd");b.disabled=true;jpost("/cmd?do=countdown").then(function(j){b.textContent=j&&j.ok?"✓ Countdown started on the laptop":"Could not start it"}).catch(function(){b.textContent="No connection to the laptop"}).then(function(){setTimeout(function(){b.disabled=false;b.textContent="⏱ Start the countdown on the laptop"},3000)})};
+loadSel();loadCfg();ping();poll();
+setInterval(function(){if(!document.hidden){ping();loadCfg()}},15000);setInterval(function(){if(!document.hidden)poll()},2500);
+(function(){var h=$("hint");var sa=navigator.standalone||(window.matchMedia&&matchMedia("(display-mode: standalone)").matches);if(sa)return;var ios=/iPhone|iPad|iPod/.test(navigator.userAgent);h.textContent=ios?"Tip: tap the Share button, then Add to Home Screen. Next time you are two taps from sending: open it, tap Record now.":"Tip: open the browser menu, then Add to Home screen. Next time you are two taps from sending: open it, tap Record now.";h.style.display="block"})();
+</script></body></html>`;
 
 const ROVE_MAX = 80 * 1024 * 1024;
 const ROVE_RE = /\.(jpe?g|png|webp)$/i;
@@ -694,6 +853,7 @@ function handleSend(req, res, url, sm) {
     lookPicks.set(n, { key, who: cleanText(url.searchParams.get('who'), 40) });
     return send(res, 200, 'application/json', JSON.stringify({ ok: true }), cors);
   }
+  if (['config', 'clips', 'choice', 'act', 'cmd'].includes(sm[2])) return handleSendV2(req, res, url, sm);
   const d = spinDirNow(); if (!d) return send(res, 503, 'text/plain', 'Not ready');
   if (!sm[2]) {
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
@@ -1981,7 +2141,7 @@ async function handleShare(req, res) {
       return res.end();
     }
   }
-  const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited|proxy|photos|photo|hello|looks|look|manifest|icon)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);
+  const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited|proxy|photos|photo|hello|looks|look|manifest|icon|config|clips|choice|act|cmd)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);
   if (sm) return handleSend(req, res, url, sm);
   const om = /^\/o\/([A-Za-z0-9_-]{16,40})(?:\/(f|print)\/([^/]+))?\/?$/.exec(url.pathname);
   if (om) return handleOwn(req, res, url, om);

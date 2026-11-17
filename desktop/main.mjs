@@ -16,7 +16,7 @@ import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
 import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
-import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinConnectInfo, spinLookOfferSet, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
+import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import { makeShrinkPage, makePngToJpeg } from './lib/pageshrink.mjs';
 import * as SPIN from './lib/spin.mjs';
@@ -463,6 +463,10 @@ function wireIpc() {
   ipcMain.handle('pb4u:spinConnect', (e, test) => { try { return spinConnectInfo(!!test); } catch { return null; } });
   ipcMain.handle('pb4u:spinLookOffer', (e, offer) => spinLookOfferSet(offer));
   ipcMain.handle('pb4u:spinPicks', () => spinLookPicksTake());
+  // The phone page: what the desk tells it (what to record, which choices), how each clip is doing, and what the phone asked for.
+  ipcMain.handle('pb4u:spinSendSet', (e, cfg) => { try { return spinSendCfgSet(cfg); } catch { return false; } });
+  ipcMain.handle('pb4u:spinClipsSet', (e, list) => { try { return spinClipsSet(list); } catch { return 0; } });
+  ipcMain.handle('pb4u:spinSendTake', () => { try { return spinSendTake(); } catch { return []; } });
   ipcMain.handle('pb4u:spinStats', (e, folderKey, subfolder) => { try { return spinStatsFor(String(folderKey || ''), String(subfolder || '')); } catch { return null; } });
   ipcMain.handle('pb4u:spinMusicAdd', async () => {
     const r = await dialog.showOpenDialog(win, { title: 'Add music tracks for the 360 looks', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Audio', extensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'flac'] }] });

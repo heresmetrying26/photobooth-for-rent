@@ -206,6 +206,13 @@
       localStorage.removeItem(TOKEN_KEY);
       return;
     }
+    var qToken = (new URLSearchParams(location.search)).get('preview_token');
+    if(qToken){
+      busy(true, 'Opening admin preview…');
+      localStorage.setItem(TOKEN_KEY, qToken);
+      await openApp(qToken);
+      return;
+    }
     var qCode = (new URLSearchParams(location.search)).get('code');
     if(qCode){
       busy(false);

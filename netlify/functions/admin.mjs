@@ -669,6 +669,13 @@ export default safe(async (req, context) => {
       return json({ ok: true, offlineOpt: rec.offlineOpt, keyReady: licenceReady() });
     }
 
+    case 'preview-token': {
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      const token = sign({ t: 'admin-preview', k: key, exp: Date.now() + 2 * 3600000 });
+      return json({ ok: true, token, previewUrl: '/?preview_token=' + encodeURIComponent(token) });
+    }
+
     case 'offlineonly': { // laptop app only (e.g. Laptop 6-Month Pass): the website booth refuses the code
       const { key, rec } = await getRec();
       if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);

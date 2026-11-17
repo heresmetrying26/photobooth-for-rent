@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex, nofollow">
   <title>photobooth4u · Admin</title>
   <link
-    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Fraunces:opsz,wght@9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
   <script src="/gallery/qrcode.min.js"></script>
   <style>
@@ -967,6 +967,157 @@
         min-height: 56px;
       }
     }
+
+    /* Welcome Card Preview Modal */
+    .card-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 12, 0.82);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(8px);
+      padding: 16px;
+    }
+    .card-modal-dialog {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 18px;
+      width: 100%;
+      max-width: 820px;
+      max-height: 94vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+    }
+    .card-modal-header {
+      padding: 12px 18px;
+      border-bottom: 1px solid #27272a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #141416;
+    }
+    .card-modal-body {
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      background: #09090b;
+      min-height: 460px;
+    }
+    .card-preview-screen {
+      position: relative;
+      overflow: hidden;
+      border-radius: 16px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75);
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card-preview-screen.landscape {
+      width: 660px;
+      height: 412px;
+    }
+    .card-preview-screen.portrait {
+      width: 340px;
+      height: 550px;
+    }
+    .card-modal-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .card-preview-box {
+      position: relative;
+      z-index: 2;
+      padding: 22px 26px;
+      border-radius: 28px;
+      width: 290px;
+      text-align: center;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+      transition: background 0.2s, color 0.2s;
+    }
+    .card-preview-badge {
+      width: 66px;
+      height: 66px;
+      border-radius: 50%;
+      margin: 0 auto 10px;
+      background: #ffffff;
+      padding: 3px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card-preview-badge img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 50%;
+    }
+    .card-preview-greeting {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      opacity: 0.65;
+      margin-bottom: 2px;
+      text-transform: uppercase;
+    }
+    .card-preview-title {
+      font-family: 'Dancing Script', cursive;
+      font-size: 34px;
+      font-weight: 700;
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+    .card-preview-steps {
+      text-align: left;
+      margin: 0 auto 16px;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      width: 88%;
+    }
+    .card-preview-steps .step-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-preview-steps .step-num {
+      display: inline-flex;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .card-preview-btn {
+      display: inline-block;
+      width: 82%;
+      padding: 9px 0;
+      border-radius: 999px;
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      border: none;
+      cursor: default;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
   </style>
 </head>
 
@@ -1461,6 +1612,41 @@
   </div>
   <div class="toast" id="toast"></div>
 
+  <!-- Welcome Card Preview Modal -->
+  <div id="cardPreviewModal" class="card-modal-backdrop" style="display:none;">
+    <div class="card-modal-dialog">
+      <div class="card-modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h3 id="cardModalTitle" style="margin:0; font-size:15px; color:#fff;">Welcome Card Preview</h3>
+          <span style="background:rgba(2,132,199,.2); border:1px solid rgba(2,132,199,.4); color:#38bdf8; font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:999px;">Offline App Client · 0 Device Slots Used</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button type="button" class="small" id="cardModalOrientBtn" style="cursor:pointer;">Switch to Portrait (9:16)</button>
+          <button type="button" class="small" id="cardModalFullBtn" style="background:#059669; color:#fff; cursor:pointer;">Full Booth Preview &nearr;</button>
+          <button type="button" id="cardModalClose" style="background:none; border:none; font-size:24px; cursor:pointer; line-height:1; color:#9ca3af; margin-left:6px;">&times;</button>
+        </div>
+      </div>
+      <div class="card-modal-body" id="cardModalViewport">
+        <div id="cardModalScreen" class="card-preview-screen landscape">
+          <canvas id="cardModalDecoCanvas" class="card-modal-canvas"></canvas>
+          <div id="cardModalOuterCard" class="card-preview-box">
+            <div id="cardModalBadge" class="card-preview-badge">
+              <img id="cardModalBadgeImg" src="/assets/charm-up-clean-badge.png" alt="Logo">
+            </div>
+            <div class="card-preview-greeting">WELCOME TO</div>
+            <div id="cardModalEventTitle" class="card-preview-title">Charm Up</div>
+            <div class="card-preview-steps" id="cardModalSteps">
+              <div class="step-item"><span class="step-num" id="cardModalNum1">1</span> Tap the screen</div>
+              <div class="step-item"><span class="step-num" id="cardModalNum2">2</span> Strike a pose</div>
+              <div class="step-item"><span class="step-num" id="cardModalNum3">3</span> Scan the QR for your photos</div>
+            </div>
+            <button type="button" id="cardModalStartBtn" class="card-preview-btn">Tap to start</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     (function () {
       var TOKEN = sessionStorage.getItem('pb_admin') || '';
@@ -1935,7 +2121,7 @@
           '<div class="printbox hidden" data-pay-box></div>' +
           '<div class="printbox hidden" data-offkey-box></div>' +
           '<div class="printbox hidden" data-sched-edit></div>' +
-          '<div class="actions"><button class="small" data-a="copy" data-c="' + c + '">Copy code</button>' + (bonus ? '' : '<button class="small" data-a="portal" data-c="' + c + '" title="Link to the customer\'s My Events page (signs them in with this code)">Copy events page link</button>') + '<button class="small" data-a="preview" data-c="' + c + '" title="Open this code in the photobooth in a new tab to preview the welcome screen and setup">Preview booth &nearr;</button>' + acts + '</div>';
+          '<div class="actions"><button class="small" data-a="copy" data-c="' + c + '">Copy code</button>' + (bonus ? '' : '<button class="small" data-a="portal" data-c="' + c + '" title="Link to the customer\'s My Events page (signs them in with this code)">Copy events page link</button>') + '<button class="small" data-a="previewcard" data-c="' + c + '" title="Instant live preview of the branded welcome card in a popup">Preview card 👁</button><button class="small" data-a="preview" data-c="' + c + '" title="Open this code in the photobooth (admin preview mode, zero devices used)">Preview booth &nearr;</button>' + acts + '</div>';
       }
 
       // ---- Guest payments box (one booking): PayMongo status — never the key — money taken, vouchers ----
@@ -2150,7 +2336,24 @@
             return;
           }
           if (a === 'portal') { await navigator.clipboard.writeText(location.origin + '/lifetime/#' + code); toast('Copied the My Events link for ' + code); return; }
-          if (a === 'preview') { window.open('/?code=' + encodeURIComponent(code), '_blank'); return; }
+          if (a === 'previewcard') {
+            openCardPreviewModal(code);
+            return;
+          }
+          if (a === 'preview') {
+            try {
+              toast('Opening admin preview…');
+              var r = await api({ action: 'preview-token', code: code });
+              if (r.ok && r.previewUrl) {
+                window.open(r.previewUrl, '_blank');
+              } else {
+                toast(r.error || 'Could not generate preview', true);
+              }
+            } catch (e) {
+              toast('Could not open preview: ' + e.message, true);
+            }
+            return;
+          }
           if (a === 'rmdev') {
             var n = Number(b.dataset.n);
             if (!confirm('Remove device ' + n + ' from ' + code + '? It is locked out within ~5 minutes, and a new device can then use the code.')) return;
@@ -3121,6 +3324,185 @@
         navigator.clipboard.writeText(lines).then(function () {
           toast('Customer message copied — paste into Messenger or WhatsApp');
         }).catch(function () { toast('Could not copy. Code: ' + code, true); });
+      }
+
+      // ---- Card Preview Modal ----
+      var modalCurCode = null;
+      var modalIsPortrait = false;
+      var PALETTES_MAP = {
+        'charm-pink': { name: 'Charm Blush & Navy', bg: '#ffffff', text: '#111827', btn: '#F28DA0', p: '#1C233C', s: '#F28DA0', a: '#DDA59A', screenBg: '#FFF5F7' },
+        'sweet-berry': { name: 'Sweet Berry', bg: '#FFF5F8', text: '#3B1E2B', btn: '#E11D48', p: '#4A1525', s: '#F472B6', a: '#FDA4AF', screenBg: '#FFF0F5' },
+        'matcha': { name: 'Matcha & Cream', bg: '#FAF8F5', text: '#1C2E24', btn: '#4A7C59', p: '#2D4A3E', s: '#86B294', a: '#D8E2DC', screenBg: '#F4F7F4' },
+        'midnight-gold': { name: 'Midnight Gold', bg: '#18181B', text: '#FFFFFF', btn: '#D4AF37', p: '#0F0F12', s: '#D4AF37', a: '#F5E6AB', screenBg: '#121214' },
+        'lilac': { name: 'Lilac Dream', bg: '#FAF5FF', text: '#2E1065', btn: '#9333EA', p: '#3B0764', s: '#C084FC', a: '#E9D5FF', screenBg: '#FAF5FF' },
+        'peach': { name: 'Peach Sunset', bg: '#FFF7ED', text: '#431407', btn: '#F97316', p: '#7C2D12', s: '#FB923C', a: '#FED7AA', screenBg: '#FFF7ED' },
+        'monochrome': { name: 'Studio Monochrome', bg: '#FFFFFF', text: '#111827', btn: '#111827', p: '#111827', s: '#4B5563', a: '#9CA3AF', screenBg: '#F3F4F6' }
+      };
+
+      function openCardPreviewModal(code) {
+        modalCurCode = code;
+        var l = LIC[code] || {};
+        var modal = $('cardPreviewModal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        renderCardModalContent(l);
+      }
+      function closeCardPreviewModal() {
+        var modal = $('cardPreviewModal');
+        if (modal) modal.style.display = 'none';
+      }
+      var cClose = $('cardModalClose');
+      if (cClose) cClose.addEventListener('click', closeCardPreviewModal);
+      var cModal = $('cardPreviewModal');
+      if (cModal) cModal.addEventListener('click', function (e) {
+        if (e.target === this) closeCardPreviewModal();
+      });
+      var cOrient = $('cardModalOrientBtn');
+      if (cOrient) cOrient.addEventListener('click', function () {
+        modalIsPortrait = !modalIsPortrait;
+        this.textContent = modalIsPortrait ? 'Switch to Landscape (16:9)' : 'Switch to Portrait (9:16)';
+        var screen = $('cardModalScreen');
+        if (screen) {
+          screen.classList.toggle('portrait', modalIsPortrait);
+          screen.classList.toggle('landscape', !modalIsPortrait);
+        }
+        var l = modalCurCode ? LIC[modalCurCode] || {} : {};
+        renderCardModalContent(l);
+      });
+      var cFull = $('cardModalFullBtn');
+      if (cFull) cFull.addEventListener('click', async function () {
+        if (!modalCurCode) return;
+        try {
+          toast('Opening full booth preview…');
+          var r = await api({ action: 'preview-token', code: modalCurCode });
+          if (r.ok && r.previewUrl) window.open(r.previewUrl, '_blank');
+          else toast(r.error || 'Could not generate preview', true);
+        } catch (e) { toast(e.message, true); }
+      });
+
+      function renderCardModalContent(l) {
+        var palKey = l.startPalette || 'charm-pink';
+        var pal = PALETTES_MAP[palKey] || PALETTES_MAP['charm-pink'];
+        var deco = l.startDeco || 'ribbon-waves';
+        var name = (l.startName || (l.label ? l.label.replace(/PH$/i, '').trim() : 'Charm Up Booth')).trim() || 'Charm Up';
+        if (name === 'Charm Up PH') name = 'Charm Up';
+
+        var tEl = $('cardModalTitle');
+        if (tEl) tEl.textContent = 'Welcome Card Preview: ' + (l.code || '');
+        var eEl = $('cardModalEventTitle');
+        if (eEl) {
+          eEl.textContent = name;
+          eEl.style.color = pal.text;
+        }
+
+        var screen = $('cardModalScreen');
+        if (screen) screen.style.background = pal.screenBg;
+
+        var card = $('cardModalOuterCard');
+        if (card) {
+          card.style.background = pal.bg;
+          card.style.color = pal.text;
+          if (palKey === 'midnight-gold') {
+            card.style.border = '1px solid rgba(212,175,55,0.3)';
+          } else {
+            card.style.border = 'none';
+          }
+        }
+
+        var btn = $('cardModalStartBtn');
+        if (btn) btn.style.background = pal.btn;
+
+        ['cardModalNum1', 'cardModalNum2', 'cardModalNum3'].forEach(function (id) {
+          var el = $(id);
+          if (el) el.style.background = pal.btn;
+        });
+
+        var badgeImg = $('cardModalBadgeImg');
+        if (badgeImg) {
+          if (l.startLogo && l.startLogo.url) {
+            badgeImg.src = l.startLogo.url;
+          } else if (/charm/i.test(name + ' ' + (l.label || ''))) {
+            badgeImg.src = '/assets/charm-up-clean-badge.png';
+          } else {
+            badgeImg.src = '/assets/charm-up-clean-badge.png';
+          }
+        }
+
+        var canvas = $('cardModalDecoCanvas');
+        if (!canvas || !screen) return;
+        var W = screen.clientWidth || (modalIsPortrait ? 340 : 660);
+        var H = screen.clientHeight || (modalIsPortrait ? 550 : 412);
+        canvas.width = W; canvas.height = H;
+        var ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, W, H);
+
+        if (deco === 'ribbon-waves') {
+          ctx.save();
+          // Top-Left Wave
+          ctx.fillStyle = pal.p;
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, H * 0.32);
+          ctx.bezierCurveTo(W * 0.08, H * 0.22, W * 0.18, H * 0.08, W * 0.40, 0);
+          ctx.closePath(); ctx.fill();
+
+          ctx.fillStyle = pal.s;
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, H * 0.46);
+          ctx.bezierCurveTo(W * 0.06, H * 0.32, W * 0.18, H * 0.16, W * 0.34, 0);
+          ctx.closePath(); ctx.fill();
+
+          ctx.strokeStyle = pal.a; ctx.lineWidth = 2.5;
+          ctx.beginPath(); ctx.moveTo(0, H * 0.50);
+          ctx.bezierCurveTo(W * 0.08, H * 0.36, W * 0.22, H * 0.18, W * 0.38, 0);
+          ctx.stroke();
+
+          // Bottom-Right Wave
+          ctx.fillStyle = pal.p;
+          ctx.beginPath(); ctx.moveTo(W, H); ctx.lineTo(W * 0.60, H);
+          ctx.bezierCurveTo(W * 0.82, H * 0.92, W * 0.92, H * 0.78, W, H * 0.70);
+          ctx.closePath(); ctx.fill();
+
+          ctx.fillStyle = pal.s;
+          ctx.beginPath(); ctx.moveTo(W, H); ctx.lineTo(W * 0.66, H);
+          ctx.bezierCurveTo(W * 0.80, H * 0.84, W * 0.94, H * 0.68, W, H * 0.54);
+          ctx.closePath(); ctx.fill();
+
+          ctx.strokeStyle = pal.a; ctx.lineWidth = 2.5;
+          ctx.beginPath(); ctx.moveTo(W * 0.62, H);
+          ctx.bezierCurveTo(W * 0.76, H * 0.80, W * 0.92, H * 0.64, W, H * 0.50);
+          ctx.stroke();
+
+          // Sparkle Stars
+          var drawStar = function (cx, cy, ro, ri, col) {
+            ctx.save(); ctx.fillStyle = col; ctx.beginPath();
+            for (var si = 0; si < 8; si++) {
+              var sa = si * Math.PI / 4, sr = (si % 2 === 0) ? ro : ri;
+              var spx = cx + sr * Math.cos(sa), spy = cy + sr * Math.sin(sa);
+              if (si === 0) ctx.moveTo(spx, spy); else ctx.lineTo(spx, spy);
+            }
+            ctx.closePath(); ctx.fill(); ctx.restore();
+          };
+          drawStar(W * 0.12, H * 0.30, 14, 4, pal.s);
+          drawStar(W * 0.88, H * 0.22, 16, 5, pal.p);
+          drawStar(W * 0.85, H * 0.82, 14, 4, pal.p);
+          ctx.restore();
+        } else if (deco === 'aurora-sparkles') {
+          ctx.save();
+          var gA = ctx.createRadialGradient(W * 0.5, H * 0.45, 40, W * 0.5, H * 0.45, W * 0.6);
+          gA.addColorStop(0, 'rgba(255, 182, 193, 0.45)');
+          gA.addColorStop(0.5, 'rgba(221, 160, 221, 0.25)');
+          gA.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = gA; ctx.fillRect(0, 0, W, H);
+          ctx.restore();
+        } else if (deco === 'theatre-curtains') {
+          ctx.save();
+          var cw = Math.round(W * 0.14);
+          var gL = ctx.createLinearGradient(0, 0, cw, 0);
+          gL.addColorStop(0, '#B91C1C'); gL.addColorStop(0.5, '#DC2626'); gL.addColorStop(1, '#991B1B');
+          ctx.fillStyle = gL; ctx.fillRect(0, 0, cw, H);
+          var gR = ctx.createLinearGradient(W - cw, 0, W, 0);
+          gR.addColorStop(0, '#991B1B'); gR.addColorStop(0.5, '#DC2626'); gR.addColorStop(1, '#B91C1C');
+          ctx.fillStyle = gR; ctx.fillRect(W - cw, 0, cw, H);
+          ctx.restore();
+        }
       }
 
       if (TOKEN) { showAdmin(true); load(); }

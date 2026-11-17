@@ -599,9 +599,45 @@ export async function clearFail(t) {
 // ---------- license check used by /api/app and /api/verify ----------
 export async function checkLicense(token, deviceId) {
   const p = verifyToken(token);
-  if (!p || (p.t !== 'rental' && p.t !== 'trial')) return { valid: false, reason: 'invalid' };
-  if (!deviceId || p.d !== deviceId) return { valid: false, reason: 'invalid' };
+  if (!p || (p.t !== 'rental' && p.t !== 'trial' && p.t !== 'admin-preview')) return { valid: false, reason: 'invalid' };
   const now = Date.now();
+
+  if (p.t === 'admin-preview') {
+    const rec = await licenses().get(p.k, { type: 'json' });
+    if (!rec) return { valid: false, reason: 'invalid' };
+    const settings = await getSettings();
+    return {
+      valid: true,
+      type: 'rental',
+      exp: Date.now() + 2 * 3600000,
+      token,
+      folderKey: (rec.folderName || rec.label || '').trim() || null,
+      folderPrefix: ((rec.folderName || rec.label || rec.code || '').trim() || null),
+      label: String(rec.label || '').trim() || null,
+      lifetime: !!rec.lifetime,
+      deviceNo: 1,
+      defaultTheme: rec.defaultTheme || null,
+      multiDevice: true,
+      print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes, rec.print),
+      traditional: !!rec.traditional,
+      gifOpt: !!rec.gifOpt,
+      rushOpt: !!rec.rushOpt,
+      extras: extrasOf(rec),
+      retakeOpt: !!rec.retakeOpt,
+      typesOpt: !!rec.typesOpt,
+      payOpt: !!rec.payOpt,
+      lockOpt: !!rec.lockOpt,
+      orientation: rec.orientation || 'landscape',
+      pinResetAt: rec.pinResetAt || 0,
+      startFrame: rec.startFrame || null,
+      startLogo: rec.startLogo || null,
+      startName: rec.startName || null,
+      startCardOnly: !!rec.startCardOnly,
+      startDeco: rec.startDeco || null,
+      startPalette: rec.startPalette || null,
+      isAdminPreview: true
+    };
+  }
 
   if (p.t === 'trial') {
     if (p.exp <= now) return { valid: false, reason: 'trial-ended' };

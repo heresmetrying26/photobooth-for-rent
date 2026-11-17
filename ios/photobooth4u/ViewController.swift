@@ -50,6 +50,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
         // 1. Start local servers & USB camera browser
         IccCameraHelper.shared.start()
+        VoiceBridge.shared.warmUp()      // read the voice list and load the speech engine now, not during the first countdown
         _ = LocalShareServer.shared.start()
 
         // 2. Setup WKWebView

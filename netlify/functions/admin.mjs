@@ -109,7 +109,6 @@ function bonusRecord(key, parent, minutes) {
   return {
     key, code: displayCode(key), kind: 'bonus', parent: parent.key,
     label: (parent.label || parent.code) + ' · Bonus', folderName: parent.folderName, subfolder: BONUS_SUBFOLDER,
-    minutes, days: 0, startsAt: null, print: parent.print, traditional: !!parent.traditional, gifOpt: !!parent.gifOpt, retakeOpt: !!parent.retakeOpt, typesOpt: !!parent.typesOpt, payOpt: !!parent.payOpt, lockOpt: !!parent.lockOpt, defaultTheme: parent.defaultTheme || null,
     minutes, days: 0, startsAt: null, print: parent.print, traditional: !!parent.traditional, gifOpt: !!parent.gifOpt, retakeOpt: !!parent.retakeOpt, typesOpt: !!parent.typesOpt, payOpt: !!parent.payOpt, lockOpt: !!parent.lockOpt, ipadOpt: !!parent.ipadOpt, defaultTheme: parent.defaultTheme || null,
     status: 'unused', createdAt: Date.now() + 1, redeemedAt: null, expiresAt: null, deviceId: null
   };
@@ -497,7 +496,6 @@ export default safe(async (req, context) => {
       return json({ ok: true, lockOpt: rec.lockOpt });
     }
 
-    case 'ipadopt': { // an iPad may use the laptop app's camera over Wi-Fi (on by default; the laptop app reads it at its next check-in)
     case 'ipadopt': { // an iPad may use the laptop app's camera over Wi-Fi (off by default; the laptop app reads it at its next check-in)
       const { key, rec } = await getRec();
       if (!rec) return json({ error: 'Code not found.' }, 404);

@@ -310,7 +310,21 @@ Without kiosk mode the normal print dialog opens: pick the photo printer, set Ma
   runtime ~12 MB + a 250 KB model, Apache 2.0, see `public/bg/NOTICE.txt`); they load only when this mode is on and are
   cached for a week. Best with guests close to the camera; hats and props held away from the body may be cut off.
 - **Green screen:** classic chroma key (green, blue, or **Pick from camera** = the colour at the top of the picture)
-  with a **Strength** slider and colour-spill removal. Cleanest edges; needs an evenly lit cloth.
+  with a **Strength** slider. Cleanest edges; needs an evenly lit cloth. The keyer is `protected/src/camera/chroma-key.js`
+  (pure maths, tested by `node scripts/test-chroma-key.mjs`). What it does, in order:
+  1. **Matte** measured against the cloth's own colour *and* brightness, so a shadow or fold on the cloth still keys, and white
+     shirts, black hair and skin stay fully solid (the old distance test left them ~6% see-through, which showed as a ghostly
+     new background through a white shirt).
+  2. **Specks:** small islands left on the cloth (a bright wrinkle) are removed. Needs a guest in the picture to know what is cloth.
+  3. **Choke + feather:** the faint halo is cut and the edge softened about a pixel, so there are no stair-steps.
+  4. **Spill:** the cloth's colour is pulled off the guest, hard at the edge and light further in (so yellow or lime clothes
+     keep their colour). A little of the new background also glows onto the edge ("light wrap"), so the guest sits in the scene.
+  5. **Live view only:** the matte is blended with the last frame (no shimmer; fast movement isn't blended, so no trails). On a slow
+     tablet the live picture is worked on at a smaller size (never below 480 px); photos are always full quality.
+  What software can't fix, so set the cloth up well: **wrinkles and uneven light** (light the cloth on its own, evenly, with
+  no hot-spot or shadow), **guests too close to the cloth** (keep about 1 m / 3 ft between them, otherwise green light bounces
+  onto their skin and hair), **guests wearing the cloth colour**, and **motion blur** (use a faster shutter or more light).
+  The hint under the Green screen tab says the same. To tune the look, change the numbers marked `tune` in `chroma-key.js`.
 - 9 built-in backgrounds (drawn in the browser, nothing to license) or **Upload your own picture** (saved with the
   customer's images like logos, so every device gets it).
 - Applied to every shot (so uploads, QR photos and prints have it), to **Preview with my camera**, and (switch) to the

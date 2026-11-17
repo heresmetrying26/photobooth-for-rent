@@ -46715,38 +46715,38 @@
       }
 
       // ---- Green screen (chroma key) ----
-      function keyCbCr() {
-        const h = bgKeyHex(), r = parseInt(h.slice(1, 3), 16), g = parseInt(h.slice(3, 5), 16), b = parseInt(h.slice(5, 7), 16);
-        return [128 - 0.168736 * r - 0.331264 * g + 0.5 * b, 128 + 0.5 * r - 0.418688 * g - 0.081312 * b, g >= b];
-      }
-      // Keys the pixels of x (w x h) in place over the background.
-      function chromaKey(x, w, h) {
-        const fg = x.getImageData(0, 0, w, h), d = fg.data;
-        const bd = bgPixels(w, h);
-        const [kcb, kcr, isGreen] = keyCbCr();
-        const tol = bgRep.tol, soft = 26 + tol * 0.25;
-        for (let i = 0; i < d.length; i += 4) {
-          let r = d[i], g = d[i + 1], b = d[i + 2];
-          const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b, cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
-          const dist = Math.sqrt((cb - kcb) * (cb - kcb) + (cr - kcr) * (cr - kcr));
-          let a = (dist - tol) / soft; a = a <= 0 ? 0 : a >= 1 ? 1 : a;
-          if (a === 0) { d[i] = bd[i]; d[i + 1] = bd[i + 1]; d[i + 2] = bd[i + 2]; continue; }
-          // remove the screen's colour cast from edges and hair
-          if (isGreen) { const lim = r > b ? r : b; if (g > lim) g = lim; }
-          else { const lim = r > g ? r : g; if (b > lim) b = lim; }
-          d[i] = r * a + bd[i] * (1 - a); d[i + 1] = g * a + bd[i + 1] * (1 - a); d[i + 2] = b * a + bd[i + 2] * (1 - a);
-        }
+      // The keying itself (matte, spill, edge) is in camera/chroma-key.js; scripts/test-chroma-key.mjs runs it.
+      /*@include camera/chroma-key.js*/
+      // Keys the pixels of x (w x h) in place over the background. live = the live view (it also smooths from frame to frame).
+      const ckLive = {}, ckStill = {};
+      function chromaKey(x, w, h, live) {
+        const fg = x.getImageData(0, 0, w, h);
+        ckRun(fg.data, bgPixels(w, h), bgSmall(w, h), w, h, { hex: bgKeyHex(), tol: bgRep.tol, live: !!live, now: performance.now() }, live ? ckLive : ckStill);
         x.putImageData(fg, 0, 0);
       }
       // The background's pixels at w x h, kept for the live view (same size every frame).
       let bgPix = { key: '', data: null };
+      function bgKeyFor(im, w, h) { return bgRep.bg + '|' + w + 'x' + h + '|' + (im.naturalWidth || im.width); }
       function bgPixels(w, h) {
-        const im = bgImageFor(w, h), key = bgRep.bg + '|' + w + 'x' + h + '|' + (im.naturalWidth || im.width);
+        const im = bgImageFor(w, h), key = bgKeyFor(im, w, h);
         if (bgPix.key === key) return bgPix.data;
         const bc = document.createElement('canvas'); bc.width = w; bc.height = h;
         const bx = bc.getContext('2d'); drawCoverImg(bx, im, w, h);
         bgPix = { key: key, data: bx.getImageData(0, 0, w, h).data };
         return bgPix.data;
+      }
+      // The same background, tiny (1/16 size), so it is soft: the edge of a guest picks up a little of its colour ("light wrap").
+      let bgSm = { key: '', data: null, sw: 0, sh: 0 };
+      function bgSmall(w, h) {
+        const im = bgImageFor(w, h), key = bgKeyFor(im, w, h);
+        if (bgSm.key === key) return bgSm;
+        const sw = Math.max(8, Math.round(w / 16)), sh = Math.max(8, Math.round(h / 16));
+        const c = document.createElement('canvas'); c.width = sw; c.height = sh;
+        const x = c.getContext('2d', { willReadFrequently: true });
+        x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+        drawCoverImg(x, im, sw, sh);
+        bgSm = { key: key, data: x.getImageData(0, 0, sw, sh).data, sw: sw, sh: sh };
+        return bgSm;
       }
       const aiTmp = document.createElement('canvas');
       function aiComposite(x, w, h, mask) {
@@ -46779,7 +46779,7 @@
       }
 
       // ---- Live view ----
-      const bgLive = { canvas: null, raf: 0, last: 0, gap: 40, stream: null, work: document.createElement('canvas') };
+      const bgLive = { canvas: null, raf: 0, last: 0, gap: 40, side: 800, stream: null, work: document.createElement('canvas') };
       (function () {
         const c = document.createElement('canvas');
         c.id = 'bgLiveCanvas';
@@ -46809,7 +46809,7 @@
         if (now - bgLive.last < bgLive.gap) return;
         bgLive.last = now;
         const t0 = performance.now();
-        const vw = video.videoWidth, vh = video.videoHeight, k = Math.min(1, 800 / Math.max(vw, vh));
+        const vw = video.videoWidth, vh = video.videoHeight, k = Math.min(1, (bgRep.mode === 'green' ? bgLive.side : 800) / Math.max(vw, vh));
         const w = Math.round(vw * k), h = Math.round(vh * k), c = bgLive.canvas;
         if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
         const x = c.getContext('2d', { willReadFrequently: bgRep.mode === 'green' });
@@ -46818,7 +46818,7 @@
         x.drawImage(video, 0, 0, w, h);
         x.restore();
         try {
-          if (bgRep.mode === 'green') chromaKey(x, w, h);
+          if (bgRep.mode === 'green') chromaKey(x, w, h, true);
           else aiComposite(x, w, h, personMask(c, w, h, 256));
         } catch (e) { console.error('live background', e); stopBgLive(); return; }
         if (c.style.display === 'none') {
@@ -46829,6 +46829,11 @@
         // Slower devices: fewer frames, so the countdown and buttons stay smooth.
         const took = performance.now() - t0;
         bgLive.gap = Math.max(33, Math.min(160, took * 2.2));
+        // Green screen on a slow tablet: work on a smaller live picture rather than a slideshow (photos are always full quality).
+        if (bgRep.mode === 'green') {
+          if (took > 45 && bgLive.side > 480) bgLive.side = Math.max(480, Math.round(bgLive.side * 0.85));
+          else if (took < 16 && bgLive.side < 800) bgLive.side = Math.min(800, Math.round(bgLive.side * 1.1));
+        }
       }
       // Traditional booth: the guest screen shows the swapped background too.
       function bgGuestStream() {
@@ -46864,7 +46869,7 @@
         document.getElementById('greenOpts').style.display = bgRep.mode === 'green' ? '' : 'none';
         document.getElementById('bgModeHint').textContent = bgRep.mode === 'ai'
           ? 'Beta, and we keep improving it with every update. Works without a green cloth. Best with guests close to the camera and a plain, uncluttered wall behind them. For the cleanest edges every time, use Green screen.'
-          : bgRep.mode === 'green' ? 'Hang a smooth green (or blue) cloth behind the guests and light it evenly. Guests shouldn’t wear that colour.'
+          : bgRep.mode === 'green' ? 'Hang a smooth green (or blue) cloth behind the guests and light it evenly. Guests shouldn’t wear that colour. For the cleanest edges: stretch the cloth wrinkle-free, keep guests about a metre (3 ft) in front of it so its colour doesn’t reflect on them, and light the cloth separately from the guests.'
             : 'Replace the real background behind your guests with a picture, on the photos, the prints and the live view.';
         const ids = Object.keys(BG_BUILTIN).map(k => 'b:' + k).concat(bgMine.map(a => 'a:' + a));
         bgrGrid.innerHTML = '';

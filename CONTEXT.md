@@ -1,13 +1,13 @@
 # Session Context
 
-**Current Task**: Release Desktop 1.1.25 and Android 1.1.43 with clean Wi-Fi UI, auto-linked hotspot, undistorted GIF scaling, and solo white frame.
+**Current Task**: Released Desktop 1.1.64 & Android 1.1.76 with welcome card decorations, 1-click color palettes, and Charm Up styling.
 
 **Key Decisions**:
-- Cleaned up redundant Wi-Fi inputs in Setup Step 6 when hotspot is active; linked hotspot checkboxes.
-- Fixed GIF aspect distortion by dynamically sizing slot canvases to native camera ratio and using drawImageCover.
-- Isolated Solo 1 large frame GIF to default white border frame without custom strip frame overlay contamination.
+- Decoupled welcome card from side photo strip for standalone aesthetic presentation with 6 decoration styles.
+- Added 7 curated 1-click color palettes and synced editing across Admin dashboard and Client Setup.
+- Customized Charm Up account with Luxe Corner Waves, blush & midnight navy palette, and PH-free branding.
 
 **Next Steps**:
-- Push `desktop-v1.1.25` and `android-v1.1.43` tags to trigger GitHub Actions builds.
-- Verify in-app update prompt for Desktop and Android on client devices.
-- Confirm guest GIF playback and clean Wi-Fi setup during booth operations.
+- Tag release `desktop-v1.1.64` and `android-v1.1.76` if triggering native installer builds.
+- Verify Netlify web deployment finishes and live booth loads new decoration options.
+- Confirm Charm Up account loads standalone card with Luxe Corner Waves aesthetic.

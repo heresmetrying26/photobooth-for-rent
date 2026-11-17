@@ -55,6 +55,9 @@
   .card h3{margin:0 0 6px; font-size:17px;}
   .card p, .card ul{margin:0; color:var(--dim); font-size:14.5px;}
   .card ul{padding-left:18px; margin-top:6px;}
+  figure.shot{margin:12px 0 0; background:#f3ece3; border:1px solid var(--line); border-radius:12px; padding:10px; max-width:340px;}
+  figure.shot img{display:block; width:100%; height:auto; max-height:420px; object-fit:contain; border-radius:8px; background:#141214;}
+  figure.shot figcaption{margin-top:6px; font-size:12.5px; color:var(--dim); line-height:1.4;}
   footer{padding:40px 0 60px; color:var(--dim); font-size:14px;}
   .help{display:flex; align-items:center; justify-content:space-between; gap:16px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px; margin-bottom:18px;}
   .help h3{margin:0 0 2px;} .help p{margin:0;}
@@ -68,7 +71,7 @@
   <h1>Run <em>photobooth4u</em> Offline on iPad + USB DSLR</h1>
   <p class="lead">Install the native iPad offline app to run full events with zero internet, direct USB DSLR &amp; mirrorless camera tethering (real shutter &amp; flash), AirPrint, and local Wi-Fi QR downloads for guests.</p>
   <div class="hero-actions">
-    <a class="btn" id="ipaBtn" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/ios-v1.0.3/photobooth4u-kiosk-ipad.ipa">Download iPad App (.ipa) · <span id="ipaVer">v1.0.3</span></a>
+    <a class="btn" id="ipaBtn" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/ios-v1.0.5/photobooth4u-kiosk-ipad.ipa">Download iPad App (.ipa) · <span id="ipaVer">v1.0.5</span></a>
     <a class="btn alt" href="https://sideloadly.io/" target="_blank" rel="noopener">Get Sideloadly (Free Installer)</a>
     <a class="btn alt" href="/how-to-ipad-offline/photobooth4u-ipad-dslr-guide.pdf" download>Download PDF Guide</a>
   </div>
@@ -90,12 +93,12 @@
       <div class="card">
         <h3>For Installing the App (Once)</h3>
         <ul>
-          <li><b>iPad</b> running <b>iPadOS 15.0 or newer</b>.</li>
-          <li><b>Windows PC or Mac</b> + USB cable to connect the iPad.</li>
-          <li><b><a href="https://sideloadly.io/" target="_blank" rel="noopener">Sideloadly</a></b> installed on your computer:
+          <li><b>iPad or iPhone</b> running <b>iPadOS / iOS 15.0 or newer</b>.</li>
+          <li><b>Windows PC or Mac</b> + USB cable to connect the device.</li>
+          <li><b><a href="https://sideloadly.io/" target="_blank" rel="noopener">Sideloadly</a></b> installed on your computer (free tool used to sideload the <code>.ipa</code> onto your iPad):
             <ul style="margin-top:4px;padding-left:16px;">
-              <li><b>Mac ("Sideloadly Not Opened"):</b> Click <b>Done</b> (not Move to Trash), move Sideloadly to <b>Applications</b>, go to <b>System Settings &rarr; Privacy &amp; Security</b>, scroll down, click <b>Open Anyway</b>, then enter your Mac password / Touch ID.</li>
-              <li><b>Windows:</b> Also install Apple's non-Microsoft-Store <b>iTunes</b> linked on sideloadly.io if Sideloadly doesn't see your iPad.</li>
+              <li><b>Mac:</b> Download the macOS <code>.dmg</code> from sideloadly.io and drag <b>Sideloadly</b> to <b>Applications</b>. If macOS shows <i>"Sideloadly" Not Opened</i>, click <b>Done</b> &rarr; <b>System Settings &rarr; Privacy &amp; Security</b> &rarr; <b>Open Anyway</b>.</li>
+              <li><b>Windows:</b> Run the Sideloadly installer, and also install Apple's non-Microsoft-Store <b>iTunes</b> linked on sideloadly.io if Sideloadly doesn't see your iPad.</li>
             </ul>
           </li>
           <li>Your <b>Apple ID</b> (a free regular Apple ID works).</li>
@@ -115,12 +118,17 @@
 
   <section class="part" id="install">
     <p class="kicker">Part 1 · ~5 Minutes</p>
-    <h2>Install the iPad Offline App using Sideloadly</h2>
-    <p class="why">Follow these steps on your Windows PC or Mac to put photobooth4u on your iPad.</p>
+    <h2>Install Sideloadly &amp; Sideload the iPad Offline App</h2>
+    <p class="why">Follow these steps on your Windows PC or Mac to install Sideloadly and load photobooth4u onto your iPad.</p>
     <ol class="steps">
       <li><span class="n">1</span><div>
-        <h3>Download the .ipa file on your computer</h3>
-        <p>Click <b>Download iPad App (.ipa)</b> at the top of this page to save <code>photobooth4u-kiosk-ipad.ipa</code> to your computer. <b>Do not unzip or extract the .ipa file.</b></p>
+        <h3>Install Sideloadly &amp; download the .ipa file</h3>
+        <p>On your computer, download and install <b><a href="https://sideloadly.io/" target="_blank" rel="noopener">Sideloadly</a></b> (Windows: also install Apple's non-Microsoft-Store <b>iTunes</b> from sideloadly.io; Mac: open the <code>.dmg</code> and drag Sideloadly into <b>Applications</b>). Then click <b>Download iPad App (.ipa)</b> at the top of this page to save <code>photobooth4u-kiosk-ipad.ipa</code>. <b>Do not unzip the .ipa file.</b></p>
+        <p style="margin-top:6px;"><b>On Mac?</b> If macOS blocks Sideloadly on first launch with <i>"Sideloadly" Not Opened</i>, click <b>Done</b> (do <b>not</b> click Move to Trash), then open <b>System Settings &rarr; Privacy &amp; Security</b>, scroll down, click <b>Open Anyway</b>, and confirm with your Mac password or Touch ID.</p>
+        <figure class="shot">
+          <img src="/how-to-ipad-offline/img/sideloadly-mac-gatekeeper.jpg" alt="macOS Gatekeeper dialog showing Sideloadly Not Opened — click Done then Open Anyway in Privacy &amp; Security" loading="lazy">
+          <figcaption>Mac prerequisite: click <b>Done</b> (never Move to Trash), then go to <b>System Settings &rarr; Privacy &amp; Security &rarr; Open Anyway</b>.</figcaption>
+        </figure>
       </div></li>
       <li><span class="n">2</span><div>
         <h3>Connect your iPad to your computer</h3>
@@ -128,11 +136,20 @@
       </div></li>
       <li><span class="n">3</span><div>
         <h3>Install with Sideloadly</h3>
-        <p>Open <b>Sideloadly</b> on your computer. Check that your iPad name appears under <b>iDevice</b>, drag <code>photobooth4u-kiosk-ipad.ipa</code> into the <b>IPA</b> box, type your <b>Apple ID</b>, and click <b>Start</b>. Enter your Apple ID password and 2FA code if prompted.</p>
+        <p>Open <b>Sideloadly</b> on your computer. Confirm your iPad appears under <b>iDevice</b>, click the big <b>IPA</b> icon (or drag <code>photobooth4u-kiosk-ipad.ipa</code> into it), type your <b>Apple ID</b> email, and click <b>Start</b>. Enter your Apple ID password and 2FA code if prompted.</p>
+        <p style="margin-top:6px;"><i>Tip:</i> If <b>Advanced Options</b> is open like in the screenshot below, leave the checkboxes as-is (keep <b>Use automatic bundle ID</b> checked) and click the blue <b>Advanced Options</b> bar to collapse it so the <b>Start</b> button shows up.</p>
+        <figure class="shot">
+          <img src="/how-to-ipad-offline/img/sideloadly-setup.jpg" alt="Sideloadly window showing detected iDevice, IPA box, Apple ID field, and Advanced Options bar" loading="lazy">
+          <figcaption>Drop the <code>.ipa</code> onto the <b>IPA</b> box on the left, confirm your <b>iDevice</b> &amp; <b>Apple ID</b>, then collapse <b>Advanced Options</b> to click <b>Start</b>.</figcaption>
+        </figure>
       </div></li>
       <li><span class="n">4</span><div>
         <h3>Trust your Apple ID on the iPad</h3>
-        <p>Once installed, open iPad <b>Settings &rarr; General &rarr; VPN &amp; Device Management</b>. Tap your Apple ID under <i>Developer App</i>, then tap <b>Trust</b>.</p>
+        <p>Once Sideloadly says <b>Done</b>, the <b>photobooth4u</b> app appears on your iPad Home Screen (it may show the white grid app icon). Before opening it, go to iPad <b>Settings &rarr; General &rarr; VPN &amp; Device Management</b>, tap your Apple ID under <i>Developer App</i>, then tap <b>Trust</b>.</p>
+        <figure class="shot">
+          <img src="/how-to-ipad-offline/img/ipad-home-icon.jpg" alt="photobooth4u sideloaded app icon on the iPad Home Screen" loading="lazy">
+          <figcaption>After Sideloadly finishes, <b>photobooth4u</b> appears on your iPad Home Screen.</figcaption>
+        </figure>
       </div></li>
       <li><span class="n">5</span><div>
         <h3>Turn on Developer Mode (iPadOS 16+)</h3>
@@ -140,13 +157,22 @@
       </div></li>
       <li><span class="n">6</span><div>
         <h3>Activate your rental code</h3>
-        <p>Connect the iPad to Wi-Fi once, open <b>photobooth4u</b>, enter your <code>PB-XXXX-XXXX-XXXX</code> code, and tap <b>Activate iPad</b>. After activation, the booth works completely offline.</p>
+        <p>Connect the iPad to Wi-Fi once, open <b>photobooth4u</b>, enter your <code>PB-XXXX-XXXX-XXXX</code> code, and tap <b>Activate</b>. After activation, the booth works completely offline — you'll see the ready <b>Tap to Start</b> booth screen.</p>
+        <figure class="shot">
+          <img src="/how-to-ipad-offline/img/ipad-booth-ready.jpg" alt="photobooth4u running full screen on iPad showing Tap to Start" loading="lazy">
+          <figcaption>Activated &amp; ready to shoot — works 100% offline with USB DSLR, HDMI capture, or the iPad's built-in camera.</figcaption>
+        </figure>
       </div></li>
     </ol>
 
+    <div class="callout ok">
+      <h3>Easy Future Updates (No Sideloadly Needed!)</h3>
+      <p>Once you are on <b>v1.0.4+</b>, most booth updates (new layouts, themes, camera fixes, QR sharing &amp; printing improvements) install straight inside the app: connect to Wi-Fi, open <b>Setup &rarr; 6 Share &rarr; App updates</b>, and tap <b>Check for updates &rarr; Update now</b> (~2 seconds, no computer needed).</p>
+    </div>
+
     <div class="callout">
       <h3>Important: Free Apple ID 7-Day Refresh</h3>
-      <p>Apps installed with a free Apple ID stay active for <b>7 days</b>. Before a weekend event, open Sideloadly on your computer (over Wi-Fi or USB) and click <b>Start</b> again (~30 seconds) to reset the 7-day timer — all your frames, designs, and saved photos stay intact. <i>(Want 1-year validity without a computer? Ask us about TestFlight or a 1-year device certificate.)</i></p>
+      <p>Apps sideloaded with a free Apple ID stay active for <b>7 days</b>. Before a weekend event, open Sideloadly on your computer (over Wi-Fi or USB) and click <b>Start</b> again (~30 seconds) <b>without deleting the app</b> to reset the 7-day timer — all your frames, designs, and saved photos stay intact. <i>(Want 1-year validity without a computer? Ask us about TestFlight or a 1-year device certificate.)</i></p>
     </div>
   </section>
 
@@ -195,10 +221,11 @@
         </ul>
       </div>
       <div class="card">
-        <h3>🖨️ AirPrint &amp; Photo Backup</h3>
+        <h3>🖨️ AirPrint, LAN Receipt &amp; Photo Backup</h3>
         <ul>
-          <li><b>AirPrint:</b> Print directly from the iPad to any AirPrint printer (Canon SELPHY CP1300/CP1500, Epson, Canon, HP, Brother) — supports Auto-print.</li>
-          <li><b>Photo Backup:</b> Every strip and shot saves in <b>Files &rarr; On My iPad &rarr; photobooth4u</b> and copies to the iPad <b>Photos</b> app.</li>
+          <li><b>AirPrint (Silent Auto-Print):</b> Print straight to any wireless AirPrint printer (Canon SELPHY CP1300/CP1500, Epson, DNP WPS Pro). Pick a <b>Silent AirPrint printer</b> once in Print settings to skip pop-up dialogs every session.</li>
+          <li><b>LAN Thermal Receipt Printing:</b> Add a 58mm/80mm LAN receipt printer IP (port <code>9100</code>) in Print settings for direct thermal booth strips.</li>
+          <li><b>Photo Backup:</b> Every photo strip, animated GIF, and video saves in <b>Files &rarr; On My iPad &rarr; photobooth4u</b> and copies straight to the iPad <b>Photos</b> app.</li>
         </ul>
       </div>
     </div>

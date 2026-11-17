@@ -49555,6 +49555,34 @@
         setTimeout(function () { try { refreshProfChip(); } catch (e) { } }, 1500);   // the saved setup is in now: compare with the profile
         if (sfOffer && setupLoadedKey === key) await applyStartFrame(sfOffer, sfFresh);
         if (slOffer && setupLoadedKey === key) await applyStartLogo(slOffer, sfFresh);
+        var isCharmFinal = /charm/i.test((snOffer || '') + ' ' + (welcomeTitle || '') + ' ' + (labelInput.value || '') + ' ' + ((window.__PB && window.__PB.label) || ''));
+        if (isCharmFinal) {
+          welcomeSampleOn = false;
+          if (typeof setWelcomeSampleUI === 'function') setWelcomeSampleUI(false);
+          if (!welcomeDecoStyle || welcomeDecoStyle === 'none') {
+            welcomeDecoStyle = 'ribbon-waves';
+            if (typeof setWelcomeDecoStyleUI === 'function') setWelcomeDecoStyleUI('ribbon-waves');
+          }
+          if (!welcomePalette) {
+            welcomePalette = 'charm-pink';
+            if (typeof setWelcomePaletteUI === 'function') setWelcomePaletteUI('charm-pink');
+          }
+          if (welcomeTitle === 'Charm Up PH') {
+            welcomeTitle = 'Charm Up';
+            if (welcomeTitleInput) welcomeTitleInput.value = 'Charm Up';
+          }
+          if (typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
+        }
+        if (j && j.startCardOnly) {
+          welcomeSampleOn = false;
+          if (typeof setWelcomeSampleUI === 'function') setWelcomeSampleUI(false);
+        }
+        if (j && j.startDeco && (!welcomeDecoStyle || welcomeDecoStyle === 'none')) {
+          setWelcomeDecoStyleUI(j.startDeco);
+        }
+        if (j && j.startPalette && !welcomePalette) {
+          setWelcomePaletteUI(j.startPalette);
+        }
       }
       // A frame Admin made for this renter: added once to Your frames (and used as the layout on a brand-new setup).
       // The renter can delete it; it is not added again because the setup remembers it (sfDone).

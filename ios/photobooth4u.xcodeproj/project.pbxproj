@@ -14,6 +14,7 @@
 		100100012CE8000100000005 /* LocalShareServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000005 /* LocalShareServer.swift */; };
 		100100012CE8000100000006 /* PBLocal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000006 /* PBLocal.swift */; };
 		100100012CE8000100000007 /* VoiceBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000007 /* VoiceBridge.swift */; };
+		100100012CE8000100000020 /* BtPrinterBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000020 /* BtPrinterBridge.swift */; };
 		100100012CE8000100000008 /* AppLicence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000008 /* AppLicence.swift */; };
 		100100012CE8000100000009 /* booth.html in Resources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000009 /* booth.html */; };
 /* End PBXBuildFile section */
@@ -27,6 +28,7 @@
 		200100012CE8000100000005 /* LocalShareServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalShareServer.swift; sourceTree = "<group>"; };
 		200100012CE8000100000006 /* PBLocal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PBLocal.swift; sourceTree = "<group>"; };
 		200100012CE8000100000007 /* VoiceBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceBridge.swift; sourceTree = "<group>"; };
+		200100012CE8000100000020 /* BtPrinterBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BtPrinterBridge.swift; sourceTree = "<group>"; };
 		200100012CE8000100000008 /* AppLicence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLicence.swift; sourceTree = "<group>"; };
 		200100012CE8000100000009 /* booth.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = booth.html; sourceTree = "<group>"; };
 		200100012CE8000100000010 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -61,6 +63,7 @@
 				200100012CE8000100000005 /* LocalShareServer.swift */,
 				200100012CE8000100000006 /* PBLocal.swift */,
 				200100012CE8000100000007 /* VoiceBridge.swift */,
+				200100012CE8000100000020 /* BtPrinterBridge.swift */,
 				200100012CE8000100000008 /* AppLicence.swift */,
 				200100012CE8000100000009 /* booth.html */,
 				200100012CE8000100000010 /* Info.plist */,
@@ -152,6 +155,7 @@
 				100100012CE8000100000005 /* LocalShareServer.swift in Sources */,
 				100100012CE8000100000006 /* PBLocal.swift in Sources */,
 				100100012CE8000100000007 /* VoiceBridge.swift in Sources */,
+				100100012CE8000100000020 /* BtPrinterBridge.swift in Sources */,
 				100100012CE8000100000008 /* AppLicence.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

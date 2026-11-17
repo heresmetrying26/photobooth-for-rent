@@ -56,7 +56,9 @@ export default safe(async (req) => {
       const image = doc && doc.hasImage ? await store.get(docId + '_img') : null;
       const ownerRec = owner === p.k ? rec : await licenses().get(owner, { type: 'json' });   // a frame Admin made for this renter
       const sf = ownerRec && ownerRec.startFrame;
-      return json({ ok: true, settings: doc ? doc.settings : null, updatedAt: doc ? doc.updatedAt : 0, image: image || null, startFrame: sf ? { id: sf.id, name: sf.name } : null });
+      const sl = ownerRec && ownerRec.startLogo;
+      const sn = ownerRec && (ownerRec.startName || null);
+      return json({ ok: true, settings: doc ? doc.settings : null, updatedAt: doc ? doc.updatedAt : 0, image: image || null, startFrame: sf ? { id: sf.id, name: sf.name } : null, startLogo: sl ? { id: sl.id, name: sl.name } : null, startName: sn });
     }
 
     case 'save': {

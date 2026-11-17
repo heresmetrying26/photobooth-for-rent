@@ -16878,6 +16878,11 @@
               <p class="panel-hint" id="attractHint" style="margin:6px 0 0;">Auto-generates a branded welcome card with
                 your event title, date, 3-step guest instructions, and a sample photo print.</p>
 
+              <div id="welcomeSampleCardRow" class="fb-card" style="margin-top:10px;">
+                <label class="switch-row" style="margin-top:0;"><span>Show sample photo print</span><input type="checkbox" id="welcomeSampleToggle" checked></label>
+                <p class="panel-hint" style="margin:4px 0 0;">Shows a sample print of the layout beside or above the card. Turn off to display just the branded welcome card centered.</p>
+              </div>
+
               <div id="attractPosterRow" style="display:none; margin-top:12px;">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
                   <p class="sub-label" style="margin:0;">Sponsor / Media slides</p>
@@ -17022,6 +17027,12 @@
                       <button type="button" class="chip" data-color="#D87080"
                         style="display:inline-flex; align-items:center; gap:6px;"><i
                           style="width:12px;height:12px;border-radius:50%;background:#D87080;display:inline-block;"></i>Rose</button>
+                      <button type="button" class="chip" data-color="#F28DA0"
+                        style="display:inline-flex; align-items:center; gap:6px;"><i
+                          style="width:12px;height:12px;border-radius:50%;background:#F28DA0;display:inline-block;"></i>Blush Pink</button>
+                      <button type="button" class="chip" data-color="#A78BFA"
+                        style="display:inline-flex; align-items:center; gap:6px;"><i
+                          style="width:12px;height:12px;border-radius:50%;background:#A78BFA;display:inline-block;"></i>Lavender</button>
                     </div>
                   </div>
                   <div id="welcomeBtnPosRow" style="margin-top:10px;">
@@ -30495,8 +30506,8 @@
             return showToast('Bluetooth is not supported in this browser. Use Google Chrome or the Android Tablet App (APK).', 5000);
           }
           if (window._btThermal.isNativeAndroid && window._btThermal.isNativeAndroid() && typeof window._btThermal.isBtEnabled === 'function' && !window._btThermal.isBtEnabled()) {
-            showToast('Bluetooth is turned off on this tablet. Opening Bluetooth Settings…', 4500);
-            if (typeof window._btThermal.openBtSettings === 'function') window._btThermal.openBtSettings();
+            showToast(IS_IOS_APP ? 'Bluetooth is turned off on this iPad. Switch it on in Control Center, then tap Connect again.' : 'Bluetooth is turned off on this tablet. Opening Bluetooth Settings…', 4500);
+            if (!IS_IOS_APP && typeof window._btThermal.openBtSettings === 'function') window._btThermal.openBtSettings();
             return;
           }
           btThermalConnectBtn.disabled = true;
@@ -30509,8 +30520,8 @@
           } catch (err) {
             var msg = String((err && err.message) || err || '');
             if (/turned off/i.test(msg) || /enable bluetooth/i.test(msg)) {
-              showToast('Bluetooth is turned off. Please turn it on in Android Settings.', 6000);
-              if (window._btThermal.isNativeAndroid && typeof window._btThermal.openBtSettings === 'function') window._btThermal.openBtSettings();
+              showToast(IS_IOS_APP ? 'Bluetooth is turned off. Switch it on in Control Center, then tap Connect again.' : 'Bluetooth is turned off. Please turn it on in Android Settings.', 6000);
+              if (!IS_IOS_APP && window._btThermal.isNativeAndroid && typeof window._btThermal.openBtSettings === 'function') window._btThermal.openBtSettings();
             } else if (/No paired/i.test(msg)) {
               showToast(msg, 7000);
               if (window._btThermal.isNativeAndroid && typeof window._btThermal.openBtSettings === 'function') window._btThermal.openBtSettings();
@@ -30519,7 +30530,7 @@
             } else if (/User cancelled/i.test(msg) || (err && err.name === 'NotFoundError' && !/globally disabled/i.test(msg))) {
               showToast('No Bluetooth device selected.', 3000);
             } else {
-              showToast('Bluetooth connection failed: ' + msg + (IS_ANDROID_APP ? '' : '. For Classic Bluetooth POS printers, use the Android Tablet App.'), 6000);
+              showToast('Bluetooth connection failed: ' + msg + ((IS_ANDROID_APP || IS_IOS_APP) ? '' : '. For Classic Bluetooth POS printers, use the Android Tablet App.'), IS_IOS_APP ? 9000 : 6000);
             }
           } finally {
             btThermalConnectBtn.disabled = false;
@@ -34297,7 +34308,7 @@
 
           if (btWarn) {
             if (!btEnabled) {
-              btWarn.textContent = '⚠️ Bluetooth is turned off on this tablet. Turn on Bluetooth in Android Settings before connecting.';
+              btWarn.textContent = IS_IOS_APP ? '⚠️ Bluetooth is turned off on this iPad. Switch it on in Control Center before connecting.' : '⚠️ Bluetooth is turned off on this tablet. Turn on Bluetooth in Android Settings before connecting.';
               btWarn.style.display = '';
             } else {
               btWarn.textContent = '';
@@ -34322,7 +34333,7 @@
             btConnBtn.style.display = '';
           }
           if (btSettingsBtn) {
-            btSettingsBtn.style.display = (window._btThermal && window._btThermal.isNativeAndroid() && (!conn || !btEnabled)) ? '' : 'none';
+            btSettingsBtn.style.display = (!IS_IOS_APP && window._btThermal && window._btThermal.isNativeAndroid() && (!conn || !btEnabled)) ? '' : 'none';   // an iPad does not pair BLE printers in Settings
             btSettingsBtn.textContent = !btEnabled ? 'Open Android Bluetooth Settings' : 'Pair in Android Bluetooth settings';
           }
           if (btTestBtn) btTestBtn.style.display = conn ? '' : 'none';
@@ -34334,8 +34345,10 @@
             btStatus.textContent = conn
               ? 'Connected: ' + (window._btThermal.btPrinter.name || 'Bluetooth Printer') + ' (' + btModeLabel + ').'
               : (!btEnabled
-                ? 'Bluetooth is disabled. Turn on Bluetooth in Settings, pair your printer, then tap Connect.'
-                : (window._btThermal && window._btThermal.isNativeAndroid()
+                ? (IS_IOS_APP ? 'Bluetooth is turned off. Switch it on in Control Center, then tap Connect.' : 'Bluetooth is disabled. Turn on Bluetooth in Settings, pair your printer, then tap Connect.')
+                : (IS_IOS_APP
+                  ? 'Switch the printer on and keep it next to the iPad, then tap Connect and choose it. Bluetooth LE printers only (FunPrint / C19, WalkPrint, BLE receipt printers); classic Bluetooth printers do not work on an iPad.'
+                  : window._btThermal && window._btThermal.isNativeAndroid()
                   ? 'Pair your thermal printer in Bluetooth Settings first, then tap Connect.'
                   : (IS_ANDROID_APP
                     ? 'Ensure your thermal printer is powered on and paired in Bluetooth Settings, then tap Connect.'
@@ -35080,6 +35093,7 @@
       var welcomeBtnPos = 'bottom';         // bottom | center | lower
       var guestWelcomeStyle = 'full';       // guest screen between guests (laptop + guest screen): full = picture only | panel = with logo & welcome text
       var welcomeBtnOn = true;
+      var welcomeSampleOn = true;
       var welcomeCustomOn = false;
       var welcomeGreeting = '';
       var welcomeTitle = '';
@@ -43625,6 +43639,15 @@
         });
       }
 
+      var welcomeSampleToggle = document.getElementById('welcomeSampleToggle');
+      if (welcomeSampleToggle) {
+        welcomeSampleToggle.addEventListener('change', function () {
+          welcomeSampleOn = welcomeSampleToggle.checked;
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+
       var welcomeCustomToggle = document.getElementById('welcomeCustomToggle');
       var welcomeGreetingInput = document.getElementById('welcomeGreetingInput');
       var welcomeTitleInput = document.getElementById('welcomeTitleInput');
@@ -43746,6 +43769,8 @@
         if (camHint) camHint.style.display = attractMode === 'camera' ? 'flex' : 'none';
         var cardBlock = document.getElementById('welcomeCardCustomBlock');
         if (cardBlock) cardBlock.style.display = attractMode === 'card' ? '' : 'none';
+        var sampleCardRow = document.getElementById('welcomeSampleCardRow');
+        if (sampleCardRow) sampleCardRow.style.display = attractMode === 'card' ? '' : 'none';
         try { if (typeof syncWelcomeFitUI === 'function') syncWelcomeFitUI(); } catch (e) { }
       }
       (function () {
@@ -44194,17 +44219,21 @@
           ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
 
           // Sample print of their layout (drawn people, never a real guest's photo)
-          var sample = document.createElement('canvas');
-          try { composeCanvas(currentLayout, sample, buildPlaceholderShots(300, shotsNeeded(currentLayout))); } catch (e) { sample = null; }
-          // A frame whose strips all repeat the same photos: show one strip, not the whole sheet of copies.
-          try {
-            var cf = sample && currentLayout === 'myframe' ? activeFrame() : null, cr = cf && frameFirstStripCrop(cf);
-            if (cr) {
-              var sc = document.createElement('canvas'); sc.width = Math.max(1, Math.round(sample.width * cr.w)); sc.height = Math.max(1, Math.round(sample.height * cr.h));
-              sc.getContext('2d').drawImage(sample, Math.round(sample.width * cr.x), 0, sc.width, sc.height, 0, 0, sc.width, sc.height);
-              sample = sc;
-            }
-          } catch (e) { }
+          var showSample = welcomeSampleOn !== false;
+          var sample = null;
+          if (showSample) {
+            sample = document.createElement('canvas');
+            try { composeCanvas(currentLayout, sample, buildPlaceholderShots(300, shotsNeeded(currentLayout))); } catch (e) { sample = null; }
+            // A frame whose strips all repeat the same photos: show one strip, not the whole sheet of copies.
+            try {
+              var cf = sample && currentLayout === 'myframe' ? activeFrame() : null, cr = cf && frameFirstStripCrop(cf);
+              if (cr) {
+                var sc = document.createElement('canvas'); sc.width = Math.max(1, Math.round(sample.width * cr.w)); sc.height = Math.max(1, Math.round(sample.height * cr.h));
+                sc.getContext('2d').drawImage(sample, Math.round(sample.width * cr.x), 0, sc.width, sc.height, 0, 0, sc.width, sc.height);
+                sample = sc;
+              }
+            } catch (e) { }
+          }
 
           // Card with the event name and how it works
           var cardColor = titleBgEnabled ? titleBgColor : '#ffffff';
@@ -44234,17 +44263,26 @@
 
           var cardBox = function (slotH) {
             if (land) {
-              var area = { x: W * 0.05, y: H * 0.08, w: W * 0.42, h: H * 0.84 };
-              var pw = 0, ph = 0;
-              if (sample && sample.width) {
-                var k = Math.min(area.w / sample.width, area.h / sample.height);
-                pw = sample.width * k; ph = sample.height * k;
+              if (showSample) {
+                var area = { x: W * 0.05, y: H * 0.08, w: W * 0.42, h: H * 0.84 };
+                var pw = 0, ph = 0;
+                if (sample && sample.width) {
+                  var k = Math.min(area.w / sample.width, area.h / sample.height);
+                  pw = sample.width * k; ph = sample.height * k;
+                }
+                var ch = 64 + (hasGreeting ? 40 : 10) + (hasGreeting ? 110 : 80) + (cardSub ? 54 : 0) + (showSteps ? (40 + steps.length * 64) : 20) + (welcomeBtnOn ? (40 + 92) : 0) + 56 + slotH;
+                var cw = Math.min(W * 0.42, 720);
+                var cx = W * 0.53;
+                var cy = (H - ch) / 2;
+                return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: 64, titleSize: 96, padY: 64, pw: pw, ph: ph, sampleX: area.x + area.w / 2, sampleY: area.y + area.h / 2 };
+              } else {
+                // Not tied to layout: perfectly centered aesthetic card
+                var ch = 64 + (hasGreeting ? 40 : 10) + (hasGreeting ? 110 : 80) + (cardSub ? 54 : 0) + (showSteps ? (40 + steps.length * 64) : 20) + (welcomeBtnOn ? (40 + 92) : 0) + 56 + slotH;
+                var cw = Math.min(W * 0.68, 760);
+                var cx = (W - cw) / 2;
+                var cy = (H - ch) / 2;
+                return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: 64, titleSize: 96, padY: 64, pw: 0, ph: 0, sampleX: 0, sampleY: 0 };
               }
-              var ch = 64 + (hasGreeting ? 40 : 10) + (hasGreeting ? 110 : 80) + (cardSub ? 54 : 0) + (showSteps ? (40 + steps.length * 64) : 20) + (welcomeBtnOn ? (40 + 92) : 0) + 56 + slotH;
-              var cw = Math.min(W * 0.42, 720);
-              var cx = W * 0.53;
-              var cy = (H - ch) / 2;
-              return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: 64, titleSize: 96, padY: 64, pw: pw, ph: ph, sampleX: area.x + area.w / 2, sampleY: area.y + area.h / 2 };
             }
 
             // Portrait layout: vertically and horizontally centered between topbar and bottom dock
@@ -44261,10 +44299,10 @@
             var baseCardH = padY + (hasGreeting ? 32 : 10) + 72 + (cardSub ? 38 : 0) + (showSteps ? (22 + stepCount * stepH) : 10) + (welcomeBtnOn ? (24 + 80) : 0) + 32 + slotH;
             var ch = baseCardH;
 
-            var maxSampleH = Math.min(500, Math.max(260, safeH - ch - 36));
+            var maxSampleH = showSample ? Math.min(500, Math.max(260, safeH - ch - 36)) : 0;
             var maxSampleW = Math.min(W * 0.74, 560);
             var pw = 0, ph = 0;
-            if (sample && sample.width) {
+            if (showSample && sample && sample.width) {
               var k = Math.min(maxSampleW / sample.width, maxSampleH / sample.height);
               pw = sample.width * k;
               ph = sample.height * k;
@@ -44301,8 +44339,8 @@
           var ch = box.ch, cw = box.cw, cx = box.cx, cy = box.cy;
           var pw = box.pw, ph = box.ph, sampleX = box.sampleX, sampleY = box.sampleY;
 
-          // Draw sample print of layout chosen (centered horizontally, fully visible)
-          if (sample && sample.width && pw > 0 && ph > 0) {
+          // Draw sample print of layout chosen (if enabled, centered horizontally, fully visible)
+          if (showSample && sample && sample.width && pw > 0 && ph > 0) {
             ctx.save();
             ctx.translate(sampleX, sampleY);
             ctx.rotate((land ? -3 : 0) * Math.PI / 180);
@@ -44313,12 +44351,18 @@
             ctx.restore();
           }
 
-          // Draw branded details card below the sample print
+          // Draw branded details card (trendy aesthetic styling with soft shadow and subtle border)
           ctx.save();
-          ctx.shadowColor = 'rgba(0,0,0,.22)'; ctx.shadowBlur = 42; ctx.shadowOffsetY = 14;
+          ctx.shadowColor = 'rgba(28,26,30,.14)'; ctx.shadowBlur = 48; ctx.shadowOffsetY = 16;
           roundRectPath(ctx, cx, cy, cw, ch, 32);
-          ctx.globalAlpha = 0.95; ctx.fillStyle = cardColor; ctx.fill();
+          ctx.globalAlpha = 0.96; ctx.fillStyle = cardColor; ctx.fill();
           ctx.restore();
+
+          ctx.save();
+          roundRectPath(ctx, cx, cy, cw, ch, 32);
+          ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(28,26,30,0.06)'; ctx.stroke();
+          ctx.restore();
+
           ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
           var mid = cx + cw / 2, yy = cy + (box.padY || 34) + 16 + box.slot;
 
@@ -44342,11 +44386,13 @@
             var widest = Math.max.apply(null, steps.map(function (t) { return ctx.measureText(t).width; }));
             var sx = mid - (widest + (land ? 62 : 48)) / 2;
             var stepH = box.stepH || (land ? 64 : 50);
+            var stepCol = welcomeBtnColor || accent || '#F28DA0';
             steps.forEach(function (t, i) {
               var sy = yy + (land ? 50 : 34) + i * stepH;
               var r = land ? 22 : 16;
-              ctx.fillStyle = '#C93D27'; ctx.beginPath(); ctx.arc(sx + r, sy - (r * 0.5), r, 0, Math.PI * 2); ctx.fill();
-              ctx.fillStyle = '#fff'; ctx.font = '800 ' + (land ? '24px' : '18px') + ' Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + r, sy - 2);
+              ctx.fillStyle = stepCol; ctx.beginPath(); ctx.arc(sx + r, sy - (r * 0.5), r, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = (typeof lumOf === 'function' && lumOf(stepCol) > 0.6) ? '#1C1A1E' : '#ffffff';
+              ctx.font = '800 ' + (land ? '24px' : '18px') + ' Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + r, sy - 2);
               ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 ' + (land ? '31px' : '24px') + ' Manrope, sans-serif'; ctx.fillText(t, sx + r * 2 + 14, sy);
             });
           }
@@ -44354,8 +44400,12 @@
             ctx.font = '800 34px Manrope, sans-serif';
             var bh = land ? 92 : 78, bw = Math.min(cw - 70, ctx.measureText(btnText).width + (land ? 130 : 100));
             var bx = mid - bw / 2, by = cy + ch - bh - (land ? 48 : 24);
-            var bCol2 = welcomeBtnColor || '#C93D27';
+            var bCol2 = welcomeBtnColor || '#F28DA0';
+            ctx.save();
+            ctx.shadowColor = (typeof hexToRgb === 'function') ? 'rgba(' + hexToRgb(bCol2).join(',') + ',.30)' : 'rgba(0,0,0,.15)';
+            ctx.shadowBlur = 18; ctx.shadowOffsetY = 6;
             roundRectPath(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = bCol2; ctx.fill();
+            ctx.restore();
             ctx.fillStyle = (typeof lumOf === 'function' && lumOf(bCol2) > 0.6) ? '#1C1A1E' : '#ffffff';
             ctx.textAlign = 'center';
             var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', land ? 34 : 28, bw - 40, 16);
@@ -48241,6 +48291,7 @@
           welcomeMsg: welcomeMsg,
           saverDimMin: saverDimMin, saverOffMin: saverOffMin,
           welcomeBtnOn: welcomeBtnOn,
+          welcomeSampleOn: welcomeSampleOn,
           welcomeCustomOn: welcomeCustomOn,
           welcomeGreeting: welcomeGreeting,
           welcomeTitle: welcomeTitle,
@@ -48274,7 +48325,7 @@
           guestStickersOn: !!guestStickersOn,
           stickerPacks: stickerPacksOn.slice(), guestStickerSec: guestStickerSec,
           myProps: myProps.slice(),
-          frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet, sfDone: startFrameDone,
+          frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet, sfDone: startFrameDone, slDone: startLogoDone,
           frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
           titleStyle: titleStyle, kicker: kickerText, receiptNote: receiptCustomNote, upper: titleUpper, art: themeArt.slice(), artPal: Object.assign({}, artPal),
           printPrefs: Object.assign({}, printPrefs),
@@ -48447,6 +48498,10 @@
             if (welcomeBtnToggle) welcomeBtnToggle.checked = welcomeBtnOn;
             var wmRow = document.getElementById('welcomeMsgRow');
             if (wmRow) wmRow.style.display = welcomeBtnOn ? '' : 'none';
+          }
+          if (typeof s.welcomeSampleOn === 'boolean') {
+            welcomeSampleOn = s.welcomeSampleOn;
+            if (welcomeSampleToggle) welcomeSampleToggle.checked = welcomeSampleOn;
           }
           if (typeof s.welcomeCustomOn === 'boolean') {
             welcomeCustomOn = s.welcomeCustomOn;
@@ -48759,7 +48814,7 @@
       async function loadSetup(carryOver) {
         var key = localSetupKey();
         setupLoadedKey = key;
-        var local = null, localImg = null, sfOffer = null, sfFresh = false;
+        var local = null, localImg = null, sfOffer = null, slOffer = null, snOffer = null, sfFresh = false;
         try { local = JSON.parse(localStorage.getItem(key) || 'null'); localImg = localStorage.getItem(key + '#img'); } catch (e) { }
         if (local && local.settings) {
           applySetup(local.settings, localImg);
@@ -48770,7 +48825,16 @@
           try {
             var j = await fetchServerSetup();
             if (setupLoadedKey !== key) return;
-            sfOffer = j.startFrame || null; sfFresh = !j.settings && !local;
+            sfOffer = j.startFrame || null;
+            slOffer = j.startLogo || null;
+            snOffer = j.startName || null;
+            sfFresh = !j.settings && !local;
+            if (sfFresh && snOffer && (!labelInput.value.trim() || labelInput.value === 'Your Event')) {
+              labelInput.value = snOffer;
+              welcomeTitle = snOffer;
+              welcomeCustomOn = true;
+              welcomeGreeting = 'Welcome to';
+            }
             if (j.settings && (!local || (j.updatedAt || 0) > (local.updatedAt || 0))) {
               applySetup(j.settings, j.image || null);
               lastSavedJson = JSON.stringify(j.settings);
@@ -48800,6 +48864,7 @@
         setupReady = true;
         setTimeout(function () { try { refreshProfChip(); } catch (e) { } }, 1500);   // the saved setup is in now: compare with the profile
         if (sfOffer && setupLoadedKey === key) await applyStartFrame(sfOffer, sfFresh);
+        if (slOffer && setupLoadedKey === key) await applyStartLogo(slOffer, sfFresh);
       }
       // A frame Admin made for this renter: added once to Your frames (and used as the layout on a brand-new setup).
       // The renter can delete it; it is not added again because the setup remembers it (sfDone).
@@ -48815,6 +48880,22 @@
           myFrames.push({ id: sf.id, name: String(sf.name || '').slice(0, 40) || undefined, w: img.width, h: img.height, spots: spots });
           if (fresh) { activeFrameId = sf.id; setupLayout = 'myframe'; layoutPicked = true; if (chooseIds.indexOf(sf.id) < 0) chooseIds.push(sf.id); }
           framesChanged(fresh ? { layout: 'myframe' } : {});
+        } catch (e) { /* keep going without it */ }
+      }
+      // A logo Admin uploaded for this renter: placed on the welcome card and top-left.
+      // The renter can still replace or delete it anytime in Setup -> Extras or Welcome screen.
+      async function applyStartLogo(sl, fresh) {
+        if (!sl || !/^a[A-Za-z0-9]{8,32}$/.test(sl.id || '') || startLogoDone === sl.id) return;
+        try {
+          await ensureAssets([sl.id]);
+          if (!ASSETS[sl.id]) return;
+          startLogoDone = sl.id;
+          logo = { id: sl.id, name: String(sl.name || 'Logo').slice(0, 40) };
+          brand.w = { on: true, id: sl.id, x: null, y: null, s: null };
+          brand.c = { on: true, id: sl.id, x: null, y: null, s: null };
+          if (typeof syncBrandUI === 'function') syncBrandUI();
+          if (typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
+          scheduleSetupSave();
         } catch (e) { /* keep going without it */ }
       }
       // Any change in Setup saves (debounced). The Drive folder box is excluded:
@@ -51256,6 +51337,7 @@
       var myFrames = [];            // [{ id, w, h, spots: [{ x, y, w, h }] }]  (spots as 0-1 of the frame)
       var activeFrameId = null;     // the frame used by the "My frame" layout
       var startFrameDone = '';      // id of the Admin-made starting frame this setup already received
+      var startLogoDone = '';       // id of the Admin-made starting logo this setup already received
       var sheet = { pattern: 'tall-one-two-strips', items: [] };   // items: [{ f, cx, cy, s, r }] (0-1 of the sheet; s = width share)
       var sheetPresets = [];        // [{ id, name, paper, pattern, items: [{ f, cx, cy, s, r }] }]
       var activeSheetPresetId = null;
@@ -52984,6 +53066,7 @@
           };
         });
         startFrameDone = okId(s.sfDone) ? s.sfDone : '';
+        startLogoDone = okId(s.slDone) ? s.slDone : '';
         activeFrameId = okId(s.activeFrame) && frameById(s.activeFrame) ? s.activeFrame : (myFrames[0] ? myFrames[0].id : null);
         setupActiveFrameId = activeFrameId;
         // Older setups with several frames were always "all on one sheet".

@@ -250,6 +250,34 @@ export default safe(async (req, context) => {
       return json({ ok: true, name: rec.startFrame ? rec.startFrame.name : null });
     }
 
+    case 'startlogo': { // a logo set for one renter: it appears in their Setup -> Extras -> Logo and as the Welcome Card logo
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      const sstore = setupsStore();
+      const own = setupKeyFor('own|' + key);
+      const data = b.image === null ? null : String(b.image || '');
+      if (data !== null && (data.length > 3500000 || !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(data))) return json({ error: 'That is not a PNG/JPEG, or it is too large.' }, 413);
+      const old = rec.startLogo && rec.startLogo.id;
+      if (data === null) rec.startLogo = null;
+      else {
+        const id = 'a' + randomBytes(14).toString('base64url').replace(/[^A-Za-z0-9]/g, 'x').slice(0, 18);
+        await sstore.set(own + '_a_' + id, data);
+        rec.startLogo = { id, name: String(b.name || '').trim().slice(0, 40) || 'Logo' };
+      }
+      await putLicense(store, key, rec);
+      if (old) await sstore.delete(own + '_a_' + old);
+      return json({ ok: true, name: rec.startLogo ? rec.startLogo.name : null });
+    }
+
+    case 'startname': { // pre-customise event/client name; client can still override in Setup
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      const name = String(b.name || '').trim().slice(0, 60);
+      rec.startName = name || null;
+      await putLicense(store, key, rec);
+      return json({ ok: true, name: rec.startName });
+    }
+
     case 'create': {
       const lifetime = !!b.lifetime;
       const days = lifetime ? (intIn(b.days, 1, 365) || 1) : intIn(b.days, 1, 365);
@@ -283,7 +311,7 @@ export default safe(async (req, context) => {
         // Keep a dedicated Drive folder name. If neither field was supplied,
         // fall back to the code so the renter never has to configure Drive.
         const _allowedOr = ['landscape', 'portrait', 'either'];
-        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, gifOpt: b.gifOpt !== false, rushOpt: !!b.rushOpt, extras: normExtras(b.extras), retakeOpt: b.retakeOpt !== false, typesOpt: !!b.typesOpt, lockOpt: b.lockOpt !== false, payOpt: b.payOpt !== false, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, orientation: _allowedOr.includes(b.orientation) ? b.orientation : 'landscape', status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
+        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startName: String(b.startName || '').trim().slice(0, 60) || null, startsAt: start.value, print, traditional: !!b.traditional, gifOpt: b.gifOpt !== false, rushOpt: !!b.rushOpt, extras: normExtras(b.extras), retakeOpt: b.retakeOpt !== false, typesOpt: !!b.typesOpt, lockOpt: b.lockOpt !== false, payOpt: b.payOpt !== false, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, orientation: _allowedOr.includes(b.orientation) ? b.orientation : 'landscape', status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
         // A hand-made Lifetime code (for example a Messenger sale): Admin ticks that the buyer replied "I agree".
         if (lifetime && b.agreementAccepted) rec.agreement = { version: AGREEMENT_VERSION, acceptedAt: Date.now(), by: 'admin' };
         await putLicense(store, key, rec);

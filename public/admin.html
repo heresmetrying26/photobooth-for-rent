@@ -1922,12 +1922,17 @@
           (bonus ? '' : '<div class="themerow">Starting theme <select class="sel" data-theme-for="' + c + '">' + themeOptions(l.defaultTheme || '') + '</select>' +
             '&nbsp; Starting frame <button class="small" data-a="sframe" data-c="' + c + '" title="A PNG with the photo spots left white or see-through. It appears in the renter’s Your frames.">' + (l.startFrame ? esc(l.startFrame.name || l.startFrame) + ' &middot; replace' : 'Upload') + '</button>' +
             (l.startFrame ? '<button class="small" data-a="sframeoff" data-c="' + c + '">Remove</button>' : '') +
-            '<input type="file" class="hidden" accept="image/png,image/jpeg,image/webp" data-sframe-for="' + c + '"></div>') +
+            '<input type="file" class="hidden" accept="image/png,image/jpeg,image/webp" data-sframe-for="' + c + '">' +
+            '&nbsp; Client logo <button class="small" data-a="slogo" data-c="' + c + '" title="The client’s logo. Placed on their welcome screen and in Extras.">' + (l.startLogo ? esc(l.startLogo.name || l.startLogo) + ' &middot; replace' : 'Upload') + '</button>' +
+            (l.startLogo ? '<button class="small" data-a="slogooff" data-c="' + c + '">Remove</button>' : '') +
+            '<input type="file" class="hidden" accept="image/png,image/jpeg,image/webp" data-slogo-for="' + c + '">' +
+            '&nbsp; Client name <button class="small" data-a="sname" data-c="' + c + '" title="Pre-set event or client brand name (client can still change it in Setup).">' + (l.startName ? esc(l.startName) + ' &middot; change' : 'Set name') + '</button>' +
+            (l.startName ? '<button class="small" data-a="snameoff" data-c="' + c + '">Clear</button>' : '') + '</div>') +
           '<div class="printbox hidden" data-print-edit></div>' +
           '<div class="printbox hidden" data-pay-box></div>' +
           '<div class="printbox hidden" data-offkey-box></div>' +
           '<div class="printbox hidden" data-sched-edit></div>' +
-          '<div class="actions"><button class="small" data-a="copy" data-c="' + c + '">Copy code</button>' + (bonus ? '' : '<button class="small" data-a="portal" data-c="' + c + '" title="Link to the customer\'s My Events page (signs them in with this code)">Copy events page link</button>') + acts + '</div>';
+          '<div class="actions"><button class="small" data-a="copy" data-c="' + c + '">Copy code</button>' + (bonus ? '' : '<button class="small" data-a="portal" data-c="' + c + '" title="Link to the customer\'s My Events page (signs them in with this code)">Copy events page link</button>') + '<button class="small" data-a="preview" data-c="' + c + '" title="Open this code in the photobooth in a new tab to preview the welcome screen and setup">Preview booth &nearr;</button>' + acts + '</div>';
       }
 
       // ---- Guest payments box (one booking): PayMongo status — never the key — money taken, vouchers ----
@@ -2059,6 +2064,18 @@
           } catch (err) { if (err.message !== 'auth') toast(err.message, true); }
           return;
         }
+        var sl = e.target.closest('[data-slogo-for]');
+        if (sl) {
+          var file = sl.files && sl.files[0], scode = sl.dataset.slogoFor; sl.value = '';
+          if (!file) return;
+          try {
+            var url = await new Promise(function (res, rej) { var fr = new FileReader(); fr.onload = function () { res(fr.result); }; fr.onerror = function () { rej(new Error('Could not read that file.')); }; fr.readAsDataURL(file); });
+            var fname = file.name.replace(/\.[^/.]+$/, '').trim();
+            await api({ action: 'startlogo', code: scode, image: url, name: fname });
+            toast('Client logo saved: placed on welcome screen the next time the booth opens'); load();
+          } catch (err) { if (err.message !== 'auth') toast(err.message, true); }
+          return;
+        }
         var ts = e.target.closest('[data-theme-for]');
         if (ts) {
           var code = ts.dataset.themeFor;
@@ -2083,7 +2100,25 @@
             await api({ action: 'startframe', code: code, image: null });
             toast('Starting frame removed'); refresh(); return;
           }
+          if (a === 'slogo') { b.parentNode.querySelector('[data-slogo-for]').click(); return; }
+          if (a === 'slogooff') {
+            if (!confirm('Remove the client logo from ' + code + '?')) return;
+            await api({ action: 'startlogo', code: code, image: null });
+            toast('Client logo removed'); refresh(); return;
+          }
+          if (a === 'sname') {
+            var curName = (LIC[code] && LIC[code].startName) || '';
+            var val = prompt('Pre-set event / client name for ' + code + ' (client can still change it in Setup):', curName);
+            if (val === null) return;
+            await api({ action: 'startname', code: code, name: val.trim() });
+            toast(val.trim() ? 'Starting name set to: ' + val.trim() : 'Starting name cleared'); refresh(); return;
+          }
+          if (a === 'snameoff') {
+            await api({ action: 'startname', code: code, name: '' });
+            toast('Starting name cleared'); refresh(); return;
+          }
           if (a === 'portal') { await navigator.clipboard.writeText(location.origin + '/lifetime/#' + code); toast('Copied the My Events link for ' + code); return; }
+          if (a === 'preview') { window.open('/?code=' + encodeURIComponent(code), '_blank'); return; }
           if (a === 'rmdev') {
             var n = Number(b.dataset.n);
             if (!confirm('Remove device ' + n + ' from ' + code + '? It is locked out within ~5 minutes, and a new device can then use the code.')) return;

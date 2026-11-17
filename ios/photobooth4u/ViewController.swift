@@ -107,6 +107,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         userContent.add(self, name: "pbPickAirPrint")
         userContent.add(self, name: "pbClearAirPrint")
         userContent.add(self, name: "pbPrintRawTcp")
+        userContent.add(self, name: "pbBt")
 
         let bridgeJs = """
         (function(){
@@ -235,6 +236,45 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             }
           };
 
+          // Bluetooth receipt printers (Bluetooth LE only on an iPad). Same calls as the Android app's __BTBridge,
+          // but every call is an asynchronous message to the app, so the camera picture never waits for the printer.
+          (function() {
+            var pend = {}, seq = 0;
+            var st = \(BtPrinterBridge.shared.initialStateJson());
+            function post(op, args, id) {
+              try { window.webkit.messageHandlers.pbBt.postMessage({ id: id || 0, op: op, args: args || {} }); return true; } catch (e) { return false; }
+            }
+            function call(op, args) {
+              return new Promise(function(resolve) {
+                var id = ++seq;
+                pend[id] = resolve;
+                if (!post(op, args, id)) { delete pend[id]; resolve(JSON.stringify({ ok: false, error: 'Bluetooth is not available here.' })); }
+              });
+            }
+            window.__pbBtResolve = function(id, json) { var f = pend[id]; if (f) { delete pend[id]; f(json); } };
+            window.__pbBtState = function(s) { if (s) st = s; };
+            window.__BTBridge = {
+              isAvailable: function() { return true; },
+              isEnabled: function() { return st.on !== false; },
+              openBluetoothSettings: function() { post('settings'); return true; },
+              listDevices: function() { return '[]'; },
+              connect: function() { return call('connect'); },
+              connectSaved: function() {
+                if (!st.saved || !st.saved.address) return JSON.stringify({ ok: false, none: true });
+                if (st.connected) return JSON.stringify({ ok: true, connected: true, name: st.name || '', address: st.saved.address, proto: st.proto || '' });
+                post('connectSaved');
+                return JSON.stringify({ ok: true, started: true });
+              },
+              savedPrinter: function() { var s = st.saved || {}; return JSON.stringify({ address: s.address || '', name: s.name || '', connected: !!st.connected }); },
+              isConnected: function() { return !!st.connected; },
+              getConnectedDeviceName: function() { return st.connected ? (st.name || '') : null; },
+              write: function(b64) { return call('write', { b64: String(b64 || '') }); },
+              writePaced: function(b64, chunk, delay) { return call('writePaced', { b64: String(b64 || ''), chunk: Number(chunk) || 100, delay: Number(delay) || 0 }); },
+              release: function() { st.connected = false; post('release'); return JSON.stringify({ ok: true }); },
+              disconnect: function() { st.connected = false; post('disconnect'); return JSON.stringify({ ok: true }); }
+            };
+          })();
+
           try {
             Object.defineProperty(Navigator.prototype, 'onLine', {
               get: function() { return window.__PBLocal ? window.__PBLocal.isOnline() : true; },
@@ -257,6 +297,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         webView.customUserAgent = (webView.value(forKey: "userAgent") as? String ?? "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)") + " PB4uIOS/\(AppLicence.shared.appVersion())"
         webView.navigationDelegate = self
         webView.uiDelegate = self
+        BtPrinterBridge.shared.evaluate = { [weak self] js in self?.webView?.evaluateJavaScript(js, completionHandler: nil) }
+        BtPrinterBridge.shared.presenter = { [weak self] in self?.presentedViewController ?? self }
         // The setup pages (Design, Layout, Text...) are taller than the screen and scroll as a normal web page, so scrolling
         // must stay on. Only the rubber-band bounce is off, and taps are not held back waiting for a possible scroll.
         webView.scrollView.isScrollEnabled = true
@@ -1092,6 +1134,13 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             let b64 = (dict["b64"] as? String) ?? ""
             let paced = (dict["paced"] as? Bool) ?? false
             sendRawTcpPrint(job: job, ipPort: ip, b64: b64, paced: paced)
+        } else if message.name == "pbBt", let dict = message.body as? [String: Any] {
+            // Bluetooth LE receipt printer (window.__BTBridge): answered later through window.__pbBtResolve
+            BtPrinterBridge.shared.handle(
+                id: (dict["id"] as? NSNumber)?.intValue ?? 0,
+                op: (dict["op"] as? String) ?? "",
+                args: (dict["args"] as? [String: Any]) ?? [:]
+            )
         }
     }
 
@@ -1290,6 +1339,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         }
         UIApplication.shared.open(url, options: [:], completionHandler: nil)
         return nil
+    }
+
+    // The page was (re)loaded: tell it whether the Bluetooth printer is still connected.
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        BtPrinterBridge.shared.pushState()
     }
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {

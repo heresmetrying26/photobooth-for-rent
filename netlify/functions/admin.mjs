@@ -278,6 +278,14 @@ export default safe(async (req, context) => {
       return json({ ok: true, name: rec.startName });
     }
 
+    case 'startcard': { // starting welcome card style: cardOnly true/false
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      rec.startCardOnly = !!b.cardOnly;
+      await putLicense(store, key, rec);
+      return json({ ok: true, startCardOnly: rec.startCardOnly });
+    }
+
     case 'create': {
       const lifetime = !!b.lifetime;
       const days = lifetime ? (intIn(b.days, 1, 365) || 1) : intIn(b.days, 1, 365);
@@ -311,7 +319,7 @@ export default safe(async (req, context) => {
         // Keep a dedicated Drive folder name. If neither field was supplied,
         // fall back to the code so the renter never has to configure Drive.
         const _allowedOr = ['landscape', 'portrait', 'either'];
-        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startName: String(b.startName || '').trim().slice(0, 60) || null, startsAt: start.value, print, traditional: !!b.traditional, gifOpt: b.gifOpt !== false, rushOpt: !!b.rushOpt, extras: normExtras(b.extras), retakeOpt: b.retakeOpt !== false, typesOpt: !!b.typesOpt, lockOpt: b.lockOpt !== false, payOpt: b.payOpt !== false, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, orientation: _allowedOr.includes(b.orientation) ? b.orientation : 'landscape', status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
+        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startName: String(b.startName || '').trim().slice(0, 60) || null, startCardOnly: !!b.startCardOnly, startsAt: start.value, print, traditional: !!b.traditional, gifOpt: b.gifOpt !== false, rushOpt: !!b.rushOpt, extras: normExtras(b.extras), retakeOpt: b.retakeOpt !== false, typesOpt: !!b.typesOpt, lockOpt: b.lockOpt !== false, payOpt: b.payOpt !== false, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, orientation: _allowedOr.includes(b.orientation) ? b.orientation : 'landscape', status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
         // A hand-made Lifetime code (for example a Messenger sale): Admin ticks that the buyer replied "I agree".
         if (lifetime && b.agreementAccepted) rec.agreement = { version: AGREEMENT_VERSION, acceptedAt: Date.now(), by: 'admin' };
         await putLicense(store, key, rec);

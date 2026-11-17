@@ -16878,9 +16878,66 @@
               <p class="panel-hint" id="attractHint" style="margin:6px 0 0;">Auto-generates a branded welcome card with
                 your event title, date, 3-step guest instructions, and a sample photo print.</p>
 
-              <div id="welcomeSampleCardRow" class="fb-card" style="margin-top:10px;">
-                <label class="switch-row" style="margin-top:0;"><span>Show sample photo print</span><input type="checkbox" id="welcomeSampleToggle" checked></label>
-                <p class="panel-hint" style="margin:4px 0 0;">Shows a sample print of the layout beside or above the card. Turn off to display just the branded welcome card centered.</p>
+              <div id="welcomeCardOptions">
+                <div id="welcomeSampleCardRow" class="fb-card" style="margin-top:10px;">
+                  <p class="sub-label" style="margin:0 0 6px;">Welcome card layout</p>
+                  <div class="chip-row" id="welcomeSampleChips" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                    <button type="button" class="chip" data-sample="card-only">Card only (Centered aesthetic)</button>
+                    <button type="button" class="chip active" data-sample="with-strip">With photo strip sample</button>
+                  </div>
+                  <input type="checkbox" id="welcomeSampleToggle" checked style="display:none;">
+                  <p class="panel-hint" style="margin:6px 0 0;"><b>Card only:</b> clean, perfectly centered aesthetic card (not tied to your layout). <b>With photo strip sample:</b> displays a sample strip of your layout beside the card.</p>
+                </div>
+
+                <div class="fb-card" style="margin-top:10px;">
+                  <p class="sub-label" style="margin:0 0 6px;">Card background colour</p>
+                  <div class="chip-row" id="welcomeCardBgChips">
+                    <button type="button" class="chip active" data-card-bg="#ffffff" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#ffffff;border:1px solid rgba(0,0,0,.2);display:inline-block;"></i>White</button>
+                    <button type="button" class="chip" data-card-bg="#18181B" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#18181B;border:1px solid rgba(255,255,255,.2);display:inline-block;"></i>Jet Black</button>
+                    <button type="button" class="chip" data-card-bg="#FFF0F5" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#FFF0F5;border:1px solid rgba(0,0,0,.15);display:inline-block;"></i>Blush Pink</button>
+                    <button type="button" class="chip" data-card-bg="#FDFBF7" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#FDFBF7;border:1px solid rgba(0,0,0,.15);display:inline-block;"></i>Warm Ivory</button>
+                    <button type="button" class="chip" data-card-bg="glass" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,0.7);border:1px dashed #999;display:inline-block;"></i>Frosted Glass</button>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                    <span class="sub-label" style="font-size:12px; margin:0;">Custom background:</span>
+                    <input type="color" id="welcomeCardBgCustom" value="#ffffff" style="width:34px; height:28px; padding:0; border:1px solid var(--line); border-radius:6px; cursor:pointer; background:none;">
+                  </div>
+                </div>
+
+                <div class="fb-card" style="margin-top:10px;">
+                  <p class="sub-label" style="margin:0 0 6px;">Card text &amp; font colour</p>
+                  <div class="chip-row" id="welcomeCardFontColorChips">
+                    <button type="button" class="chip active" data-font-color="" style="display:inline-flex; align-items:center; gap:6px;">Auto (adaptive)</button>
+                    <button type="button" class="chip" data-font-color="#111827" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#111827;display:inline-block;"></i>Jet Black</button>
+                    <button type="button" class="chip" data-font-color="#FFFFFF" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(0,0,0,.2);display:inline-block;"></i>Pure White</button>
+                    <button type="button" class="chip" data-font-color="#4B5563" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#4B5563;display:inline-block;"></i>Slate Grey</button>
+                    <button type="button" class="chip" data-font-color="#F28DA0" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#F28DA0;display:inline-block;"></i>Blush Pink</button>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                    <span class="sub-label" style="font-size:12px; margin:0;">Custom font colour:</span>
+                    <input type="color" id="welcomeCardFontCustom" value="#111827" style="width:34px; height:28px; padding:0; border:1px solid var(--line); border-radius:6px; cursor:pointer; background:none;">
+                  </div>
+                  <p class="panel-hint" style="margin:4px 0 0;">Sets the headline and details font colour on the card.</p>
+                </div>
+
+                <div class="fb-card" style="margin-top:10px;">
+                  <p class="sub-label" style="margin:0 0 6px;">Card shape &amp; corners</p>
+                  <div class="chip-row" id="welcomeCardShapeChips">
+                    <button type="button" class="chip active" data-radius="32">Modern Rounded (32px)</button>
+                    <button type="button" class="chip" data-radius="44">Pill / Ultra-curved (44px)</button>
+                    <button type="button" class="chip" data-radius="16">Sleek Minimal (16px)</button>
+                  </div>
+                </div>
+
+                <div class="fb-card" style="margin-top:10px;">
+                  <p class="sub-label" style="margin:0 0 6px;">Guest instructions look</p>
+                  <div class="chip-row" id="welcomeStepStyleChips">
+                    <button type="button" class="chip active" data-step-style="numbers">Numbered badges (1, 2, 3)</button>
+                    <button type="button" class="chip" data-step-style="bullets">Clean dots (&bull;)</button>
+                    <button type="button" class="chip" data-step-style="none">Minimalist (No steps)</button>
+                  </div>
+                  <p class="panel-hint" style="margin:4px 0 0;"><b>Minimalist:</b> hides the 3 steps entirely, creating a clean editorial billboard with just your logo, title, and start button.</p>
+                </div>
               </div>
 
               <div id="attractPosterRow" style="display:none; margin-top:12px;">
@@ -36559,6 +36616,10 @@
       var guestWelcomeStyle = 'full';       // guest screen between guests (laptop + guest screen): full = picture only | panel = with logo & welcome text
       var welcomeBtnOn = true;
       var welcomeSampleOn = true;
+      var welcomeCardBg = '#ffffff';
+      var welcomeCardFontColor = '';
+      var welcomeCardRadius = 32;
+      var welcomeStepStyle = 'numbers';
       var welcomeCustomOn = false;
       var welcomeGreeting = '';
       var welcomeTitle = '';
@@ -45104,10 +45165,128 @@
         });
       }
 
+      function setWelcomeSampleUI(on) {
+        welcomeSampleOn = !!on;
+        var chips = document.getElementById('welcomeSampleChips');
+        if (chips) {
+          [].forEach.call(chips.querySelectorAll('.chip'), function (c) {
+            c.classList.toggle('active', (c.dataset.sample === 'with-strip') === welcomeSampleOn);
+          });
+        }
+        var toggle = document.getElementById('welcomeSampleToggle');
+        if (toggle) toggle.checked = welcomeSampleOn;
+      }
+
+      function setWelcomeCardBgUI(bg) {
+        welcomeCardBg = bg || '#ffffff';
+        var chips = document.getElementById('welcomeCardBgChips');
+        if (chips) {
+          [].forEach.call(chips.querySelectorAll('.chip'), function (c) {
+            c.classList.toggle('active', (c.dataset.cardBg || '').toLowerCase() === welcomeCardBg.toLowerCase());
+          });
+        }
+        var customInp = document.getElementById('welcomeCardBgCustom');
+        if (customInp && welcomeCardBg.startsWith('#')) customInp.value = welcomeCardBg;
+      }
+
+      function setWelcomeCardFontColorUI(hex) {
+        welcomeCardFontColor = hex || '';
+        var chips = document.getElementById('welcomeCardFontColorChips');
+        if (chips) {
+          [].forEach.call(chips.querySelectorAll('.chip'), function (c) {
+            c.classList.toggle('active', (c.dataset.fontColor || '').toLowerCase() === (welcomeCardFontColor || '').toLowerCase());
+          });
+        }
+        var customInp = document.getElementById('welcomeCardFontCustom');
+        if (customInp && welcomeCardFontColor.startsWith('#')) customInp.value = welcomeCardFontColor;
+      }
+
+      function setWelcomeCardRadiusUI(r) {
+        welcomeCardRadius = Number(r) || 32;
+        var chips = document.getElementById('welcomeCardShapeChips');
+        if (chips) {
+          [].forEach.call(chips.querySelectorAll('.chip'), function (c) {
+            c.classList.toggle('active', Number(c.dataset.radius) === welcomeCardRadius);
+          });
+        }
+      }
+
+      function setWelcomeStepStyleUI(st) {
+        welcomeStepStyle = (st === 'bullets' || st === 'none') ? st : 'numbers';
+        var chips = document.getElementById('welcomeStepStyleChips');
+        if (chips) {
+          [].forEach.call(chips.querySelectorAll('.chip'), function (c) {
+            c.classList.toggle('active', c.dataset.stepStyle === welcomeStepStyle);
+          });
+        }
+      }
+
+      var welcomeSampleChips = document.getElementById('welcomeSampleChips');
+      if (welcomeSampleChips) {
+        welcomeSampleChips.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-sample]'); if (!b) return;
+          setWelcomeSampleUI(b.dataset.sample === 'with-strip');
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      var welcomeCardBgChips = document.getElementById('welcomeCardBgChips');
+      if (welcomeCardBgChips) {
+        welcomeCardBgChips.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-card-bg]'); if (!b) return;
+          setWelcomeCardBgUI(b.dataset.cardBg);
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      var welcomeCardBgCustom = document.getElementById('welcomeCardBgCustom');
+      if (welcomeCardBgCustom) {
+        welcomeCardBgCustom.addEventListener('input', function () {
+          setWelcomeCardBgUI(this.value);
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      var welcomeCardFontColorChips = document.getElementById('welcomeCardFontColorChips');
+      if (welcomeCardFontColorChips) {
+        welcomeCardFontColorChips.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-font-color]'); if (!b) return;
+          setWelcomeCardFontColorUI(b.dataset.fontColor);
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      var welcomeCardFontCustom = document.getElementById('welcomeCardFontCustom');
+      if (welcomeCardFontCustom) {
+        welcomeCardFontCustom.addEventListener('input', function () {
+          setWelcomeCardFontColorUI(this.value);
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      var welcomeCardShapeChips = document.getElementById('welcomeCardShapeChips');
+      if (welcomeCardShapeChips) {
+        welcomeCardShapeChips.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-radius]'); if (!b) return;
+          setWelcomeCardRadiusUI(b.dataset.radius);
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      var welcomeStepStyleChips = document.getElementById('welcomeStepStyleChips');
+      if (welcomeStepStyleChips) {
+        welcomeStepStyleChips.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-step-style]'); if (!b) return;
+          setWelcomeStepStyleUI(b.dataset.stepStyle);
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+
       var welcomeSampleToggle = document.getElementById('welcomeSampleToggle');
       if (welcomeSampleToggle) {
         welcomeSampleToggle.addEventListener('change', function () {
-          welcomeSampleOn = welcomeSampleToggle.checked;
+          setWelcomeSampleUI(welcomeSampleToggle.checked);
           scheduleWelcomeRender();
           if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
         });
@@ -45234,6 +45413,8 @@
         if (camHint) camHint.style.display = attractMode === 'camera' ? 'flex' : 'none';
         var cardBlock = document.getElementById('welcomeCardCustomBlock');
         if (cardBlock) cardBlock.style.display = attractMode === 'card' ? '' : 'none';
+        var cardOpts = document.getElementById('welcomeCardOptions');
+        if (cardOpts) cardOpts.style.display = attractMode === 'card' ? '' : 'none';
         var sampleCardRow = document.getElementById('welcomeSampleCardRow');
         if (sampleCardRow) sampleCardRow.style.display = attractMode === 'card' ? '' : 'none';
         try { if (typeof syncWelcomeFitUI === 'function') syncWelcomeFitUI(); } catch (e) { }
@@ -45701,9 +45882,25 @@
           }
 
           // Card with the event name and how it works
-          var cardColor = titleBgEnabled ? titleBgColor : '#ffffff';
-          var ink = colorDist(textColor, cardColor) > 140 ? textColor : (lumOf(cardColor) > 0.5 ? '#1C1A1E' : '#ffffff');
-          var soft = lumOf(cardColor) > 0.5 ? 'rgba(28,26,30,.62)' : 'rgba(255,255,255,.75)';
+          var cardColor = '#ffffff';
+          if (welcomeCardBg) {
+            cardColor = welcomeCardBg;
+          } else if (titleBgEnabled && titleBgColor) {
+            cardColor = titleBgColor;
+          }
+          var isGlass = cardColor === 'glass';
+          var fillCardColor = isGlass ? 'rgba(255,255,255,0.85)' : cardColor;
+          var isDarkCard = !isGlass && typeof lumOf === 'function' && lumOf(fillCardColor) <= 0.45;
+
+          var ink = '#111827';
+          if (welcomeCardFontColor) {
+            ink = welcomeCardFontColor;
+          } else if (isDarkCard) {
+            ink = '#ffffff';
+          } else {
+            ink = '#111827';
+          }
+          var soft = isDarkCard ? 'rgba(255,255,255,.72)' : 'rgba(28,26,30,.62)';
           var dt = currentDateLabel();
 
           var isCustom = !!welcomeCustomOn;
@@ -45714,7 +45911,7 @@
           var cardFont = isCustom && welcomeFont ? welcomeFont : currentFont;
           var cardSub = isCustom ? (welcomeSub !== '' ? welcomeSub : '') : dt;
           var cardSubFont = isCustom && welcomeFont ? welcomeFont : currentDateFont;
-          var showSteps = !isCustom || welcomeStepsOn !== false;
+          var showSteps = (!isCustom || welcomeStepsOn !== false) && welcomeStepStyle !== 'none';
 
           var defaultSteps = [hfMode === 'wave' ? 'Wave at the camera' : hfMode === 'smile' ? 'Smile at the camera' : 'Tap the screen', 'Strike a pose', 'Scan the QR for your photos'];
           var steps = [];
@@ -45764,10 +45961,15 @@
             var baseCardH = padY + (hasGreeting ? 32 : 10) + 72 + (cardSub ? 38 : 0) + (showSteps ? (22 + stepCount * stepH) : 10) + (welcomeBtnOn ? (24 + 80) : 0) + 32 + slotH;
             var ch = baseCardH;
 
-            var maxSampleH = showSample ? Math.min(500, Math.max(260, safeH - ch - 36)) : 0;
+            if (!showSample) {
+              var cy = Math.max(safeTop, Math.round((safeH - ch) / 2 + safeTop * 0.2));
+              return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: stepH, titleSize: titleSize, padY: padY, pw: 0, ph: 0, sampleX: 0, sampleY: 0 };
+            }
+
+            var maxSampleH = Math.min(500, Math.max(260, safeH - ch - 36));
             var maxSampleW = Math.min(W * 0.74, 560);
             var pw = 0, ph = 0;
-            if (showSample && sample && sample.width) {
+            if (sample && sample.width) {
               var k = Math.min(maxSampleW / sample.width, maxSampleH / sample.height);
               pw = sample.width * k;
               ph = sample.height * k;
@@ -45817,15 +46019,22 @@
           }
 
           // Draw branded details card (trendy aesthetic styling with soft shadow and subtle border)
+          var cardRadius = Number(welcomeCardRadius) || 32;
           ctx.save();
-          ctx.shadowColor = 'rgba(28,26,30,.14)'; ctx.shadowBlur = 48; ctx.shadowOffsetY = 16;
-          roundRectPath(ctx, cx, cy, cw, ch, 32);
-          ctx.globalAlpha = 0.96; ctx.fillStyle = cardColor; ctx.fill();
+          if (isDarkCard) {
+            ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 54; ctx.shadowOffsetY = 18;
+          } else {
+            ctx.shadowColor = 'rgba(28,26,30,.14)'; ctx.shadowBlur = 48; ctx.shadowOffsetY = 16;
+          }
+          roundRectPath(ctx, cx, cy, cw, ch, cardRadius);
+          ctx.globalAlpha = isGlass ? 0.84 : 0.98; ctx.fillStyle = fillCardColor; ctx.fill();
           ctx.restore();
 
           ctx.save();
-          roundRectPath(ctx, cx, cy, cw, ch, 32);
-          ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(28,26,30,0.06)'; ctx.stroke();
+          roundRectPath(ctx, cx, cy, cw, ch, cardRadius);
+          ctx.lineWidth = isDarkCard ? 1.5 : 1.2;
+          ctx.strokeStyle = isDarkCard ? 'rgba(255,255,255,0.12)' : (isGlass ? 'rgba(255,255,255,0.45)' : 'rgba(28,26,30,0.06)');
+          ctx.stroke();
           ctx.restore();
 
           ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
@@ -45854,11 +46063,17 @@
             var stepCol = welcomeBtnColor || accent || '#F28DA0';
             steps.forEach(function (t, i) {
               var sy = yy + (land ? 50 : 34) + i * stepH;
-              var r = land ? 22 : 16;
-              ctx.fillStyle = stepCol; ctx.beginPath(); ctx.arc(sx + r, sy - (r * 0.5), r, 0, Math.PI * 2); ctx.fill();
-              ctx.fillStyle = (typeof lumOf === 'function' && lumOf(stepCol) > 0.6) ? '#1C1A1E' : '#ffffff';
-              ctx.font = '800 ' + (land ? '24px' : '18px') + ' Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + r, sy - 2);
-              ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 ' + (land ? '31px' : '24px') + ' Manrope, sans-serif'; ctx.fillText(t, sx + r * 2 + 14, sy);
+              if (welcomeStepStyle === 'bullets') {
+                var r = land ? 7 : 5;
+                ctx.fillStyle = stepCol; ctx.beginPath(); ctx.arc(sx + (land ? 14 : 10), sy - (land ? 10 : 8), r, 0, Math.PI * 2); ctx.fill();
+                ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 ' + (land ? '31px' : '24px') + ' Manrope, sans-serif'; ctx.fillText(t, sx + (land ? 34 : 26), sy);
+              } else {
+                var r = land ? 22 : 16;
+                ctx.fillStyle = stepCol; ctx.beginPath(); ctx.arc(sx + r, sy - (r * 0.5), r, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = (typeof lumOf === 'function' && lumOf(stepCol) > 0.6) ? '#1C1A1E' : '#ffffff';
+                ctx.font = '800 ' + (land ? '24px' : '18px') + ' Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + r, sy - 2);
+                ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 ' + (land ? '31px' : '24px') + ' Manrope, sans-serif'; ctx.fillText(t, sx + r * 2 + 14, sy);
+              }
             });
           }
           if (welcomeBtnOn) {
@@ -49975,6 +50190,10 @@
           saverDimMin: saverDimMin, saverOffMin: saverOffMin,
           welcomeBtnOn: welcomeBtnOn,
           welcomeSampleOn: welcomeSampleOn,
+          welcomeCardBg: welcomeCardBg || '#ffffff',
+          welcomeCardFontColor: welcomeCardFontColor || '',
+          welcomeCardRadius: welcomeCardRadius || 32,
+          welcomeStepStyle: welcomeStepStyle || 'numbers',
           welcomeCustomOn: welcomeCustomOn,
           welcomeGreeting: welcomeGreeting,
           welcomeTitle: welcomeTitle,
@@ -50183,8 +50402,24 @@
             if (wmRow) wmRow.style.display = welcomeBtnOn ? '' : 'none';
           }
           if (typeof s.welcomeSampleOn === 'boolean') {
-            welcomeSampleOn = s.welcomeSampleOn;
-            if (welcomeSampleToggle) welcomeSampleToggle.checked = welcomeSampleOn;
+            if (typeof setWelcomeSampleUI === 'function') setWelcomeSampleUI(s.welcomeSampleOn);
+            else { welcomeSampleOn = s.welcomeSampleOn; if (welcomeSampleToggle) welcomeSampleToggle.checked = welcomeSampleOn; }
+          }
+          if (typeof s.welcomeCardBg === 'string') {
+            if (typeof setWelcomeCardBgUI === 'function') setWelcomeCardBgUI(s.welcomeCardBg);
+            else welcomeCardBg = s.welcomeCardBg;
+          }
+          if (typeof s.welcomeCardFontColor === 'string') {
+            if (typeof setWelcomeCardFontColorUI === 'function') setWelcomeCardFontColorUI(s.welcomeCardFontColor);
+            else welcomeCardFontColor = s.welcomeCardFontColor;
+          }
+          if (typeof s.welcomeCardRadius !== 'undefined') {
+            if (typeof setWelcomeCardRadiusUI === 'function') setWelcomeCardRadiusUI(s.welcomeCardRadius);
+            else welcomeCardRadius = Number(s.welcomeCardRadius) || 32;
+          }
+          if (typeof s.welcomeStepStyle === 'string') {
+            if (typeof setWelcomeStepStyleUI === 'function') setWelcomeStepStyleUI(s.welcomeStepStyle);
+            else welcomeStepStyle = s.welcomeStepStyle;
           }
           if (typeof s.welcomeCustomOn === 'boolean') {
             welcomeCustomOn = s.welcomeCustomOn;
@@ -50511,12 +50746,40 @@
             sfOffer = j.startFrame || null;
             slOffer = j.startLogo || null;
             snOffer = j.startName || null;
+            var scOffer = j.startCardOnly;
             sfFresh = !j.settings && !local;
             if (sfFresh && snOffer && (!labelInput.value.trim() || labelInput.value === 'Your Event')) {
               labelInput.value = snOffer;
               welcomeTitle = snOffer;
               welcomeCustomOn = true;
               welcomeGreeting = 'Welcome to';
+            }
+            if (sfFresh && typeof scOffer === 'boolean') {
+              setWelcomeSampleUI(!scOffer);
+            }
+            var isCharm = /charm/i.test((snOffer || '') + ' ' + (labelInput.value || '') + ' ' + ((window.__PB && window.__PB.label) || ''));
+            if (isCharm) {
+              welcomeSampleOn = false;
+              if (typeof setWelcomeSampleUI === 'function') setWelcomeSampleUI(false);
+              if (sfFresh) {
+                welcomeCardBg = '#ffffff';
+                if (typeof setWelcomeCardBgUI === 'function') setWelcomeCardBgUI('#ffffff');
+                welcomeCardFontColor = '#111827';
+                if (typeof setWelcomeCardFontColorUI === 'function') setWelcomeCardFontColorUI('#111827');
+                welcomeBtnColor = '#F28DA0';
+                if (typeof setWelcomeBtnColorUI === 'function') setWelcomeBtnColorUI('#F28DA0');
+                welcomeCardRadius = 32;
+                if (typeof setWelcomeCardRadiusUI === 'function') setWelcomeCardRadiusUI(32);
+                welcomeStepStyle = 'numbers';
+                if (typeof setWelcomeStepStyleUI === 'function') setWelcomeStepStyleUI('numbers');
+                welcomeFont = "'Dancing Script', cursive";
+                if (typeof selectWelcomeFontUI === 'function') selectWelcomeFontUI(welcomeFont);
+                welcomeGreeting = 'Welcome to';
+                welcomeTitle = snOffer || 'Charm Up PH';
+                welcomeCustomOn = true;
+                if (welcomeGreetingInput) welcomeGreetingInput.value = 'Welcome to';
+                if (welcomeTitleInput) welcomeTitleInput.value = welcomeTitle;
+              }
             }
             if (j.settings && (!local || (j.updatedAt || 0) > (local.updatedAt || 0))) {
               applySetup(j.settings, j.image || null);
@@ -50576,6 +50839,28 @@
           logo = { id: sl.id, name: String(sl.name || 'Logo').slice(0, 40) };
           brand.w = { on: true, id: sl.id, x: null, y: null, s: null };
           brand.c = { on: true, id: sl.id, x: null, y: null, s: null };
+          var isCharm = /charm/i.test((sl.name || '') + ' ' + (welcomeTitle || '') + ' ' + (labelInput.value || '') + ' ' + ((window.__PB && window.__PB.label) || ''));
+          if (isCharm) {
+            welcomeSampleOn = false;
+            if (typeof setWelcomeSampleUI === 'function') setWelcomeSampleUI(false);
+            welcomeCardBg = '#ffffff';
+            if (typeof setWelcomeCardBgUI === 'function') setWelcomeCardBgUI('#ffffff');
+            welcomeCardFontColor = '#111827';
+            if (typeof setWelcomeCardFontColorUI === 'function') setWelcomeCardFontColorUI('#111827');
+            welcomeBtnColor = '#F28DA0';
+            if (typeof setWelcomeBtnColorUI === 'function') setWelcomeBtnColorUI('#F28DA0');
+            welcomeCardRadius = 32;
+            if (typeof setWelcomeCardRadiusUI === 'function') setWelcomeCardRadiusUI(32);
+            welcomeStepStyle = 'numbers';
+            if (typeof setWelcomeStepStyleUI === 'function') setWelcomeStepStyleUI('numbers');
+            welcomeFont = "'Dancing Script', cursive";
+            if (typeof selectWelcomeFontUI === 'function') selectWelcomeFontUI(welcomeFont);
+            welcomeGreeting = 'Welcome to';
+            welcomeTitle = 'Charm Up PH';
+            welcomeCustomOn = true;
+            if (welcomeGreetingInput) welcomeGreetingInput.value = 'Welcome to';
+            if (welcomeTitleInput) welcomeTitleInput.value = 'Charm Up PH';
+          }
           if (typeof syncBrandUI === 'function') syncBrandUI();
           if (typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
           scheduleSetupSave();
@@ -50642,6 +50927,7 @@
       // style; everything can still be fine-tuned afterwards.
       var THEME_CATS = ['All', 'Receipt', 'Wedding', 'Birthday', 'Debut', 'Kids Party', 'Baby Shower', 'Graduation', 'Christening', 'Christmas', 'New Year', 'Summer', 'Anniversary', 'Prom', 'Corporate'];
       var THEMES = [
+        { id: 'charm-up-ph', name: 'Charm Up PH (Cute Aesthetic)', cats: ['Birthday', 'Debut', 'Wedding', 'Corporate'], tags: 'charm up ph blush pink cute aesthetic pastel ribbon chic', preset: 'blush', color: '#FFF5F7', frame: '#ffffff', text: '#111827', font: "'Dancing Script', cursive", dateFont: "'Quicksand', sans-serif", titleBg: false, welcomeSampleOn: false, welcomeCardBg: '#ffffff', welcomeCardFontColor: '#111827', welcomeBtnColor: '#F28DA0', welcomeFont: "'Dancing Script', cursive" },
         { id: 'cafe-receipt', name: 'Classic Cafe Receipt', cats: ['Receipt', 'Corporate'], tags: 'receipt thermal coffee cafe minimalist b&w retro barcode pos', layout: 'receipt', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Courier New', monospace", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'COFFEE & GOOD VIBES' },
         { id: 'wedding-receipt', name: 'Wedding Love Receipt', cats: ['Receipt', 'Wedding'], tags: 'receipt thermal wedding love eternal vows couple the wedding of', layout: 'receipt', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Cinzel', serif", dateFont: "'Cinzel', serif", titleStyle: 'wedding', kicker: 'The wedding of' },
         { id: 'cinema-ticket', name: 'Vintage Cinema Ticket', cats: ['Receipt', 'Birthday', 'Corporate'], tags: 'receipt thermal ticket admit one retro movie cinema barcode 1 shot', layout: 'receipt1', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Courier New', monospace", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'ADMIT ONE · VIP ACCESS' },
@@ -50971,6 +51257,13 @@
         useShadow = !!t.shadow; shadowToggle.checked = useShadow;
         titleStyle = t.titleStyle || 'classic'; kickerText = t.kicker || ''; titleUpper = !!t.upper;
         themeArt = (t.art || []).slice(); artPal = Object.assign({}, t.artPal || {});
+        if (t.welcomeSampleOn !== undefined && typeof setWelcomeSampleUI === 'function') setWelcomeSampleUI(t.welcomeSampleOn);
+        if (t.welcomeCardBg && typeof setWelcomeCardBgUI === 'function') setWelcomeCardBgUI(t.welcomeCardBg);
+        if (t.welcomeCardFontColor && typeof setWelcomeCardFontColorUI === 'function') setWelcomeCardFontColorUI(t.welcomeCardFontColor);
+        if (t.welcomeBtnColor && typeof setWelcomeBtnColorUI === 'function') setWelcomeBtnColorUI(t.welcomeBtnColor);
+        if (t.welcomeFont && typeof selectWelcomeFontUI === 'function') selectWelcomeFontUI(t.welcomeFont);
+        if (t.welcomeCardRadius && typeof setWelcomeCardRadiusUI === 'function') setWelcomeCardRadiusUI(t.welcomeCardRadius);
+        if (t.welcomeStepStyle && typeof setWelcomeStepStyleUI === 'function') setWelcomeStepStyleUI(t.welcomeStepStyle);
         refreshTitleUI();
         // opts.layout: the layout picked in the design preview (keep mine / the design's); else the design's own.
         var tl = opts && opts.layout !== undefined ? opts.layout : (t.layout && LAYOUT_DEFS[t.layout] ? t.layout : null);

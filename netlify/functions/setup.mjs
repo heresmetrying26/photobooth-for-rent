@@ -58,7 +58,7 @@ export default safe(async (req) => {
       const sf = ownerRec && ownerRec.startFrame;
       const sl = ownerRec && ownerRec.startLogo;
       const sn = ownerRec && (ownerRec.startName || null);
-      return json({ ok: true, settings: doc ? doc.settings : null, updatedAt: doc ? doc.updatedAt : 0, image: image || null, startFrame: sf ? { id: sf.id, name: sf.name } : null, startLogo: sl ? { id: sl.id, name: sl.name } : null, startName: sn });
+      return json({ ok: true, settings: doc ? doc.settings : null, updatedAt: doc ? doc.updatedAt : 0, image: image || null, startFrame: sf ? { id: sf.id, name: sf.name } : null, startLogo: sl ? { id: sl.id, name: sl.name } : null, startName: sn, startCardOnly: !!(ownerRec && ownerRec.startCardOnly) });
     }
 
     case 'save': {

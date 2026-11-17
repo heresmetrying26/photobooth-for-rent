@@ -1927,7 +1927,8 @@
             (l.startLogo ? '<button class="small" data-a="slogooff" data-c="' + c + '">Remove</button>' : '') +
             '<input type="file" class="hidden" accept="image/png,image/jpeg,image/webp" data-slogo-for="' + c + '">' +
             '&nbsp; Client name <button class="small" data-a="sname" data-c="' + c + '" title="Pre-set event or client brand name (client can still change it in Setup).">' + (l.startName ? esc(l.startName) + ' &middot; change' : 'Set name') + '</button>' +
-            (l.startName ? '<button class="small" data-a="snameoff" data-c="' + c + '">Clear</button>' : '') + '</div>') +
+            (l.startName ? '<button class="small" data-a="snameoff" data-c="' + c + '">Clear</button>' : '') +
+            '&nbsp; Welcome card <button class="small" data-a="scard" data-c="' + c + '" title="Toggle starting welcome card look: Card only (Centered) or With photo strip sample">' + (l.startCardOnly ? 'Card only' : 'With strip') + '</button>' + '</div>') +
           '<div class="printbox hidden" data-print-edit></div>' +
           '<div class="printbox hidden" data-pay-box></div>' +
           '<div class="printbox hidden" data-offkey-box></div>' +
@@ -2116,6 +2117,13 @@
           if (a === 'snameoff') {
             await api({ action: 'startname', code: code, name: '' });
             toast('Starting name cleared'); refresh(); return;
+          }
+          if (a === 'scard') {
+            var nextCardOnly = !(LIC[code] && LIC[code].startCardOnly);
+            await api({ action: 'startcard', code: code, cardOnly: nextCardOnly });
+            toast(nextCardOnly ? 'Starting card set to: Card only (Centered)' : 'Starting card set to: With photo strip');
+            refresh();
+            return;
           }
           if (a === 'portal') { await navigator.clipboard.writeText(location.origin + '/lifetime/#' + code); toast('Copied the My Events link for ' + code); return; }
           if (a === 'preview') { window.open('/?code=' + encodeURIComponent(code), '_blank'); return; }

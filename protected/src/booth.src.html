@@ -16185,6 +16185,17 @@
                   </div>
                 </div>
               </div>
+              <div class="fb-card" style="margin-top:10px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                  <p class="sub-label" style="margin:0;">Fine-tune position</p>
+                  <button type="button" class="remove-link" id="logoNudgeReset" style="display:inline;">Reset</button>
+                </div>
+                <p class="panel-hint" style="margin:4px 0 0;">Nudge the logo off the photos or title. Size is auto-limited on sideways sheets.</p>
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--ink-dim); font-weight:600; margin-top:8px;"><span>← Left</span><span>Right →</span></div>
+                <input type="range" id="logoDx" min="-40" max="40" value="0" style="width:100%; accent-color:var(--brand);">
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--ink-dim); font-weight:600; margin-top:6px;"><span>↑ Up</span><span>Down ↓</span></div>
+                <input type="range" id="logoDy" min="-40" max="40" value="0" style="width:100%; accent-color:var(--brand);">
+              </div>
             </div>
           </div>
 
@@ -49295,7 +49306,7 @@
           accent = ACCENTS[s.accent] ? s.accent : 'gold'; markAccentChips();
           var assetOk = function (id) { return typeof id === 'string' && /^a[A-Za-z0-9]{8,32}$/.test(id); };
           overlay = s.overlay && assetOk(s.overlay.id) ? { id: s.overlay.id, fit: s.overlay.fit === 'contain' ? 'contain' : 'stretch' } : null;
-          logo = s.logo && assetOk(s.logo.id) ? { id: s.logo.id, pos: LOGO_POS[s.logo.pos] ? s.logo.pos : 'br', size: Math.max(0.05, Math.min(0.5, Number(s.logo.size) || 0.2)) } : null;
+          logo = s.logo && assetOk(s.logo.id) ? { id: s.logo.id, pos: LOGO_POS[s.logo.pos] ? s.logo.pos : 'br', size: Math.max(0.05, Math.min(0.5, Number(s.logo.size) || 0.2)), dx: Math.max(-0.5, Math.min(0.5, Number(s.logo.dx) || 0)), dy: Math.max(-0.5, Math.min(0.5, Number(s.logo.dy) || 0)) } : null;
           decor = Array.isArray(s.decor) ? s.decor.filter(function (d) { return d && typeof d.src === 'string' && (/^b:[a-z-]+$/.test(d.src) ? !!STICKER_NAMES[d.src.slice(2)] : assetOk(d.src.slice(2))); }).slice(0, 30)
             .map(function (d) { return { src: d.src, x: +d.x || 0.5, y: +d.y || 0.5, s: Math.max(0.02, Math.min(1, +d.s || 0.2)), r: +d.r || 0 }; }) : [];
           guestStickersOn = !!s.guestStickersOn;
@@ -50804,8 +50815,15 @@
         if (logo) {
           var li = assetImg(logo.id);
           if (li) {
-            var lw = W * logo.size, lh = lw * li.height / li.width, m = W * 0.035, p = LOGO_POS[logo.pos] || LOGO_POS.br;
-            var lx = m + p[0] * (W - 2 * m - lw), ly = m + p[1] * (H - 2 * m - lh);
+            // Size follows the shorter side (so a sideways 4R sheet doesn't get a giant logo), and a logo can
+            // never be taller than ~22% of the sheet or wider than ~45%.
+            var base = Math.min(W, H * 0.67);
+            var lw = base * logo.size, lh = lw * li.height / li.width, m = base * 0.035, p = LOGO_POS[logo.pos] || LOGO_POS.br;
+            var capH = H * 0.22, capW = W * 0.45;
+            if (lh > capH) { lw *= capH / lh; lh = capH; }
+            if (lw > capW) { lh *= capW / lw; lw = capW; }
+            var lx = m + p[0] * (W - 2 * m - lw) + (logo.dx || 0) * W, ly = m + p[1] * (H - 2 * m - lh) + (logo.dy || 0) * H;
+            lx = Math.max(0, Math.min(W - lw, lx)); ly = Math.max(0, Math.min(H - lh, ly));
             ctx.drawImage(li, lx, ly, lw, lh);
           }
         }
@@ -50848,7 +50866,12 @@
         if (logo && ASSETS[logo.id]) logoThumb.src = ASSETS[logo.id].url;
         logoRemove.style.display = logo ? 'inline' : 'none';
         logoControls.style.display = logo ? 'block' : 'none';
-        if (logo) { logoPos.value = logo.pos; logoSize.value = Math.round(logo.size * 100); }
+        if (logo) {
+          logoPos.value = logo.pos; logoSize.value = Math.round(logo.size * 100);
+          var lxs = document.getElementById('logoDx'), lys = document.getElementById('logoDy');
+          if (lxs) lxs.value = Math.round((logo.dx || 0) * 100);
+          if (lys) lys.value = Math.round((logo.dy || 0) * 100);
+        }
         refreshLogoControlsUI();
         var clrBtn = document.getElementById('decorClear');
         if (clrBtn) clrBtn.style.display = decor.length ? 'inline-block' : 'none';
@@ -50876,7 +50899,7 @@
         try {
           var url = await readImageFile(f, 900);
           var id = await addAsset(url);
-          logo = { id: id, pos: logo ? logo.pos : 'br', size: logo ? logo.size : 0.2 };
+          logo = { id: id, pos: logo ? logo.pos : 'br', size: logo ? logo.size : 0.16, dx: logo ? logo.dx : 0, dy: logo ? logo.dy : 0 };
           refreshDecorUI(); redrawAll(); scheduleSetupSave(); refreshBrandUI();
         } catch (e) { showToast(e.message, 4000); }
       });
@@ -50895,8 +50918,18 @@
           logo.size = Number(logoSize.value) / 100;
           var sv = document.getElementById('logoSizeVal');
           if (sv) sv.textContent = Math.round(logo.size * 100) + '%';
-          redrawAll();
+          redrawAll(); scheduleSetupSave();
         }
+      });
+      ['Dx', 'Dy'].forEach(function (k) {
+        var el = document.getElementById('logo' + k);
+        if (el) el.addEventListener('input', function () {
+          if (logo) { logo[k.toLowerCase()] = Number(el.value) / 100; redrawAll(); scheduleSetupSave(); }
+        });
+      });
+      var logoNudgeReset = document.getElementById('logoNudgeReset');
+      if (logoNudgeReset) logoNudgeReset.addEventListener('click', function () {
+        if (logo) { logo.dx = 0; logo.dy = 0; refreshLogoControlsUI(); refreshDecorUI(); redrawAll(); scheduleSetupSave(); }
       });
 
       // ---- Your logo on the guest screen (Setup 5) ----

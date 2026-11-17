@@ -1088,10 +1088,11 @@ class BTBridge(
         val prefs = try { activity.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE) } catch (_: Exception) { null }
         val isBle = prefs?.getBoolean("last_printer_ble", false) == true
         val savedName = prefs?.getString("last_printer_name", null)
-        val device = try { adapter.bondedDevices?.find { it.address.equals(addr, true) } } catch (_: SecurityException) { null }
-            ?: if (isBle && BluetoothAdapter.checkBluetoothAddress(addr)) {
-                try { adapter.getRemoteDevice(addr) } catch (_: Exception) { null }
-            } else null
+        val bonded = try { adapter.bondedDevices?.find { it.address.equals(addr, true) } } catch (_: SecurityException) { null }
+        val ble = if (bonded == null && isBle && BluetoothAdapter.checkBluetoothAddress(addr)) {
+            try { adapter.getRemoteDevice(addr) } catch (_: Exception) { null }
+        } else null
+        val device: BluetoothDevice = bonded ?: ble
             ?: return JSONObject().put("ok", false).put("unpaired", true).put("error", "The printer is no longer paired")
         return try { JSONObject(connectToDevice(device, savedName)) } catch (_: Exception) { JSONObject().put("ok", false).put("error", "Could not connect") }
     }

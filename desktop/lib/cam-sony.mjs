@@ -7,7 +7,7 @@
 import { OK, BUSY, GoneError, CamError, sleep, hex, jpegStart, cutJpeg, downloadObject } from './ptp.mjs';
 
 const SONY_LV = 0xFFFFC002, SONY_PHOTO = 0xFFFFC001;
-export const SONY_HINT = 'On the camera set USB Connection to PC Remote (MENU > Setup > USB), quit Photos, Image Capture and Imaging Edge, switch the camera off and on, unplug and replug the USB cable, then try again.';
+export const SONY_HINT = 'On the camera enable PC Remote (MENU > Network > PC Remote Function > PC Remote: On, or MENU > Setup > USB > USB Connection: PC Remote), set Still Img. Save Dest. to PC Only and File Format to JPEG, quit Photos, Image Capture and Imaging Edge, switch the camera off and on, unplug and replug the USB cable, then try again.';
 
 const NAMES = {
   'ILCE-7M2': 'A7 II', 'ILCE-7M3': 'A7 III', 'ILCE-7M4': 'A7 IV', 'ILCE-7M5': 'A7 V',
@@ -21,39 +21,126 @@ export function sonyName(model) {
   return 'Sony ' + (NAMES[key] || (key === '' ? 'camera' : key));
 }
 
-// Current value of one property in the 0x9209 blob (-1 when it isn't there):
-// entries are  code(2) type(2) getset(1) enabled(1) default(size) current(size) ...
-export function sonyVal(d, code) {
-  for (let i = 8; i + 8 <= d.length; i++) {
-    if (d[i] !== (code & 0xFF) || d[i + 1] !== (code >> 8)) continue;
-    const type = d[i + 2] | (d[i + 3] << 8);
-    const size = (type === 1 || type === 2) ? 1 : (type === 3 || type === 4) ? 2 : (type === 5 || type === 6) ? 4 : 0;
-    if (size === 0 || d[i + 4] > 0x84 || d[i + 5] > 2) continue;
-    const cur = i + 6 + size;
-    if (cur + size > d.length) continue;
+function sonyScalarSize(t) {
+  if (t === 1 || t === 2) return 1;
+  if (t === 3 || t === 4) return 2;
+  if (t === 5 || t === 6) return 4;
+  if (t === 7 || t === 8) return 8;
+  if (t === 9 || t === 10) return 16;
+  return 0;
+}
+
+function sonyReadInt(d, pos, t) {
+  if (t === 1) return d.readInt8(pos);
+  if (t === 2) return d.readUInt8(pos);
+  if (t === 3) return d.readInt16LE(pos);
+  if (t === 4) return d.readUInt16LE(pos);
+  if (t === 5) return d.readInt32LE(pos);
+  if (t === 6) return d.readUInt32LE(pos);
+  if (t === 7 || t === 8) {
     let v = 0;
-    for (let k = 0; k < size; k++) v += d[cur + k] * 2 ** (8 * k);
+    for (let k = 0; k < 8; k++) v += d[pos + k] * 2 ** (8 * k);
     return v;
   }
   return -1;
 }
 
-// The frame starts with the offset of the JPEG inside it.
-export function sonyJpeg(d) {
-  let s = -1;
-  if (d.length > 8) {
-    const off = d.readUInt32LE(0);
-    if (off + 1 < d.length && d[off] === 0xFF && d[off + 1] === 0xD8) s = off;
+function sonySkipValue(d, pos, t) {
+  if (pos >= d.length) return -1;
+  if ((t & 0x4000) !== 0) {
+    if (pos + 4 > d.length) return -1;
+    const n = d.readUInt32LE(pos);
+    let p = pos + 4;
+    const base = t & 0x3FFF;
+    for (let k = 0; k < n; k++) { p = sonySkipValue(d, p, base); if (p < 0) return -1; }
+    return p;
   }
-  if (s < 0) s = jpegStart(d);
-  return s < 0 ? null : cutJpeg(d, s);
+  if (t === 0xFFFF) {
+    const n = d[pos];
+    const next = pos + 1 + n * 2;
+    return next <= d.length ? next : -1;
+  }
+  const sz = sonyScalarSize(t);
+  if (sz <= 0 || pos + sz > d.length) return -1;
+  return pos + sz;
 }
 
-// ctx: { ptp, ops, props, name, diag, log, note(text) }
+// Current value & PTP type of one property in the 0x9209 blob ({ val: -1, type: 0 } when absent):
+// header: count(4) reserved(4); entries: code(2) type(2) access(1) enabled(1) default(T) current(T) form(1) ...
+// Protocol v3 (0x12C, e.g. A7 III) sends TWO arrays for form=2 enums (n1 supported + n2 available).
+function sonyProp(d, code, ver = 2) {
+  if (!d || d.length < 8) return { val: -1, type: 0 };
+  const count = d.readUInt32LE(0);
+  const reserved = d.readUInt32LE(4);
+  if (reserved !== 0 || count > 8192) return { val: -1, type: 0 };
+  const limit = count > 0 ? count : 4096;
+  let pos = 8;
+  for (let idx = 0; idx < limit && pos + 7 <= d.length; idx++) {
+    const pCode = d.readUInt16LE(pos);
+    const type = d.readUInt16LE(pos + 2);
+    const getSet = d[pos + 4], enabled = d[pos + 5];
+    pos += 6; // skip code(2), type(2), access(1), enabled(1)
+    if (getSet > 0x84 || enabled > 2) break;
+    pos = sonySkipValue(d, pos, type); // default
+    if (pos < 0) break;
+    const curStart = pos;
+    pos = sonySkipValue(d, pos, type); // current
+    if (pos < 0 || pos + 1 > d.length) break;
+    if (pCode === code) {
+      const sz = sonyScalarSize(type);
+      const val = (sz > 0 && sz <= 8 && curStart + sz <= d.length) ? sonyReadInt(d, curStart, type) : -1;
+      return { val, type };
+    }
+    const form = d[pos++];
+    if (form === 1) {
+      for (let k = 0; k < 3; k++) { pos = sonySkipValue(d, pos, type); if (pos < 0) return { val: -1, type: 0 }; }
+    } else if (form === 2) {
+      if (pos + 2 > d.length) break;
+      const n1 = d.readUInt16LE(pos); pos += 2;
+      for (let k = 0; k < n1; k++) { pos = sonySkipValue(d, pos, type); if (pos < 0) return { val: -1, type: 0 }; }
+      if (ver >= 3 && pos + 2 <= d.length) {
+        const n2 = d.readUInt16LE(pos); pos += 2;
+        for (let k = 0; k < n2; k++) { pos = sonySkipValue(d, pos, type); if (pos < 0) return { val: -1, type: 0 }; }
+      }
+    } else if (form !== 0) {
+      break;
+    }
+  }
+  return { val: -1, type: 0 };
+}
+
+export function sonyVal(d, code, ver = 2) {
+  return sonyProp(d, code, ver).val;
+}
+
+// Live-view payload has [offset:u32][size:u32]...; fail closed if EOI (0xFF 0xD9) is missing.
+export function sonyJpeg(d) {
+  if (!d || d.length <= 8) return null;
+  const off = d.readUInt32LE(0);
+  const fsize = d.readUInt32LE(4);
+  if (off === 0 && fsize === 0) return null;
+  let s = -1;
+  if (off >= 8 && off + 1 < d.length && d[off] === 0xFF && d[off + 1] === 0xD8) s = off;
+  if (s < 0) s = jpegStart(d);
+  if (s < 0) return null;
+  const limit = (fsize > 0 && s + fsize <= d.length) ? s + fsize : d.length;
+  for (let k = limit - 2; k > s; k--) {
+    if (d[k] === 0xFF && d[k + 1] === 0xD9) {
+      const len = k + 2 - s;
+      return len <= 512 * 1024 ? Buffer.from(d.subarray(s, k + 2)) : null;
+    }
+  }
+  return null;
+}
+
+// ctx: { ptp, ops, props, name, model, product, diag, log, note(text) }
 export function createSony(ctx) {
   const { ptp, log } = ctx;
   const d = { brand: 'sony', live: false, lastShutterMs: 0 };
+  const isA7M3 = /ILCE-7M3/i.test(ctx.model || ctx.name || '');
   let clock = 0;   // when the connection was made
+  let ver = isA7M3 ? 3 : 2;
+  let destBlocked = false;
 
   const fail = (what, r) => new CamError('DRIVER The ' + ctx.name + " didn't accept remote control (" + what + ', ' + hex(r) + '). ' + SONY_HINT + ' [' + ctx.diag() + ']');
 
@@ -65,46 +152,90 @@ export function createSony(ctx) {
   const button = (prop, value) => ptp.opWrite(0x9207, Buffer.from([value & 0xFF, value >> 8]), prop);
   const release = async () => { try { await button(0xD2C2, 1); await button(0xD2C1, 1); } catch (e) { if (e instanceof GoneError) throw e; } };
 
+  async function connectPhase(phase) {
+    let r = 0;
+    for (let t = 0; t < 12; t++) {
+      r = (await ptp.opRead(0x9201, phase, 0, 0)).resp;
+      if (r === OK || r !== BUSY) return r;
+      await sleep(150);
+    }
+    return r;
+  }
+
+  function scalarBuf(val, type) {
+    if (type === 5 || type === 6) {
+      const b = Buffer.alloc(4); b.writeUInt32LE(val >>> 0, 0); return b;
+    }
+    if (type === 1 || type === 2) return Buffer.from([val & 0xFF]);
+    return Buffer.from([val & 0xFF, (val >> 8) & 0xFF]);
+  }
+
+  async function ensureSaveDest(curDest, destType = 4) {
+    if (curDest === 0x01) { destBlocked = false; return curDest; }
+    if (destBlocked && curDest !== 0x10) return curDest;
+    let ok = false;
+    for (const want of [0x01, 0x11]) {
+      try {
+        if (await ptp.opWrite(0x9205, scalarBuf(want, destType || 4), 0xD222) !== OK) continue;
+        if (sonyVal(await props(), 0xD222, ver) !== want) continue;   // the camera must really have taken it
+        ok = true;
+        destBlocked = (want !== 0x01);
+        ctx.note(want === 0x01 ? 'Photos go to the computer only (no memory card needed). ' : 'Photos go to the computer and the card. ');
+        log('Save destination 0x' + curDest.toString(16).toUpperCase() + ' -> 0x' + want.toString(16).toUpperCase());
+        return want;
+      } catch (e) { if (e instanceof GoneError) throw e; log('Save destination not changed: ' + e.message); }
+    }
+    if (!ok) {
+      destBlocked = true;
+      log('Could not change the save destination (it is 0x' + curDest.toString(16).toUpperCase() + '); photos may need a memory card');
+    }
+    return curDest;
+  }
+
   d.prepare = async () => {
     clock = 0;
+    destBlocked = false;
+    ver = isA7M3 ? 3 : 2;
     if (!ctx.ops.includes(0x9201) || !ctx.ops.includes(0x9202))
       throw new CamError('MODE The ' + ctx.name + ' is connected as a file-transfer drive, not for remote control. ' + SONY_HINT + ' [' + ctx.diag() + ']');
-    let r = (await ptp.opRead(0x9201, 1, 0, 0)).resp; if (r !== OK) throw fail('connect 1', r);
-    r = (await ptp.opRead(0x9201, 2, 0, 0)).resp; if (r !== OK) throw fail('connect 2', r);
-    let ver = 2;
+    let r = await connectPhase(1); if (r !== OK) throw fail('connect 1', r);
+    r = await connectPhase(2); if (r !== OK) throw fail('connect 2', r);
+    let askV2 = !isA7M3 && (/ILCE-6400/i.test(ctx.model || ctx.name || '') || ctx.product === 0x0CAA);
     for (let t = 0; t < 20; t++) {
-      const g = await ptp.opRead(0x9202, 0x12C, 1);
-      if (g.resp === OK && g.data.length >= 2) { ver = (g.data[0] | (g.data[1] << 8)) === 0x12C ? 3 : 2; break; }
+      const g = askV2 ? await ptp.opRead(0x9202, 0xC8) : await ptp.opRead(0x9202, 0x12C, 1);
+      if (g.resp === OK && g.data.length >= 2) { ver = (g.data[0] | (g.data[1] << 8)) >= 0x12C ? 3 : 2; break; }
+      if (!askV2 && (g.resp === 0x2005 || g.resp === 0x2006 || g.resp === 0x201D)) { askV2 = true; continue; }
       await sleep(100);
     }
-    r = (await ptp.opRead(0x9201, 3, 0, 0)).resp; if (r !== OK) throw fail('connect 3', r);
+    r = await connectPhase(3); if (r !== OK) throw fail('connect 3', r);
     clock = Date.now();
-    ctx.addDiag('sony protocol ' + ver);
+    ctx.addDiag('sony protocol ' + ver + (isA7M3 ? ' (ILCE-7M3)' : ''));
     log('Sony connected, protocol ' + ver);
-    // Remote control wins over the camera's own buttons ("application" priority).
+    // Clear any shutter button held down by an interrupted earlier session, then give remote control priority.
+    await release();
     try { await ptp.opWrite(0x9205, Buffer.from([1]), 0xD25A); }
     catch (e) { if (e instanceof GoneError) throw e; log('Priority mode not set: ' + e.message); }
-    // Several bodies (A7 III, A7R IV, ZV-1...) only take photos about 3 s after connecting:
+    // Several bodies (A7 III, A7R IV, A6400, ZV-1...) only take photos about 3 s after connecting:
     // wait here, while the booth shows "connecting", not during the first guest's photo.
     let p = Buffer.alloc(0);
-    while (Date.now() - clock < 3000) { p = await props(); await sleep(150); }
+    while (Date.now() - clock < 3000) {
+      const np = await props();
+      if (np.length) p = np;
+      await sleep(150);
+    }
+    if (!p.length) p = await props();
+    // Ensure Single Shooting mode (0x5013 = 1) so continuous/bracket drive doesn't fire bursts.
+    const scm = sonyProp(p, 0x5013, ver);
+    if (scm.val >= 0 && scm.val !== 1) {
+      try {
+        const sr = await ptp.opWrite(0x9205, scalarBuf(1, scm.type || 4), 0x5013);
+        if (sr === OK) log('Still capture mode ' + scm.val + ' -> 1');
+      } catch (e) { if (e instanceof GoneError) throw e; log('Still capture mode not changed: ' + e.message); }
+    }
     // Photos go straight to the computer ("PC Only"), so no memory card is needed: with PC + Camera or Camera Only some bodies
     // refuse to shoot when the card is missing. 1 = PC Only, 0x11 = PC + Camera, 0x10 = Camera Only.
-    const dest = sonyVal(p, 0xD222);
-    if (dest >= 0 && dest !== 0x01) {
-      let ok = false;
-      for (const want of [0x01, 0x11]) {
-        try {
-          if (await ptp.opWrite(0x9205, Buffer.from([want & 0xFF, want >> 8]), 0xD222) !== OK) continue;
-          if (sonyVal(await props(), 0xD222) !== want) continue;   // the camera must really have taken it
-          ok = true;
-          ctx.note(want === 0x01 ? 'Photos go to the computer only (no memory card needed). ' : 'Photos go to the computer and the card. ');
-          log('Save destination 0x' + dest.toString(16).toUpperCase() + ' -> 0x' + want.toString(16).toUpperCase());
-          break;
-        } catch (e) { if (e instanceof GoneError) throw e; log('Save destination not changed: ' + e.message); }
-      }
-      if (!ok) log('Could not change the save destination (it is 0x' + dest.toString(16).toUpperCase() + '); photos may need a memory card');
-    }
+    const dest = sonyProp(p, 0xD222, ver);
+    if (dest.val >= 0 && dest.val !== 0x01) await ensureSaveDest(dest.val, dest.type);
     d.live = true;   // Sony live view has no start command: the frames are simply there
   };
 
@@ -118,17 +249,14 @@ export function createSony(ctx) {
     const t0 = Date.now();
     let last = 0;
     while (Date.now() - t0 < 2500) {
-      let r;
-      try { r = (await ptp.opRead(0x1008, SONY_LV)).resp; }
-      catch (e) { if (e instanceof GoneError) throw e; r = OK; }
-      if (r === 0x2009) { last = r; await sleep(50); continue; }   // InvalidObjectHandle: not ready yet (up to 1 s on some bodies)
       const g = await ptp.opRead(0x1009, SONY_LV);
       last = g.resp;
-      if (g.resp === OK && g.data.length > 8) {
+      if (g.resp === OK) {
+        if (g.data.length === 8 || g.data.length === 0) { await sleep(15); continue; }   // 8 zero bytes = "no new frame yet"
         const j = sonyJpeg(g.data);
         if (j) return j;
       }
-      await sleep(g.resp === 0x200F ? 20 : 40);   // AccessDenied: asked too fast
+      await sleep(g.resp === 0x200F ? 20 : g.resp === 0x2009 ? 50 : 30);   // AccessDenied / InvalidObjectHandle
     }
     if (last !== OK && last !== BUSY && last !== 0 && last !== 0x2009)
       throw new CamError('LIVEVIEW The camera sends no live view (' + hex(last) + "). Check it is in PC Remote mode, the lens cap is off and the camera's menu is closed.");
@@ -139,11 +267,17 @@ export function createSony(ctx) {
     const t0 = Date.now();
     // The first photo right after connecting has to wait for the camera to settle.
     while (clock && Date.now() - clock < 3000) { await props(); await sleep(150); }
-    // A photo left in the camera's memory by an earlier attempt would be handed over instead of this one.
+    // A photo left in the camera's memory by an earlier attempt would be handed over instead of this one; also ensure save dest is PC.
+    let pre = Buffer.alloc(0);
     for (let k = 0; k < 4; k++) {
-      if (sonyVal(await props(), 0xD215) !== 0x8001) break;
+      pre = await props();
+      if (sonyVal(pre, 0xD215, ver) < 0x8000) break;
       await downloadObject(ptp, SONY_PHOTO, 0, []);
       log("Cleared an old photo from the camera's memory");
+    }
+    const curDest = sonyProp(pre, 0xD222, ver);
+    if (curDest.val === 0x10 || (!destBlocked && curDest.val >= 0 && curDest.val !== 0x01)) {
+      await ensureSaveDest(curDest.val, curDest.type);
     }
     // Half press, full press (the camera focuses, then shoots).
     const shutter = Date.now();
@@ -155,11 +289,11 @@ export function createSony(ctx) {
     }
     try {
       // Hold until focus is found (1 s at most). Manual focus needs no wait.
-      if (sonyVal(await props(), 0x500A) !== 1) {
+      if (sonyVal(await props(), 0x500A, ver) !== 1) {
         const hold = Date.now();
         while (Date.now() - hold < 1000) {
           const p = await props();
-          const ff = sonyVal(p, 0xD213), om = sonyVal(p, 0xD215);
+          const ff = sonyVal(p, 0xD213, ver), om = sonyVal(p, 0xD215, ver);
           if (ff === 2 || ff === 3 || om >= 0x8000) break;
           await sleep(50);
         }
@@ -169,7 +303,7 @@ export function createSony(ctx) {
     let mem = -1;
     const ew = Date.now();
     while (Date.now() - ew < 15000) {
-      mem = sonyVal(await props(), 0xD215);
+      mem = sonyVal(await props(), 0xD215, ver);
       if (mem >= 0x8000) break;
       await sleep(100);
     }
@@ -179,15 +313,54 @@ export function createSony(ctx) {
       throw new CamError("FOCUS The camera didn't take the photo. Point it at something with detail or set the lens to MF (manual focus), and check the camera's Still Img. Save Dest. is PC Only and its Release w/o Card setting is Enable.");
     }
     d.lastShutterMs = Math.min(Date.now() - shutter, 10000);
-    const img = await downloadObject(ptp, SONY_PHOTO, 0, notes);   // whole photo, or in 1 MB pieces
+    // Peek ObjectFormat when available so RAW+JPEG skips RAW and picks the JPEG, then drain any trailing queued RAW.
+    let img = Buffer.alloc(0);
+    let sawRaw = false;
+    for (let k = 0; k < 4; k++) {
+      let fmt = 0, size = 0;
+      try {
+        const oi = await ptp.opRead(0x1008, SONY_PHOTO);
+        if (oi.resp === OK && oi.data.length >= 12) {
+          fmt = oi.data.readUInt16LE(4);
+          size = oi.data.readUInt32LE(8);
+          notes.push('info ' + hex(oi.resp) + ' fmt ' + hex(fmt) + ' ' + size + ' B');
+        } else if (k > 0) break;
+      } catch (e) { if (e instanceof GoneError) throw e; if (k > 0) break; }
+      if (fmt !== 0 && fmt !== 0x3801) {
+        sawRaw = true;
+        await downloadObject(ptp, SONY_PHOTO, size, notes);
+        notes.push('skipped non-JPEG ' + hex(fmt));
+        const waitNext = Date.now();
+        let more = false;
+        while (Date.now() - waitNext < 4000) {
+          if (sonyVal(await props(), 0xD215, ver) >= 0x8000) { more = true; break; }
+          await sleep(60);
+        }
+        if (!more) break;
+        continue;
+      }
+      const b = await downloadObject(ptp, SONY_PHOTO, size, notes);
+      if (b.length >= 4 && b[0] === 0xFF && b[1] === 0xD8) { img = b; break; }
+      if (b.length >= 4) sawRaw = true;
+      if (sonyVal(await props(), 0xD215, ver) < 0x8000) break;
+    }
+    if (img.length >= 4 && sonyVal(await props(), 0xD215, ver) >= 0x8000) {
+      await downloadObject(ptp, SONY_PHOTO, 0, notes);
+      notes.push('drained trailing');
+    }
     log('Photo download: ' + notes.join('; '));
-    if (img.length < 4) throw new CamError("CAPTURE The photo didn't come through from the camera (" + notes.join('; ') + ').');
-    if (!(img[0] === 0xFF && img[1] === 0xD8)) throw new CamError('CAPTURE The camera saved a RAW photo. Set File Format to JPEG (or RAW + JPEG) on the camera.');
+    if (img.length < 4) {
+      if (sawRaw) throw new CamError('CAPTURE The camera saved a RAW photo. Set File Format to JPEG (or RAW + JPEG) on the camera.');
+      throw new CamError("CAPTURE The photo didn't come through from the camera (" + notes.join('; ') + ').');
+    }
     log('Photo ' + Math.round(img.length / 1024) + ' KB in ' + (Date.now() - t0) + ' ms');
     return img;
   };
 
-  d.close = async () => { d.live = false; };
+  d.close = async () => {
+    d.live = false;
+    try { await release(); } catch { /* ignore */ }
+  };
 
   return d;
 }

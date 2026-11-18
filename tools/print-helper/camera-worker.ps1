@@ -1408,7 +1408,7 @@ namespace Pb4uCam
         // set property 0x9205, buttons 0x9207 (shutter half press 0xD2C1, full press 0xD2C2),
         // live view = object 0xFFFFC002, a new photo = property 0xD215 >= 0x8000, then object 0xFFFFC001.
         const uint SONY_LV = 0xFFFFC002, SONY_PHOTO = 0xFFFFC001;
-        const string SONY_HINT = "On the camera set USB Connection to PC Remote (MENU > Setup > USB), close Imaging Edge and other camera apps, switch the camera off and on, unplug and replug the USB cable, then try again.";
+        const string SONY_HINT = "On the camera set PC Remote: On (MENU > Network > PC Remote Function) and USB Connection to PC Remote (MENU > Setup > USB), close Imaging Edge and other camera apps, switch the camera off and on, unplug and replug the USB cable, then try again.";
         static int sonyVer = 2;
         static Stopwatch sonyClock;
 
@@ -1439,34 +1439,8 @@ namespace Pb4uCam
             return new CamException("DRIVER The " + camName + " didn't accept remote control (" + what + ", " + H(r) + "). " + SONY_HINT + " [" + diag + "]");
         }
 
-        static void PrepareSony()
+        static void EnsureSonySaveDest(byte[] props)
         {
-            setupNote = "";
-            sonyClock = null;
-            if (!ops.Contains(0x9201) || !ops.Contains(0x9202))
-                throw new CamException("MODE The " + camName + " is connected as a file-transfer drive, not for remote control. " + SONY_HINT + " [" + diag + "]");
-            byte[] b; uint r;
-            r = SonyGet(0x9201, out b, 1, 0, 0); if (r != Ptp.OK) throw SonyFail("connect 1", r);
-            r = SonyGet(0x9201, out b, 2, 0, 0); if (r != Ptp.OK) throw SonyFail("connect 2", r);
-            sonyVer = 2;
-            for (int t = 0; t < 20; t++)
-            {
-                r = SonyGet(0x9202, out b, 0x12C, 1);
-                if (r == Ptp.OK && b.Length >= 2) { sonyVer = (b[0] | (b[1] << 8)) == 0x12C ? 3 : 2; break; }
-                Thread.Sleep(100);
-            }
-            r = SonyGet(0x9201, out b, 3, 0, 0); if (r != Ptp.OK) throw SonyFail("connect 3", r);
-            sonyClock = Stopwatch.StartNew();
-            diag += "; sony protocol " + sonyVer;
-            Log("Sony connected, protocol " + sonyVer);
-            // Remote control wins over the camera's own buttons ("application" priority).
-            try { ptp.OpWrite(0x9205, new byte[] { 1 }, 0xD25A); }
-            catch (GoneException) { throw; }
-            catch (Exception e) { Log("Priority mode not set: " + e.Message); }
-            // Several bodies (A7 III, A7R IV, ZV-1...) only take photos about 3 s after connecting:
-            // wait here, while the booth shows "connecting", not during the first guest's photo.
-            byte[] props = new byte[0];
-            while (sonyClock.ElapsedMilliseconds < 3000) { props = SonyProps(); Thread.Sleep(150); }
             // Photos go straight to the computer ("PC Only"), so no memory card is needed: with PC + Camera or
             // Camera Only some bodies refuse to shoot when the card is missing. 1 = PC Only, 0x11 = PC + Camera, 0x10 = Camera Only.
             long dest = SonyVal(props, 0xD222);
@@ -1489,6 +1463,58 @@ namespace Pb4uCam
                 }
                 if (!ok) Log("Could not change the save destination (it is 0x" + dest.ToString("X") + "); photos may need a memory card");
             }
+        }
+
+        static void PrepareSony()
+        {
+            setupNote = "";
+            sonyClock = null;
+            if (!ops.Contains(0x9201) || !ops.Contains(0x9202))
+                throw new CamException("MODE The " + camName + " is connected as a file-transfer drive, not for remote control. " + SONY_HINT + " [" + diag + "]");
+            byte[] b; uint r;
+            r = SonyGet(0x9201, out b, 1, 0, 0); if (r != Ptp.OK) throw SonyFail("connect 1", r);
+            r = SonyGet(0x9201, out b, 2, 0, 0); if (r != Ptp.OK) throw SonyFail("connect 2", r);
+            sonyVer = 2;
+            // Older/mid Alpha bodies (e.g. A6400) expect protocol 0xC8 (200); newer bodies use 0x12C (300).
+            bool preferV2 = (camModel ?? "").IndexOf("6400", StringComparison.OrdinalIgnoreCase) >= 0;
+            uint vFirst = preferV2 ? 0xC8U : 0x12CU, vSecond = preferV2 ? 0x12CU : 0xC8U;
+            for (int t = 0; t < 20; t++)
+            {
+                r = SonyGet(0x9202, out b, vFirst, 1);
+                if (r == Ptp.OK && b.Length >= 2) { sonyVer = (b[0] | (b[1] << 8)) >= 0x12C ? 3 : 2; break; }
+                if (r != Ptp.BUSY)
+                {
+                    byte[] b2; uint r2 = SonyGet(0x9202, out b2, vSecond, 1);
+                    if (r2 == Ptp.OK && b2.Length >= 2) { sonyVer = (b2[0] | (b2[1] << 8)) >= 0x12C ? 3 : 2; break; }
+                }
+                Thread.Sleep(100);
+            }
+            r = SonyGet(0x9201, out b, 3, 0, 0); if (r != Ptp.OK) throw SonyFail("connect 3", r);
+            sonyClock = Stopwatch.StartNew();
+            diag += "; sony protocol " + sonyVer;
+            Log("Sony connected, protocol " + sonyVer);
+            // Remote control wins over the camera's own buttons ("application" priority).
+            try { ptp.OpWrite(0x9205, new byte[] { 1 }, 0xD25A); }
+            catch (GoneException) { throw; }
+            catch (Exception e) { Log("Priority mode not set: " + e.Message); }
+            // Several bodies (A7 III, A7R IV, ZV-1...) only take photos about 3 s after connecting:
+            // wait here, while the booth shows "connecting", not during the first guest's photo.
+            byte[] props = new byte[0];
+            while (sonyClock.ElapsedMilliseconds < 3000) { props = SonyProps(); Thread.Sleep(150); }
+            if (props.Length == 0) props = SonyProps();
+            // Ensure Single Shooting mode (0x5013 = 1) so continuous/bracket drive doesn't fire bursts.
+            long scm = SonyVal(props, 0x5013);
+            if (scm >= 0 && scm != 1)
+            {
+                try
+                {
+                    uint sr = ptp.OpWrite(0x9205, new byte[] { 1, 0 }, 0x5013);
+                    if (sr == Ptp.OK) Log("Still capture mode " + scm + " -> 1");
+                }
+                catch (GoneException) { throw; }
+                catch (Exception e) { Log("Still capture mode not changed: " + e.Message); }
+            }
+            EnsureSonySaveDest(props);
             live = true;    // Sony live view has no start command: the frames are simply there
         }
 
@@ -1498,21 +1524,91 @@ namespace Pb4uCam
             uint r = SonyGet(0x9209, out b);
             return r == Ptp.OK ? b : new byte[0];
         }
-        // Current value of one property in the 0x9209 blob (-1 when it isn't there):
-        // entries are  code(2) type(2) getset(1) enabled(1) default(size) current(size) ...
+        static int SonyScalarSize(ushort dtype)
+        {
+            if (dtype == 1 || dtype == 2) return 1;
+            if (dtype == 3 || dtype == 4) return 2;
+            if (dtype == 5 || dtype == 6) return 4;
+            if (dtype == 7 || dtype == 8) return 8;
+            return 0;
+        }
+        static bool SonyReadInt(byte[] d, ref int off, ushort dtype, out long val)
+        {
+            val = -1;
+            int sz = SonyScalarSize(dtype);
+            if (sz == 0 || off + sz > d.Length) return false;
+            if (dtype == 1) val = (sbyte)d[off];
+            else if (dtype == 2) val = d[off];
+            else if (dtype == 3) val = (short)(d[off] | (d[off + 1] << 8));
+            else if (dtype == 4) val = (ushort)(d[off] | (d[off + 1] << 8));
+            else if (dtype == 5) val = (int)U32(d, off);
+            else if (dtype == 6) val = U32(d, off);
+            else { long u = 0; for (int k = 0; k < 8; k++) u |= (long)d[off + k] << (8 * k); val = u; }
+            off += sz;
+            return true;
+        }
+        static bool SonySkipValue(byte[] d, ref int off, ushort dtype)
+        {
+            if (dtype == 0xFFFF)
+            {
+                if (off >= d.Length) return false;
+                int n = d[off++];
+                if (off + n * 2 > d.Length) return false;
+                off += n * 2;
+                return true;
+            }
+            if (dtype >= 0x4001 && dtype <= 0x4008)
+            {
+                if (off + 4 > d.Length) return false;
+                uint n = U32(d, off); off += 4;
+                int esz = SonyScalarSize((ushort)(dtype & 0x0FFF));
+                if (esz == 0 || n > 4096 || off + (long)n * esz > d.Length) return false;
+                off += (int)n * esz;
+                return true;
+            }
+            int sz = SonyScalarSize(dtype);
+            if (sz == 0 || off + sz > d.Length) return false;
+            off += sz;
+            return true;
+        }
+        // Current value of one property in the 0x9209 blob (-1 when absent):
+        // header is count(4) reserved(4); each entry is code(2) type(2) getset(1) enabled(1) default cur form ...
         static long SonyVal(byte[] d, ushort code)
         {
-            for (int i = 8; i + 8 <= d.Length; i++)
+            if (d == null || d.Length < 8) return -1;
+            uint count = U32(d, 0), reserved = U32(d, 4);
+            if (reserved != 0 || count > 8192) return -1;
+            int off = 8;
+            for (uint idx = 0; idx < count && off + 6 <= d.Length; idx++)
             {
-                if (d[i] != (byte)(code & 0xFF) || d[i + 1] != (byte)(code >> 8)) continue;
-                int type = d[i + 2] | (d[i + 3] << 8);
-                int size = (type == 1 || type == 2) ? 1 : (type == 3 || type == 4) ? 2 : (type == 5 || type == 6) ? 4 : 0;
-                if (size == 0 || d[i + 4] > 0x84 || d[i + 5] > 2) continue;
-                int cur = i + 6 + size;
-                if (cur + size > d.Length) continue;
-                long v = 0;
-                for (int k = 0; k < size; k++) v |= (long)d[cur + k] << (8 * k);
-                return v;
+                ushort pcode = (ushort)(d[off] | (d[off + 1] << 8));
+                ushort dtype = (ushort)(d[off + 2] | (d[off + 3] << 8));
+                byte getSet = d[off + 4], enabled = d[off + 5];
+                off += 6;
+                if (getSet > 0x84 || enabled > 2) break;
+                if (!SonySkipValue(d, ref off, dtype)) break;
+                long curVal; bool hasCur;
+                if (dtype >= 1 && dtype <= 8) hasCur = SonyReadInt(d, ref off, dtype, out curVal);
+                else { curVal = -1; hasCur = false; if (!SonySkipValue(d, ref off, dtype)) break; }
+                if (pcode == code) return hasCur ? curVal : -1;
+                if (off >= d.Length) break;
+                byte form = d[off++];
+                if (form == 1)
+                {
+                    if (!SonySkipValue(d, ref off, dtype) || !SonySkipValue(d, ref off, dtype) || !SonySkipValue(d, ref off, dtype)) break;
+                }
+                else if (form == 2)
+                {
+                    if (off + 2 > d.Length) break;
+                    int n1 = d[off] | (d[off + 1] << 8); off += 2;
+                    for (int k = 0; k < n1; k++) if (!SonySkipValue(d, ref off, dtype)) return -1;
+                    if (sonyVer >= 3 && off + 2 <= d.Length)
+                    {
+                        int n2 = d[off] | (d[off + 1] << 8); off += 2;
+                        for (int k = 0; k < n2; k++) if (!SonySkipValue(d, ref off, dtype)) return -1;
+                    }
+                }
+                else if (form != 0) break;
             }
             return -1;
         }
@@ -1524,16 +1620,18 @@ namespace Pb4uCam
 
         static byte[] SonyJpeg(byte[] d)
         {
+            if (d == null || d.Length <= 8) return null;
+            uint off = U32(d, 0);    // header has JPEG offset + size; 8 zero bytes = no frame ready yet
+            uint fsize = U32(d, 4);
+            if (off == 0 && fsize == 0) return null;
             int s = -1;
-            if (d.Length > 8)
-            {
-                uint off = U32(d, 0);    // the frame starts with the offset of the JPEG inside it
-                if (off + 1 < (uint)d.Length && d[off] == 0xFF && d[off + 1] == 0xD8) s = (int)off;
-            }
+            if (off >= 8 && off + 1 < (uint)d.Length && d[off] == 0xFF && d[off + 1] == 0xD8) s = (int)off;
             if (s < 0) s = JpegStart(d);
             if (s < 0) return null;
-            int e = d.Length;
-            for (int k = d.Length - 2; k > s; k--) if (d[k] == 0xFF && d[k + 1] == 0xD9) { e = k + 2; break; }
+            int limit = (fsize > 0 && (long)s + fsize <= d.Length) ? (int)(s + fsize) : d.Length;
+            int e = -1;
+            for (int k = limit - 2; k > s; k--) if (d[k] == 0xFF && d[k + 1] == 0xD9) { e = k + 2; break; }
+            if (e <= s || e - s > 524288) return null;
             var o = new byte[e - s];
             Array.Copy(d, s, o, 0, o.Length);
             return o;
@@ -1546,24 +1644,41 @@ namespace Pb4uCam
             uint last = 0;
             while (sw.ElapsedMilliseconds < 2500)
             {
-                uint r;
-                try { byte[] oi; r = ptp.OpRead(0x1008, out oi, SONY_LV); }
-                catch (GoneException) { throw; }
-                catch (Exception) { r = Ptp.OK; }
-                if (r == 0x2009) { last = r; Thread.Sleep(50); continue; }   // InvalidObjectHandle: not ready yet (up to 1 s on some bodies)
                 byte[] lv;
-                r = ptp.OpRead(0x1009, out lv, SONY_LV);
+                uint r = ptp.OpRead(0x1009, out lv, SONY_LV);
                 last = r;
-                if (r == Ptp.OK && lv.Length > 8)
+                if (r == Ptp.OK)
                 {
-                    var j = SonyJpeg(lv);
-                    if (j != null) return j;
+                    if (lv != null && lv.Length > 8)
+                    {
+                        var j = SonyJpeg(lv);
+                        if (j != null) return j;
+                    }
+                    Thread.Sleep(25);
+                    continue;
                 }
+                if (r == 0x2009) { Thread.Sleep(50); continue; }   // InvalidObjectHandle: not ready yet
                 Thread.Sleep(r == 0x200F ? 20 : 40);    // AccessDenied: asked too fast
             }
             if (last != Ptp.OK && last != Ptp.BUSY && last != 0 && last != 0x2009)
                 throw new CamException("LIVEVIEW The camera sends no live view (" + H(last) + "). Check it is in PC Remote mode, the lens cap is off and the camera's menu is closed.");
             return null;
+        }
+
+        static void SonyInfo(out ushort fmt, out uint size, out uint ro)
+        {
+            fmt = 0; size = 0; ro = 0;
+            try
+            {
+                byte[] oi; ro = ptp.OpRead(0x1008, out oi, SONY_PHOTO);
+                if (ro == Ptp.OK && oi.Length >= 12)
+                {
+                    fmt = (ushort)(oi[4] | (oi[5] << 8));
+                    size = U32(oi, 8);
+                }
+            }
+            catch (GoneException) { throw; }
+            catch (Exception e) { Log("Sony info failed: " + e.Message); }
         }
 
         static byte[] SonyCapture()
@@ -1572,10 +1687,11 @@ namespace Pb4uCam
             string cd = "";
             // The first photo right after connecting has to wait for the camera to settle.
             while (sonyClock != null && sonyClock.ElapsedMilliseconds < 3000) { SonyProps(); Thread.Sleep(150); }
+            EnsureSonySaveDest(SonyProps());
             // A photo left in the camera's memory by an earlier attempt would be handed over instead of this one.
             for (int k = 0; k < 4; k++)
             {
-                if (SonyVal(SonyProps(), 0xD215) != 0x8001) break;
+                if (SonyVal(SonyProps(), 0xD215) < 0x8000) break;
                 string junk = "";
                 CanonDownload(SONY_PHOTO, 0, ref junk);
                 Log("Cleared an old photo from the camera's memory");
@@ -1623,18 +1739,58 @@ namespace Pb4uCam
                 Log("No photo appeared: " + cd);
                 throw new CamException("FOCUS The camera didn't take the photo. Point it at something with detail or set the lens to MF (manual focus), and check the camera's Still Img. Save Dest. is PC Only and its Release w/o Card setting is Enable.");
             }
-            uint size = 0;
+            // RAW+JPEG bodies can queue RAW (0x3000/0xB101) before or after JPEG (0x3801): peek format and skip RAW.
+            ushort fmt = 0; uint size = 0, ro = 0; bool sawRaw = false;
+            byte[] img = new byte[0];
+            for (int attempt = 0; attempt < 3; attempt++)
+            {
+                SonyInfo(out fmt, out size, out ro);
+                cd += "; info " + H(ro) + " fmt " + H(fmt) + " " + size + " B";
+                if (fmt != 0 && fmt != 0x3801)
+                {
+                    sawRaw = true;
+                    string junk = "";
+                    CanonDownload(SONY_PHOTO, size, ref junk);
+                    Log("Skipped non-JPEG Sony object " + H(fmt) + " (" + size + " B)");
+                    var waitNext = Stopwatch.StartNew();
+                    bool more = false;
+                    while (waitNext.ElapsedMilliseconds < 4000)
+                    {
+                        if (SonyVal(SonyProps(), 0xD215) >= 0x8000) { more = true; break; }
+                        Thread.Sleep(60);
+                    }
+                    if (!more) break;
+                    continue;
+                }
+                img = CanonDownload(SONY_PHOTO, size, ref cd);   // whole photo, or in 1 MB pieces
+                if (img.Length >= 4 && img[0] == 0xFF && img[1] == 0xD8) break;
+                sawRaw = img.Length >= 4 || sawRaw;
+            }
+            // Drain any trailing queued RAW object so the next shot starts clean.
             try
             {
-                byte[] oi; uint ro = ptp.OpRead(0x1008, out oi, SONY_PHOTO);
-                if (ro == Ptp.OK && oi.Length >= 12) size = U32(oi, 8);
-                cd += "; info " + H(ro) + " " + size + " B";
+                for (int k = 0; k < 2; k++)
+                {
+                    if (SonyVal(SonyProps(), 0xD215) < 0x8000) break;
+                    ushort dfmt; uint dsize, dro;
+                    SonyInfo(out dfmt, out dsize, out dro);
+                    if (dro != Ptp.OK || (dfmt != 0 && dfmt != 0x3801))
+                    {
+                        string junk = "";
+                        CanonDownload(SONY_PHOTO, dsize, ref junk);
+                        Log("Drained trailing Sony object " + H(dfmt));
+                    }
+                    else break;
+                }
             }
             catch (GoneException) { throw; }
-            catch (Exception e) { cd += "; info failed " + e.Message; }
-            byte[] img = CanonDownload(SONY_PHOTO, size, ref cd);   // whole photo, or in 1 MB pieces
+            catch { }
             Log("Photo download: " + cd);
-            if (img.Length < 4) throw new CamException("CAPTURE The photo didn't come through from the camera (" + cd + ").");
+            if (img.Length < 4)
+            {
+                if (sawRaw) throw new CamException("CAPTURE The camera saved a RAW photo. Set File Format to JPEG (or RAW + JPEG) on the camera.");
+                throw new CamException("CAPTURE The photo didn't come through from the camera (" + cd + ").");
+            }
             if (!(img[0] == 0xFF && img[1] == 0xD8)) throw new CamException("CAPTURE The camera saved a RAW photo. Set File Format to JPEG (or RAW + JPEG) on the camera.");
             Log("Photo " + (img.Length / 1024) + " KB in " + sw.ElapsedMilliseconds + " ms");
             return img;

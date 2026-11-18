@@ -120,6 +120,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
 
     // Sony state
     private var sonyAt: UInt64 = 0
+    private var sonyVer = 2
 
     // Generic PTP / didAdd capture waiter
     private let genericLock = NSLock()
@@ -142,7 +143,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     private let SONY_LV: UInt32 = 0xFFFFC002
     private let SONY_PHOTO: UInt32 = 0xFFFFC001
     private let SDRAM_HANDLE: UInt32 = 0xFFFF0001
-    private let SONY_HINT = "On the camera set USB Connection to PC Remote (MENU > Setup > USB), switch the camera off and on, unplug and replug the USB cable, then try again."
+    private let SONY_HINT = "On the camera set PC Remote: On (MENU > Network > PC Remote Function) and USB Connection to PC Remote (MENU > Setup > USB), switch the camera off and on, unplug and replug the USB cable, then try again."
 
     private struct CamErr: Error {
         let code: String
@@ -685,6 +686,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         canonNew.removeAll()
         gotFrame = false
         sonyAt = 0
+        sonyVer = 2
         shotFocus = ""
         setCachedCamera(open: false, name: "")
     }
@@ -1740,22 +1742,96 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         return r.code == PTP_OK ? r.data : Data()
     }
 
+    private func sonyScalarSize(_ dtype: UInt16) -> Int {
+        switch dtype {
+        case 1, 2: return 1
+        case 3, 4: return 2
+        case 5, 6: return 4
+        case 7, 8: return 8
+        default: return 0
+        }
+    }
+
+    private func sonyReadInt(_ d: Data, _ off: inout Int, _ dtype: UInt16) -> Int64? {
+        let sz = sonyScalarSize(dtype)
+        guard sz > 0, off + sz <= d.count else { return nil }
+        let val: Int64
+        switch dtype {
+        case 1: val = Int64(Int8(bitPattern: d[off]))
+        case 2: val = Int64(d[off])
+        case 3: val = Int64(Int16(bitPattern: le16(d, off)))
+        case 4: val = Int64(le16(d, off))
+        case 5: val = Int64(Int32(bitPattern: le32(d, off)))
+        case 6: val = Int64(le32(d, off))
+        default:
+            var u: UInt64 = 0
+            for k in 0..<8 { u |= UInt64(d[off + k]) << (8 * k) }
+            val = Int64(bitPattern: u)
+        }
+        off += sz
+        return val
+    }
+
+    private func sonySkipValue(_ d: Data, _ off: inout Int, _ dtype: UInt16) -> Bool {
+        if dtype == 0xFFFF {
+            guard off < d.count else { return false }
+            let n = Int(d[off]); off += 1
+            guard off + n * 2 <= d.count else { return false }
+            off += n * 2
+            return true
+        }
+        if dtype >= 0x4001 && dtype <= 0x4008 {
+            guard off + 4 <= d.count else { return false }
+            let n = Int(le32(d, off)); off += 4
+            let esz = sonyScalarSize(dtype & 0x0FFF)
+            guard esz > 0, n >= 0, n <= 4096, off + n * esz <= d.count else { return false }
+            off += n * esz
+            return true
+        }
+        let sz = sonyScalarSize(dtype)
+        guard sz > 0, off + sz <= d.count else { return false }
+        off += sz
+        return true
+    }
+
     private func sonyVal(_ d: Data, code: UInt16) -> Int64 {
-        let lo = UInt8(code & 0xFF)
-        let hi = UInt8((code >> 8) & 0xFF)
-        var i = 8
-        while i + 8 <= d.count {
-            if d[i] != lo || d[i + 1] != hi { i += 1; continue }
-            let type = UInt16(d[i + 2]) | (UInt16(d[i + 3]) << 8)
-            let size = (type == 1 || type == 2) ? 1 : (type == 3 || type == 4) ? 2 : (type == 5 || type == 6) ? 4 : 0
-            if size == 0 || d[i + 4] > 0x84 || d[i + 5] > 2 { i += 1; continue }
-            let cur = i + 6 + size
-            if cur + size > d.count { i += 1; continue }
-            var v: Int64 = 0
-            for k in 0..<size {
-                v |= Int64(d[cur + k]) << (8 * k)
+        guard d.count >= 8 else { return -1 }
+        let count = le32(d, 0)
+        let reserved = le32(d, 4)
+        guard reserved == 0, count <= 8192 else { return -1 }
+        var off = 8
+        var idx: UInt32 = 0
+        while idx < count && off + 6 <= d.count {
+            idx += 1
+            let pcode = le16(d, off)
+            let dtype = le16(d, off + 2)
+            let getSet = d[off + 4]
+            let enabled = d[off + 5]
+            off += 6
+            if getSet > 0x84 || enabled > 2 { break }
+            if !sonySkipValue(d, &off, dtype) { break }
+            var curVal: Int64? = nil
+            if dtype >= 1 && dtype <= 8 {
+                curVal = sonyReadInt(d, &off, dtype)
+            } else if !sonySkipValue(d, &off, dtype) {
+                break
             }
-            return v
+            if pcode == code { return curVal ?? -1 }
+            guard off < d.count else { break }
+            let form = d[off]; off += 1
+            if form == 1 {
+                if !sonySkipValue(d, &off, dtype) || !sonySkipValue(d, &off, dtype) || !sonySkipValue(d, &off, dtype) { break }
+            } else if form == 2 {
+                guard off + 2 <= d.count else { break }
+                let n1 = Int(le16(d, off)); off += 2
+                for _ in 0..<n1 { if !sonySkipValue(d, &off, dtype) { return -1 } }
+                if sonyVer >= 3 && off + 2 <= d.count {
+                    let n2 = Int(le16(d, off)); off += 2
+                    for _ in 0..<n2 { if !sonySkipValue(d, &off, dtype) { return -1 } }
+                }
+            } else if form != 0 {
+                break
+            }
         }
         return -1
     }
@@ -1764,6 +1840,21 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     private func sonyButton(_ prop: UInt32, _ value: UInt16) throws -> UInt16 {
         let b = Data([UInt8(value & 0xFF), UInt8((value >> 8) & 0xFF)])
         return try opWrite(0x9207, data: b, prop)
+    }
+
+    private func ensureSonySaveDest(_ p: Data) {
+        let dest = sonyVal(p, code: 0xD222)
+        if dest >= 0 && dest != 0x01 {
+            for want in [UInt16(0x01), UInt16(0x11)] {
+                let d = Data([UInt8(want & 0xFF), UInt8((want >> 8) & 0xFF)])
+                if let wr = try? opWrite(0x9205, data: d, 0xD222), wr == PTP_OK,
+                   let checkProps = try? sonyProps(), sonyVal(checkProps, code: 0xD222) == Int64(want) {
+                    setupNote += (want == 0x01) ? "Photos go to the iPad only (no memory card needed). " : "Photos go to the iPad and the card. "
+                    log("Save destination -> \(hex(want))")
+                    break
+                }
+            }
+        }
     }
 
     private func prepareSony() throws {
@@ -1782,14 +1873,25 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         if r != PTP_OK { throw fail("connect 2", r) }
 
         var ver = 2
+        let preferV2 = camModel.uppercased().contains("6400")
+        let vFirst: UInt32 = preferV2 ? 0xC8 : 0x12C
+        let vSecond: UInt32 = preferV2 ? 0x12C : 0xC8
         for _ in 0..<20 {
-            let x = try opRead(0x9202, 0x12C, 1)
+            let x = try opRead(0x9202, vFirst, 1)
             if x.code == PTP_OK && x.data.count >= 2 {
-                ver = (le16(x.data, 0) == 0x12C) ? 3 : 2
+                ver = (le16(x.data, 0) >= 0x12C) ? 3 : 2
                 break
+            }
+            if x.code != PTP_BUSY {
+                let x2 = try opRead(0x9202, vSecond, 1)
+                if x2.code == PTP_OK && x2.data.count >= 2 {
+                    ver = (le16(x2.data, 0) >= 0x12C) ? 3 : 2
+                    break
+                }
             }
             Thread.sleep(forTimeInterval: 0.1)
         }
+        sonyVer = ver
         r = try opRead(0x9201, 3, 0, 0).code
         if r != PTP_OK { throw fail("connect 3", r) }
 
@@ -1804,32 +1906,40 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             p = try sonyProps()
             Thread.sleep(forTimeInterval: 0.15)
         }
+        if p.isEmpty { p = try sonyProps() }
 
-        let dest = sonyVal(p, code: 0xD222)
-        if dest >= 0 && dest != 0x01 {
-            for want in [UInt16(0x01), UInt16(0x11)] {
-                let d = Data([UInt8(want & 0xFF), UInt8((want >> 8) & 0xFF)])
-                if let wr = try? opWrite(0x9205, data: d, 0xD222), wr == PTP_OK,
-                   let checkProps = try? sonyProps(), sonyVal(checkProps, code: 0xD222) == Int64(want) {
-                    setupNote += (want == 0x01) ? "Photos go to the iPad only (no memory card needed). " : "Photos go to the iPad and the card. "
-                    log("Save destination -> \(hex(want))")
-                    break
-                }
+        let scm = sonyVal(p, code: 0x5013)
+        if scm >= 0 && scm != 1 {
+            if let sr = try? opWrite(0x9205, data: Data([1, 0]), 0x5013), sr == PTP_OK {
+                log("Still capture mode \(scm) -> 1")
             }
         }
+
+        ensureSonySaveDest(p)
         live = true
     }
 
     private func sonyJpeg(_ d: Data) -> Data? {
+        guard d.count > 8 else { return nil }
+        let off = le32(d, 0)
+        let fsize = le32(d, 4)
+        if off == 0 && fsize == 0 { return nil }
         var s = -1
-        if d.count > 8 {
-            let off = Int(le32(d, 0))
-            if off >= 0 && off + 1 < d.count && d[off] == 0xFF && d[off + 1] == 0xD8 {
-                s = off
-            }
+        if off >= 8 && Int(off) + 1 < d.count && d[Int(off)] == 0xFF && d[Int(off) + 1] == 0xD8 {
+            s = Int(off)
         }
         if s < 0 { s = jpegStart(d) }
-        return s < 0 ? nil : cutJpeg(d, from: s)
+        guard s >= 0 else { return nil }
+        let limit = (fsize > 0 && UInt64(s) + UInt64(fsize) <= UInt64(d.count)) ? s + Int(fsize) : d.count
+        guard limit >= s + 4 else { return nil }
+        var e = -1
+        var k = limit - 2
+        while k > s {
+            if d[k] == 0xFF && d[k + 1] == 0xD9 { e = k + 2; break }
+            k -= 1
+        }
+        guard e > s, (e - s) <= 524_288 else { return nil }
+        return d.subdata(in: s..<e)
     }
 
     private func sonyFrame() throws -> Data? {
@@ -1837,15 +1947,16 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         let t0 = nowMs()
         var last: UInt16 = 0
         while nowMs() - t0 < 2500 {
-            if let oi = try? opRead(0x1008, SONY_LV), oi.code == PTP_INVALID_HANDLE {
-                last = oi.code
-                Thread.sleep(forTimeInterval: 0.05)
-                continue
-            }
             let lv = try opRead(0x1009, SONY_LV)
             last = lv.code
-            if lv.code == PTP_OK && lv.data.count > 8 {
-                if let j = sonyJpeg(lv.data) { return j }
+            if lv.code == PTP_OK {
+                if lv.data.count > 8, let j = sonyJpeg(lv.data) { return j }
+                Thread.sleep(forTimeInterval: 0.025)
+                continue
+            }
+            if lv.code == PTP_INVALID_HANDLE {
+                Thread.sleep(forTimeInterval: 0.05)
+                continue
             }
             Thread.sleep(forTimeInterval: lv.code == PTP_ACCESS_DENIED ? 0.02 : 0.04)
         }
@@ -1855,15 +1966,29 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         return nil
     }
 
+    private func sonyInfo() throws -> (code: UInt16, fmt: UInt16, size: UInt32) {
+        do {
+            let oi = try opRead(0x1008, SONY_PHOTO)
+            if oi.code == PTP_OK && oi.data.count >= 12 {
+                return (oi.code, le16(oi.data, 4), le32(oi.data, 8))
+            }
+            return (oi.code, 0, 0)
+        } catch let e as CamErr {
+            if e.code == "GONE" { throw e }
+            return (0, 0, 0)
+        }
+    }
+
     private func sonyCapture() throws -> Data {
         let t0 = nowMs()
         while sonyAt > 0 && nowMs() - sonyAt < 3000 {
             _ = try sonyProps()
             Thread.sleep(forTimeInterval: 0.15)
         }
+        ensureSonySaveDest(try sonyProps())
 
         for _ in 0..<4 {
-            if sonyVal(try sonyProps(), code: 0xD215) != 0x8001 { break }
+            if sonyVal(try sonyProps(), code: 0xD215) < 0x8000 { break }
             var junk: [String] = []
             _ = try? downloadObject(handle: SONY_PHOTO, sizeIn: 0, notes: &junk)
         }
@@ -1910,9 +2035,51 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             throw CamErr("FOCUS", "The camera didn't take the photo. Point it at something with detail or set the lens to MF (manual focus), and check Still Img. Save Dest. is PC Only and Release w/o Card is Enable.")
         }
 
-        let img = try downloadObject(handle: SONY_PHOTO, sizeIn: 0, notes: &notes)
+        var sawRaw = false
+        var img = Data()
+        for _ in 0..<3 {
+            let info = try sonyInfo()
+            notes.append("info \(hex(info.code)) fmt \(hex(info.fmt)) \(info.size) B")
+            if info.fmt != 0 && info.fmt != 0x3801 {
+                sawRaw = true
+                var junk: [String] = []
+                _ = try? downloadObject(handle: SONY_PHOTO, sizeIn: info.size, notes: &junk)
+                log("Skipped non-JPEG Sony object \(hex(info.fmt)) (\(info.size) B)")
+                let w0 = nowMs()
+                var more = false
+                while nowMs() - w0 < 4000 {
+                    if sonyVal(try sonyProps(), code: 0xD215) >= 0x8000 { more = true; break }
+                    Thread.sleep(forTimeInterval: 0.06)
+                }
+                if !more { break }
+                continue
+            }
+            img = try downloadObject(handle: SONY_PHOTO, sizeIn: info.size, notes: &notes)
+            if img.count >= 4 && img[0] == 0xFF && img[1] == 0xD8 { break }
+            sawRaw = sawRaw || img.count >= 4
+        }
+
+        do {
+            for _ in 0..<2 {
+                if sonyVal(try sonyProps(), code: 0xD215) < 0x8000 { break }
+                let info = try sonyInfo()
+                if info.code != PTP_OK || (info.fmt != 0 && info.fmt != 0x3801) {
+                    var junk: [String] = []
+                    _ = try? downloadObject(handle: SONY_PHOTO, sizeIn: info.size, notes: &junk)
+                    log("Drained trailing Sony object \(hex(info.fmt))")
+                } else {
+                    break
+                }
+            }
+        } catch let e as CamErr {
+            if e.code == "GONE" { throw e }
+        } catch { }
+
         log("Photo download: \(notes.joined(separator: "; "))")
         if img.count < 4 {
+            if sawRaw {
+                throw CamErr("CAPTURE", "The camera saved a RAW photo. Set File Format to JPEG (or RAW + JPEG) on the camera.")
+            }
             throw CamErr("CAPTURE", "The photo didn't come through from the camera (\(notes.joined(separator: "; "))).")
         }
         if !(img[0] == 0xFF && img[1] == 0xD8) {

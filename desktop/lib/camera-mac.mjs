@@ -20,7 +20,7 @@ const realBackend = {
   list: () => listPtpDevices(),
   all: () => listAllUsb(),
   open: (entry, opts) => openUsbPtp(entry, opts),
-  free: async () => { await freeCamera({ quiet: true }); guardCamera(12000); }
+  free: async () => { if (process.platform === 'darwin') { await freeCamera({ quiet: true }); guardCamera(12000); } }
 };
 let backend = realBackend;
 export function setBackend(b) { backend = b || realBackend; }
@@ -330,7 +330,7 @@ async function alive() {
 async function open(recover) {
   if (s.ptp) { try { await alive(); return infoJson(); } catch { /* reconnect below */ } await closeCamera(); }
   const cams = backend.list().filter((e) => BRANDS.has(e.vendor));
-  if (!cams.length) throw new CamError('NOCAMERA No Canon, Nikon or Sony camera found on USB. Plug the camera into this Mac with a data USB cable (not charge-only) and switch it on. Canon: Photo Import / Remote Control. Nikon: PTP or MTP. Sony: PC Remote.');
+  if (!cams.length) throw new CamError('NOCAMERA No Canon, Nikon or Sony camera found on USB. Plug the camera into this ' + (process.platform === 'win32' ? 'PC' : 'Mac') + ' with a data USB cable (not charge-only) and switch it on. Canon: Photo Import / Remote Control. Nikon: PTP or MTP. Sony: PC Remote.');
   await backend.free();
   s.recoverNext = !!recover;
   let lastErr = null;
@@ -350,7 +350,7 @@ async function open(recover) {
         s.name = entry.vendor === SONY ? sonyName(s.model) : 'Nikon ' + s.model.replace(/nikon/gi, '').trim();
         log('Opened ' + s.name);
         s.setupNote = '';
-        const ctx = { ptp: p, ops: s.ops, props: s.props, name: s.name, log, note: (t) => { s.setupNote += t; }, diag: () => s.diag, addDiag: (t) => { s.diag += '; ' + t; } };
+        const ctx = { ptp: p, ops: s.ops, props: s.props, name: s.name, model: s.model, product: entry.product, log, note: (t) => { s.setupNote += t; }, diag: () => s.diag, addDiag: (t) => { s.diag += '; ' + t; } };
         s.drv = entry.vendor === SONY ? createSony(ctx) : createNikon(ctx);
         await s.drv.prepare();
         s.battery = await s.drv.battery();
@@ -364,10 +364,14 @@ async function open(recover) {
   }
   if (lastErr instanceof GoneError) throw new CamError('NOCAMERA The camera disconnected while connecting. Check the USB cable, switch the camera off and on, and try again.');
   if (lastErr instanceof CamError) throw lastErr;
-  throw new CamError('DRIVER The camera did not answer (' + (lastErr && lastErr.message) + '). Quit Photos, Image Capture, EOS Utility and Imaging Edge, switch the camera off and on, unplug and replug it, and try again.');
+  throw new CamError('DRIVER The camera did not answer (' + (lastErr && lastErr.message) + '). ' + (process.platform === 'win32' ? 'Close EOS Utility and Imaging Edge' : 'Quit Photos, Image Capture, EOS Utility and Imaging Edge') + ', switch the camera off and on, unplug and replug it, and try again.');
 }
 
-function listJson() {
+async function listJson() {
+  if (s.ptp) {
+    try { await alive(); }
+    catch { log('Camera lost'); await closeCamera(); }
+  }
   const devs = backend.list().map((e) => (BRANDS.has(e.vendor)
     ? { name: MAKERS.get(e.vendor) + ' camera', maker: MAKERS.get(e.vendor), camera: true }
     : { name: 'USB camera ' + e.vendor.toString(16) + ':' + e.product.toString(16), maker: '', camera: false }));
@@ -390,7 +394,7 @@ export async function reset() { try { await closeCamera(); } catch { /* ignore *
 export async function call(cmd, arg) {
   try {
     if (cmd === 'ping') return reply('OK', 'J', '{"ok":true}');
-    if (cmd === 'list') return reply('OK', 'J', listJson());
+    if (cmd === 'list') return reply('OK', 'J', await listJson());
     if (cmd === 'diag') return reply('OK', 'J', diagJson());
     if (cmd === 'open') return reply('OK', 'J', await open(String(arg || '').split(' ').includes('recover')));
     if (!s.ptp) throw new GoneError('NOCAMERA The camera isn’t connected.');

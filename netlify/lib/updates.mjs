@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.67', date: '2026-11-18' },
   { version: '1.1.66', date: '2026-11-18' },
   { version: '1.1.65', date: '2026-11-18' },
   { version: '1.1.64', date: '2026-11-17' },
@@ -206,7 +207,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.1', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.1/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.2', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.2/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -259,6 +260,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-18', title: 'Desktop 1.1.67 (Win/Mac) + Android 1.1.79 + iPad 1.1.2: Hardened Sony A6400 & Alpha USB tethering', for: ['website', 'app'], app: '1.1.67',
+    items: [
+      '📷 Sony A6400 (ILCE-6400) & Alpha PC Remote hardening across Windows, Mac, Android & iPad: uses the verified 0x9202(0xC8) handshake with 0x12C fallback and enforces Single Shooting mode (0x5013 = 1) with PC Only save destination.',
+      '👁️ Faster, glitch-free Sony live view: reads 0x1009(0xFFFFC002) directly without extra pre-frame object queries, ignores 8-zero-byte warm-up replies, and verifies JPEG SOF/EOI boundaries.',
+      '🖼️ Reliable RAW + JPEG & Android USB framing: peeks object format to skip RAW objects and drain trailing RAW frames cleanly, while Android preserves multi-container PTP packets across USB reads and reports shutter lag.',
+      '🍎 Windows WinUSB fallback & full Mac Helper parity: Windows automatically falls back to libusb/WinUSB if WPD blocks a camera, and Mac Desktop gains helper auto-detect, grace-window capture handling, Sony deep sleep, and shutter lag compensation.'
+    ]
+  },
   {
     date: '2026-11-18', title: 'iPad app 1.1.1: Native AVFoundation camera, hardware MP4 Video Guestbook & 1st-photo timer save fix', for: ['website', 'app'], app: '1.1.1',
     items: [

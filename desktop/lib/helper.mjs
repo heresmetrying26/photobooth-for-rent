@@ -787,10 +787,11 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, c
 }
 
 // ---------- camera (Windows) ----------
-// On a Mac the Canon part runs inside the app (lib/camera-mac.mjs, libusb); loaded only there.
+// On a Mac (and as a WinUSB fallback on Windows) the camera part runs inside the app (lib/camera-mac.mjs, libusb); loaded on demand.
 let macCamP = null;
 const macCam = () => (macCamP || (macCamP = import('./camera-mac.mjs')));
-const camOk = () => (IS_MAC ? true : IS_WIN ? !!WORKER_PS : !!process.env.PB_CAMERA_WORKER);
+let winUsbOpen = false;
+const camOk = () => (IS_MAC ? true : IS_WIN ? (!!WORKER_PS || true) : !!process.env.PB_CAMERA_WORKER);
 // hangs: calls in a row the camera never answered; recover: the camera part was restarted, so the next open tells a Canon to leave remote mode first; resetAt: when it was stopped last.
 const cam = { proc: null, sock: null, server: null, starting: null, buf: Buffer.alloc(0), wait: null, seq: 0, queue: Promise.resolve(), open: null, hangs: 0, recover: false, resetAt: 0 };
 function camReset(why) {
@@ -874,20 +875,40 @@ async function camStart() {
 const isGoproDev = (d) => /gopro|\bhero\s?\d/i.test(String((d && d.name) || '') + ' ' + String((d && d.maker) || ''));
 const goproJson = (r) => { try { return r && r.status === 'OK' ? JSON.parse(r.body.toString('utf8')) : null; } catch { return null; } };
 const dslrPresent = (j) => !!(j && (j.open || (j.devices || []).some((d) => d.camera && !isGoproDev(d))));
+const WIN_LIBUSB = () => IS_WIN && !IS_MAC && !process.env.PB_CAMERA_WORKER;
+async function winUsbList() {
+  if (!WIN_LIBUSB()) return null;
+  try {
+    const r = await (await macCam()).call('list', '');
+    return goproJson(r);
+  } catch { return null; }
+}
 async function camDispatch(cmd, arg, timeoutMs) {
   if (cmd === 'diag') return camRaw(cmd, arg, timeoutMs);
   if (gopro.isOpen()) {
     if (cmd === 'open' && /\brecover\b/.test(arg || '')) await gopro.reset();   // the booth lost the picture: connect again from scratch
     else return gopro.call(cmd, arg);
   }
+  if (winUsbOpen) {
+    if (cmd === 'close') { const r = await camCallMac('close', '', timeoutMs); winUsbOpen = false; return r; }
+    const r = await camCallMac(cmd, arg, timeoutMs);
+    if (r.status === 'GONE') winUsbOpen = false;
+    else if (cmd === 'list') { const j = goproJson(r); if (j && !j.open) winUsbOpen = false; }
+    if (cmd !== 'open' || r.status === 'OK') return r;
+    winUsbOpen = false;
+  }
   if (cmd === 'list') {
     let r = null;
     let rawErr = null;
-    try { r = await camRaw(cmd, arg, timeoutMs); } catch (e) { rawErr = e; }   // the DSLR part failed: a GoPro may still be there
+    if (WORKER_PS || !WIN_LIBUSB()) {
+      try { r = await camRaw(cmd, arg, timeoutMs); } catch (e) { rawErr = e; }   // the DSLR part failed: a GoPro or WinUSB DSLR may still be there
+    }
     const j = goproJson(r);
     if (dslrPresent(j)) return r;
+    const u = await winUsbList();
+    if (dslrPresent(u)) return { status: 'OK', kind: 'J', body: Buffer.from(JSON.stringify(u), 'utf8'), flags: [] };
     const g = await gopro.detect().catch(() => null);
-    if (!g) { if (r) return r; throw rawErr; }
+    if (!g) { if (r) return r; if (rawErr) throw rawErr; return { status: 'OK', kind: 'J', body: Buffer.from('{"devices":[],"open":false,"name":""}', 'utf8'), flags: [] }; }
     const out = j || { devices: [] };
     out.devices = (out.devices || []).filter((d) => !isGoproDev(d)).concat([{ name: g.name, maker: 'GoPro', camera: true, gopro: true }]);
     return { status: 'OK', kind: 'J', body: Buffer.from(JSON.stringify(out), 'utf8'), flags: [] };
@@ -896,9 +917,36 @@ async function camDispatch(cmd, arg, timeoutMs) {
     const g = await gopro.detect().catch(() => null);
     if (g) {
       let present = false;
-      try { present = dslrPresent(goproJson(await camRaw('list', '', 20000))); } catch { /* no DSLR part: the GoPro it is */ }
+      try { present = dslrPresent(goproJson(await camRaw('list', '', 20000))); } catch { /* check WinUSB next */ }
+      if (!present) {
+        const u = await winUsbList();
+        present = dslrPresent(u);
+      }
       if (!present) return gopro.call('open', arg);
     }
+    if (!WORKER_PS && WIN_LIBUSB()) {
+      const ur = await camCallMac('open', arg, timeoutMs);
+      if (ur.status === 'OK') winUsbOpen = true;
+      return ur;
+    }
+    const r = await camRaw('open', arg, timeoutMs);
+    if (r.status === 'OK' || !WIN_LIBUSB()) return r;
+    const u = await winUsbList();
+    if (!dslrPresent(u)) return r;
+    const ur = await camCallMac('open', arg, timeoutMs);
+    if (ur.status === 'OK') {
+      winUsbOpen = true;
+      log('Camera opened over direct USB (libusb/WinUSB fallback).');
+      return ur;
+    }
+    const wpdErr = camError(r);
+    const usbErr = camError(ur);
+    if (wpdErr.code === 'NOCAMERA') return ur;
+    if (/WinUSB|built-in camera driver/i.test(usbErr.error)) {
+      const msg = wpdErr.code + ' ' + wpdErr.error + ' (If Windows\' built-in driver keeps refusing remote control, you can switch the camera to WinUSB once with Zadig and reconnect.)';
+      return { status: r.status, kind: 'N', body: Buffer.from(msg, 'utf8'), flags: [] };
+    }
+    return r;
   }
   return camRaw(cmd, arg, timeoutMs);
 }

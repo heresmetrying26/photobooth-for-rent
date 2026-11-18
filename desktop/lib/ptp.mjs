@@ -274,6 +274,9 @@ export async function openUsbPtp(entry, { tries = 10, onBusy = null } = {}) {
       last = e;
       try { dev.close(); } catch { /* ignore */ }
       if (e instanceof CamError) throw e;
+      if (process.platform === 'win32' && /NOT_SUPPORTED|ACCESS|-12\b|-3\b/i.test(errText(e))) {
+        throw new CamError('DRIVER Windows is still using its built-in camera driver for this camera (' + errText(e) + '). Close Sony Imaging Edge and replug, or use Zadig once to bind WinUSB so direct USB control works.');
+      }
       if (onBusy) { try { await onBusy(); } catch { /* ignore */ } }
       await sleep(500);
     }

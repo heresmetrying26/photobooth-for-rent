@@ -68,7 +68,7 @@ class UsbCameraHelper(private val ctx: Context) {
         private val SONY_PHOTO = 0xFFFFC001L.toInt()
         private val ALL_ONES = 0xFFFFFFFFL.toInt()
         private val SDRAM_HANDLE = 0xFFFF0001L.toInt()
-        private const val SONY_HINT = "On the camera set USB Connection to PC Remote (MENU > Setup > USB), close Imaging Edge and other camera apps, switch the camera off and on, unplug and replug the USB cable, then try again."
+        private const val SONY_HINT = "On the camera set PC Remote: On (MENU > Network > PC Remote Function) and USB Connection to PC Remote (MENU > Setup > USB), close Imaging Edge and other camera apps, switch the camera off and on, unplug and replug the USB cable, then try again."
 
         @Volatile
         var activeInstance: UsbCameraHelper? = null
@@ -127,6 +127,8 @@ class UsbCameraHelper(private val ctx: Context) {
 
     // Sony
     private var sonyAt = -1L                           // when the connection finished; -1 = not a Sony
+    private var sonyVer = 2
+    @Volatile private var lastShutterMs = 0L
 
     @Volatile private var server: ServerSocket? = null
 
@@ -440,7 +442,7 @@ class UsbCameraHelper(private val ctx: Context) {
             arr.put(JSONObject().put("name", d.productName ?: "USB camera").put("maker", d.manufacturerName ?: "").put("camera", true))
         }
         val o = JSONObject().put("devices", arr)
-        synchronized(lock) { o.put("open", conn != null).put("name", if (conn != null) camName else "") }
+        synchronized(lock) { o.put("open", conn != null).put("name", if (conn != null) camName else "").put("shutterMs", lastShutterMs) }
         return o
     }
 
@@ -533,11 +535,10 @@ class UsbCameraHelper(private val ctx: Context) {
 
     /** One PTP operation: command, optional data out, then the camera's data (if any) and its response. */
     private fun transact(op: Int, params: IntArray = IntArray(0), out: ByteArray? = null, timeoutMs: Int = 15000): Resp {
-        pendLen = 0
         val t = ++tid
         send(container(1, op, t, params))
         if (out != null) send(container(2, op, t, IntArray(0), out))
-        var data: ByteArray? = null
+        var dataOut: java.io.ByteArrayOutputStream? = null
         while (true) {
             fill(12, timeoutMs)
             val len = le(pend, 0)
@@ -545,11 +546,18 @@ class UsbCameraHelper(private val ctx: Context) {
             fill(len, timeoutMs)
             val type = le16(pend, 4)
             val code = le16(pend, 6)
+            val cTid = le(pend, 8)
             val payload = pend.copyOfRange(12, len)
             System.arraycopy(pend, len, pend, 0, pendLen - len)
             pendLen -= len
-            if (type == 2) data = payload
-            else if (type == 3) return Resp(code, IntArray(payload.size / 4) { le(payload, it * 4) }, data)
+            if (type == 4) continue                                 // PTP event packet: ignore while awaiting response
+            if (cTid != t && cTid != 0) continue                    // stale packet from an earlier transaction
+            if (type == 2) {
+                if (dataOut == null) dataOut = java.io.ByteArrayOutputStream(payload.size)
+                dataOut.write(payload)
+            } else if (type == 3) {
+                return Resp(code, IntArray(payload.size / 4) { le(payload, it * 4) }, dataOut?.toByteArray())
+            }
         }
     }
 
@@ -615,7 +623,7 @@ class UsbCameraHelper(private val ctx: Context) {
     /** The camera is gone (or about to be handed back): forget it without talking to it. */
     private fun closeUsb() {
         releaseUsb()
-        live = false; nikon = false; canon = false; sony = false; sonyAt = -1L
+        live = false; nikon = false; canon = false; sony = false; sonyAt = -1L; sonyVer = 2; lastShutterMs = 0L
     }
 
     /** Hands the camera back politely, then lets go of the USB connection. */
@@ -687,7 +695,7 @@ class UsbCameraHelper(private val ctx: Context) {
         }
         if (bi == null || bo == null) { c.releaseInterface(itf); c.close(); throw CamErr("ERROR", "The camera did not offer a USB data channel. Unplug and replug it.") }
         dev = d; conn = c; iface = itf; epIn = bi; epOut = bo; tid = 0; pendLen = 0
-        live = false; nikon = false; canon = false; sony = false; sonyAt = -1L; setupNote = ""
+        live = false; nikon = false; canon = false; sony = false; sonyAt = -1L; sonyVer = 2; lastShutterMs = 0L; setupNote = ""
 
         val s = transact(0x1002, intArrayOf(1))                                   // OpenSession
         if (s.code != OK && s.code != SESSION_OPEN) throw CamErr("ERROR", "The camera would not start a session (${hex(s.code)}). Switch it off and on, then try again.")
@@ -981,6 +989,7 @@ class UsbCameraHelper(private val ctx: Context) {
             } catch (e: CamErr) { throw e } catch (_: Exception) { }
         }
         try { nikonEvents() } catch (e: CamErr) { throw e } catch (_: Exception) { }      // drain old events
+        val lagSw = now()
         r = if (has(0x90C0)) op(0x90C0, ALL_ONES) else op(0x100E, 0, 0)              // InitiateCaptureRecInSdram / InitiateCapture
         if (r == 0xA002 && has(0x9207)) {
             log("Out of focus; shooting without autofocus")
@@ -994,6 +1003,7 @@ class UsbCameraHelper(private val ctx: Context) {
             throw CamErr("CAPTURE", "The camera refused the photo (${hex(r)}). Check the mode dial isn't on video and the camera's menu is closed.")
         }
         waitReady(10000)
+        lastShutterMs = minOf(now() - lagSw, 10000L)
         val handles = ArrayList<Int>()
         val e0 = now()
         while (now() - e0 < 8000) {
@@ -1239,6 +1249,7 @@ class UsbCameraHelper(private val ctx: Context) {
         val t0 = now()
         canonPoll()
         canonNew.clear()
+        val lagSw = now()
         var r: Int
         if (ops.contains(0x9128)) {
             // Newer EOS: press the shutter all the way (it focuses, then shoots), then let go.
@@ -1270,7 +1281,10 @@ class UsbCameraHelper(private val ctx: Context) {
             canonPoll()
             for (o in canonNew) if (o[2] != 0x3001L) files.add(o)     // not folders
             canonNew.clear()
-            if (files.isNotEmpty() && firstAt < 0) firstAt = now() - e0
+            if (files.isNotEmpty() && firstAt < 0) {
+                firstAt = now() - e0
+                lastShutterMs = minOf(now() - lagSw, 10000L)
+            }
             if (firstAt >= 0 && now() - e0 - firstAt > 350) break
             Thread.sleep(80)
         }
@@ -1313,21 +1327,94 @@ class UsbCameraHelper(private val ctx: Context) {
         return if (r.code == OK) r.bytes else ByteArray(0)
     }
 
-    /** Current value of one property in the 0x9209 blob (-1 when it isn't there): entries are code(2) type(2) getset(1) enabled(1) default(size) current(size) ... */
-    private fun sonyVal(d: ByteArray, code: Int): Long {
-        var i = 8
-        while (i + 8 <= d.size) {
-            if ((d[i].toInt() and 0xFF) != (code and 0xFF) || (d[i + 1].toInt() and 0xFF) != ((code shr 8) and 0xFF)) { i++; continue }
-            val type = (d[i + 2].toInt() and 0xFF) or ((d[i + 3].toInt() and 0xFF) shl 8)
-            val size = if (type == 1 || type == 2) 1 else if (type == 3 || type == 4) 2 else if (type == 5 || type == 6) 4 else 0
-            if (size == 0 || (d[i + 4].toInt() and 0xFF) > 0x84 || (d[i + 5].toInt() and 0xFF) > 2) { i++; continue }
-            val cur = i + 6 + size
-            if (cur + size > d.size) { i++; continue }
-            var v = 0L
-            for (k in 0 until size) v = v or ((d[cur + k].toLong() and 0xFF) shl (8 * k))
-            return v
+    private fun sonyScalarSize(dtype: Int): Int = when (dtype) {
+        1, 2 -> 1
+        3, 4 -> 2
+        5, 6 -> 4
+        7, 8 -> 8
+        else -> 0
+    }
+
+    private fun sonyReadInt(d: ByteArray, off: IntArray, dtype: Int): Long? {
+        val o = off[0]
+        val sz = sonyScalarSize(dtype)
+        if (sz == 0 || o + sz > d.size) return null
+        val v: Long = when (dtype) {
+            1 -> d[o].toLong()
+            2 -> d[o].toLong() and 0xFFL
+            3 -> le16(d, o).toShort().toLong()
+            4 -> le16(d, o).toLong()
+            5 -> le(d, o).toLong()
+            6 -> u32(d, o)
+            else -> {
+                var u = 0L
+                for (k in 0 until 8) u = u or ((d[o + k].toLong() and 0xFFL) shl (8 * k))
+                u
+            }
         }
-        return -1
+        off[0] = o + sz
+        return v
+    }
+
+    private fun sonySkipValue(d: ByteArray, off: IntArray, dtype: Int): Boolean {
+        var o = off[0]
+        if (dtype == 0xFFFF) {
+            if (o >= d.size) return false
+            val n = d[o++].toInt() and 0xFF
+            if (o + n * 2 > d.size) return false
+            off[0] = o + n * 2
+            return true
+        }
+        if (dtype in 0x4001..0x4008) {
+            if (o + 4 > d.size) return false
+            val n = u32(d, o)
+            o += 4
+            val esz = sonyScalarSize(dtype and 0x0FFF)
+            if (esz == 0 || n > 4096L || o + n * esz > d.size) return false
+            off[0] = o + (n * esz).toInt()
+            return true
+        }
+        val sz = sonyScalarSize(dtype)
+        if (sz == 0 || o + sz > d.size) return false
+        off[0] = o + sz
+        return true
+    }
+
+    /** Current value of one property in the 0x9209 blob (-1 when absent): header count(4)+reserved(4), entries code(2) type(2) getset(1) enabled(1) def cur form. */
+    private fun sonyVal(d: ByteArray, code: Int): Long {
+        if (d.size < 8) return -1L
+        val count = u32(d, 0)
+        val reserved = u32(d, 4)
+        if (reserved != 0L || count > 8192L) return -1L
+        val off = intArrayOf(8)
+        for (idx in 0 until count.toInt()) {
+            if (off[0] + 6 > d.size) break
+            val pcode = le16(d, off[0])
+            val dtype = le16(d, off[0] + 2)
+            val getSet = d[off[0] + 4].toInt() and 0xFF
+            val enabled = d[off[0] + 5].toInt() and 0xFF
+            off[0] += 6
+            if (getSet > 0x84 || enabled > 2) break
+            if (!sonySkipValue(d, off, dtype)) break
+            var curVal: Long? = null
+            if (dtype in 1..8) curVal = sonyReadInt(d, off, dtype)
+            else if (!sonySkipValue(d, off, dtype)) break
+            if (pcode == code) return curVal ?: -1L
+            if (off[0] >= d.size) break
+            val form = d[off[0]++].toInt() and 0xFF
+            if (form == 1) {
+                if (!sonySkipValue(d, off, dtype) || !sonySkipValue(d, off, dtype) || !sonySkipValue(d, off, dtype)) break
+            } else if (form == 2) {
+                if (off[0] + 2 > d.size) break
+                val n1 = le16(d, off[0]); off[0] += 2
+                for (k in 0 until n1) if (!sonySkipValue(d, off, dtype)) return -1L
+                if (sonyVer >= 3 && off[0] + 2 <= d.size) {
+                    val n2 = le16(d, off[0]); off[0] += 2
+                    for (k in 0 until n2) if (!sonySkipValue(d, off, dtype)) return -1L
+                }
+            } else if (form != 0) break
+        }
+        return -1L
     }
 
     /** Sony "buttons": 1 = released, 2 = pressed. */
@@ -1338,30 +1425,7 @@ class UsbCameraHelper(private val ctx: Context) {
         while (sonyAt >= 0 && now() - sonyAt < 3000) { sonyProps(); Thread.sleep(150) }
     }
 
-    private fun prepareSony() {
-        setupNote = ""
-        sonyAt = -1L
-        if (!ops.contains(0x9201) || !ops.contains(0x9202))
-            throw CamErr("MODE", "The $camName is connected as a file-transfer drive, not for remote control. $SONY_HINT [$diag]")
-        var r = opRead(0x9201, 1, 0, 0).code; if (r != OK) throw sonyFail("connect 1", r)
-        r = opRead(0x9201, 2, 0, 0).code; if (r != OK) throw sonyFail("connect 2", r)
-        var ver = 2
-        for (t in 0 until 20) {
-            val x = opRead(0x9202, 0x12C, 1)
-            val b = x.bytes
-            if (x.code == OK && b.size >= 2) { ver = if (le16(b, 0) == 0x12C) 3 else 2; break }
-            Thread.sleep(100)
-        }
-        r = opRead(0x9201, 3, 0, 0).code; if (r != OK) throw sonyFail("connect 3", r)
-        sonyAt = now()
-        diag += "; sony protocol $ver"
-        log("Sony connected, protocol $ver")
-        // Remote control wins over the camera's own buttons ("application" priority).
-        try { opWrite(0x9205, byteArrayOf(1), 0xD25A) } catch (e: CamErr) { throw e } catch (e: Exception) { log("Priority mode not set: ${e.message}") }
-        // Several bodies (A7 III, A7R IV, ZV-1...) only take photos about 3 s after connecting:
-        // wait here, while the booth shows "connecting", not during the first guest's photo.
-        var p = ByteArray(0)
-        while (now() - sonyAt < 3000) { p = sonyProps(); Thread.sleep(150) }
+    private fun ensureSonySaveDest(p: ByteArray) {
         // Photos go straight to the tablet ("PC Only"), so no memory card is needed: with PC + Camera or
         // Camera Only some bodies refuse to shoot when the card is missing. 1 = PC Only, 0x11 = PC + Camera, 0x10 = Camera Only.
         val dest = sonyVal(p, 0xD222)
@@ -1379,17 +1443,68 @@ class UsbCameraHelper(private val ctx: Context) {
             }
             if (!ok) log("Could not change the save destination (it is 0x${java.lang.Long.toHexString(dest)}); photos may need a memory card")
         }
+    }
+
+    private fun prepareSony() {
+        setupNote = ""
+        sonyAt = -1L
+        if (!ops.contains(0x9201) || !ops.contains(0x9202))
+            throw CamErr("MODE", "The $camName is connected as a file-transfer drive, not for remote control. $SONY_HINT [$diag]")
+        var r = opRead(0x9201, 1, 0, 0).code; if (r != OK) throw sonyFail("connect 1", r)
+        r = opRead(0x9201, 2, 0, 0).code; if (r != OK) throw sonyFail("connect 2", r)
+        var ver = 2
+        val preferV2 = camModel.contains("6400", ignoreCase = true)
+        val vFirst = if (preferV2) 0xC8 else 0x12C
+        val vSecond = if (preferV2) 0x12C else 0xC8
+        for (t in 0 until 20) {
+            val x = opRead(0x9202, vFirst, 1)
+            val b = x.bytes
+            if (x.code == OK && b.size >= 2) { ver = if (le16(b, 0) >= 0x12C) 3 else 2; break }
+            if (x.code != BUSY) {
+                val x2 = opRead(0x9202, vSecond, 1)
+                val b2 = x2.bytes
+                if (x2.code == OK && b2.size >= 2) { ver = if (le16(b2, 0) >= 0x12C) 3 else 2; break }
+            }
+            Thread.sleep(100)
+        }
+        sonyVer = ver
+        r = opRead(0x9201, 3, 0, 0).code; if (r != OK) throw sonyFail("connect 3", r)
+        sonyAt = now()
+        diag += "; sony protocol $ver"
+        log("Sony connected, protocol $ver")
+        // Remote control wins over the camera's own buttons ("application" priority).
+        try { opWrite(0x9205, byteArrayOf(1), 0xD25A) } catch (e: CamErr) { throw e } catch (e: Exception) { log("Priority mode not set: ${e.message}") }
+        // Several bodies (A7 III, A7R IV, ZV-1...) only take photos about 3 s after connecting:
+        // wait here, while the booth shows "connecting", not during the first guest's photo.
+        var p = ByteArray(0)
+        while (now() - sonyAt < 3000) { p = sonyProps(); Thread.sleep(150) }
+        if (p.isEmpty()) p = sonyProps()
+        // Ensure Single Shooting mode (0x5013 = 1) so continuous/bracket drive doesn't fire bursts.
+        val scm = sonyVal(p, 0x5013)
+        if (scm >= 0 && scm != 1L) {
+            try {
+                val sr = opWrite(0x9205, byteArrayOf(1, 0), 0x5013)
+                if (sr == OK) log("Still capture mode $scm -> 1")
+            } catch (e: CamErr) { throw e } catch (e: Exception) { log("Still capture mode not changed: ${e.message}") }
+        }
+        ensureSonySaveDest(p)
         live = true      // Sony live view has no start command: the frames are simply there
     }
 
     private fun sonyJpeg(d: ByteArray): ByteArray? {
+        if (d.size <= 8) return null
+        val off = u32(d, 0)           // header has JPEG offset + size; 8 zero bytes = no frame ready yet
+        val fsize = u32(d, 4)
+        if (off == 0L && fsize == 0L) return null
         var s = -1
-        if (d.size > 8) {
-            val off = u32(d, 0)           // the frame starts with the offset of the JPEG inside it
-            if (off + 1 < d.size && d[off.toInt()] == 0xFF.toByte() && d[off.toInt() + 1] == 0xD8.toByte()) s = off.toInt()
-        }
+        if (off >= 8 && off + 1 < d.size && d[off.toInt()] == 0xFF.toByte() && d[off.toInt() + 1] == 0xD8.toByte()) s = off.toInt()
         if (s < 0) s = jpegStart(d)
-        return if (s < 0) null else jpegFrom(d, s)
+        if (s < 0) return null
+        val limit = if (fsize > 0L && s.toLong() + fsize <= d.size) (s.toLong() + fsize).toInt() else d.size
+        var e = -1
+        for (k in limit - 2 downTo s + 1) if (d[k] == 0xFF.toByte() && d[k + 1] == 0xD9.toByte()) { e = k + 2; break }
+        if (e <= s || e - s > 524_288) return null
+        return d.copyOfRange(s, e)
     }
 
     private fun sonyFrame(): ByteArray? {
@@ -1397,34 +1512,49 @@ class UsbCameraHelper(private val ctx: Context) {
         val t0 = now()
         var last = 0
         while (now() - t0 < 2500) {
-            var r = opRead(0x1008, SONY_LV).code
-            if (r == 0x2009) { last = r; Thread.sleep(50); continue }       // InvalidObjectHandle: not ready yet (up to 1 s on some bodies)
             val lv = opRead(0x1009, SONY_LV)
-            r = lv.code
+            val r = lv.code
             last = r
-            val b = lv.bytes
-            if (r == OK && b.size > 8) {
-                val j = sonyJpeg(b)
-                if (j != null) return j
+            if (r == OK) {
+                val b = lv.bytes
+                if (b.size > 8) {
+                    val j = sonyJpeg(b)
+                    if (j != null) return j
+                }
+                Thread.sleep(25)
+                continue
             }
-            Thread.sleep(if (r == 0x200F) 20 else 40)                         // AccessDenied: asked too fast
+            if (r == 0x2009) { Thread.sleep(50); continue }                         // InvalidObjectHandle: not ready yet
+            Thread.sleep(if (r == 0x200F) 20 else 40)                               // AccessDenied: asked too fast
         }
         if (last != OK && last != BUSY && last != 0 && last != 0x2009)
             throw CamErr("LIVEVIEW", "The camera sends no live view (${hex(last)}). Check it is in PC Remote mode, the lens cap is off and the camera's menu is closed.")
         return null
     }
 
+    private fun sonyInfo(): IntArray {
+        return try {
+            val oi = opRead(0x1008, SONY_PHOTO)
+            val b = oi.bytes
+            val fmt = if (oi.code == OK && b.size >= 12) le16(b, 4) else 0
+            val sz = if (oi.code == OK && b.size >= 12) le(b, 8) else 0
+            intArrayOf(oi.code, fmt, sz)
+        } catch (e: CamErr) { throw e } catch (_: Exception) { intArrayOf(0, 0, 0) }
+    }
+
     private fun sonyCapture(): ByteArray {
         val t0 = now()
         // The first photo right after connecting has to wait for the camera to settle.
         sonyWait3s()
+        ensureSonySaveDest(sonyProps())
         // A photo left in the camera's memory by an earlier attempt would be handed over instead of this one.
         for (k in 0 until 4) {
-            if (sonyVal(sonyProps(), 0xD215) != 0x8001L) break
+            if (sonyVal(sonyProps(), 0xD215) < 0x8000) break
             downloadObject(SONY_PHOTO, 0, StringBuilder())
             log("Cleared an old photo from the camera's memory")
         }
         // Half press, full press (the camera focuses, then shoots).
+        val lagSw = now()
         var r = sonyButton(0xD2C1, 2)
         if (r == OK) r = sonyButton(0xD2C2, 2)
         if (r != OK) {
@@ -1451,7 +1581,7 @@ class UsbCameraHelper(private val ctx: Context) {
         val e0 = now()
         while (now() - e0 < 15000) {
             mem = sonyVal(sonyProps(), 0xD215)
-            if (mem >= 0x8000) break
+            if (mem >= 0x8000) { lastShutterMs = minOf(now() - lagSw, 10000L); break }
             Thread.sleep(100)
         }
         val cd = StringBuilder("memory " + (if (mem < 0) "?" else "0x" + java.lang.Long.toHexString(mem).uppercase()))
@@ -1459,16 +1589,46 @@ class UsbCameraHelper(private val ctx: Context) {
             log("No photo appeared: $cd")
             throw CamErr("FOCUS", "The camera didn't take the photo. Point it at something with detail or set the lens to MF (manual focus), and check the camera's Still Img. Save Dest. is PC Only and its Release w/o Card setting is Enable.")
         }
-        var size = 0
+        // RAW+JPEG bodies can queue RAW (0x3000/0xB101) before or after JPEG (0x3801): peek format and skip RAW.
+        var sawRaw = false
+        var img = ByteArray(0)
+        for (attempt in 0 until 3) {
+            val info = sonyInfo()
+            val ro = info[0]; val fmt = info[1]; val size = info[2]
+            cd.append("; info ${hex(ro)} fmt ${hex(fmt)} $size B")
+            if (fmt != 0 && fmt != 0x3801) {
+                sawRaw = true
+                downloadObject(SONY_PHOTO, size, StringBuilder())
+                log("Skipped non-JPEG Sony object ${hex(fmt)} ($size B)")
+                val w0 = now()
+                var more = false
+                while (now() - w0 < 4000) {
+                    if (sonyVal(sonyProps(), 0xD215) >= 0x8000) { more = true; break }
+                    Thread.sleep(60)
+                }
+                if (!more) break
+                continue
+            }
+            img = downloadObject(SONY_PHOTO, size, cd)          // whole photo, or in 1 MB pieces
+            if (img.size >= 4 && img[0] == 0xFF.toByte() && img[1] == 0xD8.toByte()) break
+            sawRaw = sawRaw || img.size >= 4
+        }
+        // Drain any trailing queued RAW object so the next shot starts clean.
         try {
-            val oi = opRead(0x1008, SONY_PHOTO)
-            val b = oi.bytes
-            if (oi.code == OK && b.size >= 12) size = le(b, 8)
-            cd.append("; info ${hex(oi.code)} $size B")
-        } catch (e: CamErr) { throw e } catch (e: Exception) { cd.append("; info failed ${e.message}") }
-        val img = downloadObject(SONY_PHOTO, size, cd)          // whole photo, or in 1 MB pieces
+            for (k in 0 until 2) {
+                if (sonyVal(sonyProps(), 0xD215) < 0x8000) break
+                val info = sonyInfo()
+                if (info[0] != OK || (info[1] != 0 && info[1] != 0x3801)) {
+                    downloadObject(SONY_PHOTO, info[2], StringBuilder())
+                    log("Drained trailing Sony object ${hex(info[1])}")
+                } else break
+            }
+        } catch (e: CamErr) { throw e } catch (_: Exception) { }
         log("Photo download: $cd")
-        if (img.size < 4) throw CamErr("CAPTURE", "The photo didn't come through from the camera ($cd).")
+        if (img.size < 4) {
+            if (sawRaw) throw CamErr("CAPTURE", "The camera saved a RAW photo. Set File Format to JPEG (or RAW + JPEG) on the camera.")
+            throw CamErr("CAPTURE", "The photo didn't come through from the camera ($cd).")
+        }
         if (!(img[0] == 0xFF.toByte() && img[1] == 0xD8.toByte())) throw CamErr("CAPTURE", "The camera saved a RAW photo. Set File Format to JPEG (or RAW + JPEG) on the camera.")
         log("Photo ${img.size / 1024} KB in ${now() - t0} ms")
         return img
@@ -1478,18 +1638,20 @@ class UsbCameraHelper(private val ctx: Context) {
         val p = sonyProps()
         val mem = sonyVal(p, 0xD215)
         if (mem >= 0x8000) {
-            var size = 0
-            val cd = StringBuilder("sony_poll")
-            try {
-                val oi = opRead(0x1008, SONY_PHOTO)
-                val b = oi.bytes
-                if (oi.code == OK && b.size >= 12) size = le(b, 8)
-                cd.append("; info ${hex(oi.code)} $size B")
-            } catch (_: Exception) { }
-            val img = downloadObject(SONY_PHOTO, size, cd)
-            log("Sony roving photo download: $cd")
-            if (img.size > 4 && img[0] == 0xFF.toByte() && img[1] == 0xD8.toByte()) {
-                return img
+            for (k in 0 until 2) {
+                val info = sonyInfo()
+                val fmt = info[1]; val size = info[2]
+                val cd = StringBuilder("sony_poll; info ${hex(info[0])} fmt ${hex(fmt)} $size B")
+                if (fmt != 0 && fmt != 0x3801) {
+                    downloadObject(SONY_PHOTO, size, StringBuilder())
+                    log("Skipped non-JPEG Sony roving object ${hex(fmt)}")
+                    if (sonyVal(sonyProps(), 0xD215) < 0x8000) break
+                    continue
+                }
+                val img = downloadObject(SONY_PHOTO, size, cd)
+                log("Sony roving photo download: $cd")
+                if (img.size > 4 && img[0] == 0xFF.toByte() && img[1] == 0xD8.toByte()) return img
+                break
             }
         }
         return null

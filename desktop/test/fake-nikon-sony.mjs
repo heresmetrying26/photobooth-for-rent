@@ -9,6 +9,7 @@ const PHOTO = Buffer.concat([Buffer.from([0xFF, 0xD8, 0xFF, 0xE1]), Buffer.alloc
 const pstr = (s) => { const b = Buffer.alloc(1 + (s.length + 1) * 2); b[0] = s.length + 1; b.write(s, 1, 'utf16le'); return b; };
 const arr16 = (a) => { const b = Buffer.alloc(4 + 2 * a.length); b.writeUInt32LE(a.length, 0); a.forEach((v, i) => b.writeUInt16LE(v, 4 + 2 * i)); return b; };
 const u16 = (v) => { const b = Buffer.alloc(2); b.writeUInt16LE(v, 0); return b; };
+const u32 = (v) => { const b = Buffer.alloc(4); b.writeUInt32LE(v >>> 0, 0); return b; };
 function deviceInfo(vendorExt, ops, props, maker, model) {
   const h = Buffer.alloc(8); h.writeUInt16LE(100, 0); h.writeUInt32LE(vendorExt, 2); h.writeUInt16LE(100, 6);
   return Buffer.concat([h, pstr('ext: 1.0'), Buffer.from([0, 0]), arr16(ops), arr16([]), arr16(props), arr16([]), arr16([0x3801]), pstr(maker), pstr(model), pstr('1.0'), pstr('123')]);
@@ -84,18 +85,39 @@ class FakeNikon extends Fake {
   }
 }
 
-// ---------- Sony A7 III (PC Remote) ----------
+// ---------- Sony A7 III (PC Remote, Protocol v3 0x12C with dual-array form=2 enums) ----------
 class FakeSony extends Fake {
   constructor() {
     super();
     this.writes = [0x9205, 0x9207];
-    this.dest = 0x11; this.mem = 0; this.half = false; this.connected = 0; this.priority = 0;
+    this.dest = 0x11; this.stillMode = 2; this.mem = 0; this.half = false; this.connected = 0; this.priority = 0;
+    this.connect1BusyLeft = 1;
   }
   entry(code, val) { return Buffer.concat([u16(code), u16(4), Buffer.from([1, 1]), u16(0), u16(val), Buffer.from([0])]); }
-  blob() { return Buffer.concat([Buffer.alloc(8), this.entry(0xD222, this.dest), this.entry(0xD215, this.mem), this.entry(0xD213, this.half ? 2 : 1), this.entry(0x500A, 2)]); }
+  v3EnumEntry(code, val, allChoices, availChoices) {
+    return Buffer.concat([
+      u16(code), u16(4), Buffer.from([1, 1]), u16(allChoices[0]), u16(val), Buffer.from([2]),
+      u16(allChoices.length), ...allChoices.map(u16),
+      u16(availChoices.length), ...availChoices.map(u16)
+    ]);
+  }
+  blob() {
+    const entries = [
+      this.v3EnumEntry(0x5013, this.stillMode, [1, 2, 3], [1, 2]),
+      this.v3EnumEntry(0xD222, this.dest, [0x01, 0x10, 0x11], [0x01, 0x10, 0x11]),
+      this.entry(0xD215, this.mem),
+      this.entry(0xD213, this.half ? 2 : 1),
+      this.entry(0x500A, 2)
+    ];
+    return Buffer.concat([u32(entries.length), u32(0), ...entries]);
+  }
   onData(pw, data) {
     const prop = pw.ps[0];
-    if (pw.code === 0x9205) { if (prop === 0xD222) this.dest = data.readUInt16LE(0); if (prop === 0xD25A) this.priority = data[0]; }
+    if (pw.code === 0x9205) {
+      if (prop === 0xD222) this.dest = data.readUInt16LE(0);
+      if (prop === 0x5013 && data.length === 2) this.stillMode = data.readUInt16LE(0);
+      if (prop === 0xD25A) this.priority = data[0];
+    }
     if (pw.code === 0x9207) {
       const v = data.readUInt16LE(0);
       if (prop === 0xD2C1) this.half = v === 2;
@@ -107,14 +129,86 @@ class FakeSony extends Fake {
     if (this.common(code, tid)) return;
     switch (code) {
       case 0x1001: this.dataOut(tid, code, deviceInfo(0x11, [0x1001, 0x1002, 0x1003, 0x1008, 0x1009, 0x9201, 0x9202, 0x9205, 0x9207, 0x9209], [], 'Sony Corporation', 'ILCE-7M3')); return this.respond(tid, 0x2001);
-      case 0x9201: this.connected = ps[0]; return this.respond(tid, 0x2001);
+      case 0x9201:
+        if (ps[0] === 1 && this.connect1BusyLeft > 0) { this.connect1BusyLeft--; return this.respond(tid, 0x2019); }
+        this.connected = ps[0]; return this.respond(tid, 0x2001);
       case 0x9202: { const b = Buffer.alloc(8); b.writeUInt16LE(0x12C, 0); this.dataOut(tid, code, b); return this.respond(tid, 0x2001); }
       case 0x9209: this.dataOut(tid, code, this.blob()); return this.respond(tid, 0x2001);
-      case 0x1008: { const b = Buffer.alloc(16); b.writeUInt32LE(ps[0] === 0xFFFFC001 ? PHOTO.length : JPEG.length, 8); this.dataOut(tid, code, b); return this.respond(tid, 0x2001); }
+      case 0x1008: { const b = Buffer.alloc(16); b.writeUInt16LE(0x3801, 4); b.writeUInt32LE(ps[0] === 0xFFFFC001 ? PHOTO.length : JPEG.length, 8); this.dataOut(tid, code, b); return this.respond(tid, 0x2001); }
       case 0x1009:
-        if (ps[0] === 0xFFFFC002) { const head = Buffer.alloc(16); head.writeUInt32LE(16, 0); this.dataOut(tid, code, Buffer.concat([head, JPEG])); return this.respond(tid, 0x2001); }
+        if (ps[0] === 0xFFFFC002) { const head = Buffer.alloc(16); head.writeUInt32LE(16, 0); head.writeUInt32LE(JPEG.length, 4); this.dataOut(tid, code, Buffer.concat([head, JPEG])); return this.respond(tid, 0x2001); }
         this.mem = 0; this.dataOut(tid, code, PHOTO); return this.respond(tid, 0x2001);
       default: return this.respond(tid, 0x2005);
+    }
+  }
+}
+
+// ---------- Sony A6400 (ILCE-6400, 0xC8 protocol, 8-byte LV sentinel, RAW+JPEG) ----------
+class FakeSonyA6400 extends FakeSony {
+  constructor() {
+    super();
+    this.stillMode = 2; this.lvEmptyLeft = 2; this.lvPeekedInfo = false;
+    this.captureQueue = [];
+  }
+  enumEntry(code, val, choices) {
+    return Buffer.concat([u16(code), u16(4), Buffer.from([1, 1]), u16(choices[0]), u16(val), Buffer.from([2]), u16(choices.length), ...choices.map(u16)]);
+  }
+  blob() {
+    const entries = [
+      this.enumEntry(0x5013, this.stillMode, [1, 2, 3]),
+      this.enumEntry(0xD222, this.dest, [0x01, 0x10, 0x11]),
+      this.entry(0xD215, this.mem),
+      this.entry(0xD213, this.half ? 2 : 1),
+      this.entry(0x500A, 2)
+    ];
+    return Buffer.concat([u32(entries.length), u32(0), ...entries]);
+  }
+  onData(pw, data) {
+    const prop = pw.ps[0];
+    if (pw.code === 0x9205 && prop === 0x5013) this.stillMode = data.readUInt16LE(0);
+    if (pw.code === 0x9207 && prop === 0xD2C2 && data.readUInt16LE(0) === 2) {
+      // Simulate RAW+JPEG where a RAW precedes JPEG AND a trailing RAW follows in memory.
+      this.captureQueue = [
+        { fmt: 0x3000, data: Buffer.from('RAW_FIRST_123456') },
+        { fmt: 0x3801, data: PHOTO },
+        { fmt: 0xB101, data: Buffer.from('RAW_TRAIL_654321') }
+      ];
+      this.mem = 0x8001;
+      return this.respond(pw.tid, 0x2001);
+    }
+    return super.onData(pw, data);
+  }
+  handle(code, tid, ps) {
+    if (this.common(code, tid)) return;
+    switch (code) {
+      case 0x1001: this.dataOut(tid, code, deviceInfo(0x11, [0x1001, 0x1002, 0x1003, 0x1008, 0x1009, 0x9201, 0x9202, 0x9205, 0x9207, 0x9209], [], 'Sony Corporation', 'ILCE-6400')); return this.respond(tid, 0x2001);
+      case 0x9202: {
+        if (ps[0] !== 0xC8) return this.respond(tid, 0x201D);   // A6400 rejects 0x12C, accepts 0xC8
+        const b = Buffer.alloc(8); b.writeUInt16LE(0xC8, 0); this.dataOut(tid, code, b); return this.respond(tid, 0x2001);
+      }
+      case 0x1008: {
+        if (ps[0] === 0xFFFFC002) this.lvPeekedInfo = true;
+        const head = this.captureQueue[0];
+        const b = Buffer.alloc(16);
+        b.writeUInt16LE(ps[0] === 0xFFFFC001 && head ? head.fmt : 0x3801, 4);
+        b.writeUInt32LE(ps[0] === 0xFFFFC001 ? (head ? head.data.length : PHOTO.length) : JPEG.length, 8);
+        this.dataOut(tid, code, b);
+        return this.respond(tid, 0x2001);
+      }
+      case 0x1009:
+        if (ps[0] === 0xFFFFC002) {
+          if (this.lvEmptyLeft > 0) { this.lvEmptyLeft--; this.dataOut(tid, code, Buffer.alloc(8)); return this.respond(tid, 0x2001); }
+          const head = Buffer.alloc(16); head.writeUInt32LE(16, 0); head.writeUInt32LE(JPEG.length, 4);
+          this.dataOut(tid, code, Buffer.concat([head, JPEG])); return this.respond(tid, 0x2001);
+        }
+        if (this.captureQueue.length) {
+          const item = this.captureQueue.shift();
+          this.mem = this.captureQueue.length ? 0x8001 : 0;
+          this.dataOut(tid, code, item.data);
+          return this.respond(tid, 0x2001);
+        }
+        return super.handle(code, tid, ps);
+      default: return super.handle(code, tid, ps);
     }
   }
 }
@@ -159,10 +253,21 @@ check('[Nikon] live view stopped on close', nik.live === false);
 
 const son = new FakeSony();
 await run('[Sony] ', 0x054c, son, { maker: 'Sony', name: 'Sony A7 III', brand: 'sony', battery: -1 });
+check('[Sony] connect 1 recovered from BUSY', son.connect1BusyLeft === 0);
 check('[Sony] connect phases ran (3)', son.connected === 3);
+check('[Sony] Still Shooting mode set to Single (1)', son.stillMode === 1, String(son.stillMode));
 check('[Sony] remote control has priority', son.priority === 1);
 check('[Sony] photos go to the computer only', son.dest === 0x01, '0x' + son.dest.toString(16));
 check('[Sony] shutter released at the end', son.half === false);
+
+const a64 = new FakeSonyA6400();
+await run('[A6400] ', 0x054c, a64, { maker: 'Sony', name: 'Sony A6400', brand: 'sony', battery: -1 });
+check('[A6400] connect phases ran (3)', a64.connected === 3);
+check('[A6400] Still Shooting mode set to Single (1)', a64.stillMode === 1, String(a64.stillMode));
+check('[A6400] photos go to the computer only', a64.dest === 0x01, '0x' + a64.dest.toString(16));
+check('[A6400] live view did not poll 0x1008 before frames', a64.lvPeekedInfo === false);
+check('[A6400] handled 8-byte sentinel before JPEG frame', a64.lvEmptyLeft === 0);
+check('[A6400] RAW+JPEG skipped RAW and drained trailing RAW', a64.mem === 0 && a64.captureQueue.length === 0);
 
 // A Sony left in file-transfer mode lists no remote commands: say so.
 class FakeSonyDrive extends FakeSony {

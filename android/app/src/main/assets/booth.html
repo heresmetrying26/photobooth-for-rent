@@ -19792,7 +19792,7 @@
           <video id="video" autoplay playsinline muted></video>
           <canvas id="previewCanvas"></canvas>
           <div class="box-guide" id="boxGuide" aria-hidden="true"><span>Photo area</span></div>
-          <canvas class="shot-review" id="shotReview"></canvas>
+          <img class="shot-review" id="shotReview" alt="Photo review">
           <div class="welcome-overlay" id="welcomeOverlay" role="button" tabindex="0" aria-label="Tap to start">
             <img id="welcomeImg" alt="Welcome — tap to start">
             <video id="welcomeVideo" autoplay loop muted playsinline style="display:none;"></video>
@@ -41078,11 +41078,30 @@
       function showShotReview(i) {
         if (!shotCanvases[i]) return;
         var url = shotReviewUrl(shotCanvases[i]);
-        shotReview.src = url; shotReview.classList.add('on');
+        if (shotReview.tagName === 'IMG') {
+          shotReview.src = url;
+        } else if (shotReview.getContext) {
+          try {
+            var ctx = shotReview.getContext('2d');
+            var sc = shotCanvases[i];
+            shotReview.width = sc.width;
+            shotReview.height = sc.height;
+            ctx.drawImage(sc, 0, 0);
+          } catch (e) { }
+        }
+        shotReview.classList.add('on');
         guestCall('review', url);
       }
       function hideShotReview() {
         shotReview.classList.remove('on');
+        if (shotReview.tagName === 'IMG') {
+          shotReview.removeAttribute('src');
+        } else if (shotReview.getContext) {
+          try {
+            var ctx = shotReview.getContext('2d');
+            ctx.clearRect(0, 0, shotReview.width, shotReview.height);
+          } catch (e) { }
+        }
         guestCall('reviewEnd');
       }
       // After the finished photo has been on screen for the chosen time, go back

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.69', date: '2026-11-18' },
   { version: '1.1.68', date: '2026-11-18' },
   { version: '1.1.67', date: '2026-11-18' },
   { version: '1.1.66', date: '2026-11-18' },
@@ -208,7 +209,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.3', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.3/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.4', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.4/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -261,6 +262,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-18', title: 'Desktop 1.1.69 (Win/Mac) + Android 1.1.81 + iPad 1.1.4: Smoother Canon EOS M50 II live view over USB', for: ['website', 'app'], app: '1.1.69',
+    items: [
+      '🎞️ Smoother live view with every USB camera in the app: the booth now asks for the next picture while the current one is being drawn, so the camera is never left idle between frames.',
+      '📷 Canon EOS (M50 Mark II and others) on Android & iPad: the camera is checked for news every 6 s instead of 2 s while live view runs (no more small hitch), and a busy camera is asked again after 15 ms instead of 50 ms.',
+      '📊 Live view speed (frames per second and picture size) is now written to the camera log every 5 s, so lag can be measured.'
+    ]
+  },
   {
     date: '2026-11-18', title: 'Desktop 1.1.68 (Win/Mac) + Android 1.1.80 + iPad 1.1.3: Hardened Sony A7 III USB & iPad HDMI stability', for: ['website', 'app'], app: '1.1.68',
     items: [

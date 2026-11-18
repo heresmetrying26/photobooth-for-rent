@@ -1135,8 +1135,10 @@ class UsbCameraHelper(private val ctx: Context) {
     }
 
     /** Every few seconds: read news (keeps the camera's list short) and keep it awake. */
-    private fun canonKeep() {
-        if (pollAt < 0 || now() - pollAt > 2000) canonPoll()
+    // [pollEveryMs]: the live view loop passes a longer gap, because each news read is an extra USB round
+    // trip made while the frame lock is held (a visible hitch). Photo calls keep the quick 2 s default.
+    private fun canonKeep(pollEveryMs: Long = 2000L) {
+        if (pollAt < 0 || now() - pollAt > pollEveryMs) canonPoll()
         // Not only when the camera lists KeepDeviceOn: some older EOS (60D) don't list it but still stay awake when it is sent.
         if (now() - keepAt > 10000) { try { op(0x911D) } catch (e: CamErr) { throw e } catch (_: Exception) { }; keepAt = now() }
     }
@@ -1174,6 +1176,21 @@ class UsbCameraHelper(private val ctx: Context) {
         return if (s < 0) null else jpegFrom(d, s)
     }
 
+    // Live view speed, written to the log about every 5 s so lag can be measured instead of guessed.
+    private var fpsFrames = 0
+    private var fpsBytes = 0L
+    private var fpsSince = 0L
+    private fun canonFpsTick(bytes: Int) {
+        val t = now()
+        if (fpsSince == 0L || t - fpsSince > 60000L) { fpsSince = t; fpsFrames = 0; fpsBytes = 0L }
+        fpsFrames++; fpsBytes += bytes
+        val ms = t - fpsSince
+        if (ms >= 5000L) {
+            log("Canon live view: %.1f fps, %d KB/frame".format(fpsFrames * 1000.0 / ms, fpsBytes / fpsFrames / 1024))
+            fpsSince = t; fpsFrames = 0; fpsBytes = 0L
+        }
+    }
+
     private fun canonFrame(): ByteArray? {
         if (!live) { canonLiveOn(); if (!live) { Thread.sleep(400); return null } }     // camera still busy: no picture yet, ask again
         val t0 = now()
@@ -1181,12 +1198,12 @@ class UsbCameraHelper(private val ctx: Context) {
         var kicked = false
         var rearmed = false
         while (now() - t0 < 3000) {
-            canonKeep()
+            canonKeep(6000L)
             val r = opRead(0x9153, 0x00100000)
             last = r.code
             if (r.code == OK) {
                 val j = eosJpeg(r.data)
-                if (j != null) { gotFrame = true; return j }
+                if (j != null) { gotFrame = true; canonFpsTick(j.size); return j }
             } else if (r.code != BUSY && r.code != NOTREADY) {
                 // The camera ended live view by itself (heat, its time limit, sleep): switch it back on once.
                 if (gotFrame && !rearmed) {
@@ -1200,7 +1217,7 @@ class UsbCameraHelper(private val ctx: Context) {
             }
             // Some models leave live view after a photo: switch it back on once.
             if (!kicked && now() - t0 > 1200 && now() - liveAt > 4000) { kicked = true; setEos(0xD1B0, 2) }
-            Thread.sleep(50)
+            Thread.sleep(15)       // camera not ready with the next picture: look again soon, don't idle (was 50 ms)
         }
         if (last != OK && last != BUSY && last != NOTREADY && last != 0)
             throw CamErr("LIVEVIEW", "The camera sends no live view (${hex(last)}). On the camera: Menu, Live View shoot: Enable; close the menu; mode dial on P, Tv, Av or M.")

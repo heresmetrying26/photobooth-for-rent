@@ -1,12 +1,13 @@
 # Session Context
 
-**Current Task**: Released Desktop 1.1.68 (Win/Mac), Android 1.1.80 (`versionCode 182`), and iPad 1.1.3 (`13`) for Sony A7 III USB & iPad HDMI stability.
+**Current Task**: Released Desktop 1.1.69 (Win/Mac), Android 1.1.81 (`versionCode 183`), and iPad 1.1.4 (`14`) for smoother Canon EOS M50 II live view.
 
 **Key Decisions**:
-- Hardened `ILCE-7M3` across Windows, Mac, Android, and iPad: direct Protocol v3 (`0x12C`), `0x9201` `BUSY` retries, shutter release on open/close, width-safe `0x5013`/`0xD222` writes, and `sonyDestBlocked`.
-- Hardened iPad `.external` UVC/HDMI capture in `NativeCameraBridge.swift`: skip `AVCapturePhotoOutput` and recover runtime/interruption events cleanly.
-- Pushed `main` plus tags `desktop-v1.1.68`, `android-v1.1.80`, and `ios-v1.1.3`.
+- Booth page live-view loop (helper path) now prefetches the next frame while the current one is decoded/drawn (one request in flight).
+- Android + iPad Canon loops: event poll every 6 s during live view (was 2 s), busy wait 15 ms (was 50 ms), fps logged every 5 s.
+- Released without the desktop smoke test, at the user's request.
 
 **Next Steps**:
-- Confirm GitHub Actions builds finish green (`desktop-v1.1.68`, `android-v1.1.80`, `ios-v1.1.3`) and Netlify deploys `/api/updates`.
-- Test Sony A7 III on physical Windows, Mac, Android, and iPad hardware.
+- Confirm GitHub Actions builds finish green (`desktop-v1.1.69`, `android-v1.1.81`, `ios-v1.1.4`) and Netlify `/api/updates` reports 1.1.69.
+- Test Canon M50 II on a real tablet: compare the `Canon live view: N fps` log line before and after.
+- Swift and Kotlin changes were never compiled locally; check the CI builds.

@@ -1525,8 +1525,10 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         keepAt = nowMs()
     }
 
-    private func canonKeep() throws {
-        if pollAt == 0 || nowMs() - pollAt > 2000 { try canonPoll() }
+    // pollEveryMs: the live view loop passes a longer gap, because each news read is an extra USB round
+    // trip made between frames (a visible hitch). Photo calls keep the quick 2 s default.
+    private func canonKeep(pollEveryMs: UInt64 = 2000) throws {
+        if pollAt == 0 || nowMs() - pollAt > pollEveryMs { try canonPoll() }
         if nowMs() - keepAt > 10000 {
             _ = try? op(0x911D)
             keepAt = nowMs()
@@ -1586,6 +1588,23 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         return st < 0 ? nil : cutJpeg(d, from: st)
     }
 
+    // Live view speed, written to the log about every 5 s so lag can be measured instead of guessed.
+    private var fpsFrames: UInt64 = 0
+    private var fpsBytes: UInt64 = 0
+    private var fpsSince: UInt64 = 0
+    private func canonFpsTick(_ bytes: Int) {
+        let t = nowMs()
+        if fpsSince == 0 || t < fpsSince || t - fpsSince > 60000 { fpsSince = t; fpsFrames = 0; fpsBytes = 0 }
+        fpsFrames += 1
+        fpsBytes += UInt64(bytes)
+        let ms = t - fpsSince
+        if ms >= 5000 {
+            let fps = Double(fpsFrames) * 1000.0 / Double(ms)
+            log("Canon live view: \(String(format: "%.1f", fps)) fps, \(fpsBytes / fpsFrames / 1024) KB/frame")
+            fpsSince = t; fpsFrames = 0; fpsBytes = 0
+        }
+    }
+
     private func canonFrame() throws -> Data? {
         if !live {
             try canonLiveOn()
@@ -1597,12 +1616,13 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         var rearmed = false
 
         while nowMs() - t0 < 3000 {
-            try canonKeep()
+            try canonKeep(pollEveryMs: 6000)
             let r = try opRead(0x9153, 0x00100000)
             last = r.code
             if r.code == PTP_OK {
                 if let j = eosJpeg(r.data) {
                     gotFrame = true
+                    canonFpsTick(j.count)
                     return j
                 }
             } else if r.code != PTP_BUSY && r.code != PTP_NOTREADY {
@@ -1619,7 +1639,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
                 kicked = true
                 _ = try? setEos(0xD1B0, 2)
             }
-            Thread.sleep(forTimeInterval: 0.05)
+            Thread.sleep(forTimeInterval: 0.015)   // camera not ready with the next picture: look again soon (was 50 ms)
         }
         if last != PTP_OK && last != PTP_BUSY && last != PTP_NOTREADY && last != 0 {
             throw CamErr("LIVEVIEW", "The camera sends no live view (\(hex(last))). On the camera: Menu, Live View shoot: Enable; close the menu; mode dial on P, Tv, Av or M.")

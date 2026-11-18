@@ -27693,16 +27693,21 @@
         let fails = 0;
         const helper = usbIsHelper();
         const fast = !helper;   // the camera helper keeps its own, slower timing
+        // Helper only: the next picture is asked for as soon as this one arrives, so the camera is already busy
+        // while this one is decoded and drawn (one request in flight at a time, never a queue).
+        let ahead = null, prevArrive = 0;
         usbCam.lastFrameAt = Date.now();
         while (usbCam.active && usbCam.gen === gen && usbCam.camera) {
           // While the camera takes and sends a photo, don't queue live view requests behind it: they would wait out the whole
           // photo and could time out ("Camera disconnected" between shots even though the photo was saved).
-          if (usbCam.shooting && helper) { await new Promise(r => setTimeout(r, 100)); continue; }
-          if (usbCam.sleeping) { await new Promise(r => setTimeout(r, 300)); usbCam.lastFrameAt = Date.now(); continue; }   // live view is off on purpose (battery saver)
+          if (usbCam.shooting && helper) { ahead = null; await new Promise(r => setTimeout(r, 100)); continue; }
+          if (usbCam.sleeping) { ahead = null; await new Promise(r => setTimeout(r, 300)); usbCam.lastFrameAt = Date.now(); continue; }   // live view is off on purpose (battery saver)
           try {
-            const frameT0 = performance.now();
-            const blob = await usbCam.camera.capturePreviewAsBlob();
+            const pre = ahead; ahead = null;
+            const blob = await (pre || usbCam.camera.capturePreviewAsBlob());
             if (usbCam.sleeping) continue;   // live view was switched off while this picture was on its way
+            const arrived = performance.now();
+            if (helper && usbCam.gen === gen && !usbCam.shooting) { ahead = usbCam.camera.capturePreviewAsBlob(); ahead.catch(function () { }); }
             const bmp = await createImageBitmap(blob);
             if (usbCam.gen !== gen) { bmp.close(); return; }
             if (usbCam.canvas.width !== bmp.width || usbCam.canvas.height !== bmp.height) {
@@ -27715,8 +27720,12 @@
             if (usbCam.shotAt) { usbLog('live-back', { afterShotMs: usbCam.frameAt - usbCam.shotAt, camera: usbCam.name }); usbCam.shotAt = 0; }
             usbCam.kicked = false;
             if (usbCam.stallShown) { usbCam.stallShown = false; cameraError.style.display = 'none'; usbLog('stall-over', { camera: usbCam.name }); }
-            await new Promise(r => setTimeout(r, helper ? Math.max(10, 55 - (performance.now() - frameT0)) : 45));
+            // Helper: keep at most one picture per 55 ms (a quick camera is not hammered); a slow one is never delayed further.
+            const gapMs = prevArrive ? arrived - prevArrive : 55;
+            prevArrive = arrived;
+            await new Promise(r => setTimeout(r, helper ? Math.max(0, 55 - gapMs) : 45));
           } catch (err) {
+            ahead = null;   // a failed round: start the next one fresh
             // This loop was stopped meanwhile (the camera was replaced or reported lost): not a new failure.
             if (usbCam.gen !== gen || !usbCam.active) return;
             if (usbCam.sleeping) { fails = 0; continue; }   // live view was switched off on purpose: not a failure

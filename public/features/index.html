@@ -443,6 +443,80 @@
       color: var(--ink)
     }
 
+    .shots {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 16px
+    }
+
+    .shots.two {
+      grid-template-columns: repeat(2, 1fr)
+    }
+
+    .shot {
+      margin: 0;
+      padding: 12px;
+      border-radius: 16px;
+      background: #fff;
+      border: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      gap: 8px
+    }
+
+    .shot img {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      border-radius: 10px;
+      background: var(--paper);
+      display: block
+    }
+
+    .shot.contain img {
+      object-fit: contain;
+      background: #FAF7F2
+    }
+
+    .shot figcaption {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.4
+    }
+
+    .shot figcaption b {
+      color: var(--ink)
+    }
+
+    .yes {
+      color: var(--green);
+      font-weight: 800
+    }
+
+    .no {
+      color: var(--muted);
+      font-weight: 600
+    }
+
+    .opt {
+      color: var(--red);
+      font-weight: 800
+    }
+
+    @media (max-width: 860px) {
+      .shots {
+        grid-template-columns: 1fr 1fr
+      }
+    }
+
+    @media (max-width: 640px) {
+      .shots,
+      .shots.two {
+        grid-template-columns: 1fr
+      }
+    }
+
     .banner {
       display: flex;
       flex-wrap: wrap;
@@ -612,15 +686,18 @@
         Canon SELPHY &amp; wide Bluetooth/USB thermal printers, to post-session stickers, green screen, 40-spot custom
         frames, LumaShare Sharing Station, GIF styles, flipbooks, and XL prints up to 48 inches.</p>
       <nav class="jump" aria-label="Jump to section">
-        <a href="#android">Android offline app</a>
-        <a href="#desktop">Windows &amp; Mac offline app</a>
+        <a href="#android">Android offline</a>
+        <a href="#desktop">Windows &amp; Mac offline</a>
+        <a href="#ipad">iPad offline</a>
         <a href="#printers-2">2 Printers, Thermal &amp; SELPHY</a>
-        <a href="#designs-frames">Designs, Frames (40 spots) &amp; Stickers</a>
+        <a href="#designs-frames">Designs, Welcome Styles &amp; Stickers</a>
         <a href="#greenscreen">Green screen</a>
         <a href="#lumashare">LumaShare &amp; Sharing Station</a>
         <a href="#gif-styles">GIF styles</a>
         <a href="#flipbook">Flipbook</a>
         <a href="#xl-print">XL print</a>
+        <a href="#extras-more">Keychains, Roving, AR &amp; Pay</a>
+        <a href="#matrix">Platform matrix</a>
         <a href="#lock-support">Lock mode &amp; Support</a>
       </nav>
     </section>
@@ -752,6 +829,40 @@
       </div>
     </section>
 
+    <!-- IPAD OFFLINE APP -->
+    <section class="block" id="ipad" aria-labelledby="h-ipad">
+      <p class="label">Offline &middot; iPadOS / iOS 15.0+</p>
+      <h2 id="h-ipad">iPad Offline App &amp; USB DSLR Tethering</h2>
+      <p class="sub">Install the native iPad offline app once with Sideloadly to run full events with zero venue
+        internet, AirPrint silent printing, and direct USB DSLR control.</p>
+
+      <div class="grid-2">
+        <article class="card">
+          <span class="pill">Zero Internet &middot; AirPrint &amp; USB DSLR</span>
+          <h3>Full iPad Kiosk + Local QR Sharing</h3>
+          <ul class="list">
+            <li><b>USB DSLR &amp; Mirrorless tethering:</b> Plug in Canon EOS, Nikon, or Sony Alpha cameras through a
+              powered USB-C hub (or Apple Lightning to USB 3 adapter) for live view, shutter control, and strobe flash
+              sync—plus HDMI capture cards or the built-in iPad camera.</li>
+            <li><b>Offline guest QR sharing:</b> Connect to a pocket Wi-Fi router or phone hotspot (no mobile data
+              needed) and show a <i>Join Wi-Fi</i> QR before each guest's Photo QR.</li>
+            <li><b>Silent AirPrint &amp; LAN receipts:</b> Print silently to AirPrint photo printers (Canon SELPHY,
+              Epson, DNP WPS Pro) or 58/80 mm LAN thermal receipt printers (port <code>9100</code>).</li>
+            <li><b>Guided Access &amp; in-app updates:</b> Lock guests inside the booth with iOS Guided Access, save
+              copies straight to iPad Files &amp; Photos, and install booth updates inside <i>Setup &rsaquo; Share</i>.</li>
+          </ul>
+          <p style="margin-top:12px;"><a class="btn" href="/how-to-ipad-offline/">Open iPad Offline Setup Guide &rarr;</a></p>
+        </article>
+
+        <figure class="shot contain">
+          <img src="/how-to-ipad-offline/img/ipad-booth-ready.jpg"
+            alt="photobooth4u running full screen offline on an iPad showing Tap to start" loading="lazy">
+          <figcaption><b>iPad Offline App:</b> Runs full screen with USB DSLR, HDMI capture, or built-in iPad camera—no
+            internet required at the venue.</figcaption>
+        </figure>
+      </div>
+    </section>
+
     <!-- 2 PRINTERS, THERMAL & CANON SELPHY -->
     <section class="block" id="printers-2" aria-labelledby="h-printers2">
       <p class="label">Printing &amp; hardware compatibility</p>
@@ -854,6 +965,55 @@
           </ul>
         </article>
       </div>
+
+      <div class="grid-2" style="margin-top:14px;">
+        <article class="card">
+          <span class="pill">Welcome card aesthetics</span>
+          <h3>Branded Welcome Cards &amp; 1-Click Color Palettes</h3>
+          <ul class="list">
+            <li><b>6 designer card aesthetics:</b> Pick from <i>Luxe Corner Waves</i>, <i>Aura &amp; Sparkles</i>,
+              <i>Coquette Stitched</i>, <i>Pop Retro 3D</i>, <i>Scrapbook Doodles</i>, and clean standalone cards (with
+              or without a side photo strip preview).</li>
+            <li><b>1-Click color palette harmonies:</b> Apply curated themes like <i>Charm Blush &amp; Navy</i>,
+              <i>Sweet Berry</i>, <i>Matcha &amp; Cream</i>, <i>Midnight Gold</i>, <i>Lilac Dream</i>, <i>Peach
+                Sunset</i>, and <i>Studio Monochrome</i>—coordinating background, typography, button, and accents.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill green">Voice &amp; Hands-free</span>
+          <h3>Spoken Countdowns &amp; Smile to Start</h3>
+          <ul class="list">
+            <li><b>Virtual assistant voice countdowns:</b> Friendly spoken guidance (<i>&ldquo;Get ready&hellip; Three,
+                Two, One&hellip; Smile!&rdquo;</i>) available in <b>English and Tagalog</b> voices.</li>
+            <li><b>Hands-free &ldquo;Smile to start&rdquo;:</b> Guests can trigger the session just by smiling at the
+              camera—or tap the screen / use a Bluetooth clicker.</li>
+            <li><b>Customizable countdown ring:</b> Choose 3, 5, 7, or 10 seconds (fine-tuned in half seconds) with a
+              smooth visual countdown ring.</li>
+          </ul>
+        </article>
+      </div>
+
+      <div class="shots" aria-label="Design and welcome card previews">
+        <figure class="shot">
+          <img src="/about-us/assets/pb4u-02-layouts-v2.jpg"
+            alt="12 built-in print layouts plus My frame and Frame collage" loading="lazy">
+          <figcaption><b>12+ layouts &amp; custom frames:</b> Strips, grids, polaroids, hero shots, landscape prints, and
+            40-spot Canva frames.</figcaption>
+        </figure>
+        <figure class="shot contain">
+          <img src="/assets/welcome-card-options-guide.png"
+            alt="Branded welcome card customization options and palettes" loading="lazy">
+          <figcaption><b>Welcome card aesthetics:</b> Customize card style, decoration waves/sparkles, and 1-click color
+            palettes.</figcaption>
+        </figure>
+        <figure class="shot contain">
+          <img src="/assets/charm-up-client-bottom-right-mockup.png"
+            alt="Branded welcome screen mockup with custom aesthetic card" loading="lazy">
+          <figcaption><b>Guest-facing welcome screen:</b> Clean standalone branded card look ready for weddings, debuts,
+            and corporate events.</figcaption>
+        </figure>
+      </div>
     </section>
 
     <!-- GREEN SCREEN -->
@@ -924,6 +1084,21 @@
                 current session</i> for privacy or <i>Allow browsing event gallery</i>.</li>
           </ul>
         </article>
+      </div>
+
+      <div class="shots two" aria-label="Booth and QR sharing previews">
+        <figure class="shot">
+          <img src="/about-us/assets/pb4u-06-traditional-booth.jpg"
+            alt="Laptop booth running setup and auto-print with a second monitor for guests" loading="lazy">
+          <figcaption><b>Dual-screen or Sharing Station:</b> Run a guest monitor on HDMI, or pair a separate tablet/phone
+            as a dedicated QR Sharing Station.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="/about-us/assets/pb4u-07-share-photos-v3.jpg"
+            alt="Guest QR code sharing for individual photos and event gallery" loading="lazy">
+          <figcaption><b>Instant QR sharing:</b> Guests scan one QR for their photo strip, solo shots, and GIFs—online
+            or offline over local Wi-Fi.</figcaption>
+        </figure>
       </div>
     </section>
 
@@ -1075,6 +1250,186 @@
         strips continuously; dye-sub printers (DNP / Canon SELPHY) remain limited by their physical media sizes (up to
         6&times;9 on Android DNP, 8&times;12 on Desktop DNP/Citizen/Mitsubishi).
       </div>
+
+      <div class="shots two" aria-label="Keychain sheet and print preview">
+        <figure class="shot contain">
+          <img src="/keychain-guide/img/3-step3-preview-sheet.png"
+            alt="2.5 by 7.5 inch keychain strips arranged on a full sheet with cut lines" loading="lazy">
+          <figcaption><b>Exact-scale packing:</b> 2.5&times;7.5&Prime; acrylic keychain strips pack onto A4, Letter, or
+            8R sheets with thin cut lines.</figcaption>
+        </figure>
+        <figure class="shot contain">
+          <img src="/keychain-guide/img/5-print-preview-overlay.png"
+            alt="Print preview window before the first print showing paper size, printer, and layout" loading="lazy">
+          <figcaption><b>Print preview before printing:</b> Checks paper size, copies, 2-up strip split, or flipbook
+            sheets before sending the first job.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- KEYCHAINS, ROVING DESK, GUESTBOOK, AR & PAYMENTS -->
+    <section class="block" id="extras-more" aria-labelledby="h-extras-more">
+      <p class="label">More event tools &amp; revenue features</p>
+      <h2 id="h-extras-more">Keychains, Roving Desk, Guestbook, AR &amp; Payments</h2>
+      <p class="sub">Everything else included with your booth—plus the optional 360 Video Desk add-on—to expand what you
+        offer at weddings, debuts, corporate events, and self-service kiosks.</p>
+
+      <div class="grid-2">
+        <article class="card">
+          <span class="pill">Included &middot; Acrylic keychains &amp; 360</span>
+          <h3>2.5&times;7.5&Prime; Keychains &amp; Spin &amp; Print</h3>
+          <ul class="list">
+            <li><b>Keychain strips at real size:</b> Toggle <i>Keychain strips at real size (2.5&times;7.5 in)</i> to
+              pack multiple 2.5&times;7.5&Prime; strips upright or sideways onto A4, Letter, or 8R paper at true 100%
+              scale with cut guides (<a href="/keychain-guide/">Keychain guide &rarr;</a>).</li>
+            <li><b>360 Spin &amp; Print (with 360 add-on):</b> Extract crisp still frames straight from any 360 spinner
+              video and print them as strips or 2.5&times;7.5&Prime; keychains automatically.</li>
+            <li><b>Print preview before the first print:</b> Inspect the exact page, copies, and margins on screen
+              before sending the first print job.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill">Included &middot; Roaming photography</span>
+          <h3>Photographer Desk &amp; Roving DSLR Bridge</h3>
+          <ul class="list">
+            <li><b>Photographer Desk:</b> A roaming photographer sends shots from a phone QR, memory card, or watched
+              camera folder (Desktop app) straight into your booth frame for instant printing + QR.</li>
+            <li><b>Print framed or original:</b> Choose <i>Make print + QR</i> (framed in your event design) or <i>Print
+                original</i> (unframed full photo).</li>
+            <li><b>Roving DSLR Bridge (Android APK):</b> Free companion phone app connects a Canon, Nikon, or Sony DSLR
+              via USB OTG and streams shots over local Wi-Fi to your laptop's Photographer Desk with 1-second QR
+              pairing.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill">Included &middot; Guest interaction</span>
+          <h3>Video Guestbook, Print Requests &amp; AR Moving Picture</h3>
+          <ul class="list">
+            <li><b>Video Guestbook:</b> Guests record 15, 30, or 60-second audio/video messages with up to 5 custom
+              question prompts and get a QR code (plus 1-click zip download in the online gallery).</li>
+            <li><b>Guest Print Requests:</b> Guests scan their QR, tap <i>Ask for a print at the booth</i>, and
+              operators approve or dismiss from the dock (rate-limited to prevent spam).</li>
+            <li><b>AR Moving Picture (<code>/ar/</code>):</b> Point a phone camera at a printed photo and watch the
+              captured motion clip play right on top of the physical print.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill green">Self-service monetization</span>
+          <h3>GCash / Maya / ShopeePay QR &amp; Offline Vouchers</h3>
+          <ul class="list">
+            <li><b>Pay with QR (Online booth):</b> Collect automated per-session payments via <b>GCash, Maya, or
+                ShopeePay</b> before the camera unlocks—ideal for unmanned kiosks and malls.</li>
+            <li><b>Offline Vouchers (Online &amp; Offline):</b> Generate and print voucher ticket sheets (supports
+              multiple tiers like Thermal vs. Coloured) for cash/prepaid booth sessions with zero internet needed.</li>
+            <li><b>360 Video Desk (Optional &#8369;1,500 add-on):</b> 0.5x slow-mo, speed ramp, boomerang, 40 animated
+              overlays, background music, phone QR send page &amp; Live Wall.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- QUICK PLATFORM MATRIX -->
+    <section class="block" id="matrix" aria-labelledby="h-matrix">
+      <p class="label">At a glance</p>
+      <h2 id="h-matrix">Which Setup Should You Pick?</h2>
+      <p class="sub">Compare what runs on every platform. All standard extras are included; only the 360 Video Desk is an
+        optional &#8369;1,500 add-on.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:32%">Feature / Capability</th>
+              <th style="width:17%">Online (Web)</th>
+              <th style="width:17%">Windows / Mac</th>
+              <th style="width:17%">Android Offline</th>
+              <th style="width:17%">iPad Offline</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Zero venue internet</b></td>
+              <td><span class="no">Needs internet</span></td>
+              <td><span class="yes">&#10003; Included</span></td>
+              <td><span class="yes">&#10003; Included</span></td>
+              <td><span class="yes">&#10003; Included</span></td>
+            </tr>
+            <tr>
+              <td><b>Built-in hotspot (no router)</b></td>
+              <td><span class="no">&ndash;</span></td>
+              <td><span class="yes">&#10003; Windows</span></td>
+              <td><span class="yes">&#10003; Wi-Fi Direct</span></td>
+              <td><span class="no">Pocket Wi-Fi</span></td>
+            </tr>
+            <tr>
+              <td><b>DSLR / Mirrorless over USB</b></td>
+              <td><span class="opt">Chrome (Win/Mac)</span></td>
+              <td><span class="yes">&#10003; Canon/Nikon/Sony</span></td>
+              <td><span class="yes">&#10003; USB OTG</span></td>
+              <td><span class="yes">&#10003; USB-C Hub</span></td>
+            </tr>
+            <tr>
+              <td><b>2+ Printers &amp; XL Print (up to 48&Prime;)</b></td>
+              <td><span class="opt">With Print Helper</span></td>
+              <td><span class="yes">&#10003; Full Driver</span></td>
+              <td><span class="opt">IPP / Dialog</span></td>
+              <td><span class="opt">AirPrint</span></td>
+            </tr>
+            <tr>
+              <td><b>Thermal 58 / 80 mm &amp; Canon SELPHY</b></td>
+              <td><span class="opt">AirPrint / Helper</span></td>
+              <td><span class="yes">&#10003; USB / BT / Wi-Fi</span></td>
+              <td><span class="yes">&#10003; Direct BT / USB</span></td>
+              <td><span class="yes">&#10003; AirPrint / LAN</span></td>
+            </tr>
+            <tr>
+              <td><b>DNP / HiTi / Citizen / Mitsubishi / Sinfonia</b></td>
+              <td><span class="opt">With Print Helper</span></td>
+              <td><span class="yes">&#10003; All Models</span></td>
+              <td><span class="opt">DNP RX1/620/40 USB</span></td>
+              <td><span class="opt">DNP WPS Pro</span></td>
+            </tr>
+            <tr>
+              <td><b>GIF styles, Flipbook &amp; 40-spot frames</b></td>
+              <td><span class="yes">&#10003; Included</span></td>
+              <td><span class="yes">&#10003; Included</span></td>
+              <td><span class="yes">&#10003; Included</span></td>
+              <td><span class="yes">&#10003; Included</span></td>
+            </tr>
+            <tr>
+              <td><b>Stickers post-session &amp; Green screen</b></td>
+              <td><span class="yes">&#10003; Included</span></td>
+              <td><span class="yes">&#10003; Included</span></td>
+              <td><span class="yes">&#10003; Included</span></td>
+              <td><span class="yes">&#10003; Included</span></td>
+            </tr>
+            <tr>
+              <td><b>LumaShare Pop-up &amp; Sharing Station</b></td>
+              <td><span class="yes">&#10003; Included</span></td>
+              <td><span class="yes">&#10003; Included</span></td>
+              <td><span class="yes">&#10003; Included</span></td>
+              <td><span class="yes">&#10003; Included</span></td>
+            </tr>
+            <tr>
+              <td><b>GCash / Maya / ShopeePay QR</b></td>
+              <td><span class="yes">&#10003; Live QR</span></td>
+              <td><span class="no">Vouchers only</span></td>
+              <td><span class="no">Vouchers only</span></td>
+              <td><span class="no">Vouchers only</span></td>
+            </tr>
+            <tr>
+              <td><b>360 Video Desk (editing + 40 overlays)</b></td>
+              <td><span class="no">Unedited share</span></td>
+              <td><span class="opt">Add-on (&#8369;1,500)</span></td>
+              <td><span class="opt">Send page to PC</span></td>
+              <td><span class="opt">Send page to PC</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <!-- LOCK MODE & SUPPORT -->
@@ -1120,11 +1475,13 @@
       <div class="banner">
         <div>
           <h2>Ready to set up your booth?</h2>
-          <p>Download the Windows, Mac, or Android offline installer, check supported printers, or message us on Messenger
-            for fast support and code activation.</p>
+          <p>Download the Windows, Mac, Android, or iPad offline installer, test your camera and printer in Free Trial
+            mode<span id="trialInline" hidden> (code: <code id="trialCode" style="background:#2d2a30;color:#fff;border-color:#57525A;"></code>)</span>,
+            or message us on Messenger for fast support.</p>
         </div>
         <div class="actions">
-          <a class="btn red" href="https://web.facebook.com/roktetnachi/" target="_blank"
+          <a class="btn red" id="trialBtn" href="/">Try Free Trial</a>
+          <a class="btn ghost" href="https://web.facebook.com/roktetnachi/" target="_blank"
             rel="noopener noreferrer">Message support</a>
           <a class="btn ghost" href="/downloads/">Get the apps</a>
           <a class="btn ghost" href="/about-us/#packages">See pricing</a>
@@ -1145,6 +1502,19 @@
       </nav>
     </footer>
   </div>
+  <script>
+    fetch('/api/trial').then(function (r) { return r.json(); }).then(function (d) {
+      if (!d || !d.enabled || !d.code) return;
+      var btn = document.getElementById('trialBtn');
+      if (btn) btn.href = '/?code=' + encodeURIComponent(d.code);
+      var codeEl = document.getElementById('trialCode');
+      var wrap = document.getElementById('trialInline');
+      if (codeEl && wrap) {
+        codeEl.textContent = d.code;
+        wrap.hidden = false;
+      }
+    }).catch(function () { });
+  </script>
 </body>
 
 </html>

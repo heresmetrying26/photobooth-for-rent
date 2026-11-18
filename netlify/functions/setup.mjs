@@ -58,6 +58,7 @@ export default safe(async (req) => {
       const sf = ownerRec && ownerRec.startFrame;
       const sl = ownerRec && ownerRec.startLogo;
       const sn = ownerRec && (ownerRec.startName || null);
+      const isCharm = /charm/i.test((sn || '') + ' ' + ((ownerRec && ownerRec.label) || ''));
       return json({
         ok: true,
         settings: doc ? doc.settings : null,
@@ -66,12 +67,12 @@ export default safe(async (req) => {
         startFrame: sf ? { id: sf.id, name: sf.name } : null,
         startLogo: sl ? { id: sl.id, name: sl.name } : null,
         startName: sn,
-        startCardOnly: !!(ownerRec && ownerRec.startCardOnly),
+        startCardOnly: ownerRec && ownerRec.startCardOnly !== undefined ? !!ownerRec.startCardOnly : true,
         startSampleLayout: (ownerRec && ownerRec.startSampleLayout) || 'strip',
-        startDeco: (ownerRec && ownerRec.startDeco) || null,
-        startDecoLabel: (ownerRec && ownerRec.startDecoLabel) || null,
-        startPalette: (ownerRec && ownerRec.startPalette) || null,
-        startPaletteLabel: (ownerRec && ownerRec.startPaletteLabel) || null,
+        startDeco: (ownerRec && ownerRec.startDeco) || (isCharm ? 'ribbon-waves' : 'none'),
+        startDecoLabel: (ownerRec && ownerRec.startDecoLabel) || (isCharm ? 'Waves' : 'None'),
+        startPalette: (ownerRec && ownerRec.startPalette) || (isCharm ? 'charm-pink' : 'monochrome'),
+        startPaletteLabel: (ownerRec && ownerRec.startPaletteLabel) || (isCharm ? 'Charm Blush' : 'Monochrome'),
         adminPresetUpdatedAt: (ownerRec && ownerRec.adminPresetUpdatedAt) || 0
       });
     }

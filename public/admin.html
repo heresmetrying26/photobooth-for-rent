@@ -1003,6 +1003,63 @@
       background: #141416;
     }
 
+    .card-modal-toolbar {
+      padding: 10px 18px;
+      background: #111113;
+      border-bottom: 1px solid #27272a;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .modal-tool-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .modal-tool-row .tool-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #a1a1aa;
+      min-width: 72px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .modal-chips {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .m-chip {
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      color: #d4d4d8;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 9px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .m-chip:hover {
+      background: #3f3f46;
+      color: #fff;
+    }
+
+    .m-chip.active {
+      background: #2563eb;
+      border-color: #3b82f6;
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+    }
+
     .card-modal-body {
       padding: 24px;
       display: flex;
@@ -1022,16 +1079,26 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      box-sizing: border-box;
     }
 
     .card-preview-screen.landscape {
-      width: 660px;
-      height: 412px;
+      width: 680px;
+      height: 420px;
+      flex-direction: row;
+      gap: 44px; /* Generous clean distance between strip and card to prevent overlap */
+      justify-content: center;
+      align-items: center;
     }
 
     .card-preview-screen.portrait {
       width: 340px;
-      height: 550px;
+      height: 560px;
+      flex-direction: column; /* Stacked vertically in portrait to prevent cramping */
+      gap: 16px;
+      padding: 18px 12px;
+      justify-content: center;
+      align-items: center;
     }
 
     .card-modal-canvas {
@@ -1055,14 +1122,15 @@
       gap: 6px;
       transition: all 0.2s ease;
       box-sizing: border-box;
+      flex-shrink: 0;
     }
 
-    .card-modal-sample-strip.strip-mode {
+    .card-preview-screen.landscape .card-modal-sample-strip.strip-mode {
       width: 104px;
       height: 290px;
     }
 
-    .card-modal-sample-strip.grid-mode {
+    .card-preview-screen.landscape .card-modal-sample-strip.grid-mode {
       width: 154px;
       height: 210px;
       display: grid !important;
@@ -1071,9 +1139,76 @@
       gap: 6px;
     }
 
-    .card-modal-sample-strip.solo-mode {
+    .card-preview-screen.landscape .card-modal-sample-strip.solo-mode {
       width: 154px;
       height: 210px;
+    }
+
+    /* Portrait scaling: strip sits comfortably above the card without crowding */
+    .card-preview-screen.portrait .card-modal-sample-strip.strip-mode {
+      width: 68px;
+      height: 155px;
+      padding: 5px;
+      gap: 4px;
+    }
+
+    .card-preview-screen.portrait .card-modal-sample-strip.grid-mode {
+      width: 125px;
+      height: 105px;
+      display: grid !important;
+      grid-template-columns: 1fr 1fr;
+      padding: 5px;
+      gap: 4px;
+    }
+
+    .card-preview-screen.portrait .card-modal-sample-strip.solo-mode {
+      width: 110px;
+      height: 110px;
+      padding: 5px;
+    }
+
+    .card-preview-screen.portrait .card-preview-box {
+      width: 260px;
+      padding: 12px 18px;
+      border-radius: 20px;
+    }
+
+    .card-preview-screen.portrait .card-preview-badge {
+      width: 46px;
+      height: 46px;
+      margin-bottom: 6px;
+    }
+
+    .card-preview-screen.portrait .card-preview-greeting {
+      font-size: 8px;
+      letter-spacing: 1px;
+    }
+
+    .card-preview-screen.portrait .card-preview-title {
+      font-size: 19px;
+      margin-bottom: 6px;
+    }
+
+    .card-preview-screen.portrait .card-preview-steps {
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .card-preview-screen.portrait .step-item {
+      font-size: 10px;
+      gap: 6px;
+    }
+
+    .card-preview-screen.portrait .step-num {
+      width: 14px;
+      height: 14px;
+      font-size: 8px;
+    }
+
+    .card-preview-screen.portrait .card-preview-btn {
+      padding: 7px 18px;
+      font-size: 11px;
+      border-radius: 999px;
     }
 
     .card-modal-sample-strip .sample-cell {
@@ -1090,6 +1225,11 @@
 
     .card-modal-sample-strip.grid-mode .sample-cell {
       height: 90px;
+    }
+
+    .card-preview-screen.portrait .card-modal-sample-strip.grid-mode .sample-cell {
+      height: 42px;
+      font-size: 9px;
     }
 
     .card-modal-sample-strip .sample-brand {
@@ -1713,6 +1853,41 @@
             style="background:none; border:none; font-size:24px; cursor:pointer; line-height:1; color:#9ca3af; margin-left:6px;">&times;</button>
         </div>
       </div>
+      <div class="card-modal-toolbar" id="cardModalToolbar">
+        <div class="modal-tool-row">
+          <span class="tool-label">Layout:</span>
+          <div class="modal-chips" id="modalLayoutChips">
+            <button type="button" class="m-chip" data-mlay="card-only">Card only</button>
+            <button type="button" class="m-chip" data-mlay="strip">With 2×6 strip</button>
+            <button type="button" class="m-chip" data-mlay="grid4">With 4R grid</button>
+            <button type="button" class="m-chip" data-mlay="solo">With 1-photo</button>
+          </div>
+        </div>
+        <div class="modal-tool-row">
+          <span class="tool-label">Decoration:</span>
+          <div class="modal-chips" id="modalDecoChips">
+            <button type="button" class="m-chip" data-mdeco="none">None</button>
+            <button type="button" class="m-chip" data-mdeco="ribbon-waves">Waves</button>
+            <button type="button" class="m-chip" data-mdeco="aurora-sparkles">Aura</button>
+            <button type="button" class="m-chip" data-mdeco="coquette-stitch">Coquette</button>
+            <button type="button" class="m-chip" data-mdeco="pop-retro">Pop 3D</button>
+            <button type="button" class="m-chip" data-mdeco="scrapbook-doodle">Scrapbook</button>
+            <button type="button" class="m-chip" data-mdeco="theatre-curtains">Curtains</button>
+          </div>
+        </div>
+        <div class="modal-tool-row">
+          <span class="tool-label">Palette:</span>
+          <div class="modal-chips" id="modalPaletteChips">
+            <button type="button" class="m-chip" data-mpal="monochrome">Monochrome</button>
+            <button type="button" class="m-chip" data-mpal="charm-pink">Charm Blush</button>
+            <button type="button" class="m-chip" data-mpal="sweet-berry">Sweet Berry</button>
+            <button type="button" class="m-chip" data-mpal="matcha">Matcha</button>
+            <button type="button" class="m-chip" data-mpal="midnight-gold">Midnight Gold</button>
+            <button type="button" class="m-chip" data-mpal="lilac">Lilac</button>
+            <button type="button" class="m-chip" data-mpal="peach">Peach</button>
+          </div>
+        </div>
+      </div>
       <div class="card-modal-body" id="cardModalViewport">
         <div id="cardModalScreen" class="card-preview-screen landscape">
           <canvas id="cardModalDecoCanvas" class="card-modal-canvas"></canvas>
@@ -2203,9 +2378,15 @@
             '<input type="file" class="hidden" accept="image/png,image/jpeg,image/webp" data-slogo-for="' + c + '">' +
             '&nbsp; Client name <button class="small" data-a="sname" data-c="' + c + '" title="Pre-set event or client brand name (client can still change it in Setup).">' + (l.startName ? esc(l.startName) + ' &middot; change' : 'Set name') + '</button>' +
             (l.startName ? '<button class="small" data-a="snameoff" data-c="' + c + '">Clear</button>' : '') +
-            '&nbsp; Welcome card <button class="small" data-a="scard" data-c="' + c + '" title="Cycle welcome card look: Card only, With 2×6 strip, With 4R grid, or With 1-photo frame">' + (l.startCardOnly ? 'Card only' : (l.startSampleLayout === 'grid4' ? 'With 4R grid' : l.startSampleLayout === 'solo' ? 'With 1-photo' : 'With 2×6 strip')) + '</button>' +
-            '&nbsp; Decoration <button class="small" data-a="sdeco" data-c="' + c + '" title="Cycle starting decoration style (Waves, Aura, Coquette, Pop 3D, Scrapbook, Curtains, None)">' + esc(l.startDecoLabel || (l.startDeco === 'ribbon-waves' ? 'Waves' : (l.startDeco || 'Waves'))) + '</button>' +
-            '&nbsp; Palette <button class="small" data-a="spalette" data-c="' + c + '" title="Cycle starting color palette (Charm Blush, Sweet Berry, Matcha, Midnight Gold, Lilac, Peach, Monochrome)">' + esc(l.startPaletteLabel || (l.startPalette === 'charm-pink' ? 'Charm Blush' : (l.startPalette || 'Charm Blush'))) + '</button>' + '</div>') +
+            (function () {
+              var isCh = /charm/i.test((l.startName || '') + ' ' + (l.label || ''));
+              var dLbl = l.startDecoLabel || (l.startDeco === 'ribbon-waves' ? 'Waves' : l.startDeco === 'aurora-sparkles' ? 'Aura' : l.startDeco === 'coquette-stitch' ? 'Coquette' : l.startDeco === 'pop-retro' ? 'Pop 3D' : l.startDeco === 'scrapbook-doodle' ? 'Scrapbook' : l.startDeco === 'theatre-curtains' ? 'Curtains' : l.startDeco === 'none' ? 'None' : (isCh ? 'Waves' : 'None'));
+              var pLbl = l.startPaletteLabel || (l.startPalette === 'charm-pink' ? 'Charm Blush' : l.startPalette === 'sweet-berry' ? 'Sweet Berry' : l.startPalette === 'matcha' ? 'Matcha' : l.startPalette === 'midnight-gold' ? 'Midnight Gold' : l.startPalette === 'lilac' ? 'Lilac' : l.startPalette === 'peach' ? 'Peach' : l.startPalette === 'monochrome' ? 'Monochrome' : (isCh ? 'Charm Blush' : 'Monochrome'));
+              var cLook = (l.startCardOnly !== false) ? 'Card only' : (l.startSampleLayout === 'grid4' ? 'With 4R grid' : l.startSampleLayout === 'solo' ? 'With 1-photo' : 'With 2×6 strip');
+              return '&nbsp; Welcome card <button class="small" data-a="scard" data-c="' + c + '" title="Click to view/change welcome card look (Shift-click to reverse)">' + cLook + '</button>' +
+                '&nbsp; Decoration <button class="small" data-a="sdeco" data-c="' + c + '" title="Click to view/change decoration (Shift-click to reverse)">' + esc(dLbl) + '</button>' +
+                '&nbsp; Palette <button class="small" data-a="spalette" data-c="' + c + '" title="Click to view/change palette (Shift-click to reverse)">' + esc(pLbl) + '</button>';
+            })() + '</div>') +
           '<div class="printbox hidden" data-print-edit></div>' +
           '<div class="printbox hidden" data-pay-box></div>' +
           '<div class="printbox hidden" data-offkey-box></div>' +
@@ -2396,50 +2577,67 @@
             toast('Starting name cleared'); refresh(); return;
           }
           if (a === 'scard') {
-            var curCardOnly = !!(LIC[code] && LIC[code].startCardOnly);
+            var isRev = !!(e.shiftKey || e.button === 2);
+            var cardLooks = [
+              { cardOnly: true, sampleLayout: 'strip', label: 'Card only (Centered aesthetic)' },
+              { cardOnly: false, sampleLayout: 'strip', label: 'With 2×6 photo strip' },
+              { cardOnly: false, sampleLayout: 'grid4', label: 'With 4R grid (4 shots)' },
+              { cardOnly: false, sampleLayout: 'solo', label: 'With single frame' }
+            ];
+            var curCardOnly = (LIC[code] && LIC[code].startCardOnly !== undefined) ? !!LIC[code].startCardOnly : true;
             var curSampleLay = (LIC[code] && LIC[code].startSampleLayout) || 'strip';
-            var nextCardOnly, nextSampleLay, msg;
-            if (curCardOnly) {
-              nextCardOnly = false;
-              nextSampleLay = 'strip';
-              msg = 'With 2×6 photo strip';
-            } else if (curSampleLay === 'strip') {
-              nextCardOnly = false;
-              nextSampleLay = 'grid4';
-              msg = 'With 4R grid (4 shots)';
-            } else if (curSampleLay === 'grid4') {
-              nextCardOnly = false;
-              nextSampleLay = 'solo';
-              msg = 'With single frame';
-            } else {
-              nextCardOnly = true;
-              nextSampleLay = 'strip';
-              msg = 'Card only (Centered aesthetic)';
+            var curIdx = 0;
+            if (!curCardOnly) {
+              if (curSampleLay === 'grid4') curIdx = 2;
+              else if (curSampleLay === 'solo') curIdx = 3;
+              else curIdx = 1;
             }
-            await api({ action: 'startcard', code: code, cardOnly: nextCardOnly, sampleLayout: nextSampleLay });
-            toast('Welcome look set to: ' + msg);
+            var nextIdx = (curIdx + (isRev ? -1 : 1) + cardLooks.length) % cardLooks.length;
+            var chosen = cardLooks[nextIdx];
+            if (!LIC[code]) LIC[code] = {};
+            LIC[code].startCardOnly = chosen.cardOnly;
+            LIC[code].startSampleLayout = chosen.sampleLayout;
+            await api({ action: 'startcard', code: code, cardOnly: chosen.cardOnly, sampleLayout: chosen.sampleLayout });
+            toast('Welcome look: ' + chosen.label);
+            openCardPreviewModal(code);
             refresh();
             return;
           }
           if (a === 'sdeco') {
-            var order = ['Waves', 'Aura', 'Coquette', 'Pop 3D', 'Scrapbook', 'Curtains', 'None'];
-            var decoMap = { 'Waves': 'ribbon-waves', 'Aura': 'aurora-sparkles', 'Coquette': 'coquette-stitch', 'Pop 3D': 'pop-retro', 'Scrapbook': 'scrapbook-doodle', 'Curtains': 'theatre-curtains', 'None': 'none' };
-            var cur = LIC[code] && (LIC[code].startDecoLabel || 'Waves');
+            var isRev = !!(e.shiftKey || e.button === 2);
+            var order = ['None', 'Waves', 'Aura', 'Coquette', 'Pop 3D', 'Scrapbook', 'Curtains'];
+            var decoMap = { 'None': 'none', 'Waves': 'ribbon-waves', 'Aura': 'aurora-sparkles', 'Coquette': 'coquette-stitch', 'Pop 3D': 'pop-retro', 'Scrapbook': 'scrapbook-doodle', 'Curtains': 'theatre-curtains' };
+            var isCh = /charm/i.test(((LIC[code] && LIC[code].startName) || '') + ' ' + ((LIC[code] && LIC[code].label) || ''));
+            var cur = (LIC[code] && LIC[code].startDecoLabel) || (isCh ? 'Waves' : 'None');
             var idx = order.indexOf(cur);
-            var next = order[(idx + 1) % order.length];
+            if (idx === -1) idx = isCh ? 1 : 0;
+            var nextIdx = (idx + (isRev ? -1 : 1) + order.length) % order.length;
+            var next = order[nextIdx];
+            if (!LIC[code]) LIC[code] = {};
+            LIC[code].startDeco = decoMap[next];
+            LIC[code].startDecoLabel = next;
             await api({ action: 'startdeco', code: code, deco: decoMap[next], label: next });
-            toast('Starting decoration set to: ' + next);
+            toast('Decoration: ' + next);
+            openCardPreviewModal(code);
             refresh();
             return;
           }
           if (a === 'spalette') {
-            var palOrder = ['Charm Blush', 'Sweet Berry', 'Matcha', 'Midnight Gold', 'Lilac', 'Peach', 'Monochrome'];
-            var palMap = { 'Charm Blush': 'charm-pink', 'Sweet Berry': 'sweet-berry', 'Matcha': 'matcha', 'Midnight Gold': 'midnight-gold', 'Lilac': 'lilac', 'Peach': 'peach', 'Monochrome': 'monochrome' };
-            var cur = LIC[code] && (LIC[code].startPaletteLabel || 'Charm Blush');
+            var isRev = !!(e.shiftKey || e.button === 2);
+            var palOrder = ['Monochrome', 'Charm Blush', 'Sweet Berry', 'Matcha', 'Midnight Gold', 'Lilac', 'Peach'];
+            var palMap = { 'Monochrome': 'monochrome', 'Charm Blush': 'charm-pink', 'Sweet Berry': 'sweet-berry', 'Matcha': 'matcha', 'Midnight Gold': 'midnight-gold', 'Lilac': 'lilac', 'Peach': 'peach' };
+            var isCh = /charm/i.test(((LIC[code] && LIC[code].startName) || '') + ' ' + ((LIC[code] && LIC[code].label) || ''));
+            var cur = (LIC[code] && LIC[code].startPaletteLabel) || (isCh ? 'Charm Blush' : 'Monochrome');
             var idx = palOrder.indexOf(cur);
-            var next = palOrder[(idx + 1) % palOrder.length];
+            if (idx === -1) idx = isCh ? 1 : 0;
+            var nextIdx = (idx + (isRev ? -1 : 1) + palOrder.length) % palOrder.length;
+            var next = palOrder[nextIdx];
+            if (!LIC[code]) LIC[code] = {};
+            LIC[code].startPalette = palMap[next];
+            LIC[code].startPaletteLabel = next;
             await api({ action: 'startpalette', code: code, palette: palMap[next], label: next });
-            toast('Starting palette set to: ' + next);
+            toast('Palette: ' + next);
+            openCardPreviewModal(code);
             refresh();
             return;
           }
@@ -3488,12 +3686,80 @@
         } catch (e) { toast(e.message, true); }
       });
 
+      // Direct-selection interactive toolbar inside the preview modal (no more cycling forward/backward!)
+      var modalToolbar = $('cardModalToolbar');
+      if (modalToolbar) {
+        modalToolbar.addEventListener('click', async function (e) {
+          var btn = e.target.closest('.m-chip');
+          if (!btn || !modalCurCode) return;
+          var curRec = LIC[modalCurCode] || {};
+
+          if (btn.dataset.mlay) {
+            var val = btn.dataset.mlay;
+            var isOnly = (val === 'card-only');
+            var sLay = isOnly ? 'strip' : val;
+            curRec.startCardOnly = isOnly;
+            curRec.startSampleLayout = sLay;
+            renderCardModalContent(curRec);
+            try {
+              await api({ action: 'startcard', code: modalCurCode, cardOnly: isOnly, sampleLayout: sLay });
+              toast('Layout updated: ' + (isOnly ? 'Card only' : (sLay === 'grid4' ? 'With 4R grid' : sLay === 'solo' ? 'With 1-photo' : 'With 2×6 strip')));
+              refresh();
+            } catch (err) { toast(err.message, true); }
+            return;
+          }
+
+          if (btn.dataset.mdeco) {
+            var decoKey = btn.dataset.mdeco;
+            var decoLabel = btn.textContent.trim();
+            curRec.startDeco = decoKey;
+            curRec.startDecoLabel = decoLabel;
+            renderCardModalContent(curRec);
+            try {
+              await api({ action: 'startdeco', code: modalCurCode, deco: decoKey, label: decoLabel });
+              toast('Decoration updated: ' + decoLabel);
+              refresh();
+            } catch (err) { toast(err.message, true); }
+            return;
+          }
+
+          if (btn.dataset.mpal) {
+            var palKey = btn.dataset.mpal;
+            var palLabel = btn.textContent.trim();
+            curRec.startPalette = palKey;
+            curRec.startPaletteLabel = palLabel;
+            renderCardModalContent(curRec);
+            try {
+              await api({ action: 'startpalette', code: modalCurCode, palette: palKey, label: palLabel });
+              toast('Palette updated: ' + palLabel);
+              refresh();
+            } catch (err) { toast(err.message, true); }
+            return;
+          }
+        });
+      }
+
       function renderCardModalContent(l) {
-        var palKey = l.startPalette || 'charm-pink';
-        var pal = PALETTES_MAP[palKey] || PALETTES_MAP['charm-pink'];
-        var deco = l.startDeco || 'ribbon-waves';
-        var name = (l.startName || (l.label ? l.label.replace(/PH$/i, '').trim() : 'Charm Up Booth')).trim() || 'Charm Up';
+        var isCharm = /charm/i.test((l.startName || '') + ' ' + (l.label || ''));
+        var defPal = isCharm ? 'charm-pink' : 'monochrome';
+        var defDeco = isCharm ? 'ribbon-waves' : 'none';
+        var palKey = l.startPalette || defPal;
+        var pal = PALETTES_MAP[palKey] || PALETTES_MAP['monochrome'];
+        var deco = l.startDeco || defDeco;
+        var name = (l.startName || (l.label ? l.label.replace(/PH$/i, '').trim() : (isCharm ? 'Charm Up' : 'Photobooth'))).trim() || (isCharm ? 'Charm Up' : 'Photobooth');
         if (name === 'Charm Up PH') name = 'Charm Up';
+
+        // Update active class on toolbar chips
+        var activeLay = (l.startCardOnly !== false) ? 'card-only' : (l.startSampleLayout || 'strip');
+        [].slice.call(document.querySelectorAll('#modalLayoutChips .m-chip')).forEach(function (ch) {
+          ch.classList.toggle('active', ch.dataset.mlay === activeLay);
+        });
+        [].slice.call(document.querySelectorAll('#modalDecoChips .m-chip')).forEach(function (ch) {
+          ch.classList.toggle('active', ch.dataset.mdeco === deco);
+        });
+        [].slice.call(document.querySelectorAll('#modalPaletteChips .m-chip')).forEach(function (ch) {
+          ch.classList.toggle('active', ch.dataset.mpal === palKey);
+        });
 
         var tEl = $('cardModalTitle');
         if (tEl) tEl.textContent = 'Welcome Card Preview: ' + (l.code || '');
@@ -3510,21 +3776,41 @@
         if (card) {
           card.style.background = pal.bg;
           card.style.color = pal.text;
-          if (palKey === 'midnight-gold') {
+          if (deco === 'pop-retro') {
+            var popShadowCol = (palKey === 'monochrome') ? '#18181b' : (pal.s || '#F28DA0');
+            card.style.border = '3px solid #18181b';
+            card.style.boxShadow = '8px 8px 0px ' + popShadowCol;
+            card.style.borderRadius = '24px';
+          } else if (deco === 'coquette-stitch') {
+            card.style.border = '2px dashed ' + (pal.s || '#F28DA0');
+            card.style.boxShadow = '0 12px 32px rgba(0,0,0,0.08)';
+            card.style.borderRadius = '28px';
+          } else if (palKey === 'midnight-gold') {
             card.style.border = '1px solid rgba(212,175,55,0.3)';
+            card.style.boxShadow = '0 16px 40px rgba(0,0,0,0.4)';
+            card.style.borderRadius = '28px';
           } else {
             card.style.border = 'none';
+            card.style.boxShadow = '0 16px 40px rgba(0,0,0,0.12)';
+            card.style.borderRadius = '28px';
           }
         }
 
         var sampleStrip = $('cardModalSampleStrip');
-        var isCardOnly = !!l.startCardOnly;
+        var isCardOnly = (l.startCardOnly !== false);
         var sLayout = l.startSampleLayout || 'strip';
         if (sampleStrip) {
           if (isCardOnly) {
             sampleStrip.style.display = 'none';
           } else {
             sampleStrip.style.display = 'flex';
+            if (deco === 'pop-retro') {
+              sampleStrip.style.border = '2.5px solid #18181b';
+              sampleStrip.style.boxShadow = '5px 5px 0px rgba(0,0,0,0.85)';
+            } else {
+              sampleStrip.style.border = 'none';
+              sampleStrip.style.boxShadow = '0 10px 28px rgba(0, 0, 0, 0.25)';
+            }
             if (sLayout === 'grid4') {
               sampleStrip.className = 'card-modal-sample-strip grid-mode';
               sampleStrip.innerHTML = '<div class="sample-cell">1</div><div class="sample-cell">2</div><div class="sample-cell">3</div><div class="sample-cell">4</div>';
@@ -3550,7 +3836,7 @@
         if (badgeImg) {
           if (l.startLogo && l.startLogo.url) {
             badgeImg.src = l.startLogo.url;
-          } else if (/charm/i.test(name + ' ' + (l.label || ''))) {
+          } else if (isCharm) {
             badgeImg.src = '/assets/charm-up-clean-badge.png';
           } else {
             badgeImg.src = '/assets/charm-up-clean-badge.png';
@@ -3559,8 +3845,8 @@
 
         var canvas = $('cardModalDecoCanvas');
         if (!canvas || !screen) return;
-        var W = screen.clientWidth || (modalIsPortrait ? 340 : 660);
-        var H = screen.clientHeight || (modalIsPortrait ? 550 : 412);
+        var W = screen.clientWidth || (modalIsPortrait ? 340 : 680);
+        var H = screen.clientHeight || (modalIsPortrait ? 560 : 420);
         canvas.width = W; canvas.height = H;
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, W, H);
@@ -3620,16 +3906,164 @@
           gA.addColorStop(0.5, 'rgba(221, 160, 221, 0.25)');
           gA.addColorStop(1, 'rgba(255, 255, 255, 0)');
           ctx.fillStyle = gA; ctx.fillRect(0, 0, W, H);
+
+          var drawSparkle = function (cx, cy, sz, col) {
+            ctx.save(); ctx.fillStyle = col; ctx.beginPath();
+            ctx.moveTo(cx, cy - sz);
+            ctx.quadraticCurveTo(cx, cy, cx + sz, cy);
+            ctx.quadraticCurveTo(cx, cy, cx, cy + sz);
+            ctx.quadraticCurveTo(cx, cy, cx - sz, cy);
+            ctx.quadraticCurveTo(cx, cy, cx, cy - sz);
+            ctx.fill(); ctx.restore();
+          };
+          drawSparkle(W * 0.15, H * 0.20, 12, pal.s);
+          drawSparkle(W * 0.86, H * 0.25, 15, pal.s);
+          drawSparkle(W * 0.18, H * 0.80, 14, pal.a);
+          drawSparkle(W * 0.82, H * 0.78, 11, pal.s);
+          ctx.restore();
+        } else if (deco === 'coquette-stitch') {
+          ctx.save();
+          // Dainty stitch dashed border
+          ctx.setLineDash([8, 6]);
+          ctx.strokeStyle = pal.s || '#F28DA0';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(10, 10, W - 20, H - 20);
+          ctx.setLineDash([]);
+
+          // Ribbon Bow function
+          var drawBow = function (bx, by, size, color) {
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            // Left loop
+            ctx.beginPath();
+            ctx.moveTo(bx, by);
+            ctx.bezierCurveTo(bx - size, by - size * 0.65, bx - size * 0.8, by + size * 0.65, bx, by);
+            ctx.fill();
+            // Right loop
+            ctx.beginPath();
+            ctx.moveTo(bx, by);
+            ctx.bezierCurveTo(bx + size, by - size * 0.65, bx + size * 0.8, by + size * 0.65, bx, by);
+            ctx.fill();
+            // Center knot
+            ctx.beginPath();
+            ctx.arc(bx, by, size * 0.24, 0, Math.PI * 2);
+            ctx.fill();
+            // Tails
+            ctx.beginPath();
+            ctx.moveTo(bx - size * 0.1, by + size * 0.1);
+            ctx.bezierCurveTo(bx - size * 0.4, by + size * 0.7, bx - size * 0.6, by + size * 0.9, bx - size * 0.7, by + size * 1.25);
+            ctx.lineTo(bx - size * 0.5, by + size * 1.25);
+            ctx.bezierCurveTo(bx - size * 0.4, by + size * 0.8, bx - size * 0.2, by + size * 0.6, bx, by);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(bx + size * 0.1, by + size * 0.1);
+            ctx.bezierCurveTo(bx + size * 0.4, by + size * 0.7, bx + size * 0.6, by + size * 0.9, bx + size * 0.7, by + size * 1.25);
+            ctx.lineTo(bx + size * 0.5, by + size * 1.25);
+            ctx.bezierCurveTo(bx + size * 0.4, by + size * 0.8, bx + size * 0.2, by + size * 0.6, bx, by);
+            ctx.fill();
+            ctx.restore();
+          };
+
+          // Floating heart function
+          var drawHeart = function (hx, hy, sz, col) {
+            ctx.save();
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.moveTo(hx, hy);
+            ctx.bezierCurveTo(hx - sz * 0.5, hy - sz * 0.5, hx - sz, hy + sz * 0.3, hx, hy + sz * 0.9);
+            ctx.bezierCurveTo(hx + sz, hy + sz * 0.3, hx + sz * 0.5, hy - sz * 0.5, hx, hy);
+            ctx.fill();
+            ctx.restore();
+          };
+
+          drawBow(32, 30, 16, pal.s);
+          drawBow(W - 32, 30, 16, pal.s);
+          drawBow(32, H - 32, 16, pal.s);
+          drawBow(W - 32, H - 32, 16, pal.s);
+
+          drawHeart(W * 0.16, H * 0.55, 9, pal.a || pal.s);
+          drawHeart(W * 0.84, H * 0.52, 10, pal.a || pal.s);
+          ctx.restore();
+        } else if (deco === 'pop-retro') {
+          ctx.save();
+          var drawRetroStar = function (px, py, sz, col) {
+            ctx.save(); ctx.fillStyle = col; ctx.beginPath();
+            ctx.moveTo(px, py - sz);
+            ctx.quadraticCurveTo(px, py, px + sz, py);
+            ctx.quadraticCurveTo(px, py, px, py + sz);
+            ctx.quadraticCurveTo(px, py, px - sz, py);
+            ctx.quadraticCurveTo(px, py, px, py - sz);
+            ctx.fill();
+            ctx.strokeStyle = '#18181b'; ctx.lineWidth = 1.5; ctx.stroke();
+            ctx.restore();
+          };
+          var drawRetroDot = function (cx, cy, r, col) {
+            ctx.save(); ctx.fillStyle = col; ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#18181b'; ctx.lineWidth = 1.5; ctx.stroke();
+            ctx.restore();
+          };
+
+          drawRetroStar(36, 36, 18, pal.s);
+          drawRetroStar(W - 38, 44, 22, pal.p);
+          drawRetroStar(42, H - 42, 20, pal.p);
+          drawRetroStar(W - 44, H - 46, 24, pal.s);
+
+          drawRetroDot(70, 32, 6, pal.a || '#FEF08A');
+          drawRetroDot(30, 72, 8, pal.btn);
+          drawRetroDot(W - 74, 34, 7, pal.s);
+          drawRetroDot(W - 32, 80, 9, pal.a || '#FEF08A');
+          drawRetroDot(76, H - 34, 7, pal.btn);
+          drawRetroDot(W - 78, H - 36, 8, pal.p);
+          ctx.restore();
+        } else if (deco === 'scrapbook-doodle') {
+          ctx.save();
+          // Washi tape in corners
+          var drawWashi = function (wx, wy, ang, col) {
+            ctx.save();
+            ctx.translate(wx, wy);
+            ctx.rotate(ang * Math.PI / 180);
+            ctx.fillStyle = col;
+            ctx.fillRect(-34, -9, 68, 18);
+            ctx.restore();
+          };
+          drawWashi(42, 34, -25, 'rgba(244, 114, 182, 0.45)');
+          drawWashi(W - 42, 34, 25, 'rgba(167, 139, 250, 0.45)');
+          drawWashi(46, H - 36, 20, 'rgba(110, 231, 183, 0.45)');
+          drawWashi(W - 46, H - 36, -20, 'rgba(253, 186, 116, 0.45)');
+
+          // Doodle star
+          var drawDoodleStar = function (cx, cy, r, col) {
+            ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath();
+            for (var i = 0; i < 5; i++) {
+              var a1 = (i * 4 * Math.PI / 5) - Math.PI / 2;
+              var sx = cx + r * Math.cos(a1), sy = cy + r * Math.sin(a1);
+              if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+            }
+            ctx.closePath(); ctx.stroke(); ctx.restore();
+          };
+          drawDoodleStar(74, 68, 10, pal.p);
+          drawDoodleStar(W - 74, 72, 11, pal.s);
+          drawDoodleStar(80, H - 68, 10, pal.s);
+          drawDoodleStar(W - 80, H - 70, 12, pal.p);
           ctx.restore();
         } else if (deco === 'theatre-curtains') {
           ctx.save();
-          var cw = Math.round(W * 0.14);
+          var cw = Math.round(W * 0.13);
           var gL = ctx.createLinearGradient(0, 0, cw, 0);
           gL.addColorStop(0, '#B91C1C'); gL.addColorStop(0.5, '#DC2626'); gL.addColorStop(1, '#991B1B');
           ctx.fillStyle = gL; ctx.fillRect(0, 0, cw, H);
           var gR = ctx.createLinearGradient(W - cw, 0, W, 0);
           gR.addColorStop(0, '#991B1B'); gR.addColorStop(0.5, '#DC2626'); gR.addColorStop(1, '#B91C1C');
           ctx.fillStyle = gR; ctx.fillRect(W - cw, 0, cw, H);
+          // Top valance
+          var gT = ctx.createLinearGradient(0, 0, 0, 28);
+          gT.addColorStop(0, '#7F1D1D'); gT.addColorStop(1, '#DC2626');
+          ctx.fillStyle = gT; ctx.fillRect(0, 0, W, 22);
           ctx.restore();
         }
       }

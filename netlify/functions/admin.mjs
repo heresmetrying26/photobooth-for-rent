@@ -343,7 +343,44 @@ export default safe(async (req, context) => {
         // Keep a dedicated Drive folder name. If neither field was supplied,
         // fall back to the code so the renter never has to configure Drive.
         const _allowedOr = ['landscape', 'portrait', 'either'];
-        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startName: String(b.startName || '').trim().slice(0, 60) || null, startCardOnly: !!b.startCardOnly, startsAt: start.value, print, traditional: !!b.traditional, gifOpt: b.gifOpt !== false, rushOpt: !!b.rushOpt, extras: normExtras(b.extras), retakeOpt: b.retakeOpt !== false, typesOpt: !!b.typesOpt, lockOpt: b.lockOpt !== false, payOpt: b.payOpt !== false, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, orientation: _allowedOr.includes(b.orientation) ? b.orientation : 'landscape', status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
+        const isCharm = /charm/i.test((b.startName || '') + ' ' + (label || ''));
+        const rec = {
+          key,
+          code: displayCode(key),
+          kind: 'rental',
+          label: label || displayCode(key),
+          folderName: folderName || displayCode(key),
+          days,
+          lifetime,
+          maxDevices,
+          defaultTheme: cleanTheme(b.defaultTheme),
+          startName: String(b.startName || '').trim().slice(0, 60) || null,
+          startCardOnly: b.startCardOnly !== undefined ? !!b.startCardOnly : true,
+          startSampleLayout: b.startSampleLayout ? String(b.startSampleLayout).slice(0, 30) : 'strip',
+          startDeco: b.startDeco || (isCharm ? 'ribbon-waves' : 'none'),
+          startDecoLabel: b.startDecoLabel || (isCharm ? 'Waves' : 'None'),
+          startPalette: b.startPalette || (isCharm ? 'charm-pink' : 'monochrome'),
+          startPaletteLabel: b.startPaletteLabel || (isCharm ? 'Charm Blush' : 'Monochrome'),
+          startsAt: start.value,
+          print,
+          traditional: !!b.traditional,
+          gifOpt: b.gifOpt !== false,
+          rushOpt: !!b.rushOpt,
+          extras: normExtras(b.extras),
+          retakeOpt: b.retakeOpt !== false,
+          typesOpt: !!b.typesOpt,
+          lockOpt: b.lockOpt !== false,
+          payOpt: b.payOpt !== false,
+          offlineOpt: !!(b.offlineOpt || b.offlineOnly),
+          offlineOnly: !!b.offlineOnly,
+          orientation: _allowedOr.includes(b.orientation) ? b.orientation : 'landscape',
+          status: 'unused',
+          createdAt: Date.now(),
+          redeemedAt: null,
+          expiresAt: null,
+          deviceId: null,
+          email: email || null
+        };
         // A hand-made Lifetime code (for example a Messenger sale): Admin ticks that the buyer replied "I agree".
         if (lifetime && b.agreementAccepted) rec.agreement = { version: AGREEMENT_VERSION, acceptedAt: Date.now(), by: 'admin' };
         await putLicense(store, key, rec);

@@ -38419,10 +38419,12 @@
         });
         d.addEventListener('fullscreenchange', () => G && G.fs.classList.toggle('hide', !!d.fullscreenElement));
         // A tap on the background while reviewing or on result/layout picker doesn't auto-shoot.
-        d.addEventListener('click', () => { if ((sess && sess.reviewing) || state === 'result' || pickOpen) return; boothTrigger(true); });
+        d.addEventListener('click', () => { if ((typeof layoutEditorActive !== 'undefined' && layoutEditorActive) || (sess && sess.reviewing) || state === 'result' || pickOpen) return; boothTrigger(true); });
         d.addEventListener('keydown', onTriggerKey);
+        syncGuestUiScale();
         guestCall('camera');
         guestRender();
+        if (typeof layoutEditorActive !== 'undefined' && layoutEditorActive) syncGuestEditorPreview(true);
       }
 
       async function openGuestScreen() {
@@ -38522,12 +38524,17 @@
         if (!guestOpen()) return;
         if (typeof tabletBridgeSync === 'function') tabletBridgeSync();
         if (!localGuestOpen()) return;
+        if (typeof layoutEditorActive !== 'undefined' && layoutEditorActive && !(Array.isArray(shotCanvases) && shotCanvases.some(Boolean))) {
+          syncGuestEditorPreview(true);
+          return;
+        }
         const n = shotCanvases.length;
         if (G.film.children.length !== n) {
           G.film.innerHTML = '';
           for (let i = 0; i < n; i++) G.film.appendChild(G.d.createElement('div'));
         }
         G.film.style.setProperty('--n', String(Math.max(3, n)));
+        if (typeof currentBoxAspect === 'function') G.film.style.setProperty('--box-aspect', currentBoxAspect().toFixed(4));
         let anyShot = false;
         [...G.film.children].forEach((el, i) => {
           const shot = shotCanvases[i], mf = filmTrack.children[i];
@@ -38545,6 +38552,10 @@
         if (!guestOpen()) return;
         if (typeof tabletBridgeSync === 'function') tabletBridgeSync();
         if (!localGuestOpen()) return;
+        if (typeof layoutEditorActive !== 'undefined' && layoutEditorActive) {
+          syncGuestEditorPreview(true);
+          return;
+        }
         try {
           const r = !!sess && !retakeBtn.hidden, dn = !!sess && !doneBtn.hidden;
           G.gRetake.textContent = retakeBtn.textContent; G.gRetake.classList.toggle('hide', !r);
@@ -38631,6 +38642,14 @@
         try {
           const psMode = guestWelcomeStyle !== 'panel';
           G.d.body.classList.toggle('ps', psMode);
+          syncGuestUiScale();
+          if (typeof layoutEditorActive !== 'undefined' && layoutEditorActive) {
+            G.ev.textContent = (labelInput.value || '').trim();
+            G.dt.textContent = currentDateLabel();
+            guestBrand();
+            syncGuestEditorPreview(true);
+            return;
+          }
           const ready = readyOverlay.classList.contains('ready-active');
           const result = state === 'result' && shotCanvases.every(Boolean);
           const galleryIdle = !psMode && state === 'idle' && !pickOpen && !ready && !!currentFolderLink && !gvPrivate();
@@ -38768,6 +38787,7 @@
       // One trigger for the guest screen, the keyboard and presenter clickers:
       // answers "Get ready", or starts a new session from the Photo Session tab.
       function boothTrigger(fromGuest) {
+        if (typeof layoutEditorActive !== 'undefined' && layoutEditorActive) return;
         if (sess && sess.reviewEnd) { sess.reviewEnd('done'); return; }
         if (sess && sess.pauseEnd) { sess.pauseEnd(); return; }   // Space / clicker: next photo now (skips the wait)
         if (!startScreen.classList.contains('gone')) { leaveStartScreen(); return; }

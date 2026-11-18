@@ -270,7 +270,7 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
-    date: '2026-11-18', title: 'Desktop 1.1.73 (Win/Mac) + Android 1.1.84: Tablet Guest Screen + Camera Bridge & Guest Print Options', for: ['website', 'app'], app: '1.1.73',
+    date: '2026-11-18', title: 'Desktop 1.1.73 (Win/Mac) + Android 1.1.85: Tablet Guest Screen + Camera Bridge & Guest Print Options', for: ['website', 'app'], app: '1.1.73',
     items: [
       '📱 Tablet Guest Screen + Camera Bridge: pair an Android / Huawei MatePad Pro / Samsung Galaxy Tab via QR over USB Tethering, ADB, or laptop Wi-Fi to use the tablet as both the live Guest Screen and the booth camera.',
       '📷 Zero-lag guest live view & full-res shots: tablet runs native Camera2 live preview behind the Guest Screen while streaming preview frames and capturing full-resolution photos for the laptop.',

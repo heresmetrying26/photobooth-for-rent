@@ -28,6 +28,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         let filterView: MTKView?
         private let ciContext: CIContext?
         private let cmdQueue: MTLCommandQueue?
+        var wantsFilterOverlay: Bool = false
 
         override init(frame: CGRect) {
             if let dev = MTLCreateSystemDefaultDevice() {
@@ -38,6 +39,9 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 mv.autoResizeDrawable = true
                 mv.contentMode = .scaleAspectFill
                 mv.isHidden = true
+                mv.isOpaque = false
+                mv.layer.isOpaque = false
+                mv.clearColor = MTLClearColorMake(0, 0, 0, 0)
                 mv.backgroundColor = .clear
                 self.filterView = mv
                 self.ciContext = CIContext(mtlDevice: dev, options: [.useSoftwareRenderer: false])
@@ -61,10 +65,22 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             fatalError("init(coder:) has not been implemented")
         }
 
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            previewLayer.frame = bounds
+            if let fv = filterView {
+                fv.frame = bounds
+            }
+        }
+
         func renderFiltered(pixelBuffer: CVPixelBuffer, mirrored: Bool, filter: String, softSkin: Bool) {
             guard let fv = filterView, let ctx = ciContext, let cq = cmdQueue else { return }
             DispatchQueue.main.async {
-                guard !fv.isHidden, fv.bounds.width > 2, fv.bounds.height > 2 else { return }
+                guard self.wantsFilterOverlay, !self.isHidden, self.bounds.width > 2, self.bounds.height > 2 else { return }
+                if fv.frame != self.bounds {
+                    fv.frame = self.bounds
+                    fv.layoutIfNeeded()
+                }
                 guard let drawable = fv.currentDrawable, let cmdBuf = cq.makeCommandBuffer() else { return }
                 let dSize = fv.drawableSize
                 guard dSize.width > 1, dSize.height > 1 else { return }
@@ -85,6 +101,9 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 ctx.render(img, to: drawable.texture, commandBuffer: cmdBuf, bounds: targetBounds, colorSpace: CGColorSpaceCreateDeviceRGB())
                 cmdBuf.present(drawable)
                 cmdBuf.commit()
+                if self.wantsFilterOverlay && !self.isHidden && fv.isHidden {
+                    fv.isHidden = false
+                }
             }
         }
     }
@@ -212,13 +231,26 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
 
     // MARK: - Device Discovery
 
-    func listDevices() -> [[String: Any]] {
-        var types: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera]
+    private func discoveredDevices() -> [AVCaptureDevice] {
+        var types: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera, .builtInUltraWideCamera]
         if #available(iOS 17.0, *) {
             types.append(.external)
         }
-        let discovery = AVCaptureDevice.DiscoverySession(deviceTypes: types, mediaType: .video, position: .unspecified)
-        return discovery.devices.map { dev in
+        let raw = AVCaptureDevice.DiscoverySession(deviceTypes: types, mediaType: .video, position: .unspecified).devices
+        let hasFrontWide = raw.contains { $0.position == .front && $0.deviceType == .builtInWideAngleCamera }
+        let hasBackWide = raw.contains { $0.position == .back && $0.deviceType == .builtInWideAngleCamera }
+        var seen = Set<String>()
+        return raw.filter { dev in
+            guard !seen.contains(dev.uniqueID) else { return false }
+            if dev.position == .front && dev.deviceType == .builtInUltraWideCamera && hasFrontWide { return false }
+            if dev.position == .back && dev.deviceType == .builtInUltraWideCamera && hasBackWide { return false }
+            seen.insert(dev.uniqueID)
+            return true
+        }
+    }
+
+    func listDevices() -> [[String: Any]] {
+        return discoveredDevices().map { dev in
             var ext = false
             if #available(iOS 17.0, *) {
                 ext = (dev.deviceType == .external)
@@ -240,12 +272,21 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
 
     // MARK: - Open / Stop
 
-    func open(deviceId: String?, presetName: String, completion: @escaping ([String: Any]) -> Void) {
-        DispatchQueue.main.async { [weak self] in
+    private func captureInterfaceOrientationSync() {
+        let grab = { [weak self] in
             if let ws = self?.hostContainerView?.window?.windowScene {
                 self?.currentInterfaceOrientation = ws.interfaceOrientation
             }
         }
+        if Thread.isMainThread {
+            grab()
+        } else {
+            DispatchQueue.main.sync(execute: grab)
+        }
+    }
+
+    func open(deviceId: String?, presetName: String, completion: @escaping ([String: Any]) -> Void) {
+        captureInterfaceOrientationSync()
         sessionQueue.async { [weak self] in
             guard let self = self else { return }
             let status = AVCaptureDevice.authorizationStatus(for: .video)
@@ -285,6 +326,8 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
 
     func stop(completion: (() -> Void)? = nil) {
         DispatchQueue.main.async { [weak self] in
+            self?.previewView.wantsFilterOverlay = false
+            self?.previewView.filterView?.isHidden = true
             self?.previewView.isHidden = true
         }
         sessionQueue.async { [weak self] in
@@ -402,11 +445,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
     }
 
     private func pickDevice(deviceId: String?) -> AVCaptureDevice? {
-        var types: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera]
-        if #available(iOS 17.0, *) {
-            types.append(.external)
-        }
-        let devices = AVCaptureDevice.DiscoverySession(deviceTypes: types, mediaType: .video, position: .unspecified).devices
+        let devices = discoveredDevices()
         if let wanted = deviceId, !wanted.isEmpty, let match = devices.first(where: { $0.uniqueID == wanted }) {
             return match
         }
@@ -513,19 +552,6 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             } catch { }
         }
 
-        let dims = CMVideoFormatDescriptionGetDimensions(dev.activeFormat.formatDescription)
-        let rawW = Int(dims.width)
-        let rawH = Int(dims.height)
-
-        stateLock.lock()
-        isFrontCamera = (dev.position == .front)
-        isExternalCamera = ext
-        latestBuffer = nil
-        currentWidth = rawW
-        currentHeight = rawH
-        stateLock.unlock()
-
-        setupRotation(for: dev)
         if wantsAudio {
             attachAudioIfNeeded(inConfigBlock: true)
         }
@@ -533,8 +559,18 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         committed = true
         session.startRunning()
 
+        // Configure rotation coordinator only after session connections exist and are running.
+        setupRotation(for: dev)
+
+        let dims = CMVideoFormatDescriptionGetDimensions(dev.activeFormat.formatDescription)
+        let rawW = Int(dims.width)
+        let rawH = Int(dims.height)
         let effective = effectivePreviewDimensions(rawW: rawW, rawH: rawH)
+
         stateLock.lock()
+        isFrontCamera = (dev.position == .front)
+        isExternalCamera = ext
+        latestBuffer = nil
         currentWidth = effective.w
         currentHeight = effective.h
         stateLock.unlock()
@@ -568,43 +604,58 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         rotationCoordinatorObj = nil
     }
 
+    @available(iOS 17.0, *)
+    private func applyPreviewRotationAngle(_ angle: CGFloat) {
+        if let conn = previewView.previewLayer.connection, conn.isVideoRotationAngleSupported(angle) {
+            conn.videoRotationAngle = angle
+        }
+    }
+
+    @available(iOS 17.0, *)
+    private func applyCaptureRotationAngle(_ angle: CGFloat) {
+        sessionQueue.async { [weak self] in
+            guard let self = self else { return }
+            if let pConn = self.photoOutput?.connection(with: .video), pConn.isVideoRotationAngleSupported(angle) {
+                pConn.videoRotationAngle = angle
+            }
+            if let vConn = self.videoDataOutput?.connection(with: .video), vConn.isVideoRotationAngleSupported(angle) {
+                vConn.videoRotationAngle = angle
+            }
+        }
+    }
+
     private func setupRotation(for dev: AVCaptureDevice) {
         if #available(iOS 17.0, *) {
             DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
+                guard let self = self, self.currentDevice?.uniqueID == dev.uniqueID else { return }
+                self.clearRotationObservers()
                 let coord = AVCaptureDevice.RotationCoordinator(device: dev, previewLayer: self.previewView.previewLayer)
                 self.rotationCoordinatorObj = coord
 
-                let applyPreview: (CGFloat) -> Void = { angle in
-                    if let conn = self.previewView.previewLayer.connection, conn.isVideoRotationAngleSupported(angle) {
-                        conn.videoRotationAngle = angle
-                    }
-                }
-                let applyCapture: (CGFloat) -> Void = { angle in
-                    self.sessionQueue.async {
-                        if let pConn = self.photoOutput?.connection(with: .video), pConn.isVideoRotationAngleSupported(angle) {
-                            pConn.videoRotationAngle = angle
-                        }
-                        if let vConn = self.videoDataOutput?.connection(with: .video), vConn.isVideoRotationAngleSupported(angle) {
-                            vConn.videoRotationAngle = angle
-                        }
-                    }
-                }
+                self.applyPreviewRotationAngle(coord.videoRotationAngleForHorizonLevelPreview)
+                self.applyCaptureRotationAngle(coord.videoRotationAngleForHorizonLevelCapture)
 
-                applyPreview(coord.videoRotationAngleForHorizonLevelPreview)
-                applyCapture(coord.videoRotationAngleForHorizonLevelCapture)
-
-                self.rotationObserverPreview = coord.observe(\.videoRotationAngleForHorizonLevelPreview, options: [.new]) { _, ch in
+                self.rotationObserverPreview = coord.observe(\.videoRotationAngleForHorizonLevelPreview, options: [.new]) { [weak self] _, ch in
                     if let ang = ch.newValue {
-                        DispatchQueue.main.async { applyPreview(ang) }
+                        DispatchQueue.main.async { self?.applyPreviewRotationAngle(ang) }
                     }
                 }
-                self.rotationObserverCapture = coord.observe(\.videoRotationAngleForHorizonLevelCapture, options: [.new]) { _, ch in
+                self.rotationObserverCapture = coord.observe(\.videoRotationAngleForHorizonLevelCapture, options: [.new]) { [weak self] _, ch in
                     if let ang = ch.newValue {
-                        applyCapture(ang)
+                        self?.applyCaptureRotationAngle(ang)
                     }
                 }
             }
+        } else {
+            syncLegacyOrientation()
+        }
+    }
+
+    private func applyCurrentRotation() {
+        if #available(iOS 17.0, *) {
+            guard let coord = rotationCoordinatorObj as? AVCaptureDevice.RotationCoordinator else { return }
+            applyPreviewRotationAngle(coord.videoRotationAngleForHorizonLevelPreview)
+            applyCaptureRotationAngle(coord.videoRotationAngleForHorizonLevelCapture)
         } else {
             syncLegacyOrientation()
         }
@@ -661,21 +712,30 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             CATransaction.setDisableActions(true)
             let validRect = visible && w > 2 && h > 2
             self.previewView.isHidden = !validRect
+            self.previewView.wantsFilterOverlay = hasFilter && validRect
             if validRect {
                 self.previewView.frame = CGRect(x: x, y: y, width: w, height: h)
                 self.previewView.previewLayer.frame = self.previewView.bounds
                 self.previewView.layer.cornerRadius = max(0, radius)
                 if let fv = self.previewView.filterView {
                     fv.frame = self.previewView.bounds
-                    fv.isHidden = !hasFilter
+                    if !hasFilter {
+                        fv.isHidden = true
+                    }
                 }
                 if let conn = self.previewView.previewLayer.connection, conn.isVideoMirroringSupported {
                     conn.automaticallyAdjustsVideoMirroring = false
                     conn.isVideoMirrored = mirror
                 }
+            } else {
+                self.previewView.filterView?.isHidden = true
             }
             CATransaction.commit()
-            self.syncLegacyOrientation()
+            if validRect {
+                self.applyCurrentRotation()
+            } else {
+                self.syncLegacyOrientation()
+            }
         }
     }
 
@@ -687,8 +747,12 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         stateLock.unlock()
 
         DispatchQueue.main.async { [weak self] in
-            guard let self = self, let fv = self.previewView.filterView else { return }
-            fv.isHidden = !hasFilter || self.previewView.isHidden
+            guard let self = self else { return }
+            let showOverlay = hasFilter && !self.previewView.isHidden
+            self.previewView.wantsFilterOverlay = showOverlay
+            if !showOverlay {
+                self.previewView.filterView?.isHidden = true
+            }
         }
     }
 

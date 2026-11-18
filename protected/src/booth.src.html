@@ -62,32 +62,7 @@
       animation: none !important;
     }
 
-    /* Native iOS AVCaptureSession preview (behind transparent WKWebView during full-screen session stage) */
-    html.pb-ios-nativecam.pb-nativecam-stage,
-    html.pb-ios-nativecam.pb-nativecam-stage body,
-    html.pb-ios-nativecam.pb-nativecam-stage .app-shell,
-    html.pb-ios-nativecam.pb-nativecam-stage #tabSession,
-    html.pb-ios-nativecam.pb-nativecam-stage .stage-wrap,
-    html.pb-ios-nativecam.pb-nativecam-stage .stage-frame {
-      background: transparent !important;
-    }
-    html.pb-ios-nativecam.pb-nativecam-stage #video {
-      opacity: 0 !important;
-    }
-    html.pb-ios-nativecam.pb-nativecam-vg,
-    html.pb-ios-nativecam.pb-nativecam-vg body,
-    html.pb-ios-nativecam.pb-nativecam-vg .app-shell,
-    html.pb-ios-nativecam.pb-nativecam-vg #vgOverlay {
-      background: transparent !important;
-    }
-    html.pb-ios-nativecam.pb-nativecam-vg #tabSession,
-    html.pb-ios-nativecam.pb-nativecam-vg #tabSetup {
-      visibility: hidden !important;
-    }
-    html.pb-ios-nativecam.pb-nativecam-vg #vgVideo,
-    html.pb-ios-nativecam.pb-nativecam-vg #vgCanvas {
-      opacity: 0 !important;
-    }
+    /* Native iOS AVCaptureSession preview (canvases for Setup preview & non-fullscreen overlays; full-stage transparency rules live at end of stylesheet) */
     .native-cam-canvas {
       position: absolute;
       inset: 0;
@@ -16195,6 +16170,47 @@
     .app-shell:not(.getting-ready) #stageLookBtn {
       display: none !important;
     }
+
+    /* Native iOS AVCaptureSession preview (behind transparent WKWebView; placed last so no .stage-full/.capturing rule can paint #000 over the live camera) */
+    html.pb-ios-nativecam.pb-nativecam-stage,
+    html.pb-ios-nativecam.pb-nativecam-stage body,
+    html.pb-ios-nativecam.pb-nativecam-stage body.in-session,
+    html.pb-ios-nativecam.pb-nativecam-stage body.stage-full,
+    html.pb-ios-nativecam.pb-nativecam-stage body .app-shell,
+    html.pb-ios-nativecam.pb-nativecam-stage body #tabSession,
+    html.pb-ios-nativecam.pb-nativecam-stage body .app-shell .stage-wrap,
+    html.pb-ios-nativecam.pb-nativecam-stage body .app-shell .stage-frame,
+    html.pb-ios-nativecam.pb-nativecam-stage body.stage-full .app-shell .stage-frame,
+    html.pb-ios-nativecam.pb-nativecam-stage body.stage-full.has-film-shots .app-shell .stage-frame,
+    html.pb-ios-nativecam.pb-nativecam-stage body.stage-full.welcome-on .app-shell .stage-frame,
+    html.pb-ios-nativecam.pb-nativecam-stage body.stage-full.in-session.shooting .app-shell.capturing .stage-frame,
+    html.pb-ios-nativecam.pb-nativecam-stage body.stage-full.has-film-shots.in-session.shooting .app-shell.capturing .stage-frame,
+    html.pb-ios-nativecam.pb-nativecam-stage body .app-shell .stage-surround.on {
+      background: transparent !important;
+      background-color: transparent !important;
+    }
+    html.pb-ios-nativecam.pb-nativecam-stage #video {
+      opacity: 0 !important;
+      background: transparent !important;
+    }
+    html.pb-ios-nativecam.pb-nativecam-vg,
+    html.pb-ios-nativecam.pb-nativecam-vg body,
+    html.pb-ios-nativecam.pb-nativecam-vg body.in-session,
+    html.pb-ios-nativecam.pb-nativecam-vg body.stage-full,
+    html.pb-ios-nativecam.pb-nativecam-vg body .app-shell,
+    html.pb-ios-nativecam.pb-nativecam-vg #vgOverlay.qs-ov.vg-ov {
+      background: transparent !important;
+      background-color: transparent !important;
+    }
+    html.pb-ios-nativecam.pb-nativecam-vg #tabSession,
+    html.pb-ios-nativecam.pb-nativecam-vg #tabSetup {
+      visibility: hidden !important;
+    }
+    html.pb-ios-nativecam.pb-nativecam-vg #vgVideo,
+    html.pb-ios-nativecam.pb-nativecam-vg #vgCanvas {
+      opacity: 0 !important;
+      background: transparent !important;
+    }
   </style>
   <script>/* qrcode-generator 1.4.4 (MIT) — QR codes are made on this device, no outside service. */
     // Copyright (c) 2009 Kazuhiko Arase
@@ -19229,7 +19245,7 @@
 
                 <div class="fb-card" style="margin-top:10px;">
                   <p class="sub-label" style="margin:0 0 4px;">Welcome card headline / Event name</p>
-                  <input type="text" class="label-input" id="welcomeTitleInputCard" placeholder="Charm Up"
+                  <input type="text" class="label-input" id="welcomeTitleInputCard" placeholder="Photobooth"
                     maxlength="60" style="font-family:'Manrope',sans-serif; font-size:14px; margin-top:4px;">
                   <p class="panel-hint" style="margin:4px 0 0;">Custom headline on the welcome card (independent from 2
                     Text prints).</p>
@@ -26175,8 +26191,11 @@
         var v = (typeof activeCamVideo === 'function' ? activeCamVideo() : video) || video;
         return { w: (v && v.videoWidth) || (video && video.videoWidth) || 0, h: (v && v.videoHeight) || (video && video.videoHeight) || 0 };
       }
+      function nativeCamHasFrame() {
+        return nativeCam.frameTs > 0 && nativeCam.frameCanvas.width > 0 && nativeCam.frameCanvas.height > 0;
+      }
       function camFrameSource() {
-        if (nativeCam.active && nativeCam.frameCanvas.width > 0 && nativeCam.frameCanvas.height > 0) return nativeCam.frameCanvas;
+        if (nativeCam.active && nativeCamHasFrame()) return nativeCam.frameCanvas;
         return (typeof activeCamVideo === 'function' ? activeCamVideo() : video) || video;
       }
       function ensureNativeCanvas(kind) {
@@ -26246,9 +26265,15 @@
           if (!res || res.status === 204 || !res.ok) return false;
           var blob = await res.blob();
           if (!blob || !blob.size) return false;
+          var hadFrame = nativeCamHasFrame();
           await decodeBlobToCanvas(blob, nativeCam.frameCanvas);
           nativeCam.frameTs = performance.now();
-          paintNativeCanvases();
+          if (!hadFrame && nativeCamHasFrame()) {
+            try { syncNativeCamLayout(); } catch (e) { }
+            try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
+          } else {
+            paintNativeCanvases();
+          }
           return true;
         } catch (e) {
           return false;
@@ -26294,7 +26319,7 @@
           htmlEl.classList.remove('pb-ios-nativecam', 'pb-nativecam-stage', 'pb-nativecam-vg');
           if (nativeCam.stageCanvas) nativeCam.stageCanvas.style.display = 'none';
           if (nativeCam.scpCanvas) nativeCam.scpCanvas.style.display = 'none';
-          try { window.__PBCam.layout({ visible: false, x: 0, y: 0, w: 0, h: 0, mirror: false, radius: 0, bg: '#000000' }); } catch (e) { }
+          try { window.__PBCam.layout({ visible: false, x: 0, y: 0, w: 0, h: 0, mirror: false, radius: 0, bg: '#f5f1ea' }); } catch (e) { }
           nativeCamSyncPump();
           return;
         }
@@ -26326,7 +26351,7 @@
             } catch (e) { }
           } else {
             htmlEl.classList.remove('pb-ios-nativecam', 'pb-nativecam-stage', 'pb-nativecam-vg');
-            try { window.__PBCam.layout({ visible: false, x: 0, y: 0, w: 0, h: 0, mirror: false, radius: 0, bg: '#000000' }); } catch (e) { }
+            try { window.__PBCam.layout({ visible: false, x: 0, y: 0, w: 0, h: 0, mirror: false, radius: 0, bg: '#f5f1ea' }); } catch (e) { }
           }
           nativeCamSyncPump();
           return;
@@ -26360,21 +26385,26 @@
             });
           } catch (e) { }
         } else {
+          if (inSession && !showingResult && isFullStage && !nativeCam._rectRetry) {
+            nativeCam._rectRetry = true;
+            requestAnimationFrame(function () { nativeCam._rectRetry = false; syncNativeCamLayout(); });
+          }
           htmlEl.classList.remove('pb-ios-nativecam', 'pb-nativecam-stage');
-          try { window.__PBCam.layout({ visible: false, x: 0, y: 0, w: 0, h: 0, mirror: !!mir, radius: 0, bg: '#000000' }); } catch (e) { }
+          try { window.__PBCam.layout({ visible: false, x: 0, y: 0, w: 0, h: 0, mirror: !!mir, radius: 0, bg: '#f5f1ea' }); } catch (e) { }
+          var hasNativeFrame = nativeCamHasFrame();
           var stC = (inSession && !showingResult) ? ensureNativeCanvas('stage') : nativeCam.stageCanvas;
           if (stC) {
-            stC.style.display = (inSession && !showingResult) ? 'block' : 'none';
+            stC.style.display = (inSession && !showingResult && hasNativeFrame) ? 'block' : 'none';
             stC.style.transform = mir ? 'scaleX(-1)' : 'scaleX(1)';
             stC.style.filter = filt;
           }
           var scC = inSetup4 ? ensureNativeCanvas('scp') : nativeCam.scpCanvas;
           if (scC) {
-            scC.style.display = inSetup4 ? 'block' : 'none';
+            scC.style.display = (inSetup4 && hasNativeFrame) ? 'block' : 'none';
             scC.style.transform = mir ? 'scaleX(-1)' : 'scaleX(1)';
             scC.style.filter = filt;
           }
-          paintNativeCanvases();
+          if (hasNativeFrame) paintNativeCanvases();
         }
         nativeCamSyncPump();
       }
@@ -28373,6 +28403,9 @@
               return false;
             }
             nativeCam.active = true;
+            nativeCam.frameTs = 0;
+            nativeCam.frameCanvas.width = 0;
+            nativeCam.frameCanvas.height = 0;
             nativeCam.deviceId = res.id || deviceId || '';
             nativeCam.w = res.width || 1280;
             nativeCam.h = res.height || 960;
@@ -48383,7 +48416,10 @@
           var isCustom = !!welcomeCustomOn;
           var cardGreeting = (welcomeGreeting != null && welcomeGreeting !== '') ? welcomeGreeting : 'Welcome to';
           var hasGreeting = Boolean(cardGreeting && cardGreeting.trim());
-          var cardTitle = (welcomeTitle || '').trim() || 'Charm Up';
+          var isCardCharm = /charm/i.test(((window.__PB && window.__PB.label) || '') + ' ' + (labelInput.value || ''));
+          var defCardTitle = isCardCharm ? 'Charm Up' : 'Photobooth';
+          var cardTitle = (welcomeTitle || '').trim() || defCardTitle;
+          if (!isCardCharm && (cardTitle === 'Charm Up' || cardTitle === 'Charm Up PH')) cardTitle = 'Photobooth';
           var cardFont = isCustom && welcomeFont ? welcomeFont : (welcomeFont ? welcomeFont : "'Dancing Script', cursive");
           var cardSub = isCustom ? (welcomeSub !== '' ? welcomeSub : '') : (welcomeSub !== '' ? welcomeSub : '');
           var cardSubFont = isCustom && welcomeFont ? welcomeFont : currentDateFont;
@@ -53175,7 +53211,7 @@
         setTimeout(function () { try { refreshProfChip(); } catch (e) { } }, 1500);   // the saved setup is in now: compare with the profile
         if (sfOffer && setupLoadedKey === key) await applyStartFrame(sfOffer, sfFresh);
         if (slOffer && setupLoadedKey === key) await applyStartLogo(slOffer, sfFresh);
-        var isCharmFinal = /charm/i.test((snOffer || '') + ' ' + (welcomeTitle || '') + ' ' + (labelInput.value || '') + ' ' + ((window.__PB && window.__PB.label) || ''));
+        var isCharmFinal = /charm/i.test((snOffer || '') + ' ' + (labelInput.value || '') + ' ' + ((window.__PB && window.__PB.label) || ''));
         if (isCharmFinal) {
           if (typeof (j && j.startCardOnly) !== 'boolean' && (!local || !local.settings || typeof local.settings.welcomeSampleOn !== 'boolean')) {
             welcomeSampleOn = false;
@@ -53204,6 +53240,14 @@
           if (!welcomePalette || (sfFresh && !(j && j.startPalette))) {
             welcomePalette = 'monochrome';
             if (typeof setWelcomePaletteUI === 'function') setWelcomePaletteUI('monochrome');
+          }
+          if (!welcomeTitle || welcomeTitle === 'Charm Up' || welcomeTitle === 'Charm Up PH') {
+            var defName = (snOffer || (labelInput && labelInput.value && !/^PB-/i.test(labelInput.value) ? labelInput.value : '') || 'Photobooth').trim();
+            if (defName === 'Charm Up' || defName === 'Charm Up PH' || !defName) defName = 'Photobooth';
+            welcomeTitle = defName;
+            if (welcomeTitleInput) welcomeTitleInput.value = defName;
+            var wInpCard = document.getElementById('welcomeTitleInputCard');
+            if (wInpCard) wInpCard.value = defName;
           }
         }
         if (j && typeof j.startCardOnly === 'boolean' && (adminIsNewer || sfFresh)) {
@@ -53239,10 +53283,13 @@
             if (j.startDeco) setWelcomeDecoStyleUI(j.startDeco);
             if (j.startPalette) setWelcomePaletteUI(j.startPalette);
             if (j.startName) {
-              welcomeTitle = j.startName;
-              if (welcomeTitleInput) welcomeTitleInput.value = j.startName;
+              var isChSync = /charm/i.test((j.startName || '') + ' ' + (labelInput.value || '') + ' ' + ((window.__PB && window.__PB.label) || ''));
+              var synName = j.startName;
+              if (!isChSync && (synName === 'Charm Up' || synName === 'Charm Up PH')) synName = 'Photobooth';
+              welcomeTitle = synName;
+              if (welcomeTitleInput) welcomeTitleInput.value = synName;
               var wInpCard = document.getElementById('welcomeTitleInputCard');
-              if (wInpCard) wInpCard.value = j.startName;
+              if (wInpCard) wInpCard.value = synName;
             }
             localStorage.setItem(key + '#adminPresetTs', String(serverAdminTs));
             saveLocalCopy(key, snapshotSetup(), Date.now(), null, true);
@@ -53284,7 +53331,7 @@
           logo = { id: sl.id, name: String(sl.name || 'Logo').slice(0, 40) };
           brand.w = { on: true, id: sl.id, x: null, y: null, s: null };
           brand.c = { on: true, id: sl.id, x: null, y: null, s: null };
-          var isCharm = /charm/i.test((sl.name || '') + ' ' + (welcomeTitle || '') + ' ' + (labelInput.value || '') + ' ' + ((window.__PB && window.__PB.label) || ''));
+          var isCharm = /charm/i.test((sl.name || '') + ' ' + (labelInput.value || '') + ' ' + ((window.__PB && window.__PB.label) || ''));
           if (isCharm) {
             welcomeSampleOn = false;
             if (typeof setWelcomeSampleUI === 'function') setWelcomeSampleUI(false);
@@ -54735,7 +54782,10 @@
           brandEls.pwr.hidden = !cImg;
           var isCustomW = typeof welcomeCustomOn !== 'undefined' && welcomeCustomOn;
           col.querySelector('.bpv-msg').textContent = isCustomW && (welcomeGreeting != null && welcomeGreeting !== '') ? welcomeGreeting : 'Welcome!';
-          brandEls.ev.textContent = (welcomeTitle || '').trim() || 'Charm Up';
+          var isCh2 = /charm/i.test(((window.__PB && window.__PB.label) || '') + ' ' + (labelInput.value || ''));
+          var curEvTitle = (welcomeTitle || '').trim() || (isCh2 ? 'Charm Up' : 'Photobooth');
+          if (!isCh2 && (curEvTitle === 'Charm Up' || curEvTitle === 'Charm Up PH')) curEvTitle = 'Photobooth';
+          brandEls.ev.textContent = curEvTitle;
           brandEls.dt.textContent = isCustomW && welcomeSub !== '' ? welcomeSub : ((typeof currentDateLabel === 'function' && currentDateLabel()) || '');
           brandEls.chip.style.cssText = 'font-size:' + px(0.85) + ';left:' + (brandPvGeo.colR) + 'px;top:' + padY + 'px;transform:translateX(-50%);';
         }
@@ -59036,10 +59086,11 @@
         scpFrame.style.setProperty('--scp-aspect', a.toFixed(4));
         scpFrame.classList.toggle('crop', layout);
         var sz = camVideoSize();
-        var vw = useNative ? sz.w : (scpVideo.videoWidth || video.videoWidth), vh = useNative ? sz.h : (scpVideo.videoHeight || video.videoHeight);
-        var live = (useNative || !!stream) && !!vw && streamActive, err = cameraError.style.display === 'flex';
+        var hasNativeFrame = useNative && nativeCamHasFrame();
+        var vw = useNative ? (hasNativeFrame ? sz.w : 0) : (scpVideo.videoWidth || video.videoWidth), vh = useNative ? (hasNativeFrame ? sz.h : 0) : (scpVideo.videoHeight || video.videoHeight);
+        var live = (useNative ? hasNativeFrame : !!stream) && !!vw && streamActive, err = cameraError.style.display === 'flex';
         scpEmpty.hidden = live && !err;
-        scpEmpty.textContent = err ? cameraErrorText.textContent : 'Waiting for the camera…';
+        scpEmpty.textContent = err ? cameraErrorText.textContent : (useNative && streamActive ? 'Starting the camera…' : 'Waiting for the camera…');
         var isDslr = currentDeviceId === USB_CAM_ID;
         var infoText = live ? (isDslr
           ? 'Live view: ' + vw + ' × ' + vh + ' (DSLR viewfinder) · Photos: full DSLR resolution (up to 3000px HD)'

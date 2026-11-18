@@ -3746,8 +3746,13 @@
         var palKey = l.startPalette || defPal;
         var pal = PALETTES_MAP[palKey] || PALETTES_MAP['monochrome'];
         var deco = l.startDeco || defDeco;
-        var name = (l.startName || (l.label ? l.label.replace(/PH$/i, '').trim() : (isCharm ? 'Charm Up' : 'Photobooth'))).trim() || (isCharm ? 'Charm Up' : 'Photobooth');
-        if (name === 'Charm Up PH') name = 'Charm Up';
+        var name;
+        if (isCharm) {
+          name = (l.startName || (l.label && /charm/i.test(l.label) ? l.label.replace(/PH$/i, '').trim() : 'Charm Up')).trim() || 'Charm Up';
+          if (name === 'Charm Up PH') name = 'Charm Up';
+        } else {
+          name = (l.startName && !/charm/i.test(l.startName) ? l.startName : 'Photobooth').trim();
+        }
 
         // Update active class on toolbar chips
         var activeLay = (l.startCardOnly !== false) ? 'card-only' : (l.startSampleLayout || 'strip');

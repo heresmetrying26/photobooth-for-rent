@@ -27880,7 +27880,7 @@
         // Not a Canon: an older EOS (60D) fired right after its live view came back can accept the shutter command and
         // take no photo, so a Canon stays in live view from "Get ready" to the last photo, as it did before this rest existed.
         if (camReadyWaiting() && !(currentDeviceId === USB_CAM_ID && camIsCanon())) return false;
-        if (state === 'capturing') return true;   // keep camera live for the full session (all shots + review-each pause)
+        if (state === 'capturing') return !usbCam.shotsDone;   // live while taking photos; sleeps as soon as all shots are done (review/stickers/result)
         if (document.hidden) return false;
         // Start screen splash: definitely idle
         const ss = document.getElementById('startScreen');
@@ -29100,10 +29100,13 @@
         usbCam.graceUntil = Date.now() + USB_GRACE_MS;
         usbCam.shotAt = Date.now(); usbCam.frameAt = 0; usbCam.kickAt = 0;
         if (usbCam.stallShown) { usbCam.stallShown = false; cameraError.style.display = 'none'; }
-        // Always bring live view back after every shot (including the last one) so the camera
-        // stays on for the whole session. Sleep happens later via camSleepNow() when the
-        // session moves to the result/review state (state === 'result').
-        try { usbCam.kicked = true; Promise.resolve(usbViewfinderOn()).catch(function () { }); } catch (e) { }
+        if (final && usbSaveOn()) {
+          // The guest's last photo: don't bring live view back (the camera would sit with its mirror up while they review);
+          // switch it off once the session has finished recording (see usbSleepNow). A retake wakes it again in about a second.
+          usbCam.shotsDone = true;
+        } else {
+          try { usbCam.kicked = true; Promise.resolve(usbViewfinderOn()).catch(function () { }); } catch (e) { }
+        }
         fetch(CAM_HELPER + '/camera', { cache: 'no-store', signal: AbortSignal.timeout(8000) }).then(r => r.json()).then(j => {
           const ms = Number(j && j.shutterMs) || 0;
           if (ms > 0) {
@@ -30082,6 +30085,7 @@
           shotCanvases[pick] = null;
           updateFilmTrack(); guestCall('shots');
           countdownOverlay.style.display = 'flex';
+          await camEnsureLive();
           await countdownThenCapture(pick, true);
           usbCam.shotsDone = true; usbSleepNow();
           if (sess.cancelled) return;

@@ -26,7 +26,7 @@ import { spawn } from 'node:child_process';
 import { freeCamera, guardCamera } from './camfree.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.11';
+const VERSION = '1.1.12';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',

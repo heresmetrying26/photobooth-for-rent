@@ -161,26 +161,42 @@ namespace Pb4uCam
         [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode)]
         static extern int CM_Get_Device_Interface_ListW(ref Guid cls, string devId, char[] buffer, uint len, uint flags);
 
+        static void PtpLog(string s) { try { Console.WriteLine("[camera] " + s); Console.Out.Flush(); } catch { } }
+
         public static List<DevInfo> ListDevices()
         {
             var list = new List<DevInfo>();
-            var mgr = Create<IPortableDeviceManager>("0af10cec-2ecd-4b92-9581-34f6ae0637f3");
-            mgr.RefreshDeviceList();
-            uint n = 0;
-            int hr = mgr.GetDevices(null, ref n);
+            IPortableDeviceManager mgr = null;
             var ids = new List<string>();
-            if (hr == 0 && n > 0)
+
+            // WPD sometimes needs a moment after a camera connects — retry up to 3 times.
+            for (int attempt = 0; attempt < 3 && ids.Count == 0; attempt++)
             {
-                var arr = new IntPtr[n];
-                hr = mgr.GetDevices(arr, ref n);
-                for (int i = 0; i < n && hr == 0; i++) { ids.Add(Marshal.PtrToStringUni(arr[i])); Marshal.FreeCoTaskMem(arr[i]); }
+                if (attempt > 0) Thread.Sleep(700);
+                try
+                {
+                    mgr = Create<IPortableDeviceManager>("0af10cec-2ecd-4b92-9581-34f6ae0637f3");
+                    int rfHr = mgr.RefreshDeviceList();
+                    uint n = 0;
+                    int hr = mgr.GetDevices(null, ref n);
+                    PtpLog("WPD list attempt " + (attempt + 1) + ": RefreshDeviceList=0x" + ((uint)rfHr).ToString("X8") + " GetDevices=0x" + ((uint)hr).ToString("X8") + " count=" + n);
+                    if (hr == 0 && n > 0)
+                    {
+                        var arr = new IntPtr[n];
+                        hr = mgr.GetDevices(arr, ref n);
+                        for (int i = 0; i < n && hr == 0; i++) { ids.Add(Marshal.PtrToStringUni(arr[i])); Marshal.FreeCoTaskMem(arr[i]); }
+                    }
+                }
+                catch (Exception e) { PtpLog("WPD manager error (attempt " + (attempt + 1) + "): " + e.Message); }
             }
+
             if (ids.Count == 0)
             {
                 // Second way: ask Windows directly for portable-device interfaces.
                 Guid wpd = new Guid("6AC27878-A6FA-4155-BA85-F98F491D4F33");
                 uint len;
                 int cr = CM_Get_Device_Interface_List_SizeW(out len, ref wpd, null, 0);
+                PtpLog("CM_Get_Device_Interface_List (WPD): cr=" + cr + " len=" + len);
                 if (cr == 0 && len > 1)
                 {
                     var buf = new char[len];
@@ -189,10 +205,48 @@ namespace Pb4uCam
                         foreach (string id in new string(buf).Split(new char[] { '\0' }, StringSplitOptions.RemoveEmptyEntries)) ids.Add(id);
                 }
             }
+            if (ids.Count == 0)
+            {
+                // Third way: ask Windows for Still Image / Imaging device interfaces.
+                Guid img = new Guid("6BDD1FC6-810F-11D0-BEC7-08002BE2092F");
+                uint len;
+                int cr = CM_Get_Device_Interface_List_SizeW(out len, ref img, null, 0);
+                PtpLog("CM_Get_Device_Interface_List (Image): cr=" + cr + " len=" + len);
+                if (cr == 0 && len > 1)
+                {
+                    var buf = new char[len];
+                    cr = CM_Get_Device_Interface_ListW(ref img, null, buf, len, 0);
+                    if (cr == 0)
+                        foreach (string id in new string(buf).Split(new char[] { '\0' }, StringSplitOptions.RemoveEmptyEntries)) ids.Add(id);
+                }
+            }
+
+            PtpLog("WPD devices found: " + ids.Count);
             foreach (string id in ids)
             {
+                string lid = (id ?? "").ToLowerInvariant();
+                if (lid.Contains("scanner") || lid.Contains("escl") || lid.Contains("wsdprovider") || lid.Contains("root#scanner")) continue;
                 var d = new DevInfo();
-                d.Id = id; d.Name = Name(mgr, id, 0); d.Maker = Name(mgr, id, 1);
+                d.Id = id;
+                string nm = mgr != null ? Name(mgr, id, 0) : "";
+                string mk = mgr != null ? Name(mgr, id, 1) : "";
+                if (string.IsNullOrEmpty(nm) || nm.Equals("MTP USB Device", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (lid.Contains("vid_04a9")) { nm = "Canon EOS Camera"; mk = "Canon"; }
+                    else if (lid.Contains("vid_04b0")) { nm = "Nikon Camera"; mk = "Nikon"; }
+                    else if (lid.Contains("vid_054c")) { nm = "Sony Camera"; mk = "Sony"; }
+                    else if (lid.Contains("vid_04cb")) { nm = "Fujifilm Camera"; mk = "Fujifilm"; }
+                    else if (string.IsNullOrEmpty(nm)) { nm = "MTP Camera"; mk = "Camera"; }
+                }
+                else if (string.IsNullOrEmpty(mk))
+                {
+                    if (lid.Contains("vid_04a9") || nm.IndexOf("canon", StringComparison.OrdinalIgnoreCase) >= 0) mk = "Canon";
+                    else if (lid.Contains("vid_04b0") || nm.IndexOf("nikon", StringComparison.OrdinalIgnoreCase) >= 0) mk = "Nikon";
+                    else if (lid.Contains("vid_054c") || nm.IndexOf("sony", StringComparison.OrdinalIgnoreCase) >= 0) mk = "Sony";
+                }
+                d.Name = nm;
+                d.Maker = mk;
+                PtpLog("WPD device: id=\"" + id + "\" name=\"" + d.Name + "\" maker=\"" + d.Maker + "\"");
                 list.Add(d);
             }
             return list;
@@ -450,11 +504,23 @@ namespace Pb4uCam
         }
 
         // ---------- camera picking ----------
-        static readonly string[] CAMERA_WORDS = { "nikon", "canon", "sony", "ilce", "ilme", "alpha", "zv-", "dsc-", "fuji", "panasonic", "olympus", "om system", "pentax", "eos", "lumix" };
+        static readonly string[] CAMERA_WORDS = {
+            "nikon", "canon", "sony", "ilce", "ilme", "alpha", "zv-", "dsc-",
+            "fuji", "panasonic", "olympus", "om system", "pentax", "eos", "lumix",
+            "rebel", "kiss", "1300", "camera", "mtp", "ptp", "digital still"
+        };
+        static readonly string[] CAMERA_VIDS = {
+            "vid_04a9", "vid_04b0", "vid_054c", "vid_04cb", "vid_07b4", "vid_04da", "vid_0a17"
+        };
+
         static bool LooksLikeCamera(DevInfo d)
         {
+            string id = (d.Id ?? "").ToLowerInvariant();
+            if (id.Contains("scanner") || id.Contains("escl") || id.Contains("wsdprovider") || id.Contains("root#scanner")) return false;
             string n = ((d.Name ?? "") + " " + (d.Maker ?? "")).ToLowerInvariant();
-            foreach (string w in CAMERA_WORDS) if (n.Contains(w)) return true;
+            if (n.Contains("scanner") || n.Contains("printer")) return false;
+            foreach (string v in CAMERA_VIDS) if (id.Contains(v)) return true;
+            foreach (string w in CAMERA_WORDS) if (n.Contains(w) || id.Contains(w)) return true;
             // Nikon model names: D5600, D750, Z 6, Z50...
             return System.Text.RegularExpressions.Regex.IsMatch(n, @"\b(d\d{2,4}|z ?\d{1,2}|zf|zfc)\b");
         }
@@ -532,6 +598,7 @@ namespace Pb4uCam
                 CloseCamera();
             }
             var all = ListDevs();
+            Log("Open: WPD returned " + all.Count + " device(s)" + (all.Count > 0 ? ": " + string.Join(", ", all.ConvertAll(d => "\"" + (d.Name ?? "") + "\"/\"" + (d.Maker ?? "") + "\"").ToArray()) : ""));
             if (all.Count == 0) throw new CamException("NOCAMERA No camera found. Plug the camera into this laptop with a data USB cable and switch it on.");
             // Cameras by name first, then anything else (some cameras show only a model number).
             var order = new List<DevInfo>();

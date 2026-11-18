@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.72', date: '2026-11-18' },
   { version: '1.1.71', date: '2026-11-18' },
   { version: '1.1.70', date: '2026-11-18' },
   { version: '1.1.69', date: '2026-11-18' },
@@ -267,6 +268,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-18', title: 'Desktop 1.1.72 (Win/Mac) + Helper 1.1.12: Canon EOS (1300D / Rebel T6) MTP USB detection fix', for: ['website', 'app', 'helper'], app: '1.1.72',
+    items: [
+      '📷 Canon EOS MTP USB detection: resolved issue where Canon EOS DSLRs (such as the EOS 1300D / Rebel T6 / Kiss X80) showing as generic "MTP USB Device" in Windows were ignored by the camera picker.',
+      '🔍 Hardware VID auto-matching: device discovery now inspects USB vendor IDs directly (vid_04a9) and maps generic MTP devices to Canon EOS remote control automatically.',
+      '🔄 Dual interface fallback: added fallback scanning for Still Image / Imaging device interfaces (GUID_DEVINTERFACE_IMAGE) alongside WPD with retry settling on initial connection.'
+    ]
+  },
   {
     date: '2026-11-18', title: 'Desktop 1.1.71 (Win/Mac) + Android 1.1.83 + iPad 1.1.6: Camera preview between shots & live view hold', for: ['website', 'app'], app: '1.1.71',
     items: [

@@ -12,7 +12,7 @@ import net from 'node:net';
 import { discoverNetworkPrinters, ippCaps, ippPrintDirect, pickMediaName } from './netprinters.mjs';
 import * as gopro from './cam-gopro.mjs';
 
-export const HELPER_VERSION = '1.1.11-app';
+export const HELPER_VERSION = '1.1.12-app';
 const IS_WIN = platform() === 'win32';
 const IS_MAC = platform() === 'darwin' || process.env.PB_TEST_MAC_CAMERA === '1';   // (the env var lets tests run the Mac camera path on another system)
 const PS = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass'];

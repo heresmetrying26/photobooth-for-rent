@@ -205,7 +205,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.0.8', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.0.8/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.0', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.0/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -258,6 +258,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-18', title: 'iPad app 1.1.0: Native AVFoundation zero-lag camera, hardware MP4 Video Guestbook & hardened M50 USB', for: ['website', 'app'], app: '1.1.0',
+    items: [
+      '📷 Native iPad live camera & instant capture: replaces WebKit getUserMedia buffering with a hardware AVCaptureVideoPreviewLayer + Metal CIFilter preview and instant AVCapturePhotoOutput still capture (plus UVC HDMI capture cards on iPadOS 17+).',
+      '🎥 Native Video Guestbook: records hardware-encoded H.264/AAC .mp4 clips via AVAssetWriter with all 15 GPU looks and on-demand mic audio, eliminating getUserMedia preview lag and canvas capture overhead.',
+      '🔌 Hardened USB DSLR tethering: auto-rescans ImageCaptureCore devices on empty lists, clears stale PTP sessions, and retries Canon SetRemoteMode with actionable Canon M50 setup hints.'
+    ]
+  },
   {
     date: '2026-11-18', title: 'Desktop 1.1.65 + Android 1.1.77: Optional Roving DSLR photo editing before QR & print', for: ['website', 'app'], app: '1.1.65',
     items: [

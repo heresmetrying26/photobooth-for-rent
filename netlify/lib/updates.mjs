@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.66', date: '2026-11-18' },
   { version: '1.1.65', date: '2026-11-18' },
   { version: '1.1.64', date: '2026-11-17' },
   { version: '1.1.63', date: '2026-11-17' },
@@ -273,6 +274,16 @@ export const NOTES = [
       '📷 Native iPad live camera & instant capture: replaces WebKit getUserMedia buffering with a hardware AVCaptureVideoPreviewLayer + Metal CIFilter preview and instant AVCapturePhotoOutput still capture (plus UVC HDMI capture cards on iPadOS 17+).',
       '🎥 Native Video Guestbook: records hardware-encoded H.264/AAC .mp4 clips via AVAssetWriter with all 15 GPU looks and on-demand mic audio, eliminating getUserMedia preview lag and canvas capture overhead.',
       '🔌 Hardened USB DSLR tethering: auto-rescans ImageCaptureCore devices on empty lists, clears stale PTP sessions, and retries Canon SetRemoteMode with actionable Canon M50 setup hints.'
+    ]
+  },
+  {
+    date: '2026-11-18', title: 'Desktop 1.1.66 + Android 1.1.78: Real-time branded card sync, direct preset selection & color profile enhancements', for: ['website', 'app'], app: '1.1.66',
+    items: [
+      '⚡ Real-time admin welcome card sync: changes made in Admin to card layout, decoration, and palette now synchronize automatically to live and newly reopened booths without manual configuration.',
+      '🎨 Default Studio Monochrome: newly created non-Charm booths default cleanly to Studio Monochrome and minimal decoration, while Charm Up booths retain signature Charm Blush and Waves.',
+      '🎛️ Direct-selection preview toolbar: instant 1-click chip controls for welcome card layout, decoration, and palette inside the preview modal with auto-open on table click and reverse cycling support.',
+      '📐 Spacing & responsive layout fix: generous distance between cards and photo strips in landscape with vertically stacked responsive hierarchy in portrait to eliminate crowding.',
+      '🌈 Hardware color profile persistency: complete preservation of hue shift, saturation, temperature, tint, brightness, contrast, and color presets across app restarts.'
     ]
   },
   {

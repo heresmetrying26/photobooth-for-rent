@@ -1448,11 +1448,8 @@
           </div>
           <div class="printbox" id="newPrint"></div>
           <div class="modebox">
-            <label class="toggle"><input type="checkbox" id="newTraditional"> Traditional booth (laptop + guest
-              screen)</label>
-            <div class="meta" style="margin:0;">For a laptop with a second monitor: guests see the camera and countdown
-              on the extended screen, the renter runs setup and printing on the laptop, and prints can run
-              automatically. Leave off for tablets (iPad / Android).</div>
+            <label class="toggle"><input type="checkbox" id="newTraditional" checked> Guest screen / traditional booth (laptop &amp; tablet)</label>
+            <div class="meta" style="margin:0;">Includes guest screen mode for extended monitors / tablets, and auto-print option. Enabled by default on all packages.</div>
           </div>
           <div class="modebox">
             <label class="toggle"><input type="checkbox" id="newGif" checked> GIF mode (animated GIF &amp; Photo + GIF
@@ -1497,15 +1494,13 @@
               include the offline app. Lifetime Offline is laptop app only (the website booth refuses it).</div>
           </div>
           <div class="modebox">
-            <label style="font-size:13px;color:var(--ink);">Android screen orientation</label>
+            <label style="font-size:13px;color:var(--ink);">Tablet screen orientation</label>
             <div class="row" style="gap:8px;margin-top:6px;">
-              <label class="toggle"><input type="radio" name="newOrientation" value="landscape" checked> Landscape
-                (default)</label>
+              <label class="toggle"><input type="radio" name="newOrientation" value="either" checked> Either (default — renter chooses in Setup)</label>
+              <label class="toggle"><input type="radio" name="newOrientation" value="landscape"> Landscape</label>
               <label class="toggle"><input type="radio" name="newOrientation" value="portrait"> Portrait</label>
-              <label class="toggle"><input type="radio" name="newOrientation" value="either"> Either (renter
-                chooses)</label>
             </div>
-            <div class="meta" style="margin:0;">Android tablet only. "Either" lets the renter lock it in Setup.</div>
+            <div class="meta" style="margin:0;">"Either" lets the renter choose or lock Landscape vs Portrait in Setup.</div>
           </div>
           <button class="primary" id="createBtn" style="margin-top:12px;">Generate</button>
           <div id="newBox" class="newbox hidden"></div>
@@ -1824,6 +1819,8 @@
             <span id="ixInfo"></span>
             <span style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="small" id="exportBtn">Export CSV</button>
+              <button class="small" id="upgradeAllBtn"
+                title="Update all existing codes in the database so guest screen is on and orientation is either.">Upgrade all codes (Guest screen + Either)</button>
               <button class="small" id="reindexBtn"
                 title="Re-read every code. Only needed if the list ever looks out of date.">Rebuild index</button>
             </span>
@@ -2316,12 +2313,12 @@
           if (unusedish || (st === 'expired' && !l.redeemedAt)) acts += '<button class="small" data-a="schedopen" data-c="' + c + '">' + (l.startsAt ? 'Change date' : 'Set date') + '</button>';
         }
         acts += '<button class="small" data-a="printedit" data-c="' + c + '">Print settings</button>';
-        acts += '<button class="small" data-a="mode" data-c="' + c + '">' + (l.traditional ? 'Switch to tablet' : 'Make traditional') + '</button>';
+        acts += '<button class="small" data-a="mode" data-c="' + c + '">' + (l.traditional ? 'Switch to basic (hide guest screen)' : 'Make traditional (add guest screen)') + '</button>';
         acts += '<button class="small" data-a="retakeopt" data-c="' + c + '">' + (l.retakeOpt ? 'Hide retake switch' : 'Give retake switch') + '</button>';
         acts += '<button class="small" data-a="typesopt" data-c="' + c + '">' + (l.typesOpt ? 'Hide card &amp; certificate booths' : 'Give card &amp; certificate booths') + '</button>';
         acts += '<button class="small" data-a="debugopt" data-c="' + c + '">' + (l.debugOpt ? 'Turn off debug tools' : 'Turn on debug tools') + '</button>';
-        var ors = ['landscape', 'portrait', 'either'], oi = ors.indexOf(l.orientation || 'landscape'), nextOr = ors[(oi + 1) % 3], orLabel = { landscape: 'Landscape', portrait: 'Portrait', either: 'Either (renter picks)' }[l.orientation || 'landscape'];
-        acts += '<button class="small" data-a="orientationopt" data-or="' + nextOr + '" data-c="' + c + '" title="Android only. Landscape = always landscape. Portrait = always portrait. Either = renter chooses in Setup.">Android orientation: ' + orLabel + '</button>';
+        var ors = ['either', 'landscape', 'portrait'], oi = ors.indexOf(l.orientation || 'either'), nextOr = ors[(oi + 1) % 3], orLabel = { landscape: 'Landscape', portrait: 'Portrait', either: 'Either (renter picks)' }[l.orientation || 'either'];
+        acts += '<button class="small" data-a="orientationopt" data-or="' + nextOr + '" data-c="' + c + '" title="Tablet screen orientation. Either = renter chooses in Setup. Landscape = always landscape. Portrait = always portrait.">Orientation: ' + orLabel + '</button>';
         acts += '<button class="small" data-a="gifopt" data-c="' + c + '">' + (l.gifOpt ? 'Hide GIF mode' : 'Give GIF mode') + '</button>';
         acts += '<button class="small" data-a="rushopt" data-c="' + c + '" title="Self-service ID photo + photo printing station at /rush. The renter opens /rush and enters this same code.">' + (l.rushOpt ? 'Turn off Rush ID station' : 'Turn on Rush ID station') + '</button>';
         acts += '<button class="small" data-a="lockopt" data-c="' + c + '">' + (l.lockOpt ? 'Hide lock booth' : 'Give lock booth') + '</button>';
@@ -2507,6 +2504,19 @@
         catch (err) { if (err.message !== 'auth') toast(err.message, true); }
         btn.disabled = false;
       });
+      var uab = $('upgradeAllBtn');
+      if (uab) {
+        uab.addEventListener('click', async function () {
+          if (!confirm('Upgrade all previously created codes?\n\nThis sets:\n• Guest screen (traditional mode) = ON\n• Screen orientation = Either (renter picks in Setup)\n\non all existing rental codes in the database.')) return;
+          var btn = this; btn.disabled = true;
+          try {
+            var r = await api({ action: 'upgradeallcodes' });
+            toast('Upgraded ' + (r.updated || 0) + ' codes to Guest screen + Either orientation');
+            await load();
+          } catch (err) { if (err.message !== 'auth') toast(err.message, true); }
+          btn.disabled = false;
+        });
+      }
 
       $('list').addEventListener('change', async function (e) {
         var cb = e.target.closest('.selc');
@@ -3015,7 +3025,7 @@
         try {
           var np = readPrint($('newPrint'));
           var startsAt = readStartInputs($('newStartDate'), $('newStartTime'));
-          var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, agreementAccepted: $('newAgreed').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, typesOpt: $('newTypes').checked, rushOpt: $('newRush').checked, lockOpt: $('newLock').checked, extras: { vintage: $('newXVintage').checked, roving: $('newXRoving').checked, flipbook: $('newXFlipbook').checked, video: $('newXVideo').checked, spin360: $('newXSpin').checked }, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null, orientation: (document.querySelector('[name="newOrientation"]:checked') || {}).value || 'landscape' };
+          var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, agreementAccepted: $('newAgreed').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, typesOpt: $('newTypes').checked, rushOpt: $('newRush').checked, lockOpt: $('newLock').checked, extras: { vintage: $('newXVintage').checked, roving: $('newXRoving').checked, flipbook: $('newXFlipbook').checked, video: $('newXVideo').checked, spin360: $('newXSpin').checked }, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null, orientation: (document.querySelector('[name="newOrientation"]:checked') || {}).value || 'either' };
           var j;
           try { j = await api(createBody); }
           catch (e1) {
@@ -3324,12 +3334,12 @@
       // Lifetime Online adding the offline app later (₱2,200): open the code → Give offline app.
       // Lifetime Offline adding the online booth later (₱1,500): open the code → Allow website too.
       var PKG = {
-        tablet: { days: 1, devices: 1, lifetime: false, traditional: false, gif: true, offline: false, only: false },
+        tablet: { days: 1, devices: 1, lifetime: false, traditional: true, gif: true, offline: false, only: false },
         laptop: { days: 1, devices: 1, lifetime: false, traditional: true, gif: true, offline: true, only: false },
         monthonline: { days: 30, devices: 1, lifetime: false, traditional: true, gif: true, offline: false, only: false },
         monthoffline: { days: 30, devices: 1, lifetime: false, traditional: true, gif: true, offline: true, only: true },
         monthboth: { days: 30, devices: 1, lifetime: false, traditional: true, gif: true, offline: true, only: false },
-        android: { days: 30, devices: 1, lifetime: false, traditional: false, gif: true, offline: true, only: true },
+        android: { days: 30, devices: 1, lifetime: false, traditional: true, gif: true, offline: true, only: true },
         lifeonline: { days: 1, devices: 5, lifetime: true, traditional: true, gif: true, offline: false, only: false, spin: false },
         lifeoffline: { days: 1, devices: 5, lifetime: true, traditional: true, gif: true, offline: true, only: true, spin: false },
         lifetime: { days: 1, devices: 5, lifetime: true, traditional: true, gif: true, offline: true, only: false, spin: false }
@@ -3340,6 +3350,7 @@
         $('newDays').value = p.days; $('newDevices').value = p.devices;
         $('newLifetime').checked = p.lifetime; $('newDays').disabled = p.lifetime;
         $('newTraditional').checked = p.traditional; $('newGif').checked = p.gif; $('newOffline').checked = p.offline; $('newOfflineOnly').checked = p.only;
+        var orRadio = document.querySelector('[name="newOrientation"][value="either"]'); if (orRadio) orRadio.checked = true;
         $('newRetake').checked = true; $('newTypes').checked = false; $('newLock').checked = true; $('newPay').checked = true;
         if (p.spin !== undefined) $('newXSpin').checked = p.spin;
         [].forEach.call(this.querySelectorAll('[data-pkg]'), function (x) { x.classList.toggle('primary', x === b); });

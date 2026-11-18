@@ -449,8 +449,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         let typesOpt = (feat["typesOpt"] as? NSNumber)?.boolValue ?? false
         let debugOpt = (feat["debugOpt"] as? NSNumber)?.boolValue ?? false
         let payOpt = (feat["vouchers"] as? NSNumber)?.boolValue ?? false
-        let traditional = (feat["traditional"] as? NSNumber)?.boolValue ?? false
-        let orientation = (feat["orientation"] as? String) ?? "landscape"
+        let traditional = (feat["traditional"] as? NSNumber)?.boolValue ?? true
+        let orientation = (feat["orientation"] as? String) ?? "either"
 
         let exObj = feat["extras"] as? [String: Any] ?? [:]
         let extrasJs = ["vintage", "roving", "flipbook", "video", "spin360"].map { key in

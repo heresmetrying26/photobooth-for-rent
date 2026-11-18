@@ -61,8 +61,8 @@ export function readLicence(lic) {
 export function featuresOf(rec, deviceNo) {
   return {
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes, rec.print),
-    traditional: !!rec.traditional, retakeOpt: !!rec.retakeOpt, typesOpt: !!rec.typesOpt, lockOpt: !!rec.lockOpt, debugOpt: !!rec.debugOpt,
-    orientation: rec.orientation || 'landscape',
+    traditional: rec.traditional !== false, retakeOpt: !!rec.retakeOpt, typesOpt: !!rec.typesOpt, lockOpt: !!rec.lockOpt, debugOpt: !!rec.debugOpt,
+    orientation: (rec.orientation && rec.orientation !== 'landscape') ? rec.orientation : 'either',
     gifOpt: rec.gifOpt !== false,
     ipadOpt: !!rec.ipadOpt,                      // an iPad may use this laptop's camera over Wi-Fi (off by default unless Admin turns it on)
     extras: extrasOf(rec),

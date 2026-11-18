@@ -198,6 +198,26 @@ export default safe(async (req, context) => {
     case 'reindex':
       return json({ ok: true, count: Object.keys((await rebuildIndex()).rows).length });
 
+    case 'upgradeallcodes': { // upgrade all codes: traditional = true, orientation = either
+      const { blobs } = await store.list();
+      let count = 0;
+      for (let i = 0; i < blobs.length; i += 50) {
+        const part = await Promise.all(blobs.slice(i, i + 50).map((b) => store.get(b.key, { type: 'json' })));
+        for (const rec of part) {
+          if (!rec || !rec.key) continue;
+          let changed = false;
+          if (rec.traditional !== true) { rec.traditional = true; changed = true; }
+          if (!rec.orientation || rec.orientation === 'landscape') { rec.orientation = 'either'; changed = true; }
+          if (changed) {
+            await putLicense(store, rec.key, rec);
+            count++;
+          }
+        }
+      }
+      await rebuildIndex();
+      return json({ ok: true, updated: count });
+    }
+
     case 'bulk': { // disable / restore / delete many codes at once
       const op = b.op;
       if (!['revoke', 'restore', 'delete'].includes(op)) return json({ error: 'Unknown bulk action.' }, 400);
@@ -363,7 +383,7 @@ export default safe(async (req, context) => {
           startPaletteLabel: b.startPaletteLabel || (isCharm ? 'Charm Blush' : 'Monochrome'),
           startsAt: start.value,
           print,
-          traditional: !!b.traditional,
+          traditional: b.traditional !== false,
           gifOpt: b.gifOpt !== false,
           rushOpt: !!b.rushOpt,
           extras: normExtras(b.extras),
@@ -373,7 +393,7 @@ export default safe(async (req, context) => {
           payOpt: b.payOpt !== false,
           offlineOpt: !!(b.offlineOpt || b.offlineOnly),
           offlineOnly: !!b.offlineOnly,
-          orientation: _allowedOr.includes(b.orientation) ? b.orientation : 'landscape',
+          orientation: _allowedOr.includes(b.orientation) ? b.orientation : 'either',
           status: 'unused',
           createdAt: Date.now(),
           redeemedAt: null,

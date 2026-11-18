@@ -347,6 +347,7 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
       startsAt: null, // Begins counting upon first redemption on device
       print: { enabled: true, sizes: [...PAPER_SIZES], eventLimit: 0, sessionLimit: 0 },
       traditional: planCfg.traditional !== false,
+      orientation: planCfg.orientation || 'either',
       gifOpt: true,
       offlineOpt: !!planCfg.offlineOpt,
       offlineOnly: !!planCfg.offlineOnly,

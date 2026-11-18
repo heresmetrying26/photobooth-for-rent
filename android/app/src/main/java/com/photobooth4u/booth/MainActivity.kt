@@ -84,7 +84,26 @@ class MainActivity : AppCompatActivity() {
     private val checkinLoop = object : Runnable {
         override fun run() {
             if (::licence.isInitialized && isNetworkAvailable()) {
-                licence.checkin { /* applied silently; a lapsed licence gates at the next boot */ }
+                licence.checkin { res ->
+                    if (res == "ok") {
+                        val st = licence.status()
+                        if (st.ok && st.payload != null) {
+                            activeFeat = st.payload.optJSONObject("feat")
+                            val trad = activeFeat?.optBoolean("traditional", true) ?: true
+                            val orient = activeFeat?.optString("orientation", "either") ?: "either"
+                            val savedPref = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString("pref_orientation", null)
+                            if (orient == "either") {
+                                applyOrientation(savedPref ?: "either")
+                            } else {
+                                applyOrientation(orient)
+                            }
+                            val js = "window.__PB=window.__PB||{};window.__PB.traditional=$trad;window.__PB.orientation=" + jsStr(orient) + ";try{window.dispatchEvent(new Event('pb-mode-change'));window.dispatchEvent(new Event('pb-orientation-change'));}catch(e){}"
+                            runOnUiThread {
+                                webView.evaluateJavascript(js, null)
+                            }
+                        }
+                    }
+                }
             }
             checkinHandler.postDelayed(this, 10 * 60_000L)
         }
@@ -353,7 +372,7 @@ class MainActivity : AppCompatActivity() {
         activeFeat = st.payload?.optJSONObject("feat")
         activeLifetime = st.payload?.optBoolean("lifetime", false) ?: false
         activeExp = if (st.payload != null && st.payload.has("exp") && !st.payload.isNull("exp")) st.payload.optLong("exp") else null
-        val adminOrientation = activeFeat?.optString("orientation", "landscape") ?: "landscape"
+        val adminOrientation = activeFeat?.optString("orientation", "either") ?: "either"
         val savedPref = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString("pref_orientation", null)
         if (adminOrientation == "either") {
             applyOrientation(savedPref ?: "either")
@@ -764,8 +783,8 @@ class MainActivity : AppCompatActivity() {
                 val typesOpt = feat?.optBoolean("typesOpt", false) ?: false
                 val debugOpt = feat?.optBoolean("debugOpt", false) ?: false     // Admin turns this on per code; off for everyone else
                 val payOpt = feat?.optBoolean("vouchers", false) ?: false
-                val traditional = feat?.optBoolean("traditional", false) ?: false
-                val orientationOpt = feat?.optString("orientation", "landscape") ?: "landscape"
+                val traditional = feat?.optBoolean("traditional", true) ?: true
+                val orientationOpt = feat?.optString("orientation", "either") ?: "either"
                 // Extras every package includes (missing = on): vintage looks, photographer desk, flipbook, video guestbook
                 val exObj = feat?.optJSONObject("extras")
                 val extrasJs = listOf("vintage", "roving", "flipbook", "video", "spin360").joinToString(",") { it + ":" + (exObj?.optBoolean(it, true) ?: true) }

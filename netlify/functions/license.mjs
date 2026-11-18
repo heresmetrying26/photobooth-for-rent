@@ -50,6 +50,8 @@ export default safe(async (req, context) => {
       const why = startCode(rec, now);
       if (why) return json({ error: why }, 403);
     } else if (rec.expiresAt <= now) return json({ error: 'This code has expired.' }, 403);
+    if (rec.traditional !== true) rec.traditional = true;
+    if (!rec.orientation || rec.orientation === 'landscape') rec.orientation = 'either';
     const r = activateOn(rec, { mid, name: b.name, os: b.os, ver: b.ver }, now);
     if (r.error) return json({ error: r.error }, r.status || 400);
     await putLicense(store, key, rec);
@@ -82,6 +84,8 @@ export default safe(async (req, context) => {
     if (rec.expiresAt <= now) return json({ ok: false, revoked: true, reason: 'expired', error: 'This code has expired.' });
     dev.app.seen = now; dev.seen = now;
     if (b.ver) dev.app.ver = String(b.ver).slice(0, 20);
+    if (rec.traditional !== true) rec.traditional = true;
+    if (!rec.orientation || rec.orientation === 'landscape') rec.orientation = 'either';
     setDevices(rec, devicesOf(rec).map((d) => (d.id === dev.id ? dev : d)));
     await putLicense(store, map.key, rec);
     return json({ ok: true, licence: licenceFor(map.key, rec, dev, now, sd.on), app: await liveApp() });

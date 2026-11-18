@@ -22,15 +22,14 @@ jobs:
         run: |
           bun build --compile --minify --target=bun-windows-x64 print-helper.js --outfile photobooth4u-print-helper-windows.exe
           Compress-Archive -Path photobooth4u-print-helper-windows.exe -DestinationPath photobooth4u-print-helper-windows.zip -CompressionLevel Optimal
-      - uses: actions/upload-artifact@v4
+      - uses: softprops/action-gh-release@v2
         with:
-          name: print-helper-windows
-          path: tools/print-helper/photobooth4u-print-helper-windows.zip
-          if-no-files-found: error
+          name: Print Helper ${{ github.ref_name }}
+          files: tools/print-helper/photobooth4u-print-helper-windows.zip
+          make_latest: false
 
   build-mac:
     runs-on: macos-latest
-    continue-on-error: true
     defaults:
       run:
         working-directory: tools/print-helper
@@ -46,25 +45,10 @@ jobs:
           bun build --compile --minify --target=bun-darwin-x64 print-helper.js --outfile photobooth4u-print-helper-mac-intel
           codesign --force --sign - --identifier com.photobooth4u.printhelper photobooth4u-print-helper-mac-intel
           zip -j -X photobooth4u-print-helper-mac-intel.zip photobooth4u-print-helper-mac-intel
-      - uses: actions/upload-artifact@v4
-        with:
-          name: print-helper-mac
-          path: |
-            tools/print-helper/photobooth4u-print-helper-mac-apple-silicon.zip
-            tools/print-helper/photobooth4u-print-helper-mac-intel.zip
-          if-no-files-found: ignore
-
-  release:
-    needs: [build-windows, build-mac]
-    if: always() && !cancelled() && (needs.build-windows.result == 'success' || needs.build-mac.result == 'success')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: release-assets
-          merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
           name: Print Helper ${{ github.ref_name }}
-          files: release-assets/*.zip
+          files: |
+            tools/print-helper/photobooth4u-print-helper-mac-apple-silicon.zip
+            tools/print-helper/photobooth4u-print-helper-mac-intel.zip
           make_latest: false

@@ -205,7 +205,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.0', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.0/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.1', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.1/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -258,6 +258,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-18', title: 'iPad app 1.1.1: Native AVFoundation camera, hardware MP4 Video Guestbook & 1st-photo timer save fix', for: ['website', 'app'], app: '1.1.1',
+    items: [
+      '⏱️ Saved 1st-photo countdown persistence: the 2–60 s 1st-photo countdown now saves and restores properly across reloads, cloud sync, and offline presets (while staying backward-compatible with legacy extra-time setups).',
+      '📷 Native iPad live camera & instant capture: hardware AVCaptureVideoPreviewLayer + Metal CIFilter preview and instant AVCapturePhotoOutput still capture (plus UVC HDMI capture cards on iPadOS 17+).',
+      '🎥 Native Video Guestbook: records hardware-encoded H.264/AAC .mp4 clips via AVAssetWriter with all 15 GPU looks and on-demand mic audio.',
+      '🔌 Hardened USB DSLR tethering: auto-rescans ImageCaptureCore devices on empty lists, clears stale PTP sessions, and retries Canon SetRemoteMode with Canon M50 hints.'
+    ]
+  },
   {
     date: '2026-11-18', title: 'iPad app 1.1.0: Native AVFoundation zero-lag camera, hardware MP4 Video Guestbook & hardened M50 USB', for: ['website', 'app'], app: '1.1.0',
     items: [

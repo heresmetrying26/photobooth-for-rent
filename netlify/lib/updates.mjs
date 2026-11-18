@@ -181,7 +181,10 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-18', url: 'https://photobooth4u.netlify.app/downloads/photobooth4u-kiosk-android.apk' };
+// The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
+// after about 60 s, so on a slower connection the 18 MB file never finished ("unexpected end of stream").
+// GitHub has no such limit. (The copy in public/downloads is still kept for the /downloads page.)
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-18', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
 // The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
 // /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new

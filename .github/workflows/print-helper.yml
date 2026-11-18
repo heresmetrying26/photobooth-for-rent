@@ -1,6 +1,7 @@
 name: Print Helper
 
 on:
+  workflow_dispatch:
   push:
     tags: ['print-helper-v*']
 
@@ -29,6 +30,7 @@ jobs:
 
   build-mac:
     runs-on: macos-latest
+    continue-on-error: true
     defaults:
       run:
         working-directory: tools/print-helper
@@ -50,10 +52,11 @@ jobs:
           path: |
             tools/print-helper/photobooth4u-print-helper-mac-apple-silicon.zip
             tools/print-helper/photobooth4u-print-helper-mac-intel.zip
-          if-no-files-found: error
+          if-no-files-found: ignore
 
   release:
     needs: [build-windows, build-mac]
+    if: always() && !cancelled() && (needs.build-windows.result == 'success' || needs.build-mac.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4

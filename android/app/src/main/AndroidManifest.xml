@@ -122,6 +122,17 @@
             android:screenOrientation="unspecified"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- Guest Screen + Camera Bridge Activity: Turns tablet into laptop Guest Screen + Camera -->
+        <activity
+            android:name=".GuestBridgeActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:label="Laptop Guest + Camera Bridge"
+            android:icon="@mipmap/ic_launcher"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- Foreground service for 127.0.0.1:17321 Print & Camera Helper -->
         <service
             android:name=".PrintHelperService"

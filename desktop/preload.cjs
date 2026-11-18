@@ -91,6 +91,15 @@ contextBridge.exposeInMainWorld('pb4u', {
   usbScan: () => ipcRenderer.invoke('pb4u:usbScan'),
   // Reconnects an Instax printer set up before (Bluetooth), by its name: { ok, name } / { ok:false, error }
   bluetoothReconnect: (name) => ipcRenderer.invoke('pb4u:bluetoothReconnect', String(name || '')),
+  bridge: {
+    info: () => ipcRenderer.invoke('pb4u:bridgeInfo'),
+    renew: () => ipcRenderer.invoke('pb4u:bridgeRenew'),
+    pushState: (state) => ipcRenderer.invoke('pb4u:bridgeState', state || {}),
+    sendEvent: (ev) => ipcRenderer.invoke('pb4u:bridgeEvent', ev || {}),
+    camCmd: (cmd) => ipcRenderer.invoke('pb4u:bridgeCamCmd', cmd || {}),
+    onStatus: (fn) => { ipcRenderer.on('pb4u:bridgeStatus', (e, info) => { try { fn(info); } catch (err) { /* ignore */ } }); },
+    onAction: (fn) => { ipcRenderer.on('pb4u:bridgeAction', (e, act) => { try { fn(act); } catch (err) { /* ignore */ } }); }
+  },
   update: {
     info: () => ipcRenderer.invoke('pb4u:update'),
     check: () => ipcRenderer.invoke('pb4u:updateCheck'),

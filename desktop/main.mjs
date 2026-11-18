@@ -17,6 +17,7 @@ import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './li
 import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
 import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
+import { initBridge, getBridgeInfo, renewBridgeToken, pushBridgeState, sendBridgeEvent, sendCamCommand } from './lib/guest-bridge.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import { makeShrinkPage, makePngToJpeg } from './lib/pageshrink.mjs';
 import * as SPIN from './lib/spin.mjs';
@@ -592,6 +593,11 @@ function wireIpc() {
   ipcMain.handle('pb4u:updateDownload', () => U.download());
   ipcMain.handle('pb4u:updateOpen', () => U.openDownloaded());
   ipcMain.handle('pb4u:updateInstall', () => U.installNow());
+  ipcMain.handle('pb4u:bridgeInfo', () => getBridgeInfo());
+  ipcMain.handle('pb4u:bridgeRenew', () => renewBridgeToken());
+  ipcMain.handle('pb4u:bridgeState', (e, state) => pushBridgeState(state));
+  ipcMain.handle('pb4u:bridgeEvent', (e, ev) => sendBridgeEvent(ev));
+  ipcMain.handle('pb4u:bridgeCamCmd', (e, cmd) => sendCamCommand(cmd));
 }
 
 let isQuitting = false;
@@ -660,6 +666,12 @@ app.whenReady().then(async () => {
     handleWeb: (webReq) => handle(webReq),
     setGuestView
   }));
+  initBridge({
+    getPort: sharePortNow,
+    logger: (m) => console.log(m),
+    onStatus: (info) => { if (win && !win.isDestroyed()) win.webContents.send('pb4u:bridgeStatus', info); },
+    onAction: (act) => { if (win && !win.isDestroyed()) win.webContents.send('pb4u:bridgeAction', act); }
+  });
   await startShareServer();
   initHotspot({
     get: () => (settings.hotspot = settings.hotspot || {}), save: saveSettings, logger: (m) => console.log('[hotspot] ' + m),

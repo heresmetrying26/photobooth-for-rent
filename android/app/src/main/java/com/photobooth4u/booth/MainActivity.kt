@@ -520,6 +520,26 @@ class MainActivity : AppCompatActivity() {
         }
         container.addView(roveBtn)
 
+        val bridgeBtn = Button(this).apply {
+            text = "🖥️ Laptop Guest + Camera Bridge"
+            textSize = 13f
+            setTextColor(Color.parseColor("#C93D27"))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = px(10).toFloat()
+                setColor(Color.parseColor("#FDEEEB"))
+                setStroke(px(1), Color.parseColor("#C93D27"))
+            }
+            val bp = LinearLayout.LayoutParams(px(260), px(44)).apply {
+                topMargin = px(10)
+            }
+            layoutParams = bp
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, GuestBridgeActivity::class.java))
+            }
+        }
+        container.addView(bridgeBtn)
+
         return container
     }
 
@@ -1068,14 +1088,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showUrlConfigDialog() {
+        val wrap = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(px(20), px(8), px(20), px(4))
+        }
         val input = EditText(this)
         input.setText(getSavedUrl())
         input.setSelection(input.text.length)
+        wrap.addView(input)
 
-        AlertDialog.Builder(this)
+        val dlg = AlertDialog.Builder(this)
             .setTitle("Booth Configuration")
             .setMessage("Choose how this tablet runs.\n\nOffline: works with no internet (no QR payment; photos, GIFs and vouchers still work).\n\nOnline: opens the live website below (QR payment available, needs internet).")
-            .setView(input)
+            .setView(wrap)
             .setPositiveButton("Online (live site)") { _, _ ->
                 val newUrl = input.text.toString().trim()
                 if (newUrl.isNotBlank()) {
@@ -1093,7 +1118,20 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Loaded offline booth from device", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Cancel", null)
-            .show()
+            .create()
+
+        val bridgeBtn = Button(this).apply {
+            text = "🖥️ Open Laptop Guest + Camera Bridge"
+            textSize = 13f
+            setOnClickListener {
+                dlg.dismiss()
+                startActivity(Intent(this@MainActivity, GuestBridgeActivity::class.java))
+            }
+        }
+        wrap.addView(bridgeBtn, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = px(10)
+        })
+        dlg.show()
     }
 
     private fun showExitConfirmation() {

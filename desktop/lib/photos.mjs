@@ -14,6 +14,7 @@ import { deflateSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 import { hotspotInfo } from './hotspot.mjs';
+import { attachBridgeUpgrade, handleBridgeHttp } from './guest-bridge.mjs';
 
 const QR_JS_PATH = fileURLToPath(new URL('qr.js', import.meta.url));
 let QR_JS_CODE = '';
@@ -2108,6 +2109,7 @@ async function handleShare(req, res) {
   if (lanHandler && await lanHandler(req, res)) return;
   let url;
   try { url = new URL(req.url, 'http://x'); } catch { return send(res, 400, 'text/plain', 'Bad request'); }
+  if (await handleBridgeHttp(req, res, url)) return;
   if (url.pathname === '/qr.js') {
     if (QR_JS_CODE) {
       return send(res, 200, 'application/javascript; charset=utf-8', QR_JS_CODE, { 'cache-control': 'public, max-age=86400' });
@@ -2316,7 +2318,7 @@ export function startShareServer() {
       const port = SHARE_PORTS[i++];
       const s = http.createServer((req, res) => { handleShare(req, res).catch(() => { try { send(res, 500, 'text/plain', 'Error'); } catch { /* closed */ } }); });
       s.once('error', () => { try { s.close(); } catch { /* ignore */ } tryNext(); });
-      s.listen(port, '0.0.0.0', () => { server = s; sharePort = port; resolve(port); });
+      s.listen(port, '0.0.0.0', () => { server = s; sharePort = port; attachBridgeUpgrade(s); resolve(port); });
     };
     tryNext();
   });

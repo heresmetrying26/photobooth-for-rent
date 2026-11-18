@@ -2111,8 +2111,7 @@
       width: 100%;
     }
 
-    body.in-session.shooting:not(.stage-full) .stage-frame,
-    body.in-session.shooting:not(.stage-full) .app-shell.capturing .stage-frame {
+    body.in-session.shooting:not(.stage-full) .app-shell:not(.capturing) .stage-frame {
       width: min(calc(100vw - 20px), calc((var(--vh) - 54px) * var(--cam-aspect, 0.8))) !important;
       width: min(calc(100vw - 20px), calc((100dvh - 54px) * var(--cam-aspect, 0.8))) !important;
       max-height: calc(var(--vh) - 54px) !important;
@@ -8629,6 +8628,8 @@
     }
 
     body.in-session .app-shell.capturing .film-track {
+      position: relative;
+      z-index: 6;
       grid-column: 3;
       grid-row: 1;
       align-self: start;
@@ -8692,9 +8693,9 @@
     }
 
     /* the finished photo isn't live */
-    /* Tall strip on a wide screen (tablet landscape, laptop): review buttons on one
-     row across the whole width instead of wrapping under the narrow strip... */
-    body.in-session .app-shell.capturing.tall-stage:not(.film-below) .session-controls {
+    /* Controls on wide screens: center across all grid columns so narrow stages
+       (e.g. 2x6 strips) never force buttons to wrap or stretch Column 2. */
+    body.in-session .app-shell.capturing:not(.getting-ready):not(.film-below) .session-controls {
       grid-column: 1 / -1;
       justify-self: center;
       width: max-content;
@@ -15446,17 +15447,19 @@
       padding: calc(7px * var(--ui-btn-scale, 1)) calc(16px * var(--ui-btn-scale, 1)) !important;
     }
 
-    body.stage-full .app-shell .session-controls .sc-btn {
+    body.stage-full .app-shell .session-controls .sc-btn,
+    body.in-session .app-shell.capturing .session-controls .sc-btn {
       font-size: calc(13.5px * min(var(--ui-btn-scale, 1), 1.35)) !important;
       min-height: calc(38px * min(var(--ui-btn-scale, 1), 1.35)) !important;
       padding: calc(7px * min(var(--ui-btn-scale, 1), 1.3)) calc(14px * min(var(--ui-btn-scale, 1), 1.3)) !important;
       max-width: 100% !important;
       box-sizing: border-box !important;
+      white-space: nowrap !important;
     }
 
     /* Scalable side photos per session (Film Track) */
     body.stage-full .app-shell .film-track .film-frame {
-      width: calc(clamp(64px, 9vmin, 120px) * var(--ui-film-scale, 1)) !important;
+      width: min(calc(clamp(64px, 9vmin, 120px) * var(--ui-film-scale, 1)), calc(((var(--vh, 100vh) - 130px) / var(--n, 4) - 10px) * var(--box-aspect, 0.8))) !important;
     }
 
     body.stage-full .app-shell .film-track {
@@ -15478,9 +15481,9 @@
     /* --- On-Screen Layout & Resize Editor Floating Dock (Minimizable & Movable) --- */
     .layout-edit-bar {
       position: fixed;
-      top: max(12px, env(safe-area-inset-top));
-      right: max(16px, env(safe-area-inset-right));
-      left: auto;
+      top: max(14px, env(safe-area-inset-top));
+      left: max(16px, env(safe-area-inset-left));
+      right: auto;
       bottom: auto;
       transform: none;
       z-index: 1000;
@@ -15701,11 +15704,28 @@
     }
 
     /* While layout-editing is active on body: show sample preview overlays */
+    body:not(.stage-full) .layout-edit-bar {
+      top: max(68px, env(safe-area-inset-top));
+    }
+
+    body.layout-editing .app-shell {
+      max-width: calc(100vw - 16px) !important;
+      width: 100% !important;
+      grid-template-columns: 1fr !important;
+    }
+
+    body.layout-editing .app-shell .panel,
+    body.layout-editing #opDock,
+    body.layout-editing #pbTimeChip,
+    body.layout-editing .ready-overlay.edit-preview .ready-head {
+      display: none !important;
+    }
+
     body.layout-editing .countdown-overlay.edit-preview {
       display: flex !important;
       position: fixed !important;
-      top: 74px !important;
-      left: 50% !important;
+      top: 74px;
+      left: 50%;
       right: auto !important;
       bottom: auto !important;
       transform: translateX(-50%) !important;
@@ -15713,8 +15733,24 @@
       pointer-events: auto !important;
     }
 
-    body.layout-editing .film-track.edit-preview,
-    body.layout-editing .film-track {
+    body.layout-editing:not(.stage-full) .app-shell:not(.film-below) .stage-wrap {
+      display: grid !important;
+      grid-template-columns: auto auto auto;
+      justify-content: center;
+      gap: 16px;
+      row-gap: 0;
+      align-items: start;
+    }
+
+    body.layout-editing:not(.stage-full) .app-shell:not(.film-below) .stage-frame {
+      grid-column: 2 !important;
+      grid-row: 1 !important;
+      justify-self: center !important;
+      margin: 0 !important;
+    }
+
+    body.layout-editing:not(.stage-full) .app-shell:not(.film-below) .film-track.edit-preview,
+    body.layout-editing:not(.stage-full) .app-shell:not(.film-below) .film-track {
       display: flex !important;
       grid-column: 3 !important;
       grid-row: 1 !important;
@@ -15722,14 +15758,23 @@
       flex-direction: column !important;
       align-items: center !important;
       justify-content: center !important;
-      margin: auto 0 !important;
+      margin: 0 !important;
       gap: 10px !important;
-      padding: 12px 14px 28px !important;
-      max-height: calc(var(--vh, 100vh) - 80px) !important;
-      overflow-y: auto !important;
-      overflow-x: visible !important;
-      scrollbar-width: thin;
+      padding: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+      position: relative;
+      z-index: 6;
       box-sizing: border-box;
+    }
+
+    body.stage-full.layout-editing .app-shell .film-track.edit-preview,
+    body.stage-full.layout-editing .app-shell .film-track {
+      display: flex !important;
+      margin: 0 !important;
+      padding: 10px !important;
+      max-height: none !important;
+      overflow: visible !important;
     }
 
     body.layout-editing .welcome-overlay {
@@ -15749,6 +15794,7 @@
       z-index: 55 !important;
       pointer-events: auto !important;
       background: rgba(0, 0, 0, 0.18) !important;
+      justify-content: flex-end !important;
     }
 
     body.layout-editing .ready-overlay .ready-actions.edit-preview {
@@ -15762,6 +15808,7 @@
       background: rgba(0, 0, 0, 0.45) !important;
       backdrop-filter: blur(8px) !important;
       -webkit-backdrop-filter: blur(8px) !important;
+      max-width: calc(100% - 16px);
     }
 
     /* 4 Corner Sticker-Style Resize Handles */
@@ -15838,7 +15885,7 @@
 
     /* Children ignore clicks while editing so dragging handles doesn't trigger buttons */
     body.layout-editing .countdown-overlay.edit-preview>*:not(.leb-handle),
-    body.layout-editing .film-track.edit-preview>*:not(.leb-handle),
+    body.layout-editing .film-track.edit-preview .film-frame>*:not(.leb-handle),
     body.layout-editing .ready-actions.edit-preview>*:not(.leb-handle) {
       pointer-events: none !important;
     }
@@ -15852,11 +15899,15 @@
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
       background: #18151f !important;
       padding: 0 !important;
-      width: calc(clamp(64px, 9vmin, 120px) * var(--ui-film-scale, 1)) !important;
       aspect-ratio: var(--box-aspect, 0.8) !important;
       flex-shrink: 0 !important;
       justify-content: center;
       align-items: center;
+    }
+
+    body.stage-full.layout-editing .film-frame.sample-frame {
+      width: min(calc(clamp(64px, 9vmin, 120px) * var(--ui-film-scale, 1)), calc(((var(--vh, 100vh) - 130px) / var(--n, 4) - 10px) * var(--box-aspect, 0.8))) !important;
+      height: auto !important;
     }
 
     body.layout-editing .film-frame.sample-frame .sample-svg-wrap {
@@ -19669,6 +19720,22 @@
             the guest screen once to make it full screen.</p>
           <p class="panel-hint">Guests start a session by tapping the guest screen, or pressing <b>Space</b> / a
             presenter clicker. Setup, printing and the QR code stay on this screen.</p>
+          <div id="tabletBridgeBox" style="display:none; margin-top:14px; padding-top:12px; border-top:1px solid var(--line);">
+            <p class="sub-label" style="margin:0 0 6px;">Huawei / Android Tablet Bridge (Guest Screen + Camera)</p>
+            <p class="guest-status" id="tabletBridgeStatus"><i></i><span>Not paired yet — scan QR inside the tablet app</span></p>
+            <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:8px 0;">
+              <img id="tabletBridgeQr" alt="Tablet bridge pairing QR" style="width:128px; height:128px; border-radius:10px; background:#fff; padding:6px; border:1px solid var(--line); object-fit:contain;">
+              <div style="flex:1; min-width:180px;">
+                <p class="panel-hint" style="margin:0 0 6px;">1. Connect via <b>USB-C + USB Tethering</b> or the laptop’s booth Wi-Fi.<br>2. Open <b>photobooth4u → Laptop Guest + Camera Bridge</b> on the tablet and scan this QR.</p>
+                <p class="panel-hint" id="tabletBridgeUrl" style="margin:0; font-family:monospace; font-size:11px; white-space:pre-wrap; word-break:break-all;"></p>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
+              <button type="button" class="action-btn" id="tabletBridgeFlipBtn" style="width:auto; margin:0;" disabled>Flip tablet camera (Front)</button>
+              <button type="button" class="action-btn" id="tabletBridgeCopyBtn" style="width:auto; margin:0;">Copy link</button>
+              <button type="button" class="action-btn" id="tabletBridgeRenewBtn" style="width:auto; margin:0;">New pairing code</button>
+            </div>
+          </div>
         </div>
         <div class="panel-section d7-pane" data-d7="screen" id="lockSection" style="display:none;">
           <p class="panel-label">Lock booth</p>
@@ -26474,7 +26541,7 @@
         sel.appendChild(g);
       }
       function isUsbWebcamOption(id, label) {
-        if (!id || id === 'usb-remote') return false;
+        if (!id || id === 'usb-remote' || (typeof TABLET_CAM_ID !== 'undefined' && id === TABLET_CAM_ID)) return false;
         if (id === UVC_ID) return true;
         const l = String(label || '');
         if (/facetime|macbook|imac|built-in|integrated|isight|internal|surface camera|microsoft camera|ir camera|windows hello|depth|facing (front|back)|\b(front|back|rear) camera\b/i.test(l)) return false;
@@ -26644,7 +26711,7 @@
         return false;
       }
       function isMaxWebcamShotEligible() {
-        if (currentDeviceId === USB_CAM_ID) return false;
+        if (currentDeviceId === USB_CAM_ID || (typeof TABLET_CAM_ID !== 'undefined' && currentDeviceId === TABLET_CAM_ID)) return false;
         if (currentDeviceId === UVC_ID) return true;
         if (isBuiltInCamera()) return false;
         return usbWebcamSelected() || typeof ImageCapture !== 'undefined';
@@ -26790,6 +26857,12 @@
           opt.textContent = usbOptionLabel();
           cameraSelect.appendChild(opt);
         }
+        if (typeof tabletCamAvailable === 'function' && tabletCamAvailable()) {
+          const opt = document.createElement('option');
+          opt.value = TABLET_CAM_ID;
+          opt.textContent = tabletCamOptionLabel();
+          cameraSelect.appendChild(opt);
+        }
         // Say why the USB camera option is missing instead of silently hiding it.
         usbUnsupportedNote();
         setTimeout(() => { try { refreshCamFab(); } catch (e) { } }, 0);
@@ -26812,14 +26885,16 @@
         // A camera plugged in through the camera helper is picked when nothing
         // else was chosen in this visit (it's plugged in, so it's meant to be used).
         const usbPick = usbCam.supported && (previous === USB_CAM_ID || (!previous && saved && saved.id === USB_CAM_ID) || (!previous && (usbCam.viaHelper || (DESKTOP && USB_MAC)) && usbCam.helperSees)) ? { deviceId: USB_CAM_ID } : null;
+        const tabletPick = (typeof tabletCamAvailable === 'function' && tabletCamAvailable() && (previous === TABLET_CAM_ID || (!previous && saved && saved.id === TABLET_CAM_ID))) ? { deviceId: TABLET_CAM_ID } : null;
         const usbWebcamPick = videoDevices.find(d => !AVOID.test(lbl(d)) && isUsbWebcamOption(d.deviceId, d.label));
-        const pick = usbPick || byId(previous)
+        const pick = usbPick || tabletPick || byId(previous)
           || (saved && (byId(saved.id) || (saved.label && videoDevices.find(d => d.label === saved.label))))
           || ((ANDROID_APP || IS_IOS_APP) && videoDevices.find(d => d.deviceId === UVC_ID || d.isExternal || /external|usb webcam/i.test(d.label || '')))   // tablet app: a plugged-in USB webcam/HDMI capture beats the tablet's own cameras
           || videoDevices.find(d => /insta\s*360/i.test(d.label || ''))   // Insta360 in webcam mode: prefer it over built-ins
           || usbWebcamPick
           || videoDevices.find(d => BUILTIN.test(lbl(d)) && !AVOID.test(lbl(d)))
-          || videoDevices.find(d => d.label && !AVOID.test(lbl(d)));
+          || videoDevices.find(d => d.label && !AVOID.test(lbl(d)))
+          || (typeof tabletCamAvailable === 'function' && tabletCamAvailable() ? { deviceId: TABLET_CAM_ID } : null);
         if (pick) cameraSelect.value = pick.deviceId;
 
         return videoDevices;
@@ -27009,6 +27084,7 @@
       // drops the size first, then the id if that camera no longer exists.
       // A busy or blocked camera is never swapped for a different one.
       async function openCameraStream(deviceId) {
+        if (typeof TABLET_CAM_ID !== 'undefined' && deviceId === TABLET_CAM_ID) return openTabletCameraStream();
         let localFacing = '';
         if (hasNativeCamBridge() && deviceId && nativeCam.devicesById[deviceId]) {
           const nativeMeta = nativeCam.devicesById[deviceId];
@@ -28480,7 +28556,9 @@
           if (!cameraSelect.options.length || Array.from(cameraSelect.options).some(o => !o.value || /^Camera \d+$/.test(o.textContent))) {
             try { await enumerateCameras(); } catch (e) { }
           }
-          const opened = (stream.getVideoTracks()[0] && stream.getVideoTracks()[0].getSettings().deviceId) || deviceId || null;
+          const opened = (typeof TABLET_CAM_ID !== 'undefined' && deviceId === TABLET_CAM_ID)
+            ? TABLET_CAM_ID
+            : ((stream.getVideoTracks()[0] && stream.getVideoTracks()[0].getSettings().deviceId) || deviceId || null);
           currentDeviceId = opened;
           if (opened && Array.from(cameraSelect.options).some(o => o.value === opened)) cameraSelect.value = opened;
           // Mirror the live preview for a natural selfie feel; captureFrame()
@@ -28642,9 +28720,14 @@
           if (sf.style.aspectRatio !== a) { sf.style.aspectRatio = a; sf.style.setProperty('--cam-aspect', a); }
         }
         var ft = document.getElementById('filmTrack');
-        if (ft) ft.style.setProperty('--box-aspect', filmBox.toFixed(4));
+        if (ft) {
+          ft.style.setProperty('--box-aspect', filmBox.toFixed(4));
+          var fc = ft.querySelectorAll('.film-frame').length || (typeof shotsNeeded === 'function' ? shotsNeeded() : 4);
+          ft.style.setProperty('--n', String(Math.max(3, fc)));
+        }
         layoutSessionStage(filmBox, sa);
         try { layoutDock(filmBox, sa); } catch (e) { }
+        try { if (typeof positionLayoutEditOverlays === 'function') positionLayoutEditOverlays(); } catch (e) { }
         var live = true;
         try { live = state !== 'result' && !(sess && sess.reviewing); } catch (e) { }
         placeGuide(document.getElementById('boxGuide'), cam, box, false);
@@ -28793,6 +28876,15 @@
         // out instead of wrapping into the strip's narrow width (see CSS).
         shell.classList.toggle('tall-stage', side && sa < 0.6);
         var frames = ft.querySelectorAll('.film-frame');
+        if (document.body.classList.contains('stage-full')) {
+          sw.style.gridTemplateColumns = ''; sw.style.columnGap = '';
+          ft.style.width = ''; ft.style.gap = '';
+          sf.style.width = ''; sf.style.maxHeight = '';
+          frames.forEach(function (f) { f.style.height = ''; f.style.width = ''; });
+          sf.style.setProperty('--stage-h', Math.round(window.innerHeight) + 'px');
+          sw.style.setProperty('--stage-w', Math.round(sf.getBoundingClientRect().width || window.innerWidth) + 'px');
+          return;
+        }
         var vh = window.innerHeight - (dockReserve || 0);
         var top = Math.max(0, sw.getBoundingClientRect().top + window.scrollY);
         var ctrlH = sc && sc.offsetParent !== null && getComputedStyle(sc).position !== 'fixed' ? sc.offsetHeight + 12 : 0;
@@ -28800,9 +28892,10 @@
         var btnH = sb && sb.offsetParent !== null && getComputedStyle(sb).position !== 'absolute' ? sb.offsetHeight + 28 : 0;
         if (!side) {
           sw.style.gridTemplateColumns = ''; sw.style.columnGap = '';
-          ft.style.width = '';
+          ft.style.width = ''; ft.style.gap = '';
           frames.forEach(function (f) { f.style.height = ''; f.style.width = ''; });
-          var filmH = ft.offsetParent !== null && getComputedStyle(ft).display !== 'none' ? ft.offsetHeight + 12 : 0;
+          var filmFixed = getComputedStyle(ft).position === 'fixed';
+          var filmH = !filmFixed && ft.offsetParent !== null && getComputedStyle(ft).display !== 'none' ? ft.offsetHeight + 12 : 0;
           var Wn = sw.clientWidth || shell.clientWidth;
           // A finished tall strip on a wide screen: put Next guest / Print beside it
           // (bottom right) when there's room, so the strip gets the full height.
@@ -28824,46 +28917,62 @@
             if (state === 'result' && qs && qs.offsetParent !== null && !qs.closest('#qrPopOv') && qs.parentElement.getBoundingClientRect().top > sw.getBoundingClientRect().top + 20) cardH = qs.offsetHeight + 18;
           } catch (e) { }
           var isShoot = document.body.classList.contains('shooting');
-          var Hn = isShoot ? Math.max(220, vh - (ctrlH ? ctrlH + 8 : 46)) : Math.max(220, vh - top - ctrlH - filmH - btnH - cardH - 14);
+          var Hn = isShoot ? Math.max(220, vh - top - (ctrlH ? ctrlH + 14 : 46) - filmH) : Math.max(220, vh - top - ctrlH - filmH - btnH - cardH - 14);
           var wn = Math.max(200, Math.min(Wn, Hn * sa));
           sf.style.width = Math.round(wn) + 'px';
+          sf.style.maxHeight = 'none';
           sf.style.setProperty('--stage-h', Math.round(wn / sa) + 'px');
           sw.style.setProperty('--stage-w', Math.round(wn) + 'px');
           return;
         }
         shell.classList.remove('btn-beside');
         var isShoot = document.body.classList.contains('shooting');
+        var isReview = !!(typeof sess !== 'undefined' && sess && sess.reviewing);
         var hasShots = (Array.isArray(shotCanvases) && shotCanvases.some(Boolean)) || isEditing;
         var filmScale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-film-scale')) || 1;
         var effFilmScale = Math.min(2.5, Math.max(0.6, filmScale));
         var shotCount = frames.length || (typeof shotsNeeded === 'function' ? shotsNeeded() : 4);
-        var n = Math.max(3, shotCount), g = 10, gap = 16;
-        var W = Math.max(shell.clientWidth - 4, window.innerWidth - 32);
-        var Hmax = isShoot ? Math.max(260, vh - (ctrlH ? ctrlH + 8 : 46)) : Math.max(260, Math.min(vh * 0.94, vh - top - ctrlH - 12));
-        var boxFactor = 2 * box * effFilmScale;
-        var hFit = hasShots ? ((W - 2 * gap + boxFactor * g * (n - 1) / n) / (sa + boxFactor / n)) : (W / sa);
-        var h = Math.max(200, Math.min(Hmax, hFit));
-        var fh = ((h - g * (n - 1)) / n) * effFilmScale, fw = Math.round(fh * box), stw = Math.round(h * sa);
+        var g = 10, gap = 16;
+        var W = Math.max(240, Math.min(shell.clientWidth || (window.innerWidth - 32), window.innerWidth - 32));
+        var topPad = isShoot && !isEditing ? Math.max(6, top) : top;
+        var ctrlReserve = ctrlH ? (ctrlH + (isReview ? 22 : 14)) : (isReview ? 96 : (isEditing ? 20 : 40));
+        var Hmax = Math.max(220, vh - topPad - ctrlReserve);
+        if (!isShoot && !isEditing) Hmax = Math.min(Hmax, Math.round(vh * 0.94));
+        var h, stw;
         if (hasShots) {
-          var maxTotalW = window.innerWidth - 32;
-          if (2 * fw + 2 * gap + stw > maxTotalW) {
-            stw = Math.max(200, maxTotalW - 2 * fw - 2 * gap);
-            h = Math.round(stw / sa);
-            fh = ((h - g * (n - 1)) / n) * effFilmScale;
-            fw = Math.round(fh * box);
+          var vmin = Math.min(window.innerWidth, window.innerHeight);
+          var baseFw = Math.max(72, Math.min(130, Math.round(vmin * 0.11)));
+          var desiredFw = Math.round(baseFw * effFilmScale);
+          var maxFhVert = Math.max(40, (Hmax - g * Math.max(0, shotCount - 1)) / Math.max(1, shotCount));
+          var fh = Math.min(desiredFw / box, maxFhVert);
+          var fw = Math.max(48, Math.round(fh * box));
+          var stwIdeal = Math.round(Hmax * sa);
+          var minStageShare = Math.min(stwIdeal, Math.round(W * 0.56));
+          if (2 * fw + 2 * gap + minStageShare > W) {
+            fw = Math.max(48, Math.floor((W - 2 * gap - minStageShare) / 2));
+            fh = Math.min(fw / box, maxFhVert);
+            fw = Math.max(48, Math.round(fh * box));
           }
+          var availStw = Math.max(200, W - 2 * fw - 2 * gap);
+          h = Math.max(180, Math.min(Hmax, availStw / sa));
+          stw = Math.round(h * sa);
           sw.style.gridTemplateColumns = fw + 'px ' + stw + 'px ' + fw + 'px';
           sw.style.columnGap = gap + 'px';
           ft.style.width = fw + 'px';
           ft.style.gap = g + 'px';
           frames.forEach(function (f) { f.style.height = Math.floor(fh) + 'px'; f.style.width = fw + 'px'; });
         } else {
+          h = Math.max(200, Math.min(Hmax, W / sa));
+          stw = Math.round(h * sa);
           sw.style.gridTemplateColumns = 'auto';
           sw.style.columnGap = '0px';
           ft.style.width = '0px';
+          ft.style.gap = '';
         }
         sf.style.width = stw + 'px';
+        sf.style.maxHeight = 'none';
         sf.style.setProperty('--stage-h', Math.round(h) + 'px');
+        sw.style.setProperty('--stage-w', stw + 'px');
       }
       function refreshPanelSolo() {
         var shell = document.querySelector('.app-shell'), p = shell && shell.querySelector('.panel');
@@ -29299,6 +29408,7 @@
             if (shotCanvases !== shots0 || (sess && sess.cancelled)) return;
           }
         }
+        if (typeof TABLET_CAM_ID !== 'undefined' && currentDeviceId === TABLET_CAM_ID) return captureTabletShot(index);
         captureFrame(index);
         if (webcamRes.photo === 'max' && isMaxWebcamShotEligible()) return webcamMaxShot(index);
         if (!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
@@ -29400,6 +29510,19 @@
         large: { cd: 1.3, btn: 1.15, film: 1.15 }    // Large displays / TV
       };
 
+      function syncGuestUiScale() {
+        if (typeof localGuestOpen === 'function' && !localGuestOpen()) return;
+        if (typeof G === 'undefined' || !G || !G.d || !G.d.documentElement) return;
+        try {
+          var rs = document.documentElement.style;
+          var gs = G.d.documentElement.style;
+          ['--ui-cd-scale', '--ui-btn-scale', '--ui-film-scale', '--ui-cd-opacity', '--ui-btn-opacity', '--ui-film-opacity'].forEach(function (k) {
+            var v = rs.getPropertyValue(k);
+            if (v) gs.setProperty(k, v);
+          });
+        } catch (e) { }
+      }
+
       function applyUiScale(cd, btn, film, preset) {
         var root = document.documentElement;
         root.style.setProperty('--ui-cd-scale', String(cd));
@@ -29425,6 +29548,7 @@
             c.classList.toggle('active', c.dataset.scale === (preset || 'custom'));
           });
         }
+        syncGuestUiScale();
         if (typeof applyStageAspect === 'function') applyStageAspect();
       }
 
@@ -29444,11 +29568,75 @@
         var lbl = document.getElementById(which === 'cd' ? 'lebCdOpVal' : (which === 'btn' ? 'lebBtnOpVal' : 'lebFilmOpVal'));
         if (slider) slider.value = String(Math.round(value * 100));
         if (lbl) lbl.textContent = Math.round(value * 100) + '%';
+        syncGuestUiScale();
       }
 
 
       // ---- On-Screen Live Layout & Resize Editor ----
       var layoutEditorActive = false;
+
+      function positionLayoutEditOverlays() {
+        if (!layoutEditorActive) return;
+        var cd = document.getElementById('countdownOverlay');
+        var sf = document.getElementById('stageFrame');
+        if (cd && sf) {
+          var r = sf.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) {
+            cd.style.top = Math.max(12, Math.round(r.top + 14)) + 'px';
+            cd.style.left = Math.round(r.left + r.width / 2) + 'px';
+          }
+        }
+      }
+
+      function syncGuestEditorPreview(active) {
+        if (typeof localGuestOpen === 'function' && !localGuestOpen()) return;
+        if (typeof G === 'undefined' || !G || !G.d || !G.d.body) return;
+        try {
+          syncGuestUiScale();
+          if (!active) {
+            G.d.body.classList.remove('edit-preview');
+            if (G.film) {
+              G.film.querySelectorAll('.sample-frame').forEach(function (el) { el.remove(); });
+            }
+            if (G.cd) G.cd.style.display = 'none';
+            if (typeof guestRender === 'function') guestRender();
+            return;
+          }
+          G.d.body.classList.add('edit-preview');
+          G.d.body.classList.remove('wel', 'wel-full', 'is-result', 'has-qr');
+          if (typeof guestCall === 'function') guestCall('camera');
+          if (G.v) G.v.style.display = 'block';
+          if (G.res) G.res.style.display = 'none';
+          if (G.cd) {
+            G.cd.style.display = 'flex';
+            G.cd.classList.remove('pausing');
+            if (G.num) { G.num.textContent = '3'; G.num.classList.remove('word'); }
+            if (G.bar) G.bar.style.strokeDashoffset = '0';
+          }
+          if (G.gb) {
+            G.gb.classList.remove('hide');
+            if (G.gRetake) { G.gRetake.textContent = '\u21BA Retake photo 1'; G.gRetake.classList.remove('hide'); }
+            if (G.gDone) { G.gDone.textContent = '\u2713 Done \u2014 save my photo'; G.gDone.classList.remove('hide'); }
+          }
+          if (G.film) {
+            var n = typeof shotsNeeded === 'function' ? shotsNeeded() : 4;
+            var boxAsp = typeof currentBoxAspect === 'function' ? currentBoxAspect() : 0.8;
+            G.film.style.setProperty('--n', String(Math.max(3, n)));
+            G.film.style.setProperty('--box-aspect', boxAsp.toFixed(4));
+            G.film.classList.remove('no-shots', 'hide');
+            var hasReal = Array.isArray(shotCanvases) && shotCanvases.some(Boolean);
+            if (!hasReal && !G.film.querySelector('.sample-frame')) {
+              G.film.innerHTML = '';
+              for (var i = 0; i < n; i++) {
+                var el = G.d.createElement('div');
+                el.className = 'f sample-frame';
+                el.style.backgroundImage = 'url("data:image/svg+xml;utf8,' + encodeURIComponent(SAMPLE_PORTRAITS[i % SAMPLE_PORTRAITS.length]) + '")';
+                G.film.appendChild(el);
+              }
+            }
+          }
+        } catch (e) { }
+      }
 
       function updateLebLabels() {
         var cd = parseFloat(localStorage.getItem(UI_CD_SCALE_KEY)) || 1;
@@ -29485,6 +29673,12 @@
         if (bar) {
           bar.hidden = false;
           bar.classList.remove('is-minimized');
+          if (bar.style.left) {
+            var bx = Math.max(8, Math.min(window.innerWidth - (bar.offsetWidth || 320) - 8, parseFloat(bar.style.left) || 16));
+            var by = Math.max(8, Math.min(window.innerHeight - (bar.offsetHeight || 200) - 8, parseFloat(bar.style.top) || 68));
+            bar.style.left = bx + 'px';
+            bar.style.top = by + 'px';
+          }
         }
 
         // Switch to Photo Session tab so operator sees live camera stage
@@ -29503,7 +29697,8 @@
           var num = document.getElementById('countdownNum');
           if (num) num.textContent = '3';
           var shot = document.getElementById('cdShot');
-          if (shot) shot.textContent = 'Photo 1 of 4';
+          var totalShots = typeof shotsNeeded === 'function' ? shotsNeeded() : 4;
+          if (shot) shot.textContent = 'Photo 1 of ' + totalShots;
           attachCornerResize(cd, 'cd');
         }
 
@@ -29535,6 +29730,7 @@
         // Show the real Get Ready overlay with Cancel and Start
         var ro = document.getElementById('readyOverlay');
         if (ro) {
+          ro.classList.remove('hands');
           ro.classList.add('edit-preview', 'ready-active');
           ro.style.display = 'flex';
           var ra = ro.querySelector('.ready-actions');
@@ -29545,7 +29741,9 @@
         }
 
         updateLebLabels();
+        syncGuestEditorPreview(true);
         if (typeof applyStageAspect === 'function') applyStageAspect();
+        requestAnimationFrame(positionLayoutEditOverlays);
       }
 
       function closeLayoutEditor() {
@@ -29566,6 +29764,8 @@
         var cd = document.getElementById('countdownOverlay');
         if (cd) {
           cd.classList.remove('edit-preview');
+          cd.style.top = '';
+          cd.style.left = '';
           if (typeof state === 'undefined' || state !== 'capturing') {
             cd.style.display = 'none';
           }
@@ -29575,7 +29775,7 @@
         var ro = document.getElementById('readyOverlay');
         if (ro) {
           ro.classList.remove('edit-preview');
-          if (typeof gettingReady === 'undefined' || !gettingReady) {
+          if ((typeof gettingReady === 'undefined' || !gettingReady) && !document.querySelector('.app-shell.getting-ready')) {
             ro.classList.remove('ready-active');
             ro.style.display = '';
           }
@@ -29594,6 +29794,7 @@
           if (typeof updateFilmTrack === 'function') updateFilmTrack();
         }
 
+        syncGuestEditorPreview(false);
         if (typeof applyStageAspect === 'function') applyStageAspect();
         if (typeof showToast === 'function') showToast('✓ Layout saved for this monitor', 2500);
       }
@@ -36884,8 +37085,10 @@
           if (!dr.ok) throw new Error(dr.error || (IOS_APP ? 'AirPrint did not open.' : 'The Android print dialog did not open.'));
           return;
         }
-        if (paper.receipt && p.raw && window._btThermal && window._btThermal.EscPosEncoder) {
-          const dotW = paper.w <= 55 ? 384 : 576;
+        // A thermal (ESC/POS) printer prints any paper size: a photo size such as 4R is scaled to the roll width (80 mm unless a
+        // 58 mm Receipt size is picked). Before, only the two Receipt sizes worked and 4R gave "only takes receipts".
+        if (p.raw && (paper.receipt || !p.ipp) && window._btThermal && window._btThermal.EscPosEncoder) {
+          const dotW = (paper.receipt && paper.w <= 55) ? 384 : 576;
           const bVal = (typeof window !== 'undefined' && window._colorAdj && typeof window._colorAdj.brightness === 'number' && window._colorAdj.brightness !== 0)
             ? window._colorAdj.brightness
             : ((typeof colorAdj !== 'undefined' && colorAdj && typeof colorAdj.brightness === 'number' && colorAdj.brightness !== 0) ? colorAdj.brightness : 0);
@@ -37881,6 +38084,7 @@
         else if (lim.se || lim.ev) small = (left >= MAX_COPIES ? MAX_COPIES + '+' : left) + (left === 1 ? ' print left' : ' prints left');
         const showBusy = printing || is58mmBusy;
         pq.innerHTML = ICON('printer') + ' ' + escHtml(showBusy ? printTxt('txtPrinting') : printTxt('txtPrint')) + (small && !showBusy ? '<small>' + small + '</small>' : (is58mmBusy ? '<small>' + small + '</small>' : ''));
+        if (typeof guestButtons === 'function') guestButtons();
       }
       function escHtml(v) { return String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
@@ -37981,7 +38185,8 @@
       var G = null;            // the guest window's elements
       let countingDown = false;
       function isTraditional() { return !!(window.__PB && window.__PB.traditional); }
-      function guestOpen() { return !!(guestWin && !guestWin.closed && G); }
+      function localGuestOpen() { return !!(guestWin && !guestWin.closed && G); }
+      function guestOpen() { return localGuestOpen() || (typeof tabletGuestOpen === 'function' && tabletGuestOpen()); }
 
       function refreshTraditionalUI() {
         const on = isTraditional();
@@ -37996,10 +38201,12 @@
       window.addEventListener('pb-mode-change', refreshTraditionalUI);
 
       function updateGuestStatus() {
-        const open = guestOpen();
+        const localOpen = localGuestOpen();
+        const tabOpen = typeof tabletGuestOpen === 'function' && tabletGuestOpen();
+        const open = localOpen || tabOpen;
         guestStatus.classList.toggle('on', open);
-        guestStatus.querySelector('span').textContent = open ? 'Guest screen is open' : 'Not open yet';
-        guestOpenBtn.innerHTML = open ? '↻ Move / reopen guest screen' : ICON('monitor') + ' Open guest screen';
+        guestStatus.querySelector('span').textContent = tabOpen && localOpen ? 'Guest screen + Tablet Bridge open' : tabOpen ? 'Tablet Guest Screen connected' : localOpen ? 'Guest screen is open' : 'Not open yet';
+        guestOpenBtn.innerHTML = localOpen ? '↻ Move / reopen guest screen' : ICON('monitor') + ' Open guest screen';
       }
       setInterval(() => { if (guestWin && guestWin.closed) { guestWin = null; G = null; updateGuestStatus(); } }, 1500);
       window.addEventListener('beforeunload', () => { try { if (guestWin) guestWin.close(); } catch (e) { } });
@@ -38008,7 +38215,7 @@
         '<title>photobooth4u · Guest screen</title>' +
         '<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">' +
         '<style>' +
-        ':root{--bg:#F5F1EA;--ink:#1C1A1E;--dim:#6B666C;--red:#C93D27;}' +
+        ':root{--bg:#F5F1EA;--ink:#1C1A1E;--dim:#6B666C;--red:#C93D27;--ui-cd-scale:1;--ui-btn-scale:1;--ui-film-scale:1;--ui-cd-opacity:1;--ui-btn-opacity:1;--ui-film-opacity:1;}' +
         '*{box-sizing:border-box;}html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:Manrope,system-ui,sans-serif;overflow:hidden;user-select:none;}' +
         '.g{position:fixed;inset:0;display:grid;grid-template-columns:1fr auto 1fr;gap:2.4vw;padding:3vh 2.4vw;align-items:center;}' +
         '.side{height:100%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;text-align:center;gap:2vh;min-width:0;}' +
@@ -38021,21 +38228,21 @@
         '.sub{font-weight:700;letter-spacing:.24em;text-transform:uppercase;font-size:clamp(10px,.85vw,15px);color:var(--red);margin:1.4vh 0 0;}' +
         '.frame{position:relative;height:94vh;aspect-ratio:4/5;border-radius:18px;overflow:hidden;background:#141216;box-shadow:0 20px 50px rgba(60,40,20,.22);}' +
         '.frame video,.frame img.res{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}.frame img.res{object-fit:contain;background:var(--bg);display:none;}.frame video.gv{object-fit:cover;}' +
-        '.cd{position:absolute;top:2.5%;right:2%;display:none;align-items:center;justify-content:center;z-index:4;}' +
-        '.cdw{position:relative;width:min(18vh,11vw);aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;}' +
+        '.cd{position:absolute;top:2.5%;right:2%;display:none;align-items:center;justify-content:center;z-index:4;opacity:var(--ui-cd-opacity,1);}' +
+        '.cdw{position:relative;width:calc(min(18vh,11vw) * var(--ui-cd-scale,1));aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;}' +
         '.cdw svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);}' +
         '.cdw .trk{fill:rgba(20,18,22,.5);stroke:rgba(255,255,255,.25);stroke-width:4;}.cdw .bar{fill:none;stroke:var(--red);stroke-width:4;stroke-linecap:round;}' +
-        '.num{position:relative;color:#fff;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:min(8vh,5vw);line-height:1;text-shadow:0 0 20px rgba(0,0,0,.4);}' +
-        '.num.word{font-size:min(3vh,1.8vw);letter-spacing:.04em;text-transform:uppercase;}' +
+        '.num{position:relative;color:#fff;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:calc(min(8vh,5vw) * var(--ui-cd-scale,1));line-height:1;text-shadow:0 0 20px rgba(0,0,0,.4);}' +
+        '.num.word{font-size:calc(min(3vh,1.8vw) * var(--ui-cd-scale,1));letter-spacing:.04em;text-transform:uppercase;}' +
         '.cd.pausing .cdw{display:none;}' +
         '.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity 120ms ease-out;}.flash.on{opacity:.92;transition:opacity 20ms;}' +
-        '.film{display:flex;flex-direction:column;gap:1.2vh;align-items:center;}' +
-        '.film div{position:relative;height:min(15vh, calc(62vh / var(--n,3) - 1.2vh));aspect-ratio:var(--box-aspect,0.8);border-radius:8px;border:2px dashed #D6CEC1;background-size:cover;background-position:center;}' +
+        '.film{display:flex;flex-direction:column;gap:1.2vh;align-items:center;opacity:var(--ui-film-opacity,1);}' +
+        '.film div{position:relative;height:min(calc(min(15vh, calc(62vh / var(--n,3) - 1.2vh)) * var(--ui-film-scale,1)), calc(66vh / var(--n,3) - 1.2vh));aspect-ratio:var(--box-aspect,0.8);border-radius:8px;border:2px dashed #D6CEC1;background-size:cover;background-position:center;}' +
         '.film div.pick{cursor:pointer;}' +
         '.film div.pick::after{content:"↺ Tap to retake";position:absolute;left:0;right:0;bottom:0;padding:.5vh .3vw;border-radius:0 0 6px 6px;background:rgba(20,16,22,.62);color:#fff;font:800 clamp(10px,.85vw,15px) Manrope,sans-serif;text-align:center;}' +
         '.film div.sel{outline:5px solid var(--red);outline-offset:3px;}.film div.sel::after{content:"✓ Will retake";background:var(--red);}' +
-        '.gb{display:flex;flex-direction:column;gap:1.4vh;width:min(100%,22vw);min-width:180px;}' +
-        '.gbtn{min-height:max(56px,7vh);padding:1vh 1.2vw;border-radius:99px;border:2px solid var(--ink);background:#fff;color:var(--ink);font:800 clamp(15px,1.3vw,26px) Manrope,sans-serif;cursor:pointer;touch-action:manipulation;}' +
+        '.gb{display:flex;flex-direction:column;gap:calc(1.4vh * min(var(--ui-btn-scale,1),1.35));width:min(100%,calc(22vw * max(1,min(var(--ui-btn-scale,1),1.35))));min-width:180px;opacity:var(--ui-btn-opacity,1);}' +
+        '.gbtn{min-height:calc(max(56px,7vh) * min(var(--ui-btn-scale,1),1.35));padding:calc(1vh * min(var(--ui-btn-scale,1),1.35)) calc(1.2vw * min(var(--ui-btn-scale,1),1.35));border-radius:99px;border:2px solid var(--ink);background:#fff;color:var(--ink);font:800 calc(clamp(15px,1.3vw,26px) * min(var(--ui-btn-scale,1),1.35)) Manrope,sans-serif;cursor:pointer;touch-action:manipulation;}' +
         '.gbtn.strong{background:var(--red);border-color:var(--red);color:#fff;}' +
         '.guide{position:absolute;z-index:2;display:none;pointer-events:none;border:3px dashed rgba(255,255,255,.9);border-radius:8px;box-shadow:0 0 0 9999px rgba(10,8,12,.45);}.guide.on{display:block;}' +
         '.film div.f{border:2px solid var(--red);}' +
@@ -38056,7 +38263,7 @@
         '.gready{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.2vh;padding:4vh 4vw;background:radial-gradient(circle at center,rgba(0,0,0,.15),rgba(0,0,0,.48));text-align:center;color:#fff;}' +
         '.gready-title{margin:0;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(34px,5vw,76px);line-height:1.05;text-shadow:0 4px 24px rgba(0,0,0,.5);}' +
         '.gready-sub{margin:0;font:700 clamp(13px,1.3vw,22px) Manrope,sans-serif;color:rgba(255,255,255,.88);letter-spacing:.03em;}' +
-        '.gready-btn{min-height:max(58px,7.5vh);padding:0 clamp(28px,4vw,56px);border:0;border-radius:999px;background:var(--red);color:#fff;font:800 clamp(18px,1.8vw,30px) Manrope,sans-serif;cursor:pointer;box-shadow:0 14px 34px rgba(201,61,39,.45);}' +
+        '.gready-btn{min-height:calc(max(58px,7.5vh) * min(var(--ui-btn-scale,1),1.45));padding:0 calc(clamp(28px,4vw,56px) * min(var(--ui-btn-scale,1),1.45));border:0;border-radius:999px;background:var(--red);color:#fff;font:800 calc(clamp(18px,1.8vw,30px) * min(var(--ui-btn-scale,1),1.45)) Manrope,sans-serif;cursor:pointer;box-shadow:0 14px 34px rgba(201,61,39,.45);opacity:var(--ui-btn-opacity,1);}' +
         '.hide{display:none !important;}' +
         /* Photo Session clean full-screen mode (default on guest screen from welcome through result) */
         'body.ps{background:#0d0c0e;color:#F5F1EA;}' +
@@ -38066,22 +38273,44 @@
         'body.ps .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(100vw,calc(100vh * var(--ga,1.3333))) !important;height:min(100vh,calc(100vw / var(--ga,1.3333))) !important;aspect-ratio:var(--ga,1.3333) !important;border-radius:0;box-shadow:none;background:#000;}' +
         'body.ps.wel-full .frame{left:0;top:0;transform:none;width:100vw !important;height:100vh !important;aspect-ratio:auto !important;}' +
         'body.ps .frame img.res{background:#000;}' +
-        'body.ps .cd{position:fixed;top:max(20px,2.4vh);left:50%;right:auto;transform:translateX(-50%);z-index:46;padding:10px 18px;border-radius:999px;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.2);}' +
-        'body.ps .cdw{width:clamp(56px,8vmin,84px);}' +
-        'body.ps .num{font-size:clamp(30px,4.6vmin,48px);text-shadow:none;}' +
-        'body.ps .num.word{font-size:clamp(13px,1.8vmin,18px);}' +
+        'body.ps .cd{position:fixed;top:max(20px,2.4vh);left:50%;right:auto;transform:translateX(-50%);z-index:46;padding:calc(10px * var(--ui-cd-scale,1)) calc(18px * var(--ui-cd-scale,1));border-radius:999px;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.2);}' +
+        'body.ps .cdw{width:calc(clamp(56px,8vmin,84px) * var(--ui-cd-scale,1));}' +
+        'body.ps .num{font-size:calc(clamp(30px,4.6vmin,48px) * var(--ui-cd-scale,1));text-shadow:none;}' +
+        'body.ps .num.word{font-size:calc(clamp(13px,1.8vmin,18px) * var(--ui-cd-scale,1));}' +
         'body.ps .film{position:fixed;top:max(16px,2vh);right:max(16px,1.6vw);z-index:50;display:flex !important;flex-direction:column;gap:8px;padding:8px;border-radius:16px;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);max-height:calc(100vh - 120px);overflow:auto;}' +
         'body.ps .film.no-shots{display:none !important;}' +
-        'body.ps .film div{height:auto !important;width:clamp(64px,9vmin,120px);aspect-ratio:var(--box-aspect,.8);border:2px solid rgba(255,255,255,.85);}' +
+        'body.ps .film div{height:auto !important;width:min(calc(clamp(64px,9vmin,120px) * var(--ui-film-scale,1)), calc(((100vh - 140px) / var(--n,4) - 10px) * var(--box-aspect,.8)));aspect-ratio:var(--box-aspect,.8);border:2px solid rgba(255,255,255,.85);}' +
         'body.ps .film div:not(.f){display:none !important;}' +
-        'body.ps .gb{position:fixed;left:50%;bottom:max(18px,2.4vh);transform:translateX(-50%);z-index:45;display:flex;flex-direction:row;justify-content:center;gap:12px;width:max-content;max-width:calc(100vw - 32px);}' +
-        'body.ps .gbtn{background:rgba(0,0,0,.58);border:1.5px solid rgba(255,255,255,.32);color:#fff;padding:12px 28px;min-height:52px;backdrop-filter:blur(8px);}' +
+        'body.ps .gb{position:fixed;left:50%;bottom:max(18px,2.4vh);transform:translateX(-50%);z-index:45;display:flex;flex-direction:row;justify-content:center;gap:calc(12px * min(var(--ui-btn-scale,1),1.35));width:max-content;max-width:calc(100vw - 32px);flex-wrap:wrap;}' +
+        'body.ps .gbtn{background:rgba(0,0,0,.58);border:1.5px solid rgba(255,255,255,.32);color:#fff;padding:calc(12px * min(var(--ui-btn-scale,1),1.35)) calc(28px * min(var(--ui-btn-scale,1),1.35));min-height:calc(52px * min(var(--ui-btn-scale,1),1.35));font-size:calc(clamp(15px,1.3vw,24px) * min(var(--ui-btn-scale,1),1.35));white-space:nowrap;backdrop-filter:blur(8px);}' +
         'body.ps .gbtn.strong{background:rgba(201,61,39,.95);border-color:transparent;}' +
+        'body.edit-preview .frame video#v{display:block !important;}' +
+        'body.edit-preview .frame img.res,body.edit-preview .frame video.gv,body.edit-preview .gready,body.edit-preview .pk{display:none !important;}' +
+        'body.edit-preview .cd{display:flex !important;}' +
+        'body.edit-preview .gb{display:flex !important;}' +
+        'body.edit-preview .gb .gbtn{display:inline-flex !important;align-items:center;justify-content:center;}' +
+        'body.edit-preview .film{display:flex !important;}' +
+        'body.edit-preview .film div.f{display:block !important;}' +
         'body.ps.is-result .g{display:flex;align-items:center;justify-content:center;gap:4vw;padding:4vh 4vw;}' +
-        'body.ps.is-result .frame{position:relative;left:auto;top:auto;transform:none;width:auto !important;height:86vh !important;max-width:65vw;border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.55);}' +
+        'body.ps.is-result .frame{position:relative;left:auto;top:auto;transform:none;width:auto !important;height:86vh !important;max-width:62vw;border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.55);}' +
+        'body.ps.is-result .side-r-res{display:flex;flex-direction:column;align-items:center;gap:16px;z-index:10;}' +
         'body.ps.is-result .qrs{position:relative;z-index:10;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:22px;padding:24px 28px;backdrop-filter:blur(10px);}' +
         'body.ps.is-result .qrl{color:#fff;}' +
-        'body.ps.is-result:not(.has-qr) .frame{max-width:92vw;height:90vh !important;}' +
+        'body.ps.is-result:not(.has-qr):not(.has-res-acts) .frame{max-width:92vw;height:90vh !important;}' +
+        '.res-acts{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:6px;}' +
+        '.res-acts .gbtn{min-width:130px;padding:12px 24px;}' +
+        '.gbtn small{display:block;font-size:.72em;font-weight:700;opacity:.9;margin-top:2px;}' +
+        '.gcopies-modal{position:fixed;inset:0;z-index:60;background:rgba(10,10,12,.76);display:flex;align-items:center;justify-content:center;padding:20px;}' +
+        '.gcopies-card{background:#fff;color:var(--ink);border-radius:22px;padding:26px 28px;width:min(360px,90vw);text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.45);}' +
+        '.gcopies-card h3{margin:0 0 14px;font:600 24px Fraunces,Georgia,serif;}' +
+        '.gstep{display:inline-flex;align-items:center;gap:18px;background:#F5F1EA;border-radius:999px;padding:8px 14px;}' +
+        '.gstep button{width:44px;height:44px;border-radius:50%;border:0;background:var(--ink);color:#fff;font:800 22px Manrope,sans-serif;cursor:pointer;}' +
+        '.gstep button:disabled{opacity:.3;}' +
+        '.gstep b{font:800 26px Manrope,sans-serif;min-width:40px;text-align:center;}' +
+        '.gcopies-left{margin:10px 0 0;color:var(--dim);font-size:13px;font-weight:700;}' +
+        '.gcopies-btns{display:flex;gap:10px;margin-top:18px;}' +
+        '.gcopies-btns button{flex:1;min-height:48px;border-radius:99px;font:800 15px Manrope,sans-serif;cursor:pointer;border:1.5px solid #D6CEC1;background:#fff;color:var(--ink);}' +
+        '.gcopies-btns button.go{background:var(--red);border-color:var(--red);color:#fff;}' +
         /* Classic "With logo & side text" mode: still hides chrome between guests when wel is set */
         'body.wel{background:#141216;}body.wel .g{display:block;padding:0;}body.wel .side,body.wel .clogo{display:none !important;}' +
         'body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);height:min(100vh,calc(100vw / var(--wa,1.3333))) !important;aspect-ratio:var(--wa,1.3333) !important;border-radius:0;box-shadow:none;}' +
@@ -38116,9 +38345,9 @@
         '<span class="chip" id="chip">Ready</span>' +
         '<div class="film" id="film"></div>' +
         '<div class="gb hide" id="gb"><button class="gbtn strong hide" id="gRetake" type="button"></button><button class="gbtn hide" id="gDone" type="button"></button></div>' +
-        '<div class="qrs hide" id="qrw"></div>' +
+        '<div class="side-r-res"><div class="qrs hide" id="qrw"></div><div class="res-acts hide" id="gResActs"><button class="gbtn strong hide" id="gPrint" type="button"></button><button class="gbtn hide" id="gNext" type="button">Done</button></div></div>' +
         '</div>' +
-        '</div><button class="gallery-pill hide" id="galleryPill" type="button">▦ Event gallery</button><section class="gallery-card hide" id="guestGallery" aria-label="Event gallery QR"><h2>All event photos</h2><img id="guestGalleryQr" alt="Scan to open all event photos"><a id="guestGalleryLink" href="#" target="_blank" rel="noopener">Open gallery</a><button id="guestGalleryClose" type="button">Close</button></section><img class="clogo hide" id="clogo" alt=""></body></html>';
+        '</div><div class="gcopies-modal hide" id="gCopiesModal"><div class="gcopies-card"><h3 id="gCopiesTitle">How many copies?</h3><div class="gstep"><button type="button" id="gCopiesMinus">&minus;</button><b id="gCopiesVal">1</b><button type="button" id="gCopiesPlus">+</button></div><p class="gcopies-left" id="gCopiesLeft"></p><div class="gcopies-btns"><button type="button" id="gCopiesCancel">Cancel</button><button type="button" class="go" id="gCopiesGo">Print</button></div></div></div><button class="gallery-pill hide" id="galleryPill" type="button">▦ Event gallery</button><section class="gallery-card hide" id="guestGallery" aria-label="Event gallery QR"><h2>All event photos</h2><img id="guestGalleryQr" alt="Scan to open all event photos"><a id="guestGalleryLink" href="#" target="_blank" rel="noopener">Open gallery</a><button id="guestGalleryClose" type="button">Close</button></section><img class="clogo hide" id="clogo" alt=""></body></html>';
 
       function buildGuestDoc() {
         const d = guestWin.document;
@@ -38128,11 +38357,41 @@
           d, v: $g('v'), gv: $g('gv'), res: $g('res'), cd: $g('cd'), bar: $g('bar'), num: $g('num'), flash: $g('flash'), film: $g('film'),
           msg: $g('msg'), sub: $g('sub'), ev: $g('ev'), dt: $g('dt'), chip: $g('chip'), qrw: $g('qrw'), qrSig: '', fs: $g('fs'),
           pk: $g('pk'), pkg: $g('pkg'), pkSig: '', gb: $g('gb'), gRetake: $g('gRetake'), gDone: $g('gDone'), wasRev: false,
+          gResActs: $g('gResActs'), gPrint: $g('gPrint'), gNext: $g('gNext'),
+          gCopiesModal: $g('gCopiesModal'), gCopiesTitle: $g('gCopiesTitle'), gCopiesMinus: $g('gCopiesMinus'), gCopiesVal: $g('gCopiesVal'), gCopiesPlus: $g('gCopiesPlus'), gCopiesLeft: $g('gCopiesLeft'), gCopiesCancel: $g('gCopiesCancel'), gCopiesGo: $g('gCopiesGo'), gCopyN: 1, gCopyMax: 1,
           gReady: $g('gReady'), gReadySub: $g('gReadySub'), gReadyBtn: $g('gReadyBtn'),
           glogo: $g('glogo'), lgImg: $g('lgImg'), clogo: $g('clogo'), pwr: $g('pwr'), brandSig: '',
           galleryPill: $g('galleryPill'), galleryCard: $g('guestGallery'), galleryQr: $g('guestGalleryQr'), galleryLink: $g('guestGalleryLink'),
           lk: $g('lk'), lkPill: $g('lkPill'), lkRow: $g('lkRow'), lkSig: ''
         };
+        if (G.gPrint) G.gPrint.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (printing) return;
+          if (typeof noPrintSession === 'function' && noPrintSession()) { showToast('This option is a softcopy only: scan the QR to get your photo.', 3500); return; }
+          const max = maxCopies(printSize);
+          if (max < 1) { limitReached(); return; }
+          if (printPrefs.guestCopies && max > 1) {
+            G.gCopyMax = max; G.gCopyN = Math.max(1, Math.min(max, printPrefs.copies || 1));
+            G.gCopiesTitle.textContent = printTxt('txtCopies');
+            G.gCopiesGo.textContent = printTxt('txtPrint');
+            const renderGStep = () => {
+              G.gCopiesVal.textContent = String(G.gCopyN);
+              G.gCopiesMinus.disabled = G.gCopyN <= 1; G.gCopiesPlus.disabled = G.gCopyN >= G.gCopyMax;
+              const lim = printLimits();
+              G.gCopiesLeft.textContent = (lim.se || lim.ev) ? 'Up to ' + G.gCopyMax + (G.gCopyMax === 1 ? ' copy' : ' copies') + ' left' : '';
+            };
+            renderGStep();
+            G.gCopiesMinus.onclick = (ev) => { ev.stopPropagation(); if (G.gCopyN > 1) { G.gCopyN--; renderGStep(); } };
+            G.gCopiesPlus.onclick = (ev) => { ev.stopPropagation(); if (G.gCopyN < G.gCopyMax) { G.gCopyN++; renderGStep(); } };
+            G.gCopiesModal.classList.remove('hide');
+          } else {
+            printCurrentPhoto(false, Math.min(printPrefs.copies || 1, max));
+          }
+        });
+        if (G.gCopiesModal) G.gCopiesModal.addEventListener('click', (e) => { e.stopPropagation(); if (e.target === G.gCopiesModal) G.gCopiesModal.classList.add('hide'); });
+        if (G.gCopiesCancel) G.gCopiesCancel.addEventListener('click', (e) => { e.stopPropagation(); G.gCopiesModal.classList.add('hide'); });
+        if (G.gCopiesGo) G.gCopiesGo.addEventListener('click', (e) => { e.stopPropagation(); G.gCopiesModal.classList.add('hide'); printCurrentPhoto(false, G.gCopyN); });
+        if (G.gNext) G.gNext.addEventListener('click', (e) => { e.stopPropagation(); if (state === 'result' && typeof resetForNextGuest === 'function') resetForNextGuest(); });
         if (G.gReadyBtn) G.gReadyBtn.addEventListener('click', (e) => { e.stopPropagation(); readyStartBtn.click(); });
         if (G.gReady) G.gReady.addEventListener('click', (e) => { e.stopPropagation(); readyStartBtn.click(); });
         // The look button and its row must not start a session: only a tap on a look (or the button) does anything.
@@ -38159,8 +38418,8 @@
           (el.requestFullscreen ? el.requestFullscreen() : Promise.reject()).catch(() => { });
         });
         d.addEventListener('fullscreenchange', () => G && G.fs.classList.toggle('hide', !!d.fullscreenElement));
-        // A tap on the background while reviewing doesn't save: guests use Done.
-        d.addEventListener('click', () => { if (sess && sess.reviewing) return; boothTrigger(true); });
+        // A tap on the background while reviewing or on result/layout picker doesn't auto-shoot.
+        d.addEventListener('click', () => { if ((sess && sess.reviewing) || state === 'result' || pickOpen) return; boothTrigger(true); });
         d.addEventListener('keydown', onTriggerKey);
         guestCall('camera');
         guestRender();
@@ -38195,9 +38454,11 @@
       }
       guestOpenBtn.addEventListener('click', openGuestScreen);
 
-      // Calls into the guest window; a no-op when it isn't open.
+      // Calls into the guest window (and connected tablet bridge); a no-op when neither is open.
       function guestCall(what, a, b, c, d) {
         if (!guestOpen()) return;
+        if (typeof tabletBridgePushEvent === 'function') tabletBridgePushEvent(what, a, b, c, d);
+        if (!localGuestOpen()) return;
         try {
           if (what === 'camera') {
             const gsrc = (typeof bgGuestStream === 'function' && bgGuestStream()) || currentStream;
@@ -38230,7 +38491,7 @@
       // The renter's corner logo on the guest screen (in place of the photobooth4u logo),
       // with a small "Powered by photobooth4u" under the event date.
       function guestBrand() {
-        if (!guestOpen()) return;
+        if (!localGuestOpen()) return;
         try {
           const b = brand.c, im = brandImgFor('c'), id = brandId('c');
           const sig = im ? [id, b.x, b.y, b.s, im.naturalWidth, im.naturalHeight].join('|') : 'off';
@@ -38259,6 +38520,8 @@
       }
       function guestFilm() {
         if (!guestOpen()) return;
+        if (typeof tabletBridgeSync === 'function') tabletBridgeSync();
+        if (!localGuestOpen()) return;
         const n = shotCanvases.length;
         if (G.film.children.length !== n) {
           G.film.innerHTML = '';
@@ -38280,11 +38543,28 @@
       // Retake / Done on the guest screen copy the booth's buttons (shown, wording).
       function guestButtons() {
         if (!guestOpen()) return;
+        if (typeof tabletBridgeSync === 'function') tabletBridgeSync();
+        if (!localGuestOpen()) return;
         try {
           const r = !!sess && !retakeBtn.hidden, dn = !!sess && !doneBtn.hidden;
           G.gRetake.textContent = retakeBtn.textContent; G.gRetake.classList.toggle('hide', !r);
           G.gDone.textContent = doneBtn.textContent; G.gDone.classList.toggle('hide', !dn);
           G.gb.classList.toggle('hide', !r && !dn);
+          if (G.gResActs && typeof tabletGuestPrintState === 'function') {
+            const ps = tabletGuestPrintState();
+            const showAny = !!(ps.printShow || ps.nextShow);
+            G.gResActs.classList.toggle('hide', !showAny);
+            G.d.body.classList.toggle('has-res-acts', showAny);
+            G.gPrint.classList.toggle('hide', !ps.printShow);
+            if (ps.printShow) {
+              G.gPrint.disabled = !!ps.printDisabled;
+              G.gPrint.innerHTML = '🖨️ ' + escHtml(ps.printLabel || 'Print') + (ps.printSub ? '<small>' + escHtml(ps.printSub) + '</small>' : '');
+            } else if (G.gCopiesModal) {
+              G.gCopiesModal.classList.add('hide');
+            }
+            G.gNext.classList.toggle('hide', !ps.nextShow);
+            G.gNext.textContent = ps.nextLabel || 'Done';
+          }
           const rev = !!(sess && sess.reviewing);
           if (rev) {
             G.msg.textContent = 'Check your photos';
@@ -38302,6 +38582,8 @@
       // The layout picker on the guest screen (same choices as on the laptop).
       function guestPickRender() {
         if (!guestOpen()) return;
+        if (typeof tabletBridgeSync === 'function') tabletBridgeSync();
+        if (!localGuestOpen()) return;
         try {
           G.pk.classList.toggle('hide', !pickOpen);
           if (!pickOpen) { G.pkSig = ''; return; }
@@ -38344,6 +38626,8 @@
       // Redraws the guest screen for the booth's current state.
       function guestRender() {
         if (!guestOpen()) return;
+        if (typeof tabletBridgeSync === 'function') tabletBridgeSync();
+        if (!localGuestOpen()) return;
         try {
           const psMode = guestWelcomeStyle !== 'panel';
           G.d.body.classList.toggle('ps', psMode);
@@ -38480,6 +38764,7 @@
           if (typeof guestLooksRender === 'function') guestLooksRender();
         } catch (e) { /* closed */ }
       }
+      /*@include bridge/tablet-bridge.js*/
       // One trigger for the guest screen, the keyboard and presenter clickers:
       // answers "Get ready", or starts a new session from the Photo Session tab.
       function boothTrigger(fromGuest) {
@@ -38658,7 +38943,8 @@
         try { if (hasNativeCamBridge()) window.__PBCam.setFilter(filterKey || 'none', !!softSkin); } catch (e) { }
         try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
         try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
-        if (guestOpen()) { try { G.v.style.filter = liveFilterCss(); } catch (e) { } }
+        if (localGuestOpen()) { try { G.v.style.filter = liveFilterCss(); } catch (e) { } }
+        if (typeof tabletBridgeSync === 'function') tabletBridgeSync();
       }
       // Per-look grain strength, vignette strength and light leak for the vintage looks.
       var VINTAGE_FX = { film: { grain: 16, vig: .35 }, faded: { grain: 6, vig: .15 }, retro: { grain: 10, vig: .4, leak: true }, instant: { grain: 8, vig: .3, leak: true }, noir: { grain: 22, vig: .5 } };
@@ -39252,6 +39538,8 @@
       }
       function guestLooksRender() {
         if (!guestOpen()) return;
+        if (typeof tabletBridgeSync === 'function') tabletBridgeSync();
+        if (!localGuestOpen()) return;
         try {
           // Shown while the booth waits for the next guest (also over the welcome picture) and on "Get ready";
           // never while choosing a layout, counting down, reviewing or on the result.

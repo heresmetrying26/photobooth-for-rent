@@ -445,9 +445,9 @@ class MainActivity : AppCompatActivity() {
         gateRoot?.visibility = View.GONE
     }
 
+    private fun px(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
     private fun buildGateView(): LinearLayout {
-        val dp = resources.displayMetrics.density
-        fun px(v: Int) = (v * dp).toInt()
 
         val container = LinearLayout(this)
         container.orientation = LinearLayout.VERTICAL

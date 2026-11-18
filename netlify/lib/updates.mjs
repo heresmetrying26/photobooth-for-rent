@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.71', date: '2026-11-18' },
   { version: '1.1.70', date: '2026-11-18' },
   { version: '1.1.69', date: '2026-11-18' },
   { version: '1.1.68', date: '2026-11-18' },
@@ -266,6 +267,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-18', title: 'Desktop 1.1.71 (Win/Mac) + Android 1.1.83 + iPad 1.1.6: Camera preview between shots & live view hold', for: ['website', 'app'], app: '1.1.71',
+    items: [
+      '📷 Camera live view hold: camera live view now stays running through all shots and after the final shot until the result screen opens (eliminates premature camera sleep/blackout after last shot).',
+      '🖼️ Between-shots review: still-image photo review with Retake option displays seamlessly between photos, and the full strip review screen allows retaking shot 3 before saving.',
+      '🔋 Preserved battery saving: camera automatically goes to sleep during guest review and sticker decoration phase to preserve camera battery life.'
+    ]
+  },
   {
     date: '2026-11-18', title: 'Desktop 1.1.70 (Win/Mac) + Android 1.1.82 + iPad 1.1.5: iPad front camera & live preview fix', for: ['website', 'app'], app: '1.1.70',
     items: [

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.70', date: '2026-11-18' },
   { version: '1.1.69', date: '2026-11-18' },
   { version: '1.1.68', date: '2026-11-18' },
   { version: '1.1.67', date: '2026-11-18' },
@@ -209,7 +210,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.4', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.4/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.5', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.5/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -262,6 +263,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-18', title: 'Desktop 1.1.70 (Win/Mac) + Android 1.1.82 + iPad 1.1.5: iPad front camera & live preview fix', for: ['website', 'app'], app: '1.1.70',
+    items: [
+      '📱 iPad live camera preview fix: resolved stage black screen during photo sessions by ensuring full stage-frame transparency for the hardware AVCaptureSession preview layer.',
+      '📷 iPad Center Stage & Ultra-Wide front camera: native camera bridge now discovers and opens the 12MP Ultra-Wide Center Stage front camera on 10th-gen iPad / iPad A16.',
+      '⚡ Smooth real-time preview: eliminated WebKit 1-second movement delay and Setup Step 4 canvas blanking, providing silky-smooth 60 fps live preview with zero lag.'
+    ]
+  },
   {
     date: '2026-11-18', title: 'Desktop 1.1.69 (Win/Mac) + Android 1.1.81 + iPad 1.1.4: Smoother Canon EOS M50 II live view over USB', for: ['website', 'app'], app: '1.1.69',
     items: [

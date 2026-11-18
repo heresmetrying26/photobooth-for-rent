@@ -101,35 +101,38 @@ class AppUpdater(private val activity: AppCompatActivity) {
         Thread {
             val part = File(dir, "photobooth4u-$version.apk.part")
             try {
-                dir.mkdirs(); part.delete()
-                val c = URL(url).openConnection() as HttpURLConnection   // follows GitHub's https redirect to its file server
-                conn = c
-                c.connectTimeout = 15_000; c.readTimeout = 30_000; c.instanceFollowRedirects = true
-                val code = c.responseCode
-                if (code !in 200..299) throw IOException("the server answered $code")
-                val total = c.contentLengthLong
-                var done = 0L; var lastUi = 0L
-                c.inputStream.use { inp ->
-                    FileOutputStream(part).use { out ->
-                        val buf = ByteArray(64 * 1024)
-                        while (true) {
-                            if (cancelled) throw IOException("cancelled")
-                            val n = inp.read(buf)
-                            if (n < 0) break
-                            out.write(buf, 0, n); done += n
-                            val t = System.currentTimeMillis()
-                            if (t - lastUi > 200) { lastUi = t; val d = done; activity.runOnUiThread { showProgress(d, total) } }
-                        }
+                dir.mkdirs()
+                // The same file is also on GitHub: used when the website's copy keeps dropping.
+                val mirror = if (url.endsWith("/downloads/photobooth4u-kiosk-android.apk"))
+                    "https://github.com/heresmetrying26/photobooth-for-rent/releases/download/android-v$version/photobooth4u-kiosk-android.apk" else null
+                val sources = listOfNotNull(url, mirror)
+                var total = -1L
+                var fails = 0; var idx = 0; var rounds = 0
+                // A weak Wi-Fi often cuts a big download ("unexpected end of stream"). Don't start over: carry on from
+                // what is already saved, and only give up after several tries in a row that got nowhere.
+                while (true) {
+                    if (cancelled) throw IOException("cancelled")
+                    val before = part.length()
+                    try {
+                        total = fetch(sources[idx % sources.size], part)
+                        break
+                    } catch (e: IOException) {
+                        if (cancelled) throw e
+                        if (part.length() > before) fails = 0 else { fails++; idx++ }   // switch website <-> GitHub when a try got nowhere
+                        if (fails >= 5 || ++rounds > 80) throw e
+                        val d = part.length()
+                        activity.runOnUiThread { label?.text = "Connection dropped (${mb(d)} MB saved). Trying again…" }
+                        Thread.sleep(minOf(1000L * (fails + 1), 4000L))
                     }
                 }
-                if (total > 0 && done != total) throw IOException("the download was cut short")
+                val done = part.length()
                 val apk = apkFile(version)
                 apk.delete()
                 if (!part.renameTo(apk)) throw IOException("the file couldn't be saved")
                 checkApk(apk)?.let { apk.delete(); throw IOException(it) }
-                activity.runOnUiThread { showProgress(done, done); closeDialog(); install(apk, url, version) }
+                activity.runOnUiThread { showProgress(done, if (total > 0) total else done); closeDialog(); install(apk, url, version) }
             } catch (e: Exception) {
-                part.delete()
+                // The part already saved stays: "Try again" carries on from it.
                 val why = e.message ?: "no connection"
                 activity.runOnUiThread {
                     closeDialog()
@@ -140,6 +143,52 @@ class AppUpdater(private val activity: AppCompatActivity) {
                 downloading = false
             }
         }.start()
+    }
+
+    /**
+     * One try at the download, carrying on from what [part] already holds (HTTP Range). Returns the file's full size
+     * once all of it is saved; throws IOException when the connection ends early.
+     */
+    private fun fetch(src: String, part: File): Long {
+        var have = if (part.exists()) part.length() else 0L
+        val c = URL(src).openConnection() as HttpURLConnection   // follows GitHub's https redirect to its file server
+        conn = c
+        c.connectTimeout = 15_000; c.readTimeout = 30_000; c.instanceFollowRedirects = true
+        c.setRequestProperty("Accept-Encoding", "identity")      // exact length, and a cut download can carry on where it stopped
+        if (have > 0) c.setRequestProperty("Range", "bytes=$have-")
+        try {
+            val code = c.responseCode
+            val total: Long
+            when (code) {
+                206 -> {
+                    val m = Regex("""bytes (\d+)-\d+/(\d+)""").find(c.getHeaderField("Content-Range") ?: "")
+                    val start = m?.groupValues?.get(1)?.toLongOrNull()
+                    total = m?.groupValues?.get(2)?.toLongOrNull() ?: -1L
+                    if (start != have) { part.delete(); throw IOException("the server couldn't carry on the download") }
+                }
+                200 -> { have = 0; total = c.contentLengthLong }   // the server sent the whole file again
+                416 -> { part.delete(); throw IOException("the server couldn't carry on the download") }
+                else -> throw IOException("the server answered $code")
+            }
+            var done = have; var lastUi = 0L
+            c.inputStream.use { inp ->
+                FileOutputStream(part, have > 0).use { out ->
+                    val buf = ByteArray(64 * 1024)
+                    while (true) {
+                        if (cancelled) throw IOException("cancelled")
+                        val n = inp.read(buf)
+                        if (n < 0) break
+                        out.write(buf, 0, n); done += n
+                        val t = System.currentTimeMillis()
+                        if (t - lastUi > 200) { lastUi = t; val d = done; activity.runOnUiThread { showProgress(d, total) } }
+                    }
+                }
+            }
+            if (total > 0 && part.length() != total) throw IOException("the download was cut short")
+            return total
+        } finally {
+            try { c.disconnect() } catch (e: Exception) { }
+        }
     }
 
     /** null when the file is a newer build of this app; otherwise why it can't be installed. */

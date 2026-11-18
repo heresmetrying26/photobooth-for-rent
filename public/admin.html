@@ -1893,11 +1893,11 @@
           <canvas id="cardModalDecoCanvas" class="card-modal-canvas"></canvas>
           <div id="cardModalSampleStrip" class="card-modal-sample-strip" style="display:none;"></div>
           <div id="cardModalOuterCard" class="card-preview-box">
-            <div id="cardModalBadge" class="card-preview-badge">
-              <img id="cardModalBadgeImg" src="/assets/charm-up-clean-badge.png" alt="Logo">
+            <div id="cardModalBadge" class="card-preview-badge" style="display:none;">
+              <img id="cardModalBadgeImg" src="" alt="Logo">
             </div>
             <div class="card-preview-greeting">WELCOME TO</div>
-            <div id="cardModalEventTitle" class="card-preview-title">Charm Up</div>
+            <div id="cardModalEventTitle" class="card-preview-title">Photobooth</div>
             <div class="card-preview-steps" id="cardModalSteps">
               <div class="step-item"><span class="step-num" id="cardModalNum1">1</span> Tap the screen</div>
               <div class="step-item"><span class="step-num" id="cardModalNum2">2</span> Strike a pose</div>
@@ -3832,14 +3832,18 @@
           if (el) el.style.background = pal.btn;
         });
 
+        var badgeWrap = $('cardModalBadge');
         var badgeImg = $('cardModalBadgeImg');
-        if (badgeImg) {
+        if (badgeWrap && badgeImg) {
           if (l.startLogo && l.startLogo.url) {
+            badgeWrap.style.display = 'flex';
             badgeImg.src = l.startLogo.url;
           } else if (isCharm) {
+            badgeWrap.style.display = 'flex';
             badgeImg.src = '/assets/charm-up-clean-badge.png';
           } else {
-            badgeImg.src = '/assets/charm-up-clean-badge.png';
+            badgeWrap.style.display = 'none';
+            badgeImg.src = '';
           }
         }
 

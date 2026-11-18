@@ -109,6 +109,9 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
     private var rotationObserverCapture: NSKeyValueObservation?
     private var rotationCoordinatorObj: AnyObject?
     private var orientationObserver: NSObjectProtocol?
+    private var sessionRuntimeObserver: NSObjectProtocol?
+    private var sessionInterruptionEndedObserver: NSObjectProtocol?
+    private var deviceDisconnectedObserver: NSObjectProtocol?
 
     private let stateLock = NSLock()
     private var latestBuffer: CVPixelBuffer?
@@ -157,12 +160,54 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         ) { [weak self] _ in
             self?.syncLegacyOrientation()
         }
+        sessionRuntimeObserver = NotificationCenter.default.addObserver(
+            forName: .AVCaptureSessionRuntimeError,
+            object: session,
+            queue: nil
+        ) { [weak self] note in
+            guard let self = self else { return }
+            let err = note.userInfo?[AVCaptureSessionErrorKey] as? NSError
+            self.sessionQueue.async {
+                guard let dev = self.currentDevice, dev.isConnected, !self.session.isRunning else { return }
+                if err?.code == AVError.mediaServicesWereReset.rawValue || err != nil {
+                    self.session.startRunning()
+                }
+            }
+        }
+        sessionInterruptionEndedObserver = NotificationCenter.default.addObserver(
+            forName: .AVCaptureSessionInterruptionEnded,
+            object: session,
+            queue: nil
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            self.sessionQueue.async {
+                guard let dev = self.currentDevice, dev.isConnected, !self.session.isRunning else { return }
+                self.session.startRunning()
+            }
+        }
+        deviceDisconnectedObserver = NotificationCenter.default.addObserver(
+            forName: .AVCaptureDeviceWasDisconnected,
+            object: nil,
+            queue: nil
+        ) { [weak self] note in
+            guard let self = self, let lost = note.object as? AVCaptureDevice else { return }
+            self.sessionQueue.async {
+                if self.currentDevice?.uniqueID == lost.uniqueID {
+                    self.cancelActiveRecording()
+                    if self.session.isRunning { self.session.stopRunning() }
+                    self.stateLock.lock()
+                    self.latestBuffer = nil
+                    self.stateLock.unlock()
+                }
+            }
+        }
     }
 
     deinit {
-        if let obs = orientationObserver {
-            NotificationCenter.default.removeObserver(obs)
-        }
+        if let obs = orientationObserver { NotificationCenter.default.removeObserver(obs) }
+        if let obs = sessionRuntimeObserver { NotificationCenter.default.removeObserver(obs) }
+        if let obs = sessionInterruptionEndedObserver { NotificationCenter.default.removeObserver(obs) }
+        if let obs = deviceDisconnectedObserver { NotificationCenter.default.removeObserver(obs) }
     }
 
     // MARK: - Device Discovery
@@ -436,11 +481,17 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             videoDataOutput = nil
         }
 
-        let pOut = AVCapturePhotoOutput()
-        if session.canAddOutput(pOut) {
-            pOut.isHighResolutionCaptureEnabled = true
-            session.addOutput(pOut)
-            photoOutput = pOut
+        // External UVC / HDMI capture cards grab still frames from the live CVPixelBuffer directly;
+        // skip AVCapturePhotoOutput so capture cards never stall on unsupported still-photo paths.
+        if !ext {
+            let pOut = AVCapturePhotoOutput()
+            if session.canAddOutput(pOut) {
+                pOut.isHighResolutionCaptureEnabled = true
+                session.addOutput(pOut)
+                photoOutput = pOut
+            } else {
+                photoOutput = nil
+            }
         } else {
             photoOutput = nil
         }

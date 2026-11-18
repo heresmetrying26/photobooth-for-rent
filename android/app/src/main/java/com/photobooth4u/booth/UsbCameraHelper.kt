@@ -128,6 +128,7 @@ class UsbCameraHelper(private val ctx: Context) {
     // Sony
     private var sonyAt = -1L                           // when the connection finished; -1 = not a Sony
     private var sonyVer = 2
+    private var sonyDestBlocked = false
     @Volatile private var lastShutterMs = 0L
 
     @Volatile private var server: ServerSocket? = null
@@ -623,7 +624,7 @@ class UsbCameraHelper(private val ctx: Context) {
     /** The camera is gone (or about to be handed back): forget it without talking to it. */
     private fun closeUsb() {
         releaseUsb()
-        live = false; nikon = false; canon = false; sony = false; sonyAt = -1L; sonyVer = 2; lastShutterMs = 0L
+        live = false; nikon = false; canon = false; sony = false; sonyAt = -1L; sonyVer = 2; sonyDestBlocked = false; lastShutterMs = 0L
     }
 
     /** Hands the camera back politely, then lets go of the USB connection. */
@@ -635,6 +636,7 @@ class UsbCameraHelper(private val ctx: Context) {
                     // Hand the camera back: live view off, out of remote mode.
                     try { if (live) setEos(0xD1B0, 0); op(0x9115, 0); op(0x9114, 0) } catch (e: CamErr) { throw e } catch (_: Exception) { }
                 }
+                if (sony) sonyReleaseButtons(false)
                 try { op(0x1003) } catch (e: CamErr) { throw e } catch (_: Exception) { }     // CloseSession
             } catch (_: CamErr) { }
         }
@@ -695,7 +697,7 @@ class UsbCameraHelper(private val ctx: Context) {
         }
         if (bi == null || bo == null) { c.releaseInterface(itf); c.close(); throw CamErr("ERROR", "The camera did not offer a USB data channel. Unplug and replug it.") }
         dev = d; conn = c; iface = itf; epIn = bi; epOut = bo; tid = 0; pendLen = 0
-        live = false; nikon = false; canon = false; sony = false; sonyAt = -1L; sonyVer = 2; lastShutterMs = 0L; setupNote = ""
+        live = false; nikon = false; canon = false; sony = false; sonyAt = -1L; sonyVer = 2; sonyDestBlocked = false; lastShutterMs = 0L; setupNote = ""
 
         val s = transact(0x1002, intArrayOf(1))                                   // OpenSession
         if (s.code != OK && s.code != SESSION_OPEN) throw CamErr("ERROR", "The camera would not start a session (${hex(s.code)}). Switch it off and on, then try again.")
@@ -1380,12 +1382,12 @@ class UsbCameraHelper(private val ctx: Context) {
         return true
     }
 
-    /** Current value of one property in the 0x9209 blob (-1 when absent): header count(4)+reserved(4), entries code(2) type(2) getset(1) enabled(1) def cur form. */
-    private fun sonyVal(d: ByteArray, code: Int): Long {
-        if (d.size < 8) return -1L
+    /** Current value and scalar type of one property in the 0x9209 blob, or null when absent: header count(4)+reserved(4), entries code(2) type(2) getset(1) enabled(1) def cur form. */
+    private fun sonyPropInfo(d: ByteArray, code: Int): LongArray? {
+        if (d.size < 8) return null
         val count = u32(d, 0)
         val reserved = u32(d, 4)
-        if (reserved != 0L || count > 8192L) return -1L
+        if (reserved != 0L || count > 8192L) return null
         val off = intArrayOf(8)
         for (idx in 0 until count.toInt()) {
             if (off[0] + 6 > d.size) break
@@ -1399,7 +1401,7 @@ class UsbCameraHelper(private val ctx: Context) {
             var curVal: Long? = null
             if (dtype in 1..8) curVal = sonyReadInt(d, off, dtype)
             else if (!sonySkipValue(d, off, dtype)) break
-            if (pcode == code) return curVal ?: -1L
+            if (pcode == code) return if (curVal != null) longArrayOf(curVal, dtype.toLong()) else null
             if (off[0] >= d.size) break
             val form = d[off[0]++].toInt() and 0xFF
             if (form == 1) {
@@ -1407,19 +1409,46 @@ class UsbCameraHelper(private val ctx: Context) {
             } else if (form == 2) {
                 if (off[0] + 2 > d.size) break
                 val n1 = le16(d, off[0]); off[0] += 2
-                for (k in 0 until n1) if (!sonySkipValue(d, off, dtype)) return -1L
+                for (k in 0 until n1) if (!sonySkipValue(d, off, dtype)) return null
                 if (sonyVer >= 3 && off[0] + 2 <= d.size) {
                     val n2 = le16(d, off[0]); off[0] += 2
-                    for (k in 0 until n2) if (!sonySkipValue(d, off, dtype)) return -1L
+                    for (k in 0 until n2) if (!sonySkipValue(d, off, dtype)) return null
                 }
             } else if (form != 0) break
         }
-        return -1L
+        return null
+    }
+
+    private fun sonyVal(d: ByteArray, code: Int): Long = sonyPropInfo(d, code)?.get(0) ?: -1L
+
+    private fun sonyScalarBytes(value: Int, dtype: Int): ByteArray {
+        val raw = sonyScalarSize(dtype)
+        val sz = if (raw in 1..8) raw else 2
+        return ByteArray(sz) { k -> ((value ushr (8 * k)) and 0xFF).toByte() }
     }
 
     /** Sony "buttons": 1 = released, 2 = pressed. */
     private fun sonyButton(prop: Int, value: Int): Int =
         opWrite(0x9207, byteArrayOf((value and 0xFF).toByte(), (value shr 8).toByte()), prop)
+
+    private fun sonyReleaseButtons(throwGone: Boolean) {
+        try {
+            sonyButton(0xD2C2, 1)
+            sonyButton(0xD2C1, 1)
+        } catch (e: CamErr) {
+            if (throwGone) throw e
+        } catch (_: Exception) { }
+    }
+
+    private fun sonyConnectPhase(phase: Int): Int {
+        var r = OK
+        for (t in 0 until 12) {
+            r = opRead(0x9201, phase, 0, 0).code
+            if (r != BUSY) break
+            Thread.sleep(150)
+        }
+        return r
+    }
 
     private fun sonyWait3s() {
         while (sonyAt >= 0 && now() - sonyAt < 3000) { sonyProps(); Thread.sleep(150) }
@@ -1428,12 +1457,14 @@ class UsbCameraHelper(private val ctx: Context) {
     private fun ensureSonySaveDest(p: ByteArray) {
         // Photos go straight to the tablet ("PC Only"), so no memory card is needed: with PC + Camera or
         // Camera Only some bodies refuse to shoot when the card is missing. 1 = PC Only, 0x11 = PC + Camera, 0x10 = Camera Only.
-        val dest = sonyVal(p, 0xD222)
-        if (dest >= 0 && dest != 0x01L) {
+        val info = sonyPropInfo(p, 0xD222) ?: return
+        val dest = info[0]
+        val dtype = info[1].toInt()
+        if (dest >= 0 && dest != 0x01L && !sonyDestBlocked) {
             var ok = false
             for (want in intArrayOf(0x01, 0x11)) {
                 try {
-                    if (opWrite(0x9205, byteArrayOf((want and 0xFF).toByte(), (want shr 8).toByte()), 0xD222) != OK) continue
+                    if (opWrite(0x9205, sonyScalarBytes(want, dtype), 0xD222) != OK) continue
                     if (sonyVal(sonyProps(), 0xD222) != want.toLong()) continue      // the camera must really have taken it
                     ok = true
                     setupNote += if (want == 0x01) "Photos go to the tablet only (no memory card needed). " else "Photos go to the tablet and the card. "
@@ -1441,26 +1472,31 @@ class UsbCameraHelper(private val ctx: Context) {
                     break
                 } catch (e: CamErr) { throw e } catch (e: Exception) { log("Save destination not changed: ${e.message}") }
             }
-            if (!ok) log("Could not change the save destination (it is 0x${java.lang.Long.toHexString(dest)}); photos may need a memory card")
+            if (!ok) {
+                sonyDestBlocked = true
+                log("Could not change the save destination (it is 0x${java.lang.Long.toHexString(dest)}); photos may need a memory card")
+            }
         }
     }
 
     private fun prepareSony() {
         setupNote = ""
         sonyAt = -1L
+        sonyDestBlocked = false
         if (!ops.contains(0x9201) || !ops.contains(0x9202))
             throw CamErr("MODE", "The $camName is connected as a file-transfer drive, not for remote control. $SONY_HINT [$diag]")
-        var r = opRead(0x9201, 1, 0, 0).code; if (r != OK) throw sonyFail("connect 1", r)
-        r = opRead(0x9201, 2, 0, 0).code; if (r != OK) throw sonyFail("connect 2", r)
-        var ver = 2
-        val preferV2 = camModel.contains("6400", ignoreCase = true)
+        var r = sonyConnectPhase(1); if (r != OK) throw sonyFail("connect 1", r)
+        r = sonyConnectPhase(2); if (r != OK) throw sonyFail("connect 2", r)
+        val isA7M3 = camModel.contains("ILCE-7M3", ignoreCase = true)
+        var ver = if (isA7M3) 3 else 2
+        val preferV2 = !isA7M3 && camModel.contains("6400", ignoreCase = true)
         val vFirst = if (preferV2) 0xC8 else 0x12C
         val vSecond = if (preferV2) 0x12C else 0xC8
         for (t in 0 until 20) {
             val x = opRead(0x9202, vFirst, 1)
             val b = x.bytes
             if (x.code == OK && b.size >= 2) { ver = if (le16(b, 0) >= 0x12C) 3 else 2; break }
-            if (x.code != BUSY) {
+            if (!isA7M3 && x.code != BUSY) {
                 val x2 = opRead(0x9202, vSecond, 1)
                 val b2 = x2.bytes
                 if (x2.code == OK && b2.size >= 2) { ver = if (le16(b2, 0) >= 0x12C) 3 else 2; break }
@@ -1468,8 +1504,9 @@ class UsbCameraHelper(private val ctx: Context) {
             Thread.sleep(100)
         }
         sonyVer = ver
-        r = opRead(0x9201, 3, 0, 0).code; if (r != OK) throw sonyFail("connect 3", r)
+        r = sonyConnectPhase(3); if (r != OK) throw sonyFail("connect 3", r)
         sonyAt = now()
+        sonyReleaseButtons(true)
         diag += "; sony protocol $ver"
         log("Sony connected, protocol $ver")
         // Remote control wins over the camera's own buttons ("application" priority).
@@ -1477,14 +1514,18 @@ class UsbCameraHelper(private val ctx: Context) {
         // Several bodies (A7 III, A7R IV, ZV-1...) only take photos about 3 s after connecting:
         // wait here, while the booth shows "connecting", not during the first guest's photo.
         var p = ByteArray(0)
-        while (now() - sonyAt < 3000) { p = sonyProps(); Thread.sleep(150) }
+        while (now() - sonyAt < 3000) {
+            val cur = sonyProps()
+            if (cur.isNotEmpty()) p = cur
+            Thread.sleep(150)
+        }
         if (p.isEmpty()) p = sonyProps()
         // Ensure Single Shooting mode (0x5013 = 1) so continuous/bracket drive doesn't fire bursts.
-        val scm = sonyVal(p, 0x5013)
-        if (scm >= 0 && scm != 1L) {
+        val scm = sonyPropInfo(p, 0x5013)
+        if (scm != null && scm[0] >= 0 && scm[0] != 1L) {
             try {
-                val sr = opWrite(0x9205, byteArrayOf(1, 0), 0x5013)
-                if (sr == OK) log("Still capture mode $scm -> 1")
+                val sr = opWrite(0x9205, sonyScalarBytes(1, scm[1].toInt()), 0x5013)
+                if (sr == OK) log("Still capture mode ${scm[0]} -> 1")
             } catch (e: CamErr) { throw e } catch (e: Exception) { log("Still capture mode not changed: ${e.message}") }
         }
         ensureSonySaveDest(p)
@@ -1546,7 +1587,7 @@ class UsbCameraHelper(private val ctx: Context) {
         val t0 = now()
         // The first photo right after connecting has to wait for the camera to settle.
         sonyWait3s()
-        ensureSonySaveDest(sonyProps())
+        if (!sonyDestBlocked) ensureSonySaveDest(sonyProps())
         // A photo left in the camera's memory by an earlier attempt would be handed over instead of this one.
         for (k in 0 until 4) {
             if (sonyVal(sonyProps(), 0xD215) < 0x8000) break
@@ -1558,7 +1599,7 @@ class UsbCameraHelper(private val ctx: Context) {
         var r = sonyButton(0xD2C1, 2)
         if (r == OK) r = sonyButton(0xD2C2, 2)
         if (r != OK) {
-            try { sonyButton(0xD2C2, 1); sonyButton(0xD2C1, 1) } catch (e: CamErr) { throw e } catch (_: Exception) { }
+            sonyReleaseButtons(true)
             throw CamErr("CAPTURE", "The camera refused the shutter (${hex(r)}). Check the mode dial isn't on video, the camera's menu is closed and it is in PC Remote mode.")
         }
         try {
@@ -1574,7 +1615,7 @@ class UsbCameraHelper(private val ctx: Context) {
                 }
             }
         } finally {
-            try { sonyButton(0xD2C2, 1); sonyButton(0xD2C1, 1) } catch (e: CamErr) { throw e } catch (_: Exception) { }
+            sonyReleaseButtons(true)
         }
         // Wait for the photo to appear in the camera's memory.
         var mem = -1L

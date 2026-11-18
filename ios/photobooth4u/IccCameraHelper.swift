@@ -121,6 +121,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     // Sony state
     private var sonyAt: UInt64 = 0
     private var sonyVer = 2
+    private var sonyDestBlocked = false
 
     // Generic PTP / didAdd capture waiter
     private let genericLock = NSLock()
@@ -687,6 +688,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         gotFrame = false
         sonyAt = 0
         sonyVer = 2
+        sonyDestBlocked = false
         shotFocus = ""
         setCachedCamera(open: false, name: "")
     }
@@ -700,6 +702,8 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
                     if live { _ = try? setEos(0xD1B0, 0) }
                     _ = try? op(0x9115, 0)
                     _ = try? op(0x9114, 0)
+                } else if brand == .sony {
+                    try? sonyReleaseButtons()
                 }
             }
             let sema = DispatchSemaphore(value: 0)
@@ -1794,11 +1798,11 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         return true
     }
 
-    private func sonyVal(_ d: Data, code: UInt16) -> Int64 {
-        guard d.count >= 8 else { return -1 }
+    private func sonyPropInfo(_ d: Data, code: UInt16) -> (val: Int64, type: UInt16) {
+        guard d.count >= 8 else { return (-1, 0) }
         let count = le32(d, 0)
         let reserved = le32(d, 4)
-        guard reserved == 0, count <= 8192 else { return -1 }
+        guard reserved == 0, count <= 8192 else { return (-1, 0) }
         var off = 8
         var idx: UInt32 = 0
         while idx < count && off + 6 <= d.count {
@@ -1816,7 +1820,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             } else if !sonySkipValue(d, &off, dtype) {
                 break
             }
-            if pcode == code { return curVal ?? -1 }
+            if pcode == code { return (curVal ?? -1, dtype) }
             guard off < d.count else { break }
             let form = d[off]; off += 1
             if form == 1 {
@@ -1824,16 +1828,35 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             } else if form == 2 {
                 guard off + 2 <= d.count else { break }
                 let n1 = Int(le16(d, off)); off += 2
-                for _ in 0..<n1 { if !sonySkipValue(d, &off, dtype) { return -1 } }
+                for _ in 0..<n1 { if !sonySkipValue(d, &off, dtype) { return (-1, 0) } }
                 if sonyVer >= 3 && off + 2 <= d.count {
                     let n2 = Int(le16(d, off)); off += 2
-                    for _ in 0..<n2 { if !sonySkipValue(d, &off, dtype) { return -1 } }
+                    for _ in 0..<n2 { if !sonySkipValue(d, &off, dtype) { return (-1, 0) } }
                 }
             } else if form != 0 {
                 break
             }
         }
-        return -1
+        return (-1, 0)
+    }
+
+    private func sonyVal(_ d: Data, code: UInt16) -> Int64 {
+        return sonyPropInfo(d, code: code).val
+    }
+
+    private func sonyScalarData(_ value: UInt32, type: UInt16) -> Data {
+        if type == 5 || type == 6 {
+            return Data([
+                UInt8(value & 0xFF),
+                UInt8((value >> 8) & 0xFF),
+                UInt8((value >> 16) & 0xFF),
+                UInt8((value >> 24) & 0xFF)
+            ])
+        }
+        if type == 1 || type == 2 {
+            return Data([UInt8(value & 0xFF)])
+        }
+        return Data([UInt8(value & 0xFF), UInt8((value >> 8) & 0xFF)])
     }
 
     @discardableResult
@@ -1842,23 +1865,55 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         return try opWrite(0x9207, data: b, prop)
     }
 
+    private func sonyReleaseButtons() throws {
+        do {
+            _ = try sonyButton(0xD2C2, 1)
+            _ = try sonyButton(0xD2C1, 1)
+        } catch let e as CamErr {
+            if e.code == "GONE" { throw e }
+        } catch { }
+    }
+
+    private func sonyConnectPhase(_ phase: UInt32) throws -> UInt16 {
+        var r: UInt16 = 0
+        for _ in 0..<12 {
+            r = try opRead(0x9201, phase, 0, 0).code
+            if r == PTP_OK || r != PTP_BUSY { return r }
+            Thread.sleep(forTimeInterval: 0.15)
+        }
+        return r
+    }
+
     private func ensureSonySaveDest(_ p: Data) {
-        let dest = sonyVal(p, code: 0xD222)
+        let info = sonyPropInfo(p, code: 0xD222)
+        let dest = info.val
+        if dest == 0x01 { sonyDestBlocked = false; return }
+        if sonyDestBlocked && dest != 0x10 { return }
         if dest >= 0 && dest != 0x01 {
+            var ok = false
             for want in [UInt16(0x01), UInt16(0x11)] {
-                let d = Data([UInt8(want & 0xFF), UInt8((want >> 8) & 0xFF)])
+                let d = sonyScalarData(UInt32(want), type: info.type == 0 ? 4 : info.type)
                 if let wr = try? opWrite(0x9205, data: d, 0xD222), wr == PTP_OK,
                    let checkProps = try? sonyProps(), sonyVal(checkProps, code: 0xD222) == Int64(want) {
+                    ok = true
+                    sonyDestBlocked = (want != 0x01)
                     setupNote += (want == 0x01) ? "Photos go to the iPad only (no memory card needed). " : "Photos go to the iPad and the card. "
                     log("Save destination -> \(hex(want))")
                     break
                 }
+            }
+            if !ok {
+                sonyDestBlocked = true
+                log("Could not change save destination (it is \(dest)); photos may need a memory card")
             }
         }
     }
 
     private func prepareSony() throws {
         sonyAt = 0
+        sonyDestBlocked = false
+        let isA7M3 = camModel.uppercased().contains("ILCE-7M3")
+        sonyVer = isA7M3 ? 3 : 2
         guard ops.contains(0x9201) && ops.contains(0x9202) else {
             throw CamErr("MODE", "The \(camName) is connected as a file-transfer drive, not for remote control. \(SONY_HINT) [\(diag)]")
         }
@@ -1867,13 +1922,13 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             return CamErr("MODE", "The \(self.camName) didn't accept remote control (\(what), \(self.hex(r))). \(self.SONY_HINT) [\(self.diag)]")
         }
 
-        var r = try opRead(0x9201, 1, 0, 0).code
+        var r = try sonyConnectPhase(1)
         if r != PTP_OK { throw fail("connect 1", r) }
-        r = try opRead(0x9201, 2, 0, 0).code
+        r = try sonyConnectPhase(2)
         if r != PTP_OK { throw fail("connect 2", r) }
 
-        var ver = 2
-        let preferV2 = camModel.uppercased().contains("6400")
+        var ver = sonyVer
+        let preferV2 = !isA7M3 && camModel.uppercased().contains("6400")
         let vFirst: UInt32 = preferV2 ? 0xC8 : 0x12C
         let vSecond: UInt32 = preferV2 ? 0x12C : 0xC8
         for _ in 0..<20 {
@@ -1892,26 +1947,30 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             Thread.sleep(forTimeInterval: 0.1)
         }
         sonyVer = ver
-        r = try opRead(0x9201, 3, 0, 0).code
+        r = try sonyConnectPhase(3)
         if r != PTP_OK { throw fail("connect 3", r) }
 
         sonyAt = nowMs()
-        diag += "; sony protocol \(ver)"
+        diag += "; sony protocol \(ver)\(isA7M3 ? " (ILCE-7M3)" : "")"
         log("Sony connected, protocol \(ver)")
 
+        // Clear any shutter button held down by an interrupted earlier session, then set remote priority.
+        try sonyReleaseButtons()
         _ = try? opWrite(0x9205, data: Data([1]), 0xD25A)
 
         var p = Data()
         while nowMs() - sonyAt < 3000 {
-            p = try sonyProps()
+            let np = try sonyProps()
+            if !np.isEmpty { p = np }
             Thread.sleep(forTimeInterval: 0.15)
         }
         if p.isEmpty { p = try sonyProps() }
 
-        let scm = sonyVal(p, code: 0x5013)
-        if scm >= 0 && scm != 1 {
-            if let sr = try? opWrite(0x9205, data: Data([1, 0]), 0x5013), sr == PTP_OK {
-                log("Still capture mode \(scm) -> 1")
+        let scm = sonyPropInfo(p, code: 0x5013)
+        if scm.val >= 0 && scm.val != 1 {
+            let d = sonyScalarData(1, type: scm.type == 0 ? 4 : scm.type)
+            if let sr = try? opWrite(0x9205, data: d, 0x5013), sr == PTP_OK {
+                log("Still capture mode \(scm.val) -> 1")
             }
         }
 

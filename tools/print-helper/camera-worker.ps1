@@ -516,9 +516,10 @@ namespace Pb4uCam
                     // Hand the camera back: live view off, out of remote mode.
                     try { if (live) SetEos(0xD1B0, 0); ptp.Op(0x9115, 0); ptp.Op(0x9114, 0); } catch { }
                 }
+                if (sony) SonyReleaseButtons(false);
                 ptp.Close();
             }
-            ptp = null; live = false; devId = null; nikon = false; canon = false; sony = false; sonyClock = null;
+            ptp = null; live = false; devId = null; nikon = false; canon = false; sony = false; sonyClock = null; sonyDestBlocked = false;
         }
 
         static string Open()
@@ -1411,6 +1412,7 @@ namespace Pb4uCam
         const string SONY_HINT = "On the camera set PC Remote: On (MENU > Network > PC Remote Function) and USB Connection to PC Remote (MENU > Setup > USB), close Imaging Edge and other camera apps, switch the camera off and on, unplug and replug the USB cable, then try again.";
         static int sonyVer = 2;
         static Stopwatch sonyClock;
+        static bool sonyDestBlocked = false;
 
         static string SonyName(string model)
         {
@@ -1443,15 +1445,16 @@ namespace Pb4uCam
         {
             // Photos go straight to the computer ("PC Only"), so no memory card is needed: with PC + Camera or
             // Camera Only some bodies refuse to shoot when the card is missing. 1 = PC Only, 0x11 = PC + Camera, 0x10 = Camera Only.
-            long dest = SonyVal(props, 0xD222);
-            if (dest >= 0 && dest != 0x01)
+            long dest; ushort dtype;
+            if (!SonyPropInfo(props, 0xD222, out dest, out dtype)) return;
+            if (dest >= 0 && dest != 0x01 && !sonyDestBlocked)
             {
                 bool ok = false;
                 foreach (ushort want in new ushort[] { 0x01, 0x11 })
                 {
                     try
                     {
-                        if (ptp.OpWrite(0x9205, new byte[] { (byte)(want & 0xFF), (byte)(want >> 8) }, 0xD222) != Ptp.OK) continue;
+                        if (ptp.OpWrite(0x9205, SonyScalarBytes(want, dtype), 0xD222) != Ptp.OK) continue;
                         if (SonyVal(SonyProps(), 0xD222) != want) continue;     // the camera must really have taken it
                         ok = true;
                         setupNote += want == 0x01 ? "Photos go to the computer only (no memory card needed). " : "Photos go to the computer and the card. ";
@@ -1461,7 +1464,11 @@ namespace Pb4uCam
                     catch (GoneException) { throw; }
                     catch (Exception e) { Log("Save destination not changed: " + e.Message); }
                 }
-                if (!ok) Log("Could not change the save destination (it is 0x" + dest.ToString("X") + "); photos may need a memory card");
+                if (!ok)
+                {
+                    sonyDestBlocked = true;
+                    Log("Could not change the save destination (it is 0x" + dest.ToString("X") + "); photos may need a memory card");
+                }
             }
         }
 
@@ -1469,28 +1476,31 @@ namespace Pb4uCam
         {
             setupNote = "";
             sonyClock = null;
+            sonyDestBlocked = false;
             if (!ops.Contains(0x9201) || !ops.Contains(0x9202))
                 throw new CamException("MODE The " + camName + " is connected as a file-transfer drive, not for remote control. " + SONY_HINT + " [" + diag + "]");
             byte[] b; uint r;
-            r = SonyGet(0x9201, out b, 1, 0, 0); if (r != Ptp.OK) throw SonyFail("connect 1", r);
-            r = SonyGet(0x9201, out b, 2, 0, 0); if (r != Ptp.OK) throw SonyFail("connect 2", r);
-            sonyVer = 2;
-            // Older/mid Alpha bodies (e.g. A6400) expect protocol 0xC8 (200); newer bodies use 0x12C (300).
-            bool preferV2 = (camModel ?? "").IndexOf("6400", StringComparison.OrdinalIgnoreCase) >= 0;
+            r = SonyConnectPhase(1); if (r != Ptp.OK) throw SonyFail("connect 1", r);
+            r = SonyConnectPhase(2); if (r != Ptp.OK) throw SonyFail("connect 2", r);
+            bool isA7M3 = (camModel ?? "").IndexOf("ILCE-7M3", StringComparison.OrdinalIgnoreCase) >= 0;
+            sonyVer = isA7M3 ? 3 : 2;
+            // Older/mid Alpha bodies (e.g. A6400) expect protocol 0xC8 (200); newer/A7 III bodies use 0x12C (300).
+            bool preferV2 = !isA7M3 && (camModel ?? "").IndexOf("6400", StringComparison.OrdinalIgnoreCase) >= 0;
             uint vFirst = preferV2 ? 0xC8U : 0x12CU, vSecond = preferV2 ? 0x12CU : 0xC8U;
             for (int t = 0; t < 20; t++)
             {
                 r = SonyGet(0x9202, out b, vFirst, 1);
                 if (r == Ptp.OK && b.Length >= 2) { sonyVer = (b[0] | (b[1] << 8)) >= 0x12C ? 3 : 2; break; }
-                if (r != Ptp.BUSY)
+                if (!isA7M3 && r != Ptp.BUSY)
                 {
                     byte[] b2; uint r2 = SonyGet(0x9202, out b2, vSecond, 1);
                     if (r2 == Ptp.OK && b2.Length >= 2) { sonyVer = (b2[0] | (b2[1] << 8)) >= 0x12C ? 3 : 2; break; }
                 }
                 Thread.Sleep(100);
             }
-            r = SonyGet(0x9201, out b, 3, 0, 0); if (r != Ptp.OK) throw SonyFail("connect 3", r);
+            r = SonyConnectPhase(3); if (r != Ptp.OK) throw SonyFail("connect 3", r);
             sonyClock = Stopwatch.StartNew();
+            SonyReleaseButtons(true);
             diag += "; sony protocol " + sonyVer;
             Log("Sony connected, protocol " + sonyVer);
             // Remote control wins over the camera's own buttons ("application" priority).
@@ -1500,15 +1510,20 @@ namespace Pb4uCam
             // Several bodies (A7 III, A7R IV, ZV-1...) only take photos about 3 s after connecting:
             // wait here, while the booth shows "connecting", not during the first guest's photo.
             byte[] props = new byte[0];
-            while (sonyClock.ElapsedMilliseconds < 3000) { props = SonyProps(); Thread.Sleep(150); }
+            while (sonyClock.ElapsedMilliseconds < 3000)
+            {
+                byte[] cur = SonyProps();
+                if (cur.Length > 0) props = cur;
+                Thread.Sleep(150);
+            }
             if (props.Length == 0) props = SonyProps();
             // Ensure Single Shooting mode (0x5013 = 1) so continuous/bracket drive doesn't fire bursts.
-            long scm = SonyVal(props, 0x5013);
-            if (scm >= 0 && scm != 1)
+            long scm; ushort scmType;
+            if (SonyPropInfo(props, 0x5013, out scm, out scmType) && scm >= 0 && scm != 1)
             {
                 try
                 {
-                    uint sr = ptp.OpWrite(0x9205, new byte[] { 1, 0 }, 0x5013);
+                    uint sr = ptp.OpWrite(0x9205, SonyScalarBytes(1, scmType), 0x5013);
                     if (sr == Ptp.OK) Log("Still capture mode " + scm + " -> 1");
                 }
                 catch (GoneException) { throw; }
@@ -1571,51 +1586,89 @@ namespace Pb4uCam
             off += sz;
             return true;
         }
-        // Current value of one property in the 0x9209 blob (-1 when absent):
+        // Current value and scalar type of one property in the 0x9209 blob:
         // header is count(4) reserved(4); each entry is code(2) type(2) getset(1) enabled(1) default cur form ...
-        static long SonyVal(byte[] d, ushort code)
+        static bool SonyPropInfo(byte[] d, ushort code, out long val, out ushort dtype)
         {
-            if (d == null || d.Length < 8) return -1;
+            val = -1;
+            dtype = 0;
+            if (d == null || d.Length < 8) return false;
             uint count = U32(d, 0), reserved = U32(d, 4);
-            if (reserved != 0 || count > 8192) return -1;
+            if (reserved != 0 || count > 8192) return false;
             int off = 8;
             for (uint idx = 0; idx < count && off + 6 <= d.Length; idx++)
             {
                 ushort pcode = (ushort)(d[off] | (d[off + 1] << 8));
-                ushort dtype = (ushort)(d[off + 2] | (d[off + 3] << 8));
+                ushort pt = (ushort)(d[off + 2] | (d[off + 3] << 8));
                 byte getSet = d[off + 4], enabled = d[off + 5];
                 off += 6;
                 if (getSet > 0x84 || enabled > 2) break;
-                if (!SonySkipValue(d, ref off, dtype)) break;
+                if (!SonySkipValue(d, ref off, pt)) break;
                 long curVal; bool hasCur;
-                if (dtype >= 1 && dtype <= 8) hasCur = SonyReadInt(d, ref off, dtype, out curVal);
-                else { curVal = -1; hasCur = false; if (!SonySkipValue(d, ref off, dtype)) break; }
-                if (pcode == code) return hasCur ? curVal : -1;
+                if (pt >= 1 && pt <= 8) hasCur = SonyReadInt(d, ref off, pt, out curVal);
+                else { curVal = -1; hasCur = false; if (!SonySkipValue(d, ref off, pt)) break; }
+                if (pcode == code)
+                {
+                    if (!hasCur) return false;
+                    val = curVal;
+                    dtype = pt;
+                    return true;
+                }
                 if (off >= d.Length) break;
                 byte form = d[off++];
                 if (form == 1)
                 {
-                    if (!SonySkipValue(d, ref off, dtype) || !SonySkipValue(d, ref off, dtype) || !SonySkipValue(d, ref off, dtype)) break;
+                    if (!SonySkipValue(d, ref off, pt) || !SonySkipValue(d, ref off, pt) || !SonySkipValue(d, ref off, pt)) break;
                 }
                 else if (form == 2)
                 {
                     if (off + 2 > d.Length) break;
                     int n1 = d[off] | (d[off + 1] << 8); off += 2;
-                    for (int k = 0; k < n1; k++) if (!SonySkipValue(d, ref off, dtype)) return -1;
+                    for (int k = 0; k < n1; k++) if (!SonySkipValue(d, ref off, pt)) return false;
                     if (sonyVer >= 3 && off + 2 <= d.Length)
                     {
                         int n2 = d[off] | (d[off + 1] << 8); off += 2;
-                        for (int k = 0; k < n2; k++) if (!SonySkipValue(d, ref off, dtype)) return -1;
+                        for (int k = 0; k < n2; k++) if (!SonySkipValue(d, ref off, pt)) return false;
                     }
                 }
                 else if (form != 0) break;
             }
-            return -1;
+            return false;
+        }
+        static long SonyVal(byte[] d, ushort code)
+        {
+            long val; ushort dtype;
+            return SonyPropInfo(d, code, out val, out dtype) ? val : -1;
+        }
+        static byte[] SonyScalarBytes(uint val, ushort dtype)
+        {
+            int sz = SonyScalarSize(dtype);
+            if (sz <= 0 || sz > 8) sz = 2;
+            byte[] buf = new byte[sz];
+            for (int k = 0; k < sz && k < 4; k++) buf[k] = (byte)((val >> (8 * k)) & 0xFF);
+            return buf;
         }
         // Sony "buttons": 1 = released, 2 = pressed.
         static uint SonyButton(ushort prop, ushort value)
         {
             return ptp.OpWrite(0x9207, new byte[] { (byte)(value & 0xFF), (byte)(value >> 8) }, prop);
+        }
+        static void SonyReleaseButtons(bool throwGone)
+        {
+            try { SonyButton(0xD2C2, 1); SonyButton(0xD2C1, 1); }
+            catch (GoneException) { if (throwGone) throw; }
+            catch { }
+        }
+        static uint SonyConnectPhase(uint phase)
+        {
+            byte[] b; uint r = Ptp.OK;
+            for (int t = 0; t < 12; t++)
+            {
+                r = SonyGet(0x9201, out b, phase, 0, 0);
+                if (r != Ptp.BUSY) break;
+                Thread.Sleep(150);
+            }
+            return r;
         }
 
         static byte[] SonyJpeg(byte[] d)
@@ -1687,7 +1740,7 @@ namespace Pb4uCam
             string cd = "";
             // The first photo right after connecting has to wait for the camera to settle.
             while (sonyClock != null && sonyClock.ElapsedMilliseconds < 3000) { SonyProps(); Thread.Sleep(150); }
-            EnsureSonySaveDest(SonyProps());
+            if (!sonyDestBlocked) EnsureSonySaveDest(SonyProps());
             // A photo left in the camera's memory by an earlier attempt would be handed over instead of this one.
             for (int k = 0; k < 4; k++)
             {
@@ -1702,7 +1755,7 @@ namespace Pb4uCam
             if (r == Ptp.OK) r = SonyButton(0xD2C2, 2);
             if (r != Ptp.OK)
             {
-                try { SonyButton(0xD2C2, 1); SonyButton(0xD2C1, 1); } catch (GoneException) { throw; } catch { }
+                SonyReleaseButtons(true);
                 throw new CamException("CAPTURE The camera refused the shutter (" + H(r) + "). Check the mode dial isn't on video, the camera's menu is closed and it is in PC Remote mode.");
             }
             try
@@ -1722,7 +1775,7 @@ namespace Pb4uCam
             }
             finally
             {
-                try { SonyButton(0xD2C2, 1); SonyButton(0xD2C1, 1); } catch (GoneException) { throw; } catch { }
+                SonyReleaseButtons(true);
             }
             // Wait for the photo to appear in the camera's memory.
             long mem = -1;

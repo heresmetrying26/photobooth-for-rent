@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.68', date: '2026-11-18' },
   { version: '1.1.67', date: '2026-11-18' },
   { version: '1.1.66', date: '2026-11-18' },
   { version: '1.1.65', date: '2026-11-18' },
@@ -207,7 +208,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.2', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.2/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.3', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.3/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -260,6 +261,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-18', title: 'Desktop 1.1.68 (Win/Mac) + Android 1.1.80 + iPad 1.1.3: Hardened Sony A7 III USB & iPad HDMI stability', for: ['website', 'app'], app: '1.1.68',
+    items: [
+      '📷 Sony A7 III (ILCE-7M3) USB PC Remote hardening across Windows, Mac, Android & iPad: locks directly to Protocol v3 (0x12C), retries transient BUSY (0x2019) replies during 0x9201 handshake phases, and releases stuck shutter lines (0xD2C2/0xD2C1) on open and close.',
+      '⚙️ Width-safe property writes & settle handling: writes Single Shooting (0x5013 = 1) and Save Destination (0xD222) using each property’s declared scalar size from 0x9209, preserves non-empty snapshots during the 3 s settle wait, and suppresses repeat failed 0xD222 retries.',
+      '🍎 Idle USB keepalive on Mac: probes active sessions during status checks so Sony USB connections stay alive and disconnects are detected right away.',
+      '🎥 iPad HDMI / UVC capture card stability: skips AVCapturePhotoOutput on external capture cards to grab stills from live video frames without stalling and automatically resumes interrupted HDMI sessions while connected.'
+    ]
+  },
   {
     date: '2026-11-18', title: 'Desktop 1.1.67 (Win/Mac) + Android 1.1.79 + iPad 1.1.2: Hardened Sony A6400 & Alpha USB tethering', for: ['website', 'app'], app: '1.1.67',
     items: [

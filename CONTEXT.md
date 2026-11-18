@@ -1,12 +1,12 @@
 # Session Context
 
-**Current Task**: Released Desktop 1.1.65 & Android 1.1.77 with optional Photographer desk photo editing (applied to print + guest QR), separate countdown timers, native iOS camera bridge, and /features/ guide.
+**Current Task**: Released Desktop 1.1.68 (Win/Mac), Android 1.1.80 (`versionCode 182`), and iPad 1.1.3 (`13`) for Sony A7 III USB & iPad HDMI stability.
 
 **Key Decisions**:
-- Added optional per-photo editor (`✎ Edit photo`) in the Photographer desk queue (`brightness`, `contrast`, `warmth`, `saturation`, presets, Hold to compare) applied to print + QR outputs while leaving Roving inbox originals untouched.
-- Placed the `✎ Edited` badge at bottom-left (`bottom: 6px; left: 6px;`) so it never collides with selection, phone (`📱`), or `Printed` badges.
-- Bumped Desktop to `1.1.65` and Android to `1.1.77` (`versionCode 179`), pushed `main`, `desktop-v1.1.65`, and `android-v1.1.77`.
+- Hardened `ILCE-7M3` across Windows, Mac, Android, and iPad: direct Protocol v3 (`0x12C`), `0x9201` `BUSY` retries, shutter release on open/close, width-safe `0x5013`/`0xD222` writes, and `sonyDestBlocked`.
+- Hardened iPad `.external` UVC/HDMI capture in `NativeCameraBridge.swift`: skip `AVCapturePhotoOutput` and recover runtime/interruption events cleanly.
+- Pushed `main` plus tags `desktop-v1.1.68`, `android-v1.1.80`, and `ios-v1.1.3`.
 
 **Next Steps**:
-- Confirm GitHub Actions workflows for `desktop-v1.1.65` and `android-v1.1.77` finish green and attach installers/APK.
-- Confirm Netlify production deploy succeeds and `/api/updates` + `/features/` load live.
+- Confirm GitHub Actions builds finish green (`desktop-v1.1.68`, `android-v1.1.80`, `ios-v1.1.3`) and Netlify deploys `/api/updates`.
+- Test Sony A7 III on physical Windows, Mac, Android, and iPad hardware.

@@ -2,7 +2,8 @@ import {
   safe, json, licenses, meta, getSettings, sign, verifyToken, sha,
   newCode, displayCode, normCode, throttle, recordFail, clearFail, normPrint, extrasOf, normExtras, EXTRA_KEYS, DAY, MIN, BONUS_SUBFOLDER,
   LIFETIME_EXP, MAX_DEVICES, maxDevicesOf, devicesOf, setDevices, printsStore
-, putLicense, delLicense, readIndex, rebuildIndex, windowEnd } from '../lib/core.mjs';
+  , putLicense, delLicense, readIndex, rebuildIndex, windowEnd
+} from '../lib/core.mjs';
 import { timingSafeEqual, createHash, randomBytes } from 'node:crypto';
 import { setupsStore, setupKeyFor } from '../lib/core.mjs';
 import { ownerId, eventKeyOf, getAcct, acctPublic, acctKey, payStore, unseal, pm, listJSON, usedMap, batchView, createBatch, batchKey, KEY_RE } from '../lib/pay.mjs';
@@ -819,8 +820,10 @@ export default safe(async (req, context) => {
       const paid = (await listJSON('pp/' + oid + '/', 1000)).filter((x) => x.status === 'paid');
       const used = await usedMap(oid);
       const batches = (await listJSON('vb/' + oid + '/', 200)).sort((x, y) => y.at - x.at).map((bt) => batchView(bt, used));
-      return json({ ok: true, payOpt: !!rec.payOpt, lifetime: !!rec.lifetime, acct: acctPublic(await getAcct(oid)),
-        paid: { count: paid.length, total: paid.reduce((s, x) => s + x.amount, 0), live: paid.filter((x) => x.live).reduce((s, x) => s + x.amount, 0) }, batches });
+      return json({
+        ok: true, payOpt: !!rec.payOpt, lifetime: !!rec.lifetime, acct: acctPublic(await getAcct(oid)),
+        paid: { count: paid.length, total: paid.reduce((s, x) => s + x.amount, 0), live: paid.filter((x) => x.live).reduce((s, x) => s + x.amount, 0) }, batches
+      });
     }
 
     case 'payreset': { // forgotten payments PIN: removes the PIN AND disconnects PayMongo (the renter connects again)
@@ -828,7 +831,7 @@ export default safe(async (req, context) => {
       if (!rec) return json({ error: 'Code not found.' }, 404);
       const oid = ownerId(rec.kind === 'bonus' && rec.parent ? rec.parent : rec.key);
       const acct = await getAcct(oid);
-      if (acct && acct.enc && acct.whId) { try { await pm(unseal(acct.enc, oid), 'POST', '/webhooks/' + acct.whId + '/disable'); } catch (e) {} }
+      if (acct && acct.enc && acct.whId) { try { await pm(unseal(acct.enc, oid), 'POST', '/webhooks/' + acct.whId + '/disable'); } catch (e) { } }
       await payStore().delete(acctKey(oid));
       return json({ ok: true });
     }
@@ -978,7 +981,8 @@ export default safe(async (req, context) => {
       if (!prefix) return json({ error: 'Trial folder name cannot be empty.' }, 400);
       const trialPrint = normPrint(b.trialPrintEnabled, b.trialPrintSizes, { eventLimit: b.trialPrintEventLimit, sessionLimit: b.trialPrintSessionLimit });
       if (b.trialPrintEnabled && !trialPrint.enabled) return json({ error: 'Pick at least one trial paper size, or turn trial printing off.' }, 400);
-      const settings = { trialEnabled: !!b.trialEnabled, trialPassword: pw, trialMinutes: minutes, trialFolderPrefix: prefix,
+      const settings = {
+        trialEnabled: !!b.trialEnabled, trialPassword: pw, trialMinutes: minutes, trialFolderPrefix: prefix,
         trialPrintEnabled: trialPrint.enabled, trialPrintSizes: trialPrint.sizes.length ? trialPrint.sizes : ['4x6'],
         trialPrintEventLimit: trialPrint.eventLimit, trialPrintSessionLimit: trialPrint.sessionLimit,
         trialTraditional: !!b.trialTraditional,
@@ -986,7 +990,8 @@ export default safe(async (req, context) => {
         trialRetakeOpt: !!b.trialRetakeOpt,
         trialTypesOpt: !!b.trialTypesOpt,
         trialLockOpt: !!b.trialLockOpt,
-        trialWatermark: b.trialWatermark !== false };
+        trialWatermark: b.trialWatermark !== false
+      };
       const prev = await getSettings();
       settings.qrTarget = prev.qrTarget; settings.galleryQr = prev.galleryQr !== false;
       await meta().setJSON('settings', settings);

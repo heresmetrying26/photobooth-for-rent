@@ -1,0 +1,1150 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description"
+    content="Full feature guide for photobooth4u offline apps (Android tablet, Windows & Mac desktop), GIF animation styles, printed flipbooks, and XL prints up to 48 inches.">
+  <title>Offline Apps &amp; Detailed Features | photobooth4u</title>
+  <link rel="canonical" href="https://photobooth4u.netlify.app/features/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="photobooth4u">
+  <meta property="og:title" content="photobooth4u — Offline Apps, GIF Styles, Flipbook &amp; XL Print">
+  <meta property="og:description"
+    content="Everything inside the Android, Windows, and Mac offline photobooth apps: cameras, printers, GIF styles, printed flipbooks, and XL strips up to 48 inches.">
+  <meta property="og:url" content="https://photobooth4u.netlify.app/features/">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --ink: #1C1A1E;
+      --muted: #6B666C;
+      --red: #C93D27;
+      --red-dark: #A9301D;
+      --tint: #FBEDEA;
+      --paper: #F5F1EA;
+      --line: #E4DCCF;
+      --green: #1F6F62;
+      --green-tint: #E6F4F1;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    html {
+      scroll-behavior: smooth
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: 'Manrope', Arial, sans-serif;
+      background: var(--paper);
+      line-height: 1.55
+    }
+
+    a {
+      color: inherit
+    }
+
+    .wrap {
+      width: min(980px, calc(100% - 32px));
+      margin: 0 auto
+    }
+
+    /* top navigation (matches /about-us/) */
+    .topnav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 16px;
+      flex-wrap: wrap;
+      padding: 18px 0
+    }
+
+    .nbrand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      text-decoration: none;
+      color: var(--ink)
+    }
+
+    .nmark {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px;
+      width: 24px;
+      height: 24px;
+      flex: none
+    }
+
+    .nmark i {
+      background: var(--ink);
+      border-radius: 4px
+    }
+
+    .nmark i:nth-child(2) {
+      background: var(--red)
+    }
+
+    .nword {
+      display: flex;
+      align-items: flex-start
+    }
+
+    .nword b {
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: 23px;
+      letter-spacing: -.035em;
+      line-height: 1
+    }
+
+    .nword em {
+      font-style: normal;
+      margin-left: 3px;
+      padding: 2px 6px 4px;
+      border-radius: 7px;
+      background: var(--red);
+      color: #fff;
+      font-weight: 800;
+      font-size: 11px;
+      line-height: 1;
+      transform: rotate(-7deg)
+    }
+
+    .navlinks {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px
+    }
+
+    .navlinks a {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 9px 13px;
+      border-radius: 999px;
+      white-space: nowrap;
+      transition: background .2s, color .2s
+    }
+
+    .navlinks a:hover,
+    .navlinks a:focus-visible {
+      color: var(--ink);
+      background: #fff;
+      outline: none
+    }
+
+    .navlinks a[aria-current="page"] {
+      color: var(--ink);
+      background: #fff
+    }
+
+    .navlinks a.cta {
+      margin-left: 4px;
+      color: #fff;
+      background: var(--red)
+    }
+
+    .navlinks a.cta:hover,
+    .navlinks a.cta:focus-visible {
+      background: var(--red-dark);
+      color: #fff
+    }
+
+    /* hero */
+    .hero {
+      text-align: center;
+      padding: 28px 0 18px
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--red)
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(34px, 5.8vw, 56px);
+      line-height: 1.04;
+      letter-spacing: -.035em
+    }
+
+    h1 em {
+      font-style: italic;
+      font-weight: 500;
+      color: var(--red)
+    }
+
+    .hero p.lead {
+      margin: 0 auto;
+      max-width: 600px;
+      font-size: 16.5px;
+      color: var(--muted)
+    }
+
+    .jump {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin: 22px auto 0
+    }
+
+    .jump a {
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--line);
+      font-size: 13.5px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: border-color .15s, color .15s, transform .15s
+    }
+
+    .jump a:hover,
+    .jump a:focus-visible {
+      border-color: var(--red);
+      color: var(--red);
+      transform: translateY(-1px);
+      outline: none
+    }
+
+    section.block {
+      padding: 48px 0 0;
+      scroll-margin-top: 16px
+    }
+
+    .label {
+      margin: 0 0 8px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--red)
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(26px, 3.6vw, 34px);
+      letter-spacing: -.025em;
+      line-height: 1.12;
+      text-align: center
+    }
+
+    .sub {
+      margin: 0 auto 22px;
+      text-align: center;
+      color: var(--muted);
+      max-width: 620px;
+      font-size: 15px
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px
+    }
+
+    .card {
+      padding: 22px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--line);
+      display: flex;
+      flex-direction: column
+    }
+
+    .card.dark {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: #fff
+    }
+
+    .card.dark .muted {
+      color: #CFC8C0
+    }
+
+    .pill {
+      align-self: flex-start;
+      margin: 0 0 10px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--tint);
+      color: var(--red);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase
+    }
+
+    .pill.green {
+      background: var(--green-tint);
+      color: var(--green)
+    }
+
+    .pill.ink {
+      background: var(--ink);
+      color: #fff
+    }
+
+    .card.dark .pill {
+      background: var(--red);
+      color: #fff
+    }
+
+    .card h3 {
+      margin: 0 0 6px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: 20px;
+      letter-spacing: -.015em;
+      line-height: 1.2
+    }
+
+    .card p {
+      margin: 0 0 10px;
+      font-size: 14.5px;
+      color: var(--muted)
+    }
+
+    .card p:last-child {
+      margin-bottom: 0
+    }
+
+    .card.dark p {
+      color: #D7D0C8
+    }
+
+    .list {
+      margin: 4px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+      font-size: 14px
+    }
+
+    .list li {
+      position: relative;
+      padding-left: 20px;
+      line-height: 1.45
+    }
+
+    .list li::before {
+      content: "\2713";
+      position: absolute;
+      left: 0;
+      font-weight: 800;
+      color: var(--red)
+    }
+
+    .list li.note-li::before {
+      content: "\2022";
+      color: var(--muted)
+    }
+
+    .card.dark .list li::before {
+      color: #F2B8AC
+    }
+
+    .callout {
+      margin-top: 14px;
+      padding: 18px 20px;
+      border-radius: 16px;
+      background: #fff;
+      border: 1.5px dashed var(--line);
+      font-size: 14.5px;
+      color: var(--muted)
+    }
+
+    .callout b,
+    .callout a {
+      color: var(--ink)
+    }
+
+    .callout a {
+      font-weight: 800;
+      color: var(--red);
+      text-decoration: none
+    }
+
+    .callout a:hover {
+      text-decoration: underline
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: #fff;
+      margin-top: 14px
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      min-width: 620px
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 12px 15px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top
+    }
+
+    th {
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: #FAF7F2
+    }
+
+    tr:last-child td {
+      border-bottom: 0
+    }
+
+    code {
+      padding: 1px 6px;
+      border-radius: 6px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 13px;
+      color: var(--ink)
+    }
+
+    .banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 26px;
+      border-radius: 20px;
+      background: var(--ink);
+      color: #fff
+    }
+
+    .banner h2 {
+      text-align: left;
+      color: #fff;
+      margin: 0 0 6px
+    }
+
+    .banner p {
+      margin: 0;
+      color: #CFC8C0;
+      max-width: 540px;
+      font-size: 15px
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 18px;
+      border-radius: 999px;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 800;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1.5px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      transition: .2s
+    }
+
+    .btn:hover,
+    .btn:focus-visible {
+      border-color: var(--red);
+      color: var(--red);
+      outline: none
+    }
+
+    .btn.red {
+      background: var(--red);
+      border-color: var(--red);
+      color: #fff
+    }
+
+    .btn.red:hover,
+    .btn.red:focus-visible {
+      background: var(--red-dark);
+      border-color: var(--red-dark);
+      color: #fff
+    }
+
+    .banner .btn.ghost {
+      background: transparent;
+      border-color: #57525A;
+      color: #fff
+    }
+
+    .banner .btn.ghost:hover,
+    .banner .btn.ghost:focus-visible {
+      border-color: #fff;
+      color: #fff
+    }
+
+    footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin: 56px 0 0;
+      padding: 22px 0 40px;
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+      color: var(--muted)
+    }
+
+    footer nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px
+    }
+
+    footer nav a {
+      font-weight: 700;
+      color: var(--ink);
+      text-decoration: none
+    }
+
+    footer nav a:hover {
+      color: var(--red)
+    }
+
+    @media (max-width: 860px) {
+      .grid-3 {
+        grid-template-columns: 1fr 1fr
+      }
+    }
+
+    @media (max-width: 640px) {
+      .topnav {
+        justify-content: center;
+        padding: 16px 0 4px
+      }
+
+      .navlinks {
+        width: 100%;
+        justify-content: center;
+        gap: 2px
+      }
+
+      .navlinks a {
+        font-size: 13.5px;
+        padding: 8px 10px
+      }
+
+      .grid-2,
+      .grid-3 {
+        grid-template-columns: 1fr
+      }
+
+      .banner {
+        padding: 22px
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header class="topnav">
+      <a class="nbrand" href="/about-us/" aria-label="photobooth4u home"><span class="nmark"
+          aria-hidden="true"><i></i><i></i><i></i><i></i></span><span
+          class="nword"><b>photobooth</b><em>4u</em></span></a>
+      <nav class="navlinks" aria-label="Main">
+        <a href="/about-us/">About us</a>
+        <a href="/features/" aria-current="page">App &amp; features</a>
+        <a href="/about-us/#packages">Pricing</a>
+        <a href="/downloads/">Downloads</a>
+        <a href="/faq/">FAQ</a>
+        <a class="cta" href="/about-us/#avail">Book now</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <p class="eyebrow">Full feature breakdown</p>
+      <h1>Offline apps, <em>GIF styles</em>, flipbook, XL print &amp; more.</h1>
+      <p class="lead">Everything inside our Android tablet and Windows/Mac desktop offline apps—from 2-printer setups,
+        Canon SELPHY &amp; wide Bluetooth/USB thermal printers, to post-session stickers, green screen, 40-spot custom
+        frames, LumaShare Sharing Station, GIF styles, flipbooks, and XL prints up to 48 inches.</p>
+      <nav class="jump" aria-label="Jump to section">
+        <a href="#android">Android offline app</a>
+        <a href="#desktop">Windows &amp; Mac offline app</a>
+        <a href="#printers-2">2 Printers, Thermal &amp; SELPHY</a>
+        <a href="#designs-frames">Designs, Frames (40 spots) &amp; Stickers</a>
+        <a href="#greenscreen">Green screen</a>
+        <a href="#lumashare">LumaShare &amp; Sharing Station</a>
+        <a href="#gif-styles">GIF styles</a>
+        <a href="#flipbook">Flipbook</a>
+        <a href="#xl-print">XL print</a>
+        <a href="#lock-support">Lock mode &amp; Support</a>
+      </nav>
+    </section>
+
+    <!-- ANDROID OFFLINE APP -->
+    <section class="block" id="android" aria-labelledby="h-android">
+      <p class="label">Offline &middot; Android 7.0+ tablet</p>
+      <h2 id="h-android">Android Tablet Offline App</h2>
+      <p class="sub">Run a full booth on a Samsung Galaxy Tab, Lenovo, Xiaomi, or other Android tablet with zero venue
+        internet. Connect to Wi-Fi once to activate your code, then run events anywhere.</p>
+
+      <div class="grid-2">
+        <article class="card">
+          <span class="pill green">No internet &middot; Built-in hotspot</span>
+          <h3>Offline Photos, QR Codes &amp; Wi-Fi</h3>
+          <ul class="list">
+            <li><b>100% local storage:</b> Photos and GIFs save straight to <code>Pictures/photobooth4u/&lt;event&gt;/</code>
+              on the tablet—nothing uploads to the cloud.</li>
+            <li><b>Local QR share server:</b> Guests scan the QR code to open their single-photo Save page or the event
+              <i>All photos</i> gallery directly from the tablet over Wi-Fi.</li>
+            <li><b>Built-in tablet Wi-Fi (no router needed):</b> Turn on <i>Make this tablet the booth Wi-Fi</i> (Wi-Fi
+              Direct on Android 10+, local hotspot fallback on Android 8+) and show a <b>Join Wi-Fi</b> QR code before
+              the photo QR.</li>
+            <li><b>Same license &amp; slots:</b> Shares your Offline plan's device slots with Windows/Mac and updates
+              right inside <i>Setup &rsaquo; Share &rsaquo; App updates</i>.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill">Kiosk lock &amp; Cameras</span>
+          <h3>Event-Ready Hardware &amp; Lockdown</h3>
+          <ul class="list">
+            <li><b>Full kiosk lockdown:</b> Auto-boot on power-on, optional Default Home Launcher lock, screen
+              keep-awake, brightness control, immersive full-screen bars, and back-button exit protection.</li>
+            <li><b>Flexible orientation:</b> Lock to landscape or portrait, or let operators switch orientation inside
+              booth setup.</li>
+            <li><b>Cameras over USB OTG:</b> Supports built-in tablet cameras, external UVC USB webcams / HDMI capture
+              cards (auto-prioritized when plugged in), <b>Canon EOS, Nikon &amp; Sony Alpha</b> DSLRs over USB, and
+              <b>GoPro HERO9+</b> (Wi-Fi / USB).</li>
+            <li><b>Companion Android APKs:</b> Free <b>Roving DSLR Bridge</b> phone app (tether DSLR to laptop
+              Photographer Desk via QR) and <b>Rush ID Station</b> tablet app.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px;">
+        <span class="pill green">Direct Printing on Android</span>
+        <h3>Wi-Fi, USB OTG, Bluetooth Thermal &amp; Instax</h3>
+        <div class="grid-2" style="margin-top:6px;">
+          <ul class="list">
+            <li><b>Wi-Fi printers (no dialog):</b> Auto-discovers AirPrint / Mopria / IPP printers (Epson, Canon, HP,
+              Brother, Canon SELPHY) with quality, color, media, and borderless support on supported Epson models.</li>
+            <li><b>Bluetooth &amp; network receipt printers:</b> Direct 58 mm &amp; 80 mm Bluetooth (RFCOMM SPP) and
+              Wi-Fi/USB thermal printing with dithering, darkness test strips, and smoothness presets.</li>
+            <li><b>Fujifilm Instax Link (BLE):</b> Connects via Bluetooth Low Energy to Instax Link mini, SQUARE, and
+              WIDE printers with live film &amp; battery readout.</li>
+          </ul>
+          <ul class="list">
+            <li><b>Direct USB OTG (driverless):</b> Prints straight over a USB cable to <b>DNP DS-RX1 / RX1HS, DS620 /
+                DS620A, DS40</b> (3.5&times;5, 4&times;6, 5&times;7, 6&times;8, 6&times;9 &amp; 2&times;6 dual-cut
+              strips), <b>Canon SELPHY</b> (CP820–CP1500), <b>Epson L-series</b> (L8050, L3210, L3276, ESC/P-R / ESC/P2),
+              and IPP-over-USB printers.</li>
+            <li><b>System Print Dialog fallback:</b> Any other printer with an Android print service works via Android's
+              print dialog.</li>
+            <li class="note-li"><b>Needs the laptop app:</b> DNP DS80 / DS820 / QW410, HiTi, Citizen, Mitsubishi, and
+              Sinfonia USB printers require Windows or Mac drivers.</li>
+          </ul>
+        </div>
+      </article>
+    </section>
+
+    <!-- DESKTOP WINDOWS & MAC OFFLINE APP -->
+    <section class="block" id="desktop" aria-labelledby="h-desktop">
+      <p class="label">Offline &middot; Windows 10/11 (x64) &amp; macOS 11+ (Apple Silicon / Intel)</p>
+      <h2 id="h-desktop">Windows &amp; Mac Desktop Offline App</h2>
+      <p class="sub">The full studio booth packaged as a standalone desktop app. No separate Print Helper needed,
+        built-in silent printing, external guest display, and offline activation support.</p>
+
+      <div class="grid-3">
+        <article class="card">
+          <span class="pill ink">Zero Venue Internet</span>
+          <h3>Offline Share &amp; Activation</h3>
+          <ul class="list">
+            <li><b>Local event folders:</b> Automatically sorts files into <code>Prints</code>, <code>Solo Shots</code>,
+              <code>GIFs</code>, and <code>360 Videos</code> inside <code>Pictures/photobooth4u/</code>.</li>
+            <li><b>QR sharing over local Wi-Fi:</b> Guests scan QR codes to download photos, solo shots, and GIFs from
+              the laptop; operators can reprint any earlier photo from <i>All photos</i>.</li>
+            <li><b>Windows Mobile Hotspot:</b> 1-click laptop Wi-Fi hotspot (<code>192.168.137.1</code>) with loopback
+              setup so no router is needed.</li>
+            <li><b>Activate with zero internet:</b> Supports online activation plus offline Machine ID key entry
+              (<code>WIN-…</code> / <code>MAC-…</code>).</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill">Pro Cameras &amp; 2nd Screen</span>
+          <h3>DSLR, GoPro, Webcam &amp; Monitor</h3>
+          <ul class="list">
+            <li><b>Native USB DSLR / Mirrorless:</b> Drives Canon EOS, Nikon, and Sony Alpha (PC Remote) directly over
+              USB—no Zadig needed on Windows; auto-releases macOS Image Capture lock on Mac.</li>
+            <li><b>UVC Webcams &amp; HDMI:</b> Pro camera controls (brightness, contrast, saturation, focus, exposure),
+              photo clean-up, and low-light multi-frame stacking.</li>
+            <li><b>GoPro HERO9+:</b> Connects over USB-C or Wi-Fi via Open GoPro.</li>
+            <li><b>Guest second screen:</b> Fullscreen HDMI/TV display with welcome screen, live view, countdown,
+              optional guest Look picker, and PIN booth lock.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill">Printers &amp; Add-ons</span>
+          <h3>Silent Print, Desks &amp; 360</h3>
+          <ul class="list">
+            <li><b>All driver-based printers:</b> Built-in silent printing to DNP, HiTi, Citizen, Mitsubishi, Sinfonia,
+              Fujifilm ASK/Frontier, Canon SELPHY, Epson EcoTank, Brother, HP, thermal &amp; Instax.</li>
+            <li><b>Multi-printer routing:</b> Assign different printers per paper size, pool Printer 1/2/3+ round-robin,
+              or print a secondary size in parallel.</li>
+            <li><b>Included desks &amp; extras:</b> Roving Photographer Desk (phone QR + watched camera folder), Video
+              Guestbook, Print Requests, offline Vouchers, and Flipbook.</li>
+            <li><b>360 Video Desk (add-on):</b> Bundled <code>ffmpeg</code> editing (0.5x slow-mo, speed ramp,
+              boomerang, 1080p/720p, overlays, music &amp; phone QR send page).</li>
+          </ul>
+        </article>
+      </div>
+
+      <div class="callout">
+        <b>Requires internet (Online booth only):</b> Live GCash / Maya / ShopeePay payment QRs, 7-day cloud gallery,
+        Google Drive auto-backup, My Events web sync, and iPad Print Station relay. Offline apps support voucher codes
+        instead of live payment QRs.
+      </div>
+    </section>
+
+    <!-- 2 PRINTERS, THERMAL & CANON SELPHY -->
+    <section class="block" id="printers-2" aria-labelledby="h-printers2">
+      <p class="label">Printing &amp; hardware compatibility</p>
+      <h2 id="h-printers2">2 Printers Setup, Thermal &amp; Canon SELPHY</h2>
+      <p class="sub">Speed up busy event lines with two or more printers, print 1-second retro strips on Bluetooth or
+        USB thermal printers, or run wireless/wired Canon SELPHY prints with zero pop-up dialogs.</p>
+
+      <div class="grid-3">
+        <article class="card">
+          <span class="pill">Multi-printer setup</span>
+          <h3>Set Up 2 (or More) Printers</h3>
+          <ul class="list">
+            <li><b>+ Add Printer 2 / 3+:</b> Add a second or third printer right inside <i>Print settings</i> under
+              Printer 1.</li>
+            <li><b>Share the work (round-robin):</b> Rotates pages and copies across Printer 1 &rarr; Printer 2 &rarr;
+              Printer 3 with automatic failover if one printer stops.</li>
+            <li><b>Parallel Extra Size:</b> Or set Printer 2 to automatically print a second paper size (e.g., 4R on
+              Printer 1 + a thermal receipt strip or Instax on Printer 2) with zero print-limit penalty.</li>
+            <li><b>Per-printer tuning:</b> Each printer keeps its own quality, margins/edges, and lightness/color
+              correction—or copy Printer 1's settings in one tap.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill green">80 mm wide &amp; 58 mm</span>
+          <h3>Bluetooth &amp; USB Wired Thermal</h3>
+          <ul class="list">
+            <li><b>Wide 80 mm &amp; portable 58 mm:</b> Compatible with Vozy G80 (80 mm auto-cut), Vozy MP210 / 50,
+              Epson TM-T20III / T88 / m30, Xprinter (XP-80C, XP-N160II, XP-58), Munbyn, Rongta, Star, ArcticBreeze RP30,
+              Goojprt PT-210 &amp; pocket printers.</li>
+            <li><b>Direct Bluetooth &amp; USB wired:</b> Pairs via Classic Bluetooth (RFCOMM SPP) on Android or prints
+              over USB / Wi-Fi ESC/POS on Windows, Mac, and Android.</li>
+            <li><b>Clean retro dithering:</b> Floyd-Steinberg halftone dithering, <i>Best / Normal / Draft</i> quality,
+              5-level darkness test strips, and anti-banding smooth-print calibration.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill">Wireless &amp; USB OTG</span>
+          <h3>Canon SELPHY &amp; USB Printers</h3>
+          <ul class="list">
+            <li><b>Canon SELPHY (CP800–CP1500, QX10):</b> Prints directly over <b>Wi-Fi AirPrint / Mopria</b> (no
+              dialog) or <b>USB cable / USB OTG</b> on Android, Windows, and Mac.</li>
+            <li><b>SELPHY reliability built in:</b> Sends one photo per job (prevents CP1500 multi-copy stalls) and
+              automatically prioritizes borderless Postcard (<code>100&times;148 mm</code>) paper.</li>
+            <li><b>USB wired photo printers:</b> Direct USB OTG on Android for DNP (DS-RX1/RX1HS, DS620/DS620A, DS40),
+              Epson L8050/L3210/L3276, and IPP-over-USB—plus all Windows/Mac driver printers (DNP, HiTi, Citizen,
+              Mitsubishi, Sinfonia, Fujifilm, Epson, Brother, HP).</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- READY-MADE DESIGNS, 40-SPOT FRAMES & POST-SESSION STICKERS -->
+    <section class="block" id="designs-frames" aria-labelledby="h-designs">
+      <p class="label">Templates, Canva frames &amp; guest customization</p>
+      <h2 id="h-designs">Ready-Made Designs, 40-Spot Frames &amp; Post-Session Stickers</h2>
+      <p class="sub">Start with curated event designs, upload Canva frames with automatic photo-spot detection up to
+        40 boxes, and let guests add stickers, text, and framing after their session.</p>
+
+      <div class="grid-3">
+        <article class="card">
+          <span class="pill">Ready-made &amp; Multi-design</span>
+          <h3>Ready-Made Designs</h3>
+          <ul class="list">
+            <li><b>14 event categories:</b> Built-in themes and full artwork templates for Wedding, Birthday, Debut, Kids
+              Party, Baby Shower, Graduation, Christening, Christmas, New Year, Summer, Anniversary, Prom, Corporate, and
+              Receipt booths.</li>
+            <li><b>Guest design lineup:</b> Offer <i>Design 1, Design 2…</i> so guests choose their favorite look and
+              ticked layouts right before shooting.</li>
+            <li><b>Full styling:</b> Customize event title, date, fonts, backdrops, colors, logo placement, and live
+              preview—saved with your code.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill">Canva PNG &middot; Auto-detect</span>
+          <h3>Own Frames (Up to 40 Photo Spots)</h3>
+          <ul class="list">
+            <li><b>Auto-detects photo spots:</b> Upload up to 100 custom frames (PNG/JPG); the booth automatically detects
+              transparent cutouts, white boxes, faint-divided borderless grids, tilted/angled windows, or a picked
+              window color.</li>
+            <li><b>Beyond 20 spots (up to 40):</b> Add, copy, split (<code>2&times;1</code> or grid), reorder, rotate,
+              or layer <b>up to 40 photo spots</b> on a single frame—great for giant collages and multi-strip sheets.</li>
+            <li><b>Frame collage sheets:</b> Combine up to 10 frames onto a single printable sheet or 2.5&times;7.5 in
+              keychain layout.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill">After the last shot</span>
+          <h3>Post-Session Stickers, Text &amp; Crop</h3>
+          <ul class="list">
+            <li><b>Adjust Framing &amp; Design:</b> After the session, tap <b>&#9986;&#65039; Adjust Framing &amp;
+                Design</b> to customize the finished print before sending it to the printer &amp; QR.</li>
+            <li><b>Post-session stickers:</b> Tap stickers or your own uploaded PNG props to place, drag, pinch/resize,
+              rotate, or duplicate them right onto the photo.</li>
+            <li><b>Custom text &amp; photo framing:</b> Add captions or trend phrases in 5 font styles (Pill Badge,
+              Outline, Neon Glow), plus zoom (<code>1.0&times;–2.5&times;</code>) and pan individual photo boxes.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- GREEN SCREEN -->
+    <section class="block" id="greenscreen" aria-labelledby="h-green">
+      <p class="label">Setup &rsaquo; Extras &rsaquo; Green screen</p>
+      <h2 id="h-green">Green Screen (Cloth &amp; No-Cloth AI)</h2>
+      <p class="sub">Swap the background live in real time and in full-resolution saved/printed photos—whether you have a
+        green or blue cloth backdrop or just a plain wall.</p>
+
+      <div class="grid-2">
+        <article class="card">
+          <span class="pill green">Best edge quality</span>
+          <h3>Green Screen (Green or Blue Cloth)</h3>
+          <ul class="list">
+            <li><b>Pick your cloth color:</b> Choose <b>Green</b>, <b>Blue</b>, or use <b>Pick from camera</b> to sample
+              your exact backdrop shade directly from the live camera feed.</li>
+            <li><b>Clean edge &amp; spill removal:</b> Adjustable <b>Strength</b> slider (<code>15%–95%</code>) keeps
+              white shirts, dark hair, and flyaway edges solid without green halos or ghosting.</li>
+            <li><b>Live view + custom scenes:</b> Preview the swapped background live while guests pose, and choose from
+              built-in scenes or upload your own backdrop image.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill">No cloth needed</span>
+          <h3>No-Cloth AI Background Swap (Beta)</h3>
+          <ul class="list">
+            <li><b>Works on a plain wall:</b> Remove and replace the background without hanging a green cloth—ideal for
+              tight indoor venues and roving setups.</li>
+            <li><b>Same custom backdrops:</b> Drop in your branded event graphic, travel scene, or themed artwork behind
+              guests automatically.</li>
+            <li><b>Smooth performance:</b> Keeps the live view responsive while saving full-resolution final photos.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- LUMASHARE & SEPARATE SHARING STATION -->
+    <section class="block" id="lumashare" aria-labelledby="h-luma">
+      <p class="label">Setup &rsaquo; Session &rsaquo; QR &amp; after-session</p>
+      <h2 id="h-luma">LumaShare Pop-up &amp; Separate Sharing Station</h2>
+      <p class="sub">Keep the main camera moving with a LumaShare-style big photo reveal, or offload QR scanning to a
+        dedicated second screen so guests never hold up the booth line.</p>
+
+      <div class="grid-2">
+        <article class="card">
+          <span class="pill">On the booth screen</span>
+          <h3>LumaShare Pop-up Modes</h3>
+          <ul class="list">
+            <li><b>LumaShare Pop-up + QR:</b> Shows the big finished photo full-screen first (configurable
+              <code>0–8 s</code> delay), then opens a large, clean QR pop-up for instant phone saving.</li>
+            <li><b>LumaShare Pop-up &middot; No QR:</b> Displays the full-screen photo followed by a <i>Print &amp;
+                Done</i> pop-up for print-only events.</li>
+            <li><b>Print first option:</b> Optionally hold the QR pop-up until auto-print finishes so guests grab their
+              print and scan in one smooth flow.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill ink">Separate photo session screen</span>
+          <h3>Dedicated Sharing Station (<code>/station/</code>)</h3>
+          <ul class="list">
+            <li><b>1-scan QR pairing:</b> Tap <i>Pair Sharing Station (Scan QR)</i> to link any separate phone, tablet,
+              or laptop on a stand.</li>
+            <li><b>Zero queue bottleneck:</b> The main booth shows a quick hand-off prompt (or returns straight to Start)
+              so the next group can shoot immediately while the previous guests scan and save at the Sharing Station.</li>
+            <li><b>Session pills &amp; privacy:</b> One QR saves print, GIF, and solo photos together; choose <i>Only show
+                current session</i> for privacy or <i>Allow browsing event gallery</i>.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- GIF STYLES -->
+    <section class="block" id="gif-styles" aria-labelledby="h-gif">
+      <p class="label">Setup &rsaquo; Extras &rsaquo; Output mode</p>
+      <h2 id="h-gif">GIF Styles &amp; Live Motion</h2>
+      <p class="sub">Available on Online, Windows/Mac Desktop, and Android Offline apps. Choose <b>GIF only</b> or
+        <b>Photo + GIF (Both)</b> to give guests a still strip and an animated GIF on one QR code.</p>
+
+      <div class="grid-3">
+        <article class="card">
+          <span class="pill">1 &middot; Picture frame</span>
+          <h3>Where the GIF sits</h3>
+          <ul class="list">
+            <li><b>Chosen layout (default):</b> Places the animated frames inside your active event layout (4-cut strip,
+              2&times;2 grid, polaroid, etc.) with all custom branding and text.</li>
+            <li><b>Solo layout:</b> Places the motion inside a large 1-photo frame with your title and design, even when
+              printed photos use a strip.</li>
+            <li><b>Plain camera:</b> Full wide camera feed with no borders, event title, or overlays.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill">2 &middot; Animation style</span>
+          <h3>4 Motion Styles</h3>
+          <ul class="list">
+            <li><b>&#9889; Auto (Smart Match):</b> Automatically picks <i>Story Replay</i> for vertical/receipt strips
+              and <i>Multi-Box Boomerang</i> for grids and multi-cut sheets.</li>
+            <li><b>&#10024; Multi-Box Boomerang:</b> Captures motion during the countdown before each shot; every box
+              animates together in sync.</li>
+            <li><b>&#127916; Story Replay:</b> Plays one box at a time in order (Box 1 &rarr; 2 &rarr; 3 &rarr; 4), then
+              pauses on the finished strip.</li>
+            <li><b>&#127902; Full Session:</b> Continuous recording across the whole session, dynamically fast-forwarded
+              into a smooth 4–5 second recap.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill">3 &middot; Loop mode &amp; Looks</span>
+          <h3>Playback &amp; Filters</h3>
+          <ul class="list">
+            <li><b>&#128260; Boomerang (default):</b> Plays forward to the final pose, then smoothly reverses in a
+              seamless ping-pong bounce loop.</li>
+            <li><b>&#9654;&#65039; Forward only:</b> Plays straight through from start to finish and restarts, with
+              automatic fast-forward pacing so nothing feels cut short.</li>
+            <li><b>Vintage &amp; color looks:</b> Selected booth filters (Film, Faded, 70s, Instant, Noir, Soft skin)
+              apply to GIF frames too.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- FLIPBOOK -->
+    <section class="block" id="flipbook" aria-labelledby="h-flip">
+      <p class="label">Included extra &middot; Website, Desktop &amp; Android</p>
+      <h2 id="h-flip">Printed Flipbook Studio</h2>
+      <p class="sub">Guests record a short motion clip, preview it in an interactive on-screen flipbook player, get an
+        animated GIF QR code, and receive print-ready cards arranged for fast cutting and binding.</p>
+
+      <div class="grid-2">
+        <article class="card">
+          <span class="pill">Capture &amp; Covers</span>
+          <h3>Recording, Cover &amp; QR Back Card</h3>
+          <ul class="list">
+            <li><b>Clip length &amp; frame count:</b> Record <code>4 s</code>, <code>5 s</code>, <code>6 s</code>
+              (default), or <code>7 s</code>; choose <code>16</code>, <code>24</code> (default), <code>30</code>, or
+              <code>40</code> frames. The booth keeps the sharpest frames spaced by movement.</li>
+            <li><b>Motion prompts:</b> Optional on-screen motion cues while guests record.</li>
+            <li><b>3 Cover card styles:</b> <i>Logo + title</i>, <i>Clip photo</i> (hero frame with dark gradient band),
+              or <i>Your image</i> (custom uploaded cover).</li>
+            <li><b>Back card with digital QR:</b> Optional back card embedding a scannable QR code to the digital
+              flipbook/GIF plus a custom caption (e.g. <i>"Scan to view &amp; share your flipbook"</i>).</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill">Imposition &amp; Speed</span>
+          <h3>Sheet Layout, Binding &amp; Two-Printer Pooling</h3>
+          <ul class="list">
+            <li><b>Stack-cut or In-order collation:</b> <i>Stack-cut</i> arranges cards across sheets so cutting the
+              stacked pages drops every booklet into the exact page order automatically.</li>
+            <li><b>Grid presets:</b> <i>Auto</i> (~45&times;34 mm cards; 8 on 4&times;6, 32 on A4), <i>6 per sheet</i>,
+              or <i>8 per sheet</i>. Works on real sheet sizes (4&times;6, A4, Letter—not receipt rolls or narrow strips).</li>
+            <li><b>Binding gutter &amp; page numbers:</b> Optional 6 mm left binding margin with dashed fold guide,
+              staple placement dots, and rotated frame numbers.</li>
+            <li><b>Two-printer pooling:</b> Optionally assign a second printer to split sheets or copies in parallel and
+              cut guest wait time in half.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- XL PRINT -->
+    <section class="block" id="xl-print" aria-labelledby="h-xl">
+      <p class="label">Large &amp; custom formats &middot; Up to 48 inches (1220 mm)</p>
+      <h2 id="h-xl">XL Print Support</h2>
+      <p class="sub">Yes—photobooth4u supports XL strips and custom paper sizes up to <b>48 inches (1220 mm)</b>,
+        built for wide-format inkjet photo printers like the Epson L8050, L3210, and other large-sheet printers.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:26%">Capability</th>
+              <th style="width:44%">What it does</th>
+              <th style="width:30%">Platform support</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>XL Strip 4 layout (<code>stripxl</code>)</b></td>
+              <td>4 large stacked shots tuned to a <code>1:4</code> tall aspect ratio for XL strip prints.</td>
+              <td>Windows &amp; Mac, Android, Online</td>
+            </tr>
+            <tr>
+              <td><b>1-Tap XL presets &amp; Custom sizes</b></td>
+              <td>One-tap <b>+ 4&times;12 in</b>, <b>+ 8&times;24 in</b>, and <b>+ 8&times;32 in</b> presets, or enter any
+                custom width/height from <code>1–48 in</code> (<code>25–1220 mm</code>) up to 6 saved sizes.</td>
+              <td>Windows &amp; Mac, Android, Online</td>
+            </tr>
+            <tr>
+              <td><b>Fast 200 DPI JPEG XL mode</b></td>
+              <td>Switch between <code>300 DPI PNG (default)</code> and <code>200 DPI JPEG (faster XL)</code> on sheets
+                &ge; 300 mm for much faster spooling on 12–32+ in XL strips.</td>
+              <td>Windows &amp; Mac Desktop (and Print Helper)</td>
+            </tr>
+            <tr>
+              <td><b>Driver slot &amp; Media type</b></td>
+              <td>Bind an exact saved <i>User-Defined</i> driver paper slot per size, pick <i>Paper / media type</i>
+                (Glossy, Matte, Plain), and automatically request custom paper dimensions if unmatched.</td>
+              <td>Windows &amp; Mac Desktop (and Print Helper)</td>
+            </tr>
+            <tr>
+              <td><b>1 strip per sheet &amp; Auto-paper map</b></td>
+              <td>Toggle <i>1 strip per sheet</i> to disable 2-up pairing on wide sheets, and map <code>XL Strip 4</code>
+                to automatically switch to your XL paper size and printer queue.</td>
+              <td>Windows &amp; Mac Desktop, Android, Online</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <b>Printer note for XL Print:</b> Full driver-level XL printing (<code>200 DPI JPEG</code> fast mode, saved
+        <code>User-Defined</code> driver paper slots, and media type control) runs on the <b>Windows &amp; Mac Desktop
+          app</b> (or Online with Print Helper). On <b>Android</b>, you can add XL sizes and print via Wi-Fi IPP or the
+        Android Print Dialog if your printer accepts that banner/custom size; thermal receipt rolls also print tall
+        strips continuously; dye-sub printers (DNP / Canon SELPHY) remain limited by their physical media sizes (up to
+        6&times;9 on Android DNP, 8&times;12 on Desktop DNP/Citizen/Mitsubishi).
+      </div>
+    </section>
+
+    <!-- LOCK MODE & SUPPORT -->
+    <section class="block" id="lock-support" aria-labelledby="h-lock">
+      <p class="label">Event safety &amp; assistance</p>
+      <h2 id="h-lock">Lock Mode Button &amp; Responsive Customer Support</h2>
+      <p class="sub">Keep guests out of your booth settings during live parties, and get direct help whenever you need
+        it.</p>
+
+      <div class="grid-2">
+        <article class="card">
+          <span class="pill ink">PIN &amp; Kiosk protection</span>
+          <h3>One-Tap Lock Mode Button</h3>
+          <ul class="list">
+            <li><b>Instant booth lock:</b> Tap the <b>Lock</b> button in the booth dock (asks for confirmation so an
+              accidental tap never interrupts a session) to lock Setup, Camera, and Printer menus behind your <b>4-digit
+                PIN</b>.</li>
+            <li><b>Synced across devices:</b> Your PIN saves to your rental code and works on every device using that
+              code, with a discreet corner lock icon to unlock anytime.</li>
+            <li><b>Android tablet kiosk lock:</b> Keeps the screen awake, hides system navigation &amp; home bars, and
+              intercepts accidental back-button exits so guests stay inside the booth.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="pill green">Fast assistance</span>
+          <h3>Customer Support Ready to Help</h3>
+          <ul class="list">
+            <li><b>Direct Messenger support:</b> Need help pairing a camera, configuring a printer, or setting up before
+              an event? Message us directly and we assist as soon as possible.</li>
+            <li><b>Free trial before booking:</b> Test your exact laptop, tablet, camera, and printer with Trial Mode
+              first so everything is verified before event day.</li>
+            <li><b>Step-by-step guides &amp; tools:</b> Includes dedicated <a href="/printers/">printer guides</a>,
+              <a href="/camera-test/">camera test tools</a>, <a href="/how-to-extras/">booth extras guide</a>, and
+              regular app updates.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- CTA BANNER -->
+    <section class="block" aria-label="Downloads and booking">
+      <div class="banner">
+        <div>
+          <h2>Ready to set up your booth?</h2>
+          <p>Download the Windows, Mac, or Android offline installer, check supported printers, or message us on Messenger
+            for fast support and code activation.</p>
+        </div>
+        <div class="actions">
+          <a class="btn red" href="https://web.facebook.com/roktetnachi/" target="_blank"
+            rel="noopener noreferrer">Message support</a>
+          <a class="btn ghost" href="/downloads/">Get the apps</a>
+          <a class="btn ghost" href="/about-us/#packages">See pricing</a>
+          <a class="btn ghost" href="/printers/">Printer directory</a>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <span><b style="color:var(--ink)">photobooth4u.netlify.app</b> &middot; Cebu</span>
+      <nav aria-label="Footer">
+        <a href="/about-us/">About us</a>
+        <a href="/features/">App &amp; features</a>
+        <a href="/compare/">Platform compare</a>
+        <a href="/downloads/">Downloads</a>
+        <a href="/updates/">What’s new</a>
+        <a href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer">Messenger</a>
+      </nav>
+    </footer>
+  </div>
+</body>
+
+</html>

@@ -116,6 +116,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         userContent.add(self, name: "pbPrintRawTcp")
         userContent.add(self, name: "pbBt")
         userContent.add(self, name: "pbSave")
+        userContent.add(self, name: "pbCam")
 
         let bridgeJs = """
         (function(){
@@ -305,6 +306,43 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             };
           })();
 
+          // Native AVFoundation camera (zero-lag AVCaptureVideoPreviewLayer + AVCapturePhotoOutput behind WKWebView)
+          (function() {
+            var camPend = {}, camSeq = 0;
+            function callCam(op, args) {
+              return new Promise(function(resolve) {
+                var id = ++camSeq;
+                camPend[id] = resolve;
+                try {
+                  window.webkit.messageHandlers.pbCam.postMessage({ id: id, op: op, args: args || {} });
+                } catch (e) {
+                  delete camPend[id];
+                  resolve({ ok: false, error: 'Camera bridge unavailable' });
+                }
+              });
+            }
+            window.__pbCamResolve = function(id, obj) {
+              var f = camPend[id];
+              if (f) { delete camPend[id]; f(obj || { ok: false }); }
+            };
+            window.__PBCam = {
+              list: function() { return callCam('list'); },
+              open: function(deviceId, preset) { return callCam('open', { deviceId: String(deviceId || ''), preset: String(preset || 'auto') }); },
+              stop: function() { return callCam('stop'); },
+              capture: function() { return callCam('capture'); },
+              prepareAudio: function() { return callCam('prepareAudio'); },
+              releaseAudio: function() { return callCam('releaseAudio'); },
+              startVideo: function(opts) { return callCam('startVideo', opts || {}); },
+              stopVideo: function() { return callCam('stopVideo'); },
+              layout: function(opts) {
+                try { window.webkit.messageHandlers.pbCam.postMessage({ id: 0, op: 'layout', args: opts || {} }); } catch (e) {}
+              },
+              setFilter: function(filterKey, softSkin) {
+                try { window.webkit.messageHandlers.pbCam.postMessage({ id: 0, op: 'filter', args: { filter: String(filterKey || 'none'), softSkin: !!softSkin } }); } catch (e) {}
+              }
+            };
+          })();
+
           try {
             Object.defineProperty(Navigator.prototype, 'onLine', {
               get: function() { return window.__PBLocal ? window.__PBLocal.isOnline() : true; },
@@ -324,6 +362,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
         webView = WKWebView(frame: view.bounds, configuration: config)
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        webView.isOpaque = false
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
         webView.customUserAgent = (webView.value(forKey: "userAgent") as? String ?? "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)") + " PB4uIOS/\(AppLicence.shared.appVersion())"
         webView.navigationDelegate = self
         webView.uiDelegate = self
@@ -337,6 +378,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         webView.scrollView.alwaysBounceHorizontal = false
         webView.scrollView.delaysContentTouches = false
         webView.scrollView.contentInsetAdjustmentBehavior = .never
+        NativeCameraBridge.shared.hostContainerView = view
+        view.addSubview(NativeCameraBridge.shared.previewView)
         view.addSubview(webView)
 
         setupBackToBoothButton()
@@ -1216,6 +1259,75 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 op: (dict["op"] as? String) ?? "",
                 args: (dict["args"] as? [String: Any]) ?? [:]
             )
+        } else if message.name == "pbCam", let dict = message.body as? [String: Any] {
+            let id = (dict["id"] as? NSNumber)?.intValue ?? 0
+            let op = (dict["op"] as? String) ?? ""
+            let args = (dict["args"] as? [String: Any]) ?? [:]
+
+            let reply: ([String: Any]) -> Void = { [weak self] obj in
+                guard id != 0 else { return }
+                let json = (try? JSONSerialization.data(withJSONObject: obj, options: []))
+                    .flatMap { String(data: $0, encoding: .utf8) } ?? "{\"ok\":false}"
+                DispatchQueue.main.async {
+                    self?.webView?.evaluateJavaScript("window.__pbCamResolve && window.__pbCamResolve(\(id), \(json));", completionHandler: nil)
+                }
+            }
+
+            switch op {
+            case "list":
+                reply(["ok": true, "devices": NativeCameraBridge.shared.listDevices()])
+            case "open":
+                let devId = args["deviceId"] as? String
+                let preset = (args["preset"] as? String) ?? "auto"
+                NativeCameraBridge.shared.open(deviceId: devId, presetName: preset) { res in
+                    reply(res)
+                }
+            case "stop":
+                NativeCameraBridge.shared.stop {
+                    reply(["ok": true])
+                }
+            case "capture":
+                NativeCameraBridge.shared.capturePhoto { res in
+                    reply(res)
+                }
+            case "layout":
+                let visible = (args["visible"] as? Bool) ?? false
+                let x = CGFloat((args["x"] as? NSNumber)?.doubleValue ?? 0)
+                let y = CGFloat((args["y"] as? NSNumber)?.doubleValue ?? 0)
+                let w = CGFloat((args["w"] as? NSNumber)?.doubleValue ?? 0)
+                let h = CGFloat((args["h"] as? NSNumber)?.doubleValue ?? 0)
+                let mirror = (args["mirror"] as? Bool) ?? false
+                let radius = CGFloat((args["radius"] as? NSNumber)?.doubleValue ?? 0)
+                let bg = args["bg"] as? String
+                NativeCameraBridge.shared.updateLayout(visible: visible, x: x, y: y, w: w, h: h, mirror: mirror, radius: radius, bgHex: bg)
+            case "filter":
+                let f = (args["filter"] as? String) ?? "none"
+                let soft = (args["softSkin"] as? Bool) ?? false
+                NativeCameraBridge.shared.setFilter(filterKey: f, softSkin: soft)
+            case "prepareAudio":
+                NativeCameraBridge.shared.prepareAudio { res in
+                    reply(res)
+                }
+            case "releaseAudio":
+                NativeCameraBridge.shared.releaseAudio {
+                    reply(["ok": true])
+                }
+            case "startVideo":
+                let maxW = (args["maxWidth"] as? NSNumber)?.intValue ?? 1280
+                let br = (args["bitrate"] as? NSNumber)?.intValue ?? 2_200_000
+                let mir = (args["mirror"] as? Bool) ?? false
+                let f = (args["filter"] as? String) ?? "none"
+                let soft = (args["softSkin"] as? Bool) ?? false
+                NativeCameraBridge.shared.startVideoRecording(maxWidth: maxW, bitrate: br, mirror: mir, filter: f, softSkin: soft) { res in
+                    reply(res)
+                }
+            case "stopVideo":
+                NativeCameraBridge.shared.stopVideoRecording { res in
+                    reply(res)
+                }
+            default:
+                reply(["ok": false, "error": "Unknown camera command"])
+            }
         }
     }
 

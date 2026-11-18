@@ -1,13 +1,12 @@
 # Session Context
 
-**Current Task**: Released Desktop 1.1.64 & Android 1.1.76 with welcome card decorations, 1-click color palettes, and Charm Up styling.
+**Current Task**: Released Desktop 1.1.65 & Android 1.1.77 with optional Photographer desk photo editing (applied to print + guest QR), separate countdown timers, native iOS camera bridge, and /features/ guide.
 
 **Key Decisions**:
-- Decoupled welcome card from side photo strip for standalone aesthetic presentation with 6 decoration styles.
-- Added 7 curated 1-click color palettes and synced editing across Admin dashboard and Client Setup.
-- Customized Charm Up account with Luxe Corner Waves, blush & midnight navy palette, and PH-free branding.
+- Added optional per-photo editor (`✎ Edit photo`) in the Photographer desk queue (`brightness`, `contrast`, `warmth`, `saturation`, presets, Hold to compare) applied to print + QR outputs while leaving Roving inbox originals untouched.
+- Placed the `✎ Edited` badge at bottom-left (`bottom: 6px; left: 6px;`) so it never collides with selection, phone (`📱`), or `Printed` badges.
+- Bumped Desktop to `1.1.65` and Android to `1.1.77` (`versionCode 179`), pushed `main`, `desktop-v1.1.65`, and `android-v1.1.77`.
 
 **Next Steps**:
-- Tag release `desktop-v1.1.64` and `android-v1.1.76` if triggering native installer builds.
-- Verify Netlify web deployment finishes and live booth loads new decoration options.
-- Confirm Charm Up account loads standalone card with Luxe Corner Waves aesthetic.
+- Confirm GitHub Actions workflows for `desktop-v1.1.65` and `android-v1.1.77` finish green and attach installers/APK.
+- Confirm Netlify production deploy succeeds and `/api/updates` + `/features/` load live.

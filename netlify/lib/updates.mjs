@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.65', date: '2026-11-18' },
   { version: '1.1.64', date: '2026-11-17' },
   { version: '1.1.63', date: '2026-11-17' },
   { version: '1.1.62', date: '2026-11-17' },
@@ -176,7 +177,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-17', url: 'https://photobooth4u.netlify.app/downloads/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-18', url: 'https://photobooth4u.netlify.app/downloads/photobooth4u-kiosk-android.apk' };
 
 // The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
 // /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new
@@ -257,6 +258,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-18', title: 'Desktop 1.1.65 + Android 1.1.77: Optional Roving DSLR photo editing before QR & print', for: ['website', 'app'], app: '1.1.65',
+    items: [
+      '✎ Photographer desk photo editor: optionally adjust brightness, contrast, warmth, and colour saturation (or pick 1-click presets like Brighten, Warm, Cool, Vivid, Matte, and Black & white) with live preview and Hold to compare before printing.',
+      '📲 Edited QR delivery: when you apply an edit, both the print (framed or Print original) and the guest’s QR download use the edited photo while keeping the original file untouched in the Roving inbox.',
+      '⏱️ Separate 1st & succeeding photo countdowns: configure independent 2–60 s countdown timers for the first shot and follow-up shots with quick preset chips or exact values.',
+      '📷 Native iPad camera & feature guide: direct AVFoundation preview/capture bridge for smoother iOS sessions, plus a new Full app & feature guide at /features/.'
+    ]
+  },
   {
     date: '2026-11-17', title: 'Desktop 1.1.64 + Android 1.1.76: Branded welcome cards, aesthetics, and 1-click color palettes', for: ['website', 'app'], app: '1.1.64',
     items: [

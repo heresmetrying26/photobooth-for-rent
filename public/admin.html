@@ -980,6 +980,7 @@
       backdrop-filter: blur(8px);
       padding: 16px;
     }
+
     .card-modal-dialog {
       background: #18181b;
       border: 1px solid #27272a;
@@ -992,6 +993,7 @@
       overflow: hidden;
       box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
     }
+
     .card-modal-header {
       padding: 12px 18px;
       border-bottom: 1px solid #27272a;
@@ -1000,6 +1002,7 @@
       justify-content: space-between;
       background: #141416;
     }
+
     .card-modal-body {
       padding: 24px;
       display: flex;
@@ -1009,6 +1012,7 @@
       background: #09090b;
       min-height: 460px;
     }
+
     .card-preview-screen {
       position: relative;
       overflow: hidden;
@@ -1019,14 +1023,17 @@
       align-items: center;
       justify-content: center;
     }
+
     .card-preview-screen.landscape {
       width: 660px;
       height: 412px;
     }
+
     .card-preview-screen.portrait {
       width: 340px;
       height: 550px;
     }
+
     .card-modal-canvas {
       position: absolute;
       inset: 0;
@@ -1035,12 +1042,13 @@
       pointer-events: none;
       z-index: 1;
     }
+
     .card-modal-sample-strip {
       position: relative;
       z-index: 2;
       background: #ffffff;
       border-radius: 10px;
-      box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
       display: flex;
       flex-direction: column;
       padding: 8px;
@@ -1048,10 +1056,12 @@
       transition: all 0.2s ease;
       box-sizing: border-box;
     }
+
     .card-modal-sample-strip.strip-mode {
       width: 104px;
       height: 290px;
     }
+
     .card-modal-sample-strip.grid-mode {
       width: 154px;
       height: 210px;
@@ -1060,10 +1070,12 @@
       padding: 8px;
       gap: 6px;
     }
+
     .card-modal-sample-strip.solo-mode {
       width: 154px;
       height: 210px;
     }
+
     .card-modal-sample-strip .sample-cell {
       background: linear-gradient(135deg, #fce7f3 0%, #ede9fe 100%);
       border-radius: 6px;
@@ -1071,13 +1083,15 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: rgba(0,0,0,0.3);
+      color: rgba(0, 0, 0, 0.3);
       font-size: 11px;
       font-weight: 600;
     }
+
     .card-modal-sample-strip.grid-mode .sample-cell {
       height: 90px;
     }
+
     .card-modal-sample-strip .sample-brand {
       text-align: center;
       font-size: 8.5px;
@@ -1090,6 +1104,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
     .card-preview-box {
       position: relative;
       z-index: 2;
@@ -1100,6 +1115,7 @@
       box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
       transition: background 0.2s, color 0.2s;
     }
+
     .card-preview-badge {
       width: 66px;
       height: 66px;
@@ -1113,12 +1129,14 @@
       align-items: center;
       justify-content: center;
     }
+
     .card-preview-badge img {
       width: 100%;
       height: 100%;
       object-fit: contain;
       border-radius: 50%;
     }
+
     .card-preview-greeting {
       font-size: 10px;
       font-weight: 700;
@@ -1127,6 +1145,7 @@
       margin-bottom: 2px;
       text-transform: uppercase;
     }
+
     .card-preview-title {
       font-family: 'Dancing Script', cursive;
       font-size: 34px;
@@ -1134,6 +1153,7 @@
       line-height: 1.1;
       margin-bottom: 12px;
     }
+
     .card-preview-steps {
       text-align: left;
       margin: 0 auto 16px;
@@ -1144,11 +1164,13 @@
       gap: 7px;
       width: 88%;
     }
+
     .card-preview-steps .step-item {
       display: flex;
       align-items: center;
       gap: 8px;
     }
+
     .card-preview-steps .step-num {
       display: inline-flex;
       width: 18px;
@@ -1161,6 +1183,7 @@
       justify-content: center;
       flex-shrink: 0;
     }
+
     .card-preview-btn {
       display: inline-block;
       width: 82%;
@@ -1294,7 +1317,8 @@
           <div class="modebox">
             <label class="toggle"><input type="checkbox" id="newGif" checked> GIF mode (animated GIF &amp; Photo + GIF
               options)</label>
-            <div class="meta" style="margin:0 0 8px;">Enables animated GIF recording in the booth: guests can get a GIF or
+            <div class="meta" style="margin:0 0 8px;">Enables animated GIF recording in the booth: guests can get a GIF
+              or
               both photo strip + GIF with separate QR codes.</div>
             <label class="toggle"><input type="checkbox" id="newRush"> Rush ID &amp; Photo Print station (opens at
               /rush)</label>
@@ -1465,7 +1489,8 @@
           <div class="meta">Codes live only on Netlify. A backup holds every code, its devices, agreement and flags, its
             events list and the Offline App activations (not booth designs, guest-payment accounts or photos). It runs
             <b>every week</b> by itself into a private <b>photobooth4u-backups</b> folder in the photobooth Google Drive
-            (newest 12 kept), and you get an email at ALERT_EMAIL if it fails. Keep a copy somewhere else too.</div>
+            (newest 12 kept), and you get an email at ALERT_EMAIL if it fails. Keep a copy somewhere else too.
+          </div>
           <p style="margin:8px 0;font-weight:700;">Last backup: <span id="backupStatus">Checking…</span></p>
           <button class="small" id="backupDriveBtn">Back up to Drive now</button>
           <button class="small" id="backupDownloadBtn">Download a backup file</button>
@@ -1478,7 +1503,8 @@
           <div class="meta">What the Android app reports about printers when its "Send printer diagnostics" switch is on
             (it is on by default and the renter can turn it off). One row per printer model: its USB ID, how the app
             classified it, how many prints worked or failed, the newest error and the last results. No photos, guest
-            details or network addresses are sent. A printer shown as <b>no driver</b> or an unknown USB ID is one to add
+            details or network addresses are sent. A printer shown as <b>no driver</b> or an unknown USB ID is one to
+            add
             to the app.</div>
           <button class="small" id="printerDiagRefresh">Refresh</button>
           <div id="printerDiagList" style="margin-top:10px;overflow-x:auto;"></div>
@@ -1488,7 +1514,8 @@
           <summary>
             <h2>Camera reports (missed photos)</h2>
           </summary>
-          <div class="meta">What a booth reports when a USB camera (DSLR / mirrorless) doesn't take a guest's photo and its
+          <div class="meta">What a booth reports when a USB camera (DSLR / mirrorless) doesn't take a guest's photo and
+            its
             "Send camera diagnostics" switch is on (it is on by default and the renter can turn it off). One row per
             camera model: how many photos it missed, the newest error and the last reports with the camera log. A booth
             with no internet sends its reports later, so "Happened" can be earlier than "Received". No photos or guest
@@ -1673,12 +1700,17 @@
       <div class="card-modal-header">
         <div style="display:flex; align-items:center; gap:8px;">
           <h3 id="cardModalTitle" style="margin:0; font-size:15px; color:#fff;">Welcome Card Preview</h3>
-          <span style="background:rgba(2,132,199,.2); border:1px solid rgba(2,132,199,.4); color:#38bdf8; font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:999px;">Offline App Client · 0 Device Slots Used</span>
+          <span
+            style="background:rgba(2,132,199,.2); border:1px solid rgba(2,132,199,.4); color:#38bdf8; font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:999px;">Offline
+            App Client · 0 Device Slots Used</span>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
-          <button type="button" class="small" id="cardModalOrientBtn" style="cursor:pointer;">Switch to Portrait (9:16)</button>
-          <button type="button" class="small" id="cardModalFullBtn" style="background:#059669; color:#fff; cursor:pointer;">Full Booth Preview &nearr;</button>
-          <button type="button" id="cardModalClose" style="background:none; border:none; font-size:24px; cursor:pointer; line-height:1; color:#9ca3af; margin-left:6px;">&times;</button>
+          <button type="button" class="small" id="cardModalOrientBtn" style="cursor:pointer;">Switch to Portrait
+            (9:16)</button>
+          <button type="button" class="small" id="cardModalFullBtn"
+            style="background:#059669; color:#fff; cursor:pointer;">Full Booth Preview &nearr;</button>
+          <button type="button" id="cardModalClose"
+            style="background:none; border:none; font-size:24px; cursor:pointer; line-height:1; color:#9ca3af; margin-left:6px;">&times;</button>
         </div>
       </div>
       <div class="card-modal-body" id="cardModalViewport">
@@ -1694,7 +1726,8 @@
             <div class="card-preview-steps" id="cardModalSteps">
               <div class="step-item"><span class="step-num" id="cardModalNum1">1</span> Tap the screen</div>
               <div class="step-item"><span class="step-num" id="cardModalNum2">2</span> Strike a pose</div>
-              <div class="step-item"><span class="step-num" id="cardModalNum3">3</span> Scan the QR for your photos</div>
+              <div class="step-item"><span class="step-num" id="cardModalNum3">3</span> Scan the QR for your photos
+              </div>
             </div>
             <button type="button" id="cardModalStartBtn" class="card-preview-btn">Tap to start</button>
           </div>

@@ -51,6 +51,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     private var capturingNow = false
     private var cachedOpen = false
     private var cachedName = ""
+    private var lastBrowserKickAt: UInt64 = 0
 
     private func setCapturing(_ on: Bool) {
         stateLock.lock()
@@ -217,6 +218,48 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     }
 
     // MARK: - Lifecycle
+
+    private func kickBrowser(force: Bool = false) {
+        let now = nowMs()
+        stateLock.lock()
+        let elapsed = now >= lastBrowserKickAt ? (now - lastBrowserKickAt) : 10000
+        if !force && elapsed < 6000 {
+            stateLock.unlock()
+            return
+        }
+        lastBrowserKickAt = now
+        stateLock.unlock()
+
+        DispatchQueue.main.async {
+            self.browser.requestContentsAuthorization { _ in }
+            self.browser.requestControlAuthorization { _ in }
+            if force {
+                self.browser.stop()
+                self.browser.start()
+                self.log("Restarted USB camera browser scan")
+            } else if !self.browser.isBrowsing {
+                self.browser.start()
+            }
+        }
+    }
+
+    private func rescanCamerasIfEmpty(waitMs: Int = 1100) -> [ICCameraDevice] {
+        devicesLock.lock()
+        var cams = availableCameras
+        devicesLock.unlock()
+        guard cams.isEmpty else { return cams }
+
+        kickBrowser(force: true)
+        let deadline = nowMs() + UInt64(max(200, waitMs))
+        while nowMs() < deadline {
+            Thread.sleep(forTimeInterval: 0.1)
+            devicesLock.lock()
+            cams = availableCameras
+            devicesLock.unlock()
+            if !cams.isEmpty { break }
+        }
+        return cams
+    }
 
     func start() {
         guard !isRunning else { return }
@@ -668,6 +711,9 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         devicesLock.lock()
         let cams = availableCameras
         devicesLock.unlock()
+        if cams.isEmpty {
+            kickBrowser(force: false)
+        }
 
         var list: [[String: Any]] = []
         for cam in cams {
@@ -727,12 +773,15 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             }
         }
 
-        devicesLock.lock()
-        let cams = availableCameras
-        devicesLock.unlock()
+        var cams = rescanCamerasIfEmpty(waitMs: 1100)
+        if cams.isEmpty {
+            devicesLock.lock()
+            cams = availableCameras
+            devicesLock.unlock()
+        }
 
         guard !cams.isEmpty else {
-            throw CamErr("NOCAMERA", "No camera found. Plug your camera into the iPad using a USB-C data cable or USB-C hub, switch it on, and allow camera access if iPadOS asks.")
+            throw CamErr("NOCAMERA", "No camera found. Plug your camera into the iPad using a USB data cable and powered USB-C hub, switch it on (Wi-Fi OFF on Canon M50), and allow camera access if iPadOS asks.")
         }
 
         var lastErr: CamErr?
@@ -758,22 +807,47 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         activeCamera = cam
         cam.delegate = self
 
-        if !cam.hasOpenSession {
-            let sema = DispatchSemaphore(value: 0)
-            var openErr: Error?
-            cam.requestOpenSession(options: nil) { err in
-                openErr = err
-                sema.signal()
-            }
-            if sema.wait(timeout: .now() + 8.0) == .timedOut {
-                throw CamErr("ERROR", "The camera took too long to open. Unplug and replug the USB cable, then try again.")
-            }
-            if let err = openErr {
-                throw CamErr("ERROR", "Failed to open camera: \(err.localizedDescription)")
+        func ensureSessionOpen(retryOnFail: Bool) throws {
+            if !cam.hasOpenSession {
+                let sema = DispatchSemaphore(value: 0)
+                var openErr: Error?
+                cam.requestOpenSession(options: nil) { err in
+                    openErr = err
+                    sema.signal()
+                }
+                let timedOut = sema.wait(timeout: .now() + 8.0) == .timedOut
+                if timedOut || openErr != nil {
+                    if retryOnFail {
+                        log("Session open failed/timed out, closing stale session and retrying")
+                        let cs = DispatchSemaphore(value: 0)
+                        cam.requestCloseSession(options: nil) { _ in cs.signal() }
+                        _ = cs.wait(timeout: .now() + 2.0)
+                        Thread.sleep(forTimeInterval: 0.4)
+                        try ensureSessionOpen(retryOnFail: false)
+                        return
+                    }
+                    if timedOut {
+                        throw CamErr("ERROR", "The camera took too long to open. Unplug and replug the USB cable, then try again.")
+                    }
+                    if let err = openErr {
+                        throw CamErr("ERROR", "Failed to open camera: \(err.localizedDescription)")
+                    }
+                }
             }
         }
 
-        guard try readInfo() else {
+        try ensureSessionOpen(retryOnFail: true)
+
+        var gotInfo = (try? readInfo()) ?? false
+        if !gotInfo {
+            let cs = DispatchSemaphore(value: 0)
+            cam.requestCloseSession(options: nil) { _ in cs.signal() }
+            _ = cs.wait(timeout: .now() + 2.0)
+            Thread.sleep(forTimeInterval: 0.4)
+            try ensureSessionOpen(retryOnFail: false)
+            gotInfo = try readInfo()
+        }
+        guard gotInfo else {
             throw CamErr("UNSUPPORTED", "The camera did not return USB device info.")
         }
 
@@ -1412,12 +1486,21 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             Thread.sleep(forTimeInterval: 0.6)
         }
 
-        let r = try opRetry(0x9114, 1)
+        var r = try opRetry(0x9114, 1)
         log("SetRemoteMode: \(hex(r))")
-        let r2 = try opRetry(0x9115, 1)
+        var r2 = try opRetry(0x9115, 1)
         log("SetEventMode: \(hex(r2))")
         if r != PTP_OK && r2 != PTP_OK {
-            throw CamErr("UNSUPPORTED", "The \(camName) didn't accept remote control (\(hex(r))). Canon EOS cameras work; most PowerShot / compact cameras don't. Switch the camera off and on, and try again.")
+            // EOS M/R cameras sometimes refuse SetRemoteMode until a stale event/remote session is cleared
+            _ = try? op(0x9115, 0)
+            _ = try? op(0x9114, 0)
+            Thread.sleep(forTimeInterval: 0.45)
+            r = try opRetry(0x9114, 1)
+            r2 = try opRetry(0x9115, 1)
+            log("SetRemoteMode retry: \(hex(r)) / \(hex(r2))")
+        }
+        if r != PTP_OK && r2 != PTP_OK {
+            throw CamErr("UNSUPPORTED", "The \(camName) didn't accept remote control (\(hex(r))). Turn Wi-Fi/Bluetooth OFF on the camera, set mode dial to P, Tv, Av or M, and use a USB data cable.")
         }
 
         try canonPoll()
@@ -1454,7 +1537,11 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         if let mode = eosVals[0xD1B1], mode != 1 {
             _ = try setEos(0xD1B1, 1)
         }
-        let r = try setEos(0xD1B0, 2)
+        var r = try setEos(0xD1B0, 2)
+        if r == PTP_BUSY || r == PTP_NOTREADY {
+            Thread.sleep(forTimeInterval: 0.25)
+            r = try setEos(0xD1B0, 2)
+        }
         if r != PTP_OK && !started && (r == PTP_BUSY || r == PTP_NOTREADY) {
             live = false
             return
@@ -2109,6 +2196,34 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         // 2. Proxy + cache static assets (/bg/, /img/, /camera-test/build/) when online
         if method == "GET" && (path.hasPrefix("/bg/") || path.hasPrefix("/img/") || path.hasPrefix("/camera-test/build/")) {
             serveCachedRemote(clientSock: clientSock, path: path, query: query)
+            return
+        }
+
+        // 2b. Native AVFoundation camera captures & frames (http://localhost:17321/avcam/*)
+        if method == "GET" && path.hasPrefix("/avcam/shot/") {
+            let idStr = String(path.dropFirst("/avcam/shot/".count))
+            if let sid = Int(idStr), let data = NativeCameraBridge.shared.takeShotData(id: sid), !data.isEmpty {
+                sendResponse(clientSock, status: 200, type: "image/jpeg", body: data)
+            } else {
+                sendResponse(clientSock, status: 404, type: "text/plain", body: Data("Shot not found".utf8))
+            }
+            return
+        }
+        if method == "GET" && path == "/avcam/frame" {
+            if let data = NativeCameraBridge.shared.latestFrameJpeg(), !data.isEmpty {
+                sendResponse(clientSock, status: 200, type: "image/jpeg", body: data)
+            } else {
+                sendResponse(clientSock, status: 204, type: "image/jpeg", body: Data())
+            }
+            return
+        }
+        if method == "GET" && path.hasPrefix("/avcam/video/") {
+            let idStr = String(path.dropFirst("/avcam/video/".count))
+            if let vid = Int(idStr), let data = NativeCameraBridge.shared.takeVideoData(id: vid), !data.isEmpty {
+                sendResponse(clientSock, status: 200, type: "video/mp4", body: data)
+            } else {
+                sendResponse(clientSock, status: 404, type: "text/plain", body: Data("Video not found".utf8))
+            }
             return
         }
 

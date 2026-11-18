@@ -55006,7 +55006,12 @@
       window.addEventListener('focus', function () {
         syncAdminPresetIfChanged();
       });
-      setInterval(syncAdminPresetIfChanged, 25000);
+      // Android/iOS restore from bfcache (tab switched away and back): force a sync
+      // so admin event-name changes are picked up without a manual reload.
+      window.addEventListener('pageshow', function (e) {
+        if (e.persisted) syncAdminPresetIfChanged();
+      });
+      setInterval(syncAdminPresetIfChanged, 12000);
       // A frame Admin made for this renter: added once to Your frames (and used as the layout on a brand-new setup).
       // The renter can delete it; it is not added again because the setup remembers it (sfDone).
       async function applyStartFrame(sf, fresh) {

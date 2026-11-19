@@ -124,6 +124,87 @@ namespace Pb4uCam
 
     public class DevInfo { public string Id, Name, Maker; }
 
+    // A device Windows has plugged in on USB (from Device Manager's own list, see UsbScan).
+    public class UsbDev
+    {
+        public string Id = "", Name = "", Maker = "", Class = "", Service = "", VidPid = "";
+        public uint Status, Problem;   // Device Manager's state and its problem code (10 = didn't start, 28 = no driver ...)
+        public bool Ptp;               // a picture-transfer (PTP, USB class 6) connection: the kind of camera the booth controls
+    }
+
+    // What Windows has plugged in on USB. Windows' camera list (WPD) only holds cameras whose driver started, so when that
+    // list is empty this tells "nothing plugged in" apart from "a camera is plugged in but Windows' camera driver didn't start
+    // for it" (Device Manager then shows a generic "MTP USB Device" and Windows still plays the plug-in sound).
+    public static class UsbScan
+    {
+        [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode)]
+        static extern int CM_Get_Device_ID_List_SizeW(out uint len, string filter, uint flags);
+        [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode)]
+        static extern int CM_Get_Device_ID_ListW(string filter, char[] buffer, uint len, uint flags);
+        [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode)]
+        static extern int CM_Locate_DevNodeW(out uint devInst, string id, uint flags);
+        [DllImport("cfgmgr32.dll")]
+        static extern int CM_Get_DevNode_Status(out uint status, out uint problem, uint devInst, uint flags);
+        [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode)]
+        static extern int CM_Get_DevNode_Registry_PropertyW(uint devInst, uint prop, out uint type, byte[] buffer, ref uint len, uint flags);
+
+        const uint FILTER_ENUMERATOR = 0x1, FILTER_PRESENT = 0x100;
+        const uint DRP_DEVICEDESC = 0x1, DRP_COMPATIBLEIDS = 0x3, DRP_SERVICE = 0x5, DRP_CLASS = 0x8, DRP_FRIENDLYNAME = 0xD;
+        public const uint DN_STARTED = 0x8, DN_HAS_PROBLEM = 0x400;
+        // Camera makers' USB vendor IDs (as in the Mac's lib/usbscan.mjs; GoPro and Insta360 have their own paths).
+        // "0000" is a device Windows couldn't read at all ("Unknown USB Device (Device Descriptor Request Failed)").
+        public static readonly Dictionary<string, string> MAKERS = new Dictionary<string, string> {
+            { "04A9", "Canon" }, { "04B0", "Nikon" }, { "054C", "Sony" }, { "04CB", "Fujifilm" },
+            { "07B4", "Olympus" }, { "04DA", "Panasonic" }, { "0A17", "Pentax" }, { "0000", "" } };
+
+        static string Prop(uint dn, uint which)
+        {
+            try
+            {
+                uint type, len = 0;
+                CM_Get_DevNode_Registry_PropertyW(dn, which, out type, null, ref len, 0);
+                if (len == 0) return "";
+                var b = new byte[len];
+                if (CM_Get_DevNode_Registry_PropertyW(dn, which, out type, b, ref len, 0) != 0) return "";
+                return Encoding.Unicode.GetString(b, 0, (int)Math.Min(len, (uint)b.Length)).TrimEnd('\0').Replace('\0', '\n');
+            }
+            catch { return ""; }
+        }
+
+        // The USB devices plugged in now; makersOnly: only camera makers' ones (and unreadable ones).
+        public static List<UsbDev> Devices(bool makersOnly)
+        {
+            var list = new List<UsbDev>();
+            uint len, flags = FILTER_ENUMERATOR | FILTER_PRESENT;
+            int cr = CM_Get_Device_ID_List_SizeW(out len, "USB", flags);
+            if (cr != 0) { flags = FILTER_ENUMERATOR; cr = CM_Get_Device_ID_List_SizeW(out len, "USB", flags); }
+            if (cr != 0 || len < 2) return list;
+            var buf = new char[len];
+            if (CM_Get_Device_ID_ListW("USB", buf, len, flags) != 0) return list;
+            foreach (string id in new string(buf).Split(new char[] { '\0' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var m = Regex.Match(id, @"^USB\\VID_([0-9A-F]{4})&PID_([0-9A-F]{4})", RegexOptions.IgnoreCase);
+                if (!m.Success) continue;
+                string vid = m.Groups[1].Value.ToUpperInvariant(), maker;
+                if (!MAKERS.TryGetValue(vid, out maker)) { if (makersOnly) continue; maker = ""; }
+                uint dn;
+                if (CM_Locate_DevNodeW(out dn, id, 0) != 0) continue;   // not plugged in now
+                var d = new UsbDev();
+                d.Id = id; d.Maker = maker;
+                d.VidPid = ("vid_" + vid + "&pid_" + m.Groups[2].Value).ToLowerInvariant();
+                uint st, pr;
+                if (CM_Get_DevNode_Status(out st, out pr, dn, 0) == 0) { d.Status = st; d.Problem = (st & DN_HAS_PROBLEM) != 0 ? pr : 0; }
+                d.Name = Prop(dn, DRP_FRIENDLYNAME);
+                if (d.Name == "") d.Name = Prop(dn, DRP_DEVICEDESC);
+                d.Class = Prop(dn, DRP_CLASS);
+                d.Service = Prop(dn, DRP_SERVICE);
+                d.Ptp = Prop(dn, DRP_COMPATIBLEIDS).IndexOf("Class_06", StringComparison.OrdinalIgnoreCase) >= 0;
+                list.Add(d);
+            }
+            return list;
+        }
+    }
+
     // PTP / MTP commands sent through Windows' MTP driver ("MTP extension" commands).
     public class Ptp
     {
@@ -476,6 +557,7 @@ namespace Pb4uCam
         // Stand-ins for tests; the real thing talks to Windows' camera driver.
         public static Func<Ptp> NewPtp = delegate { return new Ptp(); };
         public static Func<List<DevInfo>> ListDevs = Ptp.ListDevices;
+        public static Func<List<UsbDev>> UsbDevs = delegate { return UsbScan.Devices(true); };
         static string diag = "";
         // Nikons in MTP mode (D3400, D5600...) call themselves a Microsoft/MTP device
         // and may not list their own commands, but they still answer them.
@@ -523,6 +605,50 @@ namespace Pb4uCam
             foreach (string w in CAMERA_WORDS) if (n.Contains(w) || id.Contains(w)) return true;
             // Nikon model names: D5600, D750, Z 6, Z50...
             return System.Text.RegularExpressions.Regex.IsMatch(n, @"\b(d\d{2,4}|z ?\d{1,2}|zf|zfc)\b");
+        }
+
+        // Windows' camera list gave the booth no camera it could open. Is a camera plugged in that Windows didn't set up as one?
+        // Says what Windows has instead of "plug the camera in" (it is plugged in: Windows even played its sound).
+        // listed: what Windows' camera list held (a camera in it has its own messages). null: nothing to add.
+        public static string UsbHint(List<DevInfo> listed)
+        {
+            List<UsbDev> usb;
+            try { usb = UsbDevs(); }
+            catch (Exception e) { Log("USB check failed: " + e.Message); return null; }
+            UsbDev cam = null, unreadable = null;
+            foreach (var u in usb)
+            {
+                bool started = (u.Status & UsbScan.DN_STARTED) != 0;
+                Log("USB check: " + (u.Maker == "" ? "" : u.Maker + " ") + "\"" + u.Name + "\" " + u.Id + " class=" + u.Class + " driver=" + u.Service
+                    + " ptp=" + (u.Ptp ? "yes" : "no") + " started=" + (started ? "yes" : "no") + (u.Problem != 0 ? " problem=" + u.Problem : ""));
+                if (u.Maker == "") { if (u.Problem != 0) unreadable = u; continue; }
+                if (!u.Ptp) continue;   // not a camera's picture-transfer connection (a Sony game pad, a card reader ...)
+                bool inList = false;
+                foreach (var d in listed) if ((d.Id ?? "").ToLowerInvariant().Contains(u.VidPid)) inList = true;
+                if (inList) continue;
+                if (cam == null || (cam.Problem == 0 && u.Problem != 0)) cam = u;
+            }
+            if (cam == null)
+            {
+                if (unreadable == null) return null;
+                return "NOCAMERA Windows heard a USB device but couldn't read it (\"" + unreadable.Name + "\"). If that's the camera: use another data USB cable or USB port, plug straight into the laptop (not a hub), and switch the camera on.";
+            }
+            string svc = (cam.Service ?? "").ToLowerInvariant();
+            if (svc == "winusb" || svc.StartsWith("libusb")) return null;   // switched with Zadig: the app's direct USB part takes that one
+            string mk = cam.Maker, nm = cam.Name == "" ? mk + " camera" : cam.Name;
+            if (cam.Problem == 0 && (cam.Status & UsbScan.DN_STARTED) == 0)
+                return "DRIVER Windows is still setting up the " + mk + " camera (\"" + nm + "\"). Wait a few seconds: the booth connects by itself. If it stays like this, switch the camera off and on and plug it in again.";
+            string why;
+            if (cam.Problem == 10) why = "its camera driver didn't start (code 10)";
+            else if (cam.Problem == 28) why = "Windows has no camera driver for it (code 28; on a Windows \"N\" edition, install Microsoft's Media Feature Pack)";
+            else if (cam.Problem == 22) return "DRIVER Windows sees the " + mk + " camera on USB (\"" + nm + "\"), but it is disabled in Device Manager (code 22). Right-click \"" + nm + "\" there and choose Enable device.";
+            else if (cam.Problem == 43) why = "Windows stopped it after it reported a problem (code 43)";
+            else if (cam.Problem != 0) why = "Windows reports a problem with it (code " + cam.Problem + ")";
+            else why = "Windows didn't add it to its list of cameras (" + (cam.Class == "" ? "no device type" : cam.Class) + ", driver " + (cam.Service == "" ? "none" : cam.Service) + ")";
+            string apps = mk == "Canon" ? "EOS Utility" : mk == "Nikon" ? "Nikon Transfer and NX Tether" : mk == "Sony" ? "Imaging Edge" : "other camera apps";
+            return "DRIVER Windows sees the " + mk + " camera on USB (\"" + nm + "\"), but " + why + ", so the booth can't reach it. "
+                + "On the camera, set " + (mk == "Canon" ? "Wi-Fi/NFC" : "Wi-Fi") + " to Disable, close " + apps + ", then switch the camera off and on and plug it in again. "
+                + "If it stays like this: in Device Manager right-click \"" + nm + "\", choose Uninstall device, then plug the camera in again.";
         }
 
         static string ListJson()
@@ -599,7 +725,7 @@ namespace Pb4uCam
             }
             var all = ListDevs();
             Log("Open: WPD returned " + all.Count + " device(s)" + (all.Count > 0 ? ": " + string.Join(", ", all.ConvertAll(d => "\"" + (d.Name ?? "") + "\"/\"" + (d.Maker ?? "") + "\"").ToArray()) : ""));
-            if (all.Count == 0) throw new CamException("NOCAMERA No camera found. Plug the camera into this laptop with a data USB cable and switch it on.");
+            if (all.Count == 0) throw new CamException(UsbHint(all) ?? "NOCAMERA No camera found. Plug the camera into this laptop with a data USB cable and switch it on.");
             // Cameras by name first, then anything else (some cameras show only a model number).
             var order = new List<DevInfo>();
             foreach (var d in all) if (LooksLikeCamera(d)) order.Add(d);
@@ -655,6 +781,8 @@ namespace Pb4uCam
             }
             if (canonErr != null) throw canonErr;
             if (sonyErr != null) throw sonyErr;
+            string usbHint = UsbHint(all);   // e.g. a phone was listed, the camera itself wasn't
+            if (usbHint != null) throw new CamException(usbHint);
             if (seen != "") throw new CamException("NOCAMERA Found " + seen + ", but no Nikon, Canon EOS or Sony Alpha camera with live view. Switch the camera on and check its cable.");
             throw new CamException("NOCAMERA No camera found. Plug the camera into this laptop with a data USB cable (not charge-only) and switch it on.");
         }

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.79', date: '2026-11-19' },
   { version: '1.1.78', date: '2026-11-19' },
   { version: '1.1.77', date: '2026-11-19' },
   { version: '1.1.76', date: '2026-11-19' },
@@ -274,6 +275,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-19', title: 'Desktop 1.1.79 (Win/Mac): the tablet guest screen now matches the booth screen: photo after every shot, QR pop-up, screen sizes and live resize preview', for: ['website', 'app'], app: '1.1.79',
+    items: [
+      '📸 Tablet as the guest screen (Laptop Guest + Camera Bridge): the photo the booth shows after each shot (Setup: show each photo after it is taken) now shows on the tablet too, with Retake and Next photo.',
+      '🔳 The QR pop-up (Setup → Step 7 “Show the QR code in a pop-up”) now works on the tablet: the finished photo on its own for a few seconds, then a card with a big QR code, Print and Done. With “no QR code” the card holds Print and Done only.',
+      '📐 The screen sizes you set (Display & monitor size, and “Resize on the guest screen”) now apply to the tablet: the countdown, the buttons and the photo strip follow your sizes and see-through levels, with a live preview on the tablet while you resize.',
+      '🛡️ The tablet screen is steadier: each part (photo, QR code, buttons) is drawn on its own, a slow update can no longer replace a newer one, and one guest’s photo is never shown in place of the next guest’s.',
+      '🔌 Setup → Guest screen → Tablet Bridge now says which link the tablet is using (Wi-Fi, laptop hotspot, USB tethering / Ethernet, or USB cable), and a numbered Ethernet adapter (how Windows names USB tethering) is listed first in the pairing QR. A cable is steadier than venue Wi-Fi.'
+    ]
+  },
   {
     date: '2026-11-19', title: 'Desktop 1.1.78 (Win/Mac) + Android 1.1.90 + iPad 1.1.7: offline-first cloud sync for Saved Profiles, My Themes, event setups and uploaded frames across all devices, plus smoother thermal receipt prints', for: ['website', 'app'], app: '1.1.78',
     items: [

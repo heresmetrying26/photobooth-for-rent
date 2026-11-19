@@ -815,15 +815,20 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             0x445A to "L3276"   // L3270-series PID; L3276 is the Wi-Fi variant
         )
 
-        fun match(d: UsbDevice): String? =
-            if (d.vendorId == VENDOR_ID) MODELS[d.productId] else null
+        fun match(d: UsbDevice): String? {
+            if (d.vendorId != VENDOR_ID) return null
+            MODELS[d.productId]?.let { return it }
+            // The L8050 product id above was not checked against a real printer: also know it by the name it gives once the
+            // tablet may read it ("L8050 Series"), so it is found whatever its id is.
+            val prod = try { d.productName ?: "" } catch (_: Exception) { "" }
+            return if (Regex("(?i)\\bL8050\\b").containsMatchIn(prod)) "L8050" else null
+        }
 
         /** True when this is one of the three hardcoded Epson photo/AIO printers. */
         fun isKnown(d: UsbDevice): Boolean = match(d) != null
 
         /** True for models that support borderless photo printing (L8050, L3210, L3276). */
-        fun isBorderless(d: UsbDevice): Boolean =
-            d.vendorId == VENDOR_ID && (d.productId == 0x0866 || d.productId == 0xE671 || d.productId == 0x445A)
+        fun isBorderless(d: UsbDevice): Boolean = isKnown(d)
     }
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -2007,17 +2012,23 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         val jpeg = jpegAt300Dpi(jpegIn)
         fetchAttrs(e)
         // Only ask for settings this printer says it supports (quality, colour mode, paper type).
+        // Exception, hardcoded: an Epson L8050 on USB does not list its print qualities or paper types, so nothing was ever
+        // sent and every job came out on the printer's own default (plain paper, standard quality). For it the picked values
+        // are sent anyway; if the printer refuses them, the attempts below drop them one at a time.
+        val hardEpsonL = e.usbDev?.let { EpsonLModels.isKnown(it) } == true
         val q = when (opts.quality) { "draft" -> 3; "normal" -> 4; "high" -> 5; else -> 0 }
-        val qv = if (q != 0 && q in e.qualities) q else 0
+        val qv = if (q != 0 && (q in e.qualities || hardEpsonL)) q else 0
         val cm = when {
             opts.color == "mono" && "monochrome" in e.colorModes -> "monochrome"
             opts.color == "color" && "color" in e.colorModes -> "color"
             else -> ""
         }
         val mt = when (opts.media) {
-            "plain" -> e.mediaTypes.firstOrNull { it == "stationery" } ?: e.mediaTypes.firstOrNull { it.startsWith("stationery") } ?: ""
+            "plain" -> e.mediaTypes.firstOrNull { it == "stationery" } ?: e.mediaTypes.firstOrNull { it.startsWith("stationery") } ?: (if (hardEpsonL) "stationery" else "")
             "inkjet" -> e.mediaTypes.firstOrNull { it == "stationery-inkjet" } ?: e.mediaTypes.firstOrNull { it.contains("inkjet", true) } ?: ""
-            "photo" -> e.mediaTypes.firstOrNull { it == "photographic-glossy" } ?: e.mediaTypes.firstOrNull { it.startsWith("photographic") } ?: ""
+            "photo" -> e.mediaTypes.firstOrNull { it == "photographic-glossy" } ?: e.mediaTypes.firstOrNull { it.startsWith("photographic") } ?: (if (hardEpsonL) "photographic-glossy" else "")
+            "photosg" -> e.mediaTypes.firstOrNull { it == "photographic-semi-gloss" } ?: (if (hardEpsonL) "photographic-semi-gloss" else "")
+            "matte" -> e.mediaTypes.firstOrNull { it == "photographic-matte" } ?: (if (hardEpsonL) "photographic-matte" else "")
             "bp71" -> e.mediaTypes.firstOrNull { it.equals("com.brother-bp71", true) } ?: e.mediaTypes.firstOrNull { it.contains("bp71", true) } ?: ""
             else -> if (opts.media.isNotEmpty()) (e.mediaTypes.firstOrNull { it.equals(opts.media, true) } ?: "") else ""
         }

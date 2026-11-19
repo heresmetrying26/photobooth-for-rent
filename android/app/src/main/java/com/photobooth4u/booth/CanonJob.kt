@@ -303,20 +303,71 @@ object CanonJob {
     private const val W600 = 2240                       // printable width and height of a 4x6 sheet in 1/600 inch
     private const val H600 = 3412
 
-    /** One source byte (8 pixels, MSB first) as 16 bits: every set pixel becomes the 2-bit value 01. */
-    private val EXPAND2 = IntArray(256) { v ->
-        var o = 0
-        for (k in 0 until 8) if (((v shr (7 - k)) and 1) == 1) o = o or (1 shl (14 - 2 * k))
-        o
-    }
-
-    private fun expand2(row: ByteArray, off: Int, n: Int): ByteArray {
-        val o = ByteArray(n * 2)
-        for (i in 0 until n) {
-            val e = EXPAND2[row[off + i].toInt() and 0xFF]
-            o[2 * i] = (e shr 8).toByte(); o[2 * i + 1] = e.toByte()
+    /**
+     * Turns a picture into ink planes the way Canon's driver does at this quality: each pixel's colour gives an ink amount per
+     * ink (trilinear in the 9 x 9 x 9 table, in "average pixel value"), and an error-diffusion dither places pixel values 0..maxLv
+     * so that their average is that amount (below 1: small dots at that rate; 1 to 2: a mix of small and bigger dots; ...).
+     * table: node = r * 81 + g * 9 + b, then one float per ink. bits: bits per pixel of each plane (1 or 2), packed MSB first.
+     */
+    private fun lutPlanes(bmp: Bitmap, w: Int, h: Int, table: FloatArray, bits: IntArray, maxLv: IntArray): Array<ByteArray> {
+        val n = bits.size
+        val rb = IntArray(n) { (w * bits[it] + 7) / 8 }
+        val planes = Array(n) { ByteArray(rb[it] * h) }
+        val idx = IntArray(256)
+        val frac = FloatArray(256)
+        for (v in 0..255) { val f = v / 32f; val i = minOf(7, f.toInt()); idx[v] = i; frac[v] = f - i }
+        val px = IntArray(w)
+        var cur = Array(n) { FloatArray(w + 2) }
+        var nxt = Array(n) { FloatArray(w + 2) }
+        val a = FloatArray(n)
+        for (y in 0 until h) {
+            bmp.getPixels(px, 0, w, 0, y, w, 1)
+            for (c in 0 until n) java.util.Arrays.fill(nxt[c], 0f)
+            for (x in 0 until w) {
+                val p = px[x]
+                val r = (p shr 16) and 0xFF
+                val g = (p shr 8) and 0xFF
+                val b = p and 0xFF
+                val rf = frac[r]; val gf = frac[g]; val bf = frac[b]
+                val o0 = (idx[r] * 81 + idx[g] * 9 + idx[b]) * n
+                val o1 = o0 + n                     // blue + 1
+                val o2 = o0 + 9 * n                 // green + 1
+                val o3 = o2 + n
+                val o4 = o0 + 81 * n                // red + 1
+                val o5 = o4 + n
+                val o6 = o4 + 9 * n
+                val o7 = o6 + n
+                val w0 = (1 - rf) * (1 - gf) * (1 - bf); val w1 = (1 - rf) * (1 - gf) * bf
+                val w2 = (1 - rf) * gf * (1 - bf); val w3 = (1 - rf) * gf * bf
+                val w4 = rf * (1 - gf) * (1 - bf); val w5 = rf * (1 - gf) * bf
+                val w6 = rf * gf * (1 - bf); val w7 = rf * gf * bf
+                for (c in 0 until n) {
+                    a[c] = w0 * table[o0 + c] + w1 * table[o1 + c] + w2 * table[o2 + c] + w3 * table[o3 + c] +
+                        w4 * table[o4 + c] + w5 * table[o5 + c] + w6 * table[o6 + c] + w7 * table[o7 + c]
+                }
+                for (c in 0 until n) {
+                    val v = a[c] + cur[c][x + 1]
+                    var q = Math.round(v)
+                    if (q < 0) q = 0 else if (q > maxLv[c]) q = maxLv[c]
+                    val err = v - q
+                    if (q > 0) {
+                        if (bits[c] == 2) {
+                            val bi = y * rb[c] + ((x * 2) ushr 3)
+                            planes[c][bi] = (planes[c][bi].toInt() or (q shl (6 - ((x * 2) and 7)))).toByte()
+                        } else {
+                            val bi = y * rb[c] + (x shr 3)
+                            planes[c][bi] = (planes[c][bi].toInt() or (0x80 shr (x and 7))).toByte()
+                        }
+                    }
+                    cur[c][x + 2] += err * 7f / 16f
+                    nxt[c][x] += err * 3f / 16f
+                    nxt[c][x + 1] += err * 5f / 16f
+                    nxt[c][x + 2] += err * 1f / 16f
+                }
+            }
+            val t = cur; cur = nxt; nxt = t
         }
-        return o
+        return planes
     }
 
     private fun build600(src: Bitmap, widthMm: Double, heightMm: Double, media: Int, adj: PrintColorAdj): ByteArray {
@@ -334,21 +385,12 @@ object CanonJob {
             canvas.drawBitmap(rotatedSrc, scale, paint)
         }
         if (rotatedSrc !== src) { try { rotatedSrc.recycle() } catch (_: Exception) {} }
-        val rowBytes = (W600 + 7) / 8
-        val k = EscP2Job.cmykPlanes(bmp, W600, H600, rowBytes, if (photo) 1.3 else 1.6)       // K, C, M, Y
+        // Ink amounts per colour from Canon's own driver (CanonLut), then a multi-level dither. Planes in band order:
+        // photo paper C, M, Y (2 bits, values 0..3); plain paper C, M (2 bits, 0..2), Y, K (1 bit).
+        val bits = if (photo) intArrayOf(2, 2, 2) else intArrayOf(2, 2, 1, 1)
+        val maxLv = if (photo) intArrayOf(3, 3, 3) else intArrayOf(2, 2, 1, 1)
+        val planes = lutPlanes(bmp, W600, H600, CanonLut.table(media), bits, maxLv)
         try { bmp.recycle() } catch (_: Exception) {}
-        val planes: Array<ByteArray>
-        if (photo) {
-            // photo paper has no black ink in the job: black parts go out as cyan + magenta + yellow
-            for (i in k[0].indices) {
-                val b = k[0][i].toInt()
-                if (b != 0) { for (pl in 1..3) k[pl][i] = (k[pl][i].toInt() or b).toByte() }
-            }
-            planes = arrayOf(k[1], k[2], k[3])                                               // C, M, Y
-        } else {
-            planes = arrayOf(k[1], k[2], k[3], k[0])                                         // C, M, Y, K
-        }
-        val twoBit = if (photo) booleanArrayOf(true, true, true) else booleanArrayOf(true, true, false, false)
 
         // paper codes in the page-setup commands, as sent by the driver for these papers (plain; Photo Paper Plus Glossy II; Matte Photo)
         val mediaC = when (media) { 1 -> 0x1D; 2 -> 0x0A; else -> 0x00 }
@@ -402,6 +444,7 @@ object CanonJob {
             for (ch in planes.indices) {
                 band.reset()
                 var any = false
+                val rowBytes = (W600 * bits[ch] + 7) / 8
                 for (r in 0 until LINES) {
                     val y = b * LINES + r
                     if (y < H600) {
@@ -410,8 +453,7 @@ object CanonJob {
                         while (end > 0 && pl[y * rowBytes + end - 1].toInt() == 0) end--
                         if (end > 0) {
                             any = true
-                            val raw = if (twoBit[ch]) expand2(pl, y * rowBytes, end) else pl.copyOfRange(y * rowBytes, y * rowBytes + end)
-                            band.write(EscprJob.packBits(raw, 1))
+                            band.write(EscprJob.packBits(pl.copyOfRange(y * rowBytes, y * rowBytes + end), 1))
                         }
                     }
                     band.write(0x80)                                                  // end of row

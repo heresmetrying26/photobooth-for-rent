@@ -272,6 +272,12 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-19', title: 'Android 1.1.88: Canon G1010 colours match Canon’s own driver in High (600 dpi)', for: ['website'],
+    items: [
+      'Canon PIXMA G1010 in High quality (600 dpi, 4x6): colours no longer come out faded. The ink for every colour is now taken from what Canon’s own Windows driver puts down (measured on matte photo paper, glossy photo paper and plain paper), including its bigger dots for deep colours, so reds, blues and dark backgrounds print with the same depth as from a PC. Normal and Draft are unchanged.'
+    ]
+  },
+  {
     date: '2026-11-19', title: 'Android 1.1.87: Canon G1010 prints sharper in High quality (600 dpi) and on photo paper', for: ['website'],
     items: [
       'Canon PIXMA G1010 (and G-series printers over USB): the High (600 dpi) quality is back and now works. It sends the same page data that Canon’s own Windows driver sends at its Standard 600 dpi setting, checked command by command with the driver, for 4x6 prints on plain paper. Photo paper (glossy) and matte photo paper are sent the way Canon’s driver sends them too: cyan, magenta and yellow ink only, 600 dpi. Other paper sizes stay at 300 dpi. Normal and Draft are unchanged. Please test a print on your own printer and tell us how it looks.'

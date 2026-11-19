@@ -190,7 +190,7 @@ export const HELPER = { version: '1.1.13', date: '2026-11-19' };
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
 // after about 60 s, so on a slower connection the 18 MB file never finished ("unexpected end of stream").
 // GitHub has no such limit. (The copy in public/downloads is still kept for the /downloads page.)
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-18', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-19', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
 // The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
 // /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new
@@ -271,6 +271,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-19', title: 'Android 1.1.86: Canon PIXMA G1010 prints reliably over USB; Brother USB printers recognised', for: ['website'],
+    items: [
+      'Canon PIXMA G-series over USB (G1010 / G2010 and similar): prints at 300 dpi, the mode a G1010 was tried and printed on. The “Best (600 dpi, beta)” quality is removed for Canon printers because a G1010 did not print at all with it; use Normal or Draft. Newer G-series (G3010 family) ask the printer which page language it takes, and there is a new “Canon print language” choice in the printer options (Automatic is right for almost everyone).',
+      'Brother ink-tank printers (DCP-T series) are recognised over USB, and the printer options list more paper types (inkjet paper, Brother BP71 photo). A printer that needs its own driver now says so on screen, with its USB ID, so it can be set up or reported.'
+    ]
+  },
   {
     date: '2026-11-19', title: 'Desktop 1.1.75 (Win/Mac): higher-resolution prints (3–6.5 MB), camera-original DSLR solo shots & lossless PNG masters', for: ['website', 'app'], app: '1.1.75',
     items: [

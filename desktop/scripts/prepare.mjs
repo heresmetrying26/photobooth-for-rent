@@ -96,6 +96,7 @@ copyServer('functions/app.mjs', 'functions/app.mjs', [
   ['let html = booth;', "let html = globalThis.__pb4uBooth || '';"]
 ]);
 copyServer('lib/profiles-merge.mjs', 'lib/profiles-merge.mjs', []);
+copyServer('lib/license.mjs', 'lib/license.mjs', []);
 for (const f of ['verify', 'setup', 'pay', 'prints']) copyServer('functions/' + f + '.mjs', 'functions/' + f + '.mjs', []);
 // A server file importing a lib that wasn't copied above stops the app from opening (desktop v1.0.90-1.0.91), so check every import.
 for (const sub of ['lib', 'functions']) {

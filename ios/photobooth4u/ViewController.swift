@@ -465,10 +465,14 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         let folderKey = (feat["folderKey"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let folderPrefix = (feat["folderPrefix"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
 
+        let licStr = AppLicence.shared.currentLicenceString() ?? ""
+        let midStr = AppLicence.shared.machineId()
+
         return """
         <script>
         window.__PB=window.__PB||{};
         window.__PB.desktop={v:\(jsonStr(AppLicence.shared.appVersion())),os:'ios'};
+        window.__PB.appAuth={licence:\(jsonStr(licStr)),mid:\(jsonStr(midStr))};
         window.__PB.ios=true;
         window.__PB.offline=true;
         window.__PB.type='rental';

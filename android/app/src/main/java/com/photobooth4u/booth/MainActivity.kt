@@ -97,7 +97,9 @@ class MainActivity : AppCompatActivity() {
                             } else {
                                 applyOrientation(orient)
                             }
-                            val js = "window.__PB=window.__PB||{};window.__PB.traditional=$trad;window.__PB.orientation=" + jsStr(orient) + ";try{window.dispatchEvent(new Event('pb-mode-change'));window.dispatchEvent(new Event('pb-orientation-change'));}catch(e){}"
+                            val licStr = licence.currentLicenceString() ?: ""
+                            val midStr = licence.machineId()
+                            val js = "window.__PB=window.__PB||{};window.__PB.traditional=$trad;window.__PB.orientation=" + jsStr(orient) + ";window.__PB.appAuth={licence:" + jsStr(licStr) + ",mid:" + jsStr(midStr) + "};try{window.dispatchEvent(new Event('pb-mode-change'));window.dispatchEvent(new Event('pb-orientation-change'));window.dispatchEvent(new Event('online'));}catch(e){}"
                             runOnUiThread {
                                 webView.evaluateJavascript(js, null)
                             }
@@ -323,6 +325,28 @@ class MainActivity : AppCompatActivity() {
         // behind the activation screen until a code unlocks it (needs Wi-Fi once); after
         // that it keeps working offline until the code's next check-in is due.
         licence = AppLicence(this)
+        pbLocal.authProvider = {
+            JSONObject()
+                .put("licence", licence.currentLicenceString() ?: "")
+                .put("mid", licence.machineId())
+                .toString()
+        }
+        try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            cm?.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+                override fun onCapabilitiesChanged(network: android.net.Network, caps: NetworkCapabilities) {
+                    if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                    ) {
+                        runOnUiThread {
+                            if (::webView.isInitialized && offlineLoaded) {
+                                webView.evaluateJavascript("try{window.dispatchEvent(new Event('online'));}catch(e){}", null)
+                            }
+                        }
+                    }
+                }
+            })
+        } catch (_: Exception) { }
 
         // 6. Request camera permissions if needed
         checkAndRequestPermissions()
@@ -817,6 +841,7 @@ class MainActivity : AppCompatActivity() {
                     // window.__PB lets the booth enable GIF, retake, lock, pay, printing features
                     append("window.__PB=window.__PB||{};")
                     append("window.__PB.desktop={v:").append(jsStr(licence.appVersion())).append(",os:'android'};")
+                    append("window.__PB.appAuth={licence:").append(jsStr(licence.currentLicenceString() ?: "")).append(",mid:").append(jsStr(licence.machineId())).append("};")
                     // Tells the booth that photos are saved by this app and shared over the booth Wi-Fi
                     append("window.__PB.android=true;")
                     // Offline mode: the booth hides QR payment (it needs the internet); vouchers and GIFs still work
@@ -883,8 +908,9 @@ class MainActivity : AppCompatActivity() {
         if (path.startsWith("/api/") || host.contains("catbox.moe") || host.contains("qrserver.com") ||
             host.contains("script.google.com") || host.contains("drive.google.com")
         ) {
-            // When internet is available, allow /api/pay so vouchers and offline batches sync to the server
-            if (isNetworkAvailable() && path.startsWith("/api/pay")) {
+            // When internet is available, allow /api/setup (for syncing setup, profiles, themes and assets),
+            // /api/camdiag and /api/updates. Vouchers (/api/pay) and print counts (/api/prints) stay separate per device.
+            if (isNetworkAvailable() && (path.startsWith("/api/setup") || path.startsWith("/api/camdiag") || path.startsWith("/api/updates"))) {
                 return null
             }
             return webResponse(

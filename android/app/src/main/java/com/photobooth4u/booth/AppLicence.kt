@@ -278,6 +278,9 @@ class AppLicence(private val ctx: Context) {
     /** The installed app's real version (what the admin page shows per device). */
     fun appVersion(): String = try { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName ?: APP_VERSION } catch (e: Exception) { APP_VERSION }
 
+    /** The signed licence text currently held by this tablet (for authenticating /api/setup cloud sync). */
+    fun currentLicenceString(): String? = lic
+
     /** Activates this tablet with a rental code. Needs Wi-Fi; calls back on the main thread. */
     fun activate(code: String, cb: (ok: Boolean, error: String?) -> Unit) {
         val c = code.trim()

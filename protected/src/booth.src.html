@@ -27008,6 +27008,12 @@
         if (h) h.style.display = many ? '' : 'none';
       }
 
+      // Some laptops never answer the system's camera list: a virtual camera driver (Camo, EOS Webcam Utility...) with nothing
+      // behind it can leave it hanging for good. Waiting forever froze the camera menu, the camera start-up and the tablet camera,
+      // so each system call gets a few seconds and then the booth carries on with what it knows.
+      function camSysTimeout(p, ms, fallback) {
+        return Promise.race([p, new Promise(res => setTimeout(() => res(fallback), ms))]);
+      }
       async function enumerateCameras() {
         const previous = cameraSelect.value;
         let videoDevices = [];
@@ -27027,16 +27033,20 @@
           // but can still use the laptop's USB camera, so carry on with an empty webcam list instead of stopping here.
           const webcamApi = !!(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices);
           if (!webcamApi && !usbCam.supported) return [];
-          let devices = webcamApi ? await navigator.mediaDevices.enumerateDevices() : [];
+          let devices = webcamApi ? await camSysTimeout(navigator.mediaDevices.enumerateDevices(), 4000, null) : [];
+          const listTimedOut = devices === null;
+          if (listTimedOut) { devices = []; try { usbLog('camlist-timeout', {}); } catch (e) { } }
           videoDevices = devices.filter(d => d.kind === 'videoinput');
-          if (webcamApi && (!videoDevices.length || videoDevices.some(d => !d.label))) {
+          if (webcamApi && !listTimedOut && (!videoDevices.length || videoDevices.some(d => !d.label))) {
             try {
               // Need permission first to get labels
-              const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-              tempStream.getTracks().forEach(t => t.stop());
+              const gum = navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+              const tempStream = await camSysTimeout(gum, 6000, null);
+              if (tempStream) tempStream.getTracks().forEach(t => t.stop());
+              else gum.then(s => s.getTracks().forEach(t => t.stop()), () => { });   // it answered late: do not leave the camera on
               await wait(300);
             } catch (e) { /* permission denied — labels won't show */ }
-            devices = await navigator.mediaDevices.enumerateDevices();
+            devices = (await camSysTimeout(navigator.mediaDevices.enumerateDevices(), 4000, null)) || devices;
             videoDevices = devices.filter(d => d.kind === 'videoinput');
           }
         }
@@ -28752,7 +28762,9 @@
           // Before camera access is allowed (Safari on Mac especially) the camera
           // list comes back blank or unnamed, so the menu stays hidden. Now that
           // access works, list the cameras again so the menu appears.
-          if (!cameraSelect.options.length || Array.from(cameraSelect.options).some(o => !o.value || /^Camera \d+$/.test(o.textContent))) {
+          // (The tablet camera is not a webcam: there are no labels to refresh, so it never waits for the system's camera list.)
+          const isTabletCam = typeof TABLET_CAM_ID !== 'undefined' && deviceId === TABLET_CAM_ID;
+          if (!isTabletCam && (!cameraSelect.options.length || Array.from(cameraSelect.options).some(o => !o.value || /^Camera \d+$/.test(o.textContent)))) {
             try { await enumerateCameras(); } catch (e) { }
           }
           const opened = (typeof TABLET_CAM_ID !== 'undefined' && deviceId === TABLET_CAM_ID)

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.77', date: '2026-11-19' },
   { version: '1.1.76', date: '2026-11-19' },
   { version: '1.1.75', date: '2026-11-19' },
   { version: '1.1.74', date: '2026-11-19' },
@@ -272,6 +273,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-19', title: 'Desktop 1.1.77 (Win/Mac): the camera menu no longer freezes on laptops where Windows never lists the cameras, so the tablet camera starts', for: ['website', 'app'], app: '1.1.77',
+    items: [
+      '📷 On some laptops Windows never answers when the booth asks it for the list of cameras (a virtual camera such as Camo or EOS Webcam Utility with nothing behind it can do this). The booth waited for that answer forever, so the Camera menu stayed empty, no camera started, and “Use tablet camera” did nothing. The booth now waits a few seconds, then carries on with the cameras it knows.',
+      '📲 The tablet camera (Laptop Guest + Camera Bridge) now starts as soon as the tablet is paired, without waiting for the laptop’s own camera list, and the “Use tablet camera” button starts it straight away and says if it is slow to start.'
+    ]
+  },
   {
     date: '2026-11-19', title: 'Desktop 1.1.76 (Win/Mac) + Android 1.1.89: tablet as the booth camera keeps its live picture running, Epson Wi-Fi printing fallback, and failed prints reported', for: ['website', 'app'], app: '1.1.76',
     items: [

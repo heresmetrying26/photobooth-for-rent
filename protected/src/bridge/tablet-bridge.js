@@ -28,6 +28,16 @@ function tabletCamOptionLabel() {
   const side = tabletBridge.facing === 'back' ? 'Rear' : 'Front';
   return 'Tablet Camera · ' + nm + ' (' + side + ')';
 }
+// Makes sure the camera menu has the tablet in it without waiting for the system's camera list (see renderTabletBridgeSetup).
+function tabletEnsureOption() {
+  if (!tabletCamAvailable()) return;
+  if (Array.from(cameraSelect.options).some(o => o.value === TABLET_CAM_ID)) return;
+  Array.from(cameraSelect.options).filter(o => !o.value).forEach(o => o.remove());   // the "Loading cameras…" placeholder
+  const opt = document.createElement('option');
+  opt.value = TABLET_CAM_ID;
+  opt.textContent = tabletCamOptionLabel();
+  cameraSelect.appendChild(opt);
+}
 
 async function tabletBridgeUploadMedia(slot, srcUrl, mime, maxDim) {
   if (!tabletBridge.port || !srcUrl) return '';
@@ -485,18 +495,22 @@ function renderTabletBridgeSetup(info) {
   if (useCamBtn) useCamBtn.disabled = !info.camConnected;
 
   if (wasCam !== tabletBridge.camConnected) {
-    enumerateCameras().then(() => {
-      if (tabletBridge.camConnected && currentDeviceId !== TABLET_CAM_ID) {
-        const saved = savedCamera();
-        if (saved && saved.id === TABLET_CAM_ID) {
-          cameraSelect.value = TABLET_CAM_ID;
-          initCamera(TABLET_CAM_ID);
-        } else if (!streamActive) {
-          cameraSelect.value = TABLET_CAM_ID;
-          initCamera(TABLET_CAM_ID);
+    if (tabletBridge.camConnected) {
+      // Do not wait for the system's camera list first: on some laptops it never answers (a virtual camera such as Camo or
+      // EOS Webcam Utility), and the tablet camera never started. Put the tablet in the menu and start it right away.
+      try {
+        tabletEnsureOption();
+        if (currentDeviceId !== TABLET_CAM_ID) {
+          const saved = savedCamera();
+          if ((saved && saved.id === TABLET_CAM_ID) || !streamActive) {
+            cameraSelect.value = TABLET_CAM_ID;
+            initCamera(TABLET_CAM_ID);
+          }
         }
-      }
-    }).catch(() => { });
+      } catch (e) { }
+    }
+    // Then fill in the rest of the list (and drop the tablet from it when it goes away) once the system answers.
+    enumerateCameras().catch(() => { });
   }
   if (wasGuest !== tabletBridge.guestConnected) {
     try { updateGuestStatus(); } catch (e) { }
@@ -584,11 +598,14 @@ function renderTabletBridgeSetup(info) {
       if (!tabletCamAvailable()) { showToast('The tablet camera is not connected yet. Open the bridge on the tablet first.', 5000); return; }
       useBtn.disabled = true;
       try {
-        await enumerateCameras();
+        // No waiting for the system's camera list: it can hang on some laptops, and the tablet camera does not need it.
+        tabletEnsureOption();
         cameraSelect.value = TABLET_CAM_ID;
-        const ok = await initCamera(TABLET_CAM_ID);
+        const ok = await Promise.race([initCamera(TABLET_CAM_ID), new Promise(res => setTimeout(() => res('slow'), 15000))]);
         try { saveCamera(); } catch (e) { }
-        showToast(ok ? 'Using the tablet camera.' : 'The tablet camera did not start. Check the tablet is still on the bridge screen.', 5000);
+        showToast(ok === 'slow' ? 'The tablet camera is taking a long time to start. Check the tablet is still on the bridge screen.'
+          : ok ? 'Using the tablet camera.' : 'The tablet camera did not start. Check the tablet is still on the bridge screen.', 5000);
+        try { enumerateCameras().catch(() => { }); } catch (e) { }
       } catch (e) {
         showToast('Tablet camera error: ' + ((e && e.message) || e), 6000);
       } finally {

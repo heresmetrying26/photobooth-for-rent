@@ -60,8 +60,8 @@ export function createNikon(ctx) {
     return r === OK;
   }
 
-  // Record to the camera's own memory (so no SD card is needed), JPEG, and the smallest photo size still >= ~2900 px wide
-  // (the booth uses at most 3000 px; smaller files come over USB much faster).
+  // Record to the camera's own memory (so no SD card is needed), JPEG Fine, and the smallest photo size >= ~3900 px wide
+  // (enough for 675 DPI 4R boxes without upscaling; falls back to the largest size on older cameras).
   d.prepare = async () => {
     try {
       const rm = await propDesc(0xD10B);   // RecordingMedia
@@ -77,8 +77,13 @@ export function createNikon(ctx) {
       if (ctx.props.includes(0x5003)) {
         const s = await propDesc(0x5003);
         if (s && s.type === 0xFFFF && s.choices.length > 1) {
-          let best = null, bestW = Infinity;
-          for (const c of s.choices) { const w = width(c); if (w >= 2900 && w < bestW) { best = c; bestW = w; } }
+          let best = null, bestW = Infinity, big = null, bigW = 0;
+          for (const c of s.choices) {
+            const w = width(c);
+            if (w >= 3900 && w < bestW) { best = c; bestW = w; }
+            if (w > bigW) { big = c; bigW = w; }
+          }
+          if (best === null) best = big;
           if (best !== null && best !== s.current && await setProp(0x5003, s.type, best)) { ctx.note('Photo size ' + best + '. '); log('Image size ' + s.current + ' -> ' + best); }
         }
       }

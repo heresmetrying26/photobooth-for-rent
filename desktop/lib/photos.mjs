@@ -205,8 +205,13 @@ async function gbDownloadAll(items, btn, base) {
 }
 `;
 
+// A lossless PNG master of a finished picture (<n>_<layout>_master.png): kept in its own "Masters" folder for the operator only.
+// "Masters" is deliberately not in SUBDIRS, so the gallery, the guest pages, the station list and the session numbering never see it,
+// and findFileInDir will not hand it to any route: nothing about it is ever served over the booth Wi-Fi.
+const MASTER_RE = /_master\.png$/i;
 function categoryOf(name) {
   const n = String(name || '');
+  if (MASTER_RE.test(n)) return 'Masters';
   if (VIDEO_RE.test(n) || /^360_|_360\./i.test(n)) return '360 Videos';
   if (/\.gif$/i.test(n) || /_gif\./i.test(n)) return 'GIFs';
   if (/_solo_\d+/i.test(n) || /_solo\./i.test(n)) return 'Solo Shots';
@@ -215,6 +220,7 @@ function categoryOf(name) {
 
 function findFileInDir(dir, name) {
   if (!dir || !name || name !== basename(name) || name.startsWith('.')) return null;
+  if (MASTER_RE.test(name)) return null;   // operator-only master copies are never served
   const rootPath = join(dir, name);
   if (existsSync(rootPath)) return rootPath;
   const catPath = join(dir, categoryOf(name), name);
@@ -290,8 +296,13 @@ export async function driveRequest(body) {
   const f = folderFor(body.folderKey, body.subfolder);
   const folderUrl = 'pb4u-local:' + f.slug;
   if (body.resolveOnly) return { ok: true, folderUrl, folderName: f.name, nextSessionNumber: nextSession(f.dir), folderPath: f.dir };
-  const m = /^[A-Za-z0-9+/=\s]+$/.test(String(body.imageBase64 || '')) ? body.imageBase64 : null;
-  if (!m) return { ok: false, error: 'No photo' };
+  let buf = Buffer.isBuffer(body.buffer) ? body.buffer : null;
+  if (!buf) {
+    const m = /^[A-Za-z0-9+/=\s]+$/.test(String(body.imageBase64 || '')) ? body.imageBase64 : null;
+    if (!m) return { ok: false, error: 'No photo' };
+    buf = Buffer.from(m, 'base64');
+  }
+  if (!buf.length) return { ok: false, error: 'No photo' };
   let name = basename(safeName(body.filename) || ('photo-' + Date.now() + '.jpg'));
   if (!IMG_RE.test(name)) name += '.jpg';
   const cat = categoryOf(name);
@@ -299,8 +310,8 @@ export async function driveRequest(body) {
   mkdirSync(targetDir, { recursive: true });
   let out = name, i = 2;
   while (existsSync(join(targetDir, out)) || existsSync(join(f.dir, out))) { out = name.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
-  writeFileSync(join(targetDir, out), Buffer.from(m, 'base64'));
-  noteGuestFile(body.guestCode, f.slug, out);
+  writeFileSync(join(targetDir, out), buf);
+  if (cat !== 'Masters') noteGuestFile(body.guestCode, f.slug, out);   // a master belongs to no guest's page
   return { ok: true, fileId: f.slug + '/' + out, downloadUrl: 'pb4u-local:' + f.slug + '/' + out, folderUrl, folderName: f.name, folderPath: f.dir };
 }
 export function folderPathOf(folderUrl) {

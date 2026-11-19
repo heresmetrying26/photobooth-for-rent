@@ -16,7 +16,9 @@
       //   sharpen: unsharp-mask amount for each box        page: the same, once more on the whole printed page
       const CAM_Q_TUNE = { denoise: [16, 30], sharpen: [0.6, 0.9], page: [0.35, 0.5] };
       function camQMakeProfile(o) {
-        const p = Object.assign({ tooSlow: false, defaultClean: 'auto', isoWarn: 1600, slowShutter: 1 / 60 }, o);
+        // isoClean / isoGrain: from the shot's EXIF ISO. Up to isoClean there is no grain worth removing (shrinking a big photo into its
+        // box already averages the grain away), from isoGrain it is removed fully, in between lightly (see camQDenoiseFor).
+        const p = Object.assign({ tooSlow: false, defaultClean: 'auto', isoWarn: 1600, isoClean: 1250, isoGrain: 3200, slowShutter: 1 / 60 }, o);
         p.tune = Object.assign({}, CAM_Q_TUNE, o.tune || {});
         p.classic = function () { return camQStore(p.keys.classic) === '1'; };
         p.tips = function () { return !p.classic() && camQStore(p.keys.tips) === '1'; };
@@ -28,7 +30,7 @@
         return p;
       }
 
-      // ISO / shutter / aperture from the JPEG's EXIF block. null when not found.
+      // ISO / shutter / aperture (and the rotation mark, 1 = upright) from the JPEG's EXIF block. null when not found.
       async function pbReadExif(blob) {
         try {
           const b = new Uint8Array(await blob.slice(0, 131072).arrayBuffer());
@@ -36,6 +38,7 @@
           let p = 2;
           while (p + 10 < b.length && b[p] === 0xFF) {
             const mk = b[p + 1], len = (b[p + 2] << 8) | b[p + 3];
+            if (len < 2) break;
             if (mk === 0xE1 && b[p + 4] === 0x45 && b[p + 5] === 0x78 && b[p + 6] === 0x69 && b[p + 7] === 0x66) {
               const t = p + 10, le = b[t] === 0x49;
               const u16 = function (o) { return le ? (b[o] | (b[o + 1] << 8)) : ((b[o] << 8) | b[o + 1]); };
@@ -43,7 +46,9 @@
               const ifd = function (off, want) {
                 const out = {}, n = u16(t + off);
                 for (let k = 0; k < n; k++) {
-                  const e = t + off + 2 + k * 12, tag = u16(e), type = u16(e + 2);
+                  const e = t + off + 2 + k * 12;
+                  if (e + 12 > b.length) break;
+                  const tag = u16(e), type = u16(e + 2);
                   if (want.indexOf(tag) < 0) continue;
                   if (type === 3) out[tag] = u16(e + 8);
                   else if (type === 4) out[tag] = u32(e + 8);
@@ -51,10 +56,10 @@
                 }
                 return out;
               };
-              const top = ifd(u32(t + 4), [0x8769]);
-              if (!top[0x8769]) return null;
-              const ex = ifd(top[0x8769], [0x829A, 0x829D, 0x8827]);
-              return { shutter: ex[0x829A] || 0, f: ex[0x829D] || 0, iso: ex[0x8827] || 0 };
+              const top = ifd(u32(t + 4), [0x8769, 0x0112]);
+              if (!top[0x8769] && !top[0x0112]) return null;
+              const ex = top[0x8769] ? ifd(top[0x8769], [0x829A, 0x829D, 0x8827]) : {};
+              return { shutter: ex[0x829A] || 0, f: ex[0x829D] || 0, iso: ex[0x8827] || 0, orientation: top[0x0112] || 1 };
             }
             p += 2 + len;
           }
@@ -81,7 +86,7 @@
         const amt = tune.sharpen[si];
         let src = d;
         if (denoise) {
-          const T = tune.denoise[si], inv = 1 / (T * T), lum = new Uint8Array(n);
+          const T = Math.max(1, tune.denoise[si]), inv = 1 / (T * T), lum = new Uint8Array(n);
           for (let i = 0, p = 0; i < n; i++, p += 4) lum[i] = (d[p] * 77 + d[p + 1] * 150 + d[p + 2] * 29) >> 8;
           src = new Uint8ClampedArray(d.length); src.set(d);
           for (let y = 1; y < h - 1; y++) {
@@ -120,6 +125,21 @@
         }
       }
 
+      // How much grain removal a shot gets: 0 none, 1 full, in between light. The grain average blends a pixel with its neighbours
+      // whenever they look alike, and real fine detail of low contrast (skin pores, eyelashes, hair) looks alike too: measured
+      // on a +-8 level texture at print size, the average kept 7-48% of the detail, against 65-95% for a plain shrink. That is
+      // why a clean photo was sharp on its own but soft inside a frame. A low-ISO photo has no grain worth that, so it is only
+      // sharpened; grain removal comes in lightly, then fully, as the ISO climbs. Strong (dim rooms) always removes it fully.
+      // A shot with no EXIF ISO (a webcam) is left as before.
+      function camQDenoiseFor(p, img, mode) {
+        if (mode === 'strong') return 1;
+        const iso = img && img._cqIso;
+        if (!(iso > 0)) return 1;
+        if (iso <= p.isoClean) return 0;
+        if (iso < p.isoGrain) return 0.6;
+        return 1;
+      }
+
       // The part of a photo that goes in one box, shrunk to the box's own pixel size (halving steps) and cleaned. Cached per shot.
       // Returns null when the photo should be drawn the ordinary way (classic mode, or nothing to gain).
       function camQTile(p, ctx, img, sx, sy, sw, sh, w, h) {
@@ -129,7 +149,8 @@
         const tw = Math.max(1, Math.round(w * k)), th = Math.max(1, Math.round(h * k));
         const ratio = Math.max(sw / tw, sh / th);
         if (ratio < 1.5 && mode === 'off') return null;
-        const key = [Math.round(sx), Math.round(sy), Math.round(sw), Math.round(sh), tw, th, mode].join(',');
+        const dk = camQDenoiseFor(p, img, mode);
+        const key = [Math.round(sx), Math.round(sy), Math.round(sw), Math.round(sh), tw, th, mode, dk].join(',');
         const cache = img._cqCache || (img._cqCache = new Map());
         if (cache.has(key)) return cache.get(key);
         let cur = img, cx = sx, cy = sy, cw = sw, ch = sh;
@@ -143,10 +164,17 @@
         const out = document.createElement('canvas'); out.width = tw; out.height = th;
         const ox = out.getContext('2d', { willReadFrequently: true }); ox.imageSmoothingEnabled = true; ox.imageSmoothingQuality = 'high';
         ox.drawImage(cur, cx, cy, cw, ch, 0, 0, tw, th);
-        if (mode !== 'off' && tw * th <= 4500000 && tw > 8 && th > 8) {
+        // Bigger output (2x) makes boxes bigger, so the cap is higher on a laptop (higher still when it only sharpens, which is
+        // about twice as quick as the grain pass); a tablet's CPU keeps the lower one.
+        const cqMax = (typeof DESKTOP !== 'undefined' && DESKTOP) ? (dk === 0 ? 10000000 : 6000000) : 4500000;
+        if (mode !== 'off' && tw * th <= cqMax && tw > 8 && th > 8) {
           try {
             const c0 = performance.now(), id = ox.getImageData(0, 0, tw, th);
-            pbCleanPixels(id.data, tw, th, mode, true, p.tune); ox.putImageData(id, 0, 0);
+            // Grain is only removed when the photo was shrunk (or is 1:1) and the box is small enough for it to be quick. An
+            // enlarged photo has no grain to remove (the average would only soften it) and a huge box makes the clean-up slow.
+            // Sharpening runs in every case: it is what makes a photo look crisp on paper.
+            const tune = dk === 1 ? p.tune : Object.assign({}, p.tune, { denoise: p.tune.denoise.map(function (v) { return v * dk; }) });
+            pbCleanPixels(id.data, tw, th, mode, dk > 0 && ratio >= 1 && tw * th <= 2600000, tune); ox.putImageData(id, 0, 0);
             const ms = Math.round(performance.now() - c0);
             // A laptop too slow for the clean-up (one box taking over 1.5 s) drops it for the rest of the session, so guests never
             // wait; the stepwise shrink stays. Logged in the camera log; the Camera menu note says so.
@@ -178,10 +206,17 @@
       }
 
       // During a session the warning goes to the operator only (Camera menu + camera log), never onto the guest's screen.
-      async function camQShotNote(p, file) {
+      async function camQShotNote(p, file, canvas, prefetchedEx) {
         try {
-          const ex = await pbReadExif(file), w = camQWarnings(p, ex, !!file._focusMiss);
-          usbLog(p.id + '-shot', { iso: ex && ex.iso, shutter: ex && ex.shutter, f: ex && ex.f, focusMiss: !!file._focusMiss });
+          const ex = prefetchedEx !== undefined ? prefetchedEx : await pbReadExif(file);
+          const w = camQWarnings(p, ex, !!(file && file._focusMiss));
+          // The ISO decides how much grain removal this photo gets (camQDenoiseFor); a box or preview drawn before it was known is drawn again.
+          if (canvas && ex && ex.iso > 0 && canvas._cqIso !== ex.iso) {
+            canvas._cqIso = ex.iso;
+            canvas._cqCache = null;
+            try { if (typeof previewCanvas !== 'undefined' && previewCanvas) previewCanvas._renderedForLayout = ''; } catch (e) { }
+          }
+          usbLog(p.id + '-shot', { iso: ex && ex.iso, shutter: ex && ex.shutter, f: ex && ex.f, focusMiss: !!(file && file._focusMiss) });
           const el = document.getElementById('camQWarnNote');
           if (el && p.tips()) {
             if (w.length) { el.textContent = '⚠ Last photo: ' + w.join(' '); el.style.display = ''; }
@@ -193,11 +228,12 @@
       // Between photos the layout is drawn once off-screen, so each photo's clean-up (cached) is done while the guests pose
       // for the next one, not while the result screen waits. The last photo is left: the result screen draws it right away.
       function camQPrewarm(p, finalShot) {
-        if (finalShot || !p || !p.tips() || p.cleanMode() === 'off') return;
+        if (finalShot || !p || p.cleanMode() === 'off') return;
         setTimeout(function () {
           try {
             if (!Array.isArray(shotCanvases) || !shotCanvases.some(function (s) { return s && s._cq === p.id; })) return;
             const t0 = performance.now(), cv = document.createElement('canvas');
+            cv._hiRes = true;
             composeCanvas(currentLayout, cv, shotCanvases);
             usbLog(p.id + '-prewarm', { ms: Math.round(performance.now() - t0), w: cv.width, h: cv.height });
           } catch (e) { }
@@ -205,11 +241,12 @@
       }
 
       // The shot path calls this once per photo: marks the canvas so the layout drawing and the print step know whose profile applies.
-      function camQOnShot(file, canvas) {
+      function camQOnShot(file, canvas, prefetchedEx) {
         const p = camQProfile();
         if (!p) return null;
         canvas._cq = p.id;
-        camQShotNote(p, file);   // warned about ISO / shutter / focus (operator only)
+        if (prefetchedEx && prefetchedEx.iso > 0) { canvas._cqIso = prefetchedEx.iso; canvas._cqCache = null; }
+        camQShotNote(p, file, canvas, prefetchedEx);   // warned about ISO / shutter / focus (operator only); the ISO is kept on the shot
         return p;
       }
 

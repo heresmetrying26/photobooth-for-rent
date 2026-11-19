@@ -206,6 +206,45 @@ try {
   assert.equal(printFiles2.length, 2, 'Should now have 2 print photos total (1 booth strip + 1 roving design print)');
   console.log('PASS: Roving photoman uploads both designed print (2_solo.jpg) and raw solo photo (2_solo_1.jpg)');
 
+  // 8. Test binary buffer upload path (used by offline desktop to avoid Base64 bloat)
+  const rawBytes = Buffer.from(dummyPixelJpgBase64, 'base64');
+  const rBin = await driveRequest({
+    folderKey,
+    filename: '3_strip.jpg',
+    buffer: rawBytes,
+    guestCode: 'guest-code-bin-7890123456'
+  });
+  assert(rBin.ok, 'Binary buffer driveRequest should succeed');
+  assert(existsSync(join(rBin.folderPath, 'Prints', '3_strip.jpg')), 'Binary print should be saved in Prints/ subfolder');
+  console.log('PASS: Binary buffer upload writes exact bytes without Base64 overhead');
+
+  // 9. Lossless PNG master: saved in its own Masters folder, and never seen by guests, the gallery, or any file route
+  const pngBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+  const rMaster = await driveRequest({ folderKey, filename: '3_strip_master.png', buffer: pngBytes, guestCode: 'guest-code-bin-7890123456' });
+  assert(rMaster.ok, 'Master PNG should be saved');
+  assert(existsSync(join(rMaster.folderPath, 'Masters', '3_strip_master.png')), 'Master goes in the Masters/ folder');
+  assert(!existsSync(join(rMaster.folderPath, 'Prints', '3_strip_master.png')), 'and not in Prints/');
+  const rResolve3 = await driveRequest({ folderKey, resolveOnly: true });
+  assert.equal(rResolve3.nextSessionNumber, 4, 'a master does not change the session numbering (3_strip.jpg already made it 4)');
+  const getText = (path) => new Promise((resolve, reject) => { http.get('http://127.0.0.1:' + port + path, (res) => { let d = ''; res.on('data', (c) => { d += c; }); res.on('end', () => resolve({ status: res.statusCode, body: d })); }).on('error', reject); });
+  const guest3 = await getText('/o/guest-code-bin-7890123456');
+  assert(guest3.body.includes('3_strip.jpg'), 'the guest still sees their print');
+  assert(!/master/i.test(guest3.body), 'but the guest page never mentions the master');
+  const list3 = await getText('/station/' + slug + '/list');
+  assert(!/master/i.test(list3.body), 'the gallery / station list never shows the master');
+  const ctrl = await getText('/e/' + slug + '/f/3_strip.jpg');
+  assert.equal(ctrl.status, 200, 'control: the print is served');
+  for (const route of ['/e/' + slug + '/f/3_strip_master.png', '/o/guest-code-bin-7890123456/f/3_strip_master.png']) {
+    const r = await getText(route);
+    assert.equal(r.status, 404, route + ' must not serve the master (got ' + r.status + ')');
+  }
+  // The photo page answers any file that is not there with its usual "on its way" placeholder: it must not show the master.
+  const pg = await getText('/e/' + slug + '/p/3_strip_master.png');
+  assert(!/<img/i.test(pg.body) && /isn.t here yet/i.test(pg.body), 'the photo page shows the placeholder, never the master image');
+  const pgCtrl = await getText('/e/' + slug + '/p/3_strip.jpg');
+  assert(/<img/i.test(pgCtrl.body), 'control: the print page shows its image');
+  console.log('PASS: PNG master is kept in Masters/ for the operator only (not on guest pages, gallery, numbering, or any file route)');
+
   console.log('\nAll Solo Photos tests passed successfully!');
 } finally {
   stopShareServer();

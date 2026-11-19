@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.75', date: '2026-11-19' },
   { version: '1.1.74', date: '2026-11-19' },
   { version: '1.1.73', date: '2026-11-18' },
   { version: '1.1.72', date: '2026-11-18' },
@@ -270,6 +271,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-19', title: 'Desktop 1.1.75 (Win/Mac): higher-resolution prints (3–6.5 MB), camera-original DSLR solo shots & lossless PNG masters', for: ['website', 'app'], app: '1.1.75',
+    items: [
+      '🖼️ Higher-resolution prints: laptop prints now render at 2.5×–3× design resolution (750–900 DPI, 100% JPEG quality, ~3–6.5 MB) with true print DPI stamped in the file header instead of 96 DPI.',
+      '📷 Camera-original DSLR solo shots: on the laptop app, upright DSLR and full-size webcam solo shots keep the camera’s own untouched JPEG file (full size and EXIF details) whenever no mirror, background swap or look is used; mirrored/filtered or rotated shots save at 100% JPEG quality.',
+      '🎯 Sharper Nikon & low-ISO photos: Nikon DSLRs now automatically shoot at JPEG Fine ≥ 3900 px wide (e.g. 4496×3000 Medium on D5600), and low-ISO shots skip grain smoothing (including the final shot) so fine skin and eyelash detail stays crisp.',
+      '💾 Lossless PNG master copy: optionally keeps a private 24-bit lossless PNG of every finished print in a "Masters" folder for the operator (on by default on the laptop app, never shown to guests or over booth Wi-Fi), plus faster binary local saves without Base64 overhead.'
+    ]
+  },
   {
     date: '2026-11-19', title: 'Desktop 1.1.74 (Win/Mac): fixes "Tap to start" not responding in 1.1.73', for: ['website', 'app'], app: '1.1.74',
     items: [

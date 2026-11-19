@@ -832,8 +832,8 @@ namespace Pb4uCam
             return ptp.Op(0x90C8);
         }
 
-        // ---------- photo size: JPEG, the smallest size still >= ~2900 px wide ----------
-        // (the booth uses at most 3000 px; smaller files come over USB much faster)
+        // ---------- photo size: JPEG Fine, smallest size >= ~3900 px wide (fallback to largest) ----------
+        // (3900 px is enough for 4R boxes at 675 DPI without enlarging; a camera with no size that big uses its largest)
         static void Prepare()
         {
             setupNote = "";
@@ -867,12 +867,14 @@ namespace Pb4uCam
                     var s = PropDesc(0x5003);
                     if (s != null && s.Type == 0xFFFF && s.Choices.Count > 1)
                     {
-                        string best = null; int bestW = int.MaxValue;
+                        string best = null, big = null; int bestW = int.MaxValue, bigW = 0;
                         foreach (string c in s.Choices)
                         {
                             int w = Width(c);
-                            if (w >= 2900 && w < bestW) { best = c; bestW = w; }
+                            if (w >= 3900 && w < bestW) { best = c; bestW = w; }
+                            if (w > bigW) { big = c; bigW = w; }
                         }
+                        if (best == null) best = big;
                         if (best != null && best != s.Current && SetProp(0x5003, s.Type, best)) { setupNote += "Photo size " + best + ". "; Log("Image size " + s.Current + " -> " + best); }
                     }
                 }

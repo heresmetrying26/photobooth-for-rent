@@ -48,7 +48,7 @@ class FakeNikon extends Fake {
   desc(code) {
     if (code === 0xD10B) return Buffer.concat([u16(code), u16(2), Buffer.from([1, 0, Number(this.cur.get(code))]), Buffer.from([0])]);
     if (code === 0x5004) return Buffer.concat([u16(code), u16(4), Buffer.from([1]), u16(1), u16(Number(this.cur.get(code))), Buffer.from([2]), u16(3), u16(0), u16(2), u16(4)]);
-    if (code === 0x5003) return Buffer.concat([u16(code), u16(0xFFFF), Buffer.from([1]), pstr('6000x4000'), pstr(this.cur.get(code)), Buffer.from([2]), u16(3), pstr('6000x4000'), pstr('2992x2000'), pstr('1496x1000')]);
+    if (code === 0x5003) return Buffer.concat([u16(code), u16(0xFFFF), Buffer.from([1]), pstr('6000x4000'), pstr(this.cur.get(code)), Buffer.from([2]), u16(4), pstr('6000x4000'), pstr('4496x3000'), pstr('2992x2000'), pstr('1496x1000')]);
     return null;
   }
   onData(pw, data) {
@@ -248,7 +248,7 @@ const nik = new FakeNikon();
 await run('[Nikon] ', 0x04b0, nik, { maker: 'Nikon', name: 'Nikon D5600', brand: 'nikon', battery: 87 });
 check('[Nikon] records to camera memory', nik.set.get(0xD10B) === '1');
 check('[Nikon] image quality set to JPEG Fine', nik.set.get(0x5004) === '2');
-check('[Nikon] photo size is the smallest >= 2900 px wide', nik.set.get(0x5003) === '2992x2000', String(nik.set.get(0x5003)));
+check('[Nikon] photo size is the smallest >= 3900 px wide', nik.set.get(0x5003) === '4496x3000', String(nik.set.get(0x5003)));
 check('[Nikon] live view stopped on close', nik.live === false);
 
 const son = new FakeSony();

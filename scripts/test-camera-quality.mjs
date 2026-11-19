@@ -23,7 +23,7 @@ const testAsync = async (name, fn) => { try { await fn(); passed++; console.log(
 
 // The real camIsCanon / camIsSony from the page (they decide which brand is connected), not copies.
 function pageFunction(name) {
-  const lines = page.split('\n'), a = lines.findIndex(l => l.startsWith('      function ' + name + '('));
+  const lines = page.split('\n'), a = lines.findIndex(l => l.startsWith('      function ' + name + '(') || l.startsWith('      async function ' + name + '('));
   assert(a >= 0, name + ' not found in booth.html');
   let b = a; while (!/^      }\s*$/.test(lines[b])) b++;
   return lines.slice(a, b + 1).join('\n');
@@ -183,6 +183,335 @@ test('clean-up Off with a photo about the box size leaves it alone', () => {
   assert.equal(tileCall(sb, 'canon', 700, 466, 600, 400).out, null);
 });
 
+// ---- a photo enlarged into a bigger box: sharpen only, never the grain average (that only softens it) ----
+test('an enlarged photo is sharpened but not denoised; a shrunk one is both', () => {
+  const sb = makeSandbox(); let seen = [];
+  sb.pbCleanPixels = (d, w, h, mode, denoise) => { seen.push(denoise); };
+  const run = (srcW, srcH, boxW, boxH) => { seen = []; tileCall(sb, 'canon', srcW, srcH, boxW, boxH); return seen; };
+  // a 1280x720 shot cropped to a tall box is the 480x720 middle of it, drawn into a 1000x1500 box
+  assert.deepEqual(run(480, 720, 1000, 1500), [false], '720p photo into a 4R box (enlarged)');
+  assert.deepEqual(run(3000, 2000, 600, 400), [true], '3000 px photo into a small box (shrunk)');
+  assert.deepEqual(run(6000, 4000, 2400, 1600), [false], 'a shrunk photo in a box too big for a quick denoise still gets the sharpen');
+});
+test('the clean-up pixel cap is lower for a tablet than for a laptop', () => {
+  const sbT = makeSandbox(); let ranT = 0; sbT.pbCleanPixels = () => { ranT++; };
+  tileCall(sbT, 'canon', 6000, 4000, 2800, 1800);   // 5.0 MP box
+  assert.equal(ranT, 0, 'tablet: 5 MP box is over the cap, so no per-pixel pass');
+  const sbD = makeSandbox(); let ranD = 0; sbD.pbCleanPixels = () => { ranD++; };
+  vm.runInContext('var DESKTOP = true;', sbD);
+  tileCall(sbD, 'canon', 6000, 4000, 2800, 1800);
+  assert.equal(ranD, 1, 'laptop: the same box is under its cap');
+});
+
+// ---- grain removal follows the ISO: a clean photo is only sharpened, so fine low-contrast detail (skin, lashes) survives ----
+// (measured with the real code on a chart: a +-8 level texture kept 7-48% of its detail through the full denoise, 100%+ without it)
+function isoTile(sb, iso, mode) {
+  if (mode) sb.store.set('pb_canon_clean', mode);
+  const seen = []; sb.pbCleanPixels = (d, w, h, m, denoise, tune) => seen.push({ denoise, T: tune.denoise[0], strongT: tune.denoise[1] });
+  const ctx = { getTransform: () => ({ a: 1, b: 0 }) }, img = { width: 3000, height: 2000 };
+  if (iso !== undefined) img._cqIso = iso;
+  sb.get('(function (ctx, img) { return camQTile(CAM_Q.canon, ctx, img, 0, 0, 3000, 2000, 600, 400); })')(ctx, img);
+  return seen;
+}
+test('ISO tiers: up to ISO 1250 no grain removal (sharpen only), 1600-2500 light, 3200+ full, no EXIF ISO full as before', () => {
+  const T = sb => sb.get('CAM_Q.canon.tune.denoise[0]');
+  let sb = makeSandbox(), full = T(sb);
+  assert.deepEqual(isoTile(sb, 100).map(x => x.denoise), [false], 'ISO 100');
+  assert.deepEqual(isoTile(makeSandbox(), 1250).map(x => x.denoise), [false], 'ISO 1250');
+  const mid = isoTile(makeSandbox(), 2000)[0];
+  assert.equal(mid.denoise, true); assert(Math.abs(mid.T - full * 0.6) < 1e-9, 'light: ' + mid.T + ' vs full ' + full);
+  const hi = isoTile(makeSandbox(), 3200)[0];
+  assert.equal(hi.denoise, true); assert.equal(hi.T, full);
+  const none = isoTile(makeSandbox(), undefined)[0];
+  assert.equal(none.denoise, true); assert.equal(none.T, full, 'no EXIF: unchanged');
+});
+test('Strong (dim rooms) removes grain fully whatever the ISO; Off never runs the pass', () => {
+  const sbS = makeSandbox(), s = isoTile(sbS, 100, 'strong')[0], full = sbS.get('CAM_Q.canon.tune.denoise[1]');
+  assert.equal(s.denoise, true); assert.equal(s.strongT, full);
+  assert.deepEqual(isoTile(makeSandbox(), 100, 'off'), []);
+});
+test('a box drawn for a low ISO is not reused for a high one (cached per grain setting)', () => {
+  const sb = makeSandbox(); const seen = []; sb.pbCleanPixels = (d, w, h, m, dn) => seen.push(dn);
+  const ctx = { getTransform: () => ({ a: 1, b: 0 }) }, img = { width: 3000, height: 2000, _cqIso: 100 };
+  const draw = () => sb.get('(function (ctx, img) { return camQTile(CAM_Q.canon, ctx, img, 0, 0, 3000, 2000, 600, 400); })')(ctx, img);
+  draw(); draw(); img._cqIso = 3200; draw();
+  assert.deepEqual(seen, [false, true], 'second draw cached; the new ISO is cleaned again');
+});
+await testAsync('the ISO is read from the photo EXIF block and kept on the shot (and its drawn boxes are dropped)', async () => {
+  const sb = makeSandbox(), u16 = v => [v & 255, v >> 8], u32 = v => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >> 24) & 255];
+  const entry = (tag, type, valOrOff) => [...u16(tag), ...u16(type), ...u32(1), ...(type === 3 ? [...u16(valOrOff), 0, 0] : u32(valOrOff))];
+  const tiff = [0x49, 0x49, 0x2A, 0, ...u32(8), ...u16(1), ...entry(0x8769, 4, 26), ...u32(0),
+    ...u16(3), ...entry(0x829A, 5, 68), ...entry(0x829D, 5, 76), ...entry(0x8827, 3, 200), ...u32(0), ...u32(1), ...u32(100), ...u32(28), ...u32(10)];
+  const exif = [0x45, 0x78, 0x69, 0x66, 0, 0, ...tiff];
+  const jpeg = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE1, (exif.length + 2) >> 8, (exif.length + 2) & 255, ...exif, 0xFF, 0xD9]);
+  withCamera(sb, 'Canon EOS 60D', 'canon');
+  sb.previewCanvas = { _renderedForLayout: 'strip' };
+  const canvas = { _cqCache: new Map([['old', 1]]) };
+  sb.get('camQOnShot')({ slice: () => ({ arrayBuffer: async () => jpeg.buffer }) }, canvas);
+  await new Promise(r => setTimeout(r, 20));
+  assert.equal(canvas._cqIso, 200); assert.equal(canvas._cqCache, null);
+  assert.equal(sb.previewCanvas._renderedForLayout, '', 'late ISO invalidates cached previewCanvas so uploadLayoutForQR redraws without full denoise');
+});
+test('prefetched EXIF sets _cqIso synchronously in camQOnShot so the last shot cannot race renderComposite', () => {
+  const sb = makeSandbox();
+  withCamera(sb, 'Canon EOS 60D', 'canon');
+  const cv = { _cqCache: new Map([['old', 1]]) };
+  sb.get('camQOnShot')({}, cv, { iso: 100, shutter: 1 / 200, f: 4, orientation: 1 });
+  assert.equal(cv._cqIso, 100, 'ISO is set immediately before any async tick');
+  assert.equal(cv._cqCache, null);
+  assert(page.includes('const [bmp, exif] = await Promise.all([createImageBitmap(file), pbReadExif(file).catch(() => null)]);'), 'captureShot reads EXIF in parallel with decode');
+  assert(page.includes('const qp = camQOnShot(file, c, exif);'), 'captureShot passes prefetched EXIF into camQOnShot');
+});
+
+// ---- lossless PNG master copy (laptop app): operator-only, never delays or fails the guest's session ----
+function masterSandbox(o) {
+  o = o || {};
+  const calls = { uploads: [], logs: [] }, store = new Map(o.store || []);
+  const sb = {
+    String, Math, Promise, Number, Error, DESKTOP: !!o.desktop, MASTER_PNG_KEY: 'x',
+    localStorage: { getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)) },
+    pbCanvasBlob: async (c, type) => { calls.type = type; return o.noBlob ? null : { size: 8192 * 1024, type }; },
+    uploadToDrive: async (blob, name, dest) => { calls.uploads.push([name, dest]); if (o.fail && calls.uploads.length <= o.fail) throw new Error('boom'); return {}; },
+    isPermanentUploadError: () => !!o.permanent, wait: () => Promise.resolve(), usbLog: (k, i) => calls.logs.push([k, i]),
+  };
+  vm.createContext(sb);
+  const lines = page.split('\n'), a = lines.findIndex(l => l.includes('---- Lossless master copy (laptop app only) ----')), b = lines.findIndex(l => l.includes('---- What guests see after scanning their QR'));
+  assert(a > 0 && b > a, 'master block not found');
+  const body = lines.slice(a, b).join('\n').replace(/const MASTER_PNG_KEY = 'pb4u.masterPng';/, "var MASTER_PNG_KEY = 'pb4u.masterPng';").replace(/\(function \(\) \{[\s\S]*$/, '');
+  vm.runInContext(body, sb);
+  sb.calls = calls; sb.store = store; sb.get = e => vm.runInContext(e, sb);
+  return sb;
+}
+test('master PNG: on by default on the laptop app only, and the per-laptop setting turns it off', () => {
+  assert.equal(masterSandbox({ desktop: false }).get('masterPngOn()'), false, 'tablet / web booth: never');
+  assert.equal(masterSandbox({ desktop: true }).get('masterPngOn()'), true, 'laptop: default on');
+  assert.equal(masterSandbox({ desktop: true, store: [['pb4u.masterPng', '0']] }).get('masterPngOn()'), false, 'turned off');
+  assert.equal(masterSandbox({ desktop: true, store: [['pb4u.masterPng', '1']] }).get('masterPngOn()'), true);
+});
+await testAsync('master PNG: saved as <name>_master.png into the same event folder, lossless PNG, retried once, never throws', async () => {
+  let sb = masterSandbox({ desktop: true });
+  await sb.get('saveMasterPng')({}, '3_strip_cam2.jpg', { folderKey: 'Event', subfolder: 'A' });
+  assert.deepEqual(sb.calls.uploads, [['3_strip_cam2_master.png', { folderKey: 'Event', subfolder: 'A' }]]); assert.equal(sb.calls.type, 'image/png');
+  assert.equal(sb.calls.logs[0][1].ok, true); assert.equal(sb.calls.logs[0][1].kb, 8192);
+  sb = masterSandbox({ desktop: true, fail: 1 });
+  await sb.get('saveMasterPng')({}, '4_grid.jpg', {}); assert.equal(sb.calls.uploads.length, 2, 'one retry'); assert.equal(sb.calls.logs[0][1].ok, true);
+  sb = masterSandbox({ desktop: true, fail: 9 });
+  await sb.get('saveMasterPng')({}, '5_strip.jpg', {}); assert.equal(sb.calls.uploads.length, 2); assert.equal(sb.calls.logs[0][1].ok, false, 'gives up quietly');
+  sb = masterSandbox({ desktop: true, fail: 9, permanent: true });
+  await sb.get('saveMasterPng')({}, '6_strip.jpg', {}); assert.equal(sb.calls.uploads.length, 1, 'a permanent error is not retried');
+  sb = masterSandbox({ desktop: true, noBlob: true });
+  await sb.get('saveMasterPng')({}, '7_strip.jpg', {}); assert.equal(sb.calls.uploads.length, 0, 'no PNG made: nothing uploaded');
+});
+test('master PNG: wired into the save flow without waiting, the guest-link code skips it, and the toggle exists on the laptop app only', () => {
+  assert(page.includes("if (masterPngOn()) saveMasterPng(flat, filename, dest);"), 'hook missing (it must not be awaited)');
+  assert(!/await saveMasterPng/.test(page), 'the master must never be awaited');
+  assert(page.includes('const isMaster = /_master\\.png$/i.test(filename'), 'upload must recognise a master');
+  assert(page.includes('(!isMaster && (LOCALSHARE ||'), 'a master gets no guest code'); assert(page.includes('if (!isMaster) { try { gvAfterUpload('), 'a master skips the guest-link step');
+  assert(page.includes("flat.getContext('2d', { alpha: false })"), 'opaque canvas keeps the PNG 24-bit');
+  assert(/id="masterPngToggle"/.test(page) && /id="masterBox" style="margin-top:12px; display:none;"/.test(page), 'toggle hidden until the laptop app shows it');
+});
+
+// ---- the saved picture's size follows the camera: base for any camera, more only when the camera has the detail ----
+test('output scale follows the camera: webcam / tablet photos keep the base size (2.5x laptop), a DSLR photo earns more (3x laptop, 2.5x tablet), within a memory limit', () => {
+  const mk = mode => {
+    const prev = { width: 1 }, sb = { previewCanvas: prev, DESKTOP: mode === 'desktop', LANREMOTE: false, TABLET_LOCAL: mode === 'tablet', LOCALSHARE: mode !== 'web', USB_SHOT_MAX: 3000, shotCanvases: [] };
+    vm.createContext(sb);
+    vm.runInContext(['isOutputTarget', 'cameraDetailScale', 'offlineOutputScale'].map(pageFunction).join('\n'), sb);
+    const shot = (w, h) => { sb.shotCanvases.length = 0; sb.shotCanvases.push({ width: w, height: h, _isShot: true }); };
+    return { sb, prev, shot, sc: kind => Math.round(sb.offlineOutputScale(prev, kind) * 1000) / 1000 };
+  };
+  let m = mk('desktop');
+  assert.equal(m.sc('strip'), 2.5, 'no shot yet: base'); assert.equal(m.sc('sheet'), 2.5);
+  m.shot(1280, 720); assert.equal(m.sc('strip'), 2.5, '720p webcam'); assert.equal(m.sc('sheet'), 2.5);
+  m.shot(1920, 1080); assert.equal(m.sc('strip'), 2.5, '1080p webcam'); assert.equal(m.sc('sheet'), 2.5);
+  m.shot(3840, 2160); assert.equal(m.sc('strip'), 3, '4K webcam: strip boxes are small, so it earns the cap'); assert.equal(m.sc('sheet'), 2.5, 'but a 4R box is too big for it');
+  m.shot(4500, 3000); assert.equal(m.sc('strip'), 3, 'DSLR strip: capped at 3x'); assert.equal(m.sc('sheet'), 2.727, 'DSLR 4R: 3000 / 1100');
+  m.shot(8000, 8000); assert.equal(m.sc('strip'), 3); assert.equal(m.sc('sheet'), 3);
+  m.sb.shotCanvases.length = 0; m.sb.shotCanvases.push({ width: 6000, height: 4000 });   // not a shot (no _isShot): ignored
+  assert.equal(m.sc('sheet'), 2.5);
+  m.shot(4500, 3000);
+  assert.equal(m.sb.offlineOutputScale({ width: 1 }, 'strip'), 1, 'a Setup thumbnail stays 1x'); assert.equal(m.sb.offlineOutputScale(m.prev, 'receipt'), 1, 'receipt stays 1x');
+  m = mk('tablet');
+  m.shot(1920, 1080); assert.equal(m.sc('strip'), 2.25); assert.equal(m.sc('sheet'), 2);
+  m.shot(3600, 2400); assert.equal(m.sc('strip'), 2.5, 'tablet cap 2.5x'); assert.equal(m.sc('sheet'), 2.182, 'tablet 4R: 2400 / 1100');
+  m.shot(8000, 8000); assert.equal(m.sc('strip'), 2.5); assert.equal(m.sc('sheet'), 2.357, '12 million pixel limit: sqrt(12e6 / 2.16e6)');
+  m = mk('web');
+  assert.equal(m.sc('strip'), 2); m.shot(1920, 1080); assert.equal(m.sc('sheet'), 2);
+  m.shot(4500, 3000); assert.equal(m.sc('strip'), 2.5); assert.equal(m.sc('sheet'), 2.357);
+});
+// ---- the resolution tag: a saved photo says what it is (Windows showed 96 dpi for every file) ----
+import { crc32 } from 'node:zlib';
+function dpiSandbox() {
+  const sb = { Uint8Array, Uint32Array, Blob, Math, Promise, Number };
+  vm.createContext(sb);
+  // The whole "Resolution tag" block of the page (it holds one-line functions, which pageFunction cannot cut out).
+  const lines = page.split('\n'), i0 = lines.findIndex(l => l.includes('---- Resolution tag for saved photos ----')), i1 = lines.findIndex(l => l.includes('---- Signed upload ticket ----'));
+  assert(i0 > 0 && i1 > i0, 'resolution-tag block not found in booth.html');
+  vm.runInContext(lines.slice(i0, i1).join('\n'), sb);
+  return sb;
+}
+const bytesOf = async b => new Uint8Array(await b.arrayBuffer());
+const jfifJpeg = () => new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0, 0, 16, 0x4A, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xFF, 0xDB, 0, 4, 1, 2, 0xFF, 0xD9]);
+const exifJpeg = () => new Uint8Array([0xFF, 0xD8, 0xFF, 0xE1, 0, 8, 0x45, 0x78, 0x69, 0x66, 0, 0, 0xFF, 0xDB, 0, 4, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 0xFF, 0xD9]);
+function tinyPng(extra) {
+  const chunk = (type, data) => { const t = Buffer.from(type), d = Buffer.from(data), out = Buffer.alloc(12 + d.length); out.writeUInt32BE(d.length, 0); t.copy(out, 4); d.copy(out, 8); out.writeUInt32BE(crc32(Buffer.concat([t, d])), 8 + d.length); return out; };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(1, 0); ihdr.writeUInt32BE(1, 4); ihdr[8] = 8; ihdr[9] = 2;
+  return new Uint8Array(Buffer.concat([Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]), chunk('IHDR', ihdr), ...(extra || []), chunk('IDAT', [0x78, 0x9c, 0x63, 0, 0, 0, 4, 0, 1]), chunk('IEND', [])]));
+}
+test('dpi: nominal resolution is the long side over 6 inches (600x1800 strip = 300, 1350x4050 = 675, 4R 2400x3600 = 600)', () => {
+  const f = dpiSandbox().pbNominalDpi;
+  assert.equal(f({ width: 600, height: 1800 }), 300); assert.equal(f({ width: 1350, height: 4050 }), 675);
+  assert.equal(f({ width: 2400, height: 3600 }), 600); assert.equal(f({ width: 3000, height: 2000 }), 500);
+  assert.equal(f({ width: 0, height: 0 }), 300); assert.equal(f({ width: 9000, height: 9000 }), 1200, 'capped');
+});
+await testAsync('dpi: a JPEG with a JFIF header gets units = dots per inch and the dpi; the picture bytes are untouched', async () => {
+  const sb = dpiSandbox(), src = jfifJpeg(), out = await bytesOf(await sb.pbStampDpi(new Blob([src], { type: 'image/jpeg' }), 675));
+  assert.equal(out.length, src.length);
+  assert.equal(out[13], 1, 'units'); assert.equal((out[14] << 8) | out[15], 675); assert.equal((out[16] << 8) | out[17], 675);
+  assert.deepEqual([...out.slice(0, 13)], [...src.slice(0, 13)]); assert.deepEqual([...out.slice(18)], [...src.slice(18)]);
+});
+await testAsync('dpi: a JPEG that starts with Exif instead gets a JFIF header inserted, the rest kept', async () => {
+  const sb = dpiSandbox(), src = exifJpeg(), res = await sb.pbStampDpi(new Blob([src], { type: 'image/jpeg' }), 300), out = await bytesOf(res);
+  assert.equal(out.length, src.length + 18); assert.equal(res.type, 'image/jpeg');
+  assert.deepEqual([...out.slice(0, 4)], [0xFF, 0xD8, 0xFF, 0xE0]); assert.equal(out[13], 1); assert.equal((out[14] << 8) | out[15], 300);
+  assert.deepEqual([...out.slice(20)], [...src.slice(2)], 'original data follows the new segment');
+});
+await testAsync('dpi: a PNG gets a correct pHYs chunk (pixels per metre, valid CRC) right after IHDR; the rest is byte-identical', async () => {
+  const sb = dpiSandbox(), src = tinyPng(), res = await sb.pbStampDpi(new Blob([src], { type: 'image/png' }), 300), out = await bytesOf(res);
+  assert.equal(out.length, src.length + 21); assert.equal(res.type, 'image/png');
+  const dv = new DataView(out.buffer);
+  assert.equal(dv.getUint32(33), 9); assert.equal(String.fromCharCode(...out.slice(37, 41)), 'pHYs');
+  assert.equal(dv.getUint32(41), 11811, '300 dpi = 11811 px/m'); assert.equal(dv.getUint32(45), 11811); assert.equal(out[49], 1);
+  assert.equal(dv.getUint32(50), crc32(Buffer.from(out.slice(37, 50))) >>> 0, 'CRC');
+  assert.deepEqual([...out.slice(0, 33)], [...src.slice(0, 33)]); assert.deepEqual([...out.slice(54)], [...src.slice(33)]);
+});
+await testAsync('dpi: a PNG that already has a resolution, or something that is not an image, is returned as it is', async () => {
+  const sb = dpiSandbox(), withP = tinyPng([Buffer.from([0, 0, 0, 9, 0x70, 0x48, 0x59, 0x73, 0, 0, 0x0B, 0x13, 0, 0, 0x0B, 0x13, 1, 0, 0, 0, 0])]);
+  const b1 = new Blob([withP], { type: 'image/png' }); assert.equal(await sb.pbStampDpi(b1, 600), b1);
+  const b2 = new Blob([new Uint8Array(40)], { type: 'image/gif' }); assert.equal(await sb.pbStampDpi(b2, 600), b2);
+  assert.equal(await sb.pbStampDpi(null, 300), null);
+});
+await testAsync('dpi: pbCanvasBlob stamps the canvas\'s own nominal dpi unless one is given', async () => {
+  const sb = dpiSandbox(), cv = { width: 1350, height: 4050, toBlob: (cb) => cb(new Blob([jfifJpeg()], { type: 'image/jpeg' })) };
+  let o = await bytesOf(await sb.pbCanvasBlob(cv, 'image/jpeg', 0.95)); assert.equal((o[14] << 8) | o[15], 675);
+  o = await bytesOf(await sb.pbCanvasBlob(cv, 'image/jpeg', 0.95, 300)); assert.equal((o[14] << 8) | o[15], 300);
+});
+test('dpi: every place a finished photo is saved or shared stamps its resolution', () => {
+  for (const needle of ["pbCanvasBlob(flat, 'image/jpeg', offlineJpegQuality('print'))", "pbCanvasBlob(flat, 'image/jpeg', offlineJpegQuality('solo'), 300)", "pbCanvasBlob(previewCanvas, 'image/png')", 'pbStampDpi(rawBlob, pbNominalDpi(previewCanvas))'])
+    assert(page.includes(needle), 'missing: ' + needle);
+  assert(!/previewCanvas\.toBlob\(res, 'image\/png'\)/.test(page), 'a plain PNG save is left');
+});
+
+// ---- Android tablet camera: full-size photo swapped in behind the instant frame ----
+function tabletSandbox(opts) {
+  opts = opts || {};
+  const calls = { finalized: [], takePhoto: 0, logs: [] };
+  const inst = { width: 1280, height: 720 };
+  const bmp = { width: opts.photoW || 4000, height: opts.photoH || 3000, close() { } };
+  const sb = {
+    console, Math, Object, Array, Map, Set, Promise, Date, String, Number, Error, Uint8Array,
+    IS_ANDROID_APP: !opts.desktop, DESKTOP: !!opts.desktop, USB_CAM_ID: 'usb-remote', UVC_ID: 'pb-uvc-webcam', currentDeviceId: 'cam0',
+    webcamRes: { photo: opts.photo || 'hd' }, tabletStill: { jobs: new Set(), fails: 0, off: false, why: '', offDevice: '', maxW: 0, lastW: 0, lastH: 0, lastMs: 0, caps: null, capsTrack: null },
+    ImageCapture: opts.noImageCapture ? undefined : function () { return { getPhotoCapabilities: async () => (opts.noCaps ? {} : { imageWidth: { max: opts.capMax || 4000 }, imageHeight: { max: Math.round((opts.capMax || 4000) * 0.75) }, fillLightMode: ['off', 'auto'] }), takePhoto: async o => { calls.takePhoto++; calls.opts = o; if (opts.slow) await new Promise(r => setTimeout(r, 40)); if (opts.reject) throw new Error('boom'); return { size: 999999 }; } }; },
+    bgRep: { mode: opts.bgMode || 'off' },
+    navigator: { deviceMemory: opts.mem === undefined ? 4 : opts.mem },
+    isBuiltInCamera: () => opts.builtIn !== false,
+    currentStream: { getVideoTracks: () => [opts.track || (opts.track = {})] },
+    isJpegTruncated: async () => !!opts.truncated,
+    createImageBitmap: async () => bmp,
+    mirrorPreview: () => !!opts.mirror,
+    document: { createElement: () => { const cv = { width: 0, height: 0 }; cv.getContext = () => ({ imageSmoothingEnabled: false, imageSmoothingQuality: '', translate() { }, scale() { }, drawImage: (...a) => { cv._draw = a; }, setTransform() { } }); return cv; } },
+    inst, shotCanvases: [inst], sess: null, previewCanvas: { _renderedForLayout: 'strip' },
+    TABLET_STILL_MAX_MS: opts.maxMs || 4500,
+    finalizeShotCanvas: (c, i) => { calls.finalized.push([c, i]); sb.shotCanvases[i] = c; },
+    usbLog: (k, i) => calls.logs.push([k, i]),
+    popNum: () => { }, guestCall: () => { }, cdShot: { textContent: '' }, wait: ms => new Promise(r => setTimeout(r, ms)),
+    setTimeout, clearTimeout,
+  };
+  vm.createContext(sb);
+  const names = ['tabletStillEligible', 'tabletStillMaxPx', 'tabletStillUpgrade', 'tabletStillStart', 'tabletStillSettle'];
+  vm.runInContext('const TABLET_STILL_MAX_MS = ' + (opts.maxMs || 4500) + ';\n' + names.map(pageFunction).join('\n'), sb);
+  sb.calls = calls; sb.bmp = bmp; sb.get = expr => vm.runInContext(expr, sb);
+  return sb;
+}
+const settle = sb => sb.get('tabletStillSettle')();
+await testAsync('tablet still: the full-size photo replaces the instant frame, trimmed to the live view shape (4:3 -> 16:9), at most 3000 px', async () => {
+  const sb = tabletSandbox(); sb.get('tabletStillStart')(0); await settle(sb);
+  assert.equal(sb.calls.takePhoto, 1);
+  assert.equal(sb.calls.opts.imageWidth, 4000, 'asks for the camera\'s biggest size');
+  assert.equal(sb.calls.opts.fillLightMode, 'off', 'never fires the torch');
+  const [c, i] = sb.calls.finalized[0]; assert.equal(i, 0);
+  assert.equal(c.width, 3000); assert.equal(c.height, 1688, '16:9 like the live view, not 4:3');
+  assert.deepEqual(c._draw.slice(1, 5), [0, 375, 4000, 2250], 'centre crop of the 4000x3000 photo');
+  assert.equal(sb.previewCanvas._renderedForLayout, '', 'a strip drawn with the small frame is drawn again');
+  assert.equal(sb.tabletStill.lastW, 3000);
+});
+await testAsync('tablet still: a 2 GB tablet gets a smaller photo and the camera\'s usual size', async () => {
+  const sb = tabletSandbox({ mem: 2 }); sb.get('tabletStillStart')(0); await settle(sb);
+  assert.equal(sb.calls.opts.imageWidth, undefined);
+  assert.equal(sb.calls.finalized[0][0].width, 2200);
+});
+await testAsync('tablet still: not tried on a USB webcam, with background swap on, on a 1 GB tablet, in "preview" mode, or without ImageCapture', async () => {
+  for (const o of [{ builtIn: false }, { bgMode: 'green' }, { mem: 1 }, { photo: 'preview' }, { photo: 'max' }, { noImageCapture: true }]) {
+    const sb = tabletSandbox(o); sb.get('tabletStillStart')(0); await settle(sb);
+    assert.equal(sb.calls.takePhoto, 0, JSON.stringify(o));
+  }
+  const sb = tabletSandbox(); sb.currentDeviceId = 'usb-remote'; sb.get('tabletStillStart')(0); await settle(sb);
+  assert.equal(sb.calls.takePhoto, 0, 'DSLR over USB');
+});
+await testAsync('laptop app: a built-in webcam on "Full camera resolution" also gets the full-size photo in the background; a USB webcam keeps its own path', async () => {
+  let sb = tabletSandbox({ desktop: true, photo: 'max' }); sb.get('tabletStillStart')(0); await settle(sb);
+  assert.equal(sb.calls.takePhoto, 1); assert.equal(sb.calls.finalized.length, 1);
+  sb = tabletSandbox({ desktop: true, photo: 'max', builtIn: false }); sb.get('tabletStillStart')(0); await settle(sb);
+  assert.equal(sb.calls.takePhoto, 0, 'USB webcam: handled by the full-resolution path');
+  sb = tabletSandbox({ desktop: true, photo: 'preview' }); sb.get('tabletStillStart')(0); await settle(sb);
+  assert.equal(sb.calls.takePhoto, 0, 'operator chose the instant frame');
+});
+await testAsync('tablet still: a camera whose biggest photo is no bigger than its live view (720p laptop webcam) is skipped without taking a photo, and a different camera gets its own try', async () => {
+  const sb = tabletSandbox({ desktop: true, photo: 'max', capMax: 1280 }); sb.get('tabletStillStart')(0); await settle(sb);
+  assert.equal(sb.calls.takePhoto, 0, 'no photo taken for nothing'); assert.equal(sb.tabletStill.off, true); assert.equal(sb.tabletStill.why, 'small'); assert.equal(sb.tabletStill.maxW, 1280);
+  assert(sb.calls.logs.some(l => l[0] === 'tablet-still-skip'), 'logged');
+  sb.get('tabletStillStart')(0); await settle(sb); assert.equal(sb.calls.takePhoto, 0, 'stays off for the same camera');
+  sb.currentDeviceId = 'cam-two'; sb.webcamRes.photo = 'max';
+  assert.equal(sb.get('tabletStillEligible')(), true, 'another camera is tried again');
+});
+await testAsync('tablet still: a camera that reports no photo sizes is still tried once (the Android WebView often reports none)', async () => {
+  const sb = tabletSandbox({ noCaps: true }); sb.get('tabletStillStart')(0); await settle(sb);
+  assert.equal(sb.calls.takePhoto, 1); assert.equal(sb.calls.finalized.length, 1);
+});
+await testAsync('tablet still: a photo turned the other way, or not bigger than the live view, keeps the instant frame', async () => {
+  let sb = tabletSandbox({ photoW: 3000, photoH: 4000 }); sb.get('tabletStillStart')(0); await settle(sb);
+  assert.equal(sb.calls.finalized.length, 0, 'portrait photo vs landscape live view'); assert.equal(sb.tabletStill.fails, 1);
+  sb = tabletSandbox({ photoW: 1280, photoH: 960 }); sb.get('tabletStillStart')(0); await settle(sb);
+  assert.equal(sb.calls.finalized.length, 0, 'no bigger than the live view');
+});
+await testAsync('tablet still: a failure keeps the frame; a second failure switches it off for the day', async () => {
+  const sb = tabletSandbox({ reject: true });
+  sb.get('tabletStillStart')(0); await settle(sb);
+  assert.equal(sb.tabletStill.fails, 1); assert.equal(sb.tabletStill.off, false);
+  sb.get('tabletStillStart')(0); await settle(sb);
+  assert.equal(sb.tabletStill.off, true); assert.equal(sb.calls.finalized.length, 0);
+  assert(sb.calls.logs.some(l => l[0] === 'tablet-still-fail'), 'logged for "Copy camera log"');
+  sb.get('tabletStillStart')(0); await settle(sb);
+  assert.equal(sb.calls.takePhoto, 2, 'no more attempts once off');
+});
+await testAsync('tablet still: a camera that is too slow is dropped at once (guests never wait twice)', async () => {
+  const sb = tabletSandbox({ slow: true, maxMs: 10 }); sb.get('tabletStillStart')(0); await settle(sb);
+  assert.equal(sb.tabletStill.off, true); assert.equal(sb.calls.finalized.length, 0);
+});
+await testAsync('tablet still: a photo retaken or a session cancelled meanwhile is not replaced and not counted as a failure', async () => {
+  let sb = tabletSandbox(); sb.get('tabletStillStart')(0); sb.shotCanvases[0] = { width: 1280, height: 720 };   // retaken
+  await settle(sb); assert.equal(sb.calls.finalized.length, 0);
+  sb = tabletSandbox({ reject: true }); sb.get('tabletStillStart')(0); sb.sess = { cancelled: true };
+  await settle(sb); assert.equal(sb.tabletStill.fails, 0, 'camera closed by Cancel');
+});
+test('tablet still: the "hd" mode exists only in the Android app and is the Android default', () => {
+  assert(/value="hd"/.test(page), 'option in the page');
+  assert(/IS_ANDROID_APP \? 'hd'/.test(page), 'Android default');
+  assert(/option\[value="hd"\]/.test(page) && /hdOpt\.remove\(\)/.test(page), 'removed on every other platform');
+  assert(/pb4u\.androidHdStillV1/.test(page), 'tablets left on the instant-only mode are moved once');
+});
+
 // ---- what a shot does ----
 test('a shot is marked with the brand that took it, so drawing and printing use that brand\'s profile', () => {
   const sb = makeSandbox(); withCamera(sb, 'Canon EOS 60D', 'canon');
@@ -223,6 +552,59 @@ await testAsync('reads ISO, shutter and aperture from a JPEG\'s EXIF block', asy
   assert.deepEqual([ex.iso, Math.round(ex.f * 10) / 10, ex.shutter], [800, 2.8, 0.01]);
   assert.equal(await sb.get('pbReadExif')({ slice: () => ({ arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer }) }), null, 'not a JPEG');
   assert.equal(sb.get('pbShutterText')(1 / 125), '1/125 s');
+});
+
+// ---- solo shots on the laptop app: the camera's own file when the booth didn't change the picture ----
+function rotJpeg(orientation) {
+  const u16 = v => [v & 255, v >> 8], u32 = v => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >> 24) & 255];
+  const entry = (tag, type, val) => [...u16(tag), ...u16(type), ...u32(1), ...(type === 3 ? [...u16(val), 0, 0] : u32(val))];
+  const ifd0 = orientation ? [...u16(2), ...entry(0x0112, 3, orientation), ...entry(0x8769, 4, 38), ...u32(0)]   // IFD0 at 8, 30 bytes: Exif IFD at 38
+    : [...u16(1), ...entry(0x8769, 4, 26), ...u32(0)];                                                            // IFD0 at 8, 18 bytes: Exif IFD at 26
+  const tiff = [0x49, 0x49, 0x2A, 0, ...u32(8), ...ifd0, ...u16(1), ...entry(0x8827, 3, 400), ...u32(0)];
+  const exif = [0x45, 0x78, 0x69, 0x66, 0, 0, ...tiff];
+  return new Uint8Array([0xFF, 0xD8, 0xFF, 0xE1, (exif.length + 2) >> 8, (exif.length + 2) & 255, ...exif, 0xFF, 0xD9]);
+}
+function soloSandbox(desktop) {
+  const sb = { DESKTOP: desktop !== false, Blob, Uint8Array };
+  vm.createContext(sb);
+  vm.runInContext(['pbReadExif', 'soloOriginal'].map(pageFunction).join('\n'), sb);
+  return sb;
+}
+await testAsync("solo shot: the camera's own file is kept untouched when it is an upright JPEG (laptop app)", async () => {
+  const sb = soloSandbox();
+  const up = new Blob([rotJpeg(1)], { type: 'image/jpeg' }), plain = new Blob([rotJpeg(0)], { type: 'image/jpeg' });
+  assert.equal(await sb.soloOriginal({ _orig: up }), up, 'upright: the very same file');
+  assert.equal(await sb.soloOriginal({ _orig: plain }), plain, 'no rotation mark: the very same file');
+  const untyped = new Blob([rotJpeg(1)]);
+  const out = await sb.soloOriginal({ _orig: untyped });
+  assert.equal(out.type, 'image/jpeg'); assert.equal(out.size, untyped.size, 'same bytes, labelled as a JPEG');
+  assert.equal((await sb.pbReadExif(new Blob([rotJpeg(6)]))).orientation, 6, 'the EXIF reader returns the rotation mark');
+  assert.equal((await sb.pbReadExif(up)).iso, 400);
+});
+await testAsync("solo shot: the booth's own copy is used for a turned photo, a non-JPEG, no original, or off the laptop", async () => {
+  const sb = soloSandbox();
+  assert.equal(await sb.soloOriginal({ _orig: new Blob([rotJpeg(6)], { type: 'image/jpeg' }) }), null, 'portrait mark: would show sideways in thumbnails');
+  // EXIF APP1 with IFD0 Orientation (0x0112 = 6) and NO Exif SubIFD (0x8769): must still detect rotation and reject.
+  const u16 = v => [v & 255, v >> 8], u32 = v => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >> 24) & 255];
+  const entry = (tag, type, val) => [...u16(tag), ...u16(type), ...u32(1), ...u16(val), 0, 0];
+  const tiffNoSub = [0x49, 0x49, 0x2A, 0, ...u32(8), ...u16(1), ...entry(0x0112, 3, 6), ...u32(0)];
+  const exifNoSub = [0x45, 0x78, 0x69, 0x66, 0, 0, ...tiffNoSub];
+  const noSubJpeg = new Blob([new Uint8Array([0xFF, 0xD8, 0xFF, 0xE1, (exifNoSub.length + 2) >> 8, (exifNoSub.length + 2) & 255, ...exifNoSub, 0xFF, 0xD9])], { type: 'image/jpeg' });
+  assert.equal((await sb.pbReadExif(noSubJpeg)).orientation, 6, 'reads Orientation from IFD0 even without Exif SubIFD');
+  assert.equal(await sb.soloOriginal({ _orig: noSubJpeg }), null, 'turned JPEG without Exif SubIFD uses booth copy');
+  assert.equal(await sb.soloOriginal({ _orig: new Blob([new Uint8Array([0x89, 0x50, 0x4E, 0x47])], { type: 'image/png' }) }), null, 'not a JPEG');
+  assert.equal(await sb.soloOriginal({}), null); assert.equal(await sb.soloOriginal(null), null);
+  assert.equal(await soloSandbox(false).soloOriginal({ _orig: new Blob([rotJpeg(1)], { type: 'image/jpeg' }) }), null, 'tablets / web booth keep their copy');
+});
+test('solo shot: the original is only kept when no mirror, background swap or look changed the picture', () => {
+  for (const needle of [
+    'if (DESKTOP && !mir && !bgSwapped) c._orig = file;',                                   // DSLR
+    'if (DESKTOP && !mir && !bgSwapped) c._orig = blob;',                                   // webcam full-size still
+    "var lookFree = filterKey === 'none' && !softSkin && !dateStamp;",
+    'clone._orig = (lookFree && c._orig) || null;',
+    'var blob = await soloOriginal(sc);',
+    "if (filterKey === 'none' && !softSkin && !dateStamp) return;"                           // applyFilterToCanvas: the same test for "no look"
+  ]) assert(page.includes(needle), 'missing: ' + needle);
 });
 
 // ---- the brand files stay separate ----
@@ -281,6 +663,59 @@ test('webcamBlendFrames lowers stationary noise without ghosting moving pixels',
   assert.equal(did, true);
   assert(variance(cur, w, h) < beforeVar * 0.7, 'stationary noise variance dropped: ' + beforeVar.toFixed(1) + ' -> ' + variance(cur, w, h).toFixed(1));
   assert.deepEqual([cur[moveIdx], cur[moveIdx + 1], cur[moveIdx + 2]], [240, 240, 240], 'moving pixel stayed 100% intact');
+});
+
+// ---- offline high-res output scaling & prewarm ----
+test('camQPrewarm runs without requiring tips() and marks _hiRes canvas', () => {
+  const sb = makeSandbox();
+  let composed = null;
+  sb.setTimeout = fn => { fn(); return 0; };
+  sb.composeCanvas = (lay, cv) => { composed = cv; };
+  withCamera(sb, 'Canon EOS 60D', 'canon');
+  assert.equal(sb.get('CAM_Q.canon.tips()'), false);
+  sb.shotCanvases.push({ _cq: 'canon' });
+  sb.get('camQPrewarm(CAM_Q.canon, false)');
+  assert(composed && composed._hiRes === true, 'prewarm ran without tips() on a _hiRes canvas');
+  composed = null;
+  sb.get('camQPrewarm(CAM_Q.canon, true)');
+  assert.equal(composed, null, 'finalShot skips prewarm');
+});
+test('offlineOutputScale, offlineShotMaxPx, and offlineJpegQuality enforce ~5x desktop quality without scaling UI thumbnails or online mode', () => {
+  const mkOfflineSb = (mode) => {
+    const prev = { width: 1 }, thumb = { width: 1 }, hi = { _hiRes: true };
+    const sb = {
+      previewCanvas: prev,
+      DESKTOP: mode === 'desktop',
+      LANREMOTE: mode === 'lan',
+      TABLET_LOCAL: mode === 'tablet',
+      LOCALSHARE: mode !== 'online',
+      USB_SHOT_MAX: 3000,
+      shotCanvases: [],
+    };
+    vm.createContext(sb);
+    vm.runInContext(['isOutputTarget', 'cameraDetailScale', 'offlineOutputScale', 'offlineShotMaxPx', 'offlineJpegQuality'].map(pageFunction).join('\n'), sb);
+    return { sb, prev, thumb, hi };
+  };
+  const d = mkOfflineSb('desktop');
+  assert.equal(d.sb.offlineOutputScale(d.prev, 'strip'), 2.5);
+  assert.equal(d.sb.offlineOutputScale(d.hi, 'sheet'), 2.5);
+  assert.equal(d.sb.offlineOutputScale(d.hi, 'receipt'), 1);
+  assert.equal(d.sb.offlineOutputScale(d.thumb, 'strip'), 1, 'UI thumbnails stay 1x');
+  assert.equal(d.sb.offlineShotMaxPx(), 4500);
+  assert.equal(d.sb.offlineJpegQuality('print'), 1, 'laptop prints: 100% JPEG (3-7 MB)');
+  assert.equal(d.sb.offlineJpegQuality('solo'), 1, 'laptop solo shots drawn by the booth: 100% JPEG');
+  assert.equal(d.sb.offlineJpegQuality('gif'), 0.96, 'anything else on the laptop keeps 96%');
+  const t = mkOfflineSb('tablet');
+  assert.equal(t.sb.offlineOutputScale(t.prev, 'strip'), 2.25);
+  assert.equal(t.sb.offlineOutputScale(t.hi, 'sheet'), 2);
+  assert.equal(t.sb.offlineShotMaxPx(), 3600);
+  assert.equal(t.sb.offlineJpegQuality('print'), 0.95);
+  const o = mkOfflineSb('online');
+  assert.equal(o.sb.offlineOutputScale(o.prev, 'strip'), 2, 'web booth: 2x');
+  assert.equal(o.sb.offlineOutputScale(o.thumb, 'strip'), 1, 'web booth thumbnails stay 1x');
+  assert.equal(o.sb.offlineOutputScale(o.hi, 'receipt'), 1);
+  assert.equal(o.sb.offlineShotMaxPx(), 3000);
+  assert.equal(o.sb.offlineJpegQuality('print'), 0.95);
 });
 
 // ---- the committed page is what the sources make ----

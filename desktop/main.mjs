@@ -164,8 +164,20 @@ async function handle(req) {
     }
     if (p === '/local/drive' && req.method === 'POST') {
       if (!L.status().ok) return jsonRes({ ok: false, error: 'This laptop’s licence isn’t active.' }, 401);
-      const body = JSON.parse(await req.text());
       hotspotWake();   // Option 1: photo saved = session active, wake hotspot if idle
+      const ct = String(req.headers.get('content-type') || '').toLowerCase();
+      if (ct && !ct.startsWith('text/plain') && !ct.startsWith('application/json')) {
+        const sp = url.searchParams;
+        const buf = Buffer.from(await req.arrayBuffer());
+        return jsonRes(await driveRequest({
+          filename: sp.get('filename') || '',
+          folderKey: sp.get('folderKey') || '',
+          subfolder: sp.get('subfolder') || '',
+          guestCode: sp.get('guestCode') || '',
+          buffer: buf
+        }));
+      }
+      const body = JSON.parse(await req.text());
       return jsonRes(await driveRequest(body));
     }
     if (p.startsWith('/helper/') || p === '/helper') return await handleHelper(req, p.slice(7) || '/', url.searchParams);

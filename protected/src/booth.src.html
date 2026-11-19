@@ -17896,19 +17896,20 @@
           <div id="webcamResBox" style="display:none; margin-top:8px;">
             <p class="panel-label" style="margin-top:6px;">Live viewfinder resolution</p>
             <select class="cam-select" id="webcamPreviewRes">
-              <option value="auto">Full / Max resolution (Default · crispest live view)</option>
+              <option value="auto">Auto (Default · 720p on tablets and laptop cameras, 1080p on USB webcams)</option>
               <option value="720">Downsize viewfinder: 720p (smoother preview if tablet lags)</option>
               <option value="480">Downsize viewfinder: 480p (smoothest preview)</option>
               <option value="1080">1080p (Full HD)</option>
               <option value="max">Max (camera sensor maximum / 4K)</option>
               <option value="yuyv">Max YUYV (biggest uncompressed size, lower fps)</option>
             </select>
-            <p class="panel-hint" style="margin-top:4px;">Downsizing only affects the live viewfinder to keep preview
-              smooth and lag-free. Captured photos and prints always save at full maximum camera resolution.</p>
+            <p class="panel-hint" style="margin-top:4px;">This only sets the size of the live picture (smaller = smoother
+              on a slow tablet). The size of the photo itself is set under "Camera photo resolution" below.</p>
             <p class="panel-label" style="margin-top:6px;">Camera photo resolution</p>
             <select class="cam-select" id="webcamPhotoRes">
+              <option value="hd">Tablet camera: instant, then the full-size photo (Recommended on Android)</option>
               <option value="max">Full camera resolution (Recommended · sharpest prints)</option>
-              <option value="preview">Fast capture from viewfinder (instant)</option>
+              <option value="preview">Fast capture from viewfinder (instant, smaller photo)</option>
             </select>
             <p class="panel-hint" id="webcamResNote"></p>
             <details id="webcamProBox"
@@ -19023,7 +19024,17 @@
                 id="saveSoloToggle" checked></label>
             <p class="panel-hint" style="margin-top:6px;">Saves high-quality individual raw shots without template
               design into the event folder for booth sessions and roving photoman, and displays them in the gallery
-              under the Solo Photos tab. For roving photoman, the version with template design is also uploaded.</p>
+              under the Solo Photos tab. For roving photoman, the version with template design is also uploaded.
+              On the laptop app, a DSLR solo shot is the camera's own photo at its full size whenever no mirror, background
+              swap or look is used.</p>
+          </div>
+          <div class="sub-group" id="masterBox" style="margin-top:12px; display:none;">
+            <p class="sub-label">Master copy (laptop app)</p>
+            <label class="switch-row"><span>Also keep a lossless PNG master</span><input type="checkbox"
+                id="masterPngToggle" checked></label>
+            <p class="panel-hint" style="margin-top:6px;">Saves every finished strip / print a second time as a lossless PNG
+              (about 5&ndash;15 MB each) in a &ldquo;Masters&rdquo; folder inside the event folder. It is for you only: it never
+              appears in the gallery, on a guest&rsquo;s page or over the booth Wi-Fi. Uses about 10 MB of disk per session.</p>
           </div>
         </div>
         <div class="panel-section d7-pane" data-d7="flow" id="paySection" style="display:none;">
@@ -22785,8 +22796,8 @@
       }
       // Tablet app: a web page can't write to the tablet's storage, so the save goes through the app (window.__PBLocal.drive),
       // which answers with the same JSON the Drive script / laptop app would.
-      function driveFetch(init) {
-        if (!TABLET_LOCAL) return fetch(driveScriptUrl(), init);
+      function driveFetch(init, qs) {
+        if (!TABLET_LOCAL) return fetch(driveScriptUrl() + (qs || ''), init);
         return new Promise(function (resolve, reject) {
           setTimeout(function () {
             try {
@@ -22857,6 +22868,53 @@
         });
       }
 
+      // ---- Resolution tag for saved photos ----
+      // The browser writes JPEG / PNG files with no resolution, so Windows shows "96 dpi" however big the picture is. These stamp the
+      // real one (the picture spread over a 6 in long side: 4x6 in, 2x6 in strip) so the file says what it is and a print dialog
+      // sizes it right. Only the header changes: the picture bytes are untouched.
+      function pbNominalDpi(c) { const m = Math.max((c && c.width) || 0, (c && c.height) || 0); return m ? Math.max(72, Math.min(1200, Math.round(m / 6))) : 300; }
+      const PB_CRC_TABLE = (function () { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+      function pbCrc32(b, from, to) { let c = 0xFFFFFFFF; for (let i = from; i < to; i++) c = PB_CRC_TABLE[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+      async function pbStampDpi(blob, dpi) {
+        try {
+          if (!blob || !(dpi > 0) || typeof blob.arrayBuffer !== 'function') return blob;
+          const d = Math.max(1, Math.min(65535, Math.round(dpi)));
+          const b = new Uint8Array(await blob.arrayBuffer());
+          if (b.length > 24 && b[0] === 0xFF && b[1] === 0xD8) {
+            // JPEG: the JFIF header right after the start marker holds units (1 = dots per inch) and the two densities.
+            if (b[2] === 0xFF && b[3] === 0xE0 && b[6] === 0x4A && b[7] === 0x46 && b[8] === 0x49 && b[9] === 0x46 && b[10] === 0) {
+              b[13] = 1; b[14] = d >> 8; b[15] = d & 255; b[16] = d >> 8; b[17] = d & 255;
+              return new Blob([b], { type: blob.type || 'image/jpeg' });
+            }
+            const seg = new Uint8Array([0xFF, 0xE0, 0, 16, 0x4A, 0x46, 0x49, 0x46, 0, 1, 1, 1, d >> 8, d & 255, d >> 8, d & 255, 0, 0]);
+            const out = new Uint8Array(b.length + seg.length); out.set(b.subarray(0, 2), 0); out.set(seg, 2); out.set(b.subarray(2), 2 + seg.length);
+            return new Blob([out], { type: blob.type || 'image/jpeg' });
+          }
+          const sig = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+          if (b.length > 33 && sig.every(function (v, i) { return b[i] === v; })) {
+            // PNG: a pHYs chunk (pixels per metre) right after the IHDR chunk, unless the file already has one.
+            for (let q = 8; q + 8 <= b.length && q < 400;) {
+              const len = ((b[q] << 24) | (b[q + 1] << 16) | (b[q + 2] << 8) | b[q + 3]) >>> 0;
+              if (b[q + 4] === 0x70 && b[q + 5] === 0x48 && b[q + 6] === 0x59 && b[q + 7] === 0x73) return blob;
+              q += 12 + len;
+            }
+            const ppm = Math.round(d / 0.0254), chunk = new Uint8Array(21);
+            chunk[3] = 9; chunk.set([0x70, 0x48, 0x59, 0x73], 4);
+            for (let k = 0; k < 4; k++) { chunk[8 + k] = (ppm >>> (24 - 8 * k)) & 255; chunk[12 + k] = (ppm >>> (24 - 8 * k)) & 255; }
+            chunk[16] = 1;                                   // unit: metre
+            const crc = pbCrc32(chunk, 4, 17); for (let k = 0; k < 4; k++) chunk[17 + k] = (crc >>> (24 - 8 * k)) & 255;
+            const out = new Uint8Array(b.length + 21); out.set(b.subarray(0, 33), 0); out.set(chunk, 33); out.set(b.subarray(33), 54);
+            return new Blob([out], { type: blob.type || 'image/png' });
+          }
+        } catch (e) { }
+        return blob;
+      }
+      // A canvas as a JPEG / PNG file that carries its resolution.
+      async function pbCanvasBlob(c, type, q, dpi) {
+        const blob = await new Promise(function (res) { c.toBlob(res, type, q); });
+        return pbStampDpi(blob, dpi || pbNominalDpi(c));
+      }
+
       // ---- Signed upload ticket ----
       // The Drive script only accepts requests carrying a ticket from our server,
       // and the ticket names the one folder this booth may use. Cached per folder
@@ -22884,36 +22942,90 @@
       async function uploadToDrive(blob, filename, dest) {
         const folderKey = dest ? dest.folderKey : rawFolderKey();
         const subfolder = dest ? dest.subfolder : driveSubfolder();
-        // Sent as text/plain (not application/json) on purpose: it keeps this a
-        // CORS "simple request" so the browser skips a preflight OPTIONS call,
-        // which Apps Script Web Apps don't handle — this is what makes the
-        // request work cross-origin at all.
-        const base64Data = await blobToBase64(blob);
-        const ticket = await getUploadTicket(folderKey);
-        const res = await driveFetch({
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            filename: filename,
-            mimeType: blob.type || 'image/png',
-            imageBase64: base64Data,
-            folderKey: folderKey,
-            subfolder: subfolder || undefined,
-            guestCode: ((LOCALSHARE || outputMode === 'both') && (gvActive() || outputMode === 'both') && gvFileNum(filename)) ? gvCodeFor(gvFileNum(filename)) : undefined,   // this file belongs to that guest's own page
-            ticket
-          })
-        });
+        const isMaster = /_master\.png$/i.test(filename || '');   // the operator's lossless copy: belongs to no guest's page
+        const guestCode = (!isMaster && (LOCALSHARE || outputMode === 'both') && (gvActive() || outputMode === 'both') && gvFileNum(filename)) ? gvCodeFor(gvFileNum(filename)) : undefined;
+        let res;
+        if (LOCALSHARE && !TABLET_LOCAL && blob && typeof blob.arrayBuffer === 'function') {
+          const q = new URLSearchParams();
+          q.set('filename', filename || '');
+          if (folderKey) q.set('folderKey', folderKey);
+          if (subfolder) q.set('subfolder', subfolder);
+          if (guestCode) q.set('guestCode', guestCode);
+          res = await driveFetch({
+            method: 'POST',
+            headers: { 'Content-Type': blob.type || 'application/octet-stream' },
+            body: blob
+          }, '?' + q.toString());
+        } else {
+          // Sent as text/plain (not application/json) on purpose: it keeps this a
+          // CORS "simple request" so the browser skips a preflight OPTIONS call,
+          // which Apps Script Web Apps don't handle — this is what makes the
+          // request work cross-origin at all.
+          const base64Data = await blobToBase64(blob);
+          const ticket = await getUploadTicket(folderKey);
+          res = await driveFetch({
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              filename: filename,
+              mimeType: blob.type || 'image/png',
+              imageBase64: base64Data,
+              folderKey: folderKey,
+              subfolder: subfolder || undefined,
+              guestCode: guestCode,   // this file belongs to that guest's own page
+              ticket
+            })
+          });
+        }
         if (!res.ok) throw new Error('Drive upload failed (' + res.status + ')');
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'Drive upload failed');
         // folderUrl is optional on the Apps Script side (older scripts may not
         // return it yet) — everything still works, we just can't show the
         // one persistent folder QR until it's added. See note in the script.
-        try { gvAfterUpload(filename, blob.type, data, folderKey); } catch (e) { console.error('Guest view:', e); }
+        if (!isMaster) { try { gvAfterUpload(filename, blob.type, data, folderKey); } catch (e) { console.error('Guest view:', e); } }
         return { fileId: data.fileId, downloadUrl: data.downloadUrl, folderUrl: data.folderUrl || null };
       }
 
 
+
+      function isOutputTarget(cv) {
+        return !!(cv && (cv === previewCanvas || cv._hiRes));
+      }
+      // How much detail the camera really delivered, as a size for the finished picture: the shortest side of the biggest shot
+      // measured against a box of `ref` px in the 1x design. A webcam or tablet photo gives under 2 (the base size is kept: more
+      // pixels would only be empty), a DSLR photo gives 3 or more. 0 while there is no shot.
+      function cameraDetailScale(ref) {
+        let m = 0;
+        try { shotCanvases.forEach(function (s) { if (s && s._isShot) m = Math.max(m, Math.min(s.width, s.height)); }); } catch (e) { }
+        return m ? m / ref : 0;
+      }
+      // Finished composites are drawn bigger than the 1x design (600 x 1800 for a 2x6 strip, 1200 x 1800 for 4R: only 300 dpi),
+      // while Setup thumbnails stay 1x and fast. Every camera gets the base size: the laptop app 2.5x linear (750 dpi; with its
+      // 100% JPEG every print is 3 MB or more, even from a 720p webcam), tablet / iPad remote 2.25x for strips and 2x otherwise,
+      // the web booth 2x (4x the pixels, light enough to upload on venue Wi-Fi). A camera with more detail than that (a DSLR)
+      // earns more, up to 3x per side on a laptop and 2.5x on a tablet or the web booth, and never a canvas bigger than a memory
+      // limit (24 million pixels on a laptop, 12 million elsewhere).
+      function offlineOutputScale(cv, kind) {
+        if (!isOutputTarget(cv)) return 1;
+        if (kind === 'receipt') return 1;
+        const base = !LOCALSHARE ? 2 : DESKTOP ? 2.5 : kind === 'strip' ? 2.25 : 2;
+        const d = cameraDetailScale(kind === 'strip' ? 700 : 1100);
+        if (!(d > base)) return base;
+        const area = kind === 'strip' ? 1080000 : 2160000;   // pixels of the 1x design: 600 x 1800, 1200 x 1800
+        const maxPx = DESKTOP ? 24000000 : 12000000;
+        return Math.max(base, Math.min(d, DESKTOP ? 3 : 2.5, Math.sqrt(maxPx / area)));
+      }
+      function offlineShotMaxPx() {
+        return LOCALSHARE ? (DESKTOP || LANREMOTE ? 4500 : 3600) : USB_SHOT_MAX;
+      }
+      // The laptop app keeps its prints and solo shots on the laptop, so they use the best JPEG the browser makes (100%): a print is
+      // then 3-7 MB instead of 1-2 MB at 96%. Tablets and the web booth stay lighter (their memory / venue Wi-Fi).
+      function offlineJpegQuality(kind) {
+        if (!LOCALSHARE) return 0.95;
+        if (DESKTOP && (kind === 'print' || kind === 'solo')) return 1;
+        return DESKTOP || LANREMOTE ? 0.96 : 0.95;
+      }
 
       // contentH = area used for photos. Actual canvas height = contentH + label band.
       // Strip: 600px wide, each photo is 600x600 square, 4 stacked = tall vertical strip
@@ -24925,20 +25037,24 @@
       async function uploadLayoutForQR(layoutKey, onRetry) {
         let srcCanvas = previewCanvas;
         const canReusePreview = (layoutKey === currentLayout && !btViewBack && previewCanvas && previewCanvas.width > 0 && previewCanvas.height > 0 &&
-          previewCanvas._renderedForLayout === layoutKey && previewCanvas._renderedSession === (sessionNumber || 0) && shotCanvases.every(Boolean));
+          previewCanvas._renderedForLayout === layoutKey && previewCanvas._renderedSession === (sessionNumber || 0) &&
+          !previewCanvas._renderedBack && !previewCanvas._hasCropOverlay &&
+          !(typeof sess !== 'undefined' && sess && sess.decorating && !sess.decoPreview && guestDecor && guestDecor[selGuestDecor]) &&
+          shotCanvases.every(Boolean));
         if (!canReusePreview) {
           srcCanvas = document.createElement('canvas');
+          srcCanvas._hiRes = true;
           renderCompositeToCanvas(layoutKey, srcCanvas);
         }
-        // High-quality JPEG: looks the same as PNG but about a fifth of the size,
-        // so QR codes appear faster on venue Wi-Fi. Flattened onto white first so
-        // any transparent edges don't turn black.
+        // High-quality JPEG: preserves fine high-DPI detail while keeping QR generation and download fast on booth Wi-Fi.
+        // Flattened onto white first so any transparent edges don't turn black.
         const flat = document.createElement('canvas');
         flat.width = srcCanvas.width; flat.height = srcCanvas.height;
-        const fctx = flat.getContext('2d');
+        const fctx = flat.getContext('2d', { alpha: false });   // opaque: also makes the lossless master a 24-bit PNG
         fctx.fillStyle = '#ffffff'; fctx.fillRect(0, 0, flat.width, flat.height);
+        fctx.imageSmoothingEnabled = true; fctx.imageSmoothingQuality = 'high';
         fctx.drawImage(srcCanvas, 0, 0);
-        const blob = await new Promise(resolve => flat.toBlob(resolve, 'image/jpeg', 0.92));
+        const blob = await pbCanvasBlob(flat, 'image/jpeg', offlineJpegQuality('print'));
         const label = layoutDef(layoutKey).name + ' Layout';
         // e.g. "1_strip.jpg" / "2_grid.jpg" so files sort cleanly in the folder —
         // only the chosen format is ever uploaded, so the folder only ever
@@ -24974,6 +25090,7 @@
           if (queueCount) scheduleQueue(1500);
           if (drive.folderUrl) rememberFolderUrl(drive.folderUrl);
           registerEvent(drive.folderUrl || getCachedFolderUrl(), true);
+          if (masterPngOn()) saveMasterPng(flat, filename, dest);   // not awaited: the guest's QR never waits for the master
           return { label: label + ' (Google Drive)', url: drive.downloadUrl, fileId: drive.fileId };
         } else {
           const url = await uploadToLitterbox(blob, filename, '1h');
@@ -24981,6 +25098,37 @@
         }
       }
 
+
+      // ---- Lossless master copy (laptop app only) ----
+      // Every finished picture is also saved as a lossless PNG (<n>_<layout>_master.png) into a "Masters" folder inside the event
+      // folder: the closest thing to a camera original, for the operator. The laptop app keeps it out of the gallery, the guest pages
+      // and every file route (see MASTER_RE in desktop/lib/photos.mjs), and uploadToDrive keeps it out of the guest-link machinery.
+      // The setting is per laptop (on by default). It runs after the JPEG is saved and never delays or fails the guest's session.
+      const MASTER_PNG_KEY = 'pb4u.masterPng';
+      function masterPngOn() {
+        if (!DESKTOP) return false;
+        try { return localStorage.getItem(MASTER_PNG_KEY) !== '0'; } catch (e) { return true; }
+      }
+      async function saveMasterPng(canvas, jpgName, dest) {
+        try {
+          const blob = await pbCanvasBlob(canvas, 'image/png');
+          if (!blob) return;
+          const name = String(jpgName || '').replace(/\.jpe?g$/i, '') + '_master.png';
+          let ok = false;
+          for (let attempt = 0; attempt < 2 && !ok; attempt++) {
+            try { await uploadToDrive(blob, name, dest); ok = true; }
+            catch (e) { if (isPermanentUploadError(e)) break; await wait(1500); }
+          }
+          try { usbLog('master-png', { ok: ok, kb: Math.round(blob.size / 1024), name: name }); } catch (e) { }
+        } catch (e) { }
+      }
+      (function () {
+        const box = document.getElementById('masterBox'), t = document.getElementById('masterPngToggle');
+        if (!box || !t) return;
+        if (DESKTOP) box.style.display = '';
+        t.checked = masterPngOn();
+        t.addEventListener('change', function () { try { localStorage.setItem(MASTER_PNG_KEY, t.checked ? '1' : '0'); } catch (e) { } });
+      })();
 
       // ---- What guests see after scanning their QR (Setup -> Share: "After guests scan their QR") ----
       //   'all'  everyone's photos (today's behaviour)   'mine' their own photos first, with a button for everyone's
@@ -25002,6 +25150,22 @@
         });
       })();
 
+      // A solo shot on the laptop app is the camera's own file when the booth didn't change the picture (no mirror, background swap
+      // or look: see captureShot and the snapshot in showQRForCurrentPhoto): the camera's full size and quality, untouched. Not when
+      // the camera marked the file as turned (portrait): places that ignore the mark, like the laptop's gallery thumbnails, would show
+      // it sideways, so those use the booth's own upright copy. null = save the booth's copy.
+      async function soloOriginal(sc) {
+        var o = sc && sc._orig;
+        if (!DESKTOP || !o || typeof o.slice !== 'function') return null;
+        try {
+          var head = new Uint8Array(await o.slice(0, 2).arrayBuffer());
+          if (head[0] !== 0xFF || head[1] !== 0xD8) return null;   // not a JPEG
+          var ex = await pbReadExif(o);
+          if (ex && ex.orientation > 1) return null;
+        } catch (e) { return null; }
+        return o.type === 'image/jpeg' ? o : new Blob([o], { type: 'image/jpeg' });
+      }
+
       async function saveSoloPhotosAsync(sessNum, shots) {
         if (!saveSoloPhotos || !shots || !shots.length) return;
         var num = sessNum || sessionNumber || 1;
@@ -25011,13 +25175,18 @@
           if (!sc) continue;
           if (i > 0) await wait(16);
           try {
-            var flat = document.createElement('canvas');
-            flat.width = sc.width; flat.height = sc.height;
-            var fctx = flat.getContext('2d');
-            fctx.fillStyle = '#ffffff';
-            fctx.fillRect(0, 0, flat.width, flat.height);
-            fctx.drawImage(sc, 0, 0);
-            var blob = await new Promise(function (res) { flat.toBlob(res, 'image/jpeg', 0.95); });
+            var blob = await soloOriginal(sc);
+            if (!blob) {
+              var flat = document.createElement('canvas');
+              flat.width = sc.width; flat.height = sc.height;
+              var fctx = flat.getContext('2d');
+              fctx.fillStyle = '#ffffff';
+              fctx.fillRect(0, 0, flat.width, flat.height);
+              fctx.imageSmoothingEnabled = true;
+              fctx.imageSmoothingQuality = 'high';
+              fctx.drawImage(sc, 0, 0);
+              blob = await pbCanvasBlob(flat, 'image/jpeg', offlineJpegQuality('solo'), 300);
+            }
             if (!blob) continue;
             var soloFilename = filePrefix() + num + '_solo_' + (i + 1) + deviceTag() + '.jpg';
 
@@ -25208,11 +25377,13 @@
         qrResults.innerHTML = '';
         lastRenderedFolderUrl = null;
         const isBoth = (outputMode === 'both');
+        var lookFree = filterKey === 'none' && !softSkin && !dateStamp;   // no look drawn on the shots (applyFilterToCanvas did nothing)
         var soloShotsSnapshot = (saveSoloPhotos && shotCanvases) ? shotCanvases.map(function (c) {
           if (!c) return null;
           var clone = document.createElement('canvas');
           clone.width = c.width; clone.height = c.height;
           clone.getContext('2d').drawImage(c, 0, 0);
+          clone._orig = (lookFree && c._orig) || null;
           return clone;
         }) : null;
         var soloSessionNum = sessionNumber || 1;
@@ -26165,7 +26336,7 @@
       async function saveToDevice() {
         if (backupDir && backupOk) {
           const name = filePrefix() + (sessionNumber || 1) + '_' + currentLayout + deviceTag() + '.png';
-          const blob = await new Promise(res => previewCanvas.toBlob(res, 'image/png'));
+          const blob = await pbCanvasBlob(previewCanvas, 'image/png');
           if (blob && await saveToBackupFolder(blob, name)) {
             showToast(driveReady() ? 'Saved to the backup folder (and uploading to Drive).' : 'Saved to the backup folder.');
             return;
@@ -26173,7 +26344,7 @@
           showToast('Backup folder not available. Saved to Downloads instead.', 5000);
         }
         // A blob link, not a data: link: the iPad app can save a blob download (it opens the share sheet), a data: one is not reliable.
-        const dlBlob = await new Promise(res => previewCanvas.toBlob(res, 'image/png'));
+        const dlBlob = await pbCanvasBlob(previewCanvas, 'image/png');
         const link = document.createElement('a');
         link.download = 'photo-booth-' + currentLayout + '-' + Date.now() + '.png';
         link.href = dlBlob ? URL.createObjectURL(dlBlob) : previewCanvas.toDataURL('image/png');
@@ -26485,9 +26656,22 @@
         if (IS_IOS_APP) {
           try { if (!localStorage.getItem('pb4u.iosShotTimingV1')) { localStorage.setItem('pb4u.iosShotTimingV1', '1'); v.leadMs = 'auto'; } } catch (e) { }
         }
+        // Android app, once: a tablet that was left on "Fast capture from viewfinder" (every photo only 1280 x 720, which prints soft)
+        // is moved to "hd": the same instant photo, swapped a moment later for the camera's full-size one. After that the
+        // operator's own choice is kept. Saved here, so the move is not lost on the next start.
+        if (IS_ANDROID_APP) {
+          try {
+            if (!localStorage.getItem('pb4u.androidHdStillV1')) {
+              localStorage.setItem('pb4u.androidHdStillV1', '1');
+              if (v.photo === 'preview') { v.photo = 'hd'; localStorage.setItem(WEBCAM_RES_KEY, JSON.stringify(v)); }
+            }
+          } catch (e) { }
+        }
         return {
           preview: (['auto', 'max', 'yuyv', '1080', '720', '480'].includes(v.preview) || /^x:\d+:\d+:\d+:\d+$/.test(String(v.preview))) ? v.preview : 'auto',
-          photo: (['preview', 'max'].includes(v.photo)) ? v.photo : ((IS_ANDROID_APP || IS_IOS_APP) ? 'preview' : 'max'),
+          // photo: preview = the live-view frame only | max = wait for the camera's full-size photo (USB webcams, laptops)
+          //        | hd = Android tablet camera: the live-view frame at once, swapped for the full-size photo a moment later
+          photo: (['preview', 'max'].includes(v.photo) || (v.photo === 'hd' && IS_ANDROID_APP)) ? v.photo : (IS_ANDROID_APP ? 'hd' : IS_IOS_APP ? 'preview' : 'max'),
           // Shot timing: 'auto' = measure the camera's own delay and sync the photo to the "Pose" cue;
           // a number = take the photo that many ms earlier than "Pose + 0.6 s" (for cameras that capture late and blur).
           // Auto is the default on the Android and iPad apps (tablets are where the lag is); everywhere else it is Off until the operator picks it.
@@ -26495,6 +26679,9 @@
         };
       })();
       function saveWebcamRes() { try { localStorage.setItem(WEBCAM_RES_KEY, JSON.stringify(webcamRes)); } catch (e) { } }
+      // Android tablet camera, "hd" photo mode (see tabletStillStart): the full-size photos still on their way, and what the last one was.
+      // Declared here, with webcamRes, because the Camera menu reads it before the shot code further down has run.
+      const tabletStill = { jobs: new Set(), fails: 0, off: false, why: '', offDevice: '', maxW: 0, lastW: 0, lastH: 0, lastMs: 0, caps: null, capsTrack: null };
       // getUserMedia size for any webcam or built-in camera
       function webcamGumSize(deviceId) {
         const p = webcamRes.preview;
@@ -26696,6 +26883,8 @@
       const webcamResBox = document.getElementById('webcamResBox');
       const webcamPreviewRes = document.getElementById('webcamPreviewRes');
       const webcamPhotoRes = document.getElementById('webcamPhotoRes');
+      // "Tablet camera: instant, then the full-size photo" exists only in the Android app.
+      if (webcamPhotoRes && !IS_ANDROID_APP) { const hdOpt = webcamPhotoRes.querySelector('option[value="hd"]'); if (hdOpt) hdOpt.remove(); }
       function usbWebcamSelected() {
         const o = cameraSelect && cameraSelect.options[cameraSelect.selectedIndex];
         return !!(o && isUsbWebcamOption(o.value, o.textContent));
@@ -26735,6 +26924,13 @@
           noteText += 'Viewfinder optimized (720p) for smoother performance on tablet.';
         } else {
           noteText += 'Viewfinder running at full resolution. If live view lags on slower tablets, select "Downsize viewfinder: 720p".';
+        }
+        // Android tablet camera: say what the photos really are (the last full-size photo's size, or why there is none).
+        let builtInNow = false; try { builtInNow = DESKTOP && webcamRes.photo === 'max' && isBuiltInCamera(); } catch (e) { }
+        if ((IS_ANDROID_APP && webcamRes.photo === 'hd') || builtInNow) {
+          if (tabletStill.off && tabletStill.why === 'small') noteText += ' This camera has no photo mode bigger than its live view (' + tabletStill.maxW + ' px wide), so photos cannot be sharper than that. For sharper prints use a USB webcam or a DSLR.';
+          else if (tabletStill.off) noteText += ' This camera would not give a full-size photo, so photos are the live-view picture. For sharper photos set the viewfinder to 1080p above.';
+          else if (tabletStill.lastW) noteText += ' Last photo: ' + tabletStill.lastW + ' × ' + tabletStill.lastH + ' (' + tabletStill.lastMs + ' ms).';
         }
         if (note) note.textContent = noteText.trim();
       }
@@ -29320,12 +29516,13 @@
           }
           const bmp = await createImageBitmap(blob);
           if (bmp.width <= (video.videoWidth || 0)) { bmp.close(); return; }   // not bigger than the live view: keep the instant frame
-          const k = Math.min(1, USB_SHOT_MAX / Math.max(bmp.width, bmp.height));
+          const k = Math.min(1, offlineShotMaxPx() / Math.max(bmp.width, bmp.height));
           const c = document.createElement('canvas');
           c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
           const ctx = c.getContext('2d');
           ctx.imageSmoothingQuality = 'high';
-          if (mirrorPreview()) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
+          const mir = mirrorPreview();
+          if (mir) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
           ctx.drawImage(bmp, 0, 0, c.width, c.height);
           bmp.close();
 
@@ -29337,18 +29534,126 @@
 
           ctx.setTransform(1, 0, 0, 1, 0, 0);
           try { if (typeof webcamMarkShot === 'function') webcamMarkShot(c); } catch (e) { }
-          applyBgReplace(c);
+          const bgSwapped = applyBgReplace(c);
           var rawW = document.createElement('canvas');
           rawW.width = c.width; rawW.height = c.height;
           rawW.getContext('2d').drawImage(c, 0, 0);
           c._raw = rawW;
           applyFilterToCanvas(c);
           c._isShot = true;
+          if (DESKTOP && !mir && !bgSwapped) c._orig = blob;   // the webcam's own full-size photo, for the solo shot (see soloOriginal)
           if (shotCanvases === shots) { shotCanvases[index] = c; updateFilmTrack(); }
         } catch (err) {
           console.warn('Webcam max photo failed, live frame used:', err);
           try { usbLog('webcam-max-fail', { error: String(err && err.message || err) }); } catch (e) { }
         }
+      }
+      // ---- Android tablet camera, "hd" photo mode: instant frame, then the camera's full-size photo ----
+      // The tablet's live view is 1280 x 720 (kept: a bigger one made budget tablets lag), so a photo taken from it is under 1
+      // megapixel and prints soft once it is enlarged into a 4R frame. The camera can take a real photo (ImageCapture, usually 8+
+      // megapixel), but waiting for it between photos is what made tablets lag. So the live-view frame is still taken at once, as
+      // before, and the full-size photo is asked for in the background and swapped in behind it, cropped to the same picture the
+      // guests saw. The strip waits (a few seconds at most) for the last one. A tablet that cannot do it, or is slow, keeps the
+      // live-view frame, drops the attempt for the rest of the day, and the Camera menu says so.
+      const TABLET_STILL_MAX_MS = 4500;   // longest wait for one full-size photo; past it the live-view frame stays and "hd" is switched off
+      // The laptop app does the same for a built-in webcam: its "Full camera resolution" setting used to be ignored for a built-in
+      // camera (only USB webcams honoured it), so a laptop's photos were also the 1280 x 720 live-view frame.
+      function tabletStillEligible() {
+        if (!((IS_ANDROID_APP && webcamRes.photo === 'hd') || (DESKTOP && webcamRes.photo === 'max'))) return false;
+        if (tabletStill.off && tabletStill.offDevice !== currentDeviceId) { tabletStill.off = false; tabletStill.fails = 0; tabletStill.why = ''; }   // another camera is chosen: it gets its own try
+        if (tabletStill.off || typeof ImageCapture === 'undefined') return false;
+        if (currentDeviceId === USB_CAM_ID || currentDeviceId === UVC_ID || (typeof TABLET_CAM_ID !== 'undefined' && currentDeviceId === TABLET_CAM_ID)) return false;
+        try { if (bgRep.mode !== 'off') return false; } catch (e) { }   // background swap works on every pixel: too slow at full size; the live-view frame already has it
+        try { const m = Number(navigator.deviceMemory); if (m > 0 && m <= 1) return false; } catch (e) { }
+        return isBuiltInCamera();
+      }
+      function tabletStillMaxPx() {
+        let m = 4; try { m = Number(navigator.deviceMemory) || 4; } catch (e) { }
+        return m <= 2 ? 2200 : 3000;   // longest side kept: 3000 px fills a 4R box at 300 dpi; a 2 GB tablet gets a smaller one to stay safe
+      }
+      async function tabletStillUpgrade(index, inst, shots) {
+        const t0 = Date.now();
+        // The photo was retaken, or the session ended, while the camera was busy: nothing to replace any more.
+        const gone = function () { return shotCanvases !== shots || shotCanvases[index] !== inst || !!(sess && sess.cancelled); };
+        let fatal = false;
+        try {
+          const trk = currentStream && currentStream.getVideoTracks()[0];
+          if (!trk) throw new Error('no camera track');
+          const ic = new ImageCapture(trk);
+          if (tabletStill.capsTrack !== trk) {   // the camera's biggest photo size, asked once each time the camera is opened
+            tabletStill.caps = {};
+            try {
+              const caps = await ic.getPhotoCapabilities();
+              if (caps && caps.imageWidth && caps.imageWidth.max && caps.imageHeight && caps.imageHeight.max) tabletStill.caps = { imageWidth: caps.imageWidth.max, imageHeight: caps.imageHeight.max };
+              if (caps && caps.fillLightMode && Array.prototype.indexOf.call(caps.fillLightMode, 'off') >= 0) tabletStill.caps.fillLightMode = 'off';   // never fire the torch
+            } catch (e) { }
+            tabletStill.capsTrack = trk;
+          }
+          // A camera whose biggest photo is no bigger than its live view (a 720p laptop webcam) has nothing more to give: do not
+          // take a photo for nothing, say so in the Camera menu, and try again only when another camera is chosen.
+          const capW = tabletStill.caps && tabletStill.caps.imageWidth;
+          if (capW && capW < inst.width * 1.25) {
+            tabletStill.off = true; tabletStill.why = 'small'; tabletStill.maxW = capW; tabletStill.offDevice = currentDeviceId;
+            try { usbLog('tablet-still-skip', { maxPhotoW: capW, live: inst.width + 'x' + inst.height }); } catch (e) { }
+            return;
+          }
+          const opts = Object.assign({}, tabletStill.caps);
+          try { const m = Number(navigator.deviceMemory); if (m > 0 && m <= 2) { delete opts.imageWidth; delete opts.imageHeight; } } catch (e) { }   // 2 GB tablet: the camera's usual size, not its biggest
+          let tmr;
+          const blob = await Promise.race([
+            ic.takePhoto(opts),
+            new Promise(function (_, rej) { tmr = setTimeout(function () { const e = new Error('the camera took too long for a full-size photo'); e.slow = true; rej(e); }, TABLET_STILL_MAX_MS); })
+          ]).finally(function () { clearTimeout(tmr); });
+          if (gone()) return;
+          if (await isJpegTruncated(blob)) throw new Error('the full-size photo came back cut off');
+          let bmp; try { bmp = await createImageBitmap(blob, { imageOrientation: 'from-image' }); } catch (e) { bmp = await createImageBitmap(blob); }
+          try {
+            const fa = inst.width / inst.height, pa = bmp.width / bmp.height;
+            // A photo turned the other way to the live view would end up sideways in the strip: keep the live-view frame instead.
+            if ((fa >= 1) !== (pa >= 1) && Math.abs(fa - 1) > 0.05 && Math.abs(pa - 1) > 0.05) throw new Error('the full-size photo is turned the other way (' + bmp.width + 'x' + bmp.height + ')');
+            if (bmp.width < inst.width * 1.25) throw new Error('the full-size photo is not bigger than the live view (' + bmp.width + 'x' + bmp.height + ')');
+            // Same picture as the live view: the camera's photo is often a different shape (4:3 against 16:9), so it is trimmed
+            // to the live view's shape first; the layout box then crops it exactly as it would have cropped the frame.
+            let sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;
+            if (pa > fa * 1.01) { sw = Math.round(bmp.height * fa); sx = Math.round((bmp.width - sw) / 2); }
+            else if (pa < fa / 1.01) { sh = Math.round(bmp.width / fa); sy = Math.round((bmp.height - sh) / 2); }
+            const k = Math.min(1, tabletStillMaxPx() / Math.max(sw, sh));
+            const c = document.createElement('canvas');
+            c.width = Math.max(1, Math.round(sw * k)); c.height = Math.max(1, Math.round(sh * k));
+            const ctx = c.getContext('2d');
+            ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+            if (mirrorPreview()) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }   // match the live view, like the instant frame
+            ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, c.width, c.height);
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            if (gone()) return;
+            finalizeShotCanvas(c, index);   // puts it in the slot, with the same filters / clean-up marks as any other photo
+            try { if (previewCanvas) previewCanvas._renderedForLayout = ''; } catch (e) { }   // a strip drawn with the small one must be drawn again
+            tabletStill.fails = 0; tabletStill.lastW = c.width; tabletStill.lastH = c.height; tabletStill.lastMs = Date.now() - t0;
+            try { usbLog('tablet-still', { ms: tabletStill.lastMs, w: c.width, h: c.height, from: bmp.width + 'x' + bmp.height, live: inst.width + 'x' + inst.height }); } catch (e) { }
+          } finally { try { bmp.close(); } catch (e) { } }
+        } catch (err) {
+          if (gone()) return;   // the camera closed because the session was cancelled: not the tablet's fault
+          tabletStill.fails++;
+          fatal = !!(err && err.slow);
+          try { usbLog('tablet-still-fail', { error: String(err && err.message || err), fails: tabletStill.fails }); } catch (e) { }
+          if (fatal || tabletStill.fails >= 2) { tabletStill.off = true; tabletStill.why = 'failed'; tabletStill.offDevice = currentDeviceId; }   // a slow camera is dropped at once (guests must not wait); an odd error gets one more try
+        }
+      }
+      function tabletStillStart(index) {
+        if (!tabletStillEligible()) return;
+        const shots = shotCanvases, inst = shots[index];
+        if (!inst) return;
+        const job = tabletStillUpgrade(index, inst, shots).catch(function () { }).then(function () { tabletStill.jobs.delete(job); });
+        tabletStill.jobs.add(job);
+      }
+      // After the last photo (and after a retake): the strip is built from the full-size photos, so wait for the one still arriving.
+      // The earlier photos are long done by now, so this is normally under a second.
+      async function tabletStillSettle() {
+        if (!tabletStill.jobs.size) return;
+        try { popNum('Saving', true); guestCall('tick', 'Saving', true, 0, cdShot.textContent); } catch (e) { }
+        let tmr;
+        await Promise.race([Promise.all(Array.from(tabletStill.jobs)), new Promise(function (r) { tmr = setTimeout(r, TABLET_STILL_MAX_MS + 1500); })]);
+        clearTimeout(tmr);
       }
       /*@include camera/photo-quality.js*/
       /*@include camera/brand-nikon.js*/
@@ -29411,6 +29716,7 @@
         if (typeof TABLET_CAM_ID !== 'undefined' && currentDeviceId === TABLET_CAM_ID) return captureTabletShot(index);
         captureFrame(index);
         if (webcamRes.photo === 'max' && isMaxWebcamShotEligible()) return webcamMaxShot(index);
+        tabletStillStart(index);   // Android tablet camera: the full-size photo replaces this frame a moment later (no wait here)
         if (!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
         const shots = shotCanvases;
         try {
@@ -29422,25 +29728,27 @@
             usbCam.camera.captureImageAsFile(),
             new Promise((_, rej) => { capTimer = setTimeout(() => { const e = new Error('The camera took too long to send the photo'); e.helperMsg = 'The camera took too long to send the photo.'; rej(e); }, USB_CAPTURE_MAX_MS); })
           ]).finally(() => { clearTimeout(capTimer); usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); usbAfterShot(finalShot); });
-          const bmp = await createImageBitmap(file);
+          const [bmp, exif] = await Promise.all([createImageBitmap(file), pbReadExif(file).catch(() => null)]);
           const sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;   // whole photo; the layout box crops it once
-          const k = Math.min(1, USB_SHOT_MAX / Math.max(sw, sh));
+          const k = Math.min(1, offlineShotMaxPx() / Math.max(sw, sh));
           const c = document.createElement('canvas');
           c.width = Math.round(sw * k); c.height = Math.round(sh * k);
-          const qp = camQOnShot(file, c);   // the connected brand's profile: shrunk in steps + cleaned in its box, warned about ISO / shutter / focus
+          const qp = camQOnShot(file, c, exif);   // the connected brand's profile: shrunk in steps + cleaned in its box, warned about ISO / shutter / focus
           const ctx = c.getContext('2d');
           ctx.imageSmoothingQuality = 'high';
-          if (mirrorPreview()) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }   // match the live view
+          const mir = mirrorPreview();
+          if (mir) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }   // match the live view
           ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, c.width, c.height);
           bmp.close();
           ctx.setTransform(1, 0, 0, 1, 0, 0);
-          applyBgReplace(c);
+          const bgSwapped = applyBgReplace(c);
           var rawCopy = document.createElement('canvas');
           rawCopy.width = c.width; rawCopy.height = c.height;
           rawCopy.getContext('2d').drawImage(c, 0, 0);
           c._raw = rawCopy;
           applyFilterToCanvas(c);
           c._isShot = true;
+          if (DESKTOP && !mir && !bgSwapped) c._orig = file;   // the camera's own photo, for the solo shot (see soloOriginal)
           if (shotCanvases === shots) { shotCanvases[index] = c; updateFilmTrack(); if (qp) camQPrewarm(qp, finalShot); }
         } catch (err) {
           console.error('USB shot failed:', err);
@@ -30285,6 +30593,7 @@
           countdownOverlay.style.display = 'flex';
           await camEnsureLive();
           await countdownThenCapture(pick, true);
+          if (!sess.cancelled) await tabletStillSettle();
           usbCam.shotsDone = true; usbSleepNow();
           if (sess.cancelled) return;
         }
@@ -30315,6 +30624,7 @@
         if (gsoMode !== 'crop') return;
         var b = shotSlotBoxes[selCropShot];
         if (!b) return;
+        if (ctx && ctx.canvas) ctx.canvas._hasCropOverlay = true;
         ctx.save();
         ctx.strokeStyle = '#00e5ff';
         ctx.lineWidth = Math.max(4, Math.round(previewCanvas.width * 0.005));
@@ -31251,6 +31561,7 @@
           }
           i++;
         }
+        if (!sess.cancelled) await tabletStillSettle();   // Android tablet: the last full-size photo is still arriving
         usbCam.shotsDone = true;   // all photos taken: live view may switch off while the guest reviews and decorates
         completedGifCapture = await stopGifSessionCapture(!sess.cancelled);
         usbSleepNow();
@@ -31967,6 +32278,7 @@
           var nt = null; try { nt = camQTile(CAM_Q[img._cq], ctx, img, sx, sy, sw, sh, w, h); } catch (e) { nt = null; }
           if (nt) { ctx.drawImage(nt, 0, 0, nt.width, nt.height, x, y, w, h); return; }
         }
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
       }
 
@@ -31994,9 +32306,10 @@
         ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate(rotDeg * Math.PI / 180);
+        const sb = h / 450;
         ctx.shadowColor = 'rgba(79,140,175,0.35)';
-        ctx.shadowBlur = 22;
-        ctx.shadowOffsetY = 10;
+        ctx.shadowBlur = Math.round(22 * sb);
+        ctx.shadowOffsetY = Math.round(10 * sb);
         const borderSide = h * 0.06;
         const borderTop = h * 0.06;
         const borderBottom = h * 0.14;
@@ -32009,9 +32322,10 @@
 
       function renderStrip(ctx, shots, W, H, count, size) {
         // Vertical strip: square photos stacked with equal margins/gaps
-        const photoSize = size || STRIP_PHOTO;
-        const margin = STRIP_MARGIN;
-        const gap = STRIP_GAP;
+        const k = W / STRIP_W;
+        const photoSize = size || Math.round(STRIP_PHOTO * k);
+        const margin = Math.round(STRIP_MARGIN * k);
+        const gap = Math.round(STRIP_GAP * k);
         const cx = W / 2;
         for (let i = 0; i < (count || STRIP_SHOTS); i++) {
           const cy = margin + photoSize / 2 + i * (photoSize + gap);
@@ -32020,12 +32334,13 @@
       }
 
       function renderTemplateStrip(ctx, shots, W, H, count) {
+        const k = W / STRIP_W;
         const m = W * 0.06, gap = W * 0.035;
         const ch = (H - m - m * 0.4 - gap * (count - 1)) / count, cw = W - 2 * m;
         for (let i = 0; i < count; i++) {
           const y = m + i * (ch + gap);
           ctx.save();
-          ctx.shadowColor = 'rgba(40,30,20,0.28)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
+          ctx.shadowColor = 'rgba(40,30,20,0.28)'; ctx.shadowBlur = Math.round(14 * k); ctx.shadowOffsetY = Math.round(4 * k);
           ctx.fillStyle = currentFrameColor; ctx.fillRect(m, y, cw, ch);
           ctx.restore();
           const pad = Math.max(6, cw * 0.025);
@@ -32078,13 +32393,14 @@
       // Sheet layouts: each shot in a clean frame (the Polaroid color) with an
       // even border, cropped to fill its cell.
       function renderSheet(ctx, shots, W, H, key) {
+        const k = W / SHEET_W;
         const cells = sheetCells(key, W, H);
         cells.forEach((c, i) => {
           const img = shots[i];
           ctx.save();
           ctx.shadowColor = 'rgba(40,30,20,0.28)';
-          ctx.shadowBlur = 18;
-          ctx.shadowOffsetY = 6;
+          ctx.shadowBlur = Math.round(18 * k);
+          ctx.shadowOffsetY = Math.round(6 * k);
           ctx.fillStyle = currentFrameColor;
           ctx.fillRect(c.x, c.y, c.w, c.h);
           ctx.restore();
@@ -32572,9 +32888,13 @@
           return pk.f ? composeTplBack(pk.f, targetCanvas) : composeCardBack(targetCanvas, CARD_STYLES[pk.style] || CARD_STYLES.fire);
         }
         if (pk.f) return composeTplCanvas('card', pk.f, targetCanvas, shots);
+        const sc = offlineOutputScale(targetCanvas, 'card');
         const W = 1200, H = 1680, st = CARD_STYLES[pk.style] || CARD_STYLES.fire;
-        targetCanvas.width = W; targetCanvas.height = H;
+        targetCanvas.width = Math.round(W * sc); targetCanvas.height = Math.round(H * sc);
         const ctx = targetCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        ctx.save();
+        if (sc !== 1) ctx.scale(sc, sc);
         const real = !!(guestInfo.name || '').trim() && !btDraft;
         const name = (guestInfo.name || '').trim() || 'Your Name';
         const line = (guestInfo.line || '').trim() || 'Special Move';
@@ -32663,15 +32983,20 @@
           for (let i = 0; i < (ri === 3 ? 26 : 14); i++) drawStar(ctx, sr() * W, sr() * H, 10 + sr() * 20, 4, 0, '#ffffff', 0.5 + sr() * 0.4);
           ctx.restore();
         }
-        if (typeof drawDecorLayer === 'function') drawDecorLayer(ctx, W, H);
+        ctx.restore();
+        if (typeof drawDecorLayer === 'function') drawDecorLayer(ctx, targetCanvas.width, targetCanvas.height);
         return targetCanvas;
       }
 
       // The back of a built-in card: who it belongs to, their answers, and the card's number.
       function composeCardBack(targetCanvas, st) {
+        const sc = offlineOutputScale(targetCanvas, 'card');
         const W = 1200, H = 1680, cfg = btCfg.card;
-        targetCanvas.width = W; targetCanvas.height = H;
+        targetCanvas.width = Math.round(W * sc); targetCanvas.height = Math.round(H * sc);
         const ctx = targetCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        ctx.save();
+        if (sc !== 1) ctx.scale(sc, sc);
         const real = !!(guestInfo.name || '').trim() && !btDraft;
         const name = (guestInfo.name || '').trim() || 'Your Name';
         const line = (guestInfo.line || '').trim() || 'Special Move';
@@ -32719,6 +33044,7 @@
         btFit(ctx, left, btSans(700), 32, 900, 20); ctx.fillText(left, 84, H - 96);
         ctx.textAlign = 'right'; ctx.font = btSans(800)(34);
         if (cfg.stats) ctx.fillText('★'.repeat(rar.stars), W - 84, H - 96);
+        ctx.restore();
         return targetCanvas;
       }
 
@@ -32728,6 +33054,7 @@
         const W = 3000, H = 2121, st = CERT_STYLES[pk.style] || CERT_STYLES.gold;
         targetCanvas.width = W; targetCanvas.height = H;
         const ctx = targetCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
         const name = (guestInfo.name || '').trim() || 'Recipient Name';
         const award = (guestInfo.line || '').trim() || (!(guestInfo.name || '').trim() && cfg.askAward ? 'Award Title' : '');   // the Setup preview shows a sample award
         const serif = s => 'italic ' + s + 'px Fraunces, Georgia, "Times New Roman", serif';
@@ -32830,6 +33157,7 @@
       // Front and back on one sheet, side by side with a fold line (prints on 4R: fold in half and sleeve).
       function btTwoUpCanvas(front) {
         const back = document.createElement('canvas');
+        back._hiRes = true;
         btSide = 'back';
         try { composeCanvas('card', back, shotCanvases); } finally { btSide = 'front'; }
         const PW = 1200, PH = 1680, M = 50, c = document.createElement('canvas');
@@ -32862,11 +33190,12 @@
             }
           }
         }
-        if (layoutDef(layoutKey).kind === 'frame') return composeFrameCanvas(layoutKey, targetCanvas, shots);
-        if (layoutDef(layoutKey).kind === 'landscape') return composeLandscape(layoutKey, targetCanvas, shots);
-        if (layoutDef(layoutKey).kind === 'card') return composeCard(layoutKey, targetCanvas, shots);
-        if (layoutDef(layoutKey).kind === 'cert') return composeCert(layoutKey, targetCanvas, shots);
-        if (layoutDef(layoutKey).kind === 'receipt') return composeReceipt(layoutKey, targetCanvas, shots);
+        const ld = layoutDef(layoutKey);
+        if (ld.kind === 'frame') return composeFrameCanvas(layoutKey, targetCanvas, shots);
+        if (ld.kind === 'landscape') return composeLandscape(layoutKey, targetCanvas, shots);
+        if (ld.kind === 'card') return composeCard(layoutKey, targetCanvas, shots);
+        if (ld.kind === 'cert') return composeCert(layoutKey, targetCanvas, shots);
+        if (ld.kind === 'receipt') return composeReceipt(layoutKey, targetCanvas, shots);
         const trimmed = (labelInput.value || '').trim();
         const dateText = currentDateLabel();
         const hasBand = !!trimmed || !!dateText || (titleStyle !== 'classic' && !!kickerText.trim());
@@ -32875,31 +33204,47 @@
         const growth = 1 + Math.max(0, titleSizeMultiplier - 1) * 0.6;
         const customPhotoActive = backdropPreset === 'custom' && !!backgroundImg;
         const bandPlacement = customPhotoActive && placement(layoutKey) === 'band';
-        const isSheet = layoutDef(layoutKey).kind === 'sheet';
+        const isSheet = ld.kind === 'sheet';
+        const sc = offlineOutputScale(targetCanvas, ld.kind);
         // Plain/backdrop grid is portrait so every shot fits uncropped; only the
         // grid-with-side-photo layout uses the wider canvas.
         let layout;
         if (isSheet) {
-          layout = { w: SHEET_W, contentH: 0, render: (ctx, shots, W, H) => renderSheet(ctx, shots, W, H, layoutKey) };
+          layout = { w: Math.round(SHEET_W * sc), contentH: 0, render: (ctx, shots, W, H) => renderSheet(ctx, shots, W, H, layoutKey) };
         } else if (layoutKey === 'grid' && bandPlacement) {
-          layout = Object.assign({}, LAYOUTS.grid, { w: GRID_SIDE_W, contentH: GRID_SIDE_H });
+          layout = { w: Math.round(GRID_SIDE_W * sc), contentH: Math.round(GRID_SIDE_H * sc), render: LAYOUTS.grid.render };
         } else if (isStripLayout(layoutKey) && titleStyle !== 'classic' && !bandPlacement) {
           // Template strips: full-width photos and a taller title area, still exactly 1:3 (2x6 / keychain).
-          layout = { w: STRIP_W, contentH: 0, templateStrip: true, render: (ctx, shots, W, H) => renderTemplateStrip(ctx, shots, W, H, shotsNeeded(layoutKey)) };
+          layout = { w: Math.round(STRIP_W * sc), contentH: 0, templateStrip: true, render: (ctx, shots, W, H) => renderTemplateStrip(ctx, shots, W, H, shotsNeeded(layoutKey)) };
         } else {
-          layout = LAYOUTS[layoutKey];
+          const base = LAYOUTS[layoutKey];
+          const lw = Math.round(base.w * sc);
+          if (ld.kind === 'strip') {
+            const cnt = layoutKey === 'strip' ? 3 : 4;
+            const basePhoto = layoutKey === 'strip4' ? STRIP4_PHOTO : layoutKey === 'stripxl' ? STRIPXL_PHOTO : STRIP_PHOTO;
+            const k = lw / STRIP_W;
+            const pSize = Math.round(basePhoto * k), m = Math.round(STRIP_MARGIN * k), g = Math.round(STRIP_GAP * k);
+            layout = {
+              w: lw,
+              contentH: sc === 1 ? base.contentH : (m * 2 + pSize * cnt + g * (cnt - 1)),
+              render: (ctx, shots, W, H) => renderStrip(ctx, shots, W, H, cnt, sc === 1 ? basePhoto : pSize)
+            };
+          } else {
+            layout = { w: lw, contentH: Math.round(base.contentH * sc), render: base.render };
+          }
         }
         // Always reserve a little breathing room at the bottom, even with no
         // event name or date typed in yet, instead of shots running to the edge.
         const minBottomMargin = Math.round(layout.w * 0.05);
-        const stripH = layoutKey === 'stripxl' ? STRIP_W * 4 : STRIP_W * 3;
+        const stripH = layoutKey === 'stripxl' ? layout.w * 4 : layout.w * 3;
+        const sheetH = Math.round(SHEET_H * sc);
         const bandH = layout.templateStrip
           ? Math.round(stripH * ({ wedding: 0.2, turns: 0.19, blocks: 0.21, monogram: 0.25, bignum: 0.21 }[titleStyle] || 0.2) * Math.min(1.25, growth))
           : hasBand ? Math.round(layout.w * (dateText ? LABEL_BAND_RATIO * 1.35 : LABEL_BAND_RATIO) * growth * styleBandFactor()) : minBottomMargin;
         // Theme artwork across the top (an awning) gets its own room above the shots.
         const artTop = bandPlacement ? 0 : themeArtTop(layout.w);
-        // Sheets are always exactly 4R: the shots get whatever the label band leaves.
-        if (isSheet) layout.contentH = SHEET_H - bandH - artTop;
+        // Sheets are always proportional to 4R: the shots get whatever the label band leaves.
+        if (isSheet) layout.contentH = sheetH - bandH - artTop;
         if (layout.templateStrip) layout.contentH = stripH - bandH - artTop;
 
         // Strip + a custom uploaded photo (band placement): the photo becomes a
@@ -32920,6 +33265,7 @@
         targetCanvas.width = layout.w;
         targetCanvas.height = totalH;
         const ctx = targetCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
         currentFrameColor = frameColorFor();
 
         let photoOffsetY = 0;
@@ -33394,15 +33740,17 @@
         };
       }
       function composeLandscape(layoutKey, targetCanvas, shots) {
-        var W = SHEET_H, H = SHEET_W;      // 1800 x 1200 (4R turned sideways)
+        var sc = offlineOutputScale(targetCanvas, 'landscape');
+        var W = Math.round(SHEET_H * sc), H = Math.round(SHEET_W * sc);
         targetCanvas.width = W; targetCanvas.height = H;
         var ctx = targetCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
         currentFrameColor = frameColorFor();
         drawBackdrop(ctx, W, H);
         var L = landscapeCells(layoutKey, W, H);
         L.shots.forEach(function (c, i) {
           ctx.save();
-          ctx.shadowColor = 'rgba(40,30,20,0.25)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 5;
+          ctx.shadowColor = 'rgba(40,30,20,0.25)'; ctx.shadowBlur = Math.round(16 * sc); ctx.shadowOffsetY = Math.round(5 * sc);
           ctx.fillStyle = currentFrameColor; ctx.fillRect(c.x, c.y, c.w, c.h);
           ctx.restore();
           var pad = Math.max(6, Math.min(c.w, c.h) * 0.03);
@@ -33580,6 +33928,13 @@
       function renderCompositeToCanvas(layoutKey, targetCanvas) {
         const r = composeCanvas(layoutKey, targetCanvas, shotCanvases);
         stampTrialMark(targetCanvas);
+        if (targetCanvas) {
+          const editingOverlay = targetCanvas === previewCanvas && typeof sess !== 'undefined' && !!sess && !!sess.decorating && !sess.decoPreview;
+          targetCanvas._renderedForLayout = editingOverlay ? '' : layoutKey;
+          targetCanvas._renderedSession = typeof sessionNumber !== 'undefined' ? (sessionNumber || 0) : 0;
+          targetCanvas._renderedBack = !!(typeof btViewBack !== 'undefined' && btViewBack);
+          targetCanvas._hasCropOverlay = false;
+        }
         return r;
       }
 
@@ -33776,8 +34131,9 @@
       // ---- Download / Share ----
 
       shareBtn.addEventListener('click', () => {
-        previewCanvas.toBlob(async (blob) => {
-          if (!blob) return;
+        previewCanvas.toBlob(async (rawBlob) => {
+          if (!rawBlob) return;
+          const blob = await pbStampDpi(rawBlob, pbNominalDpi(previewCanvas));
           const file = new File([blob], 'photo-booth.png', { type: 'image/png' });
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
             try {
@@ -35913,16 +36269,27 @@
         const mismatch = Math.abs(ir - br) / br;
         const cover = mode === 'cover' ? true : mode === 'contain' ? false : mismatch <= 0.02;
         const scale = cover ? Math.max(w / img.width, h / img.height) : Math.min(w / img.width, h / img.height);
-        const dw = img.width * scale, dh = img.height * scale;
+        const dw = Math.max(1, img.width * scale), dh = Math.max(1, img.height * scale);
+        let cur = img, cw = img.width, ch = img.height;
+        while (cw > dw * 2 && ch > dh * 2) {
+          const nw = Math.max(Math.round(dw), Math.ceil(cw / 2)), nh = Math.max(Math.round(dh), Math.ceil(ch / 2));
+          const step = document.createElement('canvas'); step.width = nw; step.height = nh;
+          const sx = step.getContext('2d');
+          sx.imageSmoothingEnabled = true; sx.imageSmoothingQuality = 'high';
+          sx.drawImage(cur, 0, 0, cw, ch, 0, 0, nw, nh);
+          cur = step; cw = nw; ch = nh;
+        }
         ctx.save();
         ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
-        ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(cur, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
         ctx.restore();
       }
       function buildPrintCanvas(key) {
         if (plainResult) return buildPlainPrint(key);          // "Print original" from the roving screen
         const paper = paperFor(key);
         let src = document.createElement('canvas');
+        src._hiRes = true;
         receiptPrintGrey = !!paper.receipt;
         try { renderCompositeToCanvas(currentLayout, src); } finally { receiptPrintGrey = false; }
         src = btPrintCanvas(src, paper);          // card booth: front + back on one sheet
@@ -41186,7 +41553,8 @@
       async function quickDecode(blob) {
         var bmp;
         try { bmp = await createImageBitmap(blob, { imageOrientation: 'from-image' }); } catch (e) { bmp = await createImageBitmap(blob); }
-        var k = Math.min(1, 2400 / Math.max(bmp.width, bmp.height)), c = document.createElement('canvas');
+        var maxSide = LOCALSHARE ? Math.min(3600, offlineShotMaxPx()) : 2400;
+        var k = Math.min(1, maxSide / Math.max(bmp.width, bmp.height)), c = document.createElement('canvas');
         c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
         var ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(bmp, 0, 0, c.width, c.height); bmp.close();
         c._isShot = true;
@@ -52270,10 +52638,12 @@
         ctx.restore();
       }
       function composeTplCanvas(t, f, targetCanvas, shots) {
-        var k = (t === 'card' ? 1800 : 3000) / Math.max(f.w, f.h);
+        var sc = offlineOutputScale(targetCanvas, t);
+        var k = (t === 'card' ? Math.round(1800 * sc) : 3000) / Math.max(f.w, f.h);
         var W = Math.round(f.w * k), H = Math.round(f.h * k);
         targetCanvas.width = W; targetCanvas.height = H;
         var ctx = targetCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
         ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
         drawFrameInto(ctx, f, 0, 0, W, H, shots);
         var real = !!(guestInfo.name || '').trim(), card = t === 'card';
@@ -54834,8 +55204,8 @@
           var isLight = (color === '#ffffff' || color === '#ffea79');
           ctx.fillStyle = isLight ? '#1c1a1e' : '#ffffff';
           ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-          ctx.shadowBlur = 10;
-          ctx.shadowOffsetY = 3;
+          ctx.shadowBlur = Math.max(6, Math.round(fs * 0.25));
+          ctx.shadowOffsetY = Math.max(2, Math.round(fs * 0.08));
           roundRectPath(ctx, -bw / 2, -bh / 2, bw, bh, bh / 2);
           ctx.fill();
           ctx.shadowColor = 'transparent';
@@ -54849,7 +55219,7 @@
           ctx.fillStyle = color;
         } else if (style === 'neon') {
           ctx.shadowColor = color;
-          ctx.shadowBlur = 18;
+          ctx.shadowBlur = Math.max(10, Math.round(fs * 0.45));
           ctx.fillStyle = color;
         } else {
           ctx.fillStyle = color;
@@ -54954,7 +55324,9 @@
         var clrBtn = document.getElementById('decorClear');
         if (clrBtn) clrBtn.style.display = decor.length ? 'inline-block' : 'none';
         var c = document.createElement('canvas');
-        overlaySizeHint.textContent = 'Best size: 1200 × 1800 px (4R) or 600 × 1800 px (2×6 strip).';
+        overlaySizeHint.textContent = LOCALSHARE
+          ? 'Best size: 1200 × 1800 px to 2400 × 3600 px (4R) or 600 × 1800 px to 1200 × 3600 px (2×6 strip).'
+          : 'Best size: 1200 × 1800 px (4R) or 600 × 1800 px (2×6 strip).';
         buildPropTray();
         refreshSelControls();
       }
@@ -56337,9 +56709,12 @@
       // The guest's stickers and the logo go on it too, cut from where they sit on the layout the guest decorated
       // (without this, they were in the QR copy but missing from the print preview and the print).
       function composeSingleFrame(f, shots, it) {
-        var k = 2250 / Math.max(f.w, f.h), c = document.createElement('canvas');
+        var maxSide = LOCALSHARE ? (DESKTOP ? 4050 : 3600) : 2250;
+        var k = maxSide / Math.max(f.w, f.h), c = document.createElement('canvas');
         c.width = Math.round(f.w * k); c.height = Math.round(f.h * k);
-        var x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height);
+        var x = c.getContext('2d');
+        x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+        x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height);
         drawFrameInto(x, f, 0, 0, c.width, c.height, shots);
         var ov = overlay; overlay = null;
         try {
@@ -56842,13 +57217,16 @@
           if (SPOT_TMP.width < tw || SPOT_TMP.height < th) { SPOT_TMP.width = Math.max(SPOT_TMP.width, tw); SPOT_TMP.height = Math.max(SPOT_TMP.height, th); }
           var t = SPOT_TMP.getContext('2d');
           t.setTransform(1, 0, 0, 1, 0, 0); t.globalCompositeOperation = 'source-over'; t.clearRect(0, 0, tw, th);
+          t.imageSmoothingEnabled = true; t.imageSmoothingQuality = 'high';
           paint(t, -rx0, -ry0);
-          t.globalCompositeOperation = 'destination-in'; t.imageSmoothingEnabled = true;
+          t.globalCompositeOperation = 'destination-in'; t.imageSmoothingEnabled = true; t.imageSmoothingQuality = 'high';
           var mx = mask.width / w, my = mask.height / h;
           t.drawImage(mask, rx0 * mx, ry0 * my, tw * mx, th * my, 0, 0, tw, th);
           t.globalCompositeOperation = 'source-over';
+          ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(SPOT_TMP, 0, 0, tw, th, x + rx0, y + ry0, tw, th);
         });
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
         if (art) ctx.drawImage(art.punched, x, y, w, h);
         else { ctx.save(); ctx.strokeStyle = '#999'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2); ctx.restore(); }
       }
@@ -56857,24 +57235,26 @@
         return { fw: fw, fh: fh, bw: rot ? fh : fw, bh: rot ? fw : fh };
       }
       function composeFrameCanvas(layoutKey, targetCanvas, shots) {
-        var W, H, ctx;
+        var W, H, ctx, sc = offlineOutputScale(targetCanvas, 'frame');
         if (layoutKey === 'myframe') {
           var f = activeFrame();
-          var k = f ? 1800 / Math.max(f.w, f.h) : 1;
-          W = f ? Math.round(f.w * k) : SHEET_W; H = f ? Math.round(f.h * k) : SHEET_H;
+          var k = f ? Math.round(1800 * sc) / Math.max(f.w, f.h) : sc;
+          W = f ? Math.round(f.w * k) : Math.round(SHEET_W * sc); H = f ? Math.round(f.h * k) : Math.round(SHEET_H * sc);
           targetCanvas.width = W; targetCanvas.height = H;
           ctx = targetCanvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
           ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
           if (f) drawFrameInto(ctx, f, 0, 0, W, H, shots);
         } else {
-          W = SW(); H = SH();
+          W = Math.round(SW() * sc); H = Math.round(SH() * sc);
           targetCanvas.width = W; targetCanvas.height = H;
           ctx = targetCanvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
           ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
           liveSheetItems().forEach(function (it) {
-            var f = frameById(it.f), z = sheetItemSize(it);
+            var f = frameById(it.f), z = sheetItemSize(it), fw = z.fw * sc, fh = z.fh * sc;
             ctx.save(); ctx.translate(it.cx * W, it.cy * H); ctx.rotate((it.r || 0) * Math.PI / 180);
-            drawFrameInto(ctx, f, -z.fw / 2, -z.fh / 2, z.fw, z.fh, shots);
+            drawFrameInto(ctx, f, -fw / 2, -fh / 2, fw, fh, shots);
             ctx.restore();
           });
         }
@@ -57637,7 +58017,7 @@
         var added = [], overlayAdded = false;
         for (var i = 0; i < files.length; i++) {
           try {
-            var url = await readImageFile(files[i], 2400);
+            var url = await readImageFile(files[i], LOCALSHARE ? 3600 : 2400);
             var img = await loadImageUrl(url);
             var spots = detectSpots(img), needPick = false;
             // One see-through middle covering most of the image is a border overlay, not a photo frame.
@@ -59533,6 +59913,7 @@
         guestPickToggle: 'Lets guests choose between the ticked layouts (or all layouts when Tick all layouts is clicked) before their session.',
         afterPrintFirstToggle: 'Holds the download QR code until automatic printing finishes — useful when prints should finish before guests walk away.',
         allowRetakeToggle: 'Allows guests to tap a shot during review and retake it before printing/saving.',
+        masterPngToggle: 'Keeps a lossless PNG copy of every finished picture in a Masters folder inside the event folder, for you only (never shown to guests).',
         saveSoloToggle: 'Saves clean raw individual shots (without frame design) alongside the finished collage inside your gallery Solo Photos tab.',
         gvSelect: 'Controls whether guests scanning their personal QR see Everyone’s photos, Mine first, or Only their own session.',
         fxFlash: 'Flashes the screen bright white as each photo fires to illuminate faces in dark indoor venues.',

@@ -36917,7 +36917,7 @@
           else if ((p.colorModes || []).includes('monochrome') && (p.colorModes || []).includes('color')) colorCh = [['', 'Printer default'], ['color', 'Colour'], ['mono', 'Black & white']];
           const qs = p.qualities || [];
           if (p.escp2) qualCh = [['normal', 'Normal'], ['draft', 'Draft (fast)']];
-          else if (p.canon) qualCh = [['normal', 'Normal'], ['draft', 'Draft (saves ink)'], ['high', 'Best (600 dpi, beta)']];
+          else if (p.canon) qualCh = [['normal', 'Normal'], ['draft', 'Draft (saves ink)']];   // 600 dpi "Best" did not print on a real G1010, so it is off
           else if (p.epsonL) {
             qualCh = [['normal', 'Normal (360 dpi)'], ['draft', 'Draft (fast)']];
             if (pbDebug()) qualCh.push(['rnormal', 'Normal 720 dpi (beta, 4\u00d76 glossy)'], ['rbest', 'Best 1440 dpi (beta, 4\u00d76 glossy)']);

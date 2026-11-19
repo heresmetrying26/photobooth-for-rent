@@ -1651,11 +1651,15 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
      */
     private fun canonPrintPage(id: String, jpeg: ByteArray, widthMm: Double, heightMm: Double, mono: Boolean, cq: Int, cm: Int,
                                borderless: Boolean, adj: PrintColorAdj, mode: String) {
+        // The G1000 / G2000 family (G1010, G2010) printed over USB with the native stream sent as-is, on a real G1010 (client report,
+        // 2026-11-19). For those the page goes out exactly that way: no status probing, no soft reset, no second language.
+        val nativeKnown = try { CanonGModels.match(usbFind(id)) in setOf("G1010", "G1000", "G2000", "G2010") } catch (_: Exception) { false }
         fun legacy() {
             val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                 ?: throw IllegalStateException("Couldn't read the picture to print.")
             try {
-                usbCanonJob(id, CanonJob.build(bmp, widthMm, heightMm, mono, cq, cm, adj))
+                val bytes = CanonJob.build(bmp, widthMm, heightMm, mono, cq, cm, adj)
+                if (nativeKnown) usbRaw(id, bytes) else usbCanonJob(id, bytes)
             } finally {
                 try { bmp.recycle() } catch (_: Exception) {}
             }
@@ -1668,11 +1672,13 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         val order: List<String> = when {
             mode == "legacy" -> listOf("legacy")
             mode == "ivec" -> listOf("ivec")
+            nativeKnown -> listOf("legacy")                                   // proven on a G1010: that language only
             !CanonJob.supportsIvec(widthMm, heightMm) -> listOf("legacy")
             canonMode[id] != null -> if (canonMode[id] == "legacy") listOf("legacy", "ivec") else listOf("ivec", "legacy")
             else -> {
+                // other G-series (G3010 family...): the newer page only when the printer says it takes PWG Raster
                 val caps = usbCanonCapability(id)
-                if (caps != null && !caps.contains("pwg", ignoreCase = true)) listOf("legacy", "ivec") else listOf("ivec", "legacy")
+                if (caps != null && caps.contains("pwg", ignoreCase = true)) listOf("ivec", "legacy") else listOf("legacy", "ivec")
             }
         }
         var first: CanonIgnoredException? = null

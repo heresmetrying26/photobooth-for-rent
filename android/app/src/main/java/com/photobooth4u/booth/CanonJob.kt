@@ -188,7 +188,9 @@ object CanonJob {
             ?: throw IllegalArgumentException("This paper size isn't supported on Canon USB printers yet. Use 4x6, A4 or Letter.")
         fun areaWOf(d: Int) = Math.round(minOf(widthMm, heightMm) / 25.4 * d).toInt() - 2 * MARGIN_SIDE * (d / DPI)
         fun areaHOf(d: Int) = ((Math.round(maxOf(widthMm, heightMm) / 25.4 * d).toInt() - (MARGIN_TOP + MARGIN_BOTTOM) * (d / DPI)) / LINES) * LINES
-        var dpi = if (quality == 2 || media == 1) 600 else 300
+        // 300 dpi only. A client's real G1010 printed the test page and photos at 300 dpi (Normal) but did NOT print at all with
+        // "Best (600 dpi)" (client report, 2026-11-19), so the 600 dpi mode stays off until it has been checked on a G1010.
+        var dpi = 300
         if (dpi == 600 && areaWOf(600).toLong() * areaHOf(600) > BEST_MAX_PIXELS) dpi = 300
         val u = 600 / dpi                                   // the printer counts page areas in 1/600 inch
         val paperW = Math.round(minOf(widthMm, heightMm) / 25.4 * dpi).toInt()

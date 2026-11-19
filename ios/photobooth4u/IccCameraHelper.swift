@@ -2473,9 +2473,9 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             return
         }
 
-        // 3. Offline /api/* fast handler (allows /api/pay & /api/camdiag when online)
+        // 3. Offline /api/* fast handler (allows /api/setup, /api/camdiag & /api/updates when online; vouchers and print counts stay local per device)
         if path.hasPrefix("/api/") {
-            if PBLocal.shared.isOnline() && (path.hasPrefix("/api/pay") || path.hasPrefix("/api/camdiag") || path.hasPrefix("/api/updates")) {
+            if PBLocal.shared.isOnline() && (path.hasPrefix("/api/setup") || path.hasPrefix("/api/camdiag") || path.hasPrefix("/api/updates")) {
                 proxyRemoteApi(clientSock: clientSock, method: method, path: path, query: query, headers: headers, body: body)
             } else {
                 sendJson(clientSock, status: 503, json: ["ok": false, "error": "offline"])
@@ -2700,7 +2700,18 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15.0)
         req.httpMethod = method
         if let ct = headers["content-type"] { req.setValue(ct, forHTTPHeaderField: "Content-Type") }
-        if !body.isEmpty { req.httpBody = body }
+        if !body.isEmpty {
+            if path.hasPrefix("/api/setup"),
+               let lic = AppLicence.shared.currentLicenceString(), !lic.isEmpty,
+               var obj = (try? JSONSerialization.jsonObject(with: body, options: [])) as? [String: Any],
+               obj["licence"] == nil {
+                obj["licence"] = lic
+                obj["mid"] = AppLicence.shared.machineId()
+                req.httpBody = (try? JSONSerialization.data(withJSONObject: obj, options: [])) ?? body
+            } else {
+                req.httpBody = body
+            }
+        }
 
         let sema = DispatchSemaphore(value: 0)
         var outData = Data("{\"ok\":false,\"error\":\"offline\"}".utf8)

@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld('pb4u', {
   activate: (code) => ipcRenderer.invoke('pb4u:activate', String(code || '')),
   activateOffline: (text) => ipcRenderer.invoke('pb4u:activateOffline', String(text || '')),
   checkin: () => ipcRenderer.invoke('pb4u:checkin'),
+  syncNow: () => ipcRenderer.invoke('pb4u:syncNow'),
+  onSetupSynced: (fn) => { ipcRenderer.on('pb4u:setupSynced', (e, info) => { try { fn(info); } catch (err) { /* ignore */ } }); },
   deactivate: () => ipcRenderer.invoke('pb4u:deactivate'),
   openPhotos: (folderUrl) => ipcRenderer.invoke('pb4u:openPhotos', folderUrl ? String(folderUrl) : ''),
   choosePhotos: () => ipcRenderer.invoke('pb4u:choosePhotos'),

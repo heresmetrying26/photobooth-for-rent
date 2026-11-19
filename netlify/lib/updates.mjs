@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.78', date: '2026-11-19' },
   { version: '1.1.77', date: '2026-11-19' },
   { version: '1.1.76', date: '2026-11-19' },
   { version: '1.1.75', date: '2026-11-19' },
@@ -220,7 +221,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.5', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.5/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.7', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.7/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -273,6 +274,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-19', title: 'Desktop 1.1.78 (Win/Mac) + Android 1.1.90 + iPad 1.1.7: offline-first cloud sync for Saved Profiles, My Themes, event setups and uploaded frames across all devices, plus smoother thermal receipt prints', for: ['website', 'app'], app: '1.1.78',
+    items: [
+      '☁️ Saved Profiles, My Themes, current event Setup and uploaded frames/logos/stickers/backdrops/sounds now sync automatically across the laptop app, Android tablet app, iPad app and web booth whenever connected to Wi-Fi — while keeping offline event operation 100% instant and unaffected.',
+      '🖼️ All frames, logos, stickers and backdrops used inside synced Saved Profiles and My Themes are automatically downloaded and cached on the device while on Wi-Fi, so you can switch profiles offline at the venue with no internet.',
+      '🔒 Each device now keeps its own 4-digit Lock PIN, voucher batches and print counts separately on that device (Admin’s Reset PIN still unlocks any device).',
+      '🧾 Thermal receipt layout: removed the grainy preview dithering in Setup and upgraded thermal print tone, shadow detail and Stucki dithering for sharper receipt prints.'
+    ]
+  },
   {
     date: '2026-11-19', title: 'Desktop 1.1.77 (Win/Mac): the camera menu no longer freezes on laptops where Windows never lists the cameras, so the tablet camera starts', for: ['website', 'app'], app: '1.1.77',
     items: [

@@ -14,6 +14,7 @@ import { createDecipheriv, createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
+import { initSetupSync, handleSetupRequest, syncAllNow } from './lib/setup-sync.mjs';
 import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
 import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
@@ -94,6 +95,7 @@ async function refreshRecord() {
 async function checkinNow(force) {
   const r = await L.checkin(net.fetch.bind(net), force);
   if (r === 'ok' || r === 'revoked') await refreshRecord();
+  if (r === 'ok') syncAllNow().catch(() => { });
   if (r === 'revoked' && win && !win.isDestroyed()) win.webContents.send('pb4u:licence', L.info());
   return r;
 }
@@ -160,6 +162,7 @@ async function handle(req) {
     if (p.startsWith('/api/')) {
       if (!L.status().ok) return jsonRes({ error: 'locked', reason: 'invalid' }, 401);
       if (p === '/api/camdiag' && req.method === 'POST') return await camDiagForward(req);
+      if (p === '/api/setup' && req.method === 'POST') return await handleSetupRequest(req);
       return await handleApi(req, p);
     }
     if (p === '/local/drive' && req.method === 'POST') {
@@ -372,6 +375,7 @@ function wireIpc() {
     return r;
   });
   ipcMain.handle('pb4u:checkin', async () => { const r = await checkinNow(true); return { result: r, licence: L.info() }; });
+  ipcMain.handle('pb4u:syncNow', () => syncAllNow());
   ipcMain.handle('pb4u:deactivate', async () => {
     const r = await L.deactivate(net.fetch.bind(net));
     if (r.ok) await syncRecord(null, L.deviceId(), false);
@@ -642,6 +646,11 @@ app.whenReady().then(async () => {
   L.initLicence({ dataDir: dataDir(), pubKeyB64: pub, version: VERSION });
   L.touchClock();
   initServer({ buildDir: BUILD, dataDir: dataDir() });
+  initSetupSync({
+    dataDir: dataDir(),
+    fetchFn: net.fetch.bind(net),
+    onSynced: (info) => { if (win && !win.isDestroyed()) win.webContents.send('pb4u:setupSynced', info); }
+  });
   try { setBoothHtml(decryptBooth()); } catch (e) { console.error('booth', e); dialog.showErrorBox('photobooth4u', 'This copy of the app is damaged. Please download it again.'); app.quit(); return; }
   initPhotos({
     root: settings.photos || join(app.getPath('pictures'), 'photobooth4u'), dataDir: dataDir(),
@@ -709,5 +718,5 @@ app.whenReady().then(async () => {
     notify: (i) => { if (win && !win.isDestroyed()) win.webContents.send('pb4u:update', i); }
   });
   clockTimer = setInterval(() => { L.touchClock(); refreshRecord().catch(() => { }); }, 5 * 60000);
-  checkinTimer = setInterval(() => { checkinNow(false).catch(() => { }); }, 2 * 60000);   // checks in every 10 min (see licence.mjs)
+  checkinTimer = setInterval(() => { checkinNow(false).catch(() => { }); syncAllNow().catch(() => { }); }, 2 * 60000);   // checks in every 10 min (see licence.mjs) & syncs setups/profiles when online
 });

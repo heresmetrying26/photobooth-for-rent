@@ -1,5 +1,6 @@
 import { safe, json, checkLicense, verifyToken, licenses, setupsStore, cleanEventName, setupKeyFor as keyFor } from '../lib/core.mjs';
-import { mergeProfiles } from '../lib/profiles-merge.mjs';
+import { mergeProfiles, mergeThemes } from '../lib/profiles-merge.mjs';
+import { readLicence, readMap, appDevice } from '../lib/license.mjs';
 
 // Saves and loads the booth's Setup (layout, theme, backdrop, event name,
 // fonts, timers, filters...) on the server, so it survives refreshes, restarts
@@ -24,19 +25,53 @@ const SOUND_RE = /^data:audio\/wav;base64,[A-Za-z0-9+/=]+$/;
 const ASSET_ID_RE = /^a[A-Za-z0-9]{8,32}$/;
 
 export default safe(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'access-control-allow-origin': '*',
+        'access-control-allow-methods': 'POST, OPTIONS',
+        'access-control-allow-headers': 'content-type'
+      }
+    });
+  }
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   const b = await req.json().catch(() => null);
   if (!b) return json({ error: 'Bad request' }, 400);
 
-  const lic = await checkLicense(b.token, String(b.deviceId || ''));
-  if (!lic.valid) return json({ error: 'locked', reason: lic.reason }, 401);
-  if (lic.type !== 'rental') return json({ error: 'Trials keep their setup on this device only.' }, 403);
+  let codeKey = null;
+  let rec = null;
+  let folderPrefix = null;
 
-  const p = verifyToken(b.token);
-  const rec = await licenses().get(p.k, { type: 'json' });
-  const owner = rec && rec.kind === 'bonus' && rec.parent ? rec.parent : p.k;
+  // Offline apps (Windows, Mac, Android, iPad) authenticate with their signed PB4U-LIC1 licence + machine id.
+  if (b.licence && b.mid && process.env.PB_LICENSE_KEY) {
+    const lp = readLicence(b.licence);
+    const mid = String(b.mid || '').trim().toUpperCase();
+    if (!lp || lp.typ !== 'pb4u-desktop' || lp.mid !== mid) {
+      return json({ error: 'locked', reason: 'invalid' }, 401);
+    }
+    const map = await readMap(lp.lid);
+    rec = map ? await licenses().get(map.key, { type: 'json' }) : null;
+    const dev = rec && appDevice(rec, (a) => a.lid === lp.lid && a.mid === mid);
+    if (!rec || !dev) return json({ error: 'locked', reason: 'device-removed' }, 401);
+    if (rec.status === 'revoked') return json({ error: 'locked', reason: 'revoked' }, 401);
+    if (rec.status !== 'active' || rec.expiresAt <= Date.now()) return json({ error: 'locked', reason: 'expired' }, 401);
+    codeKey = map.key;
+    folderPrefix = rec.lifetime ? ((rec.folderName || rec.label || rec.code || '').trim() || null) : null;
+  } else {
+    const lic = await checkLicense(b.token, String(b.deviceId || ''));
+    if (!lic.valid) return json({ error: 'locked', reason: lic.reason }, 401);
+    if (lic.type !== 'rental') return json({ error: 'Trials keep their setup on this device only.' }, 403);
+    const p = verifyToken(b.token);
+    codeKey = p.k;
+    rec = await licenses().get(codeKey, { type: 'json' });
+    folderPrefix = lic.folderPrefix;
+  }
+
+  const owner = rec && rec.kind === 'bonus' && rec.parent ? rec.parent : codeKey;
+  const cleanEv = cleanEventName(b.event || '');
   let scope = owner;
-  if (lic.folderPrefix) scope += '|' + (cleanEventName(b.event || '').toLowerCase() || '_');
+  if (folderPrefix) scope += '|' + (cleanEv.toLowerCase() || '_');
   const id = keyFor(scope);
   const ownerId = keyFor('own|' + owner);
   const store = setupsStore();
@@ -45,16 +80,23 @@ export default safe(async (req) => {
     case 'get': {
       let doc = await store.get(id, { type: 'json' });
       let docId = id;
-      // A rental / tester code upgraded to Lifetime: its setup was saved under the code alone, but a Lifetime code looks
-      // under "code + event name". Until an event name is typed, show the pre-upgrade design instead of a blank booth
-      // (the booth then carries it over to the first event by itself). Only read, never copied, so nothing can be lost.
-      if (!doc && lic.folderPrefix && scope === owner + '|_') {
-        const legacyId = keyFor(owner);
-        const legacy = await store.get(legacyId, { type: 'json' });
-        if (legacy) { doc = legacy; docId = legacyId; }
+      let latestEvent = '';
+      // If a Lifetime device opens without an event folder typed yet, load the latest saved event setup across this code's devices
+      // (or fall back to a pre-upgrade rental setup if none exists yet).
+      if (folderPrefix && scope === owner + '|_') {
+        const latest = await store.get(ownerId + '_latest', { type: 'json' });
+        if (latest && latest.docId && (!doc || (latest.updatedAt || 0) > (doc.updatedAt || 0))) {
+          const latestDoc = await store.get(latest.docId, { type: 'json' });
+          if (latestDoc) { doc = latestDoc; docId = latest.docId; latestEvent = latest.event || ''; }
+        }
+        if (!doc) {
+          const legacyId = keyFor(owner);
+          const legacy = await store.get(legacyId, { type: 'json' });
+          if (legacy) { doc = legacy; docId = legacyId; }
+        }
       }
       const image = doc && doc.hasImage ? await store.get(docId + '_img') : null;
-      const ownerRec = owner === p.k ? rec : await licenses().get(owner, { type: 'json' });   // a frame Admin made for this renter
+      const ownerRec = owner === codeKey ? rec : await licenses().get(owner, { type: 'json' });   // a frame Admin made for this renter
       const sf = ownerRec && ownerRec.startFrame;
       const sl = ownerRec && ownerRec.startLogo;
       const sn = ownerRec && (ownerRec.startName || null);
@@ -64,6 +106,7 @@ export default safe(async (req) => {
         settings: doc ? doc.settings : null,
         updatedAt: doc ? doc.updatedAt : 0,
         image: image || null,
+        ...(latestEvent ? { latestEvent } : {}),
         startFrame: sf ? { id: sf.id, name: sf.name } : null,
         startLogo: sl ? { id: sl.id, name: sl.name } : null,
         startName: sn,
@@ -82,6 +125,12 @@ export default safe(async (req) => {
       const raw = JSON.stringify(b.settings);
       if (raw.length > MAX_SETTINGS) return json({ error: 'Settings too large' }, 413);
       const old = await store.get(id, { type: 'json' });
+      const now = Date.now();
+      const clientTs = Number(b.updatedAt) > 0 && Number(b.updatedAt) <= now + 60000 ? Math.min(now, Math.trunc(Number(b.updatedAt))) : now;
+      if (b.ifNewer && old && (old.updatedAt || 0) > clientTs) {
+        const image = old.hasImage ? await store.get(id + '_img') : null;
+        return json({ ok: true, outdated: true, settings: old.settings, updatedAt: old.updatedAt, image: image || null });
+      }
       let hasImage = !!(old && old.hasImage);
       if ('image' in b) {
         if (b.image === null) {
@@ -94,8 +143,11 @@ export default safe(async (req) => {
           hasImage = true;
         }
       }
-      const updatedAt = Date.now();
+      const updatedAt = Math.max(now, (old && old.updatedAt ? old.updatedAt + 1 : 0));
       await store.setJSON(id, { settings: JSON.parse(raw), updatedAt, hasImage });
+      if (folderPrefix) {
+        await store.setJSON(ownerId + '_latest', { docId: id, event: cleanEv, updatedAt });
+      }
       return json({ ok: true, updatedAt });
     }
 
@@ -142,15 +194,19 @@ export default safe(async (req) => {
     // ---- "My themes" ----
     case 'themes-get': {
       const doc = await store.get(ownerId + '_themes', { type: 'json' });
-      return json({ ok: true, themes: doc && Array.isArray(doc.themes) ? doc.themes : [] });
+      return json({ ok: true, themes: doc && Array.isArray(doc.themes) ? doc.themes : [], deleted: doc && doc.deleted ? doc.deleted : {} });
     }
     case 'themes-save': {
-      const themes = Array.isArray(b.themes) ? b.themes.slice(0, MAX_THEMES) : null;
-      if (!themes) return json({ error: 'Bad themes' }, 400);
-      const raw = JSON.stringify({ themes });
+      if (!Array.isArray(b.themes)) return json({ error: 'Bad themes' }, 400);
+      for (const t of b.themes) {
+        if (t && t.settings && JSON.stringify(t.settings).length > MAX_SETTINGS) return json({ error: 'A theme is too large to save.' }, 413);
+      }
+      const old = await store.get(ownerId + '_themes', { type: 'json' });
+      const merged = mergeThemes(old && old.themes, old && old.deleted, b.themes, b.deleted);
+      const raw = JSON.stringify(merged);
       if (raw.length > MAX_THEMES_JSON) return json({ error: 'Too many saved themes — delete a few first.' }, 413);
-      await store.setJSON(ownerId + '_themes', { themes: JSON.parse(raw).themes, updatedAt: Date.now() });
-      return json({ ok: true });
+      await store.setJSON(ownerId + '_themes', { themes: merged.themes, deleted: merged.deleted, updatedAt: Date.now() });
+      return json({ ok: true, themes: merged.themes, deleted: merged.deleted });
     }
 
     // ---- Saved profiles: whole setups saved under a name, shared by all of this customer's events ----

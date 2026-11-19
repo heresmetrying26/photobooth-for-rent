@@ -173,6 +173,12 @@ class PBLocal(private val ctx: Context) {
         }
     }
 
+    var authProvider: (() -> String)? = null
+
+    /** Returns JSON {"licence":"...","mid":"..."} for authenticating /api/setup cloud sync while online. */
+    @JavascriptInterface
+    fun appAuth(): String = try { authProvider?.invoke() ?: "{}" } catch (_: Throwable) { "{}" }
+
     // ---------- phone photos and guests' print requests (mirror desktop/lib/photos.mjs) ----------
 
     class PrintReq(val id: String, val slug: String, val file: String, val event: String, val t: Long)

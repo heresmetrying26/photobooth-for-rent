@@ -51750,40 +51750,41 @@
       // the code; cached here so a locked booth still unlocks offline).
       // Trials: the PIN and the lock belong to that trial only (its expiry time).
       var PIN_CACHE_KEY = 'pb4u.lockPin.code';
-      // Tablet offline app (Android / iPad): no web session (no pb_token) and often no internet, so its PIN lives on the tablet only, like a trial's.
-      function isAndroidKioskLock() { return !!(window.__PB && (window.__PB.android || window.__PB.ios) && window.__PB.offline); }
-      function isTrialLock() { return !!(window.__PB && (window.__PB.type === 'trial' || isAndroidKioskLock())); }
-      function trialTag() { return isAndroidKioskLock() ? (window.__PB && window.__PB.ios ? 'ios' : 'android') : (window.__PB ? String(window.__PB.exp || '') : ''); }   // the tablet keeps its PIN when the code is renewed
-      var codePin = isTrialLock() ? null : lockRead(PIN_CACHE_KEY);
-      if (codePin && !codePin.h) codePin = null;
-      var seenReset = ((lockRead(PIN_CACHE_KEY) || {}).reset) || 0;
-      function ownPin() {
-        if (isTrialLock()) {
-          var p = lockRead(PIN_KEY);
-          if (p && p.trial !== trialTag()) { lockWrite(PIN_KEY, null); p = null; }   // an old trial's PIN
-          return p;
+      // Each device keeps its own 4-digit Lock PIN locally on that device (never overwritten by other devices on the same code).
+      // Trials tie their PIN to that trial's expiry time; rental/lifetime devices keep their PIN across renewals and still honour Admin PIN resets.
+      function isAndroidKioskLock() { return !!(DESKTOP || (window.__PB && (window.__PB.android || window.__PB.ios) && window.__PB.offline)); }
+      function isTrialLock() { return true; }
+      function trialTag() {
+        if (window.__PB && window.__PB.type === 'trial') return String(window.__PB.exp || '');
+        if (DESKTOP) return 'desktop';
+        if (window.__PB && window.__PB.ios) return 'ios';
+        if (window.__PB && window.__PB.android) return 'android';
+        return 'device';
+      }
+      var seenReset = ((lockRead(PIN_CACHE_KEY) || {}).reset) || ((lockRead(PIN_KEY) || {}).reset) || 0;
+      // Migrate any previously cached code-level PIN onto this device so existing booths keep their current PIN.
+      (function () {
+        var existing = lockRead(PIN_KEY);
+        var legacy = lockRead(PIN_CACHE_KEY);
+        if (!existing && legacy && legacy.h) {
+          lockWrite(PIN_KEY, { h: legacy.h, at: legacy.at || Date.now(), trial: trialTag(), reset: seenReset });
         }
+      })();
+      var codePin = null;
+      function ownPin() {
         // An admin reset newer than what this device has seen clears it and unlocks.
         var r = (window.__PB && window.__PB.pinResetAt) || 0;
         if (r > seenReset) {
-          seenReset = r; codePin = null; lockWrite(PIN_CACHE_KEY, null);
+          seenReset = r; codePin = null;
+          lockWrite(PIN_KEY, null); lockWrite(PIN_CACHE_KEY, { reset: seenReset });
           lockWrite(LOCK_KEY, null); lockState.locked = false;
         }
-        return codePin;
+        var p = lockRead(PIN_KEY);
+        if (p && p.trial !== trialTag()) { lockWrite(PIN_KEY, null); p = null; }   // an old trial's PIN
+        return p;
       }
       function savedPin() { return ownPin() || { def: true }; }
-      async function fetchCodePin() {
-        if (isTrialLock() || typeof canSyncServer !== 'function' || !canSyncServer()) return;
-        try {
-          var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'pin-get' }) });
-          var j = await r.json();
-          if (!r.ok || !j.ok) return;
-          ownPin();
-          codePin = j.pin && j.pin.h ? { h: j.pin.h, at: j.pin.at || 0, reset: seenReset } : null;
-          lockWrite(PIN_CACHE_KEY, codePin || (seenReset ? { reset: seenReset } : null));
-          refreshLockSetup();
-        } catch (e) { /* offline: keep the cached PIN */ }
-      }
+      async function fetchCodePin() { ownPin(); refreshLockSetup(); }
       function applyLock() {
         ownPin();   // applies an admin PIN reset (clears the PIN and unlocks)
         var on = lockState.locked && lockAllowed();
@@ -51804,7 +51805,8 @@
         document.getElementById('lockPinLabel').textContent = has ? 'Change the 4-digit PIN' : 'Set your own 4-digit PIN';
         document.getElementById('lockFab').hidden = !lockAllowed();
         var note = document.getElementById('lockPinNote');
-        if (!note.dataset.msg) note.textContent = has ? (isAndroidKioskLock() ? 'Your PIN is set on this tablet.' : isTrialLock() ? 'Your PIN is set for this trial.' : 'Your PIN is set for this code (every device using it).') : '';
+        var isOnlyTrial = !!(window.__PB && window.__PB.type === 'trial');
+        if (!note.dataset.msg) note.textContent = has ? (isOnlyTrial ? 'Your PIN is set for this trial.' : 'Your PIN is set on this device (each device has its own PIN).') : '';
         document.getElementById('lockTestNote').style.display = has ? 'none' : '';
       }
       document.getElementById('lockPinSave').addEventListener('click', async function () {
@@ -51814,20 +51816,13 @@
         if (!/^\d{4}$/.test(v)) { note.textContent = 'The PIN must be exactly 4 digits.'; return; }
         if (v !== b.value.trim()) { note.textContent = 'The two PINs don’t match.'; return; }
         var h = await pinHash(v);
-        if (isTrialLock()) {
-          lockWrite(PIN_KEY, { h: h, at: Date.now(), trial: trialTag() });
-        } else {
-          note.textContent = 'Saving…';
-          try {
-            var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'pin-set', h: h }) });
-            var j = await r.json().catch(function () { return {}; });
-            if (!r.ok || !j.ok) throw new Error(j.error || 'Save failed');
-            codePin = { h: h, at: j.at || Date.now(), reset: seenReset };
-            lockWrite(PIN_CACHE_KEY, codePin);
-          } catch (err) { note.textContent = 'Couldn’t save the PIN. Check the internet and try again.'; setTimeout(function () { delete note.dataset.msg; }, 5000); return; }
+        lockWrite(PIN_KEY, { h: h, at: Date.now(), trial: trialTag(), reset: seenReset });
+        if (DESKTOP) {
+          try { await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'pin-set', h: h }) }); } catch (e) { }
         }
         a.value = ''; b.value = '';
-        note.textContent = isAndroidKioskLock() ? 'PIN saved on this tablet.' : isTrialLock() ? 'PIN saved for this trial.' : 'PIN saved. It works on every device using this code.';
+        var isOnlyTrial = !!(window.__PB && window.__PB.type === 'trial');
+        note.textContent = isOnlyTrial ? 'PIN saved for this trial.' : 'PIN saved on this device.';
         setTimeout(function () { delete note.dataset.msg; }, 4000);
         refreshLockSetup();
       });
@@ -54059,10 +54054,26 @@
         return 'pb_setup:' + base + (ev ? '|' + ev.toLowerCase() : '');
       }
       function canSyncServer() { var pb = window.__PB; return !!(pb && pb.type === 'rental'); }
+      function getAppAuth() {
+        try {
+          if (window.__PBLocal && typeof window.__PBLocal.appAuth === 'function') {
+            var a = JSON.parse(window.__PBLocal.appAuth() || '{}');
+            if (a && a.licence && a.mid) return a;
+          }
+        } catch (e) { }
+        var pb = window.__PB;
+        if (pb && pb.appAuth && pb.appAuth.licence && pb.appAuth.mid) return pb.appAuth;
+        return null;
+      }
       function setupBody(extra) {
         var token = null, deviceId = null;
         try { token = localStorage.getItem('pb_token'); deviceId = localStorage.getItem('pb_device'); } catch (e) { }
-        return JSON.stringify(Object.assign({ token: token, deviceId: deviceId, event: setupScopeEvent() }, extra));
+        var auth = getAppAuth();
+        return JSON.stringify(Object.assign(
+          { token: token, deviceId: deviceId, event: setupScopeEvent() },
+          auth ? { licence: auth.licence, mid: auth.mid } : {},
+          extra
+        ));
       }
       function saveLocalCopy(key, settings, updatedAt, image, imageChanged) {
         try { localStorage.setItem(key, JSON.stringify({ settings: settings, updatedAt: updatedAt })); } catch (e) { }
@@ -54075,37 +54086,51 @@
         clearTimeout(setupSaveTimer);
         setupSaveTimer = setTimeout(saveSetupNow, 1200);
       }
-      async function saveSetupNow() {
+      async function saveSetupNow(forceSync) {
         clearTimeout(setupSaveTimer);
         var settings = snapshotSetup(), json = JSON.stringify(settings);
-        if (json === lastSavedJson && !imageDirty) return;
-        var key = localSetupKey(), sendImage = imageDirty;
-        saveLocalCopy(key, settings, Date.now(), bgImageDataUrl, sendImage);
+        var key = localSetupKey();
+        var wasDirty = false;
+        try { wasDirty = localStorage.getItem(key + '#dirty') === '1'; } catch (e) { }
+        if (!forceSync && !wasDirty && json === lastSavedJson && !imageDirty) return;
+        var sendImage = imageDirty || (wasDirty && !!bgImageDataUrl);
+        var nowTs = Date.now();
+        saveLocalCopy(key, settings, nowTs, bgImageDataUrl, sendImage);
         lastSavedJson = json;
         imageDirty = false;
         if (!canSyncServer()) { setSaveNote('Saved on this device ✓', 'ok'); return; }
-        var extra = { action: 'save', settings: settings };
+        var extra = { action: 'save', settings: settings, updatedAt: nowTs };
         if (sendImage) extra.image = bgImageDataUrl || null;
         setSaveNote('Saving…', '');
         try {
+          if (typeof syncPendingAssets === 'function' && typeof collectAllAssetIds === 'function') {
+            await syncPendingAssets(collectAllAssetIds(settings));
+          }
           var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody(extra) });
           var j = await r.json().catch(function () { return {}; });
           if (!r.ok) throw new Error(j.error || 'Save failed');
           setupUpdatedAt = j.updatedAt;
           saveLocalCopy(key, settings, j.updatedAt, null, false);
-          setSaveNote(DESKTOP ? 'Saved on this laptop ✓' : 'Saved ✓ Other devices on this code get it too.', 'ok');
+          if (j.synced === false) {
+            try { localStorage.setItem(key + '#dirty', '1'); } catch (e) { }
+            setSaveNote((DESKTOP ? 'Saved on this laptop ✓' : 'Saved on this device ✓') + ' Syncs when connected to Wi-Fi.', 'ok');
+          } else {
+            try { localStorage.removeItem(key + '#dirty'); } catch (e) { }
+            setSaveNote('Saved & synced ✓ Other devices on this code get it too.', 'ok');
+          }
         } catch (e) {
           if (sendImage) imageDirty = true;
+          try { localStorage.setItem(key + '#dirty', '1'); } catch (err) { }
           lastSavedJson = null;   // try again on the next change
           var em = String((e && e.message) || '');
           if (/too large/i.test(em)) {
             // Not a connection problem: the setup itself is over the server's size limit, so it will never sync until something is removed.
             setSaveNote('Saved on this device only: the setup is too big to sync. Remove some stickers, props or extra frames.', 'warn');
             if (!window._setupBigShown) { window._setupBigShown = true; showToast('Your setup is too big to sync to your other devices. Remove some stickers, props or extra frames.', 7000); }
-          } else if (em && !/fetch|network|load failed|failed to load|json/i.test(em)) {
+          } else if (em && !/fetch|network|load failed|failed to load|json|offline/i.test(em)) {
             setSaveNote('Saved on this device. Couldn’t sync: ' + em.slice(0, 90), 'warn');
           } else {
-            setSaveNote('Saved on this device. It syncs when you’re back online.', 'warn');
+            setSaveNote((DESKTOP ? 'Saved on this laptop ✓' : 'Saved on this device ✓') + ' Syncs when connected to Wi-Fi.', 'ok');
           }
         }
       }
@@ -54131,6 +54156,13 @@
           try {
             var j = await fetchServerSetup();
             if (setupLoadedKey !== key) return;
+            if (j.latestEvent && !driveFolderKeyInput.value.trim() && window.__PB && window.__PB.folderPrefix) {
+              driveFolderKeyInput.value = j.latestEvent;
+              try { localStorage.setItem('pb_lastEventFolder', j.latestEvent); } catch (e) { }
+              key = localSetupKey();
+              setupLoadedKey = key;
+              try { local = JSON.parse(localStorage.getItem(key) || 'null'); localImg = localStorage.getItem(key + '#img'); } catch (e) { }
+            }
             sfOffer = j.startFrame || null;
             slOffer = j.startLogo || null;
             snOffer = j.startName || null;
@@ -54854,14 +54886,70 @@
         return rec;
       }
       function assetImg(id) { return ASSETS[id] && ASSETS[id].img; }
+      var _syncedAssetsMap = null;
+      function syncedAssetsMap() {
+        if (_syncedAssetsMap) return _syncedAssetsMap;
+        try { _syncedAssetsMap = JSON.parse(localStorage.getItem('pb_assets_synced') || '{}') || {}; } catch (e) { _syncedAssetsMap = {}; }
+        return _syncedAssetsMap;
+      }
+      function markAssetSynced(id) {
+        if (!id) return;
+        var m = syncedAssetsMap();
+        if (!m[id]) {
+          m[id] = 1;
+          try { localStorage.setItem('pb_assets_synced', JSON.stringify(m)); } catch (e) { }
+        }
+      }
+      function collectAllAssetIds(root) {
+        var found = {};
+        function walk(v, depth) {
+          if (!v || depth > 7) return;
+          if (typeof v === 'string') {
+            var s = v.indexOf('a:') === 0 ? v.slice(2) : v;
+            if (/^a[A-Za-z0-9]{14,32}$/.test(s)) found[s] = 1;
+            return;
+          }
+          if (Array.isArray(v)) {
+            for (var i = 0; i < v.length; i++) walk(v[i], depth + 1);
+            return;
+          }
+          if (typeof v === 'object') {
+            var keys = Object.keys(v);
+            for (var j = 0; j < keys.length; j++) walk(v[keys[j]], depth + 1);
+          }
+        }
+        walk(root, 0);
+        return Object.keys(found);
+      }
       // Upload once to the server (rental / lifetime codes) so other devices get it.
-      async function pushAsset(id, url) {
+      async function pushAsset(id, url, silent) {
         if (!canSyncServer()) return true;
         try {
           var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'asset-put', id: id, data: url }) });
-          if (!r.ok) { var j = await r.json().catch(function () { return {}; }); showToast(j.error || 'Couldn’t save that image to the server.', 4500); return false; }
+          var j = await r.json().catch(function () { return {}; });
+          if (!r.ok) {
+            if (!silent && r.status !== 503) showToast(j.error || 'Couldn’t save that image to the server.', 4500);
+            return false;
+          }
+          if (j.synced !== false) markAssetSynced(id);
           return true;
         } catch (e) { return false; }
+      }
+      // Pushes any locally cached assets in `ids` that haven't been synced to the server yet (e.g. uploaded while offline).
+      async function syncPendingAssets(ids) {
+        if (!canSyncServer() || !Array.isArray(ids) || !ids.length) return;
+        var m = syncedAssetsMap();
+        var pending = ids.filter(function (id) { return id && /^a[A-Za-z0-9]{8,32}$/.test(id) && !m[id]; });
+        if (!pending.length) return;
+        var fromIdb = await idbAssetGet(pending);
+        for (var i = 0; i < pending.length; i++) {
+          var id = pending[i];
+          var url = (ASSETS[id] && ASSETS[id].url) || fromIdb[id] || null;
+          if (!url) { try { url = localStorage.getItem('pb_asset:' + id); } catch (e) { } }
+          if (!url) continue;
+          var ok = await pushAsset(id, url, true);
+          if (!ok) break; // stop early if offline
+        }
       }
       async function addAsset(url, wantedId) {
         var id = wantedId || newAssetId();
@@ -54891,7 +54979,7 @@
           try {
             var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'asset-get', ids: missing.slice(i, i + 3) }) });
             var j = await r.json();
-            Object.keys(j.assets || {}).forEach(function (id) { registerAsset(id, j.assets[id]); cacheAssetLocal(id, j.assets[id]); });
+            Object.keys(j.assets || {}).forEach(function (id) { registerAsset(id, j.assets[id]); cacheAssetLocal(id, j.assets[id]); markAssetSynced(id); });
           } catch (e) { }
         }
       }
@@ -54907,6 +54995,9 @@
         if (brand) { if (brand.c.id) ids.push(brand.c.id); if (brand.w.id) ids.push(brand.w.id); }
         if (typeof attractPosterId !== 'undefined' && attractPosterId) ids.push(attractPosterId);
         if (typeof flipCoverAssetId !== 'undefined' && flipCoverAssetId) ids.push(flipCoverAssetId);
+        if (typeof guestDesigns !== 'undefined' && Array.isArray(guestDesigns) && guestDesigns.length) {
+          collectAllAssetIds(guestDesigns).forEach(function (id) { ids.push(id); });
+        }
         return ids;
       }
       // Reads a picked file, shrinks it (keeping transparency for PNG/WebP) and returns a data URL.
@@ -56193,10 +56284,35 @@
       var DESIGN_KEYS = ['backdropPreset', 'backdropColor', 'elementsChoice', 'accent', 'frameColorChoice', 'photoPlacement', 'cropFocus',
         'textColor', 'font', 'dateFont', 'titleSize', 'titleBg', 'titleBgColor', 'outline', 'outlineColor', 'shadow',
         'filter', 'softSkin', 'dateStamp', 'overlay', 'logo', 'decor', 'myProps', 'titleStyle', 'kicker', 'upper', 'art', 'artPal'];
+      var themeTomb = {};
       function myThemesKey() { return 'pb_mythemes:device'; }
+      function myThemesDelKey() { return 'pb_mythemes_del:device'; }
+      function themeIdAt(t) { return t.id + '@' + (t.savedAt || 0); }
+      function themeMerge(a, ta, b, tb) {
+        var tomb = {};
+        [ta, tb].forEach(function (t) { Object.keys(t || {}).forEach(function (k) { tomb[k] = Math.max(tomb[k] || 0, +t[k] || 0); }); });
+        var tk = Object.keys(tomb).sort(function (x, y) { return tomb[y] - tomb[x]; }).slice(0, 60), tomb2 = {};
+        tk.forEach(function (k) { tomb2[k] = tomb[k]; });
+        var byId = {};
+        (a || []).concat(b || []).forEach(function (t) {
+          if (!t || typeof t.id !== 'string' || !t.settings) return;
+          var o = byId[t.id];
+          if (!o || (+t.savedAt || 0) > (+o.savedAt || 0)) byId[t.id] = t;
+        });
+        var list = Object.keys(byId).map(function (k) { return byId[k]; }).filter(function (t) { return !(tomb2[t.id] >= (+t.savedAt || 0)); });
+        list.sort(function (x, y) { return (y.savedAt || 0) - (x.savedAt || 0); });
+        return { list: list.slice(0, 40), tomb: tomb2 };
+      }
+      function themesCacheLocal() {
+        try {
+          localStorage.setItem(myThemesKey(), JSON.stringify(myThemes));
+          localStorage.setItem(myThemesDelKey(), JSON.stringify(themeTomb));
+        } catch (e) { }
+      }
       async function loadMyThemes() {
         var tk = myThemesKey();
         try { myThemes = JSON.parse(localStorage.getItem(tk) || '[]') || []; } catch (e) { myThemes = []; }
+        try { themeTomb = JSON.parse(localStorage.getItem(myThemesDelKey()) || '{}') || {}; } catch (e) { themeTomb = {}; }
         // Rescue themes from any legacy scope keys
         try {
           var themesMigrated = false;
@@ -56222,25 +56338,41 @@
           }
           if (themesMigrated) {
             myThemes = Object.values(byId).sort(function (a, b) { return (b.savedAt || 0) - (a.savedAt || 0); }).slice(0, 40);
-            localStorage.setItem(tk, JSON.stringify(myThemes));
+            themesCacheLocal();
           }
         } catch (e) { }
+        buildThemeCats(); buildThemeGrid();
         if (canSyncServer()) {
           try {
             var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'themes-get' }) });
             var j = await r.json();
-            if (r.ok && Array.isArray(j.themes) && (j.themes.length || !myThemes.length)) myThemes = j.themes;
+            if (r.ok && Array.isArray(j.themes)) {
+              var m = themeMerge(myThemes, themeTomb, j.themes, j.deleted || {});
+              var srv = j.themes.map(themeIdAt).sort().join('|'), mine = m.list.map(themeIdAt).sort().join('|');
+              myThemes = m.list; themeTomb = m.tomb; themesCacheLocal();
+              if (srv !== mine || Object.keys(themeTomb).length > Object.keys(j.deleted || {}).length) {
+                saveMyThemes();
+              }
+              ensureAssets(collectAllAssetIds(myThemes)).catch(function () { });
+            }
           } catch (e) { }
         }
-        try { localStorage.setItem(myThemesKey(), JSON.stringify(myThemes)); } catch (e) { }
+        themesCacheLocal();
         buildThemeCats(); buildThemeGrid();
       }
       async function saveMyThemes() {
-        try { localStorage.setItem(myThemesKey(), JSON.stringify(myThemes)); } catch (e) { }
+        themesCacheLocal();
         if (!canSyncServer()) return;
         try {
-          var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'themes-save', themes: myThemes }) });
-          if (!r.ok) { var j = await r.json().catch(function () { return {}; }); showToast(j.error || 'Couldn’t save your themes to the server.', 4500); }
+          await syncPendingAssets(collectAllAssetIds(myThemes));
+          var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'themes-save', themes: myThemes, deleted: themeTomb }) });
+          var j = await r.json().catch(function () { return {}; });
+          if (!r.ok) { if (r.status !== 503) showToast(j.error || 'Couldn’t save your themes to the server.', 4500); return; }
+          if (Array.isArray(j.themes)) {
+            var m = themeMerge(myThemes, themeTomb, j.themes, j.deleted || {});
+            myThemes = m.list; themeTomb = m.tomb; themesCacheLocal();
+            ensureAssets(collectAllAssetIds(myThemes)).catch(function () { });
+          }
         } catch (e) { }
       }
       document.getElementById('saveThemeBtn').addEventListener('click', async function () {
@@ -56255,6 +56387,7 @@
         th.getContext('2d').drawImage(big, 0, 0, th.width, th.height);
         var t = { id: 'my-' + newAssetId().slice(1, 11).toLowerCase(), name: name, mine: true, thumb: th.toDataURL('image/jpeg', 0.72), settings: settings, savedAt: Date.now() };
         myThemes.unshift(t);
+        delete themeTomb[t.id];
         if (myThemes.length > 40) myThemes.length = 40;
         themeId = t.id;
         await saveMyThemes();
@@ -56281,6 +56414,7 @@
       function deleteMyTheme(t) {
         if (!confirm('Delete the theme “' + t.name + '”? Photos already taken are not affected.')) return;
         myThemes = myThemes.filter(function (x) { return x.id !== t.id; });
+        themeTomb[t.id] = Date.now();
         if (themeId === t.id) themeId = null;
         saveMyThemes(); buildThemeCats(); buildThemeGrid();
       }
@@ -56298,16 +56432,21 @@
       function strHash(str) { str = String(str || ''); var h = 0; for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return str.length + ':' + h; }
       function newProfileId() { return 'pf-' + newAssetId().slice(1, 11).toLowerCase(); }
       // Joins two copies of the list (this device + server): the newer save of each profile wins, and a delete beats an older save.
+      // Preserves any device-local vouchers already attached to a profile on this device without copying vouchers across devices.
       function profileMerge(a, ta, b, tb) {
         var tomb = {};
         [ta, tb].forEach(function (t) { Object.keys(t || {}).forEach(function (k) { tomb[k] = Math.max(tomb[k] || 0, +t[k] || 0); }); });
         var tk = Object.keys(tomb).sort(function (x, y) { return tomb[y] - tomb[x]; }).slice(0, PROFILE_TOMB_MAX), tomb2 = {};
         tk.forEach(function (k) { tomb2[k] = tomb[k]; });
+        var localVouchers = {};
+        (a || []).forEach(function (p) { if (p && p.id && Array.isArray(p.vouchers) && p.vouchers.length) localVouchers[p.id] = p.vouchers; });
         var byId = {};
         (a || []).concat(b || []).forEach(function (p) {
           if (!p || typeof p.id !== 'string' || !p.settings) return;
           var o = byId[p.id];
-          if (!o || (+p.savedAt || 0) > (+o.savedAt || 0)) byId[p.id] = p;
+          if (!o || (+p.savedAt || 0) > (+o.savedAt || 0)) {
+            byId[p.id] = localVouchers[p.id] && !p.vouchers ? Object.assign({}, p, { vouchers: localVouchers[p.id] }) : p;
+          }
         });
         var list = Object.keys(byId).map(function (k) { return byId[k]; }).filter(function (p) { return !(tomb2[p.id] >= (+p.savedAt || 0)); });
         list.sort(function (x, y) { return (y.savedAt || 0) - (x.savedAt || 0); });
@@ -56391,7 +56530,10 @@
             var m = profileMerge(setupProfiles, profileTomb, j.profiles, j.deleted);
             var srv = j.profiles.map(profIdAt).sort().join('|'), mine = m.list.map(profIdAt).sort().join('|');
             setupProfiles = m.list; profileTomb = m.tomb; profilesCacheLocal();
-            if (srv !== mine) saveProfiles();          // this device had newer / extra ones: send them
+            if (srv !== mine || Object.keys(profileTomb).length > Object.keys(j.deleted || {}).length) {
+              saveProfiles();          // this device had newer / extra ones: send them
+            }
+            ensureAssets(collectAllAssetIds(setupProfiles)).catch(function () { });
           }
         } catch (e) { }
         renderProfiles(); refreshProfChip();
@@ -56400,16 +56542,73 @@
         profilesCacheLocal();
         if (!canSyncServer()) return true;
         try {
-          var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'profiles-save', profiles: setupProfiles, deleted: profileTomb }) });
+          await syncPendingAssets(collectAllAssetIds(setupProfiles));
+          // Vouchers stay separate per device (never copied across devices through synced profiles).
+          var cleanForServer = setupProfiles.map(function (p) {
+            if (!p || !p.vouchers) return p;
+            var c = Object.assign({}, p);
+            delete c.vouchers;
+            return c;
+          });
+          var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'profiles-save', profiles: cleanForServer, deleted: profileTomb }) });
           var j = await r.json().catch(function () { return {}; });
-          if (!r.ok) { showToast((j.error || 'Couldn’t save to the server.') + ' Kept on this device.', 4500); return false; }
+          if (!r.ok) {
+            if (r.status !== 503) showToast((j.error || 'Couldn’t save to the server.') + ' Kept on this device.', 4500);
+            return false;
+          }
           if (Array.isArray(j.profiles)) {
             var m = profileMerge(setupProfiles, profileTomb, j.profiles, j.deleted);
             setupProfiles = m.list; profileTomb = m.tomb; profilesCacheLocal();
+            ensureAssets(collectAllAssetIds(setupProfiles)).catch(function () { });
           }
           return true;
         } catch (e) { return false; }
       }
+
+      // ---- Automatic cloud sync on Wi-Fi reconnect / tab focus / background check-in ----
+      var _cloudSyncBusy = false;
+      async function syncCloudNow() {
+        if (_cloudSyncBusy || !canSyncServer() || !setupReady || state !== 'idle') return;
+        if (navigator.onLine === false && !DESKTOP) return;
+        _cloudSyncBusy = true;
+        try {
+          var key = localSetupKey();
+          var isDirty = false;
+          try { isDirty = localStorage.getItem(key + '#dirty') === '1'; } catch (e) { }
+          if (isDirty) {
+            await saveSetupNow(true);
+          } else if (lastSavedJson === JSON.stringify(snapshotSetup())) {
+            try {
+              var j = await fetchServerSetup();
+              if (key === setupLoadedKey && j.settings && (j.updatedAt || 0) > setupUpdatedAt) {
+                applySetup(j.settings, j.image || null);
+                lastSavedJson = JSON.stringify(j.settings);
+                setupUpdatedAt = j.updatedAt;
+                saveLocalCopy(key, j.settings, j.updatedAt, j.image || null, true);
+                setSaveNote('Latest setup synced ✓', 'ok');
+              }
+            } catch (e) { }
+          }
+          await loadProfiles();
+          await loadMyThemes();
+        } finally {
+          _cloudSyncBusy = false;
+        }
+      }
+      window.addEventListener('online', function () {
+        if (DESKTOP && window.pb4u && typeof window.pb4u.syncNow === 'function') {
+          window.pb4u.syncNow().then(function () { syncCloudNow(); }).catch(function () { syncCloudNow(); });
+        } else {
+          syncCloudNow();
+        }
+      });
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) syncCloudNow();
+      });
+      if (DESKTOP && window.pb4u && typeof window.pb4u.onSetupSynced === 'function') {
+        window.pb4u.onSetupSynced(function () { syncCloudNow(); });
+      }
+      setInterval(function () { syncCloudNow(); }, 2 * 60000);
       function profileWhen(t) {
         try { return 'Saved ' + new Date(t).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; }
       }

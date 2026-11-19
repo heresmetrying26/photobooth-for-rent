@@ -220,6 +220,7 @@ export async function checkin(fetchFn, force) {
 
 // Camera diagnostics (netlify/functions/camdiag.mjs): the booth's report of a photo the camera didn't take goes out
 // signed with this laptop's licence. Throws when photobooth4u can't be reached (the booth keeps the report for later).
+export const currentLicence = () => (state && state.lic) || '';
 export async function sendCamDiag(fetchFn, report) {
   if (!state.lic) return { status: 401 };
   const ctl = new AbortController();

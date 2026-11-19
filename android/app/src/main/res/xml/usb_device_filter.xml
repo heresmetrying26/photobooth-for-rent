@@ -68,10 +68,11 @@
     <usb-device vendor-id="4931" />
     <usb-device vendor-id="5202" />
 
-    <!-- General printer class (class 7 = USB printer: Epson, Canon SELPHY, thermal receipt, etc.) -->
+    <!-- General printer class (class 7 = USB printer: Epson, Canon SELPHY, Brother, thermal receipt, etc.) -->
     <usb-device class="7" />
     <usb-device vendor-id="1208" />   <!-- Epson (all models, catch-all) -->
-    <usb-device vendor-id="1273" />   <!-- Brother (0x04F9) -->
+    <usb-device vendor-id="1273" product-id="1141" />   <!-- Brother DCP-T420W (0x04F9:0x0475) -->
+    <usb-device vendor-id="1273" />   <!-- Brother (0x04F9, all models) -->
 
     <!--
         Star Micronics receipt printers (VID 0x0519 = 1305 decimal)

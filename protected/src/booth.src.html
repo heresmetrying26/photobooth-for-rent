@@ -20624,6 +20624,8 @@
               <select id="wifiOptQuality" class="printer-input"></select>
               <label class="sub-label" style="display:block;margin:6px 0 2px;" id="wifiOptMediaLbl">Paper type</label>
               <select id="wifiOptMedia" class="printer-input"></select>
+              <label class="sub-label" style="display:block;margin:6px 0 2px;" id="wifiOptCanonModeLbl">Canon print language</label>
+              <select id="wifiOptCanonMode" class="printer-input"></select>
             </div>
             <div id="wifiPrinterList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -34358,12 +34360,41 @@
                 const rr = await fetch(HELPER_URL + '/printer/add', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ip: p.ip, port: p.port, path: p.path, name: p.name }) });
                 let jj = null; try { jj = await rr.json(); } catch (e) { }
                 if (!jj || !jj.ok) { st.textContent = (jj && jj.error) || 'Could not add the printer. Update the app to 1.0.60 or newer and try again.'; return; }
-                st.textContent = 'Added. Choosing it for ' + (printSize ? paperFor(printSize).name : 'this size') + '…';
+                st.textContent = jj.direct
+                  ? 'Ready: photos go straight to ' + (p.name || p.ip) + ' (no driver needed). Choose Glossy Photo Paper for borderless photo prints, then print a test.'
+                  : 'Added. Choosing it for ' + (printSize ? paperFor(printSize).name : 'this size') + '…';
                 await pickInstalled(jj.printer);
               } catch (e) { st.textContent = 'Could not add the printer: ' + (e.message || e); }
               finally { b.disabled = false; }
             });
             row.appendChild(label); row.appendChild(b); list.appendChild(row);
+          });
+          // Also show plugged-in USB printers discovered by libusb that are not yet installed as OS queues (e.g. Brother DCP-T420W on USB).
+          const usbList = Array.isArray(res.usbPrinters) ? res.usbPrinters.filter(u => u && !u.installed) : [];
+          usbList.forEach(function (u) {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:4px;border-top:1px dashed var(--line);';
+            const label = document.createElement('span');
+            label.style.cssText = 'flex:1;min-width:160px;';
+            if (u.usbDirectName) {
+              label.textContent = (u.name || 'USB Printer') + ' · USB (driverless IPP-over-USB)';
+              const b = document.createElement('button');
+              b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;';
+              b.textContent = 'Use this printer';
+              b.addEventListener('click', async function () {
+                b.disabled = true;
+                try {
+                  await pickInstalled(u.usbDirectName);
+                  st.textContent = 'Ready: photos go straight over USB to ' + (u.name || 'USB printer') + ' (no driver needed).';
+                } finally { b.disabled = false; }
+              });
+              row.appendChild(label); row.appendChild(b);
+            } else {
+              label.textContent = (u.note || ((u.name || 'USB Printer') + ' needs its USB driver or Wi-Fi connection.')) +
+                (u.vidHex && u.pidHex ? ' [USB ' + u.vidHex + ':' + u.pidHex + ']' : '');
+              row.appendChild(label);
+            }
+            list.appendChild(row);
           });
         };
         const search = async function (ip) {
@@ -36019,6 +36050,8 @@
             hint = epsonLBorderlessOk(printSize)
               ? 'This Epson can print borderless on this paper size.'
               : 'This Epson prints borderless only on 4\u00d76 in, 3.5\u00d75 in, 16:9 wide (102\u00d7181 mm) and 100\u00d7148 mm paper. ' + (paper ? paper.name : 'This paper') + ' will print with a normal border.';
+          } else if (wifiPrinter && /brother|dcp-t/i.test(wifiPrinter.name || '')) {
+            hint = 'Prints edge-to-edge on glossy photo paper (4\u00d76, 3.5\u00d75, 5\u00d77, A6, A4, Letter). Load photo paper for borderless \u2014 plain paper uses 3 mm margins.';
           }
         } catch (e) { }
         borderlessHint.textContent = hint;
@@ -36852,6 +36885,7 @@
         const p = printer || wifiPrinter, st = wifiOptsFor(p);
         const o = { color: st.color || '', quality: st.quality || '', media: st.media || '' };
         if (p && p.escp2 && !o.color) o.color = 'color';   // L120 / L121: colour enabled by default
+        if (p && p.canon) o.canonMode = (st.canonMode === 'ivec' || st.canonMode === 'legacy') ? st.canonMode : '';   // Canon G-series page language: '' = automatic
         if (!pbDebug() && /^r(normal|best)$/.test(o.quality)) o.quality = '';         // beta qualities are debug only
         o.thermalQuality = (printPrefs && printPrefs.thermalQuality) || 'normal';   // for receipt printers on Wi-Fi / USB
         o.cal = wifiCal;
@@ -36890,17 +36924,29 @@
           }
           else if (qs.some(q => q >= 3 && q <= 5)) qualCh = [['', 'Printer default']].concat([['draft', 'Draft (fast)'], ['normal', 'Normal'], ['high', 'High (best)']].filter((c, i) => qs.includes(3 + i)));
           const mt = p.mediaTypes || [];
-          const plain = mt.some(m => m.indexOf('stationery') === 0), photo = mt.some(m => m.indexOf('photographic') === 0);
+          const plain = mt.some(m => m === 'stationery' || m.indexOf('stationery') === 0);
+          const inkjet = mt.some(m => m === 'stationery-inkjet');
+          const photo = mt.some(m => m.indexOf('photographic') === 0);
+          const bp71 = mt.some(m => /bp71/i.test(m));
           if (p.escp2) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper (glossy)'], ['matte', 'Matte / inkjet paper']];
           else if (p.canon) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper, glossy (beta)'], ['matte', 'Matte photo paper (beta)']];
           else if (p.epsonL) mediaCh = [['plain', 'Plain paper'], ['photo', 'Photo paper (glossy)']];
           else if (p.dnp) mediaCh = [['', 'Glossy finish'], ['matte', 'Matte finish']];
-          else if (plain || photo) mediaCh = [['', 'Printer default']].concat(plain ? [['plain', 'Plain paper']] : [], photo ? [['photo', 'Photo paper']] : []);
+          else if (plain || photo || inkjet || bp71) mediaCh = [['', 'Printer default']].concat(
+            plain ? [['plain', 'Plain paper']] : [],
+            inkjet ? [['inkjet', 'Inkjet paper']] : [],
+            photo ? [['photo', 'Photo paper (glossy)']] : [],
+            bp71 ? [['bp71', 'Brother BP71 photo']] : []
+          );
         }
         fill('wifiOptColor', 'wifiOptColorLbl', colorCh, 'color');
         fill('wifiOptQuality', 'wifiOptQualityLbl', qualCh, 'quality');
         fill('wifiOptMedia', 'wifiOptMediaLbl', mediaCh, 'media');
-        box.style.display = (colorCh.length > 1 || qualCh.length > 1 || mediaCh.length > 1) ? '' : 'none';
+        // Canon G-series over USB: which page language to send. Automatic tries the newer one (G3010 family) and, if the printer
+        // ignores it, the older one (G1000 family); pick one to skip the other.
+        const canonModeCh = (p && p.canon) ? [['', 'Automatic (recommended)'], ['ivec', 'Newer (G3010 style)'], ['legacy', 'Older (G1000 style)']] : [];
+        fill('wifiOptCanonMode', 'wifiOptCanonModeLbl', canonModeCh, 'canonMode');
+        box.style.display = (colorCh.length > 1 || qualCh.length > 1 || mediaCh.length > 1 || canonModeCh.length > 1) ? '' : 'none';
       }
       function wifiSave(p) {
         // The printer is picked for the paper size on screen (so Brother can do A4 while the Epson does 4x6); the last one
@@ -37016,7 +37062,9 @@
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
           const sel = wifiPrinter && wifiPrinter.ip === p.ip && !(p.ipp && wifiPrinter.epsonLForced);
-          var tag = p.needsPermission ? ' · Tap to allow USB access' : p.noDriver ? (p.usb ? (wifiPrinter && wifiPrinter.forcedRaw && wifiPrinter.ip === p.ip ? ' · Receipt (tried manually)' : ' · Unknown model · tap to try as a thermal printer') : ' · No driver') : (p.raw && !(p.ipp && !p.usb)) ? ' · Receipt' : p.dnp ? ' · Photo (DNP' + (p.dnpModel ? ' ' + p.dnpModel : '') + ')' : p.escp2 ? ' · Photo (' + (p.epsonModel ? 'Epson ' + p.epsonModel : 'Photo') + ')' : p.epsonL ? ' · Photo (' + (p.epsonModel || 'Photo') + ')' : p.selphy ? ' · Photo (SELPHY)' : p.canon ? ' · Photo (' + (p.canonModel ? 'Canon ' + p.canonModel : 'Canon') + ')' : (p.ipp || p.escpr) ? ' · Photo' : '';
+          const isBrotherNoIpp = !!(p.noDriver && p.usb && (p.brotherNoIpp || p.vid === 1273));
+          const isInkjetNoDriver = !!(p.noDriver && p.usb && (p.vid === 1273 || p.vid === 1208 || p.vid === 1193 || p.vid === 1008));
+          var tag = p.needsPermission ? ' · Tap to allow USB access' : p.noDriver ? (p.usb ? (isBrotherNoIpp ? ' · USB not driverless · use Wi-Fi or print screen' : isInkjetNoDriver ? ' · USB needs Wi-Fi or print screen' : (wifiPrinter && wifiPrinter.forcedRaw && wifiPrinter.ip === p.ip ? ' · Receipt (tried manually)' : ' · Unknown model · tap to try as a thermal printer')) : ' · No driver') : (p.raw && !(p.ipp && !p.usb)) ? ' · Receipt' : p.dnp ? ' · Photo (DNP' + (p.dnpModel ? ' ' + p.dnpModel : '') + ')' : p.escp2 ? ' · Photo (' + (p.epsonModel ? 'Epson ' + p.epsonModel : 'Photo') + ')' : p.epsonL ? ' · Photo (' + (p.epsonModel || 'Photo') + ')' : p.selphy ? ' · Photo (SELPHY)' : p.canon ? ' · Photo (' + (p.canonModel ? 'Canon ' + p.canonModel : 'Canon') + ')' : (p.ipp || p.escpr) ? ' · Photo' : '';
           var connTag = (p.name && p.name.indexOf('(USB)') >= 0) ? '' : (p.usb ? ' · USB' : (p.ip ? ' · Wi-Fi' : ''));
           b.textContent = (sel ? '✓ ' : '') + p.name + connTag + tag;
           b.addEventListener('click', () => {
@@ -37030,6 +37078,21 @@
             }
             if (p.noDriver) {
               const idTxt = (pbDebug() && p.usb ? ' [USB ' + (p.vid || 0).toString(16) + ':' + (p.pid || 0).toString(16) + (p.info ? ' ' + p.info : '') + ']' : '');
+              if (isBrotherNoIpp) {
+                showToast(p.name + ' does not expose driverless IPP-over-USB on this cable (it uses Brother’s proprietary USB language). Connect it to Wi-Fi or Wi-Fi Direct and tap Find Wi-Fi & USB printers for direct printing, or choose "Android print screen" above with Brother’s print plugin.' + idTxt, 11000);
+                try {
+                  const repBox = document.getElementById('wifiPrinterReport');
+                  if (repBox && window.__PBNet) {
+                    const txt = typeof window.__PBNet.usbProbe === 'function' ? String(window.__PBNet.usbProbe() || '') : (typeof window.__PBNet.printerReport === 'function' ? String(window.__PBNet.printerReport(p.id) || '') : '');
+                    if (txt) { repBox.textContent = txt; repBox.style.display = 'block'; }
+                  }
+                } catch (e) { }
+                return;
+              }
+              if (isInkjetNoDriver) {
+                showToast(p.name + ' does not expose a driverless USB interface (IPP-over-USB). Connect it via Wi-Fi and tap Find Wi-Fi & USB printers, or choose "Android print screen" above.' + idTxt, 9500);
+                return;
+              }
               if (p.usb) {
                 // A USB printer the app does not know by model (for example a thermal printer that only calls itself "USB Printer Port").
                 // The operator can try it as a thermal (ESC/POS) receipt printer: the same plain text-and-picture language almost every
@@ -37110,10 +37173,14 @@
         if (tst) tst.style.display = wifiPrinter ? '' : 'none';
         const pset = document.getElementById('wifiPrinterSettingsBtn');
         if (pset) pset.style.display = window.__PBPrint && typeof window.__PBPrint.openPrintSettings === 'function' ? '' : 'none';
-        // The printer report (Android app): the paper sizes the printer lists and how it last accepted a photo, to copy and send to support.
+        // The printer report (Android app): Wi-Fi IPP capabilities and/or USB interface probe (7/1/4 vs 7/1/2), to copy for diagnostics.
         const rep = document.getElementById('wifiPrinterReportBtn'), repBox = document.getElementById('wifiPrinterReport');
-        const repOk = !!(wifiPrinter && !wifiPrinter.usb && window.__PBNet && typeof window.__PBNet.printerReport === 'function');
-        if (rep) rep.style.display = repOk ? '' : 'none';
+        const hasUsbConnected = (() => { try { return ((wifiList().printers) || []).some(q => q && q.usb); } catch (e) { return false; } })();
+        const repOk = !!(((wifiPrinter && !wifiPrinter.dialog) || hasUsbConnected) && window.__PBNet && (typeof window.__PBNet.printerReport === 'function' || typeof window.__PBNet.usbProbe === 'function'));
+        if (rep) {
+          rep.style.display = repOk ? '' : 'none';
+          rep.textContent = (wifiPrinter && !wifiPrinter.dialog) ? (wifiPrinter.usb ? 'USB & IPP report' : 'Printer report') : 'USB probe report';
+        }
         if (repBox && !repOk) repBox.style.display = 'none';
         try { wifiOptsUI(); } catch (e) { }
         const dg = document.getElementById('wifiDiag');
@@ -37146,7 +37213,13 @@
         if (rb) rb.addEventListener('click', async () => {
           const box = document.getElementById('wifiPrinterReport');
           let txt = '';
-          try { txt = String(window.__PBNet.printerReport(wifiPrinter.ip) || ''); } catch (e) { txt = 'Could not read the printer report: ' + (e.message || e); }
+          try {
+            if (wifiPrinter && !wifiPrinter.dialog && typeof window.__PBNet.printerReport === 'function') {
+              txt = String(window.__PBNet.printerReport(wifiPrinter.ip) || '');
+            } else if (typeof window.__PBNet.usbProbe === 'function') {
+              txt = String(window.__PBNet.usbProbe() || '');
+            }
+          } catch (e) { txt = 'Could not read the printer report: ' + (e.message || e); }
           if (box) { box.textContent = txt; box.style.display = 'block'; }
           // Copied for pasting into a message; if the tablet will not copy, the text stays on screen to take a screenshot of.
           try { await navigator.clipboard.writeText(txt); showToast('Printer report copied. Paste it into your message to support.', 4500); }
@@ -37160,7 +37233,7 @@
         if (calReset) calReset.addEventListener('click', () => { wifiCal = Object.assign({}, WIFI_CAL_DEFAULT); wifiCalSave(); wifiCalFill(); });
         wifiCalFill();
         document.querySelectorAll('#wifiDiag [data-diag]').forEach(b => b.addEventListener('click', () => wifiDiag(parseInt(b.getAttribute('data-diag'), 10))));
-        [['wifiOptColor', 'color'], ['wifiOptQuality', 'quality'], ['wifiOptMedia', 'media']].forEach(([id, key]) => {
+        [['wifiOptColor', 'color'], ['wifiOptQuality', 'quality'], ['wifiOptMedia', 'media'], ['wifiOptCanonMode', 'canonMode']].forEach(([id, key]) => {
           const el = document.getElementById(id);
           if (el) el.addEventListener('change', () => {
             wifiOptsSet(wifiPrinter, key, el.value);          // saved for this printer only
@@ -45123,7 +45196,7 @@
           if (!wifiNetAvailable()) return { ok: false, items: [], scanning: false };
           var d = wifiList(), items = d.printers.map(function (p) {
             var conn = (p.name && p.name.indexOf('(USB)') >= 0) ? '' : (p.usb ? ' \u00b7 USB' : (p.ip ? ' \u00b7 Wi-Fi' : ''));
-            var note = p.needsPermission ? ' \u00b7 tap to allow USB' : p.noDriver ? ' \u00b7 needs Setup' : p.dnp ? ' \u00b7 DNP' : p.selphy ? ' \u00b7 SELPHY' : '';
+            var note = p.needsPermission ? ' \u00b7 tap to allow USB' : (p.brotherNoIpp || (p.noDriver && p.usb && p.vid === 1273)) ? ' \u00b7 USB not driverless (use Wi-Fi)' : p.noDriver ? ' \u00b7 needs Setup' : p.dnp ? ' \u00b7 DNP' : p.selphy ? ' \u00b7 SELPHY' : '';
             return { id: p.ip, name: p.name + conn + note, selected: !!(wifiPrinter && wifiPrinter.ip === p.ip), kind: p.needsPermission ? 'permission' : p.noDriver ? 'nodriver' : 'ok' };
           });
           if (window.__PBPrint && typeof window.__PBPrint.print === 'function') items.unshift({ id: 'android:dialog', name: IOS_APP ? 'AirPrint \u00b7 wireless photo printer' : 'Android print screen \u00b7 any printer', selected: !!(wifiPrinter && wifiPrinter.dialog), kind: 'ok' });
@@ -45138,6 +45211,7 @@
             var p = wifiList().printers.filter(function (x) { return x.ip === id; })[0];
             if (!p) return { ok: false, msg: 'That printer is not listed any more. Tap Find printers.' };
             if (p.needsPermission) { try { window.__PBNet.usbAllow(p.id); } catch (e) { } return { ok: false, msg: 'Allow USB access in the prompt, then tap the printer again.' }; }
+            if (p.brotherNoIpp || (p.noDriver && p.usb && p.vid === 1273)) return { ok: false, msg: p.name + ' does not expose IPP-over-USB on this cable. Connect it to Wi-Fi or Wi-Fi Direct, or use Android print screen.' };
             if (p.noDriver) return { ok: false, msg: p.name + ' needs the booth Setup (Printer settings) to choose how to print.' };
             wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, dnp: !!p.dnp, dnpModel: p.dnpModel || '', epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
             try { refreshPrintUI(); } catch (e) { }

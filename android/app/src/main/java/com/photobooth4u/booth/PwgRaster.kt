@@ -22,70 +22,99 @@ object PwgRaster {
         this[off] = (v ushr 24).toByte(); this[off + 1] = (v shr 16).toByte(); this[off + 2] = (v shr 8).toByte(); this[off + 3] = v.toByte()
     }
 
-    /** gray = 8-bit sGray, otherwise 24-bit sRGB. dpi: one of the resolutions the printer lists (300 is the usual choice). */
-    fun fromJpeg(jpeg: ByteArray, wMm: Double, hMm: Double, dpi: Int, gray: Boolean): ByteArray {
+    private fun ByteArray.putStr(off: Int, s: String) {
+        val b = s.toByteArray(Charsets.US_ASCII)
+        b.copyInto(this, off, 0, minOf(b.size, 63))                                    // 64-byte field, always ends in a zero
+    }
+
+    /**
+     * gray = 8-bit sGray, otherwise 24-bit sRGB. dpi: one of the resolutions the printer lists (300 is the usual choice).
+     * pageName / mediaType: the IPP names of the paper and its type ("na_index-4x6_4x6in", "photographic-glossy"), written into the header.
+     * cupsExact: write the header the way CUPS does (image box left zero), which is what a printer that takes ONLY raster is tested with
+     * (a Brother DCP-T420W); false keeps the whole page as the image box.
+     */
+    fun fromJpeg(jpeg: ByteArray, wMm: Double, hMm: Double, dpi: Int, gray: Boolean,
+                 pageName: String = "", mediaType: String = "", cupsExact: Boolean = false,
+                 forcePxW: Int = 0, forcePxH: Int = 0, pagePtW: Int = 0, pagePtH: Int = 0,
+                 imageBox: IntArray? = null): ByteArray {
         val shortMm = minOf(wMm, hMm)
         val longMm = maxOf(wMm, hMm)
-        val wPx = Math.round(shortMm / 25.4 * dpi).toInt()
-        val hPx = Math.round(longMm / 25.4 * dpi).toInt()
+        // forcePxW / forcePxH: the exact raster size the printer wants (Canon lists a printable area that is not the paper size).
+        // pagePtW / pagePtH: the paper in points for the header. imageBox: left, top, right, bottom written as-is (else see cupsExact).
+        val wPx = if (forcePxW > 0) forcePxW else Math.round(shortMm / 25.4 * dpi).toInt()
+        val hPx = if (forcePxH > 0) forcePxH else Math.round(longMm / 25.4 * dpi).toInt()
         if (wPx <= 0 || hPx <= 0 || wPx.toLong() * hPx > MAX_PIXELS) {
             throw IllegalStateException("This page is too large for the printer's raster mode.")
         }
         var bmp = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size) ?: throw IllegalStateException("Couldn't read the picture to print.")
-        if (bmp.width > bmp.height && wMm <= hMm) {
-            bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, Matrix().apply { postRotate(90f) }, true)
-        }
-        bmp = Bitmap.createScaledBitmap(bmp, wPx, hPx, true)
-
-        val bpp = if (gray) 1 else 3
-        val out = ByteArrayOutputStream(wPx * hPx / 4 + HEADER)
-        out.write("RaS2".toByteArray(Charsets.US_ASCII))
-
-        val h = ByteArray(HEADER)
-        "PwgRaster".toByteArray(Charsets.US_ASCII).copyInto(h, 0)
-        h.put32(276, dpi); h.put32(280, dpi)                                            // HWResolution
-        h.put32(340, 1)                                                                 // NumCopies
-        h.put32(352, Math.round(shortMm / 25.4 * 72).toInt()); h.put32(356, Math.round(longMm / 25.4 * 72).toInt())   // PageSize (points)
-        h.put32(372, wPx); h.put32(376, hPx)                                            // Width, Height
-        h.put32(384, 8)                                                                 // BitsPerColor
-        h.put32(388, 8 * bpp)                                                           // BitsPerPixel
-        h.put32(392, wPx * bpp)                                                         // BytesPerLine
-        h.put32(396, 0)                                                                 // ColorOrder: chunky
-        h.put32(400, if (gray) 18 else 19)                                              // ColorSpace: sGray / sRGB
-        h.put32(420, bpp)                                                               // NumColors
-        h.put32(452, 1)                                                                 // TotalPageCount
-        h.put32(456, 1); h.put32(460, 1)                                                // Cross-feed / feed transform
-        h.put32(464, 0); h.put32(468, 0); h.put32(472, wPx); h.put32(476, hPx)          // ImageBox
-        h.put32(480, 0x00FFFFFF)                                                        // AlternatePrimary
-        out.write(h)
-
-        val px = IntArray(wPx)
-        var prev: ByteArray? = null
-        var repeats = 0
-        for (y in 0 until hPx) {
-            bmp.getPixels(px, 0, wPx, 0, y, wPx, 1)
-            val row = ByteArray(wPx * bpp)
-            for (x in 0 until wPx) {
-                val c = px[x]
-                var r = (c shr 16) and 0xFF
-                var g = (c shr 8) and 0xFF
-                var b = c and 0xFF
-                val a = (c ushr 24) and 0xFF
-                if (a < 255) { r = (r * a + 255 * (255 - a)) / 255; g = (g * a + 255 * (255 - a)) / 255; b = (b * a + 255 * (255 - a)) / 255 }
-                if (gray) row[x] = ((299 * r + 587 * g + 114 * b) / 1000).toByte()
-                else { row[x * 3] = r.toByte(); row[x * 3 + 1] = g.toByte(); row[x * 3 + 2] = b.toByte() }
+        try {
+            if (bmp.width > bmp.height) {
+                val rotated = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, Matrix().apply { postRotate(90f) }, true)
+                if (rotated !== bmp) try { bmp.recycle() } catch (_: Exception) {}
+                bmp = rotated
             }
-            val p = prev
-            if (p != null && repeats < 255 && row.contentEquals(p)) {
-                repeats++
-            } else {
-                if (p != null) writeRow(out, p, repeats, bpp)
-                prev = row
-                repeats = 0
+            if (bmp.width != wPx || bmp.height != hPx) {
+                val scaled = Bitmap.createScaledBitmap(bmp, wPx, hPx, true)
+                if (scaled !== bmp) try { bmp.recycle() } catch (_: Exception) {}
+                bmp = scaled
             }
+
+            val bpp = if (gray) 1 else 3
+            val out = ByteArrayOutputStream(wPx * hPx / 4 + HEADER)
+            out.write("RaS2".toByteArray(Charsets.US_ASCII))
+
+            val h = ByteArray(HEADER)
+            "PwgRaster".toByteArray(Charsets.US_ASCII).copyInto(h, 0)
+            if (mediaType.isNotEmpty()) h.putStr(128, mediaType)                            // MediaType
+            if (pageName.isNotEmpty()) h.putStr(1732, pageName)                             // PageSizeName
+            h.put32(276, dpi); h.put32(280, dpi)                                            // HWResolution
+            h.put32(340, 1)                                                                 // NumCopies
+            h.put32(352, if (pagePtW > 0) pagePtW else Math.round(shortMm / 25.4 * 72).toInt())   // PageSize (points)
+            h.put32(356, if (pagePtH > 0) pagePtH else Math.round(longMm / 25.4 * 72).toInt())
+            h.put32(372, wPx); h.put32(376, hPx)                                            // Width, Height
+            h.put32(384, 8)                                                                 // BitsPerColor
+            h.put32(388, 8 * bpp)                                                           // BitsPerPixel
+            h.put32(392, wPx * bpp)                                                         // BytesPerLine
+            h.put32(396, 0)                                                                 // ColorOrder: chunky
+            h.put32(400, if (gray) 18 else 19)                                              // ColorSpace: sGray / sRGB
+            h.put32(420, bpp)                                                               // NumColors
+            h.put32(452, 1)                                                                 // TotalPageCount
+            h.put32(456, 1); h.put32(460, 1)                                                // Cross-feed / feed transform
+            if (imageBox != null && imageBox.size >= 4) { for (k in 0 until 4) h.put32(464 + 4 * k, imageBox[k]) }   // ImageBox as given
+            else if (!cupsExact) { h.put32(464, 0); h.put32(468, 0); h.put32(472, wPx); h.put32(476, hPx) }   // ImageBox (CUPS leaves it zero)
+            h.put32(480, 0x00FFFFFF)                                                        // AlternatePrimary
+            out.write(h)
+
+            val px = IntArray(wPx)
+            var prev: ByteArray? = null
+            var repeats = 0
+            for (y in 0 until hPx) {
+                bmp.getPixels(px, 0, wPx, 0, y, wPx, 1)
+                val row = ByteArray(wPx * bpp)
+                for (x in 0 until wPx) {
+                    val c = px[x]
+                    var r = (c shr 16) and 0xFF
+                    var g = (c shr 8) and 0xFF
+                    var b = c and 0xFF
+                    val a = (c ushr 24) and 0xFF
+                    if (a < 255) { r = (r * a + 255 * (255 - a)) / 255; g = (g * a + 255 * (255 - a)) / 255; b = (b * a + 255 * (255 - a)) / 255 }
+                    if (gray) row[x] = ((299 * r + 587 * g + 114 * b) / 1000).toByte()
+                    else { row[x * 3] = r.toByte(); row[x * 3 + 1] = g.toByte(); row[x * 3 + 2] = b.toByte() }
+                }
+                val p = prev
+                if (p != null && repeats < 255 && row.contentEquals(p)) {
+                    repeats++
+                } else {
+                    if (p != null) writeRow(out, p, repeats, bpp)
+                    prev = row
+                    repeats = 0
+                }
+            }
+            prev?.let { writeRow(out, it, repeats, bpp) }
+            return out.toByteArray()
+        } finally {
+            try { bmp.recycle() } catch (_: Exception) {}
         }
-        prev?.let { writeRow(out, it, repeats, bpp) }
-        return out.toByteArray()
     }
 
     private fun writeRow(out: ByteArrayOutputStream, row: ByteArray, repeats: Int, bpp: Int) {

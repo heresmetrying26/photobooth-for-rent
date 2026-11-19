@@ -204,24 +204,92 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     }
 
     /**
-     * A short text about a Wi-Fi printer for the "Copy printer report" button in Print settings: what it takes, the paper it says is
-     * loaded and every paper it lists, and how it last accepted a photo. Sent to support to see why a printer adds a white border.
+     * A short text about a Wi-Fi or USB printer for the "Copy printer report" button in Print settings: USB descriptors
+     * (when on USB), what formats/resolutions it takes, the paper loaded and supported, and how it last accepted a photo.
      */
     @JavascriptInterface
     fun printerReport(ip: String): String {
-        val e = found[ip] ?: return "Printer $ip is not in the list. Choose Find printers, then try again."
-        if (e.usbDev != null) return "This printer is on the USB cable, so it has no Wi-Fi paper list."
-        fetchAttrs(e)
+        val ver = try { activity.packageManager.getPackageInfo(activity.packageName, 0).versionName } catch (_: Exception) { "?" }
         fun list(l: List<String>) = if (l.isEmpty()) "(none given)" else l.joinToString(", ")
+        if (ip.startsWith("usb:")) {
+            val d = try { usbFind(ip) } catch (_: Exception) { usbEntries[ip]?.usbDev }
+                ?: return "USB printer $ip is not connected right now. Plug it in and try again."
+            val sb = StringBuilder()
+            sb.append(usbProbeDevice(d))
+            val ippIface = usbIppIface(d)
+            if (ippIface != null && usb?.hasPermission(d) == true) {
+                val e = usbEntries.getOrPut(ip) { Entry(ip) }.also { it.usbDev = d; it.ippPort = 1 }
+                fetchAttrs(e)
+                sb.append("IPP model: ").append(e.model.ifBlank { "(none)" }).append("\n")
+                sb.append("Takes: ").append(list(e.formats)).append("\n")
+                sb.append("PWG resolutions: ").append(if (e.pwgRes.isEmpty()) "(none)" else e.pwgRes.joinToString(", ") { "${it}dpi" }).append("\n")
+                sb.append("PWG types: ").append(list(e.pwgTypes)).append("\n")
+                sb.append("Paper loaded now: ").append(list(e.mediaReady)).append("\n")
+                sb.append("Papers it lists: ").append(list(e.mediaSupported)).append("\n")
+                sb.append("Paper types: ").append(list(e.mediaTypes)).append("\n")
+                sb.append("Last photo accepted as: ").append(if (e.lastSent.isEmpty()) "no photo sent yet since the app opened" else e.lastSent).append("\n")
+            }
+            sb.append("App: ").append(ver)
+            return sb.toString()
+        }
+        val e = found[ip] ?: return "Printer $ip is not in the list. Choose Find printers, then try again."
+        fetchAttrs(e)
         // A Wi-Fi Epson photo printer with no IPP (L805...) takes Epson's own raster job on port 9100: it lists no papers.
         val raw = if (e.ippPort <= 0 && e.rawPort > 0) "Sent in Epson's own print language (port " + e.rawPort + "); this printer lists no paper sizes.\n" else ""
         return "Printer: " + e.model.ifBlank { e.name } + " (" + e.ip + ")\n" + raw +
             "Takes: " + list(e.formats) + "\n" +
+            (if (e.pwgRes.isNotEmpty() || e.pwgTypes.isNotEmpty())
+                "PWG raster: " + (if (e.pwgRes.isEmpty()) "(default dpi)" else e.pwgRes.joinToString(", ") { "${it}dpi" }) +
+                    " · " + list(e.pwgTypes) + "\n" else "") +
             "Paper loaded now: " + list(e.mediaReady) + "\n" +
             "Papers it lists: " + list(e.mediaSupported) + "\n" +
             "Paper types: " + list(e.mediaTypes) + "\n" +
             "Last photo accepted as: " + (if (e.lastSent.isEmpty()) "no photo sent yet since the app opened" else e.lastSent) + "\n" +
-            "App: " + (try { activity.packageManager.getPackageInfo(activity.packageName, 0).versionName } catch (_: Exception) { "?" })
+            "App: " + ver
+    }
+
+    /** Probes every connected USB printer (even ones with no driver) to inspect interfaces (7/1/4 IPP-over-USB vs 7/1/2) and IEEE-1284 ID. */
+    @JavascriptInterface
+    fun usbProbe(): String {
+        val m = usb ?: return "This tablet does not support USB host mode."
+        val ver = try { activity.packageManager.getPackageInfo(activity.packageName, 0).versionName } catch (_: Exception) { "?" }
+        val devs = m.deviceList.values.filter { usbIsPrinter(it) || it.vendorId == BrotherUsbModels.VENDOR_ID }
+        if (devs.isEmpty()) return "No USB printer detected on this tablet. Check the USB-OTG cable and printer power.\nApp: $ver"
+        val sb = StringBuilder()
+        for (d in devs) {
+            sb.append(usbProbeDevice(d)).append("\n")
+        }
+        sb.append("App: ").append(ver)
+        return sb.toString()
+    }
+
+    private fun usbIfacesSummary(d: UsbDevice): String = usbIfaces(d).joinToString("; ") { i ->
+        "#${i.id} alt${i.alternateSetting} ${i.interfaceClass}/${i.interfaceSubclass}/${i.interfaceProtocol}" +
+            if (hasBulkPair(i)) " bulk" else ""
+    }
+
+    private fun usbProbeDevice(d: UsbDevice): String {
+        val perm = usb?.hasPermission(d) == true
+        val ippIface = usbIppIface(d)
+        var devId = usbIds[d.deviceName]
+        if (devId == null && perm) {
+            devId = try { usbDeviceId(d) } catch (_: Exception) { null }
+            if (devId != null) usbIds[d.deviceName] = devId
+        }
+        val mfg = if (perm) try { d.manufacturerName?.trim() ?: "" } catch (_: Exception) { "" } else ""
+        val prod = usbProduct(d) ?: ""
+        return buildString {
+            append("USB Printer: ").append(usbName(d))
+                .append(" [VID=%04x PID=%04x]\n".format(d.vendorId, d.productId))
+            if (mfg.isNotEmpty() || prod.isNotEmpty()) append("Descriptor: ").append(listOf(mfg, prod).filter { it.isNotEmpty() }.joinToString(" / ")).append("\n")
+            append("Permission: ").append(if (perm) "granted" else "not granted yet").append("\n")
+            append("Interfaces: ").append(usbIfacesSummary(d).ifEmpty { "(none)" }).append("\n")
+            append("IPP-over-USB (7/1/4): ").append(
+                if (ippIface != null) "YES (iface #${ippIface.id} alt${ippIface.alternateSetting})"
+                else "NO — only legacy USB interface; use Wi-Fi / Wi-Fi Direct or Android print screen"
+            ).append("\n")
+            if (!devId.isNullOrBlank()) append("IEEE-1284 ID: ").append(devId.take(300)).append("\n")
+        }
     }
 
     /**
@@ -815,8 +883,27 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     }
     // ─────────────────────────────────────────────────────────────────────────
 
+    // ── Brother ink-tank USB models (VID 0x04F9) ─────────────────────────────
+    // Recognised by USB VID/PID so they display cleanly before USB product descriptor is read
+    // and can be probed cleanly for IPP-over-USB (7/1/4) vs legacy HBP/PJL (7/1/2).
+    private object BrotherUsbModels {
+        const val VENDOR_ID = 0x04F9
+
+        val MODELS: Map<Int, String> = mapOf(
+            0x0475 to "DCP-T420W",
+            0x0474 to "DCP-T220",
+            0x0476 to "DCP-T520W",
+            0x0477 to "DCP-T720DW",
+            0x0478 to "DCP-T820DW"
+        )
+
+        fun match(d: UsbDevice): String? =
+            if (d.vendorId == VENDOR_ID) MODELS[d.productId] else null
+    }
+
     private val escprCache = ConcurrentHashMap<String, Boolean>()
     private val escprLogged: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    private val usbIdProbed: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     /** The printer's IEEE-1284 device ID (e.g. "MFG:EPSON;CMD:ESCPL2,ESCPR1,...;MDL:L210 Series;"), asked over USB. */
     private fun usbDeviceId(d: UsbDevice): String? {
@@ -1087,13 +1174,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 for (c in 0 until copies.coerceIn(1, 20)) {
                     for (i in 0 until arr.length()) {
                         val jpeg = decode(arr.getString(i))
-                        val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
-                            ?: throw IllegalStateException("Couldn't read the picture to print.")
-                        try {
-                            usbRaw(id, CanonJob.build(bmp, widthMm, heightMm, mono, cq, cm, adj))
-                        } finally {
-                            try { bmp.recycle() } catch (_: Exception) {}
-                        }
+                        canonPrintPage(id, jpeg, widthMm, heightMm, mono, cq, cm, copt.optBoolean("borderless", false), adj,
+                            copt.optString("canonMode"))
                     }
                 }
                 r.put("ok", true)
@@ -1305,6 +1387,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         EpsonEscp2Models.match(d)?.let { return "Epson $it" }
         // Hardcoded Canon PIXMA G-series inkjet (G1010, G3030, etc.).
         CanonGModels.match(d)?.let { return "Canon PIXMA $it" }
+        // Brother ink-tank models (DCP-T420W etc.).
+        BrotherUsbModels.match(d)?.let { return "Brother $it" }
         // Hardcoded Epson TM / EU receipt printers.
         EpsonReceiptModels.match(d)?.let { return "Epson $it" }
         // Hardcoded Star receipt printers (need ESC/POS mode enabled).
@@ -1381,11 +1465,18 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             val escp2 = !ipp && !raw && !epsonL && !escpr && usbIsEscp2(d)
             val selphy = !ipp && !raw && !epsonL && !escpr && !escp2 && usbIsSelphy(d)
             val canon = !ipp && !raw && !epsonL && !escpr && !escp2 && !selphy && usbIsCanon(d)
+            // Read IEEE-1284 Device ID once for Brother USB printers (and log its interfaces) so diagnostics and probe reports are accurate.
+            if (perm && !ipp && d.vendorId == BrotherUsbModels.VENDOR_ID && usbIdProbed.add(d.deviceName)) {
+                val bid = try { usbDeviceId(d) } catch (_: Exception) { null }
+                if (bid != null) usbIds[d.deviceName] = bid
+                Log.i(TAG, "brother usb %04x:%04x ifaces=[%s] id=%s".format(d.vendorId, d.productId, usbIfacesSummary(d), bid ?: "(unreadable)"))
+            }
             val id = "usb:" + d.deviceName
             val epsonModelName = if (epsonL) (EpsonLModels.match(d) ?: "")
                 else if (escp2) (EpsonEscp2Models.match(d) ?: "")
                 else ""
             val canonModelName = if (canon) (CanonGModels.match(d) ?: "") else ""
+            val noDriver = perm && !dnp && !ipp && !raw && !epsonL && !escpr && !escp2 && !canon && !selphy
             arr.put(JSONObject()
                 .put("id", id).put("ip", id).put("name", usbName(d) + " (USB)")
                 .put("ipp", ipp).put("raw", raw).put("escpr", escpr || epsonL).put("usb", true)
@@ -1398,11 +1489,13 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 .put("selphy", selphy)
                 .put("dnp", dnp)
                 .put("dnpModel", dnpModel ?: "")
-                .put("noDriver", perm && !dnp && !ipp && !raw && !epsonL && !escpr && !escp2 && !canon && !selphy)
+                .put("noDriver", noDriver)
+                .put("brotherNoIpp", noDriver && d.vendorId == BrotherUsbModels.VENDOR_ID)
                 .put("needsPermission", !perm && !dnp && !ipp && !raw && !selphy)
                 .put("qualities", JSONArray(ippEntry?.qualities ?: emptyList<Int>()))
                 .put("colorModes", JSONArray(ippEntry?.colorModes ?: emptyList<String>()))
                 .put("mediaTypes", JSONArray(ippEntry?.mediaTypes ?: emptyList<String>()))
+                .put("ifaces", usbIfacesSummary(d))
                 .put("info", (usbIds[d.deviceName] ?: "").take(300))
                 .put("vid", d.vendorId).put("pid", d.productId))
         }
@@ -1447,8 +1540,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         val conn = usb?.openDevice(d) ?: throw IllegalStateException("Could not open USB printer connection.")
         try {
             if (!conn.claimInterface(iface, true)) throw IllegalStateException("The USB printer is busy. Reconnect and retry.")
-            // a printer's data endpoints exist only in a non-zero alternate setting: switch it on before using them
-            if (iface.alternateSetting != 0 && !conn.setInterface(iface)) {
+            // A printer's IPP-over-USB (7/1/4) and legacy (7/1/2) endpoints may share an interface id as different
+            // alternate settings: explicitly select the chosen alternate setting whenever there is more than one.
+            val altCount = usbIfaces(d).count { it.id == iface.id }
+            if ((iface.alternateSetting != 0 || altCount > 1) && !conn.setInterface(iface)) {
                 throw IllegalStateException("Could not initialize printer USB data interface.")
             }
             var out: UsbEndpoint? = null
@@ -1468,11 +1563,18 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     private fun usbWrite(conn: UsbDeviceConnection, ep: UsbEndpoint, data: ByteArray) {
         var off = 0
+        var zeros = 0
         while (off < data.size) {
             // Never resend after a timeout: the printer may already hold part of the chunk, and a repeated piece
             // of a print job is read as text. Wait up to a minute for the printer to take each chunk instead.
             val r = conn.bulkTransfer(ep, data, off, minOf(16384, data.size - off), 60_000)
             if (r < 0) throw IllegalStateException("Printer communication timed out. Power cycle the printer and retry.")
+            if (r == 0) {
+                if (++zeros >= 10) throw IllegalStateException("Printer stopped accepting USB data. Power cycle the printer and retry.")
+                try { Thread.sleep(50) } catch (_: InterruptedException) {}
+                continue
+            }
+            zeros = 0
             off += r
         }
     }
@@ -1534,35 +1636,267 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         }
     }
 
-    /** One IPP request/response over IPP-over-USB: HTTP carried on the printer's bulk endpoints. */
-    private fun usbPost(d: UsbDevice, path: String, body: ByteArray): Reply {
-        val iface = usbIppIface(d) ?: throw IllegalStateException("This USB printer requires a dedicated driver or print station.")
-        return usbSession(d, iface) { conn, out, inn ->
-            if (inn == null) throw IllegalStateException("The USB printer has no reply port.")
-            val head = "POST $path HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/ipp\r\nContent-Length: ${body.size}\r\n\r\n"
-            usbWrite(conn, out, head.toByteArray(Charsets.ISO_8859_1) + body)
-            val buf = ByteArrayOutputStream()
-            val tmp = ByteArray(16384)
-            val deadline = System.currentTimeMillis() + 90_000
-            while (System.currentTimeMillis() < deadline) {
-                val n = conn.bulkTransfer(inn, tmp, tmp.size, 3000)
-                if (n > 0) buf.write(tmp, 0, n)
-                if (buf.size() > 0 && httpComplete(buf.toByteArray())) break
+    /** The printer answered status checks but never started the job: it did not understand that page language. Nothing was printed. */
+    private class CanonIgnoredException(msg: String) : IllegalStateException(msg)
+
+    /** Which page language worked on each Canon USB printer in this run ("ivec" = IVEC + PWG Raster, "legacy" = ESC ( bands). */
+    private val canonMode = ConcurrentHashMap<String, String>()
+
+    /**
+     * One page on a Canon G-series printer, in one of two page languages: IVEC + PWG Raster (newer, G3010 family) or the
+     * native ESC ( stream in the same IVEC wrapper (older; what Canon's Windows driver sends a G1010). Automatic mode asks the
+     * printer for its data formats and tries the likelier one first; if the printer stays idle and never starts the page,
+     * nothing was printed, so the other is sent. The one that works is remembered until the app restarts. If both are ignored
+     * the first error (with the printer's ID) is thrown.
+     */
+    private fun canonPrintPage(id: String, jpeg: ByteArray, widthMm: Double, heightMm: Double, mono: Boolean, cq: Int, cm: Int,
+                               borderless: Boolean, adj: PrintColorAdj, mode: String) {
+        fun legacy() {
+            val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+                ?: throw IllegalStateException("Couldn't read the picture to print.")
+            try {
+                usbCanonJob(id, CanonJob.build(bmp, widthMm, heightMm, mono, cq, cm, adj))
+            } finally {
+                try { bmp.recycle() } catch (_: Exception) {}
             }
-            if (buf.size() == 0) throw IllegalStateException("Printer did not respond to status request.")
-            parseReply(buf.toByteArray())
+        }
+        fun ivec() = usbCanonJob(id, CanonJob.buildIvec(jpeg, widthMm, heightMm, mono, cq, cm, borderless, adj))
+        // mode: "legacy" / "ivec" = the user picked one in the printer options; anything else = automatic.
+        // Automatic asks the printer which data formats it takes (as Canon's Windows driver does): a printer that lists
+        // PWG Raster gets the newer page first, any other gets the native ESC ( stream first (the G1010's Windows driver
+        // uses that one). Whichever is tried second only runs if the first was ignored, so nothing prints twice.
+        val order: List<String> = when {
+            mode == "legacy" -> listOf("legacy")
+            mode == "ivec" -> listOf("ivec")
+            !CanonJob.supportsIvec(widthMm, heightMm) -> listOf("legacy")
+            canonMode[id] != null -> if (canonMode[id] == "legacy") listOf("legacy", "ivec") else listOf("ivec", "legacy")
+            else -> {
+                val caps = usbCanonCapability(id)
+                if (caps != null && !caps.contains("pwg", ignoreCase = true)) listOf("legacy", "ivec") else listOf("ivec", "legacy")
+            }
+        }
+        var first: CanonIgnoredException? = null
+        for (m in order) {
+            try {
+                if (m == "legacy") legacy() else ivec()
+                canonMode[id] = m
+                return
+            } catch (e: CanonIgnoredException) {
+                if (first == null) first = e
+                Log.w(TAG, "canon: $m page ignored" + (if (m != order.last()) ", trying the other language" else ""))
+            }
+        }
+        throw first ?: IllegalStateException("The Canon printer did not start printing.")
+    }
+
+    private val canonCaps = ConcurrentHashMap<String, String>()
+
+    /** The interface a Canon G-series printer takes its jobs on: the printer-class one with both bulk endpoints. */
+    private fun canonIface(d: UsbDevice): UsbInterface =
+        usbIfaces(d).firstOrNull { it.interfaceClass == 7 && it.interfaceSubclass == 1 && hasBulkPair(it) }
+            ?: usbRawIface(d) ?: usbIfaces(d).firstOrNull { it.interfaceClass == 7 }
+            ?: throw IllegalStateException("Connected USB device is not a supported printer.")
+
+    /**
+     * Asks the printer GetCapability(print), the question Canon's own Windows driver opens with; its answer lists the data
+     * formats the printer takes. Cached per printer; null when the printer does not answer. The reply is logged (tag PBNet).
+     */
+    private fun usbCanonCapability(id: String): String? {
+        canonCaps[id]?.let { return it }
+        return try {
+            val text = synchronized(usbLockFor(id)) {
+                val d = usbFind(id)
+                usbEnsure(d)
+                usbSession(d, canonIface(d)) { conn, out, inn ->
+                    if (inn == null) return@usbSession null
+                    usbWrite(conn, out, CanonJob.GET_CAPABILITY)
+                    val buf = ByteArrayOutputStream()
+                    val tmp = ByteArray(8192)
+                    val end = System.currentTimeMillis() + 4000
+                    var got: String? = null
+                    while (System.currentTimeMillis() < end && got == null) {
+                        val n = conn.bulkTransfer(inn, tmp, tmp.size, 700)
+                        if (n > 0) {
+                            buf.write(tmp, 0, n)
+                            val s = String(buf.toByteArray(), Charsets.ISO_8859_1)
+                            if (s.contains("</cmd>")) got = s
+                        }
+                    }
+                    got
+                }
+            }
+            if (text != null) {
+                canonCaps[id] = text
+                Log.i(TAG, "canon capability: " + text.replace(Regex("\\s+"), " ").take(1500))
+            } else Log.i(TAG, "canon capability: no answer")
+            text
+        } catch (e: Exception) {
+            Log.w(TAG, "canon capability", e)
+            null
         }
     }
 
+    /**
+     * A Canon G-series job over USB: asks the printer for its status first (and soft-resets it when it stays silent),
+     * sends the job, then watches the printer's status until it goes idle, so an empty paper tray or a jam comes back as a
+     * readable error instead of a silent "printed". Status replies are logged (adb logcat, tag PBNet) to diagnose a model.
+     */
+    private fun usbCanonJob(id: String, data: ByteArray) {
+        fun blocked(s: CanonJob.Status) = s.status == "stopped" ||
+            s.detail.lowercase() in setOf("mediaempty", "mediajam", "dooropen", "attentionrequired")
+        synchronized(usbLockFor(id)) {
+            val d = usbFind(id)
+            usbEnsure(d)
+            val iface = canonIface(d)
+            // the printer's own language list, shown in the error below when it takes a job but never starts it
+            val devId = usbIds[d.deviceName] ?: try { usbDeviceId(d) } catch (_: Exception) { null }
+            if (devId != null) usbIds[d.deviceName] = devId
+            usbSession(d, iface) { conn, out, inn ->
+                fun ask(): CanonJob.Status? {
+                    if (inn == null) return null
+                    usbWrite(conn, out, CanonJob.GET_STATUS)
+                    val buf = ByteArrayOutputStream()
+                    val tmp = ByteArray(4096)
+                    val end = System.currentTimeMillis() + 2100
+                    while (System.currentTimeMillis() < end) {
+                        val n = conn.bulkTransfer(inn, tmp, tmp.size, 700)
+                        if (n > 0) {
+                            buf.write(tmp, 0, n)
+                            CanonJob.parseStatus(String(buf.toByteArray(), Charsets.ISO_8859_1))?.let { return it }
+                        }
+                    }
+                    return null
+                }
+                Log.i(TAG, "canon usb %04x:%04x id=%s bytes=%d".format(d.vendorId, d.productId, usbIds[d.deviceName] ?: "(not read)", data.size))
+                var st = ask()
+                if (st == null) {
+                    // silent printer: a class soft-reset (what Canon's own driver does) usually wakes it
+                    try { conn.controlTransfer(0x21, 2, 0, iface.id, null, 0, 1000) } catch (_: Exception) {}
+                    try { Thread.sleep(400) } catch (_: InterruptedException) {}
+                    st = ask()
+                }
+                Log.i(TAG, "canon status before: " + (st?.let { "${it.status}/${it.detail}/${it.code}" } ?: "no answer"))
+                if (st != null && blocked(st)) throw IllegalStateException(CanonJob.statusProblem(st) ?: "The printer needs attention.")
+
+                usbWrite(conn, out, data)
+
+                val t0 = System.currentTimeMillis()
+                var sawBusy = false
+                var silent = 0
+                var answered = st != null
+                while (System.currentTimeMillis() - t0 < 150_000) {
+                    try { Thread.sleep(1000) } catch (_: InterruptedException) { break }
+                    val s = ask()
+                    if (s == null) { if (++silent >= 8) break; continue }
+                    silent = 0
+                    answered = true
+                    // answers, stays idle, never starts: the printer did not understand the job (wrong language for this model)
+                    if (!sawBusy && s.status == "idle" && System.currentTimeMillis() - t0 > 20_000) {
+                        Log.w(TAG, "canon job ignored: status idle, never busy; id=$devId")
+                        throw CanonIgnoredException("The Canon printer received the page but never started printing it. " +
+                            "Please send this to support: USB %04x:%04x ID ${devId ?: "unreadable"}".format(d.vendorId, d.productId))
+                    }
+                    if (blocked(s)) throw IllegalStateException(CanonJob.statusProblem(s) ?: "The printer needs attention.")
+                    if (s.status != "idle") sawBusy = true
+                    else if (sawBusy || System.currentTimeMillis() - t0 > 10_000) break
+                }
+                Log.i(TAG, "canon job done after ${System.currentTimeMillis() - t0} ms, busy seen=$sawBusy")
+            }
+        }
+    }
+
+    /** One IPP request/response over IPP-over-USB: HTTP carried on the printer's bulk endpoints. */
+    private fun usbPost(d: UsbDevice, path: String, body: ByteArray): Reply {
+        val iface = usbIppIface(d) ?: throw IllegalStateException("This USB printer requires a dedicated driver or print station.")
+        return synchronized(usbLockFor("usb:" + d.deviceName)) {
+            usbSession(d, iface) { conn, out, inn ->
+                if (inn == null) throw IllegalStateException("The USB printer has no reply port.")
+                val head = "POST $path HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/ipp\r\nContent-Length: ${body.size}\r\n\r\n"
+                usbWrite(conn, out, head.toByteArray(Charsets.ISO_8859_1))
+                if (body.isNotEmpty()) usbWrite(conn, out, body)
+                val buf = ByteArrayOutputStream()
+                val tmp = ByteArray(16384)
+                val deadline = System.currentTimeMillis() + 90_000
+                while (System.currentTimeMillis() < deadline) {
+                    val n = conn.bulkTransfer(inn, tmp, tmp.size, 3000)
+                    if (n > 0) buf.write(tmp, 0, n)
+                    if (buf.size() > 0 && httpComplete(buf.toByteArray())) break
+                }
+                if (buf.size() == 0) throw IllegalStateException("Printer did not respond to status request.")
+                parseReply(buf.toByteArray())
+            }
+        }
+    }
+
+    private fun indexOfCrlf(b: ByteArray, from: Int): Int {
+        var i = from
+        while (i + 1 < b.size) {
+            if (b[i] == 0x0D.toByte() && b[i + 1] == 0x0A.toByte()) return i
+            i++
+        }
+        return -1
+    }
+
+    private fun indexOfHeaderEnd(b: ByteArray, from: Int): Int {
+        var i = from
+        while (i + 3 < b.size) {
+            if (b[i] == 0x0D.toByte() && b[i + 1] == 0x0A.toByte() &&
+                b[i + 2] == 0x0D.toByte() && b[i + 3] == 0x0A.toByte()) return i
+            i++
+        }
+        return -1
+    }
+
+    /** Skips any leading HTTP/1.1 100 Continue informational headers so the real 200/4xx reply is read. */
+    private fun skip100Continue(b: ByteArray): Int {
+        var off = 0
+        while (off < b.size) {
+            val split = indexOfHeaderEnd(b, off)
+            if (split < 0) return off
+            val crlf = indexOfCrlf(b, off)
+            val eol = if (crlf in off..split) crlf else split
+            val line = String(b, off, eol - off, Charsets.ISO_8859_1)
+            if (Regex("^HTTP/1\\.[01]\\s+100\\b", RegexOption.IGNORE_CASE).containsMatchIn(line)) {
+                off = split + 4
+            } else {
+                return off
+            }
+        }
+        return off
+    }
+
+    /** Decodes an HTTP/1.1 Transfer-Encoding: chunked body across any number of chunks. */
+    private fun decodeChunked(b: ByteArray, bodyStart: Int): Pair<Boolean, ByteArray> {
+        val out = ByteArrayOutputStream()
+        var p = bodyStart
+        while (p < b.size) {
+            val nl = indexOfCrlf(b, p)
+            if (nl < 0) return Pair(false, out.toByteArray())
+            val sizeHex = String(b, p, nl - p, Charsets.ISO_8859_1).substringBefore(';').trim()
+            val size = sizeHex.toIntOrNull(16) ?: return Pair(false, out.toByteArray())
+            p = nl + 2
+            if (size == 0) {
+                if (p + 2 <= b.size && b[p] == 0x0D.toByte() && b[p + 1] == 0x0A.toByte()) {
+                    return Pair(true, out.toByteArray())
+                }
+                return Pair(indexOfHeaderEnd(b, p) >= 0, out.toByteArray())
+            }
+            if (p + size + 2 > b.size) return Pair(false, out.toByteArray())
+            out.write(b, p, size)
+            p += size + 2
+        }
+        return Pair(false, out.toByteArray())
+    }
+
     private fun httpComplete(b: ByteArray): Boolean {
-        val t = String(b, Charsets.ISO_8859_1)
-        val s = t.indexOf("\r\n\r\n")
-        if (s < 0) return false
-        val head = t.substring(0, s)
-        val len = Regex("(?i)content-length:\\s*(\\d+)").find(head)?.groupValues?.get(1)?.toIntOrNull()
-        if (len != null) return b.size - (s + 4) >= len
-        if (head.contains("chunked", true)) return t.endsWith("0\r\n\r\n")
-        return b.size - (s + 4) >= 4
+        val start = skip100Continue(b)
+        val split = indexOfHeaderEnd(b, start)
+        if (split < 0) return false
+        val head = String(b, start, split - start, Charsets.ISO_8859_1)
+        val len = Regex("(?im)^content-length:\\s*(\\d+)").find(head)?.groupValues?.get(1)?.toIntOrNull()
+        if (len != null) return b.size - (split + 4) >= len
+        if (Regex("(?im)^transfer-encoding:[^\\r\\n]*chunked").containsMatchIn(head)) return decodeChunked(b, split + 4).first
+        return b.size - (split + 4) >= 8
     }
 
     // ── IPP ──────────────────────────────────────────────────────────────────
@@ -1606,7 +1940,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     if (name == "printer-make-and-model" && (tag == 0x41 || tag == 0x42) && model.isEmpty()) model = value
                     if (name == "print-quality-supported" && tag == 0x23 && raw.size == 4) qualities.add(raw[3].toInt() and 0xFF)
                     if (name == "print-color-mode-supported" && tag == 0x44) colorModes.add(value)
-                    if (name == "media-type-supported" && tag == 0x44) mediaTypes.add(value)
+                    if (name == "media-type-supported" && (tag == 0x44 || tag == 0x42)) mediaTypes.add(value)
                     if (name == "pwg-raster-document-type-supported" && tag == 0x44) pwgTypes.add(value)
                     if (name == "media-ready" && (tag == 0x44 || tag == 0x42)) mediaReady.add(value)
                     if (name == "media-supported" && (tag == 0x44 || tag == 0x42)) mediaSupported.add(value)
@@ -1653,8 +1987,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     private class Opts(val quality: String, val color: String, val media: String, val borderless: Boolean = false)
 
-    /** One way of asking the printer for a job: with the page size, with the quality / colour / paper-type settings, the paper's own name, and how to scale. */
-    private data class IppAttempt(val withMedia: Boolean, val withOpts: Boolean, val mediaName: String, val scaling: String, val sizeW: Double = 0.0, val sizeH: Double = 0.0)
+    /** One way of asking the printer for a job: with the page size, with the quality / colour / paper-type settings, the paper's own name, how to scale, and margins (1/100 mm). */
+    private data class IppAttempt(val withMedia: Boolean, val withOpts: Boolean, val mediaName: String, val scaling: String, val sizeW: Double = 0.0, val sizeH: Double = 0.0, val marginMm100: Int = 0)
 
     /** The size in mm that a paper name carries ("jpn_hagaki_100x148mm" -> 100 x 148, "na_index-4x6_4x6in" -> 101.6 x 152.4), or null. */
     private fun mediaSizeMm(name: String): Pair<Double, Double>? {
@@ -1676,16 +2010,31 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         }
         val mt = when (opts.media) {
             "plain" -> e.mediaTypes.firstOrNull { it == "stationery" } ?: e.mediaTypes.firstOrNull { it.startsWith("stationery") } ?: ""
+            "inkjet" -> e.mediaTypes.firstOrNull { it == "stationery-inkjet" } ?: e.mediaTypes.firstOrNull { it.contains("inkjet", true) } ?: ""
             "photo" -> e.mediaTypes.firstOrNull { it == "photographic-glossy" } ?: e.mediaTypes.firstOrNull { it.startsWith("photographic") } ?: ""
-            else -> ""
+            "bp71" -> e.mediaTypes.firstOrNull { it.equals("com.brother-bp71", true) } ?: e.mediaTypes.firstOrNull { it.contains("bp71", true) } ?: ""
+            else -> if (opts.media.isNotEmpty()) (e.mediaTypes.firstOrNull { it.equals(opts.media, true) } ?: "") else ""
         }
-        val hasOpts = qv != 0 || cm.isNotEmpty() || mt.isNotEmpty()
         val formats = e.formats
+        val rasterOnly = "image/pwg-raster" in formats && "image/jpeg" !in formats && "application/pdf" !in formats
+        val rasterNamed = if (rasterOnly) selphyMedia(e, wMm, hMm, false) else null
+        val rasterDims = if (rasterOnly) (rasterNamed?.let { mediaSizeMm(it) } ?: Pair(minOf(wMm, hMm), maxOf(wMm, hMm))) else Pair(wMm, hMm)
+        // Brother DCP-T420W constrains borderless against plain paper (stationery): when printing a photo sheet borderless
+        // with no paper type picked yet, default to photographic-glossy so borderless works cleanly out of the box.
+        val effMt = if (rasterOnly && mt.isEmpty() && opts.borderless && rasterDims.first <= 155.0 && rasterDims.second <= 210.0 && "photographic-glossy" in e.mediaTypes) {
+            "photographic-glossy"
+        } else mt
+        val hasOpts = qv != 0 || cm.isNotEmpty() || mt.isNotEmpty()
+        val rasterHasOpts = qv != 0 || cm.isNotEmpty() || effMt.isNotEmpty()
         // Formats to try, in order: the photo as-is when the printer takes JPEG (or won't say), then PDF, then PWG raster.
         val candidates = ArrayList<Pair<String, () -> ByteArray>>()
         if (formats.isEmpty() || "image/jpeg" in formats) candidates.add("image/jpeg" to { jpeg })
         if ("application/pdf" in formats) candidates.add("application/pdf" to { jpegToPdf(jpeg, wMm, hMm) })
-        if ("image/pwg-raster" in formats) candidates.add("image/pwg-raster" to { pwgPage(e, jpeg, wMm, hMm, opts) })
+        if ("image/pwg-raster" in formats) {
+            candidates.add("image/pwg-raster" to {
+                pwgPage(e, jpeg, rasterDims.first, rasterDims.second, opts, effMt, rasterNamed)
+            })
+        }
         if (candidates.isEmpty()) {
             throw IllegalStateException(
                 (e.model.ifBlank { "This printer" }) + " can't take photos from the tablet (it accepts: " +
@@ -1709,17 +2058,31 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         val ns = if (named != null) mediaSizeMm(named) else null
         val zeroMargin = if (selphy && opts.borderless && ns != null) listOf(
             IppAttempt(true, true, "", "fill", ns.first, ns.second), IppAttempt(true, false, "", "fill", ns.first, ns.second)) else emptyList()
-        val attempts = zeroMargin + (if (named != null) listOf(IppAttempt(true, true, named, "fill"), IppAttempt(true, true, named, ownScaling),
+        val stdAttempts = zeroMargin + (if (named != null) listOf(IppAttempt(true, true, named, "fill"), IppAttempt(true, true, named, ownScaling),
             IppAttempt(true, false, named, "fill"), IppAttempt(true, false, named, ownScaling)) else emptyList()) +
             (if (selphy) listOf(IppAttempt(true, true, "", "fill"), IppAttempt(true, false, "", "fill")) else emptyList()) +
             base.map { IppAttempt(it.first, it.second, "", ownScaling) }
+        val rasterAttempts = if (rasterOnly) {
+            val wantZero = opts.borderless && !effMt.equals("stationery", ignoreCase = true)
+            val rBase = ArrayList<IppAttempt>()
+            if (wantZero) rBase.add(IppAttempt(true, false, "", "", rasterDims.first, rasterDims.second, 0))
+            rBase.add(IppAttempt(true, false, "", "", rasterDims.first, rasterDims.second, 300))
+            if (rasterNamed != null) rBase.add(IppAttempt(true, false, rasterNamed, "", rasterDims.first, rasterDims.second, 0))
+            rBase.add(IppAttempt(false, false, "", "", 0.0, 0.0, 0))
+            rBase.flatMap { a -> if (rasterHasOpts) listOf(a.copy(withOpts = true), a) else listOf(a) }
+        } else stdAttempts
         var drops = 0
         for ((format, make) in candidates) {
             val data = try { make() } catch (ex: Exception) { lastErr = ex.message ?: lastErr; continue }
-            for (at in attempts.distinct()) {
+            val raster = format == "image/pwg-raster"
+            val useAttempts = if (raster && rasterOnly) rasterAttempts else stdAttempts
+            val jobMt = if (raster && rasterOnly) effMt else mt
+            for (at in useAttempts.distinct()) {
+                // A raster page already has the sheet's size, so print-scaling means nothing to it: leave it out (a Brother DCP-T420W takes only raster).
+                val sc = if (raster) "" else at.scaling
                 for (path in ippPaths(e)) {
                     val body = ippPrintJob(ippUri(e, path), job, format, data, if (at.withMedia) (if (at.sizeW > 0) at.sizeW else wMm) else 0.0, if (at.sizeH > 0) at.sizeH else hMm,
-                        if (at.withOpts) qv else 0, if (at.withOpts) cm else "", if (at.withOpts) mt else "", at.scaling, at.mediaName)
+                        if (at.withOpts) qv else 0, if (at.withOpts) cm else "", if (at.withOpts) jobMt else "", sc, at.mediaName, raster, at.marginMm100)
                     val r = try { doPost(e, path, body) } catch (nf: NetFail) {
                         // Can't connect at all: stop now. Connected but dropped mid-job: try the next settings, up to 3 times.
                         if (!nf.connected || ++drops >= 3) throw nf
@@ -1728,8 +2091,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     }
                     when {
                         r.http == 200 && r.ipp in 0..2 -> {
-                            e.lastSent = (if (at.mediaName.isNotEmpty()) "paper " + at.mediaName else if (at.withMedia) "custom page size, zero margins" else "no paper named") +
-                                ", scaling " + (if (at.scaling.isEmpty()) "not set" else at.scaling) + (if (at.withOpts) ", with quality/colour options" else "") + ", " + format + ", path " + path
+                            val marginDesc = if (at.marginMm100 > 0) "${at.marginMm100 / 100} mm margins" else "zero margins"
+                            e.lastSent = (if (at.mediaName.isNotEmpty()) "paper " + at.mediaName else if (at.withMedia) "custom page size, $marginDesc" else "no paper named") +
+                                ", scaling " + (if (sc.isEmpty()) "not set" else sc) + (if (at.withOpts) ", with quality/colour options" + (if (jobMt.isNotEmpty()) " ($jobMt)" else "") else "") + ", " + format + ", path " + path
                             return
                         }
                         r.http == 200 && r.ipp == 0x406 -> lastErr = "The printer says it has no print queue at the addresses tried (" +
@@ -1800,7 +2164,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     }
 
     /** One PWG Raster page for printers that list image/pwg-raster: 300 dpi when offered, colour unless grey is asked for or all they list. */
-    private fun pwgPage(e: Entry, jpeg: ByteArray, wMm: Double, hMm: Double, opts: Opts): ByteArray {
+    private fun pwgPage(e: Entry, jpeg: ByteArray, wMm: Double, hMm: Double, opts: Opts,
+                        mediaType: String = "", namedOverride: String? = null): ByteArray {
         val types = e.pwgTypes
         if (types.isNotEmpty() && "srgb_8" !in types && "sgray_8" !in types) {
             throw IllegalStateException("This printer's raster mode (" + types.take(3).joinToString(", ") + ") isn't supported yet.")
@@ -1811,7 +2176,16 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         fun pixelsAt(d: Int) = Math.round(minOf(wMm, hMm) / 25.4 * d).toLong() * Math.round(maxOf(wMm, hMm) / 25.4 * d)
         val fits = avail.filter { pixelsAt(it) <= 26_000_000L }
         val dpi = (if (fits.isNotEmpty()) fits else avail).minByOrNull { Math.abs(it - want) } ?: 300
-        return PwgRaster.fromJpeg(jpeg, wMm, hMm, dpi, gray)
+        // A printer that takes ONLY raster (no JPEG, no PDF: a Brother DCP-T420W) gets the page labelled and written the way CUPS does it,
+        // which is what such a printer is tested with: the IPP name of the paper and of its type in the header, the image box left zero.
+        val rasterOnly = "image/jpeg" !in e.formats && "application/pdf" !in e.formats
+        val shortMm = minOf(wMm, hMm)
+        val longMm = maxOf(wMm, hMm)
+        val named = if (rasterOnly) (namedOverride ?: selphyMedia(e, wMm, hMm, false)?.takeIf { n ->
+            mediaSizeMm(n)?.let { Math.abs(it.first - shortMm) < 0.6 && Math.abs(it.second - longMm) < 0.6 } == true
+        }) else null
+        val pageName = if (!rasterOnly) "" else named ?: ("custom_photo_" + (Math.round(shortMm * 10) / 10.0) + "x" + (Math.round(longMm * 10) / 10.0) + "mm")
+        return PwgRaster.fromJpeg(jpeg, shortMm, longMm, dpi, gray, pageName, if (rasterOnly) mediaType else "", rasterOnly)
     }
 
     /** A one-page PDF holding the JPEG at the sheet size, for printers that take PDF but not JPEG. */
@@ -1888,7 +2262,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val buf = ByteArrayOutputStream()
                 val tmp = ByteArray(4096)
                 try {
-                    while (buf.size() < 65536) {
+                    while (buf.size() < 262144) {
                         val n = s.getInputStream().read(tmp)
                         if (n < 0) break
                         buf.write(tmp, 0, n)
@@ -1913,21 +2287,24 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         }
     }
 
-    /** Splits an HTTP reply into its status code, the IPP status and the IPP body. */
+    /** Splits an HTTP reply into its status code, the IPP status and the IPP body (handles 100 Continue and multi-chunk encoding). */
     private fun parseReply(bytes: ByteArray): Reply {
-        val text = String(bytes, Charsets.ISO_8859_1)
-        val http = Regex("^HTTP/1\\.[01] (\\d{3})").find(text)?.groupValues?.get(1)?.toIntOrNull() ?: 0
-        val split = text.indexOf("\r\n\r\n")
+        val start = skip100Continue(bytes)
+        val split = indexOfHeaderEnd(bytes, start)
+        val head = if (split >= 0) String(bytes, start, split - start, Charsets.ISO_8859_1)
+            else String(bytes, start, bytes.size - start, Charsets.ISO_8859_1)
+        val http = Regex("^HTTP/1\\.[01]\\s+(\\d{3})").find(head)?.groupValues?.get(1)?.toIntOrNull() ?: 0
         if (http != 200 || split < 0) return Reply(http, -1)
-        var start = split + 4
-        if (text.substring(0, split).contains("chunked", true)) {
-            val nl = text.indexOf("\r\n", start)
-            if (nl > 0) start = nl + 2
+        val bodyStart = split + 4
+        val body = if (Regex("(?im)^transfer-encoding:[^\\r\\n]*chunked").containsMatchIn(head)) {
+            decodeChunked(bytes, bodyStart).second
+        } else {
+            bytes.copyOfRange(bodyStart, bytes.size)
         }
-        if (bytes.size < start + 4) return Reply(http, -1)
+        if (body.size < 4) return Reply(http, -1)
         return Reply(
-            http, ((bytes[start + 2].toInt() and 0xFF) shl 8) or (bytes[start + 3].toInt() and 0xFF),
-            bytes.copyOfRange(start, bytes.size)
+            http, ((body[2].toInt() and 0xFF) shl 8) or (body[3].toInt() and 0xFF),
+            body
         )
     }
 
@@ -1938,7 +2315,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     private fun ippPrintJob(uri: String, job: String, format: String, doc: ByteArray, wMm: Double, hMm: Double,
                             quality: Int = 0, colorMode: String = "", mediaType: String = "", scaling: String = "fill",
-                            mediaName: String = ""): ByteArray {
+                            mediaName: String = "", mediaTypeInCol: Boolean = false, marginMm100: Int = 0): ByteArray {
         val o = ByteArrayOutputStream()
         fun u8(v: Int) = o.write(v and 0xFF)
         fun u16(v: Int) { u8(v shr 8); u8(v) }
@@ -1958,6 +2335,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         attr(0x42, "job-name", job)
         attr(0x49, "document-format", format)
         u8(0x02)                                                // job attributes
+        val margin = marginMm100.coerceAtLeast(0)
         if (mediaName.isNotEmpty()) {
             attr(0x44, "media", mediaName)                      // a paper the printer itself lists
         } else if (wMm > 0) {
@@ -1967,16 +2345,19 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             memberInt("x-dimension", Math.round(minOf(wMm, hMm) * 100).toInt())
             memberInt("y-dimension", Math.round(maxOf(wMm, hMm) * 100).toInt())
             u8(0x37); u16(0); u16(0)                            // end media-size
-            memberInt("media-top-margin", 0)
-            memberInt("media-bottom-margin", 0)
-            memberInt("media-left-margin", 0)
-            memberInt("media-right-margin", 0)
+            memberInt("media-top-margin", margin)
+            memberInt("media-bottom-margin", margin)
+            memberInt("media-left-margin", margin)
+            memberInt("media-right-margin", margin)
+            // a raster page carries its paper type inside media-col, where IPP Everywhere clients put it
+            if (mediaTypeInCol && mediaType.isNotEmpty()) { member("media-type"); u8(0x44); u16(0); str(mediaType) }
             u8(0x37); u16(0); u16(0)                            // end media-col
         }
-        attr(0x44, "print-scaling", scaling)                    // "none" for borderless: the printer must not scale or trim
+        if (scaling.isNotEmpty()) attr(0x44, "print-scaling", scaling)   // "none" for borderless: the printer must not scale or trim
         if (quality != 0) { u8(0x23); str("print-quality"); u16(4); u32(quality) }          // enum
         if (colorMode.isNotEmpty()) attr(0x44, "print-color-mode", colorMode)
-        if (mediaType.isNotEmpty()) attr(0x44, "media-type", mediaType)
+        // (sent on its own too, except when media-col already carries it for a raster page)
+        if (mediaType.isNotEmpty() && !(mediaTypeInCol && mediaName.isEmpty() && wMm > 0)) attr(0x44, "media-type", mediaType)
         u8(0x03)                                                // end of attributes
         o.write(doc)
         return o.toByteArray()
@@ -2122,14 +2503,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val adj = PrintColorAdj()
                         for (i in 0 until pagesArr.length()) {
                             val jpeg = decode(pagesArr.getString(i))
-                            val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
-                                ?: throw IllegalStateException("Couldn't decode photo for printing.")
-                            try {
-                                val bytes = CanonJob.build(bmp, widthMm, heightMm, mono = false, quality = 1, media = 1, adj = adj)
-                                usbRaw(id, bytes)
-                            } finally {
-                                try { bmp.recycle() } catch (_: Exception) {}
-                            }
+                            canonPrintPage(id, jpeg, widthMm, heightMm, false, 1, 1, false, adj, "")
                         }
                     }
                     raw -> {
@@ -2155,7 +2529,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         }
                     }
                     else -> {
-                        throw IllegalStateException("Unsupported USB printer model: VID=${d.vendorId} PID=${d.productId}")
+                        if (d.vendorId == BrotherUsbModels.VENDOR_ID) {
+                            throw IllegalStateException("${usbName(d)} does not expose IPP-over-USB on this cable (only Brother's proprietary USB language). Connect it to Wi-Fi or Wi-Fi Direct for direct printing.")
+                        }
+                        throw IllegalStateException("Unsupported USB printer model: VID=%04x PID=%04x".format(d.vendorId, d.productId))
                     }
                 }
                 return null

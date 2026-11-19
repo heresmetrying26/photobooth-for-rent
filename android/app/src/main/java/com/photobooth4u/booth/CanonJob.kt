@@ -28,6 +28,130 @@ object CanonJob {
     private const val PRE_XML = """<?xml version="1.0" encoding="utf-8" ?><cmd xmlns:ivec="http://www.canon.com/ns/cmd/2008/07/common/"><ivec:contents><ivec:operation>StartJob</ivec:operation><ivec:param_set servicetype="print"><ivec:jobID>00000001</ivec:jobID><ivec:bidi>0</ivec:bidi></ivec:param_set></ivec:contents></cmd><?xml version="1.0" encoding="utf-8" ?><cmd xmlns:ivec="http://www.canon.com/ns/cmd/2008/07/common/" xmlns:vcn="http://www.canon.com/ns/cmd/2008/07/canon/"><ivec:contents><ivec:operation>VendorCmd</ivec:operation><ivec:param_set servicetype="print"><vcn:ijoperation>ModeShift</vcn:ijoperation><vcn:ijmode>1</vcn:ijmode><ivec:jobID>00000001</ivec:jobID></ivec:param_set></ivec:contents></cmd>"""
     private const val POST_XML = """<?xml version="1.0" encoding="utf-8" ?><cmd xmlns:ivec="http://www.canon.com/ns/cmd/2008/07/common/"><ivec:contents><ivec:operation>EndJob</ivec:operation><ivec:param_set servicetype="print"><ivec:jobID>00000001</ivec:jobID></ivec:param_set></ivec:contents></cmd>"""
 
+    // ── IVEC + PWG Raster (the way Canon's current G-series ink-tank printers are driven) ──────────────────────────
+    // The G3010 / G1020 / G2020 family takes the same IVEC XML wrapper as above, but the page itself goes in as ONE PWG Raster
+    // document inside a SendData command (not as ESC ( bands). Layout confirmed on a G3010 by the open-source noble6/canon-universal-driver;
+    // the byte layout here is written from the protocol description, not copied. A G1010 has not been confirmed on this app yet.
+    private const val NS = "xmlns:ivec=\"http://www.canon.com/ns/cmd/2008/07/common/\""
+    private const val NS_V = "xmlns:vcn=\"http://www.canon.com/ns/cmd/2008/07/canon/\""
+    private const val DECL = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>"
+    private const val JOB = "00000002"
+
+    private fun cmd(op: String, params: String, vendor: Boolean = false, decl: String = DECL) =
+        "$decl<cmd $NS${if (vendor) " $NS_V" else ""}><ivec:contents><ivec:operation>$op</ivec:operation>" +
+            "<ivec:param_set servicetype=\"print\"><ivec:jobID>$JOB</ivec:jobID>$params</ivec:param_set></ivec:contents></cmd>"
+
+    /** The status question the printer answers on its bulk-in endpoint (no job id). */
+    val GET_STATUS: ByteArray = ascii("$DECL<cmd $NS><ivec:contents><ivec:operation>GetStatus</ivec:operation><ivec:param_set servicetype=\"print\"></ivec:param_set></ivec:contents></cmd>")
+
+    /** The capability question Canon's Windows driver opens a job with; the reply lists the data formats the printer takes. */
+    val GET_CAPABILITY: ByteArray = ascii("$DECL<cmd $NS><ivec:contents><ivec:operation>GetCapability</ivec:operation><ivec:param_set servicetype=\"print\"></ivec:param_set></ivec:contents></cmd>")
+
+    /** What a status reply says: status ("idle", "stopped", "notready", else printing) and an optional detail ("MediaEmpty", "MediaJam", "DoorOpen"...). */
+    data class Status(val status: String, val detail: String, val code: String)
+
+    fun parseStatus(reply: String): Status? {
+        val end = reply.lastIndexOf("</cmd>")
+        if (end < 0) return null
+        fun last(tag: String): String {
+            val open = "<ivec:$tag>"
+            val i = reply.lastIndexOf(open)
+            if (i < 0) return ""
+            val j = reply.indexOf("</ivec:$tag>", i)
+            return if (j < 0) "" else reply.substring(i + open.length, j).trim()
+        }
+        val st = last("status")
+        if (st.isEmpty()) return null
+        return Status(st.lowercase(), last("status_detail"), last("current_support_code").ifEmpty { last("error_code") })
+    }
+
+    /** Plain-words message for a blocking printer status, or null when the printer is fine. */
+    fun statusProblem(s: Status): String? = when {
+        s.detail.equals("MediaEmpty", true) -> "The printer is out of paper. Load paper, press the Black button on the printer, then try again."
+        s.detail.equals("MediaJam", true) -> "The printer has a paper jam. Clear it, then try again."
+        s.detail.equals("DoorOpen", true) -> "The printer's cover is open. Close it, then try again."
+        s.detail.equals("AttentionRequired", true) || s.status == "stopped" || s.status == "notready" ->
+            "The printer needs attention (check the paper, ink and the lights on the printer)" + (if (s.code.isNotEmpty()) " - code ${s.code}." else ".")
+        else -> null
+    }
+
+    /** One paper: the PWG name, the points on the page, and the printable raster at 600 dpi without / with borderless overspray. */
+    private class IvecPaper(val pwg: String, val wPt: Int, val hPt: Int, val w600: Int, val h600: Int, val bw600: Int, val bh600: Int)
+
+    private fun ivecPaper(wMm: Double, hMm: Double): IvecPaper? {
+        val w = minOf(wMm, hMm)
+        val h = maxOf(wMm, hMm)
+        fun near(a: Double, b: Double) = Math.abs(a - b) < 3.0
+        return when {
+            near(w, 101.6) && near(h, 152.4) -> IvecPaper("na_index-4x6_4x6in", 288, 432, 2239, 3411, 2532, 3765)
+            near(w, 210.0) && near(h, 297.0) -> IvecPaper("iso_a4_210x297mm", 595, 842, 4800, 6826, 5092, 7181)
+            near(w, 215.9) && near(h, 279.4) -> IvecPaper("na_letter_8.5x11in", 612, 792, 4800, 6411, 5232, 6765)
+            else -> null
+        }
+    }
+
+    fun supportsIvec(wMm: Double, hMm: Double) = ivecPaper(wMm, hMm) != null
+
+    /**
+     * A whole IVEC print job for one page: StartJob, SetJobConfiguration (clock), SetConfiguration, SetPageConfiguration,
+     * SendData (PWG Raster), EndJob.
+     * quality: 0 draft, 1 normal, 2 best. media: 0 plain, 1 glossy photo, 2 matte photo. borderless: fill the page (the printer overshoots a little).
+     */
+    fun buildIvec(jpeg: ByteArray, widthMm: Double, heightMm: Double, mono: Boolean, quality: Int, media: Int,
+                  borderless: Boolean, adj: PrintColorAdj = PrintColorAdj()): ByteArray {
+        val p = ivecPaper(widthMm, heightMm)
+            ?: throw IllegalArgumentException("This paper size isn't supported on Canon USB printers yet. Use 4x6, A4 or Letter.")
+        // 600 dpi for a 4x6 photo; the big sheets stay at 300 dpi so the tablet's memory is enough.
+        val draftPlain = quality == 0 && media == 0
+        val dpi = if (p.wPt <= 300 && !draftPlain) 600 else 300
+        val f = dpi / 600.0
+        val bl = borderless
+        val pxW = Math.round((if (bl) p.bw600 else p.w600) * f).toInt()
+        val pxH = Math.round((if (bl) p.bh600 else p.h600) * f).toInt()
+
+        val src = if (adj.isNoop) jpeg else {
+            val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size) ?: throw IllegalStateException("Couldn't read the picture to print.")
+            val tmp = Bitmap.createBitmap(bmp.width, bmp.height, Bitmap.Config.ARGB_8888)
+            val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+            adj.toColorFilter()?.let { paint.colorFilter = it }
+            Canvas(tmp).drawBitmap(bmp, 0f, 0f, paint)
+            try { bmp.recycle() } catch (_: Exception) {}
+            val bo = ByteArrayOutputStream()
+            tmp.compress(Bitmap.CompressFormat.JPEG, 95, bo)
+            try { tmp.recycle() } catch (_: Exception) {}
+            bo.toByteArray()
+        }
+
+        // The ImageBox words are the page's usable box in points x dpi (Canon's own driver leaves out the /72).
+        val box = if (bl) intArrayOf(0, 0, p.wPt * dpi, p.hPt * dpi) else {
+            val left = (p.wPt - p.w600 * 72.0 / 600) / 2
+            val bottom = 14.18
+            intArrayOf((left * dpi).toInt(), (bottom * dpi).toInt(), ((left + p.w600 * 72.0 / 600) * dpi).toInt(), ((bottom + p.h600 * 72.0 / 600) * dpi).toInt())
+        }
+        val pwgType = when (media) { 1 -> "custom-media-type-canon-14"; 2 -> "custom-media-type-canon-15"; else -> "stationery" }
+        val pwg = PwgRaster.fromJpeg(src, widthMm, heightMm, dpi, mono, pageName = p.pwg, mediaType = pwgType, cupsExact = true,
+            forcePxW = pxW, forcePxH = pxH, pagePtW = p.wPt, pagePtH = p.hPt, imageBox = box)
+
+        val q = when { quality == 2 -> "<ivec:printquality>best</ivec:printquality>"; draftPlain -> "<ivec:printquality>fast_draft</ivec:printquality>"; else -> "" }
+        val stamp = java.text.SimpleDateFormat("yyyyMMddHHmmss", java.util.Locale.US).format(java.util.Date())
+        val uuid = java.util.UUID.randomUUID().toString()
+        val out = ByteArrayOutputStream(pwg.size + 4096)
+        out.write(ascii(cmd("StartJob",
+            "<ivec:bidi>0</ivec:bidi><vcn:forcepmdetection>OFF</vcn:forcepmdetection><ivec:jobname/><ivec:username/><ivec:computername/>" +
+                "<ivec:job_description><![CDATA[$uuid]]></ivec:job_description><vcn:host_environment>android</vcn:host_environment>", vendor = true)))
+        out.write(ascii(cmd("SetJobConfiguration", "<ivec:mismatch_mode>none</ivec:mismatch_mode><ivec:datetime>$stamp</ivec:datetime>",
+            decl = "<?xml version=\"1.0\" encoding=\"utf-8\"?>")))
+        out.write(ascii(cmd("SetConfiguration",
+            "<ivec:papersize>${p.pwg}</ivec:papersize><ivec:papertype>$pwgType</ivec:papertype>" +
+                "<ivec:borderlessprint>${if (bl) "ON" else "OFF"}</ivec:borderlessprint>" +
+                "<ivec:printcolormode>${if (mono) "monochrome" else "color"}</ivec:printcolormode><ivec:duplexprint>OFF</ivec:duplexprint>$q")))
+        out.write(ascii(cmd("VendorCmd", "<vcn:ijoperation>SetPageConfiguration</vcn:ijoperation><vcn:nextpage>OFF</vcn:nextpage>", vendor = true)))
+        out.write(ascii(cmd("SendData", "<ivec:format>PWGRaster</ivec:format><ivec:datasize>${pwg.size}</ivec:datasize>")))
+        out.write(pwg)
+        out.write(ascii(cmd("EndJob", "")))
+        return out.toByteArray()
+    }
+
     private fun bytes(vararg v: Int) = ByteArray(v.size) { v[it].toByte() }
     private fun be16(v: Int) = bytes(v shr 8, v)
     private fun be32(v: Int) = bytes(v ushr 24, v shr 16, v shr 8, v)

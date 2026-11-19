@@ -38620,9 +38620,14 @@
           const el = document.getElementById(id); if (el) el.value = String(wifiCal[key]);
         });
       }
+      // An Epson L8050 on USB, printed to the standard way (IPP). It does not list its print qualities or paper types, so the
+      // choices are fixed here and the app asks for them anyway (NetPrintBridge.sendIppJob): High quality on glossy photo paper
+      // unless the operator picks something else. Without this every job went out on the printer's default: plain paper, standard.
+      function epsonLUsbIpp(p) { return !!(p && p.usb && p.ipp && p.vid === 1208 && (EPSON_L_PIDS[p.pid] === 'L8050' || /\bL8050\b/i.test(p.name || ''))); }
       function wifiOpts(printer) {
         const p = printer || wifiPrinter, st = wifiOptsFor(p);
         const o = { color: st.color || '', quality: st.quality || '', media: st.media || '' };
+        if (epsonLUsbIpp(p)) { if (!o.quality) o.quality = 'high'; if (!o.media) o.media = 'photo'; }
         if (p && p.escp2 && !o.color) o.color = 'color';   // L120 / L121: colour enabled by default
         if (p && p.canon) o.canonMode = (st.canonMode === 'ivec' || st.canonMode === 'legacy') ? st.canonMode : '';   // Canon G-series page language: '' = automatic
         if (!pbDebug() && /^r(normal|best)$/.test(o.quality)) o.quality = '';         // beta qualities are debug only
@@ -38661,6 +38666,7 @@
             qualCh = [['normal', 'Normal (360 dpi)'], ['draft', 'Draft (fast)']];
             if (pbDebug()) qualCh.push(['rnormal', 'Normal 720 dpi (beta, 4\u00d76 glossy)'], ['rbest', 'Best 1440 dpi (beta, 4\u00d76 glossy)']);
           }
+          else if (epsonLUsbIpp(p)) qualCh = [['high', 'High (best)'], ['normal', 'Normal'], ['draft', 'Draft (fast)']];
           else if (qs.some(q => q >= 3 && q <= 5)) qualCh = [['', 'Printer default']].concat([['draft', 'Draft (fast)'], ['normal', 'Normal'], ['high', 'High (best)']].filter((c, i) => qs.includes(3 + i)));
           const mt = p.mediaTypes || [];
           const plain = mt.some(m => m === 'stationery' || m.indexOf('stationery') === 0);
@@ -38670,6 +38676,7 @@
           if (p.escp2) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper (glossy)'], ['matte', 'Matte / inkjet paper']];
           else if (p.canon) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper, glossy'], ['matte', 'Matte photo paper']];
           else if (p.epsonL) mediaCh = [['plain', 'Plain paper'], ['photo', 'Photo paper (glossy)']];
+          else if (epsonLUsbIpp(p)) mediaCh = [['photo', 'Photo paper (glossy)'], ['photosg', 'Photo paper (semi-gloss)'], ['matte', 'Photo paper (matte)'], ['plain', 'Plain paper']];
           else if (p.dnp) mediaCh = [['', 'Glossy finish'], ['matte', 'Matte finish']];
           else if (plain || photo || inkjet || bp71) mediaCh = [['', 'Printer default']].concat(
             plain ? [['plain', 'Plain paper']] : [],

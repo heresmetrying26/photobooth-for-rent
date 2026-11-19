@@ -203,6 +203,44 @@ namespace Pb4uCam
             }
             return list;
         }
+
+        // Programs that often take hold of a plugged-in camera, as { name shown to the client, start of the program's process name }.
+        // Only used to say what to close: a camera that another program holds is still in Windows' camera list, so this
+        // is a hint, not the usual cause when that list is empty.
+        static readonly string[][] BUSY_APPS = new string[][] {
+            new string[] { "EOS Utility", @"^EOS ?Utility" },
+            new string[] { "EOS Webcam Utility", @"^EOS ?Webcam" },
+            new string[] { "CameraWindow", @"^CameraWindow" },
+            new string[] { "Windows Photos", @"^Microsoft\.Photos" },
+            new string[] { "Lightroom", @"^Lightroom" },
+            new string[] { "Capture One", @"^Capture ?One" },
+            new string[] { "digiCamControl", @"^(CameraControl|digiCamControl)" },
+            new string[] { "dslrBooth", @"^dslrBooth" },
+            new string[] { "LumaBooth", @"^LumaBooth" },
+            new string[] { "Sparkbooth", @"^Sparkbooth" },
+            new string[] { "Nikon Transfer / NX Tether", @"^(NikonTransfer|NXTether|NX ?Tether)" },
+            new string[] { "Imaging Edge", @"^Imaging ?Edge" }
+        };
+
+        // The names (from BUSY_APPS) of those programs that are running now, each once.
+        public static List<string> BusyApps()
+        {
+            var found = new List<string>();
+            Process[] all = null;
+            try { all = Process.GetProcesses(); } catch { return found; }
+            try
+            {
+                foreach (var p in all)
+                {
+                    string pn;
+                    try { pn = p.ProcessName; } catch { continue; }
+                    foreach (var a in BUSY_APPS)
+                        if (!found.Contains(a[0]) && Regex.IsMatch(pn, a[1], RegexOptions.IgnoreCase)) found.Add(a[0]);
+                }
+            }
+            finally { foreach (var p in all) { try { p.Dispose(); } catch { } } }
+            return found;
+        }
     }
 
     // PTP / MTP commands sent through Windows' MTP driver ("MTP extension" commands).
@@ -558,6 +596,7 @@ namespace Pb4uCam
         public static Func<Ptp> NewPtp = delegate { return new Ptp(); };
         public static Func<List<DevInfo>> ListDevs = Ptp.ListDevices;
         public static Func<List<UsbDev>> UsbDevs = delegate { return UsbScan.Devices(true); };
+        public static Func<List<string>> OpenApps = delegate { return UsbScan.BusyApps(); };
         static string diag = "";
         // Nikons in MTP mode (D3400, D5600...) call themselves a Microsoft/MTP device
         // and may not list their own commands, but they still answer them.
@@ -646,8 +685,21 @@ namespace Pb4uCam
             else if (cam.Problem != 0) why = "Windows reports a problem with it (code " + cam.Problem + ")";
             else why = "Windows didn't add it to its list of cameras (" + (cam.Class == "" ? "no device type" : cam.Class) + ", driver " + (cam.Service == "" ? "none" : cam.Service) + ")";
             string apps = mk == "Canon" ? "EOS Utility" : mk == "Nikon" ? "Nikon Transfer and NX Tether" : mk == "Sony" ? "Imaging Edge" : "other camera apps";
-            return "DRIVER Windows sees the " + mk + " camera on USB (\"" + nm + "\"), but " + why + ", so the booth can't reach it. "
-                + "On the camera, set " + (mk == "Canon" ? "Wi-Fi/NFC" : "Wi-Fi") + " to Disable, close " + apps + ", then switch the camera off and on and plug it in again. "
+            // Programs open right now that may be holding the camera: name them instead of guessing.
+            List<string> open = null;
+            try { open = OpenApps(); } catch (Exception e) { Log("Open-programs check failed: " + e.Message); }
+            string close = "Close " + apps + ".";
+            if (open != null && open.Count > 0)
+            {
+                Log("Programs open that may hold the camera: " + string.Join(", ", open.ToArray()));
+                string names = open.Count == 1 ? open[0] : string.Join(", ", open.GetRange(0, open.Count - 1).ToArray()) + " and " + open[open.Count - 1];
+                close = "Close " + names + " (" + (open.Count == 1 ? "it is" : "they are") + " open now and may be holding the camera).";
+            }
+            return "DRIVER Windows sees the " + mk + " camera on USB (\"" + nm + "\"), but " + why + ", so the booth can't reach it. Try these in order: "
+                + "(1) On the camera, set " + (mk == "Canon" ? "Wi-Fi/NFC" : "Wi-Fi") + " to Disable. "
+                + "(2) Use the USB cable that came with the camera (not a third-party one), plugged straight into the laptop with no hub, and charge the battery fully or use the AC adapter: the laptop does not power the camera. "
+                + "(3) " + close + " "
+                + "(4) Switch the camera off and on and plug it in again. "
                 + "If it stays like this: in Device Manager right-click \"" + nm + "\", choose Uninstall device, then plug the camera in again.";
         }
 

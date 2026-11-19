@@ -36,6 +36,12 @@ function Open-Message {
     catch { $e = $_.Exception; while ($e.InnerException) { $e = $e.InnerException }; return $e.Message }
 }
 
+function Set-Apps([string[]]$names) {
+    $l = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($n in $names) { $l.Add($n) }
+    [Pb4uCam.Worker]::OpenApps = [Func[System.Collections.Generic.List[string]]]{ return , $l }.GetNewClosure()
+}
+
 $STARTED = [Pb4uCam.UsbScan]::DN_STARTED
 $PROBLEM = [Pb4uCam.UsbScan]::DN_HAS_PROBLEM
 $CANON = 'USB\VID_04A9&PID_32B4\0123456789'
@@ -52,8 +58,25 @@ Check 'real scan fills vid/pid' (@($all | Where-Object { $_.VidPid -match '^vid_
 $makers = [Pb4uCam.UsbScan]::Devices($true)
 Check 'camera-maker scan keeps only camera makers' (@($makers | Where-Object { -not [Pb4uCam.UsbScan]::MAKERS.ContainsKey($_.Id.Substring(8, 4).ToUpperInvariant()) }).Count -eq 0) ''
 
+# The real open-programs scan: run a harmless program (a copy of ping.exe) under the name EOS Utility 3.exe and see it found.
+$fakeDir = Join-Path ([IO.Path]::GetTempPath()) ('pb4u-apps-test-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $fakeDir | Out-Null
+$fakeApp = $null
+try {
+    Copy-Item (Join-Path $env:SystemRoot 'System32\PING.EXE') (Join-Path $fakeDir 'EOS Utility 3.exe')
+    $fakeApp = Start-Process -FilePath (Join-Path $fakeDir 'EOS Utility 3.exe') -ArgumentList '-n', '8', '127.0.0.1' -WindowStyle Hidden -PassThru
+    Start-Sleep -Milliseconds 700
+    $busy = [Pb4uCam.UsbScan]::BusyApps()
+    Check 'real open-programs scan finds EOS Utility' ($busy.Contains('EOS Utility')) ($busy -join ', ')
+    Check 'real open-programs scan lists each program once' (@($busy | Select-Object -Unique).Count -eq $busy.Count) ($busy -join ', ')
+} finally {
+    if ($fakeApp) { try { $fakeApp.Kill() } catch { } }
+    Remove-Item -Recurse -Force $fakeDir -ErrorAction SilentlyContinue
+}
+
 # --- 2. messages, through Open() with Windows' camera list empty (the client's case) ---
 Set-Wpd @()
+Set-Apps @()
 
 Set-Usb @()
 $msg = Open-Message
@@ -65,6 +88,26 @@ Check 'Canon, driver did not start: DRIVER code' ($msg.StartsWith('DRIVER Window
 Check 'Canon: Wi-Fi/NFC and EOS Utility advice' ($msg -match 'Wi-Fi/NFC to Disable' -and $msg -match 'close EOS Utility') $msg
 Check 'Canon: Device Manager step names the device' ($msg -match 'right-click "MTP USB Device", choose Uninstall device') $msg
 Check 'Canon: never says to plug it in first' (-not $msg.Contains('No camera found')) $msg
+Check 'Canon: cable, no hub, battery tips' ($msg -match 'cable that came with the camera' -and $msg -match 'no hub' -and $msg -match 'charge the battery' -and $msg -match 'AC adapter') $msg
+Check 'Canon: steps are numbered in order' ($msg -match '\(1\) .*Wi-Fi/NFC.*\(2\) .*cable.*\(3\) Close EOS Utility\. \(4\) Switch the camera off and on') $msg
+
+Set-Apps @('EOS Utility')
+$msg = Open-Message
+Check 'one program open: it is named' ($msg -match '\(3\) Close EOS Utility \(it is open now and may be holding the camera\)\.') $msg
+Check 'one program open: the old guess is gone' (-not ($msg -match '\(3\) Close EOS Utility\. ')) $msg
+
+Set-Apps @('EOS Utility', 'Windows Photos', 'Lightroom')
+$msg = Open-Message
+Check 'three programs open: all named' ($msg -match '\(3\) Close EOS Utility, Windows Photos and Lightroom \(they are open now and may be holding the camera\)\.') $msg
+
+Set-Apps @('Windows Photos', 'Lightroom')
+$msg = Open-Message
+Check 'two programs open: joined with and' ($msg -match '\(3\) Close Windows Photos and Lightroom \(they are open now') $msg
+
+[Pb4uCam.Worker]::OpenApps = [Func[System.Collections.Generic.List[string]]]{ throw 'boom' }
+$msg = Open-Message
+Check 'open-programs check failing keeps the generic advice' ($msg -match '\(3\) Close EOS Utility\. ' -and $msg.StartsWith('DRIVER Windows sees the Canon camera')) $msg
+Set-Apps @()
 
 Set-Usb @(Dev 'Canon' $CANON 'Canon EOS 1300D' 'WPD' 'WUDFWpdMtp' $true ($STARTED) 0)
 $msg = Open-Message

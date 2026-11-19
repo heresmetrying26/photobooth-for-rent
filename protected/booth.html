@@ -38274,6 +38274,49 @@
         if (r.ok) j.res(r); else j.rej(new Error(r.error || 'The printer did not answer.'));
       };
       function wifiNetAvailable() { return !!(window.__PBNet && typeof window.__PBNet.scan === 'function'); }
+      // Epson ink-tank photo printers (L805, L3250, L8050, L18050...) take the same ESC/P-R job over Wi-Fi (port 9100) that the app
+      // sends over USB. When the standard Wi-Fi (IPP) job fails on one of them, for example an L18050 on its own Wi-Fi Direct
+      // network (192.168.223.1), the photo is sent that way instead. The L1xx models (ESC/P2) and 5-digit A3 models are left out.
+      const EPSON_L_NET_NAME = /\b(L\s?(2\d\d|3\d\d|5\d\d|8\d\d|[1-8]\d{3}|18050)|ET-?18100)\b/i;
+      function epsonLNetPrinter(p) { return !!(p && p.ip && !p.usb && !p.dialog && EPSON_L_NET_NAME.test(p.name || '')); }
+      // Printers (by address) that refused the standard job but took Epson's own: later prints in this app session go straight to it.
+      const wifiEscprFirst = {};
+      // An error that means the printer may already have the job (it was printing, or took too long): never send the photo twice.
+      function wifiJobMayHavePrinted(e) { return /stopped answering while printing|took too long to answer/i.test((e && e.message) || ''); }
+      // An error that means nothing reached the printer: the other way of sending can still be tried.
+      // ("connection reset" / "broken pipe" are NOT in this list: those happen after the photo started to go out.)
+      function wifiJobNeverSent(e) { return /could not reach|failed to connect|econnrefused|etimedout|ehostunreach|enetunreach|unreachable|no route to host|did not answer within/i.test((e && e.message) || ''); }
+      async function wifiPhotoJob(all, paper, p, wo) {
+        const ippRun = () => {
+          const imgs = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
+          return wifiJob(id => window.__PBNet.printIpp(id, p.ip, paper.w, paper.h, 1, JSON.stringify(imgs), JSON.stringify(wo)));
+        };
+        if (!epsonLNetPrinter(p) || typeof window.__PBNet.printEscpr !== 'function') return ippRun();
+        const rawRun = () => {
+          const pics = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
+          const escprOpts = Object.assign({}, wo, { borderless: !!(wo.borderless && epsonEscprBorderlessModel(Object.assign({}, p, { escpr: true })) && epsonEscprBorderlessOk(paper)) });
+          return wifiJob(id => window.__PBNet.printEscpr(id, p.ip, paper.w, paper.h, 1, JSON.stringify(pics), JSON.stringify(escprOpts)));
+        };
+        if (wifiEscprFirst[p.ip]) {
+          try { await rawRun(); return; }
+          catch (rawErr) {
+            if (!wifiJobNeverSent(rawErr)) throw rawErr;        // it may have started printing: do not send it again
+            delete wifiEscprFirst[p.ip];                         // could not connect on 9100: the standard job gets its turn again
+          }
+        }
+        try { await ippRun(); }
+        catch (ippErr) {
+          if (wifiJobMayHavePrinted(ippErr)) throw ippErr;
+          showToast('The printer did not take the standard Wi-Fi job. Trying Epson’s own print mode…', 5000);
+          try { await rawRun(); }
+          catch (rawErr) {
+            throw new Error((ippErr && ippErr.message || 'The printer did not answer.') + ' Epson’s own print mode (port 9100) did not work either: ' + String(rawErr && rawErr.message || rawErr).slice(0, 90));
+          }
+          wifiEscprFirst[p.ip] = true;
+          // Worked, but the standard job did not: tell the diagnostics why, so the cause can be fixed for this model.
+          pdiagSend('print', p, { ok: false, error: 'Standard job failed, printed with Epson ESC/P-R on 9100: ' + (ippErr && ippErr.message || ''), paper: { w: paper && paper.w, h: paper && paper.h, name: paper && paper.name }, opts: { quality: wo && wo.quality, color: wo && wo.color, media: wo && wo.media, borderless: wo && wo.borderless } });
+        }
+      }
       function wifiJob(start) {
         return new Promise((res, rej) => {
           const id = 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
@@ -39102,8 +39145,7 @@
         }
         if (!p.ipp) throw new Error(p.name + ' only takes receipts. Pick a photo printer.');
         if (p.usb) showToast('Allow USB access on the tablet if it asks.', 3000);
-        const imgs = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
-        await wifiJob(id => window.__PBNet.printIpp(id, p.ip, paper.w, paper.h, 1, JSON.stringify(imgs), JSON.stringify(wo)));
+        await wifiPhotoJob(all, paper, p, wo);
       }
 
       // One test sheet at the chosen paper size: not counted as a guest print and never starts auto-print,

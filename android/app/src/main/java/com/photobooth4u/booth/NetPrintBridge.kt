@@ -1167,7 +1167,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 if (!usbIsCanon(d)) throw IllegalStateException("Printer model is not supported for direct USB rendering.")
                 val copt = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
                 val mono = copt.optString("color") == "mono"
-                val cq = when (copt.optString("quality")) { "draft" -> 0; "high" -> 2; else -> 1 }
+                val cq = when (copt.optString("quality")) { "draft" -> 0; "high" -> 2; "best" -> 3; else -> 1 }
                 val cm = when (copt.optString("media")) { "photo" -> 1; "matte" -> 2; else -> 0 }
                 val adj = PrintColorAdj.from(copt)
                 val arr = JSONArray(pagesJson)
@@ -1658,7 +1658,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                 ?: throw IllegalStateException("Couldn't read the picture to print.")
             try {
-                val bytes = CanonJob.build(bmp, widthMm, heightMm, mono, cq, cm, adj)
+                val bytes = CanonJob.build(bmp, widthMm, heightMm, mono, cq, cm, adj, borderless)
                 if (nativeKnown) usbRaw(id, bytes) else usbCanonJob(id, bytes)
             } finally {
                 try { bmp.recycle() } catch (_: Exception) {}

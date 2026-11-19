@@ -36037,7 +36037,10 @@
         borderlessHint.hidden = !bl;
         borderlessToggle.checked = !!printPrefs.borderless;
         let hint = 'Prints edge-to-edge without margins or scaling on supported photo printers.';
-        try { if (wifiPrinter && (wifiPrinter.escp2 || wifiPrinter.canon)) hint = 'This printer requires standard page margins; borderless mode is not supported by this model.'; } catch (e) { }
+        try {
+          if (wifiPrinter && wifiPrinter.escp2) hint = 'This printer requires standard page margins; borderless mode is not supported by this model.';
+          else if (wifiPrinter && wifiPrinter.canon) hint = 'This Canon prints borderless on 4×6 in paper (it uses its 600 dpi mode, so the sheet takes a little longer). Other paper sizes print with a normal border.';
+        } catch (e) { }
         try {
           if (wifiPrinter && epsonEscprBorderlessModel(wifiPrinter)) {
             hint = epsonEscprBorderlessOk(paper)
@@ -36318,6 +36321,18 @@
         ctx.drawImage(cur, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
         ctx.restore();
       }
+      // A Canon G-series printer on the Android app prints a 4x6 sheet at 600 dpi (High / Best quality, photo or matte paper, or
+      // borderless): it gets a 600 dpi page (2400 x 3600) instead of the usual 300 dpi one, so the extra dots carry real picture
+      // detail (the finished picture is drawn at 2x or more already; scaling it down to 300 dpi threw that away). 0 = no change.
+      function canonDpiFor(paper) {
+        try {
+          const p = wifiPrinter;
+          if (!p || !p.canon || p.dialog || !window.__PBNet || !paper || paper.receipt) return 0;
+          if (Math.abs(Math.min(paper.w, paper.h) - 101.6) > 3 || Math.abs(Math.max(paper.w, paper.h) - 152.4) > 3) return 0;
+          const o = wifiOpts(p);
+          return (o.quality === 'high' || o.quality === 'best' || o.media === 'photo' || o.media === 'matte' || o.borderless) ? 600 : 0;
+        } catch (e) { return 0; }
+      }
       function buildPrintCanvas(key) {
         if (plainResult) return buildPlainPrint(key);          // "Print original" from the roving screen
         const paper = paperFor(key);
@@ -36352,7 +36367,7 @@
           src = r;
         }
         const useFastPoster = !!(helperOn && printPrefs && Number(printPrefs.posterDpi) === 200 && Math.max(paper.w, paper.h) >= 300 && !paper.receipt);
-        const dpi = useFastPoster ? 200 : PRINT_DPI;
+        const dpi = useFastPoster ? 200 : (canonDpiFor(paper) || PRINT_DPI);
         const c = document.createElement('canvas');
         c.width = Math.round(paper.w / 25.4 * dpi);
         c.height = Math.round(paper.h / 25.4 * dpi);
@@ -36917,7 +36932,7 @@
           else if ((p.colorModes || []).includes('monochrome') && (p.colorModes || []).includes('color')) colorCh = [['', 'Printer default'], ['color', 'Colour'], ['mono', 'Black & white']];
           const qs = p.qualities || [];
           if (p.escp2) qualCh = [['normal', 'Normal'], ['draft', 'Draft (fast)']];
-          else if (p.canon) qualCh = [['normal', 'Normal'], ['draft', 'Draft (saves ink)'], ['high', 'High (600 dpi, 4×6)']];   // High = the stream Canon's own G1010 driver sends at 600 dpi (4x6 only; other sizes stay at 300 dpi)
+          else if (p.canon) qualCh = [['normal', 'Normal'], ['draft', 'Draft (saves ink)'], ['high', 'High (600 dpi, 4×6)'], ['best', 'Best (600 dpi, slowest, 4×6)']];   // High / Best = the streams Canon's own G1010 driver sends at its Standard / High quality (4x6 only; other sizes stay at 300 dpi)
           else if (p.epsonL) {
             qualCh = [['normal', 'Normal (360 dpi)'], ['draft', 'Draft (fast)']];
             if (pbDebug()) qualCh.push(['rnormal', 'Normal 720 dpi (beta, 4\u00d76 glossy)'], ['rbest', 'Best 1440 dpi (beta, 4\u00d76 glossy)']);
@@ -37568,7 +37583,7 @@
         }
         if (p.canon) {
           // Experimental Canon G-series path over USB: 300 dpi, plain paper, 4x6 / A4 / Letter.
-          const picsC = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
+          const picsC = all.map(cv => cv.toDataURL('image/jpeg', cv.width >= 2000 ? 0.96 : 0.92));
           await wifiJob(id => window.__PBNet.printCanon(id, p.ip, paper.w, paper.h, 1, JSON.stringify(picsC), JSON.stringify(wo)));
           return;
         }

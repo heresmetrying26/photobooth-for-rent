@@ -272,9 +272,12 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
-    date: '2026-11-19', title: 'Android 1.1.88: Canon G1010 colours match Canon’s own driver in High (600 dpi)', for: ['website'],
+    date: '2026-11-19', title: 'Android 1.1.88: Canon G1010 prints with Canon’s own colours, sharper, borderless on 4x6, and a slowest Best quality', for: ['website'],
     items: [
-      'Canon PIXMA G1010 in High quality (600 dpi, 4x6): colours no longer come out faded. The ink for every colour is now taken from what Canon’s own Windows driver puts down (measured on matte photo paper, glossy photo paper and plain paper), including its bigger dots for deep colours, so reds, blues and dark backgrounds print with the same depth as from a PC. Normal and Draft are unchanged.'
+      'Canon PIXMA G1010 (and other G-series over USB), 4x6: colours no longer come out faded. The ink for every colour is taken from what Canon’s own Windows driver puts down (measured on matte photo paper, glossy photo paper and plain paper), including its bigger dots for deep colours, so reds, blues and dark backgrounds print with the same depth as from a PC.',
+      'Sharper: in High and Best quality, on photo paper and when printing borderless, the booth now builds a true 600 dpi page (2400 x 3600) instead of a 300 dpi one, so the extra dots carry real picture detail. The dots are also placed the way Canon places them, so flat tones no longer show faint stripes.',
+      'Borderless on 4x6 now works on the Canon: the picture fills the whole sheet and the rim the printer sprays past the edge repeats the picture’s own edge, so nothing is cut off and no white edge shows. Switch Borderless on in the printer settings.',
+      'New Best quality (600 dpi, slowest): Canon’s own High setting, with finer drops. White margins in a design are skipped the way Canon’s driver skips them. Normal and Draft are unchanged.'
     ]
   },
   {

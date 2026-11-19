@@ -7,6 +7,7 @@ import android.graphics.ColorMatrixColorFilter
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Rect
 import java.io.ByteArrayOutputStream
 
 /**
@@ -176,18 +177,19 @@ object CanonJob {
     private const val BEST_MAX_PIXELS = 16_000_000L     // above this a page stays at 300 dpi (tablet memory)
 
     /**
-     * quality: 0 draft (300 dpi, less ink), 1 normal (300 dpi), 2 best (600 dpi).
-     * media: 0 plain paper, 1 glossy photo paper (printed at 600 dpi), 2 matte photo paper.
-     * The 600 dpi mode and the photo / matte paper codes follow Gutenprint's G1000 data but are untested on a real printer.
+     * quality: 0 draft (300 dpi, less ink), 1 normal (300 dpi), 2 high (600 dpi, Canon's Standard), 3 best (600 dpi, Canon's High: slower).
+     * media: 0 plain paper, 1 glossy photo paper, 2 matte photo paper. 4x6 on photo paper, and 4x6 at quality 2 or 3, use [build600]
+     * (the stream copied from Canon's own driver, with borderless as an option); everything else is the 300 dpi stream.
      */
     fun build(src: Bitmap, widthMm: Double, heightMm: Double, mono: Boolean, quality: Int = 1, media: Int = 0, brightness: Int = 0): ByteArray =
         build(src, widthMm, heightMm, mono, quality, media, PrintColorAdj(brightness = brightness))
 
-    fun build(src: Bitmap, widthMm: Double, heightMm: Double, mono: Boolean, quality: Int = 1, media: Int = 0, adj: PrintColorAdj): ByteArray {
+    fun build(src: Bitmap, widthMm: Double, heightMm: Double, mono: Boolean, quality: Int = 1, media: Int = 0, adj: PrintColorAdj,
+              borderless: Boolean = false): ByteArray {
         val size = sizeCode(widthMm, heightMm)
             ?: throw IllegalArgumentException("This paper size isn't supported on Canon USB printers yet. Use 4x6, A4 or Letter.")
         // 4x6 in High quality (600 dpi) or on photo / matte paper: the stream Canon's own Windows G1010 driver sends for that job.
-        if (size == 0x34 && !mono && (media != 0 || quality == 2)) return build600(src, widthMm, heightMm, media, adj)
+        if (size == 0x34 && (media != 0 || quality >= 2 || borderless)) return build600(src, widthMm, heightMm, media, adj, mono, quality >= 3, borderless)
         fun areaWOf(d: Int) = Math.round(minOf(widthMm, heightMm) / 25.4 * d).toInt() - 2 * MARGIN_SIDE * (d / DPI)
         fun areaHOf(d: Int) = ((Math.round(maxOf(widthMm, heightMm) / 25.4 * d).toInt() - (MARGIN_TOP + MARGIN_BOTTOM) * (d / DPI)) / LINES) * LINES
         // 300 dpi only. A client's real G1010 printed the test page and photos at 300 dpi (Normal) but did NOT print at all with
@@ -294,19 +296,29 @@ object CanonJob {
     }
 
     // ── 600 dpi, 4x6 ────────────────────────────────────────────────────────────────────────────────────────────────
-    // Written to match what Canon's own Windows G1010 driver sends. That driver was made to print to a file (no printer) with
-    // Standard quality on plain paper and on Photo Paper Plus Glossy II / Matte Photo, and its bytes were compared command by
-    // command: the job wrapper (StartJob, SetJobConfiguration with the date, ModeShift, EndJob), the page setup commands,
-    // the per-ink bit depths, and the raster bands. Plain paper: black and yellow 1 bit, cyan and magenta 2 bits per pixel.
-    // Photo paper: cyan, magenta and yellow only (no black), 2 bits per pixel. The driver only ever uses pixel value 1 in
-    // tones and solids at this quality, so a plain on / off dither is sent with "on" = value 1 (bits 01).
-    private const val W600 = 2240                       // printable width and height of a 4x6 sheet in 1/600 inch
+    // Written to match what Canon's own Windows G1010 driver sends. That driver was made to print to a file (no printer) at
+    // its Standard and High quality, bordered and borderless, on plain paper, Photo Paper Plus Glossy II and Matte Photo, and
+    // its bytes were compared command by command: the job wrapper (StartJob, SetJobConfiguration with the date, ModeShift,
+    // EndJob), the page setup commands, the per-ink bit depths, the skipping of blank bands, and the raster bands.
+    // Standard: plain paper black / yellow 1 bit, cyan / magenta 2 bits; photo paper cyan, magenta, yellow only, 2 bits.
+    // High: finer drops (quality byte 3): plain paper all four inks 2 bits, photo paper the same format with more levels.
+    private const val W600 = 2240                       // bordered print area of a 4x6 sheet, in 1/600 inch (offset 80, 70)
     private const val H600 = 3412
+    private const val WBL = 2533                        // borderless print area: the sheet plus the printer's overspray (offset -66, -47)
+    private const val HBL = 3766
+    private const val OFF_L = 66                        // where the sheet starts inside the borderless area
+    private const val OFF_T = 47
+    private const val SHEET_W = 2400
+    private const val SHEET_H = 3600
+    private const val JITTER = 0.5f                     // threshold noise of the dither, see lutPlanes
 
     /**
      * Turns a picture into ink planes the way Canon's driver does at this quality: each pixel's colour gives an ink amount per
      * ink (trilinear in the 9 x 9 x 9 table, in "average pixel value"), and an error-diffusion dither places pixel values 0..maxLv
      * so that their average is that amount (below 1: small dots at that rate; 1 to 2: a mix of small and bigger dots; ...).
+     * The dither scans left to right and back (serpentine) and adds a little threshold noise: plain Floyd-Steinberg leaves
+     * regular stripes in flat tones (a dot two pixels to its right 8 times out of 10 at mid-grey), which Canon's own output does
+     * not have; this version matches Canon's dot-to-dot statistics (measured on its chart) far more closely.
      * table: node = r * 81 + g * 9 + b, then one float per ink. bits: bits per pixel of each plane (1 or 2), packed MSB first.
      */
     private fun lutPlanes(bmp: Bitmap, w: Int, h: Int, table: FloatArray, bits: IntArray, maxLv: IntArray): Array<ByteArray> {
@@ -320,10 +332,13 @@ object CanonJob {
         var cur = Array(n) { FloatArray(w + 2) }
         var nxt = Array(n) { FloatArray(w + 2) }
         val a = FloatArray(n)
+        var rng = 0x2545F491
         for (y in 0 until h) {
             bmp.getPixels(px, 0, w, 0, y, w, 1)
             for (c in 0 until n) java.util.Arrays.fill(nxt[c], 0f)
-            for (x in 0 until w) {
+            val rev = (y and 1) == 1
+            for (k in 0 until w) {
+                val x = if (rev) w - 1 - k else k
                 val p = px[x]
                 val r = (p shr 16) and 0xFF
                 val g = (p shr 8) and 0xFF
@@ -346,8 +361,11 @@ object CanonJob {
                         w4 * table[o4 + c] + w5 * table[o5 + c] + w6 * table[o6 + c] + w7 * table[o7 + c]
                 }
                 for (c in 0 until n) {
+                    rng = rng * 1664525 + 1013904223
+                    if (a[c] < 0.004f) continue      // no ink wanted here: stays blank, no stray dots spill in from the row above
+                    val noise = ((rng ushr 8) * (1f / 16777216f) - 0.5f) * JITTER
                     val v = a[c] + cur[c][x + 1]
-                    var q = Math.round(v)
+                    var q = Math.round(v + noise)
                     if (q < 0) q = 0 else if (q > maxLv[c]) q = maxLv[c]
                     val err = v - q
                     if (q > 0) {
@@ -359,10 +377,17 @@ object CanonJob {
                             planes[c][bi] = (planes[c][bi].toInt() or (0x80 shr (x and 7))).toByte()
                         }
                     }
-                    cur[c][x + 2] += err * 7f / 16f
-                    nxt[c][x] += err * 3f / 16f
-                    nxt[c][x + 1] += err * 5f / 16f
-                    nxt[c][x + 2] += err * 1f / 16f
+                    if (rev) {                       // right to left: the error goes to the left pixel and the row below
+                        cur[c][x] += err * 7f / 16f
+                        nxt[c][x + 2] += err * 3f / 16f
+                        nxt[c][x + 1] += err * 5f / 16f
+                        nxt[c][x] += err * 1f / 16f
+                    } else {
+                        cur[c][x + 2] += err * 7f / 16f
+                        nxt[c][x] += err * 3f / 16f
+                        nxt[c][x + 1] += err * 5f / 16f
+                        nxt[c][x + 2] += err * 1f / 16f
+                    }
                 }
             }
             val t = cur; cur = nxt; nxt = t
@@ -370,33 +395,80 @@ object CanonJob {
         return planes
     }
 
-    private fun build600(src: Bitmap, widthMm: Double, heightMm: Double, media: Int, adj: PrintColorAdj): ByteArray {
+    private fun build600(src: Bitmap, widthMm: Double, heightMm: Double, media: Int, adj: PrintColorAdj, mono: Boolean,
+                         high: Boolean, borderless: Boolean): ByteArray {
         val photo = media != 0
+        val areaW = if (borderless) WBL else W600
+        val areaH = if (borderless) HBL else H600
         val needsRotate = src.width > src.height && widthMm <= heightMm
         val rotatedSrc = if (needsRotate) Bitmap.createBitmap(src, 0, 0, src.width, src.height, Matrix().apply { postRotate(90f) }, true) else src
-        val bmp = Bitmap.createBitmap(W600, H600, Bitmap.Config.ARGB_8888)
+        val bmp = Bitmap.createBitmap(areaW, areaH, Bitmap.Config.ARGB_8888)
         run {
             val canvas = Canvas(bmp)
+            canvas.drawColor(Color.WHITE)
             val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
-            val filter = adj.toColorFilter()
-            if (filter != null) paint.colorFilter = filter
-            val scale = Matrix()
-            scale.postScale(W600.toFloat() / rotatedSrc.width, H600.toFloat() / rotatedSrc.height)
-            canvas.drawBitmap(rotatedSrc, scale, paint)
+            val edge = Paint()                                                      // nearest pixel, for the repeated rim
+            val filter = if (mono) ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) }) else adj.toColorFilter()
+            if (filter != null) { paint.colorFilter = filter; edge.colorFilter = filter }
+            val sw = rotatedSrc.width
+            val sh = rotatedSrc.height
+            if (!borderless) {
+                val scale = Matrix()
+                scale.postScale(W600.toFloat() / sw, H600.toFloat() / sh)
+                canvas.drawBitmap(rotatedSrc, scale, paint)
+            } else {
+                // the picture fills the 4x6 sheet exactly (nothing of the design is cut off); the rim the printer sprays past the
+                // sheet repeats the picture's own edge pixels, so a sheet that sits a little off still has no white edge
+                val l = OFF_L; val t = OFF_T; val r = OFF_L + SHEET_W; val bt = OFF_T + SHEET_H
+                val scale = Matrix()
+                scale.postScale(SHEET_W.toFloat() / sw, SHEET_H.toFloat() / sh)
+                scale.postTranslate(l.toFloat(), t.toFloat())
+                canvas.drawBitmap(rotatedSrc, scale, paint)
+                canvas.drawBitmap(rotatedSrc, Rect(0, 0, 1, sh), Rect(0, t, l, bt), edge)                    // left
+                canvas.drawBitmap(rotatedSrc, Rect(sw - 1, 0, sw, sh), Rect(r, t, areaW, bt), edge)          // right
+                canvas.drawBitmap(rotatedSrc, Rect(0, 0, sw, 1), Rect(l, 0, r, t), edge)                     // top
+                canvas.drawBitmap(rotatedSrc, Rect(0, sh - 1, sw, sh), Rect(l, bt, r, areaH), edge)          // bottom
+                canvas.drawBitmap(rotatedSrc, Rect(0, 0, 1, 1), Rect(0, 0, l, t), edge)                      // corners
+                canvas.drawBitmap(rotatedSrc, Rect(sw - 1, 0, sw, 1), Rect(r, 0, areaW, t), edge)
+                canvas.drawBitmap(rotatedSrc, Rect(0, sh - 1, 1, sh), Rect(0, bt, l, areaH), edge)
+                canvas.drawBitmap(rotatedSrc, Rect(sw - 1, sh - 1, sw, sh), Rect(r, bt, areaW, areaH), edge)
+            }
         }
         if (rotatedSrc !== src) { try { rotatedSrc.recycle() } catch (_: Exception) {} }
         // Ink amounts per colour from Canon's own driver (CanonLut), then a multi-level dither. Planes in band order:
-        // photo paper C, M, Y (2 bits, values 0..3); plain paper C, M (2 bits, 0..2), Y, K (1 bit).
-        val bits = if (photo) intArrayOf(2, 2, 2) else intArrayOf(2, 2, 1, 1)
-        val maxLv = if (photo) intArrayOf(3, 3, 3) else intArrayOf(2, 2, 1, 1)
-        val planes = lutPlanes(bmp, W600, H600, CanonLut.table(media), bits, maxLv)
+        // photo paper C, M, Y (2 bits, 0..3); plain Standard C, M (2 bits, 0..2), Y, K (1 bit); plain High all 2 bits (C, M 0..3; Y, K 0..2).
+        val bits = if (photo) intArrayOf(2, 2, 2) else if (high) intArrayOf(2, 2, 2, 2) else intArrayOf(2, 2, 1, 1)
+        val maxLv = if (photo) intArrayOf(3, 3, 3) else if (high) intArrayOf(3, 3, 2, 2) else intArrayOf(2, 2, 1, 1)
+        val planes = lutPlanes(bmp, areaW, areaH, CanonLut.table(media, high), bits, maxLv)
         try { bmp.recycle() } catch (_: Exception) {}
 
+        // Bands (8 rows) with no ink in any plane are not sent: the driver skips them with ESC ( e <count>
+        val nBands = (areaH + LINES - 1) / LINES
+        val active = BooleanArray(nBands)
+        for (ch in planes.indices) {
+            val rbc = (areaW * bits[ch] + 7) / 8
+            for (y in 0 until areaH) {
+                if (active[y / LINES]) continue
+                val base = y * rbc
+                for (i in 0 until rbc) if (planes[ch][base + i].toInt() != 0) { active[y / LINES] = true; break }
+            }
+        }
+        var lead = 0
+        while (lead < nBands && !active[lead]) lead++
+
         // paper codes in the page-setup commands, as sent by the driver for these papers (plain; Photo Paper Plus Glossy II; Matte Photo)
-        val mediaC = when (media) { 1 -> 0x1D; 2 -> 0x0A; else -> 0x00 }
-        val mediaP = when (media) { 1 -> 0x32; 2 -> 0x1C; else -> 0x00 }
-        val mediaL = when (media) { 1 -> 0x23; 2 -> 0x10; else -> 0x00 }
-        val mediaW = when (media) { 1 -> 0x03; 2 -> 0x0F; else -> 0x00 }               // ESC ( w: another per-paper code in the driver's job
+        val mediaC = if (media == 1) 0x1D else if (media == 2) 0x0A else 0x00
+        val mediaP = if (media == 1) 0x32 else if (media == 2) 0x1C else 0x00
+        val mediaL = if (media == 1) 0x23 else if (media == 2) 0x10 else 0x00
+        val mediaW = if (media == 1) 0x03 else if (media == 2) 0x0F else 0x00           // ESC ( w: another per-paper code in the driver's job
+        val qual = if (high) 0x03 else 0x02
+        val pH = if (borderless) 0 else (H600 + 9) / 10
+        val pW = if (borderless) 0 else W600 / 10
+        val pLeft = if (borderless) -OFF_L else 80
+        val pTop = if (borderless) -OFF_T else 70
+        val pAreaW = if (borderless) WBL else W600
+        val pAreaH = if (borderless) HBL else H600
+        val inkFormat = if (photo) bytes(0x00, 0x00, 0x00, 0x02, 0x00, 0x04, 0x02, 0x00, 0x04, 0x02, 0x00, 0x04) else if (high) bytes(0x02, 0x00, 0x03, 0x02, 0x00, 0x04, 0x02, 0x00, 0x04, 0x02, 0x00, 0x03) else bytes(0x01, 0x00, 0x02, 0x02, 0x00, 0x03, 0x02, 0x00, 0x03, 0x01, 0x00, 0x02)
         val stamp = java.text.SimpleDateFormat("yyyyMMddHHmmss", java.util.Locale.US).format(java.util.Date())
         val uuid = java.util.UUID.randomUUID().toString().uppercase()
         val ns = "xmlns:ivec=\"http://www.canon.com/ns/cmd/2008/07/common/\""
@@ -417,15 +489,12 @@ object CanonJob {
         out.put(bytes(0x1B, 0x5B, 0x4B, 0x02, 0x00, 0x00, 0x0F))                      // reset
         out.put(bytes(0x1B, 0x28, 0x54, 0x03, 0x00, 0x03, 0x04, 0x04))                // (T) as sent by the Windows driver
         out.put(bytes(0x1B, 0x28, 0x62, 0x01, 0x00, 0x01))                            // data compression on
-        out.put(bytes(0x1B, 0x28, 0x63, 0x03, 0x00, 0x30, mediaC, 0x02))              // paper type, quality (Standard)
+        out.put(bytes(0x1B, 0x28, 0x63, 0x03, 0x00, 0x30, mediaC, qual))              // paper type, quality (2 Standard, 3 High)
         out.put(bytes(0x1B, 0x28, 0x64, 0x04, 0x00), be16(600), be16(600))            // resolution 600 x 600
         // ink formats in the order K, C, M, Y: (bits, 0, levels)
-        out.put(bytes(0x1B, 0x28, 0x74, 0x18, 0x00, 0x80, 0x80, 0x01),
-            if (photo) bytes(0x00, 0x00, 0x00, 0x02, 0x00, 0x04, 0x02, 0x00, 0x04, 0x02, 0x00, 0x04)
-            else bytes(0x01, 0x00, 0x02, 0x02, 0x00, 0x03, 0x02, 0x00, 0x03, 0x01, 0x00, 0x02),
-            bytes(0, 0, 0, 0, 0, 0, 0, 0, 0))
-        out.put(bytes(0x1B, 0x28, 0x70, 0x2E, 0x00), be16((H600 + 9) / 10), be16(0), be16(W600 / 10), be16(0), be32(0), be16(600),
-            be32(80), be32(70), be32(W600), be32(H600), be32(0), be32(0), be32(2400), be32(3600))   // print area and 4x6 sheet, in 1/600 inch
+        out.put(bytes(0x1B, 0x28, 0x74, 0x18, 0x00, 0x80, 0x80, 0x01), inkFormat, bytes(0, 0, 0, 0, 0, 0, 0, 0, 0))
+        out.put(bytes(0x1B, 0x28, 0x70, 0x2E, 0x00), be16(pH), be16(0), be16(pW), be16(0), be32(0), be16(600),
+            be32(pLeft), be32(pTop), be32(pAreaW), be32(pAreaH), be32(0), be32(0), be32(SHEET_W), be32(SHEET_H))   // print area and 4x6 sheet, in 1/600 inch
         out.put(bytes(0x1B, 0x28, 0x50, 0x09, 0x00, 0x00, 0x34, 0x00, mediaP, 0x01, 0x00, 0x01, 0x00, 0xFF))   // paper size 4x6, paper type
         out.put(bytes(0x1B, 0x28, 0x6C, 0x03, 0x00, 0x34, mediaL, 0x00))              // rear tray, paper type
         out.put(bytes(0x1B, 0x28, 0x76, 0x01, 0x00, 0x00))
@@ -436,18 +505,22 @@ object CanonJob {
         out.put(bytes(0x1B, 0x28, 0x62, 0x01, 0x00, 0x01))
         out.put(bytes(0x1B, 0x28, 0x49, 0x01, 0x00, 0x01))                            // multi-line raster on
         out.put(bytes(0x1B, 0x28, 0x4A, 0x01, 0x00, LINES))                           // 8 rows per band
+        if (lead > 0) out.put(bytes(0x1B, 0x28, 0x65, 0x02, 0x00), be16(lead))        // skip the blank bands at the top
         if (photo) out.put(bytes(0x1B, 0x28, 0x4C, 0x03, 0x00, 0x43, 0x4D, 0x59))     // channels C M Y
         else out.put(bytes(0x1B, 0x28, 0x4C, 0x04, 0x00, 0x43, 0x4D, 0x59, 0x4B))     // channels C M Y K
 
         val band = ByteArrayOutputStream()
-        for (b in 0 until (H600 + LINES - 1) / LINES) {
+        var gap = 0
+        for (b in lead until nBands) {
+            if (!active[b]) { gap++; continue }
+            if (gap > 0) { out.put(bytes(0x1B, 0x28, 0x65, 0x02, 0x00), be16(gap)); gap = 0 }       // skip blank bands in the page
             for (ch in planes.indices) {
                 band.reset()
                 var any = false
-                val rowBytes = (W600 * bits[ch] + 7) / 8
+                val rowBytes = (areaW * bits[ch] + 7) / 8
                 for (r in 0 until LINES) {
                     val y = b * LINES + r
-                    if (y < H600) {
+                    if (y < areaH) {
                         val pl = planes[ch]
                         var end = rowBytes
                         while (end > 0 && pl[y * rowBytes + end - 1].toInt() == 0) end--
@@ -458,7 +531,7 @@ object CanonJob {
                     }
                     band.write(0x80)                                                  // end of row
                 }
-                // a plane with nothing in this band is sent as an empty command, as the driver does
+                // an ink with nothing in this band is sent as an empty command, as the driver does
                 val data = if (any) band.toByteArray() else ByteArray(0)
                 out.put(bytes(0x1B, 0x28, 0x46, data.size, data.size shr 8), data)
             }

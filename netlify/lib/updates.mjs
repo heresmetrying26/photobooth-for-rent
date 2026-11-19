@@ -272,6 +272,12 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-19', title: 'Android 1.1.87: Canon G1010 prints sharper in High quality (600 dpi) and on photo paper', for: ['website'],
+    items: [
+      'Canon PIXMA G1010 (and G-series printers over USB): the High (600 dpi) quality is back and now works. It sends the same page data that Canon’s own Windows driver sends at its Standard 600 dpi setting, checked command by command with the driver, for 4x6 prints on plain paper. Photo paper (glossy) and matte photo paper are sent the way Canon’s driver sends them too: cyan, magenta and yellow ink only, 600 dpi. Other paper sizes stay at 300 dpi. Normal and Draft are unchanged. Please test a print on your own printer and tell us how it looks.'
+    ]
+  },
+  {
     date: '2026-11-19', title: 'Android 1.1.86: Canon PIXMA G1010 prints reliably over USB; Brother USB printers recognised', for: ['website'],
     items: [
       'Canon PIXMA G-series over USB (G1010 / G2010 and similar): prints at 300 dpi, the mode a G1010 was tried and printed on. The “Best (600 dpi, beta)” quality is removed for Canon printers because a G1010 did not print at all with it; use Normal or Draft. Newer G-series (G3010 family) ask the printer which page language it takes, and there is a new “Canon print language” choice in the printer options (Automatic is right for almost everyone).',

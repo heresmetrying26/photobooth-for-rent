@@ -186,6 +186,8 @@ object CanonJob {
     fun build(src: Bitmap, widthMm: Double, heightMm: Double, mono: Boolean, quality: Int = 1, media: Int = 0, adj: PrintColorAdj): ByteArray {
         val size = sizeCode(widthMm, heightMm)
             ?: throw IllegalArgumentException("This paper size isn't supported on Canon USB printers yet. Use 4x6, A4 or Letter.")
+        // 4x6 in High quality (600 dpi) or on photo / matte paper: the stream Canon's own Windows G1010 driver sends for that job.
+        if (size == 0x34 && !mono && (media != 0 || quality == 2)) return build600(src, widthMm, heightMm, media, adj)
         fun areaWOf(d: Int) = Math.round(minOf(widthMm, heightMm) / 25.4 * d).toInt() - 2 * MARGIN_SIDE * (d / DPI)
         fun areaHOf(d: Int) = ((Math.round(maxOf(widthMm, heightMm) / 25.4 * d).toInt() - (MARGIN_TOP + MARGIN_BOTTOM) * (d / DPI)) / LINES) * LINES
         // 300 dpi only. A client's real G1010 printed the test page and photos at 300 dpi (Normal) but did NOT print at all with
@@ -288,6 +290,142 @@ object CanonJob {
         out.put(bytes(0x1B, 0x28, 0x62, 0x01, 0x00, 0x00))                            // compression off
         out.put(bytes(0x1B, 0x40))                                                    // reset
         out.put(ascii(POST_XML))                                                       // end of job
+        return out.toByteArray()
+    }
+
+    // ── 600 dpi, 4x6 ────────────────────────────────────────────────────────────────────────────────────────────────
+    // Written to match what Canon's own Windows G1010 driver sends. That driver was made to print to a file (no printer) with
+    // Standard quality on plain paper and on Photo Paper Plus Glossy II / Matte Photo, and its bytes were compared command by
+    // command: the job wrapper (StartJob, SetJobConfiguration with the date, ModeShift, EndJob), the page setup commands,
+    // the per-ink bit depths, and the raster bands. Plain paper: black and yellow 1 bit, cyan and magenta 2 bits per pixel.
+    // Photo paper: cyan, magenta and yellow only (no black), 2 bits per pixel. The driver only ever uses pixel value 1 in
+    // tones and solids at this quality, so a plain on / off dither is sent with "on" = value 1 (bits 01).
+    private const val W600 = 2240                       // printable width and height of a 4x6 sheet in 1/600 inch
+    private const val H600 = 3412
+
+    /** One source byte (8 pixels, MSB first) as 16 bits: every set pixel becomes the 2-bit value 01. */
+    private val EXPAND2 = IntArray(256) { v ->
+        var o = 0
+        for (k in 0 until 8) if (((v shr (7 - k)) and 1) == 1) o = o or (1 shl (14 - 2 * k))
+        o
+    }
+
+    private fun expand2(row: ByteArray, off: Int, n: Int): ByteArray {
+        val o = ByteArray(n * 2)
+        for (i in 0 until n) {
+            val e = EXPAND2[row[off + i].toInt() and 0xFF]
+            o[2 * i] = (e shr 8).toByte(); o[2 * i + 1] = e.toByte()
+        }
+        return o
+    }
+
+    private fun build600(src: Bitmap, widthMm: Double, heightMm: Double, media: Int, adj: PrintColorAdj): ByteArray {
+        val photo = media != 0
+        val needsRotate = src.width > src.height && widthMm <= heightMm
+        val rotatedSrc = if (needsRotate) Bitmap.createBitmap(src, 0, 0, src.width, src.height, Matrix().apply { postRotate(90f) }, true) else src
+        val bmp = Bitmap.createBitmap(W600, H600, Bitmap.Config.ARGB_8888)
+        run {
+            val canvas = Canvas(bmp)
+            val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+            val filter = adj.toColorFilter()
+            if (filter != null) paint.colorFilter = filter
+            val scale = Matrix()
+            scale.postScale(W600.toFloat() / rotatedSrc.width, H600.toFloat() / rotatedSrc.height)
+            canvas.drawBitmap(rotatedSrc, scale, paint)
+        }
+        if (rotatedSrc !== src) { try { rotatedSrc.recycle() } catch (_: Exception) {} }
+        val rowBytes = (W600 + 7) / 8
+        val k = EscP2Job.cmykPlanes(bmp, W600, H600, rowBytes, if (photo) 1.3 else 1.6)       // K, C, M, Y
+        try { bmp.recycle() } catch (_: Exception) {}
+        val planes: Array<ByteArray>
+        if (photo) {
+            // photo paper has no black ink in the job: black parts go out as cyan + magenta + yellow
+            for (i in k[0].indices) {
+                val b = k[0][i].toInt()
+                if (b != 0) { for (pl in 1..3) k[pl][i] = (k[pl][i].toInt() or b).toByte() }
+            }
+            planes = arrayOf(k[1], k[2], k[3])                                               // C, M, Y
+        } else {
+            planes = arrayOf(k[1], k[2], k[3], k[0])                                         // C, M, Y, K
+        }
+        val twoBit = if (photo) booleanArrayOf(true, true, true) else booleanArrayOf(true, true, false, false)
+
+        // paper codes in the page-setup commands, as sent by the driver for these papers (plain; Photo Paper Plus Glossy II; Matte Photo)
+        val mediaC = when (media) { 1 -> 0x1D; 2 -> 0x0A; else -> 0x00 }
+        val mediaP = when (media) { 1 -> 0x32; 2 -> 0x1C; else -> 0x00 }
+        val mediaL = when (media) { 1 -> 0x23; 2 -> 0x10; else -> 0x00 }
+        val mediaW = when (media) { 1 -> 0x03; 2 -> 0x0F; else -> 0x00 }               // ESC ( w: another per-paper code in the driver's job
+        val stamp = java.text.SimpleDateFormat("yyyyMMddHHmmss", java.util.Locale.US).format(java.util.Date())
+        val uuid = java.util.UUID.randomUUID().toString().uppercase()
+        val ns = "xmlns:ivec=\"http://www.canon.com/ns/cmd/2008/07/common/\""
+        val nsV = "xmlns:vcn=\"http://www.canon.com/ns/cmd/2008/07/canon/\""
+        val decl = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>"
+        val out = ByteArrayOutputStream(1 shl 20)
+        out.put(ascii(decl + "<cmd $ns $nsV><ivec:contents><ivec:operation>StartJob</ivec:operation><ivec:param_set servicetype=\"print\">" +
+            "<ivec:jobID>00000001</ivec:jobID><ivec:bidi>0</ivec:bidi><ivec:jobname><![CDATA[photobooth4u]]></ivec:jobname>" +
+            "<ivec:username><![CDATA[photobooth4u]]></ivec:username><ivec:computername><![CDATA[Android]]></ivec:computername>" +
+            "<ivec:job_description><![CDATA[$uuid]]></ivec:job_description><vcn:host_environment>windows</vcn:host_environment>" +
+            "</ivec:param_set></ivec:contents></cmd>"))
+        out.put(ascii(decl + "<cmd $ns><ivec:contents><ivec:operation>SetJobConfiguration</ivec:operation><ivec:param_set servicetype=\"print\">" +
+            "<ivec:jobID>00000001</ivec:jobID><ivec:datetime>$stamp</ivec:datetime></ivec:param_set></ivec:contents></cmd>"))
+        out.put(ascii(decl + "<cmd $ns $nsV><ivec:contents><ivec:operation>VendorCmd</ivec:operation><ivec:param_set servicetype=\"print\">" +
+            "<vcn:ijoperation>ModeShift</vcn:ijoperation><vcn:ijmode>1</vcn:ijmode><ivec:jobID>00000001</ivec:jobID>" +
+            "</ivec:param_set></ivec:contents></cmd>"))
+
+        out.put(bytes(0x1B, 0x5B, 0x4B, 0x02, 0x00, 0x00, 0x0F))                      // reset
+        out.put(bytes(0x1B, 0x28, 0x54, 0x03, 0x00, 0x03, 0x04, 0x04))                // (T) as sent by the Windows driver
+        out.put(bytes(0x1B, 0x28, 0x62, 0x01, 0x00, 0x01))                            // data compression on
+        out.put(bytes(0x1B, 0x28, 0x63, 0x03, 0x00, 0x30, mediaC, 0x02))              // paper type, quality (Standard)
+        out.put(bytes(0x1B, 0x28, 0x64, 0x04, 0x00), be16(600), be16(600))            // resolution 600 x 600
+        // ink formats in the order K, C, M, Y: (bits, 0, levels)
+        out.put(bytes(0x1B, 0x28, 0x74, 0x18, 0x00, 0x80, 0x80, 0x01),
+            if (photo) bytes(0x00, 0x00, 0x00, 0x02, 0x00, 0x04, 0x02, 0x00, 0x04, 0x02, 0x00, 0x04)
+            else bytes(0x01, 0x00, 0x02, 0x02, 0x00, 0x03, 0x02, 0x00, 0x03, 0x01, 0x00, 0x02),
+            bytes(0, 0, 0, 0, 0, 0, 0, 0, 0))
+        out.put(bytes(0x1B, 0x28, 0x70, 0x2E, 0x00), be16((H600 + 9) / 10), be16(0), be16(W600 / 10), be16(0), be32(0), be16(600),
+            be32(80), be32(70), be32(W600), be32(H600), be32(0), be32(0), be32(2400), be32(3600))   // print area and 4x6 sheet, in 1/600 inch
+        out.put(bytes(0x1B, 0x28, 0x50, 0x09, 0x00, 0x00, 0x34, 0x00, mediaP, 0x01, 0x00, 0x01, 0x00, 0xFF))   // paper size 4x6, paper type
+        out.put(bytes(0x1B, 0x28, 0x6C, 0x03, 0x00, 0x34, mediaL, 0x00))              // rear tray, paper type
+        out.put(bytes(0x1B, 0x28, 0x76, 0x01, 0x00, 0x00))
+        out.put(bytes(0x1B, 0x28, 0x77, 0x01, 0x00, mediaW))                          // (w)
+        out.put(bytes(0x1B, 0x28, 0x43, 0x01, 0x00, 0x00))                            // (C)
+        out.put(bytes(0x1B, 0x28, 0x71, 0x01, 0x00, 0x01))                            // page id
+        out.put(bytes(0x1B, 0x28, 0x79, 0x04, 0x00, 0x00, 0x00, 0x00, 0x01))          // (y) one copy
+        out.put(bytes(0x1B, 0x28, 0x62, 0x01, 0x00, 0x01))
+        out.put(bytes(0x1B, 0x28, 0x49, 0x01, 0x00, 0x01))                            // multi-line raster on
+        out.put(bytes(0x1B, 0x28, 0x4A, 0x01, 0x00, LINES))                           // 8 rows per band
+        if (photo) out.put(bytes(0x1B, 0x28, 0x4C, 0x03, 0x00, 0x43, 0x4D, 0x59))     // channels C M Y
+        else out.put(bytes(0x1B, 0x28, 0x4C, 0x04, 0x00, 0x43, 0x4D, 0x59, 0x4B))     // channels C M Y K
+
+        val band = ByteArrayOutputStream()
+        for (b in 0 until (H600 + LINES - 1) / LINES) {
+            for (ch in planes.indices) {
+                band.reset()
+                var any = false
+                for (r in 0 until LINES) {
+                    val y = b * LINES + r
+                    if (y < H600) {
+                        val pl = planes[ch]
+                        var end = rowBytes
+                        while (end > 0 && pl[y * rowBytes + end - 1].toInt() == 0) end--
+                        if (end > 0) {
+                            any = true
+                            val raw = if (twoBit[ch]) expand2(pl, y * rowBytes, end) else pl.copyOfRange(y * rowBytes, y * rowBytes + end)
+                            band.write(EscprJob.packBits(raw, 1))
+                        }
+                    }
+                    band.write(0x80)                                                  // end of row
+                }
+                // a plane with nothing in this band is sent as an empty command, as the driver does
+                val data = if (any) band.toByteArray() else ByteArray(0)
+                out.put(bytes(0x1B, 0x28, 0x46, data.size, data.size shr 8), data)
+            }
+        }
+        out.put(bytes(0x1B, 0x28, 0x65, 0x02, 0x00, 0x00, 0x01))                      // end of page data
+        out.put(bytes(0x0C))                                                           // eject
+        out.put(bytes(0x1B, 0x28, 0x62, 0x01, 0x00, 0x00))                            // compression off
+        out.put(bytes(0x1B, 0x40))                                                    // reset
+        out.put(ascii(POST_XML))                                                       // end of job (job id 1)
         return out.toByteArray()
     }
 }

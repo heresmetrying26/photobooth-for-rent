@@ -20639,7 +20639,8 @@
                 <span class="panel-hint" style="font-size:12px;">Sends the printer's name, USB ID, which print method
                   the
                   app used and whether the print worked. No photos, no guest details, no network
-                  addresses.</span></span>
+                  addresses. A print error (or a failed test print) is always sent, even when this is
+                  off, so it can be fixed: only the printer's name, USB ID, paper size and the error message.</span></span>
             </label>
           </div>
 
@@ -38289,6 +38290,49 @@
         if (r.ok) j.res(r); else j.rej(new Error(r.error || 'The printer did not answer.'));
       };
       function wifiNetAvailable() { return !!(window.__PBNet && typeof window.__PBNet.scan === 'function'); }
+      // Epson ink-tank photo printers (L805, L3250, L8050, L18050...) take the same ESC/P-R job over Wi-Fi (port 9100) that the app
+      // sends over USB. When the standard Wi-Fi (IPP) job fails on one of them, for example an L18050 on its own Wi-Fi Direct
+      // network (192.168.223.1), the photo is sent that way instead. The L1xx models (ESC/P2) and 5-digit A3 models are left out.
+      const EPSON_L_NET_NAME = /\b(L\s?(2\d\d|3\d\d|5\d\d|8\d\d|[1-8]\d{3}|18050)|ET-?18100)\b/i;
+      function epsonLNetPrinter(p) { return !!(p && p.ip && !p.usb && !p.dialog && EPSON_L_NET_NAME.test(p.name || '')); }
+      // Printers (by address) that refused the standard job but took Epson's own: later prints in this app session go straight to it.
+      const wifiEscprFirst = {};
+      // An error that means the printer may already have the job (it was printing, or took too long): never send the photo twice.
+      function wifiJobMayHavePrinted(e) { return /stopped answering while printing|took too long to answer/i.test((e && e.message) || ''); }
+      // An error that means nothing reached the printer: the other way of sending can still be tried.
+      // ("connection reset" / "broken pipe" are NOT in this list: those happen after the photo started to go out.)
+      function wifiJobNeverSent(e) { return /could not reach|failed to connect|econnrefused|etimedout|ehostunreach|enetunreach|unreachable|no route to host|did not answer within/i.test((e && e.message) || ''); }
+      async function wifiPhotoJob(all, paper, p, wo) {
+        const ippRun = () => {
+          const imgs = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
+          return wifiJob(id => window.__PBNet.printIpp(id, p.ip, paper.w, paper.h, 1, JSON.stringify(imgs), JSON.stringify(wo)));
+        };
+        if (!epsonLNetPrinter(p) || typeof window.__PBNet.printEscpr !== 'function') return ippRun();
+        const rawRun = () => {
+          const pics = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
+          const escprOpts = Object.assign({}, wo, { borderless: !!(wo.borderless && epsonEscprBorderlessModel(Object.assign({}, p, { escpr: true })) && epsonEscprBorderlessOk(paper)) });
+          return wifiJob(id => window.__PBNet.printEscpr(id, p.ip, paper.w, paper.h, 1, JSON.stringify(pics), JSON.stringify(escprOpts)));
+        };
+        if (wifiEscprFirst[p.ip]) {
+          try { await rawRun(); return; }
+          catch (rawErr) {
+            if (!wifiJobNeverSent(rawErr)) throw rawErr;        // it may have started printing: do not send it again
+            delete wifiEscprFirst[p.ip];                         // could not connect on 9100: the standard job gets its turn again
+          }
+        }
+        try { await ippRun(); }
+        catch (ippErr) {
+          if (wifiJobMayHavePrinted(ippErr)) throw ippErr;
+          showToast('The printer did not take the standard Wi-Fi job. Trying Epson’s own print mode…', 5000);
+          try { await rawRun(); }
+          catch (rawErr) {
+            throw new Error((ippErr && ippErr.message || 'The printer did not answer.') + ' Epson’s own print mode (port 9100) did not work either: ' + String(rawErr && rawErr.message || rawErr).slice(0, 90));
+          }
+          wifiEscprFirst[p.ip] = true;
+          // Worked, but the standard job did not: tell the diagnostics why, so the cause can be fixed for this model.
+          pdiagSend('print', p, { ok: false, error: 'Standard job failed, printed with Epson ESC/P-R on 9100: ' + (ippErr && ippErr.message || ''), paper: { w: paper && paper.w, h: paper && paper.h, name: paper && paper.name }, opts: { quality: wo && wo.quality, color: wo && wo.color, media: wo && wo.media, borderless: wo && wo.borderless } });
+        }
+      }
       function wifiJob(start) {
         return new Promise((res, rej) => {
           const id = 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
@@ -38961,17 +39005,24 @@
       // Sends only: the printer's name, USB ids and the print method the app chose, the paper size and print options, and
       // whether the print worked (with the error text). No photos, no guest details, no IP addresses. Received by
       // netlify/functions/printerdiag.mjs, shown in Admin > Printer reports. Described in the Agreement.
-      const PDIAG_KEY = 'pb_printer_diag', PDIAG_SEEN_KEY = 'pb_printer_diag_seen', PDIAG_NOTICE_KEY = 'pb_printer_diag_notice';
+      // A print that FAILED (or a test print that failed) is always reported, whatever the switch says, so it can be fixed:
+      // only the printer's name and the error text go. The switch controls the other reports (printers detected, prints that worked).
+      const PDIAG_KEY = 'pb_printer_diag', PDIAG_SEEN_KEY = 'pb_printer_diag_seen', PDIAG_NOTICE_KEY = 'pb_printer_diag_notice', PDIAG_FORCED_NOTICE_KEY = 'pb_printer_diag_forced_notice';
       function pdiagOn() { try { return localStorage.getItem(PDIAG_KEY) !== '0'; } catch (e) { return true; } }
       function pdiagSend(kind, p, extra) {
         try {
-          if (!pdiagOn() || !p || p.dialog || !window.__PBNet) return;
+          const forced = kind === 'print' && !!extra && extra.ok === false;      // an error: sent even with the switch off
+          if (!p || !window.__PBNet) return;
+          if (!pdiagOn() && !forced) return;
+          if (p.dialog && !forced) return;                                      // the Android print screen: only a failure to open it is reported
+          if (p.dialog) p = { name: 'Android print screen' };
           let token = null, deviceId = null;
           try { token = localStorage.getItem('pb_token'); deviceId = localStorage.getItem('pb_device'); } catch (e) { }
           if (!token || !deviceId) return;
           const flags = {};
           ['usb', 'ipp', 'raw', 'escpr', 'epsonL', 'escp2', 'canon', 'selphy', 'dnp', 'noDriver', 'needsPermission', 'borderless'].forEach(k => { if (p[k]) flags[k] = true; });
-          const pr = { name: String(p.name || '').slice(0, 120), vid: p.vid | 0, pid: p.pid | 0, info: String(p.info || '').replace(/\b(SN|SERIAL|SERIALNUMBER|UUID):[^;]*;?/gi, '').slice(0, 300), model: String(p.epsonModel || p.dnpModel || p.canonModel || '').slice(0, 40), flags: flags };
+          const full = pdiagOn();      // with the switch off, an error goes with only the name, USB id, classification, paper size and error text
+          const pr = { name: String(p.name || '').slice(0, 120), vid: p.vid | 0, pid: p.pid | 0, info: full ? String(p.info || '').replace(/\b(SN|SERIAL|SERIALNUMBER|UUID):[^;]*;?/gi, '').slice(0, 300) : '', model: full ? String(p.epsonModel || p.dnpModel || p.canonModel || '').slice(0, 40) : '', flags: flags };
           const sig = pr.name + '|' + pr.vid + '|' + pr.pid + '|' + Object.keys(flags).sort().join(',');
           const day = new Date().toISOString().slice(0, 10);
           let seen = {};
@@ -38980,13 +39031,19 @@
           let key, limit;
           if (kind === 'detect') { key = 'd|' + sig; limit = 1; if (seen[key] && Date.now() - seen[key] < 7 * 86400000) return; }
           else { key = (extra && extra.ok ? 'ok|' : 'fail|') + sig + '|' + day; limit = extra && extra.ok ? 1 : 3; if ((seen[key] || 0) >= limit) return; }
-          if (!localStorage.getItem(PDIAG_NOTICE_KEY)) {
+          if (!pdiagOn()) {
+            // The switch is off but this is an error: say once that it was sent.
+            if (!localStorage.getItem(PDIAG_FORCED_NOTICE_KEY)) {
+              try { localStorage.setItem(PDIAG_FORCED_NOTICE_KEY, '1'); } catch (e) { }
+              showToast('A print error was sent to photobooth4u so it can be fixed: the printer name, USB ID, paper size and error message only. No photos or guest details.', 12000);
+            }
+          } else if (!localStorage.getItem(PDIAG_NOTICE_KEY)) {
             try { localStorage.setItem(PDIAG_NOTICE_KEY, '1'); } catch (e) { }
-            showToast('Printer diagnostics are on: the printer name, USB ID and whether prints work are sent to photobooth4u to fix printing problems. No photos or guest details. You can turn this off under Setup > Printer.', 14000);
+            showToast('Printer diagnostics are on: the printer name, USB ID and whether prints work are sent to photobooth4u to fix printing problems. No photos or guest details. You can turn the extra reports off under Setup > Printer; print errors are always sent.', 14000);
           }
           const ver = String((window.__PB && window.__PB.desktop && window.__PB.desktop.v) || (/PB4uAndroid\/?([\d.]*)/.exec(navigator.userAgent || '') || [])[1] || '');
           const body = { token: token, deviceId: deviceId, kind: kind, printer: pr, app: ver };
-          if (extra) { if (extra.paper) body.paper = extra.paper; if (extra.opts) body.opts = extra.opts; body.ok = !!extra.ok; if (extra.error) body.error = String(extra.error).slice(0, 200); }
+          if (extra) { if (extra.paper) body.paper = extra.paper; if (extra.opts && full) body.opts = extra.opts; body.ok = !!extra.ok; if (extra.error) body.error = String(extra.error).slice(0, 200); }
           fetch('/api/printerdiag', { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
             .then(r => {
               if (!r.ok) return;
@@ -39006,7 +39063,7 @@
         cb.checked = pdiagOn();
         cb.addEventListener('change', () => {
           try { localStorage.setItem(PDIAG_KEY, cb.checked ? '1' : '0'); } catch (e) { }
-          showToast(cb.checked ? 'Printer diagnostics on.' : 'Printer diagnostics off. Nothing will be sent.', 3000);
+          showToast(cb.checked ? 'Printer diagnostics on.' : 'Printer diagnostics off. Only print errors are still sent.', 3500);
         });
       })();
       // Prints that worked, by printer and paper size, so "Test a print" in the setup checklist can be ticked (kept on this tablet).
@@ -39031,7 +39088,7 @@
           printOkMark(p, paper);
           if (p && !p.dialog) pdiagSend('print', p, { ok: true, paper: { w: paper && paper.w, h: paper && paper.h, name: paper && paper.name }, opts: { quality: wo && wo.quality, color: wo && wo.color, media: wo && wo.media, borderless: wo && wo.borderless } });
         } catch (e) {
-          if (p && !p.dialog) pdiagSend('print', p, { ok: false, error: e && e.message, paper: { w: paper && paper.w, h: paper && paper.h, name: paper && paper.name }, opts: { quality: wo && wo.quality, color: wo && wo.color, media: wo && wo.media, borderless: wo && wo.borderless } });
+          if (p) pdiagSend('print', p, { ok: false, error: e && e.message, paper: { w: paper && paper.w, h: paper && paper.h, name: paper && paper.name }, opts: { quality: wo && wo.quality, color: wo && wo.color, media: wo && wo.media, borderless: wo && wo.borderless } });
           throw e;
         }
       }
@@ -39117,8 +39174,7 @@
         }
         if (!p.ipp) throw new Error(p.name + ' only takes receipts. Pick a photo printer.');
         if (p.usb) showToast('Allow USB access on the tablet if it asks.', 3000);
-        const imgs = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
-        await wifiJob(id => window.__PBNet.printIpp(id, p.ip, paper.w, paper.h, 1, JSON.stringify(imgs), JSON.stringify(wo)));
+        await wifiPhotoJob(all, paper, p, wo);
       }
 
       // One test sheet at the chosen paper size: not counted as a guest print and never starts auto-print,
@@ -39844,9 +39900,11 @@
                 return true;
               }
               showToast('Couldn’t open printing: ' + (r.error || 'unknown error'), 5500);
+              pdiagSend('print', { dialog: true }, { ok: false, error: 'Android print screen did not open: ' + (r.error || 'unknown error'), paper: { w: paper.w, h: paper.h, name: paper.name } });
               return false;
             } catch (e2) {
               showToast('Couldn’t open printing: ' + (e2.message || e2), 5500);
+              pdiagSend('print', { dialog: true }, { ok: false, error: 'Android print screen did not open: ' + (e2.message || e2), paper: { w: paper.w, h: paper.h, name: paper.name } });
               return false;
             }
           }

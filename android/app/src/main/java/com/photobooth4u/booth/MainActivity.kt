@@ -1048,6 +1048,7 @@ class MainActivity : AppCompatActivity() {
         val kioskStatus = if (isHome) "ACTIVE (Default Home App)" else "NOT SET (Tap to set as Home App)"
 
         val items = arrayOf(
+            "🖥️ Laptop Guest + Camera Bridge",
             "🌐 Booth Mode & URL (Online / Offline)",
             "🚀 Auto-Open on Boot: $autoBootStatus",
             "🔒 Kiosk Home App: $kioskStatus",
@@ -1058,8 +1059,9 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Operator Menu")
             .setItems(items) { _, which ->
                 when (which) {
-                    0 -> showUrlConfigDialog()
-                    1 -> {
+                    0 -> startActivity(Intent(this@MainActivity, GuestBridgeActivity::class.java))
+                    1 -> showUrlConfigDialog()
+                    2 -> {
                         val next = !autoBootPref
                         setAutoBootEnabled(next)
                         if (next && !hasOverlay && !isHome) {
@@ -1068,7 +1070,7 @@ class MainActivity : AppCompatActivity() {
                             showOperatorMenu()
                         }
                     }
-                    2 -> {
+                    3 -> {
                         AlertDialog.Builder(this)
                             .setTitle("Set as Kiosk Home App")
                             .setMessage("Setting photobooth4u as the tablet's Default Home app ensures that whenever the tablet powers on or unlocks, it boots straight into the booth and guests cannot exit.\n\nOn the next screen, tap \"Home app\" and choose photobooth4u.")
@@ -1080,7 +1082,7 @@ class MainActivity : AppCompatActivity() {
                             }
                             .show()
                     }
-                    3 -> openTabletSettings()
+                    4 -> openTabletSettings()
                 }
             }
             .setNegativeButton("Close", null)

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.76', date: '2026-11-19' },
   { version: '1.1.75', date: '2026-11-19' },
   { version: '1.1.74', date: '2026-11-19' },
   { version: '1.1.73', date: '2026-11-18' },
@@ -271,6 +272,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-19', title: 'Desktop 1.1.76 (Win/Mac) + Android 1.1.89: tablet as the booth camera keeps its live picture running, Epson Wi-Fi printing fallback, and failed prints reported', for: ['website', 'app'], app: '1.1.76',
+    items: [
+      '🖨️ Android app, Epson ink-tank photo printers over Wi-Fi (L805, L3250, L8050, L18050 and similar): when the standard Wi-Fi print job fails, for example on a printer’s own Wi-Fi Direct network, the photo is now sent in Epson’s own print mode (port 9100) instead, the same job the app already sends over USB. Once it works for a printer, later prints in that session go straight to it. A photo that may already be printing is never sent twice.',
+      '🩺 Printer reports (Admin): a print that fails, or a failed test print, is now always reported to Admin → Printer reports, even when “Send printer diagnostics” is switched off. Only the printer’s name, USB ID, paper size and the error message are sent; no photos, guest details or network addresses. With the switch on, everything is reported as before.',
+      '📷 Tablet as the booth camera (Laptop Guest + Camera Bridge): when the laptop was not showing the tablet’s own preview, the tablet camera could send the laptop only one picture every few seconds, so the laptop’s live view stayed black (“Waiting for the camera…”). The tablet app now keeps its camera feed running at full speed all the time. Update the tablet to Android 1.1.89, then tell us how the live view looks.',
+      '🖥️ Laptop app: Setup → Guest screen → Tablet Bridge now has a “Use tablet camera” button next to “Flip tablet camera”. The Camera menu hides itself when the laptop has only one camera, so if the tablet camera was not picked automatically there was no way to choose it by hand. The button picks it, remembers the choice, and says why if it cannot start.',
+      '📲 Tablet app: “🖥️ Laptop Guest + Camera Bridge” is now the first item of the Operator Menu (long-press the booth screen). Before, it was only inside “Booth Mode & URL”.'
+    ]
+  },
   {
     date: '2026-11-19', title: 'Android 1.1.88: Canon G1010 prints with Canon’s own colours, sharper, borderless on 4x6, and a slowest Best quality', for: ['website'],
     items: [

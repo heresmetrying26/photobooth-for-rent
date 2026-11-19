@@ -41284,6 +41284,8 @@ function renderTabletBridgeSetup(info) {
     flipBtn.disabled = !info.camConnected;
     flipBtn.textContent = 'Flip tablet camera (' + (info.facing === 'back' ? 'Rear' : 'Front') + ')';
   }
+  const useCamBtn = document.getElementById('tabletBridgeUseCamBtn');
+  if (useCamBtn) useCamBtn.disabled = !info.camConnected;
 
   if (wasCam !== tabletBridge.camConnected) {
     enumerateCameras().then(() => {
@@ -41369,6 +41371,34 @@ function renderTabletBridgeSetup(info) {
   if (flipBtn) flipBtn.addEventListener('click', () => {
     api.camCmd({ type: 'switchCam' });
   });
+
+  // A way to pick the tablet camera by hand. The Camera menu hides itself when there is only one choice (a laptop with no
+  // webcam), so if the automatic pick in renderTabletBridgeSetup() did not happen there was no way to choose it.
+  if (flipBtn && flipBtn.parentNode && !document.getElementById('tabletBridgeUseCamBtn')) {
+    const useBtn = document.createElement('button');
+    useBtn.type = 'button';
+    useBtn.className = 'action-btn';
+    useBtn.id = 'tabletBridgeUseCamBtn';
+    useBtn.style.cssText = 'width:auto; margin:0;';
+    useBtn.textContent = 'Use tablet camera';
+    useBtn.disabled = !tabletBridge.camConnected;
+    flipBtn.parentNode.insertBefore(useBtn, flipBtn);
+    useBtn.addEventListener('click', async () => {
+      if (!tabletCamAvailable()) { showToast('The tablet camera is not connected yet. Open the bridge on the tablet first.', 5000); return; }
+      useBtn.disabled = true;
+      try {
+        await enumerateCameras();
+        cameraSelect.value = TABLET_CAM_ID;
+        const ok = await initCamera(TABLET_CAM_ID);
+        try { saveCamera(); } catch (e) { }
+        showToast(ok ? 'Using the tablet camera.' : 'The tablet camera did not start. Check the tablet is still on the bridge screen.', 5000);
+      } catch (e) {
+        showToast('Tablet camera error: ' + ((e && e.message) || e), 6000);
+      } finally {
+        useBtn.disabled = !tabletBridge.camConnected;
+      }
+    });
+  }
 })();
       // One trigger for the guest screen, the keyboard and presenter clickers:
       // answers "Get ready", or starts a new session from the Photo Session tab.

@@ -701,12 +701,26 @@ class GuestBridgeActivity : AppCompatActivity() {
     private fun applyPreviewTransform() {
         if (!previewView.isAvailable || pvW <= 0 || pvH <= 0) return
         val lp = (previewView.layoutParams as? FrameLayout.LayoutParams) ?: FrameLayout.LayoutParams(pvW, pvH)
+        if (!pvVisible) {
+            // Never INVISIBLE or GONE while the camera runs. A TextureView that is not shown stops taking the camera's pictures,
+            // the camera then stalls, and the laptop gets one live picture every few seconds. When the laptop does not want the
+            // tablet's own preview on screen, keep the view shown but 2 px big and almost see-through so it keeps draining.
+            lp.width = 2
+            lp.height = 2
+            lp.leftMargin = 0
+            lp.topMargin = 0
+            previewView.layoutParams = lp
+            previewView.alpha = 0.02f
+            previewView.visibility = View.VISIBLE
+            return
+        }
         lp.width = pvW
         lp.height = pvH
         lp.leftMargin = pvLeft
         lp.topMargin = pvTop
         previewView.layoutParams = lp
-        previewView.visibility = if (pvVisible) View.VISIBLE else View.INVISIBLE
+        previewView.alpha = 1f
+        previewView.visibility = View.VISIBLE
 
         val viewW = pvW.toFloat()
         val viewH = pvH.toFloat()

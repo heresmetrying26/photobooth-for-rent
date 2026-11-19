@@ -4,6 +4,8 @@ import { safe, json, licenses, verifyToken, devicesOf, printerDiagStore } from '
 // Agreement describes it). The booth sends the printer's name, USB ids, which print method the app picked, the paper
 // and options, and whether the print worked. No photos, no guest details, no IP addresses. Admin > Printer reports
 // shows what came in, so an unknown printer (its USB id) or a failing one can be fixed.
+// A FAILED print (or failed test print) is reported even when the renter switched the diagnostics off: the booth then
+// sends only the printer's name, USB id, how the app classified it, the paper size and the error text. The Agreement wording must say so.
 //
 // POST { token, deviceId, kind: 'detect' | 'print', printer: { name, vid, pid, info, model, flags }, paper, opts, ok, error, app }
 // One document per printer model (not per booth), with counts, the codes that use it and the last few results.

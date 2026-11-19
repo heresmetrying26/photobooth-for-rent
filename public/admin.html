@@ -1635,8 +1635,10 @@
           <summary>
             <h2>Printer reports (Android app)</h2>
           </summary>
-          <div class="meta">What the Android app reports about printers when its "Send printer diagnostics" switch is on
-            (it is on by default and the renter can turn it off). One row per printer model: its USB ID, how the app
+          <div class="meta">What the Android app reports about printers. A print that fails (or a failed test print) is
+            always reported, with only the printer's name, USB ID, paper size and error message. The rest (printers detected, prints
+            that worked) is sent only while the "Send printer diagnostics" switch is on (on by default; the renter can
+            turn it off). One row per printer model: its USB ID, how the app
             classified it, how many prints worked or failed, the newest error and the last results. No photos, guest
             details or network addresses are sent. A printer shown as <b>no driver</b> or an unknown USB ID is one to
             add

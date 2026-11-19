@@ -29862,6 +29862,8 @@
       };
 
       function syncGuestUiScale() {
+        // The tablet's guest screen (Laptop Guest + Camera Bridge) reads the same size and opacity settings.
+        try { if (typeof tabletBridgeSync === 'function') tabletBridgeSync(); } catch (e) { }
         if (typeof localGuestOpen === 'function' && !localGuestOpen()) return;
         if (typeof G === 'undefined' || !G || !G.d || !G.d.documentElement) return;
         try {
@@ -29940,6 +29942,7 @@
       }
 
       function syncGuestEditorPreview(active) {
+        try { if (typeof tabletBridgeSync === 'function') tabletBridgeSync(); } catch (e) { }   // the tablet's guest screen shows the resize preview too
         if (typeof localGuestOpen === 'function' && !localGuestOpen()) return;
         if (typeof G === 'undefined' || !G || !G.d || !G.d.body) return;
         try {
@@ -30019,6 +30022,7 @@
 
       function openLayoutEditor() {
         layoutEditorActive = true;
+        try { if (typeof tabletBridgeSync === 'function') tabletBridgeSync(); } catch (e) { }
         document.body.classList.add('layout-editing');
         var bar = document.getElementById('layoutEditBar');
         if (bar) {
@@ -30099,6 +30103,7 @@
 
       function closeLayoutEditor() {
         layoutEditorActive = false;
+        try { if (typeof tabletBridgeSync === 'function') tabletBridgeSync(); } catch (e) { }
         document.body.classList.remove('layout-editing');
         var bar = document.getElementById('layoutEditBar');
         if (bar) bar.hidden = true;
@@ -40557,6 +40562,7 @@
         if (!qrPopOn || state !== 'result') return;
         var ov = document.getElementById('qrPopOv');
         qrPop.phase = 'wait';
+        try { if (typeof tabletBridgeSync === 'function') tabletBridgeSync(); } catch (e) { }   // the tablet's guest screen follows the same phases
         clearTimeout(resultTimer); runResultTimerBar(0);     // the "next guest" timer starts with the pop-up
         document.body.classList.add('qrpop-wait');
         ov.className = 'qrpop-ov wait'; ov.hidden = false;
@@ -40570,6 +40576,7 @@
         if (qrPop.phase !== 'wait' || state !== 'result') return;
         var ov = document.getElementById('qrPopOv'), slot = document.getElementById('qrPopSlot');
         qrPop.phase = 'show';
+        try { if (typeof tabletBridgeSync === 'function') tabletBridgeSync(); } catch (e) { }
         qrPop.home = qrSection.parentNode; qrPop.next = qrSection.nextSibling;
         slot.appendChild(qrSection);
         document.body.classList.remove('qrpop-wait');
@@ -40582,6 +40589,7 @@
         if (!qrPop.phase) return;
         clearTimeout(qrPop.timer); clearInterval(qrPop.draw);
         qrPop.timer = 0; qrPop.draw = 0; qrPop.phase = '';
+        try { if (typeof tabletBridgeSync === 'function') tabletBridgeSync(); } catch (e) { }
         if (qrPop.home && qrSection.parentNode !== qrPop.home) {
           if (qrPop.next && qrPop.next.parentNode === qrPop.home) qrPop.home.insertBefore(qrSection, qrPop.next);
           else qrPop.home.appendChild(qrSection);

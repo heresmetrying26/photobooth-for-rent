@@ -122,6 +122,10 @@ console.log('--- Testing Guest Screen + Camera Bridge ---');
   assert(html.includes('id="gPrintBtn"'), 'guestBridgeHtml has Print button');
   assert(html.includes('id="copiesModal"'), 'guestBridgeHtml has Copies modal');
   assert(html.includes('id="gNextBtn"'), 'guestBridgeHtml has Done / Next guest button');
+  // The tablet's guest screen follows the booth's size settings and the live resize preview, like the laptop's guest window
+  assert(html.includes('--ui-cd-scale') && html.includes('--ui-btn-scale') && html.includes('--ui-film-scale'), 'guest page uses the booth size settings');
+  assert(html.includes('body.edit-preview .cd') && html.includes("st.editPreview"), 'guest page has the live resize preview');
+  assert(html.includes("safe('QR codes'"), 'guest page draws the QR codes on their own, so another part cannot stop them');
   console.log('PASS: guestBridgeHtml syntax and print UI verified');
 }
 
@@ -169,6 +173,9 @@ try {
   const info1 = getBridgeInfo();
   assert.equal(info1.camConnected, true);
   assert.equal(info1.deviceName, 'HUAWEI MatePad Pro');
+  // Setup says which link the tablet came in on (here the test connects from this laptop itself)
+  assert(info1.via && info1.via.ip === '127.0.0.1', 'bridge info says which laptop address the tablet used');
+  assert.equal(info1.via.kind, 'USB cable (ADB)');
 
   // Stream preview binary JPEG frame -> read from /bridge-local/frame
   const fakePreview = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 0xff, 0xd9]);

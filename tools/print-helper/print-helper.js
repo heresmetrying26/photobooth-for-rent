@@ -328,7 +328,7 @@ $doc.add_PrintPage({
       $pa = $e.PageSettings.PrintableArea
       $w = [single]$pa.Width; $h = [single]($w * $img.Height / $img.Width)
       if ($pa.Height -gt 0 -and $h -gt $pa.Height) { $h = [single]$pa.Height; $w = [single]($h * $img.Width / $img.Height) }
-      $e.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
+      $e.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
       $e.Graphics.DrawImage($img, [single](($pa.Width - $w) / 2), [single]0, $w, $h)
       $script:i++
       $e.HasMorePages = ($script:i -lt $files.Count)

@@ -16583,11 +16583,11 @@
         return (sp === 'safe' || lv === 1) ? 1.5 : 1;
       }
 
-      // quality: 'best' (sharpened, dot-gain corrected, Atkinson dithering: crisp and not too dark),
-      //          'normal' (Floyd-Steinberg, the original look), 'draft' (coarse ordered dots: fast, light, saves heat).
+      // quality: 'best' (serpentine Stucki halftoning + noise-cored sharpen & dot-gain lift for non-receipt pages),
+      //          'normal' (serpentine Stucki halftoning, balanced shading), 'draft' (coarse ordered dots: fast, light, saves heat).
       function toReceiptCanvas(src, dotW, brightness, quality) {
         dotW = dotW || 576;
-        var q = (quality === 'best' || quality === 'draft') ? quality : 'normal';
+        var q = (quality === 'best' || quality === 'normal' || quality === 'draft') ? quality : 'best';
         var scale = dotW / src.width;
         var dotH = Math.max(1, Math.round(src.height * scale));
         var dst = document.createElement('canvas');
@@ -16598,26 +16598,51 @@
         ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(src, 0, 0, dotW, dotH);
         var id = ctx.getImageData(0, 0, dotW, dotH), d = id.data;
-        // brightness: -100 (darker) to +100 (lighter) offset for thermal dithering
-        var bOffset = (typeof brightness === 'number' && brightness !== 0) ? brightness * 1.28 : ((typeof window !== 'undefined' && window._colorAdj && typeof window._colorAdj.brightness === 'number' && window._colorAdj.brightness !== 0) ? window._colorAdj.brightness * 1.28 : ((typeof colorAdj !== 'undefined' && colorAdj && typeof colorAdj.brightness === 'number' && colorAdj.brightness !== 0) ? colorAdj.brightness * 1.28 : 0));
+        // Explicit numeric brightness (including 0 when printAdjust / receipt tone already ran) is always respected.
+        var bOffset = (typeof brightness === 'number')
+          ? brightness * 1.28
+          : (src && src._pbToneDone ? 0
+            : ((typeof window !== 'undefined' && window._colorAdj && typeof window._colorAdj.brightness === 'number' && window._colorAdj.brightness !== 0)
+              ? window._colorAdj.brightness * 1.28
+              : ((typeof colorAdj !== 'undefined' && colorAdj && typeof colorAdj.brightness === 'number' && colorAdj.brightness !== 0)
+                ? colorAdj.brightness * 1.28 : 0)));
         var n = dotW * dotH, lum = new Float32Array(n), x, y, i;
         for (i = 0; i < n; i++) lum[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
-        // A black & white receipt layout has already given its photos their tone (lift + contrast, and Lightness): lifting the
-        // mid-tones again here washed faces out and turned light backgrounds and stickers white.
-        // On 58mm mobile printers (384 dots), thermal heads heat rapidly with high dot-gain; lift mid-tones slightly more so photos don't bleed dark.
-        var lift = src && src._pbToneDone ? 1 : (dotW <= 384 ? 0.74 : 0.8);
-        if (q === 'best') {
-          // A light sharpen (so faces and text stay crisp) and a gentle lift of the mid-tones (thermal dots print bigger than they are).
-          var blur = new Float32Array(n);
-          for (y = 0; y < dotH; y++) for (x = 0; x < dotW; x++) {
-            var sum = 0, cnt = 0, yy, xx;
-            for (yy = Math.max(0, y - 1); yy <= Math.min(dotH - 1, y + 1); yy++) for (xx = Math.max(0, x - 1); xx <= Math.min(dotW - 1, x + 1); xx++) { sum += lum[yy * dotW + xx]; cnt++; }
-            blur[y * dotW + x] = sum / cnt;
+        // Receipt layouts already toned, shadow-recovered and sharpened their photo regions only (leaving text solid black).
+        // Non-receipt layouts printed on a thermal roll get highlight-safe dot-gain lift and noise-cored sharpening here.
+        var toneDone = !!(src && src._pbToneDone);
+        if (!toneDone && q !== 'draft') {
+          var lift = dotW <= 384 ? 0.75 : 0.80;
+          var lut = new Float32Array(256);
+          for (i = 0; i < 256; i++) {
+            var u = Math.pow(i / 255, lift);
+            u = u + 0.30 * u * (1 - u) * (u - 0.44);
+            lut[i] = Math.max(0, Math.min(255, u * 255));
           }
           for (i = 0; i < n; i++) {
-            var sh = lum[i] + 0.7 * (lum[i] - blur[i]);
-            sh = Math.max(0, Math.min(255, sh));
-            lum[i] = lift === 1 ? sh : 255 * Math.pow(sh / 255, lift);
+            var ki = (lum[i] + 0.5) | 0;
+            lum[i] = lut[ki < 0 ? 0 : ki > 255 ? 255 : ki];
+          }
+          if (q === 'best') {
+            // Noise-cored 3x3 unsharp mask: sharpens facial detail while skipping flat noise and pure black/white text.
+            var blur = new Float32Array(n);
+            for (y = 0; y < dotH; y++) {
+              var y0 = y > 0 ? y - 1 : 0, y1 = y + 1 < dotH ? y + 1 : dotH - 1;
+              for (x = 0; x < dotW; x++) {
+                var x0 = x > 0 ? x - 1 : 0, x1 = x + 1 < dotW ? x + 1 : dotW - 1;
+                var sum = 0, cnt = 0, yy, xx;
+                for (yy = y0; yy <= y1; yy++) for (xx = x0; xx <= x1; xx++) { sum += lum[yy * dotW + xx]; cnt++; }
+                blur[y * dotW + x] = sum / cnt;
+              }
+            }
+            for (i = 0; i < n; i++) {
+              if (lum[i] <= 8 || lum[i] >= 247) continue;
+              var df = lum[i] - blur[i], adf = df < 0 ? -df : df;
+              if (adf > 2.5) {
+                var mag = adf - 2.5; if (mag > 24) mag = 24;
+                lum[i] = Math.max(0, Math.min(255, lum[i] + (df < 0 ? -mag : mag) * 0.65));
+              }
+            }
           }
         }
         var out = new Uint8Array(n);
@@ -16629,33 +16654,36 @@
             out[y * dotW + x] = (lum[y * dotW + x] + bOffset) < t ? 0 : 255;
           }
         } else {
-          var curErr = new Float32Array(dotW + 4), nextErr = new Float32Array(dotW + 4), next2 = new Float32Array(dotW + 4), tmp;
-          // Atkinson drops a quarter of the error, so light greys go white: on a black & white receipt the wall behind the
-          // guests and light clothes vanished and faces floated on white. Those keep the receipt's own dots (Floyd-Steinberg,
-          // as on the screen and in the QR copy); Best still sharpens them.
-          var atk = q === 'best' && !(src && src._pbToneDone);
+          // Serpentine Stucki error diffusion (3-row, 100% tone conservation): eliminates unidirectional diagonal worms,
+          // keeps light walls & clothes shaded (never washed out like Atkinson), and keeps crisp pure-black text sharp.
+          var stride = dotW + 4;
+          var e0 = new Float32Array(stride), e1 = new Float32Array(stride), e2 = new Float32Array(stride), tmp;
           for (y = 0; y < dotH; y++) {
-            if (!atk) nextErr.fill(0);          // Atkinson keeps the carried-over rows
-            for (x = 0; x < dotW; x++) {
-              var l = lum[y * dotW + x] + curErr[x] + bOffset;
-              var v = l < 128 ? 0 : 255, e = l - v;
-              out[y * dotW + x] = v;
-              if (atk) {
-                // Atkinson: pass on 6/8 of the error to six neighbours; keeps highlights and shadows clean.
-                var e8 = e / 8;
-                curErr[x + 1] += e8; curErr[x + 2] += e8;
-                if (x > 0) nextErr[x - 1] += e8;
-                nextErr[x] += e8; nextErr[x + 1] += e8;
-                next2[x] += e8;
-              } else {
-                if (x + 1 < dotW) curErr[x + 1] += e * 7 / 16;
-                if (x > 0) nextErr[x - 1] += e * 3 / 16;
-                nextErr[x] += e * 5 / 16;
-                if (x + 1 < dotW) nextErr[x + 1] += e * 1 / 16;
+            var row = y * dotW, xi, l, v, e;
+            if ((y & 1) === 0) {
+              for (x = 0; x < dotW; x++) {
+                xi = x + 2;
+                l = lum[row + x] + e0[xi] + bOffset;
+                v = l < 128 ? 0 : 255;
+                e = (l - v) / 42;
+                out[row + x] = v;
+                e0[xi + 1] += e * 8; e0[xi + 2] += e * 4;
+                e1[xi - 2] += e * 2; e1[xi - 1] += e * 4; e1[xi] += e * 8; e1[xi + 1] += e * 4; e1[xi + 2] += e * 2;
+                e2[xi - 2] += e;     e2[xi - 1] += e * 2; e2[xi] += e * 4; e2[xi + 1] += e * 2; e2[xi + 2] += e;
+              }
+            } else {
+              for (x = dotW - 1; x >= 0; x--) {
+                xi = x + 2;
+                l = lum[row + x] + e0[xi] + bOffset;
+                v = l < 128 ? 0 : 255;
+                e = (l - v) / 42;
+                out[row + x] = v;
+                e0[xi - 1] += e * 8; e0[xi - 2] += e * 4;
+                e1[xi + 2] += e * 2; e1[xi + 1] += e * 4; e1[xi] += e * 8; e1[xi - 1] += e * 4; e1[xi - 2] += e * 2;
+                e2[xi + 2] += e;     e2[xi + 1] += e * 2; e2[xi] += e * 4; e2[xi - 1] += e * 2; e2[xi - 2] += e;
               }
             }
-            tmp = curErr; curErr = nextErr;
-            if (atk) { nextErr = next2; next2 = tmp; next2.fill(0); } else { nextErr = tmp; }
+            tmp = e0; e0 = e1; e1 = e2; e2 = tmp; e2.fill(0);
           }
         }
         for (i = 0; i < n; i++) { d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = out[i]; d[i * 4 + 3] = 255; }
@@ -33242,6 +33270,25 @@
           var nt = null; try { nt = camQTile(CAM_Q[img._cq], ctx, img, sx, sy, sw, sh, w, h); } catch (e) { nt = null; }
           if (nt) { ctx.drawImage(nt, 0, 0, nt.width, nt.height, x, y, w, h); return; }
         }
+        // Stepped halving shrink for high-res shots drawn into smaller output/receipt boxes (avoids 1-step aliasing).
+        if (!BOX_PROBE && (receiptPrintGrey || isOutputTarget(ctx.canvas))) {
+          let k = 1; try { const m = ctx.getTransform(); k = Math.hypot(m.a, m.b) || 1; } catch (e) { }
+          const tw = Math.max(1, Math.round(w * k)), th = Math.max(1, Math.round(h * k));
+          if (sw > tw * 2 && sh > th * 2) {
+            let cur = img, cx = sx, cy = sy, cw = sw, ch = sh;
+            while (cw > tw * 2 && ch > th * 2) {
+              const nw = Math.max(tw, Math.ceil(cw / 2)), nh = Math.max(th, Math.ceil(ch / 2));
+              const step = document.createElement('canvas'); step.width = nw; step.height = nh;
+              const sctx = step.getContext('2d');
+              sctx.imageSmoothingEnabled = true; sctx.imageSmoothingQuality = 'high';
+              sctx.drawImage(cur, cx, cy, cw, ch, 0, 0, nw, nh);
+              cur = step; cx = 0; cy = 0; cw = nw; ch = nh;
+            }
+            ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(cur, cx, cy, cw, ch, x, y, w, h);
+            return;
+          }
+        }
         ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
       }
@@ -34728,55 +34775,153 @@
       }
 
       // ---- Receipt layouts ----
-      // 576 px wide = 80 mm thermal paper at 203 dpi (the printer's own dots), so the
-      // black & white version prints sharp. Photos are dithered (tiny black dots, like
-      // a newspaper) because thermal printers can only print black.
+      // 576 px wide = 80 mm thermal paper at 203 dpi (the printer's own dots).
+      // On screen, QR copies, and photo paper, black & white receipts render as clean, smooth
+      // black & white (2x crisp on output targets, no grainy dithering). When building for a thermal
+      // roll (receiptPrintGrey), photo boxes get backlit shadow recovery, dot-gain tone mapping, and
+      // halo-free facial clarity while text & barcode stay pure solid black; the thermal printer step
+      // then converts the page to dots once at the printer's exact dot width.
       const RECEIPT_W = 576, RECEIPT_DPI = 203;
       const receiptTimes = {};
       function receiptTime(n) {
         if (!receiptTimes[n]) receiptTimes[n] = new Date();
         return receiptTimes[n];
       }
-      // While a receipt is built for a thermal print: photos stay grey (same tone and Lightness), and the printer step
-      // turns the page into dots once, at the printer's own width, with the chosen Print quality. Dotting them here as
-      // well meant the dots were resized (576 -> 575 -> 576 px) and dotted a second time: grainy, washed-out photos.
       let receiptPrintGrey = false;
+      let receiptPrint58 = false;
+      function receiptBoxBlur(src, w, h, r) {
+        const n = w * h, tmp = new Float32Array(n), out = new Float32Array(n);
+        const inv = 1 / (2 * r + 1);
+        for (let y = 0; y < h; y++) {
+          const row = y * w;
+          let acc = src[row] * (r + 1);
+          for (let x = 1; x <= r; x++) acc += src[row + (x < w ? x : w - 1)];
+          for (let x = 0; x < w; x++) {
+            tmp[row + x] = acc * inv;
+            const x0 = x - r, x1 = x + r + 1;
+            acc += src[row + (x1 < w ? x1 : w - 1)] - src[row + (x0 > 0 ? x0 : 0)];
+          }
+        }
+        for (let x = 0; x < w; x++) {
+          let acc = tmp[x] * (r + 1);
+          for (let y = 1; y <= r; y++) acc += tmp[(y < h ? y : h - 1) * w + x];
+          for (let y = 0; y < h; y++) {
+            out[y * w + x] = acc * inv;
+            const y0 = y - r, y1 = y + r + 1;
+            acc += tmp[(y1 < h ? y1 : h - 1) * w + x] - tmp[(y0 > 0 ? y0 : 0) * w + x];
+          }
+        }
+        return out;
+      }
       function ditherRegion(ctx, x, y, w, h) {
         x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
-        const grey = receiptPrintGrey;
-        const im = ctx.getImageData(x, y, w, h), d = im.data, g = new Float32Array(w * h);
-        // The printer's Lightness setting has to act here: the photo turns into black dots now, so the later
-        // lightness step (printAdjust) can no longer lighten it. Positive = lighter dots, negative = darker.
-        const adjB = (typeof colorAdj !== 'undefined' && colorAdj && Number(colorAdj.brightness)) || 0;
-        for (let i = 0, j = 0; i < d.length; i += 4, j++) {
-          let v = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-          v = (v - 128) * 1.18 + 136;                       // a little more contrast + lift: faces stay readable
-          if (adjB) { v = Math.max(0, Math.min(255, v + adjB * 1.28)); v = 255 * Math.pow(v / 255, 1 - adjB / 220); }
-          g[j] = v;
-        }
-        if (grey) {
-          for (let i = 0, j = 0; i < d.length; i += 4, j++) { d[i] = d[i + 1] = d[i + 2] = Math.max(0, Math.min(255, g[j])); d[i + 3] = 255; }
+        if (w <= 0 || h <= 0) return;
+        const im = ctx.getImageData(x, y, w, h), d = im.data;
+        if (!receiptPrintGrey) {
+          // Screen preview, QR digital copy, and photo paper: clean, plain smooth black & white (no grainy dithering).
+          for (let i = 0; i < d.length; i += 4) {
+            const v = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+            d[i] = d[i + 1] = d[i + 2] = v;
+            d[i + 3] = 255;
+          }
           ctx.putImageData(im, x, y);
           return;
         }
-        for (let yy = 0; yy < h; yy++) {
-          for (let xx = 0; xx < w; xx++) {
-            const j = yy * w + xx, old = g[j], nv = old < 128 ? 0 : 255, err = old - nv;
-            g[j] = nv;
-            if (xx + 1 < w) g[j + 1] += err * 7 / 16;
-            if (yy + 1 < h) {
-              if (xx > 0) g[j + w - 1] += err * 3 / 16;
-              g[j + w] += err * 5 / 16;
-              if (xx + 1 < w) g[j + w + 1] += err * 1 / 16;
-            }
+        // Thermal roll print: smooth grayscale tuned for 203 dpi thermal paper (applied to photo boxes only).
+        const n = w * h, g = new Float32Array(n);
+        for (let i = 0, j = 0; j < n; i += 4, j++) g[j] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        const adjB = (typeof colorAdj !== 'undefined' && colorAdj && Number(colorAdj.brightness)) || 0;
+        const tq = (typeof printPrefs !== 'undefined' && printPrefs && printPrefs.thermalQuality) || 'best';
+        // 1. Fast edge-preserving 3x3 bilateral denoise: smooths ISO noise in flat skies & skin without softening eyes.
+        const clean = new Float32Array(n);
+        clean.set(g);
+        const invT2 = 1 / 144;
+        for (let yy = 1; yy < h - 1; yy++) {
+          const rm = (yy - 1) * w, r0 = yy * w, rp = (yy + 1) * w;
+          for (let xx = 1; xx < w - 1; xx++) {
+            const c0 = g[r0 + xx];
+            let s = c0, sw = 1, v, df, wt;
+            v = g[rm + xx - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            v = g[rm + xx];     df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            v = g[rm + xx + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            v = g[r0 + xx - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            v = g[r0 + xx + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            v = g[rp + xx - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            v = g[rp + xx];     df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            v = g[rp + xx + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            clean[r0 + xx] = s / sw;
           }
         }
-        for (let i = 0, j = 0; i < d.length; i += 4, j++) { d[i] = d[i + 1] = d[i + 2] = g[j]; d[i + 3] = 255; }
+        // 2. Large-scale local illumination on 4x downsampled grid for backlit shadow recovery.
+        const ds = 4, sw = Math.max(4, Math.ceil(w / ds)), sh = Math.max(4, Math.ceil(h / ds));
+        const small = new Float32Array(sw * sh);
+        for (let sy = 0; sy < sh; sy++) {
+          const y0 = sy * ds, y1 = Math.min(h, y0 + ds);
+          for (let sx = 0; sx < sw; sx++) {
+            const x0 = sx * ds, x1 = Math.min(w, x0 + ds);
+            let sum = 0, cnt = 0;
+            for (let yy = y0; yy < y1; yy++) {
+              const rr = yy * w;
+              for (let xx = x0; xx < x1; xx++) { sum += clean[rr + xx]; cnt++; }
+            }
+            small[sy * sw + sx] = sum / cnt;
+          }
+        }
+        const sr = Math.max(3, Math.min(12, Math.round(Math.min(sw, sh) * 0.1)));
+        const locS = receiptBoxBlur(receiptBoxBlur(small, sw, sh, sr), sw, sh, sr);
+        // 3. Local shadow recovery + highlight-safe thermal dot-gain curve + printer Lightness (applied once).
+        const gBase = receiptPrint58 ? 0.75 : 0.80;
+        const B = 32, lut = new Float32Array(B * 256);
+        for (let b = 0; b < B; b++) {
+          const dark = b / (B - 1), effG = gBase / (1 + dark * 0.65), base = b * 256;
+          for (let k = 0; k < 256; k++) {
+            let u = Math.pow(k / 255, effG);
+            u = u + 0.38 * u * (1 - u) * (u - 0.42);
+            let v = u * 255;
+            if (v < 0) v = 0; else if (v > 255) v = 255;
+            if (adjB) {
+              v = Math.max(0, Math.min(255, v + adjB * 1.28));
+              v = 255 * Math.pow(v / 255, 1 - adjB / 220);
+            }
+            lut[base + k] = v;
+          }
+        }
+        const toned = new Float32Array(n);
+        for (let yy = 0; yy < h; yy++) {
+          const fy = Math.min(sh - 1.001, yy / ds), iy = fy | 0, wy = fy - iy;
+          const r0 = iy * sw, r1 = (iy + 1 < sh ? iy + 1 : iy) * sw, row = yy * w;
+          for (let xx = 0; xx < w; xx++) {
+            const fx = Math.min(sw - 1.001, xx / ds), ix = fx | 0, wx = fx - ix;
+            const ix1 = ix + 1 < sw ? ix + 1 : ix;
+            const loc = (locS[r0 + ix] * (1 - wx) + locS[r0 + ix1] * wx) * (1 - wy)
+              + (locS[r1 + ix] * (1 - wx) + locS[r1 + ix1] * wx) * wy;
+            const dark = loc < 155 ? (155 - loc) / 155 : 0;
+            const b = Math.round(dark * (B - 1));
+            const ki = (clean[row + xx] + 0.5) | 0;
+            toned[row + xx] = lut[b * 256 + (ki < 0 ? 0 : ki > 255 ? 255 : ki)];
+          }
+        }
+        // 4. Halo-free noise-cored detail sharpen + soft-clamped local facial clarity.
+        const fineAmt = tq === 'draft' ? 0.25 : (tq === 'normal' ? 0.45 : 0.65);
+        const clarAmt = tq === 'draft' ? 0 : (tq === 'normal' ? 0.22 : 0.35);
+        const fine = receiptBoxBlur(toned, w, h, 1);
+        const med = clarAmt > 0 ? receiptBoxBlur(toned, w, h, 3) : null;
+        for (let i = 0, j = 0; j < n; i += 4, j++) {
+          let df = toned[j] - fine[j];
+          const adf = df < 0 ? -df : df;
+          if (adf <= 2.5) df = 0;
+          else { const c = adf - 2.5; df = (df < 0 ? -1 : 1) * (c > 28 ? 28 : c); }
+          let dmSafe = 0;
+          if (med) { const dm = toned[j] - med[j]; dmSafe = dm / (1 + (dm / 28) * (dm / 28)); }
+          const v = Math.max(0, Math.min(255, Math.round(toned[j] + fineAmt * df + clarAmt * dmSafe)));
+          d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
+        }
         ctx.putImageData(im, x, y);
       }
       var receiptCustomNote = '';
       function composeReceipt(layoutKey, targetCanvas, shots) {
         const W = RECEIPT_W, M = 34, inner = W - 2 * M, color = !!layoutDef(layoutKey).color;
+        const sc = (!receiptPrintGrey && isOutputTarget(targetCanvas)) ? 2 : 1;
         const mono = "'Courier New', Courier, 'Liberation Mono', monospace";
         const n = Math.max(1, layoutDef(layoutKey).shots);
         let ph = Math.round(inner * 0.92), gap = 14;
@@ -34804,8 +34949,10 @@
         }
         const headH = 40 + lines.length * fs * 1.1 + (kick ? 34 : 0) + 40 + 34;
         const H = Math.round(headH + 30 + 40 + 30 + n * ph + (n - 1) * gap + 30 + 3 * 36 + 30 + 50 + 30 + 76 + 34 + 30 + 46 + rNoteH + 32 + 44);
-        targetCanvas.width = W; targetCanvas.height = H;
+        targetCanvas.width = Math.round(W * sc); targetCanvas.height = Math.round(H * sc);
         const ctx = targetCanvas.getContext('2d');
+        ctx.save();
+        if (sc !== 1) ctx.scale(sc, sc);
         ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
         ctx.fillStyle = '#000000'; ctx.textBaseline = 'alphabetic';
         let y = 40;
@@ -34824,9 +34971,8 @@
           const py = y + i * (ph + gap);
           ctx.fillStyle = '#ffffff'; ctx.fillRect(M, py, inner, ph);
           if (shots[i]) drawImageCover(ctx, shots[i], M, py, inner, ph);
-          // On a thermal roll the colour receipt prints like the black & white one: grey photos with the thermal tone and
-          // Lightness (else the wall, light clothes and faces went white and Lightness greyed the text into broken dots).
-          if (!color || receiptPrintGrey) ditherRegion(ctx, M, py, inner, ph);
+          // B&W receipts get clean plain grayscale on screen/QR/photo paper; thermal rolls get shadow-recovered thermal grey.
+          if (!color || receiptPrintGrey) ditherRegion(ctx, M * sc, py * sc, inner * sc, ph * sc);
         }
         ctx.fillStyle = '#000000';
         y += n * ph + (n - 1) * gap + 12;
@@ -34849,10 +34995,11 @@
         y += 46; text('THANK YOU!', 34, 700, 'center', y);
         if (rNote) { y += 34; text(rNote.toUpperCase(), 20, 700, 'center', y); }
         y += 32; text('PLEASE COME AGAIN', 20, 400, 'center', y);
+        ctx.restore();
         // The guest's stickers and the logo (a plain overlay frame would cover the receipt, so not that).
-        // Black & white receipt: stickers become dots like the photos (grey when printing: the printer step makes the dots).
+        // Black & white receipt: smooth B&W on screen/QR/photo paper; thermal-safe grey when printing on a thermal roll.
         const ov = overlay; overlay = null;
-        try { if (typeof drawDecorLayer === 'function') drawDecorLayer(ctx, W, H, receiptPrintGrey ? 'grey' : (color ? '' : 'dots')); } finally { overlay = ov; }
+        try { if (typeof drawDecorLayer === 'function') drawDecorLayer(ctx, targetCanvas.width, targetCanvas.height, receiptPrintGrey ? 'grey' : (color ? '' : 'f:bw')); } finally { overlay = ov; }
         return targetCanvas;
       }
 
@@ -36444,7 +36591,7 @@
           fit: ['auto', 'contain', 'fill', 'size'].includes(o.fit) ? o.fit : 'auto',
           photoSize: typeof o.photoSize === 'string' ? o.photoSize : '',
           borderless: !!o.borderless,
-          thermalQuality: ['best', 'normal', 'draft'].includes(o.thermalQuality) ? o.thermalQuality : 'normal',
+          thermalQuality: ['best', 'normal', 'draft'].includes(o.thermalQuality) ? o.thermalQuality : 'best',
           printerQuality: ['best', 'normal', 'draft'].includes(o.printerQuality) ? o.printerQuality : 'best',
           mediaType: typeof o.mediaType === 'string' ? o.mediaType : '',
           singleStrip: !!o.singleStrip,
@@ -36678,7 +36825,7 @@
 
         if (isReceipt) {
           body.appendChild(Object.assign(mkP('sub-label', 'Print quality'), { style: 'margin:0 0 6px;' }));
-          body.appendChild(mkChipRow([['best', 'Best'], ['normal', 'Normal'], ['draft', 'Draft']], opts.thermalQuality || 'normal', (v) => {
+          body.appendChild(mkChipRow([['best', 'Best'], ['normal', 'Normal'], ['draft', 'Draft']], opts.thermalQuality || 'best', (v) => {
             saveOptsForPrinter(pName, { thermalQuality: v }); refreshAll();
           }));
         } else if (!isIx) {
@@ -37445,11 +37592,11 @@
           const tqBox = document.getElementById('thermalQualityBox');
           if (tqBox) {
             tqBox.classList.toggle('hidden', !(paper && isReceiptPaper(printSize)));
-            const tq = printPrefs.thermalQuality || 'normal';
+            const tq = printPrefs.thermalQuality || 'best';
             [...document.querySelectorAll('#thermalQualityRow [data-tq]')].forEach(b => b.classList.toggle('active', b.dataset.tq === tq));
             document.getElementById('thermalQualityHint').textContent = {
-              best: 'Sharper and balanced darkness. Slower to prepare. Use this for photos on a thermal printer.',
-              normal: 'The standard look.',
+              best: 'Sharpest facial detail, shadow recovery and smooth shading. Recommended for photos on a thermal printer.',
+              normal: 'Balanced thermal shading with lighter sharpening.',
               draft: 'Coarse dots: quick, light, and gentle on the print head. Good for tests.'
             }[tq];
             try { thermalSmoothUI(); } catch (e) { }
@@ -37857,7 +38004,8 @@
         let src = document.createElement('canvas');
         src._hiRes = true;
         receiptPrintGrey = !!paper.receipt;
-        try { renderCompositeToCanvas(currentLayout, src); } finally { receiptPrintGrey = false; }
+        receiptPrint58 = !!(paper.receipt && paper.w <= 55);
+        try { renderCompositeToCanvas(currentLayout, src); } finally { receiptPrintGrey = false; receiptPrint58 = false; }
         src = btPrintCanvas(src, paper);          // card booth: front + back on one sheet
         if (paper.receipt) {
           // Exactly the printer's dots across (80 mm roll: 576, 58 mm: 384), so the receipt is never resized on the way;
@@ -37928,7 +38076,7 @@
       const MAX_COPIES = 10;
       const PRINT_TXT = { txtPrint: 'Print', txtPrinting: 'Printing, please hold…', txtCopies: 'How many copies?', txtLimit: 'That’s all the prints for this session' };
       // Saved with the setup (every device on the code gets them).
-      let printPrefs = { guestBtn: true, auto: false, printFirst: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'normal', printerQuality: 'best', mediaType: '', singleStrip: false, posterDpi: 0, edges: { t: 0, b: 0, l: 0, r: 0 }, voucherPrinter: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
+      let printPrefs = { guestBtn: true, auto: false, printFirst: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'best', printerQuality: 'best', mediaType: '', singleStrip: false, posterDpi: 0, edges: { t: 0, b: 0, l: 0, r: 0 }, voucherPrinter: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
       // Edges (per printer), in mm: + moves the picture in from that edge (for a printer that cuts it off), − moves it out (for a white line).
       const EDGE_MAX = 10, EDGE_MIN = -5;
       function cleanEdges(e) {
@@ -37945,7 +38093,7 @@
           copies: Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(p.copies) || 1))), guestCopies: !!p.guestCopies, guestReq: !!p.guestReq, preview: p.preview !== false,
           fit: ['auto', 'contain', 'fill', 'size'].includes(p.fit) ? p.fit : 'auto',
           photoSize: typeof p.photoSize === 'string' && /^[0-9A-Za-z.]{1,12}$/.test(p.photoSize) ? p.photoSize : '', borderless: !!p.borderless,
-          thermalQuality: ['best', 'normal', 'draft'].includes(p.thermalQuality) ? p.thermalQuality : 'normal',
+          thermalQuality: ['best', 'normal', 'draft'].includes(p.thermalQuality) ? p.thermalQuality : 'best',
           printerQuality: ['best', 'normal', 'draft'].includes(p.printerQuality) ? p.printerQuality : 'best',
           mediaType: typeof p.mediaType === 'string' ? p.mediaType.replace(/[<>]/g, '').slice(0, 80) : '',
           singleStrip: !!p.singleStrip,
@@ -38197,10 +38345,20 @@
       }
       function printPreviewPages() {
         const pages = printAdjustAll(flipbookResult ? buildFlipbookPages(paperFor(printSize)) : keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)]);
-        // A thermal receipt: show the dots the printer will make, with the chosen Print quality.
-        const pp = paperFor(printSize), T = window._btThermal;
-        if (pp && pp.receipt && T && T.toReceiptCanvas) {
-          try { return pages.map(c => T.toReceiptCanvas(c, pp.w <= 55 ? 384 : 576, 0, printPrefs.thermalQuality || 'normal')); } catch (e) { }
+        // A thermal receipt prints in black & white: show smooth plain grayscale in the preview (no grainy 1-bit dots).
+        const pp = paperFor(printSize);
+        if (pp && pp.receipt) {
+          return pages.map(c => {
+            if (!c || c._pbToneDone) return c;
+            try {
+              const g = document.createElement('canvas'); g.width = c.width; g.height = c.height;
+              const gx = g.getContext('2d'); gx.drawImage(c, 0, 0);
+              const id = gx.getImageData(0, 0, g.width, g.height), d = id.data;
+              for (let i = 0; i < d.length; i += 4) { const v = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]); d[i] = d[i + 1] = d[i + 2] = v; }
+              gx.putImageData(id, 0, 0);
+              return g;
+            } catch (e) { return c; }
+          });
         }
         return pages;
       }
@@ -38463,7 +38621,7 @@
         if (p && p.escp2 && !o.color) o.color = 'color';   // L120 / L121: colour enabled by default
         if (p && p.canon) o.canonMode = (st.canonMode === 'ivec' || st.canonMode === 'legacy') ? st.canonMode : '';   // Canon G-series page language: '' = automatic
         if (!pbDebug() && /^r(normal|best)$/.test(o.quality)) o.quality = '';         // beta qualities are debug only
-        o.thermalQuality = (printPrefs && printPrefs.thermalQuality) || 'normal';   // for receipt printers on Wi-Fi / USB
+        o.thermalQuality = (printPrefs && printPrefs.thermalQuality) || 'best';   // for receipt printers on Wi-Fi / USB
         o.cal = wifiCal;
         o.borderless = !!(printPrefs && printPrefs.borderless && window.__PBNet) && !(epsonLBorderlessModel(p) && !epsonLBorderlessOk(printSize));   // not on paper this Epson cannot print borderless
         // Lightness / colour correction is already in the page (printAdjust); the printer code must not add it again.
@@ -39118,9 +39276,6 @@
         // 58 mm Receipt size is picked). Before, only the two Receipt sizes worked and 4R gave "only takes receipts".
         if (p.raw && (paper.receipt || !p.ipp) && window._btThermal && window._btThermal.EscPosEncoder) {
           const dotW = (paper.receipt && paper.w <= 55) ? 384 : 576;
-          const bVal = (typeof window !== 'undefined' && window._colorAdj && typeof window._colorAdj.brightness === 'number' && window._colorAdj.brightness !== 0)
-            ? window._colorAdj.brightness
-            : ((typeof colorAdj !== 'undefined' && colorAdj && typeof colorAdj.brightness === 'number' && colorAdj.brightness !== 0) ? colorAdj.brightness : 0);
           const T = window._btThermal;
           const lv = (wo.tune >= 1 && wo.tune <= 4) ? wo.tune : (T.tuneGet ? T.tuneGet('raw:' + wifiPKey(p)) : 0);
           for (let i = 0; i < all.length; i++) {
@@ -39129,7 +39284,7 @@
             if (lv === 4) enc.slowPrint();
             // Fix: 58mm printers (dotW<=384) have tiny RAM buffers — use small bands to avoid overflow/glitch
             const _band58 = dotW <= 384 ? Math.min(32, T.rawTuneBand ? T.rawTuneBand(lv) : 32) : (T.rawTuneBand ? T.rawTuneBand(lv) : 256);
-            enc.image(T.toReceiptCanvas(cv, dotW, bVal, wo.thermalQuality || 'normal'), _band58);
+            enc.image(T.toReceiptCanvas(cv, dotW, 0, wo.thermalQuality || 'best'), _band58);
             // Fix: 58mm mobile printers have no auto-cutter — feed just 2 lines to reach tear bar without excess bottom space
             if (wo.noCut) enc.feed(wo.feed || 1); else if (dotW <= 384) enc.feed(2); else enc.cut();
             const bytes = enc.getBuffer();
@@ -39275,7 +39430,7 @@
           const rollW = (paper.w && paper.w <= 55) ? '58mm' : '80mm';
           showToast('Printing the darkness test strip…', 4000);
           if (isBtThermalRoute()) {
-            await window._btThermal.printViaBluetooth(cv, rollW, { brightness: 0, quality: printPrefs.thermalQuality || 'normal' });
+            await window._btThermal.printViaBluetooth(cv, rollW, { brightness: 0, quality: printPrefs.thermalQuality || 'best' });
           } else if (wifiPrinter && !wifiPrinter.dialog && wifiNetAvailable()) {
             await printViaWifi([cv], paper, wifiPrinter, wifiOpts(wifiPrinter));
           } else if (helperOn && printerFor(printSize)) {
@@ -39351,7 +39506,7 @@
           for (let lv = 1; lv <= 4; lv++) {
             const sec = smoothSection(W, lv, T.TUNE_NAMES[lv]), last = lv === 4;
             if (t.kind === 'bt') {
-              await T.printViaBluetooth(sec, rollW, { brightness: 0, quality: printPrefs.thermalQuality || 'normal', pace: T.btTunePacing(W, lv), cut: last, feed: last ? 4 : 1 });
+              await T.printViaBluetooth(sec, rollW, { brightness: 0, quality: printPrefs.thermalQuality || 'best', pace: T.btTunePacing(W, lv), cut: last, feed: last ? 4 : 1 });
             } else {
               const pp = Object.assign({}, paper, { h: Math.round(sec.height / RECEIPT_DPI * 254) / 10 });
               await printViaWifi([sec], pp, t.p, Object.assign(wifiOpts(t.p), { tune: lv, noCut: !last, feed: 1 }));
@@ -39771,7 +39926,7 @@
           if (isBtThermalRoute() && paper.receipt && (!fp || fpBt)) {
             try {
               const rollW = (paper.w && paper.w <= 55) ? '58mm' : '80mm';
-              const btOpts = { brightness: 0, quality: printPrefs.thermalQuality || 'normal' };          // colour already in the page (printAdjust)
+              const btOpts = { brightness: 0, quality: printPrefs.thermalQuality || 'best' };          // colour already in the page (printAdjust)
               let btDone = 0;          // pages already out: a print that waited for the printer carries on from the next one
               const btRun = async () => { for (; btDone < all.length; btDone++) await window._btThermal.printViaBluetooth(all[btDone], rollW, btOpts); };
               const btFail = (btErr) => queuedPrintFailed('Bluetooth print failed: ' + ((btErr && btErr.message) || btErr) + '.', all, paper);
@@ -41878,7 +42033,7 @@ function renderTabletBridgeSetup(info) {
             fit: printPrefs.fit || 'auto',
             photoSize: printPrefs.photoSize || '',
             borderless: !!printPrefs.borderless,
-            thermalQuality: printPrefs.thermalQuality || 'normal',
+            thermalQuality: printPrefs.thermalQuality || 'best',
             printerQuality: printPrefs.printerQuality || 'best',
             mediaType: typeof printPrefs.mediaType === 'string' ? printPrefs.mediaType : '',
             singleStrip: !!printPrefs.singleStrip,
@@ -41890,9 +42045,9 @@ function renderTabletBridgeSetup(info) {
       }
       function loadPrintOptsForPrinter(k) {
         try {
-          var o = printOptsMap[k] || { fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'normal', printerQuality: 'best', mediaType: '', singleStrip: false, posterDpi: 0 };
+          var o = printOptsMap[k] || { fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'best', printerQuality: 'best', mediaType: '', singleStrip: false, posterDpi: 0 };
           printPrefs.fit = o.fit || 'auto'; printPrefs.photoSize = o.photoSize || ''; printPrefs.borderless = !!o.borderless;
-          printPrefs.thermalQuality = ['best', 'normal', 'draft'].indexOf(o.thermalQuality) >= 0 ? o.thermalQuality : 'normal';
+          printPrefs.thermalQuality = ['best', 'normal', 'draft'].indexOf(o.thermalQuality) >= 0 ? o.thermalQuality : 'best';
           printPrefs.printerQuality = ['best', 'normal', 'draft'].indexOf(o.printerQuality) >= 0 ? o.printerQuality : 'best';
           printPrefs.mediaType = typeof o.mediaType === 'string' ? o.mediaType : '';
           printPrefs.singleStrip = !!o.singleStrip;
@@ -43849,8 +44004,10 @@ function renderTabletBridgeSetup(info) {
         var paper = paperFor(key), src = srcIn || plainResult;
         if (paper.receipt) {
           var rc = document.createElement('canvas');
-          rc.width = Math.round(paper.w / 25.4 * RECEIPT_DPI); rc.height = Math.round(src.height * rc.width / src.width);
-          var rx = rc.getContext('2d'); rx.fillStyle = '#ffffff'; rx.fillRect(0, 0, rc.width, rc.height); rx.drawImage(src, 0, 0, rc.width, rc.height);
+          rc.width = paper.w <= 55 ? 384 : RECEIPT_W; rc.height = Math.round(src.height * rc.width / src.width);
+          var rx = rc.getContext('2d'); rx.fillStyle = '#ffffff'; rx.fillRect(0, 0, rc.width, rc.height);
+          rx.imageSmoothingEnabled = true; rx.imageSmoothingQuality = 'high';
+          rx.drawImage(src, 0, 0, rc.width, rc.height);
           return rc;
         }
         if (src.width > src.height !== paper.w > paper.h) {          // a landscape photo on portrait paper prints turned 90°

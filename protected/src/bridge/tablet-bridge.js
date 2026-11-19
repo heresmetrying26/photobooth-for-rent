@@ -1,6 +1,10 @@
 // ---- Tablet Guest Screen + Camera Bridge (Android / Huawei MatePad Pro) ----
-const TABLET_CAM_ID = 'tablet-bridge';
-const tabletBridge = {
+// These are `var` on purpose, not const/let. This file is pasted in the middle of the booth script, but guestRender() and
+// the camera-list code run earlier, during start-up, and they call tabletGuestOpen() / tabletCamAvailable() and use
+// `typeof TABLET_CAM_ID`. A const/let that is not set yet throws "Cannot access ... before initialization" on the laptop
+// app (DESKTOP is true there), which stops the whole booth script and leaves "Tap to start" with no click handler (1.1.73).
+var TABLET_CAM_ID = 'tablet-bridge';
+var tabletBridge = {
   info: null,
   port: 0,
   connected: false,
@@ -17,8 +21,8 @@ const tabletBridge = {
   syncQueued: false
 };
 
-function tabletGuestOpen() { return !!(DESKTOP && tabletBridge.guestConnected); }
-function tabletCamAvailable() { return !!(DESKTOP && tabletBridge.camConnected && tabletBridge.port); }
+function tabletGuestOpen() { return !!(DESKTOP && tabletBridge && tabletBridge.guestConnected); }
+function tabletCamAvailable() { return !!(DESKTOP && tabletBridge && tabletBridge.camConnected && tabletBridge.port); }
 function tabletCamOptionLabel() {
   const nm = tabletBridge.deviceName || 'Tablet';
   const side = tabletBridge.facing === 'back' ? 'Rear' : 'Front';
@@ -195,7 +199,7 @@ function tabletGuestPrintState() {
   };
 }
 
-let bridgeRemoteCanvas = null;
+var bridgeRemoteCanvas = null;
 function syncRemoteFrameToBridge(active, bgActive) {
   if (active && tabletGuestOpen() && tabletBridge.port) {
     if (!tabletBridge.bgTimer) {

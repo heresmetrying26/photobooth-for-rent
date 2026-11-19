@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.74', date: '2026-11-19' },
   { version: '1.1.73', date: '2026-11-18' },
   { version: '1.1.72', date: '2026-11-18' },
   { version: '1.1.71', date: '2026-11-18' },
@@ -269,6 +270,12 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-19', title: 'Desktop 1.1.74 (Win/Mac): fixes "Tap to start" not responding in 1.1.73', for: ['website', 'app'], app: '1.1.74',
+    items: [
+      '👆 Fixed: in Desktop 1.1.73 the "Tap to start" screen could not be clicked, so the booth never opened. A start-up error in the new tablet guest-screen code stopped the booth page from finishing loading on the laptop app. If you are on 1.1.73, update to 1.1.74 from the update prompt on that screen (your activation, designs and photos stay).'
+    ]
+  },
   {
     date: '2026-11-19', title: 'Helper 1.1.13: Windows camera check says what Windows sees when a camera is not found', for: ['website', 'helper'], helper: '1.1.13',
     items: [

@@ -182,7 +182,7 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.10', date: '2026-10-28' };
+export const HELPER = { version: '1.1.13', date: '2026-11-19' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
@@ -269,6 +269,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-19', title: 'Helper 1.1.13: Windows camera check says what Windows sees when a camera is not found', for: ['website', 'helper'], helper: '1.1.13',
+    items: [
+      '🔍 When the Windows helper cannot find a camera, it now checks Windows’ USB list and says what it found instead of only "No camera found": a camera whose driver did not start, one Windows is still setting up, one that is disabled in Device Manager, or a USB device Windows could not read. Each message says what to try.',
+      '📝 The camera log now lists every camera-maker USB device Windows sees, with its device type, driver and Device Manager problem code, so a camera that shows up in Device Manager but not in the booth (for example a Canon EOS 1300D) can be traced from the Windows camera test report.'
+    ]
+  },
   {
     date: '2026-11-18', title: 'Desktop 1.1.73 (Win/Mac) + Android 1.1.85: Tablet Guest Screen + Camera Bridge & Guest Print Options', for: ['website', 'app'], app: '1.1.73',
     items: [

@@ -276,8 +276,9 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
-    date: '2026-11-19', title: 'Desktop 1.1.79 (Win/Mac): the tablet guest screen now matches the booth screen: photo after every shot, QR pop-up, screen sizes and live resize preview', for: ['website', 'app'], app: '1.1.79',
+    date: '2026-11-19', title: 'Desktop 1.1.79 (Win/Mac) + Android 1.1.91: the tablet guest screen now matches the booth screen, and Epson L8050 over USB prints High quality on glossy photo paper', for: ['website', 'app'], app: '1.1.79',
     items: [
+      '🖨️ Android app, Epson L8050 over USB: the printer does not list its print qualities or paper types over USB, so the app sent none of them and every job came out on the printer’s own default (plain paper, standard quality), and the Quality and Paper menus never appeared. The app now asks for the quality and paper you pick anyway, the menus are there (High / Normal / Draft, and Glossy / Semi-gloss / Matte / Plain paper), and the L8050 prints on High quality, glossy photo paper unless you choose otherwise. The app also recognises the L8050 by its name. We could not try this on a real L8050 yet: please print a test and tell us how it looks.',
       '📸 Tablet as the guest screen (Laptop Guest + Camera Bridge): the photo the booth shows after each shot (Setup: show each photo after it is taken) now shows on the tablet too, with Retake and Next photo.',
       '🔳 The QR pop-up (Setup → Step 7 “Show the QR code in a pop-up”) now works on the tablet: the finished photo on its own for a few seconds, then a card with a big QR code, Print and Done. With “no QR code” the card holds Print and Done only.',
       '📐 The screen sizes you set (Display & monitor size, and “Resize on the guest screen”) now apply to the tablet: the countdown, the buttons and the photo strip follow your sizes and see-through levels, with a live preview on the tablet while you resize.',

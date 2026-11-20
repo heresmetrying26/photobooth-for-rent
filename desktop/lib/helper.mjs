@@ -433,6 +433,7 @@ const MAC_EPSON_BORDERLESS_SCALE = 0.965;
 // leave about 0.5 mm past every edge (less shows white on some sheets: the feed varies about 0.3 mm). See shrinkBox for the fields.
 const MAC_EPSON_L8050_4X6 = { x: 0.9608, y: 0.9496, dx: 0.001, dy: -0.0045 };
 const EPSON_L8050 = /(?<![a-z0-9-])l[\s_-]?8050(?![0-9])/i;
+const L8050_WIN_GLOSSY = 'ns0000:EpsonPhotoPaperGlossy';       // the paper type name in the L8050's Windows driver (read from the driver on a real laptop)
 const EPSON = /epson|(?<![a-z0-9-])l[1-9]\d{2,3}(?![0-9])/i;
 const DYE_SUB = /selphy|(?<![a-z])cp[\s_-]?d?\d{2,4}(?![0-9])|(?<![a-z])dnp(?![a-z])|(?<![a-z])ds[\s_-]?(?:rx|\d)|hiti|mitsubishi|kodak|citizen|sinfonia|shinko|dye/i;
 async function macBorderlessScale(printer, pick) {
@@ -714,7 +715,13 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, c
   opts = opts || {};
   const twoUp = typeof opts.twoUp === 'boolean' ? opts.twoUp : undefined;
   const reqPaperName = typeof opts.paperName === 'string' ? opts.paperName.trim() : '';
-  const reqMediaType = typeof opts.mediaType === 'string' ? opts.mediaType.trim() : '';
+  let reqMediaType = typeof opts.mediaType === 'string' ? opts.mediaType.trim() : '';
+  // Hardcoded: an Epson L8050 on Windows with no paper type picked prints on Epson Photo Paper Glossy. Its Windows driver's own
+  // default is Plain paper (and Standard quality), so photos came out soft and dull, and an iPad that prints through this laptop
+  // never had a way to say otherwise. Picking a paper type in Print settings (Plain included) overrides it. If this driver does not
+  // list that paper type the print goes out as before and no warning is shown.
+  let defaultedMedia = false;
+  if (!reqMediaType && process.platform === 'win32' && EPSON_L8050.test(printer)) { reqMediaType = L8050_WIN_GLOSSY; defaultedMedia = true; }
   const warnings = [];
   const items = pageItems.map((p) => (Buffer.isBuffer(p) ? { buf: p, ext: 'png' } : p));
   const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
@@ -778,7 +785,7 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, c
     if (r.code !== 0) throw new Error((r.err || r.out || ('exit ' + r.code)).trim().slice(0, 300));
     for (const line of String(r.out || '').split(/\r?\n/)) {
       if (line.startsWith('info|')) log('Page: ' + line.slice(5));
-      else if (line.startsWith('warn|')) { const w = line.slice(5).trim(); if (w) { warnings.push(w); log('Warn: ' + w); } }
+      else if (line.startsWith('warn|')) { const w = line.slice(5).trim(); if (w && !(defaultedMedia && /did not accept paper type/i.test(w))) { warnings.push(w); log('Warn: ' + w); } }
     }
     return { warnings };
   } finally {

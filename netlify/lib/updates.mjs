@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.80', date: '2026-11-20' },
   { version: '1.1.79', date: '2026-11-19' },
   { version: '1.1.78', date: '2026-11-19' },
   { version: '1.1.77', date: '2026-11-19' },
@@ -275,6 +276,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-20', title: 'Desktop 1.1.80 (Win/Mac): an Epson L8050 on Windows prints on glossy photo paper by default (also for an iPad that prints through the laptop)', for: ['website', 'app'], app: '1.1.80',
+    items: [
+      '🖨️ Windows laptop app, Epson L8050: the printer’s Windows driver starts on Plain paper and Standard quality, so photos came out soft and dull unless a paper type was picked. The app already asks for Best quality; it now also asks for Epson Photo Paper Glossy when no paper type is picked. Choose another paper type (Plain paper included) in Print settings and that one is used instead. An iPad that opens the booth from this laptop (Setup → Share & start) prints through the same driver and gets the same result.',
+      '🧪 We could not try this on a real L8050 yet: print a test and tell us how it looks. Load glossy photo paper, or choose Plain paper in Print settings.'
+    ]
+  },
   {
     date: '2026-11-20', title: 'iPad 1.1.8: print straight to a Wi-Fi photo printer that is not AirPrint (Epson L8050)', for: ['website'],
     items: [

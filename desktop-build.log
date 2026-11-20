@@ -1,0 +1,27 @@
+
+> photobooth4u-desktop@1.1.82 dist:win
+> node scripts/prepare.mjs && electron-builder --win --publish never
+
+[prepare] fonts: 12 files
+[prepare] booth page: 3348147 chars
+[prepare] ffmpeg: bundled for the 360 desk
+[prepare] spin-fx: bundled animated overlay library
+[prepare] licence key: 4bb8f28ebb417fd3…
+[prepare] done -> C:\pbrel-1182\desktop\build
+  • electron-builder  version=26.15.3 os=10.0.26320
+  • loaded configuration  file=package.json ("build" field)
+  • skipped dependencies rebuild  reason=npmRebuild is set to false
+  • packaging       platform=win32 arch=x64 electron=37.10.3 appOutDir=dist\win-unpacked
+  • downloaded      label=electron progress=100%
+  • downloaded electron zip extracted successfully  output=C:\pbrel-1182\desktop\dist\win-unpacked
+  • searching for node modules  pm=npm searchDir=C:\pbrel-1182\desktop
+  • updating asar integrity executable resource  executablePath=dist\win-unpacked\photobooth4u.exe
+  • executing @electron/fuses  electronPath=dist\win-unpacked\photobooth4u.exe
+  • signing with signtool.exe  path=dist\win-unpacked\photobooth4u.exe
+  • signing with signtool.exe  path=dist\win-unpacked\resources\app.asar.unpacked\build\ffmpeg\ffmpeg.exe
+  • building        target=nsis file=dist\photobooth4u-1.1.82-windows-x64.exe archs=x64 oneClick=false perMachine=true
+  • signing with signtool.exe  path=dist\win-unpacked\resources\elevate.exe
+  • signing with signtool.exe  path=dist\photobooth4u-1.1.82-windows-x64.__uninstaller.exe
+  • signing with signtool.exe  path=dist\photobooth4u-1.1.82-windows-x64.exe
+  • building block map  blockMapFile=dist\photobooth4u-1.1.82-windows-x64.exe.blockmap
+exit 0

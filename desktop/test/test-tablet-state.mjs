@@ -288,5 +288,163 @@ await section(async () => {
   console.log('PASS: a screen that cannot be built is reported');
 });
 
+// 11. The mirror setting and the "Printing, please hold…" flag reach the tablet
+await section(async () => {
+  const { ctx, pushed } = makeCtx();
+  ctx.currentDeviceId = 'tablet-bridge';
+  ctx.mirrorPreview = () => true;
+  ctx.tabletBridgeSync(); await wait(150);
+  let p = last(pushed);
+  assert.equal(p.mirror, true, 'Mirror On: the tablet screen is told to mirror its own camera picture');
+  ctx.mirrorPreview = () => false;
+  ctx.tabletBridgeSync(); await wait(150);
+  assert.equal(last(pushed).mirror, false, 'Mirror Off reaches the tablet too');
+  // a laptop camera shown on the tablet as pictures: mirrored the same way
+  ctx.currentDeviceId = 'some-laptop-webcam'; ctx.mirrorPreview = () => true;
+  ctx.tabletBridgeSync(); await wait(150);
+  p = last(pushed);
+  assert.equal(p.useRemoteStream, true); assert.equal(p.remoteMirror, true); assert.equal(p.mirror, true);
+  // printing: the Print button says "Printing, please hold…" and the tablet shows it smaller
+  ctx.state = 'result'; ctx.shotCanvases = shots(4); ctx.sess = {}; ctx.printing = true;
+  ctx.tabletBridgeSync(); await wait(150);
+  p = last(pushed);
+  assert.equal(p.printShow, true); assert.equal(p.printBusy, true); assert.equal(p.printDisabled, true);
+  ctx.printing = false;
+  ctx.tabletBridgeSync(); await wait(150);
+  assert.equal(last(pushed).printBusy, false);
+  console.log('PASS: mirror setting and the printing flag reach the tablet');
+});
+
+// 12. The countdown voice: the tablet speaks when it can, the laptop otherwise (the real voice code from booth.src.html)
+await section(async () => {
+  const BOOTH = readFileSync(join(ROOT, 'protected', 'src', 'booth.src.html'), 'utf8');
+  const a = BOOTH.indexOf('// ---- Voice countdown:'), b = BOOTH.indexOf('// ---- Screen flash ----');
+  assert(a > 0 && b > a, 'the voice section is still in booth.src.html');
+  const { ctx } = makeCtx();
+  const sent = [];
+  ctx.window.pb4u.bridge.sendEvent = (e) => { sent.push(e); };
+  ctx.fx = { sound: true, vOn: true, vLang: 'en', vName: '', vCount: '3', vol: 0.7 };
+  ctx.navigator = { onLine: true };
+  ctx.refreshFxUI = () => { };
+  vm.runInContext(BOOTH.slice(a, b), ctx);
+  const EN = [{ name: 'en-us-x-tpd-local', lang: 'en-US', localService: true }, { name: 'en-gb-x-gba-network', lang: 'en-GB', localService: false }];
+  const FIL = [{ name: 'fil-ph-x-fie-local', lang: 'fil-PH', localService: true }];
+
+  // no tablet voice yet and no voice on the laptop: nothing speaks, the beeps are used
+  assert.equal(ctx.voiceViaTablet(), false); assert.equal(ctx.voiceActive(), false);
+  assert.equal(ctx.voiceSay('Three'), false); assert.equal(sent.length, 0);
+
+  // the tablet reports its voices (the "voiceCaps" action from its guest page)
+  ctx.tabletVoiceCaps({ voices: { en: EN, fil: [] } });
+  assert.equal(ctx.voiceViaTablet(), true); assert.equal(ctx.voiceActive(), true, 'voice is on, spoken by the tablet');
+  assert.equal(ctx.voiceEngine(), 'tablet');
+  assert.equal(ctx.voiceNumber(3), true);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].type, 'voice'); assert.equal(sent[0].text, 'Three'); assert.equal(sent[0].lang, 'en');
+  assert.equal(sent[0].name, 'en-us-x-tpd-local', 'a voice stored on the tablet is chosen before one that needs internet');
+  assert.equal(sent[0].vol, 0.85);
+  assert.equal(ctx.voiceNumber(5), true); assert.equal(sent.length, 1, 'numbers above 3 stay silent in the default setting');
+  ctx.voiceReady(0, false, 6);
+  assert.equal(sent[1].text, 'Get ready!');
+  assert.equal(ctx.voiceSmile(), true); assert.equal(sent[2].text, 'Smile!');
+  // the operator's chosen voice (one of the tablet's)
+  ctx.fx.vName = 'en-gb-x-gba-network';
+  ctx.voiceSay('One'); assert.equal(sent[3].name, 'en-gb-x-gba-network');
+  // Tagalog: only when the tablet has a Filipino voice
+  ctx.fx.vLang = 'fil'; ctx.fx.vName = '';
+  assert.equal(ctx.voiceLang(), 'en', 'no Tagalog voice on the tablet: English is used');
+  ctx.tabletVoiceCaps({ voices: { en: EN, fil: FIL } });
+  assert.equal(ctx.voiceLang(), 'fil');
+  ctx.voiceNumber(2);
+  assert.equal(sent[4].text, 'Dalawa'); assert.equal(sent[4].lang, 'fil'); assert.equal(sent[4].name, 'fil-ph-x-fie-local');
+  // a cancelled session stops the tablet's voice
+  ctx.voiceStop();
+  assert.equal(sent[sent.length - 1].type, 'voiceStop');
+  // voice switched off in Setup, or sound off: nothing is sent
+  const n = sent.length;
+  ctx.fx.vOn = false; ctx.voiceSay('One'); assert.equal(sent.length, n, 'voice off: the tablet says nothing');
+  ctx.fx.vOn = true; ctx.fx.sound = false; ctx.voiceSay('One'); assert.equal(sent.length, n, 'sound off: the tablet says nothing');
+  ctx.fx.sound = true;
+  // the tablet goes away: no voice command is sent any more (the laptop would speak, if it has a voice)
+  ctx.tabletBridge.guestConnected = false;
+  assert.equal(ctx.voiceViaTablet(), false); assert.equal(ctx.voiceSay('One'), false); assert.equal(sent.length, n);
+  console.log('PASS: the tablet speaks the countdown when it can');
+});
+
+// 13. Beeps and the shutter click: from the tablet when it can play them, from the laptop otherwise (the real sound code from booth.src.html)
+await section(async () => {
+  const BOOTH = readFileSync(join(ROOT, 'protected', 'src', 'booth.src.html'), 'utf8');
+  const a = BOOTH.indexOf('// ---- Sound ----'), b = BOOTH.indexOf('// ---- Screen flash ----');
+  assert(a > 0 && b > a, 'the sound section is still in booth.src.html');
+  assert(BOOTH.includes('/*@include sound/fx-sounds.js*/'), 'the built-in sounds file is included in the booth page');
+  const { ctx } = makeCtx();
+  const sent = [], played = [];
+  let lastGain = 0;
+  ctx.window.pb4u.bridge.sendEvent = (e) => { sent.push(e); };
+  Object.assign(ctx, { Float32Array, ArrayBuffer, DataView, Uint8Array, btoa, atob });
+  ctx.fx = { sound: true, vol: 0.7, sShut: null, sTick: null, vOn: false, vLang: 'en', vName: '', vCount: '3' };
+  ctx.navigator = { onLine: true }; ctx.refreshFxUI = () => { }; ctx.ASSETS = {};
+  ctx.document.addEventListener = () => { };
+  ctx.window.AudioContext = class {
+    constructor() { this.state = 'running'; this.currentTime = 0; this.destination = {}; }
+    createBuffer(ch, n) { return { n, d: new Float32Array(n), getChannelData() { return this.d; } }; }
+    createBufferSource() { const s = { buffer: null, connect() { }, start: () => played.push({ n: s.buffer.n, gain: lastGain }) }; return s; }
+    createGain() { return { gain: { set value(v) { lastGain = v; } }, connect() { } }; }
+    resume() { return Promise.resolve(); }
+  };
+  vm.runInContext(readFileSync(join(ROOT, 'protected', 'src', 'sound', 'fx-sounds.js'), 'utf8'), ctx);
+  vm.runInContext(BOOTH.slice(a, b), ctx);
+  const N = { shut: Math.round(0.26 * 44100), b1: Math.round(0.2 * 44100), b2: Math.round(0.14 * 44100), pose: Math.round(0.27 * 44100), chime: Math.round(0.3 * 44100) };
+
+  // no tablet that can play sounds: this device plays them
+  ctx.fxShutter(); ctx.fxBeep(1); ctx.fxBeep(2); ctx.fxPose(); ctx.fxStartChime();
+  assert.deepEqual(played.map((p) => p.n), [N.shut, N.b1, N.b2, N.pose, N.chime], 'every sound plays on this device');
+  assert(played.every((p) => p.gain === 0.7), 'at the booth\'s volume');
+  assert.equal(sent.length, 0);
+
+  // the tablet says it can play: the sounds go to it, the laptop is quiet
+  played.length = 0;
+  ctx.tabletBridge.soundOk = true;
+  assert.equal(ctx.tabletSoundOn(), true);
+  ctx.fxShutter(); ctx.fxBeep(1); ctx.fxBeep(2); ctx.fxPose(); ctx.fxStartChime(); ctx.fxTick(3);
+  assert.equal(played.length, 0, 'the laptop plays nothing');
+  assert.deepEqual(sent.map((e) => e.type + ':' + e.kind), ['sound:shut', 'sound:b1', 'sound:b2', 'sound:pose', 'sound:chime', 'sound:b2']);
+  assert(sent.every((e) => e.vol === 0.7));
+  // the operator's own sound files play a little louder
+  sent.length = 0; ctx.tabletBridge.soundOwn = { shut: true, tick: true };
+  ctx.fxShutter(); ctx.fxBeep(1); ctx.fxPose();
+  assert.equal(sent[0].vol, 0.77); assert.equal(sent[1].vol, 0.77); assert.equal(sent[2].vol, 0.7, 'the Pose chime has no own file');
+  // the voice says the numbers: no beeps from either
+  sent.length = 0; ctx.fx.vOn = true; ctx.tabletVoiceCaps({ voices: { en: [{ name: 'v', lang: 'en-US', localService: true }], fil: [] } });
+  ctx.fxTick(3); assert.equal(sent.length, 0, 'voice on: no beep');
+  ctx.fx.vOn = false;
+  // sound switched off in Setup: nothing anywhere
+  ctx.fx.sound = false; ctx.fxShutter(); ctx.fxBeep(1);
+  assert.equal(sent.length, 0); assert.equal(played.length, 0);
+  ctx.fx.sound = true;
+  // the tablet goes away: back to this device
+  ctx.tabletBridge.guestConnected = false;
+  ctx.fxShutter(); assert.equal(played.length, 1); assert.equal(sent.length, 0);
+  ctx.tabletBridge.guestConnected = true; ctx.tabletBridge.soundOk = false;
+  ctx.fxShutter(); assert.equal(played.length, 2, 'a tablet that cannot play yet: this device plays');
+
+  // the sound files go to the tablet once, and again only when the operator's own files change
+  sent.length = 0; ctx.tabletBridge.soundOwn = { shut: false, tick: false };
+  ctx.tabletSoundSync(true);
+  assert.equal(sent.length, 1); assert.equal(sent[0].type, 'sounds');
+  assert.deepEqual(Object.keys(sent[0].sounds).sort(), ['b1', 'b2', 'chime', 'pose', 'shut']);
+  assert(Object.values(sent[0].sounds).every((u) => u.startsWith('data:audio/wav;base64,')), 'all five are WAV files');
+  ctx.tabletSoundSync(); assert.equal(sent.length, 1, 'nothing changed: nothing sent again');
+  ctx.fx.sShut = { id: 'aOwnShutter01', name: 'my.wav' };
+  ctx.tabletSoundSync(); assert.equal(sent.length, 1, 'own file not downloaded yet: the built-in one stays');
+  ctx.ASSETS.aOwnShutter01 = { url: 'data:audio/wav;base64,QUJD' };
+  ctx.tabletSoundSync();
+  assert.equal(sent.length, 2); assert.equal(sent[1].sounds.shut, 'data:audio/wav;base64,QUJD', 'the operator\'s own shutter file goes to the tablet');
+  assert.equal(ctx.tabletBridge.soundOwn.shut, true); assert.equal(ctx.tabletBridge.soundOwn.tick, false);
+  ctx.fx.sShut = null; ctx.tabletSoundSync();
+  assert.equal(sent.length, 3); assert(sent[2].sounds.shut.length > 1000 && sent[2].sounds.shut !== 'data:audio/wav;base64,QUJD', 'own file removed: the built-in shutter goes back');
+  console.log('PASS: beeps and the shutter come from the tablet when it can play them');
+});
+
 if (failed) { console.log(failed + ' check(s) failed'); process.exit(1); }
 console.log('All tablet state tests passed!');

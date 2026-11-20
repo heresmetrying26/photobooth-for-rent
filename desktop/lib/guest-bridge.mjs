@@ -663,6 +663,7 @@ body.ps .film div:not(.f){display:none !important;}
 body.ps .gb{position:fixed;left:50%;bottom:max(18px,2.4vh);transform:translateX(-50%);z-index:45;display:flex;flex-direction:row;justify-content:center;gap:calc(12px * min(var(--ui-btn-scale,1),1.35));width:max-content;max-width:calc(100vw - 32px);flex-wrap:wrap;}
 body.ps .gbtn{background:rgba(0,0,0,.62);border:1.5px solid rgba(255,255,255,.32);color:#fff;padding:calc(12px * min(var(--ui-btn-scale,1),1.35)) calc(26px * min(var(--ui-btn-scale,1),1.35));min-height:calc(52px * min(var(--ui-btn-scale,1),1.35));font-size:calc(clamp(15px,1.3vw,24px) * min(var(--ui-btn-scale,1),1.35));white-space:nowrap;}
 body.ps .gbtn.strong{background:rgba(201,61,39,.95);border-color:transparent;}
+.gbtn.printing,.res-actions .gbtn.printing,body.ps .gbtn.printing{font-size:calc(clamp(11px,.95vw,17px) * min(var(--ui-btn-scale,1),1.35));padding-left:calc(14px * min(var(--ui-btn-scale,1),1.35));padding-right:calc(14px * min(var(--ui-btn-scale,1),1.35));white-space:normal;line-height:1.15;}
 body.ps.is-result .g{display:flex;align-items:center;justify-content:center;gap:3.5vw;padding:3vh 3.5vw;background:#0d0c0e;}
 body.ps.is-result .frame{position:relative;left:auto;top:auto;transform:none;width:auto !important;height:86vh !important;max-width:60vw;border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.55);}
 body.ps.is-result .side-r-res{display:flex;flex-direction:column;align-items:center;gap:16px;z-index:10;max-width:34vw;}
@@ -964,6 +965,7 @@ body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);h
       var showNext = !!(st.isResult && st.nextShow);
       els.resActions.classList.toggle('hide', !showPrint && !showNext);
       els.gPrintBtn.classList.toggle('hide', !showPrint);
+      els.gPrintBtn.classList.toggle('printing', !!(showPrint && st.printBusy));   // "Printing, please hold…" is long: smaller letters
       if (showPrint) {
         els.gPrintBtn.disabled = !!st.printDisabled;
         els.gPrintBtn.innerHTML = '🖨️ ' + (st.printLabel || 'Print') + (st.printSub ? '<small>' + st.printSub + '</small>' : '');
@@ -1026,12 +1028,145 @@ body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);h
     sendAction('trigger');
   });
 
+  // ---- Spoken countdown: the laptop sends the words, this tablet says them (the laptop stays quiet) ----
+  // The app's own text-to-speech (window.__PBVoice) is used when the tablet app has it; otherwise the page's speechSynthesis.
+  // The tablet tells the laptop which voices it has ("voiceCaps"); with none, the laptop keeps speaking itself.
+  var voiceReports = 0;
+  function voiceNative(){
+    try { var v = window.__PBVoice; return v && typeof v.speak === 'function' && typeof v.voices === 'function' ? v : null; } catch(e){ return null; }
+  }
+  function voiceWeb(){
+    try { return window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function' ? window.speechSynthesis : null; } catch(e){ return null; }
+  }
+  function voiceListFor(lang){
+    var out = [];
+    var nat = voiceNative();
+    if (nat) {
+      try {
+        out = JSON.parse(nat.voices(lang) || '[]').map(function(v){ return { name: String(v.name), lang: String(v.lang || ''), localService: !!v.local }; });
+      } catch(e){ out = []; }
+    } else {
+      var ss = voiceWeb();
+      if (ss) {
+        var re = lang === 'fil' ? /^(fil|tl)([-_]|$)/i : /^en([-_]|$)/i;
+        try {
+          out = (ss.getVoices() || []).filter(function(v){ return re.test(v.lang || ''); })
+            .map(function(v){ return { name: v.name, lang: v.lang, localService: !!v.localService }; });
+        } catch(e){ out = []; }
+      }
+    }
+    return out;
+  }
+  function reportVoices(){
+    var en = voiceListFor('en'), fil = voiceListFor('fil');
+    sendAction('voiceCaps', { voices: { en: en, fil: fil } });
+    // The speech engine takes a moment to start (and a browser fills its voice list late): look again for a while.
+    if (!en.length && ++voiceReports < 14) setTimeout(reportVoices, 1500);
+  }
+  function voiceSpeak(m){
+    var text = String(m.text || '');
+    if (!text) return;
+    var vol = Number(m.vol); if (!(vol > 0 && vol <= 1)) vol = 1;
+    var nat = voiceNative();
+    if (nat) { try { nat.speak(text, String(m.name || ''), vol); } catch(e){} return; }
+    var ss = voiceWeb();
+    if (!ss) return;
+    try {
+      if (ss.speaking || ss.pending) ss.cancel();      // never let a late word pile up behind the next one
+      if (ss.paused) ss.resume();
+      var u = new SpeechSynthesisUtterance(text);
+      var vs = ss.getVoices() || [], pick = null, i;
+      for (i = 0; i < vs.length; i++) { if (vs[i].name === m.name) { pick = vs[i]; break; } }
+      if (pick) { u.voice = pick; u.lang = pick.lang; } else { u.lang = m.lang === 'fil' ? 'fil-PH' : 'en-US'; }
+      u.volume = vol; u.rate = 1; u.pitch = 1;
+      ss.speak(u);
+    } catch(e){}
+  }
+  function voiceHush(){
+    var nat = voiceNative();
+    if (nat) { try { nat.stop(); } catch(e){} return; }
+    var ss = voiceWeb();
+    try { if (ss && (ss.speaking || ss.pending)) ss.cancel(); } catch(e){}
+  }
+  try { var ssv = voiceWeb(); if (ssv && ssv.addEventListener) ssv.addEventListener('voiceschanged', function(){ voiceReports = 0; reportVoices(); }); } catch(e){}
+
+  // ---- Beeps, "Pose" chime and the shutter click: the laptop sends the sound files once ("sounds"), then one "sound" message per beep ----
+  // The tablet tells the laptop when it can play them ("soundCaps"): the files are decoded and its audio is running. Until then, and in a
+  // browser that keeps audio locked until the first tap, the laptop plays them itself.
+  var SND_KINDS = ['shut', 'b1', 'b2', 'pose', 'chime'];
+  var snd = { ctx: null, bufs: {}, gen: 0, primed: false, lastOk: null };
+  function sndCtx(){
+    if (snd.ctx) return snd.ctx;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) { snd.ctx = new AC(); snd.ctx.onstatechange = function(){ reportSound(); }; }
+    } catch(e){ snd.ctx = null; }
+    return snd.ctx;
+  }
+  function sndUnlock(){
+    var c = snd.ctx;
+    if (!c) return;
+    if (c.state === 'suspended') { try { var p = c.resume(); if (p && p.catch) p.catch(function(){}); } catch(e){} }
+    if (!snd.primed) {
+      snd.primed = true;
+      try { var b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } catch(e){}
+    }
+  }
+  function sndReady(){
+    var c = snd.ctx, i;
+    if (!c || c.state !== 'running') return false;
+    for (i = 0; i < SND_KINDS.length; i++) { if (!snd.bufs[SND_KINDS[i]]) return false; }
+    return true;
+  }
+  function reportSound(force){
+    var ok = sndReady();
+    if (force === true || ok !== snd.lastOk) { snd.lastOk = ok; sendAction('soundCaps', { ok: ok }); }
+  }
+  function sndBytes(url){
+    var t = atob(String(url).split(',')[1] || ''), a = new Uint8Array(t.length), i;
+    for (i = 0; i < t.length; i++) a[i] = t.charCodeAt(i);
+    return a.buffer;
+  }
+  function sndDecode(c, ab){
+    return new Promise(function(res, rej){ try { var pr = c.decodeAudioData(ab, res, rej); if (pr && pr.then) pr.then(res, rej); } catch(e){ rej(e); } });
+  }
+  function sndLoad(m){
+    var c = sndCtx();
+    if (!c || !m || !m.sounds) return;
+    var gen = ++snd.gen;
+    var left = 0;
+    SND_KINDS.forEach(function(k){
+      var url = m.sounds[k];
+      if (typeof url !== 'string' || !url) return;
+      left++;
+      var done = function(){ if (--left === 0 && gen === snd.gen) reportSound(true); };
+      var bytes;
+      try { bytes = sndBytes(url); } catch(e){ done(); return; }
+      sndDecode(c, bytes).then(function(buf){ if (gen === snd.gen) snd.bufs[k] = buf; done(); }, function(){ done(); });
+    });
+    if (!left) reportSound(true);
+  }
+  function sndPlay(kind, vol){
+    var c = snd.ctx, b = snd.bufs[kind];
+    if (!c || !b) return;
+    if (c.state === 'suspended') sndUnlock();
+    try {
+      var s = c.createBufferSource(), g = c.createGain();
+      s.buffer = b; g.gain.value = (vol > 0 && vol <= 2) ? vol : 0.7;
+      s.connect(g); g.connect(c.destination); s.start(0);
+    } catch(e){}
+  }
+  ['pointerdown', 'touchstart', 'keydown'].forEach(function(ev){ document.addEventListener(ev, sndUnlock, true); });
+
   function connectWs(){
     var proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
     ws = new WebSocket(proto + location.host + base + '/ws?role=guest');
     ws.onopen = function(){
       els.conn.classList.add('hide');
       syncNativePreview();
+      voiceReports = 0;
+      reportVoices();
+      reportSound(true);
     };
     ws.onclose = function(){
       els.conn.textContent = 'Reconnecting to laptop…';
@@ -1057,6 +1192,14 @@ body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);h
         els.flash.style.cssText = m.on ? 'position:fixed;inset:0;background:#fff;opacity:1;z-index:99;transition:none;' : '';
       } else if (m.type === 'toast') {
         showToast(m.msg);
+      } else if (m.type === 'voice') {
+        voiceSpeak(m);
+      } else if (m.type === 'voiceStop') {
+        voiceHush();
+      } else if (m.type === 'sounds') {
+        sndLoad(m);
+      } else if (m.type === 'sound') {
+        sndPlay(m.kind, Number(m.vol));
       }
     };
   }

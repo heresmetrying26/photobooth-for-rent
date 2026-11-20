@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.82', date: '2026-11-20' },
   { version: '1.1.81', date: '2026-11-20' },
   { version: '1.1.80', date: '2026-11-20' },
   { version: '1.1.79', date: '2026-11-19' },
@@ -277,6 +278,17 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-20', title: 'Desktop 1.1.82 (Win/Mac) + Android 1.1.93: the tablet guest screen mirrors like the booth, and speaks, beeps and clicks by itself', for: ['website', 'app'], app: '1.1.82',
+    items: [
+      '🗣️ With a tablet guest screen connected, the voice countdown (“Get ready… Three, Two, One… Smile!”) is now said by the tablet, not the laptop. Setup → Session → Voice lists the tablet’s own voices while it is connected (Tagalog only if the tablet has a Filipino voice). With no tablet, or a tablet with no voice, the laptop speaks as before.',
+      '🔊 The countdown beeps, the “Pose” chime, the start chime and the shutter click now come out of the tablet too, and the laptop stays quiet. Your own uploaded shutter and beep files are sent to the tablet as well. If the tablet’s sound is not ready yet (a browser that wants one tap first), the laptop plays them as before.',
+      '📸 New built-in shutter sound: a camera-style “ka-chak” (clack, second clack, soft thump) instead of one plain click. You can still upload your own in Setup → Session → Sound.',
+      '🪞 Android tablet app 1.1.93: Mirror view in Setup → Camera now applies to the tablet’s own camera picture whichever camera is used. Before, the tablet only mirrored its front camera, so Mirror On did nothing on the rear camera. “Auto” follows the side the tablet reports, also after you flip the tablet camera. Update the tablet app for this one.',
+      '🖨️ The tablet’s Print button shows “Printing, please hold…” in smaller letters so it fits inside the button.',
+      '🧪 Not tried on a real tablet yet: please test the voice, the beeps, the shutter and Mirror, and tell us how they sound. The voice and the sounds need the new laptop app; Mirror and the tablet’s speech engine need the new tablet app too.'
+    ]
+  },
   {
     date: '2026-11-20', title: 'Desktop 1.1.81 (Win/Mac) + Android 1.1.92: Epson L8050 prints 4×6 borderless edge to edge', for: ['website', 'app'], app: '1.1.81',
     items: [

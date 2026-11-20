@@ -29367,6 +29367,8 @@
         try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
         const t = document.getElementById('mirrorToggle');
         if (t) t.checked = mirrorPreview();
+        // The tablet's guest screen mirrors its live picture from this same setting: send it the new value at once.
+        try { if (typeof tabletBridgeSync === 'function') tabletBridgeSync(); } catch (e) { }
       }
       (function () {
         const t = document.getElementById('mirrorToggle');
@@ -29385,6 +29387,8 @@
             if (meta.position) return meta.position === 'front';
           }
         }
+        // The tablet's camera: use the side the tablet itself reports (its menu name can be out of date after a flip).
+        if (typeof TABLET_CAM_ID !== 'undefined' && currentDeviceId === TABLET_CAM_ID && typeof tabletBridge !== 'undefined' && tabletBridge) return tabletBridge.facing !== 'back';
         const label = (cameraSelect.options[cameraSelect.selectedIndex]?.text || '').toLowerCase();
         // If label contains back/rear, don't mirror; otherwise default to mirroring
         return !label.includes('back') && !label.includes('rear') && !label.includes('environment');
@@ -52395,16 +52399,25 @@
       document.addEventListener('pointerdown', unlockAudio, true);
       document.addEventListener('keydown', unlockAudio, true);
       function soundOk() { const c = audioCtx(); return fx.sound && c && c.state === 'running' ? c : null; }
-      function tone(freq, dur, type, level, when) {
-        const c = soundOk(); if (!c) return;
-        const t = c.currentTime + (when || 0), o = c.createOscillator(), g = c.createGain();
-        o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
-        g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.45 * fx.vol * (level || 1)), t + 0.012);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-        o.connect(g); g.connect(c.destination);
-        o.start(t); o.stop(t + dur + 0.03);
+      // The built-in sounds (beeps, chimes, shutter) are sample arrays made in sound/fx-sounds.js: played here through a buffer.
+      const fxBufs = {};
+      function fxPlay(kind) {
+        const c = soundOk(); if (!c) return false;
+        let b = fxBufs[kind];
+        if (!b) {
+          const smp = fxSamples(kind);
+          b = c.createBuffer(1, smp.length, FX_SR);
+          b.getChannelData(0).set(smp);
+          fxBufs[kind] = b;
+        }
+        const s = c.createBufferSource(), g = c.createGain();
+        s.buffer = b; g.gain.value = fx.vol;
+        s.connect(g); g.connect(c.destination); s.start(c.currentTime);
+        return true;
       }
+      // With a tablet guest screen that can play sounds, the beeps and the shutter click come out of the tablet, not the laptop
+      // (tabletSoundOn / tabletSoundPlay in the tablet bridge). Sound off in Setup = nothing is sent.
+      function fxOnTablet(kind) { try { return typeof tabletSoundPlay === 'function' && fx.sound && tabletSoundPlay(kind); } catch (e) { return false; } }
       // ---- Own sounds (uploaded in Setup → 7 Session) ----
       const sndBufs = {};            // asset id -> decoded AudioBuffer
       function dataUrlBytes(url) {
@@ -52426,6 +52439,7 @@
           sndBufs[o.id] = 'loading';
           decodeAudio(c, dataUrlBytes(rec.url)).then(function (b) { sndBufs[o.id] = b; }, function () { delete sndBufs[o.id]; });
         });
+        try { if (typeof tabletSoundSync === 'function') tabletSoundSync(); } catch (e) { }   // the tablet gets the operator's own sound files too
         if (waiting && (tries || 0) < 15) setTimeout(function () { prepSounds((tries || 0) + 1); }, 2000);
       }
       function playOwn(o) {
@@ -52467,24 +52481,12 @@
         for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
         return 'data:audio/wav;base64,' + btoa(bin);
       }
-      function fxBeep(n) { if (playOwn(fx.sTick)) return; tone(n === 1 ? 988 : 740, n === 1 ? 0.16 : 0.1, 'sine', 0.9); }
+      /*@include sound/fx-sounds.js*/
+      function fxBeep(n) { const k = n === 1 ? 'b1' : 'b2'; if (fxOnTablet(k)) return; if (playOwn(fx.sTick)) return; fxPlay(k); }
       function fxTick(n) { if (voiceActive()) return; fxBeep(n); }       // the voice says the numbers instead of the beeps
-      function fxPose() { tone(1175, 0.09, 'triangle', 0.7); tone(1568, 0.14, 'triangle', 0.6, 0.08); }
-      function fxShutter() {
-        if (playOwn(fx.sShut)) return;
-        const c = soundOk(); if (!c) return;
-        const t = c.currentTime, len = Math.floor(c.sampleRate * 0.11), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
-        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
-        [0, 0.075].forEach(function (at, k) {
-          const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
-          s.buffer = buf; f.type = 'bandpass'; f.frequency.value = k ? 1800 : 3200; f.Q.value = 0.9;
-          g.gain.value = (k ? 0.5 : 0.9) * fx.vol;
-          s.connect(f); f.connect(g); g.connect(c.destination);
-          s.start(t + at);
-        });
-        tone(140, 0.07, 'sine', 0.8);
-      }
-      function fxStartChime() { tone(880, 0.1, 'sine', 0.7); tone(1320, 0.16, 'sine', 0.6, 0.09); }
+      function fxPose() { if (fxOnTablet('pose')) return; fxPlay('pose'); }
+      function fxShutter() { if (fxOnTablet('shut')) return; if (playOwn(fx.sShut)) return; fxPlay('shut'); }
+      function fxStartChime() { if (fxOnTablet('chime')) return; fxPlay('chime'); }
 
       // ---- Voice countdown: "Get ready ... Three, Two, One ... Smile!" ----
       // The device's own voice (speechSynthesis): no sound files, works offline with the
@@ -52507,7 +52509,9 @@
       function voiceNative() {
         try { const V = window.__PBVoice; return V && typeof V.speak === 'function' && typeof V.voices === 'function' ? V : null; } catch (e) { return null; }
       }
-      function voiceEngine() { return voiceNative() ? 'native' : voiceSynth() ? 'web' : ''; }
+      // The laptop app with a tablet guest screen connected: the tablet says the countdown (see tabletVoiceOn in the tablet bridge).
+      function voiceViaTablet() { try { return typeof tabletVoiceOn === 'function' && tabletVoiceOn(); } catch (e) { return false; } }
+      function voiceEngine() { return voiceViaTablet() ? 'tablet' : voiceNative() ? 'native' : voiceSynth() ? 'web' : ''; }
       // The app's voice list is asked for once per language and kept. Asking is a blocking call into the app (on the iPad it
       // lists every voice installed on the device), and every spoken countdown number asked several times, so the camera
       // picture stalled each time the countdown counted down.
@@ -52515,7 +52519,9 @@
       function voicesFor(lang) {
         let all = [];
         const V = voiceNative();
-        if (V) {
+        if (voiceViaTablet()) {
+          all = tabletVoiceList(lang);      // the tablet's voices, not this laptop's
+        } else if (V) {
           const key = lang === 'fil' ? 'fil' : 'en';
           if (!voiceNativeCache[key]) {
             try {
@@ -52537,7 +52543,7 @@
       }
       // A readable name for the voice picker (Android voice names look like en-us-x-tpd-local).
       function voiceLabel(v) {
-        if (voiceNative()) return v.name.replace(/-local$/i, '').replace(/-network$/i, ' (needs internet)');
+        if (voiceNative() || voiceViaTablet()) return v.name.replace(/-local$/i, '').replace(/-network$/i, ' (needs internet)');
         return v.name.replace(/^Microsoft\s+/i, '');
       }
       // Tagalog needs a Filipino voice on the device; without one the English words are used.
@@ -52549,6 +52555,7 @@
       }
       function voiceActive() { return !!(fx.sound && fx.vOn && voiceEngine() && voicePick()); }
       function voiceStop() {
+        try { if (typeof tabletVoiceStop === 'function') tabletVoiceStop(); } catch (e) { }
         const V = voiceNative();
         if (V) { try { V.stop(); } catch (e) { } return; }
         const ss = voiceSynth(); try { if (ss && (ss.speaking || ss.pending)) ss.cancel(); } catch (e) { }
@@ -52556,6 +52563,7 @@
       function voiceSay(text) {
         if (!voiceActive()) return false;
         const V = voiceNative(), v = voicePick(), vol = fx.vol === 1 ? 1 : fx.vol === 0.35 ? 0.5 : 0.85;
+        if (voiceViaTablet()) return tabletVoiceSend(text, voiceLang(), v && v.name, vol);      // the tablet speaks; nothing comes out of the laptop
         if (V) { try { return !!V.speak(text, v.name, vol); } catch (e) { return false; } }      // the app cuts off anything still being said
         const ss = voiceSynth();
         try {
@@ -52761,14 +52769,16 @@
           hint.textContent = !voiceEngine() ? 'This device can’t speak, so the booth uses the beeps.'
             : !list.length && voiceNative() ? 'No voice found on this tablet yet, so the booth uses the beeps. Open the tablet’s Settings → System → Languages → Text-to-speech output, then download the English voice data (Tagalog too, if you want it).'
               : !list.length ? 'No voice found on this device yet, so the booth uses the beeps. Install an English voice in the device’s speech settings.'
-                : fx.vLang === 'fil' && lang !== 'fil' ? 'This device has no Tagalog voice, so English is used. Add one in the device’s speech settings.'
-                  : fx.vCount === 'all' ? 'Says every number. The “Get ready” is skipped.'
-                    : 'Says “Get ready”, the last three numbers, then “Smile!” just before the photo. Uses the Volume above.';
+                : voiceViaTablet() && fx.vLang === 'fil' && lang !== 'fil' ? 'The tablet has no Tagalog voice, so English is used. Add one in the tablet’s Settings → System → Languages → Text-to-speech output.'
+                  : fx.vLang === 'fil' && lang !== 'fil' ? 'This device has no Tagalog voice, so English is used. Add one in the device’s speech settings.'
+                    : (voiceViaTablet() ? 'The tablet says the countdown (the laptop stays quiet). ' : '') + (fx.vCount === 'all' ? 'Says every number. The “Get ready” is skipped.'
+                      : 'Says “Get ready”, the last three numbers, then “Smile!” just before the photo. Uses the Volume above.');
         })();
-        document.getElementById('sndShutName').textContent = fx.sShut ? fx.sShut.name : 'Built-in click';
+        document.getElementById('sndShutName').textContent = fx.sShut ? fx.sShut.name : 'Built-in camera shutter';
         document.getElementById('sndTickName').textContent = fx.sTick ? fx.sTick.name : 'Built-in beeps';
         document.getElementById('sndShutX').hidden = !fx.sShut;
         document.getElementById('sndTickX').hidden = !fx.sTick;
+        try { if (typeof tabletSoundSync === 'function') tabletSoundSync(); } catch (e) { }   // own sounds added or removed: the tablet gets the new ones
         setSelectValue('fxVol', String(fx.vol));
         setSelectValue('fxHands', fx.hands);
         setSelectValue('fxSens', fx.sens);

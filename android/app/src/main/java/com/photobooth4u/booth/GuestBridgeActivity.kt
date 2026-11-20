@@ -118,6 +118,8 @@ class GuestBridgeActivity : AppCompatActivity() {
     private var backCamId: String? = null
     private var activeCamId: String? = null
     private var desiredFacing: String = "front"
+    // The spoken countdown: the laptop sends the words, this tablet says them (page: window.__PBVoice, same as the booth app).
+    private var voiceBridge: VoiceBridge? = null
     private var sensorOrientation = 0
     private var previewSize = Size(1280, 960)
     private var stillSize = Size(1920, 1440)
@@ -200,6 +202,8 @@ class GuestBridgeActivity : AppCompatActivity() {
         stopBridgeSession()
         stopCamThread()
         netExec.shutdownNow()
+        voiceBridge?.shutdown()
+        voiceBridge = null
         super.onDestroy()
     }
 
@@ -262,6 +266,10 @@ class GuestBridgeActivity : AppCompatActivity() {
             settings.cacheMode = WebSettings.LOAD_NO_CACHE
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             addJavascriptInterface(BridgeJsApi(), "__PBTabletBridge")
+            // The guest page speaks the laptop's countdown with this tablet's own text-to-speech voices.
+            val voice = VoiceBridge(this@GuestBridgeActivity)
+            voiceBridge = voice
+            addJavascriptInterface(voice, "__PBVoice")
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean = false
             }
@@ -743,7 +751,9 @@ class GuestBridgeActivity : AppCompatActivity() {
         }
         val fillScale = max(viewW / max(1f, uprightW), viewH / max(1f, uprightH))
         m.postScale(fillScale, fillScale, cx, cy)
-        if (pvMirror && desiredFacing == "front") {
+        // The booth page decides (Setup > Camera > Mirror: On / Off, or Auto = front camera only) and sends the answer in setPreviewRect.
+        // This used to flip only when the tablet camera was on Front, so Mirror "On" did nothing on the rear camera.
+        if (pvMirror) {
             m.postScale(-1f, 1f, cx, cy)
         }
         previewView.setTransform(m)

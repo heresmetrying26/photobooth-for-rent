@@ -12,6 +12,11 @@ var tabletBridge = {
   guestConnected: false,
   deviceName: '',
   facing: 'front',
+  voiceOk: false,   // the tablet said it can speak the countdown (its voice list came in as the "voiceCaps" action)
+  voices: { en: [], fil: [] },   // the tablet's own voices: [{ name, lang, localService }]
+  soundOk: false,   // the tablet has the sounds decoded and its audio is running (the "soundCaps" action)
+  soundSig: '',     // which own sound files the tablet was last sent
+  soundOwn: { shut: false, tick: false },   // does the tablet's shutter / beep come from the operator's own file (a little louder)
   stream: null,
   pumpStop: null,
   bgTimer: null,
@@ -34,6 +39,70 @@ function tabletCamOptionLabel() {
   const side = tabletBridge.facing === 'back' ? 'Rear' : 'Front';
   return 'Tablet Camera · ' + nm + ' (' + side + ')';
 }
+// ---- The spoken countdown on the tablet ----
+// When the tablet's guest screen is connected and the tablet can speak (the guest page sends its voice list as the "voiceCaps" action),
+// the tablet says "Get ready... Three, Two, One... Smile!" and the laptop stays quiet. The booth's voice code (voiceEngine, voicesFor,
+// voiceSay, voiceStop in the sound section) asks the functions below. No guest screen, or a tablet with no voice = the laptop's own voice.
+function tabletVoiceOn() { return !!(tabletGuestOpen() && tabletBridge.voiceOk); }
+function tabletVoiceList(lang) {
+  const l = tabletBridge.voices && tabletBridge.voices[lang === 'fil' ? 'fil' : 'en'];
+  return Array.isArray(l) ? l : [];
+}
+function tabletVoiceCaps(act) {
+  const clean = (arr) => (Array.isArray(arr) ? arr : []).slice(0, 100).filter((v) => v && v.name)
+    .map((v) => ({ name: String(v.name), lang: String(v.lang || ''), localService: !!v.localService }));
+  const v = (act && act.voices) || {};
+  tabletBridge.voices = { en: clean(v.en), fil: clean(v.fil) };
+  tabletBridge.voiceOk = tabletBridge.voices.en.length > 0;
+  try { if (typeof refreshFxUI === 'function') refreshFxUI(); } catch (e) { }
+}
+function tabletVoiceSend(text, lang, name, vol) {
+  if (!tabletVoiceOn() || !(window.pb4u && window.pb4u.bridge)) return false;
+  try {
+    window.pb4u.bridge.sendEvent({ type: 'voice', text: String(text), lang: lang === 'fil' ? 'fil' : 'en', name: name || '', vol: vol });
+    return true;
+  } catch (e) { return false; }
+}
+function tabletVoiceStop() {
+  if (!tabletGuestOpen() || !(window.pb4u && window.pb4u.bridge)) return;
+  try { window.pb4u.bridge.sendEvent({ type: 'voiceStop' }); } catch (e) { }
+}
+
+// ---- Beeps, "Pose" chime, start chime and the shutter click on the tablet ----
+// The booth's built-in sounds (sound/fx-sounds.js) and the operator's own sound files go to the tablet's guest page once as small WAV files
+// (a "sounds" message). When the tablet has decoded them and its audio is running it reports "soundCaps"; from then on the booth's sound
+// functions (fxBeep, fxPose, fxShutter, fxStartChime) send a "sound" message for each one and the laptop stays quiet. No guest screen, or a
+// tablet whose audio is still locked (a browser that wants a tap first): the laptop plays them as before.
+function tabletSoundOn() { return !!(tabletGuestOpen() && tabletBridge.soundOk); }
+function tabletSoundPlay(kind) {
+  if (!tabletSoundOn() || !(window.pb4u && window.pb4u.bridge)) return false;
+  const own = kind === 'shut' ? tabletBridge.soundOwn.shut : (kind === 'b1' || kind === 'b2') ? tabletBridge.soundOwn.tick : false;
+  try {
+    window.pb4u.bridge.sendEvent({ type: 'sound', kind: kind, vol: Number((fx.vol * (own ? 1.1 : 1)).toFixed(3)) });
+    return true;
+  } catch (e) { return false; }
+}
+function tabletSoundPack() {
+  const own = (o) => { const rec = o && typeof ASSETS !== 'undefined' && ASSETS[o.id]; return rec && rec.url ? rec.url : ''; };
+  const sh = own(fx.sShut), tk = own(fx.sTick);
+  return {
+    sig: (sh ? fx.sShut.id : '') + '|' + (tk ? fx.sTick.id : ''),
+    own: { shut: !!sh, tick: !!tk },
+    sounds: { shut: sh || fxWavUrl('shut'), b1: tk || fxWavUrl('b1'), b2: tk || fxWavUrl('b2'), pose: fxWavUrl('pose'), chime: fxWavUrl('chime') }
+  };
+}
+function tabletSoundSync(force) {
+  if (!tabletGuestOpen() || !(window.pb4u && window.pb4u.bridge)) return;
+  try {
+    const p = tabletSoundPack();
+    if (!force && p.sig === tabletBridge.soundSig) return;
+    tabletBridge.soundSig = p.sig;
+    tabletBridge.soundOwn = p.own;
+    window.pb4u.bridge.sendEvent({ type: 'sounds', sig: p.sig, sounds: p.sounds });
+  } catch (e) { }
+}
+function tabletSoundCaps(act) { tabletBridge.soundOk = !!(act && act.ok); }
+
 // Makes sure the camera menu has the tablet in it without waiting for the system's camera list (see renderTabletBridgeSetup).
 function tabletEnsureOption() {
   if (!tabletCamAvailable()) return;
@@ -242,7 +311,7 @@ async function captureTabletShot(index) {
 
 function tabletGuestPrintState() {
   const result = state === 'result' && shotCanvases.every(Boolean);
-  if (!result) return { printShow: false, nextShow: false };
+  if (!result) return { printShow: false, nextShow: false, printBusy: false };
   const printedFirst = qrPopOn && !hideQrOn && printPrefs.printFirst && willAutoPrint();
   const canPrint = !printSection.classList.contains('hidden') && printPrefs.guestBtn && !!printSize &&
     !(typeof noPrintSession === 'function' && noPrintSession()) && !printedFirst;
@@ -256,6 +325,7 @@ function tabletGuestPrintState() {
   return {
     printShow: canPrint,
     printDisabled: !!printing || out,
+    printBusy: !!printing,   // "Printing, please hold…" is a long label: the tablet shows it in a smaller size
     printLabel: printing ? printTxt('txtPrinting') : printTxt('txtPrint'),
     printSub: sub,
     printGuestCopies: !!(printPrefs.guestCopies && left > 1),
@@ -561,6 +631,7 @@ function renderTabletBridgeSetup(info) {
   if (!info) return;
   const wasCam = tabletBridge.camConnected;
   const wasGuest = tabletBridge.guestConnected;
+  const wasFacing = tabletBridge.facing;
   tabletBridge.info = info;
   tabletBridge.port = info.port || 0;
   tabletBridge.connected = !!info.connected;
@@ -642,9 +713,24 @@ function renderTabletBridgeSetup(info) {
     try { updateFullStage(); } catch (e) { }
     if (tabletBridge.guestConnected) {
       tabletBridgeSync();
+      tabletSoundSync(true);      // a tablet that just connected gets the sound files
     } else {
       syncRemoteFrameToBridge(false, false);
+      tabletBridge.soundOk = false;
+      tabletBridge.soundSig = '';
+      // The tablet is gone: the laptop speaks again until a tablet reports its voices.
+      tabletBridge.voiceOk = false;
+      tabletBridge.voices = { en: [], fil: [] };
+      try { if (typeof refreshFxUI === 'function') refreshFxUI(); } catch (e) { }
     }
+  }
+  if (wasFacing !== tabletBridge.facing) {
+    // The tablet camera was flipped (front <-> rear): the menu name and Mirror "Auto" follow it, and the tablet's screen hears about it.
+    try {
+      const opt = Array.from(cameraSelect.options).find((o) => o.value === TABLET_CAM_ID);
+      if (opt) opt.textContent = tabletCamOptionLabel();
+      if (currentDeviceId === TABLET_CAM_ID) applyMirror();
+    } catch (e) { }
   }
 }
 
@@ -658,6 +744,8 @@ function renderTabletBridgeSetup(info) {
   api.onAction((act) => {
     if (!act || !act.action) return;
     const a = act.action;
+    if (a === 'voiceCaps') { tabletVoiceCaps(act); return; }
+    if (a === 'soundCaps') { tabletSoundCaps(act); return; }
     if (a === 'trigger') { boothTrigger(true); return; }
     if (a === 'readyStart') { if (readyStartBtn) readyStartBtn.click(); return; }
     if (a === 'pickLayout' && act.key) { if (pickOpen) finishPick(act.key); return; }

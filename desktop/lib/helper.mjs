@@ -448,6 +448,16 @@ async function macBorderlessScale(printer, pick) {
 // is the one measured for the L8050 (see MAC_EPSON_BORDERLESS_SCALE); the booth's Print settings > Edges moves each side from here.
 const WIN_EPSON_L3210_SCALE = 0.965;
 
+// Epson L8050 on Windows, 4x6 in borderless. Read from Epson's own Windows driver for the L8050 (e1wf1b0e.inf) run into a file port:
+// the job's page set-up is the sheet 2880 x 4320 and a print area of 3032 x 4400 (1/720 in) that starts 76 left of and 22 above the
+// sheet, and a test page with thin lines (tools/epson-l8050/README.md) shows the driver enlarges the page 3032 / 2880 = 5.28% in both
+// directions about the middle of that area, which sits 18 (0.64 mm) below the middle of the sheet. So a picture sent at 100% lost about
+// 2.55 mm on the left and right, 3.2 mm at the top and 4.4 mm at the bottom. The picture is drawn smaller by that enlargement and
+// 0.64 mm higher, plus 0.5 mm of bleed past every edge (the feed varies about 0.3 mm). The same numbers are in the Mac values above
+// (MAC_EPSON_L8050_4X6: 1 / 1.0528 = 0.9498 and a drop of 0.6 mm), which were measured on paper. Kept here as numbers for the script
+// below, and checked against the driver's own bytes in desktop/test/test-win-l8050.mjs.
+export const WIN_EPSON_L8050_4X6 = { sheetW: 2880, sheetH: 4320, areaW: 3032, areaH: 4400, areaLeft: 76, areaTop: 22, bleedMm: 0.5 };
+
 const WIN_PRINT_PS = String.raw`
 param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [string]$MediaType = '', [switch]$Borderless, [int]$CustomW = 0, [int]$CustomH = 0, [int]$ActualW = 0, [int]$ActualH = 0, [double]$EpsonScale = 0)
 $ErrorActionPreference = 'Stop'
@@ -461,11 +471,16 @@ if (-not $doc.PrinterSettings.IsValid) { throw "Printer not found: $Printer" }
 # Borderless page past the paper edge by its own "Expansion" setting, which the app cannot change, so the picture is
 # drawn a little smaller to land edge to edge instead of trimmed. Used only in the Borderless (whole sheet) case below.
 $edgeScale = 1.0
+# Epson L8050 (same way: the queue's or the driver's name). Its driver enlarges a 4x6 Borderless page 5.28% about a point 0.64 mm below
+# the middle of the sheet, so a 4x6 picture is drawn smaller and higher by that (see WIN_EPSON_L8050_4X6). Only the 4x6 Borderless
+# whole-sheet case below uses it.
+$l8050 = $false
 if ($EpsonScale -gt 0 -and $EpsonScale -lt 1) {
   $dn = ''
   try { Add-Type -AssemblyName System.Printing; $dn = (New-Object System.Printing.LocalPrintServer).GetPrintQueue($Printer).QueueDriver.Name } catch { }
   if (-not $dn) { try { $dn = (Get-Printer -Name $Printer -ErrorAction Stop).DriverName } catch { } }
   if (("$Printer $dn") -match '(?<![a-z0-9])L[\s_-]?3210(?![0-9])') { $edgeScale = $EpsonScale }
+  if (("$Printer $dn") -match '(?<![a-z0-9])L[\s_-]?8050(?![0-9])') { $l8050 = $true }
 }
 # Print quality: the driver's best quality, applied on top of the printer's own saved settings (its paper,
 # Borderless and orientation stay as they are set). If the driver has no such option, nothing changes.
@@ -676,7 +691,20 @@ $doc.add_PrintPage({
       # Expansion), so the app does not add a margin of its own: move that slider if a white line or a
       # trimmed edge shows.
       if ($edgeScale -lt 1) { [Console]::Out.WriteLine(('info|Epson L3210 borderless: picture drawn at {0}% so the driver''s enlargement does not trim the edges' -f [Math]::Round($edgeScale * 100, 1))) }
-      if ($aw -le 0 -and [Math]::Abs(($page.Width / $page.Height) / ($img.Width / $img.Height) - 1) -le 0.04) {
+      $shortU = [Math]::Min($page.Width, $page.Height); $longU = [Math]::Max($page.Width, $page.Height)
+      if ($l8050 -and $aw -le 0 -and [Math]::Abs($shortU - 400) -le 3 -and [Math]::Abs($longU - 600) -le 3 -and [Math]::Abs(($page.Width / $page.Height) / ($img.Width / $img.Height) - 1) -le 0.04) {
+        # Epson L8050, 4x6 Borderless: the driver enlarges the page by $encl about a point $dyc below the middle of the sheet (along the
+        # long side), so the picture is drawn $encl smaller, $dyc/$encl higher, and 0.5 mm bigger than the sheet on every side.
+        $encl = 3032 / 2880
+        $um = $shortU / 101.6                                  # page units (1/100 in) per mm, from the sheet itself
+        $bl = 0.5 * $um; $dyc = (18 / 720 * 25.4) * $um
+        # A page set to Landscape in the driver is turned by the driver, and which way is not known, so the 0.64 mm cannot be moved:
+        # the bleed is 0.7 mm instead (no white either way, at most 1.3 mm trimmed on one side).
+        if ($pageLandscape) { $bl = 0.7 * $um; $bw = [single](($page.Width + 2 * $bl) / $encl); $bh = [single](($page.Height + 2 * $bl) / $encl); $cx = $page.Width / 2; $cy = $page.Height / 2 }
+        else { $bw = [single](($page.Width + 2 * $bl) / $encl); $bh = [single](($page.Height + 2 * $bl) / $encl); $cx = $page.Width / 2; $cy = $page.Height / 2 - $dyc / $encl }
+        [Console]::Out.WriteLine(('info|Epson L8050 borderless 4x6: picture drawn at {0}% across and {1}% along so the driver''s enlargement does not trim the edges' -f [Math]::Round($bw / $page.Width * 100, 1), [Math]::Round($bh / $page.Height * 100, 1)))
+        $e.Graphics.DrawImage($img, [single](-$hx + $cx - $bw / 2), [single](-$hy + $cy - $bh / 2), $bw, $bh)
+      } elseif ($aw -le 0 -and [Math]::Abs(($page.Width / $page.Height) / ($img.Width / $img.Height) - 1) -le 0.04) {
         $bw = [single]($page.Width * $edgeScale); $bh = [single]($page.Height * $edgeScale)
         $e.Graphics.DrawImage($img, [single](-$hx + ($page.Width - $bw) / 2), [single](-$hy + ($page.Height - $bh) / 2), $bw, $bh)
       } else {

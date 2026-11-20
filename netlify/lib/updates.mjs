@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.81', date: '2026-11-20' },
   { version: '1.1.80', date: '2026-11-20' },
   { version: '1.1.79', date: '2026-11-19' },
   { version: '1.1.78', date: '2026-11-19' },
@@ -195,7 +196,7 @@ export const HELPER = { version: '1.1.13', date: '2026-11-19' };
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
 // after about 60 s, so on a slower connection the 18 MB file never finished ("unexpected end of stream").
 // GitHub has no such limit. (The copy in public/downloads is still kept for the /downloads page.)
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-19', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-20', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
 // The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
 // /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new
@@ -276,6 +277,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-20', title: 'Desktop 1.1.81 (Win/Mac) + Android 1.1.92: Epson L8050 prints 4×6 borderless edge to edge', for: ['website', 'app'], app: '1.1.81',
+    items: [
+      '🖨️ Windows laptop app, Epson L8050, 4×6 in with Borderless on: the printer’s Windows driver enlarges the page about 5% past the paper, so the edges of the picture were cut off (about 2.5 mm on the left and right, 3 mm at the top and 4.5 mm at the bottom). The app now draws the picture smaller and a little higher so it lands on the sheet edge to edge, with about 0.5 mm to spare. Other paper sizes are not changed.',
+      '🖨️ Android app, Epson L8050, 4×6 in with Borderless on (USB or Wi-Fi): the printer started the picture about 2.7 mm to the left of the sheet, which left a white strip along one side and cut off the other side. The picture is now sent on a page the size of the printer’s own print area, so it lands on the sheet. If you moved Print settings → Edges by hand to fix this, set them back to 0.',
+      '🧪 We could not try either change on a real L8050 sheet yet: please print a test and tell us how the edges look. Use glossy photo paper and tick Borderless in Print settings. The iPad app is not changed.'
+    ]
+  },
   {
     date: '2026-11-20', title: 'Desktop 1.1.80 (Win/Mac): the tablet guest screen now really gets its screen from the booth (photo after every shot, QR codes, QR pop-up, your sizes), and an Epson L8050 on Windows prints on glossy photo paper by default', for: ['website', 'app'], app: '1.1.80',
     items: [

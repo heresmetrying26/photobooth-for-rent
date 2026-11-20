@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.79', date: '2026-11-19' },
   { version: '1.1.78', date: '2026-11-19' },
   { version: '1.1.77', date: '2026-11-19' },
   { version: '1.1.76', date: '2026-11-19' },
@@ -221,7 +222,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.7', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.7/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.8', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.8/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -274,6 +275,26 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-20', title: 'iPad 1.1.8: print straight to a Wi-Fi photo printer that is not AirPrint (Epson L8050)', for: ['website'],
+    items: [
+      '🖨️ iPad app: a Wi-Fi photo printer that is not AirPrint (for example an Epson L8050 that only works with Epson Smart Panel) can now be used. In Setup → Printers, type the printer’s IP address and tap Add. The iPad asks the printer what it is; within a few seconds it shows as Photo with its own name. Tap it to select it, then Test print. The iPad and the printer must be on the same Wi-Fi, and when the iPad asks to allow Local Network access, tap Allow.',
+      '🎚️ For an Epson L8050 the Quality and Paper menus are there (High / Normal / Draft, and Glossy / Semi-gloss / Matte / Plain paper), and it prints on High quality, glossy photo paper unless you choose otherwise. Load glossy photo paper, or pick Plain paper.',
+      '⚠️ We could not try this on a real iPad and L8050 yet: please print a test and tell us how it looks. A printer that does not answer on the network (IPP, port 631) cannot be used this way.',
+      '🔢 The iPad app now reports its real version number (it reported 1.1.5 before), so Check for updates compares against the right one.'
+    ]
+  },
+  {
+    date: '2026-11-19', title: 'Desktop 1.1.79 (Win/Mac) + Android 1.1.91: the tablet guest screen now matches the booth screen, and Epson L8050 over USB prints High quality on glossy photo paper', for: ['website', 'app'], app: '1.1.79',
+    items: [
+      '🖨️ Android app, Epson L8050 over USB: the printer does not list its print qualities or paper types over USB, so the app sent none of them and every job came out on the printer’s own default (plain paper, standard quality), and the Quality and Paper menus never appeared. The app now asks for the quality and paper you pick anyway, the menus are there (High / Normal / Draft, and Glossy / Semi-gloss / Matte / Plain paper), and the L8050 prints on High quality, glossy photo paper unless you choose otherwise. The app also recognises the L8050 by its name. We could not try this on a real L8050 yet: please print a test and tell us how it looks.',
+      '📸 Tablet as the guest screen (Laptop Guest + Camera Bridge): the photo the booth shows after each shot (Setup: show each photo after it is taken) now shows on the tablet too, with Retake and Next photo.',
+      '🔳 The QR pop-up (Setup → Step 7 “Show the QR code in a pop-up”) now works on the tablet: the finished photo on its own for a few seconds, then a card with a big QR code, Print and Done. With “no QR code” the card holds Print and Done only.',
+      '📐 The screen sizes you set (Display & monitor size, and “Resize on the guest screen”) now apply to the tablet: the countdown, the buttons and the photo strip follow your sizes and see-through levels, with a live preview on the tablet while you resize.',
+      '🛡️ The tablet screen is steadier: each part (photo, QR code, buttons) is drawn on its own, a slow update can no longer replace a newer one, and one guest’s photo is never shown in place of the next guest’s.',
+      '🔌 Setup → Guest screen → Tablet Bridge now says which link the tablet is using (Wi-Fi, laptop hotspot, USB tethering / Ethernet, or USB cable), and a numbered Ethernet adapter (how Windows names USB tethering) is listed first in the pairing QR. A cable is steadier than venue Wi-Fi.'
+    ]
+  },
   {
     date: '2026-11-19', title: 'Desktop 1.1.78 (Win/Mac) + Android 1.1.90 + iPad 1.1.7: offline-first cloud sync for Saved Profiles, My Themes, event setups and uploaded frames across all devices, plus smoother thermal receipt prints', for: ['website', 'app'], app: '1.1.78',
     items: [

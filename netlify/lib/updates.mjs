@@ -277,10 +277,12 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
-    date: '2026-11-20', title: 'Desktop 1.1.80 (Win/Mac): an Epson L8050 on Windows prints on glossy photo paper by default (also for an iPad that prints through the laptop)', for: ['website', 'app'], app: '1.1.80',
+    date: '2026-11-20', title: 'Desktop 1.1.80 (Win/Mac): the tablet guest screen now really gets its screen from the booth (photo after every shot, QR codes, QR pop-up, your sizes), and an Epson L8050 on Windows prints on glossy photo paper by default', for: ['website', 'app'], app: '1.1.80',
     items: [
+      '🐞 Fixed: since the tablet guest screen (Laptop Guest + Camera Bridge) was first released, the booth could not build the screen it sends to the tablet. It called a function the booth does not have, and the error was hidden. So the tablet only showed the camera and the countdown. It never got the photo after each shot, the finished photo with its QR code, the QR pop-up, Print and Done, the layout choice, the welcome screen or your screen sizes. All of these now reach the tablet, the same as on the laptop’s own guest screen. After updating the laptop, pair the tablet again.',
+      '🛠 If one part of the tablet screen cannot be built, the rest still goes to the tablet, and Setup → Guest screen → Tablet Bridge now says which part failed instead of failing silently.',
       '🖨️ Windows laptop app, Epson L8050: the printer’s Windows driver starts on Plain paper and Standard quality, so photos came out soft and dull unless a paper type was picked. The app already asks for Best quality; it now also asks for Epson Photo Paper Glossy when no paper type is picked. Choose another paper type (Plain paper included) in Print settings and that one is used instead. An iPad that opens the booth from this laptop (Setup → Share & start) prints through the same driver and gets the same result.',
-      '🧪 We could not try this on a real L8050 yet: print a test and tell us how it looks. Load glossy photo paper, or choose Plain paper in Print settings.'
+      '🧪 We could not try the L8050 change on a real printer yet: print a test and tell us how it looks. Load glossy photo paper, or choose Plain paper in Print settings.'
     ]
   },
   {

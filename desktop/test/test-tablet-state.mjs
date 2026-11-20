@@ -8,6 +8,13 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const BOOTH = readFileSync(join(ROOT, 'protected', 'booth.html'), 'utf8');
+const DECLARED = new Set();
+for (const m of BOOTH.matchAll(/\bfunction\s*\*?\s*([A-Za-z_$][\w$]*)\s*\(/g)) DECLARED.add(m[1]);
+for (const m of BOOTH.matchAll(/\b(?:var|let|const)\s+([A-Za-z_$][\w$]*)/g)) DECLARED.add(m[1]);
+for (const m of BOOTH.matchAll(/[,]\s*([A-Za-z_$][\w$]*)\s*=(?!=)/g)) DECLARED.add(m[1]);
+for (const m of BOOTH.matchAll(/\b(?:var|let|const)\s*\{([^}]*)\}/g)) m[1].split(',').forEach((x) => DECLARED.add(x.split(':').pop().split('=')[0].trim()));
+const HOST = new Set(['console', 'setInterval', 'clearInterval', 'setTimeout', 'AbortSignal', 'fetch', 'window', 'document', '__ui', '__slots', '__qrTitle']);
 const SRC = readFileSync(process.env.PB_BRIDGE_SRC || join(ROOT, 'protected', 'src', 'bridge', 'tablet-bridge.js'), 'utf8');
 const realFetch = globalThis.fetch;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -44,7 +51,7 @@ function makeCtx(opts = {}) {
     attractPlaylist: [], attractPosterUrl: '', attractPosterType: 'image', attractPlayIndex: 0, attractPosterFit: 'cover', welcomeBtnOn: false, welcomeGeo: null,
     bgGuestStream: () => null, liveFilterCss: () => '', currentDeviceId: 'tablet-bridge', mirrorPreview: () => true,
     previewCanvas: { toDataURL: () => JPEG('strip') },
-    labelInput: { value: 'Birthday' }, currentDateLabel: () => 'NOV 19', layoutBoxAspect: () => 0.8, camAspect: () => 1.3333,
+    labelInput: { value: 'Birthday' }, currentDateLabel: () => 'NOV 19', currentBoxAspect: () => 0.8, camAspect: () => 1.3333, shotBoxAspect: () => 0.75, stageShot: 0,
     qrResults: { querySelectorAll: () => ctx.__slots || [] }, printFirstHolding: false,
     filmTrack: { children: [] }, shotThumb: () => 'data:image/jpeg;base64,THUMB',
     pickKeys: [], pickGrid: { children: [] }, pickDesignMode: false, pickDesignsList: [], pickIdx: 0,
@@ -55,6 +62,8 @@ function makeCtx(opts = {}) {
     printSize: '4x6', maxCopies: () => 3, printLimits: () => ({ se: 0, ev: 0 }), printQueued: 0, printTxt: (k) => k, noPrintSession: () => false,
     willAutoPrint: () => false, MAX_COPIES: 10, qrPopOn: false, hideQrOn: false, printing: false, autoPrint: false,
     qrPop: { phase: '' }, shareStationOn: false,
+    layoutThumbUrl: () => 'data:image/png;base64,AAAA', pickName: (k) => 'Layout ' + k, LAYOUT_DEFS: { a: { shots: 4 }, b: { shots: 2 } },
+    frameById: () => null, presetById: () => null, frameShotCount: () => 4, presetShotCount: () => 4,
     layoutDef: () => ({ name: 'Strip' }), shotsNeeded: () => 4, readySub: { textContent: '' }, fx: { hands: '' }, countingDown: false,
     pickTitleText: () => 'Choose', retakesAllowed: () => true, SAMPLE_PORTRAITS: ['<svg id="a"/>', '<svg id="b"/>', '<svg id="c"/>'],
     enumerateCameras: async () => { }, savedCamera: () => null, initCamera: async () => true, showToast() { }, boothTrigger() { }, resetForNextGuest() { },
@@ -65,6 +74,11 @@ function makeCtx(opts = {}) {
     getElementById: (id) => (id === 'galleryPopQr' ? { src: '' } : id === 'qrSectionTitle' ? { textContent: ctx.__qrTitle || '' } : null),
     createElement: () => ({ style: {}, classList: { add() { }, remove() { } }, appendChild() { } })
   };
+  // Strict: only names the booth page really declares are visible to the code under test (plus the JS and browser globals the
+  // sandbox needs). A name the bridge uses that the booth does not have throws ReferenceError, exactly as in the real app. (An
+  // earlier version of this test handed the code a stand-in for layoutBoxAspect, which the booth never had, so a bug that made
+  // every tablet screen update throw went unnoticed.)
+  for (const k of Object.keys(ctx)) if (!HOST.has(k) && !DECLARED.has(k)) delete ctx[k];
   vm.createContext(ctx);
   vm.runInContext(SRC, ctx);
   ctx.tabletBridge.guestConnected = true;
@@ -213,6 +227,65 @@ await section(async () => {
   ctx.tabletBridgeSync(); await wait(150);
   assert.equal(last(pushed).qrPop, '');
   console.log('PASS: QR pop-up phases (photo alone, big QR card, no QR, share station)');
+});
+
+// 8. One part of the screen failing must not blank the rest, and the failure must show in Setup (it used to be swallowed)
+await section(async () => {
+  const { ctx, pushed } = makeCtx();
+  ctx.state = 'idle'; ctx.shotCanvases = []; ctx.pickOpen = true; ctx.pickKeys = ['a', 'b'];
+  ctx.layoutThumbUrl = () => { throw new Error('no thumbnail for this layout'); };
+  ctx.tabletBridgeSync(); await wait(150);
+  let p = last(pushed);
+  assert(p, 'the screen is still sent when the layout picker part fails');
+  assert.equal(p.pickOpen, true); assert.equal(p.layouts.length, 0, 'the failed part is left out');
+  assert(/layout picker/.test(ctx.tabletBridge.lastError) && /no thumbnail/.test(ctx.tabletBridge.lastError), 'Setup is told which part failed: ' + ctx.tabletBridge.lastError);
+  // a failing QR part: the photo and the buttons still go out
+  ctx.pickOpen = false; ctx.state = 'result'; ctx.shotCanvases = shots(4); ctx.sess = {};
+  ctx.qrResults = { querySelectorAll: () => { throw new Error('QR panel is missing'); } };
+  ctx.tabletBridgeSync(); await wait(150);
+  p = last(pushed);
+  assert(/^\/media\/result\?v=/.test(p.resSrc), 'the photo still goes out'); assert.equal(p.nextShow, true, 'Done still goes out'); assert.equal(p.showQr, false);
+  assert(/QR codes/.test(ctx.tabletBridge.lastError));
+  // all parts fine again: the report clears
+  ctx.qrResults = { querySelectorAll: () => [slot('photo', 'QR1')] }; ctx.layoutThumbUrl = () => 'data:image/png;base64,AAAA';
+  ctx.tabletBridgeSync(); await wait(150);
+  assert.equal(ctx.tabletBridge.lastError, ''); assert.equal(last(pushed).showQr, true);
+  console.log('PASS: one failing part is left out and reported; the rest of the screen still goes to the tablet');
+});
+
+// 9. The shapes of the guest picture and the strip come from the booth's own helpers (they used to come from a function that does not exist)
+await section(async () => {
+  const { ctx, pushed } = makeCtx();
+  ctx.currentBoxAspect = () => 0.5; ctx.camAspect = () => 1.5; ctx.shotBoxAspect = () => 0.75;
+  ctx.state = 'idle'; ctx.shotCanvases = []; ctx.sess = null;
+  ctx.tabletBridgeSync(); await wait(150);
+  let p = last(pushed);
+  assert.equal(p.ga, 1.5, 'between guests: the camera shape'); assert.equal(p.boxAspect, 0.5, 'the strip photos use the layout box');
+  ctx.state = 'capturing'; ctx.sess = {}; ctx.shotCanvases = shots(1);
+  ctx.tabletBridgeSync(); await wait(150);
+  assert.equal(last(pushed).ga, 0.75, 'while shooting: the shot box');
+  ctx.state = 'result'; ctx.shotCanvases = shots(4); ctx.previewCanvas = { width: 600, height: 1800, style: { display: 'block' }, toDataURL: () => JPEG('strip') };
+  ctx.tabletBridgeSync(); await wait(150);
+  assert.equal(last(pushed).ga, 0.3333, 'the finished strip: its own shape');
+  // the booth tells the bridge when the shapes change; an unchanged shape sends nothing more
+  ctx.tabletBridgeAspect(); await wait(150);            // the first call after pairing sends the screen once
+  const before = pushed.length;
+  ctx.tabletBridgeAspect(); await wait(100);
+  assert.equal(pushed.length, before, 'same shapes: no new screen');
+  ctx.currentBoxAspect = () => 0.8; ctx.tabletBridgeAspect(); await wait(150);
+  assert(pushed.length > before, 'a changed shape sends the screen again');
+  console.log('PASS: guest picture and strip shapes');
+});
+
+// 10. A screen that cannot be built at all is shown in Setup, not swallowed
+await section(async () => {
+  const { ctx, pushed } = makeCtx();
+  ctx.readyOverlay = { classList: { contains: () => { throw new Error('start overlay is gone'); } } };
+  ctx.tabletBridge.info = { camConnected: true, guestConnected: true, deviceName: 'Tab', port: 4321 };
+  ctx.tabletBridgeSync(); await wait(150);
+  assert.equal(pushed.length, 0, 'nothing could be sent');
+  assert(/start overlay is gone/.test(ctx.tabletBridge.lastError), 'the reason is kept for Setup: ' + ctx.tabletBridge.lastError);
+  console.log('PASS: a screen that cannot be built is reported');
 });
 
 if (failed) { console.log(failed + ' check(s) failed'); process.exit(1); }

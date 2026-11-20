@@ -8,6 +8,7 @@
 //
 //   node scripts/test-booth-startup.mjs      exit 1 on a problem
 import { readFileSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -36,6 +37,11 @@ for (const fn of ['tabletGuestOpen', 'tabletCamAvailable']) {
 const built = readFileSync(join(ROOT, 'protected', 'booth.html'), 'utf8');
 if (!/\nvar tabletBridge = \{/.test(built)) fail('protected/booth.html has no `var tabletBridge` (run npm run build)');
 if (/\n(const|let) tabletBridge\b/.test(built)) fail('protected/booth.html still declares tabletBridge with const/let (run npm run build)');
+
+// The bridge may only read names the booth page declares. (From 1.1.73 to 1.1.79 it called layoutBoxAspect, which never existed, so
+// the tablet never got a screen state and nothing said why. See scripts/test-bridge-names.mjs.)
+try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'test-bridge-names.mjs')], { stdio: 'pipe' }); }
+catch (e) { fail('bridge names: ' + String(e.stderr || e.stdout || e.message).trim().split('\n')[0]); }
 
 if (bad) { console.error(bad + ' problem(s).'); process.exit(1); }
 console.log('OK: bridge parts use var and guard early reads.');

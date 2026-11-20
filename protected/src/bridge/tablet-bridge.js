@@ -19,6 +19,9 @@ var tabletBridge = {
   mediaUrls: Object.create(null),
   mediaUploading: Object.create(null),
   syncQueued: false,
+  lastError: '',    // why the last screen update could not be built (shown in Setup), '' when it worked
+  lastPushAt: 0,
+  aspKey: '',
   buildSeq: 0,      // each picture of the screen that is built gets the next number...
   pushedSeq: 0,     // ...and an older one is never sent after a newer one went out
   reviewSrc: ''     // the photo just taken, shown between shots (Setup: show each photo after it is taken)
@@ -50,6 +53,30 @@ function tabletPicSig(src) {
   let h = 0;
   for (let i = 0; i < t.length; i += step) h = (h * 31 + t.charCodeAt(i)) | 0;
   return t.length + ':' + h;
+}
+// The shape of the guest picture (ga) and of one photo in the side strip (film), worked out the way applyStageAspect() does it for the
+// laptop's own guest window: the finished strip's shape, the shot's box while shooting, the camera's shape between guests.
+// (This used to call a function called layoutBoxAspect that the booth does not have, so building the screen state threw every
+// time and the tablet never got a screen state: no shot preview, no QR code, no sizes. The error was swallowed.)
+function tabletGuestAspects() {
+  let film = 0.8, ga = 1.3333;
+  try { film = currentBoxAspect(); } catch (e) { }
+  try {
+    const cam = camAspect();
+    let box = film;
+    try { if (state === 'capturing') box = shotBoxAspect(stageShot); } catch (e) { }
+    let strip = false;
+    try { strip = (state === 'result' || !!(sess && sess.reviewing)) && previewCanvas.width > 0 && previewCanvas.style.display !== 'none'; } catch (e) { }
+    ga = strip ? previewCanvas.width / previewCanvas.height : (state === 'capturing' ? box : cam);
+  } catch (e) { }
+  return { ga: ga > 0 ? ga : 1.3333, film: film > 0 ? film : 0.8 };
+}
+// Called by applyStageAspect(): send the screen again when the shapes changed (a new layout, shooting starts, the strip is shown).
+function tabletBridgeAspect() {
+  if (!tabletGuestOpen()) return;
+  const a = tabletGuestAspects();
+  const key = a.ga.toFixed(4) + '|' + a.film.toFixed(4);
+  if (tabletBridge.aspKey !== key) { tabletBridge.aspKey = key; tabletBridgeSync(); }
 }
 // The booth's size and opacity settings for the countdown, the buttons and the photo strip (Setup: Display & monitor size,
 // Resize on the guest screen). They are CSS variables on the booth page; the guest screen reads the same ones.
@@ -284,6 +311,15 @@ function syncRemoteFrameToBridge(active, bgActive) {
 async function buildAndPushTabletState() {
   if (!tabletGuestOpen() || !(window.pb4u && window.pb4u.bridge)) return;
   const buildSeq = ++tabletBridge.buildSeq;
+  // One part of the screen that fails (a helper that throws) is left out and reported in Setup; the rest still goes to the tablet.
+  const soft = [];
+  const T = (tag, fn, fallback) => {
+    try { return fn(); } catch (e) {
+      soft.push(tag + ': ' + String((e && e.message) || e));
+      try { console.error('Tablet guest screen, ' + tag + ' failed:', e); } catch (e2) { }
+      return fallback;
+    }
+  };
   const psMode = guestWelcomeStyle !== 'panel';
   const ready = readyOverlay.classList.contains('ready-active');
   // Setup > Resize on the guest screen: the guest screen shows a sample countdown, sample photos and the buttons instead.
@@ -295,12 +331,13 @@ async function buildAndPushTabletState() {
   const welcome = !ed && welcomeOn && state === 'idle' && !pickOpen && !ready &&
     (!!welcomeDataUrl || (attractMode === 'poster' && !!(attractPlaylist.length || attractPosterUrl)));
   const bgActive = !!(typeof bgGuestStream === 'function' && bgGuestStream());
-  const filterCss = liveFilterCss();
+  const filterCss = T('live filter', () => liveFilterCss(), '');
   const useRemoteStream = (bgActive || (!!filterCss && currentDeviceId === TABLET_CAM_ID) || (currentDeviceId !== TABLET_CAM_ID)) && !result && !reviewing && !shotReview && (!welcome || attractMode === 'camera');
 
   syncRemoteFrameToBridge(useRemoteStream, bgActive);
 
   let resSrc = '', resFit = 'contain';
+  try {
   if (sess && sess.decorating) {
     resSrc = await tabletBridgeUploadMedia('result', previewCanvas.toDataURL('image/jpeg', 0.85), 'image/jpeg', 1600);
   } else if (result) {
@@ -319,8 +356,14 @@ async function buildAndPushTabletState() {
       resFit = (attractMode === 'poster') ? (attractPosterFit === 'contain' ? 'contain' : (attractPosterFit === 'stretch' ? 'fill' : 'cover')) : 'cover';
     }
   }
+  } catch (e) {
+    soft.push('photo: ' + String((e && e.message) || e));
+    try { console.error('Tablet guest screen, photo failed:', e); } catch (e2) { }
+    resSrc = '';
+  }
 
   let layouts = [];
+  try {
   if (pickOpen) {
     layouts = await Promise.all(pickKeys.map(async (k, i) => {
       let rawThumb = '';
@@ -346,13 +389,18 @@ async function buildAndPushTabletState() {
       return { k, name: nm, shots: sh, thumb };
     }));
   }
+  } catch (e) {
+    soft.push('layout picker: ' + String((e && e.message) || e));
+    try { console.error('Tablet guest screen, layout picker failed:', e); } catch (e2) { }
+    layouts = [];
+  }
 
   // Setup > Step 7 "Show the QR code in a pop-up": the finished photo is on its own for a few seconds ('wait'), then a card with a
   // big QR code, Print and Done ('show'). The tablet follows the same two phases as the booth screen.
   const qrPopPhase = (!ed && result && qrPopOn && !shareStationOn && typeof qrPop !== 'undefined' && qrPop) ? (qrPop.phase || '') : '';
-  const slots = [...qrResults.querySelectorAll('.qr-result')];
+  const slots = T('QR codes', () => [...qrResults.querySelectorAll('.qr-result')], []);
   const showQr = result && slots.length > 0 && !printFirstHolding && qrPopPhase !== 'wait';
-  const qrs = showQr ? slots.map(sl => {
+  const qrs = showQr ? T('QR codes', () => slots.map(sl => {
     const im = sl.querySelector('.qr-img');
     return {
       kind: sl.dataset.kind || '',
@@ -360,22 +408,23 @@ async function buildAndPushTabletState() {
       wait: (sl.querySelector('.qr-wait') || {}).textContent || 'One moment…',
       label: (sl.querySelector('.qr-caption') || {}).textContent || ''
     };
-  }) : [];
+  }), []) : [];
 
-  let shots = shotCanvases.map((shot, i) => {
+  let shots = T('photo strip', () => shotCanvases.map((shot, i) => {
     const mf = filmTrack.children[i];
     return {
       src: shot ? shotThumb(shot) : '',
       pick: !!(mf && mf.classList.contains('pickable')),
       sel: !!(mf && mf.classList.contains('picked'))
     };
-  });
+  }), []);
   if (ed && !shots.some((x) => x.src) && typeof SAMPLE_PORTRAITS !== 'undefined') {
     const n = typeof shotsNeeded === 'function' ? shotsNeeded() : 4;
     shots = Array.from({ length: n }, (_, i) => ({ src: 'data:image/svg+xml;utf8,' + encodeURIComponent(SAMPLE_PORTRAITS[i % SAMPLE_PORTRAITS.length]), pick: false, sel: false }));
   }
 
   let msg = 'Tap to start', sub = '', chip = 'Ready';
+  T('captions', () => {
   if (pickOpen) { msg = pickTitleText(); sub = 'Tap one to start'; chip = 'Pick one'; }
   else if (sess && sess.decorating) { msg = 'Customising photo…'; sub = 'Finish on booth screen'; chip = 'Decorate'; }
   else if (sess && sess.reviewing) {
@@ -399,17 +448,18 @@ async function buildAndPushTabletState() {
   } else {
     sub = layoutDef().name + ' · ' + shotsNeeded() + (shotsNeeded() === 1 ? ' shot' : ' shots');
   }
+  });
 
-  let ga = 1.3333;
-  try {
-    const box = layoutBoxAspect();
-    ga = (typeof camAspect === 'function') ? camAspect() : box;
-  } catch (e) { }
+  const asp = tabletGuestAspects();
 
-  const looksShow = !!(guestLooksOn && isTraditional() && !pickOpen && (ready || state === 'idle') && !(sess && sess.reviewing));
-  const looks = looksShow ? guestLookKeys().map(k => ({ k, label: FILTER_LABELS[k] || k })) : [];
-  const galleryIdle = !psMode && state === 'idle' && !pickOpen && !ready && !!currentFolderLink && !gvPrivate();
-  const printState = tabletGuestPrintState();
+  const looksShow = T('looks', () => !!(guestLooksOn && isTraditional() && !pickOpen && (ready || state === 'idle') && !(sess && sess.reviewing)), false);
+  const looks = looksShow ? T('looks', () => guestLookKeys().map(k => ({ k, label: FILTER_LABELS[k] || k })), []) : [];
+  const galleryIdle = T('event gallery', () => !psMode && state === 'idle' && !pickOpen && !ready && !!currentFolderLink && !gvPrivate(), false);
+  const printState = T('print buttons', () => tabletGuestPrintState(), { printShow: false, nextShow: false });
+  const mirror = T('mirror', () => !!mirrorPreview(), true);
+  const dateLabel = T('date', () => currentDateLabel(), '');
+  const eventName = T('event name', () => (labelInput.value || '').trim(), '');
+  const uiVars = T('sizes', () => tabletUiVars(), {});
   if (qrPopPhase === 'wait') { printState.printShow = false; printState.nextShow = false; }
   const qrTitleEl = document.getElementById('qrSectionTitle');
 
@@ -420,20 +470,20 @@ async function buildAndPushTabletState() {
     qrs,
     qrPop: qrPopPhase,
     qrTitle: (qrTitleEl && qrTitleEl.textContent || '').trim(),
-    ga: Number(ga.toFixed(4)),
+    ga: Number(asp.ga.toFixed(4)),
     wa: welcomeGeo ? Number((welcomeGeo.W / welcomeGeo.H).toFixed(4)) : 1.3333,
-    boxAspect: Number((layoutBoxAspect() || 0.8).toFixed(4)),
+    boxAspect: Number(asp.film.toFixed(4)),
     welFull: !!(welcome && !psMode && welcomeGeo && guestWelcomeStyle !== 'panel'),
     welFullPs: !!(psMode && welcome),
     hideCam: !!(result || reviewing || shotReview || (welcome && attractMode !== 'camera')),
     useRemoteStream: !!useRemoteStream,
-    remoteMirror: !!(mirrorPreview() && !bgActive),
-    mirror: !!mirrorPreview(),
+    remoteMirror: !!(mirror && !bgActive),
+    mirror,
     filterCss: filterCss || '',
     resSrc,
     resFit,
-    ev: (labelInput.value || '').trim(),
-    dt: currentDateLabel(),
+    ev: eventName,
+    dt: dateLabel,
     msg, sub, chip,
     countingDown: !!(state === 'capturing' && countingDown),
     showReady: !!(psMode && ready && !pickOpen),
@@ -441,28 +491,35 @@ async function buildAndPushTabletState() {
     readyBtn: readyOverlay.classList.contains('hands') ? (fx.hands === 'smile' ? 'Smile to start' : 'Wave to start') : 'Start',
     pickOpen: !!pickOpen && !ed,
     pickIdx,
-    pickTitle: pickOpen ? pickTitleText() : '',
+    pickTitle: pickOpen ? T('layout picker', () => pickTitleText(), '') : '',
     pickSub: pickDesignMode ? 'Pick a design or frame first' : 'Tap a layout to start your session',
     layouts,
     looksShow,
     looksOpen: !!guestLookOpen,
     lookKey: filterKey,
-    lookLabel: FILTER_LABELS[filterKey] || filterKey,
+    lookLabel: T('looks', () => FILTER_LABELS[filterKey] || filterKey, ''),
     looks,
     shots,
     retakeShow: ed || !!(sess && !retakeBtn.hidden),
     retakeText: ed ? '\u21BA Retake photo 1' : (retakeBtn.textContent || 'Retake'),
     doneShow: ed || !!(sess && !doneBtn.hidden),
     doneText: ed ? '\u2713 Done \u2014 save my photo' : (doneBtn.textContent || 'Done'),
-    ui: tabletUiVars(),
+    ui: uiVars,
     editPreview: ed,
     galleryShow: galleryIdle,
-    galleryQr: galleryIdle ? (document.getElementById('galleryPopQr').src || '') : ''
+    galleryQr: galleryIdle ? T('event gallery', () => (document.getElementById('galleryPopQr').src || ''), '') : ''
   }, printState);
 
   if (buildSeq < tabletBridge.pushedSeq) return;   // a newer picture of the screen already went out while this one was being built
   tabletBridge.pushedSeq = buildSeq;
-  try { window.pb4u.bridge.pushState(payload); } catch (e) { }
+  try {
+    window.pb4u.bridge.pushState(payload);
+    tabletBridge.lastError = soft.length ? 'part of the screen was left out (' + soft.join('; ') + ')' : '';
+    tabletBridge.lastPushAt = Date.now();
+  } catch (e) {
+    tabletBridge.lastError = 'could not send the screen: ' + String((e && e.message) || e);
+    try { console.error('Tablet guest screen could not be sent:', e); } catch (e2) { }
+  }
 }
 
 function tabletBridgeSync() {
@@ -470,7 +527,11 @@ function tabletBridgeSync() {
   tabletBridge.syncQueued = true;
   setTimeout(() => {
     tabletBridge.syncQueued = false;
-    buildAndPushTabletState().catch(() => { });
+    buildAndPushTabletState().catch((e) => {
+      tabletBridge.lastError = String((e && e.message) || e);
+      try { console.error('Tablet guest screen update failed:', e); } catch (e2) { }
+      try { renderTabletBridgeSetup(tabletBridge.info); } catch (e3) { }
+    });
   }, 16);
 }
 
@@ -522,6 +583,8 @@ function renderTabletBridgeSetup(info) {
       else if (info.guestConnected) txt.textContent = 'Guest Screen connected (waiting for camera…)';
       else if (info.camConnected) txt.textContent = 'Camera connected: ' + (info.deviceName || 'Tablet');
       else txt.textContent = 'Not paired yet — scan QR inside the tablet app';
+      // Say so when the booth could not build the tablet's screen, instead of leaving it to look like a tablet that is simply slow.
+      if (tabletBridge.lastError && info.guestConnected) txt.textContent += ' \u00b7 the tablet screen could not be updated: ' + tabletBridge.lastError;
     }
   }
   if (urlEl) {

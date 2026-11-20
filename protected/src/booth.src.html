@@ -28984,6 +28984,7 @@
           }
         } catch (e) { }
         try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
+        try { if (typeof tabletBridgeAspect === 'function') tabletBridgeAspect(); } catch (e) { }   // the tablet's guest screen follows the same shapes
       }
       // ---- Full-screen photo session (see the CSS "Full-screen photo session") ----
       // On from the welcome screen until the finished-photo screen, on every booth

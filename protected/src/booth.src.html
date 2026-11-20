@@ -34984,9 +34984,9 @@
         ];
         else if (IOS_APP) {
           const apInfo = (() => { try { return (window.__PBPrint && typeof window.__PBPrint.savedAirPrint === 'function') ? JSON.parse(window.__PBPrint.savedAirPrint() || '{}') : {}; } catch (e) { return {}; } })();
-          const tcpSelected = !!(wifiPrinter && !wifiPrinter.dialog && wifiPrinter.raw);
+          const tcpSelected = !!(wifiPrinter && !wifiPrinter.dialog && (wifiPrinter.raw || wifiPrinter.ipp));
           steps = [
-            { done: tcpSelected || !!(apInfo && apInfo.name), t: 'Choose your printer in Printers below', s: tcpSelected ? 'LAN receipt printer ready: <b>' + escHtml(wifiPrinter.name) + '</b>.' : (apInfo && apInfo.name ? 'Silent AirPrint ready: <b>' + escHtml(apInfo.name) + '</b> (zero pop-ups).' : 'Tap <b>Pick Silent AirPrint printer</b> below for zero-popup Auto-Print, or add a LAN thermal printer IP.') },
+            { done: tcpSelected || !!(apInfo && apInfo.name), t: 'Choose your printer in Printers below', s: tcpSelected ? (wifiPrinter.ipp ? 'Wi-Fi photo printer ready: <b>' : 'LAN receipt printer ready: <b>') + escHtml(wifiPrinter.name) + '</b>.' : (apInfo && apInfo.name ? 'Silent AirPrint ready: <b>' + escHtml(apInfo.name) + '</b> (zero pop-ups).' : 'Tap <b>Pick Silent AirPrint printer</b> below for zero-popup Auto-Print, or add a Wi-Fi printer by its IP (a photo printer that is not AirPrint, or a LAN thermal printer).') },
             { done: andHere && andOk, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> after a photo session (or Test print below).' }
           ];
         }
@@ -37113,7 +37113,8 @@
       // An Epson L8050 on USB, printed to the standard way (IPP). It does not list its print qualities or paper types, so the
       // choices are fixed here and the app asks for them anyway (NetPrintBridge.sendIppJob): High quality on glossy photo paper
       // unless the operator picks something else. Without this every job went out on the printer's default: plain paper, standard.
-      function epsonLUsbIpp(p) { return !!(p && p.usb && p.ipp && p.vid === 1208 && (EPSON_L_PIDS[p.pid] === 'L8050' || /\bL8050\b/i.test(p.name || ''))); }
+      // (The iPad app asks an L8050 on Wi-Fi the same way: IppNet.printPage in ViewController.swift sends the picked values for it too.)
+      function epsonLUsbIpp(p) { return !!(p && p.ipp && ((p.usb && p.vid === 1208 && (EPSON_L_PIDS[p.pid] === 'L8050' || /\bL8050\b/i.test(p.name || ''))) || (IOS_APP && !p.usb && /\bL8050\b/i.test(p.name || '')))); }
       function wifiOpts(printer) {
         const p = printer || wifiPrinter, st = wifiOptsFor(p);
         const o = { color: st.color || '', quality: st.quality || '', media: st.media || '' };
@@ -37372,7 +37373,7 @@
         if (st && !wifiPrinter) {
           const prog = d.total ? ' ' + Math.min(d.checked || 0, d.total) + ' of ' + d.total + ' addresses checked.' : '';
           st.textContent = IOS_APP
-            ? (d.printers.length ? 'Pick AirPrint above or tap a saved LAN receipt printer below.' : 'Pick an AirPrint wireless photo printer above (supports Silent Auto-Print), or add a LAN thermal receipt printer IP below.')
+            ? (d.printers.length ? 'Pick AirPrint above or tap a saved Wi-Fi printer below.' : 'Pick an AirPrint wireless photo printer above (supports Silent Auto-Print), or add a Wi-Fi printer by its IP below (a photo printer that is not AirPrint, such as an Epson L8050, or a LAN thermal receipt printer).')
             : (d.scanning ? 'Scanning for printers…' + (d.printers.length ? ' Select a printer below.' : '')
               : d.printers.length ? 'Select a printer below.'
                 : 'No printers found. Ensure Wi-Fi printers are on the same network or USB printers are connected via USB-OTG.');
@@ -37426,8 +37427,8 @@
         if (IOS_APP) {
           const wLbl = row.querySelector('.sub-label');
           const wHint = row.querySelector('.panel-hint');
-          if (wLbl) wLbl.textContent = 'AirPrint & LAN Receipt Printers';
-          if (wHint && wHint.id !== 'wifiPrinterStatus') wHint.textContent = 'Pick a wireless AirPrint photo printer (supports Silent Auto-Print) or add a LAN thermal receipt printer by IP.';
+          if (wLbl) wLbl.textContent = 'AirPrint & Wi-Fi Printers';
+          if (wHint && wHint.id !== 'wifiPrinterStatus') wHint.textContent = 'Pick a wireless AirPrint photo printer (supports Silent Auto-Print), or add a Wi-Fi printer by its IP: a photo printer that is not AirPrint (for example an Epson L8050) or a LAN thermal receipt printer.';
         }
         if (st && wifiPrinter && wifiPrinter.dialog) {
           const apInfo = (() => { try { return (IOS_APP && typeof window.__PBPrint.savedAirPrint === 'function') ? JSON.parse(window.__PBPrint.savedAirPrint() || '{}') : {}; } catch (e) { return {}; } })();
@@ -37485,7 +37486,15 @@
           const inp = document.getElementById('wifiPrinterIp');
           if (!inp || !wifiNetAvailable()) return;
           if (window.__PBNet.addByIp(inp.value) !== 'ok') { showToast('Invalid IP address. Format: 192.168.1.50', 4000); return; }
-          if (IOS_APP) { inp.value = ''; wifiRenderList(wifiList()); refreshPrintUI(); showToast('Added LAN receipt printer ✓ Tap it above to select.', 3500); return; }
+          if (IOS_APP) {
+            // The iPad asks the printer over IPP what it is: a photo printer (an Epson L8050, say) shows up as "Photo" with its own name within a few seconds; one that does not answer stays a receipt printer.
+            inp.value = ''; wifiRenderList(wifiList()); refreshPrintUI();
+            showToast('Added ✓ Checking what the printer is… Tap it above to select it. If iPad asks to allow Local Network access, tap Allow.', 6000);
+            setTimeout(() => { wifiRenderList(wifiList()); refreshPrintUI(); }, 2000);
+            setTimeout(() => { wifiRenderList(wifiList()); refreshPrintUI(); }, 5000);
+            setTimeout(() => { wifiRenderList(wifiList()); refreshPrintUI(); }, 9000);
+            return;
+          }
           const st = document.getElementById('wifiPrinterStatus'); if (st) st.textContent = 'Checking ' + inp.value.trim() + '…';
           setTimeout(() => wifiRenderList(wifiList()), 1500);
           setTimeout(() => wifiRenderList(wifiList()), 3500);

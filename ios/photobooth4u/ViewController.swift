@@ -114,6 +114,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         userContent.add(self, name: "pbPickAirPrint")
         userContent.add(self, name: "pbClearAirPrint")
         userContent.add(self, name: "pbPrintRawTcp")
+        userContent.add(self, name: "pbPrintIpp")
         userContent.add(self, name: "pbBt")
         userContent.add(self, name: "pbSave")
         userContent.add(self, name: "pbCam")
@@ -248,6 +249,19 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                   ip: String(ip || ''),
                   b64: String(b64 || ''),
                   paced: true
+                });
+              } catch (e) {}
+            },
+            printIpp: function(jobId, ip, widthMm, heightMm, copies, pagesJson, optionsJson) {
+              try {
+                window.webkit.messageHandlers.pbPrintIpp.postMessage({
+                  job: String(jobId || ''),
+                  ip: String(ip || ''),
+                  widthMm: Number(widthMm) || 0,
+                  heightMm: Number(heightMm) || 0,
+                  copies: Number(copies) || 1,
+                  pagesJson: String(pagesJson || '[]'),
+                  optionsJson: String(optionsJson || '{}')
                 });
               } catch (e) {}
             }
@@ -1106,6 +1120,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             "usb": false
         ], at: 0)
         saveTcpPrinters(list)
+        probeIppPrinter(trimmed)     // a photo printer that answers IPP (an Epson L8050, say) turns into a photo printer a moment later
         return "ok"
     }
 
@@ -1191,6 +1206,83 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         conn.start(queue: q)
     }
 
+    // MARK: - IPP photo printers on Wi-Fi (printers that are not AirPrint, e.g. Epson L8050)
+
+    /// After a printer is added by its IP: ask it over IPP what it is. One that answers and takes JPEG photos becomes a photo
+    /// printer, with the quality and paper types it lists; one that does not answer stays as it was (a receipt printer).
+    private func probeIppPrinter(_ ipPort: String) {
+        let host = String(ipPort.split(separator: ":", maxSplits: 1).first ?? Substring(ipPort))
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let caps = IppNet.fetchCaps(ip: host, port: 631) else { return }
+            guard caps.formats.isEmpty || caps.formats.contains("image/jpeg") else { return }
+            DispatchQueue.main.async { self?.applyIppCaps(ipPort, caps) }
+        }
+    }
+
+    private func applyIppCaps(_ ipPort: String, _ caps: IppNet.Caps) {
+        var list = loadTcpPrinters()
+        guard let i = list.firstIndex(where: { ($0["ip"] as? String) == ipPort }) else { return }
+        var e = list[i]
+        e["ipp"] = true
+        e["raw"] = false
+        e["usb"] = false
+        e["name"] = caps.model.isEmpty ? "Wi-Fi printer (\(ipPort))" : caps.model
+        e["ippPath"] = caps.path
+        e["qualities"] = caps.qualities
+        e["colorModes"] = caps.colorModes
+        e["mediaTypes"] = caps.mediaTypes
+        list[i] = e
+        saveTcpPrinters(list)
+    }
+
+    /// window.__PBNet.printIpp: sends each photo to the printer as an IPP Print-Job (copies repeats the whole set) and answers
+    /// through window.__PBNetResult, like the Android app does.
+    private func sendIppPrint(job: String, ipPort: String, widthMm: Double, heightMm: Double, copies: Int, pagesJson: String, optionsJson: String) {
+        guard !job.isEmpty else { return }
+        let host = String(ipPort.split(separator: ":", maxSplits: 1).first ?? Substring(ipPort))
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            do {
+                guard let pd = pagesJson.data(using: .utf8),
+                      let arr = try JSONSerialization.jsonObject(with: pd, options: []) as? [String],
+                      !arr.isEmpty else {
+                    throw IppNet.Failure("Nothing to print.")
+                }
+                var pages: [Data] = []
+                for s in arr {
+                    var b64 = s
+                    if s.hasPrefix("data:"), let comma = s.firstIndex(of: ",") {
+                        b64 = String(s[s.index(after: comma)...])
+                    }
+                    guard let d = Data(base64Encoded: b64, options: .ignoreUnknownCharacters), !d.isEmpty else {
+                        throw IppNet.Failure("Could not read the picture to print.")
+                    }
+                    pages.append(d)
+                }
+                var opts: [String: Any] = [:]
+                if let od = optionsJson.data(using: .utf8),
+                   let o = (try? JSONSerialization.jsonObject(with: od, options: [])) as? [String: Any] {
+                    opts = o
+                }
+                let quality = (opts["quality"] as? String) ?? ""
+                let color = (opts["color"] as? String) ?? ""
+                let media = (opts["media"] as? String) ?? ""
+                let borderless = (opts["borderless"] as? Bool) ?? false
+                let sets = max(1, min(copies, 20))
+                for _ in 0..<sets {
+                    for p in pages {
+                        try IppNet.printPage(ip: host, port: 631, jpegIn: p, job: "Photobooth", wMm: widthMm, hMm: heightMm,
+                                             quality: quality, color: color, media: media, borderless: borderless)
+                    }
+                }
+                self?.emitNetResult(job: job, ok: true)
+            } catch let f as IppNet.Failure {
+                self?.emitNetResult(job: job, ok: false, error: f.message)
+            } catch {
+                self?.emitNetResult(job: job, ok: false, error: error.localizedDescription)
+            }
+        }
+    }
+
     private func printWebViewFallback() {
         guard UIPrintInteractionController.isPrintingAvailable else { return }
         let controller = UIPrintInteractionController.shared
@@ -1234,6 +1326,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             let b64 = (dict["b64"] as? String) ?? ""
             let paced = (dict["paced"] as? Bool) ?? false
             sendRawTcpPrint(job: job, ipPort: ip, b64: b64, paced: paced)
+        } else if message.name == "pbPrintIpp", let dict = message.body as? [String: Any] {
+            let job = (dict["job"] as? String) ?? ""
+            let ip = (dict["ip"] as? String) ?? ""
+            let widthMm = (dict["widthMm"] as? NSNumber)?.doubleValue ?? 0
+            let heightMm = (dict["heightMm"] as? NSNumber)?.doubleValue ?? 0
+            let copies = (dict["copies"] as? NSNumber)?.intValue ?? 1
+            let pagesJson = (dict["pagesJson"] as? String) ?? "[]"
+            let optionsJson = (dict["optionsJson"] as? String) ?? "{}"
+            sendIppPrint(job: job, ipPort: ip, widthMm: widthMm, heightMm: heightMm, copies: copies, pagesJson: pagesJson, optionsJson: optionsJson)
         } else if message.name == "pbSave", let dict = message.body as? [String: Any] {
             // window.__PBLocal.driveAsync / saveImageAsync: write the file in the background, answer through window.__pbSaveResolve
             let id = (dict["id"] as? NSNumber)?.intValue ?? 0
@@ -1557,5 +1658,281 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             clearOtaCache()
             loadBooth()
         }
+    }
+}
+
+// MARK: - IPP over HTTP (Wi-Fi photo printers that are not AirPrint, e.g. Epson L8050)
+
+/// A small IPP client: asks a printer what it can do (Get-Printer-Attributes) and sends a photo (Print-Job) as JPEG over
+/// HTTP on port 631. It builds the same requests as the Android app (NetPrintBridge.kt), so a printer that works there works here.
+enum IppNet {
+    struct Failure: Error {
+        let message: String
+        init(_ message: String) { self.message = message }
+    }
+
+    struct Caps {
+        var model = ""
+        var path = "/ipp/print"
+        var formats: [String] = []
+        var qualities: [Int] = []
+        var colorModes: [String] = []
+        var mediaTypes: [String] = []
+    }
+
+    struct Reply {
+        let http: Int
+        let ipp: Int
+        let body: Data
+    }
+
+    private final class Box {
+        var reply: Reply?
+        var error: String?
+    }
+
+    private struct Writer {
+        var d = Data()
+        mutating func u8(_ v: Int) { d.append(UInt8(truncatingIfNeeded: v)) }
+        mutating func u16(_ v: Int) { u8(v >> 8); u8(v) }
+        mutating func u32(_ v: Int) { u16(v >> 16); u16(v) }
+        mutating func str(_ s: String) { let b = Array(s.utf8); u16(b.count); d.append(contentsOf: b) }
+        mutating func attr(_ tag: Int, _ name: String, _ value: String) { u8(tag); str(name); str(value) }
+        mutating func member(_ name: String) { u8(0x4a); u16(0); str(name) }
+        mutating func memberInt(_ name: String, _ v: Int) { member(name); u8(0x21); u16(0); u16(4); u32(v) }
+    }
+
+    /// Where printers keep their IPP queue, most common first.
+    static let paths = ["/ipp/print", "/ipp", "/", "/ipp/printer", "/printer"]
+
+    // MARK: requests
+
+    static func capsRequest(uri: String) -> Data {
+        var w = Writer()
+        w.u16(0x0200); w.u16(0x000B); w.u16(0); w.u16(1)          // IPP 2.0, Get-Printer-Attributes, request id 1
+        w.u8(0x01)
+        w.attr(0x47, "attributes-charset", "utf-8")
+        w.attr(0x48, "attributes-natural-language", "en")
+        w.attr(0x45, "printer-uri", uri)
+        w.attr(0x44, "requested-attributes", "printer-make-and-model")
+        let wanted = ["document-format-supported", "print-quality-supported", "print-color-mode-supported", "media-type-supported"]
+        for n in wanted { w.u8(0x44); w.u16(0); w.str(n) }
+        w.u8(0x03)
+        return w.d
+    }
+
+    static func printJobRequest(uri: String, job: String, doc: Data, wMm: Double, hMm: Double, quality: Int,
+                                colorMode: String, mediaType: String, scaling: String, marginMm100: Int) -> Data {
+        var w = Writer()
+        w.u16(0x0200); w.u16(0x0002); w.u32(1)                    // IPP 2.0, Print-Job, request id 1
+        w.u8(0x01)
+        w.attr(0x47, "attributes-charset", "utf-8")
+        w.attr(0x48, "attributes-natural-language", "en")
+        w.attr(0x45, "printer-uri", uri)
+        w.attr(0x42, "requesting-user-name", "photobooth")
+        w.attr(0x42, "job-name", job)
+        w.attr(0x49, "document-format", "image/jpeg")
+        w.u8(0x02)
+        let margin = max(0, marginMm100)
+        if wMm > 0 {
+            w.u8(0x34); w.str("media-col"); w.u16(0)             // begCollection
+            w.member("media-size")
+            w.u8(0x34); w.u16(0); w.u16(0)                        // nested begCollection
+            w.memberInt("x-dimension", Int((min(wMm, hMm) * 100).rounded()))
+            w.memberInt("y-dimension", Int((max(wMm, hMm) * 100).rounded()))
+            w.u8(0x37); w.u16(0); w.u16(0)                        // end media-size
+            w.memberInt("media-top-margin", margin)
+            w.memberInt("media-bottom-margin", margin)
+            w.memberInt("media-left-margin", margin)
+            w.memberInt("media-right-margin", margin)
+            w.u8(0x37); w.u16(0); w.u16(0)                        // end media-col
+        }
+        if !scaling.isEmpty { w.attr(0x44, "print-scaling", scaling) }      // "none" for borderless: the printer must not scale or trim
+        if quality != 0 { w.u8(0x23); w.str("print-quality"); w.u16(4); w.u32(quality) }    // enum
+        if !colorMode.isEmpty { w.attr(0x44, "print-color-mode", colorMode) }
+        if !mediaType.isEmpty { w.attr(0x44, "media-type", mediaType) }
+        w.u8(0x03)
+        w.d.append(doc)
+        return w.d
+    }
+
+    // MARK: network
+
+    static func describe(_ e: URLError) -> String {
+        switch e.code {
+        case .timedOut:
+            return "The printer took too long to answer."
+        case .networkConnectionLost:
+            return "The printer stopped answering while printing."
+        case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed, .notConnectedToInternet:
+            return "Could not reach the printer. Check it is on, on the same Wi-Fi as this iPad, and that Local Network access is allowed for photobooth4u in the iPad Settings."
+        default:
+            return e.localizedDescription
+        }
+    }
+
+    /// One IPP request. Returns what the printer answered (any HTTP status); throws when it could not be reached at all.
+    static func post(ip: String, port: Int, path: String, body: Data, timeout: TimeInterval) throws -> Reply {
+        guard let url = URL(string: "http://\(ip):\(port)\(path)") else { throw Failure("Invalid printer address.") }
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
+        req.httpMethod = "POST"
+        req.setValue("application/ipp", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        let cfg = URLSessionConfiguration.ephemeral
+        cfg.timeoutIntervalForRequest = timeout
+        cfg.timeoutIntervalForResource = timeout + 20
+        let session = URLSession(configuration: cfg)
+        let box = Box()
+        let sema = DispatchSemaphore(value: 0)
+        let task = session.dataTask(with: req) { data, resp, error in
+            if let http = resp as? HTTPURLResponse {
+                let d = data ?? Data()
+                var code = -1
+                if d.count >= 4 { code = (Int(d[d.startIndex + 2]) << 8) | Int(d[d.startIndex + 3]) }
+                box.reply = Reply(http: http.statusCode, ipp: code, body: d)
+            } else if let ue = error as? URLError {
+                box.error = IppNet.describe(ue)
+            } else {
+                box.error = error?.localizedDescription ?? "The printer did not answer."
+            }
+            sema.signal()
+        }
+        task.resume()
+        sema.wait()
+        session.finishTasksAndInvalidate()
+        if let r = box.reply { return r }
+        throw Failure(box.error ?? "The printer did not answer.")
+    }
+
+    /// Walks an IPP response and hands every attribute value to the callback (name, value tag, value bytes).
+    static func parse(_ b: Data, _ cb: (String, Int, [UInt8]) -> Void) {
+        let bytes = [UInt8](b)
+        var p = 8
+        var last = ""
+        func u16(_ i: Int) -> Int { return (Int(bytes[i]) << 8) | Int(bytes[i + 1]) }
+        while p < bytes.count {
+            let tag = Int(bytes[p])
+            p += 1
+            if tag == 0x03 { return }
+            if tag <= 0x05 { continue }                            // group delimiter
+            if p + 2 > bytes.count { return }
+            let nl = u16(p)
+            p += 2
+            if p + nl + 2 > bytes.count { return }
+            if nl > 0 {
+                last = String(decoding: bytes[p..<(p + nl)], as: UTF8.self)
+                p += nl
+            }
+            let vl = u16(p)
+            p += 2
+            if p + vl > bytes.count { return }
+            cb(last, tag, Array(bytes[p..<(p + vl)]))
+            p += vl
+        }
+    }
+
+    /// Asks the printer who it is and what it can print. nil when it does not answer IPP.
+    static func fetchCaps(ip: String, port: Int) -> Caps? {
+        for path in paths {
+            let uri = "ipp://\(ip):\(port)\(path)"
+            let reply: Reply
+            do {
+                reply = try post(ip: ip, port: port, path: path, body: capsRequest(uri: uri), timeout: 6)
+            } catch {
+                return nil                                         // not reachable: the other paths will not be either
+            }
+            if reply.http != 200 || reply.ipp < 0 || reply.ipp > 2 { continue }
+            var c = Caps()
+            c.path = path
+            parse(reply.body) { name, tag, raw in
+                let value = String(decoding: raw, as: UTF8.self)
+                if name == "document-format-supported" && tag == 0x49 { c.formats.append(value.lowercased()) }
+                if name == "printer-make-and-model" && (tag == 0x41 || tag == 0x42) && c.model.isEmpty { c.model = value }
+                if name == "print-quality-supported" && tag == 0x23 && raw.count == 4 { c.qualities.append(Int(raw[3])) }
+                if name == "print-color-mode-supported" && tag == 0x44 { c.colorModes.append(value) }
+                if name == "media-type-supported" && (tag == 0x44 || tag == 0x42) { c.mediaTypes.append(value) }
+            }
+            return c
+        }
+        return nil
+    }
+
+    // MARK: printing
+
+    /// The JPEG says 300 dpi, so the printer does not take the picture for a small one.
+    static func jpegAt300Dpi(_ d: Data) -> Data {
+        var b = [UInt8](d)
+        guard b.count >= 20, b[0] == 0xFF, b[1] == 0xD8, b[2] == 0xFF, b[3] == 0xE0,
+              b[6] == 0x4A, b[7] == 0x46, b[8] == 0x49, b[9] == 0x46 else { return d }      // "JFIF"
+        b[13] = 1                                                  // dots per inch
+        b[14] = 1; b[15] = 44                                      // 300 = 0x012C
+        b[16] = 1; b[17] = 44
+        return Data(b)
+    }
+
+    /// The IPP paper type keyword for the booth's paper choice. A printer that lists its types gets one of those; an Epson L8050
+    /// does not list them in every case, so for it the standard keyword is sent anyway (a printer that refuses it is asked again without).
+    static func mediaTypeKeyword(_ media: String, _ listed: [String], _ hard: Bool) -> String {
+        func first(_ pred: (String) -> Bool) -> String? { return listed.first(where: pred) }
+        switch media {
+        case "plain":
+            return first({ $0 == "stationery" }) ?? first({ $0.hasPrefix("stationery") }) ?? (hard ? "stationery" : "")
+        case "inkjet":
+            return first({ $0 == "stationery-inkjet" }) ?? first({ $0.lowercased().contains("inkjet") }) ?? ""
+        case "photo":
+            return first({ $0 == "photographic-glossy" }) ?? first({ $0.hasPrefix("photographic") }) ?? (hard ? "photographic-glossy" : "")
+        case "photosg":
+            return first({ $0 == "photographic-semi-gloss" }) ?? (hard ? "photographic-semi-gloss" : "")
+        case "matte":
+            return first({ $0 == "photographic-matte" }) ?? (hard ? "photographic-matte" : "")
+        case "":
+            return ""
+        default:
+            return first({ $0.lowercased() == media.lowercased() }) ?? ""
+        }
+    }
+
+    /// Prints one photo. Tries the page size with the quality / paper settings first, then drops them one at a time if the
+    /// printer refuses. A printer that cannot be reached, or that goes quiet mid-job, throws at once: nothing is sent twice.
+    static func printPage(ip: String, port: Int, jpegIn: Data, job: String, wMm: Double, hMm: Double,
+                          quality: String, color: String, media: String, borderless: Bool) throws {
+        let jpeg = jpegAt300Dpi(jpegIn)
+        let found = fetchCaps(ip: ip, port: port)
+        let caps = found ?? Caps()
+        let hardEpsonL = caps.model.range(of: "L8050", options: .caseInsensitive) != nil
+        var q = 0
+        if quality == "draft" { q = 3 } else if quality == "normal" { q = 4 } else if quality == "high" { q = 5 }
+        let qv = (q != 0 && (caps.qualities.contains(q) || hardEpsonL)) ? q : 0
+        var cm = ""
+        if color == "mono" && caps.colorModes.contains("monochrome") { cm = "monochrome" }
+        else if color == "color" && caps.colorModes.contains("color") { cm = "color" }
+        let mt = mediaTypeKeyword(media, caps.mediaTypes, hardEpsonL)
+        let hasOpts = qv != 0 || !cm.isEmpty || !mt.isEmpty
+        let attempts: [(Bool, Bool)] = hasOpts
+            ? [(true, true), (false, true), (true, false), (false, false)]
+            : [(true, false), (false, false)]
+        let scaling = borderless ? "none" : "fill"
+        let pathList: [String] = found == nil ? paths : [caps.path]
+        var lastErr = "The printer didn't accept the job."
+        for at in attempts {
+            for path in pathList {
+                let uri = "ipp://\(ip):\(port)\(path)"
+                let body = printJobRequest(uri: uri, job: job, doc: jpeg, wMm: at.0 ? wMm : 0, hMm: hMm,
+                                           quality: at.1 ? qv : 0, colorMode: at.1 ? cm : "", mediaType: at.1 ? mt : "",
+                                           scaling: scaling, marginMm100: 0)
+                let r = try post(ip: ip, port: port, path: path, body: body, timeout: 90)
+                if r.http == 200 && r.ipp >= 0 && r.ipp <= 2 { return }
+                if r.http == 200 && r.ipp == 0x406 {
+                    lastErr = "The printer says it has no print queue (code 0x406). Check that IPP / AirPrint is turned on for it."
+                } else if r.http == 200 {
+                    lastErr = "The printer refused the photo (code 0x" + String(r.ipp, radix: 16) + ")."
+                } else if r.http == 426 || r.http == 301 || r.http == 302 {
+                    lastErr = "This printer only accepts secure printing, which the app doesn't support yet."
+                } else if r.http != 404 {
+                    lastErr = "The printer answered with HTTP \(r.http)."
+                }
+            }
+        }
+        throw Failure(lastErr)
     }
 }

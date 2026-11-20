@@ -46,7 +46,7 @@
     <key>NSMicrophoneUsageDescription</key>
     <string>photobooth4u uses the microphone for video guestbook audio recording.</string>
     <key>NSLocalNetworkUsageDescription</key>
-    <string>photobooth4u hosts a local Wi-Fi sharing server so guests can scan QR codes to download photos, and connects to tethered USB DSLR cameras.</string>
+    <string>photobooth4u hosts a local Wi-Fi sharing server so guests can scan QR codes to download photos, connects to tethered USB DSLR cameras, and sends photos to Wi-Fi printers on your network.</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>photobooth4u saves event photo strips and originals to your Photos library.</string>
     <key>NSPhotoLibraryUsageDescription</key>

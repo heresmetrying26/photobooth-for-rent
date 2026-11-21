@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roving Photoman Guide · photobooth4u</title>
+<meta name="description" content="How to use Roving Photoman: send photos from a phone (QR scan) or from a DSLR tethered to an Android phone, then frame, edit, print and share them from the Photographer Desk on the laptop base station.">
+<style>
+  :root {
+    --bg: #f6f2ea;
+    --paper: #ffffff;
+    --ink: #1a171c;
+    --body: #423d44;
+    --dim: #6e6670;
+    --line: #e2dad0;
+    --red: #c83924;
+    --red-soft: #fbeee9;
+    --green: #1b7358;
+    --green-soft: #e6f4ef;
+    --blue: #1d6fa5;
+    --blue-soft: #eaf3fa;
+    --amber: #a85f0d;
+    --amber-soft: #fef5e7;
+    --purple: #583ca3;
+    --purple-soft: #ede7f7;
+    --code: #f0ebe2;
+    --shadow: 0 1px 2px rgba(40, 30, 20, .05), 0 6px 18px rgba(40, 30, 20, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151317;
+      --paper: #201d24;
+      --ink: #f3eee6;
+      --body: #d3ccd6;
+      --dim: #a39da6;
+      --line: #34303a;
+      --red: #ec6a55;
+      --red-soft: #3a211f;
+      --green: #55c9a2;
+      --green-soft: #17302a;
+      --blue: #6cb7e8;
+      --blue-soft: #172a38;
+      --amber: #f0a64e;
+      --amber-soft: #38290f;
+      --purple: #b8a2f0;
+      --purple-soft: #2a2140;
+      --code: #2b2730;
+      --shadow: none;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 70px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--body);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  h1, h2, h3 { color: var(--ink); font-family: Georgia, "Times New Roman", serif; letter-spacing: -.01em; line-height: 1.2; margin: 0; }
+  h2 { font-size: 27px; margin-bottom: 6px; }
+  h3 { font-size: 19px; margin: 22px 0 8px; }
+  p { margin: 0 0 12px; }
+  b, strong { color: var(--ink); }
+  a { color: var(--red); font-weight: 600; }
+  code {
+    font: 13.5px/1.4 ui-monospace, SFMono-Regular, Consolas, Menlo, monospace;
+    background: var(--code); color: var(--ink); padding: 1px 6px; border-radius: 5px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+
+  /* top bar + jump nav */
+  .bar {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .bar .wrap { display: flex; align-items: center; gap: 14px; height: 52px; }
+  .brand { display: flex; align-items: center; gap: 8px; font: 700 16px Georgia, serif; color: var(--ink); white-space: nowrap; }
+  .mark { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5px; width: 18px; height: 18px; }
+  .mark i { background: var(--ink); border-radius: 2.5px; }
+  .mark i:nth-child(2) { background: var(--red); }
+  .brand em { font: 800 9px sans-serif; font-style: normal; background: var(--red); color: #fff; padding: 2px 5px; border-radius: 4px; transform: rotate(-4deg); }
+  nav.jump { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; }
+  nav.jump::-webkit-scrollbar { display: none; }
+  nav.jump a {
+    flex: none; padding: 6px 11px; border-radius: 999px; text-decoration: none;
+    font-size: 13px; font-weight: 700; color: var(--dim);
+  }
+  nav.jump a:hover { background: var(--paper); color: var(--ink); }
+
+  /* hero */
+  header.hero { padding: 44px 0 26px; }
+  .kicker { font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--red); margin-bottom: 10px; }
+  header.hero h1 { font-size: clamp(30px, 5.4vw, 46px); max-width: 17em; }
+  header.hero p.lead { font-size: 18px; max-width: 40em; margin: 14px 0 0; color: var(--body); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .chip { font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
+
+  section { padding: 34px 0 6px; }
+  .sec-head { margin-bottom: 14px; }
+  .sec-head .kicker { margin-bottom: 4px; }
+  .sub { color: var(--dim); margin: 0; max-width: 46em; }
+
+  /* cards + grids */
+  .card {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px 20px; box-shadow: var(--shadow);
+  }
+  .card > h3:first-child, .card > h4:first-child { margin-top: 0; }
+  h4 { margin: 0 0 6px; font-size: 15.5px; color: var(--ink); }
+  .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 760px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+  .card.green { background: var(--green-soft); border-color: transparent; }
+  .card.blue { background: var(--blue-soft); border-color: transparent; }
+  .card.amber { background: var(--amber-soft); border-color: transparent; }
+  .card.purple { background: var(--purple-soft); border-color: transparent; }
+
+  /* flow diagram */
+  .flow { display: grid; grid-template-columns: 1.15fr auto 1fr auto 1.1fr auto 1fr; gap: 8px; align-items: stretch; }
+  .flow .node { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; box-shadow: var(--shadow); }
+  .flow .node h4 { font-size: 14.5px; margin-bottom: 4px; }
+  .flow .node p { font-size: 13.5px; margin: 0; color: var(--dim); }
+  .flow .node ul { margin: 0; padding-left: 18px; font-size: 13.5px; }
+  .flow .node.hub { border: 2px solid var(--red); }
+  .flow .arrow { align-self: center; color: var(--red); font-weight: 800; font-size: 22px; }
+  .flow.chain { grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; }
+  @media (max-width: 860px) {
+    .flow, .flow.chain { grid-template-columns: 1fr; }
+    .flow .arrow { transform: rotate(90deg); justify-self: center; }
+  }
+
+  /* steps */
+  ol.steps { list-style: none; counter-reset: s; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
+  ol.steps > li {
+    counter-increment: s; position: relative; padding: 12px 14px 12px 52px;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+  }
+  ol.steps > li::before {
+    content: counter(s); position: absolute; left: 14px; top: 12px;
+    width: 26px; height: 26px; border-radius: 50%; background: var(--red); color: #fff;
+    font: 800 14px/26px sans-serif; text-align: center;
+  }
+  ol.steps > li > b:first-child { display: block; margin-bottom: 2px; }
+  ol.steps p { margin: 4px 0 0; font-size: 15px; }
+
+  /* UI label pill, e.g. the name of a button */
+  .ui {
+    display: inline-block; font-size: 13.5px; font-weight: 700; color: var(--ink);
+    background: var(--code); border: 1px solid var(--line); border-radius: 7px; padding: 0 7px; white-space: nowrap;
+  }
+
+  .note { border-left: 4px solid var(--blue); background: var(--blue-soft); padding: 10px 14px; border-radius: 0 10px 10px 0; margin: 14px 0; font-size: 15px; }
+  .note.tip { border-color: var(--green); background: var(--green-soft); }
+  .note.warn { border-color: var(--amber); background: var(--amber-soft); }
+  .note p:last-child { margin-bottom: 0; }
+
+  /* tables */
+  .tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14.5px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .tbl th, .tbl td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .tbl tr:last-child td { border-bottom: 0; }
+  .tbl th { background: var(--code); color: var(--ink); font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; }
+  .tbl td:first-child { white-space: nowrap; font-weight: 700; color: var(--ink); }
+  @media (max-width: 640px) { .tbl td:first-child { white-space: normal; } .tbl { font-size: 14px; } }
+
+  /* checklist */
+  .check { list-style: none; margin: 8px 0 0; padding: 0; }
+  .check li { display: flex; gap: 10px; align-items: flex-start; padding: 5px 0; }
+  .check input { margin-top: 5px; width: 17px; height: 17px; accent-color: var(--red); flex: none; }
+
+  .pill { display: inline-block; font-size: 11.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; vertical-align: middle; }
+  .pill.new { background: var(--red-soft); color: var(--red); }
+  .pill.laptop { background: var(--purple-soft); color: var(--purple); }
+
+  footer { margin-top: 44px; padding: 26px 0 50px; border-top: 1px solid var(--line); font-size: 14px; color: var(--dim); }
+
+  @media print {
+    .bar { display: none; }
+    body { background: #fff; font-size: 12.5px; }
+    section { break-inside: auto; padding-top: 18px; }
+    .card, ol.steps > li, .tbl tr, .note { break-inside: avoid; }
+    .flow .node, .card { box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="wrap">
+    <div class="brand"><span class="mark"><i></i><i></i><i></i><i></i></span>photobooth4u <em>ROVE</em></div>
+    <nav class="jump" aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#before">Before the event</a>
+      <a href="#desk">The desk</a>
+      <a href="#phone">A · Phone scan</a>
+      <a href="#dslr">B · DSLR + Android</a>
+      <a href="#template">Template &amp; Auto-frame</a>
+      <a href="#edit">Pick, preview, edit</a>
+      <a href="#print">Print &amp; share</a>
+      <a href="#remote">Phone remote</a>
+      <a href="#recipes">Recipes</a>
+      <a href="#help">Troubleshooting</a>
+    </nav>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <header class="hero">
+    <div class="kicker">photobooth4u · Roving Photoman</div>
+    <h1>Shoot anywhere. Frame, edit and print from the laptop.</h1>
+    <p class="lead">Two ways to get photos in: a <b>phone that scans a QR</b>, or a <b>DSLR tethered to an Android phone</b>. One place to finish them: the <b>Photographer Desk</b> on the laptop base station.</p>
+    <div class="chips">
+      <span class="chip">Laptop app: Desktop 1.1.89 or newer</span>
+      <span class="chip">Windows &amp; Mac</span>
+      <span class="chip">Works on the booth's own Wi-Fi, no internet needed for transfer</span>
+    </div>
+  </header>
+
+  <!-- ====================================================== HOW IT WORKS -->
+  <section id="how">
+    <div class="sec-head">
+      <div class="kicker">The big picture</div>
+      <h2>How it fits together</h2>
+      <p class="sub">Photos land in a queue on the laptop. You choose a template, check the live preview, optionally touch the photo up, then print it and show the guest a QR to save it on their phone.</p>
+    </div>
+
+    <div class="flow">
+      <div class="node">
+        <h4>1 · Photos come in</h4>
+        <ul>
+          <li><b>A.</b> Phone: scan the QR, tap <span class="ui">Take a Photo</span></li>
+          <li><b>B.</b> DSLR + Android Bridge phone</li>
+          <li><b>C.</b> A folder on the laptop, or drag and drop</li>
+        </ul>
+      </div>
+      <div class="arrow">➔</div>
+      <div class="node hub">
+        <h4>2 · Photographer Desk</h4>
+        <p>Queue of every photo, in the order they arrived.</p>
+      </div>
+      <div class="arrow">➔</div>
+      <div class="node">
+        <h4>3 · Frame &amp; check</h4>
+        <p>Photoman template, Auto-frame, live preview, <span class="ui">✎ Edit photo</span>.</p>
+      </div>
+      <div class="arrow">➔</div>
+      <div class="node">
+        <h4>4 · Print &amp; share</h4>
+        <p>Printer plus a <b>Guest Photo QR</b> the guest scans to save the photo.</p>
+      </div>
+    </div>
+
+    <h3>What this version adds</h3>
+    <div class="grid2">
+      <div class="card">
+        <p><span class="pill new">New</span> <b>Its own template.</b> Photoman prints use their own template (a built-in layout, one of your frames, or a design from the Template Maker). It never changes the booth's layout.</p>
+        <p><span class="pill new">New</span> <b>Auto-frame.</b> New photos are framed, given a QR and printed without a click, and it steps aside while you pick photos by hand.</p>
+        <p style="margin:0"><span class="pill new">New</span> <b>Photos in any order.</b> For a template with several spots, tap one photo per spot, or let one photo fill every spot.</p>
+      </div>
+      <div class="card">
+        <p><span class="pill new">New</span> <b>Live Output Preview.</b> It shows the photos that have just arrived and the print you just made, not a stock sample.</p>
+        <p><span class="pill new">New</span> <b>Edit photo.</b> Brightness, contrast, warmth and colour before printing.</p>
+        <p style="margin:0"><span class="pill new">New</span> <b>Phone as remote.</b> The photographer's phone can pick the template, switch Auto-frame, and make or reprint a photo.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================== BEFORE THE EVENT -->
+  <section id="before">
+    <div class="sec-head">
+      <div class="kicker">Set up once</div>
+      <h2>Before the event</h2>
+    </div>
+    <table class="tbl">
+      <tr><th style="width:24%">What</th><th>What to do</th></tr>
+      <tr><td>Laptop app</td><td>Install <b>photobooth4u Desktop 1.1.89 or newer</b>. The booth code must include the <b>Photographer desk</b> (Roving) extra. Without it the desk says <i>"Photographer Desk extra is not active on this code."</i></td></tr>
+      <tr><td>Wi-Fi</td><td>The phone and the laptop must be on the <b>same Wi-Fi</b>. Easiest: in <span class="ui">Setup → Share &amp; start</span> switch on <span class="ui">Make this laptop the booth Wi-Fi</span>. A router or the laptop's mobile hotspot also works. No internet is needed to move photos from the phone to the laptop.</td></tr>
+      <tr><td>Printer</td><td>In <span class="ui">Setup → Printer</span> pick the printer and paper size. Switch on <span class="ui">Print after each session</span> if you want prints to start by themselves. If you skip this, the desk says <i>"Set a matching paper size in Setup → Printer first."</i></td></tr>
+      <tr><td>Template</td><td>Decide what the prints look like (see <a href="#template">Template &amp; Auto-frame</a>). You can design your own in the Template Maker ahead of time.</td></tr>
+      <tr><td>Phone (option A)</td><td>Nothing to install. Any phone with a camera app and a browser.</td></tr>
+      <tr><td>Phone (option B)</td><td>Android 7 or newer with USB OTG, a USB OTG cable, and the free <b>Roving DSLR Bridge</b> app (no booth code needed). Download it from <code>/downloads</code> under <i>Roving DSLR Bridge</i>.</td></tr>
+    </table>
+  </section>
+
+  <!-- ====================================================== THE DESK -->
+  <section id="desk">
+    <div class="sec-head">
+      <div class="kicker">The laptop base station</div>
+      <h2>Open the Photographer Desk</h2>
+      <p class="sub">In the booth, tap <span class="ui">Tools</span> and choose <span class="ui">Photographer desk</span>. A red number on that button counts photos that arrived while the desk was closed, and a message pops up: <i>"Roving photo queued in Photographer desk (3 waiting)"</i>.</p>
+    </div>
+
+    <table class="tbl">
+      <tr><th style="width:24%">Tab</th><th>What it is for</th></tr>
+      <tr><td>📥 Queue</td><td>Every photo that arrived, newest first. Tap photos here to choose what to print. <span class="ui">Clear list</span> empties it. The queue is remembered if you close the desk or the app.</td></tr>
+      <tr><td>🖼️ Template &amp; Auto</td><td>Choose the Photoman template, how several photo spots are filled, <b>Auto-frame</b>, and <b>Also show result on Booth Screen</b>.</td></tr>
+      <tr><td>🎨 Template Maker</td><td>Design your own print: photo spots, text, logo, background, PNG frame.</td></tr>
+      <tr><td>🔌 Connect &amp; QR</td><td>The QR for phones and the Roving DSLR Bridge, the list of what is connected, a folder to watch, and drag-and-drop.</td></tr>
+      <tr><td>👁️ Live Preview</td><td>On a small screen the preview is its own tab. On a laptop it sits on the right: <b>Live Output Preview</b>, the buttons <span class="ui">✎ Edit photo</span>, <span class="ui">Print original</span>, <span class="ui">Make print + QR</span>, and the finished print with its QR codes.</td></tr>
+    </table>
+
+    <div class="grid2" style="margin-top:14px">
+      <div class="card">
+        <h4>Header buttons</h4>
+        <p style="margin:0"><span class="ui">? Guide</span> shows or hides the 3-step quick guide. <span class="ui">Back to Booth</span> returns to the booth. <span class="ui">↗ Pop Out Window</span> moves the desk into its own window (see the tip).</p>
+      </div>
+      <div class="card green">
+        <h4>Tip: use the pop-out window at busy events</h4>
+        <p style="margin:0">In its own window the desk keeps framing and printing <b>while the main booth is serving guests</b>. Inside the booth window, Auto-frame waits until the booth is idle. The label at the top shows <i>Booth Capturing · Photoman Ready</i> when the booth is busy.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================== OPTION A -->
+  <section id="phone">
+    <div class="sec-head">
+      <div class="kicker">Option A</div>
+      <h2>Send photos from a phone by scanning the QR</h2>
+      <p class="sub">No app to install. The phone opens a small page served by the laptop and sends its photos straight into the queue.</p>
+    </div>
+
+    <ol class="steps">
+      <li><b>On the laptop, open Connect &amp; QR</b>
+        <p>Look at <i>Booth &amp; Camera Links</i>. You want a green tick on <i>Roving DSLR / Phone QR ready</i>. If you see <i>Booth Wi-Fi / LAN address needed for Phone QR</i>, connect the laptop to the booth Wi-Fi first, then press <span class="ui">Refresh</span>.</p></li>
+      <li><b>Put the phone on the same Wi-Fi</b>
+        <p>It must be the same network as the laptop.</p></li>
+      <li><b>Scan the QR with the phone's normal camera app</b>
+        <p>A page titled <b>Photoman Control &amp; Queue</b> opens in the phone's browser. (<span class="ui">Copy link</span> under the QR gives you the same address to send by message.)</p></li>
+      <li><b>Send photos</b>
+        <p>Tap <span class="ui">📸 Take a Photo</span> to shoot with the phone, or <span class="ui">🖼️ Choose Photos</span> to send several from the gallery at once. A progress bar shows each upload.</p></li>
+      <li><b>Watch them arrive</b>
+        <p>Each photo appears in the laptop's <span class="ui">Queue</span> within a couple of seconds. A 📱 badge marks photos that came in over Wi-Fi from a phone or the Bridge.</p></li>
+    </ol>
+
+    <div class="note">
+      <p><b>On the website version (no laptop app)</b> the QR is different: the phone uploads into the event's online folder and photos show up on the desk about every 10 seconds. The phone remote in <a href="#remote">section 9</a> is a laptop-app feature.</p>
+    </div>
+  </section>
+
+  <!-- ====================================================== OPTION B -->
+  <section id="dslr">
+    <div class="sec-head">
+      <div class="kicker">Option B</div>
+      <h2>DSLR connected to an Android phone</h2>
+      <p class="sub">The camera is plugged into an Android phone. Every time you press the camera's own shutter, the photo is sent over Wi-Fi to the laptop's queue.</p>
+    </div>
+
+    <div class="flow chain" style="margin-bottom: 8px;">
+      <div class="node"><h4>📷 DSLR</h4><p>JPEG, camera on</p></div>
+      <div class="arrow">➔</div>
+      <div class="node"><h4>🔌 USB OTG cable</h4><p>Host end in the phone</p></div>
+      <div class="arrow">➔</div>
+      <div class="node"><h4>📱 Roving DSLR Bridge</h4><p>On the same Wi-Fi</p></div>
+      <div class="arrow">➔</div>
+      <div class="node hub"><h4>💻 Desk queue</h4><p>Photographer Desk</p></div>
+    </div>
+
+    <ol class="steps">
+      <li><b>Set the camera</b>
+        <p>Image quality <b>JPEG</b> (or RAW + JPEG), camera mode dial <b>not</b> on movie, camera Wi-Fi and Bluetooth <b>off</b>, a memory card inside. Sony: set <i>USB Connection</i> to <b>PC Remote</b>. The full menu table for Canon, Nikon and Sony is in the <a href="/photobooth4u-roving-dslr-guide.pdf">Roving DSLR Guide (PDF)</a>.</p></li>
+      <li><b>Install the Roving DSLR Bridge on the Android phone</b>
+        <p>Download it from <code>/downloads</code> (section <i>Roving DSLR Bridge</i>), tap the file to install, then open <b>Roving DSLR Bridge</b>. It is free and needs no booth code.</p></li>
+      <li><b>Pair it with the laptop</b>
+        <p>Phone on the booth Wi-Fi. On the laptop open <span class="ui">Photographer desk → Connect &amp; QR</span>. In the phone app tap <span class="ui">📷 Scan QR Code on Laptop</span> and point it at the laptop screen. It sets itself up, tests the link and shows <i>✅ Connected! Base station ready.</i></p></li>
+      <li><b>Plug in the camera</b>
+        <p>Connect the USB OTG cable from the phone to the camera and switch the camera on. If Android asks to open the app when the device is connected, choose <b>Always allow</b>. The status card goes from <i>WAITING</i> to <i>READY</i> and shows the camera model and battery. Tap <span class="ui">Test Shutter</span> once to check the whole chain.</p></li>
+      <li><b>Optional: Pocket Mode</b>
+        <p>Tap <span class="ui">🔒 Pocket Mode</span> before the phone goes into your pocket. The screen dims and ignores touches, and the shutter link stays live. Tap the unlock button 3 times to come back.</p></li>
+      <li><b>Shoot</b>
+        <p>Use the camera normally. About half a second after each shot the phone buzzes to confirm the photo reached the laptop, and it shows up in the <span class="ui">Queue</span>. If Wi-Fi drops, shots wait in the phone and are sent when the signal returns.</p></li>
+    </ol>
+
+    <div class="note tip">
+      <p><b>Already using the camera's own software on the laptop?</b> (EOS Utility, Imaging Edge, FTP.) In <span class="ui">Connect &amp; QR</span> press <span class="ui">Choose folder</span> and pick the folder that software saves into. New files in that folder join the queue. You can also drop photos onto the desk or press <span class="ui">Choose photos</span>.</p>
+    </div>
+    <div class="note">
+      <p><b>Two photographers?</b> Both scan the same QR. Their photos merge into the one queue.</p>
+    </div>
+  </section>
+
+  <!-- ====================================================== TEMPLATE & AUTO -->
+  <section id="template">
+    <div class="sec-head">
+      <div class="kicker">On the laptop</div>
+      <h2>Template &amp; Auto-frame</h2>
+      <p class="sub">Open the <span class="ui">🖼️ Template &amp; Auto</span> tab (or scroll to <i>Photoman Template &amp; Flow</i>).</p>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h4>Photoman template</h4>
+        <p>The list has four groups. The number is how many photos the template needs.</p>
+        <ul style="margin:0 0 0 18px; padding:0">
+          <li><b>Same as the booth</b>: copies whatever layout the booth uses right now.</li>
+          <li><b>🎨 My Photoman templates</b>: your own designs from the Template Maker.</li>
+          <li><b>Built-in layouts</b>: Solo, strips, grids and so on.</li>
+          <li><b>My frames</b>: frames you uploaded in Setup.</li>
+        </ul>
+        <p style="margin:10px 0 0; font-size:14.5px">Choosing a template here <b>never changes the booth's own layout</b>, so the booth and Photoman can share one laptop.</p>
+      </div>
+      <div class="card">
+        <h4>✨ New Template (Template Maker)</h4>
+        <p>Press <span class="ui">New Template</span> and start from a preset: 4R Hero + Title, 4R Wide + Text, 4R Polaroid, 4R Hero + 2, 4R 2×2 Grid, 2×6 3-Shot Strip, Square 1:1, or <b>Import PNG Frame</b>.</p>
+        <ul style="margin:0 0 0 18px; padding:0">
+          <li>Set the background colour or picture, and an optional PNG overlay.</li>
+          <li><span class="ui">+ Photo Spot</span>, <span class="ui">+ Text</span>, <span class="ui">+ Logo</span>. Drag to move, drag a corner to resize.</li>
+          <li>Each spot has an <b>Assigned Photo #</b>, so you decide which shot goes where.</li>
+          <li><span class="ui">✓ Save &amp; Use Template</span> when done. Reopen it later with <span class="ui">✎ Edit</span>.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>When the template has several photo spots</h3>
+    <table class="tbl">
+      <tr><th style="width:36%">Setting</th><th>What happens</th></tr>
+      <tr><td>Separate photos (tap one photo per spot)</td><td>You tap photos in order and they fill spot 1, 2, 3 and so on. Good for a hero + 3 layout or a 4-photo strip of different shots.</td></tr>
+      <tr><td>One photo fills every spot</td><td>One photo is repeated in all the boxes. Good for 2×6 strips cut in two, or a double-print.</td></tr>
+    </table>
+    <p class="sub" style="margin-top:8px">This setting only appears when the template has more than one spot.</p>
+
+    <h3>⚡ Auto-frame new photos</h3>
+    <p>Switch it on and the desk does the work: each new photo (or each group of photos, for a multi-spot template) is placed in the template, gets its Guest QR, and is printed if <i>Print after each session</i> is on.</p>
+    <div class="grid2">
+      <div class="card">
+        <h4>The rules</h4>
+        <ul style="margin:0 0 0 18px; padding:0">
+          <li>Only photos that arrive <b>after</b> you switch it on. Photos already in the list are left alone.</li>
+          <li>With a template of 4 spots and <i>Separate photos</i>, it waits for <b>4 new photos</b> and uses them in the order they arrived.</li>
+          <li>It pauses while the <i>Edit photo</i> window is open, while a print is being made, and (inside the booth window) while the booth is busy.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <h4>Want to choose which photo goes where?</h4>
+        <p style="margin:0">Just start tapping photos in the queue. <b>Auto-frame waits for you</b> and does not take your photos in arrival order. It carries on 30 seconds after your last tap. To stop it completely, untick <span class="ui">Auto-frame new photos</span>.</p>
+      </div>
+    </div>
+
+    <p style="margin-top:14px"><span class="ui">📺 Also show result on Booth Screen</span>: when the booth is idle, finished Photoman prints also appear on the main booth screen for guests to see. It is skipped while a guest is taking photos.</p>
+  </section>
+
+  <!-- ====================================================== PICK / PREVIEW / EDIT -->
+  <section id="edit">
+    <div class="sec-head">
+      <div class="kicker">Choose, check, touch up</div>
+      <h2>Pick photos, read the preview, edit</h2>
+    </div>
+
+    <h3 style="margin-top:6px">Picking photos</h3>
+    <ul style="margin:0 0 0 20px; padding:0">
+      <li>Tap a photo to pick it. A number appears: 1 for the first spot, 2 for the second, and so on. Tap it again to un-pick it.</li>
+      <li>The tip line above the queue tells you where you are, for example <i>"You picked 2 of 4 photos. Tap more for the other spots…"</i>.</li>
+      <li>If you pick fewer photos than the template has spots, the <b>last photo repeats</b> in the empty spots (the preview marks them <i>(repeats)</i>). You can print like that, or tap more photos.</li>
+      <li>Photos already printed are dimmed and marked <i>Printed</i>. You can still pick them again.</li>
+    </ul>
+
+    <h3>Live Output Preview</h3>
+    <p>The preview on the right is exactly what will be printed. The two tabs switch between <span class="ui">🖼️ Framed + QR (Make print)</span> and <span class="ui">📄 Original (Print original)</span>. Under it, small chips show which photo sits in which spot (<i>Spot 1 ← #1</i>). The caption on the picture tells you what you are looking at:</p>
+    <table class="tbl">
+      <tr><th style="width:44%">Caption</th><th>Meaning</th></tr>
+      <tr><td>Sample preview — tap photo(s) in queue to fill</td><td>Nothing is picked yet, so you see a stand-in picture.</td></tr>
+      <tr><td>⚡ Auto-frame: 2 of 4 photos arrived — waiting for the rest</td><td>Auto-frame has received some photos. They are shown in the first spots, the rest are still sample.</td></tr>
+      <tr><td>✓ Just made: … · Session #12</td><td>This is the print that was just made. Tap a photo to preview another one.</td></tr>
+      <tr><td>⚡ Auto-frame preview — waiting for new camera photos</td><td>Auto-frame is on and nothing new has arrived yet.</td></tr>
+    </table>
+
+    <h3>✎ Edit photo <span class="pill new">Optional</span></h3>
+    <p>Pick a photo, then press <span class="ui">✎ Edit photo</span>. If you picked several, it edits the <b>last one you tapped</b>.</p>
+    <div class="grid2">
+      <div class="card">
+        <h4>Quick looks</h4>
+        <p style="margin:0">Original, Brighten, Warm, Cool, Vivid, Matte, Black &amp; white.</p>
+        <h4 style="margin-top:12px">Sliders</h4>
+        <p style="margin:0">Brightness, Contrast, Warmth (cool ↔ warm), Colour (saturation).</p>
+      </div>
+      <div class="card">
+        <h4>Buttons</h4>
+        <p style="margin:0"><span class="ui">Hold to compare</span> shows the untouched photo while you hold it. <span class="ui">Reset</span> clears your changes. <span class="ui">Apply to print + QR</span> keeps them. <span class="ui">Cancel</span> closes without changing anything.</p>
+      </div>
+    </div>
+    <div class="note tip"><p>Once you apply an edit, <b>both the print and the photo the guest gets by QR</b> use the edited version. The original file in the Roving inbox stays untouched. Edited photos show an <i>✎ Edited</i> badge in the queue.</p></div>
+  </section>
+
+  <!-- ====================================================== PRINT & SHARE -->
+  <section id="print">
+    <div class="sec-head">
+      <div class="kicker">Finish</div>
+      <h2>Print and share with the guest</h2>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h4>🖼️ Make print + QR</h4>
+        <p style="margin:0">Puts the picked photos in the template, saves the photo for sharing, creates the <b>Guest Photo QR</b>, and prints it if <i>Print after each session</i> is on. Otherwise press <span class="ui">🖨️ Print</span> on the result card.</p>
+      </div>
+      <div class="card">
+        <h4>📄 Print original</h4>
+        <p style="margin:0">Prints the picked photo as it is, with no frame, filling the paper. The guest's QR still opens the framed version.</p>
+      </div>
+    </div>
+
+    <h3>The "Ready to Print &amp; Share" card</h3>
+    <p>After a print is made, a green card appears under the preview with the session number (<i>Session #12</i>).</p>
+    <table class="tbl">
+      <tr><th style="width:30%">On the card</th><th>What it does</th></tr>
+      <tr><td>Guest Photo QR</td><td>The guest scans it with their phone to see and save their photo. It says <i>Preparing QR…</i> for a moment, then <i>Scan to save</i>.</td></tr>
+      <tr><td>Booth Wi-Fi QR</td><td>Shown when the laptop is running the booth Wi-Fi. The guest scans this first to join the Wi-Fi, then scans the photo QR. It shows the Wi-Fi name underneath.</td></tr>
+      <tr><td>🖨️ Print</td><td>Prints another copy of this result.</td></tr>
+      <tr><td>📺 Show on Booth</td><td>Sends this result to the main booth screen.</td></tr>
+      <tr><td>Done</td><td>Closes the card when you are finished with this guest.</td></tr>
+    </table>
+    <div class="note warn"><p>If Windows shows a small <i>"Waiting for printer connection…"</i> window while printing, the printer has not answered yet. Check that it is on and connected, press <b>Cancel</b>, then use <span class="ui">🖨️ Print</span> on the result card to try again.</p></div>
+  </section>
+
+  <!-- ====================================================== PHONE REMOTE -->
+  <section id="remote">
+    <div class="sec-head">
+      <div class="kicker">Laptop app only</div>
+      <h2>Run the desk from a phone <span class="pill laptop">Remote</span></h2>
+      <p class="sub">The page a phone opens from the QR is also a remote control. Open it on any phone on the booth Wi-Fi to run the desk while you stand with your guests.</p>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h4>🖼️ Photoman Template &amp; Flow</h4>
+        <p style="margin:0">Pick the template, choose <i>Require separate shots</i> or <i>Use 1 shot only</i>, and switch <b>⚡ Auto-frame</b> on or off. Same choices as the desk, and the desk follows along.</p>
+      </div>
+      <div class="card">
+        <h4>📥 Laptop Photographer Queue</h4>
+        <p style="margin:0">Thumbnails of the latest photos. Tap them in order, then <span class="ui">🖼️ Make Print + QR</span> or <span class="ui">🖨️ Print Original</span>.</p>
+      </div>
+      <div class="card">
+        <h4>🎉 Latest Framed Print &amp; Guest QR</h4>
+        <p style="margin:0">Shows the finished print and its QR so you can hold the phone up to the guest. <span class="ui">🖨️ Print Copy</span> reprints, <span class="ui">⏭️ Next Guest</span> clears it.</p>
+      </div>
+      <div class="card">
+        <h4>📱 Send Photos from This Phone</h4>
+        <p style="margin:0"><span class="ui">📸 Take a Photo</span> and <span class="ui">🖼️ Choose Photos</span>, exactly as in option A.</p>
+      </div>
+    </div>
+    <div class="note"><p>The laptop app must be running and the phone must stay on the same Wi-Fi. If the booth is busy with a guest session, a <i>Make Print</i> sent from the phone waits and runs when the booth is free (for up to a minute). If the page says it cannot reach the laptop, scan the QR again.</p></div>
+  </section>
+
+  <!-- ====================================================== RECIPES -->
+  <section id="recipes">
+    <div class="sec-head">
+      <div class="kicker">Ready-made set-ups</div>
+      <h2>Four ways to run it</h2>
+    </div>
+    <div class="grid2">
+      <div class="card green">
+        <h4>1 · Hands-free prints</h4>
+        <p style="margin:0 0 6px">Template: Solo or a one-photo 4R frame. <b>Auto-frame on</b>, <i>Print after each session</i> on.</p>
+        <p style="margin:0">Every photo you shoot is framed, printed and given a QR by itself. Check the QR on the result card or the phone remote.</p>
+      </div>
+      <div class="card blue">
+        <h4>2 · Pick the best shot</h4>
+        <p style="margin:0 0 6px">Auto-frame <b>off</b>. Shoot freely.</p>
+        <p style="margin:0">Guests come to the desk, you tap their favourite, optionally <span class="ui">✎ Edit photo</span>, then <span class="ui">Make print + QR</span>.</p>
+      </div>
+      <div class="card purple">
+        <h4>3 · Strip or hero layout</h4>
+        <p style="margin:0 0 6px">Pick a template with several spots and <i>Separate photos</i>.</p>
+        <p style="margin:0">Auto-frame off: tap the photos in the order you want. Auto-frame on: every group of N new photos becomes one print, in arrival order.</p>
+      </div>
+      <div class="card amber">
+        <h4>4 · Booth and Photoman together</h4>
+        <p style="margin:0 0 6px">Use <span class="ui">↗ Pop Out Window</span> for the desk.</p>
+        <p style="margin:0">The booth takes guest sessions while Photoman prints in its own window. Photoman's template never changes the booth's layout.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================== TROUBLESHOOTING -->
+  <section id="help">
+    <div class="sec-head">
+      <div class="kicker">When something does not work</div>
+      <h2>Troubleshooting</h2>
+    </div>
+    <table class="tbl">
+      <tr><th style="width:26%">What you see</th><th>Try this</th></tr>
+      <tr><td>The phone cannot open the QR page</td><td>The phone and laptop must be on the <b>same Wi-Fi</b>. On Windows, set the Wi-Fi network profile to <b>Private</b>. In <i>Connect &amp; QR</i> the row <i>Booth Wi-Fi / LAN address needed</i> means the laptop has no local address yet: join the booth Wi-Fi and press <span class="ui">Refresh</span>. Then scan the QR again.</td></tr>
+      <tr><td>Photos do not reach the queue</td><td>Look at the phone: did the upload finish? On the DSLR bridge, check the status says <i>READY</i> and press <span class="ui">Test Shutter</span>. If the desk is popped out into its own window, that window receives the photos (the booth's desk then says <i>Pop-out Window Active</i>), so look there.</td></tr>
+      <tr><td>Bridge stays on WAITING (no DSLR)</td><td>Unplug the cable and check the OTG end is in the phone. Switch the camera off, wait 3 seconds, on again. Close the camera menus. Canon: dial on P / Av / Tv / M. Sony: <i>USB Connection → PC Remote</i>.</td></tr>
+      <tr><td>Camera took the shot but nothing arrived</td><td>The camera may be saving RAW only. Set image quality to <b>JPEG</b> (or RAW + JPEG).</td></tr>
+      <tr><td>I tap photos but Auto-frame uses others</td><td>Update to Desktop 1.1.89 or newer. From that version Auto-frame waits for you while you pick by hand. To stop it fully, untick <span class="ui">Auto-frame new photos</span>.</td></tr>
+      <tr><td>Auto-frame made no print</td><td>Check the paper and printer in <i>Setup → Printer</i>, and that <i>Print after each session</i> is on. Without it, the print is made and shown but you press <span class="ui">🖨️ Print</span> yourself.</td></tr>
+      <tr><td>The preview shows a sample picture</td><td>Nothing is picked and nothing is waiting. Tap a photo, or wait for Auto-frame's photos. After a print, the preview shows <i>Just made</i> until you press <span class="ui">Done</span> or pick another photo.</td></tr>
+      <tr><td>The Guest QR does not open</td><td>If the booth runs its own Wi-Fi, the guest must first join it with the <b>Booth Wi-Fi QR</b> shown on the result card.</td></tr>
+    </table>
+  </section>
+
+  <!-- ====================================================== CHECKLIST -->
+  <section id="check">
+    <div class="sec-head">
+      <div class="kicker">Print and keep</div>
+      <h2>Event-day checklist</h2>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h4>Laptop base station</h4>
+        <ul class="check">
+          <li><input type="checkbox" id="c1"><label for="c1">Desktop 1.1.89 or newer, booth code includes Photographer desk.</label></li>
+          <li><input type="checkbox" id="c2"><label for="c2">Booth Wi-Fi is on (or router/hotspot), laptop connected.</label></li>
+          <li><input type="checkbox" id="c3"><label for="c3">Printer on, loaded, paper size picked in Setup → Printer.</label></li>
+          <li><input type="checkbox" id="c4"><label for="c4">Photographer desk open (or popped out), template chosen.</label></li>
+          <li><input type="checkbox" id="c5"><label for="c5">Auto-frame set the way you want it.</label></li>
+          <li><input type="checkbox" id="c6"><label for="c6">Test photo sent, framed and printed, QR scanned by a phone.</label></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Photographer</h4>
+        <ul class="check">
+          <li><input type="checkbox" id="p1"><label for="p1">Phone on the same Wi-Fi as the laptop.</label></li>
+          <li><input type="checkbox" id="p2"><label for="p2">Option A: QR page opened, test photo arrived in the queue.</label></li>
+          <li><input type="checkbox" id="p3"><label for="p3">Option B: camera on JPEG, Bridge shows READY, Test Shutter worked.</label></li>
+          <li><input type="checkbox" id="p4"><label for="p4">Camera and phone charged, spare camera battery in the bag.</label></li>
+          <li><input type="checkbox" id="p5"><label for="p5">Pocket Mode on before walking the floor (option B).</label></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Written for photobooth4u Desktop 1.1.89. Camera menu settings for Canon, Nikon and Sony, battery tips and Wi-Fi range advice are in the <a href="/photobooth4u-roving-dslr-guide.pdf">Roving DSLR Guide (PDF)</a>. The Android Bridge app is on the <a href="/downloads/#roving-bridge">Downloads page</a>.</p>
+  </footer>
+
+</main>
+</body>
+</html>

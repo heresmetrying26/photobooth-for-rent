@@ -33,11 +33,20 @@ try {
   // config
   let c = await j('/config');
   assert.equal(c.status, 200); assert.equal(c.body.ok, true); assert.equal(c.body.choices.look, false);
+  assert.equal(c.body.arm.trigger, 'arm'); assert.equal(c.body.arm.stopMode, 'follow'); assert.equal(c.body.arm.fps, 60);
+  P.spinSendCfgSet({ guide: {}, choices: {}, arm: { trigger: 'bogus', stopMode: 'bogus', fps: 99 } });
+  c = await j('/config');
+  assert.equal(c.body.arm.trigger, 'arm'); assert.equal(c.body.arm.stopMode, 'follow'); assert.equal(c.body.arm.fps, 60);
   P.spinSendCfgSet({ guide: { spinSec: 8, spins: 1, recordSec: 10.5, trigger: 'Start when the arm moves', note: '<b>x</b>' }, choices: { look: true, music: true, speed: true, text: true, gif: true },
-    music: [{ key: 'm1', title: 'Chill' }, { key: '', title: 'bad' }], speeds: [{ key: 'slow', title: 'Slow' }], laptop: 'Booth laptop' });
+    music: [{ key: 'm1', title: 'Chill' }, { key: '', title: 'bad' }], speeds: [{ key: 'slow', title: 'Slow' }], laptop: 'Booth laptop',
+    arm: { trigger: 'desk', stopMode: 'fixed', fixedSec: 999, tailSec: -2, maxSec: 120, cooldownSec: 25, fps: 120 } });
   c = await j('/config');
   assert.equal(c.body.guide.recordSec, 10.5); assert.equal(c.body.music.length, 1, 'an option without a key is dropped');
   assert(!c.body.guide.note.includes('<'), 'markup is stripped from texts');
+  assert.equal(c.body.arm.trigger, 'desk'); assert.equal(c.body.arm.stopMode, 'fixed');
+  assert.equal(c.body.arm.fixedSec, 60, 'fixedSec clamped'); assert.equal(c.body.arm.tailSec, 0, 'tailSec clamped');
+  assert.equal(c.body.arm.maxSec, 60, 'maxSec clamped'); assert.equal(c.body.arm.cooldownSec, 20, 'cooldownSec clamped');
+  assert.equal(c.body.arm.fps, 120);
   console.log('PASS: config');
 
   // choice
@@ -83,6 +92,50 @@ try {
   assert.equal(cl.length, 2); assert.equal(cl[0].pct, 100, 'percent is capped'); assert.equal(cl[0].url, '', 'only http(s) links are passed on');
   assert.equal(cl[1].status, 'ready'); assert.equal(cl[1].look, 'Gold');
   console.log('PASS: clips');
+
+  // arm-state, arm-poll, wall cue & desk->arm commands
+  assert.equal(P.spinArmStateNow().connected, false, 'arm starts disconnected');
+  let armRes = await j('/arm-state', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ device: 'iPhone 15 Pro', state: 'idle', gyroDps: 4.5, thresholdDps: 28, battery: 88, fps: 60, lens: '0.5×' })
+  });
+  assert.equal(armRes.status, 200); assert.equal(armRes.body.ok, true);
+  let armNow = P.spinArmStateNow();
+  assert.equal(armNow.connected, true); assert.equal(armNow.device, 'iPhone 15 Pro');
+  assert.equal(armNow.battery, 88); assert.equal(armNow.thresholdDps, 28);
+
+  // Query fallback + recording transition -> recAt + wall cue
+  armRes = await post('/arm-state?state=recording&recSec=2.5&gyroDps=52');
+  assert.equal(armRes.status, 200);
+  const conn = P.spinConnectInfo(false);
+  assert.equal(conn.arm.state, 'recording');
+  assert(conn.recAt > 0, 'recording state updates conn.recAt');
+  assert.equal(P.getWallCue().action, 'recording', 'recording state triggers wall cue');
+
+  // Transition out of recording clears wall cue
+  armRes = await j('/arm-state', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ state: 'cooldown', gyroDps: 3.1 })
+  });
+  assert.equal(armRes.status, 200);
+  assert.equal(P.getWallCue().action, 'idle', 'leaving recording resets wall cue to idle');
+
+  // Desk -> arm commands & single drain
+  assert.equal(P.spinArmCmdPush('invalid').ok, false, 'invalid arm command rejected');
+  assert.equal(P.spinArmCmdPush('start').ok, true);
+  assert.equal(P.spinArmCmdPush('calibrate').ok, true);
+  const poll1 = await j('/arm-poll');
+  assert.equal(poll1.status, 200);
+  assert.deepEqual(poll1.body.cmds.map((x) => x.cmd), ['start', 'calibrate']);
+  assert.equal((await post('/arm-state?state=idle')).body.cmds.length, 0, 'commands drained after delivery');
+
+  assert.equal(P.spinArmCmdPush('stop').ok, true);
+  const stWithCmd = await post('/arm-state?state=recording');
+  assert.deepEqual(stWithCmd.body.cmds.map((x) => x.cmd), ['stop'], 'arm-state delivers pending commands');
+  assert.equal((await j('/arm-poll')).body.cmds.length, 0, 'commands drained after arm-state');
+  console.log('PASS: arm-state & arm-poll');
   console.log('ALL PASS');
 } finally {
   P.stopShareServer();

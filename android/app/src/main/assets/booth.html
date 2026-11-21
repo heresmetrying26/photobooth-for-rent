@@ -19290,6 +19290,17 @@
                 Bridge →</button>
             </div>
           </div>
+          <div id="iosSpinArmBox"
+            style="display:none; margin-top:14px; padding:12px 14px; border-radius:12px; background:#eef3fb; border:1px solid #1f3a5240;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div>
+                <b style="color:#1f3a52; font-size:13.5px; display:block;">🎥 360 Arm Camera (Motion Auto-Start)</b>
+                <span style="color:#42566b; font-size:12px;">Mount this iPhone/iPad on your 360 arm, calibrate sensitivity, and auto-record when it spins.</span>
+              </div>
+              <button type="button" class="action-btn" id="iosOpenSpinArmBtn"
+                style="width:auto; margin:0; padding:6px 14px; background:#1f3a52; color:#fff; border:0; border-radius:8px; font-weight:700; font-size:12.5px;">Launch 360 Arm Camera →</button>
+            </div>
+          </div>
         </div>
         <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="3">← Back</button><button
             type="button" class="action-btn primary next-btn" data-go="8">Next: Printer →</button></div>
@@ -22127,6 +22138,13 @@
           <circle cx="12" cy="13" r="4" />
           <path d="m19 5 2 2" />
         </svg><span>Roving DSLR</span></button>
+      <button type="button" class="dock-btn" id="spinArmFab" hidden aria-label="360 Arm Camera"><svg
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 3v6M21 12h-6" />
+        </svg><span>360 Arm Cam</span></button>
     </div>
     <div class="dock-pwr" id="dockPwr" hidden>Powered by <span class="pm"
         aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>photobooth<em>4u</em></b></div>
@@ -22321,6 +22339,32 @@
           <div class="spin-connect" id="spinSendCard">
             <div class="spin-connect-head"><span>📱 Phone send page &amp; spin timer</span><span class="spin-pill"
                 id="sendGuideTxt"></span></div>
+            <div class="spin-row" style="gap:8px 10px;flex-wrap:wrap;align-items:center;font-size:12px;margin-top:8px;padding:7px 9px;border-radius:9px;background:rgba(31,58,82,.06);border:1px solid rgba(31,58,82,.16);">
+              <span class="spin-pill" id="armPhoneStatus">Arm app: not connected</span>
+              <button type="button" class="desk-btn" id="sendArmStartBtn" disabled>▶ Start on phone</button>
+              <button type="button" class="desk-btn" id="sendArmStopBtn" hidden>⏹ Stop</button>
+              <button type="button" class="desk-btn" id="sendArmCalBtn" disabled>🎯 Calibrate sensitivity</button>
+            </div>
+            <div class="spin-row" style="gap:8px 14px;flex-wrap:wrap;align-items:center;font-size:12px;margin-top:6px;">
+              <label>Start when <select id="sendArmTrigger">
+                  <option value="arm">Arm moves (motion sensor)</option>
+                  <option value="manual">Manual / remote</option>
+                  <option value="desk">I press Start on desk</option>
+                </select></label>
+              <label>Stop <select id="sendArmStopMode">
+                  <option value="follow">Follow the arm (+ tail)</option>
+                  <option value="fixed">Fixed length</option>
+                </select></label>
+              <label id="sendArmFixedWrap" hidden>Length <input type="number" id="sendArmFixedSec" min="3" max="60"
+                  step="1" style="width:48px"> s</label>
+              <label>Cooldown <input type="number" id="sendArmCooldown" min="1" max="20" step="1"
+                  style="width:44px"> s</label>
+              <label>FPS <select id="sendArmFps">
+                  <option value="60">60 fps (smooth slow-mo)</option>
+                  <option value="120">120 fps (super slow-mo)</option>
+                  <option value="30">30 fps</option>
+                </select></label>
+            </div>
             <div class="spin-row" style="gap:8px 14px;flex-wrap:wrap;align-items:center;font-size:12px;margin-top:6px;">
               <label>Spin takes <input type="number" id="sendSpinSec" min="2" max="60" step="0.5" style="width:56px">
                 s</label>
@@ -22351,7 +22395,7 @@
               <label class="chk"><input type="checkbox" data-sendch="gif"> GIF</label>
             </div>
             <div class="desk-hint" style="margin-top:6px;">Choices and the cut are used when Auto mode edits a new
-              video. The phone page shows these settings.</div>
+              video. Arm phone settings sync automatically to the iOS <b>360 Arm Camera</b> app and the phone send page.</div>
           </div>
           <div class="desk-drop" id="spinDrop">Drop the 360 videos here, or <button type="button" class="desk-btn"
               id="spinPick">Choose videos</button> <button type="button" class="desk-btn" id="spinPickDir">Choose
@@ -22360,14 +22404,14 @@
 
           <div class="spin-send" id="spinSend" hidden>
             <div class="spin-qr" id="spinSendQr"></div>
-            <div class="spin-sendtxt"><b>📱 Send from the phone that recorded</b><br>Scan this with that phone on the
-              booth
-              Wi-Fi, then pick the video. Videos saved into the folder below also appear here automatically.<br><span
+            <div class="spin-sendtxt"><b>📱 Arm Camera &amp; Phone Send QR</b><br>For <b>auto-start on spin (motion sensor)</b>,
+              scan this inside the <b>photobooth4u iPhone/iPad app → 360 Arm Camera</b> (free companion, no licence needed).
+              Scanning with the regular phone camera opens the browser <b>360 Send</b> page. Videos saved into the folder below
+              also appear here automatically.<br><span
                 id="spinDirTxt" style="font-size:11.5px;opacity:0.85;"></span> <button type="button" class="desk-btn"
                 id="spinDirBtn" style="padding:2px 8px;font-size:11px;">Change
-                folder</button><br><b>Recording tablet?</b> The 360 capture screen on the Android app sends its clips
-              here.
-              Type this address into it: <span class="spin-link" id="spinSendLink"></span> <button type="button"
+                folder</button><br><b>Recording phone / tablet?</b> Type or scan this address: <span class="spin-link"
+                id="spinSendLink"></span> <button type="button"
                 class="desk-btn" id="spinLinkCopy" style="padding:2px 8px;font-size:11px;">Copy</button></div>
           </div>
 
@@ -28943,7 +28987,9 @@
           const isInsta = /insta\s*360/i.test(selLabel);
           return isInsta
             ? 'The Insta360 Ace Pro is busy. Close Insta360 Studio and Insta360 Link Controller, then unplug and replug the camera (make sure it is in Webcam mode: camera screen \u203a Settings \u203a USB mode \u203a Webcam), then tap Try Again.'
-            : 'The camera is busy in another app. Close Zoom, FaceTime, Teams, Photo Booth or any other tab using the camera, then tap Try Again.';
+            : (err && Array.isArray(err.holders) && err.holders.length)
+              ? 'The camera is in use by ' + err.holders.slice(0, 4).join(', ') + ' (Windows says so). Close ' + (err.holders.length > 1 ? 'them' : 'it') + ', then tap Try Again.'
+              : 'The camera is busy in another app. Close Zoom, FaceTime, Teams, Photo Booth or any other tab using the camera, then tap Try Again.';
         }
         if (name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError') {
           return 'No camera found. Plug in or switch on the camera, then tap Try Again.';
@@ -30511,7 +30557,9 @@
           if (DESKTOP && err && (err.name === 'NotReadableError' || err.name === 'TrackStartError') && !err.__freed) {
             try {
               if (window.pb4u && window.pb4u.freeCamera) {
-                await window.pb4u.freeCamera();
+                const freedRes = await window.pb4u.freeCamera();
+                const holders = (freedRes && Array.isArray(freedRes.holders)) ? freedRes.holders : [];   // Windows: apps still using the camera
+                try { if (holders.length) err.holders = holders; } catch (e) { }
                 await wait(1200);
                 const retryErr = Object.assign(Object.create(err), { __freed: true });
                 try {
@@ -30531,7 +30579,7 @@
                   camSleeping = false;
                   try { if (typeof webcamOnStreamReady === 'function') await webcamOnStreamReady(stream); } catch (e) { }
                   return true;
-                } catch (retryErr2) { err = retryErr2; }
+                } catch (retryErr2) { var keepHolders = err && err.holders; err = retryErr2; try { if (keepHolders && err && !err.holders) err.holders = keepHolders; } catch (e) { } }
               }
             } catch (freeErr) { /* ignore */ }
           }
@@ -46333,7 +46381,7 @@ function renderTabletBridgeSetup(info) {
       var deskBroadcast = function (msg) { if (!deskBc || !msg) return; try { deskBc.postMessage(Object.assign({ sender: DESK_WIN_ID, ts: Date.now() }, msg)); } catch (e) { } };
 
       // ---- the Tools menu: the dock stays compact (Tools + Lock); every tool and extra sits one tap inside here ----
-      var EXTRA_IDS = ['camFab', 'printFab', 'pstatFab', 'backupFab', 'galleryFab', 'wifiFab', 'scaleFab', 'deskFab', 'spinFab', 'reqFab', 'studioFab', 'vgFab', 'roveBridgeFab'];
+      var EXTRA_IDS = ['camFab', 'printFab', 'pstatFab', 'backupFab', 'galleryFab', 'wifiFab', 'scaleFab', 'deskFab', 'spinFab', 'reqFab', 'studioFab', 'vgFab', 'roveBridgeFab', 'spinArmFab'];
       var extrasFab = document.getElementById('extrasFab'), extrasPop = document.getElementById('extrasPop');
       function closeExtras() { extrasPop.hidden = true; extrasFab.setAttribute('aria-expanded', 'false'); }
       function refreshExtrasBtn() {
@@ -46370,6 +46418,11 @@ function renderTabletBridgeSetup(info) {
         if (deskOpenBridgeBtn) deskOpenBridgeBtn.hidden = !roveBridgeOn;
         var roveBox = document.getElementById('androidRoveBridgeBox');
         if (roveBox) roveBox.style.display = roveBridgeOn ? 'block' : 'none';
+        var spinArmOn = !!(window.__PBLocal && typeof window.__PBLocal.openSpinArm === 'function');
+        var spinArmFab = document.getElementById('spinArmFab');
+        if (spinArmFab) spinArmFab.hidden = !spinArmOn || state === 'capturing';
+        var iosSpinArmBox = document.getElementById('iosSpinArmBox');
+        if (iosSpinArmBox) iosSpinArmBox.style.display = spinArmOn ? 'block' : 'none';
         try { refreshExtrasBtn(); } catch (e) { }
         try { scheduleDock(); } catch (e) { }
       }
@@ -46386,6 +46439,7 @@ function renderTabletBridgeSetup(info) {
       var deskFill = 'multi';       // 'multi' = a photo for each spot, 'repeat1' = one photo fills every spot
       var deskAutoOn = false;       // frame new camera photos by themselves
       var deskAutoFrom = 0, deskAutoTimer = null, deskKeepFrame;
+      var deskSelAt = 0;            // when a photo was last tapped: Auto-frame leaves a hand-picked selection alone for a while
       try {
         var deskStoredTpl = localStorage.getItem('pb_desk_tpl');
         if (deskStoredTpl && /^[A-Za-z0-9:_-]{1,90}$/.test(deskStoredTpl)) deskTpl = deskStoredTpl;
@@ -46774,7 +46828,10 @@ function renderTabletBridgeSetup(info) {
         var cue = document.getElementById('deskStepCue'), txt = document.getElementById('deskStepCueTxt');
         if (!cue || !txt) return;
         var need = deskNeed(), spots = deskSpots();
-        if (deskAutoOn) {
+        if (deskAutoOn && deskSel.length && need > 1) {
+          cue.className = 'desk-step-cue ready';
+          txt.textContent = 'You picked ' + deskSel.length + ' of ' + need + ' photos. Tap ' + (deskSel.length < need ? 'more for the other spots, then ' : '') + 'Make print + QR. Auto-frame waits while you choose.';
+        } else if (deskAutoOn) {
           var have = deskAutoFresh().length;
           cue.className = 'desk-step-cue auto';
           txt.textContent = '\u26A1 Auto-frame ON: incoming photos frame automatically into ' + deskTplLabel() + (need > 1 ? ' (' + have + ' of ' + need + ' waiting)' : '') + ' — or tap photos manually anytime.';
@@ -46786,7 +46843,9 @@ function renderTabletBridgeSetup(info) {
           txt.textContent = 'Step 2: Tap ' + (need > 1 ? ('up to ' + need + ' photos in order (1 \u2192 ' + spots + ')') : 'a photo') + ' below to preview it live on the right.';
         } else {
           cue.className = 'desk-step-cue ready';
-          txt.textContent = 'Step 3: Check the live preview on the right \u2192 optionally \u270E Edit photo \u2192 Make print + QR or Print original.';
+          txt.textContent = need > 1 && deskSel.length < need
+            ? 'You picked ' + deskSel.length + ' of ' + need + ' photos \u2014 tap more for the other spots, or Make print + QR now (the last photo fills the rest).'
+            : 'Step 3: Check the live preview on the right \u2192 optionally \u270E Edit photo \u2192 Make print + QR or Print original.';
         }
       }
       function deskHint() {
@@ -46892,7 +46951,8 @@ function renderTabletBridgeSetup(info) {
         if (deskAutoOn) {
           var have = deskAutoFresh().length;
           s = '\u26A1 Auto-frame is on: ' + (need === 1 ? 'each new photo is' : 'every ' + need + ' new photos are') + ' put in ' + deskTplLabel() + ', shown with the guest\u2019s QR' + (autoPrint ? ' and printed.' : '.')
-            + (need > 1 && have > 0 && have < need ? ' (' + have + ' of ' + need + ' waiting)' : '');
+            + (need > 1 && have > 0 && have < need ? ' (' + have + ' of ' + need + ' waiting)' : '')
+            + (need > 1 ? ' They go in the order they arrive; to choose which photo goes in which spot, tap them yourself (Auto-frame waits while you choose).' : '');
         } else {
           s = 'Prints use ' + deskTplLabel() + ' (' + deskPhotosText(deskSpots()) + (deskSpots() > 1 && deskFill === 'repeat1' ? ', one photo fills all' : '') + '). The booth\u2019s own layout is not changed.';
         }
@@ -46937,14 +46997,19 @@ function renderTabletBridgeSetup(info) {
         var gen = ++deskPvGen;
         var mode = deskHoverMode || deskPreviewMode;
         var picks = deskSel.map(function (id) { return deskQueue.find(function (x) { return x.id === id; }); }).filter(Boolean);
-        var isSample = picks.length === 0;
+        // With nothing tapped the preview shows, in this order: the photos Auto-frame is waiting to use (a phone photo that has
+        // just arrived), the print that was just made (so the photographer sees the framed result), else the sample.
+        var autoPicks = (!picks.length && deskAutoOn) ? deskAutoFresh().slice(0, deskNeed()) : [];
+        var shown = picks.length ? picks : autoPicks;
+        var lastCtx = (!shown.length && deskLast && deskLast.live && deskLastCtx && deskLastCtx.pv) ? deskLastCtx : null;
+        var isSample = !shown.length && !lastCtx;
 
         var fTab = document.getElementById('deskPvModeFramed'), oTab = document.getElementById('deskPvModeOrig');
         if (fTab) fTab.classList.toggle('active', mode !== 'original');
         if (oTab) oTab.classList.toggle('active', mode === 'original');
         var mPill = document.getElementById('deskPvModePill');
         if (mPill) {
-          mPill.textContent = (deskHoverMode ? 'Previewing hover: ' : '') + (mode === 'original' ? 'Original (Unframed)' : 'Framed + QR');
+          mPill.textContent = lastCtx ? 'Just made' : (deskHoverMode ? 'Previewing hover: ' : '') + (mode === 'original' ? 'Original (Unframed)' : 'Framed + QR');
           mPill.className = 'spin-pill active';
         }
         var pPill = document.getElementById('deskPaperPill');
@@ -46955,23 +47020,38 @@ function renderTabletBridgeSetup(info) {
         }
         var sampleTag = document.getElementById('deskPvSampleTag');
         if (sampleTag) {
-          sampleTag.hidden = !isSample;
+          sampleTag.hidden = !(isSample || autoPicks.length || lastCtx);
+          if (lastCtx) sampleTag.textContent = '✓ Just made: ' + (lastCtx.isOriginal ? 'Original photo' : deskTplLabel(lastCtx.tpl)) + ' · Session #' + lastCtx.sessionNum + ' — tap a photo to preview another';
+          else if (autoPicks.length) {
+            var needA = deskNeed();
+            sampleTag.textContent = '⚡ Auto-frame: ' + autoPicks.length + ' of ' + needA + (needA === 1 ? ' photo' : ' photos') + ' arrived' + (autoPicks.length >= needA ? ' — framing now' : ' — waiting for the rest');
+          }
           if (isSample) sampleTag.textContent = deskAutoOn ? '\u26A1 Auto-frame preview — waiting for new camera photos' : 'Sample preview — tap photo(s) in queue to fill';
         }
 
         var slotMap = document.getElementById('deskSlotMap');
         var outCv = document.createElement('canvas');
         try {
+          if (lastCtx) {
+            deskDrawPv(pvCv, lastCtx.pv);
+            if (slotMap) {
+              slotMap.innerHTML = '';
+              var lch = document.createElement('span'); lch.className = 'desk-slot-chip';
+              lch.textContent = (lastCtx.isOriginal ? 'Original print' : 'Print') + ' · Session #' + lastCtx.sessionNum;
+              slotMap.appendChild(lch);
+            }
+            return;
+          }
           if (mode === 'original') {
             var rawSrc = null;
             if (!isSample) {
               var bmp;
-              try { bmp = await createImageBitmap(picks[0].blob, { imageOrientation: 'from-image' }); } catch (e) { bmp = await createImageBitmap(picks[0].blob); }
+              try { bmp = await createImageBitmap(shown[0].blob, { imageOrientation: 'from-image' }); } catch (e) { bmp = await createImageBitmap(shown[0].blob); }
               var kk = Math.min(1, 900 / Math.max(bmp.width, bmp.height));
               rawSrc = document.createElement('canvas');
               rawSrc.width = Math.max(1, Math.round(bmp.width * kk)); rawSrc.height = Math.max(1, Math.round(bmp.height * kk));
               rawSrc.getContext('2d').drawImage(bmp, 0, 0, rawSrc.width, rawSrc.height); bmp.close();
-              try { deskApplyAdj(rawSrc, picks[0].adj); } catch (e) { }
+              try { deskApplyAdj(rawSrc, shown[0].adj); } catch (e) { }
             } else {
               rawSrc = buildPlaceholderShots(400, 1)[0];
             }
@@ -46987,17 +47067,22 @@ function renderTabletBridgeSetup(info) {
             if (slotMap) {
               slotMap.innerHTML = '';
               var ch = document.createElement('span'); ch.className = 'desk-slot-chip' + (isSample ? ' miss' : '');
-              ch.textContent = isSample ? 'Original full-bleed preview (sample)' : ('Original print: ' + (picks[0].name || 'Selected photo') + (picks[0].adj ? ' (Edited)' : ''));
+              ch.textContent = isSample ? 'Original full-bleed preview (sample)' : ('Original print: ' + (shown[0].name || 'Selected photo') + (shown[0].adj ? ' (Edited)' : ''));
               slotMap.appendChild(ch);
             }
           } else {
             var tpl = deskTplKey(), spots = deskSpots(tpl), pvShots = [];
+            // Auto-frame with only some of the photos there (2 of 4): they sit in the first spots, the rest stay sample.
+            var waitRest = autoPicks.length > 0 && deskFill !== 'repeat1' && shown.length < spots;
             if (isSample) {
               pvShots = buildPlaceholderShots(400, spots);
             } else {
+              if (waitRest) pvShots = buildPlaceholderShots(400, spots);
               for (var i = 0; i < spots; i++) {
-                var pk = picks[Math.min(i, picks.length - 1)];
-                pvShots.push(await deskPreviewShot(pk));
+                if (waitRest && i >= shown.length) break;
+                var pk = shown[Math.min(i, shown.length - 1)];
+                var pvSh = await deskPreviewShot(pk);
+                if (waitRest) pvShots[i] = pvSh; else pvShots.push(pvSh);
                 if (gen !== deskPvGen) return;
               }
             }
@@ -47011,8 +47096,11 @@ function renderTabletBridgeSetup(info) {
                 if (isSample) {
                   chip.className = 'desk-slot-chip miss';
                   chip.textContent = 'Spot ' + (si + 1) + ': sample';
+                } else if (waitRest && si >= shown.length) {
+                  chip.className = 'desk-slot-chip miss';
+                  chip.textContent = 'Spot ' + (si + 1) + ': waiting for the next photo';
                 } else {
-                  var pickIdx = Math.min(si, picks.length - 1), isRepeat = si >= picks.length;
+                  var pickIdx = Math.min(si, shown.length - 1), isRepeat = si >= shown.length;
                   chip.className = 'desk-slot-chip' + (isRepeat && deskFill === 'multi' ? ' miss' : '');
                   chip.textContent = 'Spot ' + (si + 1) + ' \u2190 #' + (pickIdx + 1) + (isRepeat ? ' (repeats)' : '');
                 }
@@ -47020,15 +47108,20 @@ function renderTabletBridgeSetup(info) {
               }
             }
           }
-          if (gen !== deskPvGen || !outCv.width || !outCv.height) return;
-          var maxPv = 840, sc = Math.min(1, maxPv / Math.max(outCv.width, outCv.height));
-          pvCv.width = Math.max(1, Math.round(outCv.width * sc));
-          pvCv.height = Math.max(1, Math.round(outCv.height * sc));
-          var pctx = pvCv.getContext('2d');
-          pctx.imageSmoothingEnabled = true; pctx.imageSmoothingQuality = 'high';
-          pctx.clearRect(0, 0, pvCv.width, pvCv.height);
-          pctx.drawImage(outCv, 0, 0, pvCv.width, pvCv.height);
+          if (gen !== deskPvGen) return;
+          deskDrawPv(pvCv, outCv);
         } catch (e) { console.error('Photoman preview failed:', e); }
+      }
+      // Draws a finished picture into the preview box, scaled down to fit.
+      function deskDrawPv(pvCv, outCv) {
+        if (!pvCv || !outCv || !outCv.width || !outCv.height) return;
+        var maxPv = 840, sc = Math.min(1, maxPv / Math.max(outCv.width, outCv.height));
+        pvCv.width = Math.max(1, Math.round(outCv.width * sc));
+        pvCv.height = Math.max(1, Math.round(outCv.height * sc));
+        var pctx = pvCv.getContext('2d');
+        pctx.imageSmoothingEnabled = true; pctx.imageSmoothingQuality = 'high';
+        pctx.clearRect(0, 0, pvCv.width, pvCv.height);
+        pctx.drawImage(outCv, 0, 0, pvCv.width, pvCv.height);
       }
 
       // ---- Queue Rendering & Thumbnails ----
@@ -47371,7 +47464,8 @@ function renderTabletBridgeSetup(info) {
           } else {
             withDeskTemplateContext(tpl, function (lk) { composeCanvas(lk, previewOut, shots); });
           }
-          var ctx = { tpl: tpl, original: raw, shots: shots, itemIds: itemIds, sessionNum: sessNum, qrUrl: '' };
+          // pv / isOriginal: the picture the Live Output Preview shows after this print is made (the framed result, or the original).
+          var ctx = { tpl: tpl, original: raw, shots: shots, itemIds: itemIds, sessionNum: sessNum, qrUrl: '', pv: previewOut, isOriginal: !!(original && raw) };
           deskLastCtx = ctx;
           deskLast = {
             live: true, sessionNumber: sessNum, qrUrl: '', qrErr: '',
@@ -47613,6 +47707,10 @@ function renderTabletBridgeSetup(info) {
       if (deskOpenBridgeBtn) deskOpenBridgeBtn.addEventListener('click', function () { if (window.__PBLocal && typeof window.__PBLocal.openRoveBridge === 'function') window.__PBLocal.openRoveBridge(); });
       var androidOpenBridgeBtn = document.getElementById('androidOpenBridgeBtn');
       if (androidOpenBridgeBtn) androidOpenBridgeBtn.addEventListener('click', function () { if (window.__PBLocal && typeof window.__PBLocal.openRoveBridge === 'function') window.__PBLocal.openRoveBridge(); });
+      var spinArmFab = document.getElementById('spinArmFab');
+      if (spinArmFab) spinArmFab.addEventListener('click', function () { if (window.__PBLocal && typeof window.__PBLocal.openSpinArm === 'function') window.__PBLocal.openSpinArm(); });
+      var iosOpenSpinArmBtn = document.getElementById('iosOpenSpinArmBtn');
+      if (iosOpenSpinArmBtn) iosOpenSpinArmBtn.addEventListener('click', function () { if (window.__PBLocal && typeof window.__PBLocal.openSpinArm === 'function') window.__PBLocal.openSpinArm(); });
       document.getElementById('spinFab').addEventListener('click', function () { openSpin(); });
       document.getElementById('deskClose').addEventListener('click', closeDesk);
       document.getElementById('deskPick').addEventListener('click', function () { document.getElementById('deskFile').click(); });
@@ -48525,13 +48623,14 @@ function renderTabletBridgeSetup(info) {
       var resShowBtn = document.getElementById('deskResShowBoothBtn');
       if (resShowBtn) resShowBtn.addEventListener('click', function () { if (deskLastCtx) deskPushResultToBooth(deskLastCtx); });
       var resDoneBtn = document.getElementById('deskResDoneBtn');
-      if (resDoneBtn) resDoneBtn.addEventListener('click', function () { if (deskLast) deskLast.live = false; deskRenderResultCard(); deskRemoteMark(); });
+      if (resDoneBtn) resDoneBtn.addEventListener('click', function () { if (deskLast) deskLast.live = false; deskRenderResultCard(); deskRemoteMark(); deskSchedulePreview(); });
 
       deskGrid.addEventListener('click', function (e) {
         var b = e.target.closest('.desk-item'); if (!b) return;
         var id = Number(b.dataset.id), i = deskSel.indexOf(id);
         if (i >= 0) deskSel.splice(i, 1);
         else { deskSel.push(id); var need = deskNeed(); if (deskSel.length > need) deskSel.shift(); }
+        deskSelAt = Date.now();
         deskRender();
         deskScheduleIdbSave(true);
       });
@@ -48581,6 +48680,9 @@ function renderTabletBridgeSetup(info) {
         try { deskTplNoteUi(); deskStepCueUi(); } catch (e) { }
         if (fresh.length < need) return;
         if (deskAutoBusy()) { deskAutoSoon(1500); return; }
+        // Someone is choosing which photo goes in which spot: Auto-frame must not take those photos in arrival order.
+        // It waits until they have been idle for half a minute (then a forgotten selection cannot stall the desk).
+        if (deskSel.length && Date.now() - deskSelAt < 30000) { deskAutoSoon(3000); return; }
         deskSel = fresh.slice(0, need).map(function (it) { return it.id; });
         await deskMake(false, true);
       }
@@ -48631,7 +48733,7 @@ function renderTabletBridgeSetup(info) {
           if (deskLast && deskLast.live && !deskOverlay.hidden && deskLastCtx) { await deskPrintCtx(deskLastCtx, false); }
           else if (state === 'result' && printBtn && !printBtn.hidden && !printBtn.disabled && !printing) printBtn.click();
         } else if (act === 'next') {
-          if (deskLast && deskLast.live && !deskOverlay.hidden) { deskLast.live = false; deskRenderResultCard(); deskRemoteMark(); }
+          if (deskLast && deskLast.live && !deskOverlay.hidden) { deskLast.live = false; deskRenderResultCard(); deskRemoteMark(); deskSchedulePreview(); }
           else if (state === 'result') resetForNextGuest();
         } else if (act === 'clear') {
           deskQueue = []; deskSel = []; deskLast = null; deskLastCtx = null; deskRenderResultCard(); deskRender(); deskScheduleIdbSave();
@@ -50637,7 +50739,13 @@ function renderTabletBridgeSetup(info) {
         else rows.push({ ok: true, t: 'Phones and tablets can connect', d: lan + (reach ? ' · answered ✓' : '') });
         var wf = null; try { wf = wifiInfo(); } catch (e3) { }
         rows.push(wf ? { ok: true, t: 'Wi-Fi QR for guests', d: 'Network “' + wf.ssid + '”' } : { ok: null, t: 'Wi-Fi QR for guests (optional)', d: 'Set the booth Wi-Fi in Setup → Share so guests can join by scanning.' });
-        if (c.helloAt && c.now - c.helloAt < 90000) rows.push({ ok: true, t: 'Recorder connected', d: 'seen ' + spinAgoMs(c.now - c.helloAt) });
+        if (c.arm && c.arm.connected) {
+          var armParts = [c.arm.device || 'iPhone/iPad'];
+          armParts.push(c.arm.state === 'recording' ? 'recording' : (c.arm.state === 'calibrating' ? 'calibrating' : (c.arm.state === 'uploading' ? 'sending' : 'ready')));
+          armParts.push(Math.round(c.arm.gyroDps || 0) + '°/s');
+          if (c.arm.battery >= 0) armParts.push('🔋' + Math.round(c.arm.battery) + '%');
+          rows.push({ ok: true, t: '360 Arm Camera connected', d: armParts.join(' · ') });
+        } else if (c.helloAt && c.now - c.helloAt < 90000) rows.push({ ok: true, t: 'Recorder connected', d: 'seen ' + spinAgoMs(c.now - c.helloAt) });
         else rows.push({ ok: null, t: 'Recorder not seen yet', d: c.helloAt ? 'last seen ' + spinAgoMs(c.now - c.helloAt) + '. Open the send page on the phone.' : 'Open the send page on the phone: scan the QR below.' });
         var newest = Math.max(spinNewest ? spinNewest.mtime : 0, c.uploadAt || 0);
         rows.push(newest ? { ok: true, t: 'Last video received ' + spinAgoMs(Date.now() - newest), d: spinNewest && spinNewest.mtime >= (c.uploadAt || 0) ? spinNewest.name : '' } : { ok: null, t: 'No video received yet', d: 'Record one, or send a test from a phone.' });
@@ -50807,6 +50915,9 @@ function renderTabletBridgeSetup(info) {
         }
         spinOverlay.hidden = false; spinNew = 0; document.getElementById('spinFab').dataset.n = '0';
         spinRender(); spinSetupInfo().then(function () { spinConnectRefresh(false); spinFirstRunPrompt(); }); spinWebShow();
+        if (spinArmTimer) { clearInterval(spinArmTimer); spinArmTimer = null; }
+        spinArmRefresh();
+        spinArmTimer = setInterval(spinArmRefresh, 1200);
         if (!spinCur && spinQueue.length) {
           spinOpenItem(spinQueue[0]);
         } else if (spinCur) {
@@ -50833,6 +50944,7 @@ function renderTabletBridgeSetup(info) {
       if (swnBackdrop) swnBackdrop.addEventListener('click', closeSpinWebNotice);
       function closeSpin() {
         spinOverlay.hidden = true;
+        if (spinArmTimer) { clearInterval(spinArmTimer); spinArmTimer = null; }
         var v = document.getElementById('spinVideo');
         if (v) { try { v.pause(); } catch (e) { } }
         closeSpinModal();
@@ -54639,27 +54751,45 @@ function renderTabletBridgeSetup(info) {
         try { (await window.pb4u.spinPicks() || []).forEach(function (p) { spinPhonePicks[p.name] = p; }); } catch (e) { }
       }
       // ---- Phone send page: settings on the desk, clip status for the phone, what the phone asked for, trim and the spin timer ----
-      var SPIN_SEND_KEY = 'pb_spin_send', spinSendPicks = {}, spinSendCfgLast = '', spinSendClipsLast = '', spinTimerEl = null, spinTimerRun = 0;
+      var SPIN_SEND_KEY = 'pb_spin_send', spinSendPicks = {}, spinSendCfgLast = '', spinSendClipsLast = '', spinTimerEl = null, spinTimerRun = 0, spinArmTimer = null;
       function spinSendGet() {
-        var d = { spinSec: 8, spins: 1, armDelay: 2, lead: 1, tail: 1.5, cd: 3, sound: true, trimOn: false, choices: { look: false, music: false, speed: false, text: false, gif: false } }, sv = {};
+        var d = { spinSec: 8, spins: 1, armDelay: 2, lead: 1, tail: 1.5, cd: 3, sound: true, trimOn: false, armTrigger: 'arm', armStopMode: 'follow', armFixedSec: 10, armCooldown: 4, armFps: 60, choices: { look: false, music: false, speed: false, text: false, gif: false } }, sv = {};
         try { sv = JSON.parse(localStorage.getItem(SPIN_SEND_KEY) || '{}') || {}; } catch (e) { }
         var o = Object.assign({}, d, sv); o.choices = Object.assign({}, d.choices, sv.choices || {});
-        ['spinSec', 'spins', 'armDelay', 'lead', 'tail', 'cd'].forEach(function (k) { var n = Number(o[k]); o[k] = isFinite(n) ? n : d[k]; });
+        ['spinSec', 'spins', 'armDelay', 'lead', 'tail', 'cd', 'armFixedSec', 'armCooldown', 'armFps'].forEach(function (k) { var n = Number(o[k]); o[k] = isFinite(n) ? n : d[k]; });
+        if (!['arm', 'manual', 'desk'].includes(o.armTrigger)) o.armTrigger = d.armTrigger;
+        if (!['follow', 'fixed'].includes(o.armStopMode)) o.armStopMode = d.armStopMode;
+        if (![30, 60, 120].includes(o.armFps)) o.armFps = d.armFps;
         return o;
       }
-      function spinSendRecordSec(s) { return Math.round((s.armDelay + s.spinSec * s.spins + s.tail) * 10) / 10; }
+      function spinSendRecordSec(s) {
+        if (s.armStopMode === 'fixed') return Math.round(s.armFixedSec * 10) / 10;
+        var delay = s.armTrigger === 'arm' ? 0 : s.armDelay;
+        return Math.round((delay + s.spinSec * s.spins + s.tail) * 10) / 10;
+      }
       function spinSendCfgBuild() {
         var s = spinSendGet(), music = [];
         try { ((spinEnv && spinEnv.musicList) || []).forEach(function (n) { if (typeof n === 'string') music.push({ key: n, title: n.replace(/\.[a-z0-9]+$/i, '') }); }); } catch (e) { }
+        var trigTxt = s.armTrigger === 'arm' ? 'Starts automatically when the 360 arm moves.' : (s.armTrigger === 'desk' ? 'Starts when you press Start on the desk.' : 'Press record, then the arm starts about ' + s.armDelay + ' s later.');
         return {
-          guide: { spinSec: s.spinSec, spins: s.spins, recordSec: spinSendRecordSec(s), trigger: 'Press record, then the arm starts about ' + s.armDelay + ' s later.', note: s.trimOn ? 'The laptop trims the video to the spin for you.' : '' },
+          guide: { spinSec: s.spinSec, spins: s.spins, recordSec: spinSendRecordSec(s), trigger: trigTxt, note: s.trimOn && s.armTrigger !== 'arm' ? 'The laptop trims the video to the spin for you.' : '' },
           choices: s.choices, music: music,
-          speeds: [{ key: 'normal', title: 'Normal' }, { key: 'slow', title: 'Slow motion' }, { key: 'ramp', title: 'Speed ramp' }, { key: 'boomerang', title: 'Boomerang' }], laptop: ''
+          speeds: [{ key: 'normal', title: 'Normal' }, { key: 'slow', title: 'Slow motion' }, { key: 'ramp', title: 'Speed ramp' }, { key: 'boomerang', title: 'Boomerang' }], laptop: '',
+          arm: {
+            trigger: s.armTrigger,
+            stopMode: s.armStopMode,
+            fixedSec: s.armFixedSec,
+            tailSec: s.tail,
+            maxSec: Math.max(20, Math.round(s.spinSec * s.spins + s.tail + 10)),
+            cooldownSec: s.armCooldown,
+            fps: s.armFps
+          }
         };
       }
       // The clip is cut to the spin: from a little before the arm starts to a little after it stops. (The render caps the end at the clip's length.)
+      // When auto-started on arm motion, recording starts right as the arm moves, so don't cut the start off.
       function spinSendTrim(it) {
-        var s = spinSendGet(); if (!s.trimOn || it.trimA || it.trimB) return;
+        var s = spinSendGet(); if (!s.trimOn || s.armTrigger === 'arm' || it.trimA || it.trimB) return;
         var a = Math.max(0, s.armDelay - s.lead), b = s.armDelay + s.spinSec * s.spins + s.tail;
         if (b > a + 1) { it.trimA = a; it.trimB = b; }
       }
@@ -54702,12 +54832,43 @@ function renderTabletBridgeSetup(info) {
           else if (x.type === 'act') spinSendAct(x);
         });
       }
+      async function spinArmRefresh() {
+        var stEl = document.getElementById('armPhoneStatus');
+        var startBtn = document.getElementById('sendArmStartBtn');
+        var stopBtn = document.getElementById('sendArmStopBtn');
+        var calBtn = document.getElementById('sendArmCalBtn');
+        if (!stEl || !window.pb4u || !window.pb4u.spinArmState) return;
+        var a = null; try { a = await window.pb4u.spinArmState(); } catch (e) { }
+        if (!a || !a.connected) {
+          stEl.textContent = 'Arm app: waiting for iPhone/iPad';
+          stEl.classList.remove('active');
+          if (startBtn) startBtn.disabled = true;
+          if (stopBtn) stopBtn.hidden = true;
+          if (calBtn) calBtn.disabled = true;
+          return;
+        }
+        var dev = a.device || 'iPhone';
+        var bat = a.battery >= 0 ? ' · 🔋' + Math.round(a.battery) + '%' : '';
+        var txt = '';
+        if (a.state === 'recording') txt = '● REC ' + Number(a.recSec || 0).toFixed(1) + ' s · ' + dev + bat;
+        else if (a.state === 'uploading') txt = '⬆ Sending ' + Math.round(a.uploadPct || 0) + '% · ' + dev;
+        else if (a.state === 'calibrating') txt = '🎯 Calibrating… · ' + Math.round(a.gyroDps || 0) + '°/s';
+        else if (a.state === 'cooldown') txt = '⏳ Cooldown… · ' + dev + bat;
+        else if (a.state === 'countdown') txt = '⏱ Countdown… · ' + dev + bat;
+        else txt = '✓ ' + dev + ' · Ready · ' + Math.round(a.gyroDps || 0) + '°/s' + bat;
+        stEl.textContent = txt;
+        stEl.classList.add('active');
+        if (startBtn) startBtn.disabled = (a.state === 'recording' || a.state === 'calibrating');
+        if (stopBtn) stopBtn.hidden = (a.state !== 'recording');
+        if (calBtn) calBtn.disabled = (a.state === 'recording');
+      }
       async function spinSendTick() {
         if (!spinDesktop() || !window.pb4u || !window.pb4u.spinSendSet) return;
         var cfg = spinSendCfgBuild(), sig = JSON.stringify(cfg);
         if (sig !== spinSendCfgLast) { spinSendCfgLast = sig; window.pb4u.spinSendSet(cfg).catch(function () { }); }
         spinSendPushClips();
         await spinSendCollect();
+        spinArmRefresh();
       }
       // The spin timer: 3-2-1, GO (press record on the phone), the arm starts, the spin, STOP. Big enough to read from the platform.
       function spinBeep(f, ms) {
@@ -54756,21 +54917,57 @@ function renderTabletBridgeSetup(info) {
         var s = spinSendGet();
         g('sendSpinSec').value = s.spinSec; g('sendSpins').value = String(s.spins); g('sendArmDelay').value = s.armDelay; g('sendLead').value = s.lead; g('sendTail').value = s.tail; g('sendCd').value = s.cd;
         g('sendTrim').checked = !!s.trimOn; g('sendSound').checked = !!s.sound;
+        if (g('sendArmTrigger')) g('sendArmTrigger').value = s.armTrigger;
+        if (g('sendArmStopMode')) g('sendArmStopMode').value = s.armStopMode;
+        if (g('sendArmFixedSec')) g('sendArmFixedSec').value = s.armFixedSec;
+        if (g('sendArmFixedWrap')) g('sendArmFixedWrap').hidden = s.armStopMode !== 'fixed';
+        if (g('sendArmCooldown')) g('sendArmCooldown').value = s.armCooldown;
+        if (g('sendArmFps')) g('sendArmFps').value = String(s.armFps);
         [].forEach.call(document.querySelectorAll('[data-sendch]'), function (c) { c.checked = !!s.choices[c.dataset.sendch]; });
-        g('sendGuideTxt').textContent = 'Phones are told to record about ' + spinSendRecordSec(s) + ' s.';
+        g('sendGuideTxt').textContent = s.armTrigger === 'arm'
+          ? (s.armStopMode === 'fixed' ? 'Auto-start on spin · ' + s.armFixedSec + ' s' : 'Auto-start on spin · stop + ' + s.tail + ' s tail')
+          : 'Phones are told to record about ' + spinSendRecordSec(s) + ' s.';
       }
       function spinSendFromUI() {
-        var g = function (id) { return document.getElementById(id); }, num = function (id, lo, hi, d) { var n = Number(g(id).value); return isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
-        var s = { spinSec: num('sendSpinSec', 2, 60, 8), spins: num('sendSpins', 0.5, 10, 1), armDelay: num('sendArmDelay', 0, 30, 2), lead: num('sendLead', 0, 10, 1), tail: num('sendTail', 0, 20, 1.5), cd: num('sendCd', 0, 10, 3), sound: g('sendSound').checked, trimOn: g('sendTrim').checked, choices: {} };
+        var g = function (id) { return document.getElementById(id); }, num = function (id, lo, hi, d) { var el = g(id); if (!el) return d; var n = Number(el.value); return isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+        var s = {
+          spinSec: num('sendSpinSec', 2, 60, 8), spins: num('sendSpins', 0.5, 10, 1), armDelay: num('sendArmDelay', 0, 30, 2),
+          lead: num('sendLead', 0, 10, 1), tail: num('sendTail', 0, 20, 1.5), cd: num('sendCd', 0, 10, 3),
+          sound: g('sendSound').checked, trimOn: g('sendTrim').checked,
+          armTrigger: g('sendArmTrigger') ? g('sendArmTrigger').value : 'arm',
+          armStopMode: g('sendArmStopMode') ? g('sendArmStopMode').value : 'follow',
+          armFixedSec: num('sendArmFixedSec', 3, 60, 10),
+          armCooldown: num('sendArmCooldown', 1, 20, 4),
+          armFps: num('sendArmFps', 30, 120, 60),
+          choices: {}
+        };
         [].forEach.call(document.querySelectorAll('[data-sendch]'), function (c) { s.choices[c.dataset.sendch] = c.checked; });
         try { localStorage.setItem(SPIN_SEND_KEY, JSON.stringify(s)); } catch (e) { }
         spinSendUI(); try { spinPushOffer(); } catch (e) { } try { spinSendTick(); } catch (e) { }
       }
       (function () {
         if (!document.getElementById('sendSpinSec')) return;
-        ['sendSpinSec', 'sendSpins', 'sendArmDelay', 'sendLead', 'sendTail', 'sendCd', 'sendTrim', 'sendSound'].forEach(function (id) { document.getElementById(id).addEventListener('change', spinSendFromUI); });
+        ['sendSpinSec', 'sendSpins', 'sendArmDelay', 'sendLead', 'sendTail', 'sendCd', 'sendTrim', 'sendSound',
+          'sendArmTrigger', 'sendArmStopMode', 'sendArmFixedSec', 'sendArmCooldown', 'sendArmFps'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('change', spinSendFromUI);
+          });
         [].forEach.call(document.querySelectorAll('[data-sendch]'), function (c) { c.addEventListener('change', spinSendFromUI); });
         document.getElementById('sendTimerBtn').addEventListener('click', spinTimerStart);
+        var armCmdBind = function (id, cmd, msg) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener('click', async function () {
+            if (!window.pb4u || !window.pb4u.spinArmCmd) return;
+            try {
+              var r = await window.pb4u.spinArmCmd(cmd);
+              if (r && r.ok) showToast(msg, 3500);
+            } catch (e) { }
+          });
+        };
+        armCmdBind('sendArmStartBtn', 'start', 'Start sent to arm phone.');
+        armCmdBind('sendArmStopBtn', 'stop', 'Stop sent to arm phone.');
+        armCmdBind('sendArmCalBtn', 'calibrate', 'Calibration started on the arm phone — spin the arm when prompted.');
         spinSendUI();
       })();
       // Tell the laptop which looks a phone may choose from (nothing when guest choice is off).

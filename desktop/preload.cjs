@@ -45,6 +45,8 @@ contextBridge.exposeInMainWorld('pb4u', {
   spinSendSet: (cfg) => ipcRenderer.invoke('pb4u:spinSendSet', cfg || {}),
   spinClipsSet: (list) => ipcRenderer.invoke('pb4u:spinClipsSet', Array.isArray(list) ? list : []),
   spinSendTake: () => ipcRenderer.invoke('pb4u:spinSendTake'),
+  spinArmState: () => ipcRenderer.invoke('pb4u:spinArmState'),
+  spinArmCmd: (cmd) => ipcRenderer.invoke('pb4u:spinArmCmd', String(cmd || '')),
   spinStats: (folderKey, subfolder) => ipcRenderer.invoke('pb4u:spinStats', String(folderKey || ''), String(subfolder || '')),
   spinMusicRemove: (name) => ipcRenderer.invoke('pb4u:spinMusicRemove', String(name || '')),
   spinIntro: (clear) => ipcRenderer.invoke('pb4u:spinIntro', !!clear),

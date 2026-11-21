@@ -118,6 +118,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         userContent.add(self, name: "pbBt")
         userContent.add(self, name: "pbSave")
         userContent.add(self, name: "pbCam")
+        userContent.add(self, name: "pbSpinArm")
 
         let bridgeJs = """
         (function(){
@@ -167,6 +168,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             },
             guestViewSet: function(mode) {
               try { window.webkit.messageHandlers.pbGuestViewSet.postMessage(String(mode || 'all')); } catch (e) {}
+            },
+            openSpinArm: function() {
+              try { window.webkit.messageHandlers.pbSpinArm.postMessage({}); } catch (e) {}
             },
             isOnline: function() {
               if (typeof window.__pbIosOnline === 'boolean') return window.__pbIosOnline;
@@ -272,7 +276,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
           };
 
           window.__PBUpdate = {
-            version: function() { return window.__pbIosAppVer || '1.1.11'; },
+            version: function() { return window.__pbIosAppVer || '1.1.12'; },
             check: function() {
               try { window.webkit.messageHandlers.pbUpdateCheck.postMessage({}); } catch (e) {}
             },
@@ -789,6 +793,25 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         container.addSubview(btn)
         self.activateBtn = btn
 
+        let spinArmBtn = UIButton(type: .system)
+        spinArmBtn.setTitle("🎥 360 Arm Camera (Free Companion)", for: .normal)
+        spinArmBtn.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .bold)
+        spinArmBtn.backgroundColor = UIColor(red: 0.12, green: 0.23, blue: 0.32, alpha: 1.0) // #1F3A52
+        spinArmBtn.setTitleColor(.white, for: .normal)
+        spinArmBtn.layer.cornerRadius = 12
+        spinArmBtn.translatesAutoresizingMaskIntoConstraints = false
+        spinArmBtn.addTarget(self, action: #selector(didTapOpenSpinArm), for: .touchUpInside)
+        container.addSubview(spinArmBtn)
+
+        let spinArmNote = UILabel()
+        spinArmNote.text = "Pairs via QR to your laptop's 360 Desk · No licence needed"
+        spinArmNote.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+        spinArmNote.textColor = UIColor(red: 0.42, green: 0.40, blue: 0.42, alpha: 1.0)
+        spinArmNote.textAlignment = .center
+        spinArmNote.numberOfLines = 0
+        spinArmNote.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(spinArmNote)
+
         let mid = UILabel()
         mid.text = "iPad ID: \(AppLicence.shared.machineId())"
         mid.font = UIFont.monospacedSystemFont(ofSize: 12, weight: .regular)
@@ -802,7 +825,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
         NSLayoutConstraint.activate([
             title.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            title.centerYAnchor.constraint(equalTo: container.centerYAnchor, constant: -130),
+            title.centerYAnchor.constraint(equalTo: container.centerYAnchor, constant: -145),
 
             msg.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 12),
             msg.centerXAnchor.constraint(equalTo: container.centerXAnchor),
@@ -810,19 +833,48 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             msg.leadingAnchor.constraint(greaterThanOrEqualTo: container.leadingAnchor, constant: 24),
             msg.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -24),
 
-            tf.topAnchor.constraint(equalTo: msg.bottomAnchor, constant: 22),
+            tf.topAnchor.constraint(equalTo: msg.bottomAnchor, constant: 20),
             tf.centerXAnchor.constraint(equalTo: container.centerXAnchor),
             tf.widthAnchor.constraint(equalToConstant: 300),
             tf.heightAnchor.constraint(equalToConstant: 46),
 
-            btn.topAnchor.constraint(equalTo: tf.bottomAnchor, constant: 16),
+            btn.topAnchor.constraint(equalTo: tf.bottomAnchor, constant: 14),
             btn.centerXAnchor.constraint(equalTo: container.centerXAnchor),
             btn.widthAnchor.constraint(equalToConstant: 300),
             btn.heightAnchor.constraint(equalToConstant: 48),
 
-            mid.topAnchor.constraint(equalTo: btn.bottomAnchor, constant: 20),
+            spinArmBtn.topAnchor.constraint(equalTo: btn.bottomAnchor, constant: 14),
+            spinArmBtn.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            spinArmBtn.widthAnchor.constraint(equalToConstant: 300),
+            spinArmBtn.heightAnchor.constraint(equalToConstant: 46),
+
+            spinArmNote.topAnchor.constraint(equalTo: spinArmBtn.bottomAnchor, constant: 6),
+            spinArmNote.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            spinArmNote.leadingAnchor.constraint(greaterThanOrEqualTo: container.leadingAnchor, constant: 24),
+            spinArmNote.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -24),
+
+            mid.topAnchor.constraint(equalTo: spinArmNote.bottomAnchor, constant: 16),
             mid.centerXAnchor.constraint(equalTo: container.centerXAnchor)
         ])
+    }
+
+    @objc private func didTapOpenSpinArm() {
+        openSpinArmCamera()
+    }
+
+    private func openSpinArmCamera() {
+        NativeCameraBridge.shared.stop { [weak self] in
+            guard let self = self else { return }
+            if let presented = self.presentedViewController {
+                presented.dismiss(animated: false)
+            }
+            let vc = SpinArmViewController()
+            vc.modalPresentationStyle = .fullScreen
+            vc.onDismiss = { [weak self] in
+                self?.webView?.evaluateJavaScript("window.dispatchEvent(new Event('pbSpinArmClosed'));", completionHandler: nil)
+            }
+            self.present(vc, animated: true)
+        }
     }
 
     @objc private func dismissGateKeyboard() {
@@ -1526,6 +1578,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             default:
                 reply(["ok": false, "error": "Unknown camera command"])
             }
+        } else if message.name == "pbSpinArm" {
+            openSpinArmCamera()
         }
     }
 

@@ -505,7 +505,7 @@ export function spinShare(name, folderKey, subfolder, outName, look) {
 // What the 360 desk's Connect panel shows: when a recorder last said hello, when a recording last started, when a video last arrived.
 const conn = { helloAt: 0, recAt: 0, uploadAt: 0 };
 export function spinConnectInfo(test) {
-  const out = { dir: spinDirNow(), sendUrl: spinSendUrl(), port: sharePort || 0, helloAt: conn.helloAt, recAt: conn.recAt, uploadAt: conn.uploadAt, now: Date.now() };
+  const out = { dir: spinDirNow(), sendUrl: spinSendUrl(), port: sharePort || 0, helloAt: conn.helloAt, recAt: conn.recAt, uploadAt: conn.uploadAt, arm: spinArmStateNow(), now: Date.now() };
   if (test && out.dir) {
     try { const f = join(out.dir, '.pbtest-' + randomBytes(3).toString('hex')); writeFileSync(f, 'ok'); unlinkSync(f); out.writable = true; } catch { out.writable = false; }
     try { const st = statfsSync(out.dir); out.freeMb = Math.round(st.bavail * st.bsize / 1048576); } catch { /* unknown */ }
@@ -572,19 +572,77 @@ const SEND_CHOICES = ['look', 'music', 'speed', 'text', 'gif'];
 const SEND_ACTS = ['reedit', 'share', 'print', 'delete'];
 const SEND_STATES = ['new', 'editing', 'edited', 'sharing', 'ready', 'error'];
 const SEND_Q_MAX = 100;
-const defaultSendCfg = () => ({ guide: { spinSec: 0, spins: 1, recordSec: 0, trigger: '', note: '' }, choices: { look: false, music: false, speed: false, text: false, gif: false }, music: [], speeds: [], laptop: '' });
+const ARM_TRIGGERS = ['arm', 'manual', 'desk'];
+const ARM_STOP_MODES = ['follow', 'fixed'];
+const ARM_STATES = ['idle', 'calibrating', 'countdown', 'recording', 'uploading', 'cooldown'];
+const ARM_CMDS = ['start', 'stop', 'calibrate'];
+const ARM_CMD_TTL = 15000;
+const defaultArmCfg = () => ({ trigger: 'arm', stopMode: 'follow', fixedSec: 10, tailSec: 1.5, maxSec: 30, cooldownSec: 4, fps: 60 });
+const defaultSendCfg = () => ({ guide: { spinSec: 0, spins: 1, recordSec: 0, trigger: '', note: '' }, choices: { look: false, music: false, speed: false, text: false, gif: false }, music: [], speeds: [], laptop: '', arm: defaultArmCfg() });
 let sendCfg = defaultSendCfg();
 let clipStatus = [];
 let sendQueue = [];
 let cmdAt = 0;
+let armState = { at: 0, device: '', state: 'idle', gyroDps: 0, thresholdDps: 25, battery: -1, fps: 60, recSec: 0, uploadPct: 0, lens: '' };
+let armCmdQueue = [];
+let armCmdSeq = 0;
 const numIn = (v, lo, hi, d) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
 const optList = (a) => (Array.isArray(a) ? a : []).slice(0, 40).map((o) => ({ key: cleanText(o && o.key, 80), title: cleanText(o && o.title, 40) })).filter((o) => o.key && o.title);
+export function spinArmStateNow() {
+  const now = Date.now();
+  return { ...armState, connected: !!(armState.at && now - armState.at < 10000), now };
+}
+export function spinArmCmdPush(cmd) {
+  const c = String(cmd || '').trim();
+  if (!ARM_CMDS.includes(c)) return { ok: false, error: 'Invalid command' };
+  const now = Date.now();
+  armCmdQueue = armCmdQueue.filter((x) => now - x.at <= ARM_CMD_TTL);
+  if (armCmdQueue.length >= 20) armCmdQueue.shift();
+  const id = ++armCmdSeq;
+  armCmdQueue.push({ id, cmd: c, at: now });
+  return { ok: true, id };
+}
+function takeArmCmds() {
+  const now = Date.now();
+  const out = armCmdQueue.filter((x) => now - x.at <= ARM_CMD_TTL);
+  armCmdQueue = [];
+  return out;
+}
+function readSmallJson(req) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    let len = 0, done = false;
+    const finish = (o) => { if (done) return; done = true; resolve(o); };
+    req.on('data', (c) => {
+      len += c.length;
+      if (len > 4096) { finish({}); return; }
+      chunks.push(c);
+    });
+    req.on('end', () => {
+      try {
+        const txt = Buffer.concat(chunks).toString('utf8').trim();
+        const parsed = txt ? JSON.parse(txt) : {};
+        finish(parsed && typeof parsed === 'object' ? parsed : {});
+      } catch { finish({}); }
+    });
+    req.on('error', () => finish({}));
+  });
+}
 export function spinSendCfgSet(c) {
-  const g = (c && c.guide) || {}, ch = (c && c.choices) || {};
+  const g = (c && c.guide) || {}, ch = (c && c.choices) || {}, a = (c && c.arm) || {};
   sendCfg = {
     guide: { spinSec: numIn(g.spinSec, 0, 120, 0), spins: numIn(g.spins, 0.5, 10, 1), recordSec: numIn(g.recordSec, 0, 600, 0), trigger: cleanText(g.trigger, 80), note: cleanText(g.note, 200) },
     choices: Object.fromEntries(SEND_CHOICES.map((k) => [k, !!ch[k]])),
-    music: optList(c && c.music), speeds: optList(c && c.speeds), laptop: cleanText(c && c.laptop, 40)
+    music: optList(c && c.music), speeds: optList(c && c.speeds), laptop: cleanText(c && c.laptop, 40),
+    arm: {
+      trigger: ARM_TRIGGERS.includes(a.trigger) ? a.trigger : 'arm',
+      stopMode: ARM_STOP_MODES.includes(a.stopMode) ? a.stopMode : 'follow',
+      fixedSec: numIn(a.fixedSec, 3, 60, 10),
+      tailSec: numIn(a.tailSec, 0, 10, 1.5),
+      maxSec: numIn(a.maxSec, 5, 60, 30),
+      cooldownSec: numIn(a.cooldownSec, 1, 20, 4),
+      fps: [30, 60, 120].includes(Number(a.fps)) ? Number(a.fps) : 60
+    }
   };
   return true;
 }
@@ -612,10 +670,11 @@ function inboxClip(raw) {
   if (!dd || !n || n.startsWith('.') || !VIDEO_RE.test(n) || !existsSync(join(dd, n))) return '';
   return n;
 }
-function handleSendV2(req, res, url, sm) {
+async function handleSendV2(req, res, url, sm) {
   const cors = { 'access-control-allow-origin': '*' };
   const kind = sm[2];
-  if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': kind === 'config' || kind === 'clips' ? 'GET' : 'POST', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
+  const isGet = kind === 'config' || kind === 'clips' || kind === 'arm-poll';
+  if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': isGet ? 'GET' : 'POST', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
   const json = (code, o) => send(res, code, 'application/json', JSON.stringify(o), cors);
   if (kind === 'config') {
     if (req.method !== 'GET') return send(res, 405, 'text/plain', 'Method not allowed', cors);
@@ -625,8 +684,44 @@ function handleSendV2(req, res, url, sm) {
     if (req.method !== 'GET') return send(res, 405, 'text/plain', 'Method not allowed', cors);
     return json(200, { ok: true, clips: clipStatus });
   }
+  if (kind === 'arm-poll') {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'Method not allowed', cors);
+    conn.helloAt = Date.now();
+    return json(200, { ok: true, cmds: takeArmCmds(), config: sendCfg });
+  }
   if (req.method !== 'POST') return send(res, 405, 'text/plain', 'Method not allowed', cors);
   const q = url.searchParams;
+  if (kind === 'arm-state') {
+    const b = await readSmallJson(req);
+    const val = (k) => (b[k] !== undefined ? b[k] : q.get(k));
+    const optNum = (k, lo, hi, d) => { const v = val(k); return v === null || v === undefined || v === '' ? d : numIn(v, lo, hi, d); };
+    const prevState = armState.state;
+    const rawState = String(val('state') || 'idle');
+    const dev = cleanText(val('device'), 50);
+    const lns = cleanText(val('lens'), 20);
+    armState = {
+      at: Date.now(),
+      device: dev || armState.device,
+      state: ARM_STATES.includes(rawState) ? rawState : 'idle',
+      gyroDps: optNum('gyroDps', 0, 2000, 0),
+      thresholdDps: optNum('thresholdDps', 5, 300, armState.thresholdDps),
+      battery: optNum('battery', -1, 100, -1),
+      fps: optNum('fps', 15, 240, armState.fps),
+      recSec: optNum('recSec', 0, 600, 0),
+      uploadPct: optNum('uploadPct', 0, 100, 0),
+      lens: lns || armState.lens
+    };
+    conn.helloAt = armState.at;
+    if (prevState !== 'recording' && armState.state === 'recording') {
+      conn.recAt = armState.at;
+      setWallCue('recording', '360 SPINNING 🌀', Math.max(4000, Math.round(((sendCfg.arm && sendCfg.arm.maxSec) || 30) * 1000) + 2000));
+    } else if (armState.state === 'recording') {
+      setWallCue('recording', '360 SPINNING 🌀', Math.max(4000, Math.round(((sendCfg.arm && sendCfg.arm.maxSec) || 30) * 1000) + 2000));
+    } else if (prevState === 'recording' && armState.state !== 'recording') {
+      setWallCue('idle', '', 0);
+    }
+    return json(200, { ok: true, cmds: takeArmCmds(), config: sendCfg });
+  }
   if (kind === 'cmd') {
     if (q.get('do') !== 'countdown') return json(400, { ok: false });
     const now = Date.now();
@@ -1171,7 +1266,7 @@ function handleSend(req, res, url, sm) {
     lookPicks.set(n, { key, who: cleanText(url.searchParams.get('who'), 40) });
     return send(res, 200, 'application/json', JSON.stringify({ ok: true }), cors);
   }
-  if (['config', 'clips', 'choice', 'act', 'cmd'].includes(sm[2])) return handleSendV2(req, res, url, sm);
+  if (['config', 'clips', 'choice', 'act', 'cmd', 'arm-state', 'arm-poll'].includes(sm[2])) return handleSendV2(req, res, url, sm);
   const d = spinDirNow(); if (!d) return send(res, 503, 'text/plain', 'Not ready');
   if (!sm[2]) {
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
@@ -2460,7 +2555,7 @@ async function handleShare(req, res) {
       return res.end();
     }
   }
-  const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited|proxy|photos|photo|rove-state|rove-cmd|hello|looks|look|manifest|icon|config|clips|choice|act|cmd)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);
+  const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited|proxy|photos|photo|rove-state|rove-cmd|hello|looks|look|manifest|icon|config|clips|choice|act|cmd|arm-state|arm-poll)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);
   if (sm) return handleSend(req, res, url, sm);
   const om = /^\/o\/([A-Za-z0-9_-]{16,40})(?:\/(f|print)\/([^/]+))?\/?$/.exec(url.pathname);
   if (om) return handleOwn(req, res, url, om);

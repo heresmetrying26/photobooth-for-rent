@@ -16,6 +16,7 @@
 		100100012CE8000100000007 /* VoiceBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000007 /* VoiceBridge.swift */; };
 		100100012CE8000100000020 /* BtPrinterBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000020 /* BtPrinterBridge.swift */; };
 		100100012CE8000100000021 /* NativeCameraBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000021 /* NativeCameraBridge.swift */; };
+		100100012CE8000100000022 /* SpinArmViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000022 /* SpinArmViewController.swift */; };
 		100100012CE8000100000008 /* AppLicence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000008 /* AppLicence.swift */; };
 		100100012CE8000100000009 /* booth.html in Resources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000009 /* booth.html */; };
 /* End PBXBuildFile section */
@@ -31,6 +32,7 @@
 		200100012CE8000100000007 /* VoiceBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceBridge.swift; sourceTree = "<group>"; };
 		200100012CE8000100000020 /* BtPrinterBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BtPrinterBridge.swift; sourceTree = "<group>"; };
 		200100012CE8000100000021 /* NativeCameraBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCameraBridge.swift; sourceTree = "<group>"; };
+		200100012CE8000100000022 /* SpinArmViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpinArmViewController.swift; sourceTree = "<group>"; };
 		200100012CE8000100000008 /* AppLicence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLicence.swift; sourceTree = "<group>"; };
 		200100012CE8000100000009 /* booth.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = booth.html; sourceTree = "<group>"; };
 		200100012CE8000100000010 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -67,6 +69,7 @@
 				200100012CE8000100000007 /* VoiceBridge.swift */,
 				200100012CE8000100000020 /* BtPrinterBridge.swift */,
 				200100012CE8000100000021 /* NativeCameraBridge.swift */,
+				200100012CE8000100000022 /* SpinArmViewController.swift */,
 				200100012CE8000100000008 /* AppLicence.swift */,
 				200100012CE8000100000009 /* booth.html */,
 				200100012CE8000100000010 /* Info.plist */,
@@ -160,6 +163,7 @@
 				100100012CE8000100000007 /* VoiceBridge.swift in Sources */,
 				100100012CE8000100000020 /* BtPrinterBridge.swift in Sources */,
 				100100012CE8000100000021 /* NativeCameraBridge.swift in Sources */,
+				100100012CE8000100000022 /* SpinArmViewController.swift in Sources */,
 				100100012CE8000100000008 /* AppLicence.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -231,14 +235,14 @@
 				CODE_SIGN_STYLE = Manual;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = photobooth4u/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.11;
+				MARKETING_VERSION = 1.1.12;
 				PRODUCT_BUNDLE_IDENTIFIER = com.photobooth4u.booth;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -254,14 +258,14 @@
 				CODE_SIGN_STYLE = Manual;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = photobooth4u/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.11;
+				MARKETING_VERSION = 1.1.12;
 				PRODUCT_BUNDLE_IDENTIFIER = com.photobooth4u.booth;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;

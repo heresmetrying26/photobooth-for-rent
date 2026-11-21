@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.88', date: '2026-11-21' },
   { version: '1.1.87', date: '2026-11-21' },
   { version: '1.1.86', date: '2026-11-21' },
   { version: '1.1.85', date: '2026-11-21' },
@@ -230,7 +231,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.11', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.11/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.12', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.12/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -283,6 +284,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-21', title: 'Desktop 1.1.88 + iPad 1.1.12: 360 Motion Trigger — the 360 starts recording by itself when the arm spins (free iPhone/iPad 360 Arm Camera)', for: ['website', 'app'], app: '1.1.88',
+    items: [
+      '🌀 360 Motion Trigger (like dslrBooth / LumaBooth): mount an iPhone or iPad on the spinning arm. It reads its own gyro (CoreMotion) and starts recording the moment the arm spins, then stops when the arm stops (Follow the arm + tail) or after a Fixed duration (3–60 s). It never connects to the 360 motor.',
+      '🎯 Configure Sensitivity: a guided Hold Still → Spin Arm step works out the start and stop speed (°/s) for your spinner, plus a manual sensitivity slider, cooldown and 30/60/120 fps. Detection pauses while Settings is open.',
+      '🆓 Free companion mode: on the iPad app\'s activation screen tap "360 Arm Camera (Free Companion)" and scan the QR in the laptop\'s 360 Desk. It uses no extra device slot. It can also be opened from inside an activated iPad booth (Tools dock / Setup → Camera).',
+      '💻 360 Desk (laptop app): shows the Arm Phone live (state, gyro °/s, battery) with Start / Stop / Calibrate buttons and the Arm settings; the guest wall shows "360 SPINNING" while the arm records. Clips upload over booth Wi-Fi with retry and stay queued on the phone if the laptop is unreachable.',
+      '🛠 iPad 1.1.12 also adds NSMotionUsageDescription and the new native 360 Arm Camera screen (1080p 60/120 fps, 0.5× / 1× / front lens, tap-to-focus, AE/AF lock, screen-lock shield).'
+    ]
+  },
   {
     date: '2026-11-21', title: 'iPad 1.1.11: fix portrait split/shifted camera preview and countdown frame lag', for: ['website'],
     items: [

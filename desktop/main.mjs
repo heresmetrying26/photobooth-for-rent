@@ -17,7 +17,7 @@ import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './li
 import { initSetupSync, handleSetupRequest, syncAllNow } from './lib/setup-sync.mjs';
 import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
-import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, roveStateSet, roveCmdTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
+import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinArmStateNow, spinArmCmdPush, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, roveStateSet, roveCmdTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
 import { initBridge, getBridgeInfo, renewBridgeToken, pushBridgeState, sendBridgeEvent, sendCamCommand } from './lib/guest-bridge.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import { makeShrinkPage, makePngToJpeg } from './lib/pageshrink.mjs';
@@ -549,6 +549,8 @@ function wireIpc() {
   ipcMain.handle('pb4u:spinSendSet', (e, cfg) => { try { return spinSendCfgSet(cfg); } catch { return false; } });
   ipcMain.handle('pb4u:spinClipsSet', (e, list) => { try { return spinClipsSet(list); } catch { return 0; } });
   ipcMain.handle('pb4u:spinSendTake', () => { try { return spinSendTake(); } catch { return []; } });
+  ipcMain.handle('pb4u:spinArmState', () => { try { return spinArmStateNow(); } catch { return null; } });
+  ipcMain.handle('pb4u:spinArmCmd', (e, cmd) => { try { return spinArmCmdPush(String(cmd || '')); } catch { return { ok: false }; } });
   ipcMain.handle('pb4u:spinStats', (e, folderKey, subfolder) => { try { return spinStatsFor(String(folderKey || ''), String(subfolder || '')); } catch { return null; } });
   ipcMain.handle('pb4u:spinMusicAdd', async () => {
     const r = await dialog.showOpenDialog(win, { title: 'Add music tracks for the 360 looks', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Audio', extensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'flac'] }] });

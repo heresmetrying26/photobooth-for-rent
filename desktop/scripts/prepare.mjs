@@ -57,13 +57,14 @@ async function localFonts(cssUrl, outName) {
 const readText = (f) => readFileSync(f, 'utf8').replace(/\r\n/g, '\n');
 let booth = readText(join(ROOT, 'protected', 'booth.html'))
   .replace(/<script type="text\/plain" data-removed-feature="gifenc">[\s\S]*?<\/script>/, '');
-const headLink = /<link href="(https:\/\/fonts\.googleapis\.com\/css2\?[^"]+)" rel="stylesheet">/.exec(booth);
+must(/<\/script>\s*<\/body>\s*<\/html>\s*$/.test(booth), 'booth.html is truncated or missing closing </script></body></html>');
+const headLink = /<link href="(https:\/\/fonts\.googleapis\.com\/css2\?[^"]+)" rel="stylesheet"/.exec(booth);
 must(headLink, 'booth.html: Google Fonts <link> not found');
 const guestLink = /<link href="(https:\/\/fonts\.googleapis\.com\/css2\?[^"]+)" rel="stylesheet">' \+/.exec(booth);
 const nHead = await localFonts(headLink[1].replace(/&amp;/g, '&'), 'fonts.css');
 const nGuest = guestLink ? await localFonts(guestLink[1].replace(/&amp;/g, '&'), 'guest.css') : 0;
 if (nHead) {
-  booth = booth.replace(headLink[0], '<link href="/fonts/fonts.css" rel="stylesheet">')
+  booth = booth.replace(headLink[1], '/fonts/fonts.css')
     .replace(/<link rel="preconnect" href="https:\/\/fonts\.(googleapis|gstatic)\.com"( crossorigin)?>\n?/g, '');
   log('fonts: ' + nHead + ' files');
 }

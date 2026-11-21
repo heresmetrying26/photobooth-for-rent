@@ -19572,7 +19572,7 @@
                     data-tip-desc="Continuous recording across your entire session (all poses and laughter in between), automatically fast-forwarded into a smooth 4–5 second recap.">
                     🎞️ Full Session</option>
                   <option value="slideshow" data-tip-title="🖼️ Final Shots Slideshow" data-tip-tag="Simple &amp; Clean"
-                    data-tip-desc="Not a timelapse. Plain still photos: the final photos drop into your event layout one by one (or show one at a time on a Polaroid card), then loop.">
+                    data-tip-desc="Not a timelapse. A clean slideshow of your guests' final photos: one by one on a Polaroid-style card, in your event design, or dropping into your event layout as plain stills.">
                     🖼️ Final Shots Slideshow</option>
                 </select>
               </div>
@@ -19593,10 +19593,12 @@
               <div id="gifSlideOpts" style="display:none;">
                 <div class="fb-row" style="margin-top:10px;"><span class="lbl">Slide frame</span>
                   <select id="gifSlideFrameSelect" class="pillify" aria-label="Slideshow frame">
-                    <option value="design" selected data-tip-title="🎨 Event Layout" data-tip-tag="Your Frame &amp; Layout"
-                      data-tip-desc="Plain still photos, no motion. The final photos drop into your own event layout (strip, grid, polaroid sheet or your custom template) one by one, then the finished layout holds. The GIF takes the size of that layout.">Event layout (strip, grid, my template)</option>
-                    <option value="card" data-tip-title="📸 Polaroid Card" data-tip-tag="One Photo At A Time"
-                      data-tip-desc="One final photo at a time on a Polaroid-style card with a colour background. The slide takes the shape of the guests' photos, so nothing is cropped.">Polaroid card (one photo at a time)</option>
+                    <option value="card" selected data-tip-title="📸 Polaroid Card" data-tip-tag="Shaped Like The Photos"
+                      data-tip-desc="A Polaroid-style card on a coloured background. The slide takes the shape of the guests' photos (landscape, portrait or square), so nothing is cropped.">Polaroid card</option>
+                    <option value="design" data-tip-title="🎨 Event Design" data-tip-tag="Your Template"
+                      data-tip-desc="Each photo is placed in your own event design: your template, backdrop, title and branding. The GIF takes the size of that design. Uses your chosen layout if it holds one photo, otherwise the Solo layout.">Event design / my template</option>
+                    <option value="layout" data-tip-title="🧩 Event Layout (Stills)" data-tip-tag="Strip, Grid, Template"
+                      data-tip-desc="Plain still photos, no motion. The final photos drop into your event's own layout (strip, grid, polaroid sheet or custom template) one by one, then the finished layout holds.">Event layout, still photos (strip, grid…)</option>
                   </select>
                 </div>
                 <div id="gifSlideCardOpts">
@@ -27233,7 +27235,7 @@
       var gifLoopMode = 'boomerang'; // 'boomerang' (ping-pong) | 'forward'
 var gifSlideCard = 'white';   // slideshow card: 'white' | 'cream' | 'black' | 'none'
 var gifSlideBg = 'white';     // slideshow background: 'white' | 'blush' | 'sunset' | 'ocean' | 'lavender' | 'mint' | 'midnight'
-var gifSlideFrame = 'design'; // slideshow frame: 'design' (the event's own layout / template, photos drop in one by one) | 'card' (one Polaroid card per photo)
+var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped like the photos) | 'design' (one photo in the event's design / template) | 'layout' (event layout, still photos drop in one by one)
 
       function resolveGifMotionStyle(layoutKey) {
         if (gifMotionStyle && gifMotionStyle !== 'auto') return gifMotionStyle;
@@ -27268,7 +27270,7 @@ var gifSlideFrame = 'design'; // slideshow frame: 'design' (the event's own layo
               : gifMotionStyle === 'sequential'
                 ? '🎬 Story Replay: Each box animates one by one in sequence (Box 1 → 2 → 3 → 4), then pauses on the completed photo strip.'
                 : gifMotionStyle === 'slideshow'
-                  ? '🖼️ Final Shots Slideshow: plain still photos in your event layout, no motion or timelapse.'
+                  ? '🖼️ Final Shots Slideshow: a clean slideshow of the final photos, no timelapse. Pick the slide frame below.'
                   : '🎞️ Full Session: Captures your entire session and dynamically fast-forwards it into a smooth 4–5 second recap timelapse.';
         }
         var isSlide = gifMotionStyle === 'slideshow';
@@ -27277,11 +27279,13 @@ var gifSlideFrame = 'design'; // slideshow frame: 'design' (the event's own layo
         });
         var so = document.getElementById('gifSlideOpts'); if (so) so.style.display = isSlide ? '' : 'none';
         var sfs = document.getElementById('gifSlideFrameSelect'); if (sfs) sfs.value = gifSlideFrame;
-        var sco = document.getElementById('gifSlideCardOpts'); if (sco) sco.style.display = gifSlideFrame === 'design' ? 'none' : '';
+        var sco = document.getElementById('gifSlideCardOpts'); if (sco) sco.style.display = gifSlideFrame === 'card' ? '' : 'none';
         var sh = document.getElementById('gifSlideHint');
-        if (sh) sh.textContent = gifSlideFrame === 'design'
+        if (sh) sh.textContent = gifSlideFrame === 'layout'
           ? 'Plain still photos, no motion. The final photos drop into your event layout (strip, grid, polaroid sheet or custom template) one by one, then the finished layout holds. The GIF takes the size of that layout.'
-          : 'One final photo at a time on a Polaroid card, fading to the next. The slide is shaped like the guests\' photos, so nothing is cropped. Loop mode does not apply.';
+          : gifSlideFrame === 'design'
+            ? 'Each final photo is placed in your event design (template, backdrop, title) and the GIF takes that design\'s size. Uses your chosen layout if it holds one photo, otherwise the Solo layout. Each photo shows about a second, then fades.'
+            : 'The slide is shaped like the guests\' photos, so nothing is cropped. Each final photo shows about a second on a Polaroid card, then fades. Loop mode does not apply.';
         var scs = document.getElementById('gifSlideCardSelect'); if (scs) scs.value = gifSlideCard;
         var sbs = document.getElementById('gifSlideBgSelect'); if (sbs) sbs.value = gifSlideBg;
 
@@ -27361,7 +27365,7 @@ var gifSlideFrame = 'design'; // slideshow frame: 'design' (the event's own layo
         });
         var gsf = document.getElementById('gifSlideFrameSelect');
         if (gsf) gsf.addEventListener('change', function () {
-          gifSlideFrame = gsf.value === 'card' ? 'card' : 'design';
+          gifSlideFrame = (gsf.value === 'design' || gsf.value === 'layout') ? gsf.value : 'card';
           refreshGifLayoutUI();
           if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
         });
@@ -27970,7 +27974,7 @@ var gifSlideFrame = 'design'; // slideshow frame: 'design' (the event's own layo
         var out = document.createElement('canvas'), cur = document.createElement('canvas'), nxt = document.createElement('canvas');
         var render, ow, oh;
 
-        if (gifSlideFrame === 'design') {
+        if (gifSlideFrame === 'layout') {
           // The event's OWN layout (strip, grid, polaroid sheet, a customer's template ...) with plain still photos, no motion.
           // The photos drop into their boxes one by one, then the finished layout holds. The layout engine sets the size.
           var key = LAYOUT_DEFS[currentLayout] ? currentLayout : 'solo';
@@ -28016,6 +28020,34 @@ var gifSlideFrame = 'design'; // slideshow frame: 'design' (the event's own layo
             lt += (cnt < nSlots) ? 900 : 2400;      // each photo about a second, the finished layout a little longer
           }
           return { frames: lframes, width: lw, height: lh, durationMs: lt, speed: 1 };
+        } else if (gifSlideFrame === 'design') {
+          // Chosen layout when it holds ONE photo (this includes 1-photo custom templates); otherwise the Solo layout,
+          // which still carries the event's backdrop, colours and title.
+          var key = (LAYOUT_DEFS[currentLayout] && shotsNeeded(currentLayout) === 1) ? currentLayout : 'solo';
+          var isSolo = key === 'solo';
+          var sw = 1280;
+          var slot = document.createElement('canvas'); slot._isShot = true;
+          var box = document.createElement('canvas');
+          function compose(i) {
+            var src = shots[i], r = Math.min(1, sw / Math.max(src.width, src.height));
+            slot.width = Math.max(1, Math.round(src.width * r)); slot.height = Math.max(1, Math.round(src.height * r));
+            var sctx = slot.getContext('2d'); sctx.imageSmoothingEnabled = true; sctx.imageSmoothingQuality = 'high';
+            sctx.clearRect(0, 0, slot.width, slot.height); sctx.drawImage(src, 0, 0, slot.width, slot.height);
+            var po = overlay, pc = currentFrameColor, savedCrop;
+            var hasCrops = (typeof shotCrops !== 'undefined') && shotCrops;
+            if (hasCrops) { savedCrop = shotCrops[0]; shotCrops[0] = shotCrops[i]; }   // the photo goes in slot 0: bring its own crop along
+            if (isSolo) { overlay = null; currentFrameColor = '#ffffff'; }
+            try { composeCanvas(key, box, [slot]); }
+            finally { overlay = po; currentFrameColor = pc; if (hasCrops) shotCrops[0] = savedCrop; }
+            stampTrialMark(box);
+          }
+          compose(0);
+          var kd = Math.min(1, 900 / Math.max(box.width, box.height));
+          ow = Math.max(2, Math.round(box.width * kd)); oh = Math.max(2, Math.round(box.height * kd));
+          out.width = cur.width = nxt.width = ow; out.height = cur.height = nxt.height = oh;
+          var oc = out.getContext('2d', { willReadFrequently: true }), cc = cur.getContext('2d'), nc = nxt.getContext('2d');
+          [oc, cc, nc].forEach(function (c) { c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; });
+          render = function (ctx, i) { compose(i); ctx.fillStyle = (isSolo ? '#ffffff' : (currentFrameColor || '#ffffff')); ctx.fillRect(0, 0, ow, oh); ctx.drawImage(box, 0, 0, ow, oh); };
         } else {
           var G = slideCardGeometry(shots[0].width / shots[0].height);
           ow = G.outW; oh = G.outH;
@@ -58328,7 +58360,7 @@ var gifSlideFrame = 'design'; // slideshow frame: 'design' (the event's own layo
           if (s.gifMotionStyle === 'auto' || s.gifMotionStyle === 'multibox' || s.gifMotionStyle === 'sequential' || s.gifMotionStyle === 'session' || s.gifMotionStyle === 'slideshow') { gifMotionStyle = s.gifMotionStyle; }
           if (['white', 'cream', 'black', 'none'].indexOf(s.gifSlideCard) >= 0) { gifSlideCard = s.gifSlideCard; }
           if (GIF_SLIDE_BGS[s.gifSlideBg]) { gifSlideBg = s.gifSlideBg; }
-          if (s.gifSlideFrame === 'card' || s.gifSlideFrame === 'design') { gifSlideFrame = s.gifSlideFrame; }
+          if (s.gifSlideFrame === 'card' || s.gifSlideFrame === 'design' || s.gifSlideFrame === 'layout') { gifSlideFrame = s.gifSlideFrame; }
           if (s.gifLoopMode === 'boomerang' || s.gifLoopMode === 'forward') { gifLoopMode = s.gifLoopMode; }
           refreshGifLayoutUI();
           if ([4, 5, 6, 7].indexOf(Number(s.flipSec)) >= 0) { flipSec = Number(s.flipSec); var fsEl = document.getElementById('flipSecSelect'); if (fsEl) fsEl.value = String(flipSec); }

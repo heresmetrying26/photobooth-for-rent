@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.92', date: '2026-11-21' },
   { version: '1.1.91', date: '2026-11-21' },
   { version: '1.1.90', date: '2026-11-21' },
   { version: '1.1.89', date: '2026-11-21' },
@@ -287,6 +288,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-21', title: 'Desktop 1.1.92: fix broken booth screen on startup in 1.1.91, plus 3-mode Final Shots Slideshow GIF', for: ['website', 'app'], app: '1.1.92',
+    items: [
+      '🛠️ Fixed Desktop 1.1.91 failing to render the booth screen on startup (a truncated closing tag in the 1.1.91 build caused the licence watcher script to be injected inside GUEST_HTML). Added a build-time integrity check so truncated booth HTML can never be packaged.',
+      '🖼️ Final Shots Slideshow GIF now offers 3 slide frames: Polaroid card (shaped like the photos), Event design / my template (each photo framed in your 1-photo template or Solo design), and Event layout, still photos (photos drop into your strip/grid/template one by one).'
+    ]
+  },
   {
     date: '2026-11-21', title: 'Desktop 1.1.91, Print Helper 1.1.17, Android 1.1.96 & iPad 1.1.13: fix Canon 1300D zoom-in after shot, Final Shots Slideshow GIF, and consistent print brightness', for: ['website', 'app', 'helper'], app: '1.1.91', helper: '1.1.17',
     items: [

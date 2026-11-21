@@ -35,6 +35,7 @@ for (const fn of ['tabletGuestOpen', 'tabletCamAvailable']) {
 
 // The built page must carry the same thing (it is what the laptop app, Android and iPad load).
 const built = readFileSync(join(ROOT, 'protected', 'booth.html'), 'utf8');
+if (!/<\/script>\s*<\/body>\s*<\/html>\s*$/.test(built)) fail('protected/booth.html is truncated or missing closing </script></body></html> (run npm run build)');
 if (!/\nvar tabletBridge = \{/.test(built)) fail('protected/booth.html has no `var tabletBridge` (run npm run build)');
 if (/\n(const|let) tabletBridge\b/.test(built)) fail('protected/booth.html still declares tabletBridge with const/let (run npm run build)');
 

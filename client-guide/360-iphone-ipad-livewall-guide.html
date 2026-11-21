@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete 360 Video Booth Guide · iPhone/iPad Arm, Live Wall & QR Sharing</title>
+  <style>
+    :root {
+      --bg: #0d0f12;
+      --card-bg: #161920;
+      --card-border: #232834;
+      --text-main: #f0f2f5;
+      --text-muted: #9ba3b2;
+      --accent-red: #e63946;
+      --accent-gold: #f4a261;
+      --accent-green: #2a9d8f;
+      --accent-blue: #3a86ff;
+      --accent-purple: #8338ec;
+      --pill-bg: #1f2430;
+      --code-bg: #090a0d;
+      --highlight: #ffe66d;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.6;
+      padding: 40px 20px 80px;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .brand-tag {
+      display: inline-block;
+      text-transform: uppercase;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: var(--accent-red);
+      background: rgba(230, 57, 70, 0.12);
+      padding: 6px 14px;
+      border-radius: 20px;
+      margin-bottom: 14px;
+      border: 1px solid rgba(230, 57, 70, 0.25);
+    }
+
+    h1 {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 14px;
+      background: linear-gradient(135deg, #ffffff 40%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 18px;
+      color: var(--text-muted);
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    /* Workflow Diagram Bar */
+    .workflow-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 44px;
+    }
+
+    .wf-step {
+      text-align: center;
+      padding: 10px 8px;
+      background: var(--pill-bg);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      position: relative;
+    }
+
+    .wf-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      background: var(--accent-red);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .wf-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: block;
+    }
+
+    .wf-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 2px;
+    }
+
+    /* Section Cards */
+    .section-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .section-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--card-accent, var(--accent-red));
+    }
+
+    .sec-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .sec-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: var(--card-accent, var(--accent-red));
+      color: #fff;
+      font-size: 18px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .sec-title-group h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .sec-title-group p {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    /* Instructions & Lists */
+    .step-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .step-item-num {
+      background: var(--pill-bg);
+      color: var(--highlight);
+      font-size: 13px;
+      font-weight: 800;
+      padding: 3px 9px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .step-content h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #fff;
+    }
+
+    .step-content p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* Callout & Tips */
+    .callout {
+      background: rgba(42, 157, 143, 0.1);
+      border-left: 3px solid var(--accent-green);
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin-top: 18px;
+      font-size: 13.5px;
+      color: #bbf7d0;
+    }
+
+    .callout.warn {
+      background: rgba(244, 162, 97, 0.12);
+      border-left-color: var(--accent-gold);
+      color: #fed7aa;
+    }
+
+    .callout.pro {
+      background: rgba(58, 134, 255, 0.12);
+      border-left-color: var(--accent-blue);
+      color: #bfdbfe;
+    }
+
+    .callout strong {
+      color: #fff;
+      font-weight: 700;
+    }
+
+    /* Grid for Options / Side-by-Side */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 720px) {
+      .two-col { grid-template-columns: 1fr; }
+      body { padding: 20px 12px 60px; }
+      h1 { font-size: 28px; }
+      .section-card { padding: 20px 16px; }
+    }
+
+    .box-option {
+      background: var(--pill-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .box-option h4 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .box-option p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Keys & Tags */
+    .kbd {
+      display: inline-block;
+      padding: 2px 7px;
+      background: #282f3f;
+      border: 1px solid #424e68;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 12px;
+      font-family: monospace;
+      font-weight: bold;
+    }
+
+    .tag-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .tag-free { background: rgba(42, 157, 143, 0.2); color: #48cae4; border: 1px solid rgba(72, 202, 228, 0.3); }
+    .tag-auto { background: rgba(244, 162, 97, 0.2); color: #f4a261; border: 1px solid rgba(244, 162, 97, 0.3); }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      margin-top: 48px;
+      font-size: 13px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--card-border);
+      padding-top: 24px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <header>
+    <div class="brand-tag">photobooth4u · 360 Video Operator SOP</div>
+    <h1>360 Video Booth &amp; Live Wall Master Guide</h1>
+    <p class="subtitle">Complete step-by-step workflow: From mounting your iPhone/iPad on the spinning arm, automatic motion auto-start, to instant Ready-Made edits, Live TV Wall, and guest QR code downloading.</p>
+  </header>
+
+  <!-- Workflow Ribbon -->
+  <div class="workflow-strip">
+    <div class="wf-step">
+      <span class="wf-num">1</span>
+      <span class="wf-label">Arm Mount</span>
+      <span class="wf-sub">0.5× Ultra-Wide</span>
+    </div>
+    <div class="wf-step">
+      <span class="wf-num">2</span>
+      <span class="wf-label">Scan &amp; Pair</span>
+      <span class="wf-sub">Zero license cost</span>
+    </div>
+    <div class="wf-step">
+      <span class="wf-num">3</span>
+      <span class="wf-label">Calibrate</span>
+      <span class="wf-sub">Spin sensitivity</span>
+    </div>
+    <div class="wf-step">
+      <span class="wf-num">4</span>
+      <span class="wf-label">Auto Spin</span>
+      <span class="wf-sub">CoreMotion trigger</span>
+    </div>
+    <div class="wf-step">
+      <span class="wf-num">5</span>
+      <span class="wf-label">Ready Edit</span>
+      <span class="wf-sub">Beat sync + frame</span>
+    </div>
+    <div class="wf-step">
+      <span class="wf-num">6</span>
+      <span class="wf-label">Live Wall</span>
+      <span class="wf-sub">TV &amp; 2-Step QR</span>
+    </div>
+  </div>
+
+  <!-- SECTION 1 -->
+  <div class="section-card" style="--card-accent: var(--accent-red);">
+    <div class="sec-header">
+      <div class="sec-badge">1</div>
+      <div class="sec-title-group">
+        <h2>Hardware &amp; Arm Mounting (iPhone or iPad)</h2>
+        <p>Physically mounting and framing the device on the revolving 360 arm</p>
+      </div>
+    </div>
+
+    <ul class="step-list">
+      <li class="step-item">
+        <span class="step-item-num">1.1</span>
+        <div class="step-content">
+          <h3>Mount the iPhone / iPad securely on the Arm Clamp</h3>
+          <p>Place your iPhone (iPhone 11 or newer recommended) or iPad onto the motorized rotating arm mount. Ensure the clamp is tightly tightened and won't wobble under centrifugal force.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">1.2</span>
+        <div class="step-content">
+          <h3>Select Orientation &amp; Lens</h3>
+          <p>Set orientation to <b>Vertical / Portrait (9:16)</b> for standard Instagram Reels / TikTok format, or Landscape if doing wide corporate clips. In the app, choose the <b>0.5× Ultra-Wide lens</b> so guests' full bodies and outfits fit easily inside the frame.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">1.3</span>
+        <div class="step-content">
+          <h3>Connect to the Local Booth Wi-Fi Router</h3>
+          <p>Join the iPhone/iPad and your laptop to the <b>same dedicated booth Wi-Fi router</b> (5GHz band recommended). <i>No venue internet is required</i> — clips transfer ultra-fast offline over the local LAN.</p>
+        </div>
+      </li>
+    </ul>
+
+    <div class="callout pro">
+      <strong>Pro Tip:</strong> Plug in a small portable power bank to the phone mount arm to keep the phone at 100% battery throughout a 4-hour event!
+    </div>
+  </div>
+
+  <!-- SECTION 2 -->
+  <div class="section-card" style="--card-accent: var(--accent-gold);">
+    <div class="sec-header">
+      <div class="sec-badge">2</div>
+      <div class="sec-title-group">
+        <h2>Pairing the Arm Phone to the Laptop 360 Desk</h2>
+        <p>Free Companion Mode — consumes zero extra device slots</p>
+      </div>
+    </div>
+
+    <ul class="step-list">
+      <li class="step-item">
+        <span class="step-item-num">2.1</span>
+        <div class="step-content">
+          <h3>Open 360 Desk on your Laptop</h3>
+          <p>In photobooth4u on your laptop, click <b>🌀 360 Desk</b> (or open <span class="kbd">/?desk=360</span>). Locate the <b>360 Send</b> card displaying the Wi-Fi pairing QR code and URL.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">2.2</span>
+        <div class="step-content">
+          <h3>Launch 360 Arm Camera on iPhone/iPad</h3>
+          <p>Open the photobooth4u app on the iPhone/iPad. At the activation lock screen, simply tap <b>🎥 360 Arm Camera (Free Companion)</b>. <span class="tag-pill tag-free">100% Free Companion</span></p>
+          <p style="margin-top: 6px;"><i>(Note: If the iPad is already licensed as a main booth, tap Tools dock &rarr; 🎥 360 Arm Camera or Setup &rarr; 3 Camera &rarr; Open 360 Arm Camera).</i></p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">2.3</span>
+        <div class="step-content">
+          <h3>Scan the Desk QR Code</h3>
+          <p>Point the phone camera at the pairing QR on your laptop screen. The top status pill turns green: <span class="kbd" style="color:#4ade80;">✓ 360 Desk Connected</span>.</p>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- SECTION 3 -->
+  <div class="section-card" style="--card-accent: var(--accent-green);">
+    <div class="sec-header">
+      <div class="sec-badge">3</div>
+      <div class="sec-title-group">
+        <h2>Auto-Sensitivity Calibration ("Configure Sensitivity")</h2>
+        <p>Teach the app your platform's exact spin speed to eliminate false triggers</p>
+      </div>
+    </div>
+
+    <ul class="step-list">
+      <li class="step-item">
+        <span class="step-item-num">3.1</span>
+        <div class="step-content">
+          <h3>Tap "Configure Sensitivity"</h3>
+          <p>Tap the <b>Configure Sensitivity</b> button on the phone screen (or click <b>Calibrate</b> from the laptop 360 Desk). The 2-step calibration wizard will begin.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">3.2</span>
+        <div class="step-content">
+          <h3>Step 1: Hold Still (1.5 seconds)</h3>
+          <p>Leave the arm stationary. The app reads baseline floor vibrations and platform rumble (from guests stepping on the glass) to set the noise floor.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">3.3</span>
+        <div class="step-content">
+          <h3>Step 2: Spin the Arm</h3>
+          <p>Turn on your 360 motor for a normal test spin. The app measures the peak &amp; median rotation speed (°/s) and automatically calculates your ideal start and stop thresholds (e.g. Start at 25°/s, Stop at 11°/s).</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">3.4</span>
+        <div class="step-content">
+          <h3>Lock the Screen (Shield Mode)</h3>
+          <p>Tap the <b>Lock</b> button. The screen locks completely with a dark overlay to prevent guests, wind, or centrifugal force from accidentally tapping any buttons. <b>Hold for 1.4 seconds</b> anytime you need to unlock.</p>
+        </div>
+      </li>
+    </ul>
+
+    <div class="two-col">
+      <div class="box-option">
+        <h4>🔄 Stop Mode: Follow the Arm (Recommended)</h4>
+        <p>Recording automatically stops the moment the arm slows down, adding a smooth 1.5s deceleration tail so the final pose wraps up naturally.</p>
+      </div>
+      <div class="box-option">
+        <h4>⏱️ Stop Mode: Fixed Duration</h4>
+        <p>Guarantees every clip is exactly N seconds (e.g., 10 seconds), regardless of when the operator presses the motor stop button.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 4 -->
+  <div class="section-card" style="--card-accent: var(--accent-purple);">
+    <div class="sec-header">
+      <div class="sec-badge">4</div>
+      <div class="sec-title-group">
+        <h2>Live Shooting &amp; Automatic Background Transfer</h2>
+        <p>Zero operator taps required on the phone during the party</p>
+      </div>
+    </div>
+
+    <ul class="step-list">
+      <li class="step-item">
+        <span class="step-item-num">4.1</span>
+        <div class="step-content">
+          <h3>Guests Step onto the 360 Platform</h3>
+          <p>Operator cues the guests: <i>"3, 2, 1, spin!"</i> The TV Live Wall automatically shows: <b>GET READY 🌀</b>.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">4.2</span>
+        <div class="step-content">
+          <h3>Operator Starts the 360 Remote</h3>
+          <p>Press the start button on your physical 360 motor remote. As the arm rotates, the phone's CoreMotion gyroscope detects sustained spin (&gt;300ms) and <b>instantly auto-starts recording</b> with a chime sound.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">4.3</span>
+        <div class="step-content">
+          <h3>Auto-Stop &amp; Instant Wi-Fi Transfer</h3>
+          <p>When the spin finishes, recording auto-stops. The high-framerate (60fps/120fps) video file is compressed in H.264 and transferred automatically over local Wi-Fi to your laptop within 2 to 4 seconds!</p>
+        </div>
+      </li>
+    </ul>
+
+    <div class="callout warn">
+      <strong>Offline Protection:</strong> If the booth Wi-Fi ever stutters, the clip is never lost! It remains safely stored on the iPhone in the pending queue and automatically uploads once the Wi-Fi reconnects.
+    </div>
+  </div>
+
+  <!-- SECTION 5 -->
+  <div class="section-card" style="--card-accent: var(--accent-blue);">
+    <div class="sec-header">
+      <div class="sec-badge">5</div>
+      <div class="sec-title-group">
+        <h2>Ready-Made Edits &amp; Rendering (Laptop 360 Desk)</h2>
+        <p>Speed ramping, beat-drop soundtrack, and custom Canva PNG overlays</p>
+      </div>
+    </div>
+
+    <ul class="step-list">
+      <li class="step-item">
+        <span class="step-item-num">5.1</span>
+        <div class="step-content">
+          <h3>Clip Arrives on 360 Desk</h3>
+          <p>The laptop chimes and immediately begins rendering the clip using your selected <b>Ready-Made Edit preset</b>.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">5.2</span>
+        <div class="step-content">
+          <h3>Speed Ramping &amp; Boomerang Presets</h3>
+          <p>Choose from over 30 built-in professional effects:
+            <br>&bull; <b>Fast &rarr; Ultra Slow-Mo (0.3×) &rarr; Fast Forward</b>
+            <br>&bull; <b>Boomerang Reverse Loop</b>
+            <br>&bull; <b>Strobe Flash + Beat Drop Climax</b>
+          </p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">5.3</span>
+        <div class="step-content">
+          <h3>Custom Canva PNG Overlay Frame</h3>
+          <p>Under <b>Frame &amp; Branding</b>, drop in your custom 1080&times;1920 PNG frame containing the client's wedding monogram, birthday logo, or corporate sponsor branding with a transparent center.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">5.4</span>
+        <div class="step-content">
+          <h3>Audio Beat-Drop Synchronization</h3>
+          <p>Select your event's MP3 background track. The app automatically aligns the audio beat-drop to hit at the exact second the video switches into dramatic slow motion.</p>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- SECTION 6 -->
+  <div class="section-card" style="--card-accent: var(--accent-green);">
+    <div class="sec-header">
+      <div class="sec-badge">6</div>
+      <div class="sec-title-group">
+        <h2>Live TV Wall &amp; Offline QR Code Sharing</h2>
+        <p>Display live looping videos on external screens and let guests download in seconds</p>
+      </div>
+    </div>
+
+    <ul class="step-list">
+      <li class="step-item">
+        <span class="step-item-num">6.1</span>
+        <div class="step-content">
+          <h3>Connect an External TV / Projector</h3>
+          <p>Plug an HDMI cable from your laptop into the venue's large TV or projector. In photobooth4u, open <b>Live Wall</b> (or go to <span class="kbd">http://localhost:47777/wall</span> in a second browser window and drag it to the TV).</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">6.2</span>
+        <div class="step-content">
+          <h3>Real-Time Crowd Cues</h3>
+          <p>While the arm is spinning, the TV wall pulses with <b>"360 SPINNING 🌀"</b>. When rendering, it indicates <b>"RENDERING MAGIC ✨"</b> to keep the crowd excited.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">6.3</span>
+        <div class="step-content">
+          <h3>Seamless High-Def Video Slideshow</h3>
+          <p>Once rendering finishes, the branded 360 video immediately plays in high definition on the TV with audio. It loops continuously in a dynamic slideshow with previously finished videos.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">6.4</span>
+        <div class="step-content">
+          <h3>Guest Download via 2-Step Offline QR Code</h3>
+          <p>Alongside the video on the Live Wall (and on the operator's sharing station), guests see the <b>2-Step QR Code</b>:</p>
+          <div style="margin-top: 10px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">
+            <p><b>Step 1 (Wi-Fi QR):</b> Guest points phone camera at the Wi-Fi QR &rarr; Taps <i>"Join Network"</i> to link to your booth Wi-Fi.</p>
+            <p style="margin-top: 6px;"><b>Step 2 (Download QR):</b> Guest scans the video QR &rarr; Instant mobile download page opens in Safari / Chrome &rarr; Guest taps <b>Save Video</b> directly to Camera Roll!</p>
+          </div>
+        </div>
+      </li>
+    </ul>
+
+    <div class="callout pro">
+      <strong>Online Cloud Backup:</strong> If your laptop has an active mobile hotspot/SIM connection, the video also syncs to the online cloud gallery so guests can view it from home afterwards.
+    </div>
+  </div>
+
+  <!-- OPERATOR CHECKLIST -->
+  <div class="section-card" style="--card-accent: var(--accent-gold);">
+    <div class="sec-header">
+      <div class="sec-badge">✓</div>
+      <div class="sec-title-group">
+        <h2>Quick Operator Pre-Flight Checklist</h2>
+        <p>Run through these 5 checks before opening the booth to event guests</p>
+      </div>
+    </div>
+
+    <ul class="step-list">
+      <li class="step-item">
+        <span class="step-item-num">A</span>
+        <div class="step-content">
+          <h3>Lighting Check</h3>
+          <p>Ensure ring light or LED bar on the arm is turned ON and tilted slightly downward toward guests' faces. Guests should face the light.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">B</span>
+        <div class="step-content">
+          <h3>Tap-to-Focus &amp; AE/AF Lock</h3>
+          <p>On the iPhone/iPad, tap a person standing in the center and tap the <b>AE/AF Lock</b> button. This prevents exposure flickering when the camera spins past bright room lights.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">C</span>
+        <div class="step-content">
+          <h3>Perform 1 Complete Test Spin</h3>
+          <p>Spin the empty platform for 8 seconds. Verify the iPhone triggers auto-record, sends the clip, renders the music &amp; overlay, and plays on the Live TV Wall.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <span class="step-item-num">D</span>
+        <div class="step-content">
+          <h3>Download Test on your Personal Phone</h3>
+          <p>Scan the 2-Step QR with your personal phone to ensure you can save the MP4 to your gallery in under 5 seconds.</p>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <footer>
+    <p>&copy; 2026 photobooth4u · Complete 360 Video Booth Operator Documentation</p>
+  </footer>
+
+</div>
+
+</body>
+</html>

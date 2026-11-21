@@ -29441,6 +29441,7 @@
       // goes in first (so a failed shot never leaves a gap), then the camera's
       // real photo replaces it, cropped like the live view and sized for print.
       const USB_CAPTURE_MAX_MS = 25000;   // longest wait for the camera's photo before the live view frame is used (a photo this late is the wrong moment anyway)
+      const USB_REVIEW_MIN_MS = 2000;     // a USB camera's photo stays up at least this long between photos, even when the camera took most of the pause to send it
       const USB_GRACE_MS = 45000;         // after a photo, live view may take this long to come back without "Reconnecting" (a Canon saving a big file can take a while; a real unplug is still noticed at once)
       const USB_LEAD_MAX = 2500;          // the shutter is fired at most this much before "Pose" (a Nikon focuses first: about 1.5 s from command to photo)
       const USB_LEAD_CANON_MAX = 1500;    // Canon: the limit from before the Nikon change (see usbShutterLead)
@@ -30512,6 +30513,7 @@
         try { fxShutter(); } catch (e) { }
         flashOverlay.classList.add('flash-active');
         guestCall('flash');
+        const flashAt = Date.now();   // the pause after this photo is counted from here (see below)
         fireNow();   // already fired above when the camera has a shutter lag
         stopShotMotionCapture(index);
         await wait(180);
@@ -30538,7 +30540,12 @@
           if (tapMode) { doneBtn.textContent = 'Next photo \u25B6'; doneBtn.hidden = false; }
           // Tap mode: waits for Next / Space / clicker / a tap on the guest screen.
           // Auto: at least 4 s to look at the photo (and press Retake) before the next one; Space / clicker skips ahead.
-          await sessPause(tapMode ? 0 : betweenSec * 1000);   // the pause set in Setup; Space skips    // ends early on Retake, Next or Cancel
+          let pauseMs = tapMode ? 0 : betweenSec * 1000;   // the pause set in Setup
+          // A USB camera spends seconds on the photo (saving, USB, decoding) while "Saving" shows. That time counts toward the
+          // pause, so guests don't wait for it twice; the photo still stays up for USB_REVIEW_MIN_MS (or the whole pause, if shorter).
+          if (pauseMs > 0 && usbIsHelper() && usbCam.active && currentDeviceId === USB_CAM_ID)
+            pauseMs = Math.max(Math.min(pauseMs, USB_REVIEW_MIN_MS), pauseMs - (Date.now() - flashAt));
+          await sessPause(pauseMs);   // Space skips    // ends early on Retake, Next or Cancel
           retakeBtn.hidden = true; doneBtn.hidden = true;
           countdownOverlay.classList.remove('pausing');
           hideShotReview();

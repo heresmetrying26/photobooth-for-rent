@@ -757,7 +757,9 @@ namespace Pb4uCam
                 if (nikon && live) { try { ptp.Op(0x9202); } catch { } }
                 if (canon)
                 {
-                    // Hand the camera back: live view off, out of remote mode.
+                    // Hand the camera back: photos on the card again (it would otherwise stay on "computer" and the next photos taken
+                    // on the camera itself wouldn't be saved), live view off, out of remote mode.
+                    try { CanonToCard(false); } catch { }
                     try { if (live) SetEos(0xD1B0, 0); ptp.Op(0x9115, 0); ptp.Op(0x9114, 0); } catch { }
                 }
                 if (sony) SonyReleaseButtons(false);
@@ -1215,6 +1217,16 @@ namespace Pb4uCam
         const uint NOTREADY = 0xA102;   // Canon: "not ready yet, ask again"
         static Dictionary<ushort, uint> eosVals = new Dictionary<ushort, uint>();
         static List<uint[]> canonNew = new List<uint[]>();   // new files: { handle, event, format, size }
+        // "Save to" (0xD11C): where the camera puts a new photo. Bit 1 = the SD card (the default), bit 4 = the computer (the camera's
+        // memory; libgphoto2 calls it "Internal RAM"). With the card the camera finishes writing the whole JPEG (and RAW) to the card
+        // before it says the photo exists: seconds of "Saving". To the computer, the photo is announced as soon as it is taken.
+        const ushort EOS_SAVETO = 0xD11C;
+        const uint SAVETO_CARD = 2, SAVETO_HOST = 4;
+        static Dictionary<ushort, List<uint>> eosAvail = new Dictionary<ushort, List<uint>>();   // the values the camera says a setting can take
+        static bool canonToHost;          // the camera is set to send photos to the computer (put back on the card when we let go of it)
+        static bool canonHostGaveUp;      // it didn't work with this camera: photos stay on the card until the worker is restarted
+        static bool canonHostWorked;      // a photo has come through that way
+        static uint canonDestOrig = SAVETO_CARD;
         static Stopwatch liveSw = new Stopwatch(), keepSw = new Stopwatch(), pollSw = new Stopwatch();
         static bool gotFrame;
         // How long the last photo took from the shutter command until the camera reported it (focus + exposure + saving);
@@ -1278,6 +1290,7 @@ namespace Pb4uCam
                 int end = off + (int)size;
                 if (type != 0xC189 && type != 0xC18A) { string th = type.ToString("X"); if (!evSeen.Contains(th) && evSeen.Count < 24) evSeen.Add(th); }
                 if (type == 0xC189 && size >= 16) eosVals[(ushort)U32(d, off + 8)] = U32(d, off + 12);   // a setting changed
+                else if (type == 0xC18A && size >= 20) CanonAvail(d, off, (int)size);   // the values a setting can take
                 else if ((type == 0xC181 || type == 0xC1A7) && size >= 12)   // a photo was saved on the card
                     canonNew.Add(new uint[] { U32(d, off + 8), type, off + 0x12 <= end ? U16(d, off + 0x10) : 0, off + 0x20 <= end ? SaneSize(U32(d, off + 0x1C)) : 0 });
                 else if ((type == 0xC186 || type == 0xC1A9 || type == 0xC1B8) && size >= 12)   // a photo waits in the camera's memory for us (newer bodies use the 64-bit versions of this event, same layout)
@@ -1286,10 +1299,71 @@ namespace Pb4uCam
             }
         }
 
+        // 0xC18A: { size, 0xC18A, setting, data type, count, values... }. Only "Save to" is kept; the size of one value comes from the
+        // event's own length, so a model that sends 16 bit or 32 bit values reads the same way. Anything odd is ignored.
+        static void CanonAvail(byte[] d, int off, int size)
+        {
+            if ((ushort)U32(d, off + 8) != EOS_SAVETO) return;
+            uint cnt = U32(d, off + 16);
+            int room = size - 20;
+            if (cnt == 0 || cnt > 64 || room <= 0 || room % (int)cnt != 0) return;
+            int es = room / (int)cnt;
+            if (es != 1 && es != 2 && es != 4) return;
+            var l = new List<uint>();
+            for (int k = 0; k < (int)cnt; k++)
+            {
+                int p = off + 20 + k * es;
+                l.Add(es == 4 ? U32(d, p) : es == 2 ? U16(d, p) : d[p]);
+            }
+            eosAvail[EOS_SAVETO] = l;
+        }
+
+        // Photos to the computer, not the SD card (see EOS_SAVETO). Never fails the session: a camera that doesn't list the
+        // setting, doesn't offer "computer" or refuses it just keeps saving to the card the way it always did.
+        static void CanonToHost()
+        {
+            canonToHost = false;
+            if (canonHostGaveUp) return;
+            uint cur;
+            if (!eosVals.TryGetValue(EOS_SAVETO, out cur)) { Log("Save to: this camera doesn't list it, photos stay on the card"); return; }
+            List<uint> av;
+            bool known = eosAvail.TryGetValue(EOS_SAVETO, out av);
+            string offered = known ? string.Join("/", av.ConvertAll(v => v.ToString()).ToArray()) : "unknown";
+            if (cur == SAVETO_HOST)
+            {
+                // Left that way by a session that never said goodbye: keep it, and put it back on the card at the end.
+                canonDestOrig = known && !av.Contains(SAVETO_CARD) && av.Contains(1) ? 1U : SAVETO_CARD;
+                canonToHost = true;
+                Log("Save to: already the computer (the last session didn't put it back); will return it to the card when done");
+                return;
+            }
+            if (known && !av.Contains(SAVETO_HOST)) { Log("Save to: the camera doesn't offer the computer (offers " + offered + "), photos stay on the card"); return; }
+            uint r = SetEos(EOS_SAVETO, SAVETO_HOST);
+            if (r != Ptp.OK) { eosVals[EOS_SAVETO] = cur; Log("Save to the computer: the camera refused (" + H(r) + "), photos stay on the card"); return; }
+            CanonPoll();   // the camera confirms with a "setting changed" event
+            uint now;
+            if (eosVals.TryGetValue(EOS_SAVETO, out now) && now != SAVETO_HOST) { Log("Save to the computer: the camera kept " + now + ", photos stay on the card"); return; }
+            canonDestOrig = cur;
+            canonToHost = true;
+            Log("Save to: the computer (was " + cur + "; the camera offers " + offered + "). Photos no longer wait for the SD card");
+        }
+
+        // Back to the card: when the camera is let go of, or when sending to the computer proved not to work with this camera.
+        static void CanonToCard(bool giveUp)
+        {
+            if (giveUp) canonHostGaveUp = true;
+            if (!canonToHost) return;
+            canonToHost = false;
+            try { uint r = SetEos(EOS_SAVETO, canonDestOrig); Log("Save to: back to the card: " + H(r)); }
+            catch (GoneException) { throw; }
+            catch { }
+        }
+
         static void PrepareCanon()
         {
             setupNote = "";
-            eosVals.Clear(); canonNew.Clear(); gotFrame = false;
+            eosVals.Clear(); eosAvail.Clear(); canonNew.Clear(); gotFrame = false;
+            canonToHost = false;
             if (recoverNext)
             {
                 recoverNext = false;
@@ -1313,6 +1387,9 @@ namespace Pb4uCam
                 throw new CamException("UNSUPPORTED The " + camName + " doesn't take photos over USB.");
             lastShutterMs = 0;
             CanonSingleShot();
+            try { CanonToHost(); }
+            catch (GoneException) { throw; }
+            catch (Exception e) { Log("Save to the computer not set: " + e.Message); }
             keepSw.Restart();
         }
 
@@ -1590,9 +1667,22 @@ namespace Pb4uCam
                 Log("No photo from the camera after " + (attempt + 1) + " tries (last poll " + lastPollAnswer + "; events seen: " + (evSeen.Count > 0 ? string.Join(" ", evSeen.ToArray()) : "none") + ")");
                 // Never leave the shutter button held down: the next live view / photo would be refused.
                 try { ptp.Op(0x9129, 3); } catch (GoneException) { throw; } catch { }
+                // Sending photos to the computer has never delivered one on this camera: it may be the cause, so go back to the card.
+                if (canonToHost && !canonHostWorked) { Log("No photo yet since the camera was set to send photos to the computer: putting it back on the card"); CanonToCard(true); }
                 throw new CamException("FOCUS The camera didn't take a photo. It may not have focused: point it at something with detail, or set the lens to MF (manual focus). Also check there's an SD card in the camera and it isn't full or locked.");
             }
-            string cd = "files " + string.Join(",", files.ConvertAll(o => o[0].ToString("X") + "/" + o[2].ToString("X")).ToArray());
+            long eventMs = firstAt;   // from the shutter command (or the last retry) to the camera announcing the photo
+            // Where the camera put it: 0xC186 / 0xC1A9 / 0xC1B8 = waiting in its memory for us; 0xC181 / 0xC1A7 = already on the card.
+            bool ramPhoto = false, cardPhoto = false;
+            foreach (var o in files) { if (o[1] == 0xC186 || o[1] == 0xC1A9 || o[1] == 0xC1B8) ramPhoto = true; else cardPhoto = true; }
+            if (canonToHost && !ramPhoto && cardPhoto)
+            {
+                // Set to "computer" but the camera still wrote to the card: it ignores the setting. Put it back, don't try again.
+                Log("The camera reported the photo on its card although it was set to send it to the computer: putting it back on the card");
+                CanonToCard(true);
+            }
+            string cd = (ramPhoto ? "sent to computer" : "on card") + " files " + string.Join(",", files.ConvertAll(o => o[0].ToString("X") + "/" + o[2].ToString("X")).ToArray());
+            var dlSw = Stopwatch.StartNew();
             // JPEG first, then anything else that isn't RAW (CRW / CR2 / CR3).
             var order = new List<uint[]>();
             foreach (var o in files) if (o[2] == 0x3801) order.Add(o);
@@ -1614,10 +1704,13 @@ namespace Pb4uCam
             Log("Photo download: " + cd);
             if (img == null)
             {
+                // A photo the camera held in its memory for us that never came through: don't leave the setting on.
+                if (ramPhoto && canonToHost && !canonHostWorked) { Log("The photo didn't come through from the camera's memory: putting it back on the card"); CanonToCard(true); }
                 if (order.Count == 0) throw new CamException("CAPTURE The camera saved a RAW photo. Set Image quality to JPEG on the camera (L, M or S; RAW + JPEG also works).");
                 throw new CamException("CAPTURE The photo didn't come through from the camera (" + cd + ").");
             }
-            Log("Photo " + (img.Length / 1024) + " KB in " + sw.ElapsedMilliseconds + " ms");
+            if (ramPhoto && canonToHost) canonHostWorked = true;
+            Log("Photo " + (img.Length / 1024) + " KB in " + sw.ElapsedMilliseconds + " ms (announced after " + eventMs + " ms, download " + dlSw.ElapsedMilliseconds + " ms, " + (ramPhoto ? "sent to computer" : "via card") + ")");
             return img;
         }
 

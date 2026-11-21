@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.83', date: '2026-11-21' },
   { version: '1.1.82', date: '2026-11-20' },
   { version: '1.1.81', date: '2026-11-20' },
   { version: '1.1.80', date: '2026-11-20' },
@@ -278,6 +279,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-21', title: 'Desktop 1.1.83 (Win/Mac): Canon photos reach the booth faster, with a shorter wait between shots', for: ['website', 'app'], app: '1.1.83',
+    items: [
+      '📸 Canon cameras on a Windows laptop (60D, 6D and the like): the camera now sends each photo straight to the laptop instead of saving it on its SD card first. That removes most of the “Saving” wait after each shot, and RAW + JPEG no longer slows it down. The photo is the same full-size JPEG as before. When the booth lets go of the camera it puts “save to card” back, so photos you take on the camera itself are still saved.',
+      '⏱️ Shorter wait between shots with a USB camera: the pause set in Setup → Photos now counts from the flash, not from the moment the photo arrives, so guests no longer wait for the camera and then wait the full pause again. The photo stays up for at least 2 seconds (or the whole pause, if you set it shorter) so guests can look at it or press Retake. Tap-to-continue and webcams work as before.',
+      '🛟 If a Canon does not accept the new setting, or its photos stop arriving, the app goes back to saving on the card by itself and the shot still goes through.',
+      '🧪 Not tried on a real Canon yet: please time “Saving” on a 60D or 6D and tell us. The camera log (camera.log in the photobooth4u folder under %APPDATA%) says “sent to computer” for each photo that took the new route.'
+    ]
+  },
   {
     date: '2026-11-20', title: 'Desktop 1.1.82 (Win/Mac) + Android 1.1.93: the tablet guest screen mirrors like the booth, and speaks, beeps and clicks by itself', for: ['website', 'app'], app: '1.1.82',
     items: [

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.86', date: '2026-11-21' },
   { version: '1.1.85', date: '2026-11-21' },
   { version: '1.1.84', date: '2026-11-21' },
   { version: '1.1.83', date: '2026-11-21' },
@@ -194,13 +195,13 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.13', date: '2026-11-19' };
+export const HELPER = { version: '1.1.14', date: '2026-11-21' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
 // after about 60 s, so on a slower connection the 18 MB file never finished ("unexpected end of stream").
 // GitHub has no such limit. (The copy in public/downloads is still kept for the /downloads page.)
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-20', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-21', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
 // The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
 // /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new
@@ -228,7 +229,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.8', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.8/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.9', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.9/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -281,6 +282,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-21', title: 'Desktop 1.1.86 + Android 1.1.94 + iPad 1.1.9 + Helper 1.1.14: Photographer desk templates, Auto-frame & phone control, B&W / colour print split, Camera check & direct USB/Wi-Fi printing', for: ['website', 'app', 'helper'], app: '1.1.86', helper: '1.1.14',
+    items: [
+      '📷 Photographer desk (Photoman): choose a template (the booth’s layout, Solo or any built-in layout, or an uploaded frame) without changing the booth’s own layout or paper, pick how photo spots fill (a photo per spot or one photo fills every spot), and enable Auto-frame to frame new arrivals automatically.',
+      '📱 Phone control (laptop app): the Photoman desk’s phone page now syncs live state and lets you pick photos, change template, Make print + QR, Print copy, and move to the Next guest right from your phone.',
+      '🧾 B&W / colour print split (opt-in, Setup → Layout): optional switch to tag B&W (thermal) vs Colour layouts and frames, and route each kind to its own printer in Setup → Printer. Off by default.',
+      '🎛️ Cleaner Setup tabs & Camera check: Camera and Printer are now separate steps, Text sits inside Design, and Camera check reads your exposure settings and lets you apply suggested shutter, aperture and ISO to a Nikon over USB (Desktop, Android, Print Helper 1.1.14).',
+      '🖨️ Driverless PWG Raster & IPP-over-USB printing (Desktop), plus automatic Bonjour name re-discovery and print-job problem alerts for Wi-Fi IPP printers on iPad.'
+    ]
+  },
   {
     date: '2026-11-21', title: 'Desktop 1.1.85 (Win/Mac): the camera shoots once, at the shutter sound and flash (Nikon and Canon), with a guide for Canon', for: ['website', 'app'], app: '1.1.85',
     items: [

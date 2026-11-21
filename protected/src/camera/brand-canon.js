@@ -44,8 +44,11 @@
         if (st.toCard) {
           out.push({ id: 'card', text: 'This Canon is saving each photo on its SD card first, so "Saving" takes longer. Use a fast SD card (UHS-I) and set the image quality to JPEG only, not RAW + JPEG.' });
         }
+        if (st.aspectCrop) {
+          out.push({ id: 'aspect', text: 'This Canon is set to a cropped Aspect ratio (such as 16:9 or 1:1) while Live View is 3:2, which makes photos look zoomed in after each shot. In the camera menu (Live View shoot. -> Aspect ratio), set it to 3:2.' });
+        }
         if (st.flashMode) {
-          out.push({ id: 'flash', text: 'Flash / strobe with Canon live view (6D / 60D): in the camera menu set Silent LV shoot (Silent shoot.) to Disable (Mode 1 or 2 makes external flashes fire with no effect on the photo), set Exposure simulation to Disable, and use M mode at 1/160 s or slower (S2 if using an optical slave).' });
+          out.push({ id: 'flash', text: 'Flash / strobe with Canon live view (6D / 60D / 1300D): in the camera menu set Silent LV shoot (Silent shoot.) to Disable (Mode 1 or 2 makes external flashes fire with no effect on the photo), set Exposure simulation to Disable, use M mode at 1/160 s or slower (S2 if using an optical slave), and allow 3–4 s between photos so the flash/strobe finishes recycling.' });
         }
         return out;
       }
@@ -67,12 +70,14 @@
         var lag = Number(j && j.shutterMs) || 0;
         var mf = !!((j && j.lensMf) || (typeof usbCam !== 'undefined' && usbCam && usbCam.lensMf) || canonGuideState.fastRun >= 2);
         var older = !!((j && j.olderCanon) || (typeof usbCam !== 'undefined' && usbCam && usbCam.olderCanon));
+        var aspectCrop = !!((j && j.aspectCrop) || (typeof usbCam !== 'undefined' && usbCam && usbCam.aspectCrop));
         return canonGuideFrom({
           fireOnce: typeof usbFireOnce === 'function' ? usbFireOnce() : false,
           lagMs: lag,
           focusInShot: !!(j && j.focusInShot),
           noAfOff: !!(j && j.noAfOff),
           toCard: !!(j && j.toCard),
+          aspectCrop: aspectCrop,
           olderCanon: older,
           lensMf: mf,
           flashMode: typeof camGuideLight === 'function' ? camGuideLight() === 'flash' : false

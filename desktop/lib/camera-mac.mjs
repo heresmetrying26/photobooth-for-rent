@@ -13,6 +13,7 @@ import { createSony, sonyName } from './cam-sony.mjs';
 const NOTREADY = 0xA102;                 // Canon: "not ready yet, ask again"
 const EOS_AVAIL_SHOTS = 0xD11B;
 const EOS_SAVETO = 0xD11C;
+const EOS_MULTI_ASPECT = 0xD194;         // 0 = 3:2 (native full sensor), 1 = 1:1, 2 = 4:3, 3/7 = 16:9
 const SAVETO_CARD = 2, SAVETO_HOST = 4;
 const CANON = 0x04a9, NIKON = 0x04b0, SONY = 0x054c;   // USB vendor ids
 const BRANDS = new Map([[CANON, 'canon'], [NIKON, 'nikon'], [SONY, 'sony']]);
@@ -40,7 +41,8 @@ const s = {
   ptp: null, entry: null, name: '', model: '', maker: '', vendorExt: 0, brand: 'canon', drv: null, battery: -1,   // drv: the Nikon / Sony driver (Canon is handled in this file)
   ops: [], props: [], live: false, gotFrame: false, setupNote: '', diag: '',
   eosVals: new Map(), eosAvail: new Map(), newFiles: [], pollAt: 0, keepAt: 0, liveAt: 0, liveOffAt: 0, lastShutterMs: 0, recoverNext: false,
-  toHost: false, hostGaveUp: false, hostWorked: false, destOrig: SAVETO_CARD, lastPollEvents: 0
+  toHost: false, hostGaveUp: false, hostWorked: false, destOrig: SAVETO_CARD, lastPollEvents: 0,
+  aspectChanged: false, aspectCrop: false, aspectOrig: 0
 };
 
 const has = (op) => s.ops.includes(op);
@@ -200,9 +202,38 @@ async function singleShot() {
   } catch (e) { if (e instanceof GoneError) throw e; log('Drive mode not changed: ' + e.message); }
 }
 
+// Canon EOS USB Live View (0x9153) always sends the full uncropped 3:2 frame, while Aspect ratio (0xD194) crops still JPEGs.
+// Switch to 3:2 (0) for the booth session and restore on closeCamera().
+async function canonAspect32() {
+  const ar = s.eosVals.get(EOS_MULTI_ASPECT);
+  if (ar === undefined || ar === 0) { s.aspectCrop = false; return; }
+  try {
+    const r = await setEos(EOS_MULTI_ASPECT, 0);
+    if (r === OK) await poll();
+    const now = s.eosVals.get(EOS_MULTI_ASPECT);
+    const ok = r === OK && (now === undefined || now === 0);
+    log('Aspect ratio was ' + ar + ': set to 3:2 (0): ' + hex(r) + (ok ? '' : ' (kept ' + now + ')'));
+    if (ok) {
+      if (!s.aspectChanged) { s.aspectOrig = ar; s.aspectChanged = true; }
+      s.aspectCrop = false;
+      s.setupNote += 'Camera aspect ratio was cropped; set to 3:2. ';
+    } else {
+      s.aspectCrop = true;
+      s.setupNote += 'Camera aspect ratio is not 3:2: set Aspect ratio to 3:2 on the camera. ';
+    }
+  } catch (e) { if (e instanceof GoneError) throw e; s.aspectCrop = true; log('Aspect ratio not changed: ' + e.message); }
+}
+
+async function canonRestoreAspect() {
+  if (!s.aspectChanged) return;
+  s.aspectChanged = false;
+  try { const r = await setEos(EOS_MULTI_ASPECT, s.aspectOrig); log('Aspect ratio: restored to ' + s.aspectOrig + ': ' + hex(r)); }
+  catch (e) { if (e instanceof GoneError) throw e; }
+}
+
 async function prepare() {
   s.setupNote = ''; s.eosVals.clear(); s.eosAvail.clear(); s.newFiles = []; s.gotFrame = false;
-  s.toHost = false; s.liveOffAt = 0;
+  s.toHost = false; s.liveOffAt = 0; s.aspectChanged = false; s.aspectCrop = false; s.aspectOrig = 0;
   if (s.recoverNext) {
     s.recoverNext = false;
     try { await s.ptp.op(0x9115, 0); } catch (e) { if (e instanceof GoneError) throw e; }
@@ -223,6 +254,7 @@ async function prepare() {
   if (!has(0x910F) && !has(0x9128)) throw new CamError('UNSUPPORTED The ' + s.name + " doesn't take photos over USB.");
   s.lastShutterMs = 0;
   await singleShot();
+  await canonAspect32();
   try { await canonToHost(); } catch (e) { if (e instanceof GoneError) throw e; log('Save to host not set: ' + e.message); }
   s.keepAt = Date.now();
 }
@@ -362,19 +394,24 @@ async function capture() {
   const t0 = Date.now();
   await poll();
   await singleShot();   // the operator may have turned the self-timer on since the session started
+  if (!s.aspectCrop) await canonAspect32();
   if (s.toHost && (s.eosVals.get(EOS_AVAIL_SHOTS) === undefined || s.eosVals.get(EOS_AVAIL_SHOTS) < 100)) {
     await canonSendCapacity();
     await poll();
   }
   const isDslr = canonIsDslr();
   if (isDslr) {
+    let turnedOffHere = false;
     if (s.live || (s.eosVals.get(0xD1B0) || 0) !== 0) {
       log('DSLR capture: ending live view before shutter (mechanical flash sync)');
       await liveOff();
+      turnedOffHere = true;
     }
-    while (s.liveOffAt && Date.now() - s.liveOffAt < 350) {
+    const maxSettle = turnedOffHere ? 500 : 350;
+    const minSettle = turnedOffHere ? 320 : 220;
+    while (s.liveOffAt && Date.now() - s.liveOffAt < maxSettle) {
       await poll();
-      if ((s.eosVals.get(0xD1B0) || 0) === 0 && Date.now() - s.liveOffAt >= 220) break;
+      if ((s.eosVals.get(0xD1B0) || 0) === 0 && Date.now() - s.liveOffAt >= minSettle) break;
       await sleep(40);
     }
   }
@@ -475,15 +512,16 @@ async function closeCamera() {
     if (s.drv) {
       try { await s.drv.close(); } catch { /* ignore */ }
     } else {
-      // Hand the camera back: photos on card again, live view off, out of remote mode.
+      // Hand the camera back: photos on card again, aspect ratio restored, live view off, out of remote mode.
       try { await canonToCard(false); } catch { /* ignore */ }
+      try { await canonRestoreAspect(); } catch { /* ignore */ }
       try { if (s.live) await setEos(0xD1B0, 0); await p.op(0x9115, 0); await p.op(0x9114, 0); } catch { /* ignore */ }
     }
     try { await p.closeSession(); } catch { /* ignore */ }
     await p.close();
   }
   s.ptp = null; s.entry = null; s.live = false; s.liveOffAt = 0; s.ops = []; s.props = []; s.drv = null; s.brand = 'canon'; s.battery = -1;
-  s.toHost = false; s.hostGaveUp = false; s.hostWorked = false;
+  s.toHost = false; s.hostGaveUp = false; s.hostWorked = false; s.aspectChanged = false; s.aspectCrop = false; s.aspectOrig = 0;
 }
 
 const infoJson = () => {
@@ -495,7 +533,7 @@ const infoJson = () => {
     name: s.name, model: s.model, maker: s.maker, brand: s.brand, vendor: s.vendorExt,
     liveview: s.drv ? s.drv.live : s.live, battery: s.battery, note: s.setupNote, diag: s.diag,
     shutterMs: s.lastShutterMs, preFocus: !cn || has(0x9128), olderCanon: older, lensMf: mf, canonDslr: dslr,
-    saveTo: cn ? (s.toHost ? 'host' : 'card') : '', toCard: cn && !s.toHost
+    saveTo: cn ? (s.toHost ? 'host' : 'card') : '', toCard: cn && !s.toHost, aspectCrop: cn && s.aspectCrop
   });
 };
 
@@ -557,7 +595,8 @@ async function listJson() {
   const mf = cn && canonLensMf();
   return JSON.stringify({
     devices: devs, open: !!s.ptp, name: s.ptp ? s.name : '', shutterMs: s.lastShutterMs,
-    toCard: cn && !s.toHost, olderCanon: cn && !has(0x9128), lensMf: mf, canonDslr: cn && canonIsDslr()
+    toCard: cn && !s.toHost, olderCanon: cn && !has(0x9128), lensMf: mf, canonDslr: cn && canonIsDslr(),
+    aspectCrop: cn && s.aspectCrop
   });
 }
 

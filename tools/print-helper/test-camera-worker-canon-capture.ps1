@@ -32,6 +32,8 @@ namespace PbCanonTest
 
         public uint SaveTo = 2;
         public uint AvailShots = 500;
+        public uint AspectRatio = 0;
+        public bool RefuseAspect = false;
         public bool LiveOn = false;
         public bool HalfPressed = false;
 
@@ -193,6 +195,12 @@ namespace PbCanonTest
                 if (val == 4) { AvailShots = 0; EvProp(0xD11B, 0); }
                 else { AvailShots = 500; EvProp(0xD11B, 500); }
             }
+            else if (prop == 0xD194)
+            {
+                if (RefuseAspect) return 0x2005;
+                AspectRatio = val;
+                EvProp(0xD194, val);
+            }
             return OK;
         }
     }
@@ -223,6 +231,7 @@ $mCapture = $W.GetMethod('CanonCapture', $flags)
 $mClose = $W.GetMethod('CloseCamera', $flags)
 $mIsDslr = $W.GetMethod('CanonIsDslr', $flags)
 $mInfoJson = $W.GetMethod('InfoJson', $flags)
+$mAspect32 = $W.GetMethod('CanonAspect32', $flags)
 $mCheck = [Pb4uCam.Ptp].GetMethod('Check', $flags)
 
 function Reset-Worker([PbCanonTest.RealisticEos]$cam, [string]$model, [uint16[]]$opList, [uint32]$initialSaveTo, [uint32]$afMode) {
@@ -241,6 +250,9 @@ function Reset-Worker([PbCanonTest.RealisticEos]$cam, [string]$model, [uint16[]]
     $W.GetField('canonHostWorked', $flags).SetValue($null, $false)
     $W.GetField('canonNoAfBad', $flags).SetValue($null, $false)
     $W.GetField('canonFocusInShot', $flags).SetValue($null, $false)
+    $W.GetField('canonAspectChanged', $flags).SetValue($null, $false)
+    $W.GetField('canonAspectCrop', $flags).SetValue($null, $false)
+    $W.GetField('canonAspectOrig', $flags).SetValue($null, [uint32]0)
     $W.GetField('canonLiveOffSw', $flags).GetValue($null).Reset()
     $cam.SaveTo = $initialSaveTo
     $cam.AvailShots = if ($initialSaveTo -eq 4) { 0 } else { 500 }
@@ -248,6 +260,7 @@ function Reset-Worker([PbCanonTest.RealisticEos]$cam, [string]$model, [uint16[]]
     $cam.EvAvail(0xD11C, [uint32[]]@(2, 4, 6))
     $cam.EvProp(0xD11B, $cam.AvailShots)
     $cam.EvProp(0xD108, $afMode)
+    $cam.EvProp(0xD194, $cam.AspectRatio)
     [void]$mPoll.Invoke($null, $null)
 }
 
@@ -387,9 +400,41 @@ foreach ($hr in @(0x802A0002, 0x802A0003)) {
 Reset-Worker $cam 'Canon EOS 60D' $eos60Ops 2 3
 [void]$mToHost.Invoke($null, $null)
 $inf = ($mInfoJson.Invoke($null, $null) | ConvertFrom-Json)
-Check 'InfoJson reports canonDslr=true, saveTo="host", toCard=false, lensMf=true' (
-    $inf.canonDslr -eq $true -and $inf.saveTo -eq 'host' -and $inf.toCard -eq $false -and $inf.lensMf -eq $true
+Check 'InfoJson reports canonDslr=true, saveTo="host", toCard=false, lensMf=true, aspectCrop=false' (
+    $inf.canonDslr -eq $true -and $inf.saveTo -eq 'host' -and $inf.toCard -eq $false -and $inf.lensMf -eq $true -and $inf.aspectCrop -eq $false
 ) ($inf | ConvertTo-Json -Compress)
+
+# --- 11. Canon EOS 1300D non-3:2 aspect ratio (0xD194=3 16:9) auto-switches to 3:2 and restores on close ---
+$cam1300 = New-Object PbCanonTest.RealisticEos
+$cam1300.IsDslr = $true
+$cam1300.AspectRatio = 3
+Reset-Worker $cam1300 'Canon EOS 1300D' $eos60Ops 2 3
+[void]$mAspect32.Invoke($null, $null)
+$inf1300 = ($mInfoJson.Invoke($null, $null) | ConvertFrom-Json)
+Check '1300D switches 0xD194 from 16:9 (3) to 3:2 (0) and clears aspectCrop' (
+    $cam1300.AspectRatio -eq 0 -and
+    ($W.GetField('canonAspectChanged', $flags).GetValue($null) -eq $true) -and
+    $inf1300.aspectCrop -eq $false -and
+    $inf1300.canonDslr -eq $true
+) ("ar=$($cam1300.AspectRatio) changed=$($W.GetField('canonAspectChanged', $flags).GetValue($null)) info=$($inf1300 | ConvertTo-Json -Compress)")
+[void]$mClose.Invoke($null, $null)
+Check '1300D CloseCamera() restores original 0xD194 (3) and clears aspect flags' (
+    $cam1300.AspectRatio -eq 3 -and
+    (-not $W.GetField('canonAspectChanged', $flags).GetValue($null)) -and
+    (-not $W.GetField('canonAspectCrop', $flags).GetValue($null))
+) ("ar=$($cam1300.AspectRatio) changed=$($W.GetField('canonAspectChanged', $flags).GetValue($null)) crop=$($W.GetField('canonAspectCrop', $flags).GetValue($null))")
+
+# --- 12. Canon EOS 1300D refusing 0xD194 reports aspectCrop=true in InfoJson ---
+$cam1300Ref = New-Object PbCanonTest.RealisticEos
+$cam1300Ref.IsDslr = $true
+$cam1300Ref.AspectRatio = 3
+$cam1300Ref.RefuseAspect = $true
+Reset-Worker $cam1300Ref 'Canon EOS 1300D' $eos60Ops 2 3
+[void]$mAspect32.Invoke($null, $null)
+$infRef = ($mInfoJson.Invoke($null, $null) | ConvertFrom-Json)
+Check '1300D refusing 0xD194 sets canonAspectCrop=true and InfoJson.aspectCrop=true' (
+    $cam1300Ref.AspectRatio -eq 3 -and $infRef.aspectCrop -eq $true
+) ("ar=$($cam1300Ref.AspectRatio) info=$($infRef | ConvertTo-Json -Compress)")
 
 [void]$mClose.Invoke($null, $null)
 if ($fails -eq 0) { Write-Output 'PASS'; exit 0 } else { Write-Output "FAIL ($fails)"; exit 1 }

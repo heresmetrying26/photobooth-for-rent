@@ -733,7 +733,8 @@ namespace Pb4uCam
                 + ",\"toCard\":" + (cn && !canonToHost ? "true" : "false")
                 + ",\"olderCanon\":" + (older ? "true" : "false")
                 + ",\"lensMf\":" + (mf ? "true" : "false")
-                + ",\"canonDslr\":" + (dslr ? "true" : "false") + "}");
+                + ",\"canonDslr\":" + (dslr ? "true" : "false")
+                + ",\"aspectCrop\":" + (cn && canonAspectCrop ? "true" : "false") + "}");
             return sb.ToString();
         }
 
@@ -776,8 +777,9 @@ namespace Pb4uCam
                 if (canon)
                 {
                     // Hand the camera back: photos on the card again (it would otherwise stay on "computer" and the next photos taken
-                    // on the camera itself wouldn't be saved), live view off, out of remote mode.
+                    // on the camera itself wouldn't be saved), aspect ratio restored, live view off, out of remote mode.
                     try { CanonToCard(false); } catch { }
+                    try { CanonRestoreAspect(); } catch { }
                     try { if (live) SetEos(0xD1B0, 0); ptp.Op(0x9115, 0); ptp.Op(0x9114, 0); } catch { }
                 }
                 if (sony) SonyReleaseButtons(false);
@@ -785,6 +787,7 @@ namespace Pb4uCam
             }
             ptp = null; live = false; devId = null; nikon = false; canon = false; sony = false; sonyClock = null; sonyDestBlocked = false;
             canonHostGaveUp = false; canonHostWorked = false; canonNoAfBad = false; canonToHost = false; canonLiveOffSw.Reset();
+            canonAspectChanged = false; canonAspectCrop = false; canonAspectOrig = 0;
         }
 
         static string Open()
@@ -876,7 +879,8 @@ namespace Pb4uCam
                 + ",\"saveTo\":" + Js(canon ? (canonToHost ? "host" : "card") : "")
                 + ",\"focusInShot\":" + (canon && canonFocusInShot && !mf ? "true" : "false")
                 + ",\"noAfOff\":" + (canon && canonNoAfBad && !mf ? "true" : "false")
-                + ",\"toCard\":" + (canon && !canonToHost ? "true" : "false") + "}";
+                + ",\"toCard\":" + (canon && !canonToHost ? "true" : "false")
+                + ",\"aspectCrop\":" + (canon && canonAspectCrop ? "true" : "false") + "}";
         }
 
         static int Battery()
@@ -1356,12 +1360,16 @@ namespace Pb4uCam
         // and refuses to capture until the host sends PCHDDCapacity (0x911A, 0x0FFFFFFF, 0x1000, 1).
         const ushort EOS_AVAIL_SHOTS = 0xD11B;
         const ushort EOS_SAVETO = 0xD11C;
+        const ushort EOS_MULTI_ASPECT = 0xD194;   // 0 = 3:2 (native full sensor), 1 = 1:1, 2 = 4:3, 3/7 = 16:9
         const uint SAVETO_CARD = 2, SAVETO_HOST = 4;
         static Dictionary<ushort, List<uint>> eosAvail = new Dictionary<ushort, List<uint>>();   // the values the camera says a setting can take
         static bool canonToHost;          // the camera is set to send photos to the computer (put back on the card when we let go of it)
         static bool canonHostGaveUp;      // it didn't work with this camera: photos stay on the card until reconnect
         static bool canonHostWorked;      // a photo has come through that way
         static uint canonDestOrig = SAVETO_CARD;
+        static bool canonAspectChanged;   // 0xD194 was cropped (16:9, 1:1, 4:3) and switched to 3:2 (0); restore on CloseCamera
+        static bool canonAspectCrop;      // 0xD194 is non-3:2 and could not be switched to 3:2
+        static uint canonAspectOrig = 0;
         static int lastPollEvents = 0;    // count of events parsed on the most recent CanonPoll()
         static Stopwatch canonLiveOffSw = new Stopwatch();   // time since Live View was switched off (so DSLR mirror-drop is already done after "Pose")
         // How long the camera took lately from the shutter command to announcing the photo (newest last, the last three). The
@@ -1586,6 +1594,7 @@ namespace Pb4uCam
             setupNote = "";
             eosVals.Clear(); eosAvail.Clear(); canonNew.Clear(); gotFrame = false;
             canonToHost = false; canonLags.Clear(); canonLiveBackPending = false; canonFocusInShot = false;
+            canonAspectChanged = false; canonAspectCrop = false; canonAspectOrig = 0;
             canonLiveOffSw.Reset();
             if (recoverNext)
             {
@@ -1616,6 +1625,7 @@ namespace Pb4uCam
                 throw new CamException("UNSUPPORTED The " + camName + " doesn't take photos over USB.");
             lastShutterMs = 0;
             CanonSingleShot();
+            CanonAspect32();
             try { CanonToHost(); }
             catch (GoneException) { throw; }
             catch (Exception e) { Log("Save to the computer not set: " + e.Message); }
@@ -1639,6 +1649,49 @@ namespace Pb4uCam
             }
             catch (GoneException) { throw; }
             catch (Exception e) { Log("Drive mode not changed: " + e.Message); }
+        }
+
+        // Canon EOS USB Live View (0x9153) always sends the full uncropped 3:2 sensor frame, while Aspect ratio
+        // (0xD194: 0=3:2, 1=1:1, 2=4:3, 3/7=16:9) crops the saved still JPEG — making every photo look zoomed in after capture.
+        // Switch to 3:2 (0) automatically for the booth session and restore the original setting when closing the camera.
+        static void CanonAspect32()
+        {
+            uint ar;
+            if (!eosVals.TryGetValue(EOS_MULTI_ASPECT, out ar) || ar == 0) { canonAspectCrop = false; return; }
+            try
+            {
+                uint r = SetEos(EOS_MULTI_ASPECT, 0);
+                if (r == Ptp.OK) CanonPoll();
+                uint now = ar;
+                bool hasNow = eosVals.TryGetValue(EOS_MULTI_ASPECT, out now);
+                bool ok = r == Ptp.OK && (!hasNow || now == 0);
+                Log("Aspect ratio was " + ar + ": set to 3:2 (0): " + H(r) + (ok ? "" : " (kept " + (hasNow ? now : ar) + ")"));
+                if (ok)
+                {
+                    if (!canonAspectChanged) { canonAspectOrig = ar; canonAspectChanged = true; }
+                    canonAspectCrop = false;
+                    setupNote += "Camera aspect ratio was cropped; set to 3:2. ";
+                }
+                else
+                {
+                    canonAspectCrop = true;
+                    setupNote += "Camera aspect ratio is not 3:2: set Aspect ratio to 3:2 on the camera. ";
+                }
+            }
+            catch (GoneException) { throw; }
+            catch (Exception e)
+            {
+                canonAspectCrop = true;
+                Log("Aspect ratio not changed: " + e.Message);
+            }
+        }
+        static void CanonRestoreAspect()
+        {
+            if (!canonAspectChanged) return;
+            canonAspectChanged = false;
+            try { uint r = SetEos(EOS_MULTI_ASPECT, canonAspectOrig); Log("Aspect ratio: restored to " + canonAspectOrig + ": " + H(r)); }
+            catch (GoneException) { throw; }
+            catch { }
         }
 
         // Every few seconds: read news (keeps the camera's list short) and keep it awake.
@@ -1834,6 +1887,7 @@ namespace Pb4uCam
             var sw = Stopwatch.StartNew();
             CanonPoll();
             CanonSingleShot();   // the operator may have turned the self-timer on since the session started
+            if (!canonAspectCrop) CanonAspect32();
             // Refresh host disk capacity before shooting if AvailableShots (0xD11B) is low or unknown (libgphoto2 library.c:6248).
             if (canonToHost)
             {
@@ -1845,22 +1899,26 @@ namespace Pb4uCam
                 }
             }
             bool isDslr = CanonIsDslr();
-            // Canon DSLRs (60D, 6D, 70D, 5D, Rebel...): Silent LV shoot (Mode 1 by default) blocks or desyncs external flashes
+            // Canon DSLRs (60D, 6D, 70D, 5D, 1300D, Rebel...): Silent LV shoot (Mode 1 by default) blocks or desyncs external flashes
             // and studio strobes while Live View is active, and Live View contrast AF is slow. Turning Live View off drops the
             // mirror into optical mode -> 100% mechanical X-sync for every flash/strobe AND fast phase-detect AF.
             // During a booth session "Pose" already turned Live View off 600 ms earlier, so canonLiveOffSw is already >= 350 ms (0 ms wait).
             if (isDslr)
             {
                 uint lvOut = 0;
+                bool turnedOffHere = false;
                 if (live || (eosVals.TryGetValue(0xD1B0, out lvOut) && lvOut != 0))
                 {
                     Log("DSLR capture: ending live view before shutter (mechanical flash sync)");
                     CanonLiveOff();
+                    turnedOffHere = true;
                 }
-                while (canonLiveOffSw.IsRunning && canonLiveOffSw.ElapsedMilliseconds < 350)
+                int maxSettle = turnedOffHere ? 500 : 350;
+                int minSettle = turnedOffHere ? 320 : 220;
+                while (canonLiveOffSw.IsRunning && canonLiveOffSw.ElapsedMilliseconds < maxSettle)
                 {
                     CanonPoll();
-                    if (eosVals.TryGetValue(0xD1B0, out lvOut) && lvOut == 0 && canonLiveOffSw.ElapsedMilliseconds >= 220) break;
+                    if (eosVals.TryGetValue(0xD1B0, out lvOut) && lvOut == 0 && canonLiveOffSw.ElapsedMilliseconds >= minSettle) break;
                     Thread.Sleep(40);
                 }
             }

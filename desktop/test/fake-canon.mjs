@@ -34,8 +34,9 @@ function evAvail(prop, vals) {
 }
 
 class FakeCanon {
-  constructor({ model, newer, dslr, hostMode }) {
+  constructor({ model, newer, dslr, hostMode, aspectRatio = 0, refuseAspect = false }) {
     this.model = model; this.newer = newer; this.dslr = dslr; this.hostMode = hostMode;
+    this.aspectRatio = aspectRatio; this.refuseAspect = refuseAspect;
     this.queue = []; this.pendingWrite = null; this.events = []; this.live = false;
     this.log = []; this.remote = 0; this.sessionOpen = false;
     this.saveTo = 2; this.availShots = 500; this.halfPressed = false;
@@ -60,6 +61,10 @@ class FakeCanon {
       // Realistic Canon EOS firmware: switching to Host (4) drops AvailableShots to 0 until 0x911A is sent!
       if (val === 4) { this.availShots = 0; this.events.push(evProp(0xD11B, 0)); }
       else { this.availShots = 500; this.events.push(evProp(0xD11B, 500)); }
+    } else if (prop === 0xD194) {
+      if (this.refuseAspect) { this.respond(pw.tid, 0x2005); return; }
+      this.aspectRatio = val;
+      this.events.push(evProp(0xD194, val));
     }
     this.respond(pw.tid, 0x2001);
   }
@@ -84,6 +89,9 @@ class FakeCanon {
       case 0x9115:
         if (ps[0] === 1 && this.hostMode) {
           this.events.push(evProp(0xD11C, this.saveTo), evAvail(0xD11C, [2, 4, 6]), evProp(0xD11B, this.availShots), evProp(0xD108, 3));
+        }
+        if (ps[0] === 1 && this.aspectRatio !== undefined) {
+          this.events.push(evProp(0xD194, this.aspectRatio));
         }
         return this.respond(tid, 0x2001);
       case 0x911A:
@@ -138,6 +146,8 @@ const check = (name, ok, extra) => { console.log((ok ? 'PASS ' : 'FAIL ') + name
 
 const cases = [
   { tag: '[Canon EOS 60D DSLR host+0x9128] ', model: 'Canon EOS 60D', newer: true, dslr: true, hostMode: true },
+  { tag: '[Canon EOS 1300D DSLR 16:9->3:2] ', model: 'Canon EOS 1300D', newer: true, dslr: true, hostMode: true, aspectRatio: 3 },
+  { tag: '[Canon EOS 1300D DSLR 16:9 refused] ', model: 'Canon EOS 1300D', newer: true, dslr: true, hostMode: true, aspectRatio: 3, refuseAspect: true },
   { tag: '[Canon EOS R50 Mirrorless host+0x9128] ', model: 'Canon EOS R50', newer: true, dslr: false, hostMode: true },
   { tag: '[Older Canon EOS 550D DSLR card+0x910F] ', model: 'Canon EOS 550D', newer: false, dslr: true, hostMode: false }
 ];
@@ -156,6 +166,13 @@ for (const tc of cases) {
   check(tag + 'open', o.status === 'OK', o.body.toString().slice(0, 120));
   const info = JSON.parse(o.body.toString());
   check(tag + 'name & canonDslr & saveTo', info.name === tc.model && info.canonDslr === tc.dslr && info.saveTo === (tc.hostMode ? 'host' : 'card'), JSON.stringify({ name: info.name, dslr: info.canonDslr, saveTo: info.saveTo }));
+  if (tc.aspectRatio) {
+    if (tc.refuseAspect) {
+      check(tag + 'refused 0xD194 sets aspectCrop=true', info.aspectCrop === true && fake.aspectRatio === tc.aspectRatio, JSON.stringify({ aspectCrop: info.aspectCrop, ar: fake.aspectRatio }));
+    } else {
+      check(tag + 'switches 0xD194 to 3:2 (0) and clears aspectCrop', info.aspectCrop === false && fake.aspectRatio === 0, JSON.stringify({ aspectCrop: info.aspectCrop, ar: fake.aspectRatio }));
+    }
+  }
   if (tc.hostMode) check(tag + 'called 0x911A PCHDDCapacity on host open', fake.sawCap === true && fake.saveTo === 4);
   const lv = await cam.call('live', 'on');
   check(tag + 'live on', lv.status === 'OK' && fake.live === true);
@@ -173,7 +190,7 @@ for (const tc of cases) {
   const f2 = await cam.call('frame', '');
   check(tag + 'live view restarts after the photo', f2.status === 'OK' && f2.kind === 'B');
   const x = await cam.call('close', '');
-  check(tag + 'close restores card saveTo & leaves remote mode', x.status === 'OK' && fake.remote === 0 && fake.saveTo === 2 && fake.closed === true);
+  check(tag + 'close restores card saveTo, aspect ratio & leaves remote mode', x.status === 'OK' && fake.remote === 0 && fake.saveTo === 2 && fake.closed === true && (!tc.aspectRatio || fake.aspectRatio === tc.aspectRatio), JSON.stringify({ remote: fake.remote, saveTo: fake.saveTo, ar: fake.aspectRatio }));
   const g = await cam.call('frame', '');
   check(tag + 'frame after close says GONE', g.status === 'GONE', g.body.toString().slice(0, 60));
 }

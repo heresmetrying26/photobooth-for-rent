@@ -60,6 +60,7 @@ class UsbCameraHelper(private val ctx: Context) {
         private const val SESSION_OPEN = 0x201E
         private const val BUSY = 0x2019
         private const val NOTREADY = 0xA102   // Canon: "not ready yet, ask again"
+        private const val EOS_MULTI_ASPECT = 0xD194   // Canon Aspect ratio (0=3:2, 1=1:1, 2=4:3, 3/7=16:9)
 
         // Nikons in MTP mode (D3400, D5600...) may not list their own commands, but they still answer them.
         private val NIKON_OPS = intArrayOf(0x90C0, 0x90C1, 0x90C7, 0x90C8, 0x9201, 0x9202, 0x9203, 0x9207)
@@ -124,6 +125,9 @@ class UsbCameraHelper(private val ctx: Context) {
     private var recoverNext = false      // the booth asked for a clean start: the Canon leaves remote mode before it is switched on again
     private var pollAt = -1L
     private var gotFrame = false
+    private var canonAspectChanged = false
+    private var canonAspectCrop = false
+    private var canonAspectOrig = 0
 
     // Sony
     private var sonyAt = -1L                           // when the connection finished; -1 = not a Sony
@@ -446,7 +450,7 @@ class UsbCameraHelper(private val ctx: Context) {
             arr.put(JSONObject().put("name", d.productName ?: "USB camera").put("maker", d.manufacturerName ?: "").put("camera", true))
         }
         val o = JSONObject().put("devices", arr)
-        synchronized(lock) { o.put("open", conn != null).put("name", if (conn != null) camName else "").put("shutterMs", lastShutterMs) }
+        synchronized(lock) { o.put("open", conn != null).put("name", if (conn != null) camName else "").put("shutterMs", lastShutterMs).put("aspectCrop", canon && canonAspectCrop) }
         return o
     }
 
@@ -628,6 +632,7 @@ class UsbCameraHelper(private val ctx: Context) {
     private fun closeUsb() {
         releaseUsb()
         live = false; nikon = false; canon = false; sony = false; sonyAt = -1L; sonyVer = 2; sonyDestBlocked = false; lastShutterMs = 0L
+        canonAspectChanged = false; canonAspectCrop = false; canonAspectOrig = 0
     }
 
     /** Hands the camera back politely, then lets go of the USB connection. */
@@ -636,7 +641,8 @@ class UsbCameraHelper(private val ctx: Context) {
             try {
                 if (nikon && live) { try { op(0x9202) } catch (e: CamErr) { throw e } catch (_: Exception) { } }
                 if (canon) {
-                    // Hand the camera back: live view off, out of remote mode.
+                    // Hand the camera back: restore aspect ratio, live view off, out of remote mode.
+                    try { canonRestoreAspect() } catch (e: CamErr) { throw e } catch (_: Exception) { }
                     try { if (live) setEos(0xD1B0, 0); op(0x9115, 0); op(0x9114, 0) } catch (e: CamErr) { throw e } catch (_: Exception) { }
                 }
                 if (sony) sonyReleaseButtons(false)
@@ -725,6 +731,7 @@ class UsbCameraHelper(private val ctx: Context) {
         .put("name", camName).put("model", camModel).put("maker", camMaker)
         .put("brand", if (nikon) "nikon" else if (canon) "canon" else if (sony) "sony" else "")
         .put("vendor", vendor).put("liveview", live).put("battery", batteryNow()).put("note", setupNote).put("diag", diag)
+        .put("aspectCrop", canon && canonAspectCrop)
 
     private fun batteryNow(): Int {
         if (canon) {
@@ -1178,9 +1185,44 @@ class UsbCameraHelper(private val ctx: Context) {
         }
     }
 
+    // Canon EOS USB Live View (0x9153) always sends the full uncropped 3:2 frame, while Aspect ratio (0xD194) crops still JPEGs.
+    // Switch to 3:2 (0) automatically for the booth session and restore on closeCamera().
+    private fun canonAspect32() {
+        val ar = eosVals[EOS_MULTI_ASPECT] ?: return
+        if (ar == 0L) { canonAspectCrop = false; return }
+        try {
+            val r = setEos(EOS_MULTI_ASPECT, 0)
+            if (r == OK) canonPoll()
+            val nowVal = eosVals[EOS_MULTI_ASPECT]
+            val ok = r == OK && (nowVal == null || nowVal == 0L)
+            log("Aspect ratio was $ar: set to 3:2 (0): ${hex(r)}${if (ok) "" else " (kept ${nowVal ?: ar})"}")
+            if (ok) {
+                if (!canonAspectChanged) { canonAspectOrig = ar.toInt(); canonAspectChanged = true }
+                canonAspectCrop = false
+                setupNote += "Camera aspect ratio was cropped; set to 3:2. "
+            } else {
+                canonAspectCrop = true
+                setupNote += "Camera aspect ratio is not 3:2: set Aspect ratio to 3:2 on the camera. "
+            }
+        } catch (e: CamErr) { throw e } catch (e: Exception) {
+            canonAspectCrop = true
+            log("Aspect ratio not changed: ${e.message}")
+        }
+    }
+
+    private fun canonRestoreAspect() {
+        if (!canonAspectChanged) return
+        canonAspectChanged = false
+        try {
+            val r = setEos(EOS_MULTI_ASPECT, canonAspectOrig)
+            log("Aspect ratio: restored to $canonAspectOrig: ${hex(r)}")
+        } catch (e: CamErr) { throw e } catch (_: Exception) { }
+    }
+
     private fun prepareCanon() {
         setupNote = ""
         eosVals.clear(); canonNew.clear(); gotFrame = false; pollAt = -1L
+        canonAspectChanged = false; canonAspectCrop = false; canonAspectOrig = 0
         if (recoverNext) {
             // The last session ended without a goodbye: leave remote mode before going in again.
             recoverNext = false
@@ -1200,6 +1242,7 @@ class UsbCameraHelper(private val ctx: Context) {
         canonPoll()
         if (!has(0x9153)) throw CamErr("UNSUPPORTED", "The $camName doesn't send live view over USB.")
         if (!has(0x910F) && !has(0x9128)) throw CamErr("UNSUPPORTED", "The $camName doesn't take photos over USB.")
+        canonAspect32()
         keepAt = now()
     }
 
@@ -1336,6 +1379,7 @@ class UsbCameraHelper(private val ctx: Context) {
     private fun canonCapture(): ByteArray {
         val t0 = now()
         canonPoll()
+        if (!canonAspectCrop) canonAspect32()
         canonNew.clear()
         val lagSw = now()
         var r: Int

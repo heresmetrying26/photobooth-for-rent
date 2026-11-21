@@ -19541,7 +19541,7 @@
           <div id="gifOptions" class="fb-opts" style="display:none;">
             <div class="fb-card">
               <p class="sub-label">GIF &amp; Live Motion</p>
-              <div class="fb-row"><span class="lbl">Picture frame</span>
+              <div class="fb-row" id="gifLayoutRow"><span class="lbl">Picture frame</span>
                 <select id="gifLayoutSelect" class="pillify" aria-label="GIF picture frame">
                   <option value="follow" selected data-tip-title="🖼️ Event Layout" data-tip-tag="Full Design"
                     data-tip-desc="Places the motion inside your event layout (strip, 2×2 grid, polaroid, etc.) complete with your custom branding and text.">
@@ -19571,12 +19571,15 @@
                   <option value="session" data-tip-title="🎞️ Full Session" data-tip-tag="Fast-Forward Timelapse"
                     data-tip-desc="Continuous recording across your entire session (all poses and laughter in between), automatically fast-forwarded into a smooth 4–5 second recap.">
                     🎞️ Full Session</option>
+                  <option value="slideshow" data-tip-title="🖼️ Final Shots Slideshow" data-tip-tag="Simple &amp; Clean"
+                    data-tip-desc="Not a timelapse. A clean slideshow of your guests' final photos, one by one on a Polaroid-style card with a soft cross-fade. Pick the card and background colour below.">
+                    🖼️ Final Shots Slideshow</option>
                 </select>
               </div>
               <p class="panel-hint" id="gifMotionStyleHint" style="margin:6px 0 0; color:var(--ink-dim);">Auto Match:
                 Automatically chooses the best motion style (Story Replay for strips, Multi-Box for grids).</p>
 
-              <div class="fb-row" style="margin-top:10px;"><span class="lbl">Loop mode</span>
+              <div class="fb-row" id="gifLoopRow" style="margin-top:10px;"><span class="lbl">Loop mode</span>
                 <select id="gifLoopModeSelect" class="pillify" aria-label="GIF loop mode">
                   <option value="boomerang" selected data-tip-title="🔄 Boomerang" data-tip-tag="Ping-Pong Loop"
                     data-tip-desc="Plays forward to the final pose, then smoothly reverses backward in an endless, seamless bounce loop.">
@@ -19585,6 +19588,39 @@
                     data-tip-desc="Plays straight through from start to the pose, then restarts from the beginning. Pacing automatically fast-forwards so it never feels cut short.">
                     Forward only</option>
                 </select>
+              </div>
+
+              <div id="gifSlideOpts" style="display:none;">
+                <div class="fb-row" style="margin-top:10px;"><span class="lbl">Slide frame</span>
+                  <select id="gifSlideFrameSelect" class="pillify" aria-label="Slideshow frame">
+                    <option value="card" selected data-tip-title="📸 Polaroid Card" data-tip-tag="Shaped Like The Photos"
+                      data-tip-desc="A Polaroid-style card on a coloured background. The slide takes the shape of the guests' photos (landscape, portrait or square), so nothing is cropped.">Polaroid card</option>
+                    <option value="design" data-tip-title="🎨 Event Design" data-tip-tag="Your Template"
+                      data-tip-desc="Each photo is placed in your own event design: your template, backdrop, title and branding. The GIF takes the size of that design. Uses your chosen layout if it holds one photo, otherwise the Solo layout.">Event design / my template</option>
+                  </select>
+                </div>
+                <div id="gifSlideCardOpts">
+                <div class="fb-row" style="margin-top:10px;"><span class="lbl">Photo card</span>
+                  <select id="gifSlideCardSelect" class="pillify" aria-label="Slideshow photo card colour">
+                    <option value="white" selected>White Polaroid</option>
+                    <option value="cream">Cream</option>
+                    <option value="black">Black</option>
+                    <option value="none">No card (photo only)</option>
+                  </select>
+                </div>
+                <div class="fb-row" style="margin-top:10px;"><span class="lbl">Background</span>
+                  <select id="gifSlideBgSelect" class="pillify" aria-label="Slideshow background">
+                    <option value="white" selected>White</option>
+                    <option value="blush">Blush Pink</option>
+                    <option value="sunset">Sunset</option>
+                    <option value="ocean">Ocean</option>
+                    <option value="lavender">Lavender</option>
+                    <option value="mint">Mint</option>
+                    <option value="midnight">Midnight</option>
+                  </select>
+                </div>
+                </div>
+                <p class="panel-hint" id="gifSlideHint" style="margin:6px 0 0; color:var(--ink-dim);"></p>
               </div>
             </div>
           </div>
@@ -27193,8 +27229,11 @@
       var flipAutoPlaying = false;  // auto-flipping state
       var flipPlayTimer = null;     // auto-play interval
       var gifLayoutMode = 'follow';  // 'follow' | 'solo' | 'raw': what the GIF frames are placed in
-      var gifMotionStyle = 'auto'; // 'auto' (smart layout match) | 'multibox' | 'sequential' | 'session'
+      var gifMotionStyle = 'auto'; // 'auto' (smart layout match) | 'multibox' | 'sequential' | 'session' | 'slideshow'
       var gifLoopMode = 'boomerang'; // 'boomerang' (ping-pong) | 'forward'
+var gifSlideCard = 'white';   // slideshow card: 'white' | 'cream' | 'black' | 'none'
+var gifSlideBg = 'white';     // slideshow background: 'white' | 'blush' | 'sunset' | 'ocean' | 'lavender' | 'mint' | 'midnight'
+var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped like the photos) | 'design' (the event's own design / template)
 
       function resolveGifMotionStyle(layoutKey) {
         if (gifMotionStyle && gifMotionStyle !== 'auto') return gifMotionStyle;
@@ -27228,8 +27267,23 @@
               ? '✨ Multi-Box Boomerang: All boxes animate together in a synchronized loop. Motion captured before each shot is dynamically fast-forwarded.'
               : gifMotionStyle === 'sequential'
                 ? '🎬 Story Replay: Each box animates one by one in sequence (Box 1 → 2 → 3 → 4), then pauses on the completed photo strip.'
-                : '🎞️ Full Session: Captures your entire session and dynamically fast-forwards it into a smooth 4–5 second recap timelapse.';
+                : gifMotionStyle === 'slideshow'
+                  ? '🖼️ Final Shots Slideshow: a clean slideshow of the final photos on Polaroid-style cards, with a soft cross-fade. No timelapse.'
+                  : '🎞️ Full Session: Captures your entire session and dynamically fast-forwards it into a smooth 4–5 second recap timelapse.';
         }
+        var isSlide = gifMotionStyle === 'slideshow';
+        [['gifLayoutRow', !isSlide], ['gifLayoutHint', !isSlide], ['gifLoopRow', !isSlide]].forEach(function (p) {
+          var el = document.getElementById(p[0]); if (el) el.style.display = p[1] ? '' : 'none';
+        });
+        var so = document.getElementById('gifSlideOpts'); if (so) so.style.display = isSlide ? '' : 'none';
+        var sfs = document.getElementById('gifSlideFrameSelect'); if (sfs) sfs.value = gifSlideFrame;
+        var sco = document.getElementById('gifSlideCardOpts'); if (sco) sco.style.display = gifSlideFrame === 'design' ? 'none' : '';
+        var sh = document.getElementById('gifSlideHint');
+        if (sh) sh.textContent = gifSlideFrame === 'design'
+          ? 'Each final photo is placed in your event design (template, backdrop, title) and the GIF takes that design\'s size. Uses your chosen layout if it holds one photo, otherwise the Solo layout. Each photo shows about a second, then fades.'
+          : 'The slide is shaped like the guests\' photos, so nothing is cropped. Each final photo shows about a second on a Polaroid card, then fades. Loop mode does not apply.';
+        var scs = document.getElementById('gifSlideCardSelect'); if (scs) scs.value = gifSlideCard;
+        var sbs = document.getElementById('gifSlideBgSelect'); if (sbs) sbs.value = gifSlideBg;
 
         var lSel = document.getElementById('gifLoopModeSelect');
         if (lSel) lSel.value = gifLoopMode;
@@ -27301,8 +27355,24 @@
         });
         var gms = document.getElementById('gifMotionStyleSelect');
         if (gms) gms.addEventListener('change', function () {
-          gifMotionStyle = (gms.value === 'multibox' || gms.value === 'sequential' || gms.value === 'session') ? gms.value : 'auto';
+          gifMotionStyle = (gms.value === 'multibox' || gms.value === 'sequential' || gms.value === 'session' || gms.value === 'slideshow') ? gms.value : 'auto';
           refreshGifLayoutUI();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+        var gsf = document.getElementById('gifSlideFrameSelect');
+        if (gsf) gsf.addEventListener('change', function () {
+          gifSlideFrame = gsf.value === 'design' ? 'design' : 'card';
+          refreshGifLayoutUI();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+        var gsc = document.getElementById('gifSlideCardSelect');
+        if (gsc) gsc.addEventListener('change', function () {
+          gifSlideCard = ['white', 'cream', 'black', 'none'].indexOf(gsc.value) >= 0 ? gsc.value : 'white';
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+        var gsb = document.getElementById('gifSlideBgSelect');
+        if (gsb) gsb.addEventListener('change', function () {
+          gifSlideBg = GIF_SLIDE_BGS[gsb.value] ? gsb.value : 'white';
           if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
         });
         var glm = document.getElementById('gifLoopModeSelect');
@@ -27839,6 +27909,133 @@
         };
       }
 
+      // ---- Final Shots Slideshow ----
+      // Not a timelapse: the final photos one by one on a Polaroid-style card over a plain or gradient background,
+      // with a short cross-fade between them. Needs no recorded motion, only the finished shots.
+      var GIF_SLIDE_BGS = {
+        white:    ['#ffffff', '#ffffff'],
+        blush:    ['#ffd6e0', '#ffb3c6'],
+        sunset:   ['#ff9a8b', '#ffd36e'],
+        ocean:    ['#4facfe', '#a0e9ff'],
+        lavender: ['#c3b1ff', '#f3d9ff'],
+        mint:     ['#a8edea', '#e3fdf5'],
+        midnight: ['#232526', '#414345']
+      };
+      var GIF_SLIDE_CARDS = { white: '#ffffff', cream: '#fbf3e4', black: '#141414' };
+
+      function paintSlideBackground(ctx, w, h) {
+        var c = GIF_SLIDE_BGS[gifSlideBg] || GIF_SLIDE_BGS.white;
+        if (c[0] === c[1]) { ctx.fillStyle = c[0]; ctx.fillRect(0, 0, w, h); return; }
+        var g = ctx.createLinearGradient(0, 0, w * 0.45, h);   // soft diagonal-ish sweep
+        g.addColorStop(0, c[0]); g.addColorStop(1, c[1]);
+        ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      }
+
+      // Geometry for the Polaroid-card slideshow. Everything follows the SHAPE OF THE GUEST'S PHOTOS (landscape webcam,
+      // portrait phone, DSLR 3:2 ...): the photo window uses the shot's own aspect ratio, so nothing is cropped, and the
+      // slide is as tall or as wide as it needs to be. Logical width is 640; k scales the whole slide down if it gets too tall.
+      function slideCardGeometry(aspect) {
+        aspect = Math.max(0.5, Math.min(2.2, aspect || 1));
+        var ow = 640, m = Math.round(ow * 0.13), hasCard = !!GIF_SLIDE_CARDS[gifSlideCard];
+        var cw = ow - 2 * m, side = hasCard ? cw * 0.065 : 0;
+        var pw = cw - 2 * side, ph = pw / aspect;
+        var top = side, bottom = hasCard ? side * 3.4 : 0;
+        var ch = ph + top + bottom, oh = Math.round(ch + 2 * m);
+        var k = Math.min(1, 1000 / oh);
+        return { ow: ow, oh: oh, cw: cw, ch: ch, pw: pw, ph: ph, side: side, top: top, k: k,
+          outW: Math.max(2, Math.round(ow * k)), outH: Math.max(2, Math.round(oh * k)) };
+      }
+
+      function paintSlideCard(ctx, shot, G, rotDeg) {
+        ctx.save();
+        ctx.translate(G.ow / 2, G.oh / 2);
+        ctx.rotate(rotDeg * Math.PI / 180);
+        var card = GIF_SLIDE_CARDS[gifSlideCard];
+        ctx.shadowColor = 'rgba(0,0,0,0.30)'; ctx.shadowBlur = G.ow * 0.05; ctx.shadowOffsetY = G.ow * 0.02;
+        ctx.fillStyle = card || '#000000';
+        ctx.fillRect(-G.cw / 2, -G.ch / 2, G.cw, G.ch);
+        ctx.shadowColor = 'transparent';
+        drawImageCover(ctx, shot, -G.cw / 2 + G.side, -G.ch / 2 + G.top, G.pw, G.ph);
+        ctx.restore();
+      }
+
+      // The frames of a slideshow. 'card' = Polaroid card sized to the photos; 'design' = each photo placed in the event's own
+      // design (template, backdrop, title, overlay, paper size) through the normal layout engine, so a customer's own template
+      // sets the size.
+      async function gifSlideshowFrames() {
+        var shots = (shotCanvases || []).filter(function (c) { return !!c; });
+        if (!shots.length) return null;
+        var n = shots.length;
+        var HOLD = 1300, FADE = 70, STEPS = [0.33, 0.66];
+        var out = document.createElement('canvas'), cur = document.createElement('canvas'), nxt = document.createElement('canvas');
+        var render, ow, oh;
+
+        if (gifSlideFrame === 'design') {
+          // Chosen layout when it holds ONE photo (this includes 1-photo custom templates); otherwise the Solo layout,
+          // which still carries the event's backdrop, colours and title.
+          var key = (LAYOUT_DEFS[currentLayout] && shotsNeeded(currentLayout) === 1) ? currentLayout : 'solo';
+          var isSolo = key === 'solo';
+          var sw = 1280, sref = shots[0];
+          var slot = document.createElement('canvas'); slot._isShot = true;
+          var box = document.createElement('canvas');
+          function compose(i) {
+            var src = shots[i], r = Math.min(1, sw / Math.max(src.width, src.height));
+            slot.width = Math.max(1, Math.round(src.width * r)); slot.height = Math.max(1, Math.round(src.height * r));
+            var sctx = slot.getContext('2d'); sctx.imageSmoothingEnabled = true; sctx.imageSmoothingQuality = 'high';
+            sctx.clearRect(0, 0, slot.width, slot.height); sctx.drawImage(src, 0, 0, slot.width, slot.height);
+            var po = overlay, pc = currentFrameColor, savedCrop;
+            var hasCrops = (typeof shotCrops !== 'undefined') && shotCrops;
+            if (hasCrops) { savedCrop = shotCrops[0]; shotCrops[0] = shotCrops[i]; }   // the photo goes in slot 0: bring its own crop along
+            if (isSolo) { overlay = null; currentFrameColor = '#ffffff'; }
+            try { composeCanvas(key, box, [slot]); }
+            finally { overlay = po; currentFrameColor = pc; if (hasCrops) shotCrops[0] = savedCrop; }
+            stampTrialMark(box);
+          }
+          compose(0);
+          var kk = Math.min(1, 900 / Math.max(box.width, box.height));
+          ow = Math.max(2, Math.round(box.width * kk)); oh = Math.max(2, Math.round(box.height * kk));
+          out.width = cur.width = nxt.width = ow; out.height = cur.height = nxt.height = oh;
+          var oc = out.getContext('2d', { willReadFrequently: true }), cc = cur.getContext('2d'), nc = nxt.getContext('2d');
+          [oc, cc, nc].forEach(function (c) { c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; });
+          render = function (ctx, i) { compose(i); ctx.fillStyle = (isSolo ? '#ffffff' : (currentFrameColor || '#ffffff')); ctx.fillRect(0, 0, ow, oh); ctx.drawImage(box, 0, 0, ow, oh); };
+        } else {
+          var G = slideCardGeometry(shots[0].width / shots[0].height);
+          ow = G.outW; oh = G.outH;
+          out.width = cur.width = nxt.width = ow; out.height = cur.height = nxt.height = oh;
+          var oc = out.getContext('2d', { willReadFrequently: true }), cc = cur.getContext('2d'), nc = nxt.getContext('2d');
+          render = function (ctx, i) {
+            ctx.save(); ctx.scale(G.k, G.k);
+            paintSlideBackground(ctx, G.ow, G.oh);
+            paintSlideCard(ctx, shots[i], G, (i % 2 === 0) ? -2 : 2);   // tiny alternate tilt, like hand-placed prints
+            ctx.restore();
+            stampTrialMark(ctx.canvas);
+          };
+        }
+
+        var frames = [], t = 0;
+        for (var i = 0; i < n; i++) {
+          (function (a, b) {
+            frames.push({ time: t, make: async function () { render(oc, a); return out; } });
+            t += HOLD;
+            if (n > 1) {
+              STEPS.forEach(function (alpha) {
+                frames.push({
+                  time: t, make: async function () {
+                    render(cc, a); render(nc, b);
+                    oc.globalAlpha = 1; oc.drawImage(cur, 0, 0);
+                    oc.globalAlpha = alpha; oc.drawImage(nxt, 0, 0);
+                    oc.globalAlpha = 1;
+                    return out;
+                  }
+                });
+                t += FADE;
+              });
+            }
+          })(i, (i + 1) % n);
+        }
+        return { frames: frames, width: ow, height: oh, durationMs: t, speed: 1 };
+      }
+
       // Puts every GIF frame inside the booth's frame, so the GIF carries the event's title and design.
       // Solo (one big photo) by default, even when the photos use a strip. The camera view fills the photo spot.
       // The frames are drawn one at a time while the GIF is encoded (each has a make() that returns the framed picture),
@@ -27946,6 +28143,10 @@
           framesObj = completedGifCapture;
           completedGifCapture = null;
           var hasMulti = Array.isArray(shotMotionClips) && shotMotionClips.some(function (c) { return c && c.length > 0; });
+          if (gifMotionStyle === 'slideshow' && !flipbookResult) {
+            framesObj = await gifSlideshowFrames();
+            if (!framesObj) throw new Error('No photos for the slideshow');
+          }
           if (!framesObj && !hasMulti) throw new Error('No session GIF was recorded');
           if (!framesObj) {
             framesObj = { frames: [], width: 640, height: 480, durationMs: 2000, speed: 1 };
@@ -27959,7 +28160,9 @@
         if (myGen !== gifGeneration) return;
 
         var statusEl = document.getElementById('gifStatusMsg');
-        if (gifLayoutMode !== 'raw' && !flipbookResult) {
+        if (gifMotionStyle === 'slideshow' && !flipbookResult) {
+          // already framed on its Polaroid card: skip layout and boomerang handling
+        } else if (gifLayoutMode !== 'raw' && !flipbookResult) {
           if (statusEl) statusEl.textContent = 'Framing your GIF, please wait…';
           try { framesObj = await gifIntoLayout(framesObj); }
           catch (e) { console.error('GIF framing failed, using the plain camera view:', e); }
@@ -29134,6 +29337,7 @@
         camera: null, name: '', active: false, gen: 0, libGen: 0, vfOn: false, initing: null,
         canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null,
         lastFrameAt: 0, shooting: false, holdLive: false, olderCanon: false, lensMf: false, stallShown: false, devId: '',
+        rawW: 0, rawH: 0, photoAspect: 0, aspectCrop: false, aspectWarned: false,   // matches live view to cropped still aspect (e.g. Canon 16:9 / 1:1)
         frameAt: 0, shotAt: 0, kickAt: 0,                        // real time of the last picture / of the last photo (while live view is still to come back) / of the last "live view again" request
         freshNext: false, dropWhy: '',                          // helper cameras: after a drop the next connect starts a clean session (a camera that slept keeps a dead one)
         shutterLagMs: 0, graceUntil: 0                           // learned delay from shutter command to exposure; live view may pause until graceUntil after a photo
@@ -29601,6 +29805,8 @@
           usbCam.olderCanon = !!(hc.info && hc.info.olderCanon);
           usbCam.lensMf = !!(hc.info && hc.info.lensMf);
           usbCam.canonDslr = !!(hc.info && hc.info.canonDslr);
+          usbCam.rawW = 0; usbCam.rawH = 0; usbCam.photoAspect = 0; usbCam.aspectWarned = false;
+          usbCam.aspectCrop = !!(hc.info && hc.info.aspectCrop);
           usbCam.name = hc.name;
           try { camQUiSync(); } catch (e) { }
           try { canonGuideUpdate(hc.info, true); } catch (e) { }
@@ -29612,6 +29818,7 @@
                   if (typeof j.lensMf === 'boolean') usbCam.lensMf = j.lensMf;
                   if (typeof j.olderCanon === 'boolean') usbCam.olderCanon = j.olderCanon;
                   if (typeof j.canonDslr === 'boolean') usbCam.canonDslr = j.canonDslr;
+                  if (j.aspectCrop) usbCam.aspectCrop = true;
                   canonGuideUpdate(j, true);
                 }
               }).catch(function () { });
@@ -29630,6 +29837,8 @@
           usbCam.olderCanon = !!(nat.info && nat.info.olderCanon);
           usbCam.lensMf = !!(nat.info && nat.info.lensMf);
           usbCam.canonDslr = !!(nat.info && nat.info.canonDslr);
+          usbCam.rawW = 0; usbCam.rawH = 0; usbCam.photoAspect = 0; usbCam.aspectWarned = false;
+          usbCam.aspectCrop = !!(nat.info && nat.info.aspectCrop);
           usbCam.name = nat.name || 'USB camera';
           usbCam.devId = '';
           usbCam.seen = ''; usbCam.macScan = null;
@@ -29665,6 +29874,7 @@
         usbCam.seen = ''; usbCam.macScan = null;
         usbCam.camera = cam;
         usbCam.vfOn = false;
+        usbCam.rawW = 0; usbCam.rawH = 0; usbCam.photoAspect = 0; usbCam.aspectCrop = false; usbCam.aspectWarned = false;
         usbCam.name = (camDev && camDev.productName) || '';
         usbCam.devId = usbDevKey(camDev);
         usbLog('connected', { camera: usbCam.name, id: usbCam.devId, connects: usbCam.libGen, freed: !!usbCam.freed, heapMB: usbHeapMB() });
@@ -29797,10 +30007,21 @@
             if (helper && usbCam.gen === gen && !usbCam.shooting && !usbCam.holdLive && !usbCam.shotsDone) { ahead = usbCam.camera.capturePreviewAsBlob(); ahead.catch(function () { }); }
             const bmp = await createImageBitmap(blob);
             if (usbCam.gen !== gen) { bmp.close(); return; }
-            if (usbCam.canvas.width !== bmp.width || usbCam.canvas.height !== bmp.height) {
-              usbCam.canvas.width = bmp.width; usbCam.canvas.height = bmp.height;
+            usbCam.rawW = bmp.width; usbCam.rawH = bmp.height;
+            let sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;
+            // If the camera's still photo is cropped differently from USB Live View (e.g. Canon 16:9 or 1:1 while EVF is 3:2),
+            // center-crop the preview canvas to match so guests never see a surprise zoom-in after each shot.
+            if (usbCam.photoAspect > 0 && bmp.width > 0 && bmp.height > 0) {
+              const lvAr = bmp.width / bmp.height, pa = usbCam.photoAspect;
+              if ((pa >= 1) === (lvAr >= 1) && Math.abs(pa - lvAr) / lvAr > 0.04) {
+                if (pa > lvAr) { sh = Math.max(1, Math.round(bmp.width / pa)); sy = Math.round((bmp.height - sh) / 2); }
+                else { sw = Math.max(1, Math.round(bmp.height * pa)); sx = Math.round((bmp.width - sw) / 2); }
+              }
             }
-            usbCam.ctx.drawImage(bmp, 0, 0); bmp.close();
+            if (usbCam.canvas.width !== sw || usbCam.canvas.height !== sh) {
+              usbCam.canvas.width = sw; usbCam.canvas.height = sh;
+            }
+            usbCam.ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, sw, sh); bmp.close();
             usbCam.hasFrame = true; fails = 0;
             usbCam.lastFrameAt = Date.now();
             usbCam.frameAt = usbCam.lastFrameAt;   // the real time of the last picture (lastFrameAt is held back during the after-photo grace)
@@ -30349,6 +30570,7 @@
         usbCam.camera = null;
         usbCam.shooting = false;
         usbCam.holdLive = false;
+        usbCam.rawW = 0; usbCam.rawH = 0; usbCam.photoAspect = 0; usbCam.aspectCrop = false; usbCam.aspectWarned = false;
         usbStopLive();
         usbCam.stallShown = false;
         usbCam.dropWhy = why;
@@ -31021,8 +31243,9 @@
         shot._thumb = t.toDataURL('image/jpeg', 0.82); shot._thumbA = box;
         return shot._thumb;
       }
-      function shotReviewUrl(shot) {
-        var box = currentBoxAspect(), t = document.createElement('canvas'), H = 1000, W = Math.round(H * box);
+      function shotReviewUrl(shot, i) {
+        var box = (typeof i === 'number' && typeof shotBoxAspect === 'function') ? shotBoxAspect(i) : currentBoxAspect();
+        var t = document.createElement('canvas'), H = 1000, W = Math.round(H * box);
         if (W > 1400) { W = 1400; H = Math.round(W / box); }
         t.width = W; t.height = H;
         drawImageCover(t.getContext('2d'), shot, 0, 0, W, H);
@@ -31231,6 +31454,7 @@
             if (j && typeof j.lensMf === 'boolean') usbCam.lensMf = j.lensMf;
             if (j && typeof j.olderCanon === 'boolean') usbCam.olderCanon = j.olderCanon;
             if (j && typeof j.canonDslr === 'boolean') usbCam.canonDslr = j.canonDslr;
+            if (j && j.aspectCrop) usbCam.aspectCrop = true;
             canonGuideUpdate(j);   // a Canon that is late or not taking photos: tips for the operator (brand-canon.js)
             const ms = Number(j && j.shutterMs) || 0;
             if (ms > 0) {
@@ -32042,8 +32266,11 @@
         if (st.toCard) {
           out.push({ id: 'card', text: 'This Canon is saving each photo on its SD card first, so "Saving" takes longer. Use a fast SD card (UHS-I) and set the image quality to JPEG only, not RAW + JPEG.' });
         }
+        if (st.aspectCrop) {
+          out.push({ id: 'aspect', text: 'This Canon is set to a cropped Aspect ratio (such as 16:9 or 1:1) while Live View is 3:2, which makes photos look zoomed in after each shot. In the camera menu (Live View shoot. -> Aspect ratio), set it to 3:2.' });
+        }
         if (st.flashMode) {
-          out.push({ id: 'flash', text: 'Flash / strobe with Canon live view (6D / 60D): in the camera menu set Silent LV shoot (Silent shoot.) to Disable (Mode 1 or 2 makes external flashes fire with no effect on the photo), set Exposure simulation to Disable, and use M mode at 1/160 s or slower (S2 if using an optical slave).' });
+          out.push({ id: 'flash', text: 'Flash / strobe with Canon live view (6D / 60D / 1300D): in the camera menu set Silent LV shoot (Silent shoot.) to Disable (Mode 1 or 2 makes external flashes fire with no effect on the photo), set Exposure simulation to Disable, use M mode at 1/160 s or slower (S2 if using an optical slave), and allow 3–4 s between photos so the flash/strobe finishes recycling.' });
         }
         return out;
       }
@@ -32065,12 +32292,14 @@
         var lag = Number(j && j.shutterMs) || 0;
         var mf = !!((j && j.lensMf) || (typeof usbCam !== 'undefined' && usbCam && usbCam.lensMf) || canonGuideState.fastRun >= 2);
         var older = !!((j && j.olderCanon) || (typeof usbCam !== 'undefined' && usbCam && usbCam.olderCanon));
+        var aspectCrop = !!((j && j.aspectCrop) || (typeof usbCam !== 'undefined' && usbCam && usbCam.aspectCrop));
         return canonGuideFrom({
           fireOnce: typeof usbFireOnce === 'function' ? usbFireOnce() : false,
           lagMs: lag,
           focusInShot: !!(j && j.focusInShot),
           noAfOff: !!(j && j.noAfOff),
           toCard: !!(j && j.toCard),
+          aspectCrop: aspectCrop,
           olderCanon: older,
           lensMf: mf,
           flashMode: typeof camGuideLight === 'function' ? camGuideLight() === 'flash' : false
@@ -32838,6 +33067,22 @@
           const [bmp, exif] = await Promise.all([createImageBitmap(file), pbReadExif(file).catch(() => null)]);
           try { camGuideSetExif(exif); } catch (e) { }   // the Camera check table follows the latest photo
           const sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;   // whole photo; the layout box crops it once
+          if (usbCam.rawW > 0 && usbCam.rawH > 0 && sw > 0 && sh > 0) {
+            const lvAr = usbCam.rawW / usbCam.rawH, pa = sw / sh;
+            if ((pa >= 1) === (lvAr >= 1) && Math.abs(pa - lvAr) / lvAr > 0.04) {
+              usbCam.photoAspect = pa;
+              usbCam.aspectCrop = true;
+              usbLog('aspect-mismatch', { live: usbCam.rawW + 'x' + usbCam.rawH, photo: sw + 'x' + sh });
+              if (!usbCam.aspectWarned) {
+                usbCam.aspectWarned = true;
+                try { canonGuideRefresh(); } catch (e) { }
+                showToast('Camera photo shape (' + sw + '×' + sh + ') differs from Live View. Live View adjusted to match — set Aspect Ratio to 3:2 on the camera for full width.', 9000);
+              }
+            } else if (usbCam.photoAspect && (pa >= 1) === (lvAr >= 1)) {
+              usbCam.photoAspect = 0;
+              usbCam.aspectCrop = false;
+            }
+          }
           const k = Math.min(1, offlineShotMaxPx() / Math.max(sw, sh));
           const c = document.createElement('canvas');
           c.width = Math.round(sw * k); c.height = Math.round(sh * k);
@@ -33556,7 +33801,7 @@
         const holdCam = () => { if (usbCam.active && currentDeviceId === USB_CAM_ID) usbCam.holdLive = true; };
         const fireNow = () => { if (!shot) shot = captureShot(index); };   // webcam: instant; USB camera: fires the real shutter
         var isGif = isGifAllowed() && (outputMode === 'gif' || outputMode === 'both');
-        if (isGif && gifMotionStyle !== 'session') {
+        if (isGif && gifMotionStyle !== 'session' && gifMotionStyle !== 'slideshow') {
           startShotMotionCapture(index);
         }
         // A Nikon / Canon over USB focuses once during the countdown, so the real shutter at the end only has to fire.
@@ -45022,6 +45267,8 @@ function renderTabletBridgeSetup(info) {
       function syncColorAdjToPrinter() {
         var key = colorAdjPrinter();
         if (key === colorAdjKeyNow || (key === '' && colorAdjKeyNow === null)) { updateColorAdjUI(); return; }
+        // A transient empty printer name (e.g. during a helper hiccup or layout/size refresh) must not wipe the active printer's lightness/colour adjustment.
+        if (key === '' && colorAdjKeyNow) { updateColorAdjUI(); return; }
         var prev = colorAdjKeyNow;
         colorAdjKeyNow = key; colorAdjView = null;
         if ((prev === null || prev === '') && key && !colorAdjMap[key]) {
@@ -45543,7 +45790,7 @@ function renderTabletBridgeSetup(info) {
       window.addEventListener('resize', function () { if (qrPop.phase) qrPopDrawPhoto(); });
       function showShotReview(i) {
         if (!shotCanvases[i]) return;
-        var url = shotReviewUrl(shotCanvases[i]);
+        var url = shotReviewUrl(shotCanvases[i], i);
         if (shotReview.tagName === 'IMG') {
           shotReview.src = url;
         } else if (shotReview.getContext) {
@@ -60959,7 +61206,7 @@ function fxWavUrl(kind) {
           firstTimerSec: firstTimerSec, timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
           reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake, qrPop: qrPopOn, hideQr: hideQrOn, qrPopDelay: qrPopDelay,
           shareStation: shareStationOn, shareStationHandoff: shareStationHandoff, shareStationPrivacy: shareStationPrivacy,
-          outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, gifMotionStyle: gifMotionStyle, gifLoopMode: gifLoopMode, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipNumbers: flipNumbers, flipCues: flipCues, flipGridPreset: flipGridPreset, flipPrinterPool: flipPrinterPool, flipPoolMode: flipPoolMode, flipCoverStyle: flipCoverStyle, flipCoverAssetId: flipCoverAssetId, flipBackQr: flipBackQr, flipBackText: flipBackText,
+          outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, gifMotionStyle: gifMotionStyle, gifLoopMode: gifLoopMode, gifSlideCard: gifSlideCard, gifSlideBg: gifSlideBg, gifSlideFrame: gifSlideFrame, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipNumbers: flipNumbers, flipCues: flipCues, flipGridPreset: flipGridPreset, flipPrinterPool: flipPrinterPool, flipPoolMode: flipPoolMode, flipCoverStyle: flipCoverStyle, flipCoverAssetId: flipCoverAssetId, flipBackQr: flipBackQr, flipBackText: flipBackText,
           backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
           frameColorChoice: frameColorChoice, photoPlacement: photoPlacement, cropFocus: cropFocus,
           label: labelInput.value, font: currentFont, dateFont: currentDateFont, dateOn: dateOn, date: dateInput.value,
@@ -61121,7 +61368,10 @@ function fxWavUrl(kind) {
           if (s.outputMode === 'flipbook') { outputMode = extraOn('flipbook') ? 'flipbook' : 'photo'; }
           else if (s.outputMode === 'gif' || s.outputMode === 'both' || s.outputMode === 'photo') { outputMode = isGifAllowed() ? s.outputMode : 'photo'; }
           if (s.gifLayout === 'solo' || s.gifLayout === 'follow' || s.gifLayout === 'raw') { gifLayoutMode = s.gifLayout; }
-          if (s.gifMotionStyle === 'auto' || s.gifMotionStyle === 'multibox' || s.gifMotionStyle === 'sequential' || s.gifMotionStyle === 'session') { gifMotionStyle = s.gifMotionStyle; }
+          if (s.gifMotionStyle === 'auto' || s.gifMotionStyle === 'multibox' || s.gifMotionStyle === 'sequential' || s.gifMotionStyle === 'session' || s.gifMotionStyle === 'slideshow') { gifMotionStyle = s.gifMotionStyle; }
+          if (['white', 'cream', 'black', 'none'].indexOf(s.gifSlideCard) >= 0) { gifSlideCard = s.gifSlideCard; }
+          if (GIF_SLIDE_BGS[s.gifSlideBg]) { gifSlideBg = s.gifSlideBg; }
+          if (s.gifSlideFrame === 'card' || s.gifSlideFrame === 'design') { gifSlideFrame = s.gifSlideFrame; }
           if (s.gifLoopMode === 'boomerang' || s.gifLoopMode === 'forward') { gifLoopMode = s.gifLoopMode; }
           refreshGifLayoutUI();
           if ([4, 5, 6, 7].indexOf(Number(s.flipSec)) >= 0) { flipSec = Number(s.flipSec); var fsEl = document.getElementById('flipSecSelect'); if (fsEl) fsEl.value = String(flipSec); }
@@ -65137,12 +65387,18 @@ function fxWavUrl(kind) {
           var si = pairs ? pairs[i] : i;
           var shot = shots[si] || shots[si % Math.max(1, shots.length)];
           var g = spotPx(sp, w, h), mask = masks && masks.list[i];
-          // With its window known, the photo is drawn a little bigger (covers the
-          // window's corners) and then cut to the window, so it never spills over.
-          var e = mask ? Math.max(g.w, g.h) * 0.04 : Math.max(1, w * 0.003);
+          // With its window known, the photo is drawn slightly bigger (covers soft
+          // window corners) and then cut to the window, so it never spills over or zooms heads out.
+          var e = mask ? Math.max(2, Math.max(g.w, g.h) * 0.008) : Math.max(1, w * 0.003);
           var paint = function (c2, ox, oy) {
             c2.save(); c2.translate(ox + g.cx, oy + g.cy); if (g.a) c2.rotate(g.a);
-            if (shot) drawImageCover(c2, shot, -g.w / 2 - e, -g.h / 2 - e, g.w + 2 * e, g.h + 2 * e);
+            if (shot) {
+              if (BOX_PROBE && BOX_PROBE.set.has(shot) && g.w > 0 && g.h > 0) {
+                if (!BOX_PROBE.aspect) BOX_PROBE.aspect = g.w / g.h;
+                if (BOX_PROBE.per && !BOX_PROBE.per.has(shot)) BOX_PROBE.per.set(shot, g.w / g.h);
+              }
+              drawImageCover(c2, shot, -g.w / 2 - e, -g.h / 2 - e, g.w + 2 * e, g.h + 2 * e);
+            }
             else { c2.fillStyle = '#e8e2d8'; c2.fillRect(-g.w / 2 - e, -g.h / 2 - e, g.w + 2 * e, g.h + 2 * e); }
             c2.restore();
           };

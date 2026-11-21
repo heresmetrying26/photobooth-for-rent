@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.91', date: '2026-11-21' },
   { version: '1.1.90', date: '2026-11-21' },
   { version: '1.1.89', date: '2026-11-21' },
   { version: '1.1.88', date: '2026-11-21' },
@@ -199,7 +200,7 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.16', date: '2026-11-21' };
+export const HELPER = { version: '1.1.17', date: '2026-11-21' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
@@ -233,7 +234,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.12', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.12/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.13', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.13/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -286,6 +287,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-21', title: 'Desktop 1.1.91, Print Helper 1.1.17, Android 1.1.96 & iPad 1.1.13: fix Canon 1300D zoom-in after shot, Final Shots Slideshow GIF, and consistent print brightness', for: ['website', 'app', 'helper'], app: '1.1.91', helper: '1.1.17',
+    items: [
+      '📷 Fixed Canon EOS 1300D (and other Canon EOS bodies) zooming in after each shot: the booth now switches Canon’s Aspect ratio (0xD194) to full 3:2 on connect (and restores your setting on disconnect) across Windows, Mac, Print Helper, Android and iPad so live view matches the saved photo 1-to-1. If a camera blocks the change, live view auto-crops to match the real photo and shows a quick reminder to set Aspect ratio to 3:2.',
+      '🖼️ Final Shots Slideshow GIF mode: turn your guests’ final photos into a clean cross-fading slideshow on Polaroid-style cards (white, cream, black, or borderless over 7 backgrounds) or inside your event’s own design/template — no motion timelapse needed.',
+      '📐 Tighter custom-frame framing & accurate review previews: reduced hidden bleed behind custom PNG cutouts from ~8% to ~1.6% so heads and edges aren’t cropped unexpectedly, and each shot review now uses its own box shape instead of Box 1.',
+      '🖨️ Fixed occasional dark prints / dropped print settings: printer lightness and colour adjustments are no longer wiped if a printer name briefly reads empty during a refresh, and Windows PrintTicket quality/paper settings now retry automatically with diagnostics if the print spooler is briefly busy.',
+      '⚡ Extra DSLR mirror-settle margin for standalone shots on entry-level Canon mirrors (1200D/1300D/1500D) and updated Canon flash guide tips (3–4 s recycle interval).'
+    ]
+  },
   {
     date: '2026-11-21', title: 'Desktop 1.1.90 + Print Helper 1.1.16: Canon EOS 60D / 6D capture fix, external flash / strobe sync, and faster sessions', for: ['website', 'app', 'helper'], app: '1.1.90', helper: '1.1.16',
     items: [

@@ -45,8 +45,10 @@ check('older Canon on connect (lag 0): proactive "older" tip', ids({ olderCanon:
 check('older Canon on AF (lag 1200): "older" tip', ids({ olderCanon: true, lagMs: 1200, focusInShot: true }) === 'older', ids({ olderCanon: true, lagMs: 1200, focusInShot: true }));
 check('older Canon once fast (lag 300): AF tip clears', ids({ olderCanon: true, lagMs: 300 }) === '', ids({ olderCanon: true, lagMs: 300 }));
 check('lens on MF clears older, late, and noaf tips', ids({ fireOnce: true, olderCanon: true, focusInShot: true, noAfOff: true, lensMf: true, lagMs: 1200 }) === '', ids({ fireOnce: true, olderCanon: true, focusInShot: true, noAfOff: true, lensMf: true, lagMs: 1200 }));
-check('flashMode adds "flash" tip mentioning Silent LV shoot and Exposure simulation', ids({ flashMode: true }) === 'flash' && /Silent LV shoot/.test(canonGuideFrom({ flashMode: true })[0].text) && /Exposure simulation/.test(canonGuideFrom({ flashMode: true })[0].text), canonGuideFrom({ flashMode: true }));
+check('flashMode adds "flash" tip mentioning Silent LV shoot, Exposure simulation, 1300D, and recycling', ids({ flashMode: true }) === 'flash' && /Silent LV shoot/.test(canonGuideFrom({ flashMode: true })[0].text) && /Exposure simulation/.test(canonGuideFrom({ flashMode: true })[0].text) && /1300D/.test(canonGuideFrom({ flashMode: true })[0].text) && /recycling/.test(canonGuideFrom({ flashMode: true })[0].text), canonGuideFrom({ flashMode: true }));
 check('flashMode + lens on MF keeps only the flash tip', ids({ olderCanon: true, lensMf: true, flashMode: true }) === 'flash', ids({ olderCanon: true, lensMf: true, flashMode: true }));
+check('aspectCrop adds "aspect" tip mentioning 3:2 and Aspect ratio', ids({ aspectCrop: true }) === 'aspect' && /3:2/.test(canonGuideFrom({ aspectCrop: true })[0].text) && /Aspect ratio/.test(canonGuideFrom({ aspectCrop: true })[0].text), canonGuideFrom({ aspectCrop: true }));
+check('toCard + aspectCrop + flashMode orders card,aspect,flash', ids({ toCard: true, aspectCrop: true, flashMode: true }) === 'card,aspect,flash', ids({ toCard: true, aspectCrop: true, flashMode: true }));
 
 if (fails === 0) { console.log('PASS'); process.exit(0); }
 console.log('FAIL (' + fails + ')');

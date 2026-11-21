@@ -113,6 +113,9 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     private var recoverNext = false
     private var pollAt: UInt64 = 0
     private var gotFrame = false
+    private var canonAspectChanged = false
+    private var canonAspectCrop = false
+    private var canonAspectOrig: UInt32 = 0
 
     // Nikon state
     private var nikonEventAt: UInt64 = 0
@@ -138,6 +141,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     private let PTP_ACCESS_DENIED: UInt16 = 0x200F
     private let PTP_SESSION_OPEN: UInt16 = 0x201E
     private let PTP_NOTREADY: UInt16 = 0xA102
+    private let EOS_MULTI_ASPECT: UInt16 = 0xD194   // Canon Aspect ratio (0=3:2, 1=1:1, 2=4:3, 3/7=16:9)
     private let NIKON_AF_FAILED: UInt16 = 0xA002
     private let NIKON_NOT_IN_LV: UInt16 = 0xA00B
     private let NIKON_OPS: Set<UInt16> = [0x90C0, 0x90C1, 0x90C7, 0x90C8, 0x9201, 0x9202, 0x9203, 0x9207]
@@ -686,6 +690,9 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         eosVals.removeAll()
         canonNew.removeAll()
         gotFrame = false
+        canonAspectChanged = false
+        canonAspectCrop = false
+        canonAspectOrig = 0
         sonyAt = 0
         sonyVer = 2
         sonyDestBlocked = false
@@ -699,6 +706,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
                 if brand == .nikon && live {
                     _ = try? op(0x9202)
                 } else if brand == .canon {
+                    canonRestoreAspect()
                     if live { _ = try? setEos(0xD1B0, 0) }
                     _ = try? op(0x9115, 0)
                     _ = try? op(0x9114, 0)
@@ -737,6 +745,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         var openFlag = false
         var openName = ""
         var lag = 0
+        var cropFlag = false
         if isCapturing() {
             let cached = getCachedCamera()
             openFlag = cached.open
@@ -747,6 +756,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
                     openFlag = true
                     openName = camName
                     lag = lastShutterMs
+                    cropFlag = (brand == .canon && canonAspectCrop)
                 } else if activeCamera != nil {
                     resetCameraState()
                 }
@@ -758,7 +768,8 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             "devices": list,
             "open": openFlag,
             "name": openName,
-            "shutterMs": lag
+            "shutterMs": lag,
+            "aspectCrop": cropFlag
         ]
     }
 
@@ -900,7 +911,8 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             "liveview": live,
             "battery": batteryNow(),
             "note": setupNote,
-            "diag": diag
+            "diag": diag,
+            "aspectCrop": (brand == .canon && canonAspectCrop)
         ]
     }
 
@@ -1478,11 +1490,47 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         }
     }
 
+    // Canon EOS USB Live View (0x9153) always sends the full uncropped 3:2 frame, while Aspect ratio (0xD194) crops still JPEGs.
+    // Switch to 3:2 (0) automatically for the booth session and restore on closeCamera().
+    private func canonAspect32() throws {
+        guard let ar = eosVals[EOS_MULTI_ASPECT] else { return }
+        if ar == 0 { canonAspectCrop = false; return }
+        do {
+            let r = try setEos(UInt32(EOS_MULTI_ASPECT), 0)
+            if r == PTP_OK { try canonPoll() }
+            let nowVal = eosVals[EOS_MULTI_ASPECT]
+            let ok = (r == PTP_OK) && (nowVal == nil || nowVal == 0)
+            log("Aspect ratio was \(ar): set to 3:2 (0): \(hex(r))\(ok ? "" : " (kept \(nowVal ?? ar))")")
+            if ok {
+                if !canonAspectChanged { canonAspectOrig = ar; canonAspectChanged = true }
+                canonAspectCrop = false
+                setupNote += "Camera aspect ratio was cropped; set to 3:2. "
+            } else {
+                canonAspectCrop = true
+                setupNote += "Camera aspect ratio is not 3:2: set Aspect ratio to 3:2 on the camera. "
+            }
+        } catch let e as CamErr {
+            if e.code == "GONE" { throw e }
+            canonAspectCrop = true
+        }
+    }
+
+    private func canonRestoreAspect() {
+        guard canonAspectChanged else { return }
+        canonAspectChanged = false
+        if let r = try? setEos(UInt32(EOS_MULTI_ASPECT), canonAspectOrig) {
+            log("Aspect ratio: restored to \(canonAspectOrig): \(hex(r))")
+        }
+    }
+
     private func prepareCanon() throws {
         eosVals.removeAll()
         canonNew.removeAll()
         gotFrame = false
         pollAt = 0
+        canonAspectChanged = false
+        canonAspectCrop = false
+        canonAspectOrig = 0
 
         if recoverNext {
             recoverNext = false
@@ -1522,6 +1570,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
 
         lastShutterMs = 0
         try canonSingleShot()
+        try canonAspect32()
         keepAt = nowMs()
     }
 
@@ -1668,6 +1717,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         let t0 = nowMs()
         try canonPoll()
         try canonSingleShot()
+        if !canonAspectCrop { try canonAspect32() }
         canonNew.removeAll()
 
         let shutter = nowMs()

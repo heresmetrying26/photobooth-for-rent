@@ -26,7 +26,7 @@ import { spawn } from 'node:child_process';
 import { freeCamera, guardCamera } from './camfree.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.16';
+const VERSION = '1.1.17';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',
@@ -237,35 +237,41 @@ $doc = New-Object System.Drawing.Printing.PrintDocument
 $doc.PrinterSettings.PrinterName = $Printer
 if (-not $doc.PrinterSettings.IsValid) { throw "Printer not found: $Printer" }
 # Print quality: the driver's best quality, applied on top of the printer's own saved settings (its paper,
-# Borderless and orientation stay as they are set). If the driver has no such option, nothing changes.
-try {
-  Add-Type -AssemblyName System.Printing
-  Add-Type -AssemblyName ReachFramework
-  $pq = (New-Object System.Printing.LocalPrintServer).GetPrintQueue($Printer)
-  $tx = [xml]([IO.StreamReader]::new($pq.UserPrintTicket.GetXmlStream()).ReadToEnd())
-  $tn = New-Object Xml.XmlNamespaceManager($tx.NameTable)
-  $tn.AddNamespace('psf', 'http://schemas.microsoft.com/windows/2003/08/printing/printschemaframework')
-  $cx = [xml]([IO.StreamReader]::new($pq.GetPrintCapabilitiesAsXml()).ReadToEnd())
-  $qo = @($cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']") | ForEach-Object { $_.name })
-  # Best (the default), Normal or Draft, set per printer in the booth. Only an option the driver really lists is used.
-  $qpat = switch ($Quality) { 'draft' { 'Draft|Fast|Economy' } 'normal' { 'Normal|Standard' } default { 'HighQuality|Best|Photographic' } }
-  $best = $qo | Where-Object { $_ -match $qpat } | Select-Object -First 1
-  $qf = $tx.SelectSingleNode("//psf:Feature[@name='psk:PageOutputQuality']/psf:Option", $tn)
-  if ($best -and $qf -and $qf.GetAttribute('name') -ne $best) {
-    $qf.SetAttribute('name', $best)
-    $vt = $pq.MergeAndValidatePrintTicket($pq.UserPrintTicket, (New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($tx.OuterXml)))))).ValidatedPrintTicket
-    $vx = [xml]([IO.StreamReader]::new($vt.GetXmlStream()).ReadToEnd())
-    $vq = $vx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']")
-    if ($vq -and $vq.GetAttribute('name') -eq $best) {
-      $dm = (New-Object System.Printing.Interop.PrintTicketConverter($Printer, $pq.ClientPrintSchemaVersion)).ConvertPrintTicketToDevMode($vt, [System.Printing.Interop.BaseDevModeType]::UserDefault)
-      $hd = [Runtime.InteropServices.Marshal]::AllocHGlobal($dm.Length)
-      [Runtime.InteropServices.Marshal]::Copy($dm, 0, $hd, $dm.Length)
-      $doc.PrinterSettings.SetHdevmode($hd); $doc.DefaultPageSettings.SetHdevmode($hd)
-      [Runtime.InteropServices.Marshal]::FreeHGlobal($hd)
-      [Console]::Out.WriteLine('info|quality ' + $best)
+# Borderless and orientation stay as they are set). Retry once on transient Windows spooler errors.
+for ($ptTry = 0; $ptTry -lt 2; $ptTry++) {
+  try {
+    Add-Type -AssemblyName System.Printing
+    Add-Type -AssemblyName ReachFramework
+    $pq = (New-Object System.Printing.LocalPrintServer).GetPrintQueue($Printer)
+    $tx = [xml]([IO.StreamReader]::new($pq.UserPrintTicket.GetXmlStream()).ReadToEnd())
+    $tn = New-Object Xml.XmlNamespaceManager($tx.NameTable)
+    $tn.AddNamespace('psf', 'http://schemas.microsoft.com/windows/2003/08/printing/printschemaframework')
+    $cx = [xml]([IO.StreamReader]::new($pq.GetPrintCapabilitiesAsXml()).ReadToEnd())
+    $qo = @($cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']") | ForEach-Object { $_.name })
+    # Best (the default), Normal or Draft, set per printer in the booth. Only an option the driver really lists is used.
+    $qpat = switch ($Quality) { 'draft' { 'Draft|Fast|Economy' } 'normal' { 'Normal|Standard' } default { 'HighQuality|Best|Photographic' } }
+    $best = $qo | Where-Object { $_ -match $qpat } | Select-Object -First 1
+    $qf = $tx.SelectSingleNode("//psf:Feature[@name='psk:PageOutputQuality']/psf:Option", $tn)
+    if ($best -and $qf -and $qf.GetAttribute('name') -ne $best) {
+      $qf.SetAttribute('name', $best)
+      $vt = $pq.MergeAndValidatePrintTicket($pq.UserPrintTicket, (New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($tx.OuterXml)))))).ValidatedPrintTicket
+      $vx = [xml]([IO.StreamReader]::new($vt.GetXmlStream()).ReadToEnd())
+      $vq = $vx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']")
+      if ($vq -and $vq.GetAttribute('name') -eq $best) {
+        $dm = (New-Object System.Printing.Interop.PrintTicketConverter($Printer, $pq.ClientPrintSchemaVersion)).ConvertPrintTicketToDevMode($vt, [System.Printing.Interop.BaseDevModeType]::UserDefault)
+        $hd = [Runtime.InteropServices.Marshal]::AllocHGlobal($dm.Length)
+        [Runtime.InteropServices.Marshal]::Copy($dm, 0, $hd, $dm.Length)
+        $doc.PrinterSettings.SetHdevmode($hd); $doc.DefaultPageSettings.SetHdevmode($hd)
+        [Runtime.InteropServices.Marshal]::FreeHGlobal($hd)
+        [Console]::Out.WriteLine('info|quality ' + $best)
+      }
     }
+    break
+  } catch {
+    if ($ptTry -eq 0) { Start-Sleep -Milliseconds 250 }
+    else { [Console]::Out.WriteLine('info|print ticket not applied: ' + $_.Exception.Message) }
   }
-} catch { }
+}
 if ($PaperName) {
   $p = $doc.PrinterSettings.PaperSizes | Where-Object { $_.PaperName -eq $PaperName } | Select-Object -First 1
   if ($p) { $doc.DefaultPageSettings.PaperSize = $p }

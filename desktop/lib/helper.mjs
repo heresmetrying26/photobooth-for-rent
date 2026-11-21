@@ -591,72 +591,79 @@ if ($EpsonScale -gt 0 -and $EpsonScale -lt 1) {
   if (("$Printer $dn") -match '(?<![a-z0-9])L[\s_-]?3210(?![0-9])') { $edgeScale = $EpsonScale }
   if (("$Printer $dn") -match '(?<![a-z0-9])L[\s_-]?8050(?![0-9])') { $l8050 = $true }
 }
-# Print quality: the driver's best quality, applied on top of the printer's own saved settings (its paper,
-# Borderless and orientation stay as they are set). If the driver has no such option, nothing changes.
-try {
-  Add-Type -AssemblyName System.Printing
-  Add-Type -AssemblyName ReachFramework
-  $pq = (New-Object System.Printing.LocalPrintServer).GetPrintQueue($Printer)
-  $tx = [xml]([IO.StreamReader]::new($pq.UserPrintTicket.GetXmlStream()).ReadToEnd())
-  $tn = New-Object Xml.XmlNamespaceManager($tx.NameTable)
-  $tn.AddNamespace('psf', 'http://schemas.microsoft.com/windows/2003/08/printing/printschemaframework')
-  $cx = [xml]([IO.StreamReader]::new($pq.GetPrintCapabilitiesAsXml()).ReadToEnd())
-  $qo = @($cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']") | ForEach-Object { $_.name })
-  # Best (the default), Normal or Draft, set per printer in the booth. Only an option the driver really lists is used.
-  $qpat = switch ($Quality) { 'draft' { 'Draft|Fast|Economy' } 'normal' { 'Normal|Standard' } default { 'HighQuality|Best|Photographic' } }
-  $best = $qo | Where-Object { $_ -match $qpat } | Select-Object -First 1
-  $qf = $tx.SelectSingleNode("//psf:Feature[@name='psk:PageOutputQuality']/psf:Option", $tn)
-  if ($best -and $qf -and $qf.GetAttribute('name') -ne $best) {
-    $qf.SetAttribute('name', $best)
-    $vt = $pq.MergeAndValidatePrintTicket($pq.UserPrintTicket, (New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($tx.OuterXml)))))).ValidatedPrintTicket
-    $vx = [xml]([IO.StreamReader]::new($vt.GetXmlStream()).ReadToEnd())
-    $vq = $vx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']")
-    if ($vq -and $vq.GetAttribute('name') -eq $best) {
-      $dm = (New-Object System.Printing.Interop.PrintTicketConverter($Printer, $pq.ClientPrintSchemaVersion)).ConvertPrintTicketToDevMode($vt, [System.Printing.Interop.BaseDevModeType]::UserDefault)
-      $hd = [Runtime.InteropServices.Marshal]::AllocHGlobal($dm.Length)
-      [Runtime.InteropServices.Marshal]::Copy($dm, 0, $hd, $dm.Length)
-      $doc.PrinterSettings.SetHdevmode($hd); $doc.DefaultPageSettings.SetHdevmode($hd)
-      [Runtime.InteropServices.Marshal]::FreeHGlobal($hd)
-      [Console]::Out.WriteLine('info|quality ' + $best)
+# Print quality and paper type: applied on top of the printer's own saved settings (its paper,
+# Borderless and orientation stay as they are set). Retry once on transient Windows spooler errors
+# so a busy queue never silently drops media type / quality and prints dark on photo paper.
+for ($ptTry = 0; $ptTry -lt 2; $ptTry++) {
+  try {
+    Add-Type -AssemblyName System.Printing
+    Add-Type -AssemblyName ReachFramework
+    $pq = (New-Object System.Printing.LocalPrintServer).GetPrintQueue($Printer)
+    $tx = [xml]([IO.StreamReader]::new($pq.UserPrintTicket.GetXmlStream()).ReadToEnd())
+    $tn = New-Object Xml.XmlNamespaceManager($tx.NameTable)
+    $tn.AddNamespace('psf', 'http://schemas.microsoft.com/windows/2003/08/printing/printschemaframework')
+    $cx = [xml]([IO.StreamReader]::new($pq.GetPrintCapabilitiesAsXml()).ReadToEnd())
+    $qo = @($cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']") | ForEach-Object { $_.name })
+    # Best (the default), Normal or Draft, set per printer in the booth. Only an option the driver really lists is used.
+    $qpat = switch ($Quality) { 'draft' { 'Draft|Fast|Economy' } 'normal' { 'Normal|Standard' } default { 'HighQuality|Best|Photographic' } }
+    $best = $qo | Where-Object { $_ -match $qpat } | Select-Object -First 1
+    $qf = $tx.SelectSingleNode("//psf:Feature[@name='psk:PageOutputQuality']/psf:Option", $tn)
+    if ($best -and $qf -and $qf.GetAttribute('name') -ne $best) {
+      $qf.SetAttribute('name', $best)
+      $vt = $pq.MergeAndValidatePrintTicket($pq.UserPrintTicket, (New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($tx.OuterXml)))))).ValidatedPrintTicket
+      $vx = [xml]([IO.StreamReader]::new($vt.GetXmlStream()).ReadToEnd())
+      $vq = $vx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']")
+      if ($vq -and $vq.GetAttribute('name') -eq $best) {
+        $dm = (New-Object System.Printing.Interop.PrintTicketConverter($Printer, $pq.ClientPrintSchemaVersion)).ConvertPrintTicketToDevMode($vt, [System.Printing.Interop.BaseDevModeType]::UserDefault)
+        $hd = [Runtime.InteropServices.Marshal]::AllocHGlobal($dm.Length)
+        [Runtime.InteropServices.Marshal]::Copy($dm, 0, $hd, $dm.Length)
+        $doc.PrinterSettings.SetHdevmode($hd); $doc.DefaultPageSettings.SetHdevmode($hd)
+        [Runtime.InteropServices.Marshal]::FreeHGlobal($hd)
+        [Console]::Out.WriteLine('info|quality ' + $best)
+      }
     }
-  }
-  if ($MediaType) {
-    $mhas = $cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageMediaType']/*[local-name()='Option']") | Where-Object { $_.GetAttribute('name') -eq $MediaType } | Select-Object -First 1
-    if ($mhas) {
-      $mconv = New-Object System.Printing.Interop.PrintTicketConverter($Printer, $pq.ClientPrintSchemaVersion)
-      $mh0 = $doc.PrinterSettings.GetHdevmode($doc.DefaultPageSettings)
-      if (-not ('PB4U.K32' -as [type])) {
-        Add-Type -MemberDefinition @'
+    if ($MediaType) {
+      $mhas = $cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageMediaType']/*[local-name()='Option']") | Where-Object { $_.GetAttribute('name') -eq $MediaType } | Select-Object -First 1
+      if ($mhas) {
+        $mconv = New-Object System.Printing.Interop.PrintTicketConverter($Printer, $pq.ClientPrintSchemaVersion)
+        $mh0 = $doc.PrinterSettings.GetHdevmode($doc.DefaultPageSettings)
+        if (-not ('PB4U.K32' -as [type])) {
+          Add-Type -MemberDefinition @'
 [DllImport("kernel32.dll")] public static extern IntPtr GlobalLock(IntPtr h);
 [DllImport("kernel32.dll")] public static extern bool GlobalUnlock(IntPtr h);
 [DllImport("kernel32.dll")] public static extern UIntPtr GlobalSize(IntPtr h);
 [DllImport("kernel32.dll")] public static extern IntPtr GlobalFree(IntPtr h);
 '@ -Name K32 -Namespace PB4U
-      }
-      $mp = [PB4U.K32]::GlobalLock($mh0); $mn = ([PB4U.K32]::GlobalSize($mh0)).ToUInt32()
-      $mb = New-Object byte[] $mn
-      [Runtime.InteropServices.Marshal]::Copy($mp, $mb, 0, $mn)
-      [void][PB4U.K32]::GlobalUnlock($mh0); [void][PB4U.K32]::GlobalFree($mh0)
-      $mt0 = $mconv.ConvertDevModeToPrintTicket($mb)
-      $mx = [xml]([IO.StreamReader]::new($mt0.GetXmlStream()).ReadToEnd())
-      $mf = $mx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageMediaType']/*[local-name()='Option']")
-      if ($mf -and $mf.GetAttribute('name') -ne $MediaType) {
-        $mf.SetAttribute('name', $MediaType)
-        $mvt = $pq.MergeAndValidatePrintTicket($mt0, (New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($mx.OuterXml)))))).ValidatedPrintTicket
-        $mvx = [xml]([IO.StreamReader]::new($mvt.GetXmlStream()).ReadToEnd())
-        $mvo = $mvx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageMediaType']/*[local-name()='Option']")
-        if ($mvo -and $mvo.GetAttribute('name') -eq $MediaType) {
-          $mdm = $mconv.ConvertPrintTicketToDevMode($mvt, [System.Printing.Interop.BaseDevModeType]::UserDefault)
-          $mhd = [Runtime.InteropServices.Marshal]::AllocHGlobal($mdm.Length)
-          [Runtime.InteropServices.Marshal]::Copy($mdm, 0, $mhd, $mdm.Length)
-          $doc.PrinterSettings.SetHdevmode($mhd); $doc.DefaultPageSettings.SetHdevmode($mhd)
-          [Runtime.InteropServices.Marshal]::FreeHGlobal($mhd)
-          [Console]::Out.WriteLine('info|mediaType ' + $MediaType)
-        } else { [Console]::Out.WriteLine('warn|Printer driver did not accept paper type "' + $MediaType + '".') }
+        }
+        $mp = [PB4U.K32]::GlobalLock($mh0); $mn = ([PB4U.K32]::GlobalSize($mh0)).ToUInt32()
+        $mb = New-Object byte[] $mn
+        [Runtime.InteropServices.Marshal]::Copy($mp, $mb, 0, $mn)
+        [void][PB4U.K32]::GlobalUnlock($mh0); [void][PB4U.K32]::GlobalFree($mh0)
+        $mt0 = $mconv.ConvertDevModeToPrintTicket($mb)
+        $mx = [xml]([IO.StreamReader]::new($mt0.GetXmlStream()).ReadToEnd())
+        $mf = $mx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageMediaType']/*[local-name()='Option']")
+        if ($mf -and $mf.GetAttribute('name') -ne $MediaType) {
+          $mf.SetAttribute('name', $MediaType)
+          $mvt = $pq.MergeAndValidatePrintTicket($mt0, (New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($mx.OuterXml)))))).ValidatedPrintTicket
+          $mvx = [xml]([IO.StreamReader]::new($mvt.GetXmlStream()).ReadToEnd())
+          $mvo = $mvx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageMediaType']/*[local-name()='Option']")
+          if ($mvo -and $mvo.GetAttribute('name') -eq $MediaType) {
+            $mdm = $mconv.ConvertPrintTicketToDevMode($mvt, [System.Printing.Interop.BaseDevModeType]::UserDefault)
+            $mhd = [Runtime.InteropServices.Marshal]::AllocHGlobal($mdm.Length)
+            [Runtime.InteropServices.Marshal]::Copy($mdm, 0, $mhd, $mdm.Length)
+            $doc.PrinterSettings.SetHdevmode($mhd); $doc.DefaultPageSettings.SetHdevmode($mhd)
+            [Runtime.InteropServices.Marshal]::FreeHGlobal($mhd)
+            [Console]::Out.WriteLine('info|mediaType ' + $MediaType)
+          } else { [Console]::Out.WriteLine('warn|Printer driver did not accept paper type "' + $MediaType + '".') }
+        }
       }
     }
+    break
+  } catch {
+    if ($ptTry -eq 0) { Start-Sleep -Milliseconds 250 }
+    else { [Console]::Out.WriteLine('info|print ticket not applied: ' + $_.Exception.Message) }
   }
-} catch { }
+}
 if ($PaperName) {
   $p = $doc.PrinterSettings.PaperSizes | Where-Object { $_.PaperName -eq $PaperName } | Select-Object -First 1
   if ($p) { $doc.DefaultPageSettings.PaperSize = $p }

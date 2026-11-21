@@ -77,10 +77,16 @@
         return (ex.flash & 1) ? 'Flash fired' : 'Flash did not fire';
       }
       // A flash photo taken faster than the camera can sync with a flash (most cameras: 1/160 to 1/250 s): the flash only lights part of the frame.
-      function pbFlashWarnings(ex) {
+      // Manual strobes and wireless triggers do not set the EXIF flash bit, so when "Flash or strobe" is selected also check shutter vs sync.
+      function pbFlashWarnings(ex, camName, light, profile) {
         const w = [];
-        if (ex && typeof ex.flash === 'number' && ex.flash >= 0 && (ex.flash & 1) && ex.shutter > 0 && ex.shutter < 1 / 250 - 1e-9) {
-          w.push('The flash fired at ' + pbShutterText(ex.shutter) + ', faster than a camera can sync with a flash (about 1/160 to 1/250 s), so the flash lights only part of the photo. Use a shutter of 1/160 s or slower (mode M or Tv).');
+        if (!ex || !(ex.shutter > 0)) return w;
+        const fired = typeof ex.flash === 'number' && ex.flash >= 0 && (ex.flash & 1) === 1;
+        if (!fired && light !== 'flash') return w;
+        const p = profile || (camName && typeof camQProfile === 'function' ? camQProfile() : null);
+        const sync = (p && p.guide && typeof p.guide.syncFor === 'function' && p.guide.syncFor(camName || '')) || (1 / 250);
+        if (ex.shutter < sync - 1e-9) {
+          w.push((fired ? 'The flash fired at ' : 'Flash or strobe mode with shutter ') + pbShutterText(ex.shutter) + ', faster than this camera can sync with a flash (' + pbShutterText(sync) + ' or slower), so the flash lights only part of the photo. Use a shutter of ' + pbShutterText(sync) + ' or slower (mode M or Tv).');
         }
         return w;
       }
@@ -192,6 +198,7 @@
         }
         const note = document.getElementById('camGuideNote'), nt = camGuideNote(light, camGuideEx);
         if (note) { note.textContent = nt; note.style.display = nt ? 'block' : 'none'; }
+        try { if (p && typeof p.onGuideRender === 'function') p.onGuideRender(light); } catch (e) { }
       }
 
       // "Read from camera" and "Apply suggested settings": only where the camera program can read and set the camera's shutter, aperture
@@ -385,6 +392,10 @@
         try {
           const ex = prefetchedEx !== undefined ? prefetchedEx : await pbReadExif(file);
           const w = camQWarnings(p, ex, !!(file && file._focusMiss));
+          try {
+            const camName = (typeof usbCam !== 'undefined' && usbCam && usbCam.name) || '';
+            pbFlashWarnings(ex, camName, camGuideLight(), p).forEach(function (t) { w.push(t); });
+          } catch (e) { }
           // The ISO decides how much grain removal this photo gets (camQDenoiseFor); a box or preview drawn before it was known is drawn again.
           if (canvas && ex && ex.iso > 0 && canvas._cqIso !== ex.iso) {
             canvas._cqIso = ex.iso;

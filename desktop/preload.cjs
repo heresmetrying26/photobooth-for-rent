@@ -81,11 +81,14 @@ contextBridge.exposeInMainWorld('pb4u', {
   studioFolders: (key, sub) => ipcRenderer.invoke('pb4u:studioFolders', String(key || ''), String(sub || '')),
   studioList: (slug) => ipcRenderer.invoke('pb4u:studioList', String(slug || '')),
   studioRead: (slug, name) => ipcRenderer.invoke('pb4u:studioRead', String(slug || ''), String(name || '')),
-  // Photographer desk folder watching
+  // Photographer desk folder watching & standalone window
   deskFolder: () => ipcRenderer.invoke('pb4u:deskFolder'),
   deskChoose: () => ipcRenderer.invoke('pb4u:deskChoose'),
   deskScan: () => ipcRenderer.invoke('pb4u:deskScan'),
   deskRead: (name) => ipcRenderer.invoke('pb4u:deskRead', String(name || '')),
+  openPhotomanWindow: () => ipcRenderer.invoke('pb4u:openPhotomanWindow'),
+  focusBoothWindow: () => ipcRenderer.invoke('pb4u:focusBoothWindow'),
+  onPhotomanState: (fn) => { ipcRenderer.on('pb4u:photomanState', (e, info) => { try { fn(info); } catch (err) { /* ignore */ } }); },
   ipadInfo: () => ipcRenderer.invoke('pb4u:ipadInfo'),
   ipadSet: (on, renewPin) => ipcRenderer.invoke('pb4u:ipadSet', !!on, !!renewPin),
   copy: (t) => ipcRenderer.invoke('pb4u:copy', String(t || '')),

@@ -40,6 +40,14 @@ const fail = canonGuideFail('FOCUS');
 check('the checklist covers lens switch, mode dial, card lock, menu', fail && /MF/.test(fail.text) && /mode dial/.test(fail.text) && /lock switch/.test(fail.text) && /menu is closed/.test(fail.text), fail && fail.text);
 check('other errors (no camera, live view...) get no Canon checklist', canonGuideFail('NOCAMERA') === null && canonGuideFail('LIVEVIEW') === null && canonGuideFail('') === null && canonGuideFail(undefined) === null, [canonGuideFail('NOCAMERA'), canonGuideFail('')]);
 
+// Older Canons (60D, 550D...), MF switch clearing, and 6D/60D Live View + Flash tip.
+check('older Canon on connect (lag 0): proactive "older" tip', ids({ olderCanon: true, lagMs: 0 }) === 'older', ids({ olderCanon: true, lagMs: 0 }));
+check('older Canon on AF (lag 1200): "older" tip', ids({ olderCanon: true, lagMs: 1200, focusInShot: true }) === 'older', ids({ olderCanon: true, lagMs: 1200, focusInShot: true }));
+check('older Canon once fast (lag 300): AF tip clears', ids({ olderCanon: true, lagMs: 300 }) === '', ids({ olderCanon: true, lagMs: 300 }));
+check('lens on MF clears older, late, and noaf tips', ids({ fireOnce: true, olderCanon: true, focusInShot: true, noAfOff: true, lensMf: true, lagMs: 1200 }) === '', ids({ fireOnce: true, olderCanon: true, focusInShot: true, noAfOff: true, lensMf: true, lagMs: 1200 }));
+check('flashMode adds "flash" tip mentioning Silent LV shoot and Exposure simulation', ids({ flashMode: true }) === 'flash' && /Silent LV shoot/.test(canonGuideFrom({ flashMode: true })[0].text) && /Exposure simulation/.test(canonGuideFrom({ flashMode: true })[0].text), canonGuideFrom({ flashMode: true }));
+check('flashMode + lens on MF keeps only the flash tip', ids({ olderCanon: true, lensMf: true, flashMode: true }) === 'flash', ids({ olderCanon: true, lensMf: true, flashMode: true }));
+
 if (fails === 0) { console.log('PASS'); process.exit(0); }
 console.log('FAIL (' + fails + ')');
 process.exit(1);

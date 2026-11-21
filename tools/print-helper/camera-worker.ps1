@@ -1,4 +1,4 @@
-# photobooth4u Helper - camera worker (Windows)
+﻿# photobooth4u Helper - camera worker (Windows)
 # Started by the helper (photobooth4u-print-helper-windows.exe); not run by hand.
 # Talks to the camera through Windows' OWN camera driver (WPD / MTP), so no
 # Zadig / driver switch is needed: plug the camera in, switch it on, done.
@@ -707,6 +707,12 @@ namespace Pb4uCam
         {
             // An open camera that was unplugged meanwhile: notice it now.
             if (ptp != null) { try { Alive(); } catch { Log("Camera lost"); CloseCamera(); } }
+            if (canon && ptp != null && (!pollSw.IsRunning || pollSw.ElapsedMilliseconds > 1500))
+            {
+                try { CanonPoll(); }
+                catch (GoneException) { Log("Camera lost"); CloseCamera(); }
+                catch { }
+            }
             var sb = new StringBuilder("{\"devices\":[");
             bool first = true;
             foreach (var d in ListDevs())
@@ -715,13 +721,17 @@ namespace Pb4uCam
                 first = false;
                 sb.Append("{\"name\":" + Js(d.Name) + ",\"maker\":" + Js(d.Maker) + ",\"camera\":" + (LooksLikeCamera(d) ? "true" : "false") + "}");
             }
-            // The booth's Canon guide reads these three (see brand-canon.js): the last photo was focused inside the shot (so it came
-            // after the flash), the press without focusing was turned off on this camera, photos are saved on the card first.
+            // The booth's Canon guide reads these flags (see brand-canon.js): focusing inside the shot (came after the flash),
+            // press without focusing turned off, saving to the card first, an older body without 0x9128, and the lens on MF (0xD108=3).
             bool cn = canon && ptp != null;
+            bool mf = cn && CanonLensMf();
+            bool older = cn && !Has(0x9128);
             sb.Append("],\"open\":" + (ptp != null ? "true" : "false") + ",\"name\":" + Js(ptp != null ? camName : "") + ",\"shutterMs\":" + lastShutterMs
-                + ",\"focusInShot\":" + (cn && canonFocusInShot ? "true" : "false")
-                + ",\"noAfOff\":" + (cn && canonNoAfBad ? "true" : "false")
-                + ",\"toCard\":" + (cn && !canonToHost ? "true" : "false") + "}");
+                + ",\"focusInShot\":" + (cn && canonFocusInShot && !mf ? "true" : "false")
+                + ",\"noAfOff\":" + (cn && canonNoAfBad && !mf ? "true" : "false")
+                + ",\"toCard\":" + (cn && !canonToHost ? "true" : "false")
+                + ",\"olderCanon\":" + (older ? "true" : "false")
+                + ",\"lensMf\":" + (mf ? "true" : "false") + "}");
             return sb.ToString();
         }
 
@@ -849,9 +859,14 @@ namespace Pb4uCam
 
         static string InfoJson()
         {
+            bool canPreFocus = !canon || Has(0x9128);   // Nikon & newer Canon (0x9128) can pre-focus; older Canon (60D, 550D...) focuses inside 0x910F
+            bool older = canon && !Has(0x9128);
+            bool mf = CanonLensMf();
             return "{\"name\":" + Js(camName) + ",\"model\":" + Js(camModel) + ",\"maker\":" + Js(camMaker) + ",\"brand\":" + Js(nikon ? "nikon" : canon ? "canon" : sony ? "sony" : "") + ",\"vendor\":" + vendor
                 + ",\"liveview\":" + (live ? "true" : "false") + ",\"battery\":" + Battery() + ",\"note\":" + Js(setupNote) + ",\"diag\":" + Js(diag)
-                + ",\"preFocus\":true}";   // this worker can focus beforehand ("af") and then shoot at once: the booth then fires the shutter only at the shutter moment
+                + ",\"preFocus\":" + (canPreFocus ? "true" : "false")
+                + ",\"olderCanon\":" + (older ? "true" : "false")
+                + ",\"lensMf\":" + (mf ? "true" : "false") + "}";
         }
 
         static int Battery()
@@ -1137,6 +1152,12 @@ namespace Pb4uCam
         static bool preFocusOk;
         static bool canonNoAfBad;   // a Canon press without focusing gave no photo: not used again until the worker restarts
         static bool canonFocusInShot;   // the last Canon photo was focused inside the shot (not beforehand): it came after the flash
+        // 0xD108 = Canon EOS FocusMode (0 One Shot, 1 AI Servo, 2 AI Focus, 3 Manual).
+        static bool CanonLensMf()
+        {
+            uint fm;
+            return canon && eosVals.TryGetValue(0xD108, out fm) && fm == 3;
+        }
         static long TakePreFocus()   // ms since the pre-focus, or -1 when there was none (or it is old)
         {
             long ago = (preFocusOk && preFocusSw.IsRunning && preFocusSw.ElapsedMilliseconds < 12000) ? preFocusSw.ElapsedMilliseconds : -1;
@@ -1704,9 +1725,11 @@ namespace Pb4uCam
             // half press refocuses, which takes up to a second after the shutter moment). If that press ever gives no photo, or is
             // refused, the camera goes back to focusing in the shot and the shortcut is not used again (canonNoAfBad).
             long preAgo = TakePreFocus();
-            bool noAf = preAgo >= 0 && ops.Contains(0x9128) && !canonNoAfBad;
+            bool lensMf = CanonLensMf();
+            bool noAf = (preAgo >= 0 || lensMf) && ops.Contains(0x9128) && !canonNoAfBad;
             int firstMode = noAf ? 2 : baseMode;
-            if (noAf) Log("Focused " + preAgo + " ms ago: pressing the shutter without focusing again");
+            if (lensMf) Log("Lens is on MF: shooting without autofocus");
+            else if (noAf) Log("Focused " + preAgo + " ms ago: pressing the shutter without focusing again");
             if (ops.Contains(0x9128))
             {
                 // Newer EOS: a DSLR (6D, 70D...) is shot the way libgphoto2 does it (half press, focus, full press); a mirrorless one with the one-command press.
@@ -1743,7 +1766,7 @@ namespace Pb4uCam
                 }
                 if (r != Ptp.OK || res != 0) throw CanonShotError(r, res);
             }
-            canonFocusInShot = !noAf;   // the booth's Canon guide: a camera that focuses inside the shot takes its photo after the flash
+            canonFocusInShot = !noAf && !lensMf;   // the booth's Canon guide: a camera that focuses inside the shot takes its photo after the flash
             // Wait for the camera to say where the photo is (RAW + JPEG: two files).
             var files = new List<uint[]>();
             var ew = Stopwatch.StartNew();
@@ -2414,7 +2437,11 @@ namespace Pb4uCam
                             else if (canon)
                             {
                                 uint afR = 0x2005;   // an older EOS (60D...) has no separate focus command: it focuses inside the shot
-                                if (Has(0x9128))
+                                if (CanonLensMf())
+                                {
+                                    afR = Ptp.OK;    // lens switch is on MF: skip the 800 ms AF pause so live view stays smooth
+                                }
+                                else if (Has(0x9128))
                                 {
                                     afR = OpRetry(0x9128, 1, 0);
                                     Thread.Sleep(800);

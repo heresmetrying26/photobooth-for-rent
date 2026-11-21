@@ -585,6 +585,14 @@ await testAsync('flash: reads whether the flash fired, and warns when the shutte
   assert.equal(warn(await read(0x19, 250)).length, 0, 'fired at 1/250: fine (the 60D syncs at 1/250)');
   assert.equal(warn(skipped).length, 0, 'no flash fired: nothing to warn about');
   assert.equal(warn(noTag).length, 0); assert.equal(warn(null).length, 0);
+
+  // Per-model sync (Canon 6D = 1/180 s) & manual strobe mode ("Flash or strobe" selected even when EXIF flash=0).
+  withCamera(sb, 'Canon EOS 6D', 'canon');
+  const pCanon = sb.get('CAM_Q.canon');
+  assert(/1\/200 s/.test(warn(await read(0x19, 200), 'Canon EOS 6D', 'flash', pCanon)[0]), '6D syncs at 1/180: 1/200 warns');
+  assert(/1\/400 s/.test(warn(await read(0x10, 400), 'Canon EOS 6D', 'flash', pCanon)[0]), 'manual strobe/trigger (EXIF flash=0) still warns at 1/400 in flash mode');
+  assert.equal(warn(await read(0x10, 160), 'Canon EOS 6D', 'flash', pCanon).length, 0, '1/160 is safe on 6D');
+  assert.equal(warn(await read(0x10, 400), 'Canon EOS 6D', 'steady', pCanon).length, 0, 'steady light mode does not warn on 1/400');
 });
 
 // ---- the Camera check table (current settings against what suits the lighting) ----

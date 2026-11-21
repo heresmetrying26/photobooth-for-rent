@@ -19,26 +19,33 @@
           modeNames: ['', 'M', 'P', 'Av', 'Tv'],
           modeHow: 'Turn the mode dial on top of the camera to',
           syncFor: function (name) { return /\b60D\b/i.test(name) ? 1 / 250 : /\b6D\b/i.test(name) ? 1 / 180 : 1 / 200; },
-          flashHow: 'Raise the built-in flash (60D), or switch the Speedlite on and set it to E-TTL. In the camera menu set Flash firing to Enable. In live view also set Silent LV shoot (Silent shooting) to Disable and Exposure simulation to Disable.'
-        }
+          flashHow: 'Using a Canon Speedlite: raise the built-in flash (60D) or turn the Speedlite on (E-TTL) and set Flash firing to Enable. Using a manual flash, studio strobe or wireless trigger (normal for EXIF to say "Did not fire"): in the camera menu set Silent LV shoot (Silent shoot. on 60D) to Disable — Mode 1 or 2 makes external flashes fire with no effect on the photo — set Exposure simulation to Disable, and keep shutter at 1/160 s or slower in M mode (set optical slave strobes to S2 or flash to M).'
+        },
+        onGuideRender: function () { try { if (typeof canonGuideRefresh === 'function') canonGuideRefresh(); } catch (e) { } }
       });
 
       // ---- Canon guide for the operator ----
-      // What the booth tells the operator when a Canon does not give its photo at the flash, or does not take the photo. The camera
-      // program (the Windows laptop app) reports three things after each photo (see ListJson in camera-worker.ps1): the photo was
-      // focused inside the shot, the press without focusing was turned off, photos go via the card. canonGuideFrom turns them into
-      // short tips. These two functions touch nothing on the page, so scripts/test-canon-guide.mjs runs them on their own.
+      // What the booth tells the operator when a Canon does not give its photo at the flash, does not take the photo, or is set to flash.
+      // The camera program (the Windows laptop app) reports focusInShot, noAfOff, toCard, olderCanon, lensMf (see ListJson in camera-worker.ps1).
+      // canonGuideFrom turns them into short tips. These two functions touch nothing on the page, so scripts/test-canon-guide.mjs runs them on their own.
       // canon-guide:start
       function canonGuideFrom(st) {
         var out = [];
         if (!st) return out;
-        if (st.noAfOff) {
-          out.push({ id: 'noaf', text: 'This Canon gave no photo when asked to skip focusing, so it now focuses inside each shot and the photo comes after the flash. Slide the switch on the lens from AF to MF and focus once on the spot where guests stand: then the photo is taken right on the flash.' });
-        } else if (st.fireOnce && st.focusInShot && st.lagMs >= 800) {
-          out.push({ id: 'late', text: 'This Canon focuses inside every shot, so the photo is taken about ' + (Math.round(st.lagMs / 100) / 10) + ' s after the flash. To get it right on the flash: slide the switch on the lens from AF to MF, and focus once on the spot where guests stand.' });
+        if (!st.lensMf) {
+          if (st.noAfOff) {
+            out.push({ id: 'noaf', text: 'This Canon gave no photo when asked to skip focusing, so it now focuses inside each shot and the photo comes after the flash. Slide the switch on the lens from AF to MF and focus once on the spot where guests stand: then the photo is taken right on the flash.' });
+          } else if (st.olderCanon && (!st.lagMs || st.lagMs >= 700)) {
+            out.push({ id: 'older', text: 'This Canon focuses inside each shot, so on AF the booth fires slightly early to keep photos on time. To shoot right on the flash: slide the switch on the lens from AF to MF and focus once on the spot where guests stand.' });
+          } else if (st.fireOnce && st.focusInShot && st.lagMs >= 800) {
+            out.push({ id: 'late', text: 'This Canon focuses inside every shot, so the photo is taken about ' + (Math.round(st.lagMs / 100) / 10) + ' s after the flash. To get it right on the flash: slide the switch on the lens from AF to MF, and focus once on the spot where guests stand.' });
+          }
         }
         if (st.toCard) {
           out.push({ id: 'card', text: 'This Canon is saving each photo on its SD card first, so "Saving" takes longer. Use a fast SD card (UHS-I) and set the image quality to JPEG only, not RAW + JPEG.' });
+        }
+        if (st.flashMode) {
+          out.push({ id: 'flash', text: 'Flash / strobe with Canon live view (6D / 60D): in the camera menu set Silent LV shoot (Silent shoot.) to Disable (Mode 1 or 2 makes external flashes fire with no effect on the photo), set Exposure simulation to Disable, and use M mode at 1/160 s or slower (S2 if using an optical slave).' });
         }
         return out;
       }
@@ -48,7 +55,7 @@
         return { id: 'fail', text: 'The Canon did not take the photo. Check: (1) the lens switch: try MF and focus on the spot where guests stand; (2) the mode dial is on P, Tv, Av or M, not the video camera; (3) the SD card is in, not full, and its lock switch is slid up; (4) the camera\'s menu is closed. Then take a test shot.' };
       }
       // canon-guide:end
-      var canonGuideState = { shown: {}, lateRun: 0 };
+      var canonGuideState = { shown: {}, lateRun: 0, fastRun: 0, lastStatus: null };
       function canonGuideShow(items) {
         var el = document.getElementById('canonGuideNote');
         if (!el) return;
@@ -56,17 +63,45 @@
         el.textContent = 'ℹ Canon tip: ' + items.map(function (i) { return i.text; }).join(' ');
         el.style.display = '';
       }
-      // After each photo (usbAfterShot): the camera program's status becomes the tips, in the Camera menu. A tip that says the
-      // photo is late also comes up once as a message, but only when it was late twice in a row (one slow shot is not a pattern).
-      function canonGuideUpdate(j) {
+      function canonGuideBuild(j) {
+        var lag = Number(j && j.shutterMs) || 0;
+        var mf = !!((j && j.lensMf) || (typeof usbCam !== 'undefined' && usbCam && usbCam.lensMf) || canonGuideState.fastRun >= 2);
+        var older = !!((j && j.olderCanon) || (typeof usbCam !== 'undefined' && usbCam && usbCam.olderCanon));
+        return canonGuideFrom({
+          fireOnce: typeof usbFireOnce === 'function' ? usbFireOnce() : false,
+          lagMs: lag,
+          focusInShot: !!(j && j.focusInShot),
+          noAfOff: !!(j && j.noAfOff),
+          toCard: !!(j && j.toCard),
+          olderCanon: older,
+          lensMf: mf,
+          flashMode: typeof camGuideLight === 'function' ? camGuideLight() === 'flash' : false
+        });
+      }
+      function canonGuideRefresh() {
         try {
-          if (!camIsCanon()) { canonGuideShow([]); canonGuideState.lateRun = 0; return; }
+          if (!camIsCanon()) { canonGuideShow([]); return; }
+          canonGuideShow(canonGuideBuild(canonGuideState.lastStatus));
+        } catch (e) { }
+      }
+      // On connect and after each photo (usbAfterShot): the camera program's status becomes the tips in the Camera menu.
+      // A tip that says the photo is late also comes up once as a toast after two late shots in a row.
+      function canonGuideUpdate(j, isConnect) {
+        try {
+          if (!camIsCanon()) { canonGuideShow([]); canonGuideState.lateRun = 0; canonGuideState.fastRun = 0; canonGuideState.lastStatus = null; return; }
           var lag = Number(j && j.shutterMs) || 0;
-          var items = canonGuideFrom({ fireOnce: usbFireOnce(), lagMs: lag, focusInShot: !!(j && j.focusInShot), noAfOff: !!(j && j.noAfOff), toCard: !!(j && j.toCard) });
+          if (!isConnect && lag > 0) {
+            if (lag < 600) canonGuideState.fastRun++;
+            else if (lag >= 700) canonGuideState.fastRun = 0;
+          }
+          canonGuideState.lastStatus = j || null;
+          var items = canonGuideBuild(j);
           canonGuideShow(items);
+          if (isConnect) return;
           var late = items.some(function (i) { return i.id === 'late' || i.id === 'noaf'; });
           canonGuideState.lateRun = late ? canonGuideState.lateRun + 1 : 0;
           items.forEach(function (i) {
+            if (i.id === 'flash' || i.id === 'older') return;
             if (canonGuideState.shown[i.id]) return;
             if ((i.id === 'late' || i.id === 'noaf') && canonGuideState.lateRun < 2) return;
             canonGuideState.shown[i.id] = true;

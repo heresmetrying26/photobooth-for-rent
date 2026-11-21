@@ -70,7 +70,12 @@ protocol.registerSchemesAsPrivileged([{
   privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true, codeCache: true, allowServiceWorkers: false }
 }]);
 
-let win = null, blocker = null, settings = {};
+let win = null, photomanWin = null, blocker = null, settings = {};
+function broadcastWin(channel, data) {
+  [win, photomanWin].forEach((w) => {
+    try { if (w && !w.isDestroyed()) w.webContents.send(channel, data); } catch { /* ignore */ }
+  });
+}
 const dataDir = () => app.getPath('userData');
 const settingsFile = () => join(dataDir(), 'settings.json');
 function loadSettings() { try { settings = JSON.parse(readFileSync(settingsFile(), 'utf8')) || {}; } catch { settings = {}; } }
@@ -96,7 +101,7 @@ async function checkinNow(force) {
   const r = await L.checkin(net.fetch.bind(net), force);
   if (r === 'ok' || r === 'revoked') await refreshRecord();
   if (r === 'ok') syncAllNow().catch(() => { });
-  if (r === 'revoked' && win && !win.isDestroyed()) win.webContents.send('pb4u:licence', L.info());
+  if (r === 'revoked') broadcastWin('pb4u:licence', L.info());
   return r;
 }
 
@@ -222,7 +227,47 @@ function createWindow() {
   win.once('ready-to-show', () => { win.maximize(); win.show(); });
   wireContents(win.webContents);
   win.loadURL(ORIGIN + '/');
-  win.on('closed', () => { win = null; });
+  win.on('closed', () => {
+    win = null;
+    if (photomanWin && !photomanWin.isDestroyed()) { try { photomanWin.close(); } catch { /* ignore */ } }
+  });
+}
+
+function createPhotomanWindow() {
+  if (photomanWin && !photomanWin.isDestroyed()) {
+    if (photomanWin.isMinimized()) photomanWin.restore();
+    photomanWin.show();
+    photomanWin.focus();
+    return photomanWin;
+  }
+  let b = null;
+  try {
+    if (win && !win.isDestroyed()) {
+      const other = screen.getAllDisplays().find((d) => d.id !== screen.getDisplayMatching(win.getBounds()).id);
+      if (other) b = other.workArea;
+    }
+  } catch { /* ignore */ }
+  photomanWin = new BrowserWindow({
+    width: b ? b.width : 1280, height: b ? b.height : 840, minWidth: 900, minHeight: 600,
+    ...(b ? { x: b.x, y: b.y } : {}),
+    show: false, backgroundColor: '#FAF7F2',
+    title: 'photobooth4u – Photographer Studio',
+    icon: existsSync(join(HERE, 'resources', 'icon.png')) ? join(HERE, 'resources', 'icon.png') : undefined,
+    autoHideMenuBar: true,
+    webPreferences: { preload: join(HERE, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false, backgroundThrottling: false }
+  });
+  photomanWin.once('ready-to-show', () => {
+    if (b) photomanWin.maximize();
+    photomanWin.show();
+    if (win && !win.isDestroyed()) win.webContents.send('pb4u:photomanState', { open: true });
+  });
+  wireContents(photomanWin.webContents);
+  photomanWin.loadURL(ORIGIN + '/?desk=photoman');
+  photomanWin.on('closed', () => {
+    photomanWin = null;
+    if (win && !win.isDestroyed()) win.webContents.send('pb4u:photomanState', { open: false });
+  });
+  return photomanWin;
 }
 
 let btAuto = null;                   // an Instax printer being reconnected by name: { name, cb, timer }
@@ -262,13 +307,18 @@ function wireContents(wc) {
   });
   wc.on('will-navigate', (e, u) => { if (!isLocalPage(u)) { e.preventDefault(); openOutside(u); } });
   wc.setWindowOpenHandler(({ url, frameName }) => {
+    // Dedicated Photographer Studio window (single-instance, preload bridge included).
+    if (frameName === 'pb4uPhotoman' || (isLocalPage(url) && /(?:\?|&)desk=photoman\b/.test(url))) {
+      createPhotomanWindow();
+      return { action: 'deny' };
+    }
     // The guest screen (opened empty, then filled by the booth) and printable voucher tickets.
     if (!url || url === 'about:blank' || frameName === 'pb4uGuest') {
       const other = screen.getAllDisplays().find((d) => d.id !== screen.getDisplayMatching(win.getBounds()).id);
       const b = other ? other.workArea : null;
       return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, backgroundColor: '#000000', title: 'photobooth4u – guest screen', ...(b ? { x: b.x, y: b.y, width: b.width, height: b.height } : {}), webPreferences: { sandbox: true, contextIsolation: true, backgroundThrottling: false } } };
     }
-    if (isLocalPage(url)) return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, width: 900, height: 1000 } };
+    if (isLocalPage(url)) return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, width: 900, height: 1000, webPreferences: { preload: join(HERE, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false, backgroundThrottling: false } } };
     openOutside(url);
     return { action: 'deny' };
   });
@@ -414,11 +464,24 @@ function wireIpc() {
   // The page only ever reads image files directly inside the folder the operator picked.
   const DESK_EXT = /\.(jpe?g|png|webp)$/i;
   ipcMain.handle('pb4u:deskFolder', () => settings.deskDir || null);
-  ipcMain.handle('pb4u:deskChoose', async () => {
-    const r = await dialog.showOpenDialog(win, { title: 'Folder the photographer\u2019s photos arrive in', defaultPath: settings.deskDir || photosRoot(), properties: ['openDirectory', 'createDirectory'] });
+  ipcMain.handle('pb4u:deskChoose', async (e) => {
+    const owner = BrowserWindow.fromWebContents(e.sender) || win;
+    const r = await dialog.showOpenDialog(owner, { title: 'Folder the photographer\u2019s photos arrive in', defaultPath: settings.deskDir || photosRoot(), properties: ['openDirectory', 'createDirectory'] });
     if (r.canceled || !r.filePaths[0]) return null;
     settings.deskDir = r.filePaths[0]; saveSettings();
     return settings.deskDir;
+  });
+  ipcMain.handle('pb4u:openPhotomanWindow', () => {
+    createPhotomanWindow();
+    return { ok: true };
+  });
+  ipcMain.handle('pb4u:focusBoothWindow', () => {
+    if (win && !win.isDestroyed()) {
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+    }
+    return { ok: true };
   });
   ipcMain.handle('pb4u:deskScan', () => {
     const dir = settings.deskDir; if (!dir || !existsSync(dir)) return [];
@@ -651,7 +714,7 @@ app.whenReady().then(async () => {
   initSetupSync({
     dataDir: dataDir(),
     fetchFn: net.fetch.bind(net),
-    onSynced: (info) => { if (win && !win.isDestroyed()) win.webContents.send('pb4u:setupSynced', info); }
+    onSynced: (info) => { broadcastWin('pb4u:setupSynced', info); }
   });
   try { setBoothHtml(decryptBooth()); } catch (e) { console.error('booth', e); dialog.showErrorBox('photobooth4u', 'This copy of the app is damaged. Please download it again.'); app.quit(); return; }
   initPhotos({
@@ -700,7 +763,7 @@ app.whenReady().then(async () => {
     get: () => (settings.hotspot = settings.hotspot || {}), save: saveSettings, logger: (m) => console.log('[hotspot] ' + m),
     dir: app.getPath('userData'),   // where the "hotspot is starting" crash marker lives
     // The page hears about every change (on, off, locked), so its Join QR stays right without polling.
-    onChange: (i) => { if (win && !win.isDestroyed()) win.webContents.send('pb4u:hotspotChanged', i); }
+    onChange: (i) => { broadcastWin('pb4u:hotspotChanged', i); }
   });
   if (settings.hotspot && settings.hotspot.ssid) setExternalWifi(settings.hotspot.ssid, settings.hotspot.pass);
   // Never sleep with the hotspot running (a common cause of Wi-Fi driver crashes on wake); it comes back after wake.
@@ -717,7 +780,7 @@ app.whenReady().then(async () => {
   checkinNow(true).catch(() => { });                      // every start-up, when online
   U.initUpdater({
     server: L.SERVER, version: VERSION, log: (m) => console.log('[update] ' + m),
-    notify: (i) => { if (win && !win.isDestroyed()) win.webContents.send('pb4u:update', i); }
+    notify: (i) => { broadcastWin('pb4u:update', i); }
   });
   clockTimer = setInterval(() => { L.touchClock(); refreshRecord().catch(() => { }); }, 5 * 60000);
   checkinTimer = setInterval(() => { checkinNow(false).catch(() => { }); syncAllNow().catch(() => { }); }, 2 * 60000);   // checks in every 10 min (see licence.mjs) & syncs setups/profiles when online

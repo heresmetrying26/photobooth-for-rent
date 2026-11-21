@@ -136,6 +136,36 @@ $s = Canon-Status $true $true $true $true
 Check 'status: the press without focusing turned off' ($s.noAfOff -eq $true -and $s.toCard -eq $false) ($s | ConvertTo-Json -Compress)
 $s = Canon-Status $false $false $true $true
 Check 'status: not a Canon: all three false' ($s.toCard -eq $false -and $s.focusInShot -eq $false -and $s.noAfOff -eq $false) ($s | ConvertTo-Json -Compress)
+
+# --- older Canon (!Has 0x9128) and lens on MF (0xD108 = 3) ---
+$ops = $W.GetField('ops', $flags).GetValue($null)
+$infoJson = $W.GetMethod('InfoJson', $flags)
+$canonLensMf = $W.GetMethod('CanonLensMf', $flags)
+$ops.Clear(); [void]$ops.Add([uint16]0x910F)
+$W.GetField('canon', $flags).SetValue($null, $true)
+$W.GetField('nikon', $flags).SetValue($null, $false)
+$W.GetField('sony', $flags).SetValue($null, $false)
+$W.GetField('canonNoAfBad', $flags).SetValue($null, $true)
+$W.GetField('canonFocusInShot', $flags).SetValue($null, $true)
+$e = New-Eos 2 ([uint32[]]@(2, 4)) 4
+$e.Changed(0xD108, 0)
+[void]$poll.Invoke($null, $null)
+$inf = ($infoJson.Invoke($null, $null) | ConvertFrom-Json)
+Check 'older Canon InfoJson: preFocus=false, olderCanon=true, lensMf=false' (-not $inf.preFocus -and $inf.olderCanon -and -not $inf.lensMf) ($inf | ConvertTo-Json -Compress)
+$s = ($listJson.Invoke($null, $null) | ConvertFrom-Json)
+Check 'older Canon on AF: olderCanon=true, lensMf=false' ($s.olderCanon -eq $true -and $s.lensMf -eq $false -and $s.focusInShot -eq $true) ($s | ConvertTo-Json -Compress)
+$e.Changed(0xD108, 3)
+[void]$poll.Invoke($null, $null)
+$infMf = ($infoJson.Invoke($null, $null) | ConvertFrom-Json)
+Check 'Canon lens on MF (0xD108=3): CanonLensMf=true, InfoJson lensMf=true' (([bool]$canonLensMf.Invoke($null, $null)) -and $infMf.lensMf) ($infMf | ConvertTo-Json -Compress)
+$ops.Clear(); [void]$ops.Add([uint16]0x9128)
+$infNew = ($infoJson.Invoke($null, $null) | ConvertFrom-Json)
+Check 'newer Canon (0x9128) InfoJson: preFocus=true, olderCanon=false' ($infNew.preFocus -and -not $infNew.olderCanon) ($infNew | ConvertTo-Json -Compress)
+$sMf = $listJson.Invoke($null, $null) | ConvertFrom-Json
+Check 'ListJson when lensMf=true clears focusInShot and noAfOff' ($sMf.lensMf -eq $true -and $sMf.focusInShot -eq $false -and $sMf.noAfOff -eq $false) ($sMf | ConvertTo-Json -Compress)
+
+$ops.Clear()
+$vals.Clear()
 $W.GetField('canon', $flags).SetValue($null, $false)
 $W.GetField('canonNoAfBad', $flags).SetValue($null, $false)
 $W.GetField('canonFocusInShot', $flags).SetValue($null, $false)

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.87', date: '2026-11-21' },
   { version: '1.1.86', date: '2026-11-21' },
   { version: '1.1.85', date: '2026-11-21' },
   { version: '1.1.84', date: '2026-11-21' },
@@ -195,7 +196,7 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.14', date: '2026-11-21' };
+export const HELPER = { version: '1.1.15', date: '2026-11-21' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
@@ -229,7 +230,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.9', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.9/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.10', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.10/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -282,6 +283,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-21', title: 'Desktop 1.1.87 + Android 1.1.95 + iPad 1.1.10 + Helper 1.1.15: Photoman Studio Workspace, Template Maker, Pop-out Window/Tab & Canon MF/Strobe Live-View Fixes', for: ['website', 'app', 'helper'], app: '1.1.87', helper: '1.1.15',
+    items: [
+      '🎨 Photoman Template Maker: build independent Photoman templates (4R Portrait/Landscape, 5R, 2×6 2-up Strip, Square 1:1) with starter presets, draggable/resizable photo spots with aspect locks, tilt, rounded corners and borders, multi-line text layers, custom studio logos, Booth Colour Filter opt-out, and PNG frame auto-spot detection with Canva white-box knockout — without changing the main booth’s own design.',
+      '🪟 Dedicated Photoman Studio & Pop-Out Window / Tab: full-screen Photographer Studio workspace with live button-driven previews (hover/tap switching between Framed + QR and Print Original), inline Guest QR & Wi-Fi QR result card, (?) tooltip guides, and real-time BroadcastChannel + IndexedDB sync when popped out into its own window or browser tab (/?desk=photoman).',
+      '📸 Canon USB MF & Strobe Live-View Improvements (Desktop 1.1.87 + Print Helper 1.1.15): skips autofocus pauses when the lens switch is on MF, warns cleanly on older Canon bodies or external flash/strobe settings (Silent LV shoot + Exposure simulation), and updates Canon live-view flash tips.'
+    ]
+  },
   {
     date: '2026-11-21', title: 'Desktop 1.1.86 + Android 1.1.94 + iPad 1.1.9 + Helper 1.1.14: Photographer desk templates, Auto-frame & phone control, B&W / colour print split, Camera check & direct USB/Wi-Fi printing', for: ['website', 'app', 'helper'], app: '1.1.86', helper: '1.1.14',
     items: [

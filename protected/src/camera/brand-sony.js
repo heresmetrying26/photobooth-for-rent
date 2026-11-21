@@ -8,5 +8,13 @@
         id: 'sony', label: 'Sony',
         is: function () { return camIsSony(); },
         keys: { clean: 'pb_sony_clean', tips: 'pb_sony_tips', classic: 'pb_sony_classic' },
-        tune: { denoise: [16, 30], sharpen: [0.6, 0.9], page: [0.35, 0.5] }
+        tune: { denoise: [16, 30], sharpen: [0.6, 0.9], page: [0.35, 0.5] },
+        // Camera check (see CAM_GUIDE in photo-quality.js): Sony's mode names (A and S), the fastest shutter its flash syncs with
+        // (1/160 s is safe on every Alpha), and flash advice.
+        guide: {
+          modeNames: ['', 'M', 'P', 'A', 'S'],
+          modeHow: 'Turn the mode dial on top of the camera to',
+          syncFor: function () { return 1 / 160; },
+          flashHow: 'Raise the flash (or switch the flash on the hot shoe on) and set Flash mode to Fill-flash. Then take the test shot again.'
+        }
       });

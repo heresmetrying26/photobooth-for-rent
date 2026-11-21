@@ -30,7 +30,9 @@
         return p;
       }
 
-      // ISO / shutter / aperture (and the rotation mark, 1 = upright) from the JPEG's EXIF block. null when not found.
+      // ISO / shutter / aperture / flash / exposure mode (and the rotation mark, 1 = upright) from the JPEG's EXIF block. null when not found.
+      // flash = the camera's own EXIF Flash value (bit 0 = the flash fired), or -1 when the photo has no such record.
+      // program = the EXIF ExposureProgram (1 manual, 2 program, 3 aperture priority, 4 shutter priority, 5-8 scene modes), 0 = not recorded.
       async function pbReadExif(blob) {
         try {
           const b = new Uint8Array(await blob.slice(0, 131072).arrayBuffer());
@@ -58,8 +60,8 @@
               };
               const top = ifd(u32(t + 4), [0x8769, 0x0112]);
               if (!top[0x8769] && !top[0x0112]) return null;
-              const ex = top[0x8769] ? ifd(top[0x8769], [0x829A, 0x829D, 0x8827]) : {};
-              return { shutter: ex[0x829A] || 0, f: ex[0x829D] || 0, iso: ex[0x8827] || 0, orientation: top[0x0112] || 1 };
+              const ex = top[0x8769] ? ifd(top[0x8769], [0x829A, 0x829D, 0x8827, 0x9209, 0x8822]) : {};
+              return { shutter: ex[0x829A] || 0, f: ex[0x829D] || 0, iso: ex[0x8827] || 0, flash: ex[0x9209] === undefined ? -1 : ex[0x9209], program: ex[0x8822] || 0, orientation: top[0x0112] || 1 };
             }
             p += 2 + len;
           }
@@ -67,6 +69,179 @@
         return null;
       }
       function pbShutterText(s) { return !s ? '' : (s >= 0.5 ? (Math.round(s * 10) / 10) + ' s' : '1/' + Math.round(1 / s) + ' s'); }
+
+      // What the camera itself recorded about its flash for this photo (EXIF Flash, bit 0 = fired). '' when the photo has no record.
+      // Lets the operator tell "the flash fired but the room light was already enough" from "the camera never used its flash".
+      function pbFlashText(ex) {
+        if (!ex || typeof ex.flash !== 'number' || ex.flash < 0) return '';
+        return (ex.flash & 1) ? 'Flash fired' : 'Flash did not fire';
+      }
+      // A flash photo taken faster than the camera can sync with a flash (most cameras: 1/160 to 1/250 s): the flash only lights part of the frame.
+      function pbFlashWarnings(ex) {
+        const w = [];
+        if (ex && typeof ex.flash === 'number' && ex.flash >= 0 && (ex.flash & 1) && ex.shutter > 0 && ex.shutter < 1 / 250 - 1e-9) {
+          w.push('The flash fired at ' + pbShutterText(ex.shutter) + ', faster than a camera can sync with a flash (about 1/160 to 1/250 s), so the flash lights only part of the photo. Use a shutter of 1/160 s or slower (mode M or Tv).');
+        }
+        return w;
+      }
+
+      // ---- Camera check: what the camera is set to, against what suits the way the event is lit ----
+      // The numbers are a starting point for a photobooth (guests 1 to 2 m away, moving a little, in a dim room), not a rule.
+      // A brand changes any of them in its own profile (guide: { ... } in brand-<name>.js): the names of its exposure modes (modeNames),
+      // the fastest shutter its flash can sync with (syncFor), where its mode dial is (modeHow) and what to do on that camera when the
+      // flash did not fire (flashHow). ex = the numbers from pbReadExif (null before a test shot); light = 'flash' | 'steady' | 'room'.
+      // shutter / slowest are exposure times in seconds; fMin / fMax and isoMax are the range that counts as fine.
+      const CAM_GUIDE = {
+        modeNames: ['', 'M', 'P', 'Av', 'Tv'],
+        syncDefault: 1 / 200,
+        light: {
+          flash: { name: 'Flash or strobe', programs: [1], shutter: 1 / 160, slowest: 1 / 100, f: 5.6, fMin: 4, fMax: 11, iso: 400, isoMax: 800 },
+          steady: { name: 'Steady lights', programs: [1], shutter: 1 / 125, slowest: 1 / 60, f: 4, fMin: 2.8, fMax: 8, iso: 800, isoMax: 1600 },
+          room: { name: 'Room light only', programs: [3, 2], shutter: 1 / 60, slowest: 1 / 60, f: 4, fMin: 1, fMax: 5.6, iso: 1600, isoMax: 1600 }
+        }
+      };
+      function camGuideModeName(g, program) {
+        if (program >= 5 && program <= 8) return 'Scene';
+        return (g.modeNames || CAM_GUIDE.modeNames)[program] || '';
+      }
+      function pbApertureText(f) { return f > 0 ? 'f/' + (Math.round(f * 10) / 10) : ''; }
+      // The rows of the table: { key, label, current, suggested, status, how }. status: 'ok' | 'change' | 'info' | 'unknown'.
+      // how = what to do about it, only for 'change'. Pure (no page access) so it can be tested.
+      function camGuideRows(p, ex, light, camName) {
+        const g = Object.assign({}, CAM_GUIDE, (p && p.guide) || {});
+        const L = Object.assign({}, CAM_GUIDE.light[light] || CAM_GUIDE.light.flash, (g.light && g.light[light]) || {});
+        const sync = (typeof g.syncFor === 'function' && g.syncFor(camName || '')) || g.syncDefault;
+        const rows = [];
+        const add = function (key, label, current, suggested, status, how) { rows.push({ key: key, label: label, current: current || '—', suggested: suggested, status: status, how: status === 'change' ? (how || '') : '' }); };
+        // Mode (the dial on the camera: a program cannot change it)
+        const wantMode = camGuideModeName(g, L.programs[0]);
+        if (!(ex && ex.program)) add('mode', 'Mode', '', wantMode, 'unknown');
+        else add('mode', 'Mode', camGuideModeName(g, ex.program), wantMode, L.programs.indexOf(ex.program) >= 0 ? 'ok' : 'change', (g.modeHow || 'Turn the mode dial on top of the camera to') + ' ' + wantMode + '.');
+        // Shutter
+        const wantShutter = Math.max(L.shutter, sync);
+        if (!(ex && ex.shutter > 0)) add('shutter', 'Shutter', '', pbShutterText(wantShutter), 'unknown');
+        else {
+          const tooFast = light === 'flash' && ex.shutter < sync - 1e-9, tooSlow = ex.shutter > L.slowest + 1e-9;
+          add('shutter', 'Shutter', pbShutterText(ex.shutter), pbShutterText(wantShutter), tooFast || tooSlow ? 'change' : 'ok',
+            tooFast ? 'Faster than this camera can sync with a flash, so the flash lights only part of the photo. Use ' + pbShutterText(wantShutter) + ' or slower.'
+              : light === 'flash' ? 'Slow for a flash photo: the room light adds blur and ghosting. Use ' + pbShutterText(wantShutter) + '.'
+                : 'Slow: moving guests will blur. Use ' + pbShutterText(wantShutter) + ' or faster, and raise the ISO or add light.');
+        }
+        // Aperture
+        if (!(ex && ex.f > 0)) add('aperture', 'Aperture', '', pbApertureText(L.f), 'unknown');
+        else {
+          const wide = ex.f < L.fMin - 0.05, narrow = ex.f > L.fMax + 0.05;
+          add('aperture', 'Aperture', pbApertureText(ex.f), pbApertureText(L.f), wide || narrow ? 'change' : 'ok',
+            wide ? 'Wide open: only part of a group will be sharp. Close it to ' + pbApertureText(L.f) + '.' : 'Closed down too far: little light reaches the camera. Open it to ' + pbApertureText(L.f) + '.');
+        }
+        // ISO
+        if (!(ex && ex.iso > 0)) add('iso', 'ISO', '', String(L.iso), 'unknown');
+        else add('iso', 'ISO', String(ex.iso), String(L.iso), ex.iso > L.isoMax ? 'change' : 'ok', 'Grain: ISO ' + ex.iso + ' is high. Add light or a flash so the camera can use ISO ' + L.iso + '.');
+        // Flash: what the camera itself recorded for this photo
+        const known = !!(ex && typeof ex.flash === 'number' && ex.flash >= 0), fired = known && (ex.flash & 1) === 1;
+        if (!known) add('flash', 'Flash', '', light === 'flash' ? 'Fires' : 'Off', 'unknown');
+        else if (light === 'flash') add('flash', 'Flash', fired ? 'Fired' : 'Did not fire', 'Fires', fired ? 'ok' : 'change', g.flashHow || 'Switch the flash on (raise the built-in flash, or turn on the flash on the hot shoe) and set it to automatic (TTL) flash.');
+        else add('flash', 'Flash', fired ? 'Fired' : 'Off', 'Off', fired ? 'info' : 'ok');
+        // The suggestion as a number, for the Apply button: shutter in seconds, aperture as the f-number, ISO.
+        const wants = { shutter: wantShutter, aperture: L.f, iso: L.iso };
+        rows.forEach(function (r) { if (wants[r.key]) r.want = wants[r.key]; });
+        return rows;
+      }
+      // One line above the table, or ''.
+      function camGuideNote(light, ex) {
+        if (light === 'room') return 'Room light only: at an event a flash or steady lights are highly recommended.';
+        if (!ex) return 'Take a test shot to read the camera’s settings.';
+        return '';
+      }
+
+      // The "Camera check" card in the Camera step (#camGuide): lighting chips, the Current / Suggested table, and what to change.
+      // camGuideEx = the numbers of the latest photo the camera took (a test shot or a session shot); null until there is one.
+      var camGuideEx = null;
+      function camGuideLight() { const v = camQStore('pb_cam_light'); return v === 'steady' || v === 'room' ? v : 'flash'; }
+      function camGuideSetExif(ex) { camGuideEx = ex || null; try { camGuideRender(); } catch (e) { } }
+      function camGuideRender() {
+        const box = document.getElementById('camGuide'), tb = document.getElementById('camGuideRows');
+        if (!box || !tb) return;
+        const rb = document.getElementById('camGuideReadBtn'), ab = document.getElementById('camGuideApplyBtn');
+        if (rb && !rb._pbBound) { rb._pbBound = true; rb.addEventListener('click', function () { camGuideMsg('Reading the camera…'); camGuideProbe().then(function () { camGuideMsg(camGuideCan ? '' : 'This camera cannot be read from here: take a test shot instead.'); }); }); }
+        if (ab && !ab._pbBound) { ab._pbBound = true; ab.addEventListener('click', function () { camGuideApply(); }); }
+        const light = camGuideLight(), p = camQProfile();
+        box.querySelectorAll('[data-light]').forEach(function (b) {
+          b.classList.toggle('active', b.dataset.light === light);
+          if (!b._pbBound) { b._pbBound = true; b.addEventListener('click', function () { camQSave('pb_cam_light', b.dataset.light); camGuideRender(); }); }
+        });
+        const rows = camGuideRows(p, camGuideEx, light, (typeof usbCam !== 'undefined' && usbCam && usbCam.name) || '');
+        const colour = { ok: '#1d6f45', change: '#b3261e', info: '#1f5fa8', unknown: 'var(--ink-dim)' };
+        const mark = { ok: '✓ ', change: '⚠ ', info: '', unknown: '' };
+        tb.textContent = '';
+        rows.forEach(function (r) {
+          const tr = document.createElement('tr');
+          [r.label, mark[r.status] + r.current, r.suggested].forEach(function (t, i) {
+            const td = document.createElement('td');
+            td.textContent = t;
+            td.style.cssText = 'padding:4px 6px; border-top:1px solid var(--line);' + (i === 0 ? 'font-weight:700;' : '') + (i === 1 ? 'font-weight:700; color:' + colour[r.status] + ';' : '');
+            tr.appendChild(td);
+          });
+          tb.appendChild(tr);
+        });
+        const how = document.getElementById('camGuideHow');
+        if (how) {
+          how.textContent = '';
+          rows.filter(function (r) { return r.how; }).forEach(function (r) { const d = document.createElement('div'); d.textContent = '⚠ ' + r.label + ': ' + r.how; how.appendChild(d); });
+          how.style.display = how.firstChild ? 'block' : 'none';
+        }
+        const note = document.getElementById('camGuideNote'), nt = camGuideNote(light, camGuideEx);
+        if (note) { note.textContent = nt; note.style.display = nt ? 'block' : 'none'; }
+      }
+
+      // "Read from camera" and "Apply suggested settings": only where the camera program can read and set the camera's shutter, aperture
+      // and ISO (the Windows and Android camera programs for the cameras they support; for any other camera they answer "not
+      // supported" and the two buttons stay hidden). Apply sets those three numbers inside the mode the camera is in. The mode is the
+      // dial on the camera: it is never changed. A setting the camera will not take is reported, never forced.
+      var camGuideCan = false;
+      function camGuideCamera() { return (typeof usbCam !== 'undefined' && usbCam && usbCam.camera && typeof usbCam.camera.getExposure === 'function') ? usbCam.camera : null; }
+      function camGuideMsg(t) { const e = document.getElementById('camGuideApplyMsg'); if (e) { e.textContent = t || ''; e.style.display = t ? 'block' : 'none'; } }
+      function camGuideApplyUi() { const r = document.getElementById('camGuideApplyRow'); if (r) r.style.display = camGuideCan ? 'block' : 'none'; }
+      // A camera reports its shutter as a count of 0.0001 s (1/160 s comes as 0.0063): show the speed its dial calls it (1/160, not 1/159).
+      const PB_SHUTTERS = [8000, 6400, 5000, 4000, 3200, 2500, 2000, 1600, 1250, 1000, 800, 640, 500, 400, 320, 250, 200, 160, 125, 100, 80, 60, 50, 40, 30, 25, 20, 15, 13, 10, 8, 6, 5, 4];
+      function pbSnapShutter(s) {
+        if (!(s > 0) || s >= 0.3) return s || 0;   // 1/3 s and slower: the number already is what the dial shows
+        let best = s, bd = Infinity;
+        PB_SHUTTERS.forEach(function (n) { const d = Math.abs(Math.log(1 / n) - Math.log(s)); if (d < bd) { bd = d; best = 1 / n; } });
+        return best;
+      }
+      // The camera's own numbers become the table's "Current". Whether the flash fired is only known from a photo: kept from the last one.
+      function camGuideTake(j) {
+        camGuideEx = { program: j.program || 0, shutter: pbSnapShutter(j.shutter || 0), f: j.f || 0, iso: j.iso || 0, flash: camGuideEx && typeof camGuideEx.flash === 'number' ? camGuideEx.flash : -1 };
+        camGuideRender();
+      }
+      // Asked once when the camera connects (and by "Read from camera"): can this camera be read and set from here?
+      async function camGuideProbe() {
+        const cam = camGuideCamera();
+        camGuideCan = false;
+        if (cam) { try { const j = await cam.getExposure(); if (j) { camGuideCan = true; camGuideTake(j); } } catch (e) { } }
+        camGuideApplyUi();
+      }
+      async function camGuideApply() {
+        const cam = camGuideCamera();
+        if (!cam) return;
+        const rows = camGuideRows(camQProfile(), camGuideEx, camGuideLight(), (usbCam && usbCam.name) || '');
+        const want = {};
+        rows.forEach(function (r) { if (r.want && r.status === 'change') want[r.key === 'aperture' ? 'f' : r.key] = r.want; });
+        if (!Object.keys(want).length) { camGuideMsg(camGuideEx ? 'Nothing to change: the settings already match.' : 'Take a test shot or press Read from camera first.'); return; }
+        camGuideMsg('Setting the camera…');
+        let j = null;
+        try { j = await cam.setExposure(want); } catch (e) { camGuideMsg('The camera did not answer. Change the settings on the camera instead.'); return; }
+        if (!j || j.supported === false) { camGuideMsg('This camera cannot be set from here. Change the settings on the camera instead.'); return; }
+        const names = { shutter: 'Shutter', f: 'Aperture', iso: 'ISO' }, notDone = [];
+        Object.keys(j.results || {}).forEach(function (k) {
+          const s = j.results[k];
+          if (s === 'locked') notDone.push(names[k] + ' is set by the camera in its current mode (turn the mode dial to the suggested mode first)');
+          else if (s === 'refused' || s === 'unsupported') notDone.push(names[k] + ' was not accepted: change it on the camera');
+        });
+        camGuideTake(j);
+        camGuideMsg(notDone.length ? 'Done, except: ' + notDone.join('; ') + '.' : 'Done. The camera now shows the suggested settings.');
+      }
 
       // What to tell the operator about a photo: grain, motion blur, no focus lock. A brand can add its own lines (p.extraWarnings).
       function camQWarnings(p, ex, focusMiss) {
@@ -252,6 +427,8 @@
 
       // The "<Brand> photo options" box in the Camera menu: shown only while that brand is connected.
       function camQUiSync() {
+        try { camGuideRender(); } catch (e) { }   // the Camera check card follows the connected camera too
+        try { camGuideProbe(); } catch (e) { }    // and finds out once whether this camera can be read and set from here
         const row = document.getElementById('camQRow'), sel = document.getElementById('camQCleanSel');
         if (!row || !sel) return;
         const p = camQProfile();

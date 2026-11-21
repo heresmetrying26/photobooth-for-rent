@@ -84,7 +84,7 @@ class UsbCameraHelper(private val ctx: Context) {
         val bytes: ByteArray get() = data ?: ByteArray(0)
     }
 
-    private class Desc(val type: Int, val current: String, val choices: List<String>)
+    private class Desc(val type: Int, val current: String, val choices: List<String>, val getSet: Int = 0)   // getSet: 1 = the camera lets us change it right now
 
     private val usb = ctx.getSystemService(Context.USB_SERVICE) as UsbManager
     private val lock = Any()
@@ -273,6 +273,9 @@ class UsbCameraHelper(private val ctx: Context) {
             method == "POST" && path == "/camera/capture" -> reply(out, 200, "image/jpeg", if (gopro.isOpen()) goTry { gopro.capture() } else capture())
             method == "POST" && path == "/camera/af" -> json(out, if (gopro.isOpen()) JSONObject() else autoFocus())   // a GoPro focuses by itself
             method == "GET" && path == "/camera/battery" -> json(out, JSONObject().put("battery", if (gopro.isOpen()) gopro.batteryNow() else battery()))
+            // The booth's Camera check: read the camera's shutter / aperture / ISO and set them (Nikon; any other camera, and a GoPro, answer supported:false)
+            method == "GET" && path == "/camera/props" -> json(out, if (gopro.isOpen()) JSONObject().put("supported", false) else synchronized(lock) { needCamera(); exposureJson() })
+            method == "POST" && path == "/camera/setprops" -> json(out, if (gopro.isOpen()) JSONObject().put("supported", false) else setExposure(query))
             method == "POST" && path == "/camera/close" -> { gopro.close(); synchronized(lock) { closeCamera() }; json(out, JSONObject()) }
             method == "POST" && path == "/camera/free" -> json(out, JSONObject())
             else -> reply(out, 404, "application/json", err("NOTFOUND", "Not found").toByteArray())
@@ -822,12 +825,12 @@ class UsbCameraHelper(private val ctx: Context) {
         val d = r.bytes
         if (r.code != OK || d.size < 6) return null
         val rd = Rd(d)
-        rd.u16(); val type = rd.u16(); rd.u8()
+        rd.u16(); val type = rd.u16(); val getSet = rd.u8()
         rd.value(type); val cur = rd.value(type)
         val form = rd.u8()
         val choices = ArrayList<String>()
         if (form == 2) { val n = rd.u16(); for (k in 0 until n) choices.add(rd.value(type)) }
-        return Desc(type, cur, choices)
+        return Desc(type, cur, choices, getSet)
     }
 
     private fun setProp(code: Int, type: Int, value: String): Boolean {
@@ -845,6 +848,72 @@ class UsbCameraHelper(private val ctx: Context) {
         val r = opWrite(0x1016, data, code)
         waitReady(2000)
         return r == OK
+    }
+
+    // ---- Exposure settings for the booth's Camera check (Nikon; standard PTP properties) ----
+    // A port of props / setprops in tools/print-helper/camera-worker.ps1: keep the two in step.
+    // 0x500E exposure mode (1 manual, 2 program, 3 aperture priority, 4 shutter priority), 0x500D exposure time in 0.0001 s,
+    // 0x5007 f-number x 100, 0x500F ISO. The camera says per property whether it can be changed right now; a setting it will not
+    // take is reported, never forced. The mode itself is the dial: never set. Any other brand answers supported:false.
+    private fun descNum(d: Desc?): Double = d?.current?.toDoubleOrNull() ?: 0.0
+    private fun canSet(d: Desc?): Boolean = d != null && d.getSet == 1 && d.choices.isNotEmpty()
+
+    private fun exposureJson(): JSONObject {
+        if (!nikon) return JSONObject().put("supported", false)
+        var m: Desc? = null; var t: Desc? = null; var f: Desc? = null; var i: Desc? = null
+        try { m = propDesc(0x500E); t = propDesc(0x500D); f = propDesc(0x5007); i = propDesc(0x500F) }
+        catch (e: CamErr) { throw e } catch (e: Exception) { log("Exposure settings not read: ${e.message}") }
+        if (t == null && f == null && i == null) return JSONObject().put("supported", false)
+        return JSONObject().put("supported", true)
+            .put("program", descNum(m).toInt())
+            .put("shutter", descNum(t) / 10000.0)
+            .put("f", descNum(f) / 100.0)
+            .put("iso", descNum(i).toInt())
+            .put("set", JSONObject().put("shutter", canSet(t)).put("f", canSet(f)).put("iso", canSet(i)))
+    }
+
+    // The camera's own list, the entry nearest (on a log scale) to what was asked for. Entries that are not real values
+    // (Auto / Hi / bulb markers sit at the ends of some lists) are skipped.
+    private fun nearChoice(d: Desc, want: Double, scale: Double): String? {
+        var best: String? = null
+        var bestD = Double.MAX_VALUE
+        for (c in d.choices) {
+            val v = c.toDoubleOrNull() ?: continue
+            val x = v * scale
+            if (x <= 0 || x > 60000) continue
+            val dd = Math.abs(Math.log(x) - Math.log(want))
+            if (dd < bestD) { bestD = dd; best = c }
+        }
+        return best
+    }
+
+    // query: "shutter=0.00625&f=5.6&iso=400" (seconds, f-number, ISO; any subset). Answers the settings now plus, per asked setting,
+    // "set" | "same" | "locked" (the camera won't change it in this mode) | "refused" | "unsupported".
+    private fun setExposure(query: String): JSONObject = synchronized(lock) {
+        needCamera()
+        if (!nikon) return@synchronized JSONObject().put("supported", false)
+        val want = HashMap<String, Double>()
+        for (kv in query.split('&', ' ')) {
+            val eq = kv.indexOf('=')
+            val v = if (eq > 0) kv.substring(eq + 1).toDoubleOrNull() else null
+            if (v != null && v > 0) want[kv.substring(0, eq)] = v
+        }
+        val res = JSONObject()
+        for ((key, code, scale) in listOf(Triple("shutter", 0x500D, 0.0001), Triple("f", 0x5007, 0.01), Triple("iso", 0x500F, 1.0))) {
+            val w = want[key] ?: continue
+            val state = try {
+                val d = propDesc(code)
+                if (d == null) "unsupported"
+                else if (d.getSet != 1 || d.choices.isEmpty()) "locked"
+                else {
+                    val pick = nearChoice(d, w, scale)
+                    if (pick == null) "unsupported" else if (pick == d.current) "same" else if (setProp(code, d.type, pick)) "set" else "refused"
+                }
+            } catch (e: CamErr) { throw e } catch (e: Exception) { log("Exposure setting $key not changed: ${e.message}"); "refused" }
+            log("Exposure $key -> $w: $state")
+            res.put(key, state)
+        }
+        exposureJson().put("results", res)
     }
 
     private fun widthOf(s: String): Int { val x = s.indexOf('x'); return if (x > 0) s.substring(0, x).toIntOrNull() ?: 0 else 0 }

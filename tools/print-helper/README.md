@@ -10,7 +10,7 @@ size can use its own printer. Renter instructions live on `/downloads/` (public/
 - `POST /printer/bluetooth` opens Bluetooth settings on Windows or Mac; pair the printer, add it as a system printer, then refresh `/status?refresh=1`.
 - `POST /print` `{ printer, widthMm, heightMm, pages: ["data:image/png;base64,..."] }` → `{ ok }`
 - Windows (1.1+): `GET /camera`, `POST /camera/open`, `GET /camera/frame`, `POST /camera/capture`,
-  `GET /camera/battery`, `POST /camera/live?on=0|1`, `POST /camera/close` control a Nikon over USB through
+  `GET /camera/battery`, `GET /camera/props` + `POST /camera/setprops?shutter=&f=&iso=` (the booth's Camera check: read and set shutter, aperture and ISO; a Nikon only, any other camera answers `supported:false`), `POST /camera/live?on=0|1`, `POST /camera/close` control a Nikon over USB through
   Windows' own camera driver (`camera-worker.ps1`, embedded in the exe and run with PowerShell). `/status`
   includes `camera: { supported, open, name }`. Test with a stand-in worker on any OS:
   `PB_CAMERA_WORKER="node mock-worker.mjs" bun print-helper.js` (the port is added as the last argument).

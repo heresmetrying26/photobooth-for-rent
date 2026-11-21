@@ -1421,7 +1421,7 @@ const acts = {
   'save-cfg': saveSettings,
   'hw-setup': () => { closeModal(); hw.openSetup(); },
   'printer-modal': printerModal,
-  'hw-printer-setup': () => { closeModal(); hw.openSetup(4); },
+  'hw-printer-setup': () => { closeModal(); hw.openSetup(8); },   // 8 = the booth Setup's Printer step
   'prn-refresh': async () => {
     await busy('Refreshing printers…');
     try {

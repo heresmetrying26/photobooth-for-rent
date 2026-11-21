@@ -552,6 +552,174 @@ await testAsync('reads ISO, shutter and aperture from a JPEG\'s EXIF block', asy
   assert.deepEqual([ex.iso, Math.round(ex.f * 10) / 10, ex.shutter], [800, 2.8, 0.01]);
   assert.equal(await sb.get('pbReadExif')({ slice: () => ({ arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer }) }), null, 'not a JPEG');
   assert.equal(sb.get('pbShutterText')(1 / 125), '1/125 s');
+  assert.equal(ex.flash, -1, 'a photo with no Flash tag reports -1');
+});
+
+// ---- the camera's own record of its flash (EXIF Flash 0x9209) ----
+await testAsync('flash: reads whether the flash fired, and warns when the shutter is faster than flash sync', async () => {
+  const sb = makeSandbox(), u16 = v => [v & 255, v >> 8], u32 = v => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >> 24) & 255];
+  const entry = (tag, type, valOrOff) => [...u16(tag), ...u16(type), ...u32(1), ...(type === 3 ? [...u16(valOrOff), 0, 0] : u32(valOrOff))];
+  // flash undefined = the photo has no Flash tag. The shutter is 1/<den> s.
+  const jpegWith = (flash, den) => {
+    const entries = [entry(0x829A, 5, flash === undefined ? 44 : 56)];
+    if (flash !== undefined) entries.push(entry(0x9209, 3, flash));
+    const tiff = [0x49, 0x49, 0x2A, 0, ...u32(8),
+      ...u16(1), ...entry(0x8769, 4, 26), ...u32(0),                       // IFD0 -> Exif IFD at 26
+      ...u16(entries.length), ...entries.flat(), ...u32(0),                // Exif IFD
+      ...u32(1), ...u32(den)];                                             // the shutter: 1/den s
+    const exif = [0x45, 0x78, 0x69, 0x66, 0, 0, ...tiff];
+    const jpeg = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE1, (exif.length + 2) >> 8, (exif.length + 2) & 255, ...exif, 0xFF, 0xD9]);
+    return { slice: () => ({ arrayBuffer: async () => jpeg.buffer }) };
+  };
+  const read = (flash, den) => sb.get('pbReadExif')(jpegWith(flash, den));
+  const text = sb.get('pbFlashText'), warn = sb.get('pbFlashWarnings');
+  const fired = await read(0x19, 500), skipped = await read(0x10, 500), noTag = await read(undefined, 500);
+  assert.equal(fired.flash, 0x19); assert.equal(skipped.flash, 0x10); assert.equal(noTag.flash, -1);
+  assert.equal(text(fired), 'Flash fired');
+  assert.equal(text(skipped), 'Flash did not fire');
+  assert.equal(text(noTag), '', 'no record: say nothing rather than guess');
+  assert.equal(text(null), '');
+  assert.equal(await read(0, 500).then(text), 'Flash did not fire', 'Flash = 0 (no flash) is a record, not a missing tag');
+  assert(/1\/500 s/.test(warn(fired)[0]), 'fired at 1/500: faster than sync, warned');
+  assert.equal(warn(await read(0x19, 200)).length, 0, 'fired at 1/200: fine');
+  assert.equal(warn(await read(0x19, 250)).length, 0, 'fired at 1/250: fine (the 60D syncs at 1/250)');
+  assert.equal(warn(skipped).length, 0, 'no flash fired: nothing to warn about');
+  assert.equal(warn(noTag).length, 0); assert.equal(warn(null).length, 0);
+});
+
+// ---- the Camera check table (current settings against what suits the lighting) ----
+test('camera check: rows for each lighting choice, per-model flash sync, brand mode names, and what to change', () => {
+  const sb = makeSandbox();
+  const rows = (brand, ex, light, name) => sb.get(`(function(){ return camGuideRows(${brand ? 'CAM_Q.' + brand : 'null'}, ${JSON.stringify(ex)}, ${JSON.stringify(light)}, ${JSON.stringify(name || '')}); })`)();
+  const row = (r, k) => r.find(x => x.key === k);
+  const status = r => r.map(x => x.key + ':' + x.status).join(' ');
+
+  // Before any test shot: nothing to compare yet, but the suggestion is already there.
+  const none = rows('canon', null, 'flash', 'Canon EOS 6D');
+  assert.equal(status(none), 'mode:unknown shutter:unknown aperture:unknown iso:unknown flash:unknown');
+  assert.deepEqual([row(none, 'mode').suggested, row(none, 'shutter').suggested, row(none, 'aperture').suggested, row(none, 'iso').suggested], ['M', '1/160 s', 'f/5.6', '400']);
+
+  // The client's case: a Canon on aperture priority at f/2.8, ISO 1250, a slow shutter, and the flash did not fire.
+  const bad = rows('canon', { program: 3, shutter: 1 / 60, f: 2.8, iso: 1250, flash: 0x10 }, 'flash', 'Canon EOS 60D');
+  assert.equal(status(bad), 'mode:change shutter:change aperture:change iso:change flash:change');
+  assert.equal(row(bad, 'mode').current, 'Av');
+  assert(/mode dial/.test(row(bad, 'mode').how) && /M\.$/.test(row(bad, 'mode').how));
+  assert(/Flash firing/.test(row(bad, 'flash').how) && /Silent LV shoot/.test(row(bad, 'flash').how), 'Canon advice names its own live view settings');
+  assert.equal(row(bad, 'flash').current, 'Did not fire');
+
+  // Good flash settings: nothing to change.
+  const good = rows('canon', { program: 1, shutter: 1 / 160, f: 5.6, iso: 400, flash: 0x09 }, 'flash', 'Canon EOS 60D');
+  assert.equal(status(good), 'mode:ok shutter:ok aperture:ok iso:ok flash:ok');
+  assert.equal(good.filter(x => x.how).length, 0, 'only a row to change carries advice');
+
+  // Flash sync differs per model: 1/200 s is fine on a 60D (1/250) and a D5600 (1/200), too fast on a 6D (1/180).
+  const at200 = (brand, name) => row(rows(brand, { program: 1, shutter: 1 / 200, f: 5.6, iso: 400, flash: 1 }, 'flash', name), 'shutter');
+  assert.equal(at200('canon', 'Canon EOS 60D').status, 'ok');
+  assert.equal(at200('canon', 'Canon EOS 6D').status, 'change');
+  assert(/sync/.test(at200('canon', 'Canon EOS 6D').how));
+  assert.equal(at200('nikon', 'Nikon Corporation D5600').status, 'ok');
+  assert.equal(row(rows('nikon', { program: 1, shutter: 1 / 250, f: 5.6, iso: 400, flash: 1 }, 'flash', 'Nikon D5600'), 'shutter').status, 'change');
+  assert.equal(row(rows('canon', { program: 1, shutter: 1 / 200, f: 5.6, iso: 400, flash: 1 }, 'flash', 'Canon EOS 600D'), 'shutter').status, 'ok', '600D is not a 60D');
+
+  // Brand names for the same EXIF mode: a Nikon calls aperture priority "A", a Canon "Av".
+  assert.equal(row(rows('nikon', { program: 3, shutter: 1 / 100, f: 4, iso: 400, flash: 0 }, 'room', 'Nikon D5600'), 'mode').current, 'A');
+  assert.equal(row(rows('canon', { program: 3, shutter: 1 / 100, f: 4, iso: 400, flash: 0 }, 'room', 'Canon EOS 6D'), 'mode').current, 'Av');
+  assert.equal(row(rows(null, { program: 3, shutter: 1 / 100, f: 4, iso: 400, flash: 0 }, 'room', ''), 'mode').current, 'Av', 'a brand without a profile still gets a table');
+
+  // Steady lights: the flash is not wanted. A flash that fired is shown, not flagged; a slow shutter is.
+  const steady = rows('canon', { program: 1, shutter: 1 / 30, f: 4, iso: 800, flash: 1 }, 'steady', 'Canon EOS 6D');
+  assert.equal(row(steady, 'flash').status, 'info');
+  assert.equal(row(steady, 'shutter').status, 'change');
+  assert(/blur/.test(row(steady, 'shutter').how));
+  assert.equal(row(rows('canon', { program: 1, shutter: 1 / 125, f: 4, iso: 800, flash: 16 }, 'steady', 'Canon EOS 6D'), 'flash').status, 'ok');
+
+  // Room light only: aperture priority and program are both fine; manual is not what the suggestion asks for.
+  const roomMode = p => row(rows('canon', { program: p, shutter: 1 / 100, f: 4, iso: 800, flash: 16 }, 'room', 'Canon EOS 6D'), 'mode').status;
+  assert.deepEqual([roomMode(3), roomMode(2), roomMode(1)], ['ok', 'ok', 'change']);
+  const g = sb.get('camGuideNote');
+  assert(/flash or steady lights/.test(g('room', { iso: 1 })), 'room light only: a flash or steady lights are recommended');
+  assert(/test shot/.test(g('flash', null)) && g('flash', { iso: 1 }) === '');
+
+  // Missing numbers never crash and are shown as a dash.
+  const part = rows('sony', { program: 0, shutter: 0, f: 0, iso: 0, flash: -1 }, 'flash', 'Sony ILCE-7M3');
+  assert.equal(status(part), 'mode:unknown shutter:unknown aperture:unknown iso:unknown flash:unknown');
+  assert(part.every(x => x.current === '—'));
+});
+
+// ---- the EXIF reader returns the exposure mode ----
+await testAsync('reads the exposure mode (ExposureProgram) from a JPEG\'s EXIF block', async () => {
+  const sb = makeSandbox(), u16 = v => [v & 255, v >> 8], u32 = v => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >> 24) & 255];
+  const entry = (tag, type, valOrOff) => [...u16(tag), ...u16(type), ...u32(1), ...(type === 3 ? [...u16(valOrOff), 0, 0] : u32(valOrOff))];
+  const jpegWith = program => {
+    const entries = program === undefined ? [entry(0x8827, 3, 400)] : [entry(0x8822, 3, program), entry(0x8827, 3, 400)];
+    const tiff = [0x49, 0x49, 0x2A, 0, ...u32(8), ...u16(1), ...entry(0x8769, 4, 26), ...u32(0), ...u16(entries.length), ...entries.flat(), ...u32(0)];
+    const exif = [0x45, 0x78, 0x69, 0x66, 0, 0, ...tiff];
+    const jpeg = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE1, (exif.length + 2) >> 8, (exif.length + 2) & 255, ...exif, 0xFF, 0xD9]);
+    return { slice: () => ({ arrayBuffer: async () => jpeg.buffer }) };
+  };
+  const read = p => sb.get('pbReadExif')(jpegWith(p));
+  assert.equal((await read(1)).program, 1);
+  assert.equal((await read(3)).program, 3);
+  assert.equal((await read(undefined)).program, 0, 'no tag: 0 = not recorded');
+  assert.equal((await read(3)).iso, 400, 'the other numbers still read with the extra tag present');
+});
+
+// ---- "Read from camera" and "Apply suggested settings" (the camera program answers; this is the booth's side of it) ----
+await testAsync('camera check apply: reads the camera, sets only what differs, reports what the camera would not take', async () => {
+  const sb = makeSandbox();
+  const els = { camGuideApplyMsg: { style: {}, textContent: '' }, camGuideApplyRow: { style: { display: 'none' } } };
+  sb.document.getElementById = id => els[id] || null;
+  const asked = [];
+  withCamera(sb, 'Nikon Corporation D5600', 'nikon');
+  const now = { ok: true, supported: true, program: 3, shutter: 1 / 60, f: 2.8, iso: 1250, set: { shutter: false, f: true, iso: true } };
+  sb.usbCam.camera.getExposure = async () => now;
+  sb.usbCam.camera.setExposure = async want => { asked.push(JSON.stringify(want)); return { ok: true, supported: true, program: 3, shutter: 1 / 60, f: 5.6, iso: 400, results: { shutter: 'locked', f: 'set', iso: 'set' } }; };
+  const ex = () => JSON.parse(JSON.stringify(sb.get('camGuideEx')));
+
+  // Probe: the camera answers, so the buttons show and "Current" is filled before any photo (the flash is unknown until a photo).
+  await sb.get('camGuideProbe')();
+  assert.equal(sb.get('camGuideCan'), true);
+  assert.equal(els.camGuideApplyRow.style.display, 'block');
+  assert.deepEqual(ex(), { program: 3, shutter: 1 / 60, f: 2.8, iso: 1250, flash: -1 });
+
+  // Apply (flash lighting): asks for 1/160 s, f/5.6, ISO 400 (numbers, in seconds / f-number / ISO), nothing about the mode.
+  await sb.get('camGuideApply')();
+  assert.deepEqual(asked, ['{"shutter":0.00625,"f":5.6,"iso":400}']);
+  assert(/^Done, except: Shutter is set by the camera in its current mode/.test(els.camGuideApplyMsg.textContent), els.camGuideApplyMsg.textContent);
+  assert(!/Aperture|ISO/.test(els.camGuideApplyMsg.textContent), 'the settings that were set are not listed as problems');
+  assert.deepEqual(ex(), { program: 3, shutter: 1 / 60, f: 5.6, iso: 400, flash: -1 }, 'Current follows what the camera now says');
+
+  // A camera reports its shutter in 0.0001 s counts: 1/160 s arrives as 0.0063 and is shown as 1/160, not 1/159.
+  const snap = sb.get('pbSnapShutter');
+  assert.deepEqual([0.0063, 0.0167, 0.01, 0.004, 0.0125, 0.0005, 0.5, 2, 0].map(snap), [1 / 160, 1 / 60, 1 / 100, 1 / 250, 1 / 80, 1 / 2000, 0.5, 2, 0]);
+
+  // Everything already matches: nothing is sent.
+  asked.length = 0;
+  sb.get('camGuideSetExif')({ program: 1, shutter: 1 / 160, f: 5.6, iso: 400, flash: 1 });
+  await sb.get('camGuideApply')();
+  assert.equal(asked.length, 0);
+  assert.equal(els.camGuideApplyMsg.textContent, 'Nothing to change: the settings already match.');
+
+  // A camera that cannot be read from here: no buttons, nothing sent.
+  sb.usbCam.camera.getExposure = async () => null;
+  await sb.get('camGuideProbe')();
+  assert.equal(sb.get('camGuideCan'), false);
+  assert.equal(els.camGuideApplyRow.style.display, 'none');
+
+  // A camera program without the feature (an older helper, or a camera made by libraries in the page): no crash, nothing to apply.
+  sb.usbCam.camera = { info: {} };
+  await sb.get('camGuideProbe')();
+  await sb.get('camGuideApply')();
+  assert.equal(sb.get('camGuideCan'), false);
+  assert.equal(asked.length, 0);
+
+  // The camera program's side of it exists in the page's client and in all three programs that answer it.
+  assert(page.includes("'/camera/props'") && page.includes("'/camera/setprops?'"), 'the booth asks for /camera/props and /camera/setprops');
+  for (const f of ['tools/print-helper/print-helper.js', 'desktop/lib/helper.mjs', 'android/app/src/main/java/com/photobooth4u/booth/UsbCameraHelper.kt']) {
+    const src = readFileSync(join(ROOT, f), 'utf8');
+    assert(src.includes('/camera/props') && src.includes('/camera/setprops'), f + ' answers /camera/props and /camera/setprops');
+  }
+  assert(readFileSync(join(ROOT, 'tools/print-helper/camera-worker.ps1'), 'utf8').includes('case "setprops"'), 'the Windows camera program has the setprops command');
 });
 
 // ---- solo shots on the laptop app: the camera's own file when the booth didn't change the picture ----

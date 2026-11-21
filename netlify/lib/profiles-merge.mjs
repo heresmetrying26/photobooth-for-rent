@@ -59,6 +59,8 @@ export function cleanDevice(d) {
   if (Array.isArray(d.ownSizes)) out.ownSizes = d.ownSizes.filter((k) => typeof k === 'string' && k.length <= 24).slice(0, 6);
   if (typeof d.keychain === 'boolean') out.keychain = d.keychain;
   if (typeof d.deskSolo === 'boolean') out.deskSolo = d.deskSolo;
+  if (typeof d.deskTpl === 'string' && /^[A-Za-z0-9:_-]{1,90}$/.test(d.deskTpl)) out.deskTpl = d.deskTpl;    // the Photographer desk's template (booth layout, built-in layout or "frame:<id>")
+  if (d.deskFill === 'multi' || d.deskFill === 'repeat1') out.deskFill = d.deskFill;
   return Object.keys(out).length ? out : null;
 }
 

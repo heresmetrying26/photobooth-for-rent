@@ -4,6 +4,7 @@
 import os from 'node:os';
 import net from 'node:net';
 import http from 'node:http';
+import { pickPwgDpi } from './pwgraster.mjs';
 
 const SKIP_ADAPTER = /vmware|virtualbox|vbox|vethernet|hyper-v|docker|wsl|tailscale|zerotier|hamachi|vpn|tap-|tun\d|loopback|bluetooth/i;
 
@@ -101,6 +102,27 @@ export function parseIpp(buf) {
   return { status, attrs };
 }
 
+/** Walks an IPP reply and returns every value as { name, tag, value: Buffer }, in order (a name carries over to the values after it). */
+export function parseIppRaw(buf) {
+  const out = [];
+  if (!buf || buf.length < 8) return out;
+  let p = 8, last = '';
+  while (p < buf.length) {
+    const tag = buf[p++];
+    if (tag === 0x03) break;
+    if (tag <= 0x05) continue;
+    if (p + 2 > buf.length) break;
+    const nl = buf.readUInt16BE(p); p += 2;
+    if (p + nl + 2 > buf.length) break;
+    if (nl > 0) { last = buf.toString('latin1', p, p + nl); p += nl; }
+    const vl = buf.readUInt16BE(p); p += 2;
+    if (p + vl > buf.length) break;
+    out.push({ name: last, tag, value: buf.subarray(p, p + vl) });
+    p += vl;
+  }
+  return out;
+}
+
 function ippPost(ip, port, path, body, timeoutMs) {
   return new Promise((resolve) => {
     const req = http.request({ host: ip, port, path, method: 'POST', timeout: timeoutMs, headers: { 'content-type': 'application/ipp', 'content-length': body.length } }, (res) => {
@@ -170,7 +192,9 @@ const ippTagged = (tag, name, value) => Buffer.concat([Buffer.from([tag]), ippSt
 
 /** Get-Printer-Attributes for the settings a direct print needs: file types, paper loaded / supported, model. */
 export function ippCapsRequest(uri) {
-  const wanted = ['printer-make-and-model', 'document-format-supported', 'media-ready', 'media-supported', 'media-default'];
+  const wanted = ['printer-make-and-model', 'document-format-supported', 'media-ready', 'media-supported', 'media-default',
+    'print-quality-supported', 'print-color-mode-supported', 'media-type-supported',
+    'pwg-raster-document-resolution-supported', 'pwg-raster-document-type-supported'];
   return Buffer.concat([
     Buffer.from([0x02, 0x00, 0x00, 0x0b, 0, 0, 0, 1, 0x01]),
     ippTagged(0x47, 'attributes-charset', 'utf-8'),
@@ -186,9 +210,10 @@ export function ippCapsRequest(uri) {
  * otherwise `wMm` x `hMm` is asked for as a custom size with zero margins (the standard way to ask for no border).
  * `scaling` is a print-scaling value ("fill", "none") or '' to leave it out.
  */
-export function ippPrintJobRequest({ uri, jobName = 'photobooth4u', format = 'image/jpeg', doc, wMm = 0, hMm = 0, mediaName = '', scaling = 'fill' }) {
+export function ippPrintJobRequest({ uri, jobName = 'photobooth4u', format = 'image/jpeg', doc, wMm = 0, hMm = 0, mediaName = '', scaling = 'fill', quality = 0, colorMode = '', mediaType = '', marginMm100 = 0 }) {
   const memberName = (n) => Buffer.concat([Buffer.from([0x4a]), ippU16(0), ippStr(n)]);
   const memberInt = (n, v) => Buffer.concat([memberName(n), Buffer.from([0x21]), ippU16(0), ippU16(4), ippU32(v)]);
+  const memberKeyword = (n, v) => Buffer.concat([memberName(n), Buffer.from([0x44]), ippU16(0), ippStr(v)]);
   const begCol = Buffer.from([0x34, 0, 0, 0, 0]), endCol = Buffer.from([0x37, 0, 0, 0, 0]);
   const parts = [
     Buffer.from([0x02, 0x00, 0x00, 0x02, 0, 0, 0, 1, 0x01]),
@@ -200,16 +225,21 @@ export function ippPrintJobRequest({ uri, jobName = 'photobooth4u', format = 'im
     ippTagged(0x49, 'document-format', format),
     Buffer.from([0x02])
   ];
+  const m = Math.max(0, Math.round(Number(marginMm100) || 0));
   if (mediaName) parts.push(ippTagged(0x44, 'media', mediaName));
   else if (wMm > 0 && hMm > 0) {
     parts.push(Buffer.concat([Buffer.from([0x34]), ippStr('media-col'), ippU16(0)]),
       memberName('media-size'), begCol,
       memberInt('x-dimension', Math.round(Math.min(wMm, hMm) * 100)), memberInt('y-dimension', Math.round(Math.max(wMm, hMm) * 100)),
       endCol,
-      memberInt('media-top-margin', 0), memberInt('media-bottom-margin', 0), memberInt('media-left-margin', 0), memberInt('media-right-margin', 0),
+      memberInt('media-top-margin', m), memberInt('media-bottom-margin', m), memberInt('media-left-margin', m), memberInt('media-right-margin', m),
+      ...(mediaType ? [memberKeyword('media-type', mediaType)] : []),   // inside media-col, where IPP Everywhere clients put it
       endCol);
   }
   if (scaling) parts.push(ippTagged(0x44, 'print-scaling', scaling));
+  if (quality) parts.push(Buffer.concat([Buffer.from([0x23]), ippStr('print-quality'), ippU16(4), ippU32(quality)]));   // enum
+  if (colorMode) parts.push(ippTagged(0x44, 'print-color-mode', colorMode));
+  if (mediaType && !(!mediaName && wMm > 0 && hMm > 0)) parts.push(ippTagged(0x44, 'media-type', mediaType));   // no media-col to carry it
   parts.push(Buffer.from([0x03]), Buffer.from(doc || []));
   return Buffer.concat(parts);
 }
@@ -264,34 +294,102 @@ export function jpegAt300Dpi(buf) {
   return j;
 }
 
-/** Asks a printer what it can take. Returns { path, model, formats, mediaReady, mediaSupported } or null. */
-export async function ippCaps(ip, port = 631, path = '', timeoutMs = 4000) {
-  for (const p of [...new Set([path, '/ipp/print', '/ipp', '/'].filter(Boolean))]) {
-    const r = await ippPost(ip, port, p, ippCapsRequest(`ipp://${ip}:${port}${p}`), timeoutMs);
+/**
+ * Asks a printer what it can take. Returns { path, model, formats, mediaReady, mediaSupported, qualities, colorModes, mediaTypes,
+ * pwgRes, pwgTypes } or null. qualities are IPP print-quality numbers (3 draft, 4 normal, 5 high); pwgRes are the dpi a raster
+ * page may use; pwgTypes the raster colour types ("srgb_8", "sgray_8").
+ * Pass `transport` ({ baseUri, post(path, body, timeoutMs) }) to talk over IPP-over-USB instead of TCP.
+ */
+export async function ippCaps(ip, port = 631, path = '', timeoutMs = 4000, transport = null) {
+  const baseUri = transport ? transport.baseUri : `ipp://${ip}:${port}`;
+  const send = transport ? transport.post : (p, body, ms) => ippPost(ip, port, p, body, ms);
+  for (const p of [...new Set([path, '/ipp/print', '/ipp', '/', '/ipp/printer', '/printer'].filter(Boolean))]) {
+    const r = await send(p, ippCapsRequest(`${baseUri}${p}`), timeoutMs);
     if (!r || r.http !== 200) continue;
     const { status, attrs } = parseIpp(r.body);
     if (status < 0 || status > 2) continue;
+    const qualities = [], pwgRes = [];
+    for (const v of parseIppRaw(r.body)) {
+      if (v.name === 'print-quality-supported' && v.tag === 0x23 && v.value.length === 4) qualities.push(v.value.readUInt32BE(0));
+      // a resolution is 4 bytes across, 4 bytes down, 1 byte units (3 = dots per inch)
+      if (v.name === 'pwg-raster-document-resolution-supported' && v.tag === 0x32 && v.value.length === 9 && v.value[8] === 3) pwgRes.push(v.value.readUInt32BE(0));
+    }
     return {
       path: p, model: (attrs['printer-make-and-model'] || [])[0] || '',
       formats: (attrs['document-format-supported'] || []).map((s) => s.toLowerCase()),
-      mediaReady: attrs['media-ready'] || [], mediaSupported: attrs['media-supported'] || []
+      mediaReady: attrs['media-ready'] || [], mediaSupported: attrs['media-supported'] || [],
+      qualities, pwgRes,
+      colorModes: attrs['print-color-mode-supported'] || [], mediaTypes: attrs['media-type-supported'] || [],
+      pwgTypes: attrs['pwg-raster-document-type-supported'] || []
     };
   }
   return null;
 }
 
+/** What a direct print can do with this printer: the photo as JPEG, or a PWG Raster page (a Brother DCP-T420W takes only that). */
+export function directFormats(caps, canRaster = true) {
+  const formats = (caps && caps.formats) || [];
+  return { jpeg: formats.length === 0 || formats.includes('image/jpeg'), pwg: !!canRaster && formats.includes('image/pwg-raster') };
+}
+
+/** The paper type keyword to send ("photographic-glossy", "stationery") for what the booth asked for, from the types the printer lists, or ''. */
+export function pickMediaType(caps, wanted) {
+  const list = (caps && caps.mediaTypes) || [];
+  const w = String(wanted || '').trim().toLowerCase();
+  if (!w || !list.length) return '';
+  const exact = list.find((t) => t.toLowerCase() === w);
+  if (exact) return exact;
+  if (/bp71/.test(w)) return list.find((t) => /bp71/i.test(t)) || '';
+  if (/inkjet/.test(w)) return list.find((t) => t === 'stationery-inkjet') || list.find((t) => /inkjet/i.test(t)) || '';
+  if (/glossy|photo/.test(w)) return list.find((t) => t === 'photographic-glossy') || list.find((t) => /^photographic/.test(t)) || '';
+  if (/plain|stationery|normal/.test(w)) return list.find((t) => t === 'stationery') || list.find((t) => /^stationery/.test(t)) || '';
+  return '';
+}
+
+const IPP_MEDIA_LABELS = {
+  stationery: 'Plain Paper',
+  'stationery-inkjet': 'Inkjet Paper',
+  'photographic-glossy': 'Glossy Photo Paper',
+  'photographic-semi-gloss': 'Semi-Gloss Photo Paper',
+  'photographic-satin': 'Satin Photo Paper',
+  'photographic-matte': 'Matte Photo Paper',
+  photographic: 'Photo Paper',
+  'com.brother-bp71': 'Brother BP71 Photo'
+};
+
+/** Friendly label for an IPP media-type keyword ("photographic-glossy" -> "Glossy Photo Paper"). */
+export function labelMediaType(kw) {
+  const k = String(kw || '').trim();
+  if (!k) return '';
+  if (IPP_MEDIA_LABELS[k.toLowerCase()]) return IPP_MEDIA_LABELS[k.toLowerCase()];
+  return k.replace(/^com\.[a-z0-9]+-/i, '').replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 /**
- * Sends one JPEG to the printer. Tries the paper the printer names itself first, then a custom size with no margins, then
- * nothing at all, and stops at the first one the printer accepts. Throws an Error with a reason a person can act on.
+ * Sends one photo straight to a printer over IPP (Wi-Fi TCP, or IPP-over-USB when `transport` is given).
+ * Tries the paper the printer names itself first, then a custom size with no margins, then nothing at all,
+ * and stops at the first one the printer accepts. Throws an Error with a reason a person can act on.
  */
-export async function ippPrintDirect({ ip, port = 631, path = '', jpeg, widthMm = 0, heightMm = 0, jobName = 'photobooth4u', timeoutMs = 90000 }) {
-  const caps = await ippCaps(ip, port, path);
-  if (!caps) throw new Error('The printer at ' + ip + ' did not answer. Is it on and on the same Wi-Fi as this computer? If it joined the Wi-Fi again it may have a new address: choose Find printers and use it again.');
-  const accepted = caps.formats.length === 0 || caps.formats.includes('image/jpeg');
+export async function ippPrintDirect({ ip, port = 631, path = '', jpeg = null, image = null, toJpeg = null, widthMm = 0, heightMm = 0, jobName = 'photobooth4u', timeoutMs = 90000, rasterize = null, quality = '', mediaType = '', paperName = '', borderless = true, transport = null }) {
+  const caps = await ippCaps(ip, port, path, 4000, transport);
+  if (!caps) {
+    throw new Error(transport
+      ? 'The USB printer did not answer over IPP-over-USB. Check its USB cable and power, then try again.'
+      : 'The printer at ' + ip + ' did not answer. Is it on and on the same Wi-Fi as this computer? If it joined the Wi-Fi again it may have a new address: choose Find printers and use it again.');
+  }
+  const can = directFormats(caps, typeof rasterize === 'function');
+  if (!can.jpeg && can.pwg) {
+    return ippPrintPwg({ ip, port, caps, image: image || jpeg, widthMm, heightMm, jobName, timeoutMs, rasterize, quality, mediaType, paperName, borderless, transport });
+  }
+  const accepted = can.jpeg;
   if (!accepted) throw new Error((caps.model || 'This printer') + ' can’t take photos straight from the app (it accepts: ' + caps.formats.filter((f) => /^(image|application)\//.test(f)).slice(0, 5).join(', ') + ').');
-  const named = pickMediaName(caps, widthMm, heightMm, true);
+  if ((!jpeg || !jpeg.length) && image && typeof toJpeg === 'function') jpeg = toJpeg(image);
+  if (!jpeg || !jpeg.length) throw new Error('Could not prepare the photo for the printer.');
+  const named = (paperName && (caps.mediaSupported || []).includes(paperName) ? paperName : '') || pickMediaName(caps, widthMm, heightMm, true);
   const dims = named ? mediaSizeMm(named) : null;
   jpeg = jpegAt300Dpi(jpeg);
+  const baseUri = transport ? transport.baseUri : `ipp://${ip}:${port}`;
+  const send = transport ? transport.post : (p, body, ms) => ippPost(ip, port, p, body, ms);
   // A Canon SELPHY lists every paper twice: with its normal margins (a few mm of border) and as a "fullbleed" paper with zero margins.
   // Over IPP the fullbleed one is not a different name: it is the same paper asked for as a page size with all four margins 0. Asking by
   // name alone gets the bordered one, so the zero-margin page (sized as the printer's own paper) goes first and the name after it.
@@ -304,12 +402,78 @@ export async function ippPrintDirect({ ip, port = 631, path = '', jpeg, widthMm 
   let lastErr = 'The printer didn’t accept the photo.', drops = 0;
   for (const a of attempts) {
     for (const p of [...new Set([caps.path, '/ipp/print', '/ipp', '/'])]) {
-      const body = ippPrintJobRequest({ uri: `ipp://${ip}:${port}${p}`, jobName, doc: jpeg, ...a });
-      const r = await ippPost(ip, port, p, body, timeoutMs);
-      if (!r) { if (++drops >= 3) throw new Error('Lost the printer while sending the photo. Check it is on and still on the same Wi-Fi, then print again.'); lastErr = 'The printer dropped the connection.'; continue; }
+      const body = ippPrintJobRequest({ uri: `${baseUri}${p}`, jobName, doc: jpeg, ...a });
+      const r = await send(p, body, timeoutMs);
+      if (!r) { if (++drops >= 3) throw new Error(transport ? 'Lost the USB printer while sending the photo. Check the USB cable and power, then print again.' : 'Lost the printer while sending the photo. Check it is on and still on the same Wi-Fi, then print again.'); lastErr = 'The printer dropped the connection.'; continue; }
       if (r.http === 200) {
         const { status } = parseIpp(r.body);
         if (status >= 0 && status <= 2) return { media: a.mediaName || (a.wMm ? 'page ' + Math.round(a.wMm * 10) / 10 + 'x' + Math.round(a.hMm * 10) / 10 + ' mm, zero margins' : 'default'), scaling: a.scaling };
+        lastErr = 'The printer refused the photo (code 0x' + status.toString(16) + ').';
+      } else if (r.http === 426 || r.http === 301 || r.http === 302) lastErr = 'This printer only accepts secure printing, which the app doesn’t support yet.';
+      else if (r.http !== 404) lastErr = 'The printer answered with HTTP ' + r.http + '.';
+    }
+  }
+  throw new Error(lastErr);
+}
+
+/**
+ * A printer that takes no JPEG and no PDF but does take PWG Raster (a Brother DCP-T420W): the photo is made into a raster page
+ * of the printer's own paper size and sent as image/pwg-raster. Borderless photo prints go out zero-margin first (using glossy
+ * photo paper when no paper type was chosen on a photo sheet, because the DCP-T420W constrains borderless against plain paper),
+ * then with 3 mm margins, then on the paper's name, then with no paper named. Quality / colour / paper type are asked for with
+ * the job and dropped again when the printer refuses them.
+ */
+async function ippPrintPwg({ ip, port, caps, image, widthMm, heightMm, jobName, timeoutMs, rasterize, quality, mediaType, paperName = '', borderless = true, transport = null }) {
+  if (!image || !image.length) throw new Error('Could not prepare the photo for the printer.');
+  const types = caps.pwgTypes || [];
+  if (types.length && !types.includes('srgb_8') && !types.includes('sgray_8')) {
+    throw new Error((caps.model || 'This printer') + '’s raster mode (' + types.slice(0, 3).join(', ') + ') isn’t supported yet.');
+  }
+  const explicit = paperName && ((caps.mediaSupported || []).includes(paperName) || mediaSizeMm(paperName)) ? paperName : '';
+  const named = explicit || pickMediaName(caps, widthMm, heightMm, true);
+  const dims = (named && mediaSizeMm(named)) || (widthMm > 0 && heightMm > 0 ? [Math.min(widthMm, heightMm), Math.max(widthMm, heightMm)] : null);
+  if (!dims) throw new Error('The paper size is missing, so the photo can’t be prepared for the printer.');
+  const gray = types.length > 0 && !types.includes('srgb_8');
+  const dpi = pickPwgDpi(caps.pwgRes, quality, dims[0], dims[1]);
+  let mt = pickMediaType(caps, mediaType);
+  // Brother DCP-T420W requires photo media for borderless output (plain paper / stationery is constrained against 0 margins).
+  // For photo sheets (up to 5x8 in) when the operator left paper type at default, request photographic-glossy if the printer lists it.
+  if (!mt && borderless !== false && dims[0] <= 155 && dims[1] <= 210 && (caps.mediaTypes || []).includes('photographic-glossy')) {
+    mt = 'photographic-glossy';
+  }
+  const q = ({ draft: 3, normal: 4, best: 5 })[quality] || 0;
+  const qv = q && (caps.qualities || []).includes(q) ? q : 0;
+  const cm = (caps.colorModes || []).includes(gray ? 'monochrome' : 'color') ? (gray ? 'monochrome' : 'color') : '';
+  const page = rasterize(image, {
+    wMm: dims[0], hMm: dims[1], dpi, gray, mediaType: mt,
+    pageSizeName: named || 'custom_photo_' + Math.round(dims[0] * 10) / 10 + 'x' + Math.round(dims[1] * 10) / 10 + 'mm',
+    imageBox: false                                           // the way CUPS writes it, which is what this printer is known to take
+  });
+  const wantZero = borderless !== false && mt.toLowerCase() !== 'stationery';
+  const zeroSized = { wMm: dims[0], hMm: dims[1], marginMm100: 0, scaling: '' };
+  const borderedSized = { wMm: dims[0], hMm: dims[1], marginMm100: 300, scaling: '' };
+  const opts = { quality: qv, colorMode: cm, mediaType: mt };
+  const hasOpts = !!(qv || cm || mt);
+  const base = [
+    ...(wantZero ? [zeroSized, borderedSized] : [borderedSized]),
+    ...(named ? [{ mediaName: named, scaling: '' }] : []),
+    { scaling: '' }
+  ];
+  const attempts = base.flatMap((a) => (hasOpts ? [{ ...a, ...opts }, a] : [a]));
+  const baseUri = transport ? transport.baseUri : `ipp://${ip}:${port}`;
+  const send = transport ? transport.post : (p, body, ms) => ippPost(ip, port, p, body, ms);
+  let lastErr = 'The printer didn’t accept the photo.', drops = 0;
+  for (const a of attempts) {
+    for (const p of [...new Set([caps.path, '/ipp/print', '/ipp', '/'])]) {
+      const body = ippPrintJobRequest({ uri: `${baseUri}${p}`, jobName, format: 'image/pwg-raster', doc: page, ...a });
+      const r = await send(p, body, timeoutMs);
+      if (!r) { if (++drops >= 3) throw new Error(transport ? 'Lost the USB printer while sending the photo. Check the USB cable and power, then print again.' : 'Lost the printer while sending the photo. Check it is on and still on the same Wi-Fi, then print again.'); lastErr = 'The printer dropped the connection.'; continue; }
+      if (r.http === 200) {
+        const { status } = parseIpp(r.body);
+        if (status >= 0 && status <= 2) {
+          const marginLabel = a.marginMm100 ? ', ' + (a.marginMm100 / 100) + ' mm margins' : ', zero margins';
+          return { media: a.mediaName || (a.wMm ? 'page ' + Math.round(a.wMm * 10) / 10 + 'x' + Math.round(a.hMm * 10) / 10 + ' mm' + marginLabel : 'default'), scaling: '', format: 'image/pwg-raster', dpi, quality: a.quality || 0, mediaType: a.mediaType || '' };
+        }
         lastErr = 'The printer refused the photo (code 0x' + status.toString(16) + ').';
       } else if (r.http === 426 || r.http === 301 || r.http === 302) lastErr = 'This printer only accepts secure printing, which the app doesn’t support yet.';
       else if (r.http !== 404) lastErr = 'The printer answered with HTTP ' + r.http + '.';

@@ -767,21 +767,326 @@ export function roveTake(name) {
   } catch { try { unlinkSync(src); } catch { /* ignore */ } }
   return bytes;
 }
-const ROVE_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Send photos</title>
-<style>body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#F6F1EA;color:#1C1A1E;padding:24px 18px;text-align:center}h1{font-size:22px;margin:6px 0}p{color:#6B666C;margin:6px 0}
-label.pick{display:block;max-width:360px;margin:14px auto 0;padding:18px 26px;border-radius:14px;background:#C93D27;color:#fff;font-weight:800;font-size:18px}label.alt{background:#1C1A1E}input{display:none}
-.bar{height:10px;border-radius:6px;background:#E4DCCF;overflow:hidden;margin:6px auto 2px;max-width:420px}.bar i{display:block;height:100%;width:0;background:#2EA66B}.row{margin:14px auto 0;max-width:420px;text-align:left;font-size:14px}#list{margin-top:18px}</style></head><body>
-<h1>Send photos to the booth</h1><p>Each photo goes straight to the booth laptop, into the event frame, ready to print.</p>
-<label class="pick" for="cam">Take a photo</label><input id="cam" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
-<label class="pick alt" for="f">Choose photos</label><input id="f" type="file" accept="image/jpeg,image/png,image/webp" multiple><div id="list"></div>
-<script>var T=location.pathname.replace(/[/]+$/,"").replace(/[/]photos$/,"");
+
+// ---- Photoman / Photographer Desk Live State & Remote Mobile Control ----
+let roveDeskState = {
+  layoutMode: 'match',
+  fillMode: 'multi',
+  autoOn: false,
+  need: 1,
+  rawShots: 1,
+  activeLabel: 'Solo (1 shot)',
+  layouts: [],
+  queue: [],
+  lastResult: null,
+  updatedAt: 0
+};
+let roveCmdQueue = [];
+export function roveStateSet(st) {
+  if (!st || typeof st !== 'object') return false;
+  const layouts = (Array.isArray(st.layouts) ? st.layouts : []).slice(0, 60).map((l) => ({
+    key: cleanText(l && l.key, 80),
+    label: cleanText(l && l.label, 80),
+    shots: numIn(l && l.shots, 1, 12, 1),
+    group: cleanText(l && l.group, 40)
+  })).filter((l) => l.key && l.label);
+  const queue = (Array.isArray(st.queue) ? st.queue : []).slice(0, 40).map((q) => ({
+    id: Number.isInteger(Number(q && q.id)) && Number(q.id) >= 1 && Number(q.id) <= 9999999 ? Number(q.id) : 0,    // not numIn(): that would turn a bad id into 1, a real photo's id
+    name: cleanText(q && q.name, 80),
+    thumb: /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]{10,160000}$/.test(String((q && q.thumb) || '')) ? String(q.thumb) : '',
+    used: !!(q && q.used),
+    phone: !!(q && q.phone),
+    edited: !!(q && q.edited),
+    selOrder: numIn(q && q.selOrder, 0, 12, 0)
+  })).filter((q) => q.id > 0);
+  let lastResult = null;
+  if (st.lastResult && typeof st.lastResult === 'object') {
+    const lr = st.lastResult;
+    lastResult = {
+      sessionNumber: numIn(lr.sessionNumber, 1, 999999, 1),
+      qrUrl: cleanText(lr.qrUrl, 300),
+      thumb: /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]{10,250000}$/.test(String(lr.thumb || '')) ? String(lr.thumb) : '',
+      label: cleanText(lr.label, 80),
+      printing: !!lr.printing,
+      at: numIn(lr.at, 0, Number.MAX_SAFE_INTEGER, Date.now())
+    };
+  }
+  const next = {
+    layoutMode: cleanText(st.layoutMode, 80) || 'match',
+    fillMode: st.fillMode === 'repeat1' ? 'repeat1' : 'multi',
+    autoOn: !!st.autoOn,
+    need: numIn(st.need, 1, 12, 1),
+    rawShots: numIn(st.rawShots, 1, 12, 1),
+    activeLabel: cleanText(st.activeLabel, 80) || 'Solo (1 shot)',
+    layouts,
+    queue,
+    lastResult
+  };
+  // The phone asks "anything new since <updatedAt>?" and gets a tiny answer when nothing changed, so it does not pull every
+  // thumbnail again every second and a half over the booth Wi-Fi. A push that changes nothing keeps the same updatedAt.
+  const { updatedAt: _u, ...prev } = roveDeskState;
+  if (JSON.stringify(prev) !== JSON.stringify(next) || !roveDeskState.updatedAt) roveDeskState = { ...next, updatedAt: Date.now() };
+  return true;
+}
+export function roveCmdTake() {
+  const out = roveCmdQueue;
+  roveCmdQueue = [];
+  return out;
+}
+function handleRoveControl(req, res, url, kind) {
+  const cors = { 'access-control-allow-origin': '*' };
+  if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': kind === 'rove-state' ? 'GET' : 'POST', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
+  const json = (code, o) => send(res, code, 'application/json', JSON.stringify(o), cors);
+  if (kind === 'rove-state') {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'Method not allowed', cors);
+    if (roveDeskState.updatedAt && url.searchParams.get('since') === String(roveDeskState.updatedAt)) return json(200, { ok: true, same: true, updatedAt: roveDeskState.updatedAt });
+    return json(200, { ok: true, ...roveDeskState });
+  }
+  if (req.method !== 'POST') return send(res, 405, 'text/plain', 'Method not allowed', cors);
+  const q = url.searchParams;
+  const act = cleanText(q.get('do'), 30);
+  if (!['make', 'config', 'print', 'next', 'clear'].includes(act)) return json(400, { ok: false, error: 'Invalid command' });
+  const cmd = { do: act, at: Date.now() };
+  if (act === 'make') {
+    const ids = String(q.get('ids') || '').split(',').map((x) => Number(x)).filter((n) => Number.isFinite(n) && n > 0).slice(0, 12);
+    if (!ids.length) return json(400, { ok: false, error: 'Pick at least 1 photo' });
+    cmd.ids = ids;
+    cmd.original = q.get('original') === '1';
+  } else if (act === 'config') {
+    if (q.has('layoutMode')) cmd.layoutMode = cleanText(q.get('layoutMode'), 80);
+    if (q.has('fillMode')) cmd.fillMode = q.get('fillMode') === 'repeat1' ? 'repeat1' : 'multi';
+    if (q.has('autoOn')) cmd.autoOn = q.get('autoOn') === '1';
+  }
+  if (roveCmdQueue.length >= 60) roveCmdQueue.shift();
+  roveCmdQueue.push(cmd);
+  return json(200, { ok: true });
+}
+
+const ROVE_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Photoman Mobile Control &amp; Queue</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#F6F1EA;color:#1C1A1E;padding:16px 14px 40px;text-align:center}
+h1{font-size:21px;margin:4px 0 2px;font-weight:800;letter-spacing:-.02em}
+p{color:#6B666C;margin:4px 0}
+.st{display:inline-block;font-size:12.5px;font-weight:700;border-radius:99px;padding:3px 12px;background:#E4DCCF;color:#444;margin:4px 0 10px}
+.st.ok{background:#d6f1e2;color:#16683f}.st.bad{background:#f9d8d2;color:#8e2312}
+.card{max-width:480px;margin:10px auto;background:#fff;border-radius:16px;padding:14px;text-align:left;box-shadow:0 2px 10px rgba(40,30,20,.06);border:1px solid #EAE3D5}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;font-weight:800;font-size:14.5px}
+.pill{font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:99px;background:#F4EFE6;color:#5C565C}
+.pill.brand{background:#FCE8E5;color:#C93D27}
+.pill.auto{background:#DCF5E7;color:#16683F}
+.field{margin-top:8px}
+.field label{display:block;font-size:12px;font-weight:700;color:#6B666C;margin-bottom:3px}
+.field select{width:100%;padding:9px 10px;border-radius:10px;border:1.5px solid #DED6C8;font:600 14px inherit;background:#fff;color:#1C1A1E}
+.chk-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding:9px 11px;border-radius:11px;background:#FAF6F0;border:1px solid #EAE3D5;font-size:13.5px;font-weight:700;cursor:pointer}
+.chk-row input{width:18px;height:18px;accent-color:#C93D27}
+.q-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.q-item{position:relative;aspect-ratio:1;border-radius:11px;overflow:hidden;border:2.5px solid transparent;background:#F4EFE6;padding:0;cursor:pointer}
+.q-item img{width:100%;height:100%;object-fit:cover;display:block}
+.q-item.sel{border-color:#C93D27;box-shadow:0 0 0 2px rgba(201,61,39,.25)}
+.q-item.used{opacity:.62}
+.q-badge{position:absolute;top:5px;right:5px;min-width:22px;height:22px;border-radius:99px;background:#C93D27;color:#fff;font:800 12px/22px inherit;text-align:center;padding:0 5px;box-shadow:0 2px 5px rgba(0,0,0,.3)}
+.q-done{position:absolute;bottom:4px;left:4px;right:4px;background:rgba(28,26,30,.75);color:#fff;font-size:10px;font-weight:700;padding:2px 4px;border-radius:5px;text-align:center}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{flex:1;min-width:120px;padding:12px 14px;border-radius:12px;border:0;font:800 14px inherit;cursor:pointer;text-align:center;text-decoration:none}
+.btn.pri{background:#C93D27;color:#fff}
+.btn.sec{background:#1C1A1E;color:#fff}
+.btn.ghost{background:#F4EFE6;color:#1C1A1E;border:1px solid #DED6C8}
+.btn:disabled{opacity:.45;cursor:default}
+.res-box{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.res-pv{width:120px;max-height:160px;border-radius:10px;object-fit:contain;background:#1C1A1E;border:1px solid #DED6C8}
+.res-qr{flex:1;min-width:150px;text-align:center}
+.res-qr img{width:136px;height:136px;image-rendering:pixelated;border-radius:10px;border:1px solid #EAE3D5;padding:4px;background:#fff}
+label.pick{display:inline-flex;align-items:center;justify-content:center;flex:1;min-width:135px;padding:13px 16px;border-radius:12px;background:#C93D27;color:#fff;font-weight:800;font-size:14.5px;cursor:pointer}
+label.pick.alt{background:#1C1A1E}
+input[type=file]{display:none}
+.bar{height:8px;border-radius:5px;background:#E4DCCF;overflow:hidden;margin:5px 0 2px}.bar i{display:block;height:100%;width:0;background:#2EA66B}
+.row{margin:8px 0 0;font-size:12.5px}
+.hint{font-size:12px;color:#6B666C;line-height:1.4;margin-top:6px}
+</style></head><body>
+<h1>📷 Photoman Control &amp; Queue</h1>
+<div class="st" id="conn">Connecting to laptop…</div>
+
+<div class="card" id="resCard" hidden>
+  <div class="card-h"><span>🎉 Latest Framed Print &amp; Guest QR</span><span class="pill auto" id="resMeta">Ready</span></div>
+  <div class="res-box">
+    <img id="resThumb" class="res-pv" alt="Framed print" hidden>
+    <div class="res-qr">
+      <div id="resQrBox"></div>
+      <div id="resQrNote" class="hint" style="margin-top:4px;font-weight:700;color:#1C1A1E">Guest scans to download</div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button type="button" class="btn sec" id="resPrintBtn">🖨️ Print Copy</button>
+    <button type="button" class="btn ghost" id="resNextBtn">⏭️ Next Guest</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-h"><span>🖼️ Photoman Template &amp; Flow</span><span class="pill brand" id="needPill">1 shot</span></div>
+  <div class="field">
+    <label for="laySel">Template / Frame for Photoman</label>
+    <select id="laySel"><option value="match">Match Photobooth Layout</option><option value="solo">Solo (1 photo — built-in design)</option></select>
+  </div>
+  <div class="field" id="fillWrap" hidden>
+    <label for="fillSel">When template has multiple photo spots</label>
+    <select id="fillSel">
+      <option value="multi">Require separate shots (e.g. 2 shots for 2 frames)</option>
+      <option value="repeat1">Use 1 shot only (duplicate into all frames)</option>
+    </select>
+  </div>
+  <label class="chk-row">
+    <span>⚡ Auto-frame incoming DSLR / phone shots</span>
+    <input type="checkbox" id="autoChk">
+  </label>
+  <div class="hint" id="flowHint">Shots from your DSLR or phone appear in the queue below.</div>
+</div>
+
+<div class="card">
+  <div class="card-h"><span>📥 Laptop Photographer Queue</span><span class="pill" id="qCount">0 photos</span></div>
+  <div class="hint" id="qHint">Tap photo(s) below in order, then tap Make Print + QR.</div>
+  <div class="q-grid" id="qGrid"></div>
+  <div class="btn-row">
+    <button type="button" class="btn pri" id="makeBtn" disabled>🖼️ Make Print + QR</button>
+    <button type="button" class="btn ghost" id="origBtn" disabled>🖨️ Print Original</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-h"><span>📱 Send Photos from This Phone</span></div>
+  <div class="btn-row" style="margin-top:4px">
+    <label class="pick" for="cam">📸 Take a Photo</label><input id="cam" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
+    <label class="pick alt" for="f">🖼️ Choose Photos</label><input id="f" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+  </div>
+  <div id="list"></div>
+</div>
+
+<script src="/qr.js"></script>
+<script>
+var T=location.pathname.replace(/[/]+$/,"").replace(/[/]photos$/,"");
+var st=null,sel=[],lastLaySig="",lastResSig="";
+function $(i){return document.getElementById(i)}
+function cmd(q){return fetch(T+"/rove-cmd?"+q,{method:"POST"}).then(function(r){return r.json().catch(function(){return{}})}).then(function(j){setTimeout(poll,250);return j})}
+
+function renderQr(url){
+  var box=$("resQrBox");box.innerHTML="";
+  if(!url){$("resQrNote").textContent="Preparing QR link on laptop…";return}
+  if(typeof qrcode==="function"){
+    try{var q=qrcode(0,"M");q.addData(url);q.make();var im=new Image();im.src=q.createDataURL(4,2);im.alt="Guest QR";box.appendChild(im)}catch(e){}
+  }
+  var a=document.createElement("a");a.href=url;a.target="_blank";a.style.cssText="display:block;font-size:11.5px;color:#C93D27;font-weight:700;margin-top:4px;word-break:break-all";
+  a.textContent=url.replace(/^https?:[/][/]/,"");box.appendChild(a);
+  $("resQrNote").textContent="Show to guest to scan & save";
+}
+
+function applyState(s){
+  st=s;
+  var need=Math.max(1,Number(s.need)||1),rawShots=Math.max(1,Number(s.rawShots)||need);
+  $("needPill").textContent=need===1?"1 shot per print":(need+" shots per print");
+  var lsig=JSON.stringify(s.layouts||[])+"|"+s.layoutMode;
+  if(lsig!==lastLaySig){
+    lastLaySig=lsig;
+    var selEl=$("laySel");selEl.innerHTML="";
+    var lays=(s.layouts&&s.layouts.length)?s.layouts:[{key:"match",label:"Match Photobooth Layout"},{key:"solo",label:"Solo (1 photo)"}];
+    var curG=null,gEl=null;
+    lays.forEach(function(l){
+      var o=document.createElement("option");o.value=l.key;o.textContent=l.label+(l.shots>1?" · "+l.shots+" photos":"");if(l.key===s.layoutMode)o.selected=true;
+      if(l.group){if(l.group!==curG){curG=l.group;gEl=document.createElement("optgroup");gEl.label=l.group;selEl.appendChild(gEl)}gEl.appendChild(o)}else selEl.appendChild(o);
+    });
+  }
+  $("fillWrap").hidden=rawShots<=1;
+  $("fillSel").value=s.fillMode==="repeat1"?"repeat1":"multi";
+  $("autoChk").checked=!!s.autoOn;
+  $("flowHint").textContent=s.autoOn
+    ?("⚡ Auto-Frame is ON: Every "+(need===1?"1 new shot is":(need+" new shots are"))+" automatically placed into "+(s.activeLabel||"your template")+" with QR & print.")
+    :("Manual mode: Tap up to "+need+" photo"+(need>1?"s":"")+" in the queue below (picking 1 photo fills all spots), then tap Make Print + QR.");
+
+  var q=s.queue||[];
+  var validIds={};q.forEach(function(it){validIds[it.id]=1});
+  sel=sel.filter(function(id){return !!validIds[id]});
+  if(sel.length>need)sel=sel.slice(-need);
+
+  $("qCount").textContent=q.length+(q.length===1?" photo":" photos");
+  $("qHint").textContent=q.length
+    ?(need>1?"Tap up to "+need+" photos in order (1 photo repeats in all boxes), then Make Print + QR.":"Tap a photo below, then tap Make Print + QR.")
+    :"No photos in queue yet. Shoot with your DSLR or use Take a Photo below.";
+
+  var grid=$("qGrid");grid.innerHTML="";
+  q.forEach(function(it){
+    var b=document.createElement("button");b.type="button";
+    var si=sel.indexOf(it.id);
+    b.className="q-item"+(si>=0?" sel":"")+(it.used?" used":"");
+    if(it.thumb){var im=new Image();im.src=it.thumb;im.alt=it.name||"photo";b.appendChild(im)}
+    if(si>=0){var bd=document.createElement("span");bd.className="q-badge";bd.textContent=String(si+1);b.appendChild(bd)}
+    if(it.used){var dn=document.createElement("span");dn.className="q-done";dn.textContent="Printed ✓";b.appendChild(dn)}
+    b.onclick=function(){
+      var idx=sel.indexOf(it.id);
+      if(idx>=0)sel.splice(idx,1);
+      else{sel.push(it.id);if(sel.length>need)sel.shift()}
+      applyState(st);
+    };
+    grid.appendChild(b);
+  });
+  $("makeBtn").disabled=!sel.length;
+  $("origBtn").disabled=!sel.length;
+
+  var lr=s.lastResult;
+  $("resCard").hidden=!lr;
+  if(lr){
+    $("resMeta").textContent=lr.printing?"Printing…":("Session #"+(lr.sessionNumber||1));
+    var th=$("resThumb");
+    if(lr.thumb){th.src=lr.thumb;th.hidden=false}else th.hidden=true;
+    var rsig=(lr.sessionNumber||"")+"|"+(lr.qrUrl||"")+"|"+(lr.at||"");
+    if(rsig!==lastResSig){lastResSig=rsig;renderQr(lr.qrUrl||"")}
+  }
+}
+
+var since="";
+function poll(){
+  fetch(T+"/rove-state"+(since?"?since="+encodeURIComponent(since):""),{cache:"no-store"}).then(function(r){return r.json()}).then(function(j){
+    if(j&&j.ok){
+      var c=$("conn");c.className="st ok";c.textContent="✓ Connected · "+(j.activeLabel||(st&&st.activeLabel)||"Photoman Ready");
+      if(j.same)return;
+      since=String(j.updatedAt||"");
+      applyState(j);
+    }
+  }).catch(function(){
+    var c=$("conn");c.className="st bad";c.textContent="No connection to laptop. Join the Booth Wi-Fi.";
+  });
+}
+
+$("laySel").onchange=function(){cmd("do=config&layoutMode="+encodeURIComponent(this.value))};
+$("fillSel").onchange=function(){cmd("do=config&fillMode="+encodeURIComponent(this.value))};
+$("autoChk").onchange=function(){cmd("do=config&autoOn="+(this.checked?"1":"0"))};
+$("makeBtn").onclick=function(){
+  if(!sel.length)return;
+  var ids=sel.slice();sel=[];
+  $("makeBtn").disabled=true;
+  cmd("do=make&ids="+ids.join(","));
+};
+$("origBtn").onclick=function(){
+  if(!sel.length)return;
+  var ids=[sel[0]];sel=[];
+  $("origBtn").disabled=true;
+  cmd("do=make&original=1&ids="+ids.join(","));
+};
+$("resPrintBtn").onclick=function(){cmd("do=print")};
+$("resNextBtn").onclick=function(){cmd("do=next")};
+
 function pick(e){Array.prototype.forEach.call(e.target.files,send);e.target.value=""}
-document.getElementById("f").addEventListener("change",pick);document.getElementById("cam").addEventListener("change",pick);
-function send(file){var row=document.createElement("div");row.className="row";row.innerHTML="<b></b><div class=bar><i></i></div><span></span>";row.querySelector("b").textContent=file.name||"photo";document.getElementById("list").insertBefore(row,document.getElementById("list").firstChild);
-var x=new XMLHttpRequest();x.open("POST",T+"/photo?name="+encodeURIComponent(file.name||"photo.jpg"));x.setRequestHeader("content-type","application/octet-stream");
-x.upload.onprogress=function(p){if(p.lengthComputable)row.querySelector("i").style.width=Math.round(p.loaded/p.total*100)+"%"};
-x.onload=function(){var ok=x.status===200;row.querySelector("span").textContent=ok?"Sent. It is on the laptop now.":"Could not send ("+x.status+"). Try again.";if(ok)row.querySelector("i").style.width="100%"};
-x.onerror=function(){row.querySelector("span").textContent="No connection to the laptop. Are you on the booth Wi-Fi?"};x.send(file)}</script></body></html>`;
+$("f").addEventListener("change",pick);$("cam").addEventListener("change",pick);
+function send(file){
+  var row=document.createElement("div");row.className="row";row.innerHTML="<b></b><div class=bar><i></i></div><span></span>";
+  row.querySelector("b").textContent=file.name||"photo";$("list").insertBefore(row,$("list").firstChild);
+  var x=new XMLHttpRequest();x.open("POST",T+"/photo?name="+encodeURIComponent(file.name||"photo.jpg"));
+  x.setRequestHeader("content-type","application/octet-stream");
+  x.upload.onprogress=function(p){if(p.lengthComputable)row.querySelector("i").style.width=Math.round(p.loaded/p.total*100)+"%"};
+  x.onload=function(){var ok=x.status===200;row.querySelector("span").textContent=ok?"Sent ✓ Appearing in queue…":"Could not send ("+x.status+").";if(ok){row.querySelector("i").style.width="100%";setTimeout(poll,600)}};
+  x.onerror=function(){row.querySelector("span").textContent="No connection to the laptop. Are you on the booth Wi-Fi?"};
+  x.send(file);
+}
+poll();setInterval(function(){if(!document.hidden)poll()},1600);
+</script></body></html>`;
 
 function handleRovePhoto(req, res, url) {
   const cors = { 'access-control-allow-origin': '*' };
@@ -834,6 +1139,7 @@ function handleSend(req, res, url, sm) {
     return send(res, 200, 'text/html; charset=utf-8', ROVE_PAGE);
   }
   if (sm[2] === 'photo') return handleRovePhoto(req, res, url);
+  if (sm[2] === 'rove-state' || sm[2] === 'rove-cmd') return handleRoveControl(req, res, url, sm[2]);
   if (sm[2] === 'hello') {
     if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'GET', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
     const who = url.searchParams.get('r');                 // a recorder says hello (r=1) or that a recording just started (r=rec)
@@ -2154,7 +2460,7 @@ async function handleShare(req, res) {
       return res.end();
     }
   }
-  const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited|proxy|photos|photo|hello|looks|look|manifest|icon|config|clips|choice|act|cmd)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);
+  const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited|proxy|photos|photo|rove-state|rove-cmd|hello|looks|look|manifest|icon|config|clips|choice|act|cmd)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);
   if (sm) return handleSend(req, res, url, sm);
   const om = /^\/o\/([A-Za-z0-9_-]{16,40})(?:\/(f|print)\/([^/]+))?\/?$/.exec(url.pathname);
   if (om) return handleOwn(req, res, url, om);

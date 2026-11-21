@@ -7,7 +7,79 @@ $ErrorActionPreference = 'Stop'
 $src = Get-Content -Raw -Encoding UTF8 (Join-Path $PSScriptRoot 'camera-worker.ps1')
 $m = [regex]::Match($src, "(?s)\`$cs = @'\r?\n(.*?)\r?\n'@")
 if (-not $m.Success) { Write-Output 'FAIL could not find the C# part of camera-worker.ps1'; exit 1 }
-Add-Type -TypeDefinition $m.Groups[1].Value -Language CSharp
+# A made-up Nikon for section 5. It has to be compiled together with the worker (Add-Type's in-memory code cannot be referenced later).
+$fakeSrc = @'
+namespace PbTest
+{
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    public class FakePtp : Pb4uCam.Ptp
+    {
+        public Dictionary<ushort, ushort> Type = new Dictionary<ushort, ushort>();   // property -> PTP data type (4 = 16 bit, 6 = 32 bit)
+        public Dictionary<ushort, uint> Cur = new Dictionary<ushort, uint>();
+        public Dictionary<ushort, byte> GetSet = new Dictionary<ushort, byte>();     // 1 = the camera lets it be changed now
+        public Dictionary<ushort, uint[]> Choices = new Dictionary<ushort, uint[]>();
+        public List<string> Writes = new List<string>();
+        public bool Refuse;
+        public override uint Op(ushort code, params uint[] ps) { return OK; }       // DeviceReady and friends
+        void Put(MemoryStream m, ushort type, uint v) { m.WriteByte((byte)v); m.WriteByte((byte)(v >> 8)); if (type == 6) { m.WriteByte((byte)(v >> 16)); m.WriteByte((byte)(v >> 24)); } }
+        public override uint OpRead(ushort code, out byte[] data, params uint[] ps)
+        {
+            data = new byte[0];
+            if (code != 0x1014 || ps.Length < 1 || !Cur.ContainsKey((ushort)ps[0])) return 0x200A;   // DevicePropNotSupported
+            ushort p = (ushort)ps[0], t = Type[p];
+            var m = new MemoryStream();
+            Put(m, 4, p); Put(m, 4, t); m.WriteByte(GetSet[p]);
+            Put(m, t, Cur[p]); Put(m, t, Cur[p]);                                    // factory default, current
+            m.WriteByte(2); Put(m, 4, (uint)Choices[p].Length);
+            foreach (uint c in Choices[p]) Put(m, t, c);
+            data = m.ToArray();
+            return OK;
+        }
+        public override uint OpWrite(ushort code, byte[] data, params uint[] ps)
+        {
+            if (code != 0x1016) return OK;
+            if (Refuse) return 0x2002;                                               // General Error
+            uint v = data[0] | (uint)(data.Length > 1 ? data[1] << 8 : 0) | (uint)(data.Length > 2 ? data[2] << 16 : 0) | (uint)(data.Length > 3 ? data[3] << 24 : 0);
+            Cur[(ushort)ps[0]] = v; Writes.Add(ps[0].ToString("X4") + "=" + v);
+            return OK;
+        }
+    }
+    // A made-up Canon EOS: answers the event poll (0x9116) with what the test queued, and takes setting writes (0x9110).
+    public class FakeEos : Pb4uCam.Ptp
+    {
+        public List<string> Sets = new List<string>();
+        public uint Refuse;          // answer to a "Save to" write (0 = accept it)
+        public bool Silent;          // accept it but never announce the change
+        public List<byte> Events = new List<byte>();
+        static void U(List<byte> l, uint v) { l.Add((byte)v); l.Add((byte)(v >> 8)); l.Add((byte)(v >> 16)); l.Add((byte)(v >> 24)); }
+        public void Changed(uint prop, uint val) { U(Events, 16); U(Events, 0xC189); U(Events, prop); U(Events, val); }
+        public void Avail(uint prop, int es, params uint[] vals)
+        {
+            U(Events, (uint)(20 + vals.Length * es)); U(Events, 0xC18A); U(Events, prop); U(Events, es == 4 ? 6U : es == 2 ? 4U : 2U); U(Events, (uint)vals.Length);
+            foreach (uint v in vals) { for (int k = 0; k < es; k++) Events.Add((byte)(v >> (8 * k))); }
+        }
+        public override uint Op(ushort code, params uint[] ps) { return OK; }
+        public override uint OpRead(ushort code, out byte[] data, params uint[] ps)
+        {
+            data = new byte[0];
+            if (code == 0x9116) { data = Events.ToArray(); Events.Clear(); }
+            return OK;
+        }
+        public override uint OpWrite(ushort code, byte[] data, params uint[] ps)
+        {
+            if (code != 0x9110) return OK;
+            uint prop = BitConverter.ToUInt32(data, 4), val = BitConverter.ToUInt32(data, 8);
+            Sets.Add(prop.ToString("X4") + "=" + val);
+            if (prop == 0xD11C && Refuse != 0) return Refuse;
+            if (!Silent) Changed(prop, val);
+            return OK;
+        }
+    }
+}
+'@
+Add-Type -TypeDefinition ($m.Groups[1].Value + "`r`n" + $fakeSrc) -Language CSharp
 
 $fails = 0
 function Check([string]$name, [bool]$ok, [string]$got) {
@@ -162,5 +234,123 @@ $c.Id = '\\?\usb#vid_04a9&pid_32b4#0123456789#{6ac27878-a6fa-4155-ba85-f98f491d4
 $listed.Add($c)
 $hint = [Pb4uCam.Worker]::UsbHint($listed)
 Check 'camera already in the list: no USB hint' ($null -eq $hint) $hint
+
+# --- 5. exposure settings the booth's Camera check reads and sets (props / setprops), with a made-up Nikon ---
+$flags = [Reflection.BindingFlags]'NonPublic,Static'
+$W = [Pb4uCam.Worker]
+$expo = $W.GetMethod('ExposureJson', $flags)
+$setx = $W.GetMethod('SetExposure', $flags)
+function New-Fake([bool]$nikon, [int]$program, [byte]$shutterSet) {
+    $f = New-Object PbTest.FakePtp
+    $f.Type[0x500E] = 4; $f.Cur[0x500E] = $program; $f.GetSet[0x500E] = 0; $f.Choices[0x500E] = [uint32[]]@(1, 2, 3, 4)
+    $f.Type[0x500D] = 6; $f.Cur[0x500D] = 100; $f.GetSet[0x500D] = $shutterSet                        # 1/100 s, in 0.0001 s
+    $f.Choices[0x500D] = [uint32[]]@(30000, 1250, 400, 100, 80, 63, 50, 40, 4294967295)               # ..., 1/100, 1/125, 1/160, 1/200, 1/250, bulb
+    $f.Type[0x5007] = 4; $f.Cur[0x5007] = 280; $f.GetSet[0x5007] = 1; $f.Choices[0x5007] = [uint32[]]@(280, 400, 560, 800)   # f/2.8 ...
+    $f.Type[0x500F] = 4; $f.Cur[0x500F] = 1250; $f.GetSet[0x500F] = 1; $f.Choices[0x500F] = [uint32[]]@(100, 200, 400, 800, 1250, 1600, 51200)
+    $W.GetField('ptp', $flags).SetValue($null, $f)
+    $W.GetField('nikon', $flags).SetValue($null, $nikon)
+    return $f
+}
+function Json($s) { return ($s | ConvertFrom-Json) }
+
+$f = New-Fake $true 1 1
+$j = Json ($expo.Invoke($null, $null))
+Check 'props: a Nikon in manual reports its settings' ($j.supported -and $j.program -eq 1 -and $j.shutter -eq 0.01 -and $j.f -eq 2.8 -and $j.iso -eq 1250) ($j | ConvertTo-Json -Compress)
+Check 'props: all three can be changed in manual' ($j.set.shutter -and $j.set.f -and $j.set.iso) ($j | ConvertTo-Json -Compress)
+
+$j = Json ($setx.Invoke($null, @('shutter=0.00625&f=5.6&iso=400')))
+Check 'setprops: picks the camera''s nearest entries and sets them' ($j.results.shutter -eq 'set' -and $j.results.f -eq 'set' -and $j.results.iso -eq 'set') ($j | ConvertTo-Json -Compress)
+Check 'setprops: wrote 1/160 (63), f/5.6 (560), ISO 400' (($f.Writes -join ' ') -eq '500D=63 5007=560 500F=400') ($f.Writes -join ' ')
+Check 'setprops: answers the settings as they are now' ($j.shutter -eq 0.0063 -and $j.f -eq 5.6 -and $j.iso -eq 400) ($j | ConvertTo-Json -Compress)
+
+$j = Json ($setx.Invoke($null, @('f=5.6&iso=400')))
+Check 'setprops: a value already set is "same" and is not written again' ($j.results.f -eq 'same' -and $j.results.iso -eq 'same' -and $f.Writes.Count -eq 3) (($f.Writes -join ' ') + ' ' + ($j | ConvertTo-Json -Compress))
+
+$f = New-Fake $true 3 0                                                                           # aperture priority: the shutter is the camera's own
+$j = Json ($expo.Invoke($null, $null))
+Check 'props: in aperture priority the shutter is not settable' ($j.program -eq 3 -and -not $j.set.shutter -and $j.set.f -and $j.set.iso) ($j | ConvertTo-Json -Compress)
+$j = Json ($setx.Invoke($null, @('shutter=0.00625&f=5.6')))
+Check 'setprops: a locked shutter is reported and not written' ($j.results.shutter -eq 'locked' -and $j.results.f -eq 'set' -and ($f.Writes -join ' ') -eq '5007=560') (($f.Writes -join ' ') + ' ' + ($j | ConvertTo-Json -Compress))
+
+$f = New-Fake $true 1 1; $f.Refuse = $true
+$j = Json ($setx.Invoke($null, @('iso=800')))
+Check 'setprops: a camera that refuses is reported as refused' ($j.results.iso -eq 'refused') ($j | ConvertTo-Json -Compress)
+
+$f = New-Fake $true 1 1
+$j = Json ($setx.Invoke($null, @('nonsense&shutter=abc&f=')))
+Check 'setprops: unreadable input changes nothing' ($f.Writes.Count -eq 0 -and $j.supported) ($j | ConvertTo-Json -Compress)
+
+$f = New-Fake $false 1 1                                                                           # not a Nikon
+Check 'props: another brand is "supported: false" (the booth hides Apply)' ((Json ($expo.Invoke($null, $null))).supported -eq $false) ''
+Check 'setprops: another brand changes nothing' ((Json ($setx.Invoke($null, @('iso=400')))).supported -eq $false -and $f.Writes.Count -eq 0) ''
+
+$f = New-Fake $true 1 1; $f.Cur.Clear()                                                            # the camera answers "not supported" for every property
+Check 'props: a camera with none of the properties is "supported: false"' ((Json ($expo.Invoke($null, $null))).supported -eq $false) ''
+
+# --- 6. a Canon EOS sends its photos to the laptop (0xD11C "Save to") instead of waiting for the SD card, and is put back after ---
+$toHost = $W.GetMethod('CanonToHost', $flags)
+$toCard = $W.GetMethod('CanonToCard', $flags)
+$poll = $W.GetMethod('CanonPoll', $flags)
+$vals = $W.GetField('eosVals', $flags).GetValue($null)
+$avail = $W.GetField('eosAvail', $flags).GetValue($null)
+function Get-Flag([string]$n) { return $W.GetField($n, $flags).GetValue($null) }
+function New-Eos([object]$cur, [uint32[]]$offers, [int]$es) {
+    $e = New-Object PbTest.FakeEos
+    $vals.Clear(); $avail.Clear()
+    $W.GetField('ptp', $flags).SetValue($null, $e)
+    $W.GetField('canonToHost', $flags).SetValue($null, $false)
+    $W.GetField('canonHostGaveUp', $flags).SetValue($null, $false)
+    if ($null -ne $cur) { $e.Changed(0xD11C, [uint32]$cur) }
+    if ($offers) { $e.Avail(0xD11C, $es, $offers) }
+    [void]$poll.Invoke($null, $null)                                                                  # the camera's first batch of news
+    return $e
+}
+
+$e = New-Eos 2 ([uint32[]]@(2, 4)) 4
+Check 'save-to: the first poll learns the current value and the choices' ($vals[[uint16]0xD11C] -eq 2 -and ($avail[[uint16]0xD11C] -join ',') -eq '2,4') (($avail[[uint16]0xD11C]) -join ',')
+[void]$toHost.Invoke($null, $null)
+Check 'save-to: a card camera that offers the computer is set to it' ((Get-Flag 'canonToHost') -and ($e.Sets -join ' ') -eq 'D11C=4') ($e.Sets -join ' ')
+[void]$toCard.Invoke($null, @($false))
+Check 'save-to: letting go of the camera puts it back on the card' (-not (Get-Flag 'canonToHost') -and ($e.Sets -join ' ') -eq 'D11C=4 D11C=2' -and -not (Get-Flag 'canonHostGaveUp')) ($e.Sets -join ' ')
+[void]$toCard.Invoke($null, @($false))
+Check 'save-to: putting it back twice writes once' (($e.Sets -join ' ') -eq 'D11C=4 D11C=2') ($e.Sets -join ' ')
+
+$e = New-Eos 2 ([uint32[]]@(2, 4)) 2                                                                 # a model that sends 16 bit values
+Check 'save-to: 16 bit choices are read too' (($avail[[uint16]0xD11C] -join ',') -eq '2,4') (($avail[[uint16]0xD11C]) -join ',')
+
+$e = New-Eos 2 ([uint32[]]@(1, 2)) 4
+[void]$toHost.Invoke($null, $null)
+Check 'save-to: a camera that does not offer the computer is left alone' (-not (Get-Flag 'canonToHost') -and $e.Sets.Count -eq 0) ($e.Sets -join ' ')
+
+$e = New-Eos 2 $null 4
+[void]$toHost.Invoke($null, $null)
+Check 'save-to: choices not reported: still tries the computer' ((Get-Flag 'canonToHost') -and ($e.Sets -join ' ') -eq 'D11C=4') ($e.Sets -join ' ')
+
+$e = New-Eos $null $null 4
+[void]$toHost.Invoke($null, $null)
+Check 'save-to: a camera that does not list it is left alone' (-not (Get-Flag 'canonToHost') -and $e.Sets.Count -eq 0) ($e.Sets -join ' ')
+
+$e = New-Eos 2 ([uint32[]]@(2, 4)) 4; $e.Refuse = 0x2002
+[void]$toHost.Invoke($null, $null)
+Check 'save-to: a camera that refuses stays on the card, no crash' (-not (Get-Flag 'canonToHost') -and $vals[[uint16]0xD11C] -eq 2) ("$($vals[[uint16]0xD11C]) " + ($e.Sets -join ' '))
+
+$e = New-Eos 2 ([uint32[]]@(2, 4)) 4; $e.Silent = $true
+$vals[[uint16]0xD11C] = [uint32]2
+[void]$toHost.Invoke($null, $null)
+Check 'save-to: accepted and not announced: taken as set (the first photo tells)' ((Get-Flag 'canonToHost')) ($e.Sets -join ' ')
+
+$e = New-Eos 4 ([uint32[]]@(2, 4)) 4
+[void]$toHost.Invoke($null, $null)
+Check 'save-to: left on the computer by a crashed session: kept, and returned to the card at the end' ((Get-Flag 'canonToHost') -and $e.Sets.Count -eq 0) ($e.Sets -join ' ')
+[void]$toCard.Invoke($null, @($false))
+Check 'save-to: ... the card value is 2 (SD)' (($e.Sets -join ' ') -eq 'D11C=2') ($e.Sets -join ' ')
+
+$e = New-Eos 2 ([uint32[]]@(2, 4)) 4
+[void]$toHost.Invoke($null, $null)
+[void]$toCard.Invoke($null, @($true))
+Check 'save-to: giving up puts it back and remembers' ((Get-Flag 'canonHostGaveUp') -and -not (Get-Flag 'canonToHost') -and ($e.Sets -join ' ') -eq 'D11C=4 D11C=2') ($e.Sets -join ' ')
+[void]$toHost.Invoke($null, $null)
+Check 'save-to: after giving up it is not tried again' (-not (Get-Flag 'canonToHost') -and $e.Sets.Count -eq 2) ($e.Sets -join ' ')
+$W.GetField('canonHostGaveUp', $flags).SetValue($null, $false)
 
 if ($fails -eq 0) { Write-Output 'PASS'; exit 0 } else { Write-Output "FAIL ($fails)"; exit 1 }

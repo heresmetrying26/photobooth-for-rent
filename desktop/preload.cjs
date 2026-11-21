@@ -66,6 +66,8 @@ contextBridge.exposeInMainWorld('pb4u', {
   roveInfo: () => ipcRenderer.invoke('pb4u:roveInfo'),
   roveScan: () => ipcRenderer.invoke('pb4u:roveScan'),
   roveTake: (name) => ipcRenderer.invoke('pb4u:roveTake', String(name || '')),
+  roveStateSet: (st) => ipcRenderer.invoke('pb4u:roveStateSet', st || {}),
+  roveCmdTake: () => ipcRenderer.invoke('pb4u:roveCmdTake'),
   // Guests asking for a print
   news: () => ipcRenderer.invoke('pb4u:news'),
   // The operator tapped "Print photo" on an earlier photo in All photos: the booth prints it now.

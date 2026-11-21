@@ -633,6 +633,17 @@ const server = Bun.serve({
           const r = await camCall('battery', '', 10000);
           return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) }, 200, origin));
         }
+        // The booth's Camera check: read the camera's shutter / aperture / ISO, and set them (Nikon; any other camera answers
+        // supported:false). Only numbers ever reach the camera program: each value goes through Number().
+        if (req.method === 'GET' && url.pathname === '/camera/props') {
+          const r = await camCall('props', '', 10000);
+          return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) }, 200, origin));
+        }
+        if (req.method === 'POST' && url.pathname === '/camera/setprops') {
+          const q = ['shutter', 'f', 'iso'].map((k) => { const v = Number(url.searchParams.get(k)); return v > 0 && v < 100000 ? k + '=' + v : ''; }).filter(Boolean).join('&');
+          const r = await camCall('setprops', q, 20000);
+          return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) }, 200, origin));
+        }
         if (req.method === 'POST' && url.pathname === '/camera/close') {
           const r = await camCall('close', '', 10000);
           cam.open = null;

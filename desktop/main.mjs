@@ -17,7 +17,7 @@ import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './li
 import { initSetupSync, handleSetupRequest, syncAllNow } from './lib/setup-sync.mjs';
 import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
-import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
+import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, roveStateSet, roveCmdTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
 import { initBridge, getBridgeInfo, renewBridgeToken, pushBridgeState, sendBridgeEvent, sendCamCommand } from './lib/guest-bridge.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import { makeShrinkPage, makePngToJpeg } from './lib/pageshrink.mjs';
@@ -439,6 +439,8 @@ function wireIpc() {
   ipcMain.handle('pb4u:roveInfo', () => ({ dir: roveDirNow(), sendUrl: roveSendUrl(), previewBase: rovePreviewBase() }));
   ipcMain.handle('pb4u:roveScan', () => roveList());
   ipcMain.handle('pb4u:roveTake', (e, name) => roveTake(name));
+  ipcMain.handle('pb4u:roveStateSet', (e, st) => { try { return roveStateSet(st); } catch { return false; } });
+  ipcMain.handle('pb4u:roveCmdTake', () => { try { return roveCmdTake(); } catch { return []; } });
   // Guests asking for a print from their phone: switched on from the booth's Print settings; requests wait here
   ipcMain.handle('pb4u:printNowTake', () => printNowTake());
   ipcMain.handle('pb4u:printNowDone', (e, id, ok, msg) => printNowDone(id, !!ok, msg));

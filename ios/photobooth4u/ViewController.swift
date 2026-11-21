@@ -1228,6 +1228,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         e["usb"] = false
         e["name"] = caps.model.isEmpty ? "Wi-Fi printer (\(ipPort))" : caps.model
         e["ippPath"] = caps.path
+        if !caps.serviceName.isEmpty { e["dnssd"] = caps.serviceName }      // lets the app find this printer again by name if its address changes
         e["qualities"] = caps.qualities
         e["colorModes"] = caps.colorModes
         e["mediaTypes"] = caps.mediaTypes
@@ -1235,12 +1236,70 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         saveTcpPrinters(list)
     }
 
+    /// Where this printer was last seen: the newer address found by name, else the one that was typed in.
+    private func ippTarget(_ ipPort: String) -> String {
+        if let e = loadTcpPrinters().first(where: { ($0["ip"] as? String) == ipPort }),
+           let live = e["liveIp"] as? String, !live.isEmpty {
+            return live
+        }
+        return String(ipPort.split(separator: ":", maxSplits: 1).first ?? Substring(ipPort))
+    }
+
+    /// The name to look this printer up by on the network: how it lists itself, else the model name it gave.
+    private func ippIdentity(_ ipPort: String) -> String {
+        guard let e = loadTcpPrinters().first(where: { ($0["ip"] as? String) == ipPort }) else { return "" }
+        if let s = e["dnssd"] as? String, !s.isEmpty { return s }
+        return (e["name"] as? String) ?? ""
+    }
+
+    private func rememberIppAddress(_ ipPort: String, _ live: String) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            var list = self.loadTcpPrinters()
+            guard let i = list.firstIndex(where: { ($0["ip"] as? String) == ipPort }) else { return }
+            list[i]["liveIp"] = live
+            self.saveTcpPrinters(list)
+        }
+    }
+
+    /// The printer did not answer at its saved address: look for it by name. When it is found and answers, its new address is
+    /// remembered, so later prints go straight there.
+    private func ippRefind(_ ipPort: String) -> (host: String, probe: IppNet.Probe)? {
+        let name = ippIdentity(ipPort)
+        guard !name.isEmpty, let fresh = IppNet.findByName(name, wait: 6) else { return nil }
+        let p = IppNet.reach(ip: fresh, port: 631, tries: 2)
+        if case .unreachable = p { return nil }
+        rememberIppAddress(ipPort, fresh)
+        return (host: fresh, probe: p)
+    }
+
+    /// Tells the booth page about a printer problem (out of paper, a jam ...). It shows it as a message to the operator.
+    private func emitIppWarn(_ message: String) {
+        let obj: [String: Any] = ["message": message]
+        guard let d = try? JSONSerialization.data(withJSONObject: obj, options: []),
+              let json = String(data: d, encoding: .utf8) else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.webView?.evaluateJavaScript("window.__PBIppWarn&&window.__PBIppWarn(\(json));", completionHandler: nil)
+        }
+    }
+
+    /// After the printer took the photos, keeps an eye on them in the background (the booth is not held up) and warns if one
+    /// does not print.
+    private func watchIppJobs(host: String, path: String, ids: [Int]) {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let limit = min(900.0, 90.0 + 60.0 * Double(ids.count))
+            if let msg = IppNet.watchJobs(ip: host, port: 631, path: path, ids: ids, maxSeconds: limit) {
+                self?.emitIppWarn(msg)
+            }
+        }
+    }
+
     /// window.__PBNet.printIpp: sends each photo to the printer as an IPP Print-Job (copies repeats the whole set) and answers
     /// through window.__PBNetResult, like the Android app does.
     private func sendIppPrint(job: String, ipPort: String, widthMm: Double, heightMm: Double, copies: Int, pagesJson: String, optionsJson: String) {
         guard !job.isEmpty else { return }
-        let host = String(ipPort.split(separator: ":", maxSplits: 1).first ?? Substring(ipPort))
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
             do {
                 guard let pd = pagesJson.data(using: .utf8),
                       let arr = try JSONSerialization.jsonObject(with: pd, options: []) as? [String],
@@ -1268,17 +1327,51 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 let media = (opts["media"] as? String) ?? ""
                 let borderless = (opts["borderless"] as? Bool) ?? false
                 let sets = max(1, min(copies, 20))
+
+                // First make sure the printer answers. One coming out of sleep needs several seconds, and one the router gave a
+                // new address is looked up again by its name. Nothing is sent until it has answered, so waiting and looking again
+                // can never print a photo twice.
+                var host = self.ippTarget(ipPort)
+                var probe = IppNet.reach(ip: host, port: 631, tries: 3)
+                if case .unreachable = probe, let fresh = self.ippRefind(ipPort) {
+                    host = fresh.host
+                    probe = fresh.probe
+                }
+                if case .unreachable = probe {
+                    throw IppNet.Failure("Could not reach the printer. Check it is on, on the same Wi-Fi as this iPad, and that Local Network access is allowed for photobooth4u in the iPad Settings.")
+                }
+                var known: IppNet.Caps? = nil
+                if case .ok(let c) = probe { known = c }
+                if let c = known, let note = IppNet.problem(c) { self.emitIppWarn(note) }
+
+                var ids: [Int] = []
                 for _ in 0..<sets {
                     for p in pages {
-                        try IppNet.printPage(ip: host, port: 631, jpegIn: p, job: "Photobooth", wMm: widthMm, hMm: heightMm,
-                                             quality: quality, color: color, media: media, borderless: borderless)
+                        do {
+                            if let id = try IppNet.printPage(ip: host, port: 631, jpegIn: p, job: "Photobooth", wMm: widthMm, hMm: heightMm,
+                                                             quality: quality, color: color, media: media, borderless: borderless, known: known) {
+                                ids.append(id)
+                            }
+                        } catch let f as IppNet.Failure where f.unreached {
+                            // The printer dropped off the network between the check and the send, so this photo never reached it:
+                            // look for it once more, then send this photo again.
+                            guard let fresh = self.ippRefind(ipPort) else { throw f }
+                            host = fresh.host
+                            if case .ok(let c) = fresh.probe { known = c } else { known = nil }
+                            if let id = try IppNet.printPage(ip: host, port: 631, jpegIn: p, job: "Photobooth", wMm: widthMm, hMm: heightMm,
+                                                             quality: quality, color: color, media: media, borderless: borderless, known: known) {
+                                ids.append(id)
+                            }
+                        }
                     }
                 }
-                self?.emitNetResult(job: job, ok: true)
+                self.emitNetResult(job: job, ok: true)
+                // The printer took the photos. Keep an eye on them without holding the booth up.
+                if let c = known, !ids.isEmpty { self.watchIppJobs(host: host, path: c.path, ids: ids) }
             } catch let f as IppNet.Failure {
-                self?.emitNetResult(job: job, ok: false, error: f.message)
+                self.emitNetResult(job: job, ok: false, error: f.message)
             } catch {
-                self?.emitNetResult(job: job, ok: false, error: error.localizedDescription)
+                self.emitNetResult(job: job, ok: false, error: error.localizedDescription)
             }
         }
     }
@@ -1668,7 +1761,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 enum IppNet {
     struct Failure: Error {
         let message: String
-        init(_ message: String) { self.message = message }
+        /// True when the connection never opened, so nothing at all reached the printer: sending again cannot print twice.
+        let unreached: Bool
+        init(_ message: String, unreached: Bool = false) {
+            self.message = message
+            self.unreached = unreached
+        }
     }
 
     struct Caps {
@@ -1678,6 +1776,8 @@ enum IppNet {
         var qualities: [Int] = []
         var colorModes: [String] = []
         var mediaTypes: [String] = []
+        var stateReasons: [String] = []          // printer-state-reasons: "media-empty-error", "media-jam-error" ...
+        var serviceName = ""                     // printer-dns-sd-name: how the printer is listed by name on the network (Bonjour)
     }
 
     struct Reply {
@@ -1689,6 +1789,7 @@ enum IppNet {
     private final class Box {
         var reply: Reply?
         var error: String?
+        var unreached = false
     }
 
     private struct Writer {
@@ -1715,7 +1816,8 @@ enum IppNet {
         w.attr(0x48, "attributes-natural-language", "en")
         w.attr(0x45, "printer-uri", uri)
         w.attr(0x44, "requested-attributes", "printer-make-and-model")
-        let wanted = ["document-format-supported", "print-quality-supported", "print-color-mode-supported", "media-type-supported"]
+        let wanted = ["document-format-supported", "print-quality-supported", "print-color-mode-supported", "media-type-supported",
+                      "printer-state-reasons", "printer-dns-sd-name"]
         for n in wanted { w.u8(0x44); w.u16(0); w.str(n) }
         w.u8(0x03)
         return w.d
@@ -1792,6 +1894,9 @@ enum IppNet {
                 box.reply = Reply(http: http.statusCode, ipp: code, body: d)
             } else if let ue = error as? URLError {
                 box.error = IppNet.describe(ue)
+                // Only a connection that never opened is certain to have sent nothing. A timeout or a dropped connection could
+                // have happened after the printer took the photo, so those are never treated as "safe to send again".
+                box.unreached = (ue.code == .cannotConnectToHost || ue.code == .cannotFindHost || ue.code == .dnsLookupFailed)
             } else {
                 box.error = error?.localizedDescription ?? "The printer did not answer."
             }
@@ -1801,7 +1906,7 @@ enum IppNet {
         sema.wait()
         session.finishTasksAndInvalidate()
         if let r = box.reply { return r }
-        throw Failure(box.error ?? "The printer did not answer.")
+        throw Failure(box.error ?? "The printer did not answer.", unreached: box.unreached)
     }
 
     /// Walks an IPP response and hands every attribute value to the callback (name, value tag, value bytes).
@@ -1831,15 +1936,21 @@ enum IppNet {
         }
     }
 
-    /// Asks the printer who it is and what it can print. nil when it does not answer IPP.
-    static func fetchCaps(ip: String, port: Int) -> Caps? {
+    enum Probe {
+        case ok(Caps)                // it answered and told us what it is
+        case noIpp                   // it is on the network but does not answer IPP questions
+        case unreachable             // no answer at all
+    }
+
+    /// Asks the printer who it is, what it can print and how it is. Nothing is printed.
+    static func probe(ip: String, port: Int) -> Probe {
         for path in paths {
             let uri = "ipp://\(ip):\(port)\(path)"
             let reply: Reply
             do {
                 reply = try post(ip: ip, port: port, path: path, body: capsRequest(uri: uri), timeout: 6)
             } catch {
-                return nil                                         // not reachable: the other paths will not be either
+                return .unreachable                                // not reachable: the other paths will not be either
             }
             if reply.http != 200 || reply.ipp < 0 || reply.ipp > 2 { continue }
             var c = Caps()
@@ -1851,9 +1962,44 @@ enum IppNet {
                 if name == "print-quality-supported" && tag == 0x23 && raw.count == 4 { c.qualities.append(Int(raw[3])) }
                 if name == "print-color-mode-supported" && tag == 0x44 { c.colorModes.append(value) }
                 if name == "media-type-supported" && (tag == 0x44 || tag == 0x42) { c.mediaTypes.append(value) }
+                if name == "printer-state-reasons" && tag == 0x44 { c.stateReasons.append(value) }
+                if name == "printer-dns-sd-name" && (tag == 0x41 || tag == 0x42) && c.serviceName.isEmpty { c.serviceName = value }
             }
-            return c
+            return .ok(c)
         }
+        return .noIpp
+    }
+
+    /// Asks the printer who it is and what it can print. nil when it does not answer IPP.
+    static func fetchCaps(ip: String, port: Int) -> Caps? {
+        if case .ok(let c) = probe(ip: ip, port: port) { return c }
+        return nil
+    }
+
+    /// Wakes the printer up: asks again a few times, because one that is coming out of sleep needs several seconds before it answers.
+    static func reach(ip: String, port: Int, tries: Int) -> Probe {
+        var last: Probe = .unreachable
+        let n = max(1, tries)
+        for i in 0..<n {
+            last = probe(ip: ip, port: port)
+            if case .unreachable = last {
+                if i < n - 1 { Thread.sleep(forTimeInterval: 2) }
+                continue
+            }
+            return last
+        }
+        return last
+    }
+
+    /// A problem the printer reports about itself (no paper, a jam ...) in plain words, or nil when it reports none.
+    static func problem(_ c: Caps) -> String? {
+        func has(_ key: String) -> Bool {
+            return c.stateReasons.contains(where: { $0.hasPrefix(key) && !$0.hasSuffix("-report") })
+        }
+        if has("media-jam") { return "The printer reports a paper jam. Clear it and the photo prints by itself." }
+        if has("media-empty") { return "The printer reports it is out of paper. Load paper and the photo prints by itself." }
+        if has("door-open") || has("cover-open") { return "The printer reports a cover is open. Close it and the photo prints by itself." }
+        if has("marker-supply-empty") { return "The printer reports it is out of ink. Refill it and the photo prints by itself." }
         return nil
     }
 
@@ -1894,10 +2040,11 @@ enum IppNet {
 
     /// Prints one photo. Tries the page size with the quality / paper settings first, then drops them one at a time if the
     /// printer refuses. A printer that cannot be reached, or that goes quiet mid-job, throws at once: nothing is sent twice.
+    @discardableResult
     static func printPage(ip: String, port: Int, jpegIn: Data, job: String, wMm: Double, hMm: Double,
-                          quality: String, color: String, media: String, borderless: Bool) throws {
+                          quality: String, color: String, media: String, borderless: Bool, known: Caps? = nil) throws -> Int? {
         let jpeg = jpegAt300Dpi(jpegIn)
-        let found = fetchCaps(ip: ip, port: port)
+        let found: Caps? = known ?? fetchCaps(ip: ip, port: port)
         let caps = found ?? Caps()
         let hardEpsonL = caps.model.range(of: "L8050", options: .caseInsensitive) != nil
         var q = 0
@@ -1921,7 +2068,7 @@ enum IppNet {
                                            quality: at.1 ? qv : 0, colorMode: at.1 ? cm : "", mediaType: at.1 ? mt : "",
                                            scaling: scaling, marginMm100: 0)
                 let r = try post(ip: ip, port: port, path: path, body: body, timeout: 90)
-                if r.http == 200 && r.ipp >= 0 && r.ipp <= 2 { return }
+                if r.http == 200 && r.ipp >= 0 && r.ipp <= 2 { return jobId(r.body) }
                 if r.http == 200 && r.ipp == 0x406 {
                     lastErr = "The printer says it has no print queue (code 0x406). Check that IPP / AirPrint is turned on for it."
                 } else if r.http == 200 {
@@ -1934,5 +2081,164 @@ enum IppNet {
             }
         }
         throw Failure(lastErr)
+    }
+
+    // MARK: watching a job after the printer took it
+
+    /// The job number the printer gave a photo it accepted.
+    static func jobId(_ body: Data) -> Int? {
+        var id: Int? = nil
+        parse(body) { name, tag, raw in
+            if name == "job-id" && tag == 0x21 && raw.count == 4 && id == nil {
+                id = (Int(raw[0]) << 24) | (Int(raw[1]) << 16) | (Int(raw[2]) << 8) | Int(raw[3])
+            }
+        }
+        return id
+    }
+
+    static func jobStateRequest(uri: String, jobId: Int) -> Data {
+        var w = Writer()
+        w.u16(0x0200); w.u16(0x0009); w.u32(2)                    // IPP 2.0, Get-Job-Attributes, request id 2
+        w.u8(0x01)
+        w.attr(0x47, "attributes-charset", "utf-8")
+        w.attr(0x48, "attributes-natural-language", "en")
+        w.attr(0x45, "printer-uri", uri)
+        w.u8(0x21); w.str("job-id"); w.u16(4); w.u32(jobId)
+        w.attr(0x44, "requested-attributes", "job-state")
+        w.u8(0x03)
+        return w.d
+    }
+
+    enum JobCheck {
+        case state(Int)              // 3 waiting, 4 held, 5 printing, 6 stopped, 7 cancelled, 8 aborted, 9 done
+        case gone                    // done and forgotten by the printer, or it cannot tell: nothing more to learn
+        case unreachable             // no answer this time (a printer that is busy printing often ignores the network for a while)
+    }
+
+    static func jobCheck(ip: String, port: Int, path: String, jobId: Int) -> JobCheck {
+        let uri = "ipp://\(ip):\(port)\(path)"
+        let reply: Reply
+        do {
+            reply = try post(ip: ip, port: port, path: path, body: jobStateRequest(uri: uri, jobId: jobId), timeout: 8)
+        } catch {
+            return .unreachable
+        }
+        if reply.http != 200 || reply.ipp < 0 || reply.ipp > 2 { return .gone }
+        var st = 0
+        parse(reply.body) { name, tag, raw in
+            if name == "job-state" && tag == 0x23 && raw.count == 4 { st = Int(raw[3]) }
+        }
+        return st == 0 ? .gone : .state(st)
+    }
+
+    /// Follows the photos after the printer took them. Returns a plain-language warning when one did not print, and nil when
+    /// all is well. It stays silent when it cannot tell (a printer that never answers questions about a job proves nothing).
+    static func watchJobs(ip: String, port: Int, path: String, ids: [Int], maxSeconds: TimeInterval) -> String? {
+        var open = ids
+        let started = Date()
+        var stoppedSince: Date? = nil
+        var sawItWaiting = false
+        while !open.isEmpty && Date().timeIntervalSince(started) < maxSeconds {
+            Thread.sleep(forTimeInterval: 4)
+            var still: [Int] = []
+            var anyStopped = false
+            for id in open {
+                switch jobCheck(ip: ip, port: port, path: path, jobId: id) {
+                case .unreachable:
+                    still.append(id)
+                case .gone:
+                    break
+                case .state(let st):
+                    if st == 7 || st == 8 {
+                        return "The printer dropped a photo before it finished printing. Check it for paper, ink or an error message, then print again."
+                    }
+                    if st != 9 {
+                        still.append(id)
+                        sawItWaiting = true
+                        if st == 6 { anyStopped = true }
+                    }
+                }
+            }
+            open = still
+            if anyStopped {
+                if stoppedSince == nil { stoppedSince = Date() }
+            } else {
+                stoppedSince = nil
+            }
+            if let s = stoppedSince, Date().timeIntervalSince(s) > 20 {
+                return "The printer has paused printing. Check it for paper, ink, a jam or an error message. It carries on by itself once that is fixed."
+            }
+        }
+        if !open.isEmpty && sawItWaiting {
+            return "The printer has not finished printing. Check it is on and has paper and ink."
+        }
+        return nil
+    }
+
+    // MARK: finding a printer again by its name
+
+    private final class FindBox {
+        private let lock = NSLock()
+        private var ep: NWEndpoint?
+        private var addr: String?
+        var endpoint: NWEndpoint? { lock.lock(); defer { lock.unlock() }; return ep }
+        var address: String? { lock.lock(); defer { lock.unlock() }; return addr }
+        /// true the first time only
+        func setEndpoint(_ e: NWEndpoint) -> Bool {
+            lock.lock(); defer { lock.unlock() }
+            if ep != nil { return false }
+            ep = e
+            return true
+        }
+        func setAddress(_ a: String) { lock.lock(); addr = a; lock.unlock() }
+    }
+
+    /// Looks for the printer on the network by the name it is listed under (Bonjour), so a new address, when the router gave it a
+    /// different one, is found again. Returns its IPv4 address, or nil when it is not seen within the wait.
+    static func findByName(_ name: String, wait: TimeInterval) -> String? {
+        let want = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if want.isEmpty { return nil }
+        let box = FindBox()
+        let q = DispatchQueue(label: "com.photobooth4u.ipp.find")
+        let seen = DispatchSemaphore(value: 0)
+        let browser = NWBrowser(for: .bonjour(type: "_ipp._tcp", domain: nil), using: .tcp)
+        browser.browseResultsChangedHandler = { results, _ in
+            for r in results {
+                if case let .service(n, _, _, _) = r.endpoint {
+                    let have = n.lowercased()
+                    if have == want || have.hasPrefix(want) {
+                        if box.setEndpoint(r.endpoint) { seen.signal() }
+                        return
+                    }
+                }
+            }
+        }
+        browser.start(queue: q)
+        let got = seen.wait(timeout: .now() + wait)
+        browser.cancel()
+        guard got == .success, let ep = box.endpoint else { return nil }
+
+        // Connect to it once to learn which IPv4 address that name stands for right now.
+        let params = NWParameters.tcp
+        if let ipOpts = params.defaultProtocolStack.internetProtocol as? NWProtocolIP.Options { ipOpts.version = .v4 }
+        let conn = NWConnection(to: ep, using: params)
+        let done = DispatchSemaphore(value: 0)
+        conn.stateUpdateHandler = { state in
+            switch state {
+            case .ready:
+                if let remote = conn.currentPath?.remoteEndpoint, case let .hostPort(host, _) = remote, case let .ipv4(a) = host {
+                    box.setAddress(a.rawValue.map { String($0) }.joined(separator: "."))
+                }
+                done.signal()
+            case .failed, .cancelled:
+                done.signal()
+            default:
+                break
+            }
+        }
+        conn.start(queue: q)
+        _ = done.wait(timeout: .now() + 6)
+        conn.cancel()
+        return box.address
     }
 }

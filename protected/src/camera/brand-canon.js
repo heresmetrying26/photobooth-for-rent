@@ -11,7 +11,16 @@
         // Starts with the same numbers as the other brands. NOT yet tuned on real Canon photos: compare a test shot with the
         // clean-up Off and Auto, then change the numbers here (each is [auto, strong]).
         tune: { denoise: [16, 30], sharpen: [0.6, 0.9], page: [0.35, 0.5] },
-        focusMissText: 'The camera could not lock focus on this photo. Check the lens switch is on AF, add light, and point at something with detail.'
+        focusMissText: 'The camera could not lock focus on this photo. Check the lens switch is on AF, add light, and point at something with detail.',
+        // Camera check (see CAM_GUIDE in photo-quality.js): Canon's mode names, the fastest shutter its flash syncs with, and flash advice.
+        // Flash sync: 60D 1/250 s, 6D and 6D Mark II 1/180 s, most other EOS 1/200 s. In live view a flash needs Silent LV shoot and
+        // Exposure simulation switched off (the booth keeps live view on until the shutter).
+        guide: {
+          modeNames: ['', 'M', 'P', 'Av', 'Tv'],
+          modeHow: 'Turn the mode dial on top of the camera to',
+          syncFor: function (name) { return /\b60D\b/i.test(name) ? 1 / 250 : /\b6D\b/i.test(name) ? 1 / 180 : 1 / 200; },
+          flashHow: 'Raise the built-in flash (60D), or switch the Speedlite on and set it to E-TTL. In the camera menu set Flash firing to Enable. In live view also set Silent LV shoot (Silent shooting) to Disable and Exposure simulation to Disable.'
+        }
       });
 
       // ---- Canon guide for the operator ----

@@ -9,7 +9,8 @@ import { writeFile, rm, mkdtemp, mkdir, readFile } from 'node:fs/promises';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
-import { discoverNetworkPrinters, ippCaps, ippPrintDirect, pickMediaName } from './netprinters.mjs';
+import { discoverNetworkPrinters, ippCaps, ippPrintDirect, pickMediaName, mediaSizeMm, directFormats, labelMediaType } from './netprinters.mjs';
+import { probeUsbPrinters, makeUsbIppTransport } from './usbipp.mjs';
 import * as gopro from './cam-gopro.mjs';
 
 export const HELPER_VERSION = '1.1.12-app';
@@ -21,11 +22,15 @@ let log = (m) => console.log('[helper] ' + m);
 let shrinkPage = null;   // (png Buffer, scale) -> png Buffer of the same size, the picture smaller in the middle on white. Given by the app (Electron).
 
 let toJpeg = null;       // (png Buffer) -> jpeg Buffer. Given by the app (Electron). Needed for printing straight to a printer over IPP.
+let rasterize = null;    // (png / jpeg Buffer, page spec) -> PWG Raster Buffer. Given by the app (Electron). For printers that take only PWG Raster (Brother DCP-T420W).
 let directFile = '';     // where the printers used without a driver are remembered between runs
 
-// Printers used straight over IPP (a Canon SELPHY on the same Wi-Fi), with no Windows / Mac driver. They show up in the
-// printer list under a name like "Canon SELPHY CP1300 (direct 192.168.137.5)" and the booth picks them like any other.
+// Printers used straight over IPP (Wi-Fi: Canon SELPHY, Brother DCP-T420W...), with no Windows / Mac driver. They show up
+// in the printer list under a name like "Brother DCP-T420W (direct 192.168.1.50)" and the booth picks them like any other.
 const direct = new Map();   // name -> { ip, port, path }
+// USB printers with a 7/1/4 IPP-over-USB interface (driverless over USB, e.g. on macOS when no OS queue exists for it).
+const usbDirect = new Map();   // name -> usbProbe entry
+let usbDirectAt = 0;
 function loadDirect() {
   try {
     const a = JSON.parse(readFileSync(directFile, 'utf8'));
@@ -37,10 +42,44 @@ function saveDirect() {
   try { writeFileSync(directFile, JSON.stringify([...direct].map(([name, v]) => ({ name, ...v })))); } catch { /* ignore */ }
 }
 
-export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, directPrintersFile }) {
+function directTarget(name) {
+  if (direct.has(name)) {
+    const d = direct.get(name);
+    return { kind: 'wifi', ip: d.ip, port: d.port, path: d.path, transport: null };
+  }
+  if (usbDirect.has(name)) {
+    const entry = usbDirect.get(name);
+    return { kind: 'usb', ip: 'localhost', port: 631, path: '', entry, transport: makeUsbIppTransport(entry) };
+  }
+  return null;
+}
+
+async function refreshUsbDirect(sysList, force, preFound) {
+  if (!force && usbDirectAt && Date.now() - usbDirectAt < 8000) return;
+  usbDirectAt = Date.now();
+  try {
+    const found = Array.isArray(preFound) ? preFound : await probeUsbPrinters();
+    usbDirect.clear();
+    const sys = (sysList || []).map((n) => ({ name: n, port: '', host: '' }));
+    for (const p of found) {
+      if (!p.hasIppUsb) continue;
+      // On Windows, if the OS already has a print queue for this model (e.g. Brother's USB driver or Microsoft IPP),
+      // keep using that OS queue rather than showing a duplicate entry.
+      if (IS_WIN && installedAs({ ip: '', name: p.name }, sys)) continue;
+      const clean = String(p.name || 'USB printer').replace(/\s*\(USB[^)]*\)\s*$/i, '').replace(/[^\w .\-+]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 48) || 'USB printer';
+      const label = clean + ' (USB direct)';
+      usbDirect.set(label, p);
+    }
+  } catch { /* libusb unavailable or no USB printers */ }
+}
+
+export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, rasterize: raster, directPrintersFile }) {
   if (logger) { log = logger; gopro.setLogger((m) => log('GoPro: ' + m)); }
   if (typeof shrink === 'function') shrinkPage = shrink;
   if (typeof jpeg === 'function') toJpeg = jpeg;
+  if (typeof raster === 'function') rasterize = raster;
+  usbDirect.clear();
+  usbDirectAt = 0;
   if (directPrintersFile) { directFile = directPrintersFile; loadDirect(); }
   try { WORKER_PS = readFileSync(workerPath, 'utf8'); } catch { WORKER_PS = ''; }
   refreshPrinters();
@@ -86,10 +125,12 @@ async function systemPrinters(force) {
   if (Date.now() - printersCache.at > 10000) refreshPrinters();
   return printersCache.list;
 }
-// The computer's own printers, then the ones used straight over IPP.
+// The computer's own printers, then Wi-Fi direct IPP printers, then IPP-over-USB direct printers.
 async function printers(force) {
   const list = await systemPrinters(force);
-  return direct.size ? [...list, ...[...direct.keys()].filter((n) => !list.includes(n))] : list;
+  await refreshUsbDirect(list, force);
+  const extra = [...direct.keys(), ...usbDirect.keys()].filter((n) => !list.includes(n));
+  return extra.length ? [...list, ...extra] : list;
 }
 
 // Remembers a printer to print to straight over IPP. Asks it first, so a wrong address is caught here and not at the event.
@@ -98,7 +139,8 @@ async function addDirectPrinter({ ip, port, path, name }) {
   const p = Number(port) || 631, rp = /^\/[\w\-./]*$/.test(path || '') ? path : '';
   const caps = await ippCaps(ip, p, rp);
   if (!caps) return { ok: false, error: 'The printer at ' + ip + ' did not answer. Is it on and on the same Wi-Fi as this computer?' };
-  if (caps.formats.length && !caps.formats.includes('image/jpeg')) return { ok: false, error: (caps.model || name || 'This printer') + ' can’t take photos straight from the app. Use “Add to this computer” instead.' };
+  const can = directFormats(caps, !!rasterize);   // a JPEG, or (a Brother DCP-T420W) a PWG Raster page the app makes itself
+  if (!can.jpeg && !can.pwg) return { ok: false, error: (caps.model || name || 'This printer') + ' can’t take photos straight from the app. Use “Add to this computer” instead.' };
   const label = (String(name || caps.model || 'Photo printer').replace(/\s*\(direct[^)]*\)\s*$/i, '').replace(/[^\w .\-+]/g, ' ').replace(/\s+/g, ' ').trim() || 'Photo printer').slice(0, 48);
   const full = label + ' (direct ' + ip + ')';
   for (const [n, v] of [...direct]) if (v.ip === ip && n !== full) direct.delete(n);
@@ -169,31 +211,76 @@ const normName = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 // "EPSON L14150 Series" -> "l14150": Windows names the same printer "EPSONC95FED (L14150 Series)", so match on the model code.
 const modelCode = (s) => { const m = String(s || '').match(/\b[A-Za-z]{0,4}-?[A-Za-z]?\d{3,}[A-Za-z0-9-]*\b/g); return m ? normName(m[m.length - 1]) : ''; };
 function installedAs(printer, installed) {
-  const byHost = installed.find((i) => i.host === printer.ip || (i.port && i.port.includes(printer.ip)));
+  const byHost = printer.ip ? installed.find((i) => i.host === printer.ip || (i.port && i.port.includes(printer.ip))) : null;
   if (byHost) return byHost.name;
   const code = modelCode(printer.name);
   if (code.length >= 4) { const hit = installed.find((i) => normName(i.name).includes(code)); if (hit) return hit.name; }
   return '';
 }
+async function usbProbeReport() {
+  const [usbFound, installed] = await Promise.all([probeUsbPrinters().catch(() => []), installedPrinterHosts().catch(() => [])]);
+  await refreshUsbDirect(installed.map((i) => i.name), true, usbFound);
+  return usbFound.map((p) => {
+    const inst = installedAs({ ip: '', name: p.name }, installed);
+    const usbDirectEntry = [...usbDirect.entries()].find(([, v]) => v.key === p.key);
+    return {
+      name: p.name,
+      vid: p.vid,
+      pid: p.pid,
+      vidHex: p.vidHex,
+      pidHex: p.pidHex,
+      hasIppUsb: p.hasIppUsb,
+      hasRawPrinter: p.hasRawPrinter,
+      deviceId: p.deviceId,
+      interfaces: p.interfaces.map((i) => `#${i.num} alt${i.alt} ${i.cls}/${i.sub}/${i.proto}${i.hasBulkPair ? ' bulk' : ''}`),
+      installed: inst,
+      usbDirectName: usbDirectEntry ? usbDirectEntry[0] : '',
+      note: inst ? `Installed on this computer as “${inst}”.` : p.note
+    };
+  });
+}
 let discoverRun = null;
 function discoverPrinters(extra) {
   if (!discoverRun) {
     discoverRun = (async () => {
-      const [res, installed] = await Promise.all([discoverNetworkPrinters({ extra }), installedPrinterHosts().catch(() => [])]);
-      return { ok: true, subnets: res.subnets, checked: res.checked, printers: res.printers.map((p) => ({ ...p, installed: installedAs(p, installed) })) };
+      const [res, installed, usbPrinters] = await Promise.all([
+        discoverNetworkPrinters({ extra }),
+        installedPrinterHosts().catch(() => []),
+        usbProbeReport().catch(() => [])
+      ]);
+      const withDirect = [...installed, ...[...direct.entries()].map(([name, v]) => ({ name, port: 'direct:' + v.ip, host: v.ip }))];
+      return {
+        ok: true,
+        subnets: res.subnets,
+        checked: res.checked,
+        printers: res.printers.map((p) => ({ ...p, installed: installedAs(p, withDirect) })),
+        usbPrinters
+      };
     })().finally(() => { discoverRun = null; });
   }
   return discoverRun;
+}
+// A printer that takes PWG Raster and nothing the system's ready-made drivers use (no JPEG, no PDF, no Apple Raster): a Brother DCP-T420W.
+// The app makes the raster pages itself and sends them over IPP, so it needs no driver on either system.
+async function takesOnlyRaster(ip, port, path) {
+  if (!rasterize) return false;
+  const caps = await ippCaps(ip, port, path, 3000).catch(() => null);
+  const f = (caps && caps.formats) || [];
+  return f.includes('image/pwg-raster') && !f.includes('image/jpeg') && !f.includes('application/pdf') && !f.includes('image/urf');
 }
 async function addNetworkPrinter({ ip, port, path, name }) {
   if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip || '')) return { ok: false, error: 'Bad printer address.' };
   const p = Number(port) || 631, rp = /^\/[\w\-./]*$/.test(path || '') ? path : '/ipp/print';
   const url = `http://${ip}:${p}${rp}`;
+  // macOS has no driver for such a printer (it is not AirPrint), so the app prints to it directly. Windows has its own IPP driver: tried first below.
+  if (!IS_WIN && await takesOnlyRaster(ip, p, rp)) { log('Raster-only printer at ' + ip + ': used straight from the app, no Mac driver.'); return addDirectPrinter({ ip, port: p, path: rp, name }); }
   if (IS_WIN) {
     const script = '$ErrorActionPreference="Stop"; $b=@(Get-Printer|ForEach-Object Name); Add-Printer -IppURL "' + url + '"; $a=@(Get-Printer|ForEach-Object Name); ($a|Where-Object{$b -notcontains $_}) -join "`n"';
     const r = await run('powershell.exe', [...PS, '-Command', script]);
     const added = r.out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)[0];
     if (r.code === 0 && added) { await printers(true); return { ok: true, printer: added }; }
+    // Windows could not add it, but the app can print to it by itself (a Brother DCP-T420W): no driver needed.
+    if (await takesOnlyRaster(ip, p, rp)) { const d = await addDirectPrinter({ ip, port: p, path: rp, name }); if (d.ok) { log('Windows could not add the printer at ' + ip + '; using it straight from the app.'); return d; } }
     // Older Windows builds, or a printer that wants its own driver: hand over to Windows' own "Add a printer".
     launchDetached('cmd.exe', ['/c', 'start', '', 'ms-settings:printers']).catch(() => { });
     return { ok: false, opened: true, error: 'Windows could not add it by itself, so Printers & scanners was opened. Choose Add device and pick ' + (name || ip) + ' there, then come back and refresh.' };
@@ -476,7 +563,6 @@ export const WIN_EPSON_L8050_EXPANSION = {
   retain: { left: 76, top: 22 },
   devmode: { size: 8192, driverVersion: 768, dmSize: 220, extra: 7972, level: 7940, method: 7942 }
 };
-
 const WIN_PRINT_PS = String.raw`
 param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [string]$MediaType = '', [switch]$Borderless, [int]$CustomW = 0, [int]$CustomH = 0, [int]$ActualW = 0, [int]$ActualH = 0, [double]$EpsonScale = 0)
 $ErrorActionPreference = 'Stop'
@@ -1119,15 +1205,46 @@ export async function handleHelper(req, path, search) {
   if (method === 'GET' && path === '/printer/caps') {
     const name = String(search.get('printer') || '').trim();
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404);
-    if (direct.has(name)) return json({ ok: true, mediaTypes: [] });
-    return json({ ok: true, ...(await printerCaps(name)) });
+    const dt = directTarget(name);
+    if (dt) {
+      const cached = CAPS_CACHE.get(name);
+      if (cached && Date.now() - cached.at < 120000) return json({ ok: true, ...cached.caps });
+      const caps = await ippCaps(dt.ip, dt.port, dt.path, 3500, dt.transport).catch(() => null);
+      const list = (caps && Array.isArray(caps.mediaTypes) ? caps.mediaTypes : []).filter(Boolean);
+      const mediaLabels = {};
+      for (const kw of list) mediaLabels[kw] = labelMediaType(kw);
+      const out = { known: list.length > 0, mediaTypes: list, mediaLabels, mediaDefault: '' };
+      CAPS_CACHE.set(name, { at: Date.now(), caps: out });
+      return json({ ok: true, ...out });
+    }
+    const raw = await printerCaps(name);
+    const items = Array.isArray(raw && raw.mediaTypes) ? raw.mediaTypes : [];
+    const mediaLabels = {};
+    let mediaDefault = '';
+    const mediaTypes = [];
+    for (const it of items) {
+      if (!it || !it.value) continue;
+      mediaTypes.push(it.value);
+      mediaLabels[it.value] = it.label || it.value;
+      if (it.selected && !mediaDefault) mediaDefault = it.value;
+    }
+    return json({ ok: true, known: mediaTypes.length > 0, mediaTypes, mediaLabels, mediaDefault, ...(raw && raw.mediaKey ? { mediaKey: raw.mediaKey } : {}) });
+  }
+  if (method === 'GET' && path === '/printer/usb-probe') {
+    try { return json({ ok: true, platform: platform(), printers: await usbProbeReport() }); }
+    catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
   }
   if (path === '/printer/configure' && method === 'POST') {
     let body;
     try { body = await req.json(); } catch { return json({ ok: false, error: 'Bad request' }, 400); }
     const name = String(body.printer || '').trim();
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);
-    if (direct.has(name)) return json({ ok: true, message: 'This printer is used straight from the app, with no driver, so there are no Windows settings to change. Choose the paper in the app (for a SELPHY: Postcard 100×148 mm) and load the matching paper and ink cassette.' });
+    if (directTarget(name)) {
+      const msg = /selphy/i.test(name)
+        ? 'This printer is used straight from the app, with no driver, so there are no system settings to change. Choose Postcard 100×148 mm paper in the app and load the matching paper and ink cassette.'
+        : 'This printer is used straight from the app with no driver needed. Choose paper size, Paper Type (pick Glossy Photo Paper for borderless photo prints) and Print Quality right here in Print settings.';
+      return json({ ok: true, message: msg });
+    }
     if (platform() === 'darwin') {
       // macOS has no per-printer preferences window like Windows: hand the driver's own options (paper, media type, quality...) to the app to show.
       try { const options = await cupsPrinterOptions(name); if (options.length) return json({ ok: true, options }); } catch { /* fall back to System Settings */ }
@@ -1152,7 +1269,7 @@ export async function handleHelper(req, path, search) {
   if (path === '/printer/options' && method === 'GET') {
     const name = String(search.get('printer') || '').trim();
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);
-    if (direct.has(name)) return json({ ok: true, options: [] });
+    if (directTarget(name)) return json({ ok: true, options: [] });
     if (IS_WIN) return json({ ok: true, platformDialog: true, options: [] });
     try { return json({ ok: true, options: await cupsPrinterOptions(name) }); }
     catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
@@ -1162,7 +1279,7 @@ export async function handleHelper(req, path, search) {
     try { body = await req.json(); } catch { return json({ ok: false, error: 'Bad request' }, 400); }
     const name = String(body.printer || '').trim();
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);
-    if (direct.has(name)) return json({ ok: true });
+    if (directTarget(name)) return json({ ok: true });
     if (IS_WIN) return json(await openPrinterSettings(name));
     const selected = body.options && typeof body.options === 'object' ? body.options : {};
     try {
@@ -1212,6 +1329,14 @@ export async function handleHelper(req, path, search) {
         });
       }
       if (method === 'GET' && path === '/camera/battery') { const r = await camCall('battery', '', 10000); return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) })); }
+      // The booth's Camera check: read the camera's shutter / aperture / ISO, and set them (Nikon; any other camera answers supported:false).
+      // Only numbers ever reach the camera program: each value goes through Number().
+      if (method === 'GET' && path === '/camera/props') { const r = await camCall('props', '', 10000); return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) })); }
+      if (method === 'POST' && path === '/camera/setprops') {
+        const q = ['shutter', 'f', 'iso'].map((k) => { const v = Number(search.get(k)); return v > 0 && v < 100000 ? k + '=' + v : ''; }).filter(Boolean).join('&');
+        const r = await camCall('setprops', q, 20000);
+        return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) }));
+      }
       if (method === 'POST' && path === '/camera/close') { const r = await camCall('close', '', 10000); cam.open = null; return send(r, () => json({ ok: true })); }
     } catch (e) {
       cam.open = null;
@@ -1224,12 +1349,17 @@ export async function handleHelper(req, path, search) {
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404);
     const twoUpQ = search.get('twoUp');
     const twoUp = twoUpQ === '1' ? true : twoUpQ === '0' ? false : undefined;
-    if (direct.has(name)) {
-      // A printer used straight over IPP names its own papers: say which one this booth size will go on.
-      const d = direct.get(name), caps = await ippCaps(d.ip, d.port, d.path, 3000);
+    const dtPaper = directTarget(name);
+    if (dtPaper) {
+      // A printer used straight over IPP (Wi-Fi or IPP-over-USB) names its own papers: say which one this booth size will go on.
+      const caps = await ippCaps(dtPaper.ip, dtPaper.port, dtPaper.path, 3000, dtPaper.transport);
       if (!caps) return json({ ok: true, known: false });
       const media = pickMediaName(caps, Number(search.get('w')) || 0, Number(search.get('h')) || 0);
-      return json({ ok: true, known: true, match: media ? { name: media + ' (sent straight to the printer)', borderless: true, isDefault: false } : null, def: '', sizes: caps.mediaSupported.slice(0, 40), paperList: caps.mediaSupported.slice(0, 80).map((s) => ({ key: s, name: s })) });
+      const paperList = caps.mediaSupported.slice(0, 80).map((s) => {
+        const dims = mediaSizeMm(s);
+        return dims ? { key: s, name: s, w: Math.round(dims[0] * 10) / 10, h: Math.round(dims[1] * 10) / 10, borderless: true } : null;
+      }).filter(Boolean);
+      return json({ ok: true, known: true, match: media ? { name: media + (dtPaper.kind === 'usb' ? ' (sent straight over USB)' : ' (sent straight to the printer)'), borderless: true, isDefault: false } : null, def: '', sizes: caps.mediaSupported.slice(0, 40), paperList });
     }
     const info = await paperSizes(name), pick = await pickPaper(name, Number(search.get('w')) || 0, Number(search.get('h')) || 0, twoUp);
     const def = info.def && info.sizes.find((x) => x.key === info.def);
@@ -1259,16 +1389,21 @@ export async function handleHelper(req, path, search) {
       paperName: typeof body.paperName === 'string' ? body.paperName.slice(0, 120) : '',
       mediaType: typeof body.mediaType === 'string' ? body.mediaType.slice(0, 120) : ''
     };
-    const dp = direct.get(name);
+    const dp = directTarget(name);
     const warnings = [];
     const job = dp
       ? prev.then(async () => {
-        // No driver: each page goes to the printer as a JPEG over IPP, on the paper the printer names itself.
+        // No driver: each page goes straight over IPP (Wi-Fi or IPP-over-USB) as JPEG or PWG Raster.
         for (const it of buffers) {
-          const jpeg = it.ext === 'jpg' ? it.buf : (toJpeg ? toJpeg(it.buf) : null);
-          if (!jpeg || !jpeg.length) throw new Error('Could not prepare the photo for the printer.');
-          const r = await ippPrintDirect({ ip: dp.ip, port: dp.port, path: dp.path, jpeg, widthMm: Number(body.widthMm) || 0, heightMm: Number(body.heightMm) || 0 });
-          log('Direct print on ' + name + ': paper ' + r.media + ', scaling ' + (r.scaling || 'printer default'));
+          const jpeg = it.ext === 'jpg' ? it.buf : null;
+          if (!jpeg && !toJpeg && !rasterize) throw new Error('Could not prepare the photo for the printer.');
+          const r = await ippPrintDirect({
+            ip: dp.ip, port: dp.port, path: dp.path, transport: dp.transport,
+            jpeg, toJpeg, image: it.buf, widthMm: Number(body.widthMm) || 0, heightMm: Number(body.heightMm) || 0,
+            rasterize, quality, mediaType: opts.mediaType, paperName: opts.paperName,
+            borderless: typeof body.borderless === 'boolean' ? body.borderless : undefined
+          });
+          log((dp.kind === 'usb' ? 'Direct USB print on ' : 'Direct print on ') + name + ': paper ' + r.media + (r.format === 'image/pwg-raster' ? ', PWG raster ' + r.dpi + ' dpi' + (r.mediaType ? ', ' + r.mediaType : '') : ', scaling ' + (r.scaling || 'printer default')));
         }
       })
       : prev.then(async () => {

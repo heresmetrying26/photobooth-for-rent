@@ -945,14 +945,14 @@ namespace Pb4uCam
         }
         static int Width(string s) { int x = s.IndexOf('x'); int w; return x > 0 && int.TryParse(s.Substring(0, x), out w) ? w : 0; }
 
-        public class Desc { public ushort Type; public string Current; public List<string> Choices = new List<string>(); }
+        public class Desc { public ushort Type; public byte GetSet; public string Current; public List<string> Choices = new List<string>(); }   // GetSet: 1 = the camera lets us change it right now, 0 = read only
         static Desc PropDesc(ushort code)
         {
             byte[] d; uint r = ptp.OpRead(0x1014, out d, code);
             if (r != Ptp.OK || d.Length < 6) return null;
             var rd = new Reader(d);
             var o = new Desc();
-            rd.U16(); o.Type = rd.U16(); rd.U8();
+            rd.U16(); o.Type = rd.U16(); o.GetSet = rd.U8();
             rd.Value(o.Type); o.Current = rd.Value(o.Type);
             byte form = rd.U8();
             if (form == 2) { int n = rd.U16(); for (int k = 0; k < n; k++) o.Choices.Add(rd.Value(o.Type)); }
@@ -979,6 +979,83 @@ namespace Pb4uCam
             uint r = ptp.OpWrite(0x1016, data, code);
             WaitReady(2000);
             return r == Ptp.OK;
+        }
+
+        // ---------- exposure settings for the booth's Camera check (Nikon; standard PTP properties) ----------
+        // 0x500E exposure mode (1 manual, 2 program, 3 aperture priority, 4 shutter priority), 0x500D exposure time in 0.0001 s,
+        // 0x5007 f-number x 100, 0x500F ISO. The camera says per property whether it can be changed right now (in aperture priority
+        // the shutter is the camera's own): a setting it will not take is reported, never forced. The mode itself is the dial: never set.
+        // "props" answers {"supported":false} for any other brand, so the booth hides its Apply button.
+        static string Dbl(double v) { return v.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture); }
+        static double DescNum(Desc d)
+        {
+            double v;
+            return d != null && double.TryParse(d.Current, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v) ? v : 0;
+        }
+        static string CanSet(Desc d) { return d != null && d.GetSet == 1 && d.Choices.Count > 0 ? "true" : "false"; }
+        static string ExposureJson()
+        {
+            if (!nikon) return "{\"supported\":false}";
+            Desc m = null, t = null, f = null, i = null;
+            try { m = PropDesc(0x500E); t = PropDesc(0x500D); f = PropDesc(0x5007); i = PropDesc(0x500F); }
+            catch (GoneException) { throw; }
+            catch (Exception e) { Log("Exposure settings not read: " + e.Message); }
+            if (t == null && f == null && i == null) return "{\"supported\":false}";
+            return "{\"supported\":true,\"program\":" + (int)DescNum(m) + ",\"shutter\":" + Dbl(DescNum(t) * 0.0001) + ",\"f\":" + Dbl(DescNum(f) / 100.0) + ",\"iso\":" + (int)DescNum(i) +
+                ",\"set\":{\"shutter\":" + CanSet(t) + ",\"f\":" + CanSet(f) + ",\"iso\":" + CanSet(i) + "}}";
+        }
+        // The camera's own list, the entry nearest (on a log scale) to what was asked for. Entries that are not real values
+        // (Auto / Hi / bulb markers sit at the ends of some lists) are skipped.
+        static string NearChoice(Desc d, double want, double scale)
+        {
+            string best = null; double bestD = double.MaxValue;
+            foreach (string c in d.Choices)
+            {
+                double v;
+                if (!double.TryParse(c, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v)) continue;
+                double x = v * scale;
+                if (x <= 0 || x > 60000) continue;
+                double dd = Math.Abs(Math.Log(x) - Math.Log(want));
+                if (dd < bestD) { bestD = dd; best = c; }
+            }
+            return best;
+        }
+        // arg: "shutter=0.00625&f=5.6&iso=400" (seconds, f-number, ISO; any subset). Answers the settings now plus, per asked setting,
+        // "set" | "same" | "locked" (the camera won't change it in this mode) | "refused" | "unsupported".
+        static string SetExposure(string arg)
+        {
+            if (!nikon) return "{\"supported\":false}";
+            var want = new Dictionary<string, double>();
+            foreach (string kv in (arg ?? "").Split(new char[] { '&', ' ' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                int eq = kv.IndexOf('='); double v;
+                if (eq > 0 && double.TryParse(kv.Substring(eq + 1), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v) && v > 0) want[kv.Substring(0, eq)] = v;
+            }
+            var res = new List<string>();
+            foreach (var spec in new object[][] { new object[] { "shutter", (ushort)0x500D, 0.0001 }, new object[] { "f", (ushort)0x5007, 0.01 }, new object[] { "iso", (ushort)0x500F, 1.0 } })
+            {
+                string key = (string)spec[0]; ushort code = (ushort)spec[1]; double scale = (double)spec[2];
+                double w;
+                if (!want.TryGetValue(key, out w)) continue;
+                string state;
+                try
+                {
+                    Desc d = PropDesc(code);
+                    if (d == null) state = "unsupported";
+                    else if (d.GetSet != 1 || d.Choices.Count == 0) state = "locked";
+                    else
+                    {
+                        string pick = NearChoice(d, w, scale);
+                        state = pick == null ? "unsupported" : pick == d.Current ? "same" : SetProp(code, d.Type, pick) ? "set" : "refused";
+                    }
+                }
+                catch (GoneException) { throw; }
+                catch (Exception e) { Log("Exposure setting " + key + " not changed: " + e.Message); state = "refused"; }
+                Log("Exposure " + key + " -> " + Dbl(w) + ": " + state);
+                res.Add("\"" + key + "\":\"" + state + "\"");
+            }
+            string now = ExposureJson();
+            return now.Substring(0, now.Length - 1) + ",\"results\":{" + string.Join(",", res.ToArray()) + "}}";
         }
 
         // ---------- live view ----------
@@ -2315,6 +2392,8 @@ namespace Pb4uCam
                         case "open": recoverNext = arg.IndexOf("recover") >= 0; kind = "J"; body = Encoding.UTF8.GetBytes(Open()); break;
                         case "info": Need(); kind = "J"; body = Encoding.UTF8.GetBytes(InfoJson()); break;
                         case "battery": Need(); kind = "J"; body = Encoding.UTF8.GetBytes("{\"battery\":" + Battery() + "}"); break;
+                        case "props": Need(); kind = "J"; body = Encoding.UTF8.GetBytes(ExposureJson()); break;
+                        case "setprops": Need(); kind = "J"; body = Encoding.UTF8.GetBytes(SetExposure(arg)); break;
                         case "af":
                             Need();
                             if (nikon)

@@ -156,7 +156,7 @@ Chrome can't open the camera on Windows (Windows' own camera driver holds it), s
   the photo from the ObjectAddedEx / RequestObjectTransfer event, GetObject or 0x9107 in pieces, then 0x9117).
   The helper starts it at launch and keeps it running; it connects back on a private
   127.0.0.1 socket. Endpoints: `GET /camera` (devices), `POST /camera/open`, `POST /camera/live?on=0|1`,
-  `GET /camera/frame` (JPEG), `POST /camera/capture` (JPEG), `GET /camera/battery`, `POST /camera/close`.
+  `GET /camera/frame` (JPEG), `POST /camera/capture` (JPEG), `GET /camera/battery`, `GET /camera/props`, `POST /camera/setprops?shutter=&f=&iso=` (the Camera check; Nikon only, others answer `supported:false`), `POST /camera/close`.
 - On open (Nikon) it sets the camera to JPEG (if it was RAW) and the smallest photo size at least ~2900 px wide
   (D5600: 2992×2000), because the booth uses at most 3000 px and smaller files come over USB faster.
   Canon settings are left as they are (RAW + JPEG: the JPEG is used; RAW only: the booth says to switch to JPEG).
@@ -386,7 +386,7 @@ subfolder. Then **Deploy → Manage deployments → Edit → New version** so th
   7 days after that event's last photo. No Apps Script change is needed for this.
 
 ## Your frames: guests choose, or all on one sheet
-- Setup → 3 Layout → **Your frames**: tick frames. 1 ticked = that frame on its own. With 2 or more ticked, choose
+- Setup → 2 Layout → **Your frames**: tick frames. 1 ticked = that frame on its own. With 2 or more ticked, choose
   **Guests choose one** (each guest taps the frame they want before the countdown; works when the booth is locked;
   combines with "Guests choose the layout") or **All on one sheet** (the old collage) with a **Sheet size**
   (4R, Selphy postcard, 5R, 6R, 8R, A5, A4, Letter; the arrangement re-fits to the size). Saved as `frameMode`,
@@ -505,7 +505,7 @@ folders with the same name.
   and My Events), so no outside service sees the folder links and QRs work on weak internet.
 
 ## Layouts, countdown and date
-- **Layouts** (Setup → 3 · Layout; each card shows the current design): Classic strip (3), Strip 4, Polaroid 4, Grid 4,
+- **Layouts** (Setup → 2 · Layout; each card shows the current design): Classic strip (3), Strip 4, Polaroid 4, Grid 4,
   Hero 1+3, Solo, Duo, Trio, Feature 1+2, Film 6. Strips print two side by side on 4R; every
   other layout is built as an exact 4R (4×6) sheet. New sheet layouts are one line each in
   `SHEET_ROWS` + `LAYOUT_DEFS` inside `protected/booth.html`.
@@ -516,11 +516,13 @@ folders with the same name.
   pick another day; Remove (or the icon again) takes it off. Works on iPad and Android.
 
 ## Design: themes, saved setup, frame, logo and stickers
-Setup is in 7 steps, one at a time: **1 Design** (two tabs: **Ready designs** and **🎨 Colours & background**) · **2 Text** (name,
-date, small line, title style, fonts, colour) · **3 Layout** (layout, guests' choice, countdown) ·
-**4 Camera** (a live view of the camera, full frame or cropped to the layout, the camera picker, Mirror and the camera log) ·
+Setup is in 7 steps, one at a time: **1 Design** (three tabs: **Ready designs**, **🎨 Colours & background** and **Text**: name,
+date, small line, title style, fonts, colour) · **2 Layout** (layout, guests' choice, countdown) ·
+**3 Camera** (a live view of the camera, full frame or cropped to the layout, the camera picker, Mirror, the camera log, and the
+**Camera check**: pick how the event is lit, take a test shot, and see what the camera is set to against what is suggested; on a
+Nikon over the Windows or Android camera program, **Apply suggested settings** sets the shutter, aperture and ISO) · **4 Printer** (paper, printer, auto-print, preview) ·
 **5 Extras** (Frame / Logo / Stickers / Filter tabs) · **6 Share** (Drive folder, all-photos QR to print
-ahead, printing) · **7 Session** (countdown, welcome screen, sounds, payment). The step bar stays at the top with a one-line summary of each step (red = still
+ahead) · **7 Session** (countdown, welcome screen, sounds, payment). The step bar stays at the top with a one-line summary of each step (red = still
 needed), and a bar at the bottom always shows the save status and **Start photo session**. On a
 laptop or tablet in landscape the **preview stays beside the steps**; on phones the **👁 Preview** button
 in the bottom bar (it pulses on the first visit) opens the preview just above the bar, and the steps still
@@ -544,7 +546,7 @@ small line; a template's own colours come first under Text colour.
   layout becomes **My frame** (a 2×6-shaped frame prints two side by side on 4R). An image with no
   boxes (or one see-through middle) is a plain overlay drawn on top of any layout. **Logo**: PNG/JPG
   in a corner or centre, adjustable size.
-- **Frame collage** (was "My frames sheet"): two or more frames on one 4R print. In **3 · Layout →
+- **Frame collage** (was "My frames sheet"): two or more frames on one 4R print. In **2 · Layout →
   Your frames** tick the frames to use (1 ticked = **My frame**, 2+ = **Frame collage**; **+ Upload
   more** is right there). The booth picks the arrangement that fits them best; change it under
   *Arrange them on the 4R sheet* (One, 2 side by side, Top + bottom, Tall + 2, Tall + 1 + 2 strips,

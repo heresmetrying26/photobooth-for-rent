@@ -3055,6 +3055,62 @@
       color: var(--ink-dim);
     }
 
+    /* Photographer desk: which template the photographer's prints use, and the auto-frame switch */
+    .desk-tpl {
+      align-items: flex-end;
+      gap: 10px 16px;
+    }
+
+    .desk-tpl[hidden],
+    .desk-tpl-l[hidden] {
+      display: none;
+    }
+
+    .desk-tpl-l {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex: 1 1 210px;
+      min-width: 0;
+      font: 700 11.5px 'Manrope', sans-serif;
+      color: var(--ink-dim);
+    }
+
+    .desk-tpl-l select {
+      max-width: 100%;
+      padding: 8px 10px;
+      border: 1.5px solid #DED6C8;
+      border-radius: 10px;
+      background: #fff;
+      color: #1C1A1E;
+      font: 600 13px 'Manrope', sans-serif;
+    }
+
+    .desk-tpl-chk {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-bottom: 8px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .desk-tpl-chk input {
+      width: 17px;
+      height: 17px;
+      accent-color: var(--blue-deep, #C93D27);
+    }
+
+    .desk-tpl-note {
+      flex: 1 0 100%;
+      font: 600 12px 'Manrope', sans-serif;
+      color: var(--ink-dim);
+    }
+
+    .desk-tpl-note b {
+      color: var(--blue-deep, #C93D27);
+    }
+
     .desk-grid {
       padding: 12px 18px;
       display: grid;
@@ -6838,8 +6894,13 @@
       display: none !important;
     }
 
-    body.bt-on #step1> :not(#btStyleSection) {
+    body.bt-on #step1> :not(#btStyleSection):not(#textPane):not(.step-nav) {
       display: none !important;
+    }
+
+    /* The card / certificate wording sits right under the card style (there is no sub-tab bar in this mode). */
+    body.bt-on #step1> #textPane {
+      display: block !important;
     }
 
     body.bt-card .bt-only-cert,
@@ -9285,6 +9346,11 @@
       color: #0369a1;
     }
 
+    .pick-tier-tag.any {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
     .pick-cancel-btn {
       align-self: center;
       min-height: 46px;
@@ -11103,6 +11169,128 @@
       color: var(--ink-dim);
       letter-spacing: 0;
       margin-top: -3px;
+    }
+
+    /* B&W / Colour tags (only shown when "Separate B&W and colour prints" is on) */
+    .lt-tier {
+      display: inline-block;
+      font: 800 11px/1 'Manrope', sans-serif;
+      letter-spacing: 0;
+      padding: 4px 9px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .lt-tier.bw {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .lt-tier.col {
+      background: #e0f2fe;
+      color: #0369a1;
+    }
+
+    .lt-tier.any {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
+    .layout-btn .lt-tier {
+      margin-top: 2px;
+    }
+
+    /* The 3 steps card at the top of Setup > Layout */
+    .tier-card {
+      margin: 0 0 12px;
+    }
+
+    .tier-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tier-head .switch-row {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .tier-collapse {
+      flex: 0 0 auto;
+      min-height: 36px;
+      padding: 0 12px;
+      border: 1.5px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--ink-dim);
+      font: 700 12px 'Manrope', sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .tier-card.collapsed #tierBody {
+      display: none;
+    }
+
+    .tier-card .tier-steps {
+      list-style: none;
+      margin: 10px 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .tier-card .tier-steps li {
+      display: grid;
+      grid-template-columns: 26px 1fr;
+      gap: 10px;
+      align-items: start;
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--ink);
+    }
+
+    .tier-card .tier-n {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--line);
+      color: var(--ink);
+      font: 800 13px/26px 'Manrope', sans-serif;
+      text-align: center;
+    }
+
+    .tier-card li.done .tier-n {
+      background: #16a34a;
+      color: #fff;
+    }
+
+    .tier-card .tier-steps .panel-hint {
+      margin: 2px 0 0;
+    }
+
+    .tier-card .tier-go {
+      margin-top: 6px;
+    }
+
+    .tier-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .tier-row .printer-input {
+      flex: 1 1 200px;
+      min-width: 0;
+    }
+
+    .tier-row .lt-tier {
+      min-width: 118px;
+      text-align: center;
     }
 
     .layout-btn.lt-empty .lt-plus {
@@ -17323,14 +17511,16 @@
       </div>
 
       <nav class="step-bar" id="stepBar" aria-label="Setup steps">
+        <!-- Step ids never changed, so every goStep(n) call keeps working: 1 Design (Text is a sub-tab of it; goStep(2) opens it), 3 Layout, 4 Camera, 8 Printer, 5 Extras, 6 Share, 7 Session.
+             The number on a tab is its place in this bar (goStep fills it in). -->
         <button type="button" class="step-tab" data-step="1"><span class="sn">1</span><span
             class="st"><b>Design</b><small id="stepSum1"></small></span></button>
-        <button type="button" class="step-tab" data-step="2"><span class="sn">2</span><span class="st"><b>Text</b><small
-              id="stepSum2"></small></span></button>
-        <button type="button" class="step-tab" data-step="3"><span class="sn">3</span><span
+        <button type="button" class="step-tab" data-step="3"><span class="sn">2</span><span
             class="st"><b>Layout</b><small id="stepSum3"></small></span></button>
-        <button type="button" class="step-tab" data-step="4"><span class="sn">4</span><span class="st"><b>Camera &amp;
-              printer</b><small id="stepSum4"></small></span></button>
+        <button type="button" class="step-tab" data-step="4"><span class="sn">3</span><span
+            class="st"><b>Camera</b><small id="stepSum4"></small></span></button>
+        <button type="button" class="step-tab" data-step="8"><span class="sn">4</span><span
+            class="st"><b>Printer</b><small id="stepSum8"></small></span></button>
         <button type="button" class="step-tab" data-step="5"><span class="sn">5</span><span
             class="st"><b>Extras</b><small id="stepSum5"></small></span></button>
         <button type="button" class="step-tab" data-step="6"><span class="sn">6</span><span
@@ -17375,7 +17565,7 @@
                 checked> Include the built-in styles in that choice</label>
           </div>
           <div class="bt-editor" id="btTplEditor" hidden></div>
-          <p class="panel-hint" style="margin-top:12px;">The event name, font and date are in the next step. Your own
+          <p class="panel-hint" style="margin-top:12px;">The event name, font and date are in the Text tab above. Your own
             stickers and logo from Extras still go on top.</p>
         </div>
         <div class="seg-tabs d1-tabs" id="designTabs" role="tablist" aria-label="Design">
@@ -17383,6 +17573,7 @@
           <button type="button" data-pane="colours" role="tab" aria-selected="false"><svg class="ic" aria-hidden="true">
               <use href="#i-palette" />
             </svg> Colours &amp; background<small id="backdropSum"></small></button>
+          <button type="button" data-pane="text" role="tab" aria-selected="false"><b aria-hidden="true" style="font-weight:800;">Aa</b> Text<small id="textSum"></small></button>
         </div>
         <div class="panel-section d1-pane on" id="themeSection" data-d1="designs">
           <div class="guest-design-bar" id="guestDesignBar">
@@ -17565,12 +17756,7 @@
             </div>
           </div>
         </div>
-        <div class="step-nav"><span></span><button type="button" class="action-btn primary next-btn" data-go="2">Next:
-            Text →</button></div>
-      </section>
-
-      <!-- STEP 2 · TEXT -->
-      <section class="step" id="step2" data-step="2">
+        <div class="d1-pane" id="textPane" data-d1="text">
         <div class="panel-section" id="btTextSection">
           <p class="panel-label bt-only-card">Trading card</p>
           <p class="panel-label bt-only-cert">Certificate wording</p>
@@ -17716,12 +17902,50 @@
               shadow</label>
           </details>
         </div>
-        <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="1">← Back</button><button
-            type="button" class="action-btn primary next-btn" data-go="3">Next: Layout →</button></div>
+        </div>
+        <div class="step-nav"><span></span><button type="button" class="action-btn primary next-btn" data-go="3">Next:
+            Layout →</button></div>
       </section>
 
       <!-- STEP 3 · LAYOUT & TIMER -->
       <section class="step" id="step3" data-step="3">
+        <!-- Optional: sort designs into B&W (thermal printer) and colour (photo printer). Off by default. -->
+        <div class="panel-section tier-card" id="tierCard">
+          <div class="tier-head">
+            <label class="switch-row" style="margin-top:0;"><span><b>Separate B&amp;W and colour prints</b> <span
+                  class="fb-opt">(optional)</span></span><input type="checkbox" id="tierSplitToggle"></label>
+            <button type="button" class="tier-collapse" id="tierCollapseBtn" aria-expanded="true"
+              aria-controls="tierBody">Hide steps &#9652;</button>
+          </div>
+          <div id="tierBody">
+          <p class="panel-hint" id="tierOffHint" style="margin:4px 0 0;">Off: nothing is sorted. Every layout prints on
+            the printer for its paper size, as it always did. Turn this on if you print black &amp; white on a thermal
+            printer and colour on a photo printer.</p>
+          <ol class="tier-steps" id="tierSteps" style="display:none;">
+            <li class="done"><span class="tier-n">1</span>
+              <div><b>Separating is on</b>
+                <p class="panel-hint">Every layout now carries a tag: <span class="lt-tier bw">&#129534; B&amp;W</span> is
+                  made for a thermal printer, <span class="lt-tier col">&#127912; Colour</span> for a photo printer.</p>
+              </div>
+            </li>
+            <li id="tierStep2"><span class="tier-n">2</span>
+              <div><b>Check your designs</b>
+                <p class="panel-hint" id="tierCount"></p>
+                <p class="panel-hint">A B&amp;W design can become colour (<b>Make colour version</b>, or Colour on your own
+                  frame). A colour design can never go to a thermal printer, because thermal prints black &amp; white
+                  only.</p>
+              </div>
+            </li>
+            <li id="tierStep3"><span class="tier-n">3</span>
+              <div><b>Connect each kind to a printer</b>
+                <p class="panel-hint" id="tierPrinterState"></p>
+                <button type="button" class="action-btn tier-go" data-go="8" style="width:auto;">Open the Printer tab
+                  &rarr;</button>
+              </div>
+            </li>
+          </ol>
+          </div>
+        </div>
         <div class="panel-section" id="formatSection">
           <div class="lay-head">
             <p class="panel-label" style="margin:0;">Layout</p>
@@ -17861,6 +18085,12 @@
           </div>
           <div class="lay-ctx" id="layoutCtx">
             <p class="panel-hint" id="layoutHint" style="margin:0;"></p>
+            <div class="tier-row" id="layoutTierRow" style="display:none;">
+              <span class="lt-tier" id="layoutTierChip"></span>
+              <span class="panel-hint" id="layoutTierText" style="margin:0;flex:1 1 200px;"></span>
+              <button type="button" class="action-btn mini" id="layoutColourBtn" style="display:none;">&#127912; Make
+                colour version</button>
+            </div>
             <div class="layout-paper-row" id="layoutPaperRow"
               style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;">
               <label for="layoutPaperSelect" style="font-size:12px;color:var(--ink-soft,#6b5f52);">Paper size for this
@@ -17893,7 +18123,7 @@
           </select>
           <div class="guest-layouts" id="guestLayouts" hidden></div>
         </div>
-        <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="2">← Back</button><button
+        <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="1">← Back</button><button
             type="button" class="action-btn primary next-btn" data-go="4">Next: Camera →</button></div>
       </section>
 
@@ -18068,6 +18298,43 @@
                 style="flex:1; min-width:130px; margin:0; padding:8px 12px; font-size:13px; font-weight:700; background:var(--ink); color:#fff;">📸
                 Take Test Shot</button>
             </div>
+            <div id="camGuide"
+              style="margin-top:10px; padding:10px 12px; border-radius:10px; background:#f8f9fa; border:1px solid var(--line);">
+              <div style="font-size:12.5px; font-weight:800; color:var(--ink); margin-bottom:4px;">🧭 Camera check</div>
+              <p class="panel-hint" style="margin:0 0 6px; font-size:11.5px;">How is this event lit? Then take a test
+                shot: the table shows what the camera is set to and what to change on it.</p>
+              <div class="chip-row" id="camGuideLight">
+                <button type="button" class="chip active" data-light="flash">Flash or strobe</button>
+                <button type="button" class="chip" data-light="steady">Steady lights</button>
+                <button type="button" class="chip" data-light="room">Room light only</button>
+              </div>
+              <p id="camGuideNote"
+                style="display:none; margin:8px 0 0; padding:6px 8px; border-radius:6px; background:#fff3cd; color:#7a5200; font-size:12px; font-weight:700; line-height:1.45;">
+              </p>
+              <table style="width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px;">
+                <thead>
+                  <tr style="text-align:left; color:var(--ink-dim); font-size:11px;">
+                    <th style="padding:2px 6px;"></th>
+                    <th style="padding:2px 6px;">Current</th>
+                    <th style="padding:2px 6px;">Suggested</th>
+                  </tr>
+                </thead>
+                <tbody id="camGuideRows"></tbody>
+              </table>
+              <div id="camGuideHow" style="display:none; margin-top:8px; font-size:12px; line-height:1.5; color:var(--ink);">
+              </div>
+              <div id="camGuideApplyRow" style="display:none; margin-top:10px;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  <button type="button" class="action-btn" id="camGuideReadBtn"
+                    style="width:auto; margin:0; padding:6px 12px; font-size:12.5px; font-weight:700;">Read from camera</button>
+                  <button type="button" class="action-btn primary" id="camGuideApplyBtn"
+                    style="width:auto; margin:0; padding:6px 12px; font-size:12.5px; font-weight:700;">Apply suggested settings</button>
+                </div>
+                <p class="panel-hint" id="camGuideApplyMsg" style="display:none; margin:6px 0 0; font-size:11.5px;"></p>
+                <p class="panel-hint" style="margin:6px 0 0; font-size:11px;">Sets the shutter, aperture and ISO in the
+                  mode the camera is in. The mode itself is the dial on the camera.</p>
+              </div>
+            </div>
             <details id="camQRow"
               style="display:none; margin-top:10px; font-size:12px; color:var(--ink-dim); background:#f8f9fa; border-radius:8px; padding:8px 10px; border:1px solid var(--line);">
               <summary id="camQTitle" style="font-weight:700; cursor:pointer; color:var(--ink);">Photo options</summary>
@@ -18157,6 +18424,16 @@
             </div>
           </div>
         </div>
+        <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="3">← Back</button><button
+            type="button" class="action-btn primary next-btn" data-go="8">Next: Printer →</button></div>
+      </section>
+
+      <!-- STEP 8 · PRINTER (id 8 so no other step had to be renumbered; it is the 4th tab in the step bar) -->
+      <section class="step" id="step8" data-step="8">
+        <div class="panel-section" id="step8Empty" hidden>
+          <p class="panel-label">Printing</p>
+          <p class="panel-hint" style="margin:0;">Printing isn’t turned on for this booth, so there is nothing to set up here.</p>
+        </div>
         <div class="panel-section hidden" id="step4Printer">
           <p class="panel-label">Printing</p>
           <div class="s4-sum" id="s4PrinterSum"></div>
@@ -18171,6 +18448,18 @@
               style="max-height:170px;border:1px solid #bbb;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);">
             <p class="panel-hint" id="s4ThumbNote" style="margin:0;">The preview shows how the printed page will look.
             </p>
+          </div>
+
+          <div class="fb-card" id="ppTierCard" style="display:none;">
+            <p class="sub-label">B&amp;W and colour printers</p>
+            <p class="panel-hint" style="margin:2px 0 0;">Step 3 of <b>Separate B&amp;W and colour prints</b> (Layout tab).
+              Pick which printer each kind prints on. Leave it on <b>Automatic</b> to use the printer for the paper size.
+              This is saved on this device only, so a tablet and a laptop can use different printers.</p>
+            <div class="tier-row"><span class="lt-tier bw">&#129534; B&amp;W &middot; thermal</span><select
+                id="tierPrinterReceipt" class="printer-input" aria-label="Printer for B&amp;W layouts"></select></div>
+            <div class="tier-row"><span class="lt-tier col">&#127912; Colour</span><select id="tierPrinterPhoto"
+                class="printer-input" aria-label="Printer for colour layouts"></select></div>
+            <p class="panel-hint" id="tierPrinterHint" style="margin:6px 0 0;"></p>
           </div>
 
           <div class="pr-opts" id="printSummaryBox" style="display:none;">
@@ -18234,7 +18523,7 @@
             <p class="panel-hint web-only" id="ppRouteHint" style="margin:4px 0 0;"></p>
           </div>
         </div>
-        <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="3">← Back</button><button
+        <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="4">← Back</button><button
             type="button" class="action-btn primary next-btn" data-go="5">Next: Extras →</button></div>
       </section>
 
@@ -18340,7 +18629,7 @@
                   id="flipGutterToggle" checked></label>
               <label class="switch-row"><span>Page numbers in the margin</span><input type="checkbox"
                   id="flipNumbersToggle" checked></label>
-              <p class="panel-hint" style="margin:8px 0 0;">Paper and printer are chosen in Camera &amp; printer.</p>
+              <p class="panel-hint" style="margin:8px 0 0;">Paper and printer are chosen in the Printer tab.</p>
             </div>
 
             <div class="fb-card">
@@ -18722,7 +19011,7 @@
           </div>
         </div>
 
-        <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="4">← Back</button><button
+        <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="8">← Back</button><button
             type="button" class="action-btn primary next-btn" data-go="6">Next: Share →</button></div>
       </section>
 
@@ -19004,7 +19293,7 @@
             <span>Print first before showing QR pop-up</span>
             <input type="checkbox" id="afterPrintFirstToggle">
           </label>
-          <p class="panel-hint" id="afterPrintFirstHint" style="margin:2px 0 8px;">Synced with Step 4 Printing. Waits
+          <p class="panel-hint" id="afterPrintFirstHint" style="margin:2px 0 8px;">Synced with Automatic printing in the Printer tab. Waits
             until auto-print finishes before revealing the download QR (or switches Print &amp; Done straight to Ready).
           </p>
           <div id="shareStationOptions" style="display:none;margin-top:8px;">
@@ -22099,8 +22388,17 @@
           accept="image/jpeg,image/png,image/webp" multiple hidden></div>
       <div class="desk-watch" id="deskWatch" hidden><span id="deskWatchTxt"></span><button type="button"
           class="desk-btn" id="deskWatchBtn">Choose folder</button></div>
-      <div class="desk-watch" id="deskSoloRow"><label><input type="checkbox" id="deskSolo"> One photo per print (Solo
-          layout, even when the event uses a strip)</label></div>
+      <div class="desk-watch desk-tpl" id="deskSoloRow">
+        <label class="desk-tpl-l" for="deskTpl">Photoman template
+          <select id="deskTpl" title="The layout or frame the photographer's prints use. It never changes the booth's own layout."></select></label>
+        <label class="desk-tpl-l" for="deskFill" id="deskFillWrap" hidden>When the template has several photo spots
+          <select id="deskFill">
+            <option value="multi">Separate photos (tap one photo per spot)</option>
+            <option value="repeat1">One photo fills every spot</option>
+          </select></label>
+        <label class="desk-tpl-chk" title="Frames new camera photos by itself and shows the guest's QR. Photos already in the list are left alone."><input type="checkbox" id="deskAuto"> &#9889; Auto-frame new photos</label>
+        <div class="desk-tpl-note" id="deskTplNote"></div>
+      </div>
       <div class="desk-watch" id="deskQueueInfoRow"
         style="margin-top:4px; font-size:12.5px; color:#6B666C; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
         <span>📥 Incoming roving DSLR photos land in this queue for review before printing.</span>
@@ -22394,6 +22692,9 @@
       // laptop does the camera, the photo folder and the licence; this page only shows the booth (desktop/lib/lan.mjs).
       const LANREMOTE = !DESKTOP && !!(window.__PB && window.__PB.lanRemote && window.__PB.lanRemote.base);
       const LOCALSHARE = DESKTOP || TABLET_LOCAL || LANREMOTE;
+      // The printer is on the laptop that runs the booth: the laptop app itself, or an iPad whose booth page came from the laptop.
+      // Either way prints go to the laptop's own printing service ('/helper'), never to a print dialog on this screen.
+      const LAPTOP_PRINT = DESKTOP || LANREMOTE;
       // The laptop's address on the booth Wi-Fi, as the guests' phones reach it ('' when unknown).
       function lanBaseNow() {
         try {
@@ -23151,13 +23452,14 @@
         land4: { name: 'Landscape 4', shots: 4, kind: 'landscape', hint: 'Landscape 4R: 1 big shot and the name on top, 3 below.' },
         // Receipt photo booth: looks like a shop receipt. Black & white is made for
         // 80 mm / 58 mm thermal receipt printers; the colour one suits photo printers.
-        receipt: { name: 'Receipt (3 shots)', shots: 3, kind: 'receipt', hint: 'Black & white layout formatted for 58 mm and 80 mm thermal receipt printers.' },
+        // tier: 'receipt' = black & white, prints on a thermal printer. A B&W layout can be moved to its colour twin (twin:).
+        receipt: { name: 'Receipt (3 shots)', shots: 3, kind: 'receipt', tier: 'receipt', twin: 'receiptc', hint: 'Black & white layout formatted for 58 mm and 80 mm thermal receipt printers.' },
         receiptc: { name: 'Receipt colour (3 shots)', shots: 3, kind: 'receipt', color: true, hint: 'The receipt look with colour photos. Prints on photo paper (2 side by side on 4R) or a receipt printer.' },
-        receipt1: { name: 'Receipt Solo (1 shot)', shots: 1, kind: 'receipt', hint: '1 large portrait photo receipt with header, totals and barcode. Thermal or photo paper.' },
+        receipt1: { name: 'Receipt Solo (1 shot)', shots: 1, kind: 'receipt', tier: 'receipt', twin: 'receipt1c', hint: '1 large portrait photo receipt with header, totals and barcode. Thermal or photo paper.' },
         receipt1c: { name: 'Receipt Solo colour', shots: 1, kind: 'receipt', color: true, hint: '1 large colour photo receipt. Thermal or photo paper.' },
-        receipt2: { name: 'Receipt Duo (2 shots)', shots: 2, kind: 'receipt', hint: '2 stacked photos on receipt paper. Thermal or photo paper.' },
+        receipt2: { name: 'Receipt Duo (2 shots)', shots: 2, kind: 'receipt', tier: 'receipt', twin: 'receipt2c', hint: '2 stacked photos on receipt paper. Thermal or photo paper.' },
         receipt2c: { name: 'Receipt Duo colour', shots: 2, kind: 'receipt', color: true, hint: '2 stacked colour photos on receipt paper.' },
-        receipt4: { name: 'Receipt Strip 4 (4 shots)', shots: 4, kind: 'receipt', hint: '4 shots in a tall receipt. Thermal or photo paper.' },
+        receipt4: { name: 'Receipt Strip 4 (4 shots)', shots: 4, kind: 'receipt', tier: 'receipt', twin: 'receipt4c', hint: '4 shots in a tall receipt. Thermal or photo paper.' },
         receipt4c: { name: 'Receipt 4 colour', shots: 4, kind: 'receipt', color: true, hint: '4 colour shots on receipt paper or 4R.' },
         // Only offered when the booth type (top of Setup) is Trading card / Certificate.
         card: { name: 'Trading card', shots: 1, kind: 'card', hint: 'One collectible card: the guest’s photo, name, a title line and random stats. 2.5 × 3.5 in.' },
@@ -23180,6 +23482,85 @@
         return has ? ['myframe', 'framesheet'].concat(LAYOUT_ORDER) : LAYOUT_ORDER.concat(['myframe']);
       }
       function layoutDef(key) { return LAYOUT_DEFS[key || currentLayout] || LAYOUT_DEFS.strip; }
+
+      // ---- Pretagged layouts: which printer a design is made for ----
+      // 'receipt' = black & white, prints on a thermal printer.   'photo' = colour, prints on a photo printer.
+      // 'all' = a black & white frame that may go either way.
+      // The rules: a B&W design can be moved to colour (twin: for a built-in layout, the tag on your own frame),
+      // a colour design can never be moved to thermal, because a thermal printer only prints black & white.
+      // OFF BY DEFAULT: "Separate B&W and colour prints" (Setup > Layout) turns the tags, the steps and the
+      // category printers on. While it is off nothing below changes how the booth behaves.
+      Object.keys(LAYOUT_DEFS).forEach(function (k) { var d = LAYOUT_DEFS[k]; if (d.kind !== 'frame' && !d.tier) d.tier = 'photo'; });
+      var tierSplit = false;                  // mirrors printPrefs.splitTier (saved with the setup, so every device on the code has it)
+      function tierSplitOn() { return !!tierSplit && boothType === 'photo'; }
+      // Which printer each category uses is per device (printers are different on every laptop and tablet).
+      var TIER_PRINTER_KEY = 'pb_tier_printers';
+      var tierPrinters = (function () {
+        try { var o = JSON.parse(localStorage.getItem(TIER_PRINTER_KEY) || '{}') || {}; return { receipt: typeof o.receipt === 'string' ? o.receipt : '', photo: typeof o.photo === 'string' ? o.photo : '' }; }
+        catch (e) { return { receipt: '', photo: '' }; }
+      })();
+      function setTierPrinter(tier, name) {
+        tierPrinters[tier] = name || '';
+        try { localStorage.setItem(TIER_PRINTER_KEY, JSON.stringify(tierPrinters)); } catch (e) { }
+      }
+      var LAYOUT_TIER_LABEL = { receipt: '🧾 B&W', photo: '🎨 Colour', all: '✨ Any' };
+      // Does this frame picture carry colour? Counts clearly coloured pixels (the picked photo-window colour is ignored).
+      function frameHasColour(img, key) {
+        try {
+          var k = Math.min(1, 200 / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+          var c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round((img.naturalWidth || img.width) * k)); c.height = Math.max(1, Math.round((img.naturalHeight || img.height) * k));
+          var x = c.getContext('2d'); x.drawImage(img, 0, 0, c.width, c.height);
+          var d = x.getImageData(0, 0, c.width, c.height).data, op = 0, col = 0, kc = key && key.c, kt = key ? (key.t || 30) * 3 : 0;
+          for (var i = 0; i < d.length; i += 4) {
+            if (d[i + 3] < 128) continue;
+            if (kc && Math.abs(d[i] - kc[0]) + Math.abs(d[i + 1] - kc[1]) + Math.abs(d[i + 2] - kc[2]) <= kt) continue;
+            op++;
+            if (Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]) > 40) col++;
+          }
+          return op > 0 && col / op > 0.02;
+        } catch (e) { return false; }
+      }
+      // The tag of one of your own frames. A colour frame is always 'photo'; a frame you tagged thermal earlier stays thermal.
+      function frameTier(f) {
+        if (!f) return 'photo';
+        if (!tierSplitOn()) return f.tier === 'receipt' ? 'receipt' : (f.tier === 'all' ? 'all' : 'photo');   // switch off: as it always was
+        if (f.tier === 'receipt') return 'receipt';
+        if (typeof f.color !== 'boolean' && typeof assetImg === 'function') {
+          // Older frames were never looked at: do it once, now, unless its photo-window colour is still being picked.
+          var im = assetImg(f.id), picking = typeof spotEdit !== 'undefined' && spotEdit && spotEdit.pick && spotEdit.f === f.id && !f.key;
+          if (im && im.complete && (im.naturalWidth || im.width) && !picking) f.color = frameHasColour(im, f.key);
+        }
+        if (f.color) return 'photo';
+        return f.tier === 'photo' ? 'photo' : 'all';
+      }
+      // 'receipt' | 'photo' | 'all' for a layout key (a built-in layout, 'frame:id', 'myframe', 'sheet:id', 'framesheet').
+      function layoutTier(key) {
+        key = key || currentLayout;
+        if (/^frame:/.test(key)) return frameTier(typeof frameById === 'function' ? frameById(key.slice(6)) : null);
+        if (key === 'myframe') return frameTier(typeof activeFrame === 'function' ? activeFrame() : null);
+        if (/^sheet:/.test(key) || key === 'framesheet') return 'photo';
+        var d = LAYOUT_DEFS[key];
+        if (!tierSplitOn()) return d && d.kind === 'receipt' ? 'receipt' : 'photo';   // switch off: the colour receipts count as receipt layouts, as before
+        return d && d.tier ? d.tier : 'photo';
+      }
+      // The printer this device uses for a category (only when the switch is on, and only if this device has it).
+      function tierPrinterName(tier) {
+        if (!tierSplitOn() || !tierPrinters) return '';
+        var n = tierPrinters[tier] || '';
+        if (!n) return '';
+        try {
+          if (helperOn && helper && Array.isArray(helper.printers) && helper.printers.indexOf(n) >= 0) return n;
+          if (typeof wifiByName === 'function' && wifiByName(n)) return n;
+          if (btThermalOn && n === btProfileName()) return n;
+        } catch (e) { }
+        return '';
+      }
+      // Can a guest on this tier (receipt = the thermal option, photo = the colour option) be offered this layout?
+      function layoutFitsTier(key, tier) {
+        var t = layoutTier(key);
+        return tier === 'receipt' ? (t === 'receipt' || t === 'all') : (t === 'photo' || t === 'all');
+      }
       function isStripLayout(key) {
         var k = key || currentLayout, d = layoutDef(k);
         if (d.kind === 'frame') {
@@ -27636,6 +28017,17 @@
         async autoFocus() {
           await this.req('/camera/af' + this.classicQ('?'), { method: 'POST' }, 20000);
         }
+        // The Camera check (see camGuideProbe / camGuideApply): the camera's shutter, aperture and ISO, and a way to set them.
+        // null / { supported: false } when this camera (or this older camera program) can't: the card then stays read-only.
+        async getExposure() {
+          try { const j = await (await this.req('/camera/props', null, 12000)).json(); return j && j.ok && j.supported ? j : null; } catch (e) { return null; }
+        }
+        // want: { shutter: seconds, f: f-number, iso: number } (any subset). Answers the settings now and, per setting,
+        // "set" | "same" | "locked" | "refused" | "unsupported" in results.
+        async setExposure(want) {
+          const q = ['shutter', 'f', 'iso'].filter(function (k) { return Number(want && want[k]) > 0; }).map(function (k) { return k + '=' + Number(want[k]); }).join('&');
+          return await (await this.req('/camera/setprops?' + q, { method: 'POST' }, 25000)).json();
+        }
         async captureImageAsFile() {
           const r = await this.req('/camera/capture' + this.classicQ('?'), { method: 'POST' }, 50000);
           const f = new File([await r.blob()], 'photo.jpg', { type: 'image/jpeg' });
@@ -28487,7 +28879,7 @@
               if (img) img.src = URL.createObjectURL(file);
               let extra = '';
               const warnEl = document.getElementById('usbTestShotWarn'), cropWrap = document.getElementById('usbTestShotCropWrap'), cropCv = document.getElementById('usbTestShotCrop');
-              if (warnEl) warnEl.style.display = 'none';
+              if (warnEl) { warnEl.style.display = 'none'; warnEl.innerHTML = ''; }
               if (cropWrap) cropWrap.style.display = 'none';
               const qp = camQProfile();
               if (qp && qp.tips()) {
@@ -28508,6 +28900,16 @@
                   bm.close();
                 } catch (e) { }
               }
+              // Every brand: what the camera recorded about its flash for this photo (fired or not), and a warning for a shutter
+              // faster than flash sync. Shown whether or not the brand's photo tips are on.
+              try {
+                const fex = await pbReadExif(file);
+                camGuideSetExif(fex);   // fills the Camera check table with what this photo says the camera is set to
+                const ftxt = pbFlashText(fex);
+                if (ftxt) extra += ' · ' + ftxt;
+                const fwarns = pbFlashWarnings(fex);
+                if (warnEl && fwarns.length) { fwarns.forEach(function (t) { const d = document.createElement('div'); d.textContent = '⚠ ' + t; warnEl.appendChild(d); }); warnEl.style.display = 'block'; }
+              } catch (e) { }
               if (meta) meta.textContent = Math.round(file.size / 1024) + ' KB JPEG' + extra + ' · ' + (Date.now() - t0) + ' ms · Inspect sharpness, then switch lens to MF to lock focus.';
               if (box) box.style.display = 'block';
               showToast('Test shot ready! Inspect sharpness above, then flip lens to MF.', 6000);
@@ -29763,7 +30165,9 @@
         return p;
       }
 
-      // ISO / shutter / aperture (and the rotation mark, 1 = upright) from the JPEG's EXIF block. null when not found.
+      // ISO / shutter / aperture / flash / exposure mode (and the rotation mark, 1 = upright) from the JPEG's EXIF block. null when not found.
+      // flash = the camera's own EXIF Flash value (bit 0 = the flash fired), or -1 when the photo has no such record.
+      // program = the EXIF ExposureProgram (1 manual, 2 program, 3 aperture priority, 4 shutter priority, 5-8 scene modes), 0 = not recorded.
       async function pbReadExif(blob) {
         try {
           const b = new Uint8Array(await blob.slice(0, 131072).arrayBuffer());
@@ -29791,8 +30195,8 @@
               };
               const top = ifd(u32(t + 4), [0x8769, 0x0112]);
               if (!top[0x8769] && !top[0x0112]) return null;
-              const ex = top[0x8769] ? ifd(top[0x8769], [0x829A, 0x829D, 0x8827]) : {};
-              return { shutter: ex[0x829A] || 0, f: ex[0x829D] || 0, iso: ex[0x8827] || 0, orientation: top[0x0112] || 1 };
+              const ex = top[0x8769] ? ifd(top[0x8769], [0x829A, 0x829D, 0x8827, 0x9209, 0x8822]) : {};
+              return { shutter: ex[0x829A] || 0, f: ex[0x829D] || 0, iso: ex[0x8827] || 0, flash: ex[0x9209] === undefined ? -1 : ex[0x9209], program: ex[0x8822] || 0, orientation: top[0x0112] || 1 };
             }
             p += 2 + len;
           }
@@ -29800,6 +30204,179 @@
         return null;
       }
       function pbShutterText(s) { return !s ? '' : (s >= 0.5 ? (Math.round(s * 10) / 10) + ' s' : '1/' + Math.round(1 / s) + ' s'); }
+
+      // What the camera itself recorded about its flash for this photo (EXIF Flash, bit 0 = fired). '' when the photo has no record.
+      // Lets the operator tell "the flash fired but the room light was already enough" from "the camera never used its flash".
+      function pbFlashText(ex) {
+        if (!ex || typeof ex.flash !== 'number' || ex.flash < 0) return '';
+        return (ex.flash & 1) ? 'Flash fired' : 'Flash did not fire';
+      }
+      // A flash photo taken faster than the camera can sync with a flash (most cameras: 1/160 to 1/250 s): the flash only lights part of the frame.
+      function pbFlashWarnings(ex) {
+        const w = [];
+        if (ex && typeof ex.flash === 'number' && ex.flash >= 0 && (ex.flash & 1) && ex.shutter > 0 && ex.shutter < 1 / 250 - 1e-9) {
+          w.push('The flash fired at ' + pbShutterText(ex.shutter) + ', faster than a camera can sync with a flash (about 1/160 to 1/250 s), so the flash lights only part of the photo. Use a shutter of 1/160 s or slower (mode M or Tv).');
+        }
+        return w;
+      }
+
+      // ---- Camera check: what the camera is set to, against what suits the way the event is lit ----
+      // The numbers are a starting point for a photobooth (guests 1 to 2 m away, moving a little, in a dim room), not a rule.
+      // A brand changes any of them in its own profile (guide: { ... } in brand-<name>.js): the names of its exposure modes (modeNames),
+      // the fastest shutter its flash can sync with (syncFor), where its mode dial is (modeHow) and what to do on that camera when the
+      // flash did not fire (flashHow). ex = the numbers from pbReadExif (null before a test shot); light = 'flash' | 'steady' | 'room'.
+      // shutter / slowest are exposure times in seconds; fMin / fMax and isoMax are the range that counts as fine.
+      const CAM_GUIDE = {
+        modeNames: ['', 'M', 'P', 'Av', 'Tv'],
+        syncDefault: 1 / 200,
+        light: {
+          flash: { name: 'Flash or strobe', programs: [1], shutter: 1 / 160, slowest: 1 / 100, f: 5.6, fMin: 4, fMax: 11, iso: 400, isoMax: 800 },
+          steady: { name: 'Steady lights', programs: [1], shutter: 1 / 125, slowest: 1 / 60, f: 4, fMin: 2.8, fMax: 8, iso: 800, isoMax: 1600 },
+          room: { name: 'Room light only', programs: [3, 2], shutter: 1 / 60, slowest: 1 / 60, f: 4, fMin: 1, fMax: 5.6, iso: 1600, isoMax: 1600 }
+        }
+      };
+      function camGuideModeName(g, program) {
+        if (program >= 5 && program <= 8) return 'Scene';
+        return (g.modeNames || CAM_GUIDE.modeNames)[program] || '';
+      }
+      function pbApertureText(f) { return f > 0 ? 'f/' + (Math.round(f * 10) / 10) : ''; }
+      // The rows of the table: { key, label, current, suggested, status, how }. status: 'ok' | 'change' | 'info' | 'unknown'.
+      // how = what to do about it, only for 'change'. Pure (no page access) so it can be tested.
+      function camGuideRows(p, ex, light, camName) {
+        const g = Object.assign({}, CAM_GUIDE, (p && p.guide) || {});
+        const L = Object.assign({}, CAM_GUIDE.light[light] || CAM_GUIDE.light.flash, (g.light && g.light[light]) || {});
+        const sync = (typeof g.syncFor === 'function' && g.syncFor(camName || '')) || g.syncDefault;
+        const rows = [];
+        const add = function (key, label, current, suggested, status, how) { rows.push({ key: key, label: label, current: current || '—', suggested: suggested, status: status, how: status === 'change' ? (how || '') : '' }); };
+        // Mode (the dial on the camera: a program cannot change it)
+        const wantMode = camGuideModeName(g, L.programs[0]);
+        if (!(ex && ex.program)) add('mode', 'Mode', '', wantMode, 'unknown');
+        else add('mode', 'Mode', camGuideModeName(g, ex.program), wantMode, L.programs.indexOf(ex.program) >= 0 ? 'ok' : 'change', (g.modeHow || 'Turn the mode dial on top of the camera to') + ' ' + wantMode + '.');
+        // Shutter
+        const wantShutter = Math.max(L.shutter, sync);
+        if (!(ex && ex.shutter > 0)) add('shutter', 'Shutter', '', pbShutterText(wantShutter), 'unknown');
+        else {
+          const tooFast = light === 'flash' && ex.shutter < sync - 1e-9, tooSlow = ex.shutter > L.slowest + 1e-9;
+          add('shutter', 'Shutter', pbShutterText(ex.shutter), pbShutterText(wantShutter), tooFast || tooSlow ? 'change' : 'ok',
+            tooFast ? 'Faster than this camera can sync with a flash, so the flash lights only part of the photo. Use ' + pbShutterText(wantShutter) + ' or slower.'
+              : light === 'flash' ? 'Slow for a flash photo: the room light adds blur and ghosting. Use ' + pbShutterText(wantShutter) + '.'
+                : 'Slow: moving guests will blur. Use ' + pbShutterText(wantShutter) + ' or faster, and raise the ISO or add light.');
+        }
+        // Aperture
+        if (!(ex && ex.f > 0)) add('aperture', 'Aperture', '', pbApertureText(L.f), 'unknown');
+        else {
+          const wide = ex.f < L.fMin - 0.05, narrow = ex.f > L.fMax + 0.05;
+          add('aperture', 'Aperture', pbApertureText(ex.f), pbApertureText(L.f), wide || narrow ? 'change' : 'ok',
+            wide ? 'Wide open: only part of a group will be sharp. Close it to ' + pbApertureText(L.f) + '.' : 'Closed down too far: little light reaches the camera. Open it to ' + pbApertureText(L.f) + '.');
+        }
+        // ISO
+        if (!(ex && ex.iso > 0)) add('iso', 'ISO', '', String(L.iso), 'unknown');
+        else add('iso', 'ISO', String(ex.iso), String(L.iso), ex.iso > L.isoMax ? 'change' : 'ok', 'Grain: ISO ' + ex.iso + ' is high. Add light or a flash so the camera can use ISO ' + L.iso + '.');
+        // Flash: what the camera itself recorded for this photo
+        const known = !!(ex && typeof ex.flash === 'number' && ex.flash >= 0), fired = known && (ex.flash & 1) === 1;
+        if (!known) add('flash', 'Flash', '', light === 'flash' ? 'Fires' : 'Off', 'unknown');
+        else if (light === 'flash') add('flash', 'Flash', fired ? 'Fired' : 'Did not fire', 'Fires', fired ? 'ok' : 'change', g.flashHow || 'Switch the flash on (raise the built-in flash, or turn on the flash on the hot shoe) and set it to automatic (TTL) flash.');
+        else add('flash', 'Flash', fired ? 'Fired' : 'Off', 'Off', fired ? 'info' : 'ok');
+        // The suggestion as a number, for the Apply button: shutter in seconds, aperture as the f-number, ISO.
+        const wants = { shutter: wantShutter, aperture: L.f, iso: L.iso };
+        rows.forEach(function (r) { if (wants[r.key]) r.want = wants[r.key]; });
+        return rows;
+      }
+      // One line above the table, or ''.
+      function camGuideNote(light, ex) {
+        if (light === 'room') return 'Room light only: at an event a flash or steady lights are highly recommended.';
+        if (!ex) return 'Take a test shot to read the camera’s settings.';
+        return '';
+      }
+
+      // The "Camera check" card in the Camera step (#camGuide): lighting chips, the Current / Suggested table, and what to change.
+      // camGuideEx = the numbers of the latest photo the camera took (a test shot or a session shot); null until there is one.
+      var camGuideEx = null;
+      function camGuideLight() { const v = camQStore('pb_cam_light'); return v === 'steady' || v === 'room' ? v : 'flash'; }
+      function camGuideSetExif(ex) { camGuideEx = ex || null; try { camGuideRender(); } catch (e) { } }
+      function camGuideRender() {
+        const box = document.getElementById('camGuide'), tb = document.getElementById('camGuideRows');
+        if (!box || !tb) return;
+        const rb = document.getElementById('camGuideReadBtn'), ab = document.getElementById('camGuideApplyBtn');
+        if (rb && !rb._pbBound) { rb._pbBound = true; rb.addEventListener('click', function () { camGuideMsg('Reading the camera…'); camGuideProbe().then(function () { camGuideMsg(camGuideCan ? '' : 'This camera cannot be read from here: take a test shot instead.'); }); }); }
+        if (ab && !ab._pbBound) { ab._pbBound = true; ab.addEventListener('click', function () { camGuideApply(); }); }
+        const light = camGuideLight(), p = camQProfile();
+        box.querySelectorAll('[data-light]').forEach(function (b) {
+          b.classList.toggle('active', b.dataset.light === light);
+          if (!b._pbBound) { b._pbBound = true; b.addEventListener('click', function () { camQSave('pb_cam_light', b.dataset.light); camGuideRender(); }); }
+        });
+        const rows = camGuideRows(p, camGuideEx, light, (typeof usbCam !== 'undefined' && usbCam && usbCam.name) || '');
+        const colour = { ok: '#1d6f45', change: '#b3261e', info: '#1f5fa8', unknown: 'var(--ink-dim)' };
+        const mark = { ok: '✓ ', change: '⚠ ', info: '', unknown: '' };
+        tb.textContent = '';
+        rows.forEach(function (r) {
+          const tr = document.createElement('tr');
+          [r.label, mark[r.status] + r.current, r.suggested].forEach(function (t, i) {
+            const td = document.createElement('td');
+            td.textContent = t;
+            td.style.cssText = 'padding:4px 6px; border-top:1px solid var(--line);' + (i === 0 ? 'font-weight:700;' : '') + (i === 1 ? 'font-weight:700; color:' + colour[r.status] + ';' : '');
+            tr.appendChild(td);
+          });
+          tb.appendChild(tr);
+        });
+        const how = document.getElementById('camGuideHow');
+        if (how) {
+          how.textContent = '';
+          rows.filter(function (r) { return r.how; }).forEach(function (r) { const d = document.createElement('div'); d.textContent = '⚠ ' + r.label + ': ' + r.how; how.appendChild(d); });
+          how.style.display = how.firstChild ? 'block' : 'none';
+        }
+        const note = document.getElementById('camGuideNote'), nt = camGuideNote(light, camGuideEx);
+        if (note) { note.textContent = nt; note.style.display = nt ? 'block' : 'none'; }
+      }
+
+      // "Read from camera" and "Apply suggested settings": only where the camera program can read and set the camera's shutter, aperture
+      // and ISO (the Windows and Android camera programs for the cameras they support; for any other camera they answer "not
+      // supported" and the two buttons stay hidden). Apply sets those three numbers inside the mode the camera is in. The mode is the
+      // dial on the camera: it is never changed. A setting the camera will not take is reported, never forced.
+      var camGuideCan = false;
+      function camGuideCamera() { return (typeof usbCam !== 'undefined' && usbCam && usbCam.camera && typeof usbCam.camera.getExposure === 'function') ? usbCam.camera : null; }
+      function camGuideMsg(t) { const e = document.getElementById('camGuideApplyMsg'); if (e) { e.textContent = t || ''; e.style.display = t ? 'block' : 'none'; } }
+      function camGuideApplyUi() { const r = document.getElementById('camGuideApplyRow'); if (r) r.style.display = camGuideCan ? 'block' : 'none'; }
+      // A camera reports its shutter as a count of 0.0001 s (1/160 s comes as 0.0063): show the speed its dial calls it (1/160, not 1/159).
+      const PB_SHUTTERS = [8000, 6400, 5000, 4000, 3200, 2500, 2000, 1600, 1250, 1000, 800, 640, 500, 400, 320, 250, 200, 160, 125, 100, 80, 60, 50, 40, 30, 25, 20, 15, 13, 10, 8, 6, 5, 4];
+      function pbSnapShutter(s) {
+        if (!(s > 0) || s >= 0.3) return s || 0;   // 1/3 s and slower: the number already is what the dial shows
+        let best = s, bd = Infinity;
+        PB_SHUTTERS.forEach(function (n) { const d = Math.abs(Math.log(1 / n) - Math.log(s)); if (d < bd) { bd = d; best = 1 / n; } });
+        return best;
+      }
+      // The camera's own numbers become the table's "Current". Whether the flash fired is only known from a photo: kept from the last one.
+      function camGuideTake(j) {
+        camGuideEx = { program: j.program || 0, shutter: pbSnapShutter(j.shutter || 0), f: j.f || 0, iso: j.iso || 0, flash: camGuideEx && typeof camGuideEx.flash === 'number' ? camGuideEx.flash : -1 };
+        camGuideRender();
+      }
+      // Asked once when the camera connects (and by "Read from camera"): can this camera be read and set from here?
+      async function camGuideProbe() {
+        const cam = camGuideCamera();
+        camGuideCan = false;
+        if (cam) { try { const j = await cam.getExposure(); if (j) { camGuideCan = true; camGuideTake(j); } } catch (e) { } }
+        camGuideApplyUi();
+      }
+      async function camGuideApply() {
+        const cam = camGuideCamera();
+        if (!cam) return;
+        const rows = camGuideRows(camQProfile(), camGuideEx, camGuideLight(), (usbCam && usbCam.name) || '');
+        const want = {};
+        rows.forEach(function (r) { if (r.want && r.status === 'change') want[r.key === 'aperture' ? 'f' : r.key] = r.want; });
+        if (!Object.keys(want).length) { camGuideMsg(camGuideEx ? 'Nothing to change: the settings already match.' : 'Take a test shot or press Read from camera first.'); return; }
+        camGuideMsg('Setting the camera…');
+        let j = null;
+        try { j = await cam.setExposure(want); } catch (e) { camGuideMsg('The camera did not answer. Change the settings on the camera instead.'); return; }
+        if (!j || j.supported === false) { camGuideMsg('This camera cannot be set from here. Change the settings on the camera instead.'); return; }
+        const names = { shutter: 'Shutter', f: 'Aperture', iso: 'ISO' }, notDone = [];
+        Object.keys(j.results || {}).forEach(function (k) {
+          const s = j.results[k];
+          if (s === 'locked') notDone.push(names[k] + ' is set by the camera in its current mode (turn the mode dial to the suggested mode first)');
+          else if (s === 'refused' || s === 'unsupported') notDone.push(names[k] + ' was not accepted: change it on the camera');
+        });
+        camGuideTake(j);
+        camGuideMsg(notDone.length ? 'Done, except: ' + notDone.join('; ') + '.' : 'Done. The camera now shows the suggested settings.');
+      }
 
       // What to tell the operator about a photo: grain, motion blur, no focus lock. A brand can add its own lines (p.extraWarnings).
       function camQWarnings(p, ex, focusMiss) {
@@ -29985,6 +30562,8 @@
 
       // The "<Brand> photo options" box in the Camera menu: shown only while that brand is connected.
       function camQUiSync() {
+        try { camGuideRender(); } catch (e) { }   // the Camera check card follows the connected camera too
+        try { camGuideProbe(); } catch (e) { }    // and finds out once whether this camera can be read and set from here
         const row = document.getElementById('camQRow'), sel = document.getElementById('camQCleanSel');
         if (!row || !sel) return;
         const p = camQProfile();
@@ -30032,7 +30611,15 @@
         is: function () { return /nikon/i.test(usbCam.name || ''); },
         keys: { clean: 'pb_nikon_clean', tips: 'pb_nikon_tips', classic: 'pb_nikon_classic' },
         classicHint: 'Turns all the Nikon photo improvements off (clean-up, sharper shrink, new autofocus wait) and goes back to how the Nikon worked before. Use it if shots feel slower or different.',
-        classicOnToast: 'Classic Nikon behaviour on: photos and autofocus work as before.'
+        classicOnToast: 'Classic Nikon behaviour on: photos and autofocus work as before.',
+        // Camera check (see CAM_GUIDE in photo-quality.js): Nikon's mode names (A and S, not Av and Tv), flash sync (1/200 s on
+        // the D5300 / D5600) and flash advice.
+        guide: {
+          modeNames: ['', 'M', 'P', 'A', 'S'],
+          modeHow: 'Turn the mode dial on top of the camera to',
+          syncFor: function () { return 1 / 200; },
+          flashHow: 'Press the flash button on the front of the camera to raise the built-in flash, or switch the flash on the hot shoe on and set it to TTL. Then take the test shot again.'
+        }
         // tune: the default numbers (see CAM_Q_TUNE) are the ones tuned on a D5300 / D5600
       });
       // ---- Canon photo quality (Canon EOS only). Everything Canon-specific about the photo is in this file. ----
@@ -30048,7 +30635,16 @@
         // Starts with the same numbers as the other brands. NOT yet tuned on real Canon photos: compare a test shot with the
         // clean-up Off and Auto, then change the numbers here (each is [auto, strong]).
         tune: { denoise: [16, 30], sharpen: [0.6, 0.9], page: [0.35, 0.5] },
-        focusMissText: 'The camera could not lock focus on this photo. Check the lens switch is on AF, add light, and point at something with detail.'
+        focusMissText: 'The camera could not lock focus on this photo. Check the lens switch is on AF, add light, and point at something with detail.',
+        // Camera check (see CAM_GUIDE in photo-quality.js): Canon's mode names, the fastest shutter its flash syncs with, and flash advice.
+        // Flash sync: 60D 1/250 s, 6D and 6D Mark II 1/180 s, most other EOS 1/200 s. In live view a flash needs Silent LV shoot and
+        // Exposure simulation switched off (the booth keeps live view on until the shutter).
+        guide: {
+          modeNames: ['', 'M', 'P', 'Av', 'Tv'],
+          modeHow: 'Turn the mode dial on top of the camera to',
+          syncFor: function (name) { return /\b60D\b/i.test(name) ? 1 / 250 : /\b6D\b/i.test(name) ? 1 / 180 : 1 / 200; },
+          flashHow: 'Raise the built-in flash (60D), or switch the Speedlite on and set it to E-TTL. In the camera menu set Flash firing to Enable. In live view also set Silent LV shoot (Silent shooting) to Disable and Exposure simulation to Disable.'
+        }
       });
 
       // ---- Canon guide for the operator ----
@@ -30121,7 +30717,15 @@
         id: 'sony', label: 'Sony',
         is: function () { return camIsSony(); },
         keys: { clean: 'pb_sony_clean', tips: 'pb_sony_tips', classic: 'pb_sony_classic' },
-        tune: { denoise: [16, 30], sharpen: [0.6, 0.9], page: [0.35, 0.5] }
+        tune: { denoise: [16, 30], sharpen: [0.6, 0.9], page: [0.35, 0.5] },
+        // Camera check (see CAM_GUIDE in photo-quality.js): Sony's mode names (A and S), the fastest shutter its flash syncs with
+        // (1/160 s is safe on every Alpha), and flash advice.
+        guide: {
+          modeNames: ['', 'M', 'P', 'A', 'S'],
+          modeHow: 'Turn the mode dial on top of the camera to',
+          syncFor: function () { return 1 / 160; },
+          flashHow: 'Raise the flash (or switch the flash on the hot shoe on) and set Flash mode to Fill-flash. Then take the test shot again.'
+        }
       });
       // ---- Webcam Pro: photo clean-up, multi-frame low-light stacking, live FPS warning, and hardware UVC controls ----
       // Works with any standard USB / built-in webcam (Logitech, Razer, Elgato, OBSBOT, Insta360, Anker, Surface, etc.).
@@ -30820,6 +31424,7 @@
             new Promise((_, rej) => { capTimer = setTimeout(() => { const e = new Error('The camera took too long to send the photo'); e.helperMsg = 'The camera took too long to send the photo.'; rej(e); }, USB_CAPTURE_MAX_MS); })
           ]).finally(() => { clearTimeout(capTimer); usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); usbAfterShot(finalShot); });
           const [bmp, exif] = await Promise.all([createImageBitmap(file), pbReadExif(file).catch(() => null)]);
+          try { camGuideSetExif(exif); } catch (e) { }   // the Camera check table follows the latest photo
           const sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;   // whole photo; the layout box crops it once
           const k = Math.min(1, offlineShotMaxPx() / Math.max(sw, sh));
           const c = document.createElement('canvas');
@@ -33079,7 +33684,7 @@
         if (d.kind === 'landscape') return '4R, sideways';
         if (d.kind === 'card') return '2.5\u00d73.5 card, or 4R';
         if (d.kind === 'cert') return 'A4 / Letter, or 4R';
-        if (d.kind === 'receipt') return d.color ? 'Photo paper or receipt' : 'Receipt printer';
+        if (d.kind === 'receipt') return tierSplitOn() ? (d.tier === 'receipt' ? 'Thermal printer' : 'Photo paper') : (d.color ? 'Photo paper or receipt' : 'Receipt printer');
         if (d.kind === 'frame') return key === 'framesheet' ? ((typeof sheetPaper === 'function' && sheetPaper().name) || '4R') : (isStripLayout(key) ? '2\u00d76 or 2 on 4R' : '4R');
         if (d.kind === 'strip') return '2\u00d76 or 2 on 4R';
         return '4R (4\u00d76)';
@@ -33135,13 +33740,19 @@
         const sh = document.createElement('span'); sh.className = 'ls'; sh.textContent = shots + (shots === 1 ? ' shot' : ' shots');
         const pp = document.createElement('span'); pp.className = 'lpaper';
         var shapeLbl = isFrame ? frameShapeLabel(f).replace(/<[^>]*>/g, '') : (isPreset ? ((paperFor(p.paper) && paperFor(p.paper).name) || p.paper || 'A4') : layoutPaperText(key));
-        if (typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && isFrame && f && f.tier) {
+        if (!tierSplitOn() && typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && isFrame && f && f.tier) {
           shapeLbl += (f.tier === 'receipt' ? ' · 🧾 Thermal' : (f.tier === 'photo' ? ' · 🎨 Color' : ''));
         }
         pp.textContent = shapeLbl;
         const tk = document.createElement('span'); tk.className = 'lt-tick'; tk.dataset.tick = key; tk.textContent = '✓';
         tk.setAttribute('role', 'checkbox'); tk.setAttribute('aria-label', 'Guests can pick ' + n.textContent);
         b.append(tk, box, n, sh, pp);
+        if (tierSplitOn()) {        // "Separate B&W and colour prints" is on: every card says which printer it is made for
+          const t = layoutTier(key), tc = document.createElement('span');
+          tc.className = 'lt-tier ' + (t === 'receipt' ? 'bw' : (t === 'all' ? 'any' : 'col'));
+          tc.textContent = LAYOUT_TIER_LABEL[t] || LAYOUT_TIER_LABEL.photo;
+          b.appendChild(tc);
+        }
         return b;
       }
       function addFrameCard() {
@@ -33157,7 +33768,8 @@
         const hasFrames = typeof myFrames !== 'undefined' && myFrames && myFrames.length;
         const groups = boothType === 'card' ? [{ t: 'Trading card', s: '2.5\u00d73.5 in card, or 4R', keys: ['card'] }]
           : boothType === 'cert' ? [{ t: 'Certificate', s: 'A4 or Letter, sideways (or 4R)', keys: ['cert'] }]
-            : LAYOUT_GROUPS.slice();
+            : LAYOUT_GROUPS.slice().map(g => tierSplitOn() && g.keys.indexOf('receipt') >= 0
+              ? Object.assign({}, g, { s: 'B&W ones print on a thermal printer (80/58 mm), colour ones on photo paper' }) : g);
         const frameGroup = { t: 'Your frames', s: hasFrames ? 'Made in Canva · tap one to use it' : 'Made in Canva: leave the photo spots white or see-through. Best size 1200 × 1800 px (4R) or 600 × 1800 px (2×6).', frames: true };
         if (boothType === 'photo') { if (hasFrames) groups.unshift(frameGroup); else groups.push(frameGroup); }
         groups.forEach(g => {
@@ -33192,6 +33804,7 @@
         layoutHint.textContent = layoutDef().hint;
         if (typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
         if (typeof ltCache !== 'undefined' && ltCache) { applyCachedLayoutThumbs(); markLayoutThumbsDirty(); }
+        try { refreshTierUI(); } catch (e) { }
       }
       const fdwInit = document.getElementById('frameDetailsWrap');
       if (fdwInit) fdwInit.addEventListener('click', (e) => e.stopPropagation());
@@ -33296,8 +33909,7 @@
           printSize = mappedPaper;
           try { localStorage.setItem('pb_print_paper', printSize); } catch (e) { }
         }
-        var fObj = (/^frame:/.test(key) && typeof frameById === 'function') ? frameById(key.slice(6)) : (key === 'myframe' && typeof activeFrame === 'function' ? activeFrame() : null);
-        var isRc = (fObj && fObj.tier === 'receipt') || (!fObj && layoutDef(key).kind === 'receipt');
+        var isRc = layoutTier(key) === 'receipt';      // B&W / thermal tag (with the B&W and colour switch off: a receipt layout or a frame you tagged thermal)
         if (isRc) {
           if (typeof isReceiptPaper === 'function' && !isReceiptPaper(printSize)) {
             const usable = (printSettings() || []).filter(isReceiptPaper);
@@ -33321,6 +33933,7 @@
         if (typeof refreshDecorUI === 'function' && typeof overlaySizeHint !== 'undefined' && overlaySizeHint) refreshDecorUI();
         if (typeof frameListEl !== 'undefined' && frameListEl) refreshFrameUI();
         if (typeof refreshGifLayoutUI === 'function') refreshGifLayoutUI();
+        try { refreshLayoutTierRow(); } catch (e) { }
       }
 
       var shotCrops = {};
@@ -36090,12 +36703,12 @@
       // The helper is only contacted when the switch is on, because Chrome asks
       // permission the first time a site talks to the computer itself.
       const PRINTER_MAP_KEY = 'pb_printer_map', HELPER_KEY = 'pb_print_helper';
-      const HELPER_URL = DESKTOP ? '/helper' : 'http://127.0.0.1:17321';
+      const HELPER_URL = LAPTOP_PRINT ? '/helper' : 'http://127.0.0.1:17321';
       let printerMap = {};
       try { printerMap = JSON.parse(localStorage.getItem(PRINTER_MAP_KEY) || '{}') || {}; } catch (e) { printerMap = {}; }
       let helperOn = false;
       try { helperOn = localStorage.getItem(HELPER_KEY) === '1'; } catch (e) { }
-      if (DESKTOP) helperOn = true;                     // built into the app
+      if (LAPTOP_PRINT) helperOn = true;                // built into the app (or the laptop this iPad's booth page came from)
       let helper = { ok: false, printers: [], checked: 0 };
       const printerNameInput = document.getElementById('printerNameInput');
       const printerList = document.getElementById('printerList');
@@ -36591,17 +37204,17 @@
         if (bluetoothPrinterBtn) bluetoothPrinterBtn.style.display = (DESKTOP || (helperOn && helper.ok && helperAtLeast('1.1.8'))) ? '' : 'none';
         if (refreshPrintersBtn) refreshPrintersBtn.style.display = (DESKTOP || (helperOn && helper.ok && helperAtLeast('1.1.8'))) ? '' : 'none';
         if (helperOn && helper.ok) {
-          if (DESKTOP && !helper.printers.length) printerHelperHint.textContent = 'No printers found on this computer. For Bluetooth, pair the printer in system settings and install its driver if required.';
+          if (LAPTOP_PRINT && !helper.printers.length) printerHelperHint.textContent = 'No printers found on this computer. For Bluetooth, pair the printer in system settings and install its driver if required.';
           else if (!name) printerHelperHint.textContent = 'Print Helper connected. Choose the printer for this paper size.';
           else if (helper.printers.length && !helper.printers.includes(name)) printerHelperHint.textContent = 'No printer on this computer is called “' + name + '”. Pick one from the list.';
           else printerHelperHint.textContent = 'Prints go straight to “' + name + '” — no dialog.';
           // Print Helper 1.0.0 for Windows couldn't print one-page jobs (fixed in 1.0.1).
           if (/Windows/i.test(navigator.userAgent) && helper.version === '1.0.0')
             printerHelperHint.innerHTML = '<div class="helper-help"><b>Please update the Print Helper.</b> This Windows version (1.0.0) can\u2019t print. Close it, <a href="/downloads/" target="_blank" rel="noopener">download the new one</a>, and open it again.</div>';
-          else if (!DESKTOP && name && !helperAtLeast('1.1.7'))
+          else if (!LAPTOP_PRINT && name && !helperAtLeast('1.1.7'))
             printerHelperHint.innerHTML = 'Update the Print Helper to open printer settings here. <a href="/downloads/" target="_blank" rel="noopener">Download the latest helper</a>.';
         } else if (helperOn && helper.checked) {
-          printerHelperHint.innerHTML = DESKTOP ? 'Printing isn\u2019t ready yet. Close and reopen the app.' : helperTroubleHtml();
+          printerHelperHint.innerHTML = DESKTOP ? 'Printing isn\u2019t ready yet. Close and reopen the app.' : LANREMOTE ? 'Can\u2019t reach the laptop\u2019s printing service. Check the laptop app is open with iPad sharing on (Setup \u2192 Share &amp; start) and this iPad is on the laptop\u2019s Wi-Fi, then reload this page.' : helperTroubleHtml();
         } else {
           printerHelperHint.innerHTML = name ? 'In the print dialog, pick “' + name + '”.' : 'Without the helper, prints go through Chrome’s print dialog. To pick a printer for each size, open the Print Helper and switch it on. <a href="/downloads/" target="_blank" rel="noopener">Download it</a>';
         }
@@ -36706,7 +37319,7 @@
           { done: andHere, t: 'Choose the printer for this paper size', s: andP ? sizeName + ' → ' + escHtml(andP.dialog ? 'Android print screen' : andP.name) + (andHere ? '' : '. It is not found right now: check it is turned on and connected.') : 'Tap a paper size, then tap its printer in the list above.' },
           { done: andHere && andOk, t: 'Test a print', s: andHere && andOk ? 'A print on this printer and paper size worked.' : 'Tap <b>Test print</b>, or tap <b>' + escHtml(printTxt('txtPrint')) + '</b> after a photo session.' }
         ];
-        else if (isMobileOS()) steps = [
+        else if (isMobileOS() && !LANREMOTE) steps = [
           { done: false, t: 'Turn on the printer and join the same Wi-Fi', s: 'Compatible network printers appear automatically. Dye-sublimation stations require a connected print station.' + (isBtThermalAvailable() && printSize && isReceiptPaper(printSize) ? ' For Bluetooth thermal printing, enable <b>Bluetooth thermal receipt printer</b> below.' : '') },
           { done: false, t: 'Print once and pick the printer', s: andUA ? 'Press <b>Print</b>, then choose the printer on the Android print screen. The tablet remembers it.' : 'Press <b>Print</b>, choose the printer in the AirPrint sheet. The iPad remembers it.' + (navigator.standalone ? ' <b>Home Screen app:</b> if no sheet appears, open the booth in a Safari tab instead, or use a laptop print station.' : '') },
           { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> and choose the printer ' + (andUA ? 'on the Android print screen.' : 'in the AirPrint sheet.') }
@@ -36715,11 +37328,11 @@
           { done: false, t: 'Test a print', s: 'Tap <b>Print</b>, then choose the printer in your browser or system dialog.' }
         ];
         else steps = [
-          DESKTOP ? { done: connected && helper.printers.length > 0, t: 'Plug in and turn on the printer', s: connected && helper.printers.length ? helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' found on this laptop.' : 'Install its driver first, then reopen Print settings.' } :
+          LAPTOP_PRINT ? { done: connected && helper.printers.length > 0, t: 'Plug in and turn on the printer', s: connected && helper.printers.length ? helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' found on this laptop.' : 'Install its driver first, then reopen Print settings.' } :
             { done: connected, t: 'Connect direct printing', s: connected ? 'Print Helper connected; ' + helper.printers.length + ' printers found.' : 'Open the photobooth4u Print Helper on this computer, enable <b>Use Print Helper for direct printing</b>, and allow local network access if asked. <a href="/downloads/" target="_blank" rel="noopener">Download</a>' },
           (function () {
             const ok = connected && !!name && helper.printers.includes(name);
-            const pl = ok && printSize && (DESKTOP || helperAtLeast('1.1.6')) ? paperLine(name, paperFor(printSize), sizeName) : '';
+            const pl = ok && printSize && (LAPTOP_PRINT || helperAtLeast('1.1.6')) ? paperLine(name, paperFor(printSize), sizeName) : '';
             return { done: ok && pl.indexOf('paper-bad') < 0, t: 'Choose the printer for each paper size', s: (name ? sizeName + ' \u2192 ' + escHtml(name) : 'Tap a paper size, then pick its printer from the list.') + pl };
           })(),
           { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> once to check the printer and paper.' }
@@ -37424,12 +38037,16 @@
         if (isInstaxPrinter(name)) return printViaInstax(pages, paper, name);
         let h = await checkHelper(true);
         // The built-in helper can be slow to list printers right after the app starts: ask again before giving up.
-        for (let i = 0; DESKTOP && i < 3 && (!h.ok || !(h.printers || []).includes(name)); i++) {
+        for (let i = 0; LAPTOP_PRINT && i < 3 && (!h.ok || !(h.printers || []).includes(name)); i++) {
           await new Promise(r => setTimeout(r, 1500));
           h = await checkHelper(true);
         }
-        if (!h.ok) { if (DESKTOP) showToast('The app can’t reach its printing service. Close and reopen photobooth4u, then try again.', 6500); return false; }
-        const dlg = DESKTOP ? '' : ' Opening the print dialog instead.';
+        if (!h.ok) {
+          if (DESKTOP) showToast('The app can’t reach its printing service. Close and reopen photobooth4u, then try again.', 6500);
+          else if (LANREMOTE) showToast('Can’t reach the laptop’s printer. Check the laptop app is open with iPad sharing on, and this iPad is on its Wi-Fi.', 6500);
+          return false;
+        }
+        const dlg = LAPTOP_PRINT ? '' : ' Opening the print dialog instead.';
         // Older Windows helpers stretch the picture to the driver's page; Mac (CUPS) already keeps its shape.
         if (paper.receipt && /Win/i.test(navigator.platform || '') && !helperAtLeast('1.1.4')) {
           showToast('Receipts need Print Helper 1.1.4 or newer (download it again from photobooth4u.netlify.app/downloads). Opening the print dialog instead.', 7000);
@@ -37459,9 +38076,9 @@
             if (Array.isArray(j.warnings) && j.warnings.length) showToast(j.warnings.join(' '), 7500);
             return true;
           }
-          showToast((DESKTOP ? 'Couldn’t print on ' + name : 'Print Helper couldn’t print') + ' (' + (j.error || ('error ' + r.status)) + ').' + (DESKTOP ? ' Check the printer is on and has paper, then print again.' : dlg), 6500);
+          showToast((LAPTOP_PRINT ? 'Couldn’t print on ' + name : 'Print Helper couldn’t print') + ' (' + (j.error || ('error ' + r.status)) + ').' + (LAPTOP_PRINT ? ' Check the printer is on and has paper, then print again.' : dlg), 6500);
         } catch (e) {
-          showToast((DESKTOP ? 'Lost the printing service.' : 'Lost the Print Helper.') + dlg, 4500);
+          showToast((LAPTOP_PRINT ? 'Lost the printing service.' : 'Lost the Print Helper.') + dlg, 4500);
         }
         return false;
       }
@@ -37706,7 +38323,7 @@
       }
       // iPad / Android pick the paper in their own print screen: it must match.
       function paperMatchTip() {
-        if (!isMobileOS() || !printSize || useStation()) return '';
+        if (!isMobileOS() || LANREMOTE || !printSize || useStation()) return '';
         const p = paperFor(printSize);
         return ' In the print screen, choose ' + p.name + ' paper' + (printSize === '4x6' ? ' (may be called 4×6, Index card 4×6 or 10×15 cm)' : printSize === 'selphy' ? ' (Postcard / 100×148 mm)' : '') + ', 1 copy, portrait.';
       }
@@ -38138,8 +38755,10 @@
       function refreshStep4Printer() {
         const box = document.getElementById('step4Printer');
         if (!box) return;
+        try { refreshTierUI(); } catch (e) { }          // the B&W / colour printer choices sit at the top of this tab
         const sizes = printSettings();
         box.classList.toggle('hidden', !sizes);
+        const none = document.getElementById('step8Empty'); if (none) none.hidden = !!sizes;   // the Printer tab is never blank
         if (!sizes) return;
         const paper = printSize ? paperFor(printSize) : null;
         let pr = printSize ? (printerFor(printSize) || '') : '';
@@ -38166,6 +38785,117 @@
       }
       document.getElementById('s4PrinterBtn').addEventListener('click', () => openPrintModal());
       document.getElementById('s4PreviewBtn').addEventListener('click', () => showPrintPreview(false, opCopies || 1, true));
+
+      // ---- Separate B&W and colour prints (optional, off by default) ----
+      // Step 1 (Layout tab): switch it on. Step 2 (Layout tab): check the tags. Step 3 (Printer tab): connect each kind to a printer.
+      function tierCounts() {
+        var c = { receipt: 0, photo: 0, all: 0 };
+        try {
+          [].forEach.call(layoutGrid.querySelectorAll('.layout-btn'), function (b) {
+            var k = b.dataset.layout; if (!k || k === 'add') return;
+            var t = layoutTier(k); c[t] = (c[t] || 0) + 1;
+          });
+        } catch (e) { }
+        return c;
+      }
+      function refreshTierUI() {
+        var card = document.getElementById('tierCard'); if (!card) return;
+        card.style.display = boothType === 'photo' ? '' : 'none';      // trading card / certificate booths have nothing to separate
+        var tg = document.getElementById('tierSplitToggle'); if (tg) tg.checked = !!tierSplit;
+        var on = tierSplitOn();
+        document.getElementById('tierOffHint').style.display = on ? 'none' : '';
+        document.getElementById('tierSteps').style.display = on ? '' : 'none';
+        var sizes = null; try { sizes = printSettings(); } catch (e) { }
+        var pc = document.getElementById('ppTierCard');
+        if (pc) pc.style.display = on && sizes ? '' : 'none';
+        if (!on) return;
+        var c = tierCounts();
+        var cnt = document.getElementById('tierCount');
+        if (cnt) cnt.textContent = 'You have ' + c.receipt + ' B&W, ' + c.photo + ' colour' + (c.all ? ' and ' + c.all + ' either-way' : '') + ' layout' + (c.receipt + c.photo + c.all === 1 ? '' : 's') + '. ' +
+          (c.receipt + c.all === 0 ? 'No B&W layout yet: the Receipt layouts are B&W, or set one of your frames to B&W.' : 'Tap a layout to see where it prints.');
+        var li2 = document.getElementById('tierStep2'); if (li2) li2.classList.toggle('done', c.receipt + c.all > 0 && c.photo + c.all > 0);
+        var rN = tierPrinters.receipt || '', pN = tierPrinters.photo || '';
+        var li3 = document.getElementById('tierStep3'); if (li3) li3.classList.toggle('done', !!(sizes && rN && pN));
+        var st = document.getElementById('tierPrinterState');
+        if (st) st.textContent = !sizes ? 'Printing is not turned on for this booth yet, so there is nothing to connect.'
+          : '🧾 B&W → ' + (rN || 'not chosen yet') + '   ·   🎨 Colour → ' + (pN || 'not chosen yet') + ((rN && pN) ? '' : '. Until you choose, each prints on the printer for its paper size.');
+        if (sizes) {
+          [['tierPrinterReceipt', 'receipt'], ['tierPrinterPhoto', 'photo']].forEach(function (p) {
+            var sel = document.getElementById(p[0]); if (!sel || document.activeElement === sel) return;
+            sel.innerHTML = voucherPrinterOptionsHtml(tierPrinters[p[1]] || '');
+          });
+          var hint = document.getElementById('tierPrinterHint');
+          if (hint) hint.textContent = voucherPrinterChoices().length
+            ? c.receipt + ' B&W layout' + (c.receipt === 1 ? '' : 's') + ' print on the B&W printer, ' + c.photo + ' colour layout' + (c.photo === 1 ? '' : 's') + ' on the colour printer.' + (c.all ? ' Either-way frames follow the paper size.' : '')
+            : 'No printers found on this device yet. Tap Choose printer & paper above first, then come back here.';
+        }
+      }
+      // The line under a layout: its tag, where it prints, and (B&W only) the way to make a colour version.
+      function refreshLayoutTierRow() {
+        var row = document.getElementById('layoutTierRow'); if (!row) return;
+        if (!tierSplitOn()) { row.style.display = 'none'; return; }
+        var key = layoutCardKey(), t = layoutTier(key);
+        var chip = document.getElementById('layoutTierChip'), txt = document.getElementById('layoutTierText'), btn = document.getElementById('layoutColourBtn');
+        chip.className = 'lt-tier ' + (t === 'receipt' ? 'bw' : (t === 'all' ? 'any' : 'col'));
+        chip.textContent = LAYOUT_TIER_LABEL[t] || LAYOUT_TIER_LABEL.photo;
+        var sizes = null; try { sizes = printSettings(); } catch (e) { }
+        var fr = /^frame:/.test(key) ? frameById(key.slice(6)) : null;
+        var line;
+        if (t === 'all') line = 'A black & white frame: it prints on a thermal or a colour printer.';
+        else {
+          var tier = t === 'receipt' ? 'receipt' : 'photo';
+          var pn = tierPrinterName(tier) || (tierPrinters[tier] ? tierPrinters[tier] + ' (not on this device)' : '');
+          if (!pn && printSize && !!isReceiptPaper(printSize) === (tier === 'receipt')) pn = printerFor(printSize) || '';
+          line = (tier === 'receipt' ? 'Prints in black & white on your thermal printer' : 'Prints in colour on your photo printer') +
+            (!sizes ? '. Printing is not set up yet (Printer tab).' : (pn ? ': ' + pn + '.' : '. Pick the printer in the Printer tab.'));
+          if (fr && fr.color && tier === 'photo') line = 'This frame has colour, so it prints on your photo printer only (thermal is black & white)' + (pn ? ': ' + pn + '.' : '.');
+        }
+        txt.textContent = line;
+        var d = LAYOUT_DEFS[currentLayout];
+        var canMake = (d && d.twin && key === currentLayout) ? 'twin' : (fr && t !== 'photo' ? 'frame' : '');
+        btn.style.display = canMake ? '' : 'none';
+        btn.textContent = canMake === 'frame' ? '🎨 Use for colour prints' : '🎨 Make colour version';
+        row.style.display = '';
+      }
+      (function () {
+        var tg = document.getElementById('tierSplitToggle');
+        if (tg) tg.addEventListener('change', function () {
+          tierSplit = tg.checked; printPrefs.splitTier = tierSplit;
+          try { buildLayoutPicker(); } catch (e) { }
+          try { setLayout(currentLayout); } catch (e) { }          // moves the layout onto the thermal roll or the photo paper it belongs to
+          try { refreshTierUI(); refreshFrameUI(); } catch (e) { }
+          printPrefsChanged();
+          showToast(tierSplit ? 'B&W and colour are now separate. Follow the 3 steps at the top of Layout.' : 'Back to one printer per paper size. Nothing is sorted.', 4500);
+        });
+        // Hide / show the hint and the 3 steps (the switch stays). Remembered on this device only.
+        var tcard = document.getElementById('tierCard'), tcb = document.getElementById('tierCollapseBtn');
+        function setTierCollapsed(v, save) {
+          if (!tcard || !tcb) return;
+          tcard.classList.toggle('collapsed', v);
+          tcb.setAttribute('aria-expanded', v ? 'false' : 'true');
+          tcb.innerHTML = v ? 'Show steps &#9662;' : 'Hide steps &#9652;';
+          if (save) { try { localStorage.setItem('pb_tier_steps_collapsed', v ? '1' : '0'); } catch (e) { } }
+        }
+        var tcStart = false; try { tcStart = localStorage.getItem('pb_tier_steps_collapsed') === '1'; } catch (e) { }
+        setTierCollapsed(tcStart, false);
+        if (tcb) tcb.addEventListener('click', function () { setTierCollapsed(!tcard.classList.contains('collapsed'), true); });
+        var cb = document.getElementById('layoutColourBtn');
+        if (cb) cb.addEventListener('click', function () {
+          var key = layoutCardKey(), d = LAYOUT_DEFS[currentLayout], fr = /^frame:/.test(key) ? frameById(key.slice(6)) : null;
+          if (fr) { fr.tier = 'photo'; framesChanged({ layout: 'myframe' }); showToast('“' + (fr.name || 'This frame') + '” now prints in colour on your photo printer.', 4500); return; }
+          if (!d || !d.twin) return;
+          var b = layoutGrid.querySelector('.layout-btn[data-layout="' + d.twin + '"]');
+          if (b) { b.click(); showToast('Now using “' + LAYOUT_DEFS[d.twin].name + '”. It prints in colour on your photo printer.', 4500); }
+        });
+        [['tierPrinterReceipt', 'receipt', 'B&W'], ['tierPrinterPhoto', 'photo', 'Colour']].forEach(function (p) {
+          var sel = document.getElementById(p[0]);
+          if (sel) sel.addEventListener('change', function () {
+            setTierPrinter(p[1], sel.value);
+            try { refreshTierUI(); refreshLayoutTierRow(); refreshPrintUI(); refreshStep4Printer(); } catch (e) { }
+            showToast(sel.value ? p[2] + ' layouts now print on “' + sel.value + '” (this device).' : p[2] + ' layouts use the printer for their paper size again.', 4000);
+          });
+        });
+      })();
 
       // Fill only when the shapes are practically the same (a trim of about 1 mm, so the print runs
       // edge to edge); otherwise fit the whole image with white space, so nothing is ever cut off
@@ -38281,7 +39011,7 @@
       const MAX_COPIES = 10;
       const PRINT_TXT = { txtPrint: 'Print', txtPrinting: 'Printing, please hold…', txtCopies: 'How many copies?', txtLimit: 'That’s all the prints for this session' };
       // Saved with the setup (every device on the code gets them).
-      let printPrefs = { guestBtn: true, auto: false, printFirst: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'best', printerQuality: 'best', mediaType: '', singleStrip: false, posterDpi: 0, edges: { t: 0, b: 0, l: 0, r: 0 }, voucherPrinter: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
+      let printPrefs = { guestBtn: true, auto: false, printFirst: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'best', printerQuality: 'best', mediaType: '', singleStrip: false, posterDpi: 0, edges: { t: 0, b: 0, l: 0, r: 0 }, voucherPrinter: false, splitTier: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
       // Edges (per printer), in mm: + moves the picture in from that edge (for a printer that cuts it off), − moves it out (for a white line).
       const EDGE_MAX = 10, EDGE_MIN = -5;
       function cleanEdges(e) {
@@ -38305,6 +39035,7 @@
           posterDpi: Number(p.posterDpi) === 200 ? 200 : 0,
           edges: cleanEdges(p.edges),
           voucherPrinter: !!p.voucherPrinter,
+          splitTier: !!p.splitTier,          // "Separate B&W and colour prints" (Setup > Layout); off unless the renter turns it on
           txtPrint: txt(p.txtPrint, 24), txtPrinting: txt(p.txtPrinting, 60), txtCopies: txt(p.txtCopies, 40), txtLimit: txt(p.txtLimit, 70)
         };
       }
@@ -38437,7 +39168,7 @@
       const ROUTE_KEY = 'pb_print_route';
       let printRoute = 'here';
       try { printRoute = localStorage.getItem(ROUTE_KEY) === 'station' ? 'station' : 'here'; } catch (e) { }
-      if (DESKTOP) printRoute = 'here';                 // the printer is on this laptop
+      if (LAPTOP_PRINT) printRoute = 'here';            // the printer is on this laptop (or the laptop this iPad is talking to)
       let station = { online: false, lastSeen: 0, checked: 0 };
       function isTrialBooth() { return !!(window.__PB && window.__PB.type === 'trial'); }
       function useStation() { return printRoute === 'station' && (isRentalBooth() || isTrialBooth()); }
@@ -38496,7 +39227,9 @@
       }
       function refreshStationHints() {
         const a = document.getElementById('stationHint'), b = document.getElementById('ppRouteHint');
-        const html = useStation() ? stationHtml() : (isMobileOS()
+        const html = useStation() ? stationHtml() : (LANREMOTE
+          ? 'The laptop sends jobs to the printer picked below without a print dialog. Plug the printer into the laptop and install its driver there.'
+          : isMobileOS()
           ? 'Prints open the AirPrint sheet on this device. Add the printer once in the sheet; it’s remembered.'
           : (DESKTOP ? 'The app sends jobs to the selected printer without a print dialog.' : helperOn
             ? (helper.ok ? 'Print Helper sends jobs to the selected printer without a dialog. If it becomes unavailable, printing falls back to the browser dialog.' : 'Direct printing is selected. Connect the Print Helper below; until it connects, prints use the browser dialog.')
@@ -38658,6 +39391,11 @@
       let wifiDefault = wifiPrinter;                 // the last printer picked: used for every paper size that has none of its own
       let wifiScanTimer = null;
       const wifiJobs = {};
+      // iPad app, Wi-Fi photo printer: after the printer took a photo the app keeps watching it, and says here when it did not
+      // print (out of paper, a jam, switched off). It shows as a message and never holds the booth up.
+      window.__PBIppWarn = function (r) {
+        try { const m = r && r.message; if (m) showToast(String(m), 9000); } catch (e) { }
+      };
       window.__PBNetResult = function (r) {
         const j = r && wifiJobs[r.job];
         if (!j) return;
@@ -38802,8 +39540,18 @@
             if (!sp || sp.usb || sp.dialog || sp.escpr || sp.forcedRaw) return;
             if (list.some(q => !q.usb && q.ip === sp.ip && q.escpr)) { sp.escpr = true; sp.raw = false; changed = true; }
           };
-          Object.keys(wifiSizeMap).forEach(k => { fix(wifiSizeMap[k]); fixNet(wifiSizeMap[k]); });
-          fix(wifiDefault); fix(wifiPrinter); fixNet(wifiDefault); fixNet(wifiPrinter);
+          // iPad: a printer added by IP before the app could ask it over IPP (or before that finished) was saved as a receipt printer.
+          // When the iPad now sees that address answer as a photo printer (an Epson L8050, say), the saved one becomes a photo printer too.
+          const fixIpp = (sp) => {
+            if (!IOS_APP || !sp || sp.usb || sp.dialog || sp.ipp || !sp.raw || sp.forcedRaw) return;
+            const q = list.find(x => x && !x.usb && x.ip === sp.ip && x.ipp);
+            if (!q) return;
+            sp.ipp = true; sp.raw = false; sp.name = q.name || sp.name;
+            sp.qualities = q.qualities || []; sp.colorModes = q.colorModes || []; sp.mediaTypes = q.mediaTypes || [];
+            changed = true;
+          };
+          Object.keys(wifiSizeMap).forEach(k => { fix(wifiSizeMap[k]); fixNet(wifiSizeMap[k]); fixIpp(wifiSizeMap[k]); });
+          fix(wifiDefault); fix(wifiPrinter); fixNet(wifiDefault); fixNet(wifiPrinter); fixIpp(wifiDefault); fixIpp(wifiPrinter);
           if (changed) {
             try { localStorage.setItem(WIFI_SIZE_MAP_KEY, JSON.stringify(wifiSizeMap)); } catch (e) { }
             try { if (wifiDefault) localStorage.setItem(WIFI_PRINTER_KEY, JSON.stringify(wifiDefault)); } catch (e) { }
@@ -39189,6 +39937,11 @@
             wifiOptsSet(wifiPrinter, key, el.value);          // saved for this printer only
           });
         });
+        // iPad: a few seconds after the app opens, every saved printer that is still a "receipt printer" is asked over IPP whether it is
+        // really a photo printer, so the first photo of the event does not go to it as receipt data.
+        if (IOS_APP) setTimeout(() => {
+          try { ((wifiList().printers) || []).filter(q => q && q.raw && !q.ipp && !q.usb && !q.forcedRaw).forEach(q => { iosEnsureIppKind(Object.assign({}, q)); }); } catch (e) { }
+        }, 5000);
         // A USB printer plugged in (or out) while this panel is open shows up without pressing anything.
         setInterval(() => {
           const row = document.getElementById('wifiPrinterRow');
@@ -39486,9 +40239,39 @@
           throw e;
         }
       }
+      // iPad: receipt data sent to an inkjet prints as rows of garbage characters. A printer saved as a receipt printer (an Epson L8050
+      // added by IP before the app could ask it over IPP) is asked once per session whether it is really an IPP photo printer; if it is,
+      // it becomes one here and in the saved settings, and the photo goes out as a photo (see wifiRelink / fixIpp).
+      const iosIppKind = {};
+      function iosEnsureIppKind(p) {
+        if (!IOS_APP || !p || !p.ip || p.usb || p.dialog || p.ipp || !p.raw || p.forcedRaw || !window.__PBNet || typeof window.__PBNet.addByIp !== 'function') return Promise.resolve(false);
+        if (!iosIppKind[p.ip]) {
+          iosIppKind[p.ip] = (async () => {
+            try { window.__PBNet.addByIp(p.ip); } catch (e) { return false; }      // asks the printer over IPP again (the iPad app does it when a printer is added)
+            for (let i = 0; i < 14; i++) {
+              await new Promise(r => setTimeout(r, 500));
+              let d = null; try { d = wifiList(); } catch (e) { }
+              if (d && (d.printers || []).some(x => x && !x.usb && x.ip === p.ip && x.ipp)) { try { wifiRelink(d); } catch (e) { } return true; }
+            }
+            return false;
+          })();
+        }
+        return iosIppKind[p.ip].then(ok => {
+          if (ok && !p.ipp) {
+            try {
+              const q = ((wifiList().printers) || []).find(x => x && !x.usb && x.ip === p.ip && x.ipp);
+              if (q) { p.ipp = true; p.raw = false; p.name = q.name || p.name; p.qualities = q.qualities || []; p.colorModes = q.colorModes || []; p.mediaTypes = q.mediaTypes || []; }
+            } catch (e) { }
+          }
+          return !!ok;
+        });
+      }
       async function printViaWifiRaw(all, paper, printer, wopts) {
         const p = printer || wifiPrinter;
-        const wo = wopts || wifiOpts(p);               // the printer's own colour / quality / paper type
+        let nowPhoto = false;
+        if (p && !p.dialog && p.raw && !p.ipp) { try { nowPhoto = await iosEnsureIppKind(p); } catch (e) { } }
+        if (nowPhoto) showToast('This is a photo printer (' + p.name + '): printing the photo with its photo mode.', 5000);
+        const wo = (nowPhoto ? null : wopts) || wifiOpts(p);               // the printer's own colour / quality / paper type
         if (p.dialog) {
           // Android / iOS native print system: AirPrint on iPad, Android print dialog on Android.
           const dlg = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
@@ -40239,7 +41022,7 @@
             sent = await printSheets(all, paper, pname);
             if (extraJob) await extraJob;
             // The app never falls back to the Windows print dialog once a printer is chosen: a guest session must not stall behind it.
-            if (!sent && DESKTOP) return false;
+            if (!sent && LAPTOP_PRINT) return false;
             if (sent) {
               showToast((auto === true ? 'Auto-printing on ' : 'Printing on ') + allPrintersLabel + ' (' + label + ').');
               armAutoPrintAfterFirst(auto === true);
@@ -40299,7 +41082,7 @@
               return false;
             }
           }
-          if (DESKTOP && (pname || auto === true)) {
+          if (LAPTOP_PRINT && (pname || auto === true)) {
             // Auto-print (or a chosen printer that was not reachable) must never open the Windows dialog.
             showToast('No printer is chosen for ' + paper.name + '. Open Printer settings and pick one.', 6500);
             return false;
@@ -40367,8 +41150,8 @@
         el.classList.toggle('out', !!parts.length && printsLeft() < sheetsPerCopy(printSize));
         printRouteSelect.value = printRoute;
         printRouteSelect.querySelector('option[value="station"]').disabled = !(isRentalBooth() || isTrialBooth());
-        // The Print Helper is a computer app: never offered on iPad / Android.
-        document.getElementById('printerPick').style.display = printSize && !useStation() && !isMobileOS() ? '' : 'none';
+        // The Print Helper is a computer app: never offered on iPad / Android, except an iPad whose booth page came from the laptop app (its printers are the laptop's).
+        document.getElementById('printerPick').style.display = printSize && !useStation() && (!isMobileOS() || LANREMOTE) ? '' : 'none';
         try { wifiPrinterUI(); } catch (_) { }
         // Bluetooth thermal UI elements (tablet only)
         const btRow = document.getElementById('btThermalRow');
@@ -40522,14 +41305,15 @@
             ? 'Silent AirPrint active (' + apInfo.name + '): each session prints automatically with zero pop-ups.'
             : 'After each session AirPrint opens. Tap "Pick Silent AirPrint printer" below to skip pop-ups completely.';
         }
+        if (LANREMOTE) return printSize && printerFor(printSize) ? 'The laptop is still looking for that printer. Tap Refresh printer list below.' : 'Pick a printer for this paper size below and each session prints with no dialog.';
         if (isMobileOS()) return 'After each session the AirPrint sheet opens by itself, so the guest just taps Print. A web page can\u2019t skip that sheet; for no pop-up at all, send prints to a laptop print station.';
         return 'Each session opens the print dialog by itself. To skip the dialog, use the Print Helper or start Chrome with --kiosk-printing.' + (isTraditional() ? ' Turns on after your first print, on the same paper.' : '');
       }
       function updateAutoPrintUI() {
         setTimeout(function () { try { renderPrintSteps(); } catch (e) { } }, 0);
         const show = !!printSettings();
-        autoPrintRow.classList.toggle('hidden', !show || !DESKTOP);
-        autoPrintHint.classList.toggle('hidden', !show || !DESKTOP);
+        autoPrintRow.classList.toggle('hidden', !show || !LAPTOP_PRINT);
+        autoPrintHint.classList.toggle('hidden', !show || !LAPTOP_PRINT);
         autoPrintToggle.checked = autoPrint;
         autoPrintHint.textContent = autoPrintHintText();
         const pa = document.getElementById('ppAuto'); if (pa) pa.checked = autoPrint;
@@ -40557,7 +41341,7 @@
       autoPrintPrompt.addEventListener('click', function (e) { if (e.target === autoPrintPrompt) autoPrintPrompt.hidden = true; });
       function armAutoPrintAfterFirst(wasAuto) {
         if (wasAuto || autoPrint || autoPrintDecided) return;
-        if (!DESKTOP) {
+        if (!LAPTOP_PRINT) {
           if (autoPrintPrompted) return;
           autoPrintPrompted = true;
           try { localStorage.setItem(AUTO_PRINT_PROMPT_KEY, '1'); } catch (e) { }
@@ -44070,16 +44854,105 @@ function renderTabletBridgeSetup(info) {
       updateUI = function () { _updateUI(); refreshDeskBtn(); };
       refreshDeskBtn();
 
-      // "One photo per print": the desk makes a Solo print instead of filling the event's layout (a strip takes 3 photos).
-      var deskSoloOn = true;      // a roving photographer's photo is one big print (switch it off to fill the event's layout)
-      try { if (localStorage.getItem('pb_desk_solo') === '0') deskSoloOn = false; } catch (e) { }
-      function deskNeed() { return deskSoloOn ? 1 : shotsNeeded(); }
+      // ---- Photoman template: the layout or frame the photographer's prints use, apart from the booth's own layout ----
+      //  'match'      = whatever the booth uses (what switching off the old "One photo per print" box did)
+      //  'solo', ...  = a built-in layout (Solo, one big print, is the default)
+      //  'frame:<id>' = one of the frames uploaded in Setup (for example a 2-photo 4R frame)
+      // The booth's own layout is put back after every print (resetForNextGuest), so a booth and a Photoman can share one laptop.
+      var deskTpl = 'solo';
+      var deskFill = 'multi';       // 'multi' = a photo for each spot, 'repeat1' = one photo fills every spot
+      var deskAutoOn = false;       // frame new camera photos by themselves
+      var deskAutoFrom = 0, deskAutoTimer = null, deskKeepFrame;
+      try {
+        var deskStoredTpl = localStorage.getItem('pb_desk_tpl');
+        if (deskStoredTpl && /^[A-Za-z0-9:_-]{1,90}$/.test(deskStoredTpl)) deskTpl = deskStoredTpl;
+        else if (localStorage.getItem('pb_desk_solo') === '0') deskTpl = 'match';     // the old box was off: the booth's layout
+        if (localStorage.getItem('pb_desk_fill') === 'repeat1') deskFill = 'repeat1';
+        if (localStorage.getItem('pb_desk_auto') === '1') deskAutoOn = true;
+      } catch (e) { }
+      function deskSave() {
+        try {
+          localStorage.setItem('pb_desk_tpl', deskTpl);
+          localStorage.setItem('pb_desk_solo', deskTpl === 'match' ? '0' : '1');      // an older version of the app reads this one
+          localStorage.setItem('pb_desk_fill', deskFill);
+          localStorage.setItem('pb_desk_auto', deskAutoOn ? '1' : '0');
+        } catch (e) { }
+      }
+      // A frame you deleted, or a layout this booth type can't use, falls back to Solo without losing the saved choice.
+      function deskTplValid(k) {
+        if (k === 'match') return true;
+        if (/^frame:/.test(k)) { try { return !!frameById(k.slice(6)); } catch (e) { return false; } }
+        var d = LAYOUT_DEFS[k];
+        return !!d && d.kind !== 'frame' && d.kind !== 'card' && d.kind !== 'cert' && d.kind !== 'receipt';
+      }
+      function deskTplKey() { return deskTplValid(deskTpl) ? deskTpl : 'solo'; }
+      // The booth's own layout as a key ('frame:<id>' for one of its frames).
+      function deskBoothKey() { var mk = setupLayout; try { mk = mainLayoutKey(); } catch (e) { } return mk; }
+      // How many photo spots the template has.
+      function deskSpots(key) {
+        key = key || deskTplKey();
+        if (key === 'match') {
+          var mk = deskBoothKey();
+          if (/^frame:/.test(mk)) return deskSpots(mk);
+          return Math.max(1, shotsNeeded(mk) || 1);
+        }
+        if (/^frame:/.test(key)) { var fr = frameById(key.slice(6)); return fr ? Math.max(1, frameShotCount(fr)) : 1; }
+        return Math.max(1, (LAYOUT_DEFS[key] && LAYOUT_DEFS[key].shots) || 1);
+      }
+      // How many photos the photographer picks for one print.
+      function deskNeed() { return deskFill === 'repeat1' ? 1 : deskSpots(); }
+      function deskTplLabel(key) {
+        key = key || deskTplKey();
+        if (key === 'match') return 'the booth layout (' + pickName(deskBoothKey()) + ')';
+        return pickName(key);
+      }
+      function deskPhotosText(n) { return n + (n === 1 ? ' photo' : ' photos'); }
       function deskHint() {
-        var n = deskNeed(), el = document.getElementById('deskHint');
+        var n = deskNeed(), spots = deskSpots(), el = document.getElementById('deskHint');
         if (!deskQueue.length) { el.textContent = 'No photos yet. Scan the QR code above with a phone to send photos, or drop / choose the photographer\u2019s photos' + (window.pb4u && window.pb4u.deskScan ? ', or choose the folder their camera saves into.' : '.'); return; }
         el.textContent = n > 1
-          ? 'This layout uses ' + n + ' photos. Tap up to ' + n + ' photos in order (one photo fills them all), then Make print + QR.'
-          : 'Tap a photo, then Make print + QR (in your frame, with a QR for the guest) or Print original (the photo as it is). Optional: \u270E Edit photo first to adjust brightness or colour (the print and the guest\u2019s QR photo both use the edit).';
+          ? 'This template has ' + spots + ' photo spots. Tap up to ' + n + ' photos in order (tap just one and it fills every spot), then Make print + QR.'
+          : spots > 1
+            ? 'One photo fills all ' + spots + ' spots of this template. Tap a photo, then Make print + QR.'
+            : 'Tap a photo, then Make print + QR (in your frame, with a QR for the guest) or Print original (the photo as it is). Optional: \u270E Edit photo first to adjust brightness or colour (the print and the guest\u2019s QR photo both use the edit).';
+      }
+      // The select lists the booth's layout, the built-in layouts and the frames uploaded in Setup. Rebuilt when the desk opens or a choice changes
+      // (not on every new photo: that would close a list the photographer has open).
+      function deskTplOptions() {
+        var sel = document.getElementById('deskTpl'); if (!sel) return;
+        sel.innerHTML = '';
+        function add(parent, v, t) { var o = document.createElement('option'); o.value = v; o.textContent = t; parent.appendChild(o); }
+        function grp(t) { var g = document.createElement('optgroup'); g.label = t; sel.appendChild(g); return g; }
+        add(sel, 'match', 'Same as the booth: ' + pickName(deskBoothKey()) + ' \u00B7 ' + deskPhotosText(deskSpots('match')));
+        var g1 = grp('Built-in layouts');
+        ['solo'].concat(LAYOUT_ORDER.filter(function (k) { return k !== 'solo'; })).forEach(function (k) {
+          if (deskTplValid(k)) add(g1, k, LAYOUT_DEFS[k].name + ' \u00B7 ' + deskPhotosText(LAYOUT_DEFS[k].shots));
+        });
+        var fl = (typeof myFrames !== 'undefined' && myFrames) || [];
+        if (fl.length) {
+          var g2 = grp('My frames (uploaded in Setup)');
+          fl.forEach(function (f) { add(g2, 'frame:' + f.id, pickName('frame:' + f.id) + ' \u00B7 ' + deskPhotosText(Math.max(1, frameShotCount(f)))); });
+        }
+        sel.value = deskTplKey();
+      }
+      function deskTplNoteUi() {
+        var el = document.getElementById('deskTplNote'); if (!el) return;
+        var need = deskNeed(), s;
+        if (deskAutoOn) {
+          var have = deskAutoFresh().length;
+          s = '\u26A1 Auto-frame is on: ' + (need === 1 ? 'each new photo is' : 'every ' + need + ' new photos are') + ' put in ' + deskTplLabel() + ', shown with the guest\u2019s QR' + (autoPrint ? ' and printed.' : '.')
+            + (need > 1 && have > 0 && have < need ? ' (' + have + ' of ' + need + ' waiting)' : '');
+        } else {
+          s = 'Prints use ' + deskTplLabel() + ' (' + deskPhotosText(deskSpots()) + (deskSpots() > 1 && deskFill === 'repeat1' ? ', one photo fills all' : '') + '). The booth\u2019s own layout is not changed.';
+        }
+        el.textContent = s;
+      }
+      function deskTplUi() {
+        deskTplOptions();
+        var fw = document.getElementById('deskFillWrap'); if (fw) fw.hidden = deskSpots() <= 1;
+        var fs = document.getElementById('deskFill'); if (fs) fs.value = deskFill;
+        var au = document.getElementById('deskAuto'); if (au) au.checked = deskAutoOn;
+        deskTplNoteUi();
       }
       function deskRender() {
         deskGrid.innerHTML = '';
@@ -44097,6 +44970,8 @@ function renderTabletBridgeSetup(info) {
         deskMakeBtn.disabled = !deskSel.length; deskOrigBtn.disabled = !deskSel.length;
         var edBtn = document.getElementById('deskEdit'); if (edBtn) edBtn.disabled = !deskSel.length;
         deskHint();
+        try { deskTplNoteUi(); } catch (e) { }
+        deskRemoteMark();
       }
       async function deskThumb(it) {
         try {
@@ -44107,12 +44982,18 @@ function renderTabletBridgeSetup(info) {
           c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); bmp.close();
           try { deskApplyAdj(c, it.adj); } catch (e) { }       // the thumbnail shows the operator's edit, if any
           it.thumb = c.toDataURL('image/jpeg', 0.7);
+          // A much smaller copy for the photographer's phone (it is fetched again and again over the booth Wi-Fi).
+          var k2 = Math.min(1, 150 / Math.max(c.width, c.height)), c2 = document.createElement('canvas');
+          c2.width = Math.max(1, Math.round(c.width * k2)); c2.height = Math.max(1, Math.round(c.height * k2));
+          c2.getContext('2d').drawImage(c, 0, 0, c2.width, c2.height);
+          it.pthumb = c2.toDataURL('image/jpeg', 0.6);
         } catch (e) { it.bad = true; }
         deskRender();
       }
       function deskAdd(blob, name, phone) {
-        var it = { id: ++deskSeq, blob: blob, name: name || ('photo ' + deskSeq), used: false, thumb: '', canvas: null, phone: !!phone };
+        var it = { id: ++deskSeq, blob: blob, name: name || ('photo ' + deskSeq), used: false, thumb: '', pthumb: '', canvas: null, phone: !!phone };
         deskQueue.push(it); deskRender(); deskThumb(it);
+        deskAutoSoon(1200);       // a second photo may follow straight away: give it a moment
       }
       function deskAddFiles(files) {
         [].forEach.call(files || [], function (f) { if (/^image\/(jpeg|png|webp)$/.test(f.type) || /\.(jpe?g|png|webp)$/i.test(f.name || '')) deskAdd(f, f.name); });
@@ -44132,27 +45013,61 @@ function renderTabletBridgeSetup(info) {
       function openDesk() {
         if (!extraOn('roving')) return;
         if (state === 'capturing') { showToast('Finish the session first.', 3000); return; }
-        deskOverlay.hidden = false; deskRender(); deskWatchUI();
+        deskOverlay.hidden = false; deskTplUi(); deskRender(); deskWatchUI();
         roveUnseen = 0; deskFab.dataset.n = '0'; deskPhoneUi();
       }
       function closeDesk() { deskOverlay.hidden = true; }
+      // The booth's own layout back on screen (a Photoman print before this one may have left its template in place).
+      function deskBoothLayoutBack() {
+        if (currentLayout !== setupLayout) { try { setLayout(setupLayout); } catch (e) { } }
+        if (setupLayout === 'myframe' && setupActiveFrameId) activeFrameId = setupActiveFrameId;
+      }
+      // Puts the Photoman template in place for this print. resetForNextGuest puts the booth's layout (and its frame and paper) back.
+      function deskApplyTemplate(key) {
+        if (!key || key === 'match') { deskBoothLayoutBack(); return; }
+        if (key === 'solo') { enterSoloLayout(); return; }
+        var lk = key, fid = '';
+        if (/^frame:/.test(key)) { fid = key.slice(6); lk = 'myframe'; if (!frameById(fid)) { enterSoloLayout(); return; } }
+        if (currentLayout === lk && (!fid || activeFrameId === fid)) return;
+        if (soloPaper === null) soloPaper = printSize || '';     // restoreSoloPaper() gives the booth's paper back
+        if (fid) { if (deskKeepFrame === undefined) deskKeepFrame = activeFrameId; activeFrameId = fid; }
+        currentLayout = lk;
+        try { refreshPrintUI(); } catch (e) { }
+      }
+      // The last print made at the desk, for the photographer's phone: its picture, QR link and whether it is printing.
+      var deskLast = null;
+      function deskResultThumb() {
+        try {
+          var h = 260, k = h / Math.max(1, previewCanvas.height), c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(previewCanvas.width * k)); c.height = h;
+          c.getContext('2d').drawImage(previewCanvas, 0, 0, c.width, c.height);
+          return c.toDataURL('image/jpeg', 0.7);
+        } catch (e) { return ''; }
+      }
       // original = true: print the photo as it is (no frame); its QR still opens the framed version.
-      async function deskMake(original) {
+      // auto = true: made by Auto-frame (a photo that can't be opened is then set aside so it is not tried again).
+      async function deskMake(original, auto) {
         original = original === true;
         var picks = deskSel.map(function (id) { return deskQueue.find(function (x) { return x.id === id; }); }).filter(Boolean);
         if (!picks.length) return;
         if (state === 'capturing') return;
         deskMakeBtn.disabled = true; deskOrigBtn.disabled = true;
         try {
-          var need = original ? 1 : deskNeed(), shots = [], raw = null;
-          for (var i = 0; i < need; i++) shots.push(await deskCanvas(picks[Math.min(i, picks.length - 1)]));
+          var tpl = original ? 'solo' : deskTplKey();
+          if (!original && tpl === 'match') deskBoothLayoutBack();
+          var spots = original ? 1 : deskSpots(tpl), shots = [], raw = null;
+          for (var i = 0; i < spots; i++) shots.push(await deskCanvas(picks[Math.min(i, picks.length - 1)]));
           if (original) { raw = await quickDecode(picks[0].blob); try { deskApplyAdj(raw, picks[0].adj); } catch (e) { } }
-          picks.forEach(function (p) { p.used = true; });
+          picks.forEach(function (p) { p.used = true; p.noAuto = true; });
           deskSel = [];
           closeDesk();
-          startDeskResult(shots, original ? { solo: true, original: raw } : { solo: deskSoloOn });
+          deskLast = { live: true, sessionNumber: 0, qrUrl: '', thumb: '', label: original ? 'Original photo' : deskTplLabel(tpl), printing: false, at: Date.now() };
+          startDeskResult(shots, original ? { solo: true, original: raw } : { tpl: tpl });
+          deskLast.sessionNumber = sessionNumber || 1; deskLast.thumb = deskResultThumb(); deskLast.at = Date.now();
+          deskRemoteMark();
         } catch (e) {
           console.error('Desk photo failed:', e);
+          if (auto) picks.forEach(function (p) { p.bad = true; p.noAuto = true; });
           showToast('Couldn\u2019t open that photo. Try another.', 4000);
           deskRender();
         }
@@ -44180,7 +45095,8 @@ function renderTabletBridgeSetup(info) {
         flipbookResult = null; completedGifCapture = null;
         resetSessionPrints();
         sess = null; countingDown = false;
-        if (opts.solo) enterSoloLayout();
+        if (opts.tpl) deskApplyTemplate(opts.tpl);              // the Photographer desk's template (booth layout, a built-in layout or one of the frames)
+        else if (opts.solo) enterSoloLayout();
         plainResult = opts.original || null;                    // "Print original": the result is the photo itself, no frame
         shotCanvases = shots;
         qrResults.innerHTML = ''; lastRenderedFolderUrl = null;
@@ -44200,10 +45116,23 @@ function renderTabletBridgeSetup(info) {
         flipbookResult = null; plainResult = null; deskReturn = false;
         _resetForNextGuest();
         restoreSoloPaper();
+        // A Photoman frame was only borrowed for that print: the booth's own frame (when it uses "My frame" the reset already put it back) returns.
+        if (deskKeepFrame !== undefined) {
+          if (setupLayout !== 'myframe' && deskKeepFrame && frameById(deskKeepFrame)) activeFrameId = deskKeepFrame;
+          deskKeepFrame = undefined;
+        }
+        if (deskLast) { deskLast.live = false; deskRemoteMark(); }
         if (wasResult) restoreGuestLook();      // the next guest starts with the look chosen in Setup
         if (back === 'req') openReq();         // the list of print requests comes back
         else if (back === 'spin') openSpin();  // return to 360 studio desk
-        else if (back) openDesk();
+        else if (back && !(deskAutoOn && deskAutoFresh().length >= deskNeed())) openDesk();   // Auto-frame has more waiting: go straight on with it instead
+        deskAutoSoon(back ? 600 : 1500);       // photos that arrived during a guest's session or the last print are picked up now
+      };
+      // The guest's QR link, for the photographer's phone. The photo's own link replaces the "All photos" one once it has uploaded.
+      var _fillQrSlot = fillQrSlot;
+      fillQrSlot = function (kind, url) {
+        _fillQrSlot(kind, url);
+        if (kind === 'photo' && deskLast && deskLast.live && url) { deskLast.qrUrl = String(url); deskRemoteMark(); }
       };
       // ---- Optional per-photo edit: brightness, contrast, warmth, colour. Stored on the desk item (it.adj) and applied in
       // deskCanvas (framed print + QR photo) and for "Print original", so the guest's QR photo is the edited one. ----
@@ -44381,14 +45310,115 @@ function renderTabletBridgeSetup(info) {
         else { deskSel.push(id); var need = deskNeed(); if (deskSel.length > need) deskSel.shift(); }
         deskRender();
       });
-      var deskSoloBox = document.getElementById('deskSolo');
-      deskSoloBox.checked = deskSoloOn;
-      deskSoloBox.addEventListener('change', function () {
-        deskSoloOn = deskSoloBox.checked;
-        try { localStorage.setItem('pb_desk_solo', deskSoloOn ? '1' : '0'); } catch (e) { }
+      // ---- Template, photo-spot and Auto-frame choices (also changed from the photographer's phone: see deskRemoteDo) ----
+      function deskTplChanged() {
+        deskSave();
         var need = deskNeed(); if (deskSel.length > need) deskSel = deskSel.slice(-need);
-        deskRender();
-      });
+        deskTplUi(); deskRender();
+      }
+      function deskSetAuto(on) {
+        on = !!on;
+        if (on && !deskAutoOn) deskAutoFrom = deskSeq;          // only photos that arrive from now on: the ones already in the list are left alone
+        deskAutoOn = on;
+        if (!on) { clearTimeout(deskAutoTimer); deskAutoTimer = null; }
+        deskSave(); deskTplUi(); deskRender();
+      }
+      document.getElementById('deskTpl').addEventListener('change', function () { deskTpl = this.value; deskTplChanged(); });
+      document.getElementById('deskFill').addEventListener('change', function () { deskFill = this.value === 'repeat1' ? 'repeat1' : 'multi'; deskTplChanged(); });
+      document.getElementById('deskAuto').addEventListener('change', function () { deskSetAuto(this.checked); });
+      // (The lists are filled in when the desk opens: openDesk calls deskTplUi. Nothing here reads the layouts while the page is still starting.)
+
+      // ---- Auto-frame: each new camera photo (or each group of photos, when the template has several spots) is framed by itself ----
+      // The same finish as Make print + QR: the frame, the guest's QR and (if Auto-print is on) the print. Only photos that arrive after it was
+      // switched on count, and never while a guest is mid-session, a result is on screen or a photo is being edited.
+      function deskAutoFresh() {
+        return deskQueue.filter(function (it) { return it.id > deskAutoFrom && !it.used && !it.bad && !it.noAuto; });
+      }
+      function deskAutoBusy() {
+        return state !== 'idle' || !deskEdOv.hidden || (typeof flowBusy !== 'undefined' && flowBusy);
+      }
+      function deskAutoSoon(ms) {
+        clearTimeout(deskAutoTimer); deskAutoTimer = null;
+        if (!deskAutoOn) return;
+        deskAutoTimer = setTimeout(deskAutoRun, ms == null ? 600 : ms);
+      }
+      async function deskAutoRun() {
+        deskAutoTimer = null;
+        if (!deskAutoOn || !extraOn('roving')) return;
+        var need = deskNeed(), fresh = deskAutoFresh();
+        try { deskTplNoteUi(); } catch (e) { }
+        if (fresh.length < need) return;                         // waiting for the rest of the group
+        if (deskAutoBusy()) { deskAutoSoon(1500); return; }      // try again when the booth is free
+        deskSel = fresh.slice(0, need).map(function (it) { return it.id; });
+        await deskMake(false, true);
+      }
+
+      // ---- The photographer's phone (laptop app): it shows this queue, changes these choices and presses Make / Print / Next ----
+      // The booth page pushes a small picture of the desk to the laptop app (roveStateSet); the phone page reads it from the app's
+      // share server and sends its taps back as commands, which this page collects (roveCmdTake) and runs like the same taps here.
+      var deskRemoteDirty = true, deskRemoteBusy = false, deskRemoteHold = [];
+      function deskRemoteOn() { return !!(window.pb4u && window.pb4u.roveStateSet && window.pb4u.roveCmdTake) && extraOn('roving'); }
+      function deskRemoteMark() { deskRemoteDirty = true; }
+      function deskRemoteLayouts() {
+        var out = [{ key: 'match', label: 'Same as the booth: ' + pickName(deskBoothKey()), shots: deskSpots('match'), group: 'Photobooth' }];
+        ['solo'].concat(LAYOUT_ORDER.filter(function (k) { return k !== 'solo'; })).forEach(function (k) {
+          if (deskTplValid(k)) out.push({ key: k, label: LAYOUT_DEFS[k].name, shots: LAYOUT_DEFS[k].shots, group: 'Built-in layouts' });
+        });
+        ((typeof myFrames !== 'undefined' && myFrames) || []).forEach(function (f) {
+          out.push({ key: 'frame:' + f.id, label: pickName('frame:' + f.id), shots: Math.max(1, frameShotCount(f)), group: 'My frames' });
+        });
+        return out.slice(0, 60);
+      }
+      function deskRemoteState() {
+        var key = deskTplKey(), q = deskQueue.slice(-30).reverse().map(function (it) {
+          return { id: it.id, name: it.name, thumb: it.pthumb || '', used: !!it.used, phone: !!it.phone, edited: !!it.adj, selOrder: deskSel.indexOf(it.id) + 1 };
+        });
+        var st = {
+          layoutMode: key, fillMode: deskFill, autoOn: deskAutoOn,
+          need: deskNeed(), rawShots: deskSpots(key), activeLabel: deskTplLabel(key),
+          layouts: deskRemoteLayouts(), queue: q, lastResult: null
+        };
+        if (deskLast) st.lastResult = { sessionNumber: deskLast.sessionNumber || 1, qrUrl: deskLast.qrUrl || '', thumb: deskLast.thumb || '', label: deskLast.label || '', printing: !!deskLast.printing, at: deskLast.at || Date.now() };
+        return st;
+      }
+      async function deskRemoteDo(c) {
+        var act = c && c.do;
+        if (act === 'config') {
+          if (typeof c.layoutMode === 'string' && deskTplValid(c.layoutMode)) deskTpl = c.layoutMode;
+          if (c.fillMode === 'repeat1' || c.fillMode === 'multi') deskFill = c.fillMode;
+          if (typeof c.autoOn === 'boolean') deskSetAuto(c.autoOn);
+          deskTplChanged();
+        } else if (act === 'make') {
+          var ids = (Array.isArray(c.ids) ? c.ids : []).map(Number).filter(function (id) { return deskQueue.some(function (x) { return x.id === id; }); });
+          if (!ids.length) { showToast('The photographer’s phone picked a photo that is no longer in the list.', 3500); return; }
+          if (state === 'capturing') { deskRemoteHold.push(c); return; }       // a guest is mid-session: do it when they are done
+          deskSel = ids.slice(0, c.original ? 1 : Math.max(1, deskNeed()));
+          await deskMake(c.original === true);
+        } else if (act === 'print') {
+          if (state === 'result' && printBtn && !printBtn.hidden && !printBtn.disabled && !printing) printBtn.click();
+        } else if (act === 'next') {
+          if (state === 'result') resetForNextGuest();
+        } else if (act === 'clear') {
+          deskQueue = []; deskSel = []; deskRender();
+        }
+      }
+      async function deskRemoteTick() {
+        if (deskRemoteBusy) return;
+        deskRemoteBusy = true;
+        try {
+          if (!deskRemoteOn()) { deskRemoteBusy = false; return; }
+          var cmds = deskRemoteHold.filter(function (c) { return Date.now() - (c.at || 0) < 60000; });
+          deskRemoteHold = [];
+          cmds = cmds.concat((await window.pb4u.roveCmdTake()) || []);
+          for (var i = 0; i < cmds.length; i++) { try { await deskRemoteDo(cmds[i]); } catch (e) { console.error('Phone command failed:', e); } }
+          var pr = !!printing;
+          if (deskLast && deskLast.live && deskLast.printing !== pr) { deskLast.printing = pr; deskRemoteDirty = true; }
+          if (deskRemoteDirty) { deskRemoteDirty = false; await window.pb4u.roveStateSet(deskRemoteState()); }
+        } catch (e) { /* the next tick tries again */ }
+        deskRemoteBusy = false;
+      }
+      setInterval(deskRemoteTick, 800);
+      window.addEventListener('pb-extras-change', function () { deskRemoteMark(); });
       var deskDrop = document.getElementById('deskDrop');
       ['dragenter', 'dragover'].forEach(function (t) { deskDrop.addEventListener(t, function (e) { e.preventDefault(); deskDrop.classList.add('over'); }); });
       ['dragleave', 'drop'].forEach(function (t) { deskDrop.addEventListener(t, function (e) { e.preventDefault(); deskDrop.classList.remove('over'); }); });
@@ -47286,7 +48316,7 @@ function renderTabletBridgeSetup(info) {
         var paper = printSize ? paperFor(printSize) : null;
         if (!printSettings() || !paper) return { ok: false, error: 'Printing isn’t set up on this booth.' };
         var pname = printerFor(printSize), viaStation = useStation();
-        if (!viaStation && DESKTOP && !pname) return { ok: false, error: 'Choose a printer for ' + paper.name + ' in Print settings.' };
+        if (!viaStation && LAPTOP_PRINT && !pname) return { ok: false, error: 'Choose a printer for ' + paper.name + ' in Print settings.' };
         for (var w = 0; printing && w < 100; w++) await new Promise(function (r) { setTimeout(r, 300); });
         if (printing) return { ok: false, error: 'The booth is busy printing. Try again.' };
         var lim = printLimits(), left = lim.ev && printCount && printCount.left != null ? printCount.left : Infinity;
@@ -47305,9 +48335,9 @@ function renderTabletBridgeSetup(info) {
             var sent = true;
             sent = await printSheets(all, paper, pname);
             if (sent) { showToast('Printing on ' + pname + ' (' + label + ').'); return { ok: true }; }
-            if (DESKTOP) return { ok: false, error: 'The printer didn’t take the photo. Check it is on and try again.' };
+            if (LAPTOP_PRINT) return { ok: false, error: 'The printer didn’t take the photo. Check it is on and try again.' };
           }
-          if (isMobileOS() || DESKTOP) return { ok: false, error: 'Choose a printer in Print settings.' };
+          if (isMobileOS() || LAPTOP_PRINT) return { ok: false, error: 'Choose a printer in Print settings.' };
           // Website without the Print Helper: the browser's own print (silent with Chrome's --kiosk-printing).
           var urls = [];
           printArea.innerHTML = '';
@@ -47781,7 +48811,7 @@ function renderTabletBridgeSetup(info) {
           printSize = key;          // the printer, colour and quality chosen for this paper size apply
           try { wifiRelink(); wifiSyncForSize(); } catch (e) { }
           var viaStation = useStation(), pname = printerFor(key);
-          if (!viaStation && DESKTOP && !pname) { stSay('Choose the printer for ' + P.name + ' above first.', true); return; }
+          if (!viaStation && LAPTOP_PRINT && !pname) { stSay('Choose the printer for ' + P.name + ' above first.', true); return; }
           var lim = printLimits(), left = lim.ev && printCount && printCount.left != null ? printCount.left : Infinity;
           if (left < total) { stSay(left < 1 ? 'No prints left for this event.' : 'Only ' + left + ' print' + (left === 1 ? '' : 's') + ' left for this event, and this needs ' + total + '.', true); return; }
           var res = await reservePrints(total); if (!res.ok) { limitReached(); stSay('No prints left for this event.', true); return; }
@@ -47793,7 +48823,7 @@ function renderTabletBridgeSetup(info) {
           var all = []; for (var c = 0; c < sheets; c++) all.push.apply(all, pages);
           if (helperOn && pname) {
             if (await printSheets(all, P, pname)) { stSay('Printing on ' + pname + ' (' + label + ').'); return; }
-            if (DESKTOP) { stSay('The printer didn’t take the sheets. Check it is on and try again.', true); return; }
+            if (LAPTOP_PRINT) { stSay('The printer didn’t take the sheets. Check it is on and try again.', true); return; }
           }
           var wf = wifiPrinter;
           if (wf && !wf.dialog && wifiNetAvailable()) {
@@ -47805,7 +48835,7 @@ function renderTabletBridgeSetup(info) {
             var r = JSON.parse(window.__PBPrint.print('Photobooth ' + P.name, P.w, P.h, JSON.stringify(imgs)) || '{}');
             stSay(r.ok ? 'Choose your printer to print (' + label + ').' : 'Couldn’t open printing: ' + (r.error || 'unknown error'), !r.ok); return;
           }
-          if (isMobileOS() || DESKTOP) { stSay('Choose a printer in Print settings first.', true); return; }
+          if (isMobileOS() || LAPTOP_PRINT) { stSay('Choose a printer in Print settings first.', true); return; }
           var urls = []; printArea.innerHTML = '';
           for (var k = 0; k < all.length; k++) {
             var blob = await new Promise(function (r2) { all[k].toBlob(r2, 'image/png'); });
@@ -47854,7 +48884,7 @@ function renderTabletBridgeSetup(info) {
           printSize = key;          // the printer, colour and quality chosen for this paper size apply
           try { wifiRelink(); wifiSyncForSize(); } catch (e) { }
           var viaStation = useStation(), pname = printerFor(key);
-          if (!viaStation && DESKTOP && !pname) return { ok: false, msg: 'Staff: choose the printer for ' + P.name + ' in Setup first.' };
+          if (!viaStation && LAPTOP_PRINT && !pname) return { ok: false, msg: 'Staff: choose the printer for ' + P.name + ' in Setup first.' };
           var lim = printLimits(), left = lim.ev && printCount && printCount.left != null ? printCount.left : Infinity;
           if (left < total) return { ok: false, msg: left < 1 ? 'No prints left for this event.' : 'Only ' + left + ' print' + (left === 1 ? '' : 's') + ' left, and this needs ' + total + '.' };
           var res = await reservePrints(total); if (!res.ok) { limitReached(); return { ok: false, msg: 'No prints left for this event.' }; }
@@ -47867,7 +48897,7 @@ function renderTabletBridgeSetup(info) {
           var all = []; for (var c = 0; c < sheets; c++) all.push.apply(all, pages);
           if (helperOn && pname) {
             if (await printSheets(all, P, pname)) return { ok: true, msg: 'Printing on ' + pname + ' (' + label + ').' };
-            if (DESKTOP) return { ok: false, msg: 'The printer did not take the sheets. Check it is on and try again.' };
+            if (LAPTOP_PRINT) return { ok: false, msg: 'The printer did not take the sheets. Check it is on and try again.' };
           }
           var wf = wifiPrinter;
           if (wf && !wf.dialog && wifiNetAvailable()) {
@@ -47879,7 +48909,7 @@ function renderTabletBridgeSetup(info) {
             var r = JSON.parse(window.__PBPrint.print('Rush ID ' + P.name, P.w, P.h, JSON.stringify(imgs)) || '{}');
             return r.ok ? { ok: true, msg: 'Choose your printer to print (' + label + ').' } : { ok: false, msg: 'Could not open printing: ' + (r.error || 'unknown error') };
           }
-          if (isMobileOS() || DESKTOP) return { ok: false, msg: 'Staff: choose a printer in Setup first.' };
+          if (isMobileOS() || LAPTOP_PRINT) return { ok: false, msg: 'Staff: choose a printer in Setup first.' };
           var urls = []; printArea.innerHTML = '';
           for (var k = 0; k < all.length; k++) {
             var blob = await new Promise(function (r2) { all[k].toBlob(r2, 'image/png'); });
@@ -52780,24 +53810,16 @@ function renderTabletBridgeSetup(info) {
           });
         }
         if (typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && sessionTier) {
+          // layoutTier(): with "Separate B&W and colour prints" off this is the old rule (receipt layouts and frames tagged thermal
+          // are thermal, everything else is colour); on, the colour receipts and colour frames count as colour.
           if (sessionTier === 'receipt') {
             var rKeys = keys.filter(function (k) {
-              if (/^frame:/.test(k)) {
-                var f = typeof frameById === 'function' ? frameById(k.slice(6)) : null;
-                return f && (f.tier === 'receipt' || f.tier === 'all');
-              }
-              return LAYOUT_DEFS[k] && LAYOUT_DEFS[k].kind === 'receipt';
+              return (/^frame:/.test(k) || LAYOUT_DEFS[k]) && layoutFitsTier(k, 'receipt');
             });
             if (rKeys.length) keys = rKeys;
             else keys = ['receipt'];
           } else if (sessionTier === 'photo') {
-            var pKeys = keys.filter(function (k) {
-              if (/^frame:/.test(k)) {
-                var f = typeof frameById === 'function' ? frameById(k.slice(6)) : null;
-                return !f || f.tier === 'photo' || f.tier === 'all' || !f.tier;
-              }
-              return !LAYOUT_DEFS[k] || LAYOUT_DEFS[k].kind !== 'receipt';
-            });
+            var pKeys = keys.filter(function (k) { return layoutFitsTier(k, 'photo'); });
             if (pKeys.length) keys = pKeys;
           }
         }
@@ -52883,8 +53905,9 @@ function renderTabletBridgeSetup(info) {
         var frames = (typeof myFrames !== 'undefined' && Array.isArray(myFrames)) ? myFrames : [];
         var filteredFrames = standAloneFrames ? frames.filter(function (f) {
           if (!(typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && sessionTier)) return true;
-          if (sessionTier === 'receipt') return f && (f.tier === 'receipt' || f.tier === 'all');
-          return !f || f.tier === 'photo' || f.tier === 'all' || !f.tier;
+          var ft = frameTier(f);
+          if (sessionTier === 'receipt') return !!f && (ft === 'receipt' || ft === 'all');
+          return !f || ft === 'photo' || ft === 'all';
         }) : [];
         var includeDesigns = guestDesigns.length >= 2 || (standAloneFrames && filteredFrames.length > 0);
         if (includeDesigns) {
@@ -52968,7 +53991,7 @@ function renderTabletBridgeSetup(info) {
             var prObj = isPr && typeof presetById === 'function' ? presetById(k.slice(6)) : null;
             var shots = isFr ? frameShotCount(fObj) : (isPr ? presetShotCount(prObj) : (LAYOUT_DEFS[k] ? LAYOUT_DEFS[k].shots : 4));
             shBadge.textContent = shots + (shots === 1 ? ' shot' : ' shots');
-            var isRc = (fObj && fObj.tier === 'receipt') || (!isFr && !isPr && LAYOUT_DEFS[k] && LAYOUT_DEFS[k].kind === 'receipt');
+            var kt = layoutTier(k), isRc = kt === 'receipt';
             b.append(im, sp, shBadge);
             if (typeof payActive === 'function' && payActive() && payCfg && payCfg.dual) {
               var tierTag = document.createElement('span');
@@ -52976,6 +53999,12 @@ function renderTabletBridgeSetup(info) {
               var matchingOpt = payCfg.options && payCfg.options.find(function (o) { return o.tier === (isRc ? 'receipt' : 'photo'); });
               tierTag.textContent = matchingOpt ? ((isRc ? '🧾 ' : '🎨 ') + matchingOpt.label) : (isRc ? ('🧾 ' + (payCfg.tier1 ? payCfg.tier1.label : 'Thermal')) : ('🎨 ' + (payCfg.tier2 ? payCfg.tier2.label : 'Coloured')));
               b.append(tierTag);
+            } else if (tierSplitOn() && keys.some(function (x) { return layoutTier(x) === 'receipt'; }) && keys.some(function (x) { return layoutTier(x) !== 'receipt'; })) {
+              // B&W and colour are separated and the guest can pick either: say which is which.
+              var sTag = document.createElement('span');
+              sTag.className = 'pick-tier-tag ' + (isRc ? 'thermal' : (kt === 'all' ? 'any' : 'color'));
+              sTag.textContent = LAYOUT_TIER_LABEL[kt] || LAYOUT_TIER_LABEL.photo;
+              b.append(sTag);
             }
             b.addEventListener('click', function (e) { e.stopPropagation(); finishPick(k); });
             pickGrid.appendChild(b);
@@ -53251,7 +54280,12 @@ function renderTabletBridgeSetup(info) {
       // The linked printer for this guest, only if this device has it (otherwise prints go the normal way, by paper size).
       function forcedPrinterName() {
         try {
-          if (!(printPrefs.voucherPrinter && payCfg.dual && sessionPrinter)) return '';
+          if (!(printPrefs.voucherPrinter && payCfg.dual && sessionPrinter)) {
+            // No payment option picked a printer: with "Separate B&W and colour prints" on, the layout's kind does
+            // (B&W -> the thermal printer, colour -> the photo printer chosen in the Printer tab, on this device).
+            var lt = tierSplitOn() ? layoutTier(currentLayout) : '';
+            return (lt === 'receipt' || lt === 'photo') ? tierPrinterName(lt) : '';
+          }
           var n = sessionPrinter;
           if (helperOn && helper && Array.isArray(helper.printers) && helper.printers.indexOf(n) >= 0) return n;
           if (typeof wifiByName === 'function' && wifiByName(n)) return n;
@@ -53743,7 +54777,7 @@ function renderTabletBridgeSetup(info) {
           box.innerHTML += '<p class="panel-hint" style="margin:6px 0 0;color:#e05252;">Two options have the same label. Give each option its own label: vouchers and payments find their prints and printer by the label.</p>';
         }
         if (!printPrefs.voucherPrinter) {
-          box.innerHTML += '<p class="panel-hint" style="margin:6px 0 0;">Want an option to print on its own printer? Turn on <b>Link vouchers to printers</b> in <a href="#" class="pay-goto-print">Camera &amp; printer</a>.</p>';
+          box.innerHTML += '<p class="panel-hint" style="margin:6px 0 0;">Want an option to print on its own printer? Turn on <b>Link vouchers to printers</b> in <a href="#" class="pay-goto-print">Printer</a>.</p>';
         }
       }
       // The Prints choice on an option: same as the default, no print (softcopy only), or 1-5 prints.
@@ -53895,7 +54929,7 @@ function renderTabletBridgeSetup(info) {
         });
         pol.addEventListener('click', function (e) {
           var go = e.target.closest('.pay-goto-print');
-          if (go) { e.preventDefault(); try { switchTab('setup'); if (typeof goStep === 'function') goStep(4); } catch (err) { } return; }
+          if (go) { e.preventDefault(); try { switchTab('setup'); if (typeof goStep === 'function') goStep(8); } catch (err) { } return; }   // 8 = the Printer step
           var delBtn = e.target.closest('.pay-opt-del');
           if (!delBtn) return;
           var idx = Number(delBtn.dataset.idx);
@@ -59603,7 +60637,7 @@ function fxWavUrl(kind) {
         try { var os = ownSizes(); if (os.length) d.ownSizes = os.slice(0, OWN_MAX); } catch (e) { }
         try { if (layoutPaperMap && Object.keys(layoutPaperMap).length) d.layoutPaperMap = Object.assign({}, layoutPaperMap); } catch (e) { }
         try { d.keychain = !!keychainOn; } catch (e) { }
-        try { d.deskSolo = !!deskSoloOn; } catch (e) { }
+        try { d.deskSolo = deskTpl !== 'match'; d.deskTpl = String(deskTpl); d.deskFill = deskFill; } catch (e) { }   // deskSolo: kept for an older app
         return d;
       }
       function profileDeviceApply(d) {
@@ -59625,10 +60659,11 @@ function fxWavUrl(kind) {
         } catch (e) { }
         try { if (typeof d.keychain === 'boolean') { keychainOn = d.keychain; localStorage.setItem('pb_keychain_print', keychainOn ? '1' : '0'); } } catch (e) { }
         try {
-          if (typeof d.deskSolo === 'boolean') {
-            deskSoloOn = d.deskSolo; localStorage.setItem('pb_desk_solo', deskSoloOn ? '1' : '0');
-            var dsb = document.getElementById('deskSolo'); if (dsb) dsb.checked = deskSoloOn;
-          }
+          var dtOk = typeof d.deskTpl === 'string' && /^[A-Za-z0-9:_-]{1,90}$/.test(d.deskTpl);
+          if (dtOk) deskTpl = d.deskTpl;
+          else if (typeof d.deskSolo === 'boolean') deskTpl = d.deskSolo ? 'solo' : 'match';       // saved by an older app
+          if (d.deskFill === 'repeat1' || d.deskFill === 'multi') deskFill = d.deskFill;
+          if (dtOk || typeof d.deskSolo === 'boolean') { deskSave(); deskTplUi(); }
         } catch (e) { }
         try {
           if (typeof d.paper === 'string' && d.paper) { localStorage.setItem('pb_print_paper', d.paper); printSize = null; }   // refreshPrintUI picks it when this layout / code allows it
@@ -60841,13 +61876,27 @@ function fxWavUrl(kind) {
           var tierSel = document.createElement('select');
           tierSel.className = 'mini-select pillify frame-tier-select';
           tierSel.style.cssText = 'font:700 12px/1.3 Manrope,sans-serif;padding:3px 8px;border-radius:8px;border:1.5px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;';
-          tierSel.innerHTML = '<option value="all">✨ Any layout (Thermal or Color)</option>' +
-            '<option value="photo"' + (f.tier === 'photo' ? ' selected' : '') + '>🎨 Normal / Coloured only</option>' +
-            '<option value="receipt"' + (f.tier === 'receipt' ? ' selected' : '') + '>🧾 Thermal / Receipt only</option>';
-          tierSel.value = (f.tier === 'receipt' || f.tier === 'photo') ? f.tier : 'all';
-          tierSel.title = 'Link this frame to Thermal option, Coloured option, or Any layout';
+          var splitOn = tierSplitOn();
+          if (splitOn) {
+            // "Separate B&W and colour prints" is on. A frame with colour can only be Colour (a thermal printer is black & white);
+            // a black & white frame can be B&W, Colour or either. Frames already tagged B&W earlier keep that tag.
+            var fColour = !!f.color && f.tier !== 'receipt', ft = frameTier(f);
+            tierSel.innerHTML = (fColour ? '' : '<option value="receipt">🧾 B&W · thermal printer</option>') +
+              '<option value="photo">🎨 Colour · photo printer</option>' +
+              (fColour ? '' : '<option value="all">✨ Either (B&W or colour)</option>');
+            tierSel.value = ft;
+            tierSel.title = fColour ? 'This frame has colour, so it prints on the colour printer only' : 'Which printer this frame prints on';
+          } else {
+            tierSel.innerHTML = '<option value="all">✨ Any layout (Thermal or Color)</option>' +
+              '<option value="photo"' + (f.tier === 'photo' ? ' selected' : '') + '>🎨 Normal / Coloured only</option>' +
+              '<option value="receipt"' + (f.tier === 'receipt' ? ' selected' : '') + '>🧾 Thermal / Receipt only</option>';
+            tierSel.value = (f.tier === 'receipt' || f.tier === 'photo') ? f.tier : 'all';
+            tierSel.title = 'Link this frame to Thermal option, Coloured option, or Any layout';
+          }
           tierSel.addEventListener('change', function () {
+            if (tierSplitOn() && f.color && f.tier !== 'receipt' && tierSel.value !== 'photo') { tierSel.value = 'photo'; showToast('A frame with colour can only print on the colour printer.', 3500); return; }
             f.tier = tierSel.value;
+            if (tierSplitOn()) { framesChanged({ layout: 'myframe' }); return; }      // re-routes the paper and the printer for this frame
             buildLayoutPicker();
             if (typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
             scheduleSetupSave();
@@ -60855,6 +61904,12 @@ function fxWavUrl(kind) {
           nameRow.appendChild(nameInput);
           nameRow.appendChild(tierSel);
           info.append(nameRow, subText);
+          if (splitOn && f.color && f.tier !== 'receipt') {
+            var colNote = document.createElement('span');
+            colNote.style.cssText = 'display:block;font-size:12px;color:var(--muted);margin-top:2px;';
+            colNote.textContent = 'This frame has colour, so it prints on your colour printer only.';
+            info.appendChild(colNote);
+          }
           top.append(th, info);
           var btns = document.createElement('div'); btns.className = 'frame-ctx-btns';
           var ed = document.createElement('button'); ed.type = 'button'; ed.className = 'action-btn mini'; ed.textContent = spotEdit && spotEdit.f === f.id ? 'Done editing spots' : 'Edit photo spots';
@@ -61371,6 +62426,7 @@ function fxWavUrl(kind) {
       }
       function redetectWithKey(f, quiet) {
         var img = assetImg(f.id); if (!img) return;
+        f.color = frameHasColour(img, f.key);          // with the picked window colour left out
         var found = detectSpots(img, f.key);
         if (found.length) { f.spots = found; spotEdit.sel = -1; }
         framesChanged({ layout: 'myframe' });
@@ -61440,7 +62496,10 @@ function fxWavUrl(kind) {
               var initName = (files[i].name || '').replace(/\.[^/.]+$/, '').trim().slice(0, 40) || ('Frame ' + (myFrames.length + 1));
               var isTallReceipt = (img.height / img.width >= 2.2);
               var autoTier = isTallReceipt || /thermal|receipt|b&w|bw/i.test(initName) ? 'receipt' : 'all';
-              myFrames.push({ id: id, name: initName, w: img.width, h: img.height, spots: spots, tier: autoTier });
+              // Has this frame got colour? (Frames with coloured photo windows are checked once the window colour is picked.)
+              var hasCol = needPick ? undefined : frameHasColour(img);
+              if (hasCol && tierSplitOn()) autoTier = 'photo';          // B&W / colour separated: a colour frame is never tagged thermal
+              myFrames.push({ id: id, name: initName, w: img.width, h: img.height, spots: spots, tier: autoTier, color: hasCol });
               added.push(myFrames[myFrames.length - 1]);
               if (needPick) added[added.length - 1]._pick = true;
             } else {
@@ -61652,7 +62711,7 @@ function fxWavUrl(kind) {
       function framesSnapshot() {
         var r4 = function (v) { return Math.round(v * 10000) / 10000; };
         return {
-          frames: myFrames.map(function (f) { var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function (s) { var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; if (s.a) q.a = Math.round(s.a * 10) / 10; if (s.z) q.z = s.z; if (s.s >= 1) q.s = s.s; return q; }) }; if (typeof f.name === 'string' && f.name.trim()) o.name = f.name.trim().slice(0, 40); if (typeof f.copy === 'boolean') o.copy = f.copy; if (frameRepeat(f)) o.rep = frameRepeat(f); if (f.one === false) o.one = false; if (f.tl) o.tl = r4(f.tl); if (f.tr) o.tr = r4(f.tr); if (f.tb) o.tb = r4(f.tb); if (f.key) o.key = { c: f.key.c.slice(), t: f.key.t }; if (f.tier) o.tier = f.tier; return o; }),
+          frames: myFrames.map(function (f) { var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function (s) { var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; if (s.a) q.a = Math.round(s.a * 10) / 10; if (s.z) q.z = s.z; if (s.s >= 1) q.s = s.s; return q; }) }; if (typeof f.name === 'string' && f.name.trim()) o.name = f.name.trim().slice(0, 40); if (typeof f.copy === 'boolean') o.copy = f.copy; if (frameRepeat(f)) o.rep = frameRepeat(f); if (f.one === false) o.one = false; if (f.tl) o.tl = r4(f.tl); if (f.tr) o.tr = r4(f.tr); if (f.tb) o.tb = r4(f.tb); if (f.key) o.key = { c: f.key.c.slice(), t: f.key.t }; if (f.tier) o.tier = f.tier; if (typeof f.color === 'boolean') o.color = f.color; return o; }),
           activeFrame: activeFrameId,
           frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
           sheet: { pattern: sheet.pattern, items: sheet.items.map(function (it) { return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; }) },
@@ -61686,7 +62745,8 @@ function fxWavUrl(kind) {
             rep: Math.round(num(f.rep, 0, MAX_SPOTS, 0)) || undefined,
             one: f.one === false ? false : undefined,
             tl: Math.round(num(f.tl, -0.1, 0.1, 0) * 10000) / 10000 || undefined, tr: Math.round(num(f.tr, -0.1, 0.1, 0) * 10000) / 10000 || undefined, tb: Math.round(num(f.tb, -0.1, 0.1, 0) * 10000) / 10000 || undefined,
-            tier: (f.tier === 'receipt' || f.tier === 'photo' || f.tier === 'all') ? f.tier : undefined
+            tier: (f.tier === 'receipt' || f.tier === 'photo' || f.tier === 'all') ? f.tier : undefined,
+            color: typeof f.color === 'boolean' ? f.color : undefined       // does the frame picture carry colour? (checked once; decides if it can print on thermal)
           };
         });
         startFrameDone = okId(s.sfDone) ? s.sfDone : '';
@@ -61862,28 +62922,41 @@ function fxWavUrl(kind) {
       var setupLoadPromise = loadSetup(false);
 
       // =====================================================================
-      // Setup in 7 steps: 1 Design · 2 Text · 3 Layout · 4 Camera · 5 Extras · 6 Share · 7 Session.
+      // Setup in 7 steps: Design (with a Text sub-tab) · Layout · Camera · Printer · Extras · Share · Session.
+      // The step ids are 1 · 3 · 4 · 8 · 5 · 6 · 7. They never changed when Text moved into Design and Printer was
+      // split from Camera, so every goStep(n) call and every saved step still works (goStep(2) opens Design > Text).
+      // STEP_IDS is the order the tabs are shown in; the number on a tab is its place in that order.
       // One step shows at a time; the step bar (with a one-line summary of
       // each step) and the bottom Start bar stay in reach.
       // =====================================================================
       var curStep = 1;
       var setupShellEl = document.querySelector('#tabSetup .setup-shell');
       var stepTabs = [].slice.call(document.querySelectorAll('#stepBar .step-tab'));
+      var STEP_IDS = [1, 3, 4, 8, 5, 6, 7];
+      stepTabs.forEach(function (t, i) { var sn = t.querySelector('.sn'); if (sn) sn.textContent = String(i + 1); });
+      function stepTab(id) { return document.querySelector('#stepBar .step-tab[data-step="' + id + '"]'); }
+      // Is the Text part of Design on screen? (Trading card / certificate mode shows it straight under the card style.)
+      function textPaneShown() { var p = document.getElementById('textPane'); return document.body.classList.contains('bt-on') || !!(p && p.classList.contains('on')); }
       function goStep(n, opts) {
-        n = Math.max(1, Math.min(7, Number(n) || 1));
+        n = Number(n) || 1;
+        var toText = n === 2;   // the old Text step: Design, Text sub-tab
+        if (toText) n = 1;
+        if (STEP_IDS.indexOf(n) < 0) n = 1;
         curStep = n;
-        for (var i = 1; i <= 7; i++) document.getElementById('step' + i).classList.toggle('on', i === n);
+        STEP_IDS.forEach(function (i) { var el = document.getElementById('step' + i); if (el) el.classList.toggle('on', i === n); });
         stepTabs.forEach(function (t) {
           var on = Number(t.dataset.step) === n;
           t.classList.toggle('on', on);
           if (on) t.setAttribute('aria-current', 'step'); else t.removeAttribute('aria-current');
         });
         try { sessionStorage.setItem('pb_step', String(n)); } catch (e) { }
-        if (n === 2) { renderFontUI(); refreshThemePalette(); }
-        if (n === 3) queueLayoutThumbs();
+        if (toText) setDesignPane('text', true);
+        if (n === 1 && textPaneShown()) { renderFontUI(); refreshThemePalette(); }
+        if (n === 3) { queueLayoutThumbs(); try { refreshTierUI(); } catch (e) { } }
         else prewarmLayoutThumbs();
         if (n === 6) refreshPrintSummary();
-        if (n === 4) { try { refreshStep4Printer(); } catch (e) { } try { camEnsureLive(); } catch (e) { } }
+        if (n === 8) { try { refreshStep4Printer(); } catch (e) { } }
+        if (n === 4) { try { camEnsureLive(); } catch (e) { } }
         else if (n !== 7 || (typeof fx !== 'undefined' && fx.hands === 'off')) { try { camSleepNow(); } catch (e) { } }
         refreshSetupNav();
         if (n === 7 && typeof refreshD7Tabs === 'function') refreshD7Tabs();
@@ -61899,6 +62972,15 @@ function fxWavUrl(kind) {
         if (b && tabSetup.contains(b)) goStep(b.dataset.go);
       });
 
+      // One line for the Printer tab: the paper, and whether prints start by themselves.
+      function printerSummary() {
+        try {
+          if (!printSettings()) return 'Not turned on';
+          var paper = printSize ? paperFor(printSize) : null;
+          if (!paper) return 'Choose paper';
+          return paper.name + (autoPrint ? ' · auto-print' : '');
+        } catch (e) { return ''; }
+      }
       function setStepSum(n, text, warn) {
         var el = document.getElementById('stepSum' + n);
         el.textContent = text; el.classList.toggle('warn', !!warn);
@@ -61930,20 +63012,21 @@ function fxWavUrl(kind) {
       function refreshSetupNav() {
         if (!stepTabs) return;
         var t = currentThemeObj();
-        setStepSum(1, t ? t.name : 'Your design');
         var nm = labelInput.value.trim();
-        setStepSum(2, nm || 'Add a name', !nm);
+        setStepSum(1, nm ? (t ? t.name : 'Your design') : 'Add a name', !nm);   // the event name is in Design's Text sub-tab
+        var txs = document.getElementById('textSum'); if (txs) txs.textContent = nm || 'Add a name';
         var d = LAYOUT_DEFS[setupLayout] || layoutDef();
         setStepSum(3, d.name);
         var ex = extrasList();
         setStepSum(4, cameraSummary());
+        setStepSum(8, printerSummary());
         setStepSum(5, ex.length ? ex.join(', ') : 'None');
         var folderOk = !!rawFolderKey();
         setStepSum(6, folderOk ? 'Ready' : 'Folder needed', !folderOk);
         setStepSum(7, fmtSec(timerSec) + ' s countdown' + (advanceMode === 'tap' ? ', tap for next' : ''));
-        stepTabs[1].classList.toggle('done', !!nm);
-        stepTabs[5].classList.toggle('done', folderOk);
-        stepTabs[6].classList.remove('done');
+        stepTab(1).classList.toggle('done', !!nm);
+        stepTab(6).classList.toggle('done', folderOk);
+        stepTab(7).classList.remove('done');
         var st = document.getElementById('startStatus');
         st.textContent = folderOk ? 'Ready to start' : 'Add a folder name (step 6)';
         st.classList.toggle('warn', !folderOk);
@@ -61971,7 +63054,7 @@ function fxWavUrl(kind) {
         }
         pillSyncAll();
         markStyleTiles();
-        if (curStep === 2) { markFontUI(); refreshThemePalette(); }
+        if (curStep === 1 && textPaneShown()) { markFontUI(); refreshThemePalette(); }
         if (typeof refreshD7Tabs === 'function') refreshD7Tabs();
       }
       ['input', 'change', 'click'].forEach(function (type) { tabSetup.addEventListener(type, scheduleSetupNav); });
@@ -62530,18 +63613,21 @@ function fxWavUrl(kind) {
 
       [].forEach.call(document.querySelectorAll('.go-step'), function (a) { a.addEventListener('click', function (e) { e.preventDefault(); goStep(Number(a.dataset.goStep)); }); });
 
-      // ---- Step 1: Ready designs | Colours & background ----
-      function setDesignPane(p) {
+      // ---- Step 1: Ready designs | Colours & background | Text ----
+      // quiet = don't scroll (goStep already scrolls).
+      function setDesignPane(p, quiet) {
         [].forEach.call(document.querySelectorAll('#designTabs button'), function (b) { var on = b.dataset.pane === p; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
         [].forEach.call(document.querySelectorAll('#step1 .d1-pane'), function (x) { x.classList.toggle('on', x.dataset.d1 === p); });
         try { sessionStorage.setItem('pb_d1', p); } catch (e) { }
         if (p === 'colours') refreshAccentHelp();
+        if (p === 'text') { try { renderFontUI(); refreshThemePalette(); } catch (e) { } }
+        if (quiet) return;
         var bar = document.getElementById('designTabs'), top = bar.getBoundingClientRect().top;
         if (top < 0 || top > 140) window.scrollTo({ top: Math.max(0, window.scrollY + top - 76), behavior: 'smooth' });
       }
       document.getElementById('designTabs').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) setDesignPane(b.dataset.pane); });
       [].forEach.call(document.querySelectorAll('.d1-jump'), function (a) { a.addEventListener('click', function (e) { e.preventDefault(); setDesignPane(a.dataset.pane); }); });
-      try { if (sessionStorage.getItem('pb_d1') === 'colours') setDesignPane('colours'); } catch (e) { }
+      try { var savedD1 = sessionStorage.getItem('pb_d1'); if (savedD1 === 'colours' || savedD1 === 'text') setDesignPane(savedD1, true); } catch (e) { }
       // ---- Step 7: Photos | QR & sharing | Sound & start | Welcome screen | Screen & lock ----
       // One group at a time instead of one long page. A tab with nothing to show on this booth
       // (e.g. Screen & lock on a laptop with one screen and no lock) is hidden.
@@ -62678,9 +63764,12 @@ function fxWavUrl(kind) {
         refreshStationHints();
       }
       function applyPrintPrefs(p) {
+        var tierWas = tierSplit;
         printPrefs = cleanPrintPrefs(p);
+        tierSplit = !!printPrefs.splitTier;
         autoPrint = printPrefs.auto;
         opCopies = printPrefs.copies;
+        if (tierWas !== tierSplit) { try { buildLayoutPicker(); refreshTierUI(); } catch (e) { } }      // tags and steps appear / go away
         try { refreshPrintSummary(); refreshPrintUI(); } catch (e) { }
         try { if (window._pfSaveOpts) window._pfSaveOpts(); } catch (e) { }
         try { reqApply(); } catch (e) { }
@@ -63236,7 +64325,7 @@ function fxWavUrl(kind) {
       // ---- First step to show ----
       (function () {
         var saved = 0; try { saved = Number(sessionStorage.getItem('pb_step')) || 0; } catch (e) { }
-        goStep(saved >= 1 && saved <= 7 ? saved : 1, { noScroll: true });
+        goStep(saved === 2 || STEP_IDS.indexOf(saved) >= 0 ? saved : 1, { noScroll: true });
         afterSetupPreview();
         if (typeof renderGuestDesignBar === 'function') renderGuestDesignBar();
         setupLoadPromise.then(function () {

@@ -458,7 +458,7 @@ async function camStart() {
       const dir = join(tmpdir(), 'photobooth4u-helper');
       await mkdir(dir, { recursive: true });
       const ps1 = join(dir, 'camera-worker-' + VERSION + '.ps1');
-      await writeFile(ps1, '﻿' + WORKER_PS, 'utf8');
+      await writeFile(ps1, '\uFEFF' + String(WORKER_PS).replace(/^\uFEFF+/, ''), 'utf8');   // exactly one BOM: two make PowerShell run the first comment line as code
       cmd = 'powershell.exe'; args = [...PS, '-File', ps1, '-Port', String(port)];
     }
     const proc = spawn(cmd, args, { windowsHide: true });

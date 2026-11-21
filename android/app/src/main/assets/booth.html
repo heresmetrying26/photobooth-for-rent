@@ -10742,6 +10742,12 @@
       display: none;
     }
 
+    .scp-empty>div {
+      max-height: 100%;
+      overflow-y: auto;
+      max-width: 520px;
+    }
+
     .scp-meta {
       display: flex;
       align-items: center;
@@ -19002,7 +19008,11 @@
             too.</p>
           <div class="scp-frame" id="scpFrame">
             <video id="setupCamVideo" autoplay playsinline muted></video>
-            <div class="scp-empty" id="scpEmpty">Waiting for the camera…</div>
+            <div class="scp-empty" id="scpEmpty"><div>
+                <p id="scpEmptyTxt" style="margin:0 0 12px;">Waiting for the camera…</p>
+                <button type="button" class="action-btn primary" id="scpRetryBtn" hidden
+                  style="width:auto; padding:8px 18px;">Try again</button>
+              </div></div>
           </div>
           <div class="scp-meta">
             <span class="scp-info" id="scpInfo"></span>
@@ -28729,6 +28739,13 @@
       // Some laptops never answer the system's camera list: a virtual camera driver (Camo, EOS Webcam Utility...) with nothing
       // behind it can leave it hanging for good. Waiting forever froze the camera menu, the camera start-up and the tablet camera,
       // so each system call gets a few seconds and then the booth carries on with what it knows.
+      // True while the system's camera list is not answering (set by enumerateCameras). Then NO webcam can be listed, so the booth
+      // would only show the USB / helper option and a helper error that has nothing to do with the real cause.
+      var camListHung = false;
+      function camListHungNote() {
+        if (!camListHung || !/Win/i.test(navigator.platform || '')) return '';
+        return ' Also: Windows is not answering the request for its list of webcams, so no webcam can be shown. A virtual camera driver (Camo, EOS Webcam Utility, DroidCam, Nikon Webcam Utility...) is the usual cause. In Device Manager > Cameras, disable the ones you do not use, then tap Try Again.';
+      }
       function camSysTimeout(p, ms, fallback) {
         return Promise.race([p, new Promise(res => setTimeout(() => res(fallback), ms))]);
       }
@@ -28753,6 +28770,7 @@
           if (!webcamApi && !usbCam.supported) return [];
           let devices = webcamApi ? await camSysTimeout(navigator.mediaDevices.enumerateDevices(), 4000, null) : [];
           const listTimedOut = devices === null;
+          camListHung = listTimedOut;
           if (listTimedOut) { devices = []; try { usbLog('camlist-timeout', {}); } catch (e) { } }
           videoDevices = devices.filter(d => d.kind === 'videoinput');
           if (webcamApi && !listTimedOut && (!videoDevices.length || videoDevices.some(d => !d.label))) {
@@ -29425,7 +29443,8 @@
       // The camera is held by another app (macOS' own camera service, Image Capture, Imaging Edge...).
       function usbBusyError(err) { return /claim|access denied|busy|Unable to open|LIBUSB_ERROR_ACCESS|LIBUSB_ERROR_BUSY/i.test(String((err && (err.message || err.name)) || err)); }
       // auto: the booth keeps retrying by itself (Windows helper), so no "tap Try Again".
-      function usbErrorMessage(err, auto) {
+      function usbErrorMessage(err, auto) { return usbErrorMessageBase(err, auto) + camListHungNote(); }
+      function usbErrorMessageBase(err, auto) {
         const s = String((err && (err.message || err.name)) || err);
         const win = /Win/i.test(navigator.platform || '');
         if (usbIsHelper() || (err && (err instanceof HelperGone || err.helperMsg))) {
@@ -67722,6 +67741,9 @@ function fxWavUrl(kind) {
       // layout's photo shape. It lets go of the stream when this step is not showing.
       var scpVideo = document.getElementById('setupCamVideo'), scpFrame = document.getElementById('scpFrame');
       var scpEmpty = document.getElementById('scpEmpty'), scpInfo = document.getElementById('scpInfo');
+      var scpEmptyTxt = document.getElementById('scpEmptyTxt'), scpRetryBtn = document.getElementById('scpRetryBtn');
+      // The Camera step had the error text but no way to try again (only the guest screen had a Try Again button).
+      if (scpRetryBtn) scpRetryBtn.addEventListener('click', function () { retryCameraBtn.click(); });
       var SCP_FIT_KEY = 'pb_setup_cam_fit', scpFit = 'full', scpSum = null;
       try { if (localStorage.getItem(SCP_FIT_KEY) === 'layout') scpFit = 'layout'; } catch (e) { }
       function cameraSummary() {
@@ -67757,7 +67779,8 @@ function fxWavUrl(kind) {
         var vw = useNative ? (hasNativeFrame ? sz.w : 0) : (scpVideo.videoWidth || video.videoWidth), vh = useNative ? (hasNativeFrame ? sz.h : 0) : (scpVideo.videoHeight || video.videoHeight);
         var live = (useNative ? hasNativeFrame : !!stream) && !!vw && streamActive, err = cameraError.style.display === 'flex';
         scpEmpty.hidden = live && !err;
-        scpEmpty.textContent = err ? cameraErrorText.textContent : (useNative && streamActive ? 'Starting the camera…' : 'Waiting for the camera…');
+        scpEmptyTxt.textContent = err ? cameraErrorText.textContent : (useNative && streamActive ? 'Starting the camera…' : 'Waiting for the camera…');
+        scpRetryBtn.hidden = scpEmpty.hidden || (!err && useNative);
         var isDslr = currentDeviceId === USB_CAM_ID;
         var infoText = live ? (isDslr
           ? 'Live view: ' + vw + ' × ' + vh + ' (DSLR viewfinder) · Photos: full DSLR resolution (up to 3000px HD)'

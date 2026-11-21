@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.89', date: '2026-11-21' },
   { version: '1.1.88', date: '2026-11-21' },
   { version: '1.1.87', date: '2026-11-21' },
   { version: '1.1.86', date: '2026-11-21' },
@@ -284,6 +285,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-21', title: 'Desktop 1.1.89: the Windows camera part starts again, clearer webcam messages, and Photoman shows your framed photo', for: ['website', 'app'], app: '1.1.89',
+    items: [
+      '📷 Fixed: on Windows the camera part (DSLR / mirrorless control) never started in 1.1.87 and 1.1.88 ("The camera part could not start ... 127.0.0.1:0"). It starts again. Update, then reopen the app.',
+      '🔎 If Windows does not answer the request for its list of webcams (a virtual camera driver such as Camo, EOS Webcam Utility or DroidCam is the usual cause), the booth now says so and what to switch off, instead of a helper error. When a webcam is busy, it names the app that is using it.',
+      '🔁 The Camera step in Setup now has a Try again button under the camera message (before, only the guest screen had one).',
+      '🖼️ Photoman: the Live Output Preview now shows the photos Auto-frame has received (the other spots stay sample) and, after a print, the finished framed print ("Just made · Session #N"), instead of going back to the sample.',
+      '☝️ Photoman: Auto-frame no longer takes your hand-picked photos in arrival order. It waits 30 seconds after your last tap, and the hint shows "You picked 2 of 4".'
+    ]
+  },
   {
     date: '2026-11-21', title: 'Desktop 1.1.88 + iPad 1.1.12: 360 Motion Trigger — the 360 starts recording by itself when the arm spins (free iPhone/iPad 360 Arm Camera)', for: ['website', 'app'], app: '1.1.88',
     items: [

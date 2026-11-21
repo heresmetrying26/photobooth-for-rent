@@ -22,6 +22,44 @@ function killall(bin, args) {
 
 const WIN_APPS = ['Insta360 Studio.exe', 'Insta360LinkController.exe', 'WindowsCamera.exe', 'LogiCapture.exe'];
 
+function runOut(bin, args, timeout) {
+  return new Promise((resolve) => {
+    execFile(bin, args, { timeout: timeout || 5000, maxBuffer: 8 * 1024 * 1024, windowsHide: true }, (err, stdout) => resolve(err ? '' : String(stdout || '')));
+  });
+}
+
+// Windows keeps, for every app that has used the camera, when it started and stopped (Settings > Privacy > Camera shows the same).
+// An app with a start time and a stop time of 0 is using the camera right now. This names it, so the booth can say
+// "close X" instead of "the camera is busy in another app". An entry left over from an app that crashed is dropped by
+// checking that the app is still running.
+// opts (for tests): { regOut: text of `reg query ... /s`, running: async (exeName) => boolean, selfPath }
+export async function cameraHolders(opts = {}) {
+  if ((opts.platform || process.platform) !== 'win32') return [];
+  const root = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\webcam';
+  const text = opts.regOut != null ? String(opts.regOut) : await runOut('reg.exe', ['query', root, '/s'], 6000);
+  const self = String(opts.selfPath || process.execPath || '').toLowerCase();
+  const found = [];
+  for (const block of text.split(/\r?\n\r?\n/)) {
+    const lines = block.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+    const head = lines.find((l) => /^HKEY_/i.test(l));
+    if (!head) continue;
+    const start = /LastUsedTimeStart\s+REG_QWORD\s+(0x[0-9a-f]+)/i.exec(block), stop = /LastUsedTimeStop\s+REG_QWORD\s+(0x[0-9a-f]+)/i.exec(block);
+    if (!start || !stop) continue;
+    if (BigInt(start[1]) === 0n || BigInt(stop[1]) !== 0n) continue;                      // never used, or finished
+    const raw = head.split('\\').pop().replace(/#/g, '\\');                                // C:#Program Files#OBS#obs64.exe -> C:\Program Files\OBS\obs64.exe
+    const isExe = /\.exe$/i.test(raw);
+    if (isExe && raw.toLowerCase() === self) continue;                                    // this booth itself
+    found.push({ path: raw, name: isExe ? raw.split('\\').pop().replace(/\.exe$/i, '') : raw.split('_')[0].replace(/^[^.]+\./, '') || raw, exe: isExe ? raw.split('\\').pop() : '' });
+  }
+  const running = opts.running || (async (exe) => /\.exe/i.test(await runOut('tasklist.exe', ['/NH', '/FO', 'CSV', '/FI', 'IMAGENAME eq ' + exe], 4000)));
+  const out = [];
+  for (const h of found.slice(0, 12)) {
+    if (h.exe && !(await running(h.exe))) continue;                                       // stale entry: the app is gone
+    out.push({ name: h.name, path: h.path });
+  }
+  return out;
+}
+
 // opts (for tests): { platform, killall }
 export async function freeCamera(opts = {}) {
   const platform = opts.platform || process.platform;
@@ -32,7 +70,10 @@ export async function freeCamera(opts = {}) {
       if (r.stopped) stopped.push(app);
     }
     if (stopped.length && !opts.quiet) console.log('[camera] Freed the camera: stopped ' + stopped.join(', '));
-    return { ok: true, mac: false, win: true, stopped, denied: [] };
+    let holders = [];
+    try { holders = (await cameraHolders(opts)).map((h) => h.name); } catch { /* the list is only a hint */ }
+    if (holders.length && !opts.quiet) console.log('[camera] Windows says the camera is in use by: ' + holders.join(', '));
+    return { ok: true, mac: false, win: true, stopped, denied: [], holders };
   }
   const bin = opts.killall || '/usr/bin/killall';
   if (platform !== 'darwin') return { ok: true, mac: false, stopped: [], denied: [] };

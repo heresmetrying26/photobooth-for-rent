@@ -18,6 +18,10 @@ const IS_WIN = platform() === 'win32';
 const IS_MAC = platform() === 'darwin' || process.env.PB_TEST_MAC_CAMERA === '1';   // (the env var lets tests run the Mac camera path on another system)
 const PS = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass'];
 let WORKER_PS = '';
+// A PowerShell script file needs exactly ONE byte-order mark at the top (Windows PowerShell 5.1 reads it as UTF-8 that way).
+// Two make PowerShell run the first comment line as code, so `param([int]$Port)` is ignored and the camera part connects to
+// port 0 ("The requested address is not valid in its context 127.0.0.1:0"). Desktop 1.1.87 shipped that way.
+export const psFileText = (src) => '﻿' + String(src == null ? '' : src).replace(/^﻿+/, '');
 let log = (m) => console.log('[helper] ' + m);
 let shrinkPage = null;   // (png Buffer, scale) -> png Buffer of the same size, the picture smaller in the middle on white. Given by the app (Electron).
 
@@ -81,7 +85,7 @@ export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpe
   usbDirect.clear();
   usbDirectAt = 0;
   if (directPrintersFile) { directFile = directPrintersFile; loadDirect(); }
-  try { WORKER_PS = readFileSync(workerPath, 'utf8'); } catch { WORKER_PS = ''; }
+  try { WORKER_PS = readFileSync(workerPath, 'utf8').replace(/^\uFEFF+/, ''); } catch { WORKER_PS = ''; }   // no BOM here: the one written in front of it at start-up is the only one PowerShell may see (two broke every start in 1.1.87)
   refreshPrinters();
   if (IS_WIN && WORKER_PS) camStart().catch((e) => log(String(e && e.message || e)));
 }
@@ -1024,7 +1028,7 @@ async function camStart() {
       const dir = join(tmpdir(), 'photobooth4u-app');
       await mkdir(dir, { recursive: true });
       const ps1 = join(dir, 'camera-worker-' + HELPER_VERSION + '.ps1');
-      await writeFile(ps1, '﻿' + WORKER_PS, 'utf8');
+      await writeFile(ps1, psFileText(WORKER_PS), 'utf8');
       cmd = 'powershell.exe'; args = [...PS, '-File', ps1, '-Port', String(port)];
     }
     const proc = spawn(cmd, args, { windowsHide: true });

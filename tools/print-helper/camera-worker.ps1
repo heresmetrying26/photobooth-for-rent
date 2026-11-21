@@ -1,4 +1,4 @@
-﻿# photobooth4u Helper - camera worker (Windows)
+# photobooth4u Helper - camera worker (Windows)
 # Started by the helper (photobooth4u-print-helper-windows.exe); not run by hand.
 # Talks to the camera through Windows' OWN camera driver (WPD / MTP), so no
 # Zadig / driver switch is needed: plug the camera in, switch it on, done.

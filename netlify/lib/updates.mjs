@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.85', date: '2026-11-21' },
   { version: '1.1.84', date: '2026-11-21' },
   { version: '1.1.83', date: '2026-11-21' },
   { version: '1.1.82', date: '2026-11-20' },
@@ -280,6 +281,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-21', title: 'Desktop 1.1.85 (Win/Mac): the camera shoots once, at the shutter sound and flash (Nikon and Canon), with a guide for Canon', for: ['website', 'app'], app: '1.1.85',
+    items: [
+      '📸 Windows laptop app, Nikon and Canon over USB: the camera now takes ONE real photo, at the moment of the shutter sound and flash. Before, the app fired the shutter early to make up for the camera’s delay, so a Nikon clicked at “2” or “1”, and a live-view picture sat in the strip until the real photo replaced it. Both are gone. If the camera fails, the live-view picture from the shutter moment is still used, so a session never ends with a missing photo.',
+      '🎯 To keep the photo close to the flash, a Nikon or a newer Canon (6D and similar) is focused during the last seconds of the countdown, and the shot then fires without focusing again. If a Canon ever gives no photo that way, it goes back to focusing inside the shot for the rest of the run. An older Canon (60D and similar) cannot focus beforehand, so its photo is taken a moment after the flash. Sony and the Mac / tablet camera parts still fire early by the delay they measured, as before, but they too no longer put a live-view picture in the strip first.',
+      '⏱️ Canon: when the first shutter press does nothing (for example it could not focus), the app now waits about twice the camera’s own delay (3.5 to 4.5 seconds at least) before pressing again, instead of 6 or 8 seconds. A “busy” answer to that second press no longer fails the shot.',
+      'ℹ️ New Canon guide (Setup → Camera, a blue “Canon tip” box): it says when the photo comes after the flash because the lens focuses inside the shot (slide the lens switch from AF to MF and focus once on the spot where guests stand), when photos still go through the SD card (use a fast card, JPEG only), and, when a photo was not taken, a short checklist (lens switch, mode dial, SD card lock, closed menu). The “after the flash” tip also shows once on screen after two late photos in a row.',
+      '🧪 Not tried on a real Nikon or Canon yet. Please tell us how the photo timing feels, and send camera.log (in the photobooth4u folder under %APPDATA%): each Canon photo line says whether it was focused beforehand and how long the camera took.'
+    ]
+  },
   {
     date: '2026-11-21', title: 'Desktop 1.1.84 (Win/Mac): Epson L8050 4×6 borderless follows the driver’s Borderless Settings (Auto Expand Std / Med / Min, or Retain Size)', for: ['website', 'app'], app: '1.1.84',
     items: [

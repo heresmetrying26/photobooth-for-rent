@@ -18000,6 +18000,9 @@
           <p class="panel-hint" id="camQWarnNote"
             style="display:none; margin-top:6px; padding:6px 8px; border-radius:6px; background:#fff3cd; color:#7a5200; font-weight:700; line-height:1.45;">
           </p>
+          <p class="panel-hint" id="canonGuideNote"
+            style="display:none; margin-top:6px; padding:6px 8px; border-radius:6px; background:#e8f1ff; color:#1d3f7a; font-weight:600; line-height:1.45;">
+          </p>
           <p class="panel-hint" id="usbWhyNote" style="display:none; font-weight:600;"></p>
           <details class="setup-tools-drawer" id="camDiagDrawer">
             <summary>Camera troubleshooting &amp; diagnostics</summary>
@@ -26980,9 +26983,13 @@
             // DSLR / mirrorless: the app times the shutter itself from the delay it measured; the choice below is on top of that.
             if (!usbCam.shutterLagMs && usbCam.name) usbLagLoad();
             const lag = usbCam.shutterLagMs;
-            shotTimingNote.textContent = (lag > 0
-              ? 'This camera takes about ' + lag + ' ms from the shutter command to the photo (it focuses first). The app fires the shutter that much earlier on its own, so the photo lands on "Pose". '
-              : 'The app learns this camera\'s delay from its first photo: take one test shot before the event so even guest #1 is on time. ') + shotTimingHint;
+            shotTimingNote.textContent = (usbFireOnce()
+              ? (lag > 0
+                ? 'This camera takes about ' + lag + ' ms from the shutter command to the photo. The shutter is fired once, at the shutter sound and flash; a Nikon or Canon is focused during the countdown so the photo follows right away. '
+                : 'The shutter is fired once, at the shutter sound and flash. A Nikon or Canon is focused during the countdown so the photo follows right away. ')
+              : lag > 0
+                ? 'This camera takes about ' + lag + ' ms from the shutter command to the photo (it focuses first). The app fires the shutter that much earlier on its own, so the photo lands on "Pose". '
+                : 'The app learns this camera\'s delay from its first photo: take one test shot before the event so even guest #1 is on time. ') + shotTimingHint;
             return;
           }
           const m = webcamRes.leadMs === 'auto' && nativeCam.active
@@ -26994,8 +27001,8 @@
                 : '';
           shotTimingNote.textContent = m + shotTimingHint;
         }
-        // Also for DSLR / mirrorless cameras: the app fires their shutter early by the delay it measured (see usbShutterLead),
-        // and this choice adds to that when photos still come out late.
+        // Also for DSLR / mirrorless cameras: the shutter is fired once, at the shutter moment (see usbShutterLead),
+        // and this choice moves it earlier when photos still come out late.
         const shotTimingBox = document.getElementById('shotTimingBox');
         function updateShotTimingBox() {
           if (shotTimingBox) shotTimingBox.style.display = '';
@@ -29417,7 +29424,9 @@
         updateFilmTrack();
       }
 
-      function captureFrame(index) {
+      // The live-view picture as a canvas (flipped like the live view when Mirror is on), not yet put in the strip.
+      function captureFrame(index) { finalizeShotCanvas(grabFrameCanvas(), index); }
+      function grabFrameCanvas() {
         const sz = camVideoSize();
         const src = camFrameSource();
         const vw = sz.w || 720;
@@ -29434,12 +29443,12 @@
         ctx.drawImage(src, sx, sy, sw, sh, 0, 0, c.width, c.height);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         try { if (typeof webcamApplyStack === 'function') webcamApplyStack(ctx, c.width, c.height); } catch (e) { }
-        finalizeShotCanvas(c, index);
+        return c;
       }
 
-      // Webcam: the frame above is the photo. USB camera: that live-view frame
-      // goes in first (so a failed shot never leaves a gap), then the camera's
-      // real photo replaces it, cropped like the live view and sized for print.
+      // Webcam: the frame above is the photo. USB camera: the photo is only ever the camera's own, taken once when the shutter
+      // fires, cropped like the live view and sized for print. The live-view frame from that moment is held aside and used
+      // only if the camera fails (so a failed shot never leaves a gap); it is never put in the strip first.
       const USB_CAPTURE_MAX_MS = 25000;   // longest wait for the camera's photo before the live view frame is used (a photo this late is the wrong moment anyway)
       const USB_REVIEW_MIN_MS = 2000;     // a USB camera's photo stays up at least this long between photos, even when the camera took most of the pause to send it
       const USB_GRACE_MS = 45000;         // after a photo, live view may take this long to come back without "Reconnecting" (a Canon saving a big file can take a while; a real unplug is still noticed at once)
@@ -29459,6 +29468,7 @@
         // is what actually puts the camera to sleep — no need to set shotsDone here.
         try { usbCam.kicked = true; Promise.resolve(usbViewfinderOn()).catch(function () { }); } catch (e) { }
         fetch(CAM_HELPER + '/camera', { cache: 'no-store', signal: AbortSignal.timeout(8000) }).then(r => r.json()).then(j => {
+          canonGuideUpdate(j);   // a Canon that is late or not taking photos: tips for the operator (brand-canon.js)
           const ms = Number(j && j.shutterMs) || 0;
           if (ms > 0) {
             usbCam.shutterLagMs = usbCam.shutterLagMs ? Math.round(usbCam.shutterLagMs * 0.5 + ms * 0.5) : ms;
@@ -29471,15 +29481,32 @@
       function usbLagLoad() {
         try { const v = Number(localStorage.getItem(usbLagKey())); if (v > 0 && v <= 10000) usbCam.shutterLagMs = v; } catch (e) { }
       }
-      // How much earlier than "Pose + 0.6 s" the shutter command goes out. The lag includes saving the photo, so some of it is
-      // taken off (the exposure itself is a bit before the camera reports the file).
+      // A DSLR / mirrorless camera is fired ONCE, at the shutter moment (the shutter sound and flash, 0.6 s after "Pose"), never
+      // earlier during the countdown. It used to be fired early by the delay it had measured, so the photo was taken before the
+      // guests' "Pose" (a Nikon's click came at "2" or "1"). To keep the delay small the camera is focused during the countdown
+      // instead (usbPreFocus), so the photo follows the shutter command at once. Only the operator's own "Shot timing"
+      // (Setup → Camera) can still move the command earlier.
+      // This needs a camera program that can skip its own focusing after that ("preFocus" in the info it reports: the Windows
+      // laptop app). A Sony (it focuses inside the shot, nothing to do beforehand) and a camera program without it (Mac, tablets,
+      // an older Helper) still fire early by the delay they measured: their photo would otherwise come late.
+      function usbPreFocusReady() { return !!(usbCam.camera && usbCam.camera.info && usbCam.camera.info.preFocus); }
+      function usbFireOnce() { return usbPreFocusReady() && !camIsSony(); }
       function usbShutterLead() {
         if (!(usbIsHelper() && usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return 0;
+        if (usbFireOnce()) return 0;
         if (!usbCam.shutterLagMs && usbCam.name) usbLagLoad();
         // A Canon keeps the 1.5 s limit it always had: its measured delay includes saving the photo, and a shutter command
         // sent sooner after the previous photo reaches an older EOS (60D) before it is ready for it.
         const max = camIsCanon() ? Math.min(USB_LEAD_MAX, USB_LEAD_CANON_MAX) : USB_LEAD_MAX;
         return Math.max(0, Math.min(max, usbCam.shutterLagMs - 200));
+      }
+      // Focus once, in the last seconds of the countdown (a Nikon's live view focus takes up to 2 s). Not Sony: it half-presses by itself in the shot.
+      const USB_PREFOCUS_MS = 2200;   // the focus starts this long before the shutter moment
+      function usbPreFocusOk() {
+        return !!(usbIsHelper() && usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID && usbFireOnce() && (camIsNikon() || camIsCanon()) && typeof usbCam.camera.autoFocus === 'function');
+      }
+      function usbPreFocus() {
+        try { Promise.resolve(usbCam.camera.autoFocus()).catch(function () { }); } catch (e) { }
       }
       // USB webcam set to "Max resolution" photos: the full-size still replaces the live-view frame
       // (app webcam: /uvc/capture switches the webcam to its biggest mode for the shot; Android-listed webcam: ImageCapture).
@@ -29763,10 +29790,15 @@
           }
         }
         if (typeof TABLET_CAM_ID !== 'undefined' && currentDeviceId === TABLET_CAM_ID) return captureTabletShot(index);
-        captureFrame(index);
-        if (webcamRes.photo === 'max' && isMaxWebcamShotEligible()) return webcamMaxShot(index);
-        tabletStillStart(index);   // Android tablet camera: the full-size photo replaces this frame a moment later (no wait here)
-        if (!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
+        const viaCam = !!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID);
+        let standIn = null, committed = false;
+        if (viaCam) { try { standIn = grabFrameCanvas(); } catch (e) { } }   // held aside: only if the camera fails
+        else {
+          captureFrame(index);
+          if (webcamRes.photo === 'max' && isMaxWebcamShotEligible()) return webcamMaxShot(index);
+          tabletStillStart(index);   // Android tablet camera: the full-size photo replaces this frame a moment later (no wait here)
+          return;
+        }
         const shots = shotCanvases;
         try {
           // Never wait forever: a camera that stops answering must not freeze the whole session.
@@ -29798,11 +29830,14 @@
           applyFilterToCanvas(c);
           c._isShot = true;
           if (DESKTOP && !mir && !bgSwapped) c._orig = file;   // the camera's own photo, for the solo shot (see soloOriginal)
-          if (shotCanvases === shots) { shotCanvases[index] = c; updateFilmTrack(); if (qp) camQPrewarm(qp, finalShot); }
+          if (shotCanvases === shots) { shotCanvases[index] = c; committed = true; updateFilmTrack(); if (qp) camQPrewarm(qp, finalShot); }
         } catch (err) {
           console.error('USB shot failed:', err);
           usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); usbAfterShot();
+          // The camera failed: the live-view frame from the shutter moment becomes the photo, so the session still has one.
+          if (standIn && !committed && shotCanvases === shots) { try { finalizeShotCanvas(standIn, index); } catch (e2) { } }
           usbLog('shot-fail', usbErrInfo(err));
+          canonGuideOnFail(err);   // a Canon: the checklist for a photo that was not taken (brand-canon.js)
           cdiagReport(err);   // camera diagnostics (see cdiagReport)
           showToast(err && err.helperMsg ? err.helperMsg + ' Live view frame captured instead.' : 'Camera capture timed out. Live view frame captured instead.', 6000);
           if (usbIsCritical(err)) usbDead(err);
@@ -30495,7 +30530,12 @@
         if (isGif && gifMotionStyle !== 'session') {
           startShotMotionCapture(index);
         }
+        // A Nikon / Canon over USB focuses once during the countdown, so the real shutter at the end only has to fire.
+        const preFocusTimer = usbPreFocusOk()
+          ? setTimeout(function () { if (!(sess && sess.cancelled) && usbPreFocusOk()) usbPreFocus(); }, Math.max(0, shotSec * 1000 + 600 - USB_PREFOCUS_MS))
+          : null;
         await runCountdown(shotSec, index, lead > 600 ? lead - 600 : 0, fireNow);
+        clearTimeout(preFocusTimer);
         if (sess && sess.cancelled) { stopShotMotionCapture(index); return; }
         popNum('Pose', true);
         try { if (window.pb4u && window.pb4u.setWallCue) window.pb4u.setWallCue('countdown', 'JUMP! 🎬', 1800); } catch (e) { }

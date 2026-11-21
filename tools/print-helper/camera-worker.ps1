@@ -715,7 +715,13 @@ namespace Pb4uCam
                 first = false;
                 sb.Append("{\"name\":" + Js(d.Name) + ",\"maker\":" + Js(d.Maker) + ",\"camera\":" + (LooksLikeCamera(d) ? "true" : "false") + "}");
             }
-            sb.Append("],\"open\":" + (ptp != null ? "true" : "false") + ",\"name\":" + Js(ptp != null ? camName : "") + ",\"shutterMs\":" + lastShutterMs + "}");
+            // The booth's Canon guide reads these three (see brand-canon.js): the last photo was focused inside the shot (so it came
+            // after the flash), the press without focusing was turned off on this camera, photos are saved on the card first.
+            bool cn = canon && ptp != null;
+            sb.Append("],\"open\":" + (ptp != null ? "true" : "false") + ",\"name\":" + Js(ptp != null ? camName : "") + ",\"shutterMs\":" + lastShutterMs
+                + ",\"focusInShot\":" + (cn && canonFocusInShot ? "true" : "false")
+                + ",\"noAfOff\":" + (cn && canonNoAfBad ? "true" : "false")
+                + ",\"toCard\":" + (cn && !canonToHost ? "true" : "false") + "}");
             return sb.ToString();
         }
 
@@ -844,7 +850,8 @@ namespace Pb4uCam
         static string InfoJson()
         {
             return "{\"name\":" + Js(camName) + ",\"model\":" + Js(camModel) + ",\"maker\":" + Js(camMaker) + ",\"brand\":" + Js(nikon ? "nikon" : canon ? "canon" : sony ? "sony" : "") + ",\"vendor\":" + vendor
-                + ",\"liveview\":" + (live ? "true" : "false") + ",\"battery\":" + Battery() + ",\"note\":" + Js(setupNote) + ",\"diag\":" + Js(diag) + "}";
+                + ",\"liveview\":" + (live ? "true" : "false") + ",\"battery\":" + Battery() + ",\"note\":" + Js(setupNote) + ",\"diag\":" + Js(diag)
+                + ",\"preFocus\":true}";   // this worker can focus beforehand ("af") and then shoot at once: the booth then fires the shutter only at the shutter moment
         }
 
         static int Battery()
@@ -1045,6 +1052,20 @@ namespace Pb4uCam
         // delay, and that has a limit). One more try if it reported no focus and there is time. true = focused (or not reported).
         // A camera that refuses at once (lens switch on MF, which the booth's own guide recommends) is not a focus miss.
         static bool afRefusedLogged;
+        // The booth focuses once during the countdown ("af"), so the shutter at the end only has to fire. The shot right after a good
+        // pre-focus skips its own focusing (Nikon: the live view autofocus before the shot; newer Canon: the half press and its wait),
+        // so the photo follows the shutter command at once instead of 1-2 s later. Used once and only within 12 s: any other shot
+        // (a test shot, a retake the booth did not pre-focus) focuses exactly as it always did.
+        static Stopwatch preFocusSw = new Stopwatch();
+        static bool preFocusOk;
+        static bool canonNoAfBad;   // a Canon press without focusing gave no photo: not used again until the worker restarts
+        static bool canonFocusInShot;   // the last Canon photo was focused inside the shot (not beforehand): it came after the flash
+        static long TakePreFocus()   // ms since the pre-focus, or -1 when there was none (or it is old)
+        {
+            long ago = (preFocusOk && preFocusSw.IsRunning && preFocusSw.ElapsedMilliseconds < 12000) ? preFocusSw.ElapsedMilliseconds : -1;
+            preFocusOk = false;
+            return ago;
+        }
         static bool NikonAf()
         {
             var total = Stopwatch.StartNew();
@@ -1078,9 +1099,12 @@ namespace Pb4uCam
             var sw = Stopwatch.StartNew();
             uint r;
             shotFocus = "";
+            long preAgo = TakePreFocus();
             // Focus first while in live view (contrast AF). It waits for the camera to finish focusing and tries once more
             // if the first try missed; a miss still takes the photo, but the booth is told (shotFocus) so it can warn.
-            if (live && Has(0x90C1) && classicNikon)
+            // Not when the booth focused during the countdown a moment ago: then the shutter fires straight away.
+            if (preAgo >= 0) Log("Autofocus skipped: the booth focused " + preAgo + " ms ago");
+            else if (live && Has(0x90C1) && classicNikon)
             {
                 // Classic: focus, then a fixed 1.2 s wait; a miss is fine, the shot decides.
                 try
@@ -1227,7 +1251,26 @@ namespace Pb4uCam
         static bool canonHostGaveUp;      // it didn't work with this camera: photos stay on the card until the worker is restarted
         static bool canonHostWorked;      // a photo has come through that way
         static uint canonDestOrig = SAVETO_CARD;
-        static Stopwatch liveSw = new Stopwatch(), keepSw = new Stopwatch(), pollSw = new Stopwatch();
+        // How long the camera took lately from the shutter command to announcing the photo (newest last, the last three). The
+        // slowest of them is "how slow this camera is right now": a photo still missing after about twice that is not coming.
+        static List<int> canonLags = new List<int>();
+        static void CanonNoteLag(int ms) { canonLags.Add(ms); while (canonLags.Count > 3) canonLags.RemoveAt(0); }
+        static int CanonLag() { int m = 0; foreach (int v in canonLags) if (v > m) m = v; return m; }
+        // How long to wait for the camera to announce the photo before pressing the shutter again. The old limits (6 s on an older
+        // EOS, 8 s on a newer one, 8 s after a retry) date from when every photo had to be written to the card first. Once photos
+        // come straight to the computer (fast = they have, and at least two recent ones were timed), a photo that is not there after
+        // about twice the camera's own delay is not coming: press again sooner. Never under 3.5 s (4.5 s after a retry), never over
+        // the old limit; until a couple of photos have shown how fast the camera is, the old limits stay.
+        static int CanonWaitLimit(int attempt, bool oldEos, int lagMs, bool fast)
+        {
+            int old = attempt > 0 ? 8000 : (oldEos ? 6000 : 8000);
+            if (!fast || lagMs <= 0) return old;
+            int floor = attempt > 0 ? 4500 : 3500;
+            return Math.Min(old, Math.Max(floor, lagMs * 2 + 1500));
+        }
+        // The last photo ended here; the first live view picture after it logs how long the camera took to bring live view back.
+        static Stopwatch canonShotEnd = new Stopwatch();
+        static bool canonLiveBackPending;        static Stopwatch liveSw = new Stopwatch(), keepSw = new Stopwatch(), pollSw = new Stopwatch();
         static bool gotFrame;
         // How long the last photo took from the shutter command until the camera reported it (focus + exposure + saving);
         // the booth reads it to fire the shutter that much earlier, so the photo lands on "Pose".
@@ -1363,7 +1406,7 @@ namespace Pb4uCam
         {
             setupNote = "";
             eosVals.Clear(); eosAvail.Clear(); canonNew.Clear(); gotFrame = false;
-            canonToHost = false;
+            canonToHost = false; canonLags.Clear(); canonLiveBackPending = false; canonFocusInShot = false;
             if (recoverNext)
             {
                 recoverNext = false;
@@ -1489,7 +1532,12 @@ namespace Pb4uCam
                 if (r == Ptp.OK)
                 {
                     var j = EosJpeg(d);
-                    if (j != null) { gotFrame = true; return j; }
+                    if (j != null)
+                    {
+                        gotFrame = true;
+                        if (canonLiveBackPending) { canonLiveBackPending = false; Log("Live view back " + canonShotEnd.ElapsedMilliseconds + " ms after the photo"); }
+                        return j;
+                    }
                 }
                 else if (r != Ptp.BUSY && r != NOTREADY)
                 {
@@ -1574,11 +1622,24 @@ namespace Pb4uCam
             evSeen.Clear();
             sw.Restart();        // the shutter lag is counted from the shutter command
             uint r;
-            int firstMode = CanonIsDslr() ? 0 : 1;   // see CanonFireNew
+            int baseMode = CanonIsDslr() ? 0 : 1;   // see CanonFireNew
+            // The booth focused during the countdown a moment ago: a newer EOS is then shot without focusing again (in live view the
+            // half press refocuses, which takes up to a second after the shutter moment). If that press ever gives no photo, or is
+            // refused, the camera goes back to focusing in the shot and the shortcut is not used again (canonNoAfBad).
+            long preAgo = TakePreFocus();
+            bool noAf = preAgo >= 0 && ops.Contains(0x9128) && !canonNoAfBad;
+            int firstMode = noAf ? 2 : baseMode;
+            if (noAf) Log("Focused " + preAgo + " ms ago: pressing the shutter without focusing again");
             if (ops.Contains(0x9128))
             {
                 // Newer EOS: a DSLR (6D, 70D...) is shot the way libgphoto2 does it (half press, focus, full press); a mirrorless one with the one-command press.
                 r = CanonFireNew(firstMode);
+                if (r != Ptp.OK && noAf)
+                {
+                    Log("The press without focusing was refused (" + H(r) + "): focusing and shooting the usual way");
+                    noAf = false; canonNoAfBad = true;
+                    r = CanonFireNew(baseMode);
+                }
                 if (r != Ptp.OK) throw CanonShotError(r, 0);
             }
             else
@@ -1605,6 +1666,7 @@ namespace Pb4uCam
                 }
                 if (r != Ptp.OK || res != 0) throw CanonShotError(r, res);
             }
+            canonFocusInShot = !noAf;   // the booth's Canon guide: a camera that focuses inside the shot takes its photo after the flash
             // Wait for the camera to say where the photo is (RAW + JPEG: two files).
             var files = new List<uint[]>();
             var ew = Stopwatch.StartNew();
@@ -1620,14 +1682,15 @@ namespace Pb4uCam
             bool skipWait = false;   // the camera refused the last try: nothing to wait for, go on to the next one
             while (true)
             {
-                int limit = attempt > 0 ? 8000 : (oldEos ? 6000 : 8000);
+                int limit = CanonWaitLimit(attempt, oldEos, CanonLag(), canonHostWorked && canonLags.Count >= 2);
+                if (attempt == 0 && noAf) limit = Math.Min(limit, 3500);   // no focusing to wait for: a photo that is not there by now is not coming
                 while (!skipWait && ew.ElapsedMilliseconds < limit)
                 {
                     CanonPoll();
                     foreach (var o in canonNew) if (o[2] != 0x3001) files.Add(o);   // not folders
                     canonNew.Clear();
                     // A retried photo's time includes the wait for the first try: it is not the camera's real delay, never learn it.
-                    if (files.Count > 0 && firstAt < 0) { firstAt = ew.ElapsedMilliseconds; if (attempt == 0) { lastShutterMs = (int)Math.Min(sw.ElapsedMilliseconds, 10000); Log("Shutter lag " + lastShutterMs + " ms"); } }
+                    if (files.Count > 0 && firstAt < 0) { firstAt = ew.ElapsedMilliseconds; if (attempt == 0) { lastShutterMs = (int)Math.Min(sw.ElapsedMilliseconds, 10000); CanonNoteLag(lastShutterMs); Log("Shutter lag " + lastShutterMs + " ms"); } }
                     if (firstAt >= 0 && ew.ElapsedMilliseconds - firstAt > 350) break;
                     Thread.Sleep(80);
                 }
@@ -1652,16 +1715,22 @@ namespace Pb4uCam
                     if (r2 == Ptp.BUSY || r2 == NOTREADY) { Thread.Sleep(400); r2 = ptp.OpP(0x910F, out ans2); }
                     uint res2 = ans2.Length > 0 ? ans2[0] : 0;
                     Log("RemoteRelease (second try): " + H(r2) + ", result " + res2);
-                    if (r2 != Ptp.OK || res2 != 0) throw CanonShotError(r2, res2);
+                    // "Busy" = the camera is still working on the first press (a slow focus, not a lost one): wait for its photo
+                    // like before instead of failing the shot.
+                    if (r2 == Ptp.BUSY || r2 == NOTREADY) Log("The camera is still busy with the first press: waiting for its photo");
+                    else if (r2 != Ptp.OK || res2 != 0) throw CanonShotError(r2, res2);
                 }
                 else
                 {
-                    uint r2 = CanonFireNew(attempt >= 2 ? 2 : firstMode);
-                    if (r2 != Ptp.OK && attempt >= maxAttempt) throw CanonShotError(r2, 0);
-                    skipWait = r2 != Ptp.OK;
+                    uint r2 = CanonFireNew(attempt >= 2 ? 2 : baseMode);
+                    bool busy2 = r2 == Ptp.BUSY || r2 == NOTREADY;   // still working on the last press: wait for its photo, don't press on
+                    if (busy2) Log("The camera is still busy with the last press: waiting for its photo");
+                    else if (r2 != Ptp.OK && attempt >= maxAttempt) throw CanonShotError(r2, 0);
+                    skipWait = r2 != Ptp.OK && !busy2;
                 }
                 ew.Restart();
             }
+            if (noAf && attempt > 0) { canonNoAfBad = true; Log("The press without focusing gave no photo: from now on this camera focuses in the shot again"); }
             if (files.Count == 0)
             {
                 Log("No photo from the camera after " + (attempt + 1) + " tries (last poll " + lastPollAnswer + "; events seen: " + (evSeen.Count > 0 ? string.Join(" ", evSeen.ToArray()) : "none") + ")");
@@ -2260,13 +2329,19 @@ namespace Pb4uCam
                                     afOk = afR == Ptp.OK;
                                 }
                                 else if (Has(0x90C1)) afOk = NikonAf();
+                                preFocusOk = afOk; preFocusSw.Restart();   // the shot that follows skips its own focus
                                 kind = "J"; body = Encoding.UTF8.GetBytes("{\"ok\":" + (afOk ? "true" : "false") + "}");
                             }
                             else if (canon)
                             {
-                                uint afR = OpRetry(0x9128, 1, 0);
-                                Thread.Sleep(800);
-                                try { OpRetry(0x9129, 1); } catch { }
+                                uint afR = 0x2005;   // an older EOS (60D...) has no separate focus command: it focuses inside the shot
+                                if (Has(0x9128))
+                                {
+                                    afR = OpRetry(0x9128, 1, 0);
+                                    Thread.Sleep(800);
+                                    try { OpRetry(0x9129, 1); } catch { }
+                                }
+                                preFocusOk = afR == Ptp.OK; preFocusSw.Restart();   // the shot that follows skips its own focus
                                 kind = "J"; body = Encoding.UTF8.GetBytes("{\"ok\":" + (afR == Ptp.OK ? "true" : "false") + "}");
                             }
                             else
@@ -2290,7 +2365,7 @@ namespace Pb4uCam
                         case "capture":
                             Need(); kind = "B";
                             // A Canon often leaves live view after a photo: the next frame request starts it again right away.
-                            if (canon) { try { body = CanonCapture(); } finally { live = false; } }
+                            if (canon) { try { body = CanonCapture(); } finally { live = false; canonShotEnd.Restart(); canonLiveBackPending = true; } }
                             else body = sony ? SonyCapture() : Capture();
                             break;
                         case "close": CloseCamera(); break;

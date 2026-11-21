@@ -117,4 +117,28 @@ Check 'save-to: giving up puts it back and remembers' ((Get-Flag 'canonHostGaveU
 [void]$toHost.Invoke($null, $null)
 Check 'save-to: after giving up it is not tried again' (-not (Get-Flag 'canonToHost') -and $e.Sets.Count -eq 2) ($e.Sets -join ' ')
 
+# --- the three Canon statuses the booth's Canon guide reads from the camera list (ListJson) ---
+$listJson = $W.GetMethod('ListJson', $flags)
+$W.GetField('ListDevs', [Reflection.BindingFlags]'Public,NonPublic,Static').SetValue($null, [Func[System.Collections.Generic.List[Pb4uCam.DevInfo]]]{ return , (New-Object 'System.Collections.Generic.List[Pb4uCam.DevInfo]') })
+function Canon-Status([bool]$canon, [bool]$toHost, [bool]$noAfBad, [bool]$focusInShot) {
+    $e = New-Eos 2 ([uint32[]]@(2, 4)) 4
+    $W.GetField('canon', $flags).SetValue($null, $canon)
+    $W.GetField('canonToHost', $flags).SetValue($null, $toHost)
+    $W.GetField('canonNoAfBad', $flags).SetValue($null, $noAfBad)
+    $W.GetField('canonFocusInShot', $flags).SetValue($null, $focusInShot)
+    return ($listJson.Invoke($null, $null) | ConvertFrom-Json)
+}
+$s = Canon-Status $true $false $false $true
+Check 'status: a Canon saving on the card, focusing in the shot' ($s.toCard -eq $true -and $s.focusInShot -eq $true -and $s.noAfOff -eq $false) ($s | ConvertTo-Json -Compress)
+$s = Canon-Status $true $true $false $false
+Check 'status: a Canon sending photos to the laptop, focused beforehand' ($s.toCard -eq $false -and $s.focusInShot -eq $false -and $s.noAfOff -eq $false) ($s | ConvertTo-Json -Compress)
+$s = Canon-Status $true $true $true $true
+Check 'status: the press without focusing turned off' ($s.noAfOff -eq $true -and $s.toCard -eq $false) ($s | ConvertTo-Json -Compress)
+$s = Canon-Status $false $false $true $true
+Check 'status: not a Canon: all three false' ($s.toCard -eq $false -and $s.focusInShot -eq $false -and $s.noAfOff -eq $false) ($s | ConvertTo-Json -Compress)
+$W.GetField('canon', $flags).SetValue($null, $false)
+$W.GetField('canonNoAfBad', $flags).SetValue($null, $false)
+$W.GetField('canonFocusInShot', $flags).SetValue($null, $false)
+$W.GetField('ptp', $flags).SetValue($null, $null)
+
 if ($fails -eq 0) { Write-Output 'PASS'; exit 0 } else { Write-Output "FAIL ($fails)"; exit 1 }

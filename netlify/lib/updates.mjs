@@ -218,7 +218,7 @@ let liveR = { at: 0, ttl: 0, v: null };
 export async function liveRush() {
   if (liveR.v && Date.now() - liveR.at < liveR.ttl) return liveR.v;
   try {
-    const r = await fetch('https://api.github.com/repos/' + REPO + '/releases?per_page=30', { headers: { accept: 'application/vnd.github+json', 'user-agent': 'photobooth4u-site' }, signal: AbortSignal.timeout(5000) });
+    const r = await fetch('https://api.github.com/repos/' + REPO + '/releases?per_page=60', { headers: { accept: 'application/vnd.github+json', 'user-agent': 'photobooth4u-site' }, signal: AbortSignal.timeout(5000) });
     if (r.ok) {
       let best = null;
       for (const rel of await r.json()) {
@@ -239,7 +239,7 @@ let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
   try {
-    const r = await fetch('https://api.github.com/repos/' + REPO + '/releases?per_page=30', { headers: { accept: 'application/vnd.github+json', 'user-agent': 'photobooth4u-site' }, signal: AbortSignal.timeout(5000) });
+    const r = await fetch('https://api.github.com/repos/' + REPO + '/releases?per_page=60', { headers: { accept: 'application/vnd.github+json', 'user-agent': 'photobooth4u-site' }, signal: AbortSignal.timeout(5000) });
     if (r.ok) {
       let best = null;
       for (const rel of await r.json()) {

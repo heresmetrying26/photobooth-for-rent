@@ -1016,19 +1016,37 @@
       }
       fetch('/api/updates').then(r => r.json()).then(j => { if (j && j.app && j.app.version) applyVersion(j.app.version); if (j) applyAndroid(j.android); }).catch(() => { });
       // Standalone companion apps have their own releases (tags rushid-v*, roving-v*)
-      fetch('https://api.github.com/repos/heresmetrying26/photobooth-for-rent/releases?per_page=30').then(r => r.json()).then(function (rs) {
-        const rList = Array.isArray(rs) ? rs : [];
-        const r = rList.filter(function (x) { return /^rushid-v/.test(x.tag_name) && !x.draft; })[0];
-        const a = r && (r.assets || []).filter(function (x) { return x.name === 'rush-id-station-android.apk'; })[0];
-        if (a) {
-          document.getElementById('rushApk').href = a.browser_download_url;
-          const t = document.getElementById('rushTag'); if (t) t.innerHTML = t.innerHTML.replace(/\d+\.\d+\.\d+/, r.tag_name.replace(/^rushid-v/, ''));
+      function verNewer(a, b) {
+        const x = String(a).split('.').map(n => parseInt(n, 10) || 0);
+        const y = String(b).split('.').map(n => parseInt(n, 10) || 0);
+        for (let i = 0; i < Math.max(x.length, y.length); i++) {
+          const p = x[i] || 0, q = y[i] || 0;
+          if (p !== q) return p > q;
         }
-        const rv = rList.filter(function (x) { return /^roving-v/.test(x.tag_name) && !x.draft; })[0];
-        const ra = rv && (rv.assets || []).filter(function (x) { return x.name === 'roving-dslr-bridge-android.apk'; })[0];
-        if (ra) {
-          const el = document.getElementById('rovingApk'); if (el) el.href = ra.browser_download_url;
-          const rt = document.getElementById('rovingTag'); if (rt) rt.innerHTML = rt.innerHTML.replace(/\d+\.\d+\.\d+/, rv.tag_name.replace(/^roving-v/, ''));
+        return false;
+      }
+      function latestTagAsset(list, prefixRe, assetName) {
+        let best = null;
+        for (const rel of list) {
+          const m = prefixRe.exec(rel.tag_name || '');
+          if (!m || rel.draft) continue;
+          const a = (rel.assets || []).find(x => x.name === assetName);
+          if (!a) continue;
+          if (!best || verNewer(m[1], best.ver)) best = { ver: m[1], url: a.browser_download_url };
+        }
+        return best;
+      }
+      fetch('https://api.github.com/repos/heresmetrying26/photobooth-for-rent/releases?per_page=60').then(r => r.json()).then(function (rs) {
+        const rList = Array.isArray(rs) ? rs : [];
+        const rush = latestTagAsset(rList, /^rushid-v(\d+(?:\.\d+)*)$/, 'rush-id-station-android.apk');
+        if (rush) {
+          document.getElementById('rushApk').href = rush.url;
+          const t = document.getElementById('rushTag'); if (t) t.innerHTML = t.innerHTML.replace(/\d+\.\d+\.\d+/, rush.ver);
+        }
+        const rv = latestTagAsset(rList, /^roving-v(\d+(?:\.\d+)*)$/, 'roving-dslr-bridge-android.apk');
+        if (rv) {
+          const el = document.getElementById('rovingApk'); if (el) el.href = rv.url;
+          const rt = document.getElementById('rovingTag'); if (rt) rt.innerHTML = rt.innerHTML.replace(/\d+\.\d+\.\d+/, rv.ver);
         }
       }).catch(() => { });
       if (isIPad) {

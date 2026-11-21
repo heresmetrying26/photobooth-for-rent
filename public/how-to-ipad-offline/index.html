@@ -71,7 +71,7 @@
   <h1>Run <em>photobooth4u</em> Offline on iPad + USB DSLR</h1>
   <p class="lead">Install the native iPad offline app to run full events with zero internet, direct USB DSLR &amp; mirrorless camera tethering (real shutter &amp; flash), AirPrint, and local Wi-Fi QR downloads for guests.</p>
   <div class="hero-actions">
-    <a class="btn" id="ipaBtn" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/ios-v1.1.12/photobooth4u-kiosk-ipad.ipa">Download iPad App (.ipa) · <span id="ipaVer">v1.1.12</span></a>
+    <a class="btn" id="ipaBtn" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/ios-v1.1.13/photobooth4u-kiosk-ipad.ipa">Download iPad App (.ipa) · <span id="ipaVer">v1.1.13</span></a>
     <a class="btn alt" href="https://sideloadly.io/" target="_blank" rel="noopener">Get Sideloadly (Free Installer)</a>
     <a class="btn alt" href="/how-to-ipad-offline/photobooth4u-ipad-dslr-guide.pdf" download>Download PDF Guide</a>
   </div>
@@ -259,20 +259,45 @@
 
 <script>
   (function () {
-    fetch('https://api.github.com/repos/heresmetrying26/photobooth-for-rent/releases?per_page=20')
-      .then(function (r) { return r.json(); })
-      .then(function (rs) {
-        if (!Array.isArray(rs)) return;
-        var rel = rs.filter(function (x) { return /^ios-v/.test(x.tag_name) && !x.draft; })[0];
-        var asset = rel && (rel.assets || []).filter(function (a) { return /\.ipa$/i.test(a.name); })[0];
-        if (asset) {
-          var btn = document.getElementById('ipaBtn');
-          var ver = document.getElementById('ipaVer');
-          if (btn) btn.href = asset.browser_download_url;
-          if (ver) ver.textContent = rel.tag_name.replace(/^ios-/, '');
-        }
+    function applyIpa(url, version) {
+      var btn = document.getElementById('ipaBtn');
+      var ver = document.getElementById('ipaVer');
+      if (btn && url) btn.href = url;
+      if (ver && version) ver.textContent = 'v' + String(version).replace(/^v/i, '');
+    }
+    function verNewer(a, b) {
+      var x = String(a).split('.').map(function (n) { return parseInt(n, 10) || 0; });
+      var y = String(b).split('.').map(function (n) { return parseInt(n, 10) || 0; });
+      for (var i = 0; i < Math.max(x.length, y.length); i++) {
+        var p = x[i] || 0, q = y[i] || 0;
+        if (p !== q) return p > q;
+      }
+      return false;
+    }
+    fetch('/api/updates')
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+      .then(function (j) {
+        if (j && j.ios && j.ios.version && j.ios.url) { applyIpa(j.ios.url, j.ios.version); return; }
+        throw new Error('no ios');
       })
-      .catch(function () { });
+      .catch(function () {
+        fetch('https://api.github.com/repos/heresmetrying26/photobooth-for-rent/releases?per_page=60')
+          .then(function (r) { return r.json(); })
+          .then(function (rs) {
+            if (!Array.isArray(rs)) return;
+            var best = null;
+            for (var i = 0; i < rs.length; i++) {
+              var rel = rs[i];
+              var m = /^ios-v(\d+(?:\.\d+)*)$/.exec(rel.tag_name || '');
+              if (!m || rel.draft) continue;
+              var asset = (rel.assets || []).filter(function (a) { return /\.ipa$/i.test(a.name); })[0];
+              if (!asset) continue;
+              if (!best || verNewer(m[1], best.ver)) best = { ver: m[1], url: asset.browser_download_url };
+            }
+            if (best) applyIpa(best.url, best.ver);
+          })
+          .catch(function () { });
+      });
   })();
 </script>
 </body>

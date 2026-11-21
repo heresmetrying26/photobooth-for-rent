@@ -22,12 +22,13 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
     static let shared = NativeCameraBridge()
 
     final class PreviewHostView: UIView {
-        override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
-        var previewLayer: AVCaptureVideoPreviewLayer { return layer as! AVCaptureVideoPreviewLayer }
+        let previewLayer = AVCaptureVideoPreviewLayer()
 
         let filterView: MTKView?
         private let ciContext: CIContext?
         private let cmdQueue: MTLCommandQueue?
+        private let renderLock = NSLock()
+        private var isRenderingFilter = false
         var wantsFilterOverlay: Bool = false
 
         override init(frame: CGRect) {
@@ -55,6 +56,8 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             backgroundColor = .black
             clipsToBounds = true
             previewLayer.videoGravity = .resizeAspectFill
+            previewLayer.frame = bounds
+            layer.insertSublayer(previewLayer, at: 0)
             if let fv = filterView {
                 fv.autoresizingMask = [.flexibleWidth, .flexibleHeight]
                 addSubview(fv)
@@ -67,15 +70,31 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
 
         override func layoutSubviews() {
             super.layoutSubviews()
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
             previewLayer.frame = bounds
             if let fv = filterView {
                 fv.frame = bounds
             }
+            CATransaction.commit()
         }
 
         func renderFiltered(pixelBuffer: CVPixelBuffer, mirrored: Bool, filter: String, softSkin: Bool) {
             guard let fv = filterView, let ctx = ciContext, let cq = cmdQueue else { return }
+            renderLock.lock()
+            if isRenderingFilter {
+                renderLock.unlock()
+                return
+            }
+            isRenderingFilter = true
+            renderLock.unlock()
+
             DispatchQueue.main.async {
+                defer {
+                    self.renderLock.lock()
+                    self.isRenderingFilter = false
+                    self.renderLock.unlock()
+                }
                 guard self.wantsFilterOverlay, !self.isHidden, self.bounds.width > 2, self.bounds.height > 2 else { return }
                 if fv.frame != self.bounds {
                     fv.frame = self.bounds

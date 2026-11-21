@@ -230,7 +230,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.10', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.10/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.11', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.11/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -283,6 +283,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-21', title: 'iPad 1.1.11: fix portrait split/shifted camera preview and countdown frame lag', for: ['website'],
+    items: [
+      '📸 iPad app (portrait mode): fixes the camera preview splitting into two stacked slices with a black bottom half during countdowns — `AVCaptureVideoPreviewLayer` now runs as a dedicated child sublayer inside `PreviewHostView` so its origin stays aligned with `#stageFrame`.',
+      '⚡ Smoother countdown & live filters: live Metal filter frames now drop when a render is already in flight instead of piling up on the main thread, and background GIF/boomerang frame polling matches the capture rate instead of polling at 30 FPS.',
+      '🪟 Clean between-shot review & scroll guard: hides the native preview layer cleanly while reviewing each shot (`showShotReview` / `hideShotReview`), resets any leftover vertical scroll before measuring `#stageFrame`, and observes `#stageFrame` resizes directly.'
+    ]
+  },
   {
     date: '2026-11-21', title: 'Desktop 1.1.87 + Android 1.1.95 + iPad 1.1.10 + Helper 1.1.15: Photoman Studio Workspace, Template Maker, Pop-out Window/Tab & Canon MF/Strobe Live-View Fixes', for: ['website', 'app', 'helper'], app: '1.1.87', helper: '1.1.15',
     items: [

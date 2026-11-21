@@ -28187,7 +28187,8 @@
       function nativeCamPumpNeededMs() {
         if (!nativeCam.active || document.hidden) return 0;
         try { if (typeof vgIsOpen === 'function' && vgIsOpen()) return 0; } catch (e) { }
-        if (nativeCam.motionCapturing || nativeCam.flipCapturing) return 33;
+        if (nativeCam.flipCapturing) return 65;
+        if (nativeCam.motionCapturing) return (typeof gifMotionStyle !== 'undefined' && gifMotionStyle === 'session') ? 220 : 90;
         try {
           if (typeof tabSetup !== 'undefined' && tabSetup && !tabSetup.classList.contains('hidden') && typeof curStep !== 'undefined' && curStep === 4) return 50;
         } catch (e) { }
@@ -28265,8 +28266,11 @@
         var inSession = false;
         try { inSession = typeof tabSession !== 'undefined' && tabSession && !tabSession.classList.contains('hidden'); } catch (e) { }
         var showingResult = false;
-        try { showingResult = state === 'result' || !!(sess && sess.reviewing) || (previewCanvas && previewCanvas.style.display !== 'none' && previewCanvas.width > 0 && state !== 'capturing'); } catch (e) { }
+        try { showingResult = state === 'result' || !!(sess && sess.reviewing) || !!(typeof shotReview !== 'undefined' && shotReview && shotReview.classList.contains('on')) || (previewCanvas && previewCanvas.style.display !== 'none' && previewCanvas.width > 0 && state !== 'capturing'); } catch (e) { }
         var isFullStage = document.body.classList.contains('stage-full');
+        if (isFullStage && (window.scrollY || window.pageYOffset)) {
+          try { window.scrollTo(0, 0); } catch (e) { }
+        }
         var sf = document.getElementById('stageFrame');
         var rect = (inSession && !showingResult && sf) ? sf.getBoundingClientRect() : null;
         var mir = false; try { mir = mirrorPreview(); } catch (e) { }
@@ -30911,7 +30915,7 @@
       // Re-fit when the buttons under the live view change (Retake / Done / hints).
       try {
         var stageRO = new ResizeObserver(function () { requestAnimationFrame(function () { applyStageAspect(); }); });
-        ['sessionControls', 'tabSession'].forEach(function (id) { var el = document.getElementById(id); if (el) stageRO.observe(el); });
+        ['sessionControls', 'tabSession', 'stageFrame'].forEach(function (id) { var el = document.getElementById(id); if (el) stageRO.observe(el); });
       } catch (e) { }
       window.addEventListener('resize', function () {
         applyStageAspect();
@@ -45462,6 +45466,7 @@ function renderTabletBridgeSetup(info) {
         }
         shotReview.classList.add('on');
         guestCall('review', url);
+        try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
       }
       function hideShotReview() {
         shotReview.classList.remove('on');
@@ -45474,6 +45479,7 @@ function renderTabletBridgeSetup(info) {
           } catch (e) { }
         }
         guestCall('reviewEnd');
+        try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
       }
       // After the finished photo has been on screen for the chosen time, go back
       // to the start for the next guests (waiting for any print to finish).

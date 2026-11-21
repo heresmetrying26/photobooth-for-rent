@@ -458,6 +458,25 @@ const WIN_EPSON_L3210_SCALE = 0.965;
 // below, and checked against the driver's own bytes in desktop/test/test-win-l8050.mjs.
 export const WIN_EPSON_L8050_4X6 = { sheetW: 2880, sheetH: 4320, areaW: 3032, areaH: 4400, areaLeft: 76, areaTop: 22, bleedMm: 0.5 };
 
+// The numbers above are for the driver's default Borderless setting: Printing preferences > Borderless > Settings > Auto Expand, slider on
+// Std. The same dialog has a slider (Min / Med / Std) and "Retain Size"; the driver keeps them in its own bytes of the page settings
+// (DEVMODE, byte 7940 = slider 0 Min, 1 Med, 2 Std; byte 7942 = 0 Auto Expand, 1 Retain Size; found by changing the setting in the driver
+// and comparing the saved bytes; the layout is checked before they are read) and writes a different job for each. Read from the driver's job
+// (tools/epson-l8050, 720 dpi, 4x6 in borderless) and from thin-line test pages through the same queue:
+//   Std     area 3032 x 4400 at (-76, -22)  page enlarged 3032/2880 about the middle of the area, which sits 18 px below the sheet's middle
+//   Med     area 2956 x 4362 at (-38, -12)  enlarged 2956/2880, middle 9 px below
+//   Min     area 2920 x 4342 at (-20, -6)   enlarged 2920/2880, middle 5 px below
+//   Retain  area 3032 x 4400 at (-76, -22)  NOT enlarged: the page sits 1:1 at the area's top-left corner, so on paper it is 76 px (2.68 mm)
+//           too far left and 22 px (0.78 mm) too high: the left and top edges lose that much and the right and bottom edges stay white.
+// A client's Retain Size was the white strip along two sides on a 4R print. Retain Size cannot print edge to edge from the app (the page
+// is only 2880 x 4320, so the strips at the right and bottom cannot be drawn on): the picture covers the left and top edges and the
+// operator is told to choose Auto Expand.
+export const WIN_EPSON_L8050_EXPANSION = {
+  std: { areaW: 3032, dy: 18 }, med: { areaW: 2956, dy: 9 }, min: { areaW: 2920, dy: 5 },
+  retain: { left: 76, top: 22 },
+  devmode: { size: 8192, driverVersion: 768, dmSize: 220, extra: 7972, level: 7940, method: 7942 }
+};
+
 const WIN_PRINT_PS = String.raw`
 param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [string]$MediaType = '', [switch]$Borderless, [int]$CustomW = 0, [int]$CustomH = 0, [int]$ActualW = 0, [int]$ActualH = 0, [double]$EpsonScale = 0)
 $ErrorActionPreference = 'Stop'
@@ -648,6 +667,31 @@ if ($Borderless) {
     }
   } catch { [Console]::Out.WriteLine('info|borderless not set: ' + $_.Exception.Message) }
 }
+# Epson L8050 driver, Borderless > Settings: Auto Expand (slider Min / Med / Std) or Retain Size. It decides how far the driver enlarges a
+# Borderless page, so the picture is drawn for the one that is set (see WIN_EPSON_L8050_EXPANSION). Read from the driver's own bytes of the
+# page settings, and only when their layout is the one it was measured on; otherwise the default (Auto Expand, Std) is assumed.
+$l8050Mode = ''; $l8050Level = 2
+if ($l8050) {
+  try {
+    if (-not ('PB4U.K32' -as [type])) {
+      Add-Type -MemberDefinition @'
+[DllImport("kernel32.dll")] public static extern IntPtr GlobalLock(IntPtr h);
+[DllImport("kernel32.dll")] public static extern bool GlobalUnlock(IntPtr h);
+[DllImport("kernel32.dll")] public static extern UIntPtr GlobalSize(IntPtr h);
+[DllImport("kernel32.dll")] public static extern IntPtr GlobalFree(IntPtr h);
+'@ -Name K32 -Namespace PB4U
+    }
+    $xh = $doc.PrinterSettings.GetHdevmode($doc.DefaultPageSettings)
+    $xp = [PB4U.K32]::GlobalLock($xh); $xn = ([PB4U.K32]::GlobalSize($xh)).ToUInt32()
+    $xb = New-Object byte[] $xn
+    [Runtime.InteropServices.Marshal]::Copy($xp, $xb, 0, $xn)
+    [void][PB4U.K32]::GlobalUnlock($xh); [void][PB4U.K32]::GlobalFree($xh)
+    if ($xn -ge 8192 -and [BitConverter]::ToUInt16($xb, 66) -eq 768 -and [BitConverter]::ToUInt16($xb, 68) -eq 220 -and [BitConverter]::ToUInt16($xb, 70) -eq 7972 -and $xb[7940] -le 2 -and $xb[7942] -le 1) {
+      $l8050Mode = if ($xb[7942] -eq 1) { 'retain' } else { 'auto' }; $l8050Level = [int]$xb[7940]
+      [Console]::Out.WriteLine('info|Epson L8050 driver Borderless setting: ' + $(if ($l8050Mode -eq 'retain') { 'Retain Size' } else { 'Auto Expand, ' + @('Min', 'Med', 'Std')[$l8050Level] }))
+    } else { [Console]::Out.WriteLine('info|Epson L8050 driver settings have another layout than the one measured: Auto Expand, Std assumed') }
+  } catch { [Console]::Out.WriteLine('info|Epson L8050 Borderless setting not read: ' + $_.Exception.Message) }
+}
 $doc.DocumentName = 'photobooth4u'
 $doc.PrintController = New-Object System.Drawing.Printing.StandardPrintController
 $doc.OriginAtMargins = $false
@@ -698,12 +742,24 @@ $doc.add_PrintPage({
         $encl = 3032 / 2880
         $um = $shortU / 101.6                                  # page units (1/100 in) per mm, from the sheet itself
         $bl = 0.5 * $um; $dyc = (18 / 720 * 25.4) * $um
+        # Auto Expand with the slider on Med or Min: the driver enlarges less (see WIN_EPSON_L8050_EXPANSION).
+        if ($l8050Mode -eq 'auto' -and $l8050Level -eq 1) { $encl = 2956 / 2880; $dyc = (9 / 720 * 25.4) * $um }
+        elseif ($l8050Mode -eq 'auto' -and $l8050Level -eq 0) { $encl = 2920 / 2880; $dyc = (5 / 720 * 25.4) * $um }
         # A page set to Landscape in the driver is turned by the driver, and which way is not known, so the 0.64 mm cannot be moved:
         # the bleed is 0.7 mm instead (no white either way, at most 1.3 mm trimmed on one side).
         if ($pageLandscape) { $bl = 0.7 * $um; $bw = [single](($page.Width + 2 * $bl) / $encl); $bh = [single](($page.Height + 2 * $bl) / $encl); $cx = $page.Width / 2; $cy = $page.Height / 2 }
         else { $bw = [single](($page.Width + 2 * $bl) / $encl); $bh = [single](($page.Height + 2 * $bl) / $encl); $cx = $page.Width / 2; $cy = $page.Height / 2 - $dyc / $encl }
+        if ($l8050Mode -eq 'retain' -and -not $pageLandscape) {
+          # Retain Size: no enlargement, and the page starts at the area's top-left corner (76 px left of and 22 px above the sheet at 720 dpi).
+          # The picture covers the left and top edges (plus the bleed); the right and bottom strips are outside the page and stay white.
+          $px = $shortU / 2880
+          $rx0 = 76 * $px - $bl; $ry0 = 22 * $px - $bl
+          [Console]::Out.WriteLine('warn|The Epson L8050 driver is set to Retain Size (Printing preferences > Borderless > Settings), so the right and bottom edge of the print keep a white strip of about 3 mm. Choose Auto Expand with the slider on Std there.')
+          $e.Graphics.DrawImage($img, [single](-$hx + $rx0), [single](-$hy + $ry0), [single]($page.Width - $rx0), [single]($page.Height - $ry0))
+        } else {
         [Console]::Out.WriteLine(('info|Epson L8050 borderless 4x6: picture drawn at {0}% across and {1}% along so the driver''s enlargement does not trim the edges' -f [Math]::Round($bw / $page.Width * 100, 1), [Math]::Round($bh / $page.Height * 100, 1)))
         $e.Graphics.DrawImage($img, [single](-$hx + $cx - $bw / 2), [single](-$hy + $cy - $bh / 2), $bw, $bh)
+        }
       } elseif ($aw -le 0 -and [Math]::Abs(($page.Width / $page.Height) / ($img.Width / $img.Height) - 1) -le 0.04) {
         $bw = [single]($page.Width * $edgeScale); $bh = [single]($page.Height * $edgeScale)
         $e.Graphics.DrawImage($img, [single](-$hx + ($page.Width - $bw) / 2), [single](-$hy + ($page.Height - $bh) / 2), $bw, $bh)

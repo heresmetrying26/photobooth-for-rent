@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WIN_EPSON_L8050_4X6 as G } from '../lib/helper.mjs';
+import { WIN_EPSON_L8050_4X6 as G, WIN_EPSON_L8050_EXPANSION as X } from '../lib/helper.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(here, '..', 'lib', 'helper.mjs'), 'utf8');
@@ -89,6 +89,60 @@ test('a 4x6 picture at the old 100% would have lost the edges listed in the note
   assert.ok(Math.abs(left - 2.55) < 0.05, 'left ' + left);
   assert.ok(Math.abs(top - 3.2) < 0.05, 'top ' + top);
   assert.ok(Math.abs(bottom - 4.4) < 0.05, 'bottom ' + bottom);
+});
+
+// ---- the driver's Borderless > Settings (Auto Expand: Min / Med / Std, or Retain Size) ----
+// Jobs from the driver's file-port queue, one per setting (4x6 borderless, 720 dpi): setj sheet, margins (top, left), area.
+const SETJ_BY_MODE = {
+  std: '00 00 0b 40 00 00 10 e0 ff ea ff b4 00 00 0b d8 00 00 11 30 01 00',
+  med: '00 00 0b 40 00 00 10 e0 ff f4 ff da 00 00 0b 8c 00 00 11 0a 01 00',
+  min: '00 00 0b 40 00 00 10 e0 ff fa ff ec 00 00 0b 68 00 00 10 f6 01 00',
+  retain: '00 00 0b 40 00 00 10 e0 ff ea ff b4 00 00 0b d8 00 00 11 30 01 00'
+};
+const jobOf = (hex) => { const q = Buffer.from(hex.replace(/ /g, ''), 'hex'); return { top: q.readInt16BE(8), left: q.readInt16BE(10), areaW: q.readUInt32BE(12), areaH: q.readUInt32BE(16) }; };
+
+test('the table of settings is what the driver wrote for each of them', () => {
+  for (const k of ['std', 'med', 'min']) {
+    const j = jobOf(SETJ_BY_MODE[k]);
+    assert.equal(X[k].areaW, j.areaW, k + ' area width');
+    // the middle of the area sits dy below the sheet's middle (top is negative: the area starts above the sheet)
+    assert.equal(X[k].dy, j.top + j.areaH / 2 - G.sheetH / 2, k + ' dy');
+  }
+  const r = jobOf(SETJ_BY_MODE.retain);
+  assert.equal(X.retain.left, -r.left); assert.equal(X.retain.top, -r.top);
+});
+
+test('the script has the same numbers and reads the driver bytes it was measured on', () => {
+  assert.ok(/\$encl = 2956 \/ 2880; \$dyc = \(9 \/ 720 \* 25\.4\) \* \$um/.test(ps), 'Med line');
+  assert.ok(/\$encl = 2920 \/ 2880; \$dyc = \(5 \/ 720 \* 25\.4\) \* \$um/.test(ps), 'Min line');
+  assert.equal(X.med.areaW, 2956); assert.equal(X.min.areaW, 2920);
+  const d = X.devmode;
+  assert.ok(ps.includes('$xb[' + d.level + ']') && ps.includes('$xb[' + d.method + ']'), 'bytes ' + d.level + ' and ' + d.method);
+  assert.ok(ps.includes('-eq ' + d.driverVersion) && ps.includes('-eq ' + d.dmSize) && ps.includes('-eq ' + d.extra) && ps.includes('$xn -ge ' + d.size), 'layout check');
+  assert.ok(/\$xb\[7940\] -le 2 -and \$xb\[7942\] -le 1/.test(ps), 'values checked before use');
+  assert.ok(/\$rx0 = 76 \* \$px - \$bl; \$ry0 = 22 \* \$px - \$bl/.test(ps), 'Retain Size offsets');
+  assert.ok(/warn\|The Epson L8050 driver is set to Retain Size/.test(ps), 'Retain Size warning');
+});
+
+// The same model as `drawn` / `onSheet`, with the setting's enlargement and middle (vertical only: the horizontal part is symmetric).
+test('Auto Expand Std / Med / Min: the picture ends 0.5 mm past the top and bottom edge of the sheet', () => {
+  for (const k of ['std', 'med', 'min']) {
+    const e = X[k].areaW / G.sheetW, um = 400 / 101.6, dyc = (X[k].dy / 720 * 25.4) * um, bl = bleedMm * um;
+    const bh = (600 + 2 * bl) / e, cy = 300 - dyc / e, y0 = cy - bh / 2, y1 = cy + bh / 2;
+    const m = (v) => (v - 300) * e + 300 + dyc;                        // page -> sheet: enlarged about the area's middle
+    const top = -m(y0) / um, bottom = (m(y1) - 600) / um;
+    assert.ok(Math.abs(top - 0.5) < 0.02 && Math.abs(bottom - 0.5) < 0.02, k + ': ' + top + ' / ' + bottom);
+  }
+});
+
+test('Retain Size: the picture covers the left and top edge with the bleed; the right and bottom strips cannot be printed on', () => {
+  const px = 400 / 2880, um = 400 / 101.6, bl = bleedMm * um;
+  const x0 = X.retain.left * px - bl, y0 = X.retain.top * px - bl;        // where the script draws it (page units), page = sheet + (76, 22) px
+  const onSheetX0 = x0 - X.retain.left * px, onSheetY0 = y0 - X.retain.top * px;
+  assert.ok(Math.abs(onSheetX0 / um + 0.5) < 0.02 && Math.abs(onSheetY0 / um + 0.5) < 0.02, 'left/top bleed ' + onSheetX0 / um + ' / ' + onSheetY0 / um);
+  const rightEdgeOnSheet = 400 - X.retain.left * px, bottomEdgeOnSheet = 600 - X.retain.top * px;     // the page's end on the sheet
+  assert.ok(400 - rightEdgeOnSheet > 2.6 * um && 400 - rightEdgeOnSheet < 2.8 * um, 'right strip');
+  assert.ok(600 - bottomEdgeOnSheet > 0.7 * um && 600 - bottomEdgeOnSheet < 0.9 * um, 'bottom strip');
 });
 
 console.log(passed + ' passed' + (process.exitCode ? ', some FAILED' : ''));

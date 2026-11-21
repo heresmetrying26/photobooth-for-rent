@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.84', date: '2026-11-21' },
   { version: '1.1.83', date: '2026-11-21' },
   { version: '1.1.82', date: '2026-11-20' },
   { version: '1.1.81', date: '2026-11-20' },
@@ -279,6 +280,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-21', title: 'Desktop 1.1.84 (Win/Mac): Epson L8050 4×6 borderless follows the driver’s Borderless Settings (Auto Expand Std / Med / Min, or Retain Size)', for: ['website', 'app'], app: '1.1.84',
+    items: [
+      '🖨️ Windows laptop app, Epson L8050: the driver’s Printing preferences > Borderless > Settings has a slider (Std / Med / Min) and “Retain Size”. They change how far the driver enlarges a borderless page: Std 5.3%, Med 2.6%, Min 1.4%, and Retain Size not at all. The app drew every picture for Std, so a driver on Med or Min left a white edge, and Retain Size left a white strip of about 3 mm along the right and bottom and cut the left and top. The app now reads that setting and draws the picture for it.',
+      '⚠️ Retain Size cannot print edge to edge from the app (the page is smaller than the area the printer prints on). The picture now covers the left and top edges, and the booth says so: choose Auto Expand with the slider on Std in Printing preferences > Borderless > Settings. That is also what a client on Retain Size with a white strip along two sides needs.',
+      '🧪 Measured on the driver’s file-port queue (no paper): where the picture lands for each setting matches the model. Not tried on a real L8050 sheet yet: print the Edge test and tell us how the edges look.'
+    ]
+  },
   {
     date: '2026-11-21', title: 'Desktop 1.1.83 (Win/Mac): Canon photos reach the booth faster, with a shorter wait between shots', for: ['website', 'app'], app: '1.1.83',
     items: [

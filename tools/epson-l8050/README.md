@@ -60,3 +60,27 @@ powershell -File capture.ps1 -Pattern hlines -Out C:\temp\bl_hlines.prn
 python escpr_dump.py C:\temp\bl_hlines.prn
 Remove-Printer -Name 'PB4U L8050 capture'; Remove-PrinterPort -Name C:\temp\pb4u-cap8050.prn
 ```
+
+## Borderless > Settings: Auto Expand (Min / Med / Std) and Retain Size (2026-11-21)
+
+A client's 4R print had a white strip of 3-5 mm along two sides and the Edge test showed the picture shifted; her driver was on **Retain Size**
+(Printing preferences > Borderless > Settings). That dialog ("Expansion") has *Method of Enlargement* (Auto Expand / Retain Size) and a slider
+(Min / Med / Std, Std is the default). The driver keeps them in its own bytes of the page settings (DEVMODE, 8192 bytes: 220 public + 7972 driver
+bytes): **byte 7940 = slider (0 Min, 1 Med, 2 Std), byte 7942 = method (0 Auto Expand, 1 Retain Size)**, found by changing the setting with
+`expansion.ps1` and diffing `HKCU\Printers\DevModePerUser\<queue>` (byte 7988 also moves with the slider: a check value, not used).
+
+`expansion.ps1` (with `win32ui.ps1`) opens the queue's Printing preferences, picks 10 x 15 cm and Borderless, opens Settings and sets the dialog by
+control id, so each setting can be captured with `capture.ps1` and read with `escpr_dump.py`:
+
+| setting | area (setj) | origin top, left | what the driver does with the page |
+|---|---|---|---|
+| Auto Expand, Std (default) | 3032 x 4400 | -22, -76 | enlarged 3032/2880 = 5.28% about the area's middle (18 px below the sheet's middle) |
+| Auto Expand, Med | 2956 x 4362 | -12, -38 | enlarged 2956/2880 = 2.64%, middle 9 px below |
+| Auto Expand, Min | 2920 x 4342 | -6, -20 | enlarged 2920/2880 = 1.39%, middle 5 px below |
+| **Retain Size** | 3032 x 4400 | -22, -76 | **not enlarged**: the page (2880 x 4320) sits 1:1 at the area's top-left corner: rows 0..4320 of the area, which is 76 px (2.68 mm) left of and 22 px (0.78 mm) above the sheet |
+
+Thin-line pages (`-Pattern hlines`) landed where `row = areaH/2 + (page row - 2160) x E` says for all three Auto Expand levels, and at
+`row = page row` for Retain Size. Retain Size cannot print edge to edge from the app: the page is only 2880 x 4320, so the 2.68 mm strip at the
+right and the 0.78 mm strip at the bottom are outside it. `desktop/lib/helper.mjs` (`WIN_EPSON_L8050_EXPANSION`, `$l8050Mode`) reads the two bytes
+(only when the layout matches), draws the picture for the setting, and warns on Retain Size. `desktop/test/test-win-l8050.mjs` ties the numbers to the jobs.
+The horizontal part could not be read from the band data (blank bands are not sent, but a band's columns are not decoded), it follows from the same enlargement.

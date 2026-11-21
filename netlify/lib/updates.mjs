@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.90', date: '2026-11-21' },
   { version: '1.1.89', date: '2026-11-21' },
   { version: '1.1.88', date: '2026-11-21' },
   { version: '1.1.87', date: '2026-11-21' },
@@ -198,7 +199,7 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.15', date: '2026-11-21' };
+export const HELPER = { version: '1.1.16', date: '2026-11-21' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
@@ -285,6 +286,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-21', title: 'Desktop 1.1.90 + Print Helper 1.1.16: Canon EOS 60D / 6D capture fix, external flash / strobe sync, and faster sessions', for: ['website', 'app', 'helper'], app: '1.1.90', helper: '1.1.16',
+    items: [
+      '📸 Fixed Canon EOS 60D / 6D failing to take photos in host-transfer mode: the camera worker now sends Canon’s required host capacity handshake (PCHDDCapacity 0x911A) after switching SaveTo to the laptop, uses the proper DSLR two-stage shutter sequence (half-press then full-press) instead of the mirrorless-only command, and streams RAM photos directly in 1 MB chunks (with RAW+JPEG cleanup).',
+      '⚡ External flash & studio strobe sync on Canon DSLRs: the booth now drops Live View during the 0.6 s "Pose" pause so the mirror settles before the shutter fires — giving reliable mechanical X-sync with hot-shoe flashes, strobes and triggers with zero extra delay at the shutter moment.',
+      '🚀 Faster between shots and after the last shot: between-shot status uses a lightweight /camera/info check instead of re-scanning Windows USB devices, Canon DSLRs skip unnecessary countdown Live View contrast-AF freezes, and the final photo skips bouncing Live View back on so the booth moves straight to Review / Result.',
+      '🔌 Swapping Canon cameras (e.g. 60D to 6D) now resets all per-camera Canon state cleanly, and Windows unplug errors (0x802A0002 / 0x802A0003) are handled cleanly as disconnects.'
+    ]
+  },
   {
     date: '2026-11-21', title: 'Desktop 1.1.89: the Windows camera part starts again, clearer webcam messages, and Photoman shows your framed photo', for: ['website', 'app'], app: '1.1.89',
     items: [

@@ -26,7 +26,7 @@ import { spawn } from 'node:child_process';
 import { freeCamera, guardCamera } from './camfree.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.15';
+const VERSION = '1.1.16';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',
@@ -606,14 +606,25 @@ const server = Bun.serve({
         return json({ ok: false, code: e.code, error: e.error }, e.code === 'GONE' ? 410 : e.code === 'NOCAMERA' ? 404 : 409, origin);
       };
       const jpeg = (body, extra) => new Response(body, { status: 200, headers: { 'content-type': 'image/jpeg', 'cache-control': 'no-store', ...cors(origin), ...(extra || {}) } });
+      const classic = url.searchParams.get('classic') === '1' ? 'classic' : '';
       try {
         if (req.method === 'GET' && url.pathname === '/camera') {
           const r = await camCall('list', '', 20000);
           return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) }, 200, origin));
         }
+        if (req.method === 'GET' && url.pathname === '/camera/info') {
+          const r = await camCall('info', '', 8000);
+          return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) }, 200, origin));
+        }
         if (req.method === 'POST' && url.pathname === '/camera/open') {
-          const r = await camCall('open', '', 60000);
+          const openArg = [url.searchParams.get('fresh') === '1' ? 'recover' : '', classic].filter(Boolean).join(' ');
+          const r = await camCall('open', openArg, 60000);
           return send(r, () => { cam.open = JSON.parse(r.body.toString('utf8')); log('Camera connected: ' + cam.open.name); return json({ ok: true, ...cam.open }, 200, origin); });
+        }
+        if (req.method === 'POST' && url.pathname === '/camera/af') {
+          const afArg = [classic, url.searchParams.get('pre') === '1' ? 'pre' : ''].filter(Boolean).join(' ');
+          const r = await camCall('af', afArg, 15000);
+          return send(r, () => json({ ok: true }, 200, origin));
         }
         if (req.method === 'POST' && url.pathname === '/camera/live') {
           const on = url.searchParams.get('on') !== '0';
@@ -626,7 +637,7 @@ const server = Bun.serve({
         }
         if (req.method === 'POST' && url.pathname === '/camera/capture') {
           const t0 = Date.now();
-          const r = await camCall('capture', '', 45000);
+          const r = await camCall('capture', classic, 45000);
           return send(r, () => { log('Photo taken (' + Math.round(r.body.length / 1024) + ' KB, ' + (Date.now() - t0) + ' ms)'); return jpeg(r.body); });
         }
         if (req.method === 'GET' && url.pathname === '/camera/battery') {

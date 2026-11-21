@@ -11,6 +11,9 @@ import { createNikon } from './cam-nikon.mjs';
 import { createSony, sonyName } from './cam-sony.mjs';
 
 const NOTREADY = 0xA102;                 // Canon: "not ready yet, ask again"
+const EOS_AVAIL_SHOTS = 0xD11B;
+const EOS_SAVETO = 0xD11C;
+const SAVETO_CARD = 2, SAVETO_HOST = 4;
 const CANON = 0x04a9, NIKON = 0x04b0, SONY = 0x054c;   // USB vendor ids
 const BRANDS = new Map([[CANON, 'canon'], [NIKON, 'nikon'], [SONY, 'sony']]);
 const MAKERS = new Map([[CANON, 'Canon'], [NIKON, 'Nikon'], [SONY, 'Sony']]);
@@ -36,12 +39,20 @@ const log = (m) => {
 const s = {
   ptp: null, entry: null, name: '', model: '', maker: '', vendorExt: 0, brand: 'canon', drv: null, battery: -1,   // drv: the Nikon / Sony driver (Canon is handled in this file)
   ops: [], props: [], live: false, gotFrame: false, setupNote: '', diag: '',
-  eosVals: new Map(), newFiles: [], pollAt: 0, keepAt: 0, liveAt: 0, lastShutterMs: 0, recoverNext: false
+  eosVals: new Map(), eosAvail: new Map(), newFiles: [], pollAt: 0, keepAt: 0, liveAt: 0, liveOffAt: 0, lastShutterMs: 0, recoverNext: false,
+  toHost: false, hostGaveUp: false, hostWorked: false, destOrig: SAVETO_CARD, lastPollEvents: 0
 };
 
 const has = (op) => s.ops.includes(op);
 const u32 = (b, i) => b.readUInt32LE(i);
 const u16 = (b, i) => b.readUInt16LE(i);
+const canonLensMf = () => s.brand === 'canon' && s.eosVals.get(0xD108) === 3;
+function canonIsDslr() {
+  if (s.brand !== 'canon') return false;
+  const m = ((s.name || '') + ' ' + (s.model || '')).toUpperCase();
+  if (!m.includes('EOS')) return false;
+  return !/\bEOS (R\d*|RP|RA|M\d*)\b/.test(m);
+}
 
 async function opRetry(code, ...ps) {
   const t0 = Date.now();
@@ -71,6 +82,7 @@ async function setEos(prop, val) {
 // Reads the camera's news: changed settings, and new photos.
 async function poll() {
   s.pollAt = Date.now();
+  s.lastPollEvents = 0;
   const { resp, data } = await s.ptp.opRead(0x9116);
   if (resp !== OK || !data.length) return;
   let off = 0;
@@ -78,13 +90,79 @@ async function poll() {
     const size = u32(data, off), type = u32(data, off + 4);
     if (size < 8 || off + size > data.length || type === 0) break;
     const end = off + size;
+    s.lastPollEvents++;
     if (type === 0xC189 && size >= 16) s.eosVals.set(u32(data, off + 8) & 0xFFFF, u32(data, off + 12));   // a setting changed
+    else if (type === 0xC18A && size >= 20) {
+      if ((u32(data, off + 8) & 0xFFFF) === EOS_SAVETO) {
+        const cnt = u32(data, off + 16), room = size - 20;
+        if (cnt > 0 && cnt <= 64 && room > 0 && room % cnt === 0) {
+          const es = room / cnt;
+          if (es === 1 || es === 2 || es === 4) {
+            const vals = [];
+            for (let k = 0; k < cnt; k++) {
+              const p = off + 20 + k * es;
+              vals.push(es === 4 ? u32(data, p) : es === 2 ? u16(data, p) : data[p]);
+            }
+            s.eosAvail.set(EOS_SAVETO, vals);
+          }
+        }
+      }
+    }
     else if ((type === 0xC181 || type === 0xC1A7) && size >= 12)   // a photo was saved on the card
-      s.newFiles.push([u32(data, off + 8), type, off + 0x12 <= end ? u16(data, off + 0x10) : 0, off + 0x20 <= end ? u32(data, off + 0x1C) : 0]);
-    else if (type === 0xC186 && size >= 12)   // a photo waits in the camera's memory for us
-      s.newFiles.push([u32(data, off + 8), type, off + 0x0E <= end ? u16(data, off + 0x0C) : 0, off + 0x18 <= end ? u32(data, off + 0x14) : 0]);
+      s.newFiles.push([u32(data, off + 8), type, off + 0x12 <= end ? u16(data, off + 0x10) : 0, off + 0x20 <= end ? (u32(data, off + 0x1C) > 0x10000000 ? 0 : u32(data, off + 0x1C)) : 0]);
+    else if ((type === 0xC186 || type === 0xC1A9 || type === 0xC1B8) && size >= 12)   // a photo waits in the camera's memory for us
+      s.newFiles.push([u32(data, off + 8), type, off + 0x0E <= end ? u16(data, off + 0x0C) : 0, off + 0x18 <= end ? (u32(data, off + 0x14) > 0x10000000 ? 0 : u32(data, off + 0x14)) : 0]);
     off = end;
   }
+}
+
+async function canonSendCapacity() {
+  if (s.ops.length > 0 && !has(0x911A)) return false;
+  const r = await opRetry(0x911A, 0x0FFFFFFF, 0x00001000, 1);
+  log('PCHDDCapacity (0x911A): ' + hex(r));
+  return r === OK || r === BUSY;
+}
+
+async function canonToHost() {
+  s.toHost = false;
+  if (s.hostGaveUp) return;
+  if (!s.eosVals.has(EOS_SAVETO)) return;
+  if (s.ops.length > 0 && !has(0x911A)) return;
+  const cur = s.eosVals.get(EOS_SAVETO);
+  const av = s.eosAvail.get(EOS_SAVETO);
+  const hadAvail = s.eosVals.has(EOS_AVAIL_SHOTS);
+  if (cur === SAVETO_HOST) {
+    s.destOrig = av && !av.includes(SAVETO_CARD) && av.includes(1) ? 1 : SAVETO_CARD;
+    if (!(await canonSendCapacity())) { s.hostGaveUp = true; try { await setEos(EOS_SAVETO, s.destOrig); } catch { } return; }
+    if (hadAvail) {
+      const t0 = Date.now();
+      while (Date.now() - t0 < 1500) { await poll(); if ((s.eosVals.get(EOS_AVAIL_SHOTS) || 0) > 0) break; await sleep(60); }
+      if ((s.eosVals.get(EOS_AVAIL_SHOTS) || 0) === 0) { s.hostGaveUp = true; try { await setEos(EOS_SAVETO, s.destOrig); } catch { } return; }
+    }
+    s.toHost = true;
+    return;
+  }
+  if (av && !av.includes(SAVETO_HOST)) return;
+  const r = await setEos(EOS_SAVETO, SAVETO_HOST);
+  if (r !== OK) { s.eosVals.set(EOS_SAVETO, cur); return; }
+  if (!(await canonSendCapacity())) { s.hostGaveUp = true; try { await setEos(EOS_SAVETO, cur); } catch { } return; }
+  await poll();
+  if (s.eosVals.get(EOS_SAVETO) !== SAVETO_HOST) return;
+  if (hadAvail) {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 1500) { if ((s.eosVals.get(EOS_AVAIL_SHOTS) || 0) > 0) break; await sleep(60); await poll(); }
+    if ((s.eosVals.get(EOS_AVAIL_SHOTS) || 0) === 0) { s.hostGaveUp = true; try { await setEos(EOS_SAVETO, cur); } catch { } return; }
+  }
+  s.destOrig = cur;
+  s.toHost = true;
+  log('Save to: the computer (was ' + cur + ')');
+}
+
+async function canonToCard(giveUp) {
+  if (giveUp) s.hostGaveUp = true;
+  if (!s.toHost) return;
+  s.toHost = false;
+  try { await setEos(EOS_SAVETO, s.destOrig); } catch (e) { if (e instanceof GoneError) throw e; }
 }
 
 // EOS battery arrives as property 0xD111 in the event stream: quarter steps (1=Low 6=25% 2=50% 5=75% 3=100%) on most bodies, a percent on some.
@@ -123,7 +201,8 @@ async function singleShot() {
 }
 
 async function prepare() {
-  s.setupNote = ''; s.eosVals.clear(); s.newFiles = []; s.gotFrame = false;
+  s.setupNote = ''; s.eosVals.clear(); s.eosAvail.clear(); s.newFiles = []; s.gotFrame = false;
+  s.toHost = false; s.liveOffAt = 0;
   if (s.recoverNext) {
     s.recoverNext = false;
     try { await s.ptp.op(0x9115, 0); } catch (e) { if (e instanceof GoneError) throw e; }
@@ -144,6 +223,7 @@ async function prepare() {
   if (!has(0x910F) && !has(0x9128)) throw new CamError('UNSUPPORTED The ' + s.name + " doesn't take photos over USB.");
   s.lastShutterMs = 0;
   await singleShot();
+  try { await canonToHost(); } catch (e) { if (e instanceof GoneError) throw e; log('Save to host not set: ' + e.message); }
   s.keepAt = Date.now();
 }
 
@@ -160,14 +240,15 @@ async function liveOn() {
   const r = await setEos(0xD1B0, 2);   // live view to the computer (mirror up)
   if (r !== OK && !started)
     throw new CamError('LIVEVIEW The camera refused live view (' + hex(r) + '). On the camera: Menu, Live View shoot: Enable; close the menu; mode dial on P, Tv, Av or M. Then try again.');
-  s.live = true; s.gotFrame = false; s.liveAt = Date.now();
+  s.live = true; s.gotFrame = false; s.liveAt = Date.now(); s.liveOffAt = 0;
 }
 
 async function liveOff() {
-  if (!s.live) return;
+  const outOn = (s.eosVals.get(0xD1B0) || 0) !== 0;
+  if (!s.live && !outOn) return;
   try { await setEos(0xD1B0, 0); if (has(0x9152)) await s.ptp.op(0x9152); }
   catch (e) { if (e instanceof GoneError) throw e; }
-  s.live = false;
+  s.live = false; s.liveOffAt = Date.now();
 }
 
 // The camera ended live view by itself (after a photo, its own timeout, a sleep): start it again from the beginning.
@@ -236,31 +317,83 @@ function shotError(r, res) {
   return new CamError('CAPTURE The camera refused the photo (' + hex(r) + (res !== 0 ? ', result ' + res : '') + "). Close the camera's menu, set the mode dial to P, Tv, Av or M (not video), and check the SD card.");
 }
 
-// Whole, or in 1 MB pieces (Canon's own command, then the standard one).
-const download = (h, size, notes) => downloadObject(s.ptp, h, size, notes, has(0x9107) ? 0x9107 : 0x101B);
+// Whole, or in 1 MB pieces. For RAM / host objects (0xC186 / 0xC1A9 / 0xC1B8), download directly in 1 MB chunks via 0x101B (libgphoto2).
+async function download(h, size, notes, ramPhoto = false) {
+  if (ramPhoto && size > 0) {
+    for (const piece of has(0x9107) ? [0x101B, 0x9107] : [0x101B]) {
+      const parts = [];
+      let off = 0, pr = 0;
+      try {
+        while (off < size) {
+          const g = await s.ptp.opRead(piece, h, off, Math.min(1048576, size - off));
+          pr = g.resp;
+          if (pr !== OK || g.data.length === 0) break;
+          parts.push(g.data); off += g.data.length;
+        }
+      } catch (e) { if (e instanceof GoneError) throw e; pr = 0; }
+      notes.push('pieces ' + hex(piece) + ' ' + hex(pr) + ' ' + off + ' B');
+      if (pr === OK && off >= size) return Buffer.concat(parts);
+    }
+  }
+  return downloadObject(s.ptp, h, size, notes, has(0x9107) ? 0x9107 : 0x101B);
+}
+
+async function canonHalfFull(lensMf, skipAf) {
+  let afFlag = (skipAf && !lensMf) ? 1 : 0;
+  let h = await opRetry(0x9128, 1, afFlag);
+  if (h !== OK && afFlag === 1) { afFlag = 0; h = await opRetry(0x9128, 1, 0); }
+  if (h === OK) {
+    const fast = lensMf || afFlag === 1;
+    const t0 = Date.now(), maxWait = fast ? 80 : 350;
+    while (Date.now() - t0 < maxWait) {
+      await poll();
+      if (fast && s.lastPollEvents > 0) break;
+      await sleep(40);
+    }
+  }
+  let f = h === OK ? await opRetry(0x9128, 2, afFlag) : h;
+  if (f !== OK && afFlag === 1) f = await opRetry(0x9128, 2, 0);
+  try { await opRetry(0x9129, 2); await poll(); await opRetry(0x9129, 1); } catch (e) { if (e instanceof GoneError) throw e; }
+  log('Half / full press (mf=' + (lensMf ? '1' : '0') + ' af=' + afFlag + '): ' + hex(h) + ' / ' + hex(f));
+  return f;
+}
 
 async function capture() {
   const t0 = Date.now();
   await poll();
   await singleShot();   // the operator may have turned the self-timer on since the session started
+  if (s.toHost && (s.eosVals.get(EOS_AVAIL_SHOTS) === undefined || s.eosVals.get(EOS_AVAIL_SHOTS) < 100)) {
+    await canonSendCapacity();
+    await poll();
+  }
+  const isDslr = canonIsDslr();
+  if (isDslr) {
+    if (s.live || (s.eosVals.get(0xD1B0) || 0) !== 0) {
+      log('DSLR capture: ending live view before shutter (mechanical flash sync)');
+      await liveOff();
+    }
+    while (s.liveOffAt && Date.now() - s.liveOffAt < 350) {
+      await poll();
+      if ((s.eosVals.get(0xD1B0) || 0) === 0 && Date.now() - s.liveOffAt >= 220) break;
+      await sleep(40);
+    }
+  }
   s.newFiles = [];
   let r;
   const shutter = Date.now();
+  const lensMf = canonLensMf();
   if (has(0x9128)) {
-    // Newer EOS: press the shutter all the way (it focuses, then shoots), then let go.
-    r = await opRetry(0x9128, 3, 0);
-    log('RemoteReleaseOn: ' + hex(r));
-    if (r === OK) { try { await opRetry(0x9129, 3); } catch (e) { if (e instanceof GoneError) throw e; } }
-    else {
-      const h = await opRetry(0x9128, 1, 0);   // half press (focus)
-      const f = h === OK ? await opRetry(0x9128, 2, 0) : h;   // full press
-      try { await opRetry(0x9129, 2); await opRetry(0x9129, 1); } catch (e) { if (e instanceof GoneError) throw e; }
-      log('Half / full press: ' + hex(h) + ' / ' + hex(f));
-      r = f;
+    if (isDslr) {
+      r = await canonHalfFull(lensMf, false);
+    } else {
+      r = await opRetry(0x9128, 3, lensMf ? 1 : 0);
+      log('RemoteReleaseOn: ' + hex(r));
+      if (r === OK) { await sleep(80); await poll(); try { await opRetry(0x9129, 3); } catch (e) { if (e instanceof GoneError) throw e; } }
+      else r = await canonHalfFull(lensMf, false);
     }
     if (r !== OK) throw shotError(r, 0);
   } else {
-    // Older EOS (60D, 7D, 550D...): one command; its answer says if it fired.
+    // Older EOS without 0x9128: one command; its answer says if it fired.
     let a = await s.ptp.opP(0x910F);
     if (a.resp === BUSY || a.resp === NOTREADY) { await sleep(400); a = await s.ptp.opP(0x910F); }
     const res = a.params.length > 0 ? a.params[0] : 0;
@@ -269,36 +402,68 @@ async function capture() {
   }
   // Wait for the camera to say where the photo is (RAW + JPEG: two files).
   const files = [];
-  const ew = Date.now();
+  let ew = Date.now();
   let firstAt = -1;
-  while (Date.now() - ew < 15000) {
-    await poll();
-    for (const o of s.newFiles) if (o[2] !== 0x3001) files.push(o);   // not folders
-    s.newFiles = [];
-    if (files.length > 0 && firstAt < 0) { firstAt = Date.now() - ew; s.lastShutterMs = Math.min(Date.now() - shutter, 10000); log('Shutter lag ' + s.lastShutterMs + ' ms'); }
-    if (firstAt >= 0 && Date.now() - ew - firstAt > 350) break;
-    await sleep(80);
+  const maxTry = has(0x9128) ? 2 : 1;
+  for (let attempt = 0; attempt <= maxTry; attempt++) {
+    const limit = s.toHost ? 4500 : (attempt === 0 ? 6000 : 7000);
+    while (Date.now() - ew < limit) {
+      await poll();
+      for (const o of s.newFiles) if (o[2] !== 0x3001) files.push(o);   // not folders
+      s.newFiles = [];
+      if (files.length > 0 && firstAt < 0) { firstAt = Date.now() - ew; if (attempt === 0) { s.lastShutterMs = Math.min(Date.now() - shutter, 10000); log('Shutter lag ' + s.lastShutterMs + ' ms'); } }
+      const hasJpeg = files.some((o) => o[2] === 0x3801);
+      if (firstAt >= 0 && Date.now() - ew - firstAt > (hasJpeg ? 120 : 220)) break;
+      await sleep(50);
+    }
+    if (files.length > 0 || attempt >= maxTry) break;
+    if (s.live) { await liveOff(); await sleep(300); }
+    if (isDslr && attempt === 1 && has(0x910F)) {
+      let a2 = await s.ptp.opP(0x910F);
+      if (a2.resp === BUSY || a2.resp === NOTREADY) { await sleep(400); a2 = await s.ptp.opP(0x910F); }
+      const res2 = a2.params.length > 0 ? a2.params[0] : 0;
+      if (a2.resp === OK && (res2 === 7 || res2 === 8)) throw shotError(a2.resp, res2);
+    } else if (has(0x9128)) {
+      if (isDslr) await canonHalfFull(lensMf, true);
+      else { const r2 = await opRetry(0x9128, 3, 1); if (r2 === OK) { await sleep(80); await poll(); try { await opRetry(0x9129, 3); } catch { } } }
+    } else {
+      await s.ptp.opP(0x910F);
+    }
+    ew = Date.now();
   }
-  if (files.length === 0)
+  if (files.length === 0) {
+    if (s.toHost && !s.hostWorked) await canonToCard(true);
     throw new CamError("FOCUS The camera didn't take a photo. It may not have focused: point it at something with detail, or set the lens to MF (manual focus). Also check there's an SD card in the camera and it isn't full or locked.");
-  const notes = ['files ' + files.map((o) => o[0].toString(16).toUpperCase() + '/' + o[2].toString(16).toUpperCase()).join(',')];
+  }
+  const ramPhoto = files.some((o) => o[1] === 0xC186 || o[1] === 0xC1A9 || o[1] === 0xC1B8);
+  const cardPhoto = files.some((o) => o[1] !== 0xC186 && o[1] !== 0xC1A9 && o[1] !== 0xC1B8);
+  if (s.toHost && !ramPhoto && cardPhoto) await canonToCard(true);
+  const notes = [(ramPhoto ? 'sent to computer ' : 'on card ') + 'files ' + files.map((o) => o[0].toString(16).toUpperCase() + '/' + o[2].toString(16).toUpperCase()).join(',')];
   // JPEG first, then anything else that isn't RAW (CRW / CR2 / CR3).
   const order = files.filter((o) => o[2] === 0x3801).concat(files.filter((o) => o[2] !== 0x3801 && o[2] !== 0xB101 && o[2] !== 0xB103 && o[2] !== 0xB108));
-  let img = null;
+  let img = null, downloadedHandle = 0;
   try {
     for (const o of order) {
-      const b = await download(o[0], o[3], notes);
-      if (b.length > 4 && b[0] === 0xFF && b[1] === 0xD8) { img = b; break; }
+      const isRam = o[1] === 0xC186 || o[1] === 0xC1A9 || o[1] === 0xC1B8;
+      const b = await download(o[0], o[3], notes, isRam);
+      if (b.length > 4 && b[0] === 0xFF && b[1] === 0xD8) { img = b; downloadedHandle = o[0]; break; }
     }
   } finally {
     // Photos waiting in the camera's memory: tell it we're done so it frees them.
-    for (const o of files) if (o[1] === 0xC186) { try { await s.ptp.op(0x9117, o[0]); } catch (e) { if (e instanceof GoneError) throw e; } }
+    for (const o of files) {
+      if (o[1] === 0xC186 || o[1] === 0xC1A9 || o[1] === 0xC1B8) {
+        try { await opRetry(o[0] !== downloadedHandle && has(0x9118) ? 0x9118 : 0x9117, o[0]); }
+        catch (e) { if (e instanceof GoneError) throw e; }
+      }
+    }
   }
   log('Photo download: ' + notes.join('; '));
   if (!img) {
+    if (ramPhoto && s.toHost && !s.hostWorked) await canonToCard(true);
     if (order.length === 0) throw new CamError('CAPTURE The camera saved a RAW photo. Set Image quality to JPEG on the camera (L, M or S; RAW + JPEG also works).');
     throw new CamError("CAPTURE The photo didn't come through from the camera (" + notes.join('; ') + ').');
   }
+  if (ramPhoto && s.toHost) s.hostWorked = true;
   log('Photo ' + Math.round(img.length / 1024) + ' KB in ' + (Date.now() - t0) + ' ms');
   return img;
 }
@@ -310,16 +475,29 @@ async function closeCamera() {
     if (s.drv) {
       try { await s.drv.close(); } catch { /* ignore */ }
     } else {
-      // Hand the camera back: live view off, out of remote mode.
+      // Hand the camera back: photos on card again, live view off, out of remote mode.
+      try { await canonToCard(false); } catch { /* ignore */ }
       try { if (s.live) await setEos(0xD1B0, 0); await p.op(0x9115, 0); await p.op(0x9114, 0); } catch { /* ignore */ }
     }
     try { await p.closeSession(); } catch { /* ignore */ }
     await p.close();
   }
-  s.ptp = null; s.entry = null; s.live = false; s.ops = []; s.props = []; s.drv = null; s.brand = 'canon'; s.battery = -1;
+  s.ptp = null; s.entry = null; s.live = false; s.liveOffAt = 0; s.ops = []; s.props = []; s.drv = null; s.brand = 'canon'; s.battery = -1;
+  s.toHost = false; s.hostGaveUp = false; s.hostWorked = false;
 }
 
-const infoJson = () => JSON.stringify({ name: s.name, model: s.model, maker: s.maker, brand: s.brand, vendor: s.vendorExt, liveview: s.drv ? s.drv.live : s.live, battery: s.battery, note: s.setupNote, diag: s.diag });
+const infoJson = () => {
+  const cn = s.brand === 'canon' && !s.drv;
+  const mf = cn && canonLensMf();
+  const older = cn && !has(0x9128);
+  const dslr = cn && canonIsDslr();
+  return JSON.stringify({
+    name: s.name, model: s.model, maker: s.maker, brand: s.brand, vendor: s.vendorExt,
+    liveview: s.drv ? s.drv.live : s.live, battery: s.battery, note: s.setupNote, diag: s.diag,
+    shutterMs: s.lastShutterMs, preFocus: !cn || has(0x9128), olderCanon: older, lensMf: mf, canonDslr: dslr,
+    saveTo: cn ? (s.toHost ? 'host' : 'card') : '', toCard: cn && !s.toHost
+  });
+};
 
 async function alive() {
   if (s.drv) { await s.drv.alive(); return; }
@@ -375,7 +553,12 @@ async function listJson() {
   const devs = backend.list().map((e) => (BRANDS.has(e.vendor)
     ? { name: MAKERS.get(e.vendor) + ' camera', maker: MAKERS.get(e.vendor), camera: true }
     : { name: 'USB camera ' + e.vendor.toString(16) + ':' + e.product.toString(16), maker: '', camera: false }));
-  return JSON.stringify({ devices: devs, open: !!s.ptp, name: s.ptp ? s.name : '', shutterMs: s.lastShutterMs });
+  const cn = !!s.ptp && s.brand === 'canon' && !s.drv;
+  const mf = cn && canonLensMf();
+  return JSON.stringify({
+    devices: devs, open: !!s.ptp, name: s.ptp ? s.name : '', shutterMs: s.lastShutterMs,
+    toCard: cn && !s.toHost, olderCanon: cn && !has(0x9128), lensMf: mf, canonDslr: cn && canonIsDslr()
+  });
 }
 
 const reply = (status, kind, body) => ({ status, kind, body: Buffer.isBuffer(body) ? body : Buffer.from(String(body || ''), 'utf8') });
@@ -401,8 +584,9 @@ export async function call(cmd, arg) {
     if (cmd === 'info') return reply('OK', 'J', infoJson());
     if (cmd === 'battery') { if (s.drv) s.battery = await s.drv.battery(); else if (s.brand === 'canon') s.battery = await canonBattery(); return reply('OK', 'J', JSON.stringify({ battery: s.battery })); }
     if (cmd === 'af') {
+      const isPre = String(arg || '').split(' ').includes('pre');
       if (s.drv && typeof s.drv.af === 'function') await s.drv.af();
-      else if (s.brand === 'canon') {
+      else if (s.brand === 'canon' && !canonLensMf() && !(isPre && canonIsDslr()) && has(0x9128)) {
         try {
           await opRetry(0x9128, 1, 0);
           await sleep(800);

@@ -1313,13 +1313,14 @@ export async function handleHelper(req, path, search) {
     try {
       if (method === 'GET' && path === '/camera/diag' && IS_MAC) { const r = await camCall('diag', '', 8000); return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) })); }
       if (method === 'GET' && path === '/camera') { const r = await camCall('list', '', 20000); return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) })); }
+      if (method === 'GET' && path === '/camera/info') { const r = await camCall('info', '', 8000); return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) })); }
       if (method === 'POST' && path === '/camera/open') {
         if (search.get('fresh') === '1') cam.recover = true;   // the booth lost the picture: start a clean camera session
         const r = await camCall('open', [cam.recover ? 'recover' : '', classic].filter(Boolean).join(' '), 60000);
         cam.recover = false;
         return send(r, () => { cam.open = JSON.parse(r.body.toString('utf8')); log('Camera connected: ' + cam.open.name); return json({ ok: true, ...cam.open }); });
       }
-      if (method === 'POST' && path === '/camera/af') { const r = await camCall('af', classic, 15000); return send(r, () => json({ ok: true })); }
+      if (method === 'POST' && path === '/camera/af') { const afArg = [classic, search.get('pre') === '1' ? 'pre' : ''].filter(Boolean).join(' '); const r = await camCall('af', afArg, 15000); return send(r, () => json({ ok: true })); }
       if (method === 'POST' && path === '/camera/live') { const on = search.get('on') !== '0'; const r = await camCall('live', on ? 'on' : 'off', 20000); return send(r, () => json({ ok: true })); }
       if (method === 'GET' && path === '/camera/frame') { const r = await camCall('frame', '', 10000); return send(r, () => (r.kind === 'B' ? jpeg(r.body) : new Response(null, { status: 204 }))); }
       if (method === 'POST' && path === '/camera/capture') {

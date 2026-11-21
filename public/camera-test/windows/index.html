@@ -65,7 +65,7 @@
       <div class="card">
         <h2>Before you start</h2>
         <ol class="help" style="padding-left:18px; margin-top:0;">
-          <li><b>Open the photobooth4u Helper</b> (latest is <b>1.1.15</b>; Canon needs 1.1.5+, Sony 1.1.9+; 1.1.14+ also supports Camera check settings and tells you what Windows sees when it can’t find the camera) on this laptop. <a href="/downloads/">Download it</a>, unzip, double-click. Keep its window open.</li>
+          <li><b>Open the photobooth4u Helper</b> (latest is <b>1.1.16</b>; Canon needs 1.1.5+, Sony 1.1.9+; 1.1.14+ also supports Camera check settings and tells you what Windows sees when it can’t find the camera) on this laptop. <a href="/downloads/">Download it</a>, unzip, double-click. Keep its window open.</li>
           <li><b>Plug the camera straight into the laptop</b> with a <b>data</b> USB cable (many micro-USB cables only charge) and switch it on. Windows lists it under <b>This PC</b> and in Device Manager under <b>Portable Devices</b> (not under "Cameras").</li>
           <li>Close camera apps (<b>EOS Utility</b>, EOS Webcam Utility, NX Studio, Nikon Webcam Utility, <b>Sony Imaging Edge</b> / Camera Remote) and any "Import photos" window that popped up.</li>
           <li>Camera: mode dial on <b>P, S, A or M</b> (Canon: <b>P, Tv, Av or M</b>), lens cap off, SD card in, battery charged (or a mains adapter), <b>Auto power off</b> disabled.</li>
@@ -197,7 +197,7 @@
   checks.forEach(([l, ok]) => log('Check: ' + l + ' = ' + (ok ? 'yes' : 'no')));
 
   // ---- Camera ----
-  let info = null, live = false, gen = 0;
+  let info = null, live = false, shooting = false, gen = 0;
   async function connect(){
     hideMsg();
     $('connectBtn').disabled = true;
@@ -245,7 +245,7 @@
       step('remote', 'ok', info.name + ' in ' + (Math.round((performance.now() - t0) / 100) / 10) + ' s');
       log('Connected to ' + info.name + ' in ' + Math.round(performance.now() - t0) + ' ms' + (info.note ? ' — ' + info.note : ''));
       if(info.diag) log('Details: ' + info.diag);
-      $('infoTable').innerHTML = row('Status', 'Connected') + row('Camera', info.name) + row('Maker', info.maker) + row('Battery', info.battery >= 0 ? info.battery + '%' : '') + row('Booth settings', info.note || 'unchanged') + row('Details', info.diag || '');
+      $('infoTable').innerHTML = row('Status', 'Connected') + row('Camera', info.name) + row('Maker', info.maker) + row('Battery', info.battery >= 0 ? info.battery + '%' : '') + (info.saveTo ? row('Save to', info.saveTo) : '') + row('Booth settings', info.note || 'unchanged') + row('Details', info.diag || '');
       $('liveBtn').disabled = false; $('shotBtn').disabled = false;
       $('connectBtn').textContent = 'Reconnect camera';
       showMsg('Connected. Now try live view, then take a photo.', 'info');
@@ -265,6 +265,7 @@
   async function liveLoop(g){
     let n = 0, t0 = performance.now(), fails = 0;
     while(live && g === gen){
+      if(shooting){ await new Promise(r => setTimeout(r, 80)); continue; }
       try{
         const r = await call('/camera/frame', null, 12000);
         if(r.status === 204){ await new Promise(r => setTimeout(r, 200)); continue; }
@@ -294,6 +295,7 @@
 
   async function shoot(){
     $('shotBtn').disabled = true;
+    shooting = true;
     hideMsg();
     try{
       log('Firing the shutter…');
@@ -317,6 +319,7 @@
       step('shot', 'bad', err.message);
       showMsg(err.message, 'err');
     }finally{
+      shooting = false;
       $('shotBtn').disabled = false;
     }
   }

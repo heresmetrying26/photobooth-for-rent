@@ -29337,7 +29337,8 @@
         // "Classic Nikon behaviour" (Camera menu): tells the camera program to use its old JPEG / autofocus behaviour.
         classicQ(sep) { try { return localStorage.getItem('pb_nikon_classic') === '1' ? sep + 'classic=1' : ''; } catch (e) { return ''; } }
         async autoFocus() {
-          await this.req('/camera/af' + this.classicQ('?'), { method: 'POST' }, 20000);
+          const cq = this.classicQ('&');
+          await this.req('/camera/af?pre=1' + cq, { method: 'POST' }, 20000);
         }
         // The Camera check (see camGuideProbe / camGuideApply): the camera's shutter, aperture and ISO, and a way to set them.
         // null / { supported: false } when this camera (or this older camera program) can't: the card then stays read-only.
@@ -29599,16 +29600,18 @@
           usbCam.holdLive = false;
           usbCam.olderCanon = !!(hc.info && hc.info.olderCanon);
           usbCam.lensMf = !!(hc.info && hc.info.lensMf);
+          usbCam.canonDslr = !!(hc.info && hc.info.canonDslr);
           usbCam.name = hc.name;
           try { camQUiSync(); } catch (e) { }
           try { canonGuideUpdate(hc.info, true); } catch (e) { }
           if (camIsCanon()) {
-            fetch(CAM_HELPER + '/camera', { cache: 'no-store', signal: AbortSignal.timeout(5000) })
-              .then(r => r.json())
+            fetch(CAM_HELPER + '/camera/info', { cache: 'no-store', signal: AbortSignal.timeout(5000) })
+              .then(r => r.ok ? r.json() : fetch(CAM_HELPER + '/camera', { cache: 'no-store', signal: AbortSignal.timeout(5000) }).then(r2 => r2.json()))
               .then(j => {
                 if (usbCam.camera === hc && j) {
                   if (typeof j.lensMf === 'boolean') usbCam.lensMf = j.lensMf;
                   if (typeof j.olderCanon === 'boolean') usbCam.olderCanon = j.olderCanon;
+                  if (typeof j.canonDslr === 'boolean') usbCam.canonDslr = j.canonDslr;
                   canonGuideUpdate(j, true);
                 }
               }).catch(function () { });
@@ -29623,6 +29626,10 @@
         if (nat) {
           usbCam.camera = nat;
           usbCam.vfOn = false;
+          usbCam.holdLive = false;
+          usbCam.olderCanon = !!(nat.info && nat.info.olderCanon);
+          usbCam.lensMf = !!(nat.info && nat.info.lensMf);
+          usbCam.canonDslr = !!(nat.info && nat.info.canonDslr);
           usbCam.name = nat.name || 'USB camera';
           usbCam.devId = '';
           usbCam.seen = ''; usbCam.macScan = null;
@@ -29778,16 +29785,16 @@
         let ahead = null, prevArrive = 0;
         usbCam.lastFrameAt = Date.now();
         while (usbCam.active && usbCam.gen === gen && usbCam.camera) {
-          // While the camera takes and sends a photo (or right before the shutter fires), don't queue live view requests behind it:
+          // While the camera takes and sends a photo (or right before the shutter fires, or once all shots are done), don't queue live view requests behind it:
           // they would wait out the photo, stall cam.queue behind a retry, or time out ("Camera disconnected").
-          if ((usbCam.shooting || usbCam.holdLive) && helper) { ahead = null; await new Promise(r => setTimeout(r, 60)); continue; }
+          if ((usbCam.shooting || usbCam.holdLive || usbCam.shotsDone) && helper) { ahead = null; await new Promise(r => setTimeout(r, 60)); continue; }
           if (usbCam.sleeping) { ahead = null; await new Promise(r => setTimeout(r, 300)); usbCam.lastFrameAt = Date.now(); continue; }   // live view is off on purpose (battery saver)
           try {
             const pre = ahead; ahead = null;
             const blob = await (pre || usbCam.camera.capturePreviewAsBlob());
             if (usbCam.sleeping) continue;   // live view was switched off while this picture was on its way
             const arrived = performance.now();
-            if (helper && usbCam.gen === gen && !usbCam.shooting && !usbCam.holdLive) { ahead = usbCam.camera.capturePreviewAsBlob(); ahead.catch(function () { }); }
+            if (helper && usbCam.gen === gen && !usbCam.shooting && !usbCam.holdLive && !usbCam.shotsDone) { ahead = usbCam.camera.capturePreviewAsBlob(); ahead.catch(function () { }); }
             const bmp = await createImageBitmap(blob);
             if (usbCam.gen !== gen) { bmp.close(); return; }
             if (usbCam.canvas.width !== bmp.width || usbCam.canvas.height !== bmp.height) {
@@ -29842,7 +29849,7 @@
       // Watchdog: a camera that hangs mid-transfer never throws an error, so the loop above can't notice it.
       // Not while a photo is being taken (live view legitimately pauses then) or while the page is in the background.
       setInterval(function () {
-        if (!usbCam.active || !usbCam.camera || !usbCam.hasFrame || usbCam.shooting || usbCam.holdLive) return;
+        if (!usbCam.active || !usbCam.camera || !usbCam.hasFrame || usbCam.shooting || usbCam.holdLive || usbCam.shotsDone) return;
         if (usbCam.sleeping) { usbCam.lastFrameAt = Date.now(); return; }
         if (document.hidden) { usbCam.lastFrameAt = Date.now(); return; }
         const helper = usbIsHelper();
@@ -30016,6 +30023,7 @@
               usbCam.graceUntil = Date.now() + 20000;      // no "Reconnecting" while it starts
               await usbViewfinderOn();
               usbCam.frameAt = 0; usbCam.kicked = false; usbCam.lastFrameAt = Date.now();
+              usbCam.shotsDone = false;
               usbCam.sleeping = false;
               camSleeping = false;
               try { const pp = video.play(); if (pp && pp.catch) pp.catch(function () { }); } catch (e) { }
@@ -30124,6 +30132,7 @@
           const want = camWantLive();
           if (want) {
             usbWantAt = Date.now();
+            usbCam.shotsDone = false;
             if (camSleeping || !streamActive) await camLiveWake();
             return;
           }
@@ -31208,21 +31217,28 @@
         usbCam.graceUntil = Date.now() + USB_GRACE_MS;
         usbCam.shotAt = Date.now(); usbCam.frameAt = 0; usbCam.kickAt = 0;
         if (usbCam.stallShown) { usbCam.stallShown = false; cameraError.style.display = 'none'; }
-        // Keep live view running even after the final shot so the camera feed stays visible until the
-        // result screen opens. usbSleepNow() (called by the session loop right before reviewPhase)
-        // is what actually puts the camera to sleep — no need to set shotsDone here.
-        try { usbCam.kicked = true; Promise.resolve(usbViewfinderOn()).catch(function () { }); } catch (e) { }
-        fetch(CAM_HELPER + '/camera', { cache: 'no-store', signal: AbortSignal.timeout(8000) }).then(r => r.json()).then(j => {
-          if (j && typeof j.lensMf === 'boolean') usbCam.lensMf = j.lensMf;
-          if (j && typeof j.olderCanon === 'boolean') usbCam.olderCanon = j.olderCanon;
-          canonGuideUpdate(j);   // a Canon that is late or not taking photos: tips for the operator (brand-canon.js)
-          const ms = Number(j && j.shutterMs) || 0;
-          if (ms > 0) {
-            // Fast drop (e.g. operator flipped lens from AF to MF): snap to the new lag immediately instead of taking 3 shots to decay.
-            usbCam.shutterLagMs = (!usbCam.shutterLagMs || (ms < 600 && usbCam.shutterLagMs >= 800)) ? ms : Math.round(usbCam.shutterLagMs * 0.5 + ms * 0.5);
-            try { localStorage.setItem(usbLagKey(), String(usbCam.shutterLagMs)); } catch (e) { }   // remembered, so the next event's first photo is already early enough
-          }
-        }).catch(function () { });
+        // On the final photo of a session (or final retake), do NOT bounce Live View back on only for usbSleepNow()
+        // to turn it off moments later — mark shotsDone so usbLiveLoop doesn't queue a frame ahead of sleep/review.
+        if (final) {
+          usbCam.shotsDone = true;
+        } else {
+          try { usbCam.kicked = true; Promise.resolve(usbViewfinderOn()).catch(function () { }); } catch (e) { }
+        }
+        // Lightweight /camera/info avoids Windows WPD RefreshDeviceList() between shots (falls back to /camera on older helpers).
+        fetch(CAM_HELPER + '/camera/info', { cache: 'no-store', signal: AbortSignal.timeout(8000) })
+          .then(r => r.ok ? r.json() : fetch(CAM_HELPER + '/camera', { cache: 'no-store', signal: AbortSignal.timeout(8000) }).then(r2 => r2.json()))
+          .then(j => {
+            if (j && typeof j.lensMf === 'boolean') usbCam.lensMf = j.lensMf;
+            if (j && typeof j.olderCanon === 'boolean') usbCam.olderCanon = j.olderCanon;
+            if (j && typeof j.canonDslr === 'boolean') usbCam.canonDslr = j.canonDslr;
+            canonGuideUpdate(j);   // a Canon that is late or not taking photos: tips for the operator (brand-canon.js)
+            const ms = Number(j && j.shutterMs) || 0;
+            if (ms > 0) {
+              // Fast drop (e.g. operator flipped lens from AF to MF): snap to the new lag immediately instead of taking 3 shots to decay.
+              usbCam.shutterLagMs = (!usbCam.shutterLagMs || (ms < 600 && usbCam.shutterLagMs >= 800)) ? ms : Math.round(usbCam.shutterLagMs * 0.5 + ms * 0.5);
+              try { localStorage.setItem(usbLagKey(), String(usbCam.shutterLagMs)); } catch (e) { }   // remembered, so the next event's first photo is already early enough
+            }
+          }).catch(function () { });
       }
       // The learned delay is kept per camera: without it the first photo of every session would fire late (nothing measured yet).
       function usbLagKey() { return 'pb_usb_lag_' + String(usbCam.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '_'); }
@@ -32809,14 +32825,16 @@
           return;
         }
         const shots = shotCanvases;
+        const finalShot = shotCanvases.every(function (c, i) { return i === index || !!c; });   // every other photo is already taken
+        let afterDone = false;
+        const finishUsb = () => { if (afterDone) return; afterDone = true; usbCam.shooting = false; usbCam.holdLive = false; usbCam.lastFrameAt = Date.now(); usbAfterShot(finalShot); };
         try {
           // Never wait forever: a camera that stops answering must not freeze the whole session.
           let capTimer;
-          const finalShot = shotCanvases.every(function (c, i) { return i === index || !!c; });   // every other photo is already taken
           const file = await Promise.race([
             usbCam.camera.captureImageAsFile(),
             new Promise((_, rej) => { capTimer = setTimeout(() => { const e = new Error('The camera took too long to send the photo'); e.helperMsg = 'The camera took too long to send the photo.'; rej(e); }, USB_CAPTURE_MAX_MS); })
-          ]).finally(() => { clearTimeout(capTimer); usbCam.shooting = false; usbCam.holdLive = false; usbCam.lastFrameAt = Date.now(); usbAfterShot(finalShot); });
+          ]).finally(() => { clearTimeout(capTimer); finishUsb(); });
           const [bmp, exif] = await Promise.all([createImageBitmap(file), pbReadExif(file).catch(() => null)]);
           try { camGuideSetExif(exif); } catch (e) { }   // the Camera check table follows the latest photo
           const sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;   // whole photo; the layout box crops it once
@@ -32842,7 +32860,7 @@
           if (shotCanvases === shots) { shotCanvases[index] = c; committed = true; updateFilmTrack(); if (qp) camQPrewarm(qp, finalShot); }
         } catch (err) {
           console.error('USB shot failed:', err);
-          usbCam.shooting = false; usbCam.holdLive = false; usbCam.lastFrameAt = Date.now(); usbAfterShot();
+          finishUsb();
           // The camera failed: the live-view frame from the shutter moment becomes the photo, so the session still has one.
           if (standIn && !committed && shotCanvases === shots) { try { finalizeShotCanvas(standIn, index); } catch (e2) { } }
           usbLog('shot-fail', usbErrInfo(err));
@@ -33552,6 +33570,12 @@
           if (sess && sess.cancelled) { stopShotMotionCapture(index); return; }
           // Pause new live-view frame prefetch during the 600 ms "Pose" window so any in-flight /camera/frame finishes before /camera/capture.
           holdCam();
+          // Canon DSLR (60D, 6D, 70D, 5D, Rebel...): drop out of Live View during the 600 ms "Pose" pause so the mirror settles
+          // BEFORE the shutter fires -> 100% mechanical X-sync for external flashes/strobes (bypasses Silent LV shoot Mode 1/2)
+          // and fast optical phase-detect AF, with zero extra wait at the shutter moment.
+          if (usbIsHelper() && usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID && camIsCanon() && usbCam.canonDslr) {
+            try { Promise.resolve(usbCam.camera.setConfigValue('viewfinder', 0)).catch(function () { }); } catch (e) { }
+          }
           popNum('Pose', true);
           try { if (window.pb4u && window.pb4u.setWallCue) window.pb4u.setWallCue('countdown', 'JUMP! 🎬', 1800); } catch (e) { }
           cdBar.style.strokeDashoffset = '100';
@@ -33573,7 +33597,7 @@
           stopShotMotionCapture(index);
           await wait(180);
           flashOverlay.classList.remove('flash-active');
-          if (lit) setTimeout(screenFlashOff, 120);
+          if (lit) setTimeout(screenFlashOff, (usbCam.active && currentDeviceId === USB_CAM_ID) ? 550 : 120);
           if ((usbCam.active && currentDeviceId === USB_CAM_ID) || (webcamRes.photo === 'max' && isMaxWebcamShotEligible())) {
             popNum('Saving', true);
             guestCall('tick', 'Saving', true, 0, cdShot.textContent);

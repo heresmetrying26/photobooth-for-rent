@@ -268,8 +268,8 @@ namespace Pb4uCam
         {
             if (hr == 0) return;
             uint u = (uint)hr;
-            // Device gone / not connected / disconnected while busy
-            if (u == 0x8007048F || u == 0x80070015 || u == 0x8007001F || u == 0x80070006 || u == 0x80070079 || u == 0x8007045D || u == 0x80070490)
+            // Device gone / not connected / disconnected while busy / WPD device closed or hung
+            if (u == 0x8007048F || u == 0x80070015 || u == 0x8007001F || u == 0x80070006 || u == 0x80070079 || u == 0x8007045D || u == 0x80070490 || u == 0x802A0002 || u == 0x802A0003)
                 throw new GoneException(what + " failed (0x" + u.ToString("X8") + "): the camera was disconnected or switched off");
             throw new Exception(what + " failed (0x" + u.ToString("X8") + ")");
         }
@@ -726,12 +726,14 @@ namespace Pb4uCam
             bool cn = canon && ptp != null;
             bool mf = cn && CanonLensMf();
             bool older = cn && !Has(0x9128);
+            bool dslr = cn && CanonIsDslr();
             sb.Append("],\"open\":" + (ptp != null ? "true" : "false") + ",\"name\":" + Js(ptp != null ? camName : "") + ",\"shutterMs\":" + lastShutterMs
                 + ",\"focusInShot\":" + (cn && canonFocusInShot && !mf ? "true" : "false")
                 + ",\"noAfOff\":" + (cn && canonNoAfBad && !mf ? "true" : "false")
                 + ",\"toCard\":" + (cn && !canonToHost ? "true" : "false")
                 + ",\"olderCanon\":" + (older ? "true" : "false")
-                + ",\"lensMf\":" + (mf ? "true" : "false") + "}");
+                + ",\"lensMf\":" + (mf ? "true" : "false")
+                + ",\"canonDslr\":" + (dslr ? "true" : "false") + "}");
             return sb.ToString();
         }
 
@@ -748,7 +750,7 @@ namespace Pb4uCam
             canon = !nikon && (vendor == 0x0B || camMaker.IndexOf("canon", StringComparison.OrdinalIgnoreCase) >= 0);
             sony = !nikon && !canon && (vendor == 0x11 || camMaker.IndexOf("sony", StringComparison.OrdinalIgnoreCase) >= 0);
             // The commands that matter for this brand: which ones the camera lists, which ones Windows passes on.
-            ushort[] mine = canon ? new ushort[] { 0x9114, 0x9115, 0x9116, 0x9153, 0x9110, 0x910F, 0x9128 } : sony ? new ushort[] { 0x9201, 0x9202, 0x9205, 0x9207, 0x9209 } : new ushort[] { 0x9201, 0x9203, 0x90C0, 0x90C7, 0x90C8 };
+            ushort[] mine = canon ? new ushort[] { 0x9114, 0x9115, 0x9116, 0x9153, 0x9110, 0x910F, 0x9128, 0x911A, 0x9117, 0x9107 } : sony ? new ushort[] { 0x9201, 0x9202, 0x9205, 0x9207, 0x9209 } : new ushort[] { 0x9201, 0x9203, 0x90C0, 0x90C7, 0x90C8 };
             var listed = new List<string>();
             foreach (ushort op in mine) if (ops.Contains(op)) listed.Add(op.ToString("X4"));
             string driverOps = "?";
@@ -782,6 +784,7 @@ namespace Pb4uCam
                 ptp.Close();
             }
             ptp = null; live = false; devId = null; nikon = false; canon = false; sony = false; sonyClock = null; sonyDestBlocked = false;
+            canonHostGaveUp = false; canonHostWorked = false; canonNoAfBad = false; canonToHost = false; canonLiveOffSw.Reset();
         }
 
         static string Open()
@@ -859,14 +862,21 @@ namespace Pb4uCam
 
         static string InfoJson()
         {
-            bool canPreFocus = !canon || Has(0x9128);   // Nikon & newer Canon (0x9128) can pre-focus; older Canon (60D, 550D...) focuses inside 0x910F
+            bool canPreFocus = !canon || Has(0x9128);   // Nikon & newer Canon (0x9128) fire once at the shutter moment; older Canon (without 0x9128) focuses inside 0x910F
             bool older = canon && !Has(0x9128);
             bool mf = CanonLensMf();
+            bool dslr = canon && CanonIsDslr();
             return "{\"name\":" + Js(camName) + ",\"model\":" + Js(camModel) + ",\"maker\":" + Js(camMaker) + ",\"brand\":" + Js(nikon ? "nikon" : canon ? "canon" : sony ? "sony" : "") + ",\"vendor\":" + vendor
                 + ",\"liveview\":" + (live ? "true" : "false") + ",\"battery\":" + Battery() + ",\"note\":" + Js(setupNote) + ",\"diag\":" + Js(diag)
+                + ",\"shutterMs\":" + lastShutterMs
                 + ",\"preFocus\":" + (canPreFocus ? "true" : "false")
                 + ",\"olderCanon\":" + (older ? "true" : "false")
-                + ",\"lensMf\":" + (mf ? "true" : "false") + "}";
+                + ",\"lensMf\":" + (mf ? "true" : "false")
+                + ",\"canonDslr\":" + (dslr ? "true" : "false")
+                + ",\"saveTo\":" + Js(canon ? (canonToHost ? "host" : "card") : "")
+                + ",\"focusInShot\":" + (canon && canonFocusInShot && !mf ? "true" : "false")
+                + ",\"noAfOff\":" + (canon && canonNoAfBad && !mf ? "true" : "false")
+                + ",\"toCard\":" + (canon && !canonToHost ? "true" : "false") + "}";
         }
 
         static int Battery()
@@ -1339,16 +1349,21 @@ namespace Pb4uCam
         const uint NOTREADY = 0xA102;   // Canon: "not ready yet, ask again"
         static Dictionary<ushort, uint> eosVals = new Dictionary<ushort, uint>();
         static List<uint[]> canonNew = new List<uint[]>();   // new files: { handle, event, format, size }
-        // "Save to" (0xD11C): where the camera puts a new photo. Bit 1 = the SD card (the default), bit 4 = the computer (the camera's
-        // memory; libgphoto2 calls it "Internal RAM"). With the card the camera finishes writing the whole JPEG (and RAW) to the card
-        // before it says the photo exists: seconds of "Saving". To the computer, the photo is announced as soon as it is taken.
+        // "Save to" (0xD11C): where the camera puts a new photo. Bit 1 (2) = the SD card (the default), bit 2 (4) = the computer
+        // (the camera's memory; libgphoto2 calls it "Internal RAM"). With the card the camera finishes writing the whole JPEG (and RAW)
+        // to the card before it says the photo exists: seconds of "Saving". To the computer, the photo is announced as soon as it is taken.
+        // CRITICAL (libgphoto2 config.c / library.c): whenever SaveTo is set to Host (4), Canon EOS sets AvailableShots (0xD11B) to 0
+        // and refuses to capture until the host sends PCHDDCapacity (0x911A, 0x0FFFFFFF, 0x1000, 1).
+        const ushort EOS_AVAIL_SHOTS = 0xD11B;
         const ushort EOS_SAVETO = 0xD11C;
         const uint SAVETO_CARD = 2, SAVETO_HOST = 4;
         static Dictionary<ushort, List<uint>> eosAvail = new Dictionary<ushort, List<uint>>();   // the values the camera says a setting can take
         static bool canonToHost;          // the camera is set to send photos to the computer (put back on the card when we let go of it)
-        static bool canonHostGaveUp;      // it didn't work with this camera: photos stay on the card until the worker is restarted
+        static bool canonHostGaveUp;      // it didn't work with this camera: photos stay on the card until reconnect
         static bool canonHostWorked;      // a photo has come through that way
         static uint canonDestOrig = SAVETO_CARD;
+        static int lastPollEvents = 0;    // count of events parsed on the most recent CanonPoll()
+        static Stopwatch canonLiveOffSw = new Stopwatch();   // time since Live View was switched off (so DSLR mirror-drop is already done after "Pose")
         // How long the camera took lately from the shutter command to announcing the photo (newest last, the last three). The
         // slowest of them is "how slow this camera is right now": a photo still missing after about twice that is not coming.
         static List<int> canonLags = new List<int>();
@@ -1420,6 +1435,7 @@ namespace Pb4uCam
         static void CanonPoll()
         {
             pollSw.Restart();
+            lastPollEvents = 0;
             byte[] d; uint r = ptp.OpRead(0x9116, out d);
             lastPollAnswer = H(r) + (d != null ? " " + d.Length + " B" : "");
             if (r != Ptp.OK || d == null) return;
@@ -1429,6 +1445,7 @@ namespace Pb4uCam
                 uint size = U32(d, off), type = U32(d, off + 4);
                 if (size < 8 || off + size > d.Length || type == 0) break;
                 int end = off + (int)size;
+                lastPollEvents++;
                 if (type != 0xC189 && type != 0xC18A) { string th = type.ToString("X"); if (!evSeen.Contains(th) && evSeen.Count < 24) evSeen.Add(th); }
                 if (type == 0xC189 && size >= 16) eosVals[(ushort)U32(d, off + 8)] = U32(d, off + 12);   // a setting changed
                 else if (type == 0xC18A && size >= 20) CanonAvail(d, off, (int)size);   // the values a setting can take
@@ -1459,34 +1476,98 @@ namespace Pb4uCam
             eosAvail[EOS_SAVETO] = l;
         }
 
-        // Photos to the computer, not the SD card (see EOS_SAVETO). Never fails the session: a camera that doesn't list the
-        // setting, doesn't offer "computer" or refuses it just keeps saving to the card the way it always did.
+        // Tell the Canon camera the computer has plenty of free disk space (libgphoto2: 0x0FFFFFFF clusters x 4096 B, reset=1).
+        // Without this, Canon EOS firmware sets AvailableShots (0xD11B) to 0 when CaptureDestination (0xD11C) = 4 (Host)
+        // and silently refuses every capture!
+        static bool CanonSendCapacity()
+        {
+            if (ops.Count > 0 && !Has(0x911A)) return false;
+            uint r = OpRetry(0x911A, 0x0FFFFFFFU, 0x00001000U, 1U);
+            Log("PCHDDCapacity (0x911A): " + H(r));
+            return r == Ptp.OK || r == Ptp.BUSY;
+        }
+
+        // Photos to the computer, not the SD card (see EOS_SAVETO + PCHDDCapacity). Never fails the session: a camera that doesn't list
+        // the setting, doesn't offer "computer", refuses PCHDDCapacity, or still reports 0 available shots stays on the card.
         static void CanonToHost()
         {
             canonToHost = false;
             if (canonHostGaveUp) return;
             uint cur;
             if (!eosVals.TryGetValue(EOS_SAVETO, out cur)) { Log("Save to: this camera doesn't list it, photos stay on the card"); return; }
+            if (ops.Count > 0 && !Has(0x911A)) { Log("Save to: camera doesn't list PCHDDCapacity (0x911A), photos stay on the card"); return; }
             List<uint> av;
             bool known = eosAvail.TryGetValue(EOS_SAVETO, out av);
             string offered = known ? string.Join("/", av.ConvertAll(v => v.ToString()).ToArray()) : "unknown";
+            bool hadAvail = eosVals.ContainsKey(EOS_AVAIL_SHOTS);
             if (cur == SAVETO_HOST)
             {
-                // Left that way by a session that never said goodbye: keep it, and put it back on the card at the end.
+                // Left that way by a session that never said goodbye: still must send PCHDDCapacity for this new session!
                 canonDestOrig = known && !av.Contains(SAVETO_CARD) && av.Contains(1) ? 1U : SAVETO_CARD;
+                if (!CanonSendCapacity())
+                {
+                    Log("Save to: already the computer, but PCHDDCapacity (0x911A) was refused; returning to card");
+                    canonHostGaveUp = true;
+                    try { SetEos(EOS_SAVETO, canonDestOrig); } catch (GoneException) { throw; } catch { }
+                    return;
+                }
+                if (hadAvail)
+                {
+                    var w0 = Stopwatch.StartNew();
+                    uint avNow = 0;
+                    while (w0.ElapsedMilliseconds < 1500)
+                    {
+                        CanonPoll();
+                        if (eosVals.TryGetValue(EOS_AVAIL_SHOTS, out avNow) && avNow > 0) break;
+                        Thread.Sleep(60);
+                    }
+                    if (eosVals.TryGetValue(EOS_AVAIL_SHOTS, out avNow) && avNow == 0)
+                    {
+                        Log("Save to: already the computer, but AvailableShots stayed 0 after PCHDDCapacity; returning to card");
+                        canonHostGaveUp = true;
+                        try { SetEos(EOS_SAVETO, canonDestOrig); } catch (GoneException) { throw; } catch { }
+                        return;
+                    }
+                }
                 canonToHost = true;
-                Log("Save to: already the computer (the last session didn't put it back); will return it to the card when done");
+                Log("Save to: already the computer (sent PCHDDCapacity); will return it to the card when done");
                 return;
             }
             if (known && !av.Contains(SAVETO_HOST)) { Log("Save to: the camera doesn't offer the computer (offers " + offered + "), photos stay on the card"); return; }
             uint r = SetEos(EOS_SAVETO, SAVETO_HOST);
             if (r != Ptp.OK) { eosVals[EOS_SAVETO] = cur; Log("Save to the computer: the camera refused (" + H(r) + "), photos stay on the card"); return; }
-            CanonPoll();   // the camera confirms with a "setting changed" event
+            if (!CanonSendCapacity())
+            {
+                Log("Save to the computer: PCHDDCapacity (0x911A) failed; putting it back on the card");
+                canonHostGaveUp = true;
+                try { SetEos(EOS_SAVETO, cur); } catch (GoneException) { throw; } catch { }
+                return;
+            }
+            CanonPoll();   // the camera confirms with a "setting changed" event (and updates AvailableShots 0xD11B)
             uint now;
             if (eosVals.TryGetValue(EOS_SAVETO, out now) && now != SAVETO_HOST) { Log("Save to the computer: the camera kept " + now + ", photos stay on the card"); return; }
+            uint availShots = 0;
+            if (hadAvail)
+            {
+                // Some Canon bodies (e.g. 1200D, 60D, 6D) take a brief moment to register PCHDDCapacity and raise AvailableShots above 0.
+                var w = Stopwatch.StartNew();
+                while (w.ElapsedMilliseconds < 1500)
+                {
+                    if (eosVals.TryGetValue(EOS_AVAIL_SHOTS, out availShots) && availShots > 0) break;
+                    Thread.Sleep(60);
+                    CanonPoll();
+                }
+                if (eosVals.TryGetValue(EOS_AVAIL_SHOTS, out availShots) && availShots == 0)
+                {
+                    Log("Save to the computer: camera still reports 0 available shots after PCHDDCapacity; putting it back on the card");
+                    canonHostGaveUp = true;
+                    try { SetEos(EOS_SAVETO, cur); } catch (GoneException) { throw; } catch { }
+                    return;
+                }
+            }
             canonDestOrig = cur;
             canonToHost = true;
-            Log("Save to: the computer (was " + cur + "; the camera offers " + offered + "). Photos no longer wait for the SD card");
+            Log("Save to: the computer (was " + cur + "; offers " + offered + (hadAvail ? "; available shots " + availShots : "") + "). Photos no longer wait for the SD card");
         }
 
         // Back to the card: when the camera is let go of, or when sending to the computer proved not to work with this camera.
@@ -1505,6 +1586,7 @@ namespace Pb4uCam
             setupNote = "";
             eosVals.Clear(); eosAvail.Clear(); canonNew.Clear(); gotFrame = false;
             canonToHost = false; canonLags.Clear(); canonLiveBackPending = false; canonFocusInShot = false;
+            canonLiveOffSw.Reset();
             if (recoverNext)
             {
                 recoverNext = false;
@@ -1522,6 +1604,12 @@ namespace Pb4uCam
             CanonPoll();   // the first batch lists all settings
             ReadInfo();    // in remote mode the camera lists more commands
             CanonPoll();
+            // Some newer/older bodies return an empty first event batch; poll briefly until EOS properties arrive.
+            for (int t = 0; t < 5 && !eosVals.ContainsKey(EOS_SAVETO) && !eosVals.ContainsKey(0xD1B0); t++)
+            {
+                Thread.Sleep(50);
+                CanonPoll();
+            }
             if (!Has(0x9153))
                 throw new CamException("UNSUPPORTED The " + camName + " doesn't send live view over USB.");
             if (!Has(0x910F) && !Has(0x9128))
@@ -1571,15 +1659,18 @@ namespace Pb4uCam
             if (r != Ptp.OK && !started && (r == Ptp.BUSY || r == NOTREADY)) { live = false; Log("Live view: camera still busy (" + H(r) + "), will ask again"); return; }
             if (r != Ptp.OK && !started)
                 throw new CamException("LIVEVIEW The camera refused live view (" + H(r) + "). On the camera: Menu, Live View shoot: Enable; close the menu; mode dial on P, Tv, Av or M. Then try again.");
-            live = true; gotFrame = false; liveSw.Restart();
+            live = true; gotFrame = false; liveSw.Restart(); canonLiveOffSw.Reset();
         }
         static void CanonLiveOff()
         {
-            if (!live) return;
+            uint lvOut = 0;
+            bool outOn = eosVals.TryGetValue(0xD1B0, out lvOut) && lvOut != 0;
+            if (!live && !outOn) return;
             try { SetEos(0xD1B0, 0); if (Has(0x9152)) ptp.Op(0x9152); }
             catch (GoneException) { throw; }
             catch { }
             live = false;
+            canonLiveOffSw.Restart();
         }
         // The camera ended live view by itself (after a photo, its own timeout, a sleep): the "live" flag still says it is
         // on, so start it again from the beginning (not only the live view mode) instead of waiting for frames that never come.
@@ -1683,31 +1774,58 @@ namespace Pb4uCam
         }
 
         // How to press the shutter on a newer EOS (it lists 0x9128):
-        //   0 = half press, wait for focus, full press, release (DSLR)
-        //   1 = one "full press" command (3), falling back to the DSLR sequence if the camera refuses it (mirrorless)
-        //   2 = full press without waiting for autofocus (the last resort when it keeps failing to focus on a dim or plain scene)
-        static uint CanonFireNew(int mode)
+        //   0 = DSLR two-stage press: half press (1), short wait, full press (2), release (2), poll, release (1).
+        //       Never sends param1 = 3 on a DSLR (param1 = 3 is for mirrorless / EOS M).
+        //   1 = mirrorless one-command press (3, 0), falling back to half/full if refused.
+        //   2 = no-AF press: DSLR uses half/full with NonAF (1, 1)+(2, 1) (or (1, 0)+(2, 0) when lens is on MF);
+        //       mirrorless uses (3, 1) with a brief poll before releasing (3).
+        static uint CanonFireNew(int mode, bool isDslr, bool lensMf)
         {
-            if (mode == 0) return CanonHalfFull();
+            if (isDslr) return CanonHalfFull(lensMf, mode == 2);
+            if (mode == 0) return CanonHalfFull(lensMf, false);
             uint r = OpRetry(0x9128, 3, mode == 2 ? 1U : 0U);
             Log("RemoteReleaseOn(" + (mode == 2 ? "no AF" : "full") + "): " + H(r));
-            if (r == Ptp.OK) { try { OpRetry(0x9129, 3); } catch (GoneException) { throw; } catch { } }
-            else if (mode == 1) r = CanonHalfFull();
+            if (r == Ptp.OK)
+            {
+                // Give the camera a brief moment before releasing so the shutter trigger is registered (not 0 ms).
+                Thread.Sleep(80);
+                CanonPoll();
+                try { OpRetry(0x9129, 3); } catch (GoneException) { throw; } catch { }
+            }
+            else if (mode == 1) r = CanonHalfFull(lensMf, false);
             return r;
         }
 
-        static uint CanonHalfFull()
+        static uint CanonHalfFull(bool lensMf, bool skipAf)
         {
-            uint h = OpRetry(0x9128, 1, 0);   // half press (focus)
+            // When the lens switch is physically on MF (0xD108 == 3), param2 = 0 already skips AF and works on every EOS DSLR
+            // (including older DIGIC 4/5 bodies like 60D/6D); wait <= 80 ms (libgphoto2 waits <= 100 ms in MF), not 550 ms.
+            uint afFlag = (skipAf && !lensMf) ? 1U : 0U;
+            uint h = OpRetry(0x9128, 1, afFlag);
+            if (h != Ptp.OK && afFlag == 1U) { afFlag = 0U; h = OpRetry(0x9128, 1, 0); }
             if (h == Ptp.OK)
             {
-                // Give the autofocus a moment (libgphoto2 waits up to 500 ms) before the full press.
+                bool fast = lensMf || afFlag == 1U;
+                int maxWait = fast ? 80 : 350;
                 var fw = Stopwatch.StartNew();
-                while (fw.ElapsedMilliseconds < 550) { CanonPoll(); Thread.Sleep(60); }
+                while (fw.ElapsedMilliseconds < maxWait)
+                {
+                    CanonPoll();
+                    if (fast && lastPollEvents > 0) break;
+                    Thread.Sleep(40);
+                }
             }
-            uint f = h == Ptp.OK ? OpRetry(0x9128, 2, 0) : h;   // full press
-            try { OpRetry(0x9129, 2); OpRetry(0x9129, 1); } catch (GoneException) { throw; } catch { }
-            Log("Half / full press: " + H(h) + " / " + H(f));
+            uint f = h == Ptp.OK ? OpRetry(0x9128, 2, afFlag) : h;
+            if (f != Ptp.OK && afFlag == 1U) f = OpRetry(0x9128, 2, 0);
+            try
+            {
+                OpRetry(0x9129, 2);
+                CanonPoll();
+                OpRetry(0x9129, 1);
+            }
+            catch (GoneException) { throw; }
+            catch { }
+            Log("Half / full press (mf=" + (lensMf ? "1" : "0") + " af=" + afFlag + "): " + H(h) + " / " + H(f));
             return f;
         }
 
@@ -1716,35 +1834,66 @@ namespace Pb4uCam
             var sw = Stopwatch.StartNew();
             CanonPoll();
             CanonSingleShot();   // the operator may have turned the self-timer on since the session started
+            // Refresh host disk capacity before shooting if AvailableShots (0xD11B) is low or unknown (libgphoto2 library.c:6248).
+            if (canonToHost)
+            {
+                uint avShots = 0;
+                if (!eosVals.TryGetValue(EOS_AVAIL_SHOTS, out avShots) || avShots < 100)
+                {
+                    CanonSendCapacity();
+                    CanonPoll();
+                }
+            }
+            bool isDslr = CanonIsDslr();
+            // Canon DSLRs (60D, 6D, 70D, 5D, Rebel...): Silent LV shoot (Mode 1 by default) blocks or desyncs external flashes
+            // and studio strobes while Live View is active, and Live View contrast AF is slow. Turning Live View off drops the
+            // mirror into optical mode -> 100% mechanical X-sync for every flash/strobe AND fast phase-detect AF.
+            // During a booth session "Pose" already turned Live View off 600 ms earlier, so canonLiveOffSw is already >= 350 ms (0 ms wait).
+            if (isDslr)
+            {
+                uint lvOut = 0;
+                if (live || (eosVals.TryGetValue(0xD1B0, out lvOut) && lvOut != 0))
+                {
+                    Log("DSLR capture: ending live view before shutter (mechanical flash sync)");
+                    CanonLiveOff();
+                }
+                while (canonLiveOffSw.IsRunning && canonLiveOffSw.ElapsedMilliseconds < 350)
+                {
+                    CanonPoll();
+                    if (eosVals.TryGetValue(0xD1B0, out lvOut) && lvOut == 0 && canonLiveOffSw.ElapsedMilliseconds >= 220) break;
+                    Thread.Sleep(40);
+                }
+            }
             canonNew.Clear();
             evSeen.Clear();
             sw.Restart();        // the shutter lag is counted from the shutter command
             uint r;
-            int baseMode = CanonIsDslr() ? 0 : 1;   // see CanonFireNew
-            // The booth focused during the countdown a moment ago: a newer EOS is then shot without focusing again (in live view the
-            // half press refocuses, which takes up to a second after the shutter moment). If that press ever gives no photo, or is
-            // refused, the camera goes back to focusing in the shot and the shortcut is not used again (canonNoAfBad).
+            bool oldEos = !ops.Contains(0x9128);
             long preAgo = TakePreFocus();
             bool lensMf = CanonLensMf();
-            bool noAf = (preAgo >= 0 || lensMf) && ops.Contains(0x9128) && !canonNoAfBad;
+            // Mirrorless can skip AF via (3, 1) after pre-focus or on MF. DSLRs always use the proven two-stage half/full press
+            // (and with mirror already down, MF skips AF natively in <= 80 ms and AF uses fast optical phase-detect AF).
+            bool noAf = !isDslr && (preAgo >= 0 || lensMf) && !oldEos && !canonNoAfBad;
+            int baseMode = isDslr ? 0 : 1;
             int firstMode = noAf ? 2 : baseMode;
-            if (lensMf) Log("Lens is on MF: shooting without autofocus");
+            if (lensMf) Log("Lens is on MF: shooting without autofocus" + (isDslr ? " (DSLR half/full)" : ""));
             else if (noAf) Log("Focused " + preAgo + " ms ago: pressing the shutter without focusing again");
-            if (ops.Contains(0x9128))
+            bool tried910F = false;
+            if (!oldEos)
             {
-                // Newer EOS: a DSLR (6D, 70D...) is shot the way libgphoto2 does it (half press, focus, full press); a mirrorless one with the one-command press.
-                r = CanonFireNew(firstMode);
+                r = CanonFireNew(firstMode, isDslr, lensMf);
                 if (r != Ptp.OK && noAf)
                 {
                     Log("The press without focusing was refused (" + H(r) + "): focusing and shooting the usual way");
                     noAf = false; canonNoAfBad = true;
-                    r = CanonFireNew(baseMode);
+                    r = CanonFireNew(baseMode, isDslr, lensMf);
                 }
                 if (r != Ptp.OK) throw CanonShotError(r, 0);
             }
             else
             {
-                // Older EOS (60D, 7D, 550D...): one command; its answer says if it fired.
+                // Older EOS without 0x9128 (550D, 50D...): one command; its answer says if it fired.
+                tried910F = true;
                 uint[] ans;
                 r = ptp.OpP(0x910F, out ans);
                 if (r == Ptp.BUSY || r == NOTREADY) { Thread.Sleep(400); r = ptp.OpP(0x910F, out ans); }
@@ -1754,11 +1903,8 @@ namespace Pb4uCam
                 {
                     // Result 3 = the mirror is still up (live view): end live view and press again once.
                     Log("Mirror still up (result 3): ending live view and pressing again");
-                    try { SetEos(0xD1B0, 0); if (Has(0x9152)) ptp.Op(0x9152); }
-                    catch (GoneException) { throw; }
-                    catch { }
-                    live = false;
-                    Thread.Sleep(600);
+                    CanonLiveOff();
+                    Thread.Sleep(500);
                     r = ptp.OpP(0x910F, out ans);
                     if (r == Ptp.BUSY || r == NOTREADY) { Thread.Sleep(400); r = ptp.OpP(0x910F, out ans); }
                     res = ans.Length > 0 ? ans[0] : 0;
@@ -1771,19 +1917,14 @@ namespace Pb4uCam
             var files = new List<uint[]>();
             var ew = Stopwatch.StartNew();
             long firstAt = -1;
-            // Older EOS (60D...): a photo that is going to come reports itself within a few seconds, so don't leave the guest
-            // waiting 15 s. If the camera said OK but never fired (live view focus lost on a moving guest), end live view and
-            // press the shutter once more: out of live view the camera focuses with its fast viewfinder sensor.
-            // Newer EOS (6D...): the same, with up to two more tries: 1) live view off, the shutter again (the camera then focuses
-            // with its viewfinder sensor, which a dim or plain scene doesn't stop the way it stops live view focus);
-            // 2) the shutter without waiting for autofocus. A photo that came late from an earlier try is still used.
-            bool oldEos = !ops.Contains(0x9128);
             int attempt = 0, maxAttempt = oldEos ? 1 : 2;
             bool skipWait = false;   // the camera refused the last try: nothing to wait for, go on to the next one
             while (true)
             {
                 int limit = CanonWaitLimit(attempt, oldEos, CanonLag(), canonHostWorked && canonLags.Count >= 2);
-                if (attempt == 0 && noAf) limit = Math.Min(limit, 3500);   // no focusing to wait for: a photo that is not there by now is not coming
+                // Saving to computer (0xD11C=4 + 0x911A): photos announce in < 1 s, so never stall 8 s per try.
+                if (canonToHost) limit = Math.Min(limit, attempt == 0 ? 4500 : 5000);
+                if (attempt == 0 && (noAf || lensMf)) limit = Math.Min(limit, 4000);
                 while (!skipWait && ew.ElapsedMilliseconds < limit)
                 {
                     CanonPoll();
@@ -1791,23 +1932,28 @@ namespace Pb4uCam
                     canonNew.Clear();
                     // A retried photo's time includes the wait for the first try: it is not the camera's real delay, never learn it.
                     if (files.Count > 0 && firstAt < 0) { firstAt = ew.ElapsedMilliseconds; if (attempt == 0) { lastShutterMs = (int)Math.Min(sw.ElapsedMilliseconds, 10000); CanonNoteLag(lastShutterMs); Log("Shutter lag " + lastShutterMs + " ms"); } }
-                    if (firstAt >= 0 && ew.ElapsedMilliseconds - firstAt > 350) break;
-                    Thread.Sleep(80);
+                    // Once a JPEG (0x3801) has arrived, wait only ~120 ms to catch any paired RAW event (so we can cancel/free it); otherwise ~220 ms.
+                    bool hasJpeg = false;
+                    foreach (var o in files) if (o[2] == 0x3801) { hasJpeg = true; break; }
+                    if (firstAt >= 0 && ew.ElapsedMilliseconds - firstAt > (hasJpeg ? 120 : 220)) break;
+                    Thread.Sleep(50);
                 }
                 skipWait = false;
                 if (files.Count > 0 || attempt >= maxAttempt) break;
                 attempt++;
+                uint avDbg = 0; bool hasAvDbg = eosVals.TryGetValue(EOS_AVAIL_SHOTS, out avDbg);
                 if (attempt == 1)
                 {
-                    Log((oldEos ? "Older EOS" : "EOS") + ": no photo " + ew.ElapsedMilliseconds + " ms after the shutter (last poll " + lastPollAnswer + "; events seen: " + (evSeen.Count > 0 ? string.Join(" ", evSeen.ToArray()) : "none") + "). Ending live view and pressing the shutter once more");
-                    try { SetEos(0xD1B0, 0); if (Has(0x9152)) ptp.Op(0x9152); }
-                    catch (GoneException) { throw; }
-                    catch { }
-                    live = false;
-                    Thread.Sleep(500);
+                    Log((oldEos ? "Older EOS" : "EOS") + ": no photo " + ew.ElapsedMilliseconds + " ms after the shutter (saveTo=" + (canonToHost ? "host" : "card") + (hasAvDbg ? " avail=" + avDbg : "") + "; last poll " + lastPollAnswer + "; events seen: " + (evSeen.Count > 0 ? string.Join(" ", evSeen.ToArray()) : "none") + "). Retrying");
+                    uint lvChk = 0;
+                    if (live || (eosVals.TryGetValue(0xD1B0, out lvChk) && lvChk != 0))
+                    {
+                        CanonLiveOff();
+                        Thread.Sleep(350);
+                    }
                     CanonPoll(); canonNew.Clear();
                 }
-                else Log("EOS: still no photo " + ew.ElapsedMilliseconds + " ms after the shutter. Pressing it once more without waiting for autofocus");
+                else Log("EOS: still no photo " + ew.ElapsedMilliseconds + " ms after the shutter. Trying fallback shutter");
                 if (oldEos)
                 {
                     uint[] ans2;
@@ -1815,14 +1961,31 @@ namespace Pb4uCam
                     if (r2 == Ptp.BUSY || r2 == NOTREADY) { Thread.Sleep(400); r2 = ptp.OpP(0x910F, out ans2); }
                     uint res2 = ans2.Length > 0 ? ans2[0] : 0;
                     Log("RemoteRelease (second try): " + H(r2) + ", result " + res2);
-                    // "Busy" = the camera is still working on the first press (a slow focus, not a lost one): wait for its photo
-                    // like before instead of failing the shot.
                     if (r2 == Ptp.BUSY || r2 == NOTREADY) Log("The camera is still busy with the first press: waiting for its photo");
                     else if (r2 != Ptp.OK || res2 != 0) throw CanonShotError(r2, res2);
                 }
+                else if (isDslr && ((attempt == 1 && lensMf) || attempt >= 2) && !tried910F && Has(0x910F))
+                {
+                    // Fallback on DSLRs that also list 0x910F (60D, 6D...): fires cleanly and reports exact result code (1/3/7/8) on failure.
+                    tried910F = true;
+                    uint[] ans2;
+                    uint r2 = ptp.OpP(0x910F, out ans2);
+                    if (r2 == Ptp.BUSY || r2 == NOTREADY) { Thread.Sleep(400); r2 = ptp.OpP(0x910F, out ans2); }
+                    uint res2 = ans2.Length > 0 ? ans2[0] : 0;
+                    Log("RemoteRelease (0x910F fallback): " + H(r2) + ", result " + res2);
+                    if (r2 == Ptp.BUSY || r2 == NOTREADY) Log("The camera is still busy with the last press: waiting for its photo");
+                    else if (r2 != Ptp.OK || res2 != 0)
+                    {
+                        // Explicit hardware error (e.g. result 7 = no card/full, result 8 = card locked): report immediately!
+                        if (res2 == 7 || res2 == 8) throw CanonShotError(r2, res2);
+                        if (attempt >= maxAttempt) throw CanonShotError(r2, res2);
+                        skipWait = true;
+                    }
+                }
                 else
                 {
-                    uint r2 = CanonFireNew(attempt >= 2 ? 2 : baseMode);
+                    int retryMode = isDslr ? 2 : (attempt >= 2 ? 2 : baseMode);
+                    uint r2 = CanonFireNew(retryMode, isDslr, lensMf);
                     bool busy2 = r2 == Ptp.BUSY || r2 == NOTREADY;   // still working on the last press: wait for its photo, don't press on
                     if (busy2) Log("The camera is still busy with the last press: waiting for its photo");
                     else if (r2 != Ptp.OK && attempt >= maxAttempt) throw CanonShotError(r2, 0);
@@ -1833,9 +1996,10 @@ namespace Pb4uCam
             if (noAf && attempt > 0) { canonNoAfBad = true; Log("The press without focusing gave no photo: from now on this camera focuses in the shot again"); }
             if (files.Count == 0)
             {
-                Log("No photo from the camera after " + (attempt + 1) + " tries (last poll " + lastPollAnswer + "; events seen: " + (evSeen.Count > 0 ? string.Join(" ", evSeen.ToArray()) : "none") + ")");
+                uint avEnd = 0; bool hasAvEnd = eosVals.TryGetValue(EOS_AVAIL_SHOTS, out avEnd);
+                Log("No photo from the camera after " + (attempt + 1) + " tries (saveTo=" + (canonToHost ? "host" : "card") + (hasAvEnd ? " avail=" + avEnd : "") + "; last poll " + lastPollAnswer + "; events seen: " + (evSeen.Count > 0 ? string.Join(" ", evSeen.ToArray()) : "none") + ")");
                 // Never leave the shutter button held down: the next live view / photo would be refused.
-                try { ptp.Op(0x9129, 3); } catch (GoneException) { throw; } catch { }
+                try { if (isDslr) { ptp.Op(0x9129, 2); ptp.Op(0x9129, 1); } else ptp.Op(0x9129, 3); } catch (GoneException) { throw; } catch { }
                 // Sending photos to the computer has never delivered one on this camera: it may be the cause, so go back to the card.
                 if (canonToHost && !canonHostWorked) { Log("No photo yet since the camera was set to send photos to the computer: putting it back on the card"); CanonToCard(true); }
                 throw new CamException("FOCUS The camera didn't take a photo. It may not have focused: point it at something with detail, or set the lens to MF (manual focus). Also check there's an SD card in the camera and it isn't full or locked.");
@@ -1857,18 +2021,32 @@ namespace Pb4uCam
             foreach (var o in files) if (o[2] == 0x3801) order.Add(o);
             foreach (var o in files) if (o[2] != 0x3801 && o[2] != 0xB101 && o[2] != 0xB103 && o[2] != 0xB108) order.Add(o);
             byte[] img = null;
+            uint downloadedHandle = 0;
             try
             {
                 foreach (var o in order)
                 {
-                    var b = CanonDownload(o[0], o[3], ref cd);
-                    if (b.Length > 4 && b[0] == 0xFF && b[1] == 0xD8) { img = b; break; }
+                    bool isRam = o[1] == 0xC186 || o[1] == 0xC1A9 || o[1] == 0xC1B8;
+                    var b = CanonDownload(o[0], o[3], isRam, ref cd);
+                    if (b.Length > 4 && b[0] == 0xFF && b[1] == 0xD8) { img = b; downloadedHandle = o[0]; break; }
                 }
             }
             finally
             {
-                // Photos waiting in the camera's memory: tell it we're done so it frees them.
-                foreach (var o in files) if (o[1] == 0xC186 || o[1] == 0xC1A9 || o[1] == 0xC1B8) { try { ptp.Op(0x9117, o[0]); } catch (GoneException) { throw; } catch { } }
+                // Photos waiting in the camera's memory: TransferComplete (0x9117) on what we downloaded, CancelTransfer (0x9118) on skipped RAW so RAM frees immediately.
+                foreach (var o in files)
+                {
+                    if (o[1] == 0xC186 || o[1] == 0xC1A9 || o[1] == 0xC1B8)
+                    {
+                        try
+                        {
+                            if (o[0] != downloadedHandle && Has(0x9118)) OpRetry(0x9118, o[0]);
+                            else OpRetry(0x9117, o[0]);
+                        }
+                        catch (GoneException) { throw; }
+                        catch { }
+                    }
+                }
             }
             Log("Photo download: " + cd);
             if (img == null)
@@ -1883,8 +2061,41 @@ namespace Pb4uCam
             return img;
         }
 
-        static byte[] CanonDownload(uint h, uint size, ref string cd)
+        static byte[] CanonDownloadPieces(ushort piece, uint h, uint size, ref string cd, out uint pr)
         {
+            var ms = new MemoryStream((int)size);
+            uint off = 0; pr = 0;
+            while (off < size)
+            {
+                byte[] part;
+                try { pr = ptp.OpRead(piece, out part, h, off, Math.Min(1048576U, size - off)); }
+                catch (GoneException) { throw; }
+                catch (Exception e) { cd += "; pieces " + H(piece) + " failed " + e.Message; pr = 0; break; }
+                if (pr != Ptp.OK || part == null || part.Length == 0) break;
+                ms.Write(part, 0, part.Length); off += (uint)part.Length;
+            }
+            cd += "; pieces " + H(piece) + " " + H(pr) + " " + off + " B";
+            return (pr == Ptp.OK && off >= size) ? ms.ToArray() : new byte[0];
+        }
+
+        static byte[] CanonDownload(uint h, uint size, ref string cd) { return CanonDownload(h, size, false, ref cd); }
+
+        static byte[] CanonDownload(uint h, uint size, bool ramPhoto, ref string cd)
+        {
+            // For RAM / direct-transfer objects (0xC186 / 0xC1A9 / 0xC1B8), libgphoto2 downloads directly in 1 MB chunks via
+            // GetPartialObject (0x101B) — calling GetObject (0x1009) on a RAM handle fails or stalls on many EOS models.
+            if (ramPhoto && size > 0)
+            {
+                uint pr1 = 0;
+                var b1 = CanonDownloadPieces(0x101B, h, size, ref cd, out pr1);
+                if (b1.Length >= 4) return b1;
+                if (Has(0x9107))
+                {
+                    uint pr2 = 0;
+                    var b2 = CanonDownloadPieces(0x9107, h, size, ref cd, out pr2);
+                    if (b2.Length >= 4) return b2;
+                }
+            }
             if (size == 0)
             {
                 try { byte[] oi; uint ro = ptp.OpRead(0x1008, out oi, h); if (ro == Ptp.OK && oi.Length >= 12) size = U32(oi, 8); cd += "; info " + H(ro) + " " + size + " B"; }
@@ -1900,16 +2111,9 @@ namespace Pb4uCam
             {
                 // In 1 MB pieces (Canon's own command, then the standard one).
                 ushort piece = Has(0x9107) ? (ushort)0x9107 : (ushort)0x101B;
-                var ms = new MemoryStream((int)size);
-                uint off = 0, pr = 0;
-                while (off < size)
-                {
-                    byte[] part; pr = ptp.OpRead(piece, out part, h, off, Math.Min(1048576U, size - off));
-                    if (pr != Ptp.OK || part.Length == 0) break;
-                    ms.Write(part, 0, part.Length); off += (uint)part.Length;
-                }
-                cd += "; pieces " + H(piece) + " " + H(pr) + " " + off + " B";
-                if (off >= size) { img = ms.ToArray(); r = Ptp.OK; }
+                uint pr;
+                var b = CanonDownloadPieces(piece, h, size, ref cd, out pr);
+                if (b.Length >= 4) { img = b; r = Ptp.OK; }
             }
             return r == Ptp.OK ? img : new byte[0];
         }
@@ -2436,10 +2640,17 @@ namespace Pb4uCam
                             }
                             else if (canon)
                             {
-                                uint afR = 0x2005;   // an older EOS (60D...) has no separate focus command: it focuses inside the shot
+                                uint afR = 0x2005;   // an older EOS without 0x9128 has no separate focus command: it focuses inside the shot
+                                bool isPre = arg.IndexOf("pre") >= 0;
                                 if (CanonLensMf())
                                 {
                                     afR = Ptp.OK;    // lens switch is on MF: skip the 800 ms AF pause so live view stays smooth
+                                }
+                                else if (isPre && CanonIsDslr())
+                                {
+                                    // Canon DSLRs drop out of Live View at "Pose" and use fast optical phase-detect AF at the shutter:
+                                    // never freeze Live View for 800 ms of slow contrast-detect AF during the countdown.
+                                    afR = Ptp.OK;
                                 }
                                 else if (Has(0x9128))
                                 {
@@ -2447,7 +2658,7 @@ namespace Pb4uCam
                                     Thread.Sleep(800);
                                     try { OpRetry(0x9129, 1); } catch { }
                                 }
-                                preFocusOk = afR == Ptp.OK; preFocusSw.Restart();   // the shot that follows skips its own focus
+                                preFocusOk = afR == Ptp.OK && !(isPre && CanonIsDslr()); preFocusSw.Restart();
                                 kind = "J"; body = Encoding.UTF8.GetBytes("{\"ok\":" + (afR == Ptp.OK ? "true" : "false") + "}");
                             }
                             else

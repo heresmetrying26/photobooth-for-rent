@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Interactive DSLR 360 Booth Walkthrough &amp; Prototype · photobooth4u</title>
+<title>Interactive 360 Booth Walkthrough (iPhone &amp; DSLR) · photobooth4u</title>
 <style>
   :root {
     --bg: #0c0e13;
@@ -178,15 +178,15 @@
     <a class="brand" href="/"><b>●</b> photobooth4u</a>
     <div class="nav-links">
       <a href="/how-to-360/">360 Overview</a>
-      <a href="/how-to-360-arm/#dslr">Text SOP Guide</a>
+      <a href="/how-to-360-arm/" id="topSopLink">Text SOP Guide</a>
       <a href="/downloads/">Downloads (v1.1.94+)</a>
     </div>
   </div>
 
   <header>
-    <div class="badge">Interactive Semi-Video Walkthrough · Desktop v1.1.94+</div>
-    <h1>How DSLR 360 Works with photobooth4u</h1>
-    <p class="lead">Watch the automated end-to-end 7-stage walkthrough or click any chapter below to test exposure, spin calibration, Boomerang speed, and Live TV Wall cues live.</p>
+    <div class="badge" id="heroBadge">Interactive Semi-Video Walkthrough · iPhone &amp; DSLR · Desktop v1.1.94+</div>
+    <h1 id="heroTitle">How 360 Booths Work with photobooth4u</h1>
+    <p class="lead">Switch between <b>iPhone / iPad Wireless</b> and <b>DSLR / GoPro / Capture Card</b> rigs on the right — watch the 7-stage walkthrough or test exposure, spin calibration, Boomerang speed, and Live TV Wall cues live.</p>
   </header>
 
   <div class="player-grid">
@@ -217,6 +217,10 @@
       <div class="side-section">
         <div class="side-kicker">1 · Select Your Rig</div>
         <div class="rig-pills" id="rigPills">
+          <button type="button" class="rig-pill" data-rig="iphone_arm">
+            <strong>📱 iPhone / iPad Only (360 Arm Camera)</strong>
+            Free iOS Companion &middot; 0.5&times; Ultra-Wide &middot; CoreMotion Gyro &middot; 5GHz Wi-Fi Auto-Upload
+          </button>
           <button type="button" class="rig-pill active" data-rig="usb_tablet">
             <strong>📷 Canon / Nikon USB + Tablet on Arm</strong>
             Direct USB cable to Surface Pro / Windows tablet using built-in Windows Gyroscope
@@ -226,7 +230,7 @@
             Plug HDMI out into Cam Link &rarr; select <b>HDMI Card / Webcam</b> in Record 360
           </button>
           <button type="button" class="rig-pill" data-rig="ios_sensor">
-            <strong>📱 DSLR + Paired iPhone Wireless Sensor</strong>
+            <strong>📡 DSLR + Paired iPhone Wireless Sensor</strong>
             Keep laptop safely on a table; mount a spare iPhone on the arm as wireless trigger
           </button>
         </div>
@@ -243,15 +247,15 @@
         <div class="side-kicker">Interactive Test Controls</div>
         <div class="sandbox-box">
           <div class="sb-row">
-            <label for="simShutter">Shutter (HFR)</label>
+            <label for="simShutter">FPS / Shutter</label>
             <select id="simShutter">
-              <option value="1/60">1/60 s (30fps)</option>
-              <option value="1/125" selected>1/125 s (60fps)</option>
-              <option value="1/250">1/250 s (120fps)</option>
+              <option value="1/60">30 fps (1/60 s)</option>
+              <option value="1/125" selected>60 fps (1/125 s)</option>
+              <option value="1/250">120 fps (1/250 s)</option>
             </select>
           </div>
           <div class="sb-row">
-            <label for="simIso">ISO Brightness</label>
+            <label for="simIso">Exposure / ISO</label>
             <input type="range" id="simIso" min="200" max="3200" step="200" value="800">
           </div>
           <div class="sb-row">
@@ -264,7 +268,7 @@
         </div>
 
         <div class="cta-bar">
-          <a class="cta-link" href="/how-to-360-arm/#dslr">📖 Full Written SOP</a>
+          <a class="cta-link" href="/how-to-360-arm/#dslr" id="sopLink">📖 Full Written SOP</a>
           <a class="cta-link red" href="/downloads/">⬇️ Download v1.1.94</a>
         </div>
       </div>
@@ -275,7 +279,7 @@
 <script>
 (function () {
   var TOTAL_MS = 35000; // 7 stages x 5s
-  var STAGES = [
+  var DSLR_STAGES = [
     {
       id: 0, start: 0, end: 5000, short: '1. Mount', title: '1 · Mount Camera, Ring Light & Tablet',
       caption: 'Mount Canon EOS / Nikon / GoPro inside the ring light with a wide-angle lens; secure your Windows tablet / cable straight in.',
@@ -348,6 +352,79 @@
     }
   ];
 
+  var IPHONE_STAGES = [
+    {
+      id: 0, start: 0, end: 5000, short: '1. Mount', title: '1 · Mount iPhone / iPad (9:16 & 0.5×)',
+      caption: 'Lock iPhone 11+ or iPad vertically inside the rotating ring light, add an optional power bank, and join the booth 5GHz Wi-Fi.',
+      desc: 'Zero USB cables on the rotating arm. Your laptop stays safe on the operator table while iPhone handles high-frame-rate capture wirelessly.',
+      checks: [
+        'Clamp iPhone upright (9:16 Portrait) inside the ring light',
+        'Optional power bank strapped on arm for all-night shoots',
+        'Both Laptop & iPhone connected to the same 5GHz Wi-Fi'
+      ]
+    },
+    {
+      id: 1, start: 5000, end: 10000, short: '2. Pair QR', title: '2 · Scan 360 Desk QR (Free Companion)',
+      caption: 'Open photobooth4u iOS app → tap 🎥 360 Arm Camera (Free — Zero Extra License) → point camera at Laptop 360 Desk QR to link.',
+      desc: 'Companion mode works without consuming an extra license slot. One quick QR scan binds your iPhone straight to the Windows 360 Desk.',
+      checks: [
+        'Free Companion mode skips license sign-in completely',
+        'Scan Desktop QR once → pill turns green ✓ 360 Desk Connected',
+        'Auto-reconnects seamlessly if venue Wi-Fi briefly blinks'
+      ]
+    },
+    {
+      id: 2, start: 10000, end: 15000, short: '3. Cam/Shield', title: '3 · Lock 0.5×, AE/AF Lock & Shield Mode',
+      caption: 'Choose 0.5× Ultra-Wide + 60/120fps, tap guest for yellow AE/AF Lock, then tap Shield Lock (hold 1.4s) so vibration cannot tap buttons.',
+      desc: 'Locking exposure stops venue strobe lights from pumping brightness, while Shield Mode dims and guards the screen during fast spins.',
+      checks: [
+        '0.5× Ultra-Wide fits full guests & props on tight arms',
+        'AE/AF Lock freezes white balance & focus mid-spin',
+        'Shield Lock requires 1.4s hold to unlock accidental touches'
+      ]
+    },
+    {
+      id: 3, start: 15000, end: 20000, short: '4. Calibrate', title: '4 · Configure CoreMotion Spin Sensitivity',
+      caption: 'Tap Configure Sensitivity → Hold Still 1.5s (noise floor) → Spin Arm 3s (peak °/s). Auto-sets Start (25°/s) & Stop (11°/s). (iPhone/iPad only)',
+      desc: 'Uses iPhone CoreMotion precision gyroscopes to separate platform wobble from real spins. Pick Follow the Arm or Fixed Duration.',
+      checks: [
+        'Calibrate Sensitivity runs natively on iPhone/iPad CoreMotion',
+        'Step 1 (1.5s still) + Step 2 (3s spin) sets °/s thresholds',
+        'Follow the Arm auto-ends cleanly right as the motor brakes'
+      ]
+    },
+    {
+      id: 4, start: 20000, end: 25000, short: '5. Auto Spin', title: '5 · Motor Remote → CoreMotion Auto-Records',
+      caption: 'Operator clicks the motor remote → iPhone CoreMotion crosses threshold (>300ms) → chimes, counts down & auto-records 60/120fps H.264!',
+      desc: 'Hands-free operation all night. iPhone never needs tapping between guests and cleanly stops when the spinner decelerates.',
+      checks: [
+        'Just click your physical spinner remote — zero screen taps',
+        '3.. 2.. 1.. countdown + audio chime fires automatically',
+        'Records smooth 60/120fps H.264 locally before upload'
+      ]
+    },
+    {
+      id: 5, start: 25000, end: 30000, short: '6. Wi-Fi Edit', title: '6 · 5GHz Wi-Fi Upload + Auto-Boomerang',
+      caption: 'Compressed .mov uploads over 5GHz Wi-Fi to Laptop 360 Inbox in 2–4s (offline queue protected) → auto Slow-Mo, Boomerang, music & Canva frame.',
+      desc: 'Even if Wi-Fi drops mid-event, clips stay safely queued on the iPhone and auto-resume the moment signal returns.',
+      checks: [
+        '5GHz local transfer finishes in ~2–4s per reel',
+        'Built-in Offline Queue retries failed uploads cleanly',
+        'FFmpeg bakes Boomerang, beat-drop music & PNG overlay'
+      ]
+    },
+    {
+      id: 6, start: 30000, end: 35000, short: '7. Live Wall', title: '7 · Live TV Wall & 2-Step Offline QR Sharing',
+      caption: 'External TV celebrates ✨ FRESH OFF THE 360!, loops HD video, and displays Step 1 (Wi-Fi QR) + Step 2 (Save MP4 QR) offline!',
+      desc: 'No venue internet required. Guests scan Step 1 to join booth Wi-Fi automatically and Step 2 to download the MP4 to Camera Roll in seconds.',
+      checks: [
+        'Live Wall mirrors Countdown, REC, and Ready spotlight',
+        'Step 1 QR joins booth Wi-Fi without typing passwords',
+        'Step 2 QR opens instant Save Video page on Safari/Chrome'
+      ]
+    }
+  ];
+
   var st = {
     playing: true,
     speed: 1,
@@ -360,6 +437,10 @@
     lastStageId: -1
   };
 
+  function isIphone() { return st.rig === 'iphone_arm'; }
+  function activeStages() { return isIphone() ? IPHONE_STAGES : DSLR_STAGES; }
+  function fpsNum() { return st.shutter === '1/250' ? 120 : (st.shutter === '1/125' ? 60 : 30); }
+
   var cv = document.getElementById('simCv');
   var cx = cv.getContext('2d');
   var scrubber = document.getElementById('scrubber');
@@ -368,25 +449,28 @@
   var speedBtn = document.getElementById('speedBtn');
   var chapRow = document.getElementById('chaptersRow');
 
-  // Build chapter buttons
-  STAGES.forEach(function (s) {
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'chap-btn';
-    b.dataset.id = String(s.id);
-    b.innerHTML = '<b>' + s.short + '</b><span>' + (s.start / 1000) + 's</span>';
-    b.addEventListener('click', function () {
-      st.tMs = s.start + 120;
-      syncSidePanel(s);
+  function rebuildChapters() {
+    chapRow.innerHTML = '';
+    activeStages().forEach(function (s) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chap-btn';
+      b.dataset.id = String(s.id);
+      b.innerHTML = '<b>' + s.short + '</b><span>' + (s.start / 1000) + 's</span>';
+      b.addEventListener('click', function () {
+        st.tMs = s.start + 120;
+        syncSidePanel(s);
+      });
+      chapRow.appendChild(b);
     });
-    chapRow.appendChild(b);
-  });
+  }
 
   function stageFor(ms) {
-    for (var i = STAGES.length - 1; i >= 0; i--) {
-      if (ms >= STAGES[i].start) return STAGES[i];
+    var list = activeStages();
+    for (var i = list.length - 1; i >= 0; i--) {
+      if (ms >= list[i].start) return list[i];
     }
-    return STAGES[0];
+    return list[0];
   }
 
   function syncSidePanel(s) {
@@ -459,42 +543,66 @@
     cx.strokeStyle = '#475569'; cx.lineWidth = 8;
     cx.beginPath(); cx.moveTo(gx, gy + 10); cx.lineTo(camX, gy + 24); cx.lineTo(camX, camY + 60); cx.stroke();
 
-    // Ring light around DSLR
+    // Ring light around camera
     cx.save();
     cx.shadowColor = '#fff6d6'; cx.shadowBlur = 18;
     cx.strokeStyle = '#fffbeb'; cx.lineWidth = 11;
     cx.beginPath(); cx.arc(camX, camY, 44, 0, Math.PI * 2); cx.stroke();
     cx.restore();
 
-    // DSLR / GoPro inside ring light
-    rr(camX - 24, camY - 17, 48, 34, 6, '#1e2430', '#94a3b8', 2);
-    cx.fillStyle = '#0f172a'; cx.beginPath(); cx.arc(camX, camY, 12, 0, Math.PI * 2); cx.fill();
-    cx.strokeStyle = '#64748b'; cx.lineWidth = 2; cx.stroke();
-    txt(st.rig === 'hdmi_card' ? 'SONY' : 'DSLR', camX, camY - 29, '800 10px system-ui', '#fde68a', 'center');
-
-    // Device mounted below ring light (Surface Pro OR iPhone sensor OR USB tethered to Laptop)
-    if (st.rig === 'usb_tablet') {
-      rr(camX - 54, camY + 56, 108, 66, 8, '#0f172a', '#60a5fa', 2);
-      rr(camX - 46, camY + 62, 92, 50, 4, '#1d273b');
-      txt('Surface Pro', camX, camY + 87, '700 11px system-ui', '#93c5fd', 'center');
-      // Glowing USB cable camera -> Surface
-      cx.strokeStyle = highlightCable ? '#22c55e' : '#38bdf8';
-      cx.lineWidth = highlightCable ? 3.5 : 2.5;
-      cx.beginPath(); cx.moveTo(camX + 20, camY + 14); cx.bezierCurveTo(camX + 68, camY + 25, camX + 70, camY + 75, camX + 52, camY + 84); cx.stroke();
-    } else if (st.rig === 'ios_sensor') {
-      rr(camX - 20, camY + 58, 40, 68, 7, '#0f172a', '#f5a623', 2);
-      txt('iPhone', camX, camY + 86, '700 10px system-ui', '#fde68a', 'center');
-      txt('Gyro', camX, camY + 100, '700 9px system-ui', '#94a3b8', 'center');
+    if (isIphone()) {
+      // Vertical 9:16 iPhone inside ring light + optional power bank on boom pole
+      rr(camX - 15, camY - 26, 30, 52, 6, '#0f172a', '#22c55e', 2.2);
+      rr(camX - 11, camY - 19, 22, 38, 3, '#1e293b');
+      txt('9:16', camX, camY, '800 8.5px monospace', '#4ade80', 'center');
+      txt('iPHONE', camX, camY - 35, '800 10px system-ui', '#86efac', 'center');
+      // Optional power bank strapped lower on pole
+      rr(camX - 16, camY + 58, 32, 46, 6, '#1e293b', '#f5a623', 1.5);
+      txt('🔋 PWR', camX, camY + 81, '700 8.5px system-ui', '#fde68a', 'center');
+      // Wireless 5GHz Wi-Fi signal waves
+      cx.save();
+      for (var w = 1; w <= 3; w++) {
+        cx.strokeStyle = 'rgba(34,197,94,' + (0.85 - w * 0.2 + Math.sin(p * 10 + w) * 0.15) + ')';
+        cx.lineWidth = 2.5;
+        cx.beginPath();
+        cx.arc(camX + 26, camY - 10, 12 * w, -0.7, 0.7);
+        cx.stroke();
+      }
+      cx.restore();
+      txt('5GHz Wi-Fi (Zero Cables)', camX + 6, camY + 124, '700 10px system-ui', '#4ade80', 'center');
     } else {
-      rr(camX - 26, camY + 58, 52, 24, 5, '#1e293b', '#c084fc', 2);
-      txt('CamLink', camX, camY + 70, '700 9px system-ui', '#e9d5ff', 'center');
+      // DSLR / GoPro inside ring light
+      rr(camX - 24, camY - 17, 48, 34, 6, '#1e2430', '#94a3b8', 2);
+      cx.fillStyle = '#0f172a'; cx.beginPath(); cx.arc(camX, camY, 12, 0, Math.PI * 2); cx.fill();
+      cx.strokeStyle = '#64748b'; cx.lineWidth = 2; cx.stroke();
+      txt(st.rig === 'hdmi_card' ? 'SONY' : 'DSLR', camX, camY - 29, '800 10px system-ui', '#fde68a', 'center');
+
+      // Device mounted below ring light (Surface Pro OR iPhone sensor OR USB tethered to Laptop)
+      if (st.rig === 'usb_tablet') {
+        rr(camX - 54, camY + 56, 108, 66, 8, '#0f172a', '#60a5fa', 2);
+        rr(camX - 46, camY + 62, 92, 50, 4, '#1d273b');
+        txt('Surface Pro', camX, camY + 87, '700 11px system-ui', '#93c5fd', 'center');
+        // Glowing USB cable camera -> Surface
+        cx.strokeStyle = highlightCable ? '#22c55e' : '#38bdf8';
+        cx.lineWidth = highlightCable ? 3.5 : 2.5;
+        cx.beginPath(); cx.moveTo(camX + 20, camY + 14); cx.bezierCurveTo(camX + 68, camY + 25, camX + 70, camY + 75, camX + 52, camY + 84); cx.stroke();
+      } else if (st.rig === 'ios_sensor') {
+        rr(camX - 20, camY + 58, 40, 68, 7, '#0f172a', '#f5a623', 2);
+        txt('iPhone', camX, camY + 86, '700 10px system-ui', '#fde68a', 'center');
+        txt('Gyro', camX, camY + 100, '700 9px system-ui', '#94a3b8', 'center');
+      } else {
+        rr(camX - 26, camY + 58, 52, 24, 5, '#1e293b', '#c084fc', 2);
+        txt('CamLink', camX, camY + 70, '700 9px system-ui', '#e9d5ff', 'center');
+      }
     }
     cx.restore();
 
     // Right info card on stage
     rr(620, 62, 305, 430, 16, '#131722', '#283144', 1.5);
-    txt('HARDWARE CHECKLIST', 642, 92, '800 11px system-ui', '#93c5fd');
-    var items = st.rig === 'usb_tablet'
+    txt('HARDWARE CHECKLIST', 642, 92, '800 11px system-ui', isIphone() ? '#4ade80' : '#93c5fd');
+    var items = isIphone()
+      ? ['1. iPhone 11+ / iPad vertical (9:16)', '2. Ultra-Wide 0.5× frames full body', '3. Zero USB cables (100% wireless)', '4. Optional power bank on arm pole', '5. Built-in CoreMotion auto-records']
+      : st.rig === 'usb_tablet'
       ? ['1. Canon/Nikon/GoPro inside ring', '2. Wide lens frames full guest', '3. Surface Pro / Win tablet on arm', '4. Direct USB data cable (no hub)', '5. Built-in Gyro auto-starts on spin']
       : st.rig === 'hdmi_card'
       ? ['1. Sony / DSLR HDMI out -> Cam Link', '2. Select HDMI Card in Record 360', '3. 1080p 60fps clean HDMI feed', '4. Tablet gyro or clicker starts REC', '5. Auto-saves straight to 360 Inbox']
@@ -503,6 +611,49 @@
       rr(640, 122 + idx * 62, 265, 50, 10, '#1a2030', '#2d364b', 1);
       txt(it, 654, 147 + idx * 62, '600 12.5px system-ui', '#e2e8f0');
     });
+  }
+
+  function drawIphonePairScene(p) {
+    // Left: Laptop showing 360 Desk QR
+    rr(60, 68, 420, 355, 16, '#161b26', '#334155', 2);
+    rr(78, 86, 384, 300, 10, '#f6f2eb');
+    txt('photobooth4u · 360 Desk', 96, 114, '800 14px system-ui', '#1c1a1e');
+    rr(96, 134, 348, 28, 8, '#e2d9cd');
+    txt('Pair iPhone / iPad Companion (Free — No Extra License)', 270, 148, '700 11px system-ui', '#475569', 'center');
+    // Session QR box
+    rr(185, 178, 170, 170, 12, '#ffffff', '#cbd5e1', 2);
+    cx.fillStyle = '#0f172a';
+    for (var r = 0; r < 7; r++) for (var c = 0; c < 7; c++) {
+      if ((r * 3 + c) % 2 === 0 || (r < 2 && c < 2) || (r > 4 && c < 2)) {
+        cx.fillRect(202 + c * 20, 195 + r * 20, 15, 15);
+      }
+    }
+    var connected = p > 0.48;
+    rr(145, 360, 250, 22, 11, connected ? '#16a34a' : '#d97706');
+    txt(connected ? '✓ 360 Desk Connected (5GHz)' : 'Waiting for iPhone QR scan...', 270, 371, '800 11px system-ui', '#fff', 'center');
+
+    // Animated wireless beam between Laptop QR & iPhone
+    cx.save();
+    cx.strokeStyle = connected ? '#22c55e' : '#38bdf8';
+    cx.setLineDash([8, 6]); cx.lineWidth = 3;
+    cx.beginPath(); cx.moveTo(490, 260); cx.lineTo(610, 260); cx.stroke();
+    cx.setLineDash([]);
+    cx.restore();
+    txt(connected ? 'PAIRED ✓' : 'SCANNING', 550, 240, '800 11px system-ui', connected ? '#4ade80' : '#38bdf8', 'center');
+
+    // Right: iPhone running 360 Arm Camera companion
+    rr(620, 56, 250, 440, 30, '#0f172a', connected ? '#22c55e' : '#3b82f6', 3);
+    rr(638, 82, 214, 386, 18, '#131722');
+    txt('🎥 360 Arm Camera', 745, 114, '800 14px system-ui', '#fff', 'center');
+    txt('FREE COMPANION MODE', 745, 134, '700 10px system-ui', '#4ade80', 'center');
+    // Scanner reticle box
+    rr(676, 174, 138, 138, 12, '#0a0d14', connected ? '#22c55e' : '#f5a623', 2.5);
+    var scanY = 184 + ((p * 2.2) % 1) * 116;
+    cx.strokeStyle = connected ? '#22c55e' : '#38bdf8'; cx.lineWidth = 2.5;
+    cx.beginPath(); cx.moveTo(686, scanY); cx.lineTo(804, scanY); cx.stroke();
+    txt(connected ? '✓ Linked to 360 Desk' : 'Point at Laptop QR', 745, 344, '700 12px system-ui', connected ? '#4ade80' : '#fde68a', 'center');
+    rr(662, 384, 166, 46, 10, connected ? '#14532d' : '#1e293b', connected ? '#22c55e' : '#334155');
+    txt(connected ? 'Ready for Spin' : 'Zero License Login', 745, 407, '800 12px system-ui', '#e2e8f0', 'center');
   }
 
   function drawCameraMenuScene(p) {
@@ -546,12 +697,53 @@
   }
 
   function drawAppExposureScene(p) {
+    var bright = Math.min(0.45, Math.max(0.05, (st.iso - 200) / 5500));
+    if (isIphone()) {
+      // iPhone 9:16 Arm Camera + Shield Mode preview
+      rr(125, 46, 255, 468, 30, '#0f172a', '#22c55e', 3);
+      rr(142, 72, 221, 416, 18, '#13151c');
+      rr(142, 72, 221, 416, 18, 'rgba(255,245,225,' + bright + ')');
+      // 9:16 guest preview in 0.5x Ultra-Wide
+      cx.fillStyle = '#e2e8f0'; cx.beginPath(); cx.arc(252, 210, 26, 0, Math.PI * 2); cx.fill();
+      rr(222, 242, 60, 112, 16, '#38bdf8');
+      // Yellow AE/AF Lock box
+      cx.strokeStyle = '#fbbf24'; cx.lineWidth = 2;
+      cx.strokeRect(204, 174, 96, 130);
+      rr(186, 142, 132, 22, 6, '#f59e0b');
+      txt('AE/AF LOCKED', 252, 153, '800 10.5px system-ui', '#111', 'center');
+      // Top lens & fps pills
+      rr(156, 86, 62, 24, 12, 'rgba(34,197,94,.9)');
+      txt('0.5×', 187, 98, '800 11px system-ui', '#fff', 'center');
+      rr(226, 86, 74, 24, 12, '#1e293b');
+      txt(fpsNum() + ' fps', 263, 98, '800 11px monospace', '#93c5fd', 'center');
+      // Shield Lock bar at bottom of phone
+      var shieldOn = p > 0.52;
+      rr(156, 424, 193, 44, 12, shieldOn ? 'rgba(15,23,42,.92)' : '#1e293b', shieldOn ? '#22c55e' : '#475569', 2);
+      txt(shieldOn ? '🛡️ SHIELD LOCKED (Hold 1.4s)' : 'Tap 🛡️ Lock before Spin', 252, 446, '800 10.5px system-ui', shieldOn ? '#4ade80' : '#e2e8f0', 'center');
+
+      // Right controls summary card
+      rr(435, 62, 450, 420, 16, '#131722', '#283144', 2);
+      txt('📱 360 Arm Camera Settings', 462, 102, '800 17px system-ui', '#fff');
+      var cfg = [
+        ['Lens Selection', '0.5× Ultra-Wide (Full Body)'],
+        ['Frame Rate', fpsNum() + ' fps · 1080p H.264'],
+        ['Exposure / Focus', 'AE/AF Locked (ISO sim ' + st.iso + ')'],
+        ['Accidental Touch Guard', 'Shield Mode · Hold 1.4s to Unlock']
+      ];
+      cfg.forEach(function (c, i) {
+        rr(462, 136 + i * 74, 396, 58, 10, '#1a2030', '#2d364b');
+        txt(c[0], 480, 155 + i * 74, '700 11px system-ui', '#94a3b8');
+        txt(c[1], 480, 177 + i * 74, '800 13.5px system-ui', '#e2e8f0');
+      });
+      txt('Tip: Adjust FPS & Exposure sliders on the right panel →', 660, 446, '700 11.5px system-ui', '#93c5fd', 'center');
+      return;
+    }
+
     // Desktop Record 360 App Mockup
     rr(55, 42, 850, 440, 16, '#f6f2eb', '#cbd5e1', 2);
     // Left preview panel inside app
     rr(78, 66, 420, 300, 12, '#13151c');
     // Simulate ISO brightness inside live preview
-    var bright = Math.min(0.45, Math.max(0.05, (st.iso - 200) / 5500));
     rr(78, 66, 420, 300, 12, 'rgba(255,245,225,' + bright + ')');
     // Guest figure inside live frame
     cx.fillStyle = '#e2e8f0';
@@ -566,7 +758,7 @@
     rr(518, 66, 364, 392, 12, '#ffffff', '#e2d9cd', 1.5);
     txt('📷 Record 360 · ⚙️ DSLR Settings', 536, 94, '800 14px system-ui', '#1c1a1e');
     var rows = [
-      ['Shutter Speed', st.shutter + (st.shutter === '1/250' ? ' (120fps)' : st.shutter === '1/125' ? ' (60fps)' : '')],
+      ['Shutter Speed', st.shutter + ' (' + fpsNum() + 'fps)'],
       ['Aperture', 'f/2.8'],
       ['ISO', String(st.iso)],
       ['White Balance', 'Daylight (Fixed)']
@@ -581,24 +773,25 @@
     txt('↻ Read Settings', 613, 411, '700 12.5px system-ui', '#fff', 'center');
     rr(704, 390, 160, 42, 10, '#16a34a');
     txt('✓ Apply to DSLR', 784, 411, '700 12.5px system-ui', '#fff', 'center');
-    txt('Tip: Try changing Shutter / ISO in Right Panel →', 288, 398, '700 12px system-ui', '#475569', 'center');
+    txt('Tip: Try changing FPS / Exposure in Right Panel →', 288, 398, '700 12px system-ui', '#475569', 'center');
   }
 
   function drawCalibrateScene(p) {
     var step2 = p > 0.4;
     var dps = step2 ? (22 + Math.sin((p - 0.4) * 14) * 18 + 38) : (1.5 + Math.sin(p * 40) * 1.4);
+    var startTh = isIphone() ? 25 : 28;
     rr(75, 52, 810, 430, 16, '#131722', '#283144', 2);
-    txt('🌀 Arm Motion Trigger · Configure sensitivity', 105, 92, '800 18px system-ui', '#fff');
-    txt(step2 ? 'STEP 2/2: SPIN THE 360 ARM AT NORMAL EVENT SPEED (3s)...' : 'STEP 1/2: HOLD ARM STILL FOR 2s TO MEASURE VIBRATION NOISE...', 105, 126, '800 13px system-ui', step2 ? '#4ade80' : '#fbbf24');
+    txt(isIphone() ? '🌀 CoreMotion Gyro · Configure Sensitivity (iPhone/iPad)' : '🌀 Arm Motion Trigger · Configure sensitivity', 105, 92, '800 18px system-ui', '#fff');
+    txt(step2 ? 'STEP 2/2: SPIN THE 360 ARM AT NORMAL EVENT SPEED (3s)...' : ('STEP 1/2: HOLD ARM STILL FOR ' + (isIphone() ? '1.5s' : '2s') + ' TO MEASURE VIBRATION NOISE...'), 105, 126, '800 13px system-ui', step2 ? '#4ade80' : '#fbbf24');
 
     // Gauge bar
     rr(105, 168, 750, 34, 17, '#1f2534', '#374151');
     var fillW = Math.min(744, Math.max(8, (dps / 100) * 744));
     rr(108, 171, fillW, 28, 14, step2 ? '#22c55e' : '#f59e0b');
-    // Start Threshold Marker at 28 deg/s
-    var markX = 108 + 0.28 * 744;
+    // Start Threshold Marker
+    var markX = 108 + (startTh / 100) * 744;
     cx.fillStyle = '#fff'; cx.fillRect(markX - 2, 158, 4, 54);
-    txt('Start: 28 °/s', markX, 148, '800 11px monospace', '#93c5fd', 'center');
+    txt('Start: ' + startTh + ' °/s', markX, 148, '800 11px monospace', '#93c5fd', 'center');
     txt(dps.toFixed(1) + ' °/s', 845, 224, '800 22px monospace', step2 ? '#4ade80' : '#fbbf24', 'right');
 
     // Wave graph
@@ -615,19 +808,23 @@
     // Dashed threshold line across graph
     cx.strokeStyle = 'rgba(147,197,253,.7)'; cx.setLineDash([6, 4]); cx.lineWidth = 1.5;
     cx.beginPath(); cx.moveTo(115, 342); cx.lineTo(845, 342); cx.stroke(); cx.setLineDash([]);
-    txt('Result: Baseline Max 2.9 °/s · Spin Peak 74.2 °/s → Auto Start = 28 °/s, Stop = 11 °/s', 105, 422, '700 13px system-ui', '#cbd5e1');
+    txt('Result: Baseline Max 2.9 °/s · Spin Peak 74.2 °/s → Auto Start = ' + startTh + ' °/s, Stop = 11 °/s', 105, 422, '700 13px system-ui', '#cbd5e1');
   }
 
   function drawStreamEditScene(p) {
     rr(65, 52, 830, 430, 16, '#131722', '#283144', 2);
-    // Left USB progress box
-    rr(95, 86, 360, 165, 12, '#182032', '#3b82f6', 1.5);
-    txt('📦 USB Streaming to 360 Inbox', 115, 114, '800 14px system-ui', '#93c5fd');
+    // Left transfer box (Wi-Fi for iPhone OR USB Streaming for DSLR)
+    rr(95, 86, 360, 165, 12, '#182032', isIphone() ? '#22c55e' : '#3b82f6', 1.5);
+    txt(isIphone() ? '📶 5GHz Wi-Fi Upload to 360 Inbox' : '📦 USB Streaming to 360 Inbox', 115, 114, '800 14px system-ui', isIphone() ? '#4ade80' : '#93c5fd');
     var dl = Math.min(1, p * 1.4);
     rr(115, 146, 320, 18, 9, '#0f172a');
-    rr(115, 146, Math.max(18, 320 * dl), 18, 9, '#3b82f6');
-    txt('canon-360.mov (' + Math.round(dl * 142) + ' / 142 MB)', 115, 184, '700 12px monospace', '#e2e8f0');
-    txt('Host → Card → Stream → Host restored ✓', 115, 218, '600 11.5px system-ui', '#4ade80');
+    rr(115, 146, Math.max(18, 320 * dl), 18, 9, isIphone() ? '#22c55e' : '#3b82f6');
+    txt(isIphone()
+      ? 'iphone-360-h264.mov (' + Math.round(dl * 24) + ' / 24 MB · 2.4s)'
+      : 'canon-360.mov (' + Math.round(dl * 142) + ' / 142 MB)', 115, 184, '700 12px monospace', '#e2e8f0');
+    txt(isIphone()
+      ? 'Offline Queue Protected · Auto-Retry Ready ✓'
+      : 'Host → Card → Stream → Host restored ✓', 115, 218, '600 11.5px system-ui', '#4ade80');
 
     // Arrow to Auto-Edit
     txt('➔ AUTO-EDIT + BOOMERANG', 275, 290, '800 12px system-ui', '#f5a623', 'center');
@@ -708,7 +905,7 @@
     cx.fillStyle = bg; cx.fillRect(0, 0, 960, 600);
 
     if (s.id === 0) drawRigScene(p, true);
-    else if (s.id === 1) drawCameraMenuScene(p);
+    else if (s.id === 1) { if (isIphone()) drawIphonePairScene(p); else drawCameraMenuScene(p); }
     else if (s.id === 2) drawAppExposureScene(p);
     else if (s.id === 3) drawCalibrateScene(p);
     else if (s.id === 4) {
@@ -722,12 +919,33 @@
         rr(40, 30, 148, 34, 17, '#dc2626');
         txt('● REC  0:0' + Math.min(7, Math.floor(((p - 0.35) / 0.65) * 8)), 114, 47, '800 14px monospace', '#fff', 'center');
       }
-      txt('ARMED · GYRO > 28°/s TRIGGERED!', 642, 42, '800 13px system-ui', '#4ade80');
+      txt(isIphone() ? 'ARMED · COREMOTION > 25°/s AUTO-STARTED!' : 'ARMED · GYRO > 28°/s TRIGGERED!', 642, 42, '800 13px system-ui', '#4ade80');
     }
     else if (s.id === 5) drawStreamEditScene(p);
     else drawLiveWallScene(p);
 
     requestAnimationFrame(renderFrame);
+  }
+
+  function applyRigSelection(rigKey) {
+    st.rig = rigKey;
+    Array.from(document.getElementById('rigPills').children).forEach(function (el) {
+      el.classList.toggle('active', el.dataset.rig === rigKey);
+    });
+    var sopHref = isIphone() ? '/how-to-360-arm/#setup-iphone' : '/how-to-360-arm/#dslr';
+    var sopEl = document.getElementById('sopLink');
+    if (sopEl) sopEl.href = sopHref;
+    var topSopEl = document.getElementById('topSopLink');
+    if (topSopEl) topSopEl.href = sopHref;
+    var badgeEl = document.getElementById('heroBadge');
+    if (badgeEl) {
+      badgeEl.textContent = isIphone()
+        ? 'Interactive Semi-Video Walkthrough · iPhone / iPad Wireless 360 · Free Companion'
+        : 'Interactive Semi-Video Walkthrough · DSLR / Capture Card · Desktop v1.1.94+';
+    }
+    rebuildChapters();
+    st.lastStageId = -1;
+    syncSidePanel(stageFor(st.tMs));
   }
 
   // Bind UI controls
@@ -747,19 +965,22 @@
   });
   document.getElementById('rigPills').addEventListener('click', function (e) {
     var b = e.target.closest('[data-rig]'); if (!b) return;
-    st.rig = b.dataset.rig;
-    Array.from(this.children).forEach(function (el) { el.classList.toggle('active', el === b); });
+    applyRigSelection(b.dataset.rig);
   });
   document.getElementById('simShutter').addEventListener('change', function () { st.shutter = this.value; });
   document.getElementById('simIso').addEventListener('input', function () { st.iso = Number(this.value); });
   document.getElementById('simBoomerang').addEventListener('change', function () { st.boomerang = this.checked; });
   document.getElementById('demoSpinBtn').addEventListener('click', function () {
-    st.tMs = STAGES[4].start + 100;
+    st.tMs = activeStages()[4].start + 100;
     st.playing = true;
     playBtn.textContent = '⏸ Pause';
   });
 
-  syncSidePanel(STAGES[0]);
+  var qRig = new URLSearchParams(window.location.search).get('rig');
+  var initRig = (qRig === 'iphone' || qRig === 'iphone_arm') ? 'iphone_arm'
+    : (qRig === 'hdmi_card' || qRig === 'ios_sensor' || qRig === 'usb_tablet') ? qRig
+    : 'usb_tablet';
+  applyRigSelection(initRig);
   requestAnimationFrame(renderFrame);
 })();
 </script>

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.96', date: '2026-11-22' },
   { version: '1.1.95', date: '2026-11-22' },
   { version: '1.1.94', date: '2026-11-22' },
   { version: '1.1.93', date: '2026-11-22' },
@@ -238,7 +239,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.16', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.16/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.17', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.17/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -291,6 +292,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-22', title: 'Desktop 1.1.96, Android 1.1.100 & iPad 1.1.17: In-Place Edit Layout for Multi-Section & 4-in-1 Frames (Move & Rotate Spliced Sections)', for: ['website', 'app'], app: '1.1.96',
+    items: [
+      '📐 New Edit Layout mode for 4-in-1 and multi-section custom frames: tap Edit layout right under your uploaded frame to splice, drag to move, and rotate individual sections (such as Polaroid, Mini Wallet, or Mini Photo Strips) directly inside the single combined 4×6 preview frame without splitting them into separate frames.',
+      '🔒 Exact print size locked (zero stretching): rotating a sideways 3×2 Mini Wallet turns it into a true 2×3 upright Mini Wallet with its photo window and guest photo moving and rotating together, gentle magnetic edge snapping, clean layer ordering, independent Photo-only rotation, 1-tap Reset layout, and full save/load persistence.'
+    ]
+  },
   {
     date: '2026-11-22', title: 'Android 1.1.99 & iPad 1.1.16: Epson L8050 Wi-Fi / Wi-Fi Direct printing fixes & built-in Wi-Fi Printer Test', for: ['website'],
     items: [

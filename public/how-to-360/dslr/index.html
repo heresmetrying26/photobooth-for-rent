@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Interactive DSLR 360 Booth Walkthrough &amp; Prototype · photobooth4u</title>
+<style>
+  :root {
+    --bg: #0c0e13;
+    --card: #151922;
+    --panel: #1a1f2b;
+    --line: #272e3f;
+    --ink: #f3f5f9;
+    --dim: #9aa3b5;
+    --red: #e0462e;
+    --gold: #f5a623;
+    --green: #22c55e;
+    --blue: #3b82f6;
+    --cyan: #06b6d4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 20px 16px 64px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding-bottom: 14px; margin-bottom: 20px; border-bottom: 1px solid var(--line);
+  }
+  .brand { color: #fff; text-decoration: none; font-weight: 800; font-size: 16px; display: inline-flex; align-items: center; gap: 8px; }
+  .brand b { color: var(--red); }
+  .nav-links { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; font-weight: 700; }
+  .nav-links a { color: var(--dim); text-decoration: none; }
+  .nav-links a:hover { color: #fff; }
+
+  header { margin-bottom: 20px; }
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+    color: #93c5fd; background: rgba(59,130,246,.14); border: 1px solid rgba(59,130,246,.35);
+    padding: 4px 11px; border-radius: 999px; margin-bottom: 10px;
+  }
+  h1 { font-size: clamp(24px, 4vw, 34px); font-weight: 800; line-height: 1.15; margin-bottom: 8px; }
+  .lead { color: var(--dim); max-width: 780px; font-size: 14.5px; }
+
+  /* Player Grid */
+  .player-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(300px, 380px);
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .player-grid { grid-template-columns: 1fr; } }
+
+  .stage-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 18px 48px rgba(0,0,0,.45);
+  }
+  .stage-wrap {
+    position: relative;
+    background: #07090d;
+    aspect-ratio: 16 / 10;
+    width: 100%;
+    overflow: hidden;
+  }
+  canvas#simCv {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .caption-bar {
+    position: absolute; left: 12px; right: 12px; bottom: 10px;
+    background: rgba(8, 10, 15, .84); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 10px; padding: 8px 12px;
+    display: flex; align-items: center; gap: 10px;
+    pointer-events: none;
+  }
+  .caption-pill {
+    flex-shrink: 0; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px;
+    background: var(--red); color: #fff; text-transform: uppercase;
+  }
+  .caption-text { font-size: 12.5px; color: #f1f5f9; font-weight: 600; line-height: 1.35; }
+
+  /* Video Transport Controls */
+  .transport {
+    padding: 12px 16px 14px;
+    border-top: 1px solid var(--line);
+    background: #12151d;
+  }
+  .scrub-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .scrub-row input[type=range] { flex: 1; accent-color: var(--red); cursor: pointer; }
+  .time-lbl { font: 700 12px monospace; color: var(--dim); min-width: 78px; text-align: right; }
+
+  .btn-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tbtn {
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+    border-radius: 9px; padding: 7px 12px; font: 700 12.5px inherit; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; transition: all .15s;
+  }
+  .tbtn:hover { border-color: #4b556b; background: #222838; }
+  .tbtn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+  .tbtn.primary:hover { filter: brightness(1.08); }
+  .tbtn.active { border-color: var(--blue); background: rgba(59,130,246,.2); color: #93c5fd; }
+
+  .chapters {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 12px;
+  }
+  @media (max-width: 720px) { .chapters { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); } }
+  .chap-btn {
+    border: 1px solid var(--line); background: var(--panel); color: var(--dim);
+    border-radius: 9px; padding: 7px 6px; text-align: left; cursor: pointer; font: 600 11px inherit;
+    transition: all .15s;
+  }
+  .chap-btn b { display: block; color: var(--ink); font-size: 11px; margin-bottom: 1px; }
+  .chap-btn.active { border-color: var(--gold); background: rgba(245,166,35,.13); color: #fde68a; }
+  .chap-btn.active b { color: #fff; }
+
+  /* Right Inspector Panel */
+  .side-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 18px;
+  }
+  .side-section { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .side-section:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+  .side-kicker {
+    font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px;
+  }
+  .side-card h2 { font-size: 18px; margin-bottom: 6px; }
+  .side-card p.desc { color: var(--dim); font-size: 13px; line-height: 1.5; }
+
+  .rig-pills { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .rig-pill {
+    border: 1px solid var(--line); background: var(--panel); color: var(--dim);
+    border-radius: 10px; padding: 9px 11px; text-align: left; cursor: pointer; font: 600 12px inherit;
+    transition: all .15s;
+  }
+  .rig-pill strong { display: block; color: var(--ink); font-size: 12.5px; }
+  .rig-pill.active { border-color: var(--blue); background: rgba(59,130,246,.14); color: #dbeafe; }
+
+  .checklist { list-style: none; display: flex; flex-direction: column; gap: 7px; margin-top: 8px; }
+  .checklist li {
+    background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.06);
+    border-radius: 9px; padding: 8px 10px; font-size: 12.5px; color: #dbe2ef;
+    display: flex; gap: 8px; align-items: flex-start;
+  }
+  .checklist li i { font-style: normal; color: var(--green); font-weight: 800; }
+
+  .sandbox-box {
+    background: #10141e; border: 1px solid #293247; border-radius: 11px; padding: 11px; margin-top: 8px;
+  }
+  .sb-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; font-size: 12px; }
+  .sb-row label { color: var(--dim); font-weight: 700; }
+  .sb-row select, .sb-row input[type=range] { max-width: 175px; }
+  select {
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 7px; padding: 4px 8px; font: 600 12px inherit;
+  }
+
+  .cta-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .cta-link {
+    flex: 1; text-align: center; text-decoration: none; padding: 9px 12px; border-radius: 10px;
+    font: 700 12.5px inherit; background: var(--panel); color: #fff; border: 1px solid var(--line);
+  }
+  .cta-link.red { background: var(--red); border-color: var(--red); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="brand" href="/"><b>●</b> photobooth4u</a>
+    <div class="nav-links">
+      <a href="/how-to-360/">360 Overview</a>
+      <a href="/how-to-360-arm/#dslr">Text SOP Guide</a>
+      <a href="/downloads/">Downloads (v1.1.94+)</a>
+    </div>
+  </div>
+
+  <header>
+    <div class="badge">Interactive Semi-Video Walkthrough · Desktop v1.1.94+</div>
+    <h1>How DSLR 360 Works with photobooth4u</h1>
+    <p class="lead">Watch the automated end-to-end 7-stage walkthrough or click any chapter below to test exposure, spin calibration, Boomerang speed, and Live TV Wall cues live.</p>
+  </header>
+
+  <div class="player-grid">
+    <!-- Left: Animated Semi-Video Canvas -->
+    <div class="stage-card">
+      <div class="stage-wrap">
+        <canvas id="simCv" width="960" height="600"></canvas>
+        <div class="caption-bar">
+          <span class="caption-pill" id="capBadge">Step 1/7</span>
+          <span class="caption-text" id="capText">Mount Canon/Nikon DSLR or GoPro inside the ring light, strap your Surface Pro / Windows tablet below, and plug the USB data cable straight in.</span>
+        </div>
+      </div>
+
+      <div class="transport">
+        <div class="scrub-row">
+          <button type="button" class="tbtn primary" id="playBtn">⏸ Pause</button>
+          <button type="button" class="tbtn" id="restartBtn">⏮ Restart</button>
+          <button type="button" class="tbtn" id="speedBtn">1×</button>
+          <input type="range" id="scrubber" min="0" max="35000" step="50" value="0" aria-label="Timeline scrubber">
+          <span class="time-lbl" id="timeLbl">0:00 / 0:35</span>
+        </div>
+        <div class="chapters" id="chaptersRow"></div>
+      </div>
+    </div>
+
+    <!-- Right: Interactive Controls & Step Breakdown -->
+    <div class="side-card">
+      <div class="side-section">
+        <div class="side-kicker">1 · Select Your Rig</div>
+        <div class="rig-pills" id="rigPills">
+          <button type="button" class="rig-pill active" data-rig="usb_tablet">
+            <strong>📷 Canon / Nikon USB + Tablet on Arm</strong>
+            Direct USB cable to Surface Pro / Windows tablet using built-in Windows Gyroscope
+          </button>
+          <button type="button" class="rig-pill" data-rig="hdmi_card">
+            <strong>🎥 Sony / Any Camera + HDMI Capture Card</strong>
+            Plug HDMI out into Cam Link &rarr; select <b>HDMI Card / Webcam</b> in Record 360
+          </button>
+          <button type="button" class="rig-pill" data-rig="ios_sensor">
+            <strong>📱 DSLR + Paired iPhone Wireless Sensor</strong>
+            Keep laptop safely on a table; mount a spare iPhone on the arm as wireless trigger
+          </button>
+        </div>
+      </div>
+
+      <div class="side-section">
+        <div class="side-kicker" id="stepKicker">Active Stage</div>
+        <h2 id="stepTitle">1 · Hardware &amp; Arm Mounting</h2>
+        <p class="desc" id="stepDesc"></p>
+        <ul class="checklist" id="stepChecks"></ul>
+      </div>
+
+      <div class="side-section">
+        <div class="side-kicker">Interactive Test Controls</div>
+        <div class="sandbox-box">
+          <div class="sb-row">
+            <label for="simShutter">Shutter (HFR)</label>
+            <select id="simShutter">
+              <option value="1/60">1/60 s (30fps)</option>
+              <option value="1/125" selected>1/125 s (60fps)</option>
+              <option value="1/250">1/250 s (120fps)</option>
+            </select>
+          </div>
+          <div class="sb-row">
+            <label for="simIso">ISO Brightness</label>
+            <input type="range" id="simIso" min="200" max="3200" step="200" value="800">
+          </div>
+          <div class="sb-row">
+            <label for="simBoomerang">Reverse / Boomerang</label>
+            <input type="checkbox" id="simBoomerang" checked>
+          </div>
+          <div class="cta-bar" style="margin-top:8px;">
+            <button type="button" class="tbtn active" id="demoSpinBtn" style="flex:1;justify-content:center;">🌀 Test Spin Now</button>
+          </div>
+        </div>
+
+        <div class="cta-bar">
+          <a class="cta-link" href="/how-to-360-arm/#dslr">📖 Full Written SOP</a>
+          <a class="cta-link red" href="/downloads/">⬇️ Download v1.1.94</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var TOTAL_MS = 35000; // 7 stages x 5s
+  var STAGES = [
+    {
+      id: 0, start: 0, end: 5000, short: '1. Mount', title: '1 · Mount Camera, Ring Light & Tablet',
+      caption: 'Mount Canon EOS / Nikon / GoPro inside the ring light with a wide-angle lens; secure your Windows tablet / cable straight in.',
+      desc: 'Position the lens inside the ring light so guests fit comfortably with clean headroom. Plug directly with a data USB cable (or HDMI Capture Card for Sony).',
+      checks: [
+        'Wide-angle lens centered inside ring light',
+        'High-speed USB data cable (no unpowered hubs)',
+        'Ring light tilted slightly downward at face level'
+      ]
+    },
+    {
+      id: 1, start: 5000, end: 10000, short: '2. Camera', title: '2 · Set 120fps HFR & Manual Movie Mode',
+      caption: 'On camera: Mode Dial = Movie, 1080p 60/120fps High Frame Rate ON, Movie Manual Exposure, Exposure Sim = Disable, Servo AF = Off.',
+      desc: 'Canon and Nikon record high-bitrate 60/120fps footage directly to the SD card first, then stream straight to photobooth4u.',
+      checks: [
+        'Fast SD card inserted with free space',
+        'High Frame Rate Movie: 1080p 119.9 / 120fps Enabled',
+        'Movie Servo AF Off (use manual focus or one-shot AF)'
+      ]
+    },
+    {
+      id: 2, start: 10000, end: 15000, short: '3. Expose', title: '3 · Connect in 📷 Record 360 & Tune Settings',
+      caption: 'Open 360 Desk → Record 360 → Connect. Open DSLR Settings → Read → pick 1/125 (60fps) or 1/250 (120fps) → Apply.',
+      desc: 'Adjust Shutter Speed, Aperture, ISO, and White Balance right from the Surface Pro screen and frame with the live view crosshair.',
+      checks: [
+        'Click Read to load live camera settings',
+        'Use 1/125 for 60fps or 1/250 for 120fps zero motion blur',
+        'Tap 🎯 AF once on a test person before spinning'
+      ]
+    },
+    {
+      id: 3, start: 15000, end: 20000, short: '4. Calibrate', title: '4 · Configure Arm Motion Sensitivity (5s)',
+      caption: 'Click Configure sensitivity → Run 5s Auto-Calibrate: 2s hold still (noise floor), then 3s test spin to lock start & stop °/s.',
+      desc: 'Windows tablet gyroscopes (or a paired iPhone wireless arm sensor) learn your platform wobble vs. real spin speed so footsteps never false-trigger.',
+      checks: [
+        'Step 1: Hold arm STILL for 2s to measure vibration floor',
+        'Step 2: Run 3s SPIN to find peak & median °/s',
+        'Auto-sets Start (28°/s) and Stop (11°/s) thresholds'
+      ]
+    },
+    {
+      id: 4, start: 20000, end: 25000, short: '5. Spin', title: '5 · Arm Trigger, Countdown & Auto-Record',
+      caption: 'Click Arm Trigger (green). Remote starts the motor → gyro crosses threshold → 3..2..1 countdown → REC orbits guest 360°!',
+      desc: 'Zero screen taps needed during the party. Once spin passes threshold, countdown fires and camera records until Fixed duration or Arm Stop.',
+      checks: [
+        'Green ARMED badge watches °/s live (or F9 remote clicker)',
+        '3.. 2.. 1.. cues show on both screen and Live Wall TV',
+        'Follow Arm Stop adds smooth tail until motor stops'
+      ]
+    },
+    {
+      id: 5, start: 25000, end: 30000, short: '6. Stream', title: '6 · USB Stream Transfer & Boomerang Render',
+      caption: 'Camera stops and streams .MOV over USB into 360 Inbox with live % bar → auto speed ramp, Boomerang reverse, music & Canva frame.',
+      desc: 'Large 120fps files stream in 1 MB chunks straight to disk (no memory crash) and trigger Auto-Edit immediately.',
+      checks: [
+        'Canon temporarily switches Host → Card → Host cleanly',
+        'FFmpeg applies Slow-Mo + Reverse Boomerang loop',
+        'Beat-drop music & custom transparent PNG frame baked in'
+      ]
+    },
+    {
+      id: 6, start: 30000, end: 35000, short: '7. Live Wall', title: '7 · Live TV Wall & 2-Step Offline QR Sharing',
+      caption: 'External TV celebrates ✨ FRESH OFF THE 360!, loops HD video, and displays Step 1 (Wi-Fi QR) + Step 2 (Save MP4 QR) offline!',
+      desc: 'No venue internet required. Guests scan Step 1 to join booth Wi-Fi automatically and Step 2 to download the MP4 to Camera Roll in seconds.',
+      checks: [
+        'Live Wall mirrors Countdown, REC, and Ready spotlight',
+        'Step 1 QR joins booth Wi-Fi without typing passwords',
+        'Step 2 QR opens instant Save Video page on Safari/Chrome'
+      ]
+    }
+  ];
+
+  var st = {
+    playing: true,
+    speed: 1,
+    tMs: 0,
+    lastTick: performance.now(),
+    rig: 'usb_tablet',
+    shutter: '1/125',
+    iso: 800,
+    boomerang: true,
+    lastStageId: -1
+  };
+
+  var cv = document.getElementById('simCv');
+  var cx = cv.getContext('2d');
+  var scrubber = document.getElementById('scrubber');
+  var timeLbl = document.getElementById('timeLbl');
+  var playBtn = document.getElementById('playBtn');
+  var speedBtn = document.getElementById('speedBtn');
+  var chapRow = document.getElementById('chaptersRow');
+
+  // Build chapter buttons
+  STAGES.forEach(function (s) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chap-btn';
+    b.dataset.id = String(s.id);
+    b.innerHTML = '<b>' + s.short + '</b><span>' + (s.start / 1000) + 's</span>';
+    b.addEventListener('click', function () {
+      st.tMs = s.start + 120;
+      syncSidePanel(s);
+    });
+    chapRow.appendChild(b);
+  });
+
+  function stageFor(ms) {
+    for (var i = STAGES.length - 1; i >= 0; i--) {
+      if (ms >= STAGES[i].start) return STAGES[i];
+    }
+    return STAGES[0];
+  }
+
+  function syncSidePanel(s) {
+    if (st.lastStageId === s.id) return;
+    st.lastStageId = s.id;
+    document.getElementById('capBadge').textContent = 'Step ' + (s.id + 1) + '/7';
+    document.getElementById('capText').textContent = s.caption;
+    document.getElementById('stepKicker').textContent = 'Stage ' + (s.id + 1) + ' of 7';
+    document.getElementById('stepTitle').textContent = s.title;
+    document.getElementById('stepDesc').textContent = s.desc;
+    document.getElementById('stepChecks').innerHTML = s.checks.map(function (c) {
+      return '<li><i>✓</i><span>' + c + '</span></li>';
+    }).join('');
+    Array.from(chapRow.children).forEach(function (el) {
+      el.classList.toggle('active', Number(el.dataset.id) === s.id);
+    });
+  }
+
+  function fmtSec(ms) {
+    var s = Math.floor(ms / 1000);
+    return '0:' + (s < 10 ? '0' : '') + s;
+  }
+
+  // Drawing helpers
+  function rr(x, y, w, h, r, fill, stroke, lw) {
+    cx.beginPath();
+    cx.roundRect(x, y, w, h, r);
+    if (fill) { cx.fillStyle = fill; cx.fill(); }
+    if (stroke) { cx.strokeStyle = stroke; cx.lineWidth = lw || 1.5; cx.stroke(); }
+  }
+
+  function txt(t, x, y, font, color, align) {
+    cx.fillStyle = color || '#fff';
+    cx.font = font || '600 13px system-ui, sans-serif';
+    cx.textAlign = align || 'left';
+    cx.textBaseline = 'middle';
+    cx.fillText(t, x, y);
+  }
+
+  function drawRigScene(p, highlightCable) {
+    var W = 960, H = 600;
+    // Floor platform (perspective ellipse)
+    var gx = 320, gy = 435;
+    cx.save();
+    cx.fillStyle = 'rgba(0,0,0,.45)';
+    cx.beginPath(); cx.ellipse(gx, gy + 18, 175, 44, 0, 0, Math.PI * 2); cx.fill();
+    cx.fillStyle = '#1b202d'; cx.strokeStyle = '#3b445c'; cx.lineWidth = 4;
+    cx.beginPath(); cx.ellipse(gx, gy, 165, 38, 0, 0, Math.PI * 2); cx.fill(); cx.stroke();
+    cx.strokeStyle = '#e0462e'; cx.lineWidth = 2;
+    cx.beginPath(); cx.ellipse(gx, gy, 138, 28, 0, 0, Math.PI * 2); cx.stroke();
+
+    // Standing Guest silhouette on center of platform
+    var bob = Math.sin(p * Math.PI * 4) * 3;
+    cx.fillStyle = '#2c3347';
+    cx.beginPath(); cx.arc(gx, gy - 205 + bob, 26, 0, Math.PI * 2); cx.fill();
+    cx.beginPath(); cx.roundRect(gx - 34, gy - 175 + bob, 68, 105, 18); cx.fill();
+    cx.fillRect(gx - 26, gy - 75 + bob, 20, 72);
+    cx.fillRect(gx + 6, gy - 75 + bob, 20, 72);
+    // Confetti/glam prop wave
+    cx.strokeStyle = '#93c5fd'; cx.lineWidth = 10; cx.lineCap = 'round';
+    cx.beginPath(); cx.moveTo(gx + 28, gy - 155 + bob); cx.lineTo(gx + 75, gy - 195 + Math.sin(p * 12) * 14); cx.stroke();
+
+    // Rotating 360 Arm + Camera Angle
+    var angle = st.lastStageId === 4 ? (p * Math.PI * 2) : (st.lastStageId === 0 ? Math.sin(p * 6) * 0.25 : 0.45);
+    var armReach = 240;
+    var camX = gx + Math.cos(angle) * armReach;
+    var camY = gy - 140 + Math.sin(angle) * 35;
+
+    // Boom pole from hub -> arm mount
+    cx.strokeStyle = '#475569'; cx.lineWidth = 8;
+    cx.beginPath(); cx.moveTo(gx, gy + 10); cx.lineTo(camX, gy + 24); cx.lineTo(camX, camY + 60); cx.stroke();
+
+    // Ring light around DSLR
+    cx.save();
+    cx.shadowColor = '#fff6d6'; cx.shadowBlur = 18;
+    cx.strokeStyle = '#fffbeb'; cx.lineWidth = 11;
+    cx.beginPath(); cx.arc(camX, camY, 44, 0, Math.PI * 2); cx.stroke();
+    cx.restore();
+
+    // DSLR / GoPro inside ring light
+    rr(camX - 24, camY - 17, 48, 34, 6, '#1e2430', '#94a3b8', 2);
+    cx.fillStyle = '#0f172a'; cx.beginPath(); cx.arc(camX, camY, 12, 0, Math.PI * 2); cx.fill();
+    cx.strokeStyle = '#64748b'; cx.lineWidth = 2; cx.stroke();
+    txt(st.rig === 'hdmi_card' ? 'SONY' : 'DSLR', camX, camY - 29, '800 10px system-ui', '#fde68a', 'center');
+
+    // Device mounted below ring light (Surface Pro OR iPhone sensor OR USB tethered to Laptop)
+    if (st.rig === 'usb_tablet') {
+      rr(camX - 54, camY + 56, 108, 66, 8, '#0f172a', '#60a5fa', 2);
+      rr(camX - 46, camY + 62, 92, 50, 4, '#1d273b');
+      txt('Surface Pro', camX, camY + 87, '700 11px system-ui', '#93c5fd', 'center');
+      // Glowing USB cable camera -> Surface
+      cx.strokeStyle = highlightCable ? '#22c55e' : '#38bdf8';
+      cx.lineWidth = highlightCable ? 3.5 : 2.5;
+      cx.beginPath(); cx.moveTo(camX + 20, camY + 14); cx.bezierCurveTo(camX + 68, camY + 25, camX + 70, camY + 75, camX + 52, camY + 84); cx.stroke();
+    } else if (st.rig === 'ios_sensor') {
+      rr(camX - 20, camY + 58, 40, 68, 7, '#0f172a', '#f5a623', 2);
+      txt('iPhone', camX, camY + 86, '700 10px system-ui', '#fde68a', 'center');
+      txt('Gyro', camX, camY + 100, '700 9px system-ui', '#94a3b8', 'center');
+    } else {
+      rr(camX - 26, camY + 58, 52, 24, 5, '#1e293b', '#c084fc', 2);
+      txt('CamLink', camX, camY + 70, '700 9px system-ui', '#e9d5ff', 'center');
+    }
+    cx.restore();
+
+    // Right info card on stage
+    rr(620, 62, 305, 430, 16, '#131722', '#283144', 1.5);
+    txt('HARDWARE CHECKLIST', 642, 92, '800 11px system-ui', '#93c5fd');
+    var items = st.rig === 'usb_tablet'
+      ? ['1. Canon/Nikon/GoPro inside ring', '2. Wide lens frames full guest', '3. Surface Pro / Win tablet on arm', '4. Direct USB data cable (no hub)', '5. Built-in Gyro auto-starts on spin']
+      : st.rig === 'hdmi_card'
+      ? ['1. Sony / DSLR HDMI out -> Cam Link', '2. Select HDMI Card in Record 360', '3. 1080p 60fps clean HDMI feed', '4. Tablet gyro or clicker starts REC', '5. Auto-saves straight to 360 Inbox']
+      : ['1. Canon/Nikon wired to table laptop', '2. Mount spare iPhone on arm', '3. Pair via Free 360 Arm Camera', '4. iPhone Gyro triggers DSLR over Wi-Fi', '5. No tablet weight on rotating arm'];
+    items.forEach(function (it, idx) {
+      rr(640, 122 + idx * 62, 265, 50, 10, '#1a2030', '#2d364b', 1);
+      txt(it, 654, 147 + idx * 62, '600 12.5px system-ui', '#e2e8f0');
+    });
+  }
+
+  function drawCameraMenuScene(p) {
+    // Stylized DSLR rear screen
+    rr(95, 58, 480, 390, 22, '#171a22', '#3a4256', 3);
+    rr(145, 118, 380, 260, 10, '#0a0c10', '#475569', 2);
+    // Mode Dial icon top right
+    cx.fillStyle = '#252a38'; cx.beginPath(); cx.arc(530, 74, 28, 0, Math.PI * 2); cx.fill();
+    cx.strokeStyle = '#ef4444'; cx.lineWidth = 2.5; cx.stroke();
+    txt('🎥', 530, 74, '18px system-ui', '#fff', 'center');
+    txt('DIAL: MOVIE', 530, 112, '800 9.5px system-ui', '#f87171', 'center');
+
+    // Canon/Nikon Menu UI inside LCD
+    rr(155, 128, 360, 34, 4, '#7f1d1d');
+    txt('High Frame Rate Movie', 170, 145, '700 14px system-ui', '#fff');
+    txt('1920x1080  119.9fps', 175, 188, '700 18px monospace', '#93c5fd');
+    txt('Standard (IPB) · Max rec 07:29', 175, 214, '600 12px system-ui', '#94a3b8');
+
+    var pulse = 0.6 + 0.4 * Math.sin(p * Math.PI * 6);
+    rr(215, 238, 105, 36, 6, '#1f2937', '#475569');
+    txt('Disable', 267, 256, '700 14px system-ui', '#94a3b8', 'center');
+    rr(335, 238, 105, 36, 6, 'rgba(220,38,38,' + (0.35 + pulse * 0.4) + ')', '#ef4444', 2.5);
+    txt('Enable', 387, 256, '800 14px system-ui', '#fff', 'center');
+
+    txt('Movie Servo AF: Off   ·   Exposure Sim: Disable', 335, 308, '600 12px system-ui', '#fde68a', 'center');
+    rr(250, 336, 170, 26, 6, '#14532d', '#22c55e');
+    txt('✓ SD CARD READY', 335, 349, '700 11.5px system-ui', '#bbf7d0', 'center');
+
+    // Explanation column
+    rr(610, 58, 315, 390, 16, '#131722', '#283144', 1.5);
+    txt('WHY 120 FPS MATTERS', 632, 92, '800 11px system-ui', '#f5a623');
+    [['30 fps', 'Standard speed (no true slow-mo)', '#94a3b8'],
+     ['60 fps', 'Smooth 0.5× slow motion', '#93c5fd'],
+     ['120 fps', 'Cinematic 0.25× super slow-mo!', '#22c55e']].forEach(function (row, i) {
+      rr(630, 124 + i * 74, 275, 58, 10, '#1a2030', i === 2 ? '#22c55e' : '#2d364b', i === 2 ? 2 : 1);
+      txt(row[0], 644, 144 + i * 74, '800 15px system-ui', row[2]);
+      txt(row[1], 644, 166 + i * 74, '600 12px system-ui', '#cbd5e1');
+    });
+    txt('Match Shutter Speed = 2× FPS (1/250)', 634, 380, '700 12px system-ui', '#fde68a');
+    txt('Selected now: ' + st.shutter + ' · ISO ' + st.iso, 634, 405, '600 12px monospace', '#93c5fd');
+  }
+
+  function drawAppExposureScene(p) {
+    // Desktop Record 360 App Mockup
+    rr(55, 42, 850, 440, 16, '#f6f2eb', '#cbd5e1', 2);
+    // Left preview panel inside app
+    rr(78, 66, 420, 300, 12, '#13151c');
+    // Simulate ISO brightness inside live preview
+    var bright = Math.min(0.45, Math.max(0.05, (st.iso - 200) / 5500));
+    rr(78, 66, 420, 300, 12, 'rgba(255,245,225,' + bright + ')');
+    // Guest figure inside live frame
+    cx.fillStyle = '#e2e8f0';
+    cx.beginPath(); cx.arc(288, 165, 28, 0, Math.PI * 2); cx.fill();
+    rr(256, 200, 64, 118, 18, '#93c5fd');
+    cx.strokeStyle = 'rgba(255,255,255,.35)'; cx.setLineDash([6, 5]); cx.lineWidth = 1.5;
+    cx.strokeRect(145, 98, 286, 236); cx.setLineDash([]);
+    rr(92, 80, 96, 22, 11, 'rgba(34,197,94,.9)');
+    txt('LIVE VIEW', 140, 91, '800 10.5px system-ui', '#fff', 'center');
+
+    // Right settings drawer
+    rr(518, 66, 364, 392, 12, '#ffffff', '#e2d9cd', 1.5);
+    txt('📷 Record 360 · ⚙️ DSLR Settings', 536, 94, '800 14px system-ui', '#1c1a1e');
+    var rows = [
+      ['Shutter Speed', st.shutter + (st.shutter === '1/250' ? ' (120fps)' : st.shutter === '1/125' ? ' (60fps)' : '')],
+      ['Aperture', 'f/2.8'],
+      ['ISO', String(st.iso)],
+      ['White Balance', 'Daylight (Fixed)']
+    ];
+    rows.forEach(function (r, i) {
+      rr(536, 122 + i * 64, 328, 50, 9, '#f8f4ee', '#e2d9cd');
+      txt(r[0], 550, 138 + i * 64, '700 11px system-ui', '#64748b');
+      txt(r[1], 550, 157 + i * 64, '800 14px monospace', '#1c1a1e');
+    });
+    var pulse = Math.sin(p * Math.PI * 4) > 0;
+    rr(536, 390, 154, 42, 10, pulse ? '#2563eb' : '#1c1a1e');
+    txt('↻ Read Settings', 613, 411, '700 12.5px system-ui', '#fff', 'center');
+    rr(704, 390, 160, 42, 10, '#16a34a');
+    txt('✓ Apply to DSLR', 784, 411, '700 12.5px system-ui', '#fff', 'center');
+    txt('Tip: Try changing Shutter / ISO in Right Panel →', 288, 398, '700 12px system-ui', '#475569', 'center');
+  }
+
+  function drawCalibrateScene(p) {
+    var step2 = p > 0.4;
+    var dps = step2 ? (22 + Math.sin((p - 0.4) * 14) * 18 + 38) : (1.5 + Math.sin(p * 40) * 1.4);
+    rr(75, 52, 810, 430, 16, '#131722', '#283144', 2);
+    txt('🌀 Arm Motion Trigger · Configure sensitivity', 105, 92, '800 18px system-ui', '#fff');
+    txt(step2 ? 'STEP 2/2: SPIN THE 360 ARM AT NORMAL EVENT SPEED (3s)...' : 'STEP 1/2: HOLD ARM STILL FOR 2s TO MEASURE VIBRATION NOISE...', 105, 126, '800 13px system-ui', step2 ? '#4ade80' : '#fbbf24');
+
+    // Gauge bar
+    rr(105, 168, 750, 34, 17, '#1f2534', '#374151');
+    var fillW = Math.min(744, Math.max(8, (dps / 100) * 744));
+    rr(108, 171, fillW, 28, 14, step2 ? '#22c55e' : '#f59e0b');
+    // Start Threshold Marker at 28 deg/s
+    var markX = 108 + 0.28 * 744;
+    cx.fillStyle = '#fff'; cx.fillRect(markX - 2, 158, 4, 54);
+    txt('Start: 28 °/s', markX, 148, '800 11px monospace', '#93c5fd', 'center');
+    txt(dps.toFixed(1) + ' °/s', 845, 224, '800 22px monospace', step2 ? '#4ade80' : '#fbbf24', 'right');
+
+    // Wave graph
+    rr(105, 250, 750, 140, 12, '#0a0d14', '#263044');
+    cx.strokeStyle = step2 ? '#22c55e' : '#f59e0b'; cx.lineWidth = 3;
+    cx.beginPath();
+    for (var x = 0; x <= 730; x += 10) {
+      var u = x / 730;
+      var amp = u < 0.4 ? (4 + Math.sin(x * 0.4 + p * 20) * 3) : (68 + Math.sin(x * 0.15 + p * 12) * 18);
+      var py = 375 - Math.min(115, amp * 1.1);
+      if (x === 0) cx.moveTo(115 + x, py); else cx.lineTo(115 + x, py);
+    }
+    cx.stroke();
+    // Dashed threshold line across graph
+    cx.strokeStyle = 'rgba(147,197,253,.7)'; cx.setLineDash([6, 4]); cx.lineWidth = 1.5;
+    cx.beginPath(); cx.moveTo(115, 342); cx.lineTo(845, 342); cx.stroke(); cx.setLineDash([]);
+    txt('Result: Baseline Max 2.9 °/s · Spin Peak 74.2 °/s → Auto Start = 28 °/s, Stop = 11 °/s', 105, 422, '700 13px system-ui', '#cbd5e1');
+  }
+
+  function drawStreamEditScene(p) {
+    rr(65, 52, 830, 430, 16, '#131722', '#283144', 2);
+    // Left USB progress box
+    rr(95, 86, 360, 165, 12, '#182032', '#3b82f6', 1.5);
+    txt('📦 USB Streaming to 360 Inbox', 115, 114, '800 14px system-ui', '#93c5fd');
+    var dl = Math.min(1, p * 1.4);
+    rr(115, 146, 320, 18, 9, '#0f172a');
+    rr(115, 146, Math.max(18, 320 * dl), 18, 9, '#3b82f6');
+    txt('canon-360.mov (' + Math.round(dl * 142) + ' / 142 MB)', 115, 184, '700 12px monospace', '#e2e8f0');
+    txt('Host → Card → Stream → Host restored ✓', 115, 218, '600 11.5px system-ui', '#4ade80');
+
+    // Arrow to Auto-Edit
+    txt('➔ AUTO-EDIT + BOOMERANG', 275, 290, '800 12px system-ui', '#f5a623', 'center');
+    rr(95, 315, 360, 130, 12, '#1c1829', '#a855f7', 1.5);
+    txt(st.boomerang ? '🔁 Forward + Reverse Boomerang' : '⚡ Classic 0.5× Slow-Mo', 115, 345, '800 13px system-ui', '#e9d5ff');
+    txt('♫ Beat-drop MP3 audio synchronized', 115, 376, '600 12px system-ui', '#cbd5e1');
+    txt('🖼️ Custom Canva 1080×1920 PNG overlay', 115, 406, '600 12px system-ui', '#cbd5e1');
+
+    // Right vertical 9:16 video preview
+    rr(545, 76, 260, 385, 20, '#0a0c12', '#f5a623', 3);
+    // Canva frame border inside preview
+    cx.strokeStyle = '#fbbf24'; cx.lineWidth = 4;
+    cx.strokeRect(562, 94, 226, 349);
+    // Animated guest inside final reel
+    var spinPos = st.boomerang ? Math.abs(Math.sin(p * Math.PI * 2)) : (p * 2 % 1);
+    cx.fillStyle = '#fde68a'; cx.beginPath(); cx.arc(675 + (spinPos - 0.5) * 40, 215, 26, 0, Math.PI * 2); cx.fill();
+    rr(645 + (spinPos - 0.5) * 40, 248, 60, 95, 16, '#e0462e');
+    rr(580, 396, 190, 32, 8, 'rgba(0,0,0,.65)');
+    txt('ALEX & SAM · 2026', 675, 412, '800 12px system-ui', '#fff', 'center');
+  }
+
+  function drawLiveWallScene(p) {
+    // External HDMI TV Mockup
+    rr(60, 58, 560, 360, 14, '#090b10', '#475569', 6);
+    rr(78, 76, 524, 324, 6, '#141925');
+    // Celebrating Banner
+    rr(98, 92, 484, 42, 10, '#7c2d12', '#f5a623');
+    txt('✨ FRESH OFF THE 360! SCAN QR TO SAVE MP4 ✨', 340, 113, '800 13.5px system-ui', '#fef08a', 'center');
+
+    // Looping video on left of TV
+    rr(105, 152, 200, 232, 10, '#1e293b', '#f5a623', 2);
+    cx.fillStyle = '#93c5fd'; cx.beginPath(); cx.arc(205, 230 + Math.sin(p * 8) * 6, 24, 0, Math.PI * 2); cx.fill();
+    rr(176, 262, 58, 78, 12, '#e0462e');
+
+    // Two-Step Offline QRs on right of TV
+    rr(330, 152, 114, 150, 10, '#ffffff');
+    rr(456, 152, 114, 150, 10, '#ffffff');
+    // Fake QR patterns
+    cx.fillStyle = '#0f172a';
+    for (var q = 0; q < 2; q++) {
+      var qx = (q === 0 ? 344 : 470), qy = 166;
+      for (var r = 0; r < 6; r++) for (var c = 0; c < 6; c++) {
+        if ((r + c + q) % 2 === 0 || (r < 2 && c < 2)) cx.fillRect(qx + c * 14, qy + r * 14, 11, 11);
+      }
+    }
+    txt('1. JOIN WI-FI', 387, 274, '800 11px system-ui', '#0f172a', 'center');
+    txt('NO PASSWORD', 387, 289, '700 9.5px system-ui', '#64748b', 'center');
+    txt('2. SAVE MP4', 513, 274, '800 11px system-ui', '#e0462e', 'center');
+    txt('INSTANT REEL', 513, 289, '700 9.5px system-ui', '#64748b', 'center');
+    txt('No Internet Needed · 100% Local Speed', 450, 336, '700 12px system-ui', '#4ade80', 'center');
+
+    // Guest Phone scanning QR
+    rr(680, 105, 200, 355, 26, '#0f172a', '#22c55e', 3);
+    rr(698, 134, 164, 290, 12, '#1e293b');
+    txt('✓ Saved to Photos!', 780, 185, '800 14px system-ui', '#4ade80', 'center');
+    rr(726, 216, 108, 150, 10, '#0f172a', '#f5a623', 1.5);
+    txt('360 Reel', 780, 290, '700 13px system-ui', '#fde68a', 'center');
+    rr(718, 382, 124, 30, 8, '#22c55e');
+    txt('Share TikTok / IG', 780, 397, '800 11px system-ui', '#052e16', 'center');
+  }
+
+  function renderFrame(now) {
+    if (st.playing) {
+      var dt = Math.min(80, now - st.lastTick) * st.speed;
+      st.tMs = (st.tMs + dt) % TOTAL_MS;
+      scrubber.value = String(Math.round(st.tMs));
+    }
+    st.lastTick = now;
+
+    var s = stageFor(st.tMs);
+    syncSidePanel(s);
+    timeLbl.textContent = fmtSec(st.tMs) + ' / 0:35';
+    var p = Math.max(0, Math.min(1, (st.tMs - s.start) / (s.end - s.start)));
+
+    // Clear stage background
+    var bg = cx.createLinearGradient(0, 0, 960, 600);
+    bg.addColorStop(0, '#090b10'); bg.addColorStop(1, '#111623');
+    cx.fillStyle = bg; cx.fillRect(0, 0, 960, 600);
+
+    if (s.id === 0) drawRigScene(p, true);
+    else if (s.id === 1) drawCameraMenuScene(p);
+    else if (s.id === 2) drawAppExposureScene(p);
+    else if (s.id === 3) drawCalibrateScene(p);
+    else if (s.id === 4) {
+      drawRigScene(p, true);
+      // Overlay countdown or REC badge on stage top-left
+      if (p < 0.35) {
+        var cd = 3 - Math.floor((p / 0.35) * 3);
+        rr(280, 240, 80, 80, 40, 'rgba(224,70,46,.92)', '#fff', 3);
+        txt(String(cd), 320, 280, '900 42px system-ui', '#fff', 'center');
+      } else {
+        rr(40, 30, 148, 34, 17, '#dc2626');
+        txt('● REC  0:0' + Math.min(7, Math.floor(((p - 0.35) / 0.65) * 8)), 114, 47, '800 14px monospace', '#fff', 'center');
+      }
+      txt('ARMED · GYRO > 28°/s TRIGGERED!', 642, 42, '800 13px system-ui', '#4ade80');
+    }
+    else if (s.id === 5) drawStreamEditScene(p);
+    else drawLiveWallScene(p);
+
+    requestAnimationFrame(renderFrame);
+  }
+
+  // Bind UI controls
+  playBtn.addEventListener('click', function () {
+    st.playing = !st.playing;
+    playBtn.textContent = st.playing ? '⏸ Pause' : '▶ Play';
+  });
+  document.getElementById('restartBtn').addEventListener('click', function () {
+    st.tMs = 0; st.playing = true; playBtn.textContent = '⏸ Pause';
+  });
+  speedBtn.addEventListener('click', function () {
+    st.speed = st.speed === 1 ? 1.5 : (st.speed === 1.5 ? 2 : 1);
+    speedBtn.textContent = st.speed + '×';
+  });
+  scrubber.addEventListener('input', function () {
+    st.tMs = Number(this.value) || 0;
+  });
+  document.getElementById('rigPills').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-rig]'); if (!b) return;
+    st.rig = b.dataset.rig;
+    Array.from(this.children).forEach(function (el) { el.classList.toggle('active', el === b); });
+  });
+  document.getElementById('simShutter').addEventListener('change', function () { st.shutter = this.value; });
+  document.getElementById('simIso').addEventListener('input', function () { st.iso = Number(this.value); });
+  document.getElementById('simBoomerang').addEventListener('change', function () { st.boomerang = this.checked; });
+  document.getElementById('demoSpinBtn').addEventListener('click', function () {
+    st.tMs = STAGES[4].start + 100;
+    st.playing = true;
+    playBtn.textContent = '⏸ Pause';
+  });
+
+  syncSidePanel(STAGES[0]);
+  requestAnimationFrame(renderFrame);
+})();
+</script>
+</body>
+</html>

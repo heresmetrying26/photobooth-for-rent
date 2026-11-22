@@ -821,6 +821,35 @@
       </div>
     </section>
 
+    <section id="ios-builds">
+      <div class="section-head">
+        <h2>iPhone &amp; iPad app (360 Arm Camera &amp; Kiosk)</h2>
+        <p>Includes the <b>Free 360 Arm Camera Companion</b> (CoreMotion gyro auto-start) and full offline iPad Photo Booth kiosk.</p>
+      </div>
+      <div class="helper" style="background:#f3f6;background:#f2f6ff;border-color:#d0defa;">
+        <div>
+          <span class="tag" id="iosTag" style="background:#dce7fe;color:#1d4ed8;">iOS / iPadOS 15+ &middot; IPA &middot; version 1.1.14</span>
+          <h3>photobooth4u for iPhone &amp; iPad (.ipa)</h3>
+          <p><b>🎥 Free 360 Arm Camera Companion (Zero Extra License):</b> Open the app on an iPhone or iPad mounted on your 360 spinner arm and tap <b>🎥 360 Arm Camera (Free Companion)</b> on the lock screen. Scan your laptop&rsquo;s 360 Desk QR to unlock <b>CoreMotion Gyro Auto-Start (Configure Sensitivity)</b>, <b>0.5&times; Ultra-Wide 60/120fps</b> capture, <b>AE/AF Lock</b>, <b>Shield Mode</b>, and automatic 5GHz Wi-Fi upload.</p>
+          <p><b>📸 Full iPad Booth Kiosk:</b> Unlock with your access code to run the complete offline photo booth on an iPad with Ultra-Wide / Center Stage camera support.</p>
+          <p><a href="/how-to-360/iphone/" style="color:#1d4ed8;font-weight:800;">🎬 Watch iPhone 360 Simulation &rarr;</a> &nbsp;&bull;&nbsp; <a href="/how-to-360-arm/" style="color:var(--red);font-weight:800;">📖 Read 360 Arm Camera Guide &rarr;</a></p>
+        </div>
+        <a class="download" id="iosIpaLink" style="background:#1d4ed8;"
+          href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/ios-v1.1.14/photobooth4u-kiosk-ipad.ipa">Download
+          iOS .IPA</a>
+      </div>
+      <div class="install">
+        <div class="callout">
+          <b>How to install on iPhone or iPad (Sideloadly)</b>
+          <p>1. Download the <b>.IPA</b> file above on your Windows PC or Mac.<br>2. Plug your iPhone or iPad into the computer via USB and open <a href="https://sideloadly.io/" target="_blank" rel="noopener" style="color:#1d4ed8;font-weight:800;">Sideloadly</a>.<br>3. Drag the <code>.ipa</code> into Sideloadly, enter your Apple ID, and click <b>Start</b>. Then trust the developer certificate in <b>Settings &rsaquo; General &rsaquo; VPN &amp; Device Management</b>.</p>
+        </div>
+        <div class="callout">
+          <b>Zero-install browser option</b>
+          <p>Don&rsquo;t want to sideload the app yet? You can also scan the <b>360 Desk QR code</b> directly using <b>Safari or Chrome</b> on any iPhone or Android phone to use the browser <b>360 Phone Send Page</b> (note: automatic CoreMotion Gyro spin auto-start requires the native iOS app above).</p>
+        </div>
+      </div>
+    </section>
+
     <section id="rush-station">
       <div class="section-head">
         <h2>Rush ID Station</h2>
@@ -1014,7 +1043,12 @@
           if (/Android/.test(t.textContent)) t.textContent = t.textContent.replace(/\d+\.\d+\.\d+/, a.version);
         });
       }
-      fetch('/api/updates').then(r => r.json()).then(j => { if (j && j.app && j.app.version) applyVersion(j.app.version); if (j) applyAndroid(j.android); }).catch(() => { });
+      function applyIos(ios) {
+        if (!ios || !ios.version || !ios.url) return;
+        const l = document.getElementById('iosIpaLink'); if (l) l.href = ios.url;
+        const t = document.getElementById('iosTag'); if (t) t.textContent = 'iOS / iPadOS 15+ · IPA · version ' + ios.version;
+      }
+      fetch('/api/updates').then(r => r.json()).then(j => { if (j && j.app && j.app.version) applyVersion(j.app.version); if (j) applyAndroid(j.android); if (j) applyIos(j.ios); }).catch(() => { });
       // Standalone companion apps have their own releases (tags rushid-v*, roving-v*)
       function verNewer(a, b) {
         const x = String(a).split('.').map(n => parseInt(n, 10) || 0);

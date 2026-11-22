@@ -295,7 +295,22 @@ async function gbDownloadAll(items, btn, base) {
     if(!vid && !gif){
       var pr = el('button', 'btn alt', 'Print photo');
       pr.type = 'button';
-      pr.onclick = function(){ window.print(); };
+      pr.onclick = function(){
+        if(window.__PBPrint && typeof window.__PBPrint.print === 'function'){
+          if(!media.complete || !media.naturalWidth){ pr.textContent = 'Loading photo…'; setTimeout(function(){ pr.textContent = 'Print photo'; }, 1800); return; }
+          try{
+            var w = media.naturalWidth, h = media.naturalHeight;
+            var sc = Math.min(1, 2400 / Math.max(w, h));
+            var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * sc)); c.height = Math.max(1, Math.round(h * sc));
+            var x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(media, 0, 0, c.width, c.height);
+            var wMm = (w / h < 0.45) ? 50.8 : (w > h ? 152.4 : 101.6), hMm = (w > h ? 101.6 : 152.4);
+            var r = JSON.parse(window.__PBPrint.print(name || 'Photobooth photo', wMm, hMm, JSON.stringify([c.toDataURL('image/jpeg', 0.92)])) || '{}');
+            if(!r.ok){ pr.textContent = r.error || 'Could not print'; setTimeout(function(){ pr.textContent = 'Print photo'; }, 3000); }
+          }catch(e){ pr.textContent = 'Could not open printer'; setTimeout(function(){ pr.textContent = 'Print photo'; }, 3000); }
+          return;
+        }
+        window.print();
+      };
       row.appendChild(pr);
     }
     if(!vid && !gif && d.print){

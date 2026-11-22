@@ -194,7 +194,8 @@ const ippTagged = (tag, name, value) => Buffer.concat([Buffer.from([tag]), ippSt
 export function ippCapsRequest(uri) {
   const wanted = ['printer-make-and-model', 'document-format-supported', 'media-ready', 'media-supported', 'media-default',
     'print-quality-supported', 'print-color-mode-supported', 'media-type-supported',
-    'pwg-raster-document-resolution-supported', 'pwg-raster-document-type-supported'];
+    'pwg-raster-document-resolution-supported', 'pwg-raster-document-type-supported',
+    'media-top-margin-supported', 'media-bottom-margin-supported', 'media-left-margin-supported', 'media-right-margin-supported'];
   return Buffer.concat([
     Buffer.from([0x02, 0x00, 0x00, 0x0b, 0, 0, 0, 1, 0x01]),
     ippTagged(0x47, 'attributes-charset', 'utf-8'),
@@ -309,8 +310,11 @@ export async function ippCaps(ip, port = 631, path = '', timeoutMs = 4000, trans
     const { status, attrs } = parseIpp(r.body);
     if (status < 0 || status > 2) continue;
     const qualities = [], pwgRes = [];
+    let zeroMargin = false;
     for (const v of parseIppRaw(r.body)) {
       if (v.name === 'print-quality-supported' && v.tag === 0x23 && v.value.length === 4) qualities.push(v.value.readUInt32BE(0));
+      // A margin of 0 in the supported margins (1/100 mm) is how a printer says it can print edge to edge.
+      if (v.tag === 0x21 && v.value.length === 4 && /^media-(?:top|bottom|left|right)-margin-supported$/.test(v.name) && v.value.readUInt32BE(0) === 0) zeroMargin = true;
       // a resolution is 4 bytes across, 4 bytes down, 1 byte units (3 = dots per inch)
       if (v.name === 'pwg-raster-document-resolution-supported' && v.tag === 0x32 && v.value.length === 9 && v.value[8] === 3) pwgRes.push(v.value.readUInt32BE(0));
     }
@@ -320,7 +324,8 @@ export async function ippCaps(ip, port = 631, path = '', timeoutMs = 4000, trans
       mediaReady: attrs['media-ready'] || [], mediaSupported: attrs['media-supported'] || [],
       qualities, pwgRes,
       colorModes: attrs['print-color-mode-supported'] || [], mediaTypes: attrs['media-type-supported'] || [],
-      pwgTypes: attrs['pwg-raster-document-type-supported'] || []
+      pwgTypes: attrs['pwg-raster-document-type-supported'] || [],
+      borderlessCap: zeroMargin || (attrs['media-supported'] || []).some((n) => /[-_.](?:borderless|full-?bleed)$/i.test(n))   // it says it can print edge to edge
     };
   }
   return null;
@@ -344,6 +349,34 @@ export function pickMediaType(caps, wanted) {
   if (/glossy|photo/.test(w)) return list.find((t) => t === 'photographic-glossy') || list.find((t) => /^photographic/.test(t)) || '';
   if (/plain|stationery|normal/.test(w)) return list.find((t) => t === 'stationery') || list.find((t) => /^stationery/.test(t)) || '';
   return '';
+}
+
+const L8050_NAME = /(?<![a-z0-9-])l[\s_-]?8050(?![0-9])/i;
+
+/**
+ * The print quality (IPP number) and paper type a direct JPEG print asks for. Until now the JPEG path asked for neither, so every
+ * photo went out on the printer's own default (plain paper, standard quality: banding lines and no borderless on an ink-tank printer).
+ * - quality: what the booth asked for (best = 5, normal = 4, draft = 3), only if the printer lists it. An Epson L8050 does not list
+ *   its qualities over IPP, so it is asked anyway; if it refuses, the job is sent again without them (see ippPrintDirect).
+ * - paper type: the one the operator chose; with none chosen, glossy photo paper for a printer that says it can print borderless
+ *   (media-*-margin-supported = 0) on a photo sheet (up to 6 x 8 in), and always for an L8050. `mediaType` 'driver' means "leave it
+ *   to the printer". A dye-sub SELPHY keeps its own fixed paper and is never asked.
+ */
+export function directPhotoOpts(caps, { quality = '', mediaType = '', borderless = true, wMm = 0, hMm = 0 } = {}) {
+  const none = { quality: 0, mediaType: '' };
+  if (!caps || /selphy/i.test(caps.model || '')) return none;
+  const hardL = L8050_NAME.test(caps.model || '');
+  const want = ({ draft: 3, normal: 4, best: 5 })[quality] || 0;
+  const qv = want && ((caps.qualities || []).includes(want) || hardL) ? want : 0;
+  const list = caps.mediaTypes || [];
+  let mt = '';
+  if (mediaType && mediaType !== 'driver') mt = pickMediaType(caps, mediaType);
+  else if (!mediaType) {
+    const photoSheet = !(wMm > 0 && hMm > 0) || (Math.min(wMm, hMm) <= 155 && Math.max(wMm, hMm) <= 210);
+    if (hardL) mt = list.includes('photographic-glossy') || !list.length ? 'photographic-glossy' : (list.find((t) => /^photographic/.test(t)) || '');
+    else if (borderless !== false && caps.borderlessCap && photoSheet && list.includes('photographic-glossy')) mt = 'photographic-glossy';
+  }
+  return { quality: qv, mediaType: mt };
 }
 
 const IPP_MEDIA_LABELS = {
@@ -393,12 +426,15 @@ export async function ippPrintDirect({ ip, port = 631, path = '', jpeg = null, i
   // A Canon SELPHY lists every paper twice: with its normal margins (a few mm of border) and as a "fullbleed" paper with zero margins.
   // Over IPP the fullbleed one is not a different name: it is the same paper asked for as a page size with all four margins 0. Asking by
   // name alone gets the bordered one, so the zero-margin page (sized as the printer's own paper) goes first and the name after it.
-  const attempts = [
+  const base = [
     ...(dims ? [{ wMm: dims[0], hMm: dims[1], scaling: 'fill' }, { wMm: dims[0], hMm: dims[1], scaling: '' }] : []),
     ...(named ? [{ mediaName: named, scaling: 'fill' }, { mediaName: named, scaling: '' }] : []),
     ...(widthMm > 0 && heightMm > 0 ? [{ wMm: widthMm, hMm: heightMm, scaling: 'fill' }] : []),
     { scaling: '' }
   ];
+  // Each way of asking goes first with the quality / paper type (see directPhotoOpts), then again without them if the printer refuses.
+  const dpo = directPhotoOpts(caps, { quality, mediaType, borderless, wMm: dims ? dims[0] : widthMm, hMm: dims ? dims[1] : heightMm });
+  const attempts = base.flatMap((a) => (dpo.quality || dpo.mediaType ? [{ ...a, quality: dpo.quality, mediaType: dpo.mediaType }, a] : [a]));
   let lastErr = 'The printer didn’t accept the photo.', drops = 0;
   for (const a of attempts) {
     for (const p of [...new Set([caps.path, '/ipp/print', '/ipp', '/'])]) {

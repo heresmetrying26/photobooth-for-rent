@@ -4910,6 +4910,349 @@
       padding: 0 8px;
     }
 
+    /* All photos · Reprint gallery & prefilled print pop-up */
+    .rg-card {
+      width: min(1040px, 100%);
+      height: min(88vh, 840px);
+    }
+
+    .rg-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      background: #faf7f2;
+      flex: none;
+    }
+
+    .rg-bar select {
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      padding: 7px 10px;
+      font: 700 13px 'Manrope', sans-serif;
+      background: #fff;
+      color: var(--ink);
+      max-width: 240px;
+    }
+
+    .rg-tabs {
+      display: inline-flex;
+      gap: 4px;
+      background: #ece5d9;
+      padding: 3px;
+      border-radius: 999px;
+    }
+
+    .rg-tab {
+      border: 0;
+      background: transparent;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font: 700 13px 'Manrope', sans-serif;
+      color: var(--ink-dim);
+      cursor: pointer;
+    }
+
+    .rg-tab.active {
+      background: #fff;
+      color: var(--ink);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+    }
+
+    .rg-meta {
+      margin-left: auto;
+      font: 600 12.5px 'Manrope', sans-serif;
+      color: var(--ink-dim);
+    }
+
+    .rg-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+      gap: 10px;
+      padding: 14px 18px 22px;
+      overflow-y: auto;
+      flex: 1;
+      align-content: start;
+    }
+
+    .rg-tile {
+      position: relative;
+      border: 2px solid transparent;
+      border-radius: 12px;
+      padding: 0;
+      overflow: hidden;
+      aspect-ratio: 3/4;
+      background: #f0ebe2;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform .12s, border-color .15s, box-shadow .15s;
+    }
+
+    .rg-tile:hover,
+    .rg-tile:focus-visible {
+      border-color: var(--brand, #c93d27);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, .14);
+      transform: translateY(-1px);
+      outline: none;
+    }
+
+    .rg-tile img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .rg-tile .rg-badge {
+      position: absolute;
+      left: 6px;
+      top: 6px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(20, 18, 22, .72);
+      color: #fff;
+      font: 800 10px 'Manrope', sans-serif;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .rg-tile .rg-reprint-pill {
+      position: absolute;
+      right: 6px;
+      bottom: 6px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: rgba(201, 61, 39, .92);
+      color: #fff;
+      font: 800 11px 'Manrope', sans-serif;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+    }
+
+    .rg-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: var(--ink-dim);
+      font: 600 14px/1.5 'Manrope', sans-serif;
+      padding: 44px 16px;
+    }
+
+    /* Prefilled Reprint Print Pop-up */
+    .rp-ov {
+      z-index: 9700;
+    }
+
+    .rp-card {
+      width: min(760px, 100%);
+      max-height: 92vh;
+    }
+
+    .rp-body {
+      display: grid;
+      grid-template-columns: minmax(210px, 46%) minmax(0, 1fr);
+      gap: 18px;
+      padding: 16px 18px 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 680px) {
+      .rp-body {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .rp-preview-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .rp-preview-box {
+      width: 100%;
+      aspect-ratio: 3/4;
+      max-height: 52vh;
+      border-radius: 12px;
+      background: #f3eee6;
+      border: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      padding: 8px;
+    }
+
+    .rp-preview-box img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 6px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .14);
+    }
+
+    .rp-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .rp-nav .rp-pos {
+      font: 700 12.5px 'Manrope', sans-serif;
+      color: var(--ink-dim);
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+
+    .rp-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .rp-field label {
+      display: block;
+      font: 800 11.5px 'Manrope', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--ink-dim);
+      margin: 0 0 5px;
+    }
+
+    .rp-sel-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .rp-field select {
+      flex: 1;
+      min-width: 0;
+      width: 100%;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: 700 14px 'Manrope', sans-serif;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .rp-stepper-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1.5px solid var(--line);
+      background: #faf7f2;
+    }
+
+    .rp-stepper-row span {
+      font: 700 14px 'Manrope', sans-serif;
+      color: var(--ink);
+    }
+
+    .rp-stepper {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .rp-stepper button {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1.5px solid var(--line);
+      background: #fff;
+      font: 800 18px 'Manrope', sans-serif;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .rp-stepper b {
+      min-width: 24px;
+      text-align: center;
+      font: 800 16px 'Manrope', sans-serif;
+    }
+
+    .rp-chk {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font: 600 13px 'Manrope', sans-serif;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .rp-qual {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .rp-qual button {
+      border: 1.5px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font: 700 13px 'Manrope', sans-serif;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .rp-qual button.active {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: #fff;
+    }
+
+    .rp-status {
+      font: 600 12.5px/1.45 'Manrope', sans-serif;
+      color: var(--ink-dim);
+      margin: 0;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: #faf7f2;
+    }
+
+    .rp-status.ok {
+      background: #e9f6ee;
+      color: #1f6d3d;
+    }
+
+    .rp-status.err {
+      background: #fdecec;
+      color: #b42318;
+    }
+
+    .rp-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 2px;
+    }
+
+    .rp-actions .desk-btn.reprint-go {
+      flex: 1;
+      min-height: 46px;
+      font-size: 15px;
+      background: var(--brand, #c93d27);
+      border-color: var(--brand, #c93d27);
+      color: #fff;
+    }
+
+    .rp-actions .desk-btn.reprint-sys {
+      min-height: 46px;
+    }
+
     /* Arrange & Print (operator) */
     .st-card {
       width: min(1180px, 100%);
@@ -10496,6 +10839,30 @@
       #setupPreviewCanvas {
         max-height: calc(var(--vh) - 360px);
       }
+
+      /* The preview space is the same size for every sheet size and layout: 2:3 (a 4R sheet fills it), and never
+         taller than the screen has room for. The paper keeps its real shape (its own width:height) and fits inside,
+         centred, so picking A4 / Letter / 8R no longer makes the preview shorter or moves the buttons under it. */
+      #previewSection .setup-preview-wrap {
+        width: 100%;
+        aspect-ratio: 2 / 3;
+        max-height: calc(var(--vh) - 360px);
+        align-items: center;
+      }
+    }
+
+    @supports (width: 1cqw) {
+      @media (min-width:900px) {
+        #previewSection .setup-preview-wrap {
+          container-type: size;
+        }
+
+        /* 10px = the frame's 5px white edge on each side */
+        #setupPreviewCanvas {
+          max-width: calc(100cqw - 10px);
+          max-height: calc(100cqh - 10px);
+        }
+      }
     }
 
     @media (max-width:420px) {
@@ -11067,6 +11434,12 @@
 
       #previewSection.docked #setupPreviewCanvas {
         max-height: 30vh;
+      }
+
+      /* Same preview space whatever the sheet size: the paper keeps its shape and fits inside it. */
+      #previewSection.docked .setup-preview-wrap {
+        height: calc(30vh + 10px);
+        align-items: center;
       }
 
       #previewSection.docked .sample-row {
@@ -19955,6 +20328,7 @@
             <img id="driveFolderQrImg" class="qr-img" style="width:140px;height:140px;" alt="All photos QR code">
             <p class="qr-caption" id="driveFolderQrCaption">All photos</p>
             <div class="folder-links" id="driveFolderLinks">
+              <button type="button" id="driveFolderReprint">🖨️ Browse &amp; Reprint</button>
               <a id="driveFolderOpen" href="#" target="_blank" rel="noopener">Open gallery</a>
               <button type="button" id="driveFolderCopy">Copy link</button>
               <a id="driveFolderDrive" href="#" target="_blank" rel="noopener" style="display:none;">Drive folder</a>
@@ -22273,7 +22647,7 @@
     <button type="button" class="gallery-close" id="galleryPopClose" aria-label="Close">&#215;</button>
     <p class="bp-title">All photos</p><img id="galleryPopQr" alt="All photos gallery QR code"><a class="gallery-link"
       id="galleryPopLink" href="#" target="_blank" rel="noopener">Open event gallery</a>
-    <div class="bp-btns"><button type="button" class="action-btn" id="galleryPopCopy">Copy link</button></div>
+    <div class="bp-btns"><button type="button" class="action-btn primary" id="galleryPopReprint">&#128424; Browse &amp; Reprint</button><button type="button" class="action-btn" id="galleryPopCopy">Copy link</button></div>
   </div>
   <div class="gallery-pop" id="wifiPop" role="dialog" aria-label="Booth Wi-Fi" hidden>
     <button type="button" class="gallery-close" id="wifiPopClose" aria-label="Close">&#215;</button>
@@ -23226,6 +23600,73 @@
           class="desk-btn" id="reqClose">Close</button></div>
       <div class="desk-hint" id="reqHint"></div>
       <div class="desk-grid" id="reqGrid"></div>
+    </div>
+  </div>
+  <div class="desk-ov" id="rgOverlay" hidden role="dialog" aria-label="All photos reprint gallery">
+    <div class="desk-card rg-card">
+      <div class="desk-head"><b>&#128424; All photos &middot; Reprint</b><span class="sp"></span><button type="button"
+          class="desk-btn" id="rgRefresh">Refresh</button><button type="button" class="desk-btn" id="rgClose">Close</button></div>
+      <div class="rg-bar">
+        <select id="rgFolder" aria-label="Event folder" hidden></select>
+        <div class="rg-tabs" id="rgTabs">
+          <button type="button" class="rg-tab active" data-cat="prints">Prints</button>
+          <button type="button" class="rg-tab" data-cat="solo" hidden>Solo shots</button>
+          <button type="button" class="rg-tab" data-cat="all" hidden>All</button>
+        </div>
+        <span class="rg-meta" id="rgMeta">Tap any photo to open the pre-filled reprint pop-up</span>
+      </div>
+      <div class="rg-grid" id="rgGrid"></div>
+    </div>
+  </div>
+  <div class="desk-ov rp-ov" id="rpModal" hidden role="dialog" aria-label="Reprint photo">
+    <div class="desk-card rp-card">
+      <div class="desk-head"><b>&#128424; Reprint photo</b><span class="sp"></span><button type="button"
+          class="desk-btn" id="rpClose">Close</button></div>
+      <div class="rp-body">
+        <div class="rp-preview-col">
+          <div class="rp-preview-box"><img id="rpImg" alt="Selected photo"></div>
+          <div class="rp-nav">
+            <button type="button" class="desk-btn" id="rpPrev">&lsaquo; Prev</button>
+            <span class="rp-pos" id="rpPos"></span>
+            <button type="button" class="desk-btn" id="rpNext">Next &rsaquo;</button>
+          </div>
+        </div>
+        <div class="rp-form">
+          <div class="rp-field">
+            <label for="rpPrinter">Printer</label>
+            <div class="rp-sel-row">
+              <select id="rpPrinter" aria-label="Choose printer"></select>
+              <button type="button" class="desk-btn" id="rpRefreshPrinters" title="Refresh printers" style="padding:8px 12px;">&#8635;</button>
+            </div>
+          </div>
+          <div class="rp-field" id="rpSizeField">
+            <label for="rpSize">Paper size</label>
+            <select id="rpSize" aria-label="Choose paper size"></select>
+          </div>
+          <div class="rp-stepper-row" id="rpCopiesRow">
+            <span>Copies</span>
+            <div class="rp-stepper">
+              <button type="button" id="rpMinus" aria-label="Fewer copies">&minus;</button>
+              <b id="rpCopies">1</b>
+              <button type="button" id="rpPlus" aria-label="More copies">+</button>
+            </div>
+          </div>
+          <label class="rp-chk" id="rpSingleRow" hidden><input type="checkbox" id="rpSingle"> 1 full strip per sheet (don&rsquo;t pair 2 side-by-side)</label>
+          <div class="rp-field" id="rpQualField" hidden>
+            <label>Thermal quality</label>
+            <div class="rp-qual" id="rpQualRow">
+              <button type="button" data-q="best" class="active">Best</button>
+              <button type="button" data-q="normal">Normal</button>
+              <button type="button" data-q="draft">Draft</button>
+            </div>
+          </div>
+          <p class="rp-status" id="rpStatus"></p>
+          <div class="rp-actions">
+            <button type="button" class="desk-btn reprint-go" id="rpPrintBtn">&#128424; Reprint now</button>
+            <button type="button" class="desk-btn reprint-sys" id="rpSettingsBtn" hidden>Print settings</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="desk-ov" id="studioOverlay" hidden role="dialog" aria-label="Arrange and print">
@@ -26114,6 +26555,9 @@
           if (TABLET_LOCAL && window.__PBLocal && window.__PBLocal.localBase) {
             return window.__PBLocal.localBase() || '';
           }
+          if (DESKTOP && window.pb4u && typeof window.pb4u.localBase === 'function') {
+            return window.pb4u.localBase() || '';
+          }
           return '';
         } catch (e) { return ''; }
       }
@@ -26653,16 +27097,21 @@
         const fab = document.getElementById('galleryFab');
         const link = document.getElementById('galleryPopLink');
         const qr = document.getElementById('galleryPopQr');
+        const copyBtn = document.getElementById('galleryPopCopy');
         if (!fab || !link || !qr) return;
         const guestUrl = currentFolderLink || '';
         const opUrl = localFolderUrl ? (localDeviceShareUrl(localFolderUrl) || guestUrl) : guestUrl;
+        const hasAny = !!(guestUrl || opUrl || localFolderUrl);
         const hide = gvPrivate();      // guests see only their own photos: no All photos button, link or QR at the booth
-        fab.hidden = (!guestUrl && !opUrl) || hide;
-        if ((guestUrl || opUrl) && !hide) {
-          link.href = opUrl || guestUrl;
-          link.textContent = guestUrl || opUrl;
+        fab.hidden = !hasAny || hide;
+        if (hasAny && !hide) {
+          const href = opUrl || guestUrl;
+          link.href = href || '#';
+          link.textContent = guestUrl || opUrl || '';
+          link.style.display = href ? '' : 'none';
           if (TABLET_LOCAL) link.removeAttribute('target');
-          if (guestUrl) qr.src = qrImageUrl(guestUrl); else qr.removeAttribute('src');
+          if (guestUrl) { qr.src = qrImageUrl(guestUrl); qr.style.display = ''; } else { qr.removeAttribute('src'); qr.style.display = 'none'; }
+          if (copyBtn) copyBtn.style.display = guestUrl ? '' : 'none';
         } else {
           link.href = '#'; link.textContent = ''; qr.removeAttribute('src'); closeGalleryPop();
         }
@@ -38616,6 +39065,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function savePrinterMap() {
         try { localStorage.setItem(PRINTER_MAP_KEY, JSON.stringify(printerMap)); } catch (e) { }
         try { if (typeof printPreviewOk !== 'undefined') delete printPreviewOk[printPreviewKey()]; printPrefs.preview = true; } catch (e) { }
+        try { if (typeof reprintSyncExternalConfig === 'function') reprintSyncExternalConfig(false); } catch (e) { }
       }
       function instaxNames() { try { return window._instax ? window._instax.names() : []; } catch (e) { return []; } }
       function isInstaxPrinter(n) { try { return !!(window._instax && window._instax.isInstaxName(n)); } catch (e) { return false; } }
@@ -38626,6 +39076,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function driverPaperFor(name, sizeKey) { const k = driverPaperKey(name, sizeKey); return k ? (driverPaperMap[k] || '') : ''; }
       function saveDriverPaperMap() { try { localStorage.setItem(DRIVER_PAPER_KEY, JSON.stringify(driverPaperMap)); } catch (e) { } }
       const capsChecks = {};
+      // The first choice of the paper / media type list. Empty = Auto: a printer that prints borderless prints on its glossy photo paper type
+      // (the app works it out, autoMedia says which), any other printer keeps the driver's own. 'driver' = leave the driver's paper type alone.
+      function mediaAutoLabel(caps) {
+        const a = caps && caps.state === 'ok' && caps.autoMedia;
+        return a ? 'Auto: ' + ((caps.mediaLabels && caps.mediaLabels[a]) || a) + ' (recommended)' : 'Auto (recommended)';
+      }
       async function fetchPrinterCaps(name) {
         if (!name || !helperOn || isInstaxPrinter(name) || capsChecks[name]) return capsChecks[name] || null;
         capsChecks[name] = { state: 'loading' };
@@ -38633,7 +39089,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const r = await fetch(HELPER_URL + '/printer/caps?printer=' + encodeURIComponent(name), { cache: 'no-store' });
           const j = r.ok ? await r.json().catch(() => null) : null;
           capsChecks[name] = j && j.ok && j.known
-            ? { state: 'ok', mediaTypes: Array.isArray(j.mediaTypes) ? j.mediaTypes : [], mediaLabels: j.mediaLabels || {}, mediaDefault: j.mediaDefault || '' }
+            ? { state: 'ok', mediaTypes: Array.isArray(j.mediaTypes) ? j.mediaTypes : [], mediaLabels: j.mediaLabels || {}, mediaDefault: j.mediaDefault || '', autoMedia: j.autoMedia || '' }
             : { state: 'unknown' };
         } catch (e) { capsChecks[name] = { state: 'unknown' }; }
         try { refreshPhotoFitUI(); } catch (e) { }
@@ -39547,7 +40003,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           body.appendChild(Object.assign(mkP('sub-label', 'Paper / media type'), { style: 'margin:10px 0 4px;' }));
           const mSel = document.createElement('select'); mSel.className = 'printer-input';
           const addM = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; mSel.appendChild(o); };
-          addM('', 'Driver default (recommended)');
+          addM('', mediaAutoLabel(caps));
+          addM('driver', 'Driver default (leave the paper type as the driver has it)');
           if (caps && caps.state === 'ok' && Array.isArray(caps.mediaTypes)) {
             caps.mediaTypes.forEach(mt => addM(mt, (caps.mediaLabels && caps.mediaLabels[mt]) || mt));
           }
@@ -39555,7 +40012,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           mSel.value = opts.mediaType || '';
           mSel.addEventListener('change', () => { saveOptsForPrinter(pName, { mediaType: mSel.value || '' }); refreshAll(); });
           body.appendChild(mSel);
-          body.appendChild(Object.assign(mkP('panel-hint', caps && caps.state === 'loading' ? ('Checking media types for ' + pName + '…') : 'Optional driver media type (Glossy, Matte, Plain, etc.).'), { style: 'margin:3px 0 4px;' }));
+          body.appendChild(Object.assign(mkP('panel-hint', caps && caps.state === 'loading' ? ('Checking media types for ' + pName + '…') : 'Auto prints on glossy photo paper when this printer can print borderless. Pick Matte, Plain, etc. if that is what is loaded.'), { style: 'margin:3px 0 4px;' }));
 
           body.appendChild(Object.assign(mkP('sub-label', 'Driver paper size / slot'), { style: 'margin:10px 0 4px;' }));
           const dpSel = document.createElement('select'); dpSel.className = 'printer-input';
@@ -39953,7 +40410,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const isCustom = ownSizes().some(k => { const op = paperFor(k); return !!op && Math.abs(op.w - paper.w) < 0.6 && Math.abs(op.h - paper.h) < 0.6; }) || !Object.keys(PAPER).some(k => Math.abs(PAPER[k].w - paper.w) < 0.6 && Math.abs(PAPER[k].h - paper.h) < 0.6);
           const body = JSON.stringify({
             printer: name,
-            quality: helperQualityFor(name),
+            quality: (opt && opt.quality) || helperQualityFor(name),
             mediaType,
             paperName: explicitPaper,
             twoUp: !!twoUpFlag,
@@ -40213,6 +40670,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (ready && printSize && printsLeft() < sheetsPerCopy(printSize)) printBtn.disabled = true;
         refreshPrintExtras();
         try { refreshGuestPrintBtn(); } catch (e) { }
+        try { if (typeof reprintSyncExternalConfig === 'function') reprintSyncExternalConfig(false); } catch (e) { }
       }
       // iPad / Android pick the paper in their own print screen: it must match.
       function paperMatchTip() {
@@ -40339,7 +40797,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               if (document.activeElement !== mediaSel) {
                 mediaSel.innerHTML = '';
                 const addM = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; mediaSel.appendChild(o); };
-                addM('', 'Driver default (recommended)');
+                addM('', mediaAutoLabel(caps));
+                addM('driver', 'Driver default (leave the paper type as the driver has it)');
                 if (caps && caps.state === 'ok' && Array.isArray(caps.mediaTypes)) {
                   caps.mediaTypes.forEach(mt => addM(mt, (caps.mediaLabels && caps.mediaLabels[mt]) || mt));
                 }
@@ -40349,8 +40808,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               if (mediaHint) {
                 mediaHint.textContent = caps && caps.state === 'loading' ? 'Checking media types supported by ' + pname + '…'
                   : (caps && caps.state === 'ok' && caps.mediaTypes && caps.mediaTypes.length)
-                    ? 'Applies to this printer (Glossy, Matte, Plain, etc.) across Epson L8050, L3210, Canon & more.'
-                    : 'Optional driver media type. Keep Driver default unless the printer expects Glossy or Matte.';
+                    ? 'Auto prints on glossy photo paper when this printer can print borderless. Pick Matte, Plain, etc. if that is what is loaded.'
+                    : 'Optional driver media type. Keep Auto unless the printer expects Matte or Plain.';
               }
             }
             const dpSel = document.getElementById('driverPaperSelect'), dpHint = document.getElementById('driverPaperHint');
@@ -41390,7 +41849,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function wifiOptsSet(p, key, val) {
         if (!p) return;
         const k = wifiPKey(p);
-        wifiOptsMap[k] = Object.assign(wifiOptsFor(p), { [key]: val });
+        // Only the setting that was changed is kept for this printer: a setting that is not in the map was never chosen, so the printer's
+        // own default (printerBorderlessKnown / wifiDefaultFor below) still applies to it; one chosen as "Printer default" stays ''.
+        wifiOptsMap[k] = Object.assign({}, wifiOptsMap[k] || wifiOptsMap[p.ip] || {}, { [key]: val });
         try { localStorage.setItem(WIFI_OPTS_MAP_KEY, JSON.stringify(wifiOptsMap)); } catch (e) { }
       }
       // The printer chosen for each paper size (Android). Sizes without their own printer use the last one picked.
@@ -41474,11 +41935,46 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // choices are fixed here and the app asks for them anyway (NetPrintBridge.sendIppJob): High quality on glossy photo paper
       // unless the operator picks something else. Without this every job went out on the printer's default: plain paper, standard.
       // (The iPad app asks an L8050 on Wi-Fi the same way: IppNet.printPage in ViewController.swift sends the picked values for it too.)
-      function epsonLUsbIpp(p) { return !!(p && p.ipp && ((p.usb && p.vid === 1208 && (EPSON_L_PIDS[p.pid] === 'L8050' || /\bL8050\b/i.test(p.name || ''))) || (IOS_APP && !p.usb && /\bL8050\b/i.test(p.name || '')))); }
+      // An Epson L8050 the app prints to over IPP: on USB, and on Wi-Fi (Android and iPad). It does not list its print qualities or paper
+      // types the way other printers do, so "Printer default" meant plain paper at standard quality: banding lines across the photo and no
+      // borderless (a client's Xiaomi Pad 5 over Wi-Fi printed that way while the Epson app printed the same photo sharp and borderless).
+      // It gets fixed High / photo-paper choices instead, and the Android side sends them even though the printer does not list them.
+      function epsonLUsbIpp(p) { return !!(p && p.ipp && ((p.usb && p.vid === 1208 && EPSON_L_PIDS[p.pid] === 'L8050') || /\bL8050\b/i.test(p.name || ''))); }
+      // A printer that can print borderless, as far as the app knows: an Epson it knows by model (the L8050, the L3200 / L1200 family, the
+      // ESC/P-R L-series), or any IPP printer that itself lists a margin of 0 (p.bcap, read by the Android app). Picking one turns Borderless
+      // on, and until the operator chooses otherwise it prints on glossy photo paper at the best quality it offers (High where listed).
+      // Left out on purpose: the L1xx family (no borderless), the Canon G-series over USB (its High / borderless is the 600 dpi mode, not
+      // yet proven on a real printer), Canon SELPHY / DNP / Instax (dye-sub, fixed paper), receipt printers and the Android print screen.
+      function printerBorderlessKnown(p) {
+        if (!p || p.dialog || p.instax || p.escp2 || p.canon || p.selphy || p.dnp) return false;
+        if (/selphy|\bdnp\b|instax/i.test(p.name || '')) return false;
+        if (p.raw && !p.ipp && !p.escpr) return false;
+        return !!(p.borderless || epsonLUsbIpp(p) || epsonLBorderlessModel(p) || epsonEscprBorderlessModel(p) || (p.ipp && p.bcap));
+      }
+      // The value used for a setting nobody chose, for a printer above ('' = leave it to the printer). Only what the printer lists is asked for.
+      function wifiDefaultFor(p, key) {
+        if (!printerBorderlessKnown(p)) return '';
+        const qs = p.qualities || [], mt = p.mediaTypes || [];
+        if (key === 'quality') return (epsonLUsbIpp(p) || (p.ipp && qs.indexOf(5) >= 0)) ? 'high' : '';
+        if (key === 'media') return (p.epsonL || epsonLUsbIpp(p) || (p.ipp && mt.some(m => m.indexOf('photographic') === 0))) ? 'photo' : '';
+        return '';
+      }
+      // What is used for a setting: the one chosen for this printer, else its default. "Printer default" chosen on purpose is kept ('' is
+      // stored for it); the L8050 has no such choice, so it always has a value.
+      function wifiOptEff(p, key) {
+        const v = wifiOptsFor(p)[key] || '';
+        if (v) return v;
+        const own = (p && (wifiOptsMap[wifiPKey(p)] || wifiOptsMap[p.ip])) || {};
+        return (epsonLUsbIpp(p) || !(key in own)) ? wifiDefaultFor(p, key) : '';
+      }
+      // The sheet is a photo size (up to 8 x 10 in): the size a Borderless default is switched on for when only the printer's own list says
+      // it can (an office inkjet printing A4 keeps its margins unless the operator turns Borderless on).
+      function photoSheetSize() {
+        try { const pp = printSize && paperFor(printSize); return !pp || Math.max(pp.w, pp.h) <= 260; } catch (e) { return true; }
+      }
       function wifiOpts(printer) {
         const p = printer || wifiPrinter, st = wifiOptsFor(p);
-        const o = { color: st.color || '', quality: st.quality || '', media: st.media || '' };
-        if (epsonLUsbIpp(p)) { if (!o.quality) o.quality = 'high'; if (!o.media) o.media = 'photo'; }
+        const o = { color: st.color || '', quality: wifiOptEff(p, 'quality'), media: wifiOptEff(p, 'media') };
         if (p && p.escp2 && !o.color) o.color = 'color';   // L120 / L121: colour enabled by default
         if (p && p.canon) o.canonMode = (st.canonMode === 'ivec' || st.canonMode === 'legacy') ? st.canonMode : '';   // Canon G-series page language: '' = automatic
         if (!pbDebug() && /^r(normal|best)$/.test(o.quality)) o.quality = '';         // beta qualities are debug only
@@ -41503,7 +41999,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (!show) return;
           sel.textContent = '';
           choices.forEach(c => { const o = document.createElement('option'); o.value = c[0]; o.textContent = c[1]; sel.appendChild(o); });
-          sel.value = choices.some(c => c[0] === ost[key]) ? ost[key] : choices[0][0];
+          const shown = wifiOptEff(p, key);                // the one chosen, else the printer's default (the same value a print uses)
+          sel.value = choices.some(c => c[0] === shown) ? shown : choices[0][0];
         };
         let colorCh = [], qualCh = [], mediaCh = [];
         if (p) {
@@ -41555,7 +42052,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         try { localStorage.setItem(WIFI_SIZE_MAP_KEY, JSON.stringify(wifiSizeMap)); } catch (e) { }
         try { if (p) localStorage.setItem(WIFI_PRINTER_KEY, JSON.stringify(p)); else localStorage.removeItem(WIFI_PRINTER_KEY); } catch (e) { }
         try { if (typeof printPreviewOk !== 'undefined') delete printPreviewOk[printPreviewKey()]; printPrefs.preview = true; } catch (e) { }
-        if (p && p.borderless) { printPrefs.borderless = true; try { borderlessToggle.checked = true; } catch (e) { } }
+        // Picking a printer that can print borderless turns Borderless on (it still can be switched off after): left off, an L8050 over
+        // Wi-Fi printed with a white border all round. A printer known only from its own IPP list (p.bcap) does it for photo sizes only.
+        if (p && (p.borderless || (printerBorderlessKnown(p) && (epsonLUsbIpp(p) || epsonLBorderlessModel(p) || epsonEscprBorderlessModel(p) || photoSheetSize())))) { printPrefs.borderless = true; try { borderlessToggle.checked = true; } catch (e) { } }
         try { printPrefsChanged(); } catch (e) { }
       }
       // An Instax Link printer as the tablet's printer for a paper size (it is not found by the Wi-Fi / USB scan).
@@ -41655,7 +42154,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         d.printers.forEach(p => {
           if (p.usb && !p.needsPermission) { try { pdiagSend('detect', p); } catch (e) { } }      // printer diagnostics (see pdiagSend)
           if (wifiPrinter && p.usb && wifiPrinter.ip === p.ip) { wifiPrinter.info = p.info || ''; wifiPrinter.vid = p.vid || 0; wifiPrinter.pid = p.pid || 0; }
-          if (wifiPrinter && wifiPrinter.ip === p.ip) { wifiPrinter.qualities = p.qualities || []; wifiPrinter.colorModes = p.colorModes || []; wifiPrinter.mediaTypes = p.mediaTypes || []; }
+          if (wifiPrinter && wifiPrinter.ip === p.ip) { wifiPrinter.qualities = p.qualities || []; wifiPrinter.colorModes = p.colorModes || []; wifiPrinter.mediaTypes = p.mediaTypes || []; if (p.bcap !== undefined) wifiPrinter.bcap = !!p.bcap; }
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
           const sel = wifiPrinter && wifiPrinter.ip === p.ip && !(p.ipp && wifiPrinter.epsonLForced);
@@ -41707,7 +42206,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               showToast(p.name + ' is detected, but requires the System Print Dialog or Print Station.' + idTxt, pbDebug() ? 10000 : 5000);
               return;
             }
-            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, dnp: !!p.dnp, dnpModel: p.dnpModel || '', epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
+            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, dnp: !!p.dnp, dnpModel: p.dnpModel || '', epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, bcap: !!p.bcap, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
             showToast('Printer selected: ' + p.name, 3000);
             wifiRenderList(wifiList());
             refreshPrintUI();
@@ -49160,7 +49659,7 @@ function renderTabletBridgeSetup(info) {
         previewCanvas.width = src.width; previewCanvas.height = src.height;
         previewCanvas.getContext('2d').drawImage(src, 0, 0);
       }
-      function buildPlainPrint(key, srcIn) {
+      function buildPlainPrint(key, srcIn, opt) {
         var paper = paperFor(key), src = srcIn || plainResult;
         if (paper.receipt) {
           var rc = document.createElement('canvas');
@@ -49178,7 +49677,8 @@ function renderTabletBridgeSetup(info) {
         var c = document.createElement('canvas');
         c.width = Math.round(paper.w / 25.4 * PRINT_DPI); c.height = Math.round(paper.h / 25.4 * PRINT_DPI);
         var ctx = c.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height); ctx.imageSmoothingQuality = 'high';
-        if (src.width / src.height < 0.45 && paper.w / paper.h >= 0.5) {        // a photo strip: two side by side on the sheet, cut down the middle (like the booth's own prints)
+        var single = (opt && typeof opt.singleStrip === 'boolean') ? opt.singleStrip : !!(printPrefs && printPrefs.singleStrip);
+        if (!single && src.width / src.height < 0.45 && paper.w / paper.h >= 0.5) {        // a photo strip: two side by side on the sheet, cut down the middle (like the booth's own prints)
           var half = c.width / 2; drawFitted(ctx, src, 0, 0, half, c.height); drawFitted(ctx, src, half, 0, c.width - half, c.height);
         } else drawFitted(ctx, src, 0, 0, c.width, c.height);
         return c;
@@ -51986,7 +52486,9 @@ function renderTabletBridgeSetup(info) {
           if (!bytes) throw new Error('That photo is no longer on this laptop.');
           return quickDecode(new Blob([bytes]));
         }
-        var l = await (await fetch('/api/gallery?f=' + encodeURIComponent(roveFolderId()) + '&v=' + Date.now())).json();
+        var fid = roveFolderId(), k = '';
+        try { k = localStorage.getItem('pb_gvk:' + fid) || ''; } catch (e) { }
+        var l = await (await fetch('/api/gallery?f=' + encodeURIComponent(fid) + (k ? '&k=' + encodeURIComponent(k) : '') + '&v=' + Date.now())).json();
         var f = (l.files || []).find(function (x) { return x.id === r.file; });
         if (!f || !f.src) throw new Error('That photo is not in the gallery yet. Try again in a moment.');
         var rr = await fetch(f.src); if (!rr.ok) throw new Error('Could not open that photo.');
@@ -52003,43 +52505,360 @@ function renderTabletBridgeSetup(info) {
         closeReq();
         startDeskResult([cv], { solo: true, original: cv, noQr: true, back: 'req' });
       }
-      // ---- Print now: the operator opens an earlier photo in All photos and taps "Print photo" ----
-      // It prints at once on the printer, paper and copies chosen in Print settings (no preview, no dialog), like auto-print.
-      // Laptop app: the gallery page is served by the app, which hands the photo over (pb4u.printNowTake).
-      // Website: the gallery page asks this booth tab (same browser) through a BroadcastChannel.
+      // ---- Unified Reprint Engine (in-booth Gallery + Desktop local gallery + Web online gallery) ----
+      // Pre-fills from the booth's live setup (so reprinting works right away alongside Auto-print without changing it),
+      // while letting the operator switch printer (thermal, coloured, Bluetooth, Wi-Fi/USB, Instax, Print Station, or System dialog),
+      // paper size, and copies for that single reprint.
       var pnChain = Promise.resolve(), pnBusy = false;
-      function printSavedNow(cv) {
-        var job = pnChain.then(function () { return pnRun(cv); });
+      function reprintFindWifiPrinter(idOrName) {
+        if (!idOrName) return null;
+        var key = String(idOrName).replace(/^wifi:/, '');
+        var found = null;
+        try {
+          if (wifiNetAvailable()) {
+            var wl = (wifiList().printers || []);
+            found = wl.find(function (p) { return p && !p.dialog && (p.ip === key || p.name === key); }) || null;
+          }
+          if (!found && wifiPrinter && !wifiPrinter.dialog && (wifiPrinter.ip === key || wifiPrinter.name === key)) found = wifiPrinter;
+          if (!found && wifiDefault && !wifiDefault.dialog && (wifiDefault.ip === key || wifiDefault.name === key)) found = wifiDefault;
+          if (!found) {
+            Object.keys(wifiSizeMap || {}).forEach(function (k) {
+              var sp = wifiSizeMap[k];
+              if (!found && sp && !sp.dialog && (sp.ip === key || sp.name === key)) found = sp;
+            });
+          }
+        } catch (e) { }
+        return found;
+      }
+      function reprintDefaultPrinterForSize(sizeKey, printerIds) {
+        var has = function (id) { return !printerIds || printerIds.indexOf(id) >= 0; };
+        var paper = sizeKey ? paperFor(sizeKey) : null;
+        if (useStation() && has('station')) return 'station';
+        if (paper && paper.receipt && isBtThermalRoute() && has('bt')) return 'bt';
+        var pname = sizeKey ? printerFor(sizeKey) : '';
+        if (pname && isInstaxPrinter(pname)) {
+          if (helperOn && has('helper:' + pname)) return 'helper:' + pname;
+          if (has('instax:' + pname)) return 'instax:' + pname;
+        }
+        if (helperOn && pname && has('helper:' + pname)) return 'helper:' + pname;
+        if (wifiNetAvailable()) {
+          var wp = sizeKey ? wifiForSize(sizeKey) : wifiPrinter;
+          if (wp && !wp.dialog && wp.ip && has('wifi:' + wp.ip)) return 'wifi:' + wp.ip;
+        }
+        if (paper && paper.receipt && btThermalOn && isBtThermalAvailable() && has('bt')) return 'bt';
+        if (helperOn && helper && helper.ok && Array.isArray(helper.printers) && helper.printers.length && has('helper:' + helper.printers[0])) {
+          return 'helper:' + helper.printers[0];
+        }
+        if (has('dialog')) return 'dialog';
+        return (printerIds && printerIds.length) ? printerIds[0] : '';
+      }
+      async function reprintBuildConfig(refresh) {
+        try {
+          if (refresh && (helperOn || LAPTOP_PRINT)) {
+            await checkHelper(true);
+          }
+        } catch (e) { }
+        try { if (refresh && wifiNetAvailable()) wifiRelink(); } catch (e) { }
+        var rawSizes = printSettings();
+        var sizeKeys = (rawSizes && rawSizes.length) ? rawSizes.slice() : ['4x6', '2x6', 'receipt80', 'receipt58'];
+        var sizes = [];
+        sizeKeys.forEach(function (k) {
+          var p = paperFor(k);
+          if (p) sizes.push({ key: k, name: p.name, w: p.w, h: p.h, receipt: !!p.receipt });
+        });
+        var printers = [], seen = {};
+        var addP = function (obj) {
+          if (!obj || !obj.id || seen[obj.id]) return;
+          seen[obj.id] = true;
+          printers.push(obj);
+        };
+        if (useStation()) {
+          addP({ id: 'station', label: 'Print station' + (station && station.online ? ' · online' : ''), kind: 'station' });
+        }
+        if (isBtThermalAvailable()) {
+          var bp = window._btThermal && window._btThermal.btPrinter;
+          var btConn = !!(bp && bp.connected);
+          addP({ id: 'bt', label: '🧾 ' + btProfileName() + ' (Bluetooth thermal' + (btConn ? ' · connected' : '') + ')', kind: 'bt', receipt: true });
+        }
+        if (helperOn || LAPTOP_PRINT) {
+          var hList = (helper && Array.isArray(helper.printers)) ? helper.printers : [];
+          hList.forEach(function (n) {
+            if (!n) return;
+            if (isInstaxPrinter(n)) {
+              var sn = n.slice(window._instax.VIRTUAL.length);
+              addP({ id: 'helper:' + n, label: '📷 ' + sn + ' (Instax Bluetooth)', kind: 'helper' });
+            } else {
+              addP({ id: 'helper:' + n, label: n, kind: 'helper' });
+            }
+          });
+          try {
+            Object.keys(printerMap || {}).forEach(function (k) {
+              var pn = printerMap[k];
+              if (!pn || isInstaxPrinter(pn) || seen['helper:' + pn]) return;
+              addP({ id: 'helper:' + pn, label: pn + (helper && helper.ok ? ' (saved · offline)' : ' (saved)'), kind: 'helper' });
+            });
+          } catch (e) { }
+        }
+        try {
+          instaxNames().forEach(function (n) {
+            if (!n || seen['helper:' + n]) return;
+            var sn = window._instax && n.indexOf(window._instax.VIRTUAL) === 0 ? n.slice(window._instax.VIRTUAL.length) : n;
+            addP({ id: 'instax:' + n, label: '📷 ' + sn + ' (Instax Bluetooth)', kind: 'instax' });
+          });
+        } catch (e) { }
+        if (wifiNetAvailable()) {
+          var addWifi = function (p, savedTag) {
+            if (!p || p.dialog || !p.ip || !p.name || p.noDriver) return;
+            var conn = (p.name.indexOf('(USB)') >= 0) ? '' : (p.usb ? ' (USB)' : ' (Wi-Fi)');
+            addP({ id: 'wifi:' + p.ip, label: p.name + conn + (savedTag ? ' · saved' : ''), kind: 'wifi', receipt: !!(p.raw && !p.ipp && !p.escpr && !p.escp2 && !p.canon && !p.dnp && !p.selphy && !p.epsonL) });
+          };
+          try { (wifiList().printers || []).forEach(function (p) { addWifi(p, false); }); } catch (e) { }
+          try { Object.keys(wifiSizeMap || {}).forEach(function (k) { addWifi(wifiSizeMap[k], true); }); } catch (e) { }
+          try { addWifi(wifiDefault, true); } catch (e) { }
+        }
+        // Keep printing inside the app: Desktop never shows the OS print dialog. On tablets, include Silent AirPrint (zero dialog),
+        // or the tablet print service only when chosen in Setup / no direct in-app printer exists; on plain web, only when no direct printer exists.
+        if (!LAPTOP_PRINT) {
+          if (IOS_APP && window.__PBPrint && typeof window.__PBPrint.print === 'function') {
+            var apInfo = {};
+            try { apInfo = (typeof window.__PBPrint.savedAirPrint === 'function') ? JSON.parse(window.__PBPrint.savedAirPrint() || '{}') : {}; } catch (e) { }
+            if (apInfo && apInfo.name) {
+              addP({ id: 'dialog', label: 'AirPrint (Silent: ' + apInfo.name + ')', kind: 'airprint-silent' });
+            } else if (!printers.length || (wifiPrinter && wifiPrinter.dialog)) {
+              addP({ id: 'dialog', label: 'AirPrint · wireless printer', kind: 'dialog' });
+            }
+          } else if (window.__PBPrint && typeof window.__PBPrint.print === 'function') {
+            if (!printers.length || (wifiPrinter && wifiPrinter.dialog)) {
+              addP({ id: 'dialog', label: 'Android print service', kind: 'dialog' });
+            }
+          } else if (!printers.length) {
+            addP({ id: 'dialog', label: 'Browser print (no Print Helper connected)', kind: 'dialog' });
+          }
+        }
+
+        var pIds = printers.map(function (p) { return p.id; });
+        var sizePrinters = {};
+        sizes.forEach(function (s) { sizePrinters[s.key] = reprintDefaultPrinterForSize(s.key, pIds); });
+        var defaultSize = (printSize && sizes.some(function (s) { return s.key === printSize; })) ? printSize : (sizes[0] ? sizes[0].key : '4x6');
+        var defaultPrinter = sizePrinters[defaultSize] || reprintDefaultPrinterForSize(defaultSize, pIds);
+        if (pIds.indexOf(defaultPrinter) < 0) defaultPrinter = pIds[0] || '';
+        var defaultCopies = Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(printPrefs && printPrefs.copies) || 1)));
+        return {
+          printOn: !!rawSizes,
+          autoPrint: !!autoPrint,
+          sizes: sizes,
+          printers: printers,
+          sizePrinters: sizePrinters,
+          defaultSize: defaultSize,
+          defaultPrinter: defaultPrinter,
+          defaultCopies: defaultCopies,
+          singleStrip: !!(printPrefs && printPrefs.singleStrip),
+          thermalQuality: (printPrefs && printPrefs.thermalQuality) || 'best'
+        };
+      }
+      var pnCfgSyncTimer = null;
+      function reprintSyncExternalConfig(refresh) {
+        clearTimeout(pnCfgSyncTimer);
+        pnCfgSyncTimer = setTimeout(async function () {
+          try {
+            var cfg = await reprintBuildConfig(!!refresh);
+            if (DESKTOP && window.pb4u && typeof window.pb4u.printConfigSet === 'function') {
+              try { await window.pb4u.printConfigSet(cfg); } catch (e) { }
+            }
+            if (typeof pnCh !== 'undefined' && pnCh) {
+              try { pnCh.postMessage({ t: 'here', on: true, config: cfg }); } catch (e) { }
+            }
+          } catch (e) { }
+        }, 120);
+      }
+      function printSavedNow(cv, opts) {
+        var job = pnChain.then(function () { return pnRun(cv, opts || null); });
         pnChain = job.catch(function () { });
         return job;
       }
-      async function pnRun(cv) {
-        var paper = printSize ? paperFor(printSize) : null;
-        if (!printSettings() || !paper) return { ok: false, error: 'Printing isn’t set up on this booth.' };
-        var pname = printerFor(printSize), viaStation = useStation();
-        if (!viaStation && LAPTOP_PRINT && !pname) return { ok: false, error: 'Choose a printer for ' + paper.name + ' in Print settings.' };
+      async function pnRun(cv, opts) {
+        opts = opts || {};
+        var hasBoothPrint = !!printSettings();
+        var sizeKey = (opts.size && paperFor(opts.size)) ? opts.size : (printSize && paperFor(printSize) ? printSize : '4x6');
+        var paper = paperFor(sizeKey);
+        if (!paper) return { ok: false, error: 'Choose a valid paper size.' };
+        var route = opts.printer ? String(opts.printer) : reprintDefaultPrinterForSize(sizeKey);
+        if (!route) return { ok: false, error: 'No printer selected. Connect a printer and tap Refresh, or open Print settings.' };
+        if (LAPTOP_PRINT && route === 'dialog') return { ok: false, error: 'Choose a printer from the list above (or tap Refresh).' };
+        if (!hasBoothPrint && route !== 'dialog') return { ok: false, error: 'Printing isn’t turned on for this booth.' };
+        // Bluetooth thermal requires a receipt roll paper definition so raster width matches 58mm/80mm.
+        if (route === 'bt' && !paper.receipt) {
+          sizeKey = paperFor('receipt80') ? 'receipt80' : 'receipt58';
+          paper = paperFor(sizeKey);
+        }
+        // If an external web gallery tab picked Browser print dialog (or no silent route exists), print in the foreground tab.
+        if (route === 'dialog' && opts.fromExternalTab && !(window.__PBPrint && typeof window.__PBPrint.print === 'function')) {
+          return { ok: true, useBrowserPrint: true, paper: { w: paper.w, h: paper.h, name: paper.name }, msg: 'Opening print dialog…' };
+        }
         for (var w = 0; printing && w < 100; w++) await new Promise(function (r) { setTimeout(r, 300); });
         if (printing) return { ok: false, error: 'The booth is busy printing. Try again.' };
-        var lim = printLimits(), left = lim.ev && printCount && printCount.left != null ? printCount.left : Infinity;
-        if (left < 1) { limitReached(); return { ok: false, error: 'No prints left for this event.' }; }
-        var n = Math.min(left, Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(printPrefs.copies) || 1))));
+        var wantCopies = opts.copies != null ? opts.copies : (printPrefs && printPrefs.copies) || 1;
+        var n = Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(wantCopies) || 1)));
+        if (hasBoothPrint) {
+          var lim = printLimits(), left = lim.ev && printCount && printCount.left != null ? printCount.left : Infinity;
+          if (left < 1) { limitReached(); return { ok: false, error: 'No prints left for this event.' }; }
+          n = Math.min(left, n);
+        }
+        var oldSize = printSize;
         printing = true; refreshPrintUI();
         try {
-          var res = await reservePrints(n);
-          if (!res.ok) { limitReached(); return { ok: false, error: 'No prints left for this event.' }; }
-          var pages = printAdjustAll([buildPlainPrint(printSize, cv)]);
+          if (hasBoothPrint) {
+            var res = await reservePrints(n);
+            if (!res.ok) { limitReached(); return { ok: false, error: 'No prints left for this event.' }; }
+          }
+          printSize = sizeKey;
+          var singleOpt = (typeof opts.singleStrip === 'boolean') ? opts.singleStrip : !!(printPrefs && printPrefs.singleStrip);
+          var buildOpt = { singleStrip: singleOpt };
+          var isHelperRoute = route.indexOf('helper:') === 0;
+          var helperName = isHelperRoute ? route.slice(7) : '';
+          var pages;
+          if (isHelperRoute && helperName) {
+            pages = withPrinterContext(helperName, sizeKey, function () {
+              return printAdjustAll([buildPlainPrint(sizeKey, cv, buildOpt)]);
+            });
+          } else {
+            pages = printAdjustAll([buildPlainPrint(sizeKey, cv, buildOpt)]);
+          }
           if (paper.receipt) paper = Object.assign({}, paper, { h: Math.round(pages[0].height / RECEIPT_DPI * 254) / 10 });
           var label = (n > 1 ? n + ' copies, ' : '') + paper.name;
-          if (viaStation) { await sendToStation(pages, paper, n); showToast('Sent to the print station (' + label + ').', 4000); return { ok: true }; }
           var all = []; for (var c = 0; c < n; c++) all.push.apply(all, pages);
-          if (helperOn && pname) {
-            var sent = true;
-            sent = await printSheets(all, paper, pname);
-            if (sent) { showToast('Printing on ' + pname + ' (' + label + ').'); return { ok: true }; }
-            if (LAPTOP_PRINT) return { ok: false, error: 'The printer didn’t take the photo. Check it is on and try again.' };
+
+          // 1. Print Station
+          if (route === 'station') {
+            await sendToStation(pages, paper, n);
+            var stMsg = 'Sent to the print station (' + label + ').';
+            showToast(stMsg, 4000);
+            return { ok: true, msg: stMsg };
           }
-          if (isMobileOS() || LAPTOP_PRINT) return { ok: false, error: 'Choose a printer in Print settings.' };
-          // Website without the Print Helper: the browser's own print (silent with Chrome's --kiosk-printing).
+
+          // 2. Bluetooth thermal printer (Android / iPad / Chrome Web Bluetooth)
+          if (route === 'bt') {
+            if (!isBtThermalAvailable()) return { ok: false, error: 'Bluetooth thermal printing is not available on this device.' };
+            var rollW = (paper.w && paper.w <= 55) ? '58mm' : '80mm';
+            var btOpts = { brightness: 0, quality: opts.thermalQuality || (printPrefs && printPrefs.thermalQuality) || 'best' };
+            var btDone = 0;
+            var btRun = async function () {
+              for (; btDone < all.length; btDone++) await window._btThermal.printViaBluetooth(all[btDone], rollW, btOpts);
+            };
+            var btFail = function (btErr) { showToast('Bluetooth print failed: ' + ((btErr && btErr.message) || btErr) + '.', 6000); };
+            if (pwAuto && pw.bt.state === 'off' && !(window._btThermal.btPrinter && window._btThermal.btPrinter.connected) && pwHoldBt(label, btRun, btFail)) {
+              return { ok: true, msg: 'Waiting for Bluetooth thermal printer (' + label + ')…' };
+            }
+            if (androidQueueOn()) {
+              var ahead = printQueued;
+              enqueuePrint('bt', btRun).then(function () { pwSet('bt', 'ready'); }, function (btErr) {
+                try { window._btThermal.btPrinter.disconnect(true); } catch (_) { }
+                try { refreshPrintUI(); } catch (_) { }
+                if (pwHoldBt(label, btRun, btFail)) return;
+                btFail(btErr);
+              });
+              var qMsg = ahead > 0 ? ('Added to thermal print queue (' + ahead + ' ahead): ' + label + '.') : ('Printing via Bluetooth (' + label + ').');
+              showToast(qMsg, 4000);
+              return { ok: true, msg: qMsg };
+            }
+            showPrintingNote(printTxt('txtPrinting'), 6000);
+            try {
+              await btRun();
+            } catch (btErr) {
+              try { window._btThermal.btPrinter.disconnect(true); } catch (_) { }
+              try { refreshPrintUI(); } catch (_) { }
+              if (pwHoldBt(label, btRun, function (e2) { showToast('Bluetooth print failed: ' + ((e2 && e2.message) || e2) + '.', 6000); })) {
+                return { ok: true, msg: 'Waiting for Bluetooth thermal printer (' + label + ')…' };
+              }
+              return { ok: false, error: 'Bluetooth thermal failed: ' + ((btErr && btErr.message) || btErr) + '.' };
+            }
+            pwSet('bt', 'ready');
+            var bMsg = 'Printed on ' + btProfileName() + ' (' + label + ').';
+            showToast(bMsg, 4000);
+            return { ok: true, msg: bMsg };
+          }
+
+          // 3. Instax Link Bluetooth printer
+          if (route.indexOf('instax:') === 0) {
+            var ixName = route.slice(7);
+            var sentIx = await printViaInstax(all, paper, ixName);
+            if (sentIx) {
+              var ixMsg = 'Printing on ' + (window._instax && ixName.indexOf(window._instax.VIRTUAL) === 0 ? ixName.slice(window._instax.VIRTUAL.length) : ixName) + ' (' + label + ').';
+              showToast(ixMsg, 4500);
+              return { ok: true, msg: ixMsg };
+            }
+            return { ok: false, error: 'The Instax printer did not accept the photo. Check it is turned on.' };
+          }
+
+          // 4. Print Helper / Desktop built-in helper (coloured photo printers & USB/spooler thermal printers)
+          if (isHelperRoute && helperName) {
+            var isStripImg = cv && cv.width && cv.height && (cv.width / cv.height < 0.45);
+            var twoUpFlag = !singleOpt && isStripImg && !paper.receipt && paper.w / paper.h >= 0.5;
+            var hOpt = { sizeKey: sizeKey, twoUp: twoUpFlag };
+            if (paper.receipt && opts.thermalQuality) hOpt.quality = opts.thermalQuality;
+            var sent = await printChunks(all, paper, helperName, hOpt);
+            if (sent) {
+              var hMsg = 'Printing on ' + helperName + ' (' + label + ').';
+              showToast(hMsg, 4000);
+              return { ok: true, msg: hMsg };
+            }
+            return { ok: false, error: '“' + helperName + '” didn’t take the photo. Check it is on and has paper, or choose another printer.' };
+          }
+
+          // 5. Android / iPad direct Wi-Fi or USB printer
+          if (route.indexOf('wifi:') === 0) {
+            if (!wifiNetAvailable()) return { ok: false, error: 'Direct Wi-Fi / USB printing is not available here.' };
+            try { wifiRelink(); } catch (e) { }
+            var wp = reprintFindWifiPrinter(route);
+            if (!wp) return { ok: false, error: 'That Wi-Fi / USB printer is not connected right now. Tap Refresh or choose another printer.' };
+            var wo = wifiOpts(wp);
+            var wRun = function () { return printViaWifi(all, paper, wp, wo); };
+            var wFail = function (wErr) { showToast((wp.usb ? 'USB' : 'Wi-Fi') + ' print failed: ' + ((wErr && wErr.message) || wErr) + '.', 6000); };
+            if (wp.usb && pwAuto && !pwUsbHere(wp) && pwHoldUsb(wp, label, wRun, wFail)) {
+              return { ok: true, msg: 'Waiting for ' + wp.name + ' (' + label + ')…' };
+            }
+            if (androidQueueOn()) {
+              var wAhead = printQueued;
+              enqueuePrint('w:' + wifiPKey(wp), wRun).catch(function (wErr) {
+                if (wp.usb && !pwUsbHere(wp) && pwHoldUsb(wp, label, wRun, wFail)) return;
+                wFail(wErr);
+              });
+              var wqMsg = wAhead > 0 ? ('Added to print queue (' + wAhead + ' ahead): ' + wp.name + '.') : ('Printing on ' + wp.name + ' (' + label + ').');
+              showToast(wqMsg, 4000);
+              return { ok: true, msg: wqMsg };
+            }
+            showPrintingNote(printTxt('txtPrinting'), 6000);
+            try {
+              await printViaWifi(all, paper, wp, wo);
+              var wMsg = 'Printing on ' + wp.name + ' (' + label + ').';
+              showToast(wMsg, 4000);
+              return { ok: true, msg: wMsg };
+            } catch (wErr) {
+              return { ok: false, error: (wp.usb ? 'USB' : 'Wi-Fi') + ' print failed: ' + ((wErr && wErr.message) || wErr) + '. Check the printer or pick another one.' };
+            }
+          }
+
+          // 6. Native Android Print Service / iOS AirPrint (only when explicitly chosen in Print settings or no direct printer exists)
+          if (route === 'dialog' && window.__PBPrint && typeof window.__PBPrint.print === 'function') {
+            var imgs = all.map(function (c2) { return c2.toDataURL('image/jpeg', 0.92); });
+            var nr = JSON.parse(window.__PBPrint.print('Photobooth ' + paper.name, paper.w, paper.h, JSON.stringify(imgs)) || '{}');
+            if (nr.ok) {
+              var apName = '';
+              try { apName = (IOS_APP && typeof window.__PBPrint.savedAirPrint === 'function') ? (JSON.parse(window.__PBPrint.savedAirPrint() || '{}').name || '') : ''; } catch (e) { }
+              var dMsg = IOS_APP
+                ? (apName ? ('Printing silently on ' + apName + ' (' + label + ').') : ('Choose your AirPrint printer (' + label + ').'))
+                : ('Choose your printer to print (' + label + ').');
+              showToast(dMsg, 4000);
+              return { ok: true, msg: dMsg };
+            }
+            return { ok: false, error: 'Couldn’t open printing: ' + (nr.error || 'unknown error') };
+          }
+
+          if (LAPTOP_PRINT || route !== 'dialog') {
+            return { ok: false, error: 'Choose a printer from the list above (or tap Refresh).' };
+          }
+
+          // 7. Plain web browser fallback (only when no Print Helper / Bluetooth / Station printer exists)
           var urls = [];
           printArea.innerHTML = '';
           for (var k = 0; k < all.length; k++) {
@@ -52054,12 +52873,14 @@ function renderTabletBridgeSetup(info) {
           printPageStyle.textContent = '@page { size: ' + paper.w + 'mm ' + paper.h + 'mm; margin: 0; }';
           window.print();
           setTimeout(function () { printArea.innerHTML = ''; urls.forEach(function (u) { URL.revokeObjectURL(u); }); }, 2000);
-          showToast('Sent to the printer (' + label + ').');
-          return { ok: true };
+          var bpMsg = 'Opened system print dialog (' + label + ').';
+          showToast(bpMsg, 4000);
+          return { ok: true, msg: bpMsg };
         } catch (e) {
           console.error('Print now failed:', e);
-          return { ok: false, error: 'Couldn’t print. Try again.' };
+          return { ok: false, error: 'Couldn’t print: ' + ((e && e.message) || 'try again') + '.' };
         } finally {
+          printSize = oldSize;
           printing = false; refreshPrintUI();
           if (printLimits().ev) setTimeout(refreshPrintCount, 1500);
         }
@@ -52071,31 +52892,435 @@ function renderTabletBridgeSetup(info) {
           var jobs = await api.printNowTake();
           for (var i = 0; i < jobs.length; i++) {
             var j = jobs[i], r;
-            try { r = await printSavedNow(await quickDecode(new Blob([j.bytes]))); } catch (e) { r = { ok: false, error: 'Couldn’t open that photo.' }; }
+            try { r = await printSavedNow(await quickDecode(new Blob([j.bytes])), j.opts || null); } catch (e) { r = { ok: false, error: 'Couldn’t open that photo.' }; }
             if (!r.ok) showToast(r.error, 5000);
-            try { await api.printNowDone(j.id, !!r.ok, r.ok ? '' : r.error); } catch (e) { }
+            try { await api.printNowDone(j.id, !!r.ok, r.ok ? (r.msg || 'Printing ✓') : (r.error || 'Could not print.')); } catch (e) { }
           }
         } catch (e) { /* try again next time */ }
         pnBusy = false;
       }
-      if (DESKTOP && window.pb4u && window.pb4u.printNowTake) setInterval(pnPoll, 1500);
+      if (DESKTOP && window.pb4u && window.pb4u.printNowTake) {
+        setInterval(pnPoll, 1500);
+        setTimeout(function () { reprintSyncExternalConfig(true); }, 1800);
+        setInterval(function () { reprintSyncExternalConfig(false); }, 15000);
+      }
+      var pnCh = null;
       if (!LOCALSHARE && 'BroadcastChannel' in window) {
-        var pnCh = new BroadcastChannel('pb4u-print');
-        var pnHere = function () { try { pnCh.postMessage({ t: 'here', on: !!printSettings() }); } catch (e) { } };
+        pnCh = new BroadcastChannel('pb4u-print');
+        var pnHere = async function (refresh) {
+          try {
+            var cfg = await reprintBuildConfig(!!refresh);
+            pnCh.postMessage({ t: 'here', on: true, config: cfg });
+          } catch (e) {
+            try { pnCh.postMessage({ t: 'here', on: !!printSettings() }); } catch (e2) { }
+          }
+        };
         pnCh.onmessage = async function (ev) {
           var m = ev.data || {};
-          if (m.t === 'hello') return pnHere();
+          if (m.t === 'hello' || m.t === 'config') return pnHere(m.t === 'config');
           if (m.t !== 'print') return;
-          var reply = function (r) { try { pnCh.postMessage({ t: 'result', id: m.id, ok: !!r.ok, error: r.error || '' }); } catch (e) { } };
-          if (!printSettings()) return reply({ ok: false, error: 'Printing isn’t on for this booth.' });
+          var reply = function (r) {
+            try { pnCh.postMessage({ t: 'result', id: m.id, ok: !!r.ok, msg: r.msg || '', error: r.error || '', useBrowserPrint: !!r.useBrowserPrint, paper: r.paper || null }); } catch (e) { }
+          };
           var fid = roveFolderId();
           if (!fid || String(m.folder) !== fid) return reply({ ok: false, error: 'That photo isn’t from this booth’s event.' });
-          try { reply(await printSavedNow(await reqImage({ file: String(m.file) }))); }
+          var opts = Object.assign({}, m.opts || {}, { fromExternalTab: true });
+          try { reply(await printSavedNow(await reqImage({ file: String(m.file) }), opts)); }
           catch (e) { reply({ ok: false, error: (e && e.message) || 'Could not open that photo.' }); }
         };
-        window.addEventListener('pb-print-change', pnHere);
-        pnHere();
+        window.addEventListener('pb-print-change', function () { pnHere(false); });
+        pnHere(false);
       }
+      window.addEventListener('pb-print-change', function () { reprintSyncExternalConfig(false); });
+
+      // ---- In-booth All Photos Gallery & Prefilled Reprint Pop-up ----
+      var RG = { list: [], view: [], cat: 'prints', folders: [], folder: '', cur: -1, cfg: null, copies: 1, qual: 'best', busy: false, userPickedPrinter: false, urls: [], io: null, seq: 0, previewUrl: '' };
+      var rgOverlay = document.getElementById('rgOverlay'), rpModal = document.getElementById('rpModal');
+      function rgEl(id) { return document.getElementById(id); }
+      function rgIsSolo(name) { return /_solo_\d+/i.test(String(name || '')); }
+      function rgIsPrintable(name, mime) {
+        var n = String(name || '');
+        if (/\.(mp4|mov|m4v|webm|gif)$/i.test(n)) return false;
+        if (mime && (/^video\//.test(mime) || mime === 'image/gif')) return false;
+        return /\.(jpe?g|png|webp)$/i.test(n) || /^image\/(jpeg|png|webp)$/i.test(mime || '');
+      }
+      function rgLocalSlug() {
+        var m = /^pb4u-local:([A-Za-z0-9_-]+)/.exec(String(localFolderUrl || ''));
+        return m ? m[1] : '';
+      }
+      function rgRevokeUrls() {
+        RG.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) { } });
+        RG.urls = [];
+      }
+      function rgFiltered() {
+        if (RG.cat === 'all') return RG.list;
+        if (RG.cat === 'solo') return RG.list.filter(function (f) { return rgIsSolo(f.name); });
+        return RG.list.filter(function (f) { return !rgIsSolo(f.name); });
+      }
+      function rgUpdateTabs() {
+        var prints = RG.list.filter(function (f) { return !rgIsSolo(f.name); }).length;
+        var solos = RG.list.filter(function (f) { return rgIsSolo(f.name); }).length;
+        if (RG.cat === 'solo' && !solos) RG.cat = 'prints';
+        if (RG.cat === 'prints' && !prints && solos) RG.cat = 'solo';
+        var tabs = rgEl('rgTabs').querySelectorAll('.rg-tab');
+        for (var i = 0; i < tabs.length; i++) {
+          var t = tabs[i], c = t.dataset.cat;
+          if (c === 'prints') t.textContent = (solos ? 'Prints (' : 'Photos (') + prints + ')';
+          else if (c === 'solo') { t.hidden = !solos; t.textContent = 'Solo shots (' + solos + ')'; }
+          else if (c === 'all') { t.hidden = !(prints && solos); t.textContent = 'All (' + RG.list.length + ')'; }
+          t.classList.toggle('active', c === RG.cat);
+        }
+      }
+      function rgRenderGrid() {
+        var g = rgEl('rgGrid');
+        rgRevokeUrls();
+        if (RG.io) { try { RG.io.disconnect(); } catch (e) { } RG.io = null; }
+        g.innerHTML = '';
+        rgUpdateTabs();
+        RG.view = rgFiltered();
+        rgEl('rgMeta').textContent = RG.view.length ? (RG.view.length + ' photo' + (RG.view.length === 1 ? '' : 's') + ' · tap any photo to reprint') : 'No photos yet';
+        if (!RG.view.length) {
+          var p = document.createElement('p'); p.className = 'rg-empty';
+          p.textContent = 'No printable photos in this gallery yet. Take a photo session and tap Refresh.';
+          g.appendChild(p);
+          return;
+        }
+        if ('IntersectionObserver' in window && RG.view.some(function (f) { return f.kind === 'desktop'; })) {
+          RG.io = new IntersectionObserver(function (es) {
+            es.forEach(function (en) {
+              if (!en.isIntersecting) return;
+              var tile = en.target; RG.io.unobserve(tile);
+              var f = tile._f, im = tile.querySelector('img');
+              if (!f || !im) return;
+              PBX.studioRead(f.slug, f.name).then(function (b) {
+                if (b && im.isConnected) {
+                  var u = URL.createObjectURL(new Blob([b]));
+                  RG.urls.push(u); im.src = u;
+                }
+              }).catch(function () { });
+            });
+          }, { root: g, rootMargin: '240px' });
+        }
+        var frag = document.createDocumentFragment();
+        RG.view.forEach(function (f, i) {
+          var b = document.createElement('button');
+          b.type = 'button'; b.className = 'rg-tile'; b.dataset.i = String(i); b.title = f.name;
+          var im = document.createElement('img'); im.alt = f.name; im.decoding = 'async';
+          if (f.thumb || f.src) {
+            im.loading = 'lazy';
+            im.src = f.thumb || f.src;
+            if (f.thumb && f.src && f.thumb !== f.src) {
+              im.onerror = function () { im.onerror = null; im.src = f.src; };
+            }
+          } else {
+            b._f = f;
+            if (RG.io) RG.io.observe(b);
+            else if (PBX && PBX.studioRead) {
+              PBX.studioRead(f.slug, f.name).then(function (bytes) {
+                if (bytes && im.isConnected) { var u = URL.createObjectURL(new Blob([bytes])); RG.urls.push(u); im.src = u; }
+              }).catch(function () { });
+            }
+          }
+          b.appendChild(im);
+          if (rgIsSolo(f.name)) {
+            var bg = document.createElement('span'); bg.className = 'rg-badge'; bg.textContent = 'Solo'; b.appendChild(bg);
+          }
+          var pill = document.createElement('span'); pill.className = 'rg-reprint-pill'; pill.textContent = '🖨️ Reprint';
+          b.appendChild(pill);
+          frag.appendChild(b);
+        });
+        g.appendChild(frag);
+      }
+      async function rgLoad() {
+        var seq = ++RG.seq;
+        var g = rgEl('rgGrid');
+        g.innerHTML = '<p class="rg-empty">Loading photos…</p>';
+        rgEl('rgMeta').textContent = 'Loading…';
+        var fSel = rgEl('rgFolder');
+        try {
+          if (DESKTOP && PBX && PBX.studioFolders && PBX.studioList) {
+            RG.folders = (await PBX.studioFolders(rawFolderKey(), driveSubfolder())) || [];
+            var cur = RG.folders.find(function (f) { return f.current; }) || RG.folders[0];
+            if (!RG.folder || !RG.folders.some(function (f) { return f.slug === RG.folder; })) RG.folder = cur ? cur.slug : '';
+            fSel.innerHTML = '';
+            RG.folders.forEach(function (f) {
+              var o = document.createElement('option'); o.value = f.slug; o.textContent = f.name + (f.current ? ' (this event)' : '');
+              if (f.slug === RG.folder) o.selected = true;
+              fSel.appendChild(o);
+            });
+            fSel.hidden = RG.folders.length <= 1;
+            var list = RG.folder ? (await PBX.studioList(RG.folder)) : [];
+            if (seq !== RG.seq) return;
+            RG.list = (list || []).filter(function (f) { return rgIsPrintable(f.name); }).map(function (f) {
+              return { kind: 'desktop', slug: RG.folder, name: f.name, t: f.t || 0 };
+            });
+          } else if (LOCALSHARE) {
+            fSel.hidden = true;
+            var slug = rgLocalSlug();
+            var base = localBaseNow() || lanBaseNow();
+            if (!slug || !base) throw new Error('No event folder is ready yet.');
+            var r = await fetch(base + '/e/' + encodeURIComponent(slug) + '/list.json?t=' + Date.now(), { cache: 'no-store' });
+            var j = await r.json().catch(function () { return {}; });
+            if (seq !== RG.seq) return;
+            if (!r.ok) throw new Error('Could not load photos from this device.');
+            var raw = Array.isArray(j.files) ? j.files : [];
+            RG.list = raw.map(function (x) { return typeof x === 'string' ? { n: x, t: 0 } : x; })
+              .filter(function (x) { return x && rgIsPrintable(x.n); })
+              .map(function (x) {
+                var enc = encodeURIComponent(x.n);
+                var full = base + '/e/' + encodeURIComponent(slug) + '/f/' + enc;
+                var thumb = IOS_LOCAL ? full : (base + '/e/' + encodeURIComponent(slug) + '/t/' + enc);
+                return { kind: 'url', name: x.n, t: x.t || 0, src: full, thumb: thumb };
+              });
+          } else {
+            fSel.hidden = true;
+            var fid = roveFolderId(), k = '';
+            try { k = localStorage.getItem('pb_gvk:' + fid) || ''; } catch (e) { }
+            if (!fid) throw new Error('Set up your event folder first to see All photos.');
+            var wr = await fetch('/api/gallery?f=' + encodeURIComponent(fid) + (k ? '&k=' + encodeURIComponent(k) : '') + '&v=' + Date.now(), { cache: 'no-store' });
+            var wj = await wr.json().catch(function () { return {}; });
+            if (seq !== RG.seq) return;
+            if (!wr.ok || !wj.ok) throw new Error(wj.error === 'private' ? 'This event gallery is private on this device.' : 'Could not load the event gallery.');
+            RG.list = (wj.files || []).filter(function (f) { return f && f.src && rgIsPrintable(f.name, f.mime); })
+              .sort(function (a, b) { return (b.t || 0) - (a.t || 0); })
+              .map(function (f) {
+                return { kind: 'url', id: f.id, name: f.name, t: f.t || 0, src: f.src, thumb: 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w480' };
+              });
+          }
+          rgRenderGrid();
+        } catch (e) {
+          if (seq !== RG.seq) return;
+          RG.list = []; RG.view = [];
+          g.innerHTML = '';
+          var pe = document.createElement('p'); pe.className = 'rg-empty';
+          pe.textContent = (e && e.message) || 'Could not load photos.';
+          g.appendChild(pe);
+          rgEl('rgMeta').textContent = '';
+        }
+      }
+      function openReprintGallery() {
+        if (state === 'capturing') { showToast('Finish the current session first.', 3000); return; }
+        try { closeGalleryPop(); } catch (e) { }
+        rgOverlay.hidden = false;
+        rgLoad();
+        reprintBuildConfig(true).then(function (c) { RG.cfg = c; reprintSyncExternalConfig(false); }).catch(function () { });
+      }
+      function closeReprintGallery() {
+        closeReprintModal();
+        rgOverlay.hidden = true;
+        rgRevokeUrls();
+      }
+      async function rgItemToCanvas(item) {
+        if (item.kind === 'desktop') {
+          var bytes = await PBX.studioRead(item.slug, item.name);
+          if (!bytes) throw new Error('That photo is no longer on this laptop.');
+          return quickDecode(new Blob([bytes]));
+        }
+        var r = await fetch(item.src);
+        if (!r.ok) throw new Error('Could not load that photo.');
+        return quickDecode(await r.blob());
+      }
+      function rpSetStatus(msg, cls) {
+        var el = rgEl('rpStatus');
+        el.textContent = msg || '';
+        el.className = 'rp-status' + (cls ? (' ' + cls) : '');
+      }
+      function rpCurSize() {
+        if (!RG.cfg || !RG.cfg.sizes) return null;
+        var val = rgEl('rpSize').value;
+        return RG.cfg.sizes.find(function (s) { return s.key === val; }) || null;
+      }
+      function rpIsStripPreview() {
+        var im = rgEl('rpImg');
+        return !!(im && im.naturalWidth && im.naturalHeight && (im.naturalWidth / im.naturalHeight) < 0.45);
+      }
+      function rpUpdateUI() {
+        var pVal = rgEl('rpPrinter').value || '';
+        var pObj = RG.cfg && RG.cfg.printers ? RG.cfg.printers.find(function (x) { return x.id === pVal; }) : null;
+        var hasPrinter = !!pVal;
+        var isBrowserOnly = (pVal === 'dialog' && pObj && pObj.kind === 'dialog');
+        var sz = rpCurSize();
+        var isReceipt = !!(pVal === 'bt' || (sz && sz.receipt));
+        rgEl('rpCopies').textContent = String(RG.copies);
+        rgEl('rpCopiesRow').hidden = !hasPrinter || (isBrowserOnly && !(window.__PBPrint && typeof window.__PBPrint.print === 'function'));
+        rgEl('rpSingleRow').hidden = !(hasPrinter && !isBrowserOnly && sz && !sz.receipt && sz.w / sz.h >= 0.5 && rpIsStripPreview());
+        rgEl('rpQualField').hidden = !hasPrinter || !isReceipt || isBrowserOnly;
+        [].forEach.call(rgEl('rpQualRow').querySelectorAll('button'), function (b) {
+          b.classList.toggle('active', b.dataset.q === RG.qual);
+        });
+        var go = rgEl('rpPrintBtn'), setBtn = rgEl('rpSettingsBtn');
+        go.disabled = RG.busy || !hasPrinter;
+        setBtn.hidden = hasPrinter;
+        setBtn.disabled = RG.busy;
+        if (RG.busy) {
+          go.textContent = 'Printing…';
+        } else {
+          go.textContent = RG.copies > 1 ? ('🖨️ Reprint (' + RG.copies + ' copies)') : '🖨️ Reprint now';
+        }
+        if (!RG.busy) {
+          if (!hasPrinter) {
+            rpSetStatus('No printer found yet. Connect your printer and tap ↻ Refresh, or open Print settings.', 'err');
+          } else {
+            var pTxt = pObj ? pObj.label : 'selected printer';
+            rpSetStatus('Ready to print directly on ' + pTxt + '. Reprinting here won’t change Auto-print.', '');
+          }
+        }
+      }
+      function rpFillControls(cfg, keepSelection) {
+        RG.cfg = cfg;
+        var prSel = rgEl('rpPrinter'), szSel = rgEl('rpSize');
+        var prevP = keepSelection ? prSel.value : '';
+        var prevS = keepSelection ? szSel.value : '';
+        prSel.innerHTML = ''; szSel.innerHTML = '';
+        var plist = (cfg && cfg.printers) ? cfg.printers : [];
+        if (!plist.length) {
+          var emp = document.createElement('option'); emp.value = ''; emp.textContent = '— No printer found —'; prSel.appendChild(emp);
+        } else {
+          plist.forEach(function (p) {
+            var o = document.createElement('option'); o.value = p.id; o.textContent = p.label; prSel.appendChild(o);
+          });
+        }
+        (cfg.sizes || []).forEach(function (s) {
+          var o = document.createElement('option'); o.value = s.key; o.textContent = s.name; szSel.appendChild(o);
+        });
+        if (keepSelection && prevS && (cfg.sizes || []).some(function (s) { return s.key === prevS; })) szSel.value = prevS;
+        else if (cfg.defaultSize) szSel.value = cfg.defaultSize;
+        if (keepSelection && prevP && plist.some(function (p) { return p.id === prevP; })) prSel.value = prevP;
+        else if (cfg.defaultPrinter && plist.some(function (p) { return p.id === cfg.defaultPrinter; })) prSel.value = cfg.defaultPrinter;
+        else if (plist.length) prSel.value = plist[0].id;
+        if (!keepSelection) {
+          RG.userPickedPrinter = false;
+          RG.copies = cfg.defaultCopies || 1;
+          RG.qual = cfg.thermalQuality || 'best';
+          rgEl('rpSingle').checked = !!cfg.singleStrip;
+        }
+        rpUpdateUI();
+      }
+      async function rpShowItem(idx) {
+        if (idx < 0 || idx >= RG.view.length) return;
+        RG.cur = idx;
+        var item = RG.view[idx];
+        rgEl('rpPos').textContent = (idx + 1) + ' of ' + RG.view.length + ' · ' + item.name;
+        rgEl('rpPrev').disabled = idx <= 0;
+        rgEl('rpNext').disabled = idx >= RG.view.length - 1;
+        var im = rgEl('rpImg');
+        im.onload = function () { rpUpdateUI(); };
+        if (RG.previewUrl) { try { URL.revokeObjectURL(RG.previewUrl); } catch (e) { } RG.previewUrl = ''; }
+        if (item.kind === 'desktop') {
+          im.removeAttribute('src');
+          try {
+            var bytes = await PBX.studioRead(item.slug, item.name);
+            if (bytes && RG.cur === idx) {
+              RG.previewUrl = URL.createObjectURL(new Blob([bytes]));
+              im.src = RG.previewUrl;
+            }
+          } catch (e) { }
+        } else {
+          im.src = item.src;
+        }
+        rpUpdateUI();
+      }
+      async function openReprintModal(idx) {
+        rpModal.hidden = false;
+        rpSetStatus('Checking printers…', '');
+        await rpShowItem(idx);
+        var cfg = await reprintBuildConfig(true);
+        rpFillControls(cfg, false);
+        reprintSyncExternalConfig(false);
+      }
+      function closeReprintModal() {
+        if (RG.busy) return;
+        rpModal.hidden = true;
+        if (RG.previewUrl) { try { URL.revokeObjectURL(RG.previewUrl); } catch (e) { } RG.previewUrl = ''; }
+      }
+      async function rpExecutePrint() {
+        if (RG.busy || RG.cur < 0 || !RG.view[RG.cur]) return;
+        var item = RG.view[RG.cur];
+        var route = rgEl('rpPrinter').value || '';
+        if (!route) { rpSetStatus('No printer selected. Connect a printer and tap ↻ Refresh, or open Print settings.', 'err'); return; }
+        var sizeKey = rgEl('rpSize').value || (RG.cfg && RG.cfg.defaultSize) || '4x6';
+        RG.busy = true;
+        rpUpdateUI();
+        rpSetStatus('Sending to printer…', '');
+        try {
+          var cv = await rgItemToCanvas(item);
+          var opts = {
+            size: sizeKey,
+            printer: route,
+            copies: RG.copies,
+            thermalQuality: RG.qual
+          };
+          if (!rgEl('rpSingleRow').hidden) opts.singleStrip = !!rgEl('rpSingle').checked;
+          var r = await printSavedNow(cv, opts);
+          RG.busy = false;
+          rpUpdateUI();
+          if (r && r.ok) rpSetStatus((r.msg || 'Sent to printer ✓'), 'ok');
+          else rpSetStatus((r && r.error) || 'Could not print. Check the printer or pick another one.', 'err');
+        } catch (e) {
+          RG.busy = false;
+          rpUpdateUI();
+          rpSetStatus((e && e.message) || 'Could not print that photo.', 'err');
+        }
+      }
+      document.getElementById('galleryPopReprint').addEventListener('click', function (e) { e.stopPropagation(); openReprintGallery(); });
+      var dfReprint = document.getElementById('driveFolderReprint');
+      if (dfReprint) dfReprint.addEventListener('click', function (e) { e.preventDefault(); openReprintGallery(); });
+      rgEl('rgClose').addEventListener('click', closeReprintGallery);
+      rgEl('rgRefresh').addEventListener('click', rgLoad);
+      rgEl('rgFolder').addEventListener('change', function () { RG.folder = this.value; rgLoad(); });
+      rgEl('rgTabs').addEventListener('click', function (e) {
+        var b = e.target.closest('.rg-tab'); if (!b) return;
+        RG.cat = b.dataset.cat; rgRenderGrid();
+      });
+      rgEl('rgGrid').addEventListener('click', function (e) {
+        var tile = e.target.closest('.rg-tile'); if (!tile) return;
+        openReprintModal(Number(tile.dataset.i));
+      });
+      rgOverlay.addEventListener('click', function (e) { if (e.target === rgOverlay) closeReprintGallery(); });
+      rgEl('rpClose').addEventListener('click', closeReprintModal);
+      rpModal.addEventListener('click', function (e) { if (e.target === rpModal) closeReprintModal(); });
+      rgEl('rpPrev').addEventListener('click', function () { if (!RG.busy && RG.cur > 0) rpShowItem(RG.cur - 1); });
+      rgEl('rpNext').addEventListener('click', function () { if (!RG.busy && RG.cur < RG.view.length - 1) rpShowItem(RG.cur + 1); });
+      rgEl('rpMinus').addEventListener('click', function () { RG.copies = Math.max(1, RG.copies - 1); rpUpdateUI(); });
+      rgEl('rpPlus').addEventListener('click', function () { RG.copies = Math.min(MAX_COPIES, RG.copies + 1); rpUpdateUI(); });
+      rgEl('rpSize').addEventListener('change', function () {
+        if (!RG.userPickedPrinter && RG.cfg && RG.cfg.sizePrinters && RG.cfg.sizePrinters[this.value]) {
+          rgEl('rpPrinter').value = RG.cfg.sizePrinters[this.value];
+        }
+        rpUpdateUI();
+      });
+      rgEl('rpPrinter').addEventListener('change', function () {
+        RG.userPickedPrinter = true;
+        if (this.value === 'bt' && RG.cfg && RG.cfg.sizes) {
+          var s = rpCurSize();
+          if (!s || !s.receipt) {
+            var rec = RG.cfg.sizes.find(function (x) { return x.receipt; });
+            if (rec) rgEl('rpSize').value = rec.key;
+          }
+        }
+        rpUpdateUI();
+      });
+      rgEl('rpQualRow').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-q]'); if (!b) return;
+        RG.qual = b.dataset.q; rpUpdateUI();
+      });
+      rgEl('rpRefreshPrinters').addEventListener('click', async function () {
+        if (RG.busy) return;
+        rpSetStatus('Refreshing printers…', '');
+        try { if (wifiNetAvailable() && typeof wifiScan === 'function') wifiScan(); } catch (e) { }
+        var cfg = await reprintBuildConfig(true);
+        rpFillControls(cfg, true);
+        rpSetStatus('Printer list refreshed.', '');
+        reprintSyncExternalConfig(false);
+      });
+      rgEl('rpPrintBtn').addEventListener('click', function () { rpExecutePrint(); });
+      rgEl('rpSettingsBtn').addEventListener('click', function () { closeReprintGallery(); openPrintModal(); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        if (!rpModal.hidden) { e.stopPropagation(); closeReprintModal(); }
+        else if (!rgOverlay.hidden) { e.stopPropagation(); closeReprintGallery(); }
+      }, true);
+
       function openReq() {
         if (!reqOn()) return;
         if (state === 'capturing') { showToast('Finish the session first.', 3000); return; }
@@ -52746,7 +53971,7 @@ function renderTabletBridgeSetup(info) {
             if (p.needsPermission) { try { window.__PBNet.usbAllow(p.id); } catch (e) { } return { ok: false, msg: 'Allow USB access in the prompt, then tap the printer again.' }; }
             if (p.brotherNoIpp || (p.noDriver && p.usb && p.vid === 1273)) return { ok: false, msg: p.name + ' does not expose IPP-over-USB on this cable. Connect it to Wi-Fi or Wi-Fi Direct, or use Android print screen.' };
             if (p.noDriver) return { ok: false, msg: p.name + ' needs the booth Setup (Printer settings) to choose how to print.' };
-            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, dnp: !!p.dnp, dnpModel: p.dnpModel || '', epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
+            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, dnp: !!p.dnp, dnpModel: p.dnpModel || '', epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, bcap: !!p.bcap, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
             try { refreshPrintUI(); } catch (e) { }
             return { ok: true, msg: 'Printer selected: ' + p.name };
           } finally { printSize = old; }

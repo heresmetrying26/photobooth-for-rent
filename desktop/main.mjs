@@ -17,7 +17,7 @@ import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './li
 import { initSetupSync, handleSetupRequest, syncAllNow } from './lib/setup-sync.mjs';
 import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
-import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinArmStateNow, spinArmCmdPush, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, roveStateSet, roveCmdTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
+import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinArmStateNow, spinArmCmdPush, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, roveStateSet, roveCmdTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, setPrintNowConfig, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
 import { initBridge, getBridgeInfo, renewBridgeToken, pushBridgeState, sendBridgeEvent, sendCamCommand } from './lib/guest-bridge.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import { makeShrinkPage, makePngToJpeg } from './lib/pageshrink.mjs';
@@ -374,6 +374,7 @@ const ipadAllowed = () => { const s = L.status(); return !!(s.p && s.p.feat && s
 // ---------- IPC (preload.cjs) ----------
 function wireIpc() {
   ipcMain.on('pb4u:lan', (e) => { e.returnValue = shareBase(); });
+  ipcMain.on('pb4u:localBase', (e) => { const p = sharePortNow(); e.returnValue = p ? ('http://127.0.0.1:' + p) : null; });
   // Reconnect an Instax printer that was set up before. Chromium only opens the Bluetooth chooser for a tap, so the booth
   // asks here and the app runs the request "as a tap" itself; the printer is taken by its name and the operator is not asked.
   let btQueue = Promise.resolve();
@@ -507,6 +508,7 @@ function wireIpc() {
   // Guests asking for a print from their phone: switched on from the booth's Print settings; requests wait here
   ipcMain.handle('pb4u:printNowTake', () => printNowTake());
   ipcMain.handle('pb4u:printNowDone', (e, id, ok, msg) => printNowDone(id, !!ok, msg));
+  ipcMain.handle('pb4u:printConfigSet', (e, cfg) => setPrintNowConfig(cfg));
   ipcMain.handle('pb4u:guestPrintSet', (e, on) => setGuestPrint(!!on));
   ipcMain.handle('pb4u:guestViewSet', (e, mode) => setGuestView(String(mode || '')));
   ipcMain.handle('pb4u:printReqList', () => printReqList());

@@ -6,7 +6,7 @@ import { encodePwgRaster, makePwgRasterizer, pickPwgDpi, PWG_HEADER } from '../l
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ippPrintDirect, ippCaps, directFormats, pickMediaType, labelMediaType } from '../lib/netprinters.mjs';
+import { ippPrintDirect, ippCaps, directFormats, pickMediaType, labelMediaType, directPhotoOpts } from '../lib/netprinters.mjs';
 import { setUsbBackend, probeUsbPrinters, decodeChunked, isHttpComplete, parseHttpReply } from '../lib/usbipp.mjs';
 import { initHelper, handleHelper, stopHelper } from '../lib/helper.mjs';
 
@@ -290,9 +290,44 @@ const rasterizer = (calls) => (image, spec) => {
   await ippPrintDirect({ ip: '127.0.0.1', port: p.port, jpeg, widthMm: 101.6, heightMm: 152.4, rasterize: rasterizer([]), quality: 'best' });
   assert.equal(text(p.jobs[0], 'document-format'), 'image/jpeg');
   assert.deepEqual([...p.jobs[0].doc], [...jpeg]);
-  assert.ok(!names(p.jobs[0]).includes('print-quality'), 'JPEG printers are sent exactly what they were before');
+  // Changed on purpose (2026-11-22): a JPEG printer used to get no print-quality at all, so every photo went out at the printer's default.
+  // It is now asked for the best quality it LISTS; a paper type only when the printer says it prints borderless (see directPhotoOpts).
+  const pq = p.jobs[0].attrs.find((a) => a[0] === 'print-quality');
+  assert.ok(pq && pq[2].readUInt32BE(0) === 5, 'asked for the best quality the printer lists');
+  assert.ok(!names(p.jobs[0]).includes('media-type') && !members(p.jobs[0]).includes('media-type'), 'no paper type for a printer that did not say it prints borderless');
   p.srv.close();
-  console.log('✓ Passed: a JPEG printer keeps getting a plain JPEG');
+  console.log('✓ Passed: a JPEG printer gets a plain JPEG, asked for the best quality it lists');
+}
+
+// ---- 8b. a JPEG printer that refuses the quality gets the same photo again without it ----
+{
+  const p = await fakePrinter({ formats: ['image/jpeg'], refuse: (job) => names(job).includes('print-quality') });
+  const jpeg = Buffer.from([0xff, 0xd8, 0x01, 0x02, 0xff, 0xd9]);
+  await ippPrintDirect({ ip: '127.0.0.1', port: p.port, jpeg, widthMm: 101.6, heightMm: 152.4, quality: 'best' });
+  assert.ok(p.jobs.length >= 2 && names(p.jobs[0]).includes('print-quality') && !names(p.jobs[p.jobs.length - 1]).includes('print-quality'), 'sent with the quality, then without');
+  assert.deepEqual([...p.jobs[p.jobs.length - 1].doc], [...jpeg], 'the same photo');
+  p.srv.close();
+  console.log('✓ Passed: a JPEG printer that refuses the quality still prints');
+}
+
+// ---- 8c. what a direct JPEG print asks for: best quality if listed, glossy photo paper for a borderless printer, never on a SELPHY ----
+{
+  const caps = (o) => ({ model: 'Some Printer', qualities: [3, 4, 5], mediaTypes: ['stationery', 'photographic-glossy', 'photographic-matte'], borderlessCap: true, ...o });
+  const d = (c, o) => directPhotoOpts(c, { quality: 'best', wMm: 101.6, hMm: 152.4, ...o });
+  assert.deepEqual(d(caps()), { quality: 5, mediaType: 'photographic-glossy' }, 'a printer that says it prints borderless');
+  assert.deepEqual(d(caps({ borderlessCap: false })), { quality: 5, mediaType: '' }, 'no paper type when it did not say so');
+  assert.deepEqual(d(caps({ qualities: [3, 4] })), { quality: 0, mediaType: 'photographic-glossy' }, 'High only when listed');
+  assert.deepEqual(d(caps(), { quality: 'normal' }), { quality: 4, mediaType: 'photographic-glossy' }, 'the quality the booth asked for');
+  assert.deepEqual(d(caps(), { quality: '' }), { quality: 0, mediaType: 'photographic-glossy' });
+  assert.deepEqual(d(caps(), { mediaType: 'plain' }), { quality: 5, mediaType: 'stationery' }, 'a paper type picked by the operator wins');
+  assert.deepEqual(d(caps(), { mediaType: 'driver' }), { quality: 5, mediaType: '' }, 'Driver default leaves the paper type to the printer');
+  assert.deepEqual(d(caps(), { wMm: 210, hMm: 297 }), { quality: 5, mediaType: '' }, 'an A4 sheet is not switched to photo paper');
+  assert.deepEqual(d(caps(), { borderless: false }), { quality: 5, mediaType: '' }, 'not when borderless is off');
+  assert.deepEqual(d(caps({ model: 'EPSON L8050 Series', qualities: [], mediaTypes: [], borderlessCap: false })), { quality: 5, mediaType: 'photographic-glossy' }, 'the L8050 lists nothing and is asked anyway');
+  assert.deepEqual(d(caps({ model: 'EPSON L8050 Series', qualities: [], mediaTypes: [], borderlessCap: false }), { mediaType: 'plain' }), { quality: 5, mediaType: '' }, 'an L8050 that does not list plain is not sent glossy over it');
+  assert.deepEqual(d(caps({ model: 'Canon SELPHY CP1300' })), { quality: 0, mediaType: '' }, 'a SELPHY keeps its own paper');
+  assert.deepEqual(directPhotoOpts(null, { quality: 'best' }), { quality: 0, mediaType: '' });
+  console.log('✓ Passed: direct JPEG prints ask for the best quality and glossy photo paper where the printer allows borderless');
 }
 
 // ---- 9. odd printers: only colour types it can not do, and no paper size at all ----

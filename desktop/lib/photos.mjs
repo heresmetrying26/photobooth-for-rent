@@ -1354,6 +1354,50 @@ export function studioRead(slug, name) {
 
 const printNowJobs = new Map();
 const PRINTNOW_MAX = 20, PRINTNOW_KEEP_MS = 120000;
+let printNowConfig = null;
+export function setPrintNowConfig(cfg) {
+  if (!cfg || typeof cfg !== 'object') { printNowConfig = null; return false; }
+  const cleanStr = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, '').slice(0, n);
+  const sizes = (Array.isArray(cfg.sizes) ? cfg.sizes : []).slice(0, 30).map((s) => ({
+    key: cleanStr(s && s.key, 40),
+    name: cleanStr(s && s.name, 60),
+    w: Number(s && s.w) || 0,
+    h: Number(s && s.h) || 0,
+    receipt: !!(s && s.receipt)
+  })).filter((s) => s.key && s.name);
+  const printers = (Array.isArray(cfg.printers) ? cfg.printers : []).slice(0, 60).map((p) => ({
+    id: cleanStr(p && p.id, 180),
+    label: cleanStr(p && p.label, 180),
+    kind: cleanStr(p && p.kind, 24),
+    receipt: !!(p && p.receipt)
+  })).filter((p) => p.id && p.label);
+  const sizePrinters = {};
+  if (cfg.sizePrinters && typeof cfg.sizePrinters === 'object') {
+    for (const [k, v] of Object.entries(cfg.sizePrinters)) {
+      const ck = cleanStr(k, 40), cv = cleanStr(v, 180);
+      if (ck && cv) sizePrinters[ck] = cv;
+    }
+  }
+  printNowConfig = {
+    printOn: !!cfg.printOn,
+    autoPrint: !!cfg.autoPrint,
+    sizes,
+    printers,
+    sizePrinters,
+    defaultSize: cleanStr(cfg.defaultSize, 40),
+    defaultPrinter: cleanStr(cfg.defaultPrinter, 180),
+    defaultCopies: Math.max(1, Math.min(20, Math.floor(Number(cfg.defaultCopies) || 1))),
+    singleStrip: !!cfg.singleStrip,
+    thermalQuality: cleanStr(cfg.thermalQuality || 'best', 16),
+    at: Date.now()
+  };
+  return true;
+}
+function handlePrintNowConfig(req, res) {
+  const reply = (code, o) => send(res, code, 'application/json', JSON.stringify(o));
+  if (!isLocalReq(req)) return reply(403, { ok: false, error: 'Only the booth laptop can read printer settings.' });
+  return reply(200, { ok: true, config: printNowConfig });
+}
 export function printNowTake() {
   const out = [];
   for (const [id, j] of printNowJobs) {
@@ -1363,7 +1407,7 @@ export function printNowTake() {
     const target = dir ? findFileInDir(dir, j.file) : null;
     try { bytes = target ? readFileSync(target) : null; } catch { /* gone */ }
     if (!bytes) { j.state = 'fail'; j.msg = 'That photo is no longer on this laptop.'; continue; }
-    j.state = 'taken'; out.push({ id, file: j.file, bytes });
+    j.state = 'taken'; out.push({ id, file: j.file, bytes, opts: j.opts || null });
   }
   return out;
 }
@@ -1372,7 +1416,7 @@ export function printNowDone(id, ok, msg) {
   j.state = ok ? 'ok' : 'fail'; j.msg = String(msg || '').slice(0, 200);
   return true;
 }
-function handlePrintNow(req, res, pm) {
+async function handlePrintNow(req, res, pm) {
   const reply = (code, o) => send(res, code, 'application/json', JSON.stringify(o));
   if (req.method !== 'POST') return reply(405, { ok: false, error: 'Method not allowed' });
   if (!isLocalReq(req)) return reply(403, { ok: false, error: 'Only the booth laptop can print from here.' });
@@ -1381,8 +1425,15 @@ function handlePrintNow(req, res, pm) {
   if (!dir || !file || file !== basename(file) || file.startsWith('.') || !/\.(jpe?g|png|webp)$/i.test(file) || !findFileInDir(dir, file)) return reply(404, { ok: false, error: 'Photo not found' });
   let live = 0; for (const j of printNowJobs.values()) if (j.state === 'wait' || j.state === 'taken') live++;
   if (live >= PRINTNOW_MAX) return reply(429, { ok: false, error: 'The booth is busy printing. Try again in a moment.' });
+  const body = await readSmallJson(req);
+  const opts = {};
+  if (body && typeof body.size === 'string' && body.size.trim()) opts.size = body.size.trim().slice(0, 40);
+  if (body && typeof body.printer === 'string' && body.printer.trim()) opts.printer = body.printer.trim().slice(0, 180);
+  if (body && body.copies != null) opts.copies = Math.max(1, Math.min(20, Math.floor(Number(body.copies) || 1)));
+  if (body && typeof body.singleStrip === 'boolean') opts.singleStrip = body.singleStrip;
+  if (body && typeof body.thermalQuality === 'string' && body.thermalQuality.trim()) opts.thermalQuality = body.thermalQuality.trim().slice(0, 16);
   const id = randomBytes(6).toString('hex');
-  printNowJobs.set(id, { slug: pm[1], file, state: 'wait', msg: '', t: Date.now() });
+  printNowJobs.set(id, { slug: pm[1], file, state: 'wait', msg: '', opts: Object.keys(opts).length ? opts : null, t: Date.now() });
   return reply(200, { ok: true, id });
 }
 function handlePrintNowStatus(req, res, pm) {
@@ -1392,16 +1443,73 @@ function handlePrintNowStatus(req, res, pm) {
   return j ? reply(200, { ok: true, state: j.state, msg: j.msg }) : reply(404, { ok: false, state: 'gone' });
 }
 function opPrintButtonHtml(slug, file) {
-  return '<button class="btn alt" id="opPrint" type="button">Print photo</button>' +
-    '<script>(function(){var b=document.getElementById("opPrint");' +
-    'function end(m,ok){b.textContent=m;setTimeout(function(){b.disabled=false;b.textContent="Print photo"},ok?2500:4500)}' +
-    'b.addEventListener("click",function(){b.disabled=true;b.textContent="Sending…";' +
-    'fetch("/e/' + slug + '/printnow/' + encodeURIComponent(file) + '",{method:"POST"}).then(function(r){return r.json()}).then(function(j){' +
-    'if(!j.ok){end(j.error||"Could not print",0);return}' +
+  return '<button class="btn alt" id="opPrint" type="button">🖨️ Reprint</button>' +
+    '<div id="opPrintModal" style="display:none;position:fixed;inset:0;z-index:99;background:rgba(28,26,30,.64);align-items:center;justify-content:center;padding:16px">' +
+    '<div style="background:#fff;color:#1C1A1E;border-radius:18px;width:min(440px,100%);padding:20px;text-align:left;box-shadow:0 20px 60px rgba(0,0,0,.35)">' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><b style="font-size:18px;flex:1">🖨️ Reprint photo</b><button type="button" id="opPmClose" style="border:1.5px solid #E4DCCF;background:#fff;border-radius:999px;width:32px;height:32px;font-size:18px;cursor:pointer;color:#1C1A1E">×</button></div>' +
+    '<label style="display:block;font-size:12px;font-weight:800;color:#6B666C;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.04em">Printer</label>' +
+    '<div style="display:flex;gap:6px;align-items:center">' +
+    '<select id="opPmPrinter" style="flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1.5px solid #E4DCCF;font:600 14px inherit;background:#fff;color:#1C1A1E"></select>' +
+    '<button type="button" id="opPmRefresh" title="Refresh printers" style="border:1.5px solid #E4DCCF;background:#fff;border-radius:10px;padding:10px 12px;font:700 14px inherit;cursor:pointer;color:#1C1A1E">↻</button>' +
+    '</div>' +
+    '<label id="opPmSizeLbl" style="display:block;font-size:12px;font-weight:800;color:#6B666C;margin:12px 0 4px;text-transform:uppercase;letter-spacing:.04em">Paper size</label>' +
+    '<select id="opPmSize" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #E4DCCF;font:600 14px inherit;background:#fff;color:#1C1A1E"></select>' +
+    '<div id="opPmCopiesWrap" style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 6px">' +
+    '<span style="font-size:13px;font-weight:800;color:#1C1A1E">Copies</span>' +
+    '<div style="display:inline-flex;align-items:center;gap:10px">' +
+    '<button type="button" id="opPmMinus" style="width:36px;height:36px;border-radius:10px;border:1.5px solid #E4DCCF;background:#fff;font:800 18px inherit;cursor:pointer">−</button>' +
+    '<b id="opPmCopies" style="min-width:26px;text-align:center;font-size:16px">1</b>' +
+    '<button type="button" id="opPmPlus" style="width:36px;height:36px;border-radius:10px;border:1.5px solid #E4DCCF;background:#fff;font:800 18px inherit;cursor:pointer">+</button>' +
+    '</div></div>' +
+    '<label id="opPmStripRow" style="display:none;align-items:center;gap:8px;margin:10px 0 4px;font-size:13px;font-weight:600;color:#1C1A1E"><input type="checkbox" id="opPmSingle"> 1 full strip per sheet (don’t pair 2 side-by-side)</label>' +
+    '<p id="opPmHint" style="font-size:12.5px;color:#6B666C;line-height:1.45;margin:10px 0 14px"></p>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+    '<button type="button" id="opPmGo" class="btn" style="flex:1;margin:0;text-align:center">🖨️ Reprint now</button>' +
+    '</div></div></div>' +
+    '<script>(function(){' +
+    'var btn=document.getElementById("opPrint"),mo=document.getElementById("opPrintModal"),prSel=document.getElementById("opPmPrinter"),szSel=document.getElementById("opPmSize"),szLbl=document.getElementById("opPmSizeLbl"),cpWrap=document.getElementById("opPmCopiesWrap"),cpVal=document.getElementById("opPmCopies"),stRow=document.getElementById("opPmStripRow"),stChk=document.getElementById("opPmSingle"),hint=document.getElementById("opPmHint"),go=document.getElementById("opPmGo");' +
+    'var cfg=null,copies=1,busy=false,userPickedPrinter=false;' +
+    'function openM(){mo.style.display="flex";loadCfg()}' +
+    'function closeM(){if(busy)return;mo.style.display="none"}' +
+    'function isStripImg(){var im=document.querySelector(".one img");return !!(im&&im.naturalWidth&&im.naturalHeight&&im.naturalWidth/im.naturalHeight<0.45)}' +
+    'function curSizeObj(){if(!cfg||!cfg.sizes)return null;for(var i=0;i<cfg.sizes.length;i++)if(cfg.sizes[i].key===szSel.value)return cfg.sizes[i];return null}' +
+    'function updateUI(){var p=prSel.value,s=curSizeObj(),hasP=!!p;cpVal.textContent=String(copies);' +
+    'szSel.style.display=(cfg&&cfg.sizes&&cfg.sizes.length)?"":"none";szLbl.style.display=szSel.style.display;' +
+    'cpWrap.style.display=hasP?"flex":"none";' +
+    'stRow.style.display=(hasP&&s&&!s.receipt&&s.w/s.h>=0.5&&isStripImg())?"flex":"none";' +
+    'go.disabled=busy||!hasP;' +
+    'go.textContent=busy?"Sending…":(copies>1?"🖨️ Reprint ("+copies+" copies)":"🖨️ Reprint now");' +
+    'if(!busy){hint.textContent=hasP?"Pre-filled from your booth setup. Prints directly from photobooth4u without changing Auto-print.":"No printers found yet. Connect a printer in photobooth4u and tap ↻.";hint.style.color=hasP?"#6B666C":"#C93D27"}}' +
+    'function fillCfg(c){cfg=c;userPickedPrinter=false;prSel.innerHTML="";szSel.innerHTML="";' +
+    'var ps=(c&&c.printers)?c.printers.filter(function(x){return x&&x.id&&x.id!=="dialog"}):[];' +
+    'if(!ps.length){var eo=document.createElement("option");eo.value="";eo.textContent="— No printer found —";prSel.appendChild(eo)}' +
+    'else{ps.forEach(function(x){var o=document.createElement("option");o.value=x.id;o.textContent=x.label;prSel.appendChild(o)})}' +
+    'var sz=(c&&c.sizes)?c.sizes:[];' +
+    'sz.forEach(function(x){var o=document.createElement("option");o.value=x.key;o.textContent=x.name;szSel.appendChild(o)});' +
+    'if(c&&c.defaultSize&&sz.some(function(x){return x.key===c.defaultSize}))szSel.value=c.defaultSize;' +
+    'if(ps.length){prSel.value=(c&&c.defaultPrinter&&ps.some(function(x){return x.id===c.defaultPrinter}))?c.defaultPrinter:ps[0].id}' +
+    'copies=Math.max(1,Math.min(20,(c&&c.defaultCopies)||1));stChk.checked=!!(c&&c.singleStrip);updateUI()}' +
+    'function loadCfg(){hint.textContent="Loading printers…";hint.style.color="#6B666C";fetch("/printnow/config").then(function(r){return r.json()}).then(function(j){fillCfg(j&&j.ok?j.config:null)}).catch(function(){fillCfg(null)})}' +
+    'document.getElementById("opPmRefresh").addEventListener("click",function(){if(!busy)loadCfg()});' +
+    'szSel.addEventListener("change",function(){if(!userPickedPrinter&&cfg&&cfg.sizePrinters&&cfg.sizePrinters[szSel.value]&&cfg.sizePrinters[szSel.value]!=="dialog")prSel.value=cfg.sizePrinters[szSel.value];updateUI()});' +
+    'prSel.addEventListener("change",function(){userPickedPrinter=true;if(prSel.value==="bt"&&cfg&&cfg.sizes){var s=curSizeObj();if(!s||!s.receipt){var r=cfg.sizes.find(function(x){return x.receipt});if(r)szSel.value=r.key}}updateUI()});' +
+    'document.getElementById("opPmMinus").addEventListener("click",function(){copies=Math.max(1,copies-1);updateUI()});' +
+    'document.getElementById("opPmPlus").addEventListener("click",function(){copies=Math.min(20,copies+1);updateUI()});' +
+    'document.getElementById("opPmClose").addEventListener("click",closeM);' +
+    'mo.addEventListener("click",function(e){if(e.target===mo)closeM()});' +
+    'document.addEventListener("keydown",function(e){if(e.key==="Escape"&&mo.style.display==="flex")closeM()});' +
+    'go.addEventListener("click",function(){if(busy||!prSel.value)return;' +
+    'busy=true;go.disabled=true;updateUI();hint.textContent="Sending to printer…";hint.style.color="#6B666C";' +
+    'var payload={size:szSel.value||"",printer:prSel.value||"",copies:copies};if(stRow.style.display!=="none")payload.singleStrip=!!stChk.checked;' +
+    'fetch("/e/' + slug + '/printnow/' + encodeURIComponent(file) + '",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)}).then(function(r){return r.json()}).then(function(j){' +
+    'if(!j.ok){busy=false;go.disabled=false;updateUI();hint.textContent=j.error||"Could not print.";hint.style.color="#C93D27";return}' +
     'var n=0;(function poll(){fetch("/printnow/"+j.id).then(function(r){return r.json()}).then(function(s){' +
-    'if(s.state==="ok")return end("Printing ✓",1);if(s.state==="fail")return end(s.msg||"Could not print",0);' +
-    'if(++n>40)return end("The booth did not answer",0);setTimeout(poll,700)}).catch(function(){end("Could not print",0)})})()' +
-    '}).catch(function(){end("Could not print",0)})})})()</script>';
+    'if(s.state==="ok"){busy=false;go.disabled=false;updateUI();hint.textContent=s.msg||"Sent to printer ✓";hint.style.color="#2E7D32";return}' +
+    'if(s.state==="fail"){busy=false;go.disabled=false;updateUI();hint.textContent=s.msg||"Could not print. Check the printer or pick another one.";hint.style.color="#C93D27";return}' +
+    'if(++n>50){busy=false;go.disabled=false;updateUI();hint.textContent="The booth did not answer. Check photobooth4u is open.";hint.style.color="#C93D27";return}' +
+    'setTimeout(poll,600)}).catch(function(){busy=false;go.disabled=false;updateUI();hint.textContent="Could not reach photobooth4u.";hint.style.color="#C93D27"})})()' +
+    '}).catch(function(){busy=false;go.disabled=false;updateUI();hint.textContent="Could not reach photobooth4u.";hint.style.color="#C93D27"})});' +
+    'btn.addEventListener("click",openM)})()</script>';
 }
 function reqButtonHtml(slug, file, postUrl, idn) {
   const id = 'askPrint' + (idn || '');
@@ -2571,6 +2679,7 @@ async function handleShare(req, res) {
   if (guestView === 'only' && /^\/e\/[A-Za-z0-9]{6,20}\/?$/.test(url.pathname) && !isLocalReq(req)) {
     return send(res, 403, 'text/html; charset=utf-8', page('Private', '<p class="empty">Guests of this event see only their own photos. Scan your own QR code at the booth to open yours.</p>'));
   }
+  if (url.pathname === '/printnow/config' || url.pathname === '/printnow/config/') return handlePrintNowConfig(req, res);
   const pnm = /^\/e\/([A-Za-z0-9]{6,20})\/printnow\/([^/]+)\/?$/.exec(url.pathname);
   if (pnm) return handlePrintNow(req, res, pnm);
   const pns = /^\/printnow\/([a-f0-9]{12})\/?$/.exec(url.pathname);
@@ -2578,6 +2687,15 @@ async function handleShare(req, res) {
   const prm = /^\/e\/([A-Za-z0-9]{6,20})\/print\/([^/]+)\/?$/.exec(url.pathname);
   if (prm) return handlePrintReq(req, res, prm);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
+  const ljm = /^\/e\/([A-Za-z0-9]{6,20})\/list\.json\/?$/.exec(url.pathname);
+  if (ljm) {
+    if (guestView === 'only' && !isLocalReq(req)) return send(res, 403, 'application/json', JSON.stringify({ ok: false, error: 'private' }), { 'access-control-allow-origin': '*' });
+    const d = dirOf(ljm[1]);
+    if (!d || !existsSync(d)) return send(res, 404, 'application/json', JSON.stringify({ ok: false, error: 'not-found' }), { 'access-control-allow-origin': '*' });
+    const ev = index.folders[ljm[1]];
+    const nm = ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : 'Event photos';
+    return send(res, 200, 'application/json; charset=utf-8', JSON.stringify({ ok: true, name: nm, files: photosIn(d).map(({ n, t }) => ({ n, t })), print: guestPrintOn }), { 'access-control-allow-origin': '*' });
+  }
   const m = /^\/e\/([A-Za-z0-9]{6,20})(?:\/(p|f|t|s)\/([^/]+))?\/?$/.exec(url.pathname);
   if (!m) return send(res, 404, 'text/html; charset=utf-8', page('Not found', '<p class="empty">This link isn’t on this booth.</p>'));
   const dir = dirOf(m[1]);

@@ -327,6 +327,9 @@ foreach ($o in $opts) {
   $sel = if ($nm -eq $cur) { '1' } else { '0' }
   '{0}|{1}|{2}' -f $nm, $label, $sel
 }
+# Does the driver offer a Borderless mode at all (read from the driver, no print)?
+$blo = @($cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageBorderless']/*[local-name()='Option']") | Where-Object { $_.GetAttribute('name') -eq 'psk:Borderless' })
+'@borderless|' + $(if ($blo.Count -gt 0) { '1' } else { '0' })
 `;
 async function winPrinterCaps(printer) {
   const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
@@ -335,13 +338,15 @@ async function winPrinterCaps(printer) {
     await writeFile(ps1, '﻿' + WIN_CAPS_PS, 'utf8');
     const r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer]);
     const mediaTypes = [];
+    let borderless = false;
     for (const line of r.out.split(/\r?\n/)) {
+      if (/^@borderless\|1\s*$/.test(line)) { borderless = true; continue; }
       const m = /^([^|]+)\|([^|]*)\|([01])\s*$/.exec(line);
       if (!m) continue;
       const value = m[1].trim();
       mediaTypes.push({ value, label: formatCapsLabel(value, m[2]), selected: m[3] === '1' });
     }
-    return { mediaTypes };
+    return { mediaTypes, borderless };
   } finally { rm(dir, { recursive: true, force: true }).catch(() => { }); }
 }
 async function printerCaps(printer) {
@@ -359,6 +364,19 @@ async function printerCaps(printer) {
   } catch { caps = { mediaTypes: [] }; }
   CAPS_CACHE.set(printer, { at: Date.now(), caps });
   return caps;
+}
+// The glossy photo paper type of a driver's list ([{ value, label }] or plain strings), or '' when it has none it can be sure of.
+// Read from the drivers installed on a real laptop (Windows PageMediaType): Epson "ns0000:EpsonPhotoPaperGlossy" (L8050, L805, L3210,
+// L18050), Brother "psk:PhotographicGlossy", Canon "ns0000:PhotoPaperPlusGlossy2" / "GlossyPaperStandard"; the Epson L210 only has
+// "psk:PhotographicHighGloss". Matte, luster, silky, semi-gloss, postcard and "contents" papers are never picked as glossy, and an
+// opaque name (an HP driver names its papers by numbers) gives ''.
+export function pickGlossyMediaType(list) {
+  const items = (Array.isArray(list) ? list : []).map((m) => (typeof m === 'string' ? { value: m, label: '' } : m)).filter((m) => m && m.value);
+  const bare = (m) => String(m.value).replace(/^[a-z0-9]+:/i, '');
+  const prefs = [/^EpsonPhotoPaperGlossy$/i, /^PhotographicGlossy$/i, /^PhotoPaperPlusGlossy\d*$/i, /^GlossyPaperStandard$/i, /^PhotographicHighGloss$/i];
+  for (const re of prefs) { const hit = items.find((m) => re.test(bare(m))); if (hit) return hit.value; }
+  const generic = items.find((m) => /gloss/i.test(bare(m) + ' ' + (m.label || '')) && !/semi|contents|post.?card|hagaki|matte|luster|lustre|silky|plain|bond|bp71/i.test(bare(m) + ' ' + (m.label || '')));
+  return generic ? generic.value : '';
 }
 const PAPER_NAMES = {
   a3: [297, 420], a4: [210, 297], a5: [148, 210], a6: [105, 148], letter: [215.9, 279.4], legal: [215.9, 355.6],
@@ -605,7 +623,8 @@ for ($ptTry = 0; $ptTry -lt 2; $ptTry++) {
     $cx = [xml]([IO.StreamReader]::new($pq.GetPrintCapabilitiesAsXml()).ReadToEnd())
     $qo = @($cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']") | ForEach-Object { $_.name })
     # Best (the default), Normal or Draft, set per printer in the booth. Only an option the driver really lists is used.
-    $qpat = switch ($Quality) { 'draft' { 'Draft|Fast|Economy' } 'normal' { 'Normal|Standard' } default { 'HighQuality|Best|Photographic' } }
+    # 'psk:High' is the standard name the Brother, Canon and HP drivers use for their best quality (Epson: ns0000:HighQuality).
+    $qpat = switch ($Quality) { 'draft' { 'Draft|Fast|Economy' } 'normal' { 'Normal|Standard' } default { 'HighQuality|Best|Photographic|^psk:High$' } }
     $best = $qo | Where-Object { $_ -match $qpat } | Select-Object -First 1
     $qf = $tx.SelectSingleNode("//psf:Feature[@name='psk:PageOutputQuality']/psf:Option", $tn)
     if ($best -and $qf -and $qf.GetAttribute('name') -ne $best) {
@@ -901,8 +920,11 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, c
   // default is Plain paper (and Standard quality), so photos came out soft and dull, and an iPad that prints through this laptop
   // never had a way to say otherwise. Picking a paper type in Print settings (Plain included) overrides it. If this driver does not
   // list that paper type the print goes out as before and no warning is shown.
+  // 'driver' (Print settings > Paper / media type > Driver default) means the operator wants the driver's own paper type left alone.
+  const keepDriverMedia = reqMediaType === 'driver';
+  if (keepDriverMedia) reqMediaType = '';
   let defaultedMedia = false;
-  if (!reqMediaType && process.platform === 'win32' && EPSON_L8050.test(printer)) { reqMediaType = L8050_WIN_GLOSSY; defaultedMedia = true; }
+  if (!reqMediaType && !keepDriverMedia && process.platform === 'win32' && EPSON_L8050.test(printer)) { reqMediaType = L8050_WIN_GLOSSY; defaultedMedia = true; }
   const warnings = [];
   const items = pageItems.map((p) => (Buffer.isBuffer(p) ? { buf: p, ext: 'png' } : p));
   const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
@@ -922,6 +944,19 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, c
     };
     const pick = await resolvePick();
     if (pick) log('Paper: ' + pick.name + (pick.explicit ? ' (selected by operator)' : pick.keep ? ' (the printer\'s default)' : ''));
+    // Any printer that can print borderless prints on its glossy photo paper type unless a paper type was picked (the Epson L8050 on Windows
+    // is done above): the driver lists a Borderless mode (Windows), or the paper matched is a borderless one (Mac). A dye-sub printer, a
+    // receipt roll and an AirPrint queue on a Mac (which chooses its own photo paper in airPrintQualityOptions) are left as they are. If the
+    // driver lists no glossy photo paper that can be told apart, or refuses it, the print goes out as before and no warning is shown.
+    if (!reqMediaType && !keepDriverMedia && fit !== 'width' && !DYE_SUB.test(printer)) {
+      try {
+        const caps = await printerCaps(printer);
+        if ((caps.borderless === true || !!(pick && pick.borderless)) && (IS_WIN || !(await isAirPrintQueue(printer)))) {
+          const g = pickGlossyMediaType(caps.mediaTypes);
+          if (g) { reqMediaType = g; defaultedMedia = true; log('Paper type: ' + g + ' (glossy photo paper, the default for a printer that prints borderless)'); }
+        }
+      } catch { /* no default: the print goes out as before */ }
+    }
     if (IS_WIN) {
       const ps1 = join(dir, 'print.ps1'), list = join(dir, 'pages.txt');
       await writeFile(ps1, '﻿' + WIN_PRINT_PS, 'utf8');
@@ -1224,7 +1259,8 @@ export async function handleHelper(req, path, search) {
       const list = (caps && Array.isArray(caps.mediaTypes) ? caps.mediaTypes : []).filter(Boolean);
       const mediaLabels = {};
       for (const kw of list) mediaLabels[kw] = labelMediaType(kw);
-      const out = { known: list.length > 0, mediaTypes: list, mediaLabels, mediaDefault: '' };
+      const autoMedia = ((caps && caps.borderlessCap) || EPSON_L8050.test((caps && caps.model) || '')) && !/selphy/i.test((caps && caps.model) || '') && list.includes('photographic-glossy') ? 'photographic-glossy' : '';
+      const out = { known: list.length > 0, mediaTypes: list, mediaLabels, mediaDefault: '', autoMedia };
       CAPS_CACHE.set(name, { at: Date.now(), caps: out });
       return json({ ok: true, ...out });
     }
@@ -1239,7 +1275,9 @@ export async function handleHelper(req, path, search) {
       mediaLabels[it.value] = it.label || it.value;
       if (it.selected && !mediaDefault) mediaDefault = it.value;
     }
-    return json({ ok: true, known: mediaTypes.length > 0, mediaTypes, mediaLabels, mediaDefault, ...(raw && raw.mediaKey ? { mediaKey: raw.mediaKey } : {}) });
+    // autoMedia: the paper type a print uses when none is picked (the glossy photo paper of a printer that prints borderless); the Print settings show it.
+    const autoMedia = (raw && raw.borderless === true && !DYE_SUB.test(name)) ? pickGlossyMediaType(items) : '';
+    return json({ ok: true, known: mediaTypes.length > 0, mediaTypes, mediaLabels, mediaDefault, autoMedia, ...(raw && raw.mediaKey ? { mediaKey: raw.mediaKey } : {}) });
   }
   if (method === 'GET' && path === '/printer/usb-probe') {
     try { return json({ ok: true, platform: platform(), printers: await usbProbeReport() }); }
@@ -1440,4 +1478,4 @@ export function stopHelper() {
   gopro.reset().catch(() => { });
   if (macCamP) macCamP.then((m) => m.reset()).catch(() => { });
 }
-export const _helperTest = { pickPaper, sizeFromName, formatCapsLabel, PAPER_CACHE, CAPS_CACHE };
+export const _helperTest = { pickPaper, sizeFromName, formatCapsLabel, pickGlossyMediaType, PAPER_CACHE, CAPS_CACHE };

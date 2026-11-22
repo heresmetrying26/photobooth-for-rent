@@ -75,6 +75,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         @Volatile var mediaTypes: List<String> = emptyList()   // media-type-supported: stationery, photographic-glossy...
         @Volatile var mediaReady: List<String> = emptyList()   // media-ready: the paper loaded now, e.g. "jpn_hagaki_100x148mm"
         @Volatile var mediaSupported: List<String> = emptyList() // media-supported: every paper size it names
+        @Volatile var borderlessCap = false                    // it lists a margin of 0 (media-*-margin-supported) or a borderless paper name: it can print edge to edge
         @Volatile var pwgRes: List<Int> = emptyList()          // pwg-raster-document-resolution-supported (dpi)
         @Volatile var pwgTypes: List<String> = emptyList()     // pwg-raster-document-type-supported: srgb_8, sgray_8...
         @Volatile var usbDev: UsbDevice? = null                // set for a printer on the USB port
@@ -178,7 +179,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     .put("escpr", escprNet)
                     .put("qualities", JSONArray(it.qualities))
                     .put("colorModes", JSONArray(it.colorModes))
-                    .put("mediaTypes", JSONArray(it.mediaTypes)))
+                    .put("mediaTypes", JSONArray(it.mediaTypes))
+                    .put("bcap", it.borderlessCap))
             }
         usbListInto(arr)
         return JSONObject().put("scanning", scanning).put("printers", arr)
@@ -1500,6 +1502,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 .put("qualities", JSONArray(ippEntry?.qualities ?: emptyList<Int>()))
                 .put("colorModes", JSONArray(ippEntry?.colorModes ?: emptyList<String>()))
                 .put("mediaTypes", JSONArray(ippEntry?.mediaTypes ?: emptyList<String>()))
+                .put("bcap", ippEntry?.borderlessCap ?: false)
                 .put("ifaces", usbIfacesSummary(d))
                 .put("info", (usbIds[d.deviceName] ?: "").take(300))
                 .put("vid", d.vendorId).put("pid", d.productId))
@@ -1945,7 +1948,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val mediaReady = ArrayList<String>()
                 val mediaSupported = ArrayList<String>()
                 var model = ""
+                var zeroMargin = false
                 parseIpp(r.body) { name, tag, raw ->
+                    // A margin of 0 in the list of supported margins (1/100 mm, a 4-byte integer) is how a printer says it can print edge to edge.
+                    if (tag == 0x21 && raw.size == 4 && name.startsWith("media-") && name.endsWith("-margin-supported") &&
+                        raw[0].toInt() == 0 && raw[1].toInt() == 0 && raw[2].toInt() == 0 && raw[3].toInt() == 0) zeroMargin = true
                     val value = String(raw, Charsets.UTF_8)
                     if (name == "document-format-supported" && tag == 0x49) formats.add(value.lowercase())
                     if (name == "printer-make-and-model" && (tag == 0x41 || tag == 0x42) && model.isEmpty()) model = value
@@ -1968,6 +1975,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 e.pwgTypes = pwgTypes
                 e.mediaReady = mediaReady
                 e.mediaSupported = mediaSupported
+                e.borderlessCap = zeroMargin || mediaSupported.any { Regex("(?i)[-_.](borderless|full-?bleed)$").containsMatchIn(it) }
                 if (model.isNotBlank()) { e.model = model; if (e.name.isBlank()) e.name = model }
                 e.ippPath = path
                 e.attrsTried = true
@@ -2015,7 +2023,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         // Exception, hardcoded: an Epson L8050 on USB does not list its print qualities or paper types, so nothing was ever
         // sent and every job came out on the printer's own default (plain paper, standard quality). For it the picked values
         // are sent anyway; if the printer refuses them, the attempts below drop them one at a time.
-        val hardEpsonL = e.usbDev?.let { EpsonLModels.isKnown(it) } == true
+        // The same goes for an Epson L8050 on Wi-Fi (known by the name it gives): a client's Xiaomi Pad 5 sent none of the settings over
+        // Wi-Fi, so the printer used plain paper at standard quality (banding lines, no borderless) where the Epson app printed it sharp.
+        val hardEpsonL = e.usbDev?.let { EpsonLModels.isKnown(it) } == true ||
+            (e.usbDev == null && Regex("(?i)(?:^|[^A-Za-z0-9])L8050(?![0-9])").containsMatchIn(e.model + " " + e.name))
         val q = when (opts.quality) { "draft" -> 3; "normal" -> 4; "high" -> 5; else -> 0 }
         val qv = if (q != 0 && (q in e.qualities || hardEpsonL)) q else 0
         val cm = when {
@@ -2246,7 +2257,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         attr(0x45, "printer-uri", uri)
         attr(0x44, "requested-attributes", "printer-make-and-model")
         for (n in listOf("document-format-supported", "print-quality-supported", "print-color-mode-supported", "media-type-supported",
-            "pwg-raster-document-resolution-supported", "pwg-raster-document-type-supported", "media-ready", "media-supported")) {
+            "pwg-raster-document-resolution-supported", "pwg-raster-document-type-supported", "media-ready", "media-supported",
+            "media-top-margin-supported", "media-bottom-margin-supported", "media-left-margin-supported", "media-right-margin-supported")) {
             u8(0x44); u16(0); str(n)
         }
         u8(0x03)

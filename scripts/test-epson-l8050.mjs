@@ -119,4 +119,74 @@ test('booth page: the part is included and the Wi-Fi/USB photo job uses it', () 
   assert.ok(/!IOS_APP && window\._epsonL8050/.test(html), 'iPad app left alone');
 });
 
+// A client's Xiaomi Pad 5 over Wi-Fi printed an L8050 with banding lines and a white border (plain paper, standard quality, Borderless
+// off) while the Epson app printed the same photo sharp and borderless: the High / photo-paper settings were USB-only on Android.
+test('L8050 on Wi-Fi (Android): High quality + photo paper sent, Borderless turned on when it is picked', () => {
+  const html = assemble().html;
+  const m = html.match(/function epsonLUsbIpp\(p\) \{[^\n]*\}/);
+  assert.ok(m, 'epsonLUsbIpp found in the booth page');
+  const known = new Function('EPSON_L_PIDS', m[0] + '; return epsonLUsbIpp;')({ 2150: 'L8050', 58993: 'L3210', 17498: 'L3276' });
+  assert.equal(known({ ipp: true, usb: false, name: 'EPSON L8050 Series' }), true, 'Wi-Fi L8050');
+  assert.equal(known({ ipp: true, usb: true, vid: 1208, pid: 2150, name: 'Epson L8050 (USB)' }), true, 'USB L8050');
+  assert.equal(known({ ipp: true, usb: false, name: 'EPSON L18050 Series' }), false, 'L18050 is another printer');
+  assert.equal(known({ ipp: true, usb: false, name: 'EPSON L3210 Series' }), false, 'L3210 is left alone');
+  assert.equal(known({ ipp: false, usb: false, name: 'EPSON L8050 Series' }), false, 'no IPP, not this path');
+  assert.ok(/if \(p && \(p\.borderless \|\| \(printerBorderlessKnown\(p\) && \(epsonLUsbIpp\(p\)[^\n]*\{ printPrefs\.borderless = true/.test(html), 'picking it turns Borderless on');
+  const kt = readFileSync(join(ROOT, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'NetPrintBridge.kt'), 'utf8');
+  assert.ok(/val hardEpsonL = [^\n]*\n[^\n]*e\.usbDev == null && Regex\("\(\?i\)\(\?:\^\|\[\^A-Za-z0-9\]\)L8050\(\?!\[0-9\]\)"\)\.containsMatchIn\(e\.model \+ " " \+ e\.name\)/.test(kt), 'Android sends the settings for a Wi-Fi L8050');
+});
+
+// Any printer that can print borderless defaults to Borderless + glossy photo paper + the best quality it lists (USB and Wi-Fi), unless
+// the operator chose otherwise. The booth page's own functions are run here with stand-ins for the page's globals.
+test('borderless-capable printers: defaults for Borderless, photo paper and quality; what is left out; operator choices win', () => {
+  const html = assemble().html;
+  const a = html.indexOf('const WIFI_OPTS_KEY'), b = html.indexOf('function wifiOpts(printer) {');
+  assert.ok(a > 0 && b > a, 'printer options block found');
+  const mem = {};
+  const store = { getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = String(v); } };
+  const f = new Function('localStorage', 'IOS_APP', 'printSize', 'paperFor', 'printerKey',
+    html.slice(a, b) + '; return { printerBorderlessKnown, wifiDefaultFor, wifiOptEff, wifiOptsSet, photoSheetSize };');
+  const sizes = { s4x6: { w: 101.6, h: 152.4 }, a4: { w: 210, h: 297 }, xl: { w: 300, h: 900 } };
+  let size = 's4x6';
+  const api = f(store, false, 'x', () => sizes[size], () => 'k');
+  const L8050 = { ipp: true, usb: false, name: 'EPSON L8050 Series', qualities: [], mediaTypes: [] };
+  const generic = { ipp: true, usb: false, name: 'Brother DCP-T520W', bcap: true, qualities: [3, 4, 5], mediaTypes: ['stationery', 'photographic-glossy', 'photographic-matte'] };
+  // Known as able to print borderless
+  assert.equal(api.printerBorderlessKnown(L8050), true, 'L8050');
+  assert.equal(api.printerBorderlessKnown(generic), true, 'IPP printer that lists a margin of 0');
+  assert.equal(api.printerBorderlessKnown({ usb: true, epsonL: true, borderless: true, escpr: true, name: 'Epson L3210 (USB)' }), true, 'Epson built-in USB mode');
+  assert.equal(api.printerBorderlessKnown({ ipp: true, name: 'EPSON L3210 Series' }), true, 'L3210 over IPP');
+  assert.equal(api.printerBorderlessKnown({ escpr: true, raw: false, name: 'EPSON L805 Series' }), true, 'L805 over ESC/P-R');
+  // Not known / left out on purpose
+  assert.equal(api.printerBorderlessKnown(Object.assign({}, generic, { bcap: false })), false, 'IPP printer that does not say so');
+  assert.equal(api.printerBorderlessKnown({ usb: true, canon: true, name: 'Canon PIXMA G1010 (USB)' }), false, 'Canon G-series over USB');
+  assert.equal(api.printerBorderlessKnown({ usb: true, escp2: true, name: 'Epson L120 (USB)' }), false, 'L1xx');
+  assert.equal(api.printerBorderlessKnown({ ipp: true, bcap: true, name: 'Canon SELPHY CP1500' }), false, 'SELPHY');
+  assert.equal(api.printerBorderlessKnown({ raw: true, ipp: false, name: 'Xprinter XP-T80Q' }), false, 'receipt printer');
+  assert.equal(api.printerBorderlessKnown({ dialog: true, name: 'Android print dialog', ipp: true, bcap: true }), false, 'print dialog');
+  // Defaults: only what the printer lists is asked for
+  assert.equal(api.wifiOptEff(L8050, 'quality'), 'high'); assert.equal(api.wifiOptEff(L8050, 'media'), 'photo');
+  assert.equal(api.wifiOptEff(generic, 'quality'), 'high'); assert.equal(api.wifiOptEff(generic, 'media'), 'photo');
+  const noHigh = Object.assign({}, generic, { name: 'HP DeskJet 4155e', qualities: [3, 4] });
+  assert.equal(api.wifiOptEff(noHigh, 'quality'), '', 'no High listed: not asked for');
+  assert.equal(api.wifiOptEff(noHigh, 'media'), 'photo');
+  assert.equal(api.wifiOptEff(Object.assign({}, generic, { mediaTypes: ['stationery'] }), 'media'), '', 'no photo paper listed: not asked for');
+  assert.equal(api.wifiOptEff({ usb: true, epsonL: true, borderless: true, escpr: true, name: 'Epson L3210 (USB)' }, 'media'), 'photo', 'built-in USB mode: photo paper');
+  assert.equal(api.wifiOptEff({ ipp: true, name: 'Some Office Printer', qualities: [3, 4, 5], mediaTypes: ['photographic-glossy'] }, 'quality'), '', 'not known as borderless: printer default');
+  // The operator's choice wins; "Printer default" chosen on purpose stays
+  api.wifiOptsSet(generic, 'quality', 'normal');
+  assert.equal(api.wifiOptEff(generic, 'quality'), 'normal', 'chosen quality');
+  assert.equal(api.wifiOptEff(generic, 'media'), 'photo', 'paper not touched: still the default');
+  api.wifiOptsSet(generic, 'media', '');
+  assert.equal(api.wifiOptEff(generic, 'media'), '', 'Printer default chosen on purpose');
+  api.wifiOptsSet(L8050, 'quality', 'draft');
+  assert.equal(api.wifiOptEff(L8050, 'quality'), 'draft'); assert.equal(api.wifiOptEff(L8050, 'media'), 'photo');
+  // Switching Borderless on for an office printer only for photo sizes
+  assert.equal(api.photoSheetSize(), true, '4x6'); size = 'a4'; assert.equal(api.photoSheetSize(), false, 'A4 is not a photo size'); size = 'xl'; assert.equal(api.photoSheetSize(), false, 'XL sheet');
+  assert.ok(/borderless: !!p\.borderless, bcap: !!p\.bcap, info/.test(html), 'saved printer keeps bcap');
+  assert.ok(/printerBorderlessKnown\(p\) && \(epsonLUsbIpp\(p\) \|\| epsonLBorderlessModel\(p\) \|\| epsonEscprBorderlessModel\(p\) \|\| photoSheetSize\(\)\)/.test(html), 'wifiSave turns Borderless on');
+  const kt = readFileSync(join(ROOT, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'NetPrintBridge.kt'), 'utf8');
+  assert.ok(/"media-bottom-margin-supported"/.test(kt) && /name\.endsWith\("-margin-supported"\)/.test(kt) && /\.put\("bcap", it\.borderlessCap\)/.test(kt) && /\.put\("bcap", ippEntry\?\.borderlessCap \?: false\)/.test(kt), 'Android asks for the margins and reports bcap (Wi-Fi and USB lists)');
+});
+
 console.log(passed + ' passed' + (process.exitCode ? ', some FAILED' : ''));

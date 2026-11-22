@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('pb4u', {
   desktop: true,
   // This laptop's address for guests' phones (http://<ip>:<port>) or null when it isn't on a network.
   lanBase: () => ipcRenderer.sendSync('pb4u:lan'),
+  localBase: () => ipcRenderer.sendSync('pb4u:localBase'),
   // The Wi-Fi this laptop is on: { ssid, pass, open, passKnown } (ssid is '' when it isn't on Wi-Fi).
   wifi: (force) => ipcRenderer.invoke('pb4u:wifi', !!force),
   // The booth's own Wi-Fi (Windows): { supported, on, wanted, busy, ssid, pass, auto, error, needsSetup }
@@ -75,6 +76,7 @@ contextBridge.exposeInMainWorld('pb4u', {
   // The operator tapped "Print photo" on an earlier photo in All photos: the booth prints it now.
   printNowTake: () => ipcRenderer.invoke('pb4u:printNowTake'),
   printNowDone: (id, ok, msg) => ipcRenderer.invoke('pb4u:printNowDone', String(id || ''), !!ok, String(msg || '')),
+  printConfigSet: (cfg) => ipcRenderer.invoke('pb4u:printConfigSet', cfg || null),
   guestPrintSet: (on) => ipcRenderer.invoke('pb4u:guestPrintSet', !!on),
   guestViewSet: (mode) => ipcRenderer.invoke('pb4u:guestViewSet', String(mode || '')),
   printReqList: () => ipcRenderer.invoke('pb4u:printReqList'),

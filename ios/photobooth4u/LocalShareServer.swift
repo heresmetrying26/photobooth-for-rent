@@ -365,10 +365,13 @@ class LocalShareServer {
     private func renderPhotoPageHtml(slug: String, filename: String, eventName: String) -> String {
         let encName = urlEsc(filename)
         let safeFile = esc(filename)
-        let isVideo = filename.lowercased().hasSuffix(".mp4") || filename.lowercased().hasSuffix(".webm")
+        let lower = filename.lowercased()
+        let isVideo = lower.hasSuffix(".mp4") || lower.hasSuffix(".webm") || lower.hasSuffix(".mov") || lower.hasSuffix(".m4v")
+        let isGif = lower.hasSuffix(".gif")
         let mediaTag = isVideo ?
             "<video src='/e/\(slug)/f/\(encName)' controls autoplay playsinline loop></video>" :
             "<img src='/e/\(slug)/f/\(encName)' alt='Photo' />"
+        let printBtn = (!isVideo && !isGif) ? "<button class=\"btn alt\" type=\"button\" onclick=\"window.print()\">Print photo</button>" : ""
 
         return """
         <!doctype html>
@@ -383,8 +386,9 @@ class LocalShareServer {
                 .box { max-width: 500px; margin: 0 auto; width: 100%; }
                 img, video { max-width: 100%; max-height: 72vh; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); display: block; margin: 0 auto; }
                 .actions { margin-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-                .btn { display: inline-block; padding: 14px 24px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 15px; background: #C93D27; color: #fff; border: 0; }
+                .btn { display: inline-block; padding: 14px 24px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 15px; background: #C93D27; color: #fff; border: 0; cursor: pointer; font-family: inherit; }
                 .btn.alt { background: #fff; color: #1C1A1E; border: 1.5px solid #E4DCCF; }
+                @media print { @page { margin: 0; } body { padding: 0; background: #fff; } .actions { display: none !important; } .box { max-width: none; } img { max-width: 100vw; max-height: 100vh; border-radius: 0; box-shadow: none; } }
             </style>
         </head>
         <body>
@@ -392,6 +396,7 @@ class LocalShareServer {
                 \(mediaTag)
                 <div class="actions">
                     <a class="btn" href="/e/\(slug)/f/\(encName)?dl=1" download="\(safeFile)">Save Photo</a>
+                    \(printBtn)
                     <a class="btn alt" href="/e/\(slug)/">All Photos</a>
                 </div>
             </div>

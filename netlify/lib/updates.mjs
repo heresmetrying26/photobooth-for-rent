@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.93', date: '2026-11-22' },
   { version: '1.1.92', date: '2026-11-21' },
   { version: '1.1.91', date: '2026-11-21' },
   { version: '1.1.90', date: '2026-11-21' },
@@ -288,6 +289,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-22', title: 'Desktop 1.1.93, Android 1.1.97 & iPad 1.1.14: in-app All Photos Reprint Pop-up, glossy / best-quality defaults, and steady 2:3 Setup preview', for: ['website', 'app'], app: '1.1.93',
+    items: [
+      '🖨️ New in-app Browse & Reprint gallery and pre-filled Reprint Pop-up: tap All photos → Browse & Reprint to reprint earlier photos right inside the app without opening any system print dialog. Pre-fills from your current setup (works right alongside Auto-print without changing it) and lets you switch between any thermal, coloured, Bluetooth, Wi-Fi/USB, Instax, or Print Station printer, paper size, and copies.',
+      '🛠️ Fixed gallery reprinting on Android WebView, iPad local gallery, private online galleries, and web browsers without Print Helper.',
+      '✨ Glossy photo paper & Best quality by default: the laptop app and direct Wi-Fi/USB printers now default to glossy photo paper and best quality on any printer that supports borderless photo printing (any setting you pick manually still wins).',
+      '📐 Steady Setup preview: the preview space is now a fixed 2:3 frame across Desktop, tablet and phone for all 22 built-in layouts (strips, grids, landscape, receipts) so switching paper sizes keeps the sheet centred at its true shape without jumping or shifting buttons.'
+    ]
+  },
   {
     date: '2026-11-21', title: 'Desktop 1.1.92: fix broken booth screen on startup in 1.1.91, plus 3-mode Final Shots Slideshow GIF', for: ['website', 'app'], app: '1.1.92',
     items: [

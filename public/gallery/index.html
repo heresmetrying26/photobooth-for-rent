@@ -106,13 +106,31 @@
     #vFrame{width:min(100%,900px);height:min(78vh,560px);border:0;border-radius:12px;background:#000}
     .qrsheet p{margin:0 0 14px;color:var(--muted);font-size:14px;font-weight:600;line-height:1.45}
     .qrsheet .btn{width:100%}
+    .pmodal{position:fixed;inset:0;z-index:75;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(12,10,14,.74)}
+    .psheet{width:min(440px,100%);background:var(--card);color:var(--ink);border-radius:22px;padding:20px;text-align:left;box-shadow:0 24px 60px rgba(0,0,0,.4)}
+    .phead{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+    .phead h2{margin:0;flex:1;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:22px;letter-spacing:-.02em}
+    .pclose{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--line);background:transparent;color:var(--ink);font-size:18px;cursor:pointer}
+    .plbl{display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:10px 0 4px}
+    .psel{width:100%;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink);font:700 14px inherit}
+    .pcopies{display:flex;align-items:center;justify-content:space-between;margin:12px 0 4px;padding:8px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--paper)}
+    .pcopies span{font-size:13.5px;font-weight:700}
+    .pstep{display:inline-flex;align-items:center;gap:10px}
+    .pstep button{width:34px;height:34px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:800 18px inherit;cursor:pointer}
+    .pstep b{min-width:24px;text-align:center;font-size:15px}
+    .pchk{display:flex;align-items:center;gap:8px;margin:10px 0 4px;font-size:13px;font-weight:600;cursor:pointer}
+    .phint{margin:10px 0 14px;padding:8px 10px;border-radius:10px;background:var(--paper);color:var(--muted);font-size:12.5px;font-weight:600;line-height:1.45}
+    .phint.ok{background:#e9f6ee;color:#1f6d3d}
+    .phint.err{background:#fdecec;color:#b42318}
+    .pacts{display:flex;gap:8px;flex-wrap:wrap}
+    .pacts .btn.primary{flex:1}
     @media print{
       @page{margin:0}
       html,body{width:100%;height:100%;margin:0!important;background:#fff!important;overflow:visible!important}
       body *{visibility:hidden!important}
       #viewer,#viewer #vStage,#viewer #vImg{visibility:visible!important}
       #viewer{position:absolute!important;inset:0!important;display:block!important;background:#fff!important;color:#000!important}
-      #viewer .v-top,#viewer .v-bottom,#viewer .v-nav,#viewer .v-spin{display:none!important}
+      #viewer .v-top,#viewer .v-bottom,#viewer .v-nav,#viewer .v-spin,#pModal{display:none!important}
       #viewer .v-stage{position:absolute!important;inset:0!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important}
       #viewer #vImg{display:block!important;max-width:100vw!important;max-height:100vh!important;object-fit:contain!important;opacity:1!important}
     }
@@ -193,6 +211,31 @@
       <h2 id="qrTitle">Scan for your photos</h2>
       <p>Point a phone camera here to open this gallery and download the photos again, anytime.</p>
       <button class="btn primary" id="qrClose" type="button">Done</button>
+    </div>
+  </div>
+  <div class="pmodal hidden" id="pModal" role="dialog" aria-modal="true" aria-labelledby="pModalTitle">
+    <div class="psheet">
+      <div class="phead">
+        <h2 id="pModalTitle">🖨️ Reprint photo</h2>
+        <button class="pclose" id="pClose" type="button" aria-label="Close">×</button>
+      </div>
+      <label class="plbl" for="pPrinter">Printer</label>
+      <select class="psel" id="pPrinter"></select>
+      <label class="plbl" id="pSizeLbl" for="pSize">Paper size</label>
+      <select class="psel" id="pSize"></select>
+      <div class="pcopies" id="pCopiesWrap">
+        <span>Copies</span>
+        <div class="pstep">
+          <button type="button" id="pMinus" aria-label="Fewer copies">−</button>
+          <b id="pCopies">1</b>
+          <button type="button" id="pPlus" aria-label="More copies">+</button>
+        </div>
+      </div>
+      <label class="pchk hidden" id="pSingleRow"><input type="checkbox" id="pSingle"> 1 full strip per sheet (don’t pair 2 side-by-side)</label>
+      <p class="phint" id="pHint"></p>
+      <div class="pacts">
+        <button class="btn primary" id="pGo" type="button">🖨️ Reprint now</button>
+      </div>
     </div>
   </div>
   <div class="toast" id="toast"></div>
@@ -695,35 +738,149 @@
     try{ saveBlob(await fetchPhoto(f), fileName(f, cur)); }
     catch(err){ location.href = downloadUrl(f); }
   });
-  // The operator, opening All photos in the same browser as the booth: "Print photo" prints through the booth
-  // (its printer, paper and copies from Print settings, no dialog). A guest's phone has no booth tab, so it keeps the normal print.
-  var boothHere = false, pch = null, pnSeq = 0;
+  // The operator, opening All photos in the same browser as the booth: "Print photo" opens a pre-filled Reprint pop-up
+  // using the booth's current printers (thermal, coloured, Bluetooth, Instax, Print Station) AND a Browser print dialog option.
+  // A guest's phone has no booth tab, so it uses Android's native print bridge (inside Android app) or normal browser print.
+  var boothHere = false, boothCfg = null, pch = null, pnSeq = 0, pCopies = 1, pBusy = false, pUserPicked = false;
+  var pPending = {};
   try{
     if(FOLDER && 'BroadcastChannel' in window){
       pch = new BroadcastChannel('pb4u-print');
-      pch.onmessage = function(ev){ var m = ev.data || {}; if(m.t === 'here') boothHere = !!m.on; };
+      pch.onmessage = function(ev){
+        var m = ev.data || {};
+        if(m.t === 'here'){
+          boothHere = !!m.on;
+          if(m.config){ boothCfg = m.config; if(!$('pModal').classList.contains('hidden')) fillPrintModal(boothCfg, true); }
+        } else if(m.t === 'result' && m.id && pPending[m.id]){
+          var fn = pPending[m.id]; delete pPending[m.id]; fn(m);
+        }
+      };
       pch.postMessage({ t: 'hello' });
     }
   }catch(e){ pch = null; }
-  function printViaBooth(f){
+  function printViaBooth(f, opts){
     return new Promise(function(resolve){
-      var id = 'p' + (++pnSeq) + '-' + Date.now(), prev = pch.onmessage, t;
-      function done(r){ clearTimeout(t); pch.onmessage = prev; resolve(r); }
-      t = setTimeout(function(){ done({ ok: false, error: 'The booth did not answer.' }); }, 45000);
-      pch.onmessage = function(ev){ var m = ev.data || {}; if(m.t === 'result' && m.id === id) done(m); else prev(ev); };
-      pch.postMessage({ t: 'print', id: id, folder: FOLDER, file: f.id });
+      var id = 'p' + (++pnSeq) + '-' + Date.now(), t;
+      function done(r){ clearTimeout(t); delete pPending[id]; resolve(r); }
+      pPending[id] = done;
+      t = setTimeout(function(){ done({ ok: false, error: 'The booth did not answer. Try System dialog…' }); }, 45000);
+      pch.postMessage({ t: 'print', id: id, folder: FOLDER, file: f.id, opts: opts || {} });
     });
   }
+  async function printHereInBrowser(f, paper){
+    // Android WebView ignores window.print(): hand the same-origin image bytes to Android's native print dialog.
+    if(window.__PBPrint && typeof window.__PBPrint.print === 'function'){
+      try{
+        toast('Opening print dialog…');
+        var blob = await fetchPhoto(f);
+        var url = URL.createObjectURL(blob);
+        var im = new Image();
+        await new Promise(function(res, rej){ im.onload = res; im.onerror = rej; im.src = url; });
+        var w = im.naturalWidth || 1200, h = im.naturalHeight || 1800;
+        var scale = Math.min(1, 2400 / Math.max(w, h));
+        var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * scale)); c.height = Math.max(1, Math.round(h * scale));
+        var x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        var wMm = paper && paper.w ? paper.w : (w / h < 0.45 ? 50.8 : (w > h ? 152.4 : 101.6));
+        var hMm = paper && paper.h ? paper.h : (w > h ? 101.6 : 152.4);
+        var r = JSON.parse(window.__PBPrint.print(f.name || 'Photobooth photo', wMm, hMm, JSON.stringify([c.toDataURL('image/jpeg', 0.92)])) || '{}');
+        if(!r.ok) toast('Could not open printing: ' + (r.error || 'unknown error'));
+        return;
+      }catch(e){ toast('Could not prepare photo for printing.'); return; }
+    }
+    window.print();
+  }
+  function pCurSize(){
+    if(!boothCfg || !boothCfg.sizes) return null;
+    var val = $('pSize').value;
+    for(var i = 0; i < boothCfg.sizes.length; i++) if(boothCfg.sizes[i].key === val) return boothCfg.sizes[i];
+    return null;
+  }
+  function pIsStrip(){ var im = $('vImg'); return !!(im && im.naturalWidth && im.naturalHeight && im.naturalWidth / im.naturalHeight < 0.45); }
+  function setPHint(msg, cls){ var el = $('pHint'); el.textContent = msg || ''; el.className = 'phint' + (cls ? (' ' + cls) : ''); }
+  function updatePrintModalUI(){
+    var pv = $('pPrinter').value || '', isDlg = (pv === 'dialog'), sz = pCurSize();
+    $('pCopies').textContent = String(pCopies);
+    $('pSizeLbl').classList.toggle('hidden', !(boothCfg && boothCfg.sizes && boothCfg.sizes.length));
+    $('pSize').classList.toggle('hidden', !(boothCfg && boothCfg.sizes && boothCfg.sizes.length));
+    $('pCopiesWrap').classList.toggle('hidden', isDlg || !pv);
+    $('pSingleRow').classList.toggle('hidden', !(!isDlg && pv && sz && !sz.receipt && sz.w / sz.h >= 0.5 && pIsStrip()));
+    $('pGo').disabled = pBusy || !pv;
+    $('pGo').textContent = pBusy ? 'Sending…' : (isDlg ? '🖨️ Print photo' : (pCopies > 1 ? ('🖨️ Reprint (' + pCopies + ' copies)') : '🖨️ Reprint now'));
+    if(!pBusy) setPHint(isDlg ? 'No direct Print Helper or Bluetooth printer connected in the booth tab — printing through the browser.' : 'Pre-filled from your booth setup. Prints directly without changing your Auto-print settings.', '');
+  }
+  function fillPrintModal(cfg, keep){
+    var prSel = $('pPrinter'), szSel = $('pSize');
+    var prevP = keep ? prSel.value : '', prevS = keep ? szSel.value : '';
+    prSel.innerHTML = ''; szSel.innerHTML = '';
+    var ps = (cfg && cfg.printers && cfg.printers.length) ? cfg.printers.slice() : [];
+    if(!ps.length) ps.push({ id: 'dialog', label: 'Browser print (no Print Helper connected)', kind: 'dialog' });
+    ps.forEach(function(x){ var o = document.createElement('option'); o.value = x.id; o.textContent = x.label; prSel.appendChild(o); });
+    var sz = (cfg && cfg.sizes) ? cfg.sizes : [];
+    sz.forEach(function(x){ var o = document.createElement('option'); o.value = x.key; o.textContent = x.name; szSel.appendChild(o); });
+    if(keep && prevS && sz.some(function(x){ return x.key === prevS; })) szSel.value = prevS;
+    else if(cfg && cfg.defaultSize && sz.some(function(x){ return x.key === cfg.defaultSize; })) szSel.value = cfg.defaultSize;
+    if(keep && prevP && ps.some(function(x){ return x.id === prevP; })) prSel.value = prevP;
+    else if(cfg && cfg.defaultPrinter && ps.some(function(x){ return x.id === cfg.defaultPrinter; })) prSel.value = cfg.defaultPrinter;
+    else prSel.value = ps[0].id;
+    if(!keep){
+      pUserPicked = false;
+      pCopies = Math.max(1, Math.min(20, (cfg && cfg.defaultCopies) || 1));
+      $('pSingle').checked = !!(cfg && cfg.singleStrip);
+    }
+    updatePrintModalUI();
+  }
+  function openPrintModal(){
+    $('pModal').classList.remove('hidden');
+    fillPrintModal(boothCfg, false);
+    if(pch) try{ pch.postMessage({ t: 'config' }); }catch(e){}
+  }
+  function closePrintModal(){ if(pBusy) return; $('pModal').classList.add('hidden'); }
+  $('pClose').addEventListener('click', closePrintModal);
+  $('pModal').addEventListener('click', function(e){ if(e.target === this) closePrintModal(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !$('pModal').classList.contains('hidden')) closePrintModal(); });
+  $('pMinus').addEventListener('click', function(){ pCopies = Math.max(1, pCopies - 1); updatePrintModalUI(); });
+  $('pPlus').addEventListener('click', function(){ pCopies = Math.min(20, pCopies + 1); updatePrintModalUI(); });
+  $('pSize').addEventListener('change', function(){
+    if(!pUserPicked && boothCfg && boothCfg.sizePrinters && boothCfg.sizePrinters[this.value]) $('pPrinter').value = boothCfg.sizePrinters[this.value];
+    updatePrintModalUI();
+  });
+  $('pPrinter').addEventListener('change', function(){
+    pUserPicked = true;
+    if(this.value === 'bt' && boothCfg && boothCfg.sizes){
+      var s = pCurSize();
+      if(!s || !s.receipt){ var r = boothCfg.sizes.find(function(x){ return x.receipt; }); if(r) $('pSize').value = r.key; }
+    }
+    updatePrintModalUI();
+  });
+  $('pGo').addEventListener('click', async function(){
+    if(pBusy) return;
+    var f = view[cur]; if(!f) return;
+    var pv = $('pPrinter').value || '';
+    if(!pv) return;
+    if(pv === 'dialog' || !boothHere || !pch){
+      closePrintModal();
+      setTimeout(function(){ printHereInBrowser(f, pCurSize()); }, 80);
+      return;
+    }
+    pBusy = true; updatePrintModalUI(); setPHint('Sending to printer…', '');
+    var opts = { size: $('pSize').value || '', printer: pv, copies: pCopies };
+    if(!$('pSingleRow').classList.contains('hidden')) opts.singleStrip = !!$('pSingle').checked;
+    var r = await printViaBooth(f, opts);
+    pBusy = false; updatePrintModalUI();
+    if(r && r.useBrowserPrint){
+      closePrintModal();
+      setTimeout(function(){ printHereInBrowser(f, r.paper || pCurSize()); }, 80);
+      return;
+    }
+    if(r && r.ok) setPHint(r.msg || 'Sent to printer ✓', 'ok');
+    else setPHint((r && r.error) || 'Could not print. Check the printer or pick another one.', 'err');
+  });
   $('vPrint').addEventListener('click', async function(){
     if(cur < 0 || !$('vImg').complete || !$('vImg').naturalWidth){ toast('Wait for the photo to finish loading, then print.'); return; }
     var f = view[cur];
-    if(boothHere && pch && f){
-      var b = this; b.disabled = true; toast('Sending to the printer…');
-      var r = await printViaBooth(f);
-      b.disabled = false; toast(r.ok ? 'Printing ✓' : (r.error || 'Could not print.'));
-      return;
-    }
-    window.print();
+    if(boothHere && pch && f){ openPrintModal(); return; }
+    printHereInBrowser(f, null);
   });
 
   // New photos appear while the page is open (checks every 30 s while visible).

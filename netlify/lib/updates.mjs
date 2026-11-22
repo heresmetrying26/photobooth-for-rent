@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.95', date: '2026-11-22' },
   { version: '1.1.94', date: '2026-11-22' },
   { version: '1.1.93', date: '2026-11-22' },
   { version: '1.1.92', date: '2026-11-21' },
@@ -203,13 +204,13 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.18', date: '2026-11-22' };
+export const HELPER = { version: '1.1.19', date: '2026-11-22' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
 // after about 60 s, so on a slower connection the 18 MB file never finished ("unexpected end of stream").
 // GitHub has no such limit. (The copy in public/downloads is still kept for the /downloads page.)
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-21', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-22', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
 // The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
 // /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new
@@ -237,7 +238,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.13', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.13/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.15', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.15/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -290,6 +291,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-22', title: 'Desktop 1.1.95, Print Helper 1.1.19, Android 1.1.98 & iPad 1.1.15: Canon EOS 1500D SD Card + Rear LCD Live View, 2-Step B&W vs Coloured Picker & Spot Rotation', for: ['website', 'app', 'helper'], app: '1.1.95', helper: '1.1.19',
+    items: [
+      '📷 Canon EOS 1500D (2000D / Rebel T7 / Kiss X90): preserves SD card backup (SaveTo=Card, automatically restoring from Host if left stuck) alongside laptop download, and keeps Live View active on both the camera’s rear LCD and the laptop screen (0xD1B0=3 TFT+PC) without dropping Live View before shots — while Canon 60D, 6D, 1300D, R50, and other EOS bodies keep fast host transfer and mechanical flash X-sync.',
+      '🎨 2-Step B&W vs Coloured Layout Picker: when Separate B&W and colour prints is enabled and both B&W and coloured options exist, guests first pick B&W designs or Coloured designs and then choose their layout (with a Back button), mirrored across external guest monitors and tablet guest screens.',
+      '🔄 90° / 180° / 270° Per-Spot Rotation, 4-in-1 Auto-Sectioning & Landscape Collage: rotate individual photo slots inside custom layouts and templates, auto-section 4-in-1 layouts, and build landscape collages.',
+      '📱 Interactive 360 Booth Walkthroughs & iOS Arm Companion Downloads: added interactive DSLR 360 (/how-to-360/dslr/) and iPhone 360 Arm Camera (/how-to-360/iphone/) guides plus the iPhone/iPad 360 Arm Camera Companion (.ipa) section on /downloads/.'
+    ]
+  },
   {
     date: '2026-11-22', title: 'Desktop 1.1.94 + Print Helper 1.1.18: 360 Booth for DSLR / Mirrorless, HDMI Capture Card & GoPro with Windows Tablet Motion Trigger', for: ['website', 'app', 'helper'], app: '1.1.94', helper: '1.1.18',
     items: [

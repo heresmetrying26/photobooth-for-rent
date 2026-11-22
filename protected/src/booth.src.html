@@ -22485,6 +22485,29 @@
             <p class="panel-hint" id="wifiPrinterStatus" style="margin:4px 0 6px;"></p>
             <pre id="wifiPrinterReport"
               style="display:none;white-space:pre-wrap;word-break:break-word;user-select:text;-webkit-user-select:text;font-size:12px;line-height:1.45;margin:0 0 8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;max-height:240px;overflow:auto;"></pre>
+            <details id="wifiDiagPanel" style="display:none;margin:0 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#faf7f2;">
+              <summary style="font-weight:700;cursor:pointer;">Wi-Fi / Wi-Fi Direct Printer Test (offline-ready)</summary>
+              <p class="panel-hint" style="margin:6px 0 8px;">Tests ports 631 &amp; 9100, reads full IPP attributes, runs a <b>zero-paper</b> Validate-Job matrix, and prints a 1-sheet sharpness + borderless ruler test. Works offline on Wi-Fi Direct and saves the report so you can copy it after reconnecting.</p>
+              <p class="panel-hint" id="wdNetInfo" style="margin:0 0 8px;font-family:monospace;font-size:12px;"></p>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px;">
+                <input type="text" id="wdIp" class="printer-input" placeholder="Printer IP (e.g. 192.168.223.1)" style="flex:1;min-width:170px;margin:0;">
+                <button type="button" class="action-btn" id="wdWfdBtn" style="width:auto;margin:0;padding:8px 10px;font-size:12px;">Use 192.168.223.1 (Epson Wi-Fi Direct)</button>
+                <button type="button" class="action-btn" id="wdProbeBtn" style="width:auto;margin:0;">1. Run zero-paper check</button>
+              </div>
+              <div id="wdMatrix" style="display:none;margin:0 0 8px;font-size:12px;line-height:1.45;"></div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 6px;">
+                <select id="wdPreset" class="printer-input" style="flex:1;min-width:220px;margin:0;"></select>
+                <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;"><input type="checkbox" id="wdBleed"> L8050 bleed pad (IPP)</label>
+                <button type="button" class="action-btn" id="wdPrintBtn" style="width:auto;margin:0;">2. Print 1-sheet ruler test</button>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 6px;">
+                <button type="button" class="action-btn" id="wdCopyBtn" style="width:auto;margin:0;">Copy test report</button>
+                <button type="button" class="action-btn" id="wdSendBtn" style="width:auto;margin:0;">Send report to support</button>
+                <span class="panel-hint" id="wdStatus" style="margin:0;"></span>
+              </div>
+              <pre id="wdReport"
+                style="display:none;white-space:pre-wrap;word-break:break-word;user-select:text;-webkit-user-select:text;font-size:11.5px;line-height:1.45;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#1c1a1e;color:#e8e3ec;max-height:260px;overflow:auto;"></pre>
+            </details>
             <details id="wifiDiag" style="display:none;margin:0 0 8px;">
               <summary>Colour diagnostics (advanced)</summary>
               <p class="panel-hint" style="margin:4px 0 6px;">Prints diagnostic test patterns to calibrate color
@@ -37681,6 +37704,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
       /*@include printer/instax.js*/
       /*@include printer/epson-l8050.js*/
+      /*@include printer/wifi-diag.js*/
       // ---- Printing ----
       // Only shown when this rental (or the trial) allows printing — the lock
       // screen passes { enabled, sizes } in window.__PB.print, and the 5-minute
@@ -40978,6 +41002,24 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           rep.textContent = (wifiPrinter && !wifiPrinter.dialog) ? (wifiPrinter.usb ? 'USB & IPP report' : 'Printer report') : 'USB probe report';
         }
         if (repBox && !repOk) repBox.style.display = 'none';
+        const wdPanel = document.getElementById('wifiDiagPanel');
+        if (wdPanel) {
+          const wdOk = !!(window._wifiDiag && window._wifiDiag.isAvailable());
+          wdPanel.style.display = wdOk ? '' : 'none';
+          if (wdOk) {
+            const wdIp = document.getElementById('wdIp');
+            const wdNet = document.getElementById('wdNetInfo');
+            const info = window._wifiDiag.networkInfo();
+            if (wdNet && info) {
+              const ns = (info.nets || []).map(n => (n.iface || 'wifi') + ' ' + n.ip + '/' + n.prefix + (n.wifiDirectHint ? ' [Wi-Fi Direct]' : '')).join(' · ');
+              wdNet.textContent = 'Tablet Wi-Fi: ' + (ns || 'not connected') + (info.wifiDirectDetected ? ' — Epson Wi-Fi Direct detected (192.168.223.1)' : '');
+            }
+            if (wdIp && !wdIp.value) {
+              if (wifiPrinter && !wifiPrinter.usb && !wifiPrinter.dialog && wifiPrinter.ip) wdIp.value = wifiPrinter.ip;
+              else if (info && info.suggestedIps && info.suggestedIps.length) wdIp.value = info.suggestedIps[0];
+            }
+          }
+        }
         try { wifiOptsUI(); } catch (e) { }
         const dg = document.getElementById('wifiDiag');
         if (dg) dg.style.display = pbDebug() && wifiPrinter && wifiPrinter.escp2 ? '' : 'none';
@@ -41021,6 +41063,126 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           try { await navigator.clipboard.writeText(txt); showToast('Printer report copied. Paste it into your message to support.', 4500); }
           catch (e) { showToast('Take a screenshot of the printer report and send it to support.', 4500); }
         });
+        // ---- In-app Wi-Fi / Wi-Fi Direct Printer Tester (offline-ready) ----
+        (function () {
+          const wd = window._wifiDiag;
+          if (!wd) return;
+          const ipEl = document.getElementById('wdIp');
+          const wfdBtn = document.getElementById('wdWfdBtn');
+          const probeBtn = document.getElementById('wdProbeBtn');
+          const printBtn = document.getElementById('wdPrintBtn');
+          const copyBtn = document.getElementById('wdCopyBtn');
+          const sendBtn = document.getElementById('wdSendBtn');
+          const presetEl = document.getElementById('wdPreset');
+          const bleedEl = document.getElementById('wdBleed');
+          const matrixEl = document.getElementById('wdMatrix');
+          const statusEl = document.getElementById('wdStatus');
+          const reportEl = document.getElementById('wdReport');
+          if (!probeBtn || !presetEl) return;
+          wd.PRESETS.forEach(pr => {
+            const opt = document.createElement('option');
+            opt.value = pr.id;
+            opt.textContent = pr.label;
+            presetEl.appendChild(opt);
+          });
+          let lastProbe = null, printLog = [];
+          const showReport = (txt) => {
+            if (!reportEl) return;
+            reportEl.textContent = txt;
+            reportEl.style.display = txt ? 'block' : 'none';
+            if (txt) wd.saveLastReport(txt);
+          };
+          const saved = wd.loadLastReport();
+          if (saved) showReport(saved);
+          const renderMatrix = (res) => {
+            if (!matrixEl) return;
+            const rows = (res && res.validateMatrix) || [];
+            if (!rows.length) { matrixEl.style.display = 'none'; matrixEl.innerHTML = ''; return; }
+            matrixEl.style.display = 'block';
+            matrixEl.innerHTML = rows.map(r => {
+              const bg = r.clean ? '#e5f5ec' : (r.ok ? '#fff4db' : '#fbeaea');
+              const fg = r.clean ? '#1f8a4c' : (r.ok ? '#8a5a00' : '#c23b3b');
+              const tag = r.clean ? 'CLEAN' : (r.ok ? 'WARN' : 'FAIL');
+              const unsup = (r.unsupported && r.unsupported.length) ? (' · ignored: ' + r.unsupported.join(', ')) : '';
+              const detail = r.error ? r.error : (r.ippName + ' (' + r.ippHex + ')' + unsup);
+              return '<div style="padding:4px 8px;margin:3px 0;border-radius:6px;background:' + bg + ';color:' + fg + ';"><b>[' + tag + '] ' +
+                String(r.label || r.id).replace(/</g, '&lt;') + '</b><br><span style="opacity:.9;">' + String(detail).replace(/</g, '&lt;') + '</span></div>';
+            }).join('');
+          };
+          if (wfdBtn && ipEl) wfdBtn.addEventListener('click', () => { ipEl.value = '192.168.223.1'; });
+          probeBtn.addEventListener('click', async () => {
+            const ip = (ipEl && ipEl.value || '').trim();
+            if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) { showToast('Enter a valid printer IP address first (e.g. 192.168.223.1).', 3500); return; }
+            probeBtn.disabled = true;
+            if (statusEl) statusEl.textContent = 'Checking ports, IPP attributes & Validate-Job matrix (zero paper)…';
+            try {
+              lastProbe = await wd.runProbe(ip, null);
+              renderMatrix(lastProbe);
+              showReport(wd.formatReport(lastProbe, printLog));
+              if (statusEl) statusEl.textContent = lastProbe.recommendation || (lastProbe.ok ? 'Check complete.' : (lastProbe.error || 'Check failed.'));
+              showToast('Zero-paper check complete. Report saved locally.', 4000);
+            } catch (e) {
+              if (statusEl) statusEl.textContent = 'Check failed: ' + (e.message || e);
+              showToast('Check failed: ' + (e.message || e), 5000);
+            } finally { probeBtn.disabled = false; }
+          });
+          if (printBtn) printBtn.addEventListener('click', async () => {
+            const ip = (ipEl && ipEl.value || '').trim();
+            if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) { showToast('Enter a valid printer IP address first.', 3500); return; }
+            const preset = wd.getPreset(presetEl.value);
+            const paper = (typeof printSize !== 'undefined' && printSize && typeof paperFor === 'function') ? paperFor(printSize) : { w: 101.6, h: 152.4 };
+            const wMm = (paper && paper.w > 0 && paper.h > 0 && !paper.receipt) ? paper.w : 101.6;
+            const hMm = (paper && paper.w > 0 && paper.h > 0 && !paper.receipt) ? paper.h : 152.4;
+            printBtn.disabled = true;
+            if (statusEl) statusEl.textContent = 'Sending 1-sheet ruler test (' + preset.shortLabel + ')…';
+            try {
+              let cv = wd.buildCalibrationCanvas(wMm, hMm, preset.shortLabel, ip + ' · ' + new Date().toLocaleTimeString());
+              if (preset.protocol === 'ipp' && bleedEl && bleedEl.checked && window._epsonL8050 && typeof window._epsonL8050.bleedPage === 'function') {
+                cv = window._epsonL8050.bleedPage(cv);
+              }
+              const payload = Object.assign({}, preset, {
+                ip: ip,
+                widthMm: wMm,
+                heightMm: hMm,
+                path: (lastProbe && lastProbe.ipp && lastProbe.ipp.path) || '/ipp/print',
+                imageBase64: cv.toDataURL('image/jpeg', 0.94),
+                pollSeconds: 15
+              });
+              const res = await wd.runPrint(payload);
+              res.presetId = preset.id + (bleedEl && bleedEl.checked && preset.protocol === 'ipp' ? '+bleed' : '');
+              printLog.push(res);
+              showReport(wd.formatReport(lastProbe, printLog));
+              const msg = res.ok
+                ? ('Sent (' + preset.shortLabel + '). Check the printed sheet & send a photo of all 4 edges + Copy report.')
+                : ('Test print failed: ' + (res.error || res.ippName || 'rejected'));
+              if (statusEl) statusEl.textContent = msg;
+              showToast(msg, 6000);
+            } catch (e) {
+              if (statusEl) statusEl.textContent = 'Test print error: ' + (e.message || e);
+              showToast('Test print error: ' + (e.message || e), 5500);
+            } finally { printBtn.disabled = false; }
+          });
+          if (copyBtn) copyBtn.addEventListener('click', async () => {
+            const txt = (reportEl && reportEl.textContent) || wd.loadLastReport();
+            if (!txt) { showToast('Run step 1 first to generate a report.', 3000); return; }
+            try { await navigator.clipboard.writeText(txt); showToast('Diagnostic report copied. Paste it to support.', 4500); }
+            catch (e) { showToast('Copy blocked — screenshot the dark report box below.', 4500); }
+          });
+          if (sendBtn) sendBtn.addEventListener('click', () => {
+            const txt = (reportEl && reportEl.textContent) || wd.loadLastReport();
+            if (!txt) { showToast('Run step 1 first to generate a report.', 3000); return; }
+            const model = (lastProbe && lastProbe.ipp && lastProbe.ipp.attrs && lastProbe.ipp.attrs['printer-make-and-model'] && lastProbe.ipp.attrs['printer-make-and-model'][0]) || (wifiPrinter && wifiPrinter.name) || 'Wi-Fi Printer Diag';
+            try {
+              pdiagSend('print', { name: model, ip: (ipEl && ipEl.value) || '', ipp: true, info: txt.slice(0, 380) }, {
+                ok: false,
+                error: ((lastProbe && lastProbe.recommendation) || txt.slice(0, 190)),
+                paper: { name: '4x6-diag', w: 102, h: 152 },
+                opts: { quality: presetEl.value || 'diag', media: 'photo', borderless: true }
+              });
+              showToast('Report queued to support (make sure internet is connected, or tap Copy test report to paste in chat).', 5500);
+            } catch (e) { showToast('Use Copy test report to send it in chat.', 4000); }
+          });
+        })();
         [['wifiCalM', 'm', parseInt], ['wifiCalC', 'c', parseInt], ['wifiCalK', 'k', parseInt], ['wifiCalN', 'n', parseInt], ['wifiCalG', 'g', parseFloat]].forEach(([id, key, parse]) => {
           const el = document.getElementById(id);
           if (el) el.addEventListener('change', () => { const v = parse(el.value); if (!isNaN(v)) { wifiCal[key] = v; wifiCalSave(); } });

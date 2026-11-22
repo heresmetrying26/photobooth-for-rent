@@ -9,7 +9,7 @@ import { writeFile, rm, mkdtemp, mkdir, readFile } from 'node:fs/promises';
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
-import { discoverNetworkPrinters, ippCaps, ippPrintDirect, pickMediaName, mediaSizeMm, directFormats, labelMediaType } from './netprinters.mjs';
+import { discoverNetworkPrinters, ippCaps, ippPrintDirect, pickMediaName, mediaSizeMm, directFormats, labelMediaType, diagNetworkInfo, ippDiagProbe, ippDiagPrint } from './netprinters.mjs';
 import { probeUsbPrinters, makeUsbIppTransport } from './usbipp.mjs';
 import * as gopro from './cam-gopro.mjs';
 
@@ -1286,7 +1286,7 @@ export async function handleHelper(req, path, search) {
     const refresh = search.get('refresh') === '1';
     if (refresh) { PAPER_CACHE.clear(); CAPS_CACHE.clear(); }
     return json({
-      ok: true, app: 'photobooth4u-print-helper', builtIn: true, version: HELPER_VERSION, printers: await printers(refresh),
+      ok: true, app: 'photobooth4u-print-helper', builtIn: true, version: HELPER_VERSION, printerDiag: true, printers: await printers(refresh),
       camera: { supported: camOk(), open: !!cam.open, name: cam.open ? cam.open.name : '' }
     });
   }
@@ -1346,6 +1346,24 @@ export async function handleHelper(req, path, search) {
   if (path === '/printer/discover' && method === 'GET') {
     const extra = String(search.get('ip') || '').split(',').map((s) => s.trim()).filter((s) => /^\d{1,3}(\.\d{1,3}){3}$/.test(s));
     try { return json(await discoverPrinters(extra)); }
+    catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
+  }
+  if (path === '/printer/diag/info' && method === 'GET') {
+    try { return json({ ok: true, ...diagNetworkInfo({ appVersion: HELPER_VERSION }) }); }
+    catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
+  }
+  if (path === '/printer/diag/probe' && method === 'POST') {
+    let body;
+    try { body = await req.json(); } catch { return json({ ok: false, error: 'Bad request' }, 400); }
+    try {
+      const res = await ippDiagProbe({ ip: body.ip, port: body.port || 631, rawPort: body.rawPort || 9100, cases: body.cases || null, appVersion: HELPER_VERSION });
+      return json(res);
+    } catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
+  }
+  if (path === '/printer/diag/print' && method === 'POST') {
+    let body;
+    try { body = await req.json(); } catch { return json({ ok: false, error: 'Bad request' }, 400); }
+    try { return json(await ippDiagPrint(body)); }
     catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
   }
   if (path === '/printer/add' && method === 'POST') {

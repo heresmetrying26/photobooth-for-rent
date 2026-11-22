@@ -169,11 +169,196 @@ object EscprJob {
         return out.toByteArray()
     }
 
-    private const val MEDIA_PREMIUM_GLOSSY = 0x0B     // EPS_MTID_PGPHOTO
+    const val MEDIA_PLAIN = 0x00
+    const val MEDIA_MATTE = 0x05
+    const val MEDIA_PREMIUM_GLOSSY = 0x0B     // EPS_MTID_PGPHOTO (High-Gloss / Premium Glossy)
+    const val MEDIA_SEMI_GLOSS = 0x0C
+    const val MEDIA_EPSON_GLOSSY = 0x34       // Epson Photo Paper Glossy (L8050 Windows driver setq byte 0)
+
     private const val BL_LEFT = 36                    // borderless: the page area starts this far left of the sheet (360 dpi)
     private const val BL_TOP = 42                     // ... and this far above it
     private const val BL_EXTRA_W = 72                 // ... and is this much wider than the sheet (36 each side)
     private const val BL_EXTRA_H = 112                // ... and this much taller (42 above, 70 below)
+
+    /**
+     * Explicit ESC/P-R parameters for L8050 & wireless diagnostics (port 9100): lets the tester
+     * compare 360 vs 720 dpi, quality 0/1/2 (Draft/Standard/High), media codes (0x34 Epson Glossy,
+     * 0x0B Premium Glossy, 0x0C Semi-Gloss, 0x05 Matte, 0x00 Plain), and L8050 vs L805 borderless geometry.
+     */
+    data class Config(
+        val dpi: Int = 360,
+        val mediaCode: Int = MEDIA_EPSON_GLOSSY,
+        val qualityCode: Int = 2,                     // 0 draft, 1 standard, 2 high
+        val borderless: Boolean = true,
+        val l8050Geo: Boolean = true,
+        val sendSetiChku: Boolean = true,
+        val mono: Boolean = false,
+        val adj: PrintColorAdj = PrintColorAdj()
+    )
+
+    /**
+     * Builds an ESC/P-R job with explicit dpi (360 or 720), media byte, quality byte, and geometry.
+     * For L8050 4x6 borderless (tools/epson-l8050/README.md):
+     *   720 dpi -> sheet 2880x4320, area 3032x4400, origin top -22, left -76, setj res byte 0x01
+     *   360 dpi -> sheet 1440x2160, area 1516x2200, origin top -11, left -38, setj res byte 0x00
+     */
+    fun buildWithConfig(src: Bitmap, widthMm: Double, heightMm: Double, cfg: Config): ByteArray {
+        val useDpi = if (cfg.dpi >= 720) 720 else 360
+        val scale = useDpi / 360
+        val shortMm = minOf(widthMm, heightMm)
+        val longMm = maxOf(widthMm, heightMm)
+        val is4x6 = Math.abs(shortMm - 101.6) <= 1.5 && Math.abs(longMm - 152.4) <= 1.5
+
+        val paperW: Int
+        val paperH: Int
+        val areaW: Int
+        val areaH: Int
+        val marginTop: Int
+        val marginLeft: Int
+        val blLeft: Int
+        val blTop: Int
+        val useBleed: Boolean
+
+        if (cfg.borderless && cfg.l8050Geo && is4x6) {
+            paperW = 1440 * scale
+            paperH = 2160 * scale
+            blLeft = 38 * scale                       // 76 at 720 dpi, 38 at 360 dpi
+            blTop = 11 * scale                        // 22 at 720 dpi, 11 at 360 dpi
+            areaW = 1516 * scale                      // 3032 at 720 dpi, 1516 at 360 dpi
+            areaH = 2200 * scale                      // 4400 at 720 dpi, 2200 at 360 dpi
+            marginTop = -blTop
+            marginLeft = -blLeft
+            useBleed = true
+        } else if (cfg.borderless) {
+            val ep = epsonBorderlessPaper(widthMm, heightMm)
+            val baseW = ep?.first ?: Math.round(shortMm / 25.4 * 360).toInt()
+            val baseH = ep?.second ?: Math.round(longMm / 25.4 * 360).toInt()
+            paperW = baseW * scale
+            paperH = baseH * scale
+            blLeft = BL_LEFT * scale
+            blTop = BL_TOP * scale
+            areaW = (baseW + BL_EXTRA_W) * scale
+            areaH = (baseH + BL_EXTRA_H) * scale
+            marginTop = -blTop
+            marginLeft = -blLeft
+            useBleed = true
+        } else {
+            paperW = Math.round(shortMm / 25.4 * useDpi).toInt()
+            paperH = Math.round(longMm / 25.4 * useDpi).toInt()
+            val border = BORDER * scale
+            areaW = paperW - 2 * border
+            areaH = paperH - 2 * border
+            marginTop = border
+            marginLeft = border
+            blLeft = 0
+            blTop = 0
+            useBleed = false
+        }
+        require(areaW > 0 && areaH > 0) { "Sheet too small" }
+
+        val needsRotate = (src.width > src.height) != (areaW > areaH)
+        val rotatedSrc: Bitmap
+        val shouldRecycleRotated: Boolean
+        if (needsRotate) {
+            rotatedSrc = Bitmap.createBitmap(src, 0, 0, src.width, src.height, Matrix().apply { postRotate(90f) }, true)
+            shouldRecycleRotated = (rotatedSrc !== src)
+        } else {
+            rotatedSrc = src
+            shouldRecycleRotated = false
+        }
+        val bmp = try {
+            if (useBleed) {
+                epsonBleedPageCustom(rotatedSrc, paperW, paperH, areaW, areaH, blLeft, blTop)
+            } else if (rotatedSrc.width == areaW && rotatedSrc.height == areaH) {
+                rotatedSrc
+            } else {
+                Bitmap.createScaledBitmap(rotatedSrc, areaW, areaH, true)
+            }
+        } catch (ex: Exception) {
+            if (shouldRecycleRotated) {
+                try { rotatedSrc.recycle() } catch (_: Exception) {}
+            }
+            throw ex
+        }
+        if (shouldRecycleRotated && bmp !== rotatedSrc) {
+            try { rotatedSrc.recycle() } catch (_: Exception) {}
+        }
+
+        try {
+            val out = ByteArrayOutputStream()
+            out.put(bytes(0x00, 0x00, 0x00, 0x1B, 0x01), ascii("@EJL 1284.4\n@EJL     \n"))
+            out.put(bytes(0x1B, 0x40))
+            out.put(bytes(0x1B, 0x28, 0x52, 0x08, 0x00, 0x00), ascii("REMOTE1"))
+            val now = Calendar.getInstance()
+            out.put(bytes(0x54, 0x49, 0x08, 0x00, 0x00), be16(now.get(Calendar.YEAR)),
+                bytes(now.get(Calendar.MONTH) + 1, now.get(Calendar.DAY_OF_MONTH), now.get(Calendar.HOUR_OF_DAY),
+                    now.get(Calendar.MINUTE), now.get(Calendar.SECOND)))
+            out.put(bytes(0x4A, 0x53, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00))
+            out.put(bytes(0x4A, 0x48, 0x0E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00), ascii("ESCPRLib"))
+            out.put(bytes(0x48, 0x44, 0x03, 0x00, 0x00, 0x03, 0x04))
+            out.put(bytes(0x50, 0x50, 0x03, 0x00, 0x00, 0x01, 0xFF))
+            out.put(bytes(0x1B, 0x00, 0x00, 0x00))
+            out.put(bytes(0x1B, 0x28, 0x52, 0x06, 0x00, 0x00), ascii("ESCPR"))
+
+            val media = cfg.mediaCode.coerceIn(0, 0xFF)
+            val quality = cfg.qualityCode.coerceIn(0, 2)
+            out.put(bytes(0x1B, 0x71, 0x09, 0x00, 0x00, 0x00), ascii("setq"),
+                bytes(media, quality, if (cfg.mono) 1 else 0, 0, 0, 0, 0x00, 0x00, 0x00))
+            if (cfg.borderless && cfg.sendSetiChku) {
+                out.put(bytes(0x1B, 0x71, 0x0A, 0x00, 0x00, 0x00), ascii("seti"), ByteArray(10))
+                out.put(bytes(0x1B, 0x75, 0x02, 0x00, 0x00, 0x00), ascii("chku"), bytes(0x01, 0x01))
+            }
+            val resByte = if (useDpi >= 720) 0x01 else 0x00
+            out.put(bytes(0x1B, 0x6A, 0x16, 0x00, 0x00, 0x00), ascii("setj"),
+                be32(paperW), be32(paperH), be16(marginTop), be16(marginLeft), be32(areaW), be32(areaH), bytes(resByte, 0x00))
+
+            out.put(bytes(0x1B, 0x70, 0x00, 0x00, 0x00, 0x00), ascii("sttp"))
+            out.put(bytes(0x1B, 0x70, 0x01, 0x00, 0x00, 0x00), ascii("setn"), bytes(0x01))
+            val adj = cfg.adj
+            val bOff = (adj.brightness.coerceIn(-100, 100) * 2.55).toInt()
+            val rOff = bOff + (adj.red.coerceIn(-100, 100) * 2.55).toInt()
+            val gOff = bOff + (adj.green.coerceIn(-100, 100) * 2.55).toInt()
+            val bOff2 = bOff + (adj.blue.coerceIn(-100, 100) * 2.55).toInt()
+            val px = IntArray(areaW)
+            val row = ByteArray(areaW * 3)
+            for (y in 0 until areaH) {
+                bmp.getPixels(px, 0, areaW, 0, y, areaW, 1)
+                var white = true
+                for (x in 0 until areaW) {
+                    val c = px[x]
+                    var r = (c shr 16) and 0xFF
+                    var g = (c shr 8) and 0xFF
+                    var b = c and 0xFF
+                    if (cfg.mono) { val l = (0.299 * r + 0.587 * g + 0.114 * b).toInt(); r = l; g = l; b = l }
+                    if (!adj.isNoop) {
+                        r = (r + rOff).coerceIn(0, 255)
+                        g = (g + gOff).coerceIn(0, 255)
+                        b = (b + bOff2).coerceIn(0, 255)
+                    }
+                    row[x * 3] = r.toByte(); row[x * 3 + 1] = g.toByte(); row[x * 3 + 2] = b.toByte()
+                    if (r != 0xFF || g != 0xFF || b != 0xFF) white = false
+                }
+                if (white) continue
+                val rle = packBits(row, 3)
+                val useRle = rle.size < row.size
+                val data = if (useRle) rle else row
+                val len = 7 + data.size
+                out.put(bytes(0x1B, 0x64), bytes(len, len shr 8, len shr 16, len shr 24),
+                    ascii("dsnd"), be16(0), be16(y), bytes(if (useRle) 1 else 0), be16(data.size), data)
+            }
+            out.put(bytes(0x1B, 0x70, 0x01, 0x00, 0x00, 0x00), ascii("endp"), bytes(0x00))
+            out.put(bytes(0x1B, 0x6A, 0x00, 0x00, 0x00, 0x00), ascii("endj"))
+            out.put(bytes(0x1B, 0x40))
+            out.put(bytes(0x1B, 0x28, 0x52, 0x08, 0x00, 0x00), ascii("REMOTE1"))
+            out.put(bytes(0x4A, 0x45, 0x01, 0x00, 0x00))
+            out.put(bytes(0x1B, 0x00, 0x00, 0x00))
+            return out.toByteArray()
+        } finally {
+            if (bmp !== src) {
+                try { bmp.recycle() } catch (_: Exception) {}
+            }
+        }
+    }
 
     /** The sheet in 1/360 inch as Epson's media table lists it, for the sizes borderless is sent for; null for any other size. */
     fun epsonBorderlessPaper(widthMm: Double, heightMm: Double): Pair<Int, Int>? {
@@ -198,22 +383,29 @@ object EscprJob {
      * The page for a borderless job: the picture fills the sheet exactly (nothing is cut off), and the strip past each edge, which the
      * printer prints off the paper, repeats the picture's edge pixels so a hair of misalignment never shows white.
      */
-    private fun epsonBleedPage(pic: Bitmap, paperW: Int, paperH: Int, areaW: Int, areaH: Int): Bitmap {
+    private fun epsonBleedPage(pic: Bitmap, paperW: Int, paperH: Int, areaW: Int, areaH: Int): Bitmap =
+        epsonBleedPageCustom(pic, paperW, paperH, areaW, areaH, BL_LEFT, BL_TOP)
+
+    private fun epsonBleedPageCustom(pic: Bitmap, paperW: Int, paperH: Int, areaW: Int, areaH: Int, blLeft: Int, blTop: Int): Bitmap {
         val page = Bitmap.createBitmap(areaW, areaH, Bitmap.Config.ARGB_8888)
         val cv = android.graphics.Canvas(page)
-        val l = BL_LEFT
-        val t = BL_TOP
+        val l = blLeft.coerceIn(0, areaW - paperW)
+        val t = blTop.coerceIn(0, areaH - paperH)
         val r = l + paperW
         val bt = t + paperH
         val w = pic.width
         val h = pic.height
         val paint = android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG)
-        cv.drawBitmap(pic, android.graphics.Rect(0, 0, w, 1), android.graphics.Rect(l, 0, r, t), null)
-        cv.drawBitmap(pic, android.graphics.Rect(0, h - 1, w, h), android.graphics.Rect(l, bt, r, areaH), null)
-        cv.drawBitmap(pic, android.graphics.Rect(0, 0, 1, h), android.graphics.Rect(0, t, l, bt), null)
-        cv.drawBitmap(pic, android.graphics.Rect(w - 1, 0, w, h), android.graphics.Rect(r, t, areaW, bt), null)
+        if (t > 0) cv.drawBitmap(pic, android.graphics.Rect(0, 0, w, 1), android.graphics.Rect(l, 0, r, t), null)
+        if (bt < areaH) cv.drawBitmap(pic, android.graphics.Rect(0, h - 1, w, h), android.graphics.Rect(l, bt, r, areaH), null)
+        if (l > 0) cv.drawBitmap(pic, android.graphics.Rect(0, 0, 1, h), android.graphics.Rect(0, t, l, bt), null)
+        if (r < areaW) cv.drawBitmap(pic, android.graphics.Rect(w - 1, 0, w, h), android.graphics.Rect(r, t, areaW, bt), null)
         val fill = android.graphics.Paint()
-        fun corner(px: Int, py: Int, x0: Int, y0: Int, x1: Int, y1: Int) { fill.color = pic.getPixel(px, py); cv.drawRect(x0.toFloat(), y0.toFloat(), x1.toFloat(), y1.toFloat(), fill) }
+        fun corner(px: Int, py: Int, x0: Int, y0: Int, x1: Int, y1: Int) {
+            if (x1 <= x0 || y1 <= y0) return
+            fill.color = pic.getPixel(px, py)
+            cv.drawRect(x0.toFloat(), y0.toFloat(), x1.toFloat(), y1.toFloat(), fill)
+        }
         corner(0, 0, 0, 0, l, t)
         corner(w - 1, 0, r, 0, areaW, t)
         corner(0, h - 1, 0, bt, l, areaH)

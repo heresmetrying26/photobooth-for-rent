@@ -188,3 +188,15 @@
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-cache"
+
+# Wi-Fi & Wi-Fi Direct Printer Test page (talks to local 127.0.0.1:17321 helper; offline-cached via sw.js)
+[[redirects]]
+  from = "/printer-test"
+  to = "/printer-test/"
+  status = 301
+
+[[headers]]
+  for = "/printer-test/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-cache"

@@ -238,7 +238,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.15', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.15/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.16', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.16/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -291,6 +291,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-22', title: 'Android 1.1.99 & iPad 1.1.16: Epson L8050 Wi-Fi / Wi-Fi Direct printing fixes & built-in Wi-Fi Printer Test', for: ['website'],
+    items: [
+      '🖨️ Fixed Epson L8050 (and other AirPrint / IPP Wi-Fi printers) refusing to print over Wi-Fi or Wi-Fi Direct after the 1.1.97 high-quality glossy update: paper type is now sent cleanly inside media-col (RFC standard), scaling falls back smoothly without dropping glossy/best-quality settings, sleeping printers wake and retry automatically, and Wi-Fi Direct gateways (192.168.223.1) are discovered first with direct interface routing.',
+      '🔎 New built-in offline Wi-Fi / Wi-Fi Direct Printer Test (Setup → Printer → Wi-Fi / Wi-Fi Direct Printer Test, and online at /printer-test/): runs a zero-paper printer capability & Validate-Job check, prints a 1-sheet sharpness + 0–6 mm borderless ruler test on IPP or Epson ESC/P-R (port 9100), tracks post-print job status warnings, and saves/copies a full report even with no internet on Wi-Fi Direct.'
+    ]
+  },
   {
     date: '2026-11-22', title: 'Desktop 1.1.95, Print Helper 1.1.19, Android 1.1.98 & iPad 1.1.15: Canon EOS 1500D SD Card + Rear LCD Live View, 2-Step B&W vs Coloured Picker & Spot Rotation', for: ['website', 'app', 'helper'], app: '1.1.95', helper: '1.1.19',
     items: [

@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Wi-Fi &amp; Wi-Fi Direct Printer Test · photobooth4u</title>
+<style>
+  :root{
+    --bg:#f7f3ee; --card:#ffffff; --ink:#1c1a1e; --dim:#6b6470; --line:#e4ddd3;
+    --blue:#2b5fd9; --blue-soft:#e8eefc; --ok:#1f8a4c; --ok-soft:#e5f5ec;
+    --warn:#9a6200; --warn-soft:#fff4db; --bad:#c23b3b; --bad-soft:#fbeaea;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  main{max-width:1040px; margin:0 auto; padding:24px 16px 56px;}
+  h1{font-size:26px; margin:0 0 4px;}
+  .lead{color:var(--dim); margin:0 0 18px;}
+  .grid{display:grid; grid-template-columns:360px 1fr; gap:16px; align-items:start;}
+  @media (max-width:820px){ .grid{grid-template-columns:1fr;} }
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:16px;}
+  .card h2{font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin:0 0 10px;}
+  .step{display:flex; gap:10px; align-items:center; margin-bottom:10px;}
+  .num{flex:none; width:24px; height:24px; border-radius:50%; background:var(--blue-soft); color:var(--blue); font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center;}
+  button{font:600 14px system-ui,sans-serif; padding:10px 14px; border-radius:10px; border:1.5px solid var(--blue); background:var(--blue); color:#fff; cursor:pointer; width:100%;}
+  button.secondary{background:#fff; color:var(--blue);}
+  button.chip{width:auto; padding:5px 10px; font-size:12px; border-radius:99px; border-color:var(--line); background:#faf7f2; color:var(--ink);}
+  button.chip:hover{border-color:var(--blue); color:var(--blue);}
+  button:disabled{opacity:.45; cursor:not-allowed;}
+  input[type=text], input[type=number], select{
+    width:100%; font:14px/1.4 system-ui,sans-serif; padding:9px 10px; border-radius:9px;
+    border:1.5px solid var(--line); background:#fff; color:var(--ink);
+  }
+  .chips{display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 10px;}
+  .row{display:flex; gap:8px; flex-wrap:wrap;}
+  .row > *{flex:1; min-width:120px;}
+  .pill{display:inline-block; padding:2px 8px; border-radius:99px; font-size:11.5px; font-weight:700; white-space:nowrap;}
+  .pill.ok{background:var(--ok-soft); color:var(--ok);}
+  .pill.warn{background:var(--warn-soft); color:var(--warn);}
+  .pill.bad{background:var(--bad-soft); color:var(--bad);}
+  .pill.run{background:var(--blue-soft); color:var(--blue);}
+  .pill.wait{background:#eee; color:#777;}
+  .msg{border-radius:10px; padding:10px 12px; margin:0 0 12px; display:none; font-size:14px;}
+  .msg.show{display:block;}
+  .msg.err{background:var(--bad-soft); color:var(--bad);}
+  .msg.ok{background:var(--ok-soft); color:var(--ok);}
+  .msg.info{background:var(--blue-soft); color:var(--blue);}
+  .steps{list-style:none; padding:0; margin:0;}
+  .steps li{display:flex; gap:10px; align-items:flex-start; padding:7px 0; border-bottom:1px solid var(--line);}
+  .steps li:last-child{border-bottom:0;}
+  .steps b{display:block; font-size:14px;}
+  .steps small{display:block; color:var(--dim); font-size:12.5px; word-break:break-word;}
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  td{padding:6px 4px; border-bottom:1px solid var(--line); vertical-align:top;}
+  td:first-child{color:var(--dim); width:34%;}
+  .matrix-item{padding:8px 10px; border-radius:9px; margin:6px 0; font-size:13px; border:1px solid transparent;}
+  .matrix-item.clean{background:var(--ok-soft); color:var(--ok); border-color:#b8e3ca;}
+  .matrix-item.warn{background:var(--warn-soft); color:var(--warn); border-color:#f2d79c;}
+  .matrix-item.fail{background:var(--bad-soft); color:var(--bad); border-color:#efc0c0;}
+  .matrix-item small{display:block; color:var(--ink); opacity:.85; margin-top:2px; font-family:ui-monospace,Consolas,monospace; font-size:12px;}
+  .preview-wrap{background:#1c1a1e; border-radius:12px; padding:12px; display:flex; justify-content:center; align-items:center;}
+  .preview-wrap canvas{max-width:100%; max-height:360px; height:auto; background:#fff; border-radius:4px; box-shadow:0 4px 18px rgba(0,0,0,.35);}
+  pre{background:#1c1a1e; color:#dfd9e4; border-radius:10px; padding:12px; font-size:12px; line-height:1.45; max-height:320px; overflow:auto; white-space:pre-wrap; word-break:break-word; margin:0;}
+  .help{font-size:13px; color:var(--dim); margin:6px 0 0;}
+  details.adv{margin-top:10px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#faf7f2;}
+  details.adv summary{cursor:pointer; font-weight:600; font-size:13.5px;}
+  .field{margin-top:8px;}
+  .field label{display:block; font-size:12px; font-weight:600; color:var(--dim); margin-bottom:3px;}
+  .chk{display:flex; align-items:center; gap:7px; font-size:13.5px; margin-top:8px; cursor:pointer;}
+  .banner{background:var(--blue-soft); color:var(--blue); padding:8px 12px; border-radius:10px; font-size:13px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;}
+</style>
+</head>
+<body>
+<main>
+  <h1>Wi-Fi &amp; Wi-Fi Direct Printer Test</h1>
+  <p class="lead">Diagnoses wireless photo printers (including <b>Epson L8050</b> over Wi-Fi and Wi-Fi Direct <code>192.168.223.1</code>): checks ports <b>631</b> &amp; <b>9100</b>, dumps full IPP capabilities, runs a <b>zero-paper Validate-Job matrix</b>, and optionally prints a 1-sheet sharpness &amp; borderless ruler target.</p>
+
+  <div class="banner">
+    <span id="offlineBadge">Offline cache: ready (keep this tab open when switching to printer Wi-Fi Direct)</span>
+    <span id="helperBadge" class="pill wait">Helper: not checked</span>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Before you start (Android / Laptop)</h2>
+        <ol class="help" style="padding-left:18px; margin-top:0;">
+          <li><b>Android tablet:</b> open the <b>photobooth4u app</b> once so its background helper (<code>127.0.0.1:17321</code>) is active (look for the <i>Photobooth Helper Active</i> notification). You can also run this exact same test inside the app under <b>Setup &gt; Printer &gt; Wi-Fi / Wi-Fi Direct Printer Test</b>.</li>
+          <li><b>Keep this tab open</b> before switching Wi-Fi to the printer's <b>Wi-Fi Direct</b> network (e.g. <code>DIRECT-xx-EPSON...</code>), because Wi-Fi Direct has no internet.</li>
+          <li><b>Router Wi-Fi:</b> Epson L8050 uses <b>2.4 GHz Wi-Fi</b> only. Make sure router Privacy Separator / AP Isolation is off.</li>
+          <li>Load <b>4&times;6 in glossy photo paper</b> before Step 3 (Steps 1 &amp; 2 use <b>zero paper</b>).</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2>1. Connect &amp; Printer IP</h2>
+        <div class="step"><span class="num">1</span><button id="connectBtn">Check Helper &amp; Find Wi-Fi Printer</button></div>
+        <div class="field">
+          <label for="ipInput">Printer IP address</label>
+          <input type="text" id="ipInput" placeholder="e.g. 192.168.223.1 or 192.168.1.45" autocomplete="off">
+        </div>
+        <div class="chips" id="ipChips">
+          <button type="button" class="chip" data-ip="192.168.223.1">192.168.223.1 (Epson Wi-Fi Direct)</button>
+          <button type="button" class="chip" data-ip="192.168.0.1">192.168.0.1 (Canon)</button>
+          <button type="button" class="chip" data-ip="192.168.118.1">192.168.118.1 (Brother)</button>
+        </div>
+        <div class="step" style="margin-bottom:0;"><span class="num">2</span><button id="probeBtn" disabled>Run Zero-Paper Probe &amp; Matrix</button></div>
+        <p class="help">Checks ports 631/9100/515/80, dumps full IPP attributes, and runs IPP <code>Validate-Job</code> across 7–8 attribute combinations without printing anything.</p>
+      </div>
+
+      <div class="card">
+        <h2>3. 1-Sheet Ruler &amp; Quality Test</h2>
+        <div class="field" style="margin-top:0;">
+          <label for="presetSelect">Print mode to test (1 sheet)</label>
+          <select id="presetSelect"></select>
+        </div>
+        <label class="chk"><input type="checkbox" id="bleedChk"> Apply L8050 IPP bleed pad (4.21&times;6.11 in canvas)</label>
+        <details class="adv">
+          <summary>Custom IPP / ESC/P-R override (advanced)</summary>
+          <p class="help">Tick below to test custom IPP attributes or ESC/P-R codes live without updating the app.</p>
+          <label class="chk"><input type="checkbox" id="useCustomChk"> Use custom parameters below</label>
+          <div class="row field">
+            <div><label for="cProto">Protocol</label><select id="cProto"><option value="ipp">IPP (:631)</option><option value="escpr">ESC/P-R (:9100, Android)</option></select></div>
+            <div><label for="cFmt">IPP Format</label><select id="cFmt"><option value="image/jpeg">image/jpeg</option><option value="image/pwg-raster">image/pwg-raster</option><option value="application/pdf">application/pdf</option></select></div>
+          </div>
+          <div class="row field">
+            <div><label for="cQual">IPP Quality</label><select id="cQual"><option value="5">5 (High)</option><option value="4">4 (Normal)</option><option value="3">3 (Draft)</option><option value="0">0 (Omit)</option></select></div>
+            <div><label for="cSc">IPP Scaling</label><select id="cSc"><option value="">(Omit)</option><option value="none">none</option><option value="fill">fill</option><option value="fit">fit</option></select></div>
+          </div>
+          <div class="row field">
+            <div><label for="cMt">IPP media-type</label><input type="text" id="cMt" value="photographic-glossy"></div>
+            <div><label for="cMtMode">media-type placement</label><select id="cMtMode"><option value="col">Inside media-col (RFC)</option><option value="top">Top-level attribute</option><option value="both">Both</option><option value="none">Omit</option></select></div>
+          </div>
+          <div class="row field">
+            <div><label for="cDpi">ESC/P-R DPI</label><select id="cDpi"><option value="720">720 dpi (L8050)</option><option value="360">360 dpi</option></select></div>
+            <div><label for="cMediaHex">ESC/P-R Media Hex</label><select id="cMediaHex"><option value="52">0x34 Epson Glossy</option><option value="11">0x0B Premium Glossy</option><option value="12">0x0C Semi-Gloss</option><option value="5">0x05 Matte</option><option value="0">0x00 Plain</option></select></div>
+          </div>
+          <div class="row field">
+            <div><label for="cEscQ">ESC/P-R Quality</label><select id="cEscQ"><option value="2">2 (High)</option><option value="1">1 (Standard)</option><option value="0">0 (Draft)</option></select></div>
+            <div><label for="cL8050Geo">ESC/P-R Geometry</label><select id="cL8050Geo"><option value="1">L8050 (-22,-76 / -11,-38)</option><option value="0">L805 (-42,-36)</option></select></div>
+          </div>
+        </details>
+        <div class="step" style="margin-top:12px;"><span class="num">3</span><button id="printBtn" disabled>Print 1-Sheet Ruler Test</button></div>
+        <div class="row">
+          <button id="copyBtn" class="secondary">4. Copy Test Report</button>
+          <button id="dlBtn" class="secondary">Download .txt</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Step Results</h2>
+        <ul class="steps" id="stepsList"></ul>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="msg" id="msgBox"></div>
+        <h2>Printer &amp; Network Summary</h2>
+        <table id="summaryTable">
+          <tr><td>Status</td><td>Tap <b>Check Helper &amp; Find Wi-Fi Printer</b> to start.</td></tr>
+        </table>
+      </div>
+
+      <div class="card" id="matrixCard" style="display:none;">
+        <h2>Zero-Paper Validate-Job Matrix</h2>
+        <p class="help" style="margin-top:0;"><b>CLEAN</b> = printer accepted with 0 ignored attributes. <b>WARN</b> = accepted, but printer echoed ignored/unsupported attributes. <b>FAIL</b> = printer rejected or dropped connection.</p>
+        <div id="matrixList"></div>
+      </div>
+
+      <div class="card">
+        <h2>1-Sheet Sharpness &amp; Borderless Ruler Preview</h2>
+        <div class="preview-wrap"><canvas id="previewCanvas"></canvas></div>
+        <p class="help">Edge ticks measure <b>0–6 mm</b> from all 4 borders; hairline bars &amp; smooth gradients prove High/Glossy vs Standard/Plain.</p>
+      </div>
+
+      <div class="card">
+        <h2>Full Diagnostic Report (saved offline)</h2>
+        <pre id="reportPre">No test run yet.</pre>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const HELPER = new URLSearchParams(location.search).get('helper') || 'http://127.0.0.1:17321';
+  const STORAGE_KEY = 'pb4u_printer_test_last_report_v1';
+
+  // Register offline Service Worker so the page works while switched onto Wi-Fi Direct (no internet)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').then(() => {
+      $('offlineBadge').textContent = 'Offline cache: active (safe to switch tablet to Wi-Fi Direct)';
+    }).catch(() => {});
+  }
+
+  const PRESETS = [
+    { id: 'ipp_rec', label: 'IPP · Recommended (media-col 0mm + High + Glossy + NO scaling)', shortLabel: 'IPP media-col q=5 glossy no-scaling', protocol: 'ipp', format: 'image/jpeg', withMedia: true, marginMm100: 0, quality: 5, mediaType: 'photographic-glossy', mediaTypeMode: 'col', scaling: '' },
+    { id: 'ipp_sc_none', label: 'IPP · media-col 0mm + High + Glossy + scaling=none', shortLabel: 'IPP media-col q=5 glossy sc=none', protocol: 'ipp', format: 'image/jpeg', withMedia: true, marginMm100: 0, quality: 5, mediaType: 'photographic-glossy', mediaTypeMode: 'col', scaling: 'none' },
+    { id: 'ipp_sc_fill', label: 'IPP · media-col 0mm + High + Glossy + scaling=fill', shortLabel: 'IPP media-col q=5 glossy sc=fill', protocol: 'ipp', format: 'image/jpeg', withMedia: true, marginMm100: 0, quality: 5, mediaType: 'photographic-glossy', mediaTypeMode: 'col', scaling: 'fill' },
+    { id: 'ipp_col_only', label: 'IPP · media-col 0mm only (no quality / paper type)', shortLabel: 'IPP media-col only', protocol: 'ipp', format: 'image/jpeg', withMedia: true, marginMm100: 0, quality: 0, mediaType: '', mediaTypeMode: 'none', scaling: '' },
+    { id: 'ipp_minimal', label: 'IPP · Minimal JPEG (no job attributes)', shortLabel: 'IPP minimal JPEG', protocol: 'ipp', format: 'image/jpeg', withMedia: false, marginMm100: 0, quality: 0, mediaType: '', mediaTypeMode: 'none', scaling: '' },
+    { id: 'escpr_l8050_720', label: 'ESC/P-R :9100 · L8050 High Glossy 720 dpi Borderless (0x34, q=2)', shortLabel: 'ESCPR :9100 720dpi 0x34 q=2 L8050-BL', protocol: 'escpr', port: 9100, dpi: 720, mediaCode: 0x34, qualityCode: 2, borderless: true, l8050Geo: true, sendSetiChku: true },
+    { id: 'escpr_l8050_360', label: 'ESC/P-R :9100 · L8050 High Glossy 360 dpi Borderless (0x34, q=2)', shortLabel: 'ESCPR :9100 360dpi 0x34 q=2 L8050-BL', protocol: 'escpr', port: 9100, dpi: 360, mediaCode: 0x34, qualityCode: 2, borderless: true, l8050Geo: true, sendSetiChku: true },
+    { id: 'escpr_l805_360', label: 'ESC/P-R :9100 · Standard L805 Borderless 360 dpi (0x0B, q=1)', shortLabel: 'ESCPR :9100 360dpi 0x0B q=1 L805-BL', protocol: 'escpr', port: 9100, dpi: 360, mediaCode: 0x0b, qualityCode: 1, borderless: true, l8050Geo: false, sendSetiChku: true }
+  ];
+
+  PRESETS.forEach((p) => {
+    const o = document.createElement('option');
+    o.value = p.id;
+    o.textContent = p.label;
+    $('presetSelect').appendChild(o);
+  });
+
+  const STEPS = [
+    ['helper', 'Local helper reachable (127.0.0.1:17321)'],
+    ['net', 'Wi-Fi / Wi-Fi Direct network detected'],
+    ['ports', 'Printer ports 631 (IPP) & 9100 (ESC/P-R)'],
+    ['ipp', 'IPP Get-Printer-Attributes ("all")'],
+    ['matrix', 'Zero-paper Validate-Job matrix'],
+    ['print', '1-sheet ruler & quality test (optional)']
+  ];
+  const stepState = {};
+  function drawSteps() {
+    $('stepsList').innerHTML = STEPS.map(([k, label]) => {
+      const st = stepState[k] || { s: 'wait', note: '' };
+      const pTxt = st.s === 'ok' ? 'OK' : st.s === 'warn' ? 'WARN' : st.s === 'bad' ? 'NO' : st.s === 'run' ? '…' : '—';
+      return '<li><span class="pill ' + st.s + '">' + pTxt + '</span><div><b>' + label + '</b>' +
+        (st.note ? '<small>' + esc(st.note) + '</small>' : '') + '</div></li>';
+    }).join('');
+  }
+  function setStep(k, s, note) { stepState[k] = { s, note: note || '' }; drawSteps(); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  function row(k, v) { return '<tr><td>' + esc(k) + '</td><td>' + esc(v || '—') + '</td></tr>'; }
+  function showMsg(text, kind) { const el = $('msgBox'); el.textContent = text; el.className = 'msg show ' + (kind || 'info'); }
+  drawSteps();
+
+  async function api(path, opts, timeoutMs) {
+    let r;
+    try {
+      r = await fetch(HELPER + path, Object.assign({ cache: 'no-store', signal: AbortSignal.timeout(timeoutMs || 25000) }, opts || {}));
+    } catch (e) {
+      throw new Error(e && e.name === 'TimeoutError'
+        ? 'Helper took too long to answer.'
+        : 'Cannot reach local photobooth4u Helper at ' + HELPER + '. On Android: open the photobooth4u app first so "Photobooth Helper Active" is running. If Chrome asks permission for local network access, tap Allow.');
+    }
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok && !j.ip) throw new Error(j.error || ('HTTP ' + r.status));
+    return j;
+  }
+
+  // Exact same L8050 bleed pad math as protected/src/printer/epson-l8050.js
+  function l8050Bleed(cv) {
+    const w = cv.width, h = cv.height;
+    const s = w / 2880;
+    const L = Math.round(76 * s), T = Math.round(22 * s), R = Math.round(76 * s), B = Math.round(58 * s);
+    const out = document.createElement('canvas');
+    out.width = L + w + R; out.height = T + h + B;
+    const x = out.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, out.width, out.height);
+    x.imageSmoothingEnabled = false;
+    x.drawImage(cv, 0, 0, w, 1, L, 0, w, T);
+    x.drawImage(cv, 0, h - 1, w, 1, L, T + h, w, B);
+    x.drawImage(cv, 0, 0, 1, h, 0, T, L, h);
+    x.drawImage(cv, w - 1, 0, 1, h, L + w, T, R, h);
+    x.drawImage(cv, 0, 0, 1, 1, 0, 0, L, T);
+    x.drawImage(cv, w - 1, 0, 1, 1, L + w, 0, R, T);
+    x.drawImage(cv, 0, h - 1, 1, 1, 0, T + h, L, B);
+    x.drawImage(cv, w - 1, h - 1, 1, 1, L + w, T + h, R, B);
+    x.drawImage(cv, L, T);
+    return out;
+  }
+
+  function buildCalibrationCanvas(wMm, hMm, title, subtitle) {
+    const sw = Math.min(wMm || 101.6, hMm || 152.4), sh = Math.max(wMm || 101.6, hMm || 152.4);
+    const dpi = 300, ppm = dpi / 25.4;
+    const W = Math.round(sw * ppm), H = Math.round(sh * ppm);
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const g = cv.getContext('2d');
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+    const eb = Math.round(3 * ppm);
+    g.fillStyle = '#e7eef8';
+    g.fillRect(0, 0, W, eb); g.fillRect(0, H - eb, W, eb); g.fillRect(0, 0, eb, H); g.fillRect(W - eb, 0, eb, H);
+    g.strokeStyle = '#1b4999'; g.lineWidth = 2; g.strokeRect(1, 1, W - 2, H - 2);
+    g.strokeStyle = '#8aa4cc'; g.lineWidth = 1; g.strokeRect(eb, eb, W - 2 * eb, H - 2 * eb);
+    const fs = Math.max(18, Math.round(W * 0.017)), fm = Math.max(22, Math.round(W * 0.022)), fb = Math.max(30, Math.round(W * 0.032));
+    g.fillStyle = '#111'; g.strokeStyle = '#111'; g.font = '700 ' + fs + 'px sans-serif'; g.textBaseline = 'middle';
+    const cx = Math.round(W * 0.5), cy = Math.round(H * 0.5);
+    for (let mm = 0; mm <= 6; mm++) {
+      const half = mm % 2 === 0 ? Math.round(9 * ppm) : Math.round(5 * ppm);
+      g.lineWidth = mm === 0 ? 3 : 2;
+      const yt = Math.round(mm * ppm), yb = H - Math.round(mm * ppm), xl = Math.round(mm * ppm), xr = W - Math.round(mm * ppm);
+      g.beginPath(); g.moveTo(cx - half, yt); g.lineTo(cx + half, yt); g.stroke();
+      g.beginPath(); g.moveTo(cx - half, yb); g.lineTo(cx + half, yb); g.stroke();
+      g.beginPath(); g.moveTo(xl, cy - half); g.lineTo(xl, cy + half); g.stroke();
+      g.beginPath(); g.moveTo(xr, cy - half); g.lineTo(xr, cy + half); g.stroke();
+      if (mm > 0 && mm % 2 === 0) {
+        g.textAlign = 'left'; g.fillText(mm + 'mm', cx + half + 6, yt); g.fillText(mm + 'mm', cx + half + 6, yb);
+        g.textAlign = 'center'; g.fillText(String(mm), xl, cy + half + Math.round(2 * ppm)); g.fillText(String(mm), xr, cy + half + Math.round(2 * ppm));
+      }
+    }
+    g.textAlign = 'center';
+    g.fillText('▲ TOP EDGE (0-6mm)', cx, Math.round(9.5 * ppm));
+    g.fillText('▼ BOTTOM EDGE (0-6mm)', cx, H - Math.round(9.5 * ppm));
+    g.save(); g.translate(Math.round(9.5 * ppm), cy); g.rotate(-Math.PI / 2); g.fillText('◀ LEFT EDGE', 0, 0); g.restore();
+    g.save(); g.translate(W - Math.round(9.5 * ppm), cy); g.rotate(Math.PI / 2); g.fillText('RIGHT EDGE ▶', 0, 0); g.restore();
+
+    const cLen = Math.round(8 * ppm), cOff = Math.round(2 * ppm);
+    g.strokeStyle = '#c22b2b'; g.lineWidth = 3;
+    [[cOff, cOff, 1, 1], [W - cOff, cOff, -1, 1], [cOff, H - cOff, 1, -1], [W - cOff, H - cOff, -1, -1]].forEach(([x0, y0, dx, dy]) => {
+      g.beginPath(); g.moveTo(x0 + dx * cLen, y0); g.lineTo(x0, y0); g.lineTo(x0, y0 + dy * cLen); g.stroke();
+    });
+
+    const padX = Math.round(14 * ppm), boxW = W - 2 * padX;
+    let y = Math.round(16 * ppm);
+    g.fillStyle = '#111'; g.font = '700 ' + fb + 'px sans-serif'; g.fillText('photobooth4u · WI-FI PRINT TEST', W / 2, y);
+    y += Math.round(5.5 * ppm); g.fillStyle = '#1b4999'; g.font = '700 ' + fm + 'px sans-serif'; g.fillText(title || 'Diagnostic Target', W / 2, y);
+    y += Math.round(4.5 * ppm); g.fillStyle = '#444'; g.font = '500 ' + fs + 'px sans-serif'; g.fillText(subtitle || '4x6 in · 300 dpi', W / 2, y);
+    y += Math.round(6 * ppm); g.textAlign = 'left'; g.fillStyle = '#222'; g.font = '700 ' + fs + 'px sans-serif';
+    g.fillText('SHARPNESS & BANDING CHECK (1px / 2px / 3px)', padX, y);
+    y += Math.round(3 * ppm);
+    const barH = Math.round(15 * ppm), segW = Math.floor(boxW / 3) - 8;
+    [1, 2, 3].forEach((pitch, pi) => {
+      const sx = padX + pi * (segW + 12), hw = Math.floor(segW / 2);
+      g.fillStyle = '#fff'; g.fillRect(sx, y, segW, barH);
+      g.fillStyle = '#000';
+      for (let ry = 0; ry < barH; ry += pitch * 2) g.fillRect(sx, y + ry, hw - 2, pitch);
+      for (let rx = 0; rx < hw - 2; rx += pitch * 2) g.fillRect(sx + hw + 2 + rx, y, pitch, barH);
+      g.strokeStyle = '#333'; g.lineWidth = 1; g.strokeRect(sx, y, segW, barH);
+    });
+    y += barH + Math.round(7 * ppm);
+    g.fillStyle = '#222'; g.fillText('GRADIENT & 6-INK DENSITY CHECK (check for banding lines)', padX, y);
+    y += Math.round(3 * ppm);
+    const rampH = Math.round(7.5 * ppm);
+    [['#000000', '#ffffff'], ['#2d1b12', '#f7d7c4'], ['#00aeef', '#ffffff'], ['#ec008c', '#ffffff'], ['#fff200', '#ffffff']].forEach(([a, b]) => {
+      const grd = g.createLinearGradient(padX, 0, padX + boxW, 0);
+      grd.addColorStop(0, a); grd.addColorStop(1, b);
+      g.fillStyle = grd; g.fillRect(padX, y, boxW, rampH);
+      g.strokeStyle = '#888'; g.lineWidth = 1; g.strokeRect(padX, y, boxW, rampH);
+      y += rampH + Math.round(2 * ppm);
+    });
+    y += Math.round(3 * ppm);
+    const cols = ['#00aeef', '#ec008c', '#fff200', '#111111', '#d92626', '#189c46', '#1f5cd1'];
+    const swW = Math.floor((boxW - (cols.length - 1) * 8) / cols.length), swH = Math.round(12 * ppm);
+    cols.forEach((c, i) => { g.fillStyle = c; g.fillRect(padX + i * (swW + 8), y, swW, swH); g.strokeStyle = '#222'; g.strokeRect(padX + i * (swW + 8), y, swW, swH); });
+    y += swH + Math.round(7 * ppm);
+    g.fillStyle = '#333'; g.textAlign = 'center'; g.font = '600 ' + fs + 'px sans-serif';
+    g.fillText('Send a photo of all 4 edges + Copy Test Report to support.', W / 2, y);
+    return cv;
+  }
+
+  function currentPrintSpec() {
+    if ($('useCustomChk').checked) {
+      const proto = $('cProto').value;
+      if (proto === 'escpr') {
+        const dpi = Number($('cDpi').value) || 720;
+        const mc = Number($('cMediaHex').value);
+        const q = Number($('cEscQ').value);
+        const geo = $('cL8050Geo').value === '1';
+        return {
+          id: 'custom_escpr', shortLabel: 'CUSTOM ESCPR ' + dpi + 'dpi 0x' + mc.toString(16) + ' q=' + q,
+          protocol: 'escpr', port: 9100, dpi, mediaCode: mc, qualityCode: q, borderless: true, l8050Geo: geo, sendSetiChku: true
+        };
+      }
+      const q = Number($('cQual').value) || 0, sc = $('cSc').value, mt = $('cMt').value.trim(), mtm = $('cMtMode').value, fmt = $('cFmt').value;
+      return {
+        id: 'custom_ipp', shortLabel: 'CUSTOM IPP q=' + q + ' mt=' + (mt || '-') + '(' + mtm + ') sc=' + (sc || 'omit'),
+        protocol: 'ipp', format: fmt, withMedia: true, marginMm100: 0, quality: q, mediaType: mt, mediaTypeMode: mtm, scaling: sc
+      };
+    }
+    return PRESETS.find((p) => p.id === $('presetSelect').value) || PRESETS[0];
+  }
+
+  function refreshPreview() {
+    const spec = currentPrintSpec();
+    const ip = ($('ipInput').value || '192.168.223.1').trim();
+    const cv = buildCalibrationCanvas(101.6, 152.4, spec.shortLabel, ip + ' · 4x6 in · 300 dpi');
+    const dst = $('previewCanvas');
+    dst.width = cv.width; dst.height = cv.height;
+    dst.getContext('2d').drawImage(cv, 0, 0);
+  }
+  $('presetSelect').addEventListener('change', refreshPreview);
+  ['useCustomChk', 'cProto', 'cFmt', 'cQual', 'cSc', 'cMt', 'cMtMode', 'cDpi', 'cMediaHex', 'cEscQ', 'cL8050Geo', 'ipInput'].forEach((id) => {
+    $(id).addEventListener('change', refreshPreview);
+  });
+  refreshPreview();
+
+  let helperStatus = null, netInfo = null, lastProbe = null, printLog = [];
+
+  function formatReport() {
+    const L = [];
+    L.push('=== photobooth4u Online Wi-Fi / Wi-Fi Direct Printer Test ===');
+    L.push('Time: ' + new Date().toISOString());
+    L.push('Browser: ' + navigator.userAgent);
+    if (helperStatus) L.push('Helper: ' + (helperStatus.app || '?') + ' v' + (helperStatus.version || '?') + ' (printerDiag=' + !!helperStatus.printerDiag + ')');
+    const net = (lastProbe && lastProbe.network) || netInfo;
+    if (net) {
+      L.push('Platform: ' + (net.platform || '?') + ' · Device: ' + (net.device || '?') + ' · App: ' + (net.appVersion || '?'));
+      L.push('Interfaces: ' + ((net.nets || []).map((n) => (n.iface || 'wifi') + '=' + n.ip + '/' + n.prefix + ' (gw ' + n.gateway + ', ' + (n.boundNetwork ? 'bound' : 'iface') + (n.wifiDirectHint ? ', Wi-Fi-Direct' : '') + ')').join('; ') || '(none)'));
+    }
+    if (lastProbe) {
+      L.push('Target IP: ' + lastProbe.ip + (lastProbe.route ? ' · Route: ' + lastProbe.route : ''));
+      if (lastProbe.error) L.push('Probe error: ' + lastProbe.error);
+      if (lastProbe.ports) {
+        L.push('Ports: ' + ['631', '9100', '515', '80'].map((k) => {
+          const p = lastProbe.ports[k];
+          return p ? (k + ':' + (p.open ? 'OPEN(' + p.ms + 'ms)' : 'closed')) : (k + ':?');
+        }).join('  '));
+      }
+      if (lastProbe.ipp && lastProbe.ipp.answered) {
+        const ipp = lastProbe.ipp, a = ipp.attrs || {};
+        L.push('IPP path: ' + ipp.path + ' (' + ipp.ms + 'ms, ' + ipp.ippStatus + ', ' + ipp.attrCount + ' attrs, ' + ipp.bodyBytes + 'B)');
+        L.push('Model: ' + ((a['printer-make-and-model'] || [])[0] || '(none)') + ' · State: ' + ((a['printer-state'] || [])[0] || '?') + ' · Reasons: ' + ((a['printer-state-reasons'] || []).join(',') || 'none'));
+        L.push('Formats: ' + ((a['document-format-supported'] || []).join(', ') || '(none)'));
+        L.push('Qualities: ' + ((a['print-quality-supported'] || []).join(', ') || '(none)') + ' · Scaling: ' + ((a['print-scaling-supported'] || []).join(', ') || '(none)'));
+        L.push('Media types: ' + ((a['media-type-supported'] || []).join(', ') || '(none)'));
+        L.push('Margins (1/100mm): top=' + ((a['media-top-margin-supported'] || []).join(',') || '-') + ' left=' + ((a['media-left-margin-supported'] || []).join(',') || '-'));
+        L.push('Media ready: ' + ((a['media-ready'] || []).join(', ') || '(none)'));
+        L.push('Media-col-supported: ' + ((a['media-col-supported'] || []).join(', ') || '(none)'));
+        if (ipp.mediaColDbCount > 0) {
+          L.push('media-col-database: ' + ipp.mediaColDbCount + ' entries; types=' + ((ipp.mediaColDbMediaTypes || []).join(',') || '(none)'));
+          if (ipp.mediaColDb4x6Samples && ipp.mediaColDb4x6Samples.length) L.push('  4x6/0mm samples: ' + ipp.mediaColDb4x6Samples.join(' | '));
+        }
+        if (a['pwg-raster-document-resolution-supported'] || a['urf-supported']) {
+          L.push('PWG res: ' + ((a['pwg-raster-document-resolution-supported'] || []).join(',') || '-') + ' · URF: ' + ((a['urf-supported'] || []).join(',') || '-'));
+        }
+      } else {
+        L.push('IPP: did not answer' + (lastProbe.ipp && lastProbe.ipp.error ? ' (' + lastProbe.ipp.error + ')' : ''));
+      }
+      if (lastProbe.validateMatrix && lastProbe.validateMatrix.length) {
+        L.push('--- Validate-Job matrix (zero paper) ---');
+        lastProbe.validateMatrix.forEach((v) => {
+          const tag = v.clean ? 'CLEAN' : (v.ok ? 'WARN ' : 'FAIL ');
+          let det = v.error ? v.error : ('HTTP ' + v.http + ' ' + v.ippName + ' (' + v.ippHex + ')');
+          if (v.unsupported && v.unsupported.length) det += ' unsup=[' + v.unsupported.join(', ') + ']';
+          if (v.statusMessage) det += ' msg="' + v.statusMessage + '"';
+          L.push('  [' + tag + '] ' + v.id + ': ' + det + ' (' + (v.ms || 0) + 'ms)');
+        });
+      }
+      if (lastProbe.recommendation) L.push('Summary: ' + lastProbe.recommendation);
+    }
+    if (printLog.length) {
+      L.push('--- Live 1-sheet print tests ---');
+      printLog.forEach((pr) => {
+        let s = '  [' + (pr.ok ? 'OK  ' : 'FAIL') + '] ' + (pr.presetId || pr.protocol) + ' -> ';
+        if (pr.protocol === 'escpr') {
+          s += pr.ok ? ('sent ' + pr.bytes + 'B in ' + pr.sendMs + 'ms (build ' + pr.buildMs + 'ms, reply ' + pr.replyBytes + 'B) cfg=' + JSON.stringify(pr.config || {})) : ('error: ' + (pr.error || 'failed'));
+        } else {
+          s += pr.error ? ('error: ' + pr.error) : ('HTTP ' + pr.http + ' ' + pr.ippName + ' (' + pr.ippHex + ') jobId=' + pr.jobId + ' ' + pr.sendMs + 'ms');
+          if (pr.unsupported && pr.unsupported.length) s += ' unsup=[' + pr.unsupported.join(', ') + ']';
+          if (pr.jobStates && pr.jobStates.length) s += ' states=[' + pr.jobStates.map((x) => x.stateName + (x.reasons && x.reasons.length ? '(' + x.reasons.join(',') + ')' : '')).join(' -> ') + ']';
+        }
+        L.push(s);
+      });
+    }
+    const text = L.join('\n');
+    $('reportPre').textContent = text;
+    try { localStorage.setItem(STORAGE_KEY, text); } catch (e) {}
+    return text;
+  }
+
+  // Restore last offline report if user reopened page after switching back from Wi-Fi Direct
+  try {
+    const prev = localStorage.getItem(STORAGE_KEY);
+    if (prev) $('reportPre').textContent = prev;
+  } catch (e) {}
+
+  function bindIpChips(extra) {
+    const seen = new Set();
+    const list = [];
+    const add = (ip, label) => { if (!ip || seen.has(ip)) return; seen.add(ip); list.push([ip, label]); };
+    (extra || []).forEach(([ip, label]) => add(ip, label));
+    add('192.168.223.1', '192.168.223.1 (Epson Wi-Fi Direct)');
+    add('192.168.0.1', '192.168.0.1 (Canon)');
+    add('192.168.118.1', '192.168.118.1 (Brother)');
+    $('ipChips').innerHTML = list.map(([ip, label]) => '<button type="button" class="chip" data-ip="' + esc(ip) + '">' + esc(label) + '</button>').join('');
+    $('ipChips').querySelectorAll('button.chip').forEach((b) => b.addEventListener('click', () => {
+      $('ipInput').value = b.getAttribute('data-ip');
+      refreshPreview();
+    }));
+  }
+  bindIpChips([]);
+
+  $('connectBtn').addEventListener('click', async () => {
+    $('connectBtn').disabled = true;
+    setStep('helper', 'run');
+    try {
+      helperStatus = await api('/status', null, 10000);
+      $('helperBadge').className = 'pill ok';
+      $('helperBadge').textContent = 'Helper v' + (helperStatus.version || '?');
+      if (!helperStatus.printerDiag) {
+        setStep('helper', 'bad', 'Helper v' + helperStatus.version + ' is older and does not have /printer/diag yet. Update the photobooth4u app first.');
+        showMsg('Your photobooth4u app/helper (v' + helperStatus.version + ') needs the latest update to run Wi-Fi printer diagnostics.', 'err');
+        return;
+      }
+      setStep('helper', 'ok', 'v' + helperStatus.version);
+      setStep('net', 'run');
+      netInfo = await api('/printer/diag/info', null, 12000);
+      // Also run quick discovery (.1 Wi-Fi Direct gateway + subnet printers) without failing if unavailable
+      let disc = null;
+      try { disc = await api('/printer/discover', null, 18000); } catch (e) {}
+      if (disc && Array.isArray(disc.printers) && disc.printers.length) {
+        const byIp = new Map();
+        (netInfo.printers || []).forEach((p) => { if (p && p.ip) byIp.set(p.ip, p); });
+        disc.printers.forEach((p) => { if (p && p.ip && !byIp.has(p.ip)) byIp.set(p.ip, p); });
+        netInfo.printers = [...byIp.values()];
+      }
+      const ns = (netInfo.nets || []).map((n) => (n.iface || 'wifi') + ' ' + n.ip + '/' + n.prefix + (n.wifiDirectHint ? ' [Wi-Fi Direct]' : ''));
+      setStep('net', ns.length ? 'ok' : 'bad', ns.length ? ns.join(' · ') : 'No Wi-Fi IPv4 address found');
+      const chips = [];
+      (netInfo.printers || []).forEach((p) => { if (p && p.ip) chips.push([p.ip, p.ip + (p.name ? ' (' + p.name + ')' : '')]); });
+      (netInfo.suggestedIps || []).forEach((ip) => chips.push([ip, ip + ' (detected gateway)']));
+      bindIpChips(chips);
+      if (!$('ipInput').value && chips.length) $('ipInput').value = chips[0][0];
+      $('summaryTable').innerHTML =
+        row('Helper', (helperStatus.app || 'photobooth4u') + ' v' + helperStatus.version) +
+        row('Device', netInfo.device || navigator.platform) +
+        row('Wi-Fi Interfaces', ns.join(', ') || 'None') +
+        row('Wi-Fi Direct detected', netInfo.wifiDirectDetected ? 'YES (Epson 192.168.223.x / P2P)' : 'No') +
+        row('Discovered printers', (netInfo.printers || []).map((p) => (p.name || p.ip) + ' [' + p.ip + ']').join(', ') || 'None yet — enter IP or tap chip');
+      $('probeBtn').disabled = false;
+      $('printBtn').disabled = false;
+      showMsg('Helper connected! Pick or type your printer IP and tap Step 2 (zero paper).', 'ok');
+      formatReport();
+      refreshPreview();
+    } catch (e) {
+      $('helperBadge').className = 'pill bad';
+      $('helperBadge').textContent = 'Helper: unreachable';
+      setStep('helper', 'bad', e.message || String(e));
+      showMsg(e.message || String(e), 'err');
+    } finally {
+      $('connectBtn').disabled = false;
+    }
+  });
+
+  $('probeBtn').addEventListener('click', async () => {
+    const ip = $('ipInput').value.trim();
+    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) { showMsg('Enter a valid IPv4 address (for Epson Wi-Fi Direct, tap 192.168.223.1).', 'err'); return; }
+    $('probeBtn').disabled = true;
+    setStep('ports', 'run'); setStep('ipp', 'run'); setStep('matrix', 'run');
+    showMsg('Probing ' + ip + ' (ports 631/9100 + full IPP attributes + zero-paper Validate-Job matrix)…', 'info');
+    try {
+      const cases = $('useCustomChk').checked && $('cProto').value === 'ipp' ? [{
+        id: 'custom-validate', label: currentPrintSpec().shortLabel,
+        withMedia: true, marginMm100: 0, format: $('cFmt').value,
+        quality: Number($('cQual').value) || 0, mediaType: $('cMt').value.trim(),
+        mediaTypeMode: $('cMtMode').value, scaling: $('cSc').value
+      }] : null;
+      lastProbe = await api('/printer/diag/probe', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ip, cases })
+      }, 65000);
+
+      const p631 = lastProbe.ports && lastProbe.ports['631'], p9100 = lastProbe.ports && lastProbe.ports['9100'];
+      const portTxt = '631(IPP): ' + (p631 && p631.open ? 'OPEN ' + p631.ms + 'ms' : 'closed') +
+        ' · 9100(ESC/P-R): ' + (p9100 && p9100.open ? 'OPEN ' + p9100.ms + 'ms' : 'closed');
+      setStep('ports', (p631 && p631.open) || (p9100 && p9100.open) ? 'ok' : 'bad', portTxt);
+
+      const ipp = lastProbe.ipp || {};
+      const a = ipp.attrs || {};
+      setStep('ipp', ipp.answered ? 'ok' : 'bad', ipp.answered ? ((a['printer-make-and-model'] || ['IPP printer'])[0] + ' at ' + ipp.path + ' (' + ipp.attrCount + ' attrs)') : 'No IPP reply');
+
+      const mat = lastProbe.validateMatrix || [];
+      const cleanCnt = mat.filter((x) => x.clean).length, okCnt = mat.filter((x) => x.ok).length;
+      setStep('matrix', cleanCnt ? 'ok' : (okCnt ? 'warn' : (ipp.answered ? 'bad' : 'wait')),
+        mat.length ? (cleanCnt + ' clean, ' + (okCnt - cleanCnt) + ' with ignored attrs, ' + (mat.length - okCnt) + ' failed') : 'Skipped (no IPP)');
+
+      $('summaryTable').innerHTML =
+        row('Target IP / Route', lastProbe.ip + (lastProbe.route ? ' · ' + lastProbe.route : '')) +
+        row('Ports', portTxt) +
+        row('Model', (a['printer-make-and-model'] || [])[0] || '(unknown)') +
+        row('Printer state', ((a['printer-state'] || [])[0] || '?') + ' · ' + ((a['printer-state-reasons'] || []).join(', ') || 'none')) +
+        row('Formats', (a['document-format-supported'] || []).join(', ') || '(none)') +
+        row('Qualities / Scaling', ((a['print-quality-supported'] || []).join(', ') || '(none)') + ' / ' + ((a['print-scaling-supported'] || []).join(', ') || '(none)')) +
+        row('Media types', (a['media-type-supported'] || []).join(', ') || '(none)') +
+        row('Margins (top / left)', ((a['media-top-margin-supported'] || []).join(', ') || '-') + ' / ' + ((a['media-left-margin-supported'] || []).join(', ') || '-')) +
+        row('media-col-database', ipp.mediaColDbCount ? (ipp.mediaColDbCount + ' entries; types: ' + (ipp.mediaColDbMediaTypes || []).join(', ')) : '(none)') +
+        row('Recommendation', lastProbe.recommendation || '');
+
+      if (mat.length) {
+        $('matrixCard').style.display = '';
+        $('matrixList').innerHTML = mat.map((v) => {
+          const cls = v.clean ? 'clean' : (v.ok ? 'warn' : 'fail');
+          const tag = v.clean ? 'CLEAN' : (v.ok ? 'WARN' : 'FAIL');
+          const unsup = v.unsupported && v.unsupported.length ? ' · unsupported/ignored: ' + v.unsupported.join(', ') : '';
+          const det = v.error ? v.error : ('HTTP ' + v.http + ' · ' + v.ippName + ' (' + v.ippHex + ')' + unsup + (v.statusMessage ? ' · ' + v.statusMessage : ''));
+          return '<div class="matrix-item ' + cls + '"><b>[' + tag + '] ' + esc(v.label || v.id) + '</b><small>' + esc(det) + ' (' + (v.ms || 0) + ' ms)</small></div>';
+        }).join('');
+      } else {
+        $('matrixCard').style.display = 'none';
+      }
+
+      showMsg(lastProbe.recommendation || 'Probe finished.', lastProbe.reachable ? 'ok' : 'err');
+      formatReport();
+    } catch (e) {
+      setStep('ports', 'bad', e.message || String(e));
+      showMsg('Probe error: ' + (e.message || e), 'err');
+    } finally {
+      $('probeBtn').disabled = false;
+    }
+  });
+
+  $('printBtn').addEventListener('click', async () => {
+    const ip = $('ipInput').value.trim();
+    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) { showMsg('Enter a valid IPv4 address first.', 'err'); return; }
+    const spec = currentPrintSpec();
+    $('printBtn').disabled = true;
+    setStep('print', 'run', 'Sending ' + spec.shortLabel + '…');
+    showMsg('Sending 1-sheet ruler test (' + spec.shortLabel + ') to ' + ip + '…', 'info');
+    try {
+      let cv = buildCalibrationCanvas(101.6, 152.4, spec.shortLabel, ip + ' · ' + new Date().toLocaleTimeString());
+      const useBleed = spec.protocol === 'ipp' && $('bleedChk').checked;
+      if (useBleed) cv = l8050Bleed(cv);
+      const payload = Object.assign({}, spec, {
+        ip,
+        widthMm: 101.6,
+        heightMm: 152.4,
+        path: (lastProbe && lastProbe.ipp && lastProbe.ipp.path) || '/ipp/print',
+        imageBase64: cv.toDataURL('image/jpeg', 0.94),
+        pollSeconds: 15
+      });
+      const res = await api('/printer/diag/print', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload)
+      }, 120000);
+      res.presetId = spec.id + (useBleed ? '+bleed' : '');
+      printLog.push(res);
+      const statesTxt = (res.jobStates || []).map((s) => s.stateName).join(' -> ');
+      const note = res.ok
+        ? (spec.protocol === 'escpr'
+          ? ('Sent ' + res.bytes + 'B over :9100 in ' + res.sendMs + 'ms')
+          : ('Accepted (' + res.ippName + ', job #' + res.jobId + (statesTxt ? ', states: ' + statesTxt : '') + ')'))
+        : (res.error || res.ippName || 'Rejected');
+      setStep('print', res.ok ? 'ok' : 'bad', note);
+      showMsg(res.ok ? ('Test sheet sent: ' + note + '. Inspect all 4 borders & banding, then tap Copy Test Report.') : ('Test print failed: ' + note), res.ok ? 'ok' : 'err');
+      formatReport();
+    } catch (e) {
+      setStep('print', 'bad', e.message || String(e));
+      showMsg('Print error: ' + (e.message || e), 'err');
+    } finally {
+      $('printBtn').disabled = false;
+    }
+  });
+
+  $('copyBtn').addEventListener('click', async () => {
+    const txt = $('reportPre').textContent;
+    try {
+      await navigator.clipboard.writeText(txt);
+      showMsg('Test report copied! Reconnect to internet if needed and paste it to support.', 'ok');
+    } catch (e) {
+      showMsg('Clipboard blocked — tap Download .txt or select and copy from the black box below.', 'info');
+    }
+  });
+
+  $('dlBtn').addEventListener('click', () => {
+    const blob = new Blob([$('reportPre').textContent], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'photobooth4u-printer-report.txt';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  });
+})();
+</script>
+</body>
+</html>

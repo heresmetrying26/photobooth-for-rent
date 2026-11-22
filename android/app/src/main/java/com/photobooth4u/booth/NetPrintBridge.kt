@@ -59,7 +59,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     }
 
     /** One local IPv4 network the tablet is on. [network] is set when Android knows it, so sockets can be bound to it. */
-    private class LocalNet(val network: Network?, val addr: Inet4Address, val prefix: Int)
+    private class LocalNet(val network: Network?, val addr: Inet4Address, val prefix: Int, val ifaceName: String = "")
 
     private class Entry(val ip: String) {
         @Volatile var name: String = ""
@@ -78,8 +78,12 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         @Volatile var borderlessCap = false                    // it lists a margin of 0 (media-*-margin-supported) or a borderless paper name: it can print edge to edge
         @Volatile var pwgRes: List<Int> = emptyList()          // pwg-raster-document-resolution-supported (dpi)
         @Volatile var pwgTypes: List<String> = emptyList()     // pwg-raster-document-type-supported: srgb_8, sgray_8...
+        @Volatile var stateReasons: List<String> = emptyList() // printer-state-reasons: none, media-empty-error, etc.
         @Volatile var usbDev: UsbDevice? = null                // set for a printer on the USB port
         @Volatile var lastSent: String = ""                    // how the printer last accepted a photo (paper name, scaling), for the printer report
+        @Volatile var lastUnsupported: List<String> = emptyList() // group 0x05 unsupported-attributes echoed by printer
+        @Volatile var lastAttempts: List<String> = emptyList() // per-attempt trace from the most recent IPP job
+        @Volatile var lastJobStatus: String = ""               // post-print Get-Job-Attributes state / reasons
     }
 
     private val found = ConcurrentHashMap<String, Entry>()
@@ -236,10 +240,17 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         }
         val e = found[ip] ?: return "Printer $ip is not in the list. Choose Find printers, then try again."
         fetchAttrs(e)
+        val netsText = currentNets().joinToString(", ") {
+            "${it.ifaceName.ifEmpty { "net" }}:${it.addr.hostAddress}/${it.prefix}" + if (it.network != null) "[bound]" else "[iface]"
+        }.ifEmpty { "(none)" }
         // A Wi-Fi Epson photo printer with no IPP (L805...) takes Epson's own raster job on port 9100: it lists no papers.
         val raw = if (e.ippPort <= 0 && e.rawPort > 0) "Sent in Epson's own print language (port " + e.rawPort + "); this printer lists no paper sizes.\n" else ""
-        return "Printer: " + e.model.ifBlank { e.name } + " (" + e.ip + ")\n" + raw +
+        return "Printer: " + e.model.ifBlank { e.name } + " (" + e.ip + ", ports ipp=" + e.ippPort + " raw=" + e.rawPort + ", path=" + e.ippPath.ifBlank { "(none)" } + ")\n" +
+            "Tablet nets: " + netsText + " · route: " + routeHintFor(e.ip) + "\n" + raw +
             "Takes: " + list(e.formats) + "\n" +
+            "Qualities: " + (if (e.qualities.isEmpty()) "(none)" else e.qualities.joinToString(", ")) +
+            " · Borderless cap: " + e.borderlessCap + "\n" +
+            (if (e.stateReasons.isNotEmpty()) "State reasons: " + e.stateReasons.joinToString(", ") + "\n" else "") +
             (if (e.pwgRes.isNotEmpty() || e.pwgTypes.isNotEmpty())
                 "PWG raster: " + (if (e.pwgRes.isEmpty()) "(default dpi)" else e.pwgRes.joinToString(", ") { "${it}dpi" }) +
                     " · " + list(e.pwgTypes) + "\n" else "") +
@@ -247,6 +258,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             "Papers it lists: " + list(e.mediaSupported) + "\n" +
             "Paper types: " + list(e.mediaTypes) + "\n" +
             "Last photo accepted as: " + (if (e.lastSent.isEmpty()) "no photo sent yet since the app opened" else e.lastSent) + "\n" +
+            (if (e.lastUnsupported.isNotEmpty()) "Printer ignored/unsupported: " + e.lastUnsupported.joinToString(", ") + "\n" else "") +
+            (if (e.lastJobStatus.isNotEmpty()) "Last job status: " + e.lastJobStatus + "\n" else "") +
+            (if (e.lastAttempts.isNotEmpty()) "Last attempts:\n  " + e.lastAttempts.takeLast(8).joinToString("\n  ") + "\n" else "") +
+            "Device: " + Build.MANUFACTURER + " " + Build.MODEL + " (Android " + Build.VERSION.RELEASE + ")\n" +
             "App: " + ver
     }
 
@@ -306,8 +321,27 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val o = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
                 val opts = Opts(o.optString("quality"), o.optString("color"), o.optString("media"), o.optBoolean("borderless"))
                 val adj = PrintColorAdj.from(o)
-                val e = if (ip.startsWith("usb:")) usbEntry(ip) else found[ip] ?: Entry(ip).also { probeInto(it) }
-                if (e.ippPort <= 0) throw IllegalStateException("This printer cannot receive photo print jobs.")
+                val e = if (ip.startsWith("usb:")) {
+                    usbEntry(ip)
+                } else {
+                    found[ip] ?: Entry(ip).also {
+                        probeInto(it, 3500)
+                        if (it.ippPort <= 0) {
+                            // A sleeping Wi-Fi / Wi-Fi Direct printer often wakes on the first knock and answers on the second.
+                            try { Thread.sleep(800) } catch (_: InterruptedException) {}
+                            if (open(ip, 631, 3500)) it.ippPort = 631
+                        }
+                        if (it.ippPort > 0 || it.rawPort > 0) found.putIfAbsent(ip, it)
+                    }
+                }
+                if (e.ippPort <= 0) {
+                    if (e.rawPort <= 0 && !ip.startsWith("usb:")) {
+                        val active = currentNets().joinToString(", ") { "${it.addr.hostAddress}/${it.prefix}" }
+                        val hint = if (active.isNotEmpty() && matchLocalNet(ip) == null) " (Tablet Wi-Fi is $active — if you switched between Wi-Fi and Wi-Fi Direct, tap Find printers.)" else ""
+                        throw IllegalStateException("Could not reach printer at $ip on port 631. Check it is on and on the same Wi-Fi as the tablet.$hint")
+                    }
+                    throw IllegalStateException("This printer cannot receive photo print jobs.")
+                }
                 val arr = JSONArray(pagesJson)
                 val pages = ArrayList<ByteArray>()
                 for (i in 0 until arr.length()) {
@@ -397,6 +431,17 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     private fun deliver(r: JSONObject) {
         val js = "window.__PBNetResult&&window.__PBNetResult(" + r.toString() + ")"
+        activity.runOnUiThread { try { webView.evaluateJavascript(js, null) } catch (_: Exception) {} }
+    }
+
+    private fun deliverDiag(r: JSONObject) {
+        val js = "window.__PBNetDiagResult&&window.__PBNetDiagResult(" + r.toString() + ")"
+        activity.runOnUiThread { try { webView.evaluateJavascript(js, null) } catch (_: Exception) {} }
+    }
+
+    private fun emitIppWarn(message: String) {
+        val obj = JSONObject().put("message", message)
+        val js = "window.__PBIppWarn&&window.__PBIppWarn(" + obj.toString() + ")"
         activity.runOnUiThread { try { webView.evaluateJavascript(js, null) } catch (_: Exception) {} }
     }
 
@@ -509,9 +554,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) continue
                 if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) && !caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) continue
                 val lp = mgr.getLinkProperties(n) ?: continue
+                val ifName = lp.interfaceName ?: ""
                 for (la in lp.linkAddresses) {
                     val a = la.address
-                    if (a is Inet4Address && !a.isLoopbackAddress && !a.isLinkLocalAddress) out.add(LocalNet(n, a, la.prefixLength))
+                    if (a is Inet4Address && !a.isLoopbackAddress && !a.isLinkLocalAddress) out.add(LocalNet(n, a, la.prefixLength, ifName))
                 }
             }
         } catch (e: Exception) { Log.w(TAG, "networks", e) }
@@ -522,7 +568,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 if (nm.startsWith("rmnet") || nm.startsWith("ccmni") || nm.startsWith("pdp") || nm.startsWith("tun") || nm.startsWith("ppp") || nm.startsWith("v4-") || nm.startsWith("dummy")) continue
                 for (ia in ni.interfaceAddresses) {
                     val a = ia.address
-                    if (a is Inet4Address && a.isSiteLocalAddress && out.none { it.addr == a }) out.add(LocalNet(null, a, ia.networkPrefixLength.toInt()))
+                    if (a is Inet4Address && a.isSiteLocalAddress && out.none { it.addr == a }) out.add(LocalNet(null, a, ia.networkPrefixLength.toInt(), ni.name))
                 }
             }
         } catch (e: Exception) { Log.w(TAG, "interfaces", e) }
@@ -535,25 +581,54 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         return nets
     }
 
-    /** A socket that goes out over the Wi-Fi the printer is on, even when Android prefers mobile data because that Wi-Fi has no internet. */
+    private fun matchLocalNet(ip: String): LocalNet? {
+        try {
+            val a = InetAddress.getByName(ip) as? Inet4Address ?: return null
+            val v = ipLong(a)
+            val list = currentNets()
+            // Prefer Android-managed Network objects first (socketFactory binding beats mobile data on Wi-Fi Direct).
+            for (n in list) {
+                if (n.network == null) continue
+                val mask = if (n.prefix <= 0) 0L else (0xFFFFFFFFL shl (32 - n.prefix.coerceAtMost(32))) and 0xFFFFFFFFL
+                if ((ipLong(n.addr) and mask) == (v and mask)) return n
+            }
+            for (n in list) {
+                val mask = if (n.prefix <= 0) 0L else (0xFFFFFFFFL shl (32 - n.prefix.coerceAtMost(32))) and 0xFFFFFFFFL
+                if ((ipLong(n.addr) and mask) == (v and mask)) return n
+            }
+        } catch (_: Exception) {}
+        return null
+    }
+
+    private fun routeHintFor(ip: String): String {
+        val n = matchLocalNet(ip)
+        if (n == null) {
+            val active = currentNets().joinToString(", ") { "${it.addr.hostAddress}/${it.prefix}" }.ifEmpty { "none" }
+            return "default-route (printer $ip is not on active Wi-Fi subnets: $active)"
+        }
+        val mode = if (n.network != null) "bound-network" else "bound-local-ip"
+        return "$mode:${n.ifaceName.ifEmpty { "wifi" }}(${n.addr.hostAddress}/${n.prefix})"
+    }
+
+    /** A socket that goes out over the Wi-Fi or Wi-Fi Direct interface the printer is on, even when Android prefers mobile data because that Wi-Fi has no internet. */
     private fun newSocket(ip: String): Socket {
         try {
-            val a = InetAddress.getByName(ip) as? Inet4Address
-            if (a != null) {
-                val v = ipLong(a)
-                for (n in currentNets()) {
-                    val net = n.network ?: continue
-                    val mask = if (n.prefix <= 0) 0L else (0xFFFFFFFFL shl (32 - n.prefix.coerceAtMost(32))) and 0xFFFFFFFFL
-                    if ((ipLong(n.addr) and mask) == (v and mask)) return net.socketFactory.createSocket()
-                }
+            val n = matchLocalNet(ip)
+            if (n != null) {
+                val net = n.network
+                if (net != null) return net.socketFactory.createSocket()
+                // Wi-Fi Direct P2P interface (e.g. p2p-wlan0-0) not registered in ConnectivityManager: bind source IP so Linux routes out that interface.
+                val s = Socket()
+                try { s.bind(InetSocketAddress(n.addr, 0)) } catch (be: Exception) { Log.w(TAG, "local ip bind", be) }
+                return s
             }
         } catch (e: Exception) { Log.w(TAG, "bound socket", e) }
         return Socket()
     }
 
     /**
-     * Looks for printer ports on the networks the tablet is on: first the tablet's own /24 (where the printer nearly
-     * always is), then the rest of a larger subnet (up to a /22, 1,022 addresses).
+     * Looks for printer ports on the networks the tablet is on: gateway / Wi-Fi Direct `.1` addresses FIRST
+     * (e.g. Epson Wi-Fi Direct `192.168.223.1`), then the rest of the tablet's own /24, then any larger subnet (up to /22).
      */
     private fun sweepSubnet(id: Int) {
         nets = localNets(); netsAt = System.currentTimeMillis()
@@ -563,7 +638,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         for (n in list) {
             mine.add(ipLong(n.addr))
             val base = ipLong(n.addr) and 0xFFFFFF00L
-            for (h in 1L..254L) targets.add(base or h)
+            targets.add(base or 1L)                                // Wi-Fi Direct / router gateway first (192.168.223.1 etc.)
+        }
+        for (n in list) {
+            val base = ipLong(n.addr) and 0xFFFFFF00L
+            for (h in 2L..254L) targets.add(base or h)
         }
         for (n in list) {
             if (n.prefix >= 24 || n.prefix <= 0) continue
@@ -1947,9 +2026,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val pwgTypes = ArrayList<String>()
                 val mediaReady = ArrayList<String>()
                 val mediaSupported = ArrayList<String>()
+                val stateReasons = ArrayList<String>()
                 var model = ""
                 var zeroMargin = false
-                parseIpp(r.body) { name, tag, raw ->
+                parseIppGrouped(r.body) { grp, name, tag, raw ->
+                    if (grp == 0x05) return@parseIppGrouped
                     // A margin of 0 in the list of supported margins (1/100 mm, a 4-byte integer) is how a printer says it can print edge to edge.
                     if (tag == 0x21 && raw.size == 4 && name.startsWith("media-") && name.endsWith("-margin-supported") &&
                         raw[0].toInt() == 0 && raw[1].toInt() == 0 && raw[2].toInt() == 0 && raw[3].toInt() == 0) zeroMargin = true
@@ -1962,6 +2043,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     if (name == "pwg-raster-document-type-supported" && tag == 0x44) pwgTypes.add(value)
                     if (name == "media-ready" && (tag == 0x44 || tag == 0x42)) mediaReady.add(value)
                     if (name == "media-supported" && (tag == 0x44 || tag == 0x42)) mediaSupported.add(value)
+                    if (name == "printer-state-reasons" && tag == 0x44) stateReasons.add(value)
                     // resolution value: 4 bytes across, 4 bytes down, 1 byte units (3 = dots per inch)
                     if (name == "pwg-raster-document-resolution-supported" && tag == 0x32 && raw.size == 9 && raw[8].toInt() == 3) {
                         pwgRes.add(((raw[0].toInt() and 0xFF) shl 24) or ((raw[1].toInt() and 0xFF) shl 16) or ((raw[2].toInt() and 0xFF) shl 8) or (raw[3].toInt() and 0xFF))
@@ -1975,6 +2057,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 e.pwgTypes = pwgTypes
                 e.mediaReady = mediaReady
                 e.mediaSupported = mediaSupported
+                e.stateReasons = stateReasons
                 e.borderlessCap = zeroMargin || mediaSupported.any { Regex("(?i)[-_.](borderless|full-?bleed)$").containsMatchIn(it) }
                 if (model.isNotBlank()) { e.model = model; if (e.name.isBlank()) e.name = model }
                 e.ippPath = path
@@ -1984,24 +2067,192 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         }
     }
 
-    /** Walks an IPP response and hands every attribute value to the callback. */
-    private fun parseIpp(b: ByteArray, cb: (name: String, tag: Int, value: ByteArray) -> Unit) {
+    /** Walks an IPP response and hands every attribute value (with its group delimiter tag) to the callback. */
+    private fun parseIppGrouped(b: ByteArray, cb: (group: Int, name: String, tag: Int, value: ByteArray) -> Unit) {
+        if (b.size < 8) return
         var p = 8
+        var grp = 0
         var last = ""
         fun u16(i: Int) = ((b[i].toInt() and 0xFF) shl 8) or (b[i + 1].toInt() and 0xFF)
         while (p < b.size) {
             val tag = b[p++].toInt() and 0xFF
             if (tag == 0x03) return
-            if (tag <= 0x05) continue                              // group delimiter
+            if (tag <= 0x05) { grp = tag; last = ""; continue }     // group delimiter (0x01 op, 0x02 job, 0x04 printer, 0x05 unsupported)
             if (p + 2 > b.size) return
             val nl = u16(p); p += 2
             if (p + nl + 2 > b.size) return
             if (nl > 0) { last = String(b, p, nl, Charsets.ISO_8859_1); p += nl }
             val vl = u16(p); p += 2
             if (p + vl > b.size) return
-            cb(last, tag, b.copyOfRange(p, p + vl))
+            cb(grp, last, tag, b.copyOfRange(p, p + vl))
             p += vl
         }
+    }
+
+    /** Walks an IPP response and hands every attribute value to the callback. */
+    private fun parseIpp(b: ByteArray, cb: (name: String, tag: Int, value: ByteArray) -> Unit) {
+        parseIppGrouped(b) { _, name, tag, raw -> cb(name, tag, raw) }
+    }
+
+    private fun ippValText(tag: Int, raw: ByteArray): String = when {
+        tag == 0x10 -> "(unsupported)"
+        tag == 0x12 -> "(unknown)"
+        tag == 0x13 -> "(no-value)"
+        tag == 0x21 && raw.size == 4 -> (((raw[0].toInt() and 0xFF) shl 24) or ((raw[1].toInt() and 0xFF) shl 16) or ((raw[2].toInt() and 0xFF) shl 8) or (raw[3].toInt() and 0xFF)).toString()
+        tag == 0x22 && raw.size == 1 -> if (raw[0].toInt() != 0) "true" else "false"
+        tag == 0x23 && raw.size == 4 -> (((raw[0].toInt() and 0xFF) shl 24) or ((raw[1].toInt() and 0xFF) shl 16) or ((raw[2].toInt() and 0xFF) shl 8) or (raw[3].toInt() and 0xFF)).toString()
+        tag == 0x32 && raw.size == 9 -> {
+            val x = ((raw[0].toInt() and 0xFF) shl 24) or ((raw[1].toInt() and 0xFF) shl 16) or ((raw[2].toInt() and 0xFF) shl 8) or (raw[3].toInt() and 0xFF)
+            val y = ((raw[4].toInt() and 0xFF) shl 24) or ((raw[5].toInt() and 0xFF) shl 16) or ((raw[6].toInt() and 0xFF) shl 8) or (raw[7].toInt() and 0xFF)
+            val u = if (raw[8].toInt() == 3) "dpi" else "dpcm"
+            if (x == y) "$x$u" else "${x}x${y}$u"
+        }
+        tag == 0x33 && raw.size == 8 -> {
+            val lo = ((raw[0].toInt() and 0xFF) shl 24) or ((raw[1].toInt() and 0xFF) shl 16) or ((raw[2].toInt() and 0xFF) shl 8) or (raw[3].toInt() and 0xFF)
+            val hi = ((raw[4].toInt() and 0xFF) shl 24) or ((raw[5].toInt() and 0xFF) shl 16) or ((raw[6].toInt() and 0xFF) shl 8) or (raw[7].toInt() and 0xFF)
+            "$lo..$hi"
+        }
+        tag == 0x34 -> "{"
+        tag == 0x37 -> "}"
+        tag == 0x4a -> String(raw, Charsets.UTF_8)
+        tag >= 0x40 -> String(raw, Charsets.UTF_8)
+        else -> "0x" + raw.joinToString("") { "%02x".format(it) }
+    }
+
+    private fun extractUnsupported(b: ByteArray): List<String> {
+        val out = ArrayList<String>()
+        parseIppGrouped(b) { grp, name, tag, raw ->
+            if (grp != 0x05) return@parseIppGrouped
+            if (tag == 0x34 || tag == 0x37) return@parseIppGrouped
+            if (tag == 0x4a) {
+                val m = String(raw, Charsets.UTF_8)
+                if (m.isNotEmpty()) out.add("member:$m")
+            } else if (name.isNotEmpty()) {
+                val v = ippValText(tag, raw)
+                out.add(if (v.isNotEmpty() && v != "(unsupported)") "$name=$v" else name)
+            }
+        }
+        return out.distinct()
+    }
+
+    private fun extractStatusMessage(b: ByteArray): String {
+        var msg = ""
+        parseIppGrouped(b) { grp, name, tag, raw ->
+            if (grp == 0x01 && name == "status-message" && (tag == 0x41 || tag == 0x42) && msg.isEmpty()) {
+                msg = String(raw, Charsets.UTF_8)
+            }
+        }
+        return msg
+    }
+
+    private fun extractJobId(b: ByteArray): Int? {
+        var id: Int? = null
+        parseIppGrouped(b) { _, name, tag, raw ->
+            if (name == "job-id" && tag == 0x21 && raw.size == 4 && id == null) {
+                id = ((raw[0].toInt() and 0xFF) shl 24) or ((raw[1].toInt() and 0xFF) shl 16) or ((raw[2].toInt() and 0xFF) shl 8) or (raw[3].toInt() and 0xFF)
+            }
+        }
+        return id
+    }
+
+    private fun ippStatusName(code: Int): String = when (code) {
+        0x0000 -> "successful-ok"
+        0x0001 -> "successful-ok-ignored-or-substituted-attributes"
+        0x0002 -> "successful-ok-conflicting-attributes"
+        0x0400 -> "client-error-bad-request"
+        0x0403 -> "client-error-not-authorized"
+        0x0404 -> "client-error-not-possible"
+        0x0406 -> "client-error-not-found"
+        0x040a -> "client-error-document-format-not-supported"
+        0x040b -> "client-error-attributes-or-values-not-supported"
+        0x040e -> "client-error-conflicting-attributes"
+        0x0500 -> "server-error-internal-error"
+        0x0501 -> "server-error-operation-not-supported"
+        0x0507 -> "server-error-busy"
+        else -> "0x" + Integer.toHexString(code)
+    }
+
+    private fun ippJobStateName(st: Int): String = when (st) {
+        3 -> "pending"
+        4 -> "pending-held"
+        5 -> "processing"
+        6 -> "processing-stopped"
+        7 -> "canceled"
+        8 -> "aborted"
+        9 -> "completed"
+        else -> "unknown($st)"
+    }
+
+    private fun ippGetJobAttributes(uri: String, jobId: Int): ByteArray {
+        val o = ByteArrayOutputStream()
+        fun u8(v: Int) = o.write(v and 0xFF)
+        fun u16(v: Int) { u8(v shr 8); u8(v) }
+        fun u32(v: Int) { u16(v ushr 16); u16(v) }
+        fun str(s: String) { val b = s.toByteArray(Charsets.UTF_8); u16(b.size); o.write(b) }
+        fun attr(tag: Int, name: String, value: String) { u8(tag); str(name); str(value) }
+        u16(0x0200); u16(0x0009); u32(2)                       // IPP 2.0, Get-Job-Attributes
+        u8(0x01)
+        attr(0x47, "attributes-charset", "utf-8")
+        attr(0x48, "attributes-natural-language", "en")
+        attr(0x45, "printer-uri", uri)
+        u8(0x21); str("job-id"); u16(4); u32(jobId)
+        attr(0x44, "requested-attributes", "job-state")
+        u8(0x44); u16(0); str("job-state-reasons")
+        u8(0x44); u16(0); str("job-state-message")
+        u8(0x03)
+        return o.toByteArray()
+    }
+
+    private data class JobPollResult(val state: Int, val stateName: String, val reasons: List<String>, val message: String)
+
+    private fun queryJobStateOnce(e: Entry, path: String, jobId: Int): JobPollResult? {
+        return try {
+            val r = doPost(e, path, ippGetJobAttributes(ippUri(e, path), jobId))
+            if (r.http != 200 || r.ipp !in 0..2) return null
+            var st = 0
+            val reasons = ArrayList<String>()
+            var msg = ""
+            parseIppGrouped(r.body) { grp, name, tag, raw ->
+                if (grp == 0x05) return@parseIppGrouped
+                if (name == "job-state" && tag == 0x23 && raw.size == 4) st = raw[3].toInt() and 0xFF
+                if (name == "job-state-reasons" && tag == 0x44) reasons.add(String(raw, Charsets.UTF_8))
+                if (name == "job-state-message" && (tag == 0x41 || tag == 0x42) && msg.isEmpty()) msg = String(raw, Charsets.UTF_8)
+            }
+            if (st == 0) null else JobPollResult(st, ippJobStateName(st), reasons, msg)
+        } catch (_: Exception) { null }
+    }
+
+    /** Background job watcher after Print-Job returns HTTP 200: warns if the printer stops, cancels, or aborts the job. */
+    private fun watchIppJob(e: Entry, path: String, jobId: Int) {
+        try {
+            val end = System.currentTimeMillis() + 25_000L
+            var stoppedAt = 0L
+            while (System.currentTimeMillis() < end) {
+                try { Thread.sleep(2500) } catch (_: InterruptedException) { return }
+                val js = queryJobStateOnce(e, path, jobId) ?: continue
+                val reasonText = js.reasons.filter { it != "none" }.joinToString(", ")
+                e.lastJobStatus = "job #$jobId ${js.stateName}" + (if (reasonText.isNotEmpty()) " ($reasonText)" else "") +
+                    (if (js.message.isNotEmpty()) " — ${js.message}" else "")
+                if (js.state == 7 || js.state == 8) {
+                    emitIppWarn("The printer ${js.stateName} the photo" +
+                        (if (reasonText.isNotEmpty()) " ($reasonText)" else "") +
+                        ". Check paper size, paper type, or ink on the printer.")
+                    return
+                }
+                if (js.state == 9) return
+                if (js.state == 6) {
+                    if (stoppedAt == 0L) stoppedAt = System.currentTimeMillis()
+                    else if (System.currentTimeMillis() - stoppedAt > 10_000L) {
+                        emitIppWarn("The printer paused the print" +
+                            (if (reasonText.isNotEmpty()) " ($reasonText)" else "") +
+                            ". Check paper tray / screen on the printer.")
+                        return
+                    }
+                } else {
+                    stoppedAt = 0L
+                }
+            }
+        } catch (_: Exception) {}
     }
 
     private class Opts(val quality: String, val color: String, val media: String, val borderless: Boolean = false)
@@ -2070,26 +2321,33 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             )
         }
         var lastErr = "The printer didn't accept the job."
-        // Try with the page size and settings first, then drop them one at a time if the printer refuses.
-        val base = if (hasOpts) listOf(true to true, false to true, true to false, false to false) else listOf(true to false, false to false)
         // A Canon SELPHY has only a few fixed papers (postcard, L, card) and often refuses a custom size such as 101.6 x 152.4 mm,
         // so name the loaded paper itself first ("jpn_hagaki_100x148mm") and fall back to the custom size after that.
         val selphy = isSelphy(e)
         val named = if (selphy) selphyMedia(e, wMm, hMm, opts.borderless) else null
         val ownScaling = if (opts.borderless) "none" else "fill"
-        // The page already has the paper's own shape, so a SELPHY is asked to scale it to the whole sheet ("fill") first. "none" prints
-        // it at its own size, which can leave a white border all round; it stays as the next try for a printer that refuses "fill".
-        // After the paper's own name comes the page size with zero margins (the standard way to ask for no border), also with "fill".
-        // A SELPHY lists every paper twice: with its normal margins (a few mm of border) and as a "fullbleed" paper with zero margins. Over
-        // IPP the fullbleed one is not a different name, it is the same paper asked for as a page size with all four margins 0. Asking by
-        // name alone gets the bordered one, so with Borderless on, the zero-margin page (sized as the printer's own paper) goes first.
+        // Try ideal settings first, then drop print-scaling (some non-AirPrint printers reject "none" even when they support zero-margin
+        // media-col), then drop quality/media-type, then drop media-col, down to a plain minimal JPEG print job.
+        val baseStd = ArrayList<IppAttempt>()
+        if (hasOpts) {
+            baseStd.add(IppAttempt(true, true, "", ownScaling))
+            baseStd.add(IppAttempt(true, true, "", ""))
+            baseStd.add(IppAttempt(true, false, "", ownScaling))
+            baseStd.add(IppAttempt(true, false, "", ""))
+            baseStd.add(IppAttempt(false, true, "", ""))
+            baseStd.add(IppAttempt(false, false, "", ""))
+        } else {
+            baseStd.add(IppAttempt(true, false, "", ownScaling))
+            baseStd.add(IppAttempt(true, false, "", ""))
+            baseStd.add(IppAttempt(false, false, "", ""))
+        }
         val ns = if (named != null) mediaSizeMm(named) else null
         val zeroMargin = if (selphy && opts.borderless && ns != null) listOf(
             IppAttempt(true, true, "", "fill", ns.first, ns.second), IppAttempt(true, false, "", "fill", ns.first, ns.second)) else emptyList()
         val stdAttempts = zeroMargin + (if (named != null) listOf(IppAttempt(true, true, named, "fill"), IppAttempt(true, true, named, ownScaling),
             IppAttempt(true, false, named, "fill"), IppAttempt(true, false, named, ownScaling)) else emptyList()) +
             (if (selphy) listOf(IppAttempt(true, true, "", "fill"), IppAttempt(true, false, "", "fill")) else emptyList()) +
-            base.map { IppAttempt(it.first, it.second, "", ownScaling) }
+            baseStd
         val rasterAttempts = if (rasterOnly) {
             val wantZero = opts.borderless && !effMt.equals("stationery", ignoreCase = true)
             val rBase = ArrayList<IppAttempt>()
@@ -2099,41 +2357,81 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             rBase.add(IppAttempt(false, false, "", "", 0.0, 0.0, 0))
             rBase.flatMap { a -> if (rasterHasOpts) listOf(a.copy(withOpts = true), a) else listOf(a) }
         } else stdAttempts
+
+        val attemptLog = ArrayList<String>()
         var drops = 0
+        val maxDrops = 6
         for ((format, make) in candidates) {
             val data = try { make() } catch (ex: Exception) { lastErr = ex.message ?: lastErr; continue }
             val raster = format == "image/pwg-raster"
-            val useAttempts = if (raster && rasterOnly) rasterAttempts else stdAttempts
+            val useAttempts = (if (raster && rasterOnly) rasterAttempts else stdAttempts).distinct()
             val jobMt = if (raster && rasterOnly) effMt else mt
-            for (at in useAttempts.distinct()) {
+            for (at in useAttempts) {
                 // A raster page already has the sheet's size, so print-scaling means nothing to it: leave it out (a Brother DCP-T420W takes only raster).
                 val sc = if (raster) "" else at.scaling
-                for (path in ippPaths(e)) {
+                val pathList = if (e.attrsTried && e.ippPath.isNotBlank()) listOf(e.ippPath) else ippPaths(e).toList()
+                var pathIdx = 0
+                val pathsToTry = ArrayList<String>(pathList)
+                while (pathIdx < pathsToTry.size) {
+                    val path = pathsToTry[pathIdx++]
+                    val desc = "$format $path " + (if (at.mediaName.isNotEmpty()) "media=${at.mediaName}" else if (at.withMedia) "media-col(m=${at.marginMm100})" else "no-media") +
+                        (if (sc.isNotEmpty()) " sc=$sc" else "") +
+                        (if (at.withOpts) " q=$qv mt=${jobMt.ifEmpty { "-" }}" else " no-opts")
+                    // Always place media-type inside media-col (RFC 8011 / PWG 5100.7), never as a non-standard top-level attribute alongside media-col.
                     val body = ippPrintJob(ippUri(e, path), job, format, data, if (at.withMedia) (if (at.sizeW > 0) at.sizeW else wMm) else 0.0, if (at.sizeH > 0) at.sizeH else hMm,
-                        if (at.withOpts) qv else 0, if (at.withOpts) cm else "", if (at.withOpts) jobMt else "", sc, at.mediaName, raster, at.marginMm100)
+                        if (at.withOpts) qv else 0, if (at.withOpts) cm else "", if (at.withOpts) jobMt else "", sc, at.mediaName, true, at.marginMm100)
                     val r = try { doPost(e, path, body) } catch (nf: NetFail) {
-                        // Can't connect at all: stop now. Connected but dropped mid-job: try the next settings, up to 3 times.
-                        if (!nf.connected || ++drops >= 3) throw nf
+                        attemptLog.add("$desc -> NET_FAIL(connected=${nf.connected}): ${nf.message}")
+                        e.lastAttempts = attemptLog.toList()
+                        // Can't connect at all: stop now. Connected but dropped mid-job: move on to the next attempt (do not burn retries on alternate paths).
+                        if (!nf.connected || ++drops >= maxDrops) throw nf
                         lastErr = nf.message ?: lastErr
-                        continue
+                        break
                     }
+                    val unsup = if (r.http == 200) extractUnsupported(r.body) else emptyList()
+                    val smsg = if (r.http == 200) extractStatusMessage(r.body) else ""
+                    attemptLog.add("$desc -> HTTP ${r.http} IPP ${ippStatusName(r.ipp)}" +
+                        (if (unsup.isNotEmpty()) " unsup=[${unsup.joinToString(",")}]" else "") +
+                        (if (smsg.isNotEmpty()) " msg=$smsg" else ""))
+                    e.lastAttempts = attemptLog.toList()
                     when {
                         r.http == 200 && r.ipp in 0..2 -> {
                             val marginDesc = if (at.marginMm100 > 0) "${at.marginMm100 / 100} mm margins" else "zero margins"
+                            e.lastUnsupported = unsup
+                            e.lastJobStatus = ""
                             e.lastSent = (if (at.mediaName.isNotEmpty()) "paper " + at.mediaName else if (at.withMedia) "custom page size, $marginDesc" else "no paper named") +
-                                ", scaling " + (if (sc.isEmpty()) "not set" else sc) + (if (at.withOpts) ", with quality/colour options" + (if (jobMt.isNotEmpty()) " ($jobMt)" else "") else "") + ", " + format + ", path " + path
+                                ", scaling " + (if (sc.isEmpty()) "not set" else sc) + (if (at.withOpts) ", with quality/colour options" + (if (jobMt.isNotEmpty()) " ($jobMt)" else "") else "") + ", " + format + ", path " + path +
+                                (if (unsup.isNotEmpty()) " [ignored: ${unsup.joinToString(", ")}]" else "")
+                            val jobId = extractJobId(r.body)
+                            if (jobId != null && e.usbDev == null) {
+                                pool.execute { watchIppJob(e, path, jobId) }
+                            }
                             return
                         }
-                        r.http == 200 && r.ipp == 0x406 -> lastErr = "The printer says it has no print queue at the addresses tried (" +
-                            ippPaths(e).joinToString(", ") + "; code 0x406). Add it by its IP address again, or check it has IPP / AirPrint turned on."
-                        r.http == 200 -> lastErr = "The printer refused the photo (code 0x" + Integer.toHexString(r.ipp) + ")."
+                        r.http == 200 && r.ipp == 0x406 -> {
+                            if (pathsToTry.size == 1) {
+                                for (alt in ippPaths(e)) if (alt !in pathsToTry) pathsToTry.add(alt)
+                            }
+                            lastErr = "The printer says it has no print queue at the addresses tried (" +
+                                ippPaths(e).joinToString(", ") + "; code 0x406). Add it by its IP address again, or check it has IPP / AirPrint turned on."
+                        }
+                        r.http == 200 -> {
+                            lastErr = "The printer refused the photo (code 0x" + Integer.toHexString(r.ipp) +
+                                (if (unsup.isNotEmpty()) "; unsupported: ${unsup.take(4).joinToString(", ")}" else "") + ")."
+                            break // move to next attribute attempt on the same known path
+                        }
                         r.http == 426 || r.http == 301 || r.http == 302 -> lastErr = "This printer only accepts secure printing, which the app doesn't support yet."
-                        r.http == 404 -> {}
+                        r.http == 404 -> {
+                            if (pathsToTry.size == 1) {
+                                for (alt in ippPaths(e)) if (alt !in pathsToTry) pathsToTry.add(alt)
+                            }
+                        }
                         else -> if (r.http > 0) lastErr = "The printer answered with HTTP ${r.http}."
                     }
                 }
             }
         }
+        e.lastAttempts = attemptLog.toList()
         throw IllegalStateException(lastErr)
     }
 
@@ -2258,9 +2556,26 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         attr(0x44, "requested-attributes", "printer-make-and-model")
         for (n in listOf("document-format-supported", "print-quality-supported", "print-color-mode-supported", "media-type-supported",
             "pwg-raster-document-resolution-supported", "pwg-raster-document-type-supported", "media-ready", "media-supported",
-            "media-top-margin-supported", "media-bottom-margin-supported", "media-left-margin-supported", "media-right-margin-supported")) {
+            "media-top-margin-supported", "media-bottom-margin-supported", "media-left-margin-supported", "media-right-margin-supported",
+            "printer-state-reasons")) {
             u8(0x44); u16(0); str(n)
         }
+        u8(0x03)
+        return o.toByteArray()
+    }
+
+    private fun ippGetAllAttributes(uri: String): ByteArray {
+        val o = ByteArrayOutputStream()
+        fun u8(v: Int) = o.write(v and 0xFF)
+        fun u16(v: Int) { u8(v shr 8); u8(v) }
+        fun str(s: String) { val b = s.toByteArray(Charsets.UTF_8); u16(b.size); o.write(b) }
+        fun attr(tag: Int, name: String, value: String) { u8(tag); str(name); str(value) }
+        u16(0x0200); u16(0x000B); u16(0); u16(1)
+        u8(0x01)
+        attr(0x47, "attributes-charset", "utf-8")
+        attr(0x48, "attributes-natural-language", "en")
+        attr(0x45, "printer-uri", uri)
+        attr(0x44, "requested-attributes", "all")
         u8(0x03)
         return o.toByteArray()
     }
@@ -2270,13 +2585,13 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     /** A network failure talking to the printer. [connected] is true when the printer did answer the connection, then dropped it. */
     private class NetFail(msg: String, val connected: Boolean) : IllegalStateException(msg)
 
-    private fun post(ip: String, port: Int, path: String, body: ByteArray): Reply {
+    private fun post(ip: String, port: Int, path: String, body: ByteArray, connectTimeoutMs: Int = 5000, readTimeoutMs: Int = 90_000, maxReplyBytes: Int = 262144): Reply {
         var connected = false
         try {
             newSocket(ip).use { s ->
-                s.connect(InetSocketAddress(ip, port), 5000)
+                s.connect(InetSocketAddress(ip, port), connectTimeoutMs)
                 connected = true
-                s.soTimeout = 90_000
+                s.soTimeout = readTimeoutMs
                 val out = s.getOutputStream()
                 val head = "POST $path HTTP/1.1\r\nHost: $ip:$port\r\nContent-Type: application/ipp\r\n" +
                     "Content-Length: ${body.size}\r\nConnection: close\r\n\r\n"
@@ -2291,7 +2606,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val buf = ByteArrayOutputStream()
                 val tmp = ByteArray(4096)
                 try {
-                    while (buf.size() < 262144) {
+                    while (buf.size() < maxReplyBytes) {
                         val n = s.getInputStream().read(tmp)
                         if (n < 0) break
                         buf.write(tmp, 0, n)
@@ -2305,14 +2620,18 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         } catch (ex: Exception) {
             Log.w(TAG, "post $ip:$port$path", ex)
             val why = when {
-                ex is java.net.SocketTimeoutException && !connected -> "it did not answer within 5 seconds"
+                ex is java.net.SocketTimeoutException && !connected -> "it did not answer within ${connectTimeoutMs / 1000} seconds"
                 ex is java.net.SocketTimeoutException -> "it stopped answering while printing"
                 ex is java.net.ConnectException -> "it refused the connection on port $port"
                 ex is java.net.NoRouteToHostException || ex is java.net.UnknownHostException -> "the tablet has no route to it"
                 connected -> "it hung up while the photo was being sent (${ex.message ?: ex.javaClass.simpleName})"
                 else -> ex.message ?: ex.javaClass.simpleName
             }
-            throw NetFail("Could not reach printer at $ip: $why. Check it is on, and on the same Wi-Fi as the tablet.", connected)
+            val subnetHint = if (!connected && matchLocalNet(ip) == null) {
+                val active = currentNets().joinToString(", ") { "${it.addr.hostAddress}/${it.prefix}" }
+                if (active.isNotEmpty()) " (Tablet Wi-Fi is $active — if you switched between Wi-Fi and Wi-Fi Direct, tap Find printers.)" else ""
+            } else ""
+            throw NetFail("Could not reach printer at $ip: $why. Check it is on, and on the same Wi-Fi as the tablet.$subnetHint", connected)
         }
     }
 
@@ -2344,18 +2663,19 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     private fun ippPrintJob(uri: String, job: String, format: String, doc: ByteArray, wMm: Double, hMm: Double,
                             quality: Int = 0, colorMode: String = "", mediaType: String = "", scaling: String = "fill",
-                            mediaName: String = "", mediaTypeInCol: Boolean = false, marginMm100: Int = 0): ByteArray {
+                            mediaName: String = "", mediaTypeInCol: Boolean = true, marginMm100: Int = 0,
+                            opCode: Int = 0x0002, mediaTypeMode: String = ""): ByteArray {
         val o = ByteArrayOutputStream()
         fun u8(v: Int) = o.write(v and 0xFF)
         fun u16(v: Int) { u8(v shr 8); u8(v) }
         fun u32(v: Int) { u16(v ushr 16); u16(v) }
         fun str(s: String) { val b = s.toByteArray(Charsets.UTF_8); u16(b.size); o.write(b) }
         fun attr(tag: Int, name: String, value: String) { u8(tag); str(name); str(value) }
-        fun intAttr(name: String, v: Int) { u8(0x21); str(name); u16(4); u32(v) }
         fun member(name: String) { u8(0x4a); u16(0); str(name) }
         fun memberInt(name: String, v: Int) { member(name); u8(0x21); u16(0); u16(4); u32(v) }
 
-        u16(0x0200); u16(0x0002); u32(1)                       // IPP 2.0, Print-Job, request id 1
+        val mtMode = if (mediaTypeMode.isNotEmpty()) mediaTypeMode.lowercase() else if (mediaTypeInCol) "col" else "top"
+        u16(0x0200); u16(opCode); u32(1)                       // IPP 2.0, Print-Job (0x0002) or Validate-Job (0x0004)
         u8(0x01)                                                // operation attributes
         attr(0x47, "attributes-charset", "utf-8")
         attr(0x48, "attributes-natural-language", "en")
@@ -2365,6 +2685,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         attr(0x49, "document-format", format)
         u8(0x02)                                                // job attributes
         val margin = marginMm100.coerceAtLeast(0)
+        var sentMtInCol = false
         if (mediaName.isNotEmpty()) {
             attr(0x44, "media", mediaName)                      // a paper the printer itself lists
         } else if (wMm > 0) {
@@ -2378,18 +2699,541 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             memberInt("media-bottom-margin", margin)
             memberInt("media-left-margin", margin)
             memberInt("media-right-margin", margin)
-            // a raster page carries its paper type inside media-col, where IPP Everywhere clients put it
-            if (mediaTypeInCol && mediaType.isNotEmpty()) { member("media-type"); u8(0x44); u16(0); str(mediaType) }
+            // IPP RFC 8011 / PWG 5100.7: media-type belongs inside media-col.
+            if (mediaType.isNotEmpty() && (mtMode == "col" || mtMode == "both")) {
+                member("media-type"); u8(0x44); u16(0); str(mediaType)
+                sentMtInCol = true
+            }
             u8(0x37); u16(0); u16(0)                            // end media-col
+        } else if (mediaType.isNotEmpty() && mtMode == "col") {
+            // Minimal media-col carrying only media-type when no page size is attached.
+            u8(0x34); str("media-col"); u16(0)
+            member("media-type"); u8(0x44); u16(0); str(mediaType)
+            u8(0x37); u16(0); u16(0)
+            sentMtInCol = true
         }
-        if (scaling.isNotEmpty()) attr(0x44, "print-scaling", scaling)   // "none" for borderless: the printer must not scale or trim
+        if (scaling.isNotEmpty()) attr(0x44, "print-scaling", scaling)
         if (quality != 0) { u8(0x23); str("print-quality"); u16(4); u32(quality) }          // enum
         if (colorMode.isNotEmpty()) attr(0x44, "print-color-mode", colorMode)
-        // (sent on its own too, except when media-col already carries it for a raster page)
-        if (mediaType.isNotEmpty() && !(mediaTypeInCol && mediaName.isEmpty() && wMm > 0)) attr(0x44, "media-type", mediaType)
+        if (mediaType.isNotEmpty() && mtMode != "none" && (!sentMtInCol || mtMode == "both")) {
+            attr(0x44, "media-type", mediaType)
+        }
         u8(0x03)                                                // end of attributes
-        o.write(doc)
+        if (opCode != 0x0004 && doc.isNotEmpty()) o.write(doc)
         return o.toByteArray()
+    }
+
+    // ── Shared Wireless Printer Diagnostic Engine (in-app + 127.0.0.1:17321 /printer/diag/*) ──
+
+    private fun appVersionName(): String = try {
+        activity.packageManager.getPackageInfo(activity.packageName, 0).versionName ?: "?"
+    } catch (_: Exception) { "?" }
+
+    /** Active tablet network interfaces, Wi-Fi Direct hints, and currently discovered printers. */
+    fun diagNetworkJson(): JSONObject {
+        nets = localNets(); netsAt = System.currentTimeMillis()
+        val netArr = JSONArray()
+        val suggestions = LinkedHashSet<String>()
+        var wifiDirectDetected = false
+        for (n in nets) {
+            val ip = n.addr.hostAddress ?: ""
+            val gw = ipText((ipLong(n.addr) and 0xFFFFFF00L) or 1L)
+            val isEpsonWfd = ip.startsWith("192.168.223.")
+            val isP2p = n.ifaceName.lowercase().contains("p2p") || ip.startsWith("192.168.49.")
+            if (isEpsonWfd || isP2p) wifiDirectDetected = true
+            if (gw != ip) suggestions.add(gw)
+            netArr.put(JSONObject()
+                .put("iface", n.ifaceName.ifEmpty { "wifi" })
+                .put("ip", ip)
+                .put("prefix", n.prefix)
+                .put("gateway", gw)
+                .put("boundNetwork", n.network != null)
+                .put("wifiDirectHint", isEpsonWfd || isP2p))
+        }
+        val printersArr = JSONArray()
+        for (e in found.values.sortedBy { it.ip }) {
+            if (e.ippPort > 0 || e.rawPort > 0) {
+                suggestions.add(e.ip)
+                printersArr.put(JSONObject()
+                    .put("ip", e.ip)
+                    .put("name", e.name.ifBlank { e.model.ifBlank { "Printer at ${e.ip}" } })
+                    .put("model", e.model)
+                    .put("ippPort", e.ippPort)
+                    .put("ippPath", e.ippPath)
+                    .put("rawPort", e.rawPort)
+                    .put("qualities", JSONArray(e.qualities))
+                    .put("mediaTypes", JSONArray(e.mediaTypes))
+                    .put("borderlessCap", e.borderlessCap)
+                    .put("route", routeHintFor(e.ip)))
+            }
+        }
+        return JSONObject()
+            .put("platform", "android")
+            .put("device", "${Build.MANUFACTURER} ${Build.MODEL} (Android ${Build.VERSION.RELEASE})")
+            .put("appVersion", appVersionName())
+            .put("wifiDirectDetected", wifiDirectDetected)
+            .put("nets", netArr)
+            .put("suggestedIps", JSONArray(suggestions.toList()))
+            .put("printers", printersArr)
+    }
+
+    @JavascriptInterface
+    fun diagNetwork(): String = diagNetworkJson().toString()
+
+    /** Quick discovery helper for 127.0.0.1:17321 /printer/discover (probes gateway .1 + any supplied IPs immediately). */
+    fun discoverForHelper(extraIps: List<String> = emptyList()): JSONObject {
+        nets = localNets(); netsAt = System.currentTimeMillis()
+        val toProbe = LinkedHashSet<String>()
+        for (ip in extraIps) if (Regex("^\\d{1,3}(\\.\\d{1,3}){3}$").matches(ip)) toProbe.add(ip)
+        for (n in nets) {
+            val gw = ipText((ipLong(n.addr) and 0xFFFFFF00L) or 1L)
+            if (gw != n.addr.hostAddress) toProbe.add(gw)
+        }
+        for (ip in toProbe) {
+            val e = Entry(ip)
+            probeInto(e, 1500)
+            if (e.ippPort > 0 || e.rawPort > 0) {
+                val cur = found.getOrPut(ip) { e }
+                if (cur !== e) {
+                    if (cur.ippPort == 0) cur.ippPort = e.ippPort
+                    if (cur.rawPort == 0) cur.rawPort = e.rawPort
+                }
+                if (cur.ippPort > 0) fetchAttrs(cur)
+            }
+        }
+        val info = diagNetworkJson()
+        val names = JSONArray()
+        for (n in getPrinterNames()) names.put(n)
+        info.put("printerNames", names)
+        return info
+    }
+
+    private fun portProbeTimed(ip: String, port: Int, timeoutMs: Int): JSONObject {
+        val t0 = System.currentTimeMillis()
+        return try {
+            newSocket(ip).use { s ->
+                s.connect(InetSocketAddress(ip, port), timeoutMs)
+            }
+            JSONObject().put("port", port).put("open", true).put("ms", System.currentTimeMillis() - t0)
+        } catch (ex: Exception) {
+            JSONObject().put("port", port).put("open", false).put("ms", System.currentTimeMillis() - t0)
+                .put("error", ex.javaClass.simpleName + (ex.message?.let { ": $it" } ?: ""))
+        }
+    }
+
+    private fun defaultValidateCases(named4x6: String, supportsPwg: Boolean): JSONArray {
+        val arr = JSONArray()
+        fun add(id: String, label: String, withMedia: Boolean, mediaName: String, margin: Int, q: Int, mt: String, mtMode: String, sc: String, fmt: String = "image/jpeg") {
+            arr.put(JSONObject()
+                .put("id", id).put("label", label).put("withMedia", withMedia).put("mediaName", mediaName)
+                .put("marginMm100", margin).put("quality", q).put("mediaType", mt).put("mediaTypeMode", mtMode)
+                .put("scaling", sc).put("format", fmt))
+        }
+        add("ipp-col-q5-glossy-scNone", "media-col (0mm) + glossy IN col + High(5) + scaling=none", true, "", 0, 5, "photographic-glossy", "col", "none")
+        add("ipp-col-q5-glossy-noSc", "media-col (0mm) + glossy IN col + High(5) + NO scaling", true, "", 0, 5, "photographic-glossy", "col", "")
+        add("ipp-col-q5-glossy-scFill", "media-col (0mm) + glossy IN col + High(5) + scaling=fill", true, "", 0, 5, "photographic-glossy", "col", "fill")
+        add("ipp-top-q5-glossy-scNone", "OLD ca4428a style: media-col + TOP-LEVEL glossy + High(5) + scaling=none", true, "", 0, 5, "photographic-glossy", "top", "none")
+        if (named4x6.isNotEmpty()) {
+            add("ipp-named-q5-glossy-noSc", "named media=$named4x6 + High(5) + top glossy + NO scaling", false, named4x6, 0, 5, "photographic-glossy", "top", "")
+        }
+        add("ipp-col-only-noSc", "media-col (0mm) only (no quality / media-type / scaling)", true, "", 0, 0, "", "none", "")
+        add("ipp-minimal", "Minimal JPEG (no job attributes)", false, "", 0, 0, "", "none", "")
+        if (supportsPwg) {
+            add("ipp-pwg-col-q5-glossy", "PWG Raster + media-col (0mm) + glossy IN col + High(5)", true, "", 0, 5, "photographic-glossy", "col", "", "image/pwg-raster")
+        }
+        return arr
+    }
+
+    /**
+     * Zero-paper comprehensive Wi-Fi / Wi-Fi Direct diagnostic probe:
+     *   1) Active interfaces & socket route check
+     *   2) TCP port scan (631 IPP, 9100 raw/ESC/P-R, 515 LPD, 80 Web Config)
+     *   3) Full IPP Get-Printer-Attributes ("all") dump + media-col-database 4x6/borderless summary
+     *   4) Zero-paper IPP Validate-Job (0x0004) matrix checking unsupported-attributes (group 0x05)
+     */
+    fun diagProbeSync(ipRaw: String, casesArr: JSONArray? = null): JSONObject {
+        val ip = ipRaw.trim()
+        val out = JSONObject()
+            .put("ip", ip)
+            .put("timestamp", System.currentTimeMillis())
+            .put("network", diagNetworkJson())
+        if (!Regex("^\\d{1,3}(\\.\\d{1,3}){3}$").matches(ip)) {
+            return out.put("ok", false).put("error", "Invalid IPv4 address: $ip")
+        }
+        out.put("route", routeHintFor(ip))
+
+        // Step 1: TCP port checks
+        val portsObj = JSONObject()
+        val p631 = portProbeTimed(ip, 631, 3000)
+        val p9100 = portProbeTimed(ip, 9100, 2500)
+        val p515 = portProbeTimed(ip, 515, 1500)
+        val p80 = portProbeTimed(ip, 80, 1500)
+        portsObj.put("631", p631).put("9100", p9100).put("515", p515).put("80", p80)
+        out.put("ports", portsObj)
+
+        if (!p631.optBoolean("open") && !p9100.optBoolean("open")) {
+            return out.put("ok", true).put("reachable", false)
+                .put("recommendation", "Printer $ip did not answer on port 631 (IPP) or 9100 (raw/ESC/P-R). Check power, 2.4 GHz Wi-Fi / Wi-Fi Direct connection, and router AP Isolation (Privacy Separator).")
+        }
+        out.put("reachable", true)
+
+        // Step 2: Full IPP Get-Printer-Attributes ("all")
+        val ippObj = JSONObject()
+        var chosenPath = ""
+        var named4x6 = ""
+        var supportsPwg = false
+        val wantedKeys = setOf(
+            "printer-make-and-model", "printer-name", "printer-info", "printer-dns-sd-name",
+            "printer-state", "printer-state-reasons", "printer-state-message",
+            "ipp-versions-supported", "operations-supported", "document-format-supported", "document-format-default",
+            "print-quality-supported", "print-quality-default", "print-color-mode-supported", "print-color-mode-default",
+            "print-scaling-supported", "print-scaling-default",
+            "media-supported", "media-ready", "media-default",
+            "media-type-supported", "media-source-supported", "media-col-supported",
+            "media-top-margin-supported", "media-bottom-margin-supported", "media-left-margin-supported", "media-right-margin-supported",
+            "pwg-raster-document-resolution-supported", "pwg-raster-document-type-supported", "urf-supported",
+            "printer-resolution-supported", "color-supported"
+        )
+        if (p631.optBoolean("open")) {
+            val e = found.getOrPut(ip) { Entry(ip).also { it.ippPort = 631 } }
+            if (e.ippPort <= 0) e.ippPort = 631
+            if (p9100.optBoolean("open") && e.rawPort <= 0) e.rawPort = 9100
+            for (path in ippPaths(e)) {
+                val t0 = System.currentTimeMillis()
+                try {
+                    val uri = "ipp://$ip:631$path"
+                    var r = post(ip, 631, path, ippGetAllAttributes(uri), 5000, 12_000, 524288)
+                    if (r.http != 200 || r.ipp !in 0..2) {
+                        r = post(ip, 631, path, ippGetAttributes(uri), 5000, 10_000, 262144)
+                    }
+                    if (r.http != 200 || r.ipp !in 0..2) continue
+                    chosenPath = path
+                    e.ippPath = path
+                    val attrMap = LinkedHashMap<String, ArrayList<String>>()
+                    val allAttrNames = LinkedHashSet<String>()
+                    // Track media-col-database summary without flooding memory
+                    var dbTotal = 0
+                    val dbMediaTypes = LinkedHashSet<String>()
+                    val dbSample4x6 = ArrayList<String>()
+                    var inDb = false
+                    var dbDepth = 0
+                    var curMember = ""
+                    var curX = 0; var curY = 0; var curTop = -1; var curLeft = -1; var curMt = ""; var curSrc = ""
+                    parseIppGrouped(r.body) { grp, name, tag, raw ->
+                        if (grp == 0x05) return@parseIppGrouped
+                        if (name.isNotEmpty() && !inDb) allAttrNames.add(name)
+                        if (name == "media-col-database" || inDb) {
+                            if (name == "media-col-database" && tag == 0x34 && !inDb) {
+                                inDb = true; dbDepth = 1; dbTotal++
+                                curMember = ""; curX = 0; curY = 0; curTop = -1; curLeft = -1; curMt = ""; curSrc = ""
+                                return@parseIppGrouped
+                            }
+                            if (inDb) {
+                                if (tag == 0x34) { dbDepth++; return@parseIppGrouped }
+                                if (tag == 0x37) {
+                                    dbDepth--
+                                    if (dbDepth <= 0) {
+                                        inDb = false
+                                        if (curMt.isNotEmpty()) dbMediaTypes.add(curMt)
+                                        val is4x6Entry = (curX in 9900..10400 && curY in 14700..15500) || curTop == 0
+                                        if (is4x6Entry && dbSample4x6.size < 16) {
+                                            dbSample4x6.add("${curX}x${curY} m=($curTop,$curLeft) mt=${curMt.ifEmpty { "-" }} src=${curSrc.ifEmpty { "-" }}")
+                                        }
+                                    }
+                                    return@parseIppGrouped
+                                }
+                                if (tag == 0x4a) { curMember = String(raw, Charsets.UTF_8); return@parseIppGrouped }
+                                val txt = ippValText(tag, raw)
+                                when (curMember) {
+                                    "x-dimension" -> curX = txt.toIntOrNull() ?: curX
+                                    "y-dimension" -> curY = txt.toIntOrNull() ?: curY
+                                    "media-top-margin" -> curTop = txt.toIntOrNull() ?: curTop
+                                    "media-left-margin" -> curLeft = txt.toIntOrNull() ?: curLeft
+                                    "media-type" -> curMt = txt
+                                    "media-source" -> curSrc = txt
+                                }
+                                return@parseIppGrouped
+                            }
+                        }
+                        if (name in wantedKeys && tag != 0x34 && tag != 0x37 && tag != 0x4a) {
+                            val list = attrMap.getOrPut(name) { ArrayList() }
+                            val v = ippValText(tag, raw)
+                            if (v.isNotEmpty() && list.size < 64) list.add(v)
+                        }
+                    }
+                    val attrsJson = JSONObject()
+                    for ((k, v) in attrMap) attrsJson.put(k, JSONArray(v))
+                    val formats = attrMap["document-format-supported"]?.map { it.lowercase() } ?: emptyList()
+                    supportsPwg = "image/pwg-raster" in formats
+                    val mediaAll = (attrMap["media-ready"] ?: emptyList()) + (attrMap["media-supported"] ?: emptyList())
+                    named4x6 = mediaAll.firstOrNull { n ->
+                        val sz = mediaSizeMm(n)
+                        sz != null && Math.abs(sz.first - 101.6) <= 3.0 && Math.abs(sz.second - 152.4) <= 5.0
+                    } ?: ""
+                    ippObj.put("answered", true)
+                        .put("path", path)
+                        .put("ms", System.currentTimeMillis() - t0)
+                        .put("ippStatus", ippStatusName(r.ipp))
+                        .put("bodyBytes", r.body.size)
+                        .put("attrCount", allAttrNames.size)
+                        .put("attrs", attrsJson)
+                        .put("mediaColDbCount", dbTotal)
+                        .put("mediaColDbMediaTypes", JSONArray(dbMediaTypes.toList()))
+                        .put("mediaColDb4x6Samples", JSONArray(dbSample4x6))
+                    val model = attrMap["printer-make-and-model"]?.firstOrNull() ?: ""
+                    if (model.isNotBlank()) { e.model = model; if (e.name.isBlank()) e.name = model }
+                    break
+                } catch (ex: Exception) {
+                    ippObj.put("error", ex.message ?: ex.javaClass.simpleName)
+                }
+            }
+        }
+        if (!ippObj.has("answered")) ippObj.put("answered", false)
+        out.put("ipp", ippObj)
+
+        // Step 3: Zero-paper Validate-Job (0x0004) matrix
+        val valResults = JSONArray()
+        if (chosenPath.isNotEmpty()) {
+            val cases = if (casesArr != null && casesArr.length() > 0) casesArr else defaultValidateCases(named4x6, supportsPwg)
+            val uri = "ipp://$ip:631$chosenPath"
+            for (i in 0 until cases.length()) {
+                val c = cases.optJSONObject(i) ?: continue
+                val cid = c.optString("id", "case-$i")
+                val label = c.optString("label", cid)
+                val fmt = c.optString("format", "image/jpeg").ifBlank { "image/jpeg" }
+                val withMedia = c.optBoolean("withMedia", true)
+                val wMm = if (withMedia) c.optDouble("widthMm", 101.6) else 0.0
+                val hMm = if (withMedia) c.optDouble("heightMm", 152.4) else 0.0
+                val mediaName = c.optString("mediaName", "")
+                val margin = c.optInt("marginMm100", 0)
+                val quality = c.optInt("quality", 0)
+                val colorMode = c.optString("colorMode", "")
+                val mediaType = c.optString("mediaType", "")
+                val mtMode = c.optString("mediaTypeMode", "col")
+                val scaling = c.optString("scaling", "")
+                val t0 = System.currentTimeMillis()
+                val res = JSONObject().put("id", cid).put("label", label)
+                try {
+                    val reqBody = ippPrintJob(uri, "pb4u-validate", fmt, ByteArray(0), wMm, hMm,
+                        quality, colorMode, mediaType, scaling, mediaName, mtMode == "col", margin, 0x0004, mtMode)
+                    val r = post(ip, 631, chosenPath, reqBody, 5000, 10_000, 65536)
+                    val unsup = if (r.http == 200) extractUnsupported(r.body) else emptyList()
+                    val smsg = if (r.http == 200) extractStatusMessage(r.body) else ""
+                    val accepted = r.http == 200 && r.ipp in 0..2
+                    res.put("http", r.http)
+                        .put("ipp", r.ipp)
+                        .put("ippHex", "0x" + Integer.toHexString(if (r.ipp < 0) 0 else r.ipp))
+                        .put("ippName", ippStatusName(r.ipp))
+                        .put("ok", accepted)
+                        .put("clean", accepted && unsup.isEmpty() && r.ipp == 0)
+                        .put("unsupported", JSONArray(unsup))
+                        .put("statusMessage", smsg)
+                        .put("ms", System.currentTimeMillis() - t0)
+                } catch (ex: Exception) {
+                    res.put("ok", false).put("clean", false).put("error", ex.message ?: ex.javaClass.simpleName)
+                        .put("ms", System.currentTimeMillis() - t0)
+                }
+                valResults.put(res)
+            }
+        }
+        out.put("validateMatrix", valResults)
+
+        // Plain-English diagnosis summary
+        val rec = StringBuilder()
+        if (p9100.optBoolean("open")) rec.append("Port 9100 (raw ESC/P-R) is OPEN. ")
+        else rec.append("Port 9100 (raw ESC/P-R) is CLOSED. ")
+        if (chosenPath.isNotEmpty()) {
+            var cleanId = ""
+            var anyOkId = ""
+            var oldStyleFailed = false
+            for (i in 0 until valResults.length()) {
+                val r = valResults.getJSONObject(i)
+                val id = r.optString("id")
+                if (cleanId.isEmpty() && r.optBoolean("clean") && id != "ipp-minimal") cleanId = id
+                if (anyOkId.isEmpty() && r.optBoolean("ok") && id != "ipp-minimal") anyOkId = id
+                if (id == "ipp-top-q5-glossy-scNone" && !r.optBoolean("ok")) oldStyleFailed = true
+            }
+            if (cleanId.isNotEmpty()) rec.append("Cleanest IPP Validate-Job winner: $cleanId (0 ignored attributes). ")
+            else if (anyOkId.isNotEmpty()) rec.append("IPP accepted $anyOkId but ignored some attributes — check unsupported list and also test ESC/P-R on port 9100. ")
+            else rec.append("IPP Validate-Job rejected photo options (or Validate-Job unsupported) — run a 1-sheet live test on IPP and ESC/P-R :9100. ")
+            if (oldStyleFailed) rec.append("Confirmed: old top-level media-type + scaling=none failed Validate-Job on this printer.")
+        } else {
+            rec.append("IPP port 631 did not answer Get-Printer-Attributes — use ESC/P-R on port 9100 if open.")
+        }
+        out.put("recommendation", rec.toString().trim())
+        return out.put("ok", true)
+    }
+
+    /**
+     * Explicit 1-sheet live diagnostic print (either IPP Print-Job + Get-Job-Attributes polling,
+     * or raw ESC/P-R on port 9100 with explicit dpi/mediaCode/qualityCode/l8050Geo).
+     */
+    fun diagPrintSync(payload: JSONObject): JSONObject {
+        val ip = payload.optString("ip", "").trim()
+        val protocol = payload.optString("protocol", "ipp").lowercase()
+        val out = JSONObject().put("ip", ip).put("protocol", protocol).put("route", routeHintFor(ip))
+        if (!Regex("^\\d{1,3}(\\.\\d{1,3}){3}$").matches(ip)) {
+            return out.put("ok", false).put("error", "Invalid IPv4 address: $ip")
+        }
+        val b64 = payload.optString("imageBase64", "")
+        if (b64.isBlank()) return out.put("ok", false).put("error", "Missing calibration imageBase64.")
+        val jpegIn = decode(b64)
+        val wMm = payload.optDouble("widthMm", 101.6)
+        val hMm = payload.optDouble("heightMm", 152.4)
+
+        if (protocol == "escpr") {
+            val port = payload.optInt("port", 9100)
+            val dpi = payload.optInt("dpi", 720)
+            val mediaCode = payload.optInt("mediaCode", EscprJob.MEDIA_EPSON_GLOSSY)
+            val qualityCode = payload.optInt("qualityCode", 2)
+            val borderless = payload.optBoolean("borderless", true)
+            val l8050Geo = payload.optBoolean("l8050Geo", true)
+            val sendSetiChku = payload.optBoolean("sendSetiChku", true)
+            val mono = payload.optBoolean("mono", false)
+            val bmp = android.graphics.BitmapFactory.decodeByteArray(jpegIn, 0, jpegIn.size)
+                ?: return out.put("ok", false).put("error", "Could not decode JPEG image.")
+            val data: ByteArray
+            val buildStart = System.currentTimeMillis()
+            try {
+                val cfg = EscprJob.Config(dpi, mediaCode, qualityCode, borderless, l8050Geo, sendSetiChku, mono)
+                data = EscprJob.buildWithConfig(bmp, wMm, hMm, cfg)
+            } finally {
+                try { bmp.recycle() } catch (_: Exception) {}
+            }
+            val buildMs = System.currentTimeMillis() - buildStart
+            val sendStart = System.currentTimeMillis()
+            val replyBuf = ByteArrayOutputStream()
+            try {
+                newSocket(ip).use { s ->
+                    s.connect(InetSocketAddress(ip, port), 6000)
+                    s.getOutputStream().apply { write(data); flush() }
+                    try {
+                        s.shutdownOutput()
+                        s.soTimeout = 3000
+                        val tmp = ByteArray(512)
+                        val until = System.currentTimeMillis() + 8_000
+                        val inp = s.getInputStream()
+                        while (System.currentTimeMillis() < until && replyBuf.size() < 4096) {
+                            val n = inp.read(tmp)
+                            if (n < 0) break
+                            replyBuf.write(tmp, 0, n)
+                        }
+                    } catch (_: Exception) {}
+                }
+                val replyBytes = replyBuf.toByteArray()
+                return out.put("ok", true)
+                    .put("port", port)
+                    .put("bytes", data.size)
+                    .put("buildMs", buildMs)
+                    .put("sendMs", System.currentTimeMillis() - sendStart)
+                    .put("replyBytes", replyBytes.size)
+                    .put("replyPreview", String(replyBytes.take(120).toByteArray(), Charsets.ISO_8859_1).replace(Regex("[^\\x20-\\x7E]"), "."))
+                    .put("config", JSONObject()
+                        .put("dpi", dpi).put("mediaHex", "0x%02x".format(mediaCode))
+                        .put("qualityCode", qualityCode).put("borderless", borderless)
+                        .put("l8050Geo", l8050Geo).put("sendSetiChku", sendSetiChku))
+            } catch (ex: Exception) {
+                return out.put("ok", false).put("error", ex.message ?: ex.javaClass.simpleName)
+                    .put("bytes", data.size).put("buildMs", buildMs).put("sendMs", System.currentTimeMillis() - sendStart)
+            }
+        }
+
+        // IPP Print-Job + Get-Job-Attributes live trace
+        val port = payload.optInt("port", 631)
+        val path = payload.optString("path", "").ifBlank { found[ip]?.ippPath?.ifBlank { "/ipp/print" } ?: "/ipp/print" }
+        val format = payload.optString("format", "image/jpeg").ifBlank { "image/jpeg" }
+        val withMedia = payload.optBoolean("withMedia", true)
+        val mediaName = payload.optString("mediaName", "")
+        val margin = payload.optInt("marginMm100", 0)
+        val quality = payload.optInt("quality", 5)
+        val colorMode = payload.optString("colorMode", "")
+        val mediaType = payload.optString("mediaType", "photographic-glossy")
+        val mtMode = payload.optString("mediaTypeMode", "col")
+        val scaling = payload.optString("scaling", "")
+        val pollSeconds = payload.optInt("pollSeconds", 15).coerceIn(0, 30)
+
+        val e = found.getOrPut(ip) { Entry(ip).also { it.ippPort = port; it.ippPath = path } }
+        if (e.ippPort <= 0) e.ippPort = port
+        if (e.ippPath.isBlank()) e.ippPath = path
+        val doc = when (format) {
+            "application/pdf" -> jpegToPdf(jpegAt300Dpi(jpegIn), wMm, hMm)
+            "image/pwg-raster" -> PwgRaster.fromJpeg(jpegIn, minOf(wMm, hMm), maxOf(wMm, hMm), 300, false, mediaName, mediaType, true)
+            else -> jpegAt300Dpi(jpegIn)
+        }
+        val uri = "ipp://$ip:$port$path"
+        val reqBody = ippPrintJob(uri, "pb4u-diag", format, doc, if (withMedia) wMm else 0.0, if (withMedia) hMm else 0.0,
+            quality, colorMode, mediaType, scaling, mediaName, mtMode == "col", margin, 0x0002, mtMode)
+        val t0 = System.currentTimeMillis()
+        try {
+            val r = post(ip, port, path, reqBody, 5000, 90_000, 65536)
+            val unsup = if (r.http == 200) extractUnsupported(r.body) else emptyList()
+            val smsg = if (r.http == 200) extractStatusMessage(r.body) else ""
+            val jobId = if (r.http == 200) extractJobId(r.body) else null
+            val accepted = r.http == 200 && r.ipp in 0..2
+            out.put("ok", accepted)
+                .put("path", path)
+                .put("format", format)
+                .put("docBytes", doc.size)
+                .put("sendMs", System.currentTimeMillis() - t0)
+                .put("http", r.http)
+                .put("ipp", r.ipp)
+                .put("ippHex", "0x" + Integer.toHexString(if (r.ipp < 0) 0 else r.ipp))
+                .put("ippName", ippStatusName(r.ipp))
+                .put("unsupported", JSONArray(unsup))
+                .put("statusMessage", smsg)
+                .put("jobId", jobId ?: -1)
+            val states = JSONArray()
+            if (accepted && jobId != null && pollSeconds > 0) {
+                val pollEnd = System.currentTimeMillis() + pollSeconds * 1000L
+                while (System.currentTimeMillis() < pollEnd) {
+                    try { Thread.sleep(2000) } catch (_: InterruptedException) { break }
+                    val js = queryJobStateOnce(e, path, jobId)
+                    if (js != null) {
+                        states.put(JSONObject()
+                            .put("atMs", System.currentTimeMillis() - t0)
+                            .put("state", js.state)
+                            .put("stateName", js.stateName)
+                            .put("reasons", JSONArray(js.reasons))
+                            .put("message", js.message))
+                        if (js.state in setOf(7, 8, 9)) break
+                    }
+                }
+            }
+            out.put("jobStates", states)
+            return out
+        } catch (ex: Exception) {
+            return out.put("ok", false).put("error", ex.message ?: ex.javaClass.simpleName)
+                .put("sendMs", System.currentTimeMillis() - t0)
+        }
+    }
+
+    @JavascriptInterface
+    fun diagRunProbe(job: String, ip: String, casesJson: String): String {
+        pool.execute {
+            val res = try {
+                val arr = if (casesJson.isNotBlank()) try { JSONArray(casesJson) } catch (_: Exception) { null } else null
+                diagProbeSync(ip, arr)
+            } catch (ex: Exception) {
+                JSONObject().put("ok", false).put("error", ex.message ?: "Probe failed")
+            }
+            res.put("job", job).put("op", "probe")
+            deliverDiag(res)
+        }
+        return "started"
+    }
+
+    @JavascriptInterface
+    fun diagRunPrint(job: String, payloadJson: String): String {
+        pool.execute {
+            val res = try {
+                diagPrintSync(JSONObject(payloadJson))
+            } catch (ex: Exception) {
+                JSONObject().put("ok", false).put("error", ex.message ?: "Diagnostic print failed")
+            }
+            res.put("job", job).put("op", "print")
+            deliverDiag(res)
+        }
+        return "started"
     }
 
     /** Lists printer names available via USB and Wi-Fi for 127.0.0.1:17321 /status and /printers */

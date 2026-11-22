@@ -102,25 +102,30 @@ export function parseIpp(buf) {
   return { status, attrs };
 }
 
-/** Walks an IPP reply and returns every value as { name, tag, value: Buffer }, in order (a name carries over to the values after it). */
-export function parseIppRaw(buf) {
+/** Walks an IPP reply and returns every value as { group, name, tag, value: Buffer }, in order. */
+export function parseIppGrouped(buf) {
   const out = [];
   if (!buf || buf.length < 8) return out;
-  let p = 8, last = '';
+  let p = 8, grp = 0, last = '';
   while (p < buf.length) {
     const tag = buf[p++];
     if (tag === 0x03) break;
-    if (tag <= 0x05) continue;
+    if (tag <= 0x05) { grp = tag; last = ''; continue; }
     if (p + 2 > buf.length) break;
     const nl = buf.readUInt16BE(p); p += 2;
     if (p + nl + 2 > buf.length) break;
     if (nl > 0) { last = buf.toString('latin1', p, p + nl); p += nl; }
     const vl = buf.readUInt16BE(p); p += 2;
     if (p + vl > buf.length) break;
-    out.push({ name: last, tag, value: buf.subarray(p, p + vl) });
+    out.push({ group: grp, name: last, tag, value: buf.subarray(p, p + vl) });
     p += vl;
   }
   return out;
+}
+
+/** Walks an IPP reply and returns every value as { name, tag, value: Buffer }, in order (a name carries over to the values after it). */
+export function parseIppRaw(buf) {
+  return parseIppGrouped(buf).map(({ name, tag, value }) => ({ name, tag, value }));
 }
 
 function ippPost(ip, port, path, body, timeoutMs) {
@@ -211,13 +216,14 @@ export function ippCapsRequest(uri) {
  * otherwise `wMm` x `hMm` is asked for as a custom size with zero margins (the standard way to ask for no border).
  * `scaling` is a print-scaling value ("fill", "none") or '' to leave it out.
  */
-export function ippPrintJobRequest({ uri, jobName = 'photobooth4u', format = 'image/jpeg', doc, wMm = 0, hMm = 0, mediaName = '', scaling = 'fill', quality = 0, colorMode = '', mediaType = '', marginMm100 = 0 }) {
+export function ippPrintJobRequest({ uri, jobName = 'photobooth4u', format = 'image/jpeg', doc, wMm = 0, hMm = 0, mediaName = '', scaling = 'fill', quality = 0, colorMode = '', mediaType = '', marginMm100 = 0, opCode = 0x0002, mediaTypeMode = 'col' }) {
   const memberName = (n) => Buffer.concat([Buffer.from([0x4a]), ippU16(0), ippStr(n)]);
   const memberInt = (n, v) => Buffer.concat([memberName(n), Buffer.from([0x21]), ippU16(0), ippU16(4), ippU32(v)]);
   const memberKeyword = (n, v) => Buffer.concat([memberName(n), Buffer.from([0x44]), ippU16(0), ippStr(v)]);
   const begCol = Buffer.from([0x34, 0, 0, 0, 0]), endCol = Buffer.from([0x37, 0, 0, 0, 0]);
+  const mtMode = String(mediaTypeMode || 'col').toLowerCase();
   const parts = [
-    Buffer.from([0x02, 0x00, 0x00, 0x02, 0, 0, 0, 1, 0x01]),
+    Buffer.from([0x02, 0x00, (opCode >> 8) & 0xff, opCode & 0xff, 0, 0, 0, 1, 0x01]),
     ippTagged(0x47, 'attributes-charset', 'utf-8'),
     ippTagged(0x48, 'attributes-natural-language', 'en'),
     ippTagged(0x45, 'printer-uri', uri),
@@ -227,21 +233,28 @@ export function ippPrintJobRequest({ uri, jobName = 'photobooth4u', format = 'im
     Buffer.from([0x02])
   ];
   const m = Math.max(0, Math.round(Number(marginMm100) || 0));
+  let sentMtInCol = false;
   if (mediaName) parts.push(ippTagged(0x44, 'media', mediaName));
   else if (wMm > 0 && hMm > 0) {
+    const putMt = mediaType && (mtMode === 'col' || mtMode === 'both');
+    if (putMt) sentMtInCol = true;
     parts.push(Buffer.concat([Buffer.from([0x34]), ippStr('media-col'), ippU16(0)]),
       memberName('media-size'), begCol,
       memberInt('x-dimension', Math.round(Math.min(wMm, hMm) * 100)), memberInt('y-dimension', Math.round(Math.max(wMm, hMm) * 100)),
       endCol,
       memberInt('media-top-margin', m), memberInt('media-bottom-margin', m), memberInt('media-left-margin', m), memberInt('media-right-margin', m),
-      ...(mediaType ? [memberKeyword('media-type', mediaType)] : []),   // inside media-col, where IPP Everywhere clients put it
+      ...(putMt ? [memberKeyword('media-type', mediaType)] : []),   // inside media-col, where IPP Everywhere clients put it
       endCol);
+  } else if (mediaType && mtMode === 'col') {
+    sentMtInCol = true;
+    parts.push(Buffer.concat([Buffer.from([0x34]), ippStr('media-col'), ippU16(0)]), memberKeyword('media-type', mediaType), endCol);
   }
   if (scaling) parts.push(ippTagged(0x44, 'print-scaling', scaling));
   if (quality) parts.push(Buffer.concat([Buffer.from([0x23]), ippStr('print-quality'), ippU16(4), ippU32(quality)]));   // enum
   if (colorMode) parts.push(ippTagged(0x44, 'print-color-mode', colorMode));
-  if (mediaType && !(!mediaName && wMm > 0 && hMm > 0)) parts.push(ippTagged(0x44, 'media-type', mediaType));   // no media-col to carry it
-  parts.push(Buffer.from([0x03]), Buffer.from(doc || []));
+  if (mediaType && mtMode !== 'none' && (!sentMtInCol || mtMode === 'both')) parts.push(ippTagged(0x44, 'media-type', mediaType));
+  parts.push(Buffer.from([0x03]));
+  if (opCode !== 0x0004 && doc && doc.length) parts.push(Buffer.from(doc));
   return Buffer.concat(parts);
 }
 
@@ -516,4 +529,359 @@ async function ippPrintPwg({ ip, port, caps, image, widthMm, heightMm, jobName, 
     }
   }
   throw new Error(lastErr);
+}
+
+// ---- Wireless printer diagnostics (mirrors Android NetPrintBridge.kt diagProbeSync / diagPrintSync) ----
+
+const IPP_STATUS_NAMES = {
+  0x0000: 'successful-ok',
+  0x0001: 'successful-ok-ignored-or-substituted-attributes',
+  0x0002: 'successful-ok-conflicting-attributes',
+  0x0400: 'client-error-bad-request',
+  0x0403: 'client-error-not-authorized',
+  0x0404: 'client-error-not-possible',
+  0x0406: 'client-error-not-found',
+  0x040a: 'client-error-document-format-not-supported',
+  0x040b: 'client-error-attributes-or-values-not-supported',
+  0x040e: 'client-error-conflicting-attributes',
+  0x0500: 'server-error-internal-error',
+  0x0501: 'server-error-operation-not-supported',
+  0x0507: 'server-error-busy'
+};
+const IPP_JOB_STATES = { 3: 'pending', 4: 'pending-held', 5: 'processing', 6: 'processing-stopped', 7: 'canceled', 8: 'aborted', 9: 'completed' };
+
+export function ippStatusName(code) {
+  return IPP_STATUS_NAMES[code] || ('0x' + Math.max(0, Number(code) || 0).toString(16));
+}
+
+function ippValText(tag, raw) {
+  if (tag === 0x10) return '(unsupported)';
+  if (tag === 0x12) return '(unknown)';
+  if (tag === 0x13) return '(no-value)';
+  if ((tag === 0x21 || tag === 0x23) && raw.length === 4) return String(raw.readInt32BE(0));
+  if (tag === 0x22 && raw.length === 1) return raw[0] ? 'true' : 'false';
+  if (tag === 0x32 && raw.length === 9) {
+    const x = raw.readUInt32BE(0), y = raw.readUInt32BE(4), u = raw[8] === 3 ? 'dpi' : 'dpcm';
+    return x === y ? `${x}${u}` : `${x}x${y}${u}`;
+  }
+  if (tag === 0x33 && raw.length === 8) return `${raw.readInt32BE(0)}..${raw.readInt32BE(4)}`;
+  if (tag === 0x34) return '{';
+  if (tag === 0x37) return '}';
+  if (tag >= 0x40) return raw.toString('utf8');
+  return '0x' + raw.toString('hex');
+}
+
+export function extractUnsupported(buf) {
+  const out = [];
+  for (const v of parseIppGrouped(buf)) {
+    if (v.group !== 0x05 || v.tag === 0x34 || v.tag === 0x37) continue;
+    if (v.tag === 0x4a) { const m = v.value.toString('utf8'); if (m) out.push('member:' + m); }
+    else if (v.name) {
+      const txt = ippValText(v.tag, v.value);
+      out.push(txt && txt !== '(unsupported)' ? `${v.name}=${txt}` : v.name);
+    }
+  }
+  return [...new Set(out)];
+}
+
+function extractStatusMessage(buf) {
+  const hit = parseIppGrouped(buf).find((v) => v.group === 0x01 && v.name === 'status-message' && (v.tag === 0x41 || v.tag === 0x42));
+  return hit ? hit.value.toString('utf8') : '';
+}
+
+function extractJobId(buf) {
+  const hit = parseIppGrouped(buf).find((v) => v.name === 'job-id' && v.tag === 0x21 && v.value.length === 4);
+  return hit ? hit.value.readInt32BE(0) : null;
+}
+
+export function ippAllAttrsRequest(uri) {
+  return Buffer.concat([
+    Buffer.from([0x02, 0x00, 0x00, 0x0b, 0, 0, 0, 1, 0x01]),
+    ippTagged(0x47, 'attributes-charset', 'utf-8'),
+    ippTagged(0x48, 'attributes-natural-language', 'en'),
+    ippTagged(0x45, 'printer-uri', uri),
+    ippTagged(0x44, 'requested-attributes', 'all'),
+    Buffer.from([0x03])
+  ]);
+}
+
+export function ippGetJobAttributesRequest(uri, jobId) {
+  return Buffer.concat([
+    Buffer.from([0x02, 0x00, 0x00, 0x09, 0, 0, 0, 2, 0x01]),
+    ippTagged(0x47, 'attributes-charset', 'utf-8'),
+    ippTagged(0x48, 'attributes-natural-language', 'en'),
+    ippTagged(0x45, 'printer-uri', uri),
+    Buffer.concat([Buffer.from([0x21]), ippStr('job-id'), ippU16(4), ippU32(jobId)]),
+    ippTagged(0x44, 'requested-attributes', 'job-state'),
+    ippTagged(0x44, '', 'job-state-reasons'),
+    ippTagged(0x44, '', 'job-state-message'),
+    Buffer.from([0x03])
+  ]);
+}
+
+function portProbeTimed(ip, port, timeoutMs) {
+  const t0 = Date.now();
+  return new Promise((resolve) => {
+    const s = new net.Socket();
+    let done = false;
+    const finish = (open, error) => {
+      if (done) return;
+      done = true;
+      s.destroy();
+      resolve({ port, open, ms: Date.now() - t0, ...(error ? { error } : {}) });
+    };
+    s.setTimeout(timeoutMs);
+    s.once('connect', () => finish(true));
+    s.once('timeout', () => finish(false, 'Timeout'));
+    s.once('error', (e) => finish(false, e && e.code ? e.code : String(e && e.message || e)));
+    s.connect(port, ip);
+  });
+}
+
+export function diagNetworkInfo({ appVersion = '', printers = [] } = {}) {
+  const subnets = lanSubnets();
+  const suggestions = new Set();
+  let wifiDirectDetected = false;
+  const nets = subnets.map((s) => {
+    const gw = longToIp((Math.floor(ipToLong(s.address) / 256) * 256) + 1);
+    const wfd = /^192\.168\.(223|49)\./.test(s.address);
+    if (wfd) wifiDirectDetected = true;
+    if (gw !== s.address) suggestions.add(gw);
+    return { iface: s.name, ip: s.address, prefix: s.prefix, gateway: gw, boundNetwork: false, wifiDirectHint: wfd };
+  });
+  for (const p of printers) if (p && p.ip) suggestions.add(p.ip);
+  return {
+    platform: process.platform,
+    device: `${os.platform()} ${os.release()} (${os.arch()})`,
+    appVersion,
+    wifiDirectDetected,
+    nets,
+    suggestedIps: [...suggestions],
+    printers
+  };
+}
+
+function defaultValidateCases(named4x6, supportsPwg) {
+  const list = [
+    { id: 'ipp-col-q5-glossy-scNone', label: 'media-col (0mm) + glossy IN col + High(5) + scaling=none', withMedia: true, mediaName: '', marginMm100: 0, quality: 5, mediaType: 'photographic-glossy', mediaTypeMode: 'col', scaling: 'none', format: 'image/jpeg' },
+    { id: 'ipp-col-q5-glossy-noSc', label: 'media-col (0mm) + glossy IN col + High(5) + NO scaling', withMedia: true, mediaName: '', marginMm100: 0, quality: 5, mediaType: 'photographic-glossy', mediaTypeMode: 'col', scaling: '', format: 'image/jpeg' },
+    { id: 'ipp-col-q5-glossy-scFill', label: 'media-col (0mm) + glossy IN col + High(5) + scaling=fill', withMedia: true, mediaName: '', marginMm100: 0, quality: 5, mediaType: 'photographic-glossy', mediaTypeMode: 'col', scaling: 'fill', format: 'image/jpeg' },
+    { id: 'ipp-top-q5-glossy-scNone', label: 'OLD ca4428a style: media-col + TOP-LEVEL glossy + High(5) + scaling=none', withMedia: true, mediaName: '', marginMm100: 0, quality: 5, mediaType: 'photographic-glossy', mediaTypeMode: 'top', scaling: 'none', format: 'image/jpeg' }
+  ];
+  if (named4x6) list.push({ id: 'ipp-named-q5-glossy-noSc', label: `named media=${named4x6} + High(5) + top glossy + NO scaling`, withMedia: false, mediaName: named4x6, marginMm100: 0, quality: 5, mediaType: 'photographic-glossy', mediaTypeMode: 'top', scaling: '', format: 'image/jpeg' });
+  list.push({ id: 'ipp-col-only-noSc', label: 'media-col (0mm) only (no quality / media-type / scaling)', withMedia: true, mediaName: '', marginMm100: 0, quality: 0, mediaType: '', mediaTypeMode: 'none', scaling: '', format: 'image/jpeg' });
+  list.push({ id: 'ipp-minimal', label: 'Minimal JPEG (no job attributes)', withMedia: false, mediaName: '', marginMm100: 0, quality: 0, mediaType: '', mediaTypeMode: 'none', scaling: '', format: 'image/jpeg' });
+  if (supportsPwg) list.push({ id: 'ipp-pwg-col-q5-glossy', label: 'PWG Raster + media-col (0mm) + glossy IN col + High(5)', withMedia: true, mediaName: '', marginMm100: 0, quality: 5, mediaType: 'photographic-glossy', mediaTypeMode: 'col', scaling: '', format: 'image/pwg-raster' });
+  return list;
+}
+
+const DIAG_WANTED_ATTRS = new Set([
+  'printer-make-and-model', 'printer-name', 'printer-info', 'printer-dns-sd-name',
+  'printer-state', 'printer-state-reasons', 'printer-state-message',
+  'ipp-versions-supported', 'operations-supported', 'document-format-supported', 'document-format-default',
+  'print-quality-supported', 'print-quality-default', 'print-color-mode-supported', 'print-color-mode-default',
+  'print-scaling-supported', 'print-scaling-default',
+  'media-supported', 'media-ready', 'media-default',
+  'media-type-supported', 'media-source-supported', 'media-col-supported',
+  'media-top-margin-supported', 'media-bottom-margin-supported', 'media-left-margin-supported', 'media-right-margin-supported',
+  'pwg-raster-document-resolution-supported', 'pwg-raster-document-type-supported', 'urf-supported',
+  'printer-resolution-supported', 'color-supported'
+]);
+
+/** Full zero-paper Wi-Fi / Wi-Fi Direct probe (ports, Get-Printer-Attributes "all", Validate-Job matrix). */
+export async function ippDiagProbe({ ip: rawIp, port = 631, rawPort = 9100, cases = null, appVersion = '' } = {}) {
+  const ip = String(rawIp || '').trim();
+  const out = { ok: true, ip, timestamp: Date.now(), network: diagNetworkInfo({ appVersion }) };
+  if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return { ...out, ok: false, error: 'Invalid IPv4 address: ' + ip };
+
+  const [p631, p9100, p515, p80] = await Promise.all([
+    portProbeTimed(ip, port, 3000),
+    portProbeTimed(ip, rawPort, 2500),
+    portProbeTimed(ip, 515, 1500),
+    portProbeTimed(ip, 80, 1500)
+  ]);
+  out.ports = { 631: p631, 9100: p9100, 515: p515, 80: p80 };
+  if (!p631.open && !p9100.open) {
+    out.reachable = false;
+    out.ipp = { answered: false };
+    out.validateMatrix = [];
+    out.recommendation = `Printer ${ip} did not answer on port ${port} (IPP) or ${rawPort} (raw/ESC/P-R). Check power, 2.4 GHz Wi-Fi / Wi-Fi Direct connection, and router AP Isolation (Privacy Separator).`;
+    return out;
+  }
+  out.reachable = true;
+
+  let chosenPath = '', named4x6 = '', supportsPwg = false;
+  out.ipp = { answered: false };
+  if (p631.open) {
+    for (const path of ['/ipp/print', '/ipp', '/', '/ipp/printer', '/printer']) {
+      const t0 = Date.now();
+      const uri = `ipp://${ip}:${port}${path}`;
+      let r = await ippPost(ip, port, path, ippAllAttrsRequest(uri), 8000);
+      if (!r || r.http !== 200 || parseIpp(r.body).status > 2) {
+        r = await ippPost(ip, port, path, ippCapsRequest(uri), 6000);
+      }
+      if (!r || r.http !== 200) continue;
+      const status = r.body.length >= 4 ? r.body.readUInt16BE(2) : -1;
+      if (status < 0 || status > 2) continue;
+      chosenPath = path;
+      const attrs = {}, allNames = new Set();
+      let dbTotal = 0, inDb = false, dbDepth = 0, curMember = '', curX = 0, curY = 0, curTop = -1, curLeft = -1, curMt = '', curSrc = '';
+      const dbMediaTypes = new Set(), dbSample4x6 = [];
+      for (const v of parseIppGrouped(r.body)) {
+        if (v.group === 0x05) continue;
+        if (v.name && !inDb) allNames.add(v.name);
+        if (v.name === 'media-col-database' || inDb) {
+          if (v.name === 'media-col-database' && v.tag === 0x34 && !inDb) {
+            inDb = true; dbDepth = 1; dbTotal++;
+            curMember = ''; curX = 0; curY = 0; curTop = -1; curLeft = -1; curMt = ''; curSrc = '';
+            continue;
+          }
+          if (inDb) {
+            if (v.tag === 0x34) { dbDepth++; continue; }
+            if (v.tag === 0x37) {
+              dbDepth--;
+              if (dbDepth <= 0) {
+                inDb = false;
+                if (curMt) dbMediaTypes.add(curMt);
+                if (((curX >= 9900 && curX <= 10400 && curY >= 14700 && curY <= 15500) || curTop === 0) && dbSample4x6.length < 16) {
+                  dbSample4x6.push(`${curX}x${curY} m=(${curTop},${curLeft}) mt=${curMt || '-'} src=${curSrc || '-'}`);
+                }
+              }
+              continue;
+            }
+            if (v.tag === 0x4a) { curMember = v.value.toString('utf8'); continue; }
+            const txt = ippValText(v.tag, v.value);
+            if (curMember === 'x-dimension') curX = Number(txt) || curX;
+            else if (curMember === 'y-dimension') curY = Number(txt) || curY;
+            else if (curMember === 'media-top-margin') curTop = Number(txt);
+            else if (curMember === 'media-left-margin') curLeft = Number(txt);
+            else if (curMember === 'media-type') curMt = txt;
+            else if (curMember === 'media-source') curSrc = txt;
+            continue;
+          }
+        }
+        if (DIAG_WANTED_ATTRS.has(v.name) && v.tag !== 0x34 && v.tag !== 0x37 && v.tag !== 0x4a) {
+          const list = (attrs[v.name] = attrs[v.name] || []);
+          const txt = ippValText(v.tag, v.value);
+          if (txt && list.length < 64) list.push(txt);
+        }
+      }
+      const formats = (attrs['document-format-supported'] || []).map((s) => s.toLowerCase());
+      supportsPwg = formats.includes('image/pwg-raster');
+      const mediaAll = [...(attrs['media-ready'] || []), ...(attrs['media-supported'] || [])];
+      named4x6 = mediaAll.find((n) => {
+        const sz = mediaSizeMm(n);
+        return sz && Math.abs(sz[0] - 101.6) <= 3 && Math.abs(sz[1] - 152.4) <= 5;
+      }) || '';
+      out.ipp = {
+        answered: true, path, ms: Date.now() - t0, ippStatus: ippStatusName(status),
+        bodyBytes: r.body.length, attrCount: allNames.size, attrs,
+        mediaColDbCount: dbTotal, mediaColDbMediaTypes: [...dbMediaTypes], mediaColDb4x6Samples: dbSample4x6
+      };
+      break;
+    }
+  }
+
+  const valResults = [];
+  if (chosenPath) {
+    const runCases = Array.isArray(cases) && cases.length ? cases : defaultValidateCases(named4x6, supportsPwg);
+    const uri = `ipp://${ip}:${port}${chosenPath}`;
+    for (let i = 0; i < runCases.length; i++) {
+      const c = runCases[i] || {};
+      const id = c.id || ('case-' + i);
+      const label = c.label || id;
+      const t0 = Date.now();
+      const body = ippPrintJobRequest({
+        uri, jobName: 'pb4u-validate', format: c.format || 'image/jpeg', doc: null,
+        wMm: c.withMedia !== false ? (Number(c.widthMm) || 101.6) : 0,
+        hMm: c.withMedia !== false ? (Number(c.heightMm) || 152.4) : 0,
+        mediaName: c.mediaName || '', scaling: c.scaling || '', quality: Number(c.quality) || 0,
+        colorMode: c.colorMode || '', mediaType: c.mediaType || '', marginMm100: Number(c.marginMm100) || 0,
+        opCode: 0x0004, mediaTypeMode: c.mediaTypeMode || 'col'
+      });
+      const r = await ippPost(ip, port, chosenPath, body, 8000);
+      if (!r) {
+        valResults.push({ id, label, ok: false, clean: false, error: 'Connection dropped or timed out', ms: Date.now() - t0 });
+        continue;
+      }
+      const ipp = r.http === 200 && r.body.length >= 4 ? r.body.readUInt16BE(2) : -1;
+      const unsupported = r.http === 200 ? extractUnsupported(r.body) : [];
+      const statusMessage = r.http === 200 ? extractStatusMessage(r.body) : '';
+      const accepted = r.http === 200 && ipp >= 0 && ipp <= 2;
+      valResults.push({
+        id, label, http: r.http, ipp, ippHex: '0x' + Math.max(0, ipp).toString(16), ippName: ippStatusName(ipp),
+        ok: accepted, clean: accepted && unsupported.length === 0 && ipp === 0, unsupported, statusMessage, ms: Date.now() - t0
+      });
+    }
+  }
+  out.validateMatrix = valResults;
+
+  const rec = [];
+  rec.push(p9100.open ? 'Port 9100 (raw ESC/P-R) is OPEN.' : 'Port 9100 (raw ESC/P-R) is CLOSED.');
+  if (chosenPath) {
+    const clean = valResults.find((r) => r.clean && r.id !== 'ipp-minimal');
+    const anyOk = valResults.find((r) => r.ok && r.id !== 'ipp-minimal');
+    const oldBad = valResults.find((r) => r.id === 'ipp-top-q5-glossy-scNone' && !r.ok);
+    if (clean) rec.push(`Cleanest IPP Validate-Job winner: ${clean.id} (0 ignored attributes).`);
+    else if (anyOk) rec.push(`IPP accepted ${anyOk.id} but ignored some attributes — check unsupported list and also test ESC/P-R on port 9100.`);
+    else rec.push('IPP Validate-Job rejected photo options (or Validate-Job unsupported) — run a 1-sheet live test.');
+    if (oldBad) rec.push('Confirmed: old top-level media-type + scaling=none failed Validate-Job on this printer.');
+  } else {
+    rec.push('IPP port 631 did not answer Get-Printer-Attributes — use ESC/P-R on port 9100 if open.');
+  }
+  out.recommendation = rec.join(' ');
+  return out;
+}
+
+/** Explicit 1-sheet live IPP Print-Job diagnostic + Get-Job-Attributes polling. */
+export async function ippDiagPrint({ ip: rawIp, port = 631, path = '/ipp/print', protocol = 'ipp', imageBase64 = '', widthMm = 101.6, heightMm = 152.4, format = 'image/jpeg', withMedia = true, mediaName = '', marginMm100 = 0, quality = 5, colorMode = '', mediaType = 'photographic-glossy', mediaTypeMode = 'col', scaling = '', pollSeconds = 12 } = {}) {
+  const ip = String(rawIp || '').trim();
+  if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return { ok: false, ip, protocol, error: 'Invalid IPv4 address: ' + ip };
+  if (String(protocol).toLowerCase() === 'escpr') {
+    return { ok: false, ip, protocol: 'escpr', error: 'ESC/P-R port 9100 diagnostic prints run directly on the Android app helper (not the desktop helper).' };
+  }
+  const cleanB64 = String(imageBase64 || '').replace(/^data:[^,]*,/, '');
+  if (!cleanB64) return { ok: false, ip, protocol: 'ipp', error: 'Missing calibration imageBase64.' };
+  const doc = jpegAt300Dpi(Buffer.from(cleanB64, 'base64'));
+  const uri = `ipp://${ip}:${port}${path || '/ipp/print'}`;
+  const reqBody = ippPrintJobRequest({
+    uri, jobName: 'pb4u-diag', format, doc,
+    wMm: withMedia ? Number(widthMm) || 101.6 : 0, hMm: withMedia ? Number(heightMm) || 152.4 : 0,
+    mediaName, scaling, quality: Number(quality) || 0, colorMode, mediaType, marginMm100: Number(marginMm100) || 0,
+    opCode: 0x0002, mediaTypeMode: mediaTypeMode || 'col'
+  });
+  const t0 = Date.now();
+  const r = await ippPost(ip, port, path || '/ipp/print', reqBody, 90000);
+  if (!r) return { ok: false, ip, protocol: 'ipp', path, sendMs: Date.now() - t0, error: 'Connection dropped or timed out' };
+  const ipp = r.http === 200 && r.body.length >= 4 ? r.body.readUInt16BE(2) : -1;
+  const unsupported = r.http === 200 ? extractUnsupported(r.body) : [];
+  const statusMessage = r.http === 200 ? extractStatusMessage(r.body) : '';
+  const jobId = r.http === 200 ? extractJobId(r.body) : null;
+  const ok = r.http === 200 && ipp >= 0 && ipp <= 2;
+  const jobStates = [];
+  const maxPoll = Math.max(0, Math.min(30, Number(pollSeconds) || 0));
+  if (ok && jobId != null && maxPoll > 0) {
+    const until = Date.now() + maxPoll * 1000;
+    while (Date.now() < until) {
+      await new Promise((res) => setTimeout(res, Math.min(2000, Math.max(250, until - Date.now()))));
+      const jr = await ippPost(ip, port, path || '/ipp/print', ippGetJobAttributesRequest(uri, jobId), 5000);
+      if (!jr || jr.http !== 200) continue;
+      let st = 0; const reasons = []; let message = '';
+      for (const v of parseIppGrouped(jr.body)) {
+        if (v.group === 0x05) continue;
+        if (v.name === 'job-state' && v.tag === 0x23 && v.value.length === 4) st = v.value.readInt32BE(0);
+        if (v.name === 'job-state-reasons' && v.tag === 0x44) reasons.push(v.value.toString('utf8'));
+        if (v.name === 'job-state-message' && (v.tag === 0x41 || v.tag === 0x42) && !message) message = v.value.toString('utf8');
+      }
+      if (st) {
+        jobStates.push({ atMs: Date.now() - t0, state: st, stateName: IPP_JOB_STATES[st] || `unknown(${st})`, reasons, message });
+        if (st === 7 || st === 8 || st === 9) break;
+      }
+    }
+  }
+  return {
+    ok, ip, protocol: 'ipp', path, format, docBytes: doc.length, sendMs: Date.now() - t0,
+    http: r.http, ipp, ippHex: '0x' + Math.max(0, ipp).toString(16), ippName: ippStatusName(ipp),
+    unsupported, statusMessage, jobId: jobId == null ? -1 : jobId, jobStates
+  };
 }

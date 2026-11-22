@@ -1901,12 +1901,16 @@ enum IppNet {
             w.memberInt("media-bottom-margin", margin)
             w.memberInt("media-left-margin", margin)
             w.memberInt("media-right-margin", margin)
+            if !mediaType.isEmpty { w.member("media-type"); w.u8(0x44); w.u16(0); w.str(mediaType) }
             w.u8(0x37); w.u16(0); w.u16(0)                        // end media-col
+        } else if !mediaType.isEmpty {
+            w.u8(0x34); w.str("media-col"); w.u16(0)
+            w.member("media-type"); w.u8(0x44); w.u16(0); w.str(mediaType)
+            w.u8(0x37); w.u16(0); w.u16(0)
         }
         if !scaling.isEmpty { w.attr(0x44, "print-scaling", scaling) }      // "none" for borderless: the printer must not scale or trim
         if quality != 0 { w.u8(0x23); w.str("print-quality"); w.u16(4); w.u32(quality) }    // enum
         if !colorMode.isEmpty { w.attr(0x44, "print-color-mode", colorMode) }
-        if !mediaType.isEmpty { w.attr(0x44, "media-type", mediaType) }
         w.u8(0x03)
         w.d.append(doc)
         return w.d
@@ -2109,10 +2113,10 @@ enum IppNet {
         else if color == "color" && caps.colorModes.contains("color") { cm = "color" }
         let mt = mediaTypeKeyword(media, caps.mediaTypes, hardEpsonL)
         let hasOpts = qv != 0 || !cm.isEmpty || !mt.isEmpty
-        let attempts: [(Bool, Bool)] = hasOpts
-            ? [(true, true), (false, true), (true, false), (false, false)]
-            : [(true, false), (false, false)]
-        let scaling = borderless ? "none" : "fill"
+        let ownScaling = borderless ? "none" : "fill"
+        let attempts: [(Bool, Bool, String)] = hasOpts
+            ? [(true, true, ownScaling), (true, true, ""), (true, false, ownScaling), (true, false, ""), (false, true, ""), (false, false, "")]
+            : [(true, false, ownScaling), (true, false, ""), (false, false, "")]
         let pathList: [String] = found == nil ? paths : [caps.path]
         var lastErr = "The printer didn't accept the job."
         for at in attempts {
@@ -2120,7 +2124,7 @@ enum IppNet {
                 let uri = "ipp://\(ip):\(port)\(path)"
                 let body = printJobRequest(uri: uri, job: job, doc: jpeg, wMm: at.0 ? wMm : 0, hMm: hMm,
                                            quality: at.1 ? qv : 0, colorMode: at.1 ? cm : "", mediaType: at.1 ? mt : "",
-                                           scaling: scaling, marginMm100: 0)
+                                           scaling: at.2, marginMm100: 0)
                 let r = try post(ip: ip, port: port, path: path, body: body, timeout: 90)
                 if r.http == 200 && r.ipp >= 0 && r.ipp <= 2 { return jobId(r.body) }
                 if r.http == 200 && r.ipp == 0x406 {

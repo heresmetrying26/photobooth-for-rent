@@ -261,7 +261,10 @@ class UsbCameraHelper(private val ctx: Context) {
             method == "GET" && path == "/paper" -> json(out, paperJson(query))
             method == "POST" && path == "/printer/configure" -> json(out, printerConfigureJson())
             method == "POST" && path == "/printer/bluetooth" -> json(out, printerBluetoothJson())
-            method == "GET" && path == "/printer/discover" -> json(out, printerDiscoverJson())
+            method == "GET" && path == "/printer/discover" -> json(out, printerDiscoverJson(query))
+            method == "GET" && path == "/printer/diag/info" -> printerDiagInfo(out)
+            method == "POST" && path == "/printer/diag/probe" -> printerDiagProbe(out, body)
+            method == "POST" && path == "/printer/diag/print" -> printerDiagPrint(out, body)
             method == "POST" && path == "/print" -> printJson(out, body)
             method == "GET" && path == "/camera" -> json(out, listAny())
             method == "POST" && path == "/camera/open" -> json(out, openAny(query.contains("fresh=1")))
@@ -290,7 +293,8 @@ class UsbCameraHelper(private val ctx: Context) {
         val o = JSONObject()
         o.put("ok", true)
         o.put("app", "photobooth4u-print-helper")
-        o.put("version", "1.1.11-android")
+        o.put("version", "1.1.12-android")
+        o.put("printerDiag", true)
         val pb = printBridge
         val printersArr = JSONArray()
         if (pb != null) {
@@ -339,14 +343,71 @@ class UsbCameraHelper(private val ctx: Context) {
         return JSONObject().put("ok", true).put("message", "Bluetooth settings opened.")
     }
 
-    private fun printerDiscoverJson(): JSONObject {
-        val o = JSONObject().put("ok", true)
-        val arr = JSONArray()
-        printBridge?.let { pb ->
-            for (p in pb.getPrinterNames()) arr.put(p)
+    private fun queryParam(query: String, key: String): String {
+        if (query.isBlank()) return ""
+        for (part in query.split('&')) {
+            val eq = part.indexOf('=')
+            val k = if (eq >= 0) part.substring(0, eq) else part
+            if (k == key) {
+                val raw = if (eq >= 0) part.substring(eq + 1) else ""
+                return try { java.net.URLDecoder.decode(raw, "UTF-8") } catch (_: Exception) { raw }
+            }
         }
-        o.put("printers", arr)
-        return o
+        return ""
+    }
+
+    private fun printerDiscoverJson(query: String): JSONObject {
+        val pb = printBridge ?: return JSONObject().put("ok", true).put("printers", JSONArray())
+        val extra = queryParam(query, "ip").split(',').map { it.trim() }.filter { it.isNotEmpty() }
+        return pb.discoverForHelper(extra)
+    }
+
+    private fun printerDiagInfo(out: OutputStream) {
+        val pb = printBridge
+        if (pb == null) {
+            reply(out, 503, "application/json", err("UNAVAILABLE", "Print bridge not available").toByteArray())
+            return
+        }
+        val res = pb.diagNetworkJson().put("ok", true)
+        reply(out, 200, "application/json", res.toString().toByteArray(Charsets.UTF_8))
+    }
+
+    private fun printerDiagProbe(out: OutputStream, body: ByteArray?) {
+        val pb = printBridge
+        if (pb == null) {
+            reply(out, 503, "application/json", err("UNAVAILABLE", "Print bridge not available").toByteArray())
+            return
+        }
+        val req = try {
+            if (body != null && body.isNotEmpty()) JSONObject(String(body, Charsets.UTF_8)) else JSONObject()
+        } catch (_: Exception) {
+            reply(out, 400, "application/json", err("BAD_REQUEST", "Invalid JSON body").toByteArray())
+            return
+        }
+        val ip = req.optString("ip", "").trim()
+        val cases = req.optJSONArray("cases")
+        val res = pb.diagProbeSync(ip, cases)
+        reply(out, 200, "application/json", res.toString().toByteArray(Charsets.UTF_8))
+    }
+
+    private fun printerDiagPrint(out: OutputStream, body: ByteArray?) {
+        val pb = printBridge
+        if (pb == null) {
+            reply(out, 503, "application/json", err("UNAVAILABLE", "Print bridge not available").toByteArray())
+            return
+        }
+        if (body == null || body.isEmpty()) {
+            reply(out, 400, "application/json", err("BAD_REQUEST", "Missing request body").toByteArray())
+            return
+        }
+        val req = try {
+            JSONObject(String(body, Charsets.UTF_8))
+        } catch (_: Exception) {
+            reply(out, 400, "application/json", err("BAD_REQUEST", "Invalid JSON body").toByteArray())
+            return
+        }
+        val res = pb.diagPrintSync(req)
+        reply(out, 200, "application/json", res.toString().toByteArray(Charsets.UTF_8))
     }
 
     private fun printJson(out: OutputStream, body: ByteArray?) {

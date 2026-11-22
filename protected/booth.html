@@ -19493,8 +19493,15 @@
                   </select>
                 </div>
                 <div class="spot-sec-chips" id="spotSecChips"></div>
+                <div class="spot-rot-row" id="spotSecArtRotRow" style="display:none;">
+                  <span style="font-size:11.5px;font-weight:700;color:var(--ink-dim);" id="spotSecArtSelLabel">Splice layout:</span>
+                  <button type="button" class="spot-rot-btn" data-sec-art-rot="0">0&deg; Original</button>
+                  <button type="button" class="spot-rot-btn" data-sec-art-rot="90">+90&deg; &#8635;</button>
+                  <button type="button" class="spot-rot-btn" data-sec-art-rot="180">180&deg;</button>
+                  <button type="button" class="spot-rot-btn" data-sec-art-rot="270">-90&deg; &#8634;</button>
+                </div>
                 <div class="spot-rot-row" id="spotSecRotRow" style="display:none;">
-                  <span style="font-size:11.5px;font-weight:700;color:var(--ink-dim);" id="spotSecSelLabel">Section:</span>
+                  <span style="font-size:11.5px;font-weight:700;color:var(--ink-dim);" id="spotSecSelLabel">Photo only:</span>
                   <button type="button" class="spot-rot-btn" data-sec-rot="0">0&deg; Upright</button>
                   <button type="button" class="spot-rot-btn" data-sec-rot="90">+90&deg; &#8635;</button>
                   <button type="button" class="spot-rot-btn" data-sec-rot="180">180&deg;</button>
@@ -40276,7 +40283,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         return capsChecks[name];
       }
       async function checkHelper(force) {
-        if (!helperOn) { helper = { ok: false, printers: [], checked: 0 }; refreshPrinterHint(); return helper; }
+        if (!helperOn) { helper = { ok: false, printers: [], checked: 0 }; refreshPrinterHint(); try { updateAutoPrintUI(); } catch (e) { } return helper; }
         if (!force && helper.checked && Date.now() - helper.checked < 15000) return helper;
         if (force) {
           Object.keys(capsChecks).forEach(k => delete capsChecks[k]);
@@ -40298,6 +40305,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         helper.printers.forEach(n => { const o = document.createElement('option'); o.value = n; printerList.appendChild(o); });
         fillPrinterSelect();
         refreshPrinterHint();
+        try { updateAutoPrintUI(); } catch (e) { }
         try { refreshPhotoFitUI(); } catch (e) { }
         return helper;
       }
@@ -40388,7 +40396,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             const label = document.createElement('span');
             label.style.cssText = 'flex:1;min-width:160px;';
             if (u.usbDirectName) {
-              label.textContent = (u.name || 'USB Printer') + ' · USB (driverless IPP-over-USB)';
+              label.textContent = (u.name || 'USB Printer') + (u.isSelphy && !u.hasIppUsb ? ' · USB (driverless Canon SELPHY)' : ' · USB (driverless IPP-over-USB)');
               const b = document.createElement('button');
               b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;';
               b.textContent = 'Use this printer';
@@ -40708,6 +40716,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         printerNameInput.value = v;
         savePrinterMap();
         refreshPrinterHint();
+        try { updateAutoPrintUI(); } catch (e) { }
         try { refreshSecondPrinterUI(); } catch (e) { }
         // In the desktop app, selecting a printer is also the setup step: open its
         // driver preferences (Windows) or the helper's available driver options (Mac).
@@ -45014,6 +45023,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (useStation()) return 'Each session goes to the laptop print station by itself.';
         if (helperOn && helper.ok && printSize && helper.printers.includes(printerFor(printSize))) return 'Each session sends a job to the selected printer with no dialog.';
         if (DESKTOP) return printSize && printerFor(printSize) ? 'The app is still looking for “' + printerFor(printSize) + '”. Tap Refresh printer list below. It will never open the Windows print dialog.' : 'Pick a printer for this paper size below and each session prints with no dialog.';
+        if (helperOn && helper.ok) return 'Pick a printer for this paper size below and each session prints with no dialog.';
         if (IOS_APP) {
           const apInfo = (() => { try { return (window.__PBPrint && typeof window.__PBPrint.savedAirPrint === 'function') ? JSON.parse(window.__PBPrint.savedAirPrint() || '{}') : {}; } catch (e) { return {}; } })();
           return apInfo && apInfo.name
@@ -45027,8 +45037,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function updateAutoPrintUI() {
         setTimeout(function () { try { renderPrintSteps(); } catch (e) { } }, 0);
         const show = !!printSettings();
-        autoPrintRow.classList.toggle('hidden', !show || !LAPTOP_PRINT);
-        autoPrintHint.classList.toggle('hidden', !show || !LAPTOP_PRINT);
+        const canAuto = LAPTOP_PRINT || !!(helperOn && helper && helper.ok);
+        autoPrintRow.classList.toggle('hidden', !show || !canAuto);
+        autoPrintHint.classList.toggle('hidden', !show || !canAuto);
         autoPrintToggle.checked = autoPrint;
         autoPrintHint.textContent = autoPrintHintText();
         const pa = document.getElementById('ppAuto'); if (pa) pa.checked = autoPrint;
@@ -68666,6 +68677,7 @@ function fxWavUrl(kind) {
       function chooseList() { return chooseIds.filter(function (id) { return frameById(id); }); }   // frames guests can pick (with Let guests choose)
       var selItem = -1;             // selected frame on the sheet (Setup preview)
       var spotEdit = null;          // { f: frameId, sel: index, sec?: sectionIdx } while fixing a frame's photo spots
+      var layoutEdit = null;        // { f: frameId, sec: sectionIdx } while moving & rotating spliced sections (size locked)
       var FRAME_CACHE = {};         // frameId -> { img, key, punched }
       var MAX_FRAMES = 100, MAX_SPOTS = 40, MAX_SHEET_ITEMS = 10;
       var SHEET_PATTERNS = [
@@ -69242,6 +69254,41 @@ function fxWavUrl(kind) {
         return out;
       }
 
+      // Rigid splice geometry helpers (Move & Rotate ONLY — exact physical size locked, zero stretching!)
+      function sectionHasSplice(sec) {
+        return !!(sec && (normalizeSpotRot(sec.artRot) || typeof sec.dx === 'number' || typeof sec.dy === 'number' || (sec.z || 0) !== 0));
+      }
+      function hasAnySplice(sections) {
+        return Array.isArray(sections) && sections.some(sectionHasSplice);
+      }
+      function sectionDestBox(sec, W, H) {
+        var fw = Math.max(1, W || 1800), fh = Math.max(1, H || 1200);
+        var ar = normalizeSpotRot(sec && sec.artRot);
+        var q = (ar === 90 || ar === 270);
+        var dw = q ? (sec.h * fh / fw) : sec.w;
+        var dh = q ? (sec.w * fw / fh) : sec.h;
+        var cx = (typeof sec.dx === 'number' && isFinite(sec.dx)) ? sec.dx : (sec.x + sec.w / 2);
+        var cy = (typeof sec.dy === 'number' && isFinite(sec.dy)) ? sec.dy : (sec.y + sec.h / 2);
+        return { x: cx - dw / 2, y: cy - dh / 2, w: dw, h: dh, cx: cx, cy: cy, artRot: ar };
+      }
+      function sectionOrder(f) {
+        if (!f || !Array.isArray(f.sections)) return [];
+        return f.sections.map(function (s, i) { return i; }).sort(function (a, b) {
+          return ((f.sections[a].z || 0) - (f.sections[b].z || 0)) || (a - b);
+        });
+      }
+      function bringSectionToFront(f, secIdx) {
+        if (!f || !Array.isArray(f.sections) || !f.sections[secIdx]) return;
+        var maxZ = 0;
+        f.sections.forEach(function (s, i) { if (i !== secIdx && (s.z || 0) >= maxZ) maxZ = (s.z || 0) + 1; });
+        f.sections[secIdx].z = Math.max(1, maxZ);
+        // Keep z compact starting at 0
+        var ord = sectionOrder(f);
+        ord.forEach(function (idx, rank) {
+          if (rank) f.sections[idx].z = rank; else delete f.sections[idx].z;
+        });
+      }
+
       // Keep f.sections spot indices valid after spots are added, split, deleted, or reordered.
       function reconcileFrameSections(f) {
         if (!f || !Array.isArray(f.sections) || !f.sections.length) return;
@@ -69249,10 +69296,11 @@ function fxWavUrl(kind) {
         var assigned = {};
         f.sections.forEach(function (sec) {
           sec.r = normalizeSpotRot(sec.r);
+          var box = sectionDestBox(sec, f.w, f.h);
           var matched = [];
           spots.forEach(function (sp, i) {
             var cx = sp.x + sp.w / 2, cy = sp.y + sp.h / 2;
-            if (cx >= sec.x - 0.01 && cx <= sec.x + sec.w + 0.01 && cy >= sec.y - 0.01 && cy <= sec.y + sec.h + 0.01 && !assigned[i]) {
+            if (cx >= box.x - 0.01 && cx <= box.x + box.w + 0.01 && cy >= box.y - 0.01 && cy <= box.y + box.h + 0.01 && !assigned[i]) {
               matched.push(i); assigned[i] = true;
             }
           });
@@ -69322,6 +69370,7 @@ function fxWavUrl(kind) {
       // Run auto-sectioning on a frame: detect sections, apply inferred rotations, and link duplicate strips.
       function autoSectionFrame(f, img) {
         if (!f || !Array.isArray(f.spots) || f.spots.length < 2) return [];
+        if (Array.isArray(f.sections) && hasAnySplice(f.sections)) resetAllSplicedSections(f);
         var secs = detectFrameSections(f, img);
         if (secs.length <= 1) { delete f.sections; return []; }
         f.sections = secs;
@@ -69339,6 +69388,7 @@ function fxWavUrl(kind) {
       // Apply a built-in section blueprint ('4in1-land', '4in1-port', '2hstrips', 'clear').
       function applySectionBlueprint(f, presetId) {
         if (!f || !Array.isArray(f.spots)) return false;
+        if (Array.isArray(f.sections) && hasAnySplice(f.sections)) resetAllSplicedSections(f);
         if (presetId === 'clear') {
           delete f.sections; delete f.saveCuts;
           return true;
@@ -69378,7 +69428,7 @@ function fxWavUrl(kind) {
         return true;
       }
 
-      // Rotate all spots inside one section together and keep upright spot ordering synced.
+      // Rotate all spots inside one section together (photo only) and keep upright spot ordering synced.
       function rotateSectionSpots(f, secIdx, deg) {
         if (!f || !Array.isArray(f.sections) || !f.sections[secIdx]) return false;
         var sec = f.sections[secIdx], r = normalizeSpotRot(deg);
@@ -69394,6 +69444,137 @@ function fxWavUrl(kind) {
           sec.spots.forEach(function (si, k) { if (f.spots[si]) f.spots[si].s = existing[k]; });
         }
         return true;
+      }
+
+      // Rigid in-place transform for one spliced section (move & rotate ONLY — exact physical size locked, no stretching!)
+      function applySectionTransform(f, secIdx, targetCx, targetCy, targetArtRot, opts) {
+        if (!f || !Array.isArray(f.sections) || !f.sections[secIdx]) return false;
+        opts = opts || {};
+        var sec = f.sections[secIdx];
+        var fw = Math.max(1, f.w || 1800), fh = Math.max(1, f.h || 1200);
+        var oldBox = sectionDestBox(sec, fw, fh);
+        var nextArt = normalizeSpotRot(targetArtRot);
+        var delta = normalizeSpotRot(nextArt - oldBox.artRot);
+        var q = (nextArt === 90 || nextArt === 270);
+        var newW = q ? (sec.h * fh / fw) : sec.w;
+        var newH = q ? (sec.w * fw / fh) : sec.h;
+
+        var cx = (typeof targetCx === 'number' && isFinite(targetCx)) ? targetCx : oldBox.cx;
+        var cy = (typeof targetCy === 'number' && isFinite(targetCy)) ? targetCy : oldBox.cy;
+
+        // Optional gentle magnetic snap to canvas edges & neighbouring sections when dragging
+        if (opts.snap) {
+          var thrX = 0.014, thrY = 0.014;
+          var xTargets = [0, 0.5, 1], yTargets = [0, 0.5, 1];
+          f.sections.forEach(function (other, oi) {
+            if (oi === secIdx) return;
+            var ob = sectionDestBox(other, fw, fh);
+            xTargets.push(ob.x, ob.x + ob.w);
+            yTargets.push(ob.y, ob.y + ob.h);
+          });
+          var bestDx = thrX + 1, snapCx = cx;
+          xTargets.forEach(function (tx) {
+            var dL = Math.abs((cx - newW / 2) - tx);
+            if (dL < bestDx) { bestDx = dL; snapCx = tx + newW / 2; }
+            var dR = Math.abs((cx + newW / 2) - tx);
+            if (dR < bestDx) { bestDx = dR; snapCx = tx - newW / 2; }
+          });
+          cx = snapCx;
+          var bestDy = thrY + 1, snapCy = cy;
+          yTargets.forEach(function (ty) {
+            var dT = Math.abs((cy - newH / 2) - ty);
+            if (dT < bestDy) { bestDy = dT; snapCy = ty + newH / 2; }
+            var dB = Math.abs((cy + newH / 2) - ty);
+            if (dB < bestDy) { bestDy = dB; snapCy = ty - newH / 2; }
+          });
+          cy = snapCy;
+        }
+
+        // Clamp inside the frame canvas so rotated/moved pieces stay cleanly printable
+        if (!opts.noClamp) {
+          cx = newW <= 1 ? Math.max(newW / 2, Math.min(1 - newW / 2, cx)) : 0.5;
+          cy = newH <= 1 ? Math.max(newH / 2, Math.min(1 - newH / 2, cy)) : 0.5;
+        }
+
+        if (!delta && Math.abs(cx - oldBox.cx) < 1e-7 && Math.abs(cy - oldBox.cy) < 1e-7) return false;
+
+        // Rigidly transform every photo spot inside this section in true pixel space (zero stretching!)
+        var oldCxPx = oldBox.cx * fw, oldCyPx = oldBox.cy * fh;
+        var newCxPx = cx * fw, newCyPx = cy * fh;
+        (sec.spots || []).forEach(function (si) {
+          var sp = f.spots[si]; if (!sp) return;
+          var spCx = (sp.x + sp.w / 2) * fw, spCy = (sp.y + sp.h / 2) * fh;
+          var spW = sp.w * fw, spH = sp.h * fh;
+          var ox = spCx - oldCxPx, oy = spCy - oldCyPx;
+          var rx = ox, ry = oy, nw = spW, nh = spH;
+          if (delta === 90) { rx = -oy; ry = ox; nw = spH; nh = spW; }
+          else if (delta === 180) { rx = -ox; ry = -oy; }
+          else if (delta === 270) { rx = oy; ry = -ox; nw = spH; nh = spW; }
+          sp.w = nw / fw;
+          sp.h = nh / fh;
+          sp.x = (newCxPx + rx) / fw - sp.w / 2;
+          sp.y = (newCyPx + ry) / fh - sp.h / 2;
+          if (delta) {
+            var nr = normalizeSpotRot((sp.r || 0) + delta);
+            if (nr) sp.r = nr; else delete sp.r;
+          }
+        });
+
+        var origCx = sec.x + sec.w / 2, origCy = sec.y + sec.h / 2;
+        if (nextArt) sec.artRot = nextArt; else delete sec.artRot;
+        if (Math.abs(cx - origCx) < 1e-5 && Math.abs(cy - origCy) < 1e-5) {
+          delete sec.dx; delete sec.dy;
+        } else {
+          sec.dx = cx; sec.dy = cy;
+        }
+        if (delta) {
+          sec.r = normalizeSpotRot((sec.r || 0) + delta);
+          sec.spots = sortSpotIndicesUpright(f.spots, sec.spots, sec.r);
+          if (frameManual(f) && sec.spots.length >= 2) {
+            var existing = sec.spots.map(function (si) { return f.spots[si].s || 1; }).sort(function (a, b) { return a - b; });
+            sec.spots.forEach(function (si, k) { if (f.spots[si]) f.spots[si].s = existing[k]; });
+          }
+        }
+        return true;
+      }
+
+      function moveSplicedSection(f, secIdx, targetCx, targetCy, snap) {
+        if (!f || !Array.isArray(f.sections) || !f.sections[secIdx]) return false;
+        var sec = f.sections[secIdx];
+        return applySectionTransform(f, secIdx, targetCx, targetCy, normalizeSpotRot(sec.artRot), { snap: !!snap });
+      }
+
+      function setSplicedSectionRot(f, secIdx, targetArtRot) {
+        if (!f || !Array.isArray(f.sections) || !f.sections[secIdx]) return false;
+        var sec = f.sections[secIdx];
+        var box = sectionDestBox(sec, f.w, f.h);
+        return applySectionTransform(f, secIdx, box.cx, box.cy, targetArtRot, {});
+      }
+
+      function rotateSplicedSection(f, secIdx, deltaDeg) {
+        if (!f || !Array.isArray(f.sections) || !f.sections[secIdx]) return false;
+        var cur = normalizeSpotRot(f.sections[secIdx].artRot);
+        var step = (deltaDeg === undefined || deltaDeg === null) ? 90 : Number(deltaDeg);
+        return setSplicedSectionRot(f, secIdx, normalizeSpotRot(cur + step));
+      }
+
+      function resetSplicedSection(f, secIdx) {
+        if (!f || !Array.isArray(f.sections) || !f.sections[secIdx]) return false;
+        var sec = f.sections[secIdx];
+        var changed = applySectionTransform(f, secIdx, sec.x + sec.w / 2, sec.y + sec.h / 2, 0, { noClamp: true });
+        delete sec.dx; delete sec.dy; delete sec.artRot; delete sec.z;
+        return changed;
+      }
+
+      function resetAllSplicedSections(f) {
+        if (!f || !Array.isArray(f.sections)) return false;
+        var any = false;
+        f.sections.forEach(function (sec, idx) {
+          if (sectionHasSplice(sec)) {
+            if (resetSplicedSection(f, idx)) any = true;
+          }
+        });
+        return any;
       }
 
       // Deduplicate identical cuttable sections (e.g. skip a second identical Mini Strip when saving digital QR cuts or splitting frames).
@@ -69450,9 +69631,10 @@ function fxWavUrl(kind) {
       // Crop one section out of a rendered (or original) canvas and auto-rotate it upright.
       function renderUprightSection(src, sec) {
         var W = src.width || src.naturalWidth, H = src.height || src.naturalHeight;
-        var sx = Math.max(0, Math.round(sec.x * W)), sy = Math.max(0, Math.round(sec.y * H));
-        var sw = Math.max(2, Math.min(W - sx, Math.round(sec.w * W)));
-        var sh = Math.max(2, Math.min(H - sy, Math.round(sec.h * H)));
+        var box = sectionDestBox(sec, W, H);
+        var sx = Math.max(0, Math.round(box.x * W)), sy = Math.max(0, Math.round(box.y * H));
+        var sw = Math.max(2, Math.min(W - sx, Math.round(box.w * W)));
+        var sh = Math.max(2, Math.min(H - sy, Math.round(box.h * H)));
         var upRot = (360 - normalizeSpotRot(sec.r)) % 360;
         var quarter = (upRot === 90 || upRot === 270);
         var out = document.createElement('canvas');
@@ -69542,6 +69724,16 @@ function fxWavUrl(kind) {
           applySectionBlueprint: applySectionBlueprint,
           applySectionShotRecipe: applySectionShotRecipe,
           rotateSectionSpots: rotateSectionSpots,
+          sectionDestBox: sectionDestBox,
+          sectionHasSplice: sectionHasSplice,
+          hasAnySplice: hasAnySplice,
+          bringSectionToFront: bringSectionToFront,
+          moveSplicedSection: moveSplicedSection,
+          setSplicedSectionRot: setSplicedSectionRot,
+          rotateSplicedSection: rotateSplicedSection,
+          resetSplicedSection: resetSplicedSection,
+          resetAllSplicedSections: resetAllSplicedSections,
+          drawSplicedFrameImage: drawSplicedFrameImage,
           reconcileFrameSections: reconcileFrameSections,
           uniqueFrameSections: uniqueFrameSections,
           renderUprightSection: renderUprightSection,
@@ -69818,9 +70010,23 @@ function fxWavUrl(kind) {
         return out;
       }
       // A spot in pixels of a W x H frame: centre, size, angle (radians).
-      // Drawing order of a frame's spots: lowest layer first (layer = spot.z, then its number).
+      // Drawing order of a frame's spots: lowest layer first (section z-order when spliced, then spot.z, then its number).
       function spotOrder(f) {
-        return f.spots.map(function (s, i) { return i; }).sort(function (a, b) { return ((f.spots[a].z || 0) - (f.spots[b].z || 0)) || (a - b); });
+        var secZ = null;
+        if (f && Array.isArray(f.sections) && hasAnySplice(f.sections)) {
+          secZ = {};
+          f.sections.forEach(function (sec) {
+            var z = sec.z || 0;
+            (sec.spots || []).forEach(function (si) { secZ[si] = z; });
+          });
+        }
+        return f.spots.map(function (s, i) { return i; }).sort(function (a, b) {
+          if (secZ) {
+            var dsz = (secZ[a] || 0) - (secZ[b] || 0);
+            if (dsz) return dsz;
+          }
+          return ((f.spots[a].z || 0) - (f.spots[b].z || 0)) || (a - b);
+        });
       }
       function spotPx(sp, W, H) {
         return { cx: (sp.x + sp.w / 2) * W, cy: (sp.y + sp.h / 2) * H, w: sp.w * W, h: sp.h * H, a: (sp.a || 0) * Math.PI / 180 };
@@ -69830,45 +70036,113 @@ function fxWavUrl(kind) {
         var dx = px - g.cx, dy = py - g.cy, c = Math.cos(g.a), sn = Math.sin(g.a);
         return { x: dx * c + dy * sn, y: -dx * sn + dy * c };
       }
+      // Draw one spliced section crop from img onto x at its destination center/rotation (true physical size, zero stretching!)
+      function drawOneSplicedSection(x, img, W, H, sec) {
+        var iw = img.width || img.naturalWidth || W, ih = img.height || img.naturalHeight || H;
+        var sx = Math.round(sec.x * iw), sy = Math.round(sec.y * ih);
+        var sw = Math.round(sec.w * iw), sh = Math.round(sec.h * ih);
+        var dw = sec.w * W, dh = sec.h * H;
+        if (dw < 2 || dh < 2 || sw < 2 || sh < 2) return;
+        var box = sectionDestBox(sec, W, H);
+        x.save();
+        x.translate(box.cx * W, box.cy * H);
+        if (box.artRot) x.rotate(box.artRot * Math.PI / 180);
+        x.imageSmoothingEnabled = true;
+        x.imageSmoothingQuality = 'high';
+        x.drawImage(img, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh);
+        x.restore();
+      }
+      // Draw the frame artwork onto (0, 0, W, H), applying any in-place spliced section moves/rotations (size locked, zero stretch).
+      function drawSplicedFrameImage(x, img, W, H, sections) {
+        if (!hasAnySplice(sections)) {
+          x.drawImage(img, 0, 0, W, H);
+          return;
+        }
+        x.fillStyle = '#ffffff';
+        x.fillRect(0, 0, W, H);
+        var ord = sections.map(function (s, i) { return i; }).sort(function (a, b) {
+          return ((sections[a].z || 0) - (sections[b].z || 0)) || (a - b);
+        });
+        ord.forEach(function (idx) { drawOneSplicedSection(x, img, W, H, sections[idx]); });
+      }
+      function punchOneSpotOnCanvas(x, cW, cH, sp, key) {
+        var g = spotPx(sp, cW, cH), ca = Math.abs(Math.cos(g.a)), sa = Math.abs(Math.sin(g.a));
+        var hw = (g.w * ca + g.h * sa) / 2, hh = (g.w * sa + g.h * ca) / 2;
+        var x0 = Math.max(0, Math.floor(g.cx - hw) - 2), y0 = Math.max(0, Math.floor(g.cy - hh) - 2);
+        var x1 = Math.min(cW, Math.ceil(g.cx + hw) + 2), y1 = Math.min(cH, Math.ceil(g.cy + hh) + 2);
+        if (x1 <= x0 || y1 <= y0) return;
+        var id = x.getImageData(x0, y0, x1 - x0, y1 - y0), d = id.data, rw = x1 - x0, turned = g.a !== 0;
+        for (var i = 0, p = 0; i < d.length; i += 4, p++) {
+          if (turned) {
+            var L = spotLocal(g, x0 + (p % rw) + 0.5, y0 + Math.floor(p / rw) + 0.5);
+            if (Math.abs(L.x) > g.w / 2 + 2 || Math.abs(L.y) > g.h / 2 + 2) continue;
+          }
+          if (key) {
+            var kd = keyDist(d[i], d[i + 1], d[i + 2], key);
+            if (kd <= key.t) { d[i + 3] = 0; continue; }
+            if (kd <= key.t * 1.35) { d[i + 3] = Math.round(d[i + 3] * (kd - key.t) / (key.t * 0.35)); continue; }
+          }
+          var mn = Math.min(d[i], d[i + 1], d[i + 2]), mx = Math.max(d[i], d[i + 1], d[i + 2]);
+          if (mx - mn > 34) continue;                       // colored design over the box edge stays
+          if (mn >= 236) d[i + 3] = 0;
+          else if (mn >= 205) d[i + 3] = Math.round(d[i + 3] * (236 - mn) / 31);
+        }
+        x.putImageData(id, x0, y0);
+      }
       // The frame with its photo spots made see-through (white boxes, or the
       // picked window colour, included). Turned spots punch only inside the turned box.
-      function punchFrame(img, spots, key) {
+      function punchFrame(img, spots, key, sections) {
         var c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
-        var x = c.getContext('2d'); x.drawImage(img, 0, 0);
+        var x = c.getContext('2d');
         try {
-          spots.forEach(function (sp) {
-            var g = spotPx(sp, c.width, c.height), ca = Math.abs(Math.cos(g.a)), sa = Math.abs(Math.sin(g.a));
-            var hw = (g.w * ca + g.h * sa) / 2, hh = (g.w * sa + g.h * ca) / 2;
-            var x0 = Math.max(0, Math.floor(g.cx - hw) - 2), y0 = Math.max(0, Math.floor(g.cy - hh) - 2);
-            var x1 = Math.min(c.width, Math.ceil(g.cx + hw) + 2), y1 = Math.min(c.height, Math.ceil(g.cy + hh) + 2);
-            if (x1 <= x0 || y1 <= y0) return;
-            var id = x.getImageData(x0, y0, x1 - x0, y1 - y0), d = id.data, rw = x1 - x0, turned = g.a !== 0;
-            for (var i = 0, p = 0; i < d.length; i += 4, p++) {
-              if (turned) {
-                var L = spotLocal(g, x0 + (p % rw) + 0.5, y0 + Math.floor(p / rw) + 0.5);
-                if (Math.abs(L.x) > g.w / 2 + 2 || Math.abs(L.y) > g.h / 2 + 2) continue;
-              }
-              if (key) {
-                var kd = keyDist(d[i], d[i + 1], d[i + 2], key);
-                if (kd <= key.t) { d[i + 3] = 0; continue; }
-                if (kd <= key.t * 1.35) { d[i + 3] = Math.round(d[i + 3] * (kd - key.t) / (key.t * 0.35)); continue; }
-              }
-              var mn = Math.min(d[i], d[i + 1], d[i + 2]), mx = Math.max(d[i], d[i + 1], d[i + 2]);
-              if (mx - mn > 34) continue;                       // colored design over the box edge stays
-              if (mn >= 236) d[i + 3] = 0;
-              else if (mn >= 205) d[i + 3] = Math.round(d[i + 3] * (236 - mn) / 31);
-            }
-            x.putImageData(id, x0, y0);
-          });
+          if (hasAnySplice(sections)) {
+            // Layered splice rendering: draw each section in z-order and punch ONLY its own spots right after,
+            // so a top section cleanly covers any underlying section and never gets punched by an underlying spot!
+            x.fillStyle = '#ffffff';
+            x.fillRect(0, 0, c.width, c.height);
+            var punchedIdx = {};
+            var ord = sections.map(function (s, i) { return i; }).sort(function (a, b) {
+              return ((sections[a].z || 0) - (sections[b].z || 0)) || (a - b);
+            });
+            ord.forEach(function (idx) {
+              var sec = sections[idx];
+              drawOneSplicedSection(x, img, c.width, c.height, sec);
+              (sec.spots || []).forEach(function (si) {
+                if (!spots[si]) return;
+                punchedIdx[si] = true;
+                punchOneSpotOnCanvas(x, c.width, c.height, spots[si], key);
+              });
+            });
+            spots.forEach(function (sp, si) {
+              if (!punchedIdx[si]) punchOneSpotOnCanvas(x, c.width, c.height, sp, key);
+            });
+          } else {
+            x.drawImage(img, 0, 0);
+            spots.forEach(function (sp) { punchOneSpotOnCanvas(x, c.width, c.height, sp, key); });
+          }
         } catch (e) { }
         return c;
       }
-      function spotsKey(f) { return f.spots.map(function (s) { return [s.x, s.y, s.w, s.h].map(function (v) { return v.toFixed(4); }).join(',') + (s.a ? '@' + s.a : '') + (s.r ? 'r' + normalizeSpotRot(s.r) : '') + (s.z ? '^' + s.z : ''); }).join(';') + (f.key ? '#' + f.key.c.join('.') + ':' + f.key.t : ''); }
+      function spotsKey(f) {
+        var sk = f.spots.map(function (s) { return [s.x, s.y, s.w, s.h].map(function (v) { return v.toFixed(4); }).join(',') + (s.a ? '@' + s.a : '') + (s.r ? 'r' + normalizeSpotRot(s.r) : '') + (s.z ? '^' + s.z : ''); }).join(';') + (f.key ? '#' + f.key.c.join('.') + ':' + f.key.t : '');
+        if (Array.isArray(f.sections) && hasAnySplice(f.sections)) {
+          var ak = f.sections.map(function (sec, idx) {
+            if (!sectionHasSplice(sec)) return '';
+            var ar = normalizeSpotRot(sec.artRot);
+            var dx = typeof sec.dx === 'number' ? sec.dx.toFixed(4) : '';
+            var dy = typeof sec.dy === 'number' ? sec.dy.toFixed(4) : '';
+            var z = sec.z || 0;
+            return idx + ':' + ar + ':' + dx + ':' + dy + ':' + z;
+          }).filter(Boolean).join(',');
+          if (ak) sk += '|sp:' + ak;
+        }
+        return sk;
+      }
       function frameArt(f) {
         var img = assetImg(f.id); if (!img) return null;
         var c = FRAME_CACHE[f.id], key = spotsKey(f);
         if (c && c.img === img && c.key === key) return c;
-        c = FRAME_CACHE[f.id] = { img: img, key: key, punched: punchFrame(img, f.spots, f.key), masks: null };
+        c = FRAME_CACHE[f.id] = { img: img, key: key, punched: punchFrame(img, f.spots, f.key, f.sections), masks: null };
         return c;
       }
       // Each photo stays inside its own window: the see-through areas of the
@@ -70109,7 +70383,7 @@ function fxWavUrl(kind) {
       function useFrames(ids) {
         ids = ids.filter(function (id) { return frameById(id); });
         if (!ids.length) return;
-        spotEdit = null;
+        spotEdit = null; layoutEdit = null;
         if (ids.length === 1) {
           chooseIds = [];
           activeFrameId = ids[0]; setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); return;
@@ -70155,8 +70429,9 @@ function fxWavUrl(kind) {
       var spotEditControls = document.getElementById('spotEditControls');
       function framesChanged(opts) {
         opts = opts || {};
-        if (!myFrames.length) { activeFrameId = null; sheet.items = []; spotEdit = null; }
+        if (!myFrames.length) { activeFrameId = null; sheet.items = []; spotEdit = null; layoutEdit = null; }
         else if (!frameById(activeFrameId)) activeFrameId = myFrames[0].id;
+        if (layoutEdit && !frameById(layoutEdit.f)) layoutEdit = null;
         sheet.items = sheet.items.filter(function (it) { return frameById(it.f); });
         chooseIds = chooseIds.filter(function (id) { return frameById(id); });
         if (myFrames.length && !liveSheetItems().length) applyPattern(sheet.pattern);   // Frame collage card shows a real sheet
@@ -70238,9 +70513,33 @@ function fxWavUrl(kind) {
           }
           top.append(th, info);
           var btns = document.createElement('div'); btns.className = 'frame-ctx-btns';
+          var hasSecs = Array.isArray(f.sections) && f.sections.length > 1;
+          var isLayEdit = !!(layoutEdit && layoutEdit.f === f.id);
+          if (hasSecs) {
+            var layEd = document.createElement('button'); layEd.type = 'button';
+            layEd.className = 'action-btn mini' + (isLayEdit ? ' primary' : '');
+            layEd.textContent = isLayEdit ? 'Done editing layout' : '\uD83D\uDCD0 Edit layout';
+            layEd.title = 'Move and rotate spliced sections directly in the preview frame (size locked so print cuts stay accurate)';
+            layEd.addEventListener('click', function () {
+              if (layoutEdit && layoutEdit.f === f.id) {
+                layoutEdit = null;
+                refreshFrameUI(); renderSetupPreview();
+                return;
+              }
+              spotEdit = null;
+              var initSec = (typeof f._selSec === 'number' && f._selSec >= 0 && f._selSec < f.sections.length) ? f._selSec : 0;
+              layoutEdit = { f: f.id, sec: initSec };
+              f._selSec = initSec;
+              framesChanged({ layout: 'myframe' });
+              if (window.innerWidth < 900 && window.pbDockPreview) window.pbDockPreview(true);
+              showToast('Edit layout ON: drag any spliced section in the preview to move it, or tap Rotate 90\u00B0. Size is locked (no resizing).', 5500);
+            });
+            btns.appendChild(layEd);
+          }
           var ed = document.createElement('button'); ed.type = 'button'; ed.className = 'action-btn mini'; ed.textContent = spotEdit && spotEdit.f === f.id ? 'Done editing spots' : 'Edit photo spots';
           ed.addEventListener('click', function () {
             if (spotEdit && spotEdit.f === f.id) { spotEdit = null; refreshFrameUI(); renderSetupPreview(); return; }
+            layoutEdit = null;
             spotEdit = { f: f.id, sel: -1 }; framesChanged({ layout: 'myframe' });
             if (window.innerWidth < 900 && window.pbDockPreview) window.pbDockPreview(true);
             showToast('Tap a box, then drag it, resize it (corner square), tilt it (round button at the bottom), split it or change its order. Boxes are where the photos go.', 6500);
@@ -70254,27 +70553,120 @@ function fxWavUrl(kind) {
             myFrames = myFrames.filter(function (x) { return x.id !== f.id; });
             chooseIds = chooseIds.filter(function (id) { return id !== f.id; });
             if (spotEdit && spotEdit.f === f.id) spotEdit = null;
+            if (layoutEdit && layoutEdit.f === f.id) layoutEdit = null;
             framesChanged();
           });
           btns.append(ed, prevBtn, rm);
           ctx.append(top, btns);
-          // Multi-section summary & Phase 3 actions (save upright cuts to QR/gallery, split into separate frames)
-          if (Array.isArray(f.sections) && f.sections.length > 1) {
+          // Multi-section in-place splicing & layout editor (Option A: Move & Rotate only, size locked, single combined frame)
+          if (hasSecs) {
+            if (typeof f._selSec !== 'number' || f._selSec < 0 || f._selSec >= f.sections.length) f._selSec = 0;
+            if (layoutEdit && layoutEdit.f === f.id && typeof layoutEdit.sec === 'number' && layoutEdit.sec >= 0 && layoutEdit.sec < f.sections.length) {
+              f._selSec = layoutEdit.sec;
+            } else if (spotEdit && spotEdit.f === f.id && typeof spotEdit.sec === 'number' && spotEdit.sec >= 0 && spotEdit.sec < f.sections.length) {
+              f._selSec = spotEdit.sec;
+            }
+            var curSecIdx = f._selSec;
+            var curSec = f.sections[curSecIdx] || f.sections[0];
             var sBox = document.createElement('div'); sBox.className = 'frame-sec-summary';
             var sHead = document.createElement('div'); sHead.className = 'sec-head';
-            var sTitle = document.createElement('b'); sTitle.textContent = '\u2728 ' + f.sections.length + ' sections detected (' + frameShotCount(f) + ' shot' + (frameShotCount(f) === 1 ? '' : 's') + ')';
-            var sSplitBtn = document.createElement('button'); sSplitBtn.type = 'button'; sSplitBtn.className = 'action-btn mini';
-            sSplitBtn.textContent = '\u2702\uFE0F Split into separate frames';
-            sSplitBtn.title = 'Crop each unique section upright and add it to Your frames (great for Guest Choice, Keychains or Frame collage)';
-            sSplitBtn.addEventListener('click', function () { splitFrameIntoSections(f); });
-            sHead.append(sTitle, sSplitBtn);
-            var sTags = document.createElement('div'); sTags.className = 'sec-tags';
-            f.sections.forEach(function (sec) {
-              var tg = document.createElement('span'); tg.className = 'sec-tag';
-              tg.textContent = sec.name + ' (' + sec.spots.length + ') \u00B7 ' + spotRotLabel(sec.r);
+            var sTitle = document.createElement('b');
+            sTitle.textContent = isLayEdit
+              ? ('\uD83D\uDCD0 Edit layout ON \u2014 drag to move or rotate any section (size locked)')
+              : ('\u2728 ' + f.sections.length + ' spliced sections (' + frameShotCount(f) + ' shot' + (frameShotCount(f) === 1 ? '' : 's') + ') \u2014 tap Edit layout to move & rotate');
+            sHead.appendChild(sTitle);
+            if (hasAnySplice(f.sections)) {
+              var sResetBtn = document.createElement('button'); sResetBtn.type = 'button'; sResetBtn.className = 'action-btn mini';
+              sResetBtn.textContent = '\u21BA Reset layout';
+              sResetBtn.title = 'Snap all spliced sections back to their original positions and 0\u00B0 rotation';
+              sResetBtn.addEventListener('click', function () {
+                resetAllSplicedSections(f);
+                framesChanged({ layout: 'myframe' });
+                showToast('Layout reset to original positions.', 2200);
+              });
+              sHead.appendChild(sResetBtn);
+            }
+
+            var sTags = document.createElement('div'); sTags.className = 'spot-sec-chips'; sTags.style.marginTop = '6px';
+            f.sections.forEach(function (sec, idx) {
+              var tg = document.createElement('button'); tg.type = 'button';
+              var isOn = idx === curSecIdx;
+              tg.className = 'spot-sec-chip' + (isOn ? ' active' : '');
+              var ar = normalizeSpotRot(sec.artRot);
+              var moved = (typeof sec.dx === 'number' || typeof sec.dy === 'number');
+              var rotBadge = (ar ? ('Layout ' + spotRotLabel(ar) + ' \u00B7 ') : (moved ? 'Moved \u00B7 ' : '')) + 'Photo ' + spotRotLabel(sec.r);
+              tg.innerHTML = '<span>' + sec.name + ' (' + sec.spots.length + ')</span><span class="sec-rot">' + rotBadge + '</span>';
+              tg.addEventListener('click', function () {
+                f._selSec = idx;
+                if (!spotEdit) {
+                  layoutEdit = { f: f.id, sec: idx };
+                  bringSectionToFront(f, idx);
+                } else if (spotEdit.f === f.id) {
+                  spotEdit.sec = idx;
+                  if (sec.spots && sec.spots.length) spotEdit.sel = sec.spots[0];
+                }
+                refreshFrameUI();
+                renderSetupPreview();
+              });
               sTags.appendChild(tg);
             });
-            var sActs = document.createElement('div'); sActs.className = 'sec-acts';
+
+            // Row 1: Splice & rotate section layout (move & rotate only, exact print size locked, zero stretching)
+            var artRow = document.createElement('div'); artRow.className = 'spot-rot-row'; artRow.style.marginTop = '8px';
+            var artLbl = document.createElement('span');
+            artLbl.style.cssText = 'font-size:11.5px;font-weight:700;color:var(--ink-dim);';
+            artLbl.textContent = curSec.name + ' \u2014 Rotate layout (size locked):';
+            artRow.appendChild(artLbl);
+            var curAr = normalizeSpotRot(curSec.artRot);
+            [[0, '0\u00B0 Original'], [90, '+90\u00B0 \u21BB'], [180, '180\u00B0'], [270, '-90\u00B0 \u21BA']].forEach(function (pair) {
+              var b = document.createElement('button'); b.type = 'button';
+              b.className = 'spot-rot-btn' + (curAr === pair[0] ? ' active' : '');
+              b.textContent = pair[1];
+              b.title = 'Rotate ' + curSec.name + ' keeping its exact physical size (no stretching). Turn on Edit layout to drag it anywhere.';
+              b.addEventListener('click', function () {
+                if (!spotEdit) layoutEdit = { f: f.id, sec: curSecIdx };
+                bringSectionToFront(f, curSecIdx);
+                if (setSplicedSectionRot(f, curSecIdx, pair[0])) {
+                  framesChanged({ layout: 'myframe' });
+                  showToast(curSec.name + ' rotated to ' + spotRotLabel(pair[0]) + ' (size locked). Drag in preview to move it.', 2500);
+                }
+              });
+              artRow.appendChild(b);
+            });
+            if (sectionHasSplice(curSec)) {
+              var rstPiece = document.createElement('button'); rstPiece.type = 'button';
+              rstPiece.className = 'spot-rot-btn';
+              rstPiece.textContent = 'Reset piece';
+              rstPiece.addEventListener('click', function () {
+                resetSplicedSection(f, curSecIdx);
+                framesChanged({ layout: 'myframe' });
+                showToast(curSec.name + ' reset to original position.', 2000);
+              });
+              artRow.appendChild(rstPiece);
+            }
+
+            // Row 2: Rotate guest photo only (keeps template border untouched)
+            var phRow = document.createElement('div'); phRow.className = 'spot-rot-row'; phRow.style.marginTop = '6px';
+            var phLbl = document.createElement('span');
+            phLbl.style.cssText = 'font-size:11.5px;font-weight:700;color:var(--ink-dim);';
+            phLbl.textContent = curSec.name + ' \u2014 Rotate photo only:';
+            phRow.appendChild(phLbl);
+            var curPr = normalizeSpotRot(curSec.r);
+            [[0, '0\u00B0 Upright'], [90, '+90\u00B0 \u21BB'], [180, '180\u00B0'], [270, '-90\u00B0 \u21BA']].forEach(function (pair) {
+              var b = document.createElement('button'); b.type = 'button';
+              b.className = 'spot-rot-btn' + (curPr === pair[0] ? ' active' : '');
+              b.textContent = pair[1];
+              b.title = 'Rotate only the guest photo inside ' + curSec.name + ' (keeps the frame border as-is)';
+              b.addEventListener('click', function () {
+                if (rotateSectionSpots(f, curSecIdx, pair[0])) {
+                  framesChanged({ layout: 'myframe' });
+                  showToast(curSec.name + ' photo rotated to ' + spotRotLabel(pair[0]) + '.', 2200);
+                }
+              });
+              phRow.appendChild(b);
+            });
+
+            var sActs = document.createElement('div'); sActs.className = 'sec-acts'; sActs.style.marginTop = '8px';
             var cutLbl = document.createElement('label');
             cutLbl.style.cssText = 'display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer;';
             var cutCb = document.createElement('input'); cutCb.type = 'checkbox'; cutCb.checked = !!f.saveCuts;
@@ -70285,7 +70677,7 @@ function fxWavUrl(kind) {
             });
             cutLbl.append(cutCb, document.createTextNode('Also save cut upright pieces to QR & Gallery (skips duplicate strips)'));
             sActs.appendChild(cutLbl);
-            sBox.append(sHead, sTags, sActs);
+            sBox.append(sHead, sTags, artRow, phRow, sActs);
             ctx.appendChild(sBox);
           } else if (f.spots.length >= 2) {
             var autoRow = document.createElement('div');
@@ -70681,6 +71073,7 @@ function fxWavUrl(kind) {
       var spotSizeEl = document.getElementById('spotSize'), spotNum = { x: 'spotX', y: 'spotY', w: 'spotW', h: 'spotH' };
       function refreshSpotSecUI() {
         var chipsEl = document.getElementById('spotSecChips');
+        var artRotRow = document.getElementById('spotSecArtRotRow');
         var rotRow = document.getElementById('spotSecRotRow');
         var recRow = document.getElementById('spotSecRecipes');
         var showRow = document.getElementById('spotShowSecRow');
@@ -70689,34 +71082,52 @@ function fxWavUrl(kind) {
         var secs = (f && Array.isArray(f.sections) && f.sections.length > 1) ? f.sections : [];
         chipsEl.innerHTML = '';
         if (!secs.length) {
+          if (artRotRow) artRotRow.style.display = 'none';
           if (rotRow) rotRow.style.display = 'none';
           if (recRow) recRow.style.display = 'none';
           if (showRow) showRow.style.display = 'none';
           return;
         }
-        if (spotEdit && (typeof spotEdit.sec !== 'number' || spotEdit.sec >= secs.length)) spotEdit.sec = -1;
+        if (spotEdit && (typeof spotEdit.sec !== 'number' || spotEdit.sec < 0 || spotEdit.sec >= secs.length)) {
+          spotEdit.sec = (f && typeof f._selSec === 'number' && f._selSec >= 0 && f._selSec < secs.length) ? f._selSec : 0;
+        }
         secs.forEach(function (sec, idx) {
           var b = document.createElement('button'); b.type = 'button';
           var isOn = spotEdit && spotEdit.sec === idx;
           b.className = 'spot-sec-chip' + (isOn ? ' active' : '');
-          b.innerHTML = '<span>' + sec.name + ' (' + sec.spots.length + ')</span><span class="sec-rot">' + spotRotLabel(sec.r) + '</span>';
+          var ar = normalizeSpotRot(sec.artRot);
+          var badge = (ar ? ('Layout ' + spotRotLabel(ar) + ' \u00B7 ') : '') + spotRotLabel(sec.r);
+          b.innerHTML = '<span>' + sec.name + ' (' + sec.spots.length + ')</span><span class="sec-rot">' + badge + '</span>';
           b.addEventListener('click', function () {
             if (!spotEdit) return;
-            spotEdit.sec = (spotEdit.sec === idx) ? -1 : idx;
-            if (spotEdit.sec >= 0 && sec.spots.length) spotEdit.sel = sec.spots[0];
+            spotEdit.sec = idx;
+            if (f) f._selSec = idx;
+            if (sec.spots.length) spotEdit.sel = sec.spots[0];
             refreshSpotSize();
+            refreshFrameUI();
             renderSetupPreview();
           });
           chipsEl.appendChild(b);
         });
         if (recRow) recRow.style.display = '';
         if (showRow) showRow.style.display = '';
-        var selSec = (spotEdit && spotEdit.sec >= 0) ? secs[spotEdit.sec] : null;
+        var selSec = (spotEdit && spotEdit.sec >= 0) ? secs[spotEdit.sec] : secs[0];
+        if (artRotRow) {
+          artRotRow.style.display = selSec ? 'flex' : 'none';
+          if (selSec) {
+            var albl = document.getElementById('spotSecArtSelLabel');
+            if (albl) albl.textContent = selSec.name + ' \u2014 Splice layout:';
+            var curAr = normalizeSpotRot(selSec.artRot);
+            artRotRow.querySelectorAll('[data-sec-art-rot]').forEach(function (btn) {
+              btn.classList.toggle('active', Number(btn.dataset.secArtRot) === curAr);
+            });
+          }
+        }
         if (rotRow) {
           rotRow.style.display = selSec ? 'flex' : 'none';
           if (selSec) {
             var lbl = document.getElementById('spotSecSelLabel');
-            if (lbl) lbl.textContent = selSec.name + ' (' + selSec.spots.length + '):';
+            if (lbl) lbl.textContent = selSec.name + ' \u2014 Photo only:';
             var curSr = normalizeSpotRot(selSec.r);
             rotRow.querySelectorAll('[data-sec-rot]').forEach(function (btn) {
               btn.classList.toggle('active', Number(btn.dataset.secRot) === curSr);
@@ -70785,6 +71196,18 @@ function fxWavUrl(kind) {
           showToast(val === 'clear' ? 'Sections cleared.' : ('Applied blueprint (' + (f.sections ? f.sections.length : 0) + ' sections, ' + frameShotCount(f) + ' shots).'), 3500);
         });
       }
+      var spotSecArtRotRowEl = document.getElementById('spotSecArtRotRow');
+      if (spotSecArtRotRowEl) {
+        spotSecArtRotRowEl.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-sec-art-rot]'); if (!b || !spotEdit || spotEdit.sec < 0) return;
+          var f = frameById(spotEdit.f); if (!f) return;
+          var r = normalizeSpotRot(b.dataset.secArtRot);
+          if (setSplicedSectionRot(f, spotEdit.sec, r)) {
+            framesChanged({ layout: 'myframe' });
+            showToast(f.sections[spotEdit.sec].name + ' layout spliced & rotated to ' + spotRotLabel(r) + '.', 2200);
+          }
+        });
+      }
       var spotSecRotRowEl = document.getElementById('spotSecRotRow');
       if (spotSecRotRowEl) {
         spotSecRotRowEl.addEventListener('click', function (e) {
@@ -70793,7 +71216,7 @@ function fxWavUrl(kind) {
           var r = normalizeSpotRot(b.dataset.secRot);
           if (rotateSectionSpots(f, spotEdit.sec, r)) {
             framesChanged({ layout: 'myframe' });
-            showToast(f.sections[spotEdit.sec].name + ' rotated to ' + spotRotLabel(r) + '.', 2200);
+            showToast(f.sections[spotEdit.sec].name + ' photo rotated to ' + spotRotLabel(r) + '.', 2200);
           }
         });
       }
@@ -70852,12 +71275,12 @@ function fxWavUrl(kind) {
       var SNAP_CACHE = { id: '', key: '', w: 0, h: 0, cls: null };
       function snapClasses(f) {
         var img = assetImg(f.id); if (!img) return null;
-        var kk = f.key ? f.key.c.join('.') + ':' + f.key.t : '';
+        var kk = (f.key ? f.key.c.join('.') + ':' + f.key.t : '') + '|' + spotsKey(f);
         if (SNAP_CACHE.id === f.id && SNAP_CACHE.key === kk && SNAP_CACHE.img === img) return SNAP_CACHE;
         var sc = Math.min(1, 1200 / Math.max(img.width, img.height));
         var w = Math.max(8, Math.round(img.width * sc)), h = Math.max(8, Math.round(img.height * sc));
         var c = document.createElement('canvas'); c.width = w; c.height = h;
-        var x = c.getContext('2d'); x.drawImage(img, 0, 0, w, h);
+        var x = c.getContext('2d'); drawSplicedFrameImage(x, img, w, h, f.sections);
         var d = x.getImageData(0, 0, w, h).data, cls = new Uint8Array(w * h);
         for (var i = 0; i < w * h; i++) cls[i] = slotPixel(d[i * 4], d[i * 4 + 1], d[i * 4 + 2], d[i * 4 + 3], f.key) ? 1 : 0;
         SNAP_CACHE = { id: f.id, key: kk, img: img, w: w, h: h, cls: cls };
@@ -71113,9 +71536,68 @@ function fxWavUrl(kind) {
         s.w = Math.max(0.03, Math.min(1, wpx / f.w)); s.h = Math.max(0.02, Math.min(1, hpx / f.h));
         s.x = cx / f.w - s.w / 2; s.y = cy / f.h - s.h / 2;
       }
+      function sectionAtPoint(f, pt) {
+        if (!f || !Array.isArray(f.sections) || f.sections.length <= 1) return -1;
+        // Hit-test top-most layer first
+        var ord = sectionOrder(f).reverse();
+        for (var k = 0; k < ord.length; k++) {
+          var idx = ord[k], box = sectionDestBox(f.sections[idx], f.w, f.h);
+          if (pt.x >= box.x && pt.x <= box.x + box.w && pt.y >= box.y && pt.y <= box.y + box.h) return idx;
+        }
+        return -1;
+      }
       setupPreviewCanvas.addEventListener('pointerdown', function (e) {
         if (drag) return;                                       // a sticker is being moved
         var pt = previewPoint(e);
+        if (currentLayout === 'myframe') {
+          var af = spotEdit ? frameById(spotEdit.f) : (layoutEdit ? frameById(layoutEdit.f) : activeFrame());
+          // Check on-canvas spliced section quick-rotate buttons first (if visible)
+          if (af && Array.isArray(af._secActionBtns) && af._secActionBtns.length) {
+            var cW = setupPreviewCanvas.width, cH = setupPreviewCanvas.height;
+            var px = pt.x * cW, py = pt.y * cH;
+            for (var bi = 0; bi < af._secActionBtns.length; bi++) {
+              var ab = af._secActionBtns[bi];
+              if (px >= ab.x && px <= ab.x + ab.w && py >= ab.y && py <= ab.y + ab.h) {
+                e.preventDefault();
+                var sIdx = ab.sec;
+                var secObj = af.sections && af.sections[sIdx];
+                if (ab.act === 'art90' && secObj) {
+                  bringSectionToFront(af, sIdx);
+                  rotateSplicedSection(af, sIdx, 90);
+                  framesChanged({ layout: 'myframe' });
+                  showToast(secObj.name + ' rotated to ' + spotRotLabel(secObj.artRot) + ' (size locked).', 2200);
+                } else if (ab.act === 'photo90' && secObj) {
+                  var nextPr = normalizeSpotRot((secObj.r || 0) + 90);
+                  rotateSectionSpots(af, sIdx, nextPr);
+                  framesChanged({ layout: 'myframe' });
+                  showToast(secObj.name + ' photo rotated to ' + spotRotLabel(nextPr) + '.', 2200);
+                } else if (ab.act === 'done') {
+                  layoutEdit = null;
+                  refreshFrameUI();
+                  renderSetupPreview();
+                }
+                return;
+              }
+            }
+          }
+          // Edit layout mode (Option A: Move & Rotate ONLY — size strictly locked!)
+          if (!spotEdit && layoutEdit && af && layoutEdit.f === af.id && Array.isArray(af.sections) && af.sections.length > 1) {
+            var hitSec = sectionAtPoint(af, pt);
+            if (hitSec >= 0) {
+              e.preventDefault();
+              layoutEdit.sec = hitSec;
+              af._selSec = hitSec;
+              bringSectionToFront(af, hitSec);
+              var gBox = sectionDestBox(af.sections[hitSec], af.w, af.h);
+              fdrag = { id: e.pointerId, kind: 'secMove', fId: af.id, sec: hitSec, dx: gBox.cx - pt.x, dy: gBox.cy - pt.y };
+              setupPreviewCanvas.setPointerCapture(e.pointerId);
+              setupPreviewCanvas.style.cursor = 'grabbing';
+              refreshFrameUI();
+              renderSetupPreview();
+              return;
+            }
+          }
+        }
         if (currentLayout === 'myframe' && spotEdit) {
           var f = frameById(spotEdit.f); if (!f) return;
           if (spotEdit.pick) {
@@ -71141,9 +71623,13 @@ function fxWavUrl(kind) {
               if (f.sections[si].spots && f.sections[si].spots.indexOf(hit.i) >= 0) { foundSec = si; break; }
             }
             spotEdit.sec = foundSec;
-          } else if (!hit) {
-            spotEdit.sec = -1;
+            if (foundSec >= 0) f._selSec = foundSec;
+          } else if (!hit && Array.isArray(f.sections) && f.sections.length > 1) {
+            var secByPt = sectionAtPoint(f, pt);
+            spotEdit.sec = secByPt;
+            if (secByPt >= 0) f._selSec = secByPt;
           }
+          refreshFrameUI();
           if (hit) {
             var s = f.spots[hit.i], g = spotPx(s, f.w, f.h), c0 = Math.cos(g.a), s0 = Math.sin(g.a);
             // resize keeps the opposite (top-left) corner where it is
@@ -71171,7 +71657,10 @@ function fxWavUrl(kind) {
       setupPreviewCanvas.addEventListener('pointermove', function (e) {
         if (!fdrag || e.pointerId !== fdrag.id) return;
         var pt = previewPoint(e);
-        if (fdrag.kind === 'item') {
+        if (fdrag.kind === 'secMove') {
+          var lf = frameById(fdrag.fId); if (!lf) return;
+          moveSplicedSection(lf, fdrag.sec, pt.x + fdrag.dx, pt.y + fdrag.dy, true);
+        } else if (fdrag.kind === 'item') {
           var it = sheet.items[selItem]; if (!it) return;
           it.cx = Math.max(0, Math.min(1, pt.x + fdrag.dx)); it.cy = Math.max(0, Math.min(1, pt.y + fdrag.dy));
         } else {
@@ -71198,50 +71687,114 @@ function fxWavUrl(kind) {
       });
       function endFDrag(e) {
         if (!fdrag || (e && e.pointerId !== fdrag.id)) return;
-        var wasTilt = fdrag.kind === 'tilt';
-        fdrag = null; redrawAll(); scheduleSetupSave();
+        var wasTilt = fdrag.kind === 'tilt', wasSec = fdrag.kind === 'secMove';
+        fdrag = null;
+        if (wasSec) setupPreviewCanvas.style.cursor = (layoutEdit && currentLayout === 'myframe') ? 'grab' : '';
+        redrawAll(); scheduleSetupSave();
+        if (wasSec) try { refreshFrameUI(); } catch (err) { }
         if (wasTilt) try { refreshSpotSize(); } catch (err) { }
       }
       setupPreviewCanvas.addEventListener('pointerup', endFDrag);
       setupPreviewCanvas.addEventListener('pointercancel', endFDrag);
+      // Draw spliced section guides & on-canvas Move + Rotate pills onto setupPreviewCanvas (NO resize handles in Edit layout!)
+      function drawSectionSpliceGuides(ctx, f, W, H, selSecIdx, isLayoutEditMode) {
+        if (!f || !Array.isArray(f.sections) || f.sections.length <= 1) return;
+        f._secActionBtns = [];
+        var uSec = Math.max(W, H);
+        ctx.save();
+        var ord = sectionOrder(f);
+        ord.forEach(function (sIdx) {
+          var sec = f.sections[sIdx];
+          var box = sectionDestBox(sec, W, H);
+          var sx = box.x * W, sy = box.y * H, sw = box.w * W, sh = box.h * H;
+          var isSelSec = selSecIdx === sIdx;
+          ctx.save();
+          ctx.setLineDash([uSec * 0.016, uSec * 0.01]);
+          ctx.lineWidth = Math.max(2, uSec * (isSelSec ? 0.005 : 0.003));
+          ctx.strokeStyle = isSelSec ? '#2563EB' : 'rgba(14,165,233,0.85)';
+          ctx.strokeRect(sx + 1, sy + 1, sw - 2, sh - 2);
+          if (isSelSec) {
+            ctx.fillStyle = 'rgba(37,99,235,0.08)';
+            ctx.fillRect(sx, sy, sw, sh);
+          }
+          ctx.setLineDash([]);
+          var ar = normalizeSpotRot(sec.artRot);
+          var pill = (isSelSec && isLayoutEditMode ? '\u2725 ' : '') + sec.name + ' \u00B7 ' + (ar ? ('Layout ' + spotRotLabel(ar) + ' / ') : '') + spotRotLabel(sec.r);
+          var pfs = Math.max(11, Math.round(uSec * 0.016));
+          ctx.font = '800 ' + pfs + 'px Manrope, sans-serif';
+          var pw = Math.min(sw - 8, ctx.measureText(pill).width + pfs * 1.1), ph = pfs * 1.55;
+          var px = Math.max(4, Math.min(W - pw - 4, sx + Math.max(4, uSec * 0.006)));
+          var py = Math.max(4, Math.min(H - ph - 4, sy + Math.max(4, uSec * 0.006)));
+          ctx.fillStyle = isSelSec ? '#2563EB' : 'rgba(15,23,42,0.78)';
+          ctx.fillRect(px, py, pw, ph);
+          ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+          ctx.fillText(pill, px + pfs * 0.5, py + ph / 2);
+
+          // On-canvas interactive quick-rotate pills for the selected section (NO resize handle — Move & Rotate only!)
+          if (isSelSec) {
+            var bfs = Math.max(10, Math.round(uSec * 0.0155));
+            ctx.font = '800 ' + bfs + 'px Manrope, sans-serif';
+            var bh = bfs * 1.65;
+            var by = py + ph + Math.max(3, uSec * 0.004);
+            if (by + bh > H - 4) by = Math.max(4, py - bh - 3);
+            var bx = px;
+            var b1Txt = '\u21BB Rotate 90\u00B0';
+            var b1W = ctx.measureText(b1Txt).width + bfs * 1.1;
+            ctx.fillStyle = '#1D4ED8';
+            ctx.fillRect(bx, by, b1W, bh);
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.strokeRect(bx, by, b1W, bh);
+            ctx.fillStyle = '#fff'; ctx.fillText(b1Txt, bx + bfs * 0.55, by + bh / 2);
+            f._secActionBtns.push({ x: bx, y: by, w: b1W, h: bh, sec: sIdx, act: 'art90' });
+
+            bx += b1W + Math.max(4, uSec * 0.005);
+            var b2Txt = '\u21BB Photo 90\u00B0';
+            var b2W = ctx.measureText(b2Txt).width + bfs * 1.1;
+            if (bx + b2W <= W - 4) {
+              ctx.fillStyle = '#0F172A';
+              ctx.fillRect(bx, by, b2W, bh);
+              ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.strokeRect(bx, by, b2W, bh);
+              ctx.fillStyle = '#fff'; ctx.fillText(b2Txt, bx + bfs * 0.55, by + bh / 2);
+              f._secActionBtns.push({ x: bx, y: by, w: b2W, h: bh, sec: sIdx, act: 'photo90' });
+              bx += b2W + Math.max(4, uSec * 0.005);
+            }
+            if (isLayoutEditMode && bx + bh <= W - 2) {
+              ctx.fillStyle = 'rgba(15,23,42,0.85)';
+              ctx.fillRect(bx, by, bh, bh);
+              ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+              ctx.fillText('\u2713', bx + bh / 2, by + bh / 2);
+              f._secActionBtns.push({ x: bx, y: by, w: bh, h: bh, sec: sIdx, act: 'done' });
+            }
+          }
+          ctx.restore();
+        });
+        ctx.restore();
+      }
       // Outlines on the Setup preview only (never on the real photo).
       function drawFrameOverlays() {
         var ctx = setupPreviewCanvas.getContext('2d'), W = setupPreviewCanvas.width, H = setupPreviewCanvas.height;
+        if (currentLayout === 'myframe' && !spotEdit) {
+          var af = layoutEdit ? frameById(layoutEdit.f) : activeFrame();
+          if (af) af._secActionBtns = [];
+          var layOn = !!(layoutEdit && af && layoutEdit.f === af.id && Array.isArray(af.sections) && af.sections.length > 1);
+          setupPreviewCanvas.style.cursor = layOn ? (fdrag && fdrag.kind === 'secMove' ? 'grabbing' : 'grab') : '';
+          if (layOn) {
+            var selIdx = (typeof layoutEdit.sec === 'number' && layoutEdit.sec >= 0 && layoutEdit.sec < af.sections.length) ? layoutEdit.sec : 0;
+            drawSectionSpliceGuides(ctx, af, W, H, selIdx, true);
+          }
+          return;
+        }
+        setupPreviewCanvas.style.cursor = '';
         if (currentLayout === 'myframe' && spotEdit) {
           var f = frameById(spotEdit.f); if (!f) return;
+          f._secActionBtns = [];
           try { refreshSpotSize(); } catch (e) { }
           // Blue = where photos will show (the frame's photo windows).
           var art0 = spotShowWin && frameArt(f), mk = art0 && frameMasks(f, art0);
           if (mk && mk.tint) { ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(mk.tint, 0, 0, W, H); ctx.restore(); }
           // Section cut guides (for 4-in-1, strips, etc.)
           if (spotShowSec && Array.isArray(f.sections) && f.sections.length > 1) {
-            var uSec = Math.max(W, H);
-            ctx.save();
-            f.sections.forEach(function (sec, sIdx) {
-              var sx = sec.x * W, sy = sec.y * H, sw = sec.w * W, sh = sec.h * H;
-              var isSelSec = spotEdit && spotEdit.sec === sIdx;
-              ctx.save();
-              ctx.setLineDash([uSec * 0.016, uSec * 0.01]);
-              ctx.lineWidth = Math.max(2, uSec * (isSelSec ? 0.005 : 0.003));
-              ctx.strokeStyle = isSelSec ? '#2563EB' : 'rgba(14,165,233,0.85)';
-              ctx.strokeRect(sx + 1, sy + 1, sw - 2, sh - 2);
-              if (isSelSec) {
-                ctx.fillStyle = 'rgba(37,99,235,0.08)';
-                ctx.fillRect(sx, sy, sw, sh);
-              }
-              ctx.setLineDash([]);
-              var pill = sec.name + ' \u00B7 ' + spotRotLabel(sec.r);
-              var pfs = Math.max(11, Math.round(uSec * 0.017));
-              ctx.font = '800 ' + pfs + 'px Manrope, sans-serif';
-              var pw = ctx.measureText(pill).width + pfs * 1.1, ph = pfs * 1.55;
-              var px = sx + Math.max(4, uSec * 0.006), py = sy + Math.max(4, uSec * 0.006);
-              ctx.fillStyle = isSelSec ? '#2563EB' : 'rgba(15,23,42,0.78)';
-              ctx.fillRect(px, py, Math.min(sw - 8, pw), ph);
-              ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-              ctx.fillText(pill, px + pfs * 0.5, py + ph / 2);
-              ctx.restore();
-            });
-            ctx.restore();
+            var sEditIdx = (typeof spotEdit.sec === 'number' && spotEdit.sec >= 0) ? spotEdit.sec : (typeof f._selSec === 'number' ? f._selSec : 0);
+            drawSectionSpliceGuides(ctx, f, W, H, sEditIdx, false);
           }
           ctx.save();
           var repMap = frameRepeat(f) || frameManual(f) ? framePairs(f) : null;   // repeating / numbered by hand: each box shows the photo it takes
@@ -71337,7 +71890,7 @@ function fxWavUrl(kind) {
             if (typeof f.color === 'boolean') o.color = f.color;
             if (Array.isArray(f.sections) && f.sections.length > 1) {
               o.sections = f.sections.map(function (sec) {
-                return {
+                var so = {
                   id: String(sec.id || '').slice(0, 20),
                   name: String(sec.name || 'Section').slice(0, 32),
                   kind: sec.kind || 'card',
@@ -71345,6 +71898,12 @@ function fxWavUrl(kind) {
                   r: normalizeSpotRot(sec.r),
                   spots: Array.isArray(sec.spots) ? sec.spots.slice() : []
                 };
+                var ar = normalizeSpotRot(sec.artRot);
+                if (ar) so.artRot = ar;
+                if (typeof sec.dx === 'number' && isFinite(sec.dx)) so.dx = r4(sec.dx);
+                if (typeof sec.dy === 'number' && isFinite(sec.dy)) so.dy = r4(sec.dy);
+                if (sec.z) so.z = Math.round(sec.z);
+                return so;
               });
             }
             if (f.saveCuts) o.saveCuts = true;
@@ -71391,7 +71950,8 @@ function fxWavUrl(kind) {
             var sx = num(sec && sec.x, 0, 1, 0), sy = num(sec && sec.y, 0, 1, 0);
             var sw = num(sec && sec.w, 0.04, 1 - sx, 0.5), sh = num(sec && sec.h, 0.04, 1 - sy, 0.5);
             var spList = Array.isArray(sec && sec.spots) ? sec.spots.map(function (i) { return Math.round(Number(i)); }).filter(function (i) { return i >= 0 && i < parsedSpots.length; }) : [];
-            return {
+            var ar = normalizeSpotRot(sec && sec.artRot);
+            var so = {
               id: typeof (sec && sec.id) === 'string' && sec.id ? sec.id.slice(0, 20) : ('sec_' + (si + 1)),
               name: typeof (sec && sec.name) === 'string' && sec.name.trim() ? sec.name.trim().slice(0, 32) : ('Section ' + (si + 1)),
               kind: (sec && ['polaroid', 'wallet', 'strip', 'card'].indexOf(sec.kind) >= 0) ? sec.kind : 'card',
@@ -71399,6 +71959,12 @@ function fxWavUrl(kind) {
               r: normalizeSpotRot(sec && sec.r),
               spots: spList
             };
+            if (ar) so.artRot = ar;
+            if (sec && typeof sec.dx === 'number' && isFinite(sec.dx)) so.dx = num(sec.dx, 0, 1, sx + sw / 2);
+            if (sec && typeof sec.dy === 'number' && isFinite(sec.dy)) so.dy = num(sec.dy, 0, 1, sy + sh / 2);
+            var sz = Math.round(num(sec && sec.z, 0, 50, 0));
+            if (sz) so.z = sz;
+            return so;
           }).filter(function (sec) { return sec.spots.length > 0; }) : undefined;
           if (sections && sections.length <= 1) sections = undefined;
           return {
@@ -71448,7 +72014,7 @@ function fxWavUrl(kind) {
         setupActiveSheetPresetId = activeSheetPresetId;
         ensureDefaultSheetPreset();
         if (!sheet.items.length && myFrames.length) applyPattern(sheet.pattern);
-        selItem = -1; spotEdit = null;
+        selItem = -1; spotEdit = null; layoutEdit = null;
         if (typeof buildSheetPresetUI === 'function') buildSheetPresetUI();
       }
 

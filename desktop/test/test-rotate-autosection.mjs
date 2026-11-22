@@ -54,6 +54,14 @@ for (const marker of [
   'function applySectionBlueprint',
   'function applySectionShotRecipe',
   'function rotateSectionSpots',
+  'function sectionDestBox',
+  'function moveSplicedSection',
+  'function setSplicedSectionRot',
+  'function rotateSplicedSection',
+  'function resetSplicedSection',
+  'function resetAllSplicedSections',
+  'function drawSplicedFrameImage',
+  'id="spotSecArtRotRow"',
   'function reconcileFrameSections',
   'function uniqueFrameSections',
   'function renderUprightSection',
@@ -69,7 +77,7 @@ for (const marker of [
 // 3. Extract and execute the real production frame/section/collage functions from protected/booth.html
 console.log('3. Running live unit tests on extracted production functions...');
 const startIdx = html.indexOf('var myFrames = [];');
-const endIdx = html.indexOf('function punchFrame(img, spots, key)');
+const endIdx = html.indexOf('function punchFrame(');
 const snapStart = html.indexOf('function framesSnapshot()');
 const snapEnd = html.indexOf('// ---- Setup preview: sample photo + phone dock ----');
 const fitStart = html.indexOf('// ---- Arranging frames on the 4R sheet ----');
@@ -119,7 +127,9 @@ module.exports = {
   SW, SH, SHEET_PATTERNS, patternCells, fitItem, assignCells, applyPattern, bestPatternFor,
   normalizeSpotRot, spotRotLabel, sortSpotIndicesUpright,
   detectFrameSections, autoSectionFrame, applySectionBlueprint, applySectionShotRecipe,
-  rotateSectionSpots, reconcileFrameSections, uniqueFrameSections, transformSpotToUprightSection,
+  rotateSectionSpots, sectionDestBox, moveSplicedSection, setSplicedSectionRot, rotateSplicedSection,
+  resetSplicedSection, resetAllSplicedSections, bringSectionToFront, drawSplicedFrameImage,
+  reconcileFrameSections, uniqueFrameSections, transformSpotToUprightSection,
   frameStrips, frameCopyStrip, frameShotCount, framePairs, spotsKey,
   framesSnapshot, applyFramesSetup
 };
@@ -393,6 +403,64 @@ console.log('9. Testing multi-color 4-in-1 (different colored mini strips)...');
   assert.deepEqual(Array.from(mSecs[3].spots), [5, 6, 7], 'Dark Navy strip must group horizontal spots [5,6,7]');
   assert.equal(api.frameShotCount(fMulti), 3, 'Multi-color 4-in-1 auto-links to 3 shots');
   assert.equal(api.uniqueFrameSections(fMulti, mockImg).length, 4, 'Different-colored strips must BOTH be kept in unique QR/Split cuts');
+
+  // 3k. Option A: Rigid Move & Rotate spliced sections (size locked, zero stretching) without splitting into separate frames
+  console.log('10. Testing Option A Edit layout (rigid Move + Rotate, exact size locked, persistence & reset)...');
+  const origWalletSpot = { ...fMulti.spots[1] };
+  const origWpx = origWalletSpot.w * fMulti.w;
+  const origHpx = origWalletSpot.h * fMulti.h;
+  assert.equal(fMulti.sections[1].name, 'Mini Wallet');
+  assert.equal(fMulti.sections[1].r, 270);
+  assert.equal(fMulti.sections[1].artRot || 0, 0);
+
+  // Rotate Mini Wallet +90° CW: physical pixel width & height MUST swap cleanly with zero stretching!
+  assert.equal(api.rotateSplicedSection(fMulti, 1, 90), true);
+  assert.equal(fMulti.sections[1].artRot, 90, 'Mini Wallet artRot must be 90');
+  assert.equal(fMulti.sections[1].r, 0, 'Mini Wallet photo orientation turns from 270 (-90°) to 0° upright');
+  assert.equal(fMulti.spots[1].r || 0, 0, 'Mini Wallet spot sp.r turns to 0° upright');
+  const rotWpx = fMulti.spots[1].w * fMulti.w;
+  const rotHpx = fMulti.spots[1].h * fMulti.h;
+  assert(Math.abs(rotWpx - origHpx) < 1e-6, 'Rotated Mini Wallet spot pixel width must equal original pixel height (zero stretching)');
+  assert(Math.abs(rotHpx - origWpx) < 1e-6, 'Rotated Mini Wallet spot pixel height must equal original pixel width (zero stretching)');
+
+  // Check sectionDestBox preserves true physical size (3x2 sideways -> 2x3 upright)
+  const box90 = api.sectionDestBox(fMulti.sections[1], fMulti.w, fMulti.h);
+  assert(Math.abs(box90.w * fMulti.w - fMulti.sections[1].h * fMulti.h) < 1e-6, 'Section width in px equals original section height in px');
+  assert(Math.abs(box90.h * fMulti.h - fMulti.sections[1].w * fMulti.w) < 1e-6, 'Section height in px equals original section width in px');
+
+  // Drag / move Mini Wallet to the left side of the 4x6 preview canvas (keeping size locked)
+  api.bringSectionToFront(fMulti, 1);
+  assert.equal(api.moveSplicedSection(fMulti, 1, 0.25, 0.5, false), true);
+  const movedBox = api.sectionDestBox(fMulti.sections[1], fMulti.w, fMulti.h);
+  assert(Math.abs(movedBox.cx - 0.25) < 1e-6, 'Moved Mini Wallet center X must be 0.25');
+  assert(Math.abs(movedBox.cy - 0.5) < 1e-6, 'Moved Mini Wallet center Y must be 0.5');
+  assert(Math.abs(fMulti.spots[1].w * fMulti.w - origHpx) < 1e-6, 'Moving never resizes Mini Wallet spot width');
+  assert(Math.abs(fMulti.spots[1].h * fMulti.h - origWpx) < 1e-6, 'Moving never resizes Mini Wallet spot height');
+
+  // Verify persistence round-trip preserves sec.artRot, sec.dx, sec.dy, sec.z
+  api.setState({ myFrames: [fMulti], activeFrameId: fMulti.id });
+  const snapSplice = api.framesSnapshot();
+  assert.equal(snapSplice.frames[0].sections[1].artRot, 90, 'framesSnapshot must persist sec.artRot=90');
+  assert(Math.abs(snapSplice.frames[0].sections[1].dx - 0.25) < 1e-3, 'framesSnapshot must persist sec.dx');
+  assert(Math.abs(snapSplice.frames[0].sections[1].dy - 0.5) < 1e-3, 'framesSnapshot must persist sec.dy');
+  assert(snapSplice.frames[0].sections[1].z > 0, 'framesSnapshot must persist sec.z');
+  api.applyFramesSetup(snapSplice);
+  const fRestoredSplice = api.getState().myFrames[0];
+  assert.equal(fRestoredSplice.sections[1].artRot, 90, 'applyFramesSetup must restore sec.artRot=90');
+  assert(Math.abs(fRestoredSplice.sections[1].dx - 0.25) < 1e-3, 'applyFramesSetup must restore sec.dx');
+  assert(Math.abs(fRestoredSplice.sections[1].dy - 0.5) < 1e-3, 'applyFramesSetup must restore sec.dy');
+
+  // Resetting the piece restores exact original spot coordinates, size & photo rotation
+  assert.equal(api.resetAllSplicedSections(fMulti), true);
+  assert.equal(fMulti.sections[1].artRot || 0, 0);
+  assert.equal(fMulti.sections[1].dx, undefined);
+  assert.equal(fMulti.sections[1].dy, undefined);
+  assert.equal(fMulti.sections[1].r, 270);
+  assert.equal(fMulti.spots[1].r, 270);
+  assert(Math.abs(fMulti.spots[1].x - origWalletSpot.x) < 1e-9, 'Spot X restored identically after reset');
+  assert(Math.abs(fMulti.spots[1].y - origWalletSpot.y) < 1e-9, 'Spot Y restored identically after reset');
+  assert(Math.abs(fMulti.spots[1].w - origWalletSpot.w) < 1e-9, 'Spot W restored identically after reset');
+  assert(Math.abs(fMulti.spots[1].h - origWalletSpot.h) < 1e-9, 'Spot H restored identically after reset');
 }
 
 console.log('ALL PHASE 1-3 ROTATION & AUTO-SECTION TESTS PASSED! ✓');

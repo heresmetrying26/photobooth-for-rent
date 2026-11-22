@@ -14,7 +14,10 @@
 //   { status: 'OK' | 'ERR' | 'GONE', kind: 'J' json | 'B' bytes | 'N' none, body: Buffer, flags: [] }
 import http from 'node:http';
 import dgram from 'node:dgram';
+import fs from 'node:fs';
+import { promises as fsp } from 'node:fs';
 import os from 'node:os';
+import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { findFfmpeg } from './spin.mjs';
 
@@ -49,7 +52,7 @@ const log = (m) => { try { logFn(m); } catch { /* ignore */ } };
 const s = {
   open: false, host: '', port: HTTP_PORT, mode: '', name: '', info: null, battery: -1,
   ff: null, udp: null, ffErr: '', frame: null, frameAt: 0, buf: Buffer.alloc(0), streaming: false, starting: null,
-  keep: null, keepFails: 0, gen: 0
+  keep: null, keepFails: 0, gen: 0, movieRec: false, moviePrevFiles: null, movieWasStreaming: false
 };
 
 // ---------- talking to the camera ----------
@@ -255,13 +258,151 @@ async function newestFrame(afterMs, waitMs) {
   }
 }
 
+async function listMediaFiles() {
+  const j = await getJson('/gopro/media/list', 5000);
+  const out = [];
+  for (const dir of (j && Array.isArray(j.media) ? j.media : [])) {
+    const d = dir && dir.d ? String(dir.d) : '';
+    for (const f of (dir && Array.isArray(dir.fs) ? dir.fs : [])) {
+      if (f && f.n) out.push({ dir: d, name: String(f.n), key: `${d}/${f.n}`, size: Number(f.s || 0) });
+    }
+  }
+  return out;
+}
+
+function streamHttpToFile(urlPath, outDir, ext = '.mp4', ms = 120000) {
+  const safeDir = String(outDir || '').trim().replace(/^["']|["']$/g, '');
+  if (!safeDir || !fs.existsSync(safeDir)) return Promise.reject(new CamError('BAD Destination folder does not exist: ' + safeDir));
+  const stamp = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 17);
+  const fileName = `gopro-360-${stamp}${ext}`;
+  const finalPath = path.join(safeDir, fileName);
+  const partPath = finalPath + '.part';
+  const metaPath = partPath + '.meta';
+  return new Promise((resolve, reject) => {
+    const req = http.get({ host: s.host, port: s.port, path: urlPath, timeout: ms, agent: false, headers: { connection: 'close' } }, (res) => {
+      if ((res.statusCode || 0) >= 400 || res.statusCode === 0) {
+        res.resume();
+        return reject(new CamError(`CAPTURE GoPro download failed (HTTP ${res.statusCode || 0}).`));
+      }
+      const total = Number(res.headers['content-length'] || 0) || 0;
+      try { fs.writeFileSync(metaPath, JSON.stringify({ total, filename: fileName })); } catch { /* ignore */ }
+      const ws = fs.createWriteStream(partPath);
+      let bytes = 0, settled = false;
+      const fail = (err) => {
+        if (settled) return; settled = true;
+        try { ws.destroy(); } catch { /* ignore */ }
+        fsp.unlink(partPath).catch(() => {});
+        fsp.unlink(metaPath).catch(() => {});
+        reject(err);
+      };
+      res.on('data', (c) => { bytes += c.length; });
+      res.pipe(ws);
+      ws.on('finish', () => {
+        if (settled) return; settled = true;
+        fsp.unlink(metaPath).catch(() => {});
+        if (bytes < 16) {
+          fsp.unlink(partPath).catch(() => {});
+          return reject(new CamError('CAPTURE GoPro returned an empty video file.'));
+        }
+        try {
+          if (fs.existsSync(finalPath)) fs.unlinkSync(finalPath);
+          fs.renameSync(partPath, finalPath);
+          resolve({ ok: true, brand: 'gopro', path: finalPath, filename: fileName, bytes, format: ext.replace(/^\./, '') });
+        } catch (err) {
+          fsp.unlink(partPath).catch(() => {});
+          reject(err);
+        }
+      });
+      ws.on('error', fail);
+      res.on('error', fail);
+    });
+    req.on('timeout', () => req.destroy(new Error('timeout')));
+    req.on('error', (err) => {
+      fsp.unlink(partPath).catch(() => {});
+      fsp.unlink(metaPath).catch(() => {});
+      reject(err);
+    });
+  });
+}
+
+async function movieStart() {
+  if (s.movieRec) return JSON.stringify({ ok: true, brand: 'gopro', recording: true });
+  s.movieWasStreaming = !!(s.streaming || s.ff);
+  if (s.mode === 'usb') {
+    await stopStream();
+    await sleep(350);
+  }
+  try {
+    const list = await listMediaFiles();
+    s.moviePrevFiles = new Set(list.map((f) => f.key));
+  } catch {
+    s.moviePrevFiles = null;
+  }
+  try {
+    await getJson('/gopro/camera/shutter/start', 6000);
+  } catch (e) {
+    try {
+      await getJson('/gopro/camera/presets/set_group?id=1000', 4000);
+      await sleep(300);
+      await getJson('/gopro/camera/shutter/start', 6000);
+    } catch {
+      if (s.movieWasStreaming) { s.movieWasStreaming = false; await startStream().catch(() => {}); }
+      throw new CamError("CAPTURE The GoPro wouldn't start video recording. Switch it to Video mode and check that the SD card has free space.");
+    }
+  }
+  s.movieRec = true;
+  log('GoPro movie recording started');
+  return JSON.stringify({ ok: true, brand: 'gopro', recording: true });
+}
+
+async function movieStop(outDir) {
+  const safeDir = String(outDir || '').trim().replace(/^["']|["']$/g, '');
+  if (!safeDir || !fs.existsSync(safeDir)) throw new CamError('BAD Destination folder does not exist: ' + safeDir);
+  try {
+    try { await getJson('/gopro/camera/shutter/stop', 6000); }
+    finally { s.movieRec = false; }
+
+    await sleep(450);
+    let pick = null;
+    const ew = Date.now();
+    while (Date.now() - ew < 12000) {
+      try {
+        const list = await listMediaFiles();
+        const videos = list.filter((f) => /\.(mp4|mov|m4v)$/i.test(f.name));
+        if (s.moviePrevFiles) {
+          const fresh = videos.filter((f) => !s.moviePrevFiles.has(f.key));
+          if (fresh.length > 0) { pick = fresh[fresh.length - 1]; break; }
+        } else if (videos.length > 0) {
+          pick = videos[videos.length - 1]; break;
+        }
+      } catch { /* retrying */ }
+      await sleep(450);
+    }
+    if (!pick) throw new CamError('CAPTURE GoPro stopped recording, but no new MP4 appeared in its media list.');
+    const ext = path.extname(pick.name).toLowerCase() || '.mp4';
+    const dl = await streamHttpToFile(`/videos/DCIM/${encodeURIComponent(pick.dir)}/${encodeURIComponent(pick.name)}`, safeDir, ext);
+    log('GoPro movie downloaded: ' + dl.filename + ' (' + Math.round(dl.bytes / 1024) + ' KB)');
+    return JSON.stringify(dl);
+  } finally {
+    s.moviePrevFiles = null;
+    if (s.movieWasStreaming) {
+      s.movieWasStreaming = false;
+      await sleep(300);
+      await startStream().catch(() => {});
+    }
+  }
+}
+
 export function isOpen() { return s.open; }
 export async function reset() {
   stopKeep();
-  const was = s.open;
-  s.open = false;
+  const was = s.open, wasRec = s.movieRec;
+  s.open = false; s.movieRec = false; s.moviePrevFiles = null; s.movieWasStreaming = false;
   stopFfmpeg();
-  if (was) { try { if (s.mode === 'usb') { await getJson('/gopro/webcam/stop', 3000); await getJson('/gopro/webcam/exit', 3000); } else await getJson('/gopro/camera/stream/stop', 3000); } catch { /* ignore */ } }
+  if (was) {
+    if (wasRec) { try { await getJson('/gopro/camera/shutter/stop', 2500); } catch { /* ignore */ } }
+    try { if (s.mode === 'usb') { await getJson('/gopro/webcam/stop', 3000); await getJson('/gopro/webcam/exit', 3000); } else await getJson('/gopro/camera/stream/stop', 3000); } catch { /* ignore */ }
+  }
 }
 
 export async function listJson() {
@@ -292,6 +433,8 @@ export async function call(cmd, arg) {
       if (!f) throw new CamError('CAPTURE The GoPro picture did not arrive. Try again.');
       return reply('OK', 'B', f);
     }
+    if (cmd === 'moviestart') return reply('OK', 'J', await movieStart());
+    if (cmd === 'moviestop') return reply('OK', 'J', await movieStop(arg));
     if (cmd === 'close') { await reset(); return reply('OK', 'N', ''); }
     throw new CamError('BAD Unknown command ' + cmd);
   } catch (e) {

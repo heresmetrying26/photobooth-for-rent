@@ -6,7 +6,7 @@
 import { tmpdir, platform, release as osRelease } from 'node:os';
 import { join } from 'node:path';
 import { writeFile, rm, mkdtemp, mkdir, readFile } from 'node:fs/promises';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { discoverNetworkPrinters, ippCaps, ippPrintDirect, pickMediaName, mediaSizeMm, directFormats, labelMediaType } from './netprinters.mjs';
@@ -77,11 +77,53 @@ async function refreshUsbDirect(sysList, force, preFound) {
   } catch { /* libusb unavailable or no USB printers */ }
 }
 
-export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, rasterize: raster, directPrintersFile }) {
+let getSpinInboxDir = () => '';
+const movieState = { active: false, state: 'idle', startedAt: 0, brand: '', outDir: '', error: '' };
+function readMovieProgress() {
+  const dir = movieState.outDir || (typeof getSpinInboxDir === 'function' ? String(getSpinInboxDir() || '') : '');
+  let bytesDownloaded = 0, totalBytes = 0, filename = '';
+  if (dir && existsSync(dir)) {
+    try {
+      const partName = readdirSync(dir).find((n) => n.endsWith('.part') && !n.endsWith('.part.meta'));
+      if (partName) {
+        const partPath = join(dir, partName);
+        try { bytesDownloaded = statSync(partPath).size || 0; } catch { /* ignore */ }
+        const metaPath = partPath + '.meta';
+        if (existsSync(metaPath)) {
+          try {
+            const m = JSON.parse(readFileSync(metaPath, 'utf8'));
+            totalBytes = Number(m && m.total) || 0;
+            filename = String((m && m.filename) || partName.slice(0, -5));
+          } catch { /* ignore */ }
+        }
+        if (!filename) filename = partName.slice(0, -5);
+      }
+    } catch { /* ignore */ }
+  }
+  const pct = totalBytes > 0 ? Math.min(100, Math.round((bytesDownloaded / totalBytes) * 100)) : 0;
+  return {
+    ok: true,
+    active: movieState.active,
+    state: movieState.state,
+    startedAt: movieState.startedAt,
+    elapsedMs: movieState.startedAt ? Math.max(0, Date.now() - movieState.startedAt) : 0,
+    brand: movieState.brand,
+    outDir: dir,
+    filename,
+    bytesDownloaded,
+    totalBytes,
+    pct,
+    error: movieState.error
+  };
+}
+
+export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, rasterize: raster, directPrintersFile, spinInboxDir }) {
   if (logger) { log = logger; gopro.setLogger((m) => log('GoPro: ' + m)); }
   if (typeof shrink === 'function') shrinkPage = shrink;
   if (typeof jpeg === 'function') toJpeg = jpeg;
   if (typeof raster === 'function') rasterize = raster;
+  if (typeof spinInboxDir === 'function') getSpinInboxDir = spinInboxDir;
+  else if (typeof spinInboxDir === 'string') getSpinInboxDir = () => spinInboxDir;
   usbDirect.clear();
   usbDirectAt = 0;
   if (directPrintersFile) { directFile = directPrintersFile; loadDirect(); }
@@ -1379,15 +1421,47 @@ export async function handleHelper(req, path, search) {
         });
       }
       if (method === 'GET' && path === '/camera/battery') { const r = await camCall('battery', '', 10000); return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) })); }
-      // The booth's Camera check: read the camera's shutter / aperture / ISO, and set them (Nikon; any other camera answers supported:false).
-      // Only numbers ever reach the camera program: each value goes through Number().
+      if (method === 'GET' && path === '/camera/movie/status') { return json(readMovieProgress()); }
+      // The booth's Camera check & 360 Video settings: read/set shutter, aperture, ISO & white balance (Nikon & Canon EOS; other cameras answer supported:false).
+      // Only finite numbers ever reach the camera program: each value goes through Number().
       if (method === 'GET' && path === '/camera/props') { const r = await camCall('props', '', 10000); return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) })); }
       if (method === 'POST' && path === '/camera/setprops') {
-        const q = ['shutter', 'f', 'iso'].map((k) => { const v = Number(search.get(k)); return v > 0 && v < 100000 ? k + '=' + v : ''; }).filter(Boolean).join('&');
+        const q = ['shutter', 'f', 'iso', 'wb'].map((k) => {
+          const raw = search.get(k);
+          if (raw === null || raw === '') return '';
+          const v = Number(raw);
+          return Number.isFinite(v) && (k === 'wb' ? (v >= 0 && v < 100000) : (v > 0 && v < 100000)) ? k + '=' + v : '';
+        }).filter(Boolean).join('&');
         const r = await camCall('setprops', q, 20000);
         return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) }));
       }
-      if (method === 'POST' && path === '/camera/close') { const r = await camCall('close', '', 10000); cam.open = null; return send(r, () => json({ ok: true })); }
+      if (method === 'POST' && path === '/camera/movie/start') {
+        const outDir = typeof getSpinInboxDir === 'function' ? String(getSpinInboxDir() || '') : '';
+        if (!outDir) return json({ ok: false, code: 'NOFOLDER', error: 'Spin inbox folder is not configured yet.' }, 409);
+        try { mkdirSync(outDir, { recursive: true }); } catch { /* ignore */ }
+        movieState.active = true; movieState.state = 'recording'; movieState.startedAt = Date.now();
+        movieState.outDir = outDir; movieState.error = ''; movieState.brand = (cam.open && cam.open.brand) || '';
+        const r = await camCall('moviestart', '', 25000);
+        if (r.status !== 'OK') { movieState.active = false; movieState.state = 'idle'; movieState.startedAt = 0; }
+        return send(r, () => {
+          const info = JSON.parse(r.body.toString('utf8'));
+          movieState.brand = info.brand || movieState.brand;
+          return json({ ok: true, ...info, startedAt: movieState.startedAt });
+        });
+      }
+      if (method === 'POST' && path === '/camera/movie/stop') {
+        const outDir = movieState.outDir || (typeof getSpinInboxDir === 'function' ? String(getSpinInboxDir() || '') : '');
+        if (!outDir) { movieState.active = false; movieState.state = 'idle'; return json({ ok: false, code: 'NOFOLDER', error: 'Spin inbox folder is not configured yet.' }, 409); }
+        try { mkdirSync(outDir, { recursive: true }); } catch { /* ignore */ }
+        movieState.state = 'downloading'; movieState.outDir = outDir;
+        try {
+          const r = await camCall('moviestop', outDir, 180000);
+          return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) }));
+        } finally {
+          movieState.active = false; movieState.state = 'idle'; movieState.startedAt = 0;
+        }
+      }
+      if (method === 'POST' && path === '/camera/close') { movieState.active = false; movieState.state = 'idle'; movieState.startedAt = 0; movieState.error = ''; const r = await camCall('close', '', 10000); cam.open = null; return send(r, () => json({ ok: true })); }
     } catch (e) {
       cam.open = null;
       return json({ ok: false, code: 'HELPER', error: String(e && e.message || e) }, 503);

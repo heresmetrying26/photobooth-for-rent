@@ -77,6 +77,152 @@ namespace PbTest
             return OK;
         }
     }
+
+    public class Fake360Ptp : Pb4uCam.Ptp
+    {
+        public bool IsCanon;
+        public uint SaveTo = 4;
+        public uint Av = 0x20, Tv = 0x68, Iso = 0x58, Wb = 0, MovieTarget = 0;
+        public string RecMedia = "1", LvSel = "0";
+        public bool LvOn = false;
+        public bool Recording = false;
+        public bool PendingMovie = false;
+        public byte[] MovieData;
+        public List<string> Log = new List<string>();
+
+        static void PutU32(MemoryStream ms, uint v) {
+            ms.WriteByte((byte)(v & 0xFF)); ms.WriteByte((byte)((v >> 8) & 0xFF));
+            ms.WriteByte((byte)((v >> 16) & 0xFF)); ms.WriteByte((byte)((v >> 24) & 0xFF));
+        }
+        static void PutU16(MemoryStream ms, ushort v) {
+            ms.WriteByte((byte)(v & 0xFF)); ms.WriteByte((byte)(v >> 8));
+        }
+        static byte[] AvailRec(ushort prop, params uint[] vals) {
+            var ms = new MemoryStream();
+            PutU32(ms, (uint)(20 + vals.Length * 4));
+            PutU32(ms, 0xC18A);
+            PutU32(ms, prop);
+            PutU32(ms, 4);
+            PutU32(ms, (uint)vals.Length);
+            foreach (uint v in vals) PutU32(ms, v);
+            return ms.ToArray();
+        }
+        static byte[] ValRec(ushort prop, uint val) {
+            var ms = new MemoryStream();
+            PutU32(ms, 16); PutU32(ms, 0xC189); PutU32(ms, prop); PutU32(ms, val);
+            return ms.ToArray();
+        }
+        public override uint Op(ushort code, params uint[] ps) {
+            Log.Add("OP:" + code.ToString("X4"));
+            if (!IsCanon) {
+                if (code == 0x90C8) return OK;
+                if (code == 0x9201) { LvOn = true; return OK; }
+                if (code == 0x9202) { LvOn = false; return OK; }
+                if (code == 0x920A) { Recording = true; return OK; }
+                if (code == 0x920B) { Recording = false; PendingMovie = true; return OK; }
+            } else {
+                if (code == 0x911A || code == 0x9115 || code == 0x9114 || code == 0x911D) return OK;
+            }
+            return OK;
+        }
+        public override uint OpWrite(ushort code, byte[] data, params uint[] ps) {
+            if (IsCanon && code == 0x9110 && data != null && data.Length >= 12) {
+                ushort prop = (ushort)(data[4] | (data[5] << 8));
+                uint val = (uint)(data[8] | (data[9] << 8) | (data[10] << 16) | (data[11] << 24));
+                Log.Add("EOS:" + prop.ToString("X4") + "=" + val);
+                if (prop == 0xD11C) SaveTo = val;
+                else if (prop == 0xD101) Av = val;
+                else if (prop == 0xD102) Tv = val;
+                else if (prop == 0xD103) Iso = val;
+                else if (prop == 0xD109) Wb = val;
+                else if (prop == 0xD1B8) {
+                    MovieTarget = val;
+                    if (val == 4) Recording = true;
+                    else if (val == 0) { Recording = false; PendingMovie = true; }
+                }
+                return OK;
+            }
+            if (!IsCanon && code == 0x1016 && ps.Length > 0 && data != null && data.Length > 0) {
+                ushort p = (ushort)ps[0];
+                string val = data[0].ToString();
+                Log.Add("NIK:" + p.ToString("X4") + "=" + val);
+                if (p == 0xD10B) RecMedia = val;
+                else if (p == 0xD1A6) LvSel = val;
+                return OK;
+            }
+            return OK;
+        }
+        public override uint OpRead(ushort code, out byte[] data, params uint[] ps) {
+            data = new byte[0];
+            if (IsCanon && code == 0x9116) {
+                var ms = new MemoryStream();
+                byte[] b;
+                b = ValRec(0xD11C, SaveTo); ms.Write(b, 0, b.Length);
+                b = ValRec(0xD11B, 999); ms.Write(b, 0, b.Length);
+                b = ValRec(0xD105, 3); ms.Write(b, 0, b.Length);
+                b = ValRec(0xD101, Av); ms.Write(b, 0, b.Length);
+                b = ValRec(0xD102, Tv); ms.Write(b, 0, b.Length);
+                b = ValRec(0xD103, Iso); ms.Write(b, 0, b.Length);
+                b = ValRec(0xD109, Wb); ms.Write(b, 0, b.Length);
+                b = AvailRec(0xD11C, 2, 4); ms.Write(b, 0, b.Length);
+                b = AvailRec(0xD101, 0x20, 0x28); ms.Write(b, 0, b.Length);
+                b = AvailRec(0xD102, 0x68, 0x70, 0x78); ms.Write(b, 0, b.Length);
+                b = AvailRec(0xD103, 0x58, 0x60, 0x63); ms.Write(b, 0, b.Length);
+                b = AvailRec(0xD109, 0, 1, 2); ms.Write(b, 0, b.Length);
+                if (PendingMovie) {
+                    PendingMovie = false;
+                    var ev = new MemoryStream();
+                    PutU32(ev, 32); PutU32(ev, 0xC181); PutU32(ev, 0x55550001);
+                    PutU32(ev, 0); PutU16(ev, 0x300D); PutU16(ev, 0);
+                    PutU32(ev, 0); PutU32(ev, 0); PutU32(ev, (uint)MovieData.Length);
+                    byte[] evb = ev.ToArray();
+                    ms.Write(evb, 0, evb.Length);
+                }
+                data = ms.ToArray();
+                return OK;
+            }
+            if (!IsCanon && code == 0x90C7) {
+                var ms = new MemoryStream();
+                if (PendingMovie) {
+                    PendingMovie = false;
+                    PutU16(ms, 1); PutU16(ms, 0x4002); PutU32(ms, 0x77770001);
+                } else {
+                    PutU16(ms, 0);
+                }
+                data = ms.ToArray();
+                return OK;
+            }
+            if (!IsCanon && code == 0x1014 && ps.Length > 0) {
+                ushort p = (ushort)ps[0];
+                string cur = p == 0xD10B ? RecMedia : LvSel;
+                uint[] ch = new uint[] { 0, 1 };
+                var ms = new MemoryStream();
+                PutU16(ms, p); PutU16(ms, 2); ms.WriteByte(1);
+                ms.WriteByte(0); ms.WriteByte(byte.Parse(cur));
+                ms.WriteByte(2); PutU16(ms, (ushort)ch.Length);
+                foreach (uint c in ch) ms.WriteByte((byte)c);
+                data = ms.ToArray();
+                return OK;
+            }
+            if (code == 0x1008) {
+                string name = IsCanon ? "MVI_0001.MOV" : "DSC_0001.MOV";
+                byte[] nb = System.Text.Encoding.Unicode.GetBytes(name + "\0");
+                var ms = new MemoryStream();
+                PutU32(ms, 1); PutU16(ms, 0x300D); PutU16(ms, 0); PutU32(ms, (uint)MovieData.Length);
+                for (int k = 0; k < 40; k++) ms.WriteByte(0);
+                ms.WriteByte((byte)(name.Length + 1));
+                ms.Write(nb, 0, nb.Length);
+                data = ms.ToArray();
+                return OK;
+            }
+            if (code == 0x101B && ps.Length >= 3) {
+                int off = (int)ps[1], len = Math.Min((int)ps[2], MovieData.Length - off);
+                if (len > 0) { data = new byte[len]; Buffer.BlockCopy(MovieData, off, data, 0, len); }
+                return OK;
+            }
+            return OK;
+        }
+    }
 }
 '@
 Add-Type -TypeDefinition ($m.Groups[1].Value + "`r`n" + $fakeSrc) -Language CSharp
@@ -352,5 +498,70 @@ Check 'save-to: giving up puts it back and remembers' ((Get-Flag 'canonHostGaveU
 [void]$toHost.Invoke($null, $null)
 Check 'save-to: after giving up it is not tried again' (-not (Get-Flag 'canonToHost') -and $e.Sets.Count -eq 2) ($e.Sets -join ' ')
 $W.GetField('canonHostGaveUp', $flags).SetValue($null, $false)
+
+# --- 7. Nikon White Balance, Canon EOS exposure, and 360 Movie recording / streaming download ---
+$null = $W.GetField('canon', $flags).SetValue($null, $false)
+$null = $W.GetField('nikon', $flags).SetValue($null, $false)
+$null = $W.GetField('sony', $flags).SetValue($null, $false)
+
+# Nikon WB check
+$fwb = New-Fake $true 1 1
+$fwb.Type[0x5005] = 4; $fwb.Cur[0x5005] = 2; $fwb.GetSet[0x5005] = 1; $fwb.Choices[0x5005] = [uint32[]]@(2, 4, 5, 6)
+$jwb = Json ($expo.Invoke($null, $null))
+Check 'props: Nikon reads white balance 0x5005 & choices' ($jwb.wb -eq 2 -and $jwb.set.wb -and $jwb.wbChoices.Count -eq 4) ($jwb | ConvertTo-Json -Compress)
+$jwb2 = Json ($setx.Invoke($null, @('wb=4')))
+Check 'setprops: Nikon writes white balance 0x5005 = 4 (Daylight)' ($jwb2.results.wb -eq 'set' -and $jwb2.wb -eq 4) ($jwb2 | ConvertTo-Json -Compress)
+
+$tmpMov = Join-Path ([IO.Path]::GetTempPath()) ('pb4u-mov-test-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $tmpMov | Out-Null
+try {
+    $canonStart = $W.GetMethod('CanonMovieStart', $flags)
+    $canonStop = $W.GetMethod('CanonMovieStop', $flags)
+    $nikStart = $W.GetMethod('NikonMovieStart', $flags)
+    $nikStop = $W.GetMethod('NikonMovieStop', $flags)
+    $cBytes = New-Object byte[] 150000
+    (New-Object Random 42).NextBytes($cBytes)
+
+    $cp = New-Object PbTest.Fake360Ptp
+    $cp.IsCanon = $true; $cp.MovieData = $cBytes
+    $W.GetField('ptp', $flags).SetValue($null, $cp)
+    $W.GetField('canon', $flags).SetValue($null, $true)
+    $W.GetField('nikon', $flags).SetValue($null, $false)
+    $W.GetField('canonToHost', $flags).SetValue($null, $true)
+    $W.GetField('canonHostGaveUp', $flags).SetValue($null, $false)
+    $W.GetField('canonDestOrig', $flags).SetValue($null, [uint32]2)
+    $eosVals = $W.GetField('eosVals', $flags).GetValue($null); $eosVals.Clear()
+    $eosAvail = $W.GetField('eosAvail', $flags).GetValue($null); $eosAvail.Clear()
+    $opsList = $W.GetField('ops', $flags).GetValue($null); $opsList.Clear(); [void]$opsList.Add([uint16]0x911A); [void]$opsList.Add([uint16]0x101B)
+
+    $cj = Json ($expo.Invoke($null, $null))
+    Check 'props: Canon reads shutter (1/60), f/2.8, ISO 400, WB 0' ($cj.supported -and [Math]::Abs($cj.shutter - (1.0/60)) -lt 0.002 -and $cj.f -eq 2.8 -and $cj.iso -eq 400 -and $cj.wb -eq 0 -and $cj.set.shutter) ($cj | ConvertTo-Json -Compress)
+    $cj2 = Json ($setx.Invoke($null, @('shutter=0.004&iso=1000&wb=1')))
+    Check 'setprops: Canon picks nearest Tv (1/250=0x78), ISO (1000=0x63), WB (1)' ($cj2.results.shutter -eq 'set' -and $cj2.results.iso -eq 'set' -and $cj2.results.wb -eq 'set' -and $cp.Tv -eq 0x78 -and $cp.Iso -eq 0x63 -and $cp.Wb -eq 1) ($cp.Log -join ' ')
+
+    [void]$canonStart.Invoke($null, $null)
+    Check 'CanonMovieStart switches SaveTo to card (2) and sets 0xD1B8=4' ($cp.SaveTo -eq 2 -and $cp.MovieTarget -eq 4 -and $cp.Recording) ($cp.Log -join ' ')
+    $cs = Json ($canonStop.Invoke($null, @([string]$tmpMov)))
+    $cDisk = Get-Item $cs.path
+    Check 'CanonMovieStop streams exact 150 KB .mov to temp folder & restores SaveTo=4' ($cs.ok -and $cs.bytes -eq 150000 -and $cDisk.Length -eq 150000 -and $cp.SaveTo -eq 4 -and -not (Get-ChildItem $tmpMov -Filter '*.part')) (($cs | ConvertTo-Json -Compress) + ' SaveTo=' + $cp.SaveTo)
+
+    # Nikon movie test
+    $nBytes = New-Object byte[] 120000
+    (New-Object Random 77).NextBytes($nBytes)
+    $np = New-Object PbTest.Fake360Ptp
+    $np.IsCanon = $false; $np.MovieData = $nBytes
+    $W.GetField('ptp', $flags).SetValue($null, $np)
+    $W.GetField('canon', $flags).SetValue($null, $false)
+    $W.GetField('nikon', $flags).SetValue($null, $true)
+    $W.GetField('live', $flags).SetValue($null, $false)
+
+    [void]$nikStart.Invoke($null, $null)
+    Check 'NikonMovieStart switches media->Card(0), LV->Movie(1), starts LV & rec 0x920A' ($np.RecMedia -eq '0' -and $np.LvSel -eq '1' -and $np.LvOn -and $np.Recording) ($np.Log -join ' ')
+    $ns = Json ($nikStop.Invoke($null, @([string]$tmpMov)))
+    $nDisk = Get-Item $ns.path
+    Check 'NikonMovieStop stops rec 0x920B, streams 120 KB .mov & restores 0xD1A6/0xD10B' ($ns.ok -and $ns.bytes -eq 120000 -and $nDisk.Length -eq 120000 -and $np.RecMedia -eq '1' -and $np.LvSel -eq '0') (($ns | ConvertTo-Json -Compress) + ' media=' + $np.RecMedia + ' lvSel=' + $np.LvSel)
+} finally {
+    Remove-Item -Recurse -Force $tmpMov -ErrorAction SilentlyContinue
+}
 
 if ($fails -eq 0) { Write-Output 'PASS'; exit 0 } else { Write-Output "FAIL ($fails)"; exit 1 }

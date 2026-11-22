@@ -777,10 +777,17 @@ namespace Pb4uCam
                 if (canon)
                 {
                     // Hand the camera back: photos on the card again (it would otherwise stay on "computer" and the next photos taken
-                    // on the camera itself wouldn't be saved), aspect ratio restored, live view off, out of remote mode.
+                    // on the camera itself wouldn't be saved), aspect ratio restored, movie recording stopped, live view off, out of remote mode.
+                    try { if (canonMovieRec) { SetEos(0xD1B8, 0); canonMovieRec = false; } } catch { }
                     try { CanonToCard(false); } catch { }
                     try { CanonRestoreAspect(); } catch { }
                     try { if (live) SetEos(0xD1B0, 0); ptp.Op(0x9115, 0); ptp.Op(0x9114, 0); } catch { }
+                }
+                if (nikon)
+                {
+                    try { if (nikonMovieRec) { ptp.Op(0x920B); nikonMovieRec = false; } } catch { }
+                    try { if (nikonPrevMedia != null) { SetProp(0xD10B, nikonPrevMediaType, nikonPrevMedia); nikonPrevMedia = null; } } catch { }
+                    try { if (nikonPrevLvSel != null) { ptp.Op(0x9202); SetProp(0xD1A6, nikonPrevLvSelType, nikonPrevLvSel); nikonPrevLvSel = null; } } catch { }
                 }
                 if (sony) SonyReleaseButtons(false);
                 ptp.Close();
@@ -788,6 +795,7 @@ namespace Pb4uCam
             ptp = null; live = false; devId = null; nikon = false; canon = false; sony = false; sonyClock = null; sonyDestBlocked = false;
             canonHostGaveUp = false; canonHostWorked = false; canonNoAfBad = false; canonToHost = false; canonLiveOffSw.Reset();
             canonAspectChanged = false; canonAspectCrop = false; canonAspectOrig = 0;
+            canonMovieRec = false; canonMovieRestoredHost = false; nikonMovieRec = false; nikonPrevMedia = null; nikonPrevLvSel = null;
         }
 
         static string Open()
@@ -1010,11 +1018,9 @@ namespace Pb4uCam
             return r == Ptp.OK;
         }
 
-        // ---------- exposure settings for the booth's Camera check (Nikon; standard PTP properties) ----------
-        // 0x500E exposure mode (1 manual, 2 program, 3 aperture priority, 4 shutter priority), 0x500D exposure time in 0.0001 s,
-        // 0x5007 f-number x 100, 0x500F ISO. The camera says per property whether it can be changed right now (in aperture priority
-        // the shutter is the camera's own): a setting it will not take is reported, never forced. The mode itself is the dial: never set.
-        // "props" answers {"supported":false} for any other brand, so the booth hides its Apply button.
+        // ---------- exposure settings for the booth's Camera check & 360 Video settings (Nikon & Canon EOS) ----------
+        // Nikon: 0x500E exposure mode, 0x500D shutter (0.0001s), 0x5007 f*100, 0x500F ISO, 0x5005 WB; Movie LV uses 0xD1A8/0xD1A9/0xD1AA when settable.
+        // Canon: 0xD105 AE mode, 0xD101 Av, 0xD102 Tv, 0xD103 ISO, 0xD109 WB (via EOS 0x9110 + 0xC189/0xC18A events).
         static string Dbl(double v) { return v.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture); }
         static double DescNum(Desc d)
         {
@@ -1022,16 +1028,59 @@ namespace Pb4uCam
             return d != null && double.TryParse(d.Current, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v) ? v : 0;
         }
         static string CanSet(Desc d) { return d != null && d.GetSet == 1 && d.Choices.Count > 0 ? "true" : "false"; }
-        static string ExposureJson()
+        static Desc NikonPropFor(ushort stillCode, ushort movieCode, bool inMovieLv)
         {
-            if (!nikon) return "{\"supported\":false}";
-            Desc m = null, t = null, f = null, i = null;
-            try { m = PropDesc(0x500E); t = PropDesc(0x500D); f = PropDesc(0x5007); i = PropDesc(0x500F); }
+            if (inMovieLv && movieCode != 0)
+            {
+                try { Desc md = PropDesc(movieCode); if (md != null && md.Choices.Count > 0) return md; } catch { }
+            }
+            return PropDesc(stillCode);
+        }
+        static readonly uint[] NIKON_WB_IDS = { 2, 4, 5, 6, 7, 32784, 32785, 32787 };
+        static readonly string[] NIKON_WB_NAMES = { "Auto", "Daylight", "Fluorescent", "Tungsten", "Flash", "Cloudy", "Shade", "Custom" };
+        static string NikonWbChoicesJson(Desc wb)
+        {
+            if (wb == null || wb.Choices.Count == 0) return "[]";
+            var items = new List<string>();
+            foreach (string c in wb.Choices)
+            {
+                uint id;
+                if (!uint.TryParse(c, out id)) continue;
+                int idx = Array.IndexOf(NIKON_WB_IDS, id);
+                if (idx >= 0) items.Add("{\"v\":" + id + ",\"label\":" + Js(NIKON_WB_NAMES[idx]) + "}");
+            }
+            return "[" + string.Join(",", items.ToArray()) + "]";
+        }
+        static string NikonExposureJson()
+        {
+            Desc m = null, t = null, f = null, i = null, wb = null, lvs = null;
+            bool inMovieLv = false;
+            try
+            {
+                m = PropDesc(0x500E);
+                try { lvs = PropDesc(0xD1A6); if (lvs != null && lvs.Current == "1") inMovieLv = true; } catch { }
+                t = NikonPropFor(0x500D, 0xD1A8, inMovieLv);
+                f = NikonPropFor(0x5007, 0xD1A9, inMovieLv);
+                i = NikonPropFor(0x500F, 0xD1AA, inMovieLv);
+                try { wb = PropDesc(0x5005); } catch { }
+            }
             catch (GoneException) { throw; }
             catch (Exception e) { Log("Exposure settings not read: " + e.Message); }
             if (t == null && f == null && i == null) return "{\"supported\":false}";
+            string extra = "";
+            if (wb != null)
+            {
+                extra = ",\"wb\":" + (int)DescNum(wb) + ",\"wbChoices\":" + NikonWbChoicesJson(wb);
+            }
+            string setWb = wb != null ? ",\"wb\":" + CanSet(wb) : "";
             return "{\"supported\":true,\"program\":" + (int)DescNum(m) + ",\"shutter\":" + Dbl(DescNum(t) * 0.0001) + ",\"f\":" + Dbl(DescNum(f) / 100.0) + ",\"iso\":" + (int)DescNum(i) +
-                ",\"set\":{\"shutter\":" + CanSet(t) + ",\"f\":" + CanSet(f) + ",\"iso\":" + CanSet(i) + "}}";
+                extra + ",\"set\":{\"shutter\":" + CanSet(t) + ",\"f\":" + CanSet(f) + ",\"iso\":" + CanSet(i) + setWb + "}}";
+        }
+        static string ExposureJson()
+        {
+            if (nikon) return NikonExposureJson();
+            if (canon) return CanonExposureJson();
+            return "{\"supported\":false}";
         }
         // The camera's own list, the entry nearest (on a log scale) to what was asked for. Entries that are not real values
         // (Auto / Hi / bulb markers sit at the ends of some lists) are skipped.
@@ -1049,33 +1098,43 @@ namespace Pb4uCam
             }
             return best;
         }
-        // arg: "shutter=0.00625&f=5.6&iso=400" (seconds, f-number, ISO; any subset). Answers the settings now plus, per asked setting,
+        // arg: "shutter=0.00625&f=5.6&iso=400&wb=2" (seconds, f-number, ISO, WB id; any subset). Answers the settings now plus, per asked setting,
         // "set" | "same" | "locked" (the camera won't change it in this mode) | "refused" | "unsupported".
         static string SetExposure(string arg)
         {
+            if (canon) return CanonSetExposure(arg);
             if (!nikon) return "{\"supported\":false}";
             var want = new Dictionary<string, double>();
             foreach (string kv in (arg ?? "").Split(new char[] { '&', ' ' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 int eq = kv.IndexOf('='); double v;
-                if (eq > 0 && double.TryParse(kv.Substring(eq + 1), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v) && v > 0) want[kv.Substring(0, eq)] = v;
+                if (eq > 0 && double.TryParse(kv.Substring(eq + 1), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v) && (kv.Substring(0, eq) == "wb" ? v >= 0 : v > 0)) want[kv.Substring(0, eq)] = v;
             }
+            bool inMovieLv = false;
+            try { Desc lvs = PropDesc(0xD1A6); if (lvs != null && lvs.Current == "1") inMovieLv = true; } catch { }
             var res = new List<string>();
-            foreach (var spec in new object[][] { new object[] { "shutter", (ushort)0x500D, 0.0001 }, new object[] { "f", (ushort)0x5007, 0.01 }, new object[] { "iso", (ushort)0x500F, 1.0 } })
+            foreach (var spec in new object[][] {
+                new object[] { "shutter", (ushort)0x500D, (ushort)0xD1A8, 0.0001 },
+                new object[] { "f", (ushort)0x5007, (ushort)0xD1A9, 0.01 },
+                new object[] { "iso", (ushort)0x500F, (ushort)0xD1AA, 1.0 }
+            })
             {
-                string key = (string)spec[0]; ushort code = (ushort)spec[1]; double scale = (double)spec[2];
+                string key = (string)spec[0]; ushort stillCode = (ushort)spec[1]; ushort movieCode = (ushort)spec[2]; double scale = (double)spec[3];
                 double w;
                 if (!want.TryGetValue(key, out w)) continue;
                 string state;
                 try
                 {
-                    Desc d = PropDesc(code);
+                    Desc d = NikonPropFor(stillCode, movieCode, inMovieLv);
+                    ushort useCode = (d != null && inMovieLv && movieCode != 0 && d.Choices.Count > 0) ? movieCode : stillCode;
+                    Desc md = (useCode == movieCode) ? d : PropDesc(stillCode);
+                    d = md;
                     if (d == null) state = "unsupported";
                     else if (d.GetSet != 1 || d.Choices.Count == 0) state = "locked";
                     else
                     {
                         string pick = NearChoice(d, w, scale);
-                        state = pick == null ? "unsupported" : pick == d.Current ? "same" : SetProp(code, d.Type, pick) ? "set" : "refused";
+                        state = pick == null ? "unsupported" : pick == d.Current ? "same" : SetProp(useCode, d.Type, pick) ? "set" : "refused";
                     }
                 }
                 catch (GoneException) { throw; }
@@ -1083,7 +1142,206 @@ namespace Pb4uCam
                 Log("Exposure " + key + " -> " + Dbl(w) + ": " + state);
                 res.Add("\"" + key + "\":\"" + state + "\"");
             }
-            string now = ExposureJson();
+            double wbW;
+            if (want.TryGetValue("wb", out wbW))
+            {
+                string state;
+                try
+                {
+                    Desc wd = PropDesc(0x5005);
+                    string target = ((uint)Math.Round(wbW)).ToString();
+                    if (wd == null) state = "unsupported";
+                    else if (wd.GetSet != 1 || wd.Choices.Count == 0) state = "locked";
+                    else if (!wd.Choices.Contains(target)) state = "unsupported";
+                    else state = wd.Current == target ? "same" : SetProp(0x5005, wd.Type, target) ? "set" : "refused";
+                }
+                catch (GoneException) { throw; }
+                catch (Exception e) { Log("Exposure setting wb not changed: " + e.Message); state = "refused"; }
+                res.Add("\"wb\":\"" + state + "\"");
+            }
+            string now = NikonExposureJson();
+            return now.Substring(0, now.Length - 1) + ",\"results\":{" + string.Join(",", res.ToArray()) + "}}";
+        }
+
+        // Canon EOS APEX code tables (EOS PTP 0xD101 Av, 0xD102 Tv, 0xD103 ISO, 0xD109 WB)
+        static readonly uint[] CANON_TV_CODES = {
+            0x10, 0x18, 0x20, 0x28, 0x30, 0x38, 0x3B, 0x3D,
+            0x40, 0x43, 0x45, 0x48, 0x4B, 0x4D,
+            0x50, 0x53, 0x55, 0x58, 0x5B, 0x5C, 0x5D,
+            0x60, 0x63, 0x64, 0x65, 0x68, 0x6B, 0x6C, 0x6D,
+            0x70, 0x73, 0x74, 0x75, 0x78, 0x7B, 0x7C, 0x7D,
+            0x80, 0x83, 0x84, 0x85, 0x88, 0x8B, 0x8C, 0x8D,
+            0x90, 0x93, 0x94, 0x95, 0x98, 0xA0
+        };
+        static readonly double[] CANON_TV_VALS = {
+            30.0, 15.0, 8.0, 4.0, 2.0, 1.0, 0.8, 0.6,
+            0.5, 0.4, 0.3, 0.25, 0.2, 0.16,
+            0.125, 0.1, 1.0 / 13.0, 1.0 / 15.0, 1.0 / 20.0, 1.0 / 20.0, 1.0 / 25.0,
+            1.0 / 30.0, 1.0 / 40.0, 1.0 / 45.0, 1.0 / 50.0, 1.0 / 60.0, 1.0 / 80.0, 1.0 / 90.0, 1.0 / 100.0,
+            1.0 / 125.0, 1.0 / 160.0, 1.0 / 180.0, 1.0 / 200.0, 1.0 / 250.0, 1.0 / 320.0, 1.0 / 350.0, 1.0 / 400.0,
+            1.0 / 500.0, 1.0 / 640.0, 1.0 / 750.0, 1.0 / 800.0, 1.0 / 1000.0, 1.0 / 1250.0, 1.0 / 1500.0, 1.0 / 1600.0,
+            1.0 / 2000.0, 1.0 / 2500.0, 1.0 / 3000.0, 1.0 / 3200.0, 1.0 / 4000.0, 1.0 / 8000.0
+        };
+        static readonly uint[] CANON_AV_CODES = {
+            0x08, 0x0B, 0x0C, 0x0D, 0x10, 0x13, 0x14, 0x15, 0x18, 0x1B, 0x1C, 0x1D,
+            0x20, 0x23, 0x24, 0x25, 0x28, 0x2B, 0x2C, 0x2D, 0x30, 0x33, 0x34, 0x35,
+            0x38, 0x3B, 0x3C, 0x3D, 0x40, 0x43, 0x44, 0x45, 0x48, 0x4B, 0x4C, 0x4D,
+            0x50, 0x53, 0x55, 0x58
+        };
+        static readonly double[] CANON_AV_VALS = {
+            1.0, 1.1, 1.2, 1.2, 1.4, 1.6, 1.8, 1.8, 2.0, 2.2, 2.5, 2.5,
+            2.8, 3.2, 3.5, 3.5, 4.0, 4.5, 4.5, 5.0, 5.6, 6.3, 6.7, 7.1,
+            8.0, 9.0, 9.5, 10.0, 11.0, 13.0, 13.0, 14.0, 16.0, 18.0, 19.0, 20.0,
+            22.0, 25.0, 29.0, 32.0
+        };
+        static readonly uint[] CANON_ISO_CODES = {
+            0x00, 0x40, 0x48, 0x4B, 0x4D, 0x50, 0x53, 0x55, 0x58, 0x5B, 0x5D, 0x60,
+            0x63, 0x65, 0x68, 0x6B, 0x6D, 0x70, 0x73, 0x75, 0x78, 0x7B, 0x7D, 0x80, 0x88, 0x90
+        };
+        static readonly double[] CANON_ISO_VALS = {
+            0, 50, 100, 125, 160, 200, 250, 320, 400, 500, 640, 800,
+            1000, 1250, 1600, 2000, 2500, 3200, 4000, 5000, 6400, 8000, 10000, 12800, 25600, 51200
+        };
+        static readonly uint[] CANON_WB_IDS = { 0, 1, 2, 3, 4, 5, 6, 8, 9 };
+        static readonly string[] CANON_WB_NAMES = { "Auto", "Daylight", "Shade", "Cloudy", "Tungsten", "Fluorescent", "Flash", "Custom", "Kelvin" };
+
+        static double CanonCodeToVal(uint code, uint[] codes, double[] vals)
+        {
+            int idx = Array.IndexOf(codes, code);
+            return idx >= 0 ? vals[idx] : 0;
+        }
+        static bool CanonCanSetProp(ushort prop)
+        {
+            List<uint> av;
+            if (eosAvail.TryGetValue(prop, out av) && av.Count > 0) return av.Count > 1;
+            return eosVals.ContainsKey(prop);
+        }
+        static uint CanonPickApex(ushort prop, double want, uint[] codes, double[] vals, bool skipHalfDuplicates)
+        {
+            if (want <= 0) return uint.MaxValue;
+            List<uint> av;
+            bool hasAv = eosAvail.TryGetValue(prop, out av) && av.Count > 0;
+            uint bestCode = uint.MaxValue; double bestD = double.MaxValue;
+            for (int k = 0; k < codes.Length; k++)
+            {
+                double v = vals[k];
+                if (v <= 0) continue;
+                uint c = codes[k];
+                if (hasAv) { if (!av.Contains(c)) continue; }
+                else if (skipHalfDuplicates && (c == 0x0C || c == 0x14 || c == 0x1C || c == 0x24 || c == 0x2C || c == 0x34 || c == 0x44 || c == 0x4C || c == 0x5C || c == 0x64 || c == 0x6C || c == 0x74 || c == 0x7C || c == 0x84 || c == 0x8C || c == 0x94)) continue;
+                double dd = Math.Abs(Math.Log(v) - Math.Log(want));
+                if (dd < bestD) { bestD = dd; bestCode = c; }
+            }
+            return bestCode;
+        }
+        static string CanonWbChoicesJson()
+        {
+            var items = new List<string>();
+            List<uint> av;
+            if (eosAvail.TryGetValue(0xD109, out av) && av.Count > 0)
+            {
+                foreach (uint id in av)
+                {
+                    int idx = Array.IndexOf(CANON_WB_IDS, id);
+                    string lbl = idx >= 0 ? CANON_WB_NAMES[idx] : ("WB " + id);
+                    items.Add("{\"v\":" + id + ",\"label\":" + Js(lbl) + "}");
+                }
+            }
+            else
+            {
+                for (int k = 0; k < CANON_WB_IDS.Length; k++)
+                    items.Add("{\"v\":" + CANON_WB_IDS[k] + ",\"label\":" + Js(CANON_WB_NAMES[k]) + "}");
+            }
+            return "[" + string.Join(",", items.ToArray()) + "]";
+        }
+        static string CanonExposureJson()
+        {
+            if (ptp != null) { try { CanonPoll(); } catch (GoneException) { throw; } catch { } }
+            uint tvC = 0, avC = 0, isoC = 0, wbC = 0, aeC = 0;
+            bool hasTv = eosVals.TryGetValue(0xD102, out tvC);
+            bool hasAv = eosVals.TryGetValue(0xD101, out avC);
+            bool hasIso = eosVals.TryGetValue(0xD103, out isoC);
+            bool hasWb = eosVals.TryGetValue(0xD109, out wbC);
+            eosVals.TryGetValue(0xD105, out aeC);
+            if (!hasTv && !hasAv && !hasIso && !eosAvail.ContainsKey(0xD102) && !eosAvail.ContainsKey(0xD101) && !eosAvail.ContainsKey(0xD103))
+                return "{\"supported\":false}";
+            double shutter = hasTv ? CanonCodeToVal(tvC, CANON_TV_CODES, CANON_TV_VALS) : 0;
+            double f = hasAv ? CanonCodeToVal(avC, CANON_AV_CODES, CANON_AV_VALS) : 0;
+            int iso = hasIso ? (int)Math.Round(CanonCodeToVal(isoC, CANON_ISO_CODES, CANON_ISO_VALS)) : 0;
+            string extra = hasWb ? ",\"wb\":" + (int)wbC + ",\"wbChoices\":" + CanonWbChoicesJson() : ",\"wbChoices\":" + CanonWbChoicesJson();
+            return "{\"supported\":true,\"program\":" + (int)aeC + ",\"shutter\":" + Dbl(shutter) + ",\"f\":" + Dbl(f) + ",\"iso\":" + iso +
+                extra + ",\"set\":{\"shutter\":" + (CanonCanSetProp(0xD102) ? "true" : "false") +
+                ",\"f\":" + (CanonCanSetProp(0xD101) ? "true" : "false") +
+                ",\"iso\":" + (CanonCanSetProp(0xD103) ? "true" : "false") +
+                ",\"wb\":" + (CanonCanSetProp(0xD109) ? "true" : "false") + "}}";
+        }
+        static string CanonSetExposure(string arg)
+        {
+            if (!canon) return "{\"supported\":false}";
+            var want = new Dictionary<string, double>();
+            foreach (string kv in (arg ?? "").Split(new char[] { '&', ' ' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                int eq = kv.IndexOf('='); double v;
+                if (eq > 0 && double.TryParse(kv.Substring(eq + 1), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v) && (kv.Substring(0, eq) == "wb" ? v >= 0 : v > 0)) want[kv.Substring(0, eq)] = v;
+            }
+            var res = new List<string>();
+            foreach (var spec in new object[][] {
+                new object[] { "shutter", (ushort)0xD102, CANON_TV_CODES, CANON_TV_VALS },
+                new object[] { "f", (ushort)0xD101, CANON_AV_CODES, CANON_AV_VALS },
+                new object[] { "iso", (ushort)0xD103, CANON_ISO_CODES, CANON_ISO_VALS }
+            })
+            {
+                string key = (string)spec[0]; ushort prop = (ushort)spec[1];
+                uint[] codes = (uint[])spec[2]; double[] vals = (double[])spec[3];
+                double w;
+                if (!want.TryGetValue(key, out w)) continue;
+                string state;
+                try
+                {
+                    List<uint> av;
+                    bool hasList = eosAvail.TryGetValue(prop, out av) && av.Count > 0;
+                    uint cur = 0; bool hasCur = eosVals.TryGetValue(prop, out cur);
+                    if (!hasCur && !hasList) state = "unsupported";
+                    else if (hasList && av.Count <= 1) state = "locked";
+                    else
+                    {
+                        uint pick = CanonPickApex(prop, w, codes, vals, true);
+                        if (pick == uint.MaxValue) state = "unsupported";
+                        else if (hasCur && pick == cur) state = "same";
+                        else
+                        {
+                            uint r = SetEos(prop, pick);
+                            state = r == Ptp.OK ? "set" : "refused";
+                        }
+                    }
+                }
+                catch (GoneException) { throw; }
+                catch (Exception e) { Log("Canon exposure " + key + " not changed: " + e.Message); state = "refused"; }
+                Log("Canon exposure " + key + " -> " + Dbl(w) + ": " + state);
+                res.Add("\"" + key + "\":\"" + state + "\"");
+            }
+            double wbW;
+            if (want.TryGetValue("wb", out wbW))
+            {
+                string state;
+                try
+                {
+                    uint target = (uint)Math.Round(wbW);
+                    List<uint> av;
+                    bool hasList = eosAvail.TryGetValue(0xD109, out av) && av.Count > 0;
+                    uint cur = 0; bool hasCur = eosVals.TryGetValue(0xD109, out cur);
+                    if (!hasCur && !hasList) state = "unsupported";
+                    else if (hasList && av.Count <= 1) state = "locked";
+                    else if (hasList && !av.Contains(target)) state = "unsupported";
+                    else if (hasCur && cur == target) state = "same";
+                    else state = SetEos(0xD109, target) == Ptp.OK ? "set" : "refused";
+                }
+                catch (GoneException) { throw; }
+                catch (Exception e) { Log("Canon wb not changed: " + e.Message); state = "refused"; }
+                res.Add("\"wb\":\"" + state + "\"");
+            }
+            if (ptp != null) { try { CanonPoll(); } catch (GoneException) { throw; } catch { } }
+            string now = CanonExposureJson();
             return now.Substring(0, now.Length - 1) + ",\"results\":{" + string.Join(",", res.ToArray()) + "}}";
         }
 
@@ -1370,6 +1628,14 @@ namespace Pb4uCam
         static bool canonAspectChanged;   // 0xD194 was cropped (16:9, 1:1, 4:3) and switched to 3:2 (0); restore on CloseCamera
         static bool canonAspectCrop;      // 0xD194 is non-3:2 and could not be switched to 3:2
         static uint canonAspectOrig = 0;
+        static bool canonMovieRec = false;
+        static bool canonMovieRestoredHost = false;
+        static Stopwatch canonMovieStartedAt = new Stopwatch();
+        static bool nikonMovieRec = false;
+        static string nikonPrevMedia = null;
+        static ushort nikonPrevMediaType = 0;
+        static string nikonPrevLvSel = null;
+        static ushort nikonPrevLvSelType = 0;
         static int lastPollEvents = 0;    // count of events parsed on the most recent CanonPoll()
         static Stopwatch canonLiveOffSw = new Stopwatch();   // time since Live View was switched off (so DSLR mirror-drop is already done after "Pose")
         // How long the camera took lately from the shutter command to announcing the photo (newest last, the last three). The
@@ -1465,14 +1731,15 @@ namespace Pb4uCam
             }
         }
 
-        // 0xC18A: { size, 0xC18A, setting, data type, count, values... }. Only "Save to" is kept; the size of one value comes from the
-        // event's own length, so a model that sends 16 bit or 32 bit values reads the same way. Anything odd is ignored.
+        // 0xC18A: { size, 0xC18A, setting, data type, count, values... }. Keep SaveTo plus exposure & movie record target choices.
+        // The size of one value comes from the event's own length, so 16-bit and 32-bit EOS models read the same way.
         static void CanonAvail(byte[] d, int off, int size)
         {
-            if ((ushort)U32(d, off + 8) != EOS_SAVETO) return;
+            ushort prop = (ushort)U32(d, off + 8);
+            if (prop != EOS_SAVETO && prop != 0xD101 && prop != 0xD102 && prop != 0xD103 && prop != 0xD109 && prop != 0xD1B8) return;
             uint cnt = U32(d, off + 16);
             int room = size - 20;
-            if (cnt == 0 || cnt > 64 || room <= 0 || room % (int)cnt != 0) return;
+            if (cnt == 0 || cnt > 128 || room <= 0 || room % (int)cnt != 0) return;
             int es = room / (int)cnt;
             if (es != 1 && es != 2 && es != 4) return;
             var l = new List<uint>();
@@ -1481,7 +1748,7 @@ namespace Pb4uCam
                 int p = off + 20 + k * es;
                 l.Add(es == 4 ? U32(d, p) : es == 2 ? U16(d, p) : d[p]);
             }
-            eosAvail[EOS_SAVETO] = l;
+            eosAvail[prop] = l;
         }
 
         // Tell the Canon camera the computer has plenty of free disk space (libgphoto2: 0x0FFFFFFF clusters x 4096 B, reset=1).
@@ -1595,6 +1862,7 @@ namespace Pb4uCam
             eosVals.Clear(); eosAvail.Clear(); canonNew.Clear(); gotFrame = false;
             canonToHost = false; canonLags.Clear(); canonLiveBackPending = false; canonFocusInShot = false;
             canonAspectChanged = false; canonAspectCrop = false; canonAspectOrig = 0;
+            canonMovieRec = false; canonMovieRestoredHost = false; canonMovieStartedAt.Reset();
             canonLiveOffSw.Reset();
             if (recoverNext)
             {
@@ -2176,6 +2444,351 @@ namespace Pb4uCam
             return r == Ptp.OK ? img : new byte[0];
         }
 
+        // ---------- 360 Movie recording & streaming USB transfer (Canon EOS & Nikon) ----------
+        static void PtpObjectMeta(uint h, out ushort fmt, out uint size, out string ext, out string origName)
+        {
+            fmt = 0; size = 0; ext = ""; origName = "";
+            try
+            {
+                byte[] oi;
+                uint r = ptp.OpRead(0x1008, out oi, h);
+                if (r != Ptp.OK || oi == null || oi.Length < 12) return;
+                fmt = (ushort)(oi[4] | (oi[5] << 8));
+                size = U32(oi, 8);
+                if (oi.Length >= 54)
+                {
+                    int nlen = oi[52];
+                    if (nlen > 0 && 53 + nlen * 2 <= oi.Length)
+                    {
+                        origName = Encoding.Unicode.GetString(oi, 53, nlen * 2).TrimEnd('\0');
+                        string pe = System.IO.Path.GetExtension(origName).ToLowerInvariant();
+                        if (pe == ".mov" || pe == ".mp4" || pe == ".avi" || pe == ".m4v" || pe == ".jpg" || pe == ".jpeg" || pe == ".thm" || pe == ".cr2" || pe == ".cr3" || pe == ".nef")
+                            ext = pe;
+                    }
+                }
+                if (ext == "")
+                {
+                    if (fmt == 0xB982) ext = ".mp4";
+                    else if (fmt == 0x300B) ext = ".avi";
+                    else if (fmt == 0x300D) ext = ".mov";
+                    else if (fmt == 0x3801 || fmt == 0x3001) ext = ".jpg";
+                }
+            }
+            catch (GoneException) { throw; }
+            catch { }
+        }
+
+        static bool IsStillOrRawFormat(ushort fmt, string ext)
+        {
+            return fmt == 0x3801 || fmt == 0x3001 || fmt == 0xB101 || fmt == 0xB103 || fmt == 0xB108 ||
+                ext == ".jpg" || ext == ".jpeg" || ext == ".thm" || ext == ".cr2" || ext == ".cr3" || ext == ".nef";
+        }
+
+        static void StreamObjectToFile(uint handle, uint size, string ext, string outDir, out string finalPath, out string fileName, out uint written, ref string note)
+        {
+            if (string.IsNullOrEmpty(ext)) ext = ".mov";
+            if (size == 0)
+            {
+                ushort mf; uint ms; string me, mn;
+                PtpObjectMeta(handle, out mf, out ms, out me, out mn);
+                if (ms > 0) size = ms;
+                if (me != "" && ext == ".mov") ext = me;
+            }
+            string stamp = DateTime.Now.ToString("yyyyMMdd-HHmmssfff");
+            string prefix = nikon ? "nikon-360-" : canon ? "canon-360-" : "dslr-360-";
+            fileName = prefix + stamp + ext;
+            finalPath = System.IO.Path.Combine(outDir, fileName);
+            string partPath = finalPath + ".part";
+            string metaPath = partPath + ".meta";
+            written = 0;
+            bool committed = false;
+            try
+            {
+                try { System.IO.File.WriteAllText(metaPath, "{\"total\":" + size + ",\"filename\":" + Js(fileName) + "}", new UTF8Encoding(false)); } catch { }
+                uint off = 0, pr = 0;
+                using (var fs = new System.IO.FileStream(partPath, System.IO.FileMode.Create, System.IO.FileAccess.Write, System.IO.FileShare.Read))
+                {
+                    if (size > 0)
+                    {
+                        while (off < size)
+                        {
+                            byte[] chunk;
+                            try { pr = ptp.OpRead(0x101B, out chunk, handle, off, Math.Min(1048576U, size - off)); }
+                            catch (GoneException) { throw; }
+                            catch (Exception e) { note += "; 0x101B failed " + e.Message; pr = 0; break; }
+                            if (pr != Ptp.OK || chunk == null || chunk.Length == 0) break;
+                            fs.Write(chunk, 0, chunk.Length);
+                            off += (uint)chunk.Length;
+                        }
+                        note += "; 0x101B " + H(pr) + " " + off + "/" + size + " B";
+                    }
+                    else
+                    {
+                        while (true)
+                        {
+                            byte[] chunk;
+                            try { pr = ptp.OpRead(0x101B, out chunk, handle, off, 1048576U); }
+                            catch (GoneException) { throw; }
+                            catch { pr = 0; break; }
+                            if (pr != Ptp.OK || chunk == null || chunk.Length == 0) break;
+                            fs.Write(chunk, 0, chunk.Length);
+                            off += (uint)chunk.Length;
+                            if (chunk.Length < 1048576) break;
+                        }
+                        if (off > 0) note += "; 0x101B(nosize) " + off + " B";
+                    }
+                    if ((off == 0 || (size > 0 && off < size)) && canon && Has(0x9107) && size > 0)
+                    {
+                        fs.SetLength(0); fs.Position = 0; off = 0; pr = 0;
+                        while (off < size)
+                        {
+                            byte[] chunk;
+                            try { pr = ptp.OpRead(0x9107, out chunk, handle, off, Math.Min(1048576U, size - off)); }
+                            catch (GoneException) { throw; }
+                            catch (Exception e) { note += "; 0x9107 failed " + e.Message; pr = 0; break; }
+                            if (pr != Ptp.OK || chunk == null || chunk.Length == 0) break;
+                            fs.Write(chunk, 0, chunk.Length);
+                            off += (uint)chunk.Length;
+                        }
+                        note += "; 0x9107 " + H(pr) + " " + off + "/" + size + " B";
+                    }
+                    if (off == 0 || (size > 0 && off < size))
+                    {
+                        byte[] full = new byte[0];
+                        try { pr = ptp.OpRead(0x1009, out full, handle); }
+                        catch (GoneException) { throw; }
+                        catch (Exception e) { pr = 0; note += "; 0x1009 failed " + e.Message; }
+                        if (pr == Ptp.OK && full != null && full.Length >= 16)
+                        {
+                            fs.SetLength(0); fs.Position = 0;
+                            fs.Write(full, 0, full.Length);
+                            off = (uint)full.Length;
+                            note += "; 0x1009 " + off + " B";
+                        }
+                    }
+                }
+                if (off < 16 || (size > 0 && off < size))
+                    throw new CamException("CAPTURE Incomplete movie download from the camera (" + off + " / " + size + " B; " + note + ").");
+                if (System.IO.File.Exists(finalPath)) System.IO.File.Delete(finalPath);
+                System.IO.File.Move(partPath, finalPath);
+                written = off;
+                committed = true;
+            }
+            finally
+            {
+                try { if (System.IO.File.Exists(metaPath)) System.IO.File.Delete(metaPath); } catch { }
+                if (!committed) { try { if (System.IO.File.Exists(partPath)) System.IO.File.Delete(partPath); } catch { } }
+            }
+        }
+
+        static string CanonMovieStart()
+        {
+            if (canonMovieRec) return "{\"ok\":true,\"brand\":\"canon\",\"recording\":true}";
+            canonMovieRestoredHost = false;
+            try { CanonPoll(); } catch (GoneException) { throw; } catch { }
+            uint curSaveto = 0;
+            bool hasSaveto = eosVals.TryGetValue(EOS_SAVETO, out curSaveto);
+            if (canonToHost || (hasSaveto && curSaveto == SAVETO_HOST))
+            {
+                CanonToCard(false);
+                canonMovieRestoredHost = true;
+                try { CanonPoll(); } catch (GoneException) { throw; } catch { }
+            }
+            canonNew.Clear();
+            uint r = SetEos(0xD1B8, 4);
+            if (r != Ptp.OK)
+            {
+                if (!live)
+                {
+                    try { CanonRestartLive(); Thread.Sleep(300); } catch (GoneException) { throw; } catch { }
+                    try { CanonPoll(); } catch (GoneException) { throw; } catch { }
+                }
+                r = SetEos(0xD1B8, 4);
+            }
+            if (r != Ptp.OK)
+            {
+                if (canonMovieRestoredHost) { canonMovieRestoredHost = false; try { CanonToHost(); } catch (GoneException) { throw; } catch { } }
+                throw new CamException("CAPTURE The Canon camera didn't start movie recording (" + H(r) + "). On the camera: turn the mode dial to Movie (video camera icon), insert a formatted SD card with free space, and close any open camera menu.");
+            }
+            canonMovieRec = true;
+            canonMovieStartedAt.Restart();
+            Log("Canon movie recording started");
+            return "{\"ok\":true,\"brand\":\"canon\",\"recording\":true}";
+        }
+
+        static string CanonMovieStop(string outDir)
+        {
+            string safeDir = (outDir ?? "").Trim().Trim('"');
+            if (safeDir == "" || !System.IO.Directory.Exists(safeDir))
+                throw new CamException("BAD Destination folder for movie download does not exist: " + safeDir);
+            try
+            {
+                var sw = Stopwatch.StartNew();
+                try
+                {
+                    uint r = SetEos(0xD1B8, 0);
+                    if (r == Ptp.BUSY || r == NOTREADY) { Thread.Sleep(250); SetEos(0xD1B8, 0); }
+                }
+                finally { canonMovieRec = false; canonMovieStartedAt.Reset(); }
+
+                uint pickHandle = 0, pickSize = 0; string pickExt = ".mov";
+                var ew = Stopwatch.StartNew();
+                while (ew.ElapsedMilliseconds < 15000)
+                {
+                    CanonPoll();
+                    if (canonNew.Count > 0)
+                    {
+                        Thread.Sleep(250);
+                        CanonPoll();
+                        uint bestHandle = 0, bestSize = 0; string bestExt = ".mov";
+                        foreach (var o in canonNew)
+                        {
+                            ushort mf; uint ms; string me, mn;
+                            PtpObjectMeta(o[0], out mf, out ms, out me, out mn);
+                            ushort fmt = mf != 0 ? mf : (ushort)o[2];
+                            uint sz = ms > 0 ? ms : o[3];
+                            string ext = me != "" ? me : (fmt == 0xB982 ? ".mp4" : fmt == 0x300B ? ".avi" : ".mov");
+                            if (IsStillOrRawFormat(fmt, me)) continue;
+                            if (bestHandle == 0 || sz > bestSize) { bestHandle = o[0]; bestSize = sz; bestExt = ext; }
+                        }
+                        if (bestHandle != 0) { pickHandle = bestHandle; pickSize = bestSize; pickExt = bestExt; break; }
+                    }
+                    Thread.Sleep(100);
+                }
+                if (pickHandle == 0)
+                    throw new CamException("CAPTURE The camera stopped recording, but no movie file appeared from the camera. Make sure an SD card with free space is inserted.");
+
+                string note = "handle " + H(pickHandle);
+                string finalPath, fileName; uint written;
+                StreamObjectToFile(pickHandle, pickSize, pickExt, safeDir, out finalPath, out fileName, out written, ref note);
+                Log("Canon movie downloaded: " + fileName + " (" + (written / 1024) + " KB) in " + sw.ElapsedMilliseconds + " ms [" + note + "]");
+                return "{\"ok\":true,\"brand\":\"canon\",\"path\":" + Js(finalPath) + ",\"filename\":" + Js(fileName) + ",\"bytes\":" + written + ",\"format\":" + Js(pickExt.TrimStart('.')) + "}";
+            }
+            finally
+            {
+                if (canonMovieRestoredHost)
+                {
+                    canonMovieRestoredHost = false;
+                    try { CanonToHost(); } catch (GoneException) { throw; } catch { }
+                }
+            }
+        }
+
+        static void NikonRestoreMovieProps()
+        {
+            try
+            {
+                if (nikonPrevLvSel != null)
+                {
+                    if (live) { try { ptp.Op(0x9202); WaitReady(1500); } catch (GoneException) { throw; } catch { } live = false; }
+                    try { SetProp(0xD1A6, nikonPrevLvSelType, nikonPrevLvSel); } catch (GoneException) { throw; } catch { }
+                    nikonPrevLvSel = null;
+                }
+            }
+            finally
+            {
+                if (nikonPrevMedia != null)
+                {
+                    try { SetProp(0xD10B, nikonPrevMediaType, nikonPrevMedia); } catch (GoneException) { throw; } catch { }
+                    nikonPrevMedia = null;
+                }
+            }
+        }
+
+        static string NikonMovieStart()
+        {
+            if (nikonMovieRec) return "{\"ok\":true,\"brand\":\"nikon\",\"recording\":true}";
+            DrainEvents();
+            try
+            {
+                Desc rmed = null; try { rmed = PropDesc(0xD10B); } catch (GoneException) { throw; } catch { }
+                if (rmed != null && rmed.Current != "0")
+                {
+                    nikonPrevMedia = rmed.Current; nikonPrevMediaType = rmed.Type;
+                    if (!SetProp(0xD10B, rmed.Type, "0"))
+                    {
+                        nikonPrevMedia = null;
+                        throw new CamException("CAPTURE Couldn't switch Nikon recording media to SD Card for movie capture. Make sure an SD card with free space is inserted.");
+                    }
+                }
+                Desc lvs = null; try { lvs = PropDesc(0xD1A6); } catch (GoneException) { throw; } catch { }
+                if (lvs != null && lvs.Current != "1" && lvs.GetSet == 1 && lvs.Choices.Contains("1"))
+                {
+                    nikonPrevLvSel = lvs.Current; nikonPrevLvSelType = lvs.Type;
+                    if (live) { StopLive(); WaitReady(2000); }
+                    if (!SetProp(0xD1A6, lvs.Type, "1")) { Log("Nikon 0xD1A6 -> 1 refused; continuing"); nikonPrevLvSel = null; }
+                }
+                if (!live) StartLive();
+                DrainEvents();
+                uint r = ptp.Op(0x920A);
+                if (r == Ptp.BUSY) { WaitReady(2500); r = ptp.Op(0x920A); }
+                if (r != Ptp.OK)
+                    throw new CamException("CAPTURE The Nikon camera didn't start movie recording (" + H(r) + "). Switch the photo/movie selector on the camera to Movie, insert a card with free space, and close any open camera menu.");
+                nikonMovieRec = true;
+                Log("Nikon movie recording started");
+                return "{\"ok\":true,\"brand\":\"nikon\",\"recording\":true}";
+            }
+            catch
+            {
+                NikonRestoreMovieProps();
+                throw;
+            }
+        }
+
+        static string NikonMovieStop(string outDir)
+        {
+            string safeDir = (outDir ?? "").Trim().Trim('"');
+            if (safeDir == "" || !System.IO.Directory.Exists(safeDir))
+                throw new CamException("BAD Destination folder for movie download does not exist: " + safeDir);
+            try
+            {
+                var sw = Stopwatch.StartNew();
+                try
+                {
+                    uint r = ptp.Op(0x920B);
+                    if (r == Ptp.BUSY) { WaitReady(2500); r = ptp.Op(0x920B); }
+                    WaitReady(5000);
+                }
+                finally { nikonMovieRec = false; }
+
+                var handles = new List<uint>();
+                var ew = Stopwatch.StartNew();
+                uint pickHandle = 0, pickSize = 0; string pickExt = ".mov";
+                while (ew.ElapsedMilliseconds < 15000)
+                {
+                    foreach (uint h in Events()) if (!handles.Contains(h)) handles.Add(h);
+                    if (handles.Count > 0)
+                    {
+                        Thread.Sleep(200);
+                        foreach (uint h in Events()) if (!handles.Contains(h)) handles.Add(h);
+                        uint bestH = 0, bestSz = 0; string bestExt = ".mov";
+                        foreach (uint h in handles)
+                        {
+                            ushort mf; uint ms; string me, mn;
+                            PtpObjectMeta(h, out mf, out ms, out me, out mn);
+                            if (IsStillOrRawFormat(mf, me)) continue;
+                            string ext = me != "" ? me : (mf == 0xB982 ? ".mp4" : mf == 0x300B ? ".avi" : ".mov");
+                            if (bestH == 0 || ms > bestSz) { bestH = h; bestSz = ms; bestExt = ext; }
+                        }
+                        if (bestH != 0) { pickHandle = bestH; pickSize = bestSz; pickExt = bestExt; break; }
+                    }
+                    Thread.Sleep(100);
+                }
+                if (pickHandle == 0)
+                    throw new CamException("CAPTURE The Nikon stopped recording, but no movie file appeared from the camera. Make sure an SD card with free space is inserted.");
+
+                string note = "handle " + H(pickHandle);
+                string finalPath, fileName; uint written;
+                StreamObjectToFile(pickHandle, pickSize, pickExt, safeDir, out finalPath, out fileName, out written, ref note);
+                Log("Nikon movie downloaded: " + fileName + " (" + (written / 1024) + " KB) in " + sw.ElapsedMilliseconds + " ms [" + note + "]");
+                return "{\"ok\":true,\"brand\":\"nikon\",\"path\":" + Js(finalPath) + ",\"filename\":" + Js(fileName) + ",\"bytes\":" + written + ",\"format\":" + Js(pickExt.TrimStart('.')) + "}";
+            }
+            finally
+            {
+                NikonRestoreMovieProps();
+            }
+        }
+
         // ================= Sony Alpha (PC Remote mode) =================
         // Sony's own PTP commands (the same ones gphoto2 and Sony's remote tools use):
         // connect 0x9201 (phases 1, 2, 3), extended device info 0x9202, all properties 0x9209,
@@ -2742,6 +3355,20 @@ namespace Pb4uCam
                             // A Canon often leaves live view after a photo: the next frame request starts it again right away.
                             if (canon) { try { body = CanonCapture(); } finally { live = false; canonShotEnd.Restart(); canonLiveBackPending = true; } }
                             else body = sony ? SonyCapture() : Capture();
+                            break;
+                        case "moviestart":
+                            Need(); kind = "J";
+                            if (canon) body = Encoding.UTF8.GetBytes(CanonMovieStart());
+                            else if (nikon) body = Encoding.UTF8.GetBytes(NikonMovieStart());
+                            else if (sony) throw new CamException("UNSUPPORTED Sony Alpha cameras don't transfer 360 videos over USB in PC Remote mode. Choose HDMI Capture Card / Webcam in Camera Source.");
+                            else throw new CamException("UNSUPPORTED This camera doesn't support USB movie recording.");
+                            break;
+                        case "moviestop":
+                            Need(); kind = "J";
+                            if (canon) body = Encoding.UTF8.GetBytes(CanonMovieStop(arg));
+                            else if (nikon) body = Encoding.UTF8.GetBytes(NikonMovieStop(arg));
+                            else if (sony) throw new CamException("UNSUPPORTED Sony Alpha cameras don't transfer 360 videos over USB in PC Remote mode.");
+                            else throw new CamException("UNSUPPORTED This camera doesn't support USB movie recording.");
                             break;
                         case "close": CloseCamera(); break;
                         case "quit": CloseCamera(); return;

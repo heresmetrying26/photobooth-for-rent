@@ -5778,6 +5778,44 @@
       }
     }
 
+    /* 360 DSLR / Capture Card Record Panel */
+    .spin-cap-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .spin-cap-badge { display: inline-flex; align-items: center; gap: 5px; font: 800 10.5px 'Manrope', sans-serif; padding: 3px 9px; border-radius: 999px; background: #ede7df; color: #433c48; text-transform: uppercase; letter-spacing: .04em; }
+    .spin-cap-badge.live { background: #e3f5e8; color: #196b34; }
+    .spin-cap-badge.armed { background: #fff3d6; color: #8c5900; }
+    .spin-cap-badge.rec { background: #fde2df; color: #b71c1c; }
+    .spin-cap-badge.dl { background: #e3ecff; color: #1e4b9c; }
+    .spin-cap-src-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+    .spin-cap-src-btn { border: 1.5px solid #e0d7cb; background: #faf7f3; color: #3d3741; border-radius: 10px; padding: 8px 10px; font: 700 12px 'Manrope', sans-serif; cursor: pointer; text-align: center; transition: all .15s; }
+    .spin-cap-src-btn.active { background: #1c1a1e; color: #fff; border-color: #1c1a1e; box-shadow: 0 2px 8px rgba(28,26,30,.15); }
+    .spin-cap-pv { position: relative; aspect-ratio: 16 / 9; background: #141216; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1.5px solid #2b2630; margin: 8px 0; }
+    .spin-cap-pv img, .spin-cap-pv video { width: 100%; height: 100%; object-fit: cover; display: none; }
+    .spin-cap-pv-empty { color: rgba(255,255,255,.55); font: 600 12px 'Manrope', sans-serif; text-align: center; padding: 14px; line-height: 1.45; }
+    .spin-cap-guide { position: absolute; inset: 12% 18%; border: 1px dashed rgba(255,255,255,.22); border-radius: 8px; pointer-events: none; }
+    .spin-cap-overlay-num { position: absolute; font: 900 54px 'Manrope', sans-serif; color: #fff; text-shadow: 0 4px 20px rgba(0,0,0,.65); pointer-events: none; display: none; }
+    .spin-cap-rec-dot { position: absolute; top: 8px; left: 8px; background: rgba(183,28,28,.9); color: #fff; padding: 3px 9px; border-radius: 999px; font: 800 11px monospace; display: none; align-items: center; gap: 5px; }
+    .spin-cap-cam-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 6px 0; font-size: 12px; }
+    .spin-cap-drawer { background: #f8f4ee; border: 1.5px solid #e7ded3; border-radius: 11px; padding: 10px 11px; margin: 8px 0; }
+    .spin-cap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+    .spin-cap-grid label { display: flex; flex-direction: column; gap: 3px; font: 700 11px 'Manrope', sans-serif; color: #534c59; }
+    .spin-cap-meter { height: 8px; background: #e8e0d5; border-radius: 999px; overflow: hidden; margin: 5px 0; position: relative; }
+    .spin-cap-meter-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #32a852, #f59e0b, #dc2626); transition: width .06s linear; }
+    .spin-cap-meter-mark { position: absolute; top: 0; bottom: 0; width: 2px; background: #1c1a1e; opacity: .75; }
+    .spin-cap-cal { background: #fff9ec; border: 1.5px solid #f0d49b; border-radius: 10px; padding: 9px 10px; margin: 7px 0; font-size: 12px; color: #5c430d; }
+    .spin-cap-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 10px; }
+    .spin-cap-btn-rec { border: 0; border-radius: 12px; padding: 11px 14px; font: 800 13.5px 'Manrope', sans-serif; cursor: pointer; background: #c93d27; color: #fff; box-shadow: 0 4px 12px rgba(201,61,39,.25); }
+    .spin-cap-btn-rec.recording { background: #1c1a1e; }
+    .spin-cap-btn-rec:disabled { opacity: .55; cursor: not-allowed; }
+    .spin-cap-btn-arm { border: 1.5px solid #d5cbbe; border-radius: 12px; padding: 11px 12px; font: 800 12.5px 'Manrope', sans-serif; cursor: pointer; background: #fff; color: #1c1a1e; white-space: nowrap; }
+    .spin-cap-btn-arm.armed { background: #196b34; color: #fff; border-color: #196b34; }
+    .spin-cap-dl { background: #eef3ff; border: 1px solid #cddcfb; border-radius: 10px; padding: 8px 10px; margin-top: 8px; font-size: 12px; color: #1e4b9c; }
+    .spin-cap-dl-bar { height: 6px; background: #d5e2fc; border-radius: 999px; overflow: hidden; margin-top: 5px; }
+    .spin-cap-dl-fill { height: 100%; width: 0%; background: #2d66dc; transition: width .15s linear; }
+    .spin-cap-note { font-size: 11px; color: #6b6370; line-height: 1.4; margin: 6px 0 0; }
+    .spin-cap-quick { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+    .spin-cap-pill { border: 1px solid #d7cec1; background: #fff; color: #36303b; border-radius: 999px; padding: 2px 8px; font: 700 10.5px 'Manrope', sans-serif; cursor: pointer; }
+    .spin-cap-pill:hover { border-color: #1c1a1e; }
+
     .spin-head-right {
       display: flex;
       align-items: center;
@@ -6346,8 +6384,8 @@
     }
 
     /* Locked while a clip is rendered: the scroll area itself stays live (wheel, scrollbar, top tabs),
-       only the option cards are dimmed and unclickable. The video queue card stays usable. */
-    .spin-locked-controls .spin-panel-card:not(#spinSecVideos) {
+       only the option cards are dimmed and unclickable. The video queue & 360 capture cards stay usable. */
+    .spin-locked-controls .spin-panel-card:not(#spinSecVideos):not(#spinSecCapture) {
       opacity: 0.52;
       pointer-events: none !important;
       user-select: none;
@@ -22711,6 +22749,7 @@
         </div>
       </div>
       <div class="spin-head-nav" id="spinHeadTabs">
+        <button type="button" class="spin-tab-btn" data-tab="spinSecCapture">📷 Record 360</button>
         <button type="button" class="spin-tab-btn active" data-tab="spinSecVideos">🎬 Videos &amp; Queue</button>
         <button type="button" class="spin-tab-btn" data-tab="spinSecPresets">✨ Presets</button>
         <button type="button" class="spin-tab-btn" data-tab="spinSecLook">🎨 Look &amp; Frame</button>
@@ -22742,7 +22781,195 @@
         </div>
 
         <!-- SECTION 1: VIDEOS & INBOX -->
-        <div class="spin-panel-card" id="spinSecVideos">
+        <!-- SECTION 0: RECORD 360 (DSLR / HDMI CAPTURE CARD / GOPRO + MOTION TRIGGER) -->
+      <div class="spin-panel-card" id="spinSecCapture">
+        <div class="spin-cap-head">
+          <h3>📷 Record 360 (DSLR / Capture)</h3>
+          <span class="spin-cap-badge" id="spinCapStateBadge">IDLE</span>
+        </div>
+
+        <div class="spin-cap-src-row" role="group" aria-label="360 Capture source">
+          <button type="button" class="spin-cap-src-btn active" id="spinCapSrcUsb" data-src="usb">📷 USB DSLR / GoPro</button>
+          <button type="button" class="spin-cap-src-btn" id="spinCapSrcWebcam" data-src="webcam">🎥 HDMI Card / Webcam</button>
+        </div>
+
+        <div class="spin-cap-cam-bar" id="spinCapUsbBar">
+          <span id="spinCapCamName" style="flex:1;min-width:120px;font-weight:700;color:#2b282c;">No USB camera connected</span>
+          <button type="button" class="desk-btn" id="spinCapConnectBtn" style="padding:4px 10px;font-size:11.5px;">Connect</button>
+          <button type="button" class="desk-btn" id="spinCapLiveBtn" style="padding:4px 10px;font-size:11.5px;">Live</button>
+          <button type="button" class="desk-btn" id="spinCapSettingsBtn" style="padding:4px 10px;font-size:11.5px;">⚙️ DSLR Settings</button>
+        </div>
+        <div class="spin-cap-cam-bar" id="spinCapWebcamBar" hidden>
+          <select id="spinCapWebcamSel" style="flex:1;min-width:140px;font-size:12px;"></select>
+          <button type="button" class="desk-btn" id="spinCapWebcamRefresh" style="padding:4px 10px;font-size:11.5px;">↻ Refresh</button>
+        </div>
+        <p class="spin-cap-note" id="spinCapSonyWarn" hidden style="color:#b45309;font-weight:700;">Sony Alpha over USB transfers photos only — plug into an HDMI Capture Card (Cam Link) and switch above to HDMI Card / Webcam.</p>
+
+        <div class="spin-cap-pv">
+          <img id="spinCapImg" alt="Live 360 camera view">
+          <video id="spinCapVid" autoplay muted playsinline></video>
+          <div class="spin-cap-pv-empty" id="spinCapPvEmpty">Connect a Canon/Nikon DSLR or GoPro via USB, or choose HDMI Capture Card to frame your 360 shot.</div>
+          <div class="spin-cap-guide" aria-hidden="true"></div>
+          <div class="spin-cap-rec-dot" id="spinCapRecDot">● REC <span id="spinCapRecTimer">0:00</span></div>
+          <div class="spin-cap-overlay-num" id="spinCapCountNum"></div>
+        </div>
+
+        <!-- Expandable DSLR Video Exposure Settings (Canon EOS & Nikon) -->
+        <div class="spin-cap-drawer" id="spinCapDslrWrap" hidden>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
+            <strong style="font-size:12px;color:#1c1a1e;">⚙️ DSLR Video Exposure Settings</strong>
+            <div style="display:flex;gap:5px;">
+              <button type="button" class="desk-btn" id="spinCapAfBtn" style="padding:3px 9px;font-size:11px;">🎯 AF</button>
+              <button type="button" class="desk-btn" id="spinCapReadPropsBtn" style="padding:3px 9px;font-size:11px;">↻ Read</button>
+            </div>
+          </div>
+          <div class="spin-cap-grid">
+            <label>Shutter Speed
+              <select id="spinCapShutter">
+                <option value="">--</option>
+                <option value="0.033333">1/30</option>
+                <option value="0.02">1/50</option>
+                <option value="0.016667">1/60</option>
+                <option value="0.0125">1/80</option>
+                <option value="0.01">1/100</option>
+                <option value="0.008">1/125 (60fps)</option>
+                <option value="0.00625">1/160</option>
+                <option value="0.005">1/200</option>
+                <option value="0.004">1/250 (120fps)</option>
+                <option value="0.003125">1/320</option>
+                <option value="0.0025">1/400</option>
+                <option value="0.002">1/500</option>
+                <option value="0.00125">1/800</option>
+                <option value="0.001">1/1000</option>
+                <option value="0.0005">1/2000</option>
+                <option value="0.00025">1/4000</option>
+              </select>
+            </label>
+            <label>Aperture (f/)
+              <select id="spinCapAperture">
+                <option value="">--</option>
+                <option value="1.4">f/1.4</option>
+                <option value="1.8">f/1.8</option>
+                <option value="2">f/2.0</option>
+                <option value="2.8">f/2.8</option>
+                <option value="3.5">f/3.5</option>
+                <option value="4">f/4.0</option>
+                <option value="4.5">f/4.5</option>
+                <option value="5">f/5.0</option>
+                <option value="5.6">f/5.6</option>
+                <option value="6.3">f/6.3</option>
+                <option value="7.1">f/7.1</option>
+                <option value="8">f/8.0</option>
+                <option value="11">f/11</option>
+                <option value="16">f/16</option>
+              </select>
+            </label>
+            <label>ISO
+              <select id="spinCapIso">
+                <option value="">--</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="400">400</option>
+                <option value="800">800</option>
+                <option value="1000">1000</option>
+                <option value="1250">1250</option>
+                <option value="1600">1600</option>
+                <option value="2000">2000</option>
+                <option value="3200">3200</option>
+                <option value="6400">6400</option>
+                <option value="12800">12800</option>
+              </select>
+            </label>
+            <label>White Balance
+              <select id="spinCapWb">
+                <option value="0">Auto</option>
+              </select>
+            </label>
+          </div>
+          <div class="spin-cap-quick">
+            <button type="button" class="spin-cap-pill" data-shutter="0.008">1/125 · 60fps</button>
+            <button type="button" class="spin-cap-pill" data-shutter="0.004">1/250 · 120fps</button>
+            <button type="button" class="desk-btn" id="spinCapApplyProps" style="margin-left:auto;padding:4px 12px;font-size:11.5px;background:#1c1a1e;color:#fff;">Apply</button>
+          </div>
+          <p class="spin-cap-note" id="spinCapPropsMsg">Tip: On camera set dial to <b>Movie</b> (1080p 60/120fps HFR), <b>Movie Manual Exposure</b>, and <b>Exposure Simulation: Disable</b>.</p>
+        </div>
+
+        <!-- Motion Trigger & Timing -->
+        <div class="spin-cap-drawer">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+            <strong style="font-size:12px;color:#1c1a1e;">🌀 Arm Motion Trigger</strong>
+            <select id="spinCapTrigMode" style="font-size:11.5px;padding:3px 7px;">
+              <option value="tablet">Windows Tablet Gyro (Surface Pro on arm)</option>
+              <option value="iosarm">Paired iPhone/iPad (Wireless Arm Sensor)</option>
+              <option value="manual">Countdown / Start Button / Remote Clicker</option>
+            </select>
+          </div>
+
+          <div id="spinCapTabletBox" style="margin-top:7px;">
+            <label class="chk" style="margin:0 0 4px;"><input type="checkbox" id="spinCapTrigOn"> Start recording when tablet starts rotating sideways</label>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11.5px;color:#4f4855;">
+              <span id="spinCapSensorCaps">Checking tablet motion sensor...</span>
+              <b id="spinCapMeterVal" style="font-family:monospace;">0.0 °/s</b>
+            </div>
+            <div class="spin-cap-meter"><div class="spin-cap-meter-fill" id="spinCapMeterBar"></div><div class="spin-cap-meter-mark" id="spinCapMeterMark" style="left:22%;"></div></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:4px;">
+              <button type="button" class="desk-btn" id="spinCapCalBtn" style="padding:4px 10px;font-size:11.5px;">Configure sensitivity</button>
+              <span style="font-size:11px;color:#6b6370;" id="spinCapThreshLabel">Start: 22 °/s · Stop: 8 °/s</span>
+            </div>
+            <div class="spin-cap-cal" id="spinCapCalBox" hidden>
+              <div id="spinCapCalMsg" style="font-weight:700;margin-bottom:5px;">Keep arm still to begin calibration...</div>
+              <div class="spin-cap-grid" style="margin-top:4px;">
+                <label>Start threshold (<span id="spinCapStartThrLbl">22</span>)
+                  <input type="range" id="spinCapStartThr" min="8" max="120" step="1" value="22">
+                </label>
+                <label>Stop threshold (<span id="spinCapStopThrLbl">8</span>)
+                  <input type="range" id="spinCapStopThr" min="3" max="60" step="1" value="8">
+                </label>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:6px;">
+                <button type="button" class="desk-btn" id="spinCapCalRunBtn" style="padding:4px 10px;font-size:11px;background:#1c1a1e;color:#fff;">Run 5s Auto-Calibrate</button>
+                <button type="button" class="desk-btn" id="spinCapCalCloseBtn" style="padding:4px 10px;font-size:11px;">Done</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="spinCapIosArmBox" hidden style="margin-top:7px;">
+            <label class="chk" style="margin:0 0 4px;"><input type="checkbox" id="spinCapArmTrigOn"> Start DSLR when paired iPhone/iPad arm rotates sideways</label>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11.5px;color:#4f4855;">
+              <span id="spinCapArmSensorStatus">Pair iPhone in Videos tab -> Pair 360 Arm Camera</span>
+              <b id="spinCapArmMotionVal" style="font-family:monospace;">0 °/s</b>
+            </div>
+          </div>
+
+          <div class="spin-cap-grid" style="margin-top:8px;">
+            <label>Countdown (s)<input type="number" id="spinCapCountdown" min="0" max="10" value="3"></label>
+            <label>Stop mode
+              <select id="spinCapStopMode">
+                <option value="fixed">Fixed duration</option>
+                <option value="follow">Follow arm stop</option>
+              </select>
+            </label>
+            <label>Recording duration (s)<input type="number" id="spinCapDuration" min="2" max="25" value="7"></label>
+            <label>Cooldown (s)<input type="number" id="spinCapCooldown" min="1" max="15" value="4"></label>
+          </div>
+          <label class="chk" style="margin:8px 0 2px;"><input type="checkbox" id="spinCapReverse"> Reverse / Boomerang (plays video forward then backward)</label>
+          <label class="chk" style="margin:3px 0 0;"><input type="checkbox" id="spinCapWallCue" checked> Show countdown &amp; REC cues on Live Wall / TV</label>
+          <p class="spin-cap-note">Recommended camera frame rate: <b>60–120 fps</b> for dramatic slow motion. Shortcut: <b>F9</b> / clicker starts/stops.</p>
+        </div>
+
+        <div class="spin-cap-actions">
+          <button type="button" class="spin-cap-btn-rec" id="spinCapRecBtn">● Start 360 Recording</button>
+          <button type="button" class="spin-cap-btn-arm" id="spinCapArmBtn">🧲 Arm Trigger</button>
+        </div>
+
+        <div class="spin-cap-dl" id="spinCapDlWrap" hidden>
+          <div id="spinCapDlText">Transferring movie from camera...</div>
+          <div class="spin-cap-dl-bar"><div class="spin-cap-dl-fill" id="spinCapDlFill"></div></div>
+        </div>
+        <p class="spin-cap-note" id="spinCapStatus" style="color:#2b282c;font-weight:600;"></p>
+      </div>
+
+      <div class="spin-panel-card" id="spinSecVideos">
           <div class="spin-card-title">
             <span>🎬 360 Video Queue</span>
             <span class="spin-pill" id="spinQueueBadge">0 videos</span>
@@ -30048,11 +30275,30 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         async getExposure() {
           try { const j = await (await this.req('/camera/props', null, 12000)).json(); return j && j.ok && j.supported ? j : null; } catch (e) { return null; }
         }
-        // want: { shutter: seconds, f: f-number, iso: number } (any subset). Answers the settings now and, per setting,
+        // want: { shutter: seconds, f: f-number, iso: number, wb: number } (any subset). Answers the settings now and, per setting,
         // "set" | "same" | "locked" | "refused" | "unsupported" in results.
         async setExposure(want) {
-          const q = ['shutter', 'f', 'iso'].filter(function (k) { return Number(want && want[k]) > 0; }).map(function (k) { return k + '=' + Number(want[k]); }).join('&');
+          const q = ['shutter', 'f', 'iso', 'wb'].filter(function (k) {
+            if (!want || want[k] === undefined || want[k] === null || want[k] === '') return false;
+            const n = Number(want[k]);
+            return k === 'wb' ? (Number.isFinite(n) && n >= 0) : n > 0;
+          }).map(function (k) { return k + '=' + Number(want[k]); }).join('&');
           return await (await this.req('/camera/setprops?' + q, { method: 'POST' }, 25000)).json();
+        }
+        async live(on) {
+          return await (await this.req('/camera/live?on=' + (on ? '1' : '0'), { method: 'POST' }, 20000)).json();
+        }
+        async af(pre) {
+          return await (await this.req('/camera/af' + (pre ? '?pre=1' : ''), { method: 'POST' }, 15000)).json();
+        }
+        async movieStart() {
+          return await (await this.req('/camera/movie/start', { method: 'POST' }, 30000)).json();
+        }
+        async movieStop() {
+          return await (await this.req('/camera/movie/stop', { method: 'POST' }, 185000)).json();
+        }
+        async movieStatus() {
+          try { return await (await this.req('/camera/movie/status', null, 4000)).json(); } catch (e) { return null; }
         }
         async captureImageAsFile() {
           const r = await this.req('/camera/capture' + this.classicQ('?'), { method: 'POST' }, 50000);
@@ -47919,6 +48165,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         spinPopulateDesignPresetsUI();
         try { spinRenderPresetGallery(); } catch (e) { }
         g('spinSmooth').disabled = spinLook.speed !== 'slow' && !(spinLook.speed === 'custom' && (spinLook.rates || []).some(function (r) { return r < 1; }));
+        var capRev = g('spinCapReverse');
+        if (capRev) capRev.checked = (spinLook.speed === 'boomerang' || (spinLook.speed === 'custom' && !!spinLook.reverse));
         spinUpdateStageAspect();
       }
       function spinLookFromUI(fromPreset) {
@@ -49025,6 +49273,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (spinArmTimer) { clearInterval(spinArmTimer); spinArmTimer = null; }
         spinArmRefresh();
         spinArmTimer = setInterval(spinArmRefresh, 1200);
+        if (typeof spinCapRefresh === 'function') spinCapRefresh();
         if (!spinCur && spinQueue.length) {
           spinOpenItem(spinQueue[0]);
         } else if (spinCur) {
@@ -49052,6 +49301,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function closeSpin() {
         spinOverlay.hidden = true;
         if (spinArmTimer) { clearInterval(spinArmTimer); spinArmTimer = null; }
+        if (typeof spinCapDeactivate === 'function') spinCapDeactivate();
         var v = document.getElementById('spinVideo');
         if (v) { try { v.pause(); } catch (e) { } }
         closeSpinModal();
@@ -52355,7 +52605,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // Locked cards are also made inert so keyboard Tab can't reach their fields; the scroll area itself is not inert.
       function spinSetCardsInert(col, on) {
         col.querySelectorAll('.spin-panel-card').forEach(function (c) {
-          if (c.id === 'spinSecVideos') return;
+          if (c.id === 'spinSecVideos' || c.id === 'spinSecCapture') return;
           if (c.id === 'spinSecPresets' && spinCur && spinCur.status !== 'editing') { c.inert = false; c.removeAttribute('aria-disabled'); return; }   // picking a look on a rendered clip starts a new draft
           c.inert = !!on;
           if (on) c.setAttribute('aria-disabled', 'true'); else c.removeAttribute('aria-disabled');
@@ -54256,6 +54506,781 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         cvs.addEventListener('pointerup', endDrag);
         cvs.addEventListener('pointercancel', endDrag);
       })();
+      // ---- 360 DSLR / Capture Card / GoPro Capture + Motion Trigger ----
+      var spinCapRefresh = null, spinCapDeactivate = null;
+      (function () {
+        var CFG_KEY = 'pb_spin_cap_cfg';
+        var el = function (id) { return document.getElementById(id); };
+        var sec = el('spinSecCapture');
+        if (!sec) return;
+
+        var cfg = {
+          src: 'usb', webcamId: '', trigMode: 'tablet', trigOn: false, armTrigOn: false,
+          unit: 'dps', startThresh: 22, stopThresh: 8, countdown: 3, stopMode: 'fixed',
+          duration: 7, cooldown: 4, wallCue: true
+        };
+        try {
+          var saved = JSON.parse(localStorage.getItem(CFG_KEY) || 'null');
+          if (saved && typeof saved === 'object') Object.assign(cfg, saved);
+        } catch (e) { }
+        var saveCfg = function () { try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) { } };
+
+        var st = {
+          phase: 'idle', armed: false, liveOn: false, camBrand: '', camName: '', hc: null,
+          prevUrl: '', mediaStream: null, recorder: null, chunks: [],
+          recTimer: null, dlTimer: null, cdTimer: null, recStartedAt: 0, cooldownUntil: 0,
+          aboveCount: 0, stillCount: 0, lastVal: 0, sensorOff: null, iosTimer: null,
+          calActive: false, calPhase: '', calSamplesStill: [], calSamplesSpin: []
+        };
+
+        var sleepMs = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+        var fmtClock = function (ms) {
+          var s = Math.max(0, Math.floor(ms / 1000));
+          return Math.floor(s / 60) + ':' + ((s % 60) < 10 ? '0' : '') + (s % 60);
+        };
+        var fmtMb = function (b) { return (Math.max(0, Number(b) || 0) / (1024 * 1024)).toFixed(1) + ' MB'; };
+        var setStatus = function (msg, isErr) {
+          var sEl = el('spinCapStatus');
+          if (sEl) { sEl.textContent = msg || ''; sEl.style.color = isErr ? '#b91c1c' : '#2b282c'; }
+        };
+        var wallCue = function (action, text, ms) {
+          if (!cfg.wallCue) return;
+          try { if (window.pb4u && window.pb4u.setWallCue) window.pb4u.setWallCue(action, text, ms || 2500); } catch (e) { }
+        };
+
+        function updateUiState() {
+          var badge = el('spinCapStateBadge');
+          var recBtn = el('spinCapRecBtn');
+          var armBtn = el('spinCapArmBtn');
+          var recDot = el('spinCapRecDot');
+          if (badge) {
+            badge.className = 'spin-cap-badge ' + (
+              st.phase === 'recording' ? 'rec' :
+              st.phase === 'downloading' ? 'dl' :
+              st.armed ? 'armed' : st.liveOn ? 'live' : ''
+            );
+            badge.textContent = st.phase === 'recording' ? 'REC' :
+              st.phase === 'downloading' ? 'SAVING' :
+              st.phase === 'countdown' ? 'COUNTDOWN' :
+              st.armed ? 'ARMED' : st.liveOn ? 'LIVE' : 'IDLE';
+          }
+          if (recBtn) {
+            recBtn.disabled = st.phase === 'downloading';
+            recBtn.classList.toggle('recording', st.phase === 'recording' || st.phase === 'countdown');
+            recBtn.textContent = st.phase === 'recording' ? '⏹ Stop & Save Now' :
+              st.phase === 'countdown' ? '✕ Cancel Countdown' :
+              st.phase === 'downloading' ? '⏳ Downloading Movie...' :
+              '● Start 360 Recording';
+          }
+          if (armBtn) {
+            armBtn.classList.toggle('armed', !!st.armed);
+            armBtn.disabled = st.phase === 'recording' || st.phase === 'downloading';
+            armBtn.textContent = st.armed ? '🟢 Armed (Disarm)' : '🧲 Arm Trigger';
+          }
+          if (recDot) recDot.style.display = st.phase === 'recording' ? 'inline-flex' : 'none';
+        }
+
+        function spinCapCam() {
+          if (typeof usbCam !== 'undefined' && usbCam && usbCam.camera && typeof usbCam.camera.movieStart === 'function') return usbCam.camera;
+          if (!st.hc && typeof HelperCamera === 'function') st.hc = new HelperCamera();
+          return st.hc;
+        }
+
+        function releaseBoothHold() {
+          if (typeof usbCam !== 'undefined' && usbCam && usbCam.active) usbCam.holdLive = false;
+        }
+
+        function nearestOpt(sel, val) {
+          if (!sel || !(val > 0)) return;
+          var best = '', bestD = Infinity;
+          for (var i = 0; i < sel.options.length; i++) {
+            var ov = Number(sel.options[i].value);
+            if (!(ov > 0)) continue;
+            var d = Math.abs(Math.log(ov) - Math.log(val));
+            if (d < bestD) { bestD = d; best = sel.options[i].value; }
+          }
+          if (best) sel.value = best;
+        }
+
+        async function readProps() {
+          var cam = spinCapCam();
+          if (!cam || !cam.getExposure) return;
+          var msgEl = el('spinCapPropsMsg');
+          try {
+            var p = await cam.getExposure();
+            if (!p) {
+              if (msgEl) msgEl.textContent = st.camBrand === 'gopro'
+                ? 'GoPro adjusts exposure automatically (HDR/Auto).'
+                : 'Connect Canon or Nikon DSLR in Movie mode to edit shutter/aperture/ISO/WB.';
+              return;
+            }
+            if (p.shutter > 0) nearestOpt(el('spinCapShutter'), p.shutter);
+            if (p.f > 0) nearestOpt(el('spinCapAperture'), p.f);
+            if (p.iso > 0) nearestOpt(el('spinCapIso'), p.iso);
+            var wbSel = el('spinCapWb');
+            if (wbSel && Array.isArray(p.wbChoices) && p.wbChoices.length) {
+              wbSel.innerHTML = p.wbChoices.map(function (w) {
+                return '<option value="' + w.v + '">' + String(w.label || ('WB ' + w.v)).replace(/</g, '&lt;') + '</option>';
+              }).join('');
+            }
+            if (wbSel && p.wb !== undefined) wbSel.value = String(p.wb);
+            if (p.set) {
+              if (el('spinCapShutter')) el('spinCapShutter').disabled = p.set.shutter === false;
+              if (el('spinCapAperture')) el('spinCapAperture').disabled = p.set.f === false;
+              if (el('spinCapIso')) el('spinCapIso').disabled = p.set.iso === false;
+              if (wbSel) wbSel.disabled = p.set.wb === false;
+            }
+            if (msgEl) {
+              var locked = p.set ? ['shutter', 'f', 'iso', 'wb'].filter(function (k) { return p.set[k] === false; }) : [];
+              msgEl.innerHTML = locked.length
+                ? '<b>Locked (' + locked.join(', ') + '):</b> Switch camera dial to Movie Manual Exposure (M) &amp; set Exposure Simulation: Disable.'
+                : 'Loaded from ' + (st.camName || 'camera') + '. Recommended for HFR slow-mo: 1/125 (60fps) or 1/250 (120fps).';
+            }
+          } catch (e) { }
+        }
+
+        async function applyProps() {
+          var cam = spinCapCam();
+          if (!cam || !cam.setExposure) return;
+          var want = {};
+          var sh = Number((el('spinCapShutter') || {}).value);
+          var ap = Number((el('spinCapAperture') || {}).value);
+          var iso = Number((el('spinCapIso') || {}).value);
+          var wbRaw = (el('spinCapWb') || {}).value;
+          if (sh > 0) want.shutter = sh;
+          if (ap > 0) want.f = ap;
+          if (iso > 0) want.iso = iso;
+          if (wbRaw !== '' && wbRaw !== undefined && Number.isFinite(Number(wbRaw))) want.wb = Number(wbRaw);
+          setStatus('Applying DSLR exposure settings...');
+          try {
+            var r = await cam.setExposure(want);
+            if (!r || !r.supported) { setStatus('Camera did not expose writable settings in current mode.', true); return; }
+            var res = r.results || {};
+            var changed = [], blocked = [];
+            Object.keys(res).forEach(function (k) {
+              if (res[k] === 'set' || res[k] === 'same') changed.push(k + ':' + res[k]);
+              else blocked.push(k + ':' + res[k]);
+            });
+            setStatus(blocked.length
+              ? ('Settings partial (' + blocked.join(', ') + ') — set dial to Movie Manual Exposure (M).')
+              : ('Applied DSLR settings (' + (changed.join(', ') || 'ok') + ').'));
+            await readProps();
+          } catch (e) {
+            setStatus('Failed to update DSLR settings: ' + ((e && (e.helperMsg || e.message)) || e), true);
+          }
+        }
+
+        function stopUsbLive() {
+          st.liveOn = false;
+          if (st.prevUrl) { try { URL.revokeObjectURL(st.prevUrl); } catch (e) { } st.prevUrl = ''; }
+          var img = el('spinCapImg'), empty = el('spinCapPvEmpty');
+          if (img) { img.style.display = 'none'; img.removeAttribute('src'); }
+          if (empty && cfg.src === 'usb') empty.style.display = '';
+          updateUiState();
+        }
+
+        async function startUsbLive() {
+          if (st.liveOn) return;
+          if (typeof usbCam !== 'undefined' && usbCam && usbCam.active) usbCam.holdLive = true;
+          st.liveOn = true;
+          updateUiState();
+          var img = el('spinCapImg'), empty = el('spinCapPvEmpty');
+          while (st.liveOn && !spinOverlay.hidden && cfg.src === 'usb') {
+            if (st.phase === 'downloading' || (st.phase === 'recording' && st.camBrand === 'gopro')) {
+              await sleepMs(160);
+              continue;
+            }
+            try {
+              var cam = spinCapCam();
+              if (!cam) break;
+              var blob = await cam.capturePreviewAsBlob();
+              if (!st.liveOn || spinOverlay.hidden || cfg.src !== 'usb') break;
+              var nextUrl = URL.createObjectURL(blob);
+              if (img) {
+                img.onload = (function (old) { return function () { if (old) try { URL.revokeObjectURL(old); } catch (e) { } }; })(st.prevUrl);
+                st.prevUrl = nextUrl;
+                img.src = nextUrl;
+                img.style.display = 'block';
+              }
+              if (empty) empty.style.display = 'none';
+            } catch (e) {
+              if (!st.liveOn) break;
+              await sleepMs(220);
+            }
+            await sleepMs(65);
+          }
+        }
+
+        async function connectUsb(startPreview) {
+          if (typeof usbCam !== 'undefined' && usbCam && usbCam.active) usbCam.holdLive = true;
+          setStatus('Connecting to USB camera...');
+          try {
+            var cam = spinCapCam();
+            if (!cam) { setStatus('Camera Helper is only available in the Desktop app.', true); return false; }
+            if (!(typeof usbCam !== 'undefined' && usbCam && usbCam.camera === cam && usbCam.connected && cam.info)) {
+              await cam.connect();
+            } else {
+              try { cam.info = await (await cam.req('/camera/info', null, 8000)).json(); } catch (e) { }
+            }
+            var info = cam.info || {};
+            st.camName = info.name || cam.name || 'USB Camera';
+            st.camBrand = String(info.brand || (info.gopro ? 'gopro' : '')).toLowerCase();
+            var nm = el('spinCapCamName'), sw = el('spinCapSonyWarn');
+            if (nm) nm.textContent = st.camName;
+            if (sw) sw.hidden = st.camBrand !== 'sony';
+            setStatus('Connected: ' + st.camName);
+            await readProps();
+            if (startPreview !== false && st.camBrand !== 'sony') startUsbLive();
+            return true;
+          } catch (e) {
+            setStatus((e && (e.helperMsg || e.message)) || 'No USB camera found. Plug camera in & turn on.', true);
+            return false;
+          }
+        }
+
+        function stopWebcam() {
+          if (st.mediaStream) {
+            try { st.mediaStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { }
+            st.mediaStream = null;
+          }
+          var v = el('spinCapVid');
+          if (v) { v.srcObject = null; v.style.display = 'none'; }
+          var empty = el('spinCapPvEmpty');
+          if (empty && cfg.src === 'webcam') empty.style.display = '';
+          if (cfg.src === 'webcam') { st.liveOn = false; updateUiState(); }
+        }
+
+        async function refreshWebcams(autoStart) {
+          var sel = el('spinCapWebcamSel');
+          if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+          try {
+            if (!st.mediaStream) {
+              try {
+                var probeStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                probeStream.getTracks().forEach(function (t) { t.stop(); });
+              } catch (e) { }
+            }
+            var devs = (await navigator.mediaDevices.enumerateDevices()).filter(function (d) { return d.kind === 'videoinput'; });
+            if (sel) {
+              sel.innerHTML = devs.length ? devs.map(function (d, i) {
+                return '<option value="' + d.deviceId + '">' + String(d.label || ('Camera ' + (i + 1))).replace(/</g, '&lt;') + '</option>';
+              }).join('') : '<option value="">No webcam / capture card found</option>';
+              var capDev = devs.find(function (d) { return /cam link|hdmi|capture|elgato|avermedia|usb video/i.test(d.label || ''); });
+              if (cfg.webcamId && devs.some(function (d) { return d.deviceId === cfg.webcamId; })) sel.value = cfg.webcamId;
+              else if (capDev) sel.value = capDev.deviceId;
+              cfg.webcamId = sel.value || '';
+              saveCfg();
+            }
+            if (autoStart && sel && sel.value) await startWebcam();
+          } catch (e) {
+            setStatus('Cannot list webcams / HDMI capture cards: ' + (e && e.message || e), true);
+          }
+        }
+
+        async function startWebcam() {
+          stopWebcam();
+          stopUsbLive();
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setStatus('Camera capture API unavailable.', true); return false;
+          }
+          var id = (el('spinCapWebcamSel') || {}).value || cfg.webcamId;
+          try {
+            var vCons = { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } };
+            if (id) vCons.deviceId = { exact: id };
+            st.mediaStream = await navigator.mediaDevices.getUserMedia({ video: vCons, audio: false });
+            var v = el('spinCapVid'), empty = el('spinCapPvEmpty');
+            if (v) { v.srcObject = st.mediaStream; v.style.display = 'block'; await v.play().catch(function () { }); }
+            if (empty) empty.style.display = 'none';
+            st.liveOn = true;
+            var track = st.mediaStream.getVideoTracks()[0];
+            var settings = track && track.getSettings ? track.getSettings() : {};
+            setStatus('HDMI / Webcam live (' + (settings.width || '?') + 'x' + (settings.height || '?') + ' @ ' + (Math.round(settings.frameRate || 30)) + 'fps)');
+            updateUiState();
+            return true;
+          } catch (e) {
+            setStatus('Could not start capture card / webcam: ' + (e && e.message || e), true);
+            return false;
+          }
+        }
+
+        function setSrc(src) {
+          cfg.src = src === 'webcam' ? 'webcam' : 'usb';
+          saveCfg();
+          if (el('spinCapSrcUsb')) el('spinCapSrcUsb').classList.toggle('active', cfg.src === 'usb');
+          if (el('spinCapSrcWebcam')) el('spinCapSrcWebcam').classList.toggle('active', cfg.src === 'webcam');
+          if (el('spinCapUsbBar')) el('spinCapUsbBar').hidden = cfg.src !== 'usb';
+          if (el('spinCapWebcamBar')) el('spinCapWebcamBar').hidden = cfg.src !== 'webcam';
+          if (cfg.src === 'webcam') {
+            stopUsbLive();
+            el('spinCapDslrWrap').hidden = true;
+            refreshWebcams(true);
+          } else {
+            stopWebcam();
+            connectUsb(true);
+          }
+        }
+
+        function syncTrigModeUi() {
+          cfg.trigMode = (el('spinCapTrigMode') || {}).value || 'tablet';
+          if (el('spinCapTabletBox')) el('spinCapTabletBox').hidden = cfg.trigMode !== 'tablet';
+          if (el('spinCapIosArmBox')) el('spinCapIosArmBox').hidden = cfg.trigMode !== 'iosarm';
+          updateThreshUi();
+        }
+
+        function updateThreshUi() {
+          var unitStr = cfg.unit === 'g' ? ' g' : ' °/s';
+          if (el('spinCapThreshLabel')) el('spinCapThreshLabel').textContent = 'Start: ' + cfg.startThresh + unitStr + ' · Stop: ' + cfg.stopThresh + unitStr;
+          if (el('spinCapStartThr')) {
+            el('spinCapStartThr').max = cfg.unit === 'g' ? '1.5' : '120';
+            el('spinCapStartThr').min = cfg.unit === 'g' ? '0.08' : '8';
+            el('spinCapStartThr').step = cfg.unit === 'g' ? '0.02' : '1';
+            el('spinCapStartThr').value = String(cfg.startThresh);
+          }
+          if (el('spinCapStopThr')) {
+            el('spinCapStopThr').max = cfg.unit === 'g' ? '0.8' : '60';
+            el('spinCapStopThr').min = cfg.unit === 'g' ? '0.04' : '3';
+            el('spinCapStopThr').step = cfg.unit === 'g' ? '0.01' : '1';
+            el('spinCapStopThr').value = String(cfg.stopThresh);
+          }
+          if (el('spinCapStartThrLbl')) el('spinCapStartThrLbl').textContent = String(cfg.startThresh) + unitStr;
+          if (el('spinCapStopThrLbl')) el('spinCapStopThrLbl').textContent = String(cfg.stopThresh) + unitStr;
+          if (el('spinCapMeterMark')) {
+            var maxScale = cfg.unit === 'g' ? 1.5 : 100;
+            el('spinCapMeterMark').style.left = Math.min(98, Math.round((cfg.startThresh / maxScale) * 100)) + '%';
+          }
+        }
+
+        function handleMotionSample(val) {
+          st.lastVal = val;
+          var maxScale = cfg.unit === 'g' ? 1.5 : 100;
+          var pct = Math.min(100, Math.round((val / maxScale) * 100));
+          if (el('spinCapMeterBar')) el('spinCapMeterBar').style.width = pct + '%';
+          if (el('spinCapMeterVal')) el('spinCapMeterVal').textContent = (cfg.unit === 'g' ? val.toFixed(2) + ' g' : val.toFixed(1) + ' °/s');
+
+          if (st.calActive) {
+            if (st.calPhase === 'still') st.calSamplesStill.push(val);
+            else if (st.calPhase === 'spin') st.calSamplesSpin.push(val);
+            return;
+          }
+          if (!st.armed) return;
+          if (st.phase === 'armed' || st.phase === 'idle') {
+            if (Date.now() < st.cooldownUntil) return;
+            if (val >= cfg.startThresh) {
+              st.aboveCount++;
+              if (st.aboveCount >= 2) {
+                st.aboveCount = 0;
+                beginCountdownOrRecord();
+              }
+            } else {
+              st.aboveCount = 0;
+            }
+          } else if (st.phase === 'recording' && cfg.stopMode === 'follow') {
+            var elapsed = Date.now() - st.recStartedAt;
+            if (elapsed >= 2500) {
+              if (val <= cfg.stopThresh) {
+                st.stillCount++;
+                if (st.stillCount >= 6) {
+                  st.stillCount = 0;
+                  stopRecordingNow();
+                }
+              } else {
+                st.stillCount = 0;
+              }
+            }
+          }
+        }
+
+        async function startWinSensorMonitor() {
+          if (!(window.pb4u && window.pb4u.sensor)) {
+            if (el('spinCapSensorCaps')) el('spinCapSensorCaps').textContent = 'Windows sensor API requires Desktop app.';
+            return false;
+          }
+          try {
+            var p = await window.pb4u.sensor.probe();
+            if (!p || !p.available) {
+              if (el('spinCapSensorCaps')) el('spinCapSensorCaps').textContent = 'No built-in gyro/accel on this PC — pair an iPhone sensor or use Clicker.';
+              return false;
+            }
+            var prevUnit = cfg.unit;
+            cfg.unit = p.gyro ? 'dps' : 'g';
+            if (prevUnit !== cfg.unit) {
+              cfg.startThresh = cfg.unit === 'g' ? 0.25 : 22;
+              cfg.stopThresh = cfg.unit === 'g' ? 0.1 : 8;
+              saveCfg();
+            }
+            updateThreshUi();
+            if (el('spinCapSensorCaps')) el('spinCapSensorCaps').textContent = p.gyro ? 'Gyroscope ready (°/s)' : 'Accelerometer ready (Δg)';
+            if (!st.sensorOff) {
+              st.sensorOff = window.pb4u.sensor.onData(function (sample) {
+                if (!sample) return;
+                var val = cfg.unit === 'g' ? Number(sample.gDelta || 0) : Number(sample.dps || 0);
+                handleMotionSample(val);
+              });
+            }
+            await window.pb4u.sensor.start();
+            return true;
+          } catch (e) {
+            if (el('spinCapSensorCaps')) el('spinCapSensorCaps').textContent = 'Could not start Windows sensor.';
+            return false;
+          }
+        }
+
+        function stopWinSensorMonitor() {
+          if (st.sensorOff) { try { st.sensorOff(); } catch (e) { } st.sensorOff = null; }
+          try { if (window.pb4u && window.pb4u.sensor) window.pb4u.sensor.stop(); } catch (e) { }
+        }
+
+        function startIosArmMonitor() {
+          stopIosArmMonitor();
+          st.iosTimer = setInterval(async function () {
+            if (spinOverlay.hidden || !st.armed || cfg.trigMode !== 'iosarm') return;
+            if (!(window.pb4u && window.pb4u.spinArmState)) return;
+            try {
+              var a = await window.pb4u.spinArmState();
+              var mEl = el('spinCapArmMotionVal'), sEl = el('spinCapArmSensorStatus');
+              if (!a || !a.paired) {
+                if (sEl) sEl.textContent = 'No iPhone paired — open Videos & Queue -> Pair 360 Arm Camera.';
+                return;
+              }
+              if (sEl) sEl.textContent = a.connected ? ('Connected: ' + (a.device || 'iPhone Arm')) : 'Waiting for paired iPhone to connect...';
+              var vel = Number(a.motion || 0);
+              if (mEl) mEl.textContent = vel.toFixed(1) + ' °/s';
+              if (a.moving && (st.phase === 'armed' || st.phase === 'idle') && Date.now() >= st.cooldownUntil) {
+                beginCountdownOrRecord();
+              } else if (!a.moving && st.phase === 'recording' && cfg.stopMode === 'follow' && Date.now() - st.recStartedAt >= 2500) {
+                stopRecordingNow();
+              }
+            } catch (e) { }
+          }, 150);
+        }
+
+        function stopIosArmMonitor() {
+          if (st.iosTimer) { clearInterval(st.iosTimer); st.iosTimer = null; }
+        }
+
+        async function runCalibrationWizard() {
+          if (!el('spinCapCalBox')) return;
+          el('spinCapCalBox').hidden = false;
+          var ok = await startWinSensorMonitor();
+          if (!ok) {
+            if (el('spinCapCalMsg')) el('spinCapCalMsg').textContent = 'No built-in gyro/accelerometer found on this PC.';
+            return;
+          }
+          st.calActive = true; st.calPhase = 'still'; st.calSamplesStill = []; st.calSamplesSpin = [];
+          if (el('spinCapCalMsg')) el('spinCapCalMsg').textContent = 'Step 1/2: Keep the 360 arm completely STILL for 2 seconds...';
+          await sleepMs(2100);
+          if (!st.calActive) return;
+          st.calPhase = 'spin';
+          if (el('spinCapCalMsg')) el('spinCapCalMsg').textContent = 'Step 2/2: SPIN the 360 arm at your normal speed now (3s)...';
+          await sleepMs(3100);
+          if (!st.calActive) return;
+          st.calActive = false; st.calPhase = '';
+
+          var stillMax = st.calSamplesStill.length ? Math.max.apply(null, st.calSamplesStill) : (cfg.unit === 'g' ? 0.04 : 3.0);
+          var sorted = st.calSamplesSpin.slice().sort(function (a, b) { return a - b; });
+          var peak = sorted.length ? sorted[sorted.length - 1] : (cfg.unit === 'g' ? 0.45 : 60);
+          var median = sorted.length ? sorted[Math.floor(sorted.length * 0.5)] : peak * 0.7;
+          var active = Math.max(median, peak * 0.7);
+          if (cfg.unit === 'g') {
+            cfg.startThresh = Math.round(Math.min(1.5, Math.max(0.08, stillMax * 1.8 + 0.04, stillMax + (active - stillMax) * 0.35)) * 100) / 100;
+            cfg.stopThresh = Math.round(Math.min(cfg.startThresh * 0.8, Math.max(0.04, stillMax * 1.2 + 0.015, cfg.startThresh * 0.45)) * 100) / 100;
+          } else {
+            cfg.startThresh = Math.round(Math.min(120, Math.max(10, stillMax * 1.7 + 6, stillMax + (active - stillMax) * 0.35, 12)));
+            cfg.stopThresh = Math.round(Math.min(cfg.startThresh - 3, Math.max(4, stillMax + 2, cfg.startThresh * 0.45, 5)));
+          }
+          saveCfg();
+          updateThreshUi();
+          if (el('spinCapCalMsg')) el('spinCapCalMsg').textContent = 'Calibrated! Still max ' + stillMax.toFixed(1) + ', Spin peak ' + peak.toFixed(1) + ' -> Start ' + cfg.startThresh + ', Stop ' + cfg.stopThresh + '.';
+        }
+
+        function clearTimers() {
+          if (st.cdTimer) { clearInterval(st.cdTimer); st.cdTimer = null; }
+          if (st.recTimer) { clearInterval(st.recTimer); st.recTimer = null; }
+          if (st.dlTimer) { clearInterval(st.dlTimer); st.dlTimer = null; }
+          var numEl = el('spinCapCountNum');
+          if (numEl) { numEl.style.display = 'none'; numEl.textContent = ''; }
+        }
+
+        async function beginCountdownOrRecord() {
+          if (st.phase === 'countdown' || st.phase === 'recording' || st.phase === 'downloading') return;
+          clearTimers();
+          if (cfg.src === 'usb' && typeof usbCam !== 'undefined' && usbCam && usbCam.active) usbCam.holdLive = true;
+
+          var cd = Math.max(0, Math.min(10, Number(cfg.countdown) || 0));
+          if (cd > 0) {
+            st.phase = 'countdown';
+            updateUiState();
+            var numEl = el('spinCapCountNum');
+            for (var n = cd; n >= 1; n--) {
+              if (st.phase !== 'countdown') return;
+              if (numEl) { numEl.textContent = String(n); numEl.style.display = 'block'; }
+              setStatus('Countdown ' + n + '...');
+              wallCue('countdown', String(n), 1100);
+              await sleepMs(1000);
+            }
+            if (numEl) numEl.style.display = 'none';
+            if (st.phase !== 'countdown') return;
+          }
+          await startRecordingNow();
+        }
+
+        async function startRecordingNow() {
+          st.phase = 'recording';
+          st.recStartedAt = Date.now();
+          st.stillCount = 0;
+          updateUiState();
+          wallCue('recording', '360 RECORDING! 🎬', Math.max(3000, cfg.duration * 1000 + 1500));
+
+          if (cfg.src === 'webcam') {
+            if (!st.mediaStream) {
+              var okW = await startWebcam();
+              if (!okW) { st.phase = st.armed ? 'armed' : 'idle'; updateUiState(); return; }
+            }
+            st.chunks = [];
+            var mimes = ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+            var mime = mimes.find(function (m) { return window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m); }) || '';
+            try {
+              st.recorder = new MediaRecorder(st.mediaStream, mime ? { mimeType: mime, videoBitsPerSecond: 16000000 } : { videoBitsPerSecond: 16000000 });
+            } catch (e) {
+              setStatus('Cannot start Capture Card recorder: ' + (e && e.message || e), true);
+              st.phase = st.armed ? 'armed' : 'idle'; updateUiState(); return;
+            }
+            st.recorder.ondataavailable = function (ev) { if (ev.data && ev.data.size > 0) st.chunks.push(ev.data); };
+            st.recorder.start(250);
+          } else {
+            var okU = st.camName ? true : await connectUsb(true);
+            if (!okU) { st.phase = st.armed ? 'armed' : 'idle'; updateUiState(); return; }
+            try {
+              await spinCapCam().movieStart();
+            } catch (e) {
+              setStatus((e && (e.helperMsg || e.message)) || 'Could not start camera video recording.', true);
+              st.phase = st.armed ? 'armed' : 'idle'; updateUiState(); return;
+            }
+          }
+
+          var maxDurMs = cfg.stopMode === 'follow'
+            ? Math.max(15000, (Number(cfg.duration) || 7) * 2000)
+            : Math.max(2000, (Number(cfg.duration) || 7) * 1000);
+          setStatus('Recording 360 video...');
+          if (el('spinCapRecTimer')) el('spinCapRecTimer').textContent = '0:00';
+          st.recTimer = setInterval(function () {
+            if (st.phase !== 'recording') return;
+            var elMs = Date.now() - st.recStartedAt;
+            if (el('spinCapRecTimer')) el('spinCapRecTimer').textContent = fmtClock(elMs);
+            if (elMs >= maxDurMs) stopRecordingNow();
+          }, 150);
+        }
+
+        async function stopRecordingNow() {
+          if (st.phase !== 'recording') return;
+          if (st.recTimer) { clearInterval(st.recTimer); st.recTimer = null; }
+          st.phase = 'downloading';
+          updateUiState();
+          wallCue('processing', '✨ SAVING 360 CLIP... ✨', 4000);
+
+          var dlWrap = el('spinCapDlWrap'), dlFill = el('spinCapDlFill'), dlText = el('spinCapDlText');
+          if (dlWrap) dlWrap.hidden = false;
+          if (dlFill) dlFill.style.width = '12%';
+
+          try {
+            if (cfg.src === 'webcam') {
+              if (dlText) dlText.textContent = 'Saving captured video to 360 inbox...';
+              var rec = st.recorder;
+              if (rec && rec.state !== 'inactive') {
+                await new Promise(function (resolve) { rec.onstop = resolve; rec.stop(); });
+              }
+              var type = (rec && rec.mimeType) || 'video/webm';
+              var ext = type.indexOf('mp4') >= 0 ? '.mp4' : '.webm';
+              var blob = new Blob(st.chunks, { type: type });
+              st.chunks = []; st.recorder = null;
+              if (dlFill) dlFill.style.width = '75%';
+              var fname = 'capture-360-' + new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 15) + ext;
+              var res = await fetch('/local/spin-save?filename=' + encodeURIComponent(fname), {
+                method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: await blob.arrayBuffer()
+              });
+              var j = await res.json();
+              if (!res.ok || !j.ok) throw new Error((j && j.error) || 'Failed to save video');
+              if (dlFill) dlFill.style.width = '100%';
+              setStatus('Saved ' + j.filename + ' (' + fmtMb(j.bytes) + ') to 360 inbox!');
+            } else {
+              var cam = spinCapCam();
+              if (dlText) dlText.textContent = 'Downloading movie from camera over USB...';
+              st.dlTimer = setInterval(async function () {
+                if (st.phase !== 'downloading') return;
+                var ms = await cam.movieStatus();
+                if (!ms) return;
+                if (ms.bytesDownloaded > 0 && dlFill && dlText) {
+                  var pct = ms.totalBytes > 0 ? Math.min(99, ms.pct) : 50;
+                  dlFill.style.width = pct + '%';
+                  dlText.textContent = 'Downloading ' + (ms.filename || 'movie') + ': ' + fmtMb(ms.bytesDownloaded) + (ms.totalBytes > 0 ? (' / ' + fmtMb(ms.totalBytes) + ' (' + pct + '%)') : '');
+                }
+              }, 250);
+              var mRes = await cam.movieStop();
+              if (st.dlTimer) { clearInterval(st.dlTimer); st.dlTimer = null; }
+              if (!mRes || !mRes.ok) throw new Error((mRes && mRes.error) || 'Movie download failed');
+              if (dlFill) dlFill.style.width = '100%';
+              setStatus('Imported ' + mRes.filename + ' (' + fmtMb(mRes.bytes) + ') to 360 inbox!');
+            }
+
+            st.cooldownUntil = Date.now() + Math.max(1, Number(cfg.cooldown) || 4) * 1000;
+            wallCue('celebrate', '✨ 360 CAPTURED! READY ✨', 3500);
+            try { if (typeof spinPoll === 'function') await spinPoll(); } catch (e) { }
+          } catch (e) {
+            setStatus((e && (e.helperMsg || e.message)) || 'Failed to finish 360 recording.', true);
+          } finally {
+            if (st.dlTimer) { clearInterval(st.dlTimer); st.dlTimer = null; }
+            if (dlWrap) setTimeout(function () { if (st.phase !== 'downloading' && dlWrap) dlWrap.hidden = true; }, 1600);
+            st.phase = st.armed ? 'armed' : 'idle';
+            updateUiState();
+          }
+        }
+
+        async function toggleArm(force) {
+          var next = typeof force === 'boolean' ? force : !st.armed;
+          st.armed = next;
+          st.aboveCount = 0; st.stillCount = 0;
+          if (!next) {
+            if (st.phase === 'armed') st.phase = 'idle';
+            stopWinSensorMonitor();
+            stopIosArmMonitor();
+            setStatus('Motion trigger disarmed.');
+            updateUiState();
+            return;
+          }
+          if (cfg.src === 'usb' && !st.camName) await connectUsb(true);
+          if (cfg.trigMode === 'tablet') {
+            var okS = await startWinSensorMonitor();
+            if (!okS) { st.armed = false; st.phase = 'idle'; updateUiState(); return; }
+          } else if (cfg.trigMode === 'iosarm') {
+            startIosArmMonitor();
+          }
+          st.phase = 'armed';
+          setStatus('Armed! Spin the 360 arm (above ' + cfg.startThresh + (cfg.unit === 'g' ? ' g' : ' °/s') + ') or press Start.');
+          updateUiState();
+        }
+
+        // Event bindings
+        ['spinCapSrcUsb', 'spinCapSrcWebcam'].forEach(function (id) {
+          var b = el(id);
+          if (b) b.addEventListener('click', function () { setSrc(b.dataset.src); });
+        });
+        if (el('spinCapConnectBtn')) el('spinCapConnectBtn').addEventListener('click', function () { connectUsb(true); });
+        if (el('spinCapLiveBtn')) el('spinCapLiveBtn').addEventListener('click', function () { if (st.liveOn) stopUsbLive(); else connectUsb(true); });
+        if (el('spinCapSettingsBtn')) el('spinCapSettingsBtn').addEventListener('click', function () {
+          var d = el('spinCapDslrWrap');
+          if (!d) return;
+          d.hidden = !d.hidden;
+          if (!d.hidden) readProps();
+        });
+        if (el('spinCapWebcamRefresh')) el('spinCapWebcamRefresh').addEventListener('click', function () { refreshWebcams(true); });
+        if (el('spinCapWebcamSel')) el('spinCapWebcamSel').addEventListener('change', function () { cfg.webcamId = this.value; saveCfg(); startWebcam(); });
+        if (el('spinCapReadPropsBtn')) el('spinCapReadPropsBtn').addEventListener('click', readProps);
+        if (el('spinCapApplyProps')) el('spinCapApplyProps').addEventListener('click', applyProps);
+        if (el('spinCapAfBtn')) el('spinCapAfBtn').addEventListener('click', async function () {
+          try { await spinCapCam().af(true); setStatus('Autofocus complete.'); } catch (e) { setStatus('AF failed: ' + ((e && e.message) || e), true); }
+        });
+        sec.querySelectorAll('.spin-cap-pill[data-shutter]').forEach(function (pill) {
+          pill.addEventListener('click', function () {
+            if (el('spinCapShutter')) el('spinCapShutter').value = pill.dataset.shutter;
+            applyProps();
+          });
+        });
+
+        if (el('spinCapTrigMode')) {
+          el('spinCapTrigMode').value = cfg.trigMode;
+          el('spinCapTrigMode').addEventListener('change', function () {
+            syncTrigModeUi(); saveCfg();
+            if (st.armed) toggleArm(true);
+            else if (cfg.trigMode === 'tablet') startWinSensorMonitor();
+            else stopWinSensorMonitor();
+          });
+        }
+        if (el('spinCapTrigOn')) {
+          el('spinCapTrigOn').checked = !!cfg.trigOn;
+          el('spinCapTrigOn').addEventListener('change', function () { cfg.trigOn = this.checked; saveCfg(); toggleArm(this.checked); });
+        }
+        if (el('spinCapArmTrigOn')) {
+          el('spinCapArmTrigOn').checked = !!cfg.armTrigOn;
+          el('spinCapArmTrigOn').addEventListener('change', function () { cfg.armTrigOn = this.checked; saveCfg(); toggleArm(this.checked); });
+        }
+        if (el('spinCapStartThr')) el('spinCapStartThr').addEventListener('input', function () { cfg.startThresh = Number(this.value) || 22; saveCfg(); updateThreshUi(); });
+        if (el('spinCapStopThr')) el('spinCapStopThr').addEventListener('input', function () { cfg.stopThresh = Number(this.value) || 8; saveCfg(); updateThreshUi(); });
+        if (el('spinCapCalBtn')) el('spinCapCalBtn').addEventListener('click', function () {
+          var box = el('spinCapCalBox');
+          if (!box) return;
+          box.hidden = !box.hidden;
+          if (!box.hidden) startWinSensorMonitor();
+        });
+        if (el('spinCapCalRunBtn')) el('spinCapCalRunBtn').addEventListener('click', runCalibrationWizard);
+        if (el('spinCapCalCloseBtn')) el('spinCapCalCloseBtn').addEventListener('click', function () { st.calActive = false; if (el('spinCapCalBox')) el('spinCapCalBox').hidden = true; });
+
+        if (el('spinCapCountdown')) { el('spinCapCountdown').value = String(cfg.countdown); el('spinCapCountdown').addEventListener('change', function () { cfg.countdown = Math.max(0, Math.min(10, Number(this.value) || 0)); saveCfg(); }); }
+        if (el('spinCapStopMode')) { el('spinCapStopMode').value = cfg.stopMode; el('spinCapStopMode').addEventListener('change', function () { cfg.stopMode = this.value; saveCfg(); }); }
+        if (el('spinCapDuration')) { el('spinCapDuration').value = String(cfg.duration); el('spinCapDuration').addEventListener('change', function () { cfg.duration = Math.max(2, Math.min(25, Number(this.value) || 7)); saveCfg(); }); }
+        if (el('spinCapCooldown')) { el('spinCapCooldown').value = String(cfg.cooldown); el('spinCapCooldown').addEventListener('change', function () { cfg.cooldown = Math.max(1, Math.min(15, Number(this.value) || 4)); saveCfg(); }); }
+        if (el('spinCapWallCue')) { el('spinCapWallCue').checked = !!cfg.wallCue; el('spinCapWallCue').addEventListener('change', function () { cfg.wallCue = this.checked; saveCfg(); }); }
+
+        if (el('spinCapReverse')) {
+          el('spinCapReverse').checked = (spinLook.speed === 'boomerang' || (spinLook.speed === 'custom' && !!spinLook.reverse));
+          el('spinCapReverse').addEventListener('change', function () {
+            if (this.checked) {
+              if (spinLook.speed !== 'custom') { spinLook.speed = 'boomerang'; spinLook.reverse = false; }
+              else spinLook.reverse = true;
+            } else {
+              if (spinLook.speed === 'boomerang') spinLook.speed = 'slow';
+              if (spinLook.speed === 'custom') spinLook.reverse = false;
+            }
+            spinLookToUI(); spinLookFromUI();
+          });
+        }
+
+        if (el('spinCapRecBtn')) el('spinCapRecBtn').addEventListener('click', function () {
+          if (st.phase === 'countdown') { clearTimers(); st.phase = st.armed ? 'armed' : 'idle'; setStatus('Countdown cancelled.'); updateUiState(); }
+          else if (st.phase === 'recording') stopRecordingNow();
+          else beginCountdownOrRecord();
+        });
+        if (el('spinCapArmBtn')) el('spinCapArmBtn').addEventListener('click', function () { toggleArm(); });
+
+        // Remote clicker / foot pedal support (F9 / MediaTrackNext when 360 studio open)
+        document.addEventListener('keydown', function (e) {
+          if (spinOverlay.hidden) return;
+          if (e.key === 'F9' || e.code === 'MediaTrackNext') {
+            e.preventDefault();
+            if (st.phase === 'recording') stopRecordingNow();
+            else if (st.phase !== 'downloading' && st.phase !== 'countdown') beginCountdownOrRecord();
+          }
+        });
+
+        spinCapRefresh = function () {
+          syncTrigModeUi();
+          if (cfg.src === 'webcam') setSrc('webcam');
+          else {
+            if (el('spinCapSrcUsb')) el('spinCapSrcUsb').classList.add('active');
+            if (el('spinCapSrcWebcam')) el('spinCapSrcWebcam').classList.remove('active');
+            if (el('spinCapUsbBar')) el('spinCapUsbBar').hidden = false;
+            if (el('spinCapWebcamBar')) el('spinCapWebcamBar').hidden = true;
+            if (cfg.trigMode === 'tablet') startWinSensorMonitor();
+            if (typeof usbCam !== 'undefined' && usbCam && usbCam.active && usbCam.viaHelper) connectUsb(true);
+          }
+          if ((cfg.trigMode === 'tablet' && cfg.trigOn) || (cfg.trigMode === 'iosarm' && cfg.armTrigOn)) toggleArm(true);
+        };
+
+        spinCapDeactivate = function () {
+          st.armed = false;
+          st.calActive = false;
+          if (st.phase === 'countdown') { clearTimers(); st.phase = 'idle'; }
+          stopUsbLive();
+          stopWebcam();
+          stopWinSensorMonitor();
+          stopIosArmMonitor();
+          releaseBoothHold();
+          updateUiState();
+        };
+
+        syncTrigModeUi();
+        updateUiState();
+      })();
+
       document.getElementById('spinMusicBtn').addEventListener('click', async function () {
         try { var r = await window.pb4u.spinMusic(false); if (r) { spinEnv.music = r.music; document.getElementById('spinMusicName').textContent = r.music || 'no music chosen'; } } catch (e) { }
       });

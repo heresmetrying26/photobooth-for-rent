@@ -9,6 +9,7 @@ import { PtpSession, OK, BUSY, GoneError, CamError, TimeoutError, Reader, hex, s
 import { freeCamera, guardCamera } from './camfree.mjs';
 import { createNikon } from './cam-nikon.mjs';
 import { createSony, sonyName } from './cam-sony.mjs';
+import { ptpObjectMeta, isStillOrRaw, streamObjectToFile, canonExposureJson, canonSetExposure } from './cam-movie.mjs';
 
 const NOTREADY = 0xA102;                 // Canon: "not ready yet, ask again"
 const EOS_AVAIL_SHOTS = 0xD11B;
@@ -42,7 +43,7 @@ const s = {
   ops: [], props: [], live: false, gotFrame: false, setupNote: '', diag: '',
   eosVals: new Map(), eosAvail: new Map(), newFiles: [], pollAt: 0, keepAt: 0, liveAt: 0, liveOffAt: 0, lastShutterMs: 0, recoverNext: false,
   toHost: false, hostGaveUp: false, hostWorked: false, destOrig: SAVETO_CARD, lastPollEvents: 0,
-  aspectChanged: false, aspectCrop: false, aspectOrig: 0
+  aspectChanged: false, aspectCrop: false, aspectOrig: 0, movieRec: false, movieRestoredHost: false
 };
 
 const has = (op) => s.ops.includes(op);
@@ -95,9 +96,10 @@ async function poll() {
     s.lastPollEvents++;
     if (type === 0xC189 && size >= 16) s.eosVals.set(u32(data, off + 8) & 0xFFFF, u32(data, off + 12));   // a setting changed
     else if (type === 0xC18A && size >= 20) {
-      if ((u32(data, off + 8) & 0xFFFF) === EOS_SAVETO) {
+      const prop = u32(data, off + 8) & 0xFFFF;
+      if (prop === EOS_SAVETO || prop === 0xD101 || prop === 0xD102 || prop === 0xD103 || prop === 0xD109 || prop === 0xD1B8) {
         const cnt = u32(data, off + 16), room = size - 20;
-        if (cnt > 0 && cnt <= 64 && room > 0 && room % cnt === 0) {
+        if (cnt > 0 && cnt <= 128 && room > 0 && room % cnt === 0) {
           const es = room / cnt;
           if (es === 1 || es === 2 || es === 4) {
             const vals = [];
@@ -105,7 +107,7 @@ async function poll() {
               const p = off + 20 + k * es;
               vals.push(es === 4 ? u32(data, p) : es === 2 ? u16(data, p) : data[p]);
             }
-            s.eosAvail.set(EOS_SAVETO, vals);
+            s.eosAvail.set(prop, vals);
           }
         }
       }
@@ -233,7 +235,8 @@ async function canonRestoreAspect() {
 
 async function prepare() {
   s.setupNote = ''; s.eosVals.clear(); s.eosAvail.clear(); s.newFiles = []; s.gotFrame = false;
-  s.toHost = false; s.liveOffAt = 0; s.aspectChanged = false; s.aspectCrop = false; s.aspectOrig = 0;
+  s.toHost = false; s.hostWorked = false; s.liveOffAt = 0; s.aspectChanged = false; s.aspectCrop = false; s.aspectOrig = 0;
+  s.movieRec = false; s.movieRestoredHost = false;
   if (s.recoverNext) {
     s.recoverNext = false;
     try { await s.ptp.op(0x9115, 0); } catch (e) { if (e instanceof GoneError) throw e; }
@@ -505,6 +508,76 @@ async function capture() {
   return img;
 }
 
+async function canonMovieStart() {
+  if (s.movieRec) return JSON.stringify({ ok: true, brand: 'canon', recording: true });
+  s.movieRestoredHost = false;
+  try { await poll(); } catch (e) { if (e instanceof GoneError) throw e; }
+  const curSaveto = s.eosVals.get(EOS_SAVETO);
+  if (s.toHost || curSaveto === SAVETO_HOST) {
+    await canonToCard(false);
+    s.movieRestoredHost = true;
+    try { await poll(); } catch (e) { if (e instanceof GoneError) throw e; }
+  }
+  s.newFiles = [];
+  let r = await setEos(0xD1B8, 4);
+  if (r !== OK) {
+    if (!s.live) {
+      try { await restartLive(); await sleep(300); } catch (e) { if (e instanceof GoneError) throw e; }
+      try { await poll(); } catch (e) { if (e instanceof GoneError) throw e; }
+    }
+    r = await setEos(0xD1B8, 4);
+  }
+  if (r !== OK) {
+    if (s.movieRestoredHost) { s.movieRestoredHost = false; try { await canonToHost(); } catch (e) { if (e instanceof GoneError) throw e; } }
+    throw new CamError("CAPTURE The Canon camera didn't start movie recording (" + hex(r) + '). Turn the mode dial to Movie (video camera icon), insert a formatted SD card with free space, and close any open camera menu.');
+  }
+  s.movieRec = true;
+  log('Canon movie recording started');
+  return JSON.stringify({ ok: true, brand: 'canon', recording: true });
+}
+
+async function canonMovieStop(outDir) {
+  const t0 = Date.now();
+  try {
+    try {
+      let r = await setEos(0xD1B8, 0);
+      if (r === BUSY || r === NOTREADY) { await sleep(250); await setEos(0xD1B8, 0); }
+    } finally { s.movieRec = false; }
+
+    let pickHandle = 0, pickSize = 0, pickExt = '.mov';
+    const ew = Date.now();
+    while (Date.now() - ew < 15000) {
+      await poll();
+      if (s.newFiles.length > 0) {
+        await sleep(250);
+        await poll();
+        let bestHandle = 0, bestSize = 0, bestExt = '.mov';
+        for (const o of s.newFiles) {
+          const meta = await ptpObjectMeta(s.ptp, o[0]);
+          const fmt = meta.fmt || o[2];
+          const sz = meta.size || o[3];
+          const ext = meta.ext || (fmt === 0xB982 ? '.mp4' : fmt === 0x300B ? '.avi' : '.mov');
+          if (isStillOrRaw(fmt, meta.ext)) continue;
+          if (!bestHandle || sz > bestSize) { bestHandle = o[0]; bestSize = sz; bestExt = ext; }
+        }
+        if (bestHandle) { pickHandle = bestHandle; pickSize = bestSize; pickExt = bestExt; break; }
+      }
+      await sleep(100);
+    }
+    if (!pickHandle) {
+      throw new CamError('CAPTURE The camera stopped recording, but no movie file appeared from the camera. Make sure an SD card with free space is inserted.');
+    }
+    const res = await streamObjectToFile(s.ptp, pickHandle, pickSize, pickExt, outDir, 'canon-360-', { canonPiece: has(0x9107) });
+    log('Canon movie downloaded: ' + res.filename + ' (' + Math.round(res.bytes / 1024) + ' KB) in ' + (Date.now() - t0) + ' ms');
+    return JSON.stringify({ ok: true, brand: 'canon', path: res.path, filename: res.filename, bytes: res.bytes, format: res.format });
+  } finally {
+    if (s.movieRestoredHost) {
+      s.movieRestoredHost = false;
+      try { await canonToHost(); } catch (e) { if (e instanceof GoneError) throw e; }
+    }
+  }
+}
+
 // ---------- opening / closing ----------
 async function closeCamera() {
   const p = s.ptp;
@@ -512,7 +585,8 @@ async function closeCamera() {
     if (s.drv) {
       try { await s.drv.close(); } catch { /* ignore */ }
     } else {
-      // Hand the camera back: photos on card again, aspect ratio restored, live view off, out of remote mode.
+      // Hand the camera back: stop active movie recording, photos on card again, aspect ratio restored, live view off, out of remote mode.
+      try { if (s.movieRec) { await setEos(0xD1B8, 0); s.movieRec = false; } } catch { /* ignore */ }
       try { await canonToCard(false); } catch { /* ignore */ }
       try { await canonRestoreAspect(); } catch { /* ignore */ }
       try { if (s.live) await setEos(0xD1B0, 0); await p.op(0x9115, 0); await p.op(0x9114, 0); } catch { /* ignore */ }
@@ -522,6 +596,7 @@ async function closeCamera() {
   }
   s.ptp = null; s.entry = null; s.live = false; s.liveOffAt = 0; s.ops = []; s.props = []; s.drv = null; s.brand = 'canon'; s.battery = -1;
   s.toHost = false; s.hostGaveUp = false; s.hostWorked = false; s.aspectChanged = false; s.aspectCrop = false; s.aspectOrig = 0;
+  s.movieRec = false; s.movieRestoredHost = false;
 }
 
 const infoJson = () => {
@@ -622,6 +697,26 @@ export async function call(cmd, arg) {
     if (!s.ptp) throw new GoneError('NOCAMERA The camera isn’t connected.');
     if (cmd === 'info') return reply('OK', 'J', infoJson());
     if (cmd === 'battery') { if (s.drv) s.battery = await s.drv.battery(); else if (s.brand === 'canon') s.battery = await canonBattery(); return reply('OK', 'J', JSON.stringify({ battery: s.battery })); }
+    if (cmd === 'props') {
+      if (s.drv && typeof s.drv.props === 'function') return reply('OK', 'J', JSON.stringify(await s.drv.props()));
+      if (s.brand === 'canon') { try { await poll(); } catch (e) { if (e instanceof GoneError) throw e; } return reply('OK', 'J', JSON.stringify(canonExposureJson({ eosVals: s.eosVals, eosAvail: s.eosAvail }))); }
+      return reply('OK', 'J', '{"supported":false}');
+    }
+    if (cmd === 'setprops') {
+      if (s.drv && typeof s.drv.setProps === 'function') return reply('OK', 'J', JSON.stringify(await s.drv.setProps(arg)));
+      if (s.brand === 'canon') return reply('OK', 'J', JSON.stringify(await canonSetExposure({ eosVals: s.eosVals, eosAvail: s.eosAvail, setEos, poll }, arg)));
+      return reply('OK', 'J', '{"supported":false}');
+    }
+    if (cmd === 'moviestart') {
+      if (s.drv && typeof s.drv.movieStart === 'function') return reply('OK', 'J', JSON.stringify(await s.drv.movieStart()));
+      if (s.brand === 'canon') return reply('OK', 'J', await canonMovieStart());
+      throw new CamError("UNSUPPORTED Sony Alpha cameras don't transfer 360 videos over USB in PC Remote mode. Choose HDMI Capture Card / Webcam in Camera Source.");
+    }
+    if (cmd === 'moviestop') {
+      if (s.drv && typeof s.drv.movieStop === 'function') return reply('OK', 'J', JSON.stringify(await s.drv.movieStop(arg)));
+      if (s.brand === 'canon') return reply('OK', 'J', await canonMovieStop(arg));
+      throw new CamError("UNSUPPORTED Sony Alpha cameras don't transfer 360 videos over USB in PC Remote mode.");
+    }
     if (cmd === 'af') {
       const isPre = String(arg || '').split(' ').includes('pre');
       if (s.drv && typeof s.drv.af === 'function') await s.drv.af();

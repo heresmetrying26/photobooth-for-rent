@@ -3,6 +3,10 @@
 // runs Nikon's own PTP commands (the same ones gphoto2 uses): StartLiveView 0x9201, EndLiveView 0x9202, GetLiveViewImg 0x9203,
 // AfDrive 0x90C1, InitiateCaptureRecInSdram 0x90C0, InitiateCaptureRecInMedia 0x9207, GetEvent 0x90C7, DeviceReady 0x90C8.
 import { OK, BUSY, GoneError, CamError, sleep, hex, Reader, jpegStart, cutJpeg, downloadObject } from './ptp.mjs';
+import { ptpObjectMeta, isStillOrRaw, streamObjectToFile } from './cam-movie.mjs';
+
+const NIKON_WB_IDS = [2, 4, 5, 6, 7, 32784, 32785, 32787];
+const NIKON_WB_NAMES = ['Auto', 'Daylight', 'Fluorescent', 'Tungsten', 'Flash', 'Cloudy', 'Shade', 'Custom'];
 
 // Nikons in MTP mode (D3400, D5600...) may not list their own commands, but they still answer them.
 const NIKON_OPS = [0x90C0, 0x90C1, 0x90C7, 0x90C8, 0x9201, 0x9202, 0x9203, 0x9207];
@@ -17,6 +21,7 @@ export function createNikon(ctx) {
   const has = (op) => ctx.ops.includes(op) || NIKON_OPS.includes(op);
   const d = { brand: 'nikon', live: false, lastShutterMs: 0 };
   let eventAt = Date.now();
+  let movieRec = false, prevMedia = null, prevLvSel = null;
 
   async function waitReady(ms) {
     const t0 = Date.now();
@@ -35,8 +40,7 @@ export function createNikon(ctx) {
     if (resp !== OK || data.length < 6) return null;
     const rd = new Reader(data);
     rd.u16();
-    const o = { type: rd.u16(), current: '', choices: [] };
-    rd.u8();
+    const o = { type: rd.u16(), getSet: rd.u8(), current: '', choices: [] };
     rd.value(o.type);
     o.current = rd.value(o.type);
     const form = rd.u8();
@@ -250,7 +254,193 @@ export function createNikon(ctx) {
     return img;
   };
 
+  const nearChoice = (desc, want, scale) => {
+    let best = null, bestD = Infinity;
+    for (const c of desc.choices || []) {
+      const v = Number(c);
+      if (!Number.isFinite(v)) continue;
+      const x = v * scale;
+      if (x <= 0 || x > 60000) continue;
+      const dd = Math.abs(Math.log(x) - Math.log(want));
+      if (dd < bestD) { bestD = dd; best = c; }
+    }
+    return best;
+  };
+
+  async function nikonPropFor(stillCode, movieCode, inMovieLv) {
+    if (inMovieLv && movieCode) {
+      try { const md = await propDesc(movieCode); if (md && md.choices.length > 0) return { code: movieCode, desc: md }; } catch { /* ignore */ }
+    }
+    return { code: stillCode, desc: await propDesc(stillCode) };
+  }
+
+  d.props = async () => {
+    let inMovieLv = false;
+    try { const lvs = await propDesc(0xD1A6); if (lvs && lvs.current === '1') inMovieLv = true; } catch { /* ignore */ }
+    let m = null, t = null, f = null, i = null, wb = null;
+    try {
+      m = await propDesc(0x500E);
+      t = (await nikonPropFor(0x500D, 0xD1A8, inMovieLv)).desc;
+      f = (await nikonPropFor(0x5007, 0xD1A9, inMovieLv)).desc;
+      i = (await nikonPropFor(0x500F, 0xD1AA, inMovieLv)).desc;
+      try { wb = await propDesc(0x5005); } catch { /* ignore */ }
+    } catch (e) { if (e instanceof GoneError) throw e; }
+    if (!t && !f && !i) return { supported: false };
+    const canSet = (desc) => !!(desc && desc.getSet === 1 && desc.choices.length > 0);
+    const num = (desc) => desc && Number.isFinite(Number(desc.current)) ? Number(desc.current) : 0;
+    const out = {
+      supported: true,
+      program: Math.round(num(m)),
+      shutter: num(t) * 0.0001,
+      f: num(f) / 100,
+      iso: Math.round(num(i)),
+      set: { shutter: canSet(t), f: canSet(f), iso: canSet(i) }
+    };
+    if (wb) {
+      out.wb = Math.round(num(wb));
+      out.wbChoices = wb.choices.map((c) => {
+        const id = Number(c), idx = NIKON_WB_IDS.indexOf(id);
+        return idx >= 0 ? { v: id, label: NIKON_WB_NAMES[idx] } : null;
+      }).filter(Boolean);
+      out.set.wb = canSet(wb);
+    }
+    return out;
+  };
+
+  d.setProps = async (arg) => {
+    const want = new Map();
+    for (const kv of String(arg || '').split(/[&\s]+/).filter(Boolean)) {
+      const eq = kv.indexOf('=');
+      if (eq <= 0) continue;
+      const k = kv.slice(0, eq), v = Number(kv.slice(eq + 1));
+      if (Number.isFinite(v) && (k === 'wb' ? v >= 0 : v > 0)) want.set(k, v);
+    }
+    let inMovieLv = false;
+    try { const lvs = await propDesc(0xD1A6); if (lvs && lvs.current === '1') inMovieLv = true; } catch { /* ignore */ }
+    const results = {};
+    for (const [key, stillCode, movieCode, scale] of [
+      ['shutter', 0x500D, 0xD1A8, 0.0001],
+      ['f', 0x5007, 0xD1A9, 0.01],
+      ['iso', 0x500F, 0xD1AA, 1]
+    ]) {
+      if (!want.has(key)) continue;
+      try {
+        const { code, desc } = await nikonPropFor(stillCode, movieCode, inMovieLv);
+        if (!desc) results[key] = 'unsupported';
+        else if (desc.getSet !== 1 || desc.choices.length === 0) results[key] = 'locked';
+        else {
+          const pick = nearChoice(desc, want.get(key), scale);
+          results[key] = pick === null ? 'unsupported' : pick === desc.current ? 'same' : (await setProp(code, desc.type, pick)) ? 'set' : 'refused';
+        }
+      } catch (e) { if (e instanceof GoneError) throw e; results[key] = 'refused'; }
+    }
+    if (want.has('wb')) {
+      try {
+        const wd = await propDesc(0x5005);
+        const target = String(Math.round(want.get('wb')));
+        if (!wd) results.wb = 'unsupported';
+        else if (wd.getSet !== 1 || wd.choices.length === 0) results.wb = 'locked';
+        else if (!wd.choices.includes(target)) results.wb = 'unsupported';
+        else results.wb = wd.current === target ? 'same' : (await setProp(0x5005, wd.type, target)) ? 'set' : 'refused';
+      } catch (e) { if (e instanceof GoneError) throw e; results.wb = 'refused'; }
+    }
+    return { ...(await d.props()), results };
+  };
+
+  async function restoreMovieProps() {
+    try {
+      if (prevLvSel) {
+        if (d.live) { try { await ptp.op(0x9202); await waitReady(1500); } catch { /* ignore */ } d.live = false; }
+        try { await setProp(0xD1A6, prevLvSel.type, prevLvSel.value); } catch { /* ignore */ }
+        prevLvSel = null;
+      }
+    } finally {
+      if (prevMedia) {
+        try { await setProp(0xD10B, prevMedia.type, prevMedia.value); } catch { /* ignore */ }
+        prevMedia = null;
+      }
+    }
+  }
+
+  d.movieStart = async () => {
+    if (movieRec) return { ok: true, brand: 'nikon', recording: true };
+    await drain();
+    try {
+      let rmed = null;
+      try { rmed = await propDesc(0xD10B); } catch (e) { if (e instanceof GoneError) throw e; }
+      if (rmed && rmed.current !== '0') {
+        prevMedia = { type: rmed.type, value: rmed.current };
+        if (!(await setProp(0xD10B, rmed.type, '0'))) {
+          prevMedia = null;
+          throw new CamError("CAPTURE Couldn't switch Nikon recording media to SD Card for movie capture. Insert an SD card with free space.");
+        }
+      }
+      let lvs = null;
+      try { lvs = await propDesc(0xD1A6); } catch (e) { if (e instanceof GoneError) throw e; }
+      if (lvs && lvs.current !== '1' && lvs.getSet === 1 && lvs.choices.includes('1')) {
+        prevLvSel = { type: lvs.type, value: lvs.current };
+        if (d.live) { await d.liveOff(); await waitReady(2000); }
+        if (!(await setProp(0xD1A6, lvs.type, '1'))) prevLvSel = null;
+      }
+      if (!d.live) await d.liveOn();
+      await drain();
+      let r = await ptp.op(0x920A);
+      if (r === BUSY) { await waitReady(2500); r = await ptp.op(0x920A); }
+      if (r !== OK) {
+        throw new CamError("CAPTURE The Nikon camera didn't start movie recording (" + hex(r) + '). Flip the photo/movie selector to Movie, insert an SD card with free space, and close any open camera menu.');
+      }
+      movieRec = true;
+      log('Nikon movie recording started');
+      return { ok: true, brand: 'nikon', recording: true };
+    } catch (e) {
+      await restoreMovieProps();
+      throw e;
+    }
+  };
+
+  d.movieStop = async (outDir) => {
+    const t0 = Date.now();
+    try {
+      try {
+        let r = await ptp.op(0x920B);
+        if (r === BUSY) { await waitReady(2500); r = await ptp.op(0x920B); }
+        await waitReady(5000);
+      } finally { movieRec = false; }
+
+      const handles = [];
+      const add = (l) => { for (const h of l) if (!handles.includes(h)) handles.push(h); };
+      const ew = Date.now();
+      let pickHandle = 0, pickSize = 0, pickExt = '.mov';
+      while (Date.now() - ew < 15000) {
+        add(await events());
+        if (handles.length > 0) {
+          await sleep(200);
+          add(await events());
+          let bestH = 0, bestSz = 0, bestExt = '.mov';
+          for (const h of handles) {
+            const meta = await ptpObjectMeta(ptp, h);
+            if (isStillOrRaw(meta.fmt, meta.ext)) continue;
+            const ext = meta.ext || (meta.fmt === 0xB982 ? '.mp4' : meta.fmt === 0x300B ? '.avi' : '.mov');
+            if (!bestH || meta.size > bestSz) { bestH = h; bestSz = meta.size; bestExt = ext; }
+          }
+          if (bestH) { pickHandle = bestH; pickSize = bestSz; pickExt = bestExt; break; }
+        }
+        await sleep(100);
+      }
+      if (!pickHandle) {
+        throw new CamError('CAPTURE The Nikon stopped recording, but no movie file appeared from the camera. Make sure an SD card with free space is inserted.');
+      }
+      const res = await streamObjectToFile(ptp, pickHandle, pickSize, pickExt, outDir, 'nikon-360-');
+      log('Nikon movie downloaded: ' + res.filename + ' (' + Math.round(res.bytes / 1024) + ' KB) in ' + (Date.now() - t0) + ' ms');
+      return { ok: true, brand: 'nikon', path: res.path, filename: res.filename, bytes: res.bytes, format: res.format };
+    } finally {
+      await restoreMovieProps();
+    }
+  };
+
   d.close = async () => {
+    try { if (movieRec) { await ptp.op(0x920B); movieRec = false; } } catch { /* ignore */ }
+    await restoreMovieProps().catch(() => {});
     if (d.live) { try { await ptp.op(0x9202); } catch { /* ignore */ } }
     d.live = false;
   };

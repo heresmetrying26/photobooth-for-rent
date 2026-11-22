@@ -17,9 +17,10 @@ import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './li
 import { initSetupSync, handleSetupRequest, syncAllNow } from './lib/setup-sync.mjs';
 import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
-import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinArmStateNow, spinArmCmdPush, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, roveStateSet, roveCmdTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, setPrintNowConfig, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
+import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinSaveVideo, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinArmStateNow, spinArmCmdPush, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, roveStateSet, roveCmdTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, setPrintNowConfig, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
 import { initBridge, getBridgeInfo, renewBridgeToken, pushBridgeState, sendBridgeEvent, sendCamCommand } from './lib/guest-bridge.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
+import { probeSensor, startSensor, stopSensor, latestSensor } from './lib/winsensor.mjs';
 import { makeShrinkPage, makePngToJpeg } from './lib/pageshrink.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { detectWifi } from './lib/wifi.mjs';
@@ -187,6 +188,13 @@ async function handle(req) {
       }
       const body = JSON.parse(await req.text());
       return jsonRes(await driveRequest(body));
+    }
+    if (p === '/local/spin-save' && req.method === 'POST') {
+      if (!L.status().ok) return jsonRes({ ok: false, error: 'This laptop’s licence isn’t active.' }, 401);
+      hotspotWake();
+      const buf = Buffer.from(await req.arrayBuffer());
+      const r = await spinSaveVideo({ filename: url.searchParams.get('filename') || '', buffer: buf });
+      return jsonRes(r, r.ok ? 200 : 400);
     }
     if (p.startsWith('/helper/') || p === '/helper') return await handleHelper(req, p.slice(7) || '/', url.searchParams);
     if (p.startsWith('/spin-fx/')) {
@@ -554,6 +562,11 @@ function wireIpc() {
   ipcMain.handle('pb4u:spinArmState', () => { try { return spinArmStateNow(); } catch { return null; } });
   ipcMain.handle('pb4u:spinArmCmd', (e, cmd) => { try { return spinArmCmdPush(String(cmd || '')); } catch { return { ok: false }; } });
   ipcMain.handle('pb4u:spinStats', (e, folderKey, subfolder) => { try { return spinStatsFor(String(folderKey || ''), String(subfolder || '')); } catch { return null; } });
+  const onWinSensorSample = (sample) => { broadcastWin('pb4u:sensorData', sample); };
+  ipcMain.handle('pb4u:sensorProbe', async () => { try { return await probeSensor(); } catch (err) { return { ok: false, available: false, error: String(err && err.message || err) }; } });
+  ipcMain.handle('pb4u:sensorStart', async () => { try { return await startSensor(onWinSensorSample); } catch (err) { return { ok: false, available: false, error: String(err && err.message || err) }; } });
+  ipcMain.handle('pb4u:sensorStop', () => { try { return stopSensor(); } catch { return { ok: true }; } });
+  ipcMain.handle('pb4u:sensorRead', () => { try { return latestSensor(); } catch { return { running: false, available: false, dps: 0, gDelta: 0 }; } });
   ipcMain.handle('pb4u:spinMusicAdd', async () => {
     const r = await dialog.showOpenDialog(win, { title: 'Add music tracks for the 360 looks', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Audio', extensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'flac'] }] });
     if (r.canceled || !r.filePaths.length) return null;
@@ -701,6 +714,7 @@ app.on('before-quit', () => {
   if (clockTimer) clearInterval(clockTimer);
   if (checkinTimer) clearInterval(checkinTimer);
   try { U.installOnQuit(); } catch { /* ignore */ }
+  try { stopSensor(); } catch { /* ignore */ }
   stopHelper();
   stopShareServer();
   hotspotStopOnQuit();
@@ -739,6 +753,7 @@ app.whenReady().then(async () => {
     shrinkPage: makeShrinkPage(nativeImage),
     toJpeg: makePngToJpeg(nativeImage),
     directPrintersFile: join(dataDir(), 'direct-printers.json'),
+    spinInboxDir: () => spinDirNow() || '',
     logger: (m) => {
       console.log('[helper] ' + m);
       try {

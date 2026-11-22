@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.94', date: '2026-11-22' },
   { version: '1.1.93', date: '2026-11-22' },
   { version: '1.1.92', date: '2026-11-21' },
   { version: '1.1.91', date: '2026-11-21' },
@@ -202,7 +203,7 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.17', date: '2026-11-21' };
+export const HELPER = { version: '1.1.18', date: '2026-11-22' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
@@ -289,6 +290,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-22', title: 'Desktop 1.1.94 + Print Helper 1.1.18: 360 Booth for DSLR / Mirrorless, HDMI Capture Card & GoPro with Windows Tablet Motion Trigger', for: ['website', 'app', 'helper'], app: '1.1.94', helper: '1.1.18',
+    items: [
+      '🌀 New Record 360 tab in the 360 Desk: mount a Canon EOS, Nikon DSLR/Z, GoPro, or HDMI capture card (e.g. Cam Link) on your rotating 360 arm alongside a Windows tablet or laptop and capture straight into your 360 Inbox with automatic speed, Reverse / Boomerang, music, overlays, Live Wall cues, and QR sharing.',
+      '⚙️ In-app DSLR Video Exposure Settings: read and set Shutter Speed (with 1/125 60fps & 1/250 120fps presets), Aperture, ISO, White Balance, and Autofocus on Canon EOS and Nikon bodies via USB, with on-screen Movie Manual Exposure & Exposure Simulation reminders.',
+      '📐 Windows Tablet Gyroscope Trigger & Calibration: Surface Pro and Windows 2-in-1 tablets on the rotating arm can auto-start recording as the arm begins rotating sideways, stop automatically on Fixed duration or Follow arm stop, and run a 2-step Configure sensitivity wizard — plus Wireless iPhone/iPad Arm Sensor and F9 / remote clicker triggers.',
+      '📦 Large 60/120fps USB video downloads (.MOV / .MP4) stream directly to the 360 Inbox with a live download progress bar so high-frame-rate recordings transfer smoothly without running out of memory.'
+    ]
+  },
   {
     date: '2026-11-22', title: 'Desktop 1.1.93, Android 1.1.97 & iPad 1.1.14: in-app All Photos Reprint Pop-up, glossy / best-quality defaults, and steady 2:3 Setup preview', for: ['website', 'app'], app: '1.1.93',
     items: [

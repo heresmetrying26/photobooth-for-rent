@@ -119,5 +119,16 @@ contextBridge.exposeInMainWorld('pb4u', {
     install: () => ipcRenderer.invoke('pb4u:updateInstall'),
     on: (fn) => { ipcRenderer.on('pb4u:update', (e, info) => { try { fn(info); } catch (err) { /* ignore */ } }); }
   },
+  sensor: {
+    probe: () => ipcRenderer.invoke('pb4u:sensorProbe'),
+    start: () => ipcRenderer.invoke('pb4u:sensorStart'),
+    stop: () => ipcRenderer.invoke('pb4u:sensorStop'),
+    read: () => ipcRenderer.invoke('pb4u:sensorRead'),
+    onData: (fn) => {
+      const h = (e, sample) => { try { fn(sample); } catch (err) { /* ignore */ } };
+      ipcRenderer.on('pb4u:sensorData', h);
+      return () => ipcRenderer.removeListener('pb4u:sensorData', h);
+    }
+  },
   onLicence: (fn) => { ipcRenderer.on('pb4u:licence', (e, info) => { try { fn(info); } catch (err) { /* ignore */ } }); }
 });

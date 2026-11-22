@@ -26,7 +26,7 @@ import { spawn } from 'node:child_process';
 import { freeCamera, guardCamera } from './camfree.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.17';
+const VERSION = '1.1.18';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',
@@ -657,7 +657,12 @@ const server = Bun.serve({
           return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) }, 200, origin));
         }
         if (req.method === 'POST' && url.pathname === '/camera/setprops') {
-          const q = ['shutter', 'f', 'iso'].map((k) => { const v = Number(url.searchParams.get(k)); return v > 0 && v < 100000 ? k + '=' + v : ''; }).filter(Boolean).join('&');
+          const q = ['shutter', 'f', 'iso', 'wb'].map((k) => {
+            const raw = url.searchParams.get(k);
+            if (raw === null || raw === '') return '';
+            const v = Number(raw);
+            return Number.isFinite(v) && (k === 'wb' ? (v >= 0 && v < 100000) : (v > 0 && v < 100000)) ? k + '=' + v : '';
+          }).filter(Boolean).join('&');
           const r = await camCall('setprops', q, 20000);
           return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) }, 200, origin));
         }

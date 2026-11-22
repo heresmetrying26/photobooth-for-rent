@@ -564,6 +564,34 @@ export function spinStatsFor(folderKey, subfolder) {
   const f = folderFor(folderKey, subfolder);
   return { event: getStats(f && f.slug), totals: (getStats() || {}).totals || {} };
 }
+/**
+ * Persist a locally captured video buffer (e.g. HDMI capture card / webcam MediaRecorder) into the active 360 inbox folder atomically.
+ * @param {{ filename?: string, buffer: Buffer|Uint8Array }} req
+ */
+export async function spinSaveVideo({ filename, buffer }) {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const dir = spinDirNow();
+  if (!dir) return { ok: false, error: '360 inbox folder is not set yet.' };
+  const buf = Buffer.isBuffer(buffer) ? buffer : (buffer ? Buffer.from(buffer) : null);
+  if (!buf || buf.length < 16) return { ok: false, error: 'Recorded video buffer is empty.' };
+  await fs.promises.mkdir(dir, { recursive: true });
+  const rawName = path.basename(String(filename || '').trim()).replace(/[^a-zA-Z0-9._-]/g, '-');
+  const extMatch = rawName.match(/\.(mp4|webm|mov|m4v)$/i);
+  const ext = extMatch ? '.' + extMatch[1].toLowerCase() : '.webm';
+  const base = (extMatch ? rawName.slice(0, -ext.length) : rawName).replace(/^\.+/, '') || ('capture-360-' + new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 17));
+  const finalName = base + ext;
+  const finalPath = path.join(dir, finalName);
+  const partPath = path.join(dir, `.${finalName}.${Date.now()}.part`);
+  try {
+    await fs.promises.writeFile(partPath, buf);
+    await fs.promises.rename(partPath, finalPath);
+    return { ok: true, filename: finalName, path: finalPath, bytes: buf.length, dir };
+  } catch (e) {
+    await fs.promises.unlink(partPath).catch(() => {});
+    return { ok: false, error: String((e && e.message) || e) };
+  }
+}
 // ---- Send page v2: what to record, what to offer, how each clip is doing ----
 // The desk tells the phone page what to record and which choices to offer. The booth page tells it how each clip is doing.
 // What the phone asks for (a choice, a re-edit, a countdown) waits here until the booth page collects it. Nothing from the phone is

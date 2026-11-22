@@ -56,6 +56,14 @@ function canonIsDslr() {
   if (!m.includes('EOS')) return false;
   return !/\bEOS (R\d*|RP|RA|M\d*)\b/.test(m);
 }
+// Canon EOS 1500D / 2000D / Rebel T7 / Kiss X90: keep SD card backup (SaveTo=Card), keep Live View on both
+// camera rear LCD and PC (0xD1B0=3 TFT+PC), and do not drop Live View before each shot — restoring pre-1.1.90
+// behavior without affecting Canon 60D / 6D / other EOS bodies.
+function canonKeepCardAndLcd() {
+  if (s.brand !== 'canon') return false;
+  const m = ((s.name || '') + ' ' + (s.model || '')).toUpperCase();
+  return /\b(1500D|2000D|REBEL\s*T7|KISS\s*X90)\b/.test(m);
+}
 
 async function opRetry(code, ...ps) {
   const t0 = Date.now();
@@ -129,6 +137,17 @@ async function canonSendCapacity() {
 
 async function canonToHost() {
   s.toHost = false;
+  if (canonKeepCardAndLcd()) {
+    if (s.eosVals.get(EOS_SAVETO) === SAVETO_HOST) {
+      const avCard = s.eosAvail.get(EOS_SAVETO);
+      const cardVal = avCard && !avCard.includes(SAVETO_CARD) && avCard.includes(1) ? 1 : SAVETO_CARD;
+      try { await setEos(EOS_SAVETO, cardVal); await poll(); } catch (e) { if (e instanceof GoneError) throw e; }
+      log('Save to: restored SD card (' + cardVal + ') for ' + s.name);
+    } else {
+      log('Save to: keeping SD card backup for ' + s.name);
+    }
+    return;
+  }
   if (s.hostGaveUp) return;
   if (!s.eosVals.has(EOS_SAVETO)) return;
   if (s.ops.length > 0 && !has(0x911A)) return;
@@ -272,7 +291,13 @@ async function liveOn() {
   let started = false;
   if (has(0x9151)) { const ri = await opRetry(0x9151); log('InitiateViewfinder: ' + hex(ri)); started = ri === OK; }
   if (s.eosVals.has(0xD1B1) && s.eosVals.get(0xD1B1) !== 1) await setEos(0xD1B1, 1);   // live view mode
-  const r = await setEos(0xD1B0, 2);   // live view to the computer (mirror up)
+  const targetOut = canonKeepCardAndLcd() ? 3 : 2;   // 3 = TFT + PC (rear LCD + laptop), 2 = PC only
+  let r = await setEos(0xD1B0, targetOut);   // live view to the computer (mirror up)
+  // Only fall back to PC-only (2) if TFT+PC (3) was genuinely refused — never on transient BUSY/NOTREADY.
+  if (r !== OK && r !== BUSY && r !== NOTREADY && targetOut === 3) {
+    log('Live view TFT+PC (0xD1B0=3) refused (' + hex(r) + '): falling back to PC-only (2)');
+    r = await setEos(0xD1B0, 2);
+  }
   if (r !== OK && !started)
     throw new CamError('LIVEVIEW The camera refused live view (' + hex(r) + '). On the camera: Menu, Live View shoot: Enable; close the menu; mode dial on P, Tv, Av or M. Then try again.');
   s.live = true; s.gotFrame = false; s.liveAt = Date.now(); s.liveOffAt = 0;
@@ -373,13 +398,13 @@ async function download(h, size, notes, ramPhoto = false) {
   return downloadObject(s.ptp, h, size, notes, has(0x9107) ? 0x9107 : 0x101B);
 }
 
-async function canonHalfFull(lensMf, skipAf) {
+async function canonHalfFull(lensMf, skipAf, lvStillOn = false) {
   let afFlag = (skipAf && !lensMf) ? 1 : 0;
   let h = await opRetry(0x9128, 1, afFlag);
   if (h !== OK && afFlag === 1) { afFlag = 0; h = await opRetry(0x9128, 1, 0); }
   if (h === OK) {
     const fast = lensMf || afFlag === 1;
-    const t0 = Date.now(), maxWait = fast ? 80 : 350;
+    const t0 = Date.now(), maxWait = fast ? 80 : (lvStillOn ? 550 : 350);
     while (Date.now() - t0 < maxWait) {
       await poll();
       if (fast && s.lastPollEvents > 0) break;
@@ -403,7 +428,8 @@ async function capture() {
     await poll();
   }
   const isDslr = canonIsDslr();
-  if (isDslr) {
+  const dropLvForShot = isDslr && !canonKeepCardAndLcd();
+  if (dropLvForShot) {
     let turnedOffHere = false;
     if (s.live || (s.eosVals.get(0xD1B0) || 0) !== 0) {
       log('DSLR capture: ending live view before shutter (mechanical flash sync)');
@@ -424,12 +450,12 @@ async function capture() {
   const lensMf = canonLensMf();
   if (has(0x9128)) {
     if (isDslr) {
-      r = await canonHalfFull(lensMf, false);
+      r = await canonHalfFull(lensMf, false, !dropLvForShot);
     } else {
       r = await opRetry(0x9128, 3, lensMf ? 1 : 0);
       log('RemoteReleaseOn: ' + hex(r));
       if (r === OK) { await sleep(80); await poll(); try { await opRetry(0x9129, 3); } catch (e) { if (e instanceof GoneError) throw e; } }
-      else r = await canonHalfFull(lensMf, false);
+      else r = await canonHalfFull(lensMf, false, !dropLvForShot);
     }
     if (r !== OK) throw shotError(r, 0);
   } else {
@@ -604,11 +630,12 @@ const infoJson = () => {
   const mf = cn && canonLensMf();
   const older = cn && !has(0x9128);
   const dslr = cn && canonIsDslr();
+  const keepLive = cn && canonKeepCardAndLcd();
   return JSON.stringify({
     name: s.name, model: s.model, maker: s.maker, brand: s.brand, vendor: s.vendorExt,
     liveview: s.drv ? s.drv.live : s.live, battery: s.battery, note: s.setupNote, diag: s.diag,
-    shutterMs: s.lastShutterMs, preFocus: !cn || has(0x9128), olderCanon: older, lensMf: mf, canonDslr: dslr,
-    saveTo: cn ? (s.toHost ? 'host' : 'card') : '', toCard: cn && !s.toHost, aspectCrop: cn && s.aspectCrop
+    shutterMs: s.lastShutterMs, preFocus: !cn || has(0x9128), olderCanon: older, lensMf: mf, canonDslr: dslr, canonKeepLive: keepLive,
+    saveTo: cn ? (s.toHost ? 'host' : 'card') : '', toCard: cn && !s.toHost && !keepLive, aspectCrop: cn && s.aspectCrop
   });
 };
 
@@ -668,10 +695,11 @@ async function listJson() {
     : { name: 'USB camera ' + e.vendor.toString(16) + ':' + e.product.toString(16), maker: '', camera: false }));
   const cn = !!s.ptp && s.brand === 'canon' && !s.drv;
   const mf = cn && canonLensMf();
+  const keepLive = cn && canonKeepCardAndLcd();
   return JSON.stringify({
     devices: devs, open: !!s.ptp, name: s.ptp ? s.name : '', shutterMs: s.lastShutterMs,
-    toCard: cn && !s.toHost, olderCanon: cn && !has(0x9128), lensMf: mf, canonDslr: cn && canonIsDslr(),
-    aspectCrop: cn && s.aspectCrop
+    toCard: cn && !s.toHost && !keepLive, olderCanon: cn && !has(0x9128), lensMf: mf, canonDslr: cn && canonIsDslr(),
+    canonKeepLive: keepLive, aspectCrop: cn && s.aspectCrop
   });
 }
 

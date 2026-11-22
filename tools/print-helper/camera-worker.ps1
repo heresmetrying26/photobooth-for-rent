@@ -727,13 +727,15 @@ namespace Pb4uCam
             bool mf = cn && CanonLensMf();
             bool older = cn && !Has(0x9128);
             bool dslr = cn && CanonIsDslr();
+            bool keepLive = cn && CanonKeepCardAndLcd();
             sb.Append("],\"open\":" + (ptp != null ? "true" : "false") + ",\"name\":" + Js(ptp != null ? camName : "") + ",\"shutterMs\":" + lastShutterMs
                 + ",\"focusInShot\":" + (cn && canonFocusInShot && !mf ? "true" : "false")
                 + ",\"noAfOff\":" + (cn && canonNoAfBad && !mf ? "true" : "false")
-                + ",\"toCard\":" + (cn && !canonToHost ? "true" : "false")
+                + ",\"toCard\":" + (cn && !canonToHost && !keepLive ? "true" : "false")
                 + ",\"olderCanon\":" + (older ? "true" : "false")
                 + ",\"lensMf\":" + (mf ? "true" : "false")
                 + ",\"canonDslr\":" + (dslr ? "true" : "false")
+                + ",\"canonKeepLive\":" + (keepLive ? "true" : "false")
                 + ",\"aspectCrop\":" + (cn && canonAspectCrop ? "true" : "false") + "}");
             return sb.ToString();
         }
@@ -877,6 +879,7 @@ namespace Pb4uCam
             bool older = canon && !Has(0x9128);
             bool mf = CanonLensMf();
             bool dslr = canon && CanonIsDslr();
+            bool keepLive = canon && CanonKeepCardAndLcd();
             return "{\"name\":" + Js(camName) + ",\"model\":" + Js(camModel) + ",\"maker\":" + Js(camMaker) + ",\"brand\":" + Js(nikon ? "nikon" : canon ? "canon" : sony ? "sony" : "") + ",\"vendor\":" + vendor
                 + ",\"liveview\":" + (live ? "true" : "false") + ",\"battery\":" + Battery() + ",\"note\":" + Js(setupNote) + ",\"diag\":" + Js(diag)
                 + ",\"shutterMs\":" + lastShutterMs
@@ -884,10 +887,11 @@ namespace Pb4uCam
                 + ",\"olderCanon\":" + (older ? "true" : "false")
                 + ",\"lensMf\":" + (mf ? "true" : "false")
                 + ",\"canonDslr\":" + (dslr ? "true" : "false")
+                + ",\"canonKeepLive\":" + (keepLive ? "true" : "false")
                 + ",\"saveTo\":" + Js(canon ? (canonToHost ? "host" : "card") : "")
                 + ",\"focusInShot\":" + (canon && canonFocusInShot && !mf ? "true" : "false")
                 + ",\"noAfOff\":" + (canon && canonNoAfBad && !mf ? "true" : "false")
-                + ",\"toCard\":" + (canon && !canonToHost ? "true" : "false")
+                + ",\"toCard\":" + (canon && !canonToHost && !keepLive ? "true" : "false")
                 + ",\"aspectCrop\":" + (canon && canonAspectCrop ? "true" : "false") + "}";
         }
 
@@ -1767,6 +1771,19 @@ namespace Pb4uCam
         static void CanonToHost()
         {
             canonToHost = false;
+            if (CanonKeepCardAndLcd())
+            {
+                uint curCard;
+                if (eosVals.TryGetValue(EOS_SAVETO, out curCard) && curCard == SAVETO_HOST)
+                {
+                    List<uint> avCard;
+                    uint cardVal = (eosAvail.TryGetValue(EOS_SAVETO, out avCard) && !avCard.Contains(SAVETO_CARD) && avCard.Contains(1)) ? 1U : SAVETO_CARD;
+                    try { SetEos(EOS_SAVETO, cardVal); CanonPoll(); } catch (GoneException) { throw; } catch { }
+                    Log("Save to: restored SD card (" + cardVal + ") for " + camName);
+                }
+                else Log("Save to: keeping SD card backup for " + camName);
+                return;
+            }
             if (canonHostGaveUp) return;
             uint cur;
             if (!eosVals.TryGetValue(EOS_SAVETO, out cur)) { Log("Save to: this camera doesn't list it, photos stay on the card"); return; }
@@ -1975,7 +1992,14 @@ namespace Pb4uCam
             bool started = false;
             if (Has(0x9151)) { uint ri = OpRetry(0x9151); Log("InitiateViewfinder: " + H(ri)); started = ri == Ptp.OK; }
             if (eosVals.ContainsKey(0xD1B1) && eosVals[0xD1B1] != 1) SetEos(0xD1B1, 1);   // live view mode
-            uint r = SetEos(0xD1B0, 2);   // live view to the computer (mirror up)
+            uint targetOut = CanonKeepCardAndLcd() ? 3U : 2U;   // 3 = TFT + PC (rear LCD + laptop), 2 = PC only
+            uint r = SetEos(0xD1B0, targetOut);   // live view to the computer (mirror up)
+            // Only fall back to PC-only (2) if TFT+PC (3) was genuinely refused — NEVER on transient BUSY/NOTREADY while saving to SD card!
+            if (r != Ptp.OK && r != Ptp.BUSY && r != NOTREADY && targetOut == 3U)
+            {
+                Log("Live view TFT+PC (0xD1B0=3) refused (" + H(r) + "): falling back to PC-only (2)");
+                r = SetEos(0xD1B0, 2U);
+            }
             // Still saving the last photo (a RAW + JPEG on a slow card can take several seconds): not an error, the next frame asks again.
             if (r != Ptp.OK && !started && (r == Ptp.BUSY || r == NOTREADY)) { live = false; Log("Live view: camera still busy (" + H(r) + "), will ask again"); return; }
             if (r != Ptp.OK && !started)
@@ -2094,16 +2118,27 @@ namespace Pb4uCam
             return !Regex.IsMatch(m, @"\bEOS (R\d*|RP|RA|M\d*)\b");
         }
 
+        // Canon EOS 1500D / 2000D / Rebel T7 / Kiss X90: keep SD card backup (SaveTo=Card), keep Live View on both
+        // camera rear LCD and PC (0xD1B0=3 TFT+PC), and do not drop Live View before each shot — restoring pre-1.1.90
+        // behavior without affecting Canon 60D / 6D / other EOS bodies.
+        static bool CanonKeepCardAndLcd()
+        {
+            if (!canon) return false;
+            string m = ((camName ?? "") + " " + (camModel ?? "")).ToUpperInvariant();
+            return Regex.IsMatch(m, @"\b(1500D|2000D|REBEL\s*T7|KISS\s*X90)\b");
+        }
+
         // How to press the shutter on a newer EOS (it lists 0x9128):
         //   0 = DSLR two-stage press: half press (1), short wait, full press (2), release (2), poll, release (1).
         //       Never sends param1 = 3 on a DSLR (param1 = 3 is for mirrorless / EOS M).
         //   1 = mirrorless one-command press (3, 0), falling back to half/full if refused.
         //   2 = no-AF press: DSLR uses half/full with NonAF (1, 1)+(2, 1) (or (1, 0)+(2, 0) when lens is on MF);
         //       mirrorless uses (3, 1) with a brief poll before releasing (3).
-        static uint CanonFireNew(int mode, bool isDslr, bool lensMf)
+        static uint CanonFireNew(int mode, bool isDslr, bool lensMf) { return CanonFireNew(mode, isDslr, lensMf, false); }
+        static uint CanonFireNew(int mode, bool isDslr, bool lensMf, bool lvStillOn)
         {
-            if (isDslr) return CanonHalfFull(lensMf, mode == 2);
-            if (mode == 0) return CanonHalfFull(lensMf, false);
+            if (isDslr) return CanonHalfFull(lensMf, mode == 2, lvStillOn);
+            if (mode == 0) return CanonHalfFull(lensMf, false, lvStillOn);
             uint r = OpRetry(0x9128, 3, mode == 2 ? 1U : 0U);
             Log("RemoteReleaseOn(" + (mode == 2 ? "no AF" : "full") + "): " + H(r));
             if (r == Ptp.OK)
@@ -2113,11 +2148,11 @@ namespace Pb4uCam
                 CanonPoll();
                 try { OpRetry(0x9129, 3); } catch (GoneException) { throw; } catch { }
             }
-            else if (mode == 1) r = CanonHalfFull(lensMf, false);
+            else if (mode == 1) r = CanonHalfFull(lensMf, false, lvStillOn);
             return r;
         }
 
-        static uint CanonHalfFull(bool lensMf, bool skipAf)
+        static uint CanonHalfFull(bool lensMf, bool skipAf, bool lvStillOn)
         {
             // When the lens switch is physically on MF (0xD108 == 3), param2 = 0 already skips AF and works on every EOS DSLR
             // (including older DIGIC 4/5 bodies like 60D/6D); wait <= 80 ms (libgphoto2 waits <= 100 ms in MF), not 550 ms.
@@ -2127,7 +2162,7 @@ namespace Pb4uCam
             if (h == Ptp.OK)
             {
                 bool fast = lensMf || afFlag == 1U;
-                int maxWait = fast ? 80 : 350;
+                int maxWait = fast ? 80 : (lvStillOn ? 550 : 350);
                 var fw = Stopwatch.StartNew();
                 while (fw.ElapsedMilliseconds < maxWait)
                 {
@@ -2167,11 +2202,14 @@ namespace Pb4uCam
                 }
             }
             bool isDslr = CanonIsDslr();
+            bool keepCardLcd = CanonKeepCardAndLcd();
+            bool dropLvForShot = isDslr && !keepCardLcd;
             // Canon DSLRs (60D, 6D, 70D, 5D, 1300D, Rebel...): Silent LV shoot (Mode 1 by default) blocks or desyncs external flashes
             // and studio strobes while Live View is active, and Live View contrast AF is slow. Turning Live View off drops the
             // mirror into optical mode -> 100% mechanical X-sync for every flash/strobe AND fast phase-detect AF.
             // During a booth session "Pose" already turned Live View off 600 ms earlier, so canonLiveOffSw is already >= 350 ms (0 ms wait).
-            if (isDslr)
+            // EOS 1500D / 2000D / Rebel T7 / Kiss X90 keeps Live View on (pre-1.1.90 behavior so rear LCD stays active for framing).
+            if (dropLvForShot)
             {
                 uint lvOut = 0;
                 bool turnedOffHere = false;
@@ -2207,12 +2245,12 @@ namespace Pb4uCam
             bool tried910F = false;
             if (!oldEos)
             {
-                r = CanonFireNew(firstMode, isDslr, lensMf);
+                r = CanonFireNew(firstMode, isDslr, lensMf, !dropLvForShot);
                 if (r != Ptp.OK && noAf)
                 {
                     Log("The press without focusing was refused (" + H(r) + "): focusing and shooting the usual way");
                     noAf = false; canonNoAfBad = true;
-                    r = CanonFireNew(baseMode, isDslr, lensMf);
+                    r = CanonFireNew(baseMode, isDslr, lensMf, !dropLvForShot);
                 }
                 if (r != Ptp.OK) throw CanonShotError(r, 0);
             }
@@ -3319,8 +3357,8 @@ namespace Pb4uCam
                                 }
                                 else if (isPre && CanonIsDslr())
                                 {
-                                    // Canon DSLRs drop out of Live View at "Pose" and use fast optical phase-detect AF at the shutter:
-                                    // never freeze Live View for 800 ms of slow contrast-detect AF during the countdown.
+                                    // Canon DSLRs focus inside two-stage CanonHalfFull() at capture (or skip AF on MF):
+                                    // never freeze Live View for 800 ms of redundant contrast-detect AF during the countdown.
                                     afR = Ptp.OK;
                                 }
                                 else if (Has(0x9128))

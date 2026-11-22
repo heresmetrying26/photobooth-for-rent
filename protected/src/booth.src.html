@@ -30391,7 +30391,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         helperSees: false, helperName: '', helperUp: false,
         camera: null, name: '', active: false, gen: 0, libGen: 0, vfOn: false, initing: null,
         canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null,
-        lastFrameAt: 0, shooting: false, holdLive: false, olderCanon: false, lensMf: false, stallShown: false, devId: '',
+        lastFrameAt: 0, shooting: false, holdLive: false, olderCanon: false, lensMf: false, canonDslr: false, canonKeepLive: false, stallShown: false, devId: '',
         rawW: 0, rawH: 0, photoAspect: 0, aspectCrop: false, aspectWarned: false,   // matches live view to cropped still aspect (e.g. Canon 16:9 / 1:1)
         frameAt: 0, shotAt: 0, kickAt: 0,                        // real time of the last picture / of the last photo (while live view is still to come back) / of the last "live view again" request
         freshNext: false, dropWhy: '',                          // helper cameras: after a drop the next connect starts a clean session (a camera that slept keeps a dead one)
@@ -30879,6 +30879,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           usbCam.olderCanon = !!(hc.info && hc.info.olderCanon);
           usbCam.lensMf = !!(hc.info && hc.info.lensMf);
           usbCam.canonDslr = !!(hc.info && hc.info.canonDslr);
+          usbCam.canonKeepLive = !!(hc.info && hc.info.canonKeepLive);
           usbCam.rawW = 0; usbCam.rawH = 0; usbCam.photoAspect = 0; usbCam.aspectWarned = false;
           usbCam.aspectCrop = !!(hc.info && hc.info.aspectCrop);
           usbCam.name = hc.name;
@@ -30892,6 +30893,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                   if (typeof j.lensMf === 'boolean') usbCam.lensMf = j.lensMf;
                   if (typeof j.olderCanon === 'boolean') usbCam.olderCanon = j.olderCanon;
                   if (typeof j.canonDslr === 'boolean') usbCam.canonDslr = j.canonDslr;
+                  if (typeof j.canonKeepLive === 'boolean') usbCam.canonKeepLive = j.canonKeepLive;
                   if (j.aspectCrop) usbCam.aspectCrop = true;
                   canonGuideUpdate(j, true);
                 }
@@ -30911,6 +30913,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           usbCam.olderCanon = !!(nat.info && nat.info.olderCanon);
           usbCam.lensMf = !!(nat.info && nat.info.lensMf);
           usbCam.canonDslr = !!(nat.info && nat.info.canonDslr);
+          usbCam.canonKeepLive = !!(nat.info && nat.info.canonKeepLive);
           usbCam.rawW = 0; usbCam.rawH = 0; usbCam.photoAspect = 0; usbCam.aspectWarned = false;
           usbCam.aspectCrop = !!(nat.info && nat.info.aspectCrop);
           usbCam.name = nat.name || 'USB camera';
@@ -32528,6 +32531,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (j && typeof j.lensMf === 'boolean') usbCam.lensMf = j.lensMf;
             if (j && typeof j.olderCanon === 'boolean') usbCam.olderCanon = j.olderCanon;
             if (j && typeof j.canonDslr === 'boolean') usbCam.canonDslr = j.canonDslr;
+            if (j && typeof j.canonKeepLive === 'boolean') usbCam.canonKeepLive = j.canonKeepLive;
             if (j && j.aspectCrop) usbCam.aspectCrop = true;
             canonGuideUpdate(j);   // a Canon that is late or not taking photos: tips for the operator (brand-canon.js)
             const ms = Number(j && j.shutterMs) || 0;
@@ -33626,10 +33630,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (sess && sess.cancelled) { stopShotMotionCapture(index); return; }
           // Pause new live-view frame prefetch during the 600 ms "Pose" window so any in-flight /camera/frame finishes before /camera/capture.
           holdCam();
-          // Canon DSLR (60D, 6D, 70D, 5D, Rebel...): drop out of Live View during the 600 ms "Pose" pause so the mirror settles
+          // Canon DSLR (60D, 6D, 70D, 5D, 1300D...): drop out of Live View during the 600 ms "Pose" pause so the mirror settles
           // BEFORE the shutter fires -> 100% mechanical X-sync for external flashes/strobes (bypasses Silent LV shoot Mode 1/2)
           // and fast optical phase-detect AF, with zero extra wait at the shutter moment.
-          if (usbIsHelper() && usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID && camIsCanon() && usbCam.canonDslr) {
+          // EOS 1500D / 2000D / Rebel T7 / Kiss X90 keeps Live View on so the camera rear LCD stays active for framing.
+          if (usbIsHelper() && usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID && camIsCanon() && usbCam.canonDslr && !usbCam.canonKeepLive && !/\b(1500D|2000D|REBEL\s*T7|KISS\s*X90)\b/i.test(usbCam.name || '')) {
             try { Promise.resolve(usbCam.camera.setConfigValue('viewfinder', 0)).catch(function () { }); } catch (e) { }
           }
           popNum('Pose', true);

@@ -34,10 +34,10 @@ function evAvail(prop, vals) {
 }
 
 class FakeCanon {
-  constructor({ model, newer, dslr, hostMode, aspectRatio = 0, refuseAspect = false }) {
-    this.model = model; this.newer = newer; this.dslr = dslr; this.hostMode = hostMode;
+  constructor({ model, newer, dslr, hostMode, keepCardLcd = false, aspectRatio = 0, refuseAspect = false }) {
+    this.model = model; this.newer = newer; this.dslr = dslr; this.hostMode = hostMode; this.keepCardLcd = keepCardLcd;
     this.aspectRatio = aspectRatio; this.refuseAspect = refuseAspect;
-    this.queue = []; this.pendingWrite = null; this.events = []; this.live = false;
+    this.queue = []; this.pendingWrite = null; this.events = []; this.live = false; this.liveOut = 0;
     this.log = []; this.remote = 0; this.sessionOpen = false;
     this.saveTo = 2; this.availShots = 500; this.halfPressed = false;
     this.liveWhenShot = null; this.sawCap = false; this.sawParam3 = false;
@@ -54,7 +54,7 @@ class FakeCanon {
   }
   onData(pw, data) {
     const prop = data.readUInt32LE(4), val = data.readUInt32LE(8);
-    if (prop === 0xD1B0) { this.live = val === 2; this.events.push(evProp(0xD1B0, val)); }
+    if (prop === 0xD1B0) { this.liveOut = val; this.live = (val === 2 || val === 3); this.events.push(evProp(0xD1B0, val)); }
     else if (prop === 0xD11C) {
       this.saveTo = val;
       this.events.push(evProp(0xD11C, val));
@@ -148,6 +148,7 @@ const cases = [
   { tag: '[Canon EOS 60D DSLR host+0x9128] ', model: 'Canon EOS 60D', newer: true, dslr: true, hostMode: true },
   { tag: '[Canon EOS 1300D DSLR 16:9->3:2] ', model: 'Canon EOS 1300D', newer: true, dslr: true, hostMode: true, aspectRatio: 3 },
   { tag: '[Canon EOS 1300D DSLR 16:9 refused] ', model: 'Canon EOS 1300D', newer: true, dslr: true, hostMode: true, aspectRatio: 3, refuseAspect: true },
+  { tag: '[Canon EOS 1500D DSLR card+LCD] ', model: 'Canon EOS 1500D', newer: true, dslr: true, hostMode: true, keepCardLcd: true },
   { tag: '[Canon EOS R50 Mirrorless host+0x9128] ', model: 'Canon EOS R50', newer: true, dslr: false, hostMode: true },
   { tag: '[Older Canon EOS 550D DSLR card+0x910F] ', model: 'Canon EOS 550D', newer: false, dslr: true, hostMode: false }
 ];
@@ -165,7 +166,8 @@ for (const tc of cases) {
   const o = await cam.call('open', '');
   check(tag + 'open', o.status === 'OK', o.body.toString().slice(0, 120));
   const info = JSON.parse(o.body.toString());
-  check(tag + 'name & canonDslr & saveTo', info.name === tc.model && info.canonDslr === tc.dslr && info.saveTo === (tc.hostMode ? 'host' : 'card'), JSON.stringify({ name: info.name, dslr: info.canonDslr, saveTo: info.saveTo }));
+  const expectHost = tc.hostMode && !tc.keepCardLcd;
+  check(tag + 'name & canonDslr & saveTo', info.name === tc.model && info.canonDslr === tc.dslr && info.canonKeepLive === !!tc.keepCardLcd && info.saveTo === (expectHost ? 'host' : 'card'), JSON.stringify({ name: info.name, dslr: info.canonDslr, keepLive: info.canonKeepLive, saveTo: info.saveTo }));
   if (tc.aspectRatio) {
     if (tc.refuseAspect) {
       check(tag + 'refused 0xD194 sets aspectCrop=true', info.aspectCrop === true && fake.aspectRatio === tc.aspectRatio, JSON.stringify({ aspectCrop: info.aspectCrop, ar: fake.aspectRatio }));
@@ -173,18 +175,22 @@ for (const tc of cases) {
       check(tag + 'switches 0xD194 to 3:2 (0) and clears aspectCrop', info.aspectCrop === false && fake.aspectRatio === 0, JSON.stringify({ aspectCrop: info.aspectCrop, ar: fake.aspectRatio }));
     }
   }
-  if (tc.hostMode) check(tag + 'called 0x911A PCHDDCapacity on host open', fake.sawCap === true && fake.saveTo === 4);
+  if (expectHost) check(tag + 'called 0x911A PCHDDCapacity on host open', fake.sawCap === true && fake.saveTo === 4);
+  if (tc.keepCardLcd) check(tag + 'kept SD card (SaveTo=2) and skipped host switch', fake.sawCap === false && fake.saveTo === 2 && info.toCard === false);
   const lv = await cam.call('live', 'on');
-  check(tag + 'live on', lv.status === 'OK' && fake.live === true);
+  check(tag + 'live on', lv.status === 'OK' && fake.live === true && fake.liveOut === (tc.keepCardLcd ? 3 : 2), 'liveOut=' + fake.liveOut);
   const f = await cam.call('frame', '');
   check(tag + 'frame is the JPEG', f.status === 'OK' && f.kind === 'B' && f.body.equals(JPEG));
   const c = await cam.call('capture', '');
   check(tag + 'capture is the full photo', c.status === 'OK' && c.kind === 'B' && c.body.equals(PHOTO), c.status === 'OK' ? '' : c.body.toString());
-  if (tc.dslr) {
+  if (tc.dslr && !tc.keepCardLcd) {
     check(tag + 'DSLR drops live view before shutter (mechanical X-sync)', fake.liveWhenShot === false);
     check(tag + 'DSLR never sends EOS-M param1=3', fake.sawParam3 === false);
   }
-  if (tc.hostMode) {
+  if (tc.keepCardLcd) {
+    check(tag + '1500D keeps live view active before shutter and never sends param1=3', fake.liveWhenShot === true && fake.sawParam3 === false);
+  }
+  if (expectHost) {
     check(tag + 'RAM object downloaded via 0x101B + 0x9117 done + 0x9118 cancel RAW', fake.sawPartial && fake.doneHandles.includes(0x2002) && fake.cancelHandles.includes(0x2001), JSON.stringify({ p: fake.sawPartial, done: fake.doneHandles, cancel: fake.cancelHandles }));
   }
   const f2 = await cam.call('frame', '');

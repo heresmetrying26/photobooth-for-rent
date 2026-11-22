@@ -35,6 +35,9 @@ namespace PbCanonTest
         public uint AspectRatio = 0;
         public bool RefuseAspect = false;
         public bool LiveOn = false;
+        public uint LiveOut = 0;
+        public bool RefuseLcdLive = false;
+        public bool BusyLcdLive = false;
         public bool HalfPressed = false;
 
         public int CapCalls = 0;
@@ -187,7 +190,14 @@ namespace PbCanonTest
             if (code != 0x9110) return OK;
             uint prop = BitConverter.ToUInt32(data, 4), val = BitConverter.ToUInt32(data, 8);
             LogOps.Add("SET_" + prop.ToString("X4") + "=" + val);
-            if (prop == 0xD1B0) { LiveOn = (val == 2); EvProp(0xD1B0, val); }
+            if (prop == 0xD1B0)
+            {
+                if (val == 3 && BusyLcdLive) return BUSY;
+                if (val == 3 && RefuseLcdLive) return 0x2005;
+                LiveOut = val;
+                LiveOn = (val == 2 || val == 3);
+                EvProp(0xD1B0, val);
+            }
             else if (prop == 0xD11C)
             {
                 SaveTo = val;
@@ -435,6 +445,51 @@ $infRef = ($mInfoJson.Invoke($null, $null) | ConvertFrom-Json)
 Check '1300D refusing 0xD194 sets canonAspectCrop=true and InfoJson.aspectCrop=true' (
     $cam1300Ref.AspectRatio -eq 3 -and $infRef.aspectCrop -eq $true
 ) ("ar=$($cam1300Ref.AspectRatio) info=$($infRef | ConvertTo-Json -Compress)")
+
+# --- 13. Canon EOS 1500D: keeps SD card backup (SaveTo=2), LCD+PC live view (0xD1B0=3), does not drop LV before shot ---
+$cam1500 = New-Object PbCanonTest.RealisticEos
+$cam1500.IsDslr = $true
+Reset-Worker $cam1500 'Canon EOS 1500D' $eos60Ops 2 3
+[void]$mToHost.Invoke($null, $null)
+Check '1500D connect: keeps SaveTo=2 (SD card backup), does not switch to host' (
+    ($W.GetField('canonToHost', $flags).GetValue($null) -eq $false) -and $cam1500.SaveTo -eq 2 -and $cam1500.CapCalls -eq 0
+) ("toHost=$($W.GetField('canonToHost', $flags).GetValue($null)) saveTo=$($cam1500.SaveTo) capCalls=$($cam1500.CapCalls)")
+[void]$mLiveOn.Invoke($null, $null)
+Check '1500D live view enables rear LCD + PC simultaneously (0xD1B0=3)' (
+    $cam1500.LiveOn -eq $true -and $cam1500.LiveOut -eq 3
+) ("live=$($cam1500.LiveOn) out=$($cam1500.LiveOut)")
+$img1500 = $mCapture.Invoke($null, $null)
+Check '1500D capture saves on SD card, keeps LV active, uses DSLR half/full (no param1=3)' (
+    $img1500.Length -eq $cam1500.PhotoBytes.Length -and $cam1500.SaveTo -eq 2 -and $cam1500.LiveWhenShot -eq $true -and -not $cam1500.SawParam3
+) ("len=$($img1500.Length) saveTo=$($cam1500.SaveTo) liveWhenShot=$($cam1500.LiveWhenShot) param3=$($cam1500.SawParam3)")
+$inf1500 = ($mInfoJson.Invoke($null, $null) | ConvertFrom-Json)
+Check '1500D InfoJson reports canonDslr=true, canonKeepLive=true, saveTo="card", toCard=false (no warning toast)' (
+    $inf1500.canonDslr -eq $true -and $inf1500.canonKeepLive -eq $true -and $inf1500.saveTo -eq 'card' -and $inf1500.toCard -eq $false
+) ($inf1500 | ConvertTo-Json -Compress)
+
+# --- 14. Canon EOS 1500D left stuck on SaveTo=4 restores SD card (2) on connect, and 0xD1B0=3 refused falls back to 2 ---
+$cam1500Stuck = New-Object PbCanonTest.RealisticEos
+$cam1500Stuck.IsDslr = $true
+$cam1500Stuck.RefuseLcdLive = $true
+Reset-Worker $cam1500Stuck 'Canon EOS Rebel T7' $eos60Ops 4 3
+[void]$mToHost.Invoke($null, $null)
+Check 'Rebel T7 (1500D) left on SaveTo=4 automatically restores SaveTo=2 (SD card)' (
+    $cam1500Stuck.SaveTo -eq 2 -and ($W.GetField('canonToHost', $flags).GetValue($null) -eq $false)
+) ("saveTo=$($cam1500Stuck.SaveTo) toHost=$($W.GetField('canonToHost', $flags).GetValue($null))")
+[void]$mLiveOn.Invoke($null, $null)
+Check 'Rebel T7 (1500D) falls back to 0xD1B0=2 if 0xD1B0=3 is refused' (
+    $cam1500Stuck.LiveOn -eq $true -and $cam1500Stuck.LiveOut -eq 2
+) ("live=$($cam1500Stuck.LiveOn) out=$($cam1500Stuck.LiveOut)")
+
+# --- 15. Canon EOS 1500D transient BUSY on 0xD1B0=3 must NOT fall back to PC-only (2) ---
+$cam1500Busy = New-Object PbCanonTest.RealisticEos
+$cam1500Busy.IsDslr = $true
+$cam1500Busy.BusyLcdLive = $true
+Reset-Worker $cam1500Busy 'Canon EOS 1500D' $eos60Ops 2 3
+[void]$mLiveOn.Invoke($null, $null)
+Check '1500D transient BUSY on 0xD1B0=3 does not downgrade to PC-only (0xD1B0=2)' (
+    $cam1500Busy.LiveOut -eq 0 -and -not ($cam1500Busy.LogOps -contains 'SET_D1B0=2')
+) ("out=$($cam1500Busy.LiveOut) ops=$($cam1500Busy.LogOps -join ' ')")
 
 [void]$mClose.Invoke($null, $null)
 if ($fails -eq 0) { Write-Output 'PASS'; exit 0 } else { Write-Output "FAIL ($fails)"; exit 1 }

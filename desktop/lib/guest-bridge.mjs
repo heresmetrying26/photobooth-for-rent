@@ -636,8 +636,14 @@ html,body{margin:0;height:100%;background:transparent;color:var(--ink);font-fami
 .pkg{flex:1 1 auto;width:100%;min-height:0;overflow-y:auto;display:flex;gap:2.4vw;justify-content:center;align-items:flex-start;align-content:flex-start;flex-wrap:wrap;padding:0 1vw 3vh;}
 .pkb{display:flex;flex-direction:column;align-items:center;gap:1.2vh;padding:1.2vh;border-radius:18px;border:4px solid transparent;background:rgba(255,255,255,.08);color:#fff;font:700 clamp(14px,1.3vw,24px) Manrope,sans-serif;cursor:pointer;}
 .pkb img{height:44vh;max-width:28vw;object-fit:contain;border-radius:10px;background:#fff;}
+.pkg.tier .pkb img{height:46vh;max-width:36vw;}
+.pkg.tier-bw .pkb img{filter:grayscale(1) contrast(1.06);}
 .pkb .pks{font-size:clamp(10px,.8vw,14px);font-weight:700;color:rgba(255,255,255,.8);background:rgba(255,255,255,.14);padding:2px 10px;border-radius:99px;}
+.pkb .pktag{font-size:clamp(10px,.85vw,15px);font-weight:800;padding:3px 10px;border-radius:99px;}
+.pkb .pktag.thermal{background:#fef3c7;color:#92400e;}
+.pkb .pktag.color{background:#e0f2fe;color:#0369a1;}
 .pkb.sel{border-color:var(--red);background:rgba(255,255,255,.16);}
+.pk-back{flex:none;min-height:46px;padding:0 28px;border:1.5px solid rgba(255,255,255,.45);border-radius:999px;background:rgba(255,255,255,.18);color:#fff;font:700 clamp(14px,1.1vw,18px) Manrope,sans-serif;cursor:pointer;}
 .logo .lg{display:block;object-fit:contain;}.logo.off{visibility:hidden;}
 .clogo{position:fixed;z-index:8;object-fit:contain;pointer-events:none;transform:translate(-50%,-50%);}
 .pwr{display:flex;align-items:center;justify-content:center;gap:.4em;margin-top:1.4vh;color:var(--dim);font-weight:700;font-size:clamp(9px,.72vw,14px);letter-spacing:.06em;}
@@ -691,7 +697,7 @@ body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);h
 <body class="ps">
 <div class="conn-dot" id="connDot">Connecting to laptop…</div>
 <div class="toast hide" id="toast"></div>
-<div class="pk hide" id="pk"><p class="pkt" id="pkt">Choose your layout</p><p class="pksb" id="pksb">Tap a design to start your session</p><div class="pkg" id="pkg"></div></div>
+<div class="pk hide" id="pk"><p class="pkt" id="pkt">Choose your layout</p><p class="pksb" id="pksb">Tap a design to start your session</p><div class="pkg" id="pkg"></div><button type="button" class="pk-back hide" id="pkBack">&larr; Back</button></div>
 <div class="g">
   <div class="side side-l">
     <div class="logo" id="glogo"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span><img class="lg hide" id="lgImg" alt=""></div>
@@ -730,7 +736,7 @@ body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);h
   var base = '/bridge/' + TOK;
   var $ = function(id){ return document.getElementById(id); };
   var els = {
-    conn: $('connDot'), toast: $('toast'), pk: $('pk'), pkt: $('pkt'), pksb: $('pksb'), pkg: $('pkg'),
+    conn: $('connDot'), toast: $('toast'), pk: $('pk'), pkt: $('pkt'), pksb: $('pksb'), pkg: $('pkg'), pkBack: $('pkBack'),
     glogo: $('glogo'), lgImg: $('lgImg'), clogo: $('clogo'), pwr: $('pwr'),
     msg: $('msg'), sub: $('sub'), ev: $('ev'), dt: $('dt'), chip: $('chip'),
     frame: $('frame'), vRemote: $('vRemote'), res: $('res'),
@@ -872,7 +878,10 @@ body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);h
       if (st.pickOpen) {
         els.pkt.textContent = st.pickTitle || 'Choose your layout';
         els.pksb.textContent = st.pickSub || 'Tap a design to start your session';
-        var sig = (st.layouts || []).map(function(x){ return x.k + ':' + x.thumb; }).join('|');
+        if (els.pkBack) els.pkBack.classList.toggle('hide', !st.pickCanBack);
+        els.pkg.classList.toggle('tier', !!st.pickTier);
+        els.pkg.classList.toggle('tier-bw', !!st.pickBwStep);
+        var sig = (st.pickTier ? 'T:' : '') + (st.pickBwStep ? 'B:' : '') + (st.layouts || []).map(function(x){ return x.k + ':' + x.thumb + ':' + (x.tag || ''); }).join('|');
         if (els.pkg.getAttribute('data-sig') !== sig) {
           els.pkg.setAttribute('data-sig', sig);
           els.pkg.innerHTML = '';
@@ -884,6 +893,12 @@ body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);h
             var sp = document.createElement('span'); sp.textContent = item.name || '';
             var sh = document.createElement('span'); sh.className = 'pks'; sh.textContent = item.shots || '';
             b.append(im, sp, sh);
+            if (item.tag) {
+              var tg = document.createElement('span');
+              tg.className = 'pktag' + (item.tagCls ? ' ' + item.tagCls : '');
+              tg.textContent = item.tag;
+              b.append(tg);
+            }
             b.onclick = function(e){ e.stopPropagation(); sendAction('pickLayout', { key: item.k }); };
             els.pkg.appendChild(b);
           });
@@ -994,6 +1009,7 @@ body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);h
     els.copiesLeft.textContent = curState && curState.printLimitText ? curState.printLimitText : '';
   }
 
+  if (els.pkBack) els.pkBack.onclick = function(e){ e.stopPropagation(); sendAction('pickBack'); };
   els.gReadyBtn.onclick = function(e){ e.stopPropagation(); sendAction('readyStart'); };
   els.gReady.onclick = function(e){ e.stopPropagation(); sendAction('readyStart'); };
   els.lk.onclick = function(e){ e.stopPropagation(); };

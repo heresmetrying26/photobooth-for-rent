@@ -10736,6 +10736,78 @@
       color: #5b21b6;
     }
 
+    .pick-grid.tier-mode {
+      gap: clamp(16px, 3vmin, 32px);
+      max-width: 780px;
+    }
+
+    .pick-btn.tier-card-btn {
+      flex: 0 1 clamp(210px, 34vw, 310px);
+      padding: clamp(14px, 2.2vmin, 22px);
+      gap: 10px;
+    }
+
+    .pick-btn.tier-card-btn img {
+      max-height: min(36vh, calc(var(--stage-h, 600px) * 0.48));
+    }
+
+    .pick-btn.tier-card-btn.tier-bw {
+      border-color: rgba(254, 243, 199, .34);
+    }
+
+    .pick-btn.tier-card-btn.tier-col {
+      border-color: rgba(186, 230, 253, .38);
+    }
+
+    .pick-grid.tier-bw-step .pick-btn img {
+      filter: grayscale(1) contrast(1.06);
+    }
+
+    .pick-acts {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+
+    .pick-back-btn {
+      align-self: center;
+      min-height: 46px;
+      padding: 0 28px;
+      border: 1.5px solid rgba(255, 255, 255, 0.45);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.22);
+      color: #fff;
+      font: 700 15px 'Manrope', -apple-system, sans-serif;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.16s ease;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .pick-back-btn[hidden] {
+      display: none;
+    }
+
+    .pick-back-btn:hover {
+      background: rgba(255, 255, 255, 0.34);
+      border-color: rgba(255, 255, 255, 0.8);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    }
+
+    .pick-back-btn:active {
+      transform: scale(0.97);
+    }
+
     .pick-cancel-btn {
       align-self: center;
       min-height: 46px;
@@ -10752,7 +10824,7 @@
       gap: 8px;
       transition: all 0.16s ease;
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-      margin-top: 6px;
+      margin-top: 0;
       flex-shrink: 0;
       user-select: none;
     }
@@ -19346,7 +19418,9 @@
             <li class="done"><span class="tier-n">1</span>
               <div><b>Separating is on</b>
                 <p class="panel-hint">Every layout now carries a tag: <span class="lt-tier bw">&#129534; B&amp;W</span> is
-                  made for a thermal printer, <span class="lt-tier col">&#127912; Colour</span> for a photo printer.</p>
+                  made for a thermal printer, <span class="lt-tier col">&#127912; Colour</span> for a photo printer.
+                  When guests can choose from both kinds, Photo Session asks them to pick <b>B&amp;W designs</b> or
+                  <b>Coloured designs</b> first, then shows only the matching layouts.</p>
               </div>
             </li>
             <li id="tierStep2"><span class="tier-n">2</span>
@@ -21723,7 +21797,10 @@
               <p class="pick-sub" id="pickSub">Tap a design to start your session</p>
             </div>
             <div class="pick-grid" id="pickGrid"></div>
-            <button type="button" class="pick-cancel-btn" id="pickCancelBtn">&#10005; Cancel</button>
+            <div class="pick-acts">
+              <button type="button" class="pick-back-btn" id="pickBackBtn" hidden>&larr; Back</button>
+              <button type="button" class="pick-cancel-btn" id="pickCancelBtn">&#10005; Cancel</button>
+            </div>
           </div>
           <div class="pick-overlay bt-details" id="btDetailsOverlay" aria-label="Your details">
             <div class="bt-form-wrap">
@@ -25756,6 +25833,17 @@
       function layoutFitsTier(key, tier) {
         var t = layoutTier(key);
         return tier === 'receipt' ? (t === 'receipt' || t === 'all') : (t === 'photo' || t === 'all');
+      }
+      // Which side the guest tapped on the 2-option B&W / Coloured screen ('receipt' | 'photo' | null).
+      // Lets an either-way ('all') B&W frame follow the printer and paper size the guest asked for.
+      var guestPickedTier = null;
+      function effectiveLayoutTier(key) {
+        var t = layoutTier(key);
+        if (tierSplitOn() && t === 'all') {
+          var active = (typeof sessionTier !== 'undefined' && sessionTier) ? sessionTier : guestPickedTier;
+          if (active === 'receipt' || active === 'photo') return active;
+        }
+        return t;
       }
       function isStripLayout(key) {
         var k = key || currentLayout, d = layoutDef(k);
@@ -35312,7 +35400,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           printSize = mappedPaper;
           try { localStorage.setItem('pb_print_paper', printSize); } catch (e) { }
         }
-        var isRc = layoutTier(key) === 'receipt';      // B&W / thermal tag (with the B&W and colour switch off: a receipt layout or a frame you tagged thermal)
+        var isRc = effectiveLayoutTier(key) === 'receipt';      // B&W / thermal tag (or an either-way frame chosen under B&W designs)
         if (isRc) {
           if (typeof isReceiptPaper === 'function' && !isReceiptPaper(printSize)) {
             const usable = (printSettings() || []).filter(isReceiptPaper);
@@ -42523,11 +42611,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         '.pkg{flex:1 1 auto;width:100%;min-height:0;overflow-y:auto;display:flex;gap:2.4vw;justify-content:center;align-items:flex-start;align-content:flex-start;flex-wrap:wrap;padding:0 1vw 3vh;box-sizing:border-box;overscroll-behavior:contain;}' +
         '.pkb{display:flex;flex-direction:column;align-items:center;gap:1.2vh;padding:1.2vh;border-radius:18px;border:4px solid transparent;background:rgba(255,255,255,.08);color:#fff;font:700 clamp(14px,1.3vw,24px) Manrope,sans-serif;cursor:pointer;}' +
         '.pkb img{height:52vh;max-width:28vw;object-fit:contain;border-radius:10px;background:#fff;}' +
+        '.pkg.tier .pkb img{height:50vh;max-width:36vw;}' +
+        '.pkg.tier-bw .pkb img{filter:grayscale(1) contrast(1.06);}' +
         '.pkb .pks{font-size:clamp(10px,.8vw,14px);font-weight:700;color:rgba(255,255,255,.8);background:rgba(255,255,255,.14);padding:2px 10px;border-radius:99px;margin-top:-0.3vh;}' +
+        '.pkb .pktag{font-size:clamp(10px,.85vw,15px);font-weight:800;padding:3px 10px;border-radius:99px;}' +
+        '.pkb .pktag.thermal{background:#fef3c7;color:#92400e;}' +
+        '.pkb .pktag.color{background:#e0f2fe;color:#0369a1;}' +
         '.pkb.sel{border-color:var(--red);background:rgba(255,255,255,.16);}' +
+        '.pk-back{flex:none;min-height:46px;padding:0 28px;border:1.5px solid rgba(255,255,255,.45);border-radius:999px;background:rgba(255,255,255,.18);color:#fff;font:700 clamp(14px,1.1vw,18px) Manrope,sans-serif;cursor:pointer;}' +
         '</style></head><body class="ps">' +
         '<button class="fs" id="fs" type="button">⛶ Click for full screen</button>' +
-        '<div class="pk hide" id="pk"><p class="pkt">Choose your layout</p><p class="pksb">Tap a design to start your session</p><div class="pkg" id="pkg"></div></div>' +
+        '<div class="pk hide" id="pk"><p class="pkt">Choose your layout</p><p class="pksb">Tap a design to start your session</p><div class="pkg" id="pkg"></div><button type="button" class="pk-back hide" id="pkBack">&larr; Back</button></div>' +
         '<div class="g">' +
         '<div class="side side-l">' +
         '<div class="logo" id="glogo"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span><img class="lg hide" id="lgImg" alt=""></div>' +
@@ -42554,7 +42648,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         G = {
           d, v: $g('v'), gv: $g('gv'), res: $g('res'), cd: $g('cd'), bar: $g('bar'), num: $g('num'), flash: $g('flash'), film: $g('film'),
           msg: $g('msg'), sub: $g('sub'), ev: $g('ev'), dt: $g('dt'), chip: $g('chip'), qrw: $g('qrw'), qrSig: '', fs: $g('fs'),
-          pk: $g('pk'), pkg: $g('pkg'), pkSig: '', gb: $g('gb'), gRetake: $g('gRetake'), gDone: $g('gDone'), wasRev: false,
+          pk: $g('pk'), pkg: $g('pkg'), pkBack: $g('pkBack'), pkSig: '', gb: $g('gb'), gRetake: $g('gRetake'), gDone: $g('gDone'), wasRev: false,
           gResActs: $g('gResActs'), gPrint: $g('gPrint'), gNext: $g('gNext'),
           gCopiesModal: $g('gCopiesModal'), gCopiesTitle: $g('gCopiesTitle'), gCopiesMinus: $g('gCopiesMinus'), gCopiesVal: $g('gCopiesVal'), gCopiesPlus: $g('gCopiesPlus'), gCopiesLeft: $g('gCopiesLeft'), gCopiesCancel: $g('gCopiesCancel'), gCopiesGo: $g('gCopiesGo'), gCopyN: 1, gCopyMax: 1,
           gReady: $g('gReady'), gReadySub: $g('gReadySub'), gReadyBtn: $g('gReadyBtn'),
@@ -42589,6 +42683,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (G.gCopiesModal) G.gCopiesModal.addEventListener('click', (e) => { e.stopPropagation(); if (e.target === G.gCopiesModal) G.gCopiesModal.classList.add('hide'); });
         if (G.gCopiesCancel) G.gCopiesCancel.addEventListener('click', (e) => { e.stopPropagation(); G.gCopiesModal.classList.add('hide'); });
         if (G.gCopiesGo) G.gCopiesGo.addEventListener('click', (e) => { e.stopPropagation(); G.gCopiesModal.classList.add('hide'); printCurrentPhoto(false, G.gCopyN); });
+        if (G.pkBack) G.pkBack.addEventListener('click', (e) => { e.stopPropagation(); if (pickOpen && pickBackAllowed) finishPick('__back__'); });
         if (G.gNext) G.gNext.addEventListener('click', (e) => { e.stopPropagation(); if (state === 'result' && typeof resetForNextGuest === 'function') resetForNextGuest(); });
         if (G.gReadyBtn) G.gReadyBtn.addEventListener('click', (e) => { e.stopPropagation(); readyStartBtn.click(); });
         if (G.gReady) G.gReady.addEventListener('click', (e) => { e.stopPropagation(); readyStartBtn.click(); });
@@ -42797,8 +42892,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           G.pk.classList.toggle('hide', !pickOpen);
           if (!pickOpen) { G.pkSig = ''; return; }
           const pkt = G.pk.querySelector('.pkt'); if (pkt) pkt.textContent = pickTitleText();
-          const pksb = G.pk.querySelector('.pksb'); if (pksb) pksb.textContent = pickDesignMode ? 'Pick a design or frame first' : 'Tap a layout to start your session';
-          const sig = pickKeys.join(',');
+          const pksb = G.pk.querySelector('.pksb'); if (pksb) pksb.textContent = pickSubText();
+          if (G.pkBack) G.pkBack.classList.toggle('hide', !pickBackAllowed);
+          G.pkg.classList.toggle('tier', !!pickTierMode);
+          G.pkg.classList.toggle('tier-bw', !pickTierMode && pickTierFilter === 'receipt');
+          const sig = (pickTierMode ? 'T:' : (pickDesignMode ? 'D:' : 'L:')) + (pickTierFilter || '') + ':' + pickKeys.join(',');
           if (G.pkSig !== sig) {
             G.pkSig = sig;
             G.pkg.innerHTML = '';
@@ -42807,13 +42905,20 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               const im = G.d.createElement('img');
               const sp = G.d.createElement('span'); sp.className = 'pkn';
               const sh = G.d.createElement('span'); sh.className = 'pks';
+              let tagEl = null;
               if (pickDesignMode) {
                 const srcBtn = pickGrid.children[i];
                 const nmEl = srcBtn && srcBtn.querySelector('.pick-name');
                 const shEl = srcBtn && srcBtn.querySelector('.pick-shots');
+                const srcTag = srcBtn && srcBtn.querySelector('.pick-tier-tag');
                 im.src = (srcBtn && srcBtn.querySelector('img') && srcBtn.querySelector('img').src) || '';
                 sp.textContent = (nmEl && nmEl.textContent) || (pickDesignsList[i] && pickDesignsList[i].name) || ('Design ' + (i + 1));
                 sh.textContent = (shEl && shEl.textContent) || 'Ready';
+                if (srcTag && srcTag.textContent) {
+                  tagEl = G.d.createElement('span');
+                  tagEl.className = 'pktag ' + (srcTag.classList.contains('thermal') ? 'thermal' : (srcTag.classList.contains('color') ? 'color' : ''));
+                  tagEl.textContent = srcTag.textContent;
+                }
               } else {
                 im.src = layoutThumbUrl(k);
                 sp.textContent = pickName(k);
@@ -42825,6 +42930,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                 sh.textContent = shots + (shots === 1 ? ' shot' : ' shots');
               }
               b.append(im, sp, sh);
+              if (tagEl) b.append(tagEl);
               b.addEventListener('click', (e) => { e.stopPropagation(); finishPick(k); });
               G.pkg.appendChild(b);
             });
@@ -44185,16 +44291,18 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (gso) gso.classList.add('hidden');
         if (gsoMounted() || document.body.classList.contains('decorating')) gsoUnmount();
         if (typeof sessionTier !== 'undefined') sessionTier = null;
+        var hadGuestTier = typeof guestPickedTier !== 'undefined' && !!guestPickedTier;
+        if (typeof guestPickedTier !== 'undefined') guestPickedTier = null;
         if (typeof sessionNoPrint !== 'undefined' && sessionNoPrint) { sessionNoPrint = false; try { refreshPrintUI(); } catch (e) { } }
         if (typeof sessionPrinter !== 'undefined' && sessionPrinter) { sessionPrinter = ''; try { refreshPrintUI(); } catch (e) { } }
         guestInfo = { name: '', line: '', q: ['', '', ''] };
         btViewBack = false; try { btFlipBtn.hidden = true; } catch (e) { }
         if (tplEdit) { tplEdit = null; try { btRenderTplEditor(); } catch (e) { } }
-        if (currentLayout !== setupLayout) setLayout(setupLayout);
         if (setupLayout === 'myframe' && typeof setupActiveFrameId !== 'undefined' && setupActiveFrameId) activeFrameId = setupActiveFrameId;
         if (setupLayout === 'framesheet' && typeof setupActiveSheetPresetId !== 'undefined' && setupActiveSheetPresetId && typeof loadSheetPreset === 'function') {
           loadSheetPreset(setupActiveSheetPresetId, true);
         }
+        if (currentLayout !== setupLayout || hadGuestTier) setLayout(setupLayout);
         shotCanvases = new Array(shotsNeeded()).fill(null);
         qrResults.innerHTML = '';
         lastRenderedFolderUrl = null;
@@ -57110,6 +57218,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var activeDesignIdx = 0;
       var includeFramesInDesignPick = true;
       var pickDesignMode = false;
+      var pickTierMode = false;
+      var pickTierFilter = null;
+      var pickBackAllowed = false;
       var pickDesignsList = [];
 
       function framesStandAlongsideDesigns() {
@@ -57380,48 +57491,104 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         refreshGuestLayoutChoices();
         if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
       });
-      function guestChoiceKeys() {
-        var standAlone = framesStandAlongsideDesigns();
-        if (!guestPickOn) return [mainLayoutKey()];
+      function guestChoiceKeys(tierFilter, mergeStandaloneFrames) {
+        var includeAllFrames = !!(mergeStandaloneFrames && framesStandAlongsideDesigns());
+        var standAlone = !mergeStandaloneFrames && framesStandAlongsideDesigns();
         var main = mainLayoutKey(), keys = [];
-        if (!standAlone) {
-          (myFrames || []).forEach(function (f) { var k = 'frame:' + f.id; if (k === main || chooseIds.indexOf(f.id) >= 0) keys.push(k); });
+        var addKey = function (k) { if (k && keys.indexOf(k) < 0) keys.push(k); };
+        if (!guestPickOn) {
+          addKey(main);
+          if (includeAllFrames) {
+            (myFrames || []).forEach(function (f) { addKey('frame:' + f.id); });
+          }
+        } else {
+          if (!standAlone) {
+            (myFrames || []).forEach(function (f) {
+              var k = 'frame:' + f.id;
+              if (includeAllFrames || k === main || chooseIds.indexOf(f.id) >= 0) addKey(k);
+            });
+          }
+          if (typeof sheetPresets !== 'undefined' && sheetPresets.length > 1) {
+            sheetPresets.forEach(function (p) {
+              var k = 'sheet:' + p.id;
+              if (k === main || guestLayoutSet.indexOf(k) >= 0) addKey(k);
+            });
+          } else {
+            LAYOUT_ORDER.concat(['framesheet']).forEach(function (k) {
+              if (!LAYOUT_DEFS[k] || (k === 'framesheet' && !(myFrames && myFrames.length))) return;
+              if (k === main || guestLayoutSet.indexOf(k) >= 0) addKey(k);
+            });
+          }
         }
+        var effTier = tierFilter || ((typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && sessionTier) ? sessionTier : null);
+        if (effTier === 'receipt') {
+          // layoutTier(): with "Separate B&W and colour prints" off this is the old rule (receipt layouts and frames tagged thermal
+          // are thermal, everything else is colour); on, the colour receipts and colour frames count as colour.
+          var rKeys = keys.filter(function (k) {
+            return (/^frame:/.test(k) || LAYOUT_DEFS[k]) && layoutFitsTier(k, 'receipt');
+          });
+          if (tierFilter) keys = rKeys;
+          else keys = rKeys.length ? rKeys : ['receipt'];
+        } else if (effTier === 'photo') {
+          var pKeys = keys.filter(function (k) { return layoutFitsTier(k, 'photo'); });
+          if (tierFilter) keys = pKeys;
+          else if (pKeys.length) keys = pKeys;
+        }
+        if (!tierFilter && keys.length === 1 && /^frame:/.test(keys[0])) {
+          activeFrameId = keys[0].slice(6);
+          return [keys[0]];
+        }
+        return tierFilter ? keys : (keys.length ? keys : [mainLayoutKey()]);
+      }
+      function designSlotCandidateKeys(slot, idx) {
+        if (idx === activeDesignIdx) return guestChoiceKeys(null, false);
+        if (!slot) return [];
+        var standAlone = framesStandAlongsideDesigns();
+        var main = (standAlone && slot.layout === 'myframe') ? designSlotFallbackLayout(slot)
+          : (slot.layout === 'myframe' && slot.activeFrameId ? 'frame:' + slot.activeFrameId : (slot.layout || 'strip'));
+        if (!slot.guestPick) return [main];
+        var keys = [];
+        var addKey = function (k) { if (k && keys.indexOf(k) < 0) keys.push(k); };
+        if (!standAlone) {
+          var cids = Array.isArray(slot.chooseIds) ? slot.chooseIds : [];
+          (myFrames || []).forEach(function (f) {
+            var k = 'frame:' + f.id;
+            if (k === main || cids.indexOf(f.id) >= 0) addKey(k);
+          });
+        }
+        var gl = Array.isArray(slot.guestLayouts) ? slot.guestLayouts : [];
         if (typeof sheetPresets !== 'undefined' && sheetPresets.length > 1) {
           sheetPresets.forEach(function (p) {
             var k = 'sheet:' + p.id;
-            if (k === main || guestLayoutSet.indexOf(k) >= 0) keys.push(k);
+            if (k === main || gl.indexOf(k) >= 0) addKey(k);
           });
         } else {
           LAYOUT_ORDER.concat(['framesheet']).forEach(function (k) {
             if (!LAYOUT_DEFS[k] || (k === 'framesheet' && !(myFrames && myFrames.length))) return;
-            if (k === main || guestLayoutSet.indexOf(k) >= 0) keys.push(k);
+            if (k === main || gl.indexOf(k) >= 0) addKey(k);
           });
         }
-        if (typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && sessionTier) {
-          // layoutTier(): with "Separate B&W and colour prints" off this is the old rule (receipt layouts and frames tagged thermal
-          // are thermal, everything else is colour); on, the colour receipts and colour frames count as colour.
-          if (sessionTier === 'receipt') {
-            var rKeys = keys.filter(function (k) {
-              return (/^frame:/.test(k) || LAYOUT_DEFS[k]) && layoutFitsTier(k, 'receipt');
-            });
-            if (rKeys.length) keys = rKeys;
-            else keys = ['receipt'];
-          } else if (sessionTier === 'photo') {
-            var pKeys = keys.filter(function (k) { return layoutFitsTier(k, 'photo'); });
-            if (pKeys.length) keys = pKeys;
-          }
-        }
-        if (keys.length === 1 && /^frame:/.test(keys[0])) {
-          activeFrameId = keys[0].slice(6);
-          return [keys[0]];
-        }
-        return keys.length ? keys : [mainLayoutKey()];
+        return keys.length ? keys : [main];
+      }
+      function designSlotKeysForTier(slot, idx, tier) {
+        var keys = designSlotCandidateKeys(slot, idx);
+        if (!tier) return keys;
+        return keys.filter(function (k) {
+          return tier === 'receipt' ? ((/^frame:/.test(k) || LAYOUT_DEFS[k]) && layoutFitsTier(k, 'receipt')) : layoutFitsTier(k, 'photo');
+        });
       }
       // "Choose your design" when picking from multiple guest designs, custom frames or collage sheets.
       function pickTitleText() {
+        if (pickTierMode) return 'B&W or Coloured?';
+        if (pickTierFilter === 'receipt') return 'B&W designs';
+        if (pickTierFilter === 'photo') return 'Coloured designs';
         if (pickDesignMode) return 'Choose your design';
         return pickKeys.length && pickKeys.every(function (k) { return /^frame:/.test(k) || /^sheet:/.test(k); }) ? 'Choose your design' : 'Choose your layout';
+      }
+      function pickSubText() {
+        if (pickTierMode) return 'Pick a style to see its layouts';
+        if (pickDesignMode) return 'Pick a design or frame first';
+        return 'Tap a layout to start your session';
       }
       function pickName(k) {
         if (/^pm:/.test(k)) {
@@ -57445,6 +57612,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       var pickOverlay = document.getElementById('pickOverlay');
       var pickGrid = document.getElementById('pickGrid');
+      var pickBackBtn = document.getElementById('pickBackBtn');
       var pickOpen = false, pickResolve = null, pickKeys = [], pickIdx = 0;
       var pickThumbs = { sig: '', urls: {} };
       function layoutThumbUrl(key) {
@@ -57478,38 +57646,68 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         return pickThumbs.urls[key];
       }
-      async function designThumbUrl(slot, idx) {
-        var lay = designSlotFallbackLayout(slot);
+      function grayscaleThumbUrl(url) {
+        if (!url) return Promise.resolve('');
+        return new Promise(function (resolve) {
+          var im = new Image();
+          im.onload = function () {
+            try {
+              var c = document.createElement('canvas');
+              c.width = im.naturalWidth || im.width || 240;
+              c.height = im.naturalHeight || im.height || 360;
+              var x = c.getContext('2d');
+              x.drawImage(im, 0, 0, c.width, c.height);
+              var id = x.getImageData(0, 0, c.width, c.height), d = id.data;
+              for (var i = 0; i < d.length; i += 4) {
+                var v = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+                d[i] = d[i + 1] = d[i + 2] = v;
+              }
+              x.putImageData(id, 0, 0);
+              resolve(c.toDataURL('image/jpeg', 0.85));
+            } catch (e) { resolve(url); }
+          };
+          im.onerror = function () { resolve(url); };
+          im.src = url;
+        });
+      }
+      async function designThumbUrl(slot, idx, overrideLay) {
+        var lay = overrideLay || designSlotFallbackLayout(slot);
         var sig = JSON.stringify(slot.settings) + '|' + lay;
-        if (slot && slot._thumbUrl && slot._thumbSig === sig) return slot._thumbUrl;
+        if (!overrideLay && slot && slot._thumbUrl && slot._thumbSig === sig) return slot._thumbUrl;
         var prevSlot = captureCurrentDesignSlot(guestDesigns[activeDesignIdx]);
         var prevIdx = activeDesignIdx;
         await applyDesignSlot(slot, idx, true);
         var url = layoutThumbUrl(lay);
-        slot._thumbUrl = url;
-        slot._thumbSig = sig;
+        if (!overrideLay) {
+          slot._thumbUrl = url;
+          slot._thumbSig = sig;
+        }
         await applyDesignSlot(prevSlot, prevIdx, true);
         return url;
       }
-      function guestTopDesignOptions() {
+      function guestTopDesignOptions(tierFilter) {
         ensureGuestDesigns();
         var opts = [];
         var standAloneFrames = framesStandAlongsideDesigns();
         var frames = (typeof myFrames !== 'undefined' && Array.isArray(myFrames)) ? myFrames : [];
+        var effTier = tierFilter || ((typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && sessionTier) ? sessionTier : null);
         var filteredFrames = standAloneFrames ? frames.filter(function (f) {
-          if (!(typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && sessionTier)) return true;
+          if (!effTier) return true;
           var ft = frameTier(f);
-          if (sessionTier === 'receipt') return !!f && (ft === 'receipt' || ft === 'all');
+          if (effTier === 'receipt') return !!f && (ft === 'receipt' || ft === 'all');
           return !f || ft === 'photo' || ft === 'all';
         }) : [];
         var includeDesigns = guestDesigns.length >= 2 || (standAloneFrames && filteredFrames.length > 0);
         if (includeDesigns) {
           guestDesigns.forEach(function (sl, i) {
+            var tks = tierFilter ? designSlotKeysForTier(sl, i, tierFilter) : null;
+            if (tierFilter && (!tks || !tks.length)) return;
             opts.push({
               key: 'gd:' + i,
               kind: 'design',
               idx: i,
               slot: sl,
+              tierKeys: tks,
               name: sl.name || ('Design ' + (i + 1))
             });
           });
@@ -57525,19 +57723,186 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         });
         return opts;
       }
-      async function pickTopOptions(opts) {
-        var urls = [];
-        for (var i = 0; i < opts.length; i++) {
-          var o = opts[i];
-          urls.push(o.kind === 'design' ? await designThumbUrl(o.slot, o.idx) : layoutThumbUrl(o.key));
+      // When "Separate B&W and colour prints" is on and guests have options in BOTH kinds (and payment did not already pick one),
+      // show a 2-option screen first (B&W designs vs Coloured designs), then only the layouts for whichever side they tapped.
+      function tierSplitSummary() {
+        if (!tierSplitOn()) return null;
+        if (typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && sessionTier) return null;
+        ensureGuestDesigns();
+        if (guestDesigns.length < 2) {
+          var allKeys = guestChoiceKeys(null, true);
+          var bwKeys = guestChoiceKeys('receipt', true);
+          var colKeys = guestChoiceKeys('photo', true);
+          if (!bwKeys.length || !colKeys.length) return null;
+          if (allKeys.length < 2 && !guestPickOn) return null;
+          var bwRep = bwKeys.find(function (k) { return layoutTier(k) === 'receipt'; }) || bwKeys[0];
+          var colRep = colKeys.find(function (k) { return layoutTier(k) === 'photo'; }) || colKeys[0];
+          return {
+            multiDesign: false,
+            bw: {
+              keys: bwKeys,
+              displayCount: bwKeys.length,
+              unit: bwKeys.every(function (k) { return /^frame:/.test(k) || /^sheet:/.test(k); }) ? 'design' : 'layout',
+              repKey: bwRep,
+              repSlot: null,
+              repIdx: 0
+            },
+            col: {
+              keys: colKeys,
+              displayCount: colKeys.length,
+              unit: colKeys.every(function (k) { return /^frame:/.test(k) || /^sheet:/.test(k); }) ? 'design' : 'layout',
+              repKey: colRep,
+              repSlot: null,
+              repIdx: 0
+            }
+          };
         }
+        var bwTop = guestTopDesignOptions('receipt');
+        var colTop = guestTopDesignOptions('photo');
+        if (!bwTop.length || !colTop.length) return null;
+        function sideInfo(topList, tier) {
+          var count = 0, repKey = '', repSlot = null, repIdx = 0;
+          topList.forEach(function (o) {
+            if (o.kind === 'frame') {
+              count++;
+              if (!repKey && layoutTier(o.key) === tier) repKey = o.key;
+            } else {
+              var tks = o.tierKeys || designSlotKeysForTier(o.slot, o.idx, tier);
+              count += tks.length;
+              var strict = tks.find(function (k) { return layoutTier(k) === tier; });
+              if (!repKey && strict) { repKey = strict; repSlot = o.slot; repIdx = o.idx; }
+            }
+          });
+          if (!repKey && topList.length) {
+            var first = topList[0];
+            if (first.kind === 'frame') repKey = first.key;
+            else {
+              var fk = first.tierKeys || designSlotKeysForTier(first.slot, first.idx, tier);
+              repKey = fk[0] || designSlotFallbackLayout(first.slot);
+              repSlot = first.slot; repIdx = first.idx;
+            }
+          }
+          var multiTop = topList.length >= 2;
+          return {
+            top: topList,
+            displayCount: multiTop ? topList.length : count,
+            unit: multiTop ? 'design' : 'layout',
+            repKey: repKey,
+            repSlot: repSlot,
+            repIdx: repIdx
+          };
+        }
+        return {
+          multiDesign: true,
+          bw: sideInfo(bwTop, 'receipt'),
+          col: sideInfo(colTop, 'photo')
+        };
+      }
+      async function pickTierChoice(summary) {
+        async function repThumb(info, makeGray) {
+          var u = '';
+          if (info.repSlot && info.repKey) {
+            u = await designThumbUrl(info.repSlot, info.repIdx, info.repKey);
+          } else if (info.repKey) {
+            u = layoutThumbUrl(info.repKey);
+          }
+          if (makeGray && u && !(LAYOUT_DEFS[info.repKey] && LAYOUT_DEFS[info.repKey].kind === 'receipt' && !LAYOUT_DEFS[info.repKey].color)) {
+            u = await grayscaleThumbUrl(u);
+          }
+          return u;
+        }
+        var bwUrl = await repThumb(summary.bw, true);
+        var colUrl = await repThumb(summary.col, false);
+        var opts = [
+          {
+            key: 'tier:receipt',
+            tier: 'receipt',
+            name: 'B&W designs',
+            countText: summary.bw.displayCount + ' ' + summary.bw.unit + (summary.bw.displayCount === 1 ? '' : 's'),
+            badgeText: '🧾 Black & white',
+            badgeCls: 'thermal',
+            cardCls: 'tier-bw',
+            thumb: bwUrl
+          },
+          {
+            key: 'tier:photo',
+            tier: 'photo',
+            name: 'Coloured designs',
+            countText: summary.col.displayCount + ' ' + summary.col.unit + (summary.col.displayCount === 1 ? '' : 's'),
+            badgeText: '🎨 Full colour',
+            badgeCls: 'color',
+            cardCls: 'tier-col',
+            thumb: colUrl
+          }
+        ];
         return new Promise(function (resolve) {
+          pickTierMode = true;
           pickDesignMode = true;
+          pickTierFilter = null;
+          pickBackAllowed = false;
           pickDesignsList = opts;
           pickOpen = true; pickResolve = resolve;
           pickKeys = opts.map(function (o) { return o.key; });
-          var pt = document.getElementById('pickTitle'); if (pt) pt.textContent = 'Choose your design';
-          var ps = document.getElementById('pickSub'); if (ps) ps.textContent = 'Pick a design or frame first';
+          var pt = document.getElementById('pickTitle'); if (pt) pt.textContent = pickTitleText();
+          var ps = document.getElementById('pickSub'); if (ps) ps.textContent = pickSubText();
+          if (pickBackBtn) pickBackBtn.hidden = true;
+          pickGrid.classList.add('tier-mode');
+          pickGrid.classList.remove('tier-bw-step');
+          pickIdx = -1;
+          pickGrid.innerHTML = '';
+          opts.forEach(function (o) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'pick-btn tier-card-btn ' + o.cardCls;
+            var im = document.createElement('img'); im.alt = ''; im.src = o.thumb || '';
+            var sp = document.createElement('span'); sp.className = 'pick-name'; sp.textContent = o.name;
+            var shBadge = document.createElement('span'); shBadge.className = 'pick-shots'; shBadge.textContent = o.countText;
+            var tTag = document.createElement('span'); tTag.className = 'pick-tier-tag ' + o.badgeCls; tTag.textContent = o.badgeText;
+            b.append(im, sp, shBadge, tTag);
+            b.addEventListener('click', function (e) { e.stopPropagation(); finishPick(o); });
+            pickGrid.appendChild(b);
+          });
+          markPick();
+          pickOverlay.classList.add('on');
+          document.body.classList.add('shooting', 'picking');
+          try { refreshPrintFab(); } catch (e) { }
+          refreshWelcome();
+          guestRender();
+        });
+      }
+      async function pickTopOptions(opts, uiOpts) {
+        var tier = (uiOpts && uiOpts.tier) || null;
+        var urls = [];
+        for (var i = 0; i < opts.length; i++) {
+          var o = opts[i];
+          if (o.kind === 'design') {
+            var prefLay = (tier && Array.isArray(o.tierKeys) && o.tierKeys.length)
+              ? (o.tierKeys.find(function (k) { return layoutTier(k) === tier; }) || o.tierKeys[0])
+              : null;
+            var u = await designThumbUrl(o.slot, o.idx, prefLay);
+            if (tier === 'receipt' && u && !(prefLay && LAYOUT_DEFS[prefLay] && LAYOUT_DEFS[prefLay].kind === 'receipt' && !LAYOUT_DEFS[prefLay].color)) {
+              u = await grayscaleThumbUrl(u);
+            }
+            urls.push(u);
+          } else {
+            var fu = layoutThumbUrl(o.key);
+            if (tier === 'receipt' && fu) fu = await grayscaleThumbUrl(fu);
+            urls.push(fu);
+          }
+        }
+        return new Promise(function (resolve) {
+          pickTierMode = false;
+          pickDesignMode = true;
+          pickTierFilter = tier;
+          pickBackAllowed = !!(uiOpts && uiOpts.canBack);
+          pickDesignsList = opts;
+          pickOpen = true; pickResolve = resolve;
+          pickKeys = opts.map(function (o) { return o.key; });
+          var pt = document.getElementById('pickTitle'); if (pt) pt.textContent = pickTitleText();
+          var ps = document.getElementById('pickSub'); if (ps) ps.textContent = pickSubText();
+          if (pickBackBtn) pickBackBtn.hidden = !pickBackAllowed;
+          pickGrid.classList.remove('tier-mode');
+          pickGrid.classList.toggle('tier-bw-step', pickTierFilter === 'receipt');
           pickIdx = -1;
           pickGrid.innerHTML = '';
           opts.forEach(function (o, i) {
@@ -57546,9 +57911,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             var sp = document.createElement('span'); sp.className = 'pick-name'; sp.textContent = o.name;
             var shBadge = document.createElement('span'); shBadge.className = 'pick-shots';
             if (o.kind === 'design') {
-              var nLay = designSlotChoiceCount(o.slot, o.idx);
-              var fbLay = designSlotFallbackLayout(o.slot);
-              shBadge.textContent = nLay > 1 ? (nLay + ' layouts') : (LAYOUT_DEFS[fbLay] ? LAYOUT_DEFS[fbLay].name : 'Ready');
+              var nLay = Array.isArray(o.tierKeys) ? o.tierKeys.length : designSlotChoiceCount(o.slot, o.idx);
+              var fbLay = (Array.isArray(o.tierKeys) && o.tierKeys.length) ? o.tierKeys[0] : designSlotFallbackLayout(o.slot);
+              shBadge.textContent = nLay > 1 ? (nLay + ' layouts') : (pickName(fbLay) || 'Ready');
             } else {
               var shots = typeof frameShotCount === 'function' ? frameShotCount(o.frame) : 4;
               shBadge.textContent = shots + (shots === 1 ? ' shot' : ' shots');
@@ -57565,12 +57930,18 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           guestRender();
         });
       }
-      function pickLayout(keys) {
+      function pickLayout(keys, uiOpts) {
         return new Promise(function (resolve) {
+          pickTierMode = false;
           pickDesignMode = false;
+          pickTierFilter = (uiOpts && uiOpts.tier) || null;
+          pickBackAllowed = !!(uiOpts && uiOpts.canBack);
           pickOpen = true; pickResolve = resolve; pickKeys = keys;
           var pt = document.getElementById('pickTitle'); if (pt) pt.textContent = pickTitleText();
-          var ps = document.getElementById('pickSub'); if (ps) ps.textContent = 'Tap a layout to start your session';
+          var ps = document.getElementById('pickSub'); if (ps) ps.textContent = pickSubText();
+          if (pickBackBtn) pickBackBtn.hidden = !pickBackAllowed;
+          pickGrid.classList.remove('tier-mode');
+          pickGrid.classList.toggle('tier-bw-step', pickTierFilter === 'receipt');
           pickIdx = -1;      // nothing chosen yet: guests tap a card (a clicker / arrow key shows the highlight)
           pickGrid.innerHTML = '';
           keys.forEach(function (k, i) {
@@ -57592,7 +57963,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               var matchingOpt = payCfg.options && payCfg.options.find(function (o) { return o.tier === (isRc ? 'receipt' : 'photo'); });
               tierTag.textContent = matchingOpt ? ((isRc ? '🧾 ' : '🎨 ') + matchingOpt.label) : (isRc ? ('🧾 ' + (payCfg.tier1 ? payCfg.tier1.label : 'Thermal')) : ('🎨 ' + (payCfg.tier2 ? payCfg.tier2.label : 'Coloured')));
               b.append(tierTag);
-            } else if (tierSplitOn() && keys.some(function (x) { return layoutTier(x) === 'receipt'; }) && keys.some(function (x) { return layoutTier(x) !== 'receipt'; })) {
+            } else if (!pickTierFilter && tierSplitOn() && keys.some(function (x) { return layoutTier(x) === 'receipt'; }) && keys.some(function (x) { return layoutTier(x) !== 'receipt'; })) {
               // B&W and colour are separated and the guest can pick either: say which is which.
               var sTag = document.createElement('span');
               sTag.className = 'pick-tier-tag ' + (isRc ? 'thermal' : (kt === 'all' ? 'any' : 'color'));
@@ -57614,7 +57985,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         [...pickGrid.children].forEach(function (b, i) { b.classList.toggle('sel', i === pickIdx); });
         guestPickRender();
       }
-      function pickStart() { return pickDesignMode ? Math.max(0, activeDesignIdx) : Math.max(0, pickKeys.indexOf(setupLayout), pickKeys.indexOf('frame:' + activeFrameId)); }
+      function pickStart() {
+        if (pickTierMode) return 0;
+        if (pickDesignMode) return Math.min(Math.max(0, activeDesignIdx), Math.max(0, pickKeys.length - 1));
+        return Math.max(0, pickKeys.indexOf(setupLayout), pickKeys.indexOf('frame:' + activeFrameId));
+      }
       function movePick(step) {
         if (!pickOpen) return;
         pickIdx = pickIdx < 0 ? pickStart() : (pickIdx + step + pickKeys.length) % pickKeys.length;   // first press: show the highlight
@@ -57626,6 +58001,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var listRef = pickDesignsList;
         pickOpen = false;
         pickDesignMode = false;
+        pickTierMode = false;
+        pickTierFilter = null;
+        pickBackAllowed = false;
+        if (pickBackBtn) pickBackBtn.hidden = true;
+        pickGrid.classList.remove('tier-mode', 'tier-bw-step');
         pickOverlay.classList.remove('on');
         document.body.classList.remove('picking');
         if (state !== 'capturing') document.body.classList.remove('shooting');
@@ -57633,12 +58013,22 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var r = pickResolve; pickResolve = null;
         guestRender();
         if (!r) return;
+        if (k === '__back__') {
+          r('__back__');
+          return;
+        }
         if (wasDesign && typeof k === 'string') {
           var found = listRef.find(function (o) { return o.key === k; }) || null;
           r(found);
           return;
         }
         r(k);
+      }
+      if (pickBackBtn) {
+        pickBackBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          finishPick('__back__');
+        });
       }
       var pickCancelBtn = document.getElementById('pickCancelBtn');
       if (pickCancelBtn) {
@@ -57656,7 +58046,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           finishPick(null);
         }
       }, true);
-      // Starts the next guest's turn: (optional design/frame picker -> layout picker) -> countdown.
+      // Starts the next guest's turn: (optional B&W/Coloured -> design/frame -> layout picker) -> countdown.
       var flowBusy = false;
       var flowStartedAt = 0;
       async function beginGuestFlow(skipReady) {
@@ -57685,18 +58075,91 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var keys = [];
           if (boothType === 'photo') {
             syncActiveDesignSlot();
-            var topOpts = guestTopDesignOptions();
-            if (topOpts.length >= 2) {
-              var chosenOpt = await pickTopOptions(topOpts);
-              if (!chosenOpt) {
-                resetForNextGuest();
-                return;
+            var tierSum = tierSplitSummary();
+            if (tierSum) {
+              while (true) {
+                guestPickedTier = null;
+                var chosenTierObj = await pickTierChoice(tierSum);
+                if (!chosenTierObj || chosenTierObj === '__back__') {
+                  resetForNextGuest();
+                  return;
+                }
+                var chosenTier = chosenTierObj.tier;
+                guestPickedTier = chosenTier;
+                didPickTop = true;
+                if (!tierSum.multiDesign) {
+                  keys = guestChoiceKeys(chosenTier, true);
+                  if (keys.length > 1) {
+                    var picked = await pickLayout(keys, { canBack: true, tier: chosenTier });
+                    if (picked === '__back__') continue;
+                    if (!picked) {
+                      resetForNextGuest();
+                      return;
+                    }
+                    key = picked;
+                  } else {
+                    key = keys[0] || setupLayout;
+                  }
+                  break;
+                } else {
+                  var backToTier = false;
+                  var tierTopOpts = guestTopDesignOptions(chosenTier);
+                  while (true) {
+                    if (tierTopOpts.length >= 2) {
+                      var chosenTierTop = await pickTopOptions(tierTopOpts, { canBack: true, tier: chosenTier });
+                      if (chosenTierTop === '__back__') { backToTier = true; break; }
+                      if (!chosenTierTop) {
+                        resetForNextGuest();
+                        return;
+                      }
+                      if (chosenTierTop.kind === 'frame') {
+                        key = 'frame:' + chosenTierTop.frameId;
+                        break;
+                      }
+                      await applyDesignSlot(chosenTierTop.slot, chosenTierTop.idx, true);
+                    } else if (tierTopOpts.length === 1) {
+                      if (tierTopOpts[0].kind === 'frame') {
+                        key = 'frame:' + tierTopOpts[0].frameId;
+                        break;
+                      }
+                      await applyDesignSlot(tierTopOpts[0].slot, tierTopOpts[0].idx, true);
+                    }
+                    keys = guestChoiceKeys(chosenTier, false);
+                    if (keys.length > 1) {
+                      var layPick = await pickLayout(keys, { canBack: true, tier: chosenTier });
+                      if (layPick === '__back__') {
+                        if (tierTopOpts.length >= 2) continue;
+                        backToTier = true;
+                        break;
+                      }
+                      if (!layPick) {
+                        resetForNextGuest();
+                        return;
+                      }
+                      key = layPick;
+                    } else {
+                      key = keys[0] || setupLayout;
+                    }
+                    break;
+                  }
+                  if (backToTier) continue;
+                  break;
+                }
               }
-              didPickTop = true;
-              if (chosenOpt.kind === 'frame') {
-                key = 'frame:' + chosenOpt.frameId;
-              } else {
-                await applyDesignSlot(chosenOpt.slot, chosenOpt.idx, true);
+            } else {
+              var topOpts = guestTopDesignOptions();
+              if (topOpts.length >= 2) {
+                var chosenOpt = await pickTopOptions(topOpts);
+                if (!chosenOpt) {
+                  resetForNextGuest();
+                  return;
+                }
+                didPickTop = true;
+                if (chosenOpt.kind === 'frame') {
+                  key = 'frame:' + chosenOpt.frameId;
+                } else {
+                  await applyDesignSlot(chosenOpt.slot, chosenOpt.idx, true);
+                }
               }
             }
           }
@@ -57714,7 +58177,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             key = 'framesheet';
             setLayout(key);
           }
-          else if (key !== currentLayout) setLayout(key);
+          else if (key !== currentLayout || guestPickedTier) setLayout(key);
           // Trading card / certificate booth: the guest types their name (and a title) first.
           if (boothType !== 'photo' && (!(await askGuestDesign()) || !(await askGuestDetails()))) return;
           // After picking a design or layout there's always a "Get ready" screen (summary,
@@ -57876,7 +58339,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (!(printPrefs.voucherPrinter && payCfg.dual && sessionPrinter)) {
             // No payment option picked a printer: with "Separate B&W and colour prints" on, the layout's kind does
             // (B&W -> the thermal printer, colour -> the photo printer chosen in the Printer tab, on this device).
-            var lt = tierSplitOn() ? layoutTier(currentLayout) : '';
+            var lt = tierSplitOn() ? effectiveLayoutTier(currentLayout) : '';
             return (lt === 'receipt' || lt === 'photo') ? tierPrinterName(lt) : '';
           }
           var n = sessionPrinter;

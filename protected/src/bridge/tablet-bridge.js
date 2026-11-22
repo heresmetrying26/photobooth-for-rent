@@ -439,13 +439,20 @@ async function buildAndPushTabletState() {
       let rawThumb = '';
       let nm = '';
       let sh = '';
+      let tag = '';
+      let tagCls = '';
       if (pickDesignMode) {
         const srcBtn = pickGrid.children[i];
         const nmEl = srcBtn && srcBtn.querySelector('.pick-name');
         const shEl = srcBtn && srcBtn.querySelector('.pick-shots');
+        const tagEl = srcBtn && srcBtn.querySelector('.pick-tier-tag');
         rawThumb = (srcBtn && srcBtn.querySelector('img') && srcBtn.querySelector('img').src) || '';
         nm = (nmEl && nmEl.textContent) || (pickDesignsList[i] && pickDesignsList[i].name) || ('Design ' + (i + 1));
         sh = (shEl && shEl.textContent) || 'Ready';
+        if (tagEl && tagEl.textContent) {
+          tag = tagEl.textContent;
+          tagCls = tagEl.classList.contains('thermal') ? 'thermal' : (tagEl.classList.contains('color') ? 'color' : '');
+        }
       } else {
         rawThumb = layoutThumbUrl(k);
         nm = pickName(k);
@@ -456,7 +463,7 @@ async function buildAndPushTabletState() {
         sh = nShots + (nShots === 1 ? ' shot' : ' shots');
       }
       const thumb = rawThumb ? await tabletBridgeUploadMedia('lay_' + i + '_' + k.replace(/[^A-Za-z0-9_-]/g, '_'), rawThumb, 'image/png', 480) : '';
-      return { k, name: nm, shots: sh, thumb };
+      return { k, name: nm, shots: sh, thumb, tag, tagCls };
     }));
   }
   } catch (e) {
@@ -562,7 +569,10 @@ async function buildAndPushTabletState() {
     pickOpen: !!pickOpen && !ed,
     pickIdx,
     pickTitle: pickOpen ? T('layout picker', () => pickTitleText(), '') : '',
-    pickSub: pickDesignMode ? 'Pick a design or frame first' : 'Tap a layout to start your session',
+    pickSub: pickOpen ? T('layout picker', () => pickSubText(), '') : '',
+    pickCanBack: !!(pickOpen && !ed && pickBackAllowed),
+    pickTier: !!(pickOpen && !ed && pickTierMode),
+    pickBwStep: !!(pickOpen && !ed && !pickTierMode && pickTierFilter === 'receipt'),
     layouts,
     looksShow,
     looksOpen: !!guestLookOpen,
@@ -749,6 +759,7 @@ function renderTabletBridgeSetup(info) {
     if (a === 'trigger') { boothTrigger(true); return; }
     if (a === 'readyStart') { if (readyStartBtn) readyStartBtn.click(); return; }
     if (a === 'pickLayout' && act.key) { if (pickOpen) finishPick(act.key); return; }
+    if (a === 'pickBack') { if (pickOpen && pickBackAllowed) finishPick('__back__'); return; }
     if (a === 'pickLook' && act.key) { guestPickLook(act.key); return; }
     if (a === 'toggleLooks') { guestLookOpen = !guestLookOpen; guestRender(); return; }
     if (a === 'retake') { if (retakeBtn && !retakeBtn.hidden) retakeBtn.click(); return; }

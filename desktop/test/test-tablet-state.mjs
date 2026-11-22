@@ -54,7 +54,7 @@ function makeCtx(opts = {}) {
     labelInput: { value: 'Birthday' }, currentDateLabel: () => 'NOV 19', currentBoxAspect: () => 0.8, camAspect: () => 1.3333, shotBoxAspect: () => 0.75, stageShot: 0,
     qrResults: { querySelectorAll: () => ctx.__slots || [] }, printFirstHolding: false,
     filmTrack: { children: [] }, shotThumb: () => 'data:image/jpeg;base64,THUMB',
-    pickKeys: [], pickGrid: { children: [] }, pickDesignMode: false, pickDesignsList: [], pickIdx: 0,
+    pickKeys: [], pickGrid: { children: [] }, pickDesignMode: false, pickTierMode: false, pickTierFilter: null, pickBackAllowed: false, pickDesignsList: [], pickIdx: 0,
     retakeBtn: { hidden: true, textContent: 'Retake' }, doneBtn: { hidden: true, textContent: 'Done' },
     guestLooksOn: false, isTraditional: () => false, guestLookKeys: () => [], FILTER_LABELS: {}, guestLookOpen: false, filterKey: 'normal',
     currentFolderLink: '', gvPrivate: () => false,
@@ -65,7 +65,7 @@ function makeCtx(opts = {}) {
     layoutThumbUrl: () => 'data:image/png;base64,AAAA', pickName: (k) => 'Layout ' + k, LAYOUT_DEFS: { a: { shots: 4 }, b: { shots: 2 } },
     frameById: () => null, presetById: () => null, frameShotCount: () => 4, presetShotCount: () => 4,
     layoutDef: () => ({ name: 'Strip' }), shotsNeeded: () => 4, readySub: { textContent: '' }, fx: { hands: '' }, countingDown: false,
-    pickTitleText: () => 'Choose', retakesAllowed: () => true, SAMPLE_PORTRAITS: ['<svg id="a"/>', '<svg id="b"/>', '<svg id="c"/>'],
+    pickTitleText: () => 'Choose', pickSubText: () => 'Tap one', retakesAllowed: () => true, SAMPLE_PORTRAITS: ['<svg id="a"/>', '<svg id="b"/>', '<svg id="c"/>'],
     enumerateCameras: async () => { }, savedCamera: () => null, initCamera: async () => true, showToast() { }, boothTrigger() { }, resetForNextGuest() { },
     updateGuestStatus() { }, updateFullStage() { }, cameraSelect: { options: [], value: '' }, streamActive: false, qrcode: null
   };
@@ -444,6 +444,54 @@ await section(async () => {
   ctx.fx.sShut = null; ctx.tabletSoundSync();
   assert.equal(sent.length, 3); assert(sent[2].sounds.shut.length > 1000 && sent[2].sounds.shut !== 'data:audio/wav;base64,QUJD', 'own file removed: the built-in shutter goes back');
   console.log('PASS: beeps and the shutter come from the tablet when it can play them');
+});
+
+// 14. Two-step B&W vs Coloured picker: Step 1 sends 2 cards with tags, Step 2 sends Back flag & B&W filter flag
+await section(async () => {
+  const { ctx, pushed } = makeCtx();
+  const mkBtn = (nm, sh, tag, cls) => ({
+    querySelector: (s) => s === '.pick-name' ? { textContent: nm }
+      : s === '.pick-shots' ? { textContent: sh }
+      : s === '.pick-tier-tag' ? { textContent: tag, classList: { contains: (c) => c === cls } }
+      : s === 'img' ? { src: JPEG(nm) } : null
+  });
+  ctx.pickOpen = true;
+  ctx.pickDesignMode = true;
+  ctx.pickTierMode = true;
+  ctx.pickTierFilter = null;
+  ctx.pickBackAllowed = false;
+  ctx.pickKeys = ['tier:receipt', 'tier:photo'];
+  ctx.pickGrid = { children: [mkBtn('B&W designs', '5 layouts', '🧾 Black & white', 'thermal'), mkBtn('Coloured designs', '23 layouts', '🎨 Full colour', 'color')] };
+  ctx.pickTitleText = () => 'B&W or Coloured?';
+  ctx.pickSubText = () => 'Pick a style to see its layouts';
+  ctx.tabletBridgeSync(); await wait(150);
+  let p = last(pushed);
+  assert.equal(p.pickOpen, true);
+  assert.equal(p.pickTier, true);
+  assert.equal(p.pickCanBack, false);
+  assert.equal(p.pickTitle, 'B&W or Coloured?');
+  assert.equal(p.pickSub, 'Pick a style to see its layouts');
+  assert.equal(p.layouts.length, 2);
+  assert.equal(p.layouts[0].tag, '🧾 Black & white');
+  assert.equal(p.layouts[0].tagCls, 'thermal');
+  assert.equal(p.layouts[1].tag, '🎨 Full colour');
+  assert.equal(p.layouts[1].tagCls, 'color');
+
+  // Step 2: B&W layouts with Back allowed
+  ctx.pickDesignMode = false;
+  ctx.pickTierMode = false;
+  ctx.pickTierFilter = 'receipt';
+  ctx.pickBackAllowed = true;
+  ctx.pickKeys = ['a', 'b'];
+  ctx.pickTitleText = () => 'B&W designs';
+  ctx.pickSubText = () => 'Tap a layout to start your session';
+  ctx.tabletBridgeSync(); await wait(150);
+  p = last(pushed);
+  assert.equal(p.pickTier, false);
+  assert.equal(p.pickCanBack, true);
+  assert.equal(p.pickBwStep, true);
+  assert.equal(p.pickTitle, 'B&W designs');
+  console.log('PASS: 2-step B&W vs Coloured picker state (Step 1 tags + Step 2 Back button) reaches the tablet');
 });
 
 if (failed) { console.log(failed + ' check(s) failed'); process.exit(1); }

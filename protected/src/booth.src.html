@@ -9618,6 +9618,143 @@
       margin: 0 0 10px;
     }
 
+    .sheet-orient-row {
+      display: inline-flex;
+      gap: 4px;
+      padding: 3px;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+
+    .sheet-orient-btn {
+      padding: 5px 10px;
+      border-radius: 7px;
+      border: 0;
+      background: transparent;
+      font: 700 12px 'Manrope', sans-serif;
+      color: var(--ink-dim);
+      cursor: pointer;
+    }
+
+    .sheet-orient-btn.active {
+      background: var(--blue-deep);
+      color: #fff;
+    }
+
+    .spot-rot-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .spot-rot-btn {
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1.5px solid var(--line);
+      background: #fff;
+      font: 700 12px 'Manrope', sans-serif;
+      color: var(--ink);
+      cursor: pointer;
+      transition: all .12s ease;
+    }
+
+    .spot-rot-btn.active {
+      border-color: var(--brand, #c93d27);
+      background: #fff1ee;
+      color: var(--brand, #c93d27);
+    }
+
+    .spot-sec-box {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+
+    .spot-sec-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .spot-sec-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1.5px solid var(--line);
+      background: var(--panel-2, #f5f2ec);
+      font: 700 11.5px 'Manrope', sans-serif;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .spot-sec-chip.active {
+      border-color: var(--blue-deep);
+      background: var(--tint);
+      color: var(--blue-deep);
+    }
+
+    .spot-sec-chip .sec-rot {
+      font-size: 10.5px;
+      padding: 1px 5px;
+      border-radius: 99px;
+      background: rgba(28, 26, 30, .08);
+    }
+
+    .spot-sec-chip.active .sec-rot {
+      background: var(--blue-deep);
+      color: #fff;
+    }
+
+    .frame-sec-summary {
+      margin-top: 8px;
+      padding: 9px 11px;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .frame-sec-summary .sec-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .frame-sec-summary .sec-tags {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .frame-sec-summary .sec-tag {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--panel-2, #f5f2ec);
+      border: 1px solid var(--line);
+      font: 700 11px 'Manrope', sans-serif;
+      color: var(--ink);
+    }
+
+    .frame-sec-summary .sec-acts {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
     @media (max-width:640px) {
       #sheetPatterns {
         flex-wrap: nowrap;
@@ -19268,6 +19405,38 @@
                 to pick its colour.</p>
               <label class="toggle-row" style="margin-top:6px;"><input type="checkbox" id="spotShowWin" checked>
                 Highlight the photo windows (blue)</label>
+              <div class="spot-sec-box" id="spotSecBox">
+                <p class="sub-label" style="margin:0 0 6px;">Auto-section &amp; multi-layout (4-in-1, strips)</p>
+                <div class="decor-btns" style="align-items:center;">
+                  <button type="button" class="action-btn primary" id="spotAutoSec" style="width:auto;margin:0;"
+                    title="Detect cuttable sections (Polaroid, Mini Wallet, Mini Strips), auto-rotate sideways ones and link duplicate strips">&#10024; Auto-section</button>
+                  <select class="mini-select" id="spotSecPreset" aria-label="Section blueprint" style="width:auto;max-width:190px;height:34px;font-size:12px;">
+                    <option value="">Apply blueprint&hellip;</option>
+                    <option value="4in1-land">4-in-1 (6&times;4 Landscape)</option>
+                    <option value="4in1-port">4-in-1 (4&times;6 Portrait)</option>
+                    <option value="2hstrips">2 Horizontal Strips (-90&deg;)</option>
+                    <option value="clear">Clear sections (whole frame)</option>
+                  </select>
+                </div>
+                <div class="spot-sec-chips" id="spotSecChips"></div>
+                <div class="spot-rot-row" id="spotSecRotRow" style="display:none;">
+                  <span style="font-size:11.5px;font-weight:700;color:var(--ink-dim);" id="spotSecSelLabel">Section:</span>
+                  <button type="button" class="spot-rot-btn" data-sec-rot="0">0&deg; Upright</button>
+                  <button type="button" class="spot-rot-btn" data-sec-rot="90">+90&deg; &#8635;</button>
+                  <button type="button" class="spot-rot-btn" data-sec-rot="180">180&deg;</button>
+                  <button type="button" class="spot-rot-btn" data-sec-rot="270">-90&deg; &#8634;</button>
+                </div>
+                <div class="decor-btns" id="spotSecRecipes" style="display:none;margin-top:8px;">
+                  <button type="button" class="action-btn" id="spotRec3" style="width:auto;margin:0;font-size:11.5px;"
+                    title="Strips share photos 1-2-3; Polaroid and Wallet show photo 1">3 shots (linked)</button>
+                  <button type="button" class="action-btn" id="spotRec4" style="width:auto;margin:0;font-size:11.5px;"
+                    title="Polaroid = 1, Wallet = 2, Strips share 2-3-4 (or 1-2-3 + 4)">4 shots (linked)</button>
+                  <button type="button" class="action-btn" id="spotRecAll" style="width:auto;margin:0;font-size:11.5px;"
+                    title="Every spot takes its own separate photo">All separate</button>
+                </div>
+                <label class="toggle-row" id="spotShowSecRow" style="display:none;margin-top:6px;"><input type="checkbox" id="spotShowSec" checked>
+                  Show section cut guides</label>
+              </div>
               <p class="sub-label" style="margin:10px 0 4px;">Selected box</p>
               <div class="decor-btns"><button type="button" class="action-btn primary" id="spotSnap"
                   title="Fit this box to the photo window under it: edges, size and tilt">&#129522; Snap to
@@ -19283,11 +19452,17 @@
                   title="This photo shows on top where boxes overlap">&#11014; Bring to front</button><button
                   type="button" class="action-btn" id="spotBack"
                   title="This photo goes under the others where boxes overlap">&#11015; Send to back</button></div>
-              <p class="panel-hint" style="margin:6px 0 0;">Drag the round <b>&#8635;</b> at the bottom of a box to tilt
-                it. <b>Bring to front</b> / <b>Send to back</b> decide which photo is on top where two boxes overlap.
+              <p class="panel-hint" style="margin:6px 0 0;">Use <b>Photo rotation</b> for sideways (90&deg; / -90&deg;) or upside-down (180&deg;) cards without changing the window box. Drag the round <b>&#8635;</b> at the bottom of a box for fine tilt.
               </p>
               <div class="spot-size" id="spotSize"
                 style="display:none; margin-top:8px; gap:8px; flex-wrap:wrap; align-items:center; font-size:12.5px; font-weight:700;">
+                <div class="spot-rot-row" id="spotRotRow" style="width:100%;margin-top:0;">
+                  <span style="font-size:12px;color:var(--ink-dim);">Photo rotation:</span>
+                  <button type="button" class="spot-rot-btn" data-spot-rot="0">0&deg; Upright</button>
+                  <button type="button" class="spot-rot-btn" data-spot-rot="90">+90&deg; &#8635;</button>
+                  <button type="button" class="spot-rot-btn" data-spot-rot="180">180&deg;</button>
+                  <button type="button" class="spot-rot-btn" data-spot-rot="270">-90&deg; &#8634;</button>
+                </div>
                 <label>Left % <input type="number" id="spotX" min="0" max="100" step="0.5" style="width:64px;"></label>
                 <label>Top % <input type="number" id="spotY" min="0" max="100" step="0.5" style="width:64px;"></label>
                 <label>Width % <input type="number" id="spotW" min="2" max="100" step="0.5" style="width:64px;"></label>
@@ -19347,11 +19522,16 @@
                     (e.g. <b>Collage A</b> with 3-shot strips, <b>Collage B</b> with 4-shot strips). Turn on <b>Let
                       guests choose layout</b> below to let guests pick!</p>
                 </div>
-                <p class="sub-label" style="margin-top:6px;">Sheet size</p>
+                <p class="sub-label" style="margin-top:6px;">Sheet size &amp; orientation</p>
                 <div class="sheet-size-row">
                   <select class="mini-select" id="sheetSizeSelect" aria-label="Sheet size"></select>
-                  <span class="panel-hint" style="margin:0;">Choose the same paper size when you print.</span>
+                  <div class="sheet-orient-row" id="sheetOrientRow" role="group" aria-label="Sheet orientation">
+                    <button type="button" class="sheet-orient-btn active" id="sheetOrientPort" data-sorient="portrait">Portrait</button>
+                    <button type="button" class="sheet-orient-btn" id="sheetOrientLand" data-sorient="landscape">Landscape</button>
+                  </div>
+                  <label class="toggle-row" style="margin:0;font-size:12px;"><input type="checkbox" id="sheetBleedChk"> Edge-to-edge (0 gap)</label>
                 </div>
+                <p class="panel-hint" style="margin:-4px 0 8px;">Choose the same paper size when you print. Landscape 4&times;6 pairs cleanly with the <b>4-in-1</b> pattern.</p>
                 <p class="sub-label" style="margin-top:6px;">Arrange them on the sheet</p>
                 <div class="pattern-row" id="sheetPatterns"></div>
                 <div class="decor-btns">
@@ -24220,8 +24400,16 @@
                     <button type="button" class="pm-ratio-btn" data-ratio="1.5">3:2</button>
                   </div>
                 </div>
+                <div class="pm-field full"><span>Photo Rotation (inside box)</span>
+                  <div class="pm-ratio-chips" id="pmSpRotBtns">
+                    <button type="button" class="pm-ratio-btn active" data-pm-rot="0">0&deg; Upright</button>
+                    <button type="button" class="pm-ratio-btn" data-pm-rot="90">+90&deg; &#8635;</button>
+                    <button type="button" class="pm-ratio-btn" data-pm-rot="180">180&deg;</button>
+                    <button type="button" class="pm-ratio-btn" data-pm-rot="270">-90&deg; &#8634;</button>
+                  </div>
+                </div>
                 <label class="pm-field"><span>Tilt: <b id="pmSpTiltVal">0°</b> <a href="#" id="pmSpTiltZero" style="font-weight:700;color:#C93D27;margin-left:4px;">Reset</a></span>
-                  <input type="range" id="pmSpTilt" min="-30" max="30" step="0.5" value="0">
+                  <input type="range" id="pmSpTilt" min="-45" max="45" step="0.5" value="0">
                 </label>
                 <label class="pm-field"><span>Rounded Corners: <b id="pmSpRadiusVal">0</b>px</span>
                   <input type="range" id="pmSpRadius" min="0" max="90" step="2" value="0">
@@ -27516,6 +27704,12 @@
           if (!drive) {
             let queued = false;
             try { queued = await queueUpload(blob, filename, dest); } catch (e) { console.error('Could not keep photo for later:', e); }
+            if (layoutKey === 'myframe' && typeof activeFrame === 'function') {
+              var cutF0 = activeFrame();
+              if (cutF0 && cutF0.saveCuts && Array.isArray(cutF0.sections) && cutF0.sections.length > 1) {
+                try { saveSectionCutsAsync(sessionNumber || 1, flat, cutF0); } catch (e) { }
+              }
+            }
             const err = lastErr || new Error('Upload failed');
             err.queued = queued;
             throw err;
@@ -27524,6 +27718,12 @@
           if (drive.folderUrl) rememberFolderUrl(drive.folderUrl);
           registerEvent(drive.folderUrl || getCachedFolderUrl(), true);
           if (masterPngOn()) saveMasterPng(flat, filename, dest);   // not awaited: the guest's QR never waits for the master
+          if (layoutKey === 'myframe' && typeof activeFrame === 'function') {
+            var cutF = activeFrame();
+            if (cutF && cutF.saveCuts && Array.isArray(cutF.sections) && cutF.sections.length > 1) {
+              try { saveSectionCutsAsync(sessionNumber || 1, flat, cutF); } catch (e) { }
+            }
+          }
           return { label: label + ' (Google Drive)', url: drive.downloadUrl, fileId: drive.fileId };
         } else {
           const url = await uploadToLitterbox(blob, filename, '1h');
@@ -27597,6 +27797,47 @@
           if (ex && ex.orientation > 1) return null;
         } catch (e) { return null; }
         return o.type === 'image/jpeg' ? o : new Blob([o], { type: 'image/jpeg' });
+      }
+
+      async function saveSectionCutsAsync(sessNum, flatCanvas, f) {
+        if (!flatCanvas || !f || !f.saveCuts || !Array.isArray(f.sections) || f.sections.length < 2) return;
+        if (typeof uniqueFrameSections !== 'function' || typeof renderUprightSection !== 'function') return;
+        var cuts = uniqueFrameSections(f);
+        if (!cuts.length) return;
+        var num = sessNum || sessionNumber || 1;
+        var dest = { folderKey: rawFolderKey(), subfolder: driveSubfolder() };
+        for (var i = 0; i < cuts.length; i++) {
+          var sec = cuts[i];
+          if (i > 0) await wait(20);
+          try {
+            var piece = renderUprightSection(flatCanvas, sec);
+            if (!piece || piece.width < 8 || piece.height < 8) continue;
+            var blob = await pbCanvasBlob(piece, 'image/jpeg', offlineJpegQuality('print'), 300);
+            if (!blob) continue;
+            var slug = String(sec.name || ('sec' + (i + 1))).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 20) || ('sec' + (i + 1));
+            var cutName = filePrefix() + num + '_cut_' + (i + 1) + '_' + slug + deviceTag() + '.jpg';
+            if (backupDir && backupOk) {
+              try { await saveToBackupFolder(blob, cutName); } catch (e) { }
+            }
+            if (driveReady() || LOCALSHARE) {
+              var online = LOCALSHARE || navigator.onLine !== false;
+              var uploaded = false;
+              if (online) {
+                try {
+                  await uploadToDrive(blob, cutName, dest);
+                  uploaded = true;
+                } catch (err) {
+                  console.warn('Section cut upload failed, will queue:', err);
+                }
+              }
+              if (!uploaded) {
+                try { await queueUpload(blob, cutName, dest); } catch (e) { console.error('Queue section cut failed:', e); }
+              }
+            }
+          } catch (err) {
+            console.warn('Failed saving section cut ' + (i + 1) + ':', err);
+          }
+        }
       }
 
       async function saveSoloPhotosAsync(sessNum, shots) {
@@ -34032,7 +34273,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               panX0: shotCrops[selCropShot].panX || 0,
               panY0: shotCrops[selCropShot].panY || 0,
               slotW: Math.max(40, slotW),
-              slotH: Math.max(40, slotH)
+              slotH: Math.max(40, slotH),
+              rot: (b && b.rot) ? b.rot : 0
             };
             refreshCropUI();
             gsoRedraw();
@@ -34088,8 +34330,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (gCropDrag && e.pointerId === gCropDrag.id) {
               var dx = e.clientX - gCropDrag.startX;
               var dy = e.clientY - gCropDrag.startY;
-              var dPanX = -dx / (gCropDrag.slotW * 0.6 || 100);
-              var dPanY = -dy / (gCropDrag.slotH * 0.6 || 100);
+              var rad = -(gCropDrag.rot || 0) * Math.PI / 180;
+              var ldx = rad ? (dx * Math.cos(rad) - dy * Math.sin(rad)) : dx;
+              var ldy = rad ? (dx * Math.sin(rad) + dy * Math.cos(rad)) : dy;
+              var quarter = Math.round((gCropDrag.rot || 0) / 90) % 2 !== 0;
+              var effW = quarter ? gCropDrag.slotH : gCropDrag.slotW;
+              var effH = quarter ? gCropDrag.slotW : gCropDrag.slotH;
+              var dPanX = -ldx / (effW * 0.6 || 100);
+              var dPanY = -ldy / (effH * 0.6 || 100);
               if (!shotCrops[selCropShot]) shotCrops[selCropShot] = { zoom: 1, panX: 0, panY: 0 };
               shotCrops[selCropShot].panX = Math.max(-1, Math.min(1, Math.round((gCropDrag.panX0 + dPanX) * 100) / 100));
               shotCrops[selCropShot].panY = Math.max(-1, Math.min(1, Math.round((gCropDrag.panY0 + dPanY) * 100) / 100));
@@ -35100,11 +35348,19 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var y0 = m.b * x + m.d * y + m.f;
           var x1 = m.a * (x + w) + m.c * (y + h) + m.e;
           var y1 = m.b * (x + w) + m.d * (y + h) + m.f;
+          var x2 = m.a * (x + w) + m.c * y + m.e;
+          var y2 = m.b * (x + w) + m.d * y + m.f;
+          var x3 = m.a * x + m.c * (y + h) + m.e;
+          var y3 = m.b * x + m.d * (y + h) + m.f;
+          var minX = Math.min(x0, x1, x2, x3), maxX = Math.max(x0, x1, x2, x3);
+          var minY = Math.min(y0, y1, y2, y3), maxY = Math.max(y0, y1, y2, y3);
+          var rotDeg = Math.round(Math.atan2(m.b, m.a) * 180 / Math.PI);
           shotSlotBoxes[idx] = {
-            x: Math.min(x0, x1),
-            y: Math.min(y0, y1),
-            w: Math.abs(x1 - x0),
-            h: Math.abs(y1 - y0)
+            x: minX,
+            y: minY,
+            w: maxX - minX,
+            h: maxY - minY,
+            rot: rotDeg
           };
         } catch (e) { }
       }
@@ -36150,6 +36406,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             var sw = Math.max(4, (Number(sp.w) || 0.2) * W);
             var sh = Math.max(4, (Number(sp.h) || 0.2) * H);
             var ang = (Number(sp.a) || 0) * Math.PI / 180;
+            var rotDeg = ((Math.round((Number(sp.r) || 0) / 90) * 90) % 360 + 360) % 360;
+            var quarter = (rotDeg === 90 || rotDeg === 270);
+            var drawW = quarter ? sh : sw, drawH = quarter ? sw : sh;
             var rad = Math.min(sw / 2, sh / 2, Math.max(0, (Number(sp.radius) || 0) * pxScale));
             var si = (Number(sp.s) >= 1) ? (Number(sp.s) - 1) : i;
             var shot = list.length ? (list[si] || list[si % list.length] || list[0]) : null;
@@ -36162,7 +36421,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             else { ctx.beginPath(); ctx.rect(-sw / 2, -sh / 2, sw, sh); }
             ctx.clip();
             if (shot && !opts.wireframeOnly) {
-              drawImageCover(ctx, shot, -sw / 2, -sh / 2, sw, sh);
+              if (rotDeg) {
+                ctx.save();
+                ctx.rotate(rotDeg * Math.PI / 180);
+                drawImageCover(ctx, shot, -drawW / 2, -drawH / 2, drawW, drawH);
+                ctx.restore();
+              } else {
+                drawImageCover(ctx, shot, -sw / 2, -sh / 2, sw, sh);
+              }
             } else {
               ctx.fillStyle = (i % 2 === 0) ? '#eae4dc' : '#e1dad0';
               ctx.fillRect(-sw / 2, -sh / 2, sw, sh);
@@ -46228,10 +46494,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var out = list.map(function (sp, i) {
           return {
             x: Number(sp.x) || 0, y: Number(sp.y) || 0,
-            w: Math.max(0.05, Number(sp.w) || 0.2), h: Math.max(0.05, Number(sp.h) || 0.2),
-            s: i + 1, a: Number(sp.a) || 0, radius: 0, borderW: 0, borderColor: '#ffffff'
+            w: Math.max(0.04, Number(sp.w) || 0.2), h: Math.max(0.035, Number(sp.h) || 0.2),
+            s: i + 1, a: Number(sp.a) || 0, r: 0, radius: 0, borderW: 0, borderColor: '#ffffff'
           };
         });
+        if (out.length >= 2 && typeof autoSectionFrame === 'function') {
+          try {
+            var tmp = { w: img.width || 1200, h: img.height || 1800, spots: out };
+            var secs = autoSectionFrame(tmp, img);
+            if (secs && secs.length > 1) return out;
+          } catch (e) { }
+        }
         if (out.length >= 6 && out.length % 2 === 0) {
           var L = [], R = [];
           out.forEach(function (sp, idx) { (sp.x + sp.w / 2 < 0.5 ? L : R).push({ sp: sp, idx: idx }); });
@@ -46346,7 +46619,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           ov.appendChild(box);
         }
         (t.spots || []).forEach(function (sp, i) {
-          addBox('spot', i, sp, 'Spot ' + (i + 1) + ' (#' + (Number(sp.s) || (i + 1)) + ')', 'all', sp.a || 0);
+          var rLbl = sp.r ? (' ' + (sp.r === 270 ? '-90\u00B0' : ('+' + sp.r + '\u00B0'))) : '';
+          addBox('spot', i, sp, 'Spot ' + (i + 1) + ' (#' + (Number(sp.s) || (i + 1)) + ')' + rLbl, 'all', sp.a || 0);
         });
         (t.texts || []).forEach(function (tx, i) {
           addBox('text', i, pmTextBoxNorm(t, tx), 'T' + (i + 1), false, 0);
@@ -46461,6 +46735,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           document.getElementById('pmSpShot').value = String(Math.max(1, Math.min(8, Number(sp.s) || (pmSel.idx + 1))));
           document.getElementById('pmSpTilt').value = String(Number(sp.a) || 0);
           document.getElementById('pmSpTiltVal').textContent = (Number(sp.a) || 0) + '\u00B0';
+          var curRot = ((Math.round((Number(sp.r) || 0) / 90) * 90) % 360 + 360) % 360;
+          document.querySelectorAll('#pmSpRotBtns [data-pm-rot]').forEach(function (rb) {
+            rb.classList.toggle('active', Number(rb.dataset.pmRot) === curRot);
+          });
           document.getElementById('pmSpRadius').value = String(Number(sp.radius) || 0);
           document.getElementById('pmSpRadiusVal').textContent = String(Number(sp.radius) || 0);
           document.getElementById('pmSpBorderW').value = String(Number(sp.borderW) || 0);
@@ -46794,6 +47072,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             sp.w = Number(nw.toFixed(4)); sp.h = Number(nh.toFixed(4));
             sp.x = Number(Math.max(0, Math.min(1 - sp.w, cx - sp.w / 2)).toFixed(4));
             sp.y = Number(Math.max(0, Math.min(1 - sp.h, cy - sp.h / 2)).toFixed(4));
+            pmSaveAll(); pmRefreshAllUi();
+          });
+        });
+        document.querySelectorAll('#pmSpRotBtns [data-pm-rot]').forEach(function (rb) {
+          rb.addEventListener('click', function () {
+            var t = pmActive(), sp = t.spots[pmSel.idx]; if (!sp) return;
+            var r = ((Math.round((Number(rb.dataset.pmRot) || 0) / 90) * 90) % 360 + 360) % 360;
+            sp.r = r;
             pmSaveAll(); pmRefreshAllUi();
           });
         });
@@ -61276,7 +61562,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var spots = detectSpots(img);
           startFrameDone = sf.id;
           if (!spots.length || (spots.length === 1 && spots[0].w * spots[0].h > 0.75) || myFrames.length >= MAX_FRAMES) { scheduleSetupSave(); return; }
-          myFrames.push({ id: sf.id, name: String(sf.name || '').slice(0, 40) || undefined, w: img.width, h: img.height, spots: spots });
+          var sfObj = { id: sf.id, name: String(sf.name || '').slice(0, 40) || undefined, w: img.width, h: img.height, spots: spots };
+          if (spots.length >= 2) { try { autoSectionFrame(sfObj, img); } catch (secErr) { } }
+          myFrames.push(sfObj);
           if (fresh) { activeFrameId = sf.id; setupLayout = 'myframe'; layoutPicked = true; if (chooseIds.indexOf(sf.id) < 0) chooseIds.push(sf.id); }
           framesChanged(fresh ? { layout: 'myframe' } : {});
         } catch (e) { /* keep going without it */ }
@@ -63975,8 +64263,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var activeFrameId = null;     // the frame used by the "My frame" layout
       var startFrameDone = '';      // id of the Admin-made starting frame this setup already received
       var startLogoDone = '';       // id of the Admin-made starting logo this setup already received
-      var sheet = { pattern: 'tall-one-two-strips', items: [] };   // items: [{ f, cx, cy, s, r }] (0-1 of the sheet; s = width share)
-      var sheetPresets = [];        // [{ id, name, paper, pattern, items: [{ f, cx, cy, s, r }] }]
+      var sheet = { pattern: 'tall-one-two-strips', orient: 'portrait', bleed: false, items: [] };   // items: [{ f, cx, cy, s, r }] (0-1 of the sheet; s = width share)
+      var sheetPresets = [];        // [{ id, name, paper, orient, bleed, pattern, items: [{ f, cx, cy, s, r }] }]
       var activeSheetPresetId = null;
       var setupActiveSheetPresetId = null;
 
@@ -64001,6 +64289,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             id: defId,
             name: 'Collage A',
             paper: sheetSize || 'A4',
+            orient: sheet.orient === 'landscape' ? 'landscape' : 'portrait',
+            bleed: !!sheet.bleed,
             pattern: sheet.pattern || 'tall-one-two-strips',
             items: (sheet.items || []).map(function (it) { return { f: it.f, cx: it.cx, cy: it.cy, s: it.s, r: it.r || 0 }; })
           }];
@@ -64017,6 +64307,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         activeSheetPresetId = p.id;
         setupActiveSheetPresetId = p.id;
         if (p.paper && SHEET_SIZES.indexOf(p.paper) >= 0) sheetSize = p.paper;
+        sheet.orient = p.orient === 'landscape' ? 'landscape' : 'portrait';
+        sheet.bleed = !!p.bleed;
         sheet.pattern = p.pattern || 'tall-one-two-strips';
         sheet.items = (p.items || []).map(function (it) { return { f: it.f, cx: it.cx, cy: it.cy, s: it.s, r: it.r || 0 }; });
         var selEl = document.getElementById('sheetSizeSelect');
@@ -64039,6 +64331,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           id: newId,
           name: name,
           paper: sheetSize,
+          orient: sheet.orient === 'landscape' ? 'landscape' : 'portrait',
+          bleed: !!sheet.bleed,
           pattern: sheet.pattern,
           items: (sheet.items || []).map(function (it) { return { f: it.f, cx: it.cx, cy: it.cy, s: it.s, r: it.r || 0 }; })
         };
@@ -64055,6 +64349,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var p = presetById(activeSheetPresetId);
         if (!p) return;
         p.paper = sheetSize;
+        p.orient = sheet.orient === 'landscape' ? 'landscape' : 'portrait';
+        p.bleed = !!sheet.bleed;
         p.pattern = sheet.pattern;
         p.items = (sheet.items || []).map(function (it) { return { f: it.f, cx: it.cx, cy: it.cy, s: it.s, r: it.r || 0 }; });
         buildSheetPresetUI();
@@ -64106,12 +64402,18 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var frameMode = 'choose', chooseIds = [], sheetSize = '4x6';
       var SHEET_SIZES = ['4x6', 'selphy', '5x7', '6x8', '8x10', 'A5', 'A4', 'Letter'];
       function sheetPaper() { return paperFor(sheetSize) || paperFor('4x6'); }
-      // The sheet in pixels at 300 dpi, portrait (4R = 1200 x 1800).
-      function SW() { return Math.round(sheetPaper().w / 25.4 * 300); }
-      function SH() { return Math.round(sheetPaper().h / 25.4 * 300); }
+      // The sheet in pixels at 300 dpi (portrait 4R = 1200 x 1800, landscape 4R = 1800 x 1200).
+      function SW() {
+        var p = sheetPaper(), mm = (sheet && sheet.orient === 'landscape') ? Math.max(p.w, p.h) : Math.min(p.w, p.h);
+        return Math.round(mm / 25.4 * 300);
+      }
+      function SH() {
+        var p = sheetPaper(), mm = (sheet && sheet.orient === 'landscape') ? Math.min(p.w, p.h) : Math.max(p.w, p.h);
+        return Math.round(mm / 25.4 * 300);
+      }
       function chooseList() { return chooseIds.filter(function (id) { return frameById(id); }); }   // frames guests can pick (with Let guests choose)
       var selItem = -1;             // selected frame on the sheet (Setup preview)
-      var spotEdit = null;          // { f: frameId, sel: index } while fixing a frame's photo spots
+      var spotEdit = null;          // { f: frameId, sel: index, sec?: sectionIdx } while fixing a frame's photo spots
       var FRAME_CACHE = {};         // frameId -> { img, key, punched }
       var MAX_FRAMES = 100, MAX_SPOTS = 40, MAX_SHEET_ITEMS = 10;
       var SHEET_PATTERNS = [
@@ -64119,11 +64421,18 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         { id: 'two-strips', name: '2 side by side', cells: [[0, 0, .5, 1], [.5, 0, .5, 1]] },
         { id: 'top-bottom', name: 'Top + bottom', cells: [[0, 0, 1, .5], [0, .5, 1, .5]] },
         { id: 'tall-two', name: 'Tall + 2', cells: [[0, 0, .5, 1], [.5, 0, .5, .5], [.5, .5, .5, .5]] },
+        { id: '4in1', name: '4-in-1 (Polaroid + Wallet + 2 strips)',
+          cells: [[0, 0, 1, .5], [0, .5, .5, .5], [.5, .5, .25, .5], [.75, .5, .25, .5]],
+          landCells: [[0, 0, .5, 1], [.5, 0, .5, .5], [.5, .5, .5, .25], [.5, .75, .5, .25]] },
         { id: 'tall-one-two-strips', name: 'Tall + 1 + 2 strips', cells: [[0, 0, .5, 1], [.5, 0, .5, .5], [.5, .5, .25, .5], [.75, .5, .25, .5]] },
         { id: 'three-strips', name: '3 strips', cells: [[0, 0, 1 / 3, 1], [1 / 3, 0, 1 / 3, 1], [2 / 3, 0, 1 / 3, 1]] },
         { id: 'four', name: '4 quarters', cells: [[0, 0, .5, .5], [.5, 0, .5, .5], [0, .5, .5, .5], [.5, .5, .5, .5]] },
         { id: 'four-strips', name: '4 strips', cells: [[0, 0, .25, 1], [.25, 0, .25, 1], [.5, 0, .25, 1], [.75, 0, .25, 1]] }
       ];
+      function patternCells(p) {
+        if (!p) return [[0, 0, 1, 1]];
+        return (sheet && sheet.orient === 'landscape' && p.landCells) ? p.landCells : p.cells;
+      }
       // How a strip frame fits a 2.5 x 7.5 in keychain (and a 2 x 6 strip): both are 1:3.
       function frameShapeLabel(f) {
         var r = f.w / f.h;
@@ -64207,11 +64516,79 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         return Math.max(1, Math.min(n, f.spots.length - 1));
       }
+      // ---- Spot photo rotation (0 / 90 / 180 / 270 CW) & Auto-Sectioning (4-in-1, strips, wallets) ----
+      function normalizeSpotRot(v) {
+        var d = ((Math.round((Number(v) || 0) / 90) * 90) % 360 + 360) % 360;
+        return d === 90 || d === 180 || d === 270 ? d : 0;
+      }
+      function spotRotLabel(r) {
+        var d = normalizeSpotRot(r);
+        return d === 90 ? '+90\u00B0' : d === 180 ? '180\u00B0' : d === 270 ? '-90\u00B0' : '0\u00B0';
+      }
+      // Order a section's spot indices in upright reading order (top-to-bottom, then left-to-right once cut upright).
+      function sortSpotIndicesUpright(spots, idxs, rot) {
+        var r = normalizeSpotRot(rot), arr = (idxs || []).slice();
+        var center = function (i) { var sp = spots[i]; return { x: sp.x + sp.w / 2, y: sp.y + sp.h / 2 }; };
+        // Map canvas (x,y) to upright card (u = left->right, v = top->bottom) via rotation upRot = (360 - r) % 360:
+        // r=0: u=x, v=y | r=270 (-90): upright top is canvas left -> v=x, u=1-y
+        // r=90 (+90): upright top is canvas right -> v=1-x, u=y | r=180: v=1-y, u=1-x
+        var uv = function (i) {
+          var c = center(i);
+          if (r === 270) return { u: 1 - c.y, v: c.x };
+          if (r === 90) return { u: c.y, v: 1 - c.x };
+          if (r === 180) return { u: 1 - c.x, v: 1 - c.y };
+          return { u: c.x, v: c.y };
+        };
+        arr.sort(function (a, b) {
+          var pa = uv(a), pb = uv(b);
+          if (Math.abs(pa.v - pb.v) > 0.035) return pa.v - pb.v;
+          return pa.u - pb.u || a - b;
+        });
+        return arr;
+      }
+
       // Boxes the user numbered by hand (spot.s = photo number): boxes with the same number show the same photo.
       function frameManual(f) { return !!(f && f.spots && f.spots.some(function (s) { return s.s >= 1; })); }
-      // The strips: each column's boxes cut where there is a big vertical gap (e.g. two strips stacked in one column).
-      // Each strip lists its spot indexes top to bottom; strips go left to right, then top to bottom.
+      // The strips/sections: if the frame has detected sections, use them directly (works for both vertical &
+      // rotated horizontal strips). Otherwise group vertical columns (or horizontal rows when spots are rotated +-90°).
       function frameStrips(f) {
+        if (!f || !f.spots || !f.spots.length) return [];
+        if (Array.isArray(f.sections) && f.sections.length > 1) {
+          var secOut = [];
+          f.sections.forEach(function (sec) {
+            var valid = (sec.spots || []).filter(function (i) { return i >= 0 && i < f.spots.length; });
+            if (valid.length) secOut.push(sortSpotIndicesUpright(f.spots, valid, sec.r));
+          });
+          if (secOut.length) return secOut;
+        }
+        // Horizontal rotated spots fallback (e.g. two horizontal strips without sections yet)
+        var rotQuarter = f.spots.filter(function (sp) { var rr = normalizeSpotRot(sp.r); return rr === 90 || rr === 270; }).length;
+        if (rotQuarter >= Math.ceil(f.spots.length * 0.6) && f.spots.length >= 2) {
+          var ix = f.spots.map(function (s, i) { return i; });
+          var cy = function (i) { return f.spots[i].y + f.spots[i].h / 2; };
+          var cx = function (i) { return f.spots[i].x + f.spots[i].w / 2; };
+          ix.sort(function (a, b) { return cy(a) - cy(b) || a - b; });
+          var rows = [];
+          ix.forEach(function (i) {
+            var r0 = rows[rows.length - 1];
+            if (r0 && cy(i) - cy(r0[0]) <= 0.5 * Math.min(f.spots[r0[0]].h, f.spots[i].h)) r0.push(i); else rows.push([i]);
+          });
+          var hOut = [];
+          rows.forEach(function (row) {
+            row.sort(function (a, b) { return cx(a) - cx(b) || a - b; });
+            var gaps = [], avgW = 0, k;
+            row.forEach(function (i) { avgW += f.spots[i].w; }); avgW /= row.length;
+            for (k = 1; k < row.length; k++) { var a = f.spots[row[k - 1]], b = f.spots[row[k]]; gaps.push(b.x - (a.x + a.w)); }
+            var sorted = gaps.slice().sort(function (x, y) { return x - y; }), med = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
+            var cur = [row[0]];
+            for (k = 1; k < row.length; k++) {
+              if (gaps[k - 1] > Math.max(med, 0) + avgW * 0.6) { hOut.push(cur); cur = []; }
+              cur.push(row[k]);
+            }
+            hOut.push(cur);
+          });
+          return hOut.map(function (st) { return sortSpotIndicesUpright(f.spots, st, f.spots[st[0]].r); });
+        }
         var out = [];
         frameStripRanks(f).cols.forEach(function (c) {
           var gaps = [], avgH = 0, k;
@@ -64226,6 +64603,701 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           out.push(cur);
         });
         return out;
+      }
+
+      // ---- Auto-sectioning engine: guillotine XY-cut + seam snapping + visual band similarity + orientation inference ----
+      function detectFrameSections(f, img) {
+        if (!f || !Array.isArray(f.spots) || f.spots.length < 2) return [];
+        var spots = f.spots, fw = Math.max(1, Number(f.w) || 1200), fh = Math.max(1, Number(f.h) || 1800);
+        // Optional downsampled pixel sampler for seam & duplicate-card artwork detection.
+        var samp = null;
+        if (img && img.width && img.height && typeof document !== 'undefined') {
+          try {
+            var S = 360, sc = Math.min(1, S / Math.max(img.width, img.height));
+            var sw = Math.max(24, Math.round(img.width * sc)), sh = Math.max(24, Math.round(img.height * sc));
+            var cv = document.createElement('canvas'); cv.width = sw; cv.height = sh;
+            var cx = cv.getContext('2d'); cx.drawImage(img, 0, 0, sw, sh);
+            var dt = cx.getImageData(0, 0, sw, sh).data;
+            var holeMask = new Uint8Array(sw * sh);
+            spots.forEach(function (sp) {
+              var x0 = Math.max(0, Math.floor((sp.x - 0.004) * sw)), x1 = Math.min(sw - 1, Math.ceil((sp.x + sp.w + 0.004) * sw));
+              var y0 = Math.max(0, Math.floor((sp.y - 0.004) * sh)), y1 = Math.min(sh - 1, Math.ceil((sp.y + sp.h + 0.004) * sh));
+              for (var yy = y0; yy <= y1; yy++) for (var xx = x0; xx <= x1; xx++) holeMask[yy * sw + xx] = 1;
+            });
+            samp = { w: sw, h: sh, d: dt, hole: holeMask };
+          } catch (e) { samp = null; }
+        }
+        var CLEAN_FRACS = [0.25, 1 / 3, 0.5, 2 / 3, 0.75];
+        // Edge-seam strength at normalized coordinate pos along axis ('x' vertical cut, 'y' horizontal cut) across region reg.
+        function seamAt(reg, axis, pos) {
+          if (!samp) return 0;
+          var sum = 0, cnt = 0;
+          if (axis === 'x') {
+            var px = Math.max(1, Math.min(samp.w - 2, Math.round(pos * samp.w)));
+            var y0 = Math.max(0, Math.floor(reg.y * samp.h)), y1 = Math.min(samp.h - 1, Math.ceil((reg.y + reg.h) * samp.h));
+            for (var y = y0; y <= y1; y += 2) {
+              var iL = (y * samp.w + (px - 1)) * 4, iR = (y * samp.w + px) * 4;
+              if (samp.hole[y * samp.w + px - 1] || samp.hole[y * samp.w + px]) continue;
+              sum += Math.abs(samp.d[iL] - samp.d[iR]) + Math.abs(samp.d[iL + 1] - samp.d[iR + 1]) + Math.abs(samp.d[iL + 2] - samp.d[iR + 2]);
+              cnt++;
+            }
+          } else {
+            var py = Math.max(1, Math.min(samp.h - 2, Math.round(pos * samp.h)));
+            var x0 = Math.max(0, Math.floor(reg.x * samp.w)), x1 = Math.min(samp.w - 1, Math.ceil((reg.x + reg.w) * samp.w));
+            for (var x = x0; x <= x1; x += 2) {
+              var iT = ((py - 1) * samp.w + x) * 4, iB = (py * samp.w + x) * 4;
+              if (samp.hole[(py - 1) * samp.w + x] || samp.hole[py * samp.w + x]) continue;
+              sum += Math.abs(samp.d[iT] - samp.d[iB]) + Math.abs(samp.d[iT + 1] - samp.d[iB + 1]) + Math.abs(samp.d[iT + 2] - samp.d[iB + 2]);
+              cnt++;
+            }
+          }
+          return cnt >= 6 ? (sum / (cnt * 3)) : 0;
+        }
+        // Choose the sharpest cut inside clear gap [g0, g1], snapping to clean sheet/region fractions when close.
+        function bestCutInGap(reg, axis, g0, g1) {
+          var mid = (g0 + g1) / 2, bestPos = mid, bestScore = -1, bestSeam = 0;
+          var regStart = axis === 'x' ? reg.x : reg.y, regSpan = axis === 'x' ? reg.w : reg.h;
+          var cands = [mid];
+          CLEAN_FRACS.forEach(function (fr) {
+            if (fr > g0 + 0.002 && fr < g1 - 0.002) cands.push(fr);
+            var localFr = regStart + regSpan * fr;
+            if (localFr > g0 + 0.002 && localFr < g1 - 0.002) cands.push(localFr);
+          });
+          if (samp) {
+            var steps = 12;
+            for (var s = 1; s < steps; s++) cands.push(g0 + (g1 - g0) * (s / steps));
+          }
+          cands.forEach(function (pos) {
+            var sm = seamAt(reg, axis, pos);
+            var fracBonus = 0;
+            for (var fi = 0; fi < CLEAN_FRACS.length; fi++) {
+              if (Math.abs(pos - CLEAN_FRACS[fi]) < 0.008) { fracBonus = 18; break; }
+              if (Math.abs(pos - (regStart + regSpan * CLEAN_FRACS[fi])) < 0.008) { fracBonus = 12; break; }
+            }
+            var centerBonus = (1 - Math.abs(pos - mid) / Math.max(0.001, (g1 - g0) / 2)) * 4;
+            var sc = sm * 1.4 + fracBonus + centerBonus;
+            if (sc > bestScore) { bestScore = sc; bestPos = pos; bestSeam = sm; }
+          });
+          return { pos: bestPos, seam: bestSeam, gap: g1 - g0 };
+        }
+        // Find all clear disjoint gaps separating spots along axis ('x' or 'y').
+        function clearGaps(reg, idxs, axis) {
+          var ivs = idxs.map(function (i) {
+            var sp = spots[i];
+            return axis === 'x' ? [sp.x, sp.x + sp.w] : [sp.y, sp.y + sp.h];
+          });
+          ivs.sort(function (a, b) { return a[0] - b[0]; });
+          var merged = [], cur = [ivs[0][0], ivs[0][1]];
+          for (var i = 1; i < ivs.length; i++) {
+            if (ivs[i][0] <= cur[1] + 0.002) { if (ivs[i][1] > cur[1]) cur[1] = ivs[i][1]; }
+            else { merged.push(cur); cur = [ivs[i][0], ivs[i][1]]; }
+          }
+          merged.push(cur);
+          var out = [];
+          for (var g = 0; g < merged.length - 1; g++) {
+            var g0 = merged[g][1], g1 = merged[g + 1][0];
+            if (g1 - g0 < 0.003) continue;
+            var cut = bestCutInGap(reg, axis, g0, g1);
+            var L = [], R = [];
+            idxs.forEach(function (idx) {
+              var sp = spots[idx], c = axis === 'x' ? (sp.x + sp.w / 2) : (sp.y + sp.h / 2);
+              if (c < cut.pos) L.push(idx); else R.push(idx);
+            });
+            if (L.length && R.length) out.push({ axis: axis, pos: cut.pos, seam: cut.seam, gap: cut.gap, g0: g0, g1: g1, L: L, R: R });
+          }
+          return out;
+        }
+        // Visual similarity of non-hole frame artwork across K sub-bands of region along axis.
+        function bandArtworkSimilarity(reg, axis, cuts) {
+          if (!samp || !cuts.length) return { sim: 0, variance: 0 };
+          var bounds = [axis === 'x' ? reg.x : reg.y];
+          cuts.forEach(function (c) { bounds.push(c.pos); });
+          bounds.push(axis === 'x' ? (reg.x + reg.w) : (reg.y + reg.h));
+          var K = bounds.length - 1;
+          if (K < 2) return { sim: 0, variance: 0 };
+          var GW = 28, GH = 28, diffSum = 0, diffCnt = 0, lums = [];
+          var sampleBand = function (bIdx, gx, gy) {
+            var fx = axis === 'x'
+              ? (bounds[bIdx] + (bounds[bIdx + 1] - bounds[bIdx]) * ((gx + 0.5) / GW))
+              : (reg.x + reg.w * ((gx + 0.5) / GW));
+            var fy = axis === 'y'
+              ? (bounds[bIdx] + (bounds[bIdx + 1] - bounds[bIdx]) * ((gy + 0.5) / GH))
+              : (reg.y + reg.h * ((gy + 0.5) / GH));
+            var px = Math.max(0, Math.min(samp.w - 1, Math.floor(fx * samp.w)));
+            var py = Math.max(0, Math.min(samp.h - 1, Math.floor(fy * samp.h)));
+            var p = py * samp.w + px;
+            if (samp.hole[p]) return null;
+            var o = p * 4;
+            return [samp.d[o], samp.d[o + 1], samp.d[o + 2]];
+          };
+          for (var gy = 0; gy < GH; gy++) {
+            for (var gx = 0; gx < GW; gx++) {
+              var ref = sampleBand(0, gx, gy);
+              if (!ref) continue;
+              lums.push(0.299 * ref[0] + 0.587 * ref[1] + 0.114 * ref[2]);
+              for (var b = 1; b < K; b++) {
+                var cmp = sampleBand(b, gx, gy);
+                if (!cmp) continue;
+                diffSum += (Math.abs(ref[0] - cmp[0]) + Math.abs(ref[1] - cmp[1]) + Math.abs(ref[2] - cmp[2])) / 3;
+                diffCnt++;
+              }
+            }
+          }
+          if (diffCnt < 40) return { sim: 0, variance: 0 };
+          var mean = 0; lums.forEach(function (v) { mean += v; }); mean /= Math.max(1, lums.length);
+          var vSum = 0; lums.forEach(function (v) { vSum += Math.abs(v - mean); });
+          var variance = vSum / Math.max(1, lums.length);
+          var sim = Math.max(0, 1 - (diffSum / diffCnt) / 255);
+          return { sim: sim, variance: variance };
+        }
+        function avgSpotBox(idxs) {
+          var aw = 0, ah = 0;
+          idxs.forEach(function (i) { aw += spots[i].w; ah += spots[i].h; });
+          return { w: aw / idxs.length, h: ah / idxs.length, area: (aw / idxs.length) * (ah / idxs.length) };
+        }
+        function isHomogeneous(idxs) {
+          var minW = 9, maxW = 0, minH = 9, maxH = 0;
+          idxs.forEach(function (i) {
+            var s = spots[i];
+            if (s.w < minW) minW = s.w; if (s.w > maxW) maxW = s.w;
+            if (s.h < minH) minH = s.h; if (s.h > maxH) maxH = s.h;
+          });
+          return (maxW / Math.max(0.001, minW) < 1.28) && (maxH / Math.max(0.001, minH) < 1.28);
+        }
+        function splitRegion(reg, idxs, depth) {
+          if (idxs.length <= 1 || depth > 5) return [{ reg: reg, spots: idxs.slice() }];
+          var gx = clearGaps(reg, idxs, 'x'), gy = clearGaps(reg, idxs, 'y');
+          var allGaps = gx.concat(gy);
+          if (!allGaps.length) return [{ reg: reg, spots: idxs.slice() }];
+
+          // 1. Heterogeneous split (e.g. Polaroid vs Wallet+Strips, or Wallet vs Mini Strips):
+          var bestHet = null;
+          allGaps.forEach(function (g) {
+            var aL = avgSpotBox(g.L), aR = avgSpotBox(g.R);
+            var wRatio = Math.max(aL.w, aR.w) / Math.max(0.001, Math.min(aL.w, aR.w));
+            var hRatio = Math.max(aL.h, aR.h) / Math.max(0.001, Math.min(aL.h, aR.h));
+            var areaRatio = Math.max(aL.area, aR.area) / Math.max(0.0001, Math.min(aL.area, aR.area));
+            var hetSize = (wRatio > 1.28 || hRatio > 1.28 || areaRatio > 1.45);
+            if (!hetSize) return;
+            var nearClean = CLEAN_FRACS.some(function (fr) { return Math.abs(g.pos - fr) < 0.03; });
+            var ok = g.seam >= 12 || (nearClean && g.gap >= 0.018) || (areaRatio > 1.8 && g.gap >= 0.016);
+            if (!ok) return;
+            // Prefer top-level clean full-span splits (e.g. x=0.50 before y=0.50)
+            var spanScore = (g.axis === 'x' ? reg.h : reg.w) * 15;
+            var score = areaRatio * 10 + (nearClean ? 20 : 0) + g.seam * 0.8 + spanScore;
+            if (!bestHet || score > bestHet.score) bestHet = { g: g, score: score };
+          });
+          if (bestHet) {
+            var hg = bestHet.g;
+            var r1 = hg.axis === 'x'
+              ? { x: reg.x, y: reg.y, w: hg.pos - reg.x, h: reg.h }
+              : { x: reg.x, y: reg.y, w: reg.w, h: hg.pos - reg.y };
+            var r2 = hg.axis === 'x'
+              ? { x: hg.pos, y: reg.y, w: reg.x + reg.w - hg.pos, h: reg.h }
+              : { x: reg.x, y: hg.pos, w: reg.w, h: reg.y + reg.h - hg.pos };
+            return splitRegion(r1, hg.L, depth + 1).concat(splitRegion(r2, hg.R, depth + 1));
+          }
+
+          // 2. Homogeneous split (e.g. 2 horizontal mini strips, 2 vertical strips, 4-up wallets, stacked strips):
+          if (!isHomogeneous(idxs)) return [{ reg: reg, spots: idxs.slice() }];
+          var Kx = gx.length + 1, Ky = gy.length + 1;
+          var regPxW = reg.w * fw, regPxH = reg.h * fh;
+          var simX = gx.length ? bandArtworkSimilarity(reg, 'x', gx) : { sim: 0, variance: 0 };
+          var simY = gy.length ? bandArtworkSimilarity(reg, 'y', gy) : { sim: 0, variance: 0 };
+
+          // Helper to slice a region into multiple equal-axis bands along a sorted gap array
+          function sliceBands(axis, gaps) {
+            var bounds = [axis === 'x' ? reg.x : reg.y];
+            gaps.forEach(function (g) { bounds.push(g.pos); });
+            bounds.push(axis === 'x' ? (reg.x + reg.w) : (reg.y + reg.h));
+            var out = [];
+            for (var b = 0; b < bounds.length - 1; b++) {
+              var b0 = bounds[b], b1 = bounds[b + 1];
+              var subReg = axis === 'x'
+                ? { x: b0, y: reg.y, w: b1 - b0, h: reg.h }
+                : { x: reg.x, y: b0, w: reg.w, h: b1 - b0 };
+              var subSpots = idxs.filter(function (i) {
+                var c = axis === 'x' ? (spots[i].x + spots[i].w / 2) : (spots[i].y + spots[i].h / 2);
+                return c >= b0 && c <= b1;
+              });
+              if (subSpots.length) out = out.concat(splitRegion(subReg, subSpots, depth + 1));
+            }
+            return out;
+          }
+
+          // Check 1D stacked strips (e.g., 6 spots in 1 column with a big gap in the middle -> 2 strips of 3)
+          if (Kx === 1 && Ky >= 4 && gy.length >= 3) {
+            var gVals = gy.map(function (g) { return g.gap; }).sort(function (a, b) { return a - b; });
+            var medG = gVals[Math.floor(gVals.length / 2)];
+            var bigG = gy.filter(function (g) { return g.gap > Math.max(medG, 0.005) * 1.65; });
+            if (bigG.length) return sliceBands('y', bigG);
+          }
+          if (Ky === 1 && Kx >= 4 && gx.length >= 3) {
+            var gValsX = gx.map(function (g) { return g.gap; }).sort(function (a, b) { return a - b; });
+            var medGX = gValsX[Math.floor(gValsX.length / 2)];
+            var bigGX = gx.filter(function (g) { return g.gap > Math.max(medGX, 0.005) * 1.65; });
+            if (bigGX.length) return sliceBands('x', bigGX);
+          }
+
+          // Never split a single 1D strip of 2..4 spots (unless artwork has super-strong identical repeated card frames with big symmetric margins)
+          if (Kx === 1 || Ky === 1) {
+            var axis1 = Kx > 1 ? 'x' : 'y';
+            var gaps1 = axis1 === 'x' ? gx : gy;
+            var sim1 = axis1 === 'x' ? simX : simY;
+            var K1 = gaps1.length + 1;
+            // Only split a 1D run if it's 2 identical large cards (e.g. 2 side-by-side Polaroids / top+bottom cards) with duplicate artwork & high seam/symmetry
+            if (K1 === 2 && sim1.variance >= 8 && sim1.sim >= 0.88) {
+              var bSpan = (axis1 === 'x' ? regPxW : regPxH) / 2, perp = axis1 === 'x' ? regPxH : regPxW;
+              var subAsp = Math.max(bSpan, perp) / Math.max(1, Math.min(bSpan, perp));
+              if (subAsp <= 1.85 && gaps1[0].seam >= 10) return sliceBands(axis1, gaps1);
+            }
+            return [{ reg: reg, spots: idxs.slice() }];
+          }
+
+          // 2D grid (Kx >= 2 && Ky >= 2): decide whether it is Kx vertical strips, Ky horizontal strips, or Kx*Ky cards (or 1 single grid card)
+          var avgSeamX = gx.reduce(function (a, g) { return a + g.seam; }, 0) / gx.length;
+          var avgSeamY = gy.reduce(function (a, g) { return a + g.seam; }, 0) / gy.length;
+          // 2a. Strong full-span colour/design seam wins first (e.g. Royal Blue strip above Dark Navy strip -> horizontal cut!)
+          if (avgSeamY >= 14 && avgSeamY > avgSeamX * 1.6) return sliceBands('y', gy);
+          if (avgSeamX >= 14 && avgSeamX > avgSeamY * 1.6) return sliceBands('x', gx);
+
+          // 2b. Repeated identical-artwork bands (must have equal band widths/heights — rejects slicing across a strip's wider footer chin!)
+          function bandsEqualSpan(axis, cuts) {
+            var b0 = axis === 'x' ? reg.x : reg.y, bEnd = axis === 'x' ? (reg.x + reg.w) : (reg.y + reg.h);
+            var minS = 9, maxS = 0, prev = b0;
+            for (var ci = 0; ci <= cuts.length; ci++) {
+              var cur = ci < cuts.length ? cuts[ci].pos : bEnd, spn = cur - prev;
+              if (spn < minS) minS = spn; if (spn > maxS) maxS = spn; prev = cur;
+            }
+            return maxS / Math.max(0.001, minS) <= 1.15;
+          }
+          var hasVisualX = simX.variance >= 6 && simX.sim >= 0.80 && bandsEqualSpan('x', gx);
+          var hasVisualY = simY.variance >= 6 && simY.sim >= 0.80 && bandsEqualSpan('y', gy);
+          if (hasVisualX || hasVisualY) {
+            // If BOTH are high (e.g. 2x2 identical wallets), pick the stronger first and recursion splits the other
+            if (hasVisualY && (!hasVisualX || simY.sim > simX.sim + 0.03)) return sliceBands('y', gy);
+            if (hasVisualX && (!hasVisualY || simX.sim > simY.sim + 0.03)) return sliceBands('x', gx);
+            if (hasVisualX && hasVisualY) {
+              return Kx <= Ky ? sliceBands('x', gx) : sliceBands('y', gy);
+            }
+          }
+
+          // 2c. Geometry fallback (solid-colour frames or headless unit tests):
+          // Horizontal strips: e.g. 2 rows x 3+ cols where each row is wide strip-shaped (aspect >= 2.0)
+          var rowAsp = regPxW / Math.max(1, regPxH / Ky);
+          var colAsp = regPxH / Math.max(1, regPxW / Kx);
+          if (Kx >= 3 && Ky >= 2 && rowAsp >= 2.0 && (rowAsp > colAsp || Kx > Ky)) {
+            return sliceBands('y', gy);
+          }
+          // Vertical strips: e.g. 3+ rows x 2+ cols where each col is tall strip-shaped (aspect >= 2.0)
+          if (Ky >= 3 && Kx >= 2 && colAsp >= 2.0 && (colAsp > rowAsp || Ky > Kx)) {
+            return sliceBands('x', gx);
+          }
+          // Milder seam tiebreaker
+          if (avgSeamY >= 10 && avgSeamY > avgSeamX * 1.25) return sliceBands('y', gy);
+          if (avgSeamX >= 10 && avgSeamX > avgSeamY * 1.25) return sliceBands('x', gx);
+          return [{ reg: reg, spots: idxs.slice() }];
+        }
+
+        var allIdx = spots.map(function (s, i) { return i; });
+        var leaves = splitRegion({ x: 0, y: 0, w: 1, h: 1 }, allIdx, 0);
+        if (leaves.length <= 1) return [];
+
+        // Infer orientation (0 / 90 / 180 / 270) per section from strip axis & Polaroid/footer chin margins.
+        function inferRot(leaf) {
+          var reg = leaf.reg, sIdxs = leaf.spots;
+          var secW = reg.w * fw, secH = reg.h * fh;
+          var minX = 9, minY = 9, maxX = -9, maxY = -9;
+          sIdxs.forEach(function (i) {
+            var sp = spots[i];
+            if (sp.x < minX) minX = sp.x; if (sp.y < minY) minY = sp.y;
+            if (sp.x + sp.w > maxX) maxX = sp.x + sp.w; if (sp.y + sp.h > maxY) maxY = sp.y + sp.h;
+          });
+          var pxL = Math.max(0, (minX - reg.x) * fw);
+          var pxR = Math.max(0, (reg.x + reg.w - maxX) * fw);
+          var pxT = Math.max(0, (minY - reg.y) * fh);
+          var pxB = Math.max(0, (reg.y + reg.h - maxY) * fh);
+
+          if (sIdxs.length >= 2) {
+            var spanX = maxX - minX, spanY = maxY - minY;
+            var horizStrip = (secW > secH * 1.25) && (spanX * fw > spanY * fh * 1.2);
+            var vertStrip = (secH > secW * 1.25) && (spanY * fh > spanX * fw * 1.2);
+            if (horizStrip) {
+              if (pxR > pxL * 1.15) return 270;       // footer on right -> rotate photo -90°
+              if (pxL > pxR * 1.15) return 90;        // footer on left -> rotate photo +90°
+              return 270;                             // standard convention (cut & turn 90° CW)
+            }
+            if (vertStrip) {
+              if (pxT > pxB * 1.55 && pxT > secH * 0.09) return 180;
+              return 0;
+            }
+          }
+          // Solo card (Polaroid, Mini Wallet, etc.): look for the dominant footer/chin margin
+          var margins = [
+            { side: 'B', v: pxB, opp: pxT, perp: Math.max(pxL, pxR), r: 0, span: secH },
+            { side: 'R', v: pxR, opp: pxL, perp: Math.max(pxT, pxB), r: 270, span: secW },
+            { side: 'L', v: pxL, opp: pxR, perp: Math.max(pxT, pxB), r: 90, span: secW },
+            { side: 'T', v: pxT, opp: pxB, perp: Math.max(pxL, pxR), r: 180, span: secH }
+          ];
+          margins.sort(function (a, b) { return b.v - a.v; });
+          var topM = margins[0];
+          if (topM.v >= topM.span * 0.075 && topM.v >= Math.max(2, topM.opp) * 1.38 && topM.v >= Math.max(2, topM.perp) * 1.2) {
+            return topM.r;
+          }
+          // Secondary cue for landscape solo card beside rotated horizontal strips
+          if (secW > secH * 1.2 && Math.max(pxL, pxR) >= Math.min(pxL, pxR) * 1.25) {
+            return pxR >= pxL ? 270 : 90;
+          }
+          return 0;
+        }
+
+        // Order sections naturally: left-to-right, top-to-bottom (big anchor sections first)
+        leaves.sort(function (a, b) {
+          if (Math.abs(a.reg.x - b.reg.x) > 0.12) return a.reg.x - b.reg.x;
+          return a.reg.y - b.reg.y;
+        });
+
+        var stripN = 0, walletN = 0, polaroidN = 0, cardN = 0;
+        var out = leaves.map(function (leaf, idx) {
+          var reg = leaf.reg, r = inferRot(leaf);
+          var quarter = (r === 90 || r === 270);
+          var secW = reg.w * fw, secH = reg.h * fh;
+          var upW = quarter ? secH : secW, upH = quarter ? secW : secH;
+          var area = reg.w * reg.h;
+          var kind = 'card', name = '';
+          if (leaf.spots.length >= 2 && upH / Math.max(1, upW) >= 1.7) {
+            kind = 'strip'; stripN++;
+            name = (area < 0.32 ? 'Mini Strip ' : 'Strip ') + stripN;
+          } else if (leaf.spots.length === 1 && area >= 0.34) {
+            kind = 'polaroid'; polaroidN++;
+            name = polaroidN === 1 ? 'Polaroid' : ('Polaroid ' + polaroidN);
+          } else if (leaf.spots.length === 1 && area <= 0.34) {
+            kind = 'wallet'; walletN++;
+            name = walletN === 1 ? 'Mini Wallet' : ('Mini Wallet ' + walletN);
+          } else {
+            cardN++; name = 'Section ' + (idx + 1);
+          }
+          var r4 = function (v) { return Math.round(v * 10000) / 10000; };
+          return {
+            id: 'sec_' + (idx + 1),
+            name: name,
+            kind: kind,
+            x: r4(reg.x), y: r4(reg.y), w: r4(reg.w), h: r4(reg.h),
+            r: r,
+            spots: sortSpotIndicesUpright(spots, leaf.spots, r)
+          };
+        });
+        return out;
+      }
+
+      // Keep f.sections spot indices valid after spots are added, split, deleted, or reordered.
+      function reconcileFrameSections(f) {
+        if (!f || !Array.isArray(f.sections) || !f.sections.length) return;
+        var spots = f.spots || [];
+        var assigned = {};
+        f.sections.forEach(function (sec) {
+          sec.r = normalizeSpotRot(sec.r);
+          var matched = [];
+          spots.forEach(function (sp, i) {
+            var cx = sp.x + sp.w / 2, cy = sp.y + sp.h / 2;
+            if (cx >= sec.x - 0.01 && cx <= sec.x + sec.w + 0.01 && cy >= sec.y - 0.01 && cy <= sec.y + sec.h + 0.01 && !assigned[i]) {
+              matched.push(i); assigned[i] = true;
+            }
+          });
+          sec.spots = sortSpotIndicesUpright(spots, matched, sec.r);
+        });
+        f.sections = f.sections.filter(function (sec) { return sec.spots.length > 0; });
+        if (f.sections.length <= 1) delete f.sections;
+      }
+
+      // Apply a shot-linking recipe across sections:
+      //   'auto'   -> duplicate strips share 1..K, solo cards share #1 (when duplicate strips exist)
+      //   '3shots' -> strips = 1,2,3 (repeated), Polaroid & Wallet = 1
+      //   '4shots' -> strips = 1,2,3 (repeated), first solo = 1, second solo = 4 (or first solo = 4 if only 1 solo)
+      //   'all'    -> clear manual numbering so every spot takes its own photo
+      function applySectionShotRecipe(f, recipe) {
+        if (!f || !Array.isArray(f.spots) || !f.spots.length) return;
+        if (recipe === 'all') {
+          f.spots.forEach(function (sp) { delete sp.s; });
+          delete f.rep; f.copy = false;
+          return;
+        }
+        var secs = Array.isArray(f.sections) ? f.sections : [];
+        if (secs.length < 2) return;
+        var strips = secs.filter(function (sc) { return sc.spots && sc.spots.length >= 2; });
+        var solos = secs.filter(function (sc) { return sc.spots && sc.spots.length === 1; });
+        // Group strips by shot count to detect duplicates
+        var countMap = {};
+        strips.forEach(function (st) { var k = st.spots.length; countMap[k] = (countMap[k] || 0) + 1; });
+        var hasDupStrips = Object.keys(countMap).some(function (k) { return countMap[k] >= 2; });
+
+        if (recipe === 'auto' && !hasDupStrips) return;   // all-unique sections: don't collapse automatically
+
+        var mainK = strips.length ? strips[0].spots.length : 3;
+        if (recipe === '3shots') {
+          var lim3 = Math.min(3, Math.max(1, mainK));
+          strips.forEach(function (st) {
+            st.spots.forEach(function (si, k) { if (f.spots[si]) f.spots[si].s = (k % lim3) + 1; });
+          });
+          solos.forEach(function (so) { if (f.spots[so.spots[0]]) f.spots[so.spots[0]].s = 1; });
+          frameCompact(f);
+          return;
+        }
+        if (recipe === '4shots') {
+          var lim4 = Math.min(3, Math.max(1, mainK));
+          strips.forEach(function (st) {
+            st.spots.forEach(function (si, k) { if (f.spots[si]) f.spots[si].s = (k % lim4) + 1; });
+          });
+          if (solos.length >= 2) {
+            if (f.spots[solos[0].spots[0]]) f.spots[solos[0].spots[0]].s = 1;
+            for (var j = 1; j < solos.length; j++) {
+              if (f.spots[solos[j].spots[0]]) f.spots[solos[j].spots[0]].s = lim4 + j;
+            }
+          } else if (solos.length === 1) {
+            if (f.spots[solos[0].spots[0]]) f.spots[solos[0].spots[0]].s = lim4 + 1;
+          }
+          frameCompact(f);
+          return;
+        }
+        // 'auto' with duplicate strips
+        strips.forEach(function (st) {
+          st.spots.forEach(function (si, k) { if (f.spots[si]) f.spots[si].s = k + 1; });
+        });
+        solos.forEach(function (so) { if (f.spots[so.spots[0]]) f.spots[so.spots[0]].s = 1; });
+        frameCompact(f);
+      }
+
+      // Run auto-sectioning on a frame: detect sections, apply inferred rotations, and link duplicate strips.
+      function autoSectionFrame(f, img) {
+        if (!f || !Array.isArray(f.spots) || f.spots.length < 2) return [];
+        var secs = detectFrameSections(f, img);
+        if (secs.length <= 1) { delete f.sections; return []; }
+        f.sections = secs;
+        secs.forEach(function (sec) {
+          var r = normalizeSpotRot(sec.r);
+          sec.spots.forEach(function (si) {
+            if (!f.spots[si]) return;
+            if (r) f.spots[si].r = r; else delete f.spots[si].r;
+          });
+        });
+        applySectionShotRecipe(f, 'auto');
+        return secs;
+      }
+
+      // Apply a built-in section blueprint ('4in1-land', '4in1-port', '2hstrips', 'clear').
+      function applySectionBlueprint(f, presetId) {
+        if (!f || !Array.isArray(f.spots)) return false;
+        if (presetId === 'clear') {
+          delete f.sections; delete f.saveCuts;
+          return true;
+        }
+        var defs = {
+          '4in1-land': [
+            { id: 'sec_1', name: 'Polaroid', kind: 'polaroid', x: 0, y: 0, w: 0.5, h: 1, r: 0 },
+            { id: 'sec_2', name: 'Mini Wallet', kind: 'wallet', x: 0.5, y: 0, w: 0.5, h: 0.5, r: 270 },
+            { id: 'sec_3', name: 'Mini Strip 1', kind: 'strip', x: 0.5, y: 0.5, w: 0.5, h: 0.25, r: 270 },
+            { id: 'sec_4', name: 'Mini Strip 2', kind: 'strip', x: 0.5, y: 0.75, w: 0.5, h: 0.25, r: 270 }
+          ],
+          '4in1-port': [
+            { id: 'sec_1', name: 'Polaroid', kind: 'polaroid', x: 0, y: 0, w: 1, h: 0.5, r: 90 },
+            { id: 'sec_2', name: 'Mini Wallet', kind: 'wallet', x: 0, y: 0.5, w: 0.5, h: 0.5, r: 0 },
+            { id: 'sec_3', name: 'Mini Strip 1', kind: 'strip', x: 0.5, y: 0.5, w: 0.25, h: 0.5, r: 0 },
+            { id: 'sec_4', name: 'Mini Strip 2', kind: 'strip', x: 0.75, y: 0.5, w: 0.25, h: 0.5, r: 0 }
+          ],
+          '2hstrips': [
+            { id: 'sec_1', name: 'Strip 1', kind: 'strip', x: 0, y: 0, w: 1, h: 0.5, r: 270 },
+            { id: 'sec_2', name: 'Strip 2', kind: 'strip', x: 0, y: 0.5, w: 1, h: 0.5, r: 270 }
+          ]
+        };
+        var tpl = defs[presetId];
+        if (!tpl) return false;
+        f.sections = tpl.map(function (t) { return Object.assign({}, t, { spots: [] }); });
+        reconcileFrameSections(f);
+        if (Array.isArray(f.sections)) {
+          f.sections.forEach(function (sec) {
+            var r = normalizeSpotRot(sec.r);
+            sec.spots.forEach(function (si) {
+              if (!f.spots[si]) return;
+              if (r) f.spots[si].r = r; else delete f.spots[si].r;
+            });
+          });
+          applySectionShotRecipe(f, 'auto');
+        }
+        return true;
+      }
+
+      // Rotate all spots inside one section together and keep upright spot ordering synced.
+      function rotateSectionSpots(f, secIdx, deg) {
+        if (!f || !Array.isArray(f.sections) || !f.sections[secIdx]) return false;
+        var sec = f.sections[secIdx], r = normalizeSpotRot(deg);
+        sec.r = r;
+        sec.spots = sortSpotIndicesUpright(f.spots, sec.spots, r);
+        sec.spots.forEach(function (si) {
+          if (!f.spots[si]) return;
+          if (r) f.spots[si].r = r; else delete f.spots[si].r;
+        });
+        // If this strip has numbered shots, preserve reading order 1..K along the new upright direction
+        if (frameManual(f) && sec.spots.length >= 2) {
+          var existing = sec.spots.map(function (si) { return f.spots[si].s || 1; }).sort(function (a, b) { return a - b; });
+          sec.spots.forEach(function (si, k) { if (f.spots[si]) f.spots[si].s = existing[k]; });
+        }
+        return true;
+      }
+
+      // Deduplicate identical cuttable sections (e.g. skip a second identical Mini Strip when saving digital QR cuts or splitting frames).
+      // When frame artwork `img` is available, strips with DIFFERENT colours/designs (e.g. Royal Blue vs Dark Navy) are BOTH kept!
+      function uniqueFrameSections(f, img) {
+        if (!f || !Array.isArray(f.sections) || !f.sections.length) return [];
+        var pairs = framePairs(f);
+        var artImg = img || (typeof assetImg === 'function' ? assetImg(f.id) : null);
+        // Optional lightweight border-colour signature per section (sampled outside photo holes)
+        var samp = null;
+        if (artImg && artImg.width && artImg.height && typeof document !== 'undefined') {
+          try {
+            var S = 240, sc = Math.min(1, S / Math.max(artImg.width, artImg.height));
+            var sw = Math.max(24, Math.round(artImg.width * sc)), sh = Math.max(24, Math.round(artImg.height * sc));
+            var cv = document.createElement('canvas'); cv.width = sw; cv.height = sh;
+            var cx = cv.getContext('2d'); cx.drawImage(artImg, 0, 0, sw, sh);
+            var dt = cx.getImageData(0, 0, sw, sh).data;
+            var hm = new Uint8Array(sw * sh);
+            (f.spots || []).forEach(function (sp) {
+              var x0 = Math.max(0, Math.floor(sp.x * sw)), x1 = Math.min(sw - 1, Math.ceil((sp.x + sp.w) * sw));
+              var y0 = Math.max(0, Math.floor(sp.y * sh)), y1 = Math.min(sh - 1, Math.ceil((sp.y + sp.h) * sh));
+              for (var yy = y0; yy <= y1; yy++) for (var xx = x0; xx <= x1; xx++) hm[yy * sw + xx] = 1;
+            });
+            samp = { w: sw, h: sh, d: dt, hole: hm };
+          } catch (e) { samp = null; }
+        }
+        function sectionsLookSame(a, b) {
+          if (!samp) return true;
+          var G = 16, diff = 0, cnt = 0;
+          for (var gy = 0; gy < G; gy++) for (var gx = 0; gx < G; gx++) {
+            var ax = Math.min(samp.w - 1, Math.max(0, Math.floor((a.x + a.w * (gx + 0.5) / G) * samp.w)));
+            var ay = Math.min(samp.h - 1, Math.max(0, Math.floor((a.y + a.h * (gy + 0.5) / G) * samp.h)));
+            var bx = Math.min(samp.w - 1, Math.max(0, Math.floor((b.x + b.w * (gx + 0.5) / G) * samp.w)));
+            var by = Math.min(samp.h - 1, Math.max(0, Math.floor((b.y + b.h * (gy + 0.5) / G) * samp.h)));
+            var pa = ay * samp.w + ax, pb = by * samp.w + bx;
+            if (samp.hole[pa] || samp.hole[pb]) continue;
+            diff += (Math.abs(samp.d[pa * 4] - samp.d[pb * 4]) + Math.abs(samp.d[pa * 4 + 1] - samp.d[pb * 4 + 1]) + Math.abs(samp.d[pa * 4 + 2] - samp.d[pb * 4 + 2])) / 3;
+            cnt++;
+          }
+          return cnt < 16 ? true : (1 - (diff / cnt) / 255) >= 0.88;
+        }
+        var seen = {}, out = [];
+        f.sections.forEach(function (sec) {
+          if (!sec || !sec.spots || !sec.spots.length) return;
+          var shotSig = sec.spots.map(function (si) { return pairs ? pairs[si] : si; }).join(',');
+          var sig = sec.kind + '|' + sec.spots.length + '|' + Math.round(sec.w * 20) + 'x' + Math.round(sec.h * 20) + '|' + normalizeSpotRot(sec.r) + '|' + shotSig;
+          if (sec.spots.length >= 2 && seen[sig] && seen[sig].some(function (prev) { return sectionsLookSame(prev, sec); })) return;
+          (seen[sig] = seen[sig] || []).push(sec);
+          out.push(sec);
+        });
+        return out;
+      }
+
+      // Crop one section out of a rendered (or original) canvas and auto-rotate it upright.
+      function renderUprightSection(src, sec) {
+        var W = src.width || src.naturalWidth, H = src.height || src.naturalHeight;
+        var sx = Math.max(0, Math.round(sec.x * W)), sy = Math.max(0, Math.round(sec.y * H));
+        var sw = Math.max(2, Math.min(W - sx, Math.round(sec.w * W)));
+        var sh = Math.max(2, Math.min(H - sy, Math.round(sec.h * H)));
+        var upRot = (360 - normalizeSpotRot(sec.r)) % 360;
+        var quarter = (upRot === 90 || upRot === 270);
+        var out = document.createElement('canvas');
+        out.width = quarter ? sh : sw;
+        out.height = quarter ? sw : sh;
+        var ctx = out.getContext('2d');
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        ctx.save();
+        ctx.translate(out.width / 2, out.height / 2);
+        if (upRot) ctx.rotate(upRot * Math.PI / 180);
+        ctx.drawImage(src, sx, sy, sw, sh, -sw / 2, -sh / 2, sw, sh);
+        ctx.restore();
+        return out;
+      }
+
+      // Transform a spot's normalized coords from the full frame into a cropped & upright-rotated section frame.
+      function transformSpotToUprightSection(sp, sec) {
+        var upRot = (360 - normalizeSpotRot(sec.r)) % 360;
+        var lx = ((sp.x + sp.w / 2) - sec.x) / Math.max(0.001, sec.w);
+        var ly = ((sp.y + sp.h / 2) - sec.y) / Math.max(0.001, sec.h);
+        var lw = sp.w / Math.max(0.001, sec.w);
+        var lh = sp.h / Math.max(0.001, sec.h);
+        var nx = lx, ny = ly, nw = lw, nh = lh;
+        if (upRot === 90) { nx = 1 - ly; ny = lx; nw = lh; nh = lw; }
+        else if (upRot === 180) { nx = 1 - lx; ny = 1 - ly; }
+        else if (upRot === 270) { nx = ly; ny = 1 - lx; nw = lh; nh = lw; }
+        var r4 = function (v) { return Math.round(v * 10000) / 10000; };
+        var res = {
+          x: r4(Math.max(0, Math.min(1 - 0.01, nx - nw / 2))),
+          y: r4(Math.max(0, Math.min(1 - 0.01, ny - nh / 2))),
+          w: r4(Math.max(0.02, Math.min(1, nw))),
+          h: r4(Math.max(0.02, Math.min(1, nh)))
+        };
+        if (sp.a) res.a = sp.a;
+        var remR = (normalizeSpotRot(sp.r) + upRot) % 360;
+        if (remR) res.r = remR;
+        return res;
+      }
+
+      // Phase 3B: Split a sectioned multi-layout frame into separate upright standalone frames in myFrames.
+      async function splitFrameIntoSections(f) {
+        if (!f || !Array.isArray(f.sections) || f.sections.length < 2) {
+          showToast('Auto-section this frame first before splitting.', 3000);
+          return [];
+        }
+        var img = assetImg(f.id);
+        if (!img) { showToast('Frame image is still loading. Try again in a moment.', 3000); return []; }
+        var cuts = uniqueFrameSections(f, img);
+        if (!cuts.length) return [];
+        if (myFrames.length + cuts.length > MAX_FRAMES) {
+          showToast('Not enough room in Your frames (limit ' + MAX_FRAMES + '). Remove old frames first.', 4000);
+          return [];
+        }
+        var baseName = (f.name || 'Frame').trim().slice(0, 22);
+        var created = [];
+        for (var i = 0; i < cuts.length; i++) {
+          var sec = cuts[i];
+          var cv = renderUprightSection(img, sec);
+          var url = cv.toDataURL('image/png');
+          var aid = await addAsset(url);
+          var newSpots = sec.spots.map(function (si) { return transformSpotToUprightSection(f.spots[si], sec); });
+          var nf = {
+            id: aid,
+            name: (baseName + ' - ' + sec.name).slice(0, 40),
+            w: cv.width,
+            h: cv.height,
+            spots: newSpots,
+            tier: f.tier || 'all',
+            color: f.color
+          };
+          if (f.key) nf.key = { c: f.key.c.slice(), t: f.key.t };
+          myFrames.push(nf);
+          created.push(nf);
+        }
+        framesChanged({ layout: 'myframe' });
+        showToast('Split into ' + created.length + ' upright frame' + (created.length === 1 ? '' : 's') + '! Find them in Your frames (or arrange in Frame collage).', 5500);
+        return created;
+      }
+
+      if (typeof window !== 'undefined') {
+        window.__frameSections = {
+          normalizeSpotRot: normalizeSpotRot,
+          spotRotLabel: spotRotLabel,
+          sortSpotIndicesUpright: sortSpotIndicesUpright,
+          detectFrameSections: detectFrameSections,
+          autoSectionFrame: autoSectionFrame,
+          applySectionBlueprint: applySectionBlueprint,
+          applySectionShotRecipe: applySectionShotRecipe,
+          rotateSectionSpots: rotateSectionSpots,
+          reconcileFrameSections: reconcileFrameSections,
+          uniqueFrameSections: uniqueFrameSections,
+          renderUprightSection: renderUprightSection,
+          transformSpotToUprightSection: transformSpotToUprightSection,
+          frameStrips: frameStrips,
+          frameShotCount: frameShotCount,
+          framePairs: framePairs
+        };
       }
       // Start numbering by hand: with "every strip repeats" on, keep those numbers; otherwise each strip gets
       // its own run of numbers (1-3, 4-6, ...) so strips can then be linked to each other.
@@ -64392,7 +65464,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               var cw = cr[2] - cr[0] + 1, ch = cr[3] - cr[1] + 1;
               var csides = (cr[0] === 0) + (cr[2] >= w - 1) + (cr[1] === 0) + (cr[3] >= h - 1);
               if (csides > 3 || cw * ch > n * 0.45) return;
-              if (cw < w * 0.08 || ch < h * 0.04 || cw * ch < n * 0.008) return;
+              if (cw < w * 0.048 || ch < h * 0.035 || cw * ch < n * 0.004) return;
               spots.push({ x: cr[0] / w, y: cr[1] / h, w: cw / w, h: ch / h, _exact: true });
             });
             continue;
@@ -64402,7 +65474,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           // those when they're a solid rectangle and not most of the image.
           var sides = (minX === 0) + (maxX === w - 1) + (minY === 0) + (maxY === h - 1);
           if (edge && !(cnt / (bw * bh) >= 0.9 && bw * bh < n * 0.45 && sides <= 3)) continue;
-          if (bw < w * 0.08 || bh < h * 0.04 || bw * bh < n * 0.008) continue;   // text, specks
+          if (bw < w * 0.048 || bh < h * 0.035 || bw * bh < n * 0.004) continue;   // text, specks (still catches 4-shot mini strips)
+          var smallSpot = (bw < w * 0.08 || bw * bh < n * 0.008);
+          if (smallSpot && cnt / (bw * bh) < 0.80) continue;   // tiny shapes must be crisp rectangles, not text blobs
           // A tilted photo window: the smallest turned box around it.
           var tb = null;
           if (cnt > 60 && cnt / (bw * bh) < 0.97) {             // a straight box fills its outline: skip
@@ -64537,7 +65611,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         } catch (e) { }
         return c;
       }
-      function spotsKey(f) { return f.spots.map(function (s) { return [s.x, s.y, s.w, s.h].map(function (v) { return v.toFixed(4); }).join(',') + (s.a ? '@' + s.a : '') + (s.z ? '^' + s.z : ''); }).join(';') + (f.key ? '#' + f.key.c.join('.') + ':' + f.key.t : ''); }
+      function spotsKey(f) { return f.spots.map(function (s) { return [s.x, s.y, s.w, s.h].map(function (v) { return v.toFixed(4); }).join(',') + (s.a ? '@' + s.a : '') + (s.r ? 'r' + normalizeSpotRot(s.r) : '') + (s.z ? '^' + s.z : ''); }).join(';') + (f.key ? '#' + f.key.c.join('.') + ':' + f.key.t : ''); }
       function frameArt(f) {
         var img = assetImg(f.id); if (!img) return null;
         var c = FRAME_CACHE[f.id], key = spotsKey(f);
@@ -64626,19 +65700,22 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var si = pairs ? pairs[i] : i;
           var shot = shots[si] || shots[si % Math.max(1, shots.length)];
           var g = spotPx(sp, w, h), mask = masks && masks.list[i];
+          var rotDeg = normalizeSpotRot(sp.r), quarter = (rotDeg === 90 || rotDeg === 270);
+          var drawW = quarter ? g.h : g.w, drawH = quarter ? g.w : g.h;
           // With its window known, the photo is drawn slightly bigger (covers soft
           // window corners) and then cut to the window, so it never spills over or zooms heads out.
           var e = mask ? Math.max(2, Math.max(g.w, g.h) * 0.008) : Math.max(1, w * 0.003);
           var paint = function (c2, ox, oy) {
-            c2.save(); c2.translate(ox + g.cx, oy + g.cy); if (g.a) c2.rotate(g.a);
+            c2.save(); c2.translate(ox + g.cx, oy + g.cy);
+            if (g.a || rotDeg) c2.rotate(g.a + rotDeg * Math.PI / 180);
             if (shot) {
-              if (BOX_PROBE && BOX_PROBE.set.has(shot) && g.w > 0 && g.h > 0) {
-                if (!BOX_PROBE.aspect) BOX_PROBE.aspect = g.w / g.h;
-                if (BOX_PROBE.per && !BOX_PROBE.per.has(shot)) BOX_PROBE.per.set(shot, g.w / g.h);
+              if (BOX_PROBE && BOX_PROBE.set.has(shot) && drawW > 0 && drawH > 0) {
+                if (!BOX_PROBE.aspect) BOX_PROBE.aspect = drawW / drawH;
+                if (BOX_PROBE.per && !BOX_PROBE.per.has(shot)) BOX_PROBE.per.set(shot, drawW / drawH);
               }
-              drawImageCover(c2, shot, -g.w / 2 - e, -g.h / 2 - e, g.w + 2 * e, g.h + 2 * e);
+              drawImageCover(c2, shot, -drawW / 2 - e, -drawH / 2 - e, drawW + 2 * e, drawH + 2 * e);
             }
-            else { c2.fillStyle = '#e8e2d8'; c2.fillRect(-g.w / 2 - e, -g.h / 2 - e, g.w + 2 * e, g.h + 2 * e); }
+            else { c2.fillStyle = '#e8e2d8'; c2.fillRect(-drawW / 2 - e, -drawH / 2 - e, drawW + 2 * e, drawH + 2 * e); }
             c2.restore();
           };
           if (!mask) { paint(ctx, x, y); return; }
@@ -64702,7 +65779,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
       // ---- Arranging frames on the 4R sheet ----
       function fitItem(f, r, cell) {
-        var inset = 0.012;
+        var inset = (sheet && sheet.bleed) ? 0 : 0.012;
         var cw = (cell[2] - 2 * inset) * SW(), ch = (cell[3] - 2 * inset) * SH();
         var rot = Math.round(r / 90) % 2 !== 0, bw = rot ? f.h : f.w, bh = rot ? f.w : f.h;
         var sc = Math.min(cw / bw, ch / bh);
@@ -64735,11 +65812,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var uses = {}, total = 0;
         var items = cells.map(function (cell) {
           var cw = cell[2] * SW(), ch = cell[3] * SH(), best = null;
+          // Prefer -90° (270) on sideways right-side cells so footers sit on the right edge (standard 4-in-1 cutting convention).
+          var rots = (sheet && sheet.orient === 'landscape') ? [0, 270] : [0, 90];
           frames.forEach(function (f) {
-            [0, 90].forEach(function (r) {
-              var fw = r ? f.h : f.w, fh = r ? f.w : f.h, k = Math.min(cw / fw, ch / fh);
+            rots.forEach(function (r) {
+              var quarter = (r === 90 || r === 270);
+              var fw = quarter ? f.h : f.w, fh = quarter ? f.w : f.h, k = Math.min(cw / fw, ch / fh);
               var fill = (fw * k * fh * k) / (cw * ch);
-              var score = fill - (r ? 0.04 : 0) - (strict ? 0.6 : 0.03) * (uses[f.id] || 0);
+              var score = fill - (quarter ? 0.04 : 0) - (strict ? 0.6 : 0.03) * (uses[f.id] || 0);
               if (!best || score > best.score) best = { f: f, r: r, score: score, fill: fill };
             });
           });
@@ -64756,8 +65836,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!myFrames.length) { sheet.items = []; return; }
         var picked = framesFromIds(ids || sheetFrameIds());
         var frames = picked.length ? picked : myFrames;
+        var pCells = patternCells(pat);
         // A pattern tapped by hand is used as is; an automatic pick with more frames than spots gets a grid.
-        var cells = (!ids || pat.cells.length >= frames.length || !picked.length) ? pat.cells : gridCells(frames.length);
+        var cells = (!ids || pCells.length >= frames.length || !picked.length) ? pCells : gridCells(frames.length);
         sheet.items = assignCells(cells, frames, !!picked.length).items;
         selItem = -1;
       }
@@ -64765,8 +65846,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function bestPatternFor(ids) {
         var frames = framesFromIds(ids), n = frames.length, best = null;
         SHEET_PATTERNS.forEach(function (p) {
-          if (p.cells.length < n) return;
-          var score = assignCells(p.cells, frames, true).fill - 0.3 * (p.cells.length - n);
+          var pCells = patternCells(p);
+          if (pCells.length < n) return;
+          var score = assignCells(pCells, frames, true).fill - 0.3 * (pCells.length - n);
           if (!best || score > best.score) best = { id: p.id, score: score };
         });
         return best ? best.id : 'four';
@@ -64924,6 +66006,50 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           });
           btns.append(ed, prevBtn, rm);
           ctx.append(top, btns);
+          // Multi-section summary & Phase 3 actions (save upright cuts to QR/gallery, split into separate frames)
+          if (Array.isArray(f.sections) && f.sections.length > 1) {
+            var sBox = document.createElement('div'); sBox.className = 'frame-sec-summary';
+            var sHead = document.createElement('div'); sHead.className = 'sec-head';
+            var sTitle = document.createElement('b'); sTitle.textContent = '\u2728 ' + f.sections.length + ' sections detected (' + frameShotCount(f) + ' shot' + (frameShotCount(f) === 1 ? '' : 's') + ')';
+            var sSplitBtn = document.createElement('button'); sSplitBtn.type = 'button'; sSplitBtn.className = 'action-btn mini';
+            sSplitBtn.textContent = '\u2702\uFE0F Split into separate frames';
+            sSplitBtn.title = 'Crop each unique section upright and add it to Your frames (great for Guest Choice, Keychains or Frame collage)';
+            sSplitBtn.addEventListener('click', function () { splitFrameIntoSections(f); });
+            sHead.append(sTitle, sSplitBtn);
+            var sTags = document.createElement('div'); sTags.className = 'sec-tags';
+            f.sections.forEach(function (sec) {
+              var tg = document.createElement('span'); tg.className = 'sec-tag';
+              tg.textContent = sec.name + ' (' + sec.spots.length + ') \u00B7 ' + spotRotLabel(sec.r);
+              sTags.appendChild(tg);
+            });
+            var sActs = document.createElement('div'); sActs.className = 'sec-acts';
+            var cutLbl = document.createElement('label');
+            cutLbl.style.cssText = 'display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer;';
+            var cutCb = document.createElement('input'); cutCb.type = 'checkbox'; cutCb.checked = !!f.saveCuts;
+            cutCb.addEventListener('change', function () {
+              f.saveCuts = cutCb.checked ? true : undefined;
+              scheduleSetupSave();
+              showToast(cutCb.checked ? 'Guests will also get cut upright pieces in their QR & Gallery (full 4\u00D76 sheet still prints intact).' : 'Only the full combined print will be saved to QR & Gallery.', 3500);
+            });
+            cutLbl.append(cutCb, document.createTextNode('Also save cut upright pieces to QR & Gallery (skips duplicate strips)'));
+            sActs.appendChild(cutLbl);
+            sBox.append(sHead, sTags, sActs);
+            ctx.appendChild(sBox);
+          } else if (f.spots.length >= 2) {
+            var autoRow = document.createElement('div');
+            autoRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;';
+            var autoBtn = document.createElement('button'); autoBtn.type = 'button'; autoBtn.className = 'action-btn mini';
+            autoBtn.textContent = '\u2728 Auto-section (4-in-1 / strips)';
+            autoBtn.title = 'Detect cuttable sections (Polaroid, Mini Wallet, Mini Strips), rotate sideways spots and link duplicate strips';
+            autoBtn.addEventListener('click', function () {
+              var secs = autoSectionFrame(f, assetImg(f.id));
+              if (!secs.length) { showToast('No separate cuttable sections detected. Open Edit photo spots to pick a blueprint (e.g. 4-in-1) or rotate individual spots.', 4500); return; }
+              framesChanged({ layout: 'myframe' });
+              showToast('Auto-sectioned into ' + secs.length + ' sections (' + frameShotCount(f) + ' shots). Open Edit photo spots to fine-tune.', 4000);
+            });
+            autoRow.appendChild(autoBtn);
+            ctx.appendChild(autoRow);
+          }
           if (frameManual(f)) {
             var mn = document.createElement('div');
             mn.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12.5px;font-weight:600;margin-top:8px;';
@@ -65056,19 +66182,45 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       });
       function buildSheetPatterns() {
         sheetSizeSel.value = sheetSize;
+        var pBtn = document.getElementById('sheetOrientPort'), lBtn = document.getElementById('sheetOrientLand'), blChk = document.getElementById('sheetBleedChk');
+        if (pBtn) pBtn.classList.toggle('active', sheet.orient !== 'landscape');
+        if (lBtn) lBtn.classList.toggle('active', sheet.orient === 'landscape');
+        if (blChk) blChk.checked = !!sheet.bleed;
         sheetPatternsEl.innerHTML = '';
         SHEET_PATTERNS.forEach(function (p) {
           var b = document.createElement('button'); b.type = 'button'; b.className = 'pattern-btn' + (sheet.pattern === p.id ? ' active' : ''); b.title = p.name;
-          var th = Math.round(40 * SH() / SW());
-          var c = document.createElement('canvas'); c.width = 40; c.height = th;
-          var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 40, th);
-          p.cells.forEach(function (cell) { x.fillStyle = '#1C1A1E'; x.fillRect(cell[0] * 40 + 1.5, cell[1] * th + 1.5, cell[2] * 40 - 3, cell[3] * th - 3); });
+          var tw = sheet.orient === 'landscape' ? 54 : 40;
+          var th = Math.round(tw * SH() / SW());
+          var c = document.createElement('canvas'); c.width = tw; c.height = th;
+          var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, tw, th);
+          patternCells(p).forEach(function (cell) { x.fillStyle = '#1C1A1E'; x.fillRect(cell[0] * tw + 1.5, cell[1] * th + 1.5, cell[2] * tw - 3, cell[3] * th - 3); });
           var s = document.createElement('span'); s.textContent = p.name;
           b.append(c, s);
           b.addEventListener('click', function () { applyPattern(p.id); framesChanged({ layout: 'framesheet' }); });
           sheetPatternsEl.appendChild(b);
         });
         buildSheetPresetUI();
+      }
+      var sheetOrientRowEl = document.getElementById('sheetOrientRow');
+      if (sheetOrientRowEl) {
+        sheetOrientRowEl.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-sorient]'); if (!b) return;
+          var next = b.dataset.sorient === 'landscape' ? 'landscape' : 'portrait';
+          if (sheet.orient === next) return;
+          sheet.orient = next;
+          var ids = sheetFrameIds();
+          applyPattern(sheet.pattern, ids.length ? ids : null);
+          framesChanged({ layout: 'framesheet' });
+        });
+      }
+      var sheetBleedChkEl = document.getElementById('sheetBleedChk');
+      if (sheetBleedChkEl) {
+        sheetBleedChkEl.addEventListener('change', function () {
+          sheet.bleed = !!sheetBleedChkEl.checked;
+          var ids = sheetFrameIds();
+          applyPattern(sheet.pattern, ids.length ? ids : null);
+          framesChanged({ layout: 'framesheet' });
+        });
       }
       function buildSheetPresetUI() {
         ensureDefaultSheetPreset();
@@ -65082,7 +66234,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           opt.value = p.id;
           var sh = presetShotCount(p);
           var pPaper = (paperFor(p.paper) && paperFor(p.paper).name) || p.paper || 'A4';
-          opt.textContent = p.name + ' (' + sh + (sh === 1 ? ' shot' : ' shots') + ', ' + pPaper + ')';
+          opt.textContent = p.name + ' (' + sh + (sh === 1 ? ' shot' : ' shots') + ', ' + pPaper + (p.orient === 'landscape' ? ' Landscape' : '') + ')';
           if (p.id === activeSheetPresetId) opt.selected = true;
           sel.appendChild(opt);
         });
@@ -65147,8 +66299,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         items.forEach(function (it, i) {
           var f = frameById(fids[(i + fids.length - 1) % fids.length]), b = boxes[i];
           var best = null;
-          [0, 90].forEach(function (r) {
-            var fw = r ? f.h : f.w, fh = r ? f.w : f.h, k = Math.min(b.bw / fw, b.bh / fh);
+          var shRots = (sheet && sheet.orient === 'landscape') ? [0, 270] : [0, 90];
+          shRots.forEach(function (r) {
+            var quarter = (r === 90 || r === 270);
+            var fw = quarter ? f.h : f.w, fh = quarter ? f.w : f.h, k = Math.min(b.bw / fw, b.bh / fh);
             if (!best || k * fw * k * fh > best.a) best = { r: r, a: k * fw * k * fh, s: f.w * k / SW() };
           });
           it.f = f.id; it.r = best.r; it.s = best.s; it.cx = b.cx; it.cy = b.cy;
@@ -65189,15 +66343,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (f.spots.length >= MAX_SPOTS) { showToast('Up to ' + MAX_SPOTS + ' photo spots.'); return; }
         var nsp = { x: 0.3, y: 0.35, w: 0.4, h: 0.25 };
         if (frameManual(f)) nsp.s = Math.min(MAX_SPOTS, Math.max.apply(null, f.spots.map(function (o) { return o.s || 0; })) + 1);   // numbered by hand: a new box is a new photo
-        f.spots.push(nsp); spotEdit.sel = f.spots.length - 1; framesChanged({ layout: 'myframe' });
+        f.spots.push(nsp); spotEdit.sel = f.spots.length - 1; reconcileFrameSections(f); framesChanged({ layout: 'myframe' });
       });
-      // Copy the selected box (same size, tilt and layer), nudged a little so you can see it; it becomes the next shot.
+      // Copy the selected box (same size, tilt, photo rotation and layer), nudged a little so you can see it; it becomes the next shot.
       document.getElementById('spotCopy').addEventListener('click', function () {
         var f = spotEdit && frameById(spotEdit.f); if (!f) return;
         var src = f.spots[spotEdit.sel]; if (!src) { showToast('Tap a box first, then Copy spot.'); return; }
         if (f.spots.length >= MAX_SPOTS) { showToast('Up to ' + MAX_SPOTS + ' photo spots.'); return; }
         var c = { x: src.x, y: src.y, w: src.w, h: src.h };
         if (src.a) c.a = src.a;
+        if (src.r) c.r = normalizeSpotRot(src.r);
         if (src.z) c.z = src.z;
         if (src.s) c.s = src.s;   // numbered by hand: the copy shows the same photo
         var dx = 0.03, dy = 0.02;
@@ -65205,21 +66360,24 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           c.x = c.x + c.w + dx <= 1 ? c.x + dx : Math.max(0, c.x - dx);
           c.y = c.y + c.h + dy <= 1 ? c.y + dy : Math.max(0, c.y - dy);
         } else { c.x += dx; c.y += dy; }
-        f.spots.push(c); spotEdit.sel = f.spots.length - 1; framesChanged({ layout: 'myframe' });
+        f.spots.push(c); spotEdit.sel = f.spots.length - 1; reconcileFrameSections(f); framesChanged({ layout: 'myframe' });
         showToast('Copied as photo ' + f.spots.length + '. Drag it where you want it.', 2200);
       });
       document.getElementById('spotDel').addEventListener('click', function () {
         var f = spotEdit && frameById(spotEdit.f); if (!f || spotEdit.sel < 0) { showToast('Tap a box first.'); return; }
         if (f.spots.length <= 1) { showToast('A frame needs at least one photo spot.'); return; }
-        f.spots.splice(spotEdit.sel, 1); spotEdit.sel = -1; framesChanged({ layout: 'myframe' });
+        f.spots.splice(spotEdit.sel, 1); spotEdit.sel = -1; reconcileFrameSections(f); framesChanged({ layout: 'myframe' });
       });
       document.getElementById('spotRedetect').addEventListener('click', function () {
         var f = spotEdit && frameById(spotEdit.f), img = f && assetImg(f.id); if (!img) return;
         var s = detectSpots(img, f.key);
         if (!s.length) { showToast(f.key ? 'No areas of the picked colour found. Raise \u201cMatch\u201d, or pick the colour again.' : 'No white or see-through boxes found in this frame. Tap \u201cPick window colour\u201d, then tap a photo window.'); return; }
-        f.spots = s; spotEdit.sel = -1; framesChanged({ layout: 'myframe' });
+        f.spots = s; delete f.sections; spotEdit.sel = -1; spotEdit.sec = -1;
+        var secs = autoSectionFrame(f, img);
+        framesChanged({ layout: 'myframe' });
         var turned = s.filter(function (p) { return p.a; }).length;
-        showToast('Found ' + s.length + ' photo spot' + (s.length === 1 ? '' : 's') + (turned ? ' (' + turned + ' tilted, turned to match)' : '') + '.', 3500);
+        var rotCnt = s.filter(function (p) { return p.r; }).length;
+        showToast('Found ' + s.length + ' photo spot' + (s.length === 1 ? '' : 's') + (secs.length > 1 ? ' in ' + secs.length + ' sections' : '') + (rotCnt ? ' (' + rotCnt + ' rotated)' : '') + (turned ? ' (' + turned + ' tilted)' : '') + '.', 4000);
       });
       document.getElementById('spotDone').addEventListener('click', function () { spotEdit = null; refreshFrameUI(); renderSetupPreview(); });
       // Order and split the selected spot; exact position/size in % of the frame.
@@ -65228,6 +66386,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var f = selSpot(); if (!f) return;
         var i = spotEdit.sel, j = i + step; if (j < 0 || j >= f.spots.length) return;
         var t = f.spots[i]; f.spots[i] = f.spots[j]; f.spots[j] = t; spotEdit.sel = j;
+        reconcileFrameSections(f);
         framesChanged({ layout: 'myframe' });
       }
       function splitSpot(nx, ny) {
@@ -65236,6 +66395,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var sp = f.spots[spotEdit.sel], parts = [], g = spotPx(sp, f.w, f.h), ca = Math.cos(g.a), sa = Math.sin(g.a);
         for (var r = 0; r < ny; r++) for (var c = 0; c < nx; c++) {
           var lx = -g.w / 2 + g.w * (c + 0.5) / nx, ly = -g.h / 2 + g.h * (r + 0.5) / ny, part = { a: sp.a || 0 };
+          if (sp.r) part.r = normalizeSpotRot(sp.r);
           if (sp.z) part.z = sp.z;
           if (sp.s) part.s = sp.s;
           setSpotPx(part, f, g.cx + lx * ca - ly * sa, g.cy + lx * sa + ly * ca, g.w / nx, g.h / ny);
@@ -65243,6 +66403,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           parts.push(part);
         }
         f.spots.splice.apply(f.spots, [spotEdit.sel, 1].concat(parts));
+        reconcileFrameSections(f);
         framesChanged({ layout: 'myframe' });
       }
       // Layer: which photo shows on top where boxes overlap (doesn't change the shot order).
@@ -65264,19 +66425,139 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       document.getElementById('spotSplitX').addEventListener('click', function () { splitSpot(2, 1); });
       document.getElementById('spotSplitY').addEventListener('click', function () { splitSpot(1, 2); });
       document.getElementById('spotSplit4').addEventListener('click', function () { splitSpot(2, 2); });
+      var spotShowSec = true;
       var spotSizeEl = document.getElementById('spotSize'), spotNum = { x: 'spotX', y: 'spotY', w: 'spotW', h: 'spotH' };
+      function refreshSpotSecUI() {
+        var chipsEl = document.getElementById('spotSecChips');
+        var rotRow = document.getElementById('spotSecRotRow');
+        var recRow = document.getElementById('spotSecRecipes');
+        var showRow = document.getElementById('spotShowSecRow');
+        if (!chipsEl) return;
+        var f = spotEdit && frameById(spotEdit.f);
+        var secs = (f && Array.isArray(f.sections) && f.sections.length > 1) ? f.sections : [];
+        chipsEl.innerHTML = '';
+        if (!secs.length) {
+          if (rotRow) rotRow.style.display = 'none';
+          if (recRow) recRow.style.display = 'none';
+          if (showRow) showRow.style.display = 'none';
+          return;
+        }
+        if (spotEdit && (typeof spotEdit.sec !== 'number' || spotEdit.sec >= secs.length)) spotEdit.sec = -1;
+        secs.forEach(function (sec, idx) {
+          var b = document.createElement('button'); b.type = 'button';
+          var isOn = spotEdit && spotEdit.sec === idx;
+          b.className = 'spot-sec-chip' + (isOn ? ' active' : '');
+          b.innerHTML = '<span>' + sec.name + ' (' + sec.spots.length + ')</span><span class="sec-rot">' + spotRotLabel(sec.r) + '</span>';
+          b.addEventListener('click', function () {
+            if (!spotEdit) return;
+            spotEdit.sec = (spotEdit.sec === idx) ? -1 : idx;
+            if (spotEdit.sec >= 0 && sec.spots.length) spotEdit.sel = sec.spots[0];
+            refreshSpotSize();
+            renderSetupPreview();
+          });
+          chipsEl.appendChild(b);
+        });
+        if (recRow) recRow.style.display = '';
+        if (showRow) showRow.style.display = '';
+        var selSec = (spotEdit && spotEdit.sec >= 0) ? secs[spotEdit.sec] : null;
+        if (rotRow) {
+          rotRow.style.display = selSec ? 'flex' : 'none';
+          if (selSec) {
+            var lbl = document.getElementById('spotSecSelLabel');
+            if (lbl) lbl.textContent = selSec.name + ' (' + selSec.spots.length + '):';
+            var curSr = normalizeSpotRot(selSec.r);
+            rotRow.querySelectorAll('[data-sec-rot]').forEach(function (btn) {
+              btn.classList.toggle('active', Number(btn.dataset.secRot) === curSr);
+            });
+          }
+        }
+      }
       function refreshSpotSize() {
         if (!spotSizeEl) return;
         var f = spotEdit && frameById(spotEdit.f), sp = f && f.spots[spotEdit.sel];
         spotSizeEl.style.display = sp ? 'flex' : 'none';
         try { refreshKeyUI(); } catch (e) { }
+        try { refreshSpotSecUI(); } catch (e) { }
         if (!sp) return;
         Object.keys(spotNum).forEach(function (k) { var el = document.getElementById(spotNum[k]); if (document.activeElement !== el) el.value = Math.round(sp[k] * 1000) / 10; });
         var ae = document.getElementById('spotA'); if (ae && document.activeElement !== ae) ae.value = sp.a || 0;
+        var curR = normalizeSpotRot(sp.r);
+        document.querySelectorAll('#spotRotRow [data-spot-rot]').forEach(function (btn) {
+          btn.classList.toggle('active', Number(btn.dataset.spotRot) === curR);
+        });
         var pe = document.getElementById('spotShot');
         if (pe && document.activeElement !== pe) { var pm = framePairs(f); pe.value = (pm ? pm[spotEdit.sel] : spotEdit.sel) + 1; }
         var cb2 = document.getElementById('spotCopyStrip'); if (cb2) cb2.classList.toggle('primary', !!spotEdit.copyFrom);
       }
+      // 1-tap Photo rotation (0° / +90° / 180° / -90°) for the selected spot (keeps the detected box locked to the window!).
+      var spotRotRowEl = document.getElementById('spotRotRow');
+      if (spotRotRowEl) {
+        spotRotRowEl.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-spot-rot]'); if (!b) return;
+          var f = selSpot(); if (!f) return;
+          var sp = f.spots[spotEdit.sel], r = normalizeSpotRot(b.dataset.spotRot);
+          if (r) sp.r = r; else delete sp.r;
+          // If this spot is the only spot in its section, keep section rotation in sync too
+          if (Array.isArray(f.sections)) {
+            f.sections.forEach(function (sec) {
+              if (sec.spots && sec.spots.length === 1 && sec.spots[0] === spotEdit.sel) sec.r = r;
+            });
+          }
+          framesChanged({ layout: 'myframe' });
+          showToast('Photo rotation set to ' + spotRotLabel(r) + '.', 1800);
+        });
+      }
+      var spotAutoSecBtn = document.getElementById('spotAutoSec');
+      if (spotAutoSecBtn) {
+        spotAutoSecBtn.addEventListener('click', function () {
+          var f = spotEdit && frameById(spotEdit.f); if (!f) return;
+          var secs = autoSectionFrame(f, assetImg(f.id));
+          spotEdit.sec = secs.length > 1 ? 0 : -1;
+          framesChanged({ layout: 'myframe' });
+          if (secs.length > 1) {
+            showToast('Auto-sectioned into ' + secs.length + ' sections (' + frameShotCount(f) + ' shots). Tap any section chip to rotate all spots in it together.', 4500);
+          } else {
+            showToast('No separate sections auto-detected. Use the blueprint menu (e.g. 4-in-1) or rotate individual boxes below.', 4500);
+          }
+        });
+      }
+      var spotSecPresetEl = document.getElementById('spotSecPreset');
+      if (spotSecPresetEl) {
+        spotSecPresetEl.addEventListener('change', function () {
+          var val = spotSecPresetEl.value; spotSecPresetEl.value = '';
+          if (!val) return;
+          var f = spotEdit && frameById(spotEdit.f); if (!f) return;
+          applySectionBlueprint(f, val);
+          spotEdit.sec = (f.sections && f.sections.length > 1) ? 0 : -1;
+          framesChanged({ layout: 'myframe' });
+          showToast(val === 'clear' ? 'Sections cleared.' : ('Applied blueprint (' + (f.sections ? f.sections.length : 0) + ' sections, ' + frameShotCount(f) + ' shots).'), 3500);
+        });
+      }
+      var spotSecRotRowEl = document.getElementById('spotSecRotRow');
+      if (spotSecRotRowEl) {
+        spotSecRotRowEl.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-sec-rot]'); if (!b || !spotEdit || spotEdit.sec < 0) return;
+          var f = frameById(spotEdit.f); if (!f) return;
+          var r = normalizeSpotRot(b.dataset.secRot);
+          if (rotateSectionSpots(f, spotEdit.sec, r)) {
+            framesChanged({ layout: 'myframe' });
+            showToast(f.sections[spotEdit.sec].name + ' rotated to ' + spotRotLabel(r) + '.', 2200);
+          }
+        });
+      }
+      [['spotRec3', '3shots', 'Linked for 3 shots (strips share 1-2-3; Polaroid/Wallet = 1).'],
+       ['spotRec4', '4shots', 'Linked for 4 shots (distinct Polaroid & Wallet + 3-shot strips).'],
+       ['spotRecAll', 'all', 'Unlinked: every spot takes its own photo.']].forEach(function (cfg) {
+        var el = document.getElementById(cfg[0]);
+        if (el) el.addEventListener('click', function () {
+          var f = spotEdit && frameById(spotEdit.f); if (!f) return;
+          applySectionShotRecipe(f, cfg[1]);
+          framesChanged({ layout: 'myframe' });
+          showToast(cfg[2] + ' (' + frameShotCount(f) + ' shots)', 3000);
+        });
+      });
+      var spotShowSecEl = document.getElementById('spotShowSec');
+      if (spotShowSecEl) spotShowSecEl.addEventListener('change', function (e) { spotShowSec = e.target.checked; renderSetupPreview(); });
       // Photo # of the selected box: boxes with the same number show the same photo.
       document.getElementById('spotShot').addEventListener('change', function (e) {
         var f = spotEdit && frameById(spotEdit.f), sp = f && f.spots[spotEdit.sel]; if (!sp) return;
@@ -65420,11 +66701,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var img = assetImg(f.id); if (!img) return;
         f.color = frameHasColour(img, f.key);          // with the picked window colour left out
         var found = detectSpots(img, f.key);
-        if (found.length) { f.spots = found; spotEdit.sel = -1; }
+        if (found.length) {
+          f.spots = found; delete f.sections;
+          if (spotEdit) { spotEdit.sel = -1; spotEdit.sec = -1; }
+          if (found.length >= 2) { try { autoSectionFrame(f, img); } catch (e) { } }
+        }
         framesChanged({ layout: 'myframe' });
         if (!quiet) {
           var turned = found.filter(function (p) { return p.a; }).length;
-          showToast(found.length ? 'Found ' + found.length + ' photo window' + (found.length === 1 ? '' : 's') + (turned ? ' (' + turned + ' tilted, turned to match)' : '') + '. Check the blue areas.' : 'No windows of that colour found. Raise \u201cMatch\u201d or pick again. Your boxes were kept.', 4500);
+          var secN = Array.isArray(f.sections) && f.sections.length > 1 ? f.sections.length : 0;
+          showToast(found.length ? 'Found ' + found.length + ' photo window' + (found.length === 1 ? '' : 's') + (secN ? ' in ' + secN + ' sections' : '') + (turned ? ' (' + turned + ' tilted, turned to match)' : '') + '. Check the blue areas.' : 'No windows of that colour found. Raise \u201cMatch\u201d or pick again. Your boxes were kept.', 4500);
         }
       }
       function pickKeyAt(f, pt) {
@@ -65491,8 +66777,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               // Has this frame got colour? (Frames with coloured photo windows are checked once the window colour is picked.)
               var hasCol = needPick ? undefined : frameHasColour(img);
               if (hasCol && tierSplitOn()) autoTier = 'photo';          // B&W / colour separated: a colour frame is never tagged thermal
-              myFrames.push({ id: id, name: initName, w: img.width, h: img.height, spots: spots, tier: autoTier, color: hasCol });
-              added.push(myFrames[myFrames.length - 1]);
+              var newFrame = { id: id, name: initName, w: img.width, h: img.height, spots: spots, tier: autoTier, color: hasCol };
+              if (!needPick && spots.length >= 2) {
+                try { autoSectionFrame(newFrame, img); } catch (secErr) { }
+              }
+              myFrames.push(newFrame);
+              added.push(newFrame);
               if (needPick) added[added.length - 1]._pick = true;
             } else {
               var oid = await addAsset(url);
@@ -65524,7 +66814,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var ctxEl = document.getElementById('frameCtx');
           if (ctxEl && ctxEl.scrollIntoView) setTimeout(function () { ctxEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
           showToast(ids.length === 1
-            ? 'Found ' + added[0].spots.length + ' photo spot' + (added[0].spots.length === 1 ? '' : 's') + (added[0].spots.some(function (p) { return p.a; }) ? ' (tilted ones turned to match)' : '') + (framePairs(added[0]) ? ' (two matching strips: ' + frameShotCount(added[0]) + ' shots, copied to both)' : '') + '. Wrong number? Tap \u201cEdit photo spots\u201d to add, split, turn or reorder them.'
+            ? (function (fr) {
+              var secN = Array.isArray(fr.sections) && fr.sections.length > 1 ? fr.sections.length : 0;
+              var rotN = fr.spots.filter(function (p) { return p.r; }).length;
+              return 'Found ' + fr.spots.length + ' photo spot' + (fr.spots.length === 1 ? '' : 's')
+                + (secN ? ' in ' + secN + ' auto-sections' : '')
+                + (rotN ? ' (' + rotN + ' rotated to match)' : '')
+                + (fr.spots.some(function (p) { return p.a; }) ? ' (tilted ones turned to match)' : '')
+                + (secN ? ' · ' + frameShotCount(fr) + ' shots' : (framePairs(fr) ? ' (two matching strips: ' + frameShotCount(fr) + ' shots, copied to both)' : ''))
+                + '. Tap \u201cEdit photo spots\u201d to adjust rotations, sections or order.';
+            })(added[0])
             : (ids.length + ' frames added: guests choose one before each session (untick any in 3 \u00b7 Layout). Want them all on one print? Tap \u201cFrame collage\u201d.'), 6500);
         }
         if (overlayAdded) {
@@ -65584,6 +66883,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           }
           var hit = spotAt(f, pt);
           spotEdit.sel = hit ? hit.i : -1;
+          if (hit && Array.isArray(f.sections) && f.sections.length > 1) {
+            var foundSec = -1;
+            for (var si = 0; si < f.sections.length; si++) {
+              if (f.sections[si].spots && f.sections[si].spots.indexOf(hit.i) >= 0) { foundSec = si; break; }
+            }
+            spotEdit.sec = foundSec;
+          } else if (!hit) {
+            spotEdit.sec = -1;
+          }
           if (hit) {
             var s = f.spots[hit.i], g = spotPx(s, f.w, f.h), c0 = Math.cos(g.a), s0 = Math.sin(g.a);
             // resize keeps the opposite (top-left) corner where it is
@@ -65653,21 +66961,73 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           // Blue = where photos will show (the frame's photo windows).
           var art0 = spotShowWin && frameArt(f), mk = art0 && frameMasks(f, art0);
           if (mk && mk.tint) { ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(mk.tint, 0, 0, W, H); ctx.restore(); }
+          // Section cut guides (for 4-in-1, strips, etc.)
+          if (spotShowSec && Array.isArray(f.sections) && f.sections.length > 1) {
+            var uSec = Math.max(W, H);
+            ctx.save();
+            f.sections.forEach(function (sec, sIdx) {
+              var sx = sec.x * W, sy = sec.y * H, sw = sec.w * W, sh = sec.h * H;
+              var isSelSec = spotEdit && spotEdit.sec === sIdx;
+              ctx.save();
+              ctx.setLineDash([uSec * 0.016, uSec * 0.01]);
+              ctx.lineWidth = Math.max(2, uSec * (isSelSec ? 0.005 : 0.003));
+              ctx.strokeStyle = isSelSec ? '#2563EB' : 'rgba(14,165,233,0.85)';
+              ctx.strokeRect(sx + 1, sy + 1, sw - 2, sh - 2);
+              if (isSelSec) {
+                ctx.fillStyle = 'rgba(37,99,235,0.08)';
+                ctx.fillRect(sx, sy, sw, sh);
+              }
+              ctx.setLineDash([]);
+              var pill = sec.name + ' \u00B7 ' + spotRotLabel(sec.r);
+              var pfs = Math.max(11, Math.round(uSec * 0.017));
+              ctx.font = '800 ' + pfs + 'px Manrope, sans-serif';
+              var pw = ctx.measureText(pill).width + pfs * 1.1, ph = pfs * 1.55;
+              var px = sx + Math.max(4, uSec * 0.006), py = sy + Math.max(4, uSec * 0.006);
+              ctx.fillStyle = isSelSec ? '#2563EB' : 'rgba(15,23,42,0.78)';
+              ctx.fillRect(px, py, Math.min(sw - 8, pw), ph);
+              ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+              ctx.fillText(pill, px + pfs * 0.5, py + ph / 2);
+              ctx.restore();
+            });
+            ctx.restore();
+          }
           ctx.save();
           var repMap = frameRepeat(f) || frameManual(f) ? framePairs(f) : null;   // repeating / numbered by hand: each box shows the photo it takes
           spotOrder(f).forEach(function (i) {
             var s = f.spots[i];
             var on = i === spotEdit.sel, g = spotPx(s, W, H), x = -g.w / 2, y = -g.h / 2, w = g.w, h = g.h, u = Math.max(W, H);
+            var sRot = normalizeSpotRot(s.r);
             ctx.save(); ctx.translate(g.cx, g.cy); if (g.a) ctx.rotate(g.a);
             ctx.fillStyle = on ? 'rgba(201,61,39,.18)' : 'rgba(255,255,255,.12)'; ctx.fillRect(x, y, w, h);
             ctx.lineWidth = Math.max(2, u * 0.004); ctx.setLineDash([u * 0.012, u * 0.008]);
             ctx.strokeStyle = on ? '#C93D27' : '#ffffff'; ctx.strokeRect(x, y, w, h);
             ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineDashOffset = u * 0.01; ctx.strokeRect(x, y, w, h); ctx.lineDashOffset = 0;
+            // TOP edge indicator: shows which edge is the top of the photo when rotated (or selected)
+            if (sRot || on) {
+              var bar = Math.max(4, Math.min(w, h) * 0.06);
+              ctx.setLineDash([]);
+              ctx.fillStyle = sRot ? '#0EA5E9' : '#16A34A';
+              if (sRot === 0) ctx.fillRect(x, y, w, bar);
+              else if (sRot === 90) ctx.fillRect(x + w - bar, y, bar, h);
+              else if (sRot === 180) ctx.fillRect(x, y + h - bar, w, bar);
+              else if (sRot === 270) ctx.fillRect(x, y, bar, h);
+            }
             var r = u * 0.022;
             ctx.setLineDash([]); ctx.fillStyle = on ? '#C93D27' : '#1C1A1E';
             ctx.beginPath(); ctx.arc(x + r * 1.4, y + r * 1.4, r, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#fff'; ctx.font = '700 ' + Math.round(r * 1.15) + 'px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText(String(repMap ? repMap[i] + 1 : i + 1), x + r * 1.4, y + r * 1.45);
+            // Rotation badge inside top-right when rotated 90° / 180° / -90°
+            if (sRot) {
+              var rTxt = spotRotLabel(sRot);
+              var rfs = Math.max(10, Math.round(r * 0.92));
+              ctx.font = '800 ' + rfs + 'px Manrope, sans-serif';
+              var rtw = ctx.measureText(rTxt).width + rfs * 0.85, rth = rfs * 1.45;
+              ctx.fillStyle = '#0284C7';
+              ctx.fillRect(x + w - rtw - 4, y + 4, rtw, rth);
+              ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+              ctx.fillText(rTxt, x + w - rtw / 2 - 4, y + 4 + rth / 2);
+            }
             ctx.fillStyle = on ? '#C93D27' : '#1C1A1E'; ctx.fillRect(x + w - r * 0.9, y + h - r * 0.9, r * 0.9, r * 0.9);   // resize handle
             // tilt handle: a round "turn" button at the bottom middle
             var th = spotTiltHandle(g, u, H);
@@ -65703,15 +67063,56 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function framesSnapshot() {
         var r4 = function (v) { return Math.round(v * 10000) / 10000; };
         return {
-          frames: myFrames.map(function (f) { var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function (s) { var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; if (s.a) q.a = Math.round(s.a * 10) / 10; if (s.z) q.z = s.z; if (s.s >= 1) q.s = s.s; return q; }) }; if (typeof f.name === 'string' && f.name.trim()) o.name = f.name.trim().slice(0, 40); if (typeof f.copy === 'boolean') o.copy = f.copy; if (frameRepeat(f)) o.rep = frameRepeat(f); if (f.one === false) o.one = false; if (f.tl) o.tl = r4(f.tl); if (f.tr) o.tr = r4(f.tr); if (f.tb) o.tb = r4(f.tb); if (f.key) o.key = { c: f.key.c.slice(), t: f.key.t }; if (f.tier) o.tier = f.tier; if (typeof f.color === 'boolean') o.color = f.color; return o; }),
+          frames: myFrames.map(function (f) {
+            var o = {
+              id: f.id, w: f.w, h: f.h,
+              spots: f.spots.map(function (s) {
+                var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) };
+                if (s.a) q.a = Math.round(s.a * 10) / 10;
+                var sr = normalizeSpotRot(s.r); if (sr) q.r = sr;
+                if (s.z) q.z = s.z;
+                if (s.s >= 1) q.s = s.s;
+                return q;
+              })
+            };
+            if (typeof f.name === 'string' && f.name.trim()) o.name = f.name.trim().slice(0, 40);
+            if (typeof f.copy === 'boolean') o.copy = f.copy;
+            if (frameRepeat(f)) o.rep = frameRepeat(f);
+            if (f.one === false) o.one = false;
+            if (f.tl) o.tl = r4(f.tl); if (f.tr) o.tr = r4(f.tr); if (f.tb) o.tb = r4(f.tb);
+            if (f.key) o.key = { c: f.key.c.slice(), t: f.key.t };
+            if (f.tier) o.tier = f.tier;
+            if (typeof f.color === 'boolean') o.color = f.color;
+            if (Array.isArray(f.sections) && f.sections.length > 1) {
+              o.sections = f.sections.map(function (sec) {
+                return {
+                  id: String(sec.id || '').slice(0, 20),
+                  name: String(sec.name || 'Section').slice(0, 32),
+                  kind: sec.kind || 'card',
+                  x: r4(sec.x), y: r4(sec.y), w: r4(sec.w), h: r4(sec.h),
+                  r: normalizeSpotRot(sec.r),
+                  spots: Array.isArray(sec.spots) ? sec.spots.slice() : []
+                };
+              });
+            }
+            if (f.saveCuts) o.saveCuts = true;
+            return o;
+          }),
           activeFrame: activeFrameId,
           frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
-          sheet: { pattern: sheet.pattern, items: sheet.items.map(function (it) { return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; }) },
+          sheet: {
+            pattern: sheet.pattern,
+            orient: sheet.orient === 'landscape' ? 'landscape' : 'portrait',
+            bleed: !!sheet.bleed,
+            items: sheet.items.map(function (it) { return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; })
+          },
           sheetPresets: (sheetPresets || []).map(function (p) {
             return {
               id: p.id,
               name: (p.name || 'Collage').slice(0, 40),
               paper: p.paper || sheetSize,
+              orient: p.orient === 'landscape' ? 'landscape' : 'portrait',
+              bleed: !!p.bleed,
               pattern: p.pattern || sheet.pattern,
               items: (p.items || []).map(function (it) { return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; })
             };
@@ -65725,20 +67126,39 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         myFrames = (Array.isArray(s.frames) ? s.frames : []).filter(function (f) { return f && okId(f.id) && Array.isArray(f.spots) && f.spots.length; }).slice(0, MAX_FRAMES).map(function (f) {
           var key = f.key && Array.isArray(f.key.c) && f.key.c.length === 3 ? { c: f.key.c.map(function (v) { return Math.round(num(v, 0, 255, 0)); }), t: Math.round(num(f.key.t, 4, 100, 36)) } : null;
           var name = typeof f.name === 'string' && f.name.trim() ? f.name.trim().slice(0, 40) : undefined;
+          var parsedSpots = f.spots.slice(0, MAX_SPOTS).map(function (p) {
+            var a = num(p.a, -45, 45, 0), z = Math.round(num(p.z, 0, 50, 0)), sr = normalizeSpotRot(p.r), o;
+            if (a) { var tw = num(p.w, 0.01, 1, 0.3), th = num(p.h, 0.01, 1, 0.3); o = { x: num(p.x, -0.5, 1, 0), y: num(p.y, -0.5, 1, 0), w: tw, h: th, a: a }; }
+            else { var x = num(p.x, 0, 1, 0), y = num(p.y, 0, 1, 0); o = { x: x, y: y, w: num(p.w, 0.01, 1 - x, 0.3), h: num(p.h, 0.01, 1 - y, 0.3) }; }
+            if (sr) o.r = sr;
+            if (z) o.z = z;
+            var sn = Math.round(num(p.s, 0, MAX_SPOTS, 0)); if (sn >= 1) o.s = sn;
+            return o;
+          });
+          var sections = (Array.isArray(f.sections) && f.sections.length > 1) ? f.sections.slice(0, 20).map(function (sec, si) {
+            var sx = num(sec && sec.x, 0, 1, 0), sy = num(sec && sec.y, 0, 1, 0);
+            var sw = num(sec && sec.w, 0.04, 1 - sx, 0.5), sh = num(sec && sec.h, 0.04, 1 - sy, 0.5);
+            var spList = Array.isArray(sec && sec.spots) ? sec.spots.map(function (i) { return Math.round(Number(i)); }).filter(function (i) { return i >= 0 && i < parsedSpots.length; }) : [];
+            return {
+              id: typeof (sec && sec.id) === 'string' && sec.id ? sec.id.slice(0, 20) : ('sec_' + (si + 1)),
+              name: typeof (sec && sec.name) === 'string' && sec.name.trim() ? sec.name.trim().slice(0, 32) : ('Section ' + (si + 1)),
+              kind: (sec && ['polaroid', 'wallet', 'strip', 'card'].indexOf(sec.kind) >= 0) ? sec.kind : 'card',
+              x: sx, y: sy, w: sw, h: sh,
+              r: normalizeSpotRot(sec && sec.r),
+              spots: spList
+            };
+          }).filter(function (sec) { return sec.spots.length > 0; }) : undefined;
+          if (sections && sections.length <= 1) sections = undefined;
           return {
-            id: f.id, name: name, w: num(f.w, 1, 10000, 1200), h: num(f.h, 1, 10000, 1800), key: key, spots: f.spots.slice(0, MAX_SPOTS).map(function (p) {
-              var a = num(p.a, -45, 45, 0), z = Math.round(num(p.z, 0, 50, 0)), o;
-              if (a) { var tw = num(p.w, 0.01, 1, 0.3), th = num(p.h, 0.01, 1, 0.3); o = { x: num(p.x, -0.5, 1, 0), y: num(p.y, -0.5, 1, 0), w: tw, h: th, a: a }; }
-              else { var x = num(p.x, 0, 1, 0), y = num(p.y, 0, 1, 0); o = { x: x, y: y, w: num(p.w, 0.01, 1 - x, 0.3), h: num(p.h, 0.01, 1 - y, 0.3) }; }
-              if (z) o.z = z;
-              var sn = Math.round(num(p.s, 0, MAX_SPOTS, 0)); if (sn >= 1) o.s = sn;
-              return o;
-            }), copy: typeof f.copy === 'boolean' ? f.copy : undefined,
+            id: f.id, name: name, w: num(f.w, 1, 10000, 1200), h: num(f.h, 1, 10000, 1800), key: key, spots: parsedSpots,
+            copy: typeof f.copy === 'boolean' ? f.copy : undefined,
             rep: Math.round(num(f.rep, 0, MAX_SPOTS, 0)) || undefined,
             one: f.one === false ? false : undefined,
             tl: Math.round(num(f.tl, -0.1, 0.1, 0) * 10000) / 10000 || undefined, tr: Math.round(num(f.tr, -0.1, 0.1, 0) * 10000) / 10000 || undefined, tb: Math.round(num(f.tb, -0.1, 0.1, 0) * 10000) / 10000 || undefined,
             tier: (f.tier === 'receipt' || f.tier === 'photo' || f.tier === 'all') ? f.tier : undefined,
-            color: typeof f.color === 'boolean' ? f.color : undefined       // does the frame picture carry colour? (checked once; decides if it can print on thermal)
+            color: typeof f.color === 'boolean' ? f.color : undefined,       // does the frame picture carry colour? (checked once; decides if it can print on thermal)
+            sections: sections,
+            saveCuts: f.saveCuts === true ? true : undefined
           };
         });
         startFrameDone = okId(s.sfDone) ? s.sfDone : '';
@@ -65752,6 +67172,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var sh = s.sheet && typeof s.sheet === 'object' ? s.sheet : {};
         sheet = {
           pattern: SHEET_PATTERNS.some(function (p) { return p.id === sh.pattern; }) ? sh.pattern : 'tall-one-two-strips',
+          orient: sh.orient === 'landscape' ? 'landscape' : 'portrait',
+          bleed: !!sh.bleed,
           items: (Array.isArray(sh.items) ? sh.items : []).filter(function (it) { return it && frameById(it.f); }).slice(0, MAX_SHEET_ITEMS).map(function (it) {
             return { f: it.f, cx: num(it.cx, 0, 1, 0.5), cy: num(it.cy, 0, 1, 0.5), s: num(it.s, 0.05, 1.5, 0.5), r: [0, 90, 180, 270].indexOf(it.r) >= 0 ? it.r : 0 };
           })
@@ -65762,6 +67184,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             id: typeof p.id === 'string' && p.id ? p.id : ('cp_' + Math.random().toString(36).slice(2, 9)),
             name: typeof p.name === 'string' && p.name.trim() ? p.name.trim().slice(0, 40) : 'Collage',
             paper: SHEET_SIZES.indexOf(p.paper) >= 0 ? p.paper : (sheetSize || 'A4'),
+            orient: p.orient === 'landscape' ? 'landscape' : 'portrait',
+            bleed: !!p.bleed,
             pattern: SHEET_PATTERNS.some(function (pt) { return pt.id === p.pattern; }) ? p.pattern : 'tall-one-two-strips',
             items: (Array.isArray(p.items) ? p.items : []).filter(function (it) { return it && frameById(it.f); }).map(function (it) {
               return { f: it.f, cx: num(it.cx, 0, 1, 0.5), cy: num(it.cy, 0, 1, 0.5), s: num(it.s, 0.05, 1.5, 0.5), r: [0, 90, 180, 270].indexOf(it.r) >= 0 ? it.r : 0 };

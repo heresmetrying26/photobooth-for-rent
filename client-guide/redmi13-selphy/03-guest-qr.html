@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Guide 3 - Guest QR</title>
+<link rel="stylesheet" href="guide.css">
+<style>
+.rows{display:grid;gap:14px;margin-top:20px}
+.row{background:#fff;border:2px solid var(--line);border-radius:26px;padding:16px 22px 16px 20px;display:flex;align-items:center;gap:18px;height:206px}
+.row .tx{flex:1;min-width:0}
+.row h3{font-size:31px;line-height:1.1;font-weight:800}
+.row p{font-size:23px;color:#3d372f;margin-top:7px;line-height:1.27}
+.tag{display:inline-block;font-size:19px;font-weight:800;padding:3px 12px;border-radius:999px;background:var(--bluebg);color:var(--blue);margin-left:8px;vertical-align:3px;white-space:nowrap}
+.row svg.ill{flex:none;width:300px;height:174px}
+.tips{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.tip{border-radius:22px;padding:14px 20px;font-size:22px;line-height:1.27}
+.tip.a{background:var(--amberbg);border:2px solid var(--amber)}
+.tip.b{background:var(--greenbg);border:2px solid var(--green)}
+</style></head>
+<body><div class="page">
+<div class="eyebrow"><b>photobooth4u</b> &middot; Redmi 13 + Canon SELPHY CP1300</div>
+<h1>How guests get their photos</h1>
+<p class="sub">Two QR scans: first the Wi-Fi, then their own photo.</p>
+
+<div class="rows">
+  <div class="row"><div class="num">1</div>
+    <div class="tx"><h3>Guest takes the photos</h3><p>Tap the screen, strike a pose. The Redmi counts down and takes the shots.</p></div>
+    <svg class="ill" viewBox="0 0 300 174" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+      <path d="M150 120 L100 172 M150 120 L200 172 M150 120 V172" stroke="#8a847a" stroke-width="6" stroke-linecap="round"/>
+      <rect x="104" y="2" width="92" height="124" rx="16" fill="#1f1b16"/>
+      <rect x="111" y="16" width="78" height="96" rx="8" fill="#d7e6f6"/>
+      <text x="150" y="82" text-anchor="middle" font-size="62" font-weight="800" fill="#c93d27">3</text>
+      <circle cx="150" cy="9" r="3" fill="#555"/>
+      <g fill="#f6c7a8" stroke="#1f1b16" stroke-width="3"><circle cx="48" cy="96" r="24"/><circle cx="254" cy="96" r="24"/></g>
+      <g fill="#1f1b16"><circle cx="40" cy="92" r="3"/><circle cx="56" cy="92" r="3"/><circle cx="246" cy="92" r="3"/><circle cx="262" cy="92" r="3"/></g>
+      <g fill="none" stroke="#1f1b16" stroke-width="3" stroke-linecap="round"><path d="M39 104 Q48 112 57 104"/><path d="M245 104 Q254 112 263 104"/></g>
+      <path d="M24 144 Q48 124 72 144V174H24Z M230 144 Q254 124 278 144V174H230Z" fill="#c93d27"/>
+    </svg>
+  </div>
+
+  <div class="row"><div class="num">2</div>
+    <div class="tx"><h3>Scan the Wi-Fi QR <span class="tag">only if booth Wi-Fi is ON</span></h3><p>Open the phone&rsquo;s <b>Camera</b>, point it at the Wi-Fi sign, tap <b>Join</b>. If it says &ldquo;No internet&rdquo;, tap <b>Stay connected</b>.</p></div>
+    <svg class="ill" viewBox="0 0 300 174" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+      <rect x="2" y="4" width="124" height="166" rx="12" fill="#fff" stroke="#cfc7b8" stroke-width="3"/>
+      <text x="64" y="30" text-anchor="middle" font-size="17" font-weight="800" fill="#2563eb">BOOTH WI-FI</text>
+      <svg class="qr" data-seed="11" x="26" y="40" width="76" height="76" viewBox="0 0 27 27"></svg>
+      <text x="64" y="138" text-anchor="middle" font-size="13" font-weight="700" fill="#1f1b16">DIRECT-pb-…</text>
+      <text x="64" y="157" text-anchor="middle" font-size="12" fill="#6b645b">Scan to join</text>
+      <path d="M140 87 H168" stroke="#c93d27" stroke-width="6" stroke-linecap="round"/><path d="M160 76 L172 87 L160 98" fill="none" stroke="#c93d27" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="180" y="2" width="118" height="170" rx="18" fill="#1f1b16"/>
+      <rect x="188" y="16" width="102" height="142" rx="8" fill="#fff"/>
+      <text x="239" y="44" text-anchor="middle" font-size="14" font-weight="800" fill="#1f1b16">Join Wi-Fi?</text>
+      <rect x="196" y="54" width="86" height="26" rx="8" fill="#eef2f7"/>
+      <text x="239" y="72" text-anchor="middle" font-size="12" font-weight="700" fill="#1f1b16">DIRECT-pb-…</text>
+      <rect x="204" y="90" width="70" height="26" rx="13" fill="#2563eb"/>
+      <text x="239" y="108" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">Join</text>
+      <rect x="196" y="126" width="86" height="24" rx="12" fill="#fff4cf" stroke="#d99a00" stroke-width="2"/>
+      <text x="239" y="143" text-anchor="middle" font-size="11" font-weight="800" fill="#6b4e00">Stay connected</text>
+    </svg>
+  </div>
+
+  <div class="row"><div class="num">3</div>
+    <div class="tx"><h3>Scan their own photo QR</h3><p>When the session ends the booth shows <b>&ldquo;Scan to get your photo&rdquo;</b>. Point the Camera at it and tap the link.</p></div>
+    <svg class="ill" viewBox="0 0 300 174" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+      <rect x="40" y="2" width="130" height="170" rx="20" fill="#1f1b16"/>
+      <rect x="49" y="16" width="112" height="142" rx="9" fill="#fff"/>
+      <text x="105" y="38" text-anchor="middle" font-size="14" font-weight="800" fill="#c93d27">Looking good!</text>
+      <svg class="qr" data-seed="23" x="71" y="46" width="68" height="68" viewBox="0 0 27 27"></svg>
+      <text x="105" y="130" text-anchor="middle" font-size="12" font-weight="700" fill="#1f1b16">Scan to get</text>
+      <text x="105" y="146" text-anchor="middle" font-size="12" font-weight="700" fill="#1f1b16">your photo</text>
+      <g fill="none" stroke="#2563eb" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M204 30 V10 H224"/><path d="M276 10 H296 V30"/><path d="M296 124 V144 H276"/><path d="M224 144 H204 V124"/>
+      </g>
+      <rect x="226" y="52" width="46" height="72" rx="9" fill="#1f1b16"/>
+      <rect x="230" y="60" width="38" height="52" rx="4" fill="#dbe6f3"/>
+      <circle cx="249" cy="118" r="2.5" fill="#888"/>
+      <path d="M186 88 H218" stroke="#2563eb" stroke-width="5" stroke-linecap="round" stroke-dasharray="2 9"/>
+    </svg>
+  </div>
+
+  <div class="row"><div class="num">4</div>
+    <div class="tx"><h3>Open, save, share</h3><p>The photos open on the guest&rsquo;s phone. They save or share from there, with no app to install.</p></div>
+    <svg class="ill" viewBox="0 0 300 174" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+      <rect x="86" y="2" width="128" height="170" rx="20" fill="#1f1b16"/>
+      <rect x="95" y="16" width="110" height="142" rx="9" fill="#fff"/>
+      <g>
+        <rect x="102" y="24" width="45" height="54" rx="4" fill="#f6c7a8"/><circle cx="124" cy="44" r="8" fill="#fff"/><path d="M102 78 L118 62 L132 72 L147 58 V78Z" fill="#7fb77e"/>
+        <rect x="153" y="24" width="45" height="54" rx="4" fill="#bcd3ee"/><circle cx="175" cy="44" r="8" fill="#fff"/><path d="M153 78 L169 62 L183 72 L198 58 V78Z" fill="#7fb77e"/>
+        <rect x="102" y="84" width="96" height="30" rx="4" fill="#f0e3c8"/>
+      </g>
+      <rect x="108" y="122" width="84" height="28" rx="14" fill="#1e9e5a"/>
+      <text x="150" y="142" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">Save</text>
+    </svg>
+  </div>
+</div>
+
+<div class="tips">
+  <div class="tip a"><b>Photo won&rsquo;t open?</b> The guest&rsquo;s phone probably went back to mobile data. Check it is still on the booth Wi-Fi.</div>
+  <div class="tip b"><b>Put the signs by the booth.</b> &ldquo;Point your phone camera here, then scan your photo QR at the booth.&rdquo;</div>
+</div>
+<p class="note" style="margin-top:8px;text-align:center;font-size:19px">QR pictures in this guide are examples and will not scan.</p>
+
+<div class="foot"><span>Guide 3 of 5 &middot; Guest QR</span><span class="dots"><i></i><i></i><i class="on"></i><i></i><i></i></span></div>
+</div>
+<script src="qr.js"></script>
+</body></html>

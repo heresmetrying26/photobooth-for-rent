@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Booth Setup Guide</title>
+<style>
+  :root { --ink:#1a1a1a; --mute:#6b6b6b; --line:#e8e8e8; --accent:#c93d27; --bg:#ffffff; --soft:#f7f6f4; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; width: 1080px; padding: 72px 80px 80px; line-height: 1.45; }
+  h1 { font-size: 46px; font-weight: 700; letter-spacing: -0.5px; }
+  .sub { color: var(--mute); font-size: 22px; margin-top: 8px; }
+  .gear { margin-top: 28px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .gear span { background: var(--soft); border-radius: 999px; padding: 8px 18px; font-size: 19px; }
+  section { margin-top: 44px; padding-top: 30px; border-top: 1px solid var(--line); }
+  h2 { font-size: 28px; font-weight: 700; display: flex; align-items: center; gap: 14px; }
+  h2 i { font-style: normal; background: var(--accent); color: #fff; width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 20px; }
+  ul { list-style: none; margin-top: 16px; }
+  li { font-size: 22px; padding: 6px 0 6px 30px; position: relative; }
+  li::before { content: ""; position: absolute; left: 4px; top: 17px; width: 9px; height: 9px; border-radius: 50%; background: var(--line); border: 2px solid var(--accent); background: #fff; }
+  b { font-weight: 700; }
+  .opt { margin-top: 16px; background: var(--soft); border-radius: 14px; padding: 18px 24px; }
+  .opt h3 { font-size: 21px; margin-bottom: 4px; }
+  .opt p { font-size: 20px; color: var(--ink); }
+  .fix li { padding-left: 38px; }
+  .fix li span { position: absolute; left: 0; top: 6px; color: var(--accent); font-weight: 700; font-size: 20px; }
+  .fix li::before { display: none; }
+  .foot { margin-top: 44px; font-size: 19px; color: var(--mute); text-align: center; }
+</style>
+</head>
+<body>
+  <h1>Photo Booth Setup</h1>
+  <p class="sub">Quick guide for your Canon, tablet and Epson printer</p>
+  <div class="gear"><span>Canon M50 II</span><span>Samsung Tab S9+</span><span>Epson L5590 / L8050 / L18050</span></div>
+
+  <section>
+    <h2><i>1</i>Light</h2>
+    <ul>
+      <li>Set the bulb to <b>5500K (white / daylight)</b> with its <b>remote</b>. Put batteries in (pull out the plastic tab) and point it at the bulb.</li>
+      <li>Press <b>ON</b>. Press <b>Section</b> to jump between the 3 presets (3200K, 4000K, 5500K) until the light looks <b>white, not orange</b>.</li>
+      <li>Fine tune: <b>CT+</b> = whiter / cooler, <b>CT-</b> = warmer / orange. Up and down arrows = brightness.</li>
+      <li>Softbox slightly above eye level, angled down, 1 to 1.5 m away.</li>
+      <li>Guests face the light, <b>not the window</b>. Close the curtains if you can.</li>
+      <li>Use a plain white or grey backdrop, not the red wall.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><i>2</i>Camera</h2>
+    <ul>
+      <li>Mode dial on <b>M</b> (not video). Quality: <b>JPEG</b>.</li>
+      <li>White balance: <b>Daylight</b> (not Auto).</li>
+      <li>Camera <b>Wi-Fi and Bluetooth off</b>. Live View shooting on.</li>
+      <li>Start at ISO 400, f/4, 1/125. Adjust until a test photo looks right.</li>
+      <li>Full battery, SD card in, auto power off set to the longest time.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><i>3</i>Connect</h2>
+    <ul>
+      <li>Cable from the camera's <b>Micro-USB</b> port to the tablet's <b>USB-C</b> port. It must be a <b>data cable</b> (the old Android phone cable works). Tap <b>OK</b> on the USB prompt.</li>
+      <li>App: <b>Setup &rarr; 3 Camera &rarr; DSLR / mirrorless over USB</b>. Live view should show.</li>
+      <li>Keep the tablet on a charger.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><i>4</i>Printer</h2>
+    <div class="opt">
+      <h3>Option A: Booth Wi-Fi (router or venue Wi-Fi)</h3>
+      <p>On the printer panel open <b>Wi-Fi setup</b>, pick the booth Wi-Fi and enter the password. Join the tablet to the <b>same Wi-Fi</b>. App: <b>Setup &rarr; Print settings &rarr; Find Wi-Fi printers</b>, then tap your printer. Not listed? Print the printer's network status page, type its IP address and tap <b>Add</b>.</p>
+    </div>
+    <div class="opt">
+      <h3>Option B: Tablet hotspot (no router, no internet needed)</h3>
+      <p>Tablet: <b>Settings &rarr; Connections &rarr; Mobile Hotspot</b>. Set the band to <b>2.4 GHz</b> and turn off the auto-off timer, then switch it on. On the printer panel, <b>Wi-Fi setup</b>, join the tablet's hotspot. In the app tap <b>Find Wi-Fi printers</b> (or <b>Add</b> its IP address).</p>
+    </div>
+    <div class="opt">
+      <h3>Option C: USB cable</h3>
+      <p>Plug the printer into the tablet with a USB cable and OTG adapter. Tap <b>OK</b> on the prompt, then pick it in <b>Print settings</b> and tap <b>Test print</b>. If it says "no driver", use Wi-Fi.</p>
+    </div>
+    <ul>
+      <li>Photo paper must match the paper size chosen in the app.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><i>5</i>Test before guests arrive</h2>
+    <ul>
+      <li>Do one full session and one print. Check the colour on the <b>photo</b>, not the live view.</li>
+      <li>Run 10 sessions in a row. Then switch on <b>Auto-print</b>.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><i>?</i>Photos look brown?</h2>
+    <ul class="fix">
+      <li><span>1</span>Bulb on 5500K</li>
+      <li><span>2</span>Camera white balance: Daylight, not Auto</li>
+      <li><span>3</span>Close the curtains, guests face the softbox</li>
+      <li><span>4</span>Plain backdrop, no red wall behind</li>
+      <li><span>5</span>Photo too dark? Raise ISO or open the aperture</li>
+      <li><span>6</span>Booth filter set to <b>None</b></li>
+    </ul>
+  </section>
+
+  <p class="foot">Still stuck? Send us a photo and tell us the colour setting on the bulb remote.</p>
+</body>
+</html>

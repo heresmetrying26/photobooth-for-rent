@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Guide 1 - Overview</title>
+<link rel="stylesheet" href="guide.css">
+<style>
+.diagram{margin-top:22px;padding:14px 10px 6px}
+.diagram svg{display:block;width:100%;height:auto}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.tile{background:#fff;border:2px solid var(--line);border-radius:22px;padding:16px 20px;display:flex;gap:16px;align-items:center;height:136px}
+.tile .e{flex:none;font-size:44px;width:64px;text-align:center}
+.tile b{font-size:25px;display:block;line-height:1.15}
+.tile span{font-size:21px;color:var(--mute);display:block;margin-top:3px;line-height:1.2}
+</style></head>
+<body><div class="page">
+<div class="eyebrow"><b>photobooth4u</b> &middot; Redmi 13 + Canon SELPHY CP1300</div>
+<h1>Phone booth + SELPHY CP1300</h1>
+<p class="sub">The phone is the camera. The SELPHY prints. Guests scan a QR.</p>
+
+<div class="card diagram">
+<svg viewBox="0 0 900 380" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+  <!-- booth phone -->
+  <rect x="40" y="40" width="130" height="258" rx="26" fill="#1f1b16"/>
+  <rect x="50" y="62" width="110" height="214" rx="12" fill="#d7e6f6"/>
+  <circle cx="105" cy="51" r="4.5" fill="#555"/>
+  <circle cx="105" cy="128" r="32" fill="#fff" stroke="#2b4a6b" stroke-width="4"/>
+  <circle cx="94" cy="120" r="4" fill="#2b4a6b"/><circle cx="116" cy="120" r="4" fill="#2b4a6b"/>
+  <path d="M91 136 Q105 150 119 136" fill="none" stroke="#2b4a6b" stroke-width="4" stroke-linecap="round"/>
+  <rect x="64" y="212" width="82" height="34" rx="17" fill="#c93d27"/>
+  <text x="105" y="235" text-anchor="middle" font-size="16" font-weight="800" fill="#fff">START</text>
+  <text x="190" y="190" font-size="24" font-weight="800" fill="#1f1b16">Xiaomi Redmi 13</text>
+  <text x="190" y="218" font-size="19" fill="#6b645b">its own camera is</text>
+  <text x="190" y="242" font-size="19" fill="#6b645b">the booth camera</text>
+
+  <!-- cable: OTG adapter + USB cable -->
+  <path d="M105 298 V318 H470 V250 H520" fill="none" stroke="#2f2b27" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="92" y="296" width="26" height="30" rx="5" fill="#8a847a"/>
+  <rect x="505" y="238" width="24" height="26" rx="5" fill="#8a847a"/>
+  <g font-size="20" font-weight="700">
+    <rect x="150" y="332" width="130" height="30" rx="15" fill="#fff4cf" stroke="#d99a00" stroke-width="2"/>
+    <text x="215" y="353" text-anchor="middle" fill="#6b4e00">USB-C OTG</text>
+    <rect x="320" y="332" width="130" height="30" rx="15" fill="#fff4cf" stroke="#d99a00" stroke-width="2"/>
+    <text x="385" y="353" text-anchor="middle" fill="#6b4e00">USB cable</text>
+  </g>
+
+  <!-- SELPHY -->
+  <g transform="rotate(-5 745 118)">
+    <rect x="705" y="88" width="92" height="66" rx="4" fill="#fff" stroke="#cfc7b8" stroke-width="2"/>
+    <rect x="711" y="94" width="80" height="48" fill="#f6c7a8"/><circle cx="742" cy="112" r="9" fill="#fff"/><path d="M711 142 L736 124 L752 136 L772 120 L791 134 V142Z" fill="#7fb77e"/>
+  </g>
+  <rect x="520" y="140" width="350" height="170" rx="26" fill="#f3f1ec" stroke="#cbc4b8" stroke-width="3"/>
+  <rect x="548" y="160" width="140" height="78" rx="10" fill="#2b2f36"/>
+  <rect x="558" y="170" width="120" height="58" rx="6" fill="#3b7bd8"/>
+  <text x="618" y="206" text-anchor="middle" font-size="18" font-weight="700" fill="#fff">SELPHY</text>
+  <rect x="548" y="262" width="294" height="14" rx="7" fill="#d4ccbe"/>
+  <circle cx="800" cy="190" r="12" fill="#c93d27"/>
+  <text x="695" y="338" text-anchor="middle" font-size="24" font-weight="800" fill="#1f1b16">Canon SELPHY CP1300</text>
+  <text x="695" y="366" text-anchor="middle" font-size="19" fill="#6b645b">prints the 4&times;6 photo</text>
+
+  <!-- booth Wi-Fi to guest phone -->
+  <g transform="translate(222,72) rotate(90)" fill="none" stroke="#2563eb" stroke-width="7" stroke-linecap="round">
+    <path d="M-11.3 -11.3 A16 16 0 0 1 11.3 -11.3"/><path d="M-22.6 -22.6 A32 32 0 0 1 22.6 -22.6"/><path d="M-33.9 -33.9 A48 48 0 0 1 33.9 -33.9"/>
+    <circle cx="0" cy="0" r="4" fill="#2563eb" stroke="none"/>
+  </g>
+  <rect x="330" y="24" width="64" height="110" rx="14" fill="#1f1b16"/>
+  <rect x="336" y="36" width="52" height="84" rx="6" fill="#fff"/>
+  <svg class="qr" data-seed="3" x="342" y="50" width="40" height="40" viewBox="0 0 27 27"></svg>
+  <text x="440" y="62" font-size="21" font-weight="800" fill="#2563eb">Booth Wi-Fi</text>
+  <text x="440" y="90" font-size="19" fill="#6b645b">guests join, then scan</text>
+  <text x="440" y="114" font-size="19" fill="#6b645b">their photo QR</text>
+</svg>
+</div>
+
+<h2 style="margin-top:22px">What you need</h2>
+<div class="grid">
+  <div class="tile"><div class="e">📱</div><div><b>Redmi 13 + the app</b><span>Open photobooth4u once online to activate your code</span></div></div>
+  <div class="tile"><div class="e">🔌</div><div><b>USB-C OTG adapter</b><span>Lets the phone talk to the printer</span></div></div>
+  <div class="tile"><div class="e">🔗</div><div><b>USB printer cable</b><span>USB-A on one end, the SELPHY&rsquo;s USB-B (square) on the other</span></div></div>
+  <div class="tile"><div class="e">🖨️</div><div><b>SELPHY CP1300</b><span>Matching paper + ink set, e.g. 4&times;6 postcard</span></div></div>
+  <div class="tile"><div class="e">📸</div><div><b>Phone stand + light</b><span>Phone at face height, light in front of guests</span></div></div>
+  <div class="tile"><div class="e">🔋</div><div><b>Full battery</b><span>The phone may not charge while the printer cable is in</span></div></div>
+</div>
+
+<div class="foot"><span>Guide 1 of 5 &middot; Overview</span><span class="dots"><i class="on"></i><i></i><i></i><i></i><i></i></span></div>
+</div>
+<script src="qr.js"></script>
+</body></html>

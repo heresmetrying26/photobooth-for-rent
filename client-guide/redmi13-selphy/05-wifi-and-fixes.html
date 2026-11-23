@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Guide 5 - SELPHY by Wi-Fi and fixes</title>
+<link rel="stylesheet" href="guide.css">
+<style>
+.wf{margin-top:18px;border:4px solid var(--blue);background:#fff;border-radius:28px;padding:20px 26px}
+.wf .need{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 12px}
+.wf .need span{background:var(--bluebg);color:#173a8c;font-weight:700;font-size:21px;border-radius:999px;padding:5px 16px}
+.wf ol{list-style:none;counter-reset:n;display:grid;gap:9px}
+.wf li{counter-increment:n;display:flex;gap:14px;align-items:flex-start;font-size:23px;line-height:1.26}
+.wf li::before{content:counter(n);flex:none;width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;font-weight:800;font-size:21px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.wf .warn{margin-top:12px;background:var(--amberbg);border:2px solid var(--amber);border-radius:16px;padding:10px 16px;font-size:21px;line-height:1.25}
+.fx{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+.f{background:#fff;border:2px solid var(--line);border-radius:22px;padding:12px 18px;min-height:112px}
+.f > b{display:block;font-size:22px;color:var(--red);line-height:1.15}
+.f > span{display:block;font-size:20.5px;margin-top:4px;line-height:1.24;color:#3d372f}
+</style></head>
+<body><div class="page">
+<div class="eyebrow"><b>photobooth4u</b> &middot; Redmi 13 + Canon SELPHY CP1300</div>
+<h1>SELPHY by Wi-Fi, and quick fixes</h1>
+<p class="sub">Use Wi-Fi only when there is a router or venue Wi-Fi.</p>
+
+<div class="wf">
+  <h2 style="font-size:31px;margin:0">Print over Wi-Fi instead of USB</h2>
+  <div class="need"><span>Needs a router / venue Wi-Fi</span><span>Booth Wi-Fi: OFF</span><span>No cable</span></div>
+  <ol>
+    <li><span>On the SELPHY open its <b>Wi-Fi settings</b> and join the router (menu names differ by firmware).</span></li>
+    <li><span>Join the Redmi to the <b>same Wi-Fi</b>.</span></li>
+    <li><span>In the app: <kbd>Setup</kbd> &rarr; step 4 &rarr; <b>Printer 1</b> &rarr; <kbd>Find Wi-Fi / network printers</kbd>.</span></li>
+    <li><span>Tap the SELPHY in the list so it shows ✓, then tap <kbd>Test print</kbd>.</span></li>
+    <li><span>Not listed? Type its IP in <b>&ldquo;Not listed? Type its IP&rdquo;</b> and tap <kbd>Search</kbd>. Last resort: pick <b>Android print screen &middot; any printer</b>.</span></li>
+  </ol>
+  <div class="warn"><b>Booth Wi-Fi ON means USB.</b> While it is on, the phone may not be able to use the router. The SELPHY&rsquo;s own &ldquo;Direct Connection&rdquo; network is not for guests either: use USB there.</div>
+</div>
+
+<h2 style="margin:18px 0 0;font-size:31px">Something not working?</h2>
+<div class="fx">
+  <div class="f"><b>&ldquo;Tap to allow USB access&rdquo;</b><span>Tap the printer name, allow, tick <b>Always open</b>.</span></div>
+  <div class="f"><b>SELPHY not listed (USB)</b><span>Unplug and replug. Try another cable. If your Redmi has <b>Settings &rarr; Additional settings &rarr; OTG connection</b>, switch it on.</span></div>
+  <div class="f"><b>&ldquo;Incorrect paper / Media mismatch&rdquo;</b><span>Paper and ink must be the same size set (e.g. 4&times;6 postcard).</span></div>
+  <div class="f"><b>&ldquo;Ink cassette empty&rdquo;</b><span>The ribbon is used up. Put in a new ink cassette.</span></div>
+  <div class="f"><b>&ldquo;Paper feed error&rdquo;</b><span>Push the paper cassette in until it clicks. Do not overfill it.</span></div>
+  <div class="f"><b>Guest photo link won&rsquo;t open</b><span>Their phone left the booth Wi-Fi. Join it again, then rescan.</span></div>
+</div>
+
+<div class="foot"><span>Guide 5 of 5 &middot; Wi-Fi printing &amp; fixes</span><span class="dots"><i></i><i></i><i></i><i></i><i class="on"></i></span></div>
+</div>
+</body></html>

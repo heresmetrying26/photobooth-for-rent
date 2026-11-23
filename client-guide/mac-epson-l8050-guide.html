@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MacBook + Epson L8050 Guide</title>
+<style>
+  :root { --ink:#1a1a1a; --mute:#6b6b6b; --line:#e8e8e8; --accent:#c93d27; --bg:#ffffff; --soft:#f7f6f4; --ok:#2f7d4f; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; width: 1080px; padding: 72px 80px 80px; line-height: 1.45; }
+  h1 { font-size: 46px; font-weight: 700; letter-spacing: -0.5px; }
+  .sub { color: var(--mute); font-size: 22px; margin-top: 8px; }
+  .gear { margin-top: 28px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .gear span { background: var(--soft); border-radius: 999px; padding: 8px 18px; font-size: 19px; }
+  section { margin-top: 44px; padding-top: 30px; border-top: 1px solid var(--line); }
+  h2 { font-size: 28px; font-weight: 700; display: flex; align-items: center; gap: 14px; }
+  h2 i { font-style: normal; background: var(--accent); color: #fff; width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 20px; flex: none; }
+  ul { list-style: none; margin-top: 16px; }
+  li { font-size: 22px; padding: 6px 0 6px 30px; position: relative; }
+  li::before { content: ""; position: absolute; left: 4px; top: 17px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--accent); background: #fff; }
+  ol { list-style: none; margin-top: 16px; counter-reset: s; }
+  ol li { padding-left: 46px; counter-increment: s; }
+  ol li::before { content: counter(s); left: 0; top: 7px; width: 28px; height: 28px; border-radius: 50%; border: 0; background: var(--soft); color: var(--accent); font-weight: 700; font-size: 17px; display: flex; align-items: center; justify-content: center; }
+  b { font-weight: 700; }
+  code { font-family: ui-monospace, "SF Mono", Consolas, monospace; background: var(--soft); border-radius: 6px; padding: 1px 8px; font-size: 20px; }
+  .opt { margin-top: 16px; background: var(--soft); border-radius: 14px; padding: 18px 24px; }
+  .opt h3 { font-size: 21px; margin-bottom: 4px; }
+  .opt p { font-size: 20px; color: var(--ink); }
+  .tag { display: inline-block; font-size: 15px; font-weight: 700; color: #fff; background: var(--ok); border-radius: 999px; padding: 2px 12px; margin-left: 8px; vertical-align: 2px; }
+  .warn { margin-top: 18px; border-left: 5px solid var(--accent); background: #fdf1ee; border-radius: 0 12px 12px 0; padding: 16px 22px; font-size: 20px; }
+  .fix li { padding-left: 38px; }
+  .fix li span { position: absolute; left: 0; top: 6px; color: var(--accent); font-weight: 700; font-size: 20px; }
+  .fix li::before { display: none; }
+  .foot { margin-top: 44px; font-size: 19px; color: var(--mute); text-align: center; }
+</style>
+</head>
+<body>
+  <h1>MacBook + Epson L8050</h1>
+  <p class="sub">Install the printer on your MacBook, then connect it to the photobooth4u app</p>
+  <div class="gear"><span>MacBook (macOS 11 or newer)</span><span>Epson L8050</span><span>photobooth4u Mac app</span></div>
+
+  <section>
+    <h2><i>1</i>Before you start</h2>
+    <ul>
+      <li>The <b>photobooth4u Mac app</b> is installed. Get it at <b>photobooth4u.netlify.app/downloads</b>. Choose <b>Apple Silicon</b> (M1, M2, M3...) or <b>Intel</b>. Not sure? Apple menu &rarr; <b>About This Mac</b>.</li>
+      <li>First time opening the app: <b>right-click it &rarr; Open</b>. If the Mac still blocks it: System Settings &rarr; Privacy &amp; Security &rarr; <b>Open Anyway</b>. If the Mac asks about network connections, click <b>Allow</b>.</li>
+      <li>The printer is switched on, all ink tanks are filled, and <b>4x6 (4R) glossy photo paper</b> is in the rear tray, glossy side up.</li>
+      <li>A <b>USB cable</b> for the printer. A MacBook with only USB-C ports needs a USB-C to USB-B cable (or an adapter).</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><i>2</i>Connect the printer to the MacBook</h2>
+    <div class="opt">
+      <h3>Option A: USB cable <span class="tag">Best for events</span></h3>
+      <p>Plug the cable into the printer and the MacBook, then switch the printer on. Works anywhere, with or without Wi-Fi.</p>
+    </div>
+    <div class="opt">
+      <h3>Option B: Wi-Fi</h3>
+      <p>Join the printer to the <b>same Wi-Fi as the MacBook</b> (use the printer's own Wi-Fi setup, or the Epson Smart Panel app on your phone). Avoid venue &ldquo;guest&rdquo; Wi-Fi: it often stops devices from seeing each other.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><i>3</i>Install Epson's driver, then add the printer</h2>
+    <ol>
+      <li>Apple menu &rarr; <b>System Settings</b> &rarr; <b>Printers &amp; Scanners</b>. (macOS 11 and 12: <b>System Preferences</b> &rarr; <b>Printers &amp; Scanners</b>.)</li>
+      <li>Is <b>EPSON L8050 Series</b> already listed? Click it, then <b>Options &amp; Supplies</b>. If you see both an <b>Options</b> tab and a <b>Utility</b> tab, it already uses Epson's driver: go to step 6. If not, select it and click the <b>&minus;</b> button (<b>Remove Printer</b>).</li>
+      <li><b>Install Epson's driver first.</b> Open the <b>Epson L8050</b> page on your country's Epson Support website and click the <b>Downloads</b> tab. In the <b>Operating System</b> menu, pick your Mac version (Apple menu &rarr; <b>About This Mac</b> shows it, for example <b>Mac OS 15.x</b>). Download the printer driver, open it and follow the installer.</li>
+      <li>Back in <b>Printers &amp; Scanners</b>, click <b>+</b> (<b>Add Printer, Scanner, or Fax</b>). Pick <b>EPSON L8050 Series</b>: the <b>USB</b> one for a cable, or the <b>Bonjour</b> / Wi-Fi one for Wi-Fi.</li>
+      <li>Look at the <b>Use</b> box. It must say <b>EPSON L8050 Series</b>, <b>not</b> AirPrint, Secure AirPrint or Generic PostScript. Click <b>Add</b>. No Epson choice in <b>Use</b>? The driver from step 3 did not install: run it again, then repeat step 4.</li>
+      <li>Check it: select the printer &rarr; <b>Options &amp; Supplies</b> &rarr; <b>Utility</b> &rarr; <b>Print Test Page</b>. Paper comes out? The driver works.</li>
+    </ol>
+    <div class="warn"><b>Keep &ldquo;L8050&rdquo; in the printer's name.</b> The app uses it to apply the settings made for this printer (borderless 4x6). Don't rename it to something like &ldquo;Photo printer&rdquo;. If you ended up with two L8050 entries (one USB, one Wi-Fi), remove one.</div>
+  </section>
+
+  <section>
+    <h2><i>4</i>Connect it to the photobooth4u app</h2>
+    <ol>
+      <li>Open the app &rarr; <b>Setup</b> &rarr; <b>Print settings</b>. Under <b>Paper size</b>, pick the size you print (for example <b>4x6</b>). The <b>Printer 1</b> card below is the printer for that size.</li>
+      <li>Open the <b>Printer 1</b> list and pick <b>EPSON L8050 Series</b>. Not there? Tap <b>Refresh printer list</b>. Still not there? Check the cable or Wi-Fi, and that it shows in <b>Printers &amp; Scanners</b>.</li>
+      <li>Wi-Fi shortcut: <b>Find a Wi-Fi, Bluetooth, or Instax printer</b> &rarr; <b>Find Wi-Fi / network printers</b>. Your L8050 should say <b>on this computer as &ldquo;EPSON L8050 Series&rdquo;</b>: tap <b>Use this printer</b>. If it says <b>Add to this computer</b> instead, don't tap it. Go back to step 3 first, so the Mac gets Epson's driver.</li>
+      <li>In the same card: keep <b>Print quality</b> on <b>Best</b>. Under <b>Paper / media type</b>, pick the <b>glossy photo paper</b> choice. Leave <b>Driver paper size / slot</b> on <b>Auto match</b>: it picks a borderless 4x6 when the driver has one. (<b>Configure printer</b> shows every Epson driver option if you need more; tap <b>Save printer settings</b> after a change.)</li>
+      <li>Check with a real print: tap <b>Print edge test</b> (one test sheet on the chosen paper), or run one practice session and tap <b>Print</b>. Look at the photo: nothing cut off at the edges, no white line.</li>
+      <li>Edges cut off or a thin white line? The edge test prints a scale on every side. Find the <b>first bar you can see</b> on each side. Under <b>Edges (margins)</b>: side cut off, press <b>+</b>; thin white line, press <b>&minus;</b>. The app already has settings for the L8050 on 4x6, so you may not need to change anything.</li>
+      <li>Happy with the test? Run a few full sessions. Then switch on <b>Send a print automatically after each session</b> (Auto-print).</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2><i>?</i>Something not right?</h2>
+    <ul class="fix">
+      <li><span>1</span><b>Printer missing in the app:</b> unplug and re-plug the USB cable, switch the printer off and on, tap <b>Refresh printer list</b>.</li>
+      <li><span>2</span><b>Wi-Fi printer vanished:</b> the Mac and the printer must be on the same Wi-Fi. At events, use the USB cable.</li>
+      <li><span>3</span><b>Nothing prints:</b> System Settings &rarr; Printers &amp; Scanners &rarr; your printer &rarr; <b>Open Print Queue</b>. If it says paused or offline, resume it.</li>
+      <li><span>4</span><b>Dull or not glossy:</b> <b>Paper / media type</b> must match the paper loaded (glossy), and <b>Print quality</b> must be <b>Best</b> (step 4).</li>
+      <li><span>5</span><b>Prints on the wrong paper size:</b> the paper size in the app must match the paper in the tray.</li>
+    </ul>
+  </section>
+
+  <p class="foot">Still stuck? Message us a screenshot of System Settings &rarr; Printers &amp; Scanners (with the <b>Use</b> line showing) and your macOS version.</p>
+</body>
+</html>

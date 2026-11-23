@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>photobooth4u – Facebook cover photo</title>
+<style>
+@font-face{font-family:'Fraunces';font-weight:600;font-style:normal;src:url('../docs/setup-guide/fonts/fraunces-latin-600-normal.woff2') format('woff2');}
+@font-face{font-family:'Fraunces';font-weight:600;font-style:italic;src:url('../docs/setup-guide/fonts/fraunces-latin-600-italic.woff2') format('woff2');}
+@font-face{font-family:'Manrope';font-weight:500;src:url('../docs/setup-guide/fonts/manrope-latin-500-normal.woff2') format('woff2');}
+@font-face{font-family:'Manrope';font-weight:800;src:url('../docs/setup-guide/fonts/manrope-latin-800-normal.woff2') format('woff2');}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1640px;height:624px;overflow:hidden;background:#F5F1EA}
+body{position:relative;font-family:'Manrope',sans-serif;color:#1C1A1E}
+
+/* Everything important sits inside x:200–1440 so Facebook's mobile crop never cuts it. */
+.copy{position:absolute;left:190px;top:0;height:624px;display:flex;flex-direction:column;justify-content:center;width:640px;white-space:nowrap}
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:34px}
+.mark{display:grid;grid-template-columns:1fr 1fr;gap:5px;width:40px;height:40px}
+.mark i{background:#1C1A1E;border-radius:7px}
+.mark i:nth-child(2){background:#C93D27}
+.word{display:flex;align-items:flex-start}
+.word b{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:40px;letter-spacing:-0.035em;line-height:1}
+.word em{font-style:normal;margin-left:5px;padding:3px 9px 5px;border-radius:10px;background:#C93D27;color:#fff;font-weight:800;font-size:19px;line-height:1;transform:rotate(-7deg)}
+h1{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:70px;line-height:1.04;letter-spacing:-0.03em}
+h1 em{font-style:italic;color:#C93D27}
+.tag{margin-top:30px;font-size:19px;font-weight:800;letter-spacing:0.28em;text-transform:uppercase;color:#6B666C}
+
+/* Tablet crop from the About-us hero artwork */
+.shot{position:absolute;left:800px;top:100px;width:710px;height:424px;overflow:hidden;
+  -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 82%,transparent 100%);
+          mask-image:linear-gradient(to bottom,#000 0,#000 82%,transparent 100%)}
+.shot img{position:absolute;width:738px;left:-16px;top:-324px;display:block}
+</style></head>
+<body>
+  <div class="copy">
+    <div class="brand"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span></div>
+    <h1>The photobooth,<br><em>without</em> the booth.</h1>
+    <div class="tag">Snap · Print · Share</div>
+  </div>
+  <div class="shot"><img src="../public/about-us/assets/pb4u-01-diy-photobooth.jpg" alt=""></div>
+</body></html>

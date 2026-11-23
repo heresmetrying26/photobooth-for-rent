@@ -1,0 +1,26 @@
+:root{--bg:#f6f1ea;--ink:#1f1b16;--mute:#6b645b;--line:#e4dccf;--card:#fff;--red:#c93d27;--green:#1e9e5a;--greenbg:#eaf6ef;--blue:#2563eb;--bluebg:#eaf0fe;--amber:#d99a00;--amberbg:#fff4cf;--redbg:#fdecea}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1350px;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,Arial,sans-serif;position:relative;line-height:1.3}
+.page{position:absolute;inset:0;padding:50px 60px 0}
+.eyebrow{font-size:23px;color:var(--mute)}
+.eyebrow b{color:var(--red);font-weight:800}
+h1{font-size:58px;line-height:1.05;font-weight:800;letter-spacing:-1.2px;margin-top:10px}
+.sub{font-size:27px;color:var(--mute);margin-top:10px}
+h2{font-size:33px;font-weight:800;margin:0 0 12px}
+b,strong{font-weight:700}
+.card{background:var(--card);border-radius:28px;border:2px solid var(--line);padding:24px 28px}
+.pill{display:inline-block;border-radius:999px;padding:7px 22px;font-size:24px;font-weight:800;color:#fff;letter-spacing:.4px}
+.foot{position:absolute;left:60px;right:60px;bottom:24px;display:flex;justify-content:space-between;align-items:center;font-size:22px;color:var(--mute)}
+.dots{display:flex;gap:10px;align-items:center}
+.dots i{width:14px;height:14px;border-radius:50%;background:#d8cfc0;display:block}
+.dots i.on{background:var(--red);width:38px;border-radius:8px}
+.num{flex:none;width:58px;height:58px;border-radius:50%;background:var(--red);color:#fff;font-size:30px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.note{font-size:23px;color:var(--mute)}
+svg.qr{fill:#1f1b16;display:block}
+kbd{font-family:inherit;font-weight:700;background:#f1ebe0;border:2px solid var(--line);border-radius:10px;padding:1px 9px;font-size:.92em;white-space:nowrap}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:14px;background:#f6f1ea;border-radius:16px;padding:12px 16px;font-size:24px;font-weight:600;line-height:1.2}
+.sw .t{flex:none;width:58px;height:34px;border-radius:17px;background:#c9c2b5;position:relative}
+.sw .t::after{content:"";position:absolute;top:4px;left:4px;width:26px;height:26px;border-radius:50%;background:#fff}
+.sw.on .t{background:var(--green)}
+.sw.on .t::after{left:28px}

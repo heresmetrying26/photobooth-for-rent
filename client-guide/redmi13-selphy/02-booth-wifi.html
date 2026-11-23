@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Guide 2 - Booth Wi-Fi</title>
+<link rel="stylesheet" href="guide.css">
+<style>
+.rule{margin-top:20px;background:var(--amberbg);border:3px solid var(--amber);border-radius:24px;padding:18px 26px;font-size:26px;line-height:1.3;display:flex;gap:16px;align-items:center}
+.rule .e{font-size:42px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}
+.opt{border-radius:28px;padding:22px 24px 20px;background:#fff;border:4px solid}
+.opt.on{border-color:var(--green)}
+.opt.off{border-color:var(--blue)}
+.opt h3{font-size:33px;line-height:1.1;margin:12px 0 8px;font-weight:800}
+.opt p{font-size:23px;color:#3d372f;line-height:1.28}
+.opt .sws{display:grid;gap:10px;margin:14px 0}
+.sw{font-size:21px}
+.sw.off .t{background:#c9c2b5}
+.steps2{display:flex;align-items:center;gap:8px;margin-top:4px}
+.steps2 div{flex:1;text-align:center;border-radius:14px;padding:8px 6px;font-size:21px;font-weight:700;line-height:1.15}
+.opt.on .steps2 div{background:var(--greenbg)}
+.opt.off .steps2 div{background:var(--bluebg)}
+.steps2 .ar{flex:none;width:auto;background:none!important;padding:0;font-size:26px;color:var(--mute)}
+.how{margin-top:20px}
+.how ol{list-style:none;counter-reset:n;display:grid;gap:9px;margin-top:6px}
+.how li{counter-increment:n;display:flex;gap:16px;align-items:flex-start;font-size:23px;line-height:1.24}
+.how{padding:20px 26px 22px}
+.how li::before{content:counter(n);flex:none;width:38px;height:38px;border-radius:50%;background:var(--red);color:#fff;font-weight:800;font-size:22px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+</style></head>
+<body><div class="page">
+<div class="eyebrow"><b>photobooth4u</b> &middot; Redmi 13 + Canon SELPHY CP1300</div>
+<h1>Booth Wi-Fi: ON or OFF?</h1>
+<p class="sub">Setup &rarr; step 6 <b>Share</b> &rarr; &ldquo;Booth Wi-Fi for guests&rdquo;</p>
+
+<div class="rule"><div class="e">📶</div><div><b>The rule:</b> guests&rsquo; phones must be on the <b>same Wi-Fi as the booth phone</b>, or their photo link will not open.</div></div>
+
+<div class="cols">
+  <div class="opt on">
+    <span class="pill" style="background:var(--green)">TURN IT ON ✓</span>
+    <h3>No router at the venue</h3>
+    <p>The Redmi makes its own Wi-Fi for guests. Its name starts with <b>DIRECT-pb-</b>.</p>
+    <div class="sws">
+      <div class="sw on"><span>Make this tablet the booth Wi-Fi</span><i class="t"></i></div>
+      <div class="sw on"><span>Turn it on when the app opens</span><i class="t"></i></div>
+    </div>
+    <div class="steps2"><div>1 &middot; Scan the Wi-Fi QR</div><span class="ar">→</span><div>2 &middot; Scan the photo QR</div></div>
+    <p class="note" style="margin-top:12px">Print on the SELPHY with the <b>USB cable</b>. While this is on, the phone may not use other Wi-Fi.</p>
+  </div>
+  <div class="opt off">
+    <span class="pill" style="background:var(--blue)">LEAVE IT OFF ✗</span>
+    <h3>Venue has Wi-Fi / router</h3>
+    <p>Join the Redmi to that Wi-Fi. Guests join the same one.</p>
+    <div class="sws">
+      <div class="sw off"><span>Make this tablet the booth Wi-Fi</span><i class="t"></i></div>
+      <div class="sw off"><span>Turn it on when the app opens</span><i class="t"></i></div>
+    </div>
+    <div class="steps2"><div>1 &middot; Scan the Wi-Fi QR</div><span class="ar">→</span><div>2 &middot; Scan the photo QR</div></div>
+    <p class="note" style="margin-top:12px">Type its name and password in the <b>Wi-Fi boxes</b> on the same page. The SELPHY can print by USB or by that Wi-Fi.</p>
+  </div>
+</div>
+
+<div class="card how">
+<h2 style="font-size:30px;margin-bottom:4px">How to turn the booth Wi-Fi on <span class="note" style="font-weight:600">(once, before guests arrive)</span></h2>
+<ol>
+  <li><span>Switch the phone&rsquo;s <b>Wi-Fi ON</b>. It does not need to join anything.</span></li>
+  <li><span>In <kbd>Setup</kbd> &rarr; step 6 <kbd>Share</kbd>, tick <b>&ldquo;Make this tablet the booth Wi-Fi&rdquo;</b> (it says &ldquo;tablet&rdquo; on a phone too) and <b>&ldquo;Turn it on whenever the app opens&rdquo;</b>.</span></li>
+  <li><span>Allow <b>Nearby devices</b> or <b>Location</b> if Android asks. Wait for <b>&ldquo;The booth Wi-Fi is on ✓&rdquo;</b>.</span></li>
+  <li><span>Tap <kbd>Download WIFI QR Sign</kbd> and <kbd>Download QR sign</kbd>. Print both for the booth.</span></li>
+</ol>
+</div>
+
+<div class="foot"><span>Guide 2 of 5 &middot; Booth Wi-Fi</span><span class="dots"><i></i><i class="on"></i><i></i><i></i><i></i></span></div>
+</div>
+</body></html>

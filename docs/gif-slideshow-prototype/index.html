@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Final Shots Slideshow — prototype</title>
+<style>
+  :root { --bg:#14121a; --panel:#1e1b27; --ink:#f1eef7; --dim:#9b95ad; --acc:#ff7aa8; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  .wrap { max-width:1020px; margin:0 auto; padding:24px; display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:24px; }
+  @media (max-width:820px){ .wrap{ grid-template-columns:1fr; } }
+  h1 { font-size:20px; margin:0 0 4px; } .sub { color:var(--dim); margin:0 0 18px; }
+  .stage { background:#0c0b10; border-radius:16px; padding:24px; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:640px; }
+  canvas { max-width:100%; max-height:560px; width:auto; height:auto; border-radius:6px; box-shadow:0 10px 40px rgba(0,0,0,.5); background:#222; }
+  .meta { margin-top:14px; color:var(--dim); font-size:12px; text-align:center; }
+  .dots { display:flex; gap:6px; margin-top:10px; } .dots i { width:8px; height:8px; border-radius:50%; background:#3a3648; } .dots i.on { background:var(--acc); }
+  .panel { background:var(--panel); border-radius:16px; padding:18px; align-self:start; }
+  .panel h3 { margin:0 0 10px; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); }
+  .grp { margin-bottom:16px; }
+  .pills { display:flex; flex-wrap:wrap; gap:6px; }
+  .pill { border:1px solid #3a3648; background:transparent; color:var(--ink); padding:6px 11px; border-radius:99px; cursor:pointer; font:inherit; }
+  .pill.on { background:var(--acc); border-color:var(--acc); color:#1a0f14; font-weight:600; }
+  .sw { width:26px; height:26px; padding:0; border-radius:50%; border:2px solid #3a3648; }
+  .sw.on { border-color:#fff; box-shadow:0 0 0 2px var(--acc); }
+  .note { color:var(--dim); font-size:12px; margin-top:8px; }
+  label.up { display:inline-block; margin-top:6px; color:var(--acc); cursor:pointer; font-size:12px; text-decoration:underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>🖼️ Final Shots Slideshow</h1>
+    <p class="sub">Prototype of the new GIF style: the final photos, no timelapse. Three slide frames: Polaroid card, Event design, and the new Event layout (plain stills dropping into the strip or grid).</p>
+    <div class="stage">
+      <canvas id="cv"></canvas>
+      <div class="dots" id="dots"></div>
+      <div class="meta" id="meta"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="grp"><h3>Guest photo shape</h3><div class="pills" id="shape"></div>
+      <div class="note">Polaroid mode follows this. Nothing gets cropped.</div>
+      <label class="up">Try your own photos<input id="file" type="file" accept="image/*" multiple hidden></label></div>
+    <div class="grp"><h3>Slide frame</h3><div class="pills" id="frame"></div></div>
+    <div id="cardOpts">
+      <div class="grp"><h3>Photo card</h3><div class="pills" id="card"></div></div>
+      <div class="grp"><h3>Background</h3><div class="pills" id="bg"></div></div>
+    </div>
+    <div id="designOpts" style="display:none">
+      <div class="grp"><h3>Template (mock)</h3><div class="pills" id="tpl"></div>
+        <div class="note">In the booth this is the customer's own template, backdrop, title and branding. The GIF takes that design's size.</div></div>
+    </div>
+    <div id="layoutOpts" style="display:none">
+      <div class="grp"><h3>Event layout (mock)</h3><div class="pills" id="lay"></div>
+        <div class="note"><b>New:</b> plain still photos, no motion. They drop into the app's own layout one by one, then the finished layout holds. In the booth this is whatever layout, frame or custom template the event uses.</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---- same values as protected/src/booth.src.html ---- */
+var BGS = { white:['#ffffff','#ffffff'], blush:['#ffd6e0','#ffb3c6'], sunset:['#ff9a8b','#ffd36e'], ocean:['#4facfe','#a0e9ff'],
+            lavender:['#c3b1ff','#f3d9ff'], mint:['#a8edea','#e3fdf5'], midnight:['#232526','#414345'] };
+var CARDS = { white:'#ffffff', cream:'#fbf3e4', black:'#141414' };
+var BG_NAMES = { white:'White', blush:'Blush Pink', sunset:'Sunset', ocean:'Ocean', lavender:'Lavender', mint:'Mint', midnight:'Midnight' };
+var CARD_NAMES = { white:'White Polaroid', cream:'Cream', black:'Black', none:'No card' };
+var SHAPES = { land:['Landscape 3:2', 3/2], wide:['Wide 16:9', 16/9], square:['Square', 1], port:['Portrait 4:5', 4/5] };
+var TPLS = { land:'Wedding (4×6 portrait)', strip:'Event poster (3:4)', wide:'Wide banner (16:9)' };
+var LAYS = { strip:'4-cut strip', grid:'2×2 grid' };
+var HOLD = 1300, FADE = 70, STEPS = [0.33, 0.66];
+
+var st = { shape:'land', frame:'card', card:'white', bg:'blush', tpl:'land', lay:'strip' };
+var userImgs = null;
+
+/* ---- fake guest photos (so this works with no files) ---- */
+function fakePhoto(aspect, i) {
+  var h = 600, w = Math.round(h * aspect), c = document.createElement('canvas'); c.width = w; c.height = h;
+  var x = c.getContext('2d');
+  var pal = [['#6fc3ff','#ffe9b0','#f7a8b8'],['#b79cff','#ffd1ea','#7de0c0'],['#ffb36b','#ffe29a','#6aa8ff'],['#7de0c0','#d7f7ff','#ff8fa3']][i % 4];
+  var g = x.createLinearGradient(0,0,0,h); g.addColorStop(0,pal[0]); g.addColorStop(1,pal[1]); x.fillStyle = g; x.fillRect(0,0,w,h);
+  x.fillStyle = 'rgba(255,255,255,.35)'; x.beginPath(); x.arc(w*.82,h*.2,h*.1,0,7); x.fill();
+  x.fillStyle = 'rgba(0,0,0,.12)'; x.fillRect(0,h*.82,w,h*.18);
+  var n = 2 + (i % 2), gap = w / (n + 1);
+  for (var p = 0; p < n; p++) {                       // little people silhouettes
+    var cx = gap * (p + 1), by = h * .86, s = h * (.16 + (p % 2) * .03);
+    x.fillStyle = ['#2b2540','#3d2f55','#53406b'][(p + i) % 3];
+    x.beginPath(); x.arc(cx, by - s * 3.0, s * .62, 0, 7); x.fill();
+    x.beginPath(); x.moveTo(cx - s * 1.0, by); x.quadraticCurveTo(cx, by - s * 2.6, cx + s * 1.0, by); x.fill();
+    x.fillStyle = pal[2]; x.beginPath(); x.arc(cx + s * .15, by - s * 3.1, s * .22, 0, 7); x.fill();
+  }
+  x.fillStyle = 'rgba(255,255,255,.9)'; x.font = '700 ' + Math.round(h * .05) + 'px system-ui'; x.fillText('Shot ' + (i + 1), 18, h * .08);
+  return c;
+}
+var fakeCache = {};
+function shots() {
+  if (userImgs && userImgs.length) return userImgs;
+  var key = st.shape; if (!fakeCache[key]) fakeCache[key] = [0,1,2,3].map(function (i) { return fakePhoto(SHAPES[key][1], i); });
+  return fakeCache[key];
+}
+
+/* ---- drawing: mirrors drawImageCover / slideCardGeometry / paintSlideCard ---- */
+function cover(ctx, img, x, y, w, h) {
+  var iw = img.width, ih = img.height, ir = iw / ih, br = w / h, sx, sy, sw, sh;
+  if (ir > br) { sh = ih; sw = sh * br; sx = (iw - sw) / 2; sy = 0; } else { sw = iw; sh = sw / br; sx = 0; sy = (ih - sh) / 2; }
+  ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+}
+function geometry(aspect) {
+  aspect = Math.max(.5, Math.min(2.2, aspect || 1));
+  var ow = 640, m = Math.round(ow * .13), hasCard = !!CARDS[st.card];
+  var cw = ow - 2 * m, side = hasCard ? cw * .065 : 0, pw = cw - 2 * side, ph = pw / aspect;
+  var top = side, bottom = hasCard ? side * 3.4 : 0, ch = ph + top + bottom, oh = Math.round(ch + 2 * m);
+  var k = Math.min(1, 1000 / oh);
+  return { ow:ow, oh:oh, cw:cw, ch:ch, pw:pw, ph:ph, side:side, top:top, k:k, outW:Math.round(ow * k), outH:Math.round(oh * k) };
+}
+function paintBg(ctx, w, h) {
+  var c = BGS[st.bg];
+  if (c[0] === c[1]) { ctx.fillStyle = c[0]; ctx.fillRect(0,0,w,h); return; }
+  var g = ctx.createLinearGradient(0,0,w * .45,h); g.addColorStop(0,c[0]); g.addColorStop(1,c[1]); ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+}
+function paintCard(ctx, shot, G, rot) {
+  ctx.save(); ctx.translate(G.ow / 2, G.oh / 2); ctx.rotate(rot * Math.PI / 180);
+  ctx.shadowColor = 'rgba(0,0,0,.30)'; ctx.shadowBlur = G.ow * .05; ctx.shadowOffsetY = G.ow * .02;
+  ctx.fillStyle = CARDS[st.card] || '#000'; ctx.fillRect(-G.cw / 2, -G.ch / 2, G.cw, G.ch);
+  ctx.shadowColor = 'transparent';
+  cover(ctx, shot, -G.cw / 2 + G.side, -G.ch / 2 + G.top, G.pw, G.ph);
+  ctx.restore();
+}
+/* mock of "Event design": a customer template decides the size, photo goes into its window */
+function renderDesign(ctx, shot, W, H) {
+  var t = st.tpl, pal = { land:['#fff7ef','#c9788a','Sam & Jules'], strip:['#16213e','#ffd36e','Rica turns 7!'], wide:['#0f3d3e','#a8edea','Night Market 2026'] }[t];
+  ctx.fillStyle = pal[0]; ctx.fillRect(0,0,W,H);
+  var m = W * .07, bandH = H * (t === 'wide' ? .22 : .2), px = m, py = m, pw = W - 2 * m, ph = H - 2 * m - bandH;
+  ctx.strokeStyle = pal[1]; ctx.lineWidth = Math.max(2, W * .006); ctx.strokeRect(m / 2, m / 2, W - m, H - m);
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = W * .03; ctx.fillStyle = '#fff'; ctx.fillRect(px - 4, py - 4, pw + 8, ph + 8); ctx.restore();
+  cover(ctx, shot, px, py, pw, ph);
+  ctx.fillStyle = (t === 'land') ? '#4a2c35' : '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '700 ' + Math.round(bandH * .38) + 'px Georgia, serif'; ctx.fillText(pal[2], W / 2, H - m - bandH * .62);
+  ctx.fillStyle = pal[1]; ctx.font = '400 ' + Math.round(bandH * .2) + 'px system-ui'; ctx.fillText('21 · 11 · 2026', W / 2, H - m - bandH * .22);
+}
+function designSize() { return { land:[640,960], strip:[720,960], wide:[960,640] }[st.tpl]; }
+function layoutSize() { return { strip:[400,1200], grid:[600,900] }[st.lay]; }
+/* the event's own layout with plain still photos: boxes not yet filled stay empty */
+function renderLayout(ctx, S, count) {
+  var W = S.W, H = S.H, list = S.list, t = st.lay;
+  var pal = t === 'strip' ? ['#fff7ef','#c9788a','Sam & Jules'] : ['#16213e','#ffd36e','Rica turns 7!'];
+  ctx.fillStyle = pal[0]; ctx.fillRect(0,0,W,H);
+  var n = t === 'strip' ? 4 : 4, m = W * .07, gap = W * .04, bandH = H * .13, boxes = [];
+  if (t === 'strip') { var bh = (H - bandH - m * 2 - gap * 3) / 4; for (var i = 0; i < 4; i++) boxes.push([m, m + i * (bh + gap), W - 2 * m, bh]); }
+  else { var cw = (W - 2 * m - gap) / 2, ch = (H - bandH - 2 * m - gap) / 2; for (var j = 0; j < 4; j++) boxes.push([m + (j % 2) * (cw + gap), m + Math.floor(j / 2) * (ch + gap), cw, ch]); }
+  boxes.forEach(function (b, k) {
+    ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.06)'; ctx.fillRect(b[0], b[1], b[2], b[3]);
+    if (k < count) { ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = W * .02; ctx.fillStyle = '#fff'; ctx.fillRect(b[0] - 3, b[1] - 3, b[2] + 6, b[3] + 6); ctx.shadowColor = 'transparent'; cover(ctx, list[k % list.length], b[0], b[1], b[2], b[3]); }
+    ctx.restore();
+  });
+  ctx.fillStyle = t === 'strip' ? '#4a2c35' : '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '700 ' + Math.round(bandH * .34) + 'px Georgia, serif'; ctx.fillText(pal[2], W / 2, H - bandH * .5);
+}
+
+/* ---- frame builder: identical hold / fade pattern as the booth ---- */
+var cv = document.getElementById('cv'), cx = cv.getContext('2d');
+var cur = document.createElement('canvas'), nxt = document.createElement('canvas');
+function setup() {
+  var list = shots(), W, H, G;
+  if (st.frame === 'layout') { var d = layoutSize(); W = d[0]; H = d[1]; }
+  else if (st.frame === 'design') { var d2 = designSize(); W = d2[0]; H = d2[1]; }
+  else { G = geometry(list[0].width / list[0].height); W = G.outW; H = G.outH; }
+  [cv, cur, nxt].forEach(function (c) { c.width = W; c.height = H; });
+  return { list:list, W:W, H:H, G:G };
+}
+function render(ctx, S, i) {
+  var shot = S.list[i];
+  if (st.frame === 'design') { renderDesign(ctx, shot, S.W, S.H); return; }
+  ctx.save(); ctx.scale(S.G.k, S.G.k); paintBg(ctx, S.G.ow, S.G.oh); paintCard(ctx, shot, S.G, i % 2 === 0 ? -2 : 2); ctx.restore();
+}
+var S = setup(), timeline = [], T = 0, startT = performance.now();
+function build() {
+  S = setup(); timeline = []; T = 0;
+  if (st.frame === 'layout') {
+    var nn = 4;
+    for (var c = 1; c <= nn; c++) { timeline.push({ t:T, count:c, alpha:0 }); T += (c < nn ? 900 : 2400); }
+  } else
+  for (var i = 0; i < S.list.length; i++) {
+    var a = i, b = (i + 1) % S.list.length;
+    timeline.push({ t:T, a:a, b:b, alpha:0 }); T += HOLD;
+    if (S.list.length > 1) STEPS.forEach(function (al) { timeline.push({ t:T, a:a, b:b, alpha:al }); T += FADE; });
+  }
+  startT = performance.now();
+  var dots = document.getElementById('dots'); dots.innerHTML = ''; S.list.forEach(function () { dots.appendChild(document.createElement('i')); });
+  if (st.frame === 'layout') { dots.innerHTML = ''; for (var d = 0; d < 4; d++) dots.appendChild(document.createElement('i')); }
+  document.getElementById('meta').textContent = S.W + ' × ' + S.H + ' px  ·  loop ' + (T / 1000).toFixed(1) + ' s' +
+    (st.frame === 'card' ? '  ·  one photo at a time, shaped like the photos' : st.frame === 'design' ? '  ·  one photo at a time, size set by the template' : '  ·  plain stills drop into the layout, then it holds; size set by the layout');
+}
+var lastKey = '';
+function tick(now) {
+  var t = (now - startT) % T, f = timeline[0];
+  for (var k = 0; k < timeline.length; k++) if (timeline[k].t <= t) f = timeline[k];
+  var key = f.t + ':' + f.alpha + ':' + st.frame + st.tpl + st.lay;
+  if (key !== lastKey) {
+    lastKey = key;
+    if (st.frame === 'layout') { renderLayout(cx, S, f.count); }
+    else if (f.alpha === 0) { render(cx, S, f.a); }
+    else { var c1 = cur.getContext('2d'), c2 = nxt.getContext('2d'); render(c1, S, f.a); render(c2, S, f.b);
+      cx.globalAlpha = 1; cx.drawImage(cur, 0, 0); cx.globalAlpha = f.alpha; cx.drawImage(nxt, 0, 0); cx.globalAlpha = 1; }
+    [].forEach.call(document.getElementById('dots').children, function (d, n) { d.classList.toggle('on', st.frame === 'layout' ? n === f.count - 1 : n === f.a); });
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ---- controls ---- */
+function pills(id, opts, key, sw) {
+  var el = document.getElementById(id); el.innerHTML = '';
+  Object.keys(opts).forEach(function (v) {
+    var b = document.createElement('button'); b.className = (sw ? 'pill sw' : 'pill'); b.type = 'button';
+    if (sw) { var c = BGS[v]; b.style.background = c[0] === c[1] ? c[0] : 'linear-gradient(135deg,' + c[0] + ',' + c[1] + ')'; b.title = opts[v]; }
+    else b.textContent = opts[v];
+    if (st[key] === v) b.classList.add('on');
+    b.onclick = function () { st[key] = v; refresh(); };
+    el.appendChild(b);
+  });
+}
+function refresh() {
+  var shapeNames = {}; Object.keys(SHAPES).forEach(function (k) { shapeNames[k] = SHAPES[k][0]; });
+  pills('shape', shapeNames, 'shape');
+  pills('frame', { card:'Polaroid card', design:'Event design / my template', layout:'Event layout, still photos (strip, grid…)' }, 'frame');
+  pills('card', CARD_NAMES, 'card');
+  pills('bg', BG_NAMES, 'bg', true);
+  pills('tpl', TPLS, 'tpl');
+  pills('lay', LAYS, 'lay');
+  document.getElementById('cardOpts').style.display = st.frame === 'card' ? '' : 'none';
+  document.getElementById('designOpts').style.display = st.frame === 'design' ? '' : 'none';
+  document.getElementById('layoutOpts').style.display = st.frame === 'layout' ? '' : 'none';
+  lastKey = ''; build();
+}
+document.getElementById('file').onchange = function (e) {
+  var files = [].slice.call(e.target.files).slice(0, 6), out = [];
+  files.forEach(function (f) { var im = new Image(); im.onload = function () {
+      var c = document.createElement('canvas'), k = Math.min(1, 1200 / Math.max(im.width, im.height));
+      c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+      out.push(c); if (out.length === files.length) { userImgs = out; refresh(); } }; im.src = URL.createObjectURL(f); });
+};
+refresh(); requestAnimationFrame(tick);
+</script>
+</body>
+</html>

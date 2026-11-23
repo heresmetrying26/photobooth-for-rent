@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Canon SELPHY Direct Printing Guide · Android Tablet &amp; Laptop (Windows / Mac) · photobooth4u</title>
+<style>
+  :root {
+    --bg: #f6f1ea;
+    --card: #fffdf9;
+    --ink: #1f1a1d;
+    --dim: #5d555b;
+    --line: #e4ddd3;
+    --red: #c8402a;
+    --red-soft: #fbeee9;
+    --purple: #7c3aed;
+    --purple-soft: #f3eeff;
+    --ok: #1f6f62;
+    --ok-soft: #e6f4f1;
+    --blue: #1b63c7;
+    --blue-soft: #eef3fb;
+    --blue-line: #cfdcf2;
+    --amber: #995d13;
+    --amber-soft: #fef7eb;
+    --amber-line: #f3d9ae;
+    --dark: #1f1a1d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15.5px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--red); font-weight: 600; }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 0 18px; }
+
+  /* Hero */
+  header.hero {
+    background: linear-gradient(135deg, #1f1a1d 0%, #2d2429 100%);
+    color: #f6f1ea;
+    padding: 40px 0 48px;
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font: 700 22px Georgia, "Times New Roman", serif;
+    color: #f6f1ea;
+    text-decoration: none;
+  }
+  .brand .mark { display: grid; grid-template-columns: repeat(2, 9px); gap: 3px; }
+  .brand .mark i { width: 9px; height: 9px; border-radius: 2px; background: #f6f1ea; display: block; }
+  .brand .mark i:nth-child(2) { background: var(--red); }
+  .brand .badge {
+    background: var(--red);
+    color: #fff;
+    font: 800 11px system-ui, sans-serif;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transform: translateY(-4px);
+  }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #f2846e;
+    margin: 24px 0 8px;
+  }
+  h1 {
+    font: 700 clamp(30px, 5.5vw, 48px)/1.08 Georgia, "Times New Roman", serif;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  h1 em { color: #f2846e; font-style: italic; }
+  .lead {
+    color: #ded5cc;
+    font-size: 17px;
+    max-width: 710px;
+    margin-bottom: 20px;
+  }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #f6f1ea;
+    border-radius: 999px;
+    padding: 5px 13px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .pill.ok { background: rgba(31, 111, 98, 0.35); border-color: rgba(74, 222, 128, 0.35); }
+
+  /* Quick TOC */
+  nav.toc {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin: -24px 0 18px;
+    position: relative;
+  }
+  nav.toc a {
+    display: block;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    text-decoration: none;
+    color: var(--ink);
+    box-shadow: 0 8px 20px rgba(31, 26, 29, 0.07);
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  nav.toc a:hover { border-color: var(--red); transform: translateY(-1px); }
+  nav.toc b { display: block; color: var(--red); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  nav.toc span { font-weight: 700; font-size: 14px; }
+
+  /* Sections */
+  section.part { padding: 28px 0 6px; scroll-margin-top: 14px; }
+  .kicker {
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 4px;
+  }
+  h2 {
+    font: 700 clamp(23px, 3.6vw, 31px)/1.18 Georgia, "Times New Roman", serif;
+    margin-bottom: 8px;
+  }
+  .why { color: var(--dim); margin-bottom: 14px; }
+
+  /* Cards & Grids */
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 20px;
+  }
+  .card h3 { font-size: 17px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card p, .card li { color: var(--dim); font-size: 14.5px; }
+  .card ul, .card ol { padding-left: 20px; margin-top: 8px; }
+  .card li { margin: 5px 0; }
+  .card b { color: var(--ink); }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 2px 9px;
+  }
+  .tag.ok { background: var(--ok-soft); color: var(--ok); }
+  .tag.purple { background: var(--purple-soft); color: var(--purple); }
+  .tag.red { background: var(--red-soft); color: var(--red); }
+  .tag.blue { background: var(--blue-soft); color: var(--blue); }
+  .tag.amber { background: var(--amber-soft); color: var(--amber); }
+
+  /* Visual diagram */
+  .diagram-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 20px;
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    align-items: stretch;
+  }
+  .diagram-box {
+    background: #faf6f0;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .diagram-box h4 { font-size: 15.5px; margin: 10px 0 4px; }
+  .diagram-box p { font-size: 13.5px; color: var(--dim); max-width: 340px; }
+
+  /* 4-pass dye-sub flow */
+  .pass-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin-top: 14px;
+  }
+  .pass-card h3 { font-size: 16.5px; margin-bottom: 4px; }
+  .pass-card > p { font-size: 14px; color: var(--dim); margin-bottom: 12px; }
+  .pass-chips {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .pass-chip {
+    flex: 1 1 110px;
+    border-radius: 12px;
+    padding: 10px 8px;
+    text-align: center;
+    font-weight: 800;
+    font-size: 13.5px;
+    line-height: 1.25;
+  }
+  .pass-chip small {
+    display: block;
+    font-weight: 600;
+    font-size: 11.5px;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+  .pass-arrow {
+    align-self: center;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--dim);
+  }
+
+  /* Numbered Steps */
+  ol.steps { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+  ol.steps li {
+    display: grid;
+    grid-template-columns: 38px 1fr;
+    gap: 14px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 15px 18px;
+  }
+  ol.steps .n {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--red);
+    color: #fff;
+    font-weight: 800;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+  }
+  ol.steps .n.ok { background: var(--ok); }
+  ol.steps .n.blue { background: var(--blue); }
+  ol.steps .n.purple { background: var(--purple); }
+  ol.steps h3 { font-size: 16px; margin: 3px 0 4px; }
+  ol.steps p { color: var(--dim); font-size: 14.5px; }
+
+  /* Platform Panels */
+  .os-win { background: var(--blue-soft); border: 1px solid var(--blue-line); border-radius: 16px; padding: 16px 20px; }
+  .os-mac { background: #faf6f0; border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; }
+  .os-and { background: var(--ok-soft); border: 1px solid #bfe3da; border-radius: 16px; padding: 16px 20px; }
+  .os-win h3, .os-mac h3, .os-and h3 { font-size: 16.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .os-win ol, .os-mac ol, .os-and ol { padding-left: 20px; color: var(--dim); font-size: 14.5px; }
+  .os-win li, .os-mac li, .os-and li { margin: 6px 0; }
+  .os-win b, .os-mac b, .os-and b { color: var(--ink); }
+
+  /* Code */
+  code {
+    font: 600 13.5px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: #efe7dd;
+    border-radius: 6px;
+    padding: 1px 6px;
+    color: var(--ink);
+  }
+
+  /* App UI Preview Mockup */
+  .ui-mock {
+    background: var(--card);
+    border: 1.5px solid var(--line);
+    border-radius: 18px;
+    padding: 18px;
+    margin-top: 12px;
+    box-shadow: 0 10px 26px rgba(31, 26, 29, 0.06);
+  }
+  .ui-slot {
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 14px 16px;
+    background: #fff;
+    margin-bottom: 10px;
+  }
+  .ui-slot:last-child { margin-bottom: 0; }
+  .ui-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 9px;
+  }
+  .ui-title { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+  .ui-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .ui-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--ok-soft);
+    color: var(--ok);
+  }
+  .ui-pills { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 10px; }
+  .ui-pill {
+    padding: 5px 11px;
+    border-radius: 999px;
+    border: 1px solid #d5cdc2;
+    background: #faf8f4;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--dim);
+  }
+  .ui-pill.active {
+    background: var(--dark);
+    border-color: var(--dark);
+    color: #fff;
+  }
+  .ui-select {
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 9px;
+    border: 1px solid #d5cdc2;
+    background: #faf8f4;
+    font: 600 13.5px system-ui, sans-serif;
+    color: var(--ink);
+  }
+  .ui-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    background: var(--ok-soft);
+    border: 1px solid #bfe3da;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--ok);
+  }
+  .ui-switch {
+    width: 38px;
+    height: 22px;
+    border-radius: 999px;
+    background: var(--ok);
+    position: relative;
+    flex: none;
+  }
+  .ui-switch::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    top: 3px;
+    right: 3px;
+  }
+  .ui-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .ui-btn {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid #d5cdc2;
+    background: #fff;
+    font: 700 12.5px system-ui, sans-serif;
+    color: var(--ink);
+  }
+  .ui-btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+
+  /* Callouts */
+  .callout {
+    background: var(--red-soft);
+    border: 1px solid #f1cfc5;
+    border-left: 4px solid var(--red);
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin-top: 14px;
+  }
+  .callout.ok { background: var(--ok-soft); border-color: #bfe3da; border-left-color: var(--ok); }
+  .callout.blue { background: var(--blue-soft); border-color: var(--blue-line); border-left-color: var(--blue); }
+  .callout.amber { background: var(--amber-soft); border-color: var(--amber-line); border-left-color: var(--amber); }
+  .callout h3 { font-size: 15.5px; margin-bottom: 4px; }
+  .callout p { font-size: 14.5px; color: var(--dim); }
+  .callout b { color: var(--ink); }
+
+  /* Tables */
+  .tbl-wrap { overflow-x: auto; margin-top: 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); background: #f3ece3; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 700; }
+
+  /* Checklist grid */
+  .check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 12px; }
+  .check-item {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 15px 16px;
+  }
+  .check-item .ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--red-soft);
+    color: var(--red);
+    font-weight: 800;
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  .check-item h3 { font-size: 15px; margin-bottom: 4px; }
+  .check-item p { font-size: 13.5px; color: var(--dim); }
+
+  /* Footer */
+  footer {
+    margin-top: 38px;
+    padding: 24px 0 44px;
+    border-top: 1px solid var(--line);
+    color: var(--dim);
+    font-size: 13.5px;
+  }
+  .help-box {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--dark);
+    color: #f6f1ea;
+    border-radius: 16px;
+    padding: 18px 22px;
+    margin-bottom: 14px;
+  }
+  .help-box h3 { font: 700 19px Georgia, serif; margin-bottom: 2px; }
+  .help-box p { color: #d9cfc6; font-size: 14px; }
+  .help-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    text-decoration: none;
+  }
+
+  @media (max-width: 760px) {
+    .grid-2, .grid-3, .diagram-card { grid-template-columns: 1fr; }
+    .pass-arrow { display: none; }
+  }
+  @media print {
+    body { background: #fff; font-size: 12.5px; }
+    header.hero { background: #1f1a1d !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 24px 0; }
+    nav.toc { display: none !important; }
+    section.part, .card, .callout, .ui-mock, .pass-card, tr { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <a class="brand" href="https://photobooth4u.netlify.app/">
+      <span class="mark"><i></i><i></i><i></i><i></i></span>
+      photobooth<span class="badge">4u</span>
+    </a>
+    <p class="eyebrow">Canon SELPHY Direct Printing Guide · Android Tablet · Windows · macOS · iPad</p>
+    <h1>Canon SELPHY <em>Direct Printing</em><br>on Android &amp; Laptop</h1>
+    <p class="lead">
+      Print vibrant, waterproof, borderless 4&times;6 postcards (and paired 2&times;6 photo strips) straight from your
+      <b>Android tablet/phone</b> or <b>Windows / Mac laptop</b> — with <b>zero pop-up dialogs</b>, <b>no third-party Canon app needed</b>,
+      and <b>automatic printing</b> after every guest session.
+    </p>
+    <div class="pills">
+      <span class="pill ok">&#10003; Android USB OTG &amp; Wi-Fi Direct</span>
+      <span class="pill ok">&#10003; Windows &amp; Mac Laptop Direct</span>
+      <span class="pill ok">&#10003; Silent Auto-Print (No Dialogs)</span>
+      <span class="pill">CP1500 · CP1300 · CP1200 · CP1000 · CP910 · CP820</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="toc" aria-label="Guide sections">
+    <a href="#overview"><b>Overview</b><span>Device Support</span></a>
+    <a href="#android"><b>Android</b><span>USB OTG &amp; Wi-Fi</span></a>
+    <a href="#laptop"><b>Laptop</b><span>Windows &amp; Mac</span></a>
+    <a href="#settings"><b>Booth App</b><span>Paper &amp; Auto-Print</span></a>
+    <a href="#tips"><b>Event Tips</b><span>Cables &amp; Paper</span></a>
+    <a href="#fixes"><b>Help</b><span>Quick Fixes</span></a>
+  </nav>
+
+  <!-- OVERVIEW -->
+  <section class="part" id="overview">
+    <p class="kicker">Quick Answer · Works on Both Platforms</p>
+    <h2>Yes — Direct Printing Works on Both Android &amp; Laptop</h2>
+    <p class="why">
+      photobooth4u has built-in Canon SELPHY support on <b>both Android tablets/phones and Windows/Mac laptops</b>.
+      You do <b>not</b> need the Canon SELPHY Photo Layout app or any manual print screen during your event.
+    </p>
+
+    <div class="diagram-card">
+      <div class="diagram-box">
+        <svg viewBox="0 0 260 118" width="240" height="108" aria-label="Android Tablet to Canon SELPHY Diagram">
+          <rect x="10" y="20" width="84" height="62" rx="9" fill="#1f1a1d" stroke="#1f6f62" stroke-width="2.5"/>
+          <rect x="17" y="27" width="70" height="48" rx="4" fill="#e6f4f1"/>
+          <text x="52" y="48" text-anchor="middle" font-size="10" font-weight="800" fill="#1f6f62">ANDROID</text>
+          <text x="52" y="62" text-anchor="middle" font-size="9" font-weight="600" fill="#1f1a1d">Tablet / Phone</text>
+
+          <line x1="96" y1="43" x2="154" y2="43" stroke="#1f6f62" stroke-width="3"/>
+          <text x="125" y="36" text-anchor="middle" font-size="9.5" font-weight="800" fill="#1f6f62">USB OTG</text>
+          <line x1="96" y1="62" x2="154" y2="62" stroke="#1b63c7" stroke-width="2.5" stroke-dasharray="4 3"/>
+          <text x="125" y="76" text-anchor="middle" font-size="9" font-weight="700" fill="#1b63c7">or Wi-Fi IPP</text>
+
+          <rect x="158" y="22" width="90" height="58" rx="9" fill="#fff" stroke="#c8402a" stroke-width="2.5"/>
+          <rect x="170" y="32" width="38" height="22" rx="3" fill="#2d2429"/>
+          <rect x="215" y="34" width="22" height="18" rx="3" fill="#fbeee9" stroke="#c8402a" stroke-width="1.5"/>
+          <rect x="172" y="62" width="62" height="10" rx="2" fill="#e4ddd3"/>
+          <text x="203" y="96" text-anchor="middle" font-size="10" font-weight="800" fill="#1f1a1d">Canon SELPHY</text>
+        </svg>
+        <h4>Android Tablet / Phone Booth</h4>
+        <p>Built-in native <b>USB OTG driver</b> (zero internet, best for events) + direct <b>Wi-Fi IPP</b> printing with zero pop-ups.</p>
+      </div>
+
+      <div class="diagram-box">
+        <svg viewBox="0 0 260 118" width="240" height="108" aria-label="Laptop to Canon SELPHY Diagram">
+          <rect x="14" y="18" width="76" height="52" rx="6" fill="#1f1a1d" stroke="#1b63c7" stroke-width="2.5"/>
+          <rect x="20" y="24" width="64" height="40" rx="3" fill="#eef3fb"/>
+          <rect x="6" y="70" width="92" height="9" rx="4" fill="#5d555b"/>
+          <text x="52" y="42" text-anchor="middle" font-size="10" font-weight="800" fill="#1b63c7">LAPTOP</text>
+          <text x="52" y="55" text-anchor="middle" font-size="9" font-weight="600" fill="#1f1a1d">Win / Mac</text>
+
+          <line x1="94" y1="43" x2="154" y2="43" stroke="#1b63c7" stroke-width="3"/>
+          <text x="124" y="36" text-anchor="middle" font-size="9.5" font-weight="800" fill="#1b63c7">USB Cable</text>
+          <line x1="94" y1="62" x2="154" y2="62" stroke="#7c3aed" stroke-width="2.5" stroke-dasharray="4 3"/>
+          <text x="124" y="76" text-anchor="middle" font-size="9" font-weight="700" fill="#7c3aed">or Wi-Fi Direct</text>
+
+          <rect x="158" y="22" width="90" height="58" rx="9" fill="#fff" stroke="#c8402a" stroke-width="2.5"/>
+          <rect x="170" y="32" width="38" height="22" rx="3" fill="#2d2429"/>
+          <rect x="215" y="34" width="22" height="18" rx="3" fill="#fbeee9" stroke="#c8402a" stroke-width="1.5"/>
+          <rect x="172" y="62" width="62" height="10" rx="2" fill="#e4ddd3"/>
+          <text x="203" y="96" text-anchor="middle" font-size="10" font-weight="800" fill="#1f1a1d">Canon SELPHY</text>
+        </svg>
+        <h4>Windows &amp; Mac Laptop Booth</h4>
+        <p>Direct <b>Wi-Fi (no driver needed)</b> or <b>USB cable</b> via the photobooth4u Desktop App (or Web Booth + Print Helper).</p>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Device &amp; App</th>
+            <th>Direct USB Cable</th>
+            <th>Direct Wi-Fi</th>
+            <th>Silent Auto-Print?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Android Tablet / Phone<br><small style="color:var(--dim);font-weight:500;">photobooth4u Android App</small></td>
+            <td><span class="tag ok">Yes · No Driver</span><br>USB OTG cable (CP820–CP1500). <b>Best for events &amp; offline.</b></td>
+            <td><span class="tag ok">Yes · No Driver</span><br>Same Wi-Fi via built-in IPP (CP910 / CP1200 / CP1300 / CP1500).</td>
+            <td><span class="tag ok">Yes · Zero Dialog</span></td>
+          </tr>
+          <tr>
+            <td>Windows 10 / 11 Laptop<br><small style="color:var(--dim);font-weight:500;">photobooth4u Desktop App</small></td>
+            <td><span class="tag ok">Yes · Plug &amp; Play</span><br>USB cable (driverless USB direct or Canon Windows driver). <b>Best for offline.</b></td>
+            <td><span class="tag ok">Yes · No Driver</span><br>1-click <b>Use this printer</b> over Wi-Fi IPP — zero Canon driver needed.</td>
+            <td><span class="tag ok">Yes · Zero Dialog</span></td>
+          </tr>
+          <tr>
+            <td>MacBook (Apple Silicon / Intel)<br><small style="color:var(--dim);font-weight:500;">photobooth4u Desktop App</small></td>
+            <td><span class="tag ok">Yes · Plug &amp; Play</span><br>USB cable (driverless USB direct or macOS AirPrint/CUPS queue).</td>
+            <td><span class="tag ok">Yes · No Driver</span><br>1-click <b>Use this printer</b> over Wi-Fi IPP — zero driver needed.</td>
+            <td><span class="tag ok">Yes · Zero Dialog</span></td>
+          </tr>
+          <tr>
+            <td>Laptop Web Browser<br><small style="color:var(--dim);font-weight:500;">Chrome / Edge + Print Helper</small></td>
+            <td><span class="tag blue">Yes · With OS Queue</span><br>Add SELPHY in Windows/Mac Printers &amp; open Print Helper.</td>
+            <td><span class="tag blue">Yes · With OS Queue</span><br>Add Wi-Fi SELPHY in Printers &amp; open Print Helper.</td>
+            <td><span class="tag ok">Yes · Zero Dialog</span></td>
+          </tr>
+          <tr>
+            <td>iPad / iPhone (Bonus)<br><small style="color:var(--dim);font-weight:500;">photobooth4u iPad App</small></td>
+            <td><span class="tag amber">Wi-Fi Recommended</span><br>Use Wi-Fi AirPrint directly from iPad.</td>
+            <td><span class="tag ok">Yes · Silent AirPrint</span><br>Pick once in Print settings — zero pop-ups every session.</td>
+            <td><span class="tag ok">Yes · Zero Dialog</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ANDROID SETUP -->
+  <section class="part" id="android">
+    <p class="kicker">Part 1 · Android Tablet &amp; Phone App</p>
+    <h2>Direct Printing from Android to Canon SELPHY</h2>
+    <p class="why">
+      Choose <b>Option A (USB OTG Cable)</b> for events — it never drops out, needs no router, and lets your Android tablet keep <b>Booth Wi-Fi ON</b> for offline guest QR photo downloads.
+    </p>
+
+    <div class="grid-2">
+      <div class="os-and">
+        <h3>Option A · USB OTG Cable <span class="tag ok">Best for Events · Offline</span></h3>
+        <ol>
+          <li>Load the matching <b>paper cassette</b> (up to 18 sheets) and <b>ink cassette</b> into the Canon SELPHY and power it ON.</li>
+          <li>Plug a <b>USB OTG adapter</b> (or USB-C to USB-C / Mini-USB data cable) between your Android tablet and the SELPHY&rsquo;s side USB port.</li>
+          <li>When Android pops up <b>&ldquo;Allow photobooth4u to access the USB device?&rdquo;</b>, tick <b>Always open</b> and tap <b>OK</b>.</li>
+          <li>In photobooth4u, open <b>Setup &rarr; 4 Printer</b> and choose paper size <b>Selphy postcard (100&times;148)</b>.</li>
+          <li>Under <b>Printer 1</b>, tap <b>Canon SELPHY CP1500 (USB) &middot; Photo (SELPHY)</b> (or CP1300/CP1200/CP910) so it shows a checkmark <b>&#10003;</b>.</li>
+          <li>Tap <b>Test print</b> to verify borderless colour output, then turn on <b>Send a print automatically after each session</b>.</li>
+        </ol>
+      </div>
+
+      <div class="os-mac">
+        <h3>Option B · Wi-Fi Direct (No Cable) <span class="tag blue">Same Wi-Fi Router</span></h3>
+        <ol>
+          <li>On the SELPHY screen, open <b>Wi-Fi Settings &rarr; Connection Settings &rarr; Via Wi-Fi Router</b> and join your Wi-Fi network. <i>(Avoid venue &ldquo;guest&rdquo; Wi-Fi that blocks device-to-device discovery.)</i></li>
+          <li>Connect your Android tablet to the <b>exact same Wi-Fi</b>. (Switch <b>Booth Wi-Fi OFF</b> while using router Wi-Fi.)</li>
+          <li>In photobooth4u, go to <b>Setup &rarr; 4 Printer</b> &rarr; select <b>Selphy postcard (100&times;148)</b>.</li>
+          <li>Tap <b>Find Wi-Fi &amp; USB printers</b>. After ~10 seconds, your <b>Canon SELPHY</b> appears — tap it to select.</li>
+          <li><i>Not showing?</i> Check the SELPHY&rsquo;s IP address on its LCD screen, type it into the IP box, and tap <b>Add / Search</b>.</li>
+          <li>Tap <b>Test print</b>. The app sends a zero-margin borderless photo straight to the SELPHY with no pop-up dialog.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="callout amber">
+      <h3>Android Tip (Xiaomi / Redmi / Oppo / Realme / Vivo Tablets &amp; Phones)</h3>
+      <p>
+        Some Android brands disable USB OTG by default to save battery. If your SELPHY does not show up when plugged in via USB, open Android
+        <b>Settings &rarr; Additional settings &rarr; OTG connection</b> and switch it <b>ON</b>, then unplug and replug the cable.
+      </p>
+    </div>
+  </section>
+
+  <!-- LAPTOP SETUP -->
+  <section class="part" id="laptop">
+    <p class="kicker">Part 2 · Windows &amp; Mac Laptop</p>
+    <h2>Direct Printing from Laptop to Canon SELPHY</h2>
+    <p class="why">
+      Install the <b>photobooth4u Desktop App</b> from <a href="https://photobooth4u.netlify.app/downloads/" target="_blank" rel="noopener">photobooth4u.netlify.app/downloads</a>
+      (Windows 10/11 or Mac Apple Silicon / Intel). Works <b>100% offline</b> once activated — choose either <b>USB Cable</b> or <b>Driverless Wi-Fi</b>.
+    </p>
+
+    <div class="grid-2">
+      <div class="os-win">
+        <h3>Option A · USB Cable (Windows &amp; Mac) <span class="tag ok">Best for Events · Offline</span></h3>
+        <ol>
+          <li>Load the matching <b>paper &amp; ink cassette</b> into the Canon SELPHY, switch it ON, and connect it to your laptop with a USB data cable.</li>
+          <li>Open the <b>photobooth4u Desktop App</b> &rarr; go to <b>Setup &rarr; 4 Printer</b> &rarr; select <b>Selphy postcard (100&times;148)</b> (or <b>4R 4&times;6</b>).</li>
+          <li>Open the <b>Printer 1</b> dropdown:
+            <br>&bull; <b>Driverless USB:</b> pick <code>Canon SELPHY CP1500 (USB direct)</code> / <code>CP1300 (USB direct)</code> — works right away with <b>no Canon driver</b>!
+            <br>&bull; <b>Already installed in Windows/Mac?</b> Pick your system queue (e.g. <code>Canon SELPHY CP1500</code>). photobooth4u automatically uses it cleanly without USB conflicts.
+          </li>
+          <li>Not listed yet? Tap <b>Refresh printer list</b> (or open <b>Find a Wi-Fi, Bluetooth, or Instax printer &rarr; Find Wi-Fi / network printers</b>, which scans USB too).</li>
+          <li>Tap <b>Test print</b> (or run 1 test session), then turn ON <b>Send a print automatically after each session</b>.</li>
+        </ol>
+      </div>
+
+      <div class="os-mac">
+        <h3>Option B · Wi-Fi Direct (Zero Driver!) <span class="tag purple">Wireless · 1-Click</span></h3>
+        <ol>
+          <li>Connect your Canon SELPHY (CP1500 / CP1300 / CP1200 / CP910) to the <b>same Wi-Fi</b> as your Windows or Mac laptop.</li>
+          <li>Open the <b>photobooth4u Desktop App</b> &rarr; go to <b>Setup &rarr; 4 Printer</b> &rarr; pick <b>Selphy postcard (100&times;148)</b>.</li>
+          <li>Expand <b>Find a Wi-Fi, Bluetooth, or Instax printer</b> &rarr; click <b>Find Wi-Fi / network printers</b> (~10 seconds).</li>
+          <li>Next to your <b>Canon SELPHY</b>, click <b>Use this printer</b>. No Windows or Mac driver installation is required — the app sends borderless photos directly over IPP!</li>
+          <li><i>Using Chrome/Edge Web Booth instead of the Desktop App?</i> Install the SELPHY in Windows/Mac <b>Printers &amp; Scanners</b>, open <b>photobooth4u Print Helper</b>, turn on <b>Print directly with Print Helper (skip dialog)</b>, and select your SELPHY.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="callout blue">
+      <h3>Using Windows Laptop Hotspot for Offline Guest QR Downloads?</h3>
+      <p>
+        If your Windows laptop is running the built-in <b>Laptop Hotspot</b> (so guests can scan the QR code with zero venue internet),
+        connect your Canon SELPHY by <b>USB cable</b>! That keeps Wi-Fi dedicated to guest phones while every print flows reliably over USB.
+      </p>
+    </div>
+  </section>
+
+  <!-- BOOTH APP SETTINGS -->
+  <section class="part" id="settings">
+    <p class="kicker">Part 3 · Inside photobooth4u (Same on Android &amp; Laptop)</p>
+    <h2>Exact Print Settings for Borderless Postcards &amp; 2&times;6 Strips</h2>
+    <p class="why">
+      Open <b>Setup &rarr; 4 Printer</b> (or tap the <b>&#128424; Print settings</b> button during a Photo Session). Match these three settings and you&rsquo;re ready for the event:
+    </p>
+
+    <div class="ui-mock" aria-label="photobooth4u Canon SELPHY Print Settings preview">
+      <div class="ui-slot">
+        <div class="ui-head">
+          <span class="ui-title">Paper size</span>
+          <span class="ui-badge">Postcard 100&times;148 mm</span>
+        </div>
+        <div class="ui-pills">
+          <span class="ui-pill">4R (4&times;6)</span>
+          <span class="ui-pill active">&#10003; Selphy postcard (100&times;148)</span>
+          <span class="ui-pill">Selphy card (54&times;86)</span>
+          <span class="ui-pill">3R (3.5&times;5)</span>
+        </div>
+      </div>
+
+      <div class="ui-slot">
+        <div class="ui-head">
+          <span class="ui-title"><span class="ui-num">1</span> Printer 1 <small style="color:var(--dim);font-weight:600;">for Selphy postcard</small></span>
+          <span class="ui-badge">Connected · Direct</span>
+        </div>
+        <div class="ui-select">Canon SELPHY CP1500 (USB) &middot; Photo (SELPHY) &#9662;</div>
+        <div class="ui-toggle-row">
+          <span>Send a print automatically after each session</span>
+          <span class="ui-switch" aria-hidden="true"></span>
+        </div>
+        <div class="ui-btns">
+          <span class="ui-btn primary">Test print</span>
+          <span class="ui-btn">Lightness &amp; Colour Correction</span>
+          <span class="ui-btn">Edges (margins)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-3" style="margin-top:14px;">
+      <div class="card">
+        <h3>Postcard (100&times;148 mm) <span class="tag ok">Standard</span></h3>
+        <p>Matches Canon <b>KP-108IN / RP-108</b> 4&times;6 postcard paper &amp; ink sets. Renders at native <b>300 DPI (1248&times;1872 px)</b> edge-to-edge with protective clear overcoat.</p>
+      </div>
+      <div class="card">
+        <h3>2&times;6 Photo Strips <span class="tag purple">2-Up Ready</span></h3>
+        <p>Canon SELPHY doesn&rsquo;t have an internal cutter blade — photobooth4u automatically places <b>two identical 2&times;6 strips side-by-side</b> on one postcard sheet ready for a paper trimmer!</p>
+      </div>
+      <div class="card">
+        <h3>Card / Stickers (54&times;86) <span class="tag blue">Optional</span></h3>
+        <p>Using Canon <b>KC-36IP</b> or <b>KC-18IF</b> credit-card sticker packs? Load the Card cassette + ink and switch paper size to <b>Selphy card (54&times;86)</b>.</p>
+      </div>
+    </div>
+
+    <!-- 4-PASS CYCLE -->
+    <div class="pass-card">
+      <h3>What Happens During Every SELPHY Print (~41–47 Seconds)</h3>
+      <p>The postcard sheet feeds out the <b>back</b> of the printer and pulls back in 4 times — do not touch or pull the sheet until all 4 passes finish:</p>
+      <div class="pass-chips">
+        <div class="pass-chip" style="background:#ece8e0;color:#1f1a1d;">1. Feed<small>Paper loads</small></div>
+        <span class="pass-arrow">&rarr;</span>
+        <div class="pass-chip" style="background:#ffe066;color:#1f1a1d;">2. Yellow<small>Pass 1</small></div>
+        <span class="pass-arrow">&rarr;</span>
+        <div class="pass-chip" style="background:#e85d9e;color:#fff;">3. Magenta<small>Pass 2</small></div>
+        <span class="pass-arrow">&rarr;</span>
+        <div class="pass-chip" style="background:#38bdf8;color:#0c2d48;">4. Cyan<small>Pass 3</small></div>
+        <span class="pass-arrow">&rarr;</span>
+        <div class="pass-chip" style="background:#e6f4f1;color:#1f6f62;border:1px solid #bfe3da;">5. Clear Coat<small>Waterproof finish</small></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- UNDER THE HOOD & EVENT TIPS -->
+  <section class="part" id="tips">
+    <p class="kicker">Part 4 · Built-In Protections &amp; Event Checklist</p>
+    <h2>What photobooth4u Handles Automatically + Pre-Event Checklist</h2>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>No Yellow-Only Stalls</h3>
+        <p>Sending multiple copies in one batch can freeze a CP1500/CP1300 mid-print. photobooth4u automatically splits multi-copy prints into <b>one photo per job</b>, back-to-back.</p>
+      </div>
+      <div class="card">
+        <h3>Full-Bleed Borderless</h3>
+        <p>Automatically requests zero margins over Wi-Fi IPP and full-bleed <b>1248&times;1872 px</b> raster over USB — avoiding unwanted white borders around postcards.</p>
+      </div>
+      <div class="card">
+        <h3>Live Printer Status</h3>
+        <p>Over direct USB, photobooth4u monitors the SELPHY&rsquo;s live status and alerts you immediately if paper is out, ink ribbon is empty, or cassettes don&rsquo;t match.</p>
+      </div>
+    </div>
+
+    <div class="check-grid">
+      <div class="check-item">
+        <div class="ico">1</div>
+        <h3>Check Your USB Cable</h3>
+        <p><b>CP1500:</b> uses a <b>USB-C</b> port on the side.<br><b>CP1300 / CP1200 / CP910:</b> uses a <b>Mini-USB</b> port. Always use a <b>data-capable</b> USB cable (not a charge-only cable).</p>
+      </div>
+      <div class="check-item">
+        <div class="ico">2</div>
+        <h3>15 cm Rear Clearance</h3>
+        <p>Leave at least <b>15 cm (6 inches)</b> of clear space behind the SELPHY so the paper never hits a wall or backdrop during its 4 passes.</p>
+      </div>
+      <div class="check-item">
+        <div class="ico">3</div>
+        <h3>Max 18 Sheets per Tray</h3>
+        <p>Don&rsquo;t overfill the paper cassette (max 18 sheets). Glossy printing side faces <b>UP</b>, and avoid touching the glossy surface with bare fingers.</p>
+      </div>
+      <div class="check-item">
+        <div class="ico">4</div>
+        <h3>Match Paper &amp; Ink</h3>
+        <p>Postcard paper requires a Postcard ink cassette (<code>KP-108IN</code> / <code>RP-108</code>). Each ink cartridge prints 36 or 54 sheets — keep spare cassettes ready.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TROUBLESHOOTING -->
+  <section class="part" id="fixes">
+    <p class="kicker">Part 5 · Quick Fixes</p>
+    <h2>Troubleshooting Checklist</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>Problem</th><th>Quick Fix</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Android says &ldquo;Tap to allow USB access&rdquo;</td>
+            <td>Tap the printer row in the list &rarr; tick <b>Always open</b> &rarr; tap <b>OK</b>.</td>
+          </tr>
+          <tr>
+            <td>SELPHY not listed over USB (Android)</td>
+            <td>Unplug and replug the cable. Verify it&rsquo;s a <b>data cable + OTG adapter</b> (not charge-only). On Xiaomi/Redmi/Oppo/Realme/Vivo, switch ON <b>Settings &rarr; Additional settings &rarr; OTG connection</b>.</td>
+          </tr>
+          <tr>
+            <td>Laptop says &ldquo;USB port is busy&rdquo; or &ldquo;Could not open over USB&rdquo;</td>
+            <td>Your Windows/Mac already has a system printer queue holding the USB port. Select the system queue name (e.g. <code>Canon SELPHY CP1500</code>) in <b>Printer 1</b> instead — or switch to <b>Wi-Fi Direct</b>.</td>
+          </tr>
+          <tr>
+            <td>Wi-Fi SELPHY not found during scan</td>
+            <td>Confirm both device and SELPHY are on the <b>same Wi-Fi</b> (not a guest/isolated venue network). Turn <b>Booth Wi-Fi OFF</b> on Android. Or type the SELPHY&rsquo;s IP address from its LCD screen into the IP box and tap <b>Search</b>.</td>
+          </tr>
+          <tr>
+            <td>White border around printed photo</td>
+            <td>Set paper size to <b>Selphy postcard (100&times;148)</b> and make sure <b>Borderless</b> is ON. On the SELPHY&rsquo;s own LCD menu, ensure <b>Borders</b> is set to <b>Borderless</b>. Fine-tune if needed with <b>Edges (margins)</b>.</td>
+          </tr>
+          <tr>
+            <td>Prints look slightly dark or warm</td>
+            <td>Open <b>Lightness &amp; Colour Correction</b> inside Printer 1 and bump <b>Lightness</b> by <code>+10</code> to <code>+20</code>. This brightens printed output only — guest QR/digital photos stay untouched.</td>
+          </tr>
+          <tr>
+            <td>&ldquo;Media/job mismatch&rdquo; or &ldquo;Paper feed error&rdquo;</td>
+            <td>Push the paper cassette in firmly until it clicks, verify max 18 sheets, and confirm the paper cassette size matches the loaded ink cassette and the selected paper size in photobooth4u.</td>
+          </tr>
+          <tr>
+            <td>Multi-copy print stalls or prints only yellow</td>
+            <td>Keep <code>SELPHY</code> or <code>CP1500</code> / <code>CP1300</code> in the printer name so photobooth4u sends each copy as a separate single-page job automatically.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <div class="help-box">
+      <div>
+        <h3>Need help testing your Canon SELPHY?</h3>
+        <p>Message us your SELPHY model (e.g. CP1500 / CP1300) and device (Android tablet, Windows, or Mac) — we&rsquo;ll help you get printing in minutes.</p>
+      </div>
+      <a class="help-btn" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener">Message photobooth4u</a>
+    </div>
+    photobooth4u &middot; Canon SELPHY Direct Printing Guide (Android &amp; Laptop) &middot; Press <b>Ctrl+P</b> (or <b>Cmd+P</b>) to save as PDF.
+  </footer>
+</main>
+
+</body>
+</html>

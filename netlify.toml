@@ -97,6 +97,11 @@
   status = 301
 
 [[redirects]]
+  from = "/selphy"
+  to = "/how-to-print-selphy/"
+  status = 301
+
+[[redirects]]
   from = "/how-to-print"
   to = "/how-to-print-hiti/"
   status = 301

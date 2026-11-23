@@ -4,6 +4,7 @@
 // the exact same IPP / PWG Raster jobs over USB that it sends over Wi-Fi. If it exposes only 7/1/2 (e.g. Brother HBP/PJL),
 // the probe reports the exact interfaces and IEEE-1284 ID so the app can guide the operator cleanly.
 import { createRequire } from 'node:module';
+import { isSelphyUsb, selphyModelName, selphyErrorDescription } from './selphyusb.mjs';
 
 const BROTHER_VID = 0x04f9;
 const HP_VID = 0x03f0;
@@ -152,6 +153,13 @@ export function pickUsbRawInterface(interfaces) {
   return interfaces.find((i) => i.cls === 7 && i.sub === 1 && (i.proto === 1 || i.proto === 2)) || null;
 }
 
+export function pickUsbSelphyInterface(interfaces) {
+  return interfaces.find((i) => i.cls === 7 && i.sub === 1 && (i.proto === 2 || i.proto === 1) && i.hasBulkPair)
+    || interfaces.find((i) => i.cls === 7 && i.hasBulkPair)
+    || interfaces.find((i) => i.hasBulkPair)
+    || null;
+}
+
 async function readStringDesc(dev, index) {
   if (!index) return '';
   try { return String((await call((cb) => dev.getStringDescriptor(index, cb))) || '').trim(); } catch { return ''; }
@@ -190,7 +198,7 @@ export async function probeUsbPrinters({ platform = process.platform, readDescri
     if (!d) continue;
     const vid = d.idVendor, pid = d.idProduct;
     const ifaces = inspectDeviceInterfaces(dev);
-    const isPrinter = ifaces.some((i) => i.cls === 7) || vid === BROTHER_VID;
+    const isPrinter = ifaces.some((i) => i.cls === 7) || vid === BROTHER_VID || isSelphyUsb(vid, pid, '');
     if (!isPrinter) continue;
     const ippIface = pickUsbIppInterface(vid, ifaces);
     const rawIface = pickUsbRawInterface(ifaces);
@@ -208,15 +216,20 @@ export async function probeUsbPrinters({ platform = process.platform, readDescri
       finally { if (opened) { try { dev.close(); } catch { /* ignore */ } } }
     }
     const vendorName = VENDORS.get(vid) || manufacturer || '';
-    const known = KNOWN_MODELS.get(idPair) || '';
+    const known = KNOWN_MODELS.get(idPair) || selphyModelName(vid, pid) || '';
     const from1284 = modelFromDeviceId(deviceId);
     let name = known || from1284 || '';
     if (!name && product) name = vendorName && !product.toLowerCase().includes(vendorName.toLowerCase()) ? `${vendorName} ${product}` : product;
     if (!name) name = (vendorName ? vendorName + ' ' : '') + `USB printer (${idPair})`;
 
+    const selphy = isSelphyUsb(vid, pid, `${name} ${product} ${deviceId}`);
+    const selphyIface = selphy ? pickUsbSelphyInterface(ifaces) : null;
+
     const key = `usb:${dev.busNumber || 0}:${dev.deviceAddress || 0}:${idPair}`;
     let note = '';
-    if (ippIface) {
+    if (selphy && selphyIface) {
+      note = 'Canon SELPHY detected on USB: the app can print straight to it over USB with no driver.';
+    } else if (ippIface) {
       note = 'Supports driverless IPP-over-USB (7/1/4): the app can print straight to it over USB.';
     } else if (vid === BROTHER_VID) {
       note = platform === 'win32'
@@ -232,6 +245,9 @@ export async function probeUsbPrinters({ platform = process.platform, readDescri
       key, vid, pid, vidHex: hex4(vid), pidHex: hex4(pid),
       bus: dev.busNumber || 0, address: dev.deviceAddress || 0,
       name, product, manufacturer, deviceId,
+      isSelphy: selphy,
+      hasSelphyUsb: !!selphyIface,
+      selphyIface,
       hasIppUsb: !!ippIface,
       hasRawPrinter: !!rawIface,
       ippIface,
@@ -349,4 +365,108 @@ export function makeUsbIppTransport(entry) {
     baseUri: 'ipp://localhost',
     post: (path, body, timeoutMs) => usbIppPost(entry, path, body, timeoutMs)
   };
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const isUsbTimeout = (e) => /TIMED_OUT|TIMEOUT/i.test(String((e && (e.message || e.errno)) || e));
+
+async function readSelphyStatus(inEp, timeoutMs) {
+  inEp.timeout = timeoutMs;
+  try {
+    const buf = await call((cb) => inEp.transfer(12, cb));
+    return buf && buf.length ? buf : null;
+  } catch (e) {
+    if (isUsbTimeout(e)) return null;
+    throw e;
+  }
+}
+
+/**
+ * Sends one or more Canon SELPHY Neo USB jobs (32-byte header + YUV444 planes) directly over libusb bulk pipes.
+ * Mirrors NetPrintBridge.kt printSelphy: initial status check, wait for Idle (0x01), bulk write, wait for print cycle completion.
+ */
+export function usbSelphyPrint(entry, jobBuffers, { pollMs = 500, idleTimeoutMs = 45000, printTimeoutMs = 120000, writeTimeoutMs = 60000 } = {}) {
+  const jobs = Array.isArray(jobBuffers) ? jobBuffers.filter((b) => b && b.length) : [];
+  if (!jobs.length) return Promise.reject(new Error('No pages to print.'));
+  return enqueueUsb(entry.key || `${entry.vid}:${entry.pid}`, async () => {
+    const dev = findLiveDevice(entry);
+    if (!dev) throw new Error('The Canon SELPHY USB printer is not connected. Check its USB cable and power.');
+    const ifaces = inspectDeviceInterfaces(dev);
+    const want = pickUsbSelphyInterface(ifaces);
+    if (!want) throw new Error('This Canon SELPHY has no usable USB bulk printer interface.');
+    let opened = false, claimed = null;
+    try {
+      try {
+        dev.open();
+        opened = true;
+      } catch (e) {
+        throw new Error('Could not open Canon SELPHY over USB (' + String((e && e.message) || e) + '). If macOS/Windows already added it as a system printer, choose that printer name instead, or connect it over Wi-Fi.');
+      }
+      const iface = dev.interface(want.num);
+      try { if (iface.isKernelDriverActive && iface.isKernelDriverActive()) iface.detachKernelDriver(); } catch { /* macOS / Windows */ }
+      try {
+        iface.claim();
+        claimed = iface;
+      } catch (e) {
+        throw new Error('Canon SELPHY USB port is busy (' + String((e && e.message) || e) + '). If it is already added in Printers & Scanners, choose that printer name instead.');
+      }
+      const altCount = ifaces.filter((i) => i.num === want.num).length;
+      if ((want.alt !== 0 || altCount > 1) && typeof iface.setAltSetting === 'function') {
+        await call((cb) => iface.setAltSetting(want.alt, cb));
+      }
+      let outEp = null, inEp = null;
+      for (const ep of iface.endpoints || []) {
+        if (ep.transferType !== 2) continue;                 // LIBUSB_TRANSFER_TYPE_BULK = 2
+        if (ep.direction === 'out' && !outEp) outEp = ep;
+        if (ep.direction === 'in' && !inEp) inEp = ep;
+      }
+      if (!outEp) throw new Error('Canon SELPHY has no USB data output endpoint.');
+      if (!inEp) throw new Error('Canon SELPHY has no USB status reply endpoint.');
+      outEp.timeout = Math.max(10000, Number(writeTimeoutMs) || 60000);
+
+      // Initial status query to clear any stale error flag (matches NetPrintBridge.kt)
+      const init = await readSelphyStatus(inEp, 3000);
+      if (init && init.length >= 3 && init[2] !== 0) {
+        await readSelphyStatus(inEp, 1000);
+      }
+
+      const ACTIVE_STATES = new Set([0x02, 0x04, 0x08, 0x10, 0x20]);
+      for (const jobData of jobs) {
+        // 1. Wait for printer to be Idle (status 0x01)
+        const waitEnd = Date.now() + Math.max(1000, idleTimeoutMs);
+        while (Date.now() < waitEnd) {
+          const rd = await readSelphyStatus(inEp, 2000);
+          if (rd && rd.length >= 12) {
+            const status = rd[0] & 0xff;
+            const err = rd[2] & 0xff;
+            if (err !== 0) throw new Error('Canon SELPHY error: ' + selphyErrorDescription(err));
+            if (status === 0x01) break;
+          }
+          if (pollMs > 0) await sleep(pollMs);
+        }
+
+        // 2. Write Neo YUV444 job over bulk OUT
+        await writeBulk(outEp, Buffer.isBuffer(jobData) ? jobData : Buffer.from(jobData));
+
+        // 3. Wait for print cycle to run and return to Idle (0x01)
+        const printEnd = Date.now() + Math.max(2000, printTimeoutMs);
+        let printingSeen = false;
+        while (Date.now() < printEnd) {
+          const rd = await readSelphyStatus(inEp, 3000);
+          if (rd && rd.length >= 12) {
+            const status = rd[0] & 0xff;
+            const err = rd[2] & 0xff;
+            if (err !== 0) throw new Error('Canon SELPHY error during print: ' + selphyErrorDescription(err));
+            if (ACTIVE_STATES.has(status)) printingSeen = true;
+            if (printingSeen && status === 0x01) break;
+          }
+          if (pollMs > 0) await sleep(pollMs);
+        }
+      }
+      return { ok: true, pages: jobs.length };
+    } finally {
+      if (claimed) { try { await call((cb) => claimed.release(true, cb)); } catch { /* ignore */ } }
+      if (opened) { try { dev.close(); } catch { /* ignore */ } }
+    }
+  });
 }

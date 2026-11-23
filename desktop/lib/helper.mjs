@@ -10,7 +10,8 @@ import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSy
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { discoverNetworkPrinters, ippCaps, ippPrintDirect, pickMediaName, mediaSizeMm, directFormats, labelMediaType, diagNetworkInfo, ippDiagProbe, ippDiagPrint } from './netprinters.mjs';
-import { probeUsbPrinters, makeUsbIppTransport } from './usbipp.mjs';
+import { probeUsbPrinters, makeUsbIppTransport, usbSelphyPrint } from './usbipp.mjs';
+import { SELPHY_SPECS, selphySpecFor } from './selphyusb.mjs';
 import * as gopro from './cam-gopro.mjs';
 
 export const HELPER_VERSION = '1.1.12-app';
@@ -27,13 +28,16 @@ let shrinkPage = null;   // (png Buffer, scale) -> png Buffer of the same size, 
 
 let toJpeg = null;       // (png Buffer) -> jpeg Buffer. Given by the app (Electron). Needed for printing straight to a printer over IPP.
 let rasterize = null;    // (png / jpeg Buffer, page spec) -> PWG Raster Buffer. Given by the app (Electron). For printers that take only PWG Raster (Brother DCP-T420W).
+let buildSelphyJob = null;   // (png / jpeg Buffer, wMm, hMm, paperName) -> { data: Buffer, spec }. Given by Electron for native Canon SELPHY USB printing (Neo YUV444).
+let selphyPrintOpts = {};
 let directFile = '';     // where the printers used without a driver are remembered between runs
 
 // Printers used straight over IPP (Wi-Fi: Canon SELPHY, Brother DCP-T420W...), with no Windows / Mac driver. They show up
 // in the printer list under a name like "Brother DCP-T420W (direct 192.168.1.50)" and the booth picks them like any other.
 const direct = new Map();   // name -> { ip, port, path }
-// USB printers with a 7/1/4 IPP-over-USB interface (driverless over USB, e.g. on macOS when no OS queue exists for it).
-const usbDirect = new Map();   // name -> usbProbe entry
+// USB printers used straight over libusb when no OS print queue exists for them:
+// either driverless IPP-over-USB (7/1/4) or native Canon SELPHY Neo USB (CP820–CP1500).
+const usbDirect = new Map();   // name -> usbProbe entry (with usbMode: 'ipp' | 'selphy')
 let usbDirectAt = 0;
 function loadDirect() {
   try {
@@ -53,6 +57,7 @@ function directTarget(name) {
   }
   if (usbDirect.has(name)) {
     const entry = usbDirect.get(name);
+    if (entry.usbMode === 'selphy') return { kind: 'usb-selphy', entry };
     return { kind: 'usb', ip: 'localhost', port: 631, path: '', entry, transport: makeUsbIppTransport(entry) };
   }
   return null;
@@ -66,13 +71,16 @@ async function refreshUsbDirect(sysList, force, preFound) {
     usbDirect.clear();
     const sys = (sysList || []).map((n) => ({ name: n, port: '', host: '' }));
     for (const p of found) {
-      if (!p.hasIppUsb) continue;
-      // On Windows, if the OS already has a print queue for this model (e.g. Brother's USB driver or Microsoft IPP),
-      // keep using that OS queue rather than showing a duplicate entry.
-      if (IS_WIN && installedAs({ ip: '', name: p.name }, sys)) continue;
+      const canSelphy = !!(p.isSelphy && p.hasSelphyUsb && buildSelphyJob);
+      const canIpp = !!p.hasIppUsb;
+      if (!canSelphy && !canIpp) continue;
+      // On both Windows and macOS, if the OS already has a print queue for this model (e.g. macOS AirPrint/CUPS queue,
+      // Brother USB driver, or Microsoft IPP), keep using that OS queue rather than showing a duplicate "(USB direct)"
+      // entry that can conflict with the OS holding the USB interface.
+      if (installedAs({ ip: '', name: p.name }, sys)) continue;
       const clean = String(p.name || 'USB printer').replace(/\s*\(USB[^)]*\)\s*$/i, '').replace(/[^\w .\-+]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 48) || 'USB printer';
       const label = clean + ' (USB direct)';
-      usbDirect.set(label, p);
+      usbDirect.set(label, { ...p, usbMode: canSelphy ? 'selphy' : 'ipp' });
     }
   } catch { /* libusb unavailable or no USB printers */ }
 }
@@ -117,11 +125,14 @@ function readMovieProgress() {
   };
 }
 
-export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, rasterize: raster, directPrintersFile, spinInboxDir }) {
+export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, rasterize: raster, selphyJob, selphyPrintOpts: sOpts, directPrintersFile, spinInboxDir }) {
   if (logger) { log = logger; gopro.setLogger((m) => log('GoPro: ' + m)); }
   if (typeof shrink === 'function') shrinkPage = shrink;
   if (typeof jpeg === 'function') toJpeg = jpeg;
   if (typeof raster === 'function') rasterize = raster;
+  if (typeof selphyJob === 'function') buildSelphyJob = selphyJob;
+  else if (selphyJob === null) buildSelphyJob = null;
+  selphyPrintOpts = sOpts && typeof sOpts === 'object' ? sOpts : {};
   if (typeof spinInboxDir === 'function') getSpinInboxDir = spinInboxDir;
   else if (typeof spinInboxDir === 'string') getSpinInboxDir = () => spinInboxDir;
   usbDirect.clear();
@@ -275,6 +286,8 @@ async function usbProbeReport() {
       pid: p.pid,
       vidHex: p.vidHex,
       pidHex: p.pidHex,
+      isSelphy: !!p.isSelphy,
+      hasSelphyUsb: !!p.hasSelphyUsb,
       hasIppUsb: p.hasIppUsb,
       hasRawPrinter: p.hasRawPrinter,
       deviceId: p.deviceId,
@@ -514,34 +527,97 @@ async function paperSizes(printer) {
 // The printer's paper size for the booth's paper (mm), or null. Within 3 mm a side; borderless preferred.
 // When the printer's default paper already is that size it's kept (keep: true), so its own
 // settings (borderless, cutting) stay. A strip on a sheet twice as wide (cut in two) counts too.
-const near = (s, a, b) => { const sa = Math.min(s.w, s.h), sb = Math.max(s.w, s.h); return Math.abs(sa - a) <= 3 && Math.abs(sb - b) <= 3; };
+// On dye-sub printers (HiTi, DNP, Citizen, Sinfonia, Mitsubishi...), also match split/2-UP paper slots
+// when twoUp is explicitly requested, and avoid split slots when a whole 4x6 print is requested.
+const near = (s, a, b, tol = 3) => { const sa = Math.min(s.w, s.h), sb = Math.max(s.w, s.h); return Math.abs(sa - a) <= tol && Math.abs(sb - b) <= tol; };
+const SPLIT_PAPER_NAME = /(?:(?:^|[^a-z0-9])(?:split|2[\s_-]?up|div2|2[\s_-]?in(?:ch)?[\s_-]?cut|2[\s_-]?strips?)(?=$|[^a-z0-9])|(?:^|[^0-9])(?:2\s*[x×]\s*6|6\s*[x×]\s*2)(?=$|[^0-9])|cut[\s_-]?2\s*[x×]\s*6)/i;
+export const isSplitPaperName = (s) => SPLIT_PAPER_NAME.test(String(s || ''));
+const isSplitPaper = (s) => !!(s && isSplitPaperName((s.key || '') + ' ' + (s.name || '')));
 async function pickPaper(printer, widthMm, heightMm, twoUp) {
   if (!(widthMm > 0 && heightMm > 0)) return null;
   const a = Math.min(widthMm, heightMm), b = Math.max(widthMm, heightMm);
   const allowTwoUp = twoUp !== false && (twoUp === true || a <= 60);
+  const isDyeSub = DYE_SUB.test(String(printer || ''));
   const { sizes, def } = await paperSizes(printer);
   const d = def && sizes.find((s) => s.key === def);
-  if (d && (near(d, a, b) || (allowTwoUp && a / b < 0.45 && near(d, a * 2, b)))) return { ...d, keep: true };
+  const matchesDim = (s, tol = 3) => near(s, a, b, tol) || (allowTwoUp && a / b < 0.45 && near(s, a * 2, b, tol));
+  const scoreOf = (s, tol = 3) => {
+    const sa = Math.min(s.w, s.h), sb = Math.max(s.w, s.h);
+    const direct = Math.abs(sa - a) <= tol && Math.abs(sb - b) <= tol;
+    const da = direct ? Math.abs(sa - a) : Math.abs(sa - a * 2);
+    const db = Math.abs(sb - b);
+    return da + db - (s.borderless ? 2.5 : 0);
+  };
+  if (isDyeSub && typeof twoUp === 'boolean') {
+    const wantSplit = twoUp === true;
+    const cands = sizes.filter((s) => matchesDim(s, 3));
+    if (d && matchesDim(d, 3) && isSplitPaper(d) === wantSplit) return { ...d, keep: true };
+    const preferred = cands.filter((s) => isSplitPaper(s) === wantSplit);
+    if (preferred.length) {
+      let bestPref = null;
+      for (const s of preferred) {
+        const score = scoreOf(s, 3);
+        if (!bestPref || score < bestPref.score) bestPref = { ...s, score };
+      }
+      if (bestPref) return { ...bestPref, keep: bestPref.key === def };
+    }
+    // No distinct split/whole paper slot listed (e.g. a dedicated queue where 2-inch cut is a driver checkbox):
+    // preserve the queue's default when its dimensions match so saved driver preferences stay intact.
+    if (d && matchesDim(d, 3)) return { ...d, keep: true };
+  } else if (d && matchesDim(d, 3)) {
+    return { ...d, keep: true };
+  }
   let best = null;
   for (const s of sizes) {
-    const sa = Math.min(s.w, s.h), sb = Math.max(s.w, s.h);
-    if (Math.abs(sa - a) > 3 || Math.abs(sb - b) > 3) continue;
-    const score = Math.abs(sa - a) + Math.abs(sb - b) - (s.borderless ? 2.5 : 0);
+    if (!matchesDim(s, 3)) continue;
+    const splitPenalty = isDyeSub && isSplitPaper(s) ? (twoUp === true || a <= 60 ? -4 : 4) : 0;
+    const score = scoreOf(s, 3) + splitPenalty;
     if (!best || score < best.score) best = { ...s, score };
   }
+  if (!best && /selphy|canon.*\bCP\s?\d{3,4}\b/i.test(printer)) {
+    // A Canon SELPHY Postcard sheet is 100 x 148 mm (4.4 mm shorter than 4x6 in = 101.6 x 152.4 mm).
+    // When the booth is set to 4x6 and the queue only lists Postcard, match it cleanly.
+    if (d && matchesDim(d, 5)) return { ...d, keep: true };
+    for (const s of sizes) {
+      if (!matchesDim(s, 5)) continue;
+      const score = scoreOf(s, 5);
+      if (!best || score < best.score) best = { ...s, score };
+    }
+  }
   return best;
+}
+
+// macOS CUPS: when a single dye-sub queue exposes an explicit cut/split PPD option (not already encoded in PageSize
+// and not a dedicated "2x6 cut" queue whose saved defaults should stay untouched), toggle only the exact option the PPD lists.
+async function dyeSubCupsCutOptions(printer, twoUp, pick) {
+  try {
+    if (IS_WIN || typeof twoUp !== 'boolean' || !DYE_SUB.test(String(printer || ''))) return [];
+    if (pick && isSplitPaper(pick)) return [];
+    if (twoUp === true && /(?:2\s*[x×]\s*6|split|strip|cut)/i.test(String(printer || ''))) return [];
+    const opts = await cupsPrinterOptions(printer);
+    const cutOpt = opts.find((o) => /^(?:cut(?:ter|2x6|mode)?|split(?:mode)?|media-?cut|multi-?cut|hiti-?cut|2inch-?cut|strip-?cut)$/i.test(o.key));
+    if (!cutOpt || !cutOpt.choices.length) return [];
+    const pickChoice = twoUp
+      ? cutOpt.choices.find((c) => /(?:2\s*[x×]\s*6|2[\s_-]?in|split|strip)/i.test(c.value))
+        || cutOpt.choices.find((c) => /^(?:on|yes|true|1|enable|enabled|cut)$/i.test(c.value))
+      : cutOpt.choices.find((c) => /^(?:off|no|none|false|0|disable|disabled|normal|standard|uncut)$/i.test(c.value));
+    if (!pickChoice || pickChoice.selected) return [];
+    log('Dye-sub CUPS cut option: ' + cutOpt.key + '=' + pickChoice.value);
+    return ['-o', cutOpt.key + '=' + pickChoice.value];
+  } catch { return []; }
 }
 
 // ---------- photo quality for AirPrint queues (Mac) ----------
 // A printer added on a Mac as AirPrint is a driverless IPP queue and prints at its draft/normal
 // quality unless told otherwise. For those queues only, ask for the best quality and photo paper,
-// using just the options the queue lists (DNP / HiTi and other driver queues keep their own settings).
+// using just the options the queue lists (DNP / HiTi / SELPHY dye-sub and driver queues keep their own settings).
 async function isAirPrintQueue(printer) {
   const r = await run('lpstat', ['-v', printer]);
   return /^device for [^:]+:\s*(?:ipps?|dnssd|mdns|ippusb):/im.test(r.out || '');
 }
 async function airPrintQualityOptions(printer, want) {
   try {
+    if (DYE_SUB.test(printer)) return [];
     if (!(await isAirPrintQueue(printer))) return [];
     const opts = await cupsPrinterOptions(printer);
     const out = [], notes = [];
@@ -628,7 +704,7 @@ export const WIN_EPSON_L8050_EXPANSION = {
   devmode: { size: 8192, driverVersion: 768, dmSize: 220, extra: 7972, level: 7940, method: 7942 }
 };
 const WIN_PRINT_PS = String.raw`
-param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [string]$MediaType = '', [switch]$Borderless, [int]$CustomW = 0, [int]$CustomH = 0, [int]$ActualW = 0, [int]$ActualH = 0, [double]$EpsonScale = 0)
+param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [string]$MediaType = '', [switch]$Borderless, [switch]$DyeSub, [int]$CustomW = 0, [int]$CustomH = 0, [int]$ActualW = 0, [int]$ActualH = 0, [double]$EpsonScale = 0)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $files = @(Get-Content -LiteralPath $ListFile -Encoding UTF8 | Where-Object { $_ })
@@ -644,7 +720,7 @@ $edgeScale = 1.0
 # the middle of the sheet, so a 4x6 picture is drawn smaller and higher by that (see WIN_EPSON_L8050_4X6). Only the 4x6 Borderless
 # whole-sheet case below uses it.
 $l8050 = $false
-if ($EpsonScale -gt 0 -and $EpsonScale -lt 1) {
+if ($EpsonScale -gt 0 -and $EpsonScale -lt 1 -and -not $DyeSub) {
   $dn = ''
   try { Add-Type -AssemblyName System.Printing; $dn = (New-Object System.Printing.LocalPrintServer).GetPrintQueue($Printer).QueueDriver.Name } catch { }
   if (-not $dn) { try { $dn = (Get-Printer -Name $Printer -ErrorAction Stop).DriverName } catch { } }
@@ -652,8 +728,10 @@ if ($EpsonScale -gt 0 -and $EpsonScale -lt 1) {
   if (("$Printer $dn") -match '(?<![a-z0-9])L[\s_-]?8050(?![0-9])') { $l8050 = $true }
 }
 # Print quality and paper type: applied on top of the printer's own saved settings (its paper,
-# Borderless and orientation stay as they are set). Retry once on transient Windows spooler errors
-# so a busy queue never silently drops media type / quality and prints dark on photo paper.
+# Borderless and orientation stay as they are set). Dye-sub drivers (HiTi, DNP, Citizen, Sinfonia...)
+# keep their 2-inch cut, matte/glossy finish and factory color calibration in private DEVMODE bytes, so
+# we skip PrintTicketConverter mutations on them unless an explicit MediaType was picked.
+if (-not $DyeSub -or $MediaType) {
 for ($ptTry = 0; $ptTry -lt 2; $ptTry++) {
   try {
     Add-Type -AssemblyName System.Printing
@@ -663,24 +741,26 @@ for ($ptTry = 0; $ptTry -lt 2; $ptTry++) {
     $tn = New-Object Xml.XmlNamespaceManager($tx.NameTable)
     $tn.AddNamespace('psf', 'http://schemas.microsoft.com/windows/2003/08/printing/printschemaframework')
     $cx = [xml]([IO.StreamReader]::new($pq.GetPrintCapabilitiesAsXml()).ReadToEnd())
-    $qo = @($cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']") | ForEach-Object { $_.name })
-    # Best (the default), Normal or Draft, set per printer in the booth. Only an option the driver really lists is used.
-    # 'psk:High' is the standard name the Brother, Canon and HP drivers use for their best quality (Epson: ns0000:HighQuality).
-    $qpat = switch ($Quality) { 'draft' { 'Draft|Fast|Economy' } 'normal' { 'Normal|Standard' } default { 'HighQuality|Best|Photographic|^psk:High$' } }
-    $best = $qo | Where-Object { $_ -match $qpat } | Select-Object -First 1
-    $qf = $tx.SelectSingleNode("//psf:Feature[@name='psk:PageOutputQuality']/psf:Option", $tn)
-    if ($best -and $qf -and $qf.GetAttribute('name') -ne $best) {
-      $qf.SetAttribute('name', $best)
-      $vt = $pq.MergeAndValidatePrintTicket($pq.UserPrintTicket, (New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($tx.OuterXml)))))).ValidatedPrintTicket
-      $vx = [xml]([IO.StreamReader]::new($vt.GetXmlStream()).ReadToEnd())
-      $vq = $vx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']")
-      if ($vq -and $vq.GetAttribute('name') -eq $best) {
-        $dm = (New-Object System.Printing.Interop.PrintTicketConverter($Printer, $pq.ClientPrintSchemaVersion)).ConvertPrintTicketToDevMode($vt, [System.Printing.Interop.BaseDevModeType]::UserDefault)
-        $hd = [Runtime.InteropServices.Marshal]::AllocHGlobal($dm.Length)
-        [Runtime.InteropServices.Marshal]::Copy($dm, 0, $hd, $dm.Length)
-        $doc.PrinterSettings.SetHdevmode($hd); $doc.DefaultPageSettings.SetHdevmode($hd)
-        [Runtime.InteropServices.Marshal]::FreeHGlobal($hd)
-        [Console]::Out.WriteLine('info|quality ' + $best)
+    if (-not $DyeSub) {
+      $qo = @($cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']") | ForEach-Object { $_.name })
+      # Best (the default), Normal or Draft, set per printer in the booth. Only an option the driver really lists is used.
+      # 'psk:High' is the standard name the Brother, Canon and HP drivers use for their best quality (Epson: ns0000:HighQuality).
+      $qpat = switch ($Quality) { 'draft' { 'Draft|Fast|Economy' } 'normal' { 'Normal|Standard' } default { 'HighQuality|Best|Photographic|^psk:High$' } }
+      $best = $qo | Where-Object { $_ -match $qpat } | Select-Object -First 1
+      $qf = $tx.SelectSingleNode("//psf:Feature[@name='psk:PageOutputQuality']/psf:Option", $tn)
+      if ($best -and $qf -and $qf.GetAttribute('name') -ne $best) {
+        $qf.SetAttribute('name', $best)
+        $vt = $pq.MergeAndValidatePrintTicket($pq.UserPrintTicket, (New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($tx.OuterXml)))))).ValidatedPrintTicket
+        $vx = [xml]([IO.StreamReader]::new($vt.GetXmlStream()).ReadToEnd())
+        $vq = $vx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']")
+        if ($vq -and $vq.GetAttribute('name') -eq $best) {
+          $dm = (New-Object System.Printing.Interop.PrintTicketConverter($Printer, $pq.ClientPrintSchemaVersion)).ConvertPrintTicketToDevMode($vt, [System.Printing.Interop.BaseDevModeType]::UserDefault)
+          $hd = [Runtime.InteropServices.Marshal]::AllocHGlobal($dm.Length)
+          [Runtime.InteropServices.Marshal]::Copy($dm, 0, $hd, $dm.Length)
+          $doc.PrinterSettings.SetHdevmode($hd); $doc.DefaultPageSettings.SetHdevmode($hd)
+          [Runtime.InteropServices.Marshal]::FreeHGlobal($hd)
+          [Console]::Out.WriteLine('info|quality ' + $best)
+        }
       }
     }
     if ($MediaType) {
@@ -724,6 +804,7 @@ for ($ptTry = 0; $ptTry -lt 2; $ptTry++) {
     if ($ptTry -eq 0) { Start-Sleep -Milliseconds 250 }
     else { [Console]::Out.WriteLine('info|print ticket not applied: ' + $_.Exception.Message) }
   }
+}
 }
 if ($PaperName) {
   $p = $doc.PrinterSettings.PaperSizes | Where-Object { $_.PaperName -eq $PaperName } | Select-Object -First 1
@@ -784,7 +865,7 @@ if ($CustomW -gt 0 -and $CustomH -gt 0 -and -not $PaperName) {
 # that paper (Epson L-series keep it as a separate switch, off unless someone ticked it in the printer's preferences,
 # and with it off the page is fitted inside a ~3 mm margin: white edges). Only if the driver lists a Borderless
 # option and accepts it on this paper; otherwise nothing changes.
-if ($Borderless) {
+if ($Borderless -and -not $DyeSub) {
   try {
     Add-Type -AssemblyName System.Printing
     Add-Type -AssemblyName ReachFramework
@@ -874,6 +955,22 @@ $doc.add_PrintPage({
     $imgLandscape = $img.Width -gt $img.Height
     if ($pageLandscape -ne $imgLandscape) { $img.RotateFlip([System.Drawing.RotateFlipType]::Rotate270FlipNone) }
     $e.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $e.Graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+    $e.Graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+    $e.Graphics.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
+    $ia = New-Object System.Drawing.Imaging.ImageAttributes
+    $ia.SetWrapMode([System.Drawing.Drawing2D.WrapMode]::TileFlipXY)
+    $drawCrisp = {
+      param([single]$dx, [single]$dy, [single]$dw, [single]$dh)
+      $pts = [System.Drawing.PointF[]]@(
+        [System.Drawing.PointF]::new($dx, $dy),
+        [System.Drawing.PointF]::new($dx + $dw, $dy),
+        [System.Drawing.PointF]::new($dx, $dy + $dh)
+      )
+      $srcRect = New-Object System.Drawing.RectangleF 0, 0, ([single]$img.Width), ([single]$img.Height)
+      $e.Graphics.DrawImage($img, $pts, $srcRect, [System.Drawing.GraphicsUnit]::Pixel, $ia)
+    }
+    try {
     $hx = $e.PageSettings.HardMarginX; $hy = $e.PageSettings.HardMarginY
     # What the driver says it can print on this paper: the smaller of its printable area and the page's clip.
     # (.NET's PageSettings.PrintableArea stays in portrait even when the driver is set to Landscape.)
@@ -887,7 +984,10 @@ $doc.add_PrintPage({
     # printer happens to hold.
     $aw = 0; $ah = 0
     if ($ActualW -gt 0 -and $ActualH -gt 0) { if ($pageLandscape) { $aw = $ActualH; $ah = $ActualW } else { $aw = $ActualW; $ah = $ActualH } }
-    if ($clip.Width -ge $page.Width * 0.99 -and $clip.Height -ge $page.Height * 0.99) {
+    # Dye-sub printers (HiTi, DNP, Citizen...) print full-bleed natively even when their Windows driver reports a
+    # slightly inset PrintableArea (94-99% for cutter/bleed allowance); never shrink those into white borders.
+    $fullBleed = ($clip.Width -ge $page.Width * 0.99 -and $clip.Height -ge $page.Height * 0.99) -or ($DyeSub -and $aw -le 0 -and $clip.Width -ge $page.Width * 0.92 -and $clip.Height -ge $page.Height * 0.92)
+    if ($fullBleed) {
       # The driver says the whole sheet is printable (Borderless is on): the picture covers it edge to edge.
       # How far the driver enlarges it past the edge is its own setting (Epson: Borderless > Settings >
       # Expansion), so the app does not add a margin of its own: move that slider if a white line or a
@@ -913,19 +1013,19 @@ $doc.add_PrintPage({
           $px = $shortU / 2880
           $rx0 = 76 * $px - $bl; $ry0 = 22 * $px - $bl
           [Console]::Out.WriteLine('warn|The Epson L8050 driver is set to Retain Size (Printing preferences > Borderless > Settings), so the right and bottom edge of the print keep a white strip of about 3 mm. Choose Auto Expand with the slider on Std there.')
-          $e.Graphics.DrawImage($img, [single](-$hx + $rx0), [single](-$hy + $ry0), [single]($page.Width - $rx0), [single]($page.Height - $ry0))
+          & $drawCrisp ([single](-$hx + $rx0)) ([single](-$hy + $ry0)) ([single]($page.Width - $rx0)) ([single]($page.Height - $ry0))
         } else {
         [Console]::Out.WriteLine(('info|Epson L8050 borderless 4x6: picture drawn at {0}% across and {1}% along so the driver''s enlargement does not trim the edges' -f [Math]::Round($bw / $page.Width * 100, 1), [Math]::Round($bh / $page.Height * 100, 1)))
-        $e.Graphics.DrawImage($img, [single](-$hx + $cx - $bw / 2), [single](-$hy + $cy - $bh / 2), $bw, $bh)
+        & $drawCrisp ([single](-$hx + $cx - $bw / 2)) ([single](-$hy + $cy - $bh / 2)) $bw $bh
         }
       } elseif ($aw -le 0 -and [Math]::Abs(($page.Width / $page.Height) / ($img.Width / $img.Height) - 1) -le 0.04) {
         $bw = [single]($page.Width * $edgeScale); $bh = [single]($page.Height * $edgeScale)
-        $e.Graphics.DrawImage($img, [single](-$hx + ($page.Width - $bw) / 2), [single](-$hy + ($page.Height - $bh) / 2), $bw, $bh)
+        & $drawCrisp ([single](-$hx + ($page.Width - $bw) / 2)) ([single](-$hy + ($page.Height - $bh) / 2)) $bw $bh
       } else {
         # A different shape or size from this sheet: never stretch it. Real size, centred (smaller only if it would not fit).
         if ($aw -gt 0) { $rs = [Math]::Min([Math]::Min($page.Width / $aw, $page.Height / $ah) * $edgeScale, 1.0); $w = [single]($aw * $rs); $h = [single]($ah * $rs) }
         else { $rs = [Math]::Min($page.Width / $img.Width, $page.Height / $img.Height) * $edgeScale; $w = [single]($img.Width * $rs); $h = [single]($img.Height * $rs) }
-        $e.Graphics.DrawImage($img, [single](-$hx + ($page.Width - $w) / 2), [single](-$hy + ($page.Height - $h) / 2), $w, $h)
+        & $drawCrisp ([single](-$hx + ($page.Width - $w) / 2)) ([single](-$hy + ($page.Height - $h) / 2)) $w $h
       }
     } else {
       # The driver keeps a margin it cannot print on. Fit the whole picture inside the part it says it can
@@ -943,9 +1043,10 @@ $doc.add_PrintPage({
       } else {
         if ($aw -gt 0) { $rs = [Math]::Min([Math]::Min($clip.Width / $aw, $clip.Height / $ah), 1.0); $w = [single]($aw * $rs); $h = [single]($ah * $rs) }
         else { $w = [single]($img.Width * $s); $h = [single]($img.Height * $s) }
-        $e.Graphics.DrawImage($img, [single]($clip.X + ($clip.Width - $w) / 2), [single]($clip.Y + ($clip.Height - $h) / 2), $w, $h)
+        & $drawCrisp ([single]($clip.X + ($clip.Width - $w) / 2)) ([single]($clip.Y + ($clip.Height - $h) / 2)) $w $h
       }
     }
+    } finally { $ia.Dispose() }
   } finally { $img.Dispose() }
   $script:i++
   $e.HasMorePages = ($script:i -lt $files.Count)
@@ -999,6 +1100,7 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, c
         }
       } catch { /* no default: the print goes out as before */ }
     }
+    const isDyeSub = DYE_SUB.test(String(printer || ''));
     if (IS_WIN) {
       const ps1 = join(dir, 'print.ps1'), list = join(dir, 'pages.txt');
       await writeFile(ps1, '﻿' + WIN_PRINT_PS, 'utf8');
@@ -1011,7 +1113,7 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, c
       // Only when no paper of the driver matched at all (a matched paper, including a strip on a 2x wider cut sheet, keeps its own handling).
       const actual = !pick && fit !== 'width' && widthMm > 0 && heightMm > 0
         ? ['-ActualW', String(Math.round(Math.min(widthMm, heightMm) / 25.4 * 100)), '-ActualH', String(Math.round(Math.max(widthMm, heightMm) / 25.4 * 100))] : [];
-      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(reqMediaType ? ['-MediaType', reqMediaType] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && (!pick.keep || pick.explicit) ? ['-PaperName', pick.key] : []), ...((pick && (pick.borderless || !pick.explicit)) || cust.length ? ['-Borderless'] : []), '-EpsonScale', String(WIN_EPSON_L3210_SCALE), ...cust, ...actual]);
+      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(reqMediaType ? ['-MediaType', reqMediaType] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(isDyeSub ? ['-DyeSub'] : []), ...(pick && (!pick.keep || pick.explicit) ? ['-PaperName', pick.key] : []), ...(!isDyeSub && ((pick && (pick.borderless || !pick.explicit)) || cust.length) ? ['-Borderless'] : []), '-EpsonScale', String(WIN_EPSON_L3210_SCALE), ...cust, ...actual]);
     } else {
       const scale = fit === 'width' ? 1 : await macBorderlessScale(printer, pick);
       const perSide = !!scale && typeof scale === 'object';
@@ -1037,8 +1139,9 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, c
           }
         } catch { }
       }
+      const cutOpts = await dyeSubCupsCutOptions(printer, twoUp, pick);
       const qopts = await airPrintQualityOptions(printer, quality);
-      r = await run('lp', ['-d', printer, ...media, ...mopts, ...qopts, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
+      r = await run('lp', ['-d', printer, ...media, ...cutOpts, ...mopts, ...qopts, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
     }
     if (r.code !== 0) throw new Error((r.err || r.out || ('exit ' + r.code)).trim().slice(0, 300));
     for (const line of String(r.out || '').split(/\r?\n/)) {
@@ -1295,6 +1398,7 @@ export async function handleHelper(req, path, search) {
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404);
     const dt = directTarget(name);
     if (dt) {
+      if (dt.kind === 'usb-selphy') return json({ ok: true, known: false, mediaTypes: [], mediaLabels: {}, mediaDefault: '', autoMedia: '' });
       const cached = CAPS_CACHE.get(name);
       if (cached && Date.now() - cached.at < 120000) return json({ ok: true, ...cached.caps });
       const caps = await ippCaps(dt.ip, dt.port, dt.path, 3500, dt.transport).catch(() => null);
@@ -1493,6 +1597,19 @@ export async function handleHelper(req, path, search) {
     const twoUp = twoUpQ === '1' ? true : twoUpQ === '0' ? false : undefined;
     const dtPaper = directTarget(name);
     if (dtPaper) {
+      if (dtPaper.kind === 'usb-selphy') {
+        const w = Number(search.get('w')) || 0, h = Number(search.get('h')) || 0;
+        const spec = w > 0 && h > 0 ? selphySpecFor(w, h) : null;
+        const paperList = SELPHY_SPECS.map((s) => ({ key: s.key, name: s.name, w: s.wMm, h: s.hMm, borderless: true }));
+        return json({
+          ok: true,
+          known: true,
+          match: spec ? { name: spec.name + ' (sent straight over USB)', borderless: true, isDefault: false } : null,
+          def: '',
+          sizes: paperList.map((s) => s.name),
+          paperList
+        });
+      }
       // A printer used straight over IPP (Wi-Fi or IPP-over-USB) names its own papers: say which one this booth size will go on.
       const caps = await ippCaps(dtPaper.ip, dtPaper.port, dtPaper.path, 3000, dtPaper.transport);
       if (!caps) return json({ ok: true, known: false });
@@ -1533,32 +1650,40 @@ export async function handleHelper(req, path, search) {
     };
     const dp = directTarget(name);
     const warnings = [];
-    const job = dp
+    const job = dp && dp.kind === 'usb-selphy'
       ? prev.then(async () => {
-        // No driver: each page goes straight over IPP (Wi-Fi or IPP-over-USB) as JPEG or PWG Raster.
-        for (const it of buffers) {
-          const jpeg = it.ext === 'jpg' ? it.buf : null;
-          if (!jpeg && !toJpeg && !rasterize) throw new Error('Could not prepare the photo for the printer.');
-          const r = await ippPrintDirect({
-            ip: dp.ip, port: dp.port, path: dp.path, transport: dp.transport,
-            jpeg, toJpeg, image: it.buf, widthMm: Number(body.widthMm) || 0, heightMm: Number(body.heightMm) || 0,
-            rasterize, quality, mediaType: opts.mediaType, paperName: opts.paperName,
-            borderless: typeof body.borderless === 'boolean' ? body.borderless : undefined
-          });
-          log((dp.kind === 'usb' ? 'Direct USB print on ' : 'Direct print on ') + name + ': paper ' + r.media + (r.format === 'image/pwg-raster' ? ', PWG raster ' + r.dpi + ' dpi' + (r.mediaType ? ', ' + r.mediaType : '') : ', scaling ' + (r.scaling || 'printer default')));
-        }
+        if (!buildSelphyJob) throw new Error('Could not prepare the photo for the Canon SELPHY printer.');
+        const wMm = Number(body.widthMm) || 100, hMm = Number(body.heightMm) || 148;
+        const built = buffers.map((it) => buildSelphyJob(it.buf, wMm, hMm, opts.paperName));
+        await usbSelphyPrint(dp.entry, built.map((b) => b.data), selphyPrintOpts);
+        log('Direct USB SELPHY print on ' + name + ': ' + built[0].spec.name + ' (' + built.length + ' page' + (built.length === 1 ? '' : 's') + ')');
       })
-      : prev.then(async () => {
-        const wMm = Number(body.widthMm) || 0, hMm = Number(body.heightMm) || 0;
-        // A Canon SELPHY CP1500 can stop halfway, print only yellow or freeze the Windows print service when several photos reach it
-        // in one print job, so on a SELPHY each page goes as its own job, one after the other.
-        if (buffers.length > 1 && /selphy|canon.*\bCP\s?1[0-9]{3}\b/i.test(name)) {
-          for (const it of buffers) { const res = await printPages(name, [it], fit, wMm, hMm, quality, body.custom === true, opts); if (res && res.warnings) warnings.push(...res.warnings); }
-          return;
-        }
-        const res = await printPages(name, buffers, fit, wMm, hMm, quality, body.custom === true, opts);
-        if (res && res.warnings) warnings.push(...res.warnings);
-      });
+      : dp
+        ? prev.then(async () => {
+          // No driver: each page goes straight over IPP (Wi-Fi or IPP-over-USB) as JPEG or PWG Raster.
+          for (const it of buffers) {
+            const jpeg = it.ext === 'jpg' ? it.buf : null;
+            if (!jpeg && !toJpeg && !rasterize) throw new Error('Could not prepare the photo for the printer.');
+            const r = await ippPrintDirect({
+              ip: dp.ip, port: dp.port, path: dp.path, transport: dp.transport,
+              jpeg, toJpeg, image: it.buf, widthMm: Number(body.widthMm) || 0, heightMm: Number(body.heightMm) || 0,
+              rasterize, quality, mediaType: opts.mediaType, paperName: opts.paperName,
+              borderless: typeof body.borderless === 'boolean' ? body.borderless : undefined
+            });
+            log((dp.kind === 'usb' ? 'Direct USB print on ' : 'Direct print on ') + name + ': paper ' + r.media + (r.format === 'image/pwg-raster' ? ', PWG raster ' + r.dpi + ' dpi' + (r.mediaType ? ', ' + r.mediaType : '') : ', scaling ' + (r.scaling || 'printer default')));
+          }
+        })
+        : prev.then(async () => {
+          const wMm = Number(body.widthMm) || 0, hMm = Number(body.heightMm) || 0;
+          // A Canon SELPHY CP1500 can stop halfway, print only yellow or freeze the Windows print service when several photos reach it
+          // in one print job, so on a SELPHY each page goes as its own job, one after the other.
+          if (buffers.length > 1 && /selphy|canon.*\bCP\s?\d{3,4}\b/i.test(name)) {
+            for (const it of buffers) { const res = await printPages(name, [it], fit, wMm, hMm, quality, body.custom === true, opts); if (res && res.warnings) warnings.push(...res.warnings); }
+            return;
+          }
+          const res = await printPages(name, buffers, fit, wMm, hMm, quality, body.custom === true, opts);
+          if (res && res.warnings) warnings.push(...res.warnings);
+        });
     printQueues.set(name, job.catch(() => { }));
     try { await job; log('Printed ' + buffers.length + ' page(s) on ' + name); return json({ ok: true, ...(warnings.length ? { warnings: Array.from(new Set(warnings)) } : {}) }); }
     catch (e) { log('Print failed on ' + name + ': ' + (e && e.message || e)); return json({ ok: false, error: String(e && e.message || e) }, 500); }
@@ -1570,4 +1695,4 @@ export function stopHelper() {
   gopro.reset().catch(() => { });
   if (macCamP) macCamP.then((m) => m.reset()).catch(() => { });
 }
-export const _helperTest = { pickPaper, sizeFromName, formatCapsLabel, pickGlossyMediaType, PAPER_CACHE, CAPS_CACHE };
+export const _helperTest = { pickPaper, sizeFromName, formatCapsLabel, pickGlossyMediaType, isSplitPaperName, DYE_SUB, refreshUsbDirect, installedAs, usbDirect, PAPER_CACHE, CAPS_CACHE };

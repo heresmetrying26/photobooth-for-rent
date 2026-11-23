@@ -22397,6 +22397,32 @@
               </div>
             </details>
 
+            <!-- Dedicated 2x6 Split Strips Printer (LumaBooth-style secondary printer for strip layouts on 4R/wide paper) -->
+            <details class="pr-card" id="stripPrinterCard" hidden>
+              <summary class="pr-card-head">
+                <span class="pr-card-title"><span class="pr-card-num" style="background:#7c3aed;">2&times;6</span> 2&times;6 Split Strips Printer
+                  <small style="font-weight:600;color:var(--ink-dim);">for strip layouts</small></span>
+                <span style="display:flex;align-items:center;gap:6px;">
+                  <span class="pr-card-badge" id="stripPrinterBadge">Same as 4&times;6 (auto-split)</span>
+                  <span class="pr-chev" aria-hidden="true">&#9656;</span>
+                </span>
+              </summary>
+              <p class="panel-hint" style="margin:4px 0 8px;">When a <b>2&times;6 strip</b> layout is chosen on <b>4R (4&times;6)</b> paper, the booth automatically routes it here with its own driver settings, edges &amp; colour (just like a secondary printer). Leave on <b>Same as 4&times;6</b> to auto-switch a single HiTi / dye-sub queue between <code>6x4</code> and <code>6x4 Split</code>.</p>
+              <select id="stripPrinterSelect" class="printer-input" aria-label="2x6 Split Strips Printer"></select>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                <button type="button" class="action-btn" id="stripPrinterSetupBtn" style="display:none;width:auto;margin:0;">Configure 2&times;6 printer</button>
+                <button type="button" class="action-btn" id="testWhole4x6Btn" style="width:auto;margin:0;">Test 4&times;6 whole</button>
+                <button type="button" class="action-btn" id="testStrip2x6Btn" style="width:auto;margin:0;">Test 2&times;6 strips (cut)</button>
+              </div>
+              <p class="panel-hint" id="stripPrinterHint" style="margin:6px 0 4px;"></p>
+              <div id="stripSingleSlotWrap" hidden style="margin:8px 0 4px;">
+                <label class="sub-label" for="stripDriverPaperSelect" style="display:block;margin:0 0 4px;">2&times;6 split driver paper slot</label>
+                <select id="stripDriverPaperSelect" class="printer-input"></select>
+                <p class="panel-hint" id="stripDriverPaperHint" style="margin:3px 0 4px;"></p>
+              </div>
+              <div class="pr-opts-body" id="stripPrinterOptsBody" hidden></div>
+            </details>
+
             <!-- Extra printers (Printer 2, Printer 3, ... — collapsible cards with all options) -->
             <div id="extraPrintersList"></div>
 
@@ -37800,11 +37826,25 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       function instaxNames() { try { return window._instax ? window._instax.names() : []; } catch (e) { return []; } }
       function isInstaxPrinter(n) { try { return !!(window._instax && window._instax.isInstaxName(n)); } catch (e) { return false; } }
+      const DYE_SUB_PRINTER_RE = /\b(?:selphy|cp[\s_-]?d?\d{2,4}|dnp|ds[\s_-]?(?:rx\d*\w*|\d+)|hiti|mitsubishi|kodak|citizen|sinfonia|shinko)\b|hiti|dye[\s_-]?sub/i;
+      function isDyeSubPrinter(name) { return DYE_SUB_PRINTER_RE.test(String(name || '')); }
       const DRIVER_PAPER_KEY = 'pb_driver_paper_map';
       let driverPaperMap = {};
       try { driverPaperMap = JSON.parse(localStorage.getItem(DRIVER_PAPER_KEY) || '{}') || {}; } catch (e) { driverPaperMap = {}; }
-      function driverPaperKey(name, sizeKey) { return name && sizeKey ? name + '|' + sizeKey : ''; }
-      function driverPaperFor(name, sizeKey) { const k = driverPaperKey(name, sizeKey); return k ? (driverPaperMap[k] || '') : ''; }
+      function driverPaperKey(name, sizeKey, forceStrip) {
+        if (!name || !sizeKey) return '';
+        const sk = forceStrip === true ? ('strip:' + sizeKey) : forceStrip === false ? sizeKey : printerKey(sizeKey);
+        return name + '|' + sk;
+      }
+      function driverPaperFor(name, sizeKey, forceStrip) {
+        if (!name || !sizeKey) return '';
+        const k = driverPaperKey(name, sizeKey, forceStrip);
+        if (k && driverPaperMap[k]) return driverPaperMap[k];
+        // Backward-compatible fallback for older saved non-strip keys (only when not targeting a strip slot).
+        const plain = name + '|' + sizeKey;
+        if (k !== plain && forceStrip !== true && driverPaperMap[plain]) return driverPaperMap[plain];
+        return '';
+      }
       function saveDriverPaperMap() { try { localStorage.setItem(DRIVER_PAPER_KEY, JSON.stringify(driverPaperMap)); } catch (e) { } }
       const capsChecks = {};
       // The first choice of the paper / media type list. Empty = Auto: a printer that prints borderless prints on its glossy photo paper type
@@ -37852,6 +37892,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         refreshPrinterHint();
         try { updateAutoPrintUI(); } catch (e) { }
         try { refreshPhotoFitUI(); } catch (e) { }
+        try { if (typeof refreshSecondPrinterUI === 'function') refreshSecondPrinterUI(); } catch (e) { }
         return helper;
       }
       // The printers come from the Print Helper, so they're picked, not typed.
@@ -38663,8 +38704,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (col.sat) bits.push('Sat ' + sg(col.sat));
         return bits.join(', ');
       }
-      // Shared option panel renderer for any extra printer card (Printer 2, Printer 3, ...).
-      function buildPrinterOptionsBody(body, slotIdx, pName, pSize) {
+      // Shared option panel renderer for any extra printer card (Printer 2, Printer 3, ..., or 2x6 Split Strips printer).
+      function buildPrinterOptionsBody(body, slotIdx, pName, pSize, forceStrip) {
         const paper = pSize ? paperFor(pSize) : null;
         if (!pName || !paper) { body.hidden = true; body.innerHTML = ''; return; }
         body.hidden = false;
@@ -38672,7 +38713,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const col = colorOfPrinter(pName);
         const isReceipt = isReceiptPaper(pSize);
         const isIx = isInstaxPrinter(pName);
-        const allowTwoUp = withPrinterContext(pName, pSize, () => typeof stripTwoUp === 'function' ? (stripTwoUp(pSize) && !sizedPhoto()) : true);
+        const allowTwoUp = forceStrip === true ? true : withPrinterContext(pName, pSize, () => typeof stripTwoUp === 'function' ? (stripTwoUp(pSize) && !sizedPhoto()) : true);
 
         if (!isIx) {
           if (!capsChecks[pName]) fetchPrinterCaps(pName);
@@ -38681,19 +38722,19 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         const caps = capsChecks[pName];
         const pChk = paperChecks[paperCheckKey(pName, paper, allowTwoUp)];
-        const curDp = driverPaperFor(pName, pSize);
+        const curDp = driverPaperFor(pName, pSize, forceStrip);
         const fitChoices = withPrinterContext(pName, pSize, () => photoSizeChoices());
         const fitCur = opts.fit === 'size' && fitChoices.includes(opts.photoSize) ? ('size:' + opts.photoSize) : (opts.fit === 'fill' ? 'fill' : 'auto');
         const fitOpts = [['auto', 'Fit the page']].concat(fitChoices.map(k => ['size:' + k, paperFor(k).name]), [['fill', 'Fill the page']]);
-        const stripOnWide = !!(!isReceipt && (isStripLayout() || layoutDef().kind === 'receipt') && paper.w / paper.h >= 0.5);
+        const stripOnWide = !!(!isReceipt && (forceStrip === true || isStripLayout() || layoutDef().kind === 'receipt') && paper.w / paper.h >= 0.5);
         const isLarge = !!(!isIx && Math.max(paper.w, paper.h) >= 300);
         const adjTxt = colorAdjSummaryText(col);
         const hasAdj = !!(col.brightness || col.red || col.green || col.blue || col.hue || col.sat);
         const e = opts.edges || { t: 0, b: 0, l: 0, r: 0 };
         const eSet = !!(e.t || e.b || e.l || e.r);
         const fmtMm = v => (v > 0 ? '+' : v < 0 ? '\u2212' : '') + Math.abs(v).toFixed(1) + ' mm';
-        const p1Name = printerFor(printSize);
-        const refreshAll = () => refreshExtraPrintersUI();
+        const p1Name = forceStrip === true ? (printerMap[pSize] || printerFor(pSize)) : printerFor(printSize);
+        const refreshAll = () => { try { refreshStripPrinterUI(); } catch (e) { } refreshExtraPrintersUI(); };
 
         body.innerHTML = '';
         const mkP = (cls, txt) => { const p = document.createElement('p'); p.className = cls; p.textContent = txt; return p; };
@@ -38757,7 +38798,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (curDp && ![...dpSel.options].some(o => o.value === curDp)) addDp(curDp, curDp + ' (saved)');
           dpSel.value = curDp;
           dpSel.addEventListener('change', () => {
-            const k = driverPaperKey(pName, pSize);
+            const k = driverPaperKey(pName, pSize, forceStrip);
             if (k) {
               if (dpSel.value) driverPaperMap[k] = dpSel.value;
               else delete driverPaperMap[k];
@@ -38818,12 +38859,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             eGrid.appendChild(rst);
           }
           body.appendChild(eGrid);
-          const etBtn = document.createElement('button'); etBtn.type = 'button'; etBtn.className = 'action-btn'; etBtn.style.cssText = 'width:auto;margin:8px 0 4px;'; etBtn.textContent = 'Print edge test (Printer ' + (slotIdx + 2) + ')';
+          const etBtn = document.createElement('button'); etBtn.type = 'button'; etBtn.className = 'action-btn'; etBtn.style.cssText = 'width:auto;margin:8px 0 4px;'; etBtn.textContent = slotIdx === 'strip' ? 'Print edge test (2\u00d76 printer)' : ('Print edge test (Printer ' + (slotIdx + 2) + ')');
           etBtn.addEventListener('click', async () => {
             if (etBtn.disabled) return;
             etBtn.disabled = true;
             try {
-              const ok = await printViaHelper([edgeTestSheet(paper, pName)], paper, pName, { sizeKey: pSize });
+              const ok = await printViaHelper([edgeTestSheet(paper, pName)], paper, pName, { sizeKey: pSize, twoUp: forceStrip === true ? true : undefined });
               if (ok) showToast('Edge test sent to ' + pName + '. Read the first bar on each side, then set Edges.', 7000);
             } catch (err) { showToast('Edge test failed: ' + ((err && err.message) || err), 5000); }
             finally { etBtn.disabled = false; }
@@ -39064,8 +39105,195 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         try { refreshStep4Printer(); } catch (e) { }
       }
-      function refreshSecondPrinterOptsUI() { refreshExtraPrintersUI(); }
-      function refreshSecondPrinterUI() { refreshExtraPrintersUI(); }
+      function makeDyeSubTestPage(paper, isTwoUp, printerName) {
+        const c = document.createElement('canvas');
+        c.width = Math.round(paper.w / 25.4 * PRINT_DPI);
+        c.height = Math.round(paper.h / 25.4 * PRINT_DPI);
+        const g = c.getContext('2d');
+        const ppm = c.width / paper.w;
+        g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height);
+        const drawPanel = (x, w, title, sub) => {
+          const pad = Math.round(2 * ppm);
+          g.fillStyle = '#f8f4ee'; g.fillRect(x + pad, pad, w - pad * 2, c.height - pad * 2);
+          g.strokeStyle = '#c8402a'; g.lineWidth = Math.max(4, Math.round(0.8 * ppm));
+          g.strokeRect(x + pad, pad, w - pad * 2, c.height - pad * 2);
+          g.fillStyle = '#1f1a1d'; g.textAlign = 'center'; g.textBaseline = 'middle';
+          g.font = '700 ' + Math.round(w * 0.095) + 'px sans-serif';
+          g.fillText(title, x + w / 2, c.height * 0.36, w - pad * 4);
+          g.font = '600 ' + Math.round(w * 0.055) + 'px sans-serif';
+          g.fillStyle = '#5d555b';
+          g.fillText(sub, x + w / 2, c.height * 0.45, w - pad * 4);
+          g.fillText(printerName || '', x + w / 2, c.height * 0.52, w - pad * 4);
+          g.fillText('300 DPI \u00b7 ' + c.width + '\u00d7' + c.height + ' px', x + w / 2, c.height * 0.59, w - pad * 4);
+          // Colour swatches to verify dye-sub colour balance & vibrancy
+          const sw = ['#e11d48', '#f59e0b', '#10b981', '#2563eb', '#111827'], swW = Math.round((w - pad * 6) / sw.length), swH = Math.round(10 * ppm);
+          const sx0 = x + Math.round((w - swW * sw.length) / 2), sy = Math.round(c.height * 0.68);
+          sw.forEach((col, i) => { g.fillStyle = col; g.fillRect(sx0 + i * swW, sy, swW - 4, swH); });
+        };
+        if (isTwoUp) {
+          const half = Math.round(c.width / 2);
+          drawPanel(0, half, '2\u00d76 STRIP (L)', 'Auto-cut left half');
+          drawPanel(half, c.width - half, '2\u00d76 STRIP (R)', 'Auto-cut right half');
+          g.save();
+          g.strokeStyle = '#9ca3af'; g.lineWidth = 2; g.setLineDash([14, 10]);
+          g.beginPath(); g.moveTo(half, 0); g.lineTo(half, c.height); g.stroke();
+          g.restore();
+        } else {
+          drawPanel(0, c.width, '4\u00d76 WHOLE TEST', paper.name + ' (uncut)');
+        }
+        return c;
+      }
+      function refreshStripPrinterUI() {
+        const card = document.getElementById('stripPrinterCard');
+        if (!card) return;
+        const paper = printSize ? paperFor(printSize) : null;
+        const show = !!(helperOn && helper && helper.ok && paper && !isReceiptPaper(printSize) && paper.w / paper.h >= 0.5);
+        card.hidden = !show;
+        if (!show) return;
+        const baseKey = printSize;
+        const stripKey = 'strip:' + baseKey;
+        const wholeP = printerMap[baseKey] || '';
+        const stripSaved = printerMap[stripKey] || '';
+        const effectiveStripP = stripSaved || wholeP;
+        const list = (helper && helper.printers) || [];
+        const sel = document.getElementById('stripPrinterSelect');
+        const badge = document.getElementById('stripPrinterBadge');
+        const hint = document.getElementById('stripPrinterHint');
+        const setupBtn = document.getElementById('stripPrinterSetupBtn');
+        const singleWrap = document.getElementById('stripSingleSlotWrap');
+        const singleSel = document.getElementById('stripDriverPaperSelect');
+        const singleHint = document.getElementById('stripDriverPaperHint');
+        const optsBody = document.getElementById('stripPrinterOptsBody');
+        const distinct = !!(stripSaved && stripSaved !== wholeP);
+
+        if (sel && document.activeElement !== sel) {
+          sel.innerHTML = '';
+          const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
+          add('', wholeP ? ('Same as 4\u00d76 (' + wholeP + ' \u2014 auto-switch Split)') : 'Same as 4\u00d76 printer (auto-switch Split)');
+          list.forEach(n => add(n, n));
+          if (stripSaved && !list.includes(stripSaved)) add(stripSaved, stripSaved + ' (not found)');
+          sel.value = stripSaved;
+        }
+        if (badge) {
+          const ok = !!(effectiveStripP && list.includes(effectiveStripP));
+          badge.textContent = distinct ? stripSaved : (wholeP ? 'Auto-split on ' + wholeP : 'Same as 4\u00d76');
+          badge.className = 'pr-card-badge' + (ok ? ' ready' : '');
+        }
+        if (setupBtn) {
+          const canCfg = (DESKTOP || (helperOn && helper.ok && helperAtLeast('1.1.7'))) && !!effectiveStripP && list.includes(effectiveStripP) && !isInstaxPrinter(effectiveStripP);
+          setupBtn.style.display = canCfg ? '' : 'none';
+        }
+        if (effectiveStripP && !isInstaxPrinter(effectiveStripP)) {
+          const pk2 = paperCheckKey(effectiveStripP, paper, true);
+          if (!paperChecks[pk2]) checkPaper(effectiveStripP, paper, true);
+          const pChk2 = paperChecks[pk2];
+          if (hint) {
+            if (distinct) {
+              hint.textContent = '2\u00d76 strip layouts automatically print on \u201c' + stripSaved + '\u201d with its own settings below' + (pChk2 && pChk2.state === 'ok' ? ' (' + pChk2.name + ')' : '') + '. Whole 4\u00d76 layouts stay on \u201c' + (wholeP || 'Printer 1') + '\u201d.';
+            } else if (pChk2 && pChk2.state === 'ok') {
+              hint.textContent = 'Single-printer mode: 2\u00d76 strips will use \u201c' + pChk2.name + '\u201d on ' + effectiveStripP + '. For HiTi/dye-sub drivers whose 2-inch cut is a checkbox instead of a paper size, add a second copy of the printer (\u201cHiTi 2x6 cut\u201d) and pick it above.';
+            } else {
+              hint.textContent = 'Pick a dedicated 2\u00d76 cut queue (e.g. \u201cHiTi 2x6 cut\u201d) above, or leave on Same as 4\u00d76 for automatic split-paper detection.';
+            }
+          }
+          if (singleWrap && singleSel) {
+            singleWrap.hidden = distinct;
+            if (!distinct) {
+              const curDp = driverPaperFor(effectiveStripP, baseKey, true);
+              if (document.activeElement !== singleSel) {
+                singleSel.innerHTML = '';
+                const addP = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; singleSel.appendChild(o); };
+                addP('', pChk2 && pChk2.state === 'ok' ? ('Auto match (' + pChk2.name + ')') : 'Auto match (6x4 Split / 2-UP)');
+                if (pChk2 && Array.isArray(pChk2.paperList)) {
+                  pChk2.paperList.forEach(ps => addP(ps.name, ps.name + ' (' + Math.round(ps.w) + '\u00d7' + Math.round(ps.h) + ' mm)'));
+                }
+                if (curDp && ![...singleSel.options].some(o => o.value === curDp)) addP(curDp, curDp + ' (saved)');
+                singleSel.value = curDp;
+              }
+              if (singleHint) {
+                singleHint.textContent = curDp
+                  ? 'Sending exact driver paper slot \u201c' + curDp + '\u201d for 2\u00d76 strips on ' + effectiveStripP + '.'
+                  : 'Leave on Auto match, or explicitly pick your driver\u2019s 6x4 Split / 2-UP slot here.';
+              }
+            }
+          }
+        } else {
+          if (hint) hint.textContent = 'Choose Printer 1 above first, or pick a dedicated 2\u00d76 cut printer here.';
+          if (singleWrap) singleWrap.hidden = true;
+        }
+        if (optsBody) {
+          if (distinct && list.includes(stripSaved)) {
+            buildPrinterOptionsBody(optsBody, 'strip', stripSaved, baseKey, true);
+          } else {
+            optsBody.hidden = true;
+            optsBody.innerHTML = '';
+          }
+        }
+      }
+      const stripPrinterSel = document.getElementById('stripPrinterSelect');
+      if (stripPrinterSel) stripPrinterSel.addEventListener('change', () => {
+        if (!printSize) return;
+        const v = stripPrinterSel.value, k = 'strip:' + printSize;
+        if (v) printerMap[k] = v; else delete printerMap[k];
+        savePrinterMap();
+        fillPrinterSelect();
+        refreshPrinterHint();
+        refreshStripPrinterUI();
+        try { refreshPhotoFitUI(); } catch (e) { }
+        try { updateAutoPrintUI(); } catch (e) { }
+      });
+      const stripDriverPaperSel = document.getElementById('stripDriverPaperSelect');
+      if (stripDriverPaperSel) stripDriverPaperSel.addEventListener('change', () => {
+        if (!printSize) return;
+        const pname = printerMap['strip:' + printSize] || printerMap[printSize] || '';
+        const k = driverPaperKey(pname, printSize, true);
+        if (k) {
+          if (stripDriverPaperSel.value) driverPaperMap[k] = stripDriverPaperSel.value;
+          else delete driverPaperMap[k];
+          saveDriverPaperMap();
+        }
+        refreshPrinterHint();
+        refreshStripPrinterUI();
+        try { refreshPhotoFitUI(); } catch (e) { }
+      });
+      const stripPrinterSetupBtn = document.getElementById('stripPrinterSetupBtn');
+      if (stripPrinterSetupBtn) stripPrinterSetupBtn.addEventListener('click', async () => {
+        if (!printSize) return;
+        const pname = printerMap['strip:' + printSize] || printerMap[printSize] || '';
+        if (!pname) return;
+        stripPrinterSetupBtn.disabled = true;
+        try {
+          const rr = await fetch(HELPER_URL + '/printer/configure', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: pname }) });
+          const jj = await rr.json();
+          if (!rr.ok || !jj.ok) throw new Error(jj.error || 'Could not open printer settings.');
+          if (jj.options && jj.options.length && printerOptionsBox) {
+            printerOptionsBox.style.display = 'block';
+            pbCupsOptionsUI(printerOptionsBox, pname, jj.options);
+            return;
+          }
+          showToast(jj.message || ('Opened preferences for ' + pname + '.'), 5000);
+        } catch (err) { showToast((err && err.message) || 'Could not open printer settings.', 5000); }
+        finally { stripPrinterSetupBtn.disabled = false; }
+      });
+      async function runDyeSubModeTest(btn, isTwoUp) {
+        if (!printSize || btn.disabled) return;
+        const paper = paperFor(printSize); if (!paper) return;
+        const pname = isTwoUp ? (printerMap['strip:' + printSize] || printerMap[printSize] || '') : (printerMap[printSize] || printerFor(printSize) || '');
+        if (!pname) { showToast('Choose a printer first.', 3500); return; }
+        btn.disabled = true;
+        try {
+          const testCanvas = withPrinterContext(pname, printSize, () => printAdjust(makeDyeSubTestPage(paper, isTwoUp, pname)));
+          const ok = await printViaHelper([testCanvas], paper, pname, { sizeKey: printSize, twoUp: isTwoUp });
+          if (ok) showToast((isTwoUp ? '2\u00d76 strip test' : '4\u00d76 whole test') + ' sent to ' + pname + '.', 4500);
+        } catch (err) { showToast('Test print failed: ' + ((err && err.message) || err), 5000); }
+        finally { btn.disabled = false; }
+      }
+      const testWhole4x6Btn = document.getElementById('testWhole4x6Btn');
+      if (testWhole4x6Btn) testWhole4x6Btn.addEventListener('click', () => runDyeSubModeTest(testWhole4x6Btn, false));
+      const testStrip2x6Btn = document.getElementById('testStrip2x6Btn');
+      if (testStrip2x6Btn) testStrip2x6Btn.addEventListener('click', () => runDyeSubModeTest(testStrip2x6Btn, true));
+      function refreshSecondPrinterOptsUI() { try { refreshStripPrinterUI(); } catch (e) { } refreshExtraPrintersUI(); }
+      function refreshSecondPrinterUI() { try { refreshStripPrinterUI(); } catch (e) { } refreshExtraPrintersUI(); }
       const addPrinter2Btn = document.getElementById('addPrinter2Btn');
       if (addPrinter2Btn) addPrinter2Btn.addEventListener('click', () => {
         const next = extraPrintersStore();
@@ -39136,19 +39364,22 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return false;
         }
         try {
+          const autoTwoUp4x6 = Array.isArray(pages) && pages.some(c => c && c._pbAutoTwoUp4x6);
           const sizeKey = (opt && opt.sizeKey) || printSize;
-          const twoUpFlag = opt && typeof opt.twoUp === 'boolean' ? opt.twoUp : (typeof stripTwoUp === 'function' && stripTwoUp(sizeKey) && (typeof sizedPhoto !== 'function' || !sizedPhoto()));
-          const explicitPaper = (opt && opt.paperName) || driverPaperFor(name, sizeKey) || undefined;
+          const twoUpFlag = autoTwoUp4x6 ? true : (opt && typeof opt.twoUp === 'boolean' ? opt.twoUp : (typeof stripTwoUp === 'function' && stripTwoUp(sizeKey) && (typeof sizedPhoto !== 'function' || !sizedPhoto())));
+          const explicitPaper = (opt && opt.paperName) || driverPaperFor(name, autoTwoUp4x6 ? '4x6' : sizeKey, twoUpFlag) || undefined;
           const mediaType = (opt && opt.mediaType) || helperMediaTypeFor(name) || undefined;
-          const isCustom = ownSizes().some(k => { const op = paperFor(k); return !!op && Math.abs(op.w - paper.w) < 0.6 && Math.abs(op.h - paper.h) < 0.6; }) || !Object.keys(PAPER).some(k => Math.abs(PAPER[k].w - paper.w) < 0.6 && Math.abs(PAPER[k].h - paper.h) < 0.6);
+          const sendW = autoTwoUp4x6 ? 101.6 : paper.w;
+          const sendH = autoTwoUp4x6 ? 152.4 : paper.h;
+          const isCustom = !autoTwoUp4x6 && (ownSizes().some(k => { const op = paperFor(k); return !!op && Math.abs(op.w - paper.w) < 0.6 && Math.abs(op.h - paper.h) < 0.6; }) || !Object.keys(PAPER).some(k => Math.abs(PAPER[k].w - paper.w) < 0.6 && Math.abs(PAPER[k].h - paper.h) < 0.6));
           const body = JSON.stringify({
             printer: name,
             quality: (opt && opt.quality) || helperQualityFor(name),
             mediaType,
             paperName: explicitPaper,
             twoUp: !!twoUpFlag,
-            widthMm: paper.w,
-            heightMm: paper.h,
+            widthMm: sendW,
+            heightMm: sendH,
             fit: paper.receipt ? 'width' : undefined,
             custom: isCustom,
             pages: pages.map(c => c && c._pbJpeg ? c.toDataURL('image/jpeg', 0.94) : c.toDataURL('image/png'))
@@ -40054,19 +40285,26 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         const useFastPoster = !!(helperOn && printPrefs && Number(printPrefs.posterDpi) === 200 && Math.max(paper.w, paper.h) >= 300 && !paper.receipt);
         const dpi = useFastPoster ? 200 : (canonDpiFor(paper) || PRINT_DPI);
+        // Commercial dye-sub printers (HiTi, DNP, Citizen, Sinfonia, Mitsubishi...) cut 2x6 strips from a 4x6 sheet:
+        // if narrow 2x6 paper is chosen for a dye-sub queue, pair two identical strips side by side on a 4x6 sheet
+        // so the printer's center cutter slices cleanly between them instead of stretching or cutting through a face.
+        const dyeSubPair2x6 = !!(paper && !paper.receipt && paper.w <= 60 && Math.abs(paper.h - 152.4) <= 6 && !(printPrefs && printPrefs.singleStrip) && !sizedPhoto() && isDyeSubPrinter(key ? printerFor(key) : ''));
+        const sheetW = dyeSubPair2x6 ? 101.6 : paper.w;
+        const sheetH = dyeSubPair2x6 ? 152.4 : paper.h;
         const c = document.createElement('canvas');
-        c.width = Math.round(paper.w / 25.4 * dpi);
-        c.height = Math.round(paper.h / 25.4 * dpi);
+        c.width = Math.round(sheetW / 25.4 * dpi);
+        c.height = Math.round(sheetH / 25.4 * dpi);
         c._pbDpi = dpi;
         c._pbJpeg = useFastPoster;
         c._pbTurned = turned;           // turned 90° clockwise: the Edges settings follow the picture, not the sheet
+        if (dyeSubPair2x6) c._pbAutoTwoUp4x6 = true;
         const ctx = c.getContext('2d');
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, c.width, c.height);
         ctx.imageSmoothingQuality = 'high';
-        if (stripTwoUp(key) && !sizedPhoto()) {
-          // Classic photo-booth sheet: two identical strips, cut down the middle.
-          const half = c.width / 2;
+        if (dyeSubPair2x6 || (stripTwoUp(key) && !sizedPhoto())) {
+          // Classic photo-booth sheet: two identical strips, cut down the middle on an exact integer pixel seam.
+          const half = Math.round(c.width / 2);
           drawFitted(ctx, src, 0, 0, half, c.height);
           drawFitted(ctx, src, half, 0, c.width - half, c.height);
         } else {
@@ -40324,12 +40562,25 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       async function sendToStation(pages, paper, copies) {
         const group = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        const autoTwoUp4x6 = Array.isArray(pages) && pages.some(c => c && c._pbAutoTwoUp4x6);
+        const isTwoUp = !!(autoTwoUp4x6 || (typeof stripTwoUp === 'function' && stripTwoUp(printSize) && (typeof sizedPhoto !== 'function' || !sizedPhoto())));
+        const routeKey = autoTwoUp4x6 ? 'strip:4x6' : (printSize ? printerKey(printSize) : '');
+        const sendW = autoTwoUp4x6 ? 101.6 : paper.w;
+        const sendH = autoTwoUp4x6 ? 152.4 : paper.h;
+        const sendName = paper.name + (isTwoUp && !/strip/i.test(paper.name || '') ? ' \u00b7 2\u00d76 strips' : '');
         for (let i = 0; i < pages.length; i++) {
-          let q = 0.92, url = pages[i].toDataURL('image/jpeg', q);
-          while (url.length > 4400000 && q > 0.5) { q -= 0.12; url = pages[i].toDataURL('image/jpeg', q); }
+          // Lossless PNG when within the upload budget for razor-sharp overlays & dye-sub skin tones;
+          // otherwise high-quality JPEG (0.96 -> 0.92 -> ...).
+          let url = pages[i].toDataURL('image/png');
+          if (url.length > 4200000) {
+            let q = 0.96;
+            url = pages[i].toDataURL('image/jpeg', q);
+            while (url.length > 4400000 && q > 0.5) { q = Math.round((q - 0.08) * 100) / 100; url = pages[i].toDataURL('image/jpeg', q); }
+          }
           const r = await postApi('/api/printjobs', {
             action: 'add', page: url, copies: copies, group: group, index: i, total: pages.length,
-            paper: { key: printSize, name: paper.name, w: paper.w, h: paper.h }
+            twoUp: isTwoUp,
+            paper: { key: routeKey || printSize, name: sendName, w: sendW, h: sendH }
           }, 30000);
           if (r.status !== 200) throw new Error(r.j.error || ('error ' + r.status));
           if (typeof r.j.online === 'boolean') station.online = r.j.online;
@@ -40361,7 +40612,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (window._btThermal && window._btThermal.btPrinter && window._btThermal.btPrinter.connected && window._btThermal.btPrinter._paperWidth <= 384) return true;
         return false;
       }
-      function printPreviewKey() { return (printSize || 'default') + '|' + activePrinterName(); }
+      function printPreviewKey() { return (printSize ? printerKey(printSize) : 'default') + '|' + activePrinterName(); }
       function needsPrintPreview(isAuto) {
         if (isAuto === true) return false;     // Never interrupt auto printing with a preview popup!
         return printPrefs.preview !== false && !printPreviewOk[printPreviewKey()];
@@ -42151,6 +42402,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
       async function printCurrentPhoto(auto, copies) {
         try { wifiRelink(); wifiSyncForSize(); } catch (e) { }
+        try { if (window._syncColorAdjToPrinter) window._syncColorAdjToPrinter(); } catch (e) { }
         if (printing || !printSize || !(state === 'result' && shotCanvases.every(Boolean))) return false;
         const curPaper = paperFor(printSize);
         if (curPaper && curPaper.w <= 55 && printQueued > 0) return false;

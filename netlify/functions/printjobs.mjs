@@ -81,7 +81,8 @@ export default safe(async (req, context) => {
     const id = newId();
     await jobs.setJSON(owner + '/' + id, {
       id, at: now, page,
-      paper: { key: String(paper.key || '').slice(0, 20), name: String(paper.name || '').slice(0, 40), w, h },
+      paper: { key: String(paper.key || '').slice(0, 28), name: String(paper.name || '').slice(0, 56), w, h },
+      twoUp: !!b.twoUp,
       copies: Math.max(1, Math.min(20, Math.floor(Number(b.copies) || 1))),
       group: String(b.group || id).slice(0, 40), index: Math.max(0, Math.floor(Number(b.index) || 0)), total: Math.max(1, Math.floor(Number(b.total) || 1)),
       device: lic.deviceNo || 1

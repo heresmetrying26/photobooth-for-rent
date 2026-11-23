@@ -101,7 +101,8 @@
       <div class="note" id="helperNote"></div>
       <div id="printerRows" style="margin-top:12px;"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
-        <button class="btn" type="button" id="testBtn">Print a test page</button>
+        <button class="btn" type="button" id="testBtn">Test 4&times;6 whole</button>
+        <button class="btn" type="button" id="testStripBtn">Test 2&times;6 strips (cut)</button>
       </div>
     </div>
 
@@ -124,11 +125,19 @@
   function load(k, d){ try{ var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; }catch(e){ return d; } }
   function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
   function paperOf(key){
-    if(PAPER[key]) return { key: key, name: PAPER[key][0], w: PAPER[key][1], h: PAPER[key][2] };
-    var m = /^(\d{1,3}(?:\.\d{1,2})?)x(\d{1,3}(?:\.\d{1,2})?)(in|mm)$/.exec(key || '');
-    if(!m) return null;
-    var k = m[3] === 'in' ? 25.4 : 1, a = Number(m[1]) * k, b = Number(m[2]) * k;
-    return { key: key, name: m[1] + '×' + m[2] + ' ' + m[3], w: Math.min(a, b), h: Math.max(a, b) };
+    var raw = String(key || '');
+    var isStripSlot = raw.indexOf('strip:') === 0;
+    var baseKey = isStripSlot ? raw.slice(6) : raw;
+    var base = null;
+    if(PAPER[baseKey]) base = { key: raw, baseKey: baseKey, name: PAPER[baseKey][0], w: PAPER[baseKey][1], h: PAPER[baseKey][2], stripSlot: isStripSlot };
+    else {
+      var m = /^(\d{1,3}(?:\.\d{1,2})?)x(\d{1,3}(?:\.\d{1,2})?)(in|mm)$/.exec(baseKey);
+      if(!m) return null;
+      var k = m[3] === 'in' ? 25.4 : 1, a = Number(m[1]) * k, b = Number(m[2]) * k;
+      base = { key: raw, baseKey: baseKey, name: m[1] + '×' + m[2] + ' ' + m[3], w: Math.min(a, b), h: Math.max(a, b), stripSlot: isStripSlot };
+    }
+    if(isStripSlot) base.name = base.name + ' · 2×6 strips (cut)';
+    return base;
   }
 
   var S = load(KEY, null);          // { stationToken, label, code, sizes }
@@ -209,7 +218,13 @@
     checkHelper().then(renderPrinters);
   });
   function sizesShown(){
-    var keys = (S && S.sizes && S.sizes.length ? S.sizes.slice() : ['4x6']);
+    var raw = (S && S.sizes && S.sizes.length ? S.sizes.slice() : ['4x6']);
+    var keys = [];
+    raw.forEach(function(k){
+      if(keys.indexOf(k) < 0 && paperOf(k)) keys.push(k);
+      // Offer a dedicated 2x6 split-cut printer slot right beside 4x6 (LumaBooth-style secondary printer).
+      if(k === '4x6' && keys.indexOf('strip:4x6') < 0) keys.push('strip:4x6');
+    });
     Object.keys(printers).forEach(function(k){ if(keys.indexOf(k) < 0 && paperOf(k)) keys.push(k); });
     return keys;
   }
@@ -219,7 +234,8 @@
     box.innerHTML = sizesShown().map(function(k){
       var p = paperOf(k); if(!p) return '';
       var cur = printers[k] || '';
-      var opts = '<option value="">' + (helper.ok ? '— Choose a printer —' : 'Print Helper not connected') + '</option>' +
+      var placeholder = !helper.ok ? 'Print Helper not connected' : (p.stripSlot ? '— Same as 4×6 (auto-split) —' : '— Choose a printer —');
+      var opts = '<option value="">' + placeholder + '</option>' +
         helper.printers.map(function(n){ return '<option' + (n === cur ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') +
         (cur && helper.printers.indexOf(cur) < 0 ? '<option selected value="' + esc(cur) + '">' + esc(cur) + ' (not found)</option>' : '');
       return '<div class="row"><label>' + esc(p.name) + '</label><select data-size="' + esc(k) + '"' + (helper.ok ? '' : ' disabled') + '>' + opts + '</select></div>';
@@ -244,12 +260,13 @@
       img.src = dataUrl;
     });
   }
-  async function printWithHelper(pages, paper, name){
-    var png = [];
-    for(var i = 0; i < pages.length; i++) png.push(/^data:image\/png/.test(pages[i]) ? pages[i] : await toPng(pages[i]));
-    for(var s = 0; s < png.length; s += 20){
+  async function printWithHelper(pages, paper, name, twoUp){
+    var out = [];
+    for(var i = 0; i < pages.length; i++) out.push(/^data:image\/(png|jpeg);base64,/.test(pages[i]) ? pages[i] : await toPng(pages[i]));
+    var baseKey = String(paper.key || '').replace(/^strip:/, '');
+    for(var s = 0; s < out.length; s += 20){
       // Receipt rolls: full width, length follows the picture (Print Helper 1.1.4+).
-      var r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, fit: /^receipt/.test(paper.key || '') ? 'width' : undefined, pages: png.slice(s, s + 20) }) });
+      var r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, twoUp: typeof twoUp === 'boolean' ? twoUp : /^strip:/.test(paper.key || ''), fit: /^receipt/.test(baseKey) ? 'width' : undefined, pages: out.slice(s, s + 20) }) });
       var j = await r.json().catch(function(){ return {}; });
       if(!r.ok || !j.ok) throw new Error(j.error || ('Print Helper error ' + r.status));
     }
@@ -268,11 +285,22 @@
     setTimeout(function(){ area.innerHTML = ''; }, 3000);
   }
   // Returns the printer used ('' = print dialog).
-  async function printPages(pages, paper){
-    var name = paper.key ? printers[paper.key] || '' : '';
+  function resolveStationPrinter(paperKey, twoUp){
+    var k = String(paperKey || '');
+    if(twoUp && k && k.indexOf('strip:') !== 0 && printers['strip:' + k]) return printers['strip:' + k];
+    if(k && printers[k]) return printers[k];
+    if(k.indexOf('strip:') === 0){
+      var base = k.slice(6);
+      if(printers[base]) return printers[base];
+    }
+    return '';
+  }
+  async function printPages(pages, paper, twoUp){
+    var isTwoUp = typeof twoUp === 'boolean' ? twoUp : /^strip:/.test(paper.key || '');
+    var name = resolveStationPrinter(paper.key, isTwoUp);
     if(useHelper && name){
       if(!helper.ok || Date.now() - helper.checked > 20000) await checkHelper();
-      if(helper.ok){ await printWithHelper(pages, paper, name); return name; }
+      if(helper.ok){ await printWithHelper(pages, paper, name, isTwoUp); return name; }
     }
     await printWithDialog(pages, paper);
     return '';
@@ -302,10 +330,11 @@
         var job = j.job;
         lastJobAt = Date.now();
         var paper = { key: job.paper.key, name: job.paper.name || job.paper.key, w: job.paper.w, h: job.paper.h };
+        var isTwoUp = typeof job.twoUp === 'boolean' ? job.twoUp : /^strip:/.test(paper.key || '');
         var pages = []; for(var c = 0; c < (job.copies || 1); c++) pages.push(job.page);
         setStatus('on', 'Printing…', paper.name + (job.copies > 1 ? ' × ' + job.copies : '') + (j.waiting > 1 ? ' · ' + (j.waiting - 1) + ' more waiting' : ''));
         var used = '', ok = true, error = '';
-        try{ used = await printPages(pages, paper); }catch(e){ ok = false; error = e.message || String(e); }
+        try{ used = await printPages(pages, paper, isTwoUp); }catch(e){ ok = false; error = e.message || String(e); }
         addLog({ at: Date.now(), paper: paper.name, copies: job.copies || 1, printer: used, ok: ok, error: error });
         await api({ action: 'done', id: job.id }).catch(function(){});
         if(j.waiting > 1){ busy = false; return poll(); }
@@ -358,22 +387,38 @@
     }catch(e){}
   }
 
-  // ---- test page ----
-  $('testBtn').addEventListener('click', async function(){
-    var key = sizesShown()[0], paper = paperOf(key);
+  // ---- test pages (4x6 whole + 2x6 strips cut) ----
+  async function runStationTest(isStrip){
+    var shown = sizesShown();
+    var key = isStrip ? (shown.indexOf('strip:4x6') >= 0 ? 'strip:4x6' : '4x6') : (shown.indexOf('4x6') >= 0 ? '4x6' : shown[0]);
+    var paper = paperOf(key) || { key: isStrip ? 'strip:4x6' : '4x6', name: isStrip ? '4R · 2×6 strips' : '4R (4×6)', w: 101.6, h: 152.4 };
     var c = document.createElement('canvas'); c.width = Math.round(paper.w / 25.4 * 300); c.height = Math.round(paper.h / 25.4 * 300);
     var x = c.getContext('2d');
     x.fillStyle = '#F5F1EA'; x.fillRect(0, 0, c.width, c.height);
-    x.strokeStyle = '#C93D27'; x.lineWidth = 12; x.strokeRect(30, 30, c.width - 60, c.height - 60);
-    x.fillStyle = '#1C1A1E'; x.textAlign = 'center';
-    x.font = 'bold ' + Math.round(c.width / 9) + 'px Georgia, serif'; x.fillText('photobooth4u', c.width / 2, c.height / 2 - c.width / 12);
-    x.font = Math.round(c.width / 18) + 'px Arial, sans-serif'; x.fillText('Print station test · ' + paper.name, c.width / 2, c.height / 2 + c.width / 20);
-    x.fillText(new Date().toLocaleString(), c.width / 2, c.height / 2 + c.width / 8);
+    if(isStrip){
+      var half = Math.round(c.width / 2);
+      [[0, half, '2×6 STRIP (L)'], [half, c.width - half, '2×6 STRIP (R)']].forEach(function(p){
+        x.strokeStyle = '#C93D27'; x.lineWidth = 10; x.strokeRect(p[0] + 22, 22, p[1] - 44, c.height - 44);
+        x.fillStyle = '#1C1A1E'; x.textAlign = 'center';
+        x.font = 'bold ' + Math.round(p[1] / 9) + 'px Georgia, serif'; x.fillText(p[2], p[0] + p[1] / 2, c.height * 0.44);
+        x.font = Math.round(p[1] / 14) + 'px Arial, sans-serif'; x.fillText('photobooth4u · auto-cut', p[0] + p[1] / 2, c.height * 0.53);
+      });
+      x.save(); x.strokeStyle = '#888'; x.lineWidth = 2; x.setLineDash([14, 10]);
+      x.beginPath(); x.moveTo(half, 0); x.lineTo(half, c.height); x.stroke(); x.restore();
+    } else {
+      x.strokeStyle = '#C93D27'; x.lineWidth = 12; x.strokeRect(30, 30, c.width - 60, c.height - 60);
+      x.fillStyle = '#1C1A1E'; x.textAlign = 'center';
+      x.font = 'bold ' + Math.round(c.width / 9) + 'px Georgia, serif'; x.fillText('photobooth4u', c.width / 2, c.height / 2 - c.width / 12);
+      x.font = Math.round(c.width / 18) + 'px Arial, sans-serif'; x.fillText('Print station test · ' + paper.name, c.width / 2, c.height / 2 + c.width / 20);
+      x.fillText(new Date().toLocaleString(), c.width / 2, c.height / 2 + c.width / 8);
+    }
     try{
-      var used = await printPages([c.toDataURL('image/png')], paper);
+      var used = await printPages([c.toDataURL('image/png')], paper, isStrip);
       addLog({ at: Date.now(), paper: paper.name + ' (test)', copies: 1, printer: used, ok: true });
-    }catch(e){ addLog({ at: Date.now(), paper: paper.name + ' (test)', copies: 1, printer: printers[key], ok: false, error: e.message }); }
-  });
+    }catch(e){ addLog({ at: Date.now(), paper: paper.name + ' (test)', copies: 1, printer: resolveStationPrinter(paper.key, isStrip), ok: false, error: e.message }); }
+  }
+  $('testBtn').addEventListener('click', function(){ runStationTest(false); });
+  if($('testStripBtn')) $('testStripBtn').addEventListener('click', function(){ runStationTest(true); });
 
   window.addEventListener('beforeunload', function(e){ if(S && !paused){ e.preventDefault(); e.returnValue = ''; } });
 

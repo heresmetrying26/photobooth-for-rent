@@ -22,6 +22,7 @@ import { initBridge, getBridgeInfo, renewBridgeToken, pushBridgeState, sendBridg
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import { probeSensor, startSensor, stopSensor, latestSensor } from './lib/winsensor.mjs';
 import { makeShrinkPage, makePngToJpeg } from './lib/pageshrink.mjs';
+import { makeSelphyJobBuilder } from './lib/selphyusb.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { detectWifi } from './lib/wifi.mjs';
 import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetup, hotspotSetCreds, hotspotWake, hotspotSuspend, hotspotResume } from './lib/hotspot.mjs';
@@ -752,6 +753,7 @@ app.whenReady().then(async () => {
     workerPath: join(BUILD, 'camera-worker.ps1'),
     shrinkPage: makeShrinkPage(nativeImage),
     toJpeg: makePngToJpeg(nativeImage),
+    selphyJob: makeSelphyJobBuilder(nativeImage),
     directPrintersFile: join(dataDir(), 'direct-printers.json'),
     spinInboxDir: () => spinDirNow() || '',
     logger: (m) => {

@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HiTi Photo Printer Guide · 4×6 Whole &amp; 2×6 Split Auto-Cut · photobooth4u</title>
+<style>
+  :root {
+    --bg: #f6f1ea;
+    --card: #fffdf9;
+    --ink: #1f1a1d;
+    --dim: #5d555b;
+    --line: #e4ddd3;
+    --red: #c8402a;
+    --red-soft: #fbeee9;
+    --purple: #7c3aed;
+    --purple-soft: #f3eeff;
+    --ok: #1f6f62;
+    --ok-soft: #e6f4f1;
+    --blue-soft: #eef3fb;
+    --blue-line: #cfdcf2;
+    --dark: #1f1a1d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15.5px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--red); font-weight: 600; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 18px; }
+
+  /* Hero */
+  header.hero {
+    background: linear-gradient(135deg, #1f1a1d 0%, #2d2429 100%);
+    color: #f6f1ea;
+    padding: 40px 0 48px;
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font: 700 22px Georgia, "Times New Roman", serif;
+    color: #f6f1ea;
+    text-decoration: none;
+  }
+  .brand .mark { display: grid; grid-template-columns: repeat(2, 9px); gap: 3px; }
+  .brand .mark i { width: 9px; height: 9px; border-radius: 2px; background: #f6f1ea; display: block; }
+  .brand .mark i:nth-child(2) { background: var(--red); }
+  .brand .badge {
+    background: var(--red);
+    color: #fff;
+    font: 800 11px system-ui, sans-serif;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transform: translateY(-4px);
+  }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #f2846e;
+    margin: 24px 0 8px;
+  }
+  h1 {
+    font: 700 clamp(30px, 5.5vw, 48px)/1.08 Georgia, "Times New Roman", serif;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  h1 em { color: #f2846e; font-style: italic; }
+  .lead {
+    color: #ded5cc;
+    font-size: 17px;
+    max-width: 680px;
+    margin-bottom: 20px;
+  }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #f6f1ea;
+    border-radius: 999px;
+    padding: 5px 13px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .pill.ok { background: rgba(31, 111, 98, 0.35); border-color: rgba(74, 222, 128, 0.35); }
+
+  /* Quick TOC */
+  nav.toc {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin: -24px 0 18px;
+    position: relative;
+  }
+  nav.toc a {
+    display: block;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    text-decoration: none;
+    color: var(--ink);
+    box-shadow: 0 8px 20px rgba(31, 26, 29, 0.07);
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  nav.toc a:hover { border-color: var(--red); transform: translateY(-1px); }
+  nav.toc b { display: block; color: var(--red); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  nav.toc span { font-weight: 700; font-size: 14px; }
+
+  /* Sections */
+  section.part { padding: 28px 0 6px; scroll-margin-top: 14px; }
+  .kicker {
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 4px;
+  }
+  h2 {
+    font: 700 clamp(23px, 3.6vw, 31px)/1.18 Georgia, "Times New Roman", serif;
+    margin-bottom: 8px;
+  }
+  .why { color: var(--dim); margin-bottom: 14px; }
+
+  /* Cards & Grids */
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 20px;
+  }
+  .card h3 { font-size: 17px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card p, .card li { color: var(--dim); font-size: 14.5px; }
+  .card ul, .card ol { padding-left: 20px; margin-top: 8px; }
+  .card li { margin: 5px 0; }
+  .card b { color: var(--ink); }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 2px 9px;
+  }
+  .tag.ok { background: var(--ok-soft); color: var(--ok); }
+  .tag.purple { background: var(--purple-soft); color: var(--purple); }
+  .tag.red { background: var(--red-soft); color: var(--red); }
+
+  /* Visual diagram */
+  .diagram-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 20px;
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    align-items: center;
+  }
+  .diagram-box {
+    background: #faf6f0;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+  }
+  .diagram-box h4 { font-size: 15px; margin: 10px 0 4px; }
+  .diagram-box p { font-size: 13.5px; color: var(--dim); }
+
+  /* Numbered Steps */
+  ol.steps { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+  ol.steps li {
+    display: grid;
+    grid-template-columns: 38px 1fr;
+    gap: 14px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 15px 18px;
+  }
+  ol.steps .n {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--red);
+    color: #fff;
+    font-weight: 800;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+  }
+  ol.steps .n.purple { background: var(--purple); }
+  ol.steps h3 { font-size: 16px; margin: 3px 0 4px; }
+  ol.steps p { color: var(--dim); font-size: 14.5px; }
+
+  /* OS Panels */
+  .os-win { background: var(--blue-soft); border: 1px solid var(--blue-line); border-radius: 16px; padding: 16px 20px; }
+  .os-mac { background: #faf6f0; border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; }
+  .os-win h3, .os-mac h3 { font-size: 16px; margin-bottom: 6px; }
+  .os-win ol, .os-mac ol { padding-left: 20px; color: var(--dim); font-size: 14.5px; }
+  .os-win li, .os-mac li { margin: 6px 0; }
+  .os-win b, .os-mac b { color: var(--ink); }
+
+  /* Code & Copy */
+  code {
+    font: 600 13.5px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: #efe7dd;
+    border-radius: 6px;
+    padding: 1px 6px;
+    color: var(--ink);
+  }
+  .codeblock {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--dark);
+    color: #f6f1ea;
+    border-radius: 11px;
+    padding: 10px 14px;
+    margin-top: 8px;
+    font: 600 13.5px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    overflow-x: auto;
+  }
+  .codeblock span { flex: 1; white-space: nowrap; }
+  .copy {
+    flex: none;
+    border: 1px solid #6b6167;
+    background: transparent;
+    color: #f6f1ea;
+    border-radius: 999px;
+    padding: 4px 11px;
+    font: 700 12px system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .copy:hover { border-color: #fff; }
+
+  /* App UI Preview Mockup */
+  .ui-mock {
+    background: var(--card);
+    border: 1.5px solid var(--line);
+    border-radius: 18px;
+    padding: 18px;
+    margin-top: 12px;
+    box-shadow: 0 10px 26px rgba(31, 26, 29, 0.06);
+  }
+  .ui-slot {
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 13px 15px;
+    background: #fff;
+    margin-bottom: 10px;
+  }
+  .ui-slot:last-child { margin-bottom: 0; }
+  .ui-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .ui-title { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+  .ui-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .ui-num.purple { background: var(--purple); }
+  .ui-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--ok-soft);
+    color: var(--ok);
+  }
+  .ui-select {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 9px;
+    border: 1px solid #d5cdc2;
+    background: #faf8f4;
+    font: 600 13.5px system-ui, sans-serif;
+    color: var(--ink);
+  }
+  .ui-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 9px; }
+  .ui-btn {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid #d5cdc2;
+    background: #fff;
+    font: 700 12.5px system-ui, sans-serif;
+    color: var(--ink);
+  }
+  .ui-btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+
+  /* Callouts */
+  .callout {
+    background: var(--red-soft);
+    border: 1px solid #f1cfc5;
+    border-left: 4px solid var(--red);
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin-top: 14px;
+  }
+  .callout.ok { background: var(--ok-soft); border-color: #bfe3da; border-left-color: var(--ok); }
+  .callout.purple { background: var(--purple-soft); border-color: #d9c8ff; border-left-color: var(--purple); }
+  .callout h3 { font-size: 15.5px; margin-bottom: 4px; }
+  .callout p { font-size: 14.5px; color: var(--dim); }
+  .callout b { color: var(--ink); }
+
+  /* Tables */
+  .tbl-wrap { overflow-x: auto; margin-top: 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); background: #f3ece3; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 700; }
+
+  /* Footer */
+  footer {
+    margin-top: 38px;
+    padding: 24px 0 44px;
+    border-top: 1px solid var(--line);
+    color: var(--dim);
+    font-size: 13.5px;
+  }
+  .help-box {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--dark);
+    color: #f6f1ea;
+    border-radius: 16px;
+    padding: 18px 22px;
+    margin-bottom: 14px;
+  }
+  .help-box h3 { font: 700 19px Georgia, serif; margin-bottom: 2px; }
+  .help-box p { color: #d9cfc6; font-size: 14px; }
+  .help-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    text-decoration: none;
+  }
+
+  @media (max-width: 760px) {
+    .grid-2, .grid-3, .diagram-card { grid-template-columns: 1fr; }
+  }
+  @media print {
+    body { background: #fff; font-size: 12.5px; }
+    header.hero { background: #1f1a1d !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 24px 0; }
+    nav.toc, .copy { display: none !important; }
+    section.part, .card, .callout, .ui-mock, tr { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <a class="brand" href="https://photobooth4u.netlify.app/">
+      <span class="mark"><i></i><i></i><i></i><i></i></span>
+      photobooth<span class="badge">4u</span>
+    </a>
+    <p class="eyebrow">HiTi Dye-Sub Printing Guide · Windows · macOS · iPad · Android</p>
+    <h1>HiTi <em>4×6 Whole</em> &amp; <em>2×6 Split</em> Auto-Cut</h1>
+    <p class="lead">
+      Set up once in 10 minutes for crisp 300 DPI borderless prints with zero pop-up dialogs — including
+      LumaBooth-style Secondary Printer routing so guests can switch freely between 4×6 postcards and 2×6 photo strips.
+    </p>
+    <div class="pills">
+      <span class="pill ok">&#10003; 300 DPI Full-Bleed</span>
+      <span class="pill ok">&#10003; Silent Auto-Print</span>
+      <span class="pill ok">&#10003; Secondary 2×6 Printer Slot</span>
+      <span class="pill">P525L · P520L · P510S/L/K · P720L · P750L</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="toc" aria-label="Guide sections">
+    <a href="#how"><b>Overview</b><span>How 4×6 &amp; 2×6 work</span></a>
+    <a href="#modes"><b>Choose Mode</b><span>Auto-Split vs Dual-Queue</span></a>
+    <a href="#driver"><b>Steps 1–2</b><span>Windows &amp; Mac Setup</span></a>
+    <a href="#booth"><b>Step 3</b><span>Booth Print Settings</span></a>
+    <a href="#tablets"><b>Step 4</b><span>iPad &amp; Android Tablets</span></a>
+    <a href="#fixes"><b>Help</b><span>Quick Fixes</span></a>
+  </nav>
+
+  <!-- OVERVIEW -->
+  <section class="part" id="how">
+    <p class="kicker">Overview · Built-in Dye-Sub Engine</p>
+    <h2>How 4×6 Whole and 2×6 Split Work on HiTi</h2>
+    <p class="why">
+      Commercial HiTi roll printers load a single <b>4×6 media roll</b> and print both formats automatically —
+      the printer's internal blade cuts 2×6 strips down the center on the final pass.
+    </p>
+
+    <div class="diagram-card">
+      <div class="diagram-box">
+        <svg viewBox="0 0 220 140" width="180" height="114" aria-label="4x6 Whole Photo Diagram">
+          <rect x="20" y="10" width="180" height="120" rx="8" fill="#fff" stroke="#c8402a" stroke-width="3"/>
+          <rect x="32" y="22" width="72" height="46" rx="4" fill="#efe7dd"/>
+          <rect x="116" y="22" width="72" height="46" rx="4" fill="#efe7dd"/>
+          <rect x="32" y="76" width="72" height="42" rx="4" fill="#efe7dd"/>
+          <rect x="116" y="76" width="72" height="42" rx="4" fill="#efe7dd"/>
+          <text x="110" y="101" text-anchor="middle" font-size="11" font-weight="700" fill="#1f1a1d">4×6 WHOLE</text>
+        </svg>
+        <h4>4R (4×6) Whole Sheet</h4>
+        <p>Sent to <b>Printer 1</b> (<code>HiTi 4x6</code>). Prints edge-to-edge at <b>300 DPI (1200×1800 px)</b>, uncut.</p>
+      </div>
+      <div class="diagram-box">
+        <svg viewBox="0 0 220 140" width="180" height="114" aria-label="2x6 Split Strips Diagram">
+          <rect x="20" y="10" width="84" height="120" rx="7" fill="#fff" stroke="#7c3aed" stroke-width="3"/>
+          <rect x="116" y="10" width="84" height="120" rx="7" fill="#fff" stroke="#7c3aed" stroke-width="3"/>
+          <rect x="30" y="20" width="64" height="26" rx="3" fill="#efe7dd"/>
+          <rect x="30" y="52" width="64" height="26" rx="3" fill="#efe7dd"/>
+          <rect x="30" y="84" width="64" height="26" rx="3" fill="#efe7dd"/>
+          <rect x="126" y="20" width="64" height="26" rx="3" fill="#efe7dd"/>
+          <rect x="126" y="52" width="64" height="26" rx="3" fill="#efe7dd"/>
+          <rect x="126" y="84" width="64" height="26" rx="3" fill="#efe7dd"/>
+          <line x1="110" y1="2" x2="110" y2="138" stroke="#c8402a" stroke-width="3" stroke-dasharray="6 5"/>
+          <text x="110" y="136" text-anchor="middle" font-size="10" font-weight="800" fill="#c8402a">AUTO-CUT</text>
+        </svg>
+        <h4>2×6 Split Strips (2 copies per sheet)</h4>
+        <p>Sent to <b>2×6 Split Printer</b> (<code>HiTi 2x6 cut</code>). Two identical strips side-by-side sliced down the center seam.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <h3>Hardware Check: Which HiTi Models Auto-Cut 2×6?</h3>
+      <p>
+        <b>Auto-cut supported (built-in cutter):</b> HiTi <b>P525L, P520L, P510S, P510L, P510K, P720L, P750L</b> (must have <b>4×6 media</b> loaded).<br>
+        <b>No built-in cutter (compact sheet models):</b> HiTi <b>P310W, P322W, S420</b> — photobooth4u still prints two 2×6 strips side-by-side on a 4×6 sheet, ready for a manual paper trimmer.
+      </p>
+    </div>
+  </section>
+
+  <!-- CHOOSE MODE -->
+  <section class="part" id="modes">
+    <p class="kicker">Choose Your Setup Mode</p>
+    <h2>Dual-Queue (LumaBooth-Style) vs. Single-Queue Auto-Split</h2>
+    <p class="why">photobooth4u supports <b>both</b> methods out of the box. Pick Dual-Queue for maximum stability across every HiTi model and driver version.</p>
+
+    <div class="grid-2">
+      <div class="card" style="border-color:#c8402a;">
+        <h3>Option A · Dual-Queue <span class="tag ok">Recommended</span></h3>
+        <p>Install the same HiTi twice on the same USB port: <code>HiTi 4x6</code> and <code>HiTi 2x6 cut</code> (same workflow as LumaBooth's Primary + Secondary Printer).</p>
+        <ul>
+          <li><b>100% reliable</b> across all HiTi models &amp; driver versions — even drivers where 2-inch cut is a checkbox instead of a paper size.</li>
+          <li><b>Independent settings per mode:</b> separate Lightness, Colour Balance, Edges, and Glossy/Matte overcoat for 4×6 vs 2×6.</li>
+          <li>photobooth4u preserves each queue's private HiTi driver settings automatically.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Option B · Single-Queue Auto-Split <span class="tag purple">Fast Setup</span></h3>
+        <p>Keep just one printer queue (e.g. <code>HiTi P525L</code>). Works whenever your HiTi driver lists both <code>6x4</code> and <code>6x4 Split (6x2 2 prints)</code> / <code>6x4/2-UP</code> as paper sizes.</p>
+        <ul>
+          <li>No duplicate printer queue needed.</li>
+          <li>photobooth4u automatically switches to <code>6x4 Split</code> / <code>2-UP</code> for strip layouts and switches back to whole <code>6x4</code> for 4R layouts.</li>
+          <li>If your driver uses a custom split name, you can lock the exact slot once under <b>2×6 split driver paper slot</b>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- DRIVER SETUP -->
+  <section class="part" id="driver">
+    <p class="kicker">Steps 1 &amp; 2 · One-Time Setup on Your Laptop</p>
+    <h2>Install HiTi Driver &amp; Create the 2×6 Cut Queue</h2>
+    <p class="why">Always install the official HiTi driver from HiTi's support website — never use macOS AirPrint or Windows Generic drivers.</p>
+
+    <div class="grid-2">
+      <div class="os-win">
+        <h3>Windows (10 / 11)</h3>
+        <ol>
+          <li><b>Install the HiTi Windows driver</b> for your model, load 4×6 ribbon &amp; paper, and plug in via USB.</li>
+          <li>Open <b>Control Panel &rarr; Devices and Printers</b> (or <b>Settings &rarr; Printers &amp; scanners</b>). Open your HiTi &rarr; <b>Printing preferences</b> &rarr; select <b>6×4</b> (whole, uncut), borderless &rarr; <b>OK</b>. Rename it <code>HiTi 4x6</code> under <b>Printer properties</b>.</li>
+          <li><b>For Option A (Dual-Queue):</b> in <b>Control Panel &rarr; Devices and Printers</b>, click <b>Add a printer</b> &rarr; <b>The printer that I want isn't listed</b> &rarr; <b>Add a local printer… with manual settings</b>.</li>
+          <li>Pick <b>Use an existing port</b> &rarr; select the exact same USB port your first HiTi uses (e.g. <code>USB001</code>) &rarr; select your <b>HiTi</b> driver &rarr; <b>Use the driver that is currently installed</b> &rarr; name it <code>HiTi 2x6 cut</code>.</li>
+          <li>Open <code>HiTi 2x6 cut</code> &rarr; <b>Printing preferences</b> &rarr; choose <b>6x4 Split (6x2 2 prints)</b> / <b>6x4/2-UP</b> (or tick the <b>2-inch cut</b> option) &rarr; click <b>Apply</b> &amp; <b>OK</b>.</li>
+        </ol>
+      </div>
+
+      <div class="os-mac">
+        <h3>macOS (Apple Silicon &amp; Intel)</h3>
+        <ol>
+          <li><b>Install the HiTi macOS driver</b> for your model, restart the Mac, load 4×6 media, and connect via USB.</li>
+          <li><b>System Settings &rarr; Printers &amp; Scanners &rarr; Add Printer</b>. Pick the HiTi, verify <b>Use</b> shows the official HiTi driver (not Generic), name it <code>HiTi 4x6</code> &rarr; <b>Add</b>.</li>
+          <li><b>For Option A (Dual-Queue):</b> click <b>Add Printer</b> again, select the same HiTi, name it <code>HiTi 2x6 cut</code> &rarr; <b>Add</b>.</li>
+          <li>Enable the CUPS settings page in <b>Terminal</b>, then open <code>http://localhost:631/printers</code> in Chrome (login with your Mac username &amp; password):
+            <div class="codeblock"><span>cupsctl WebInterface=yes</span><button class="copy" type="button">Copy</button></div>
+          </li>
+          <li>Set defaults for each queue (<b>Administration &rarr; Set Default Options</b>):<br>
+            &bull; <code>HiTi 4x6</code> &rarr; Media Size <b>6x4</b> (uncut) &rarr; Save.<br>
+            &bull; <code>HiTi 2x6 cut</code> &rarr; Media Size <b>6x4 Split</b> / <b>6x4 (2x6 ×2)</b> (or enable the 2-inch cut option) &rarr; Save.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="callout ok">
+      <h3>Important: Keep &ldquo;HiTi&rdquo; in the Printer Name</h3>
+      <p>
+        Names like <code>HiTi 4x6</code>, <code>HiTi 2x6 cut</code>, or <code>HiTi P525L</code> tell photobooth4u to activate its
+        dedicated <b>dye-sub print engine</b> — preserving your driver's private cut/finish/colour settings, preventing inkjet scaling,
+        and rendering full-bleed edge-to-edge with crisp <code>TileFlipXY</code> filtering.
+      </p>
+    </div>
+  </section>
+
+  <!-- BOOTH SETTINGS -->
+  <section class="part" id="booth">
+    <p class="kicker">Step 3 · Inside photobooth4u</p>
+    <h2>Assign Primary (4×6) &amp; Secondary (2×6 Split) Printers</h2>
+    <p class="why">
+      Both printers are configured right next to each other in <b>Setup &rarr; 4 Printer</b> (or the <b>&#128424; Print settings</b> button in Photo Session).
+      If you use the web browser instead of the Laptop App, open the <b>photobooth4u Print Helper</b> first.
+    </p>
+
+    <div class="ui-mock" aria-label="photobooth4u Print Settings preview">
+      <div class="ui-slot">
+        <div class="ui-head">
+          <span class="ui-title"><span class="ui-num">1</span> Printer 1 <small style="color:var(--dim);font-weight:600;">for 4R (4×6)</small></span>
+          <span class="ui-badge">HiTi 4x6</span>
+        </div>
+        <div class="ui-select">HiTi 4x6 &#9662;</div>
+        <div class="ui-btns">
+          <span class="ui-btn">Configure printer</span>
+          <span class="ui-btn">Lightness &amp; Colour (4×6)</span>
+          <span class="ui-btn">Edges (4×6)</span>
+        </div>
+      </div>
+
+      <div class="ui-slot" style="border-color:#d9c8ff; background:#fcfaff;">
+        <div class="ui-head">
+          <span class="ui-title"><span class="ui-num purple">2×6</span> 2×6 Split Strips Printer <small style="color:var(--dim);font-weight:600;">for strip layouts</small></span>
+          <span class="ui-badge">HiTi 2x6 cut</span>
+        </div>
+        <div class="ui-select">HiTi 2x6 cut &#9662; <span style="color:var(--dim);font-weight:500;">&nbsp;(or "Same as 4×6 — auto-switch Split")</span></div>
+        <div class="ui-btns">
+          <span class="ui-btn">Configure 2×6 printer</span>
+          <span class="ui-btn primary">Test 4×6 whole</span>
+          <span class="ui-btn primary" style="background:var(--purple);border-color:var(--purple);">Test 2×6 strips (cut)</span>
+        </div>
+      </div>
+    </div>
+
+    <ol class="steps" style="margin-top:14px;">
+      <li>
+        <span class="n">1</span>
+        <div>
+          <h3>Select 4R (4×6) Paper Size</h3>
+          <p>Under <b>Paper size</b>, tap <b>4R (4×6)</b>. Even for 2×6 strips, keep paper on <b>4R (4×6)</b> so the booth pairs two strips side-by-side for the HiTi cutter. <i>(Safety net: even if someone picks narrow 2×6 paper on a HiTi printer, the app automatically doubles it onto a 4×6 sheet so a photo is never cut in half!)</i></p>
+        </div>
+      </li>
+      <li>
+        <span class="n">2</span>
+        <div>
+          <h3>Pick Printer 1 for 4×6 Whole</h3>
+          <p>In <b>Printer 1</b>, pick <code>HiTi 4x6</code> (or your single <code>HiTi P525L</code> queue).</p>
+        </div>
+      </li>
+      <li>
+        <span class="n purple">3</span>
+        <div>
+          <h3>Pick Your Secondary Printer for 2×6 Split Strips</h3>
+          <p>Open <b>2×6 Split Strips Printer</b> right below Printer 1:<br>
+            &bull; <b>Dual-Queue (Recommended):</b> pick <code>HiTi 2x6 cut</code>. Its own independent <b>Driver paper slot</b>, <b>Edges</b>, and <b>Lightness &amp; Colour Correction</b> appear right inside this card.<br>
+            &bull; <b>Single-Queue:</b> leave on <b>Same as 4×6 (auto-switch Split)</b> — the booth automatically selects your driver's <code>6x4 Split</code> / <code>2-UP</code> slot (or pick it manually under <b>2×6 split driver paper slot</b>).</p>
+        </div>
+      </li>
+      <li>
+        <span class="n">4</span>
+        <div>
+          <h3>Verify Both Formats in 20 Seconds, Then Turn On Auto-Print</h3>
+          <p>Tap <b>Test 4×6 whole</b> (check uncut full-bleed photo &amp; colour swatches), then tap <b>Test 2×6 strips (cut)</b> (check two clean 2×6 strips cut right on the dashed center line). Once both look sharp, switch on <b>Send a print automatically after each session</b>.</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- TABLETS & ALL DEVICES -->
+  <section class="part" id="tablets">
+    <p class="kicker">Step 4 · All-Device Seamless Printing</p>
+    <h2>Using HiTi from an iPad or Android Tablet</h2>
+    <p class="why">
+      HiTi printers require HiTi's Windows/macOS driver for heat &amp; colour calibration, so tablet booths print
+      silently through a Windows or Mac laptop plugged into the HiTi via USB.
+    </p>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Method 1 · Laptop App LAN Sharing <span class="tag ok">Best for iPad · Offline</span></h3>
+        <ol>
+          <li>Plug the HiTi into your laptop and open the <b>photobooth4u Laptop App</b>.</li>
+          <li>Configure <b>Printer 1</b> (<code>HiTi 4x6</code>) and <b>2×6 Split Strips Printer</b> (<code>HiTi 2x6 cut</code>) on the laptop.</li>
+          <li>Go to <b>Setup &rarr; Share &amp; start</b> and enable <b>iPad sharing</b>.</li>
+          <li>Open the shown local link (<code>http://&lt;laptop&gt;:47777/ipad/&lt;PIN&gt;</code>) on your iPad. Every 4×6 and 2×6 print goes straight to the laptop over local Wi-Fi at <b>300 DPI lossless PNG</b> — no internet needed.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h3>Method 2 · Cloud Print Station <span class="tag purple">iPad &amp; Android</span></h3>
+        <ol>
+          <li>On the laptop plugged into the HiTi, open the <b>Print Helper</b> and go to <b>photobooth4u.netlify.app/print-station/</b>, then sign in with your booth code.</li>
+          <li>Pick your printers right on the Print Station page:<br>
+            &bull; <b>4R (4×6)</b> &rarr; <code>HiTi 4x6</code><br>
+            &bull; <b>4R (4×6) · 2×6 strips (cut)</b> &rarr; <code>HiTi 2x6 cut</code> (or leave on <i>Same as 4×6 auto-split</i>)</li>
+          <li>Tap <b>Test 4×6 whole</b> and <b>Test 2×6 strips (cut)</b> on the laptop to verify both cuts.</li>
+          <li>On your iPad or Android tablet, open <b>Print settings &rarr; Send prints to &rarr; Send to a laptop print station</b>. Guests can pick 4×6 or 2×6 layouts and the laptop routes each print automatically!</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>Device</th><th>4×6 Whole + 2×6 Cut</th><th>Connection &amp; Quality</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Windows Laptop (App or Web + Helper)</td><td><span class="tag ok">Automatic &amp; Silent</span></td><td>USB direct via HiTi driver · 300 DPI lossless PNG · private DEVMODE protected</td></tr>
+          <tr><td>macOS Laptop (App or Web + Helper)</td><td><span class="tag ok">Automatic &amp; Silent</span></td><td>USB direct via HiTi CUPS driver · 300 DPI lossless PNG · PPD auto-split + dual-queue</td></tr>
+          <tr><td>iPad / iPhone (LAN Sharing)</td><td><span class="tag ok">Automatic &amp; Silent</span></td><td>Local Wi-Fi to Laptop App (no internet needed) · 300 DPI lossless PNG</td></tr>
+          <tr><td>iPad / Android (Print Station)</td><td><span class="tag ok">Automatic &amp; Silent</span></td><td>Sends <code>4x6</code> vs <code>strip:4x6</code> + <code>twoUp</code> · lossless PNG / 0.96 JPEG to laptop</td></tr>
+          <tr><td>Android Tablet Direct USB OTG</td><td><span class="tag red">DNP Only</span></td><td>Direct USB OTG supports DNP (DS-RX1, DS620, DS40). Use Print Station for HiTi.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- QUALITY GUARANTEES -->
+  <section class="part" id="quality">
+    <p class="kicker">Under the Hood · Print Quality</p>
+    <h2>What photobooth4u Automatically Protects for HiTi</h2>
+    <div class="grid-3">
+      <div class="card">
+        <h3>True 300 DPI Native Output</h3>
+        <p>Every 4×6 and 2×6 dual-strip sheet renders at exact <b>300 DPI (1200×1800 px)</b> with an integer center seam (<code>600 px</code> + <code>600 px</code>) so there is never a white gap along the cut line.</p>
+      </div>
+      <div class="card">
+        <h3>Private Driver Settings Kept Intact</h3>
+        <p>On Windows, photobooth4u skips PrintTicket overrides on HiTi/dye-sub queues — so your driver's <b>2-inch cut, matte/glossy finish, and HiTi colour table</b> are never reset mid-event.</p>
+      </div>
+      <div class="card">
+        <h3>Crisp Full-Bleed, Zero Hairlines</h3>
+        <p>Uses high-quality bicubic resampling with <code>TileFlipXY</code> edge wrapping and full-bleed dye-sub framing — eliminating 1 px white borders and accidental inkjet shrinking.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TROUBLESHOOTING -->
+  <section class="part" id="fixes">
+    <p class="kicker">Quick Fixes</p>
+    <h2>Troubleshooting Checklist</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>Problem</th><th>Solution</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Strips print side-by-side but aren't cut</td>
+            <td>Open <code>HiTi 2x6 cut</code> &rarr; <b>Printing preferences</b> (Windows) or <code>localhost:631/printers</code> &rarr; <b>Set Default Options</b> (Mac) and make sure <b>6x4 Split (6x2 2 prints)</b> / <b>2-inch cut</b> is saved as the default. In photobooth4u, verify <b>2×6 Split Strips Printer</b> is set to <code>HiTi 2x6 cut</code>.</td>
+          </tr>
+          <tr>
+            <td>Whole 4×6 photo gets cut in half</td>
+            <td>Check <code>HiTi 4x6</code> driver defaults — set paper to regular uncut <b>6×4</b> (not Split). In single-queue mode, check <b>Driver paper size / slot</b> under Printer 1 is on <b>Auto match</b> or <code>6x4</code>.</td>
+          </tr>
+          <tr>
+            <td>HiTi LCD shows &ldquo;Paper Mismatch&rdquo;</td>
+            <td>Confirm a <b>4×6 media roll &amp; ribbon</b> is loaded. 2×6 split cutting only works on 4×6 media (not 5×7 or 6×8 rolls).</td>
+          </tr>
+          <tr>
+            <td>White edge or slight trim along one side</td>
+            <td>Make sure the printer name contains <code>HiTi</code>. Then tap <b>Print edge test</b> inside that printer's card and adjust <b>Edges (margins)</b> in 0.5 mm steps (<code>+</code> pulls image inward, <code>&minus;</code> pushes outward).</td>
+          </tr>
+          <tr>
+            <td>Print looks slightly dark or warm</td>
+            <td>Open <b>Lightness &amp; Colour Correction</b> inside that printer's card (independent per printer!) and raise <b>Lightness</b> by <code>+10</code> to <code>+25</code>. Guests' digital/QR copies stay untouched.</td>
+          </tr>
+          <tr>
+            <td>HiTi not showing in the app's printer list</td>
+            <td>Check the HiTi is powered on and USB cable is secure, confirm it appears in Windows/Mac <b>Printers &amp; Scanners</b>, then tap <b>Refresh printer list</b> (or restart Print Helper).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <div class="help-box">
+      <div>
+        <h3>Need help testing your HiTi model?</h3>
+        <p>Message us your HiTi model (e.g. P525L / P510S / P750L) and OS — we'll help verify your exact split slot.</p>
+      </div>
+      <a class="help-btn" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener">Message photobooth4u</a>
+    </div>
+    photobooth4u · HiTi 4×6 &amp; 2×6 Split Auto-Cut Guide · Print this page (Ctrl+P / Cmd+P) to save as PDF.
+  </footer>
+</main>
+
+<script>
+  document.querySelectorAll('.copy').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var txt = btn.previousElementSibling ? btn.previousElementSibling.textContent : '';
+      if (!txt) return;
+      try {
+        navigator.clipboard.writeText(txt).then(function () {
+          btn.textContent = 'Copied';
+          setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+        });
+      } catch (e) { }
+    });
+  });
+</script>
+</body>
+</html>

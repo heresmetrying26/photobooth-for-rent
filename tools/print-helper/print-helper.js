@@ -26,7 +26,7 @@ import { spawn } from 'node:child_process';
 import { freeCamera, guardCamera } from './camfree.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.19';
+const VERSION = '1.1.20';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',
@@ -178,29 +178,94 @@ async function paperSizes(printer) {
 // The printer's paper size for the booth's paper (mm), or null. Within 3 mm a side; borderless preferred.
 // When the printer's default paper already is that size it's kept (keep: true), so its own
 // settings (borderless, cutting) stay. A strip on a sheet twice as wide (cut in two) counts too.
-const near = (s, a, b) => { const sa = Math.min(s.w, s.h), sb = Math.max(s.w, s.h); return Math.abs(sa - a) <= 3 && Math.abs(sb - b) <= 3; };
+// On dye-sub printers (HiTi, DNP, Citizen, Sinfonia, Mitsubishi...), also match split/2-UP paper slots
+// when twoUp is explicitly requested, and avoid split slots when a whole 4x6 print is requested.
+const near = (s, a, b, tol = 3) => { const sa = Math.min(s.w, s.h), sb = Math.max(s.w, s.h); return Math.abs(sa - a) <= tol && Math.abs(sb - b) <= tol; };
+const DYE_SUB = /selphy|(?<![a-z])cp[\s_-]?d?\d{2,4}(?![0-9])|(?<![a-z])dnp(?![a-z])|(?<![a-z])ds[\s_-]?(?:rx|\d)|hiti|mitsubishi|kodak|citizen|sinfonia|shinko|dye/i;
+const SPLIT_PAPER_NAME = /(?:(?:^|[^a-z0-9])(?:split|2[\s_-]?up|div2|2[\s_-]?in(?:ch)?[\s_-]?cut|2[\s_-]?strips?)(?=$|[^a-z0-9])|(?:^|[^0-9])(?:2\s*[x×]\s*6|6\s*[x×]\s*2)(?=$|[^0-9])|cut[\s_-]?2\s*[x×]\s*6)/i;
+const isSplitPaper = (s) => !!(s && SPLIT_PAPER_NAME.test((s.key || '') + ' ' + (s.name || '')));
 async function pickPaper(printer, widthMm, heightMm, twoUp) {
   if (!(widthMm > 0 && heightMm > 0)) return null;
   const a = Math.min(widthMm, heightMm), b = Math.max(widthMm, heightMm);
   const allowTwoUp = twoUp !== false && (twoUp === true || a <= 60);
+  const isDyeSub = DYE_SUB.test(String(printer || ''));
   const { sizes, def } = await paperSizes(printer);
   const d = def && sizes.find((s) => s.key === def);
-  if (d && (near(d, a, b) || (allowTwoUp && a / b < 0.45 && near(d, a * 2, b)))) return { ...d, keep: true };
+  const matchesDim = (s, tol = 3) => near(s, a, b, tol) || (allowTwoUp && a / b < 0.45 && near(s, a * 2, b, tol));
+  const scoreOf = (s, tol = 3) => {
+    const sa = Math.min(s.w, s.h), sb = Math.max(s.w, s.h);
+    const direct = Math.abs(sa - a) <= tol && Math.abs(sb - b) <= tol;
+    const da = direct ? Math.abs(sa - a) : Math.abs(sa - a * 2);
+    const db = Math.abs(sb - b);
+    return da + db - (s.borderless ? 2.5 : 0);
+  };
+  if (isDyeSub && typeof twoUp === 'boolean') {
+    const wantSplit = twoUp === true;
+    const cands = sizes.filter((s) => matchesDim(s, 3));
+    if (d && matchesDim(d, 3) && isSplitPaper(d) === wantSplit) return { ...d, keep: true };
+    const preferred = cands.filter((s) => isSplitPaper(s) === wantSplit);
+    if (preferred.length) {
+      let bestPref = null;
+      for (const s of preferred) {
+        const score = scoreOf(s, 3);
+        if (!bestPref || score < bestPref.score) bestPref = { ...s, score };
+      }
+      if (bestPref) return { ...bestPref, keep: bestPref.key === def };
+    }
+    if (d && matchesDim(d, 3)) return { ...d, keep: true };
+  } else if (d && matchesDim(d, 3)) {
+    return { ...d, keep: true };
+  }
   let best = null;
   for (const s of sizes) {
-    const sa = Math.min(s.w, s.h), sb = Math.max(s.w, s.h);
-    if (Math.abs(sa - a) > 3 || Math.abs(sb - b) > 3) continue;
-    const score = Math.abs(sa - a) + Math.abs(sb - b) - (s.borderless ? 2.5 : 0);
+    if (!matchesDim(s, 3)) continue;
+    const splitPenalty = isDyeSub && isSplitPaper(s) ? (twoUp === true || a <= 60 ? -4 : 4) : 0;
+    const score = scoreOf(s, 3) + splitPenalty;
     if (!best || score < best.score) best = { ...s, score };
+  }
+  if (!best && /selphy|canon.*\bCP\s?\d{3,4}\b/i.test(printer)) {
+    // A Canon SELPHY Postcard sheet is 100 x 148 mm (4.4 mm shorter than 4x6 in = 101.6 x 152.4 mm).
+    // When the booth is set to 4x6 and the queue only lists Postcard, match it cleanly.
+    if (d && matchesDim(d, 5)) return { ...d, keep: true };
+    for (const s of sizes) {
+      if (!matchesDim(s, 5)) continue;
+      const score = scoreOf(s, 5);
+      if (!best || score < best.score) best = { ...s, score };
+    }
   }
   return best;
 }
 
+async function dyeSubCupsCutOptions(printer, twoUp, pick) {
+  try {
+    if (IS_WIN || typeof twoUp !== 'boolean' || !DYE_SUB.test(String(printer || ''))) return [];
+    if (pick && isSplitPaper(pick)) return [];
+    if (twoUp === true && /(?:2\s*[x×]\s*6|split|strip|cut)/i.test(String(printer || ''))) return [];
+    const lo = await run('lpoptions', ['-p', printer, '-l']);
+    if (lo.code !== 0) return [];
+    const opts = [];
+    for (const line of lo.out.split(/\r?\n/)) {
+      const m = /^([^/:]+)\/([^:]*):\s*(.*)$/.exec(line);
+      if (m) opts.push({ key: m[1], choices: m[3].trim().split(/\s+/).filter(Boolean).map(v => ({ value: v.replace(/^\*/, ''), selected: v.startsWith('*') })) });
+    }
+    const cutOpt = opts.find((o) => /^(?:cut(?:ter|2x6|mode)?|split(?:mode)?|media-?cut|multi-?cut|hiti-?cut|2inch-?cut|strip-?cut)$/i.test(o.key));
+    if (!cutOpt || !cutOpt.choices.length) return [];
+    const pickChoice = twoUp
+      ? cutOpt.choices.find((c) => /(?:2\s*[x×]\s*6|2[\s_-]?in|split|strip)/i.test(c.value))
+        || cutOpt.choices.find((c) => /^(?:on|yes|true|1|enable|enabled|cut)$/i.test(c.value))
+      : cutOpt.choices.find((c) => /^(?:off|no|none|false|0|disable|disabled|normal|standard|uncut)$/i.test(c.value));
+    if (!pickChoice || pickChoice.selected) return [];
+    log('Dye-sub CUPS cut option: ' + cutOpt.key + '=' + pickChoice.value);
+    return ['-o', cutOpt.key + '=' + pickChoice.value];
+  } catch { return []; }
+}
+
 // Photo quality for AirPrint queues (Mac): a printer added as AirPrint is a driverless IPP queue and
 // prints at draft/normal quality unless told otherwise. Only for those queues, ask for the best
-// quality and photo paper using the options the queue lists; driver queues keep their own settings.
+// quality and photo paper using the options the queue lists; dye-sub (SELPHY / DNP / HiTi) and driver queues keep their own settings.
 async function airPrintQualityOptions(printer, want) {
   try {
+    if (DYE_SUB.test(printer)) return [];
     const v = await run('lpstat', ['-v', printer]);
     if (!/^device for [^:]+:\s*(?:ipps?|dnssd|mdns|ippusb):/im.test(v.out || '')) return [];
     const lo = await run('lpoptions', ['-p', printer, '-l']);
@@ -227,7 +292,7 @@ async function airPrintQualityOptions(printer, want) {
 }
 
 const WIN_PRINT_PS = String.raw`
-param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [switch]$Borderless)
+param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [switch]$Borderless, [switch]$DyeSub)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 # @( ) keeps a one-page list an array (otherwise $files[0] is just the first letter of the path)
@@ -237,7 +302,10 @@ $doc = New-Object System.Drawing.Printing.PrintDocument
 $doc.PrinterSettings.PrinterName = $Printer
 if (-not $doc.PrinterSettings.IsValid) { throw "Printer not found: $Printer" }
 # Print quality: the driver's best quality, applied on top of the printer's own saved settings (its paper,
-# Borderless and orientation stay as they are set). Retry once on transient Windows spooler errors.
+# Borderless and orientation stay as they are set). Dye-sub drivers (HiTi, DNP, Citizen, Sinfonia...)
+# keep their 2-inch cut, matte/glossy finish and factory color LUT in private DEVMODE bytes, so skip
+# PrintTicketConverter mutations on them.
+if (-not $DyeSub) {
 for ($ptTry = 0; $ptTry -lt 2; $ptTry++) {
   try {
     Add-Type -AssemblyName System.Printing
@@ -249,7 +317,7 @@ for ($ptTry = 0; $ptTry -lt 2; $ptTry++) {
     $cx = [xml]([IO.StreamReader]::new($pq.GetPrintCapabilitiesAsXml()).ReadToEnd())
     $qo = @($cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']") | ForEach-Object { $_.name })
     # Best (the default), Normal or Draft, set per printer in the booth. Only an option the driver really lists is used.
-    $qpat = switch ($Quality) { 'draft' { 'Draft|Fast|Economy' } 'normal' { 'Normal|Standard' } default { 'HighQuality|Best|Photographic' } }
+    $qpat = switch ($Quality) { 'draft' { 'Draft|Fast|Economy' } 'normal' { 'Normal|Standard' } default { 'HighQuality|Best|Photographic|^psk:High$' } }
     $best = $qo | Where-Object { $_ -match $qpat } | Select-Object -First 1
     $qf = $tx.SelectSingleNode("//psf:Feature[@name='psk:PageOutputQuality']/psf:Option", $tn)
     if ($best -and $qf -and $qf.GetAttribute('name') -ne $best) {
@@ -272,6 +340,7 @@ for ($ptTry = 0; $ptTry -lt 2; $ptTry++) {
     else { [Console]::Out.WriteLine('info|print ticket not applied: ' + $_.Exception.Message) }
   }
 }
+}
 if ($PaperName) {
   $p = $doc.PrinterSettings.PaperSizes | Where-Object { $_.PaperName -eq $PaperName } | Select-Object -First 1
   if ($p) { $doc.DefaultPageSettings.PaperSize = $p }
@@ -280,7 +349,7 @@ if ($PaperName) {
 # that paper (Epson L-series keep it as a separate switch, off unless someone ticked it in the printer's preferences,
 # and with it off the page is fitted inside a ~3 mm margin: white edges). Only if the driver lists a Borderless
 # option and accepts it on this paper; otherwise nothing changes.
-if ($Borderless) {
+if ($Borderless -and -not $DyeSub) {
   try {
     Add-Type -AssemblyName System.Printing
     Add-Type -AssemblyName ReachFramework
@@ -345,6 +414,22 @@ $doc.add_PrintPage({
     $imgLandscape = $img.Width -gt $img.Height
     if ($pageLandscape -ne $imgLandscape) { $img.RotateFlip([System.Drawing.RotateFlipType]::Rotate270FlipNone) }
     $e.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $e.Graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+    $e.Graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+    $e.Graphics.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
+    $ia = New-Object System.Drawing.Imaging.ImageAttributes
+    $ia.SetWrapMode([System.Drawing.Drawing2D.WrapMode]::TileFlipXY)
+    $drawCrisp = {
+      param([single]$dx, [single]$dy, [single]$dw, [single]$dh)
+      $pts = [System.Drawing.PointF[]]@(
+        [System.Drawing.PointF]::new($dx, $dy),
+        [System.Drawing.PointF]::new($dx + $dw, $dy),
+        [System.Drawing.PointF]::new($dx, $dy + $dh)
+      )
+      $srcRect = New-Object System.Drawing.RectangleF 0, 0, ([single]$img.Width), ([single]$img.Height)
+      $e.Graphics.DrawImage($img, $pts, $srcRect, [System.Drawing.GraphicsUnit]::Pixel, $ia)
+    }
+    try {
     $hx = $e.PageSettings.HardMarginX; $hy = $e.PageSettings.HardMarginY
     # What the driver says it can print on this paper: the smaller of its printable area and the page's clip.
     # (.NET's PageSettings.PrintableArea stays in portrait even when the driver is set to Landscape.)
@@ -353,19 +438,18 @@ $doc.add_PrintPage({
     $paH = if (($pa.Width -gt $pa.Height) -ne $pageLandscape) { $pa.Width } else { $pa.Height }
     $clip = New-Object System.Drawing.RectangleF $vis.X, $vis.Y, ([Math]::Min($vis.Width, $paW)), ([Math]::Min($vis.Height, $paH))
     [Console]::Out.WriteLine(('info|sheet {0}x{1}, printable {2}x{3} at {4},{5}, hard margin {6},{7} (1/100 in)' -f $page.Width, $page.Height, $clip.Width, $clip.Height, $clip.X, $clip.Y, $hx, $hy))
-    if ($clip.Width -ge $page.Width * 0.99 -and $clip.Height -ge $page.Height * 0.99) {
+    $fullBleed = ($clip.Width -ge $page.Width * 0.99 -and $clip.Height -ge $page.Height * 0.99) -or ($DyeSub -and $clip.Width -ge $page.Width * 0.92 -and $clip.Height -ge $page.Height * 0.92)
+    if ($fullBleed) {
       # The driver says the whole sheet is printable (Borderless is on): the picture covers it edge to edge.
-      # How far the driver enlarges it past the edge is its own setting (Epson: Borderless > Settings >
-      # Expansion), so the app does not add a margin of its own: move that slider if a white line or a
-      # trimmed edge shows.
-      $e.Graphics.DrawImage($img, [single](-$hx), [single](-$hy), [single]$page.Width, [single]$page.Height)
+      & $drawCrisp ([single](-$hx)) ([single](-$hy)) ([single]$page.Width) ([single]$page.Height)
     } else {
       # The driver keeps a margin it cannot print on. Fit the whole picture inside the part it says it can
       # print, so nothing is cut off at the edges.
       $s = [Math]::Min($clip.Width / $img.Width, $clip.Height / $img.Height)
       $w = [single]($img.Width * $s); $h = [single]($img.Height * $s)
-      $e.Graphics.DrawImage($img, [single]($clip.X + ($clip.Width - $w) / 2), [single]($clip.Y + ($clip.Height - $h) / 2), $w, $h)
+      & $drawCrisp ([single]($clip.X + ($clip.Width - $w) / 2)) ([single]($clip.Y + ($clip.Height - $h) / 2)) $w $h
     }
+    } finally { $ia.Dispose() }
   } finally { $img.Dispose() }
   $script:i++
   $e.HasMorePages = ($script:i -lt $files.Count)
@@ -375,32 +459,46 @@ $doc.Print()
 `;
 
 // fit: 'width' = receipt roll (fill the width, length follows the picture).
-async function printPages(printer, pngBuffers, fit, widthMm, heightMm, quality) {
+async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, opts) {
+  opts = opts || {};
+  const twoUp = typeof opts.twoUp === 'boolean' ? opts.twoUp : undefined;
+  const reqPaperName = typeof opts.paperName === 'string' ? opts.paperName.trim() : '';
+  const isDyeSub = DYE_SUB.test(String(printer || ''));
+  const items = pageItems.map((p) => (Buffer.isBuffer(p) ? { buf: p, ext: 'png' } : p));
   const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
   try {
     const files = [];
-    for (let i = 0; i < pngBuffers.length; i++) {
-      const f = join(dir, 'page' + (i + 1) + '.png');
-      await writeFile(f, pngBuffers[i]);
+    for (let i = 0; i < items.length; i++) {
+      const f = join(dir, 'page' + (i + 1) + '.' + (items[i].ext || 'png'));
+      await writeFile(f, items[i].buf);
       files.push(f);
     }
+    const resolvePick = async () => {
+      if (fit === 'width') return null;
+      if (reqPaperName) {
+        const info = await paperSizes(printer);
+        const found = info.sizes.find((s) => s.key === reqPaperName || s.name === reqPaperName);
+        if (found) return { ...found, keep: false, explicit: true };
+        return { key: reqPaperName, name: reqPaperName, borderless: isBorderlessName(reqPaperName), explicit: true };
+      }
+      return pickPaper(printer, widthMm, heightMm, twoUp);
+    };
+    const pick = await resolvePick();
+    if (pick) log('Paper: ' + pick.name + (pick.explicit ? ' (selected by operator)' : pick.keep ? ' (the printer\'s default)' : ''));
     let r;
     if (IS_WIN) {
       const ps1 = join(dir, 'print.ps1'), list = join(dir, 'pages.txt');
       await writeFile(ps1, '﻿' + WIN_PRINT_PS, 'utf8');
       await writeFile(list, files.join('\r\n'), 'utf8');
-      const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
-      if (pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
-      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && !pick.keep ? ['-PaperName', pick.key] : []), ...(pick ? ['-Borderless'] : [])]);
+      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(isDyeSub ? ['-DyeSub'] : []), ...(pick && (!pick.keep || pick.explicit) ? ['-PaperName', pick.key] : []), ...(!isDyeSub && pick ? ['-Borderless'] : [])]);
     } else {
       // Pages are already exactly paper-sized at 300 dpi; fit-to-page fills the
       // sheet. The paper size is the printer's own one that matches the booth's.
-      const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
-      if (pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
       const media = fit === 'width' && widthMm > 0 && heightMm > 0 ? ['-o', 'media=Custom.' + Math.round(widthMm) + 'x' + Math.round(heightMm) + 'mm']
-        : pick && !pick.keep ? ['-o', (pick.opt === 'media' ? 'media=' : 'PageSize=') + pick.key] : [];
+        : pick && (!pick.keep || pick.explicit) ? ['-o', (pick.opt === 'media' ? 'media=' : 'PageSize=') + pick.key] : [];
+      const cutOpts = await dyeSubCupsCutOptions(printer, twoUp, pick);
       const qopts = await airPrintQualityOptions(printer, quality);
-      r = await run('lp', ['-d', printer, ...media, ...qopts, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
+      r = await run('lp', ['-d', printer, ...media, ...cutOpts, ...qopts, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
     }
     if (r.code !== 0) throw new Error((r.err || r.out || ('exit ' + r.code)).trim().slice(0, 300));
     for (const line of String(r.out || '').split(/\r?\n/)) if (line.startsWith('info|')) log('Page: ' + line.slice(5));
@@ -681,9 +779,11 @@ const server = Bun.serve({
     if (req.method === 'GET' && url.pathname === '/paper') {
       const name = String(url.searchParams.get('printer') || '').trim();
       if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404, origin);
-      const info = await paperSizes(name), pick = await pickPaper(name, Number(url.searchParams.get('w')) || 0, Number(url.searchParams.get('h')) || 0);
+      const twoUpQ = url.searchParams.get('twoUp');
+      const twoUp = twoUpQ === '1' ? true : twoUpQ === '0' ? false : undefined;
+      const info = await paperSizes(name), pick = await pickPaper(name, Number(url.searchParams.get('w')) || 0, Number(url.searchParams.get('h')) || 0, twoUp);
       const def = info.def && info.sizes.find((x) => x.key === info.def);
-      return json({ ok: true, known: info.sizes.length > 0, match: pick ? { name: pick.name, borderless: !!pick.borderless, isDefault: !!pick.keep } : null, def: def ? def.name : (info.def || ''), sizes: info.sizes.slice(0, 40).map((x) => x.name) }, 200, origin);
+      return json({ ok: true, known: info.sizes.length > 0, match: pick ? { name: pick.name, borderless: !!pick.borderless, isDefault: !!pick.keep } : null, def: def ? def.name : (info.def || ''), sizes: info.sizes.slice(0, 40).map((x) => x.name), paperList: info.sizes.slice(0, 80).map((x) => ({ key: x.key, name: x.name, w: Math.round(x.w * 10) / 10, h: Math.round(x.h * 10) / 10, borderless: !!x.borderless })) }, 200, origin);
     }
     if (req.method === 'POST' && url.pathname === '/printer/configure') {
       if (!origin) return json({ ok: false, error: 'Missing origin' }, 403);
@@ -715,13 +815,26 @@ const server = Bun.serve({
       if (!list.includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404, origin);
       const buffers = [];
       for (const p of pages) {
-        const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(String(p));
-        if (!m) return json({ ok: false, error: 'Pages must be PNG images' }, 400, origin);
-        buffers.push(Buffer.from(m[1], 'base64'));
+        const m = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(String(p));
+        if (!m) return json({ ok: false, error: 'Pages must be PNG or JPEG images' }, 400, origin);
+        buffers.push({ buf: Buffer.from(m[2], 'base64'), ext: m[1] === 'jpeg' ? 'jpg' : 'png' });
       }
       const fit = body.fit === 'width' ? 'width' : '';
       const quality = ['draft', 'normal', 'best'].includes(body.quality) ? body.quality : '';
-      const job = queue.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0, quality));
+      const opts = {
+        twoUp: typeof body.twoUp === 'boolean' ? body.twoUp : undefined,
+        paperName: typeof body.paperName === 'string' ? body.paperName.slice(0, 120) : ''
+      };
+      const wMm = Number(body.widthMm) || 0, hMm = Number(body.heightMm) || 0;
+      const job = queue.then(async () => {
+        // A Canon SELPHY (CP1500 / CP1300...) can stall, print only yellow, or freeze the print queue when several
+        // photos reach it in one job, so each page goes as its own single-page job, one after the other.
+        if (buffers.length > 1 && /selphy|canon.*\bCP\s?\d{3,4}\b/i.test(name)) {
+          for (const it of buffers) await printPages(name, [it], fit, wMm, hMm, quality, opts);
+          return;
+        }
+        await printPages(name, buffers, fit, wMm, hMm, quality, opts);
+      });
       queue = job.catch(() => { });
       try {
         await job;

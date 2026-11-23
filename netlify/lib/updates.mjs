@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.97', date: '2026-11-23' },
   { version: '1.1.96', date: '2026-11-22' },
   { version: '1.1.95', date: '2026-11-22' },
   { version: '1.1.94', date: '2026-11-22' },
@@ -205,13 +206,13 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.19', date: '2026-11-22' };
+export const HELPER = { version: '1.1.20', date: '2026-11-23' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
 // after about 60 s, so on a slower connection the 18 MB file never finished ("unexpected end of stream").
 // GitHub has no such limit. (The copy in public/downloads is still kept for the /downloads page.)
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-22', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-23', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
 // The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
 // /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new
@@ -239,7 +240,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.17', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.17/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.18', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.18/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -292,6 +293,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-23', title: 'Desktop 1.1.97, Print Helper 1.1.20, Android 1.1.101 & iPad 1.1.18: HiTi & Dye-Sub 2×6 Split Auto-Cut, Secondary 2×6 Printer Slot, Print Station Split Routing & Direct USB Canon SELPHY', for: ['website', 'app', 'helper'], app: '1.1.97', helper: '1.1.20',
+    items: [
+      '✂️ New Secondary 2×6 Split Strips Printer card (LumaBooth-style) in Print settings: assign Printer 1 to 4×6 whole (e.g. HiTi 4x6) and a dedicated Secondary Printer to 2×6 split strips (e.g. HiTi 2x6 cut) with its own independent Lightness, Colour Correction, Edges, and Driver Paper slot — plus 1-tap Test 4×6 whole and Test 2×6 strips (cut) buttons right inside Print settings.',
+      '🖨️ Hardcoded HiTi & commercial dye-sub print engine (Windows & Mac): auto-switches single HiTi/DNP/Citizen queues between 6×4 and 6×4 Split / 2-UP paper slots, protects private Windows DEVMODE settings (2-inch cut, matte overcoat, factory colour LUT), renders crisp 300 DPI full-bleed with TileFlipXY edge wrapping (no 1 px white hairlines), and auto-pairs narrow 2×6 paper onto a 4×6 sheet so strips are never stretched or sliced through faces.',
+      '📱 iPad & Android Cloud Print Station (/print-station/) now supports 4×6 + 2×6 split routing: choose separate printers for 4R (4×6) and 4R · 2×6 strips (cut) (or single-queue auto-split) with lossless 300 DPI PNG / high-quality JPEG transfers and dual test buttons, plus an updated step-by-step HiTi setup guide at /how-to-print-hiti/.',
+      '🔌 Direct USB Canon SELPHY printing (CP820–CP1500) on Windows & Mac Laptop App: prints straight over USB when no system print queue is installed, with cleaner 4×6 → Postcard 100×148 mm paper matching.'
+    ]
+  },
   {
     date: '2026-11-22', title: 'Desktop 1.1.96, Android 1.1.100 & iPad 1.1.17: In-Place Edit Layout for Multi-Section & 4-in-1 Frames (Move & Rotate Spliced Sections)', for: ['website', 'app'], app: '1.1.96',
     items: [

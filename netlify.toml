@@ -102,6 +102,16 @@
   status = 301
 
 [[redirects]]
+  from = "/tablet-camera"
+  to = "/how-to-tablet-camera/"
+  status = 301
+
+[[redirects]]
+  from = "/ipad-camera"
+  to = "/how-to-ipad-camera/"
+  status = 301
+
+[[redirects]]
   from = "/how-to-print"
   to = "/how-to-print-hiti/"
   status = 301

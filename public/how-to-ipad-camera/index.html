@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Laptop + iPad Extended Camera Setup Guide · Windows &amp; Mac · photobooth4u</title>
+<style>
+  :root {
+    --bg: #f6f1ea;
+    --card: #fffdf9;
+    --ink: #1f1a1d;
+    --dim: #5d555b;
+    --line: #e4ddd3;
+    --red: #c8402a;
+    --red-soft: #fbeee9;
+    --purple: #7c3aed;
+    --purple-soft: #f3eeff;
+    --purple-line: #ddd2fb;
+    --ok: #1f6f62;
+    --ok-soft: #e6f4f1;
+    --ok-line: #bfe3da;
+    --blue: #1b63c7;
+    --blue-soft: #eef3fb;
+    --blue-line: #cfdcf2;
+    --amber: #995d13;
+    --amber-soft: #fef7eb;
+    --amber-line: #f3d9ae;
+    --dark: #1f1a1d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15.5px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--red); font-weight: 600; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 18px; }
+
+  /* Hero */
+  header.hero {
+    background: linear-gradient(135deg, #161d2e 0%, #1f1a1d 60%, #2d2429 100%);
+    color: #f6f1ea;
+    padding: 40px 0 48px;
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font: 700 22px Georgia, "Times New Roman", serif;
+    color: #f6f1ea;
+    text-decoration: none;
+  }
+  .brand .mark { display: grid; grid-template-columns: repeat(2, 9px); gap: 3px; }
+  .brand .mark i { width: 9px; height: 9px; border-radius: 2px; background: #f6f1ea; display: block; }
+  .brand .mark i:nth-child(2) { background: var(--red); }
+  .brand .badge {
+    background: var(--red);
+    color: #fff;
+    font: 800 11px system-ui, sans-serif;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transform: translateY(-4px);
+  }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #93c5fd;
+    margin: 24px 0 8px;
+  }
+  h1 {
+    font: 700 clamp(30px, 5.2vw, 47px)/1.08 Georgia, "Times New Roman", serif;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  h1 em { color: #f2846e; font-style: italic; }
+  .lead {
+    color: #ded5cc;
+    font-size: 17px;
+    max-width: 740px;
+    margin-bottom: 20px;
+  }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #f6f1ea;
+    border-radius: 999px;
+    padding: 5px 13px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .pill.blue { background: rgba(27, 99, 199, 0.42); border-color: rgba(147, 197, 253, 0.42); }
+  .pill.purple { background: rgba(124, 58, 237, 0.38); border-color: rgba(196, 181, 253, 0.4); }
+
+  /* Quick TOC */
+  nav.toc {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin: -24px 0 18px;
+    position: relative;
+  }
+  nav.toc a {
+    display: block;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    text-decoration: none;
+    color: var(--ink);
+    box-shadow: 0 8px 20px rgba(31, 26, 29, 0.07);
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  nav.toc a:hover { border-color: var(--blue); transform: translateY(-1px); }
+  nav.toc b { display: block; color: var(--blue); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  nav.toc span { font-weight: 700; font-size: 14px; }
+
+  /* Sections */
+  section.part { padding: 30px 0 6px; scroll-margin-top: 14px; }
+  .kicker {
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 4px;
+  }
+  h2 {
+    font: 700 clamp(23px, 3.6vw, 31px)/1.18 Georgia, "Times New Roman", serif;
+    margin-bottom: 8px;
+  }
+  .why { color: var(--dim); margin-bottom: 14px; }
+
+  /* Cards & Grids */
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 20px;
+  }
+  .card h3 { font-size: 17px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card p, .card li { color: var(--dim); font-size: 14.5px; }
+  .card ul, .card ol { padding-left: 20px; margin-top: 8px; }
+  .card li { margin: 5px 0; }
+  .card b { color: var(--ink); }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 2px 9px;
+  }
+  .tag.ok { background: var(--ok-soft); color: var(--ok); }
+  .tag.purple { background: var(--purple-soft); color: var(--purple); }
+  .tag.red { background: var(--red-soft); color: var(--red); }
+  .tag.blue { background: var(--blue-soft); color: var(--blue); }
+  .tag.amber { background: var(--amber-soft); color: var(--amber); }
+
+  /* Visual diagram */
+  .diagram-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 20px;
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    align-items: stretch;
+  }
+  .diagram-box {
+    background: #faf6f0;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .diagram-box h4 { font-size: 15.5px; margin: 10px 0 4px; }
+  .diagram-box p { font-size: 13.5px; color: var(--dim); max-width: 360px; }
+
+  /* Platform Panels */
+  .os-win { background: var(--blue-soft); border: 1px solid var(--blue-line); border-radius: 16px; padding: 16px 20px; }
+  .os-mac { background: #faf6f0; border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; }
+  .os-pur { background: var(--purple-soft); border: 1px solid var(--purple-line); border-radius: 16px; padding: 16px 20px; }
+  .os-win h3, .os-mac h3, .os-pur h3 { font-size: 16.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .os-win ol, .os-mac ol, .os-pur ol,
+  .os-win ul, .os-mac ul, .os-pur ul { padding-left: 20px; color: var(--dim); font-size: 14.5px; }
+  .os-win li, .os-mac li, .os-pur li { margin: 6px 0; }
+  .os-win b, .os-mac b, .os-pur b { color: var(--ink); }
+
+  /* Code */
+  code {
+    font: 600 13px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: #efe7dd;
+    border-radius: 6px;
+    padding: 1px 6px;
+    color: var(--ink);
+  }
+
+  /* App UI Preview Mockup */
+  .ui-mock {
+    background: var(--card);
+    border: 1.5px solid var(--line);
+    border-radius: 18px;
+    padding: 18px;
+    margin-top: 12px;
+    box-shadow: 0 10px 26px rgba(31, 26, 29, 0.06);
+  }
+  .ui-slot {
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 14px 16px;
+    background: #fff;
+    margin-bottom: 10px;
+  }
+  .ui-slot:last-child { margin-bottom: 0; }
+  .ui-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 9px;
+  }
+  .ui-title { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+  .ui-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .ui-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--blue-soft);
+    color: var(--blue);
+  }
+  .ui-badge.ok { background: var(--ok-soft); color: var(--ok); }
+  .ui-select {
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 9px;
+    border: 1px solid #d5cdc2;
+    background: #faf8f4;
+    font: 600 13.5px system-ui, sans-serif;
+    color: var(--ink);
+  }
+  .ui-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .ui-btn {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid #d5cdc2;
+    background: #fff;
+    font: 700 12.5px system-ui, sans-serif;
+    color: var(--ink);
+  }
+  .ui-btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+
+  /* Callouts */
+  .callout {
+    background: var(--blue-soft);
+    border: 1px solid var(--blue-line);
+    border-left: 4px solid var(--blue);
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin-top: 14px;
+  }
+  .callout.amber { background: var(--amber-soft); border-color: var(--amber-line); border-left-color: var(--amber); }
+  .callout.ok { background: var(--ok-soft); border-color: var(--ok-line); border-left-color: var(--ok); }
+  .callout.purple { background: var(--purple-soft); border-color: var(--purple-line); border-left-color: var(--purple); }
+  .callout h3 { font-size: 15.5px; margin-bottom: 4px; }
+  .callout p { font-size: 14.5px; color: var(--dim); }
+  .callout b { color: var(--ink); }
+
+  /* Tables */
+  .tbl-wrap { overflow-x: auto; margin-top: 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); background: #f3ece3; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 700; }
+
+  /* Checklist grid */
+  .check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 12px; }
+  .check-item {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 15px 16px;
+  }
+  .check-item .ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--blue-soft);
+    color: var(--blue);
+    font-weight: 800;
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  .check-item h3 { font-size: 15px; margin-bottom: 4px; }
+  .check-item p { font-size: 13.5px; color: var(--dim); }
+
+  /* Footer */
+  footer {
+    margin-top: 38px;
+    padding: 24px 0 44px;
+    border-top: 1px solid var(--line);
+    color: var(--dim);
+    font-size: 13.5px;
+  }
+  .help-box {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--dark);
+    color: #f6f1ea;
+    border-radius: 16px;
+    padding: 18px 22px;
+    margin-bottom: 14px;
+  }
+  .help-box h3 { font: 700 19px Georgia, serif; margin-bottom: 2px; }
+  .help-box p { color: #d9cfc6; font-size: 14px; }
+  .help-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    text-decoration: none;
+  }
+
+  @media (max-width: 760px) {
+    .grid-2, .grid-3, .diagram-card { grid-template-columns: 1fr; }
+  }
+  @media print {
+    body { background: #fff; font-size: 12.5px; }
+    header.hero { background: #1f1a1d !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 24px 0; }
+    nav.toc { display: none !important; }
+    section.part, .card, .callout, .ui-mock, tr { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <a class="brand" href="https://photobooth4u.netlify.app/">
+      <span class="mark"><i></i><i></i><i></i><i></i></span>
+      photobooth<span class="badge">4u</span>
+    </a>
+    <p class="eyebrow">iPad + Laptop Camera Guide · Windows 10/11 &amp; macOS</p>
+    <h1>Using an <em>iPad as Your Camera</em><br>with a Windows or Mac Laptop</h1>
+    <p class="lead">
+      Yes — you can use your <b>iPad</b> as a crisp HD/4K extended camera for <b>photobooth4u Desktop</b> on Windows or Mac via a
+      direct <b>USB cable</b> — or flip the roles and run photobooth4u natively on the iPad while your laptop handles automatic USB printing.
+    </p>
+    <div class="pills">
+      <span class="pill blue">&#10003; Direct USB Extended Camera (Camo / Iriun / DroidCam)</span>
+      <span class="pill purple">&#10003; Alternative: Native iPad Booth + Laptop Print Station</span>
+      <span class="pill">Windows 10/11 · MacBook · iPad USB-C &amp; Lightning</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="toc" aria-label="Guide sections">
+    <a href="#options"><b>Overview</b><span>Choose Your Mode</span></a>
+    <a href="#apps"><b>Part 1</b><span>USB Camera Apps</span></a>
+    <a href="#setup"><b>Part 2</b><span>Windows &amp; Mac</span></a>
+    <a href="#flip"><b>Part 3</b><span>Print Station Mode</span></a>
+    <a href="#booth-ui"><b>Part 4</b><span>Booth Settings</span></a>
+    <a href="#fixes"><b>Part 5</b><span>Checklist &amp; Fixes</span></a>
+  </nav>
+
+  <!-- OVERVIEW -->
+  <section class="part" id="options">
+    <p class="kicker">Quick Overview · Two Proven Ways to Pair Laptop + iPad</p>
+    <h2>Pick the Setup That Matches Your Booth</h2>
+    <p class="why">
+      Because Apple locks iPadOS camera access to the active foreground app (and does not include a built-in native bridge camera sender on iPad),
+      choose between <b>Method 1 (iPad as USB Extended Camera)</b> or <b>Method 2 (iPad as Native Booth + Laptop as Print Station)</b>:
+    </p>
+
+    <div class="diagram-card">
+      <div class="diagram-box">
+        <svg viewBox="0 0 280 124" width="260" height="114" aria-label="Laptop with iPad Extended Camera via USB Webcam App">
+          <rect x="8" y="20" width="80" height="52" rx="6" fill="#1f1a1d" stroke="#1b63c7" stroke-width="2.5"/>
+          <rect x="14" y="26" width="68" height="40" rx="3" fill="#eef3fb"/>
+          <rect x="2" y="72" width="92" height="9" rx="4" fill="#5d555b"/>
+          <text x="48" y="44" text-anchor="middle" font-size="9.5" font-weight="800" fill="#1b63c7">LAPTOP</text>
+          <text x="48" y="57" text-anchor="middle" font-size="8.5" font-weight="600" fill="#1f1a1d">Booth + Printer</text>
+
+          <line x1="92" y1="45" x2="168" y2="45" stroke="#1b63c7" stroke-width="3"/>
+          <polygon points="92,45 100,40 100,50" fill="#1b63c7"/>
+          <text x="130" y="36" text-anchor="middle" font-size="8.5" font-weight="800" fill="#1b63c7">USB-C / Lightning</text>
+          <text x="130" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="#5d555b">Camo / Iriun</text>
+
+          <rect x="172" y="14" width="98" height="68" rx="10" fill="#1f1a1d" stroke="#1b63c7" stroke-width="2.5"/>
+          <rect x="179" y="21" width="84" height="54" rx="5" fill="#eef3fb"/>
+          <circle cx="221" cy="17.5" r="2.2" fill="#60a5fa"/>
+          <text x="221" y="43" text-anchor="middle" font-size="10" font-weight="800" fill="#1b63c7">iPAD</text>
+          <text x="221" y="56" text-anchor="middle" font-size="8.5" font-weight="700" fill="#1f1a1d">Extended Camera</text>
+          <text x="221" y="67" text-anchor="middle" font-size="8" font-weight="600" fill="#5d555b">Front or Rear</text>
+
+          <text x="140" y="106" text-anchor="middle" font-size="9" font-weight="800" fill="#1b63c7">Method 1 · Laptop Runs Booth, iPad Is Camera</text>
+        </svg>
+        <h4>Method 1 · iPad as USB Extended Camera</h4>
+        <p>Your laptop runs <b>photobooth4u Desktop</b> and selects the iPad inside <b>Setup &rarr; 3 Camera</b>. Guests view your laptop screen or an HDMI TV.</p>
+      </div>
+
+      <div class="diagram-box">
+        <svg viewBox="0 0 280 124" width="260" height="114" aria-label="iPad Running Booth Sending Prints to Laptop Print Station">
+          <rect x="8" y="14" width="98" height="68" rx="10" fill="#1f1a1d" stroke="#7c3aed" stroke-width="2.5"/>
+          <rect x="15" y="21" width="84" height="54" rx="5" fill="#f3eeff"/>
+          <circle cx="57" cy="17.5" r="2.2" fill="#c4b5fd"/>
+          <text x="57" y="41" text-anchor="middle" font-size="9.5" font-weight="800" fill="#7c3aed">iPAD (BOOTH)</text>
+          <text x="57" y="54" text-anchor="middle" font-size="8.5" font-weight="700" fill="#1f1a1d">Camera + Guest</text>
+          <text x="57" y="65" text-anchor="middle" font-size="8" font-weight="600" fill="#5d555b">Touchscreen</text>
+
+          <line x1="110" y1="45" x2="178" y2="45" stroke="#7c3aed" stroke-width="3" stroke-dasharray="5 3"/>
+          <polygon points="178,45 170,40 170,50" fill="#7c3aed"/>
+          <text x="144" y="36" text-anchor="middle" font-size="8.5" font-weight="800" fill="#7c3aed">Auto-Print</text>
+          <text x="144" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="#5d555b">Same Wi-Fi</text>
+
+          <rect x="182" y="20" width="86" height="52" rx="6" fill="#1f1a1d" stroke="#1f6f62" stroke-width="2.5"/>
+          <rect x="188" y="26" width="74" height="40" rx="3" fill="#e6f4f1"/>
+          <rect x="176" y="72" width="98" height="9" rx="4" fill="#5d555b"/>
+          <text x="225" y="44" text-anchor="middle" font-size="9" font-weight="800" fill="#1f6f62">LAPTOP</text>
+          <text x="225" y="57" text-anchor="middle" font-size="8" font-weight="700" fill="#1f1a1d">Print Station</text>
+
+          <text x="140" y="106" text-anchor="middle" font-size="9" font-weight="800" fill="#7c3aed">Method 2 · Zero 3rd-Party Apps · iPad All-in-One</text>
+        </svg>
+        <h4>Method 2 · iPad Booth + Laptop Print Station</h4>
+        <p>Run <b>photobooth4u natively on the iPad</b> (camera + guest screen together), and let the laptop silently print to DNP, HiTi, Epson, or SELPHY.</p>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>iPad + Laptop Mode</th>
+            <th>Uses iPad Camera?</th>
+            <th>Guest Screen on iPad?</th>
+            <th>Extra App Needed?</th>
+            <th>Best For</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Method 1 · USB Virtual Webcam<br><small style="color:var(--dim);font-weight:500;">Camo / Iriun / DroidCam</small></td>
+            <td><span class="tag blue">Yes · HD / 4K USB</span><br>Shows inside Laptop <b>Setup &rarr; 3 Camera</b>.</td>
+            <td><span class="tag amber">Camera Only</span><br>Guests look at Laptop screen or HDMI TV.</td>
+            <td><span class="tag blue">Camo / Iriun</span><br>Installed on iPad + Laptop.</td>
+            <td>Keeping photobooth4u Desktop on your laptop while upgrading to the iPad&rsquo;s camera.</td>
+          </tr>
+          <tr>
+            <td>Method 2 · iPad Booth + Laptop Print Station<br><small style="color:var(--dim);font-weight:500;">Recommended All-in-One</small></td>
+            <td><span class="tag purple">Yes · Native Camera</span><br>Full native iPad camera (incl. Center Stage).</td>
+            <td><span class="tag ok">Yes · Native App</span><br>Touchscreen, live preview, QR &amp; audio on iPad.</td>
+            <td><span class="tag ok">None</span><br>Built-in <code>/print-station/</code> (0 extra slots).</td>
+            <td>Cleanest, most secure setup when you want iPad to be <b>both</b> camera &amp; guest screen.</td>
+          </tr>
+          <tr>
+            <td>Bonus · iPad Safari Bridge Link<br><small style="color:var(--dim);font-weight:500;">Guest Screen Only</small></td>
+            <td><span class="tag red">No Camera Feed</span><br>Safari cannot stream iPad camera back.</td>
+            <td><span class="tag ok">Yes · Wireless</span><br>Shows laptop&rsquo;s DSLR/webcam preview + QR.</td>
+            <td><span class="tag ok">None</span><br>Open bridge URL in iPad Safari.</td>
+            <td>Laptop + DSLR setup where iPad only acts as a wireless guest touchscreen.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout amber">
+      <h3>Important Note About Apple &ldquo;Continuity Camera&rdquo;</h3>
+      <p>
+        Apple&rsquo;s built-in <b>Continuity Camera</b> for Mac works with <b>iPhone only</b> — Apple does <b>not</b> support using an iPad as a native Continuity Camera webcam.
+        To use an <b>iPad</b> as a laptop camera (on either Windows or Mac), follow <b>Part 1 &amp; Part 2</b> below.
+        <i>(If you happen to have a <b>MacBook + iPhone</b>, Continuity Camera appears automatically in photobooth4u with zero extra apps!)</i>
+      </p>
+    </div>
+  </section>
+
+  <!-- PART 1: USB CAMERA APPS -->
+  <section class="part" id="apps">
+    <p class="kicker">Part 1 · Choose a USB Camera Bridge App (For Method 1)</p>
+    <h2>Recommended Apps to Turn Your iPad into a Laptop Webcam</h2>
+    <p class="why">
+      Always connect over a <b>direct USB-C or Lightning cable</b> instead of venue Wi-Fi — it keeps video local, prevents wireless lag, and keeps your iPad charged all event long:
+    </p>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>Camo Studio <span class="tag ok">Recommended</span></h3>
+        <p><b>Windows &amp; Mac · USB-C / Lightning.</b> Most reliable plug-and-play iPad webcam bridge. Gives manual lens switching (Front / Rear / Ultra-Wide), focus lock, white balance, exposure, and zoom. Free tier works smoothly over USB; Pro adds 4K &amp; pro controls.</p>
+      </div>
+      <div class="card">
+        <h3>Iriun Webcam <span class="tag blue">Free · 4K</span></h3>
+        <p><b>Windows &amp; Mac · USB or Wi-Fi.</b> Lightweight, clean, and supports up to 4K resolution on the free tier. Great simple option if you want quick setup without extra menus.</p>
+      </div>
+      <div class="card">
+        <h3>DroidCam <span class="tag purple">Windows USB</span></h3>
+        <p><b>Windows (direct) &amp; Mac (via OBS).</b> Low-latency USB &amp; Wi-Fi streaming from iPad to Windows laptops. Ideal if you already run OBS or want a small, minimal client.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 2: WINDOWS & MAC SETUP -->
+  <section class="part" id="setup">
+    <p class="kicker">Part 2 · Step-by-Step USB Setup (Method 1)</p>
+    <h2>Connect Your iPad Camera to Windows or Mac</h2>
+
+    <div class="grid-2">
+      <div class="os-win">
+        <h3>Windows 10 / 11 Laptop + iPad <span class="tag blue">Direct USB</span></h3>
+        <ol>
+          <li><b>Install Apple USB Driver (once):</b> Install <b>Apple Devices</b> from the Microsoft Store (or Apple iTunes) so Windows detects iPads reliably over USB.</li>
+          <li><b>Install the companion apps:</b> Install <b>Camo Studio</b> (<code>reincubate.com/camo</code>) or <b>Iriun Webcam</b> (<code>iriun.com</code>) on Windows, and install the matching app on your iPad from the App Store.</li>
+          <li><b>Plug in USB cable &amp; Trust:</b> Connect your iPad to the laptop with a <b>USB-C or Lightning data cable</b>. Unlock the iPad and tap <b>Trust This Computer</b> (enter your passcode).</li>
+          <li><b>Start the camera stream first:</b> Open <b>Camo</b> (or <b>Iriun</b>) on both iPad and Windows. Choose your lens (Front or Rear), lock white balance/focus if desired, and turn on iPad <b>Orientation Lock</b>.</li>
+          <li><b>Select inside photobooth4u:</b> Open <b>photobooth4u Desktop &rarr; Setup &rarr; 3 Camera</b> &rarr; pick <b>Camo</b> (or <b>Iriun Webcam</b>) in the Camera dropdown.</li>
+        </ol>
+      </div>
+
+      <div class="os-mac">
+        <h3>MacBook (Apple Silicon / Intel) + iPad <span class="tag ok">Plug &amp; Play</span></h3>
+        <ol>
+          <li><b>No Apple driver needed:</b> macOS recognizes iPads over USB automatically.</li>
+          <li><b>Install the companion apps:</b> Install <b>Camo Studio</b> or <b>Iriun Webcam</b> on your Mac, and install the matching app on your iPad from the App Store.</li>
+          <li><b>Plug in USB cable &amp; Trust:</b> Connect your iPad with a <b>USB-C or Lightning data cable</b> and tap <b>Trust</b> on the iPad if prompted.</li>
+          <li><b>Approve Virtual Camera (first time only):</b> If macOS prompts to allow the Camera System Extension under <b>System Settings &rarr; Privacy &amp; Security</b>, click <b>Allow</b> and restart photobooth4u Desktop once.</li>
+          <li><b>Select inside photobooth4u:</b> Open <b>photobooth4u Desktop &rarr; Setup &rarr; 3 Camera</b> &rarr; pick <b>Camo</b> (or <b>Iriun Webcam</b>) and verify live framing.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="callout">
+      <h3>Where Do Guests Look in Method 1?</h3>
+      <p>
+        Because iPadOS requires Camo / Iriun to remain open on screen to stream video, the iPad displays the camera app rather than the photobooth4u Guest Screen.
+        Pair your iPad camera with either:
+        <br>&bull; <b>Your Laptop Screen</b> facing guests (compact booth), <b>or</b>
+        <br>&bull; <b>An External HDMI Monitor / TV</b> mounted below the iPad &mdash; click <b>Setup &rarr; 7 Session &rarr; Screen &amp; lock &rarr; Open guest screen</b> and extend it onto the TV!
+      </p>
+    </div>
+  </section>
+
+  <!-- PART 3: FLIP THE ROLES -->
+  <section class="part" id="flip">
+    <p class="kicker">Part 3 · Want Your iPad to Be BOTH Camera &amp; Guest Touchscreen?</p>
+    <h2>Method 2: Native iPad Photobooth + Laptop Print Station</h2>
+    <p class="why">
+      If you only need your laptop to drive a <b>USB photo printer</b> (DNP DS620/RX1HS, HiTi P525L, Epson L8050/L18050, Canon SELPHY, or thermal receipt printer),
+      this is the <b>cleanest and most secure iPad + Laptop setup</b> — zero third-party camera apps, zero lag, and guests tap &amp; pose right on the iPad!
+    </p>
+
+    <div class="os-pur">
+      <h3>3-Step Setup: Native iPad Booth + Laptop Print Station <span class="tag purple">0 Extra License Slots</span></h3>
+      <ol>
+        <li><b>Run photobooth4u natively on your iPad:</b> Open the <b>photobooth4u iPad app</b> (or Safari) and select the iPad&rsquo;s built-in front or rear camera in <b>Setup &rarr; 3 Camera</b>. (Native camera preview, full Center Stage / Ultra-Wide support, and interactive Guest Screen all on one screen!)</li>
+        <li><b>Start Print Station on your Laptop:</b> Plug your USB printer into the laptop, open <b>photobooth4u Print Helper</b>, and visit <a href="https://photobooth4u.netlify.app/print-station/" target="_blank" rel="noopener">photobooth4u.netlify.app/print-station/</a> using the same rental code. <i>(Print Station does <b>not</b> consume an extra device slot!)</i></li>
+        <li><b>Link the iPad to Print Station:</b> On your iPad, go to <b>Setup &rarr; 4 Printer</b> and select <b>Send to a laptop print station</b>. Every finished photo prints silently on the laptop automatically.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- PART 4: BOOTH SETTINGS -->
+  <section class="part" id="booth-ui">
+    <p class="kicker">Part 4 · Inside photobooth4u Desktop (For Method 1)</p>
+    <h2>Camera &amp; Display Settings to Double-Check</h2>
+
+    <div class="ui-mock" aria-label="photobooth4u Desktop iPad Camera Settings Preview">
+      <div class="ui-slot">
+        <div class="ui-head">
+          <span class="ui-title"><span class="ui-num">3</span> Setup &rarr; 3 Camera</span>
+          <span class="ui-badge">iPad Virtual Webcam</span>
+        </div>
+        <div class="ui-select">Camo &nbsp;/&nbsp; Iriun Webcam &nbsp;/&nbsp; DroidCam Video &#9662;</div>
+        <div class="grid-2" style="margin-top:10px;">
+          <div style="font-size:13px;color:var(--dim);background:#faf8f4;border:1px solid var(--line);border-radius:10px;padding:10px 12px;">
+            <b style="color:var(--ink);">Camera photo resolution</b><br>
+            Select <b>Full camera resolution (Recommended &middot; sharpest prints)</b> and verify framing with <b>Crop to layout</b>.
+          </div>
+          <div style="font-size:13px;color:var(--dim);background:#faf8f4;border:1px solid var(--line);border-radius:10px;padding:10px 12px;">
+            <b style="color:var(--ink);">Mirror preview</b><br>
+            Avoid double-mirroring: turn mirror ON in <b>either</b> photobooth4u <b>or</b> Camo/Iriun, not both.
+          </div>
+        </div>
+      </div>
+
+      <div class="ui-slot">
+        <div class="ui-head">
+          <span class="ui-title"><span class="ui-num">7</span> Setup &rarr; 7 Session &rarr; Screen &amp; lock &rarr; Guest screen</span>
+          <span class="ui-badge ok">Optional HDMI Monitor / TV</span>
+        </div>
+        <p style="font-size:13.5px;color:var(--dim);">
+          Using a separate HDMI TV or monitor facing your guests? Set Windows/Mac displays to <b>Extend</b>, then click <b>Open guest screen</b> below to show tap-to-start, live view, countdown, QR codes, and Print buttons on the TV while Setup stays private on your laptop.
+        </p>
+        <div class="ui-btns">
+          <span class="ui-btn primary">Open guest screen</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 5: CHECKLIST & TROUBLESHOOTING -->
+  <section class="part" id="fixes">
+    <p class="kicker">Part 5 · Pre-Event Checklist &amp; Quick Fixes</p>
+    <h2>Event-Day Checklist &amp; iPad Troubleshooting</h2>
+
+    <div class="check-grid">
+      <div class="check-item">
+        <div class="ico">1</div>
+        <h3>Use a Data Cable</h3>
+        <p>Test your <b>USB-C or Lightning cable</b> ahead of time. Charge-only cables will power the iPad but will never carry video to Camo / Iriun.</p>
+      </div>
+      <div class="check-item">
+        <div class="ico">2</div>
+        <h3>Set Auto-Lock to Never</h3>
+        <p>On iPad, open <b>Settings &rarr; Display &amp; Brightness &rarr; Auto-Lock &rarr; Never</b> so the screen never sleeps and pauses your camera stream.</p>
+      </div>
+      <div class="check-item">
+        <div class="ico">3</div>
+        <h3>Do Not Disturb + Rotation Lock</h3>
+        <p>Swipe down Control Center on iPad and turn ON <b>Focus / Do Not Disturb</b> and <b>Orientation Lock</b> so notifications and accidental rotation never disrupt shots.</p>
+      </div>
+      <div class="check-item">
+        <div class="ico">4</div>
+        <h3>5500K Daylight + WB Lock</h3>
+        <p>Use a steady <b>5500K softbox or ring light</b> facing guests. In Camo Studio, lock white balance and focus once so skin tones stay consistent all night.</p>
+      </div>
+    </div>
+
+    <div class="tbl-wrap" style="margin-top:16px;">
+      <table>
+        <thead>
+          <tr><th>Problem</th><th>Quick Fix</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>iPad is plugged into Windows via USB, but Camo / Iriun doesn&rsquo;t see it</td>
+            <td>Install <b>Apple Devices</b> from the Microsoft Store (or iTunes) to provide Apple&rsquo;s USB driver. Unplug, unlock the iPad, replug into a direct laptop USB port, and tap <b>Trust This Computer</b>.</td>
+          </tr>
+          <tr>
+            <td>Camo / Iriun shows live video, but isn&rsquo;t listed in photobooth4u</td>
+            <td>Launch Camo Studio / Iriun <b>before</b> opening photobooth4u Desktop (restart photobooth4u once after first-time installation). On Mac, allow the Camera Extension in <b>System Settings &rarr; Privacy &amp; Security</b>.</td>
+          </tr>
+          <tr>
+            <td>Camera feed freezes after a few minutes</td>
+            <td>Check iPad <b>Settings &rarr; Display &amp; Brightness &rarr; Auto-Lock &rarr; Never</b>, keep the camera app open in the foreground (don&rsquo;t swipe to another app), and use a direct USB cable instead of Wi-Fi.</td>
+          </tr>
+          <tr>
+            <td>Preview looks rotated sideways or zoomed in</td>
+            <td>Mount the iPad in the same orientation as your print layout, enable <b>Orientation Lock</b> in iPad Control Center, and check <b>Crop to layout</b> in photobooth4u <b>Setup &rarr; 3 Camera</b>.</td>
+          </tr>
+          <tr>
+            <td>Guest preview text / signs look backwards twice or un-mirrored</td>
+            <td>Disable mirroring inside Camo / Iriun and let photobooth4u&rsquo;s <b>Mirror</b> toggle handle it cleanly so printed photos always read correctly.</td>
+          </tr>
+          <tr>
+            <td>Can I scan the Laptop&rsquo;s Android Bridge QR code on an iPad?</td>
+            <td>No — the built-in camera-sender Bridge is Android-only. Opening the laptop&rsquo;s Bridge URL in <b>iPad Safari</b> works as a <b>wireless Guest Screen only</b> (great if your laptop uses a DSLR or webcam), not as an iPad camera source.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <div class="help-box">
+      <div>
+        <h3>Need help setting up your iPad + Laptop booth?</h3>
+        <p>Send us your iPad model, laptop (Windows / Mac), and printer model — we&rsquo;ll help you pick between USB Extended Camera or Native iPad + Print Station.</p>
+      </div>
+      <a class="help-btn" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener">Message photobooth4u</a>
+    </div>
+    photobooth4u &middot; Laptop + iPad Extended Camera Guide &middot; Press <b>Ctrl+P</b> (or <b>Cmd+P</b>) to save as PDF.
+  </footer>
+</main>
+
+</body>
+</html>

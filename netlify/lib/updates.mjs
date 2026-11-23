@@ -295,6 +295,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-23', title: 'Android 1.2.03 & Website: Web Trial Guest Payment Preview, Downloadable ESP32 & Cloudflare PayMongo Files, and Custom-Domain Android Fix', for: ['website', 'app'],
+    items: [
+      '🧪 Free web trial now unlocks the Guest payment section in Setup (Pay & photos) so you can test the ESP32 Cash Acceptor (BLE UART / USB Serial) and your own Cloudflare PayMongo Worker directly in Chrome or Edge before buying.',
+      '📄 Upgraded /cash-acceptor/ guide: direct 1-click downloads and copy buttons (including Facebook/Messenger browser support) for esp32-cash-acceptor.ino, worker.js, and wrangler.toml, a 2-minute Cloudflare Dashboard no-CLI walkthrough, Arduino ESP32 core tips, and pulse calibration notes.',
+      '📱 Android 1.2.03: scoped offline /api/ interception strictly to photobooth4u.netlify.app so custom-domain Cloudflare PayMongo Workers routed under /api/* connect smoothly on Android tablets.'
+    ]
+  },
+  {
     date: '2026-11-23', title: 'Desktop 1.1.98, Android 1.2.02 & iPad 1.1.20: Welcome-Matched QR & Sharing Screen, Idle Video + Sound Toggle, iPad USB Camera Fix, Your Frames PNG Overlays, Offline Trial & ESP32 Cash Acceptor', for: ['website', 'app'], app: '1.1.98',
     items: [
       '✨ Welcome-matched QR & sharing screen + clean unbranded guest flow: redesigned the QR & sharing screen to match your custom Welcome screen background/theme and removed the photobooth4u logo from active session and guest screens.',

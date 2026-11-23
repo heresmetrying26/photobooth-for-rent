@@ -12,9 +12,14 @@
  * CHOOSE ONE BLUETOOTH MODE BELOW (USB Serial at 115200 baud is ALWAYS on):
  *   1 = BLE HID Keyboard (DEFAULT — works EVERYWHERE: Android Offline App,
  *       Windows/Mac Desktop App, iPad, Chrome, Safari).
- *       Requires library: "ESP32 BLE Keyboard" (T-vK/ESP32-BLE-Keyboard).
+ *       Install ZIP library: https://github.com/T-vK/ESP32-BLE-Keyboard
+ *       Arduino IDE note: if ESP32 board core v3.x gives a std::string/String
+ *       compile error, either install "esp32 by Espressif" v2.0.17 in Boards
+ *       Manager, OR install NimBLE-Arduino and uncomment #define USE_NIMBLE
+ *       inside BleKeyboard.h.
  *   2 = BLE Nordic UART Service (Chrome / Edge Web Bluetooth only, does NOT
- *       hide Android's on-screen keyboard, uses built-in ESP32 BLE library).
+ *       hide Android's on-screen keyboard, uses built-in ESP32 BLE library —
+ *       ZERO extra libraries, compiles cleanly on ESP32 core 2.x & 3.x).
  *   0 = USB Serial only (plug ESP32 directly into Windows/Mac via USB cable).
  * --------------------------------------------------------------------------
  */
@@ -54,13 +59,14 @@
   #define NUS_SERVICE_UUID "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
   #define NUS_TX_UUID      "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
   BLECharacteristic *pTxChar = nullptr;
-  bool bleClientConnected = false;
+  volatile bool bleClientConnected = false;
+  volatile bool bleNeedReAdv = false;
 
   class NusCallbacks : public BLEServerCallbacks {
     void onConnect(BLEServer *s) override { bleClientConnected = true; }
     void onDisconnect(BLEServer *s) override {
       bleClientConnected = false;
-      BLEDevice::startAdvertising();
+      bleNeedReAdv = true;
     }
   };
 #endif
@@ -119,6 +125,7 @@ void sendCredit(uint32_t pesos) {
     char num[12];
     snprintf(num, sizeof(num), "c%lu", (unsigned long)pesos);
     bleKeyboard.print(num);
+    delay(15);
     bleKeyboard.write(KEY_RETURN);
   }
 #elif BT_MODE == 2
@@ -169,6 +176,13 @@ void setup() {
 }
 
 void loop() {
+#if BT_MODE == 2
+  if (bleNeedReAdv) {
+    bleNeedReAdv = false;
+    delay(150);
+    BLEDevice::startAdvertising();
+  }
+#endif
   uint32_t now = millis();
   uint32_t cCount = 0;
   uint32_t bCount = 0;

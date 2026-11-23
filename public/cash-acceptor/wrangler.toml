@@ -1,0 +1,14 @@
+name = "photobooth4u-paymongo"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+# Lock this to "https://photobooth4u.netlify.app" if you only use the web booth,
+# or keep "*" so the Android / Windows / Mac Offline Apps can call it too.
+ALLOWED_ORIGIN = "*"
+
+# Optional: uncomment after creating a KV namespace (`npx wrangler kv namespace create PAY_KV`)
+# so PayMongo webhooks mark payments paid instantaneously without polling PayMongo.
+# [[kv_namespaces]]
+# binding = "PAY_KV"
+# id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"

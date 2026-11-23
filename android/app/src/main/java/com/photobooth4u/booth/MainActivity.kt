@@ -968,7 +968,8 @@ class MainActivity : AppCompatActivity() {
         if (host.contains("fonts.googleapis.com") || host.contains("fonts.gstatic.com")) {
             return webResponse("text/css", ByteArray(0))
         }
-        if (path.startsWith("/api/") || host.contains("catbox.moe") || host.contains("qrserver.com") ||
+        val isPbHost = host.isEmpty() || host == "photobooth4u.netlify.app" || host.endsWith(".photobooth4u.netlify.app")
+        if ((isPbHost && path.startsWith("/api/")) || host.contains("catbox.moe") || host.contains("qrserver.com") ||
             host.contains("script.google.com") || host.contains("drive.google.com")
         ) {
             // When internet is available, allow /api/setup (for syncing setup, profiles, themes and assets),

@@ -3,26 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ESP32 Cash Acceptor &amp; Self-Hosted PayMongo Guide · photobooth4u</title>
-<meta name="description" content="Wire an ESP32 with Bluetooth to a coin or bill acceptor for offline cash payments in photobooth4u, or host PayMongo API & webhooks on your own Cloudflare Worker.">
+<title>ESP32 Cash Acceptor, Offline Trial &amp; Self-Hosted PayMongo Guide · photobooth4u</title>
+<meta name="description" content="Try the Android Offline App free, wire an ESP32 with Bluetooth to a coin or bill acceptor for offline cash payments in photobooth4u, or self-host PayMongo API and webhooks on your own Cloudflare account.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500..700;1,500..700&family=Manrope:wght@400..800&display=swap">
 <style>
   :root{ --bg:#f6f1ea; --card:#fffdf9; --ink:#1f1a1d; --dim:#5d555b; --line:#e4ddd3; --red:#c8402a; --dark:#1f1a1d; --green:#236e3d; }
   *{box-sizing:border-box;}
   body{margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.6 'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;}
   a{color:var(--red);}
-  .wrap{max-width:820px; margin:0 auto; padding:0 16px;}
+  .wrap{max-width:840px; margin:0 auto; padding:0 16px;}
   header.hero{background:var(--dark); color:#f6f1ea; padding:38px 0 34px;}
   .brand{font:600 22px 'Fraunces',Georgia,serif; color:#f6f1ea; text-decoration:none;}
   .brand b{background:var(--red); color:#fff; font:800 12px 'Manrope',sans-serif; padding:2px 6px; border-radius:6px; margin-left:4px;}
   h1{font:600 clamp(30px,6vw,44px)/1.1 'Fraunces',Georgia,serif; margin:20px 0 10px;}
   h1 em{color:#e8715a;}
   .lead{color:#d9cfc6; font-size:17px; margin:0 0 18px;}
-  .btn{display:inline-flex; align-items:center; min-height:42px; padding:9px 16px; border-radius:999px; font-weight:800; font-size:14px; text-decoration:none; background:var(--red); color:#fff; border:0; cursor:pointer; margin:0 8px 8px 0;}
+  .btn{display:inline-flex; align-items:center; gap:6px; min-height:42px; padding:9px 16px; border-radius:999px; font-weight:800; font-size:14px; text-decoration:none; background:var(--red); color:#fff; border:0; cursor:pointer; margin:0 8px 8px 0;}
   .btn.ghost{background:none; border:1.5px solid #5a5056; color:#f6f1ea;}
-  .btn.small{min-height:34px; padding:6px 12px; font-size:13px; background:var(--dark);}
-  h2{font:600 25px/1.2 'Fraunces',Georgia,serif; margin:34px 0 10px;}
-  h3{font:700 17px/1.3 'Manrope',sans-serif; margin:22px 0 6px;}
+  .btn.small{min-height:34px; padding:6px 12px; font-size:13px; background:var(--dark); color:#fff; margin:0;}
+  .btn.small.alt{background:#fff; color:var(--ink); border:1.5px solid var(--line);}
+  .btn-row{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+  h2{font:600 25px/1.2 'Fraunces',Georgia,serif; margin:36px 0 10px;}
+  h3{font:700 17px/1.3 'Manrope',sans-serif; margin:20px 0 6px;}
+  h4{font:800 15px/1.3 'Manrope',sans-serif; margin:18px 0 6px; color:var(--ink);}
   .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin:14px 0;}
   .warn{background:#fff5f3; border-color:#f0c4bc;}
   .tip{background:#f2faf4; border-color:#c6e5cf;}
@@ -30,9 +33,11 @@
   th,td{text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top;}
   th{font-weight:800; color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:.04em;}
   code{background:#efe8de; padding:2px 5px; border-radius:5px; font-size:13.5px; font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
-  pre{background:#1d191c; color:#f4ede4; padding:14px 16px; border-radius:12px; overflow:auto; font-size:13px; line-height:1.5; margin:10px 0;}
+  pre{background:#1d191c; color:#f4ede4; padding:14px 16px; border-radius:12px; overflow:auto; max-height:480px; font-size:12.5px; line-height:1.5; margin:10px 0;}
   pre code{background:none; padding:0; color:inherit;}
-  .code-head{display:flex; justify-content:space-between; align-items:center; gap:8px; margin:14px 0 -4px;}
+  .code-head{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin:16px 0 6px;}
+  details.code-fold{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 16px; margin:14px 0;}
+  details.code-fold summary{cursor:pointer; font-weight:800; font-size:15px;}
   ol,ul{padding-left:20px; margin:8px 0;}
   li{margin:5px 0;}
   footer{margin:40px 0 0; padding:22px 0 36px; border-top:1px solid var(--line); color:var(--dim); font-size:14px;}
@@ -42,30 +47,43 @@
 <header class="hero"><div class="wrap">
   <a class="brand" href="/about-us/">photobooth<b>4u</b></a>
   <h1>Offline Cash (ESP32) &amp; <em>Cloudflare PayMongo</em></h1>
-  <p class="lead">Accept coins and bills completely offline with an ESP32 over Bluetooth or USB — and optionally self-host PayMongo QR Ph API &amp; webhooks on your own Cloudflare account.</p>
-  <a class="btn" href="#esp32-cash">ESP32 Cash Acceptor</a>
+  <p class="lead">Test the Android Offline App free, accept offline coins &amp; bills with an ESP32 over Bluetooth or USB, and optionally self-host PayMongo QR Ph API &amp; webhooks on your own Cloudflare account.</p>
+  <a class="btn" href="#offline-trial">Android Offline Trial</a>
+  <a class="btn ghost" href="#esp32-cash">ESP32 Cash Acceptor</a>
   <a class="btn ghost" href="#cloudflare-paymongo">Own Cloudflare PayMongo</a>
 </div></header>
 
 <main class="wrap">
+  <section id="offline-trial">
+    <h2>1. Free Offline Trial (Android, Windows, Mac &amp; iPad)</h2>
+    <div class="card tip">
+      <p style="margin-top:0;">You can test the full <b>Android Offline App</b> (and Windows / Mac / iPad apps) before buying:</p>
+      <ol style="margin-bottom:0;">
+        <li>Download and install the Android APK from <a href="/downloads/">photobooth4u.netlify.app/downloads</a>.</li>
+        <li>Connect to Wi-Fi once and enter the free trial password shown on our <a href="/about-us/">About Us page</a>.</li>
+        <li>Once unlocked, you can <b>turn Wi-Fi off</b> and test everything offline — camera, offline printing, booth Wi-Fi sharing, vouchers, and the ESP32 cash acceptor.</li>
+      </ol>
+    </div>
+  </section>
+
   <section id="esp32-cash">
-    <h2>1. Offline Cash Acceptor (ESP32 + Coin / Bill Acceptor)</h2>
-    <p>photobooth4u supports offline cash payment using any standard pulse-output coin slot (CH-926, JY-923, Allan) or bill validator (TB74, ICT, Apex) wired to an ESP32. No internet is needed — credit is tracked locally on the tablet or laptop and automatically starts a session once the price is reached.</p>
+    <h2>2. Offline Cash Acceptor (ESP32 + Coin / Bill Acceptor)</h2>
+    <p>photobooth4u supports offline cash payment using any standard 12V pulse-output coin slot (CH-926, JY-923, Allan) or bill validator (TB74, ICT, Apex) wired to an ESP32. No internet is needed — credit is tracked locally on the tablet or laptop.</p>
 
     <div class="card">
-      <h3>Message protocol</h3>
+      <h3 style="margin-top:0;">Message protocol</h3>
       <p style="margin-top:0;">Whenever a coin or bill finishes pulsing, the ESP32 sends one short line:</p>
       <pre><code>c&lt;pesos&gt;\n</code></pre>
-      <p style="margin-bottom:0;">Examples: <code>c5\n</code> adds ₱5, <code>c20\n</code> adds ₱20, <code>c100\n</code> adds ₱100. Line endings accepted: <code>Enter</code> / <code>\n</code>, <code>\r</code>, or <code>;</code>. Valid single-note range: ₱1–₱5,000. Excess credit automatically rolls over to the next guest.</p>
+      <p style="margin-bottom:0;">Examples: <code>c5\n</code> adds ₱5, <code>c20\n</code> adds ₱20, <code>c100\n</code> adds ₱100. Line endings accepted: <code>Enter</code> / <code>\n</code>, <code>\r</code>, or <code>;</code>. Valid single-note range: ₱1–₱5,000. Any extra credit automatically carries over to the next guest.</p>
     </div>
 
     <div class="card">
-      <h3>Connection modes</h3>
+      <h3 style="margin-top:0;">Connection modes</h3>
       <table>
         <thead><tr><th>Booth setting</th><th>Best for</th><th>Notes</th></tr></thead>
         <tbody>
           <tr><td><b>Bluetooth or USB keyboard</b> (default)</td><td><b>Android Offline App</b>, Windows/Mac App, iPad, Chrome, Safari</td><td>ESP32 acts as a BLE HID keyboard (<code>BT_MODE 1</code>). Pair <code>Photobooth4u-Cash</code> in device Bluetooth settings. Never conflicts with Bluetooth thermal printers.</td></tr>
-          <tr><td><b>Bluetooth LE serial</b></td><td>Chrome / Edge (Android, Windows, Mac)</td><td>Nordic UART Service (<code>6e400001-...</code>, TX <code>6e400003-...</code>). Uses built-in ESP32 BLE (<code>BT_MODE 2</code>) and never hides Android's on-screen keyboard.</td></tr>
+          <tr><td><b>Bluetooth LE serial</b></td><td>Chrome / Edge (Android, Windows, Mac)</td><td>Nordic UART Service (<code>6e400001-...</code>, TX <code>6e400003-...</code>). Uses built-in ESP32 BLE (<code>BT_MODE 2</code>) with zero extra Arduino libraries and never hides Android&rsquo;s on-screen keyboard.</td></tr>
           <tr><td><b>USB cable, serial</b></td><td>Chrome / Edge (Windows, Mac)</td><td>115200 baud over USB cable (always active alongside Bluetooth).</td></tr>
         </tbody>
       </table>
@@ -74,37 +92,83 @@
     <div class="card warn">
       <h3 style="margin-top:0;">Wiring &amp; 3.3V safety</h3>
       <ul>
-        <li>Power your coin/bill acceptor with its own <b>12V DC power supply</b> (do not draw 12V or acceptor current from the ESP32).</li>
+        <li>Power your coin/bill acceptor with its own <b>12V DC power supply</b> (never power a 12V acceptor from the ESP32).</li>
         <li>Tie <b>12V Supply GND</b> and <b>ESP32 GND</b> together (common ground).</li>
-        <li>Wire Coin signal to <b>GPIO 27</b> and Bill signal to <b>GPIO 26</b> (configured with <code>INPUT_PULLUP</code> for standard open-collector / Normally Open acceptors).</li>
-        <li><b>Important:</b> If your acceptor's signal line outputs active <b>5V or 12V</b>, use a <b>PC817 optocoupler</b> (recommended) or a resistor voltage divider so the ESP32 GPIO never receives more than <b>3.3V</b>.</li>
-        <li>Press the ESP32's built-in <b>BOOT</b> button (<code>GPIO 0</code>) any time to send a test <code>c10\n</code> credit.</li>
+        <li>Wire Coin signal to <b>GPIO 27</b> and Bill signal to <b>GPIO 26</b> (configured with <code>INPUT_PULLUP</code> for standard Normally Open / open-collector acceptors).</li>
+        <li><b>Important:</b> If your acceptor&rsquo;s signal line outputs active <b>5V or 12V</b>, isolate it with a <b>PC817 optocoupler</b> (recommended) or a resistor voltage divider so ESP32 GPIOs never see more than <b>3.3V</b>.</li>
+        <li><b>Pulse calibration:</b> Set your coin slot (e.g. CH-926) to output <b>1 pulse per ₱1</b> (so ₱5 = 5 pulses, ₱10 = 10 pulses) and your bill acceptor (e.g. TB74) to <b>1 pulse per ₱10</b> (so ₱20 = 2 pulses, ₱100 = 10 pulses), or adjust <code>COIN_PESOS_PER_PULSE</code> / <code>BILL_PESOS_PER_PULSE</code> at the top of the sketch to match your DIP switches.</li>
+        <li>Press the ESP32&rsquo;s built-in <b>BOOT</b> button (<code>GPIO 0</code>) any time to send a test <code>c10\n</code> credit without dropping coins.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">Arduino IDE setup (important for ESP32)</h3>
+      <ul>
+        <li><b>For <code>BT_MODE 1</code> (BLE Keyboard — Android Offline App / iPad / Desktop):</b> Install the <a href="https://github.com/T-vK/ESP32-BLE-Keyboard" target="_blank" rel="noopener">T-vK/ESP32-BLE-Keyboard</a> library (Download ZIP → Arduino IDE → <b>Sketch → Include Library → Add .ZIP Library</b>).<br>
+        <i>Board Core tip:</i> If Arduino IDE shows a <code>std::string</code> / <code>String</code> compile error on ESP32 core 3.x, open <b>Boards Manager</b> and install <b>esp32 by Espressif v2.0.17</b> (or install <code>NimBLE-Arduino</code> and uncomment <code>#define USE_NIMBLE</code> in <code>BleKeyboard.h</code>).</li>
+        <li><b>For <code>BT_MODE 2</code> (BLE Nordic UART — Chrome / Edge):</b> Change <code>#define BT_MODE 1</code> to <code>#define BT_MODE 2</code>. Uses the built-in ESP32 BLE library — <b>zero extra libraries needed</b> and compiles cleanly on both ESP32 core 2.x and 3.x.</li>
       </ul>
     </div>
 
     <div class="card tip">
       <h3 style="margin-top:0;">Android tablet tip (BLE Keyboard mode)</h3>
-      <p style="margin:0;">When an ESP32 is paired as a Bluetooth keyboard, Android hides the virtual on-screen keyboard by default. Turn on <b>Android Settings → System → Languages &amp; input → Physical keyboard → Show on-screen keyboard</b> so you can still type freely in Setup while the ESP32 stays connected.</p>
+      <p style="margin:0;">When an ESP32 is paired as a Bluetooth keyboard, Android hides the virtual on-screen keyboard by default. Turn on <b>Android Settings → System → Languages &amp; input → Physical keyboard → Show on-screen keyboard</b> so you can still type freely in Setup while the ESP32 stays paired.</p>
     </div>
 
     <div class="code-head">
       <h3 style="margin:0;">ESP32 Arduino Sketch (<code>esp32-cash-acceptor.ino</code>)</h3>
-      <button type="button" class="btn small" id="copyIno">Copy sketch</button>
+      <div class="btn-row">
+        <button type="button" class="btn small" data-copy="inoCode">Copy sketch</button>
+        <a class="btn small alt" href="/cash-acceptor/esp32-cash-acceptor.ino" download="esp32-cash-acceptor.ino">Download .ino</a>
+      </div>
     </div>
-    <pre><code id="inoCode">// photobooth4u ESP32 Cash Acceptor (Coin + Bill -&gt; Bluetooth / USB)
-// BT_MODE: 1 = BLE HID Keyboard (works everywhere, incl. Android Offline App)
-//          2 = BLE Nordic UART (Chrome/Edge, built-in ESP32 BLE library)
-//          0 = USB Serial only (115200 baud is always on)
+    <pre><code id="inoCode">/*
+ * photobooth4u — ESP32 Offline Cash Acceptor (Coin + Bill Acceptor over Bluetooth / USB)
+ *
+ * Reads pulse outputs from standard 12V Coin Acceptors (CH-926 / JY-923 / Allan) and
+ * Bill Acceptors (TB74 / ICT / Apex) and sends peso credits to photobooth4u:
+ *     c&lt;pesos&gt;\n       e.g.  c5\n  (PHP 5 coin)   c100\n  (PHP 100 bill)
+ *
+ * Works completely OFFLINE on Android Offline App, Windows/Mac Desktop App, iPad,
+ * and Chrome/Edge browsers.
+ *
+ * --------------------------------------------------------------------------
+ * CHOOSE ONE BLUETOOTH MODE BELOW (USB Serial at 115200 baud is ALWAYS on):
+ *   1 = BLE HID Keyboard (DEFAULT — works EVERYWHERE: Android Offline App,
+ *       Windows/Mac Desktop App, iPad, Chrome, Safari).
+ *       Install ZIP library: https://github.com/T-vK/ESP32-BLE-Keyboard
+ *       Arduino IDE note: if ESP32 board core v3.x gives a std::string/String
+ *       compile error, either install "esp32 by Espressif" v2.0.17 in Boards
+ *       Manager, OR install NimBLE-Arduino and uncomment #define USE_NIMBLE
+ *       inside BleKeyboard.h.
+ *   2 = BLE Nordic UART Service (Chrome / Edge Web Bluetooth only, does NOT
+ *       hide Android's on-screen keyboard, uses built-in ESP32 BLE library —
+ *       ZERO extra libraries, compiles cleanly on ESP32 core 2.x &amp; 3.x).
+ *   0 = USB Serial only (plug ESP32 directly into Windows/Mac via USB cable).
+ * --------------------------------------------------------------------------
+ */
 #define BT_MODE 1
-#define COIN_PIN 27
-#define BILL_PIN 26
-#define TEST_BTN_PIN 0
-#define LED_PIN 2
-#define COIN_PESOS_PER_PULSE 1
-#define BILL_PESOS_PER_PULSE 10
-#define PULSE_DEBOUNCE_MS 22
-#define COIN_TRAIN_GAP_MS 320
-#define BILL_TRAIN_GAP_MS 420
+
+// ---- Pin assignments (ESP32 DevKit / WROOM-32) ----
+// SAFETY: Coin/Bill acceptor SIGNAL lines are often open-collector (active LOW)
+// or 5V/12V! NEVER feed &gt;3.3V straight into an ESP32 GPIO.
+//   - Open-collector (NPN / NO to GND, most CH-926 &amp; TB74 set to NO): connect directly
+//     to GPIO with INPUT_PULLUP + share Common GND.
+//   - 5V / 12V active output: use a PC817 optocoupler or voltage divider (e.g. 10k/4.7k for 5V).
+#define COIN_PIN            27      // Coin acceptor pulse wire
+#define BILL_PIN            26      // Bill acceptor pulse wire
+#define TEST_BTN_PIN        0       // Built-in BOOT button on ESP32 (press to send c10)
+#define LED_PIN             2       // Built-in blue LED (flashes on each credit)
+
+// ---- Calibration (adjust to match your acceptor's DIP switches / programming) ----
+#define COIN_PESOS_PER_PULSE   1    // e.g. 1 = 1 pulse per PHP 1 (5 pulses = PHP 5, 10 pulses = PHP 10)
+#define BILL_PESOS_PER_PULSE   10   // e.g. 10 = 1 pulse per PHP 10 (2 pulses = PHP 20, 10 pulses = PHP 100)
+
+// Pulse timing (milliseconds)
+#define PULSE_DEBOUNCE_MS      22   // Ignore electrical bounce shorter than 22 ms
+#define COIN_TRAIN_GAP_MS      320  // Wait 320 ms after last coin pulse before reporting
+#define BILL_TRAIN_GAP_MS      420  // Wait 420 ms after last bill pulse before reporting
+
 #define DEVICE_NAME "Photobooth4u-Cash"
 
 #if BT_MODE == 1
@@ -115,137 +179,586 @@
   #include &lt;BLEServer.h&gt;
   #include &lt;BLEUtils.h&gt;
   #include &lt;BLE2902.h&gt;
+  // Nordic UART Service (matches protected/src/cash/cash-acceptor.js)
   #define NUS_SERVICE_UUID "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
   #define NUS_TX_UUID      "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
   BLECharacteristic *pTxChar = nullptr;
-  bool bleClientConnected = false;
+  volatile bool bleClientConnected = false;
+  volatile bool bleNeedReAdv = false;
+
   class NusCallbacks : public BLEServerCallbacks {
     void onConnect(BLEServer *s) override { bleClientConnected = true; }
-    void onDisconnect(BLEServer *s) override { bleClientConnected = false; BLEDevice::startAdvertising(); }
+    void onDisconnect(BLEServer *s) override {
+      bleClientConnected = false;
+      bleNeedReAdv = true;
+    }
   };
 #endif
 
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
-volatile uint32_t coinPulses = 0, coinLastMs = 0, billPulses = 0, billLastMs = 0;
+
+volatile uint32_t coinPulses = 0;
+volatile uint32_t coinLastMs = 0;
+
+volatile uint32_t billPulses = 0;
+volatile uint32_t billLastMs = 0;
+
 uint32_t testBtnLastMs = 0;
 
 void IRAM_ATTR onCoinPulse() {
   uint32_t now = millis();
   portENTER_CRITICAL_ISR(&amp;mux);
-  if (now - coinLastMs &gt;= PULSE_DEBOUNCE_MS) { coinPulses++; coinLastMs = now; }
+  if (now - coinLastMs &gt;= PULSE_DEBOUNCE_MS) {
+    coinPulses++;
+    coinLastMs = now;
+  }
   portEXIT_CRITICAL_ISR(&amp;mux);
 }
+
 void IRAM_ATTR onBillPulse() {
   uint32_t now = millis();
   portENTER_CRITICAL_ISR(&amp;mux);
-  if (now - billLastMs &gt;= PULSE_DEBOUNCE_MS) { billPulses++; billLastMs = now; }
+  if (now - billLastMs &gt;= PULSE_DEBOUNCE_MS) {
+    billPulses++;
+    billLastMs = now;
+  }
   portEXIT_CRITICAL_ISR(&amp;mux);
 }
+
+void blinkLed(int times) {
+  for (int i = 0; i &lt; times; i++) {
+    digitalWrite(LED_PIN, HIGH);
+    delay(45);
+    digitalWrite(LED_PIN, LOW);
+    if (i + 1 &lt; times) delay(45);
+  }
+}
+
 void sendCredit(uint32_t pesos) {
   if (pesos == 0 || pesos &gt; 5000) return;
-  char msg[16]; snprintf(msg, sizeof(msg), "c%lu\n", (unsigned long)pesos);
+
+  char msg[16];
+  snprintf(msg, sizeof(msg), "c%lu\n", (unsigned long)pesos);
+
+  // 1. Always send over USB Serial (works with Chrome/Edge Web Serial + Serial Monitor)
   Serial.print(msg);
+
+  // 2. Send over Bluetooth
 #if BT_MODE == 1
   if (bleKeyboard.isConnected()) {
-    char num[12]; snprintf(num, sizeof(num), "c%lu", (unsigned long)pesos);
-    bleKeyboard.print(num); bleKeyboard.write(KEY_RETURN);
+    char num[12];
+    snprintf(num, sizeof(num), "c%lu", (unsigned long)pesos);
+    bleKeyboard.print(num);
+    delay(15);
+    bleKeyboard.write(KEY_RETURN);
   }
 #elif BT_MODE == 2
   if (bleClientConnected &amp;&amp; pTxChar != nullptr) {
-    pTxChar-&gt;setValue((uint8_t *)msg, strlen(msg)); pTxChar-&gt;notify();
+    pTxChar-&gt;setValue((uint8_t *)msg, strlen(msg));
+    pTxChar-&gt;notify();
   }
 #endif
-  digitalWrite(LED_PIN, HIGH); delay(50); digitalWrite(LED_PIN, LOW);
+
+  blinkLed(2);
 }
+
 void setup() {
   Serial.begin(115200);
   pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+
   pinMode(COIN_PIN, INPUT_PULLUP);
   pinMode(BILL_PIN, INPUT_PULLUP);
   pinMode(TEST_BTN_PIN, INPUT_PULLUP);
+
+  // FALLING edge for standard active-LOW / open-collector (NO) acceptors.
+  // If your acceptor outputs active-HIGH pulses via optocoupler, change to RISING.
   attachInterrupt(digitalPinToInterrupt(COIN_PIN), onCoinPulse, FALLING);
   attachInterrupt(digitalPinToInterrupt(BILL_PIN), onBillPulse, FALLING);
+
 #if BT_MODE == 1
   bleKeyboard.begin();
+  Serial.println("Photobooth4u Cash Acceptor ready (BLE Keyboard + USB Serial)");
 #elif BT_MODE == 2
   BLEDevice::init(DEVICE_NAME);
-  BLEServer *srv = BLEDevice::createServer(); srv-&gt;setCallbacks(new NusCallbacks());
-  BLEService *svc = srv-&gt;createService(NUS_SERVICE_UUID);
-  pTxChar = svc-&gt;createCharacteristic(NUS_TX_UUID, BLECharacteristic::PROPERTY_NOTIFY);
+  BLEServer *server = BLEDevice::createServer();
+  server-&gt;setCallbacks(new NusCallbacks());
+  BLEService *service = server-&gt;createService(NUS_SERVICE_UUID);
+  pTxChar = service-&gt;createCharacteristic(NUS_TX_UUID, BLECharacteristic::PROPERTY_NOTIFY);
   pTxChar-&gt;addDescriptor(new BLE2902());
-  svc-&gt;start();
+  service-&gt;start();
   BLEAdvertising *adv = BLEDevice::getAdvertising();
-  adv-&gt;addServiceUUID(NUS_SERVICE_UUID); adv-&gt;setScanResponse(true);
+  adv-&gt;addServiceUUID(NUS_SERVICE_UUID);
+  adv-&gt;setScanResponse(true);
   BLEDevice::startAdvertising();
+  Serial.println("Photobooth4u Cash Acceptor ready (BLE Nordic UART + USB Serial)");
+#else
+  Serial.println("Photobooth4u Cash Acceptor ready (USB Serial only)");
 #endif
+
+  blinkLed(3);
 }
+
 void loop() {
-  uint32_t now = millis(), c = 0, b = 0;
+#if BT_MODE == 2
+  if (bleNeedReAdv) {
+    bleNeedReAdv = false;
+    delay(150);
+    BLEDevice::startAdvertising();
+  }
+#endif
+  uint32_t now = millis();
+  uint32_t cCount = 0;
+  uint32_t bCount = 0;
+
   portENTER_CRITICAL(&amp;mux);
-  if (coinPulses &gt; 0 &amp;&amp; (now - coinLastMs) &gt;= COIN_TRAIN_GAP_MS) { c = coinPulses; coinPulses = 0; }
-  if (billPulses &gt; 0 &amp;&amp; (now - billLastMs) &gt;= BILL_TRAIN_GAP_MS) { b = billPulses; billPulses = 0; }
+  if (coinPulses &gt; 0 &amp;&amp; (now - coinLastMs) &gt;= COIN_TRAIN_GAP_MS) {
+    cCount = coinPulses;
+    coinPulses = 0;
+  }
+  if (billPulses &gt; 0 &amp;&amp; (now - billLastMs) &gt;= BILL_TRAIN_GAP_MS) {
+    bCount = billPulses;
+    billPulses = 0;
+  }
   portEXIT_CRITICAL(&amp;mux);
-  if (c &gt; 0) sendCredit(c * COIN_PESOS_PER_PULSE);
-  if (b &gt; 0) sendCredit(b * BILL_PESOS_PER_PULSE);
-  if (digitalRead(TEST_BTN_PIN) == LOW &amp;&amp; (now - testBtnLastMs) &gt; 600) { testBtnLastMs = now; sendCredit(10); }
+
+  if (cCount &gt; 0) sendCredit(cCount * COIN_PESOS_PER_PULSE);
+  if (bCount &gt; 0) sendCredit(bCount * BILL_PESOS_PER_PULSE);
+
+  // Hardware test button (BOOT button on ESP32 -&gt; credits PHP 10)
+  if (digitalRead(TEST_BTN_PIN) == LOW &amp;&amp; (now - testBtnLastMs) &gt; 600) {
+    testBtnLastMs = now;
+    sendCredit(10);
+  }
+
   delay(10);
 }</code></pre>
 
     <div class="card">
       <h3 style="margin-top:0;">Turn it on in photobooth4u</h3>
       <ol>
-        <li>Open <b>Setup → 7 Session → Guest payment</b>.</li>
+        <li>Open <b>Setup → 7 Session → Pay &amp; photos → Guest payment</b>.</li>
         <li>Switch on <b>Cash acceptor (coins / bills, ESP32)</b>.</li>
         <li>Pick how the ESP32 connects (default: <b>Bluetooth or USB keyboard</b>).</li>
         <li>Set your <b>Price per session</b> (or turn on <b>Multiple payment options</b>).</li>
-        <li>Tap <b>Test: add ₱10</b> (or press the ESP32 BOOT button) to confirm credits count up before switching to <b>Photo Session</b>.</li>
+        <li>Tap <b>Test: add ₱10</b> (or press the ESP32 BOOT button) while in Setup to verify credits count up, then tap <b>Clear credit</b> and switch to <b>Photo Session</b>.</li>
       </ol>
+      <p style="margin-bottom:0; font-size:14px; color:var(--dim);"><b>Guest flow:</b> When a guest taps the screen and opens <b>Pay with cash</b>, inserting enough coins/bills starts the photo session automatically. If a guest inserts cash on the Welcome screen before tapping, the booth banks the credit and displays <b>✓ Paid session ready · Tap to start</b> so one tap starts immediately.</p>
     </div>
   </section>
 
   <section id="cloudflare-paymongo">
-    <h2>2. PayMongo QR Ph: Default Server vs Your Own Cloudflare Account</h2>
+    <h2>3. PayMongo QR Ph: Default Server vs Your Own Cloudflare Account</h2>
     <div class="card">
-      <h3 style="margin-top:0;">How PayMongo works by default</h3>
+      <h3 style="margin-top:0;">How PayMongo works by default (plug-and-play)</h3>
       <p>Out of the box, you <b>do not</b> need any third-party site or Cloudflare account. Connect your PayMongo secret key once in <b>My Events → Guest payments</b>:</p>
-      <ul>
-        <li>photobooth4u's Netlify backend talks directly to <code>api.paymongo.com</code> and automatically sets up the PayMongo webhook on your account.</li>
+      <ul style="margin-bottom:0;">
+        <li>photobooth4u&rsquo;s own Netlify backend talks directly to <code>api.paymongo.com</code> and automatically configures the PayMongo webhook on your account.</li>
         <li>Your secret key is encrypted at rest (AES-256-GCM), write-only, and never sent to the booth tablet.</li>
-        <li>100% of guest payments go straight to your own PayMongo account (minus PayMongo's standard 1.5% QR Ph fee).</li>
+        <li>100% of guest payments go straight to your own PayMongo account (minus PayMongo&rsquo;s standard 1.5% QR Ph fee).</li>
       </ul>
     </div>
 
     <div class="card">
       <h3 style="margin-top:0;">Optional: Host PayMongo API &amp; Webhook on YOUR OWN Cloudflare Account</h3>
-      <p>If you want full zero-trust control where your PayMongo secret key and webhook signing secret <b>never leave your own Cloudflare account</b>, deploy the bundled Worker in <code>tools/cloudflare-paymongo-worker/</code>:</p>
+      <p>If you want zero-trust control where your PayMongo secret key and webhook signing secret <b>never leave your own Cloudflare account</b>, deploy our single-file Worker below.</p>
+
+      <h4>Option A — Cloudflare Dashboard (No CLI · 2 minutes in your browser)</h4>
       <ol>
-        <li>Install Wrangler and deploy to your Cloudflare account:
-          <pre><code>cd tools/cloudflare-paymongo-worker
-npx wrangler login
-npx wrangler deploy</code></pre>
+        <li>Log in at <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">dash.cloudflare.com</a> → <b>Workers &amp; Pages</b> → <b>Create</b> → <b>Create Worker</b> (name it e.g. <code>photobooth4u-paymongo</code>) → <b>Deploy</b>.</li>
+        <li>Click <b>Edit code</b>, replace the starter code with <code>worker.js</code> below (use <b>Copy worker.js</b>), and click <b>Deploy</b>.</li>
+        <li>Go to your Worker&rsquo;s <b>Settings → Variables and Secrets → Add</b>:
+          <ul>
+            <li><b>Secret</b> <code>PAYMONGO_SECRET_KEY</code> = your <code>sk_live_...</code> (or <code>sk_test_...</code> to test first).</li>
+            <li><b>Secret</b> <code>BOOTH_TOKEN</code> <i>(recommended)</i> = any random password you invent (only your booths will know it).</li>
+          </ul>
         </li>
-        <li>Set your PayMongo secret key and an optional booth access token inside Cloudflare:
-          <pre><code>npx wrangler secret put PAYMONGO_SECRET_KEY
+        <li>Copy your Worker&rsquo;s root URL, e.g. <code>https://photobooth4u-paymongo.yourname.workers.dev</code> (do <b>not</b> append <code>/api/pay</code>).</li>
+      </ol>
+
+      <h4>Option B — Wrangler CLI (for developers)</h4>
+      <ol>
+        <li>Download <a href="/cash-acceptor/worker.js" download="worker.js">worker.js</a> and <a href="/cash-acceptor/wrangler.toml" download="wrangler.toml">wrangler.toml</a> into an empty folder.</li>
+        <li>Run:
+          <pre><code>npx wrangler login
+npx wrangler deploy
+npx wrangler secret put PAYMONGO_SECRET_KEY
 npx wrangler secret put BOOTH_TOKEN</code></pre>
         </li>
-        <li><i>(Optional — for instant webhook confirmation)</i> Create a KV namespace (<code>npx wrangler kv namespace create PAY_KV</code>), bind it in <code>wrangler.toml</code>, register <code>https://&lt;your-worker&gt;.workers.dev/webhook</code> in PayMongo for <code>payment.paid</code>, and run <code>npx wrangler secret put PAYMONGO_WEBHOOK_SECRET</code>. Even without KV, the Worker polls PayMongo directly every 2.5 seconds.</li>
-        <li>In photobooth4u → <b>Setup → 7 Session → Guest payment</b> → expand <b>Self-hosted PayMongo (your own Cloudflare Worker)</b>, paste your Worker URL + optional token, tap <b>Test connection</b>, then <b>Save Worker</b>.</li>
       </ol>
-      <p style="margin-bottom:0;">Bonus: because your booth talks directly to your Cloudflare Worker over HTTPS, QR payment also works inside the <b>Android</b> and <b>Windows/Mac Offline Apps</b> whenever Wi-Fi is available.</p>
+
+      <h4>Optional: Instant Webhook Confirmation (KV + PayMongo Webhook)</h4>
+      <p style="margin-top:0;"><b>You can skip this step to start!</b> Even with no KV and no webhook, your Worker polls PayMongo directly every 2.5 seconds and confirms QR Ph payments automatically.</p>
+      <p>To add instant webhook push notifications too:</p>
+      <ol>
+        <li>In Cloudflare Dashboard → <b>Storage &amp; Databases → KV</b> → create a namespace → bind it to your Worker as variable name <code>PAY_KV</code>.</li>
+        <li>Register the webhook on your PayMongo account (PayMongo creates webhooks via API; replace <code>sk_live_YOUR_KEY</code> and your Worker URL):
+          <pre><code>curl https://api.paymongo.com/v1/webhooks \
+  -u sk_live_YOUR_KEY: \
+  -H "Content-Type: application/json" \
+  -d '{"data":{"attributes":{"url":"https://photobooth4u-paymongo.yourname.workers.dev/webhook","events":["payment.paid"]}}}'</code></pre>
+        </li>
+        <li>Copy the <code>secret_key</code> (<code>whsk_...</code>) from PayMongo&rsquo;s JSON response and add it as Cloudflare Worker Secret <code>PAYMONGO_WEBHOOK_SECRET</code>.</li>
+      </ol>
+
+      <h4>Connect your Cloudflare Worker inside photobooth4u</h4>
+      <ol style="margin-bottom:0;">
+        <li>Open photobooth4u (Web, Android Offline App, or Windows/Mac App) → <b>Setup → 7 Session → Pay &amp; photos → Guest payment</b>.</li>
+        <li>Expand <b>Self-hosted PayMongo (your own Cloudflare Worker · optional)</b>.</li>
+        <li>Paste your Worker root URL (and <code>BOOTH_TOKEN</code> if set), tap <b>Test connection</b>, then tap <b>Save Worker</b>.</li>
+        <li>Select <b>QR payment</b> (or <b>QR + vouchers</b>). Your Worker URL and token are stored <b>only on that device</b> — photobooth4u&rsquo;s servers never receive your PayMongo key.</li>
+      </ol>
     </div>
+
+    <details class="code-fold">
+      <summary>View / Copy Cloudflare Worker code (<code>worker.js</code>)</summary>
+      <div class="code-head">
+        <span style="font-size:13px; color:var(--dim);">Zero dependencies · Web Crypto HMAC-SHA256 · KV optional</span>
+        <div class="btn-row">
+          <button type="button" class="btn small" data-copy="workerCode">Copy worker.js</button>
+          <a class="btn small alt" href="/cash-acceptor/worker.js" download="worker.js">Download worker.js</a>
+          <a class="btn small alt" href="/cash-acceptor/wrangler.toml" download="wrangler.toml">Download wrangler.toml</a>
+        </div>
+      </div>
+      <pre><code id="workerCode">// Self-hosted PayMongo QR Ph API &amp; Webhook Worker for photobooth4u.
+// Deploy this to YOUR OWN Cloudflare account so your PayMongo secret key and
+// webhook signing secret never leave Cloudflare.
+//
+// Required Worker secret:
+//   PAYMONGO_SECRET_KEY      sk_live_... or sk_test_...
+// Optional Worker secrets:
+//   PAYMONGO_WEBHOOK_SECRET  whsk_... (from PayMongo -&gt; Developers -&gt; Webhooks)
+//   BOOTH_TOKEN              shared secret pasted into the booth's Setup panel
+// Optional KV binding (for instant webhook confirmation):
+//   PAY_KV                   Cloudflare KV namespace
+// Optional plain env vars:
+//   ALLOWED_ORIGIN           default "*" (or "https://photobooth4u.netlify.app")
+//   PAYMONGO_API_BASE        default "https://api.paymongo.com/v1"
+
+const QR_SECONDS = 300;
+const PRICE_MIN = 20;
+const PRICE_MAX = 20000;
+const PI_RE = /^pi_[A-Za-z0-9]{6,60}$/;
+
+function corsHeaders(env) {
+  return {
+    'access-control-allow-origin': (env &amp;&amp; env.ALLOWED_ORIGIN) || '*',
+    'access-control-allow-methods': 'POST, OPTIONS',
+    'access-control-allow-headers': 'content-type, authorization',
+    'access-control-max-age': '86400'
+  };
+}
+
+function json(data, status, env) {
+  return new Response(JSON.stringify(data), {
+    status: status || 200,
+    headers: {
+      'content-type': 'application/json',
+      'cache-control': 'no-store',
+      ...corsHeaders(env)
+    }
+  });
+}
+
+function timingSafeEqualStr(a, b) {
+  const ea = new TextEncoder().encode(String(a || ''));
+  const eb = new TextEncoder().encode(String(b || ''));
+  if (ea.length !== eb.length) return false;
+  let diff = 0;
+  for (let i = 0; i &lt; ea.length; i++) diff |= ea[i] ^ eb[i];
+  return diff === 0;
+}
+
+async function hmacSha256Hex(secret, message) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
+  return [...new Uint8Array(sig)].map((b) =&gt; b.toString(16).padStart(2, '0')).join('');
+}
+
+// PayMongo-Signature: t=&lt;ts&gt;,te=&lt;test sig&gt;,li=&lt;live sig&gt;; HMAC-SHA256 of "&lt;t&gt;.&lt;raw body&gt;".
+export async function signatureOk(header, raw, secret, live) {
+  if (!secret || !header) return false;
+  const parts = Object.fromEntries(
+    String(header).split(',').map((s) =&gt; s.trim().split('=')).filter((x) =&gt; x.length === 2)
+  );
+  const want = live ? parts.li : parts.te;
+  if (!parts.t || !want) return false;
+  const ts = Number(parts.t);
+  if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) &gt;= 3 * 86400) return false;
+  const mine = await hmacSha256Hex(secret, parts.t + '.' + raw);
+  return timingSafeEqualStr(mine, want);
+}
+
+async function pm(env, method, path, body) {
+  const base = ((env &amp;&amp; env.PAYMONGO_API_BASE) || 'https://api.paymongo.com/v1').replace(/\/+$/, '');
+  const key = String((env &amp;&amp; env.PAYMONGO_SECRET_KEY) || '').trim();
+  const r = await fetch(base + path, {
+    method,
+    headers: {
+      authorization: 'Basic ' + btoa(key + ':'),
+      'content-type': 'application/json',
+      accept: 'application/json'
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const j = await r.json().catch(() =&gt; ({}));
+  if (!r.ok) {
+    const e0 = (j &amp;&amp; j.errors &amp;&amp; j.errors[0]) || {};
+    const err = new Error(String(e0.detail || e0.code || ('PayMongo error ' + r.status)).slice(0, 200));
+    err.status = r.status;
+    throw err;
+  }
+  return j;
+}
+
+async function createQr(env, { amount, description }) {
+  const pi = await pm(env, 'POST', '/payment_intents', {
+    data: {
+      attributes: {
+        amount: Math.round(amount * 100),
+        currency: 'PHP',
+        payment_method_allowed: ['qrph'],
+        capture_type: 'automatic',
+        description: String(description || 'Photo booth session').slice(0, 120),
+        metadata: { booth: 'photobooth4u', self_hosted: 'cloudflare' }
+      }
+    }
+  });
+  let method = null;
+  for (const extra of [{}, { billing: { name: 'Photo booth guest', email: 'guest@photobooth4u.app' } }]) {
+    try {
+      method = await pm(env, 'POST', '/payment_methods', {
+        data: { attributes: { type: 'qrph', expiry_seconds: QR_SECONDS, ...extra } }
+      });
+      break;
+    } catch (e) {
+      if (Object.keys(extra).length) throw e;
+    }
+  }
+  const at = await pm(env, 'POST', '/payment_intents/' + pi.data.id + '/attach', {
+    data: {
+      attributes: {
+        payment_method: method.data.id,
+        client_key: pi.data.attributes.client_key
+      }
+    }
+  });
+  const code = at &amp;&amp; at.data &amp;&amp; at.data.attributes &amp;&amp; at.data.attributes.next_action &amp;&amp; at.data.attributes.next_action.code;
+  const image = code &amp;&amp; (code.image_url || code.image);
+  if (!image) throw new Error('PayMongo did not return a QR code. Is QR Ph enabled on your PayMongo account?');
+  return {
+    id: pi.data.id,
+    image: /^data:image\//.test(image) ? image : 'data:image/png;base64,' + image
+  };
+}
+
+async function kvGet(env, key) {
+  if (!env || !env.PAY_KV) return null;
+  const raw = await env.PAY_KV.get(key);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+async function kvPut(env, key, val) {
+  if (!env || !env.PAY_KV) return;
+  await env.PAY_KV.put(key, JSON.stringify(val), { expirationTtl: 1800 });
+}
+
+async function handleWebhook(req, env) {
+  if (req.method !== 'POST') return new Response('ok');
+  const raw = await req.text();
+  if (!env.PAYMONGO_WEBHOOK_SECRET) return new Response('webhook secret not configured', { status: 503 });
+  let ev;
+  try { ev = JSON.parse(raw); } catch { return new Response('bad json', { status: 400 }); }
+  const attrs = ev &amp;&amp; ev.data &amp;&amp; ev.data.attributes;
+  const live = !!(attrs &amp;&amp; attrs.livemode);
+  const ok = await signatureOk(req.headers.get('paymongo-signature'), raw, env.PAYMONGO_WEBHOOK_SECRET, live);
+  if (!ok) return new Response('bad signature', { status: 401 });
+
+  if (attrs &amp;&amp; attrs.type === 'payment.paid') {
+    const pay = attrs.data || {};
+    const pa = pay.attributes || {};
+    const piId = pa.payment_intent_id;
+    if (piId &amp;&amp; PI_RE.test(piId) &amp;&amp; env.PAY_KV) {
+      const k = 'pi:' + piId;
+      const prev = await kvGet(env, k);
+      if (prev) {
+        if (prev.status !== 'paid' &amp;&amp; Math.round(prev.amount * 100) === Number(pa.amount)) {
+          prev.status = 'paid';
+          prev.paidAt = Date.now();
+          prev.payId = pay.id || null;
+          prev.hook = true;
+          await kvPut(env, k, prev);
+        }
+      } else {
+        await kvPut(env, k, {
+          id: piId,
+          amount: Math.round(Number(pa.amount) || 0) / 100,
+          status: 'paid',
+          paidAt: Date.now(),
+          payId: pay.id || null,
+          hook: true
+        });
+      }
+    }
+  }
+  return new Response('ok');
+}
+
+function authOk(req, env) {
+  const want = String((env &amp;&amp; env.BOOTH_TOKEN) || '').trim();
+  if (!want) return true;
+  const got = String(req.headers.get('authorization') || '');
+  if (!got.startsWith('Bearer ')) return false;
+  return timingSafeEqualStr(got.slice(7).trim(), want);
+}
+
+export default {
+  async fetch(req, env) {
+    const url = new URL(req.url);
+    const path = url.pathname.replace(/\/+$/, '') || '/';
+
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: corsHeaders(env) });
+    }
+    if (path === '/webhook' || path === '/api/pay/hook') {
+      return handleWebhook(req, env);
+    }
+    if (req.method !== 'POST') {
+      return json({ ok: true, service: 'photobooth4u-paymongo-worker' }, 200, env);
+    }
+    if (!authOk(req, env)) {
+      return json({ error: 'Unauthorized: check your Booth access token.' }, 401, env);
+    }
+
+    const key = String((env &amp;&amp; env.PAYMONGO_SECRET_KEY) || '').trim();
+    if (!/^sk_(test|live)_[A-Za-z0-9]{10,100}$/.test(key)) {
+      return json({ error: 'PAYMONGO_SECRET_KEY secret is not configured on this Cloudflare Worker.' }, 503, env);
+    }
+    const isLive = key.startsWith('sk_live_');
+
+    let b;
+    try { b = await req.json(); } catch { return json({ error: 'Bad request' }, 400, env); }
+    if (!b || typeof b.action !== 'string') return json({ error: 'Bad request' }, 400, env);
+
+    if (b.action === 'config') {
+      return json({
+        ok: true,
+        acct: {
+          connected: true,
+          mode: isLive ? 'live' : 'test',
+          last4: key.slice(-4),
+          webhook: !!env.PAYMONGO_WEBHOOK_SECRET,
+          kv: !!env.PAY_KV,
+          selfHosted: true
+        }
+      }, 200, env);
+    }
+
+    if (b.action === 'qr') {
+      const amount = Math.floor(Number(b.amount) || 0);
+      if (amount &lt; PRICE_MIN || amount &gt; PRICE_MAX) {
+        return json({ error: 'Amount must be between ₱' + PRICE_MIN + ' and ₱' + PRICE_MAX + '.' }, 400, env);
+      }
+      const prints = Math.max(0, Math.min(10, Math.floor(Number(b.prints) || 0)));
+      const tier = (b.tier === 'receipt' || b.tier === 'photo') ? b.tier : 'all';
+      const now = Date.now();
+      const exp = now + QR_SECONDS * 1000;
+      try {
+        const qr = await createQr(env, {
+          amount,
+          description: (String(b.label || '').slice(0, 60) || 'Photo booth') + ' · photo session'
+        });
+        await kvPut(env, 'pi:' + qr.id, { id: qr.id, amount, prints, tier, status: 'awaiting', at: now, exp, live: isLive });
+        return json({ ok: true, id: qr.id, image: qr.image, expiresAt: exp, tier, test: !isLive }, 200, env);
+      } catch (e) {
+        return json({ error: 'PayMongo: ' + e.message }, 502, env);
+      }
+    }
+
+    if (b.action === 'simulate') {
+      if (isLive) return json({ error: 'Simulate only works with a PayMongo sk_test_ key.' }, 403, env);
+      const id = String(b.id || '');
+      if (!PI_RE.test(id)) return json({ error: 'Bad id' }, 400, env);
+      const prev = (await kvGet(env, 'pi:' + id)) || { id, prints: 0, tier: 'all' };
+      prev.status = 'paid';
+      prev.paidAt = Date.now();
+      prev.sim = true;
+      await kvPut(env, 'pi:' + id, prev);
+      return json({ ok: true, status: 'paid', prints: prev.prints || 0, tier: prev.tier || 'all' }, 200, env);
+    }
+
+    if (b.action === 'status') {
+      const id = String(b.id || '');
+      if (!PI_RE.test(id)) return json({ error: 'Bad id' }, 400, env);
+      const prev = await kvGet(env, 'pi:' + id);
+      if (prev &amp;&amp; prev.status === 'paid') {
+        return json({ ok: true, status: 'paid', prints: prev.prints || 0, tier: prev.tier || 'all' }, 200, env);
+      }
+      // Check PayMongo directly (works both as backup to the webhook and when KV is not bound).
+      try {
+        const pi = await pm(env, 'GET', '/payment_intents/' + id);
+        const a = pi &amp;&amp; pi.data &amp;&amp; pi.data.attributes;
+        if (a &amp;&amp; a.status === 'succeeded') {
+          if (prev) {
+            prev.status = 'paid';
+            prev.paidAt = Date.now();
+            await kvPut(env, 'pi:' + id, prev);
+          }
+          return json({ ok: true, status: 'paid', prints: (prev &amp;&amp; prev.prints) || 0, tier: (prev &amp;&amp; prev.tier) || 'all' }, 200, env);
+        }
+      } catch { /* keep waiting */ }
+      const expired = prev &amp;&amp; prev.exp &amp;&amp; Date.now() &gt; prev.exp + 15000;
+      return json({ ok: true, status: expired ? 'expired' : 'awaiting', prints: (prev &amp;&amp; prev.prints) || 0, tier: (prev &amp;&amp; prev.tier) || 'all' }, 200, env);
+    }
+
+    return json({ error: 'Unknown action.' }, 400, env);
+  }
+};</code></pre>
+    </details>
   </section>
 </main>
 
 <footer><div class="wrap">
-  photobooth4u · <a href="/about-us/">Plans &amp; Free Trial</a> · <a href="/faq/">FAQ</a>
+  photobooth4u · <a href="/downloads/">Downloads (Android / Desktop)</a> · <a href="/about-us/">Plans &amp; Free Trial</a> · <a href="/faq/">FAQ</a>
 </div></footer>
 
 <script>
-document.getElementById('copyIno').addEventListener('click', function () {
-  var btn = this, txt = document.getElementById('inoCode').textContent;
-  navigator.clipboard.writeText(txt).then(function () {
-    btn.textContent = 'Copied!';
-    setTimeout(function () { btn.textContent = 'Copy sketch'; }, 2000);
+function copyTextFallback(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  var ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+  return ok;
+}
+document.querySelectorAll('button[data-copy]').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var el = document.getElementById(btn.getAttribute('data-copy'));
+    if (!el) return;
+    var txt = el.textContent, orig = btn.textContent;
+    function done(ok) {
+      btn.textContent = ok ? 'Copied!' : 'Tap Download instead';
+      setTimeout(function () { btn.textContent = orig; }, 2200);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(function () { done(true); }, function () { done(copyTextFallback(txt)); });
+    } else {
+      done(copyTextFallback(txt));
+    }
   });
 });
 </script>

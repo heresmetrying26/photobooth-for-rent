@@ -643,7 +643,7 @@ export async function checkLicense(token, deviceId) {
     if (p.exp <= now) return { valid: false, reason: 'trial-ended' };
     const s = await getSettings();
     if (!s.trialEnabled) return { valid: false, reason: 'trial-disabled' };
-    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes, { eventLimit: s.trialPrintEventLimit, sessionLimit: s.trialPrintSessionLimit }), traditional: !!s.trialTraditional, gifOpt: s.trialGifOpt !== false, retakeOpt: !!s.trialRetakeOpt, typesOpt: !!s.trialTypesOpt, lockOpt: !!s.trialLockOpt, extras: normExtras(null), pinResetAt: 0 };
+    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes, { eventLimit: s.trialPrintEventLimit, sessionLimit: s.trialPrintSessionLimit }), traditional: !!s.trialTraditional, gifOpt: s.trialGifOpt !== false, retakeOpt: !!s.trialRetakeOpt, typesOpt: !!s.trialTypesOpt, payOpt: true, lockOpt: !!s.trialLockOpt, extras: normExtras(null), pinResetAt: 0 };
   }
 
   const rec = await licenses().get(p.k, { type: 'json' });

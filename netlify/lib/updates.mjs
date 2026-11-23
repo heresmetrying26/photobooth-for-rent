@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.98', date: '2026-11-23' },
   { version: '1.1.97', date: '2026-11-23' },
   { version: '1.1.96', date: '2026-11-22' },
   { version: '1.1.95', date: '2026-11-22' },
@@ -240,7 +241,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.19', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.19/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.20', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.20/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -293,6 +294,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-23', title: 'Desktop 1.1.98, Android 1.2.02 & iPad 1.1.20: Welcome-Matched QR & Sharing Screen, Idle Video + Sound Toggle, iPad USB Camera Fix, Your Frames PNG Overlays, Offline Trial & ESP32 Cash Acceptor', for: ['website', 'app'], app: '1.1.98',
+    items: [
+      '✨ Welcome-matched QR & sharing screen + clean unbranded guest flow: redesigned the QR & sharing screen to match your custom Welcome screen background/theme and removed the photobooth4u logo from active session and guest screens.',
+      '🎬 Welcome screen idle video & sound toggle + iPad USB camera fix: smoother idle video playback with an optional sound toggle on the Welcome screen, fixed iPad external USB camera black live preview, and kept the event name editable inside the Share tab across Desktop, Android, and iPad.',
+      '🖼️ Custom "Your frames" PNG overlays & enclosed white-doodle spot punch: add custom PNG overlays directly in Your frames and preserve enclosed white doodles/artwork when punching transparent photo windows.',
+      '🪙 Offline app free trial, ESP32 Coin/Bill Cash Acceptor & self-hosted PayMongo Cloudflare Worker: unlock a device-bound free trial on offline Desktop, Android, and iPad apps with the Admin trial password, connect an ESP32 coin/bill pulse acceptor over BLE HID / Web Bluetooth / USB Serial, or point QR payments to your own Cloudflare PayMongo Worker.'
+    ]
+  },
   {
     date: '2026-11-23', title: 'iPad 1.1.19: Silky-Smooth iPad A16 & Center Stage Live Camera (Eliminated Preview Lag & Filter Stutter)', for: ['website'],
     items: [

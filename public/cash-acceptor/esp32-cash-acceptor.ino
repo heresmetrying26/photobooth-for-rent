@@ -138,6 +138,8 @@ String usbRxLine = "";
   BLECharacteristic *pTxChar = nullptr;
   volatile bool bleClientConnected = false;
   volatile bool bleNeedReAdv = false;
+  volatile bool bleLogConnected = false;
+  volatile bool bleLogDisconnected = false;
 
   // ISR/callback-safe RX queue for incoming BLE write chunks
   portMUX_TYPE bleRxMux = portMUX_INITIALIZER_UNLOCKED;
@@ -146,10 +148,14 @@ String usbRxLine = "";
   volatile uint16_t bleRxTail = 0;
 
   class NusServerCallbacks : public BLEServerCallbacks {
-    void onConnect(BLEServer *s) override { bleClientConnected = true; }
+    void onConnect(BLEServer *s) override {
+      bleClientConnected = true;
+      bleLogConnected = true;
+    }
     void onDisconnect(BLEServer *s) override {
       bleClientConnected = false;
       bleNeedReAdv = true;
+      bleLogDisconnected = true;
     }
   };
 
@@ -225,6 +231,21 @@ void triggerFlashRelay() {
 }
 
 // ---- Serial / Bluetooth Writers ----
+void sendBtAck(const char *msg) {
+#if BT_MODE == 2
+  if (bleClientConnected && pTxChar != nullptr) {
+    pTxChar->setValue((uint8_t *)msg, strlen(msg));
+    pTxChar->notify();
+  }
+#elif BT_MODE == 3
+  if (SerialBT.hasClient()) {
+    SerialBT.print(msg);
+  }
+#else
+  Serial.print(msg);
+#endif
+}
+
 void sendLineToHost(const char *msg) {
   Serial.print(msg);
 #if BT_MODE == 2
@@ -387,6 +408,10 @@ void handleAppCommand(String cmd) {
   cmd.trim();
   if (cmd.length() == 0) return;
 
+  // Log incoming command cleanly to Arduino Serial Monitor ("RX: <command>")
+  Serial.print("RX: ");
+  Serial.println(cmd);
+
   if (cmd == "session_idle") {
     cashAccepting = false;
     setRelay(0, false); // Ch 1 Cash Acceptor OFF
@@ -454,9 +479,9 @@ void handleAppCommand(String cmd) {
     return;
   }
 
-  // Acknowledge back to app (safe because it does not start with 'c' + digits)
+  // Acknowledge back to the app over Bluetooth TX (safe because it does not start with 'c' + digits)
   String ack = "ok:" + cmd + "\n";
-  sendLineToHost(ack.c_str());
+  sendBtAck(ack.c_str());
   digitalWrite(LED_PIN, HIGH);
   delay(10);
   digitalWrite(LED_PIN, LOW);
@@ -557,10 +582,25 @@ void setup() {
 
 void loop() {
 #if BT_MODE == 2
+  if (bleLogConnected) {
+    bleLogConnected = false;
+    Serial.println("Bluetooth connected");
+  }
+  if (bleLogDisconnected) {
+    bleLogDisconnected = false;
+    Serial.println("Bluetooth disconnected");
+  }
   if (bleNeedReAdv) {
     bleNeedReAdv = false;
     delay(150);
     BLEDevice::startAdvertising();
+  }
+#elif BT_MODE == 3
+  static bool btSppWasConnected = false;
+  bool btSppNow = SerialBT.hasClient();
+  if (btSppNow != btSppWasConnected) {
+    btSppWasConnected = btSppNow;
+    Serial.println(btSppNow ? "Bluetooth connected" : "Bluetooth disconnected");
   }
 #endif
 

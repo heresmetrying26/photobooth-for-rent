@@ -120,11 +120,27 @@
 
     <div class="card">
       <h3 style="margin-top:0;">Arduino IDE setup</h3>
-      <ul style="margin-bottom:0;">
+      <ul>
         <li><b>Default (<code>BT_MODE 2</code> — BLE Nordic UART, Android Tablet &amp; Chrome/Edge):</b> Uses built-in ESP32 BLE — <b>zero extra Bluetooth libraries needed</b> (compiles on ESP32 core 2.x &amp; 3.x).</li>
         <li><b>NeoPixel LEDs:</b> If <code>USE_NEOPIXEL 1</code> is enabled, install <b>Adafruit NeoPixel</b> in Arduino IDE → <b>Library Manager</b> (or set <code>#define USE_NEOPIXEL 0</code> for relays only).</li>
         <li><b>Classic Bluetooth option (<code>BT_MODE 3</code>):</b> Built-in <code>BluetoothSerial.h</code>. Pair <code>Photobooth4u-Cash</code> in Android Settings → Bluetooth first, then tap <b>Connect ESP32</b> in photobooth4u.</li>
       </ul>
+      <h4 style="margin-top:12px;">Expected Arduino Serial Monitor output (115200 baud)</h4>
+      <pre style="margin-bottom:0;"><code>Bluetooth connected
+RX: session_idle
+RX: template_selection
+RX: price{50}
+RX: cash_open
+RX: cash_close
+RX: payment_success
+RX: session_start
+RX: countdown_3
+RX: countdown_2
+RX: countdown_1
+RX: shutter_flash
+RX: start_print
+RX: print_done
+RX: session_end</code></pre>
     </div>
 
     <div class="code-head">
@@ -274,6 +290,8 @@ String usbRxLine = "";
   BLECharacteristic *pTxChar = nullptr;
   volatile bool bleClientConnected = false;
   volatile bool bleNeedReAdv = false;
+  volatile bool bleLogConnected = false;
+  volatile bool bleLogDisconnected = false;
 
   // ISR/callback-safe RX queue for incoming BLE write chunks
   portMUX_TYPE bleRxMux = portMUX_INITIALIZER_UNLOCKED;
@@ -282,10 +300,14 @@ String usbRxLine = "";
   volatile uint16_t bleRxTail = 0;
 
   class NusServerCallbacks : public BLEServerCallbacks {
-    void onConnect(BLEServer *s) override { bleClientConnected = true; }
+    void onConnect(BLEServer *s) override {
+      bleClientConnected = true;
+      bleLogConnected = true;
+    }
     void onDisconnect(BLEServer *s) override {
       bleClientConnected = false;
       bleNeedReAdv = true;
+      bleLogDisconnected = true;
     }
   };
 
@@ -361,6 +383,21 @@ void triggerFlashRelay() {
 }
 
 // ---- Serial / Bluetooth Writers ----
+void sendBtAck(const char *msg) {
+#if BT_MODE == 2
+  if (bleClientConnected &amp;&amp; pTxChar != nullptr) {
+    pTxChar-&gt;setValue((uint8_t *)msg, strlen(msg));
+    pTxChar-&gt;notify();
+  }
+#elif BT_MODE == 3
+  if (SerialBT.hasClient()) {
+    SerialBT.print(msg);
+  }
+#else
+  Serial.print(msg);
+#endif
+}
+
 void sendLineToHost(const char *msg) {
   Serial.print(msg);
 #if BT_MODE == 2
@@ -523,6 +560,10 @@ void handleAppCommand(String cmd) {
   cmd.trim();
   if (cmd.length() == 0) return;
 
+  // Log incoming command cleanly to Arduino Serial Monitor ("RX: &lt;command&gt;")
+  Serial.print("RX: ");
+  Serial.println(cmd);
+
   if (cmd == "session_idle") {
     cashAccepting = false;
     setRelay(0, false); // Ch 1 Cash Acceptor OFF
@@ -590,9 +631,9 @@ void handleAppCommand(String cmd) {
     return;
   }
 
-  // Acknowledge back to app (safe because it does not start with 'c' + digits)
+  // Acknowledge back to the app over Bluetooth TX (safe because it does not start with 'c' + digits)
   String ack = "ok:" + cmd + "\n";
-  sendLineToHost(ack.c_str());
+  sendBtAck(ack.c_str());
   digitalWrite(LED_PIN, HIGH);
   delay(10);
   digitalWrite(LED_PIN, LOW);
@@ -693,10 +734,25 @@ void setup() {
 
 void loop() {
 #if BT_MODE == 2
+  if (bleLogConnected) {
+    bleLogConnected = false;
+    Serial.println("Bluetooth connected");
+  }
+  if (bleLogDisconnected) {
+    bleLogDisconnected = false;
+    Serial.println("Bluetooth disconnected");
+  }
   if (bleNeedReAdv) {
     bleNeedReAdv = false;
     delay(150);
     BLEDevice::startAdvertising();
+  }
+#elif BT_MODE == 3
+  static bool btSppWasConnected = false;
+  bool btSppNow = SerialBT.hasClient();
+  if (btSppNow != btSppWasConnected) {
+    btSppWasConnected = btSppNow;
+    Serial.println(btSppNow ? "Bluetooth connected" : "Bluetooth disconnected");
   }
 #endif
 

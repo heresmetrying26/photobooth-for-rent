@@ -15212,6 +15212,16 @@
       border-top: 1px dashed var(--line, #e5dfd5);
     }
 
+    #mobilePrintOpts > .pr-opts-body {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    #mobilePrintOpts .pb-more {
+      margin-top: 0;
+    }
+
     .pr-find-det {
       margin-top: 8px;
       border: 1px solid var(--line, #e5dfd5);
@@ -22833,6 +22843,9 @@
               </svg> Print</button>
             <p class="panel-hint" id="printHint"></p>
           </div>
+
+          <!-- Print options host for Android / iPad / Print Station (when desktop Printer 1 card is hidden) -->
+          <div class="ps-group" id="mobilePrintOpts" style="display:none;"></div>
 
           <!-- Card 1 · Printer 1 & ALL options for Printer 1 -->
           <div class="printer-pick" id="printerPick">
@@ -40744,6 +40757,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           }
         } catch (e) { }
         box.classList.toggle('hidden', !show);
+        const moreBox = document.getElementById('pbMoreOptions');
+        if (moreBox) moreBox.hidden = !show;
         if (!show) return;
         const sizes = photoSizeChoices();
         if (printPrefs.fit === 'size' && !sizes.includes(printPrefs.photoSize)) printPrefs.fit = 'auto';      // that size does not fit this paper
@@ -43690,7 +43705,23 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         printRouteSelect.value = printRoute;
         printRouteSelect.querySelector('option[value="station"]').disabled = !(isRentalBooth() || isTrialBooth());
         // The Print Helper is a computer app: never offered on iPad / Android, except an iPad whose booth page came from the laptop app (its printers are the laptop's).
-        document.getElementById('printerPick').style.display = printSize && !useStation() && (!isMobileOS() || LANREMOTE) ? '' : 'none';
+        const showDesktopPick = !!(printSize && !useStation() && (!isMobileOS() || LANREMOTE));
+        document.getElementById('printerPick').style.display = showDesktopPick ? '' : 'none';
+        // Keep Lightness & Colour Correction, photo fit / borderless / edges, and thermal quality visible on Android, iPad & Print Station.
+        const p1Opts = document.getElementById('printer1OptsBody');
+        const p1Card = document.getElementById('printer1Card');
+        const mobOpts = document.getElementById('mobilePrintOpts');
+        if (p1Opts && p1Card && mobOpts) {
+          if (showDesktopPick) {
+            if (p1Opts.parentNode !== p1Card) p1Card.appendChild(p1Opts);
+            mobOpts.style.display = 'none';
+          } else if (printSize) {
+            if (p1Opts.parentNode !== mobOpts) mobOpts.appendChild(p1Opts);
+            mobOpts.style.display = '';
+          } else {
+            mobOpts.style.display = 'none';
+          }
+        }
         try { wifiPrinterUI(); } catch (_) { }
         // Bluetooth thermal UI elements (tablet only)
         const btRow = document.getElementById('btThermalRow');
@@ -73501,13 +73532,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var h = e.target && e.target.closest ? e.target.closest('.panel-hint:not([id])') : null;
           if (h) h.classList.toggle('pb-tip-open');
         });
-        var fit = document.getElementById('photoFitBox'), col = document.getElementById('colorAdjBox');
-        if (fit && col && fit.parentNode && !document.getElementById('pbMoreOptions')) {
+        var fit = document.getElementById('photoFitBox');
+        if (fit && fit.parentNode && !document.getElementById('pbMoreOptions')) {
           var d = document.createElement('details'); d.className = 'pb-more'; d.id = 'pbMoreOptions';
-          var sm = document.createElement('summary'); sm.textContent = 'More options: photo size, borderless, colour';
+          var sm = document.createElement('summary'); sm.textContent = 'More options: photo size, borderless, edges';
           d.appendChild(sm);
           fit.parentNode.insertBefore(d, fit);
-          d.appendChild(fit); d.appendChild(col);
+          d.appendChild(fit);
+          d.hidden = fit.classList.contains('hidden');
         }
       }
       window._pbDeclutter = declutter;

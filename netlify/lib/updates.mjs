@@ -243,7 +243,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.22', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.22/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.23', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.23/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -296,6 +296,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-23', title: 'Android 1.2.08, iPad 1.1.23 & Website: Lightness & Colour Correction Restored on Tablets', for: ['website'],
+    items: [
+      '🎨 Restored Lightness & Colour Correction (and Colour presets) in Print Settings on Android tablets, Android phones, iPads, and Print Station mode.',
+      '📐 Restored Photo size on paper, Borderless, Edges (margins) / Edge test, and Thermal print quality / darkness & smooth-print test strips on Android and iPad.',
+      '👆 Lightness & Colour Correction now appears directly in Print Settings on the Android app instead of being nested inside More options.'
+    ]
+  },
   {
     date: '2026-11-23', title: 'Android 1.2.07 & Website: Multi-Layout Selection on Uploaded Frames', for: ['website'],
     items: [

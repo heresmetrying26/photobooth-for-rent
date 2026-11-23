@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Full Platform &amp; Plan Comparison · photobooth4u</title>
-<meta name="description" content="Simple comparison between photobooth4u Online (Web), Offline Desktop (Windows & Mac), and the Android Tablet Offline App.">
+<meta name="description" content="Complete side-by-side comparison between photobooth4u Online (Web), Desktop (Windows & Mac), Android Tablet, and iPad Offline App — including Tablet Camera Bridge, Overlays, B&W vs Coloured Separation, Printers, and Pricing.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -25,6 +25,8 @@
     --green-soft: #e3f5f0;
     --blue: #235ea8;
     --blue-soft: #e8f1fc;
+    --amber: #a85d08;
+    --amber-soft: #fdf2e3;
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -199,10 +201,10 @@
     font-weight: 800;
   }
 
-  /* 3 Platform Cards */
+  /* 4 Platform Cards */
   .platforms-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
     gap: 18px;
     margin-bottom: 40px;
   }
@@ -220,6 +222,7 @@
   .plat-card.online { border-top: 5px solid var(--blue); }
   .plat-card.desktop { border-top: 5px solid var(--purple); }
   .plat-card.android { border-top: 5px solid var(--green); }
+  .plat-card.ipad { border-top: 5px solid var(--amber); }
 
   .plat-pill {
     display: inline-block;
@@ -235,6 +238,7 @@
   .plat-card.online .plat-pill { background: var(--blue-soft); color: var(--blue); }
   .plat-card.desktop .plat-pill { background: var(--purple-soft); color: var(--purple); }
   .plat-card.android .plat-pill { background: var(--green-soft); color: var(--green); }
+  .plat-card.ipad .plat-pill { background: var(--amber-soft); color: var(--amber); }
 
   .plat-card h2 {
     font: 600 24px/1.2 'Fraunces', Georgia, serif;
@@ -272,6 +276,7 @@
   .plat-card.online .plat-list li::before { color: var(--blue); }
   .plat-card.desktop .plat-list li::before { color: var(--purple); }
   .plat-card.android .plat-list li::before { color: var(--green); }
+  .plat-card.ipad .plat-list li::before { color: var(--amber); }
 
   .plat-footer-badge {
     padding: 8px 12px;
@@ -283,6 +288,7 @@
   .plat-card.online .plat-footer-badge { background: var(--blue-soft); color: var(--blue); }
   .plat-card.desktop .plat-footer-badge { background: var(--purple-soft); color: var(--purple); }
   .plat-card.android .plat-footer-badge { background: var(--green-soft); color: var(--green); }
+  .plat-card.ipad .plat-footer-badge { background: var(--amber-soft); color: var(--amber); }
 
   /* Section Styling */
   .detail-section {
@@ -348,6 +354,7 @@
   .badge-tag.purple { background: var(--purple-soft); color: var(--purple); }
   .badge-tag.green { background: var(--green-soft); color: var(--green); }
   .badge-tag.red { background: var(--red-soft); color: var(--red); }
+  .badge-tag.amber { background: var(--amber-soft); color: var(--amber); }
 
   /* Responsive Matrix Table */
   .table-responsive {
@@ -358,6 +365,7 @@
   }
   table.matrix {
     width: 100%;
+    min-width: 760px;
     border-collapse: collapse;
     font-size: 13.5px;
     text-align: left;
@@ -477,68 +485,82 @@
   <!-- HERO -->
   <section class="hero-section">
     <div class="kicker">Official Platform Comparison</div>
-    <h1>Online vs. Offline Desktop vs. Android Tablet</h1>
-    <p class="lead">Compare all features across our Cloud Web Booth, Windows/Mac Desktop app, and Android Tablet app. Pick the perfect setup for your photo studio, wedding photobooth, or trending receipt booth.</p>
+    <h1>Online vs. Desktop vs. Android vs. iPad Offline</h1>
+    <p class="lead">Compare all 4 platforms plus Tablet Camera Bridge, PNG overlays, B&amp;W vs Coloured separation, direct USB SELPHY &amp; dual 2&times;6 printers, Cash Acceptor, Trading Cards, and 360 Studio.</p>
 
     <!-- TL;DR -->
     <div class="tldr-box">
       <div class="tldr-header">
         <div class="tldr-title">⚡ Quick Overview / TL;DR</div>
-        <span class="tldr-badge">Key Highlights</span>
+        <span class="tldr-badge">Updated Nov 23, 2026</span>
       </div>
       <div class="tldr-grid">
-        <div class="tldr-item"><span><b>100% Offline Capability:</b> Desktop &amp; Android run without internet at any venue.</span></div>
-        <div class="tldr-item"><span><b>DSLR &amp; Mirrorless Cameras:</b> Plug in your Canon, Nikon, or Sony camera with a simple USB cable.</span></div>
-        <div class="tldr-item"><span><b>Thermal Receipt Printing:</b> Print instant vintage photos on 58mm &amp; 80mm receipt paper rolls via Bluetooth.</span></div>
-        <div class="tldr-item"><span><b>Virtual Assistant Voice:</b> Friendly spoken countdowns ("Get ready… 3, 2, 1… Smile!") in English &amp; Tagalog.</span></div>
-        <div class="tldr-item"><span><b>Direct Phone Downloads:</b> Guests scan a QR code to save photos to their phone without needing internet.</span></div>
-        <div class="tldr-item"><span><b>360 Video Booth (Beta):</b> Fun slow-motion, boomerang effects, and 40 animated overlays for spinner platforms.</span></div>
+        <div class="tldr-item"><span><b>100% True Offline + Cloud Sync:</b> Desktop, Android &amp; iPad Offline run without internet at any venue and auto-upload queued QR photos once back online.</span></div>
+        <div class="tldr-item"><span><b>Tablet Bridge (Guest Screen + Camera):</b> Pair an Android/Huawei tablet over USB-C or local Wi-Fi as your laptop's live guest screen + Camera2 camera—0 extra license slots.</span></div>
+        <div class="tldr-item"><span><b>DSLR, Mirrorless &amp; Action Cams:</b> Plug in Canon, Nikon, or Sony Alpha via USB (plus Insta360 Ace Pro &amp; 360 Spin DSLR/GoPro/HDMI).</span></div>
+        <div class="tldr-item"><span><b>Dual Printers + B&amp;W / Colour Split:</b> Direct USB SELPHY, HiTi/DNP auto-cut 2&times;6 secondary printer, Canon G-series, Epson L8050 IPP, &amp; Bluetooth 58/80mm thermal rolls—with opt-in B&amp;W vs Coloured layout separation &amp; 2-step guest picker.</span></div>
+        <div class="tldr-item"><span><b>Custom Frames, PNG Overlays &amp; Edit Layout:</b> Upload Canva frames, layer PNG overlays with enclosed white-doodle protection, auto-section 4-in-1 collages, and move/rotate spliced strips in place.</span></div>
+        <div class="tldr-item"><span><b>Cash, PayMongo, Cards &amp; 360 Studio:</b> ESP32 Coin/Bill acceptor, GCash/Maya QR, Trading Cards &amp; Certificates, Rush ID, Photoman Studio, XL Print up to 48", &amp; free iOS 360 Arm Companion.</span></div>
       </div>
     </div>
   </section>
 
-  <!-- 3 PLATFORM CARDS -->
+  <!-- 4 PLATFORM CARDS -->
   <section class="platforms-grid">
     <div class="plat-card online">
       <div class="plat-pill">Cloud Web Platform</div>
       <h2>🌐 Online Booth</h2>
-      <div class="plat-device">Runs in any browser (Chrome, Safari, Edge) on your laptop, iPad, or phone</div>
+      <div class="plat-device">Runs in Chrome, Safari, or Edge on any laptop, iPad, Android tablet, or phone</div>
       <ul class="plat-list">
-        <li><b>No Installation Needed:</b> Open the link, enter your code, and start taking photos right away.</li>
-        <li><b>Pay With QR:</b> Collect payments easily via GCash, Maya, or ShopeePay before guests take photos.</li>
-        <li><b>Google Drive Auto-Backup:</b> Every photo and animated GIF automatically backs up to the cloud.</li>
-        <li><b>7-Day Online Gallery:</b> Guests get a link to browse and download all event photos from their phones.</li>
-        <li><b>What's Needed:</b> Requires a continuous Wi-Fi or mobile data connection at the venue.</li>
+        <li><b>Zero Install:</b> Open the link, enter your booth code, and start taking photos right away.</li>
+        <li><b>Pay With QR &amp; Multi-Tier Vouchers:</b> Collect GCash, Maya, or ShopeePay via PayMongo (or your own self-hosted Cloudflare Worker) with split Thermal/Coloured tiers &amp; single-use vouchers.</li>
+        <li><b>Custom Frames, Overlays &amp; Green Screen:</b> Same layout editor, Canva/PNG overlays, sticker packs, B&amp;W vs Coloured split picker, Trading Cards, Certificates, GIF/Slideshow, &amp; Flipbook.</li>
+        <li><b>Cloud Drive Backup &amp; 7-Day Gallery:</b> Photos, strips, and GIFs automatically upload to Google Drive and generate online share galleries.</li>
+        <li><b>Venue Connection:</b> Needs Wi-Fi or mobile data during the event.</li>
       </ul>
-      <div class="plat-footer-badge">Best for: Studios with Wi-Fi &amp; iPad kiosks</div>
+      <div class="plat-footer-badge">Best for: Wi-Fi kiosks, instant cloud galleries &amp; browser testing</div>
     </div>
 
     <div class="plat-card desktop">
-      <div class="plat-pill">Standalone Computer App</div>
+      <div class="plat-pill">Standalone Computer App · v1.1.97</div>
       <h2>💻 Desktop (Win &amp; Mac)</h2>
-      <div class="plat-device">Installable software for Windows 10/11 laptops/PCs and Mac (Apple Silicon &amp; Intel)</div>
+      <div class="plat-device">Installable software for Windows 10/11 and macOS (Apple Silicon &amp; Intel)</div>
       <ul class="plat-list">
-        <li><b>100% True Offline:</b> Connect to internet once to activate, then run all events with zero internet.</li>
-        <li><b>DSLR &amp; Mirrorless Cameras:</b> Connect Canon, Nikon, or Sony cameras via USB cable for sharp photos and flash sync.</li>
-        <li><b>Fast Automatic Printing:</b> Automatically prints 2x6 photo strips and 4R postcards silently without pop-up dialogs.</li>
-        <li><b>Built-in Laptop Hotspot:</b> Windows laptops can create their own Wi-Fi so guests can download photos without a router.</li>
-        <li><b>Second Screen for Guests:</b> Plug in a TV or second monitor via HDMI so guests can see a live view of themselves.</li>
+        <li><b>True Offline + Cloud Sync:</b> Activate once online, run all day with zero internet, then sync queued QR photos once connected again.</li>
+        <li><b>Pro Cameras + Tablet Bridge:</b> USB plug-and-play for Canon, Nikon, Sony Alpha &amp; Insta360 Ace Pro—or pair any Android/Huawei tablet over USB-C / Wi-Fi as a Guest Screen + Bridge Camera (<a href="/how-to-tablet-camera/">guide</a>), or connect iPad via Camo/Iriun (<a href="/how-to-ipad-camera/">guide</a>).</li>
+        <li><b>Silent Printing, USB SELPHY &amp; 2&times;6 Split:</b> Auto-prints without dialogs on DNP, HiTi, Citizen, Sinfonia, Mitsubishi, Canon SELPHY USB, Epson L8050, Canon G-series, &amp; 58/80mm thermal; route 2&times;6 strips to a dedicated 2nd dye-sub printer + Browse &amp; Reprint pop-up.</li>
+        <li><b>B&amp;W / Colour Routing &amp; Overlays:</b> Separate B&amp;W thermal vs Coloured photo prints, link vouchers to printers, layer per-frame/sheet PNG overlays, &amp; use in-place Edit Layout.</li>
+        <li><b>360 Studio, Photoman, Rush ID &amp; XL Print:</b> Record 360 via DSLR/GoPro/HDMI (or Windows gyro / free iOS 360 Arm Companion), Photographer Desk, Roving DSLR Bridge, Rush ID Station, &amp; banners up to 48".</li>
       </ul>
-      <div class="plat-footer-badge">Best for: Pro event rentals, weddings &amp; studios</div>
+      <div class="plat-footer-badge">Best for: Flagship events, DSLRs, multi-printers &amp; 360 booths</div>
     </div>
 
     <div class="plat-card android">
-      <div class="plat-pill">Tablet App</div>
+      <div class="plat-pill">Android App · v1.1.101</div>
       <h2>📱 Android Tablet</h2>
-      <div class="plat-device">Dedicated app for Android tablets (Samsung Galaxy Tab, Lenovo, Xiaomi, and more)</div>
+      <div class="plat-device">Dedicated kiosk APK for Android &amp; Huawei tablets (Android 7.0+)</div>
       <ul class="plat-list">
-        <li><b>Thermal Receipt Printing:</b> Connects directly via Bluetooth to 58mm &amp; 80mm receipt printers for vintage booths.</li>
-        <li><b>Kiosk Screen Lock:</b> Keeps screen awake all day, hides home/back buttons, and prevents guests from closing the app.</li>
-        <li><b>Built-in Tablet Wi-Fi:</b> Tablet shares photos directly to guest phones via local Wi-Fi without needing internet.</li>
-        <li><b>Connects to DSLR:</b> Plug in Canon, Nikon, or Sony cameras using a simple USB-C adapter cable.</li>
-        <li><b>Ultra-Portable:</b> Lightweight, cable-free, battery-powered setup that you can carry and place anywhere.</li>
+        <li><b>Booth OR Laptop Bridge Mode:</b> Run standalone offline OR switch to <b>Laptop Guest + Camera Bridge</b> (<a href="/how-to-tablet-camera/">guide</a>) to stream live Camera2 video (~22 fps) &amp; full-res captures + guest touch/voice audio to your laptop with 0 extra slots used.</li>
+        <li><b>Direct Bluetooth Thermal &amp; Wi-Fi Printers:</b> Pair 58mm/80mm receipt printers directly via Bluetooth for vintage B&amp;W booths, plus Epson/Canon/HP/DNP-WCM Wi-Fi printing &amp; Split B&amp;W/Colour routing.</li>
+        <li><b>USB-C DSLR &amp; Webcam OTG:</b> Plug in Canon, Nikon, Sony Alpha, UVC webcams, or HDMI capture adapters via USB OTG.</li>
+        <li><b>Cash Acceptor + Built-in Local QR Hotspot:</b> Supports ESP32 Coin/Bill Acceptor over Bluetooth BLE or USB Serial, plus local Wi-Fi QR downloads with no internet needed.</li>
+        <li><b>Full Kiosk Lockdown:</b> Screen keep-awake, pinned immersive navigation, PIN lock, and battery-powered portability.</li>
       </ul>
-      <div class="plat-footer-badge">Best for: Receipt booths &amp; portable tablet stands</div>
+      <div class="plat-footer-badge">Best for: Thermal receipt booths, Cash kiosks &amp; Laptop Bridge Screens</div>
+    </div>
+
+    <div class="plat-card ipad">
+      <div class="plat-pill">iPad Offline App · v1.1.19</div>
+      <h2>🍏 iPad Offline (.ipa)</h2>
+      <div class="plat-device">Dedicated iOS app for iPads &amp; iPhones—no continuous venue Wi-Fi required</div>
+      <ul class="plat-list">
+        <li><b>100% Offline + Smooth GPU Camera:</b> Works without venue internet; optimized 4:3 GPU camera pipeline runs smoothly even on A16 Center Stage iPads.</li>
+        <li><b>Direct AirPrint &amp; Non-AirPrint IPP:</b> Print wirelessly to AirPrint printers OR direct network IPP printers (including Epson L8050 over Wi-Fi) without a PC.</li>
+        <li><b>Print Station &amp; Dual-Printer Split:</b> Send jobs to a Windows/Mac <a href="/print-station/">Print Station</a> over hotspot for silent DNP/HiTi/SELPHY printing, 4&times;6 vs 2&times;6 split routing, &amp; Browse/Reprint queue.</li>
+        <li><b>Local Hotspot QR + iPad Bridge Notes:</b> Built-in local Wi-Fi QR downloads &amp; AirDrop sharing; can pair with a laptop via Camo/Iriun USB virtual webcam or Safari LAN Bridge (<a href="/how-to-ipad-camera/">guide</a>).</li>
+        <li><b>Free iOS 360 Arm Camera Companion:</b> iPhone/iPad mountable 360 spinner app included free—features CoreMotion gyro auto-start, 0.5&times; 60/120 fps, AE/AF lock, &amp; Shield (<a href="/how-to-360-arm/">guide</a>).</li>
+      </ul>
+      <div class="plat-footer-badge">Best for: Sleek iPad kiosks, wireless Wi-Fi printing &amp; 360 Arm rigs</div>
     </div>
   </section>
 
@@ -547,31 +569,31 @@
     <div class="section-heading">
       <div class="kicker">Launch Promotion</div>
       <h2>🏷️ Introductory Pricing &amp; Plans</h2>
-      <p>All prices are heavily discounted while we are in our launch phase!</p>
+      <p>Start with an Event Pass, subscribe monthly, or lock in a Lifetime license (up to 5 devices) with free software updates.</p>
     </div>
 
     <div class="pricing-grid">
       <div class="price-card">
         <h3>🌐 Online Plan</h3>
         <div class="price-amount">₱799 / mo &bull; ₱3,299 Lifetime</div>
-        <div class="price-details">Full browser cloud booth, PayMongo GCash/Maya QR payments, Google Drive auto-backup, and 7-day online cloud gallery.</div>
+        <div class="price-details">Full browser cloud booth, PayMongo GCash/Maya QR (plus self-hosted Worker), Google Drive auto-backup, and 7-day online gallery. Lifetime covers 5 devices.</div>
       </div>
 
       <div class="price-card">
         <h3>🔌 Offline Plan</h3>
         <div class="price-amount">₱999 / mo &bull; ₱3,999 Lifetime <small style="display:block;font-size:12px;color:var(--text-muted);font-weight:normal;">(excluding 360 booth)</small></div>
-        <div class="price-details">Windows, Mac, and Android offline apps. Zero internet needed, USB camera connection, local QR downloads, and automatic silent printing. <i>(360 desk available as optional ₱1,500 add-on)</i></div>
+        <div class="price-details">Windows, Mac, Android &amp; iPad Offline apps. Zero internet needed, USB camera + Tablet Bridge, local QR downloads, SELPHY/thermal/split printing. <i>(360 desk add-on: +₱1,500 one-time · 24-hr Event Pass: ₱599)</i></div>
       </div>
 
       <div class="price-card featured">
         <h3>🚀 Online + Offline Combo</h3>
-        <div class="price-amount">₱1,299 / mo &bull; ₱4,999 Lifetime <small style="display:block;font-size:12px;color:var(--text-muted);font-weight:normal;">(excluding 360 booth)</small></div>
-        <div class="price-details"><b>Most Popular &amp; Best Value.</b> Full access to both the Cloud Web Booth AND the Offline Desktop + Android apps. Switch anytime! <i>(360 desk available as optional ₱1,500 add-on)</i></div>
+        <div class="price-amount">₱1,399 / mo &bull; ₱4,999 Lifetime <small style="display:block;font-size:12px;color:var(--text-muted);font-weight:normal;">(excluding 360 booth)</small></div>
+        <div class="price-details"><b>Most Popular &amp; Best Value.</b> Full access to the Cloud Web Booth AND Offline Desktop (Win/Mac), Android Tablet, &amp; iPad Offline apps—including Tablet Bridge &amp; Cloud Sync. <i>(360 desk add-on: +₱1,500 one-time · Per-event pass: ₱599)</i></div>
       </div>
     </div>
 
     <div class="callout-feedback">
-      ❤️ <b>Why are Lifetime plans discounted?</b> We are actively launching and continuously adding new features based on operator suggestions. By getting a lifetime license now, you lock in the lowest price with free lifetime updates! <i>Check out the comments section on our social posts to see real customer reviews and implemented requests.</i>
+      ❤️ <b>Flexible Upgrade Add-ons:</b> Already own a Lifetime single-tier plan? Add <b>Offline App Later</b> (+₱2,200), <b>Online Booth Later</b> (+₱1,500), or the <b>360 Video Desk</b> (+₱1,500) anytime—no need to repurchase from scratch. Every Lifetime license unlocks up to <b>5 devices</b> with free updates!
     </div>
   </section>
 
@@ -579,96 +601,101 @@
   <section class="detail-section">
     <div class="section-heading">
       <div class="kicker">Equipment &amp; Gear</div>
-      <h2>Cameras, Printers &amp; Offline Downloads</h2>
-      <p>How each platform connects to your cameras, printers, and guests' phones.</p>
+      <h2>Cameras, Tablet Bridge, Printers &amp; Offline Sharing</h2>
+      <p>How every platform connects to your cameras, bridge tablets, printers, and guests' phones.</p>
     </div>
 
     <div class="feature-grid">
       <div class="feature-card">
-        <h3>📷 DSLR &amp; Mirrorless Cameras (USB Cable)</h3>
-        <p>Plug your camera in with a simple USB cable. The booth controls the shutter, triggers studio flashes, shows a live camera preview, and downloads sharp photos instantly.</p>
+        <h3>📱 Tablet as Bridge Camera &amp; Guest Screen</h3>
+        <p>Use an Android or Huawei tablet as your laptop's front-facing touchscreen AND live camera (<a href="/how-to-tablet-camera/">setup guide</a>)! Streams smooth Camera2 video (~22 fps) plus full-res up to 8 MP shots over USB-C Tethering or local Wi-Fi, plays tablet TTS voice &amp; shutter sounds, mirrors the 2-step B&amp;W/Colour picker, and uses <b>0 extra license slots</b>. Need iPad? Pair via Camo/Iriun USB or Safari LAN Bridge (<a href="/how-to-ipad-camera/">iPad guide</a>).</p>
+        <div class="badges">
+          <span class="badge-tag purple">Desktop Host</span>
+          <span class="badge-tag green">Android / Huawei Native Bridge</span>
+          <span class="badge-tag amber">iPad via USB Virtual Cam</span>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <h3>📷 DSLR, Mirrorless &amp; Action Cameras (USB)</h3>
+        <p>Plug Canon EOS (incl. 1300D/1500D/60D/6D strobe X-sync), Nikon (with live exposure apply), Sony Alpha, or Insta360 Ace Pro straight into USB. Full shutter trigger, live preview, lossless PNG masters, and flash sync with zero third-party utility blockers.</p>
         <div class="badges">
           <span class="badge-tag purple">Desktop: Plug &amp; Play</span>
-          <span class="badge-tag green">Android: USB Adapter</span>
-          <span class="badge-tag blue">Online: Chrome Browser</span>
+          <span class="badge-tag green">Android: USB OTG</span>
+          <span class="badge-tag amber">iPad: UVC USB-C Adapter</span>
+          <span class="badge-tag blue">Online: Chrome USB</span>
         </div>
       </div>
 
       <div class="feature-card">
-        <h3>🧾 Thermal Receipt Printers (58mm &amp; 80mm)</h3>
-        <p>Perfect for trending, low-cost receipt photobooths! Print photos onto black-and-white paper rolls (like a store receipt). On Android, simply connect via Bluetooth—no ink required!</p>
+        <h3>🖨️ Dual Printers, USB SELPHY &amp; Thermal Rolls</h3>
+        <p>Drive DNP, HiTi, Citizen, Sinfonia, Mitsubishi, Canon SELPHY (driverless USB on Win/Mac), Canon G-series (600 DPI calibrated), Epson L8050 (USB &amp; direct non-AirPrint IPP), plus 58mm/80mm Bluetooth thermal receipts. Route 2&times;6 strips to a dedicated <b>Secondary Printer</b> (HiTi/DNP auto-cut), test with <code>/printer-test/</code>, or reprint from <b>Browse &amp; Reprint</b>.</p>
         <div class="badges">
-          <span class="badge-tag green">Android: Direct Bluetooth</span>
-          <span class="badge-tag purple">Desktop: USB or Bluetooth</span>
-          <span class="badge-tag">58mm &amp; 80mm Paper</span>
+          <span class="badge-tag purple">Desktop: Silent + Split 2&times;6</span>
+          <span class="badge-tag green">Android: BT Thermal + Wi-Fi</span>
+          <span class="badge-tag amber">iPad: AirPrint + Direct IPP</span>
         </div>
       </div>
 
       <div class="feature-card">
-        <h3>🖨️ Photo Printers &amp; Studio Printers</h3>
-        <p>Supports DNP, HiTi, Citizen, Sinfonia, Canon Selphy, Epson EcoTank (L-series), Brother, and HP. The desktop app cuts 2x6 strips and 4R postcards automatically and silently.</p>
+        <h3>📡 Offline QR + Auto Cloud Sync</h3>
+        <p>Guests scan an on-screen QR code to save photos, Boomerangs, Slideshows &amp; 360 videos straight to their phone over local hotspot/Wi-Fi—with zero internet. Turn on <b>Cloud Sync</b> to automatically upload queued offline captures to online galleries &amp; Drive once the booth reconnects.</p>
         <div class="badges">
-          <span class="badge-tag purple">Desktop: Automatic Silent Print</span>
-          <span class="badge-tag green">Android: Wi-Fi Printers</span>
-        </div>
-      </div>
-
-      <div class="feature-card">
-        <h3>📡 Direct Phone Download (No Internet Needed)</h3>
-        <p>Guests scan a QR code on screen using their phones to instantly save photos and videos. This works even in remote venues with zero cell signal—files transfer directly over local Wi-Fi!</p>
-        <div class="badges">
-          <span class="badge-tag purple">Desktop App</span>
-          <span class="badge-tag green">Android App</span>
-          <span class="badge-tag">No Data or SIM Needed</span>
+          <span class="badge-tag purple">Desktop</span>
+          <span class="badge-tag green">Android</span>
+          <span class="badge-tag amber">iPad Offline</span>
+          <span class="badge-tag">Auto Sync Later</span>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- DEEP DIVE: INTERACTIVE & CREATIVE -->
+  <!-- DEEP DIVE: OVERLAYS, B&W SPLIT, PAYMENTS & MODES -->
   <section class="detail-section">
     <div class="section-heading">
-      <div class="kicker">Features &amp; Fun</div>
-      <h2>Interactive Features, Fun FX &amp; Payments</h2>
-      <p>Delight event guests, speed up your queue, and automate your photobooth.</p>
+      <div class="kicker">Design, Routing &amp; Modes</div>
+      <h2>Overlays, B&amp;W vs Colour Split, Payments &amp; Specialty Booths</h2>
+      <p>Full control over your frame pipeline, thermal vs photo printer routing, payments, and add-on stations.</p>
     </div>
 
     <div class="feature-grid">
       <div class="feature-card">
-        <h3>🎙️ Virtual Assistant Voice Countdowns</h3>
-        <p>A friendly spoken voice counts down to hype up guests and get them smiling: <i>"Get ready… Three, Two, One… Smile!"</i>. Available in English and Tagalog voices.</p>
+        <h3>🧩 Frames, Overlays &amp; Edit Layout</h3>
+        <p>Upload up to 100 custom Canva/Photoshop frames (up to 40 photo spots per frame) with automatic photo-window detection, chromakey window picker, and <b>enclosed white-doodle protection</b> (keeps white outlines/icons solid inside doodles). Add per-frame PNG overlays, sheet-wide collage overlays, or built-in layout overlays—complete with automatic outer-white knockout for Canva Free PNGs, 1-tap <i>Apply to all frames</i>, 4-in-1 auto-sectioning, 90&deg;/180&deg;/270&deg; spot rotation, and in-place <b>Edit Layout</b>.</p>
         <div class="badges">
-          <span class="badge-tag blue">Online</span>
-          <span class="badge-tag purple">Desktop</span>
-          <span class="badge-tag green">Android</span>
+          <span class="badge-tag blue">All Platforms</span>
+          <span class="badge-tag">Up to 100 Frames / 40 Spots</span>
+          <span class="badge-tag">Canva Free White Knockout</span>
         </div>
       </div>
 
       <div class="feature-card">
-        <h3>🚶‍♂️ Roving Photographer Mode</h3>
-        <p>A photographer walks around the party taking photos on their phone, scans the booth's QR code, and sends photos straight to the laptop to be framed and printed automatically!</p>
+        <h3>🎨 B&amp;W vs Coloured Split &amp; Pre-Categorization</h3>
+        <p>Turn on <b>Separate B&amp;W and colour prints</b> (optional in Setup &rarr; Layout). Built-in receipt/photo layouts are pre-categorized, and uploaded custom frames are auto-scanned: colour frames stay on <b>Colour</b> while monochrome frames can be set to <b>B&amp;W (thermal)</b>, <b>Colour (photo)</b>, or <b>Either-way</b>. Guests see a clean 2-step <i>B&amp;W designs</i> vs <i>Coloured designs</i> picker first, and each side automatically routes to your device's chosen B&amp;W or Colour printer.</p>
         <div class="badges">
-          <span class="badge-tag purple">Desktop App</span>
-          <span class="badge-tag">Local Wi-Fi</span>
-          <span class="badge-tag">Automatic Print</span>
+          <span class="badge-tag blue">All Platforms</span>
+          <span class="badge-tag">Opt-In 2-Step Guest Picker</span>
+          <span class="badge-tag">Per-Device Printer Routing</span>
         </div>
       </div>
 
       <div class="feature-card">
-        <h3>🔒 Lock Photobooth (Kiosk Protection)</h3>
-        <p>Lock your settings menu behind a PIN passcode so guests or kids can't mess with them. On Android tablets, it keeps the screen on and hides the home button so guests can't exit the booth.</p>
+        <h3>🪙 Cash Acceptor, Multi-Tier Pay &amp; Vouchers</h3>
+        <p>Accept bills &amp; coins completely offline via an <b>ESP32 Cash Acceptor</b> (Keyboard HID on all devices, USB Serial on Desktop, or Bluetooth BLE on Android), accept GCash/Maya QR via PayMongo or your own <b>Cloudflare Worker</b>, or sell printable 8-digit vouchers. Configure unlimited payment options (incl. <i>Softcopy-only</i> 0-print tiers) and link each option to specific layouts and printers.</p>
         <div class="badges">
-          <span class="badge-tag">PIN Passcode</span>
-          <span class="badge-tag green">Tablet Kiosk Lock</span>
+          <span class="badge-tag purple">Desktop: Cash + Vouchers</span>
+          <span class="badge-tag green">Android: BLE/HID Cash + Vouchers</span>
+          <span class="badge-tag blue">Online: PayMongo QR + Worker</span>
         </div>
       </div>
 
       <div class="feature-card">
-        <h3>🔄 360 Spin Video Booth (BETA)</h3>
-        <p>Dedicated 360 spinner video station! Includes slow-motion, boomerang effects, background music, custom event logos, and 40 fun animated overlays like confetti, sparkles, and hearts.</p>
+        <h3>🃏 Cards, Rush ID, Photoman &amp; 360 Studio</h3>
+        <p>Run collectible <b>Trading Card &amp; Certificate</b> booths (interactive Holo viewer, back-of-card Q&amp;A, dual-sided print), dedicated <b>Rush ID Station</b>, <b>Photoman Studio</b> (Template Maker, Auto-Frame, Roving DSLR Bridge, Phone Remote Control), <b>XL Print</b> banners up to 48", 5 motion styles (incl. <b>Final Shots Slideshow</b>), <b>Flipbook</b> video cards, and the full <b>360 Video Studio</b> (Record 360 DSLR/GoPro/HDMI + free iOS 360 Arm Companion + Beat-Drop + 3D LUTs).</p>
         <div class="badges">
-          <span class="badge-tag purple">Desktop App</span>
-          <span class="badge-tag red">Beta Testing</span>
+          <span class="badge-tag purple">Desktop Flagship</span>
+          <span class="badge-tag amber">iOS 360 Arm Companion (Free)</span>
+          <span class="badge-tag">Full Suite Included</span>
         </div>
       </div>
     </div>
@@ -679,102 +706,190 @@
     <div class="section-heading">
       <div class="kicker">Full Breakdown</div>
       <h2>Side-by-Side Feature Comparison</h2>
-      <p>A complete, easy-to-read comparison of every feature across all three versions.</p>
+      <p>Every verified capability across all four photobooth4u platforms.</p>
     </div>
 
     <div class="table-responsive">
       <table class="matrix">
         <thead>
           <tr>
-            <th style="width: 38%;">Feature / Capability</th>
-            <th style="width: 20%;">🌐 Online (Web)</th>
-            <th style="width: 21%;">💻 Desktop (Win/Mac)</th>
-            <th style="width: 21%;">📱 Android Tablet</th>
+            <th style="width: 30%;">Feature / Capability</th>
+            <th style="width: 17.5%;">🌐 Online (Web)</th>
+            <th style="width: 17.5%;">💻 Desktop (Win/Mac)</th>
+            <th style="width: 17.5%;">📱 Android Tablet</th>
+            <th style="width: 17.5%;">🍏 iPad Offline</th>
           </tr>
         </thead>
         <tbody>
-          <tr class="cat-row"><td colspan="4">Where &amp; How It Works</td></tr>
+          <tr class="cat-row"><td colspan="5">Where &amp; How It Works</td></tr>
           <tr>
             <td>Internet Needed at Venue</td>
             <td><span class="check-no">Continuous Internet</span><span class="sub-note">Needs active Wi-Fi or data</span></td>
-            <td><span class="check-yes">100% Offline</span><span class="sub-note">Activate once, runs offline</span></td>
-            <td><span class="check-yes">100% Offline</span><span class="sub-note">Activate once, runs offline</span></td>
+            <td><span class="check-yes">✅ 100% Offline</span><span class="sub-note">Activate once, runs offline</span></td>
+            <td><span class="check-yes">✅ 100% Offline</span><span class="sub-note">Activate once, runs offline</span></td>
+            <td><span class="check-yes">✅ 100% Offline</span><span class="sub-note">Local IPA app runs offline</span></td>
           </tr>
           <tr>
-            <td>Scan QR to Save Photos Without Internet</td>
-            <td><span class="check-no">❌ No</span><span class="sub-note">Needs online link</span></td>
-            <td><span class="check-yes">✅ Yes</span><span class="sub-note">Direct to guest phone</span></td>
-            <td><span class="check-yes">✅ Yes</span><span class="sub-note">Direct to guest phone</span></td>
+            <td>Local QR Phone Downloads + Auto Cloud Sync</td>
+            <td><span class="check-part">⚡ Online QR</span><span class="sub-note">Cloud gallery + Google Drive</span></td>
+            <td><span class="check-yes">✅ Offline QR + Sync</span><span class="sub-note">Zero internet + syncs later</span></td>
+            <td><span class="check-yes">✅ Offline QR + Sync</span><span class="sub-note">Zero internet + syncs later</span></td>
+            <td><span class="check-yes">✅ Offline QR + AirDrop</span><span class="sub-note">Zero internet + syncs later</span></td>
           </tr>
           <tr>
-            <td>Create Wi-Fi Without a Router</td>
+            <td>Create Wi-Fi Hotspot Without a Router</td>
             <td><span class="check-no">❌ No</span></td>
             <td><span class="check-yes">✅ Windows Hotspot</span><span class="sub-note">1-click laptop hotspot</span></td>
-            <td><span class="check-yes">✅ Tablet Hotspot</span><span class="sub-note">Built-in Wi-Fi sharing</span></td>
+            <td><span class="check-yes">✅ Tablet Hotspot</span><span class="sub-note">Wi-Fi Direct / hotspot</span></td>
+            <td><span class="check-yes">✅ Personal Hotspot</span><span class="sub-note">Local LAN server built in</span></td>
           </tr>
           <tr>
-            <td>Second Screen for Guests (TV / Monitor)</td>
+            <td>Tablet Guest Screen + Bridge Camera (to Laptop)</td>
+            <td><span class="check-no">❌ No</span></td>
+            <td><span class="check-yes">✅ Native Host</span><span class="sub-note">Pairs via QR, USB-C or Wi-Fi (0 extra slots)</span></td>
+            <td><span class="check-yes">✅ Native Bridge Mode</span><span class="sub-note">Guest touch + Camera2 (~22 fps) + TTS audio</span></td>
+            <td><span class="check-part">⚡ USB Virtual Cam / Safari</span><span class="sub-note">Via Camo/Iriun USB or Safari guest link</span></td>
+          </tr>
+          <tr>
+            <td>Second Screen for Guests (TV / HDMI Monitor)</td>
             <td><span class="check-part">⚡ Browser Pop-up</span></td>
-            <td><span class="check-yes">✅ Fullscreen on 2nd Screen</span><span class="sub-note">Plug in HDMI cable</span></td>
-            <td><span class="check-no">❌ No</span><span class="sub-note">Tablet screen only</span></td>
+            <td><span class="check-yes">✅ Fullscreen on 2nd Screen</span><span class="sub-note">Mirrors 2-step &amp; Attract screens</span></td>
+            <td><span class="check-part">⚡ External Display / Cast</span></td>
+            <td><span class="check-part">⚡ AirPlay / USB-C Display</span></td>
           </tr>
 
-          <tr class="cat-row"><td colspan="4">Cameras &amp; Printing</td></tr>
+          <tr class="cat-row"><td colspan="5">Cameras &amp; 360 Video Rig</td></tr>
           <tr>
-            <td>DSLR &amp; Mirrorless Cameras (Canon, Nikon, Sony)</td>
-            <td><span class="check-part">⚡ Supported (USB)</span><span class="sub-note">Chrome browser only</span></td>
-            <td><span class="check-yes">✅ Plug &amp; Play (USB)</span><span class="sub-note">Real shutter &amp; flash sync</span></td>
-            <td><span class="check-yes">✅ Supported (USB)</span><span class="sub-note">Connect with adapter cable</span></td>
+            <td>DSLR, Mirrorless &amp; Insta360 Ace Pro (USB)</td>
+            <td><span class="check-part">⚡ Chrome WebUSB</span><span class="sub-note">Browser-supported DSLRs</span></td>
+            <td><span class="check-yes">✅ Plug &amp; Play (USB)</span><span class="sub-note">Canon, Nikon, Sony Alpha, Insta360, X-sync</span></td>
+            <td><span class="check-yes">✅ USB OTG Adapter</span><span class="sub-note">Canon, Nikon, Sony + UVC webcams</span></td>
+            <td><span class="check-part">⚡ UVC USB-C Capture</span><span class="sub-note">Smooth 4:3 GPU A16 pipeline</span></td>
           </tr>
           <tr>
-            <td>Photo Printers (DNP, HiTi, Selphy, Epson)</td>
+            <td>Free iOS 360 Arm Camera Companion</td>
+            <td><span class="check-no">❌ Companion is iOS</span></td>
+            <td><span class="check-yes">✅ Pairs With Laptop 360</span><span class="sub-note">Auto-receives clips over hotspot</span></td>
+            <td><span class="check-no">❌ Pairs With Desktop 360</span></td>
+            <td><span class="check-yes">✅ Native App Built-in</span><span class="sub-note">CoreMotion gyro, 0.5&times; 60/120fps</span></td>
+          </tr>
+          <tr>
+            <td>360 Spin Video Studio (Add-on +₱1,500)</td>
+            <td><span class="check-no">❌ No</span></td>
+            <td><span class="check-yes">✅ Full Studio + Record 360</span><span class="sub-note">DSLR/GoPro/HDMI, 30 presets, Beat-Drop, 3D LUTs, TV Wall</span></td>
+            <td><span class="check-no">❌ Desktop Add-on Only</span></td>
+            <td><span class="check-part">⚡ 360 Arm Camera Sender</span><span class="sub-note">Streams clips to Desktop 360 Desk</span></td>
+          </tr>
+
+          <tr class="cat-row"><td colspan="5">Printers, Split Routing &amp; Print Control</td></tr>
+          <tr>
+            <td>Photo Printers (DNP, HiTi, Citizen, Epson, Canon G)</td>
             <td><span class="check-part">⚡ Via Print Assistant</span></td>
-            <td><span class="check-yes">✅ Automatic Silent Printing</span><span class="sub-note">Instant cuts, no pop-ups</span></td>
-            <td><span class="check-part">⚡ Wi-Fi Printers</span><span class="sub-note">Wireless photo printers</span></td>
+            <td><span class="check-yes">✅ Silent Auto-Print + USB SELPHY</span><span class="sub-note">Driverless SELPHY, 0.5mm edge cal, L8050 IPP</span></td>
+            <td><span class="check-yes">✅ Wi-Fi IPP / WCM</span><span class="sub-note">Epson, Canon, DNP WCM + Print Station</span></td>
+            <td><span class="check-yes">✅ AirPrint + Direct IPP</span><span class="sub-note">Epson L8050 non-AirPrint + Print Station</span></td>
+          </tr>
+          <tr>
+            <td>Secondary 2&times;6 Split Auto-Cut Printer</td>
+            <td><span class="check-no">❌ Single queue</span></td>
+            <td><span class="check-yes">✅ Dedicated 2&times;6 Printer</span><span class="sub-note">Auto routes 2-up strips to HiTi/DNP cut printer</span></td>
+            <td><span class="check-part">⚡ Via Print Station</span></td>
+            <td><span class="check-part">⚡ Via Print Station</span></td>
           </tr>
           <tr>
             <td>Thermal Receipt Printers (58mm &amp; 80mm rolls)</td>
-            <td><span class="check-part">⚡ Via Bluetooth</span></td>
-            <td><span class="check-part">⚡ Via USB or Bluetooth</span></td>
-            <td><span class="check-yes">✅ Direct Bluetooth</span><span class="sub-note">Instant wireless pairing</span></td>
+            <td><span class="check-part">⚡ Via Bluetooth / Helper</span></td>
+            <td><span class="check-yes">✅ USB &amp; Bluetooth</span></td>
+            <td><span class="check-yes">✅ Direct Bluetooth</span><span class="sub-note">Instant ink-free pairing</span></td>
+            <td><span class="check-part">⚡ Via Print Station</span></td>
+          </tr>
+          <tr>
+            <td>Browse &amp; Reprint Pop-Up + Arrange &amp; Print</td>
+            <td><span class="check-yes">✅ Session Reprint</span></td>
+            <td><span class="check-yes">✅ Full Event Grid + Layouts</span><span class="sub-note">Queue manager, multi-tile sheet builder</span></td>
+            <td><span class="check-yes">✅ Session Grid + Reprint</span></td>
+            <td><span class="check-yes">✅ Session Grid + Reprint</span></td>
           </tr>
 
-          <tr class="cat-row"><td colspan="4">Interactive Features &amp; Creative Fun</td></tr>
+          <tr class="cat-row"><td colspan="5">Frames, Overlays, B&amp;W Split &amp; Creative FX</td></tr>
           <tr>
-            <td>Voice Countdown ("3, 2, 1… Smile!")</td>
-            <td><span class="check-yes">✅ Yes</span></td>
-            <td><span class="check-yes">✅ Yes</span></td>
-            <td><span class="check-yes">✅ Yes</span></td>
+            <td>Custom Frames (100 / 40 spots), PNG Overlays &amp; Edit Layout</td>
+            <td><span class="check-yes">✅ Full Support</span><span class="sub-note">White-doodle protection, Canva knockout</span></td>
+            <td><span class="check-yes">✅ Full Support + HD 3600px</span><span class="sub-note">Per-frame &amp; sheet overlays, Edit Layout</span></td>
+            <td><span class="check-yes">✅ Full Support</span><span class="sub-note">Per-frame overlays, 4-in-1 auto-section</span></td>
+            <td><span class="check-yes">✅ Full Support</span><span class="sub-note">Per-frame &amp; sheet overlays, Edit Layout</span></td>
           </tr>
           <tr>
-            <td>Roving Photographer (Phone to Print)</td>
-            <td><span class="check-no">❌ No</span></td>
-            <td><span class="check-yes">✅ Yes (Built-in)</span><span class="sub-note">Walk around venue &amp; print</span></td>
-            <td><span class="check-no">❌ No</span></td>
+            <td>B&amp;W vs Coloured Split &amp; Pre-Categorized Printers</td>
+            <td><span class="check-yes">✅ Optional 2-Step Picker</span><span class="sub-note">Auto-tags frames B&amp;W/Colour/Either</span></td>
+            <td><span class="check-yes">✅ 2-Step + Split Printers</span><span class="sub-note">Routes B&amp;W thermal vs Colour photo per device</span></td>
+            <td><span class="check-yes">✅ 2-Step + Split Printers</span><span class="sub-note">BT thermal + Wi-Fi colour routing</span></td>
+            <td><span class="check-yes">✅ 2-Step + Split Printers</span><span class="sub-note">Mirrors &amp; routes via Print Station/IPP</span></td>
           </tr>
           <tr>
-            <td>Video Guestbook with Audio</td>
-            <td><span class="check-yes">✅ Yes</span></td>
-            <td><span class="check-yes">✅ Yes</span></td>
-            <td><span class="check-yes">✅ Yes</span></td>
+            <td>Green Screen, Filters, Sticker Packs &amp; Countdown Sounds</td>
+            <td><span class="check-yes">✅ Yes (EN/TL Voice)</span></td>
+            <td><span class="check-yes">✅ Yes (EN/TL + Bridge TTS)</span></td>
+            <td><span class="check-yes">✅ Yes (EN/TL Voice)</span></td>
+            <td><span class="check-yes">✅ Yes (EN/TL Voice)</span></td>
           </tr>
           <tr>
-            <td>360 Spin Video Booth (BETA)</td>
-            <td><span class="check-no">❌ No</span></td>
-            <td><span class="check-yes">✅ Optional Add-on (+₱1,500)</span><span class="sub-note">Full 360 studio: slow-mo, music &amp; 40 overlays</span></td>
-            <td><span class="check-no">❌ No</span></td>
+            <td>GIF, Boomerang, Final Shots Slideshow &amp; Flipbook</td>
+            <td><span class="check-yes">✅ GIF + Slideshow + Flipbook</span></td>
+            <td><span class="check-yes">✅ GIF + Slideshow + Flipbook</span></td>
+            <td><span class="check-yes">✅ GIF + Slideshow</span></td>
+            <td><span class="check-yes">✅ GIF + Slideshow</span></td>
           </tr>
           <tr>
-            <td>Pay with QR (GCash, Maya, ShopeePay)</td>
-            <td><span class="check-yes">✅ Live Payment QR</span></td>
-            <td><span class="check-no">❌ Voucher Codes Only</span></td>
-            <td><span class="check-no">❌ Voucher Codes Only</span></td>
+            <td>XL Banners &amp; Long Strips (up to 48")</td>
+            <td><span class="check-part">⚡ File Export / Browser</span></td>
+            <td><span class="check-yes">✅ Direct Roll / Wide Print</span></td>
+            <td><span class="check-part">⚡ Export + Compatible Wi-Fi</span></td>
+            <td><span class="check-part">⚡ Export + Compatible Wi-Fi</span></td>
+          </tr>
+
+          <tr class="cat-row"><td colspan="5">Payments, Cash, Kiosk &amp; Specialty Modes</td></tr>
+          <tr>
+            <td>PayMongo GCash/Maya QR &amp; Self-Hosted Worker</td>
+            <td><span class="check-yes">✅ Live QR + Worker</span></td>
+            <td><span class="check-part">⚡ Offline Vouchers / Cash</span></td>
+            <td><span class="check-part">⚡ Offline Vouchers / Cash</span></td>
+            <td><span class="check-part">⚡ Offline Vouchers / HID</span></td>
           </tr>
           <tr>
-            <td>Lock Booth (Prevent touching settings)</td>
-            <td><span class="check-yes">✅ PIN Passcode</span></td>
-            <td><span class="check-yes">✅ PIN Passcode</span></td>
-            <td><span class="check-yes">✅ Full Tablet Lockdown</span><span class="sub-note">Screen keep-awake &amp; lock</span></td>
+            <td>Offline ESP32 Cash Acceptor (Coins &amp; Bills)</td>
+            <td><span class="check-part">⚡ Keyboard HID</span></td>
+            <td><span class="check-yes">✅ USB Serial + Keyboard HID</span></td>
+            <td><span class="check-yes">✅ Bluetooth BLE + USB + HID</span></td>
+            <td><span class="check-part">⚡ Keyboard HID</span></td>
+          </tr>
+          <tr>
+            <td>Multiple Payment Tiers + Linked Vouchers/Printers</td>
+            <td><span class="check-yes">✅ Unlimited Options</span><span class="sub-note">Thermal, Coloured, Softcopy-only tiers</span></td>
+            <td><span class="check-yes">✅ Unlimited Options + Printers</span></td>
+            <td><span class="check-yes">✅ Unlimited Options + Printers</span></td>
+            <td><span class="check-yes">✅ Unlimited Options</span></td>
+          </tr>
+          <tr>
+            <td>Trading Card &amp; Certificate Booths</td>
+            <td><span class="check-yes">✅ Yes (Holo + Dual-Sided)</span></td>
+            <td><span class="check-yes">✅ Yes (Holo + Dual-Sided)</span></td>
+            <td><span class="check-yes">✅ Yes (Holo + Dual-Sided)</span></td>
+            <td><span class="check-yes">✅ Yes (Holo + Dual-Sided)</span></td>
+          </tr>
+          <tr>
+            <td>Photoman Studio, Roving DSLR Bridge &amp; Rush ID</td>
+            <td><span class="check-part">⚡ Template Editor Only</span></td>
+            <td><span class="check-yes">✅ Full Suite + Phone Control</span><span class="sub-note">Auto-frame, Roving Bridge, Rush ID Station</span></td>
+            <td><span class="check-yes">✅ Companion + Rush ID Client</span><span class="sub-note">Send roving shots or print via host</span></td>
+            <td><span class="check-part">⚡ Roving Client / Web Desk</span></td>
+          </tr>
+          <tr>
+            <td>Kiosk Lock, Attract Modes &amp; Power Saver</td>
+            <td><span class="check-yes">✅ PIN + 3 Attract Modes</span></td>
+            <td><span class="check-yes">✅ PIN + Fullscreen Kiosk</span></td>
+            <td><span class="check-yes">✅ PIN + Android App Pinning</span></td>
+            <td><span class="check-yes">✅ PIN + Guided Access Ready</span></td>
           </tr>
         </tbody>
       </table>
@@ -785,7 +900,7 @@
 <footer class="site-footer">
   <div class="wrap">
     <p>photobooth4u &bull; All-in-One Professional Photobooth System</p>
-    <p>Try the 30-Minute Free Trial<span id="trialCodeSpan" hidden></span> at <a href="https://photobooth4u.netlify.app">photobooth4u.netlify.app</a></p>
+    <p>Try the Free Trial<span id="trialCodeSpan" hidden></span> at <a href="https://photobooth4u.netlify.app">photobooth4u.netlify.app</a></p>
   </div>
 </footer>
 

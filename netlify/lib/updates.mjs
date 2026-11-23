@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.99', date: '2026-11-23' },
   { version: '1.1.98', date: '2026-11-23' },
   { version: '1.1.97', date: '2026-11-23' },
   { version: '1.1.96', date: '2026-11-22' },
@@ -241,7 +242,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.20', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.20/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.21', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.21/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -294,6 +295,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-23', title: 'Desktop 1.1.99, Android 1.2.04, iPad 1.1.21 & Website: Freeform Multi-Overlays in Layout, Remove-All Overlays, and Click-to-Slice Edit Layout', for: ['website', 'app'], app: '1.1.99',
+    items: [
+      '🧩 Sticker-style freeform overlays in 2 · Layout (Your frames & Frame collage): uploaded PNG overlays now start small with their natural aspect ratio so you can add multiple overlays, drag to move, resize from corners or slider, rotate from the top handle or slider, Duplicate to copy onto another strip, bring to front, or toggle Fit full frame — plus Canva Free outer-white knockout that keeps white inside outlines.',
+      '🧹 Apply & Remove overlays across all frames: alongside Apply to all frames, a Remove overlays from all frames button lets you clear overlays across every uploaded frame in one step.',
+      '📐 On-demand Edit layout slicing: uploaded frames stay whole by default and only slice into cuttable sections when you explicitly click Edit layout (with Clear sections to return to a whole frame anytime).'
+    ]
+  },
   {
     date: '2026-11-23', title: 'Android 1.2.03 & Website: Web Trial Guest Payment Preview, Downloadable ESP32 & Cloudflare PayMongo Files, and Custom-Domain Android Fix', for: ['website', 'app'],
     items: [

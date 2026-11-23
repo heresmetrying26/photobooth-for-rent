@@ -23188,7 +23188,10 @@
             <details id="wifiDiagPanel" style="display:none;margin:0 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#faf7f2;">
               <summary style="font-weight:700;cursor:pointer;">Wi-Fi / Wi-Fi Direct Printer Test (offline-ready)</summary>
               <p class="panel-hint" style="margin:6px 0 8px;">Tests ports 631 &amp; 9100, reads full IPP attributes, runs a <b>zero-paper</b> Validate-Job matrix, and prints a 1-sheet sharpness + borderless ruler test. Works offline on Wi-Fi Direct and saves the report so you can copy it after reconnecting.</p>
-              <p class="panel-hint" id="wdNetInfo" style="margin:0 0 8px;font-family:monospace;font-size:12px;"></p>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px;">
+                <p class="panel-hint" id="wdNetInfo" style="margin:0;flex:1;min-width:180px;font-family:monospace;font-size:12px;"></p>
+                <button type="button" class="action-btn" id="wdRefreshNetBtn" style="width:auto;margin:0;padding:6px 10px;font-size:12px;">Refresh Wi-Fi</button>
+              </div>
               <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px;">
                 <input type="text" id="wdIp" class="printer-input" placeholder="Printer IP (e.g. 192.168.223.1)" style="flex:1;min-width:170px;margin:0;">
                 <button type="button" class="action-btn" id="wdWfdBtn" style="width:auto;margin:0;padding:8px 10px;font-size:12px;">Use 192.168.223.1 (Epson Wi-Fi Direct)</button>
@@ -44660,6 +44663,33 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (t) t.addEventListener('click', wifiTestPrint);
         const ps = document.getElementById('wifiPrinterSettingsBtn');
         if (ps) ps.addEventListener('click', () => { try { window.__PBPrint.openPrintSettings(); } catch (e) { } });
+        async function copyReportText(txt) {
+          const s = String(txt || '');
+          if (!s) return false;
+          try {
+            if (window.__PBNet && typeof window.__PBNet.copyText === 'function' && window.__PBNet.copyText(s)) return true;
+          } catch (e) { }
+          try {
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+              await navigator.clipboard.writeText(s);
+              return true;
+            }
+          } catch (e) { }
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = s;
+            ta.setAttribute('readonly', '');
+            ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            ta.setSelectionRange(0, s.length);
+            const ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (ok) return true;
+          } catch (e) { }
+          return false;
+        }
         const rb = document.getElementById('wifiPrinterReportBtn');
         if (rb) rb.addEventListener('click', async () => {
           const box = document.getElementById('wifiPrinterReport');
@@ -44672,14 +44702,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             }
           } catch (e) { txt = 'Could not read the printer report: ' + (e.message || e); }
           if (box) { box.textContent = txt; box.style.display = 'block'; }
-          // Copied for pasting into a message; if the tablet will not copy, the text stays on screen to take a screenshot of.
-          try { await navigator.clipboard.writeText(txt); showToast('Printer report copied. Paste it into your message to support.', 4500); }
-          catch (e) { showToast('Take a screenshot of the printer report and send it to support.', 4500); }
+          // Copied for pasting into a message; uses native Android ClipboardManager + execCommand fallback so it works offline.
+          if (await copyReportText(txt)) showToast('Printer report copied. Paste it into your message to support.', 4500);
+          else showToast('Take a screenshot of the printer report and send it to support.', 4500);
         });
         // ---- In-app Wi-Fi / Wi-Fi Direct Printer Tester (offline-ready) ----
         (function () {
           const wd = window._wifiDiag;
           if (!wd) return;
+          const wdPanel = document.getElementById('wifiDiagPanel');
+          const wdNet = document.getElementById('wdNetInfo');
+          const refreshNetBtn = document.getElementById('wdRefreshNetBtn');
           const ipEl = document.getElementById('wdIp');
           const wfdBtn = document.getElementById('wdWfdBtn');
           const probeBtn = document.getElementById('wdProbeBtn');
@@ -44697,6 +44730,29 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             opt.value = pr.id;
             opt.textContent = pr.label;
             presetEl.appendChild(opt);
+          });
+          const refreshWdNet = (autoSwitchIp) => {
+            const info = wd.networkInfo();
+            if (!info) return;
+            if (wdNet) {
+              const ns = (info.nets || []).map(n => (n.iface || 'wifi') + ' ' + n.ip + '/' + n.prefix + (n.wifiDirectHint ? ' [Wi-Fi Direct]' : '')).join(' · ');
+              wdNet.textContent = 'Tablet Wi-Fi: ' + (ns || 'not connected') + (info.wifiDirectDetected ? ' — Epson Wi-Fi Direct detected (192.168.223.1)' : '');
+            }
+            if (ipEl) {
+              const cur = (ipEl.value || '').trim();
+              if (!cur) {
+                if (info.wifiDirectDetected) ipEl.value = '192.168.223.1';
+                else if (wifiPrinter && !wifiPrinter.usb && !wifiPrinter.dialog && wifiPrinter.ip) ipEl.value = wifiPrinter.ip;
+                else if (info.suggestedIps && info.suggestedIps.length) ipEl.value = info.suggestedIps[0];
+              } else if (autoSwitchIp && info.wifiDirectDetected && !/^192\.168\.223\./.test(cur)) {
+                ipEl.value = '192.168.223.1';
+              }
+            }
+          };
+          if (wdPanel) wdPanel.addEventListener('toggle', () => { if (wdPanel.open) refreshWdNet(true); });
+          if (refreshNetBtn) refreshNetBtn.addEventListener('click', () => {
+            refreshWdNet(true);
+            showToast('Wi-Fi status refreshed.', 2500);
           });
           let lastProbe = null, printLog = [];
           const showReport = (txt) => {
@@ -44722,11 +44778,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                 String(r.label || r.id).replace(/</g, '&lt;') + '</b><br><span style="opacity:.9;">' + String(detail).replace(/</g, '&lt;') + '</span></div>';
             }).join('');
           };
-          if (wfdBtn && ipEl) wfdBtn.addEventListener('click', () => { ipEl.value = '192.168.223.1'; });
+          if (wfdBtn && ipEl) wfdBtn.addEventListener('click', () => { ipEl.value = '192.168.223.1'; refreshWdNet(false); });
           probeBtn.addEventListener('click', async () => {
             const ip = (ipEl && ipEl.value || '').trim();
             if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) { showToast('Enter a valid printer IP address first (e.g. 192.168.223.1).', 3500); return; }
             probeBtn.disabled = true;
+            refreshWdNet(false);
             if (statusEl) statusEl.textContent = 'Checking ports, IPP attributes & Validate-Job matrix (zero paper)…';
             try {
               lastProbe = await wd.runProbe(ip, null);
@@ -44766,7 +44823,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               printLog.push(res);
               showReport(wd.formatReport(lastProbe, printLog));
               const msg = res.ok
-                ? ('Sent (' + preset.shortLabel + '). Check the printed sheet & send a photo of all 4 edges + Copy report.')
+                ? ('Sent (' + preset.shortLabel + '). Check the printed sheet & send a photo of all 4 edges + Copy test report.')
                 : ('Test print failed: ' + (res.error || res.ippName || 'rejected'));
               if (statusEl) statusEl.textContent = msg;
               showToast(msg, 6000);
@@ -44778,22 +44835,44 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (copyBtn) copyBtn.addEventListener('click', async () => {
             const txt = (reportEl && reportEl.textContent) || wd.loadLastReport();
             if (!txt) { showToast('Run step 1 first to generate a report.', 3000); return; }
-            try { await navigator.clipboard.writeText(txt); showToast('Diagnostic report copied. Paste it to support.', 4500); }
-            catch (e) { showToast('Copy blocked — screenshot the dark report box below.', 4500); }
+            if (await copyReportText(txt)) showToast('Full test report copied! Paste it into your chat with support.', 4500);
+            else showToast('Copy blocked — select and copy the text inside the dark report box below.', 5000);
           });
-          if (sendBtn) sendBtn.addEventListener('click', () => {
+          if (sendBtn) sendBtn.addEventListener('click', async () => {
             const txt = (reportEl && reportEl.textContent) || wd.loadLastReport();
             if (!txt) { showToast('Run step 1 first to generate a report.', 3000); return; }
             const model = (lastProbe && lastProbe.ipp && lastProbe.ipp.attrs && lastProbe.ipp.attrs['printer-make-and-model'] && lastProbe.ipp.attrs['printer-make-and-model'][0]) || (wifiPrinter && wifiPrinter.name) || 'Wi-Fi Printer Diag';
+            let sent = false;
             try {
-              pdiagSend('print', { name: model, ip: (ipEl && ipEl.value) || '', ipp: true, info: txt.slice(0, 380) }, {
-                ok: false,
-                error: ((lastProbe && lastProbe.recommendation) || txt.slice(0, 190)),
-                paper: { name: '4x6-diag', w: 102, h: 152 },
-                opts: { quality: presetEl.value || 'diag', media: 'photo', borderless: true }
-              });
-              showToast('Report queued to support (make sure internet is connected, or tap Copy test report to paste in chat).', 5500);
-            } catch (e) { showToast('Use Copy test report to send it in chat.', 4000); }
+              const token = localStorage.getItem('pb_token'), deviceId = localStorage.getItem('pb_device');
+              if (token && deviceId) {
+                const ver = String((window.__PB && window.__PB.desktop && window.__PB.desktop.v) || (/PB4uAndroid\/?([\d.]*)/.exec(navigator.userAgent || '') || [])[1] || '');
+                const r = await fetch('/api/printerdiag', {
+                  method: 'POST',
+                  headers: { 'content-type': 'application/json' },
+                  body: JSON.stringify({
+                    token: token,
+                    deviceId: deviceId,
+                    kind: 'print',
+                    printer: { name: model, vid: 0, pid: 0, info: txt.slice(0, 380), model: '', flags: { ipp: true, borderless: true } },
+                    paper: { name: '4x6-diag', w: 102, h: 152 },
+                    opts: { quality: presetEl.value || 'diag', media: 'photo', borderless: true },
+                    ok: false,
+                    error: ((lastProbe && lastProbe.recommendation) || txt.slice(0, 190)),
+                    app: ver
+                  })
+                });
+                sent = !!(r && r.ok);
+              }
+            } catch (e) { }
+            if (sent) {
+              showToast('Report summary sent to support ✓ You can also tap Copy test report to paste the full log in chat.', 5500);
+            } else {
+              const copied = await copyReportText(txt);
+              showToast(copied
+                ? 'Tablet is offline (or offline-only) — full report copied to clipboard! Reconnect to internet and paste it in chat.'
+                : 'No internet right now — reconnect to Wi-Fi/data, then tap Copy test report to paste it in chat.', 6500);
+            }
           });
         })();
         [['wifiCalM', 'm', parseInt], ['wifiCalC', 'c', parseInt], ['wifiCalK', 'k', parseInt], ['wifiCalN', 'n', parseInt], ['wifiCalG', 'g', parseFloat]].forEach(([id, key, parse]) => {

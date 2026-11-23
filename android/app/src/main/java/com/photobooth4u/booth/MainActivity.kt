@@ -973,8 +973,8 @@ class MainActivity : AppCompatActivity() {
             host.contains("script.google.com") || host.contains("drive.google.com")
         ) {
             // When internet is available, allow /api/setup (for syncing setup, profiles, themes and assets),
-            // /api/camdiag and /api/updates. Vouchers (/api/pay) and print counts (/api/prints) stay separate per device.
-            if (isNetworkAvailable() && (path.startsWith("/api/setup") || path.startsWith("/api/camdiag") || path.startsWith("/api/updates"))) {
+            // /api/camdiag, /api/printerdiag and /api/updates. Vouchers (/api/pay) and print counts (/api/prints) stay separate per device.
+            if (isNetworkAvailable() && (path.startsWith("/api/setup") || path.startsWith("/api/camdiag") || path.startsWith("/api/printerdiag") || path.startsWith("/api/updates"))) {
                 return null
             }
             return webResponse(

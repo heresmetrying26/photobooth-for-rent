@@ -292,10 +292,12 @@ await test('Android Kotlin, iOS Swift, assembled booth.html, and /printer-test/ 
   };
 
   const netKt = readFileSync(join(ROOT, 'android/app/src/main/java/com/photobooth4u/booth/NetPrintBridge.kt'), 'utf8');
+  const mainKt = readFileSync(join(ROOT, 'android/app/src/main/java/com/photobooth4u/booth/MainActivity.kt'), 'utf8');
   const escKt = readFileSync(join(ROOT, 'android/app/src/main/java/com/photobooth4u/booth/EscprJob.kt'), 'utf8');
   const camKt = readFileSync(join(ROOT, 'android/app/src/main/java/com/photobooth4u/booth/UsbCameraHelper.kt'), 'utf8');
   const iosSw = readFileSync(join(ROOT, 'ios/photobooth4u/ViewController.swift'), 'utf8');
   checkBraces('NetPrintBridge.kt', netKt);
+  checkBraces('MainActivity.kt', mainKt);
   checkBraces('EscprJob.kt', escKt);
   checkBraces('UsbCameraHelper.kt', camKt);
   checkBraces('ViewController.swift', iosSw);
@@ -304,14 +306,15 @@ await test('Android Kotlin, iOS Swift, assembled booth.html, and /printer-test/ 
   assert.ok(/targets\.add\(base or 1L\)/.test(netKt), 'Android sweep probes .1 Wi-Fi Direct gateway first');
   assert.ok(/s\.bind\(InetSocketAddress\(n\.addr, 0\)\)/.test(netKt), 'Android binds P2P Wi-Fi Direct local IP');
   assert.ok(/baseStd\.add\(IppAttempt\(true, true, "", ""\)\)/.test(netKt), 'Android drops print-scaling in fallback while keeping media-col + opts');
-  assert.ok(/fun diagRunProbe/.test(netKt) && /fun diagRunPrint/.test(netKt) && /fun diagNetwork/.test(netKt), 'Android JS bridge exposes diag methods');
+  assert.ok(/fun diagRunProbe/.test(netKt) && /fun diagRunPrint/.test(netKt) && /fun diagNetwork/.test(netKt) && /fun copyText/.test(netKt), 'Android JS bridge exposes diag & native clipboard methods');
+  assert.ok(/path\.startsWith\("\/api\/printerdiag"\)/.test(mainKt), 'MainActivity allows /api/printerdiag through when online');
   assert.ok(/watchIppJob\(e, path, jobId\)/.test(netKt), 'Android polls Get-Job-Attributes after Print-Job');
   assert.ok(/MEDIA_EPSON_GLOSSY = 0x34/.test(escKt) && /fun buildWithConfig/.test(escKt), 'EscprJob supports L8050 720dpi 0x34 q=2');
   assert.ok(/path == "\/printer\/diag\/probe"/.test(camKt) && /path == "\/printer\/diag\/print"/.test(camKt), 'Android 17321 helper exposes /printer/diag/*');
   assert.ok(/w\.member\("media-type"\)/.test(iosSw) && /\(true, true, ""\)/.test(iosSw), 'iOS puts media-type inside media-col and drops scaling in fallback');
 
   const html = assemble().html;
-  assert.ok(html.includes('id="wifiDiagPanel"') && html.includes('window._wifiDiag'), 'booth.html includes in-app Wi-Fi printer tester');
+  assert.ok(html.includes('id="wifiDiagPanel"') && html.includes('id="wdRefreshNetBtn"') && html.includes('copyReportText') && html.includes('window._wifiDiag'), 'booth.html includes in-app Wi-Fi printer tester with clipboard & Wi-Fi refresh');
   const webDiag = readFileSync(join(ROOT, 'public/printer-test/index.html'), 'utf8');
   const swJs = readFileSync(join(ROOT, 'public/printer-test/sw.js'), 'utf8');
   assert.ok(webDiag.includes('/printer/diag/probe') && webDiag.includes('/printer/diag/print') && webDiag.includes('192.168.223.1'), '/printer-test/ page wired to helper diag routes');

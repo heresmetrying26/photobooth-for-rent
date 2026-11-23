@@ -649,12 +649,29 @@
 
   $('copyBtn').addEventListener('click', async () => {
     const txt = $('reportPre').textContent;
+    let copied = false;
     try {
-      await navigator.clipboard.writeText(txt);
-      showMsg('Test report copied! Reconnect to internet if needed and paste it to support.', 'ok');
-    } catch (e) {
-      showMsg('Clipboard blocked — tap Download .txt or select and copy from the black box below.', 'info');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(txt);
+        copied = true;
+      }
+    } catch (e) {}
+    if (!copied) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = txt;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ta.setSelectionRange(0, txt.length);
+        copied = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch (e) {}
     }
+    if (copied) showMsg('Test report copied! Reconnect to internet if needed and paste it to support.', 'ok');
+    else showMsg('Clipboard blocked — tap Download .txt or select and copy from the black box below.', 'info');
   });
 
   $('dlBtn').addEventListener('click', () => {

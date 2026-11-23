@@ -2780,6 +2780,30 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     @JavascriptInterface
     fun diagNetwork(): String = diagNetworkJson().toString()
 
+    /** Native Android clipboard write so Copy Report always works offline in WebView even when navigator.clipboard is blocked. */
+    @JavascriptInterface
+    fun copyText(text: String): Boolean {
+        val ok = java.util.concurrent.atomic.AtomicBoolean(false)
+        val latch = CountDownLatch(1)
+        try {
+            activity.runOnUiThread {
+                try {
+                    val cm = activity.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                    if (cm != null) {
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("photobooth4u", text))
+                        ok.set(true)
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "copyText failed", e)
+                } finally {
+                    latch.countDown()
+                }
+            }
+            latch.await(1500, TimeUnit.MILLISECONDS)
+        } catch (_: Exception) {}
+        return ok.get()
+    }
+
     /** Quick discovery helper for 127.0.0.1:17321 /printer/discover (probes gateway .1 + any supplied IPs immediately). */
     fun discoverForHelper(extraIps: List<String> = emptyList()): JSONObject {
         nets = localNets(); netsAt = System.currentTimeMillis()

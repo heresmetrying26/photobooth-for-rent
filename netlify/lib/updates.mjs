@@ -297,6 +297,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-23', title: 'Android 1.2.06 & Website: Seamless Offline Wi-Fi / Wi-Fi Direct Printer Tester Copy & Live Refresh', for: ['website'],
+    items: [
+      '📋 Native Android clipboard copy for Printer Report & Wi-Fi / Wi-Fi Direct Printer Test so Copy test report works reliably offline in Android WebView.',
+      '📶 Live Wi-Fi / Wi-Fi Direct status refresh when opening the tester drawer (or tapping Refresh Wi-Fi), automatically detecting Epson Wi-Fi Direct (192.168.223.1).',
+      '📡 Enabled online /api/printerdiag uploads from the Android offline app so Send report to support works whenever internet is connected (and automatically copies the full report if offline).'
+    ]
+  },
+  {
     date: '2026-11-23', title: 'Desktop 1.1.100, Android 1.2.05, iPad 1.1.22 & Website: iPad Camera, USB DSLR & Idle Video Performance Optimizations', for: ['website', 'app'], app: '1.1.100',
     items: [
       '⚡ Cooler, smoother iPad camera & USB DSLR live preview: pauses unseen 30 fps Metal filter shaders while the Idle video or Branded card welcome screen is showing, caches CoreImage filter chains with zero per-frame filter allocations, adds HTTP/1.1 keep-alive + zero-copy writev() to the iPad local camera bridge, and eliminates redundant captureStream(30) / 2D canvas blits on iPad USB DSLRs.',

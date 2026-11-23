@@ -297,6 +297,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-23', title: 'Android 1.2.07 & Website: Multi-Layout Selection on Uploaded Frames', for: ['website'],
+    items: [
+      '✅ Fixed uploaded frames ("Your frames") so multiple frames and built-in layouts can be tapped and ticked together in Setup → 3. Layout on Android tablets and phones.',
+      '👆 Larger touch-friendly tick targets and clear highlight borders on all ticked cards; tapping a frame card or tick automatically builds up multiple guest choices (and lets you untick the active main layout cleanly).',
+      '💾 Preserved ticked uploaded frames across restarts and uploads (uploading multiple frames automatically enables guest layout choice), plus smoother Android preview touch handling.'
+    ]
+  },
+  {
     date: '2026-11-23', title: 'Roving DSLR Bridge v1.1.2 (Android): Offline Disk Queue & Automatic Upload on Reconnect', for: ['website'],
     items: [
       '📦 Offline disk queue: photos shot while out of Wi-Fi range are saved safely in phone storage (`rove_pending`) instead of failing, and stay queued even if the app closes.',

@@ -9363,6 +9363,8 @@
 
     .layout-btn {
       position: relative;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .layout-btn .lt-tick {
@@ -9370,20 +9372,39 @@
       position: absolute;
       top: 5px;
       right: 5px;
-      width: 26px;
-      height: 26px;
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
       border: 2px solid #CFC6B8;
       background: #fff;
       color: transparent;
-      font: 800 14px/22px 'Manrope', sans-serif;
+      font: 800 15px/26px 'Manrope', sans-serif;
       text-align: center;
-      z-index: 2;
+      z-index: 3;
       cursor: pointer;
+      touch-action: manipulation;
     }
 
-    .guest-on .layout-btn .lt-tick {
+    /* Bigger invisible tap area around the tick (fingers on Android tablets/phones) */
+    .layout-btn .lt-tick::before {
+      content: '';
+      position: absolute;
+      inset: -10px;
+      border-radius: 50%;
+    }
+
+    .guest-on .layout-btn .lt-tick,
+    .lay-group-frames.has-multi .layout-btn .lt-tick {
       display: block;
+    }
+
+    .lay-group-frames.has-multi .layout-btn .lt-tick {
+      opacity: .72;
+    }
+
+    .guest-on .lay-group-frames.has-multi .layout-btn .lt-tick,
+    .lay-group-frames.has-multi .layout-btn .lt-tick.on {
+      opacity: 1;
     }
 
     .layout-btn .lt-tick.on {
@@ -9393,8 +9414,14 @@
     }
 
     .layout-btn .lt-tick.locked {
-      opacity: .6;
-      cursor: default;
+      opacity: .78;
+      cursor: pointer;
+    }
+
+    .guest-on .layout-btn.guest-picked:not(.active) {
+      border-color: var(--blue-deep);
+      background: rgba(37, 99, 235, 0.06);
+      color: var(--ink);
     }
 
     .layout-btn.lt-add {
@@ -37490,6 +37517,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const grid = document.createElement('div'); grid.className = 'layout-grid lg-many';
           if (g.frames) {
             wrap.classList.add('lay-group-frames');
+            wrap.classList.toggle('has-multi', !!(hasFrames && (myFrames.length > 1 || (typeof sheetPresets !== 'undefined' && sheetPresets.length > 1))));
             if (hasFrames) {
               myFrames.forEach(f => grid.appendChild(layoutCard('frame:' + f.id)));
               if (typeof sheetPresets !== 'undefined' && sheetPresets.length > 1) {
@@ -37518,13 +37546,23 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       const fdwInit = document.getElementById('frameDetailsWrap');
       if (fdwInit) fdwInit.addEventListener('click', (e) => e.stopPropagation());
       layoutGrid.addEventListener('click', (e) => {
-        const tk = e.target.closest('[data-tick]');
-        if (tk && layoutGrid.classList.contains('guest-on')) { e.preventDefault(); e.stopPropagation(); toggleGuestKey(tk.dataset.tick); return; }
-        const btn = e.target.closest('.layout-btn');
+        const tgtEl = e.target && e.target.nodeType === 1 ? e.target : (e.target && e.target.parentElement);
+        const tk = tgtEl && tgtEl.closest ? tgtEl.closest('[data-tick]') : null;
+        if (tk) { e.preventDefault(); e.stopPropagation(); toggleGuestKey(tk.dataset.tick); return; }
+        const btn = tgtEl && tgtEl.closest ? tgtEl.closest('.layout-btn') : null;
         if (!btn || btn.dataset.layout === 'add') return;           // "Add frame" opens the file picker by itself
         const key = btn.dataset.layout;
         layoutPicked = true;
+        // With "Let guests choose" on, tapping another card makes it the main layout but keeps the old main ticked,
+        // so tapping several cards (also on Android, where the small ✓ is hard to hit) builds up the guests' choices.
+        const prevMain = (guestPickOn && typeof mainLayoutKey === 'function') ? mainLayoutKey() : null;
+        const keepPrevMain = function () {
+          if (!prevMain || prevMain === key) return;
+          if (/^frame:/.test(prevMain)) { if (typeof framesStandAlongsideDesigns === 'function' && framesStandAlongsideDesigns()) return; const pid = prevMain.slice(6); if (frameById(pid) && chooseIds.indexOf(pid) < 0) chooseIds.push(pid); }
+          else if ((LAYOUT_DEFS[prevMain] || /^sheet:/.test(prevMain)) && guestLayoutSet.indexOf(prevMain) < 0) guestLayoutSet.push(prevMain);
+        };
         if (/^frame:/.test(key)) {
+          keepPrevMain();
           activeFrameId = key.slice(6); setupActiveFrameId = activeFrameId; spotEdit = null;
           if (typeof layoutEdit !== 'undefined') layoutEdit = null;
           if (typeof selFrameOv !== 'undefined') selFrameOv = -1;
@@ -37534,6 +37572,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return;
         }
         if (/^sheet:/.test(key)) {
+          keepPrevMain();
           loadSheetPreset(key.slice(6));
           if (typeof layoutEdit !== 'undefined') layoutEdit = null;
           if (typeof selFrameOv !== 'undefined') selFrameOv = -1;
@@ -37545,7 +37584,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         if (typeof layoutEdit !== 'undefined') layoutEdit = null;
         if (typeof selFrameOv !== 'undefined') selFrameOv = -1;
+        keepPrevMain();
         setupLayout = key;   // the renter's default layout (saved with the setup)
+        if (guestPickOn && guestLayoutSet.indexOf(key) < 0) guestLayoutSet.push(key);
         setLayout(key);
         if (typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
         if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
@@ -62837,10 +62878,11 @@ function renderTabletBridgeSetup(info) {
 
       function framesStandAlongsideDesigns() {
         if (!includeFramesInDesignPick || !(typeof myFrames !== 'undefined' && myFrames && myFrames.length)) return false;
-        if (guestDesigns.length >= 2) return true;
-        var sl = guestDesigns[0];
-        if (!sl) return setupLayout !== 'myframe' || (guestLayoutSet && guestLayoutSet.some(function (k) { return !/^frame:/.test(k); }));
-        return (sl.layout && sl.layout !== 'myframe') || (Array.isArray(sl.guestLayouts) && sl.guestLayouts.some(function (k) { return !/^frame:/.test(k); }));
+        // Only with 2+ designs do uploaded frames stand as their own top-level choices next to the designs.
+        // With a single design the frames are ordinary layout cards: they can be the main layout and be ticked
+        // (several at once) for guests to choose. Before, a stale design-1 layout ('strip') made this true with
+        // one design, so every tick on an uploaded frame was ignored and snapped back off (Android: "can't tick").
+        return guestDesigns.length >= 2;
       }
       function designSlotFallbackLayout(slot) {
         if (slot && slot.layout && slot.layout !== 'myframe' && LAYOUT_DEFS[slot.layout]) return slot.layout;
@@ -62855,7 +62897,7 @@ function renderTabletBridgeSetup(info) {
           st.bgAssetUrl = bgImageDataUrl;
         }
         var lay = setupLayout;
-        if (lay === 'myframe' && existing && existing.layout && existing.layout !== 'myframe') lay = existing.layout;
+        if (lay === 'myframe' && framesStandAlongsideDesigns() && existing && existing.layout && existing.layout !== 'myframe') lay = existing.layout;
         return {
           id: (existing && existing.id) || ('gd-' + Math.random().toString(36).slice(2, 8)),
           name: (existing && existing.name) || ('Design ' + (guestDesigns.length + 1)),
@@ -62970,7 +63012,7 @@ function renderTabletBridgeSetup(info) {
           bar.appendChild(add);
         }
         if (remBtn) remBtn.hidden = guestDesigns.length <= 1;
-        if (frRow) frRow.style.display = (typeof myFrames !== 'undefined' && myFrames && myFrames.length) ? '' : 'none';
+        if (frRow) frRow.style.display = (guestDesigns.length >= 2 && typeof myFrames !== 'undefined' && myFrames && myFrames.length) ? '' : 'none';
         if (frChk) frChk.checked = !!includeFramesInDesignPick;
       }
       (function () {
@@ -63021,7 +63063,7 @@ function renderTabletBridgeSetup(info) {
       }
       function isGuestKey(k) {
         if (k === mainLayoutKey()) return true;
-        if (/^frame:/.test(k)) return !framesStandAlongsideDesigns() && chooseIds.indexOf(k.slice(6)) >= 0;
+        if (/^frame:/.test(k)) return framesStandAlongsideDesigns() ? true : chooseIds.indexOf(k.slice(6)) >= 0;   // alongside designs: every frame is offered
         return guestLayoutSet.indexOf(k) >= 0;
       }
       function allSelectableLayoutKeys() {
@@ -63036,8 +63078,65 @@ function renderTabletBridgeSetup(info) {
         return guestPickOn && all.length > 1 && all.every(function (k) { return isGuestKey(k); });
       }
       function toggleGuestKey(k) {
-        if (k === mainLayoutKey()) { showToast('That’s your main layout, so guests always have it. Tap another card to change the main one.', 4500); return; }
+        var curMain = mainLayoutKey();
+        if (!guestPickOn) {
+          if (k === curMain) { showToast('Tick another frame or layout to let guests choose between multiple layouts.', 3500); return; }
+          if (/^frame:/.test(k) && framesStandAlongsideDesigns()) { showToast('With 2+ designs, every uploaded frame is offered next to the designs. Untick \u201cShow uploaded frames right alongside these designs\u201d to choose frames per design.', 5500); return; }
+          guestPickOn = true;
+          if (guestPickToggle) guestPickToggle.checked = true;
+          guestLayoutSet = [];
+          chooseIds = [];
+          if (/^frame:/.test(curMain)) {
+            var mid = curMain.slice(6);
+            if (frameById(mid)) chooseIds.push(mid);
+          } else if (curMain) {
+            guestLayoutSet.push(curMain);
+          }
+          if (/^frame:/.test(k)) {
+            var addId = k.slice(6);
+            if (frameById(addId) && chooseIds.indexOf(addId) < 0) chooseIds.push(addId);
+          } else if (guestLayoutSet.indexOf(k) < 0) {
+            guestLayoutSet.push(k);
+          }
+          refreshGuestLayoutChoices();
+          syncActiveDesignSlot();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          return;
+        }
+        if (k === curMain) {
+          var others = guestChoiceKeys().filter(function (x) { return x !== k; });
+          if (!others.length) { showToast('Keep at least one layout ticked.', 3000); return; }
+          if (/^frame:/.test(k)) {
+            var remId = k.slice(6);
+            chooseIds = chooseIds.filter(function (id) { return id !== remId; });
+          } else {
+            guestLayoutSet = guestLayoutSet.filter(function (x) { return x !== k; });
+          }
+          var nextMain = others[0];
+          if (/^frame:/.test(nextMain)) {
+            activeFrameId = nextMain.slice(6);
+            setupActiveFrameId = activeFrameId;
+            setupLayout = 'myframe';
+            if (chooseIds.indexOf(activeFrameId) < 0) chooseIds.push(activeFrameId);
+            setLayout('myframe');
+          } else if (/^sheet:/.test(nextMain)) {
+            if (typeof loadSheetPreset === 'function') loadSheetPreset(nextMain.slice(6), true);
+            setupLayout = 'framesheet';
+            setupActiveSheetPresetId = nextMain.slice(6);
+            if (guestLayoutSet.indexOf(nextMain) < 0) guestLayoutSet.push(nextMain);
+            setLayout('framesheet');
+          } else {
+            setupLayout = nextMain;
+            if (guestLayoutSet.indexOf(nextMain) < 0) guestLayoutSet.push(nextMain);
+            setLayout(nextMain);
+          }
+          refreshGuestLayoutChoices();
+          syncActiveDesignSlot();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          return;
+        }
         if (/^frame:/.test(k)) {
+          if (framesStandAlongsideDesigns()) { showToast('With 2+ designs, every uploaded frame is offered next to the designs. Untick \u201cShow uploaded frames right alongside these designs\u201d to choose frames per design.', 5500); return; }
           var id = k.slice(6), i = chooseIds.indexOf(id);
           if (i >= 0) chooseIds.splice(i, 1); else chooseIds.push(id);
         } else {
@@ -63045,15 +63144,18 @@ function renderTabletBridgeSetup(info) {
           if (j >= 0) guestLayoutSet.splice(j, 1); else guestLayoutSet.push(k);
         }
         refreshGuestLayoutChoices();
+        syncActiveDesignSlot();
         if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
       }
       function refreshGuestLayoutChoices() {
         layoutGrid.classList.toggle('guest-on', guestPickOn);
         var main = mainLayoutKey();
         [].forEach.call(layoutGrid.querySelectorAll('[data-tick]'), function (t) {
-          var on = isGuestKey(t.dataset.tick);
+          var on = guestPickOn ? isGuestKey(t.dataset.tick) : (t.dataset.tick === main);
           t.classList.toggle('on', on); t.classList.toggle('locked', t.dataset.tick === main);
           t.setAttribute('aria-checked', on ? 'true' : 'false');
+          var cardBtn = t.closest ? t.closest('.layout-btn') : null;
+          if (cardBtn) cardBtn.classList.toggle('guest-picked', guestPickOn && on);
         });
         if (tickAllLayoutsBtn) {
           var hasMany = allSelectableLayoutKeys().length > 1;
@@ -63125,12 +63227,13 @@ function renderTabletBridgeSetup(info) {
               var k = 'sheet:' + p.id;
               if (k === main || guestLayoutSet.indexOf(k) >= 0) addKey(k);
             });
-          } else {
-            LAYOUT_ORDER.concat(['framesheet']).forEach(function (k) {
-              if (!LAYOUT_DEFS[k] || (k === 'framesheet' && !(myFrames && myFrames.length))) return;
-              if (k === main || guestLayoutSet.indexOf(k) >= 0) addKey(k);
-            });
+          } else if (myFrames && myFrames.length) {
+            if ('framesheet' === main || guestLayoutSet.indexOf('framesheet') >= 0) addKey('framesheet');
           }
+          LAYOUT_ORDER.forEach(function (k) {
+            if (!LAYOUT_DEFS[k]) return;
+            if (k === main || guestLayoutSet.indexOf(k) >= 0) addKey(k);
+          });
         }
         var effTier = tierFilter || ((typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && sessionTier) ? sessionTier : null);
         if (effTier === 'receipt') {
@@ -63174,12 +63277,13 @@ function renderTabletBridgeSetup(info) {
             var k = 'sheet:' + p.id;
             if (k === main || gl.indexOf(k) >= 0) addKey(k);
           });
-        } else {
-          LAYOUT_ORDER.concat(['framesheet']).forEach(function (k) {
-            if (!LAYOUT_DEFS[k] || (k === 'framesheet' && !(myFrames && myFrames.length))) return;
-            if (k === main || gl.indexOf(k) >= 0) addKey(k);
-          });
+        } else if (myFrames && myFrames.length) {
+          if ('framesheet' === main || gl.indexOf('framesheet') >= 0) addKey('framesheet');
         }
+        LAYOUT_ORDER.forEach(function (k) {
+          if (!LAYOUT_DEFS[k]) return;
+          if (k === main || gl.indexOf(k) >= 0) addKey(k);
+        });
         return keys.length ? keys : [main];
       }
       function designSlotKeysForTier(slot, idx, tier) {
@@ -70293,8 +70397,9 @@ function fxWavUrl(kind) {
         if (clrBtn) clrBtn.style.display = decor.length ? 'inline-block' : 'none';
         var d = decor[selDecor];
         selControls.style.display = d ? 'block' : 'none';
-        setupPreviewCanvas.style.touchAction = decor.length ? 'none' : '';
-        setupPreviewCanvas.style.cursor = decor.length ? 'grab' : '';
+        var needTouch = decor.length > 0 || currentLayout === 'framesheet' || (currentLayout === 'myframe' && (!!(typeof spotEdit !== 'undefined' && spotEdit) || !!(typeof layoutEdit !== 'undefined' && layoutEdit) || (typeof activeFrame === 'function' && activeFrame() && typeof frameOverlayList === 'function' && frameOverlayList(activeFrame()).length > 0)));
+        setupPreviewCanvas.style.touchAction = needTouch ? 'none' : '';
+        setupPreviewCanvas.style.cursor = needTouch ? 'grab' : '';
         if (!d) return;
         selSize.value = Math.round(d.s * 100);
         selRot.value = (((Math.round(d.r || 0) + 180) % 360) + 360) % 360 - 180;     // the slider runs -180..180
@@ -71606,6 +71711,7 @@ function fxWavUrl(kind) {
       function hitFrameOv(list, pt, W, H) {
         if (!Array.isArray(list) || !list.length) return -1;
         for (var i = list.length - 1; i >= 0; i--) {
+          if (list[i] && list[i].full) continue;   // full-frame / full-sheet overlays stay locked in place so they don't block clicking frames on a collage sheet
           var b = frameOverlayBox(list[i], 0, 0, W, H);
           if (!b) continue;
           var a = -(list[i].r || 0) * Math.PI / 180;
@@ -73436,8 +73542,9 @@ function fxWavUrl(kind) {
       var spotEditControls = document.getElementById('spotEditControls');
       function framesChanged(opts) {
         opts = opts || {};
-        if (!myFrames.length) { activeFrameId = null; sheet.items = []; sheet.overlays = []; selFrameOv = -1; spotEdit = null; layoutEdit = null; }
+        if (!myFrames.length) { activeFrameId = null; setupActiveFrameId = null; sheet.items = []; sheet.overlays = []; selFrameOv = -1; spotEdit = null; layoutEdit = null; }
         else if (!frameById(activeFrameId)) { activeFrameId = myFrames[0].id; selFrameOv = -1; }
+        if (myFrames.length && !frameById(setupActiveFrameId)) setupActiveFrameId = activeFrameId;
         if (layoutEdit && !frameById(layoutEdit.f)) layoutEdit = null;
         sheet.items = sheet.items.filter(function (it) { return frameById(it.f); });
         chooseIds = chooseIds.filter(function (id) { return frameById(id); });
@@ -74933,7 +75040,8 @@ function fxWavUrl(kind) {
         }
         if (toPick.length) {
           // Straight to Edit photo spots with the colour picker on.
-          activeFrameId = toPick[0].id; chooseIds = []; setupLayout = 'myframe'; selFrameOv = -1;
+          activeFrameId = toPick[0].id; setupActiveFrameId = activeFrameId; setupLayout = 'myframe'; selFrameOv = -1;
+          if (chooseIds.indexOf(activeFrameId) < 0) chooseIds.push(activeFrameId);
           spotEdit = { f: toPick[0].id, sel: -1, pick: true };
           framesChanged({ layout: 'myframe' });
           var fdwEl = document.getElementById('frameDetailsWrap') || document.getElementById('frameCtx');
@@ -74942,13 +75050,17 @@ function fxWavUrl(kind) {
           return;
         }
         if (added.length) {
-          // One new frame: it becomes the layout. Several: the first is the layout and guests choose between them.
+          // One new frame: it becomes the layout. Several (or adding another frame): guests can choose between them.
+          var prevFid = activeFrameId;
+          if (prevFid && frameById(prevFid) && chooseIds.indexOf(prevFid) < 0) chooseIds.push(prevFid);
           var ids = added.map(function (a) { return a.id; });
-          activeFrameId = ids[0]; spotEdit = null; layoutEdit = null; setupLayout = 'myframe'; layoutPicked = true;
+          activeFrameId = ids[0]; setupActiveFrameId = activeFrameId; spotEdit = null; layoutEdit = null; setupLayout = 'myframe'; layoutPicked = true;
           selFrameOv = (noSpotOverlays.length && added[0].overlays && added[0].overlays.length) ? added[0].overlays.length - 1 : -1;
-          if (ids.length > 1) {
-            ids.forEach(function (id) { if (chooseIds.indexOf(id) < 0) chooseIds.push(id); });
-          } else if (chooseIds.indexOf(ids[0]) < 0) chooseIds.push(ids[0]);
+          ids.forEach(function (id) { if (chooseIds.indexOf(id) < 0) chooseIds.push(id); });
+          if ((ids.length > 1 || (myFrames.length > 1 && chooseIds.length > 1)) && !guestPickOn) {
+            guestPickOn = true;
+            if (typeof guestPickToggle !== 'undefined' && guestPickToggle) guestPickToggle.checked = true;
+          }
           framesChanged({ layout: 'myframe' });
           var ctxEl = document.getElementById('frameCtx');
           if (ctxEl && ctxEl.scrollIntoView) setTimeout(function () { ctxEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
@@ -75351,6 +75463,7 @@ function fxWavUrl(kind) {
         setupPreviewCanvas.style.cursor = '';
         if (currentLayout === 'myframe' && spotEdit) {
           var f = frameById(spotEdit.f); if (!f) return;
+          setupPreviewCanvas.style.touchAction = 'none';
           f._secActionBtns = [];
           try { refreshSpotSize(); } catch (e) { }
           // Blue = where photos will show (the frame's photo windows).
@@ -75588,7 +75701,9 @@ function fxWavUrl(kind) {
         setupActiveFrameId = activeFrameId;
         // Older setups with several frames were always "all on one sheet".
         frameMode = s.frameMode === 'sheet' || s.frameMode === 'choose' ? s.frameMode : (myFrames.length > 1 ? 'sheet' : 'choose');
-        chooseIds = frameMode === 'sheet' ? [] : (Array.isArray(s.chooseIds) ? s.chooseIds : []).filter(function (id) { return okId(id) && frameById(id); }).slice(0, MAX_FRAMES);
+        // Keep the ticked frames (guests choose) even when an older setup was saved in 'sheet' mode: wiping them here
+        // made every ticked uploaded frame come back unticked on Android after a restart.
+        chooseIds = (Array.isArray(s.chooseIds) ? s.chooseIds : []).filter(function (id) { return okId(id) && frameById(id); }).slice(0, MAX_FRAMES);
         sheetSize = SHEET_SIZES.indexOf(s.sheetSize) >= 0 ? s.sheetSize : '4x6';
         var sh = s.sheet && typeof s.sheet === 'object' ? s.sheet : {};
         sheet = {

@@ -25,6 +25,7 @@ import android.view.View
 import android.view.WindowManager
 import android.util.Log
 import android.webkit.ConsoleMessage
+import android.webkit.MimeTypeMap
 import android.webkit.PermissionRequest
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.ValueCallback
@@ -703,14 +704,62 @@ class MainActivity : AppCompatActivity() {
                 fileUploadCallback?.onReceiveValue(null)
                 fileUploadCallback = filePathCallback
 
-                val intent = fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).apply {
-                    type = "*/*"
+                val rawAccept = fileChooserParams?.acceptTypes
+                    ?.flatMap { it.split(",") }
+                    ?.map { it.trim().lowercase() }
+                    ?.filter { it.isNotEmpty() }
+                    ?: emptyList()
+                var hasUnmappedExt = false
+                val mapped = mutableListOf<String>()
+                for (entry in rawAccept) {
+                    when {
+                        entry == "*/*" -> {
+                            mapped.clear()
+                            mapped.add("*/*")
+                            break
+                        }
+                        entry.contains("/") -> mapped.add(entry)
+                        entry.startsWith(".") -> {
+                            val ext = entry.removePrefix(".")
+                            val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+                            if (!mime.isNullOrBlank()) mapped.add(mime) else hasUnmappedExt = true
+                        }
+                    }
+                }
+                val wildcards = mapped.filter { it.endsWith("/*") }.map { it.substringBefore("/") }.toSet()
+                val mimeTypes = mapped.distinct().filter { m ->
+                    m == "*/*" || m.endsWith("/*") || !wildcards.contains(m.substringBefore("/"))
+                }
+                val allowMultiple = fileChooserParams?.mode == FileChooserParams.MODE_OPEN_MULTIPLE
+                val useAny = mimeTypes.isEmpty() || mimeTypes.contains("*/*") ||
+                    mimeTypes.contains("application/json") || (hasUnmappedExt && wildcards.isEmpty())
+
+                val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    when {
+                        useAny -> type = "*/*"
+                        mimeTypes.size == 1 -> type = mimeTypes[0]
+                        else -> {
+                            type = "*/*"
+                            putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes.toTypedArray())
+                        }
+                    }
+                    if (allowMultiple) {
+                        putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                    }
                 }
                 try {
                     startActivityForResult(intent, 3001)
                 } catch (e: Exception) {
-                    fileUploadCallback = null
-                    return false
+                    try {
+                        val fallback = fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).apply {
+                            type = "*/*"
+                        }
+                        startActivityForResult(fallback, 3001)
+                    } catch (e2: Exception) {
+                        fileUploadCallback = null
+                        return false
+                    }
                 }
                 return true
             }

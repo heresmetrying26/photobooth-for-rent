@@ -3,7 +3,7 @@ import AVFoundation
 import CoreImage
 import ImageIO
 import Metal
-import MetalKit
+import QuartzCore
 
 /**
  * photobooth4u — Native AVFoundation Camera Bridge (window.__PBCam)
@@ -33,10 +33,15 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         }
     }
 
+    final class MetalFilterView: UIView {
+        override class var layerClass: AnyClass { return CAMetalLayer.self }
+        var metalLayer: CAMetalLayer { return layer as! CAMetalLayer }
+    }
+
     final class PreviewHostView: UIView {
         let previewLayer = AVCaptureVideoPreviewLayer()
 
-        let filterView: MTKView?
+        let filterView: MetalFilterView?
         private let metalLayer: CAMetalLayer?
         private let ciContext: CIContext?
         private let cmdQueue: MTLCommandQueue?
@@ -51,24 +56,18 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
 
         override init(frame: CGRect) {
             if let dev = MTLCreateSystemDefaultDevice() {
-                let mv = MTKView(frame: frame, device: dev)
-                mv.framebufferOnly = false
-                mv.enableSetNeedsDisplay = false
-                mv.isPaused = true
-                mv.autoResizeDrawable = false
+                let mv = MetalFilterView(frame: frame)
                 mv.contentScaleFactor = 1.0
-                mv.contentMode = .scaleAspectFill
                 mv.isHidden = true
                 mv.isOpaque = true
-                mv.layer.isOpaque = true
-                mv.clearColor = MTLClearColorMake(0, 0, 0, 1)
-                mv.backgroundColor = .black
-                let ml = mv.layer as? CAMetalLayer
-                ml?.device = dev
-                ml?.pixelFormat = mv.colorPixelFormat
-                ml?.framebufferOnly = false
-                ml?.presentsWithTransaction = false
-                ml?.contentsScale = 1.0
+                mv.backgroundColor = .clear
+                let ml = mv.metalLayer
+                ml.device = dev
+                ml.pixelFormat = .bgra8Unorm
+                ml.framebufferOnly = false
+                ml.presentsWithTransaction = false
+                ml.contentsScale = 1.0
+                ml.isOpaque = true
                 self.filterView = mv
                 self.metalLayer = ml
                 self.ciContext = CIContext(mtlDevice: dev, options: [.useSoftwareRenderer: false, .cacheIntermediates: false])
@@ -98,10 +97,13 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         func syncRenderState(visible: Bool, wantsFilter: Bool, bounds: CGRect) {
             let tw = max(0, bounds.width.rounded())
             let th = max(0, bounds.height.rounded())
-            if let fv = filterView, tw > 1 && th > 1 {
+            if let ml = metalLayer, tw > 1 && th > 1 {
+                if ml.contentsScale != 1.0 {
+                    ml.contentsScale = 1.0
+                }
                 let newSize = CGSize(width: tw, height: th)
-                if fv.drawableSize != newSize {
-                    fv.drawableSize = newSize
+                if ml.drawableSize != newSize {
+                    ml.drawableSize = newSize
                 }
             }
             renderLock.lock()
@@ -670,9 +672,42 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         currentInput = input
         currentDevice = dev
 
-        // Built-in iPads (especially A16 / 10th-gen 12MP Center Stage): use .inputPriority + a binned 4:3 30fps YUV
-        // video format so live view stays buttery 30fps while AVCapturePhotoOutput still captures full high-res stills.
-        // Fall back to standard video presets if no matching custom format is found (and for external UVC cards).
+        let vOut = AVCaptureVideoDataOutput()
+        vOut.alwaysDiscardsLateVideoFrames = true
+        vOut.setSampleBufferDelegate(self, queue: videoOutputQueue)
+        if session.canAddOutput(vOut) {
+            session.addOutput(vOut)
+            // Keep native 4:2:0 YUV pixel format (Apple TN3121) to eliminate costly per-frame YUV->32BGRA conversion.
+            // CoreImage reads native 420f/420v directly on Metal GPU at 2.67x less memory bandwidth.
+            let avail = vOut.availableVideoPixelFormatTypes
+            if avail.contains(kCVPixelFormatType_420YpCbCr8BiPlanarFullRange) {
+                vOut.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)]
+            } else if avail.contains(kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange) {
+                vOut.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange)]
+            } else {
+                vOut.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)]
+            }
+            videoDataOutput = vOut
+        } else {
+            videoDataOutput = nil
+        }
+
+        // External UVC / HDMI capture cards grab still frames from the live CVPixelBuffer directly;
+        // skip AVCapturePhotoOutput so capture cards never stall on unsupported still-photo paths.
+        if !ext {
+            let pOut = AVCapturePhotoOutput()
+            if session.canAddOutput(pOut) {
+                session.addOutput(pOut)
+                photoOutput = pOut
+            } else {
+                photoOutput = nil
+            }
+        } else {
+            photoOutput = nil
+        }
+
+        // Configure session preset / custom binned format AFTER all inputs and outputs are attached
+        // so AVCaptureSession validates the format cleanly against every output.
         var usedCustomFormat = false
         if !ext, session.canSetSessionPreset(.inputPriority), let chosen = pickSmoothBuiltInFormat(for: dev, presetName: presetName) {
             do {
@@ -705,49 +740,18 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             }
         }
 
-        let vOut = AVCaptureVideoDataOutput()
-        vOut.alwaysDiscardsLateVideoFrames = true
-        vOut.setSampleBufferDelegate(self, queue: videoOutputQueue)
-        if session.canAddOutput(vOut) {
-            session.addOutput(vOut)
-            // Keep native 4:2:0 YUV pixel format (Apple TN3121) to eliminate costly per-frame YUV->32BGRA conversion.
-            // CoreImage reads native 420f/420v directly on Metal GPU at 2.67x less memory bandwidth.
-            let avail = vOut.availableVideoPixelFormatTypes
-            if avail.contains(kCVPixelFormatType_420YpCbCr8BiPlanarFullRange) {
-                vOut.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)]
-            } else if avail.contains(kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange) {
-                vOut.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange)]
-            } else {
-                vOut.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)]
-            }
-            videoDataOutput = vOut
-        } else {
-            videoDataOutput = nil
-        }
-
-        // External UVC / HDMI capture cards grab still frames from the live CVPixelBuffer directly;
-        // skip AVCapturePhotoOutput so capture cards never stall on unsupported still-photo paths.
-        if !ext {
-            let pOut = AVCapturePhotoOutput()
-            if session.canAddOutput(pOut) {
-                session.addOutput(pOut)
-                if #available(iOS 16.0, *) {
-                    let supported = dev.activeFormat.supportedMaxPhotoDimensions
-                    let atLeast2400 = supported.filter { max(Int($0.width), Int($0.height)) >= 2400 }
-                    let chosenDim = atLeast2400.min(by: { Int64($0.width) * Int64($0.height) < Int64($1.width) * Int64($1.height) })
-                        ?? supported.max(by: { Int64($0.width) * Int64($0.height) < Int64($1.width) * Int64($1.height) })
-                    if let dim = chosenDim, dim.width > 0 && dim.height > 0 {
-                        pOut.maxPhotoDimensions = dim
-                    }
-                } else {
-                    pOut.isHighResolutionCaptureEnabled = true
+        if let pOut = photoOutput {
+            if #available(iOS 16.0, *) {
+                let supported = dev.activeFormat.supportedMaxPhotoDimensions
+                let atLeast2400 = supported.filter { max(Int($0.width), Int($0.height)) >= 2400 }
+                let chosenDim = atLeast2400.min(by: { Int64($0.width) * Int64($0.height) < Int64($1.width) * Int64($1.height) })
+                    ?? supported.max(by: { Int64($0.width) * Int64($0.height) < Int64($1.width) * Int64($1.height) })
+                if let dim = chosenDim, dim.width > 0 && dim.height > 0 {
+                    pOut.maxPhotoDimensions = dim
                 }
-                photoOutput = pOut
             } else {
-                photoOutput = nil
+                pOut.isHighResolutionCaptureEnabled = true
             }
-        } else {
-            photoOutput = nil
         }
 
         if wantsAudio {
@@ -844,10 +848,22 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
 
     @available(iOS 17.0, *)
     private func applyPreviewRotationAngle(_ angle: CGFloat) {
-        if let conn = previewView.previewLayer.connection,
-           conn.isVideoRotationAngleSupported(angle),
-           abs(conn.videoRotationAngle - angle) > 0.01 {
-            conn.videoRotationAngle = angle
+        if let conn = previewView.previewLayer.connection {
+            if conn.isVideoRotationAngleSupported(angle),
+               abs(conn.videoRotationAngle - angle) > 0.01 {
+                conn.videoRotationAngle = angle
+            }
+            if conn.isVideoMirroringSupported {
+                stateLock.lock()
+                let mir = latestMirrored
+                stateLock.unlock()
+                if conn.automaticallyAdjustsVideoMirroring {
+                    conn.automaticallyAdjustsVideoMirroring = false
+                }
+                if conn.isVideoMirrored != mir {
+                    conn.isVideoMirrored = mir
+                }
+            }
         }
     }
 
@@ -967,7 +983,6 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             if sig == self.lastLayoutSig {
                 return
             }
-            let wasHidden = self.previewView.isHidden
             self.lastLayoutSig = sig
 
             if let hex = bgHex, let c = Self.colorFromHex(hex) {
@@ -1013,9 +1028,9 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             }
             CATransaction.commit()
             self.previewView.syncRenderState(visible: validRect, wantsFilter: hasFilter && validRect, bounds: self.previewView.bounds)
-            if validRect && wasHidden {
+            if validRect {
                 self.applyCurrentRotation()
-            } else if !validRect {
+            } else {
                 self.syncLegacyOrientation()
             }
         }

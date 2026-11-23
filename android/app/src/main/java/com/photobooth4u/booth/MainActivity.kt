@@ -863,7 +863,7 @@ class MainActivity : AppCompatActivity() {
                     val folderPrefix = if (feat == null || feat.isNull("folderPrefix")) "" else feat.optString("folderPrefix", "").trim()
                     append("window.__PB.folderKey=").append(jsStr(folderKey)).append(";")
                     append("window.__PB.folderPrefix=").append(jsStr(folderPrefix)).append(";")
-                    append("window.__PB.lockFolder=").append(folderKey.isNotEmpty()).append(";")   // like online: a fixed folder is not typed
+                    append("window.__PB.lockFolder=false;")   // local storage on tablet: operator can always name or change the event folder
                     // Same flags the online booth gets, so Setup, paper sizes and file names behave the same offline as online
                     append("window.__PB.lifetime=").append(activeLifetime).append(";")
                     append("window.__PB.deviceNo=").append(feat?.optInt("deviceNo", 1) ?: 1).append(";")

@@ -69280,6 +69280,33 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (rawFolderKey()) resolveDriveFolder();
           return;
         }
+        // Offline apps (Desktop Windows/Mac, Android tablet, iPad, LAN remote): photos save into local event folders on
+        // the device, never into a locked shared Drive folder. Always keep the Event name input visible and editable.
+        if (LOCALSHARE) {
+          var LAST_LOCAL = 'pb_lastEventFolder:' + ((pb && pb.folderKey) || 'local');
+          var noteLocal = document.getElementById('driveFolderAutoNote');
+          var helpLocal = document.getElementById('driveFolderHelp');
+          var savedEv = null;
+          try { savedEv = localStorage.getItem(LAST_LOCAL); } catch (e) { savedEv = null; }
+          driveFolderKeyInput.value = (savedEv !== null ? savedEv : ((pb && pb.folderKey) || ''));
+          driveFolderKeyInput.readOnly = false;
+          driveFolderKeyInput.style.opacity = '';
+          driveFolderKeyInput.style.display = '';
+          driveFolderKeyInput.placeholder = 'Event name, e.g. Sofia\u2019s Dedication';
+          driveStatusText.textContent = 'Name this event. Its photos get their own folder on this ' + LOCAL_DEVICE + '.';
+          if (helpLocal) {
+            helpLocal.textContent = 'Each event gets its own folder. Two devices? Type the same name on both.';
+            helpLocal.style.display = '';
+          }
+          noteLocal.textContent = (pb && pb.multiDevice) ? 'Device ' + (pb.deviceNo || 1) + ': its photos end in _cam' + (pb.deviceNo || 1) + '.' : '';
+          noteLocal.style.display = noteLocal.textContent ? 'block' : 'none';
+          [noteLocal, driveStatusText, driveFolderKeyInput, driveFolderError, helpLocal, driveFolderStatus, driveFolderQrPreview].forEach(function (el) { if (el) el.classList.add('always-show'); });
+          driveFolderKeyInput.addEventListener('input', function () {
+            try { localStorage.setItem(LAST_LOCAL, driveFolderKeyInput.value); } catch (e) { }
+          });
+          if (rawFolderKey()) resolveDriveFolder();
+          return;
+        }
         if (!pb || !pb.folderKey) return;
         driveFolderKeyInput.value = pb.folderKey;
         var note = document.getElementById('driveFolderAutoNote');

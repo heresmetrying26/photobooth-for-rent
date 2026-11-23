@@ -505,7 +505,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         window.__PB.orientation=\(jsonStr(orientation));
         window.__PB.folderKey=\(jsonStr(folderKey));
         window.__PB.folderPrefix=\(jsonStr(folderPrefix));
-        window.__PB.lockFolder=\(folderKey.isEmpty ? "false" : "true");
+        window.__PB.lockFolder=false;
         window.__PB.lifetime=\(lifetime ? "true" : "false");
         window.__PB.deviceNo=\(deviceNo);
         window.__PB.multiDevice=\(multiDevice ? "true" : "false");

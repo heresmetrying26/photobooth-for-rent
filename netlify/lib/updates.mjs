@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.100', date: '2026-11-23' },
   { version: '1.1.99', date: '2026-11-23' },
   { version: '1.1.98', date: '2026-11-23' },
   { version: '1.1.97', date: '2026-11-23' },
@@ -242,7 +243,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.21', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.21/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.22', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.22/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -295,6 +296,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-23', title: 'Desktop 1.1.100, Android 1.2.05, iPad 1.1.22 & Website: iPad Camera, USB DSLR & Idle Video Performance Optimizations', for: ['website', 'app'], app: '1.1.100',
+    items: [
+      '⚡ Cooler, smoother iPad camera & USB DSLR live preview: pauses unseen 30 fps Metal filter shaders while the Idle video or Branded card welcome screen is showing, caches CoreImage filter chains with zero per-frame filter allocations, adds HTTP/1.1 keep-alive + zero-copy writev() to the iPad local camera bridge, and eliminates redundant captureStream(30) / 2D canvas blits on iPad USB DSLRs.',
+      '🎬 Faster, lighter Idle video playback on iPad, Android & Desktop: frees hardware video decoder slots when leaving Setup (static thumbnails instead of persistent background video decoders), clones large videos in 4 MB chunks for low peak RAM on 2 GB tablets, and reuses/revokes blob URLs cleanly across syncs.',
+      '🔋 Lower idle CPU overhead: event-driven gamepad polling (zero wakeups when no controller is connected), debounced window resize & coalesced orientation refits, and cached layout styles.'
+    ]
+  },
   {
     date: '2026-11-23', title: 'Desktop 1.1.99, Android 1.2.04, iPad 1.1.21 & Website: Freeform Multi-Overlays in Layout, Remove-All Overlays, and Click-to-Slice Edit Layout', for: ['website', 'app'], app: '1.1.99',
     items: [

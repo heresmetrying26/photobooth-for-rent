@@ -21598,21 +21598,29 @@
           </label>
           <div id="payCashBox" style="display:none; margin-top:8px;">
             <p class="panel-hint" style="margin:0 0 8px;">Works with no internet. An ESP32 reads your coin or bill acceptor and tells the booth how
-              many pesos went in. Guests insert cash, and the session starts by itself once the price is reached. Any extra stays as credit for
-              the next guest. <a href="/cash-acceptor/" target="_blank" rel="noopener">Wiring and sketch</a></p>
+              many pesos went in, while the booth sends live two-way status commands (<code>session_idle</code>, <code>cash_open</code>,
+              <code>countdown_3..1</code>, <code>shutter_flash</code>, etc.) to control your <b>Relay Module</b> (up to 8 channels) &amp; <b>NeoPixel LEDs</b>.
+              <a href="/cash-acceptor/" target="_blank" rel="noopener">Wiring and sketch</a></p>
             <div class="opt-row">
               <span class="lbl">ESP32 connects as</span>
               <select class="mini-select pillify" id="payCashLink" aria-label="How the ESP32 connects to this device">
-                <option value="keyboard">Bluetooth or USB keyboard (works everywhere)</option>
-                <option value="ble">Bluetooth LE serial (Chrome / Edge)</option>
-                <option value="serial">USB cable, serial (Chrome / Edge)</option>
+                <option value="keyboard">Bluetooth or USB keyboard (credits only)</option>
+                <option value="ble">Bluetooth serial (two-way: Android App BLE/BT · Chrome BLE)</option>
+                <option value="serial">USB cable, serial (two-way: Chrome / Edge)</option>
               </select>
             </div>
             <div class="pay-status" id="payCashStatus"></div>
             <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
-              <button type="button" class="action-btn" id="payCashConnectBtn" style="width:auto; margin:0;">Connect</button>
+              <button type="button" class="action-btn" id="payCashConnectBtn" style="width:auto; margin:0;">Connect ESP32</button>
+              <button type="button" class="action-btn" id="payCashDisconnectBtn" style="width:auto; margin:0;" hidden>Disconnect</button>
               <button type="button" class="action-btn" id="payCashTestBtn" style="width:auto; margin:0;">Test: add ₱10</button>
               <button type="button" class="action-btn" id="payCashClearBtn" style="width:auto; margin:0;">Clear credit</button>
+            </div>
+            <div id="payCashSerialTestRow" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+              <button type="button" class="action-btn" data-esp-test="session_start" style="width:auto; margin:0; font-size:12px;">Test Light ON</button>
+              <button type="button" class="action-btn" data-esp-test="shutter_flash" style="width:auto; margin:0; font-size:12px;">Test Flash</button>
+              <button type="button" class="action-btn" data-esp-test="cash_open" style="width:auto; margin:0; font-size:12px;">Test Cash Open</button>
+              <button type="button" class="action-btn" data-esp-test="session_idle" style="width:auto; margin:0; font-size:12px;">Test Idle</button>
             </div>
             <p class="panel-hint" id="payCashStats" style="margin:8px 0 0;"></p>
             <button type="button" class="pay-link" id="payCashStatsReset" style="margin:2px 0 0; padding:2px 0;">Start the cash count again</button>
@@ -21695,6 +21703,29 @@
               id="fxFlash"></label>
           <p class="panel-hint" style="margin-top:4px;">The screen turns white as each photo is taken, lighting up faces
             in dim rooms. Turn the tablet's brightness all the way up.</p>
+          <label class="switch-row" style="margin-top:8px;"><span>ESP32 Relay Lighting &amp; NeoPixels</span><input
+              type="checkbox" id="fxEsp32Toggle"></label>
+          <p class="panel-hint" style="margin-top:4px;">Sends live two-way status commands over Bluetooth serial or USB (<code>session_idle</code>,
+            <code>session_start</code>, <code>countdown_3..1</code>, <code>shutter_flash</code>, <code>start_print</code>, etc.) to trigger your
+            ESP32 Relay Module &amp; NeoPixel LEDs &mdash; works offline on Android Tablet App &amp; Chrome/Edge even on free events.</p>
+          <div id="fxEsp32Box" style="display:none; margin-top:8px; padding:10px; border:1px solid var(--line); border-radius:10px; background:var(--panel-2,#f4efe7);">
+            <div class="opt-row">
+              <span class="lbl">ESP32 connects as</span>
+              <select class="mini-select pillify" id="fxEsp32Link" aria-label="How the ESP32 lighting controller connects">
+                <option value="ble">Bluetooth serial (Android App BLE/BT · Chrome BLE)</option>
+                <option value="serial">USB cable, serial (Chrome / Edge)</option>
+              </select>
+            </div>
+            <div class="pay-status" id="fxEsp32Status"></div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+              <button type="button" class="action-btn primary" id="fxEsp32ConnectBtn" style="width:auto; margin:0;">Connect ESP32</button>
+              <button type="button" class="action-btn" id="fxEsp32DisconnectBtn" style="width:auto; margin:0;" hidden>Disconnect</button>
+              <button type="button" class="action-btn" data-esp-test="session_start" style="width:auto; margin:0;">Test Light ON</button>
+              <button type="button" class="action-btn" data-esp-test="shutter_flash" style="width:auto; margin:0;">Test Flash</button>
+              <button type="button" class="action-btn" data-esp-test="session_idle" style="width:auto; margin:0;">Test Idle</button>
+            </div>
+            <p class="panel-hint" style="margin:6px 0 0;">Shares the same ESP32 controller if Cash Acceptor is also turned on. <a href="/cash-acceptor/" target="_blank" rel="noopener">Relay &amp; NeoPixel wiring</a></p>
+          </div>
           <label class="switch-row"><span>Countdown beeps and shutter click</span><input type="checkbox" id="fxSound"
               checked></label>
           <div class="opt-row" id="fxVolRow">
@@ -25808,6 +25839,9 @@
           // Option 1: tell the app a session is starting so it can wake the hotspot if idle.
           try { if (window.pb4u && window.pb4u.hotspotWake) window.pb4u.hotspotWake(); } catch (e) { }
           if (typeof camWantLive === 'function' && !camWantLive()) { try { camSleepNow(); } catch (e) { } }
+          if (typeof state !== 'undefined' && state === 'idle' && typeof cashSend === 'function' && typeof cashConnected === 'function' && cashConnected()) {
+            try { cashSend('session_idle'); } catch (e) { }
+          }
         } else { if (typeof curStep !== 'undefined' && curStep === 4) { try { camEnsureLive(); } catch (e) { } } else { try { camSleepNow(); } catch (e) { } } }
       }
       tabBtnSetup.addEventListener('click', () => switchTab('setup'));
@@ -35809,6 +35843,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               shown = n; popNum(n, false);
               try { fxTick(n); } catch (e) { }
               try { if (window.pb4u && window.pb4u.setWallCue) window.pb4u.setWallCue('countdown', String(n), 1200); } catch (e) { }
+              if (n >= 1 && n <= 3 && typeof cashSend === 'function') { try { cashSend('countdown_' + n); } catch (e) { } }
             }
             guestCall('tick', String(n), false, frac, cdShot.textContent);
             if (left <= 0) { clearInterval(timer); resolve(); }
@@ -35868,6 +35903,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (sess && sess.cancelled) { if (lit) screenFlashOff(); stopShotMotionCapture(index); return; }
           try { fxShutter(); } catch (e) { }
           flashOverlay.classList.add('flash-active');
+          if (typeof cashSend === 'function') { try { cashSend('shutter_flash'); } catch (e) { } }
           guestCall('flash');
           flashAt = Date.now();   // the pause after this photo is counted from here (see below)
           fireNow();   // already fired above when the camera has a shutter lag
@@ -36865,6 +36901,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
 
       function endCancelledSession() {
+        esp32LastCancelAt = Date.now();
+        if (typeof cashSend === 'function') { try { cashSend('session_cancel'); } catch (e) { } }
         if (typeof stopFlipAutoPlay === 'function') stopFlipAutoPlay();
         stopGifSessionCapture(false); completedGifCapture = null;
         stopShotMotionCapture(); shotMotionClips = [];
@@ -36971,6 +37009,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (sess.cancelled) { endCancelledSession(); return; }
         consumePayCredit();          // the paid session is used once the countdown starts (Cancel at Get ready keeps it)
         countingDown = true;
+        if (typeof cashSend === 'function') { try { cashSend('session_start'); } catch (e) { } }
         if (flipbookActive()) { await runFlipbookSession(); return; }
         if (isGifAllowed() && (outputMode === 'gif' || outputMode === 'both') && gifMotionStyle === 'session') startGifSessionCapture();
         stageShot = 0;
@@ -45887,6 +45926,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (needsPrintPreview(auto === true)) { showPrintPreview(auto, n); return false; }        // nothing is counted or sent until the operator has seen the page
         printing = true;
         refreshPrintUI();
+        let espStartedPrint = false, espQueuedPrint = false;
         try {
           let res = await reservePrints(per * n);
           if (!res.ok) {
@@ -45897,6 +45937,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (!res.ok) { limitReached(); return false; }
           }
           sessPrinted += per * n;
+          espStartedPrint = true;
+          if (typeof cashSend === 'function') { try { cashSend('start_print'); } catch (e) { } }
           showPrintingNote(printTxt('txtPrinting'), 4000);
           let paper = paperFor(printSize);
           const pages = printAdjustAll(flipbookResult ? buildFlipbookPages(paper) : keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)]);
@@ -45939,7 +45981,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               if (androidQueueOn() && !printFirstHolding) {
                 // Line up behind any print the thermal printer is still doing; the booth is free for the next guest at once.
                 const ahead = printQueued;
-                enqueuePrint('bt', btRun).then(() => { pwSet('bt', 'ready'); }, (btErr) => {
+                espQueuedPrint = true;
+                enqueuePrint('bt', btRun).then(() => {
+                  pwSet('bt', 'ready');
+                  if (typeof cashSend === 'function') { try { cashSend('print_done'); } catch (e) { } }
+                }, (btErr) => {
+                  if (typeof cashSend === 'function') { try { cashSend('print_done'); } catch (e) { } }
                   try { window._btThermal.btPrinter.disconnect(true); } catch (_) { }
                   try { refreshPrintUI(); } catch (_) { }
                   if (pwHoldBt(label, btRun, btFail)) return;          // switched off: prints when it is back
@@ -46036,7 +46083,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               }
               if (androidQueueOn() && !printFirstHolding) {
                 const ahead = printQueued;
-                enqueuePrint('w:' + wifiPKey(wp), wRun).catch((wErr) => {
+                espQueuedPrint = true;
+                enqueuePrint('w:' + wifiPKey(wp), wRun).then(() => {
+                  if (typeof cashSend === 'function') { try { cashSend('print_done'); } catch (e) { } }
+                }, (wErr) => {
+                  if (typeof cashSend === 'function') { try { cashSend('print_done'); } catch (e) { } }
                   if (wp.usb && !pwUsbHere(wp) && pwHoldUsb(wp, label, wRun, wFail)) return;     // switched off / unplugged while it printed
                   wFail(wErr);
                 });
@@ -46110,6 +46161,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return false;
         } finally {
           printing = false;
+          if (espStartedPrint && !espQueuedPrint && typeof cashSend === 'function') { try { cashSend('print_done'); } catch (e) { } }
           refreshPrintUI();
           if (printFirstHolding) finishPrintFirst();
           if (printLimits().ev) setTimeout(refreshPrintCount, 1500);
@@ -49149,7 +49201,8 @@ function renderTabletBridgeSetup(info) {
           resetForNextGuest();
         }, resultReviewSec * 1000);
       }
-      function resetForNextGuest(keepCamAwake) {
+      function resetForNextGuest(keepCamAwake, opts) {
+        var prevState = state;
         if (typeof stopFlipAutoPlay === 'function') stopFlipAutoPlay();
         clearTimeout(resultTimer);
         clearTimeout(shareStationHandoffTimer);
@@ -49188,6 +49241,14 @@ function renderTabletBridgeSetup(info) {
         updateFilmTrack();
         updateUI();
         if (!keepCamAwake) { try { camSleepNow(); } catch (e) { } }
+        if (typeof cashSend === 'function') {
+          try {
+            if (prevState === 'result') cashSend('session_end');
+            else if (!(opts && opts.fromBeginFlow) && Date.now() - (typeof esp32LastCancelAt === 'number' ? esp32LastCancelAt : 0) > 600) {
+              cashSend('session_idle');
+            }
+          } catch (e) { }
+        }
       }
 
       // ──────────────────────────────────────────────────────────────────
@@ -49875,6 +49936,7 @@ function renderTabletBridgeSetup(info) {
           popNum(String(n), false);
           if (cdBar) cdBar.style.strokeDashoffset = '0';
           guestCall('tick', String(n), false, 1, 'Get ready!');
+          if (typeof cashSend === 'function') { try { cashSend('countdown_' + n); } catch (e) { } }
           await sleepMs(1000);
         }
         if (sess && sess.cancelled) { endCancelledSession(); return; }
@@ -63582,6 +63644,7 @@ function renderTabletBridgeSetup(info) {
           markPick();
           pickOverlay.classList.add('on');
           document.body.classList.add('shooting', 'picking');
+          if (typeof cashSend === 'function') { try { cashSend('template_selection'); } catch (e) { } }
           try { refreshPrintFab(); } catch (e) { }
           refreshWelcome();
           guestRender();
@@ -63642,6 +63705,7 @@ function renderTabletBridgeSetup(info) {
           markPick();
           pickOverlay.classList.add('on');
           document.body.classList.add('shooting', 'picking');
+          if (typeof cashSend === 'function') { try { cashSend('template_selection'); } catch (e) { } }
           try { refreshPrintFab(); } catch (e) { }
           refreshWelcome();
           guestRender();
@@ -63693,6 +63757,7 @@ function renderTabletBridgeSetup(info) {
           markPick();
           pickOverlay.classList.add('on');
           document.body.classList.add('shooting', 'picking');
+          if (typeof cashSend === 'function') { try { cashSend('template_selection'); } catch (e) { } }
           try { refreshPrintFab(); } catch (e) { }
           refreshWelcome();
           guestRender();
@@ -63742,6 +63807,10 @@ function renderTabletBridgeSetup(info) {
           r(found);
           return;
         }
+        if (k === null) {
+          esp32LastCancelAt = Date.now();
+          if (typeof cashSend === 'function') { try { cashSend('session_cancel'); } catch (e) { } }
+        }
         r(k);
       }
       if (pickBackBtn) {
@@ -63787,7 +63856,7 @@ function renderTabletBridgeSetup(info) {
         try {
           clearTimeout(resultTimer);
           welcomeOverlay.classList.remove('on');
-          resetForNextGuest(true);   // always clean state before picking/session (keep camera awake while starting)
+          resetForNextGuest(true, { fromBeginFlow: true });   // always clean state before picking/session (keep camera awake while starting)
           // Guest payment (QR or voucher) before anything else; a paid session waits here if the tablet restarted.
           if (!(await payGate())) return;
           var didPickTop = false;
@@ -63899,7 +63968,11 @@ function renderTabletBridgeSetup(info) {
           }
           else if (key !== currentLayout || guestPickedTier) setLayout(key);
           // Trading card / certificate booth: the guest types their name (and a title) first.
-          if (boothType !== 'photo' && (!(await askGuestDesign()) || !(await askGuestDetails()))) return;
+          if (boothType !== 'photo' && (!(await askGuestDesign()) || !(await askGuestDetails()))) {
+            esp32LastCancelAt = Date.now();
+            if (typeof cashSend === 'function') { try { cashSend('session_cancel'); } catch (e) { } }
+            return;
+          }
           // After picking a design or layout there's always a "Get ready" screen (summary,
           // filters, Start) — the countdown never starts straight from the picker.
           await startSession((didPickTop || keys.length > 1) ? false : skipReady);
@@ -63915,42 +63988,91 @@ function renderTabletBridgeSetup(info) {
       }
 
       // ---- Guest payments: vouchers + the renter's own PayMongo (QR Ph) + cash acceptor (ESP32) ----
-/* ---- Cash acceptor: a coin / bill acceptor read by an ESP32 (works offline) ----
-   The ESP32 counts the acceptor's pulses and tells the booth how many pesos went in, one short message per
-   coin or bill:   c<pesos> then Enter     e.g.  c5<Enter>  (a P5 coin)   c100<Enter>  (a P100 bill)
-   How the message gets here (chosen per device in Setup -> Guest payment -> Cash acceptor):
-     keyboard : the ESP32 pretends to be a Bluetooth (BLE HID) or USB keyboard and types the message. Works in
-                every build: the Android app, the laptop app, iPad and any browser.
-     ble      : Bluetooth LE serial (Nordic UART service). Chrome / Edge only (Web Bluetooth).
-     serial   : USB cable, 115200 baud. Chrome / Edge only (Web Serial).
-   Credit is kept on this device (it survives a reload) and each session takes the price off it.
+/* ---- ESP32 Link: Two-way Cash Acceptor + Relay Module + NeoPixel controller (works offline) ----
+   1. ESP32 -> Booth (credits): reads coin/bill pulses and sends short messages:
+        c<pesos>\n     e.g.  c5\n  (P5 coin)   c100\n  (P100 bill)
+   2. Booth -> ESP32 (two-way status commands, newline-terminated):
+        session_idle, template_selection, price{50}, cash_open, cash_close,
+        payment_success, session_start, countdown_3, countdown_2, countdown_1,
+        shutter_flash, start_print, print_done, session_end, session_cancel
+   How the ESP32 connects (chosen per device in Setup -> Guest payment / Light & sound):
+     ble      : Bluetooth Serial — BLE Nordic UART / Classic BT SPP on Android Tablet App (window.__Esp32Bridge),
+                or BLE Nordic UART (Web Bluetooth) on Chrome / Edge. Two-way!
+     serial   : USB cable, 115200 baud (Web Serial, Chrome / Edge). Two-way!
+     keyboard : BLE HID / USB keyboard typing c<pesos><Enter>. One-way (credits only; cannot receive relay commands).
+   Credit is kept on this device (survives reload) and each session takes the price off it.
    Part file: pasted into the booth script, so top-level names are var / function, never const / let. */
 var CASH_BAL_KEY = 'pb_cash_bal', CASH_LINK_KEY = 'pb_cash_link', CASH_STATS_KEY = 'pb_cash_stats';
 var CASH_MAX_ONE = 5000;                    // one coin / bill can't be worth more than this (a garbled message is dropped)
-var CASH_NUS = '6e400001-b5a3-f393-e0a9-e50e24dcca9e', CASH_NUS_TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+var CASH_NUS = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+var CASH_NUS_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';   // App -> ESP32 (write)
+var CASH_NUS_TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';   // ESP32 -> App (notify)
 var cashLink = { mode: '', state: 'idle', name: '', note: '' };     // state: idle | connecting | ready | lost | unsupported
-var cashHooks = { credit: null, status: null };                    // set by the payment code
+var cashHooks = { credit: null, status: null };                    // set by the payment / setup code
 var cashKeyParser = null, cashKeyBound = false, cashBle = null, cashSerial = null, cashLinkEnabled = false;
+var cashSerialParser = null, cashNativeRetryTimer = null;
+var cashLastCmd = '', cashLastCmdAt = 0, cashLastRx = '';
+var cashStateHook = null;
 
-// Turns the text the ESP32 sends into credits. feed() takes any chunk (a serial / BLE packet can split a message);
-// ch() takes one character (the keyboard path). active() is true while a message is half-received.
-function cashParserNew(onCredit) {
-  var st = 0, digits = '';
-  function reset() { st = 0; digits = ''; }
+// Turns the text the ESP32 sends into credits.
+// opts: { strictLine: boolean, onLine: function(str) }
+// - strictLine = true (BLE / USB Serial): only c<digits> at the start of a line triggers credit (prevents words like "ok:cash_close50" from false-triggering).
+// - strictLine = false (Keyboard HID): allows c<digits><Enter> even after a hotkey was pressed on the page.
+function cashParserNew(onCredit, opts) {
+  var strict = !!(opts && opts.strictLine);
+  var onLine = (opts && typeof opts.onLine === 'function') ? opts.onLine : null;
+  var st = 0, digits = '', lineBuf = '', atStart = true;
+  function reset() { st = 0; digits = ''; lineBuf = ''; atStart = true; }
   function ch(c) {
-    if (st === 0) { if (c === 'c' || c === 'C') { st = 1; digits = ''; } return; }
-    if (c >= '0' && c <= '9') { if (digits.length < 5) digits += c; else reset(); return; }
     if (c === '\n' || c === '\r' || c === ';') {
-      var n = digits ? parseInt(digits, 10) : 0;
-      reset();
-      if (n >= 1 && n <= CASH_MAX_ONE) onCredit(n);
+      if (st === 1 && digits.length > 0) {
+        var n = parseInt(digits, 10);
+        reset();
+        if (n >= 1 && n <= CASH_MAX_ONE) onCredit(n);
+      } else {
+        var ln = lineBuf;
+        reset();
+        if (ln && onLine) { try { onLine(ln); } catch (e) { } }
+      }
       return;
     }
-    reset();
-    if (c === 'c' || c === 'C') { st = 1; digits = ''; }       // a new message started over a broken one
+    if (strict) {
+      if (atStart) {
+        if (c === ' ' || c === '\t') return;
+        atStart = false;
+        if (c === 'c' || c === 'C') { st = 1; digits = ''; lineBuf = c; }
+        else { st = 2; digits = ''; lineBuf = c; }
+        return;
+      }
+      if (st === 1) {
+        if (c >= '0' && c <= '9' && digits.length < 5) { digits += c; lineBuf += c; }
+        else { st = 2; digits = ''; if (lineBuf.length < 160) lineBuf += c; }
+        return;
+      }
+      if (lineBuf.length < 160) lineBuf += c;
+      return;
+    }
+    // Non-strict keyboard HID mode: look for 'c' followed immediately by 1..5 digits and Enter.
+    if (st === 0) { if (c === 'c' || c === 'C') { st = 1; digits = ''; } return; }
+    if (c >= '0' && c <= '9') { if (digits.length < 5) digits += c; else st = 0; return; }
+    st = 0; digits = '';
+    if (c === 'c' || c === 'C') { st = 1; digits = ''; }
   }
   function feed(text) { text = String(text == null ? '' : text); for (var i = 0; i < text.length; i++) ch(text.charAt(i)); }
-  return { ch: ch, feed: feed, reset: reset, active: function () { return st > 0; } };
+  return { ch: ch, feed: feed, reset: reset, active: function () { return st === 1; } };
+}
+
+function cashFeedText(text, source, customParser) {
+  if (!cashSerialParser) {
+    cashSerialParser = cashParserNew(cashCredit, {
+      strictLine: true,
+      onLine: function (ln) {
+        cashLastRx = ln;
+        if (typeof cashHooks.status === 'function') { try { cashHooks.status(cashLink); } catch (e) { } }
+      }
+    });
+  }
+  (customParser || cashSerialParser).feed(text);
 }
 
 // ---- credit kept on this device ----
@@ -63974,6 +64096,7 @@ function cashNote(kind, n) {
 function cashCredit(n) {
   n = Math.floor(Number(n) || 0);
   if (!(n >= 1 && n <= CASH_MAX_ONE)) return 0;
+  if (typeof payCashOn === 'function' && !payCashOn()) return 0;   // Lighting-only mode (free event): ignore stray coin pulses
   cashSetBalance(cashBalance() + n); cashNote('in', n);
   if (typeof cashHooks.credit === 'function') { try { cashHooks.credit(n); } catch (e) { } }
   return n;
@@ -63987,20 +64110,109 @@ function cashSpend(price) {
 }
 
 // ---- link status ----
+function cashHasNativeBridge() {
+  return !!(typeof window !== 'undefined' && window.__Esp32Bridge &&
+    typeof window.__Esp32Bridge.isAvailable === 'function' &&
+    window.__Esp32Bridge.isAvailable());
+}
 function cashSetLink(state, note, name) {
   cashLink.state = state; cashLink.note = note || ''; if (name != null) cashLink.name = name;
   if (typeof cashHooks.status === 'function') { try { cashHooks.status(cashLink); } catch (e) { } }
 }
-function cashChosenLink() { var m = ''; try { m = localStorage.getItem(CASH_LINK_KEY) || ''; } catch (e) { } return (m === 'ble' || m === 'serial' || m === 'keyboard') ? m : 'keyboard'; }
+function cashChosenLink() {
+  var m = '';
+  try { m = localStorage.getItem(CASH_LINK_KEY) || ''; } catch (e) { }
+  if (m === 'ble' || m === 'serial' || m === 'keyboard') return m;
+  return cashHasNativeBridge() ? 'ble' : 'keyboard';
+}
 function cashSetChosenLink(m) { try { localStorage.setItem(CASH_LINK_KEY, m); } catch (e) { } }
 function cashSupports(mode) {
   if (mode === 'keyboard') return true;
-  if (mode === 'ble') return typeof navigator !== 'undefined' && !!navigator.bluetooth;
+  if (mode === 'ble') return cashHasNativeBridge() || (typeof navigator !== 'undefined' && !!navigator.bluetooth);
   if (mode === 'serial') return typeof navigator !== 'undefined' && !!navigator.serial;
   return false;
 }
+function cashConnected() {
+  if (cashHasNativeBridge()) {
+    try { if (window.__Esp32Bridge.isConnected()) return true; } catch (e) { }
+  }
+  if (cashBle && cashBle.dev && cashBle.dev.gatt && cashBle.dev.gatt.connected) return true;
+  if (cashSerial && cashSerial.port && cashSerial.port.writable && !cashSerial.stop) return true;
+  return false;
+}
+function cashLinkLabel() {
+  if (!cashConnected() && cashLink.state !== 'ready') return cashLink.note || 'Not connected';
+  var base = (cashLink.name ? cashLink.name + ' · ' : '') + (cashLink.note || 'Connected');
+  if (cashLastCmd) base += ' · last sent: ' + cashLastCmd;
+  return base;
+}
 
-// ---- keyboard (Bluetooth HID / USB keyboard): the same messages, typed ----
+// ---- App -> ESP32 command writer (two-way serial over Android Bridge, Web Bluetooth RX, or USB Web Serial) ----
+function cashSend(cmd) {
+  var line = String(cmd == null ? '' : cmd).trim().replace(/[\r\n]+/g, ' ');
+  if (!line) return false;
+  cashLastCmd = line;
+  cashLastCmdAt = Date.now();
+  var sent = false;
+
+  // 1. Android Tablet Native Bridge (BLE Nordic UART + Classic BT SPP)
+  if (cashHasNativeBridge()) {
+    try {
+      if (window.__Esp32Bridge.isConnected()) {
+        sent = !!window.__Esp32Bridge.write(line + '\n');
+      }
+    } catch (e) { }
+  }
+
+  // 2. Web Bluetooth BLE Nordic UART RX characteristic (Chrome / Edge)
+  if (!sent && cashBle && cashBle.rxChar && cashBle.dev && cashBle.dev.gatt && cashBle.dev.gatt.connected) {
+    try {
+      var bytes = new TextEncoder().encode(line + '\n');
+      var ch = cashBle.rxChar;
+      var dev = cashBle.dev;
+      var useNoRsp = !!(ch.properties && ch.properties.writeWithoutResponse && typeof ch.writeValueWithoutResponse === 'function');
+      cashBle.writeChain = (cashBle.writeChain || Promise.resolve()).then(function () {
+        if (!dev.gatt || !dev.gatt.connected) return;
+        return useNoRsp ? ch.writeValueWithoutResponse(bytes) : ch.writeValue(bytes);
+      }).catch(function () { /* keep write chain alive */ });
+      sent = true;
+    } catch (e) { }
+  }
+
+  // 3. Web Serial (USB cable, Chrome / Edge)
+  if (!sent && cashSerial && cashSerial.port && cashSerial.port.writable && !cashSerial.stop) {
+    try {
+      var port = cashSerial.port;
+      var sObj = cashSerial;
+      var sBytes = new TextEncoder().encode(line + '\n');
+      sObj.writeChain = (sObj.writeChain || Promise.resolve()).then(async function () {
+        if (!port.writable || sObj.stop) return;
+        var w = port.writable.getWriter();
+        try { await w.write(sBytes); } finally { try { w.releaseLock(); } catch (e) { } }
+      }).catch(function () { });
+      sent = true;
+    } catch (e) { }
+  }
+
+  if (typeof cashHooks.status === 'function') { try { cashHooks.status(cashLink); } catch (e) { } }
+  return sent;
+}
+if (typeof window !== 'undefined') window.esp32Send = cashSend;
+
+function cashSendCurrentState() {
+  var cmd = 'session_idle';
+  if (typeof cashStateHook === 'function') {
+    try {
+      var c = cashStateHook();
+      if (c) cmd = c;
+    } catch (e) { }
+  }
+  setTimeout(function () {
+    if (cashConnected()) cashSend(cmd);
+  }, 150);
+}
+
+// ---- keyboard (Bluetooth HID / USB keyboard): c<pesos><Enter> (one-way) ----
 function cashKeyHandler(e) {
   if (!cashLinkEnabled || cashLink.mode !== 'keyboard' || !cashKeyParser) return;
   if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -64013,39 +64225,118 @@ function cashKeyHandler(e) {
   if (was || cashKeyParser.active()) { e.preventDefault(); e.stopPropagation(); if (e.stopImmediatePropagation) e.stopImmediatePropagation(); }
 }
 function cashKeyStart() {
-  cashKeyParser = cashParserNew(cashCredit);
+  cashKeyParser = cashParserNew(cashCredit, { strictLine: false });
   if (!cashKeyBound) { window.addEventListener('keydown', cashKeyHandler, true); cashKeyBound = true; }
-  cashSetLink('ready', 'Listening for the ESP32 keyboard', 'Keyboard');
+  cashSetLink('ready', 'Listening for ESP32 keyboard (credits only; use BLE/USB serial for relays)', 'Keyboard');
 }
 
-// ---- Bluetooth LE serial (Chrome / Edge) ----
+// ---- Android native Bluetooth Bridge events (window.__Esp32Bridge -> window.__Esp32Event) ----
+if (typeof window !== 'undefined') {
+  window.__Esp32Event = function (raw) {
+    var ev = null;
+    try { ev = (typeof raw === 'string') ? JSON.parse(raw) : raw; } catch (e) { return; }
+    if (!ev || !ev.type) return;
+    if (ev.type === 'connected') {
+      if (cashNativeRetryTimer) { clearTimeout(cashNativeRetryTimer); cashNativeRetryTimer = null; }
+      cashBle = { dev: null, onGone: null, rxChar: null, writeChain: Promise.resolve(), native: true, mode: ev.mode || 'ble', address: ev.address || '', name: ev.name || 'ESP32', twoWay: ev.twoWay !== false };
+      var tag = ev.mode === 'spp' ? 'Classic BT connected' : 'Bluetooth connected';
+      if (ev.twoWay !== false) tag += ' (two-way)';
+      cashSetLink('ready', tag, ev.name || 'ESP32');
+      cashSendCurrentState();
+    } else if (ev.type === 'disconnected') {
+      cashBle = null;
+      if (!cashLinkEnabled || cashLink.mode !== 'ble') {
+        cashSetLink('idle', '', '');
+        return;
+      }
+      cashSetLink('lost', ev.reason || 'Bluetooth disconnected. Reconnecting…', '');
+      if (cashHasNativeBridge() && !cashNativeRetryTimer) {
+        cashNativeRetryTimer = setTimeout(function () {
+          cashNativeRetryTimer = null;
+          if (cashLinkEnabled && cashLink.mode === 'ble' && cashHasNativeBridge() && !cashConnected()) {
+            try { window.__Esp32Bridge.connectSaved(); } catch (e) { }
+          }
+        }, 3000);
+      }
+    } else if (ev.type === 'line') {
+      if (ev.line != null) cashFeedText(String(ev.line) + '\n', 'ble');
+    } else if (ev.type === 'error') {
+      var msg = String(ev.error || 'Bluetooth error');
+      if (!cashConnected()) {
+        cashSetLink('idle', msg === 'Cancelled.' ? 'Tap “Connect” to pick the ESP32' : msg, '');
+      }
+      if (typeof showToast === 'function' && msg && msg !== 'Cancelled.') {
+        try { showToast(msg, 4500); } catch (e) { }
+      }
+    }
+  };
+}
+
+// ---- Bluetooth serial (Android __Esp32Bridge BLE/SPP + Chrome / Edge Web Bluetooth BLE NUS) ----
 function cashBleDrop() {
+  if (cashNativeRetryTimer) { clearTimeout(cashNativeRetryTimer); cashNativeRetryTimer = null; }
+  if (cashHasNativeBridge() && ((cashBle && cashBle.native) || (typeof window.__Esp32Bridge.isConnected === 'function' && window.__Esp32Bridge.isConnected()))) {
+    try { window.__Esp32Bridge.disconnect(); } catch (e) { }
+  }
   try { if (cashBle && cashBle.dev && cashBle.dev.gatt && cashBle.dev.gatt.connected) cashBle.dev.gatt.disconnect(); } catch (e) { }
   if (cashBle && cashBle.dev && cashBle.onGone) { try { cashBle.dev.removeEventListener('gattserverdisconnected', cashBle.onGone); } catch (e) { } }
   cashBle = null;
 }
 async function cashBleOpen(dev) {
-  var parser = cashParserNew(cashCredit), dec = new TextDecoder();
+  var parser = cashParserNew(cashCredit, { strictLine: true, onLine: function (ln) { cashLastRx = ln; } }), dec = new TextDecoder();
   var srv = await dev.gatt.connect();
   var svc = await srv.getPrimaryService(CASH_NUS);
   var ch = await svc.getCharacteristic(CASH_NUS_TX);
-  ch.addEventListener('characteristicvaluechanged', function (ev) { parser.feed(dec.decode(ev.target.value)); });
+  var rx = null;
+  try { rx = await svc.getCharacteristic(CASH_NUS_RX); } catch (e) { rx = null; }
+  if (cashBle && cashBle.dev === dev) cashBle.rxChar = rx;
+  ch.addEventListener('characteristicvaluechanged', function (ev) { cashFeedText(dec.decode(ev.target.value), 'ble', parser); });
   await ch.startNotifications();
-  cashSetLink('ready', 'Bluetooth connected', dev.name || 'ESP32');
+  cashSetLink('ready', 'Bluetooth connected' + (rx ? ' (two-way)' : ' (read-only)'), dev.name || 'ESP32');
+  cashSendCurrentState();
 }
-// Needs a tap (Chrome asks which device). Later starts reuse the allowed device quietly.
+// Needs a tap the first time (Android native picker or Chrome device chooser). Later starts reuse the saved device quietly.
 async function cashBleConnect(pick) {
-  if (!cashSupports('ble')) { cashSetLink('unsupported', 'Bluetooth LE isn’t available in this browser. Use the keyboard link, or Chrome / Edge.'); return false; }
+  if (!cashSupports('ble')) { cashSetLink('unsupported', 'Bluetooth serial isn’t available in this browser. Use Keyboard, or Chrome / Edge / Android App.'); return false; }
+  if (cashHasNativeBridge()) {
+    try {
+      if (!pick && window.__Esp32Bridge.isConnected()) {
+        if (!cashBle || !cashBle.native) {
+          var sv0 = {};
+          try { sv0 = JSON.parse(window.__Esp32Bridge.savedDevice() || '{}') || {}; } catch (e) { }
+          cashBle = { dev: null, onGone: null, rxChar: null, writeChain: Promise.resolve(), native: true, mode: sv0.mode || 'ble', address: sv0.address || '', name: sv0.name || 'ESP32', twoWay: true };
+          cashSetLink('ready', (sv0.mode === 'spp' ? 'Classic BT connected' : 'Bluetooth connected') + ' (two-way)', sv0.name || 'ESP32');
+        }
+        return true;
+      }
+    } catch (e) { }
+    if (!pick) {
+      var saved = '';
+      try { saved = window.__Esp32Bridge.savedDevice() || ''; } catch (e) { }
+      if (!saved) { cashSetLink('idle', 'Tap “Connect” to pick the ESP32'); return false; }
+      cashSetLink('connecting', 'Connecting to saved ESP32…');
+      var started = false;
+      try { started = !!window.__Esp32Bridge.connectSaved(); } catch (e) { started = false; }
+      if (!started) { cashSetLink('idle', 'Tap “Connect” to pick the ESP32'); return false; }
+      return true;
+    }
+    cashSetLink('connecting', 'Searching for ESP32 controllers…');
+    try { window.__Esp32Bridge.pick(); return true; }
+    catch (e) { cashSetLink('idle', 'Couldn’t open Bluetooth picker.'); return false; }
+  }
   cashBleDrop(); cashSetLink('connecting', 'Connecting…');
   try {
     var dev = null;
     if (!pick && navigator.bluetooth.getDevices) {
       var list = await navigator.bluetooth.getDevices();
-      dev = (list || []).filter(function (d) { return /photobooth|pb[-_ ]?cash|esp32/i.test(d.name || ''); })[0] || null;
+      dev = (list || []).filter(function (d) { return /photobooth|pb[-_ ]?(cash|4u)|esp32|relay|booth/i.test(d.name || ''); })[0] || null;
     }
     if (!dev) {
       if (!pick) { cashSetLink('idle', 'Tap “Connect” to pick the ESP32'); return false; }
-      dev = await navigator.bluetooth.requestDevice({ filters: [{ services: [CASH_NUS] }, { namePrefix: 'Photobooth' }, { namePrefix: 'PB-Cash' }], optionalServices: [CASH_NUS] });
+      dev = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [CASH_NUS] }, { namePrefix: 'Photobooth' }, { namePrefix: 'PB-Cash' }, { namePrefix: 'PB4U' }, { namePrefix: 'ESP32' }],
+        optionalServices: [CASH_NUS]
+      });
     }
     var onGone = function () {
       if (!cashBle || cashBle.dev !== dev) return;
@@ -64053,7 +64344,7 @@ async function cashBleConnect(pick) {
       setTimeout(function () { if (cashLinkEnabled && cashLink.mode === 'ble' && cashBle && cashBle.dev === dev) cashBleOpen(dev).catch(function () { cashSetLink('lost', 'Bluetooth lost. Tap “Connect”.'); }); }, 2500);
     };
     dev.addEventListener('gattserverdisconnected', onGone);
-    cashBle = { dev: dev, onGone: onGone };
+    cashBle = { dev: dev, onGone: onGone, rxChar: null, writeChain: Promise.resolve(), native: false };
     await cashBleOpen(dev);
     return true;
   } catch (e) {
@@ -64073,15 +64364,17 @@ async function cashSerialDrop() {
 }
 async function cashSerialOpen(port) {
   await port.open({ baudRate: 115200 });
-  var me = { port: port, reader: null, stop: false }, parser = cashParserNew(cashCredit), dec = new TextDecoder();
+  var me = { port: port, reader: null, stop: false, writeChain: Promise.resolve() };
+  var parser = cashParserNew(cashCredit, { strictLine: true, onLine: function (ln) { cashLastRx = ln; } }), dec = new TextDecoder();
   cashSerial = me;
-  cashSetLink('ready', 'USB connected', 'ESP32 (USB)');
+  cashSetLink('ready', 'USB connected (two-way)', 'ESP32 (USB)');
+  cashSendCurrentState();
   (async function () {
     try {
       while (port.readable && !me.stop) {
         me.reader = port.readable.getReader();
         try {
-          for (;;) { var r = await me.reader.read(); if (r.done) break; if (r.value) parser.feed(dec.decode(r.value, { stream: true })); }
+          for (;;) { var r = await me.reader.read(); if (r.done) break; if (r.value) cashFeedText(dec.decode(r.value, { stream: true }), 'serial', parser); }
         } finally { try { me.reader.releaseLock(); } catch (e) { } }
       }
     } catch (e) { /* unplugged */ }
@@ -64089,7 +64382,7 @@ async function cashSerialOpen(port) {
   })();
 }
 async function cashSerialConnect(pick) {
-  if (!cashSupports('serial')) { cashSetLink('unsupported', 'USB serial isn’t available in this browser. Use the keyboard link, or Chrome / Edge.'); return false; }
+  if (!cashSupports('serial')) { cashSetLink('unsupported', 'USB serial isn’t available in this browser. Use Bluetooth or Keyboard, or Chrome / Edge.'); return false; }
   await cashSerialDrop(); cashSetLink('connecting', 'Connecting…');
   try {
     var port = null;
@@ -64107,17 +64400,17 @@ async function cashSerialConnect(pick) {
   }
 }
 
-// ---- start / stop (the payment code calls these) ----
+// ---- start / stop (the payment / lighting code calls these) ----
 // pick = true when the operator tapped “Connect” (needed for Bluetooth / USB the first time).
 async function cashStart(pick) {
   var m = cashChosenLink();
   cashLinkEnabled = true;
   if (cashLink.mode && cashLink.mode !== m) await cashStopLink(true);
   cashLink.mode = m;
-  if (!cashSupports(m)) { cashSetLink('unsupported', m === 'ble' ? 'Bluetooth LE isn’t available here. Use the keyboard link, or Chrome / Edge.' : 'USB serial isn’t available here. Use the keyboard link, or Chrome / Edge.'); return false; }
-  if (m === 'keyboard') { if (!cashKeyParser) cashKeyStart(); else cashSetLink('ready', 'Listening for the ESP32 keyboard', 'Keyboard'); return true; }
+  if (!cashSupports(m)) { cashSetLink('unsupported', m === 'ble' ? 'Bluetooth serial isn’t available here. Use Keyboard, or Chrome / Edge / Android App.' : 'USB serial isn’t available here. Use Bluetooth or Keyboard, or Chrome / Edge.'); return false; }
+  if (m === 'keyboard') { if (!cashKeyParser) cashKeyStart(); else cashSetLink('ready', 'Listening for ESP32 keyboard (credits only; use BLE/USB serial for relays)', 'Keyboard'); return true; }
   if (cashLink.state === 'ready' && !pick) return true;
-  if (cashLink.state === 'connecting') return false;
+  if (cashLink.state === 'connecting' && !pick) return false;
   return m === 'ble' ? cashBleConnect(!!pick) : cashSerialConnect(!!pick);
 }
 async function cashStopLink(keepEnabled) {
@@ -64127,6 +64420,25 @@ async function cashStopLink(keepEnabled) {
   cashKeyParser = null;
   cashLink.mode = ''; cashSetLink('idle', '', '');
 }
+      var ESP32_LIGHT_KEY = 'pb_esp32_light';
+      var esp32CashIsOpen = false, esp32LastCancelAt = 0;
+      function fxEsp32On() { try { return localStorage.getItem(ESP32_LIGHT_KEY) === '1'; } catch (e) { return false; } }
+      function setFxEsp32On(on) { try { if (on) localStorage.setItem(ESP32_LIGHT_KEY, '1'); else localStorage.removeItem(ESP32_LIGHT_KEY); } catch (e) { } }
+      function esp32Active() { return payCashOn() || fxEsp32On(); }
+      function esp32SendPrice(price) {
+        var p = Math.floor(Number(price) || 0);
+        if (!(p > 0) || typeof cashSend !== 'function') return;
+        var cmd = 'price{' + p + '}';
+        if (typeof cashLastCmd !== 'undefined' && cashLastCmd === cmd && Date.now() - (cashLastCmdAt || 0) < 600) return;
+        try { cashSend(cmd); } catch (e) { }
+      }
+      cashStateHook = function () {
+        if (typeof payState !== 'undefined' && payState && payState.view === 'payCash' && typeof paySheet !== 'undefined' && paySheet && !paySheet.hidden) return 'cash_open';
+        if (typeof pickOpen !== 'undefined' && pickOpen) return 'template_selection';
+        if (typeof printing !== 'undefined' && printing) return 'start_print';
+        if (typeof state !== 'undefined' && state === 'capturing') return 'session_start';
+        return 'session_idle';
+      };
       // An add-on Admin switches on per code (window.__PB.payOpt). Mode, price and
       // prints included are saved per event with the setup. The renter's PayMongo
       // key never reaches this page: the server makes the QR and checks payment.
@@ -64542,6 +64854,10 @@ async function cashStopLink(keepEnabled) {
       function payStopTimers() { clearInterval(payState.timer); clearInterval(payState.poll); clearTimeout(payState.idle); payState.timer = payState.poll = payState.idle = null; }
       function payIdle() { clearTimeout(payState.idle); if (payState.view === 'payQr' || payState.view === 'payDone') return; payState.idle = setTimeout(function () { payFinish(false); }, 90000); }
       function payShow(view) {
+        if (view !== 'payCash' && esp32CashIsOpen) {
+          esp32CashIsOpen = false;
+          if (typeof cashSend === 'function') { try { cashSend('cash_close'); } catch (e) { } }
+        }
         payState.view = view;
         ['payChoose', 'payQr', 'payVoucher', 'payCash', 'payDone', 'payProblem'].forEach(function (id) { document.getElementById(id).hidden = id !== view; });
         // ← goes back to the other ways to pay (or, after picking a print option, back to the options)
@@ -64612,6 +64928,7 @@ async function cashStopLink(keepEnabled) {
           payLayoutChoose();
           paySheet.hidden = false;
           document.body.classList.add('pay-open');
+          if (!payCfg.dual && payCfg.price > 0) esp32SendPrice(payCfg.price);
           if (payCfg.dual || payMethodCount() > 1) payShow('payChoose');
           else if (payQrOn()) payStartQr();
           else if (payCashOn()) payStartCash();
@@ -64620,11 +64937,19 @@ async function cashStopLink(keepEnabled) {
       }
       function payFinish(ok) {
         payStopTimers();
+        if (esp32CashIsOpen) {
+          esp32CashIsOpen = false;
+          if (typeof cashSend === 'function') { try { cashSend('cash_close'); } catch (e) { } }
+        }
         paySheet.hidden = true;
         document.body.classList.remove('pay-open');
         payState.qrId = null; payState.busy = false; payState.cash = null; payState.pend = null;
         var r = payState.resolve; payState.resolve = null;
         refreshPayBadge();
+        if (!ok) {
+          esp32LastCancelAt = Date.now();
+          if (typeof cashSend === 'function') { try { cashSend('session_cancel'); } catch (e) { } }
+        }
         if (r) r(!!ok);
       }
       function payProblem(text, retry, retryLabel) {
@@ -64643,6 +64968,7 @@ async function cashStopLink(keepEnabled) {
         var askLabel = label || '1 photo session';
         var askTier = (tier === 'receipt' || tier === 'photo') ? tier : 'all';
         payState.tier = askTier; payState.label = askLabel; payState.price = askPrice;
+        esp32SendPrice(askPrice);
         var simEl = document.getElementById('paySim'); if (simEl) simEl.hidden = true;
         try {
           var r = await payQrPost({ action: 'qr', amount: askPrice, prints: payCfg.prints, tier: askTier, label: askLabel }, 12000);
@@ -64688,6 +65014,11 @@ async function cashStopLink(keepEnabled) {
       }
       function payPaid(prints, tier, label) {
         payStopTimers();
+        if (esp32CashIsOpen) {
+          esp32CashIsOpen = false;
+          if (typeof cashSend === 'function') { try { cashSend('cash_close'); } catch (e) { } }
+        }
+        if (typeof cashSend === 'function') { try { cashSend('payment_success'); } catch (e) { } }
         payGrant(prints, tier, label);
         payShow('payDone');
         setTimeout(function () { payFinish(true); }, 1500);
@@ -64700,6 +65031,8 @@ async function cashStopLink(keepEnabled) {
         // While testing in Setup (outside Photo Session), let credit build up visibly instead of auto-spending it.
         if (announce && !document.body.classList.contains('in-session')) return false;
         if (!payCashOn() || payCfg.dual || payCredit() || !cashSpend(payCfg.price)) return false;
+        esp32SendPrice(payCfg.price);
+        if (typeof cashSend === 'function') { try { cashSend('payment_success'); } catch (e) { } }
         payGrant(payCfg.prints, 'all', '1 photo session');
         if (announce) { try { showToast('Cash received · ' + peso(payCfg.price) + ' · tap to start', 3000); } catch (e) { } }
         return true;
@@ -64721,15 +65054,24 @@ async function cashStopLink(keepEnabled) {
         payStopTimers();
         var pr = Math.floor(Number(price)) > 0 ? Math.floor(Number(price)) : payCfg.price;
         payState.cash = { tier: (tier === 'receipt' || tier === 'photo') ? tier : 'all', price: pr, label: label || '1 photo session' };
+        esp32SendPrice(pr);
         payShow('payCash');
         payRenderCash();
         cashStart(false);
         payCashCheck();
+        if (payState.cash && payState.view === 'payCash' && !paySheet.hidden) {
+          esp32CashIsOpen = true;
+          if (typeof cashSend === 'function') { try { cashSend('cash_open'); } catch (e) { } }
+        }
       }
       function payCashCheck() {
         var c = payState.cash;
         if (!c || payState.view !== 'payCash' || !payState.resolve) return;
         if (!cashSpend(c.price)) return;
+        if (esp32CashIsOpen) {
+          esp32CashIsOpen = false;
+          if (typeof cashSend === 'function') { try { cashSend('cash_close'); } catch (e) { } }
+        }
         document.getElementById('payDoneT').textContent = (c.label && c.label !== '1 photo session' ? c.label + ' · ' : '') + 'Cash received';
         payState.cash = null;
         payPaid(payCfg.prints, c.tier, c.label);
@@ -64815,6 +65157,7 @@ async function cashStopLink(keepEnabled) {
           var lbl = opt.label || ('Option ' + (idx + 1));
           var prc = opt.price || payCfg.price;
           var tier = opt.tier || 'all';
+          esp32SendPrice(prc);
           if (payQrOn() && payCashOn()) {
             // Both can pay for this option: ask which.
             payState.pend = { tier: tier, price: prc, label: lbl };
@@ -65002,36 +65345,71 @@ async function cashStopLink(keepEnabled) {
           st.textContent = saved ? ('Active: ' + payWorkerHost() + ' (stored on this device only).') : 'Using default photobooth4u PayMongo server.';
         }
       }
-      // Setup card for the cash acceptor: the switch, how the ESP32 connects (kept per device), its status, and the cash count.
+      // Setup cards for the ESP32 controller (Cash Acceptor + Relay Module + NeoPixels).
+      function syncEsp32LinkSelect(sel, twoWayOnly) {
+        if (!sel) return;
+        var cur = cashChosenLink();
+        if (twoWayOnly && cur === 'keyboard') cur = cashSupports('ble') ? 'ble' : 'serial';
+        sel.value = cur;
+        Array.prototype.forEach.call(sel.options, function (o) {
+          var base = o.getAttribute('data-base') || o.textContent; o.setAttribute('data-base', base);
+          var okHere = cashSupports(o.value);
+          o.disabled = !okHere;
+          o.textContent = okHere ? base : base + ' (not in this app)';
+        });
+        if (typeof sel._pillRefresh === 'function') sel._pillRefresh();
+      }
+      function refreshFxEsp32UI() {
+        var tg = document.getElementById('fxEsp32Toggle'); if (!tg) return;
+        var on = fxEsp32On();
+        tg.checked = on;
+        var box = document.getElementById('fxEsp32Box'); if (box) box.style.display = on ? '' : 'none';
+        if (!on) return;
+        var sel = document.getElementById('fxEsp32Link');
+        syncEsp32LinkSelect(sel, true);
+        var L = cashLink, st = document.getElementById('fxEsp32Status');
+        var isCon = typeof cashConnected === 'function' && cashConnected();
+        if (st) {
+          var ready = L.state === 'ready' || isCon;
+          st.className = 'pay-status ' + (ready ? 'ok' : 'warn');
+          if (cashChosenLink() === 'keyboard') {
+            st.innerHTML = 'Keyboard mode is one-way (credits only). Choose <b>Bluetooth serial</b> or <b>USB serial</b> above for Relays &amp; NeoPixels.';
+          } else {
+            st.innerHTML = ready
+              ? ('<b>Ready</b> · ' + payEsc(cashLinkLabel ? cashLinkLabel() : ((L.name || '') + ' · ' + (L.note || ''))))
+              : payEsc(L.note || 'Not connected yet.');
+          }
+        }
+        var dBtn = document.getElementById('fxEsp32DisconnectBtn');
+        if (dBtn) dBtn.hidden = !isCon && L.state !== 'ready';
+      }
       function refreshCashSetup() {
+        refreshFxEsp32UI();
         var tg = document.getElementById('payCashToggle'); if (!tg) return;
         tg.checked = !!payCfg.cash;
         var box = document.getElementById('payCashBox'); if (box) box.style.display = payCfg.cash ? '' : 'none';
         if (!payCfg.cash) return;
         var sel = document.getElementById('payCashLink');
-        if (sel) {
-          sel.value = cashChosenLink();
-          Array.prototype.forEach.call(sel.options, function (o) {
-            var base = o.getAttribute('data-base') || o.textContent; o.setAttribute('data-base', base);
-            var okHere = cashSupports(o.value);
-            o.disabled = !okHere;
-            o.textContent = okHere ? base : base + ' (not in this app)';
-          });
-          if (typeof sel._pillRefresh === 'function') sel._pillRefresh();
-        }
+        syncEsp32LinkSelect(sel, false);
         var L = cashLink, st = document.getElementById('payCashStatus');
+        var isCon = typeof cashConnected === 'function' && cashConnected();
         if (st) {
-          var ready = L.state === 'ready';
+          var ready = L.state === 'ready' || isCon;
           st.className = 'pay-status ' + (ready ? 'ok' : 'warn');
-          st.innerHTML = ready ? '<b>Ready</b> · ' + payEsc(L.name || '') + ' · ' + payEsc(L.note || '') : payEsc(L.note || 'Not connected yet.');
+          st.innerHTML = ready
+            ? ('<b>Ready</b> · ' + payEsc(cashLinkLabel ? cashLinkLabel() : ((L.name || '') + ' · ' + (L.note || ''))))
+            : payEsc(L.note || 'Not connected yet.');
         }
-        var cb = document.getElementById('payCashConnectBtn'); if (cb) cb.hidden = (cashChosenLink() === 'keyboard');
+        var modeNow = cashChosenLink();
+        var cb = document.getElementById('payCashConnectBtn'); if (cb) cb.hidden = (modeNow === 'keyboard');
+        var db = document.getElementById('payCashDisconnectBtn'); if (db) db.hidden = !isCon || modeNow === 'keyboard';
+        var tr = document.getElementById('payCashSerialTestRow'); if (tr) tr.style.display = (modeNow === 'keyboard') ? 'none' : 'flex';
         var s = cashStats(), sx = document.getElementById('payCashStats');
         if (sx) sx.innerHTML = 'Credit waiting: <b>' + payEsc(peso(cashBalance())) + '</b> · Cash in: <b>' + payEsc(peso(s.inTotal)) + '</b> · Used for sessions: <b>' + payEsc(peso(s.sold)) + '</b> (' + s.sessions + ' session' + (s.sessions === 1 ? '' : 's') + ')' + (s.since ? ' · since ' + payEsc(fmtShortDate(s.since)) : '');
       }
-      // Starts the ESP32 link while cash is on (and this is a booth page that takes payments); stops it otherwise.
+      // Starts the ESP32 link while cash OR ESP32 lighting is on; stops it otherwise.
       function cashApply() {
-        if (payCashOn()) cashStart(false); else cashStopLink(false);
+        if (esp32Active()) cashStart(false); else cashStopLink(false);
       }
       function payChanged() { refreshPayUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); if (payVoucherOn()) { refreshVoucherCache(); payLoadBatches(); } }
       function applyPaySetup(p) {
@@ -65053,6 +65431,51 @@ async function cashStopLink(keepEnabled) {
       if (pcl) pcl.addEventListener('change', function () { cashSetChosenLink(this.value); cashApply(); refreshCashSetup(); });
       var pcb = document.getElementById('payCashConnectBtn');
       if (pcb) pcb.addEventListener('click', function () { cashStart(true).then(refreshCashSetup); });
+      var pcd = document.getElementById('payCashDisconnectBtn');
+      if (pcd) pcd.addEventListener('click', function () { cashStopLink(false).then(refreshCashSetup); showToast('ESP32 disconnected.', 2500); });
+      var fxEt = document.getElementById('fxEsp32Toggle');
+      if (fxEt) fxEt.addEventListener('change', function () {
+        setFxEsp32On(this.checked);
+        if (this.checked && cashChosenLink() === 'keyboard') {
+          cashSetChosenLink(cashSupports('ble') ? 'ble' : 'serial');
+        }
+        cashApply(); refreshCashSetup();
+      });
+      var fxEl = document.getElementById('fxEsp32Link');
+      if (fxEl) fxEl.addEventListener('change', function () {
+        cashSetChosenLink(this.value); cashApply(); refreshCashSetup();
+      });
+      var fxEc = document.getElementById('fxEsp32ConnectBtn');
+      if (fxEc) fxEc.addEventListener('click', function () {
+        if (cashChosenLink() === 'keyboard') {
+          var sel2 = document.getElementById('fxEsp32Link');
+          cashSetChosenLink((sel2 && sel2.value) || (cashSupports('ble') ? 'ble' : 'serial'));
+        }
+        cashStart(true).then(refreshCashSetup);
+      });
+      var fxEd = document.getElementById('fxEsp32DisconnectBtn');
+      if (fxEd) fxEd.addEventListener('click', function () {
+        cashStopLink(false).then(refreshCashSetup); showToast('ESP32 disconnected.', 2500);
+      });
+      document.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('[data-esp-test]') : null;
+        if (!btn) return;
+        var cmd = btn.getAttribute('data-esp-test');
+        if (!cmd) return;
+        if (cashChosenLink() === 'keyboard') {
+          showToast('Keyboard mode is one-way. Select Bluetooth serial or USB serial to send commands to ESP32.', 4000);
+          return;
+        }
+        if (typeof cashConnected !== 'function' || !cashConnected()) {
+          showToast('Tap Connect ESP32 first to test relays and NeoPixels.', 3500);
+          return;
+        }
+        if (typeof cashSend === 'function' && cashSend(cmd)) {
+          showToast('Sent to ESP32: ' + cmd, 2000);
+        }
+      });
+      refreshCashSetup();
+      if (fxEsp32On()) cashApply();
       var pcx = document.getElementById('payCashTestBtn');
       if (pcx) pcx.addEventListener('click', function () { cashCredit(10); });   // same path as a real coin
       var pcc = document.getElementById('payCashClearBtn');

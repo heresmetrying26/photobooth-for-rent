@@ -21598,21 +21598,29 @@
           </label>
           <div id="payCashBox" style="display:none; margin-top:8px;">
             <p class="panel-hint" style="margin:0 0 8px;">Works with no internet. An ESP32 reads your coin or bill acceptor and tells the booth how
-              many pesos went in. Guests insert cash, and the session starts by itself once the price is reached. Any extra stays as credit for
-              the next guest. <a href="/cash-acceptor/" target="_blank" rel="noopener">Wiring and sketch</a></p>
+              many pesos went in, while the booth sends live two-way status commands (<code>session_idle</code>, <code>cash_open</code>,
+              <code>countdown_3..1</code>, <code>shutter_flash</code>, etc.) to control your <b>Relay Module</b> (up to 8 channels) &amp; <b>NeoPixel LEDs</b>.
+              <a href="/cash-acceptor/" target="_blank" rel="noopener">Wiring and sketch</a></p>
             <div class="opt-row">
               <span class="lbl">ESP32 connects as</span>
               <select class="mini-select pillify" id="payCashLink" aria-label="How the ESP32 connects to this device">
-                <option value="keyboard">Bluetooth or USB keyboard (works everywhere)</option>
-                <option value="ble">Bluetooth LE serial (Chrome / Edge)</option>
-                <option value="serial">USB cable, serial (Chrome / Edge)</option>
+                <option value="keyboard">Bluetooth or USB keyboard (credits only)</option>
+                <option value="ble">Bluetooth serial (two-way: Android App BLE/BT · Chrome BLE)</option>
+                <option value="serial">USB cable, serial (two-way: Chrome / Edge)</option>
               </select>
             </div>
             <div class="pay-status" id="payCashStatus"></div>
             <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
-              <button type="button" class="action-btn" id="payCashConnectBtn" style="width:auto; margin:0;">Connect</button>
+              <button type="button" class="action-btn" id="payCashConnectBtn" style="width:auto; margin:0;">Connect ESP32</button>
+              <button type="button" class="action-btn" id="payCashDisconnectBtn" style="width:auto; margin:0;" hidden>Disconnect</button>
               <button type="button" class="action-btn" id="payCashTestBtn" style="width:auto; margin:0;">Test: add ₱10</button>
               <button type="button" class="action-btn" id="payCashClearBtn" style="width:auto; margin:0;">Clear credit</button>
+            </div>
+            <div id="payCashSerialTestRow" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+              <button type="button" class="action-btn" data-esp-test="session_start" style="width:auto; margin:0; font-size:12px;">Test Light ON</button>
+              <button type="button" class="action-btn" data-esp-test="shutter_flash" style="width:auto; margin:0; font-size:12px;">Test Flash</button>
+              <button type="button" class="action-btn" data-esp-test="cash_open" style="width:auto; margin:0; font-size:12px;">Test Cash Open</button>
+              <button type="button" class="action-btn" data-esp-test="session_idle" style="width:auto; margin:0; font-size:12px;">Test Idle</button>
             </div>
             <p class="panel-hint" id="payCashStats" style="margin:8px 0 0;"></p>
             <button type="button" class="pay-link" id="payCashStatsReset" style="margin:2px 0 0; padding:2px 0;">Start the cash count again</button>
@@ -21695,6 +21703,29 @@
               id="fxFlash"></label>
           <p class="panel-hint" style="margin-top:4px;">The screen turns white as each photo is taken, lighting up faces
             in dim rooms. Turn the tablet's brightness all the way up.</p>
+          <label class="switch-row" style="margin-top:8px;"><span>ESP32 Relay Lighting &amp; NeoPixels</span><input
+              type="checkbox" id="fxEsp32Toggle"></label>
+          <p class="panel-hint" style="margin-top:4px;">Sends live two-way status commands over Bluetooth serial or USB (<code>session_idle</code>,
+            <code>session_start</code>, <code>countdown_3..1</code>, <code>shutter_flash</code>, <code>start_print</code>, etc.) to trigger your
+            ESP32 Relay Module &amp; NeoPixel LEDs &mdash; works offline on Android Tablet App &amp; Chrome/Edge even on free events.</p>
+          <div id="fxEsp32Box" style="display:none; margin-top:8px; padding:10px; border:1px solid var(--line); border-radius:10px; background:var(--panel-2,#f4efe7);">
+            <div class="opt-row">
+              <span class="lbl">ESP32 connects as</span>
+              <select class="mini-select pillify" id="fxEsp32Link" aria-label="How the ESP32 lighting controller connects">
+                <option value="ble">Bluetooth serial (Android App BLE/BT · Chrome BLE)</option>
+                <option value="serial">USB cable, serial (Chrome / Edge)</option>
+              </select>
+            </div>
+            <div class="pay-status" id="fxEsp32Status"></div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+              <button type="button" class="action-btn primary" id="fxEsp32ConnectBtn" style="width:auto; margin:0;">Connect ESP32</button>
+              <button type="button" class="action-btn" id="fxEsp32DisconnectBtn" style="width:auto; margin:0;" hidden>Disconnect</button>
+              <button type="button" class="action-btn" data-esp-test="session_start" style="width:auto; margin:0;">Test Light ON</button>
+              <button type="button" class="action-btn" data-esp-test="shutter_flash" style="width:auto; margin:0;">Test Flash</button>
+              <button type="button" class="action-btn" data-esp-test="session_idle" style="width:auto; margin:0;">Test Idle</button>
+            </div>
+            <p class="panel-hint" style="margin:6px 0 0;">Shares the same ESP32 controller if Cash Acceptor is also turned on. <a href="/cash-acceptor/" target="_blank" rel="noopener">Relay &amp; NeoPixel wiring</a></p>
+          </div>
           <label class="switch-row"><span>Countdown beeps and shutter click</span><input type="checkbox" id="fxSound"
               checked></label>
           <div class="opt-row" id="fxVolRow">
@@ -25808,6 +25839,9 @@
           // Option 1: tell the app a session is starting so it can wake the hotspot if idle.
           try { if (window.pb4u && window.pb4u.hotspotWake) window.pb4u.hotspotWake(); } catch (e) { }
           if (typeof camWantLive === 'function' && !camWantLive()) { try { camSleepNow(); } catch (e) { } }
+          if (typeof state !== 'undefined' && state === 'idle' && typeof cashSend === 'function' && typeof cashConnected === 'function' && cashConnected()) {
+            try { cashSend('session_idle'); } catch (e) { }
+          }
         } else { if (typeof curStep !== 'undefined' && curStep === 4) { try { camEnsureLive(); } catch (e) { } } else { try { camSleepNow(); } catch (e) { } } }
       }
       tabBtnSetup.addEventListener('click', () => switchTab('setup'));
@@ -34546,6 +34580,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               shown = n; popNum(n, false);
               try { fxTick(n); } catch (e) { }
               try { if (window.pb4u && window.pb4u.setWallCue) window.pb4u.setWallCue('countdown', String(n), 1200); } catch (e) { }
+              if (n >= 1 && n <= 3 && typeof cashSend === 'function') { try { cashSend('countdown_' + n); } catch (e) { } }
             }
             guestCall('tick', String(n), false, frac, cdShot.textContent);
             if (left <= 0) { clearInterval(timer); resolve(); }
@@ -34605,6 +34640,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (sess && sess.cancelled) { if (lit) screenFlashOff(); stopShotMotionCapture(index); return; }
           try { fxShutter(); } catch (e) { }
           flashOverlay.classList.add('flash-active');
+          if (typeof cashSend === 'function') { try { cashSend('shutter_flash'); } catch (e) { } }
           guestCall('flash');
           flashAt = Date.now();   // the pause after this photo is counted from here (see below)
           fireNow();   // already fired above when the camera has a shutter lag
@@ -35602,6 +35638,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
 
       function endCancelledSession() {
+        esp32LastCancelAt = Date.now();
+        if (typeof cashSend === 'function') { try { cashSend('session_cancel'); } catch (e) { } }
         if (typeof stopFlipAutoPlay === 'function') stopFlipAutoPlay();
         stopGifSessionCapture(false); completedGifCapture = null;
         stopShotMotionCapture(); shotMotionClips = [];
@@ -35708,6 +35746,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (sess.cancelled) { endCancelledSession(); return; }
         consumePayCredit();          // the paid session is used once the countdown starts (Cancel at Get ready keeps it)
         countingDown = true;
+        if (typeof cashSend === 'function') { try { cashSend('session_start'); } catch (e) { } }
         if (flipbookActive()) { await runFlipbookSession(); return; }
         if (isGifAllowed() && (outputMode === 'gif' || outputMode === 'both') && gifMotionStyle === 'session') startGifSessionCapture();
         stageShot = 0;
@@ -43432,6 +43471,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (needsPrintPreview(auto === true)) { showPrintPreview(auto, n); return false; }        // nothing is counted or sent until the operator has seen the page
         printing = true;
         refreshPrintUI();
+        let espStartedPrint = false, espQueuedPrint = false;
         try {
           let res = await reservePrints(per * n);
           if (!res.ok) {
@@ -43442,6 +43482,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (!res.ok) { limitReached(); return false; }
           }
           sessPrinted += per * n;
+          espStartedPrint = true;
+          if (typeof cashSend === 'function') { try { cashSend('start_print'); } catch (e) { } }
           showPrintingNote(printTxt('txtPrinting'), 4000);
           let paper = paperFor(printSize);
           const pages = printAdjustAll(flipbookResult ? buildFlipbookPages(paper) : keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)]);
@@ -43484,7 +43526,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               if (androidQueueOn() && !printFirstHolding) {
                 // Line up behind any print the thermal printer is still doing; the booth is free for the next guest at once.
                 const ahead = printQueued;
-                enqueuePrint('bt', btRun).then(() => { pwSet('bt', 'ready'); }, (btErr) => {
+                espQueuedPrint = true;
+                enqueuePrint('bt', btRun).then(() => {
+                  pwSet('bt', 'ready');
+                  if (typeof cashSend === 'function') { try { cashSend('print_done'); } catch (e) { } }
+                }, (btErr) => {
+                  if (typeof cashSend === 'function') { try { cashSend('print_done'); } catch (e) { } }
                   try { window._btThermal.btPrinter.disconnect(true); } catch (_) { }
                   try { refreshPrintUI(); } catch (_) { }
                   if (pwHoldBt(label, btRun, btFail)) return;          // switched off: prints when it is back
@@ -43581,7 +43628,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               }
               if (androidQueueOn() && !printFirstHolding) {
                 const ahead = printQueued;
-                enqueuePrint('w:' + wifiPKey(wp), wRun).catch((wErr) => {
+                espQueuedPrint = true;
+                enqueuePrint('w:' + wifiPKey(wp), wRun).then(() => {
+                  if (typeof cashSend === 'function') { try { cashSend('print_done'); } catch (e) { } }
+                }, (wErr) => {
+                  if (typeof cashSend === 'function') { try { cashSend('print_done'); } catch (e) { } }
                   if (wp.usb && !pwUsbHere(wp) && pwHoldUsb(wp, label, wRun, wFail)) return;     // switched off / unplugged while it printed
                   wFail(wErr);
                 });
@@ -43655,6 +43706,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return false;
         } finally {
           printing = false;
+          if (espStartedPrint && !espQueuedPrint && typeof cashSend === 'function') { try { cashSend('print_done'); } catch (e) { } }
           refreshPrintUI();
           if (printFirstHolding) finishPrintFirst();
           if (printLimits().ev) setTimeout(refreshPrintCount, 1500);
@@ -45831,7 +45883,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           resetForNextGuest();
         }, resultReviewSec * 1000);
       }
-      function resetForNextGuest(keepCamAwake) {
+      function resetForNextGuest(keepCamAwake, opts) {
+        var prevState = state;
         if (typeof stopFlipAutoPlay === 'function') stopFlipAutoPlay();
         clearTimeout(resultTimer);
         clearTimeout(shareStationHandoffTimer);
@@ -45870,6 +45923,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         updateFilmTrack();
         updateUI();
         if (!keepCamAwake) { try { camSleepNow(); } catch (e) { } }
+        if (typeof cashSend === 'function') {
+          try {
+            if (prevState === 'result') cashSend('session_end');
+            else if (!(opts && opts.fromBeginFlow) && Date.now() - (typeof esp32LastCancelAt === 'number' ? esp32LastCancelAt : 0) > 600) {
+              cashSend('session_idle');
+            }
+          } catch (e) { }
+        }
       }
 
       // ──────────────────────────────────────────────────────────────────
@@ -46557,6 +46618,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           popNum(String(n), false);
           if (cdBar) cdBar.style.strokeDashoffset = '0';
           guestCall('tick', String(n), false, 1, 'Get ready!');
+          if (typeof cashSend === 'function') { try { cashSend('countdown_' + n); } catch (e) { } }
           await sleepMs(1000);
         }
         if (sess && sess.cancelled) { endCancelledSession(); return; }
@@ -60264,6 +60326,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           markPick();
           pickOverlay.classList.add('on');
           document.body.classList.add('shooting', 'picking');
+          if (typeof cashSend === 'function') { try { cashSend('template_selection'); } catch (e) { } }
           try { refreshPrintFab(); } catch (e) { }
           refreshWelcome();
           guestRender();
@@ -60324,6 +60387,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           markPick();
           pickOverlay.classList.add('on');
           document.body.classList.add('shooting', 'picking');
+          if (typeof cashSend === 'function') { try { cashSend('template_selection'); } catch (e) { } }
           try { refreshPrintFab(); } catch (e) { }
           refreshWelcome();
           guestRender();
@@ -60375,6 +60439,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           markPick();
           pickOverlay.classList.add('on');
           document.body.classList.add('shooting', 'picking');
+          if (typeof cashSend === 'function') { try { cashSend('template_selection'); } catch (e) { } }
           try { refreshPrintFab(); } catch (e) { }
           refreshWelcome();
           guestRender();
@@ -60424,6 +60489,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           r(found);
           return;
         }
+        if (k === null) {
+          esp32LastCancelAt = Date.now();
+          if (typeof cashSend === 'function') { try { cashSend('session_cancel'); } catch (e) { } }
+        }
         r(k);
       }
       if (pickBackBtn) {
@@ -60469,7 +60538,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         try {
           clearTimeout(resultTimer);
           welcomeOverlay.classList.remove('on');
-          resetForNextGuest(true);   // always clean state before picking/session (keep camera awake while starting)
+          resetForNextGuest(true, { fromBeginFlow: true });   // always clean state before picking/session (keep camera awake while starting)
           // Guest payment (QR or voucher) before anything else; a paid session waits here if the tablet restarted.
           if (!(await payGate())) return;
           var didPickTop = false;
@@ -60581,7 +60650,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           }
           else if (key !== currentLayout || guestPickedTier) setLayout(key);
           // Trading card / certificate booth: the guest types their name (and a title) first.
-          if (boothType !== 'photo' && (!(await askGuestDesign()) || !(await askGuestDetails()))) return;
+          if (boothType !== 'photo' && (!(await askGuestDesign()) || !(await askGuestDetails()))) {
+            esp32LastCancelAt = Date.now();
+            if (typeof cashSend === 'function') { try { cashSend('session_cancel'); } catch (e) { } }
+            return;
+          }
           // After picking a design or layout there's always a "Get ready" screen (summary,
           // filters, Start) — the countdown never starts straight from the picker.
           await startSession((didPickTop || keys.length > 1) ? false : skipReady);
@@ -60598,6 +60671,25 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
       // ---- Guest payments: vouchers + the renter's own PayMongo (QR Ph) + cash acceptor (ESP32) ----
       /*@include cash/cash-acceptor.js*/
+      var ESP32_LIGHT_KEY = 'pb_esp32_light';
+      var esp32CashIsOpen = false, esp32LastCancelAt = 0;
+      function fxEsp32On() { try { return localStorage.getItem(ESP32_LIGHT_KEY) === '1'; } catch (e) { return false; } }
+      function setFxEsp32On(on) { try { if (on) localStorage.setItem(ESP32_LIGHT_KEY, '1'); else localStorage.removeItem(ESP32_LIGHT_KEY); } catch (e) { } }
+      function esp32Active() { return payCashOn() || fxEsp32On(); }
+      function esp32SendPrice(price) {
+        var p = Math.floor(Number(price) || 0);
+        if (!(p > 0) || typeof cashSend !== 'function') return;
+        var cmd = 'price{' + p + '}';
+        if (typeof cashLastCmd !== 'undefined' && cashLastCmd === cmd && Date.now() - (cashLastCmdAt || 0) < 600) return;
+        try { cashSend(cmd); } catch (e) { }
+      }
+      cashStateHook = function () {
+        if (typeof payState !== 'undefined' && payState && payState.view === 'payCash' && typeof paySheet !== 'undefined' && paySheet && !paySheet.hidden) return 'cash_open';
+        if (typeof pickOpen !== 'undefined' && pickOpen) return 'template_selection';
+        if (typeof printing !== 'undefined' && printing) return 'start_print';
+        if (typeof state !== 'undefined' && state === 'capturing') return 'session_start';
+        return 'session_idle';
+      };
       // An add-on Admin switches on per code (window.__PB.payOpt). Mode, price and
       // prints included are saved per event with the setup. The renter's PayMongo
       // key never reaches this page: the server makes the QR and checks payment.
@@ -61013,6 +61105,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function payStopTimers() { clearInterval(payState.timer); clearInterval(payState.poll); clearTimeout(payState.idle); payState.timer = payState.poll = payState.idle = null; }
       function payIdle() { clearTimeout(payState.idle); if (payState.view === 'payQr' || payState.view === 'payDone') return; payState.idle = setTimeout(function () { payFinish(false); }, 90000); }
       function payShow(view) {
+        if (view !== 'payCash' && esp32CashIsOpen) {
+          esp32CashIsOpen = false;
+          if (typeof cashSend === 'function') { try { cashSend('cash_close'); } catch (e) { } }
+        }
         payState.view = view;
         ['payChoose', 'payQr', 'payVoucher', 'payCash', 'payDone', 'payProblem'].forEach(function (id) { document.getElementById(id).hidden = id !== view; });
         // ← goes back to the other ways to pay (or, after picking a print option, back to the options)
@@ -61083,6 +61179,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           payLayoutChoose();
           paySheet.hidden = false;
           document.body.classList.add('pay-open');
+          if (!payCfg.dual && payCfg.price > 0) esp32SendPrice(payCfg.price);
           if (payCfg.dual || payMethodCount() > 1) payShow('payChoose');
           else if (payQrOn()) payStartQr();
           else if (payCashOn()) payStartCash();
@@ -61091,11 +61188,19 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       function payFinish(ok) {
         payStopTimers();
+        if (esp32CashIsOpen) {
+          esp32CashIsOpen = false;
+          if (typeof cashSend === 'function') { try { cashSend('cash_close'); } catch (e) { } }
+        }
         paySheet.hidden = true;
         document.body.classList.remove('pay-open');
         payState.qrId = null; payState.busy = false; payState.cash = null; payState.pend = null;
         var r = payState.resolve; payState.resolve = null;
         refreshPayBadge();
+        if (!ok) {
+          esp32LastCancelAt = Date.now();
+          if (typeof cashSend === 'function') { try { cashSend('session_cancel'); } catch (e) { } }
+        }
         if (r) r(!!ok);
       }
       function payProblem(text, retry, retryLabel) {
@@ -61114,6 +61219,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var askLabel = label || '1 photo session';
         var askTier = (tier === 'receipt' || tier === 'photo') ? tier : 'all';
         payState.tier = askTier; payState.label = askLabel; payState.price = askPrice;
+        esp32SendPrice(askPrice);
         var simEl = document.getElementById('paySim'); if (simEl) simEl.hidden = true;
         try {
           var r = await payQrPost({ action: 'qr', amount: askPrice, prints: payCfg.prints, tier: askTier, label: askLabel }, 12000);
@@ -61159,6 +61265,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       function payPaid(prints, tier, label) {
         payStopTimers();
+        if (esp32CashIsOpen) {
+          esp32CashIsOpen = false;
+          if (typeof cashSend === 'function') { try { cashSend('cash_close'); } catch (e) { } }
+        }
+        if (typeof cashSend === 'function') { try { cashSend('payment_success'); } catch (e) { } }
         payGrant(prints, tier, label);
         payShow('payDone');
         setTimeout(function () { payFinish(true); }, 1500);
@@ -61171,6 +61282,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         // While testing in Setup (outside Photo Session), let credit build up visibly instead of auto-spending it.
         if (announce && !document.body.classList.contains('in-session')) return false;
         if (!payCashOn() || payCfg.dual || payCredit() || !cashSpend(payCfg.price)) return false;
+        esp32SendPrice(payCfg.price);
+        if (typeof cashSend === 'function') { try { cashSend('payment_success'); } catch (e) { } }
         payGrant(payCfg.prints, 'all', '1 photo session');
         if (announce) { try { showToast('Cash received · ' + peso(payCfg.price) + ' · tap to start', 3000); } catch (e) { } }
         return true;
@@ -61192,15 +61305,24 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         payStopTimers();
         var pr = Math.floor(Number(price)) > 0 ? Math.floor(Number(price)) : payCfg.price;
         payState.cash = { tier: (tier === 'receipt' || tier === 'photo') ? tier : 'all', price: pr, label: label || '1 photo session' };
+        esp32SendPrice(pr);
         payShow('payCash');
         payRenderCash();
         cashStart(false);
         payCashCheck();
+        if (payState.cash && payState.view === 'payCash' && !paySheet.hidden) {
+          esp32CashIsOpen = true;
+          if (typeof cashSend === 'function') { try { cashSend('cash_open'); } catch (e) { } }
+        }
       }
       function payCashCheck() {
         var c = payState.cash;
         if (!c || payState.view !== 'payCash' || !payState.resolve) return;
         if (!cashSpend(c.price)) return;
+        if (esp32CashIsOpen) {
+          esp32CashIsOpen = false;
+          if (typeof cashSend === 'function') { try { cashSend('cash_close'); } catch (e) { } }
+        }
         document.getElementById('payDoneT').textContent = (c.label && c.label !== '1 photo session' ? c.label + ' · ' : '') + 'Cash received';
         payState.cash = null;
         payPaid(payCfg.prints, c.tier, c.label);
@@ -61286,6 +61408,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var lbl = opt.label || ('Option ' + (idx + 1));
           var prc = opt.price || payCfg.price;
           var tier = opt.tier || 'all';
+          esp32SendPrice(prc);
           if (payQrOn() && payCashOn()) {
             // Both can pay for this option: ask which.
             payState.pend = { tier: tier, price: prc, label: lbl };
@@ -61473,36 +61596,71 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           st.textContent = saved ? ('Active: ' + payWorkerHost() + ' (stored on this device only).') : 'Using default photobooth4u PayMongo server.';
         }
       }
-      // Setup card for the cash acceptor: the switch, how the ESP32 connects (kept per device), its status, and the cash count.
+      // Setup cards for the ESP32 controller (Cash Acceptor + Relay Module + NeoPixels).
+      function syncEsp32LinkSelect(sel, twoWayOnly) {
+        if (!sel) return;
+        var cur = cashChosenLink();
+        if (twoWayOnly && cur === 'keyboard') cur = cashSupports('ble') ? 'ble' : 'serial';
+        sel.value = cur;
+        Array.prototype.forEach.call(sel.options, function (o) {
+          var base = o.getAttribute('data-base') || o.textContent; o.setAttribute('data-base', base);
+          var okHere = cashSupports(o.value);
+          o.disabled = !okHere;
+          o.textContent = okHere ? base : base + ' (not in this app)';
+        });
+        if (typeof sel._pillRefresh === 'function') sel._pillRefresh();
+      }
+      function refreshFxEsp32UI() {
+        var tg = document.getElementById('fxEsp32Toggle'); if (!tg) return;
+        var on = fxEsp32On();
+        tg.checked = on;
+        var box = document.getElementById('fxEsp32Box'); if (box) box.style.display = on ? '' : 'none';
+        if (!on) return;
+        var sel = document.getElementById('fxEsp32Link');
+        syncEsp32LinkSelect(sel, true);
+        var L = cashLink, st = document.getElementById('fxEsp32Status');
+        var isCon = typeof cashConnected === 'function' && cashConnected();
+        if (st) {
+          var ready = L.state === 'ready' || isCon;
+          st.className = 'pay-status ' + (ready ? 'ok' : 'warn');
+          if (cashChosenLink() === 'keyboard') {
+            st.innerHTML = 'Keyboard mode is one-way (credits only). Choose <b>Bluetooth serial</b> or <b>USB serial</b> above for Relays &amp; NeoPixels.';
+          } else {
+            st.innerHTML = ready
+              ? ('<b>Ready</b> · ' + payEsc(cashLinkLabel ? cashLinkLabel() : ((L.name || '') + ' · ' + (L.note || ''))))
+              : payEsc(L.note || 'Not connected yet.');
+          }
+        }
+        var dBtn = document.getElementById('fxEsp32DisconnectBtn');
+        if (dBtn) dBtn.hidden = !isCon && L.state !== 'ready';
+      }
       function refreshCashSetup() {
+        refreshFxEsp32UI();
         var tg = document.getElementById('payCashToggle'); if (!tg) return;
         tg.checked = !!payCfg.cash;
         var box = document.getElementById('payCashBox'); if (box) box.style.display = payCfg.cash ? '' : 'none';
         if (!payCfg.cash) return;
         var sel = document.getElementById('payCashLink');
-        if (sel) {
-          sel.value = cashChosenLink();
-          Array.prototype.forEach.call(sel.options, function (o) {
-            var base = o.getAttribute('data-base') || o.textContent; o.setAttribute('data-base', base);
-            var okHere = cashSupports(o.value);
-            o.disabled = !okHere;
-            o.textContent = okHere ? base : base + ' (not in this app)';
-          });
-          if (typeof sel._pillRefresh === 'function') sel._pillRefresh();
-        }
+        syncEsp32LinkSelect(sel, false);
         var L = cashLink, st = document.getElementById('payCashStatus');
+        var isCon = typeof cashConnected === 'function' && cashConnected();
         if (st) {
-          var ready = L.state === 'ready';
+          var ready = L.state === 'ready' || isCon;
           st.className = 'pay-status ' + (ready ? 'ok' : 'warn');
-          st.innerHTML = ready ? '<b>Ready</b> · ' + payEsc(L.name || '') + ' · ' + payEsc(L.note || '') : payEsc(L.note || 'Not connected yet.');
+          st.innerHTML = ready
+            ? ('<b>Ready</b> · ' + payEsc(cashLinkLabel ? cashLinkLabel() : ((L.name || '') + ' · ' + (L.note || ''))))
+            : payEsc(L.note || 'Not connected yet.');
         }
-        var cb = document.getElementById('payCashConnectBtn'); if (cb) cb.hidden = (cashChosenLink() === 'keyboard');
+        var modeNow = cashChosenLink();
+        var cb = document.getElementById('payCashConnectBtn'); if (cb) cb.hidden = (modeNow === 'keyboard');
+        var db = document.getElementById('payCashDisconnectBtn'); if (db) db.hidden = !isCon || modeNow === 'keyboard';
+        var tr = document.getElementById('payCashSerialTestRow'); if (tr) tr.style.display = (modeNow === 'keyboard') ? 'none' : 'flex';
         var s = cashStats(), sx = document.getElementById('payCashStats');
         if (sx) sx.innerHTML = 'Credit waiting: <b>' + payEsc(peso(cashBalance())) + '</b> · Cash in: <b>' + payEsc(peso(s.inTotal)) + '</b> · Used for sessions: <b>' + payEsc(peso(s.sold)) + '</b> (' + s.sessions + ' session' + (s.sessions === 1 ? '' : 's') + ')' + (s.since ? ' · since ' + payEsc(fmtShortDate(s.since)) : '');
       }
-      // Starts the ESP32 link while cash is on (and this is a booth page that takes payments); stops it otherwise.
+      // Starts the ESP32 link while cash OR ESP32 lighting is on; stops it otherwise.
       function cashApply() {
-        if (payCashOn()) cashStart(false); else cashStopLink(false);
+        if (esp32Active()) cashStart(false); else cashStopLink(false);
       }
       function payChanged() { refreshPayUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); if (payVoucherOn()) { refreshVoucherCache(); payLoadBatches(); } }
       function applyPaySetup(p) {
@@ -61524,6 +61682,51 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       if (pcl) pcl.addEventListener('change', function () { cashSetChosenLink(this.value); cashApply(); refreshCashSetup(); });
       var pcb = document.getElementById('payCashConnectBtn');
       if (pcb) pcb.addEventListener('click', function () { cashStart(true).then(refreshCashSetup); });
+      var pcd = document.getElementById('payCashDisconnectBtn');
+      if (pcd) pcd.addEventListener('click', function () { cashStopLink(false).then(refreshCashSetup); showToast('ESP32 disconnected.', 2500); });
+      var fxEt = document.getElementById('fxEsp32Toggle');
+      if (fxEt) fxEt.addEventListener('change', function () {
+        setFxEsp32On(this.checked);
+        if (this.checked && cashChosenLink() === 'keyboard') {
+          cashSetChosenLink(cashSupports('ble') ? 'ble' : 'serial');
+        }
+        cashApply(); refreshCashSetup();
+      });
+      var fxEl = document.getElementById('fxEsp32Link');
+      if (fxEl) fxEl.addEventListener('change', function () {
+        cashSetChosenLink(this.value); cashApply(); refreshCashSetup();
+      });
+      var fxEc = document.getElementById('fxEsp32ConnectBtn');
+      if (fxEc) fxEc.addEventListener('click', function () {
+        if (cashChosenLink() === 'keyboard') {
+          var sel2 = document.getElementById('fxEsp32Link');
+          cashSetChosenLink((sel2 && sel2.value) || (cashSupports('ble') ? 'ble' : 'serial'));
+        }
+        cashStart(true).then(refreshCashSetup);
+      });
+      var fxEd = document.getElementById('fxEsp32DisconnectBtn');
+      if (fxEd) fxEd.addEventListener('click', function () {
+        cashStopLink(false).then(refreshCashSetup); showToast('ESP32 disconnected.', 2500);
+      });
+      document.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('[data-esp-test]') : null;
+        if (!btn) return;
+        var cmd = btn.getAttribute('data-esp-test');
+        if (!cmd) return;
+        if (cashChosenLink() === 'keyboard') {
+          showToast('Keyboard mode is one-way. Select Bluetooth serial or USB serial to send commands to ESP32.', 4000);
+          return;
+        }
+        if (typeof cashConnected !== 'function' || !cashConnected()) {
+          showToast('Tap Connect ESP32 first to test relays and NeoPixels.', 3500);
+          return;
+        }
+        if (typeof cashSend === 'function' && cashSend(cmd)) {
+          showToast('Sent to ESP32: ' + cmd, 2000);
+        }
+      });
+      refreshCashSetup();
+      if (fxEsp32On()) cashApply();
       var pcx = document.getElementById('payCashTestBtn');
       if (pcx) pcx.addEventListener('click', function () { cashCredit(10); });   // same path as a real coin
       var pcc = document.getElementById('payCashClearBtn');

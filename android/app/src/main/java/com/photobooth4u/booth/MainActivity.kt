@@ -60,6 +60,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var root: FrameLayout
     private lateinit var btBridge: BTBridge
+    private var esp32Bridge: Esp32Bridge? = null
     private var netPrintBridge: NetPrintBridge? = null
     private lateinit var pbLocal: PBLocal
     private var voiceBridge: VoiceBridge? = null
@@ -282,6 +283,9 @@ class MainActivity : AppCompatActivity() {
         // 5. Inject BTBridge into JavaScript context (window.__BTBridge)
         btBridge = BTBridge(this, webView)
         webView.addJavascriptInterface(btBridge, "__BTBridge")
+        // 5-esp32. Two-way Bluetooth Serial (BLE Nordic UART + Classic SPP) for ESP32 Cash Acceptor, Relays & NeoPixels
+        esp32Bridge = Esp32Bridge(this, webView)
+        webView.addJavascriptInterface(esp32Bridge!!, "__Esp32Bridge")
         // 5-instax. Fujifilm INSTAX Link photo printers over Bluetooth LE (window.__InstaxBridge); the protocol lives in the page
         webView.addJavascriptInterface(InstaxBridge(this, webView), "__InstaxBridge")
         // 5a. Every other printer (Epson, Canon, HP, Brother, Wi-Fi/Mopria…): Android's own print system (window.__PBPrint)
@@ -632,6 +636,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         netPrintBridge?.shutdown()
+        esp32Bridge?.shutdown()
         btBridge.shutdown()          // keeps the chosen printer (disconnect() would forget it)
         voiceBridge?.shutdown()
         shareServer?.stop()

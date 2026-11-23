@@ -46,10 +46,10 @@
 <body>
 <header class="hero"><div class="wrap">
   <a class="brand" href="/about-us/">photobooth<b>4u</b></a>
-  <h1>Offline Cash (ESP32) &amp; <em>Cloudflare PayMongo</em></h1>
-  <p class="lead">Test the Android Offline App free, accept offline coins &amp; bills with an ESP32 over Bluetooth or USB, and optionally self-host PayMongo QR Ph API &amp; webhooks on your own Cloudflare account.</p>
+  <h1>Offline Cash, Relays &amp; NeoPixel (ESP32) · <em>Cloudflare PayMongo</em></h1>
+  <p class="lead">Test the Android Offline App free, connect an ESP32 over two-way Bluetooth or USB Serial for cash acceptors, 4&ndash;8 channel relay lighting, and NeoPixel LEDs, or self-host PayMongo QR Ph on Cloudflare.</p>
   <a class="btn" href="#offline-trial">Android Offline Trial</a>
-  <a class="btn ghost" href="#esp32-cash">ESP32 Cash Acceptor</a>
+  <a class="btn ghost" href="#esp32-cash">ESP32 Relays, LEDs &amp; Cash</a>
   <a class="btn ghost" href="#cloudflare-paymongo">Own Cloudflare PayMongo</a>
 </div></header>
 
@@ -61,58 +61,70 @@
       <ol style="margin-bottom:0;">
         <li>Download and install the Android APK from <a href="/downloads/">photobooth4u.netlify.app/downloads</a>.</li>
         <li>Connect to Wi-Fi once and enter the free trial password shown on our <a href="/about-us/">About Us page</a>.</li>
-        <li>Once unlocked, you can <b>turn Wi-Fi off</b> and test everything offline — camera, offline printing, booth Wi-Fi sharing, vouchers, and the ESP32 cash acceptor.</li>
+        <li>Once unlocked, you can <b>turn Wi-Fi off</b> and test everything offline — camera, offline printing, booth Wi-Fi sharing, vouchers, and the ESP32 controller.</li>
       </ol>
     </div>
   </section>
 
   <section id="esp32-cash">
-    <h2>2. Offline Cash Acceptor (ESP32 + Coin / Bill Acceptor)</h2>
-    <p>photobooth4u supports offline cash payment using any standard 12V pulse-output coin slot (CH-926, JY-923, Allan) or bill validator (TB74, ICT, Apex) wired to an ESP32. No internet is needed — credit is tracked locally on the tablet or laptop.</p>
-
-    <div class="card">
-      <h3 style="margin-top:0;">Message protocol</h3>
-      <p style="margin-top:0;">Whenever a coin or bill finishes pulsing, the ESP32 sends one short line:</p>
-      <pre><code>c&lt;pesos&gt;\n</code></pre>
-      <p style="margin-bottom:0;">Examples: <code>c5\n</code> adds ₱5, <code>c20\n</code> adds ₱20, <code>c100\n</code> adds ₱100. Line endings accepted: <code>Enter</code> / <code>\n</code>, <code>\r</code>, or <code>;</code>. Valid single-note range: ₱1–₱5,000. Any extra credit automatically carries over to the next guest.</p>
-    </div>
+    <h2>2. Two-Way ESP32 Controller (Relay Module + NeoPixel + Cash Acceptor)</h2>
+    <p>photobooth4u supports <b>two-way serial communication</b> over Bluetooth (Android Tablet Offline App BLE/Classic BT, plus Chrome/Edge Web Bluetooth) and USB Serial. The ESP32 can report coin/bill credits (<code>c&lt;pesos&gt;\n</code>) to the app <b>and</b> receive live booth status commands to switch a <b>Relay Module</b> (studio lights, camera flash/strobe, coin/bill inhibit, print sign) and drive <b>NeoPixel (WS2812B) LED animations</b>.</p>
 
     <div class="card">
       <h3 style="margin-top:0;">Connection modes</h3>
       <table>
-        <thead><tr><th>Booth setting</th><th>Best for</th><th>Notes</th></tr></thead>
+        <thead><tr><th>Booth setting</th><th>Best for</th><th>Two-Way Relays &amp; LEDs?</th><th>Notes</th></tr></thead>
         <tbody>
-          <tr><td><b>Bluetooth or USB keyboard</b> (default)</td><td><b>Android Offline App</b>, Windows/Mac App, iPad, Chrome, Safari</td><td>ESP32 acts as a BLE HID keyboard (<code>BT_MODE 1</code>). Pair <code>Photobooth4u-Cash</code> in device Bluetooth settings. Never conflicts with Bluetooth thermal printers.</td></tr>
-          <tr><td><b>Bluetooth LE serial</b></td><td>Chrome / Edge (Android, Windows, Mac)</td><td>Nordic UART Service (<code>6e400001-...</code>, TX <code>6e400003-...</code>). Uses built-in ESP32 BLE (<code>BT_MODE 2</code>) with zero extra Arduino libraries and never hides Android&rsquo;s on-screen keyboard.</td></tr>
-          <tr><td><b>USB cable, serial</b></td><td>Chrome / Edge (Windows, Mac)</td><td>115200 baud over USB cable (always active alongside Bluetooth).</td></tr>
+          <tr><td><b>Bluetooth serial</b> (recommended)</td><td><b>Android Offline App</b>, Chrome / Edge (Windows, Mac)</td><td><b>Yes (Two-way)</b></td><td>Default <code>BT_MODE 2</code> (BLE Nordic UART <code>6e400001-...</code> RX/TX) or <code>BT_MODE 3</code> (Classic Bluetooth SPP). Works alongside Bluetooth thermal printers and never hides Android&rsquo;s on-screen keyboard.</td></tr>
+          <tr><td><b>USB cable, serial</b></td><td>Chrome / Edge (Windows, Mac)</td><td><b>Yes (Two-way)</b></td><td>115200 baud over USB cable (always active alongside Bluetooth).</td></tr>
+          <tr><td><b>Bluetooth or USB keyboard</b></td><td>iPad Safari / Legacy</td><td>No (Credits only)</td><td>ESP32 acts as a BLE HID keyboard (<code>BT_MODE 1</code>) typing <code>c&lt;pesos&gt;</code>. Cannot receive relay/LED commands from the app.</td></tr>
         </tbody>
       </table>
     </div>
 
+    <div class="card">
+      <h3 style="margin-top:0;">Two-way status commands (App &rarr; ESP32)</h3>
+      <p style="margin-top:0;">Sent automatically as newline-terminated lines (<code>\n</code>) during every booth session:</p>
+      <table>
+        <thead><tr><th>Serial command</th><th>When photobooth4u sends it</th><th>Default ESP32 action (Relays + NeoPixel)</th></tr></thead>
+        <tbody>
+          <tr><td><code>session_idle</code></td><td>Idle / welcome screen</td><td>Idle rainbow NeoPixel; cash disabled (Ch 1 OFF); Studio Light Ch 2 OFF</td></tr>
+          <tr><td><code>template_selection</code></td><td>Guest choosing a template / layout</td><td>Template-selection cyan NeoPixel chase</td></tr>
+          <tr><td><code>price{50}</code></td><td>Price selected (e.g. ₱50)</td><td>Records target price (<code>targetPesos = 50</code>)</td></tr>
+          <tr><td><code>cash_open</code></td><td>Cash payment screen opens</td><td>Enables coin/bill acceptors (Ch 1 ON); pulsing gold NeoPixel</td></tr>
+          <tr><td><code>cash_close</code></td><td>Leaving cash screen or paid</td><td>Disables coin/bill acceptors (Ch 1 OFF)</td></tr>
+          <tr><td><code>payment_success</code></td><td>Payment confirmed (Cash / QR / Voucher)</td><td>Green confirmation NeoPixel; cash disabled (Ch 1 OFF)</td></tr>
+          <tr><td><code>session_start</code></td><td>Countdown / session begins</td><td>Turns <b>Studio Light Relay Ch 2 ON</b>; bright studio NeoPixel</td></tr>
+          <tr><td><code>countdown_3</code></td><td>3 seconds before shot</td><td>Red countdown ring on NeoPixel</td></tr>
+          <tr><td><code>countdown_2</code></td><td>2 seconds before shot</td><td>Amber countdown ring on NeoPixel</td></tr>
+          <tr><td><code>countdown_1</code></td><td>1 second before shot</td><td>Green countdown ring on NeoPixel</td></tr>
+          <tr><td><code>shutter_flash</code></td><td>Shutter captures photo</td><td>Pure white NeoPixel burst + <b>Flash Relay Ch 3</b> 250&nbsp;ms pulse</td></tr>
+          <tr><td><code>start_print</code></td><td>Printing starts</td><td>Blue printing wave + <b>Print/Aux Relay Ch 4 ON</b></td></tr>
+          <tr><td><code>print_done</code></td><td>Printing finishes</td><td>Green completion flash + <b>Print/Aux Relay Ch 4 OFF</b></td></tr>
+          <tr><td><code>session_end</code></td><td>Session completed &rarr; idle</td><td><b>Studio Light Relay Ch 2 OFF</b>; returns to idle lighting</td></tr>
+          <tr><td><code>session_cancel</code></td><td>Cancelled or timed out</td><td>Acceptors disabled; all session relays OFF &rarr; red flash &rarr; idle</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-bottom:0; font-size:13.5px; color:var(--dim);">Bonus test commands: <code>ch1_on</code>..<code>ch8_on</code>, <code>ch1_off</code>..<code>ch8_off</code>, <code>all_off</code>, <code>ping</code>. Cash acceptor pulses sent back from ESP32 &rarr; App use <code>c&lt;pesos&gt;\n</code> (e.g. <code>c5\n</code>, <code>c100\n</code>).</p>
+    </div>
+
     <div class="card warn">
-      <h3 style="margin-top:0;">Wiring &amp; 3.3V safety</h3>
+      <h3 style="margin-top:0;">Max Relay Channels &amp; Wiring Guide</h3>
       <ul>
-        <li>Power your coin/bill acceptor with its own <b>12V DC power supply</b> (never power a 12V acceptor from the ESP32).</li>
-        <li>Tie <b>12V Supply GND</b> and <b>ESP32 GND</b> together (common ground).</li>
-        <li>Wire Coin signal to <b>GPIO 27</b> and Bill signal to <b>GPIO 26</b> (configured with <code>INPUT_PULLUP</code> for standard Normally Open / open-collector acceptors).</li>
-        <li><b>Important:</b> If your acceptor&rsquo;s signal line outputs active <b>5V or 12V</b>, isolate it with a <b>PC817 optocoupler</b> (recommended) or a resistor voltage divider so ESP32 GPIOs never see more than <b>3.3V</b>.</li>
-        <li><b>Pulse calibration:</b> Set your coin slot (e.g. CH-926) to output <b>1 pulse per ₱1</b> (so ₱5 = 5 pulses, ₱10 = 10 pulses) and your bill acceptor (e.g. TB74) to <b>1 pulse per ₱10</b> (so ₱20 = 2 pulses, ₱100 = 10 pulses), or adjust <code>COIN_PESOS_PER_PULSE</code> / <code>BILL_PESOS_PER_PULSE</code> at the top of the sketch to match your DIP switches.</li>
-        <li>Press the ESP32&rsquo;s built-in <b>BOOT</b> button (<code>GPIO 0</code>) any time to send a test <code>c10\n</code> credit without dropping coins.</li>
+        <li><b>How many relay channels max on an ESP32?</b> Even with Coin Slot (<code>GPIO 27</code>), Bill Acceptor (<code>GPIO 26</code>), and NeoPixel Data (<code>GPIO 13</code>) connected, a standard 30-pin or 38-pin ESP32 DevKit has <b>8 clean, boot-glitch-free output GPIOs</b> (<code>GPIO 16, 17, 18, 19, 21, 22, 23, 25</code> &mdash; note: on ESP32-WROVER with PSRAM, swap <code>16/17</code> for <code>32/33</code>). You can wire a <b>4-channel or 8-channel relay module directly</b> (or <b>16+ channels</b> via an I2C PCF8575 / MCP23017 expander on <code>GPIO 21/22</code>).</li>
+        <li><b>Default 4-Channel Relay Mapping:</b> Ch 1 = <code>GPIO 16</code> (Cash Acceptor Inhibit/Power), Ch 2 = <code>GPIO 17</code> (Studio / Ring Light), Ch 3 = <code>GPIO 18</code> (Strobe / Flash Trigger), Ch 4 = <code>GPIO 19</code> (Print Sign / Aux Light). Set <code>#define NUM_RELAYS 8</code> for an 8-channel board.</li>
+        <li><b>NeoPixel (WS2812B):</b> Connect Data In through a 330&ndash;470&nbsp;&Omega; resistor to <code>GPIO 13</code>, powered by an external 5V supply with <b>Common GND</b> tied to the ESP32. Set <code>#define USE_NEOPIXEL 0</code> if you only wired relays.</li>
+        <li><b>Cash Acceptor 3.3V safety:</b> Power coin/bill acceptors from their own <b>12V DC supply</b> with Common GND. Wire Coin to <code>GPIO 27</code> and Bill to <code>GPIO 26</code> (NO open-collector, or via PC817 optocoupler if active 5V/12V). Set <code>#define REQUIRE_CASH_OPEN 0</code> if you want coins accepted on the idle screen without needing <code>cash_open</code>.</li>
       </ul>
     </div>
 
     <div class="card">
-      <h3 style="margin-top:0;">Arduino IDE setup (important for ESP32)</h3>
-      <ul>
-        <li><b>For <code>BT_MODE 1</code> (BLE Keyboard — Android Offline App / iPad / Desktop):</b> Install the <a href="https://github.com/T-vK/ESP32-BLE-Keyboard" target="_blank" rel="noopener">T-vK/ESP32-BLE-Keyboard</a> library (Download ZIP → Arduino IDE → <b>Sketch → Include Library → Add .ZIP Library</b>).<br>
-        <i>Board Core tip:</i> If Arduino IDE shows a <code>std::string</code> / <code>String</code> compile error on ESP32 core 3.x, open <b>Boards Manager</b> and install <b>esp32 by Espressif v2.0.17</b> (or install <code>NimBLE-Arduino</code> and uncomment <code>#define USE_NIMBLE</code> in <code>BleKeyboard.h</code>).</li>
-        <li><b>For <code>BT_MODE 2</code> (BLE Nordic UART — Chrome / Edge):</b> Change <code>#define BT_MODE 1</code> to <code>#define BT_MODE 2</code>. Uses the built-in ESP32 BLE library — <b>zero extra libraries needed</b> and compiles cleanly on both ESP32 core 2.x and 3.x.</li>
+      <h3 style="margin-top:0;">Arduino IDE setup</h3>
+      <ul style="margin-bottom:0;">
+        <li><b>Default (<code>BT_MODE 2</code> — BLE Nordic UART, Android Tablet &amp; Chrome/Edge):</b> Uses built-in ESP32 BLE — <b>zero extra Bluetooth libraries needed</b> (compiles on ESP32 core 2.x &amp; 3.x).</li>
+        <li><b>NeoPixel LEDs:</b> If <code>USE_NEOPIXEL 1</code> is enabled, install <b>Adafruit NeoPixel</b> in Arduino IDE → <b>Library Manager</b> (or set <code>#define USE_NEOPIXEL 0</code> for relays only).</li>
+        <li><b>Classic Bluetooth option (<code>BT_MODE 3</code>):</b> Built-in <code>BluetoothSerial.h</code>. Pair <code>Photobooth4u-Cash</code> in Android Settings → Bluetooth first, then tap <b>Connect ESP32</b> in photobooth4u.</li>
       </ul>
-    </div>
-
-    <div class="card tip">
-      <h3 style="margin-top:0;">Android tablet tip (BLE Keyboard mode)</h3>
-      <p style="margin:0;">When an ESP32 is paired as a Bluetooth keyboard, Android hides the virtual on-screen keyboard by default. Turn on <b>Android Settings → System → Languages &amp; input → Physical keyboard → Show on-screen keyboard</b> so you can still type freely in Setup while the ESP32 stays paired.</p>
     </div>
 
     <div class="code-head">
@@ -123,54 +135,131 @@
       </div>
     </div>
     <pre><code id="inoCode">/*
- * photobooth4u — ESP32 Offline Cash Acceptor (Coin + Bill Acceptor over Bluetooth / USB)
+ * photobooth4u — ESP32 Two-Way Controller (Cash Acceptor + Relay Module + NeoPixel LEDs)
  *
- * Reads pulse outputs from standard 12V Coin Acceptors (CH-926 / JY-923 / Allan) and
- * Bill Acceptors (TB74 / ICT / Apex) and sends peso credits to photobooth4u:
- *     c&lt;pesos&gt;\n       e.g.  c5\n  (PHP 5 coin)   c100\n  (PHP 100 bill)
+ * Works completely OFFLINE over Bluetooth Serial &amp; USB Serial on:
+ *   - Android Offline App (PB4uAndroid via native Bluetooth Bridge: BLE UART or Classic BT)
+ *   - Windows / Mac / Linux Chrome &amp; Edge (Web Bluetooth BLE UART or USB Web Serial)
  *
- * Works completely OFFLINE on Android Offline App, Windows/Mac Desktop App, iPad,
- * and Chrome/Edge browsers.
+ * TWO-WAY SERIAL PROTOCOL (115200 baud / Bluetooth Serial, newline-terminated):
+ *   1. ESP32 -&gt; photobooth4u (Coin / Bill credits):
+ *        c&lt;pesos&gt;\n          e.g. c5\n (P5 coin)   c100\n (P100 bill)
+ *
+ *   2. photobooth4u -&gt; ESP32 (Live status commands):
+ *        session_idle        Idle/welcome screen (idle NeoPixel effect; cash &amp; studio light off)
+ *        template_selection  Guest picking a template/layout (selection NeoPixel effect)
+ *        price{50}           Session price in pesos (records targetPesos = 50)
+ *        cash_open           App ready for cash (enables coin/bill acceptors + Relay Ch 1 ON)
+ *        cash_close          Stops accepting cash (disables acceptors + Relay Ch 1 OFF)
+ *        payment_success     Payment confirmed (payment-success NeoPixel; Relay Ch 1 OFF)
+ *        session_start       Photo session starts (session-start LEDs; Studio Light Relay Ch 2 ON)
+ *        countdown_3         3 seconds before shot
+ *        countdown_2         2 seconds before shot
+ *        countdown_1         1 second before shot
+ *        shutter_flash       Photo captured (white flash burst LEDs + Flash Relay Ch 3 pulse)
+ *        start_print         Printing started (printing NeoPixel wave + Aux/Print Relay Ch 4 ON)
+ *        print_done          Printing finished (completion NeoPixel + Aux/Print Relay Ch 4 OFF)
+ *        session_end         Session finished (Studio Light Relay Ch 2 OFF; return to idle effect)
+ *        session_cancel      Cancelled/failed (acceptors disabled; all session relays OFF -&gt; idle)
+ *      Bonus manual test commands: ch1_on .. ch8_on, ch1_off .. ch8_off, all_off, ping
  *
  * --------------------------------------------------------------------------
- * CHOOSE ONE BLUETOOTH MODE BELOW (USB Serial at 115200 baud is ALWAYS on):
- *   1 = BLE HID Keyboard (DEFAULT — works EVERYWHERE: Android Offline App,
- *       Windows/Mac Desktop App, iPad, Chrome, Safari).
- *       Install ZIP library: https://github.com/T-vK/ESP32-BLE-Keyboard
- *       Arduino IDE note: if ESP32 board core v3.x gives a std::string/String
- *       compile error, either install "esp32 by Espressif" v2.0.17 in Boards
- *       Manager, OR install NimBLE-Arduino and uncomment #define USE_NIMBLE
- *       inside BleKeyboard.h.
- *   2 = BLE Nordic UART Service (Chrome / Edge Web Bluetooth only, does NOT
- *       hide Android's on-screen keyboard, uses built-in ESP32 BLE library —
- *       ZERO extra libraries, compiles cleanly on ESP32 core 2.x &amp; 3.x).
- *   0 = USB Serial only (plug ESP32 directly into Windows/Mac via USB cable).
+ * CHOOSE BLUETOOTH MODE BELOW (USB Serial at 115200 baud is ALWAYS active):
+ *   2 = BLE Nordic UART Service (DEFAULT — two-way, works on Android Tablet App + Chrome/Edge,
+ *       uses built-in ESP32 BLE library, zero extra BT libraries, compiles on core 2.x &amp; 3.x)
+ *   3 = Classic Bluetooth SPP (two-way serial via BluetoothSerial — Android Tablet App;
+ *       pair ESP32 in Android Bluetooth settings, then tap Connect in photobooth4u)
+ *   1 = BLE HID Keyboard (LEGACY one-way credits only — cannot receive relay/LED commands)
+ *   0 = USB Serial only (two-way via USB cable on Chrome / Edge)
  * --------------------------------------------------------------------------
  */
-#define BT_MODE 1
+#define BT_MODE 2
 
-// ---- Pin assignments (ESP32 DevKit / WROOM-32) ----
-// SAFETY: Coin/Bill acceptor SIGNAL lines are often open-collector (active LOW)
-// or 5V/12V! NEVER feed &gt;3.3V straight into an ESP32 GPIO.
-//   - Open-collector (NPN / NO to GND, most CH-926 &amp; TB74 set to NO): connect directly
-//     to GPIO with INPUT_PULLUP + share Common GND.
-//   - 5V / 12V active output: use a PC817 optocoupler or voltage divider (e.g. 10k/4.7k for 5V).
-#define COIN_PIN            27      // Coin acceptor pulse wire
-#define BILL_PIN            26      // Bill acceptor pulse wire
-#define TEST_BTN_PIN        0       // Built-in BOOT button on ESP32 (press to send c10)
-#define LED_PIN             2       // Built-in blue LED (flashes on each credit)
+// ---- NeoPixel (WS2812B LED ring / strip) ----
+// Set USE_NEOPIXEL to 1 and install "Adafruit NeoPixel" in Arduino Library Manager,
+// or set to 0 if using only a Relay Module without NeoPixels.
+#define USE_NEOPIXEL       1
+#define NEOPIXEL_PIN       13
+#define NEOPIXEL_COUNT     16
+#define NEOPIXEL_BRIGHT    160   // 0..255
 
-// ---- Calibration (adjust to match your acceptor's DIP switches / programming) ----
-#define COIN_PESOS_PER_PULSE   1    // e.g. 1 = 1 pulse per PHP 1 (5 pulses = PHP 5, 10 pulses = PHP 10)
-#define BILL_PESOS_PER_PULSE   10   // e.g. 10 = 1 pulse per PHP 10 (2 pulses = PHP 20, 10 pulses = PHP 100)
+// ---- Relay Module configuration (supports 1, 2, 4, or 8 channels directly!) ----
+// Standard 5V/3.3V opto-isolated relay boards trigger on LOW (active-LOW = true).
+// Change RELAY_ACTIVE_LOW to false if your relay/MOSFET module triggers on HIGH.
+#define NUM_RELAYS         4     // Change up to 8 if using an 8-channel relay board
+#define RELAY_ACTIVE_LOW   true
+#define FLASH_PULSE_MS     250   // How long Relay Ch 3 pulses on shutter_flash
 
-// Pulse timing (milliseconds)
-#define PULSE_DEBOUNCE_MS      22   // Ignore electrical bounce shorter than 22 ms
-#define COIN_TRAIN_GAP_MS      320  // Wait 320 ms after last coin pulse before reporting
-#define BILL_TRAIN_GAP_MS      420  // Wait 420 ms after last bill pulse before reporting
+// Safe boot-glitch-free ESP32 DevKit (WROOM-32) output GPIOs for relays 1..8
+// (If using an ESP32-WROVER board with PSRAM, change pins 16 &amp; 17 to 32 &amp; 33):
+#define RELAY_CASH_PIN     16    // Ch 1: Coin &amp; Bill Acceptor Enable / Power Relay
+#define RELAY_LIGHT_PIN    17    // Ch 2: Studio / Ring Light Relay
+#define RELAY_FLASH_PIN    18    // Ch 3: Strobe / Camera Flash Relay (250 ms pulse)
+#define RELAY_AUX_PIN      19    // Ch 4: Print Indicator / Booth Sign / Aux Relay
+#define RELAY_CH5_PIN      21    // Ch 5 (optional 8-ch)
+#define RELAY_CH6_PIN      22    // Ch 6 (optional 8-ch)
+#define RELAY_CH7_PIN      23    // Ch 7 (optional 8-ch)
+#define RELAY_CH8_PIN      25    // Ch 8 (optional 8-ch)
+
+const uint8_t RELAY_PINS[8] = {
+  RELAY_CASH_PIN, RELAY_LIGHT_PIN, RELAY_FLASH_PIN, RELAY_AUX_PIN,
+  RELAY_CH5_PIN,  RELAY_CH6_PIN,   RELAY_CH7_PIN,   RELAY_CH8_PIN
+};
+
+// ---- Cash Acceptor Pins &amp; Calibration ----
+// SAFETY: Coin/Bill acceptor signal lines must never exceed 3.3V on ESP32 GPIO.
+//   - Open-collector (NO to GND): connect directly to GPIO with INPUT_PULLUP + common GND.
+//   - Active 5V/12V output: isolate through a PC817 optocoupler or voltage divider.
+#define COIN_PIN              27     // Coin acceptor pulse wire
+#define BILL_PIN              26     // Bill acceptor pulse wire
+#define TEST_BTN_PIN          0      // Built-in BOOT button on ESP32 (press to test c10)
+#define LED_PIN               2      // Built-in blue LED
+
+#define COIN_PESOS_PER_PULSE  1      // 1 pulse = PHP 1 (5 pulses = P5, 10 pulses = P10)
+#define BILL_PESOS_PER_PULSE  10     // 1 pulse = PHP 10 (2 pulses = P20, 10 pulses = P100)
+#define PULSE_DEBOUNCE_MS     22
+#define COIN_TRAIN_GAP_MS     320
+#define BILL_TRAIN_GAP_MS     420
+
+// 1 = ignore coin/bill pulses unless cash_open was received from the app (matches idle=disabled).
+// 0 = report coin/bill pulses even while idle (for welcome-screen pre-pay without inhibit relay).
+#define REQUIRE_CASH_OPEN     1
 
 #define DEVICE_NAME "Photobooth4u-Cash"
 
+#if USE_NEOPIXEL == 1
+  #include &lt;Adafruit_NeoPixel.h&gt;
+  Adafruit_NeoPixel strip(NEOPIXEL_COUNT, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
+#endif
+
+// ---- Booth LED / Controller State ----
+enum BoothState {
+  ST_IDLE = 0,
+  ST_TEMPLATE_SELECT,
+  ST_CASH_OPEN,
+  ST_PAYMENT_OK,
+  ST_SESSION_START,
+  ST_CD_3,
+  ST_CD_2,
+  ST_CD_1,
+  ST_FLASH,
+  ST_PRINTING,
+  ST_PRINT_DONE,
+  ST_CANCEL
+};
+
+BoothState boothState = ST_IDLE;
+uint32_t stateEnteredMs = 0;
+uint32_t targetPesos = 0;
+bool cashAccepting = false;
+bool flashRelayActive = false;
+uint32_t flashRelayOffAt = 0;
+uint32_t lastLedUpdateMs = 0;
+uint16_t animStep = 0;
+
+String usbRxLine = "";
+
+// ---- Bluetooth Transport ----
 #if BT_MODE == 1
   #include &lt;BleKeyboard.h&gt;
   BleKeyboard bleKeyboard(DEVICE_NAME, "photobooth4u", 100);
@@ -179,30 +268,55 @@
   #include &lt;BLEServer.h&gt;
   #include &lt;BLEUtils.h&gt;
   #include &lt;BLE2902.h&gt;
-  // Nordic UART Service (matches protected/src/cash/cash-acceptor.js)
   #define NUS_SERVICE_UUID "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
+  #define NUS_RX_UUID      "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
   #define NUS_TX_UUID      "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
   BLECharacteristic *pTxChar = nullptr;
   volatile bool bleClientConnected = false;
   volatile bool bleNeedReAdv = false;
 
-  class NusCallbacks : public BLEServerCallbacks {
+  // ISR/callback-safe RX queue for incoming BLE write chunks
+  portMUX_TYPE bleRxMux = portMUX_INITIALIZER_UNLOCKED;
+  volatile char bleRxQueue[512];
+  volatile uint16_t bleRxHead = 0;
+  volatile uint16_t bleRxTail = 0;
+
+  class NusServerCallbacks : public BLEServerCallbacks {
     void onConnect(BLEServer *s) override { bleClientConnected = true; }
     void onDisconnect(BLEServer *s) override {
       bleClientConnected = false;
       bleNeedReAdv = true;
     }
   };
+
+  class NusRxCallbacks : public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic *ch) override {
+      const uint8_t *data = ch-&gt;getData();
+      size_t len = ch-&gt;getLength();
+      if (!data || len == 0) return;
+      portENTER_CRITICAL(&amp;bleRxMux);
+      for (size_t i = 0; i &lt; len; i++) {
+        uint16_t next = (bleRxHead + 1) % sizeof(bleRxQueue);
+        if (next != bleRxTail) {
+          bleRxQueue[bleRxHead] = (char)data[i];
+          bleRxHead = next;
+        }
+      }
+      portEXIT_CRITICAL(&amp;bleRxMux);
+    }
+  };
+#elif BT_MODE == 3
+  #include &lt;BluetoothSerial.h&gt;
+  BluetoothSerial SerialBT;
+  String btSppRxLine = "";
 #endif
 
+// ---- Pulse Interrupts ----
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
-
 volatile uint32_t coinPulses = 0;
 volatile uint32_t coinLastMs = 0;
-
 volatile uint32_t billPulses = 0;
 volatile uint32_t billLastMs = 0;
-
 uint32_t testBtnLastMs = 0;
 
 void IRAM_ATTR onCoinPulse() {
@@ -225,25 +339,61 @@ void IRAM_ATTR onBillPulse() {
   portEXIT_CRITICAL_ISR(&amp;mux);
 }
 
+// ---- Relay Helpers ----
+void setRelay(uint8_t idx, bool on) {
+  if (idx &gt;= NUM_RELAYS || idx &gt;= 8) return;
+  uint8_t level = RELAY_ACTIVE_LOW ? (on ? LOW : HIGH) : (on ? HIGH : LOW);
+  digitalWrite(RELAY_PINS[idx], level);
+}
+
+void allRelaysOff() {
+  for (uint8_t i = 0; i &lt; NUM_RELAYS &amp;&amp; i &lt; 8; i++) {
+    setRelay(i, false);
+  }
+  flashRelayActive = false;
+}
+
+void triggerFlashRelay() {
+  if (NUM_RELAYS &lt; 3) return;
+  setRelay(2, true); // Ch 3: RELAY_FLASH_PIN
+  flashRelayActive = true;
+  flashRelayOffAt = millis() + FLASH_PULSE_MS;
+}
+
+// ---- Serial / Bluetooth Writers ----
+void sendLineToHost(const char *msg) {
+  Serial.print(msg);
+#if BT_MODE == 2
+  if (bleClientConnected &amp;&amp; pTxChar != nullptr) {
+    pTxChar-&gt;setValue((uint8_t *)msg, strlen(msg));
+    pTxChar-&gt;notify();
+  }
+#elif BT_MODE == 3
+  if (SerialBT.hasClient()) {
+    SerialBT.print(msg);
+  }
+#endif
+}
+
 void blinkLed(int times) {
   for (int i = 0; i &lt; times; i++) {
     digitalWrite(LED_PIN, HIGH);
-    delay(45);
+    delay(35);
     digitalWrite(LED_PIN, LOW);
-    if (i + 1 &lt; times) delay(45);
+    if (i + 1 &lt; times) delay(35);
   }
 }
 
-void sendCredit(uint32_t pesos) {
+void sendCredit(uint32_t pesos, bool bypassCashOpen) {
   if (pesos == 0 || pesos &gt; 5000) return;
+#if REQUIRE_CASH_OPEN == 1
+  if (!bypassCashOpen &amp;&amp; !cashAccepting) return;
+#endif
 
   char msg[16];
   snprintf(msg, sizeof(msg), "c%lu\n", (unsigned long)pesos);
-
-  // 1. Always send over USB Serial (works with Chrome/Edge Web Serial + Serial Monitor)
   Serial.print(msg);
 
-  // 2. Send over Bluetooth
 #if BT_MODE == 1
   if (bleKeyboard.isConnected()) {
     char num[12];
@@ -257,9 +407,233 @@ void sendCredit(uint32_t pesos) {
     pTxChar-&gt;setValue((uint8_t *)msg, strlen(msg));
     pTxChar-&gt;notify();
   }
+#elif BT_MODE == 3
+  if (SerialBT.hasClient()) {
+    SerialBT.print(msg);
+  }
 #endif
 
   blinkLed(2);
+}
+
+// ---- NeoPixel Animations (Non-blocking) ----
+#if USE_NEOPIXEL == 1
+uint32_t wheelColor(byte pos) {
+  pos = 255 - pos;
+  if (pos &lt; 85) return strip.Color(255 - pos * 3, 0, pos * 3);
+  if (pos &lt; 170) { pos -= 85; return strip.Color(0, pos * 3, 255 - pos * 3); }
+  pos -= 170;
+  return strip.Color(pos * 3, 255 - pos * 3, 0);
+}
+
+void fillColor(uint32_t c) {
+  for (uint16_t i = 0; i &lt; strip.numPixels(); i++) strip.setPixelColor(i, c);
+  strip.show();
+}
+
+void setCountdownRing(uint8_t sec, uint8_t r, uint8_t g, uint8_t b) {
+  uint16_t n = strip.numPixels();
+  uint16_t lit = (sec == 3) ? n : (sec == 2) ? max((uint16_t)1, (uint16_t)((n * 2) / 3)) : max((uint16_t)1, (uint16_t)(n / 3));
+  strip.clear();
+  for (uint16_t i = 0; i &lt; lit; i++) strip.setPixelColor(i, strip.Color(r, g, b));
+  strip.show();
+}
+
+void updateNeoPixel(uint32_t now) {
+  if (now - lastLedUpdateMs &lt; 35) return;
+  lastLedUpdateMs = now;
+  animStep++;
+
+  // Timed transitions back to default states
+  uint32_t elapsed = now - stateEnteredMs;
+  if (boothState == ST_FLASH &amp;&amp; elapsed &gt;= FLASH_PULSE_MS) {
+    boothState = ST_SESSION_START;
+  } else if ((boothState == ST_CANCEL || boothState == ST_PRINT_DONE) &amp;&amp; elapsed &gt;= 1800) {
+    boothState = ST_IDLE;
+  }
+
+  switch (boothState) {
+    case ST_IDLE: {
+      for (uint16_t i = 0; i &lt; strip.numPixels(); i++) {
+        strip.setPixelColor(i, wheelColor(((i * 256 / strip.numPixels()) + animStep * 2) &amp; 255));
+      }
+      strip.show();
+      break;
+    }
+    case ST_TEMPLATE_SELECT: {
+      strip.clear();
+      uint16_t head = animStep % strip.numPixels();
+      for (uint16_t k = 0; k &lt; 4; k++) {
+        strip.setPixelColor((head + k) % strip.numPixels(), strip.Color(0, 190, 255));
+      }
+      strip.show();
+      break;
+    }
+    case ST_CASH_OPEN: {
+      uint8_t br = 80 + (uint8_t)(85.0 * (0.5 + 0.5 * sin(animStep * 0.25)));
+      fillColor(strip.Color(br, (uint8_t)(br * 0.8), 0));
+      break;
+    }
+    case ST_PAYMENT_OK: {
+      fillColor(strip.Color(0, 255, 90));
+      break;
+    }
+    case ST_SESSION_START: {
+      // Bright neutral-warm studio fill light
+      fillColor(strip.Color(255, 240, 220));
+      break;
+    }
+    case ST_CD_3: setCountdownRing(3, 255, 45, 45); break;
+    case ST_CD_2: setCountdownRing(2, 255, 175, 0); break;
+    case ST_CD_1: setCountdownRing(1, 0, 255, 80); break;
+    case ST_FLASH: {
+      fillColor(strip.Color(255, 255, 255));
+      break;
+    }
+    case ST_PRINTING: {
+      strip.clear();
+      uint16_t head = animStep % strip.numPixels();
+      for (uint16_t i = 0; i &lt; strip.numPixels(); i++) {
+        uint16_t d = (i + strip.numPixels() - head) % strip.numPixels();
+        strip.setPixelColor(i, d &lt; 5 ? strip.Color(60, 130, 255) : strip.Color(15, 0, 45));
+      }
+      strip.show();
+      break;
+    }
+    case ST_PRINT_DONE: {
+      fillColor((animStep % 6 &lt; 3) ? strip.Color(0, 255, 100) : strip.Color(40, 255, 180));
+      break;
+    }
+    case ST_CANCEL: {
+      fillColor((animStep % 6 &lt; 3) ? strip.Color(255, 20, 20) : strip.Color(40, 0, 0));
+      break;
+    }
+  }
+}
+#endif
+
+// ---- Incoming Command Handler ----
+void setBoothState(BoothState st) {
+  boothState = st;
+  stateEnteredMs = millis();
+  animStep = 0;
+}
+
+void handleAppCommand(String cmd) {
+  cmd.trim();
+  if (cmd.length() == 0) return;
+
+  if (cmd == "session_idle") {
+    cashAccepting = false;
+    setRelay(0, false); // Ch 1 Cash Acceptor OFF
+    setRelay(1, false); // Ch 2 Studio Light OFF
+    setRelay(2, false);
+    setBoothState(ST_IDLE);
+  } else if (cmd == "template_selection") {
+    setBoothState(ST_TEMPLATE_SELECT);
+  } else if (cmd.startsWith("price{") &amp;&amp; cmd.endsWith("}")) {
+    String numStr = cmd.substring(6, cmd.length() - 1);
+    targetPesos = (uint32_t)numStr.toInt();
+  } else if (cmd == "cash_open") {
+    cashAccepting = true;
+    setRelay(0, true);  // Ch 1 Cash Acceptor ON
+    setBoothState(ST_CASH_OPEN);
+  } else if (cmd == "cash_close") {
+    cashAccepting = false;
+    setRelay(0, false); // Ch 1 Cash Acceptor OFF
+  } else if (cmd == "payment_success") {
+    cashAccepting = false;
+    setRelay(0, false); // Ch 1 Cash Acceptor OFF
+    setBoothState(ST_PAYMENT_OK);
+  } else if (cmd == "session_start") {
+    setRelay(1, true);  // Ch 2 Studio Light ON
+    setBoothState(ST_SESSION_START);
+  } else if (cmd == "countdown_3") {
+    setBoothState(ST_CD_3);
+  } else if (cmd == "countdown_2") {
+    setBoothState(ST_CD_2);
+  } else if (cmd == "countdown_1") {
+    setBoothState(ST_CD_1);
+  } else if (cmd == "shutter_flash") {
+    triggerFlashRelay(); // Ch 3 Strobe/Flash Relay pulse
+    setBoothState(ST_FLASH);
+  } else if (cmd == "start_print") {
+    setRelay(3, true);  // Ch 4 Aux / Printing Light Relay ON
+    setBoothState(ST_PRINTING);
+  } else if (cmd == "print_done") {
+    setRelay(3, false); // Ch 4 Aux / Printing Light Relay OFF
+    setBoothState(ST_PRINT_DONE);
+  } else if (cmd == "session_end") {
+    cashAccepting = false;
+    setRelay(0, false); // Cash Acceptor OFF
+    setRelay(1, false); // Studio Light OFF
+    setBoothState(ST_IDLE);
+  } else if (cmd == "session_cancel") {
+    cashAccepting = false;
+    allRelaysOff();
+    setBoothState(ST_CANCEL);
+  } else if (cmd == "all_off") {
+    cashAccepting = false;
+    allRelaysOff();
+    setBoothState(ST_IDLE);
+  } else if (cmd == "ping") {
+    sendLineToHost("pong\n");
+    return;
+  } else if (cmd.startsWith("ch") &amp;&amp; cmd.length() &gt;= 6) {
+    // Manual test helpers: ch1_on .. ch8_on, ch1_off .. ch8_off
+    int ch = cmd.charAt(2) - '1';
+    if (ch &gt;= 0 &amp;&amp; ch &lt; NUM_RELAYS) {
+      if (cmd.endsWith("_on")) setRelay((uint8_t)ch, true);
+      else if (cmd.endsWith("_off")) setRelay((uint8_t)ch, false);
+    }
+  } else {
+    return;
+  }
+
+  // Acknowledge back to app (safe because it does not start with 'c' + digits)
+  String ack = "ok:" + cmd + "\n";
+  sendLineToHost(ack.c_str());
+  digitalWrite(LED_PIN, HIGH);
+  delay(10);
+  digitalWrite(LED_PIN, LOW);
+}
+
+void feedRxChar(String &amp;buf, char ch) {
+  if (ch == '\n' || ch == '\r' || ch == ';') {
+    if (buf.length() &gt; 0) {
+      String cmd = buf;
+      buf = "";
+      handleAppCommand(cmd);
+    }
+  } else if (buf.length() &lt; 96) {
+    buf += ch;
+  }
+}
+
+void pollIncomingCommands() {
+  while (Serial.available() &gt; 0) {
+    feedRxChar(usbRxLine, (char)Serial.read());
+  }
+#if BT_MODE == 2
+  static String bleRxLine = "";
+  for (;;) {
+    char ch = 0;
+    bool hasChar = false;
+    portENTER_CRITICAL(&amp;bleRxMux);
+    if (bleRxTail != bleRxHead) {
+      ch = bleRxQueue[bleRxTail];
+      bleRxTail = (bleRxTail + 1) % sizeof(bleRxQueue);
+      hasChar = true;
+    }
+    portEXIT_CRITICAL(&amp;bleRxMux);
+    if (!hasChar) break;
+    feedRxChar(bleRxLine, ch);
+  }
+#elif BT_MODE == 3
+  while (SerialBT.available() &gt; 0) {
+    feedRxChar(btSppRxLine, (char)SerialBT.read());
+  }
+#endif
 }
 
 void setup() {
@@ -267,35 +641,53 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW);
 
+  for (uint8_t i = 0; i &lt; NUM_RELAYS &amp;&amp; i &lt; 8; i++) {
+    pinMode(RELAY_PINS[i], OUTPUT);
+    setRelay(i, false);
+  }
+
   pinMode(COIN_PIN, INPUT_PULLUP);
   pinMode(BILL_PIN, INPUT_PULLUP);
   pinMode(TEST_BTN_PIN, INPUT_PULLUP);
 
-  // FALLING edge for standard active-LOW / open-collector (NO) acceptors.
-  // If your acceptor outputs active-HIGH pulses via optocoupler, change to RISING.
   attachInterrupt(digitalPinToInterrupt(COIN_PIN), onCoinPulse, FALLING);
   attachInterrupt(digitalPinToInterrupt(BILL_PIN), onBillPulse, FALLING);
 
+#if USE_NEOPIXEL == 1
+  strip.begin();
+  strip.setBrightness(NEOPIXEL_BRIGHT);
+  strip.show();
+#endif
+
 #if BT_MODE == 1
   bleKeyboard.begin();
-  Serial.println("Photobooth4u Cash Acceptor ready (BLE Keyboard + USB Serial)");
+  Serial.println("Photobooth4u ESP32 ready (BLE Keyboard one-way + USB Serial two-way)");
 #elif BT_MODE == 2
   BLEDevice::init(DEVICE_NAME);
   BLEServer *server = BLEDevice::createServer();
-  server-&gt;setCallbacks(new NusCallbacks());
+  server-&gt;setCallbacks(new NusServerCallbacks());
   BLEService *service = server-&gt;createService(NUS_SERVICE_UUID);
   pTxChar = service-&gt;createCharacteristic(NUS_TX_UUID, BLECharacteristic::PROPERTY_NOTIFY);
   pTxChar-&gt;addDescriptor(new BLE2902());
+  BLECharacteristic *pRxChar = service-&gt;createCharacteristic(
+    NUS_RX_UUID,
+    BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR
+  );
+  pRxChar-&gt;setCallbacks(new NusRxCallbacks());
   service-&gt;start();
   BLEAdvertising *adv = BLEDevice::getAdvertising();
   adv-&gt;addServiceUUID(NUS_SERVICE_UUID);
   adv-&gt;setScanResponse(true);
   BLEDevice::startAdvertising();
-  Serial.println("Photobooth4u Cash Acceptor ready (BLE Nordic UART + USB Serial)");
+  Serial.println("Photobooth4u ESP32 ready (BLE Nordic UART two-way + USB Serial)");
+#elif BT_MODE == 3
+  SerialBT.begin(DEVICE_NAME);
+  Serial.println("Photobooth4u ESP32 ready (Classic Bluetooth SPP two-way + USB Serial)");
 #else
-  Serial.println("Photobooth4u Cash Acceptor ready (USB Serial only)");
+  Serial.println("Photobooth4u ESP32 ready (USB Serial two-way)");
 #endif
 
+  setBoothState(ST_IDLE);
   blinkLed(3);
 }
 
@@ -307,10 +699,20 @@ void loop() {
     BLEDevice::startAdvertising();
   }
 #endif
+
+  pollIncomingCommands();
+
   uint32_t now = millis();
+
+  // Turn off momentary Flash/Strobe Relay pulse when done
+  if (flashRelayActive &amp;&amp; (int32_t)(now - flashRelayOffAt) &gt;= 0) {
+    setRelay(2, false);
+    flashRelayActive = false;
+  }
+
+  // Count completed coin/bill pulse trains
   uint32_t cCount = 0;
   uint32_t bCount = 0;
-
   portENTER_CRITICAL(&amp;mux);
   if (coinPulses &gt; 0 &amp;&amp; (now - coinLastMs) &gt;= COIN_TRAIN_GAP_MS) {
     cCount = coinPulses;
@@ -322,28 +724,30 @@ void loop() {
   }
   portEXIT_CRITICAL(&amp;mux);
 
-  if (cCount &gt; 0) sendCredit(cCount * COIN_PESOS_PER_PULSE);
-  if (bCount &gt; 0) sendCredit(bCount * BILL_PESOS_PER_PULSE);
+  if (cCount &gt; 0) sendCredit(cCount * COIN_PESOS_PER_PULSE, false);
+  if (bCount &gt; 0) sendCredit(bCount * BILL_PESOS_PER_PULSE, false);
 
   // Hardware test button (BOOT button on ESP32 -&gt; credits PHP 10)
   if (digitalRead(TEST_BTN_PIN) == LOW &amp;&amp; (now - testBtnLastMs) &gt; 600) {
     testBtnLastMs = now;
-    sendCredit(10);
+    sendCredit(10, true);
   }
 
-  delay(10);
+#if USE_NEOPIXEL == 1
+  updateNeoPixel(now);
+#endif
+
+  delay(8);
 }</code></pre>
 
     <div class="card">
       <h3 style="margin-top:0;">Turn it on in photobooth4u</h3>
       <ol>
-        <li>Open <b>Setup → 7 Session → Pay &amp; photos → Guest payment</b>.</li>
-        <li>Switch on <b>Cash acceptor (coins / bills, ESP32)</b>.</li>
-        <li>Pick how the ESP32 connects (default: <b>Bluetooth or USB keyboard</b>).</li>
-        <li>Set your <b>Price per session</b> (or turn on <b>Multiple payment options</b>).</li>
-        <li>Tap <b>Test: add ₱10</b> (or press the ESP32 BOOT button) while in Setup to verify credits count up, then tap <b>Clear credit</b> and switch to <b>Photo Session</b>.</li>
+        <li><b>For Cash Acceptor + Relays / NeoPixels:</b> Open <b>Setup → 7 Session → Pay &amp; photos → Guest payment</b>, switch on <b>Cash acceptor (coins / bills, ESP32)</b>, pick <b>Bluetooth serial</b> (or <b>USB cable, serial</b>), and tap <b>Connect ESP32</b> to choose <code>Photobooth4u-Cash</code>.</li>
+        <li><b>For Relays / NeoPixels only (free events):</b> Open <b>Setup → 7 Session → Light, sound and start</b>, switch on <b>ESP32 Relay Lighting &amp; NeoPixels</b>, pick <b>Bluetooth serial</b> (or USB), and tap <b>Connect ESP32</b>.</li>
+        <li>Use the built-in <b>Test Light ON</b> / <b>Test Flash</b> / <b>Test Cash Open</b> / <b>Test Idle</b> buttons (and <b>Test: add ₱10</b> or the ESP32 BOOT button) to verify your relays, LEDs, and coin/bill credits before switching to <b>Photo Session</b>.</li>
       </ol>
-      <p style="margin-bottom:0; font-size:14px; color:var(--dim);"><b>Guest flow:</b> When a guest taps the screen and opens <b>Pay with cash</b>, inserting enough coins/bills starts the photo session automatically. If a guest inserts cash on the Welcome screen before tapping, the booth banks the credit and displays <b>✓ Paid session ready · Tap to start</b> so one tap starts immediately.</p>
+      <p style="margin-bottom:0; font-size:14px; color:var(--dim);"><b>Android Tablet note:</b> Because the ESP32 uses its own dedicated Bluetooth bridge (<code>window.__Esp32Bridge</code>) inside the Android Offline App, you can stay connected to your ESP32 controller and a Bluetooth thermal printer at the exact same time.</p>
     </div>
   </section>
 

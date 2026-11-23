@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESP32 Cash Acceptor &amp; Self-Hosted PayMongo Guide · photobooth4u</title>
+<meta name="description" content="Wire an ESP32 with Bluetooth to a coin or bill acceptor for offline cash payments in photobooth4u, or host PayMongo API & webhooks on your own Cloudflare Worker.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500..700;1,500..700&family=Manrope:wght@400..800&display=swap">
+<style>
+  :root{ --bg:#f6f1ea; --card:#fffdf9; --ink:#1f1a1d; --dim:#5d555b; --line:#e4ddd3; --red:#c8402a; --dark:#1f1a1d; --green:#236e3d; }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.6 'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;}
+  a{color:var(--red);}
+  .wrap{max-width:820px; margin:0 auto; padding:0 16px;}
+  header.hero{background:var(--dark); color:#f6f1ea; padding:38px 0 34px;}
+  .brand{font:600 22px 'Fraunces',Georgia,serif; color:#f6f1ea; text-decoration:none;}
+  .brand b{background:var(--red); color:#fff; font:800 12px 'Manrope',sans-serif; padding:2px 6px; border-radius:6px; margin-left:4px;}
+  h1{font:600 clamp(30px,6vw,44px)/1.1 'Fraunces',Georgia,serif; margin:20px 0 10px;}
+  h1 em{color:#e8715a;}
+  .lead{color:#d9cfc6; font-size:17px; margin:0 0 18px;}
+  .btn{display:inline-flex; align-items:center; min-height:42px; padding:9px 16px; border-radius:999px; font-weight:800; font-size:14px; text-decoration:none; background:var(--red); color:#fff; border:0; cursor:pointer; margin:0 8px 8px 0;}
+  .btn.ghost{background:none; border:1.5px solid #5a5056; color:#f6f1ea;}
+  .btn.small{min-height:34px; padding:6px 12px; font-size:13px; background:var(--dark);}
+  h2{font:600 25px/1.2 'Fraunces',Georgia,serif; margin:34px 0 10px;}
+  h3{font:700 17px/1.3 'Manrope',sans-serif; margin:22px 0 6px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin:14px 0;}
+  .warn{background:#fff5f3; border-color:#f0c4bc;}
+  .tip{background:#f2faf4; border-color:#c6e5cf;}
+  table{width:100%; border-collapse:collapse; margin:10px 0; font-size:14px;}
+  th,td{text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{font-weight:800; color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:.04em;}
+  code{background:#efe8de; padding:2px 5px; border-radius:5px; font-size:13.5px; font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
+  pre{background:#1d191c; color:#f4ede4; padding:14px 16px; border-radius:12px; overflow:auto; font-size:13px; line-height:1.5; margin:10px 0;}
+  pre code{background:none; padding:0; color:inherit;}
+  .code-head{display:flex; justify-content:space-between; align-items:center; gap:8px; margin:14px 0 -4px;}
+  ol,ul{padding-left:20px; margin:8px 0;}
+  li{margin:5px 0;}
+  footer{margin:40px 0 0; padding:22px 0 36px; border-top:1px solid var(--line); color:var(--dim); font-size:14px;}
+</style>
+</head>
+<body>
+<header class="hero"><div class="wrap">
+  <a class="brand" href="/about-us/">photobooth<b>4u</b></a>
+  <h1>Offline Cash (ESP32) &amp; <em>Cloudflare PayMongo</em></h1>
+  <p class="lead">Accept coins and bills completely offline with an ESP32 over Bluetooth or USB — and optionally self-host PayMongo QR Ph API &amp; webhooks on your own Cloudflare account.</p>
+  <a class="btn" href="#esp32-cash">ESP32 Cash Acceptor</a>
+  <a class="btn ghost" href="#cloudflare-paymongo">Own Cloudflare PayMongo</a>
+</div></header>
+
+<main class="wrap">
+  <section id="esp32-cash">
+    <h2>1. Offline Cash Acceptor (ESP32 + Coin / Bill Acceptor)</h2>
+    <p>photobooth4u supports offline cash payment using any standard pulse-output coin slot (CH-926, JY-923, Allan) or bill validator (TB74, ICT, Apex) wired to an ESP32. No internet is needed — credit is tracked locally on the tablet or laptop and automatically starts a session once the price is reached.</p>
+
+    <div class="card">
+      <h3>Message protocol</h3>
+      <p style="margin-top:0;">Whenever a coin or bill finishes pulsing, the ESP32 sends one short line:</p>
+      <pre><code>c&lt;pesos&gt;\n</code></pre>
+      <p style="margin-bottom:0;">Examples: <code>c5\n</code> adds ₱5, <code>c20\n</code> adds ₱20, <code>c100\n</code> adds ₱100. Line endings accepted: <code>Enter</code> / <code>\n</code>, <code>\r</code>, or <code>;</code>. Valid single-note range: ₱1–₱5,000. Excess credit automatically rolls over to the next guest.</p>
+    </div>
+
+    <div class="card">
+      <h3>Connection modes</h3>
+      <table>
+        <thead><tr><th>Booth setting</th><th>Best for</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><b>Bluetooth or USB keyboard</b> (default)</td><td><b>Android Offline App</b>, Windows/Mac App, iPad, Chrome, Safari</td><td>ESP32 acts as a BLE HID keyboard (<code>BT_MODE 1</code>). Pair <code>Photobooth4u-Cash</code> in device Bluetooth settings. Never conflicts with Bluetooth thermal printers.</td></tr>
+          <tr><td><b>Bluetooth LE serial</b></td><td>Chrome / Edge (Android, Windows, Mac)</td><td>Nordic UART Service (<code>6e400001-...</code>, TX <code>6e400003-...</code>). Uses built-in ESP32 BLE (<code>BT_MODE 2</code>) and never hides Android's on-screen keyboard.</td></tr>
+          <tr><td><b>USB cable, serial</b></td><td>Chrome / Edge (Windows, Mac)</td><td>115200 baud over USB cable (always active alongside Bluetooth).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card warn">
+      <h3 style="margin-top:0;">Wiring &amp; 3.3V safety</h3>
+      <ul>
+        <li>Power your coin/bill acceptor with its own <b>12V DC power supply</b> (do not draw 12V or acceptor current from the ESP32).</li>
+        <li>Tie <b>12V Supply GND</b> and <b>ESP32 GND</b> together (common ground).</li>
+        <li>Wire Coin signal to <b>GPIO 27</b> and Bill signal to <b>GPIO 26</b> (configured with <code>INPUT_PULLUP</code> for standard open-collector / Normally Open acceptors).</li>
+        <li><b>Important:</b> If your acceptor's signal line outputs active <b>5V or 12V</b>, use a <b>PC817 optocoupler</b> (recommended) or a resistor voltage divider so the ESP32 GPIO never receives more than <b>3.3V</b>.</li>
+        <li>Press the ESP32's built-in <b>BOOT</b> button (<code>GPIO 0</code>) any time to send a test <code>c10\n</code> credit.</li>
+      </ul>
+    </div>
+
+    <div class="card tip">
+      <h3 style="margin-top:0;">Android tablet tip (BLE Keyboard mode)</h3>
+      <p style="margin:0;">When an ESP32 is paired as a Bluetooth keyboard, Android hides the virtual on-screen keyboard by default. Turn on <b>Android Settings → System → Languages &amp; input → Physical keyboard → Show on-screen keyboard</b> so you can still type freely in Setup while the ESP32 stays connected.</p>
+    </div>
+
+    <div class="code-head">
+      <h3 style="margin:0;">ESP32 Arduino Sketch (<code>esp32-cash-acceptor.ino</code>)</h3>
+      <button type="button" class="btn small" id="copyIno">Copy sketch</button>
+    </div>
+    <pre><code id="inoCode">// photobooth4u ESP32 Cash Acceptor (Coin + Bill -&gt; Bluetooth / USB)
+// BT_MODE: 1 = BLE HID Keyboard (works everywhere, incl. Android Offline App)
+//          2 = BLE Nordic UART (Chrome/Edge, built-in ESP32 BLE library)
+//          0 = USB Serial only (115200 baud is always on)
+#define BT_MODE 1
+#define COIN_PIN 27
+#define BILL_PIN 26
+#define TEST_BTN_PIN 0
+#define LED_PIN 2
+#define COIN_PESOS_PER_PULSE 1
+#define BILL_PESOS_PER_PULSE 10
+#define PULSE_DEBOUNCE_MS 22
+#define COIN_TRAIN_GAP_MS 320
+#define BILL_TRAIN_GAP_MS 420
+#define DEVICE_NAME "Photobooth4u-Cash"
+
+#if BT_MODE == 1
+  #include &lt;BleKeyboard.h&gt;
+  BleKeyboard bleKeyboard(DEVICE_NAME, "photobooth4u", 100);
+#elif BT_MODE == 2
+  #include &lt;BLEDevice.h&gt;
+  #include &lt;BLEServer.h&gt;
+  #include &lt;BLEUtils.h&gt;
+  #include &lt;BLE2902.h&gt;
+  #define NUS_SERVICE_UUID "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
+  #define NUS_TX_UUID      "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
+  BLECharacteristic *pTxChar = nullptr;
+  bool bleClientConnected = false;
+  class NusCallbacks : public BLEServerCallbacks {
+    void onConnect(BLEServer *s) override { bleClientConnected = true; }
+    void onDisconnect(BLEServer *s) override { bleClientConnected = false; BLEDevice::startAdvertising(); }
+  };
+#endif
+
+portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+volatile uint32_t coinPulses = 0, coinLastMs = 0, billPulses = 0, billLastMs = 0;
+uint32_t testBtnLastMs = 0;
+
+void IRAM_ATTR onCoinPulse() {
+  uint32_t now = millis();
+  portENTER_CRITICAL_ISR(&amp;mux);
+  if (now - coinLastMs &gt;= PULSE_DEBOUNCE_MS) { coinPulses++; coinLastMs = now; }
+  portEXIT_CRITICAL_ISR(&amp;mux);
+}
+void IRAM_ATTR onBillPulse() {
+  uint32_t now = millis();
+  portENTER_CRITICAL_ISR(&amp;mux);
+  if (now - billLastMs &gt;= PULSE_DEBOUNCE_MS) { billPulses++; billLastMs = now; }
+  portEXIT_CRITICAL_ISR(&amp;mux);
+}
+void sendCredit(uint32_t pesos) {
+  if (pesos == 0 || pesos &gt; 5000) return;
+  char msg[16]; snprintf(msg, sizeof(msg), "c%lu\n", (unsigned long)pesos);
+  Serial.print(msg);
+#if BT_MODE == 1
+  if (bleKeyboard.isConnected()) {
+    char num[12]; snprintf(num, sizeof(num), "c%lu", (unsigned long)pesos);
+    bleKeyboard.print(num); bleKeyboard.write(KEY_RETURN);
+  }
+#elif BT_MODE == 2
+  if (bleClientConnected &amp;&amp; pTxChar != nullptr) {
+    pTxChar-&gt;setValue((uint8_t *)msg, strlen(msg)); pTxChar-&gt;notify();
+  }
+#endif
+  digitalWrite(LED_PIN, HIGH); delay(50); digitalWrite(LED_PIN, LOW);
+}
+void setup() {
+  Serial.begin(115200);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(COIN_PIN, INPUT_PULLUP);
+  pinMode(BILL_PIN, INPUT_PULLUP);
+  pinMode(TEST_BTN_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(COIN_PIN), onCoinPulse, FALLING);
+  attachInterrupt(digitalPinToInterrupt(BILL_PIN), onBillPulse, FALLING);
+#if BT_MODE == 1
+  bleKeyboard.begin();
+#elif BT_MODE == 2
+  BLEDevice::init(DEVICE_NAME);
+  BLEServer *srv = BLEDevice::createServer(); srv-&gt;setCallbacks(new NusCallbacks());
+  BLEService *svc = srv-&gt;createService(NUS_SERVICE_UUID);
+  pTxChar = svc-&gt;createCharacteristic(NUS_TX_UUID, BLECharacteristic::PROPERTY_NOTIFY);
+  pTxChar-&gt;addDescriptor(new BLE2902());
+  svc-&gt;start();
+  BLEAdvertising *adv = BLEDevice::getAdvertising();
+  adv-&gt;addServiceUUID(NUS_SERVICE_UUID); adv-&gt;setScanResponse(true);
+  BLEDevice::startAdvertising();
+#endif
+}
+void loop() {
+  uint32_t now = millis(), c = 0, b = 0;
+  portENTER_CRITICAL(&amp;mux);
+  if (coinPulses &gt; 0 &amp;&amp; (now - coinLastMs) &gt;= COIN_TRAIN_GAP_MS) { c = coinPulses; coinPulses = 0; }
+  if (billPulses &gt; 0 &amp;&amp; (now - billLastMs) &gt;= BILL_TRAIN_GAP_MS) { b = billPulses; billPulses = 0; }
+  portEXIT_CRITICAL(&amp;mux);
+  if (c &gt; 0) sendCredit(c * COIN_PESOS_PER_PULSE);
+  if (b &gt; 0) sendCredit(b * BILL_PESOS_PER_PULSE);
+  if (digitalRead(TEST_BTN_PIN) == LOW &amp;&amp; (now - testBtnLastMs) &gt; 600) { testBtnLastMs = now; sendCredit(10); }
+  delay(10);
+}</code></pre>
+
+    <div class="card">
+      <h3 style="margin-top:0;">Turn it on in photobooth4u</h3>
+      <ol>
+        <li>Open <b>Setup → 7 Session → Guest payment</b>.</li>
+        <li>Switch on <b>Cash acceptor (coins / bills, ESP32)</b>.</li>
+        <li>Pick how the ESP32 connects (default: <b>Bluetooth or USB keyboard</b>).</li>
+        <li>Set your <b>Price per session</b> (or turn on <b>Multiple payment options</b>).</li>
+        <li>Tap <b>Test: add ₱10</b> (or press the ESP32 BOOT button) to confirm credits count up before switching to <b>Photo Session</b>.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="cloudflare-paymongo">
+    <h2>2. PayMongo QR Ph: Default Server vs Your Own Cloudflare Account</h2>
+    <div class="card">
+      <h3 style="margin-top:0;">How PayMongo works by default</h3>
+      <p>Out of the box, you <b>do not</b> need any third-party site or Cloudflare account. Connect your PayMongo secret key once in <b>My Events → Guest payments</b>:</p>
+      <ul>
+        <li>photobooth4u's Netlify backend talks directly to <code>api.paymongo.com</code> and automatically sets up the PayMongo webhook on your account.</li>
+        <li>Your secret key is encrypted at rest (AES-256-GCM), write-only, and never sent to the booth tablet.</li>
+        <li>100% of guest payments go straight to your own PayMongo account (minus PayMongo's standard 1.5% QR Ph fee).</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">Optional: Host PayMongo API &amp; Webhook on YOUR OWN Cloudflare Account</h3>
+      <p>If you want full zero-trust control where your PayMongo secret key and webhook signing secret <b>never leave your own Cloudflare account</b>, deploy the bundled Worker in <code>tools/cloudflare-paymongo-worker/</code>:</p>
+      <ol>
+        <li>Install Wrangler and deploy to your Cloudflare account:
+          <pre><code>cd tools/cloudflare-paymongo-worker
+npx wrangler login
+npx wrangler deploy</code></pre>
+        </li>
+        <li>Set your PayMongo secret key and an optional booth access token inside Cloudflare:
+          <pre><code>npx wrangler secret put PAYMONGO_SECRET_KEY
+npx wrangler secret put BOOTH_TOKEN</code></pre>
+        </li>
+        <li><i>(Optional — for instant webhook confirmation)</i> Create a KV namespace (<code>npx wrangler kv namespace create PAY_KV</code>), bind it in <code>wrangler.toml</code>, register <code>https://&lt;your-worker&gt;.workers.dev/webhook</code> in PayMongo for <code>payment.paid</code>, and run <code>npx wrangler secret put PAYMONGO_WEBHOOK_SECRET</code>. Even without KV, the Worker polls PayMongo directly every 2.5 seconds.</li>
+        <li>In photobooth4u → <b>Setup → 7 Session → Guest payment</b> → expand <b>Self-hosted PayMongo (your own Cloudflare Worker)</b>, paste your Worker URL + optional token, tap <b>Test connection</b>, then <b>Save Worker</b>.</li>
+      </ol>
+      <p style="margin-bottom:0;">Bonus: because your booth talks directly to your Cloudflare Worker over HTTPS, QR payment also works inside the <b>Android</b> and <b>Windows/Mac Offline Apps</b> whenever Wi-Fi is available.</p>
+    </div>
+  </section>
+</main>
+
+<footer><div class="wrap">
+  photobooth4u · <a href="/about-us/">Plans &amp; Free Trial</a> · <a href="/faq/">FAQ</a>
+</div></footer>
+
+<script>
+document.getElementById('copyIno').addEventListener('click', function () {
+  var btn = this, txt = document.getElementById('inoCode').textContent;
+  navigator.clipboard.writeText(txt).then(function () {
+    btn.textContent = 'Copied!';
+    setTimeout(function () { btn.textContent = 'Copy sketch'; }, 2000);
+  });
+});
+</script>
+</body>
+</html>

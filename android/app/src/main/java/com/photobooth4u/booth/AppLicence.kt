@@ -225,7 +225,9 @@ class AppLicence(private val ctx: Context) {
         val hasExp = p.has("exp") && !p.isNull("exp")
         val exp = if (hasExp) p.optLong("exp") else 0L
         if (hasExp && now >= exp) {
-            return LicStatus(false, "expired", "This code has ended. Message us to book again.", p, "")
+            val isTrial = p.optJSONObject("feat")?.optBoolean("trial", false) == true
+            val msg = if (isTrial) "Your free trial has ended. Message us for a rental code." else "This code has ended. Message us to book again."
+            return LicStatus(false, "expired", msg, p, "")
         }
         val hard = p.optLong("hard", 0L)
         if (hard > 0 && now >= hard) {

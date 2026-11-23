@@ -124,7 +124,10 @@ const jsonRes = (o, s) => new Response(JSON.stringify(o), { status: s || 200, he
 
 function desktopHead() {
   const d = { v: VERSION, os: L.osKey(), server: L.SERVER };
+  const s = L.status();
+  const trialWm = !!(s.p && s.p.feat && s.p.feat.trial && s.p.feat.watermark !== false);
   return '<script>window.__PB=window.__PB||{};window.__PB.desktop=' + JSON.stringify(d).replace(/</g, '\\u003c') + ';' +
+    (trialWm ? 'window.__PB.watermark=true;' : '') +
     // Everything the booth needs is on this laptop, so "offline" never blocks saving.
     'try{Object.defineProperty(Navigator.prototype,"onLine",{get:function(){return true;},configurable:true});}catch(e){}' +
     'try{sessionStorage.removeItem("pb_open_tries");}catch(e){}</script>';

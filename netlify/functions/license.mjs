@@ -3,8 +3,8 @@
 //   POST { action: 'checkin',    licence, mid, ver }                     -> { ok, licence } | { ok: false, revoked, reason, error }
 //   POST { action: 'deactivate', licence, mid }                          -> { ok }   (frees this laptop's device slot)
 //   GET  /api/license?pub=1                                              -> the public key the app checks licences with
-import { safe, json, licenses, normCode, throttle, recordFail, clearFail, DAY, MIN, fmtWhen, LIFETIME_EXP, devicesOf, setDevices, putLicense, windowEnd, getShutdown, swapBlocked, logSwap, SWAP_MSG, alertDeviceFreed } from '../lib/core.mjs';
-import { readLicence, licenceFor, activateOn, saveMap, readMap, dropMap, appDevice, publicKeyInfo, MID_RE } from '../lib/license.mjs';
+import { safe, json, licenses, normCode, throttle, recordFail, clearFail, DAY, MIN, fmtWhen, LIFETIME_EXP, devicesOf, setDevices, putLicense, windowEnd, getShutdown, swapBlocked, logSwap, SWAP_MSG, alertDeviceFreed, getSettings } from '../lib/core.mjs';
+import { readLicence, licenceFor, activateOn, saveMap, readMap, dropMap, appDevice, publicKeyInfo, MID_RE, isTrialCode, trialLicence } from '../lib/license.mjs';
 import { liveApp } from '../lib/updates.mjs';
 
 const NO_ADDON = 'The offline app isn’t included in your plan yet. Message us to add it to your code.';
@@ -35,6 +35,11 @@ export default safe(async (req, context) => {
   if (b.action === 'activate') {
     const mid = String(b.mid || '').trim().toUpperCase();
     if (!MID_RE.test(mid)) return json({ error: 'This computer’s ID is missing. Please reinstall the app.' }, 400);
+    // The shared free-trial password: a short, device-bound licence that works offline (no code record, no device slot).
+    const tset = await getSettings();
+    if (isTrialCode(tset, b.code)) {
+      return json({ ok: true, trial: true, minutes: tset.trialMinutes, licence: trialLicence(tset, { mid, name: b.name, os: b.os, ver: b.ver }, now), app: await liveApp() });
+    }
     const t = await throttle('appact', context.ip, 10);
     if (t.blocked) return json({ error: 'Too many wrong attempts. Please wait a few minutes and try again.' }, 429);
     const key = normCode(b.code);
@@ -63,6 +68,14 @@ export default safe(async (req, context) => {
     const p = readLicence(b.licence);
     const mid = String(b.mid || '').trim().toUpperCase();
     if (!p || p.typ !== 'pb4u-desktop' || p.mid !== mid) return json({ ok: false, revoked: true, reason: 'invalid', error: 'This licence isn’t valid on this computer.' }, 403);
+    // A free-trial licence has no code record: it just runs to its own end date (and stops if the trial is switched off).
+    if (p.feat && p.feat.trial) {
+      if (b.action === 'deactivate') return json({ ok: true });
+      const ts = await getSettings();
+      if (!ts.trialEnabled) return json({ ok: false, revoked: true, reason: 'disabled', error: 'The free trial has been switched off. Message us for a rental code.' });
+      if (!p.exp || p.exp <= now) return json({ ok: false, revoked: true, reason: 'expired', error: 'Your free trial has ended. Message us to book.' });
+      return json({ ok: true, licence: b.licence, app: await liveApp() });
+    }
     const map = await readMap(p.lid);
     const rec = map ? await store.get(map.key, { type: 'json' }) : null;
     const dev = rec && appDevice(rec, (a) => a.lid === p.lid && a.mid === mid);

@@ -81,6 +81,11 @@ class MainActivity : AppCompatActivity() {
     private var gateButton: Button? = null
     private var gateReason: String = ""
     private val checkinHandler = Handler(Looper.getMainLooper())
+    private val expiryCheck = Runnable {
+        if (::licence.isInitialized && !licence.status().ok) {
+            bootWithLicence()
+        }
+    }
     private val checkinLoop = object : Runnable {
         override fun run() {
             if (::licence.isInitialized && isNetworkAvailable()) {
@@ -396,6 +401,14 @@ class MainActivity : AppCompatActivity() {
         activeFeat = st.payload?.optJSONObject("feat")
         activeLifetime = st.payload?.optBoolean("lifetime", false) ?: false
         activeExp = if (st.payload != null && st.payload.has("exp") && !st.payload.isNull("exp")) st.payload.optLong("exp") else null
+        checkinHandler.removeCallbacks(expiryCheck)
+        val expAt = activeExp
+        if (expAt != null && expAt < 253402300799000L) {
+            val delay = expAt - System.currentTimeMillis()
+            if (delay in 1L..(24L * 3600_000L)) {
+                checkinHandler.postDelayed(expiryCheck, delay + 1500L)
+            }
+        }
         val adminOrientation = activeFeat?.optString("orientation", "either") ?: "either"
         val savedPref = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString("pref_orientation", null)
         if (adminOrientation == "either") {
@@ -447,7 +460,7 @@ class MainActivity : AppCompatActivity() {
             )
         }
         view.visibility = View.VISIBLE
-        gateMessage?.text = st.message.ifBlank { "Enter this tablet's rental code. It needs Wi-Fi once to activate, then keeps working offline." }
+        gateMessage?.text = st.message.ifBlank { "Enter this tablet's rental code (or the free-trial password to try it). It needs Wi-Fi once to activate, then keeps working offline." }
         gateButton?.isEnabled = true
         when (st.reason) {
             "checkin" -> {
@@ -498,7 +511,7 @@ class MainActivity : AppCompatActivity() {
         gateMessage = msg
 
         val input = EditText(this)
-        input.hint = "Rental code"
+        input.hint = "Rental code or trial password"
         input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
         val ip = LinearLayout.LayoutParams(px(320), LinearLayout.LayoutParams.WRAP_CONTENT)
         ip.topMargin = px(20)
@@ -868,7 +881,8 @@ class MainActivity : AppCompatActivity() {
                     append("window.__PB.lifetime=").append(activeLifetime).append(";")
                     append("window.__PB.deviceNo=").append(feat?.optInt("deviceNo", 1) ?: 1).append(";")
                     append("window.__PB.multiDevice=").append(feat?.optBoolean("multiDevice", false) ?: false).append(";")
-                    append("window.__PB.watermark=false;")
+                    // The free trial licence carries its own watermark switch (Admin → Trial); rental codes never get one
+                    append("window.__PB.watermark=").append(feat != null && feat.optBoolean("trial", false) && feat.optBoolean("watermark", true)).append(";")
                     append("window.__PB.exp=").append(expMs).append(";")   // this rental code's own expiry, not a fixed local grant
                     append("window.__PB.print={enabled:").append(printEnabled).append(",sizes:[").append(printSizesJs).append("]};")
                     // In offline kiosk mode, let navigator.onLine reflect real network connectivity via __PBLocal

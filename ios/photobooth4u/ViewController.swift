@@ -480,6 +480,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         let lifetime = (p["lifetime"] as? NSNumber)?.boolValue ?? false
         let deviceNo = (feat["deviceNo"] as? NSNumber)?.intValue ?? 1
         let multiDevice = (feat["multiDevice"] as? NSNumber)?.boolValue ?? false
+        let isTrial = (feat["trial"] as? NSNumber)?.boolValue ?? false
+        let watermark = isTrial && ((feat["watermark"] as? NSNumber)?.boolValue ?? true)
         let folderKey = (feat["folderKey"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let folderPrefix = (feat["folderPrefix"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -509,7 +511,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         window.__PB.lifetime=\(lifetime ? "true" : "false");
         window.__PB.deviceNo=\(deviceNo);
         window.__PB.multiDevice=\(multiDevice ? "true" : "false");
-        window.__PB.watermark=false;
+        window.__PB.watermark=\(watermark ? "true" : "false");
         window.__PB.exp=\(expMs);
         window.__pbIosOnline=\(PBLocal.shared.isOnline() ? "true" : "false");
         window.__pbIosAppVer=\(jsonStr(AppLicence.shared.appVersion()));

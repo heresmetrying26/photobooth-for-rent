@@ -14689,6 +14689,30 @@
       }
     }
 
+    /* Cash view: how much has gone in, a bar, and whether the cash machine is connected */
+    .pay-cash-total {
+      margin: 6px 0 0;
+      font: 800 clamp(30px, 6.5vmin, 52px) 'Manrope', sans-serif;
+      color: #2a2529;
+      letter-spacing: -.02em;
+    }
+
+    .pay-cash-ask {
+      margin: 12px 0 0;
+      font: 700 clamp(15px, 2.4vmin, 19px) 'Manrope', sans-serif;
+      color: #6b666c;
+    }
+
+    #payCashBar {
+      width: 0;
+      background: #2f8f4e;
+      transition: width .35s ease;
+    }
+
+    .pay-state.warn .dot {
+      background: #C93D27;
+    }
+
     .pay-link {
       margin-top: 10px;
       border: 0;
@@ -15330,6 +15354,11 @@
     /* Windows / Mac app: hide what only the website does */
     .pb-desktop .web-only {
       display: none !important;
+    }
+
+    /* When the renter points QR payments at their own Cloudflare Worker, QR payment also works in the offline apps whenever Wi-Fi is on */
+    .pb-desktop.pay-custom-qr #payModes .web-only {
+      display: revert !important;
     }
 
     .desk-row {
@@ -21049,6 +21078,51 @@
             <button type="button" class="chip" data-mode="voucher">Vouchers</button>
             <button type="button" class="chip web-only" data-mode="both">QR + vouchers</button>
           </div>
+          <label class="switch-row" style="margin-top:14px;">
+            <span>Cash acceptor (coins / bills, ESP32)</span>
+            <input type="checkbox" id="payCashToggle">
+          </label>
+          <div id="payCashBox" style="display:none; margin-top:8px;">
+            <p class="panel-hint" style="margin:0 0 8px;">Works with no internet. An ESP32 reads your coin or bill acceptor and tells the booth how
+              many pesos went in. Guests insert cash, and the session starts by itself once the price is reached. Any extra stays as credit for
+              the next guest. <a href="/cash-acceptor/" target="_blank" rel="noopener">Wiring and sketch</a></p>
+            <div class="opt-row">
+              <span class="lbl">ESP32 connects as</span>
+              <select class="mini-select pillify" id="payCashLink" aria-label="How the ESP32 connects to this device">
+                <option value="keyboard">Bluetooth or USB keyboard (works everywhere)</option>
+                <option value="ble">Bluetooth LE serial (Chrome / Edge)</option>
+                <option value="serial">USB cable, serial (Chrome / Edge)</option>
+              </select>
+            </div>
+            <div class="pay-status" id="payCashStatus"></div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+              <button type="button" class="action-btn" id="payCashConnectBtn" style="width:auto; margin:0;">Connect</button>
+              <button type="button" class="action-btn" id="payCashTestBtn" style="width:auto; margin:0;">Test: add ₱10</button>
+              <button type="button" class="action-btn" id="payCashClearBtn" style="width:auto; margin:0;">Clear credit</button>
+            </div>
+            <p class="panel-hint" id="payCashStats" style="margin:8px 0 0;"></p>
+            <button type="button" class="pay-link" id="payCashStatsReset" style="margin:2px 0 0; padding:2px 0;">Start the cash count again</button>
+          </div>
+          <details id="payWorkerDetails" style="margin-top:12px; border:1px solid var(--line); border-radius:10px; padding:8px 12px; background:var(--panel-2,#f4efe7);">
+            <summary style="cursor:pointer; font-weight:700; font-size:13px;">Self-hosted PayMongo (your own Cloudflare Worker · optional)</summary>
+            <p class="panel-hint" style="margin:8px 0;">By default, PayMongo QR runs through photobooth4u’s server (encrypted, straight to your PayMongo account). If you prefer to keep your PayMongo secret key and webhook 100% on your own Cloudflare account, paste your Cloudflare Worker URL here. Saved on this device only. <a href="/cash-acceptor/#cloudflare-paymongo" target="_blank" rel="noopener">Worker setup guide</a></p>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div>
+                <label for="payWorkerUrl" style="display:block; font-size:11px; color:var(--muted); margin-bottom:2px;">Cloudflare Worker URL</label>
+                <input type="url" class="mini-input" id="payWorkerUrl" placeholder="https://pb-pay.yourname.workers.dev" autocomplete="off" style="width:100%; box-sizing:border-box;">
+              </div>
+              <div>
+                <label for="payWorkerToken" style="display:block; font-size:11px; color:var(--muted); margin-bottom:2px;">Booth access token (optional, matches BOOTH_TOKEN secret)</label>
+                <input type="password" class="mini-input" id="payWorkerToken" placeholder="Leave blank if not set on your Worker" autocomplete="off" style="width:100%; box-sizing:border-box;">
+              </div>
+              <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                <button type="button" class="action-btn primary" id="payWorkerSaveBtn" style="width:auto; margin:0;">Save Worker</button>
+                <button type="button" class="action-btn" id="payWorkerTestBtn" style="width:auto; margin:0;">Test connection</button>
+                <button type="button" class="action-btn" id="payWorkerClearBtn" style="width:auto; margin:0;">Use default</button>
+              </div>
+              <p class="panel-hint" id="payWorkerStatus" style="margin:0;"></p>
+            </div>
+          </details>
           <div id="payMore">
             <div class="pay-row" id="paySingleRow">
               <span class="lbl">Price per session</span>
@@ -22852,6 +22926,7 @@
         </div>
         <button type="button" class="pay-opt" id="payOptQr"><span class="ico">QR</span><span><b>Pay with
               QR</b><small>GCash · Maya · any bank app</small></span></button>
+        <button type="button" class="pay-opt" id="payOptCash" hidden><span class="ico">₱</span><span><b>Pay with cash</b><small>Coins or bills at the machine</small></span></button>
         <button type="button" class="pay-opt" id="payOptVoucher"><span class="ico">#</span><span><b>I have a
               voucher</b><small>Bought at the booth table</small></span></button>
       </div>
@@ -22878,6 +22953,14 @@
           <button type="button" class="fn" data-k="c">Clear</button><button type="button" data-k="0">0</button><button
             type="button" class="fn" data-k="b" aria-label="Delete">⌫</button>
         </div>
+      </div>
+      <div class="pay-view" id="payCash" hidden>
+        <p class="pay-cash-total" id="payCashTotal" aria-live="polite">₱0 of ₱0</p>
+        <div class="pay-timer"><i id="payCashBar"></i></div>
+        <p class="pay-cash-ask" id="payCashAsk">Insert coins or bills</p>
+        <p class="pay-state" id="payCashState"><span class="dot"></span>Cash machine</p>
+        <button type="button" class="pay-btn" id="payCashConnect" hidden>Connect the cash machine</button>
+        <button type="button" class="pay-link" id="payCashVoucher" hidden>I have a voucher instead</button>
       </div>
       <div class="pay-view" id="payDone" hidden>
         <div class="pay-check">✓</div>
@@ -62053,13 +62136,226 @@ function renderTabletBridgeSetup(info) {
         }
       }
 
-      // ---- Guest payments: vouchers + the renter's own PayMongo (QR Ph) ----
+      // ---- Guest payments: vouchers + the renter's own PayMongo (QR Ph) + cash acceptor (ESP32) ----
+/* ---- Cash acceptor: a coin / bill acceptor read by an ESP32 (works offline) ----
+   The ESP32 counts the acceptor's pulses and tells the booth how many pesos went in, one short message per
+   coin or bill:   c<pesos> then Enter     e.g.  c5<Enter>  (a P5 coin)   c100<Enter>  (a P100 bill)
+   How the message gets here (chosen per device in Setup -> Guest payment -> Cash acceptor):
+     keyboard : the ESP32 pretends to be a Bluetooth (BLE HID) or USB keyboard and types the message. Works in
+                every build: the Android app, the laptop app, iPad and any browser.
+     ble      : Bluetooth LE serial (Nordic UART service). Chrome / Edge only (Web Bluetooth).
+     serial   : USB cable, 115200 baud. Chrome / Edge only (Web Serial).
+   Credit is kept on this device (it survives a reload) and each session takes the price off it.
+   Part file: pasted into the booth script, so top-level names are var / function, never const / let. */
+var CASH_BAL_KEY = 'pb_cash_bal', CASH_LINK_KEY = 'pb_cash_link', CASH_STATS_KEY = 'pb_cash_stats';
+var CASH_MAX_ONE = 5000;                    // one coin / bill can't be worth more than this (a garbled message is dropped)
+var CASH_NUS = '6e400001-b5a3-f393-e0a9-e50e24dcca9e', CASH_NUS_TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+var cashLink = { mode: '', state: 'idle', name: '', note: '' };     // state: idle | connecting | ready | lost | unsupported
+var cashHooks = { credit: null, status: null };                    // set by the payment code
+var cashKeyParser = null, cashKeyBound = false, cashBle = null, cashSerial = null, cashLinkEnabled = false;
+
+// Turns the text the ESP32 sends into credits. feed() takes any chunk (a serial / BLE packet can split a message);
+// ch() takes one character (the keyboard path). active() is true while a message is half-received.
+function cashParserNew(onCredit) {
+  var st = 0, digits = '';
+  function reset() { st = 0; digits = ''; }
+  function ch(c) {
+    if (st === 0) { if (c === 'c' || c === 'C') { st = 1; digits = ''; } return; }
+    if (c >= '0' && c <= '9') { if (digits.length < 5) digits += c; else reset(); return; }
+    if (c === '\n' || c === '\r' || c === ';') {
+      var n = digits ? parseInt(digits, 10) : 0;
+      reset();
+      if (n >= 1 && n <= CASH_MAX_ONE) onCredit(n);
+      return;
+    }
+    reset();
+    if (c === 'c' || c === 'C') { st = 1; digits = ''; }       // a new message started over a broken one
+  }
+  function feed(text) { text = String(text == null ? '' : text); for (var i = 0; i < text.length; i++) ch(text.charAt(i)); }
+  return { ch: ch, feed: feed, reset: reset, active: function () { return st > 0; } };
+}
+
+// ---- credit kept on this device ----
+function cashBalance() { try { return Math.max(0, Math.floor(Number(localStorage.getItem(CASH_BAL_KEY)) || 0)); } catch (e) { return 0; } }
+function cashSetBalance(n) { try { n = Math.max(0, Math.floor(Number(n) || 0)); if (n) localStorage.setItem(CASH_BAL_KEY, String(n)); else localStorage.removeItem(CASH_BAL_KEY); } catch (e) { } }
+// What this booth has taken in cash: money in, money used for sessions, number of sessions. For the operator's count at the end of the day.
+function cashStats() {
+  var s = null;
+  try { s = JSON.parse(localStorage.getItem(CASH_STATS_KEY) || 'null'); } catch (e) { }
+  s = s && typeof s === 'object' ? s : {};
+  return { since: Number(s.since) || 0, inTotal: Math.max(0, Math.floor(Number(s.inTotal) || 0)), sold: Math.max(0, Math.floor(Number(s.sold) || 0)), sessions: Math.max(0, Math.floor(Number(s.sessions) || 0)) };
+}
+function cashSaveStats(s) { try { localStorage.setItem(CASH_STATS_KEY, JSON.stringify(s)); } catch (e) { } }
+function cashStatsReset() { cashSaveStats({ since: Date.now(), inTotal: 0, sold: 0, sessions: 0 }); }
+function cashNote(kind, n) {
+  var s = cashStats(); if (!s.since) s.since = Date.now();
+  if (kind === 'in') s.inTotal += n; else { s.sold += n; s.sessions += 1; }
+  cashSaveStats(s);
+}
+// One coin / bill arrived.
+function cashCredit(n) {
+  n = Math.floor(Number(n) || 0);
+  if (!(n >= 1 && n <= CASH_MAX_ONE)) return 0;
+  cashSetBalance(cashBalance() + n); cashNote('in', n);
+  if (typeof cashHooks.credit === 'function') { try { cashHooks.credit(n); } catch (e) { } }
+  return n;
+}
+// Takes `price` off the credit for one session. Returns false (and takes nothing) when there isn't enough.
+function cashSpend(price) {
+  price = Math.floor(Number(price) || 0);
+  if (!(price > 0) || cashBalance() < price) return false;
+  cashSetBalance(cashBalance() - price); cashNote('sold', price);
+  return true;
+}
+
+// ---- link status ----
+function cashSetLink(state, note, name) {
+  cashLink.state = state; cashLink.note = note || ''; if (name != null) cashLink.name = name;
+  if (typeof cashHooks.status === 'function') { try { cashHooks.status(cashLink); } catch (e) { } }
+}
+function cashChosenLink() { var m = ''; try { m = localStorage.getItem(CASH_LINK_KEY) || ''; } catch (e) { } return (m === 'ble' || m === 'serial' || m === 'keyboard') ? m : 'keyboard'; }
+function cashSetChosenLink(m) { try { localStorage.setItem(CASH_LINK_KEY, m); } catch (e) { } }
+function cashSupports(mode) {
+  if (mode === 'keyboard') return true;
+  if (mode === 'ble') return typeof navigator !== 'undefined' && !!navigator.bluetooth;
+  if (mode === 'serial') return typeof navigator !== 'undefined' && !!navigator.serial;
+  return false;
+}
+
+// ---- keyboard (Bluetooth HID / USB keyboard): the same messages, typed ----
+function cashKeyHandler(e) {
+  if (!cashLinkEnabled || cashLink.mode !== 'keyboard' || !cashKeyParser) return;
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  var t = e.target, tag = t && t.tagName ? String(t.tagName).toLowerCase() : '';
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || (t && t.isContentEditable)) return;   // someone typing in Setup
+  var k = e.key, was = cashKeyParser.active();
+  if (k === 'Enter') k = '\n'; else if (!k || k.length !== 1) return;
+  cashKeyParser.ch(k);
+  // Swallow the rest of a message (the digits and the Enter) so Enter can't also start a session or press a button.
+  if (was || cashKeyParser.active()) { e.preventDefault(); e.stopPropagation(); if (e.stopImmediatePropagation) e.stopImmediatePropagation(); }
+}
+function cashKeyStart() {
+  cashKeyParser = cashParserNew(cashCredit);
+  if (!cashKeyBound) { window.addEventListener('keydown', cashKeyHandler, true); cashKeyBound = true; }
+  cashSetLink('ready', 'Listening for the ESP32 keyboard', 'Keyboard');
+}
+
+// ---- Bluetooth LE serial (Chrome / Edge) ----
+function cashBleDrop() {
+  try { if (cashBle && cashBle.dev && cashBle.dev.gatt && cashBle.dev.gatt.connected) cashBle.dev.gatt.disconnect(); } catch (e) { }
+  if (cashBle && cashBle.dev && cashBle.onGone) { try { cashBle.dev.removeEventListener('gattserverdisconnected', cashBle.onGone); } catch (e) { } }
+  cashBle = null;
+}
+async function cashBleOpen(dev) {
+  var parser = cashParserNew(cashCredit), dec = new TextDecoder();
+  var srv = await dev.gatt.connect();
+  var svc = await srv.getPrimaryService(CASH_NUS);
+  var ch = await svc.getCharacteristic(CASH_NUS_TX);
+  ch.addEventListener('characteristicvaluechanged', function (ev) { parser.feed(dec.decode(ev.target.value)); });
+  await ch.startNotifications();
+  cashSetLink('ready', 'Bluetooth connected', dev.name || 'ESP32');
+}
+// Needs a tap (Chrome asks which device). Later starts reuse the allowed device quietly.
+async function cashBleConnect(pick) {
+  if (!cashSupports('ble')) { cashSetLink('unsupported', 'Bluetooth LE isn’t available in this browser. Use the keyboard link, or Chrome / Edge.'); return false; }
+  cashBleDrop(); cashSetLink('connecting', 'Connecting…');
+  try {
+    var dev = null;
+    if (!pick && navigator.bluetooth.getDevices) {
+      var list = await navigator.bluetooth.getDevices();
+      dev = (list || []).filter(function (d) { return /photobooth|pb[-_ ]?cash|esp32/i.test(d.name || ''); })[0] || null;
+    }
+    if (!dev) {
+      if (!pick) { cashSetLink('idle', 'Tap “Connect” to pick the ESP32'); return false; }
+      dev = await navigator.bluetooth.requestDevice({ filters: [{ services: [CASH_NUS] }, { namePrefix: 'Photobooth' }, { namePrefix: 'PB-Cash' }], optionalServices: [CASH_NUS] });
+    }
+    var onGone = function () {
+      if (!cashBle || cashBle.dev !== dev) return;
+      cashSetLink('lost', 'Bluetooth lost. Reconnecting…');
+      setTimeout(function () { if (cashLinkEnabled && cashLink.mode === 'ble' && cashBle && cashBle.dev === dev) cashBleOpen(dev).catch(function () { cashSetLink('lost', 'Bluetooth lost. Tap “Connect”.'); }); }, 2500);
+    };
+    dev.addEventListener('gattserverdisconnected', onGone);
+    cashBle = { dev: dev, onGone: onGone };
+    await cashBleOpen(dev);
+    return true;
+  } catch (e) {
+    cashBleDrop();
+    cashSetLink('idle', (e && e.name === 'NotFoundError') ? 'No device picked' : 'Couldn’t connect: ' + String((e && e.message) || e).slice(0, 80));
+    return false;
+  }
+}
+
+// ---- USB serial (Chrome / Edge) ----
+async function cashSerialDrop() {
+  var s = cashSerial; cashSerial = null;
+  if (!s) return;
+  s.stop = true;
+  try { if (s.reader) await s.reader.cancel(); } catch (e) { }
+  try { await s.port.close(); } catch (e) { }
+}
+async function cashSerialOpen(port) {
+  await port.open({ baudRate: 115200 });
+  var me = { port: port, reader: null, stop: false }, parser = cashParserNew(cashCredit), dec = new TextDecoder();
+  cashSerial = me;
+  cashSetLink('ready', 'USB connected', 'ESP32 (USB)');
+  (async function () {
+    try {
+      while (port.readable && !me.stop) {
+        me.reader = port.readable.getReader();
+        try {
+          for (;;) { var r = await me.reader.read(); if (r.done) break; if (r.value) parser.feed(dec.decode(r.value, { stream: true })); }
+        } finally { try { me.reader.releaseLock(); } catch (e) { } }
+      }
+    } catch (e) { /* unplugged */ }
+    if (cashSerial === me) { cashSerial = null; try { await port.close(); } catch (e) { } cashSetLink('lost', 'USB unplugged. Plug it back in, then tap “Connect”.'); }
+  })();
+}
+async function cashSerialConnect(pick) {
+  if (!cashSupports('serial')) { cashSetLink('unsupported', 'USB serial isn’t available in this browser. Use the keyboard link, or Chrome / Edge.'); return false; }
+  await cashSerialDrop(); cashSetLink('connecting', 'Connecting…');
+  try {
+    var port = null;
+    if (!pick) { var known = await navigator.serial.getPorts(); port = (known && known[0]) || null; }
+    if (!port) {
+      if (!pick) { cashSetLink('idle', 'Tap “Connect” to pick the ESP32'); return false; }
+      port = await navigator.serial.requestPort();
+    }
+    await cashSerialOpen(port);
+    return true;
+  } catch (e) {
+    cashSerial = null;
+    cashSetLink('idle', (e && e.name === 'NotFoundError') ? 'No device picked' : 'Couldn’t connect: ' + String((e && e.message) || e).slice(0, 80));
+    return false;
+  }
+}
+
+// ---- start / stop (the payment code calls these) ----
+// pick = true when the operator tapped “Connect” (needed for Bluetooth / USB the first time).
+async function cashStart(pick) {
+  var m = cashChosenLink();
+  cashLinkEnabled = true;
+  if (cashLink.mode && cashLink.mode !== m) await cashStopLink(true);
+  cashLink.mode = m;
+  if (!cashSupports(m)) { cashSetLink('unsupported', m === 'ble' ? 'Bluetooth LE isn’t available here. Use the keyboard link, or Chrome / Edge.' : 'USB serial isn’t available here. Use the keyboard link, or Chrome / Edge.'); return false; }
+  if (m === 'keyboard') { if (!cashKeyParser) cashKeyStart(); else cashSetLink('ready', 'Listening for the ESP32 keyboard', 'Keyboard'); return true; }
+  if (cashLink.state === 'ready' && !pick) return true;
+  if (cashLink.state === 'connecting') return false;
+  return m === 'ble' ? cashBleConnect(!!pick) : cashSerialConnect(!!pick);
+}
+async function cashStopLink(keepEnabled) {
+  if (!keepEnabled) cashLinkEnabled = false;
+  cashBleDrop(); await cashSerialDrop();
+  if (cashKeyParser) cashKeyParser.reset();
+  cashKeyParser = null;
+  cashLink.mode = ''; cashSetLink('idle', '', '');
+}
       // An add-on Admin switches on per code (window.__PB.payOpt). Mode, price and
       // prints included are saved per event with the setup. The renter's PayMongo
       // key never reaches this page: the server makes the QR and checks payment.
       var PAY_MODES = ['off', 'qr', 'voucher', 'both'];
       var payCfg = {
         mode: 'off',
+        cash: false,
         price: 100,
         prints: 0,
         dual: false,
@@ -62150,6 +62446,7 @@ function renderTabletBridgeSetup(info) {
 
         return {
           mode: mode,
+          cash: !!p.cash,
           price: price >= 20 && price <= 20000 ? price : 100,
           prints: Math.max(0, Math.min(5, Math.floor(Number(p.prints) || 0))),
           dual: dual,
@@ -62158,17 +62455,46 @@ function renderTabletBridgeSetup(info) {
           tier2: tier2
         };
       }
-      // The mode in use right now. QR payments need the internet version, so offline (Android offline mode, desktop app)
-      // 'qr' acts as 'off' and 'both' as 'voucher', without changing what is saved in the setup.
+      // Optional self-hosted PayMongo endpoint (the renter's own Cloudflare Worker).
+      // Kept on this device only (localStorage); photobooth4u never sees the Worker's PayMongo key.
+      var PAY_WORKER_URL_KEY = 'pb_pay_worker_url', PAY_WORKER_TOK_KEY = 'pb_pay_worker_token';
+      function cleanWorkerUrl(u) {
+        u = String(u || '').trim().replace(/\/+$/, '');
+        if (/^https:\/\/[^\s]+$/i.test(u) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/[^\s]*)?$/i.test(u)) return u;
+        return '';
+      }
+      function payWorkerUrl() { try { return cleanWorkerUrl(localStorage.getItem(PAY_WORKER_URL_KEY) || ''); } catch (e) { return ''; } }
+      function payWorkerToken() { try { return String(localStorage.getItem(PAY_WORKER_TOK_KEY) || '').trim(); } catch (e) { return ''; } }
+      function payWorkerHost() { var u = payWorkerUrl(); if (!u) return ''; try { return new URL(u).host; } catch (e) { return u; } }
+      async function payQrPost(body, timeoutMs) {
+        var u = payWorkerUrl();
+        if (!u) return postApi('/api/pay', body, timeoutMs);
+        var hdrs = { 'content-type': 'application/json' };
+        var tok = payWorkerToken();
+        if (tok) hdrs.authorization = 'Bearer ' + tok;
+        var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+        var tm = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) { } }, timeoutMs || 12000) : null;
+        try {
+          var r = await fetch(u, { method: 'POST', headers: hdrs, body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined });
+          var j = {};
+          try { j = await r.json(); } catch (e) { }
+          return { status: r.status, j: j };
+        } finally { if (tm) clearTimeout(tm); }
+      }
+      // The mode in use right now. QR payments need the internet version (or a renter's own Cloudflare Worker), so offline
+      // without a custom Worker 'qr' acts as 'off' and 'both' as 'voucher', without changing what is saved in the setup.
       function payEffMode() {
-        var mode = payCfg.mode, noQr = DESKTOP || !!(window.__PB && window.__PB.offline);
+        var mode = payCfg.mode, noQr = (DESKTOP || !!(window.__PB && window.__PB.offline)) && !payWorkerUrl();
         if (noQr && mode === 'qr') return 'off';
         if (noQr && mode === 'both') return 'voucher';
         return mode;
       }
-      function payActive() { return payOn() && payEffMode() !== 'off'; }
+      function payActive() { return payOn() && (payEffMode() !== 'off' || payCashOn()); }
       function payQrOn() { var m = payEffMode(); return m === 'qr' || m === 'both'; }
       function payVoucherOn() { var m = payEffMode(); return m === 'voucher' || m === 'both'; }
+      // Cash (coin / bill acceptor read by an ESP32) needs no internet, so it is the same offline and online.
+      function payCashOn() { return payOn() && !!payCfg.cash; }
+      function payMethodCount() { return (payQrOn() ? 1 : 0) + (payVoucherOn() ? 1 : 0) + (payCashOn() ? 1 : 0); }
       function peso(n) { return '₱' + Number(n || 0).toLocaleString('en-PH'); }
       function payIncludes() { return '1 photo session' + (payCfg.prints ? ' · ' + payCfg.prints + ' print' + (payCfg.prints > 1 ? 's' : '') + ' included' : ''); }
       function payEsc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -62231,6 +62557,8 @@ function renderTabletBridgeSetup(info) {
         if (!on) return;
         var c = payCredit();
         el.classList.toggle('credit', !!c);
+        var cashIn = payCashOn() ? cashBalance() : 0;     // cash already inserted, not yet a full session
+        var cashTxt = cashIn > 0 ? payEsc(peso(cashIn)) + ' inserted · ' : '';
         if (c) {
           el.innerHTML = '✓ Paid session ready · <b>Tap to start</b>';
         } else if (payCfg.dual && payCfg.options && payCfg.options.length) {
@@ -62238,9 +62566,9 @@ function renderTabletBridgeSetup(info) {
             var lbl = o.label || ('Option ' + (i + 1));
             return payEsc(lbl) + ' (' + payEsc(peso(o.price)) + ')';
           });
-          el.innerHTML = parts.join(' or ') + ' · <b>Tap to start</b>';
+          el.innerHTML = cashTxt + parts.join(' or ') + ' · <b>Tap to start</b>';
         } else {
-          el.innerHTML = payEsc(peso(payCfg.price)) + ' per session · <b>Tap to start</b>';
+          el.innerHTML = cashTxt + payEsc(peso(payCfg.price)) + ' per session · <b>Tap to start</b>';
         }
       }
 
@@ -62437,56 +62765,78 @@ function renderTabletBridgeSetup(info) {
       function payIdle() { clearTimeout(payState.idle); if (payState.view === 'payQr' || payState.view === 'payDone') return; payState.idle = setTimeout(function () { payFinish(false); }, 90000); }
       function payShow(view) {
         payState.view = view;
-        ['payChoose', 'payQr', 'payVoucher', 'payDone', 'payProblem'].forEach(function (id) { document.getElementById(id).hidden = id !== view; });
-        document.getElementById('payBack').hidden = !(payEffMode() === 'both' && view !== 'payChoose' && view !== 'payDone');
+        ['payChoose', 'payQr', 'payVoucher', 'payCash', 'payDone', 'payProblem'].forEach(function (id) { document.getElementById(id).hidden = id !== view; });
+        // ← goes back to the other ways to pay (or, after picking a print option, back to the options)
+        document.getElementById('payBack').hidden = !((((payMethodCount() > 1 || payCfg.dual) && view !== 'payChoose') || (payState.pend && view === 'payChoose')) && view !== 'payDone');
         document.getElementById('payClose').hidden = view === 'payDone';
         payIdle();
       }
+      // Fills the first screen of the pay sheet: the price (or the print options), and which ways to pay are offered.
+      function payLayoutChoose() {
+        var titleEl = document.getElementById('payTitle');
+        var subEl = document.getElementById('paySub');
+        var dualBox = document.getElementById('payDualChooseBox');
+        var optQr = document.getElementById('payOptQr');
+        var optCash = document.getElementById('payOptCash');
+        var optVoucher = document.getElementById('payOptVoucher');
+        var pend = payState.pend;
+        if (pend) {
+          // A print option was picked and more than one way to pay needs it: ask how they pay.
+          titleEl.textContent = peso(pend.price);
+          subEl.textContent = pend.label;
+          if (dualBox) dualBox.style.display = 'none';
+          if (optQr) optQr.hidden = !payQrOn();
+          if (optCash) optCash.hidden = !payCashOn();
+          if (optVoucher) optVoucher.hidden = true;
+          return;
+        }
+        if (payCfg.dual && payCfg.options && payCfg.options.length) {
+          var prices = payCfg.options.map(function (o) { return peso(o.price); });
+          titleEl.textContent = prices.join(' / ');
+          var labels = payCfg.options.map(function (o, i) { return o.label || ('Option ' + (i + 1)); });
+          subEl.textContent = labels.join(' or ');
+          if (dualBox) {
+            dualBox.style.display = '';
+            var grid = document.getElementById('payOptionsGrid');
+            if (grid) {
+              grid.innerHTML = payCfg.options.map(function (opt, idx) {
+                var ico = opt.tier === 'receipt' ? '🧾' : (opt.tier === 'photo' ? '🎨' : '✨');
+                var lbl = opt.label || ('Option ' + (idx + 1));
+                var ph = opt.placeholder || (idx === 0 ? 'Thermal' : (idx === 1 ? 'Coloured' : ''));
+                return '<button type="button" class="pay-opt pay-dyn-opt" data-idx="' + idx + '" style="flex-direction:column; align-items:center; text-align:center; padding:12px 8px;">' +
+                  '<span class="ico" style="margin:0 0 4px; font-size:22px;">' + ico + '</span>' +
+                  '<b style="font-size:14px; line-height:1.2;">' + payEsc(lbl) + '</b>' +
+                  '<small style="font-weight:700; font-size:13px; color:var(--red,#C93D27); margin-top:2px;">' + payEsc(peso(opt.price)) + '</small>' +
+                  (payOptionNote(opt) ? '<span style="font-size:11px; color:var(--ink-dim); font-weight:600; margin-top:3px; line-height:1.25;">' + payEsc(payOptionNote(opt)) + '</span>' : '') +
+                  (ph ? '<span style="font-size:10px; color:var(--ink-dim); text-transform:uppercase; font-weight:700; margin-top:2px;">' + payEsc(ph) + '</span>' : '') +
+                  '</button>';
+              }).join('');
+            }
+          }
+          if (optQr) optQr.hidden = true;
+          if (optCash) optCash.hidden = true;
+        } else {
+          titleEl.textContent = peso(payCfg.price);
+          subEl.textContent = payIncludes();
+          if (dualBox) dualBox.style.display = 'none';
+          if (optQr) optQr.hidden = !payQrOn();
+          if (optCash) optCash.hidden = !payCashOn();
+        }
+        if (optVoucher) optVoucher.hidden = !payVoucherOn();
+      }
       function payGate() {
         if (!payActive() || payCredit()) return Promise.resolve(true);
+        // Cash already inserted covers a session (one price): no sheet needed.
+        if (payCashOn() && !payCfg.dual && payCashAuto(false)) return Promise.resolve(true);
         return new Promise(function (resolve) {
           payState.resolve = resolve;
-          var titleEl = document.getElementById('payTitle');
-          var subEl = document.getElementById('paySub');
-          var dualBox = document.getElementById('payDualChooseBox');
-          var optQr = document.getElementById('payOptQr');
-          var optVoucher = document.getElementById('payOptVoucher');
-          if (payCfg.dual && payCfg.options && payCfg.options.length) {
-            var prices = payCfg.options.map(function (o) { return peso(o.price); });
-            titleEl.textContent = prices.join(' / ');
-            var labels = payCfg.options.map(function (o, i) { return o.label || ('Option ' + (i + 1)); });
-            subEl.textContent = labels.join(' or ');
-            if (dualBox) {
-              dualBox.style.display = '';
-              var grid = document.getElementById('payOptionsGrid');
-              if (grid) {
-                grid.innerHTML = payCfg.options.map(function (opt, idx) {
-                  var ico = opt.tier === 'receipt' ? '🧾' : (opt.tier === 'photo' ? '🎨' : '✨');
-                  var lbl = opt.label || ('Option ' + (idx + 1));
-                  var ph = opt.placeholder || (idx === 0 ? 'Thermal' : (idx === 1 ? 'Coloured' : ''));
-                  return '<button type="button" class="pay-opt pay-dyn-opt" data-idx="' + idx + '" style="flex-direction:column; align-items:center; text-align:center; padding:12px 8px;">' +
-                    '<span class="ico" style="margin:0 0 4px; font-size:22px;">' + ico + '</span>' +
-                    '<b style="font-size:14px; line-height:1.2;">' + payEsc(lbl) + '</b>' +
-                    '<small style="font-weight:700; font-size:13px; color:var(--red,#C93D27); margin-top:2px;">' + payEsc(peso(opt.price)) + '</small>' +
-                    (payOptionNote(opt) ? '<span style="font-size:11px; color:var(--ink-dim); font-weight:600; margin-top:3px; line-height:1.25;">' + payEsc(payOptionNote(opt)) + '</span>' : '') +
-                    (ph ? '<span style="font-size:10px; color:var(--ink-dim); text-transform:uppercase; font-weight:700; margin-top:2px;">' + payEsc(ph) + '</span>' : '') +
-                    '</button>';
-                }).join('');
-              }
-            }
-            if (optQr) optQr.hidden = true;
-          } else {
-            titleEl.textContent = peso(payCfg.price);
-            subEl.textContent = payIncludes();
-            if (dualBox) dualBox.style.display = 'none';
-            if (optQr) optQr.hidden = !payQrOn();
-          }
-          if (optQr) optQr.hidden = !payQrOn();
-          if (optVoucher) optVoucher.hidden = !payVoucherOn();
+          payState.pend = null;
+          payLayoutChoose();
           paySheet.hidden = false;
           document.body.classList.add('pay-open');
-          if (payCfg.dual || payEffMode() === 'both') payShow('payChoose');
-          else if (payEffMode() === 'qr') payStartQr();
+          if (payCfg.dual || payMethodCount() > 1) payShow('payChoose');
+          else if (payQrOn()) payStartQr();
+          else if (payCashOn()) payStartCash();
           else payStartVoucher();
         });
       }
@@ -62494,7 +62844,7 @@ function renderTabletBridgeSetup(info) {
         payStopTimers();
         paySheet.hidden = true;
         document.body.classList.remove('pay-open');
-        payState.qrId = null; payState.busy = false;
+        payState.qrId = null; payState.busy = false; payState.cash = null; payState.pend = null;
         var r = payState.resolve; payState.resolve = null;
         refreshPayBadge();
         if (r) r(!!ok);
@@ -62514,15 +62864,17 @@ function renderTabletBridgeSetup(info) {
         var askPrice = (price && price >= 20) ? price : payCfg.price;
         var askLabel = label || '1 photo session';
         var askTier = (tier === 'receipt' || tier === 'photo') ? tier : 'all';
-        payState.tier = askTier; payState.label = askLabel;
+        payState.tier = askTier; payState.label = askLabel; payState.price = askPrice;
+        var simEl = document.getElementById('paySim'); if (simEl) simEl.hidden = true;
         try {
-          var r = await postApi('/api/pay', { action: 'qr', amount: askPrice, prints: payCfg.prints, tier: askTier, label: askLabel }, 12000);
+          var r = await payQrPost({ action: 'qr', amount: askPrice, prints: payCfg.prints, tier: askTier, label: askLabel }, 12000);
           if (r.status === 200 && r.j.image) {
             payState.qrId = r.j.id; payState.exp = r.j.expiresAt || (Date.now() + 180000); payState.test = !!r.j.test;
             var img = document.getElementById('payQrImg');
             img.src = r.j.image; img.hidden = false;
             document.getElementById('payQrWait').hidden = true;
             var testEl = document.getElementById('payTestTag'); if (testEl) testEl.hidden = !payState.test;
+            if (simEl) simEl.hidden = !payState.test;
             payPollStart();
           } else {
             payProblem((r.j && r.j.error) || 'Couldn’t make the payment QR. Please try again or ask the attendant.', true);
@@ -62537,7 +62889,7 @@ function renderTabletBridgeSetup(info) {
           if (!payState.qrId || payState.view !== 'payQr') { clearInterval(payState.poll); return; }
           if (Date.now() > payState.exp) { payProblem('That payment code expired. Tap below to get a fresh one.', true, 'New code'); return; }
           try {
-            var r = await postApi('/api/pay', { action: 'status', id: payState.qrId }, 5000);
+            var r = await payQrPost({ action: 'status', id: payState.qrId }, 5000);
             if (r.status === 200 && r.j.status === 'paid') {
               clearInterval(payState.poll);
               document.getElementById('payDoneT').textContent = 'Payment received';
@@ -62546,8 +62898,8 @@ function renderTabletBridgeSetup(info) {
           } catch (e) { }
         }, 2500);
       }
-      function payPaid(prints, tier, label) {
-        payStopTimers();
+      // Keeps one paid session on this tablet (used when the countdown starts). Shared by QR, voucher and cash.
+      function payGrant(prints, tier, label) {
         // The option's own Prints setting wins over the voucher's / the default count; 0 means softcopy only.
         var optPrints = payOptionPrintsOf(label), np = optPrints === 0;
         payPrintAllow = np ? 0 : (optPrints > 0 ? optPrints : (prints || 0));
@@ -62555,9 +62907,66 @@ function renderTabletBridgeSetup(info) {
         sessionPrinter = np ? '' : payOptionPrinter(label);
         setPayCredit({ at: Date.now(), prints: payPrintAllow, tier: sessionTier, printer: sessionPrinter, np: np });
         try { refreshPrintUI(); } catch (e) { }
+      }
+      function payPaid(prints, tier, label) {
+        payStopTimers();
+        payGrant(prints, tier, label);
         payShow('payDone');
         setTimeout(function () { payFinish(true); }, 1500);
       }
+
+      // ---- cash: coins / bills read by an ESP32 (protected/src/cash/cash-acceptor.js) ----
+      // Credit inserted stays on this tablet. A session takes its price off it, and what is left carries over.
+      function payCashAuto(announce) {
+        // One price, and enough credit already in: that is a paid session, no sheet needed.
+        // While testing in Setup (outside Photo Session), let credit build up visibly instead of auto-spending it.
+        if (announce && !document.body.classList.contains('in-session')) return false;
+        if (!payCashOn() || payCfg.dual || payCredit() || !cashSpend(payCfg.price)) return false;
+        payGrant(payCfg.prints, 'all', '1 photo session');
+        if (announce) { try { showToast('Cash received · ' + peso(payCfg.price) + ' · tap to start', 3000); } catch (e) { } }
+        return true;
+      }
+      function payRenderCash() {
+        var c = payState.cash; if (!c) return;
+        var have = cashBalance(), need = c.price, left = Math.max(0, need - have);
+        document.getElementById('payCashTotal').textContent = peso(have) + ' of ' + peso(need);
+        document.getElementById('payCashBar').style.width = Math.min(100, Math.round(have / need * 100)) + '%';
+        document.getElementById('payCashAsk').textContent = left > 0 ? 'Insert ' + peso(left) + ' more' : 'Thank you!';
+        var L = cashLink, st = document.getElementById('payCashState'), btn = document.getElementById('payCashConnect');
+        var ready = L.state === 'ready';
+        st.className = 'pay-state' + (ready ? '' : ' warn');
+        st.innerHTML = '<span class="dot"></span>' + payEsc(ready ? 'Cash machine ready' : (L.note || 'Cash machine not connected'));
+        btn.hidden = ready || L.mode === 'keyboard' || L.state === 'unsupported';
+        document.getElementById('payCashVoucher').hidden = !payVoucherOn();
+      }
+      function payStartCash(tier, price, label) {
+        payStopTimers();
+        var pr = Math.floor(Number(price)) > 0 ? Math.floor(Number(price)) : payCfg.price;
+        payState.cash = { tier: (tier === 'receipt' || tier === 'photo') ? tier : 'all', price: pr, label: label || '1 photo session' };
+        payShow('payCash');
+        payRenderCash();
+        cashStart(false);
+        payCashCheck();
+      }
+      function payCashCheck() {
+        var c = payState.cash;
+        if (!c || payState.view !== 'payCash' || !payState.resolve) return;
+        if (!cashSpend(c.price)) return;
+        document.getElementById('payDoneT').textContent = (c.label && c.label !== '1 photo session' ? c.label + ' · ' : '') + 'Cash received';
+        payState.cash = null;
+        payPaid(payCfg.prints, c.tier, c.label);
+      }
+      // The ESP32 reported a coin / bill.
+      cashHooks.credit = function (n) {
+        if (payState.view === 'payCash' && !paySheet.hidden) { payIdle(); payRenderCash(); payCashCheck(); }
+        else if (!payCashAuto(true)) { try { showToast(peso(n) + ' received · ' + peso(cashBalance()) + ' credit', 2500); } catch (e) { } }
+        refreshPayBadge();
+        try { refreshCashSetup(); } catch (e) { }
+      };
+      cashHooks.status = function () {
+        if (payState.view === 'payCash' && !paySheet.hidden) payRenderCash();
+        try { refreshCashSetup(); } catch (e) { }
+      };
 
       function payRenderCode() {
         var el = document.getElementById('payCode'), h = '';
@@ -62605,8 +63014,18 @@ function renderTabletBridgeSetup(info) {
         if (e.key === 'Escape') { if (payState.view !== 'payDone') payFinish(false); return; }
         if (/^\d$/.test(e.key)) payKey(e.key); else if (e.key === 'Backspace') payKey('b');
       });
-      document.getElementById('payOptQr').addEventListener('click', function () { document.getElementById('payDoneT').textContent = 'Payment received'; payStartQr(); });
+      document.getElementById('payOptQr').addEventListener('click', function () {
+        var pd = payState.pend;
+        document.getElementById('payDoneT').textContent = pd ? pd.label + ' payment received' : 'Payment received';
+        if (pd) payStartQr(pd.tier, pd.price, pd.label); else payStartQr();
+      });
+      document.getElementById('payOptCash').addEventListener('click', function () {
+        var pd = payState.pend;
+        if (pd) payStartCash(pd.tier, pd.price, pd.label); else payStartCash();
+      });
       document.getElementById('payOptVoucher').addEventListener('click', function () { payStartVoucher(); });
+      document.getElementById('payCashConnect').addEventListener('click', function () { cashStart(true).then(function () { payRenderCash(); }); });
+      document.getElementById('payCashVoucher').addEventListener('click', function () { payStartVoucher(); });
       var pog = document.getElementById('payOptionsGrid');
       if (pog) {
         pog.addEventListener('click', function (e) {
@@ -62618,16 +63037,42 @@ function renderTabletBridgeSetup(info) {
           var lbl = opt.label || ('Option ' + (idx + 1));
           var prc = opt.price || payCfg.price;
           var tier = opt.tier || 'all';
-          if (payQrOn()) {
+          if (payQrOn() && payCashOn()) {
+            // Both can pay for this option: ask which.
+            payState.pend = { tier: tier, price: prc, label: lbl };
+            payLayoutChoose();
+            payShow('payChoose');
+          } else if (payQrOn()) {
             document.getElementById('payDoneT').textContent = lbl + ' payment received';
             payStartQr(tier, prc, lbl);
+          } else if (payCashOn()) {
+            payStartCash(tier, prc, lbl);
           } else {
             payStartVoucher('Enter ' + lbl + ' voucher:');
           }
         });
       }
-      document.getElementById('payBack').addEventListener('click', function () { payStopTimers(); payState.qrId = null; payShow('payChoose'); });
+      document.getElementById('payBack').addEventListener('click', function () {
+        payStopTimers(); payState.qrId = null; payState.cash = null;
+        if (payState.pend && payState.view === 'payChoose') payState.pend = null;   // from the method choice back to the print options
+        payLayoutChoose();
+        payShow('payChoose');
+      });
       document.getElementById('payClose').addEventListener('click', function () { payFinish(false); });
+      var payRetryBtn = document.getElementById('payRetry');
+      if (payRetryBtn) payRetryBtn.addEventListener('click', function () { payStartQr(payState.tier, payState.price, payState.label); });
+      var paySimBtn = document.getElementById('paySim');
+      if (paySimBtn) paySimBtn.addEventListener('click', async function () {
+        if (!payState.qrId || !payState.test) return;
+        paySimBtn.disabled = true;
+        try {
+          var r = await payQrPost({ action: 'simulate', id: payState.qrId }, 8000);
+          if (r.status === 200 && r.j && r.j.status === 'paid') {
+            document.getElementById('payDoneT').textContent = 'Payment received (test)';
+            payPaid(payCfg.prints, r.j.tier || payState.tier, payState.label);
+          }
+        } catch (e) { } finally { paySimBtn.disabled = false; }
+      });
       paySheet.addEventListener('pointerdown', function () { payIdle(); });
 
       // ---- Setup card ----
@@ -62728,8 +63173,11 @@ function renderTabletBridgeSetup(info) {
       function refreshPayUI() {
         var sec = document.getElementById('paySection'); if (!sec) return;
         sec.style.display = payOn() ? '' : 'none';
+        var wHost = payWorkerHost();
+        document.documentElement.classList.toggle('pay-custom-qr', !!wHost);
         var off = !payActive();
         document.querySelectorAll('.pay-on-row').forEach(function (el) { el.hidden = off; });
+        var pm = document.getElementById('payMore'); if (pm) pm.hidden = off;
         document.querySelectorAll('#payModes .chip').forEach(function (c) { c.classList.toggle('active', c.dataset.mode === payCfg.mode); });
         var pi = document.getElementById('payPrice'); if (pi) pi.value = payCfg.price;
         var pv = document.getElementById('payPrintsVal'); if (pv) pv.textContent = payCfg.prints ? payCfg.prints + ' print' + (payCfg.prints > 1 ? 's' : '') : 'none';
@@ -62741,22 +63189,144 @@ function renderTabletBridgeSetup(info) {
         updatePayMakeTier();
         var qf = document.getElementById('payQrFields'); if (qf) qf.hidden = !payQrOn();
         var vf = document.getElementById('payVoucherFields'); if (vf) vf.hidden = !payVoucherOn();
+        var vb = document.getElementById('payVoucherBox'); if (vb) vb.hidden = !payVoucherOn();
+        var qs = document.getElementById('payQrStatus');
+        if (qs) {
+          qs.hidden = !payQrOn();
+          if (wHost) {
+            qs.className = 'pay-status ok';
+            qs.innerHTML = '<b>Self-hosted PayMongo</b> · Using your Cloudflare Worker (<code>' + payEsc(wHost) + '</code>).';
+          } else if (payAcct && payAcct.connected) {
+            qs.className = 'pay-status ok';
+            qs.innerHTML = '<b>PayMongo connected</b> (' + payEsc(payAcct.mode || 'live') + ' · •••• ' + payEsc(payAcct.last4 || '••••') + ') via photobooth4u.';
+          } else {
+            qs.className = 'pay-status warn';
+            qs.innerHTML = 'PayMongo not connected yet. Connect it in <b>My Events</b>, or set your own Cloudflare Worker above.';
+          }
+        }
         var ac = document.getElementById('payAcctStatus');
         if (ac) {
-          if (!payAcct) ac.innerHTML = 'PayMongo not connected. Connect it on the My Events page to take QR payments.';
+          if (wHost) ac.innerHTML = 'Using your Cloudflare Worker (' + payEsc(wHost) + ').';
+          else if (!payAcct || !payAcct.connected) ac.innerHTML = 'PayMongo not connected. Connect it on the My Events page to take QR payments.';
           else ac.innerHTML = 'Connected to PayMongo (' + payEsc(payAcct.mode) + ' mode, •••• ' + payEsc(payAcct.last4 || '••••') + ').';
         }
         var hint = document.getElementById('payLockHint'); if (hint) hint.innerHTML = payLockHint();
+        refreshCashSetup();
+        refreshPayWorkerUI();
         refreshPayBadge();
+      }
+      function refreshPayWorkerUI() {
+        var uIn = document.getElementById('payWorkerUrl'), tIn = document.getElementById('payWorkerToken'), st = document.getElementById('payWorkerStatus');
+        var saved = payWorkerUrl();
+        if (uIn && document.activeElement !== uIn) uIn.value = saved;
+        if (tIn && document.activeElement !== tIn) tIn.value = payWorkerToken();
+        if (st && !st.dataset.live) {
+          st.textContent = saved ? ('Active: ' + payWorkerHost() + ' (stored on this device only).') : 'Using default photobooth4u PayMongo server.';
+        }
+      }
+      // Setup card for the cash acceptor: the switch, how the ESP32 connects (kept per device), its status, and the cash count.
+      function refreshCashSetup() {
+        var tg = document.getElementById('payCashToggle'); if (!tg) return;
+        tg.checked = !!payCfg.cash;
+        var box = document.getElementById('payCashBox'); if (box) box.style.display = payCfg.cash ? '' : 'none';
+        if (!payCfg.cash) return;
+        var sel = document.getElementById('payCashLink');
+        if (sel) {
+          sel.value = cashChosenLink();
+          Array.prototype.forEach.call(sel.options, function (o) {
+            var base = o.getAttribute('data-base') || o.textContent; o.setAttribute('data-base', base);
+            var okHere = cashSupports(o.value);
+            o.disabled = !okHere;
+            o.textContent = okHere ? base : base + ' (not in this app)';
+          });
+          if (typeof sel._pillRefresh === 'function') sel._pillRefresh();
+        }
+        var L = cashLink, st = document.getElementById('payCashStatus');
+        if (st) {
+          var ready = L.state === 'ready';
+          st.className = 'pay-status ' + (ready ? 'ok' : 'warn');
+          st.innerHTML = ready ? '<b>Ready</b> · ' + payEsc(L.name || '') + ' · ' + payEsc(L.note || '') : payEsc(L.note || 'Not connected yet.');
+        }
+        var cb = document.getElementById('payCashConnectBtn'); if (cb) cb.hidden = (cashChosenLink() === 'keyboard');
+        var s = cashStats(), sx = document.getElementById('payCashStats');
+        if (sx) sx.innerHTML = 'Credit waiting: <b>' + payEsc(peso(cashBalance())) + '</b> · Cash in: <b>' + payEsc(peso(s.inTotal)) + '</b> · Used for sessions: <b>' + payEsc(peso(s.sold)) + '</b> (' + s.sessions + ' session' + (s.sessions === 1 ? '' : 's') + ')' + (s.since ? ' · since ' + payEsc(fmtShortDate(s.since)) : '');
+      }
+      // Starts the ESP32 link while cash is on (and this is a booth page that takes payments); stops it otherwise.
+      function cashApply() {
+        if (payCashOn()) cashStart(false); else cashStopLink(false);
       }
       function payChanged() { refreshPayUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); if (payVoucherOn()) { refreshVoucherCache(); payLoadBatches(); } }
       function applyPaySetup(p) {
         payCfg = cleanPay(p);
         if (!payActive()) { sessionTier = null; sessionPrinter = ''; setPayCredit(null); }
         refreshPayUI();
+        cashApply();
         if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
         if (payVoucherOn()) setTimeout(function () { refreshVoucherCache(); payLoadBatches(); }, 800);
       }
+      var pct = document.getElementById('payCashToggle');
+      if (pct) pct.addEventListener('change', function () {
+        payCfg.cash = this.checked;
+        if (!payActive()) { sessionTier = null; sessionPrinter = ''; setPayCredit(null); }
+        payChanged(); cashApply();
+        if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
+      });
+      var pcl = document.getElementById('payCashLink');
+      if (pcl) pcl.addEventListener('change', function () { cashSetChosenLink(this.value); cashApply(); refreshCashSetup(); });
+      var pcb = document.getElementById('payCashConnectBtn');
+      if (pcb) pcb.addEventListener('click', function () { cashStart(true).then(refreshCashSetup); });
+      var pcx = document.getElementById('payCashTestBtn');
+      if (pcx) pcx.addEventListener('click', function () { cashCredit(10); });   // same path as a real coin
+      var pcc = document.getElementById('payCashClearBtn');
+      if (pcc) pcc.addEventListener('click', function () { cashSetBalance(0); refreshCashSetup(); refreshPayBadge(); showToast('Cash credit cleared.', 2500); });
+      var pcr = document.getElementById('payCashStatsReset');
+      if (pcr) pcr.addEventListener('click', function () { cashStatsReset(); refreshCashSetup(); showToast('Cash count started again.', 2500); });
+      var pws = document.getElementById('payWorkerSaveBtn');
+      if (pws) pws.addEventListener('click', function () {
+        var raw = (document.getElementById('payWorkerUrl').value || '').trim();
+        var tok = (document.getElementById('payWorkerToken').value || '').trim();
+        var st = document.getElementById('payWorkerStatus');
+        if (raw && !cleanWorkerUrl(raw)) {
+          if (st) { st.dataset.live = '1'; st.textContent = 'URL must start with https:// (for example https://pb-pay.yourname.workers.dev).'; }
+          return;
+        }
+        try {
+          if (raw) localStorage.setItem(PAY_WORKER_URL_KEY, cleanWorkerUrl(raw)); else localStorage.removeItem(PAY_WORKER_URL_KEY);
+          if (tok) localStorage.setItem(PAY_WORKER_TOK_KEY, tok); else localStorage.removeItem(PAY_WORKER_TOK_KEY);
+        } catch (e) { }
+        if (st) delete st.dataset.live;
+        refreshPayUI();
+        showToast(raw ? 'Cloudflare Worker saved on this device.' : 'Switched back to default PayMongo server.', 2800);
+      });
+      var pwc = document.getElementById('payWorkerClearBtn');
+      if (pwc) pwc.addEventListener('click', function () {
+        try { localStorage.removeItem(PAY_WORKER_URL_KEY); localStorage.removeItem(PAY_WORKER_TOK_KEY); } catch (e) { }
+        var st = document.getElementById('payWorkerStatus'); if (st) delete st.dataset.live;
+        refreshPayUI();
+        showToast('Using default photobooth4u PayMongo server.', 2500);
+      });
+      var pwt = document.getElementById('payWorkerTestBtn');
+      if (pwt) pwt.addEventListener('click', async function () {
+        var st = document.getElementById('payWorkerStatus');
+        var raw = cleanWorkerUrl((document.getElementById('payWorkerUrl').value || '').trim());
+        var tok = (document.getElementById('payWorkerToken').value || '').trim();
+        if (!raw) { if (st) { st.dataset.live = '1'; st.textContent = 'Paste a valid https:// Worker URL first.'; } return; }
+        pwt.disabled = true;
+        if (st) { st.dataset.live = '1'; st.textContent = 'Testing Cloudflare Worker…'; }
+        try {
+          var hdrs = { 'content-type': 'application/json' };
+          if (tok) hdrs.authorization = 'Bearer ' + tok;
+          var r = await fetch(raw, { method: 'POST', headers: hdrs, body: JSON.stringify({ action: 'config' }) });
+          var j = {}; try { j = await r.json(); } catch (e) { }
+          if (r.status === 200 && j && j.ok && j.acct && j.acct.connected) {
+            st.textContent = 'Connected! Mode: ' + (j.acct.mode || 'live') + (j.acct.webhook ? ' · Webhook secret set' : ' · Polling mode (no webhook secret)') + (j.acct.kv ? ' · KV enabled' : '') + '.';
+          } else {
+            st.textContent = (j && j.error) ? ('Error (' + r.status + '): ' + j.error) : ('Unexpected reply (' + r.status + '). Check Worker URL and token.');
+          }
+        } catch (e) {
+          st.textContent = 'Could not reach Worker: ' + String((e && e.message) || e).slice(0, 100);
+        } finally { pwt.disabled = false; }
+      });
       document.getElementById('payModes').addEventListener('click', function (e) {
         var b = e.target.closest('.chip[data-mode]'); if (!b) return;
         payCfg.mode = b.dataset.mode;

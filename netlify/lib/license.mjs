@@ -91,6 +91,37 @@ export function licenceFor(key, rec, dev, now, final) {
   });
 }
 
+// ---------- free trial for the offline apps (Android / Windows / Mac) ----------
+// The shared trial password also activates an app, for the trial length set in Admin
+// (Trial password → minutes). No code record and no device slot is used: the licence is
+// bound to this device's id (mid), ends at `exp` and never asks to check in (chk = hard = exp),
+// so after one online activation the trial runs fully offline. Vouchers and the cash
+// acceptor are switched on so the renter can try them too. Only the app trial uses this;
+// the web trial is unchanged.
+export const isTrialCode = (settings, code) => {
+  const pw = String((settings && settings.trialPassword) || '').trim().toLowerCase();
+  return !!(settings && settings.trialEnabled && pw && String(code || '').trim().toLowerCase() === pw);
+};
+export function trialLicence(settings, { mid, name, os, ver }, now) {
+  const clean = (v, n) => String(v || '').replace(/[<>"\u0000-\u001f]/g, '').trim().slice(0, n);
+  const osKey = os === 'mac' ? 'mac' : os === 'android' ? 'android' : os === 'ios' ? 'ios' : 'win';
+  const minutes = Math.max(1, Math.min(240, Math.floor(Number(settings.trialMinutes) || 15)));
+  const exp = now + minutes * 60000;
+  const folder = String(settings.trialFolderPrefix || 'Trial test shots').trim() || 'Trial test shots';
+  return signLicence({
+    v: 1, typ: 'pb4u-desktop', lid: randomBytes(10).toString('hex'), mid, os: osKey, name: clean(name, 60), ver: clean(ver, 20),
+    renter: 'Free trial', code: 'TRIAL', lifetime: false, exp, iat: now, chk: exp, hard: exp,
+    feat: {
+      trial: true, watermark: settings.trialWatermark !== false, minutes,
+      print: normPrint(settings.trialPrintEnabled, settings.trialPrintSizes, { eventLimit: settings.trialPrintEventLimit, sessionLimit: settings.trialPrintSessionLimit }),
+      traditional: !!settings.trialTraditional, retakeOpt: !!settings.trialRetakeOpt, typesOpt: !!settings.trialTypesOpt, lockOpt: !!settings.trialLockOpt, debugOpt: false,
+      orientation: 'either', gifOpt: settings.trialGifOpt !== false, ipadOpt: false,
+      extras: extrasOf({}), vouchers: true,
+      folderKey: folder, folderPrefix: null, defaultTheme: null, deviceNo: 1, multiDevice: false, pinResetAt: 0, final: false
+    }
+  });
+}
+
 const mapKey = (lid) => 'applic-' + lid;
 export async function saveMap(lid, key, mid) { await meta().setJSON(mapKey(lid), { key, mid, at: Date.now() }); }
 export async function readMap(lid) { return /^[a-f0-9]{16,40}$/.test(String(lid || '')) ? meta().get(mapKey(lid), { type: 'json' }) : null; }

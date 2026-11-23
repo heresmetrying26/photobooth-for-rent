@@ -297,6 +297,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-23', title: 'Android 1.2.08 & Website: Two-Way ESP32 Bluetooth / USB Serial for Relay Modules & NeoPixels', for: ['website'],
+    items: [
+      '⚡ Added two-way Bluetooth Serial (BLE Nordic UART + Classic Bluetooth SPP on Android tablets via dedicated native bridge, plus Web Bluetooth & USB Serial on Chrome/Edge) alongside existing coin/bill cash acceptor support.',
+      '💡 Live booth status commands sent automatically to ESP32: `session_idle`, `template_selection`, `price{N}`, `cash_open`, `cash_close`, `payment_success`, `session_start`, `countdown_3`, `countdown_2`, `countdown_1`, `shutter_flash`, `start_print`, `print_done`, `session_end`, and `session_cancel`.',
+      '🎛️ Added **ESP32 Relay Lighting & NeoPixels** controls in **Setup → Light, sound and start** (works even on free events) plus quick test buttons (`Test Light ON`, `Test Flash`, `Test Cash Open`, `Test Idle`) and updated `/cash-acceptor/` firmware supporting 4–8 relay channels directly.'
+    ]
+  },
+  {
     date: '2026-11-23', title: 'Android 1.2.07 & Website: Multi-Layout Selection on Uploaded Frames', for: ['website'],
     items: [
       '✅ Fixed uploaded frames ("Your frames") so multiple frames and built-in layouts can be tapped and ticked together in Setup → 3. Layout on Android tablets and phones.',

@@ -297,6 +297,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-23', title: 'Roving DSLR Bridge v1.1.2 (Android): Offline Disk Queue & Automatic Upload on Reconnect', for: ['website'],
+    items: [
+      '📦 Offline disk queue: photos shot while out of Wi-Fi range are saved safely in phone storage (`rove_pending`) instead of failing, and stay queued even if the app closes.',
+      '🔄 Automatic Wi-Fi reconnect upload: automatically detects when the booth Wi-Fi / laptop is reachable again and streams queued photos in FIFO order.',
+      '⏳ Live pending counter & 1-tap Retry Now: see queued shots on the main screen, Pocket Lock, and Session Gallery (with safe gallery clearing that protects unsent photos).'
+    ]
+  },
+  {
     date: '2026-11-23', title: 'Android 1.2.06 & Website: Seamless Offline Wi-Fi / Wi-Fi Direct Printer Tester Copy & Live Refresh', for: ['website'],
     items: [
       '📋 Native Android clipboard copy for Printer Report & Wi-Fi / Wi-Fi Direct Printer Test so Copy test report works reliably offline in Android WebView.',

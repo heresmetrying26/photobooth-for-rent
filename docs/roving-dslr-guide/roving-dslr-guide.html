@@ -423,7 +423,7 @@
           <li><b>Native Physical Shutter Polling:</b> The phone's background helper detects the exact millisecond you press the camera shutter button on the body. No touchscreen tapping needed.</li>
           <li><b>Sub-Second Beaming (&lt;500ms):</b> USB transfer into phone memory happens at 480 Mbps; local Wi-Fi transmission to laptop takes only ~300ms.</li>
           <li><b>Pocket Mode &amp; Haptic Buzz:</b> Screen dims to 5% brightness and ignores pocket touch friction; the phone vibrates in your pocket to confirm successful delivery.</li>
-          <li><b>Decoupled FIFO Buffer:</b> Shoot rapid 2-3 shot bursts without stalling. Shots queue safely in phone RAM and upload sequentially.</li>
+          <li><b>Offline Disk Queue &amp; Auto-Retry:</b> Shoot rapid bursts or walk beyond Wi-Fi range without losing shots. Photos queue safely on phone storage and auto-upload in order when Wi-Fi reconnects.</li>
         </ul>
       </div>
     </div>
@@ -777,7 +777,7 @@
           <td>Weak Wi-Fi signal at far edge of venue or heavy channel interference.</td>
           <td>
             1. Move 5–10 steps closer to the booth or elevate your Wi-Fi router.<br>
-            2. The app's FIFO executor buffers the photo in memory and will re-stream as soon as signal recovers. No photos are lost.
+            2. The app saves the full-resolution JPEG in its offline disk queue and automatically re-uploads in order as soon as Wi-Fi signal recovers (or tap <b>Retry Now</b> anytime). No photos are lost.
           </td>
         </tr>
       </tbody>

@@ -2414,6 +2414,8 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         defer { close(clientSock) }
         var noSigPipe: Int32 = 1
         setsockopt(clientSock, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, socklen_t(MemoryLayout<Int32>.size))
+        var noDelay: Int32 = 1
+        setsockopt(clientSock, IPPROTO_TCP, TCP_NODELAY, &noDelay, socklen_t(MemoryLayout<Int32>.size))
         var rcvTv = timeval(tv_sec: 5, tv_usec: 0)
         setsockopt(clientSock, SOL_SOCKET, SO_RCVTIMEO, &rcvTv, socklen_t(MemoryLayout<timeval>.size))
         var sndTv = timeval(tv_sec: 15, tv_usec: 0)
@@ -2506,7 +2508,21 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             return
         }
         if method == "GET" && path == "/avcam/frame" {
-            if let data = NativeCameraBridge.shared.latestFrameJpeg(), !data.isEmpty {
+            var maxSide: CGFloat = 640
+            var quality: CGFloat = 0.74
+            if !query.isEmpty {
+                for pair in query.split(separator: "&") {
+                    let kv = pair.split(separator: "=", maxSplits: 1)
+                    if kv.count == 2 {
+                        if kv[0] == "max", let v = Double(kv[1]), v >= 120 {
+                            maxSide = CGFloat(min(1280, v))
+                        } else if kv[0] == "q", let v = Double(kv[1]), v >= 0.35 && v <= 0.95 {
+                            quality = CGFloat(v)
+                        }
+                    }
+                }
+            }
+            if let data = NativeCameraBridge.shared.latestFrameJpeg(maxSide: maxSide, quality: quality), !data.isEmpty {
                 sendResponse(clientSock, status: 200, type: "image/jpeg", body: data)
             } else {
                 sendResponse(clientSock, status: 204, type: "image/jpeg", body: Data())
@@ -2825,9 +2841,18 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             "Connection: close\r\n\r\n"
 
         if let headerData = header.data(using: .utf8) {
-            writeAll(sock, data: headerData)
-        }
-        if !body.isEmpty {
+            if body.isEmpty {
+                writeAll(sock, data: headerData)
+            } else if body.count <= 2 * 1024 * 1024 {
+                var packet = Data(capacity: headerData.count + body.count)
+                packet.append(headerData)
+                packet.append(body)
+                writeAll(sock, data: packet)
+            } else {
+                writeAll(sock, data: headerData)
+                writeAll(sock, data: body)
+            }
+        } else if !body.isEmpty {
             writeAll(sock, data: body)
         }
     }

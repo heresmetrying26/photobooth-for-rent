@@ -240,7 +240,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.18', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.18/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.19', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.19/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -293,6 +293,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-23', title: 'iPad 1.1.19: Silky-Smooth iPad A16 & Center Stage Live Camera (Eliminated Preview Lag & Filter Stutter)', for: ['website'],
+    items: [
+      '⚡ iPad A16 & Center Stage camera performance overhaul: switches the native AVFoundation pipeline to a hardware-binned 4:3 30 fps native YUV (420f/420v) format with a 24–30 fps floor while preserving full high-resolution still capture (up to 2400 px via fast ImageIO downscaling).',
+      '🔄 Eliminated portrait buffer rotation & 1-second stutter: keeps AVCaptureVideoDataOutput unrotated on iOS 17+ (orienting frames on GPU only when rendered/encoded) and deduplicates layout/rotation/mirroring IPC updates.',
+      '🎨 Off-main-thread Metal live filters & smoother non-fullscreen previews: moves MTKView filter rendering off the UIKit main thread onto a dedicated 1× opaque Metal render queue, keeps hardware AVCaptureVideoPreviewLayer active even when Welcome Screen is off, honours the Setup viewfinder resolution setting, and speeds up /avcam/frame loopback delivery with TCP_NODELAY and direct GPU JPEG encoding.'
+    ]
+  },
   {
     date: '2026-11-23', title: 'Desktop 1.1.97, Print Helper 1.1.20, Android 1.1.101 & iPad 1.1.18: HiTi & Dye-Sub 2×6 Split Auto-Cut, Secondary 2×6 Printer Slot, Print Station Split Routing & Direct USB Canon SELPHY', for: ['website', 'app', 'helper'], app: '1.1.97', helper: '1.1.20',
     items: [

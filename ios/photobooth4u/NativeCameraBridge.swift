@@ -1,6 +1,7 @@
 import UIKit
 import AVFoundation
 import CoreImage
+import ImageIO
 import Metal
 import MetalKit
 
@@ -20,15 +21,32 @@ import MetalKit
 final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate {
 
     static let shared = NativeCameraBridge()
+    static let srgbColorSpace = CGColorSpaceCreateDeviceRGB()
+
+    static func orientImage(_ ci: CIImage, rotationAngle: CGFloat) -> CIImage {
+        let deg = ((Int(rotationAngle.rounded()) % 360) + 360) % 360
+        switch deg {
+        case 90:  return ci.oriented(.right)
+        case 180: return ci.oriented(.down)
+        case 270: return ci.oriented(.left)
+        default:  return ci
+        }
+    }
 
     final class PreviewHostView: UIView {
         let previewLayer = AVCaptureVideoPreviewLayer()
 
         let filterView: MTKView?
+        private let metalLayer: CAMetalLayer?
         private let ciContext: CIContext?
         private let cmdQueue: MTLCommandQueue?
+        private let filterRenderQueue = DispatchQueue(label: "com.photobooth4u.avcam.filter", qos: .userInteractive)
         private let renderLock = NSLock()
         private var isRenderingFilter = false
+        private var cachedVisible = false
+        private var cachedWantsFilter = false
+        private var cachedDrawableSize: CGSize = .zero
+        private var filterOverlayShown = false
         var wantsFilterOverlay: Bool = false
 
         override init(frame: CGRect) {
@@ -37,18 +55,27 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 mv.framebufferOnly = false
                 mv.enableSetNeedsDisplay = false
                 mv.isPaused = true
-                mv.autoResizeDrawable = true
+                mv.autoResizeDrawable = false
+                mv.contentScaleFactor = 1.0
                 mv.contentMode = .scaleAspectFill
                 mv.isHidden = true
-                mv.isOpaque = false
-                mv.layer.isOpaque = false
-                mv.clearColor = MTLClearColorMake(0, 0, 0, 0)
-                mv.backgroundColor = .clear
+                mv.isOpaque = true
+                mv.layer.isOpaque = true
+                mv.clearColor = MTLClearColorMake(0, 0, 0, 1)
+                mv.backgroundColor = .black
+                let ml = mv.layer as? CAMetalLayer
+                ml?.device = dev
+                ml?.pixelFormat = mv.colorPixelFormat
+                ml?.framebufferOnly = false
+                ml?.presentsWithTransaction = false
+                ml?.contentsScale = 1.0
                 self.filterView = mv
-                self.ciContext = CIContext(mtlDevice: dev, options: [.useSoftwareRenderer: false])
+                self.metalLayer = ml
+                self.ciContext = CIContext(mtlDevice: dev, options: [.useSoftwareRenderer: false, .cacheIntermediates: false])
                 self.cmdQueue = dev.makeCommandQueue()
             } else {
                 self.filterView = nil
+                self.metalLayer = nil
                 self.ciContext = nil
                 self.cmdQueue = nil
             }
@@ -68,6 +95,25 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             fatalError("init(coder:) has not been implemented")
         }
 
+        func syncRenderState(visible: Bool, wantsFilter: Bool, bounds: CGRect) {
+            let tw = max(0, bounds.width.rounded())
+            let th = max(0, bounds.height.rounded())
+            if let fv = filterView, tw > 1 && th > 1 {
+                let newSize = CGSize(width: tw, height: th)
+                if fv.drawableSize != newSize {
+                    fv.drawableSize = newSize
+                }
+            }
+            renderLock.lock()
+            cachedVisible = visible
+            cachedWantsFilter = wantsFilter
+            cachedDrawableSize = CGSize(width: tw, height: th)
+            if !visible || !wantsFilter {
+                filterOverlayShown = false
+            }
+            renderLock.unlock()
+        }
+
         override func layoutSubviews() {
             super.layoutSubviews()
             CATransaction.begin()
@@ -77,51 +123,79 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 fv.frame = bounds
             }
             CATransaction.commit()
+            syncRenderState(visible: !isHidden, wantsFilter: wantsFilterOverlay, bounds: bounds)
         }
 
-        func renderFiltered(pixelBuffer: CVPixelBuffer, mirrored: Bool, filter: String, softSkin: Bool) {
-            guard let fv = filterView, let ctx = ciContext, let cq = cmdQueue else { return }
+        func renderFiltered(pixelBuffer: CVPixelBuffer, rotationAngle: CGFloat, mirrored: Bool, filter: String, softSkin: Bool) {
+            guard let ml = metalLayer, let ctx = ciContext, let cq = cmdQueue else { return }
             renderLock.lock()
-            if isRenderingFilter {
+            if isRenderingFilter || !cachedVisible || !cachedWantsFilter || cachedDrawableSize.width < 2 || cachedDrawableSize.height < 2 {
                 renderLock.unlock()
                 return
             }
             isRenderingFilter = true
             renderLock.unlock()
 
-            DispatchQueue.main.async {
+            filterRenderQueue.async { [weak self] in
+                guard let self = self else { return }
+                var committed = false
                 defer {
+                    if !committed {
+                        self.renderLock.lock()
+                        self.isRenderingFilter = false
+                        self.renderLock.unlock()
+                    }
+                }
+
+                self.renderLock.lock()
+                let stillActive = self.cachedVisible && self.cachedWantsFilter
+                self.renderLock.unlock()
+                guard stillActive else { return }
+
+                autoreleasepool {
+                    guard let drawable = ml.nextDrawable(), let cmdBuf = cq.makeCommandBuffer() else { return }
+                    let texW = CGFloat(drawable.texture.width)
+                    let texH = CGFloat(drawable.texture.height)
+                    guard texW > 1, texH > 1 else { return }
+                    let targetBounds = CGRect(x: 0, y: 0, width: texW, height: texH)
+
+                    // Orient unrotated sensor frame on GPU, crop/scale to display points first, then run filter shaders
+                    var img = NativeCameraBridge.orientImage(CIImage(cvPixelBuffer: pixelBuffer), rotationAngle: rotationAngle)
+                    let scale = max(targetBounds.width / max(1, img.extent.width), targetBounds.height / max(1, img.extent.height))
+                    img = img.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+                    let dx = (targetBounds.width - img.extent.width) / 2.0 - img.extent.origin.x
+                    let dy = (targetBounds.height - img.extent.height) / 2.0 - img.extent.origin.y
+                    img = img.transformed(by: CGAffineTransform(translationX: dx, y: dy)).cropped(to: targetBounds)
+
+                    if mirrored {
+                        img = img.oriented(.upMirrored)
+                    }
+                    img = NativeCameraBridge.applyLiveFilter(to: img, filter: filter, softSkin: softSkin)
+
+                    ctx.render(img, to: drawable.texture, commandBuffer: cmdBuf, bounds: targetBounds, colorSpace: NativeCameraBridge.srgbColorSpace)
+                    cmdBuf.present(drawable)
+                    cmdBuf.addCompletedHandler { [weak self] _ in
+                        guard let self = self else { return }
+                        self.renderLock.lock()
+                        self.isRenderingFilter = false
+                        self.renderLock.unlock()
+                    }
+                    cmdBuf.commit()
+                    committed = true
+
+                    var needsShow = false
                     self.renderLock.lock()
-                    self.isRenderingFilter = false
+                    if self.cachedVisible && self.cachedWantsFilter && !self.filterOverlayShown {
+                        self.filterOverlayShown = true
+                        needsShow = true
+                    }
                     self.renderLock.unlock()
-                }
-                guard self.wantsFilterOverlay, !self.isHidden, self.bounds.width > 2, self.bounds.height > 2 else { return }
-                if fv.frame != self.bounds {
-                    fv.frame = self.bounds
-                    fv.layoutIfNeeded()
-                }
-                guard let drawable = fv.currentDrawable, let cmdBuf = cq.makeCommandBuffer() else { return }
-                let dSize = fv.drawableSize
-                guard dSize.width > 1, dSize.height > 1 else { return }
-                let targetBounds = CGRect(origin: .zero, size: dSize)
-
-                var img = CIImage(cvPixelBuffer: pixelBuffer)
-                if mirrored {
-                    img = img.transformed(by: CGAffineTransform(scaleX: -1, y: 1).translatedBy(x: -img.extent.width, y: 0))
-                }
-                img = NativeCameraBridge.applyLiveFilter(to: img, filter: filter, softSkin: softSkin)
-
-                let scale = max(targetBounds.width / max(1, img.extent.width), targetBounds.height / max(1, img.extent.height))
-                img = img.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-                let dx = (targetBounds.width - img.extent.width) / 2.0 - img.extent.origin.x
-                let dy = (targetBounds.height - img.extent.height) / 2.0 - img.extent.origin.y
-                img = img.transformed(by: CGAffineTransform(translationX: dx, y: dy)).cropped(to: targetBounds)
-
-                ctx.render(img, to: drawable.texture, commandBuffer: cmdBuf, bounds: targetBounds, colorSpace: CGColorSpaceCreateDeviceRGB())
-                cmdBuf.present(drawable)
-                cmdBuf.commit()
-                if self.wantsFilterOverlay && !self.isHidden && fv.isHidden {
-                    fv.isHidden = false
+                    if needsShow {
+                        DispatchQueue.main.async { [weak self] in
+                            guard let self = self, self.wantsFilterOverlay, !self.isHidden else { return }
+                            self.filterView?.isHidden = false
+                        }
+                    }
                 }
             }
         }
@@ -160,7 +234,11 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
     private var isExternalCamera = false
     private var currentWidth = 0
     private var currentHeight = 0
+    private var captureRotationAngle: CGFloat = 0
     private var currentInterfaceOrientation: UIInterfaceOrientation = .landscapeLeft
+    private var lastLayoutSig: String = ""
+
+    private let jpegEncodeLock = NSLock()
 
     private let recLock = NSLock()
     private var assetWriter: AVAssetWriter?
@@ -185,7 +263,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
     private var videoStore: [Int: URL] = [:]
     private var pendingPhotoCompletions: [Int64: (Result<(Data, Int, Int), Error>) -> Void] = [:]
 
-    private let frameCiContext = CIContext(options: [.useSoftwareRenderer: false])
+    private let frameCiContext = CIContext(options: [.useSoftwareRenderer: false, .cacheIntermediates: false])
 
     private override init() {
         super.init()
@@ -345,9 +423,12 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
 
     func stop(completion: (() -> Void)? = nil) {
         DispatchQueue.main.async { [weak self] in
-            self?.previewView.wantsFilterOverlay = false
-            self?.previewView.filterView?.isHidden = true
-            self?.previewView.isHidden = true
+            guard let self = self else { return }
+            self.lastLayoutSig = ""
+            self.previewView.wantsFilterOverlay = false
+            self.previewView.filterView?.isHidden = true
+            self.previewView.isHidden = true
+            self.previewView.syncRenderState(visible: false, wantsFilter: false, bounds: self.previewView.bounds)
         }
         sessionQueue.async { [weak self] in
             guard let self = self else { return }
@@ -369,6 +450,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             self.latestBuffer = nil
             self.currentWidth = 0
             self.currentHeight = 0
+            self.captureRotationAngle = 0
             self.stateLock.unlock()
             if let done = completion {
                 DispatchQueue.main.async { done() }
@@ -476,6 +558,83 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         return devices.first(where: { $0.position == .front }) ?? devices.first
     }
 
+    private func maxStillWidth(for format: AVCaptureDevice.Format) -> Int {
+        if #available(iOS 16.0, *) {
+            return format.supportedMaxPhotoDimensions.map { Int($0.width) }.max() ?? 0
+        } else {
+            return Int(format.highResolutionStillImageDimensions.width)
+        }
+    }
+
+    /// Selects a smooth 30 fps 8-bit 4:2:0 YUV 4:3 video-binned format on built-in iPads (e.g. 1440×1080 or 1280×960)
+    /// that keeps full 4:3 FOV and high-res still photo capability (4032×3024 on iPad A16) without forcing the heavy
+    /// .photo session preset or 10-bit HDR pipelines.
+    private func pickSmoothBuiltInFormat(for dev: AVCaptureDevice, presetName: String) -> AVCaptureDevice.Format? {
+        let targetW: Int
+        let minW: Int
+        let maxW: Int
+        switch presetName {
+        case "480":
+            targetW = 640; minW = 480; maxW = 800
+        case "720":
+            targetW = 1280; minW = 960; maxW = 1344
+        case "1080":
+            targetW = 1440; minW = 1280; maxW = 1920
+        case "max", "yuyv":
+            targetW = 1920; minW = 1280; maxW = 2160
+        default: // "auto", "high", "photo"
+            targetW = 1440; minW = 960; maxW = 1920
+        }
+
+        var centerStageWanted = false
+        if #available(iOS 14.5, *) {
+            centerStageWanted = AVCaptureDevice.isCenterStageEnabled
+        }
+
+        var bestFormat: AVCaptureDevice.Format?
+        var bestScore = Int.min
+
+        for fmt in dev.formats {
+            let dims = CMVideoFormatDescriptionGetDimensions(fmt.formatDescription)
+            let w = Int(dims.width)
+            let h = Int(dims.height)
+            guard w >= minW && w <= maxW && h >= 360 else { continue }
+
+            // Strictly pick 8-bit 4:2:0 YUV formats (skip 10-bit HDR x420 which adds tone-mapping overhead)
+            let sub = CMFormatDescriptionGetMediaSubType(fmt.formatDescription)
+            let is420f = (sub == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)
+            let is420v = (sub == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange)
+            guard is420f || is420v else { continue }
+
+            let supports30 = fmt.videoSupportedFrameRateRanges.contains {
+                $0.minFrameRate <= 30.01 && $0.maxFrameRate >= 29.9
+            }
+            guard supports30 else { continue }
+
+            let aspect = Double(w) / Double(h)
+            let is4by3 = abs(aspect - (4.0 / 3.0)) < 0.06
+            let stillW = maxStillWidth(for: fmt)
+
+            var score = 0
+            if is4by3 { score += 10_000 }
+            if stillW >= 2400 { score += 5_000 }
+            else if stillW >= 1920 { score += 2_500 }
+            if #available(iOS 14.5, *), centerStageWanted && fmt.isCenterStageSupported {
+                score += 2_000
+            }
+            if fmt.isVideoBinned { score += 600 }
+            if is420f { score += 200 }
+            if !fmt.isVideoHDRSupported { score += 150 }
+            score -= abs(w - targetW)
+
+            if score > bestScore {
+                bestScore = score
+                bestFormat = fmt
+            }
+        }
+        return bestFormat
+    }
+
     private func configureAndStart(deviceId: String?, presetName: String) throws -> [String: Any] {
         guard let dev = pickDevice(deviceId: deviceId) else {
             throw NSError(domain: "NativeCameraBridge", code: 404, userInfo: [NSLocalizedDescriptionKey: "No built-in or external USB camera found."])
@@ -490,6 +649,9 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             session.stopRunning()
         }
         clearRotationObservers()
+        DispatchQueue.main.async { [weak self] in
+            self?.lastLayoutSig = ""
+        }
 
         session.beginConfiguration()
         var committed = false
@@ -508,32 +670,56 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         currentInput = input
         currentDevice = dev
 
-        // Choose crisp native preset: .photo gives full 4:3 sensor FOV on built-in iPads with hardware GPU preview;
-        // external UVC capture cards prefer 1080p/720p video presets.
-        let desiredPresets: [AVCaptureSession.Preset]
-        switch presetName {
-        case "480":
-            desiredPresets = [.vga640x480, .hd1280x720, .high]
-        case "720":
-            desiredPresets = [.hd1280x720, .high]
-        case "1080":
-            desiredPresets = [.hd1920x1080, .hd1280x720, .high]
-        case "max", "yuyv":
-            desiredPresets = ext ? [.hd1920x1080, .hd1280x720, .high] : [.photo, .hd1920x1080, .high]
-        default: // "auto"
-            desiredPresets = ext ? [.hd1280x720, .hd1920x1080, .high] : [.photo, .hd1280x720, .high]
+        // Built-in iPads (especially A16 / 10th-gen 12MP Center Stage): use .inputPriority + a binned 4:3 30fps YUV
+        // video format so live view stays buttery 30fps while AVCapturePhotoOutput still captures full high-res stills.
+        // Fall back to standard video presets if no matching custom format is found (and for external UVC cards).
+        var usedCustomFormat = false
+        if !ext, session.canSetSessionPreset(.inputPriority), let chosen = pickSmoothBuiltInFormat(for: dev, presetName: presetName) {
+            do {
+                session.sessionPreset = .inputPriority
+                try dev.lockForConfiguration()
+                dev.activeFormat = chosen
+                dev.unlockForConfiguration()
+                usedCustomFormat = true
+            } catch {
+                usedCustomFormat = false
+            }
         }
-        for p in desiredPresets where session.canSetSessionPreset(p) {
-            session.sessionPreset = p
-            break
+        if !usedCustomFormat {
+            let desiredPresets: [AVCaptureSession.Preset]
+            switch presetName {
+            case "480":
+                desiredPresets = [.vga640x480, .hd1280x720, .high]
+            case "720":
+                desiredPresets = [.hd1280x720, .high]
+            case "1080":
+                desiredPresets = [.hd1920x1080, .hd1280x720, .high]
+            case "max", "yuyv":
+                desiredPresets = ext ? [.hd1920x1080, .hd1280x720, .high] : [.high, .hd1920x1080, .photo]
+            default: // "auto", "high", "photo"
+                desiredPresets = ext ? [.hd1280x720, .hd1920x1080, .high] : [.high, .hd1280x720, .photo]
+            }
+            for p in desiredPresets where session.canSetSessionPreset(p) {
+                session.sessionPreset = p
+                break
+            }
         }
 
         let vOut = AVCaptureVideoDataOutput()
-        vOut.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)]
         vOut.alwaysDiscardsLateVideoFrames = true
         vOut.setSampleBufferDelegate(self, queue: videoOutputQueue)
         if session.canAddOutput(vOut) {
             session.addOutput(vOut)
+            // Keep native 4:2:0 YUV pixel format (Apple TN3121) to eliminate costly per-frame YUV->32BGRA conversion.
+            // CoreImage reads native 420f/420v directly on Metal GPU at 2.67x less memory bandwidth.
+            let avail = vOut.availableVideoPixelFormatTypes
+            if avail.contains(kCVPixelFormatType_420YpCbCr8BiPlanarFullRange) {
+                vOut.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)]
+            } else if avail.contains(kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange) {
+                vOut.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange)]
+            } else {
+                vOut.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)]
+            }
             videoDataOutput = vOut
         } else {
             videoDataOutput = nil
@@ -544,8 +730,18 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         if !ext {
             let pOut = AVCapturePhotoOutput()
             if session.canAddOutput(pOut) {
-                pOut.isHighResolutionCaptureEnabled = true
                 session.addOutput(pOut)
+                if #available(iOS 16.0, *) {
+                    let supported = dev.activeFormat.supportedMaxPhotoDimensions
+                    let atLeast2400 = supported.filter { max(Int($0.width), Int($0.height)) >= 2400 }
+                    let chosenDim = atLeast2400.min(by: { Int64($0.width) * Int64($0.height) < Int64($1.width) * Int64($1.height) })
+                        ?? supported.max(by: { Int64($0.width) * Int64($0.height) < Int64($1.width) * Int64($1.height) })
+                    if let dim = chosenDim, dim.width > 0 && dim.height > 0 {
+                        pOut.maxPhotoDimensions = dim
+                    }
+                } else {
+                    pOut.isHighResolutionCaptureEnabled = true
+                }
                 photoOutput = pOut
             } else {
                 photoOutput = nil
@@ -554,12 +750,39 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             photoOutput = nil
         }
 
-        // Low-light boost & smooth continuous focus/exposure on built-in lenses
+        if wantsAudio {
+            attachAudioIfNeeded(inConfigBlock: true)
+        }
+        session.commitConfiguration()
+        committed = true
+
+        // Apply post-commit frame rate floor (24-30 fps) and focus/exposure on built-in lenses so indoor lighting
+        // cannot drop the live preview into 15 fps slideshow mode or engage heavy multi-exposure video HDR.
         if !ext {
             do {
                 try dev.lockForConfiguration()
                 if dev.isLowLightBoostSupported {
-                    dev.automaticallyEnablesLowLightBoostWhenAvailable = true
+                    dev.automaticallyEnablesLowLightBoostWhenAvailable = false
+                }
+                if dev.activeFormat.isVideoHDRSupported {
+                    dev.automaticallyAdjustsVideoHDREnabled = false
+                    if dev.isVideoHDREnabled {
+                        dev.isVideoHDREnabled = false
+                    }
+                }
+                if let range = dev.activeFormat.videoSupportedFrameRateRanges.first(where: { $0.maxFrameRate >= 29.9 }) {
+                    var minDur = CMTime(value: 1, timescale: 30)
+                    var maxDur = CMTime(value: 1, timescale: 24)
+                    if CMTimeCompare(minDur, range.minFrameDuration) < 0 { minDur = range.minFrameDuration }
+                    if CMTimeCompare(maxDur, range.maxFrameDuration) > 0 { maxDur = range.maxFrameDuration }
+                    if #available(iOS 14.5, *), dev.activeFormat.isCenterStageSupported,
+                       let csRange = dev.activeFormat.videoFrameRateRangeForCenterStage {
+                        if CMTimeCompare(minDur, csRange.minFrameDuration) < 0 { minDur = csRange.minFrameDuration }
+                        if CMTimeCompare(maxDur, csRange.maxFrameDuration) > 0 { maxDur = csRange.maxFrameDuration }
+                    }
+                    if CMTimeCompare(minDur, maxDur) > 0 { maxDur = minDur }
+                    dev.activeVideoMinFrameDuration = minDur
+                    dev.activeVideoMaxFrameDuration = maxDur
                 }
                 if dev.isFocusModeSupported(.continuousAutoFocus) {
                     dev.focusMode = .continuousAutoFocus
@@ -571,16 +794,6 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             } catch { }
         }
 
-        if wantsAudio {
-            attachAudioIfNeeded(inConfigBlock: true)
-        }
-        session.commitConfiguration()
-        committed = true
-        session.startRunning()
-
-        // Configure rotation coordinator only after session connections exist and are running.
-        setupRotation(for: dev)
-
         let dims = CMVideoFormatDescriptionGetDimensions(dev.activeFormat.formatDescription)
         let rawW = Int(dims.width)
         let rawH = Int(dims.height)
@@ -590,9 +803,15 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         isFrontCamera = (dev.position == .front)
         isExternalCamera = ext
         latestBuffer = nil
+        captureRotationAngle = 0
         currentWidth = effective.w
         currentHeight = effective.h
         stateLock.unlock()
+
+        session.startRunning()
+
+        // Configure rotation coordinator only after session connections exist and state is initialized.
+        setupRotation(for: dev)
 
         return [
             "ok": true,
@@ -625,20 +844,38 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
 
     @available(iOS 17.0, *)
     private func applyPreviewRotationAngle(_ angle: CGFloat) {
-        if let conn = previewView.previewLayer.connection, conn.isVideoRotationAngleSupported(angle) {
+        if let conn = previewView.previewLayer.connection,
+           conn.isVideoRotationAngleSupported(angle),
+           abs(conn.videoRotationAngle - angle) > 0.01 {
             conn.videoRotationAngle = angle
         }
     }
 
     @available(iOS 17.0, *)
     private func applyCaptureRotationAngle(_ angle: CGFloat) {
+        stateLock.lock()
+        captureRotationAngle = angle
+        if let pb = latestBuffer {
+            let rw = CVPixelBufferGetWidth(pb)
+            let rh = CVPixelBufferGetHeight(pb)
+            let deg = ((Int(angle.rounded()) % 360) + 360) % 360
+            let swap = (deg == 90 || deg == 270)
+            if rw > 0 && rh > 0 {
+                currentWidth = swap ? rh : rw
+                currentHeight = swap ? rw : rh
+            }
+        }
+        stateLock.unlock()
+
+        // Only rotate photoOutput connection (fires once per shot). Keep videoDataOutput unrotated at sensor
+        // native orientation to eliminate costly per-frame physical buffer rotation on portrait iPads;
+        // CoreImage orients individual frames on GPU only when actually rendered/encoded.
         sessionQueue.async { [weak self] in
             guard let self = self else { return }
-            if let pConn = self.photoOutput?.connection(with: .video), pConn.isVideoRotationAngleSupported(angle) {
+            if let pConn = self.photoOutput?.connection(with: .video),
+               pConn.isVideoRotationAngleSupported(angle),
+               abs(pConn.videoRotationAngle - angle) > 0.01 {
                 pConn.videoRotationAngle = angle
-            }
-            if let vConn = self.videoDataOutput?.connection(with: .video), vConn.isVideoRotationAngleSupported(angle) {
-                vConn.videoRotationAngle = angle
             }
         }
     }
@@ -696,15 +933,15 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             currentInterfaceOrientation = ws.interfaceOrientation
         }
         let vo = legacyVideoOrientation()
-        if let pConn = previewView.previewLayer.connection, pConn.isVideoOrientationSupported {
+        if let pConn = previewView.previewLayer.connection, pConn.isVideoOrientationSupported, pConn.videoOrientation != vo {
             pConn.videoOrientation = vo
         }
         sessionQueue.async { [weak self] in
             guard let self = self else { return }
-            if let c1 = self.photoOutput?.connection(with: .video), c1.isVideoOrientationSupported {
+            if let c1 = self.photoOutput?.connection(with: .video), c1.isVideoOrientationSupported, c1.videoOrientation != vo {
                 c1.videoOrientation = vo
             }
-            if let c2 = self.videoDataOutput?.connection(with: .video), c2.isVideoOrientationSupported {
+            if let c2 = self.videoDataOutput?.connection(with: .video), c2.isVideoOrientationSupported, c2.videoOrientation != vo {
                 c2.videoOrientation = vo
             }
         }
@@ -718,41 +955,67 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             if let ws = self.hostContainerView?.window?.windowScene {
                 self.currentInterfaceOrientation = ws.interfaceOrientation
             }
-            if let hex = bgHex, let c = Self.colorFromHex(hex) {
-                self.hostContainerView?.backgroundColor = c
-            }
 
             self.stateLock.lock()
             self.latestMirrored = mirror
             let hasFilter = (self.activeFilter != "none" || self.activeSoftSkin)
             self.stateLock.unlock()
 
+            let validRect = visible && w > 2 && h > 2
+            let rx = Int(x.rounded()), ry = Int(y.rounded()), rw = Int(w.rounded()), rh = Int(h.rounded()), rr = Int(max(0, radius).rounded())
+            let sig = "\(validRect)|\(rx)|\(ry)|\(rw)|\(rh)|\(mirror)|\(rr)|\(bgHex ?? "")|\(hasFilter)"
+            if sig == self.lastLayoutSig {
+                return
+            }
+            let wasHidden = self.previewView.isHidden
+            self.lastLayoutSig = sig
+
+            if let hex = bgHex, let c = Self.colorFromHex(hex) {
+                self.hostContainerView?.backgroundColor = c
+            }
+
             CATransaction.begin()
             CATransaction.setDisableActions(true)
-            let validRect = visible && w > 2 && h > 2
             self.previewView.isHidden = !validRect
             self.previewView.wantsFilterOverlay = hasFilter && validRect
             if validRect {
-                self.previewView.frame = CGRect(x: x, y: y, width: w, height: h)
-                self.previewView.previewLayer.frame = self.previewView.bounds
-                self.previewView.layer.cornerRadius = max(0, radius)
+                let targetFrame = CGRect(x: x, y: y, width: w, height: h)
+                if self.previewView.frame != targetFrame {
+                    self.previewView.frame = targetFrame
+                }
+                if self.previewView.previewLayer.frame != self.previewView.bounds {
+                    self.previewView.previewLayer.frame = self.previewView.bounds
+                }
+                let rVal = max(0, radius)
+                if self.previewView.layer.cornerRadius != rVal {
+                    self.previewView.layer.cornerRadius = rVal
+                }
                 if let fv = self.previewView.filterView {
-                    fv.frame = self.previewView.bounds
-                    if !hasFilter {
+                    if fv.frame != self.previewView.bounds {
+                        fv.frame = self.previewView.bounds
+                    }
+                    if !hasFilter && !fv.isHidden {
                         fv.isHidden = true
                     }
                 }
                 if let conn = self.previewView.previewLayer.connection, conn.isVideoMirroringSupported {
-                    conn.automaticallyAdjustsVideoMirroring = false
-                    conn.isVideoMirrored = mirror
+                    if conn.automaticallyAdjustsVideoMirroring {
+                        conn.automaticallyAdjustsVideoMirroring = false
+                    }
+                    if conn.isVideoMirrored != mirror {
+                        conn.isVideoMirrored = mirror
+                    }
                 }
             } else {
-                self.previewView.filterView?.isHidden = true
+                if self.previewView.filterView?.isHidden == false {
+                    self.previewView.filterView?.isHidden = true
+                }
             }
             CATransaction.commit()
-            if validRect {
+            self.previewView.syncRenderState(visible: validRect, wantsFilter: hasFilter && validRect, bounds: self.previewView.bounds)
+            if validRect && wasHidden {
                 self.applyCurrentRotation()
-            } else {
+            } else if !validRect {
                 self.syncLegacyOrientation()
             }
         }
@@ -767,11 +1030,14 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            let showOverlay = hasFilter && !self.previewView.isHidden
+            self.lastLayoutSig = ""
+            let isVis = !self.previewView.isHidden
+            let showOverlay = hasFilter && isVis
             self.previewView.wantsFilterOverlay = showOverlay
             if !showOverlay {
                 self.previewView.filterView?.isHidden = true
             }
+            self.previewView.syncRenderState(visible: isVis, wantsFilter: showOverlay, bounds: self.previewView.bounds)
         }
     }
 
@@ -805,14 +1071,17 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         }
 
         guard output === videoDataOutput, let pb = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        let w = CVPixelBufferGetWidth(pb)
-        let h = CVPixelBufferGetHeight(pb)
+        let rawW = CVPixelBufferGetWidth(pb)
+        let rawH = CVPixelBufferGetHeight(pb)
 
         stateLock.lock()
         latestBuffer = pb
-        if w > 0 && h > 0 {
-            currentWidth = w
-            currentHeight = h
+        let rot = captureRotationAngle
+        if rawW > 0 && rawH > 0 {
+            let deg = ((Int(rot.rounded()) % 360) + 360) % 360
+            let swap = (deg == 90 || deg == 270)
+            currentWidth = swap ? rawH : rawW
+            currentHeight = swap ? rawW : rawH
         }
         let filter = activeFilter
         let soft = activeSoftSkin
@@ -820,7 +1089,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         stateLock.unlock()
 
         if filter != "none" || soft {
-            previewView.renderFiltered(pixelBuffer: pb, mirrored: mir, filter: filter, softSkin: soft)
+            previewView.renderFiltered(pixelBuffer: pb, rotationAngle: rot, mirrored: mir, filter: filter, softSkin: soft)
         }
 
         // Write filtered/mirrored video frames directly into AVAssetWriter when Video Guestbook is recording.
@@ -849,18 +1118,18 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
 
         autoreleasepool {
             let targetRect = CGRect(x: 0, y: 0, width: rw, height: rh)
-            var img = CIImage(cvPixelBuffer: pb)
-            if rMir {
-                img = img.transformed(by: CGAffineTransform(scaleX: -1, y: 1).translatedBy(x: -img.extent.width, y: 0))
-            }
-            img = NativeCameraBridge.applyLiveFilter(to: img, filter: rFilter, softSkin: rSoft)
+            var img = Self.orientImage(CIImage(cvPixelBuffer: pb), rotationAngle: rot)
             let sx = targetRect.width / max(1, img.extent.width)
             let sy = targetRect.height / max(1, img.extent.height)
             img = img
                 .transformed(by: CGAffineTransform(translationX: -img.extent.origin.x, y: -img.extent.origin.y))
                 .transformed(by: CGAffineTransform(scaleX: sx, y: sy))
                 .cropped(to: targetRect)
-            frameCiContext.render(img, to: dstPb, bounds: targetRect, colorSpace: CGColorSpaceCreateDeviceRGB())
+            if rMir {
+                img = img.oriented(.upMirrored)
+            }
+            img = NativeCameraBridge.applyLiveFilter(to: img, filter: rFilter, softSkin: rSoft)
+            frameCiContext.render(img, to: dstPb, bounds: targetRect, colorSpace: Self.srgbColorSpace)
         }
 
         recLock.lock()
@@ -879,27 +1148,44 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         recLock.unlock()
     }
 
-    func latestFrameJpeg(maxSide: CGFloat = 720, quality: CGFloat = 0.78) -> Data? {
+    func latestFrameJpeg(maxSide: CGFloat = 640, quality: CGFloat = 0.74) -> Data? {
         stateLock.lock()
         let pb = latestBuffer
+        let rot = captureRotationAngle
         stateLock.unlock()
         guard let buffer = pb else { return nil }
-        return jpegData(from: buffer, maxSide: maxSide, quality: quality)?.data
+        jpegEncodeLock.lock()
+        defer { jpegEncodeLock.unlock() }
+        return jpegData(from: buffer, rotationAngle: rot, maxSide: maxSide, quality: quality)?.data
     }
 
-    private func jpegData(from buffer: CVPixelBuffer, maxSide: CGFloat, quality: CGFloat) -> (data: Data, w: Int, h: Int)? {
-        var ci = CIImage(cvPixelBuffer: buffer)
-        let ow = ci.extent.width
-        let oh = ci.extent.height
-        guard ow > 0, oh > 0 else { return nil }
-        if maxSide > 0 && max(ow, oh) > maxSide {
-            let k = maxSide / max(ow, oh)
-            ci = ci.transformed(by: CGAffineTransform(scaleX: k, y: k))
+    private func jpegData(from buffer: CVPixelBuffer, rotationAngle: CGFloat, maxSide: CGFloat, quality: CGFloat) -> (data: Data, w: Int, h: Int)? {
+        return autoreleasepool {
+            var ci = Self.orientImage(CIImage(cvPixelBuffer: buffer), rotationAngle: rotationAngle)
+            let ow = ci.extent.width
+            let oh = ci.extent.height
+            guard ow > 0, oh > 0 else { return nil }
+            if maxSide > 0 && max(ow, oh) > maxSide {
+                let k = maxSide / max(ow, oh)
+                ci = ci.transformed(by: CGAffineTransform(scaleX: k, y: k))
+            }
+            let w = max(1, Int(ci.extent.width.rounded()))
+            let h = max(1, Int(ci.extent.height.rounded()))
+            let q = max(0.3, min(0.96, quality))
+            let jpgOpts: [CIImageRepresentationOption: Any] = [
+                CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): q
+            ]
+            if let jpg = frameCiContext.jpegRepresentation(
+                of: ci,
+                colorSpace: Self.srgbColorSpace,
+                options: jpgOpts
+            ) {
+                return (jpg, w, h)
+            }
+            guard let cg = frameCiContext.createCGImage(ci, from: ci.extent) else { return nil }
+            guard let jpg = UIImage(cgImage: cg).jpegData(compressionQuality: q) else { return nil }
+            return (jpg, cg.width, cg.height)
         }
-        guard let cg = frameCiContext.createCGImage(ci, from: ci.extent) else { return nil }
-        let img = UIImage(cgImage: cg)
-        guard let jpg = img.jpegData(compressionQuality: quality) else { return nil }
-        return (jpg, cg.width, cg.height)
     }
 
     private static func applyColorControls(to img: CIImage, brightness: Double = 0, contrast: Double = 1, saturation: Double = 1) -> CIImage {
@@ -1067,6 +1353,14 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 if pOut.supportedFlashModes.contains(.off) {
                     settings.flashMode = .off
                 }
+                if #available(iOS 16.0, *) {
+                    let dim = pOut.maxPhotoDimensions
+                    if dim.width > 0 && dim.height > 0 {
+                        settings.maxPhotoDimensions = dim
+                    }
+                } else {
+                    settings.isHighResolutionPhotoEnabled = pOut.isHighResolutionCaptureEnabled
+                }
                 if #available(iOS 13.0, *) {
                     if pOut.maxPhotoQualityPrioritization.rawValue >= AVCapturePhotoOutput.QualityPrioritization.speed.rawValue {
                         settings.photoQualityPrioritization = .speed
@@ -1082,8 +1376,9 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                         // Instant pixel buffer fallback if hardware photo capture fails
                         self.stateLock.lock()
                         let pb = self.latestBuffer
+                        let rot = self.captureRotationAngle
                         self.stateLock.unlock()
-                        if let buf = pb, let j = self.jpegData(from: buf, maxSide: 2400, quality: 0.92) {
+                        if let buf = pb, let j = self.jpegData(from: buf, rotationAngle: rot, maxSide: 2400, quality: 0.92) {
                             storeAndAnswer(j.data, j.w, j.h)
                         } else {
                             DispatchQueue.main.async {
@@ -1100,8 +1395,9 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             // External UVC capture card path: grab latest video frame directly
             self.stateLock.lock()
             let pb = self.latestBuffer
+            let rot = self.captureRotationAngle
             self.stateLock.unlock()
-            if let buf = pb, let j = self.jpegData(from: buf, maxSide: 2400, quality: 0.92) {
+            if let buf = pb, let j = self.jpegData(from: buf, rotationAngle: rot, maxSide: 2400, quality: 0.92) {
                 storeAndAnswer(j.data, j.w, j.h)
             } else {
                 DispatchQueue.main.async {
@@ -1127,32 +1423,42 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             return
         }
 
-        // Normalize orientation & downscale > 2400px on a background thread so canvas drawing is fast and upright
+        // Fast hardware ImageIO orient + downscale (<= 2400px) without allocating an uncompressed 48 MB 12MP RGBA bitmap
         DispatchQueue.global(qos: .userInitiated).async {
-            if let img = UIImage(data: raw) {
-                let maxSide: CGFloat = 2400
-                let w = img.size.width
-                let h = img.size.height
-                let scale = max(w, h) > maxSide ? (maxSide / max(w, h)) : 1.0
-                let tw = max(1, Int((w * scale).rounded()))
-                let th = max(1, Int((h * scale).rounded()))
+            autoreleasepool {
+                let cfData = raw as CFData
+                if let src = CGImageSourceCreateWithData(cfData, nil) {
+                    let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any]
+                    let pw = (props?[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue ?? 0
+                    let ph = (props?[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue ?? 0
+                    let orient = (props?[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
+                    let maxSide = 2400
 
-                if img.imageOrientation == .up && scale == 1.0 {
-                    completion(.success((raw, Int(w), Int(h))))
-                    return
+                    if orient == 1 && pw > 0 && ph > 0 && max(pw, ph) <= maxSide {
+                        completion(.success((raw, pw, ph)))
+                        return
+                    }
+
+                    let thumbOpts: [CFString: Any] = [
+                        kCGImageSourceCreateThumbnailFromImageAlways: true,
+                        kCGImageSourceCreateThumbnailWithTransform: true,
+                        kCGImageSourceShouldCacheImmediately: true,
+                        kCGImageSourceThumbnailMaxPixelSize: maxSide
+                    ]
+                    if let cgImg = CGImageSourceCreateThumbnailAtIndex(src, 0, thumbOpts as CFDictionary) {
+                        let destData = NSMutableData()
+                        if let dest = CGImageDestinationCreateWithData(destData as CFMutableData, "public.jpeg" as CFString, 1, nil) {
+                            let saveOpts: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: 0.92]
+                            CGImageDestinationAddImage(dest, cgImg, saveOpts as CFDictionary)
+                            if CGImageDestinationFinalize(dest) {
+                                completion(.success((destData as Data, cgImg.width, cgImg.height)))
+                                return
+                            }
+                        }
+                    }
                 }
-                let fmt = UIGraphicsImageRendererFormat()
-                fmt.scale = 1.0
-                let renderer = UIGraphicsImageRenderer(size: CGSize(width: tw, height: th), format: fmt)
-                let rendered = renderer.image { _ in
-                    img.draw(in: CGRect(x: 0, y: 0, width: tw, height: th))
-                }
-                if let normalized = rendered.jpegData(compressionQuality: 0.92) {
-                    completion(.success((normalized, tw, th)))
-                    return
-                }
+                completion(.success((raw, 0, 0)))
             }
-            completion(.success((raw, 0, 0)))
         }
     }
 

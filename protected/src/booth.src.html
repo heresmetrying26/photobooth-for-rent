@@ -9755,6 +9755,76 @@
       align-items: center;
     }
 
+    .frame-ov-box {
+      margin-top: 8px;
+      padding: 9px 11px;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .frame-ov-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .frame-ov-thumb {
+      width: 42px;
+      height: 54px;
+      object-fit: contain;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      flex: none;
+      background-color: #f3efe8;
+      background-image:
+        linear-gradient(45deg, #e2ddd5 25%, transparent 25%),
+        linear-gradient(-45deg, #e2ddd5 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #e2ddd5 75%),
+        linear-gradient(-45deg, transparent 75%, #e2ddd5 75%);
+      background-size: 10px 10px;
+      background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+    }
+
+    .frame-ov-meta {
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .frame-ov-meta b {
+      color: var(--ink);
+      display: block;
+      font-size: 12.5px;
+    }
+
+    .frame-ov-meta small {
+      color: var(--ink-dim);
+      font-size: 11.5px;
+      display: block;
+    }
+
+    .frame-ov-acts {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .frame-ov-chk {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--ink);
+      cursor: pointer;
+      margin-top: 7px;
+    }
+
     @media (max-width:640px) {
       #sheetPatterns {
         flex-wrap: nowrap;
@@ -19623,6 +19693,7 @@
                       <use href="#i-eye" />
                     </svg> Open preview</button>
                 </div>
+                <div id="sheetOverlayBox" style="margin-top:8px;"></div>
                 <p class="panel-hint" style="margin-top:8px;">Fine-tune in the preview: <b>drag</b> a frame to move it,
                   or <b>tap</b> it to resize, swap, turn or copy it.</p>
               </div>
@@ -19648,6 +19719,7 @@
           </div>
           <div class="sub-group" id="ownFrameBox">
             <input type="file" id="overlayInput" accept="image/png,image/webp,image/jpeg,image/*" multiple hidden>
+            <input type="file" id="frameOverlayInput" accept="image/png,image/webp,image/jpeg,image/*" hidden>
             <p class="panel-hint" id="overlaySizeHint" hidden></p>
             <div id="overlayOnTopBox" class="sub-group">
               <div class="bg-row">
@@ -29427,9 +29499,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         frameTs: 0,
         pumpTimer: null,
         pumpMs: 0,
+        pumpMax: 640,
+        pumpQ: 0.74,
         inFlight: false,
         motionCapturing: false,
         flipCapturing: false,
+        usingNativeStage: false,
+        lastLayoutSig: '',
         stageCanvas: null,
         scpCanvas: null
       };
@@ -29528,11 +29604,36 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           URL.revokeObjectURL(objUrl);
         }
       }
+      function nativeCamPageBgHex() {
+        try {
+          var v = getComputedStyle(document.documentElement).getPropertyValue('--bg-page').trim();
+          if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
+        } catch (e) { }
+        return '#f5f1ea';
+      }
+      function nativeCamPostLayout(opts) {
+        var o = opts || {};
+        var sig = [
+          o.visible ? 1 : 0,
+          o.x | 0,
+          o.y | 0,
+          o.w | 0,
+          o.h | 0,
+          o.mirror ? 1 : 0,
+          o.radius | 0,
+          String(o.bg || '')
+        ].join('|');
+        if (sig === nativeCam.lastLayoutSig) return;
+        nativeCam.lastLayoutSig = sig;
+        try { window.__PBCam.layout(o); } catch (e) { }
+      }
       async function nativeCamPullFrame() {
         if (!nativeCam.active || nativeCam.inFlight) return false;
         nativeCam.inFlight = true;
         try {
-          var res = await fetch(nativeCamUrl('/avcam/frame?t=' + Date.now()), { cache: 'no-store' });
+          var maxPx = nativeCam.pumpMax || 640;
+          var qVal = nativeCam.pumpQ || 0.74;
+          var res = await fetch(nativeCamUrl('/avcam/frame?max=' + maxPx + '&q=' + qVal + '&t=' + Date.now()), { cache: 'no-store' });
           if (!res || res.status === 204 || !res.ok) return false;
           var blob = await res.blob();
           if (!blob || !blob.size) return false;
@@ -29552,27 +29653,33 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           nativeCam.inFlight = false;
         }
       }
-      function nativeCamPumpNeededMs() {
-        if (!nativeCam.active || document.hidden) return 0;
-        try { if (typeof vgIsOpen === 'function' && vgIsOpen()) return 0; } catch (e) { }
-        if (nativeCam.flipCapturing) return 65;
-        if (nativeCam.motionCapturing) return (typeof gifMotionStyle !== 'undefined' && gifMotionStyle === 'session') ? 220 : 90;
+      function nativeCamPumpSpec() {
+        if (!nativeCam.active || document.hidden) return { ms: 0, max: 640, q: 0.74 };
+        try { if (typeof vgIsOpen === 'function' && vgIsOpen()) return { ms: 0, max: 640, q: 0.74 }; } catch (e) { }
+        if (nativeCam.flipCapturing) return { ms: 65, max: 640, q: 0.76 };
+        if (nativeCam.motionCapturing) return { ms: (typeof gifMotionStyle !== 'undefined' && gifMotionStyle === 'session') ? 220 : 90, max: 640, q: 0.76 };
         try {
-          if (typeof tabSetup !== 'undefined' && tabSetup && !tabSetup.classList.contains('hidden') && typeof curStep !== 'undefined' && curStep === 4) return 50;
+          if (typeof tabSetup !== 'undefined' && tabSetup && !tabSetup.classList.contains('hidden') && typeof curStep !== 'undefined' && curStep === 4) return { ms: 33, max: 640, q: 0.74 };
         } catch (e) { }
         try {
-          if (typeof tabSession !== 'undefined' && tabSession && !tabSession.classList.contains('hidden') && state !== 'result' && !(sess && sess.reviewing) && !document.body.classList.contains('stage-full')) return 42;
+          if (typeof tabSession !== 'undefined' && tabSession && !tabSession.classList.contains('hidden') && state !== 'result' && !(sess && sess.reviewing) && !nativeCam.usingNativeStage) return { ms: 33, max: 640, q: 0.74 };
         } catch (e) { }
-        try { if (typeof hfWanted === 'function' && hfWanted()) return 140; } catch (e) { }
+        try { if (typeof hfWanted === 'function' && hfWanted()) return { ms: 140, max: 320, q: 0.68 }; } catch (e) { }
         try {
           var qf = document.getElementById('quickFilters'), rf = document.getElementById('readyFilters');
-          if ((qf && qf.offsetParent !== null) || (rf && rf.offsetParent !== null)) return 260;
+          if ((qf && qf.offsetParent !== null) || (rf && rf.offsetParent !== null)) return { ms: 280, max: 240, q: 0.65 };
         } catch (e) { }
-        try { if (typeof guestOpen === 'function' && guestOpen() && typeof guestLookOpen !== 'undefined' && guestLookOpen) return 220; } catch (e) { }
-        return 0;
+        try { if (typeof guestOpen === 'function' && guestOpen() && typeof guestLookOpen !== 'undefined' && guestLookOpen) return { ms: 240, max: 240, q: 0.65 }; } catch (e) { }
+        return { ms: 0, max: 640, q: 0.74 };
+      }
+      function nativeCamPumpNeededMs() {
+        return nativeCamPumpSpec().ms;
       }
       function nativeCamSyncPump() {
-        var wantMs = nativeCamPumpNeededMs();
+        var spec = nativeCamPumpSpec();
+        var wantMs = spec.ms;
+        nativeCam.pumpMax = spec.max;
+        nativeCam.pumpQ = spec.q;
         if (!wantMs) {
           if (nativeCam.pumpTimer) { clearInterval(nativeCam.pumpTimer); nativeCam.pumpTimer = null; }
           nativeCam.pumpMs = 0;
@@ -29588,16 +29695,18 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var htmlEl = document.documentElement;
         if (!hasNativeCamBridge()) return;
         if (!nativeCam.active || nativeCamBypassed()) {
+          nativeCam.usingNativeStage = false;
           htmlEl.classList.remove('pb-ios-nativecam', 'pb-nativecam-stage', 'pb-nativecam-vg');
           if (nativeCam.stageCanvas) nativeCam.stageCanvas.style.display = 'none';
           if (nativeCam.scpCanvas) nativeCam.scpCanvas.style.display = 'none';
-          try { window.__PBCam.layout({ visible: false, x: 0, y: 0, w: 0, h: 0, mirror: false, radius: 0, bg: '#f5f1ea' }); } catch (e) { }
+          nativeCamPostLayout({ visible: false, x: 0, y: 0, w: 0, h: 0, mirror: false, radius: 0, bg: nativeCamPageBgHex() });
           nativeCamSyncPump();
           return;
         }
         var vgOpenNow = false;
         try { vgOpenNow = typeof vgIsOpen === 'function' && vgIsOpen() && vgUseNative(); } catch (e) { }
         if (vgOpenNow) {
+          nativeCam.usingNativeStage = false;
           var vgLiveState = typeof vg !== 'undefined' && vg && (vg.state === 'idle' || vg.state === 'counting' || vg.state === 'recording');
           if (nativeCam.stageCanvas) nativeCam.stageCanvas.style.display = 'none';
           if (nativeCam.scpCanvas) nativeCam.scpCanvas.style.display = 'none';
@@ -29609,21 +29718,19 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             var fkVg = curLk === 'booth' ? (filterKey || 'none') : (curLk || 'none');
             var skVg = curLk === 'booth' ? !!softSkin : (curLk === 'beauty' || curLk === 'glow' || curLk === 'rose');
             try { window.__PBCam.setFilter(fkVg, skVg); } catch (e) { }
-            try {
-              window.__PBCam.layout({
-                visible: true,
-                x: 0,
-                y: 0,
-                w: Math.round(window.innerWidth || 0),
-                h: Math.round(window.innerHeight || 0),
-                mirror: !!mirVg,
-                radius: 0,
-                bg: '#000000'
-              });
-            } catch (e) { }
+            nativeCamPostLayout({
+              visible: true,
+              x: 0,
+              y: 0,
+              w: Math.round(window.innerWidth || 0),
+              h: Math.round(window.innerHeight || 0),
+              mirror: !!mirVg,
+              radius: 0,
+              bg: '#000000'
+            });
           } else {
             htmlEl.classList.remove('pb-ios-nativecam', 'pb-nativecam-stage', 'pb-nativecam-vg');
-            try { window.__PBCam.layout({ visible: false, x: 0, y: 0, w: 0, h: 0, mirror: false, radius: 0, bg: '#f5f1ea' }); } catch (e) { }
+            nativeCamPostLayout({ visible: false, x: 0, y: 0, w: 0, h: 0, mirror: false, radius: 0, bg: nativeCamPageBgHex() });
           }
           nativeCamSyncPump();
           return;
@@ -29635,37 +29742,45 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         try { inSession = typeof tabSession !== 'undefined' && tabSession && !tabSession.classList.contains('hidden'); } catch (e) { }
         var showingResult = false;
         try { showingResult = state === 'result' || !!(sess && sess.reviewing) || !!(typeof shotReview !== 'undefined' && shotReview && shotReview.classList.contains('on')) || (previewCanvas && previewCanvas.style.display !== 'none' && previewCanvas.width > 0 && state !== 'capturing'); } catch (e) { }
+        var isEditing = false;
+        try { isEditing = typeof layoutEditorActive !== 'undefined' && !!layoutEditorActive; } catch (e) { }
         var isFullStage = document.body.classList.contains('stage-full');
         if (isFullStage && (window.scrollY || window.pageYOffset)) {
           try { window.scrollTo(0, 0); } catch (e) { }
         }
         var sf = document.getElementById('stageFrame');
-        var rect = (inSession && !showingResult && sf) ? sf.getBoundingClientRect() : null;
+        var rect = (inSession && !showingResult && !isEditing && sf) ? sf.getBoundingClientRect() : null;
         var mir = false; try { mir = mirrorPreview(); } catch (e) { }
         var filt = ''; try { filt = liveFilterCss(); } catch (e) { }
-        if (inSession && !showingResult && isFullStage && rect && rect.width > 4 && rect.height > 4) {
+        var vpH = window.innerHeight || 9999;
+        var canUseNativeStage = inSession && !showingResult && !isEditing && rect && rect.width > 4 && rect.height > 4 && rect.bottom > 0 && rect.top < vpH;
+        if (canUseNativeStage) {
+          nativeCam.usingNativeStage = true;
           htmlEl.classList.add('pb-ios-nativecam', 'pb-nativecam-stage');
           if (nativeCam.stageCanvas) nativeCam.stageCanvas.style.display = 'none';
           if (nativeCam.scpCanvas) nativeCam.scpCanvas.style.display = 'none';
-          try {
-            window.__PBCam.layout({
-              visible: true,
-              x: Math.round(rect.left),
-              y: Math.round(rect.top),
-              w: Math.round(rect.width),
-              h: Math.round(rect.height),
-              mirror: !!mir,
-              radius: 0,
-              bg: '#000000'
-            });
-          } catch (e) { }
+          var rad = 0;
+          if (!isFullStage && sf) {
+            try { rad = Math.round(parseFloat(getComputedStyle(sf).borderRadius) || 0); } catch (e) { }
+          }
+          nativeCamPostLayout({
+            visible: true,
+            x: Math.round(rect.left),
+            y: Math.round(rect.top),
+            w: Math.round(rect.width),
+            h: Math.round(rect.height),
+            mirror: !!mir,
+            radius: rad,
+            bg: isFullStage ? '#000000' : nativeCamPageBgHex()
+          });
         } else {
-          if (inSession && !showingResult && isFullStage && !nativeCam._rectRetry) {
+          nativeCam.usingNativeStage = false;
+          if (inSession && !showingResult && !isEditing && !nativeCam._rectRetry) {
             nativeCam._rectRetry = true;
             requestAnimationFrame(function () { nativeCam._rectRetry = false; syncNativeCamLayout(); });
           }
           htmlEl.classList.remove('pb-ios-nativecam', 'pb-nativecam-stage');
-          try { window.__PBCam.layout({ visible: false, x: 0, y: 0, w: 0, h: 0, mirror: !!mir, radius: 0, bg: '#f5f1ea' }); } catch (e) { }
+          nativeCamPostLayout({ visible: false, x: 0, y: 0, w: 0, h: 0, mirror: !!mir, radius: 0, bg: nativeCamPageBgHex() });
           var hasNativeFrame = nativeCamHasFrame();
           var stC = (inSession && !showingResult) ? ensureNativeCanvas('stage') : nativeCam.stageCanvas;
           if (stC) {
@@ -31820,7 +31935,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (el && el.srcObject) { try { el.pause(); } catch (e) { } el.srcObject = null; }
           });
           try {
-            const preset = (typeof webcamRes !== 'undefined' && webcamRes && webcamRes.photo === 'max') ? 'photo' : 'high';
+            const preset = (typeof webcamRes !== 'undefined' && webcamRes && webcamRes.preview) ? String(webcamRes.preview) : 'auto';
+            nativeCam.lastLayoutSig = '';
             const res = await window.__PBCam.open(deviceId || '', preset);
             if (!res || !res.ok) {
               nativeCam.active = false;
@@ -44201,9 +44317,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var filterThumbTimer = null, filterThumbScratch = null;
       function drawFilterThumbs() {
         var rows = [quickFilters, readyFilters].filter(function (r) { return r.offsetParent !== null; });
+        var hasRows = rows.length > 0;
+        if (nativeCam.active && hasRows !== !!drawFilterThumbs._on) {
+          drawFilterThumbs._on = hasRows;
+          nativeCamSyncPump();
+        }
+        if (!hasRows) return;
         var src = camFrameSource(), sz = camVideoSize();
-        if (nativeCam.active) nativeCamSyncPump();
-        if (!rows.length || !sz.w || !sz.h || (!nativeCam.active && (!video.videoWidth || video.readyState < 2 || video.style.display === 'none')) || (nativeCam.active && (!src || !src.width))) return;
+        if (!sz.w || !sz.h || (!nativeCam.active && (!video.videoWidth || video.readyState < 2 || video.style.display === 'none')) || (nativeCam.active && (!src || !src.width))) return;
         if (!filterThumbScratch) { filterThumbScratch = document.createElement('canvas'); filterThumbScratch.width = 72; filterThumbScratch.height = 72; }
         var vw = (nativeCam.active ? src.width : sz.w), vh = (nativeCam.active ? src.height : sz.h), side = Math.min(vw, vh) * 0.8;
         var sx = (vw - side) / 2, sy = (vh - side) / 2, mir = mirrorPreview();
@@ -58060,6 +58181,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               keepSheetJson = JSON.stringify(sheet);
               sheet.pattern = pr.pattern || 'tall-one-two-strips';
               sheet.items = (pr.items || []).map(function (it) { return Object.assign({}, it); });
+              sheet.overlay = pr.overlay ? Object.assign({}, pr.overlay) : null;
               lk = 'framesheet';
             }
           }
@@ -63082,7 +63204,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (overlay) ids.push(overlay.id);
         if (logo) ids.push(logo.id);
         decor.forEach(function (d) { if (d.src.indexOf('a:') === 0) ids.push(d.src.slice(2)); });
-        (typeof myFrames !== 'undefined' && myFrames || []).forEach(function (f) { ids.push(f.id); });
+        (typeof myFrames !== 'undefined' && myFrames || []).forEach(function (f) { ids.push(f.id); if (f.overlay && f.overlay.id) ids.push(f.overlay.id); });
+        if (typeof sheet !== 'undefined' && sheet && sheet.overlay && sheet.overlay.id) ids.push(sheet.overlay.id);
+        (typeof sheetPresets !== 'undefined' && sheetPresets || []).forEach(function (p) { if (p && p.overlay && p.overlay.id) ids.push(p.overlay.id); });
         myTpls.forEach(function (f) { ids.push(f.id); if (f.back) ids.push(f.back.id); });
         if (typeof bgMine !== 'undefined') bgMine.forEach(function (a) { ids.push(a); });
         if (typeof fx !== 'undefined' && fx) { if (fx.sShut) ids.push(fx.sShut.id); if (fx.sTick) ids.push(fx.sTick.id); }
@@ -63811,7 +63935,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         overlayFit.style.display = overlay ? '' : 'none';
         document.getElementById('overlayOnTopBox').style.display = overlay ? '' : 'none';
         document.getElementById('ownFrameBox').style.display = overlay ? '' : 'none';   // only for a frame with no photo spots (overlay)
-        document.getElementById('overlayOnTopNote').style.display = overlay ? '' : 'none';
+        var ovNote = document.getElementById('overlayOnTopNote');
+        if (ovNote) {
+          ovNote.style.display = overlay ? '' : 'none';
+          ovNote.textContent = (overlay && typeof isFrameLayout === 'function' && isFrameLayout())
+            ? 'This overlay sits on built-in layouts. For Your frames, use Add overlay on the frame above.'
+            : 'No photo spots found, so it sits on top as an overlay.';
+        }
         logoThumb.style.display = logo ? 'block' : 'none';
         if (logo && ASSETS[logo.id]) logoThumb.src = ASSETS[logo.id].url;
         logoRemove.style.display = logo ? 'inline' : 'none';
@@ -65156,8 +65286,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var activeFrameId = null;     // the frame used by the "My frame" layout
       var startFrameDone = '';      // id of the Admin-made starting frame this setup already received
       var startLogoDone = '';       // id of the Admin-made starting logo this setup already received
-      var sheet = { pattern: 'tall-one-two-strips', orient: 'portrait', bleed: false, items: [] };   // items: [{ f, cx, cy, s, r }] (0-1 of the sheet; s = width share)
-      var sheetPresets = [];        // [{ id, name, paper, orient, bleed, pattern, items: [{ f, cx, cy, s, r }] }]
+      var sheet = { pattern: 'tall-one-two-strips', orient: 'portrait', bleed: false, items: [], overlay: null };   // items: [{ f, cx, cy, s, r }] (0-1 of the sheet; s = width share)
+      var sheetPresets = [];        // [{ id, name, paper, orient, bleed, pattern, items: [{ f, cx, cy, s, r }], overlay }]
       var activeSheetPresetId = null;
       var setupActiveSheetPresetId = null;
 
@@ -65185,7 +65315,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             orient: sheet.orient === 'landscape' ? 'landscape' : 'portrait',
             bleed: !!sheet.bleed,
             pattern: sheet.pattern || 'tall-one-two-strips',
-            items: (sheet.items || []).map(function (it) { return { f: it.f, cx: it.cx, cy: it.cy, s: it.s, r: it.r || 0 }; })
+            items: (sheet.items || []).map(function (it) { return { f: it.f, cx: it.cx, cy: it.cy, s: it.s, r: it.r || 0 }; }),
+            overlay: cloneFrameOverlay(sheet.overlay)
           }];
           activeSheetPresetId = defId;
           setupActiveSheetPresetId = defId;
@@ -65204,6 +65335,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         sheet.bleed = !!p.bleed;
         sheet.pattern = p.pattern || 'tall-one-two-strips';
         sheet.items = (p.items || []).map(function (it) { return { f: it.f, cx: it.cx, cy: it.cy, s: it.s, r: it.r || 0 }; });
+        sheet.overlay = cloneFrameOverlay(p.overlay);
         var selEl = document.getElementById('sheetSizeSelect');
         if (selEl) selEl.value = sheetSize;
         buildSheetPatterns();
@@ -65227,7 +65359,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           orient: sheet.orient === 'landscape' ? 'landscape' : 'portrait',
           bleed: !!sheet.bleed,
           pattern: sheet.pattern,
-          items: (sheet.items || []).map(function (it) { return { f: it.f, cx: it.cx, cy: it.cy, s: it.s, r: it.r || 0 }; })
+          items: (sheet.items || []).map(function (it) { return { f: it.f, cx: it.cx, cy: it.cy, s: it.s, r: it.r || 0 }; }),
+          overlay: cloneFrameOverlay(sheet.overlay)
         };
         sheetPresets.push(p);
         activeSheetPresetId = newId;
@@ -65246,6 +65379,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         p.bleed = !!sheet.bleed;
         p.pattern = sheet.pattern;
         p.items = (sheet.items || []).map(function (it) { return { f: it.f, cx: it.cx, cy: it.cy, s: it.s, r: it.r || 0 }; });
+        p.overlay = cloneFrameOverlay(sheet.overlay);
         buildSheetPresetUI();
         if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
         if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
@@ -65309,6 +65443,117 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var spotEdit = null;          // { f: frameId, sel: index, sec?: sectionIdx } while fixing a frame's photo spots
       var layoutEdit = null;        // { f: frameId, sec: sectionIdx } while moving & rotating spliced sections (size locked)
       var FRAME_CACHE = {};         // frameId -> { img, key, punched }
+      var FRAME_OV_CACHE = {};      // assetId -> { img, out } (cached border-flood-fill white knockout for Canva Free overlays)
+      function cloneFrameOverlay(ov) {
+        if (!ov || !ov.id) return null;
+        var o = { id: ov.id, fit: ov.fit === 'contain' ? 'contain' : 'stretch' };
+        if (ov.knockoutWhite) o.knockoutWhite = true;
+        return o;
+      }
+      function cleanFrameOverlay(ov) {
+        if (!ov || typeof ov !== 'object') return null;
+        if (typeof ov.id !== 'string' || !/^a[A-Za-z0-9]{8,32}$/.test(ov.id)) return null;
+        var o = { id: ov.id, fit: ov.fit === 'contain' ? 'contain' : 'stretch' };
+        if (ov.knockoutWhite === true) o.knockoutWhite = true;
+        return o;
+      }
+      // Removes only white background connected to the outer edges (for Canva Free overlays),
+      // keeping solid white fills enclosed inside dark outlines (e.g. white doodles, cups, text).
+      function knockoutOuterWhite(img) {
+        var W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+        var c = document.createElement('canvas'); c.width = W; c.height = H;
+        var x = c.getContext('2d');
+        x.drawImage(img, 0, 0, W, H);
+        try {
+          var id = x.getImageData(0, 0, W, H), d = id.data, n = W * H;
+          var vis = new Uint8Array(n);
+          var isBg = function (p) {
+            var k = p * 4, a = d[k + 3];
+            if (a < 20) return true;
+            var r = d[k], g = d[k + 1], b = d[k + 2];
+            var mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+            var mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
+            return mn >= 235 && (mx - mn) <= 24;
+          };
+          var stack = [];
+          var seedRow = function (ry) {
+            var row = ry * W, inRun = false;
+            for (var sx = 0; sx < W; sx++) {
+              if (isBg(row + sx)) { if (!inRun) { stack.push(sx, ry); inRun = true; } }
+              else inRun = false;
+            }
+          };
+          seedRow(0);
+          if (H > 1) seedRow(H - 1);
+          for (var sy = 1; sy < H - 1; sy++) {
+            if (isBg(sy * W)) stack.push(0, sy);
+            if (W > 1 && isBg(sy * W + W - 1)) stack.push(W - 1, sy);
+          }
+          while (stack.length) {
+            var y0 = stack.pop(), x0 = stack.pop();
+            var row = y0 * W;
+            if (vis[row + x0]) continue;
+            var lx = x0, rx = x0;
+            while (lx > 0 && !vis[row + lx - 1] && isBg(row + lx - 1)) lx--;
+            while (rx < W - 1 && !vis[row + rx + 1] && isBg(row + rx + 1)) rx++;
+            for (var fx = lx; fx <= rx; fx++) vis[row + fx] = 1;
+            for (var ny = y0 - 1; ny <= y0 + 1; ny += 2) {
+              if (ny < 0 || ny >= H) continue;
+              var nrow = ny * W, inSpan = false;
+              for (var cx = lx; cx <= rx; cx++) {
+                var np = nrow + cx;
+                if (!vis[np] && isBg(np)) {
+                  if (!inSpan) { stack.push(cx, ny); inSpan = true; }
+                } else {
+                  inSpan = false;
+                }
+              }
+            }
+          }
+          for (var p = 0; p < n; p++) {
+            if (vis[p]) { d[p * 4 + 3] = 0; continue; }
+            var px = p % W, py = (p - px) / W;
+            var touches = (px > 0 && vis[p - 1]) || (px < W - 1 && vis[p + 1]) || (py > 0 && vis[p - W]) || (py < H - 1 && vis[p + W]);
+            if (!touches) continue;
+            var k = p * 4, r = d[k], g = d[k + 1], b = d[k + 2];
+            var mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+            var mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
+            if (mx - mn <= 28 && mn >= 200) {
+              d[k + 3] = Math.round(d[k + 3] * Math.max(0, 236 - mn) / 36);
+            }
+          }
+          x.putImageData(id, 0, 0);
+        } catch (e) { }
+        return c;
+      }
+      function frameOverlaySource(ov) {
+        if (!ov || !ov.id) return null;
+        var img = assetImg(ov.id);
+        if (!img) return null;
+        if (!ov.knockoutWhite) return img;
+        var rec = FRAME_OV_CACHE[ov.id];
+        if (rec && rec.img === img) return rec.out;
+        var out = knockoutOuterWhite(img);
+        FRAME_OV_CACHE[ov.id] = { img: img, out: out };
+        return out;
+      }
+      function drawOverlayAsset(ctx, ov, x, y, w, h) {
+        if (!ov || !ov.id) return;
+        var src = frameOverlaySource(ov);
+        if (!src) return;
+        var iw = src.naturalWidth || src.width, ih = src.naturalHeight || src.height;
+        if (!iw || !ih) return;
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        if (ov.fit === 'contain') {
+          var sc = Math.min(w / iw, h / ih), ow = iw * sc, oh = ih * sc;
+          ctx.drawImage(src, x + (w - ow) / 2, y + (h - oh) / 2, ow, oh);
+        } else {
+          ctx.drawImage(src, x, y, w, h);
+        }
+        ctx.restore();
+      }
       var MAX_FRAMES = 100, MAX_SPOTS = 40, MAX_SHEET_ITEMS = 10;
       var SHEET_PATTERNS = [
         { id: 'one', name: 'One', cells: [[0, 0, 1, 1]] },
@@ -65358,6 +65603,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             x.translate(z.fw / 2, z.fh / 2);
             x.rotate(-(it.r || 0) * Math.PI / 180);
             x.translate(-it.cx * W, -it.cy * H);
+            if (sheet && sheet.overlay && sheet.overlay.id) drawOverlayAsset(x, sheet.overlay, 0, 0, W, H);
             drawDecorLayer(x, W, H);
             x.restore();
           } else drawDecorLayer(x, c.width, c.height);      // "My frame": the layout is this frame
@@ -66898,6 +67144,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
         if (art) ctx.drawImage(art.punched, x, y, w, h);
         else { ctx.save(); ctx.strokeStyle = '#999'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2); ctx.restore(); }
+        if (f && f.overlay && f.overlay.id) drawOverlayAsset(ctx, f.overlay, x, y, w, h);
       }
       function sheetItemSize(it) {
         var f = frameById(it.f), fw = it.s * SW(), fh = fw * f.h / f.w, rot = Math.round((it.r || 0) / 90) % 2 !== 0;
@@ -66926,6 +67173,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             drawFrameInto(ctx, f, -fw / 2, -fh / 2, fw, fh, shots);
             ctx.restore();
           });
+          if (sheet && sheet.overlay && sheet.overlay.id) drawOverlayAsset(ctx, sheet.overlay, 0, 0, W, H);
         }
         // Stickers and logo still go on top; a plain overlay frame doesn't.
         var ov = overlay; overlay = null;
@@ -67059,7 +67307,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var spotEditControls = document.getElementById('spotEditControls');
       function framesChanged(opts) {
         opts = opts || {};
-        if (!myFrames.length) { activeFrameId = null; sheet.items = []; spotEdit = null; layoutEdit = null; }
+        if (!myFrames.length) { activeFrameId = null; sheet.items = []; sheet.overlay = null; spotEdit = null; layoutEdit = null; }
         else if (!frameById(activeFrameId)) activeFrameId = myFrames[0].id;
         if (layoutEdit && !frameById(layoutEdit.f)) layoutEdit = null;
         sheet.items = sheet.items.filter(function (it) { return frameById(it.f); });
@@ -67174,6 +67422,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (window.innerWidth < 900 && window.pbDockPreview) window.pbDockPreview(true);
             showToast('Tap a box, then drag it, resize it (corner square), tilt it (round button at the bottom), split it or change its order. Boxes are where the photos go.', 6500);
           });
+          var ovBtn = document.createElement('button'); ovBtn.type = 'button'; ovBtn.className = 'action-btn mini';
+          ovBtn.textContent = (f.overlay && f.overlay.id) ? '\uD83E\uDDE9 Replace overlay' : '\uD83E\uDDE9 Add overlay';
+          ovBtn.title = 'Upload a PNG overlay (e.g. Canva doodles, stickers, text or borders) to draw on top of the photos in this frame';
+          ovBtn.addEventListener('click', function () { openFrameOverlayPicker({ kind: 'frame', id: f.id }); });
           var prevBtn = document.createElement('button'); prevBtn.type = 'button'; prevBtn.className = 'action-btn mini see-prev-btn';
           prevBtn.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> Preview';
           prevBtn.addEventListener('click', function () { if (window.pbDockPreview) window.pbDockPreview(true); });
@@ -67186,8 +67438,41 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (layoutEdit && layoutEdit.f === f.id) layoutEdit = null;
             framesChanged();
           });
-          btns.append(ed, prevBtn, rm);
+          btns.append(ed, ovBtn, prevBtn, rm);
           ctx.append(top, btns);
+          if (f.overlay && f.overlay.id) {
+            ctx.appendChild(buildOverlayControlBox({
+              ov: f.overlay,
+              title: 'Frame overlay (on top of photos)',
+              canApplyAll: myFrames.length > 1,
+              onReplace: function () { openFrameOverlayPicker({ kind: 'frame', id: f.id }); },
+              onFitChange: function (val) { f.overlay.fit = val === 'contain' ? 'contain' : 'stretch'; framesChanged({ layout: 'myframe' }); },
+              onKnockoutChange: function (on) {
+                if (on) f.overlay.knockoutWhite = true; else delete f.overlay.knockoutWhite;
+                framesChanged({ layout: 'myframe' });
+              },
+              onApplyAll: function () {
+                var ovImg = assetImg(f.overlay.id);
+                var ovHasCol = ovImg && typeof frameHasColour === 'function' ? frameHasColour(ovImg) : false;
+                myFrames.forEach(function (fr) {
+                  fr.overlay = cloneFrameOverlay(f.overlay);
+                  if (ovHasCol) {
+                    fr.color = true;
+                    if (tierSplitOn() && fr.tier !== 'receipt') fr.tier = 'photo';
+                  }
+                });
+                framesChanged({ layout: 'myframe' });
+                showToast('Overlay applied to all ' + myFrames.length + ' frames \u2713', 3000);
+              },
+              onRemove: function () {
+                delete f.overlay;
+                var baseIm = assetImg(f.id);
+                if (baseIm && typeof frameHasColour === 'function') f.color = frameHasColour(baseIm, f.key);
+                framesChanged({ layout: 'myframe' });
+                showToast('Overlay removed from \u201C' + (f.name || 'frame') + '\u201D.', 2500);
+              }
+            }));
+          }
           // Multi-section in-place splicing & layout editor (Option A: Move & Rotate only, size locked, single combined frame)
           if (hasSecs) {
             if (typeof f._selSec !== 'number' || f._selSec < 0 || f._selSec >= f.sections.length) f._selSec = 0;
@@ -67385,7 +67670,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         buildFramePick();
         sheetPanel.style.display = currentLayout === 'framesheet' ? '' : 'none';
-        if (currentLayout === 'framesheet') buildSheetPatterns();
+        if (currentLayout === 'framesheet') {
+          buildSheetPatterns();
+          renderSheetOverlayUI();
+        }
         spotEditControls.style.display = spotEdit && currentLayout === 'myframe' ? '' : 'none';
         if (typeof refreshSpotSize === 'function') refreshSpotSize();
         var it = sheet.items[selItem];
@@ -68061,8 +68349,146 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return t / (d.length / 4);
         } catch (e) { return 1; }
       }
+      // ---- Per-frame & Frame-collage PNG overlay controls ----
+      var frameOverlayInput = document.getElementById('frameOverlayInput');
+      var frameOverlayTarget = null;
+      function syncActivePresetOverlay() {
+        var p = typeof presetById === 'function' ? presetById(activeSheetPresetId) : null;
+        if (p) p.overlay = cloneFrameOverlay(sheet && sheet.overlay);
+      }
+      function openFrameOverlayPicker(target) {
+        if (!frameOverlayInput) return;
+        frameOverlayTarget = target || { kind: 'frame', id: activeFrameId };
+        frameOverlayInput.value = '';
+        frameOverlayInput.click();
+      }
+      function buildOverlayControlBox(opts) {
+        var ov = opts.ov;
+        var box = document.createElement('div'); box.className = 'frame-ov-box';
+        var head = document.createElement('div'); head.className = 'frame-ov-head';
+        var th = document.createElement('img'); th.className = 'frame-ov-thumb'; th.alt = 'Overlay preview';
+        if (ov && ASSETS[ov.id]) th.src = ASSETS[ov.id].url;
+        var meta = document.createElement('div'); meta.className = 'frame-ov-meta';
+        var b = document.createElement('b'); b.textContent = opts.title || 'Overlay (on top of photos)';
+        var sm = document.createElement('small');
+        sm.textContent = 'Draws crisp over photos — doodles, white icons & text stay untouched.';
+        meta.append(b, sm);
+        var fitSel = document.createElement('select'); fitSel.className = 'mini-select';
+        fitSel.setAttribute('aria-label', 'Overlay fit');
+        fitSel.style.cssText = 'width:auto;height:32px;font-size:12px;';
+        fitSel.innerHTML = '<option value="stretch">Match frame</option><option value="contain">Keep shape</option>';
+        fitSel.value = ov.fit === 'contain' ? 'contain' : 'stretch';
+        fitSel.addEventListener('change', function () { opts.onFitChange(fitSel.value); });
+        head.append(th, meta, fitSel);
+
+        var chkLbl = document.createElement('label'); chkLbl.className = 'frame-ov-chk';
+        var chk = document.createElement('input'); chk.type = 'checkbox'; chk.checked = !!ov.knockoutWhite;
+        chk.addEventListener('change', function () { opts.onKnockoutChange(chk.checked); });
+        chkLbl.append(chk, document.createTextNode('Remove outer white background (for Canva Free PNGs; keeps white inside outlines)'));
+
+        var acts = document.createElement('div'); acts.className = 'frame-ov-acts';
+        var repBtn = document.createElement('button'); repBtn.type = 'button'; repBtn.className = 'action-btn mini';
+        repBtn.textContent = 'Replace overlay';
+        repBtn.addEventListener('click', function () { opts.onReplace(); });
+        acts.appendChild(repBtn);
+        if (opts.canApplyAll && typeof opts.onApplyAll === 'function') {
+          var allBtn = document.createElement('button'); allBtn.type = 'button'; allBtn.className = 'action-btn mini';
+          allBtn.textContent = 'Apply to all frames (' + myFrames.length + ')';
+          allBtn.title = 'Use this same overlay on every uploaded frame in Your frames';
+          allBtn.addEventListener('click', function () { opts.onApplyAll(); });
+          acts.appendChild(allBtn);
+        }
+        var rmBtn = document.createElement('button'); rmBtn.type = 'button'; rmBtn.className = 'remove-link';
+        rmBtn.textContent = 'Remove overlay'; rmBtn.style.cssText = 'display:inline;margin:0 0 0 auto;';
+        rmBtn.addEventListener('click', function () { opts.onRemove(); });
+        acts.appendChild(rmBtn);
+
+        box.append(head, chkLbl, acts);
+        return box;
+      }
+      function renderSheetOverlayUI() {
+        var wrap = document.getElementById('sheetOverlayBox');
+        if (!wrap) return;
+        wrap.innerHTML = '';
+        if (sheet && sheet.overlay && sheet.overlay.id) {
+          wrap.appendChild(buildOverlayControlBox({
+            ov: sheet.overlay,
+            title: 'Sheet overlay (on top of collage)',
+            canApplyAll: false,
+            onReplace: function () { openFrameOverlayPicker({ kind: 'sheet' }); },
+            onFitChange: function (val) {
+              sheet.overlay.fit = val === 'contain' ? 'contain' : 'stretch';
+              syncActivePresetOverlay();
+              framesChanged({ layout: 'framesheet' });
+            },
+            onKnockoutChange: function (on) {
+              if (on) sheet.overlay.knockoutWhite = true; else delete sheet.overlay.knockoutWhite;
+              syncActivePresetOverlay();
+              framesChanged({ layout: 'framesheet' });
+            },
+            onRemove: function () {
+              sheet.overlay = null;
+              syncActivePresetOverlay();
+              framesChanged({ layout: 'framesheet' });
+              showToast('Sheet overlay removed.', 2500);
+            }
+          }));
+        } else {
+          var row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
+          var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'action-btn mini';
+          btn.textContent = '\uD83E\uDDE9 Add sheet overlay (PNG)';
+          btn.title = 'Upload a PNG overlay to draw on top of the entire collage sheet';
+          btn.addEventListener('click', function () { openFrameOverlayPicker({ kind: 'sheet' }); });
+          var hint = document.createElement('span'); hint.className = 'panel-hint'; hint.style.margin = '0';
+          hint.textContent = 'Optional PNG drawn on top of the whole collage.';
+          row.append(btn, hint);
+          wrap.appendChild(row);
+        }
+      }
+      async function handleFrameOverlayFile(file, target) {
+        if (!file) return;
+        try {
+          var url = await readImageFile(file, LOCALSHARE ? 3600 : 2400);
+          var img = await loadImageUrl(url);
+          var oid = await addAsset(url);
+          var opaque = seeThroughShare(img) < 0.03;
+          var ov = { id: oid, fit: 'stretch' };
+          if (opaque) ov.knockoutWhite = true;
+          if (target && target.kind === 'sheet') {
+            sheet.overlay = ov;
+            syncActivePresetOverlay();
+            framesChanged({ layout: 'framesheet' });
+            showToast(opaque
+              ? 'Sheet overlay added! Outer white background was removed automatically (Canva Free).'
+              : 'Sheet overlay added on top of your collage \u2713', 5000);
+          } else {
+            var f = (target && target.id ? frameById(target.id) : null) || activeFrame();
+            if (!f) { showToast('Select a frame first.', 3000); return; }
+            f.overlay = ov;
+            if (typeof frameHasColour === 'function' && frameHasColour(img)) {
+              f.color = true;
+              if (tierSplitOn() && f.tier !== 'receipt') f.tier = 'photo';
+            }
+            framesChanged({ layout: 'myframe' });
+            var multiNote = myFrames.length > 1 ? ' Tap \u201CApply to all frames\u201D to reuse it on every frame.' : '';
+            showToast(opaque
+              ? ('Overlay added on top of \u201C' + (f.name || 'your frame') + '\u201D! Outer white background was removed automatically (Canva Free).' + multiNote)
+              : ('Overlay added on top of \u201C' + (f.name || 'your frame') + '\u201D \u2713' + multiNote), 5500);
+          }
+        } catch (e) { showToast((e && e.message) || 'That overlay image could not be opened.', 4500); }
+      }
+      if (frameOverlayInput) {
+        frameOverlayInput.addEventListener('change', function () {
+          var file = frameOverlayInput.files && frameOverlayInput.files[0];
+          frameOverlayInput.value = '';
+          var tgt = frameOverlayTarget; frameOverlayTarget = null;
+          if (file) handleFrameOverlayFile(file, tgt);
+        });
+      }
+
       async function handleFrameFiles(files) {
-        var added = [], overlayAdded = false;
+        var added = [], noSpotOverlays = [];
         for (var i = 0; i < files.length; i++) {
           try {
             var url = await readImageFile(files[i], LOCALSHARE ? 3600 : 2400);
@@ -68091,13 +68517,22 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               if (needPick) added[added.length - 1]._pick = true;
             } else {
               var oid = await addAsset(url);
-              overlay = { id: oid, fit: overlayFit.value || 'stretch' };
-              overlayAdded = true;
+              noSpotOverlays.push({ id: oid, fit: 'stretch', color: typeof frameHasColour === 'function' ? frameHasColour(img) : false });
             }
           } catch (e) { showToast(e.message, 4000); }
         }
         var toPick = added.filter(function (a) { return a._pick; });
         added.forEach(function (a) { delete a._pick; });
+        var batchOv = noSpotOverlays.length ? noSpotOverlays[noSpotOverlays.length - 1] : null;
+        if (batchOv && added.length) {
+          added.forEach(function (fr) {
+            fr.overlay = { id: batchOv.id, fit: 'stretch' };
+            if (batchOv.color) {
+              fr.color = true;
+              if (tierSplitOn() && fr.tier !== 'receipt') fr.tier = 'photo';
+            }
+          });
+        }
         if (toPick.length) {
           // Straight to Edit photo spots with the colour picker on.
           activeFrameId = toPick[0].id; chooseIds = []; setupLayout = 'myframe';
@@ -68118,6 +68553,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           framesChanged({ layout: 'myframe' });
           var ctxEl = document.getElementById('frameCtx');
           if (ctxEl && ctxEl.scrollIntoView) setTimeout(function () { ctxEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
+          var ovNoteTxt = batchOv ? ' Overlay placed on top \u2713' : '';
           showToast(ids.length === 1
             ? (function (fr) {
               var secN = Array.isArray(fr.sections) && fr.sections.length > 1 ? fr.sections.length : 0;
@@ -68127,13 +68563,30 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                 + (rotN ? ' (' + rotN + ' rotated to match)' : '')
                 + (fr.spots.some(function (p) { return p.a; }) ? ' (tilted ones turned to match)' : '')
                 + (secN ? ' · ' + frameShotCount(fr) + ' shots' : (framePairs(fr) ? ' (two matching strips: ' + frameShotCount(fr) + ' shots, copied to both)' : ''))
-                + '. Tap \u201cEdit photo spots\u201d to adjust rotations, sections or order.';
+                + '.' + ovNoteTxt + ' Tap \u201cEdit photo spots\u201d to adjust rotations, sections or order.';
             })(added[0])
-            : (ids.length + ' frames added: guests choose one before each session (untick any in 3 \u00b7 Layout). Want them all on one print? Tap \u201cFrame collage\u201d.'), 6500);
+            : (ids.length + ' frames added' + (batchOv ? ' with overlay on top' : '') + ': guests choose one before each session (untick any in 3 \u00b7 Layout). Want them all on one print? Tap \u201cFrame collage\u201d.'), 6500);
         }
-        if (overlayAdded) {
-          refreshDecorUI(); redrawAll(); scheduleSetupSave();
-          if (!added.length) showToast('No photo spots found, so it sits on top. Leave the spots white or see-through.', 6000);
+        if (batchOv && !added.length) {
+          if (currentLayout === 'myframe' && activeFrame()) {
+            var af = activeFrame();
+            af.overlay = { id: batchOv.id, fit: 'stretch' };
+            if (batchOv.color) {
+              af.color = true;
+              if (tierSplitOn() && af.tier !== 'receipt') af.tier = 'photo';
+            }
+            framesChanged({ layout: 'myframe' });
+            showToast('Overlay added on top of \u201C' + (af.name || 'your frame') + '\u201D \u2713' + (myFrames.length > 1 ? ' Tap \u201CApply to all frames\u201D below to use it on every frame.' : ''), 5500);
+          } else if (currentLayout === 'framesheet') {
+            sheet.overlay = { id: batchOv.id, fit: 'stretch' };
+            syncActivePresetOverlay();
+            framesChanged({ layout: 'framesheet' });
+            showToast('Overlay added on top of your Frame collage \u2713', 5000);
+          } else {
+            overlay = { id: batchOv.id, fit: overlayFit.value || 'stretch' };
+            refreshDecorUI(); redrawAll(); scheduleSetupSave();
+            showToast('No photo spots found, so it sits on top. Leave the spots white or see-through.', 6000);
+          }
         }
       }
 
@@ -68537,18 +68990,23 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               });
             }
             if (f.saveCuts) o.saveCuts = true;
+            if (f.overlay && f.overlay.id) o.overlay = cloneFrameOverlay(f.overlay);
             return o;
           }),
           activeFrame: activeFrameId,
           frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
-          sheet: {
-            pattern: sheet.pattern,
-            orient: sheet.orient === 'landscape' ? 'landscape' : 'portrait',
-            bleed: !!sheet.bleed,
-            items: sheet.items.map(function (it) { return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; })
-          },
+          sheet: (function () {
+            var shOut = {
+              pattern: sheet.pattern,
+              orient: sheet.orient === 'landscape' ? 'landscape' : 'portrait',
+              bleed: !!sheet.bleed,
+              items: sheet.items.map(function (it) { return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; })
+            };
+            if (sheet.overlay && sheet.overlay.id) shOut.overlay = cloneFrameOverlay(sheet.overlay);
+            return shOut;
+          })(),
           sheetPresets: (sheetPresets || []).map(function (p) {
-            return {
+            var po = {
               id: p.id,
               name: (p.name || 'Collage').slice(0, 40),
               paper: p.paper || sheetSize,
@@ -68557,6 +69015,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               pattern: p.pattern || sheet.pattern,
               items: (p.items || []).map(function (it) { return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; })
             };
+            if (p.overlay && p.overlay.id) po.overlay = cloneFrameOverlay(p.overlay);
+            return po;
           }),
           activeSheetPresetId: activeSheetPresetId
         };
@@ -68606,7 +69066,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             tier: (f.tier === 'receipt' || f.tier === 'photo' || f.tier === 'all') ? f.tier : undefined,
             color: typeof f.color === 'boolean' ? f.color : undefined,       // does the frame picture carry colour? (checked once; decides if it can print on thermal)
             sections: sections,
-            saveCuts: f.saveCuts === true ? true : undefined
+            saveCuts: f.saveCuts === true ? true : undefined,
+            overlay: cleanFrameOverlay(f.overlay) || undefined
           };
         });
         startFrameDone = okId(s.sfDone) ? s.sfDone : '';
@@ -68624,7 +69085,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           bleed: !!sh.bleed,
           items: (Array.isArray(sh.items) ? sh.items : []).filter(function (it) { return it && frameById(it.f); }).slice(0, MAX_SHEET_ITEMS).map(function (it) {
             return { f: it.f, cx: num(it.cx, 0, 1, 0.5), cy: num(it.cy, 0, 1, 0.5), s: num(it.s, 0.05, 1.5, 0.5), r: [0, 90, 180, 270].indexOf(it.r) >= 0 ? it.r : 0 };
-          })
+          }),
+          overlay: cleanFrameOverlay(sh.overlay)
         };
         var spList = Array.isArray(s.sheetPresets) ? s.sheetPresets : [];
         sheetPresets = spList.map(function (p) {
@@ -68637,7 +69099,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             pattern: SHEET_PATTERNS.some(function (pt) { return pt.id === p.pattern; }) ? p.pattern : 'tall-one-two-strips',
             items: (Array.isArray(p.items) ? p.items : []).filter(function (it) { return it && frameById(it.f); }).map(function (it) {
               return { f: it.f, cx: num(it.cx, 0, 1, 0.5), cy: num(it.cy, 0, 1, 0.5), s: num(it.s, 0.05, 1.5, 0.5), r: [0, 90, 180, 270].indexOf(it.r) >= 0 ? it.r : 0 };
-            })
+            }),
+            overlay: cleanFrameOverlay(p.overlay)
           };
         });
         activeSheetPresetId = typeof s.activeSheetPresetId === 'string' && presetById(s.activeSheetPresetId) ? s.activeSheetPresetId : (sheetPresets[0] ? sheetPresets[0].id : null);
@@ -70156,7 +70619,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             listenVideoFrames(scpVideo);
           }
         }
-        try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
+        if (show || scpRefresh._wasShown) {
+          scpRefresh._wasShown = show;
+          try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
+        }
         if (!show) return;
         if (stream && scpVideo.paused) { try { var pr = scpVideo.play(); if (pr && pr.catch) pr.catch(function () { }); } catch (e) { } }
         scpVideo.style.transform = video.style.transform || '';
@@ -70192,8 +70658,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // Cameras come and go (and the picture size changes): keep the live view and the step's one-line summary current.
       setInterval(function () { var t = cameraSummary(); if (t !== scpSum) { scpSum = t; refreshSetupNav(); } scpRefresh(); }, 1000);
       window.addEventListener('resize', function () { try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { } });
-      window.addEventListener('orientationchange', function () { setTimeout(function () { try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { } }, 120); });
-      document.addEventListener('visibilitychange', function () { try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { } });
+      window.addEventListener('scroll', function () {
+        if (nativeCam.active && nativeCam.usingNativeStage && !document.body.classList.contains('stage-full') && !nativeCam._scrollRaf) {
+          nativeCam._scrollRaf = true;
+          requestAnimationFrame(function () { nativeCam._scrollRaf = false; try { syncNativeCamLayout(); } catch (e) { } });
+        }
+      }, { passive: true });
+      window.addEventListener('orientationchange', function () { setTimeout(function () { try { nativeCam.lastLayoutSig = ''; if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { } }, 120); });
+      document.addEventListener('visibilitychange', function () { try { if (!document.hidden) nativeCam.lastLayoutSig = ''; if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { } });
 
       // ---- First step to show ----
       (function () {

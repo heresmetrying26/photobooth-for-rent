@@ -573,7 +573,7 @@ export function guestBridgeHtml(tok) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>photobooth4u · Guest screen</title>
+<title>Guest screen</title>
 <style>
 :root{--bg:#F5F1EA;--ink:#1C1A1E;--dim:#6B666C;--red:#C93D27;--ui-cd-scale:1;--ui-btn-scale:1;--ui-film-scale:1;--ui-cd-opacity:1;--ui-btn-opacity:1;--ui-film-opacity:1;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -676,6 +676,20 @@ body.ps.is-result .side-r-res{display:flex;flex-direction:column;align-items:cen
 body.ps.is-result .qrs{position:relative;z-index:10;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:22px;padding:20px 24px;}
 body.ps.is-result .qrl{color:#fff;}
 body.ps.is-result:not(.has-qr):not(.has-res-actions) .frame{max-width:92vw;height:90vh !important;}.qrtitle{display:none;margin:0 0 6px;font:600 clamp(22px,3.4vw,30px) Fraunces,Georgia,serif;text-align:center;color:var(--ink);}body.qrpop-wait .qrs,body.qrpop-wait .res-actions{display:none !important;}body.qrpop-show .g::after{content:"";position:fixed;inset:0;background:rgba(14,11,16,.62);z-index:55;pointer-events:none;}body.qrpop-show.is-result .side-r-res{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;max-width:none;width:min(640px,94vw);max-height:calc(100vh - 24px);overflow:auto;background:#fff;color:var(--ink);border-radius:26px;padding:26px 26px 20px;box-shadow:0 30px 90px rgba(0,0,0,.5);gap:12px;}body.qrpop-show .qrtitle{display:block;}body.qrpop-show.is-result .qrs{background:none;border:0;padding:0;backdrop-filter:none;flex-direction:row;flex-wrap:wrap;justify-content:center;gap:18px;}body.qrpop-show .qr{width:min(340px,74vw,46vh);min-width:0;box-shadow:none;border:1px solid #E6DED2;}body.qrpop-show .qrs.two .qr{width:min(260px,42vw,36vh);}body.qrpop-show.is-result .qrl{color:var(--red);}body.qrpop-show .gbtn{background:#fff;color:var(--ink);border:2px solid var(--ink);backdrop-filter:none;}body.qrpop-show .gbtn.strong{background:var(--red);border-color:var(--red);color:#fff;}
+body.ps.is-result.res-themed .g{background-color:#1C1A1E;background-image:var(--res-bg-img,none);background-size:cover;background-position:center;background-repeat:no-repeat;}
+body.ps.is-result.res-themed .frame{background:transparent;box-shadow:none;overflow:visible;}
+body.ps.is-result.res-themed .frame img.res{background:transparent;border-radius:12px;filter:drop-shadow(0 20px 48px rgba(28,26,30,.40));}
+body.ps.is-result.res-themed .side-r-res{position:relative;background:var(--res-card-bg,#fff);color:var(--res-card-ink,#111827);border:1.5px solid var(--res-card-border,rgba(28,26,30,.08));border-radius:var(--res-card-radius,28px);padding:24px 26px;box-shadow:0 24px 64px rgba(28,26,30,.24);}
+body.ps.is-result.res-themed.qrpop-wait .side-r-res,body.ps.is-result.res-themed:not(.has-qr):not(.has-res-actions) .side-r-res{display:none !important;}
+body.ps.is-result.res-themed.qrpop-show .g::after{background:rgba(28,26,30,.34);}
+body.ps.is-result.res-themed.qrpop-show .side-r-res{position:fixed;background:var(--res-card-bg,#fff);color:var(--res-card-ink,#111827);border:1.5px solid var(--res-card-border,rgba(28,26,30,.08));border-radius:var(--res-card-radius,28px);padding:28px 26px 22px;box-shadow:0 30px 90px rgba(28,26,30,.36);}
+body.ps.is-result.res-themed[data-res-deco="pop-retro"] .side-r-res{border:2.5px solid #18181B;box-shadow:10px 10px 0 var(--res-deco-secondary,#F28DA0),10px 10px 0 2.5px #18181B;}
+body.ps.is-result.res-themed[data-res-deco="coquette-stitch"] .side-r-res::after{content:"";position:absolute;inset:10px;border:2px dashed var(--res-deco-secondary,#F28DA0);border-radius:calc(var(--res-card-radius,28px) - 8px);pointer-events:none;}
+body.ps.is-result.res-themed .qrtitle{font-family:var(--res-title-font,Fraunces,Georgia,serif);color:var(--res-card-ink,#111827);}
+body.ps.is-result.res-themed .qrs{background:transparent;border:0;padding:0;}
+body.ps.is-result.res-themed .qrl{color:var(--res-card-ink,#111827);}
+body.ps.is-result.res-themed .gbtn{background:rgba(128,128,128,.08);color:var(--res-card-ink,#111827);border:1.5px solid var(--res-card-border,rgba(28,26,30,.18));}
+body.ps.is-result.res-themed .gbtn.strong{background:var(--res-btn-bg,#C93D27);border-color:transparent;color:var(--res-btn-ink,#fff);}
 body.edit-preview .frame img.res,body.edit-preview .gready,body.edit-preview .pk{display:none !important;}body.edit-preview .cd{display:flex !important;}body.edit-preview .gb{display:flex !important;}body.edit-preview .gb .gbtn{display:inline-flex !important;align-items:center;justify-content:center;}body.edit-preview .film{display:flex !important;}body.edit-preview .film div.f{display:block !important;}body.wel .g{display:block;padding:0;}body.wel .side,body.wel .clogo{display:none !important;}
 body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);height:min(100vh,calc(100vw / var(--wa,1.3333))) !important;aspect-ratio:var(--wa,1.3333) !important;border-radius:0;box-shadow:none;}
 .copies-modal{position:fixed;inset:0;z-index:80;background:rgba(10,10,12,.76);display:flex;align-items:center;justify-content:center;padding:20px;}
@@ -700,9 +714,9 @@ body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);h
 <div class="pk hide" id="pk"><p class="pkt" id="pkt">Choose your layout</p><p class="pksb" id="pksb">Tap a design to start your session</p><div class="pkg" id="pkg"></div><button type="button" class="pk-back hide" id="pkBack">&larr; Back</button></div>
 <div class="g">
   <div class="side side-l">
-    <div class="logo" id="glogo"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span><img class="lg hide" id="lgImg" alt=""></div>
+    <div class="logo off" id="glogo"><img class="lg hide" id="lgImg" alt=""></div>
     <div><p class="msg" id="msg">Tap to start</p><p class="sub" id="sub"></p></div>
-    <div><p class="ev" id="ev"></p><p class="dt" id="dt"></p><div class="pwr hide" id="pwr">Powered by <span class="mk"><i></i><i></i><i></i><i></i></span><b>photobooth<em>4u</em></b></div></div>
+    <div><p class="ev" id="ev"></p><p class="dt" id="dt"></p><div class="pwr hide" id="pwr"></div></div>
   </div>
   <div class="frame" id="frame">
     <img id="vRemote" class="vremote" alt="">
@@ -823,6 +837,26 @@ body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);h
       document.body.classList.toggle('edit-preview', !!st.editPreview);
       document.body.classList.toggle('qrpop-wait', st.qrPop === 'wait');
       document.body.classList.toggle('qrpop-show', st.qrPop === 'show');
+      var rt = st.resTheme;
+      var rtOn = !!(ps && st.isResult && rt && rt.on);
+      document.body.classList.toggle('res-themed', rtOn);
+      if (rtOn) {
+        var rbs = document.body.style;
+        var bgTarget = rt.bg ? (rt.bg.indexOf('/media/') === 0 ? (base + rt.bg) : rt.bg) : '';
+        if (bgTarget) rbs.setProperty('--res-bg-img', 'url("' + bgTarget + '")');
+        else rbs.removeProperty('--res-bg-img');
+        if (rt.cardBg) rbs.setProperty('--res-card-bg', rt.cardBg);
+        if (rt.ink) rbs.setProperty('--res-card-ink', rt.ink);
+        if (rt.border) rbs.setProperty('--res-card-border', rt.border);
+        if (rt.radius) rbs.setProperty('--res-card-radius', rt.radius + 'px');
+        if (rt.btnBg) rbs.setProperty('--res-btn-bg', rt.btnBg);
+        if (rt.btnInk) rbs.setProperty('--res-btn-ink', rt.btnInk);
+        if (rt.decoSecondary) rbs.setProperty('--res-deco-secondary', rt.decoSecondary);
+        if (rt.titleFont) rbs.setProperty('--res-title-font', rt.titleFont);
+        document.body.setAttribute('data-res-deco', rt.decoStyle || 'none');
+      } else {
+        document.body.removeAttribute('data-res-deco');
+      }
       if (st.ga) document.body.style.setProperty('--ga', String(st.ga));
       if (st.wa) document.body.style.setProperty('--wa', String(st.wa));
       if (st.boxAspect) els.film.style.setProperty('--box-aspect', String(st.boxAspect));

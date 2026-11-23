@@ -539,10 +539,34 @@ async function buildAndPushTabletState() {
   const uiVars = T('sizes', () => tabletUiVars(), {});
   if (qrPopPhase === 'wait') { printState.printShow = false; printState.nextShow = false; }
   const qrTitleEl = document.getElementById('qrSectionTitle');
+  let resTheme = null;
+  if (result && typeof qrMatchWelcome !== 'undefined' && qrMatchWelcome && typeof getWelcomeThemeTokens === 'function') {
+    try {
+      const rtok = getWelcomeThemeTokens();
+      const bgUrl = (typeof resultBgDataUrl === 'string' && resultBgDataUrl)
+        ? await tabletBridgeUploadMedia('resbg', resultBgDataUrl, 'image/jpeg', 1400)
+        : '';
+      resTheme = {
+        on: true,
+        bg: bgUrl,
+        cardBg: rtok.fillCardColor,
+        ink: rtok.ink,
+        soft: rtok.soft,
+        border: rtok.cardBorder,
+        radius: Math.min(rtok.radius, 36),
+        btnBg: rtok.btnColor,
+        btnInk: rtok.btnInk,
+        decoStyle: rtok.decoStyle || 'none',
+        decoSecondary: rtok.decoSecondary || '#F28DA0',
+        titleFont: rtok.titleFont || ''
+      };
+    } catch (e) { }
+  }
 
   const payload = Object.assign({
     psMode,
     isResult: result,
+    resTheme,
     showQr,
     qrs,
     qrPop: qrPopPhase,

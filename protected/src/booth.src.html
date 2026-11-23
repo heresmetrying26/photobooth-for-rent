@@ -757,9 +757,10 @@
       object-fit: contain;
     }
 
-    body.in-session.has-client .brand-logo .brand-mark,
-    body.in-session.has-client .brand-logo .brand-word {
-      display: none;
+    body.in-session .brand-logo .brand-mark,
+    body.in-session .brand-logo .brand-word,
+    body.in-session .dock-pwr {
+      display: none !important;
     }
 
     body.in-session.has-client .brand-client {
@@ -13162,6 +13163,10 @@
         margin-left: auto;
       }
 
+      body.in-session:not(.has-client) .topbar .tab-bar {
+        margin: 0 auto;
+      }
+
       .topbar .tab-btn {
         padding: 7px 12px 7px 7px;
         font-size: 13px;
@@ -18015,6 +18020,378 @@
       display: none !important;
     }
 
+    /* ---- QR & Sharing Screen: Match 1. Welcome screen design ---- */
+    .after-theme-chips {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin: 6px 0 8px;
+    }
+
+    .after-welcome-jump {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin: 0 0 12px;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--brand-press, #a82f1d);
+      font: 700 12.5px/1.3 'Manrope', sans-serif;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .after-welcome-jump:hover {
+      color: var(--brand, #c93d27);
+    }
+
+    body.in-session.result-themed {
+      background: transparent;
+    }
+
+    body.in-session.result-themed::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background-color: #1C1A1E;
+      background-image: var(--res-bg-img, none);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    @media print {
+      body.in-session.result-themed::before {
+        display: none !important;
+      }
+    }
+
+    body.in-session.result-themed .brandbar.topbar {
+      opacity: .92;
+    }
+
+    body.in-session.result-themed.has-client .brand-logo {
+      flex: 0 1 auto;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(18, 16, 22, .56);
+      border: 1px solid rgba(255, 255, 255, .14);
+    }
+
+    body.in-session.result-themed .topbar .tab-bar {
+      background: rgba(18, 16, 22, .62);
+      border: 1px solid rgba(255, 255, 255, .14);
+    }
+
+    body.in-session.result-themed .app-shell.result .stage-frame {
+      background: transparent !important;
+      box-shadow: none !important;
+      overflow: visible;
+    }
+
+    body.in-session.result-themed .app-shell.result .sprockets,
+    body.in-session.result-themed .app-shell.result .film-track {
+      display: none !important;
+    }
+
+    body.in-session.result-themed .app-shell.result #previewCanvas {
+      background: transparent !important;
+      border-radius: 10px;
+      filter: drop-shadow(0 18px 42px rgba(28, 26, 30, .38));
+    }
+
+    @media (orientation: portrait) {
+      body.in-session.result-themed .app-shell.result .panel {
+        padding-bottom: 18px;
+      }
+    }
+
+    @media (min-width: 861px) and (orientation: landscape) {
+      body.in-session.result-themed .app-shell.result.has-qr .panel {
+        align-self: stretch;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+    }
+
+    /* Shared Welcome-matched QR card styling (side-by-side AND LumaShare pop-up) */
+    body.in-session.result-themed #qrSection,
+    #qrPopOv.res-themed #qrSection:not(.hidden) {
+      position: relative;
+      background: var(--res-card-bg, #ffffff) !important;
+      color: var(--res-card-ink, #111827) !important;
+      border: 1.5px solid var(--res-card-border, rgba(28, 26, 30, .08)) !important;
+      border-radius: var(--res-card-radius, 28px) !important;
+      box-shadow: 0 22px 58px rgba(28, 26, 30, .20) !important;
+      padding: 24px 22px 20px;
+    }
+
+    body.in-session.result-themed[data-res-dark="1"] #qrSection,
+    body[data-res-dark="1"] #qrPopOv.res-themed #qrSection:not(.hidden) {
+      box-shadow: 0 26px 70px rgba(0, 0, 0, .52) !important;
+    }
+
+    #qrPopOv.res-themed #qrSection:not(.hidden) {
+      padding: 28px 26px 22px !important;
+    }
+
+    /* Card decorations mirrored from 1. Welcome screen */
+    body[data-res-deco="pop-retro"].in-session.result-themed #qrSection,
+    body[data-res-deco="pop-retro"] #qrPopOv.res-themed #qrSection:not(.hidden),
+    body[data-res-deco="pop-retro"] #shareStationHandoffOverlay.res-themed .share-handoff-card {
+      border: 2.5px solid #18181B !important;
+      box-shadow: 10px 10px 0 var(--res-deco-secondary, #F28DA0), 10px 10px 0 2.5px #18181B !important;
+    }
+
+    body[data-res-deco="coquette-stitch"].in-session.result-themed #qrSection::after,
+    body[data-res-deco="coquette-stitch"] #qrPopOv.res-themed #qrSection:not(.hidden)::after,
+    body[data-res-deco="coquette-stitch"] #shareStationHandoffOverlay.res-themed .share-handoff-card::after {
+      content: '';
+      position: absolute;
+      inset: 10px;
+      border: 2px dashed var(--res-deco-secondary, #F28DA0);
+      border-radius: calc(var(--res-card-radius, 28px) - 8px);
+      pointer-events: none;
+    }
+
+    body[data-res-deco="scrapbook-doodle"].in-session.result-themed #qrSection {
+      overflow: visible;
+    }
+
+    body[data-res-deco="scrapbook-doodle"].in-session.result-themed #qrSection::before,
+    body[data-res-deco="scrapbook-doodle"] #shareStationHandoffOverlay.res-themed .share-handoff-card::before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      width: 108px;
+      height: 22px;
+      transform: translateX(-50%) rotate(-3.5deg);
+      background: var(--res-deco-secondary, #F28DA0);
+      opacity: .78;
+      border-radius: 3px;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    body[data-res-deco="scrapbook-doodle"] #qrPopOv.res-themed #qrSection:not(.hidden)::before {
+      content: '';
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      width: 96px;
+      height: 16px;
+      transform: translateX(-50%) rotate(-2.5deg);
+      background: var(--res-deco-secondary, #F28DA0);
+      opacity: .74;
+      border-radius: 3px;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    body.in-session.result-themed #qrSection #qrSectionTitle,
+    #qrPopOv.res-themed #qrSection #qrSectionTitle {
+      font-family: var(--res-title-font, 'Fraunces', Georgia, serif);
+      color: var(--res-card-ink, #111827) !important;
+      line-height: 1.15;
+    }
+
+    body[data-res-deco="ribbon-waves"].in-session.result-themed #qrSection #qrSectionTitle::after,
+    body[data-res-deco="scrapbook-doodle"].in-session.result-themed #qrSection #qrSectionTitle::after,
+    body[data-res-deco="ribbon-waves"] #qrPopOv.res-themed #qrSection #qrSectionTitle::after,
+    body[data-res-deco="scrapbook-doodle"] #qrPopOv.res-themed #qrSection #qrSectionTitle::after {
+      content: '';
+      display: block;
+      width: 78px;
+      height: 4px;
+      margin: 6px auto 2px;
+      border-radius: 999px;
+      background: var(--res-deco-secondary, #F28DA0);
+    }
+
+    body.in-session.result-themed #qrSection .qr-box,
+    #qrPopOv.res-themed #qrSection .qr-box {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 10px;
+      border: 1px solid rgba(28, 26, 30, .08);
+      box-shadow: 0 8px 22px rgba(28, 26, 30, .10);
+    }
+
+    body.in-session.result-themed #qrSection .qr-caption,
+    #qrPopOv.res-themed #qrSection .qr-caption {
+      color: var(--res-card-ink, #111827) !important;
+      opacity: .86;
+    }
+
+    body.in-session.result-themed #qrSection #qrHint,
+    body.in-session.result-themed #qrSection .qr-wait,
+    body.in-session.result-themed #qrSection .print-first-hold .panel-hint,
+    #qrPopOv.res-themed #qrSection #qrHint,
+    #qrPopOv.res-themed #qrSection .qr-wait,
+    #qrPopOv.res-themed #qrSection .print-first-hold .panel-hint {
+      color: var(--res-card-soft, rgba(28, 26, 30, .64)) !important;
+    }
+
+    body.in-session.result-themed #qrSection .qr-link,
+    #qrPopOv.res-themed #qrSection .qr-link {
+      color: var(--res-btn-bg, var(--brand)) !important;
+    }
+
+    body.in-session.result-themed #qrSection .print-first-hold,
+    #qrPopOv.res-themed #qrSection .print-first-hold {
+      background: rgba(128, 128, 128, .08);
+      border-color: var(--res-card-border, rgba(28, 26, 30, .14));
+      color: var(--res-card-ink, #111827);
+    }
+
+    body.in-session.result-themed #qrSection .print-first-hold .pf-spinner,
+    #qrPopOv.res-themed #qrSection .print-first-hold .pf-spinner {
+      border-color: rgba(128, 128, 128, .22);
+      border-top-color: var(--res-btn-bg, var(--brand));
+    }
+
+    body.in-session.result-themed #qrSection #printQuickBtn,
+    #qrPopOv.res-themed #qrSection #printQuickBtn {
+      background: var(--res-btn-bg, var(--brand)) !important;
+      color: var(--res-btn-ink, #ffffff) !important;
+      box-shadow: var(--res-btn-shadow, 0 10px 24px rgba(201, 61, 39, .30)) !important;
+    }
+
+    body.in-session.result-themed #qrSection .result-done,
+    #qrPopOv.res-themed #qrSection .result-done {
+      background: rgba(128, 128, 128, .08);
+      color: var(--res-card-ink, #111827);
+      border: 1.5px solid var(--res-card-border, rgba(28, 26, 30, .16));
+    }
+
+    body.in-session.result-themed #qrSection #resultActions:not(:has(#printQuickBtn:not([hidden]))) .result-done,
+    #qrPopOv.res-themed #qrSection #resultActions:not(:has(#printQuickBtn:not([hidden]))) .result-done {
+      background: var(--res-btn-bg, var(--brand));
+      color: var(--res-btn-ink, #ffffff);
+      border-color: transparent;
+      box-shadow: var(--res-btn-shadow, 0 10px 24px rgba(201, 61, 39, .30));
+    }
+
+    body.in-session.result-themed #qrSection #resultCustomizeBtn,
+    #qrPopOv.res-themed #qrSection #resultCustomizeBtn {
+      background: rgba(128, 128, 128, .10) !important;
+      color: var(--res-card-ink, #111827) !important;
+      border-color: var(--res-card-border, rgba(28, 26, 30, .18)) !important;
+      border-radius: 999px !important;
+    }
+
+    body.in-session.result-themed #qrSection .result-timer,
+    #qrPopOv.res-themed #qrSection .result-timer {
+      background: rgba(128, 128, 128, .18);
+    }
+
+    body.in-session.result-themed #qrSection .result-timer i,
+    #qrPopOv.res-themed #qrSection .result-timer i {
+      background: var(--res-btn-bg, var(--brand));
+    }
+
+    /* LumaShare Pop-up overlay themed backdrop */
+    #qrPopOv.res-themed.show {
+      background: rgba(28, 26, 30, .36);
+    }
+
+    #qrPopOv.res-themed .qrpop-slot {
+      z-index: 2;
+    }
+
+    #qrPopOv.res-themed .qrpop-photo {
+      z-index: 1;
+      border-radius: 10px;
+      box-shadow: 0 22px 54px rgba(28, 26, 30, .42);
+    }
+
+    @media (orientation: portrait) {
+      #qrPopOv.res-themed.wait,
+      #qrPopOv.res-themed.show {
+        background-color: #1C1A1E;
+        background-image: var(--res-bg-img, none);
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+
+      #qrPopOv.res-themed.show::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: rgba(28, 26, 30, .28);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      #qrPopOv.res-themed.show .qrpop-photo {
+        opacity: .46;
+        filter: blur(2px);
+      }
+
+      body.in-session.result-themed #qrSection.qr-off {
+        grid-template-columns: 1fr !important;
+        grid-template-areas: 'title' 'acts' 'timer' !important;
+        text-align: center !important;
+      }
+
+      body[data-res-deco="ribbon-waves"].in-session.result-themed #qrSection:not(.qr-off) #qrSectionTitle::after,
+      body[data-res-deco="scrapbook-doodle"].in-session.result-themed #qrSection:not(.qr-off) #qrSectionTitle::after {
+        margin-left: 0;
+      }
+    }
+
+    /* Sharing Station hand-off overlay themed to match Welcome screen */
+    #shareStationHandoffOverlay.res-themed {
+      background-color: #1C1A1E;
+      background-image: var(--res-bg-img, none);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+
+    #shareStationHandoffOverlay.res-themed .share-handoff-card {
+      position: relative;
+      background: var(--res-card-bg, #ffffff);
+      border: 1.5px solid var(--res-card-border, rgba(28, 26, 30, .08));
+      border-radius: var(--res-card-radius, 28px);
+      color: var(--res-card-ink, #111827);
+      box-shadow: 0 24px 68px rgba(28, 26, 30, .26);
+    }
+
+    #shareStationHandoffOverlay.res-themed .share-handoff-title {
+      font-family: var(--res-title-font, 'Fraunces', Georgia, serif);
+      color: var(--res-card-ink, #111827);
+    }
+
+    #shareStationHandoffOverlay.res-themed .share-handoff-sub {
+      color: var(--res-card-soft, rgba(28, 26, 30, .64));
+    }
+
+    #shareStationHandoffOverlay.res-themed .share-handoff-sub b {
+      color: var(--res-btn-bg, var(--brand));
+    }
+
+    #shareStationHandoffOverlay.res-themed .share-handoff-bar-wrap {
+      background: rgba(128, 128, 128, .18);
+    }
+
+    #shareStationHandoffOverlay.res-themed .share-handoff-bar {
+      background: var(--res-btn-bg, var(--brand));
+    }
+
+    #shareStationHandoffOverlay.res-themed .share-handoff-note {
+      color: var(--res-card-soft, rgba(28, 26, 30, .64));
+    }
+
     /* Native iOS AVCaptureSession preview (behind transparent WKWebView; placed last so no .stage-full/.capturing rule can paint #000 over the live camera) */
     html.pb-ios-nativecam.pb-nativecam-stage,
     html.pb-ios-nativecam.pb-nativecam-stage body,
@@ -20971,6 +21348,26 @@
           <p class="panel-label">QR &amp; after-session</p>
           <p class="panel-hint step-lead">One place for how guests get photos after the last shot — QR code, LumaShare
             pop-up, No QR (prints only), or a separate Sharing Station.</p>
+          <div class="welcome-pv-card" id="afterPvCard" style="margin-top:8px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
+              <span class="sub-label" style="margin:0;">Live preview</span>
+              <span class="panel-hint" id="afterPvMeta" style="margin:0; font-size:11.5px; text-align:right;">Matches
+                Welcome screen</span>
+            </div>
+            <div class="welcome-pv-frame" id="afterPvFrame">
+              <img id="afterPreviewImg" alt="QR and sharing screen preview">
+            </div>
+          </div>
+          <p class="sub-label" style="margin:8px 0 4px;">QR &amp; result screen design</p>
+          <div class="after-theme-chips" id="afterThemeChips" role="radiogroup"
+            aria-label="QR and result screen background design">
+            <button type="button" class="after-mode-chip on" data-after-theme="welcome">Match Welcome screen<small>Same
+                background, colors &amp; card style as 1. Welcome screen</small></button>
+            <button type="button" class="after-mode-chip" data-after-theme="dark">Classic Dark<small>Plain darkroom
+                black background</small></button>
+          </div>
+          <button type="button" class="after-welcome-jump" id="afterGoWelcomeBtn">Customize background &amp; card in 1.
+            Welcome screen &rarr;</button>
           <p class="sub-label" style="margin:6px 0 4px;">Guest result &amp; QR mode</p>
           <div class="after-mode-chips" id="afterModeChips" role="radiogroup" aria-label="Guest result and QR mode">
             <button type="button" class="after-mode-chip" data-after-mode="side-qr">Side-by-side + QR<small>Photo next
@@ -25288,6 +25685,7 @@
         try { refreshPrintFab(); refreshPanelSolo(); } catch (e) { }
         try { placeTimeChip(); scheduleDock(); } catch (e) { }
         try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
+        try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
         try { if (typeof usbSyncStageCanvases === 'function') usbSyncStageCanvases(); } catch (e) { }
         if (toSession) {
           // Option 1: tell the app a session is starting so it can wake the hotspot if idle.
@@ -32770,6 +33168,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         } catch (e) { }
         guestRender();
         if (typeof refreshWelcome === 'function') refreshWelcome();
+        try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
         try { if (typeof usbSyncStageCanvases === 'function') usbSyncStageCanvases(); } catch (e) { }
       }
 
@@ -32820,6 +33219,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         try { document.getElementById('surroundVideo').style.transform = video.style.transform; } catch (e) { }
         try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
         try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
+        try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
         try { if (typeof usbSyncStageCanvases === 'function') usbSyncStageCanvases(); } catch (e) { }
         const t = document.getElementById('mirrorToggle');
         if (t) t.checked = mirrorPreview();
@@ -43269,7 +43669,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       window.addEventListener('beforeunload', () => { try { if (guestWin) guestWin.close(); } catch (e) { } });
 
       const GUEST_HTML = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">' +
-        '<title>photobooth4u · Guest screen</title>' +
+        '<title>Guest screen</title>' +
         '<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">' +
         '<style>' +
         ':root{--bg:#F5F1EA;--ink:#1C1A1E;--dim:#6B666C;--red:#C93D27;--ui-cd-scale:1;--ui-btn-scale:1;--ui-film-scale:1;--ui-cd-opacity:1;--ui-btn-opacity:1;--ui-film-opacity:1;}' +
@@ -43356,6 +43756,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         'body.ps.is-result .qrs{position:relative;z-index:10;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:22px;padding:24px 28px;backdrop-filter:blur(10px);}' +
         'body.ps.is-result .qrl{color:#fff;}' +
         'body.ps.is-result:not(.has-qr):not(.has-res-acts) .frame{max-width:92vw;height:90vh !important;}' +
+        'body.ps.is-result.res-themed{background-color:#1C1A1E;background-image:var(--res-bg-img,none);background-size:cover;background-position:center;background-repeat:no-repeat;}' +
+        'body.ps.is-result.res-themed .frame{background:transparent;box-shadow:none;overflow:visible;}' +
+        'body.ps.is-result.res-themed .frame img.res{background:transparent;border-radius:12px;filter:drop-shadow(0 20px 48px rgba(28,26,30,.40));}' +
+        'body.ps.is-result.res-themed .side-r-res{position:relative;background:var(--res-card-bg,#fff);color:var(--res-card-ink,#111827);border:1.5px solid var(--res-card-border,rgba(28,26,30,.08));border-radius:var(--res-card-radius,28px);padding:26px 30px;box-shadow:0 24px 64px rgba(28,26,30,.24);}' +
+        'body.ps.is-result.res-themed[data-res-deco="pop-retro"] .side-r-res{border:2.5px solid #18181B;box-shadow:10px 10px 0 var(--res-deco-secondary,#F28DA0),10px 10px 0 2.5px #18181B;}' +
+        'body.ps.is-result.res-themed[data-res-deco="coquette-stitch"] .side-r-res::after{content:"";position:absolute;inset:10px;border:2px dashed var(--res-deco-secondary,#F28DA0);border-radius:calc(var(--res-card-radius,28px) - 8px);pointer-events:none;}' +
+        'body.ps.is-result.res-themed .qrs{background:transparent;border:0;padding:0;backdrop-filter:none;}' +
+        'body.ps.is-result.res-themed .qrl{color:var(--res-card-ink,#111827);}' +
+        'body.ps.is-result.res-themed .res-acts .gbtn{background:rgba(128,128,128,.08);color:var(--res-card-ink,#111827);border-color:var(--res-card-border,rgba(28,26,30,.18));backdrop-filter:none;}' +
+        'body.ps.is-result.res-themed .res-acts .gbtn.strong{background:var(--res-btn-bg,#C93D27);border-color:transparent;color:var(--res-btn-ink,#fff);}' +
+        'body.ps.is-result.res-themed:not(.has-qr):not(.has-res-acts) .side-r-res{display:none;}' +
         '.res-acts{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:6px;}' +
         '.res-acts .gbtn{min-width:130px;padding:12px 24px;}' +
         '.gbtn small{display:block;font-size:.72em;font-weight:700;opacity:.9;margin-top:2px;}' +
@@ -43397,9 +43808,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         '<div class="pk hide" id="pk"><p class="pkt">Choose your layout</p><p class="pksb">Tap a design to start your session</p><div class="pkg" id="pkg"></div><button type="button" class="pk-back hide" id="pkBack">&larr; Back</button></div>' +
         '<div class="g">' +
         '<div class="side side-l">' +
-        '<div class="logo" id="glogo"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span><img class="lg hide" id="lgImg" alt=""></div>' +
+        '<div class="logo off" id="glogo"><img class="lg hide" id="lgImg" alt=""></div>' +
         '<div><p class="msg" id="msg">Tap or press the button to start</p><p class="sub" id="sub"></p></div>' +
-        '<div><p class="ev" id="ev"></p><p class="dt" id="dt"></p><div class="pwr hide" id="pwr">Powered by <span class="mk"><i></i><i></i><i></i><i></i></span><b>photobooth<em>4u</em></b></div></div>' +
+        '<div><p class="ev" id="ev"></p><p class="dt" id="dt"></p><div class="pwr hide" id="pwr"></div></div>' +
         '</div>' +
         '<div class="frame" id="frame"><video id="v" autoplay playsinline muted></video><video id="gv" class="gv hide" autoplay loop muted playsinline></video><div class="gcta hide" id="gCta"><button type="button" class="gcta-btn" id="gCtaBtn">Tap to start</button></div><div class="guide" id="guide"></div><img class="res" id="res" alt="Your photo">' +
         '<div class="gready hide" id="gReady"><p class="gready-title">Get ready!</p><p class="gready-sub" id="gReadySub"></p><button type="button" class="gready-btn" id="gReadyBtn">Start</button></div>' +
@@ -43557,8 +43968,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           }
         } catch (e) { /* guest window closed mid-call */ }
       }
-      // The renter's corner logo on the guest screen (in place of the photobooth4u logo),
-      // with a small "Powered by photobooth4u" under the event date.
+      // The renter's corner logo on the guest screen (no photobooth4u branding shown to guests).
       function guestBrand() {
         if (!localGuestOpen()) return;
         try {
@@ -43566,21 +43976,20 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const sig = im ? [id, b.x, b.y, b.s, im.naturalWidth, im.naturalHeight].join('|') : 'off';
           if (G.brandSig === sig) return;
           G.brandSig = sig;
-          const mark = G.glogo.querySelector('.mark'), word = G.glogo.querySelector('.word');
+          if (G.pwr) G.pwr.classList.add('hide');
           if (!im) {
-            G.glogo.classList.remove('off'); mark.classList.remove('hide'); word.classList.remove('hide');
-            G.lgImg.classList.add('hide'); G.clogo.classList.add('hide'); G.pwr.classList.add('hide');
+            G.glogo.classList.add('off');
+            G.lgImg.classList.add('hide'); G.clogo.classList.add('hide');
             return;
           }
           const url = ASSETS[id].url, f = brandFit(im.naturalWidth / im.naturalHeight, (b.s || BRAND_DEF_S.c) * 100, (b.s || BRAND_DEF_S.c) * 100 * BRAND_MAXR);
-          G.pwr.classList.remove('hide');
           if (b.x == null) {
-            mark.classList.add('hide'); word.classList.add('hide'); G.glogo.classList.remove('off');
+            G.glogo.classList.remove('off');
             if (G.lgImg.src !== url) G.lgImg.src = url;
             G.lgImg.style.cssText = 'width:' + f.w.toFixed(2) + 'vh;height:' + f.h.toFixed(2) + 'vh;max-width:100%;';
             G.lgImg.classList.remove('hide'); G.clogo.classList.add('hide');
           } else {
-            mark.classList.remove('hide'); word.classList.remove('hide'); G.glogo.classList.add('off');   // keeps its space
+            G.glogo.classList.add('off');   // keeps its space
             if (G.clogo.src !== url) G.clogo.src = url;
             G.clogo.style.cssText = 'left:' + (b.x * 100).toFixed(2) + 'vw;top:' + (b.y * 100).toFixed(2) + 'vh;width:' + f.w.toFixed(2) + 'vh;height:' + f.h.toFixed(2) + 'vh;';
             G.clogo.classList.remove('hide'); G.lgImg.classList.add('hide');
@@ -43746,6 +44155,22 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           G.qrw.classList.toggle('hide', !showQr);
           G.d.body.classList.toggle('is-result', psMode && result);
           G.d.body.classList.toggle('has-qr', psMode && showQr);
+          const guestResThemed = !!(psMode && result && typeof qrMatchWelcome !== 'undefined' && qrMatchWelcome);
+          G.d.body.classList.toggle('res-themed', guestResThemed);
+          if (guestResThemed && typeof getWelcomeThemeTokens === 'function') {
+            const rtok = getWelcomeThemeTokens();
+            const grs = G.d.body.style;
+            if (typeof resultBgDataUrl === 'string' && resultBgDataUrl) grs.setProperty('--res-bg-img', 'url("' + resultBgDataUrl + '")');
+            grs.setProperty('--res-card-bg', rtok.fillCardColor);
+            grs.setProperty('--res-card-ink', rtok.ink);
+            grs.setProperty('--res-card-soft', rtok.soft);
+            grs.setProperty('--res-card-border', rtok.cardBorder);
+            grs.setProperty('--res-card-radius', Math.min(rtok.radius, 36) + 'px');
+            grs.setProperty('--res-btn-bg', rtok.btnColor);
+            grs.setProperty('--res-btn-ink', rtok.btnInk);
+            grs.setProperty('--res-deco-secondary', rtok.decoSecondary);
+            G.d.body.dataset.resDeco = rtok.decoStyle || 'none';
+          }
           if (showQr) {
             const sig = slots.map(sl => sl.dataset.kind + '|' + ((sl.querySelector('.qr-img') || {}).src || 'wait')).join(',');
             if (G.qrSig !== sig) {
@@ -44018,6 +44443,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var qrPopOn = false;         // Step 7: QR code in a pop-up, after the finished photo is shown on its own
       var hideQrOn = false;        // Step 7: no QR code at all for the guest (prints only); the photo is still saved
       var qrPopDelay = 3;          // seconds the photo is shown before the pop-up
+      var qrMatchWelcome = true;   // Step 7: style QR & result screens with the 1. Welcome screen background & card design
+      var resultBgDataUrl = '';    // cached rendered Welcome background for the result / QR screens
       var guestPickOn = false;
       var guestLayoutSet = [];     // extra layouts guests may pick (besides setupLayout)
       var themeId = null;
@@ -44073,6 +44500,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         try { document.getElementById('surroundVideo').style.filter = video.style.filter; } catch (e) { }
         try { if (hasNativeCamBridge()) window.__PBCam.setFilter(filterKey || 'none', !!softSkin); } catch (e) { }
         try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
+        try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
+        try { if (typeof usbSyncStageCanvases === 'function') usbSyncStageCanvases(); } catch (e) { }
         try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
         if (localGuestOpen()) { try { G.v.style.filter = liveFilterCss(); } catch (e) { } }
         if (typeof tabletBridgeSync === 'function') tabletBridgeSync();
@@ -44754,11 +45183,24 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var qrPopToggle = document.getElementById('qrPopToggle'), qrPopDelaySelect = document.getElementById('qrPopDelaySelect');
       var hideQrToggle = document.getElementById('hideQrToggle');
       var afterModeChips = document.getElementById('afterModeChips');
+      var afterThemeChips = document.getElementById('afterThemeChips');
+      var afterGoWelcomeBtn = document.getElementById('afterGoWelcomeBtn');
       var afterPrintFirstToggle = document.getElementById('afterPrintFirstToggle');
       function afterModeNow() {
         if (typeof shareStationOn !== 'undefined' && shareStationOn) return 'station';
         if (qrPopOn) return hideQrOn ? 'popup-noqr' : 'popup-qr';
         return hideQrOn ? 'side-noqr' : 'side-qr';
+      }
+      function refreshAfterThemeUI() {
+        if (afterThemeChips) {
+          var want = qrMatchWelcome ? 'welcome' : 'dark';
+          [].forEach.call(afterThemeChips.querySelectorAll('[data-after-theme]'), function (b) {
+            b.classList.toggle('on', b.dataset.afterTheme === want);
+          });
+        }
+        if (afterGoWelcomeBtn) afterGoWelcomeBtn.style.display = qrMatchWelcome ? '' : 'none';
+        try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
+        try { if (typeof scheduleAfterPreview === 'function') scheduleAfterPreview(); } catch (e) { }
       }
       function refreshQrPopUI() {
         hideQrToggle.checked = hideQrOn;
@@ -44779,6 +45221,22 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (pfHint) pfHint.style.display = (!hideQrOn && !st) ? '' : 'none';
         if (afterPrintFirstToggle && typeof printPrefs !== 'undefined') afterPrintFirstToggle.checked = !!printPrefs.printFirst;
         try { qrSection.classList.toggle('qr-off', hideQrOn); } catch (e) { }
+        try { if (typeof scheduleAfterPreview === 'function') scheduleAfterPreview(); } catch (e) { }
+      }
+      if (afterThemeChips) {
+        afterThemeChips.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-after-theme]'); if (!b) return;
+          qrMatchWelcome = b.dataset.afterTheme !== 'dark';
+          refreshAfterThemeUI();
+          try { if (typeof guestRender === 'function') guestRender(); } catch (err) { }
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      if (afterGoWelcomeBtn) {
+        afterGoWelcomeBtn.addEventListener('click', function () {
+          var tab = document.querySelector('#sessionTabs button[data-pane="welcome"]');
+          if (tab) tab.click();
+        });
       }
       if (afterModeChips) {
         afterModeChips.addEventListener('click', function (e) {
@@ -44955,6 +45413,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var bar = document.getElementById('shareStationHandoffBar');
         var secEl = document.getElementById('shareStationHandoffSec');
         if (ov && bar) {
+          ov.classList.toggle('res-themed', !!qrMatchWelcome);
+          try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
           ov.hidden = false;
           bar.style.transition = 'none';
           bar.style.width = '100%';
@@ -44998,7 +45458,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         try { if (typeof tabletBridgeSync === 'function') tabletBridgeSync(); } catch (e) { }   // the tablet's guest screen follows the same phases
         clearTimeout(resultTimer); runResultTimerBar(0);     // the "next guest" timer starts with the pop-up
         document.body.classList.add('qrpop-wait');
-        ov.className = 'qrpop-ov wait'; ov.hidden = false;
+        ov.className = 'qrpop-ov wait' + (qrMatchWelcome ? ' res-themed' : ''); ov.hidden = false;
+        try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
         qrPopDrawPhoto();
         qrPop.draw = setInterval(function () { if (window.matchMedia('(orientation: portrait)').matches) qrPopDrawPhoto(); }, 500);   // the photo may still be finishing
         try { applyStageAspect(); } catch (e) { }
@@ -45013,7 +45474,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         qrPop.home = qrSection.parentNode; qrPop.next = qrSection.nextSibling;
         slot.appendChild(qrSection);
         document.body.classList.remove('qrpop-wait');
-        ov.className = 'qrpop-ov show';
+        ov.className = 'qrpop-ov show' + (qrMatchWelcome ? ' res-themed' : '');
+        try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
         qrPopDrawPhoto();
         if (!printFirstHolding) scheduleResultReset();
         try { refreshPanelSolo(); applyStageAspect(); } catch (e) { }
@@ -45030,7 +45492,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         qrPop.home = qrPop.next = null;
         document.body.classList.remove('qrpop-wait');
         var ov = document.getElementById('qrPopOv');
-        if (ov) { ov.hidden = true; ov.className = 'qrpop-ov'; }
+        if (ov) { ov.hidden = true; ov.className = 'qrpop-ov' + (qrMatchWelcome ? ' res-themed' : ''); }
         try { refreshPanelSolo(); applyStageAspect(); } catch (e) { }
       }
       window.addEventListener('resize', function () { if (qrPop.phase) qrPopDrawPhoto(); });
@@ -45051,6 +45513,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         shotReview.classList.add('on');
         guestCall('review', url);
         try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
+        try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
+        try { if (typeof usbSyncStageCanvases === 'function') usbSyncStageCanvases(); } catch (e) { }
       }
       function hideShotReview() {
         shotReview.classList.remove('on');
@@ -45064,6 +45528,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         guestCall('reviewEnd');
         try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
+        try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
+        try { if (typeof usbSyncStageCanvases === 'function') usbSyncStageCanvases(); } catch (e) { }
       }
       // After the finished photo has been on screen for the chosen time, go back
       // to the start for the next guests (waiting for any print to finish).
@@ -57350,6 +57816,596 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         while (size > min && ctx.measureText(text).width > maxW) { size -= 2; ctx.font = fontString(font, size); }
         return size;
       }
+      // Shared design tokens & backdrop renderer used by 1. Welcome screen AND 4. QR & sharing screens
+      function getWelcomeThemeTokens() {
+        var pal = (typeof WELCOME_PALETTES !== 'undefined' && WELCOME_PALETTES[welcomePalette])
+          || (typeof WELCOME_PALETTES !== 'undefined' ? WELCOME_PALETTES['charm-pink'] : null)
+          || { btnColor: '#F28DA0', decoPrimary: '#1C233C', decoSecondary: '#F28DA0', decoAccent: '#DDA59A' };
+        var cardColor = '#ffffff';
+        if (welcomeCardBg) cardColor = welcomeCardBg;
+        else if (typeof titleBgEnabled !== 'undefined' && titleBgEnabled && typeof titleBgColor !== 'undefined' && titleBgColor) cardColor = titleBgColor;
+        var isGlass = cardColor === 'glass';
+        var fillCardColor = isGlass ? 'rgba(255,255,255,0.88)' : cardColor;
+        var isDarkCard = !isGlass && typeof lumOf === 'function' && lumOf(fillCardColor) <= 0.45;
+        var ink = welcomeCardFontColor ? welcomeCardFontColor : (isDarkCard ? '#ffffff' : '#111827');
+        var soft = isDarkCard ? 'rgba(255,255,255,.74)' : 'rgba(28,26,30,.64)';
+        var cardBorder = isDarkCard ? 'rgba(255,255,255,.16)' : (isGlass ? 'rgba(255,255,255,.55)' : 'rgba(28,26,30,.08)');
+        var btnColor = welcomeBtnColor || pal.btnColor || '#C93D27';
+        var btnInk = (typeof lumOf === 'function' && lumOf(btnColor) > 0.6) ? '#1C1A1E' : '#ffffff';
+        var btnShadow = (typeof hexToRgb === 'function')
+          ? '0 10px 24px rgba(' + hexToRgb(btnColor).join(',') + ',.34)'
+          : '0 10px 24px rgba(0,0,0,.22)';
+        var radius = Math.max(12, Math.min(48, Number(welcomeCardRadius) || 32));
+        var titleFont = welcomeFont || "'Fraunces', Georgia, serif";
+        return {
+          cardColor: cardColor,
+          fillCardColor: fillCardColor,
+          isGlass: isGlass,
+          isDarkCard: isDarkCard,
+          ink: ink,
+          soft: soft,
+          cardBorder: cardBorder,
+          btnColor: btnColor,
+          btnInk: btnInk,
+          btnShadow: btnShadow,
+          radius: radius,
+          titleFont: titleFont,
+          decoStyle: welcomeDecoStyle || 'none',
+          decoPrimary: pal.decoPrimary || '#1C233C',
+          decoSecondary: pal.decoSecondary || '#F28DA0',
+          decoAccent: pal.decoAccent || '#DDA59A'
+        };
+      }
+
+      function drawWelcomeBackdropLayer(ctx, W, H, opts) {
+        var usePoster = !!(opts && opts.usePoster && attractMode === 'poster' && attractPosterImg);
+        var tok = getWelcomeThemeTokens();
+        if (usePoster) {
+          drawPosterFit(ctx, attractPosterImg, W, H);
+          var vgp = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.25, W / 2, H / 2, Math.max(W, H) * 0.78);
+          vgp.addColorStop(0, 'rgba(28,26,30,0)'); vgp.addColorStop(1, 'rgba(28,26,30,.32)');
+          ctx.fillStyle = vgp; ctx.fillRect(0, 0, W, H);
+          return tok;
+        }
+        if (backdropPreset === 'custom' && backgroundImg) {
+          drawImageCover(ctx, backgroundImg, 0, 0, W, H, cropFocus);
+        } else {
+          drawBackdrop(ctx, W, H);
+        }
+        // a soft darkroom vignette so the print and the card stand out
+        var vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
+        vg.addColorStop(0, 'rgba(28,26,30,0)'); vg.addColorStop(1, 'rgba(28,26,30,.42)');
+        ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+
+        var decoPrimary = tok.decoPrimary;
+        var decoSecondary = tok.decoSecondary;
+        var decoAccent = tok.decoAccent;
+
+        if (welcomeDecoStyle === 'aurora-sparkles') {
+          var aura = ctx.createLinearGradient(0, 0, W, H);
+          aura.addColorStop(0, '#FFE8F0');
+          aura.addColorStop(0.5, '#F3E8FF');
+          aura.addColorStop(1, '#FFF2EA');
+          ctx.fillStyle = aura;
+          ctx.fillRect(0, 0, W, H);
+        } else if (welcomeDecoStyle === 'ribbon-waves') {
+          ctx.save();
+          // Top-Left Wave
+          ctx.fillStyle = decoPrimary;
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, H * 0.32);
+          ctx.bezierCurveTo(W * 0.08, H * 0.22, W * 0.18, H * 0.08, W * 0.40, 0);
+          ctx.closePath(); ctx.fill();
+
+          ctx.fillStyle = decoSecondary;
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, H * 0.46);
+          ctx.bezierCurveTo(W * 0.06, H * 0.32, W * 0.18, H * 0.16, W * 0.34, 0);
+          ctx.closePath(); ctx.fill();
+
+          ctx.strokeStyle = decoAccent;
+          ctx.lineWidth = Math.max(2.5, Math.round(W * 0.0025));
+          ctx.beginPath(); ctx.moveTo(0, H * 0.50);
+          ctx.bezierCurveTo(W * 0.08, H * 0.36, W * 0.22, H * 0.18, W * 0.38, 0);
+          ctx.stroke();
+
+          ctx.strokeStyle = decoSecondary; ctx.globalAlpha = 0.55;
+          ctx.lineWidth = Math.max(1.5, Math.round(W * 0.0018));
+          ctx.beginPath(); ctx.moveTo(0, H * 0.54);
+          ctx.bezierCurveTo(W * 0.06, H * 0.46, W * 0.18, H * 0.44, W * 0.22, H * 0.56);
+          ctx.stroke();
+
+          // Bottom-Right Wave
+          ctx.globalAlpha = 1.0;
+          ctx.fillStyle = decoPrimary;
+          ctx.beginPath(); ctx.moveTo(W, H); ctx.lineTo(W * 0.60, H);
+          ctx.bezierCurveTo(W * 0.82, H * 0.92, W * 0.92, H * 0.78, W, H * 0.70);
+          ctx.closePath(); ctx.fill();
+
+          ctx.fillStyle = decoSecondary;
+          ctx.beginPath(); ctx.moveTo(W, H); ctx.lineTo(W * 0.66, H);
+          ctx.bezierCurveTo(W * 0.80, H * 0.84, W * 0.94, H * 0.68, W, H * 0.54);
+          ctx.closePath(); ctx.fill();
+
+          ctx.strokeStyle = decoAccent;
+          ctx.lineWidth = Math.max(2.5, Math.round(W * 0.0025));
+          ctx.beginPath(); ctx.moveTo(W * 0.62, H);
+          ctx.bezierCurveTo(W * 0.76, H * 0.80, W * 0.92, H * 0.64, W, H * 0.50);
+          ctx.stroke();
+
+          // Curls
+          ctx.strokeStyle = decoSecondary; ctx.globalAlpha = 0.55;
+          ctx.lineWidth = Math.max(1.5, Math.round(W * 0.0018));
+          ctx.beginPath(); ctx.moveTo(W * 0.12, H * 0.88);
+          ctx.bezierCurveTo(W * 0.20, H * 0.96, W * 0.40, H * 0.94, W * 0.52, H);
+          ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(W * 0.74, 0);
+          ctx.bezierCurveTo(W * 0.82, H * 0.12, W * 0.94, H * 0.18, W, H * 0.16);
+          ctx.stroke();
+
+          // Sparkle stars
+          ctx.globalAlpha = 1.0;
+          var drawStar = function (cx, cy, ro, ri, col) {
+            ctx.save(); ctx.fillStyle = col; ctx.beginPath();
+            for (var si = 0; si < 8; si++) {
+              var sa = si * Math.PI / 4, sr = (si % 2 === 0) ? ro : ri;
+              var spx = cx + sr * Math.cos(sa), spy = cy + sr * Math.sin(sa);
+              if (si === 0) ctx.moveTo(spx, spy); else ctx.lineTo(spx, spy);
+            }
+            ctx.closePath(); ctx.fill(); ctx.restore();
+          };
+          drawStar(W * 0.14, H * 0.32, 18, 5, decoSecondary);
+          drawStar(W * 0.10, H * 0.37, 10, 3, decoAccent);
+          drawStar(W * 0.88, H * 0.22, 20, 6, decoPrimary);
+          drawStar(W * 0.92, H * 0.28, 10, 3, decoSecondary);
+          drawStar(W * 0.84, H * 0.80, 18, 5, decoPrimary);
+          drawStar(W * 0.80, H * 0.85, 9, 3, decoSecondary);
+          ctx.restore();
+        } else if (welcomeDecoStyle === 'theatre-curtains') {
+          ctx.save();
+          var cwLeft = Math.round(W * 0.16);
+          var gL = ctx.createLinearGradient(0, 0, cwLeft, 0);
+          gL.addColorStop(0, '#B91C1C'); gL.addColorStop(0.5, '#DC2626'); gL.addColorStop(1, '#991B1B');
+          ctx.fillStyle = gL;
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(cwLeft, 0);
+          ctx.bezierCurveTo(cwLeft * 0.7, H * 0.45, cwLeft * 0.4, H * 0.55, cwLeft * 0.9, H);
+          ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#D4AF37'; ctx.fillRect(cwLeft * 0.35, H * 0.48, cwLeft * 0.30, 14);
+
+          var gR = ctx.createLinearGradient(W - cwLeft, 0, W, 0);
+          gR.addColorStop(0, '#991B1B'); gR.addColorStop(0.5, '#DC2626'); gR.addColorStop(1, '#B91C1C');
+          ctx.fillStyle = gR;
+          ctx.beginPath(); ctx.moveTo(W, 0); ctx.lineTo(W - cwLeft, 0);
+          ctx.bezierCurveTo(W - cwLeft * 0.7, H * 0.45, W - cwLeft * 0.4, H * 0.55, W - cwLeft * 0.9, H);
+          ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#D4AF37'; ctx.fillRect(W - cwLeft * 0.65, H * 0.48, cwLeft * 0.30, 14);
+          ctx.restore();
+        }
+        return tok;
+      }
+
+      var resultBgSig = '', afterPreviewDirty = true, afterPreviewTimer = 0;
+      function renderResultBg(force) {
+        try {
+          var isPort = (window.innerHeight && window.innerWidth) ? (window.innerHeight > window.innerWidth) : false;
+          var W = isPort ? 760 : 1280;
+          var H = isPort ? 1220 : 800;
+          var sig = [
+            isPort ? 'P' : 'L',
+            attractMode,
+            attractPosterFit,
+            attractPosterImg ? (attractPosterImg.naturalWidth + 'x' + attractPosterImg.naturalHeight + ':' + (attractPosterImg.src || '').length) : '0',
+            backdropPreset,
+            backdropColor || '',
+            elementsChoice || '',
+            backgroundImg ? (backgroundImg.naturalWidth + 'x' + backgroundImg.naturalHeight + ':' + (backgroundImg.src || '').length) : '0',
+            cropFocus || '',
+            welcomePalette || '',
+            welcomeDecoStyle || '',
+            (typeof themeArt !== 'undefined' && Array.isArray(themeArt)) ? themeArt.join(',') : '',
+            (typeof artPal !== 'undefined' && artPal) ? JSON.stringify(artPal) : ''
+          ].join('|');
+          if (force || sig !== resultBgSig || !resultBgDataUrl) {
+            var c = document.createElement('canvas');
+            c.width = W; c.height = H;
+            drawWelcomeBackdropLayer(c.getContext('2d'), W, H, { usePoster: true });
+            resultBgDataUrl = c.toDataURL('image/jpeg', 0.86);
+            resultBgSig = sig;
+          }
+          syncResultTheme();
+          afterPreviewDirty = true;
+          var afterSec = document.getElementById('afterSection');
+          var previewImg = document.getElementById('afterPreviewImg');
+          if ((afterSec && afterSec.classList.contains('on')) || (previewImg && !previewImg.getAttribute('src'))) {
+            scheduleAfterPreview();
+          }
+        } catch (e) { console.error('resultBg', e); }
+      }
+
+      function syncResultTheme() {
+        try {
+          var tok = getWelcomeThemeTokens();
+          var rs = document.documentElement.style;
+          if (resultBgDataUrl) rs.setProperty('--res-bg-img', 'url("' + resultBgDataUrl + '")');
+          rs.setProperty('--res-card-bg', tok.fillCardColor);
+          rs.setProperty('--res-card-ink', tok.ink);
+          rs.setProperty('--res-card-soft', tok.soft);
+          rs.setProperty('--res-card-border', tok.cardBorder);
+          rs.setProperty('--res-card-radius', Math.min(tok.radius, 36) + 'px');
+          rs.setProperty('--res-btn-bg', tok.btnColor);
+          rs.setProperty('--res-btn-ink', tok.btnInk);
+          rs.setProperty('--res-btn-shadow', tok.btnShadow);
+          rs.setProperty('--res-deco-primary', tok.decoPrimary);
+          rs.setProperty('--res-deco-secondary', tok.decoSecondary);
+          rs.setProperty('--res-deco-accent', tok.decoAccent);
+          rs.setProperty('--res-title-font', tok.titleFont);
+          document.body.dataset.resDeco = tok.decoStyle || 'none';
+          document.body.dataset.resDark = tok.isDarkCard ? '1' : '0';
+          var on = !!qrMatchWelcome && state === 'result' && document.body.classList.contains('in-session');
+          document.body.classList.toggle('result-themed', on);
+          var popOv = document.getElementById('qrPopOv');
+          if (popOv) popOv.classList.toggle('res-themed', !!qrMatchWelcome);
+          var ssOv = document.getElementById('shareStationHandoffOverlay');
+          if (ssOv) ssOv.classList.toggle('res-themed', !!qrMatchWelcome);
+        } catch (e) { }
+      }
+
+      function drawAfterPreviewMiniQr(ctx, x, y, size) {
+        ctx.save();
+        roundRectPath(ctx, x, y, size, size, Math.max(8, Math.round(size * 0.08)));
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(28,26,30,0.10)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        var pad = Math.round(size * 0.09);
+        var inner = size - pad * 2;
+        try {
+          if (typeof qrcode === 'function') {
+            var q = qrcode(0, 'L');
+            q.addData('https://photobooth4u.com');
+            q.make();
+            var mc = q.getModuleCount();
+            var cell = inner / mc;
+            ctx.fillStyle = '#111827';
+            for (var r = 0; r < mc; r++) {
+              for (var col = 0; col < mc; col++) {
+                if (q.isDark(r, col)) {
+                  ctx.fillRect(x + pad + col * cell, y + pad + r * cell, Math.ceil(cell), Math.ceil(cell));
+                }
+              }
+            }
+            ctx.restore();
+            return;
+          }
+        } catch (e) { }
+        ctx.fillStyle = '#111827';
+        var b = Math.round(inner * 0.28);
+        ctx.fillRect(x + pad, y + pad, b, b);
+        ctx.fillRect(x + pad + inner - b, y + pad, b, b);
+        ctx.fillRect(x + pad, y + pad + inner - b, b, b);
+        ctx.restore();
+      }
+
+      function drawAfterPreviewCard(ctx, cx, cy, cw, ch, tok, themed) {
+        var cardRadius = themed ? Math.min(tok.radius, 38) : 24;
+        var fillCol = themed ? tok.fillCardColor : '#ffffff';
+        var isDark = themed && tok.isDarkCard;
+        var isGlass = themed && tok.isGlass;
+        if (themed && tok.decoStyle === 'pop-retro') {
+          ctx.save();
+          ctx.fillStyle = tok.decoSecondary || '#F28DA0';
+          roundRectPath(ctx, cx + 10, cy + 10, cw, ch, cardRadius);
+          ctx.fill();
+          ctx.lineWidth = 3; ctx.strokeStyle = '#18181B'; ctx.stroke();
+          ctx.restore();
+        }
+        ctx.save();
+        ctx.shadowColor = isDark ? 'rgba(0,0,0,.48)' : 'rgba(28,26,30,.20)';
+        ctx.shadowBlur = 36; ctx.shadowOffsetY = 12;
+        roundRectPath(ctx, cx, cy, cw, ch, cardRadius);
+        ctx.globalAlpha = isGlass ? 0.88 : 0.99;
+        ctx.fillStyle = fillCol;
+        ctx.fill();
+        ctx.restore();
+        if (themed && tok.decoStyle === 'coquette-stitch') {
+          ctx.save();
+          ctx.strokeStyle = tok.decoSecondary || '#F28DA0';
+          ctx.lineWidth = 2.2;
+          ctx.setLineDash([8, 6]);
+          roundRectPath(ctx, cx + 11, cy + 11, cw - 22, ch - 22, Math.max(10, cardRadius - 8));
+          ctx.stroke();
+          ctx.restore();
+        }
+        if (themed && tok.decoStyle === 'scrapbook-doodle') {
+          ctx.save();
+          ctx.fillStyle = tok.decoSecondary || '#F28DA0';
+          ctx.globalAlpha = 0.78;
+          ctx.translate(cx + cw / 2, cy);
+          ctx.rotate(-3.5 * Math.PI / 180);
+          ctx.fillRect(-52, -10, 104, 20);
+          ctx.restore();
+        }
+        ctx.save();
+        roundRectPath(ctx, cx, cy, cw, ch, cardRadius);
+        ctx.lineWidth = (themed && tok.decoStyle === 'pop-retro') ? 2.5 : 1.5;
+        ctx.strokeStyle = (themed && tok.decoStyle === 'pop-retro') ? '#18181B' : (themed ? tok.cardBorder : 'rgba(28,26,30,0.08)');
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function scheduleAfterPreview() {
+        clearTimeout(afterPreviewTimer);
+        afterPreviewTimer = setTimeout(renderAfterPreview, 80);
+      }
+
+      function renderAfterPreview() {
+        try {
+          var imgEl = document.getElementById('afterPreviewImg');
+          if (!imgEl) return;
+          afterPreviewDirty = false;
+          var isPort = (window.innerHeight && window.innerWidth) ? (window.innerHeight > window.innerWidth) : false;
+          var W = isPort ? 760 : 1280;
+          var H = isPort ? 1220 : 800;
+          var pvFrame = document.getElementById('afterPvFrame');
+          if (pvFrame) pvFrame.style.setProperty('--pv-ar', (W / H).toFixed(3));
+          var mode = typeof afterModeNow === 'function' ? afterModeNow() : 'side-qr';
+          var modeNames = {
+            'side-qr': 'Side-by-side + QR',
+            'popup-qr': 'Pop-up + QR',
+            'popup-noqr': 'Pop-up · No QR',
+            'side-noqr': 'Side panel · No QR',
+            'station': 'Sharing Station'
+          };
+          var meta = document.getElementById('afterPvMeta');
+          if (meta) meta.textContent = (modeNames[mode] || 'Result') + ' · ' + (qrMatchWelcome ? 'Matches Welcome screen' : 'Classic Dark');
+
+          var c = document.createElement('canvas'); c.width = W; c.height = H;
+          var ctx = c.getContext('2d');
+          var tok = getWelcomeThemeTokens();
+          var themed = !!qrMatchWelcome;
+
+          // 1. Background
+          if (themed) {
+            drawWelcomeBackdropLayer(ctx, W, H, { usePoster: true });
+          } else {
+            ctx.fillStyle = '#0d0c0e';
+            ctx.fillRect(0, 0, W, H);
+          }
+
+          // 2. Build sample finished layout print
+          var sample = null;
+          if (mode !== 'station') {
+            sample = document.createElement('canvas');
+            var layKey = (typeof currentLayout !== 'undefined' && LAYOUT_DEFS[currentLayout]) ? currentLayout : 'strip';
+            var tShots = (typeof shotsNeeded === 'function' && shotsNeeded(layKey)) || (LAYOUT_DEFS[layKey] ? LAYOUT_DEFS[layKey].shots : 3);
+            try { composeCanvas(layKey, sample, buildPlaceholderShots(260, tShots)); } catch (e) { sample = null; }
+            try {
+              var cf = sample && layKey === 'myframe' ? activeFrame() : null, cr = cf && frameFirstStripCrop(cf);
+              if (cr) {
+                var sc = document.createElement('canvas');
+                sc.width = Math.max(1, Math.round(sample.width * cr.w)); sc.height = Math.max(1, Math.round(sample.height * cr.h));
+                sc.getContext('2d').drawImage(sample, Math.round(sample.width * cr.x), 0, sc.width, sc.height, 0, 0, sc.width, sc.height);
+                sample = sc;
+              }
+            } catch (e) { }
+          }
+
+          var cardInk = themed ? tok.ink : '#1C1A1E';
+          var cardSoft = themed ? tok.soft : '#6B666C';
+          var btnBg = themed ? tok.btnColor : '#C93D27';
+          var btnInk = themed ? tok.btnInk : '#ffffff';
+          var titleFont = themed ? tok.titleFont : "'Fraunces', Georgia, serif";
+          var showQr = (mode === 'side-qr' || mode === 'popup-qr');
+
+          // 3. Mode-specific layout
+          if (mode === 'station') {
+            var scw = isPort ? Math.round(W * 0.84) : Math.round(W * 0.46);
+            var sch = isPort ? 440 : 390;
+            var scx = Math.round((W - scw) / 2), scy = Math.round((H - sch) / 2);
+            if (themed) {
+              drawAfterPreviewCard(ctx, scx, scy, scw, sch, tok, true);
+            } else {
+              ctx.save();
+              ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 14;
+              roundRectPath(ctx, scx, scy, scw, sch, 28);
+              ctx.fillStyle = '#18161E'; ctx.fill();
+              ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.stroke();
+              ctx.restore();
+            }
+            var stInk = themed ? tok.ink : '#ffffff';
+            var stSoft = themed ? tok.soft : '#D2CED6';
+            var stAccent = themed ? tok.btnColor : '#FF7B66';
+            var stBar = themed ? tok.btnColor : '#C93D27';
+            var smid = scx + scw / 2;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.font = '700 54px Manrope, sans-serif';
+            ctx.fillStyle = stInk;
+            ctx.fillText('📱 👉', smid, scy + 84);
+            var stSize = fitFont(ctx, 'Photos Ready!', titleFont, 46, scw - 60, 26);
+            ctx.font = fontString(titleFont, stSize);
+            ctx.fillStyle = stInk;
+            ctx.fillText('Photos Ready!', smid, scy + 160);
+            ctx.font = '600 22px Manrope, sans-serif';
+            ctx.fillStyle = stSoft;
+            ctx.fillText('Scan the QR code & save at the', smid, scy + 216);
+            ctx.font = '800 23px Manrope, sans-serif';
+            ctx.fillStyle = stAccent;
+            ctx.fillText('Sharing Station', smid, scy + 248);
+            var barW = scw - 90, barX = smid - barW / 2, barY = scy + sch - 92;
+            roundRectPath(ctx, barX, barY, barW, 10, 5);
+            ctx.fillStyle = themed ? 'rgba(128,128,128,.20)' : 'rgba(255,255,255,.14)'; ctx.fill();
+            roundRectPath(ctx, barX, barY, Math.round(barW * 0.66), 10, 5);
+            ctx.fillStyle = stBar; ctx.fill();
+            ctx.font = '600 18px Manrope, sans-serif';
+            ctx.fillStyle = stSoft;
+            ctx.fillText('Ready for next guest in 2s', smid, barY + 34);
+          } else if (mode === 'popup-qr' || mode === 'popup-noqr') {
+            // Finished photo softly visible behind the pop-up card
+            if (sample && sample.width) {
+              var pk = Math.min((W * 0.78) / sample.width, (H * 0.84) / sample.height);
+              var ppw = sample.width * pk, pph = sample.height * pk;
+              ctx.save();
+              ctx.globalAlpha = themed ? 0.56 : 0.42;
+              ctx.shadowColor = 'rgba(0,0,0,.38)'; ctx.shadowBlur = 32; ctx.shadowOffsetY = 12;
+              ctx.drawImage(sample, (W - ppw) / 2, (H - pph) / 2, ppw, pph);
+              ctx.restore();
+            }
+            ctx.fillStyle = themed ? 'rgba(28,26,30,.28)' : 'rgba(14,11,16,.62)';
+            ctx.fillRect(0, 0, W, H);
+            var pcw = isPort ? Math.round(W * 0.84) : Math.round(W * 0.46);
+            var pch = showQr ? (isPort ? 620 : 570) : (isPort ? 340 : 310);
+            var pcx = Math.round((W - pcw) / 2), pcy = Math.round((H - pch) / 2);
+            drawAfterPreviewCard(ctx, pcx, pcy, pcw, pch, tok, themed);
+            var pmid = pcx + pcw / 2;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+            var pTitle = showQr ? 'Your photo is ready' : 'Your photo is ready';
+            var pts = fitFont(ctx, pTitle, titleFont, isPort ? 44 : 42, pcw - 64, 24);
+            ctx.font = fontString(titleFont, pts);
+            ctx.fillStyle = cardInk;
+            ctx.fillText(pTitle, pmid, pcy + 74);
+            if (themed && (tok.decoStyle === 'ribbon-waves' || tok.decoStyle === 'scrapbook-doodle')) {
+              roundRectPath(ctx, pmid - 42, pcy + 84, 84, 5, 3);
+              ctx.fillStyle = tok.decoSecondary; ctx.fill();
+            }
+            if (showQr) {
+              var qsz = isPort ? 270 : 255;
+              drawAfterPreviewMiniQr(ctx, Math.round(pmid - qsz / 2), pcy + 112, qsz);
+              ctx.font = '600 20px Manrope, sans-serif';
+              ctx.fillStyle = cardSoft;
+              ctx.fillText('Scan with your phone camera to save it.', pmid, pcy + 112 + qsz + 40);
+            } else {
+              ctx.font = '600 22px Manrope, sans-serif';
+              ctx.fillStyle = cardSoft;
+              ctx.fillText('Tap Print or Done for the next guest.', pmid, pcy + 150);
+            }
+            var pbY = pcy + pch - 102, pbH = 60, pbGap = 16;
+            var pbW = Math.round((pcw - 72 - pbGap) / 2);
+            var pbX1 = pcx + 36, pbX2 = pbX1 + pbW + pbGap;
+            roundRectPath(ctx, pbX1, pbY, pbW, pbH, pbH / 2);
+            ctx.fillStyle = btnBg; ctx.fill();
+            ctx.fillStyle = btnInk; ctx.font = '800 22px Manrope, sans-serif';
+            ctx.fillText('Print', pbX1 + pbW / 2, pbY + pbH / 2 + 8);
+            roundRectPath(ctx, pbX2, pbY, pbW, pbH, pbH / 2);
+            ctx.fillStyle = themed ? 'rgba(128,128,128,.10)' : '#ffffff'; ctx.fill();
+            ctx.strokeStyle = themed ? tok.cardBorder : '#D6CEC1'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = cardInk; ctx.font = '800 22px Manrope, sans-serif';
+            ctx.fillText('Done', pbX2 + pbW / 2, pbY + pbH / 2 + 8);
+            roundRectPath(ctx, pcx + 42, pcy + pch - 24, pcw - 84, 6, 3);
+            ctx.fillStyle = 'rgba(128,128,128,.20)'; ctx.fill();
+            roundRectPath(ctx, pcx + 42, pcy + pch - 24, Math.round((pcw - 84) * 0.65), 6, 3);
+            ctx.fillStyle = btnBg; ctx.fill();
+          } else {
+            // side-qr or side-noqr
+            if (!isPort) {
+              // Landscape: finished photo print on the left, QR / action card on the right
+              var pArea = { x: W * 0.05, y: H * 0.09, w: W * 0.44, h: H * 0.82 };
+              if (sample && sample.width) {
+                var lk = Math.min(pArea.w / sample.width, pArea.h / sample.height);
+                var lpw = sample.width * lk, lph = sample.height * lk;
+                var lpx = pArea.x + (pArea.w - lpw) / 2, lpy = pArea.y + (pArea.h - lph) / 2;
+                ctx.save();
+                ctx.shadowColor = 'rgba(0,0,0,.38)'; ctx.shadowBlur = 38; ctx.shadowOffsetY = 14;
+                ctx.drawImage(sample, lpx, lpy, lpw, lph);
+                ctx.restore();
+              }
+              var cw = Math.round(W * 0.41);
+              var ch = showQr ? Math.round(H * 0.72) : Math.round(H * 0.42);
+              var cx = Math.round(W * 0.54), cy = Math.round((H - ch) / 2);
+              drawAfterPreviewCard(ctx, cx, cy, cw, ch, tok, themed);
+              var mid = cx + cw / 2;
+              ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+              var ts = fitFont(ctx, 'Your photo is ready', titleFont, 40, cw - 56, 22);
+              ctx.font = fontString(titleFont, ts);
+              ctx.fillStyle = cardInk;
+              ctx.fillText('Your photo is ready', mid, cy + 72);
+              if (themed && (tok.decoStyle === 'ribbon-waves' || tok.decoStyle === 'scrapbook-doodle')) {
+                roundRectPath(ctx, mid - 38, cy + 82, 76, 4.5, 3);
+                ctx.fillStyle = tok.decoSecondary; ctx.fill();
+              }
+              if (showQr) {
+                var qsz2 = Math.min(240, Math.round(ch * 0.44));
+                drawAfterPreviewMiniQr(ctx, Math.round(mid - qsz2 / 2), cy + 108, qsz2);
+                ctx.font = '600 18px Manrope, sans-serif';
+                ctx.fillStyle = cardSoft;
+                ctx.fillText('Scan with your phone camera', mid, cy + 108 + qsz2 + 34);
+              } else {
+                ctx.font = '600 19px Manrope, sans-serif';
+                ctx.fillStyle = cardSoft;
+                ctx.fillText('Ready to print or start next guest', mid, cy + 148);
+              }
+              var bY = cy + ch - 96, bH = 56, bGap = 14, bW = Math.round((cw - 64 - bGap) / 2);
+              var bX1 = cx + 32, bX2 = bX1 + bW + bGap;
+              roundRectPath(ctx, bX1, bY, bW, bH, bH / 2);
+              ctx.fillStyle = btnBg; ctx.fill();
+              ctx.fillStyle = btnInk; ctx.font = '800 20px Manrope, sans-serif';
+              ctx.fillText('Print', bX1 + bW / 2, bY + bH / 2 + 7);
+              roundRectPath(ctx, bX2, bY, bW, bH, bH / 2);
+              ctx.fillStyle = themed ? 'rgba(128,128,128,.10)' : '#ffffff'; ctx.fill();
+              ctx.strokeStyle = themed ? tok.cardBorder : '#D6CEC1'; ctx.lineWidth = 2; ctx.stroke();
+              ctx.fillStyle = cardInk; ctx.font = '800 20px Manrope, sans-serif';
+              ctx.fillText('Done', bX2 + bW / 2, bY + bH / 2 + 7);
+              roundRectPath(ctx, cx + 36, cy + ch - 22, cw - 72, 5, 3);
+              ctx.fillStyle = 'rgba(128,128,128,.20)'; ctx.fill();
+              roundRectPath(ctx, cx + 36, cy + ch - 22, Math.round((cw - 72) * 0.7), 5, 3);
+              ctx.fillStyle = btnBg; ctx.fill();
+            } else {
+              // Portrait: finished photo on top, QR / action card below
+              var pH = showQr ? Math.round(H * 0.56) : Math.round(H * 0.64);
+              var pW = Math.round(W * 0.84);
+              if (sample && sample.width) {
+                var pk2 = Math.min(pW / sample.width, pH / sample.height);
+                var spw = sample.width * pk2, sph = sample.height * pk2;
+                ctx.save();
+                ctx.shadowColor = 'rgba(0,0,0,.38)'; ctx.shadowBlur = 36; ctx.shadowOffsetY = 12;
+                ctx.drawImage(sample, (W - spw) / 2, 74 + (pH - sph) / 2, spw, sph);
+                ctx.restore();
+              }
+              var pcw2 = Math.round(W * 0.88);
+              var pch2 = showQr ? 320 : 230;
+              var pcx2 = Math.round((W - pcw2) / 2);
+              var pcy2 = 74 + pH + 34;
+              drawAfterPreviewCard(ctx, pcx2, pcy2, pcw2, pch2, tok, themed);
+              if (showQr) {
+                var qsz3 = 220;
+                drawAfterPreviewMiniQr(ctx, pcx2 + 28, pcy2 + Math.round((pch2 - qsz3) / 2), qsz3);
+                var tx = pcx2 + 28 + qsz3 + 26, tw = pcw2 - (qsz3 + 82);
+                ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+                var pts2 = fitFont(ctx, 'Your photo is ready', titleFont, 34, tw, 20);
+                ctx.font = fontString(titleFont, pts2); ctx.fillStyle = cardInk;
+                ctx.fillText('Your photo is ready', tx, pcy2 + 94);
+                ctx.font = '600 18px Manrope, sans-serif'; ctx.fillStyle = cardSoft;
+                ctx.fillText('Scan with your phone', tx, pcy2 + 132);
+                var pbtW = Math.round((tw - 12) / 2), pbtY = pcy2 + 168, pbtH = 54;
+                roundRectPath(ctx, tx, pbtY, pbtW, pbtH, pbtH / 2);
+                ctx.fillStyle = btnBg; ctx.fill();
+                ctx.fillStyle = btnInk; ctx.textAlign = 'center'; ctx.font = '800 19px Manrope, sans-serif';
+                ctx.fillText('Print', tx + pbtW / 2, pbtY + pbtH / 2 + 7);
+                roundRectPath(ctx, tx + pbtW + 12, pbtY, pbtW, pbtH, pbtH / 2);
+                ctx.fillStyle = themed ? 'rgba(128,128,128,.10)' : '#ffffff'; ctx.fill();
+                ctx.strokeStyle = themed ? tok.cardBorder : '#D6CEC1'; ctx.lineWidth = 2; ctx.stroke();
+                ctx.fillStyle = cardInk; ctx.fillText('Done', tx + pbtW + 12 + pbtW / 2, pbtY + pbtH / 2 + 7);
+              } else {
+                var pmid2 = pcx2 + pcw2 / 2;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+                var pts3 = fitFont(ctx, 'Your photo is ready', titleFont, 38, pcw2 - 64, 22);
+                ctx.font = fontString(titleFont, pts3); ctx.fillStyle = cardInk;
+                ctx.fillText('Your photo is ready', pmid2, pcy2 + 78);
+                var pbtW2 = Math.round((pcw2 - 84) / 2), pbtY2 = pcy2 + 116, pbtH2 = 58;
+                roundRectPath(ctx, pcx2 + 34, pbtY2, pbtW2, pbtH2, pbtH2 / 2);
+                ctx.fillStyle = btnBg; ctx.fill();
+                ctx.fillStyle = btnInk; ctx.font = '800 20px Manrope, sans-serif';
+                ctx.fillText('Print', pcx2 + 34 + pbtW2 / 2, pbtY2 + pbtH2 / 2 + 7);
+                roundRectPath(ctx, pcx2 + 50 + pbtW2, pbtY2, pbtW2, pbtH2, pbtH2 / 2);
+                ctx.fillStyle = themed ? 'rgba(128,128,128,.10)' : '#ffffff'; ctx.fill();
+                ctx.strokeStyle = themed ? tok.cardBorder : '#D6CEC1'; ctx.lineWidth = 2; ctx.stroke();
+                ctx.fillStyle = cardInk; ctx.fillText('Done', pcx2 + 50 + pbtW2 + pbtW2 / 2, pbtY2 + pbtH2 / 2 + 7);
+              }
+            }
+          }
+
+          imgEl.src = c.toDataURL('image/jpeg', 0.86);
+        } catch (e) { console.error('afterPreview', e); }
+      }
+
       // Welcome screen between guests: the event's own background, a sample print
       // of their layout, and the event name with "Tap to start". Drawn at the
       // camera's shape so it fills the live view exactly.
@@ -57401,6 +58457,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             welcomeImg.src = welcomeDataUrl;
             var prev = document.getElementById('welcomePreview'); if (prev) prev.src = welcomeDataUrl;
             try { if (typeof syncSetupVideoPreview === 'function') syncSetupVideoPreview(); } catch (e) { }
+            renderResultBg();
             guestRender();
             return;
           }
@@ -57463,125 +58520,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             var prev2 = document.getElementById('welcomePreview');
             if (prev2) prev2.src = welcomeDataUrl;
             try { if (typeof syncSetupVideoPreview === 'function') syncSetupVideoPreview(); } catch (e) { }
+            renderResultBg();
             guestRender();
             return;
           }
 
           // ---- Card mode (default): branded event card with sample print ----
-          if (backdropPreset === 'custom' && backgroundImg) {
-            drawImageCover(ctx, backgroundImg, 0, 0, W, H, cropFocus);
-          } else {
-            drawBackdrop(ctx, W, H);
-          }
-          // a soft darkroom vignette so the print and the card stand out
-          var vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
-          vg.addColorStop(0, 'rgba(28,26,30,0)'); vg.addColorStop(1, 'rgba(28,26,30,.42)');
-          ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
-
-          // Optional Background Aura & Aesthetics
-          var pal = (typeof WELCOME_PALETTES !== 'undefined' && WELCOME_PALETTES[welcomePalette]) || (typeof WELCOME_PALETTES !== 'undefined' ? WELCOME_PALETTES['charm-pink'] : { decoPrimary: '#1C233C', decoSecondary: '#F28DA0', decoAccent: '#DDA59A' });
-          var decoPrimary = pal.decoPrimary || '#1C233C';
-          var decoSecondary = pal.decoSecondary || '#F28DA0';
-          var decoAccent = pal.decoAccent || '#DDA59A';
-
-          if (welcomeDecoStyle === 'aurora-sparkles') {
-            var aura = ctx.createLinearGradient(0, 0, W, H);
-            aura.addColorStop(0, '#FFE8F0');
-            aura.addColorStop(0.5, '#F3E8FF');
-            aura.addColorStop(1, '#FFF2EA');
-            ctx.fillStyle = aura;
-            ctx.fillRect(0, 0, W, H);
-          } else if (welcomeDecoStyle === 'ribbon-waves') {
-            ctx.save();
-            // Top-Left Wave
-            ctx.fillStyle = decoPrimary;
-            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, H * 0.32);
-            ctx.bezierCurveTo(W * 0.08, H * 0.22, W * 0.18, H * 0.08, W * 0.40, 0);
-            ctx.closePath(); ctx.fill();
-
-            ctx.fillStyle = decoSecondary;
-            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, H * 0.46);
-            ctx.bezierCurveTo(W * 0.06, H * 0.32, W * 0.18, H * 0.16, W * 0.34, 0);
-            ctx.closePath(); ctx.fill();
-
-            ctx.strokeStyle = decoAccent;
-            ctx.lineWidth = Math.max(2.5, Math.round(W * 0.0025));
-            ctx.beginPath(); ctx.moveTo(0, H * 0.50);
-            ctx.bezierCurveTo(W * 0.08, H * 0.36, W * 0.22, H * 0.18, W * 0.38, 0);
-            ctx.stroke();
-
-            ctx.strokeStyle = decoSecondary; ctx.globalAlpha = 0.55;
-            ctx.lineWidth = Math.max(1.5, Math.round(W * 0.0018));
-            ctx.beginPath(); ctx.moveTo(0, H * 0.54);
-            ctx.bezierCurveTo(W * 0.06, H * 0.46, W * 0.18, H * 0.44, W * 0.22, H * 0.56);
-            ctx.stroke();
-
-            // Bottom-Right Wave
-            ctx.globalAlpha = 1.0;
-            ctx.fillStyle = decoPrimary;
-            ctx.beginPath(); ctx.moveTo(W, H); ctx.lineTo(W * 0.60, H);
-            ctx.bezierCurveTo(W * 0.82, H * 0.92, W * 0.92, H * 0.78, W, H * 0.70);
-            ctx.closePath(); ctx.fill();
-
-            ctx.fillStyle = decoSecondary;
-            ctx.beginPath(); ctx.moveTo(W, H); ctx.lineTo(W * 0.66, H);
-            ctx.bezierCurveTo(W * 0.80, H * 0.84, W * 0.94, H * 0.68, W, H * 0.54);
-            ctx.closePath(); ctx.fill();
-
-            ctx.strokeStyle = decoAccent;
-            ctx.lineWidth = Math.max(2.5, Math.round(W * 0.0025));
-            ctx.beginPath(); ctx.moveTo(W * 0.62, H);
-            ctx.bezierCurveTo(W * 0.76, H * 0.80, W * 0.92, H * 0.64, W, H * 0.50);
-            ctx.stroke();
-
-            // Curls
-            ctx.strokeStyle = decoSecondary; ctx.globalAlpha = 0.55;
-            ctx.lineWidth = Math.max(1.5, Math.round(W * 0.0018));
-            ctx.beginPath(); ctx.moveTo(W * 0.12, H * 0.88);
-            ctx.bezierCurveTo(W * 0.20, H * 0.96, W * 0.40, H * 0.94, W * 0.52, H);
-            ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(W * 0.74, 0);
-            ctx.bezierCurveTo(W * 0.82, H * 0.12, W * 0.94, H * 0.18, W, H * 0.16);
-            ctx.stroke();
-
-            // Sparkle stars
-            ctx.globalAlpha = 1.0;
-            var drawStar = function (cx, cy, ro, ri, col) {
-              ctx.save(); ctx.fillStyle = col; ctx.beginPath();
-              for (var si = 0; si < 8; si++) {
-                var sa = si * Math.PI / 4, sr = (si % 2 === 0) ? ro : ri;
-                var spx = cx + sr * Math.cos(sa), spy = cy + sr * Math.sin(sa);
-                if (si === 0) ctx.moveTo(spx, spy); else ctx.lineTo(spx, spy);
-              }
-              ctx.closePath(); ctx.fill(); ctx.restore();
-            };
-            drawStar(W * 0.14, H * 0.32, 18, 5, decoSecondary);
-            drawStar(W * 0.10, H * 0.37, 10, 3, decoAccent);
-            drawStar(W * 0.88, H * 0.22, 20, 6, decoPrimary);
-            drawStar(W * 0.92, H * 0.28, 10, 3, decoSecondary);
-            drawStar(W * 0.84, H * 0.80, 18, 5, decoPrimary);
-            drawStar(W * 0.80, H * 0.85, 9, 3, decoSecondary);
-            ctx.restore();
-          } else if (welcomeDecoStyle === 'theatre-curtains') {
-            ctx.save();
-            var cwLeft = Math.round(W * 0.16);
-            var gL = ctx.createLinearGradient(0, 0, cwLeft, 0);
-            gL.addColorStop(0, '#B91C1C'); gL.addColorStop(0.5, '#DC2626'); gL.addColorStop(1, '#991B1B');
-            ctx.fillStyle = gL;
-            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(cwLeft, 0);
-            ctx.bezierCurveTo(cwLeft * 0.7, H * 0.45, cwLeft * 0.4, H * 0.55, cwLeft * 0.9, H);
-            ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
-            ctx.fillStyle = '#D4AF37'; ctx.fillRect(cwLeft * 0.35, H * 0.48, cwLeft * 0.30, 14);
-
-            var gR = ctx.createLinearGradient(W - cwLeft, 0, W, 0);
-            gR.addColorStop(0, '#991B1B'); gR.addColorStop(0.5, '#DC2626'); gR.addColorStop(1, '#B91C1C');
-            ctx.fillStyle = gR;
-            ctx.beginPath(); ctx.moveTo(W, 0); ctx.lineTo(W - cwLeft, 0);
-            ctx.bezierCurveTo(W - cwLeft * 0.7, H * 0.45, W - cwLeft * 0.4, H * 0.55, W - cwLeft * 0.9, H);
-            ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
-            ctx.fillStyle = '#D4AF37'; ctx.fillRect(W - cwLeft * 0.65, H * 0.48, cwLeft * 0.30, 14);
-            ctx.restore();
-          }
+          var bgTok = drawWelcomeBackdropLayer(ctx, W, H, { usePoster: false });
+          var decoPrimary = bgTok.decoPrimary;
+          var decoSecondary = bgTok.decoSecondary;
+          var decoAccent = bgTok.decoAccent;
 
           // Sample print of their layout (drawn people, never a real guest's photo)
           var showSample = welcomeSampleOn !== false;
@@ -57873,6 +58821,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           welcomeImg.src = welcomeDataUrl;
           var prev = document.getElementById('welcomePreview'); if (prev) prev.src = welcomeDataUrl;
           try { if (typeof syncSetupVideoPreview === 'function') syncSetupVideoPreview(); } catch (e) { }
+          renderResultBg();
           guestRender();
         } catch (e) { console.error('welcome', e); }
       }
@@ -57989,6 +58938,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           }
         }
         try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
+        try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
         try { if (typeof usbSyncStageCanvases === 'function') usbSyncStageCanvases(); } catch (e) { }
       }
 
@@ -59047,6 +59997,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (state !== 'capturing') document.body.classList.remove('shooting');
         try { refreshPrintFab(); } catch (e) { }
         try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
+        try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
         try { if (typeof usbSyncStageCanvases === 'function') usbSyncStageCanvases(); } catch (e) { }
         var r = pickResolve; pickResolve = null;
         guestRender();
@@ -62508,7 +63459,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           guestDesigns: cleanDesigns, activeDesignIdx: activeDesignIdx, includeFramesInDesignPick: includeFramesInDesignPick,
           boothType: boothType, btCfg: JSON.parse(JSON.stringify(btCfg)), tpls: tplsSnapshot(),
           firstTimerSec: firstTimerSec, timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
-          reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake, qrPop: qrPopOn, hideQr: hideQrOn, qrPopDelay: qrPopDelay,
+          reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake, qrPop: qrPopOn, hideQr: hideQrOn, qrPopDelay: qrPopDelay, qrMatchWelcome: qrMatchWelcome,
           shareStation: shareStationOn, shareStationHandoff: shareStationHandoff, shareStationPrivacy: shareStationPrivacy,
           outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, gifMotionStyle: gifMotionStyle, gifLoopMode: gifLoopMode, gifSlideCard: gifSlideCard, gifSlideBg: gifSlideBg, gifSlideFrame: gifSlideFrame, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipNumbers: flipNumbers, flipCues: flipCues, flipGridPreset: flipGridPreset, flipPrinterPool: flipPrinterPool, flipPoolMode: flipPoolMode, flipCoverStyle: flipCoverStyle, flipCoverAssetId: flipCoverAssetId, flipBackQr: flipBackQr, flipBackText: flipBackText,
           backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
@@ -62653,6 +63604,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (typeof s.qrPop === 'boolean') { qrPopOn = s.qrPop; refreshQrPopUI(); }
           if (typeof s.hideQr === 'boolean') { hideQrOn = s.hideQr; refreshQrPopUI(); }
           if (typeof s.qrPopDelay === 'number') { qrPopDelay = Math.max(0, Math.min(15, s.qrPopDelay)); setSelectValue('qrPopDelaySelect', qrPopDelay); }
+          qrMatchWelcome = (typeof s.qrMatchWelcome === 'boolean') ? s.qrMatchWelcome : true;
+          if (typeof refreshAfterThemeUI === 'function') refreshAfterThemeUI();
           if (typeof s.shareStation === 'boolean') { shareStationOn = s.shareStation; refreshShareStationUI(); }
           if (typeof s.shareStationHandoff === 'string') { shareStationHandoff = s.shareStationHandoff; setSelectValue('shareStationHandoffSelect', s.shareStationHandoff); }
           if (typeof s.shareStationPrivacy === 'string') { shareStationPrivacy = s.shareStationPrivacy; setSelectValue('shareStationPrivacySelect', s.shareStationPrivacy); }
@@ -64825,7 +65778,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!el) return;
         if (im) { var url = ASSETS[brandId('c')].url; if (el.getAttribute('src') !== url) el.src = url; }
         document.body.classList.toggle('has-client', !!im);
-        if (pw && pw.hidden !== !im) { pw.hidden = !im; if (typeof scheduleDock === 'function') scheduleDock(); }
+        if (pw && !pw.hidden) { pw.hidden = true; if (typeof scheduleDock === 'function') scheduleDock(); }
       }
       function refreshBrandUI() {
         if (!brandEls) return;
@@ -64877,13 +65830,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           col.style.cssText = 'left:' + (0.024 * W) + 'px;top:' + padY + 'px;width:' + colW + 'px;height:' + (H - 2 * padY) + 'px;';
           var px = function (p) { return (p * W / 100) + 'px'; };
           brandEls.bName.style.fontSize = px(2.2);
-          brandEls.bName.style.visibility = cImg ? 'hidden' : '';
+          brandEls.bName.style.visibility = 'hidden';
           col.querySelector('.bpv-msg').style.fontSize = px(2.6);
           col.querySelector('.bpv-sub').style.fontSize = px(0.85);
           brandEls.ev.style.fontSize = px(2); brandEls.ev.style.maxWidth = colW + 'px';
           brandEls.dt.style.fontSize = px(0.9);
           brandEls.pwr.style.fontSize = px(0.72);
-          brandEls.pwr.hidden = !cImg;
+          brandEls.pwr.hidden = true;
           var isCustomW = typeof welcomeCustomOn !== 'undefined' && welcomeCustomOn;
           col.querySelector('.bpv-msg').textContent = isCustomW && (welcomeGreeting != null && welcomeGreeting !== '') ? welcomeGreeting : 'Welcome!';
           var isCh2 = /charm/i.test(((window.__PB && window.__PB.label) || '') + ' ' + (labelInput.value || ''));
@@ -70691,7 +71644,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var ltCache = { sig: '', urls: {} }, ltQueue = [], ltDirty = true, ltTimer = null, ltBusy = false;
       function layoutDesignSig() {
         var s = snapshotSetup({ skipDesignSync: true });
-        ['layout', 'activeFrame', 'chooseIds', 'frameMode', 'guestPick', 'guestLayouts', 'guestDesigns', 'activeDesignIdx', 'firstTimerSec', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview', 'allowRetake', 'qrPop', 'qrPopDelay', 'shareStation', 'shareStationHandoff', 'shareStationPrivacy'].forEach(function (k) { delete s[k]; });
+        ['layout', 'activeFrame', 'chooseIds', 'frameMode', 'guestPick', 'guestLayouts', 'guestDesigns', 'activeDesignIdx', 'firstTimerSec', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview', 'allowRetake', 'qrPop', 'qrPopDelay', 'qrMatchWelcome', 'shareStation', 'shareStationHandoff', 'shareStationPrivacy'].forEach(function (k) { delete s[k]; });
         return JSON.stringify(s) + '|' + (backgroundImg ? backgroundImg.src.length : 0) + '|' + labelInput.value;
       }
       function setLayoutThumb(btn, url) {
@@ -70838,6 +71791,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (nx) {
           nx.hidden = !nextTab;
           if (nextTab) { nb.textContent = 'Next: ' + nextTab.dataset.label + ' →'; nb.dataset.pane = nextTab.dataset.pane; nh.textContent = D7_HINT[nextTab.dataset.pane] || ''; }
+        }
+        if (p === 'share') {
+          try { if (typeof renderAfterPreview === 'function') renderAfterPreview(); } catch (e) { }
         }
       }
       document.getElementById('d7NextBtn').addEventListener('click', function () {

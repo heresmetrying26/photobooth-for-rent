@@ -30226,11 +30226,22 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
       }
       function nativeCamPageBgHex() {
+        var now = Date.now();
+        if (nativeCam._bgHex && now - (nativeCam._bgHexAt || 0) < 5000) return nativeCam._bgHex;
+        var out = '#f5f1ea';
         try {
           var v = getComputedStyle(document.documentElement).getPropertyValue('--bg-page').trim();
-          if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
+          if (/^#[0-9a-fA-F]{6}$/.test(v)) out = v;
         } catch (e) { }
-        return '#f5f1ea';
+        nativeCam._bgHex = out;
+        nativeCam._bgHexAt = now;
+        return out;
+      }
+      function isWelcomeCoveringCamera() {
+        try {
+          var welEl = document.getElementById('welcomeOverlay');
+          return !!(welEl && welEl.classList.contains('on') && !welEl.classList.contains('dismissing') && typeof attractMode !== 'undefined' && attractMode !== 'camera');
+        } catch (e) { return false; }
       }
       function nativeCamPostLayout(opts) {
         var o = opts || {};
@@ -30283,7 +30294,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (typeof tabSetup !== 'undefined' && tabSetup && !tabSetup.classList.contains('hidden') && typeof curStep !== 'undefined' && curStep === 4) return { ms: 33, max: 640, q: 0.74 };
         } catch (e) { }
         try {
-          if (typeof tabSession !== 'undefined' && tabSession && !tabSession.classList.contains('hidden') && state !== 'result' && !(sess && sess.reviewing) && !nativeCam.usingNativeStage) return { ms: 33, max: 640, q: 0.74 };
+          if (typeof tabSession !== 'undefined' && tabSession && !tabSession.classList.contains('hidden') && state !== 'result' && !(sess && sess.reviewing) && !nativeCam.usingNativeStage && !isWelcomeCoveringCamera()) return { ms: 33, max: 640, q: 0.74 };
         } catch (e) { }
         try { if (typeof hfWanted === 'function' && hfWanted()) return { ms: 140, max: 320, q: 0.68 }; } catch (e) { }
         try {
@@ -30365,24 +30376,32 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         try { showingResult = state === 'result' || !!(sess && sess.reviewing) || !!(typeof shotReview !== 'undefined' && shotReview && shotReview.classList.contains('on')) || (previewCanvas && previewCanvas.style.display !== 'none' && previewCanvas.width > 0 && state !== 'capturing'); } catch (e) { }
         var isEditing = false;
         try { isEditing = typeof layoutEditorActive !== 'undefined' && !!layoutEditorActive; } catch (e) { }
+        var welCovering = isWelcomeCoveringCamera();
         var isFullStage = document.body.classList.contains('stage-full');
         if (isFullStage && (window.scrollY || window.pageYOffset)) {
           try { window.scrollTo(0, 0); } catch (e) { }
         }
         var sf = document.getElementById('stageFrame');
-        var rect = (inSession && !showingResult && !isEditing && sf) ? sf.getBoundingClientRect() : null;
+        var rect = (inSession && !showingResult && !isEditing && !welCovering && sf) ? sf.getBoundingClientRect() : null;
         var mir = false; try { mir = mirrorPreview(); } catch (e) { }
         var filt = ''; try { filt = liveFilterCss(); } catch (e) { }
         var vpH = window.innerHeight || 9999;
-        var canUseNativeStage = inSession && !showingResult && !isEditing && rect && rect.width > 4 && rect.height > 4 && rect.bottom > 0 && rect.top < vpH;
+        var canUseNativeStage = inSession && !showingResult && !isEditing && !welCovering && rect && rect.width > 4 && rect.height > 4 && rect.bottom > 0 && rect.top < vpH;
         if (canUseNativeStage) {
           nativeCam.usingNativeStage = true;
           htmlEl.classList.add('pb-ios-nativecam', 'pb-nativecam-stage');
-          if (nativeCam.stageCanvas) nativeCam.stageCanvas.style.display = 'none';
-          if (nativeCam.scpCanvas) nativeCam.scpCanvas.style.display = 'none';
+          if (nativeCam.stageCanvas && nativeCam.stageCanvas.style.display !== 'none') nativeCam.stageCanvas.style.display = 'none';
+          if (nativeCam.scpCanvas && nativeCam.scpCanvas.style.display !== 'none') nativeCam.scpCanvas.style.display = 'none';
           var rad = 0;
           if (!isFullStage && sf) {
-            try { rad = Math.round(parseFloat(getComputedStyle(sf).borderRadius) || 0); } catch (e) { }
+            var radKey = (rect.width | 0) + 'x' + (rect.height | 0);
+            if (nativeCam._radKey === radKey && typeof nativeCam._radVal === 'number') {
+              rad = nativeCam._radVal;
+            } else {
+              try { rad = Math.round(parseFloat(getComputedStyle(sf).borderRadius) || 0); } catch (e) { }
+              nativeCam._radKey = radKey;
+              nativeCam._radVal = rad;
+            }
           }
           nativeCamPostLayout({
             visible: true,
@@ -30396,16 +30415,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           });
         } else {
           nativeCam.usingNativeStage = false;
-          if (inSession && !showingResult && !isEditing && !nativeCam._rectRetry) {
+          if (inSession && !showingResult && !isEditing && !welCovering && !nativeCam._rectRetry) {
             nativeCam._rectRetry = true;
             requestAnimationFrame(function () { nativeCam._rectRetry = false; syncNativeCamLayout(); });
           }
           htmlEl.classList.remove('pb-ios-nativecam', 'pb-nativecam-stage');
           nativeCamPostLayout({ visible: false, x: 0, y: 0, w: 0, h: 0, mirror: !!mir, radius: 0, bg: nativeCamPageBgHex() });
           var hasNativeFrame = nativeCamHasFrame();
-          var stC = (inSession && !showingResult) ? ensureNativeCanvas('stage') : nativeCam.stageCanvas;
+          var showStageFallback = inSession && !showingResult && !welCovering;
+          var stC = showStageFallback ? ensureNativeCanvas('stage') : nativeCam.stageCanvas;
           if (stC) {
-            stC.style.display = (inSession && !showingResult && hasNativeFrame) ? 'block' : 'none';
+            stC.style.display = (showStageFallback && hasNativeFrame) ? 'block' : 'none';
             stC.style.transform = mir ? 'scaleX(-1)' : 'scaleX(1)';
             stC.style.filter = filt;
           }
@@ -30415,7 +30435,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             scC.style.transform = mir ? 'scaleX(-1)' : 'scaleX(1)';
             scC.style.filter = filt;
           }
-          if (hasNativeFrame) paintNativeCanvases();
+          if (hasNativeFrame && (showStageFallback || inSetup4)) paintNativeCanvases();
         }
         nativeCamSyncPump();
       }
@@ -31183,7 +31203,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         helperSees: false, helperName: '', helperUp: false,
         camera: null, name: '', active: false, gen: 0, libGen: 0, vfOn: false, initing: null,
         canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null,
-        stageCanvas: null, scpCanvas: null,
+        stageCanvas: null, scpCanvas: null, frameSeq: 0,
         lastFrameAt: 0, shooting: false, holdLive: false, olderCanon: false, lensMf: false, canonDslr: false, canonKeepLive: false, stallShown: false, devId: '',
         rawW: 0, rawH: 0, photoAspect: 0, aspectCrop: false, aspectWarned: false,   // matches live view to cropped still aspect (e.g. Canon 16:9 / 1:1)
         frameAt: 0, shotAt: 0, kickAt: 0,                        // real time of the last picture / of the last photo (while live view is still to come back) / of the last "live view again" request
@@ -31893,6 +31913,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             }
             usbCam.ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, sw, sh); bmp.close();
             usbCam.hasFrame = true; fails = 0;
+            usbCam.frameSeq = (usbCam.frameSeq || 0) + 1;
             usbCam.lastFrameAt = Date.now();
             usbCam.frameAt = usbCam.lastFrameAt;   // the real time of the last picture (lastFrameAt is held back during the after-photo grace)
             if (IS_IOS_APP) { try { usbSyncStageCanvases(); } catch (e) { } }
@@ -31962,6 +31983,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         return usbCam.scpCanvas;
       }
+      function usbEnsureStream() {
+        if (!usbCam.canvas) return null;
+        const tr = usbCam.stream && usbCam.stream.getVideoTracks()[0];
+        if (!tr || tr.readyState === 'ended') usbCam.stream = usbCam.canvas.captureStream(30);
+        currentStream = usbCam.stream;
+        return usbCam.stream;
+      }
       function usbSyncStageCanvases(clearOnly) {
         if (!IS_IOS_APP) return;
         var src = usbCam.canvas;
@@ -31982,26 +32010,28 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var showScp = live && inSetup4 && !vgOn && !hasErr;
         var mir = false; try { mir = mirrorPreview(); } catch (e) { }
         var filt = ''; try { filt = liveFilterCss(); } catch (e) { }
-        var stC = showStage ? usbEnsureCanvas('stage') : usbCam.stageCanvas;
-        if (stC) {
-          stC.style.display = showStage ? 'block' : 'none';
-          if (showStage) {
-            stC.style.transform = mir ? 'scaleX(-1)' : 'scaleX(1)';
-            stC.style.filter = filt;
-            if (stC.width !== src.width || stC.height !== src.height) { stC.width = src.width; stC.height = src.height; }
-            try { stC.getContext('2d').drawImage(src, 0, 0); } catch (e) { }
+        var tfStr = mir ? 'scaleX(-1)' : 'scaleX(1)';
+        var seq = usbCam.frameSeq || 0;
+        var paintTarget = function (el, show) {
+          if (!el) return;
+          var wantDisp = show ? 'block' : 'none';
+          var wasShown = el.style.display === 'block';
+          if (el.style.display !== wantDisp) el.style.display = wantDisp;
+          if (!show) return;
+          if (el._tf !== tfStr) { el.style.transform = tfStr; el._tf = tfStr; }
+          if (el._filt !== filt) { el.style.filter = filt; el._filt = filt; }
+          var resized = (el.width !== src.width || el.height !== src.height);
+          if (resized) { el.width = src.width; el.height = src.height; }
+          if (!seq || el._drawnSeq !== seq || resized || !wasShown) {
+            try {
+              var ctx = el._ctx || (el._ctx = el.getContext('2d', { alpha: false }) || el.getContext('2d'));
+              if (ctx) ctx.drawImage(src, 0, 0);
+              el._drawnSeq = seq;
+            } catch (e) { }
           }
-        }
-        var scC = showScp ? usbEnsureCanvas('scp') : usbCam.scpCanvas;
-        if (scC) {
-          scC.style.display = showScp ? 'block' : 'none';
-          if (showScp) {
-            scC.style.transform = mir ? 'scaleX(-1)' : 'scaleX(1)';
-            scC.style.filter = filt;
-            if (scC.width !== src.width || scC.height !== src.height) { scC.width = src.width; scC.height = src.height; }
-            try { scC.getContext('2d').drawImage(src, 0, 0); } catch (e) { }
-          }
-        }
+        };
+        paintTarget(showStage ? usbEnsureCanvas('stage') : usbCam.stageCanvas, showStage);
+        paintTarget(showScp ? usbEnsureCanvas('scp') : usbCam.scpCanvas, showScp);
       }
       function usbStopLive() { usbCam.active = false; usbCam.gen++; try { usbSyncStageCanvases(true); } catch (e) { } }
       // Watchdog: a camera that hangs mid-transfer never throws an error, so the loop above can't notice it.
@@ -32191,15 +32221,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               usbCam.shotsDone = false;
               usbCam.sleeping = false;
               camSleeping = false;
-              try {
-                const tr = usbCam.stream && usbCam.stream.getVideoTracks()[0];
-                if (!tr || tr.readyState === 'ended') {
-                  usbCam.stream = usbCam.canvas.captureStream(30);
-                  currentStream = usbCam.stream;
-                }
-                if (video.srcObject !== usbCam.stream) video.srcObject = usbCam.stream;
-                if (video.paused) { const pp = video.play(); if (pp && pp.catch) pp.catch(function () { }); }
-              } catch (e) { }
+              if (!IS_IOS_APP) {
+                try {
+                  usbEnsureStream();
+                  if (video.srcObject !== usbCam.stream) video.srcObject = usbCam.stream;
+                  if (video.paused) { const pp = video.play(); if (pp && pp.catch) pp.catch(function () { }); }
+                } catch (e) { }
+              }
               const t0 = Date.now();
               while (!usbCam.frameAt && usbCam.active && Date.now() - t0 < 10000) await new Promise(r => setTimeout(r, 80));
               try { usbSyncStageCanvases(); } catch (e) { }
@@ -32571,13 +32599,18 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (Date.now() - t0 > 25000) { usbStopLive(); const e = new Error('no live view'); e.name = 'UsbNoLiveView'; throw e; }
             await new Promise(r => setTimeout(r, 100));
           }
-          const tr = usbCam.stream && usbCam.stream.getVideoTracks()[0];
-          if (!tr || tr.readyState === 'ended') usbCam.stream = usbCam.canvas.captureStream(30);
-          currentStream = usbCam.stream;
           if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
-          video.srcObject = usbCam.stream;
-          await video.play();
-          listenVideoFrames(video);
+          if (!IS_IOS_APP) {
+            usbEnsureStream();
+            video.srcObject = usbCam.stream;
+            await video.play();
+            listenVideoFrames(video);
+          } else {
+            // iPad WKWebView renders USB DSLR frames directly onto #usbStageCanvas / #usbScpCanvas;
+            // skip captureStream(30) -> hidden <video> to save continuous 30Hz compositor & stream overhead.
+            currentStream = null;
+            if (video.srcObject) { try { video.pause(); } catch (e) { } video.srcObject = null; }
+          }
           streamActive = true;
           currentDeviceId = USB_CAM_ID;
           if (Array.from(cameraSelect.options).some(o => o.value === USB_CAM_ID)) cameraSelect.value = USB_CAM_ID;
@@ -33023,6 +33056,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // The rental / trial time-left chip (made by the server's watcher script) goes
       // into the Setup bar or the dock instead of floating over buttons.
       function placeTimeChip() {
+        if (document.hidden) return;
         var chip = document.getElementById('pbTimeChip'); if (!chip) return;
         var ss = document.getElementById('startScreen');
         var startGone = !ss || ss.classList.contains('gone');
@@ -33170,19 +33204,26 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var stageRO = new ResizeObserver(function () { requestAnimationFrame(function () { applyStageAspect(); }); });
         ['sessionControls', 'tabSession', 'stageFrame'].forEach(function (id) { var el = document.getElementById(id); if (el) stageRO.observe(el); });
       } catch (e) { }
+      var _resizeAspectRaf = 0;
       window.addEventListener('resize', function () {
-        applyStageAspect();
-        if (typeof renderWelcome === 'function') renderWelcome();
+        if (!_resizeAspectRaf) {
+          _resizeAspectRaf = requestAnimationFrame(function () {
+            _resizeAspectRaf = 0;
+            applyStageAspect();
+          });
+        }
+        if (typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
+        else if (typeof renderWelcome === 'function') renderWelcome();
       });
-      window.addEventListener('orientationchange', function () {
-        setTimeout(function () { applyStageAspect(); if (typeof renderWelcome === 'function') renderWelcome(); }, 120);
-        setTimeout(function () { applyStageAspect(); if (typeof renderWelcome === 'function') renderWelcome(); }, 350);
-      });
+      var _orientRefit1 = 0, _orientRefit2 = 0;
+      function scheduleOrientationRefit() {
+        clearTimeout(_orientRefit1); clearTimeout(_orientRefit2);
+        _orientRefit1 = setTimeout(function () { applyStageAspect(); if (typeof renderWelcome === 'function') renderWelcome(); }, 120);
+        _orientRefit2 = setTimeout(function () { applyStageAspect(); if (typeof renderWelcome === 'function') renderWelcome(); }, 350);
+      }
+      window.addEventListener('orientationchange', scheduleOrientationRefit);
       if (window.screen && window.screen.orientation && typeof window.screen.orientation.addEventListener === 'function') {
-        window.screen.orientation.addEventListener('change', function () {
-          setTimeout(function () { applyStageAspect(); if (typeof renderWelcome === 'function') renderWelcome(); }, 120);
-          setTimeout(function () { applyStageAspect(); if (typeof renderWelcome === 'function') renderWelcome(); }, 350);
-        });
+        window.screen.orientation.addEventListener('change', scheduleOrientationRefit);
       }
       video.addEventListener('loadedmetadata', function () { applyStageAspect(); });
       video.addEventListener('resize', function () { applyStageAspect(); });
@@ -35763,14 +35804,28 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }, false);
 
       // HTML5 Gamepad API Poller (for wireless pocket gamepads, Bluetooth pedals)
+      // Event-driven: only polls while at least one gamepad is actually connected (zero idle CPU wakeups).
       (function setupGamepadRemote() {
         var prevButtons = {};
+        var gpTimer = null;
+        function hasConnectedPad() {
+          try {
+            var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+            for (var i = 0; i < pads.length; i++) { if (pads[i]) return true; }
+          } catch (e) { }
+          return false;
+        }
+        function stopGamepadPoll() {
+          if (gpTimer) { clearInterval(gpTimer); gpTimer = null; }
+        }
         function pollGamepads() {
           try {
             var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+            var any = false;
             for (var i = 0; i < pads.length; i++) {
               var pad = pads[i];
               if (!pad) continue;
+              any = true;
               var prev = prevButtons[pad.index] || [];
               for (var b = 0; b < pad.buttons.length; b++) {
                 var pressed = pad.buttons[b].pressed;
@@ -35781,9 +35836,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               }
               prevButtons[pad.index] = pad.buttons.map(function (btn) { return btn.pressed; });
             }
+            if (!any) stopGamepadPoll();
           } catch (e) { }
         }
-        setInterval(pollGamepads, 120);
+        function startGamepadPoll() {
+          if (!gpTimer) gpTimer = setInterval(pollGamepads, 120);
+        }
+        window.addEventListener('gamepadconnected', startGamepadPoll);
+        window.addEventListener('gamepaddisconnected', function () {
+          if (!hasConnectedPad()) { prevButtons = {}; stopGamepadPoll(); }
+        });
+        if (hasConnectedPad()) startGamepadPoll();
       })();
       // Result card: the guest's Print button lives next to Done, under the QR.
       (function () {
@@ -51121,6 +51184,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return;
         }
         var vgSrc = currentStream || video.srcObject;
+        if (!vgSrc && IS_IOS_APP && currentDeviceId === USB_CAM_ID && typeof usbEnsureStream === 'function') {
+          vgSrc = usbEnsureStream();
+        }
         // iPad / iPhone app: WebKit shows a camera picture in one <video> at a time. The booth's own <video> and the Setup
         // camera preview still holding the same stream is what froze this screen, so let go of them while it is open.
         var vgIos = false; try { vgIos = /PB4uIOS/.test(navigator.userAgent || '') && !!vgSrc && currentDeviceId !== USB_CAM_ID; } catch (e) { }
@@ -51135,6 +51201,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // Back from the guestbook on the iPad / iPhone app: the booth's own <video> gets the camera picture again.
       function vgIosRelease() {
         try {
+          if (IS_IOS_APP && currentDeviceId === USB_CAM_ID && usbCam && usbCam.stream) {
+            try { usbCam.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { }
+            usbCam.stream = null;
+            if (currentStream) currentStream = null;
+            return;
+          }
           if (!/PB4uIOS/.test(navigator.userAgent || '') || !currentStream || currentDeviceId === USB_CAM_ID || video.srcObject) return;
           video.srcObject = currentStream;
           var pp = video.play(); if (pp && pp.catch) pp.catch(function () { });
@@ -57475,7 +57547,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var firstSlide = attractPlaylist.length ? attractPlaylist[0] : (attractPosterUrl ? { url: attractPosterUrl, type: attractPosterType } : null);
         var showVidPv = attractMode === 'poster' && !!(firstSlide && firstSlide.type === 'video' && firstSlide.url);
         var inSetup = typeof tabSetup === 'undefined' || !tabSetup || !tabSetup.classList.contains('hidden');
-        if (showVidPv) {
+        if (showVidPv && inSetup) {
           if (prevVid2.dataset.curSrc !== firstSlide.url) {
             prevVid2.dataset.curSrc = firstSlide.url;
             prevVid2.src = firstSlide.url;
@@ -57488,18 +57560,20 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           prevVid2.setAttribute('webkit-playsinline', '');
           prevVid2.style.display = '';
           if (prev2) prev2.style.display = 'none';
-          if (inSetup) {
-            if (prevVid2.paused) {
-              var pp = prevVid2.play();
-              if (pp && pp.catch) pp.catch(function () { });
-            }
-          } else {
-            prevVid2.pause();
+          if (prevVid2.paused) {
+            var pp = prevVid2.play();
+            if (pp && pp.catch) pp.catch(function () { });
           }
         } else {
+          // Release the Setup preview video decoder when leaving Setup or switching modes so
+          // iPad / Android hardware video decoder slots stay dedicated to #welcomeVideo.
           prevVid2.pause();
+          if (prevVid2.dataset.curSrc || prevVid2.getAttribute && prevVid2.getAttribute('src')) {
+            prevVid2.dataset.curSrc = '';
+            try { prevVid2.removeAttribute('src'); prevVid2.load(); } catch (e) { }
+          }
           prevVid2.style.display = 'none';
-          if (prev2) prev2.style.display = '';
+          if (prev2 && !showVidPv) prev2.style.display = '';
         }
       }
       function setAttractModeUI(mode) {
@@ -57563,6 +57637,49 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           } catch (e) { }
         }
 
+        function captureAttractVideoThumb(item) {
+          if (!item || item.type !== 'video' || !item.url || item.thumb || item._thumbPending) return;
+          if (typeof document === 'undefined' || !document.createElement) return;
+          item._thumbPending = true;
+          try {
+            var tv = document.createElement('video');
+            if (!tv || typeof tv.addEventListener !== 'function') return;
+            tv.muted = true;
+            tv.playsInline = true;
+            tv.preload = 'metadata';
+            var done = false;
+            var cleanup = function () {
+              if (done) return;
+              done = true;
+              item._thumbPending = false;
+              clearTimeout(tm);
+              try { tv.pause(); tv.removeAttribute('src'); tv.load(); } catch (e) { }
+            };
+            var grab = function () {
+              if (done) return;
+              try {
+                if (tv.videoWidth > 0 && tv.videoHeight > 0) {
+                  var c = document.createElement('canvas');
+                  c.width = 76; c.height = 76;
+                  var ctx = c.getContext('2d');
+                  if (ctx) {
+                    var k = Math.max(76 / tv.videoWidth, 76 / tv.videoHeight);
+                    var dw = tv.videoWidth * k, dh = tv.videoHeight * k;
+                    ctx.drawImage(tv, (76 - dw) / 2, (76 - dh) / 2, dw, dh);
+                    item.thumb = c.toDataURL('image/jpeg', 0.72);
+                  }
+                }
+              } catch (e) { }
+              cleanup();
+              if (item.thumb && attractPlaylist.indexOf(item) >= 0) renderPlaylistGridUI();
+            };
+            var tm = setTimeout(cleanup, 2500);
+            tv.addEventListener('loadeddata', grab, { once: true });
+            tv.addEventListener('error', cleanup, { once: true });
+            tv.src = item.url;
+          } catch (e) { item._thumbPending = false; }
+        }
+
         function renderPlaylistGridUI() {
           var grid = document.getElementById('attractPlaylistGrid');
           var badge = document.getElementById('playlistCountBadge');
@@ -57600,7 +57717,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             h += '<div style="display:flex; align-items:center; gap:8px; overflow:hidden;">';
             h += '<span style="font-size:12px; font-weight:800; color:var(--brand); min-width:16px;">' + (idx + 1) + '</span>';
             if (isV) {
-              h += '<video src="' + escSlideText(it.url) + '" muted playsinline style="width:38px; height:38px; border-radius:6px; object-fit:cover; background:#000; flex-shrink:0;"></video>';
+              // Avoid persistent <video> thumbnails in Setup so hardware video decoder slots stay free on iPad/Android.
+              if (it.thumb) {
+                h += '<img src="' + escSlideText(it.thumb) + '" alt="Video slide" style="width:38px; height:38px; border-radius:6px; object-fit:cover; background:#000; flex-shrink:0;">';
+              } else {
+                h += '<div style="width:38px; height:38px; border-radius:6px; background:#18181B; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;opacity:.9;"><path d="M8 5v14l11-7z"/></svg></div>';
+                captureAttractVideoThumb(it);
+              }
             } else {
               h += '<img src="' + escSlideText(it.url) + '" style="width:38px; height:38px; border-radius:6px; object-fit:cover; background:#000; flex-shrink:0;">';
             }
@@ -57773,9 +57896,20 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                   ? (/\.webm$/i.test(fName) ? 'video/webm' : /\.mov$/i.test(fName) ? 'video/quicktime' : 'video/mp4')
                   : 'image/gif');
                 try {
-                  if (typeof f.arrayBuffer === 'function') {
+                  var CHUNK_BYTES = 4 * 1024 * 1024;
+                  if (typeof f.slice === 'function' && f.size > CHUNK_BYTES) {
+                    // Read large videos in 4 MB chunks to avoid a single 50 MB contiguous ArrayBuffer RAM spike on 2 GB tablets.
+                    var parts = [];
+                    for (var off = 0; off < f.size; off += CHUNK_BYTES) {
+                      parts.push(await f.slice(off, Math.min(f.size, off + CHUNK_BYTES)).arrayBuffer());
+                    }
+                    blobToStore = new Blob(parts, { type: inferredMime });
+                    parts.length = 0;
+                    parts = null;
+                  } else if (typeof f.arrayBuffer === 'function') {
                     var ab = await f.arrayBuffer();
                     blobToStore = new Blob([ab], { type: inferredMime });
+                    ab = null;
                   }
                 } catch (cloneErr) { console.warn('Blob clone fallback', cloneErr); }
 
@@ -59045,6 +59179,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         // Pause idle video & audio immediately on tap while the last frame fades out cleanly.
         try { stopPlaylistPlayback(); } catch (err) { }
         welcomeOverlay.classList.add('dismissing');
+        // Unhide native iPad camera preview right as the welcome screen starts fading out.
+        try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (err) { }
         setTimeout(function () {
           beginGuestFlow(true);
           setTimeout(function () {
@@ -62147,8 +62283,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       })();
       function bgLiveWanted() {
         if (typeof vgIsOpen === 'function' && vgIsOpen()) return false;      // the video guestbook is open: nothing else should be using the phone's processor
+        const sz = (typeof camVideoSize === 'function') ? camVideoSize() : { w: video.videoWidth, h: video.videoHeight };
         return bgRep.mode !== 'off' && bgRep.live && streamActive && state !== 'result' && video.style.display !== 'none' &&
-          !!video.videoWidth && (bgRep.mode === 'green' || segReady()) && !document.hidden;
+          !!(sz && sz.w) && (bgRep.mode === 'green' || segReady()) && !document.hidden;
       }
       function startBgLive() {
         if (bgLive.raf || !bgLiveWanted()) { if (!bgLiveWanted()) stopBgLive(); return; }
@@ -62168,13 +62305,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (now - bgLive.last < bgLive.gap) return;
         bgLive.last = now;
         const t0 = performance.now();
-        const vw = video.videoWidth, vh = video.videoHeight, k = Math.min(1, (bgRep.mode === 'green' ? bgLive.side : 800) / Math.max(vw, vh));
+        const src = (typeof camFrameSource === 'function') ? camFrameSource() : video;
+        const sz = (typeof camVideoSize === 'function') ? camVideoSize() : { w: video.videoWidth, h: video.videoHeight };
+        const vw = (sz && sz.w) || video.videoWidth, vh = (sz && sz.h) || video.videoHeight;
+        if (!vw || !vh || !src) return;
+        const k = Math.min(1, (bgRep.mode === 'green' ? bgLive.side : 800) / Math.max(vw, vh));
         const w = Math.round(vw * k), h = Math.round(vh * k), c = bgLive.canvas;
         if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
         const x = c.getContext('2d', { willReadFrequently: bgRep.mode === 'green' });
         x.save();
         if (mirrorPreview()) { x.translate(w, 0); x.scale(-1, 1); }
-        x.drawImage(video, 0, 0, w, h);
+        x.drawImage(src, 0, 0, w, h);
         x.restore();
         try {
           if (bgRep.mode === 'green') chromaKey(x, w, h, true);
@@ -63889,38 +64030,60 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           attractRestoreHold = savedList.length ? savedList : null;
           (async function () {
             try {
+              var existingById = {};
+              for (var ei = 0; ei < attractPlaylist.length; ei++) {
+                var ex = attractPlaylist[ei];
+                if (ex && ex.id && ex.url) existingById[ex.id] = ex;
+              }
               var restored = [];
               if (Array.isArray(s.attractPlaylist) && s.attractPlaylist.length) {
                 for (var i = 0; i < s.attractPlaylist.length; i++) {
                   var it = s.attractPlaylist[i];
-                  var u = (it.url && !/^blob:/i.test(it.url)) ? it.url : '';       // a blob: address from an earlier session is dead
-                  try {
-                    if (typeof dbDo === 'function' && it.id) {
-                      var b = await dbDo('kv', 'readonly', function (st) { return st.get('attract_blob:' + it.id); });
-                      if (b && (b instanceof Blob || (b.size && b.type))) {
-                        u = URL.createObjectURL(b);
+                  var prevIt = it && it.id ? existingById[it.id] : null;
+                  var u = (prevIt && prevIt.url) ? prevIt.url : ((it.url && !/^blob:/i.test(it.url)) ? it.url : '');       // reuse live blob: URL for unchanged slide ids; discard dead saved blob: URLs
+                  if (!u) {
+                    try {
+                      if (typeof dbDo === 'function' && it.id) {
+                        var b = await dbDo('kv', 'readonly', function (st) { return st.get('attract_blob:' + it.id); });
+                        if (b && (b instanceof Blob || (b.size && b.type))) {
+                          u = URL.createObjectURL(b);
+                        }
                       }
-                    }
-                  } catch (e) { }
+                    } catch (e) { }
+                  }
                   if (!u && it.id && typeof ASSETS !== 'undefined') {
                     if (!ASSETS[it.id]) { try { await ensureAssets([it.id]); } catch (e) { } }
                     if (ASSETS[it.id]) u = ASSETS[it.id].url;
                   }
                   if (restoreSeq !== attractRestoreSeq) return;                      // a newer load took over
                   if (u) {
-                    restored.push({ id: it.id, url: u, type: it.type, name: it.name });
+                    restored.push({ id: it.id, url: u, type: it.type, name: it.name, thumb: (prevIt && prevIt.thumb) || '' });
                   }
                 }
               }
 
               if (restored.length) {
+                var oldUrls = attractPlaylist.map(function (x) { return x && x.url; }).filter(Boolean);
+                var sameList = attractPlaylist.length === restored.length && restored.every(function (r, idx) {
+                  return attractPlaylist[idx] && attractPlaylist[idx].id === r.id && attractPlaylist[idx].url === r.url && attractPlaylist[idx].type === r.type;
+                });
                 attractPlaylist = restored;
-                if (typeof window._loadAttractPosterMedia === 'function') {
-                  window._loadAttractPosterMedia(restored[0].url, restored[0].type, restored[0].id);   // also loads the picture for the welcome screen
-                } else {
-                  attractPosterUrl = attractPlaylist[0].url;
-                  attractPosterType = attractPlaylist[0].type;
-                  attractPosterId = attractPlaylist[0].id;
+                // Revoke any orphaned blob: URLs that were replaced or removed during restore.
+                oldUrls.forEach(function (ou) {
+                  try {
+                    if (ou.indexOf('blob:') === 0 && !restored.some(function (r) { return r.url === ou; })) {
+                      URL.revokeObjectURL(ou);
+                    }
+                  } catch (e) { }
+                });
+                if (!sameList) {
+                  if (typeof window._loadAttractPosterMedia === 'function') {
+                    window._loadAttractPosterMedia(restored[0].url, restored[0].type, restored[0].id);   // also loads the picture for the welcome screen
+                  } else {
+                    attractPosterUrl = attractPlaylist[0].url;
+                    attractPosterType = attractPlaylist[0].type;
+                    attractPosterId = attractPlaylist[0].id;
+                  }
                 }
                 if (typeof window._renderPlaylistGridUI === 'function') window._renderPlaylistGridUI();
                 renderWelcome(); refreshWelcome(); guestRender();
@@ -73065,8 +73228,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (show || scpRefresh._wasShown) {
           scpRefresh._wasShown = show;
           try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
+          try { if (typeof usbSyncStageCanvases === 'function') usbSyncStageCanvases(); } catch (e) { }
         }
-        try { if (typeof usbSyncStageCanvases === 'function') usbSyncStageCanvases(); } catch (e) { }
         if (!show) return;
         if (stream && scpVideo.paused) { try { var pr = scpVideo.play(); if (pr && pr.catch) pr.catch(function () { }); } catch (e) { } }
         scpVideo.style.transform = video.style.transform || '';

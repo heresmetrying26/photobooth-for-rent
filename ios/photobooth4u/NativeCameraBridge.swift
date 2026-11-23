@@ -46,6 +46,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         private let ciContext: CIContext?
         private let cmdQueue: MTLCommandQueue?
         private let filterRenderQueue = DispatchQueue(label: "com.photobooth4u.avcam.filter", qos: .userInteractive)
+        private let filterChain = NativeCameraBridge.LiveFilterChain()
         private let renderLock = NSLock()
         private var isRenderingFilter = false
         private var cachedVisible = false
@@ -172,7 +173,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                     if mirrored {
                         img = img.oriented(.upMirrored)
                     }
-                    img = NativeCameraBridge.applyLiveFilter(to: img, filter: filter, softSkin: softSkin)
+                    img = self.filterChain.apply(to: img, filter: filter, softSkin: softSkin)
 
                     ctx.render(img, to: drawable.texture, commandBuffer: cmdBuf, bounds: targetBounds, colorSpace: NativeCameraBridge.srgbColorSpace)
                     cmdBuf.present(drawable)
@@ -266,6 +267,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
     private var pendingPhotoCompletions: [Int64: (Result<(Data, Int, Int), Error>) -> Void] = [:]
 
     private let frameCiContext = CIContext(options: [.useSoftwareRenderer: false, .cacheIntermediates: false])
+    private let recFilterChain = LiveFilterChain()
 
     private override init() {
         super.init()
@@ -1143,7 +1145,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             if rMir {
                 img = img.oriented(.upMirrored)
             }
-            img = NativeCameraBridge.applyLiveFilter(to: img, filter: rFilter, softSkin: rSoft)
+            img = recFilterChain.apply(to: img, filter: rFilter, softSkin: rSoft)
             frameCiContext.render(img, to: dstPb, bounds: targetRect, colorSpace: Self.srgbColorSpace)
         }
 
@@ -1203,133 +1205,173 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         }
     }
 
-    private static func applyColorControls(to img: CIImage, brightness: Double = 0, contrast: Double = 1, saturation: Double = 1) -> CIImage {
-        guard let f = CIFilter(name: "CIColorControls") else { return img }
-        f.setValue(img, forKey: kCIInputImageKey)
-        f.setValue(brightness, forKey: kCIInputBrightnessKey)
-        f.setValue(contrast, forKey: kCIInputContrastKey)
-        f.setValue(saturation, forKey: kCIInputSaturationKey)
-        return f.outputImage ?? img
-    }
+    /// Serial-queue-confined reusable CoreImage filter chain. Eliminates per-frame CIFilter & CIVector
+    /// allocations at 30 fps while clearing input image references immediately after building each graph.
+    final class LiveFilterChain {
+        private static let blackImage = CIImage(color: .black)
+        private static let vec5000 = CIVector(x: 5000, y: 0)
+        private static let vec5200 = CIVector(x: 5200, y: 0)
+        private static let vec5600 = CIVector(x: 5600, y: 0)
+        private static let vec5800 = CIVector(x: 5800, y: 0)
+        private static let vec6300 = CIVector(x: 6300, y: 0)
+        private static let vec6400 = CIVector(x: 6400, y: 0)
+        private static let vec6500 = CIVector(x: 6500, y: 0)
+        private static let vecPastelN = CIVector(x: 6200, y: -12)
+        private static let vecPastelT = CIVector(x: 5900, y: 12)
+        private static let vecRoseN = CIVector(x: 6000, y: -15)
+        private static let vecRoseT = CIVector(x: 6200, y: 10)
 
-    private static func applyTempTint(to img: CIImage, neutral: CIVector, target: CIVector) -> CIImage {
-        guard let f = CIFilter(name: "CITemperatureAndTint") else { return img }
-        f.setValue(img, forKey: kCIInputImageKey)
-        f.setValue(neutral, forKey: "inputNeutral")
-        f.setValue(target, forKey: "inputTargetNeutral")
-        return f.outputImage ?? img
-    }
+        private lazy var softSkinFilter = CIFilter(name: "CIColorControls")
+        private lazy var colorControlsFilter = CIFilter(name: "CIColorControls")
+        private lazy var tempTintFilter = CIFilter(name: "CITemperatureAndTint")
+        private lazy var hueAdjustFilter = CIFilter(name: "CIHueAdjust")
+        private lazy var sepiaFilter = CIFilter(name: "CISepiaTone")
+        private lazy var vignetteFilter = CIFilter(name: "CIVignette")
+        private lazy var noirFilter = CIFilter(name: "CIPhotoEffectNoir")
+        private lazy var fadeFilter = CIFilter(name: "CIPhotoEffectFade")
+        private lazy var bloomFilter = CIFilter(name: "CIBloom")
 
-    private static func applyHueAdjust(to img: CIImage, angle: Double) -> CIImage {
-        guard let f = CIFilter(name: "CIHueAdjust") else { return img }
-        f.setValue(img, forKey: kCIInputImageKey)
-        f.setValue(angle, forKey: kCIInputAngleKey)
-        return f.outputImage ?? img
-    }
+        private func runColorControls(_ f: CIFilter?, to img: CIImage, brightness: Double = 0, contrast: Double = 1, saturation: Double = 1) -> CIImage {
+            guard let f = f else { return img }
+            f.setValue(img, forKey: kCIInputImageKey)
+            f.setValue(brightness, forKey: kCIInputBrightnessKey)
+            f.setValue(contrast, forKey: kCIInputContrastKey)
+            f.setValue(saturation, forKey: kCIInputSaturationKey)
+            let out = f.outputImage ?? img
+            f.setValue(nil, forKey: kCIInputImageKey)
+            return out
+        }
 
-    private static func applySepia(to img: CIImage, intensity: Double) -> CIImage {
-        guard let f = CIFilter(name: "CISepiaTone") else { return img }
-        f.setValue(img, forKey: kCIInputImageKey)
-        f.setValue(intensity, forKey: kCIInputIntensityKey)
-        return f.outputImage ?? img
-    }
+        private func runTempTint(to img: CIImage, neutral: CIVector, target: CIVector) -> CIImage {
+            guard let f = tempTintFilter else { return img }
+            f.setValue(img, forKey: kCIInputImageKey)
+            f.setValue(neutral, forKey: "inputNeutral")
+            f.setValue(target, forKey: "inputTargetNeutral")
+            let out = f.outputImage ?? img
+            f.setValue(nil, forKey: kCIInputImageKey)
+            return out
+        }
 
-    private static func applyVignette(to img: CIImage, intensity: Double, extent: CGRect) -> CIImage {
-        guard let f = CIFilter(name: "CIVignette") else { return img }
-        f.setValue(img, forKey: kCIInputImageKey)
-        f.setValue(intensity, forKey: kCIInputIntensityKey)
-        f.setValue(1.6, forKey: kCIInputRadiusKey)
-        return f.outputImage?.cropped(to: extent) ?? img
-    }
+        private func runHueAdjust(to img: CIImage, angle: Double) -> CIImage {
+            guard let f = hueAdjustFilter else { return img }
+            f.setValue(img, forKey: kCIInputImageKey)
+            f.setValue(angle, forKey: kCIInputAngleKey)
+            let out = f.outputImage ?? img
+            f.setValue(nil, forKey: kCIInputImageKey)
+            return out
+        }
 
-    private static func applyCinemaBars(to img: CIImage, fraction: CGFloat, extent: CGRect) -> CIImage {
-        let barH = (extent.height * fraction).rounded()
-        guard barH > 1 else { return img }
-        let black = CIImage(color: .black)
-        let topRect = CGRect(x: extent.minX, y: extent.maxY - barH, width: extent.width, height: barH)
-        let botRect = CGRect(x: extent.minX, y: extent.minY, width: extent.width, height: barH)
-        return black.cropped(to: topRect)
-            .composited(over: black.cropped(to: botRect).composited(over: img))
-            .cropped(to: extent)
+        private func runSepia(to img: CIImage, intensity: Double) -> CIImage {
+            guard let f = sepiaFilter else { return img }
+            f.setValue(img, forKey: kCIInputImageKey)
+            f.setValue(intensity, forKey: kCIInputIntensityKey)
+            let out = f.outputImage ?? img
+            f.setValue(nil, forKey: kCIInputImageKey)
+            return out
+        }
+
+        private func runVignette(to img: CIImage, intensity: Double, extent: CGRect) -> CIImage {
+            guard let f = vignetteFilter else { return img }
+            f.setValue(img, forKey: kCIInputImageKey)
+            f.setValue(intensity, forKey: kCIInputIntensityKey)
+            f.setValue(1.6, forKey: kCIInputRadiusKey)
+            let out = f.outputImage?.cropped(to: extent) ?? img
+            f.setValue(nil, forKey: kCIInputImageKey)
+            return out
+        }
+
+        private func runUnary(_ f: CIFilter?, to img: CIImage) -> CIImage {
+            guard let f = f else { return img }
+            f.setValue(img, forKey: kCIInputImageKey)
+            let out = f.outputImage ?? img
+            f.setValue(nil, forKey: kCIInputImageKey)
+            return out
+        }
+
+        private func runCinemaBars(to img: CIImage, fraction: CGFloat, extent: CGRect) -> CIImage {
+            let barH = (extent.height * fraction).rounded()
+            guard barH > 1 else { return img }
+            let topRect = CGRect(x: extent.minX, y: extent.maxY - barH, width: extent.width, height: barH)
+            let botRect = CGRect(x: extent.minX, y: extent.minY, width: extent.width, height: barH)
+            return Self.blackImage.cropped(to: topRect)
+                .composited(over: Self.blackImage.cropped(to: botRect).composited(over: img))
+                .cropped(to: extent)
+        }
+
+        func apply(to input: CIImage, filter: String, softSkin: Bool) -> CIImage {
+            let extent = input.extent
+            var img = input
+            if softSkin {
+                img = runColorControls(softSkinFilter, to: img, brightness: 0.03, contrast: 1.0, saturation: 1.03)
+            }
+            switch filter {
+            case "bw":
+                img = runColorControls(colorControlsFilter, to: img, brightness: 0, contrast: 1.12, saturation: 0.0)
+            case "noir":
+                img = runUnary(noirFilter, to: img)
+                img = runVignette(to: img, intensity: 0.85, extent: extent)
+            case "sepia":
+                img = runSepia(to: img, intensity: 0.75)
+            case "warm", "retro":
+                img = runTempTint(to: img, neutral: Self.vec5200, target: Self.vec6400)
+            case "cool":
+                img = runTempTint(to: img, neutral: Self.vec6500, target: Self.vec5200)
+            case "korean":
+                img = runColorControls(colorControlsFilter, to: img, brightness: 0.05, contrast: 1.06, saturation: 1.02)
+            case "film":
+                img = runUnary(fadeFilter, to: img)
+                img = runVignette(to: img, intensity: 0.6, extent: extent)
+            case "faded", "instant":
+                img = runUnary(fadeFilter, to: img)
+            case "beauty":
+                img = runColorControls(colorControlsFilter, to: img, brightness: 0.035, contrast: 0.94, saturation: 1.06)
+                img = runTempTint(to: img, neutral: Self.vec5800, target: Self.vec6300)
+            case "glow":
+                img = runColorControls(colorControlsFilter, to: img, brightness: 0.055, contrast: 0.92, saturation: 1.12)
+                if let f = bloomFilter {
+                    f.setValue(img, forKey: kCIInputImageKey)
+                    f.setValue(8.0, forKey: kCIInputRadiusKey)
+                    f.setValue(0.28, forKey: kCIInputIntensityKey)
+                    if let out = f.outputImage { img = out.cropped(to: extent) }
+                    f.setValue(nil, forKey: kCIInputImageKey)
+                }
+            case "golden":
+                img = runSepia(to: img, intensity: 0.25)
+                img = runColorControls(colorControlsFilter, to: img, brightness: 0.03, contrast: 1.05, saturation: 1.32)
+                img = runTempTint(to: img, neutral: Self.vec5000, target: Self.vec6500)
+                img = runVignette(to: img, intensity: 0.55, extent: extent)
+            case "pastel":
+                img = runColorControls(colorControlsFilter, to: img, brightness: 0.07, contrast: 0.88, saturation: 0.78)
+                img = runTempTint(to: img, neutral: Self.vecPastelN, target: Self.vecPastelT)
+            case "rose":
+                img = runColorControls(colorControlsFilter, to: img, brightness: 0.035, contrast: 1.0, saturation: 1.15)
+                img = runHueAdjust(to: img, angle: 0.14)
+                img = runTempTint(to: img, neutral: Self.vecRoseN, target: Self.vecRoseT)
+            case "mint":
+                img = runColorControls(colorControlsFilter, to: img, brightness: 0.04, contrast: 1.0, saturation: 1.10)
+                img = runHueAdjust(to: img, angle: -0.31)
+            case "cinema":
+                img = runColorControls(colorControlsFilter, to: img, brightness: -0.02, contrast: 1.14, saturation: 1.08)
+                img = runTempTint(to: img, neutral: Self.vec6300, target: Self.vec5600)
+                img = runVignette(to: img, intensity: 0.7, extent: extent)
+                img = runCinemaBars(to: img, fraction: 0.09, extent: extent)
+            case "neon":
+                img = runColorControls(colorControlsFilter, to: img, brightness: -0.02, contrast: 1.16, saturation: 1.48)
+                img = runHueAdjust(to: img, angle: -0.21)
+                img = runVignette(to: img, intensity: 0.6, extent: extent)
+            case "camcorder":
+                img = runSepia(to: img, intensity: 0.15)
+                img = runColorControls(colorControlsFilter, to: img, brightness: 0.015, contrast: 1.10, saturation: 1.28)
+                img = runVignette(to: img, intensity: 0.6, extent: extent)
+            default:
+                break
+            }
+            return img.cropped(to: extent)
+        }
     }
 
     static func applyLiveFilter(to input: CIImage, filter: String, softSkin: Bool) -> CIImage {
-        let extent = input.extent
-        var img = input
-        if softSkin {
-            img = applyColorControls(to: img, brightness: 0.03, contrast: 1.0, saturation: 1.03)
-        }
-        switch filter {
-        case "bw":
-            img = applyColorControls(to: img, brightness: 0, contrast: 1.12, saturation: 0.0)
-        case "noir":
-            if let f = CIFilter(name: "CIPhotoEffectNoir") {
-                f.setValue(img, forKey: kCIInputImageKey)
-                if let out = f.outputImage { img = out }
-            }
-            img = applyVignette(to: img, intensity: 0.85, extent: extent)
-        case "sepia":
-            img = applySepia(to: img, intensity: 0.75)
-        case "warm", "retro":
-            img = applyTempTint(to: img, neutral: CIVector(x: 5200, y: 0), target: CIVector(x: 6400, y: 0))
-        case "cool":
-            img = applyTempTint(to: img, neutral: CIVector(x: 6500, y: 0), target: CIVector(x: 5200, y: 0))
-        case "korean":
-            img = applyColorControls(to: img, brightness: 0.05, contrast: 1.06, saturation: 1.02)
-        case "film":
-            if let f = CIFilter(name: "CIPhotoEffectFade") {
-                f.setValue(img, forKey: kCIInputImageKey)
-                if let out = f.outputImage { img = out }
-            }
-            img = applyVignette(to: img, intensity: 0.6, extent: extent)
-        case "faded", "instant":
-            if let f = CIFilter(name: "CIPhotoEffectFade") {
-                f.setValue(img, forKey: kCIInputImageKey)
-                if let out = f.outputImage { img = out }
-            }
-        case "beauty":
-            img = applyColorControls(to: img, brightness: 0.035, contrast: 0.94, saturation: 1.06)
-            img = applyTempTint(to: img, neutral: CIVector(x: 5800, y: 0), target: CIVector(x: 6300, y: 0))
-        case "glow":
-            img = applyColorControls(to: img, brightness: 0.055, contrast: 0.92, saturation: 1.12)
-            if let f = CIFilter(name: "CIBloom") {
-                f.setValue(img, forKey: kCIInputImageKey)
-                f.setValue(8.0, forKey: kCIInputRadiusKey)
-                f.setValue(0.28, forKey: kCIInputIntensityKey)
-                if let out = f.outputImage { img = out.cropped(to: extent) }
-            }
-        case "golden":
-            img = applySepia(to: img, intensity: 0.25)
-            img = applyColorControls(to: img, brightness: 0.03, contrast: 1.05, saturation: 1.32)
-            img = applyTempTint(to: img, neutral: CIVector(x: 5000, y: 0), target: CIVector(x: 6500, y: 0))
-            img = applyVignette(to: img, intensity: 0.55, extent: extent)
-        case "pastel":
-            img = applyColorControls(to: img, brightness: 0.07, contrast: 0.88, saturation: 0.78)
-            img = applyTempTint(to: img, neutral: CIVector(x: 6200, y: -12), target: CIVector(x: 5900, y: 12))
-        case "rose":
-            img = applyColorControls(to: img, brightness: 0.035, contrast: 1.0, saturation: 1.15)
-            img = applyHueAdjust(to: img, angle: 0.14)
-            img = applyTempTint(to: img, neutral: CIVector(x: 6000, y: -15), target: CIVector(x: 6200, y: 10))
-        case "mint":
-            img = applyColorControls(to: img, brightness: 0.04, contrast: 1.0, saturation: 1.10)
-            img = applyHueAdjust(to: img, angle: -0.31)
-        case "cinema":
-            img = applyColorControls(to: img, brightness: -0.02, contrast: 1.14, saturation: 1.08)
-            img = applyTempTint(to: img, neutral: CIVector(x: 6300, y: 0), target: CIVector(x: 5600, y: 0))
-            img = applyVignette(to: img, intensity: 0.7, extent: extent)
-            img = applyCinemaBars(to: img, fraction: 0.09, extent: extent)
-        case "neon":
-            img = applyColorControls(to: img, brightness: -0.02, contrast: 1.16, saturation: 1.48)
-            img = applyHueAdjust(to: img, angle: -0.21)
-            img = applyVignette(to: img, intensity: 0.6, extent: extent)
-        case "camcorder":
-            img = applySepia(to: img, intensity: 0.15)
-            img = applyColorControls(to: img, brightness: 0.015, contrast: 1.10, saturation: 1.28)
-            img = applyVignette(to: img, intensity: 0.6, extent: extent)
-        default:
-            break
-        }
-        return img.cropped(to: extent)
+        return LiveFilterChain().apply(to: input, filter: filter, softSkin: softSkin)
     }
 
     // MARK: - Instant Hardware Still Capture

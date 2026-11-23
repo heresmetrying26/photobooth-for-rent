@@ -2410,6 +2410,8 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         }
     }
 
+    private static let headerSep = Data("\r\n\r\n".utf8)
+
     private func handleClient(_ clientSock: Int32) {
         defer { close(clientSock) }
         var noSigPipe: Int32 = 1
@@ -2421,80 +2423,118 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         var sndTv = timeval(tv_sec: 15, tv_usec: 0)
         setsockopt(clientSock, SOL_SOCKET, SO_SNDTIMEO, &sndTv, socklen_t(MemoryLayout<timeval>.size))
 
-        var reqData = Data()
+        var pending = Data()
         var chunk = [UInt8](repeating: 0, count: 8192)
-        var headerEndOffset = -1
-        let sep = Data("\r\n\r\n".utf8)
+        var reqCount = 0
+        let maxKeepAliveReqs = 200
 
-        while reqData.count < 256 * 1024 {
-            let n = read(clientSock, &chunk, chunk.count)
-            if n <= 0 { break }
-            reqData.append(chunk, count: n)
-            if let range = reqData.range(of: sep) {
+        while isRunning && reqCount < maxKeepAliveReqs {
+            if reqCount > 0 && pending.isEmpty {
+                var pfd = pollfd(fd: clientSock, events: Int16(POLLIN), revents: 0)
+                let ready = Darwin.poll(&pfd, 1, 1500)
+                if ready <= 0 || (pfd.revents & Int16(POLLIN)) == 0 { break }
+            }
+
+            var headerEndOffset = -1
+            if let range = pending.range(of: Self.headerSep) {
                 headerEndOffset = range.upperBound
-                break
+            } else {
+                while pending.count < 256 * 1024 {
+                    let n = Darwin.read(clientSock, &chunk, chunk.count)
+                    if n < 0 && errno == EINTR { continue }
+                    if n <= 0 { break }
+                    pending.append(chunk, count: n)
+                    if let range = pending.range(of: Self.headerSep) {
+                        headerEndOffset = range.upperBound
+                        break
+                    }
+                }
             }
-        }
-        guard headerEndOffset > 0 else { return }
+            guard headerEndOffset > 0 else { break }
 
-        let headerText = String(data: reqData.subdata(in: 0..<headerEndOffset), encoding: .utf8) ?? ""
-        let lines = headerText.components(separatedBy: "\r\n")
-        guard let requestLine = lines.first else { return }
-        let parts = requestLine.components(separatedBy: " ")
-        guard parts.count >= 2 else { return }
-
-        var contentLength = 0
-        var reqHeaders: [String: String] = [:]
-        for h in lines.dropFirst() where !h.isEmpty {
-            if let colon = h.firstIndex(of: ":") {
-                let k = h[..<colon].trimmingCharacters(in: .whitespaces).lowercased()
-                let v = h[h.index(after: colon)...].trimmingCharacters(in: .whitespaces)
-                reqHeaders[k] = v
-                if k == "content-length" { contentLength = Int(v) ?? 0 }
+            let headerText = String(data: pending.subdata(in: 0..<headerEndOffset), encoding: .utf8) ?? ""
+            if headerEndOffset < pending.count {
+                pending = pending.subdata(in: headerEndOffset..<pending.count)
+            } else {
+                pending.removeAll(keepingCapacity: true)
             }
-        }
 
-        var bodyData = reqData.subdata(in: headerEndOffset..<reqData.count)
-        if contentLength > 0 && contentLength < 10 * 1024 * 1024 {
-            while bodyData.count < contentLength {
-                let n = read(clientSock, &chunk, chunk.count)
-                if n <= 0 { break }
-                bodyData.append(chunk, count: n)
+            let lines = headerText.components(separatedBy: "\r\n")
+            guard let requestLine = lines.first else { break }
+            let parts = requestLine.components(separatedBy: " ")
+            guard parts.count >= 2 else { break }
+            let httpVersion = parts.count >= 3 ? parts[2] : "HTTP/1.1"
+
+            var contentLength = 0
+            var reqHeaders: [String: String] = [:]
+            for h in lines.dropFirst() where !h.isEmpty {
+                if let colon = h.firstIndex(of: ":") {
+                    let k = h[..<colon].trimmingCharacters(in: .whitespaces).lowercased()
+                    let v = h[h.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+                    reqHeaders[k] = v
+                    if k == "content-length" { contentLength = Int(v) ?? 0 }
+                }
             }
-            if bodyData.count > contentLength {
-                bodyData = bodyData.subdata(in: 0..<contentLength)
+
+            var bodyData = Data()
+            if contentLength > 0 && contentLength < 10 * 1024 * 1024 {
+                while pending.count < contentLength {
+                    let n = Darwin.read(clientSock, &chunk, chunk.count)
+                    if n < 0 && errno == EINTR { continue }
+                    if n <= 0 { break }
+                    pending.append(chunk, count: n)
+                }
+                if pending.count >= contentLength {
+                    bodyData = pending.subdata(in: 0..<contentLength)
+                    if contentLength < pending.count {
+                        pending = pending.subdata(in: contentLength..<pending.count)
+                    } else {
+                        pending.removeAll(keepingCapacity: true)
+                    }
+                } else {
+                    bodyData = pending
+                    pending.removeAll(keepingCapacity: true)
+                }
             }
+
+            let method = parts[0]
+            let fullPath = parts[1]
+            let qParts = fullPath.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
+            var normPath = String(qParts[0])
+            if normPath.count > 1 && normPath.hasSuffix("/") { normPath.removeLast() }
+            let query = qParts.count > 1 ? String(qParts[1]) : ""
+
+            reqCount += 1
+            let fastKeepAlivePath = (method == "GET" && (normPath == "/camera/frame" || normPath == "/avcam/frame" || normPath == "/status" || normPath == "/camera")) || method == "OPTIONS"
+            let connHdr = (reqHeaders["connection"] ?? "").lowercased()
+            let clientWantsClose = connHdr.contains("close") || (httpVersion == "HTTP/1.0" && !connHdr.contains("keep-alive"))
+            let allowKeepAlive = fastKeepAlivePath && !clientWantsClose && (reqCount < maxKeepAliveReqs)
+
+            if method == "OPTIONS" {
+                let ok = sendResponse(clientSock, status: 204, type: "text/plain", body: Data(), keepAlive: allowKeepAlive)
+                if !allowKeepAlive || !ok { break }
+                continue
+            }
+
+            let keepOpen = route(clientSock: clientSock, method: method, path: normPath, query: query, headers: reqHeaders, body: bodyData, keepAlive: allowKeepAlive)
+            if !keepOpen { break }
         }
-
-        let method = parts[0]
-        let fullPath = parts[1]
-        let qParts = fullPath.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
-        var normPath = String(qParts[0])
-        if normPath.count > 1 && normPath.hasSuffix("/") { normPath.removeLast() }
-        let query = qParts.count > 1 ? String(qParts[1]) : ""
-
-        if method == "OPTIONS" {
-            sendResponse(clientSock, status: 204, type: "text/plain", body: Data())
-            return
-        }
-
-        route(clientSock: clientSock, method: method, path: normPath, query: query, headers: reqHeaders, body: bodyData)
     }
 
-    private func route(clientSock: Int32, method: String, path: String, query: String, headers: [String: String], body: Data) {
+    private func route(clientSock: Int32, method: String, path: String, query: String, headers: [String: String], body: Data, keepAlive: Bool) -> Bool {
         // 1. Serve the injected offline booth HTML at /booth or /
         if method == "GET" && (path == "/booth" || path == "/") {
             boothLock.lock()
             let html = boothHtmlData
             boothLock.unlock()
             sendResponse(clientSock, status: 200, type: "text/html; charset=utf-8", body: html)
-            return
+            return false
         }
 
         // 2. Proxy + cache static assets (/bg/, /img/, /camera-test/build/) when online
         if method == "GET" && (path.hasPrefix("/bg/") || path.hasPrefix("/img/") || path.hasPrefix("/camera-test/build/")) {
             serveCachedRemote(clientSock: clientSock, path: path, query: query)
-            return
+            return false
         }
 
         // 2b. Native AVFoundation camera captures & frames (http://localhost:17321/avcam/*)
@@ -2505,7 +2545,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             } else {
                 sendResponse(clientSock, status: 404, type: "text/plain", body: Data("Shot not found".utf8))
             }
-            return
+            return false
         }
         if method == "GET" && path == "/avcam/frame" {
             var maxSide: CGFloat = 640
@@ -2523,11 +2563,10 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
                 }
             }
             if let data = NativeCameraBridge.shared.latestFrameJpeg(maxSide: maxSide, quality: quality), !data.isEmpty {
-                sendResponse(clientSock, status: 200, type: "image/jpeg", body: data)
+                return keepAlive && sendResponse(clientSock, status: 200, type: "image/jpeg", body: data, keepAlive: keepAlive)
             } else {
-                sendResponse(clientSock, status: 204, type: "image/jpeg", body: Data())
+                return keepAlive && sendResponse(clientSock, status: 204, type: "image/jpeg", body: Data(), keepAlive: keepAlive)
             }
-            return
         }
         if method == "GET" && path.hasPrefix("/avcam/video/") {
             let idStr = String(path.dropFirst("/avcam/video/".count))
@@ -2536,7 +2575,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             } else {
                 sendResponse(clientSock, status: 404, type: "text/plain", body: Data("Video not found".utf8))
             }
-            return
+            return false
         }
 
         // 3. Offline /api/* fast handler (allows /api/setup, /api/camdiag & /api/updates when online; vouchers and print counts stay local per device)
@@ -2546,7 +2585,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             } else {
                 sendJson(clientSock, status: 503, json: ["ok": false, "error": "offline"])
             }
-            return
+            return false
         }
 
         // 4. Camera helper endpoints
@@ -2564,7 +2603,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
                     camTitle = camName
                 }
             }
-            sendJson(clientSock, json: [
+            return keepAlive && sendJson(clientSock, json: [
                 "ok": true,
                 "app": "photobooth4u-print-helper",
                 "version": "\(AppLicence.shared.appVersion())-ios",
@@ -2575,10 +2614,10 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
                     "name": camTitle,
                     "free": false
                 ]
-            ])
+            ], keepAlive: keepAlive)
 
         case ("GET", "/camera"):
-            sendJson(clientSock, json: listCamerasJson())
+            return keepAlive && sendJson(clientSock, json: listCamerasJson(), keepAlive: keepAlive)
 
         case ("GET", "/camera/diag"):
             devicesLock.lock()
@@ -2627,15 +2666,14 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
 
         case ("GET", "/camera/frame"):
             if isCapturing() {
-                sendResponse(clientSock, status: 204, type: "image/jpeg", body: Data())
-                return
+                return keepAlive && sendResponse(clientSock, status: 204, type: "image/jpeg", body: Data(), keepAlive: keepAlive)
             }
             do {
                 let frame = try camQueue.sync { try self.fetchFrame() }
                 if let f = frame, !f.isEmpty {
-                    sendResponse(clientSock, status: 200, type: "image/jpeg", body: f)
+                    return keepAlive && sendResponse(clientSock, status: 200, type: "image/jpeg", body: f, keepAlive: keepAlive)
                 } else {
-                    sendResponse(clientSock, status: 204, type: "image/jpeg", body: Data())
+                    return keepAlive && sendResponse(clientSock, status: 204, type: "image/jpeg", body: Data(), keepAlive: keepAlive)
                 }
             } catch let e as CamErr {
                 sendJson(clientSock, status: e.httpStatus, json: ["ok": false, "code": e.code, "error": e.message])
@@ -2696,6 +2734,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         default:
             sendJson(clientSock, status: 404, json: ["ok": false, "code": "NOTFOUND", "error": "Not found"])
         }
+        return false
     }
 
     // MARK: - Static Asset Cache & API Proxy
@@ -2799,26 +2838,74 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
 
     // MARK: - HTTP Response Helpers
 
-    private func sendJson(_ sock: Int32, status: Int = 200, json: [String: Any]) {
+    @discardableResult
+    private func sendJson(_ sock: Int32, status: Int = 200, json: [String: Any], keepAlive: Bool = false) -> Bool {
         var mutableJson = json
         if mutableJson["ok"] == nil { mutableJson["ok"] = (status == 200) }
         let data = (try? JSONSerialization.data(withJSONObject: mutableJson, options: [])) ?? Data()
-        sendResponse(sock, status: status, type: "application/json", body: data)
+        return sendResponse(sock, status: status, type: "application/json", body: data, keepAlive: keepAlive)
     }
 
-    private func writeAll(_ sock: Int32, data: Data) {
-        data.withUnsafeBytes { rawBuf in
-            guard let base = rawBuf.baseAddress else { return }
+    private func writeAll(_ sock: Int32, data: Data) -> Bool {
+        guard !data.isEmpty else { return true }
+        return data.withUnsafeBytes { rawBuf -> Bool in
+            guard let base = rawBuf.baseAddress else { return true }
             var sent = 0
             while sent < data.count {
                 let n = Darwin.write(sock, base.advanced(by: sent), data.count - sent)
-                if n <= 0 { break }
+                if n < 0 {
+                    if errno == EINTR { continue }
+                    return false
+                }
+                if n == 0 { return false }
                 sent += n
+            }
+            return true
+        }
+    }
+
+    /// Scatter-gather writev(2): sends HTTP header + body in a single kernel call with zero intermediate Data copy.
+    private func writeHeaderAndBody(_ sock: Int32, header: Data, body: Data) -> Bool {
+        if body.isEmpty { return writeAll(sock, data: header) }
+        if header.isEmpty { return writeAll(sock, data: body) }
+        return header.withUnsafeBytes { hBuf -> Bool in
+            guard let hBase = hBuf.baseAddress else { return writeAll(sock, data: body) }
+            return body.withUnsafeBytes { bBuf -> Bool in
+                guard let bBase = bBuf.baseAddress else { return writeAll(sock, data: header) }
+                let hLen = header.count
+                let bLen = body.count
+                let total = hLen + bLen
+                var sent = 0
+                while sent < total {
+                    let n: Int
+                    if sent < hLen {
+                        var iov = (
+                            iovec(iov_base: UnsafeMutableRawPointer(mutating: hBase.advanced(by: sent)), iov_len: hLen - sent),
+                            iovec(iov_base: UnsafeMutableRawPointer(mutating: bBase), iov_len: bLen)
+                        )
+                        n = withUnsafeMutablePointer(to: &iov) { ptr in
+                            ptr.withMemoryRebound(to: iovec.self, capacity: 2) { iovPtr in
+                                Darwin.writev(sock, iovPtr, 2)
+                            }
+                        }
+                    } else {
+                        let bOff = sent - hLen
+                        n = Darwin.write(sock, bBase.advanced(by: bOff), bLen - bOff)
+                    }
+                    if n < 0 {
+                        if errno == EINTR { continue }
+                        return false
+                    }
+                    if n == 0 { return false }
+                    sent += n
+                }
+                return true
             }
         }
     }
 
-    private func sendResponse(_ sock: Int32, status: Int, type: String, body: Data, extraHeaders: [String] = []) {
+    @discardableResult
+    private func sendResponse(_ sock: Int32, status: Int, type: String, body: Data, extraHeaders: [String] = [], keepAlive: Bool = false) -> Bool {
         let reason: String
         switch status {
         case 200: reason = "OK"
@@ -2829,6 +2916,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         default: reason = "Error"
         }
         let extra = extraHeaders.isEmpty ? "" : (extraHeaders.joined(separator: "\r\n") + "\r\n")
+        let connLine = keepAlive ? "Connection: keep-alive\r\nKeep-Alive: timeout=2, max=200\r\n\r\n" : "Connection: close\r\n\r\n"
         let header = "HTTP/1.1 \(status) \(reason)\r\n" +
             "Content-Type: \(type)\r\n" +
             "Content-Length: \(body.count)\r\n" +
@@ -2838,22 +2926,13 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             "Access-Control-Allow-Headers: *\r\n" +
             "Access-Control-Allow-Private-Network: true\r\n" +
             extra +
-            "Connection: close\r\n\r\n"
+            connLine
 
         if let headerData = header.data(using: .utf8) {
-            if body.isEmpty {
-                writeAll(sock, data: headerData)
-            } else if body.count <= 2 * 1024 * 1024 {
-                var packet = Data(capacity: headerData.count + body.count)
-                packet.append(headerData)
-                packet.append(body)
-                writeAll(sock, data: packet)
-            } else {
-                writeAll(sock, data: headerData)
-                writeAll(sock, data: body)
-            }
+            return writeHeaderAndBody(sock, header: headerData, body: body)
         } else if !body.isEmpty {
-            writeAll(sock, data: body)
+            return writeAll(sock, data: body)
         }
+        return true
     }
 }

@@ -131,6 +131,7 @@ module.exports = {
   resetSplicedSection, resetAllSplicedSections, bringSectionToFront, drawSplicedFrameImage,
   reconcileFrameSections, uniqueFrameSections, transformSpotToUprightSection,
   frameStrips, frameCopyStrip, frameShotCount, framePairs, spotsKey,
+  cloneFrameSpot, assignFrameSpotShot,
   framesSnapshot, applyFramesSetup
 };
 `;
@@ -461,6 +462,68 @@ console.log('9. Testing multi-color 4-in-1 (different colored mini strips)...');
   assert(Math.abs(fMulti.spots[1].y - origWalletSpot.y) < 1e-9, 'Spot Y restored identically after reset');
   assert(Math.abs(fMulti.spots[1].w - origWalletSpot.w) < 1e-9, 'Spot W restored identically after reset');
   assert(Math.abs(fMulti.spots[1].h - origWalletSpot.h) < 1e-9, 'Spot H restored identically after reset');
+
+  // 11. Duplicate Spot (same Photo #), Photo # reassignment (6 spots -> 4 shots) & 60-frame snapshot scaling
+  console.log('11. Testing duplicate spot (same Photo #), 6-spot->4-shot compaction, and 60-frame scale...');
+  const fStrip6 = {
+    id: 'strip6',
+    name: '6-spot strip',
+    w: 600,
+    h: 1800,
+    spots: [0, 1, 2, 3].map((i) => ({ x: 0.1, y: 0.05 + i * 0.15, w: 0.8, h: 0.12 })),
+  };
+  assert.equal(api.frameShotCount(fStrip6), 4, 'Starts as 4 spots taking 4 shots');
+  const dup1 = api.cloneFrameSpot(fStrip6, 0, true, 40);
+  const dup2 = api.cloneFrameSpot(fStrip6, 1, true, 40);
+  assert.ok(dup1 && dup2, 'cloneFrameSpot must clone same-photo spots');
+  assert.equal(fStrip6.spots.length, 6, 'Now 6 total spots on strip');
+  assert.equal(api.frameShotCount(fStrip6), 4, '6 spots with 2 duplicates must take only 4 shots');
+  assert.deepEqual(Array.from(api.framePairs(fStrip6)), [0, 1, 2, 3, 0, 1], 'Pairs map spots 5 & 6 back to shots 1 & 2');
+
+  // Reassign Photo # directly on a 6-spot automatic strip -> compact & verify 4 shots
+  const fAuto6 = {
+    id: 'auto6',
+    name: 'Auto 6-spot strip',
+    w: 600,
+    h: 1800,
+    spots: [0, 1, 2, 3, 4, 5].map((i) => ({ x: 0.1, y: 0.04 + i * 0.15, w: 0.8, h: 0.12 })),
+  };
+  assert.equal(api.frameShotCount(fAuto6), 6);
+  assert.equal(api.assignFrameSpotShot(fAuto6, 4, 1, 40), true, 'Assigning spot 5 -> Photo #1 succeeds');
+  // Gap compaction: [1,2,3,4,1,6] compacts to [1,2,3,4,1,5]
+  assert.equal(api.frameShotCount(fAuto6), 5, 'Compacts gap so unused Photo #6 shifts to #5');
+  assert.equal(api.assignFrameSpotShot(fAuto6, 5, 2, 40), true, 'Assigning spot 6 -> Photo #2 succeeds');
+  assert.equal(api.frameShotCount(fAuto6), 4, '6 spots reusing #1 and #2 now take 4 shots total');
+  assert.deepEqual(Array.from(api.framePairs(fAuto6)), [0, 1, 2, 3, 0, 1], 'Reassigned pairs map spots 5 & 6 to shots 1 & 2');
+
+  // Round-trip persistence of 60 frames with duplicated spots (well within Netlify MAX_SETTINGS = 120000)
+  const manyFrames = [];
+  for (let i = 0; i < 60; i++) {
+    manyFrames.push({
+      id: 'a' + String(1000000000000000 + i),
+      name: 'Event Frame ' + (i + 1),
+      w: 1200,
+      h: 1800,
+      spots: fStrip6.spots.map((sp) => ({ ...sp })),
+    });
+  }
+  api.setState({ myFrames: manyFrames, activeFrameId: manyFrames[0].id });
+  const snap60 = api.framesSnapshot();
+  const snapBytes = JSON.stringify(snap60).length;
+  assert.equal(snap60.frames.length, 60, '60 frames snapshotted');
+  assert.ok(snapBytes < 60000, '60-frame snapshot must fit comfortably under setup size limit (got ' + snapBytes + ' bytes)');
+  api.applyFramesSetup(snap60);
+  assert.equal(api.getState().myFrames.length, 60, '60 frames restored cleanly');
+  assert.equal(api.frameShotCount(api.getState().myFrames[59]), 4, 'Restored frame keeps 4-shot duplicate spot count');
+
+  // Verify new UI & performance controls exist across built booth bundle
+  for (const id of [
+    'spotDupSame', 'spotPhotoRow', 'spotShotDec', 'spotShotInc', 'spotShotChips',
+    'pmSpDupSame', 'FRAME_CACHE_PREV', 'evictFrameCache', 'lay-frame-toolbar',
+    'LT_IDB_KEY', 'assetThumbUrl', 'scheduleSpotPostRefresh',
+  ]) {
+    assert.ok(html.includes(id), 'Expected symbol/UI id in booth.html: ' + id);
+  }
 }
 
 console.log('ALL PHASE 1-3 ROTATION & AUTO-SECTION TESTS PASSED! ✓');

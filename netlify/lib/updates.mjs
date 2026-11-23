@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.101', date: '2026-11-24' },
   { version: '1.1.100', date: '2026-11-23' },
   { version: '1.1.99', date: '2026-11-23' },
   { version: '1.1.98', date: '2026-11-23' },
@@ -215,7 +216,7 @@ export const HELPER = { version: '1.1.20', date: '2026-11-23' };
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
 // after about 60 s, so on a slower connection the 18 MB file never finished ("unexpected end of stream").
 // GitHub has no such limit. (The copy in public/downloads is still kept for the /downloads page.)
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-23', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-24', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
 // The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
 // /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new
@@ -243,7 +244,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.23', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.23/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.24', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.24/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -296,6 +297,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-24', title: 'Desktop 1.1.101, Android 1.2.10, iPad 1.1.24 & Website: Simpler Setup, Live Hover Layout Previews & Faster Mobile Preview', for: ['website', 'app'],
+    items: [
+      '🖼️ **Live hover layout previews**: Hovering **Chosen layout**, **Solo layout**, **Plain camera**, or Slideshow frame pills now shows a live rendered thumbnail of the actual linked layout alongside a **Linked to: <Layout Name>** badge, and the **Chosen layout** button displays the active layout name.',
+      '🧭 **Clearer Step 7 Session tabs & synced voucher-printer toggle**: Split **Pay & photos** into **Countdown & retakes** and **Payment & vouchers** (auto-hidden when payments are off), renamed **Sound & lighting** and **Result & QR screen**, and added a 2-way synced **Link each option / voucher to its own printer** switch right inside **Payment & vouchers**.',
+      '✨ **Cleaner Design & Printer setup**: Simplified the single-design bar in **Design**, tucked advanced printer/paper/multi-printer options into tidy collapsible drawers while keeping everyday print controls up front, and cleaned up outdated step labels across Setup.',
+      '📱 **Faster mobile/tablet preview & 60-frame scaling**: Improved docked mobile/tablet preview controls (quick frame switcher and minimize toggle), fixed long layout name overflows, and verified duplicate-spot and 60-frame setup scaling.'
+    ]
+  },
   {
     date: '2026-11-23', title: 'Android 1.2.09 & Website: Two-Way ESP32 Bluetooth / USB Serial for Relay Modules & NeoPixels', for: ['website'],
     items: [

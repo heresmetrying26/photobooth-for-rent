@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.103', date: '2026-11-24' },
   { version: '1.1.102', date: '2026-11-24' },
   { version: '1.1.101', date: '2026-11-24' },
   { version: '1.1.100', date: '2026-11-23' },
@@ -245,7 +246,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.25', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.25/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.26', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.26/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -298,6 +299,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-24', title: 'Desktop 1.1.103, Android 1.2.12, iPad 1.1.26 & Website: Restored Layout Picker & Uploaded Frames Startup Sync', for: ['website', 'app'],
+    items: [
+      '🛠️ **Hotfix — Layout picker & uploaded frames restored**: Restored `spotsKey()` so accounts with uploaded frames immediately render all uploaded frames and built-in layouts in **Setup → Layout** without crashing.',
+      '🔄 **Hotfix — Startup cloud sync restored**: Guarded Step 7 tab initialization (`refreshD7Tabs`) during early boot so `loadSetup()` and `loadAccountFrames()` always complete syncing on startup across Web, Desktop, Android, and iPad.'
+    ]
+  },
   {
     date: '2026-11-24', title: 'Desktop 1.1.102, Android 1.2.11, iPad 1.1.25 & Website: Account-Wide Uploaded Frames & Seamless Cloud Sync', for: ['website', 'app'],
     items: [

@@ -70621,6 +70621,23 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         } catch (e) { }
         return c;
       }
+      function spotsKey(f) {
+        var sk = (f && Array.isArray(f.spots) ? f.spots : []).map(function (s) {
+          return [s.x, s.y, s.w, s.h].map(function (v) { return v.toFixed(4); }).join(',') + (s.a ? '@' + s.a : '') + (s.r ? 'r' + normalizeSpotRot(s.r) : '') + (s.z ? '^' + s.z : '');
+        }).join(';') + (f && f.key ? '#' + f.key.c.join('.') + ':' + f.key.t : '');
+        if (f && Array.isArray(f.sections) && hasAnySplice(f.sections)) {
+          var ak = f.sections.map(function (sec, idx) {
+            if (!sectionHasSplice(sec)) return '';
+            var ar = normalizeSpotRot(sec.artRot);
+            var dx = typeof sec.dx === 'number' ? sec.dx.toFixed(4) : '';
+            var dy = typeof sec.dy === 'number' ? sec.dy.toFixed(4) : '';
+            var z = sec.z || 0;
+            return idx + ':' + ar + ':' + dx + ':' + dy + ':' + z;
+          }).filter(Boolean).join(',');
+          if (ak) sk += '|sp:' + ak;
+        }
+        return sk;
+      }
       function frameArt(f, opts) {
         var img = assetImg(f.id); if (!img) return null;
         var isPrev = !!(opts && opts.preview);
@@ -75052,7 +75069,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           b.hidden = !panes.some(function (x) { return x.dataset.d7 === b.dataset.pane && !x.classList.contains('hidden') && x.style.display !== 'none'; });
         });
         var shown = tabs.filter(function (b) { return !b.hidden; });
-        var cur = tabs.filter(function (b) { return b.dataset.pane === d7Pane && !b.hidden; })[0] || shown[0];
+        var curPane = d7Pane || 'welcome';
+        var cur = tabs.filter(function (b) { return b.dataset.pane === curPane && !b.hidden; })[0] || shown[0];
         var p = cur ? cur.dataset.pane : 'welcome';
         // Numbered in the order a guest meets them, so the tabs read as a path.
         shown.forEach(function (b, i) { var t = (i + 1) + '. ' + b.dataset.label; if (b.textContent !== t) b.textContent = t; });
@@ -75063,7 +75081,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var at = shown.indexOf(cur), nextTab = at >= 0 ? shown[at + 1] : null;
         if (nx) {
           nx.hidden = !nextTab;
-          if (nextTab) { nb.textContent = 'Next: ' + nextTab.dataset.label + ' →'; nb.dataset.pane = nextTab.dataset.pane; nh.textContent = D7_HINT[nextTab.dataset.pane] || ''; }
+          if (nextTab) { nb.textContent = 'Next: ' + nextTab.dataset.label + ' →'; nb.dataset.pane = nextTab.dataset.pane; nh.textContent = (typeof D7_HINT === 'object' && D7_HINT && D7_HINT[nextTab.dataset.pane]) || ''; }
         }
         if (p === 'share') {
           try { if (typeof renderAfterPreview === 'function') renderAfterPreview(); } catch (e) { }

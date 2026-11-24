@@ -49,6 +49,7 @@ for (const marker of [
   'id="sheetBleedChk"',
   'id="pmSpRotBtns"',
   'function normalizeSpotRot',
+  'function spotsKey(',
   'function detectFrameSections',
   'function autoSectionFrame',
   'function applySectionBlueprint',

@@ -4,7 +4,12 @@
 // `typeof TABLET_CAM_ID`. A const/let that is not set yet throws "Cannot access ... before initialization" on the laptop
 // app (DESKTOP is true there), which stops the whole booth script and leaves "Tap to start" with no click handler (1.1.73).
 var TABLET_CAM_ID = 'tablet-bridge';
+var HELPER_BRIDGE_BASE = 'http://127.0.0.1:17321/bridge-ctrl';
 var tabletBridge = {
+  mode: '',          // 'desktop' (Electron IPC) or 'helper' (online Web Booth via Print Helper)
+  api: null,
+  webLaptop: false,
+  helperState: '',   // '', 'ready', 'missing', 'outdated'
   info: null,
   port: 0,
   connected: false,
@@ -32,8 +37,14 @@ var tabletBridge = {
   reviewSrc: ''     // the photo just taken, shown between shots (Setup: show each photo after it is taken)
 };
 
-function tabletGuestOpen() { return !!(DESKTOP && tabletBridge && tabletBridge.guestConnected); }
-function tabletCamAvailable() { return !!(DESKTOP && tabletBridge && tabletBridge.camConnected && tabletBridge.port); }
+function activeBridgeApi() { return (window.pb4u && window.pb4u.bridge) || (tabletBridge && tabletBridge.api) || null; }
+function tabletBridgeReady() { return !!(DESKTOP || (tabletBridge && tabletBridge.mode === 'helper')); }
+function tabletBridgeLocalBase() {
+  if (tabletBridge && tabletBridge.mode === 'helper') return HELPER_BRIDGE_BASE;
+  return (tabletBridge && tabletBridge.port) ? ('http://127.0.0.1:' + tabletBridge.port + '/bridge-local') : '';
+}
+function tabletGuestOpen() { return !!(tabletBridgeReady() && tabletBridge && tabletBridge.guestConnected); }
+function tabletCamAvailable() { return !!(tabletBridgeReady() && tabletBridge && tabletBridge.camConnected && tabletBridge.port); }
 function tabletCamOptionLabel() {
   const nm = tabletBridge.deviceName || 'Tablet';
   const side = tabletBridge.facing === 'back' ? 'Rear' : 'Front';
@@ -57,15 +68,17 @@ function tabletVoiceCaps(act) {
   try { if (typeof refreshFxUI === 'function') refreshFxUI(); } catch (e) { }
 }
 function tabletVoiceSend(text, lang, name, vol) {
-  if (!tabletVoiceOn() || !(window.pb4u && window.pb4u.bridge)) return false;
+  const api = activeBridgeApi();
+  if (!tabletVoiceOn() || !api) return false;
   try {
-    window.pb4u.bridge.sendEvent({ type: 'voice', text: String(text), lang: lang === 'fil' ? 'fil' : 'en', name: name || '', vol: vol });
+    api.sendEvent({ type: 'voice', text: String(text), lang: lang === 'fil' ? 'fil' : 'en', name: name || '', vol: vol });
     return true;
   } catch (e) { return false; }
 }
 function tabletVoiceStop() {
-  if (!tabletGuestOpen() || !(window.pb4u && window.pb4u.bridge)) return;
-  try { window.pb4u.bridge.sendEvent({ type: 'voiceStop' }); } catch (e) { }
+  const api = activeBridgeApi();
+  if (!tabletGuestOpen() || !api) return;
+  try { api.sendEvent({ type: 'voiceStop' }); } catch (e) { }
 }
 
 // ---- Beeps, "Pose" chime, start chime and the shutter click on the tablet ----
@@ -75,10 +88,11 @@ function tabletVoiceStop() {
 // tablet whose audio is still locked (a browser that wants a tap first): the laptop plays them as before.
 function tabletSoundOn() { return !!(tabletGuestOpen() && tabletBridge.soundOk); }
 function tabletSoundPlay(kind) {
-  if (!tabletSoundOn() || !(window.pb4u && window.pb4u.bridge)) return false;
+  const api = activeBridgeApi();
+  if (!tabletSoundOn() || !api) return false;
   const own = kind === 'shut' ? tabletBridge.soundOwn.shut : (kind === 'b1' || kind === 'b2') ? tabletBridge.soundOwn.tick : false;
   try {
-    window.pb4u.bridge.sendEvent({ type: 'sound', kind: kind, vol: Number((fx.vol * (own ? 1.1 : 1)).toFixed(3)) });
+    api.sendEvent({ type: 'sound', kind: kind, vol: Number((fx.vol * (own ? 1.1 : 1)).toFixed(3)) });
     return true;
   } catch (e) { return false; }
 }
@@ -92,13 +106,14 @@ function tabletSoundPack() {
   };
 }
 function tabletSoundSync(force) {
-  if (!tabletGuestOpen() || !(window.pb4u && window.pb4u.bridge)) return;
+  const api = activeBridgeApi();
+  if (!tabletGuestOpen() || !api) return;
   try {
     const p = tabletSoundPack();
     if (!force && p.sig === tabletBridge.soundSig) return;
     tabletBridge.soundSig = p.sig;
     tabletBridge.soundOwn = p.own;
-    window.pb4u.bridge.sendEvent({ type: 'sounds', sig: p.sig, sounds: p.sounds });
+    api.sendEvent({ type: 'sounds', sig: p.sig, sounds: p.sounds });
   } catch (e) { }
 }
 function tabletSoundCaps(act) { tabletBridge.soundOk = !!(act && act.ok); }
@@ -162,7 +177,7 @@ function tabletUiVars() {
 // already on its way (the old code answered with the previous guest's picture, or none), and a new picture for a slot goes after the
 // older one, so the bridge never ends up holding the older picture.
 async function tabletBridgeUploadMedia(slot, srcUrl, mime, maxDim) {
-  if (!tabletBridge.port || !srcUrl) return '';
+  if (!tabletBridgeLocalBase() || !srcUrl) return '';
   const sig = tabletPicSig(srcUrl);
   if (tabletBridge.mediaSigs[slot] === sig && tabletBridge.mediaUrls[slot]) return tabletBridge.mediaUrls[slot];
   const cur = tabletBridge.mediaUploading[slot];
@@ -197,7 +212,9 @@ async function tabletUploadMediaNow(slot, srcUrl, mime, maxDim, sig) {
         }
       } finally { try { bmp.close(); } catch (e) { } }
     }
-    const resp = await fetch('http://127.0.0.1:' + tabletBridge.port + '/bridge-local/media/' + encodeURIComponent(slot), {
+    const base = tabletBridgeLocalBase();
+    if (!base) return '';
+    const resp = await fetch(base + '/media/' + encodeURIComponent(slot), {
       method: 'POST',
       headers: { 'content-type': (blob && blob.type) || mime || 'image/jpeg' },
       body: blob
@@ -216,7 +233,8 @@ async function tabletUploadMediaNow(slot, srcUrl, mime, maxDim, sig) {
 function openTabletCameraStream() {
   if (!tabletCamAvailable()) throw new Error('Tablet camera is not connected');
   if (tabletBridge.pumpStop) { try { tabletBridge.pumpStop(); } catch (e) { } tabletBridge.pumpStop = null; }
-  const port = tabletBridge.port;
+  const localBase = tabletBridgeLocalBase();
+  if (!localBase) throw new Error('Tablet camera bridge is not ready');
   const canvas = document.createElement('canvas');
   canvas.width = (tabletBridge.info && tabletBridge.info.width) || 1280;
   canvas.height = (tabletBridge.info && tabletBridge.info.height) || 960;
@@ -234,7 +252,7 @@ function openTabletCameraStream() {
   track.stop = stopAll;
   tabletBridge.pumpStop = stopAll;
   tabletBridge.stream = stream;
-  try { window.pb4u.bridge.camCmd({ type: 'live', on: true }); } catch (e) { }
+  try { const a0 = activeBridgeApi(); if (a0) a0.camCmd({ type: 'live', on: true }); } catch (e) { }
 
   (async function pump() {
     while (alive) {
@@ -244,7 +262,7 @@ function openTabletCameraStream() {
         return;
       }
       try {
-        const r = await fetch('http://127.0.0.1:' + port + '/bridge-local/frame?after=' + seq + '&wait=900', {
+        const r = await fetch(localBase + '/frame?after=' + seq + '&wait=900', {
           cache: 'no-store',
           signal: AbortSignal.timeout(4000)
         });
@@ -278,10 +296,11 @@ function openTabletCameraStream() {
 
 async function captureTabletShot(index) {
   captureFrame(index);
-  if (!tabletCamAvailable()) return;
+  const localBase = tabletBridgeLocalBase();
+  if (!tabletCamAvailable() || !localBase) return;
   const shots = shotCanvases;
   try {
-    const r = await fetch('http://127.0.0.1:' + tabletBridge.port + '/bridge-local/capture', {
+    const r = await fetch(localBase + '/capture', {
       method: 'POST',
       cache: 'no-store',
       signal: AbortSignal.timeout(16000)
@@ -363,8 +382,9 @@ function syncRemoteFrameToBridge(active, bgActive) {
         tabletBridge.bgSending = true;
         try {
           outCanvas.toBlob((b) => {
-            if (!b || !tabletBridge.port) { tabletBridge.bgSending = false; return; }
-            fetch('http://127.0.0.1:' + tabletBridge.port + '/bridge-local/media/remoteFrame', {
+            const base = tabletBridgeLocalBase();
+            if (!b || !base) { tabletBridge.bgSending = false; return; }
+            fetch(base + '/media/remoteFrame', {
               method: 'POST', headers: { 'content-type': 'image/jpeg' }, body: b
             }).catch(() => { }).finally(() => { tabletBridge.bgSending = false; });
           }, 'image/jpeg', 0.72);
@@ -379,7 +399,8 @@ function syncRemoteFrameToBridge(active, bgActive) {
 }
 
 async function buildAndPushTabletState() {
-  if (!tabletGuestOpen() || !(window.pb4u && window.pb4u.bridge)) return;
+  const api = activeBridgeApi();
+  if (!tabletGuestOpen() || !api) return;
   const buildSeq = ++tabletBridge.buildSeq;
   // One part of the screen that fails (a helper that throws) is left out and reported in Setup; the rest still goes to the tablet.
   const soft = [];
@@ -617,7 +638,7 @@ async function buildAndPushTabletState() {
   if (buildSeq < tabletBridge.pushedSeq) return;   // a newer picture of the screen already went out while this one was being built
   tabletBridge.pushedSeq = buildSeq;
   try {
-    window.pb4u.bridge.pushState(payload);
+    api.pushState(payload);
     tabletBridge.lastError = soft.length ? 'part of the screen was left out (' + soft.join('; ') + ')' : '';
     tabletBridge.lastPushAt = Date.now();
   } catch (e) {
@@ -640,14 +661,15 @@ function tabletBridgeSync() {
 }
 
 function tabletBridgePushEvent(what, a, b, c, d) {
-  if (!tabletGuestOpen() || !(window.pb4u && window.pb4u.bridge)) return;
+  const api = activeBridgeApi();
+  if (!tabletGuestOpen() || !api) return;
   try {
     if (what === 'tick') {
-      window.pb4u.bridge.sendEvent({ type: 'tick', num: a, word: !!b, progress: c, chip: d || 'Smile!' });
+      api.sendEvent({ type: 'tick', num: a, word: !!b, progress: c, chip: d || 'Smile!' });
     } else if (what === 'flash') {
-      window.pb4u.bridge.sendEvent({ type: 'flash' });
+      api.sendEvent({ type: 'flash' });
     } else if (what === 'screenflash') {
-      window.pb4u.bridge.sendEvent({ type: 'screenflash', on: !!a });
+      api.sendEvent({ type: 'screenflash', on: !!a });
     } else if (what === 'camera') {
       tabletBridgeSync();
     } else if (what === 'review') {
@@ -659,6 +681,33 @@ function tabletBridgePushEvent(what, a, b, c, d) {
       tabletBridgeSync();
     }
   } catch (e) { }
+}
+
+function renderTabletBridgeHelperNote(stateKey) {
+  const box = document.getElementById('tabletBridgeBox');
+  const stEl = document.getElementById('tabletBridgeStatus');
+  const qrRow = document.getElementById('tabletBridgeQrRow');
+  const actsRow = document.getElementById('tabletBridgeActionsRow');
+  const note = document.getElementById('tabletBridgeHelperNote');
+  const noteTxt = document.getElementById('tabletBridgeHelperText');
+  if (box) box.style.display = (DESKTOP || tabletBridge.webLaptop) ? '' : 'none';
+  if (qrRow) qrRow.style.display = 'none';
+  if (actsRow) actsRow.style.display = 'none';
+  if (note) note.hidden = false;
+  if (stEl) {
+    stEl.classList.remove('on');
+    const txt = stEl.querySelector('span');
+    if (txt) {
+      txt.textContent = stateKey === 'outdated'
+        ? 'Print Helper needs update (v1.1.21+) to pair with the Android tablet'
+        : 'Online Web Booth — start Print Helper (or open Desktop App) to show the pairing QR';
+    }
+  }
+  if (noteTxt) {
+    noteTxt.innerHTML = stateKey === 'outdated'
+      ? 'Your running <b>photobooth4u Print Helper</b> is an older version without Tablet Bridge. Download the latest <b>Print Helper (v1.1.21+)</b> or open the <b>Desktop App</b>, then keep the laptop &amp; tablet on the same Wi-Fi.'
+      : 'To connect an Android / Huawei tablet while using the <b>online website</b>, start <b>photobooth4u Print Helper (v1.1.21+)</b> on this laptop (same Wi-Fi as the tablet) — or use the <b>photobooth4u Desktop App</b>. Tap <b>?</b> above for the step-by-step guide.';
+  }
 }
 
 function renderTabletBridgeSetup(info) {
@@ -677,17 +726,24 @@ function renderTabletBridgeSetup(info) {
   const box = document.getElementById('tabletBridgeBox');
   const stEl = document.getElementById('tabletBridgeStatus');
   const qrEl = document.getElementById('tabletBridgeQr');
+  const qrRow = document.getElementById('tabletBridgeQrRow');
+  const actsRow = document.getElementById('tabletBridgeActionsRow');
+  const note = document.getElementById('tabletBridgeHelperNote');
   const urlEl = document.getElementById('tabletBridgeUrl');
   const flipBtn = document.getElementById('tabletBridgeFlipBtn');
-  if (box) box.style.display = DESKTOP ? '' : 'none';
+  if (box) box.style.display = (DESKTOP || tabletBridge.webLaptop) ? '' : 'none';
+  if (qrRow) qrRow.style.display = 'flex';
+  if (actsRow) actsRow.style.display = 'flex';
+  if (note) note.hidden = true;
   if (stEl) {
     stEl.classList.toggle('on', !!info.connected);
     const txt = stEl.querySelector('span');
     if (txt) {
-      if (info.camConnected && info.guestConnected) txt.textContent = 'Connected: ' + (info.deviceName || 'Tablet') + ' (Guest Screen + Camera ready)' + (info.via ? ' \u00b7 over ' + info.via.kind + ' (' + info.via.ip + ')' : '');
-      else if (info.guestConnected) txt.textContent = 'Guest Screen connected (waiting for camera…)';
-      else if (info.camConnected) txt.textContent = 'Camera connected: ' + (info.deviceName || 'Tablet');
-      else txt.textContent = 'Not paired yet — scan QR inside the tablet app';
+      const modeTag = tabletBridge.mode === 'helper' ? ' · via Print Helper' : '';
+      if (info.camConnected && info.guestConnected) txt.textContent = 'Connected: ' + (info.deviceName || 'Tablet') + ' (Guest Screen + Camera ready)' + (info.via ? ' \u00b7 over ' + info.via.kind + ' (' + info.via.ip + ')' : '') + modeTag;
+      else if (info.guestConnected) txt.textContent = 'Guest Screen connected (waiting for camera…)' + modeTag;
+      else if (info.camConnected) txt.textContent = 'Camera connected: ' + (info.deviceName || 'Tablet') + modeTag;
+      else txt.textContent = 'Not paired yet — scan QR inside the tablet app' + modeTag;
       // Say so when the booth could not build the tablet's screen, instead of leaving it to look like a tablet that is simply slow.
       if (tabletBridge.lastError && info.guestConnected) txt.textContent += ' \u00b7 the tablet screen could not be updated: ' + tabletBridge.lastError;
     }
@@ -702,10 +758,13 @@ function renderTabletBridgeSetup(info) {
     urlEl.textContent = lines.join('\n') || 'Starting local server…';
   }
   if (qrEl && info.primaryUrl && typeof qrcode === 'function') {
+    const extras = (info.addresses || []).map(a => a.url)
+      .concat(info.adbUrl ? [info.adbUrl] : [])
+      .filter((u, idx, arr) => u && u !== info.primaryUrl && arr.indexOf(u) === idx);
     const qrPayload = JSON.stringify({
       app: 'pb4u-bridge',
       url: info.primaryUrl,
-      urls: (info.addresses || []).map(a => a.url).concat(info.adbUrl ? [info.adbUrl] : [])
+      urls: extras
     });
     if (qrEl.dataset.sig !== qrPayload) {
       qrEl.dataset.sig = qrPayload;
@@ -769,14 +828,28 @@ function renderTabletBridgeSetup(info) {
 }
 
 (function initTabletBridgeClient() {
-  if (!DESKTOP || !(window.pb4u && window.pb4u.bridge)) return;
-  const api = window.pb4u.bridge;
-  const refreshInfo = () => api.info().then(renderTabletBridgeSetup).catch(() => { });
-  refreshInfo();
-  setInterval(refreshInfo, 10000);
-  api.onStatus(renderTabletBridgeSetup);
-  api.onAction((act) => {
+  const guideBtn = document.getElementById('tabletBridgeGuideBtn');
+  const guideBox = document.getElementById('tabletBridgeGuide');
+  if (guideBtn && guideBox) {
+    guideBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const open = guideBox.hidden;
+      guideBox.hidden = !open;
+      guideBtn.classList.toggle('open', open);
+      guideBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  }
+
+  const isDesktop = !!(DESKTOP && window.pb4u && window.pb4u.bridge);
+  const isTabletOrRemote = (typeof TABLET_LOCAL !== 'undefined' && TABLET_LOCAL) || (typeof LANREMOTE !== 'undefined' && LANREMOTE);
+  const isMobile = typeof isMobileOS === 'function' && isMobileOS();
+  const isWebLaptop = !isDesktop && !isTabletOrRemote && !isMobile;
+  if (!isDesktop && !isWebLaptop) return;
+
+  function handleAction(act) {
     if (!act || !act.action) return;
+    const api = activeBridgeApi();
     const a = act.action;
     if (a === 'voiceCaps') { tabletVoiceCaps(act); return; }
     if (a === 'soundCaps') { tabletSoundCaps(act); return; }
@@ -800,12 +873,12 @@ function renderTabletBridgeSetup(info) {
     if (a === 'print') {
       if (state !== 'result' || printing) return;
       if (typeof noPrintSession === 'function' && noPrintSession()) {
-        api.sendEvent({ type: 'toast', msg: 'Softcopy only — scan QR to save.' });
+        if (api) api.sendEvent({ type: 'toast', msg: 'Softcopy only — scan QR to save.' });
         return;
       }
       const max = printSize ? maxCopies(printSize) : 0;
       if (max < 1) {
-        api.sendEvent({ type: 'toast', msg: 'Print limit reached.' });
+        if (api) api.sendEvent({ type: 'toast', msg: 'Print limit reached.' });
         return;
       }
       const copies = Math.max(1, Math.min(max, Number(act.copies) || printPrefs.copies || 1));
@@ -813,22 +886,143 @@ function renderTabletBridgeSetup(info) {
       return;
     }
     if (a === 'switchCam') {
-      api.camCmd({ type: 'switchCam' });
+      if (api) api.camCmd({ type: 'switchCam' });
     }
-  });
+  }
+
+  if (isDesktop) {
+    tabletBridge.mode = 'desktop';
+    tabletBridge.api = window.pb4u.bridge;
+    const api = window.pb4u.bridge;
+    const refreshInfo = () => api.info().then(renderTabletBridgeSetup).catch(() => { });
+    refreshInfo();
+    setInterval(refreshInfo, 10000);
+    api.onStatus(renderTabletBridgeSetup);
+    api.onAction(handleAction);
+  } else {
+    // Online Web Booth on a laptop: connect to the local Tablet Bridge inside photobooth4u Print Helper (127.0.0.1:17321).
+    tabletBridge.webLaptop = true;
+    let pollActive = false;
+    let pollSeq = 0;
+
+    const helperApi = {
+      info: () => fetch(HELPER_BRIDGE_BASE + '/info', { cache: 'no-store', signal: AbortSignal.timeout(3000) }).then((r) => (r.ok ? r.json() : null)),
+      renew: () => fetch(HELPER_BRIDGE_BASE + '/renew', { method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(3000) }).then((r) => r.json()),
+      pushState: (st) => fetch(HELPER_BRIDGE_BASE + '/state', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(st || {}) }).catch(() => { }),
+      sendEvent: (ev) => fetch(HELPER_BRIDGE_BASE + '/event', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(ev || {}) }).catch(() => { }),
+      camCmd: (cmd) => fetch(HELPER_BRIDGE_BASE + '/cam-cmd', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cmd || {}) }).catch(() => { })
+    };
+
+    function markHelperDown(stateKey) {
+      const wasActive = tabletBridge.mode === 'helper';
+      pollActive = false;
+      tabletBridge.mode = '';
+      tabletBridge.api = null;
+      tabletBridge.helperState = stateKey;
+      if (wasActive) {
+        renderTabletBridgeSetup({ port: 0, connected: false, camConnected: false, guestConnected: false, addresses: [] });
+      }
+      renderTabletBridgeHelperNote(stateKey);
+    }
+
+    async function runHelperPoll() {
+      if (pollActive) return;
+      pollActive = true;
+      let fails = 0;
+      while (pollActive && tabletBridge.mode === 'helper') {
+        try {
+          const r = await fetch(HELPER_BRIDGE_BASE + '/poll?after=' + pollSeq + '&wait=15000', {
+            cache: 'no-store',
+            signal: AbortSignal.timeout(20000)
+          });
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          const j = await r.json();
+          fails = 0;
+          if (typeof j.seq === 'number') pollSeq = j.seq;
+          if (j.info) renderTabletBridgeSetup(j.info);
+          if (Array.isArray(j.actions)) {
+            j.actions.forEach((act) => { try { handleAction(act); } catch (e) { } });
+          }
+        } catch (e) {
+          if (++fails >= 3) {
+            markHelperDown('missing');
+            return;
+          }
+          await wait(1200);
+        }
+      }
+    }
+
+    async function probeHelperBridge(manual) {
+      let r = null, j = null;
+      try {
+        r = await fetch(HELPER_BRIDGE_BASE + '/info', { cache: 'no-store', signal: AbortSignal.timeout(2500) });
+        if (r.ok) j = await r.json();
+      } catch (e) { r = null; }
+      if (j && j.ok && j.port) {
+        tabletBridge.mode = 'helper';
+        tabletBridge.api = helperApi;
+        tabletBridge.helperState = 'ready';
+        if (typeof j.seq === 'number') pollSeq = j.seq;
+        try { renderTabletBridgeSetup(j); } catch (e) { }
+        runHelperPoll();
+        if (manual) showToast('Tablet Bridge ready via Print Helper ✓', 3000);
+        return;
+      }
+      if (r && r.status === 404) {
+        markHelperDown('outdated');
+        if (manual) showToast('Update Print Helper to v1.1.21+ for Tablet Bridge.', 4500);
+        return;
+      }
+      markHelperDown('missing');
+      if (manual) showToast('Print Helper not detected on this laptop yet.', 3500);
+    }
+
+    renderTabletBridgeHelperNote('missing');
+    probeHelperBridge(false);
+    setInterval(() => {
+      if (tabletBridge.mode === 'helper') {
+        helperApi.info().then((j) => { if (j && j.ok) renderTabletBridgeSetup(j); }).catch(() => { });
+      } else {
+        probeHelperBridge(false);
+      }
+    }, 10000);
+
+    const retryBtn = document.getElementById('tabletBridgeRetryBtn');
+    if (retryBtn) retryBtn.addEventListener('click', () => {
+      retryBtn.disabled = true;
+      probeHelperBridge(true).finally(() => { retryBtn.disabled = false; });
+    });
+  }
 
   const copyBtn = document.getElementById('tabletBridgeCopyBtn');
   const renewBtn = document.getElementById('tabletBridgeRenewBtn');
   const flipBtn = document.getElementById('tabletBridgeFlipBtn');
   if (copyBtn) copyBtn.addEventListener('click', () => {
     const u = tabletBridge.info && tabletBridge.info.primaryUrl;
-    if (u && window.pb4u.copy) { window.pb4u.copy(u); showToast('Tablet bridge address copied.'); }
+    if (!u) return;
+    if (window.pb4u && window.pb4u.copy) { window.pb4u.copy(u); showToast('Tablet bridge address copied.'); }
+    else if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(u).then(() => showToast('Tablet bridge address copied.')).catch(() => { });
+    } else {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = u;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+        showToast('Tablet bridge address copied.');
+      } catch (e) { }
+    }
   });
   if (renewBtn) renewBtn.addEventListener('click', () => {
-    api.renew().then((i) => { renderTabletBridgeSetup(i); showToast('New tablet pairing QR created.'); });
+    const api = activeBridgeApi();
+    if (api && api.renew) api.renew().then((i) => { renderTabletBridgeSetup(i); showToast('New tablet pairing QR created.'); }).catch(() => { });
   });
   if (flipBtn) flipBtn.addEventListener('click', () => {
-    api.camCmd({ type: 'switchCam' });
+    const api = activeBridgeApi();
+    if (api && api.camCmd) api.camCmd({ type: 'switchCam' });
   });
 
   // A way to pick the tablet camera by hand. The Camera menu hides itself when there is only one choice (a laptop with no

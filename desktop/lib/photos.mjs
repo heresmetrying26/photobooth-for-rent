@@ -319,14 +319,16 @@ export function folderPathOf(folderUrl) {
   return m ? dirOf(m[1]) : null;
 }
 
-const VIRTUAL = /(vEthernet|VirtualBox|VMware|Hyper-V|docker|br-|veth|utun|awdl|llw|bridge|ZeroTier|Tailscale|Loopback|vboxnet|WSL)/i;
-export function lanAddress() {
-  const nets = networkInterfaces();
+const VIRTUAL = /(vEthernet|VirtualBox|VMware|Hyper-V|docker|br-|veth|utun|awdl|llw|bridge|ZeroTier|Tailscale|Loopback|vboxnet|WSL|WireGuard|NordLynx|OpenVPN|TAP-Windows|CloudflareWARP|ProtonVPN|\bwg\d+\b|\btun\d+\b)/i;
+export function lanAddress(nets = networkInterfaces()) {
   const cands = [];
-  for (const [name, list] of Object.entries(nets)) {
+  for (const [name, list] of Object.entries(nets || {})) {
     for (const a of list || []) {
       if (a.internal || (a.family !== 'IPv4' && a.family !== 4)) continue;
       if (/^169\.254\./.test(a.address)) continue;
+      // Dummy loopback subnet created by hotspot.mjs so Windows Mobile Hotspot can start offline.
+      // Exclude by IP too in case Rename-NetAdapter failed and Windows left it as "Ethernet 2".
+      if (/^10\.254\.254\./.test(a.address)) continue;
       let score = 0;
       if (/^192\.168\./.test(a.address)) score += 3;
       else if (/^10\./.test(a.address)) score += 2;

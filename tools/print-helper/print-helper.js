@@ -24,9 +24,10 @@ import { join } from 'node:path';
 import { writeFile, rm, mkdtemp, mkdir, readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { freeCamera, guardCamera } from './camfree.mjs';
+import { startHelperBridge, stopHelperBridge, helperBridgeStatus, handleBridgeCtrl } from './bridge-ctrl.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.20';
+const VERSION = '1.1.21';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',
@@ -618,6 +619,7 @@ function cors(origin) {
   const h = {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'content-type',
+    'Access-Control-Expose-Headers': 'x-pb-seq',
     'Access-Control-Allow-Private-Network': 'true',
     'Cross-Origin-Resource-Policy': 'cross-origin',
     'Access-Control-Max-Age': '600',
@@ -690,8 +692,14 @@ const server = Bun.serve({
     if (req.method === 'GET' && url.pathname === '/status') {
       return json({
         ok: true, app: 'photobooth4u-print-helper', version: VERSION, printers: await printers(url.searchParams.get('refresh') === '1'),
-        camera: { supported: CAMERA_OK, open: !!cam.open, name: cam.open ? cam.open.name : '', free: IS_MAC }
+        camera: { supported: CAMERA_OK, open: !!cam.open, name: cam.open ? cam.open.name : '', free: IS_MAC },
+        bridge: helperBridgeStatus()
       }, 200, origin);
+    }
+
+    if (url.pathname.startsWith('/bridge-ctrl/')) {
+      if (!origin) return json({ ok: false, error: 'Missing origin' }, 403);
+      return await handleBridgeCtrl(req, url, cors(origin));
     }
 
     if (url.pathname.startsWith('/camera')) {
@@ -863,6 +871,13 @@ printers(true).then(list => {
   console.log('');
   if (CAMERA_OK) console.log('  Camera: plug in a Nikon or Canon EOS camera, switch it on, and pick it in the booth.\n');
 }).catch(() => { });
-process.on('exit', () => { try { cam.proc && cam.proc.kill(); } catch (e) { } });
+process.on('exit', () => { try { cam.proc && cam.proc.kill(); } catch (e) { } try { stopHelperBridge(); } catch (e) { } });
+// Start LAN Tablet Bridge (ports 47777-47797) so the online Web Booth can pair with an Android/Huawei tablet.
+startHelperBridge({ logger: log }).then((bp) => {
+  if (bp) {
+    const st = helperBridgeStatus();
+    log('Tablet Bridge ready on port ' + bp + (st.primaryUrl ? ' (' + st.primaryUrl + ')' : '') + ' — allow Windows Firewall (Private & Public) if asked.');
+  }
+}).catch(() => { });
 // Windows: get the camera part ready now, so the booth finds the camera quickly.
 if (IS_WIN) camStart().catch(e => log(String(e && e.message || e)));

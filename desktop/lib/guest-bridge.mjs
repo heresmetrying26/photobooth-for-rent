@@ -17,7 +17,7 @@ import { networkInterfaces } from 'node:os';
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const MAX_WS_PAYLOAD = 8 * 1024 * 1024;
 const MAX_HTTP_BODY = 32 * 1024 * 1024;
-const VIRTUAL_IFACE = /(vEthernet|VirtualBox|VMware|Hyper-V|docker|br-|veth|utun|awdl|llw|bridge|ZeroTier|Tailscale|Loopback|vboxnet|WSL)/i;
+const VIRTUAL_IFACE = /(vEthernet|VirtualBox|VMware|Hyper-V|docker|br-|veth|utun|awdl|llw|bridge|ZeroTier|Tailscale|Loopback|vboxnet|WSL|WireGuard|NordLynx|OpenVPN|TAP-Windows|CloudflareWARP|ProtonVPN|\bwg\d+\b|\btun\d+\b)/i;
 
 let cfg = {
   getPort: () => 0,
@@ -29,6 +29,41 @@ let cfg = {
 let token = randomBytes(8).toString('hex');
 let camSocket = null;
 const guestSockets = new Set();
+let hbTimer = null;
+
+const WS_HB_MS = 10000;
+const WS_STALE_MS = 35000;
+
+function ensureHeartbeat() {
+  if (hbTimer) return;
+  hbTimer = setInterval(() => {
+    const now = Date.now();
+    if (camSocket) {
+      if (camSocket.destroyed) {
+        camSocket = null;
+      } else if (camSocket._pbSeenAt && now - camSocket._pbSeenAt > WS_STALE_MS) {
+        wsClose(camSocket, 1001, 'heartbeat timeout');
+      } else {
+        wsSendFrame(camSocket, 0x9, Buffer.alloc(0));
+      }
+    }
+    for (const s of [...guestSockets]) {
+      if (s.destroyed) {
+        guestSockets.delete(s);
+      } else if (s._pbSeenAt && now - s._pbSeenAt > WS_STALE_MS) {
+        wsClose(s, 1001, 'heartbeat timeout');
+      } else {
+        wsSendFrame(s, 0x9, Buffer.alloc(0));
+        wsSendJson(s, { type: 'hb' });
+      }
+    }
+    if (!camSocket && guestSockets.size === 0) {
+      clearInterval(hbTimer);
+      hbTimer = null;
+    }
+  }, WS_HB_MS);
+  if (typeof hbTimer.unref === 'function') hbTimer.unref();
+}
 
 const camState = {
   connected: false,
@@ -59,17 +94,20 @@ export function initBridge(options = {}) {
     onAction: typeof options.onAction === 'function' ? options.onAction : () => { },
     logger: typeof options.logger === 'function' ? options.logger : () => { }
   };
+  lastStateMsg = null;
 }
 
-export function allBridgeUrls() {
+export function allBridgeUrls(nets = networkInterfaces()) {
   const port = Number(cfg.getPort()) || 0;
   if (!port) return [];
-  const nets = networkInterfaces();
   const cands = [];
-  for (const [name, list] of Object.entries(nets)) {
+  for (const [name, list] of Object.entries(nets || {})) {
     for (const a of list || []) {
       if (a.internal || (a.family !== 'IPv4' && a.family !== 4)) continue;
       if (/^169\.254\./.test(a.address)) continue;
+      // Dummy loopback subnet created by hotspot.mjs so Windows Mobile Hotspot can start offline.
+      // Exclude by IP too so an unrenamed "Ethernet 2" loopback never hijacks primaryUrl.
+      if (/^10\.254\.254\./.test(a.address)) continue;
       let score = 0;
       let kind = 'LAN';
       if (/rndis|usb|tether|remote ndis/i.test(name)) { score += 10; kind = 'USB Tether'; }
@@ -198,7 +236,9 @@ function attachWsReader(socket, onMessage, onDone) {
   let fragChunks = [];
   let fragLen = 0;
 
+  socket._pbSeenAt = Date.now();
   socket.on('data', (chunk) => {
+    socket._pbSeenAt = Date.now();
     buf = buf.length ? Buffer.concat([buf, chunk]) : chunk;
     while (buf.length >= 2) {
       const b0 = buf[0];
@@ -230,7 +270,7 @@ function attachWsReader(socket, onMessage, onDone) {
         payload = Buffer.allocUnsafe(len);
         for (let i = 0; i < len; i++) payload[i] = raw[i] ^ mask[i & 3];
       } else {
-        payload = Buffer.from(buf.subarray(off + 4, need));
+        payload = Buffer.from(buf.subarray(off, need));
       }
       buf = buf.subarray(need);
 
@@ -341,6 +381,9 @@ export function attachBridgeUpgrade(httpServer) {
       'Sec-WebSocket-Accept: ' + accept + '\r\n\r\n'
     );
     socket.setNoDelay(true);
+    try { socket.setKeepAlive(true, 10000); } catch { /* ignore */ }
+    socket._pbSeenAt = Date.now();
+    ensureHeartbeat();
 
     if (role === 'cam') {
       if (camSocket && camSocket !== socket) wsClose(camSocket, 1000, 'replaced');
@@ -461,6 +504,43 @@ function isLoopback(req) {
   return a === '127.0.0.1' || a === '::1';
 }
 
+// ---------- Direct local helpers (used by both Electron /bridge-local and Print Helper /bridge-ctrl) ----------
+export async function waitLatestFrame(after = 0, waitMs = 0) {
+  const afterSeq = Number(after) || 0;
+  const maxWait = Math.min(2000, Math.max(0, Number(waitMs) || 0));
+  if (maxWait > 0 && camState.frameSeq <= afterSeq && camState.connected) {
+    await new Promise((resolve) => {
+      const t = setTimeout(() => { frameWaiters.delete(done); resolve(false); }, maxWait);
+      const done = () => { clearTimeout(t); resolve(true); };
+      frameWaiters.add(done);
+    });
+  }
+  if (!camState.latestFrame || (afterSeq > 0 && camState.frameSeq <= afterSeq)) {
+    return { seq: camState.frameSeq, buf: null };
+  }
+  return { seq: camState.frameSeq, buf: camState.latestFrame };
+}
+
+export async function captureBridgeShot(timeoutMs = 15000) {
+  return await requestTabletShot(timeoutMs);
+}
+
+export function setBridgeMedia(slot, contentType, buf) {
+  const ct = String(contentType || 'application/octet-stream').split(';')[0].trim();
+  const data = Buffer.isBuffer(buf) ? buf : Buffer.from(buf || []);
+  if (data.length) {
+    mediaSeq++;
+    mediaStore.set(slot, { type: ct, buf: data, seq: mediaSeq });
+    if (mediaStore.size > 60) {
+      const oldest = mediaStore.keys().next().value;
+      if (oldest && oldest !== slot) mediaStore.delete(oldest);
+    }
+  } else {
+    mediaStore.delete(slot);
+  }
+  return { ok: true, seq: mediaSeq, slot };
+}
+
 // ---------- HTTP handlers (called from photos.mjs handleShare) ----------
 export async function handleBridgeHttp(req, res, url) {
   const p = url.pathname;
@@ -473,27 +553,19 @@ export async function handleBridgeHttp(req, res, url) {
       return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'GET,POST', 'access-control-allow-headers': 'content-type' });
     }
     if (p === '/bridge-local/frame' && req.method === 'GET') {
-      const after = Number(url.searchParams.get('after') || 0);
-      const waitMs = Math.min(2000, Math.max(0, Number(url.searchParams.get('wait') || 0)));
-      if (waitMs > 0 && camState.frameSeq <= after && camState.connected) {
-        await new Promise((resolve) => {
-          const t = setTimeout(() => { frameWaiters.delete(done); resolve(false); }, waitMs);
-          const done = () => { clearTimeout(t); resolve(true); };
-          frameWaiters.add(done);
-        });
+      const { seq, buf } = await waitLatestFrame(url.searchParams.get('after'), url.searchParams.get('wait'));
+      if (!buf) {
+        return send(res, 204, 'text/plain', '', { ...cors, 'x-pb-seq': String(seq) });
       }
-      if (!camState.latestFrame || (after > 0 && camState.frameSeq <= after)) {
-        return send(res, 204, 'text/plain', '', { ...cors, 'x-pb-seq': String(camState.frameSeq) });
-      }
-      return send(res, 200, 'image/jpeg', camState.latestFrame, {
+      return send(res, 200, 'image/jpeg', buf, {
         ...cors,
-        'x-pb-seq': String(camState.frameSeq),
+        'x-pb-seq': String(seq),
         'access-control-expose-headers': 'x-pb-seq'
       });
     }
     if (p === '/bridge-local/capture' && req.method === 'POST') {
       try {
-        const jpeg = await requestTabletShot(15000);
+        const jpeg = await captureBridgeShot(15000);
         return send(res, 200, 'image/jpeg', jpeg, cors);
       } catch (e) {
         return send(res, 503, 'application/json', JSON.stringify({ ok: false, error: (e && e.message) || 'Capture failed' }), cors);
@@ -502,19 +574,9 @@ export async function handleBridgeHttp(req, res, url) {
     const mm = /^\/bridge-local\/media\/([A-Za-z0-9_.:-]{1,80})$/.exec(p);
     if (mm && req.method === 'POST') {
       const slot = mm[1];
-      const ct = String(req.headers['content-type'] || 'application/octet-stream').split(';')[0].trim();
       const buf = await readRawBody(req, 20 * 1024 * 1024);
-      if (buf.length) {
-        mediaSeq++;
-        mediaStore.set(slot, { type: ct, buf, seq: mediaSeq });
-        if (mediaStore.size > 60) {
-          const oldest = mediaStore.keys().next().value;
-          if (oldest && oldest !== slot) mediaStore.delete(oldest);
-        }
-      } else {
-        mediaStore.delete(slot);
-      }
-      return send(res, 200, 'application/json', JSON.stringify({ ok: true, seq: mediaSeq, slot }), cors);
+      const out = setBridgeMedia(slot, req.headers['content-type'], buf);
+      return send(res, 200, 'application/json', JSON.stringify(out), cors);
     }
     return send(res, 404, 'text/plain', 'Not found', cors);
   }
@@ -1208,24 +1270,61 @@ body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);h
   }
   ['pointerdown', 'touchstart', 'keydown'].forEach(function(ev){ document.addEventListener(ev, sndUnlock, true); });
 
+  var lastHbAt = 0, connectingAt = 0;
+  function forceReconnect(){
+    var stale = ws;
+    ws = null;
+    lastHbAt = 0;
+    connectingAt = 0;
+    if (stale) {
+      try { stale.onopen = stale.onerror = stale.onclose = stale.onmessage = null; stale.close(); } catch(e){}
+    }
+    els.conn.textContent = 'Reconnecting to laptop…';
+    els.conn.classList.remove('hide');
+    setTimeout(connectWs, 1200);
+  }
+  if (typeof setInterval === 'function') {
+    setInterval(function(){
+      if (!ws) return;
+      var now = Date.now();
+      if (ws.readyState === 1 && lastHbAt && (now - lastHbAt) > 28000) forceReconnect();
+      else if (ws.readyState === 0 && connectingAt && (now - connectingAt) > 12000) forceReconnect();
+    }, 7000);
+  }
   function connectWs(){
     var proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
-    ws = new WebSocket(proto + location.host + base + '/ws?role=guest');
-    ws.onopen = function(){
+    var sock = new WebSocket(proto + location.host + base + '/ws?role=guest');
+    ws = sock;
+    connectingAt = Date.now();
+    lastHbAt = 0;
+    sock.onopen = function(){
+      if (sock !== ws) return;
+      connectingAt = 0;
+      lastHbAt = Date.now();
       els.conn.classList.add('hide');
       syncNativePreview();
       voiceReports = 0;
       reportVoices();
       reportSound(true);
     };
-    ws.onclose = function(){
+    sock.onerror = function(){
+      if (sock !== ws) return;
+      try { sock.close(); } catch(e){}
+    };
+    sock.onclose = function(){
+      if (sock !== ws) return;
+      connectingAt = 0;
+      lastHbAt = 0;
       els.conn.textContent = 'Reconnecting to laptop…';
       els.conn.classList.remove('hide');
       setTimeout(connectWs, 1200);
     };
-    ws.onmessage = function(ev){
+    sock.onmessage = function(ev){
+      if (sock !== ws) return;
+      lastHbAt = Date.now();
       var m; try { m = JSON.parse(ev.data); } catch(e){ return; }
       if (!m || !m.type) return;
+      if (m.type === 'hb') { try { if (sock.readyState === 1) sock.send('{"type":"hb"}'); } catch(e){} return; }
       if (m.type === 'state') applyState(m.state);
       else if (m.type === 'tick') {
         els.cd.style.display = 'flex';

@@ -130,6 +130,8 @@ $res = @{ ok = $false; loopback = $false; firewall = $false; error = '' }
 try {
   netsh advfirewall firewall delete rule name="photobooth4u hotspot guests" | Out-Null
   netsh advfirewall firewall add rule name="photobooth4u hotspot guests" dir=in action=allow program="$exe" enable=yes profile=any remoteip=192.168.137.0/24 | Out-Null
+  netsh advfirewall firewall delete rule name="photobooth4u local booth" | Out-Null
+  netsh advfirewall firewall add rule name="photobooth4u local booth" dir=in action=allow program="$exe" protocol=TCP localport=47777-47797 enable=yes profile=any remoteip=192.168.0.0/16,10.0.0.0/8,172.16.0.0/12 | Out-Null
   $res.firewall = $true
   $have = Get-NetAdapter -IncludeHidden -ErrorAction SilentlyContinue | Where-Object { $_.InterfaceDescription -like '*Loopback*' }
   if (-not $have) {

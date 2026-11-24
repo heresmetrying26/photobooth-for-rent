@@ -18505,12 +18505,51 @@
 
     .pb-tip-btn:hover,
     .pb-tip-btn:focus-visible,
-    .pb-tip-btn.open {
+    .pb-tip-btn.open,
+    .pb-guide-q:hover,
+    .pb-guide-q:focus-visible,
+    .pb-guide-q.open {
       background: var(--brand, #c93d27);
       border-color: var(--brand, #c93d27);
       color: #fff;
       outline: none;
     }
+
+    .pb-guide-q {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border-radius: 50%;
+      border: 1.5px solid var(--line-dark, #cfc6ba);
+      background: rgba(255, 255, 255, .95);
+      color: var(--ink-dim, #5e554d);
+      font: 800 12px/1 'Manrope', sans-serif;
+      cursor: pointer;
+      flex: none;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+
+    .tb-guide {
+      margin: 8px 0 10px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #faf6f0;
+      border: 1px solid var(--line, #e4ddd3);
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: var(--ink-dim, #5d555b);
+    }
+    .tb-guide[hidden] { display: none; }
+    .tb-guide h4 { margin: 0 0 6px; font-size: 13px; font-weight: 800; color: var(--ink, #1c1a1e); }
+    .tb-guide .tb-g-head { margin: 9px 0 3px; font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--brand, #c93d27); }
+    .tb-guide ol, .tb-guide ul { margin: 0; padding-left: 18px; }
+    .tb-guide li { margin: 3px 0; }
+    .tb-guide b { color: var(--ink, #1c1a1e); }
+    .tb-guide .tb-g-foot { margin: 9px 0 0; padding-top: 8px; border-top: 1px solid var(--line, #e4ddd3); }
+    .tb-guide a { color: var(--brand, #c93d27); font-weight: 700; }
 
     .panel-hint.pb-tip-converted:not(.pb-tip-open) {
       display: none !important;
@@ -20139,19 +20178,20 @@
       // Prints one page. Not linked: links to the remembered printer quietly (the picker only when none was chosen yet).
       // The send fails (a stale link after the printer was switched off and on): links again once and sends it again.
       function printViaBluetooth(canvas, paper, opts) {
-        btPrinter._paperWidth = isKnown58mmPrinter(btPrinter._name) ? 384 : (PAPER_WIDTHS[paper || '80mm'] || 576);
+        var targetW = PAPER_WIDTHS[paper || '80mm'] || 576;
+        btPrinter._paperWidth = (btPrinter.connected && isKnown58mmPrinter(btPrinter._name)) ? 384 : targetW;
         var link = function () {
           if (btPrinter.connected) return Promise.resolve();
           if (btPrinter.canReconnect()) return btPrinter.reconnect().catch(function (e) { if (e && e.none) return btPrinter.connect(); throw e; });
           return btPrinter.connect();
         };
         return link().then(function () {
-          if (isKnown58mmPrinter(btPrinter._name)) btPrinter._paperWidth = 384;
+          btPrinter._paperWidth = isKnown58mmPrinter(btPrinter._name) ? 384 : targetW;
           return btPrinter.printCanvas(canvas, opts).catch(function (err) {
             if (!btPrinter.canReconnect()) throw err;
             try { btPrinter.disconnect(true); } catch (_) { }
             return btPrinter.reconnect().then(function () {
-              if (isKnown58mmPrinter(btPrinter._name)) btPrinter._paperWidth = 384;
+              btPrinter._paperWidth = isKnown58mmPrinter(btPrinter._name) ? 384 : targetW;
               return btPrinter.printCanvas(canvas, opts);
             });
           });
@@ -23104,16 +23144,48 @@
           <p class="panel-hint">Guests start a session by tapping the guest screen, or pressing <b>Space</b> / a
             presenter clicker. Setup, printing and the QR code stay on this screen.</p>
           <div id="tabletBridgeBox" style="display:none; margin-top:14px; padding-top:12px; border-top:1px solid var(--line);">
-            <p class="sub-label" style="margin:0 0 6px;">Huawei / Android Tablet Bridge (Guest Screen + Camera)</p>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 0 6px;">
+              <p class="sub-label" style="margin:0;">Huawei / Android Tablet Bridge (Guest Screen + Camera)</p>
+              <button type="button" class="pb-guide-q" id="tabletBridgeGuideBtn" aria-expanded="false" aria-controls="tabletBridgeGuide" title="How to connect laptop &amp; tablet (online or offline)">?</button>
+            </div>
+            <div id="tabletBridgeGuide" class="tb-guide print-guide" hidden>
+              <h4>How to connect your Android / Huawei tablet</h4>
+              <p class="tb-g-head">1. Laptop online (same Wi-Fi router)</p>
+              <ol>
+                <li>Connect both the <b>laptop</b> and <b>Android tablet</b> to the <b>exact same Wi-Fi router</b> (avoid hotel/mall &ldquo;Guest Wi-Fi&rdquo;).</li>
+                <li>Use the <b>photobooth4u Desktop App</b> — or if using the <b>online website</b> in Chrome/Edge, start <b>photobooth4u Print Helper (v1.1.21+)</b> on this laptop so the QR appears below.</li>
+                <li>On the tablet, open <b>photobooth4u → Laptop Guest + Camera Bridge → Scan Pairing QR on Laptop</b> and scan the QR below <i>(do not scan with the normal Camera app)</i>.</li>
+              </ol>
+              <p class="tb-g-head">2. Offline event (no internet)</p>
+              <ol>
+                <li>Use the <b>photobooth4u Desktop App</b> (works 100% offline — or if the online website + Print Helper were already opened before Wi-Fi dropped, the local bridge keeps running).</li>
+                <li>Connect via <b>USB-C + USB Tethering</b> (most reliable), the laptop’s <b>Booth Wi-Fi</b>, or your own <b>offline pocket router</b> (both devices on the same SSID).</li>
+                <li>On the tablet, keep <b>&ldquo;Make this tablet the booth Wi-Fi&rdquo; OFF</b> and scan the QR inside <b>Laptop Guest + Camera Bridge</b>.</li>
+              </ol>
+              <p class="tb-g-head">3. If it says &ldquo;Timed out&rdquo; / &ldquo;Could not reach laptop&rdquo;</p>
+              <ul>
+                <li><b>Windows Firewall:</b> Set your Wi-Fi network profile to <b>Private</b> in Windows Settings → Wi-Fi (or click <b>Allow</b> for both Private &amp; Public when Windows Firewall asks for photobooth4u / Print Helper).</li>
+                <li><b>Router setting:</b> Turn <b>AP / Client Isolation OFF</b> so devices on the Wi-Fi can talk to each other.</li>
+                <li><b>Offline tablet with SIM:</b> Turn <b>Airplane Mode ON → Wi-Fi back ON</b>, and tap <b>Stay connected</b> on &ldquo;No internet&rdquo;.</li>
+              </ul>
+              <p class="tb-g-foot"><a href="/how-to-tablet-camera/" target="_blank" rel="noopener">Open full visual Tablet Bridge guide ↗</a></p>
+            </div>
             <p class="guest-status" id="tabletBridgeStatus"><i></i><span>Not paired yet — scan QR inside the tablet app</span></p>
-            <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:8px 0;">
-              <img id="tabletBridgeQr" alt="Tablet bridge pairing QR" style="width:128px; height:128px; border-radius:10px; background:#fff; padding:6px; border:1px solid var(--line); object-fit:contain;">
+            <div id="tabletBridgeHelperNote" class="print-guide" hidden style="margin:8px 0; padding:10px 12px; border-radius:10px; background:#faf6f0; border:1px solid var(--line);">
+              <p id="tabletBridgeHelperText" style="margin:0 0 8px; font-size:12.5px; line-height:1.45; color:var(--ink-dim);"></p>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <button type="button" class="action-btn primary" id="tabletBridgeRetryBtn" style="width:auto; margin:0;">Check again</button>
+                <a class="action-btn" href="/downloads/" target="_blank" rel="noopener" style="width:auto; margin:0; text-decoration:none; display:inline-flex; align-items:center;">Download Print Helper / Desktop App</a>
+              </div>
+            </div>
+            <div id="tabletBridgeQrRow" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:8px 0;">
+              <img id="tabletBridgeQr" alt="Tablet bridge pairing QR" style="width:156px; height:156px; border-radius:10px; background:#fff; padding:6px; border:1px solid var(--line); object-fit:contain; image-rendering:pixelated;">
               <div style="flex:1; min-width:180px;">
-                <p class="panel-hint" style="margin:0 0 6px;">1. Connect via <b>USB-C + USB Tethering</b> or the laptop’s booth Wi-Fi.<br>2. Open <b>photobooth4u → Laptop Guest + Camera Bridge</b> on the tablet and scan this QR.</p>
+                <p class="panel-hint" id="tabletBridgeHint" style="margin:0 0 6px;">1. Connect via <b>USB-C + USB Tethering</b>, the laptop’s booth Wi-Fi, or the <b>same Wi-Fi router</b>.<br>2. Open <b>photobooth4u → Laptop Guest + Camera Bridge</b> on the tablet and scan this QR.</p>
                 <p class="panel-hint" id="tabletBridgeUrl" style="margin:0; font-family:monospace; font-size:11px; white-space:pre-wrap; word-break:break-all;"></p>
               </div>
             </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
+            <div id="tabletBridgeActionsRow" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
               <button type="button" class="action-btn" id="tabletBridgeFlipBtn" style="width:auto; margin:0;" disabled>Flip tablet camera (Front)</button>
               <button type="button" class="action-btn" id="tabletBridgeCopyBtn" style="width:auto; margin:0;">Copy link</button>
               <button type="button" class="action-btn" id="tabletBridgeRenewBtn" style="width:auto; margin:0;">New pairing code</button>
@@ -66320,7 +66392,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       ['input', 'change', 'click'].forEach(function (type) {
         tabSetup.addEventListener(type, function (e) {
           if (e.target === driveFolderKeyInput) return;
-          if (type === 'click' && e.target && e.target.closest && e.target.closest('summary, .step-tab, .seg-tabs button, .pb-tip-btn, #startSave, #setupSaveNote')) return;
+          if (type === 'click' && e.target && e.target.closest && e.target.closest('summary, .step-tab, .seg-tabs button, .pb-tip-btn, .pb-guide-q, #startSave, #setupSaveNote')) return;
           scheduleSetupSave();
         }, true);
       });

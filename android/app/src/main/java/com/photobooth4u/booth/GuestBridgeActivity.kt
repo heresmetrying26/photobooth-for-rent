@@ -22,6 +22,10 @@ import android.hardware.camera2.CaptureRequest
 import android.hardware.camera2.TotalCaptureResult
 import android.media.Image
 import android.media.ImageReader
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -38,6 +42,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -64,16 +69,27 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.ConnectException
 import java.net.HttpURLConnection
+import java.net.Inet4Address
+import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.net.NetworkInterface
 import java.net.Socket
+import java.net.SocketTimeoutException
 import java.net.URI
 import java.net.URL
 import java.nio.ByteBuffer
 import java.security.SecureRandom
+import java.util.Collections
+import java.util.concurrent.Callable
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.locks.ReentrantLock
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -89,7 +105,26 @@ class GuestBridgeActivity : AppCompatActivity() {
         private const val KEY_BASE_URL = "bridge_base_url"
         private const val KEY_FACING = "bridge_cam_facing"
         private const val PREVIEW_FRAME_INTERVAL_MS = 45L // ~22 fps preview to laptop
+        private const val PROBE_TIMEOUT_MS = 3500
+        private const val LOOPBACK_PROBE_TIMEOUT_MS = 1200
+        private val IPV4_RE = Regex("^\\d{1,3}(?:\\.\\d{1,3}){3}$")
     }
+
+    private data class LocalRoute(
+        val network: Network?,
+        val localAddr: Inet4Address,
+        val prefix: Int,
+        val ifaceName: String
+    )
+
+    private data class ProbeOutcome(
+        val baseUrl: String,
+        val network: Network?,
+        val localAddr: Inet4Address?,
+        val ok: Boolean,
+        val httpCode: Int = 0,
+        val error: String = ""
+    )
 
     private lateinit var root: FrameLayout
     private lateinit var previewView: TextureView
@@ -128,12 +163,19 @@ class GuestBridgeActivity : AppCompatActivity() {
     @Volatile private var pendingShotId: String? = null
     @Volatile private var pendingShotTimeout: Runnable? = null
 
-    private var activeBaseUrl: String = ""
+    private var connectivityManager: ConnectivityManager? = null
+    private val trackedNetworks: MutableSet<Network> = Collections.newSetFromMap(ConcurrentHashMap<Network, Boolean>())
+    private val lanNetworkCallbacks = ArrayList<ConnectivityManager.NetworkCallback>()
+    @Volatile private var activeBaseUrl: String = ""
+    @Volatile private var activeNetwork: Network? = null
+    @Volatile private var activeLocalAddr: Inet4Address? = null
+    private var lastScannedCandidates: List<String> = emptyList()
+    private var webReloadRunnable: Runnable? = null
     private var wsSocket: Socket? = null
     private var wsOut: OutputStream? = null
     private val wsWriteLock = Any()
     private val wsRunning = AtomicBoolean(false)
-    private var sessionActive = false
+    @Volatile private var sessionActive = false
 
     // Preview rect from WebView
     private var pvLeft = 0
@@ -158,6 +200,7 @@ class GuestBridgeActivity : AppCompatActivity() {
             Toast.makeText(this, "Not a valid photobooth4u bridge QR code.", Toast.LENGTH_SHORT).show()
             return@registerForActivityResult
         }
+        lastScannedCandidates = candidates
         urlInput.setText(candidates.first())
         resolveAndConnect(candidates)
     }
@@ -167,6 +210,8 @@ class GuestBridgeActivity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         applyImmersiveMode()
 
+        connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        registerOfflineLanCallbacks()
         val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         desiredFacing = prefs.getString(KEY_FACING, "front") ?: "front"
         val savedUrl = prefs.getString(KEY_BASE_URL, "") ?: ""
@@ -200,6 +245,7 @@ class GuestBridgeActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         stopBridgeSession()
+        unregisterOfflineLanCallbacks()
         stopCamThread()
         netExec.shutdownNow()
         voiceBridge?.shutdown()
@@ -272,6 +318,12 @@ class GuestBridgeActivity : AppCompatActivity() {
             addJavascriptInterface(voice, "__PBVoice")
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean = false
+                override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                    if (sessionActive && request?.isForMainFrame == true && activeBaseUrl.isNotEmpty()) {
+                        Log.w(TAG, "Guest WebView error ${error?.errorCode}: ${error?.description}")
+                        scheduleWebViewRecovery()
+                    }
+                }
             }
         }
         root.addView(webView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -330,7 +382,7 @@ class GuestBridgeActivity : AppCompatActivity() {
         }
 
         val tip = TextView(this).apply {
-            text = "1. Plug in USB-C and turn on USB Tethering (or join the laptop's booth Wi-Fi).\n2. On the laptop, open Setup → Guest screen and scan the QR above (or paste the link below)."
+            text = "1. Connect via USB-C + USB Tethering, the laptop's booth Wi-Fi, or the same Wi-Fi router.\n2. On the laptop, open Setup → 7 Session → Screen & lock → Guest screen and scan the QR above (or paste the link below)."
             textSize = 13f
             setTextColor(Color.parseColor("#5A5560"))
             setPadding(0, dp(18), 0, dp(10))
@@ -364,7 +416,12 @@ class GuestBridgeActivity : AppCompatActivity() {
             setPadding(dp(24), dp(12), dp(24), dp(12))
             setOnClickListener {
                 val raw = urlInput.text.toString().trim()
-                val list = parseQrCandidates(raw)
+                val parsed = parseQrCandidates(raw)
+                val list = if (parsed.size == 1 && lastScannedCandidates.size > 1 && lastScannedCandidates.first() == parsed.first()) {
+                    lastScannedCandidates
+                } else {
+                    parsed
+                }
                 if (list.isEmpty()) {
                     Toast.makeText(this@GuestBridgeActivity, "Enter the bridge address from the laptop.", Toast.LENGTH_SHORT).show()
                 } else {
@@ -455,45 +512,396 @@ class GuestBridgeActivity : AppCompatActivity() {
         return out.toList()
     }
 
-    private fun resolveAndConnect(candidates: List<String>) {
-        connectBtn.isEnabled = false
-        statusText.text = "Connecting to laptop…"
-        netExec.execute {
-            var picked: String? = null
-            for (cand in candidates) {
-                try {
-                    val conn = (URL("$cand/hello").openConnection() as HttpURLConnection).apply {
-                        connectTimeout = 1800
-                        readTimeout = 1800
-                        requestMethod = "GET"
+    // ---------- Offline-safe local Wi-Fi / Ethernet network binding ----------
+    // On offline routers or laptop hotspots (no internet), Android marks Wi-Fi unvalidated and routes
+    // default sockets & WebView over mobile data or drops them, causing timeouts. Registering callbacks
+    // with NET_CAPABILITY_INTERNET removed both discovers offline Wi-Fi handles on Android 10+/HarmonyOS
+    // and keeps the OS from dropping the offline router while the bridge runs.
+
+    private fun registerOfflineLanCallbacks() {
+        val cm = connectivityManager ?: return
+        val transports = intArrayOf(NetworkCapabilities.TRANSPORT_WIFI, NetworkCapabilities.TRANSPORT_ETHERNET)
+        for (tr in transports) {
+            try {
+                val req = NetworkRequest.Builder()
+                    .addTransportType(tr)
+                    .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .build()
+                val cb = object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) {
+                        trackedNetworks.add(network)
                     }
-                    if (conn.responseCode == 200) {
-                        val txt = conn.inputStream.bufferedReader().readText()
-                        if (txt.contains("photobooth4u-bridge")) {
-                            picked = cand
-                            conn.disconnect()
-                            break
+                    override fun onLost(network: Network) {
+                        trackedNetworks.remove(network)
+                    }
+                }
+                cm.registerNetworkCallback(req, cb)
+                lanNetworkCallbacks.add(cb)
+            } catch (e: Exception) {
+                Log.w(TAG, "registerOfflineLanCallbacks failed for transport $tr", e)
+            }
+        }
+    }
+
+    private fun unregisterOfflineLanCallbacks() {
+        val cm = connectivityManager ?: return
+        for (cb in lanNetworkCallbacks) {
+            try { cm.unregisterNetworkCallback(cb) } catch (_: Exception) { }
+        }
+        lanNetworkCallbacks.clear()
+        trackedNetworks.clear()
+    }
+
+    private fun ipLong(a: Inet4Address): Long =
+        a.address.fold(0L) { acc, b -> (acc shl 8) or (b.toLong() and 0xFF) }
+
+    private fun subnetMask(prefix: Int): Long =
+        if (prefix <= 0) 0L else (0xFFFFFFFFL shl (32 - prefix.coerceAtMost(32))) and 0xFFFFFFFFL
+
+    @Suppress("DEPRECATION")
+    private fun localRoutes(): List<LocalRoute> {
+        val out = ArrayList<LocalRoute>()
+        try {
+            val cm = connectivityManager
+            if (cm != null) {
+                val allNets = LinkedHashSet<Network>()
+                allNets.addAll(trackedNetworks)
+                try { allNets.addAll(cm.allNetworks.toList()) } catch (_: Exception) { }
+                for (n in allNets) {
+                    val caps = cm.getNetworkCapabilities(n) ?: continue
+                    if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) continue
+                    if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                        !caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+                    ) continue
+                    val lp = cm.getLinkProperties(n) ?: continue
+                    val ifName = lp.interfaceName ?: ""
+                    for (la in lp.linkAddresses) {
+                        val a = la.address
+                        if (a is Inet4Address && !a.isLoopbackAddress && !a.isLinkLocalAddress) {
+                            out.add(LocalRoute(n, a, la.prefixLength, ifName))
                         }
                     }
-                    conn.disconnect()
-                } catch (_: Exception) { }
+                }
             }
+        } catch (e: Exception) {
+            Log.w(TAG, "localRoutes ConnectivityManager scan failed", e)
+        }
+        try {
+            val nis = NetworkInterface.getNetworkInterfaces()
+            while (nis != null && nis.hasMoreElements()) {
+                val ni = nis.nextElement()
+                if (!ni.isUp || ni.isLoopback) continue
+                val nm = ni.name.lowercase()
+                if (nm.startsWith("rmnet") || nm.startsWith("ccmni") || nm.startsWith("pdp") ||
+                    nm.startsWith("tun") || nm.startsWith("ppp") || nm.startsWith("v4-") || nm.startsWith("dummy")
+                ) continue
+                for (ia in ni.interfaceAddresses) {
+                    val a = ia.address
+                    if (a is Inet4Address && a.isSiteLocalAddress && out.none { it.localAddr == a }) {
+                        out.add(LocalRoute(null, a, ia.networkPrefixLength.toInt(), ni.name))
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "localRoutes interface scan failed", e)
+        }
+        return out
+    }
+
+    private fun matchLocalRoute(host: String, routes: List<LocalRoute> = localRoutes()): LocalRoute? {
+        if (host.isBlank() || host == "127.0.0.1" || host == "localhost") return null
+        if (!IPV4_RE.matches(host)) return null
+        return try {
+            val target = InetAddress.getByName(host) as? Inet4Address ?: return null
+            val tv = ipLong(target)
+            for (r in routes) {
+                if (r.network == null) continue
+                val mask = subnetMask(r.prefix)
+                if ((ipLong(r.localAddr) and mask) == (tv and mask)) return r
+            }
+            for (r in routes) {
+                val mask = subnetMask(r.prefix)
+                if ((ipLong(r.localAddr) and mask) == (tv and mask)) return r
+            }
+            null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun hostOf(urlStr: String): String = try {
+        URI(urlStr).host ?: ""
+    } catch (_: Exception) {
+        ""
+    }
+
+    private fun hostPortOf(urlStr: String): String = try {
+        val u = URI(urlStr)
+        val h = u.host ?: urlStr
+        if (u.port > 0) "$h:${u.port}" else h
+    } catch (_: Exception) {
+        urlStr
+    }
+
+    private fun bindBridgeNetwork(network: Network?) {
+        if (network != null && !sessionActive) return
+        try {
+            connectivityManager?.bindProcessToNetwork(network)
+        } catch (e: Exception) {
+            Log.w(TAG, "bindProcessToNetwork failed", e)
+        }
+    }
+
+    private fun openBridgeHttp(url: URL, network: Network?, connectMs: Int, readMs: Int): HttpURLConnection {
+        val conn = (if (network != null) network.openConnection(url) else url.openConnection()) as HttpURLConnection
+        conn.connectTimeout = connectMs
+        conn.readTimeout = readMs
+        conn.useCaches = false
+        return conn
+    }
+
+    private fun createBridgeSocket(network: Network?, localAddr: Inet4Address?): Socket {
+        if (network != null) {
+            try {
+                return network.socketFactory.createSocket()
+            } catch (e: Exception) {
+                Log.w(TAG, "network.socketFactory.createSocket failed, falling back", e)
+            }
+        }
+        if (localAddr != null) {
+            val s = Socket()
+            try {
+                s.bind(InetSocketAddress(localAddr, 0))
+            } catch (e: Exception) {
+                Log.w(TAG, "localAddr socket bind failed", e)
+            }
+            return s
+        }
+        return Socket()
+    }
+
+    private fun probeOnce(cand: String, network: Network?, localAddr: Inet4Address?, timeoutMs: Int): ProbeOutcome {
+        var conn: HttpURLConnection? = null
+        return try {
+            conn = openBridgeHttp(URL("$cand/hello"), network, timeoutMs, timeoutMs).apply {
+                requestMethod = "GET"
+                setRequestProperty("Connection", "close")
+            }
+            val code = conn.responseCode
+            if (code == 200) {
+                val txt = conn.inputStream.bufferedReader().use { it.readText() }
+                if (txt.contains("photobooth4u-bridge")) {
+                    ProbeOutcome(cand, network, localAddr, ok = true, httpCode = 200)
+                } else {
+                    ProbeOutcome(cand, network, localAddr, ok = false, httpCode = 200, error = "wrong service")
+                }
+            } else {
+                ProbeOutcome(cand, network, localAddr, ok = false, httpCode = code, error = "HTTP $code")
+            }
+        } catch (e: SocketTimeoutException) {
+            ProbeOutcome(cand, network, localAddr, ok = false, error = "timeout")
+        } catch (e: ConnectException) {
+            ProbeOutcome(cand, network, localAddr, ok = false, error = "refused")
+        } catch (e: Exception) {
+            ProbeOutcome(cand, network, localAddr, ok = false, error = e.message ?: e.javaClass.simpleName)
+        } finally {
+            try { conn?.disconnect() } catch (_: Exception) { }
+        }
+    }
+
+    private fun probeViaBoundSocket(cand: String, localAddr: Inet4Address, timeoutMs: Int): ProbeOutcome {
+        var sock: Socket? = null
+        return try {
+            val u = URI(cand)
+            val host = u.host ?: return ProbeOutcome(cand, null, localAddr, ok = false, error = "bad host")
+            val port = if (u.port > 0) u.port else 80
+            val path = (u.rawPath ?: "") + "/hello"
+            sock = createBridgeSocket(null, localAddr)
+            sock.soTimeout = timeoutMs
+            sock.connect(InetSocketAddress(host, port), timeoutMs)
+            val out = sock.getOutputStream()
+            val req = "GET $path HTTP/1.1\r\nHost: $host:$port\r\nConnection: close\r\n\r\n"
+            out.write(req.toByteArray(Charsets.UTF_8))
+            out.flush()
+            val resp = sock.getInputStream().bufferedReader().use { it.readText() }
+            val statusLine = resp.lineSequence().firstOrNull() ?: ""
+            val code = statusLine.split(' ').getOrNull(1)?.toIntOrNull() ?: 0
+            if (code == 200 && resp.contains("photobooth4u-bridge")) {
+                ProbeOutcome(cand, null, localAddr, ok = true, httpCode = 200)
+            } else {
+                ProbeOutcome(cand, null, localAddr, ok = false, httpCode = code, error = if (code > 0) "HTTP $code" else "wrong service")
+            }
+        } catch (e: SocketTimeoutException) {
+            ProbeOutcome(cand, null, localAddr, ok = false, error = "timeout")
+        } catch (e: ConnectException) {
+            ProbeOutcome(cand, null, localAddr, ok = false, error = "refused")
+        } catch (e: Exception) {
+            ProbeOutcome(cand, null, localAddr, ok = false, error = e.message ?: e.javaClass.simpleName)
+        } finally {
+            try { sock?.close() } catch (_: Exception) { }
+        }
+    }
+
+    private fun probeCandidate(cand: String, routes: List<LocalRoute>): ProbeOutcome {
+        val host = hostOf(cand)
+        if (host == "127.0.0.1" || host == "localhost") {
+            return probeOnce(cand, null, null, LOOPBACK_PROBE_TIMEOUT_MS)
+        }
+        val matched = matchLocalRoute(host, routes)
+        if (matched != null) {
+            if (matched.network == null) {
+                // Non-CM interface (e.g. USB Tethering rndis0 / Wi-Fi Direct p2p): bind source IP directly
+                // so cellular data never hijacks the probe when offline.
+                val bound = probeViaBoundSocket(cand, matched.localAddr, PROBE_TIMEOUT_MS)
+                if (bound.ok || bound.httpCode == 403) return bound
+                val fallback = probeOnce(cand, null, matched.localAddr, 1500)
+                return if (fallback.ok || fallback.httpCode == 403) fallback else bound
+            }
+            val first = probeOnce(cand, matched.network, matched.localAddr, PROBE_TIMEOUT_MS)
+            if (first.ok || first.httpCode == 403) return first
+            // Only retry unbound if binding itself threw a non-timeout/non-refused OS error.
+            if (first.error != "timeout" && first.error != "refused") {
+                val fallback = probeOnce(cand, null, matched.localAddr, 1500)
+                if (fallback.ok || fallback.httpCode == 403) return fallback
+            }
+            return first
+        }
+        // Target IP is on another subnet (e.g. multi-subnet router or stale adapter): try Wi-Fi/Ethernet
+        // networks explicitly before the default route so offline Wi-Fi still beats mobile data.
+        val lanNets = routes.mapNotNull { it.network }.distinct()
+        var lastErr = ProbeOutcome(cand, null, null, ok = false, error = "unreachable")
+        val perTry = if (lanNets.isNotEmpty()) 2200 else PROBE_TIMEOUT_MS
+        for (net in lanNets) {
+            val r = probeOnce(cand, net, null, perTry)
+            if (r.ok || r.httpCode == 403) return r
+            lastErr = r
+        }
+        val def = probeOnce(cand, null, null, perTry)
+        return if (def.ok || def.httpCode == 403 || lanNets.isEmpty()) def else lastErr
+    }
+
+    private fun resolveAndConnect(candidates: List<String>) {
+        if (candidates.isEmpty()) return
+        connectBtn.isEnabled = false
+        statusText.text = "Connecting to laptop…"
+        val capped = candidates.take(6)
+        netExec.execute {
+            val routes = localRoutes()
+            val lock = ReentrantLock()
+            val cond = lock.newCondition()
+            val outcomes = arrayOfNulls<ProbeOutcome>(capped.size)
+            var completed = 0
+            var firstOkAt = 0L
+            val startAt = System.currentTimeMillis()
+            val futures = ArrayList<Future<*>>(capped.size)
+
+            for (idx in capped.indices) {
+                val cand = capped[idx]
+                futures.add(netExec.submit(Callable {
+                    val res = probeCandidate(cand, routes)
+                    lock.lock()
+                    try {
+                        outcomes[idx] = res
+                        completed++
+                        if (res.ok && firstOkAt == 0L) firstOkAt = System.currentTimeMillis()
+                        cond.signalAll()
+                    } finally {
+                        lock.unlock()
+                    }
+                    res
+                }))
+            }
+
+            // Wait for the highest-priority candidate (e.g. USB Tether) without stalling on dead adapters:
+            // index 0 wins immediately; if a fallback index succeeds, allow 500ms for higher-priority probes.
+            lock.lock()
+            try {
+                while (true) {
+                    val now = System.currentTimeMillis()
+                    if (outcomes[0]?.ok == true) break
+                    if (completed >= capped.size) break
+                    if (firstOkAt > 0L && now - firstOkAt >= 500L) break
+                    val ceilRem = 5000L - (now - startAt)
+                    if (ceilRem <= 0L) break
+                    val waitMs = if (firstOkAt > 0L) minOf(ceilRem, 500L - (now - firstOkAt)) else ceilRem
+                    if (waitMs <= 0L) break
+                    try {
+                        cond.await(waitMs, TimeUnit.MILLISECONDS)
+                    } catch (_: InterruptedException) {
+                        break
+                    }
+                }
+            } finally {
+                lock.unlock()
+            }
+
+            val picked = outcomes.firstOrNull { it?.ok == true }
+            futures.forEach { try { it.cancel(true) } catch (_: Exception) { } }
+
+            val allOutcomes = outcomes.filterNotNull()
+            val expired = allOutcomes.any { it.httpCode == 403 }
+            val lanTried = capped.filter { val h = hostOf(it); h != "127.0.0.1" && h != "localhost" }
+            val anyTimeout = allOutcomes.any {
+                val h = hostOf(it.baseUrl)
+                h != "127.0.0.1" && h != "localhost" && it.error == "timeout"
+            }
+            val triedLabel = (if (lanTried.isNotEmpty()) lanTried else capped).take(3).joinToString(", ") { hostPortOf(it) }
+
             mainHandler.post {
                 connectBtn.isEnabled = true
                 if (picked == null) {
-                    statusText.text = "Could not reach laptop. Check USB Tethering or booth Wi-Fi and try again."
-                    Toast.makeText(this, "Could not reach laptop.", Toast.LENGTH_LONG).show()
+                    val msg = when {
+                        expired -> "Bridge pairing code expired. Re-scan the new QR code in Setup → 7 Session on the laptop."
+                        anyTimeout -> "Timed out reaching $triedLabel. Make sure both devices are on the same Wi-Fi, Router AP Isolation is off, and Windows Firewall allows photobooth4u (set the laptop Wi-Fi to Private)."
+                        else -> "Could not reach laptop ($triedLabel). Check USB Tethering, booth Wi-Fi, or router connection and try again."
+                    }
+                    statusText.text = msg
+                    Toast.makeText(this, if (expired) "Pairing expired — re-scan QR." else "Could not reach laptop.", Toast.LENGTH_LONG).show()
                 } else {
-                    startBridgeSession(picked)
+                    startBridgeSession(picked.baseUrl, picked.network, picked.localAddr)
                 }
             }
         }
     }
 
-    private fun startBridgeSession(baseUrl: String) {
+    private fun bestNetworkForHost(host: String): Pair<Network?, Inet4Address?> {
+        if (host.isBlank() || host == "127.0.0.1" || host == "localhost") return Pair(null, null)
+        val routes = localRoutes()
+        val matched = matchLocalRoute(host, routes)
+        if (matched != null) return Pair(matched.network, matched.localAddr)
+        val cur = activeNetwork
+        if (cur != null && routes.any { it.network == cur }) return Pair(cur, null)
+        return Pair(routes.firstOrNull { it.network != null }?.network, null)
+    }
+
+    private fun scheduleWebViewRecovery() {
+        webReloadRunnable?.let { mainHandler.removeCallbacks(it) }
+        val r = Runnable {
+            if (!sessionActive || activeBaseUrl.isEmpty()) return@Runnable
+            val targetUrl = "$activeBaseUrl/guest"
+            netExec.execute {
+                val (net, localAddr) = bestNetworkForHost(hostOf(activeBaseUrl))
+                activeNetwork = net
+                activeLocalAddr = localAddr
+                mainHandler.post {
+                    if (!sessionActive) return@post
+                    bindBridgeNetwork(net)
+                    webView.loadUrl(targetUrl)
+                }
+            }
+        }
+        webReloadRunnable = r
+        mainHandler.postDelayed(r, 2000L)
+    }
+
+    private fun startBridgeSession(baseUrl: String, network: Network? = null, localAddr: Inet4Address? = null) {
         activeBaseUrl = normalizeBridgeBase(baseUrl)
+        activeNetwork = network
+        activeLocalAddr = localAddr
+        urlInput.setText(activeBaseUrl)
         getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_BASE_URL, activeBaseUrl).apply()
         sessionActive = true
+        bindBridgeNetwork(network)
         pairingLayer.visibility = View.GONE
         webView.visibility = View.VISIBLE
         previewView.visibility = View.VISIBLE
@@ -510,9 +918,14 @@ class GuestBridgeActivity : AppCompatActivity() {
     private fun stopBridgeSession() {
         sessionActive = false
         wsRunning.set(false)
+        webReloadRunnable?.let { mainHandler.removeCallbacks(it) }
+        webReloadRunnable = null
         try { wsSocket?.close() } catch (_: Exception) { }
         wsSocket = null
         wsOut = null
+        activeNetwork = null
+        activeLocalAddr = null
+        bindBridgeNetwork(null)
         stopCamera()
         webView.loadUrl("about:blank")
         webView.visibility = View.GONE
@@ -892,6 +1305,31 @@ class GuestBridgeActivity : AppCompatActivity() {
         }
     }
 
+    private fun postBytesViaBoundSocket(url: URL, localAddr: Inet4Address, bytes: ByteArray): Boolean {
+        var sock: Socket? = null
+        return try {
+            val host = url.host
+            val port = if (url.port > 0) url.port else 80
+            val path = url.file.ifEmpty { "/" }
+            sock = createBridgeSocket(null, localAddr)
+            sock.soTimeout = 12000
+            sock.connect(InetSocketAddress(host, port), 6000)
+            val out = sock.getOutputStream()
+            val hdr = "POST $path HTTP/1.1\r\nHost: $host:$port\r\nContent-Type: image/jpeg\r\nContent-Length: ${bytes.size}\r\nConnection: close\r\n\r\n"
+            out.write(hdr.toByteArray(Charsets.UTF_8))
+            out.write(bytes)
+            out.flush()
+            val line = sock.getInputStream().bufferedReader().readLine() ?: ""
+            val code = line.split(' ').getOrNull(1)?.toIntOrNull() ?: 0
+            code in 200..299
+        } catch (e: Exception) {
+            Log.w(TAG, "bound-socket shot upload failed", e)
+            false
+        } finally {
+            try { sock?.close() } catch (_: Exception) { }
+        }
+    }
+
     private fun deliverStillShot(bytes: ByteArray) {
         val shotId = pendingShotId ?: return
         pendingShotId = null
@@ -900,20 +1338,42 @@ class GuestBridgeActivity : AppCompatActivity() {
         val base = activeBaseUrl
         if (base.isEmpty()) return
         netExec.execute {
-            try {
-                val conn = (URL("$base/cam/shot?id=$shotId").openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    doOutput = true
-                    connectTimeout = 5000
-                    readTimeout = 8000
-                    setFixedLengthStreamingMode(bytes.size)
-                    setRequestProperty("Content-Type", "image/jpeg")
+            val uploadUrl = URL("$base/cam/shot?id=$shotId")
+            fun sendOn(net: Network?): Boolean {
+                var conn: HttpURLConnection? = null
+                return try {
+                    conn = openBridgeHttp(uploadUrl, net, 6000, 12000).apply {
+                        requestMethod = "POST"
+                        doOutput = true
+                        setFixedLengthStreamingMode(bytes.size)
+                        setRequestProperty("Content-Type", "image/jpeg")
+                    }
+                    conn.outputStream.use { it.write(bytes) }
+                    conn.responseCode in 200..299
+                } catch (e: Exception) {
+                    Log.w(TAG, "shot upload attempt failed", e)
+                    false
+                } finally {
+                    try { conn?.disconnect() } catch (_: Exception) { }
                 }
-                conn.outputStream.use { it.write(bytes) }
-                conn.responseCode
-                conn.disconnect()
-            } catch (e: Exception) {
-                Log.e(TAG, "shot upload failed", e)
+            }
+            fun tryUpload(net: Network?, localAddr: Inet4Address?): Boolean {
+                if (net != null) return sendOn(net)
+                if (localAddr != null) return postBytesViaBoundSocket(uploadUrl, localAddr, bytes) || sendOn(null)
+                return sendOn(null)
+            }
+            val firstNet = activeNetwork
+            val firstAddr = activeLocalAddr
+            if (!tryUpload(firstNet, firstAddr) && sessionActive) {
+                val (freshNet, freshAddr) = bestNetworkForHost(hostOf(base))
+                if (freshNet != activeNetwork) {
+                    activeNetwork = freshNet
+                    bindBridgeNetwork(freshNet)
+                }
+                activeLocalAddr = freshAddr
+                if (!tryUpload(freshNet, freshAddr)) {
+                    Log.e(TAG, "shot upload failed after retry")
+                }
             }
         }
     }
@@ -929,9 +1389,19 @@ class GuestBridgeActivity : AppCompatActivity() {
                     val port = if (uri.port > 0) uri.port else 80
                     val path = (uri.rawPath ?: "") + "/ws?role=cam"
 
-                    val sock = Socket()
-                    sock.connect(InetSocketAddress(host, port), 3000)
+                    val (net, localAddr) = bestNetworkForHost(host)
+                    if (!wsRunning.get() || !sessionActive) break
+                    if (net != activeNetwork) {
+                        activeNetwork = net
+                        bindBridgeNetwork(net)
+                    }
+                    activeLocalAddr = localAddr
+
+                    val sock = createBridgeSocket(net, localAddr)
+                    sock.connect(InetSocketAddress(host, port), 4000)
                     sock.tcpNoDelay = true
+                    sock.keepAlive = true
+                    sock.soTimeout = 30000
                     wsSocket = sock
                     val out = sock.getOutputStream()
                     wsOut = out
@@ -958,6 +1428,8 @@ class GuestBridgeActivity : AppCompatActivity() {
                     sendCameraHello()
                     readWsLoop(inp)
                 } catch (_: Exception) {
+                    // Refresh network binding on reconnect in case Wi-Fi bounced or changed.
+                    activeNetwork = null
                 } finally {
                     camConnected.set(false)
                     try { wsSocket?.close() } catch (_: Exception) { }

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.105', date: '2026-11-25' },
   { version: '1.1.104', date: '2026-11-24' },
   { version: '1.1.103', date: '2026-11-24' },
   { version: '1.1.102', date: '2026-11-24' },
@@ -213,13 +214,13 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.20', date: '2026-11-23' };
+export const HELPER = { version: '1.1.21', date: '2026-11-25' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
 // after about 60 s, so on a slower connection the 18 MB file never finished ("unexpected end of stream").
 // GitHub has no such limit. (The copy in public/downloads is still kept for the /downloads page.)
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-24', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-25', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
 // The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
 // /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new
@@ -301,6 +302,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-25', title: 'Desktop 1.1.105, Android 1.2.16, Print Helper 1.1.21 & Website: Reliable online & offline Tablet Bridge + built-in setup guide', for: ['website', 'app', 'android', 'helper'], app: '1.1.105', android: '1.2.16', helper: '1.1.21',
+    items: [
+      '📶 Fixed offline router timeouts (Android & Windows): Android and Huawei tablets now stay locked onto your offline pocket router, laptop hotspot, or USB cable instead of timing out or jumping to mobile data, and the Windows installer automatically allows local bridge traffic on both Private and Public Wi-Fi.',
+      '🌐 Tablet Bridge on the online website: You can now pair an Android or Huawei tablet as your Guest Screen and Camera straight from the online website in Chrome or Edge using Print Helper 1.1.21 — and it keeps working even if venue internet drops mid-event.',
+      '❓ Built-in ? guide in Setup Step 7: Added a quick ? guide button right next to Tablet Bridge with step-by-step online, offline, and timeout troubleshooting tips, plus automatic connection keepalive and auto-reconnect on quiet pocket routers.'
+    ]
+  },
   {
     date: '2026-11-24', title: 'Android 1.2.15 & Website: Epson L8050 Wi-Fi & Wi-Fi Direct printing + true-color fix', for: ['website', 'android'], android: '1.2.15',
     items: [

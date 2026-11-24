@@ -43,13 +43,23 @@ So the driver enlarges the page 5.28 % and the sheet only shows part of it. Of t
   Checked without paper by `desktop/test/test-win-l8050.mjs` (numbers tied to the driver's bytes) and that run; **not tried on a real
   L8050 sheet**, and the left/right edges cannot be read from the band data (they follow from the same enlargement, symmetric).
   Other paper sizes are not compensated, nor is the standalone `tools/print-helper/print-helper.js`, which has no Epson compensation.
-* **Android, IPP** (`protected/src/printer/epson-l8050.js`): the client's print had a ~3 mm white strip on one side and the
+* **Android, IPP** (`protected/src/printer/epson-l8050.js`, `NetPrintBridge.kt` `jpegAtDpi`): the client's print had a ~3 mm white strip on one side and the
   opposite side cut, which is what a 1:1 page does if the printer starts it at the corner of the area (2.68 mm left of the sheet)
-  instead of the corner of the sheet. The booth now sends the picture on a 4.21 x 6.11 in page, 2.68 / 0.78 mm in from the corner,
-  with the strips filled from the picture's edge pixels. **Not tried on a real L8050.** If a real print shows the page is placed
+  instead of the corner of the sheet. The booth sends the picture on a 4.21 x 6.11 in page, 2.68 / 0.78 mm in from the corner,
+  with the strips filled from the picture's edge pixels. On new Android APKs (`supportsL8050HiRes()`), IPP High on 4x6 renders
+  at **600 dpi** (`2400 x 3600` sheet -> `2526 x 3666` bleed page) with `600 dpi` written into the JFIF header (`jpegAtDpi`);
+  older APKs stay at 300 dpi. **Not tried on a real L8050.** If a real print shows the page is placed
   differently, change `GEO` in that file; `scripts/test-epson-l8050.mjs` ties it to the driver numbers above.
-* **Android, raw ESC/P-R** (`EscprJob.kt`, `printEpsonL` / `printEscpr`): still uses the L805's numbers (36 / 42 at 360 dpi) and the
-  `dsnd` RGB rows, not the `bsnd` bands the L8050 driver writes. Left alone.
+* **Android, raw ESC/P-R** (`EscprJob.kt`, `NetPrintBridge.kt` `printEpsonL` / `printEscpr` / `printFromHelper` / `diagPrintSync`):
+  uses `EscprJob.streamWithConfig` (64-row strip streaming directly to USB bulk-OUT / TCP `:9100`, ~0.8 MB bitmap RAM) with the
+  exact Windows L8050 driver header sequence captured from `e1wf1b0e.inf`: `setq[6]=0x03`, `0x71 seti`, `0x6d seti`,
+  `0x6d setm` (`0a 01 00 63 00 00 00` borderless / `0a 00 00 63 00 00 00` bordered), `0x75 chku`, `setj`, media byte
+  (`0x34` Epson Glossy default, `0x0c` semi-gloss, `0x05` matte, `0x00` plain), and quality byte (`2` High default, `1` Normal,
+  `0` Draft). Default `High (360 dpi)` sends `360 dpi` (`1440 x 2160` sheet, `1516 x 2200` area, `-11, -38`); opt-in
+  `High 720 dpi (L8050 4x6)` (`high720`, gated by `supportsL8050HiRes()`) renders a `2880 x 4320` canvas and streams `720 dpi`
+  `dsnd` RGB rows (`3032 x 4400` area, `-22, -76`). (The Windows driver itself emits proprietary 4-plane `bsnd` bands; `high720`
+  uses open ESC/P-R `dsnd` RGB rows and remains opt-in until verified on 1 physical sheet.) The L3210 4-ink 720/1440 dpi beta
+  raster (`PBEpsonRaster`) is blocked on L8050 so wrong nozzle offsets can never be sent to the 6-ink printhead.
 
 ## Re-running it
 

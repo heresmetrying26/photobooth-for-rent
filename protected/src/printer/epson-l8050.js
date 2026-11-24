@@ -34,7 +34,7 @@
   var SHEET_MM = [101.6, 152.4];
 
   function isL8050(p) {
-    return !!(p && ((p.usb && p.vid === 1208 && p.pid === 2150) || /(?:^|[^A-Za-z0-9])L8050(?![0-9])/i.test(String(p.name || ''))));
+    return !!(p && (String(p.epsonModel || '').toUpperCase() === 'L8050' || (p.usb && p.vid === 1208 && p.pid === 2150) || /(?:^|[^A-Za-z0-9])L8050(?![0-9])/i.test(String(p.name || ''))));
   }
   function is4x6(paper) {
     if (!paper) return false;

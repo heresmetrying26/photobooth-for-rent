@@ -112,6 +112,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     @JavascriptInterface
     fun isAvailable(): Boolean = true
 
+    /** Advertises that this APK supports streaming L8050 720 dpi ESC/P-R (with setm) and dynamic JFIF DPI over IPP. */
+    @JavascriptInterface
+    fun supportsL8050HiRes(): Boolean = true
+
     fun shutdown() {
         stopDiscovery()
         holdMulticast(false)
@@ -200,11 +204,20 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         pool.execute {
             val e = Entry(clean)
             probeInto(e, 2500)
+            if (e.ippPort == 0 && e.rawPort == 0) {
+                // Sleeping Wi-Fi / Wi-Fi Direct printer often wakes on the first knock and answers on the second.
+                try { Thread.sleep(600) } catch (_: InterruptedException) {}
+                probeInto(e, 3000)
+            }
             if (e.ippPort > 0 || e.rawPort > 0) {
                 val cur = found.getOrPut(clean) { e }
                 if (cur !== e) { if (cur.ippPort == 0) cur.ippPort = e.ippPort; if (cur.rawPort == 0) cur.rawPort = e.rawPort }
                 fetchAttrs(cur)
-            } else addNote = "Nothing at $clean answered on the printing ports (631, 9100). Check the address, and that the tablet and printer are on the same Wi-Fi."
+            } else {
+                val active = currentNets().joinToString(", ") { "${it.addr.hostAddress}/${it.prefix}" }
+                val hint = if (active.isNotEmpty() && matchLocalNet(clean) == null) " (Tablet Wi-Fi is $active.)" else ""
+                addNote = "Nothing at $clean answered on the printing ports (631, 9100). Check the address, and that the tablet and printer are on the same Wi-Fi.$hint"
+            }
         }
         return "ok"
     }
@@ -319,7 +332,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             val r = JSONObject().put("job", job)
             try {
                 val o = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
-                val opts = Opts(o.optString("quality"), o.optString("color"), o.optString("media"), o.optBoolean("borderless"))
+                val opts = Opts(o.optString("quality"), o.optString("color"), o.optString("media"), o.optBoolean("borderless"), o.optInt("dpi", 0))
                 val adj = PrintColorAdj.from(o)
                 val e = if (ip.startsWith("usb:")) {
                     usbEntry(ip)
@@ -418,6 +431,36 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         newSocket(ip).use { s ->
             s.connect(InetSocketAddress(ip, found[ip]?.rawPort?.takeIf { it > 0 } ?: 9100), 6000)
             s.getOutputStream().apply { write(data); flush() }
+            try {
+                s.shutdownOutput()
+                s.soTimeout = 3000
+                val buf = ByteArray(512)
+                val until = System.currentTimeMillis() + 20_000
+                val inp = s.getInputStream()
+                while (System.currentTimeMillis() < until && inp.read(buf) >= 0) { /* status bytes, not needed */ }
+            } catch (_: Exception) {}
+        }
+    }
+
+    /** Streams one whole photo job directly into port 9100 without buffering the full page in RAM. */
+    private fun netRawStream(ip: String, portOverride: Int = 0, stream: ((ByteArray, Int) -> Unit) -> Unit) {
+        val port = if (portOverride > 0) portOverride else (found[ip]?.rawPort?.takeIf { it > 0 } ?: 9100)
+        newSocket(ip).use { s ->
+            try {
+                s.connect(InetSocketAddress(ip, port), 6000)
+            } catch (ex: Exception) {
+                val active = currentNets().joinToString(", ") { "${it.addr.hostAddress}/${it.prefix}" }
+                val hint = if (active.isNotEmpty() && matchLocalNet(ip) == null) " (Tablet Wi-Fi is $active — if you switched between Wi-Fi and Wi-Fi Direct, tap Find printers.)" else ""
+                throw IllegalStateException("Could not reach printer at $ip on port $port: ${ex.message ?: ex.javaClass.simpleName}.$hint", ex)
+            }
+            s.soTimeout = 30_000
+            val bos = java.io.BufferedOutputStream(s.getOutputStream(), 65536)
+            try {
+                stream { buf, len -> bos.write(buf, 0, len) }
+                bos.flush()
+            } catch (ex: Exception) {
+                throw IllegalStateException("Printer at $ip stopped answering while receiving photo (${ex.message ?: ex.javaClass.simpleName}).", ex)
+            }
             try {
                 s.shutdownOutput()
                 s.soTimeout = 3000
@@ -585,16 +628,25 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         try {
             val a = InetAddress.getByName(ip) as? Inet4Address ?: return null
             val v = ipLong(a)
-            val list = currentNets()
-            // Prefer Android-managed Network objects first (socketFactory binding beats mobile data on Wi-Fi Direct).
-            for (n in list) {
-                if (n.network == null) continue
-                val mask = if (n.prefix <= 0) 0L else (0xFFFFFFFFL shl (32 - n.prefix.coerceAtMost(32))) and 0xFFFFFFFFL
-                if ((ipLong(n.addr) and mask) == (v and mask)) return n
+            fun findIn(list: List<LocalNet>): LocalNet? {
+                // Prefer Android-managed Network objects first (socketFactory binding beats mobile data on Wi-Fi Direct).
+                for (n in list) {
+                    if (n.network == null) continue
+                    val mask = if (n.prefix <= 0) 0L else (0xFFFFFFFFL shl (32 - n.prefix.coerceAtMost(32))) and 0xFFFFFFFFL
+                    if ((ipLong(n.addr) and mask) == (v and mask)) return n
+                }
+                for (n in list) {
+                    val mask = if (n.prefix <= 0) 0L else (0xFFFFFFFFL shl (32 - n.prefix.coerceAtMost(32))) and 0xFFFFFFFFL
+                    if ((ipLong(n.addr) and mask) == (v and mask)) return n
+                }
+                return null
             }
-            for (n in list) {
-                val mask = if (n.prefix <= 0) 0L else (0xFFFFFFFFL shl (32 - n.prefix.coerceAtMost(32))) and 0xFFFFFFFFL
-                if ((ipLong(n.addr) and mask) == (v and mask)) return n
+            findIn(currentNets())?.let { return it }
+            // Refresh immediately on a subnet miss (>500 ms old) so switching Router Wi-Fi <-> Wi-Fi Direct (192.168.223.1)
+            // binds to the new interface right away instead of leaking sockets onto 4G/5G mobile data.
+            if (System.currentTimeMillis() - netsAt > 500) {
+                nets = localNets(); netsAt = System.currentTimeMillis()
+                return findIn(nets)
             }
         } catch (_: Exception) {}
         return null
@@ -902,7 +954,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             // The L8050 product id above was not checked against a real printer: also know it by the name it gives once the
             // tablet may read it ("L8050 Series"), so it is found whatever its id is.
             val prod = try { d.productName ?: "" } catch (_: Exception) { "" }
-            return if (Regex("(?i)\\bL8050\\b").containsMatchIn(prod)) "L8050" else null
+            return if (Regex("(?i)(?:^|[^A-Za-z0-9])L8050(?![0-9])").containsMatchIn(prod)) "L8050" else null
         }
 
         /** True when this is one of the three hardcoded Epson photo/AIO printers. */
@@ -1353,6 +1405,53 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         return "started"
     }
 
+    private val l8050NameRx = Regex("(?i)(?:^|[^A-Za-z0-9])L8050(?![0-9])")
+    private fun isL8050Name(s: String?): Boolean = !s.isNullOrBlank() && l8050NameRx.containsMatchIn(s)
+
+    /**
+     * Best ESC/P-R config for Epson L8050 (USB and Wi-Fi :9100):
+     *   - Default "high" / "": 360 dpi RGB dsnd (proven, fast)
+     *   - Opt-in "high720": 720 dpi RGB dsnd on 4x6 (2880x4320 sheet, 3032x4400 area, -22/-76, streamed in 64-row strips)
+     *   - setq media byte: 0x34 Epson Photo Paper Glossy (default), 0x0C Semi-Gloss, 0x05 Matte, 0x00 Plain
+     *   - setq quality byte: 2 High (default), 1 Normal, 0 Draft
+     *   - L8050 borderless header (setm + seti + chku) & 4x6 geometry
+     */
+    private fun l8050EscprConfig(
+        optJson: JSONObject,
+        borderless: Boolean,
+        adj: PrintColorAdj,
+        widthMm: Double = 101.6,
+        heightMm: Double = 152.4
+    ): EscprJob.Config {
+        val mono = optJson.optString("color", "color") == "mono"
+        val mediaCode = when (optJson.optString("media", "").lowercase()) {
+            "plain" -> EscprJob.MEDIA_PLAIN
+            "matte" -> EscprJob.MEDIA_MATTE
+            "photosg" -> EscprJob.MEDIA_SEMI_GLOSS
+            "photo" -> EscprJob.MEDIA_EPSON_GLOSSY
+            else -> EscprJob.MEDIA_EPSON_GLOSSY
+        }
+        val qStr = optJson.optString("quality", "").lowercase()
+        val is4x6 = Math.abs(minOf(widthMm, heightMm) - 101.6) <= 1.5 && Math.abs(maxOf(widthMm, heightMm) - 152.4) <= 1.5
+        val useDpi = if (qStr == "high720" && is4x6) 720 else 360
+        val qualityCode = when (qStr) {
+            "draft" -> 0
+            "normal" -> 1
+            else -> 2
+        }
+        return EscprJob.Config(
+            dpi = useDpi,
+            mediaCode = mediaCode,
+            qualityCode = qualityCode,
+            borderless = borderless,
+            l8050Geo = true,
+            sendSetiChku = true,
+            mono = mono,
+            adj = adj,
+            sendSetm = true
+        )
+    }
+
     /**
      * EXPERIMENTAL: prints JPEG pages to an Epson ESC/P-R USB printer (Epson L120 / L210 and similar).
      * Result arrives as window.__PBNetResult.
@@ -1367,16 +1466,23 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             try {
                 // A Wi-Fi printer (an address, not "usb:…") gets the same job over port 9100.
                 val net = !id.startsWith("usb:")
-                if (!net) {
+                val usbDev = if (!net) {
                     val d = usbFind(id)
                     usbEnsure(d)
                     if (!usbIsEscpr(d)) throw IllegalStateException("Printer does not support ESC/P-R raster commands.")
-                }
+                    d
+                } else null
                 val optJson = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
                 val adj = PrintColorAdj.from(optJson)
-                // Borderless (L805, L210 and similar): no 3 mm border, photo paper. The booth page only sets it for a
+                // Borderless (L805, L8050, L210 and similar): no 3 mm border, photo paper. The booth page only sets it for a
                 // model and paper size the printer can do borderless; otherwise the job stays as before (border, plain).
                 val borderless = optJson.optBoolean("borderless", false)
+                val netEntry = if (net) found[id] else null
+                val isL8050 = (usbDev != null && (EpsonLModels.match(usbDev) == "L8050" || isL8050Name(usbName(usbDev)))) ||
+                    optJson.optString("epsonModel", "").equals("L8050", ignoreCase = true) ||
+                    isL8050Name(optJson.optString("printerName", "")) ||
+                    (netEntry != null && isL8050Name(netEntry.model + " " + netEntry.name))
+                val l8050Cfg = if (isL8050) l8050EscprConfig(optJson, borderless, adj, widthMm, heightMm) else null
                 val arr = JSONArray(pagesJson)
                 for (c in 0 until copies.coerceIn(1, 20)) {
                     for (i in 0 until arr.length()) {
@@ -1384,9 +1490,32 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
                         try {
-                            val data = EscprJob.build(bmp, widthMm, heightMm, false, borderless = borderless, photoMedia = borderless, adj = adj, epsonBorderless = true)
-                            if (net) netRawJob(id, data) else usbRaw(id, data)
-                            if (net) found[id]?.lastSent = (if (borderless) "borderless, Premium Glossy photo paper, " else "3 mm border, plain paper, ") + Math.round(minOf(widthMm, heightMm)) + "x" + Math.round(maxOf(widthMm, heightMm)) + " mm"
+                            if (l8050Cfg != null) {
+                                if (net) {
+                                    netRawStream(id) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
+                                } else {
+                                    usbRawStream(id) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
+                                }
+                            } else {
+                                val data = EscprJob.build(bmp, widthMm, heightMm, false, borderless = borderless, photoMedia = borderless, adj = adj, epsonBorderless = true)
+                                if (net) netRawJob(id, data) else usbRaw(id, data)
+                            }
+                            if (net) {
+                                val sizeDesc = Math.round(minOf(widthMm, heightMm)).toString() + "x" + Math.round(maxOf(widthMm, heightMm)) + " mm"
+                                found[id]?.lastSent = if (l8050Cfg != null) {
+                                    val qName = when (l8050Cfg.qualityCode) { 0 -> "Draft"; 1 -> "Normal"; else -> "High" }
+                                    val mName = when (l8050Cfg.mediaCode) {
+                                        EscprJob.MEDIA_PLAIN -> "Plain"
+                                        EscprJob.MEDIA_MATTE -> "Matte"
+                                        EscprJob.MEDIA_SEMI_GLOSS -> "Semi-Gloss"
+                                        else -> "Epson Glossy 0x34"
+                                    }
+                                    val geo = if (l8050Cfg.dpi >= 720) "borderless (-22,-76)" else "borderless (-11,-38)"
+                                    "L8050 ESC/P-R ${l8050Cfg.dpi}dpi, " + (if (borderless) geo else "3 mm border") + ", $mName, $qName, $sizeDesc"
+                                } else {
+                                    (if (borderless) "borderless, Premium Glossy photo paper, " else "3 mm border, plain paper, ") + sizeDesc
+                                }
+                            }
                         } finally {
                             try { bmp.recycle() } catch (_: Exception) {}
                         }
@@ -1404,7 +1533,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     /**
      * Prints JPEG pages to a hardcoded Epson L-series USB printer via ESC/P-R:
-     *   • Epson L8050  (PID 0x0866) — 6-ink photo printer, supports borderless
+     *   • Epson L8050  (PID 0x0866) — 6-ink photo printer, streaming ESC/P-R 360/720 dpi with L8050 geometry, setm & media (0x34)
      *   • Epson L3210  (PID 0xE671) — 4-ink all-in-one, supports borderless (up to 4R)
      *   • Epson L3276  (PID 0x445A) — 4-ink Wi-Fi AIO, supports borderless (up to 4R)
      *
@@ -1413,8 +1542,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
      *
      * optionsJson keys:
      *   color      — "color" | "mono"               (default: color)
-     *   quality    — "draft" | "normal" | "high"     (default: normal → 360 dpi)
-     *   media      — "photo" | "matte" | "plain"     (default: plain)
+     *   quality    — "draft" | "normal" | "high" | "high720" (L8050 default: high 360 dpi; high720 = 720 dpi on 4x6)
+     *   media      — "photo" | "photosg" | "matte" | "plain" (L8050 default: photo 0x34)
      *   borderless — true | false                    (L8050, L3210, L3276 supported)
      *   brightness — integer -100 … +100             (default: 0; negative = darker, positive = lighter)
      *
@@ -1440,6 +1569,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val photoMedia = optJson.optString("media", "") == "photo" || borderless
                 val draft = optJson.optString("quality", "") == "draft"
                 val adj = PrintColorAdj.from(optJson)
+                val l8050Cfg = if (model == "L8050") l8050EscprConfig(optJson, borderless, adj, widthMm, heightMm) else null
+                if (l8050Cfg != null) {
+                    Log.i(TAG, "printEpsonL L8050 cfg: dpi=${l8050Cfg.dpi} bl=${l8050Cfg.borderless} media=0x%02x q=${l8050Cfg.qualityCode} setm=${l8050Cfg.sendSetm} copies=$copies".format(l8050Cfg.mediaCode))
+                }
 
                 val arr = JSONArray(pagesJson)
                 for (c in 0 until copies.coerceIn(1, 20)) {
@@ -1448,7 +1581,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val bmp  = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't decode photo for printing.")
                         try {
-                            usbRaw(id, EscprJob.build(bmp, widthMm, heightMm, !colour, borderless, photoMedia, draft, adj))
+                            if (l8050Cfg != null) {
+                                usbRawStream(id) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
+                            } else {
+                                usbRaw(id, EscprJob.build(bmp, widthMm, heightMm, !colour, borderless, photoMedia, draft, adj))
+                            }
                         } finally {
                             try { bmp.recycle() } catch (_: Exception) {}
                         }
@@ -1719,6 +1856,46 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 }
             }
             // Give USB interface and printer controller a short pause to settle before releasing lock
+            try { Thread.sleep(250) } catch (_: InterruptedException) {}
+        }
+    }
+
+    /** Streams one whole photo job straight to USB bulk-OUT without buffering the full page in RAM. */
+    private fun usbRawStream(id: String, stream: ((ByteArray, Int) -> Unit) -> Unit) {
+        synchronized(usbLockFor(id)) {
+            val d = usbFind(id)
+            usbEnsure(d)
+            val iface = usbRawIface(d) ?: usbIfaces(d).firstOrNull { it.interfaceClass == 7 }
+                ?: throw IllegalStateException("Connected USB device is not a supported printer.")
+            usbSession(d, iface) { conn, out, inn ->
+                // Drain bidirectional printer status while writing so the printer never blocks waiting on bulk-IN.
+                val stop = java.util.concurrent.atomic.AtomicBoolean(false)
+                val reader = if (inn == null) null else Thread {
+                    val b = ByteArray(1024)
+                    while (!stop.get()) { try { conn.bulkTransfer(inn, b, b.size, 200) } catch (_: Exception) {} }
+                }.also { it.isDaemon = true; it.start() }
+                try {
+                    stream { buf, len ->
+                        var off = 0
+                        var zeros = 0
+                        while (off < len) {
+                            val r = conn.bulkTransfer(out, buf, off, minOf(16384, len - off), 60_000)
+                            if (r < 0) throw IllegalStateException("Printer communication timed out. Power cycle the printer and retry.")
+                            if (r == 0) {
+                                if (++zeros >= 10) throw IllegalStateException("Printer stopped accepting USB data. Power cycle the printer and retry.")
+                                try { Thread.sleep(50) } catch (_: InterruptedException) {}
+                                continue
+                            }
+                            zeros = 0
+                            off += r
+                        }
+                    }
+                    try { Thread.sleep(300) } catch (_: InterruptedException) {}
+                } finally {
+                    stop.set(true)
+                    reader?.join(1000)
+                }
+            }
             try { Thread.sleep(250) } catch (_: InterruptedException) {}
         }
     }
@@ -2255,7 +2432,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         } catch (_: Exception) {}
     }
 
-    private class Opts(val quality: String, val color: String, val media: String, val borderless: Boolean = false)
+    private class Opts(val quality: String, val color: String, val media: String, val borderless: Boolean = false, val dpi: Int = 0)
 
     /** One way of asking the printer for a job: with the page size, with the quality / colour / paper-type settings, the paper's own name, how to scale, and margins (1/100 mm). */
     private data class IppAttempt(val withMedia: Boolean, val withOpts: Boolean, val mediaName: String, val scaling: String, val sizeW: Double = 0.0, val sizeH: Double = 0.0, val marginMm100: Int = 0)
@@ -2268,7 +2445,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     }
 
     private fun sendIppJob(e: Entry, job: String, jpegIn: ByteArray, wMm: Double, hMm: Double, opts: Opts) {
-        val jpeg = jpegAt300Dpi(jpegIn)
+        val jpeg = jpegAtDpi(jpegIn, opts.dpi)
         fetchAttrs(e)
         // Only ask for settings this printer says it supports (quality, colour mode, paper type).
         // Exception, hardcoded: an Epson L8050 on USB does not list its print qualities or paper types, so nothing was ever
@@ -2278,7 +2455,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         // Wi-Fi, so the printer used plain paper at standard quality (banding lines, no borderless) where the Epson app printed it sharp.
         val hardEpsonL = e.usbDev?.let { EpsonLModels.isKnown(it) } == true ||
             (e.usbDev == null && Regex("(?i)(?:^|[^A-Za-z0-9])L8050(?![0-9])").containsMatchIn(e.model + " " + e.name))
-        val q = when (opts.quality) { "draft" -> 3; "normal" -> 4; "high" -> 5; else -> 0 }
+        val q = when (opts.quality) { "draft" -> 3; "normal" -> 4; "high", "high720" -> 5; else -> 0 }
         val qv = if (q != 0 && (q in e.qualities || hardEpsonL)) q else 0
         val cm = when {
             opts.color == "mono" && "monochrome" in e.colorModes -> "monochrome"
@@ -2326,19 +2503,23 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         val selphy = isSelphy(e)
         val named = if (selphy) selphyMedia(e, wMm, hMm, opts.borderless) else null
         val ownScaling = if (opts.borderless) "none" else "fill"
-        // Try ideal settings first, then drop print-scaling (some non-AirPrint printers reject "none" even when they support zero-margin
-        // media-col), then drop quality/media-type, then drop media-col, down to a plain minimal JPEG print job.
+        // Try ideal zero-margin borderless settings first, then drop print-scaling (some non-AirPrint printers reject "none" even when they
+        // support zero-margin media-col), then drop quality/media-type, then fall back to 3 mm margins (keeps paper size when a printer
+        // refuses 0 mm margins on plain paper or non-borderless sizes) before finally dropping media-col.
         val baseStd = ArrayList<IppAttempt>()
         if (hasOpts) {
             baseStd.add(IppAttempt(true, true, "", ownScaling))
             baseStd.add(IppAttempt(true, true, "", ""))
             baseStd.add(IppAttempt(true, false, "", ownScaling))
             baseStd.add(IppAttempt(true, false, "", ""))
+            baseStd.add(IppAttempt(true, true, "", "fill", 0.0, 0.0, 300))
+            baseStd.add(IppAttempt(true, false, "", "", 0.0, 0.0, 300))
             baseStd.add(IppAttempt(false, true, "", ""))
             baseStd.add(IppAttempt(false, false, "", ""))
         } else {
             baseStd.add(IppAttempt(true, false, "", ownScaling))
             baseStd.add(IppAttempt(true, false, "", ""))
+            baseStd.add(IppAttempt(true, false, "", "fill", 0.0, 0.0, 300))
             baseStd.add(IppAttempt(false, false, "", ""))
         }
         val ns = if (named != null) mediaSizeMm(named) else null
@@ -2477,17 +2658,20 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         return pick(e.mediaSupported)
     }
 
-    /** The JPEG with 300 dpi written into its header, so a printer that prints it at its own size (no scaling) still gets the sheet's size. */
-    private fun jpegAt300Dpi(j: ByteArray): ByteArray {
+    /** The JPEG with the requested DPI (default 300) written into its JFIF header, so a printer printing at actual size (no scaling) gets the exact sheet dimensions. */
+    private fun jpegAtDpi(j: ByteArray, dpi: Int = 300): ByteArray {
+        val d = if (dpi in 150..1200) dpi else 300
         // JFIF header: FF D8 FF E0 len(2) 'J' 'F' 'I' 'F' 0 ver(2) units(1) Xdensity(2) Ydensity(2)
         if (j.size < 20 || j[0] != 0xFF.toByte() || j[1] != 0xD8.toByte() || j[2] != 0xFF.toByte() || j[3] != 0xE0.toByte()) return j
         if (j[6] != 0x4A.toByte() || j[7] != 0x46.toByte() || j[8] != 0x49.toByte() || j[9] != 0x46.toByte()) return j   // "JFIF"
         val out = j.copyOf()
         out[13] = 1                                       // dots per inch
-        out[14] = (300 shr 8).toByte(); out[15] = (300 and 0xFF).toByte()
-        out[16] = (300 shr 8).toByte(); out[17] = (300 and 0xFF).toByte()
+        out[14] = (d shr 8).toByte(); out[15] = (d and 0xFF).toByte()
+        out[16] = (d shr 8).toByte(); out[17] = (d and 0xFF).toByte()
         return out
     }
+
+    private fun jpegAt300Dpi(j: ByteArray): ByteArray = jpegAtDpi(j, 300)
 
     /** One PWG Raster page for printers that list image/pwg-raster: 300 dpi when offered, colour unless grey is asked for or all they list. */
     private fun pwgPage(e: Entry, jpeg: ByteArray, wMm: Double, hMm: Double, opts: Opts,
@@ -2498,7 +2682,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         }
         val gray = types.isNotEmpty() && "sgray_8" in types && ("srgb_8" !in types || opts.color == "mono")
         val avail = if (e.pwgRes.isNotEmpty()) e.pwgRes else listOf(300)
-        val want = when (opts.quality) { "draft" -> 150; "high" -> 600; else -> 300 }
+        val want = when (opts.quality) { "draft" -> 150; "high", "high720" -> 600; else -> 300 }
         fun pixelsAt(d: Int) = Math.round(minOf(wMm, hMm) / 25.4 * d).toLong() * Math.round(maxOf(wMm, hMm) / 25.4 * d)
         val fits = avail.filter { pixelsAt(it) <= 26_000_000L }
         val dpi = (if (fits.isNotEmpty()) fits else avail).minByOrNull { Math.abs(it - want) } ?: 300
@@ -3113,24 +3297,20 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             val borderless = payload.optBoolean("borderless", true)
             val l8050Geo = payload.optBoolean("l8050Geo", true)
             val sendSetiChku = payload.optBoolean("sendSetiChku", true)
+            val sendSetm = payload.optBoolean("sendSetm", l8050Geo)
             val mono = payload.optBoolean("mono", false)
             val bmp = android.graphics.BitmapFactory.decodeByteArray(jpegIn, 0, jpegIn.size)
                 ?: return out.put("ok", false).put("error", "Could not decode JPEG image.")
-            val data: ByteArray
-            val buildStart = System.currentTimeMillis()
-            try {
-                val cfg = EscprJob.Config(dpi, mediaCode, qualityCode, borderless, l8050Geo, sendSetiChku, mono)
-                data = EscprJob.buildWithConfig(bmp, wMm, hMm, cfg)
-            } finally {
-                try { bmp.recycle() } catch (_: Exception) {}
-            }
-            val buildMs = System.currentTimeMillis() - buildStart
+            val cfg = EscprJob.Config(dpi, mediaCode, qualityCode, borderless, l8050Geo, sendSetiChku, mono, PrintColorAdj(), sendSetm)
             val sendStart = System.currentTimeMillis()
+            var streamedBytes = 0L
             val replyBuf = ByteArrayOutputStream()
             try {
                 newSocket(ip).use { s ->
                     s.connect(InetSocketAddress(ip, port), 6000)
-                    s.getOutputStream().apply { write(data); flush() }
+                    val bos = java.io.BufferedOutputStream(s.getOutputStream(), 65536)
+                    streamedBytes = EscprJob.streamWithConfig(bmp, wMm, hMm, cfg) { buf, len -> bos.write(buf, 0, len) }
+                    bos.flush()
                     try {
                         s.shutdownOutput()
                         s.soTimeout = 3000
@@ -3147,18 +3327,20 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val replyBytes = replyBuf.toByteArray()
                 return out.put("ok", true)
                     .put("port", port)
-                    .put("bytes", data.size)
-                    .put("buildMs", buildMs)
+                    .put("bytes", streamedBytes)
+                    .put("buildMs", 0L)
                     .put("sendMs", System.currentTimeMillis() - sendStart)
                     .put("replyBytes", replyBytes.size)
                     .put("replyPreview", String(replyBytes.take(120).toByteArray(), Charsets.ISO_8859_1).replace(Regex("[^\\x20-\\x7E]"), "."))
                     .put("config", JSONObject()
                         .put("dpi", dpi).put("mediaHex", "0x%02x".format(mediaCode))
                         .put("qualityCode", qualityCode).put("borderless", borderless)
-                        .put("l8050Geo", l8050Geo).put("sendSetiChku", sendSetiChku))
+                        .put("l8050Geo", l8050Geo).put("sendSetiChku", sendSetiChku).put("sendSetm", sendSetm))
             } catch (ex: Exception) {
                 return out.put("ok", false).put("error", ex.message ?: ex.javaClass.simpleName)
-                    .put("bytes", data.size).put("buildMs", buildMs).put("sendMs", System.currentTimeMillis() - sendStart)
+                    .put("bytes", streamedBytes).put("buildMs", 0L).put("sendMs", System.currentTimeMillis() - sendStart)
+            } finally {
+                try { bmp.recycle() } catch (_: Exception) {}
             }
         }
 
@@ -3174,15 +3356,16 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         val mediaType = payload.optString("mediaType", "photographic-glossy")
         val mtMode = payload.optString("mediaTypeMode", "col")
         val scaling = payload.optString("scaling", "")
+        val ippDpi = payload.optInt("dpi", 0)
         val pollSeconds = payload.optInt("pollSeconds", 15).coerceIn(0, 30)
 
         val e = found.getOrPut(ip) { Entry(ip).also { it.ippPort = port; it.ippPath = path } }
         if (e.ippPort <= 0) e.ippPort = port
         if (e.ippPath.isBlank()) e.ippPath = path
         val doc = when (format) {
-            "application/pdf" -> jpegToPdf(jpegAt300Dpi(jpegIn), wMm, hMm)
+            "application/pdf" -> jpegToPdf(jpegAtDpi(jpegIn, ippDpi), wMm, hMm)
             "image/pwg-raster" -> PwgRaster.fromJpeg(jpegIn, minOf(wMm, hMm), maxOf(wMm, hMm), 300, false, mediaName, mediaType, true)
-            else -> jpegAt300Dpi(jpegIn)
+            else -> jpegAtDpi(jpegIn, ippDpi)
         }
         val uri = "ipp://$ip:$port$path"
         val reqBody = ippPrintJob(uri, "pb4u-diag", format, doc, if (withMedia) wMm else 0.0, if (withMedia) hMm else 0.0,
@@ -3327,15 +3510,21 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 when {
                     epsonL || escpr -> {
                         val borderless = (epsonL && EpsonLModels.isBorderless(d)) || escpr
+                        val isL8050 = EpsonLModels.match(d) == "L8050" || isL8050Name(usbName(d))
                         val photoMedia = true
                         val adj = PrintColorAdj()
+                        val l8050Cfg = if (isL8050) l8050EscprConfig(JSONObject(), borderless, adj, widthMm, heightMm) else null
                         for (i in 0 until pagesArr.length()) {
                             val jpeg = decode(pagesArr.getString(i))
                             val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                                 ?: throw IllegalStateException("Couldn't decode photo for printing.")
                             try {
-                                val bytes = EscprJob.build(bmp, widthMm, heightMm, mono = false, borderless = borderless, photoMedia = photoMedia, draft = false, adj = adj)
-                                usbRaw(id, bytes)
+                                if (l8050Cfg != null) {
+                                    usbRawStream(id) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
+                                } else {
+                                    val bytes = EscprJob.build(bmp, widthMm, heightMm, mono = false, borderless = borderless, photoMedia = photoMedia, draft = false, adj = adj)
+                                    usbRaw(id, bytes)
+                                }
                             } finally {
                                 try { bmp.recycle() } catch (_: Exception) {}
                             }
@@ -3418,7 +3607,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         }
                     }
                     ipp -> {
-                        val opts = Opts("", "", "", true)
+                        val isL8050 = EpsonLModels.match(d) == "L8050" || isL8050Name(usbName(d))
+                        val opts = if (isL8050) Opts("high", "", "photo", true) else Opts("", "", "", true)
                         val e = usbEntry(id)
                         for (i in 0 until pagesArr.length()) {
                             val data = decode(pagesArr.getString(i))
@@ -3457,8 +3647,21 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                             try { bmp.recycle() } catch (_: Exception) {}
                         }
                     }
+                } else if (netMatch.ippPort == 0 && netMatch.rawPort > 0 && isL8050Name(netMatch.model + " " + netMatch.name)) {
+                    val l8050Cfg = l8050EscprConfig(JSONObject(), true, PrintColorAdj(), widthMm, heightMm)
+                    for (i in 0 until pagesArr.length()) {
+                        val jpeg = decode(pagesArr.getString(i))
+                        val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+                            ?: throw IllegalStateException("Couldn't decode photo for printing.")
+                        try {
+                            netRawStream(netMatch.ip, netMatch.rawPort) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
+                        } finally {
+                            try { bmp.recycle() } catch (_: Exception) {}
+                        }
+                    }
                 } else {
-                    val opts = Opts("", "", "", true)
+                    val isL8050 = isL8050Name(netMatch.model + " " + netMatch.name)
+                    val opts = if (isL8050) Opts("high", "", "photo", true) else Opts("", "", "", true)
                     for (i in 0 until pagesArr.length()) {
                         val data = decode(pagesArr.getString(i))
                         sendIppJob(netMatch, "helper_" + System.currentTimeMillis(), data, widthMm, heightMm, opts)

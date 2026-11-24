@@ -301,6 +301,15 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-24', title: 'Android 1.2.14 & Website: Epson L8050 Direct USB, Wi-Fi / Wi-Fi Direct, Borderless & Streaming 720 dpi Fixes', for: ['website', 'app'],
+    items: [
+      '🖨️ **Epson L8050 rainbow-band fix (Android)**: Permanently blocked the incompatible 4-ink L3210 beta raster (`720/1440 dpi`) on 6-ink Epson L8050 / L18050 printers and cleared stale saved settings automatically.',
+      '✨ **Sharper L8050 4×6 prints without tablet crashes**: Added real Windows L8050 borderless headers (`setm`, `seti`, `chku`, `0x34` Epson Glossy) with low-RAM 64-row strip streaming for ESC/P-R (safe `High 360 dpi` default + opt-in **`High 720 dpi (L8050 4×6)`**) plus sharp **600 dpi** 4×6 rendering with dynamic JFIF DPI headers over IPP.',
+      '📐 **Reliable Android Borderless**: Fixed switching from another printer (or dual-printer Bluetooth receipt + photo booth setup) resetting **Borderless** back off, persisted delayed IPP zero-margin capability, and added a 3 mm margin fallback before dropping paper size.',
+      '📶 **Wi-Fi Direct (`192.168.223.1`) & USB replug reliability**: Instant subnet cache refresh when switching between router Wi-Fi and Wi-Fi Direct, wake retry on `Add by IP`, automatic DHCP / Wi-Fi Direct IP relinking by model name, and USB relinking before **Test print**.'
+    ]
+  },
+  {
     date: '2026-11-24', title: 'Desktop 1.1.104, Android 1.2.13, iPad 1.1.27 & Website: Simpler Photo Spot Editor, Working Frame Search & Filters, No Scroll Jump & Overlay Upload Fix', for: ['website', 'app'],
     items: [
       '✨ **Cleaner, faster Edit photo spots & More frame options**: Added a 1-click **Repeat N per strip / All separate** bar inside **Edit photo spots**, simplified Photo # chips to only active shots + `+ #next`, kept **More frame options** collapsed with a live summary, grouped advanced spot tools into neat cards, and rendered resize/tilt handles only on the selected box.',

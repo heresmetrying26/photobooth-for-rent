@@ -184,6 +184,9 @@ object EscprJob {
      * Explicit ESC/P-R parameters for L8050 & wireless diagnostics (port 9100): lets the tester
      * compare 360 vs 720 dpi, quality 0/1/2 (Draft/Standard/High), media codes (0x34 Epson Glossy,
      * 0x0B Premium Glossy, 0x0C Semi-Gloss, 0x05 Matte, 0x00 Plain), and L8050 vs L805 borderless geometry.
+     *
+     * [sendSetm] emits the L8050 Windows driver's borderless/media setup commands (0x71 seti=01,
+     * 0x6d seti=00, 0x6d setm=0a <bl> 00 63 00 00 00, 0x75 chku=01 00, setq[6]=0x03).
      */
     data class Config(
         val dpi: Int = 360,
@@ -193,8 +196,11 @@ object EscprJob {
         val l8050Geo: Boolean = true,
         val sendSetiChku: Boolean = true,
         val mono: Boolean = false,
-        val adj: PrintColorAdj = PrintColorAdj()
+        val adj: PrintColorAdj = PrintColorAdj(),
+        val sendSetm: Boolean = l8050Geo
     )
+
+    private const val STREAM_STRIP_H = 64
 
     /**
      * Builds an ESC/P-R job with explicit dpi (360 or 720), media byte, quality byte, and geometry.
@@ -203,6 +209,25 @@ object EscprJob {
      *   360 dpi -> sheet 1440x2160, area 1516x2200, origin top -11, left -38, setj res byte 0x00
      */
     fun buildWithConfig(src: Bitmap, widthMm: Double, heightMm: Double, cfg: Config): ByteArray {
+        val out = ByteArrayOutputStream()
+        streamWithConfig(src, widthMm, heightMm, cfg) { buf, len -> out.write(buf, 0, len) }
+        return out.toByteArray()
+    }
+
+    /**
+     * Streams an ESC/P-R job directly into [writeChunk] in <=64 KB chunks using a seam-free 64-row
+     * strip renderer (~0.8 MB bitmap RAM at 720 dpi instead of ~53 MB full-page + ~80 MB output buffer).
+     *
+     * [writeChunk] receives a reusable buffer and byte length and must consume bytes before returning.
+     * Returns total bytes streamed.
+     */
+    fun streamWithConfig(
+        src: Bitmap,
+        widthMm: Double,
+        heightMm: Double,
+        cfg: Config,
+        writeChunk: (ByteArray, Int) -> Unit
+    ): Long {
         val useDpi = if (cfg.dpi >= 720) 720 else 360
         val scale = useDpi / 360
         val shortMm = minOf(widthMm, heightMm)
@@ -256,64 +281,121 @@ object EscprJob {
         }
         require(areaW > 0 && areaH > 0) { "Sheet too small" }
 
+        val l = if (useBleed) blLeft.coerceIn(0, areaW - paperW) else 0
+        val t = if (useBleed) blTop.coerceIn(0, areaH - paperH) else 0
+        val dstW = if (useBleed) paperW else areaW
+        val dstH = if (useBleed) paperH else areaH
+        val rEdge = l + dstW
+        val bEdge = t + dstH
+
         val needsRotate = (src.width > src.height) != (areaW > areaH)
-        val rotatedSrc: Bitmap
-        val shouldRecycleRotated: Boolean
-        if (needsRotate) {
-            rotatedSrc = Bitmap.createBitmap(src, 0, 0, src.width, src.height, Matrix().apply { postRotate(90f) }, true)
-            shouldRecycleRotated = (rotatedSrc !== src)
-        } else {
-            rotatedSrc = src
-            shouldRecycleRotated = false
-        }
-        val bmp = try {
-            if (useBleed) {
-                epsonBleedPageCustom(rotatedSrc, paperW, paperH, areaW, areaH, blLeft, blTop)
-            } else if (rotatedSrc.width == areaW && rotatedSrc.height == areaH) {
-                rotatedSrc
-            } else {
-                Bitmap.createScaledBitmap(rotatedSrc, areaW, areaH, true)
+        val rotW = if (needsRotate) src.height else src.width
+        val rotH = if (needsRotate) src.width else src.height
+        val sx = dstW.toFloat() / rotW
+        val sy = dstH.toFloat() / rotH
+
+        val chunk = ByteArray(65536)
+        var chunkPos = 0
+        var totalBytes = 0L
+        fun flushChunk() {
+            if (chunkPos > 0) {
+                writeChunk(chunk, chunkPos)
+                totalBytes += chunkPos
+                chunkPos = 0
             }
-        } catch (ex: Exception) {
-            if (shouldRecycleRotated) {
-                try { rotatedSrc.recycle() } catch (_: Exception) {}
-            }
-            throw ex
         }
-        if (shouldRecycleRotated && bmp !== rotatedSrc) {
-            try { rotatedSrc.recycle() } catch (_: Exception) {}
+        fun emit(b: ByteArray, off: Int = 0, len: Int = b.size) {
+            var p = off
+            var rem = len
+            while (rem > 0) {
+                val space = chunk.size - chunkPos
+                if (space == 0) { flushChunk(); continue }
+                val n = minOf(space, rem)
+                System.arraycopy(b, p, chunk, chunkPos, n)
+                chunkPos += n
+                p += n
+                rem -= n
+            }
         }
 
+        // ── job start header ──
+        val hdr = ByteArrayOutputStream(256)
+        hdr.put(bytes(0x00, 0x00, 0x00, 0x1B, 0x01), ascii("@EJL 1284.4\n@EJL     \n"))
+        hdr.put(bytes(0x1B, 0x40))
+        hdr.put(bytes(0x1B, 0x28, 0x52, 0x08, 0x00, 0x00), ascii("REMOTE1"))
+        val now = Calendar.getInstance()
+        hdr.put(bytes(0x54, 0x49, 0x08, 0x00, 0x00), be16(now.get(Calendar.YEAR)),
+            bytes(now.get(Calendar.MONTH) + 1, now.get(Calendar.DAY_OF_MONTH), now.get(Calendar.HOUR_OF_DAY),
+                now.get(Calendar.MINUTE), now.get(Calendar.SECOND)))
+        hdr.put(bytes(0x4A, 0x53, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00))
+        hdr.put(bytes(0x4A, 0x48, 0x0E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00), ascii("ESCPRLib"))
+        hdr.put(bytes(0x48, 0x44, 0x03, 0x00, 0x00, 0x03, 0x04))
+        hdr.put(bytes(0x50, 0x50, 0x03, 0x00, 0x00, 0x01, 0xFF))
+        hdr.put(bytes(0x1B, 0x00, 0x00, 0x00))
+        hdr.put(bytes(0x1B, 0x28, 0x52, 0x06, 0x00, 0x00), ascii("ESCPR"))
+
+        val media = cfg.mediaCode.coerceIn(0, 0xFF)
+        val quality = cfg.qualityCode.coerceIn(0, 2)
+        hdr.put(bytes(0x1B, 0x71, 0x09, 0x00, 0x00, 0x00), ascii("setq"),
+            bytes(media, quality, if (cfg.mono) 1 else 0, 0, 0, 0, if (cfg.sendSetm) 0x03 else 0x00, 0x00, 0x00))
+        if (cfg.sendSetm) {
+            // Exact L8050 Windows driver borderless/media handshake (captured from e1wf1b0e.inf):
+            // 0x71 seti(01..), 0x6d seti(00), 0x6d setm(0a, borderless?01:00, 00, 63, 00, 00, 00), 0x75 chku(01, 00)
+            hdr.put(bytes(0x1B, 0x71, 0x0A, 0x00, 0x00, 0x00), ascii("seti"), bytes(0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+            hdr.put(bytes(0x1B, 0x6D, 0x01, 0x00, 0x00, 0x00), ascii("seti"), bytes(0x00))
+            hdr.put(bytes(0x1B, 0x6D, 0x07, 0x00, 0x00, 0x00), ascii("setm"),
+                bytes(0x0A, if (cfg.borderless) 0x01 else 0x00, 0x00, 0x63, 0x00, 0x00, 0x00))
+            hdr.put(bytes(0x1B, 0x75, 0x02, 0x00, 0x00, 0x00), ascii("chku"), bytes(0x01, 0x00))
+        } else if (cfg.borderless && cfg.sendSetiChku) {
+            hdr.put(bytes(0x1B, 0x71, 0x0A, 0x00, 0x00, 0x00), ascii("seti"), ByteArray(10))
+            hdr.put(bytes(0x1B, 0x75, 0x02, 0x00, 0x00, 0x00), ascii("chku"), bytes(0x01, 0x01))
+        }
+        val resByte = if (useDpi >= 720) 0x01 else 0x00
+        hdr.put(bytes(0x1B, 0x6A, 0x16, 0x00, 0x00, 0x00), ascii("setj"),
+            be32(paperW), be32(paperH), be16(marginTop), be16(marginLeft), be32(areaW), be32(areaH), bytes(resByte, 0x00))
+        hdr.put(bytes(0x1B, 0x70, 0x00, 0x00, 0x00, 0x00), ascii("sttp"))
+        hdr.put(bytes(0x1B, 0x70, 0x01, 0x00, 0x00, 0x00), ascii("setn"), bytes(0x01))
+        emit(hdr.toByteArray())
+
+        // ── seam-free streaming strip rendering ──
+        val stripBmp = Bitmap.createBitmap(areaW, minOf(STREAM_STRIP_H, areaH), Bitmap.Config.ARGB_8888)
         try {
-            val out = ByteArrayOutputStream()
-            out.put(bytes(0x00, 0x00, 0x00, 0x1B, 0x01), ascii("@EJL 1284.4\n@EJL     \n"))
-            out.put(bytes(0x1B, 0x40))
-            out.put(bytes(0x1B, 0x28, 0x52, 0x08, 0x00, 0x00), ascii("REMOTE1"))
-            val now = Calendar.getInstance()
-            out.put(bytes(0x54, 0x49, 0x08, 0x00, 0x00), be16(now.get(Calendar.YEAR)),
-                bytes(now.get(Calendar.MONTH) + 1, now.get(Calendar.DAY_OF_MONTH), now.get(Calendar.HOUR_OF_DAY),
-                    now.get(Calendar.MINUTE), now.get(Calendar.SECOND)))
-            out.put(bytes(0x4A, 0x53, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00))
-            out.put(bytes(0x4A, 0x48, 0x0E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00), ascii("ESCPRLib"))
-            out.put(bytes(0x48, 0x44, 0x03, 0x00, 0x00, 0x03, 0x04))
-            out.put(bytes(0x50, 0x50, 0x03, 0x00, 0x00, 0x01, 0xFF))
-            out.put(bytes(0x1B, 0x00, 0x00, 0x00))
-            out.put(bytes(0x1B, 0x28, 0x52, 0x06, 0x00, 0x00), ascii("ESCPR"))
+            val stripCanvas = android.graphics.Canvas(stripBmp)
+            val paint = android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG)
+            val matrix = Matrix()
 
-            val media = cfg.mediaCode.coerceIn(0, 0xFF)
-            val quality = cfg.qualityCode.coerceIn(0, 2)
-            out.put(bytes(0x1B, 0x71, 0x09, 0x00, 0x00, 0x00), ascii("setq"),
-                bytes(media, quality, if (cfg.mono) 1 else 0, 0, 0, 0, 0x00, 0x00, 0x00))
-            if (cfg.borderless && cfg.sendSetiChku) {
-                out.put(bytes(0x1B, 0x71, 0x0A, 0x00, 0x00, 0x00), ascii("seti"), ByteArray(10))
-                out.put(bytes(0x1B, 0x75, 0x02, 0x00, 0x00, 0x00), ascii("chku"), bytes(0x01, 0x01))
+            fun fillHorizBleed(linePx: IntArray) {
+                if (!useBleed) return
+                val lv = linePx[l]
+                for (x in 0 until l) linePx[x] = lv
+                val rv = linePx[rEdge - 1]
+                for (x in rEdge until areaW) linePx[x] = rv
             }
-            val resByte = if (useDpi >= 720) 0x01 else 0x00
-            out.put(bytes(0x1B, 0x6A, 0x16, 0x00, 0x00, 0x00), ascii("setj"),
-                be32(paperW), be32(paperH), be16(marginTop), be16(marginLeft), be32(areaW), be32(areaH), bytes(resByte, 0x00))
 
-            out.put(bytes(0x1B, 0x70, 0x00, 0x00, 0x00, 0x00), ascii("sttp"))
-            out.put(bytes(0x1B, 0x70, 0x01, 0x00, 0x00, 0x00), ascii("setn"), bytes(0x01))
+            fun drawSheetSlice(yOffsetInStrip: Float, clipTop: Int, clipBot: Int) {
+                stripCanvas.save()
+                stripCanvas.clipRect(l, clipTop, rEdge, clipBot)
+                stripCanvas.drawColor(android.graphics.Color.WHITE)
+                matrix.reset()
+                if (needsRotate) {
+                    matrix.postRotate(90f)
+                    matrix.postTranslate(src.height.toFloat(), 0f)
+                }
+                matrix.postScale(sx, sy)
+                matrix.postTranslate(l.toFloat(), yOffsetInStrip)
+                stripCanvas.drawBitmap(src, matrix, paint)
+                stripCanvas.restore()
+            }
+
+            val topEdgePx = if (useBleed && t > 0) {
+                drawSheetSlice(0f, 0, 1)
+                IntArray(areaW).also {
+                    stripBmp.getPixels(it, l, areaW, l, 0, dstW, 1)
+                    fillHorizBleed(it)
+                }
+            } else null
+            val bottomEdgePx = if (useBleed && bEdge < areaH) IntArray(areaW) else null
+
             val adj = cfg.adj
             val bOff = (adj.brightness.coerceIn(-100, 100) * 2.55).toInt()
             val rOff = bOff + (adj.red.coerceIn(-100, 100) * 2.55).toInt()
@@ -321,43 +403,131 @@ object EscprJob {
             val bOff2 = bOff + (adj.blue.coerceIn(-100, 100) * 2.55).toInt()
             val px = IntArray(areaW)
             val row = ByteArray(areaW * 3)
-            for (y in 0 until areaH) {
-                bmp.getPixels(px, 0, areaW, 0, y, areaW, 1)
+            val rleBuf = ByteArray(areaW * 3)
+            val dsndHdr = ByteArray(17)
+            dsndHdr[0] = 0x1B
+            dsndHdr[1] = 0x64
+            dsndHdr[6] = 'd'.code.toByte()
+            dsndHdr[7] = 's'.code.toByte()
+            dsndHdr[8] = 'n'.code.toByte()
+            dsndHdr[9] = 'd'.code.toByte()
+            dsndHdr[10] = 0
+            dsndHdr[11] = 0
+
+            fun emitRow(y: Int, linePx: IntArray) {
                 var white = true
                 for (x in 0 until areaW) {
-                    val c = px[x]
+                    val c = linePx[x]
                     var r = (c shr 16) and 0xFF
                     var g = (c shr 8) and 0xFF
                     var b = c and 0xFF
-                    if (cfg.mono) { val l = (0.299 * r + 0.587 * g + 0.114 * b).toInt(); r = l; g = l; b = l }
+                    if (cfg.mono) { val lum = (0.299 * r + 0.587 * g + 0.114 * b).toInt(); r = lum; g = lum; b = lum }
                     if (!adj.isNoop) {
                         r = (r + rOff).coerceIn(0, 255)
                         g = (g + gOff).coerceIn(0, 255)
                         b = (b + bOff2).coerceIn(0, 255)
                     }
-                    row[x * 3] = r.toByte(); row[x * 3 + 1] = g.toByte(); row[x * 3 + 2] = b.toByte()
+                    val o = x * 3
+                    row[o] = r.toByte(); row[o + 1] = g.toByte(); row[o + 2] = b.toByte()
                     if (r != 0xFF || g != 0xFF || b != 0xFF) white = false
                 }
-                if (white) continue
-                val rle = packBits(row, 3)
-                val useRle = rle.size < row.size
-                val data = if (useRle) rle else row
-                val len = 7 + data.size
-                out.put(bytes(0x1B, 0x64), bytes(len, len shr 8, len shr 16, len shr 24),
-                    ascii("dsnd"), be16(0), be16(y), bytes(if (useRle) 1 else 0), be16(data.size), data)
+                if (white) return
+                val rleLen = packBitsInto(row, 3, rleBuf)
+                val useRle = rleLen in 1 until row.size
+                val data = if (useRle) rleBuf else row
+                val dataLen = if (useRle) rleLen else row.size
+                val len = 7 + dataLen
+                dsndHdr[2] = (len and 0xFF).toByte()
+                dsndHdr[3] = ((len shr 8) and 0xFF).toByte()
+                dsndHdr[4] = ((len shr 16) and 0xFF).toByte()
+                dsndHdr[5] = ((len shr 24) and 0xFF).toByte()
+                dsndHdr[12] = ((y shr 8) and 0xFF).toByte()
+                dsndHdr[13] = (y and 0xFF).toByte()
+                dsndHdr[14] = if (useRle) 1 else 0
+                dsndHdr[15] = ((dataLen shr 8) and 0xFF).toByte()
+                dsndHdr[16] = (dataLen and 0xFF).toByte()
+                emit(dsndHdr, 0, 17)
+                emit(data, 0, dataLen)
             }
-            out.put(bytes(0x1B, 0x70, 0x01, 0x00, 0x00, 0x00), ascii("endp"), bytes(0x00))
-            out.put(bytes(0x1B, 0x6A, 0x00, 0x00, 0x00, 0x00), ascii("endj"))
-            out.put(bytes(0x1B, 0x40))
-            out.put(bytes(0x1B, 0x28, 0x52, 0x08, 0x00, 0x00), ascii("REMOTE1"))
-            out.put(bytes(0x4A, 0x45, 0x01, 0x00, 0x00))
-            out.put(bytes(0x1B, 0x00, 0x00, 0x00))
-            return out.toByteArray()
+
+            var y0 = 0
+            while (y0 < areaH) {
+                val sh = minOf(stripBmp.height, areaH - y0)
+                val ovTop = maxOf(0, t - y0)
+                val ovBot = minOf(sh, bEdge - y0)
+                if (ovTop < ovBot) {
+                    drawSheetSlice((t - y0).toFloat(), ovTop, ovBot)
+                }
+                for (ry in 0 until sh) {
+                    val y = y0 + ry
+                    when {
+                        y < t && topEdgePx != null -> emitRow(y, topEdgePx)
+                        y >= bEdge && bottomEdgePx != null -> emitRow(y, bottomEdgePx)
+                        else -> {
+                            stripBmp.getPixels(px, l, areaW, l, ry, dstW, 1)
+                            fillHorizBleed(px)
+                            if (bottomEdgePx != null && y == bEdge - 1) {
+                                System.arraycopy(px, 0, bottomEdgePx, 0, areaW)
+                            }
+                            emitRow(y, px)
+                        }
+                    }
+                }
+                y0 += sh
+            }
+
+            // ── page end, job end ──
+            val trl = ByteArrayOutputStream(64)
+            trl.put(bytes(0x1B, 0x70, 0x01, 0x00, 0x00, 0x00), ascii("endp"), bytes(0x00))
+            trl.put(bytes(0x1B, 0x6A, 0x00, 0x00, 0x00, 0x00), ascii("endj"))
+            trl.put(bytes(0x1B, 0x40))
+            trl.put(bytes(0x1B, 0x28, 0x52, 0x08, 0x00, 0x00), ascii("REMOTE1"))
+            trl.put(bytes(0x4A, 0x45, 0x01, 0x00, 0x00))
+            trl.put(bytes(0x1B, 0x00, 0x00, 0x00))
+            emit(trl.toByteArray())
+            flushChunk()
+            return totalBytes
         } finally {
-            if (bmp !== src) {
-                try { bmp.recycle() } catch (_: Exception) {}
+            try { stripBmp.recycle() } catch (_: Exception) {}
+        }
+    }
+
+    /**
+     * PackBits over whole pixels (bpp bytes each) written directly into [dst] with zero heap allocations.
+     * Returns encoded byte length, or -1 if RLE would not be smaller than [row].size.
+     */
+    private fun packBitsInto(row: ByteArray, bpp: Int, dst: ByteArray): Int {
+        val n = row.size / bpp
+        val limit = row.size
+        var pos = 0
+        fun same(a: Int, b: Int): Boolean {
+            val ia = a * bpp
+            val ib = b * bpp
+            for (k in 0 until bpp) if (row[ia + k] != row[ib + k]) return false
+            return true
+        }
+        var i = 0
+        while (i < n) {
+            var run = 1
+            while (i + run < n && run < 128 && same(i, i + run)) run++
+            if (run >= 2) {
+                if (pos + 1 + bpp >= limit) return -1
+                dst[pos++] = (0xFF - run + 2).toByte()
+                System.arraycopy(row, i * bpp, dst, pos, bpp)
+                pos += bpp
+                i += run
+            } else {
+                var lit = 1
+                while (i + lit < n && lit < 127 && !(i + lit + 1 < n && same(i + lit, i + lit + 1))) lit++
+                val litBytes = lit * bpp
+                if (pos + 1 + litBytes >= limit) return -1
+                dst[pos++] = (lit - 1).toByte()
+                System.arraycopy(row, i * bpp, dst, pos, litBytes)
+                pos += litBytes
+                i += lit
             }
         }
+        return pos
     }
 
     /** The sheet in 1/360 inch as Epson's media table lists it, for the sizes borderless is sent for; null for any other size. */

@@ -115,10 +115,10 @@ class BTBridge(
         "TSP",
         // Xprinter XP-P300 sometimes advertises as "P300" on older firmware
         "P300",
-        // VOZY receipt printers: G80 (80mm), P50 (58mm portable), MP210 (58mm mini) — all ESC/POS
+        // VOZY / VOXY receipt printers: G80 / V80 (80mm), P50 (58mm portable), MP210 (58mm mini) — all ESC/POS
         // MP210 BT name is usually "MP210" which is already caught by "MP" above,
-        // but "VOZY" covers any model that advertises the brand name first.
-        "VOZY", "G80", "P50",
+        // and "VOZY" / "VOXY" / "G80" / "V80" / "P50" cover all brand/model prefix variants.
+        "VOZY", "VOXY", "G80", "V80", "P50",
         // GZQIANJI GZM5803L-BL mini 58mm printer (advertises as "GZM5803L..." or similar)
         "GZ", "GZM", "GZQIANJI"
     )

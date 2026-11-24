@@ -115,3 +115,10 @@ Desktop v1.0.90 and v1.0.91 never opened a window. `setup.mjs` imported a new fi
 
 ## If the app won't open on a client's laptop
 A stuck copy keeps running with no window, and new launches give way to it. Tell them to End task on photobooth4u in Task Manager (or restart), then install the fixed version from `/downloads`. Their licence code, settings and photos are kept (they are stored in `%APPDATA%\photobooth4u`). To see the start-up error on this laptop, close the app, set `ELECTRON_ENABLE_LOGGING=1` and start the exe with stderr redirected to a file.
+
+## Client release notes (`/updates/` & in-app What’s new)
+`NOTES` in `netlify/lib/updates.mjs` powers `/updates/`, `/app/`, and the in-app **What’s new** window across Desktop, Android, iPad, and Web.
+- **Write for booth clients in plain English:** Explain what got better or what to click/load (e.g. "Load glossy photo paper"), never code symbols, hex codes (`0x...`), file extensions, or internal protocol/driver jargon.
+- **Plain text only:** Never use Markdown (`**bold**` or `` `code` ``) in `NOTES` — older installed apps render strings as plain text.
+- **Accurate platform tags:** Use `for` tags `'website'`, `'app'` (Laptop app), `'android'`, `'ipad'`, `'helper'`, and match version fields (`app`, `android`, `ipad`, `helper`) to the platforms that actually changed.
+- **Keep technical details internal:** Put protocol/code/debugging notes in `docs/dev-changelog.md`. Run `node scripts/test-updates-notes.mjs` before pushing.

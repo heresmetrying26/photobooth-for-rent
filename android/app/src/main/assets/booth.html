@@ -19366,6 +19366,9 @@
         if (s.indexOf('ae30') >= 0 || s.indexOf('ae00') >= 0) return true;
         return /^(C19|LIOTOG|MX\d|GB0|GT0|YT0|PD01)/i.test(String(name || '').trim());
       }
+      function isKnown58mmPrinter(name) {
+        return /(?:^|[^a-z0-9])(?:vo[zx]y[\s_-]*(?:p50|50)|p50|mp[-_ ]?210|pt[-_ ]?210|mpt[-_ ]?(?:ii|iii|2|3)|rpp[-_ ]?(?:02n?|200)|xp[-_ ]?58[a-z0-9]*|pos[-_ ]?58[a-z0-9]*|t[-_ ]?58[a-z0-9]*|gzm?[-_ ]?58|58\s*mm)(?![a-z0-9])/i.test(String(name || ''));
+      }
       function CatPrinterEncoder(paperWidth) {
         this._w = 384;
         this._buf = [];
@@ -19507,8 +19510,8 @@
         return (sp === 'safe' || lv === 1) ? 1.5 : 1;
       }
 
-      // quality: 'best' (serpentine Stucki halftoning + noise-cored sharpen & dot-gain lift for non-receipt pages),
-      //          'normal' (serpentine Stucki halftoning, balanced shading), 'draft' (coarse ordered dots: fast, light, saves heat).
+      // quality: 'best' (serpentine Atkinson halftoning + edge-preserving bilateral denoise + highlight roll-off + dot-gain lift),
+      //          'normal' (serpentine Atkinson halftoning + bilateral denoise + dot-gain lift, balanced shading), 'draft' (coarse ordered dots: fast, light, saves heat).
       function toReceiptCanvas(src, dotW, brightness, quality) {
         dotW = dotW || 576;
         var q = (quality === 'best' || quality === 'normal' || quality === 'draft') ? quality : 'best';
@@ -19533,14 +19536,41 @@
         var n = dotW * dotH, lum = new Float32Array(n), x, y, i;
         for (i = 0; i < n; i++) lum[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
         // Receipt layouts already toned, shadow-recovered and sharpened their photo regions only (leaving text solid black).
-        // Non-receipt layouts printed on a thermal roll get highlight-safe dot-gain lift and noise-cored sharpening here.
+        // Non-receipt layouts printed on a thermal roll get edge-preserving denoise, highlight roll-off, dot-gain lift and edge sharpening here.
         var toneDone = !!(src && src._pbToneDone);
         if (!toneDone && q !== 'draft') {
-          var lift = dotW <= 384 ? 0.75 : 0.80;
+          // 1. Edge-preserving 3x3 bilateral denoise: removes camera sensor noise & skin pore roughness without softening eye/hair edges.
+          var clean = new Float32Array(n);
+          clean.set(lum);
+          var invT2 = 1 / 144;
+          for (y = 1; y < dotH - 1; y++) {
+            var rm = (y - 1) * dotW, r0 = y * dotW, rp = (y + 1) * dotW;
+            for (x = 1; x < dotW - 1; x++) {
+              var c0 = lum[r0 + x];
+              if (c0 <= 8 || c0 >= 248) continue;
+              var s = c0, sw = 1, v, df, wt;
+              v = lum[rm + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+              v = lum[rm + x];     df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+              v = lum[rm + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+              v = lum[r0 + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+              v = lum[r0 + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+              v = lum[rp + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+              v = lum[rp + x];     df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+              v = lum[rp + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+              clean[r0 + x] = s / sw;
+            }
+          }
+          lum = clean;
+          // 2. Dot-gain lift + smooth highlight roll-off: keeps walls and skin highlights clean white (no pepper dots).
+          var lift = dotW <= 384 ? 0.78 : 0.82;
           var lut = new Float32Array(256);
           for (i = 0; i < 256; i++) {
             var u = Math.pow(i / 255, lift);
-            u = u + 0.30 * u * (1 - u) * (u - 0.44);
+            if (u > 0.82) {
+              var t = (u - 0.82) / (1.0 - 0.82);
+              u = 0.82 + (1.0 - 0.82) * (3 * t * t - 2 * t * t * t);
+              if (u >= 0.96) u = 1.0;
+            }
             lut[i] = Math.max(0, Math.min(255, u * 255));
           }
           for (i = 0; i < n; i++) {
@@ -19548,7 +19578,7 @@
             lum[i] = lut[ki < 0 ? 0 : ki > 255 ? 255 : ki];
           }
           if (q === 'best') {
-            // Noise-cored 3x3 unsharp mask: sharpens facial detail while skipping flat noise and pure black/white text.
+            // Noise-cored 3x3 unsharp mask: sharpens real facial contours and hair without amplifying flat noise.
             var blur = new Float32Array(n);
             for (y = 0; y < dotH; y++) {
               var y0 = y > 0 ? y - 1 : 0, y1 = y + 1 < dotH ? y + 1 : dotH - 1;
@@ -19560,11 +19590,11 @@
               }
             }
             for (i = 0; i < n; i++) {
-              if (lum[i] <= 8 || lum[i] >= 247) continue;
+              if (lum[i] <= 12 || lum[i] >= 242) continue;
               var df = lum[i] - blur[i], adf = df < 0 ? -df : df;
-              if (adf > 2.5) {
-                var mag = adf - 2.5; if (mag > 24) mag = 24;
-                lum[i] = Math.max(0, Math.min(255, lum[i] + (df < 0 ? -mag : mag) * 0.65));
+              if (adf > 6.0) {
+                var mag = adf - 6.0; if (mag > 20) mag = 20;
+                lum[i] = Math.max(0, Math.min(255, lum[i] + (df < 0 ? -mag : mag) * 0.40));
               }
             }
           }
@@ -19578,8 +19608,9 @@
             out[y * dotW + x] = (lum[y * dotW + x] + bOffset) < t ? 0 : 255;
           }
         } else {
-          // Serpentine Stucki error diffusion (3-row, 100% tone conservation): eliminates unidirectional diagonal worms,
-          // keeps light walls & clothes shaded (never washed out like Atkinson), and keeps crisp pure-black text sharp.
+          // Serpentine Atkinson error diffusion (3-row, 75% diffusion):
+          // Discards 25% of residual error so highlights (walls, skin highlights) stay clean pure white
+          // with ZERO pepper grain, while shadows and midtones have smooth, retro, photographic clarity.
           var stride = dotW + 4;
           var e0 = new Float32Array(stride), e1 = new Float32Array(stride), e2 = new Float32Array(stride), tmp;
           for (y = 0; y < dotH; y++) {
@@ -19589,22 +19620,28 @@
                 xi = x + 2;
                 l = lum[row + x] + e0[xi] + bOffset;
                 v = l < 128 ? 0 : 255;
-                e = (l - v) / 42;
+                e = (l - v) * 0.125;
                 out[row + x] = v;
-                e0[xi + 1] += e * 8; e0[xi + 2] += e * 4;
-                e1[xi - 2] += e * 2; e1[xi - 1] += e * 4; e1[xi] += e * 8; e1[xi + 1] += e * 4; e1[xi + 2] += e * 2;
-                e2[xi - 2] += e;     e2[xi - 1] += e * 2; e2[xi] += e * 4; e2[xi + 1] += e * 2; e2[xi + 2] += e;
+                e0[xi + 1] += e;
+                e0[xi + 2] += e;
+                e1[xi - 1] += e;
+                e1[xi]     += e;
+                e1[xi + 1] += e;
+                e2[xi]     += e;
               }
             } else {
               for (x = dotW - 1; x >= 0; x--) {
                 xi = x + 2;
                 l = lum[row + x] + e0[xi] + bOffset;
                 v = l < 128 ? 0 : 255;
-                e = (l - v) / 42;
+                e = (l - v) * 0.125;
                 out[row + x] = v;
-                e0[xi - 1] += e * 8; e0[xi - 2] += e * 4;
-                e1[xi + 2] += e * 2; e1[xi + 1] += e * 4; e1[xi] += e * 8; e1[xi - 1] += e * 4; e1[xi - 2] += e * 2;
-                e2[xi + 2] += e;     e2[xi + 1] += e * 2; e2[xi] += e * 4; e2[xi - 1] += e * 2; e2[xi - 2] += e;
+                e0[xi - 1] += e;
+                e0[xi - 2] += e;
+                e1[xi + 1] += e;
+                e1[xi]     += e;
+                e1[xi - 1] += e;
+                e2[xi]     += e;
               }
             }
             tmp = e0; e0 = e1; e1 = e2; e2 = tmp; e2.fill(0);
@@ -19651,7 +19688,7 @@
         { namePrefix: 'PT' }, { namePrefix: 'ZJ' }, { namePrefix: 'NT' },
         { namePrefix: 'Printer' }, { namePrefix: 'MTP' }, { namePrefix: 'MPT' },
         { namePrefix: 'BlueTooth' }, { namePrefix: 'Inner' }, { namePrefix: 'Qsprinter' },
-        { namePrefix: 'VOZY' }, { namePrefix: 'G80' }, { namePrefix: 'P50' },
+        { namePrefix: 'VOZY' }, { namePrefix: 'VOXY' }, { namePrefix: 'G80' }, { namePrefix: 'V80' }, { namePrefix: 'P50' },
         { namePrefix: 'TSP' }, { namePrefix: 'P300' },
         { namePrefix: 'RP' }, { namePrefix: 'Rongta' }, { namePrefix: 'HPRT' }, { namePrefix: 'Gprinter' }, { namePrefix: 'iDPRT' }, { namePrefix: 'ArcticBreeze' }, { namePrefix: 'Arctic' }
       ];
@@ -19958,7 +19995,7 @@
         if (!this._mode) return Promise.reject(new Error('Printer not connected'));
 
         var prof = btProfile(), cmd = this.effectiveCmd();
-        var effW = (cmd === 'cat' || cmd === 'luck') ? 384 : this._paperWidth;
+        var effW = (cmd === 'cat' || cmd === 'luck' || isKnown58mmPrinter(this._name)) ? 384 : this._paperWidth;
         var origW = this._paperWidth;
         this._paperWidth = effW;
         var pace = opts.pace || btPaceFor(this);   // opts.pace: the smooth-print test strip
@@ -20019,15 +20056,20 @@
           ctx.font = '14px sans-serif'; ctx.fillText(this._name || 'Bluetooth printer', dotW / 2, 82);
           return this.printCanvas(cvs, { feed: 3, cut: false, quality: 'normal' });
         }
-        var enc = new EscPosEncoder(this._paperWidth);
+        var textW = isKnown58mmPrinter(this._name) ? 384 : this._paperWidth;
+        var origTW = this._paperWidth;
+        this._paperWidth = textW;
+        var textPace = btPaceFor(this);
+        this._paperWidth = origTW;
+        var enc = new EscPosEncoder(textW);
         enc.initialize().text('PHOTOBOOTH4U\nText test OK\n' + (this._name || 'Bluetooth printer') + '\n').feed(3);
-        return this.write(enc.getBuffer(), btPaceFor(this));
+        return this.write(enc.getBuffer(), textPace);
       };
 
       // Step 2: a short picture (64 rows). If text works but this garbles, the printer needs the Compatibility image mode.
       BtThermal.prototype.testSmall = function () {
         var cmd = this.effectiveCmd();
-        var dotW = (cmd === 'cat' || cmd === 'luck') ? 384 : (this._paperWidth || 576);
+        var dotW = (cmd === 'cat' || cmd === 'luck' || isKnown58mmPrinter(this._name)) ? 384 : (this._paperWidth || 576);
         var cvs = document.createElement('canvas');
         cvs.width = dotW; cvs.height = 64;
         var ctx = cvs.getContext('2d');
@@ -20042,7 +20084,7 @@
 
       BtThermal.prototype.testPrint = function (paper) {
         var cmd = this.effectiveCmd();
-        if (cmd === 'cat' || cmd === 'luck') paper = '58mm';
+        if (cmd === 'cat' || cmd === 'luck' || isKnown58mmPrinter(this._name)) paper = '58mm';
         var dotW = PAPER_WIDTHS[paper || '80mm'] || 576;
         this._paperWidth = dotW;          // the job must be as wide as this paper (a 58mm printer fed 80mm rows prints garbage)
         var cvs = document.createElement('canvas');
@@ -20097,17 +20139,21 @@
       // Prints one page. Not linked: links to the remembered printer quietly (the picker only when none was chosen yet).
       // The send fails (a stale link after the printer was switched off and on): links again once and sends it again.
       function printViaBluetooth(canvas, paper, opts) {
-        btPrinter._paperWidth = PAPER_WIDTHS[paper || '80mm'] || 576;
+        btPrinter._paperWidth = isKnown58mmPrinter(btPrinter._name) ? 384 : (PAPER_WIDTHS[paper || '80mm'] || 576);
         var link = function () {
           if (btPrinter.connected) return Promise.resolve();
           if (btPrinter.canReconnect()) return btPrinter.reconnect().catch(function (e) { if (e && e.none) return btPrinter.connect(); throw e; });
           return btPrinter.connect();
         };
         return link().then(function () {
+          if (isKnown58mmPrinter(btPrinter._name)) btPrinter._paperWidth = 384;
           return btPrinter.printCanvas(canvas, opts).catch(function (err) {
             if (!btPrinter.canReconnect()) throw err;
             try { btPrinter.disconnect(true); } catch (_) { }
-            return btPrinter.reconnect().then(function () { return btPrinter.printCanvas(canvas, opts); });
+            return btPrinter.reconnect().then(function () {
+              if (isKnown58mmPrinter(btPrinter._name)) btPrinter._paperWidth = 384;
+              return btPrinter.printCanvas(canvas, opts);
+            });
           });
         });
       }
@@ -20117,6 +20163,7 @@
         EscPosEncoder: EscPosEncoder,
         CatPrinterEncoder: CatPrinterEncoder,
         isCatDevice: isCatDevice,
+        isKnown58mmPrinter: isKnown58mmPrinter,
         PAPER_WIDTHS: PAPER_WIDTHS,
         toReceiptCanvas: toReceiptCanvas,
         btPrinter: btPrinter,
@@ -23977,10 +24024,16 @@
                   <label class="sub-label" style="display:block;margin:6px 0 2px;" id="wifiOptCanonModeLbl">Canon print language</label>
                   <select id="wifiOptCanonMode" class="printer-input"></select>
                 </div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
                   <input type="text" id="wifiPrinterIp" class="printer-input" inputmode="decimal"
                     placeholder="Printer not listed? Type its IP, e.g. 192.168.1.50" style="flex:1;min-width:180px;">
                   <button type="button" class="action-btn" id="wifiPrinterAddBtn" style="width:auto;margin:0;">Add</button>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:4px 0 6px;">
+                  <span class="panel-hint" style="font-size:11px;margin:0;">Wi-Fi Direct quick connect:</span>
+                  <button type="button" class="action-btn wfd-chip" data-ip="192.168.223.1" style="width:auto;margin:0;padding:4px 8px;font-size:11px;">192.168.223.1 (Epson/HP)</button>
+                  <button type="button" class="action-btn wfd-chip" data-ip="192.168.0.1" style="width:auto;margin:0;padding:4px 8px;font-size:11px;">192.168.0.1 (Canon)</button>
+                  <button type="button" class="action-btn wfd-chip" data-ip="192.168.118.1" style="width:auto;margin:0;padding:4px 8px;font-size:11px;">192.168.118.1 (Brother)</button>
                 </div>
                 <details id="wifiDiagPanel" style="display:none;margin:6px 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;">
                   <summary style="font-weight:700;cursor:pointer;">Wi-Fi / Wi-Fi Direct Printer Test (offline-ready)</summary>
@@ -23991,7 +24044,9 @@
                   </div>
                   <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px;">
                     <input type="text" id="wdIp" class="printer-input" placeholder="Printer IP (e.g. 192.168.223.1)" style="flex:1;min-width:170px;margin:0;">
-                    <button type="button" class="action-btn" id="wdWfdBtn" style="width:auto;margin:0;padding:8px 10px;font-size:12px;">Use 192.168.223.1 (Epson Wi-Fi Direct)</button>
+                    <button type="button" class="action-btn" id="wdWfdBtn" style="width:auto;margin:0;padding:8px 10px;font-size:12px;">192.168.223.1 (Epson/HP)</button>
+                    <button type="button" class="action-btn" id="wdWfdCanonBtn" style="width:auto;margin:0;padding:8px 10px;font-size:12px;">192.168.0.1 (Canon)</button>
+                    <button type="button" class="action-btn" id="wdWfdBrotherBtn" style="width:auto;margin:0;padding:8px 10px;font-size:12px;">192.168.118.1 (Brother)</button>
                     <button type="button" class="action-btn" id="wdProbeBtn" style="width:auto;margin:0;">1. Run zero-paper check</button>
                   </div>
                   <div id="wdMatrix" style="display:none;margin:0 0 8px;font-size:12px;line-height:1.45;"></div>
@@ -40508,6 +40563,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           for (let k = 0; k < 256; k++) {
             let u = Math.pow(k / 255, effG);
             u = u + 0.38 * u * (1 - u) * (u - 0.42);
+            if (u > 0.82) {
+              const t = (u - 0.82) / (1.0 - 0.82);
+              u = 0.82 + (1.0 - 0.82) * (3 * t * t - 2 * t * t * t);
+              if (u >= 0.96) u = 1.0;
+            }
             let v = u * 255;
             if (v < 0) v = 0; else if (v > 255) v = 255;
             if (adjB) {
@@ -40533,15 +40593,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           }
         }
         // 4. Halo-free noise-cored detail sharpen + soft-clamped local facial clarity.
-        const fineAmt = tq === 'draft' ? 0.25 : (tq === 'normal' ? 0.45 : 0.65);
-        const clarAmt = tq === 'draft' ? 0 : (tq === 'normal' ? 0.22 : 0.35);
+        const fineAmt = tq === 'draft' ? 0.15 : (tq === 'normal' ? 0.25 : 0.38);
+        const clarAmt = tq === 'draft' ? 0 : (tq === 'normal' ? 0.15 : 0.22);
         const fine = receiptBoxBlur(toned, w, h, 1);
         const med = clarAmt > 0 ? receiptBoxBlur(toned, w, h, 3) : null;
         for (let i = 0, j = 0; j < n; i += 4, j++) {
           let df = toned[j] - fine[j];
           const adf = df < 0 ? -df : df;
-          if (adf <= 2.5) df = 0;
-          else { const c = adf - 2.5; df = (df < 0 ? -1 : 1) * (c > 28 ? 28 : c); }
+          if (adf <= 6.0) df = 0;
+          else { const c = adf - 6.0; df = (df < 0 ? -1 : 1) * (c > 22 ? 22 : c); }
           let dmSafe = 0;
           if (med) { const dm = toned[j] - med[j]; dmSafe = dm / (1 + (dm / 28) * (dm / 28)); }
           const v = Math.max(0, Math.min(255, Math.round(toned[j] + fineAmt * df + clarAmt * dmSafe)));
@@ -44195,8 +44255,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             const tq = printPrefs.thermalQuality || 'best';
             [...document.querySelectorAll('#thermalQualityRow [data-tq]')].forEach(b => b.classList.toggle('active', b.dataset.tq === tq));
             document.getElementById('thermalQualityHint').textContent = {
-              best: 'Sharpest facial detail, shadow recovery and smooth shading. Recommended for photos on a thermal printer.',
-              normal: 'Balanced thermal shading with lighter sharpening.',
+              best: 'Clean Atkinson retro halftoning with smooth skin, clean white highlights and crisp details.',
+              normal: 'Smooth Atkinson halftoning with soft balanced shading.',
               draft: 'Coarse dots: quick, light, and gentle on the print head. Good for tests.'
             }[tq];
             try { thermalSmoothUI(); } catch (e) { }
@@ -45414,6 +45474,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           // A Wi-Fi Epson photo printer (L805…) saved by an older app version as a receipt printer: the app now prints photos on it.
           // Also follow DHCP IP renewals or Router Wi-Fi <-> Wi-Fi Direct switches (e.g. 192.168.1.x <-> 192.168.223.1) when the old IP
           // is gone and exactly one discovered Wi-Fi printer has the exact same model name.
+          const wfdPlaceholderRx = /^(?:Printer at |(?:Epson(?: \/ HP)?|HP|Brother) Wi-Fi Direct \()/i;
           const fixNet = (sp) => {
             if (!sp || sp.usb || sp.dialog) return;
             const atIp = list.find(q => !q.usb && q.ip === sp.ip);
@@ -45421,11 +45482,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               if (!sp.escpr && !sp.forcedRaw && atIp.escpr) { sp.escpr = true; sp.raw = false; changed = true; }
               if (atIp.lpd && !sp.lpd) { sp.lpd = true; changed = true; }
               if (atIp.epsonModel && !sp.epsonModel) { sp.epsonModel = atIp.epsonModel; changed = true; }
-              if (atIp.name && !/^Printer at |^Epson Wi-Fi Direct \(/i.test(atIp.name) && /^Printer at |^Epson Wi-Fi Direct \(/i.test(sp.name || '')) { sp.name = atIp.name; changed = true; }
+              if (atIp.name && !wfdPlaceholderRx.test(atIp.name) && wfdPlaceholderRx.test(sp.name || '')) { sp.name = atIp.name; changed = true; }
               if (sp.ipp && atIp.ipp === false && atIp.escpr) { sp.ipp = false; sp.escpr = true; changed = true; }
               return;
             }
-            if (sp.name && !/^Printer at /i.test(sp.name)) {
+            if (sp.name && !wfdPlaceholderRx.test(sp.name)) {
               const same = list.filter(q => !q.usb && q.name === sp.name && q.ip && q.ip !== sp.ip);
               if (same.length === 1) {
                 sp.ip = same[0].ip;
@@ -45958,18 +46019,37 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const refreshWdNet = (autoSwitchIp) => {
             const info = wd.networkInfo();
             if (!info) return;
+            let detectedIp = '';
+            let detectedBrand = '';
+            if (info.wifiDirectDetected) {
+              const nets = info.nets || [];
+              // Note: 192.168.0.x is NOT auto-forced because TP-Link/D-Link/pocket Wi-Fi routers use 192.168.0.1; use the 192.168.0.1 Canon chip manually.
+              if (nets.some(n => /^192\.168\.118\./.test(n.ip))) {
+                detectedIp = '192.168.118.1';
+                detectedBrand = 'Brother';
+              } else if (nets.some(n => /^192\.168\.223\./.test(n.ip))) {
+                detectedIp = '192.168.223.1';
+                detectedBrand = 'Epson / HP';
+              } else if (nets.some(n => /^192\.168\.49\./.test(n.ip) || (n.iface && n.iface.toLowerCase().includes('p2p')))) {
+                detectedIp = '192.168.49.1';
+                detectedBrand = 'P2P';
+              } else {
+                detectedIp = '192.168.223.1';
+                detectedBrand = 'Wi-Fi Direct';
+              }
+            }
             if (wdNet) {
               const ns = (info.nets || []).map(n => (n.iface || 'wifi') + ' ' + n.ip + '/' + n.prefix + (n.wifiDirectHint ? ' [Wi-Fi Direct]' : '')).join(' · ');
-              wdNet.textContent = 'Tablet Wi-Fi: ' + (ns || 'not connected') + (info.wifiDirectDetected ? ' — Epson Wi-Fi Direct detected (192.168.223.1)' : '');
+              wdNet.textContent = 'Tablet Wi-Fi: ' + (ns || 'not connected') + (detectedBrand ? ' — ' + detectedBrand + ' Wi-Fi Direct detected (' + detectedIp + ')' : '');
             }
             if (ipEl) {
               const cur = (ipEl.value || '').trim();
               if (!cur) {
-                if (info.wifiDirectDetected) ipEl.value = '192.168.223.1';
+                if (detectedIp) ipEl.value = detectedIp;
                 else if (wifiPrinter && !wifiPrinter.usb && !wifiPrinter.dialog && wifiPrinter.ip) ipEl.value = wifiPrinter.ip;
                 else if (info.suggestedIps && info.suggestedIps.length) ipEl.value = info.suggestedIps[0];
-              } else if (autoSwitchIp && info.wifiDirectDetected && !/^192\.168\.223\./.test(cur)) {
-                ipEl.value = '192.168.223.1';
+              } else if (autoSwitchIp && detectedIp && cur !== detectedIp && !/^192\.168\./.test(cur)) {
+                ipEl.value = detectedIp;
               }
             }
           };
@@ -46003,6 +46083,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             }).join('');
           };
           if (wfdBtn && ipEl) wfdBtn.addEventListener('click', () => { ipEl.value = '192.168.223.1'; refreshWdNet(false); });
+          const wfdCanonBtn = document.getElementById('wdWfdCanonBtn');
+          if (wfdCanonBtn && ipEl) wfdCanonBtn.addEventListener('click', () => { ipEl.value = '192.168.0.1'; refreshWdNet(false); });
+          const wfdBrotherBtn = document.getElementById('wdWfdBrotherBtn');
+          if (wfdBrotherBtn && ipEl) wfdBrotherBtn.addEventListener('click', () => { ipEl.value = '192.168.118.1'; refreshWdNet(false); });
           probeBtn.addEventListener('click', async () => {
             const ip = (ipEl && ipEl.value || '').trim();
             if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) { showToast('Enter a valid printer IP address first (e.g. 192.168.223.1).', 3500); return; }
@@ -46148,6 +46232,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           setTimeout(() => wifiRenderList(wifiList()), 1500);
           setTimeout(() => wifiRenderList(wifiList()), 3500);
           setTimeout(() => wifiRenderList(wifiList()), 6500);
+        });
+        document.querySelectorAll('.wfd-chip').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const inp = document.getElementById('wifiPrinterIp');
+            if (inp && btn.dataset.ip) {
+              inp.value = btn.dataset.ip;
+              if (a) a.click();
+            }
+          });
         });
       })();
       function wifiBytesToB64(bytes) {
@@ -46468,8 +46561,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         // A thermal (ESC/POS) printer prints any paper size: a photo size such as 4R is scaled to the roll width (80 mm unless a
         // 58 mm Receipt size is picked). Before, only the two Receipt sizes worked and 4R gave "only takes receipts".
         if (p.raw && (paper.receipt || !p.ipp) && window._btThermal && window._btThermal.EscPosEncoder) {
-          const dotW = (paper.receipt && paper.w <= 55) ? 384 : 576;
           const T = window._btThermal;
+          const dotW = ((paper.receipt && paper.w <= 55) || (T.isKnown58mmPrinter && T.isKnown58mmPrinter(p && p.name))) ? 384 : 576;
           const lv = (wo.tune >= 1 && wo.tune <= 4) ? wo.tune : (T.tuneGet ? T.tuneGet('raw:' + wifiPKey(p)) : 0);
           for (let i = 0; i < all.length; i++) {
             const cv = all[i];
@@ -46625,9 +46718,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!printSize || !isReceiptPaper(printSize)) { showToast('Choose a thermal roll as the paper size first.', 3500); return; }
         thermalDarkTesting = true;
         try {
-          const cv = thermalDarkStrip(RECEIPT_W);
-          const paper = Object.assign({}, paperFor(printSize), { h: Math.round(cv.height / RECEIPT_DPI * 254) / 10 });
-          const rollW = (paper.w && paper.w <= 55) ? '58mm' : '80mm';
+          const basePaper = paperFor(printSize);
+          const T58 = window._btThermal;
+          const force58Dark = !!(T58 && T58.isKnown58mmPrinter && ((isBtThermalRoute() && T58.btPrinter && T58.isKnown58mmPrinter(T58.btPrinter.name)) || (!isBtThermalRoute() && wifiPrinter && !wifiPrinter.dialog && T58.isKnown58mmPrinter(wifiPrinter.name))));
+          const cv = thermalDarkStrip(((basePaper.w && basePaper.w <= 55) || force58Dark) ? 384 : RECEIPT_W);
+          const paper = Object.assign({}, basePaper, { h: Math.round(cv.height / RECEIPT_DPI * 254) / 10 });
+          const rollW = ((paper.w && paper.w <= 55) || force58Dark) ? '58mm' : '80mm';
           showToast('Printing the darkness test strip…', 4000);
           if (isBtThermalRoute()) {
             await window._btThermal.printViaBluetooth(cv, rollW, { brightness: 0, quality: printPrefs.thermalQuality || 'best' });
@@ -46701,7 +46797,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         thermalSmoothTesting = true;
         try {
           const T = window._btThermal, paper = paperFor(printSize);
-          const W = paper.w <= 55 ? 384 : 576, rollW = W === 384 ? '58mm' : '80mm';
+          const force58Smooth = !!(T.isKnown58mmPrinter && (t.kind === 'bt' ? (T.btPrinter && T.isKnown58mmPrinter(T.btPrinter.name)) : (t.p && T.isKnown58mmPrinter(t.p.name))));
+          const W = (paper.w <= 55 || force58Smooth) ? 384 : 576, rollW = W === 384 ? '58mm' : '80mm';
           showToast('Printing the smooth-print test strip (4 parts)…', 5000);
           for (let lv = 1; lv <= 4; lv++) {
             const sec = smoothSection(W, lv, T.TUNE_NAMES[lv]), last = lv === 4;
@@ -79111,20 +79208,41 @@ function fxWavUrl(kind) {
           ov.hidden = false;
           var body = ov.querySelector('#newsBody'), say = function (t) { body.innerHTML = ''; var p = document.createElement('p'); p.className = 'desk-hint'; p.style.margin = '14px 0'; p.textContent = t; body.appendChild(p); };
           say('Loading…');
-          var tag = DESKTOP ? 'app' : 'website';
+          var tag = DESKTOP ? 'app' : (ANDROID_LOCAL ? 'android' : (IOS_LOCAL ? 'ipad' : 'website'));
+          var fmtD = function (d) { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); } catch (e) { return d || ''; } };
+          var cleanTxt = function (s) { return String(s == null ? '' : s).replace(/\*\*([^*]+)\*\*/g, '$1').replace(/`([^`]+)`/g, '$1'); };
           var get = DESKTOP && window.pb4u && window.pb4u.news ? window.pb4u.news() : fetch('/api/updates', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) { return { ok: !!j.notes, notes: j.notes || [] }; });
           Promise.resolve(get).then(function (j) {
-            var list = ((j && j.notes) || []).filter(function (n) { return (n.for || []).indexOf(tag) >= 0; }).slice(0, 8);
-            if (!j || !j.ok || !list.length) { say(j && j.ok ? 'Nothing new to show.' : 'Can’t load what’s new right now. Connect to the internet and try again.'); return; }
-            body.innerHTML = '';
-            list.forEach(function (n) {
-              var d = document.createElement('div'); d.style.cssText = 'padding:12px 0;border-bottom:1px solid var(--line)';
-              var t = document.createElement('b'); t.style.cssText = 'display:block;font:800 16px Manrope,sans-serif'; t.textContent = n.title || '';
-              var dt = document.createElement('small'); dt.style.cssText = 'color:var(--ink-dim)'; dt.textContent = n.date || '';
-              var ul = document.createElement('ul'); ul.style.cssText = 'margin:6px 0 0;padding-left:20px;font:500 14px/1.5 Manrope,sans-serif';
-              (n.items || []).forEach(function (i) { var li = document.createElement('li'); li.textContent = i; ul.appendChild(li); });
-              d.appendChild(dt); d.appendChild(t); d.appendChild(ul); body.appendChild(d);
-            });
+            var all = ((j && j.notes) || []).filter(function (n) { return (n.for || []).indexOf(tag) >= 0; });
+            if (!j || !j.ok || !all.length) { say(j && j.ok ? 'Nothing new to show.' : 'Can’t load what’s new right now. Connect to the internet and try again.'); return; }
+            var limit = 8;
+            function renderNews() {
+              body.innerHTML = '';
+              var shown = all.slice(0, limit);
+              shown.forEach(function (n) {
+                var d = document.createElement('div'); d.style.cssText = 'padding:12px 0;border-bottom:1px solid var(--line)';
+                var meta = document.createElement('div'); meta.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:4px';
+                var dt = document.createElement('small'); dt.style.cssText = 'color:var(--ink-dim);font-weight:700'; dt.textContent = fmtD(n.date);
+                meta.appendChild(dt);
+                var ver = tag === 'app' ? (n.app ? 'Laptop app ' + n.app : '') : tag === 'android' ? (n.android ? 'Android ' + n.android : '') : tag === 'ipad' ? (n.ipad ? 'iPad ' + n.ipad : '') : '';
+                if (ver) {
+                  var b = document.createElement('span'); b.style.cssText = 'font:700 11px Manrope,sans-serif;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink-dim)'; b.textContent = ver;
+                  meta.appendChild(b);
+                }
+                var t = document.createElement('b'); t.style.cssText = 'display:block;font:800 16px Manrope,sans-serif'; t.textContent = cleanTxt(n.title || '');
+                var ul = document.createElement('ul'); ul.style.cssText = 'margin:6px 0 0;padding-left:20px;font:500 14px/1.5 Manrope,sans-serif';
+                (n.items || []).forEach(function (i) { var li = document.createElement('li'); li.textContent = cleanTxt(i); ul.appendChild(li); });
+                d.appendChild(meta); d.appendChild(t); d.appendChild(ul); body.appendChild(d);
+              });
+              if (all.length > shown.length) {
+                var wrap = document.createElement('div'); wrap.style.cssText = 'padding-top:12px;text-align:center';
+                var more = document.createElement('button'); more.type = 'button'; more.className = 'desk-btn';
+                more.textContent = 'Show older updates (' + (all.length - shown.length) + ' more)';
+                more.addEventListener('click', function () { limit += 12; renderNews(); });
+                wrap.appendChild(more); body.appendChild(wrap);
+              }
+            }
+            renderNews();
           }).catch(function () { say('Can’t load what’s new right now. Connect to the internet and try again.'); });
         };
         var wn = document.getElementById('menuWhatsNew');

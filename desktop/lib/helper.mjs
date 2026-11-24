@@ -9,7 +9,7 @@ import { writeFile, rm, mkdtemp, mkdir, readFile } from 'node:fs/promises';
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
-import { discoverNetworkPrinters, ippCaps, ippPrintDirect, pickMediaName, mediaSizeMm, directFormats, labelMediaType, diagNetworkInfo, ippDiagProbe, ippDiagPrint } from './netprinters.mjs';
+import { discoverNetworkPrinters, ippCaps, ippPrintDirect, waitIppIdle, pickMediaName, mediaSizeMm, directFormats, labelMediaType, diagNetworkInfo, ippDiagProbe, ippDiagPrint } from './netprinters.mjs';
 import { probeUsbPrinters, makeUsbIppTransport, usbSelphyPrint } from './usbipp.mjs';
 import { SELPHY_SPECS, selphySpecFor } from './selphyusb.mjs';
 import * as gopro from './cam-gopro.mjs';
@@ -30,6 +30,7 @@ let toJpeg = null;       // (png Buffer) -> jpeg Buffer. Given by the app (Elect
 let rasterize = null;    // (png / jpeg Buffer, page spec) -> PWG Raster Buffer. Given by the app (Electron). For printers that take only PWG Raster (Brother DCP-T420W).
 let buildSelphyJob = null;   // (png / jpeg Buffer, wMm, hMm, paperName) -> { data: Buffer, spec }. Given by Electron for native Canon SELPHY USB printing (Neo YUV444).
 let selphyPrintOpts = {};
+let ippWaitOpts = {};
 let directFile = '';     // where the printers used without a driver are remembered between runs
 
 // Printers used straight over IPP (Wi-Fi: Canon SELPHY, Brother DCP-T420W...), with no Windows / Mac driver. They show up
@@ -125,7 +126,7 @@ function readMovieProgress() {
   };
 }
 
-export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, rasterize: raster, selphyJob, selphyPrintOpts: sOpts, directPrintersFile, spinInboxDir }) {
+export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, rasterize: raster, selphyJob, selphyPrintOpts: sOpts, ippWaitOpts: iOpts, directPrintersFile, spinInboxDir }) {
   if (logger) { log = logger; gopro.setLogger((m) => log('GoPro: ' + m)); }
   if (typeof shrink === 'function') shrinkPage = shrink;
   if (typeof jpeg === 'function') toJpeg = jpeg;
@@ -133,6 +134,7 @@ export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpe
   if (typeof selphyJob === 'function') buildSelphyJob = selphyJob;
   else if (selphyJob === null) buildSelphyJob = null;
   selphyPrintOpts = sOpts && typeof sOpts === 'object' ? sOpts : {};
+  ippWaitOpts = iOpts && typeof iOpts === 'object' ? iOpts : {};
   if (typeof spinInboxDir === 'function') getSpinInboxDir = spinInboxDir;
   else if (typeof spinInboxDir === 'string') getSpinInboxDir = () => spinInboxDir;
   usbDirect.clear();
@@ -661,7 +663,7 @@ const MAC_EPSON_BORDERLESS_SCALE = 0.965;
 const MAC_EPSON_L8050_4X6 = { x: 0.9608, y: 0.9496, dx: 0.001, dy: -0.0045 };
 const EPSON_L8050 = /(?<![a-z0-9-])l[\s_-]?8050(?![0-9])/i;
 const L8050_WIN_GLOSSY = 'ns0000:EpsonPhotoPaperGlossy';       // the paper type name in the L8050's Windows driver (read from the driver on a real laptop)
-const EPSON = /epson|(?<![a-z0-9-])l[1-9]\d{2,3}(?![0-9])/i;
+const EPSON = /epson|(?<![a-z0-9-])l[1-9]\d{2,4}(?![0-9])/i;
 const DYE_SUB = /selphy|(?<![a-z])cp[\s_-]?d?\d{2,4}(?![0-9])|(?<![a-z])dnp(?![a-z])|(?<![a-z])ds[\s_-]?(?:rx|\d)|hiti|mitsubishi|kodak|citizen|sinfonia|shinko|dye/i;
 async function macBorderlessScale(printer, pick) {
   if (!shrinkPage || !pick || !pick.borderless || DYE_SUB.test(printer)) return 1;
@@ -1661,23 +1663,29 @@ export async function handleHelper(req, path, search) {
       : dp
         ? prev.then(async () => {
           // No driver: each page goes straight over IPP (Wi-Fi or IPP-over-USB) as JPEG or PWG Raster.
-          for (const it of buffers) {
+          for (let bi = 0; bi < buffers.length; bi++) {
+            const it = buffers[bi];
             const jpeg = it.ext === 'jpg' ? it.buf : null;
             if (!jpeg && !toJpeg && !rasterize) throw new Error('Could not prepare the photo for the printer.');
             const r = await ippPrintDirect({
               ip: dp.ip, port: dp.port, path: dp.path, transport: dp.transport,
               jpeg, toJpeg, image: it.buf, widthMm: Number(body.widthMm) || 0, heightMm: Number(body.heightMm) || 0,
               rasterize, quality, mediaType: opts.mediaType, paperName: opts.paperName,
-              borderless: typeof body.borderless === 'boolean' ? body.borderless : undefined
+              borderless: typeof body.borderless === 'boolean' ? body.borderless : undefined,
+              ...(ippWaitOpts.busyWaitMs !== undefined ? { busyWaitMs: ippWaitOpts.busyWaitMs } : {}),
+              ...(ippWaitOpts.maxBusyRetries !== undefined ? { maxBusyRetries: ippWaitOpts.maxBusyRetries } : {})
             });
             log((dp.kind === 'usb' ? 'Direct USB print on ' : 'Direct print on ') + name + ': paper ' + r.media + (r.format === 'image/pwg-raster' ? ', PWG raster ' + r.dpi + ' dpi' + (r.mediaType ? ', ' + r.mediaType : '') : ', scaling ' + (r.scaling || 'printer default')));
+            if (bi < buffers.length - 1 && /selphy|\bcp[\s_-]?(?:820|910|1000|1200|1300|1500)\b/i.test(name + ' ' + (r.model || ''))) {
+              await waitIppIdle({ ip: dp.ip, port: dp.port, path: r.path || dp.path, jobId: r.jobId, transport: dp.transport, ...ippWaitOpts });
+            }
           }
         })
         : prev.then(async () => {
           const wMm = Number(body.widthMm) || 0, hMm = Number(body.heightMm) || 0;
           // A Canon SELPHY CP1500 can stop halfway, print only yellow or freeze the Windows print service when several photos reach it
           // in one print job, so on a SELPHY each page goes as its own job, one after the other.
-          if (buffers.length > 1 && /selphy|canon.*\bCP\s?\d{3,4}\b/i.test(name)) {
+          if (buffers.length > 1 && /selphy|\bcp[\s_-]?(?:820|910|1000|1200|1300|1500)\b|canon.*\bCP\s?\d{3,4}\b/i.test(name)) {
             for (const it of buffers) { const res = await printPages(name, [it], fit, wMm, hMm, quality, body.custom === true, opts); if (res && res.warnings) warnings.push(...res.warnings); }
             return;
           }

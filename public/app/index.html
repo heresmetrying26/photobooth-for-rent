@@ -395,6 +395,16 @@
       color: var(--red)
     }
 
+    .tag.t-android {
+      background: #EAF4E7;
+      color: #246B2D
+    }
+
+    .tag.t-ipad {
+      background: #EAF1FD;
+      color: #1D53B8
+    }
+
     .ver {
       border: 1.5px solid var(--line);
       color: var(--muted)
@@ -640,12 +650,16 @@
 
     function fmtDate(d) { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); } catch (e) { return d; } }
     function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-    var FOR = { website: 'Website', app: 'Laptop app', helper: 'Print Helper' };
+    function fmtItem(t) { return esc(t).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '$1'); }
+    var FOR = { website: 'Website', app: 'Laptop app', android: 'Android', ipad: 'iPad', helper: 'Print Helper' };
     function noteHtml(n) {
       var tags = (n.for || []).map(function (f) { return '<span class="tag t-' + esc(f) + '">' + esc(FOR[f] || f) + '</span>'; }).join('');
-      var vers = (n.app ? '<span class="ver">App ' + esc(n.app) + '</span>' : '') + (n.helper ? '<span class="ver">Helper ' + esc(n.helper) + '</span>' : '');
+      var vers = (n.app ? '<span class="ver">Laptop ' + esc(n.app) + '</span>' : '') +
+        (n.android ? '<span class="ver">Android ' + esc(n.android) + '</span>' : '') +
+        (n.ipad ? '<span class="ver">iPad ' + esc(n.ipad) + '</span>' : '') +
+        (n.helper ? '<span class="ver">Helper ' + esc(n.helper) + '</span>' : '');
       return '<article class="note"><div class="nh"><time>' + esc(fmtDate(n.date)) + '</time>' + tags + vers + '</div><h3>' + esc(n.title) + '</h3><ul>' +
-        (n.items || []).map(function (i) { return '<li>' + esc(i) + '</li>'; }).join('') + '</ul></article>';
+        (n.items || []).map(function (i) { return '<li>' + fmtItem(i) + '</li>'; }).join('') + '</ul></article>';
     }
 
     var $ = function (id) { return document.getElementById(id); };

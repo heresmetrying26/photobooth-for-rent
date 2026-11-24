@@ -39,7 +39,7 @@ object DnpJob {
         0x8b01 to "DS620",
         0x9001 to "DS820"
     )
-    private val NAME_RX = Regex("(?i)DS-?RX1(HS)?|DS-?620A?|DS-?40|DS-?80D?|DS-?820A?|QW-?410")
+    private val NAME_RX = Regex("(?i)DS-?RX1(HS)?|DS-?620A?|DS-?40|DS-?80D?|DS-?820A?|QW-?410|CX-?02W?|CY-?02|CZ-?01")
 
     /** Model name ("DS-RX1", "DS620" ...) or null when this is not a DNP photo printer. Works without USB access. */
     fun match(d: UsbDevice, productName: String? = null): String? {
@@ -53,11 +53,15 @@ object DnpJob {
 
     fun isKnown(d: UsbDevice): Boolean = match(d) != null
 
-    /** 8-inch (DS80 / DS820) and 4.5-inch (QW410) models use other sheet sizes that are not built in yet. */
-    fun unsupportedReason(model: String): String? = when {
-        model.contains("80") || model.contains("820") -> "The DNP $model (8-inch paper) is not supported by the app yet. Use a laptop with the DNP driver."
-        model.contains("QW") -> "The DNP $model is not supported by the app yet. Use a laptop with the DNP driver."
-        else -> null
+    /** 8-inch (DS80 / DS820 / CX-02W) and 4.5-inch (QW410 / CZ-01) models use other sheet sizes that are not built in yet. */
+    fun unsupportedReason(model: String): String? {
+        val m = model.uppercase()
+        val brand = if (m.startsWith("C")) "Citizen" else "DNP"
+        return when {
+            m.contains("80") || m.contains("820") || m.endsWith("W") -> "The $brand $model (8-inch paper) is not supported by the app yet. Use a laptop with the $brand driver."
+            m.contains("QW") || m.startsWith("CZ") -> "The $brand $model (4.5-inch paper) is not supported by the app yet. Use a laptop with the $brand driver."
+            else -> null
+        }
     }
 
     /**

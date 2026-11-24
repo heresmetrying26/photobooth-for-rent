@@ -196,13 +196,21 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 // An Epson ink-tank photo printer with no IPP (L805, L8050 on Wi-Fi Direct with only LPD :515, L120 on a
                 // print server…) is not a receipt printer: it takes the same ESC/P-R job over port 9100 or LPD :515 (/PASSTHRU).
                 val lpdOnly = it.ippPort == 0 && it.rawPort == 0 && it.lpdPort > 0
-                val isEpsonKnown = epsonLSeries(it.name) || epsonLSeries(it.model) ||
+                val isHpKnown = it.model.contains("hp", ignoreCase = true) || it.name.contains("hp", ignoreCase = true) ||
+                    it.model.contains("hewlett", ignoreCase = true) || it.webHint.contains("hp", ignoreCase = true)
+                val isBrotherKnown = it.model.contains("brother", ignoreCase = true) || it.name.contains("brother", ignoreCase = true) ||
+                    it.webHint.contains("brother", ignoreCase = true) || it.ip == "192.168.118.1"
+                val isEpsonKnown = !isHpKnown && !isBrotherKnown && (epsonLSeries(it.name) || epsonLSeries(it.model) ||
                     it.model.contains("epson", ignoreCase = true) || it.name.contains("epson", ignoreCase = true) ||
-                    it.webHint.contains("epson", ignoreCase = true) || it.ip == "192.168.223.1"
-                val escprNet = it.ippPort == 0 && ((it.rawPort > 0 && (epsonLSeries(it.name) || epsonLSeries(it.model))) || (lpdOnly && (isEpsonKnown || it.webHint == "LPD")))
+                    it.webHint.contains("epson", ignoreCase = true) || it.ip == "192.168.223.1")
+                val escprNet = it.ippPort == 0 && !isHpKnown && !isBrotherKnown && ((it.rawPort > 0 && (epsonLSeries(it.name) || epsonLSeries(it.model))) || (lpdOnly && (isEpsonKnown || it.webHint == "LPD")))
                 val isL8050 = isL8050Name(it.model + " " + it.name)
                 val displayName = it.name.ifBlank { it.model }.ifBlank {
-                    if (lpdOnly && it.ip == "192.168.223.1") "Epson Wi-Fi Direct (${it.ip})" else "Printer at ${it.ip}"
+                    when {
+                        it.ip == "192.168.118.1" -> "Brother Wi-Fi Direct (${it.ip})"
+                        it.ip == "192.168.223.1" -> if (isHpKnown) "HP Wi-Fi Direct (${it.ip})" else if (lpdOnly) "Epson Wi-Fi Direct (${it.ip})" else "Epson / HP Wi-Fi Direct (${it.ip})"
+                        else -> "Printer at ${it.ip}"
+                    }
                 }
                 val obj = JSONObject()
                     .put("id", it.ip)
@@ -425,8 +433,19 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     }
                     pages.add(data)
                 }
-                for (c in 0 until copies.coerceIn(1, 20)) {
-                    for (p in pages) sendIppJob(e, job, p, widthMm, heightMm, opts)
+                val copyCount = copies.coerceIn(1, 20)
+                val totalSheets = copyCount * pages.size
+                var sentCount = 0
+                for (c in 0 until copyCount) {
+                    for (p in pages) {
+                        val (jid, jpath) = sendIppJob(e, job, p, widthMm, heightMm, opts)
+                        sentCount++
+                        // Canon SELPHY (CP1300 / CP1500) can stall mid-Yellow pass or reject with 0x0507 if the next sheet
+                        // arrives while the current ~45s 4-pass dye-sub cycle is still running; wait for completion between sheets.
+                        if (sentCount < totalSheets && isSelphy(e)) {
+                            awaitSelphyIppIdle(e, jpath, jid)
+                        }
+                    }
                 }
                 r.put("ok", true)
             } catch (ex: Exception) {
@@ -1408,20 +1427,21 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
      * This object exists solely for accurate display naming in the printer list.
      */
     private object VozyReceiptModels {
-        // VIDs VOZY units are known to use (may vary by batch)
-        private val VENDOR_IDS = setOf(0x28e9, 0x0416, 0x6868)
+        // VIDs VOZY / VOXY units are known to use across batches
+        private val VENDOR_IDS = setOf(0x28e9, 0x0416, 0x6868, 0x0483, 0x0fe6, 0x1fc9, 0x4b43)
 
         fun isKnown(d: android.hardware.usb.UsbDevice): Boolean {
             if (d.vendorId !in VENDOR_IDS) return false
-            // Match on product name containing VOZY model identifiers
+            // Match on product name containing VOZY / VOXY model identifiers (G80, V80, P50, MP210)
             val name = (d.productName ?: "").uppercase()
-            return name.contains("VOZY") || name.contains("G80") ||
-                   name.contains("P50") || name.contains("MP210")
+            return name.contains("VOZY") || name.contains("VOXY") || name.contains("G80") ||
+                   name.contains("V80") || name.contains("P50") || name.contains("MP210")
         }
 
         fun modelName(d: android.hardware.usb.UsbDevice): String {
             val name = (d.productName ?: "").uppercase()
             return when {
+                name.contains("V80")  -> "VOZY V80"
                 name.contains("G80")  -> "VOZY G80"
                 name.contains("P50")  -> "VOZY P50"
                 name.contains("MP210") -> "VOZY MP210"
@@ -1489,7 +1509,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     object EpsonLModels {
         const val VENDOR_ID = 0x04B8
 
-        // Map of USB Product ID → friendly model name
+        // Map of INF-verified USB Product ID → friendly model name (do NOT add unverified PIDs here)
         val MODELS: Map<Int, String> = mapOf(
             0x0866 to "L8050",
             0xE671 to "L3210",
@@ -1499,8 +1519,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         fun match(d: UsbDevice): String? {
             if (d.vendorId != VENDOR_ID) return null
             MODELS[d.productId]?.let { return it }
-            // The L8050 product id above was not checked against a real printer: also know it by the name it gives once the
-            // tablet may read it ("L8050 Series"), so it is found whatever its id is.
+            // Other ESC/P-R models (L805, L3250, L210…) intentionally go through usbIsEscpr -> printEscpr(epsonBorderless=true).
             val prod = try { d.productName ?: "" } catch (_: Exception) { "" }
             return if (Regex("(?i)(?:^|[^A-Za-z0-9])L8050(?![0-9])").containsMatchIn(prod)) "L8050" else null
         }
@@ -1515,8 +1534,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     // ── Hardcoded Epson ESC/P2 printers (L120, L121) ─────────────────────────
     // VID 0x04B8 = Seiko Epson Corp.
-    // L120 / L121 speak ESC/P2 (CMD:ESCPL2) raster, not ESC/P-R.
-    // They print in color via EscP2Job.
+    // Only L120 / L121 are ESC/P2-only (CMD:ESCPL2); L130 / L210 / L220 support ESC/P-R via usbIsEscpr.
     object EpsonEscp2Models {
         const val VENDOR_ID = 0x04B8
 
@@ -1537,9 +1555,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         fun isKnown(d: UsbDevice): Boolean = match(d) != null
     }
 
-    // ── Hardcoded Canon PIXMA G-series printers (G1010, G3030, etc.) ─────────
+    // ── Hardcoded Canon PIXMA G-series 4-ink USB printers (G1000–G4000) ──────
     // VID 0x04A9 = Canon Inc.
-    // G-series ink-tank models speak Canon IVEC XML + BJRaster raster over USB.
+    // Only 4-ink G1000–G4000 models speak 4-ink IVEC XML + BJRaster over USB (6-ink G570/G620/G650 use IPP-over-USB 7/1/4).
     object CanonGModels {
         const val VENDOR_ID = 0x04A9
 
@@ -2194,8 +2212,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     }
 
     private fun usbName(d: UsbDevice): String {
-        // DNP dye-sub photo printers (DS-RX1, DS620, DS40).
-        usbDnpModel(d)?.let { return "DNP $it" }
+        // DNP / Citizen dye-sub photo printers (DS-RX1, DS620, DS40, CX-02, CY-02).
+        usbDnpModel(d)?.let { return if (it.startsWith("C", ignoreCase = true)) "Citizen $it" else "DNP $it" }
+        // Canon SELPHY compact dye-sub photo printers (CP1500, CP1300, CP1200, CP1000, CP910, CP820) — exact name before USB permission.
+        CanonSelphyJob.modelName(d.vendorId, d.productId)?.let { return "Canon SELPHY $it" }
         // Hardcoded Epson L-series inkjet: return the exact marketing name immediately.
         EpsonLModels.match(d)?.let { return "Epson $it" }
         // Hardcoded Epson ESC/P2 inkjet (L120, L121).
@@ -2229,7 +2249,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
      * Receipt printers recognised by the name in their USB descriptor (works for any vendor ID once USB access is allowed):
      * Rongta RP / RPP series (RP30, RPP30, RP326, RP80, RPP300 ...), HPRT, Gprinter, iDPRT, Zjiang, Goojprt, Munbyn, Netum.
      */
-    private val receiptNameRx = Regex("(?i)(^|[^a-z])rpp?[- ]?\\d|rongta|hprt|gprinter|idprt|zjiang|goojprt|munbyn|netum|arcticbreeze")
+    private val receiptNameRx = Regex("(?i)(^|[^a-z])rpp?[- ]?\\d|rongta|hprt|gprinter|idprt|zjiang|goojprt|munbyn|netum|arcticbreeze|vo[zx]y|(?<![a-z0-9])(?:g80|v80|p50|mp[- ]?210)(?![0-9])")
     // Many white-label 80 mm POS printers (ArcticBreeze RP30 and others) only call themselves "USB Printer Port" over USB.
     // Treated as a receipt printer unless the maker is a known inkjet / laser brand (Epson, Canon, HP, Brother), which have their own paths.
     private val genericPortNameRx = Regex("(?i)^usb[ -]?printer[ -]?port$")
@@ -3036,7 +3056,21 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         return Pair(Math.round(m.groupValues[1].toDouble() * k * 100) / 100.0, Math.round(m.groupValues[2].toDouble() * k * 100) / 100.0)
     }
 
-    private fun sendIppJob(e: Entry, job: String, jpegIn: ByteArray, wMm: Double, hMm: Double, opts: Opts) {
+    /** Waits between multi-sheet Canon SELPHY IPP prints so the next job never arrives mid-pass and freezes the printer. */
+    private fun awaitSelphyIppIdle(e: Entry, path: String, jobId: Int?) {
+        if (jobId == null || path.isBlank()) {
+            try { Thread.sleep(3500) } catch (_: InterruptedException) {}
+            return
+        }
+        val deadline = System.currentTimeMillis() + 75_000L
+        while (System.currentTimeMillis() < deadline) {
+            try { Thread.sleep(2500) } catch (_: InterruptedException) { return }
+            val js = queryJobStateOnce(e, path, jobId) ?: return
+            if (js.state >= 7) return   // 7 canceled, 8 aborted, 9 completed
+        }
+    }
+
+    private fun sendIppJob(e: Entry, job: String, jpegIn: ByteArray, wMm: Double, hMm: Double, opts: Opts): Pair<Int?, String> {
         val jpeg = jpegAtDpi(jpegIn, opts.dpi)
         fetchAttrs(e)
         // Only ask for settings this printer says it supports (quality, colour mode, paper type).
@@ -3153,13 +3187,24 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     // Always place media-type inside media-col (RFC 8011 / PWG 5100.7), never as a non-standard top-level attribute alongside media-col.
                     val body = ippPrintJob(ippUri(e, path), job, format, data, if (at.withMedia) (if (at.sizeW > 0) at.sizeW else wMm) else 0.0, if (at.sizeH > 0) at.sizeH else hMm,
                         if (at.withOpts) qv else 0, if (at.withOpts) cm else "", if (at.withOpts) jobMt else "", sc, at.mediaName, true, at.marginMm100)
-                    val r = try { doPost(e, path, body) } catch (nf: NetFail) {
+                    var busyRetries = 0
+                    var r = try { doPost(e, path, body) } catch (nf: NetFail) {
                         attemptLog.add("$desc -> NET_FAIL(connected=${nf.connected}): ${nf.message}")
                         e.lastAttempts = attemptLog.toList()
                         // Can't connect at all: stop now. Connected but dropped mid-job: move on to the next attempt (do not burn retries on alternate paths).
                         if (!nf.connected || ++drops >= maxDrops) throw nf
                         lastErr = nf.message ?: lastErr
                         break
+                    }
+                    // Canon SELPHY (CP1300 / CP1500) and compact IPP printers return 0x0507 (server-error-busy) while finishing the previous sheet;
+                    // wait and retry the SAME attempt instead of dropping paper/borderless attributes.
+                    while (r.http == 200 && r.ipp == 0x0507 && busyRetries < 24) {
+                        busyRetries++
+                        try { Thread.sleep(2500) } catch (_: InterruptedException) { break }
+                        r = try { doPost(e, path, body) } catch (nf: NetFail) {
+                            if (!nf.connected || ++drops >= maxDrops) throw nf
+                            break
+                        }
                     }
                     val unsup = if (r.http == 200) extractUnsupported(r.body) else emptyList()
                     val smsg = if (r.http == 200) extractStatusMessage(r.body) else ""
@@ -3179,7 +3224,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                             if (jobId != null && e.usbDev == null) {
                                 pool.execute { watchIppJob(e, path, jobId) }
                             }
-                            return
+                            return jobId to path
                         }
                         r.http == 200 && r.ipp == 0x406 -> {
                             if (pathsToTry.size == 1) {
@@ -3208,7 +3253,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         throw IllegalStateException(lastErr)
     }
 
-    private fun isSelphy(e: Entry) = (e.model + " " + e.name).contains("selphy", true)
+    private val selphyCpModelRx = Regex("(?i)\\bCP[\\s_-]?(?:820|910|1000|1200|1300|1500)\\b")
+    private fun isSelphy(e: Entry): Boolean {
+        val text = e.model + " " + e.name
+        return text.contains("selphy", true) || selphyCpModelRx.containsMatchIn(text) || (e.usbDev?.let { usbIsSelphy(it) } == true)
+    }
 
     /**
      * The paper the SELPHY names (loaded paper first, then everything it supports) that is closest to the sheet asked for,
@@ -3514,9 +3563,14 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         for (n in nets) {
             val ip = n.addr.hostAddress ?: ""
             val gw = ipText((ipLong(n.addr) and 0xFFFFFF00L) or 1L)
+            // Note: 192.168.0.x is NOT flagged automatically because consumer routers (TP-Link, D-Link, pocket Wi-Fi) use 192.168.0.1.
             val isEpsonWfd = ip.startsWith("192.168.223.")
+            val isBrotherWfd = ip.startsWith("192.168.118.")
             val isP2p = n.ifaceName.lowercase().contains("p2p") || ip.startsWith("192.168.49.")
-            if (isEpsonWfd || isP2p) wifiDirectDetected = true
+            val isWfd = isEpsonWfd || isBrotherWfd || isP2p
+            if (isWfd) wifiDirectDetected = true
+            if (isBrotherWfd) suggestions.add("192.168.118.1")
+            if (isEpsonWfd) suggestions.add("192.168.223.1")
             if (gw != ip) suggestions.add(gw)
             netArr.put(JSONObject()
                 .put("iface", n.ifaceName.ifEmpty { "wifi" })
@@ -3524,7 +3578,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 .put("prefix", n.prefix)
                 .put("gateway", gw)
                 .put("boundNetwork", n.network != null)
-                .put("wifiDirectHint", isEpsonWfd || isP2p))
+                .put("wifiDirectHint", isWfd))
         }
         val printersArr = JSONArray()
         for (e in found.values.sortedBy { it.ip }) {

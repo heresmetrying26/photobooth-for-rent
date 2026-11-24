@@ -128,6 +128,13 @@ export function parseIppRaw(buf) {
   return parseIppGrouped(buf).map(({ name, tag, value }) => ({ name, tag, value }));
 }
 
+function parseIppJobId(buf) {
+  for (const { name, tag, value } of parseIppGrouped(buf)) {
+    if (name === 'job-id' && tag === 0x21 && value.length === 4) return value.readInt32BE(0);
+  }
+  return 0;
+}
+
 function ippPost(ip, port, path, body, timeoutMs) {
   return new Promise((resolve) => {
     const req = http.request({ host: ip, port, path, method: 'POST', timeout: timeoutMs, headers: { 'content-type': 'application/ipp', 'content-length': body.length } }, (res) => {
@@ -416,7 +423,7 @@ export function labelMediaType(kw) {
  * Tries the paper the printer names itself first, then a custom size with no margins, then nothing at all,
  * and stops at the first one the printer accepts. Throws an Error with a reason a person can act on.
  */
-export async function ippPrintDirect({ ip, port = 631, path = '', jpeg = null, image = null, toJpeg = null, widthMm = 0, heightMm = 0, jobName = 'photobooth4u', timeoutMs = 90000, rasterize = null, quality = '', mediaType = '', paperName = '', borderless = true, transport = null }) {
+export async function ippPrintDirect({ ip, port = 631, path = '', jpeg = null, image = null, toJpeg = null, widthMm = 0, heightMm = 0, jobName = 'photobooth4u', timeoutMs = 90000, rasterize = null, quality = '', mediaType = '', paperName = '', borderless = true, transport = null, busyWaitMs = 2500, maxBusyRetries = 24 }) {
   const caps = await ippCaps(ip, port, path, 4000, transport);
   if (!caps) {
     throw new Error(transport
@@ -425,7 +432,7 @@ export async function ippPrintDirect({ ip, port = 631, path = '', jpeg = null, i
   }
   const can = directFormats(caps, typeof rasterize === 'function');
   if (!can.jpeg && can.pwg) {
-    return ippPrintPwg({ ip, port, caps, image: image || jpeg, widthMm, heightMm, jobName, timeoutMs, rasterize, quality, mediaType, paperName, borderless, transport });
+    return ippPrintPwg({ ip, port, caps, image: image || jpeg, widthMm, heightMm, jobName, timeoutMs, rasterize, quality, mediaType, paperName, borderless, transport, busyWaitMs, maxBusyRetries });
   }
   const accepted = can.jpeg;
   if (!accepted) throw new Error((caps.model || 'This printer') + ' can’t take photos straight from the app (it accepts: ' + caps.formats.filter((f) => /^(image|application)\//.test(f)).slice(0, 5).join(', ') + ').');
@@ -448,15 +455,21 @@ export async function ippPrintDirect({ ip, port = 631, path = '', jpeg = null, i
   // Each way of asking goes first with the quality / paper type (see directPhotoOpts), then again without them if the printer refuses.
   const dpo = directPhotoOpts(caps, { quality, mediaType, borderless, wMm: dims ? dims[0] : widthMm, hMm: dims ? dims[1] : heightMm });
   const attempts = base.flatMap((a) => (dpo.quality || dpo.mediaType ? [{ ...a, quality: dpo.quality, mediaType: dpo.mediaType }, a] : [a]));
+  const sleep = (ms) => (ms > 0 ? new Promise((res) => setTimeout(res, ms)) : Promise.resolve());
   let lastErr = 'The printer didn’t accept the photo.', drops = 0;
   for (const a of attempts) {
     for (const p of [...new Set([caps.path, '/ipp/print', '/ipp', '/'])]) {
       const body = ippPrintJobRequest({ uri: `${baseUri}${p}`, jobName, doc: jpeg, ...a });
-      const r = await send(p, body, timeoutMs);
+      let r = await send(p, body, timeoutMs);
+      for (let busy = 0; r && r.http === 200 && parseIpp(r.body).status === 0x0507 && busy < maxBusyRetries; busy++) {
+        await sleep(busyWaitMs);
+        r = await send(p, body, timeoutMs);
+      }
       if (!r) { if (++drops >= 3) throw new Error(transport ? 'Lost the USB printer while sending the photo. Check the USB cable and power, then print again.' : 'Lost the printer while sending the photo. Check it is on and still on the same Wi-Fi, then print again.'); lastErr = 'The printer dropped the connection.'; continue; }
       if (r.http === 200) {
         const { status } = parseIpp(r.body);
-        if (status >= 0 && status <= 2) return { media: a.mediaName || (a.wMm ? 'page ' + Math.round(a.wMm * 10) / 10 + 'x' + Math.round(a.hMm * 10) / 10 + ' mm, zero margins' : 'default'), scaling: a.scaling };
+        if (status >= 0 && status <= 2) return { media: a.mediaName || (a.wMm ? 'page ' + Math.round(a.wMm * 10) / 10 + 'x' + Math.round(a.hMm * 10) / 10 + ' mm, zero margins' : 'default'), scaling: a.scaling, jobId: parseIppJobId(r.body), path: p, model: caps.model || '' };
+        if (status === 0x0507) throw new Error('The printer is still busy with the previous photo (code 0x507). Wait for it to finish, then print again.');
         lastErr = 'The printer refused the photo (code 0x' + status.toString(16) + ').';
       } else if (r.http === 426 || r.http === 301 || r.http === 302) lastErr = 'This printer only accepts secure printing, which the app doesn’t support yet.';
       else if (r.http !== 404) lastErr = 'The printer answered with HTTP ' + r.http + '.';
@@ -472,7 +485,7 @@ export async function ippPrintDirect({ ip, port = 631, path = '', jpeg = null, i
  * then with 3 mm margins, then on the paper's name, then with no paper named. Quality / colour / paper type are asked for with
  * the job and dropped again when the printer refuses them.
  */
-async function ippPrintPwg({ ip, port, caps, image, widthMm, heightMm, jobName, timeoutMs, rasterize, quality, mediaType, paperName = '', borderless = true, transport = null }) {
+async function ippPrintPwg({ ip, port, caps, image, widthMm, heightMm, jobName, timeoutMs, rasterize, quality, mediaType, paperName = '', borderless = true, transport = null, busyWaitMs = 2500, maxBusyRetries = 24 }) {
   if (!image || !image.length) throw new Error('Could not prepare the photo for the printer.');
   const types = caps.pwgTypes || [];
   if (types.length && !types.includes('srgb_8') && !types.includes('sgray_8')) {
@@ -511,24 +524,88 @@ async function ippPrintPwg({ ip, port, caps, image, widthMm, heightMm, jobName, 
   const attempts = base.flatMap((a) => (hasOpts ? [{ ...a, ...opts }, a] : [a]));
   const baseUri = transport ? transport.baseUri : `ipp://${ip}:${port}`;
   const send = transport ? transport.post : (p, body, ms) => ippPost(ip, port, p, body, ms);
+  const sleep = (ms) => (ms > 0 ? new Promise((res) => setTimeout(res, ms)) : Promise.resolve());
   let lastErr = 'The printer didn’t accept the photo.', drops = 0;
   for (const a of attempts) {
     for (const p of [...new Set([caps.path, '/ipp/print', '/ipp', '/'])]) {
       const body = ippPrintJobRequest({ uri: `${baseUri}${p}`, jobName, format: 'image/pwg-raster', doc: page, ...a });
-      const r = await send(p, body, timeoutMs);
+      let r = await send(p, body, timeoutMs);
+      for (let busy = 0; r && r.http === 200 && parseIpp(r.body).status === 0x0507 && busy < maxBusyRetries; busy++) {
+        await sleep(busyWaitMs);
+        r = await send(p, body, timeoutMs);
+      }
       if (!r) { if (++drops >= 3) throw new Error(transport ? 'Lost the USB printer while sending the photo. Check the USB cable and power, then print again.' : 'Lost the printer while sending the photo. Check it is on and still on the same Wi-Fi, then print again.'); lastErr = 'The printer dropped the connection.'; continue; }
       if (r.http === 200) {
         const { status } = parseIpp(r.body);
         if (status >= 0 && status <= 2) {
           const marginLabel = a.marginMm100 ? ', ' + (a.marginMm100 / 100) + ' mm margins' : ', zero margins';
-          return { media: a.mediaName || (a.wMm ? 'page ' + Math.round(a.wMm * 10) / 10 + 'x' + Math.round(a.hMm * 10) / 10 + ' mm' + marginLabel : 'default'), scaling: '', format: 'image/pwg-raster', dpi, quality: a.quality || 0, mediaType: a.mediaType || '' };
+          return { media: a.mediaName || (a.wMm ? 'page ' + Math.round(a.wMm * 10) / 10 + 'x' + Math.round(a.hMm * 10) / 10 + ' mm' + marginLabel : 'default'), scaling: '', format: 'image/pwg-raster', dpi, quality: a.quality || 0, mediaType: a.mediaType || '', jobId: parseIppJobId(r.body), path: p, model: caps.model || '' };
         }
+        if (status === 0x0507) throw new Error('The printer is still busy with the previous photo (code 0x507). Wait for it to finish, then print again.');
         lastErr = 'The printer refused the photo (code 0x' + status.toString(16) + ').';
       } else if (r.http === 426 || r.http === 301 || r.http === 302) lastErr = 'This printer only accepts secure printing, which the app doesn’t support yet.';
       else if (r.http !== 404) lastErr = 'The printer answered with HTTP ' + r.http + '.';
     }
   }
   throw new Error(lastErr);
+}
+
+/**
+ * Waits between multi-sheet IPP jobs on a dye-sub photo printer (Canon SELPHY CP1300 / CP1500) so the next sheet
+ * does not collide with the ~45s 4-pass ribbon cycle. Polls Get-Job-Attributes (when jobId > 0) and Get-Printer-Attributes.
+ */
+export async function waitIppIdle({ ip, port = 631, path = '/ipp/print', jobId = 0, transport = null, pollMs = 2000, maxWaitMs = 75000 } = {}) {
+  const sleep = (ms) => (ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve());
+  const baseUri = transport ? transport.baseUri : `ipp://${ip}:${port}`;
+  const reqPath = path || '/ipp/print';
+  const uri = `${baseUri}${reqPath}`;
+  const send = transport ? transport.post : (p, body, ms) => ippPost(ip, port, p, body, ms);
+  await sleep(Math.min(pollMs, 1500));
+  const deadline = Date.now() + maxWaitMs;
+  while (Date.now() < deadline) {
+    if (jobId > 0) {
+      const req = Buffer.concat([
+        Buffer.from([0x02, 0x00, 0x00, 0x09, 0, 0, 0, 2, 0x01]),
+        ippTagged(0x47, 'attributes-charset', 'utf-8'),
+        ippTagged(0x48, 'attributes-natural-language', 'en'),
+        ippTagged(0x45, 'printer-uri', uri),
+        Buffer.from([0x21]), ippStr('job-id'), ippU16(4), ippU32(jobId),
+        ippTagged(0x44, 'requested-attributes', 'job-state'),
+        Buffer.from([0x03])
+      ]);
+      const r = await send(reqPath, req, 5000);
+      if (r && r.http === 200 && r.body && r.body.length >= 8) {
+        const st = r.body.readUInt16BE(2);
+        if (st === 0x0406) return;
+        let jobState = 0;
+        for (const { name, tag, value } of parseIppGrouped(r.body)) {
+          if (name === 'job-state' && tag === 0x23 && value.length === 4) { jobState = value.readInt32BE(0); break; }
+        }
+        if (jobState >= 7) return;
+        if (jobState >= 3 && jobState <= 6) { await sleep(pollMs); continue; }
+      }
+    }
+    const preq = Buffer.concat([
+      Buffer.from([0x02, 0x00, 0x00, 0x0b, 0, 0, 0, 3, 0x01]),
+      ippTagged(0x47, 'attributes-charset', 'utf-8'),
+      ippTagged(0x48, 'attributes-natural-language', 'en'),
+      ippTagged(0x45, 'printer-uri', uri),
+      ippTagged(0x44, 'requested-attributes', 'printer-state'),
+      ippTagged(0x44, '', 'printer-state-reasons'),
+      Buffer.from([0x03])
+    ]);
+    const pr = await send(reqPath, preq, 5000);
+    if (pr && pr.http === 200 && pr.body && pr.body.length >= 8) {
+      let pState = 0;
+      const reasons = [];
+      for (const { name, tag, value } of parseIppGrouped(pr.body)) {
+        if (name === 'printer-state' && tag === 0x23 && value.length === 4) pState = value.readInt32BE(0);
+        else if (name === 'printer-state-reasons' && tag >= 0x40) reasons.push(value.toString('utf8').toLowerCase());
+      }
+      if (pState === 3 && !reasons.some((s) => s.includes('processing') || s.includes('moving-to-paused'))) return;
+    }
+    await sleep(pollMs);
+  }
 }
 
 // ---- Wireless printer diagnostics (mirrors Android NetPrintBridge.kt diagProbeSync / diagPrintSync) ----
@@ -644,8 +721,13 @@ export function diagNetworkInfo({ appVersion = '', printers = [] } = {}) {
   let wifiDirectDetected = false;
   const nets = subnets.map((s) => {
     const gw = longToIp((Math.floor(ipToLong(s.address) / 256) * 256) + 1);
-    const wfd = /^192\.168\.(223|49)\./.test(s.address);
+    const isEpsonWfd = /^192\.168\.223\./.test(s.address);
+    const isBrotherWfd = /^192\.168\.118\./.test(s.address);
+    const isP2p = /^192\.168\.49\./.test(s.address);
+    const wfd = isEpsonWfd || isBrotherWfd || isP2p;
     if (wfd) wifiDirectDetected = true;
+    if (isBrotherWfd) suggestions.add('192.168.118.1');
+    if (isEpsonWfd) suggestions.add('192.168.223.1');
     if (gw !== s.address) suggestions.add(gw);
     return { iface: s.name, ip: s.address, prefix: s.prefix, gateway: gw, boundNetwork: false, wifiDirectHint: wfd };
   });

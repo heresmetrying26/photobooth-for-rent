@@ -1,0 +1,170 @@
+# Developer Changelog (Technical Notes Archive)
+
+Internal technical release notes extracted from client-facing updates (`netlify/lib/updates.mjs`). Keep customer-visible notes in `netlify/lib/updates.mjs` in plain layman's terms, and record protocol details, hex codes, symbol names, and internal implementation notes here for debugging and support.
+
+---
+
+## 2026-11-24 — Android 1.2.15 & Website: Epson L8050 Wi-Fi Direct / LPD Port 515 + True-Color ESC/P-R
+- **Hardcoded LPD Port 515 (`/PASSTHRU`) printing for Epson L8050 Wi-Fi & Wi-Fi Direct:** Real Epson L8050 units on Wi-Fi Direct (`192.168.223.1`) often ship with Port 631 (IPP) and Port 9100 (RAW) closed and only Port 515 (LPD) + Port 80 open. Android automatically discovers Port 515 printers, identifies the exact model via SNMP (`hrDeviceDescr.1` + IEEE-1284 Device ID) / Port 80 Web Config / `_printer._tcp.` mDNS, and streams L8050 borderless ESC/P-R jobs (`360 dpi` 1:1 native default + opt-in `720 dpi`) over RFC 1179 LPD (`PASSTHRU` → `LPT1` → `AUTO` → `lp` → `raw`) using a low-RAM spool file in app cache.
+- **ESC/P-R true-color & sharpness fix (USB + Wi-Fi):** Fixed `setq` color-plane byte to always send `0x00` (`EPS_CP_FULLCOLOR` 24-bit RGB `dsnd`) with standard `seti(0..0)` + `chku(01 01)` borderless handshake (instead of Windows `bsnd` `0x03` flag), rendered default L8050 `High (360 dpi)` 4×6 canvases at 1:1 native 360 dpi (`1440×2160`), and added Premium Glossy (`0x0B`) alongside Epson Glossy (`0x34`).
+- **Diagnostic Tester LPD presets:** Added 1-tap `LPD :515 · L8050 360 dpi` (`0x34` Glossy & `0x0B` Premium Glossy) and `720 dpi` test presets in `/printer-test/`, auto-selected when a zero-paper check finds Port 515 open while Ports 631 and 9100 are closed.
+
+## 2026-11-24 — Android 1.2.14 & Website: Epson L8050 Direct USB, Borderless & Streaming 720 dpi
+- **Epson L8050 rainbow-band fix (Android):** Permanently blocked the incompatible 4-ink L3210 beta raster (`720/1440 dpi`) on 6-ink Epson L8050 / L18050 printers and cleared stale saved settings automatically.
+- **64-row ESC/P-R strip streaming & IPP JFIF DPI:** Added Windows L8050 borderless headers (`setm`, `seti`, `chku`, `0x34` Epson Glossy) with low-RAM 64-row strip streaming for ESC/P-R (`High 360 dpi` default + opt-in `High 720 dpi (L8050 4×6)`), plus 600 dpi 4×6 rendering with dynamic JFIF DPI headers over IPP.
+- **Borderless state & IPP fallback:** Fixed switching printers (or dual-printer Bluetooth receipt + photo setup) resetting Borderless off, persisted delayed IPP zero-margin capability, and added a 3 mm margin fallback before dropping paper size.
+- **Subnet & USB relinking:** Instant subnet cache refresh when switching between router Wi-Fi and Wi-Fi Direct (`192.168.223.1`), wake retry on Add by IP, DHCP / Wi-Fi Direct IP relinking by model name, and USB relinking before Test print.
+
+## 2026-11-24 — Desktop 1.1.104, Android 1.2.13, iPad 1.1.27 & Website: Photo Spot Editor, Frame Filters & Overlay Sync
+- **Photo spot editor UI:** Added 1-click Repeat N per strip / All separate bar inside Edit photo spots, simplified Photo # chips to active shots + `+ #next`, collapsed More frame options with live summary, grouped advanced tools into cards, and rendered resize/tilt handles only on the selected box.
+- **Frame search & scroll retention:** Fixed Your frames search bar and All / Selected / Strips / 4R / Full filter tabs with live counts; preserved scroll position when selecting uploaded frames near the bottom.
+- **Overlay upload fix:** Fixed sync race and over-aggressive white-background removal on newly uploaded PNG/Canva overlays.
+
+## 2026-11-24 — Desktop 1.1.103, Android 1.2.12, iPad 1.1.26 & Website: Startup Sync & Layout Picker Hotfix
+- Restored `spotsKey()` so accounts with uploaded frames immediately render uploaded frames and built-in layouts in Setup → Layout without throwing.
+- Guarded Step 7 tab initialization (`refreshD7Tabs`) during early boot so `loadSetup()` and `loadAccountFrames()` always complete startup cloud sync across Web, Desktop, Android, and iPad.
+
+## 2026-11-24 — Desktop 1.1.102, Android 1.2.11, iPad 1.1.25 & Website: Account-Wide Uploaded Frames & Cloud Sync
+- Moved uploaded frames to permanent account-wide library endpoints (`frames-get` / `frames-save`) with two-way merge, explicit delete tracking, and rescue of frames previously stored in older event setups/profiles.
+- Fixed false offline blocks on Android hotspots/venue Wi-Fi, refreshed iPad credentials on every `/api/setup` call, triggered automatic sync on app resume/focus/Wi-Fi reconnect and every 30 s, and added tap-to-sync on save status.
+- Switched frame image downloads to 1 asset per request (3 concurrent) with a 4.4 MB server batch cap for Netlify reliability, raised setup size limits (`120 KB` → `350 KB`), and fixed the timestamp clobber bug where an empty tablet could overwrite newer cloud setups.
+
+## 2026-11-24 — Desktop 1.1.101, Android 1.2.10, iPad 1.1.24 & Website: Setup & Hover Layout Previews
+- Live hover thumbnails alongside `Linked to: <Layout Name>` badge on Chosen layout, Solo layout, Plain camera, and Slideshow frame pills.
+- Split Pay & photos into Countdown & retakes and Payment & vouchers, renamed Sound & lighting and Result & QR screen, and added 2-way synced voucher-printer toggle.
+- Simplified Design bar, tucked advanced printer options into collapsible drawers, improved mobile preview dock, and verified 60-frame setup scaling.
+
+## 2026-11-23 — Android 1.2.09 & Website: Two-Way ESP32 Bluetooth / USB Serial
+- Added two-way Bluetooth Serial (BLE Nordic UART + Classic Bluetooth SPP on Android via dedicated native bridge, plus Web Bluetooth & USB Serial on Chrome/Edge).
+- Live booth status commands sent automatically to ESP32: `session_idle`, `template_selection`, `price{N}`, `cash_open`, `cash_close`, `payment_success`, `session_start`, `countdown_3`, `countdown_2`, `countdown_1`, `shutter_flash`, `start_print`, `print_done`, `session_end`, and `session_cancel`.
+- Added ESP32 Relay Lighting & NeoPixels controls in Setup → Light, sound and start plus test buttons (`Test Light ON`, `Test Flash`, `Test Cash Open`, `Test Idle`) and updated `/cash-acceptor/` firmware supporting 4–8 relay channels directly.
+
+## 2026-11-23 — Roving DSLR Bridge v1.1.2 (Android): Offline Disk Queue
+- Stores photos shot out of Wi-Fi range in phone storage (`rove_pending`) across app restarts.
+- Detects booth Wi-Fi / laptop reachability and streams queued photos in FIFO order; shows live pending counter on main screen, Pocket Lock, and Session Gallery.
+
+## 2026-11-23 — Android 1.2.06 & Website: Offline Printer Tester Clipboard & `/api/printerdiag`
+- Added native Android clipboard bridge for Printer Report & Wi-Fi / Wi-Fi Direct Printer Test inside Android WebView.
+- Auto-refreshes Wi-Fi / Wi-Fi Direct status on drawer open, detecting Epson Wi-Fi Direct (`192.168.223.1`).
+- Enabled online `/api/printerdiag` uploads from Android offline app with automatic clipboard fallback when offline.
+
+## 2026-11-23 — Desktop 1.1.100, Android 1.2.05, iPad 1.1.22 & Website: Camera & Idle Video Performance
+- Pauses unseen 30 fps Metal filter shaders while Idle video or Branded card welcome screen is showing; caches CoreImage filter chains with zero per-frame allocations.
+- Added HTTP/1.1 keep-alive + zero-copy `writev()` to iPad local camera bridge and removed redundant `captureStream(30)` / 2D canvas blits on iPad USB DSLRs.
+- Frees hardware video decoder slots when leaving Setup (static thumbnails), clones large videos in 4 MB chunks for low peak RAM on 2 GB tablets, reuses/revokes blob URLs cleanly, and switched gamepad polling to event-driven + debounced resize / orientation refits.
+
+## 2026-11-23 — Android 1.2.03 & Website: Web Trial Payments, ESP32 & Cloudflare Worker Files
+- Free web trial unlocks Setup → Pay & photos for testing ESP32 Cash Acceptor (BLE UART / USB Serial) and custom Cloudflare PayMongo Workers in Chrome/Edge.
+- `/cash-acceptor/` provides 1-click downloads/copy for `esp32-cash-acceptor.ino`, `worker.js`, and `wrangler.toml`.
+- Android 1.2.03 scoped offline `/api/` interception strictly to `photobooth4u.netlify.app` so custom-domain Cloudflare PayMongo Workers routed under `/api/*` connect properly.
+
+## 2026-11-23 — Desktop 1.1.98, Android 1.2.02 & iPad 1.1.20: Welcome-Matched QR, Trial & ESP32 Cash Acceptor
+- Welcome-matched QR/sharing theme without photobooth4u logo on guest screens; idle video sound toggle; iPad external USB camera live preview fix; custom Your frames PNG overlays with enclosed white-doodle preservation.
+- Device-bound offline free trial, ESP32 coin/bill pulse acceptor over BLE HID / Web Bluetooth / USB Serial, and self-hosted PayMongo Cloudflare Worker option.
+
+## 2026-11-23 — iPad 1.1.19: iPad A16 & Center Stage AVFoundation / Metal Pipeline
+- Switches native AVFoundation pipeline to hardware-binned 4:3 30 fps native YUV (`420f`/`420v`) format with 24–30 fps floor while keeping high-res stills up to 2400 px via ImageIO downscaling.
+- Keeps `AVCaptureVideoDataOutput` unrotated on iOS 17+ (GPU orientation only when rendered/encoded) and deduplicates layout/rotation/mirroring IPC updates.
+- Moves `MTKView` filter rendering off UIKit main thread onto dedicated 1× opaque Metal render queue, keeps `AVCaptureVideoPreviewLayer` active when Welcome Screen is off, honours viewfinder resolution, and accelerates `/avcam/frame` loopback with `TCP_NODELAY` and direct GPU JPEG encoding.
+
+## 2026-11-23 — Desktop 1.1.97, Print Helper 1.1.20, Android 1.1.101 & iPad 1.1.18: HiTi & Dye-Sub Engine
+- Added Secondary 2×6 Split Strips Printer card in Print settings with independent Lightness, Colour Correction, Edges, Driver Paper slot, and dual test buttons.
+- Hardcoded HiTi & commercial dye-sub print engine (Windows & Mac): auto-switches single HiTi/DNP/Citizen queues between `6×4` and `6×4 Split / 2-UP`, protects private Windows `DEVMODE` settings (2-inch cut, matte overcoat, factory LUT), renders 300 DPI full-bleed with `TileFlipXY` edge wrapping, and auto-pairs 2×6 strips onto 4×6 sheets.
+- `/print-station/` split routing with lossless 300 DPI PNG / high-quality JPEG transfers; direct USB Canon SELPHY (`CP820–CP1500`) printing when no queue is installed (`4×6` → Postcard `100×148 mm`).
+
+## 2026-11-22 — Android 1.1.99 & iPad 1.1.16: Epson L8050 IPP `media-col` & `/printer-test/`
+- Sent paper type cleanly inside RFC-standard IPP `media-col`, added smooth scaling fallback preserving glossy/best-quality settings, wake retry, and prioritized Wi-Fi Direct gateway (`192.168.223.1`) discovery.
+- Built-in offline Wi-Fi / Wi-Fi Direct Printer Test (and `/printer-test/`): zero-paper capability & `Validate-Job` check, 1-sheet sharpness + 0–6 mm borderless ruler on IPP or Epson ESC/P-R (port 9100), and post-print job status warnings.
+
+## 2026-11-22 — Desktop 1.1.95, Print Helper 1.1.19, Android 1.1.98 & iPad 1.1.15: Canon EOS 1500D `0xD1B0=3`
+- Canon EOS 1500D / 2000D / Rebel T7 / Kiss X90 preserves `SaveTo=Card` (restoring from Host if stuck) alongside laptop download and keeps Live View on both rear LCD and laptop via `0xD1B0=3` (TFT+PC).
+- Added 2-step B&W vs Coloured layout picker, 90°/180°/270° per-spot rotation, 4-in-1 auto-sectioning, landscape collage, and `/how-to-360/dslr/`, `/how-to-360/iphone/`, and iOS 360 Arm Companion `.ipa` downloads.
+
+## 2026-11-22 — Desktop 1.1.93, Android 1.1.97 & iPad 1.1.14: Reprint Pop-up & Glossy Defaults
+- In-app Browse & Reprint gallery and pre-filled Reprint Pop-up; fixed gallery reprinting in Android WebView, iPad local gallery, private online galleries, and browsers without Print Helper.
+- Glossy photo paper & Best quality defaults on borderless photo printers; fixed 2:3 Setup preview frame across all 22 built-in layouts.
+
+## 2026-11-21 — Desktop 1.1.92: Startup Build Integrity Fix
+- Fixed Desktop 1.1.91 failing to render the booth screen on startup (a truncated closing tag caused the licence watcher script to be injected inside `GUEST_HTML`). Added a build-time integrity check so truncated booth HTML cannot be packaged.
+
+## 2026-11-21 — Desktop 1.1.91, Print Helper 1.1.17, Android 1.1.96 & iPad 1.1.13: Canon 1300D Aspect Ratio `0xD194`
+- Switched Canon Aspect ratio (`0xD194`) to full 3:2 on connect (restoring on disconnect) across Windows, Mac, Print Helper, Android, and iPad; auto-crops live view if locked.
+- Added Final Shots Slideshow GIF mode, reduced PNG cutout hidden bleed from ~8% to ~1.6%, prevented empty-printer-name refreshes from wiping lightness/color, added Windows `PrintTicket` retry diagnostics, and tuned mirror-settle timing for Canon 1200D/1300D/1500D.
+
+## 2026-11-21 — Desktop 1.1.90 + Print Helper 1.1.16: Canon 60D / 6D `0x911A` & Flash X-Sync
+- Fixed Canon EOS 60D / 6D host-transfer failures by sending `PCHDDCapacity` (`0x911A`) after switching SaveTo to laptop, using two-stage DSLR half-press/full-press shutter commands, and streaming RAM photos in 1 MB chunks with RAW+JPEG cleanup.
+- Drops Live View during the 0.6 s Pose pause for mechanical flash X-sync; switched between-shot polling to lightweight `/camera/info`, reset per-camera Canon state on swaps, and handled Windows unplug errors (`0x802A0002` / `0x802A0003`) cleanly as disconnects.
+
+## 2026-11-21 — Desktop 1.1.88 + iPad 1.1.12: 360 Motion Trigger (CoreMotion)
+- iPhone/iPad 360 Arm Camera reads CoreMotion gyro data (`NSMotionUsageDescription`), triggers recording automatically on rotation, supports guided calibration (°/s), 1080p 60/120 fps, 0.5× / 1× / front lens, tap-to-focus, AE/AF lock, and free companion QR pairing in 360 Desk.
+
+## 2026-11-21 — iPad 1.1.11: `PreviewHostView` Alignment & Metal Render Throttling
+- Mounted `AVCaptureVideoPreviewLayer` as a dedicated child sublayer inside `PreviewHostView` aligned to `#stageFrame` to fix portrait split/shifted previews.
+- Drops in-flight Metal filter frames when busy, matches GIF/boomerang polling to capture rate, hides preview layer cleanly via `showShotReview` / `hideShotReview`, resets scroll before measuring `#stageFrame`, and observes `#stageFrame` resizes.
+
+## 2026-11-21 — Desktop 1.1.87 + Android 1.1.95 + iPad 1.1.10 + Helper 1.1.15: Photoman Studio & Pop-Out Sync
+- Photoman Template Maker, full-screen Studio workspace, and pop-out window/tab (`/?desk=photoman`) synced via `BroadcastChannel` + `IndexedDB`.
+- Skips autofocus pauses when Canon lens switch is on MF and warns on older Canon Silent LV shoot + Exposure simulation settings.
+
+## 2026-11-21 — Desktop 1.1.86 + Android 1.1.94 + iPad 1.1.9 + Helper 1.1.14: Direct PWG Raster & IPP-over-USB
+- Driverless PWG Raster & IPP-over-USB printing (Desktop), automatic Bonjour re-discovery and print-job alerts for Wi-Fi IPP printers on iPad, Photoman templates/phone control, B&W/colour split, and Nikon exposure controls via Camera check.
+
+## 2026-11-20 — iPad 1.1.8: Non-AirPrint Wi-Fi IPP Printing
+- Direct IPP (port 631) Wi-Fi printer addition by IP on iPad (Epson L8050 quality/media options, High + Glossy default) and fixed iPad version reporting (`1.1.8` instead of `1.1.5`).
+
+## 2026-11-19 — Desktop 1.1.78 + Android 1.1.90 + iPad 1.1.7: Offline-First Cloud Sync & Stucki Dithering
+- Cross-device sync for Saved Profiles, My Themes, setups, and assets; per-device 4-digit Lock PIN / voucher / print counts; upgraded thermal receipt prints to Stucki dithering.
+
+## 2026-11-19 — Desktop 1.1.75: High-Res Prints & Binary Local Saves
+- Prints render at 2.5×–3× design resolution (750–900 DPI, 100% JPEG, true DPI stamped in header instead of 96 DPI), keeps untouched camera JPEG EXIF on upright solo shots, Nikon JPEG Fine ≥ 3900 px, optional 24-bit lossless PNG Masters, and binary local saves without Base64 overhead.
+
+## 2026-11-18 — Desktop 1.1.72 + Helper 1.1.12: Canon EOS `vid_04a9` & `GUID_DEVINTERFACE_IMAGE`
+- Inspects USB vendor IDs directly (`vid_04a9`) so generic "MTP USB Device" Canon bodies (1300D / Rebel T6 / Kiss X80) map to Canon EOS control; added fallback scanning for `GUID_DEVINTERFACE_IMAGE` alongside WPD.
+
+## 2026-11-18 — Desktop 1.1.70 + Android 1.1.82 + iPad 1.1.5: iPad `AVCaptureSession` & Ultra-Wide Camera
+- Placed high-specificity `#stageFrame` transparency CSS rules at end of stylesheet for native `AVCaptureSession` preview layer, added `.builtInUltraWideCamera` discovery for A16/10th-gen iPads, and eliminated WebKit 1-second delay / Setup Step 4 blanking.
+
+## 2026-11-18 — Desktop 1.1.68 + Android 1.1.80 + iPad 1.1.3: Sony A7 III PTP Hardening & iPad HDMI
+- Locks Sony A7 III (`ILCE-7M3`) to Protocol v3 (`0x12C`), retries transient `BUSY` (`0x2019`) during `0x9201` handshake, releases stuck shutter lines (`0xD2C2`/`0xD2C1`).
+- Writes Single Shooting (`0x5013 = 1`) and Save Destination (`0xD222`) using property scalar width from `0x9209`; adds idle USB keepalive on Mac; grabs iPad HDMI/UVC stills from live video frames instead of `AVCapturePhotoOutput`.
+
+## 2026-11-18 — Desktop 1.1.67 + Android 1.1.79 + iPad 1.1.2: Sony A6400 PTP, `WinUSB` & `libusb`
+- Uses `0x9202(0xC8)` handshake with `0x12C` fallback, enforces `0x5013 = 1` + PC Only, reads `0x1009(0xFFFFC002)` directly, skips 8-byte warm-up replies, verifies JPEG `SOF/EOI`, peeks object format to drain RAW+JPEG, preserves multi-container Android PTP packets, and falls back to `libusb`/`WinUSB` when WPD blocks on Windows.
+
+## 2026-11-18 — iPad 1.1.0 & 1.1.1: Native `AVFoundation`, `AVAssetWriter` & `ImageCaptureCore`
+- Replaced WebKit `getUserMedia` buffering with native `AVCaptureVideoPreviewLayer` + Metal `CIFilter` preview and `AVCapturePhotoOutput` capture (plus iPadOS 17+ UVC HDMI capture cards).
+- Hardware-encoded H.264/AAC `.mp4` Video Guestbook via `AVAssetWriter` with 15 GPU looks; `ImageCaptureCore` rescan + stale PTP clear + Canon `SetRemoteMode` M50 retries; 1st-photo countdown persistence fix in `1.1.1`.
+
+## 2026-11-17 — Desktop 1.1.64 + Android 1.1.76: macOS CUPS Driver Options & Welcome Aesthetics
+- Added macOS CUPS printer driver option inspection alongside 6 designer welcome card aesthetics, 1-click palettes, standalone card mode, and Admin pre-customization.
+
+## 2026-11-15 — Desktop 1.1.54 & 1.1.52: DirectShow vs MediaFoundation & Process Cleanup
+- Windows switched USB webcams from MediaFoundation to DirectShow for Insta360 Ace Pro (`2e1a:0002`) and UVC cameras, closing conflicting processes (`WindowsCamera.exe`, `LogiCapture.exe`, Insta360 Studio / Link Controller).
+
+## 2026-11-11 — Desktop 1.1.23 + Android 1.1.40: `qr.js` & `NetPrintBridge.kt` USB Pacing
+- Inlined QR generator after classic script parsing error in `qr.js`; implemented 256-byte paced USB transfers with 8 ms inter-chunk delay and 1.5 s completion wait in `NetPrintBridge.kt` for MP58C7 / POS-58 printers.
+
+## 2026-11-10 — Desktop 1.1.18 + Android 1.1.35: 58 mm `ESC/POS` Banding
+- Reduced `ESC/POS` image band size from 256 rows (~12 KB) to 32 rows for 58 mm thermal printers with 2–4 KB RAM buffers and switched 58 mm auto-select from 576-dot to 384-dot canvas.
+
+## 2026-11-10 — Desktop 1.1.17 + Android 1.1.34: WebView Compositor & GPU Layers
+- Direct viewfinder capture and WebView direct compositor rendering for budget tablets (`VOVE Pad 9 Ultra`), 1280×720 @ 30 fps stream default, and GPU-composited countdown layers.
+
+## 2026-11-05 — Universal Bluetooth Remote & HTML5 Gamepad API
+- Added wireless selfie remote (`VolumeUp`/`Down`), clicker (`PageDown`/`ArrowRight`), foot pedal, and pocket gamepad support via HTML5 Gamepad API, alongside 3D LUTs, beat-drop speed ramping, and `/wall` sync.
+
+## 2026-11-04 — 360 Booth GPU Encoders (`NVENC`, `VideoToolbox`, `QuickSync`, `AMD AMF`)
+- Scale-first FFmpeg filtergraph probing hardware GPU encoders (`NVIDIA NVENC`, `Apple VideoToolbox`, `Intel QuickSync`, `AMD AMF`), native 60/120 fps slow-motion, `/station`, and `/wall`.
+
+## 2026-11-03 — `IndexedDB`, `Skia`, `WebView` Recovery & Printer Protocols
+- **1.0.76:** Binary `IndexedDB` blob storage and playback loop watchdog for budget tablets.
+- **1.0.75:** Android foreground service local helper on `127.0.0.1:17321` for mobile Chrome silent USB OTG printing.
+- **1.0.72:** Hardware-accelerated `Skia ColorMatrixColorFilter`, downscale-first rasterization with bitmap recycling, Chromium `WebView` renderer crash recovery, and `largeHeap` manifest flag.
+- **1.0.71:** Resolved false camera-disconnect timeouts caused by `WebView` video pause on result screens.
+- **1.0.68:** Real-time `#previewCanvas` lightness/RGB adjustments mapped across `ESC/POS` dithering luminance offset, `ESC/P2`, `ESC/P-R`, and IPP Wi-Fi printers.
+
+## 2026-11-02 — Mac Quit `SIGABRT`, VP9 Alpha & `BoothDummy` Loopback
+- **Desktop 1.0.52:** Fixed `SIGABRT / __assert_rtn` on `CrBrowserMain` at quit by removing privileged `osascript` / `launchctl` Internet Sharing teardown and stopping `powerSaveBlocker`, camera-guard timer, and intervals cleanly.
+- **Desktop 1.0.51:** Switched Screen/Addition overlay blends to planar RGB compositing and decoded VP9 alpha transparency via `libvpx-vp9`.
+- **Desktop 1.0.50:** Created offline `BoothDummy` loopback interface on macOS routing guest traffic over `bridge100` for Internet Sharing without WAN internet.
+- **Desktop 1.0.49 & 1.0.48:** Bundled 40 procedural VP9 WebM / H.264 MP4 overlay loops and FFmpeg compositing.

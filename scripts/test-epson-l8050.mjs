@@ -491,4 +491,22 @@ test('Epson L8050 Wi-Fi Direct LPD Port 515 (/PASSTHRU): discovery, SNMP/Web mod
   assert.equal(wifiSizeMap2['4r'].epsonModel, 'L8050', 'epsonModel upgraded at same IP');
 });
 
+test('Wi-Fi Direct hardcoded connections: Brother 192.168.118.1, Epson/HP 192.168.223.1, Canon manual chip 192.168.0.1, no USB-flag leak on Wi-Fi', () => {
+  const html = assemble().html;
+  const kt = readFileSync(join(ROOT, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'NetPrintBridge.kt'), 'utf8');
+
+  // 1. NetPrintBridge.list() handles Brother 192.168.118.1 and Epson/HP 192.168.223.1 without leaking USB-only canon/selphy flags onto Wi-Fi entries
+  const listBody = kt.slice(kt.indexOf('fun list(): String'), kt.indexOf('usbListInto(arr)'));
+  assert.ok(!listBody.includes('.put("canon"') && !listBody.includes('.put("selphy"'), 'Wi-Fi list() must NOT set USB-only canon/selphy flags');
+  assert.ok(kt.includes('it.ip == "192.168.118.1"') && kt.includes('Brother Wi-Fi Direct (${it.ip})'), 'NetPrintBridge handles Brother Wi-Fi Direct 192.168.118.1');
+  assert.ok(kt.includes('it.ip == "192.168.223.1"') && kt.includes('Epson / HP Wi-Fi Direct (${it.ip})'), 'NetPrintBridge handles Epson/HP Wi-Fi Direct 192.168.223.1');
+  assert.ok(listBody.includes('!isHpKnown && !isBrotherKnown'), 'HP and Brother are never routed into Epson ESC/P-R');
+  assert.ok(!kt.includes('ip.startsWith("192.168.0.")'), '192.168.0.x consumer router LAN is NOT falsely flagged as Wi-Fi Direct');
+
+  // 2. booth.html has one-touch quick connection chips for all 3 major brands (including manual 192.168.0.1 Canon Direct chip)
+  assert.ok(html.includes('data-ip="192.168.223.1"') && html.includes('data-ip="192.168.0.1"') && html.includes('data-ip="192.168.118.1"'), 'booth.html contains Wi-Fi Direct quick connect chips');
+  assert.ok(html.includes('id="wdWfdCanonBtn"') && html.includes('id="wdWfdBrotherBtn"'), 'Diagnostic panel has dedicated Canon and Brother Wi-Fi Direct buttons');
+  assert.ok(html.includes("detectedBrand = 'Brother'") && html.includes("detectedBrand = 'Epson / HP'") && !html.includes("detectedBrand = 'Canon'"), 'refreshWdNet auto-detects Brother & Epson/HP without hijacking 192.168.0.x routers');
+});
+
 console.log(passed + ' passed' + (process.exitCode ? ', some FAILED' : ''));

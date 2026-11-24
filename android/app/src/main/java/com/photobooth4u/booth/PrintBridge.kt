@@ -76,6 +76,12 @@ class PrintBridge(private val activity: Activity) {
                 Math.abs(shortMils - 4000) <= 60 && Math.abs(longMils - 6000) <= 60 -> PrintAttributes.MediaSize.NA_INDEX_4X6
                 Math.abs(shortMils - 8268) <= 80 && Math.abs(longMils - 11693) <= 80 -> PrintAttributes.MediaSize.ISO_A4
                 Math.abs(shortMils - 8500) <= 80 && Math.abs(longMils - 11000) <= 80 -> PrintAttributes.MediaSize.NA_LETTER
+                Math.abs(shortMils - 8000) <= 80 && Math.abs(longMils - 10000) <= 80 -> PrintAttributes.MediaSize.NA_GOVT_LETTER // 8x10 in (8R)
+                Math.abs(shortMils - 3937) <= 60 && Math.abs(longMils - 5827) <= 60 -> PrintAttributes.MediaSize.JPN_HAGAKI   // 100x148 mm (SELPHY postcard)
+                Math.abs(shortMils - 5827) <= 80 && Math.abs(longMils - 8268) <= 80 -> PrintAttributes.MediaSize.ISO_A5
+                Math.abs(shortMils - 4134) <= 60 && Math.abs(longMils - 5827) <= 60 -> PrintAttributes.MediaSize.ISO_A6
+                Math.abs(shortMils - 5000) <= 60 && Math.abs(longMils - 7000) <= 60 -> PrintAttributes.MediaSize("na_5x7_5x7in", "5x7 in (5R)", 5000, 7000)
+                Math.abs(shortMils - 3500) <= 60 && Math.abs(longMils - 5000) <= 60 -> PrintAttributes.MediaSize("oe_photo-l_3.5x5in", "3.5x5 in (3R)", 3500, 5000)
                 else -> PrintAttributes.MediaSize("pb_${wMils}x$hMils", "Booth ${widthMm.toInt()}x${heightMm.toInt()} mm", wMils, hMils)
             }
             val attrs = PrintAttributes.Builder()

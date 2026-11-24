@@ -11,7 +11,8 @@
     "test:startup": "node scripts/test-booth-startup.mjs",
     "test:camera-worker": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/print-helper/test-camera-worker.ps1",
     "test:chroma": "node scripts/test-chroma-key.mjs",
-    "test:instax": "node scripts/test-instax.mjs"
+    "test:instax": "node scripts/test-instax.mjs",
+    "test:updates": "node scripts/test-updates-notes.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "^8.1.0"

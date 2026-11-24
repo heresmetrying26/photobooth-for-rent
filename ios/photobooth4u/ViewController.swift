@@ -287,6 +287,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 });
               } catch (e) {}
             },
+            // The iPad has no Epson ESC/P-R (port 9100 / LPD 515) path. Answer at once with a plain message instead of leaving the job to time out.
+            printEscpr: function(jobId) {
+              try {
+                if (window.__PBNetResult) window.__PBNetResult({
+                  job: String(jobId || ''),
+                  ok: false,
+                  error: 'This Epson only answers on its own direct port (9100 / 515), which the iPad app cannot use. Turn on AirPrint / Wi-Fi on the printer, or use an Android tablet or the laptop app.'
+                });
+              } catch (e) {}
+            },
             printIpp: function(jobId, ip, widthMm, heightMm, copies, pagesJson, optionsJson) {
               try {
                 window.webkit.messageHandlers.pbPrintIpp.postMessage({

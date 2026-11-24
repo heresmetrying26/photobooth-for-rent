@@ -63,7 +63,7 @@ final class BtPrinterBridge: NSObject, CBCentralManagerDelegate, CBPeripheralDel
         "XP", "Xprinter", "TM", "Epson", "POS", "Receipt", "Thermal", "RPP", "Bixolon", "Star", "MP", "BP",
         "PT", "ZJ", "NT", "Netum", "Printer", "MTP", "MPT", "Inner", "Qsprinter", "Goojprt", "Munbyn", "Milestone",
         "HOIN", "Sunmi", "Imin", "Diyep", "RP", "Rongta", "HPRT", "Gprinter", "GP-", "iDPRT", "TSP", "P300",
-        "VOZY", "G80", "P50", "GZ", "GZM", "GZQIANJI"
+        "VOZY", "VOXY", "G80", "V80", "P50", "GZ", "GZM", "GZQIANJI"
     ]
     private let catPrefixes: [String] = ["C19", "LIOTOG", "MX0", "MX1", "GB0", "GT0", "YT0", "PD01"]
 

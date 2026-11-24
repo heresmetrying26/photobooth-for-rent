@@ -14,14 +14,19 @@ object CanonSelphyJob {
 
     const val VENDOR_ID = 0x04a9
 
-    val PRODUCT_IDS = setOf(
-        0x327a, // CP910
-        0x327b, // CP820
-        0x32ae, // CP1000
-        0x32b1, // CP1200
-        0x32db, // CP1300
-        0x3302  // CP1500
+    val MODEL_NAMES: Map<Int, String> = mapOf(
+        0x327a to "CP910",
+        0x327b to "CP820",
+        0x32ae to "CP1000",
+        0x32b1 to "CP1200",
+        0x32db to "CP1300",
+        0x3302 to "CP1500"
     )
+
+    val PRODUCT_IDS: Set<Int> = MODEL_NAMES.keys
+
+    fun modelName(vendorId: Int, productId: Int): String? =
+        if (vendorId == VENDOR_ID) MODEL_NAMES[productId] else null
 
     class PaperSpec(val code: Byte, val cols: Int, val rows: Int, val name: String)
 

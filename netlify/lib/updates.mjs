@@ -298,68 +298,69 @@ export async function liveApp() {
   return APP;
 }
 
-// Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
+// Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
+// Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
   {
-    date: '2026-11-24', title: 'Android 1.2.15 & Website: Epson L8050 Wi-Fi Direct / Wi-Fi Printing over LPD Port 515 + True-Color ESC/P-R Fix', for: ['website', 'app'],
+    date: '2026-11-24', title: 'Android 1.2.15 & Website: Epson L8050 Wi-Fi & Wi-Fi Direct printing + true-color fix', for: ['website', 'android'], android: '1.2.15',
     items: [
-      '📶 **Hardcoded LPD Port 515 (`/PASSTHRU`) printing for Epson L8050 Wi-Fi & Wi-Fi Direct**: Real Epson L8050 units on Wi-Fi Direct (`192.168.223.1`) often ship with Port 631 (IPP) and Port 9100 (RAW) closed and only Port 515 (LPD) + Port 80 open. Android now automatically discovers Port 515 printers, identifies the exact model via SNMP (`hrDeviceDescr.1` + IEEE-1284 Device ID) / Port 80 Web Config / `_printer._tcp.` mDNS, and streams L8050 borderless ESC/P-R jobs (`360 dpi` 1:1 native default + opt-in `720 dpi`) over RFC 1179 LPD (`PASSTHRU` → `LPT1` → `AUTO` → `lp` → `raw`) using a low-RAM spool file in app cache.',
-      '🎨 **Critical ESC/P-R true-color & sharpness fix (USB + Wi-Fi)**: Fixed `setq` color-plane byte to always send `0x00` (`EPS_CP_FULLCOLOR` 24-bit RGB `dsnd`) with standard `seti(0..0)` + `chku(01 01)` borderless handshake (instead of the Windows `bsnd` `0x03` flag), rendered default L8050 `High (360 dpi)` 4×6 canvases at crisp **1:1 native 360 dpi** (`1440×2160`), and added **Premium Glossy (`0x0B`)** alongside **Epson Glossy (`0x34`)**.',
-      '🧪 **Wi-Fi / Wi-Fi Direct Diagnostic Tester LPD presets**: Added 1-tap **LPD :515 · L8050 360 dpi** (`0x34` Glossy & `0x0B` Premium Glossy) and **720 dpi** test presets that auto-select whenever a zero-paper check finds Port 515 open while Ports 631 and 9100 are closed.'
+      '📶 Epson L8050 wireless printing (Android): The tablet app now finds and connects to Epson L8050 printers on Wi-Fi and Wi-Fi Direct automatically — even on printers where standard wireless printing is turned off by default.',
+      '🎨 True-color and sharper Epson L8050 prints: Fixed faded or off-color prints over USB and Wi-Fi, made 4×6 prints sharper by default (with an optional extra-sharp setting), and added a Premium Glossy paper option alongside Epson Glossy.',
+      '🧪 Easier Wi-Fi printer testing: Added one-tap Epson L8050 test presets to the Wi-Fi Printer Test tool that automatically pick the right connection when wireless settings differ.'
     ]
   },
   {
-    date: '2026-11-24', title: 'Android 1.2.14 & Website: Epson L8050 Direct USB, Wi-Fi / Wi-Fi Direct, Borderless & Streaming 720 dpi Fixes', for: ['website', 'app'],
+    date: '2026-11-24', title: 'Android 1.2.14 & Website: Sharper, borderless Epson L8050 printing over USB and Wi-Fi', for: ['website', 'android'], android: '1.2.14',
     items: [
-      '🖨️ **Epson L8050 rainbow-band fix (Android)**: Permanently blocked the incompatible 4-ink L3210 beta raster (`720/1440 dpi`) on 6-ink Epson L8050 / L18050 printers and cleared stale saved settings automatically.',
-      '✨ **Sharper L8050 4×6 prints without tablet crashes**: Added real Windows L8050 borderless headers (`setm`, `seti`, `chku`, `0x34` Epson Glossy) with low-RAM 64-row strip streaming for ESC/P-R (safe `High 360 dpi` default + opt-in **`High 720 dpi (L8050 4×6)`**) plus sharp **600 dpi** 4×6 rendering with dynamic JFIF DPI headers over IPP.',
-      '📐 **Reliable Android Borderless**: Fixed switching from another printer (or dual-printer Bluetooth receipt + photo booth setup) resetting **Borderless** back off, persisted delayed IPP zero-margin capability, and added a 3 mm margin fallback before dropping paper size.',
-      '📶 **Wi-Fi Direct (`192.168.223.1`) & USB replug reliability**: Instant subnet cache refresh when switching between router Wi-Fi and Wi-Fi Direct, wake retry on `Add by IP`, automatic DHCP / Wi-Fi Direct IP relinking by model name, and USB relinking before **Test print**.'
+      '🖨️ Epson L8050 color band fix (Android): Fixed rainbow color bands on 6-ink Epson L8050 and L18050 printers and automatically cleared older problem print settings.',
+      '✨ Sharper 4×6 prints without tablet slowdowns: Improved Epson L8050 borderless print quality on 4×6 photo paper while keeping memory use low so tablets stay fast and stable.',
+      '📐 Borderless setting stays turned on: Switching printers or pairing a receipt printer alongside a photo printer no longer resets your Borderless setting back to off.',
+      '📶 Faster Wi-Fi Direct & USB reconnection: Switching between regular Wi-Fi and printer Wi-Fi Direct updates right away, sleeping printers wake automatically, and unplugged USB printers reconnect before your test print.'
     ]
   },
   {
-    date: '2026-11-24', title: 'Desktop 1.1.104, Android 1.2.13, iPad 1.1.27 & Website: Simpler Photo Spot Editor, Working Frame Search & Filters, No Scroll Jump & Overlay Upload Fix', for: ['website', 'app'],
+    date: '2026-11-24', title: 'Desktop 1.1.104, Android 1.2.13, iPad 1.1.27 & Website: Simpler Photo Spot Editor, Working Frame Search & Overlay Fix', for: ['website', 'app', 'android', 'ipad'], app: '1.1.104', android: '1.2.13', ipad: '1.1.27',
     items: [
-      '✨ **Cleaner, faster Edit photo spots & More frame options**: Added a 1-click **Repeat N per strip / All separate** bar inside **Edit photo spots**, simplified Photo # chips to only active shots + `+ #next`, kept **More frame options** collapsed with a live summary, grouped advanced spot tools into neat cards, and rendered resize/tilt handles only on the selected box.',
-      '🔍 **Working frame search & category tabs**: Fixed the **Your frames** search bar and **All / Selected / Strips / 4R / Full** filter tabs with live counts and a quick **Show all frames** reset.',
-      '📍 **No more scroll-to-top jump**: Selecting an uploaded frame near the bottom of **Your frames** now keeps your exact scroll position instead of jumping back to the top.',
-      '🧩 **Overlays always appear right away**: Fixed a sync race and over-aggressive white-background removal that could leave newly uploaded PNG/Canva overlays invisible after the "Overlay added!" message.'
+      '✨ Cleaner, faster Edit photo spots: Added a one-click bar to repeat photos across strips or keep every spot separate, kept advanced frame options neatly tucked away until needed, and showed resize/tilt handles only on the photo box you tapped.',
+      '🔍 Working frame search & category tabs: Fixed the Your frames search box and All / Selected / Strips / 4R / Full filter tabs with live counts and a quick Show all frames reset.',
+      '📍 No more jumping back to the top: Picking a frame near the bottom of Your frames now keeps your place instead of scrolling back to the top.',
+      '🧩 Uploaded overlays appear right away: Fixed a timing issue and overly strict background removal that could leave newly added PNG or Canva overlays invisible.'
     ]
   },
   {
-    date: '2026-11-24', title: 'Desktop 1.1.103, Android 1.2.12, iPad 1.1.26 & Website: Restored Layout Picker & Uploaded Frames Startup Sync', for: ['website', 'app'],
+    date: '2026-11-24', title: 'Desktop 1.1.103, Android 1.2.12, iPad 1.1.26 & Website: Restored Layout Picker & Startup Sync', for: ['website', 'app', 'android', 'ipad'], app: '1.1.103', android: '1.2.12', ipad: '1.1.26',
     items: [
-      '🛠️ **Hotfix — Layout picker & uploaded frames restored**: Restored `spotsKey()` so accounts with uploaded frames immediately render all uploaded frames and built-in layouts in **Setup → Layout** without crashing.',
-      '🔄 **Hotfix — Startup cloud sync restored**: Guarded Step 7 tab initialization (`refreshD7Tabs`) during early boot so `loadSetup()` and `loadAccountFrames()` always complete syncing on startup across Web, Desktop, Android, and iPad.'
+      '🛠️ Layout picker & uploaded frames restored: Fixed an error that stopped accounts with uploaded frames from displaying their frames and built-in layouts in Setup → Layout.',
+      '🔄 Reliable startup sync: Your saved setup and uploaded frames now finish syncing cleanly every time the booth opens across Web, Laptop, Android, and iPad.'
     ]
   },
   {
-    date: '2026-11-24', title: 'Desktop 1.1.102, Android 1.2.11, iPad 1.1.25 & Website: Account-Wide Uploaded Frames & Seamless Cloud Sync', for: ['website', 'app'],
+    date: '2026-11-24', title: 'Desktop 1.1.102, Android 1.2.11, iPad 1.1.25 & Website: Account-Wide Uploaded Frames & Seamless Cloud Sync', for: ['website', 'app', 'android', 'ipad'], app: '1.1.102', android: '1.2.11', ipad: '1.1.25',
     items: [
-      '🖼️ **Uploaded frames stay in your account**: Moved uploaded frames to a permanent account-wide library (`frames-get` / `frames-save`) with two-way merge and explicit delete tracking, plus automatic rescue of frames previously saved in older event setups and profiles. Switching events, loading a profile, updating the app, or resetting Setup never wipes your frames.',
-      '🔄 **Seamless Android, iPad, Desktop & Web syncing**: Fixed false offline blocks on Android hotspots/venue Wi-Fi, refreshed iPad credentials on every `/api/setup` call, triggered automatic sync on app resume/focus/Wi-Fi reconnect and every 30 s, and added tap-to-sync on the save status label.',
-      '⚡ **Reliable large-frame downloads & bigger setups**: Switched frame image downloads to 1 asset per request (3 concurrent) with a 4.4 MB server batch cap so large PNG frames never fail on Netlify, raised setup size limits (`120 KB` → `350 KB`), and fixed the timestamp clobber bug where an empty tablet could overwrite newer cloud setups.'
+      '🖼️ Uploaded frames stay in your account: Your uploaded frames now live in a permanent account library (with older frames rescued automatically). Switching events, loading a profile, updating the app, or resetting Setup will not erase your frames.',
+      '🔄 Seamless syncing across Laptop, Android, iPad & Web: Fixed false offline warnings on hotspots and venue Wi-Fi, added automatic syncing when waking the app or reconnecting to Wi-Fi, and lets you tap the save status label to sync anytime.',
+      '⚡ Reliable large-frame downloads & bigger setups: Large frame images now download smoothly one by one without timing out, larger event setups are supported, and a blank tablet can no longer overwrite a newer setup saved on another device.'
     ]
   },
   {
-    date: '2026-11-24', title: 'Desktop 1.1.101, Android 1.2.10, iPad 1.1.24 & Website: Simpler Setup, Live Hover Layout Previews & Faster Mobile Preview', for: ['website', 'app'],
+    date: '2026-11-24', title: 'Desktop 1.1.101, Android 1.2.10, iPad 1.1.24 & Website: Simpler Setup, Live Hover Layout Previews & Faster Mobile Preview', for: ['website', 'app', 'android', 'ipad'], app: '1.1.101', android: '1.2.10', ipad: '1.1.24',
     items: [
-      '🖼️ **Live hover layout previews**: Hovering **Chosen layout**, **Solo layout**, **Plain camera**, or Slideshow frame pills now shows a live rendered thumbnail of the actual linked layout alongside a **Linked to: <Layout Name>** badge, and the **Chosen layout** button displays the active layout name.',
-      '🧭 **Clearer Step 7 Session tabs & synced voucher-printer toggle**: Split **Pay & photos** into **Countdown & retakes** and **Payment & vouchers** (auto-hidden when payments are off), renamed **Sound & lighting** and **Result & QR screen**, and added a 2-way synced **Link each option / voucher to its own printer** switch right inside **Payment & vouchers**.',
-      '✨ **Cleaner Design & Printer setup**: Simplified the single-design bar in **Design**, tucked advanced printer/paper/multi-printer options into tidy collapsible drawers while keeping everyday print controls up front, and cleaned up outdated step labels across Setup.',
-      '📱 **Faster mobile/tablet preview & 60-frame scaling**: Improved docked mobile/tablet preview controls (quick frame switcher and minimize toggle), fixed long layout name overflows, and verified duplicate-spot and 60-frame setup scaling.'
+      '🖼️ Live hover layout previews: Hovering over Chosen layout, Solo layout, Plain camera, or Slideshow frame buttons now shows a live thumbnail preview alongside the active layout name.',
+      '🧭 Clearer Session tabs & synced voucher-printer switch: Split Pay & photos into Countdown & retakes and Payment & vouchers (hidden when payments are off), and added a synced Link each option / voucher to its own printer switch.',
+      '✨ Cleaner Design & Printer setup: Simplified the Design bar and tucked advanced printer options into tidy expandable sections while keeping everyday print controls up front.',
+      '📱 Faster phone & tablet preview: Improved docked mobile preview controls with quick frame switching and fixed long layout name wrapping.'
     ]
   },
   {
-    date: '2026-11-23', title: 'Android 1.2.09 & Website: Two-Way ESP32 Bluetooth / USB Serial for Relay Modules & NeoPixels', for: ['website'],
+    date: '2026-11-23', title: 'Android 1.2.09 & Website: Two-way smart lighting & relay control for cash-acceptor booths', for: ['website', 'android'], android: '1.2.09',
     items: [
-      '⚡ Added two-way Bluetooth Serial (BLE Nordic UART + Classic Bluetooth SPP on Android tablets via dedicated native bridge, plus Web Bluetooth & USB Serial on Chrome/Edge) alongside existing coin/bill cash acceptor support.',
-      '💡 Live booth status commands sent automatically to ESP32: `session_idle`, `template_selection`, `price{N}`, `cash_open`, `cash_close`, `payment_success`, `session_start`, `countdown_3`, `countdown_2`, `countdown_1`, `shutter_flash`, `start_print`, `print_done`, `session_end`, and `session_cancel`.',
-      '🎛️ Added **ESP32 Relay Lighting & NeoPixels** controls in **Setup → Light, sound and start** (works even on free events) plus quick test buttons (`Test Light ON`, `Test Flash`, `Test Cash Open`, `Test Idle`) and updated `/cash-acceptor/` firmware supporting 4–8 relay channels directly.'
+      '⚡ Two-way Bluetooth & USB lighting control: Connect a compatible relay or LED light controller box over Bluetooth or USB (alongside coin/bill acceptors) on Android tablets and Chrome/Edge.',
+      '💡 Lights react to every booth step: Booth lighting and relays can now turn on and off automatically for idle waiting, payment open, countdown, shutter flash, printing, and session end.',
+      '🎛️ Built-in lighting controls & quick tests: Added lighting controls in Setup → Light, sound and start (works on free events too) with quick buttons to test lights, flash, and coin slot states, plus updated setup instructions on /cash-acceptor/.'
     ]
   },
   {
-    date: '2026-11-23', title: 'Android 1.2.08, iPad 1.1.23 & Website: Lightness & Colour Correction Restored on Tablets', for: ['website'],
+    date: '2026-11-23', title: 'Android 1.2.08, iPad 1.1.23 & Website: Lightness & Colour Correction Restored on Tablets', for: ['website', 'android', 'ipad'], android: '1.2.08', ipad: '1.1.23',
     items: [
       '🎨 Restored Lightness & Colour Correction (and Colour presets) in Print Settings on Android tablets, Android phones, iPads, and Print Station mode.',
       '📐 Restored Photo size on paper, Borderless, Edges (margins) / Edge test, and Thermal print quality / darkness & smooth-print test strips on Android and iPad.',
@@ -367,7 +368,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-23', title: 'Android 1.2.07 & Website: Multi-Layout Selection on Uploaded Frames', for: ['website'],
+    date: '2026-11-23', title: 'Android 1.2.07 & Website: Multi-Layout Selection on Uploaded Frames', for: ['website', 'android'], android: '1.2.07',
     items: [
       '✅ Fixed uploaded frames ("Your frames") so multiple frames and built-in layouts can be tapped and ticked together in Setup → 3. Layout on Android tablets and phones.',
       '👆 Larger touch-friendly tick targets and clear highlight borders on all ticked cards; tapping a frame card or tick automatically builds up multiple guest choices (and lets you untick the active main layout cleanly).',
@@ -375,31 +376,31 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-23', title: 'Roving DSLR Bridge v1.1.2 (Android): Offline Disk Queue & Automatic Upload on Reconnect', for: ['website'],
+    date: '2026-11-23', title: 'Roving DSLR Bridge v1.1.2 (Android): Save photos when out of Wi-Fi range & send automatically on reconnect', for: ['website', 'android'],
     items: [
-      '📦 Offline disk queue: photos shot while out of Wi-Fi range are saved safely in phone storage (`rove_pending`) instead of failing, and stay queued even if the app closes.',
-      '🔄 Automatic Wi-Fi reconnect upload: automatically detects when the booth Wi-Fi / laptop is reachable again and streams queued photos in FIFO order.',
-      '⏳ Live pending counter & 1-tap Retry Now: see queued shots on the main screen, Pocket Lock, and Session Gallery (with safe gallery clearing that protects unsent photos).'
+      '📦 Offline photo queue: Photos taken while out of Wi-Fi range stay saved safely on the phone even if the app closes, instead of failing.',
+      '🔄 Automatic upload on reconnect: As soon as the booth Wi-Fi or laptop is back in range, queued photos send automatically in the order they were taken.',
+      '⏳ Pending counter & 1-tap Retry Now: See how many photos are waiting on the main screen, Pocket Lock, and Session Gallery (and clearing the gallery protects unsent photos).'
     ]
   },
   {
-    date: '2026-11-23', title: 'Android 1.2.06 & Website: Seamless Offline Wi-Fi / Wi-Fi Direct Printer Tester Copy & Live Refresh', for: ['website'],
+    date: '2026-11-23', title: 'Android 1.2.06 & Website: Easier Wi-Fi Printer Test copy & live status refresh', for: ['website', 'android'],
     items: [
-      '📋 Native Android clipboard copy for Printer Report & Wi-Fi / Wi-Fi Direct Printer Test so Copy test report works reliably offline in Android WebView.',
-      '📶 Live Wi-Fi / Wi-Fi Direct status refresh when opening the tester drawer (or tapping Refresh Wi-Fi), automatically detecting Epson Wi-Fi Direct (192.168.223.1).',
-      '📡 Enabled online /api/printerdiag uploads from the Android offline app so Send report to support works whenever internet is connected (and automatically copies the full report if offline).'
+      '📋 Reliable Copy test report button: Copying the Printer Report or Wi-Fi Printer Test report now works reliably offline in the Android app.',
+      '📶 Live Wi-Fi status refresh: Opening the Wi-Fi Printer Test drawer (or tapping Refresh Wi-Fi) checks your current connection right away and detects Epson Wi-Fi Direct automatically.',
+      '📡 Send report to support: Works directly from the Android app whenever internet is connected, and automatically copies the report if you are offline.'
     ]
   },
   {
-    date: '2026-11-23', title: 'Desktop 1.1.100, Android 1.2.05, iPad 1.1.22 & Website: iPad Camera, USB DSLR & Idle Video Performance Optimizations', for: ['website', 'app'], app: '1.1.100',
+    date: '2026-11-23', title: 'Desktop 1.1.100, Android 1.2.05, iPad 1.1.22 & Website: Cooler, smoother iPad camera, DSLR & Welcome video playback', for: ['website', 'app', 'android', 'ipad'], app: '1.1.100', android: '1.2.05', ipad: '1.1.22',
     items: [
-      '⚡ Cooler, smoother iPad camera & USB DSLR live preview: pauses unseen 30 fps Metal filter shaders while the Idle video or Branded card welcome screen is showing, caches CoreImage filter chains with zero per-frame filter allocations, adds HTTP/1.1 keep-alive + zero-copy writev() to the iPad local camera bridge, and eliminates redundant captureStream(30) / 2D canvas blits on iPad USB DSLRs.',
-      '🎬 Faster, lighter Idle video playback on iPad, Android & Desktop: frees hardware video decoder slots when leaving Setup (static thumbnails instead of persistent background video decoders), clones large videos in 4 MB chunks for low peak RAM on 2 GB tablets, and reuses/revokes blob URLs cleanly across syncs.',
-      '🔋 Lower idle CPU overhead: event-driven gamepad polling (zero wakeups when no controller is connected), debounced window resize & coalesced orientation refits, and cached layout styles.'
+      '⚡ Cooler, smoother iPad camera & USB DSLR live preview: Pauses background camera filters while the Welcome video or branded card is showing, keeping the iPad cooler and eliminating preview stutter.',
+      '🎬 Faster, lighter Welcome videos on iPad, Android & Laptop: Frees video memory when leaving Setup and handles large Welcome videos smoothly even on budget 2 GB tablets.',
+      '🔋 Lower idle battery & CPU use: Stops unnecessary background checks when no remote or controller is connected and keeps screen orientation changes snappy.'
     ]
   },
   {
-    date: '2026-11-23', title: 'Desktop 1.1.99, Android 1.2.04, iPad 1.1.21 & Website: Freeform Multi-Overlays in Layout, Remove-All Overlays, and Click-to-Slice Edit Layout', for: ['website', 'app'], app: '1.1.99',
+    date: '2026-11-23', title: 'Desktop 1.1.99, Android 1.2.04, iPad 1.1.21 & Website: Freeform Multi-Overlays in Layout, Remove-All Overlays, and Click-to-Slice Edit Layout', for: ['website', 'app', 'android', 'ipad'], app: '1.1.99', android: '1.2.04', ipad: '1.1.21',
     items: [
       '🧩 Sticker-style freeform overlays in 2 · Layout (Your frames & Frame collage): uploaded PNG overlays now start small with their natural aspect ratio so you can add multiple overlays, drag to move, resize from corners or slider, rotate from the top handle or slider, Duplicate to copy onto another strip, bring to front, or toggle Fit full frame — plus Canva Free outer-white knockout that keeps white inside outlines.',
       '🧹 Apply & Remove overlays across all frames: alongside Apply to all frames, a Remove overlays from all frames button lets you clear overlays across every uploaded frame in one step.',
@@ -407,104 +408,104 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-23', title: 'Android 1.2.03 & Website: Web Trial Guest Payment Preview, Downloadable ESP32 & Cloudflare PayMongo Files, and Custom-Domain Android Fix', for: ['website', 'app'],
+    date: '2026-11-23', title: 'Android 1.2.03 & Website: Test guest payments in the free trial & easier DIY payment/lighting setup', for: ['website', 'android'], android: '1.2.03',
     items: [
-      '🧪 Free web trial now unlocks the Guest payment section in Setup (Pay & photos) so you can test the ESP32 Cash Acceptor (BLE UART / USB Serial) and your own Cloudflare PayMongo Worker directly in Chrome or Edge before buying.',
-      '📄 Upgraded /cash-acceptor/ guide: direct 1-click downloads and copy buttons (including Facebook/Messenger browser support) for esp32-cash-acceptor.ino, worker.js, and wrangler.toml, a 2-minute Cloudflare Dashboard no-CLI walkthrough, Arduino ESP32 core tips, and pulse calibration notes.',
-      '📱 Android 1.2.03: scoped offline /api/ interception strictly to photobooth4u.netlify.app so custom-domain Cloudflare PayMongo Workers routed under /api/* connect smoothly on Android tablets.'
+      '🧪 Test guest payments in the free web trial: The free web trial now unlocks Guest payments in Setup so you can try coin/bill acceptors and your own QR payment setup in Chrome or Edge before renting.',
+      '📄 Simpler DIY setup guide on /cash-acceptor/: Added 1-click file downloads, copy buttons, and a quick 2-minute dashboard guide with no command-line tools needed.',
+      '📱 Android custom payment server fix: Fixed Android offline apps so your own custom payment server link connects smoothly without being blocked.'
     ]
   },
   {
-    date: '2026-11-23', title: 'Desktop 1.1.98, Android 1.2.02 & iPad 1.1.20: Welcome-Matched QR & Sharing Screen, Idle Video + Sound Toggle, iPad USB Camera Fix, Your Frames PNG Overlays, Offline Trial & ESP32 Cash Acceptor', for: ['website', 'app'], app: '1.1.98',
+    date: '2026-11-23', title: 'Desktop 1.1.98, Android 1.2.02 & iPad 1.1.20: Welcome-Matched QR Screen, Idle Video Sound, Offline Trial & Cash Acceptor', for: ['website', 'app', 'android', 'ipad'], app: '1.1.98', android: '1.2.02', ipad: '1.1.20',
     items: [
-      '✨ Welcome-matched QR & sharing screen + clean unbranded guest flow: redesigned the QR & sharing screen to match your custom Welcome screen background/theme and removed the photobooth4u logo from active session and guest screens.',
-      '🎬 Welcome screen idle video & sound toggle + iPad USB camera fix: smoother idle video playback with an optional sound toggle on the Welcome screen, fixed iPad external USB camera black live preview, and kept the event name editable inside the Share tab across Desktop, Android, and iPad.',
-      '🖼️ Custom "Your frames" PNG overlays & enclosed white-doodle spot punch: add custom PNG overlays directly in Your frames and preserve enclosed white doodles/artwork when punching transparent photo windows.',
-      '🪙 Offline app free trial, ESP32 Coin/Bill Cash Acceptor & self-hosted PayMongo Cloudflare Worker: unlock a device-bound free trial on offline Desktop, Android, and iPad apps with the Admin trial password, connect an ESP32 coin/bill pulse acceptor over BLE HID / Web Bluetooth / USB Serial, or point QR payments to your own Cloudflare PayMongo Worker.'
+      '✨ Welcome-matched QR & sharing screen + clean guest flow: The QR & sharing screen now matches your custom Welcome screen theme, with the photobooth4u logo removed from active session and guest screens.',
+      '🎬 Idle video sound toggle & iPad USB camera fix: Added an optional sound toggle for Welcome videos, fixed a black preview on iPad external USB cameras, and kept the event name editable inside Share.',
+      '🖼️ Custom PNG overlays on Your frames: Add PNG overlays directly onto uploaded frames while keeping white doodles inside artwork intact.',
+      '🪙 Offline app free trial & coin/bill cash acceptor: Try the offline Laptop, Android, and iPad apps with a trial code, connect a Bluetooth or USB coin/bill cash acceptor box, or connect your own PayMongo QR payment setup.'
     ]
   },
   {
-    date: '2026-11-23', title: 'iPad 1.1.19: Silky-Smooth iPad A16 & Center Stage Live Camera (Eliminated Preview Lag & Filter Stutter)', for: ['website'],
+    date: '2026-11-23', title: 'iPad 1.1.19: Silky-smooth live camera & filters on iPad A16 and Center Stage iPads', for: ['ipad'], ipad: '1.1.19',
     items: [
-      '⚡ iPad A16 & Center Stage camera performance overhaul: switches the native AVFoundation pipeline to a hardware-binned 4:3 30 fps native YUV (420f/420v) format with a 24–30 fps floor while preserving full high-resolution still capture (up to 2400 px via fast ImageIO downscaling).',
-      '🔄 Eliminated portrait buffer rotation & 1-second stutter: keeps AVCaptureVideoDataOutput unrotated on iOS 17+ (orienting frames on GPU only when rendered/encoded) and deduplicates layout/rotation/mirroring IPC updates.',
-      '🎨 Off-main-thread Metal live filters & smoother non-fullscreen previews: moves MTKView filter rendering off the UIKit main thread onto a dedicated 1× opaque Metal render queue, keeps hardware AVCaptureVideoPreviewLayer active even when Welcome Screen is off, honours the Setup viewfinder resolution setting, and speeds up /avcam/frame loopback delivery with TCP_NODELAY and direct GPU JPEG encoding.'
+      '⚡ Faster, smoother iPad A16 & Center Stage camera: Live preview runs smoothly at full speed without lag while still capturing sharp high-resolution photos.',
+      '🔄 No more 1-second stutter in portrait mode: Fixed camera rotation hiccups and smoothed out layout updates so movement feels instant.',
+      '🎨 Smoother live filters & non-fullscreen previews: Live filters run smoothly without slowing down the screen, and viewfinder resolution choices in Setup apply cleanly.'
     ]
   },
   {
-    date: '2026-11-23', title: 'Desktop 1.1.97, Print Helper 1.1.20, Android 1.1.101 & iPad 1.1.18: HiTi & Dye-Sub 2×6 Split Auto-Cut, Secondary 2×6 Printer Slot, Print Station Split Routing & Direct USB Canon SELPHY', for: ['website', 'app', 'helper'], app: '1.1.97', helper: '1.1.20',
+    date: '2026-11-23', title: 'Desktop 1.1.97, Print Helper 1.1.20, Android 1.1.101 & iPad 1.1.18: HiTi & Dye-Sub 2×6 Auto-Cut, Secondary Printer & Direct USB Canon SELPHY', for: ['website', 'app', 'android', 'ipad', 'helper'], app: '1.1.97', android: '1.1.101', ipad: '1.1.18', helper: '1.1.20',
     items: [
-      '✂️ New Secondary 2×6 Split Strips Printer card (LumaBooth-style) in Print settings: assign Printer 1 to 4×6 whole (e.g. HiTi 4x6) and a dedicated Secondary Printer to 2×6 split strips (e.g. HiTi 2x6 cut) with its own independent Lightness, Colour Correction, Edges, and Driver Paper slot — plus 1-tap Test 4×6 whole and Test 2×6 strips (cut) buttons right inside Print settings.',
-      '🖨️ Hardcoded HiTi & commercial dye-sub print engine (Windows & Mac): auto-switches single HiTi/DNP/Citizen queues between 6×4 and 6×4 Split / 2-UP paper slots, protects private Windows DEVMODE settings (2-inch cut, matte overcoat, factory colour LUT), renders crisp 300 DPI full-bleed with TileFlipXY edge wrapping (no 1 px white hairlines), and auto-pairs narrow 2×6 paper onto a 4×6 sheet so strips are never stretched or sliced through faces.',
-      '📱 iPad & Android Cloud Print Station (/print-station/) now supports 4×6 + 2×6 split routing: choose separate printers for 4R (4×6) and 4R · 2×6 strips (cut) (or single-queue auto-split) with lossless 300 DPI PNG / high-quality JPEG transfers and dual test buttons, plus an updated step-by-step HiTi setup guide at /how-to-print-hiti/.',
-      '🔌 Direct USB Canon SELPHY printing (CP820–CP1500) on Windows & Mac Laptop App: prints straight over USB when no system print queue is installed, with cleaner 4×6 → Postcard 100×148 mm paper matching.'
+      '✂️ New Secondary 2×6 Split Strips Printer card in Print settings: Assign Printer 1 to full 4×6 prints and a second printer slot to 2×6 cut strips (each with its own Lightness, Colour Correction, Edges, and paper slot) plus 1-tap test buttons.',
+      '🖨️ Smarter HiTi, DNP & Citizen photo printer support (Windows & Mac): Automatically switches between full 4×6 and 2×6 cut paper modes, preserves your printer finish and color settings, prevents thin white edge hairlines, and pairs 2×6 strips neatly onto 4×6 sheets.',
+      '📱 iPad & Android Print Station split routing: Choose separate printers for full 4×6 prints and 2×6 cut strips on /print-station/ with updated step-by-step HiTi setup tips on /how-to-print-hiti/.',
+      '🔌 Direct USB Canon SELPHY printing (Windows & Mac Laptop App): Print straight to a Canon SELPHY (CP820–CP1500) over USB even when no system printer driver is installed.'
     ]
   },
   {
-    date: '2026-11-22', title: 'Desktop 1.1.96, Android 1.1.100 & iPad 1.1.17: In-Place Edit Layout for Multi-Section & 4-in-1 Frames (Move & Rotate Spliced Sections)', for: ['website', 'app'], app: '1.1.96',
+    date: '2026-11-22', title: 'Desktop 1.1.96, Android 1.1.100 & iPad 1.1.17: In-Place Edit Layout for Multi-Section & 4-in-1 Frames', for: ['website', 'app', 'android', 'ipad'], app: '1.1.96', android: '1.1.100', ipad: '1.1.17',
     items: [
-      '📐 New Edit Layout mode for 4-in-1 and multi-section custom frames: tap Edit layout right under your uploaded frame to splice, drag to move, and rotate individual sections (such as Polaroid, Mini Wallet, or Mini Photo Strips) directly inside the single combined 4×6 preview frame without splitting them into separate frames.',
-      '🔒 Exact print size locked (zero stretching): rotating a sideways 3×2 Mini Wallet turns it into a true 2×3 upright Mini Wallet with its photo window and guest photo moving and rotating together, gentle magnetic edge snapping, clean layer ordering, independent Photo-only rotation, 1-tap Reset layout, and full save/load persistence.'
+      '📐 New Edit Layout mode for 4-in-1 and multi-section custom frames: Tap Edit layout right under your uploaded frame to slice, drag, and rotate individual sections (such as Polaroid, Mini Wallet, or Mini Photo Strips) inside one 4×6 sheet.',
+      '🔒 Exact print sizes stay locked with zero stretching: Rotating a sideways section keeps its photo window aligned with gentle edge snapping, clean layering, 1-tap Reset layout, and automatic saving.'
     ]
   },
   {
-    date: '2026-11-22', title: 'Android 1.1.99 & iPad 1.1.16: Epson L8050 Wi-Fi / Wi-Fi Direct printing fixes & built-in Wi-Fi Printer Test', for: ['website'],
+    date: '2026-11-22', title: 'Android 1.1.99 & iPad 1.1.16: Epson L8050 Wi-Fi / Wi-Fi Direct printing fixes & built-in Wi-Fi Printer Test', for: ['website', 'android', 'ipad'], android: '1.1.99', ipad: '1.1.16',
     items: [
-      '🖨️ Fixed Epson L8050 (and other AirPrint / IPP Wi-Fi printers) refusing to print over Wi-Fi or Wi-Fi Direct after the 1.1.97 high-quality glossy update: paper type is now sent cleanly inside media-col (RFC standard), scaling falls back smoothly without dropping glossy/best-quality settings, sleeping printers wake and retry automatically, and Wi-Fi Direct gateways (192.168.223.1) are discovered first with direct interface routing.',
-      '🔎 New built-in offline Wi-Fi / Wi-Fi Direct Printer Test (Setup → Printer → Wi-Fi / Wi-Fi Direct Printer Test, and online at /printer-test/): runs a zero-paper printer capability & Validate-Job check, prints a 1-sheet sharpness + 0–6 mm borderless ruler test on IPP or Epson ESC/P-R (port 9100), tracks post-print job status warnings, and saves/copies a full report even with no internet on Wi-Fi Direct.'
+      '🖨️ Fixed Epson L8050 and other Wi-Fi photo printers refusing to print after the glossy update: Printers now receive paper type and quality settings cleanly, sleeping printers wake and retry automatically, and Wi-Fi Direct connections are found first.',
+      '🔎 New built-in offline Wi-Fi / Wi-Fi Direct Printer Test (Setup → Printer → Wi-Fi / Wi-Fi Direct Printer Test, and /printer-test/): Checks printer compatibility without wasting paper, prints a 1-sheet sharpness and edge ruler test, warns if a job stalls, and lets you copy a full support report offline.'
     ]
   },
   {
-    date: '2026-11-22', title: 'Desktop 1.1.95, Print Helper 1.1.19, Android 1.1.98 & iPad 1.1.15: Canon EOS 1500D SD Card + Rear LCD Live View, 2-Step B&W vs Coloured Picker & Spot Rotation', for: ['website', 'app', 'helper'], app: '1.1.95', helper: '1.1.19',
+    date: '2026-11-22', title: 'Desktop 1.1.95, Print Helper 1.1.19, Android 1.1.98 & iPad 1.1.15: Canon EOS 1500D SD Card + Rear Screen Live View & 2-Step Picker', for: ['website', 'app', 'android', 'ipad', 'helper'], app: '1.1.95', android: '1.1.98', ipad: '1.1.15', helper: '1.1.19',
     items: [
-      '📷 Canon EOS 1500D (2000D / Rebel T7 / Kiss X90): preserves SD card backup (SaveTo=Card, automatically restoring from Host if left stuck) alongside laptop download, and keeps Live View active on both the camera’s rear LCD and the laptop screen (0xD1B0=3 TFT+PC) without dropping Live View before shots — while Canon 60D, 6D, 1300D, R50, and other EOS bodies keep fast host transfer and mechanical flash X-sync.',
-      '🎨 2-Step B&W vs Coloured Layout Picker: when Separate B&W and colour prints is enabled and both B&W and coloured options exist, guests first pick B&W designs or Coloured designs and then choose their layout (with a Back button), mirrored across external guest monitors and tablet guest screens.',
-      '🔄 90° / 180° / 270° Per-Spot Rotation, 4-in-1 Auto-Sectioning & Landscape Collage: rotate individual photo slots inside custom layouts and templates, auto-section 4-in-1 layouts, and build landscape collages.',
-      '📱 Interactive 360 Booth Walkthroughs & iOS Arm Companion Downloads: added interactive DSLR 360 (/how-to-360/dslr/) and iPhone 360 Arm Camera (/how-to-360/iphone/) guides plus the iPhone/iPad 360 Arm Camera Companion (.ipa) section on /downloads/.'
+      '📷 Canon EOS 1500D / 2000D / Rebel T7 support: Keeps saving backups onto the camera SD card while sending photos to the laptop, and keeps the live preview visible on both the camera screen and the booth screen.',
+      '🎨 2-Step Black & White vs Coloured Layout Picker: When Separate B&W and colour prints is on, guests pick B&W designs or Coloured designs first and then pick their layout — synced across external guest screens too.',
+      '🔄 Rotate individual photo spots (90° / 180° / 270°), auto-section 4-in-1 layouts, and build landscape collages.',
+      '📱 New interactive 360 Booth guides (/how-to-360/dslr/ and /how-to-360/iphone/) plus iPhone/iPad 360 Arm Camera downloads on /downloads/.'
     ]
   },
   {
-    date: '2026-11-22', title: 'Desktop 1.1.94 + Print Helper 1.1.18: 360 Booth for DSLR / Mirrorless, HDMI Capture Card & GoPro with Windows Tablet Motion Trigger', for: ['website', 'app', 'helper'], app: '1.1.94', helper: '1.1.18',
+    date: '2026-11-22', title: 'Desktop 1.1.94 + Print Helper 1.1.18: 360 Booth for DSLR / Mirrorless, Capture Card & GoPro with Tablet Motion Trigger', for: ['website', 'app', 'helper'], app: '1.1.94', helper: '1.1.18',
     items: [
-      '🌀 New Record 360 tab in the 360 Desk: mount a Canon EOS, Nikon DSLR/Z, GoPro, or HDMI capture card (e.g. Cam Link) on your rotating 360 arm alongside a Windows tablet or laptop and capture straight into your 360 Inbox with automatic speed, Reverse / Boomerang, music, overlays, Live Wall cues, and QR sharing.',
-      '⚙️ In-app DSLR Video Exposure Settings: read and set Shutter Speed (with 1/125 60fps & 1/250 120fps presets), Aperture, ISO, White Balance, and Autofocus on Canon EOS and Nikon bodies via USB, with on-screen Movie Manual Exposure & Exposure Simulation reminders.',
-      '📐 Windows Tablet Gyroscope Trigger & Calibration: Surface Pro and Windows 2-in-1 tablets on the rotating arm can auto-start recording as the arm begins rotating sideways, stop automatically on Fixed duration or Follow arm stop, and run a 2-step Configure sensitivity wizard — plus Wireless iPhone/iPad Arm Sensor and F9 / remote clicker triggers.',
-      '📦 Large 60/120fps USB video downloads (.MOV / .MP4) stream directly to the 360 Inbox with a live download progress bar so high-frame-rate recordings transfer smoothly without running out of memory.'
+      '🌀 New Record 360 tab in the 360 Desk: Connect a Canon, Nikon, GoPro, or capture card on your 360 arm alongside a Windows tablet or laptop and save clips straight into your 360 Inbox with automatic speed effects, music, overlays, Live Wall cues, and QR sharing.',
+      '⚙️ In-app camera video exposure controls: Adjust Shutter Speed (with 1/125 and 1/250 action presets), Aperture, ISO, White Balance, and Autofocus right inside the booth on Canon and Nikon cameras.',
+      '📐 Automatic spin motion trigger: Surface Pro and Windows 2-in-1 tablets on the arm can start recording automatically when the arm spins and stop after a set time or when the arm stops, alongside iPhone/iPad Arm Sensor and remote clicker triggers.',
+      '📦 Smooth large video transfers: High-frame-rate 360 clips transfer smoothly with a live progress bar so large recordings never freeze the app.'
     ]
   },
   {
-    date: '2026-11-22', title: 'Desktop 1.1.93, Android 1.1.97 & iPad 1.1.14: in-app All Photos Reprint Pop-up, glossy / best-quality defaults, and steady 2:3 Setup preview', for: ['website', 'app'], app: '1.1.93',
+    date: '2026-11-22', title: 'Desktop 1.1.93, Android 1.1.97 & iPad 1.1.14: in-app All Photos Reprint Pop-up, glossy defaults & steady preview', for: ['website', 'app', 'android', 'ipad'], app: '1.1.93', android: '1.1.97', ipad: '1.1.14',
     items: [
-      '🖨️ New in-app Browse & Reprint gallery and pre-filled Reprint Pop-up: tap All photos → Browse & Reprint to reprint earlier photos right inside the app without opening any system print dialog. Pre-fills from your current setup (works right alongside Auto-print without changing it) and lets you switch between any thermal, coloured, Bluetooth, Wi-Fi/USB, Instax, or Print Station printer, paper size, and copies.',
-      '🛠️ Fixed gallery reprinting on Android WebView, iPad local gallery, private online galleries, and web browsers without Print Helper.',
-      '✨ Glossy photo paper & Best quality by default: the laptop app and direct Wi-Fi/USB printers now default to glossy photo paper and best quality on any printer that supports borderless photo printing (any setting you pick manually still wins).',
-      '📐 Steady Setup preview: the preview space is now a fixed 2:3 frame across Desktop, tablet and phone for all 22 built-in layouts (strips, grids, landscape, receipts) so switching paper sizes keeps the sheet centred at its true shape without jumping or shifting buttons.'
+      '🖨️ New in-app Browse & Reprint gallery and pop-up: Tap All photos → Browse & Reprint to reprint earlier photos right inside the app without a system print pop-up. Switch printer, paper size, and copies on the spot.',
+      '🛠️ Fixed gallery reprinting inside the Android app, iPad local gallery, private online galleries, and web browsers without Print Helper.',
+      '✨ Glossy photo paper & Best quality by default: The laptop app and direct Wi-Fi/USB printers now start on glossy photo paper and best quality for borderless photo printers (any setting you pick manually still wins).',
+      '📐 Steady Setup preview: Switching paper sizes across all 22 built-in layouts keeps the sheet centered at its true shape without jumping or shifting buttons.'
     ]
   },
   {
-    date: '2026-11-21', title: 'Desktop 1.1.92: fix broken booth screen on startup in 1.1.91, plus 3-mode Final Shots Slideshow GIF', for: ['website', 'app'], app: '1.1.92',
+    date: '2026-11-21', title: 'Desktop 1.1.92: fix blank booth screen on startup in 1.1.91, plus 3-mode Final Shots Slideshow GIF', for: ['website', 'app'], app: '1.1.92',
     items: [
-      '🛠️ Fixed Desktop 1.1.91 failing to render the booth screen on startup (a truncated closing tag in the 1.1.91 build caused the licence watcher script to be injected inside GUEST_HTML). Added a build-time integrity check so truncated booth HTML can never be packaged.',
-      '🖼️ Final Shots Slideshow GIF now offers 3 slide frames: Polaroid card (shaped like the photos), Event design / my template (each photo framed in your 1-photo template or Solo design), and Event layout, still photos (photos drop into your strip/grid/template one by one).'
+      '🛠️ Fixed Desktop 1.1.91 failing to show the booth screen on startup and added an automatic build check so incomplete app builds cannot be released.',
+      '🖼️ Final Shots Slideshow GIF now offers 3 slide frames: Polaroid card, Event design / my template (each photo framed in your 1-photo design), and Event layout, still photos (photos drop into your strip or grid one by one).'
     ]
   },
   {
-    date: '2026-11-21', title: 'Desktop 1.1.91, Print Helper 1.1.17, Android 1.1.96 & iPad 1.1.13: fix Canon 1300D zoom-in after shot, Final Shots Slideshow GIF, and consistent print brightness', for: ['website', 'app', 'helper'], app: '1.1.91', helper: '1.1.17',
+    date: '2026-11-21', title: 'Desktop 1.1.91, Print Helper 1.1.17, Android 1.1.96 & iPad 1.1.13: fix Canon 1300D zoom-in, Slideshow GIF & consistent print brightness', for: ['website', 'app', 'android', 'ipad', 'helper'], app: '1.1.91', android: '1.1.96', ipad: '1.1.13', helper: '1.1.17',
     items: [
-      '📷 Fixed Canon EOS 1300D (and other Canon EOS bodies) zooming in after each shot: the booth now switches Canon’s Aspect ratio (0xD194) to full 3:2 on connect (and restores your setting on disconnect) across Windows, Mac, Print Helper, Android and iPad so live view matches the saved photo 1-to-1. If a camera blocks the change, live view auto-crops to match the real photo and shows a quick reminder to set Aspect ratio to 3:2.',
-      '🖼️ Final Shots Slideshow GIF mode: turn your guests’ final photos into a clean cross-fading slideshow on Polaroid-style cards (white, cream, black, or borderless over 7 backgrounds) or inside your event’s own design/template — no motion timelapse needed.',
-      '📐 Tighter custom-frame framing & accurate review previews: reduced hidden bleed behind custom PNG cutouts from ~8% to ~1.6% so heads and edges aren’t cropped unexpectedly, and each shot review now uses its own box shape instead of Box 1.',
-      '🖨️ Fixed occasional dark prints / dropped print settings: printer lightness and colour adjustments are no longer wiped if a printer name briefly reads empty during a refresh, and Windows PrintTicket quality/paper settings now retry automatically with diagnostics if the print spooler is briefly busy.',
-      '⚡ Extra DSLR mirror-settle margin for standalone shots on entry-level Canon mirrors (1200D/1300D/1500D) and updated Canon flash guide tips (3–4 s recycle interval).'
+      '📷 Fixed Canon EOS 1300D (and other Canon cameras) zooming in after each shot: The booth automatically keeps the camera on full 3:2 framing while connected (and restores your camera setting afterwards) so the live preview matches the saved photo.',
+      '🖼️ Final Shots Slideshow GIF mode: Turn guests’ final photos into a cross-fading slideshow on Polaroid-style cards or inside your event’s own design.',
+      '📐 Tighter custom-frame framing & accurate review previews: Reduced hidden edge crop inside custom frames from ~8% to ~1.6% so heads and edges are not unexpectedly clipped.',
+      '🖨️ Fixed occasional dark prints or lost print settings: Lightness and colour tweaks no longer reset when refreshing printers, and Windows printing retries automatically if the printer queue is briefly busy.',
+      '⚡ Better timing for entry-level Canon cameras (1200D/1300D/1500D) and updated Canon flash guide tips.'
     ]
   },
   {
-    date: '2026-11-21', title: 'Desktop 1.1.90 + Print Helper 1.1.16: Canon EOS 60D / 6D capture fix, external flash / strobe sync, and faster sessions', for: ['website', 'app', 'helper'], app: '1.1.90', helper: '1.1.16',
+    date: '2026-11-21', title: 'Desktop 1.1.90 + Print Helper 1.1.16: Canon EOS 60D / 6D capture fix, external flash sync & faster sessions', for: ['website', 'app', 'helper'], app: '1.1.90', helper: '1.1.16',
     items: [
-      '📸 Fixed Canon EOS 60D / 6D failing to take photos in host-transfer mode: the camera worker now sends Canon’s required host capacity handshake (PCHDDCapacity 0x911A) after switching SaveTo to the laptop, uses the proper DSLR two-stage shutter sequence (half-press then full-press) instead of the mirrorless-only command, and streams RAM photos directly in 1 MB chunks (with RAW+JPEG cleanup).',
-      '⚡ External flash & studio strobe sync on Canon DSLRs: the booth now drops Live View during the 0.6 s "Pose" pause so the mirror settles before the shutter fires — giving reliable mechanical X-sync with hot-shoe flashes, strobes and triggers with zero extra delay at the shutter moment.',
-      '🚀 Faster between shots and after the last shot: between-shot status uses a lightweight /camera/info check instead of re-scanning Windows USB devices, Canon DSLRs skip unnecessary countdown Live View contrast-AF freezes, and the final photo skips bouncing Live View back on so the booth moves straight to Review / Result.',
-      '🔌 Swapping Canon cameras (e.g. 60D to 6D) now resets all per-camera Canon state cleanly, and Windows unplug errors (0x802A0002 / 0x802A0003) are handled cleanly as disconnects.'
+      '📸 Fixed Canon EOS 60D and 6D cameras failing to take photos when connected to a laptop, and improved handling for RAW+JPEG so photos download reliably.',
+      '⚡ Reliable external flash & studio strobe sync on Canon DSLRs: The camera pauses live view briefly during the "Pose" moment so hot-shoe flashes and studio strobes fire cleanly in sync with the shutter.',
+      '🚀 Faster between shots and after the last shot: Reduced wait checks between photos so the booth moves straight to the Review and Result screen faster.',
+      '🔌 Swapping between different Canon camera bodies resets camera settings cleanly, and unplugged cables are detected immediately.'
     ]
   },
   {
@@ -518,39 +519,39 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-21', title: 'Desktop 1.1.88 + iPad 1.1.12: 360 Motion Trigger — the 360 starts recording by itself when the arm spins (free iPhone/iPad 360 Arm Camera)', for: ['website', 'app'], app: '1.1.88',
+    date: '2026-11-21', title: 'Desktop 1.1.88 + iPad 1.1.12: 360 Motion Trigger — starts recording by itself when the arm spins', for: ['website', 'app', 'ipad'], app: '1.1.88', ipad: '1.1.12',
     items: [
-      '🌀 360 Motion Trigger (like dslrBooth / LumaBooth): mount an iPhone or iPad on the spinning arm. It reads its own gyro (CoreMotion) and starts recording the moment the arm spins, then stops when the arm stops (Follow the arm + tail) or after a Fixed duration (3–60 s). It never connects to the 360 motor.',
-      '🎯 Configure Sensitivity: a guided Hold Still → Spin Arm step works out the start and stop speed (°/s) for your spinner, plus a manual sensitivity slider, cooldown and 30/60/120 fps. Detection pauses while Settings is open.',
-      '🆓 Free companion mode: on the iPad app\'s activation screen tap "360 Arm Camera (Free Companion)" and scan the QR in the laptop\'s 360 Desk. It uses no extra device slot. It can also be opened from inside an activated iPad booth (Tools dock / Setup → Camera).',
-      '💻 360 Desk (laptop app): shows the Arm Phone live (state, gyro °/s, battery) with Start / Stop / Calibrate buttons and the Arm settings; the guest wall shows "360 SPINNING" while the arm records. Clips upload over booth Wi-Fi with retry and stay queued on the phone if the laptop is unreachable.',
-      '🛠 iPad 1.1.12 also adds NSMotionUsageDescription and the new native 360 Arm Camera screen (1080p 60/120 fps, 0.5× / 1× / front lens, tap-to-focus, AE/AF lock, screen-lock shield).'
+      '🌀 360 Motion Trigger: Mount an iPhone or iPad on the spinning arm and it automatically starts recording the moment the arm spins, then stops when the arm stops or after your chosen duration (3–60 seconds). No connection to the 360 motor needed.',
+      '🎯 Guided sensitivity setup: A quick "Hold Still → Spin Arm" step calibrates start and stop speeds for your spinner, alongside a manual slider, cooldown, and 30/60/120 fps options.',
+      '🆓 Free companion mode: On the iPad app’s activation screen, tap "360 Arm Camera (Free Companion)" and scan the QR in the laptop’s 360 Desk — uses no extra device slot.',
+      '💻 Live status in 360 Desk: See the Arm Phone’s live spin state and battery with Start, Stop, and Calibrate controls while the guest TV shows "360 SPINNING". Clips transfer over booth Wi-Fi and wait safely if the laptop disconnects.',
+      '📱 iPad 1.1.12 adds the new 360 Arm Camera screen with wide/standard/front lens switching, tap-to-focus, exposure/focus lock, and an accidental-tap screen lock.'
     ]
   },
   {
-    date: '2026-11-21', title: 'iPad 1.1.11: fix portrait split/shifted camera preview and countdown frame lag', for: ['website'],
+    date: '2026-11-21', title: 'iPad 1.1.11: fix portrait split/shifted camera preview and countdown frame lag', for: ['ipad'], ipad: '1.1.11',
     items: [
-      '📸 iPad app (portrait mode): fixes the camera preview splitting into two stacked slices with a black bottom half during countdowns — `AVCaptureVideoPreviewLayer` now runs as a dedicated child sublayer inside `PreviewHostView` so its origin stays aligned with `#stageFrame`.',
-      '⚡ Smoother countdown & live filters: live Metal filter frames now drop when a render is already in flight instead of piling up on the main thread, and background GIF/boomerang frame polling matches the capture rate instead of polling at 30 FPS.',
-      '🪟 Clean between-shot review & scroll guard: hides the native preview layer cleanly while reviewing each shot (`showShotReview` / `hideShotReview`), resets any leftover vertical scroll before measuring `#stageFrame`, and observes `#stageFrame` resizes directly.'
+      '📸 Fixed iPad portrait camera preview bug: Fixed the issue where the camera preview could split or shift off-center with a black gap during countdowns.',
+      '⚡ Smoother countdown & live filters: Live filters no longer pile up or lag during the countdown, and GIF/boomerang frame capture runs smoothly.',
+      '🪟 Cleaner between-shot photo review: The live camera hides cleanly while reviewing each taken shot and stays aligned if the iPad rotates or resizes.'
     ]
   },
   {
-    date: '2026-11-21', title: 'Desktop 1.1.87 + Android 1.1.95 + iPad 1.1.10 + Helper 1.1.15: Photoman Studio Workspace, Template Maker, Pop-out Window/Tab & Canon MF/Strobe Live-View Fixes', for: ['website', 'app', 'helper'], app: '1.1.87', helper: '1.1.15',
+    date: '2026-11-21', title: 'Desktop 1.1.87 + Android 1.1.95 + iPad 1.1.10 + Helper 1.1.15: Photoman Studio Workspace, Template Maker & Canon Fixes', for: ['website', 'app', 'android', 'ipad', 'helper'], app: '1.1.87', android: '1.1.95', ipad: '1.1.10', helper: '1.1.15',
     items: [
-      '🎨 Photoman Template Maker: build independent Photoman templates (4R Portrait/Landscape, 5R, 2×6 2-up Strip, Square 1:1) with starter presets, draggable/resizable photo spots with aspect locks, tilt, rounded corners and borders, multi-line text layers, custom studio logos, Booth Colour Filter opt-out, and PNG frame auto-spot detection with Canva white-box knockout — without changing the main booth’s own design.',
-      '🪟 Dedicated Photoman Studio & Pop-Out Window / Tab: full-screen Photographer Studio workspace with live button-driven previews (hover/tap switching between Framed + QR and Print Original), inline Guest QR & Wi-Fi QR result card, (?) tooltip guides, and real-time BroadcastChannel + IndexedDB sync when popped out into its own window or browser tab (/?desk=photoman).',
-      '📸 Canon USB MF & Strobe Live-View Improvements (Desktop 1.1.87 + Print Helper 1.1.15): skips autofocus pauses when the lens switch is on MF, warns cleanly on older Canon bodies or external flash/strobe settings (Silent LV shoot + Exposure simulation), and updates Canon live-view flash tips.'
+      '🎨 Photoman Template Maker: Build separate Photographer Desk templates (4R, 5R, 2×6 Strip, Square) with presets, draggable/tiltable photo spots, text layers, studio logos, and frame punch-out without changing your main booth design.',
+      '🪟 Dedicated Photoman Studio & Pop-Out Window: Full-screen Photographer Studio workspace with instant previews (Framed + QR vs Print Original), guest QR card, helpful (?) tips, and live sync when popped out into its own window or tab.',
+      '📸 Better Canon manual-focus & flash support (Desktop 1.1.87 + Print Helper 1.1.15): Skips autofocus pauses when the lens switch is set to MF and shows clear reminders for external flash and studio strobe camera settings.'
     ]
   },
   {
-    date: '2026-11-21', title: 'Desktop 1.1.86 + Android 1.1.94 + iPad 1.1.9 + Helper 1.1.14: Photographer desk templates, Auto-frame & phone control, B&W / colour print split, Camera check & direct USB/Wi-Fi printing', for: ['website', 'app', 'helper'], app: '1.1.86', helper: '1.1.14',
+    date: '2026-11-21', title: 'Desktop 1.1.86 + Android 1.1.94 + iPad 1.1.9 + Helper 1.1.14: Photographer desk templates, B&W / colour split, Camera check & direct printing', for: ['website', 'app', 'android', 'ipad', 'helper'], app: '1.1.86', android: '1.1.94', ipad: '1.1.9', helper: '1.1.14',
     items: [
       '📷 Photographer desk (Photoman): choose a template (the booth’s layout, Solo or any built-in layout, or an uploaded frame) without changing the booth’s own layout or paper, pick how photo spots fill (a photo per spot or one photo fills every spot), and enable Auto-frame to frame new arrivals automatically.',
       '📱 Phone control (laptop app): the Photoman desk’s phone page now syncs live state and lets you pick photos, change template, Make print + QR, Print copy, and move to the Next guest right from your phone.',
       '🧾 B&W / colour print split (opt-in, Setup → Layout): optional switch to tag B&W (thermal) vs Colour layouts and frames, and route each kind to its own printer in Setup → Printer. Off by default.',
       '🎛️ Cleaner Setup tabs & Camera check: Camera and Printer are now separate steps, Text sits inside Design, and Camera check reads your exposure settings and lets you apply suggested shutter, aperture and ISO to a Nikon over USB (Desktop, Android, Print Helper 1.1.14).',
-      '🖨️ Driverless PWG Raster & IPP-over-USB printing (Desktop), plus automatic Bonjour name re-discovery and print-job problem alerts for Wi-Fi IPP printers on iPad.'
+      '🖨️ Built-in driverless USB and Wi-Fi printing on Laptop (no extra printer setup needed for many models), plus automatic printer re-discovery and print-problem alerts on iPad.'
     ]
   },
   {
@@ -581,7 +582,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-20', title: 'Desktop 1.1.82 (Win/Mac) + Android 1.1.93: the tablet guest screen mirrors like the booth, and speaks, beeps and clicks by itself', for: ['website', 'app'], app: '1.1.82',
+    date: '2026-11-20', title: 'Desktop 1.1.82 (Win/Mac) + Android 1.1.93: the tablet guest screen mirrors like the booth, and speaks, beeps and clicks by itself', for: ['website', 'app', 'android'], app: '1.1.82', android: '1.1.93',
     items: [
       '🗣️ With a tablet guest screen connected, the voice countdown (“Get ready… Three, Two, One… Smile!”) is now said by the tablet, not the laptop. Setup → Session → Voice lists the tablet’s own voices while it is connected (Tagalog only if the tablet has a Filipino voice). With no tablet, or a tablet with no voice, the laptop speaks as before.',
       '🔊 The countdown beeps, the “Pose” chime, the start chime and the shutter click now come out of the tablet too, and the laptop stays quiet. Your own uploaded shutter and beep files are sent to the tablet as well. If the tablet’s sound is not ready yet (a browser that wants one tap first), the laptop plays them as before.',
@@ -592,7 +593,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-20', title: 'Desktop 1.1.81 (Win/Mac) + Android 1.1.92: Epson L8050 prints 4×6 borderless edge to edge', for: ['website', 'app'], app: '1.1.81',
+    date: '2026-11-20', title: 'Desktop 1.1.81 (Win/Mac) + Android 1.1.92: Epson L8050 prints 4×6 borderless edge to edge', for: ['website', 'app', 'android'], app: '1.1.81', android: '1.1.92',
     items: [
       '🖨️ Windows laptop app, Epson L8050, 4×6 in with Borderless on: the printer’s Windows driver enlarges the page about 5% past the paper, so the edges of the picture were cut off (about 2.5 mm on the left and right, 3 mm at the top and 4.5 mm at the bottom). The app now draws the picture smaller and a little higher so it lands on the sheet edge to edge, with about 0.5 mm to spare. Other paper sizes are not changed.',
       '🖨️ Android app, Epson L8050, 4×6 in with Borderless on (USB or Wi-Fi): the printer started the picture about 2.7 mm to the left of the sheet, which left a white strip along one side and cut off the other side. The picture is now sent on a page the size of the printer’s own print area, so it lands on the sheet. If you moved Print settings → Edges by hand to fix this, set them back to 0.',
@@ -609,16 +610,16 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-20', title: 'iPad 1.1.8: print straight to a Wi-Fi photo printer that is not AirPrint (Epson L8050)', for: ['website'],
+    date: '2026-11-20', title: 'iPad 1.1.8: print straight to a Wi-Fi photo printer that is not AirPrint (Epson L8050)', for: ['ipad'], ipad: '1.1.8',
     items: [
-      '🖨️ iPad app: a Wi-Fi photo printer that is not AirPrint (for example an Epson L8050 that only works with Epson Smart Panel) can now be used. In Setup → Printers, type the printer’s IP address and tap Add. The iPad asks the printer what it is; within a few seconds it shows as Photo with its own name. Tap it to select it, then Test print. The iPad and the printer must be on the same Wi-Fi, and when the iPad asks to allow Local Network access, tap Allow.',
-      '🎚️ For an Epson L8050 the Quality and Paper menus are there (High / Normal / Draft, and Glossy / Semi-gloss / Matte / Plain paper), and it prints on High quality, glossy photo paper unless you choose otherwise. Load glossy photo paper, or pick Plain paper.',
-      '⚠️ We could not try this on a real iPad and L8050 yet: please print a test and tell us how it looks. A printer that does not answer on the network (IPP, port 631) cannot be used this way.',
-      '🔢 The iPad app now reports its real version number (it reported 1.1.5 before), so Check for updates compares against the right one.'
+      '🖨️ iPad app: A Wi-Fi photo printer that is not AirPrint (for example an Epson L8050 that only works with Epson Smart Panel) can now be used. In Setup → Printers, type the printer’s IP address and tap Add. The iPad checks the printer and shows it as Photo with its own name within a few seconds. Tap it to select it, then Test print. The iPad and printer must be on the same Wi-Fi, and tap Allow if the iPad asks for Local Network access.',
+      '🎚️ For an Epson L8050 the Quality and Paper menus are available (High / Normal / Draft, and Glossy / Semi-gloss / Matte / Plain paper), and it prints on High quality, glossy photo paper unless you choose otherwise.',
+      '⚠️ Please run a test print first; printers that do not support standard network photo printing cannot be added this way.',
+      '🔢 Fixed the iPad app reporting its version number accurately when checking for updates.'
     ]
   },
   {
-    date: '2026-11-19', title: 'Desktop 1.1.79 (Win/Mac) + Android 1.1.91: the tablet guest screen now matches the booth screen, and Epson L8050 over USB prints High quality on glossy photo paper', for: ['website', 'app'], app: '1.1.79',
+    date: '2026-11-19', title: 'Desktop 1.1.79 (Win/Mac) + Android 1.1.91: the tablet guest screen now matches the booth screen, and Epson L8050 over USB prints High quality on glossy photo paper', for: ['website', 'app', 'android'], app: '1.1.79', android: '1.1.91',
     items: [
       '🖨️ Android app, Epson L8050 over USB: the printer does not list its print qualities or paper types over USB, so the app sent none of them and every job came out on the printer’s own default (plain paper, standard quality), and the Quality and Paper menus never appeared. The app now asks for the quality and paper you pick anyway, the menus are there (High / Normal / Draft, and Glossy / Semi-gloss / Matte / Plain paper), and the L8050 prints on High quality, glossy photo paper unless you choose otherwise. The app also recognises the L8050 by its name. We could not try this on a real L8050 yet: please print a test and tell us how it looks.',
       '📸 Tablet as the guest screen (Laptop Guest + Camera Bridge): the photo the booth shows after each shot (Setup: show each photo after it is taken) now shows on the tablet too, with Retake and Next photo.',
@@ -629,12 +630,12 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-19', title: 'Desktop 1.1.78 (Win/Mac) + Android 1.1.90 + iPad 1.1.7: offline-first cloud sync for Saved Profiles, My Themes, event setups and uploaded frames across all devices, plus smoother thermal receipt prints', for: ['website', 'app'], app: '1.1.78',
+    date: '2026-11-19', title: 'Desktop 1.1.78 (Win/Mac) + Android 1.1.90 + iPad 1.1.7: offline-first cloud sync for Saved Profiles, My Themes, event setups and uploaded frames across all devices, plus smoother thermal receipt prints', for: ['website', 'app', 'android', 'ipad'], app: '1.1.78', android: '1.1.90', ipad: '1.1.7',
     items: [
       '☁️ Saved Profiles, My Themes, current event Setup and uploaded frames/logos/stickers/backdrops/sounds now sync automatically across the laptop app, Android tablet app, iPad app and web booth whenever connected to Wi-Fi — while keeping offline event operation 100% instant and unaffected.',
       '🖼️ All frames, logos, stickers and backdrops used inside synced Saved Profiles and My Themes are automatically downloaded and cached on the device while on Wi-Fi, so you can switch profiles offline at the venue with no internet.',
       '🔒 Each device now keeps its own 4-digit Lock PIN, voucher batches and print counts separately on that device (Admin’s Reset PIN still unlocks any device).',
-      '🧾 Thermal receipt layout: removed the grainy preview dithering in Setup and upgraded thermal print tone, shadow detail and Stucki dithering for sharper receipt prints.'
+      '🧾 Thermal receipt layout: removed the grainy preview dithering in Setup and upgraded thermal print tone, shadow detail and smooth dot shading for sharper receipt prints.'
     ]
   },
   {
@@ -645,9 +646,9 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-19', title: 'Desktop 1.1.76 (Win/Mac) + Android 1.1.89: tablet as the booth camera keeps its live picture running, Epson Wi-Fi printing fallback, and failed prints reported', for: ['website', 'app'], app: '1.1.76',
+    date: '2026-11-19', title: 'Desktop 1.1.76 (Win/Mac) + Android 1.1.89: tablet as the booth camera keeps its live picture running, Epson Wi-Fi printing fallback, and failed prints reported', for: ['website', 'app', 'android'], app: '1.1.76', android: '1.1.89',
     items: [
-      '🖨️ Android app, Epson ink-tank photo printers over Wi-Fi (L805, L3250, L8050, L18050 and similar): when the standard Wi-Fi print job fails, for example on a printer’s own Wi-Fi Direct network, the photo is now sent in Epson’s own print mode (port 9100) instead, the same job the app already sends over USB. Once it works for a printer, later prints in that session go straight to it. A photo that may already be printing is never sent twice.',
+      '🖨️ Android app, Epson ink-tank photo printers over Wi-Fi (L805, L3250, L8050, L18050 and similar): when the standard Wi-Fi print job fails, for example on a printer’s own Wi-Fi Direct network, the photo is now sent in Epson’s own print mode instead, the same way the app already sends over USB. Once it works for a printer, later prints in that session go straight to it. A photo that may already be printing is never sent twice.',
       '🩺 Printer reports (Admin): a print that fails, or a failed test print, is now always reported to Admin → Printer reports, even when “Send printer diagnostics” is switched off. Only the printer’s name, USB ID, paper size and the error message are sent; no photos, guest details or network addresses. With the switch on, everything is reported as before.',
       '📷 Tablet as the booth camera (Laptop Guest + Camera Bridge): when the laptop was not showing the tablet’s own preview, the tablet camera could send the laptop only one picture every few seconds, so the laptop’s live view stayed black (“Waiting for the camera…”). The tablet app now keeps its camera feed running at full speed all the time. Update the tablet to Android 1.1.89, then tell us how the live view looks.',
       '🖥️ Laptop app: Setup → Guest screen → Tablet Bridge now has a “Use tablet camera” button next to “Flip tablet camera”. The Camera menu hides itself when the laptop has only one camera, so if the tablet camera was not picked automatically there was no way to choose it by hand. The button picks it, remembers the choice, and says why if it cannot start.',
@@ -655,7 +656,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-19', title: 'Android 1.1.88: Canon G1010 prints with Canon’s own colours, sharper, borderless on 4x6, and a slowest Best quality', for: ['website'],
+    date: '2026-11-19', title: 'Android 1.1.88: Canon G1010 prints with Canon’s own colours, sharper, borderless on 4x6, and a slowest Best quality', for: ['android'], android: '1.1.88',
     items: [
       'Canon PIXMA G1010 (and other G-series over USB), 4x6: colours no longer come out faded. The ink for every colour is taken from what Canon’s own Windows driver puts down (measured on matte photo paper, glossy photo paper and plain paper), including its bigger dots for deep colours, so reds, blues and dark backgrounds print with the same depth as from a PC.',
       'Sharper: in High and Best quality, on photo paper and when printing borderless, the booth now builds a true 600 dpi page (2400 x 3600) instead of a 300 dpi one, so the extra dots carry real picture detail. The dots are also placed the way Canon places them, so flat tones no longer show faint stripes.',
@@ -664,25 +665,25 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-19', title: 'Android 1.1.87: Canon G1010 prints sharper in High quality (600 dpi) and on photo paper', for: ['website'],
+    date: '2026-11-19', title: 'Android 1.1.87: Canon G1010 prints sharper in High quality (600 dpi) and on photo paper', for: ['android'], android: '1.1.87',
     items: [
       'Canon PIXMA G1010 (and G-series printers over USB): the High (600 dpi) quality is back and now works. It sends the same page data that Canon’s own Windows driver sends at its Standard 600 dpi setting, checked command by command with the driver, for 4x6 prints on plain paper. Photo paper (glossy) and matte photo paper are sent the way Canon’s driver sends them too: cyan, magenta and yellow ink only, 600 dpi. Other paper sizes stay at 300 dpi. Normal and Draft are unchanged. Please test a print on your own printer and tell us how it looks.'
     ]
   },
   {
-    date: '2026-11-19', title: 'Android 1.1.86: Canon PIXMA G1010 prints reliably over USB; Brother USB printers recognised', for: ['website'],
+    date: '2026-11-19', title: 'Android 1.1.86: Canon PIXMA G1010 prints reliably over USB; Brother USB printers recognised', for: ['android'], android: '1.1.86',
     items: [
       'Canon PIXMA G-series over USB (G1010 / G2010 and similar): prints at 300 dpi, the mode a G1010 was tried and printed on. The “Best (600 dpi, beta)” quality is removed for Canon printers because a G1010 did not print at all with it; use Normal or Draft. Newer G-series (G3010 family) ask the printer which page language it takes, and there is a new “Canon print language” choice in the printer options (Automatic is right for almost everyone).',
       'Brother ink-tank printers (DCP-T series) are recognised over USB, and the printer options list more paper types (inkjet paper, Brother BP71 photo). A printer that needs its own driver now says so on screen, with its USB ID, so it can be set up or reported.'
     ]
   },
   {
-    date: '2026-11-19', title: 'Desktop 1.1.75 (Win/Mac): higher-resolution prints (3–6.5 MB), camera-original DSLR solo shots & lossless PNG masters', for: ['website', 'app'], app: '1.1.75',
+    date: '2026-11-19', title: 'Desktop 1.1.75 (Win/Mac): sharper high-resolution prints, original DSLR solo photos & backup masters', for: ['website', 'app'], app: '1.1.75',
     items: [
-      '🖼️ Higher-resolution prints: laptop prints now render at 2.5×–3× design resolution (750–900 DPI, 100% JPEG quality, ~3–6.5 MB) with true print DPI stamped in the file header instead of 96 DPI.',
-      '📷 Camera-original DSLR solo shots: on the laptop app, upright DSLR and full-size webcam solo shots keep the camera’s own untouched JPEG file (full size and EXIF details) whenever no mirror, background swap or look is used; mirrored/filtered or rotated shots save at 100% JPEG quality.',
-      '🎯 Sharper Nikon & low-ISO photos: Nikon DSLRs now automatically shoot at JPEG Fine ≥ 3900 px wide (e.g. 4496×3000 Medium on D5600), and low-ISO shots skip grain smoothing (including the final shot) so fine skin and eyelash detail stays crisp.',
-      '💾 Lossless PNG master copy: optionally keeps a private 24-bit lossless PNG of every finished print in a "Masters" folder for the operator (on by default on the laptop app, never shown to guests or over booth Wi-Fi), plus faster binary local saves without Base64 overhead.'
+      '🖼️ Sharper prints: Laptop prints now render at much higher print detail (up to 750–900 DPI at top quality) so text, faces, and borders print crisper.',
+      '📷 Original DSLR solo shots: On the laptop app, upright DSLR and full-size webcam solo shots keep the camera’s own untouched full-size photo whenever no mirror, background swap, or filter is applied.',
+      '🎯 Sharper Nikon & low-ISO photos: Nikon DSLRs now automatically shoot at high-quality fine JPEG, and well-lit shots skip extra smoothing so skin and eyelash details stay crisp.',
+      '💾 Optional Master photo copies: Keeps a private full-quality copy of every finished print in a "Masters" folder for you (on by default on the laptop app, never shown to guests), with faster photo saving.'
     ]
   },
   {
@@ -699,23 +700,22 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-18', title: 'Desktop 1.1.73 (Win/Mac) + Android 1.1.85: Tablet Guest Screen + Camera Bridge & Guest Print Options', for: ['website', 'app'], app: '1.1.73',
+    date: '2026-11-18', title: 'Desktop 1.1.73 (Win/Mac) + Android 1.1.85: Tablet Guest Screen + Camera Bridge & Guest Print Options', for: ['website', 'app', 'android'], app: '1.1.73', android: '1.1.85',
     items: [
-      '📱 Tablet Guest Screen + Camera Bridge: pair an Android / Huawei MatePad Pro / Samsung Galaxy Tab via QR over USB Tethering, ADB, or laptop Wi-Fi to use the tablet as both the live Guest Screen and the booth camera.',
-      '📷 Zero-lag guest live view & full-res shots: tablet runs native Camera2 live preview behind the Guest Screen while streaming preview frames and capturing full-resolution photos for the laptop.',
-      '🖨️ Guest Screen Print & Copies options: both the Tablet Bridge Guest Screen and extended-monitor Guest Screen now support Print, copy-count selection, live print limits/status, and Done.'
+      '📱 Tablet Guest Screen + Camera Bridge: Pair an Android tablet via QR over USB cable or laptop Wi-Fi to use the tablet as both the live Guest Screen and the booth camera.',
+      '📷 Smooth guest live view & sharp photos: The tablet shows a smooth live camera preview behind the Guest Screen while sending full-quality photos straight to the laptop.',
+      '🖨️ Guest Screen Print & Copies options: Both the paired tablet Guest Screen and extended-monitor Guest Screen now let guests tap Print, pick how many copies they want, see remaining print limits, and tap Done.'
     ]
   },
   {
-    date: '2026-11-18', title: 'Desktop 1.1.72 (Win/Mac) + Helper 1.1.12: Canon EOS (1300D / Rebel T6) MTP USB detection fix', for: ['website', 'app', 'helper'], app: '1.1.72',
+    date: '2026-11-18', title: 'Desktop 1.1.72 (Win/Mac) + Helper 1.1.12: Canon EOS 1300D / Rebel T6 USB detection fix', for: ['website', 'app', 'helper'], app: '1.1.72', helper: '1.1.12',
     items: [
-      '📷 Canon EOS MTP USB detection: resolved issue where Canon EOS DSLRs (such as the EOS 1300D / Rebel T6 / Kiss X80) showing as generic "MTP USB Device" in Windows were ignored by the camera picker.',
-      '🔍 Hardware VID auto-matching: device discovery now inspects USB vendor IDs directly (vid_04a9) and maps generic MTP devices to Canon EOS remote control automatically.',
-      '🔄 Dual interface fallback: added fallback scanning for Still Image / Imaging device interfaces (GUID_DEVINTERFACE_IMAGE) alongside WPD with retry settling on initial connection.'
+      '📷 Fixed Canon EOS 1300D / Rebel T6 / Kiss X80 not showing up: Resolved an issue where Windows listed these cameras as a generic USB device so the booth could not see them.',
+      '🔍 Automatic Canon recognition: The booth now spots Canon cameras by their USB hardware signature even when Windows gives them a generic name, and retries connection cleanly on plug-in.'
     ]
   },
   {
-    date: '2026-11-18', title: 'Desktop 1.1.71 (Win/Mac) + Android 1.1.83 + iPad 1.1.6: Camera preview between shots & live view hold', for: ['website', 'app'], app: '1.1.71',
+    date: '2026-11-18', title: 'Desktop 1.1.71 (Win/Mac) + Android 1.1.83 + iPad 1.1.6: Camera preview between shots & live view hold', for: ['website', 'app', 'android', 'ipad'], app: '1.1.71', android: '1.1.83', ipad: '1.1.6',
     items: [
       '📷 Camera live view hold: camera live view now stays running through all shots and after the final shot until the result screen opens (eliminates premature camera sleep/blackout after last shot).',
       '🖼️ Between-shots review: still-image photo review with Retake option displays seamlessly between photos, and the full strip review screen allows retaking shot 3 before saving.',
@@ -723,58 +723,58 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-18', title: 'Desktop 1.1.70 (Win/Mac) + Android 1.1.82 + iPad 1.1.5: iPad front camera & live preview fix', for: ['website', 'app'], app: '1.1.70',
+    date: '2026-11-18', title: 'Desktop 1.1.70 (Win/Mac) + Android 1.1.82 + iPad 1.1.5: iPad front camera & live preview fix', for: ['website', 'app', 'android', 'ipad'], app: '1.1.70', android: '1.1.82', ipad: '1.1.5',
     items: [
-      '📱 iPad live camera preview fix: resolved stage black screen during photo sessions by ensuring full stage-frame transparency for the hardware AVCaptureSession preview layer.',
-      '📷 iPad Center Stage & Ultra-Wide front camera: native camera bridge now discovers and opens the 12MP Ultra-Wide Center Stage front camera on 10th-gen iPad / iPad A16.',
-      '⚡ Smooth real-time preview: eliminated WebKit 1-second movement delay and Setup Step 4 canvas blanking, providing silky-smooth 60 fps live preview with zero lag.'
+      '📱 iPad live camera preview fix: Fixed the black screen during photo sessions on iPad so the live camera view always shows clearly.',
+      '📷 iPad Center Stage & Ultra-Wide front camera: The iPad app now discovers and uses the wide-angle Center Stage front camera on newer iPads (10th-gen / A16).',
+      '⚡ Smooth real-time preview: Removed the 1-second lag and blank preview issue in Setup Step 4 for a smooth, responsive camera feed.'
     ]
   },
   {
-    date: '2026-11-18', title: 'Desktop 1.1.69 (Win/Mac) + Android 1.1.81 + iPad 1.1.4: Smoother Canon EOS M50 II live view over USB', for: ['website', 'app'], app: '1.1.69',
+    date: '2026-11-18', title: 'Desktop 1.1.69 (Win/Mac) + Android 1.1.81 + iPad 1.1.4: Smoother Canon EOS M50 II live view over USB', for: ['website', 'app', 'android', 'ipad'], app: '1.1.69', android: '1.1.81', ipad: '1.1.4',
     items: [
       '🎞️ Smoother live view with every USB camera in the app: the booth now asks for the next picture while the current one is being drawn, so the camera is never left idle between frames.',
-      '📷 Canon EOS (M50 Mark II and others) on Android & iPad: the camera is checked for news every 6 s instead of 2 s while live view runs (no more small hitch), and a busy camera is asked again after 15 ms instead of 50 ms.',
-      '📊 Live view speed (frames per second and picture size) is now written to the camera log every 5 s, so lag can be measured.'
+      '📷 Canon EOS (M50 Mark II and others) on Android & iPad: the camera is checked for news every 6 s instead of 2 s while live view runs (no more small hitch), and a busy camera is asked again right away.',
+      '📊 Live view speed and picture size are now recorded in the camera log so any lag can be checked easily.'
     ]
   },
   {
-    date: '2026-11-18', title: 'Desktop 1.1.68 (Win/Mac) + Android 1.1.80 + iPad 1.1.3: Hardened Sony A7 III USB & iPad HDMI stability', for: ['website', 'app'], app: '1.1.68',
+    date: '2026-11-18', title: 'Desktop 1.1.68 (Win/Mac) + Android 1.1.80 + iPad 1.1.3: More reliable Sony A7 III USB & iPad capture card support', for: ['website', 'app', 'android', 'ipad'], app: '1.1.68', android: '1.1.80', ipad: '1.1.3',
     items: [
-      '📷 Sony A7 III (ILCE-7M3) USB PC Remote hardening across Windows, Mac, Android & iPad: locks directly to Protocol v3 (0x12C), retries transient BUSY (0x2019) replies during 0x9201 handshake phases, and releases stuck shutter lines (0xD2C2/0xD2C1) on open and close.',
-      '⚙️ Width-safe property writes & settle handling: writes Single Shooting (0x5013 = 1) and Save Destination (0xD222) using each property’s declared scalar size from 0x9209, preserves non-empty snapshots during the 3 s settle wait, and suppresses repeat failed 0xD222 retries.',
-      '🍎 Idle USB keepalive on Mac: probes active sessions during status checks so Sony USB connections stay alive and disconnects are detected right away.',
-      '🎥 iPad HDMI / UVC capture card stability: skips AVCapturePhotoOutput on external capture cards to grab stills from live video frames without stalling and automatically resumes interrupted HDMI sessions while connected.'
+      '📷 More reliable Sony A7 III USB connection (Windows, Mac, Android & iPad): Connects more consistently, retries automatically when the camera is briefly busy, and resets properly when opened or closed.',
+      '⚙️ Steady Sony settings & startup: Applies single-shot and save-to-computer settings cleanly without errors during the first few seconds after plugging in.',
+      '🍎 Better Mac Sony USB stability: Keeps the connection alive when idle and detects unplugged cables right away.',
+      '🎥 iPad HDMI capture card stability: Takes snapshots smoothly from external HDMI capture cards without freezing and recovers automatically if a connection hiccups.'
     ]
   },
   {
-    date: '2026-11-18', title: 'Desktop 1.1.67 (Win/Mac) + Android 1.1.79 + iPad 1.1.2: Hardened Sony A6400 & Alpha USB tethering', for: ['website', 'app'], app: '1.1.67',
+    date: '2026-11-18', title: 'Desktop 1.1.67 (Win/Mac) + Android 1.1.79 + iPad 1.1.2: More reliable Sony A6400 & Alpha USB camera support', for: ['website', 'app', 'android', 'ipad'], app: '1.1.67', android: '1.1.79', ipad: '1.1.2',
     items: [
-      '📷 Sony A6400 (ILCE-6400) & Alpha PC Remote hardening across Windows, Mac, Android & iPad: uses the verified 0x9202(0xC8) handshake with 0x12C fallback and enforces Single Shooting mode (0x5013 = 1) with PC Only save destination.',
-      '👁️ Faster, glitch-free Sony live view: reads 0x1009(0xFFFFC002) directly without extra pre-frame object queries, ignores 8-zero-byte warm-up replies, and verifies JPEG SOF/EOI boundaries.',
-      '🖼️ Reliable RAW + JPEG & Android USB framing: peeks object format to skip RAW objects and drain trailing RAW frames cleanly, while Android preserves multi-container PTP packets across USB reads and reports shutter lag.',
-      '🍎 Windows WinUSB fallback & full Mac Helper parity: Windows automatically falls back to libusb/WinUSB if WPD blocks a camera, and Mac Desktop gains helper auto-detect, grace-window capture handling, Sony deep sleep, and shutter lag compensation.'
+      '📷 Better Sony A6400 & Alpha USB support (Windows, Mac, Android & iPad): More reliable camera handshake and automatic setup for single shooting and saving photos straight to the booth.',
+      '👁️ Faster, glitch-free Sony live view: Ignores blank warm-up frames and broken frames so the live camera view looks clean and steady.',
+      '🖼️ Reliable RAW + JPEG & Android USB transfers: Skips unneeded RAW files cleanly and transfers full photos reliably on Android tablets.',
+      '🍎 Better Windows & Mac Sony fallback: Windows automatically uses an alternate USB mode if the standard driver blocks the camera, and the Mac app now supports the same camera helpers and deep sleep behavior.'
     ]
   },
   {
-    date: '2026-11-18', title: 'iPad app 1.1.1: Native AVFoundation camera, hardware MP4 Video Guestbook & 1st-photo timer save fix', for: ['website', 'app'], app: '1.1.1',
+    date: '2026-11-18', title: 'iPad app 1.1.1: Faster built-in iPad camera, smoother Video Guestbook & 1st-photo timer fix', for: ['ipad'], ipad: '1.1.1',
     items: [
-      '⏱️ Saved 1st-photo countdown persistence: the 2–60 s 1st-photo countdown now saves and restores properly across reloads, cloud sync, and offline presets (while staying backward-compatible with legacy extra-time setups).',
-      '📷 Native iPad live camera & instant capture: hardware AVCaptureVideoPreviewLayer + Metal CIFilter preview and instant AVCapturePhotoOutput still capture (plus UVC HDMI capture cards on iPadOS 17+).',
-      '🎥 Native Video Guestbook: records hardware-encoded H.264/AAC .mp4 clips via AVAssetWriter with all 15 GPU looks and on-demand mic audio.',
-      '🔌 Hardened USB DSLR tethering: auto-rescans ImageCaptureCore devices on empty lists, clears stale PTP sessions, and retries Canon SetRemoteMode with Canon M50 hints.'
+      '⏱️ 1st-photo countdown timer saves properly: Your custom 2–60 second first-photo timer now saves and restores reliably across reloads and cloud sync.',
+      '📷 Zero-lag built-in iPad camera & capture cards: Uses the iPad’s native camera engine for instant live preview, filters, and crisp photos (including HDMI capture cards on iPadOS 17+).',
+      '🎥 Smoother Video Guestbook with sound: Records smoother video messages with all 15 looks and microphone audio.',
+      '🔌 Stronger USB DSLR support: Automatically rescans connected cameras and shows clearer Canon M50 setup tips if a connection gets stuck.'
     ]
   },
   {
-    date: '2026-11-18', title: 'iPad app 1.1.0: Native AVFoundation zero-lag camera, hardware MP4 Video Guestbook & hardened M50 USB', for: ['website', 'app'], app: '1.1.0',
+    date: '2026-11-18', title: 'iPad app 1.1.0: Zero-lag built-in iPad camera, smoother Video Guestbook & Canon M50 USB fix', for: ['ipad'], ipad: '1.1.0',
     items: [
-      '📷 Native iPad live camera & instant capture: replaces WebKit getUserMedia buffering with a hardware AVCaptureVideoPreviewLayer + Metal CIFilter preview and instant AVCapturePhotoOutput still capture (plus UVC HDMI capture cards on iPadOS 17+).',
-      '🎥 Native Video Guestbook: records hardware-encoded H.264/AAC .mp4 clips via AVAssetWriter with all 15 GPU looks and on-demand mic audio, eliminating getUserMedia preview lag and canvas capture overhead.',
-      '🔌 Hardened USB DSLR tethering: auto-rescans ImageCaptureCore devices on empty lists, clears stale PTP sessions, and retries Canon SetRemoteMode with actionable Canon M50 setup hints.'
+      '📷 Zero-lag built-in iPad camera & capture cards: Switched from the slower browser camera to the iPad’s native camera engine for instant live preview, smooth filters, and fast capture.',
+      '🎥 Smoother Video Guestbook with sound: Records crisp video messages with all 15 looks and microphone audio without preview lag.',
+      '🔌 Stronger USB DSLR support: Automatically rescans connected cameras and shows clearer Canon M50 setup hints.'
     ]
   },
   {
-    date: '2026-11-18', title: 'Desktop 1.1.66 + Android 1.1.78: Real-time branded card sync, direct preset selection & color profile enhancements', for: ['website', 'app'], app: '1.1.66',
+    date: '2026-11-18', title: 'Desktop 1.1.66 + Android 1.1.78: Real-time branded card sync, direct preset selection & color profile enhancements', for: ['website', 'app', 'android'], app: '1.1.66', android: '1.1.78',
     items: [
       '⚡ Real-time admin welcome card sync: changes made in Admin to card layout, decoration, and palette now synchronize automatically to live and newly reopened booths without manual configuration.',
       '🎨 Default Studio Monochrome: newly created non-Charm booths default cleanly to Studio Monochrome and minimal decoration, while Charm Up booths retain signature Charm Blush and Waves.',
@@ -784,22 +784,22 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-18', title: 'Desktop 1.1.65 + Android 1.1.77: Optional Roving DSLR photo editing before QR & print', for: ['website', 'app'], app: '1.1.65',
+    date: '2026-11-18', title: 'Desktop 1.1.65 + Android 1.1.77: Optional Roving DSLR photo editing before QR & print', for: ['website', 'app', 'android'], app: '1.1.65', android: '1.1.77',
     items: [
       '✎ Photographer desk photo editor: optionally adjust brightness, contrast, warmth, and colour saturation (or pick 1-click presets like Brighten, Warm, Cool, Vivid, Matte, and Black & white) with live preview and Hold to compare before printing.',
       '📲 Edited QR delivery: when you apply an edit, both the print (framed or Print original) and the guest’s QR download use the edited photo while keeping the original file untouched in the Roving inbox.',
       '⏱️ Separate 1st & succeeding photo countdowns: configure independent 2–60 s countdown timers for the first shot and follow-up shots with quick preset chips or exact values.',
-      '📷 Native iPad camera & feature guide: direct AVFoundation preview/capture bridge for smoother iOS sessions, plus a new Full app & feature guide at /features/.'
+      '📷 Smoother iPad camera & feature guide: upgraded built-in iPad camera support for smoother sessions, plus a new Full app & feature guide at /features/.'
     ]
   },
   {
-    date: '2026-11-17', title: 'Desktop 1.1.64 + Android 1.1.76: Branded welcome cards, aesthetics, and 1-click color palettes', for: ['website', 'app'], app: '1.1.64',
+    date: '2026-11-17', title: 'Desktop 1.1.64 + Android 1.1.76: Branded welcome cards, aesthetics, and 1-click color palettes', for: ['website', 'app', 'android'], app: '1.1.64', android: '1.1.76',
     items: [
       '🎀 Branded welcome card aesthetics: choose from 6 designer decoration styles including Luxe Corner Waves, Aura & Sparkles, Coquette Stitched, Pop Retro 3D, and Scrapbook Doodles.',
       '🎨 1-Click color palette harmonies: curated color combinations (Charm Blush & Navy, Sweet Berry, Matcha & Cream, Midnight Gold, Lilac Dream, Peach Sunset, and Studio Monochrome) coordinating card background, typography, button, and decorative accents.',
       '✨ Decoupled standalone cards: welcome cards can now be centered symmetrically without a side photo strip sample for a luxury billboard look.',
       '💼 Admin pre-customization: pre-set client brand names, logos, card styles, decorations, and color palettes right from the Admin dashboard before deployment.',
-      '🖨️ macOS printer driver settings: inspect CUPS printer driver options directly for color matching and print quality.'
+      '🖨️ Mac printer driver settings: inspect Mac printer driver options directly for color matching and print quality.'
     ]
   },
   {
@@ -821,10 +821,10 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-17', title: 'Desktop 1.1.61 + Android 1.1.75: Fix button clipping at large scale, eliminate webcam lag, and top-level uploaded frames', for: ['website', 'app'], app: '1.1.61',
+    date: '2026-11-17', title: 'Desktop 1.1.61 + Android 1.1.75: Fix button clipping at large scale, eliminate webcam lag, and top-level uploaded frames', for: ['website', 'app', 'android'], app: '1.1.61', android: '1.1.75',
     items: [
       'Fixed Cancel, Look, Mirror, and filter swatches getting cut off when scaling up display/button sizes on the Get Ready screen.',
-      'Fixed built-in laptop & external webcam hanging/lagging: stopped background full-res stacking canvas readbacks outside countdowns, batched filter swatch redraws onto a single 72px buffer, dropped strict min-20fps lock, and defaulted built-in laptop cameras to smooth 720p viewfinder.',
+      'Fixed built-in laptop & external webcam hanging/lagging: streamlined filter previews and defaulted built-in laptop cameras to a smooth 720p live view.',
       'Guest Design Picker now shows Uploaded Frames (Frame 1, Frame 2...) right alongside Design 1 / Design 2 as standalone choices — tapping a frame goes straight to capture, while tapping a Ready Design opens its ticked standard layouts.'
     ]
   },
@@ -837,14 +837,14 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-17', title: 'Desktop 1.1.59 + Android 1.1.74: Keep reset webcam defaults across Photo Session start & camera wake', for: ['website', 'app'], app: '1.1.59',
+    date: '2026-11-17', title: 'Desktop 1.1.59 + Android 1.1.74: Keep reset webcam defaults across Photo Session start & camera wake', for: ['website', 'app', 'android'], app: '1.1.59', android: '1.1.74',
     items: [
       'Fixed clicking Reset webcam controls reverting back to 1 Brightness and 1 Contrast when entering Photo Session or waking the camera stream.',
-      'Clean reset defaults now persist across camera stream restarts and heal poisoned (1, 1) UVC driver baselines automatically.'
+      'Clean reset defaults now stay saved across camera restarts and automatically fix webcams that opened with skewed default sliders.'
     ]
   },
   {
-    date: '2026-11-17', title: 'Desktop 1.1.58 + Android 1.1.73: Consolidated QR hub, hover guides, multi-design Ready designs, and clean Photo Session', for: ['website', 'app'], app: '1.1.58',
+    date: '2026-11-17', title: 'Desktop 1.1.58 + Android 1.1.73: Consolidated QR hub, hover guides, multi-design Ready designs, and clean Photo Session', for: ['website', 'app', 'android'], app: '1.1.58', android: '1.1.73',
     items: [
       'QR & after-session consolidated into one hub (Step 7 tab 4): Side-by-side + QR, LumaShare Pop-up + QR, LumaShare Pop-up No QR, Side panel No QR, and Sharing Station, along with synced Print first, gallery privacy, and Solo photos controls.',
       'Mouse hover & focus (?) help guides added across Setup and Printer Settings so secondary explanations stay out of the way until hovered or tapped.',
@@ -853,7 +853,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-17', title: 'Desktop 1.1.57 + Android 1.1.72: revamped Extras & Welcome setup, full-screen Guest view default, webcam reset fix & Printer 1/2/3 cards', for: ['website', 'app'], app: '1.1.57',
+    date: '2026-11-17', title: 'Desktop 1.1.57 + Android 1.1.72: revamped Extras & Welcome setup, full-screen Guest view default, webcam reset fix & Printer 1/2/3 cards', for: ['website', 'app', 'android'], app: '1.1.57', android: '1.1.72',
     items: [
       'Setup step 5 (Extras) revamped into 3 clear cards (Output mode, Decor & Stickers / Filters / Green screen, and Video guestbook) with visual filter swatches and clean switches.',
       'Step 7 Welcome preview now syncs Stretch / Fit / Crop right away without black bars or lag, and the external Guest screen now defaults to clean full-screen Photo Session mode from start to finish.',
@@ -863,7 +863,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-17', title: 'Desktop 1.1.56 + Android 1.1.71: cleaner guest screen between guests and a simpler Setup step 7', for: ['website', 'app'], app: '1.1.56',
+    date: '2026-11-17', title: 'Desktop 1.1.56 + Android 1.1.71: cleaner guest screen between guests and a simpler Setup step 7', for: ['website', 'app', 'android'], app: '1.1.56', android: '1.1.71',
     items: [
       'Guest screen between guests: new "Picture only" option (the default) fills the whole second screen with your welcome picture, with no logo, "Welcome!", event name or Ready tag around it. Choose "With logo & welcome text" in Setup to keep the earlier look.',
       'Setup step 7 is split into numbered tabs in guest order: Welcome screen, Pay & photos, Sound & start, QR & sharing, and Screen & lock, with a Next button at the end of each tab instead of one long page.',
@@ -871,21 +871,21 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-16', title: 'Desktop 1.1.55 + Android 1.1.70: XL strips (4x12, 8x24, 8x32), Epson/generic driver media & paper slots, per-layout paper switching & Instax Link Wide upgrades', for: ['website', 'app'], app: '1.1.55',
+    date: '2026-11-16', title: 'Desktop 1.1.55 + Android 1.1.70: XL strips (4x12, 8x24, 8x32), Epson/generic driver media & paper slots, per-layout paper switching & Instax Link Wide upgrades', for: ['website', 'app', 'android'], app: '1.1.55', android: '1.1.70',
     items: [
-      'XL strips up to 48 inches (1220 mm): added the XL Strip 4 (1:4 tall) layout, 1-tap XL presets (4x12, 8x24, 8x32 in), an optional 200 DPI JPEG mode for faster large-sheet spooling, and fixed 4x12 strips falsely matching 8x12 sheets.',
+      'XL strips up to 48 inches (1220 mm): added the XL Strip 4 (1:4 tall) layout, 1-tap XL presets (4x12, 8x24, 8x32 in), an optional faster-print mode for large sheets, and fixed 4x12 strips falsely matching 8x12 sheets.',
       'Generic Windows & Mac printer options (including Epson L8050 and L3210): pick Paper / media type (Glossy, Matte, Plain), bind an exact Driver paper slot / User-Defined preset per size, toggle 1 strip per sheet (no 2-up pairing), and see driver custom-size warnings.',
-      'Per-layout paper size mapping in Setup lets switching layouts (or using the guest layout picker) automatically switch paper size and its assigned printer queue.',
-      'Instax Link Wide improvements: serialized multi-printer Bluetooth reconnect, live film & battery readout, transfer % progress, cover-open pre-check, Chrome/Edge Web Bluetooth printing without Print Helper, and off-UI-thread Android BLE writes.'
+      'Per-layout paper size mapping in Setup lets switching layouts (or using the guest layout picker) automatically switch paper size and its assigned printer.',
+      'Instax Link Wide improvements: automatic multi-printer Bluetooth reconnect, live film & battery readout, transfer % progress, cover-open check before printing, Chrome/Edge Bluetooth printing without Print Helper, and smoother Android tablet printing.'
     ]
   },
   {
-    date: '2026-11-15', title: 'Desktop 1.1.54 + Android 1.1.69: smarter USB webcam connection, low-light stacking, photo clean-up and webcam controls', for: ['website', 'app'], app: '1.1.54',
+    date: '2026-11-15', title: 'Desktop 1.1.54 + Android 1.1.69: smarter USB webcam connection, low-light stacking, photo clean-up and webcam controls', for: ['website', 'app', 'android'], app: '1.1.54', android: '1.1.69',
     items: [
-      'Plugging in a USB webcam or HDMI capture card now moves it ahead of built-in laptop/tablet cameras and switches automatically when not shooting. On Android tablets, external UVC webcams also take priority even if the tablet camera was saved before.',
+      'Plugging in a USB webcam or HDMI capture card now moves it ahead of built-in laptop/tablet cameras and switches automatically when not shooting. On Android tablets, external USB webcams also take priority even if the tablet camera was saved before.',
       'Webcam captures now run photo clean-up (noise reduction, edge-safe sharpening, highlight protection and skin-tone balance) and optional low-light multi-frame stacking (Off, Auto in dim light or Always).',
-      'Setup now includes a Pro controls panel for UVC cameras (brightness, contrast, saturation, autofocus/manual focus and auto/manual exposure where supported) plus a live preview FPS warning when dim lighting slows the feed below 15 fps.',
-      'Windows laptop app: closing a busy camera now also stops Windows Camera (WindowsCamera.exe) and Logitech Capture (LogiCapture.exe) if they are holding the webcam.'
+      'Setup now includes a Pro controls panel for USB webcams (brightness, contrast, saturation, autofocus/manual focus and auto/manual exposure where supported) plus a live preview speed warning when dim lighting slows the camera feed.',
+      'Windows laptop app: closing a busy camera now also closes the Windows Camera app and Logitech Capture if they are holding the webcam.'
     ]
   },
   {
@@ -899,8 +899,8 @@ export const NOTES = [
   {
     date: '2026-11-15', title: 'Desktop 1.1.52: Insta360 Ace Pro and USB webcams open cleanly on Windows without "camera is busy" errors', for: ['website', 'app'], app: '1.1.52',
     items: [
-      'On Windows, the laptop app now uses DirectShow instead of MediaFoundation for USB webcams, preventing the "The camera is busy in another app" lock on Insta360 Ace Pro and other UVC cameras.',
-      'Insta360 Ace Pro (2e1a:0002) is now recognised as a USB webcam, automatically closes conflicting Insta360 background utilities (Insta360 Studio / Link Controller) if the camera is held, and retries with longer wake-up delays.'
+      'On Windows, the laptop app now uses a smoother webcam driver mode so Insta360 Ace Pro and other USB webcams no longer get stuck saying "The camera is busy in another app".',
+      'Insta360 Ace Pro is now recognised automatically as a USB webcam, closes conflicting Insta360 background apps if they are holding the camera, and gives it extra time to wake up.'
     ]
   },
   {
@@ -948,20 +948,20 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-14', title: 'Android 1.1.68: Epson L805 prints borderless edge to edge over Wi-Fi; the Lock button asks first', for: ['website'],
+    date: '2026-11-14', title: 'Android 1.1.68: Epson L805 prints borderless edge to edge over Wi-Fi; the Lock button asks first', for: ['android'], android: '1.1.68',
     items: [
-      'A Wi-Fi Epson L805 (and similar) now prints borderless to the edge of the paper. Tried on an L805 with four variants of the job: the two commands Epson’s Linux driver sends before the job (seti and chku) were what was missing, so the printer had been ignoring the start position and printing the picture about 3 mm inside the sheet. Borderless is sent as Premium Glossy photo paper, so load glossy photo paper; it covers 3.5x5 in (3R), 4x6 in, 5x7 in, 8x10 in, 100x148 mm, 16:9 wide, A4 and Letter. The 1.1.67 test picker is gone. Print the edge test once on the paper in use and use Edges for any side that is still a fraction of a millimetre off.',
+      'A Wi-Fi Epson L805 (and similar) now prints borderless to the edge of the paper. Tried on an L805 with four variants of the job: the two commands Epson’s driver expects before the job were what was missing, so the printer had been ignoring the start position and printing the picture about 3 mm inside the sheet. Borderless is sent as Premium Glossy photo paper, so load glossy photo paper; it covers 3.5x5 in (3R), 4x6 in, 5x7 in, 8x10 in, 100x148 mm, 16:9 wide, A4 and Letter. The 1.1.67 test picker is gone. Print the edge test once on the paper in use and use Edges for any side that is still a fraction of a millimetre off.',
       'The Lock button on the dock now asks “Lock the booth?” first, so a stray tap during a session does not lock it.'
     ]
   },
   {
-    date: '2026-11-14', title: 'Android 1.1.67: borderless test methods for the Wi-Fi Epson L805', for: ['website'],
+    date: '2026-11-14', title: 'Android 1.1.67: borderless test methods for the Wi-Fi Epson L805', for: ['android'], android: '1.1.67',
     items: [
       'The Wi-Fi Epson L805 still printed borderless with the picture about 3 mm inside the sheet. Epson’s own Windows driver sends the printer a different job for borderless, with a full-bleed marker this app did not send. With the Admin debug option on, Print settings now has a Borderless test method (0 to 4) under Print edge test that adds those commands in different ways; the Printer report shows the method used. Normal use is unchanged (method 0). Once one works it will be built in.'
     ]
   },
   {
-    date: '2026-11-14', title: 'Android 1.1.66: Epson L805 borderless is sent as Premium Glossy photo paper', for: ['website'],
+    date: '2026-11-14', title: 'Android 1.1.66: Epson L805 borderless is sent as Premium Glossy photo paper', for: ['android'], android: '1.1.66',
     items: [
       'A Wi-Fi Epson L805 (and similar) still started the picture about 3 mm inside the sheet in 1.1.65. The cause: the job named a paper type this printer does not have, and it does not print borderless on plain paper, so it stayed in its bordered mode. Borderless is now sent with the printer’s Premium Glossy photo paper setting, so load glossy photo paper. It could not be tried on a printer here: print the edge test once on the paper in use.',
       'Borderless on these printers now covers every size the L805’s Epson driver lists for it: 3.5x5 in (3R), 4x6 in, 5x7 in, 8x10 in, 100x148 mm, 16:9 wide, A4 and Letter. Other sizes print with the normal border.'
@@ -975,21 +975,21 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-14', title: 'Android 1.1.65: Epson L805 borderless now sent the way Epson’s own driver sends it', for: ['website'],
+    date: '2026-11-14', title: 'Android 1.1.65: Epson L805 borderless now sent the way Epson’s own driver sends it', for: ['android'], android: '1.1.65',
     items: [
       'A Wi-Fi Epson ink-tank photo printer (L805 and similar) printing borderless now gets the same job layout Epson’s own driver uses: the page starts a little before the sheet edge and runs a little past every edge, and the picture fills the sheet exactly, so nothing is cut off. Android 1.1.64 started the picture about 3 mm inside the sheet (white top and left, trimmed bottom and right). Borderless is sent on 3.5x5 in (3R), 4x6 in, 5x7 in and A4, the sizes the L805’s Epson driver lists as borderless; other sizes print with the normal border. It could not be tried on a printer here: print the edge test once on the paper in use, and use Edges only if a side still shows white or is trimmed.',
       'The printer report for a Wi-Fi Epson without a paper list now says so and shows how the last photo was sent (borderless or border, paper size).'
     ]
   },
   {
-    date: '2026-11-14', title: 'Android 1.1.64: Epson L805 prints borderless over Wi-Fi, tidier Edges settings', for: ['website'],
+    date: '2026-11-14', title: 'Android 1.1.64: Epson L805 prints borderless over Wi-Fi, tidier Edges settings', for: ['android'], android: '1.1.64',
     items: [
       'A Wi-Fi Epson ink-tank photo printer (L805, L850 and similar, L2xx and up) now prints borderless on photo paper when Borderless is ticked in Print settings, on 3.5x5 (3R), 4x6, 5x7, 8x10, A4, 16:9 and 100x148 mm paper. Before, the Borderless tick was ignored for these printers and every print had a 3 mm white border. On any other paper size the print keeps its border. It could not be tried on an L805 here: print the edge test once and use Edges if a side is trimmed or a white line shows.',
       'Print settings: the Edges rows (Top, Bottom, Left, Right) no longer run into each other, and the hint now says the edge test is printed without your Edges and that Edges cannot remove a border the printer keeps by itself.'
     ]
   },
   {
-    date: '2026-11-14', title: 'Desktop 1.1.44 + Android 1.1.63: Canon SELPHY borderless attempt and a printer report', for: ['website', 'app'], app: '1.1.44',
+    date: '2026-11-14', title: 'Desktop 1.1.44 + Android 1.1.63: Canon SELPHY borderless attempt and a printer report', for: ['website', 'app', 'android'], app: '1.1.44', android: '1.1.63',
     items: [
       'A Canon SELPHY on Wi-Fi: if the printer lists a borderless version of the loaded paper, the app now uses it when Borderless is on, and the photo carries its 300 dpi size so a printer that prints it at its own size no longer shrinks it. This is an attempt at the white border some SELPHY prints had; it could not be tried on a printer here.',
       'Print settings (Android app) has a new Printer report button for a Wi-Fi printer. It shows the paper sizes the printer lists and how it last accepted a photo, and copies them, so support can see why a printer adds a border.',
@@ -997,7 +997,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-14', title: 'Desktop 1.1.43 + Android 1.1.62: choose the video guestbook quality, sharper video, a more reliable Flip camera', for: ['website', 'app'], app: '1.1.43',
+    date: '2026-11-14', title: 'Desktop 1.1.43 + Android 1.1.62: choose the video guestbook quality, sharper video, a more reliable Flip camera', for: ['website', 'app', 'android'], app: '1.1.43', android: '1.1.62',
     items: [
       'New "Video quality" choice in Setup > Extras > Video guestbook: Auto, Smooth (480p, the lightest), Standard (720p) or High (1080p). If messages stutter on a phone or tablet, choose Smooth. It is saved on that device only, so a strong laptop on the same code can stay on High.',
       'Sharper video on Auto: looks start at a bigger picture, the video rate is higher, and a strong laptop or tablet keeps up to 1080p. A look still steps down by itself, or switches off, on a device that cannot keep up.',
@@ -1005,13 +1005,13 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-14', title: 'Android 1.1.61: Canon SELPHY Wi-Fi prints fill the whole postcard', for: ['website'],
+    date: '2026-11-14', title: 'Android 1.1.61: Canon SELPHY Wi-Fi prints fill the whole postcard', for: ['android'], android: '1.1.61',
     items: [
       'On a Canon SELPHY over Wi-Fi the app now asks the printer to scale the page to the whole postcard first, so the photo no longer comes out smaller than the paper with a white border all round. If the printer refuses, the app falls back to the way it asked before.'
     ]
   },
   {
-    date: '2026-11-14', title: 'Desktop 1.1.42 + Android 1.1.60: smoother video guestbook on ordinary phones and tablets', for: ['website', 'app'], app: '1.1.42',
+    date: '2026-11-14', title: 'Desktop 1.1.42 + Android 1.1.60: smoother video guestbook on ordinary phones and tablets', for: ['website', 'app', 'android'], app: '1.1.42', android: '1.1.60',
     items: [
       'Video guestbook messages are recorded at 720p and 30 frames a second at most, with a lower video rate on ordinary Android phones and tablets, so recording no longer stutters. The booth’s own camera setting is put back when the guestbook closes.',
       'Looks draw on a smaller picture and only when the camera sends a new frame. On a device that cannot keep up, the picture shrinks further, and if that is still not enough the look switches itself off so the message stays smooth.',
@@ -1019,7 +1019,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-14', title: 'Desktop 1.1.41 + Android 1.1.59: video guestbook looks (beauty and more), flip camera, steadier camera and microphone', for: ['website', 'app'], app: '1.1.41',
+    date: '2026-11-14', title: 'Desktop 1.1.41 + Android 1.1.59: video guestbook looks (beauty and more), flip camera, steadier camera and microphone', for: ['website', 'app', 'android'], app: '1.1.41', android: '1.1.59',
     items: [
       'Video guestbook looks: guests tap a small "Look" button and pick Beauty (soft skin), Dreamy glow, Golden hour, Pastel, Rosé, Fresh mint, Cinema, Neon night, Camcorder, Noir, Film, B&W, Warm or Cool. The look is part of the saved video. In Setup > Video guestbook, choose the starting look (or "Same as the photos"), or untick "Let guests choose a look" to hide the button.',
       'A Flip camera button on the guestbook screen switches between the front and back camera of a phone or tablet. The booth goes back to its own camera when the guestbook closes.',
@@ -1028,7 +1028,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-14', title: 'Android 1.1.58: video guestbook records the full length, with sound', for: ['website'],
+    date: '2026-11-14', title: 'Android 1.1.58: video guestbook records the full length, with sound', for: ['android'], android: '1.1.58',
     items: [
       'Video guestbook messages are no longer cut short (a 30-second message could stop at about 10 seconds), and the camera picture no longer goes black while a guest is recording. The booth now keeps the camera on for as long as the guestbook screen is open, and the screen saver no longer dims the screen during a message.',
       'The Android app now asks for microphone permission, so video guestbook messages have sound. Tap Allow when the tablet asks after the update.',
@@ -1036,14 +1036,14 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-14', title: 'Android 1.1.57: Epson L805 photos over Wi-Fi and a printer checklist that ticks', for: ['website'],
+    date: '2026-11-14', title: 'Android 1.1.57: Epson L805 photos over Wi-Fi and a printer checklist that ticks', for: ['android'], android: '1.1.57',
     items: [
       'A Wi-Fi Epson ink-tank photo printer without AirPrint (L805, L800, L810, L850 and similar) is now listed as a photo printer, not a receipt printer, and prints photos over Wi-Fi the same way it does over a USB cable. If you had already picked it, open Print settings once so the app updates it.',
       'The printer setup checklist in Print settings now works on the Android app: it ticks when a printer is found, when one is chosen for the paper size, and after a print or test print works. It no longer mentions AirPrint or the iPad on a tablet.'
     ]
   },
   {
-    date: '2026-11-13', title: 'Android 1.1.56: easier-to-tap tick boxes and clearer setup wording', for: ['website'],
+    date: '2026-11-13', title: 'Android 1.1.56: easier-to-tap tick boxes and clearer setup wording', for: ['android'], android: '1.1.56',
     items: [
       'Every tick box row in Setup is now at least 40 px tall with the same box size, so switches are easier to hit on a tablet. Nothing moved and every option is where it was.',
       'When "No QR code for guests" is on, "Show the QR code in a pop-up" now says why it is greyed out, and a note says guests still get their QR code on a Sharing Station if you use one.',
@@ -1051,7 +1051,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-13', title: 'Android 1.1.55: 80mm USB receipt printers (Xprinter XP-T80Q etc.) print in one go again', for: ['website'],
+    date: '2026-11-13', title: 'Android 1.1.55: 80mm USB receipt printers (Xprinter XP-T80Q etc.) print in one go again', for: ['android'], android: '1.1.55',
     items: [
       'Since Android 1.1.40, prints to USB receipt printers were sent in tiny slow pieces to protect small 58mm printers. A fast 80mm printer (for example the Xprinter XP-T80Q at 200 mm/s) ran out of data, stopped and restarted while printing, and each stop left a line across the strip.',
       '80mm USB receipt printers and USB photo printers are now sent the picture at full speed again. The slow, careful sending stays for 58mm printers only.'
@@ -1064,7 +1064,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-12', title: 'Desktop 1.1.31 + Android 1.1.49: a Guestbook tab in the offline galleries', for: ['website', 'app'], app: '1.1.31',
+    date: '2026-11-12', title: 'Desktop 1.1.31 + Android 1.1.49: a Guestbook tab in the offline galleries', for: ['website', 'app', 'android'], app: '1.1.31', android: '1.1.49',
     items: [
       'The laptop and tablet photo pages now have their own Guestbook tab, with a Download all guestbook videos button that saves a few messages per zip so older phones keep up. Guestbook messages no longer show under 360 Videos or on the 360 live wall.',
       'Fixed the tablet guest photo page not loading its tabs.',
@@ -1072,7 +1072,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-12', title: 'Desktop 1.1.30 + Android 1.1.48: more designs, a smarter 360 desk and video guestbook questions', for: ['website', 'app'], app: '1.1.30',
+    date: '2026-11-12', title: 'Desktop 1.1.30 + Android 1.1.48: more designs, a smarter 360 desk and video guestbook questions', for: ['website', 'app', 'android'], app: '1.1.30', android: '1.1.48',
     items: [
       '360 desk: a new Auto mode switch edits every new video by itself and gets its QR code ready. Use the same look, a different look each time, or let the guest choose on the booth screen or on their phone. There is no text on the video unless you want it.',
       '360 desk: 12 more looks (30 in all) with real previews, a song and opening or ending clip for each look, GIF and square clips, and a 540p Light size for busy Wi-Fi.',
@@ -1084,7 +1084,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-12', title: 'Android 1.1.47: 58mm Bluetooth printers no longer print choppy after the first part', for: ['website'],
+    date: '2026-11-12', title: 'Android 1.1.47: 58mm Bluetooth printers no longer print choppy after the first part', for: ['android'], android: '1.1.47',
     items: [
       'Small 58mm Bluetooth printers printed the first part of a dark strip correctly and then only short broken pieces. Dark areas print slower than light ones, and the printer cannot tell the tablet to wait, so its small buffer overflowed and data was lost.',
       'The strip is now sent band by band, and after each dark band the tablet waits for the printer to catch up. Light pictures print as fast as before; a dark strip takes a few seconds longer. 80mm printers are not changed.',
@@ -1092,7 +1092,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-11', title: 'Desktop 1.1.29 + Android 1.1.46: camera live view really switches off when idle', for: ['website', 'app'], app: '1.1.29',
+    date: '2026-11-11', title: 'Desktop 1.1.29 + Android 1.1.46: camera live view really switches off when idle', for: ['website', 'app', 'android'], app: '1.1.29', android: '1.1.46',
     items: [
       'Nikon: the camera is now asked again until it accepts live view off. Right after the last photo it answered busy, and live view stayed on through the result and Touch to Start screens. The booth also asks again for the first minute after the camera is put to sleep.',
       'On the Get ready screen the camera turns off 2 seconds after the last touch if the guest has not pressed Start. A touch wakes it, and pressing Start brings the picture back before the countdown begins.',
@@ -1101,7 +1101,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-11', title: 'Android 1.1.45: camera rests when not in use', for: ['website'],
+    date: '2026-11-11', title: 'Android 1.1.45: camera rests when not in use', for: ['android'], android: '1.1.45',
     items: [
       'The tablet no longer keeps the camera running on the Touch to Start screen. A built-in or USB webcam stops completely, and a Nikon or Canon switches its live view off, so the battery lasts longer. Turn it off in Setup > Camera.',
       'The camera wakes as soon as a guest touches the start or welcome screen, so it is ready when they press Start.',
@@ -1132,51 +1132,51 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-11', title: 'Desktop 1.1.26 + Android 1.1.44: 58mm printer reliability & image quality improvements', for: ['website', 'app'], app: '1.1.26',
+    date: '2026-11-11', title: 'Desktop 1.1.26 + Android 1.1.44: 58mm printer reliability & image quality improvements', for: ['website', 'app', 'android'], app: '1.1.26', android: '1.1.44',
     items: [
-      '🔒 Print Lock for 58mm: disabled the Print button while a 58mm job is still physically printing — prevents double-tap data corruption when two jobs reach the printer buffer simultaneously.',
-      '🎨 Accurate brightness for USB prints: Bluetooth and USB receipt prints now read the same lightness/brightness slider value — USB was previously locked at 0 regardless of the slider setting.',
-      '📡 Bluetooth Tune 3 & 4 band cap: capped Smooth-mode (Tune 3/4) image bands to 64 rows on 58mm BT printers (was 192) — prevents rare buffer overflow on printers with extra-small internal RAM.',
-      '⏱️ Scaled USB drain wait: post-print mechanical drain now scales with strip length (1.5–5 s) instead of a fixed 1.5 s, so long custom-template strips have time to fully eject before the connection closes.',
-      '🔑 Per-printer USB lock: a mutex now prevents two concurrent USB write sessions to the same 58mm printer, eliminating the race condition when prints arrive back-to-back from the queue.',
-      '🖼️ 58mm canvas high-quality downscale: when resizing the receipt canvas from 576 to 384 dots for 58mm, imageSmoothingQuality is now set to "high" — reduces aliasing on template borders and thin text.',
-      '🖨️ Smarter 58mm detection: "MP"-prefixed BT device names and printers whose BT-reported paper width is ≤ 384 dots are now recognized as 58mm even without "58" in the name (catches MP58C7 and similar).'
+      '🔒 Print Lock for 58mm: disabled the Print button while a 58mm job is still physically printing — prevents double-tap garbled prints when tapped twice.',
+      '🎨 Accurate brightness for USB prints: Bluetooth and USB receipt prints now read the same lightness/brightness slider value — USB previously ignored the slider setting.',
+      '📡 Smoother Bluetooth Smooth mode on 58mm: sends Smooth-mode prints in smaller pieces so compact printers with tiny memory do not glitch or drop parts of the strip.',
+      '⏱️ Scaled USB finish wait: waits longer for long custom strips to finish feeding out before closing the connection.',
+      '🔑 Safer back-to-back USB printing: ensures two USB prints never overlap when multiple jobs wait in line.',
+      '🖼️ Sharper 58mm text and borders: improved picture scaling for 58mm paper so borders and thin text print cleaner.',
+      '🖨️ Smarter 58mm detection: automatically recognizes more 58mm portable printers (including MP-series models) even if "58" is not in the device name.'
     ]
   },
   {
-    date: '2026-11-11', title: 'Desktop 1.1.25 + Android 1.1.43: Clean Wi-Fi UI, auto-linked hotspot, undistorted GIF scaling & solo white frame', for: ['website', 'app'], app: '1.1.25',
+    date: '2026-11-11', title: 'Desktop 1.1.25 + Android 1.1.43: Clean Wi-Fi UI, auto-linked hotspot, undistorted GIF scaling & solo white frame', for: ['website', 'app', 'android'], app: '1.1.25', android: '1.1.43',
     items: [
-      '📶 Clean Wi-Fi UI: eliminated duplicate/redundant Wi-Fi SSID and password input fields and redundant "Use current Wi-Fi" buttons when booth hotspot is active.',
-      '🔗 Auto-linked Hotspot Checkboxes: toggling "Make this laptop the booth Wi-Fi" now automatically activates and persists "Turn it on whenever the app opens", and dock Wi-Fi QR button stays reliably accessible offline.',
-      '🖼️ Clean Solo GIF White Border: when using custom multi-photo or strip frames for prints, Solo (1 large frame) GIFs automatically bypass the strip frame overlay and use the classic default white border frame.',
-      '📐 Undistorted GIF Scaling: fixed aspect-ratio stretching and distortion in Multi-Box Boomerang and sequential GIFs — slot buffers now dynamically match native camera aspect ratios (16:9, 3:2, 4:3, or portrait) with aspect-preserving drawImageCover rendering.'
+      '📶 Clean Wi-Fi UI: removed duplicate Wi-Fi name and password boxes when the laptop booth Wi-Fi is turned on.',
+      '🔗 Auto-linked Hotspot Checkboxes: turning on "Make this laptop the booth Wi-Fi" now automatically turns on "Turn it on whenever the app opens", and keeps the dock Wi-Fi QR button accessible offline.',
+      '🖼️ Clean Solo GIF White Border: when printing with multi-photo or strip frames, Solo (1 large photo) GIFs now use the clean default white border instead of stretching a strip frame.',
+      '📐 Undistorted GIF Scaling: fixed stretched or squished GIFs in Multi-Box Boomerang and sequential GIFs across wide, portrait, and standard cameras.'
     ]
   },
   {
-    date: '2026-11-11', title: 'Desktop 1.1.24 + Android 1.1.42: Deep DSLR battery saver, dslrBooth AF test shot & session QR', for: ['website', 'app'], app: '1.1.24',
+    date: '2026-11-11', title: 'Desktop 1.1.24 + Android 1.1.42: Deep DSLR battery saver, autofocus test shot & session QR', for: ['website', 'app', 'android'], app: '1.1.24', android: '1.1.42',
     items: [
-      '🔋 Deep DSLR Battery Saver: Camera Live View mirror stays dropped during idle welcome screen, layout picker selection, payment, and post-capture guest review/print screen — dropping power draw by ~85% (from ~480mA to ~20mA standby) and preventing camera overheating on Nikon D5300 and other DSLRs.',
-      '🎯 dslrBooth-Style AF Setup & Test Shot: Added Setup Step 4 tool with "Auto-Focus Lens" and "Take Test Shot" instant preview with autofocus settle timing fix; allows operator to acquire sharp focus in setup and switch lens to MF for zero-lag instant shutter triggers during events.',
-      '⏱️ Paced Live View: Paced frame loop to prevent camera DSP overload and thermal throttling.',
-      '📋 In-App Operator Battery Guide: Added collapsible DSLR battery and heat optimization guide in Setup Step 4 covering lens VR off, screen fold, in-camera menu timer, and manual mode settings.',
-      '🔒 "Only their own" privacy fix: guests scanning the sharing station QR can now view their own session photos (strip, solos, GIF all on one page) — previously they were blocked entirely.',
-      '📲 Single session QR: when a session has multiple items (print strip + solo shots + GIF), the QR opens one page showing all of them together so guests only need to scan once.',
-      '⏱️ Configurable booth handoff duration: "Show photo Xs" now has options from 2 s to 15 s (2, 3, 5, 7, 10, 15 seconds), letting operators control how long the photo lingers before the sharing station pops up.',
-      '🔄 Auto-update fix: resolves the v1.1.40 auto-update issue — this version forces the upgrade prompt correctly.'
+      '🔋 Deep DSLR Battery Saver: Keeps the DSLR camera resting during the welcome screen, layout picker, payment, and review screens — greatly reducing battery drain and camera heat between guests.',
+      '🎯 Quick Autofocus & Test Shot setup: Added Setup Step 4 tools ("Auto-Focus Lens" and "Take Test Shot") so you can focus once during setup and switch the lens to manual focus for instant shutter response all event.',
+      '⏱️ Cooler Live View: Keeps camera live view running smoothly without overworking the camera processor.',
+      '📋 Built-in Battery & Heat Tips: Added a quick DSLR battery and heat checklist inside Setup Step 4.',
+      '🔒 "Only their own" privacy fix: guests scanning the sharing station QR can now view their own session photos (strip, solos, GIF all on one page) instead of being blocked.',
+      '📲 Single session QR: when a session has multiple items (print strip + solo shots + GIF), the QR opens one page showing all of them together so guests only scan once.',
+      '⏱️ Adjustable handoff pause: "Show photo Xs" now offers 2, 3, 5, 7, 10, and 15 seconds before switching back to the sharing screen.',
+      '🔄 Auto-update fix: ensures tablets on older versions receive this update prompt reliably.'
     ]
   },
   {
-    date: '2026-11-11', title: 'Desktop 1.1.23 + Android 1.1.40: Sharing Station QR fix, 58mm printer USB pacing & zero-waste tear feed', for: ['website', 'app'], app: '1.1.23',
+    date: '2026-11-11', title: 'Desktop 1.1.23 + Android 1.1.40: Sharing Station QR fix, 58mm printer pacing & zero-waste paper feed', for: ['website', 'app', 'android'], app: '1.1.23', android: '1.1.40',
     items: [
-      '📱 Sharing Station QR Fix: resolved missing/broken QR code display by removing classic script parsing errors in qr.js, inlining the generator for instant zero-latency rendering, and fixing Windows offline path resolution.',
-      '🚀 USB Flow Control Pacing: implemented 256-byte paced transfers with 8ms inter-chunk delay and 1.5s mechanical completion wait in NetPrintBridge.kt, preventing USB buffer overflow and ring-buffer wrap-around on cheap mobile thermal printers (MP58C7 / POS-58).',
-      '🛡️ Multi-Copy & Sequential Print Protection: added automatic 2-second inter-copy delay to prevent subsequent prints from colliding with or resetting the mechanical print head mid-print.',
-      '✂️ Zero-Waste Tear-Bar Feed: tightened 58mm trailing paper feed to 2 lines (~8 mm) so the print stops right at the tear bar, completely eliminating excess bottom margin and runaway paper.',
-      '🖨️ Zero-Configuration: all 58mm optimizations apply automatically when a 58mm printer is detected — keeping the UI simple with standard "Receipt 58 mm".'
+      '📱 Sharing Station QR Fix: Fixed missing or broken QR codes on the Sharing Station offline and on Windows laptops.',
+      '🚀 Steady 58mm USB printing: Slows data pacing slightly for compact 58mm portable receipt printers (like MP58C7 / POS-58) so strips never turn into garbled characters.',
+      '🛡️ Multi-Copy protection: Adds a short pause between consecutive copies so back-to-back prints never collide.',
+      '✂️ Zero-waste tear feed: Stops 58mm paper right at the tear bar (~8 mm feed) to avoid wasting blank receipt paper.',
+      '🖨️ Automatic setup: All 58mm print fixes turn on by themselves whenever a 58mm printer is selected.'
     ]
   },
   {
-    date: '2026-11-11', title: 'Desktop 1.1.22 + Android 1.1.39: Sharing Station — pure session mode, single-photo QR & multi-item pills', for: ['website', 'app'], app: '1.1.22',
+    date: '2026-11-11', title: 'Desktop 1.1.22 + Android 1.1.39: Sharing Station — pure session mode, single-photo QR & multi-item pills', for: ['website', 'app', 'android'], app: '1.1.22', android: '1.1.39',
     items: [
       '🔒 Pure Session Mode: the Sharing Station no longer displays an event-wide photo grid by default. It stays on a clean, branded standby screen between sessions and automatically pops only the current session\'s photos.',
       '📲 Single-Photo QR Code: scanning the station QR with a phone camera now opens only that specific photo or strip directly in the high-res downloader, never the entire event gallery.',
@@ -1185,7 +1185,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-10', title: 'Desktop 1.1.21 + Android 1.1.38: Live Layout Editor — sticker corner handles, dummy guest photos & top bar clearance', for: ['website', 'app'], app: '1.1.21',
+    date: '2026-11-10', title: 'Desktop 1.1.21 + Android 1.1.38: Live Layout Editor — sticker corner handles, dummy guest photos & top bar clearance', for: ['website', 'app', 'android'], app: '1.1.21', android: '1.1.38',
     items: [
       '🎯 Scoped Resize Handles: the 4 sticker corner handles and dashed outlines now strictly only show when actively inside "Resize Layout" mode, with zero handle leakage into live guest sessions.',
       '🖼️ Realistic Dummy Guest Photos: empty film track slots in the layout preview now render 4 colorful guest portraits with smiling cartoon avatars and "Photo 1"–"Photo 4" badges, providing an accurate, beautiful preview of side photo strips.',
@@ -1194,115 +1194,114 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-10', title: 'Desktop 1.1.20 + Android 1.1.37: Sharing Station — fix wrong event on separate phone', for: ['website', 'app'], app: '1.1.20',
+    date: '2026-11-10', title: 'Desktop 1.1.20 + Android 1.1.37: Sharing Station — fix wrong event on separate phone', for: ['website', 'app', 'android'], app: '1.1.20', android: '1.1.37',
     items: [
-      '🔧 Fixed: Scanning the Sharing Station QR on a separate phone no longer opens an old/previous event. The pairing QR is now always generated from the currently active event folder.',
+      '🔧 Fixed: Scanning the Sharing Station QR on a separate phone no longer opens an old/previous event. The pairing QR now always uses the active event folder.',
       '🔄 "Seeing wrong event?" button: if the station phone is showing a different event\'s photos, a "⟳ Reload to resync" button appears on the standby screen after ~15 seconds so you can recover without re-scanning.',
-      '📲 Offline (Desktop/Android): station URL no longer embeds a folder ID — the server always auto-resolves to the latest event, so a stale QR scan cannot pin you to an old folder.',
-      '🌐 Online: the pairing QR now reads the live event name from the booth\'s folder input field rather than a cached/stale localStorage value.'
+      '📲 Offline (Desktop/Android): station pairing automatically resolves to the latest active event so an older QR scan will not lock you onto a past event.',
+      '🌐 Online: the pairing QR now reads the live event name typed in the booth instead of an older saved value.'
     ]
   },
   {
-    date: '2026-11-10', title: 'Desktop 1.1.19 + Android 1.1.36: Separate Sharing Station with live auto-pop, audio chime & fast booth hand-off', for: ['website', 'app'], app: '1.1.19',
+    date: '2026-11-10', title: 'Desktop 1.1.19 + Android 1.1.36: Separate Sharing Station with live auto-pop, audio chime & fast booth hand-off', for: ['website', 'app', 'android'], app: '1.1.19', android: '1.1.36',
     items: [
       '📱 Separate Sharing Station: display your QR codes and photos on a separate phone or tablet stand, freeing the camera booth to start the next session immediately.',
       '⚡ 2-Second Fast Booth Handoff: skips the long 20–30s result wait on the main booth screen with an on-screen prompt directing guests to the sharing stand.',
       '✨ Live Auto-Pop on Phone: incoming photo strips automatically pop up full-screen on the phone with a large, high-contrast QR code for instant camera roll download.',
-      '🔔 Melodic Web Audio Chime: plays a clean synthesizer chime on the sharing stand whenever a session finishes — 100% offline, zero audio files required.',
+      '🔔 Melodic Audio Chime: plays a clean chime on the sharing stand whenever a session finishes — works 100% offline with no audio files needed.',
       '🔒 Privacy Mode: option to show only the current session (hides the past event gallery and auto-clears after 35s) for privacy-conscious weddings and corporate events.',
-      '📴 Works 100% Offline & Online: fully supported via local booth Wi-Fi (port 47777) on Desktop & Android tablets, and via cloud sync on the web version.'
+      '📴 Works 100% Offline & Online: supported over local booth Wi-Fi on Laptop & Android tablets, and via cloud sync on the web version.'
     ]
   },
   {
-    date: '2026-11-10', title: 'Desktop 1.1.18 + Android 1.1.35: 58mm thermal printer — fix cut-off sides, blank paper feed, and bottom glitch', for: ['website', 'app'], app: '1.1.18',
+    date: '2026-11-10', title: 'Desktop 1.1.18 + Android 1.1.35: 58mm thermal printer — fix cut-off sides, blank paper feed, and bottom glitch', for: ['website', 'app', 'android'], app: '1.1.18', android: '1.1.35',
     items: [
-      '🖨️ 58mm Right-Side Cutoff Fixed: receipt layouts and custom 2×6 strips now automatically select "Receipt 58mm" paper when a 58mm printer (e.g. MP58C7) is detected, preventing the 576-dot canvas from being clipped by the 384-dot print head.',
-      '🔁 Auto-Correction on Startup: if "Receipt 80mm" was saved from a previous session, the app now silently upgrades to "Receipt 58mm" the moment a 58mm printer is detected — no manual tap needed.',
-      '📄 Blank Paper Feed Fixed: 58mm mobile printers have no auto-cutter — the app now feeds 3 lines instead of sending a cut command, eliminating the endless blank paper scroll after each print.',
-      '🔧 Bottom Glitch / Repeating Strip Fixed: reduced ESC/POS image band size from 256 rows (~12 KB) to 32 rows for 58mm printers, preventing buffer overflow on devices with 2–4 KB RAM buffers.',
+      '🖨️ 58mm Right-Side Cutoff Fixed: receipt layouts and custom 2×6 strips now automatically select "Receipt 58mm" paper when a 58mm printer (e.g. MP58C7) is detected, preventing the right edge from getting clipped.',
+      '🔁 Auto-Correction on Startup: if "Receipt 80mm" was saved from a previous session, the app now automatically switches to "Receipt 58mm" when a 58mm printer connects.',
+      '📄 Blank Paper Feed Fixed: 58mm mobile printers have no auto-cutter — the app now stops cleanly instead of feeding endless blank paper after each print.',
+      '🔧 Bottom Glitch / Repeating Strip Fixed: prints are now sent in smaller chunks to 58mm printers so compact printers with small memory never glitch at the bottom.',
       '✅ 80mm and all other thermal/photo printers are completely unaffected by these changes.'
     ]
   },
   {
-    date: '2026-11-10', title: 'Desktop 1.1.17 + Android 1.1.34: Minimizable floating layout dock, supersized side photos & budget tablet 0ms lag optimization (VOVE Pad 9 Ultra)', for: ['website', 'app'], app: '1.1.17',
+    date: '2026-11-10', title: 'Desktop 1.1.17 + Android 1.1.34: Minimizable floating layout dock, bigger side photos & zero-lag budget tablets', for: ['website', 'app', 'android'], app: '1.1.17', android: '1.1.34',
     items: [
-      '🚀 Budget Tablet 0ms Lag Optimization: eliminated photo capture delay on generic & budget tablets (VOVE Pad 9 Ultra) by capturing directly from active viewfinder and switching WebView rendering to direct compositor.',
-      '⚡ 720p Tablet Viewfinder & GPU Layers: optimized default tablet camera stream to 1280x720 @ 30fps and isolated countdown animations into dedicated GPU compositing layers for rock-solid 30-60fps smoothness.',
-      '📐 Minimizable Floating Layout Dock: replaced the bottom bar with a sleek, movable floating dock at top-right with one-tap minimize/expand so Start button sits naturally and unobstructed.',
-      '📸 Supersized Side Photos: lifted film track scaling cap to 2.5x (250%) with smooth scrolling, letting session thumbnails grow way bigger on widescreen & 11.5" monitors.'
+      '🚀 Zero-Lag Budget Tablets: Eliminated shutter capture delay on budget Android tablets by snapping directly from the live camera view.',
+      '⚡ Smooth 720p Viewfinder & Countdown: Tuned tablet camera preview speed and animations so countdowns stay smooth without stutter.',
+      '📐 Minimizable Floating Layout Dock: Replaced the bottom bar with a movable floating dock at top-right with one-tap minimize/expand so the Start button stays clear.',
+      '📸 Bigger Side Photos: Raised side photo track scaling up to 250% with smooth scrolling so session previews look much bigger on widescreen and 11.5" monitors.'
     ]
   },
   {
-    date: '2026-11-10', title: 'Desktop 1.1.16 + Android 1.1.33: Anti-glitch safeguard for camera capture & Surface tablets', for: ['website', 'app'], app: '1.1.16',
+    date: '2026-11-10', title: 'Desktop 1.1.16 + Android 1.1.33: Anti-glitch safeguard for camera capture & Surface tablets', for: ['website', 'app', 'android'], app: '1.1.16', android: '1.1.33',
     items: [
-      '📸 Truncated JPEG Stream Guard: automatically detects incomplete camera driver buffers and missing End-of-Image markers on webcams and tablet cameras.',
-      '🛡️ Anti-Smear Protection: prevents scanline duplication and bottom streak distortion (common on Microsoft Surface tablets) by safely falling back to the pristine live viewfinder frame.',
-      '🔄 Unconstrained Still Retry: re-attempts photo capture unconstrained if driver-specific max resolution dimensions cause buffer overflow.',
-      '✨ Flawless Collages: guarantees printed and saved photos remain sharp and glitch-free across all devices.'
+      '📸 Incomplete Photo Guard: Automatically spots incomplete camera photos from webcams and tablet cameras before saving.',
+      '🛡️ Anti-Smear Protection: Prevents smeared lines at the bottom of photos (common on Surface tablets) by falling back cleanly to the clear live view frame.',
+      '🔄 Automatic Retry: Retries photo capture automatically if the camera runs into a temporary buffer glitch.',
+      '✨ Clean Collages: Keeps printed and saved photos sharp and glitch-free across all devices.'
     ]
   },
   {
-    date: '2026-11-10', title: 'Desktop 1.1.15 + Android 1.1.32: Live on-screen layout & resize editor with instant preview', for: ['website', 'app'], app: '1.1.15',
+    date: '2026-11-10', title: 'Desktop 1.1.15 + Android 1.1.32: Live on-screen layout & resize editor with instant preview', for: ['website', 'app', 'android'], app: '1.1.15', android: '1.1.32',
     items: [
-      '📐 Live On-Screen Layout Editor: new Resize UI floating tool on the Photo Session dock allows real-time scaling of countdown, buttons, and side photo strip with zero back-and-forth.',
-      '👁️ Interactive Live Preview Overlays: temporarily simulates sample countdown, start button, and side film track right over the live camera view while editing.',
-      '✓ One-Tap Done Editing: locks in monitor-specific sizes to localStorage and returns seamlessly to shooting mode.',
-      '🖥️ Step 7 Live Jump: "Live Resize on Screen" button in Session setup switches directly to camera stage and opens the editor.'
+      '📐 Live On-Screen Layout Editor: new Resize UI floating tool on the Photo Session dock lets you scale the countdown, buttons, and side photo strip directly on screen.',
+      '👁️ Interactive Live Preview Overlays: temporarily shows a sample countdown, start button, and side photo strip right over your live camera view while editing.',
+      '✓ One-Tap Done Editing: saves the sizes for that screen and returns straight to shooting mode.',
+      '🖥️ Step 7 Live Jump: "Live Resize on Screen" button in Session setup switches directly to the camera screen and opens the editor.'
     ]
   },
   {
-    date: '2026-11-10', title: 'Desktop 1.1.14 + Android 1.1.31: Monitor & display scaling, prominent guest countdown & side photos auto-fit', for: ['website', 'app'], app: '1.1.14',
+    date: '2026-11-10', title: 'Desktop 1.1.14 + Android 1.1.31: Monitor & display scaling, prominent guest countdown & side photos auto-fit', for: ['website', 'app', 'android'], app: '1.1.14', android: '1.1.31',
     items: [
-      '🖥️ Display & Monitor Scaling: new Compact (11.5" Mini Monitor), Standard, and Large / TV presets in Step 7 (Session) with fine-tuning dropdowns for buttons, countdown, and side photo scaling.',
-      '⏱️ Prominent Guest Countdown: enlarged vector countdown ring and numbers for clear guest visibility from a distance on small 11.5" screens.',
-      '📸 Adaptive Side Session Photos: dynamically computes film-track thumbnail heights based on actual shot counts (3 or 4) so all shots fit comfortably on screen without scrolling or squishing.',
-      '🎯 Responsive Buttons & Touch Targets: scales session and shutter buttons to optimize vertical screen space while maintaining standard 44px+ touch targets.'
+      '🖥️ Display & Monitor Scaling: new Compact (11.5" Mini Monitor), Standard, and Large / TV presets in Step 7 (Session) with fine-tuning choices for buttons, countdown, and side photos.',
+      '⏱️ Prominent Guest Countdown: larger countdown ring and numbers so guests can easily see them from a distance on compact 11.5" screens.',
+      '📸 Adaptive Side Session Photos: automatically adjusts side thumbnail heights based on shot count (3 or 4) so every shot fits comfortably without squishing.',
+      '🎯 Responsive Buttons & Touch Targets: keeps session and shutter buttons comfortable and easy to tap on any screen size.'
     ]
   },
   {
-    date: '2026-11-09', title: 'Desktop 1.1.13 + Android 1.1.30: Dynamic GIF motion, session fast-forward & interactive popups', for: ['website', 'app'], app: '1.1.13',
+    date: '2026-11-09', title: 'Desktop 1.1.13 + Android 1.1.30: Dynamic GIF motion, session fast-forward & interactive popups', for: ['website', 'app', 'android'], app: '1.1.13', android: '1.1.30',
     items: [
-      '⚡ Dynamic GIF motion & duration: removed fixed 2.2s clip limit. GIFs now capture natural countdown motion (up to 5.4s) and dynamically scale frame delay and playback duration.',
-      'Full session fast-forward: continuous Full Session mode automatically calculates optimal speed factor (3x–10x) based on session length, delivering smooth 4–5s recaps without dragging.',
-      'Seamless Multi-Box & Story Replay: synchronized Multi-Box Boomerang and sequential Story Replay dynamically calibrate timing to layout and loop mode with zero endpoint stutter.',
-      'Interactive hover popups: floating preview tooltips provide instant visual descriptions and recommendations when hovering over animation styles and loop modes.'
+      '⚡ Dynamic GIF motion & duration: removed fixed 2.2s clip limit. GIFs now capture natural countdown motion (up to 5.4s) and adjust playback speed cleanly.',
+      'Full session fast-forward: Full Session mode automatically picks the right fast-forward speed (3x–10x) for smooth 4–5s recaps.',
+      'Seamless Multi-Box & Story Replay: synchronized Multi-Box Boomerang and Story Replay loop smoothly with zero end-of-loop stutter.',
+      'Interactive hover popups: hovering over animation styles and loop modes shows quick visual descriptions and recommendations.'
     ]
   },
   {
-    date: '2026-11-09', title: '360 Video: 1 GB high-speed Wi-Fi upload pipeline & real-time upload progress', for: ['website', 'app'], app: '1.0.112',
+    date: '2026-11-09', title: '360 Video: 1 GB high-speed Wi-Fi upload & live progress', for: ['website', 'app'], app: '1.0.112',
     items: [
-      '⚡ Direct 1 GB high-speed Wi-Fi upload: automatic local network / hotspot detection (&lan=) allows recording phones to stream 360 clips up to 1 GB directly to the booth station in 2–3 seconds over local Wi-Fi.',
-      'Real-time upload progress tracking: replaced static progress indicators with live percentage and transferred/total MB counters during video uploads.',
-      'Desktop requirement guide on web: clicking 360 desk on the web interface now presents an informative modal explaining GPU & FFmpeg requirements for speed ramps and presets, with one-click desktop app download.',
-      'Actionable large-file guidance: clear camera setting recommendations (1080p 30fps) to keep clips under 20 MB when uploading through web relays.'
+      '⚡ Fast local Wi-Fi uploads up to 1 GB: recording phones automatically spot your booth Wi-Fi or hotspot and transfer 360 clips straight to the booth in seconds.',
+      'Live upload progress: shows live percentage and transferred MB counters while videos upload.',
+      'Laptop app guide for 360 effects: clicking 360 Desk on the website explains how the Laptop app renders slow-motion and effects faster, with a one-click download link.',
+      'Helpful size tips: suggests camera settings (1080p 30fps) for smaller clips when sending over regular web connections.'
     ]
   },
   {
-    date: '2026-11-09', title: 'Android app 1.1.28: Offline in-app gallery preview & instant Back to booth', for: ['website', 'app'], app: '1.1.28',
+    date: '2026-11-09', title: 'Android app 1.1.28: Offline in-app gallery preview & instant Back to booth', for: ['android'], android: '1.1.28',
     items: [
-      '⚡ In-app gallery preview: tapping "Open gallery" on the tablet now opens the event gallery directly inside the app over loopback, avoiding router client isolation and connection hangs.',
-      'Offline gallery access: browse all photos saved on the tablet during the event even when completely offline without Wi-Fi.',
-      'Kiosk Back button: added "← Back to booth" in the gallery header to instantly return to the camera without disrupting kiosk mode.'
+      '⚡ In-app gallery preview: tapping "Open gallery" on the tablet opens the event gallery right inside the app, avoiding router blocks and connection hangs.',
+      'Offline gallery access: browse all photos saved on the tablet during the event even with no internet.',
+      'Kiosk Back button: added "← Back to booth" in the gallery header to return straight to the camera without leaving kiosk mode.'
     ]
   },
   {
-    date: '2026-11-09', title: 'Full resolution live viewfinder with downsize options & hardware acceleration', for: ['website', 'app'], app: '1.0.111',
+    date: '2026-11-09', title: 'Full resolution live viewfinder with downsize options & smoother preview', for: ['website', 'app', 'android'], app: '1.0.111',
     items: [
-      '⚡ Crisp full-resolution live viewfinder: camera preview now runs at full camera sensor resolution (1080p+) by default on Android tablet and Desktop apps.',
-      'Flexible viewfinder downsize controls: added explicit option in Setup → Camera to downsize the live viewfinder (to 720p or 480p) to eliminate live view lag on slower tablets while keeping photos at full camera resolution.',
-      'Hardware GPU acceleration: enabled hardware composition, 3D CSS transforms, and Chromium zero-copy GPU video rasterization for silky smooth live view rendering.',
-      'Always-sharp photo captures: camera stills and prints always capture and print at maximum sensor resolution regardless of viewfinder preview downsize.',
-      'Optimized countdown capture: eliminated synchronous pixel loop bottlenecks during live countdown sampling.'
+      '⚡ Crisp full-resolution live preview: camera live view now runs at full camera clarity (1080p+) by default on Android tablets and Laptop apps.',
+      'Flexible live preview size controls: added an option in Setup → Camera to lower the live preview resolution (720p or 480p) on slower tablets while keeping saved photos at full quality.',
+      'Smoother hardware rendering: smoother live camera display and faster countdown performance.',
+      'Always-sharp photo captures: printed and saved photos always stay at the camera’s full resolution regardless of preview size.'
     ]
   },
   {
-    date: '2026-11-09', title: 'Roving DSLR Bridge: Wired DSLR to Android phone streaming wirelessly to Laptop booth', for: ['website', 'app'], app: '1.0.110',
+    date: '2026-11-09', title: 'Roving DSLR Bridge: Wired DSLR to Android phone streaming wirelessly to Laptop booth', for: ['website', 'app', 'android'], app: '1.0.110',
     items: [
-      '📷 Roving DSLR Bridge on Android: connect any Canon, Nikon, or Sony DSLR via USB OTG to an Android phone in your pocket and stream photos wirelessly to your laptop booth in real time.',
-      'Physical Shutter Detection: UsbCameraHelper automatically detects when the photographer presses the shutter button on the camera body and downloads the JPEG in ~0.5s.',
-      'Pocket Lock Mode & Haptic Feedback: dim screen to save battery and lock touches while keeping the camera shutter live; vibrates on successful photo delivery.',
-      'Photographer Desk Queue: incoming roving photos queue automatically in the Photographer Desk section at the base station for review, selection, and on-demand printing with event frames.',
-      'Zero-license Transmitter: Android activation gate includes a direct "📷 Roving DSLR Bridge" launcher so any spare Android phone can act as a wireless bridge without burning an extra rental code.'
+      '📷 Roving DSLR Bridge on Android: connect any Canon, Nikon, or Sony DSLR via USB cable (OTG) to an Android phone in your pocket and stream photos wirelessly to your laptop booth in real time.',
+      'Automatic Shutter Detection: automatically detects when the photographer presses the shutter button on the camera and transfers the photo in about half a second.',
+      'Pocket Lock Mode & Vibration Alert: dims the phone screen to save battery and prevent accidental taps while keeping the connection live, vibrating when each photo is delivered.',
+      'Photographer Desk Queue: incoming roving photos appear automatically in the Photographer Desk at the booth for reviewing, framing, and printing.',
+      'No extra licence needed: the Android activation screen includes a direct "📷 Roving DSLR Bridge" button so any spare Android phone can send photos without using a device slot.'
     ]
   },
   {
@@ -1353,7 +1352,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-08', title: 'Android app 1.1.19: Auto-open on boot and Kiosk Home Launcher mode', for: ['website'],
+    date: '2026-11-08', title: 'Android app 1.1.19: Auto-open on boot and Kiosk Home Launcher mode', for: ['android'], android: '1.1.19',
     items: [
       'The Android tablet app (v1.1.19) now includes an auto-start feature: when the tablet powers on or restarts, photobooth4u can open automatically.',
       'Long-press anywhere on the screen to open the new Operator Menu and toggle "Auto-Open on Boot: ON / OFF" with a single tap.',
@@ -1362,7 +1361,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-08', title: 'My frames: uploaded frames now stay after a restart, and you can keep up to 100', for: ['website', 'app'], app: '1.0.105',
+    date: '2026-11-08', title: 'My frames: uploaded frames now stay after a restart, and you can keep up to 100', for: ['website', 'app', 'android'], app: '1.0.105', android: '1.1.18',
     items: [
       'Fixed: frames you uploaded could show up white (design missing) or not save after the app was restarted, especially offline. The pictures were kept in a small storage that fills up after a few big frames. They are now kept in the larger on-device storage, and pictures saved the old way are moved over the first time they load. Android app 1.1.18 has the same fix.',
       'My frames now holds up to 100 frames (it was 8). Big frame pictures are also downloaded a few at a time, so a new tablet can get them all back from your account.',
@@ -1370,7 +1369,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-08', title: 'Android tablet: your saved layouts, profiles and themes are back after the 1.1.16 update', for: ['website'],
+    date: '2026-11-08', title: 'Android tablet: your saved layouts, profiles and themes are back after the 1.1.16 update', for: ['android'], android: '1.1.17',
     items: [
       'Android app 1.1.16 fixed a bug that showed the word "null" on the start screen, but on tablets running offline with a normal rental code it also looked for the saved setup in a new place, so uploaded layouts, profiles and My themes seemed to be gone.',
       'Android app 1.1.17 copies them over from the old place the first time it opens, and keeps the old copies. If you already saved something since the update, that is kept and the uploaded layouts you had before are added back to it.',
@@ -1378,7 +1377,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-08', title: 'Saved profiles keep your vouchers, and offline no longer changes your payment mode', for: ['website', 'app'], app: '1.0.104',
+    date: '2026-11-08', title: 'Saved profiles keep your vouchers, and offline no longer changes your payment mode', for: ['website', 'app', 'android'], app: '1.0.104', android: '1.1.16',
     items: [
       'A saved profile now includes the event’s voucher batches (which codes are unused, used or cancelled). Tap "Use everything" to bring them back; vouchers already used here stay used. "Design only" leaves vouchers alone.',
       'Profiles also remember your paper size, your own paper sizes, keychain printing and the photographer’s one-big-print setting. These load with "Use everything" too, and are included when you export or import profiles.',
@@ -1388,7 +1387,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-08', title: 'Canon over USB: no more "Camera disconnected" between photos', for: ['website', 'app'], app: '1.0.103',
+    date: '2026-11-08', title: 'Canon over USB: no more "Camera disconnected" between photos', for: ['website', 'app', 'android'], app: '1.0.103', android: '1.1.15',
     items: [
       'A Canon (for example the 60D) is still saving the photo when the next live view is asked for, and refuses it for a moment. The booth used to treat that as a lost camera and show "Camera disconnected. Reconnecting…" between shots even though the photo was saved. It now waits (up to 45 seconds), asks the camera for live view again every few seconds, and shows the last picture meanwhile.',
       'While a photo is being taken the booth no longer queues live view requests behind it, and a request that only timed out while the camera was busy saving no longer counts as a lost camera. A cable pulled or a camera switched off is still noticed at once.',
@@ -1396,7 +1395,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-07', title: 'Save power on the welcome screen: dim, then turn the display off', for: ['website', 'app'], app: '1.0.102',
+    date: '2026-11-07', title: 'Save power on the welcome screen: dim, then turn the display off', for: ['website', 'app', 'android'], app: '1.0.102', android: '1.1.13',
     items: [
       'New in Setup → Welcome screen → "Save power while waiting": choose after how many minutes without a touch the booth dims the screen, and after how many minutes it goes fully black. Both default to Never, so nothing changes until you set them.',
       'One touch wakes the screen. That first touch only wakes it, so a guest bumping the screen never starts a session by accident. Dimming only happens while the welcome screen is showing, never during a session.',
@@ -1412,7 +1411,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-08', title: 'Android tablet: USB webcams that only work uncompressed (YUYV)', for: ['website'],
+    date: '2026-11-08', title: 'Android tablet: USB webcams that only work uncompressed (YUYV)', for: ['android'], android: '1.1.14',
     items: [
       'The Android app (1.1.14) now tries the same size as uncompressed YUYV right after MJPEG, before it steps down to a much smaller size. Some webcams show no picture in MJPEG on a weak tablet port or hub but work in YUYV (for example 1280×720). Uncompressed video is limited by USB, so the frame rate is lower (often about 10 fps at 720p).',
       'New under USB webcam preview: "Max YUYV" starts from the biggest uncompressed size the webcam lists. The Exact size list now shows every MJPEG and YUYV size, including bigger YUYV sizes (for a Logitech Brio on a fast USB port).',
@@ -1420,7 +1419,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-07', title: 'Android tablet: USB webcam that resets itself no longer stays black', for: ['website'],
+    date: '2026-11-07', title: 'Android tablet: USB webcam that resets itself no longer stays black', for: ['android'], android: '1.1.12',
     items: [
       'The Android app (1.1.12) remembers webcam sizes that make the webcam reset itself (a weak tablet port or unpowered hub) and skips them next time. If the webcam drops out while starting, the app waits for it to come back and continues with the next size.',
       'Standard sizes (720p, 480p) are tried before odd ones, and the size that worked last time is tried first. For a webcam on a tablet, a powered USB hub is still the most reliable setup.',
@@ -1428,14 +1427,14 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-07', title: 'Android tablet: USB webcam no longer stays black', for: ['website'],
+    date: '2026-11-07', title: 'Android tablet: USB webcam no longer stays black', for: ['android'], android: '1.1.11',
     items: [
       'The Android app (1.1.11) now tries only a short list of sensible webcam sizes, including a lower frame rate for weak tablet USB ports, so a webcam that cannot start at full speed falls back in about 30 seconds instead of staying black.',
       'If the webcam still sends no picture, the message now points to a powered USB-C hub, and "Copy camera log" lists every step the app tried so we can see why.'
     ]
   },
   {
-    date: '2026-11-07', title: 'Android tablet: print straight to a DNP photo printer over USB (beta)', for: ['website'],
+    date: '2026-11-07', title: 'Android tablet: print straight to a DNP photo printer over USB (beta)', for: ['android'], android: '1.1.10',
     items: [
       'The Android app (1.1.10) now prints to a DNP DS-RX1 / RX1HS, DS620 / DS620A or DS40 plugged into the tablet with a USB OTG cable. No driver, no laptop, and it works offline.',
       '4×6, 3.5×5, 5×7, 6×8 and 6×9, to match the paper loaded, with a Glossy or Matte finish. Strip layouts on 4×6 paper are cut into two 2×6 strips by the printer.',
@@ -1497,7 +1496,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-06', title: 'Android Tablet Updates Download Inside the App', for: ['website'],
+    date: '2026-11-06', title: 'Android Tablet Updates Download Inside the App', for: ['android'], android: '1.0.106',
     items: [
       'Android tablet app 1.0.106: from the next version on, tapping "Update" downloads it inside the app with a progress bar (no browser, no GitHub page), then Android asks "Update this app?".',
       'The first time, Android asks once to allow photobooth4u to install apps ("Allow from this source"); the update then carries on by itself. If the Wi-Fi drops, tap "Try again".'
@@ -1511,7 +1510,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-06', title: 'Bigger Sticker Screen, Printers That Reconnect by Themselves, and Arrange & Print', for: ['app', 'website'], app: '1.0.93',
+    date: '2026-11-06', title: 'Bigger Sticker Screen, Printers That Reconnect by Themselves, and Arrange & Print', for: ['app', 'website', 'android'], app: '1.0.93', android: '1.0.104',
     items: [
       'Stickers: the Decorate screen now fills the whole screen. The photo is as big as it fits and nothing covers it; stickers sit beside it (landscape) or in a sheet under it that guests can pull up or down (portrait). Bigger sticker buttons, and Smaller / Bigger / Turn / Copy / Remove appear right next to the selected sticker.',
       'Stickers: zoom in to place small stickers (the + / Fit / − buttons, a two-finger pinch on the photo, or a double-tap). Pinch a sticker to resize and turn it.',
@@ -1572,14 +1571,14 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-05', title: 'No 360 Buttons on Android, Epson Borderless Test Mode (Android)', for: ['app'], app: '1.0.97',
+    date: '2026-11-05', title: 'No 360 Buttons on Android, Epson Borderless Test Mode (Android)', for: ['android'], android: '1.0.97',
     items: [
       'The 360 desk and Record 360 buttons no longer show in the Android app (phones and tablets). They stay in the laptop app and on the website.',
       'For testing only (hidden unless Admin turns the debug option on): the Epson L-series built-in Epson mode has Normal 720 dpi and Best 1440 dpi test qualities for 4x6 glossy photo paper, now with borderless as well. It has not been tried on every printer, so the normal printing choices stay as they are.'
     ]
   },
   {
-    date: '2026-11-05', title: 'Choose Your Own Booth Wi-Fi Name and Password', for: ['app'], app: '1.0.84',
+    date: '2026-11-05', title: 'Choose Your Own Booth Wi-Fi Name and Password', for: ['app', 'android'], app: '1.0.84',
     items: [
       'Windows laptop: the booth Wi-Fi (the laptop making its own network, no router needed) now has a name and password you choose in Setup. Press "Save name & password"; if the booth Wi-Fi is on, it restarts with the new ones. It still needs no internet.',
       'Android tablet (Android 10 and newer): you can set the booth Wi-Fi password and the end of its name (Android always starts it with DIRECT-pb-). If Android makes its own network instead, Setup tells you the name it used and the Join QR uses that one.',
@@ -1588,7 +1587,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-05', title: 'Insta360 and USB Camera Help, Epson L-Series Printing (Android)', for: ['app'], app: '1.0.95',
+    date: '2026-11-05', title: 'Insta360 and USB Camera Help, Epson L-Series Printing (Android)', for: ['android'], android: '1.0.95',
     items: [
       'If an Insta360 (or another USB camera) is plugged into the tablet and does not show as a webcam, the Camera panel and the camera error now say why: for example that it is in phone-control, picture-transfer or USB-drive mode and needs its USB mode set to Webcam on the camera, or that Android still needs your OK to use it. Every USB device the tablet sees is also written to the camera log (Copy camera log).',
       'Epson L3210, L3200, L3230, L1210, L1230 and L1250 printers now warn when a paper size cannot print borderless (these printers do borderless only on 4x6 in, 3.5x5 in, 16:9 wide and 100x148 mm) and print with a normal border on other sizes.',
@@ -1604,7 +1603,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-05', title: 'Print Queue, Separate Settings for Each Printer, Vouchers Linked to Printers and RP30 Thermal Printer (Android)', for: ['app'], app: '1.0.94',
+    date: '2026-11-05', title: 'Print Queue, Separate Settings for Each Printer, Vouchers Linked to Printers and RP30 Thermal Printer (Android)', for: ['android'], android: '1.0.94',
     items: [
       'Print queue: while a printer is still printing, the next guest\'s print waits in line instead of the Print button staying on "Printing, please hold". Each printer has its own line, so a Canon SELPHY and a Bluetooth thermal printer print at the same time. The button shows how many prints are in the queue. If a queued print fails, the Android print screen opens so the sheet is not lost.',
       'Each printer now keeps its own colour, brightness, photo layout and print quality (Wi-Fi and USB quality, colour mode and paper type too). They are remembered by printer name, so a USB printer that is unplugged and plugged in again finds its settings, and the Bluetooth printer keeps its own settings by its Bluetooth name.',
@@ -1622,7 +1621,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-05', title: 'Colour for Prints Only, Thermal Quality, Calmer Print Settings and Lock PIN Fix (Android)', for: ['app'], app: '1.0.93',
+    date: '2026-11-05', title: 'Colour for Prints Only, Thermal Quality, Calmer Print Settings and Lock PIN Fix (Android)', for: ['android'], android: '1.0.93',
     items: [
       'Lightness and colour correction now change only the print and the print preview, not the guests\' camera or screen.',
       'Print quality for thermal printers: Best, Normal or Draft.',
@@ -1641,7 +1640,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-05', title: 'Separate Colour and Photo Layout for Each Printer (Android)', for: ['app'], app: '1.0.92',
+    date: '2026-11-05', title: 'Separate Colour and Photo Layout for Each Printer (Android)', for: ['android'], android: '1.0.92',
     items: [
       'Each printer keeps its own Lightness and Red, Green and Blue correction, plus its own photo size on paper and Borderless setting. Printer profile chips let you edit another printer without changing the paper size.',
       'Lightness & Colour Correction is collapsed by default and shows its current values in the header.'
@@ -1657,7 +1656,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-05', title: 'Animated 360 Effects Now Really Move, and No 360 Buttons on Phones (Android)', for: ['app'], app: '1.0.91',
+    date: '2026-11-05', title: 'Animated 360 Effects Now Really Move, and No 360 Buttons on Phones (Android)', for: ['android'], android: '1.0.91',
     items: [
       'Record 360 and 360 desk are no longer shown on Android phones; they stay on tablets (and in the laptop app).',
       'Matches the laptop app version for the 360 desk. Effects are applied by the laptop app, which now renders them with real motion and the Trajectory, Size, Wobble and Location settings.'
@@ -1674,7 +1673,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-05', title: 'Safer 360 Studio Dialogs, Save-as-Preset & Re-pick Spinner (Android)', for: ['app'], app: '1.0.90',
+    date: '2026-11-05', title: 'Safer 360 Studio Dialogs, Save-as-Preset & Re-pick Spinner (Android)', for: ['android'], android: '1.0.90',
     items: [
       'On-screen confirmations for Clear list and Remove, a working Save as preset name box, steadier thumbnails, and a spinner while Spin & Print re-picks frames.'
     ]
@@ -1690,7 +1689,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-05', title: 'Sticker Packages, Decorate Timer & Resize / Rotate Handles (Android)', for: ['app'], app: '1.0.89',
+    date: '2026-11-05', title: 'Sticker Packages, Decorate Timer & Resize / Rotate Handles (Android)', for: ['android'], android: '1.0.89',
     items: [
       'Six sticker packages the operator can tick for guests, a selectable decorate timer (or none), and drag-handle resize and rotate on the guest sticker screen.',
       'Fixed the 360 live preview collapsing when the QR codes or progress bar appear.'
@@ -1708,7 +1707,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-05', title: '360 Studio Polish: Share QR, Rendered Preview, Spin & Print Preview & Tablet Layout (Android)', for: ['app'], app: '1.0.88',
+    date: '2026-11-05', title: '360 Studio Polish: Share QR, Rendered Preview, Spin & Print Preview & Tablet Layout (Android)', for: ['android'], android: '1.0.88',
     items: [
       'Working Share + QR, rendered preview with Edit again, mute button, and the Spin & Print preview with re-pick and paper size.',
       'Stacked tablet layout with the live preview on top and finger-sized buttons for the Samsung tablet in portrait.'
@@ -1717,14 +1716,14 @@ export const NOTES = [
   {
     date: '2026-11-05', title: 'Seamless Side-by-Side 360 Studio Desk, Tab Alignment & Controls Lock Engine', for: ['app', 'website'], app: '1.0.76',
     items: [
-      'Seamless Two-Column Studio Layout: Fixed structural grid nesting so editing options and sticky live preview operate harmoniously side-by-side on all screen resolutions without overlap.',
-      'Navigation Tab Alignment: Synchronized tab bar with control sections in exact 1:1 order (Queue -> Presets -> Look -> Text -> Audio) with smooth in-card scrolling.',
-      'Active Processing Lock: Editing controls automatically dim and lock during video rendering while keeping the Unlock/Edit banner interactive.',
-      'WYSIWYG Drag & Corner-Resize: Enhanced interactive canvas text bounding box and handle hit detection.'
+      'Seamless Two-Column Studio Layout: Fixed layout spacing so editing options and live preview sit neatly side by side on all screen sizes without overlapping.',
+      'Navigation Tab Alignment: Matched the top tab bar to the control sections in exact order (Queue -> Presets -> Look -> Text -> Audio) with smooth scrolling.',
+      'Active Processing Lock: Editing controls dim and lock while a video is rendering, while keeping the Unlock/Edit banner ready.',
+      'Easy Drag & Corner Resize: Smoother dragging and resizing on text boxes right inside the preview.'
     ]
   },
   {
-    date: '2026-11-05', title: 'Seamless Side-by-Side 360 Studio Desk & Navigation Alignment (Android)', for: ['app'], app: '1.0.87',
+    date: '2026-11-05', title: 'Seamless Side-by-Side 360 Studio Desk & Navigation Alignment (Android)', for: ['android'], android: '1.0.87',
     items: [
       'Two-Column Studio Layout: Restored side-by-side editing controls and sticky live preview for tablets.',
       'Tab & Section Synchronization: Seamless scrolling from header tabs directly to target control panels.',
@@ -1732,23 +1731,23 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-05', title: 'Universal Bluetooth Remote, Beat-Drop Speed Ramping, 3D LUTs & Live TV Audience Sync', for: ['app', 'website'], app: '1.0.75',
+    date: '2026-11-05', title: 'Universal Bluetooth Remote, Beat-Drop Speed Ramping, Film Color Looks & Live TV Sync', for: ['app', 'website'], app: '1.0.75',
     items: [
-      'Seamless Side-by-Side 360 Studio Layout: Restored 2-column workspace ensuring editing tabs and live sticky video preview operate harmoniously side-by-side without overlap.',
-      'Spin & Print: High-resolution frame extraction for 3-shot photo strips, keychains, and 4R physical prints directly from 360 videos, with QR codes linking back to the clip.',
-      'Universal Bluetooth Remote & Gamepad Shutter: Hands-free triggering via wireless selfie remotes (VolumeUp/Down), presentation clickers (PageDown/ArrowRight), foot pedals, and pocket gamepads (HTML5 Gamepad API).',
-      'Beat-Drop Sync Speed Ramping: Custom beat drop timestamp synchronization switching from 2× speed to 0.25×/0.5× slow motion with coordinated optical white flash and dynamic punch-in zoom.',
-      'Cinematic 3D LUT Color Engine: Professional color grading filters (Glamour B&W, Blockbuster Teal & Orange, Golden Hour, Vibrant Pop, Vintage Film) with live interactive preview.',
-      'Live TV Audience Sync: /wall screen features synchronized crowd countdowns ("3... 2... 1... JUMP! 🎬") and instant celebration replay banners ("✨ New 360 Spin Ready!") when new clips land.',
-      'Smart Inbox Watcher: Defensive file stability checking guarding against incomplete or truncated video processing during slow SD card or Wi-Fi transfers.'
+      'Seamless Side-by-Side 360 Studio Layout: Two-column workspace keeps editing tabs and the live video preview side by side without overlap.',
+      'Spin & Print: Pick crisp moments from 360 videos to print 3-shot photo strips, keychains, and 4R photos, with QR codes linking back to the clip.',
+      'Universal Bluetooth Remote & Gamepad Shutter: Start sessions hands-free with wireless selfie remotes, presentation clickers, foot pedals, or pocket gamepads.',
+      'Beat-Drop Sync Speed Ramping: Set a beat-drop moment where the video slows from 2× speed into smooth 0.25×/0.5× slow motion with a white flash and dynamic zoom.',
+      'Cinematic Color Grading Looks: Professional color looks (Glamour B&W, Teal & Orange, Golden Hour, Vibrant Pop, Vintage Film) with live preview.',
+      'Live TV Audience Sync: The TV display (/wall) shows synchronized crowd countdowns ("3... 2... 1... JUMP! 🎬") and replay banners ("✨ New 360 Spin Ready!") as new clips land.',
+      'Smart Inbox Watcher: Waits for incoming videos to finish saving before editing so slow transfers never cut clips short.'
     ]
   },
   {
-    date: '2026-11-05', title: 'Universal Bluetooth Remote, Beat-Drop Speed Ramping, 3D LUTs & Live TV Audience Sync (Android)', for: ['app'], app: '1.0.86',
+    date: '2026-11-05', title: 'Universal Bluetooth Remote, Beat-Drop Speed Ramping, Film Color Looks & Live TV Sync (Android)', for: ['android'], android: '1.0.86',
     items: [
       'Spin & Print Integration: Automatic photo strip generation and keychain printing from 360 clips on tablet.',
       'Universal Remote Triggering: Pocket Bluetooth selfie clickers and volume button triggering support.',
-      'Cinematic Color LUTs & Beat-Drop Ramping: Real-time look grading and synchronized speed transitions.'
+      'Cinematic Color Looks & Beat-Drop Ramping: Real-time look grading and synchronized speed transitions.'
     ]
   },
   {
@@ -1762,7 +1761,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-04', title: 'Square 1:1 Live Aspect, 40 Animated FX & Multi-Trajectory Motion Engine (Android)', for: ['app'], app: '1.0.85',
+    date: '2026-11-04', title: 'Square 1:1 Live Aspect, 40 Animated FX & Multi-Trajectory Motion Engine (Android)', for: ['android'], android: '1.0.85',
     items: [
       'Square 1:1 Live Aspect Ratio: Instant square format with continuous looping preview without freezing.',
       'Full 40 Animated Effects Catalog: Complete access to all 40 overlay effects across 6 categories directly on tablet.',
@@ -1775,11 +1774,11 @@ export const NOTES = [
       'Collage Presets System: Operators can now save, update, and manage multiple named collage sheet arrangements (e.g. Collage A with 3-shot strips, Collage B with 4-shot strips) directly in Step 3.',
       'Dynamic Guest Layout Selection: When multiple collage presets exist and "Let guests choose layout" is enabled, guests can choose between different collage designs. The booth automatically adjusts camera countdowns, required shot count, and sheet placement per preset.',
       '2.5×7.5 in Keychain Compatibility: Perfect scale consistency when printing multiple keychain strip designs across A4, 4R, and other paper sizes.',
-      'Persistent Preset Storage: Presets are serialized with the event setup and restored automatically across booth reboots.'
+      'Persistent Preset Storage: Presets are saved with your event setup and restored automatically when you reopen the booth.'
     ]
   },
   {
-    date: '2026-11-04', title: 'Multi-Collage Presets & Dynamic Guest Layout Selection (Android)', for: ['app'], app: '1.0.84',
+    date: '2026-11-04', title: 'Multi-Collage Presets & Dynamic Guest Layout Selection (Android)', for: ['android'], android: '1.0.84',
     items: [
       'Multi-Collage Presets: Create and switch between multiple saved collage layouts on the tablet.',
       'Dynamic Guest Choice: Guests can pick between different collage presets on the start screen with automatic camera countdown and shot count adjustment.',
@@ -1797,7 +1796,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-04', title: 'Post-Session Guest Sticker Customisation & Print-First Mode (Android)', for: ['app'], app: '1.0.83',
+    date: '2026-11-04', title: 'Post-Session Guest Sticker Customisation & Print-First Mode (Android)', for: ['android'], android: '1.0.83',
     items: [
       'Post-Session Guest Sticker Customisation: Enable the new toggle in Extras -> Stickers to let guests add stickers to their photo before printing.',
       'Touch & Drag Placement: Interactive sticker tray with sizing, rotation, and deletion tools optimized for tablet touchscreens.',
@@ -1806,47 +1805,47 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-04', title: 'Real-Time Text/Color WYSIWYG & Dedicated Dual-QR Output Modal', for: ['app', 'website'], app: '1.0.71',
+    date: '2026-11-04', title: 'Instant Live Text & Color Preview + Dual-QR Share Window', for: ['app', 'website'], app: '1.0.71',
     items: [
-      'Instant Live Text & Color Updates: Text inputs and real-time color picker update the preview canvas live on input, without needing to re-edit.',
-      'Live Draft Mode for Rendered Videos: Changing styling on previously processed clips automatically switches to raw looping footage with live overlays on top.',
-      'Dedicated Output & Share Modal: Clicking Share + QR opens a presentation modal featuring Booth Wi-Fi (Step 1), finished video, and Guest Download QR (Step 2).',
-      'QR Code Visibility Toggle: Toggle between dual QR sharing and full-screen clean video preview with the "Hide QR Codes" switch.',
-      'One-Click Share Link Copy: Easily copy the guest download link to clipboard directly from the share modal.'
+      'Instant Live Text & Color Updates: Text and color changes appear live on the video preview right as you type or pick a color, without re-rendering first.',
+      'Live Draft Preview for Edited Videos: Adjusting text or style on a finished clip switches cleanly to live preview so you see changes immediately.',
+      'Dedicated Share Window: Clicking Share + QR opens a clean presentation screen showing Booth Wi-Fi (Step 1), the finished video, and Guest Download QR (Step 2).',
+      'QR Code Visibility Toggle: Switch between dual QR sharing and a clean full-screen video preview using "Hide QR Codes".',
+      'One-Click Share Link Copy: Copy the guest download link directly from the share window.'
     ]
   },
   {
-    date: '2026-11-04', title: 'Real-Time Text/Color WYSIWYG & Dedicated Dual-QR Output Modal (Android)', for: ['app'], app: '1.0.82',
+    date: '2026-11-04', title: 'Instant Live Text & Color Preview + Dual-QR Share Window (Android)', for: ['android'], android: '1.0.82',
     items: [
-      'Instant Live Text & Color Updates: Text inputs and real-time color picker update the preview canvas live on input, without needing to re-edit.',
-      'Live Draft Mode for Rendered Videos: Changing styling on previously processed clips automatically switches to raw looping footage with live overlays on top.',
-      'Dedicated Output & Share Modal: Clicking Share + QR opens a presentation modal featuring Booth Wi-Fi (Step 1), finished video, and Guest Download QR (Step 2).',
-      'QR Code Visibility Toggle: Toggle between dual QR sharing and full-screen clean video preview with the "Hide QR Codes" switch.',
-      'One-Click Share Link Copy: Easily copy the guest download link to clipboard directly from the share modal.'
+      'Instant Live Text & Color Updates: Text and color changes appear live on the video preview right as you type or pick a color, without re-rendering first.',
+      'Live Draft Preview for Edited Videos: Adjusting text or style on a finished clip switches cleanly to live preview so you see changes immediately.',
+      'Dedicated Share Window: Clicking Share + QR opens a clean presentation screen showing Booth Wi-Fi (Step 1), the finished video, and Guest Download QR (Step 2).',
+      'QR Code Visibility Toggle: Switch between dual QR sharing and a clean full-screen video preview using "Hide QR Codes".',
+      'One-Click Share Link Copy: Copy the guest download link directly from the share window.'
     ]
   },
   {
     date: '2026-11-04', title: 'Full-Page 360 Studio Desk with Sticky Live Side Preview & Turntable Simulation', for: ['app', 'website'], app: '1.0.69',
     items: [
-      'Full-Page 360 Studio Interface: Redesigned the 360 booth desk from a modal prompt into a dedicated full-page studio workspace with quick-jump navigation tabs.',
-      'Sticky Real-Time Side Preview: WYSIWYG canvas pinned beside controls updates instantly as you customize frames, text lines, fonts, colors, and vertical placement.',
-      'Turntable Simulation Stage: Live preview stage renders an animated rotating 360 platform and camera rig when no video is loaded, enabling instant branding preview.',
-      'Interactive Playback & Timeline Scrubber: Seek bar with live timecode counter and multi-speed controls (0.25x, 0.5x, 1.0x, 2.0x) for precise video inspection.',
-      'Animated Particle FX Simulation: Live particle preview simulates gold dust, confetti, hearts, and bokeh directly on stage.'
+      'Full-Page 360 Studio Workspace: Upgraded the 360 desk into a full-page studio with quick-jump navigation tabs.',
+      'Sticky Live Side Preview: Preview stays pinned beside your controls and updates immediately as you customize frames, text, fonts, and colors.',
+      'Turntable Preview Stage: Shows a rotating 360 platform preview even before a video is loaded so you can design branding ahead of the event.',
+      'Interactive Playback & Scrubber: Seek bar with live timer and speed choices (0.25x, 0.5x, 1.0x, 2.0x) to inspect every moment.',
+      'Animated Particle Simulation: Live preview shows gold dust, confetti, hearts, and bokeh directly on stage.'
     ]
   },
   {
-    date: '2026-11-04', title: 'Full-Page 360 Studio Desk with Sticky Live Side Preview & Turntable Simulation (Android)', for: ['app'], app: '1.0.80',
+    date: '2026-11-04', title: 'Full-Page 360 Studio Desk with Sticky Live Side Preview & Turntable Simulation (Android)', for: ['android'], android: '1.0.80',
     items: [
-      'Full-Page 360 Studio Interface: Redesigned the 360 booth desk from a modal prompt into a dedicated full-page studio workspace with quick-jump navigation tabs.',
-      'Sticky Real-Time Side Preview: WYSIWYG canvas pinned beside controls updates instantly as you customize frames, text lines, fonts, colors, and vertical placement.',
-      'Turntable Simulation Stage: Live preview stage renders an animated rotating 360 platform and camera rig when no video is loaded, enabling instant branding preview.',
-      'Interactive Playback & Timeline Scrubber: Seek bar with live timecode counter and multi-speed controls (0.25x, 0.5x, 1.0x, 2.0x) for precise video inspection.',
-      'Animated Particle FX Simulation: Live particle preview simulates gold dust, confetti, hearts, and bokeh directly on stage.'
+      'Full-Page 360 Studio Workspace: Upgraded the 360 desk into a full-page studio with quick-jump navigation tabs.',
+      'Sticky Live Side Preview: Preview stays pinned beside your controls and updates immediately as you customize frames, text, fonts, and colors.',
+      'Turntable Preview Stage: Shows a rotating 360 platform preview even before a video is loaded so you can design branding ahead of the event.',
+      'Interactive Playback & Scrubber: Seek bar with live timer and speed choices (0.25x, 0.5x, 1.0x, 2.0x) to inspect every moment.',
+      'Animated Particle Simulation: Live preview shows gold dust, confetti, hearts, and bokeh directly on stage.'
     ]
   },
   {
-    date: '2026-11-04', title: 'Thermal Layouts, Dual Pricing, Custom Labels & Tiered Vouchers (Android)', for: ['app'], app: '1.0.79',
+    date: '2026-11-04', title: 'Thermal Layouts, Dual Pricing, Custom Labels & Tiered Vouchers (Android)', for: ['android'], android: '1.0.79',
     items: [
       'Dual Option Selection & Pricing: Guests choose between Thermal (e.g. ₱50) and Canon/Dye-Sub Color (e.g. ₱100) directly on the welcome pay screen.',
       'Fully Customizable Option Labels: Personalize labels like "Thermal 50" or "Canon Color 100", seamlessly reflected on welcome buttons, layout picker badges, and printed voucher tickets.',
@@ -1872,8 +1871,8 @@ export const NOTES = [
       'Custom PNG Frame Upload: Upload bespoke wedding or corporate event PNG frames with instant real-time canvas rendering.',
       'Dynamic Text Placement & Y Slider: Position text at Top (12%), Upper Third (28%), Center (50%), Lower Third (72%), Bottom (84%), or drag a 5%-95% slider with live left/center/right alignment and font choices.',
       'Interactive Live Speed Preview: Preview 0.25x, 0.5x, 1.0x, and 2.0x playback speeds dynamically right on the player stage.',
-      'Persistent Video Dismissal & Safe Deletion: Cleared videos stay cleared across app restarts with localStorage persistence and optional file deletion from disk.',
-      'System Lag & GPU Stall Protection: CPU threads capped with below-normal process priority and an automated 10-second watchdog timer for hardware GPU mode fallback to CPU.'
+      'Persistent Video Dismissal & Safe Deletion: Cleared videos stay cleared across app restarts and can optionally be removed from your computer.',
+      'Smooth Laptop Performance: Limits background rendering load so the booth stays responsive while processing videos.'
     ]
   },
   {
@@ -1898,52 +1897,51 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-04', title: '360 Photo & Video Booth Overhaul: Hardware GPU Acceleration, Sharing Station & Live Wall', for: ['app', 'website'], app: '1.0.64',
+    date: '2026-11-04', title: '360 Photo & Video Booth Overhaul: Faster Video Rendering, Sharing Station & Live TV Wall', for: ['app', 'website'], app: '1.0.64',
     items: [
-      'Scale-First & Hardware GPU Acceleration: Optimized FFmpeg filtergraph scales inputs first, probes for GPU encoders (NVIDIA NVENC, Apple VideoToolbox, Intel QuickSync, AMD AMF), and renders 360 spins up to 3× faster.',
-      'High-FPS Real Slow-Motion: Native support for 60 fps and 120 fps recordings — slow-motion effects use real captured frames directly without waiting for software motion interpolation.',
-      'Sharing Station (/station): Dedicated iPad/tablet kiosk view with live polling, instant QR code modals, and 35-second auto-reset countdown to keep lines moving away from the platform.',
-      'Live Wall Display (/wall): Full-screen TV and projector slideshow automatically looping newest 360 spins with smooth transitions, "New 360 Spin" notification banners, and on-screen QR codes.',
-      'Square 1:1 Video Format: Added Instagram-ready Square (1080×1080) format alongside Portrait (9:16) and Landscape (16:9) with automatic aspect-ratio padding.',
-      'Custom Text Overlays: Full-featured caption editor supporting two lines of customizable text, custom colors, sizing, drop shadows, top/center/bottom positioning, and timed fade-in/out.',
-      'Intro & Outro Video Stingers: Seamlessly attach sponsor branding clips before and after the 360 spin with automatic dimension scaling and normalized audio.',
-      'Auto-Rotating Looks & Music: Round-robin cycling automatically varies video styles, particle overlays, and soundtracks per spin so every guest gets a unique clip.',
-      'Dual Online & Offline Sharing: Automatic detection of connectivity — triggers native smartphone share sheets when online, and delivers direct high-speed downloads with offline saving guides when connected to local booth Wi-Fi.'
+      'Faster 360 Video Rendering: Uses your laptop’s graphics hardware when available so 360 spin videos process up to 3× faster.',
+      'Smooth High-Frame-Rate Slow Motion: Supports 60 fps and 120 fps recordings for crisp, buttery slow-motion clips.',
+      'Sharing Station (/station): Dedicated iPad/tablet screen with instant QR code pop-ups and a 35-second auto-reset so guests clear the 360 platform quickly.',
+      'Live Wall Display (/wall): Full-screen TV and projector slideshow automatically looping newest 360 spins with "New 360 Spin" banners and QR codes.',
+      'Square 1:1 Video Format: Added Instagram-ready Square (1080×1080) format alongside Portrait (9:16) and Landscape (16:9).',
+      'Custom Text Overlays: Two lines of customizable text with custom colors, sizing, drop shadows, placement, and smooth fades.',
+      'Intro & Outro Video Stingers: Automatically attach sponsor clips before and after each 360 spin with balanced audio.',
+      'Auto-Rotating Looks & Music: Automatically cycles video styles, particle effects, and soundtracks between guests.',
+      'Online & Offline Sharing: Uses native phone sharing when online and high-speed direct downloads over booth Wi-Fi when offline.'
     ]
   },
   {
-    date: '2026-11-04', title: 'Epson L120/L121 & Canon G1010/G3030 Direct USB Printing', for: ['app'], app: '1.0.78',
+    date: '2026-11-04', title: 'Epson L120/L121 & Canon G1010/G3030 Direct USB Printing', for: ['android'], android: '1.0.78',
     items: [
-      'Added hardcoded direct USB support for Epson L120 and L121 with default color printing.',
-      'Added hardcoded USB support and auto-attach permissions for Canon PIXMA G1010 and G3030 family.',
-      'Improved background helper printing dispatch and color density tuning.'
+      'Added built-in direct USB support for Epson L120 and L121 with default color printing.',
+      'Added built-in USB support and automatic permissions for Canon PIXMA G1010 and G3030 printers.',
+      'Improved background printing speed and color richness.'
     ]
   },
   {
-    date: '2026-11-04', title: 'UI Professionalization, Streamlined Printer Badges & Toast Error Cleanup', for: ['app', 'website'], app: '1.0.77',
+    date: '2026-11-04', title: 'Cleaner Printer Settings, Streamlined Badges & Friendly Notices', for: ['app', 'website', 'android'], app: '1.0.77',
     items: [
-      'Eliminated hardware manufacturer laundry lists (Epson, Canon, Selphy, VOZY, Star, Xprinter) across printer settings for a clean, professional interface.',
-      'Streamlined printer selection tags with deduplicated badges (Photo, Receipt, USB, Wi-Fi) and concise status hints.',
-      'Silenced raw development JavaScript line error toasts on Android in favor of background Logcat diagnostics.',
-      'Refined toast notices and native bridge error messages with professional, user-friendly phrasing.'
+      'Simplified printer settings to hide clutter and long hardware lists for a cleaner, easier setup screen.',
+      'Streamlined printer labels with clear badges (Photo, Receipt, USB, Wi-Fi) and helpful status hints.',
+      'Replaced technical pop-up messages on Android tablets with plain, easy-to-follow notices.'
     ]
   },
   {
-    date: '2026-11-03', title: 'Video/GIF Tap-to-Start, Corporate Sponsor Billboard Playlist & Tablet Portrait Fitting', for: ['website', 'app'], app: '1.0.76',
+    date: '2026-11-03', title: 'Video/GIF Tap-to-Start, Sponsor Playlist & Tablet Portrait Fitting', for: ['website', 'android'], android: '1.0.76',
     items: [
-      'Video & Animated GIF Welcome Screens: Tap-to-start screen now accepts looping MP4/WebM videos and multi-frame animated GIFs.',
+      'Video & Animated GIF Welcome Screens: Tap-to-start screen now accepts looping MP4/WebM videos and animated GIFs.',
       'Corporate Sponsor Playlist (Billboard Mode): Upload multiple sponsor videos and brand graphics that automatically cycle and crossfade between guests.',
-      'Tablet Portrait Scale-to-Fit: Full-bleed edge-to-edge scaling on Android tablets with zero border bars, custom button accent colors and smooth tap dismiss transition.',
-      'IndexedDB Binary Blob Storage & Loop Watchdog: Low-memory binary storage preventing RAM bloat on budget tablets with auto-recovery on sleep/wake.'
+      'Tablet Portrait Scale-to-Fit: Full-bleed edge-to-edge scaling on Android tablets with no black bars, custom button colors, and smooth tap transitions.',
+      'Low-Memory Welcome Video Storage: Keeps looping videos running smoothly on budget tablets without slowing down the booth.'
     ]
   },
   {
-    date: '2026-11-03', title: 'Android Print & Camera Helper (127.0.0.1:17321) for mobile Chrome & direct USB printing', for: ['app'], app: '1.0.75',
+    date: '2026-11-03', title: 'Android Print & Camera Helper for Chrome & Direct USB Printing', for: ['android'], android: '1.0.75',
     items: [
-      'Built-in background Print & Camera Helper: Runs a local helper service on 127.0.0.1:17321 with ongoing foreground notification support, allowing photobooth4u in Google Chrome on Android phones to connect directly via Print Helper.',
-      'Silent direct USB OTG printing: Enables 100% silent, zero-dialog printing from mobile Chrome to Epson L3210, L8050, L3276, Canon SELPHY CP1500, and USB POS thermal receipt printers.',
-      'Automatic feed rotation: Ensures landscape photos always fill the portrait feed on Epson ink-tank printers with zero edge cutoff.',
-      'Background persistence: Foreground service keeps USB connection and HTTP server awake when switching to Chrome or other apps.'
+      'Built-in Print Helper on Android: Lets Google Chrome on Android phones and tablets connect straight to USB printers through the photobooth4u app.',
+      'Silent direct USB printing: Print from Chrome to Epson L3210, L8050, L3276, Canon SELPHY CP1500, and USB receipt printers with no print pop-up.',
+      'Automatic photo rotation: Ensures landscape photos automatically fit portrait photo printers without cutting off edges.',
+      'Stays connected in background: Keeps USB printers ready while switching between Chrome and the helper app.'
     ]
   },
   {
@@ -1951,21 +1949,21 @@ export const NOTES = [
     items: [
       'Landscape & borderless 4×6 prints (Windows): Prints now fill the whole 4×6 in sheet right-side up even when the printer driver (such as Epson L3210 or L8050) is set to Landscape, fixing 2/3-size prints and upside-down Print Previews.',
       'Lightness / Exposure & RGB colour correction: Adjust lightness/darkness (-100 to +100) and Red, Green, and Blue balance directly in Setup Extras or Print settings, with real-time live preview and print support across thermal and photo printers.',
-      'Camera glitch & false-disconnect fixes: Resolved false "Camera disconnected" watchdog loops on built-in/integrated webcams and paused result screens, improved camera error prompts, and added external USB webcam preview/capture resolution controls (Auto, Max, 1080p, 720p, 480p).',
-      'Offline voucher sync & single Photo + GIF QR: Guaranteed local offline voucher redemption with automatic cloud batch sync when back online, plus one unified QR code for guests in Photo + GIF mode.'
+      'Camera glitch & false-disconnect fixes: Resolved false "Camera disconnected" messages on built-in webcams and paused result screens, improved camera error tips, and added USB webcam preview resolution options (Auto, Max, 1080p, 720p, 480p).',
+      'Offline voucher sync & single Photo + GIF QR: Reliable offline voucher redemption with automatic cloud sync when back online, plus one unified QR code for guests in Photo + GIF mode.'
     ]
   },
   {
-    date: '2026-11-03', title: 'External USB webcam support & resolution controls (Android)', for: ['app'], app: '1.0.74',
+    date: '2026-11-03', title: 'External USB webcam support & resolution controls (Android)', for: ['android'], android: '1.0.74',
     items: [
-      'Plug-and-play USB webcams: Supports Logitech Brio 4K, Logitech C270 HD, C920, and other UVC webcams via native Android external camera (Android 14+) and built-in UVC fallback (Samsung Galaxy Tab A11, S9 FE, Xiaomi Pad, etc.).',
-      'Preview resolution selector: Choose Auto (up to 1080p), Max, 1080p, 720p, or 480p (smoothest for GIFs/boomerangs), with automatic MJPEG fallback and MediaTek USB bandwidth quirks.',
-      'Max-resolution still capture: Keep smooth 1080p/720p live view on USB 2.0 tablets while switching to the webcam\u2019s highest supported resolution at capture.',
-      'Power & disconnect recovery: Automatic stall detection, hub power guidance, and mid-event hot-plug reconnection.'
+      'Plug-and-play USB webcams: Supports Logitech Brio 4K, Logitech C270 HD, C920, and other standard USB webcams on Android tablets.',
+      'Preview resolution selector: Choose Auto (up to 1080p), Max, 1080p, 720p, or 480p (smoothest for GIFs/boomerangs) to match your tablet speed.',
+      'Max-resolution still capture: Keeps smooth 1080p/720p live view while snapping photos at the webcam\u2019s highest quality.',
+      'Power & disconnect recovery: Automatic stall recovery, powered USB hub tips, and instant reconnection if a cable is replugged mid-event.'
     ]
   },
   {
-    date: '2026-11-03', title: 'Offline voucher redemption, cloud batch sync & My Events tally (Android)', for: ['app'], app: '1.0.73',
+    date: '2026-11-03', title: 'Offline voucher redemption, cloud batch sync & My Events tally (Android)', for: ['android'], android: '1.0.73',
     items: [
       'Guaranteed offline voucher redemption: Local offline batch lookup prevents offline-generated codes from being rejected as unrecognised.',
       'Offline batch syncing: Automatically synchronizes offline-generated voucher batches, used counts, and voided tickets to the server when connected to Wi-Fi.',
@@ -1973,35 +1971,34 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-03', title: 'Android app stability, hardware acceleration & print memory optimization', for: ['app'], app: '1.0.72',
+    date: '2026-11-03', title: 'Android app stability, faster color prints & smoother performance on budget tablets', for: ['android'], android: '1.0.72',
     items: [
-      'Hardware-accelerated Skia ColorMatrixColorFilter: Instant print color adjustments without slow per-pixel CPU loops.',
-      'Reduced memory footprint: Downscale-first print rasterization with immediate native bitmap recycling avoids out-of-memory errors on budget tablets.',
-      'Kiosk crash resilience: Automatic WebView renderer recovery restores the offline kiosk if Chromium engine encounters memory exhaustion.',
-      'Bluetooth & USB reliability: Instant socket cleanup on disconnect and live USB device re-enumeration when hot-plugging printers or cameras.',
-      'Enabled largeHeap application flag for seamless handling of high-resolution photo bursts and print jobs.'
+      'Instant print color adjustments: Lightness and color adjustments apply immediately without slowing down printing.',
+      'Lower memory use when printing: Prevents memory crashes on budget tablets during high-resolution photo bursts and print jobs.',
+      'Automatic screen recovery: Automatically recovers the booth screen if a budget tablet runs low on memory mid-event.',
+      'Stronger Bluetooth & USB reliability: Cleans up dropped connections right away and re-detects printers and cameras when replugged.'
     ]
   },
   {
-    date: '2026-11-03', title: 'Single QR for Photo + GIF & tablet camera reliability (Android / Web)', for: ['app', 'website'], app: '1.0.71',
+    date: '2026-11-03', title: 'Single QR for Photo + GIF & tablet camera reliability (Android / Web)', for: ['android', 'website'], android: '1.0.71',
     items: [
-      'Single unified QR code for Photo + GIF mode: Guests now scan one QR code to access and save both their photo strip and animated GIF with individual save buttons.',
-      'Fixed false "Camera disconnected" watchdog on Android tablets: Resolved false disconnection timeouts caused by WebView video pause during result screens.',
-      'Accurate camera error reporting: Tablet/built-in cameras no longer display misleading "Check USB cable" prompts.',
-      'Transferred Lightness / Exposure and RGB color correction sliders directly into the Print settings panel for fast re-prints.'
+      'Single unified QR code for Photo + GIF mode: Guests scan one QR code to view and save both their photo strip and animated GIF with separate save buttons.',
+      'Fixed false "Camera disconnected" alerts on Android tablets: Resolved false disconnection alerts when returning from the result screen.',
+      'Clearer camera error tips: Built-in tablet cameras no longer show misleading "Check USB cable" messages.',
+      'Moved Lightness and color adjustment sliders directly into Print settings for faster reprint tweaks.'
     ]
   },
   {
-    date: '2026-11-03', title: 'Lightness & RGB colour correction for thermal & photo printers (Android)', for: ['app'], app: '1.0.68',
+    date: '2026-11-03', title: 'Lightness & RGB colour correction for thermal & photo printers (Android)', for: ['android'], android: '1.0.68',
     items: [
       'New Lightness / Exposure slider (-100 to +100) in Setup Extras to prevent dark or muddy prints on thermal receipt printers.',
-      'Fine-tuned RGB color balance sliders (Red, Green, Blue from -100 to +100) with instant real-time live preview after photo sessions.',
-      'Adjustments update the post-session preview canvas (#previewCanvas) and live camera view in real time.',
-      'Full color correction applied to all supported printers: thermal receipt printers (ESC/POS dithering luminance offset), Epson L-series, Canon SELPHY, Canon PIXMA G, ESC/P2, ESC/P-R, and IPP Wi-Fi printers.'
+      'Fine-tuned RGB color balance sliders (Red, Green, Blue from -100 to +100) with instant live preview after photo sessions.',
+      'Adjustments update both the post-session preview and live camera view in real time.',
+      'Works across all supported printers: Bluetooth/USB thermal receipt printers, Epson L-series, Canon SELPHY, Canon PIXMA G, and Wi-Fi photo printers.'
     ]
   },
   {
-    date: '2026-11-03', title: 'Portrait centered welcome card & layout preview fix (Android)', for: ['app'], app: '1.0.67',
+    date: '2026-11-03', title: 'Portrait centered welcome card & layout preview fix (Android)', for: ['android'], android: '1.0.67',
     items: [
       'In portrait mode, the sample print is centered horizontally and vertically cleared below the top navigation bar without clipping.',
       'The event details card with "Tap to start" sits neatly below the sample print, centered on the tablet screen with safe clearance from bottom dock controls.',
@@ -2010,7 +2007,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-03', title: 'Bluetooth thermal printers, settings shortcut & USB detection (Android)', for: ['app'], app: '1.0.66',
+    date: '2026-11-03', title: 'Bluetooth thermal printers, settings shortcut & USB detection (Android)', for: ['android'], android: '1.0.66',
     items: [
       'Connect Bluetooth Printer button is now always visible on tablets without needing to select receipt paper first.',
       'Direct shortcut to Android Bluetooth Settings and instant warning notification if Bluetooth is disabled on the tablet.',
@@ -2020,7 +2017,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-03', title: 'Portrait camera centering, side thumbnails & welcome card fix (Android)', for: ['app'], app: '1.0.65',
+    date: '2026-11-03', title: 'Portrait camera centering, side thumbnails & welcome card fix (Android)', for: ['android'], android: '1.0.65',
     items: [
       'Welcome card layout on vertical tablets: sample strip and card are proportionally balanced with guaranteed bottom padding so the start button is never clipped.',
       'Live camera stage in portrait mode is now vertically and horizontally centered with 100% width coverage.',
@@ -2094,39 +2091,38 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-02', title: 'Mac: fix crash (unexpected quit) when closing the app', for: ['website', 'app'], app: '1.0.52',
+    date: '2026-11-02', title: 'Mac: fix crash when closing the app', for: ['website', 'app'], app: '1.0.52',
     items: [
-      'Fixed "photobooth4u quit unexpectedly" (SIGABRT / __assert_rtn on CrBrowserMain) that appeared every time the Mac app was closed.',
-      'Root cause: on quit, the app was firing a privileged osascript call to unload Internet Sharing — triggering a macOS authorization prompt mid-teardown, which races with Electron\'s process shutdown and causes a hard abort.',
-      'Fix: the app no longer calls launchctl on quit on Mac. Internet Sharing stays on after quit (same as before the 1.0.50 hotspot feature) until the operator turns it off in System Settings.',
-      'Also: the powerSaveBlocker, camera-guard timer, and background intervals are now all explicitly stopped before the process exits, preventing dangling native handles that could cause similar crashes.'
+      'Fixed the "photobooth4u quit unexpectedly" pop-up that appeared every time the Mac app was closed.',
+      'Stopped running an extra Mac permission check while the app is closing, so Internet Sharing stays on until you turn it off in System Settings.',
+      'Cleanly stops background timers and camera checks when closing so the app shuts down smoothly.'
     ]
   },
   {
     date: '2026-11-02', title: '360 desk: natural color blending and transparent animated overlays', for: ['website', 'app'], app: '1.0.51',
     items: [
-      'Fixed animated video overlays appearing pinkish or saturated with a magenta wash by upgrading Screen and Addition blend modes to planar RGB compositing.',
-      'Fixed WebM overlay effects (Floating Hearts, Streamers, Confetti, Rose Petals, Balloons) covering the person in solid black by decoding VP9 alpha transparency with libvpx-vp9.',
-      'Overlays now blend seamlessly with natural skin tones and transparent backgrounds behind floating particles.'
+      'Fixed animated video overlays appearing tinted pink or washed out so skin tones and colors stay natural.',
+      'Fixed Floating Hearts, Streamers, Confetti, Rose Petals, and Balloons overlays showing solid black behind particles instead of clear transparency.',
+      'Overlays now blend cleanly over guests with crisp transparent backgrounds.'
     ]
   },
   {
     date: '2026-11-02', title: 'Mac & Windows laptops: standalone booth Wi-Fi with no router or internet', for: ['website', 'app'], app: '1.0.50',
     items: [
       'Mac laptops can now create their own booth Wi-Fi in Setup → Share with the new “Set up (one time)” and “Make this laptop the booth Wi-Fi” switch.',
-      'The app sets up an offline loopback service (BoothDummy) on macOS to unlock Internet Sharing to Wi-Fi without external internet, routing automatically to guests over bridge100.',
+      'The app configures Mac Internet Sharing automatically so it works offline without an active internet connection.',
       'Guests scan the Join QR and access photos and videos directly with no router, pocket Wi-Fi, or phone hotspot at the booth.'
     ]
   },
   {
     date: '2026-11-02', title: '360 desk: animated video overlay loops and reliability fix', for: ['website', 'app'], app: '1.0.49',
     items: [
-      'Bundles all 40 full procedural animated video overlay loops (WebM VP9 with alpha and H.264 MP4 with Screen blend) for confetti, gold dust, streamers, rose petals, neon cyberpunk, fireworks, and more.',
-      'Includes fallback error safety in the 360 video pipeline to ensure video edits complete smoothly even if an overlay asset is unavailable.'
+      'Bundles all 40 animated video overlay loops (confetti, gold dust, streamers, rose petals, neon effects, fireworks, and more) with clean transparent backgrounds.',
+      'Adds a safety fallback so 360 video edits still finish cleanly even if an overlay file is missing.'
     ]
   },
   {
-    date: '2026-11-02', title: 'Android tablet: the tablet can make its own booth Wi-Fi', for: ['website'],
+    date: '2026-11-02', title: 'Android tablet: the tablet can make its own booth Wi-Fi', for: ['android'], android: '1.0.59',
     items: [
       'In Setup → Share there is a new switch, “Make this tablet the booth Wi-Fi”. It turns on a Wi-Fi network from the tablet itself, so guests can scan the Join QR and open their photos with no router, pocket Wi-Fi or phone hotspot. The name and password are made for you. Android 13 and newer asks to allow “Nearby devices”; older Android asks for Location.',
       'Switch the tablet’s Wi-Fi on first (it does not need to join a network). While it hosts, many tablets can’t also use another Wi-Fi, so activate and update the app beforehand. If a tablet can’t do it, the app says so and a router or phone hotspot works as before. Android app 1.0.59.'
@@ -2136,7 +2132,7 @@ export const NOTES = [
     date: '2026-11-02', title: '360 desk: 40 animated video effects (confetti, sparks, neon, and more)', for: ['website', 'app'], app: '1.0.48',
     items: [
       'The 360 desk’s editing panel has a new "Animated effect" menu with 40 overlay effects: confetti cannons, gold dust storms, rose petals, neon laser grids, burning embers, snowfall, fireworks and more — grouped by Celebration, Weddings, VIP/Luxury, Nightlife, Action/Retro and Holidays.',
-      'Effects composite directly over the slow-motion or boomerang clip on the laptop using FFmpeg, with no internet or subscription required. Light effects (sparks, lens flares, light leaks) use a fast screen-blend mode; solid particles (confetti, petals, cash rain) use an alpha-channel overlay.',
+      'Effects blend directly over the slow-motion or boomerang clip right on the laptop with no internet or extra subscription required.',
       'The chosen effect is remembered between events. Picking "None" skips the overlay step entirely, keeping the same fast processing as before.'
     ]
   },
@@ -2185,14 +2181,14 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-01', title: 'Photo size on the paper, in plain choices', for: ['website'],
+    date: '2026-11-01', title: 'Photo size on the paper, in plain choices', for: ['website', 'android'], android: '1.0.57',
     items: [
       'Print settings now has one row under Photo size on the paper: Fit the page, a real size such as 2×6 strip or 4R, or Fill the page. A real size prints in the middle of a bigger paper such as A4.',
       'Setup step 4 is now Camera & printer, with the printer, paper and a print preview. Android app 1.0.57.'
     ]
   },
   {
-    date: '2026-11-01', title: 'Android app: Android print dialog, print settings and more printers over USB', for: ['website'],
+    date: '2026-11-01', title: 'Android app: Android print dialog, print settings and more printers over USB', for: ['android'], android: '1.0.44',
     items: [
       'Android app 1.0.44: Print settings has a new Android print dialog choice. It opens Android\u2019s own print screen for any printer the tablet can reach, and a button opens Android print settings so print services (Mopria, Epson, Canon, HP, Brother) can be switched on.',
       'After you pick a Wi-Fi printer the app shows its own colour, quality and paper-type choices, only the ones that printer lists.',
@@ -2200,10 +2196,10 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-10-31', title: 'Android app prints to Wi-Fi and USB printers it finds itself', for: ['website'],
+    date: '2026-10-31', title: 'Android app prints to Wi-Fi and USB printers it finds itself', for: ['android'], android: '1.0.35',
     items: [
       'Android app 1.0.35: Print settings has a new Wi-Fi printer section. Tap Find Wi-Fi printers and the tablet lists printers on the same Wi-Fi, such as Epson, Canon, HP and Brother models that support AirPrint / Mopria, and prints photos straight to the one you pick, with no print dialog.',
-      'Printers plugged into the tablet’s USB port appear in the same list. Receipt printers and printers that support IPP-over-USB can be printed to. Printers that need their own driver (for example Epson L120 / L210, DNP, HiTi) are shown as detected but still need the laptop.',
+      'Printers plugged into the tablet’s USB port appear in the same list. Receipt printers and driverless USB printers can be printed to. Printers that need their own driver (for example Epson L120 / L210, DNP, HiTi) are shown as detected but still need the laptop.',
       'Receipt printers on Wi-Fi or USB work too, and if a direct print fails the booth opens the Android print dialog instead. See the new Android printing guide.'
     ]
   },
@@ -2214,7 +2210,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-10-31', title: 'Photo + GIF: guests can retake photos again', for: ['website', 'app'], app: '1.0.40',
+    date: '2026-10-31', title: 'Photo + GIF: guests can retake photos again', for: ['website', 'app', 'android'], app: '1.0.40', android: '1.0.34',
     items: [
       'Laptop app 1.0.40 and Android app 1.0.34: with Photo + GIF, the Retake button is back, both between shots and on the final review screen.',
       'The GIF is the first complete run of shots. A retake pressed between shots is in the GIF; a retake at the final review changes the photo but not the GIF.',
@@ -2231,7 +2227,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-10-31', title: 'Android tablet: the Bluetooth printer list shows your receipt printer first', for: ['website'],
+    date: '2026-10-31', title: 'Android tablet: the Bluetooth printer list shows your receipt printer first', for: ['android'], android: '1.0.32',
     items: [
       'Android app 1.0.32: when you connect a Bluetooth receipt printer, the list now shows the devices that look like printers first. Keyboards, headphones, speakers, watches and phones no longer appear.',
       'A printer with an unusual name is under “Other paired devices” at the bottom of the list, so you can still pick it. If only one printer is found, the tablet connects to it by itself.',
@@ -2255,7 +2251,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-10-31', title: 'Use a DSLR with an iPad: the iPad uses the laptop’s camera over Wi-Fi', for: ['website', 'app'], app: '1.0.37',
+    date: '2026-10-31', title: 'Use a DSLR with an iPad: the iPad uses the laptop’s camera over Wi-Fi', for: ['website', 'app', 'ipad'], app: '1.0.37',
     items: [
       'Laptop app 1.0.37 (Windows): an iPad can now use the real DSLR shutter, live view and flash. Plug the Nikon, Canon EOS or Sony Alpha into the laptop, then in Setup → Share & start turn on “Let an iPad use this laptop’s camera”. The laptop shows an address and a 6-digit PIN: open it in Safari on the iPad (same Wi-Fi) and type the PIN. It works with no internet, and photos save on the laptop. An iPad with a camera and no laptop can’t do this.',
       'No laptop? An iPad can still use a camera through an HDMI-to-USB capture card (no real shutter or flash). The new iPad guide at /how-to-ipad/ explains both ways.',
@@ -2263,7 +2259,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-10-30', title: 'Flip book: sharper pages that differ from each other', for: ['website', 'app'], app: '1.0.34',
+    date: '2026-10-30', title: 'Flip book: sharper pages that differ from each other', for: ['website', 'app', 'android'], app: '1.0.34', android: '1.0.31',
     items: [
       'Flip book (website, laptop app 1.0.34 and Android app 1.0.31): pages are no longer near copies of each other, and fewer are blurry. The booth records more pictures than the book needs, keeps the sharpest one around each moment, then spaces the pages so each differs from the last: a still moment gets fewer pages and a lively one gets more.',
       'The default is now 24 frames in a 6 second clip (it was 30). Setups that already chose a number keep it. For bigger changes between pages choose fewer frames (16 or 24) and a 6 or 7 second clip.',
@@ -2279,7 +2275,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-10-30', title: 'A Camera step in Setup, with a live view of your camera', for: ['website', 'app'], app: '1.0.32',
+    date: '2026-10-30', title: 'A Camera step in Setup, with a live view of your camera', for: ['website', 'app', 'android'], app: '1.0.32', android: '1.0.30',
     items: [
       'Laptop app 1.0.32 and Android app 1.0.30: Setup has a new step after Layout, Camera. It shows a live view of what the camera sees before you start: the full camera frame by default, or tap “Crop to layout” to see only the part that fits your layout.',
       'The camera picker, Mirror and the camera log moved there from the Session step. Mirror and the live filter show in the live view. The Camera button in Photo Session works as before.',
@@ -2287,7 +2283,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-10-30', title: 'Wi-Fi read for you, a Wi-Fi button in the bottom bar, and one-tap printing of earlier photos', for: ['website', 'app'], app: '1.0.31',
+    date: '2026-10-30', title: 'Wi-Fi read for you, a Wi-Fi button in the bottom bar, and one-tap printing of earlier photos', for: ['website', 'app', 'android'], app: '1.0.31', android: '1.0.29',
     items: [
       'Laptop app 1.0.31: the booth now reads the Wi-Fi the laptop is connected to and fills in the Wi-Fi name and password in Setup → Share & start. Tap “Use current Wi-Fi” to read it again. If the password can’t be read, type it there (on a Mac, allow the Keychain request). The app does not create a Wi-Fi itself: connect the laptop to your router or a phone hotspot first.',
       'New Wi-Fi button in the bottom bar, beside Extras and Lock booth: it shows the Wi-Fi QR so guests can join, then scan their photo QR. In Share & start, “Download WIFI QR Sign” saves a printable Wi-Fi sign. After each session guests now see their Photo and GIF QR codes only.',
@@ -2298,7 +2294,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-10-30', title: '360 videos: join the Wi-Fi and download, with two QR codes', for: ['website', 'app'], app: '1.0.29',
+    date: '2026-10-30', title: '360 videos: join the Wi-Fi and download, with two QR codes', for: ['website', 'app', 'android'], app: '1.0.29', android: '1.0.27',
     items: [
       'Laptop app 1.0.27 and Android app 1.0.23: when you set the booth Wi-Fi name and password in Setup → Share & start, the 360 player shows two codes. Step 1: Network joins the guest’s phone to the booth Wi-Fi, and Step 2: Download opens the video. It works with no internet.',
       'With no Wi-Fi set, you still get the single download code as before.',
@@ -2309,14 +2305,14 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-10-29', title: 'The Android tablet app now speaks the countdown', for: ['website'],
+    date: '2026-10-29', title: 'The Android tablet app now speaks the countdown', for: ['android'], android: '1.0.22',
     items: [
       'Android app 1.0.22: the spoken countdown (Get ready, Three, Two, One, Smile!) now works on the tablet, using the tablet\u2019s own text-to-speech voices. It works offline once an English voice is downloaded (Settings \u2192 System \u2192 Languages \u2192 Text-to-speech output).',
       'Choose English or Tagalog (when the tablet has a Filipino voice), the last 3 numbers or every number, and the voice in Setup \u2192 Session. With no voice on the tablet the beeps are used.'
     ]
   },
   {
-    date: '2026-10-29', title: 'Guests can see only their own photos, and a spoken countdown', for: ['website', 'app'], app: '1.0.26',
+    date: '2026-10-29', title: 'Guests can see only their own photos, and a spoken countdown', for: ['website', 'app', 'android'], app: '1.0.26', android: '1.0.21',
     items: [
       'New: Setup \u2192 Share \u2192 After guests scan their QR. Choose Everyone\u2019s photos (as before), Mine first (their own photos, with a Show photos with other guests button) or Only their own.',
       'Only their own: each guest\u2019s QR opens a page with just their photo, GIF and flipbook. The event gallery is closed to guests, so an old QR or a copied link cannot open it, and the booth hides its All photos button and the guest screen\u2019s All photos QR. Use Lock booth so guests cannot open Setup or Extras.',
@@ -2338,7 +2334,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-10-29', title: 'Phone photos, guest print requests, video guestbook, GIFs in your frame and 360 recording in the app', for: ['website', 'app'], app: '1.0.24',
+    date: '2026-10-29', title: 'Phone photos, guest print requests, video guestbook, GIFs in your frame and 360 recording in the app', for: ['website', 'app', 'android'], app: '1.0.24',
     items: [
       'GIFs now get your chosen look and sit in your frame: by default the one-photo Solo layout with your title, even when the photos use a strip. Setup → Extras → Output mode has a GIF frame choice (Solo, the chosen layout, or the plain camera view).',
       'Quick shot and photographer desk photos use the Solo layout (no more one photo repeated on a strip). The desk has a One photo per print switch, and the Quick shot screen has Print framed and Print original.',
@@ -2362,7 +2358,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-10-29', title: 'Android tablet app now needs a code, same as the laptop app', for: ['website'],
+    date: '2026-10-29', title: 'Android tablet app now needs a code, same as the laptop app', for: ['android'], android: '1.0.7',
     items: [
       'The Android app (v1.0.7) is still free to install, but now stays on an \u201cActivate this tablet\u201d screen until it\u2019s unlocked with a rental code that has the offline app add-on \u2014 the same signed-licence system the Windows/Mac app already uses.',
       'It needs Wi-Fi once to activate, then keeps working offline until the licence\u2019s own renewal is due, in the background, same as the laptop app.',
@@ -2370,14 +2366,14 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-10-29', title: 'Fix: the Android tablet sometimes tried to load the live website and failed', for: ['website'],
+    date: '2026-10-29', title: 'Fix: the Android tablet sometimes tried to load the live website and failed', for: ['android'],
     items: [
       'A tablet that had ever been pointed at the live website (via the hidden Booth Configuration screen) kept trying that on every launch, even at a venue with no Wi-Fi \u2014 showing Android\u2019s own \u201ccould not be loaded, internet disconnected\u201d page instead of the booth.',
       'The app now checks for a real internet connection before it ever tries the live site, and falls back to the bundled offline booth on any load failure, not just specific error types.',
     ]
   },
   {
-    date: '2026-10-28', title: 'Android tablet app \u2014 photos, GIFs and QR codes now work fully offline', for: ['website'],
+    date: '2026-10-28', title: 'Android tablet app \u2014 photos, GIFs and QR codes now work fully offline', for: ['android'], android: '1.0.5',
     items: [
       'The Android tablet app (v1.0.5) now saves every photo and GIF on the tablet, so a photo QR works at a venue with no internet at all.',
       'Guests scan the QR with their phone, on the same Wi-Fi or hotspot as the tablet, to open their photo or GIF, tap Save, or browse the event\u2019s All photos page.',
@@ -2417,7 +2413,7 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-10-28', title: 'Android tablet app \u2014 true offline kiosk mode', for: ['website'],
+    date: '2026-10-28', title: 'Android tablet app \u2014 true offline kiosk mode', for: ['android'], android: '1.0.2',
     items: [
       'The Android tablet APK (v1.0.2) now opens and runs fully offline \u2014 no internet connection is required at the venue.',
       'The booth page is bundled inside the app; if the device has no network when opened, it automatically loads the local copy instead of showing a \u201cWeb page not available\u201d error.',

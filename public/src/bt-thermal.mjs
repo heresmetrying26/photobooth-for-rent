@@ -122,6 +122,9 @@
     if (s.indexOf('ae30') >= 0 || s.indexOf('ae00') >= 0) return true;
     return /^(C19|LIOTOG|MX\d|GB0|GT0|YT0|PD01)/i.test(String(name || '').trim());
   }
+  function isKnown58mmPrinter(name) {
+    return /(?:^|[^a-z0-9])(?:vo[zx]y[\s_-]*(?:p50|50)|p50|mp[-_ ]?210|pt[-_ ]?210|mpt[-_ ]?(?:ii|iii|2|3)|rpp[-_ ]?(?:02n?|200)|xp[-_ ]?58[a-z0-9]*|pos[-_ ]?58[a-z0-9]*|t[-_ ]?58[a-z0-9]*|gzm?[-_ ]?58|58\s*mm)(?![a-z0-9])/i.test(String(name || ''));
+  }
   function CatPrinterEncoder() {
     this._w   = 384;
     this._buf = [];
@@ -170,10 +173,13 @@
     return new Uint8Array(this._buf);
   };
 
-  // ── Canvas → monochrome with 2-line Floyd-Steinberg dithering ──────────────
-  // Uses two rows of error diffusion for low memory footprint (~4 KB vs 6 MB).
-  function toReceiptCanvas(src, dotW, brightness) {
+  // ── Canvas → monochrome with serpentine Atkinson halftoning ──────────────
+  // Uses edge-preserving smoothing, highlight roll-off and 75% error diffusion
+  // so highlights stay pure clean white (no pepper grain), midtones are smooth and retro,
+  // and text/borders stay crisp.
+  function toReceiptCanvas(src, dotW, brightness, quality) {
     dotW = dotW || 576;
+    var q = (quality === 'best' || quality === 'normal' || quality === 'draft') ? quality : 'best';
     var scale = dotW / src.width;
     var dotH  = Math.max(1, Math.round(src.height * scale));
     var dst   = document.createElement('canvas');
@@ -183,36 +189,119 @@
     // Fill white background first (in case source has transparent regions)
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, dotW, dotH);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(src, 0, 0, dotW, dotH);
 
     var id = ctx.getImageData(0, 0, dotW, dotH), d = id.data;
-    var curErr  = new Float32Array(dotW);
-    var nextErr = new Float32Array(dotW);
+    var bOffset = (typeof brightness === 'number') ? brightness * 1.28 : 0;
+    var n = dotW * dotH, lum = new Float32Array(n), x, y, i;
+    for (i = 0; i < n; i++) lum[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
 
-    // brightness: -100 (darker) to +100 (lighter) offset for thermal dithering
-    var bOffset = (typeof brightness === 'number') ? brightness * 1.28 : ((typeof global._colorAdj !== 'undefined' && global._colorAdj && global._colorAdj.brightness) ? global._colorAdj.brightness * 1.28 : 0);
-
-    for (var y = 0; y < dotH; y++) {
-      nextErr.fill(0);
-      for (var x = 0; x < dotW; x++) {
-        var i4 = (y * dotW + x) * 4;
-        var lum = 0.299 * d[i4] + 0.587 * d[i4 + 1] + 0.114 * d[i4 + 2] + curErr[x] + bOffset;
-        var v = lum < 128 ? 0 : 255;
-        var e = lum - v;
-        d[i4] = d[i4 + 1] = d[i4 + 2] = v;
-        d[i4 + 3] = 255;
-
-        // Distribute error: right (7/16), down-left (3/16), down (5/16), down-right (1/16)
-        if (x + 1 < dotW) curErr[x + 1] += e * 7 / 16;
-        if (x > 0)        nextErr[x - 1] += e * 3 / 16;
-        nextErr[x]     += e * 5 / 16;
-        if (x + 1 < dotW) nextErr[x + 1] += e * 1 / 16;
+    var toneDone = !!(src && src._pbToneDone);
+    if (!toneDone && q !== 'draft') {
+      var clean = new Float32Array(n);
+      clean.set(lum);
+      var invT2 = 1 / 144;
+      for (y = 1; y < dotH - 1; y++) {
+        var rm = (y - 1) * dotW, r0 = y * dotW, rp = (y + 1) * dotW;
+        for (x = 1; x < dotW - 1; x++) {
+          var c0 = lum[r0 + x];
+          if (c0 <= 8 || c0 >= 248) continue;
+          var s = c0, sw = 1, v, df, wt;
+          v = lum[rm + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+          v = lum[rm + x];     df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+          v = lum[rm + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+          v = lum[r0 + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+          v = lum[r0 + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+          v = lum[rp + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+          v = lum[rp + x];     df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+          v = lum[rp + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+          clean[r0 + x] = s / sw;
+        }
       }
-      // Swap rows
-      var tmp = curErr;
-      curErr = nextErr;
-      nextErr = tmp;
+      lum = clean;
+      var lift = dotW <= 384 ? 0.78 : 0.82;
+      var lut = new Float32Array(256);
+      for (i = 0; i < 256; i++) {
+        var u = Math.pow(i / 255, lift);
+        if (u > 0.82) {
+          var t = (u - 0.82) / (1.0 - 0.82);
+          u = 0.82 + (1.0 - 0.82) * (3 * t * t - 2 * t * t * t);
+          if (u >= 0.96) u = 1.0;
+        }
+        lut[i] = Math.max(0, Math.min(255, u * 255));
+      }
+      for (i = 0; i < n; i++) {
+        var ki = (lum[i] + 0.5) | 0;
+        lum[i] = lut[ki < 0 ? 0 : ki > 255 ? 255 : ki];
+      }
+      if (q === 'best') {
+        var blur = new Float32Array(n);
+        for (y = 0; y < dotH; y++) {
+          var y0 = y > 0 ? y - 1 : 0, y1 = y + 1 < dotH ? y + 1 : dotH - 1;
+          for (x = 0; x < dotW; x++) {
+            var x0 = x > 0 ? x - 1 : 0, x1 = x + 1 < dotW ? x + 1 : dotW - 1;
+            var sum = 0, cnt = 0, yy, xx;
+            for (yy = y0; yy <= y1; yy++) for (xx = x0; xx <= x1; xx++) { sum += lum[yy * dotW + xx]; cnt++; }
+            blur[y * dotW + x] = sum / cnt;
+          }
+        }
+        for (i = 0; i < n; i++) {
+          if (lum[i] <= 12 || lum[i] >= 242) continue;
+          var df2 = lum[i] - blur[i], adf = df2 < 0 ? -df2 : df2;
+          if (adf > 6.0) {
+            var mag = adf - 6.0; if (mag > 20) mag = 20;
+            lum[i] = Math.max(0, Math.min(255, lum[i] + (df2 < 0 ? -mag : mag) * 0.40));
+          }
+        }
+      }
     }
+
+    var out = new Uint8Array(n);
+    if (q === 'draft') {
+      var bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+      for (y = 0; y < dotH; y++) for (x = 0; x < dotW; x++) {
+        var tb = (bayer[((y >> 1) & 3) * 4 + ((x >> 1) & 3)] + 0.5) / 16 * 255;
+        out[y * dotW + x] = (lum[y * dotW + x] + bOffset) < tb ? 0 : 255;
+      }
+    } else {
+      var stride = dotW + 4;
+      var e0 = new Float32Array(stride), e1 = new Float32Array(stride), e2 = new Float32Array(stride), tmp;
+      for (y = 0; y < dotH; y++) {
+        var row = y * dotW, xi, l, v, e;
+        if ((y & 1) === 0) {
+          for (x = 0; x < dotW; x++) {
+            xi = x + 2;
+            l = lum[row + x] + e0[xi] + bOffset;
+            v = l < 128 ? 0 : 255;
+            e = (l - v) * 0.125;
+            out[row + x] = v;
+            e0[xi + 1] += e;
+            e0[xi + 2] += e;
+            e1[xi - 1] += e;
+            e1[xi]     += e;
+            e1[xi + 1] += e;
+            e2[xi]     += e;
+          }
+        } else {
+          for (x = dotW - 1; x >= 0; x--) {
+            xi = x + 2;
+            l = lum[row + x] + e0[xi] + bOffset;
+            v = l < 128 ? 0 : 255;
+            e = (l - v) * 0.125;
+            out[row + x] = v;
+            e0[xi - 1] += e;
+            e0[xi - 2] += e;
+            e1[xi + 1] += e;
+            e1[xi]     += e;
+            e1[xi - 1] += e;
+            e2[xi]     += e;
+          }
+        }
+        tmp = e0; e0 = e1; e1 = e2; e2 = tmp; e2.fill(0);
+      }
+    }
+    for (i = 0; i < n; i++) { d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = out[i]; d[i * 4 + 3] = 255; }
     ctx.putImageData(id, 0, 0);
     return dst;
   }
@@ -252,6 +341,7 @@
     { namePrefix: 'RPP' }, { namePrefix: 'Bixolon' }, { namePrefix: 'BIXOLON' },
     { namePrefix: 'Star' }, { namePrefix: 'MP' }, { namePrefix: 'BP' },
     { namePrefix: 'Printer' }, { namePrefix: 'MTP' }, { namePrefix: 'BlueTooth' },
+    { namePrefix: 'VOZY' }, { namePrefix: 'VOXY' }, { namePrefix: 'G80' }, { namePrefix: 'V80' }, { namePrefix: 'P50' },
     { namePrefix: 'Inner' }, { namePrefix: 'Qsprinter' }
   ];
 
@@ -482,8 +572,8 @@
     if (!this._mode) return Promise.reject(new Error('Printer not connected'));
 
     var cmd  = this.effectiveCmd();
-    var effW = (cmd === 'cat' || cmd === 'luck') ? 384 : this._paperWidth;
-    var mono = toReceiptCanvas(canvas, effW, opts.brightness);
+    var effW = (cmd === 'cat' || cmd === 'luck' || isKnown58mmPrinter(this._name)) ? 384 : this._paperWidth;
+    var mono = toReceiptCanvas(canvas, effW, opts.brightness, opts.quality);
     if (cmd === 'cat') {
       var catEnc = new CatPrinterEncoder();
       catEnc.encode(mono, feed);
@@ -502,7 +592,7 @@
   // Quick test print verification ────────────────────────────────────────────
   BtThermal.prototype.testPrint = function(paper) {
     var cmd = this.effectiveCmd();
-    if (cmd === 'cat' || cmd === 'luck') paper = '58mm';
+    if (cmd === 'cat' || cmd === 'luck' || isKnown58mmPrinter(this._name)) paper = '58mm';
     var dotW = PAPER_WIDTHS[paper || '80mm'] || 576;
     var cvs = document.createElement('canvas');
     cvs.width = dotW;
@@ -548,11 +638,14 @@
    * @param {'80mm'|'58mm'} paper
    */
   function printViaBluetooth(canvas, paper, opts) {
-    btPrinter._paperWidth = PAPER_WIDTHS[paper || '80mm'] || 576;
+    btPrinter._paperWidth = isKnown58mmPrinter(btPrinter._name) ? 384 : (PAPER_WIDTHS[paper || '80mm'] || 576);
     var p = btPrinter.connected
       ? Promise.resolve()
       : btPrinter.connect();
-    return p.then(function() { return btPrinter.printCanvas(canvas, opts); });
+    return p.then(function() {
+      if (isKnown58mmPrinter(btPrinter._name)) btPrinter._paperWidth = 384;
+      return btPrinter.printCanvas(canvas, opts);
+    });
   }
 
   // Expose on global/window
@@ -561,6 +654,7 @@
     EscPosEncoder    : EscPosEncoder,
     CatPrinterEncoder: CatPrinterEncoder,
     isCatDevice      : isCatDevice,
+    isKnown58mmPrinter: isKnown58mmPrinter,
     PAPER_WIDTHS     : PAPER_WIDTHS,
     toReceiptCanvas  : toReceiptCanvas,
     btPrinter        : btPrinter,

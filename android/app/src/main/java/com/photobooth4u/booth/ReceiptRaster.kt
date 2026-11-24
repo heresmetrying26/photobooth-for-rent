@@ -26,10 +26,12 @@ object ReceiptRaster {
         val bandRows: Int = 0,
         /** -100 (darker) .. +100 (lighter), the same scale as the in-page encoder. */
         val brightness: Int = 0,
-        /** Sharpen a little and lift the mid-tones first (thermal dots print bigger than they are). */
+        /** Sharpen real edges ("best" quality). */
         val sharpen: Boolean = false,
         /** GS ( K: print at the printer's slowest speed so the paper never outruns the data. */
         val slowPrint: Boolean = false,
+        /** Edge-preserving bilateral denoise + dot-gain lift + highlight roll-off ("best" and "normal"). */
+        val toneLift: Boolean = sharpen,
     ) {
         companion object {
             val LEGACY = Options()
@@ -45,8 +47,8 @@ object ReceiptRaster {
                 val bright = o.optInt("brightness", 0).coerceIn(-100, 100)
                 val slow = o.optBoolean("slow", false)
                 return when (o.optString("quality", "")) {
-                    "best" -> Options(Dither.ATKINSON, 160, band, bright, sharpen = true, slowPrint = slow)
-                    "normal" -> Options(Dither.FLOYD_STEINBERG, 160, band, bright, slowPrint = slow)
+                    "best" -> Options(Dither.ATKINSON, 160, band, bright, sharpen = true, slowPrint = slow, toneLift = true)
+                    "normal" -> Options(Dither.ATKINSON, 160, band, bright, sharpen = false, slowPrint = slow, toneLift = true)
                     "draft" -> Options(Dither.ORDERED, 160, band, bright, slowPrint = slow)
                     else -> Options(Dither.THRESHOLD, 160, band, bright, slowPrint = slow)
                 }
@@ -134,7 +136,7 @@ object ReceiptRaster {
             lum[i] = (((p shr 16) and 0xFF) * 299 + ((p shr 8) and 0xFF) * 587 + (p and 0xFF) * 114) / 1000f
         }
 
-        if (opt.sharpen) sharpenAndLift(lum, w, h)
+        if (opt.toneLift || opt.sharpen) sharpenAndLift(lum, w, h, opt.sharpen)
         val offset = opt.brightness * 1.28f
         val black = BooleanArray(n)
 
@@ -150,31 +152,74 @@ object ReceiptRaster {
                     black[y * w + x] = lum[y * w + x] + offset < t
                 }
             }
-            Dither.FLOYD_STEINBERG, Dither.ATKINSON -> {
-                val atk = opt.dither == Dither.ATKINSON
-                for (y in 0 until h) for (x in 0 until w) {
-                    val i = y * w + x
-                    val l = lum[i] + offset
-                    val v = if (l < 128f) 0f else 255f
-                    black[i] = v == 0f
-                    val e = l - v
-                    if (atk) {
-                        // Atkinson passes on 6/8 of the error to six neighbours: highlights and shadows stay clean.
-                        val e8 = e / 8f
-                        if (x + 1 < w) lum[i + 1] += e8
-                        if (x + 2 < w) lum[i + 2] += e8
-                        if (y + 1 < h) {
-                            if (x > 0) lum[i + w - 1] += e8
-                            lum[i + w] += e8
-                            if (x + 1 < w) lum[i + w + 1] += e8
+            Dither.ATKINSON -> {
+                for (y in 0 until h) {
+                    val row = y * w
+                    if ((y and 1) == 0) {
+                        for (x in 0 until w) {
+                            val i = row + x
+                            val l = lum[i] + offset
+                            val v = if (l < 128f) 0f else 255f
+                            black[i] = v == 0f
+                            val e8 = (l - v) / 8f
+                            if (x + 1 < w) lum[i + 1] += e8
+                            if (x + 2 < w) lum[i + 2] += e8
+                            if (y + 1 < h) {
+                                if (x > 0) lum[i + w - 1] += e8
+                                lum[i + w] += e8
+                                if (x + 1 < w) lum[i + w + 1] += e8
+                            }
+                            if (y + 2 < h) lum[i + 2 * w] += e8
                         }
-                        if (y + 2 < h) lum[i + 2 * w] += e8
                     } else {
-                        if (x + 1 < w) lum[i + 1] += e * 7f / 16f
-                        if (y + 1 < h) {
-                            if (x > 0) lum[i + w - 1] += e * 3f / 16f
-                            lum[i + w] += e * 5f / 16f
-                            if (x + 1 < w) lum[i + w + 1] += e * 1f / 16f
+                        for (x in w - 1 downTo 0) {
+                            val i = row + x
+                            val l = lum[i] + offset
+                            val v = if (l < 128f) 0f else 255f
+                            black[i] = v == 0f
+                            val e8 = (l - v) / 8f
+                            if (x > 0) lum[i - 1] += e8
+                            if (x > 1) lum[i - 2] += e8
+                            if (y + 1 < h) {
+                                if (x + 1 < w) lum[i + w + 1] += e8
+                                lum[i + w] += e8
+                                if (x > 0) lum[i + w - 1] += e8
+                            }
+                            if (y + 2 < h) lum[i + 2 * w] += e8
+                        }
+                    }
+                }
+            }
+            Dither.FLOYD_STEINBERG -> {
+                for (y in 0 until h) {
+                    val row = y * w
+                    if ((y and 1) == 0) {
+                        for (x in 0 until w) {
+                            val i = row + x
+                            val l = lum[i] + offset
+                            val v = if (l < 128f) 0f else 255f
+                            black[i] = v == 0f
+                            val e = l - v
+                            if (x + 1 < w) lum[i + 1] += e * 7f / 16f
+                            if (y + 1 < h) {
+                                if (x > 0) lum[i + w - 1] += e * 3f / 16f
+                                lum[i + w] += e * 5f / 16f
+                                if (x + 1 < w) lum[i + w + 1] += e * 1f / 16f
+                            }
+                        }
+                    } else {
+                        for (x in w - 1 downTo 0) {
+                            val i = row + x
+                            val l = lum[i] + offset
+                            val v = if (l < 128f) 0f else 255f
+                            black[i] = v == 0f
+                            val e = l - v
+                            if (x > 0) lum[i - 1] += e * 7f / 16f
+                            if (y + 1 < h) {
+                                if (x + 1 < w) lum[i + w + 1] += e * 3f / 16f
+                                lum[i + w] += e * 5f / 16f
+                                if (x > 0) lum[i + w - 1] += e * 1f / 16f
+                            }
                         }
                     }
                 }
@@ -183,8 +228,45 @@ object ReceiptRaster {
         return black
     }
 
-    /** A light sharpen so faces and text stay crisp, then a gentle lift of the mid-tones. */
-    private fun sharpenAndLift(lum: FloatArray, w: Int, h: Int) {
+    /** Edge-preserving 3x3 bilateral denoise, dot-gain lift + highlight roll-off, and optional noise-cored unsharp mask (matches bt-thermal.mjs). */
+    private fun sharpenAndLift(lum: FloatArray, w: Int, h: Int, unsharp: Boolean = true) {
+        if (w >= 3 && h >= 3) {
+            val clean = lum.copyOf()
+            val invT2 = 1f / 144f
+            for (y in 1 until h - 1) {
+                val rm = (y - 1) * w
+                val r0 = y * w
+                val rp = (y + 1) * w
+                for (x in 1 until w - 1) {
+                    val c0 = lum[r0 + x]
+                    if (c0 <= 8f || c0 >= 248f) continue
+                    var s = c0
+                    var sw = 1f
+                    fun acc(v: Float) {
+                        val df = v - c0
+                        val wt = 1f / (1f + df * df * invT2)
+                        s += v * wt
+                        sw += wt
+                    }
+                    acc(lum[rm + x - 1]); acc(lum[rm + x]); acc(lum[rm + x + 1])
+                    acc(lum[r0 + x - 1]); acc(lum[r0 + x + 1])
+                    acc(lum[rp + x - 1]); acc(lum[rp + x]); acc(lum[rp + x + 1])
+                    clean[r0 + x] = s / sw
+                }
+            }
+            clean.copyInto(lum)
+        }
+        val lift = if (w <= 384) 0.78f else 0.82f
+        for (i in lum.indices) {
+            var u = (lum[i].coerceIn(0f, 255f) / 255f).pow(lift)
+            if (u > 0.82f) {
+                val t = (u - 0.82f) / (1.0f - 0.82f)
+                u = 0.82f + (1.0f - 0.82f) * (3f * t * t - 2f * t * t * t)
+                if (u >= 0.96f) u = 1.0f
+            }
+            lum[i] = (u * 255f).coerceIn(0f, 255f)
+        }
+        if (!unsharp) return
         val blur = FloatArray(lum.size)
         for (y in 0 until h) for (x in 0 until w) {
             var sum = 0f
@@ -196,8 +278,14 @@ object ReceiptRaster {
             blur[y * w + x] = sum / cnt
         }
         for (i in lum.indices) {
-            val sh = (lum[i] + 0.7f * (lum[i] - blur[i])).coerceIn(0f, 255f)
-            lum[i] = 255f * (sh / 255f).pow(0.8f)
+            val v = lum[i]
+            if (v <= 12f || v >= 242f) continue
+            val df = v - blur[i]
+            val adf = kotlin.math.abs(df)
+            if (adf > 6.0f) {
+                val mag = min(adf - 6.0f, 20f)
+                lum[i] = (v + (if (df < 0) -mag else mag) * 0.40f).coerceIn(0f, 255f)
+            }
         }
     }
 

@@ -41658,6 +41658,66 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       scaling: ''
     },
     {
+      id: 'lpd_l8050_360',
+      label: 'LPD :515 · L8050 High Glossy 360 dpi Borderless (PASSTHRU, 0x34, q=2)',
+      shortLabel: 'LPD :515 360dpi 0x34 q=2 L8050-BL',
+      protocol: 'lpd',
+      port: 515,
+      queue: 'PASSTHRU',
+      dpi: 360,
+      mediaCode: 0x34,
+      qualityCode: 2,
+      borderless: true,
+      l8050Geo: true,
+      sendSetiChku: true,
+      sendSetm: false
+    },
+    {
+      id: 'lpd_l8050_360_pg',
+      label: 'LPD :515 · L8050 Premium Glossy 360 dpi Borderless (PASSTHRU, 0x0B, q=2)',
+      shortLabel: 'LPD :515 360dpi 0x0B q=2 L8050-BL',
+      protocol: 'lpd',
+      port: 515,
+      queue: 'PASSTHRU',
+      dpi: 360,
+      mediaCode: 0x0b,
+      qualityCode: 2,
+      borderless: true,
+      l8050Geo: true,
+      sendSetiChku: true,
+      sendSetm: false
+    },
+    {
+      id: 'lpd_l8050_720',
+      label: 'LPD :515 · L8050 High Glossy 720 dpi Borderless (PASSTHRU, 0x34, q=2)',
+      shortLabel: 'LPD :515 720dpi 0x34 q=2 L8050-BL',
+      protocol: 'lpd',
+      port: 515,
+      queue: 'PASSTHRU',
+      dpi: 720,
+      mediaCode: 0x34,
+      qualityCode: 2,
+      borderless: true,
+      l8050Geo: true,
+      sendSetiChku: true,
+      sendSetm: false
+    },
+    {
+      id: 'lpd_l8050_360_setm',
+      label: 'LPD :515 · L8050 360 dpi Borderless + setm A/B test (0x34, q=2)',
+      shortLabel: 'LPD :515 360dpi 0x34 q=2 setm',
+      protocol: 'lpd',
+      port: 515,
+      queue: 'PASSTHRU',
+      dpi: 360,
+      mediaCode: 0x34,
+      qualityCode: 2,
+      borderless: true,
+      l8050Geo: true,
+      sendSetiChku: true,
+      sendSetm: true
+    },
+    {
       id: 'escpr_l8050_720',
       label: 'ESC/P-R :9100 · L8050 High Glossy 720 dpi Borderless (0x34, q=2)',
       shortLabel: 'ESCPR :9100 720dpi 0x34 q=2 L8050-BL',
@@ -41668,7 +41728,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       qualityCode: 2,
       borderless: true,
       l8050Geo: true,
-      sendSetiChku: true
+      sendSetiChku: true,
+      sendSetm: false
     },
     {
       id: 'escpr_l8050_360',
@@ -41681,7 +41742,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       qualityCode: 2,
       borderless: true,
       l8050Geo: true,
-      sendSetiChku: true
+      sendSetiChku: true,
+      sendSetm: false
     },
     {
       id: 'escpr_l805_360',
@@ -42030,6 +42092,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         });
         lines.push('Ports: ' + ps.join('  '));
       }
+      if (probeRes.webModel) {
+        lines.push('Model (SNMP/Web): ' + probeRes.webModel);
+      }
       if (probeRes.ipp && probeRes.ipp.answered) {
         var ipp = probeRes.ipp;
         var a = ipp.attrs || {};
@@ -42076,7 +42141,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       for (var j = 0; j < printLog.length; j++) {
         var pr = printLog[j];
         var hdr = '  [' + (pr.ok ? 'OK  ' : 'FAIL') + '] ' + (pr.presetId || pr.protocol) + ' -> ';
-        if (pr.protocol === 'escpr') {
+        if (pr.protocol === 'lpd') {
+          hdr += pr.ok
+            ? ('sent ' + pr.bytes + 'B via LPD :' + (pr.port || 515) + '/' + (pr.queue || 'PASSTHRU') + ' in ' + pr.sendMs + 'ms cfg=' + JSON.stringify(pr.config || {}))
+            : ('error: ' + (pr.error || 'failed'));
+        } else if (pr.protocol === 'escpr') {
           hdr += pr.ok
             ? ('sent ' + pr.bytes + 'B in ' + pr.sendMs + 'ms (build ' + pr.buildMs + 'ms, reply ' + pr.replyBytes + 'B) cfg=' + JSON.stringify(pr.config || {}))
             : ('error: ' + (pr.error || 'failed'));
@@ -44661,7 +44730,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         } catch (e) { return false; }
       }
       // Epson L8050 on Android, 4x6 sheet:
-      //   - Opt-in "High 720 dpi (L8050 4x6)" on ESC/P-R (USB or Wi-Fi :9100): render at 720 dpi (2880 x 4320, 1:1 with setj).
+      //   - Opt-in "High 720 dpi (L8050 4x6)" on ESC/P-R (USB, Wi-Fi :9100, or LPD :515): render at 720 dpi (2880 x 4320, 1:1 with setj).
+      //   - Default "High (360 dpi)" on ESC/P-R (USB, Wi-Fi :9100, or LPD :515): render at 360 dpi (1440 x 2160, 1:1 with setj — no 1.2x upscale blur).
       //   - Default "High" on IPP (USB or Wi-Fi): render at 600 dpi (2400 x 3600) with 600 dpi JFIF header for sharper photo output.
       function l8050DpiFor(paper) {
         try {
@@ -44670,6 +44740,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (Math.abs(Math.min(paper.w, paper.h) - 101.6) > 1.5 || Math.abs(Math.max(paper.w, paper.h) - 152.4) > 1.5) return 0;
           const o = wifiOpts(p);
           if (o.quality === 'high720' && (p.epsonL || p.escpr || (p.ipp && epsonLNetPrinter(p)))) return 720;
+          if ((p.epsonL || p.escpr) && !p.ipp && (o.quality === 'high' || !o.quality)) return 360;
           if (p.ipp && (o.quality === 'high' || !o.quality)) return 600;
           return 0;
         } catch (e) { return 0; }
@@ -45209,24 +45280,25 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const escprOpts = Object.assign({}, wo, {
             borderless: !!(wo.borderless && epsonEscprBorderlessModel(Object.assign({}, p, { escpr: true })) && epsonEscprBorderlessOk(paper)),
             printerName: p.name || '',
-            epsonModel: p.epsonModel || (isEpsonL8050(p) ? 'L8050' : '')
+            epsonModel: p.epsonModel || (isEpsonL8050(p) ? 'L8050' : ''),
+            lpd: !!(p.lpd && !p.raw)
           });
           return wifiJob(id => window.__PBNet.printEscpr(id, p.ip, paper.w, paper.h, pack.copies, JSON.stringify(pack.pics), JSON.stringify(escprOpts)), pack.ms);
         };
-        // Opt-in L8050 720 dpi on Wi-Fi (4x6 only): stream native 720 dpi ESC/P-R directly over port 9100 (fall back to IPP only if 9100 refused connection).
+        // Opt-in L8050 720 dpi on Wi-Fi (4x6 only): stream native 720 dpi ESC/P-R directly over port 9100 or LPD :515 (fall back to IPP only if refused).
         const is4x6 = !!(paper && Math.abs(Math.min(paper.w, paper.h) - 101.6) <= 1.5 && Math.abs(Math.max(paper.w, paper.h) - 152.4) <= 1.5);
         if (wo && wo.quality === 'high720' && isEpsonL8050(p) && is4x6) {
           try { await rawRun(); return; }
           catch (rawErr) {
             if (!wifiJobNeverSent(rawErr)) throw rawErr;
-            showToast('Port 9100 did not answer for 720 dpi ESC/P-R. Sending via IPP instead…', 4500);
+            showToast('Direct ESC/P-R port (9100/515) did not answer for 720 dpi. Sending via IPP instead…', 4500);
           }
         }
         if (wifiEscprFirst[p.ip]) {
           try { await rawRun(); return; }
           catch (rawErr) {
             if (!wifiJobNeverSent(rawErr)) throw rawErr;        // it may have started printing: do not send it again
-            delete wifiEscprFirst[p.ip];                         // could not connect on 9100: the standard job gets its turn again
+            delete wifiEscprFirst[p.ip];                         // could not connect on 9100/515: the standard job gets its turn again
           }
         }
         try { await ippRun(); }
@@ -45235,11 +45307,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           showToast('The printer did not take the standard Wi-Fi job. Trying Epson’s own print mode…', 5000);
           try { await rawRun(); }
           catch (rawErr) {
-            throw new Error((ippErr && ippErr.message || 'The printer did not answer.') + ' Epson’s own print mode (port 9100) did not work either: ' + String(rawErr && rawErr.message || rawErr).slice(0, 90));
+            throw new Error((ippErr && ippErr.message || 'The printer did not answer.') + ' Epson’s own print mode (port 9100/515) did not work either: ' + String(rawErr && rawErr.message || rawErr).slice(0, 90));
           }
           wifiEscprFirst[p.ip] = true;
           // Worked, but the standard job did not: tell the diagnostics why, so the cause can be fixed for this model.
-          pdiagSend('print', p, { ok: false, error: 'Standard job failed, printed with Epson ESC/P-R on 9100: ' + (ippErr && ippErr.message || ''), paper: { w: paper && paper.w, h: paper && paper.h, name: paper && paper.name }, opts: { quality: wo && wo.quality, color: wo && wo.color, media: wo && wo.media, borderless: wo && wo.borderless } });
+          pdiagSend('print', p, { ok: false, error: 'Standard job failed, printed with Epson ESC/P-R on 9100/515: ' + (ippErr && ippErr.message || ''), paper: { w: paper && paper.w, h: paper && paper.h, name: paper && paper.name }, opts: { quality: wo && wo.quality, color: wo && wo.color, media: wo && wo.media, borderless: wo && wo.borderless } });
         }
       }
       function wifiJob(start, timeoutMs) {
@@ -45282,7 +45354,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // Epson ink-tank printers the app drives itself with ESC/P-R over Wi-Fi or USB (L805, L210...): borderless only on photo
       // paper sizes, and not on the 1xx models (L120, L130...), which have no borderless mode.
       const EPSON_ESCPR_BORDERLESS = [[88.9, 127], [100, 148], [101.6, 152.4], [101.6, 180.6], [127, 177.8], [203.2, 254], [210, 297], [215.9, 279.4]];       // the sizes the L805's own Epson driver file lists for borderless: 3R (3.5x5), 100x148, 4x6, 16:9 wide, 5x7, 8x10, A4, Letter
-      function epsonEscprBorderlessModel(p) { return !!(p && p.escpr && (isEpsonL8050(p) || /\bL\s?(2\d\d|3\d\d|5\d\d|8\d\d|[1-8]\d{3}|18050)\b/i.test(p.name || ''))); }
+      function epsonEscprBorderlessModel(p) { return !!(p && p.escpr && (isEpsonL8050(p) || (p.lpd && p.ip === '192.168.223.1') || /\bL\s?(2\d\d|3\d\d|5\d\d|8\d\d|[1-8]\d{3}|18050)\b/i.test(p.name || ''))); }
       function epsonEscprBorderlessOk(pp) {
         if (!pp) return false;
         const a = Math.min(pp.w, pp.h), b = Math.max(pp.w, pp.h);
@@ -45344,13 +45416,23 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           // is gone and exactly one discovered Wi-Fi printer has the exact same model name.
           const fixNet = (sp) => {
             if (!sp || sp.usb || sp.dialog) return;
-            if (!sp.escpr && !sp.forcedRaw && list.some(q => !q.usb && q.ip === sp.ip && q.escpr)) { sp.escpr = true; sp.raw = false; changed = true; }
-            if (sp.name && !/^Printer at /i.test(sp.name) && !list.some(q => !q.usb && q.ip === sp.ip)) {
+            const atIp = list.find(q => !q.usb && q.ip === sp.ip);
+            if (atIp) {
+              if (!sp.escpr && !sp.forcedRaw && atIp.escpr) { sp.escpr = true; sp.raw = false; changed = true; }
+              if (atIp.lpd && !sp.lpd) { sp.lpd = true; changed = true; }
+              if (atIp.epsonModel && !sp.epsonModel) { sp.epsonModel = atIp.epsonModel; changed = true; }
+              if (atIp.name && !/^Printer at |^Epson Wi-Fi Direct \(/i.test(atIp.name) && /^Printer at |^Epson Wi-Fi Direct \(/i.test(sp.name || '')) { sp.name = atIp.name; changed = true; }
+              if (sp.ipp && atIp.ipp === false && atIp.escpr) { sp.ipp = false; sp.escpr = true; changed = true; }
+              return;
+            }
+            if (sp.name && !/^Printer at /i.test(sp.name)) {
               const same = list.filter(q => !q.usb && q.name === sp.name && q.ip && q.ip !== sp.ip);
               if (same.length === 1) {
                 sp.ip = same[0].ip;
                 if (same[0].ipp !== undefined) sp.ipp = !!same[0].ipp;
                 if (same[0].escpr !== undefined) sp.escpr = !!same[0].escpr;
+                if (same[0].lpd !== undefined) sp.lpd = !!same[0].lpd;
+                if (same[0].epsonModel) sp.epsonModel = same[0].epsonModel;
                 if (same[0].bcap !== undefined) sp.bcap = !!same[0].bcap;
                 changed = true;
               }
@@ -45395,7 +45477,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // types the way other printers do, so "Printer default" meant plain paper at standard quality: banding lines across the photo and no
       // borderless (a client's Xiaomi Pad 5 over Wi-Fi printed that way while the Epson app printed the same photo sharp and borderless).
       // It gets fixed High / photo-paper choices instead, and the Android side sends them even though the printer does not list them.
-      function epsonLUsbIpp(p) { return !!(p && p.ipp && ((p.usb && p.vid === 1208 && EPSON_L_PIDS[p.pid] === 'L8050') || /\bL8050\b/i.test(p.name || ''))); }
+      function epsonLUsbIpp(p) { return !!(p && p.ipp && ((p.usb && p.vid === 1208 && EPSON_L_PIDS[p.pid] === 'L8050') || /(?:^|[^A-Za-z0-9])L8050(?![0-9])/i.test(p.name || ''))); }
       // A printer that can print borderless, as far as the app knows: an Epson it knows by model (the L8050, the L3200 / L1200 family, the
       // ESC/P-R L-series), or any IPP printer that itself lists a margin of 0 (p.bcap, read by the Android app). Picking one turns Borderless
       // on, and until the operator chooses otherwise it prints on glossy photo paper at the best quality it offers (High where listed).
@@ -45490,7 +45572,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const bp71 = mt.some(m => /bp71/i.test(m));
           if (p.escp2) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper (glossy)'], ['matte', 'Matte / inkjet paper']];
           else if (p.canon) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper, glossy'], ['matte', 'Matte photo paper']];
-          else if ((p.epsonL || p.escpr) && isEpsonL8050(p)) mediaCh = [['photo', 'Photo paper (glossy)'], ['photosg', 'Photo paper (semi-gloss)'], ['matte', 'Photo paper (matte)'], ['plain', 'Plain paper']];
+          else if ((p.epsonL || p.escpr) && isEpsonL8050(p)) mediaCh = [['photo', 'Photo paper (glossy)'], ['photopg', 'Photo paper (premium glossy)'], ['photosg', 'Photo paper (semi-gloss)'], ['matte', 'Photo paper (matte)'], ['plain', 'Plain paper']];
           else if (p.epsonL) mediaCh = [['plain', 'Plain paper'], ['photo', 'Photo paper (glossy)']];
           else if (epsonLUsbIpp(p)) mediaCh = [['photo', 'Photo paper (glossy)'], ['photosg', 'Photo paper (semi-gloss)'], ['matte', 'Photo paper (matte)'], ['plain', 'Plain paper']];
           else if (p.dnp) mediaCh = [['', 'Glossy finish'], ['matte', 'Matte finish']];
@@ -45688,7 +45770,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               showToast(p.name + ' is detected, but requires the System Print Dialog or Print Station.' + idTxt, pbDebug() ? 10000 : 5000);
               return;
             }
-            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, dnp: !!p.dnp, dnpModel: p.dnpModel || '', epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, bcap: !!p.bcap, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
+            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, lpd: !!p.lpd, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, dnp: !!p.dnp, dnpModel: p.dnpModel || '', epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, bcap: !!p.bcap, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
             showToast('Printer selected: ' + p.name, 3000);
             wifiRenderList(wifiList());
             refreshPrintUI();
@@ -45929,6 +46011,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (statusEl) statusEl.textContent = 'Checking ports, IPP attributes & Validate-Job matrix (zero paper)…';
             try {
               lastProbe = await wd.runProbe(ip, null);
+              if (lastProbe && lastProbe.ports && presetEl) {
+                const o631 = !!(lastProbe.ports['631'] && lastProbe.ports['631'].open);
+                const o9100 = !!(lastProbe.ports['9100'] && lastProbe.ports['9100'].open);
+                const o515 = !!(lastProbe.ports['515'] && lastProbe.ports['515'].open);
+                if (!o631 && !o9100 && o515) presetEl.value = 'lpd_l8050_360';
+                else if (!o631 && o9100) presetEl.value = 'escpr_l8050_360';
+              }
               renderMatrix(lastProbe);
               showReport(wd.formatReport(lastProbe, printLog));
               if (statusEl) statusEl.textContent = lastProbe.recommendation || (lastProbe.ok ? 'Check complete.' : (lastProbe.error || 'Check failed.'));
@@ -45983,7 +46072,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (sendBtn) sendBtn.addEventListener('click', async () => {
             const txt = (reportEl && reportEl.textContent) || wd.loadLastReport();
             if (!txt) { showToast('Run step 1 first to generate a report.', 3000); return; }
-            const model = (lastProbe && lastProbe.ipp && lastProbe.ipp.attrs && lastProbe.ipp.attrs['printer-make-and-model'] && lastProbe.ipp.attrs['printer-make-and-model'][0]) || (wifiPrinter && wifiPrinter.name) || 'Wi-Fi Printer Diag';
+            const model = (lastProbe && lastProbe.ipp && lastProbe.ipp.attrs && lastProbe.ipp.attrs['printer-make-and-model'] && lastProbe.ipp.attrs['printer-make-and-model'][0]) || (lastProbe && lastProbe.webModel) || (wifiPrinter && wifiPrinter.name) || 'Wi-Fi Printer Diag';
             let sent = false;
             try {
               const token = localStorage.getItem('pb_token'), deviceId = localStorage.getItem('pb_device');
@@ -46264,7 +46353,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           try { token = localStorage.getItem('pb_token'); deviceId = localStorage.getItem('pb_device'); } catch (e) { }
           if (!token || !deviceId) return;
           const flags = {};
-          ['usb', 'ipp', 'raw', 'escpr', 'epsonL', 'escp2', 'canon', 'selphy', 'dnp', 'noDriver', 'needsPermission', 'borderless'].forEach(k => { if (p[k]) flags[k] = true; });
+          ['usb', 'ipp', 'raw', 'escpr', 'lpd', 'epsonL', 'escp2', 'canon', 'selphy', 'dnp', 'noDriver', 'needsPermission', 'borderless'].forEach(k => { if (p[k]) flags[k] = true; });
           const full = pdiagOn();      // with the switch off, an error goes with only the name, USB id, classification, paper size and error text
           const pr = { name: String(p.name || '').slice(0, 120), vid: p.vid | 0, pid: p.pid | 0, info: full ? String(p.info || '').replace(/\b(SN|SERIAL|SERIALNUMBER|UUID):[^;]*;?/gi, '').slice(0, 300) : '', model: full ? String(p.epsonModel || p.dnpModel || p.canonModel || '').slice(0, 40) : '', flags: flags };
           const sig = pr.name + '|' + pr.vid + '|' + pr.pid + '|' + Object.keys(flags).sort().join(',');
@@ -46436,13 +46525,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return;
         }
         if (p.escpr) {
-          // Epson ESC/P-R path (Epson L210 / L805 / L8050 and similar, over USB or Wi-Fi): colour, 3 mm borders, or borderless on photo
-          // paper when the Borderless switch is on and this model and paper size can do it.
+          // Epson ESC/P-R path (Epson L210 / L805 / L8050 and similar, over USB, Wi-Fi :9100, or LPD :515 /PASSTHRU): colour, 3 mm borders,
+          // or borderless on photo paper when the Borderless switch is on and this model and paper size can do it.
           const packE = wifiPackPages(all, cv => cv.toDataURL('image/jpeg', cv.width >= 2000 ? 0.95 : 0.92));
           const escprOpts = Object.assign({}, wo, {
             borderless: !!(wo.borderless && epsonEscprBorderlessModel(p) && epsonEscprBorderlessOk(paper)),
             printerName: p.name || '',
-            epsonModel: p.epsonModel || (isEpsonL8050(p) ? 'L8050' : '')
+            epsonModel: p.epsonModel || (isEpsonL8050(p) ? 'L8050' : ''),
+            lpd: !!(p.lpd && !p.raw)
           });
           await wifiJob(id => window.__PBNet.printEscpr(id, p.ip, paper.w, paper.h, packE.copies, JSON.stringify(packE.pics), JSON.stringify(escprOpts)), packE.ms);
           return;
@@ -57945,7 +58035,7 @@ function renderTabletBridgeSetup(info) {
             if (p.needsPermission) { try { window.__PBNet.usbAllow(p.id); } catch (e) { } return { ok: false, msg: 'Allow USB access in the prompt, then tap the printer again.' }; }
             if (p.brotherNoIpp || (p.noDriver && p.usb && p.vid === 1273)) return { ok: false, msg: p.name + ' does not expose IPP-over-USB on this cable. Connect it to Wi-Fi or Wi-Fi Direct, or use Android print screen.' };
             if (p.noDriver) return { ok: false, msg: p.name + ' needs the booth Setup (Printer settings) to choose how to print.' };
-            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, dnp: !!p.dnp, dnpModel: p.dnpModel || '', epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, bcap: !!p.bcap, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
+            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, lpd: !!p.lpd, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, dnp: !!p.dnp, dnpModel: p.dnpModel || '', epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, bcap: !!p.bcap, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
             try { refreshPrintUI(); } catch (e) { }
             return { ok: true, msg: 'Printer selected: ' + p.name };
           } finally { printSize = old; }

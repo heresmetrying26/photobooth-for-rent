@@ -301,6 +301,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-24', title: 'Android 1.2.15 & Website: Epson L8050 Wi-Fi Direct / Wi-Fi Printing over LPD Port 515 + True-Color ESC/P-R Fix', for: ['website', 'app'],
+    items: [
+      '📶 **Hardcoded LPD Port 515 (`/PASSTHRU`) printing for Epson L8050 Wi-Fi & Wi-Fi Direct**: Real Epson L8050 units on Wi-Fi Direct (`192.168.223.1`) often ship with Port 631 (IPP) and Port 9100 (RAW) closed and only Port 515 (LPD) + Port 80 open. Android now automatically discovers Port 515 printers, identifies the exact model via SNMP (`hrDeviceDescr.1` + IEEE-1284 Device ID) / Port 80 Web Config / `_printer._tcp.` mDNS, and streams L8050 borderless ESC/P-R jobs (`360 dpi` 1:1 native default + opt-in `720 dpi`) over RFC 1179 LPD (`PASSTHRU` → `LPT1` → `AUTO` → `lp` → `raw`) using a low-RAM spool file in app cache.',
+      '🎨 **Critical ESC/P-R true-color & sharpness fix (USB + Wi-Fi)**: Fixed `setq` color-plane byte to always send `0x00` (`EPS_CP_FULLCOLOR` 24-bit RGB `dsnd`) with standard `seti(0..0)` + `chku(01 01)` borderless handshake (instead of the Windows `bsnd` `0x03` flag), rendered default L8050 `High (360 dpi)` 4×6 canvases at crisp **1:1 native 360 dpi** (`1440×2160`), and added **Premium Glossy (`0x0B`)** alongside **Epson Glossy (`0x34`)**.',
+      '🧪 **Wi-Fi / Wi-Fi Direct Diagnostic Tester LPD presets**: Added 1-tap **LPD :515 · L8050 360 dpi** (`0x34` Glossy & `0x0B` Premium Glossy) and **720 dpi** test presets that auto-select whenever a zero-paper check finds Port 515 open while Ports 631 and 9100 are closed.'
+    ]
+  },
+  {
     date: '2026-11-24', title: 'Android 1.2.14 & Website: Epson L8050 Direct USB, Wi-Fi / Wi-Fi Direct, Borderless & Streaming 720 dpi Fixes', for: ['website', 'app'],
     items: [
       '🖨️ **Epson L8050 rainbow-band fix (Android)**: Permanently blocked the incompatible 4-ink L3210 beta raster (`720/1440 dpi`) on 6-ink Epson L8050 / L18050 printers and cleared stale saved settings automatically.',

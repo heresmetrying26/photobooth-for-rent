@@ -25,7 +25,13 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.net.DatagramPacket
+import java.net.DatagramSocket
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -66,7 +72,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         @Volatile var ippPort: Int = 0
         @Volatile var ippPath: String = ""
         @Volatile var rawPort: Int = 0
+        @Volatile var lpdPort: Int = 0
+        @Volatile var lpdQueue: String = ""
         @Volatile var model: String = ""                       // "EPSON L3250 Series", from the printer itself
+        @Volatile var webTried = false
+        @Volatile var webHint: String = ""                     // vendor/model hint from HTTP :80 or SNMP :161
         @Volatile var formats: List<String> = emptyList()      // document formats it says it can print
         @Volatile var attrsTried = false
         @Volatile var attrsAttempts = 0
@@ -106,6 +116,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     @Volatile private var scanNote = ""
     @Volatile private var addNote = ""
     private val probed = AtomicInteger(0)
+    private val lpdJobSeq = AtomicInteger(0)
     @Volatile private var probeTotal = 0
     private var usbReceiver: BroadcastReceiver? = null
 
@@ -172,23 +183,42 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     fun list(): String {
         val arr = JSONArray()
         found.values
-            .filter { it.ippPort > 0 || it.rawPort > 0 }
+            .filter {
+                it.ippPort > 0 || it.rawPort > 0 || (it.lpdPort > 0 && (
+                    epsonLSeries(it.name) || epsonLSeries(it.model) ||
+                        it.model.contains("epson", ignoreCase = true) || it.name.contains("epson", ignoreCase = true) ||
+                        it.webHint.contains("epson", ignoreCase = true) || it.webHint == "LPD" ||
+                        it.ip == "192.168.223.1"
+                ))
+            }
             .sortedWith(compareByDescending<Entry> { it.name.isNotBlank() }.thenBy { it.ip })
             .forEach {
-                // An Epson ink-tank photo printer with no IPP (L805, L120 on a print server…) is not a receipt printer:
-                // it takes the same ESC/P-R job over port 9100 that it takes over USB (see printEscpr).
-                val escprNet = it.ippPort == 0 && it.rawPort > 0 && (epsonLSeries(it.name) || epsonLSeries(it.model))
-                arr.put(JSONObject()
+                // An Epson ink-tank photo printer with no IPP (L805, L8050 on Wi-Fi Direct with only LPD :515, L120 on a
+                // print server…) is not a receipt printer: it takes the same ESC/P-R job over port 9100 or LPD :515 (/PASSTHRU).
+                val lpdOnly = it.ippPort == 0 && it.rawPort == 0 && it.lpdPort > 0
+                val isEpsonKnown = epsonLSeries(it.name) || epsonLSeries(it.model) ||
+                    it.model.contains("epson", ignoreCase = true) || it.name.contains("epson", ignoreCase = true) ||
+                    it.webHint.contains("epson", ignoreCase = true) || it.ip == "192.168.223.1"
+                val escprNet = it.ippPort == 0 && ((it.rawPort > 0 && (epsonLSeries(it.name) || epsonLSeries(it.model))) || (lpdOnly && (isEpsonKnown || it.webHint == "LPD")))
+                val isL8050 = isL8050Name(it.model + " " + it.name)
+                val displayName = it.name.ifBlank { it.model }.ifBlank {
+                    if (lpdOnly && it.ip == "192.168.223.1") "Epson Wi-Fi Direct (${it.ip})" else "Printer at ${it.ip}"
+                }
+                val obj = JSONObject()
                     .put("id", it.ip)
-                    .put("name", it.name.ifBlank { "Printer at ${it.ip}" })
+                    .put("name", displayName)
                     .put("ip", it.ip)
                     .put("ipp", it.ippPort > 0)
                     .put("raw", it.rawPort > 0 && !escprNet)
                     .put("escpr", escprNet)
+                    .put("lpd", it.lpdPort > 0)
+                    .put("lpdPort", it.lpdPort)
                     .put("qualities", JSONArray(it.qualities))
                     .put("colorModes", JSONArray(it.colorModes))
                     .put("mediaTypes", JSONArray(it.mediaTypes))
-                    .put("bcap", it.borderlessCap))
+                    .put("bcap", it.borderlessCap)
+                if (isL8050) obj.put("epsonModel", "L8050")
+                arr.put(obj)
             }
         usbListInto(arr)
         return JSONObject().put("scanning", scanning).put("printers", arr)
@@ -204,19 +234,27 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         pool.execute {
             val e = Entry(clean)
             probeInto(e, 2500)
-            if (e.ippPort == 0 && e.rawPort == 0) {
+            if (e.ippPort == 0 && e.rawPort == 0 && e.lpdPort == 0) {
                 // Sleeping Wi-Fi / Wi-Fi Direct printer often wakes on the first knock and answers on the second.
                 try { Thread.sleep(600) } catch (_: InterruptedException) {}
                 probeInto(e, 3000)
             }
-            if (e.ippPort > 0 || e.rawPort > 0) {
+            if (e.ippPort > 0 || e.rawPort > 0 || e.lpdPort > 0) {
                 val cur = found.getOrPut(clean) { e }
-                if (cur !== e) { if (cur.ippPort == 0) cur.ippPort = e.ippPort; if (cur.rawPort == 0) cur.rawPort = e.rawPort }
-                fetchAttrs(cur)
+                if (cur !== e) {
+                    if (cur.ippPort == 0) cur.ippPort = e.ippPort
+                    if (cur.rawPort == 0) cur.rawPort = e.rawPort
+                    if (cur.lpdPort == 0) cur.lpdPort = e.lpdPort
+                }
+                if (cur.ippPort > 0) fetchAttrs(cur)
+                if (cur.ippPort == 0 && (cur.lpdPort > 0 || cur.rawPort > 0)) {
+                    fetchWebModel(cur, force = true)
+                    if (cur.lpdPort > 0 && cur.webHint.isBlank()) cur.webHint = "LPD"
+                }
             } else {
                 val active = currentNets().joinToString(", ") { "${it.addr.hostAddress}/${it.prefix}" }
                 val hint = if (active.isNotEmpty() && matchLocalNet(clean) == null) " (Tablet Wi-Fi is $active.)" else ""
-                addNote = "Nothing at $clean answered on the printing ports (631, 9100). Check the address, and that the tablet and printer are on the same Wi-Fi.$hint"
+                addNote = "Nothing at $clean answered on the printing ports (631, 9100, 515). Check the address, and that the tablet and printer are on the same Wi-Fi.$hint"
             }
         }
         return "ok"
@@ -252,13 +290,17 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             return sb.toString()
         }
         val e = found[ip] ?: return "Printer $ip is not in the list. Choose Find printers, then try again."
-        fetchAttrs(e)
+        if (e.ippPort > 0) fetchAttrs(e) else fetchWebModel(e)
         val netsText = currentNets().joinToString(", ") {
             "${it.ifaceName.ifEmpty { "net" }}:${it.addr.hostAddress}/${it.prefix}" + if (it.network != null) "[bound]" else "[iface]"
         }.ifEmpty { "(none)" }
-        // A Wi-Fi Epson photo printer with no IPP (L805...) takes Epson's own raster job on port 9100: it lists no papers.
-        val raw = if (e.ippPort <= 0 && e.rawPort > 0) "Sent in Epson's own print language (port " + e.rawPort + "); this printer lists no paper sizes.\n" else ""
-        return "Printer: " + e.model.ifBlank { e.name } + " (" + e.ip + ", ports ipp=" + e.ippPort + " raw=" + e.rawPort + ", path=" + e.ippPath.ifBlank { "(none)" } + ")\n" +
+        // A Wi-Fi Epson photo printer with no IPP (L805, L8050 on Wi-Fi Direct LPD :515...) takes Epson's own raster job: it lists no papers.
+        val raw = when {
+            e.ippPort <= 0 && e.rawPort > 0 -> "Sent in Epson's own print language (port " + e.rawPort + "); this printer lists no paper sizes.\n"
+            e.ippPort <= 0 && e.lpdPort > 0 -> "Sent in Epson's own print language over LPD (port " + e.lpdPort + ", queue " + e.lpdQueue.ifBlank { "PASSTHRU" } + "); this printer lists no paper sizes.\n"
+            else -> ""
+        }
+        return "Printer: " + e.model.ifBlank { e.name } + " (" + e.ip + ", ports ipp=" + e.ippPort + " raw=" + e.rawPort + " lpd=" + e.lpdPort + ", path=" + e.ippPath.ifBlank { "(none)" } + ")\n" +
             "Tablet nets: " + netsText + " · route: " + routeHintFor(e.ip) + "\n" + raw +
             "Takes: " + list(e.formats) + "\n" +
             "Qualities: " + (if (e.qualities.isEmpty()) "(none)" else e.qualities.joinToString(", ")) +
@@ -344,11 +386,14 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                             try { Thread.sleep(800) } catch (_: InterruptedException) {}
                             if (open(ip, 631, 3500)) it.ippPort = 631
                         }
-                        if (it.ippPort > 0 || it.rawPort > 0) found.putIfAbsent(ip, it)
+                        if (it.ippPort > 0 || it.rawPort > 0 || it.lpdPort > 0) found.putIfAbsent(ip, it)
                     }
                 }
                 if (e.ippPort <= 0) {
                     if (e.rawPort <= 0 && !ip.startsWith("usb:")) {
+                        if (e.lpdPort > 0) {
+                            throw IllegalStateException("Could not reach printer at $ip on port 631 (only LPD port ${e.lpdPort} is open).")
+                        }
                         val active = currentNets().joinToString(", ") { "${it.addr.hostAddress}/${it.prefix}" }
                         val hint = if (active.isNotEmpty() && matchLocalNet(ip) == null) " (Tablet Wi-Fi is $active — if you switched between Wi-Fi and Wi-Fi Direct, tap Find printers.)" else ""
                         throw IllegalStateException("Could not reach printer at $ip on port 631. Check it is on and on the same Wi-Fi as the tablet.$hint")
@@ -428,9 +473,21 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
      * sending side is closed first and the answers are read until the printer hangs up (or goes quiet).
      */
     private fun netRawJob(ip: String, data: ByteArray) {
+        val port = found[ip]?.rawPort?.takeIf { it > 0 } ?: 9100
         newSocket(ip).use { s ->
-            s.connect(InetSocketAddress(ip, found[ip]?.rawPort?.takeIf { it > 0 } ?: 9100), 6000)
-            s.getOutputStream().apply { write(data); flush() }
+            try {
+                s.connect(InetSocketAddress(ip, port), 6000)
+            } catch (ex: Exception) {
+                val active = currentNets().joinToString(", ") { "${it.addr.hostAddress}/${it.prefix}" }
+                val hint = if (active.isNotEmpty() && matchLocalNet(ip) == null) " (Tablet Wi-Fi is $active — if you switched between Wi-Fi and Wi-Fi Direct, tap Find printers.)" else ""
+                throw IllegalStateException("Could not reach printer at $ip on port $port: ${ex.message ?: ex.javaClass.simpleName}.$hint", ex)
+            }
+            s.soTimeout = 30_000
+            try {
+                s.getOutputStream().apply { write(data); flush() }
+            } catch (ex: Exception) {
+                throw IllegalStateException("Printer at $ip stopped answering while receiving photo (${ex.message ?: ex.javaClass.simpleName}).", ex)
+            }
             try {
                 s.shutdownOutput()
                 s.soTimeout = 3000
@@ -454,7 +511,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 throw IllegalStateException("Could not reach printer at $ip on port $port: ${ex.message ?: ex.javaClass.simpleName}.$hint", ex)
             }
             s.soTimeout = 30_000
-            val bos = java.io.BufferedOutputStream(s.getOutputStream(), 65536)
+            val bos = BufferedOutputStream(s.getOutputStream(), 65536)
             try {
                 stream { buf, len -> bos.write(buf, 0, len) }
                 bos.flush()
@@ -470,6 +527,196 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 while (System.currentTimeMillis() < until && inp.read(buf) >= 0) { /* status bytes, not needed */ }
             } catch (_: Exception) {}
         }
+    }
+
+    /**
+     * Streams a photo job over RFC 1179 LPD (port 515, default queue "PASSTHRU") without holding the
+     * full job in RAM. Epson L8050/L3250/L805 firmware requires the exact byte count in the LPD
+     * data-file header (\x03<len> dfA<job><host>\n), so we spool into a temp file in app cacheDir
+     * (~0.8 MB bitmap RAM), send the binary control file ("l") first, then stream the data file in
+     * 64 KB chunks and delete the temp file in finally.
+     */
+    private fun netLpdStream(
+        ip: String,
+        portOverride: Int = 0,
+        queueOverride: String = "",
+        stream: ((ByteArray, Int) -> Unit) -> Unit
+    ): Pair<Long, String> {
+        try {
+            val cutoff = System.currentTimeMillis() - 600_000L
+            activity.cacheDir.listFiles()?.forEach { f ->
+                if (f.name.startsWith("pb_lpd_") && f.name.endsWith(".prn") && f.lastModified() < cutoff) {
+                    try { f.delete() } catch (_: Exception) {}
+                }
+            }
+        } catch (_: Exception) {}
+
+        val tmp = File.createTempFile("pb_lpd_", ".prn", activity.cacheDir)
+        try {
+            BufferedOutputStream(FileOutputStream(tmp), 65536).use { fos ->
+                stream { buf, len -> if (len > 0) fos.write(buf, 0, len) }
+                fos.flush()
+            }
+            val fileLen = tmp.length()
+            if (fileLen <= 0L) throw IllegalStateException("Empty print job (0 bytes).")
+            val usedQueue = sendLpdFile(ip, portOverride, queueOverride, tmp, fileLen)
+            return fileLen to usedQueue
+        } finally {
+            try { tmp.delete() } catch (_: Exception) {}
+        }
+    }
+
+    private fun netLpdBytes(
+        ip: String,
+        data: ByteArray,
+        portOverride: Int = 0,
+        queueOverride: String = ""
+    ): Pair<Long, String> {
+        val usedQueue = sendLpdSource(ip, portOverride, queueOverride, data.size.toLong()) { out ->
+            out.write(data)
+        }
+        return data.size.toLong() to usedQueue
+    }
+
+    private fun sendLpdFile(
+        ip: String,
+        portOverride: Int,
+        queueOverride: String,
+        file: File,
+        fileLen: Long
+    ): String = sendLpdSource(ip, portOverride, queueOverride, fileLen) { out ->
+        FileInputStream(file).use { fis ->
+            val buf = ByteArray(65536)
+            var rem = fileLen
+            while (rem > 0L) {
+                val n = fis.read(buf, 0, minOf(buf.size.toLong(), rem).toInt())
+                if (n <= 0) throw IllegalStateException("Unexpected end of LPD spool file.")
+                out.write(buf, 0, n)
+                rem -= n.toLong()
+            }
+        }
+    }
+
+    private fun sendLpdSource(
+        ip: String,
+        portOverride: Int,
+        queueOverride: String,
+        dataLen: Long,
+        writeData: (BufferedOutputStream) -> Unit
+    ): String {
+        val port = if (portOverride > 0) portOverride else (found[ip]?.lpdPort?.takeIf { it > 0 } ?: 515)
+        val queues = LinkedHashSet<String>()
+        if (queueOverride.isNotBlank()) queues.add(queueOverride.trim())
+        found[ip]?.lpdQueue?.takeIf { it.isNotBlank() }?.let { queues.add(it.trim()) }
+        queues.add("PASSTHRU")
+        queues.add("LPT1")
+        queues.add("AUTO")
+        queues.add("lp")
+        queues.add("raw")
+
+        val tried = LinkedHashSet<String>()
+        var lastQueueErr = ""
+        // Allow 1 retry after 1.5s if port 515 accepted TCP but NACKed all queues (e.g. briefly busy finishing previous sheet)
+        for (attempt in 0..1) {
+            if (attempt > 0) {
+                try { Thread.sleep(1500) } catch (_: InterruptedException) {}
+            }
+            for (queue in queues) {
+                tried.add(queue)
+                var stage = 0 // 0=connect, 1=queue-ack, 2=sending-job, 3=final-ack
+                var accepted = false
+                try {
+                    newSocket(ip).use { s ->
+                        try {
+                            s.connect(InetSocketAddress(ip, port), 6000)
+                        } catch (ex: Exception) {
+                            val active = currentNets().joinToString(", ") { "${it.addr.hostAddress}/${it.prefix}" }
+                            val hint = if (active.isNotEmpty() && matchLocalNet(ip) == null) " (Tablet Wi-Fi is $active — if you switched between Wi-Fi and Wi-Fi Direct, tap Find printers.)" else ""
+                            throw IllegalStateException("Could not reach printer at $ip on LPD port $port: ${ex.message ?: ex.javaClass.simpleName}.$hint", ex)
+                        }
+                        stage = 1
+                        s.soTimeout = 15_000
+                        val inp = s.getInputStream()
+                        val bos = BufferedOutputStream(s.getOutputStream(), 65536)
+
+                        // RFC 1179 §5.2: Receive a printer job (\x02<queue>\n)
+                        bos.write(0x02)
+                        bos.write(queue.toByteArray(Charsets.US_ASCII))
+                        bos.write(0x0A)
+                        bos.flush()
+                        val qAck = inp.read()
+                        if (qAck != 0) {
+                            lastQueueErr = "queue=$queue ack=$qAck"
+                            Log.w(TAG, "LPD $ip:$port rejected queue '$queue' (ack=$qAck); trying next")
+                        } else {
+                            found.getOrPut(ip) { Entry(ip) }.let { entry ->
+                                if (entry.lpdPort <= 0) entry.lpdPort = port
+                                entry.lpdQueue = queue
+                            }
+
+                            stage = 2
+                            val jobNum = ((lpdJobSeq.incrementAndGet() and 0x7FFFFFFF) % 999) + 1
+                            val job3 = "%03d".format(jobNum)
+                            val host = "pb4u"
+                            val cfName = "cfA$job3$host"
+                            val dfName = "dfA$job3$host"
+                            // RFC 1179 §7: lowercase 'l' = binary passthrough (leave control characters untouched!)
+                            val cfBytes = ("H$host\nPphotobooth\nJ$host\nl$dfName\nU$dfName\nNpb4u.prn\n").toByteArray(Charsets.US_ASCII)
+
+                            // RFC 1179 §6.2: Receive control file FIRST so Epson streams incoming data directly as binary
+                            bos.write(0x02)
+                            bos.write("${cfBytes.size} $cfName\n".toByteArray(Charsets.US_ASCII))
+                            bos.flush()
+                            val cfHdrAck = inp.read()
+                            if (cfHdrAck != 0) throw IllegalStateException("LPD control-file header rejected (ack=$cfHdrAck).")
+
+                            bos.write(cfBytes)
+                            bos.write(0x00)
+                            bos.flush()
+                            val cfAck = inp.read()
+                            if (cfAck != 0) throw IllegalStateException("LPD control-file body rejected (ack=$cfAck).")
+
+                            // RFC 1179 §6.3: Receive data file with EXACT byte count
+                            s.soTimeout = 30_000
+                            bos.write(0x03)
+                            bos.write("$dataLen $dfName\n".toByteArray(Charsets.US_ASCII))
+                            bos.flush()
+                            val dfHdrAck = inp.read()
+                            if (dfHdrAck != 0) throw IllegalStateException("LPD data-file header rejected for $dataLen bytes (ack=$dfHdrAck).")
+
+                            writeData(bos)
+                            bos.write(0x00)
+                            bos.flush()
+
+                            stage = 3
+                            // Epson may finish feeding/printing before sending the final 0x00 ACK (up to ~45s at 720 dpi)
+                            s.soTimeout = 90_000
+                            val dfAck = inp.read()
+                            if (dfAck == -1) {
+                                Log.w(TAG, "LPD $ip:$port/$queue closed cleanly on final ACK after $dataLen bytes; treating as accepted")
+                            } else if (dfAck != 0) {
+                                throw IllegalStateException("Printer at $ip rejected LPD print data on queue $queue (code $dfAck).")
+                            }
+                            Log.i(TAG, "LPD $ip:$port/$queue accepted $dataLen bytes (job $job3)")
+                            accepted = true
+                        }
+                    }
+                } catch (ex: Exception) {
+                    if (stage == 0) throw ex
+                    if (stage == 1) {
+                        lastQueueErr = "queue=$queue (${ex.message ?: ex.javaClass.simpleName})"
+                        continue
+                    }
+                    if (stage == 3 && ex is java.net.SocketTimeoutException) {
+                        throw IllegalStateException("Printer at $ip took too long to answer after receiving LPD photo.", ex)
+                    }
+                    if (ex is IllegalStateException && ex.message?.startsWith("Printer at ") == true) throw ex
+                    throw IllegalStateException("Printer at $ip stopped answering while receiving LPD photo (${ex.message ?: ex.javaClass.simpleName}).", ex)
+                }
+                if (accepted) return queue
+            }
+        }
+        throw IllegalStateException("Could not reach LPD print queue on $ip:$port (rejected ${tried.joinToString(", ")}; $lastQueueErr).")
     }
 
     private fun deliver(r: JSONObject) {
@@ -575,8 +822,14 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 if (rp.isNotBlank()) e.ippPath = "/" + rp.trimStart('/')
             }
             type.startsWith("_pdl-datastream") -> e.rawPort = if (i.port > 0) i.port else 9100
+            type.startsWith("_printer") -> {
+                e.lpdPort = if (i.port > 0) i.port else 515
+                val rp = attr("rp")
+                if (rp.isNotBlank()) e.lpdQueue = rp.trimStart('/')
+            }
         }
         if (e.ippPort > 0) pool.execute { fetchAttrs(e) }
+        else if (e.lpdPort > 0 || e.rawPort > 0) pool.execute { fetchWebModel(e) }
     }
 
     private fun ipLong(a: Inet4Address): Long = a.address.fold(0L) { acc, b -> (acc shl 8) or (b.toLong() and 0xFF) }
@@ -726,15 +979,19 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         }
     }
 
-    /** Patient retry for an address the quick sweep got no answer from: only the IPP port, but with time to wake up. */
+    /** Patient retry for an address the quick sweep got no answer from: IPP (631) or LPD (515) with time to wake up. */
     private fun probeSlow(ip: String) {
-        if (found[ip]?.let { it.ippPort > 0 || it.rawPort > 0 } == true) return
-        if (!open(ip, 631, SLOW_PROBE_MS)) return
+        if (found[ip]?.let { it.ippPort > 0 || it.rawPort > 0 || it.lpdPort > 0 } == true) return
+        val hasIpp = open(ip, 631, SLOW_PROBE_MS)
+        val hasLpd = if (hasIpp) false else open(ip, 515, if (ip.endsWith(".1")) SLOW_PROBE_MS else 1000)
+        if (!hasIpp && !hasLpd) return
         val e = Entry(ip)
-        e.ippPort = 631
+        if (hasIpp) e.ippPort = 631
+        if (hasLpd) e.lpdPort = 515
         val cur = found.getOrPut(ip) { e }
-        if (cur.ippPort == 0) cur.ippPort = 631
-        fetchAttrs(cur)
+        if (hasIpp && cur.ippPort == 0) cur.ippPort = 631
+        if (hasLpd && cur.lpdPort == 0) cur.lpdPort = 515
+        if (cur.ippPort > 0) fetchAttrs(cur) else fetchWebModel(cur)
     }
 
     private fun open(ip: String, port: Int, timeoutMs: Int = PROBE_MS): Boolean = try {
@@ -744,19 +1001,309 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     private fun probe(ip: String) {
         val e = Entry(ip)
         probeInto(e)
-        if (e.ippPort > 0 || e.rawPort > 0) {
+        if (e.ippPort > 0 || e.rawPort > 0 || e.lpdPort > 0) {
+            if (e.ippPort == 0 && (e.lpdPort > 0 || e.rawPort > 0) && found[ip] == null) {
+                fetchWebModel(e)
+            }
             val cur = found.getOrPut(ip) { e }
             if (cur !== e) {
                 if (cur.ippPort == 0) cur.ippPort = e.ippPort
                 if (cur.rawPort == 0) cur.rawPort = e.rawPort
+                if (cur.lpdPort == 0) cur.lpdPort = e.lpdPort
+                if (cur.model.isBlank() && e.model.isNotBlank()) cur.model = e.model
+                if (cur.name.isBlank() && e.name.isNotBlank()) cur.name = e.name
+                if (cur.webHint.isBlank() && e.webHint.isNotBlank()) cur.webHint = e.webHint
             }
-            fetchAttrs(cur)
+            if (cur.ippPort > 0) fetchAttrs(cur)
+            else if (cur.lpdPort > 0 || cur.rawPort > 0) fetchWebModel(cur)
         }
     }
 
     private fun probeInto(e: Entry, timeoutMs: Int = PROBE_MS) {
         if (e.ippPort == 0 && open(e.ip, 631, timeoutMs)) e.ippPort = 631
         if (e.rawPort == 0 && open(e.ip, 9100, timeoutMs)) e.rawPort = 9100
+        if (e.lpdPort == 0 && open(e.ip, 515, timeoutMs)) e.lpdPort = 515
+    }
+
+    private fun newUdpSocket(ip: String): DatagramSocket {
+        try {
+            val n = matchLocalNet(ip)
+            if (n != null) {
+                val net = n.network
+                if (net != null) {
+                    val ds = DatagramSocket()
+                    try { net.bindSocket(ds) } catch (be: Exception) { Log.w(TAG, "udp net bind", be) }
+                    return ds
+                }
+                return DatagramSocket(InetSocketAddress(n.addr, 0))
+            }
+        } catch (e: Exception) { Log.w(TAG, "bound udp socket", e) }
+        return DatagramSocket()
+    }
+
+    private fun cleanModelName(s: String): String =
+        s.replace(Regex("[\\r\\n\\t\\x00-\\x1F]+"), " ").replace(Regex("\\s{2,}"), " ").trim().take(64)
+
+    private fun snmpTlv(tag: Int, body: ByteArray): ByteArray {
+        val out = ByteArrayOutputStream(body.size + 4)
+        out.write(tag)
+        val n = body.size
+        when {
+            n < 0x80 -> out.write(n)
+            n < 0x100 -> { out.write(0x81); out.write(n) }
+            else -> { out.write(0x82); out.write((n shr 8) and 0xFF); out.write(n and 0xFF) }
+        }
+        out.write(body)
+        return out.toByteArray()
+    }
+
+    private fun snmpEncodeOid(arcs: IntArray): ByteArray {
+        val out = ByteArrayOutputStream(24)
+        out.write(arcs[0] * 40 + arcs[1])
+        for (i in 2 until arcs.size) {
+            var v = arcs[i]
+            if (v < 0x80) {
+                out.write(v)
+            } else {
+                val tmp = IntArray(5)
+                var k = 0
+                tmp[k++] = v and 0x7F
+                v = v ushr 7
+                while (v > 0) {
+                    tmp[k++] = (v and 0x7F) or 0x80
+                    v = v ushr 7
+                }
+                for (j in k - 1 downTo 0) out.write(tmp[j])
+            }
+        }
+        return snmpTlv(0x06, out.toByteArray())
+    }
+
+    private fun snmpBuildGet(oid: IntArray, reqId: Int): ByteArray {
+        val vb = snmpTlv(0x30, snmpEncodeOid(oid) + byteArrayOf(0x05, 0x00))
+        val vbl = snmpTlv(0x30, vb)
+        val pduBody = byteArrayOf(
+            0x02, 0x01, (reqId and 0x7F).toByte(),
+            0x02, 0x01, 0x00,
+            0x02, 0x01, 0x00
+        ) + vbl
+        val pdu = snmpTlv(0xA0, pduBody)
+        val msgBody = byteArrayOf(
+            0x02, 0x01, 0x00,
+            0x04, 0x06, 'p'.code.toByte(), 'u'.code.toByte(), 'b'.code.toByte(), 'l'.code.toByte(), 'i'.code.toByte(), 'c'.code.toByte()
+        ) + pdu
+        return snmpTlv(0x30, msgBody)
+    }
+
+    private fun snmpParseOctetString(buf: ByteArray, len: Int): String {
+        fun readLen(pos: Int): Pair<Int, Int>? {
+            if (pos >= len) return null
+            val b = buf[pos].toInt() and 0xFF
+            if (b < 0x80) return b to (pos + 1)
+            val cnt = b and 0x7F
+            if (cnt == 0 || cnt > 2 || pos + 1 + cnt > len) return null
+            var v = 0
+            for (i in 0 until cnt) v = (v shl 8) or (buf[pos + 1 + i].toInt() and 0xFF)
+            return v to (pos + 1 + cnt)
+        }
+        if (len < 12 || (buf[0].toInt() and 0xFF) != 0x30) return ""
+        val top = readLen(1) ?: return ""
+        var p = top.second
+        val topEnd = minOf(len, p + top.first)
+        while (p < topEnd) {
+            val tag = buf[p].toInt() and 0xFF
+            val lv = readLen(p + 1) ?: return ""
+            val vStart = lv.second
+            val vEnd = minOf(topEnd, vStart + lv.first)
+            if (tag == 0xA2) {
+                var q = vStart
+                var intsSeen = 0
+                while (q < vEnd) {
+                    val t2 = buf[q].toInt() and 0xFF
+                    val lv2 = readLen(q + 1) ?: return ""
+                    val s2 = lv2.second
+                    val e2 = minOf(vEnd, s2 + lv2.first)
+                    if (t2 == 0x02) {
+                        intsSeen++
+                        if (intsSeen == 2 && (lv2.first != 1 || s2 >= e2 || (buf[s2].toInt() and 0xFF) != 0)) return ""
+                    } else if (t2 == 0x30) {
+                        if (s2 < e2 && (buf[s2].toInt() and 0xFF) == 0x30) {
+                            val lv3 = readLen(s2 + 1) ?: return ""
+                            var r = lv3.second
+                            val e3 = minOf(e2, r + lv3.first)
+                            while (r < e3) {
+                                val t4 = buf[r].toInt() and 0xFF
+                                val lv4 = readLen(r + 1) ?: return ""
+                                val s4 = lv4.second
+                                val e4 = minOf(e3, s4 + lv4.first)
+                                if (t4 == 0x04 && e4 > s4) {
+                                    return String(buf, s4, e4 - s4, Charsets.UTF_8).trim()
+                                }
+                                r = e4
+                            }
+                        }
+                    }
+                    q = e2
+                }
+                return ""
+            }
+            p = vEnd
+        }
+        return ""
+    }
+
+    /** Queries SNMPv1 UDP :161 for printer model (hrDeviceDescr.1, Epson IEEE-1284 Device ID, sysDescr.0). Returns Pair(model, vendorHint). */
+    private fun snmpQueryModel(ip: String): Pair<String, String> {
+        val target = try { InetAddress.getByName(ip) } catch (_: Exception) { return "" to "" }
+        val oids = arrayOf(
+            intArrayOf(1, 3, 6, 1, 2, 1, 25, 3, 2, 1, 3, 1),              // hrDeviceDescr.1 -> "EPSON L8050 Series"
+            intArrayOf(1, 3, 6, 1, 4, 1, 1248, 1, 2, 2, 1, 1, 1, 2, 1),   // Epson IEEE-1284 Device ID
+            intArrayOf(1, 3, 6, 1, 2, 1, 1, 1, 0)                         // sysDescr.0 -> "EPSON Built-in ..."
+        )
+        var vendorHint = ""
+        var genericModel = ""
+        val modelDigitRx = Regex("\\d{3,}")
+        val ds = try { newUdpSocket(ip) } catch (_: Exception) { return "" to "" }
+        try {
+            ds.soTimeout = 450
+            val rx = ByteArray(1500)
+            for (idx in oids.indices) {
+                try {
+                    val req = snmpBuildGet(oids[idx], idx + 1)
+                    ds.send(DatagramPacket(req, req.size, target, 161))
+                    val pkt = DatagramPacket(rx, rx.size)
+                    ds.receive(pkt)
+                    val txt = snmpParseOctetString(pkt.data, pkt.length)
+                    if (txt.isBlank()) continue
+                    if (txt.contains("epson", ignoreCase = true) && vendorHint.isBlank()) vendorHint = "EPSON"
+                    if (idx == 0) {
+                        val cleaned = cleanModelName(txt)
+                        if (cleaned.isNotBlank()) {
+                            if (modelDigitRx.containsMatchIn(cleaned)) {
+                                return cleaned to (if (cleaned.contains("epson", ignoreCase = true)) "EPSON" else vendorHint)
+                            }
+                            genericModel = cleaned
+                        }
+                    }
+                    if (idx == 1) {
+                        val des = Regex("(?i)(?:DES|DESCRIPTION):([^;]+)").find(txt)?.groupValues?.get(1)?.trim()
+                        val mdl = Regex("(?i)(?:MDL|MODEL):([^;]+)").find(txt)?.groupValues?.get(1)?.trim()
+                        val mfg = Regex("(?i)(?:MFG|MANUFACTURER):([^;]+)").find(txt)?.groupValues?.get(1)?.trim()
+                        val picked = des?.takeIf { it.isNotBlank() }
+                            ?: if (!mdl.isNullOrBlank()) (if (!mfg.isNullOrBlank() && !mdl.startsWith(mfg, ignoreCase = true)) "$mfg $mdl" else mdl) else null
+                        if (!picked.isNullOrBlank()) return cleanModelName(picked) to (if (picked.contains("epson", ignoreCase = true)) "EPSON" else vendorHint)
+                    }
+                    if (idx == 2 && epsonLSeries(txt)) {
+                        return cleanModelName(txt) to "EPSON"
+                    }
+                } catch (_: java.net.SocketTimeoutException) {
+                    if (idx == 0) break // SNMP unreachable on this host; skip remaining OIDs
+                } catch (_: Exception) {}
+            }
+        } finally {
+            try { ds.close() } catch (_: Exception) {}
+        }
+        return genericModel to vendorHint
+    }
+
+    private fun httpGetSimple(ip: String, path: String): String {
+        return try {
+            newSocket(ip).use { s ->
+                s.connect(InetSocketAddress(ip, 80), 1200)
+                s.soTimeout = 1500
+                val req = "GET $path HTTP/1.1\r\nHost: $ip\r\nUser-Agent: photobooth4u\r\nConnection: close\r\n\r\n"
+                s.getOutputStream().apply { write(req.toByteArray(Charsets.US_ASCII)); flush() }
+                val inp = s.getInputStream()
+                val buf = ByteArrayOutputStream(8192)
+                val tmp = ByteArray(2048)
+                while (buf.size() < 32768) {
+                    val n = try { inp.read(tmp) } catch (_: Exception) { -1 }
+                    if (n <= 0) break
+                    buf.write(tmp, 0, n)
+                }
+                String(buf.toByteArray(), Charsets.ISO_8859_1)
+            }
+        } catch (_: Exception) { "" }
+    }
+
+    /** Probes HTTP port 80 Web Config (e.g. Epson /PRESENTATION/HTML/TOP/INDEX.HTML) for model name and vendor hint. */
+    private fun httpProbeModel(ip: String): Pair<String, String> {
+        val paths = ArrayList<String>()
+        paths.add("/PRESENTATION/HTML/TOP/INDEX.HTML")
+        paths.add("/")
+        var vendorHint = ""
+        val epsonModelRx = Regex("(?i)EPSON\\s+(?:L\\s?\\d{3,5}|ET-?\\d{3,5}|M\\d{3,4}|XP-?\\d{3,4}|WF-?[A-Z0-9-]+|SC-?[A-Z0-9-]+)(?:\\s+Series)?")
+        val bareLModelRx = Regex("(?i)\\b(?:L\\s?\\d{3,5}|ET-?\\d{3,5})(?:\\s+Series)?\\b")
+        val titleRx = Regex("(?is)<title[^>]*>\\s*([^<]{2,80})\\s*</title>")
+        val locRx = Regex("(?im)^Location:\\s*(\\S+)")
+        val visited = HashSet<String>()
+        var idx = 0
+        while (idx < paths.size && visited.size < 3) {
+            val path = paths[idx++]
+            if (!visited.add(path)) continue
+            val raw = httpGetSimple(ip, path)
+            if (raw.isBlank()) continue
+            val hdrEnd = raw.indexOf("\r\n\r\n").let { if (it >= 0) it else raw.indexOf("\n\n") }
+            val hdrs = if (hdrEnd > 0) raw.substring(0, hdrEnd) else raw.take(1024)
+            val body = if (hdrEnd > 0) raw.substring(hdrEnd) else raw
+            if (hdrs.contains("EPSON", ignoreCase = true) || hdrs.contains("/PRESENTATION/HTML/", ignoreCase = true) || body.contains("EPSON", ignoreCase = true)) {
+                vendorHint = "EPSON"
+            }
+            val title = titleRx.find(body)?.groupValues?.get(1)?.let { cleanModelName(it) } ?: ""
+            if (title.isNotBlank() && !title.equals("Web Config", ignoreCase = true) && !title.startsWith("301") && !title.startsWith("302") && !title.startsWith("404") && !title.contains("Moved", ignoreCase = true)) {
+                val eHit = epsonModelRx.find(title)?.value
+                if (!eHit.isNullOrBlank()) {
+                    return cleanModelName(eHit) to "EPSON"
+                }
+                val bHit = if (vendorHint == "EPSON") bareLModelRx.find(title)?.value else null
+                if (!bHit.isNullOrBlank()) {
+                    val m = cleanModelName(bHit)
+                    return (if (m.startsWith("EPSON", ignoreCase = true)) m else "EPSON $m") to "EPSON"
+                }
+            }
+            val bodyHit = epsonModelRx.find(body)?.value
+            if (!bodyHit.isNullOrBlank()) {
+                return cleanModelName(bodyHit) to "EPSON"
+            }
+            // Follow 1 same-host HTTP redirect if present (skip https:// since we never bypass TLS verification)
+            val loc = locRx.find(hdrs)?.groupValues?.get(1)?.trim() ?: ""
+            if (loc.startsWith("/") && !visited.contains(loc)) {
+                paths.add(loc)
+            } else if (loc.startsWith("http://$ip/", ignoreCase = true)) {
+                val rel = loc.substring("http://$ip".length)
+                if (rel.startsWith("/") && !visited.contains(rel)) paths.add(rel)
+            }
+        }
+        return "" to vendorHint
+    }
+
+    /** Identifies a printer without IPP (e.g. LPD :515 only) via SNMPv1 :161 and HTTP :80 Web Config. */
+    private fun fetchWebModel(e: Entry, force: Boolean = false): String {
+        if (e.usbDev != null) return e.model.ifBlank { e.name }
+        if (!force && (e.webTried || e.model.isNotBlank())) return e.model.ifBlank { e.name }
+        synchronized(e) {
+            if (!force && (e.webTried || e.model.isNotBlank())) return e.model.ifBlank { e.name }
+            e.webTried = true
+            val snmp = snmpQueryModel(e.ip)
+            if (snmp.second.isNotBlank() && e.webHint.isBlank()) e.webHint = snmp.second
+            if (snmp.first.isNotBlank()) {
+                e.model = snmp.first
+                if (e.name.isBlank() || e.name.startsWith("Printer at ", ignoreCase = true)) e.name = snmp.first
+                e.webHint = snmp.first
+                Log.i(TAG, "SNMP model for ${e.ip}: ${snmp.first}")
+                return snmp.first
+            }
+            val web = httpProbeModel(e.ip)
+            if (web.second.isNotBlank() && e.webHint.isBlank()) e.webHint = web.second
+            if (web.first.isNotBlank()) {
+                e.model = web.first
+                if (e.name.isBlank() || e.name.startsWith("Printer at ", ignoreCase = true)) e.name = web.first
+                e.webHint = web.first
+                Log.i(TAG, "HTTP :80 model for ${e.ip}: ${web.first}")
+                return web.first
+            }
+            return e.model.ifBlank { e.name }
+        }
     }
 
     // ── USB printers ─────────────────────────────────────────────────────────
@@ -922,7 +1469,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         usbIfaces(d).firstOrNull { it.interfaceClass == 7 && it.interfaceSubclass == 1 && it.interfaceProtocol == 4 && hasBulkPair(it) }
             ?: usbIfaces(d).firstOrNull { d.vendorId == 0x03f0 && it.interfaceClass == 255 && it.interfaceSubclass == 9 && it.interfaceProtocol == 1 && hasBulkPair(it) }
     private fun usbRawIface(d: UsbDevice) =
-        usbIfaces(d).firstOrNull { it.interfaceClass == 7 && it.interfaceSubclass == 1 && it.interfaceProtocol in 1..2 }
+        usbIfaces(d).firstOrNull { it.interfaceClass == 7 && it.interfaceSubclass == 1 && it.interfaceProtocol in 1..2 && hasBulkPair(it) }
+            ?: usbIfaces(d).firstOrNull { it.interfaceClass == 7 && it.interfaceSubclass == 1 && it.interfaceProtocol in 1..2 }
 
     private fun usbProduct(d: UsbDevice): String? =
         if (usb?.hasPermission(d) == true) try { d.productName?.trim()?.takeIf { it.isNotEmpty() } } catch (_: Exception) { null } else null
@@ -1428,6 +1976,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             "plain" -> EscprJob.MEDIA_PLAIN
             "matte" -> EscprJob.MEDIA_MATTE
             "photosg" -> EscprJob.MEDIA_SEMI_GLOSS
+            "photopg" -> EscprJob.MEDIA_PREMIUM_GLOSSY
             "photo" -> EscprJob.MEDIA_EPSON_GLOSSY
             else -> EscprJob.MEDIA_EPSON_GLOSSY
         }
@@ -1448,7 +1997,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             sendSetiChku = true,
             mono = mono,
             adj = adj,
-            sendSetm = true
+            sendSetm = false
         )
     }
 
@@ -1464,7 +2013,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         pool.execute {
             val r = JSONObject().put("job", job)
             try {
-                // A Wi-Fi printer (an address, not "usb:…") gets the same job over port 9100.
+                // A Wi-Fi printer (an address, not "usb:…") gets the same job over port 9100 or LPD port 515 (/PASSTHRU).
                 val net = !id.startsWith("usb:")
                 val usbDev = if (!net) {
                     val d = usbFind(id)
@@ -1478,27 +2027,69 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 // model and paper size the printer can do borderless; otherwise the job stays as before (border, plain).
                 val borderless = optJson.optBoolean("borderless", false)
                 val netEntry = if (net) found[id] else null
+                var probedModel = ""
+                if (net &&
+                    !optJson.optString("epsonModel", "").equals("L8050", ignoreCase = true) &&
+                    !isL8050Name(optJson.optString("printerName", "")) &&
+                    (netEntry == null || netEntry.model.isBlank())
+                ) {
+                    probedModel = fetchWebModel(netEntry ?: Entry(id))
+                }
                 val isL8050 = (usbDev != null && (EpsonLModels.match(usbDev) == "L8050" || isL8050Name(usbName(usbDev)))) ||
                     optJson.optString("epsonModel", "").equals("L8050", ignoreCase = true) ||
                     isL8050Name(optJson.optString("printerName", "")) ||
+                    isL8050Name(probedModel) ||
                     (netEntry != null && isL8050Name(netEntry.model + " " + netEntry.name))
                 val l8050Cfg = if (isL8050) l8050EscprConfig(optJson, borderless, adj, widthMm, heightMm) else null
+                val useLpdFirst = net && (optJson.optBoolean("lpd", false) || (netEntry != null && netEntry.rawPort == 0 && netEntry.lpdPort > 0))
                 val arr = JSONArray(pagesJson)
                 for (c in 0 until copies.coerceIn(1, 20)) {
                     for (i in 0 until arr.length()) {
+                        if (net && (c > 0 || i > 0)) try { Thread.sleep(400) } catch (_: InterruptedException) {}
                         val jpeg = decode(arr.getString(i))
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
                         try {
+                            var transportLabel = ":9100"
                             if (l8050Cfg != null) {
                                 if (net) {
-                                    netRawStream(id) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
+                                    if (useLpdFirst) {
+                                        val (_, usedQ) = netLpdStream(id) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
+                                        transportLabel = "LPD :515/$usedQ"
+                                    } else {
+                                        try {
+                                            netRawStream(id) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
+                                        } catch (rawEx: Exception) {
+                                            if (rawEx.message?.startsWith("Could not reach") == true && open(id, 515, 1500)) {
+                                                found.getOrPut(id) { Entry(id) }.lpdPort = 515
+                                                val (_, usedQ) = netLpdStream(id) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
+                                                transportLabel = "LPD :515/$usedQ"
+                                            } else throw rawEx
+                                        }
+                                    }
                                 } else {
                                     usbRawStream(id) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
                                 }
                             } else {
                                 val data = EscprJob.build(bmp, widthMm, heightMm, false, borderless = borderless, photoMedia = borderless, adj = adj, epsonBorderless = true)
-                                if (net) netRawJob(id, data) else usbRaw(id, data)
+                                if (net) {
+                                    if (useLpdFirst) {
+                                        val (_, usedQ) = netLpdBytes(id, data)
+                                        transportLabel = "LPD :515/$usedQ"
+                                    } else {
+                                        try {
+                                            netRawJob(id, data)
+                                        } catch (rawEx: Exception) {
+                                            if (rawEx.message?.startsWith("Could not reach") == true && open(id, 515, 1500)) {
+                                                found.getOrPut(id) { Entry(id) }.lpdPort = 515
+                                                val (_, usedQ) = netLpdBytes(id, data)
+                                                transportLabel = "LPD :515/$usedQ"
+                                            } else throw rawEx
+                                        }
+                                    }
+                                } else {
+                                    usbRaw(id, data)
+                                }
                             }
                             if (net) {
                                 val sizeDesc = Math.round(minOf(widthMm, heightMm)).toString() + "x" + Math.round(maxOf(widthMm, heightMm)) + " mm"
@@ -1508,12 +2099,13 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                                         EscprJob.MEDIA_PLAIN -> "Plain"
                                         EscprJob.MEDIA_MATTE -> "Matte"
                                         EscprJob.MEDIA_SEMI_GLOSS -> "Semi-Gloss"
+                                        EscprJob.MEDIA_PREMIUM_GLOSSY -> "Premium Glossy 0x0B"
                                         else -> "Epson Glossy 0x34"
                                     }
                                     val geo = if (l8050Cfg.dpi >= 720) "borderless (-22,-76)" else "borderless (-11,-38)"
-                                    "L8050 ESC/P-R ${l8050Cfg.dpi}dpi, " + (if (borderless) geo else "3 mm border") + ", $mName, $qName, $sizeDesc"
+                                    "L8050 ESC/P-R $transportLabel ${l8050Cfg.dpi}dpi, " + (if (borderless) geo else "3 mm border") + ", $mName, $qName, $sizeDesc"
                                 } else {
-                                    (if (borderless) "borderless, Premium Glossy photo paper, " else "3 mm border, plain paper, ") + sizeDesc
+                                    "ESC/P-R $transportLabel, " + (if (borderless) "borderless, Premium Glossy photo paper, " else "3 mm border, plain paper, ") + sizeDesc
                                 }
                             }
                         } finally {
@@ -2465,7 +3057,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         val mt = when (opts.media) {
             "plain" -> e.mediaTypes.firstOrNull { it == "stationery" } ?: e.mediaTypes.firstOrNull { it.startsWith("stationery") } ?: (if (hardEpsonL) "stationery" else "")
             "inkjet" -> e.mediaTypes.firstOrNull { it == "stationery-inkjet" } ?: e.mediaTypes.firstOrNull { it.contains("inkjet", true) } ?: ""
-            "photo" -> e.mediaTypes.firstOrNull { it == "photographic-glossy" } ?: e.mediaTypes.firstOrNull { it.startsWith("photographic") } ?: (if (hardEpsonL) "photographic-glossy" else "")
+            "photo", "photopg" -> e.mediaTypes.firstOrNull { it == "photographic-glossy" } ?: e.mediaTypes.firstOrNull { it.startsWith("photographic") } ?: (if (hardEpsonL) "photographic-glossy" else "")
             "photosg" -> e.mediaTypes.firstOrNull { it == "photographic-semi-gloss" } ?: (if (hardEpsonL) "photographic-semi-gloss" else "")
             "matte" -> e.mediaTypes.firstOrNull { it == "photographic-matte" } ?: (if (hardEpsonL) "photographic-matte" else "")
             "bp71" -> e.mediaTypes.firstOrNull { it.equals("com.brother-bp71", true) } ?: e.mediaTypes.firstOrNull { it.contains("bp71", true) } ?: ""
@@ -2936,7 +3528,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         }
         val printersArr = JSONArray()
         for (e in found.values.sortedBy { it.ip }) {
-            if (e.ippPort > 0 || e.rawPort > 0) {
+            if (e.ippPort > 0 || e.rawPort > 0 || e.lpdPort > 0) {
                 suggestions.add(e.ip)
                 printersArr.put(JSONObject()
                     .put("ip", e.ip)
@@ -2945,6 +3537,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     .put("ippPort", e.ippPort)
                     .put("ippPath", e.ippPath)
                     .put("rawPort", e.rawPort)
+                    .put("lpdPort", e.lpdPort)
                     .put("qualities", JSONArray(e.qualities))
                     .put("mediaTypes", JSONArray(e.mediaTypes))
                     .put("borderlessCap", e.borderlessCap)
@@ -3000,13 +3593,14 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         for (ip in toProbe) {
             val e = Entry(ip)
             probeInto(e, 1500)
-            if (e.ippPort > 0 || e.rawPort > 0) {
+            if (e.ippPort > 0 || e.rawPort > 0 || e.lpdPort > 0) {
                 val cur = found.getOrPut(ip) { e }
                 if (cur !== e) {
                     if (cur.ippPort == 0) cur.ippPort = e.ippPort
                     if (cur.rawPort == 0) cur.rawPort = e.rawPort
+                    if (cur.lpdPort == 0) cur.lpdPort = e.lpdPort
                 }
-                if (cur.ippPort > 0) fetchAttrs(cur)
+                if (cur.ippPort > 0) fetchAttrs(cur) else fetchWebModel(cur)
             }
         }
         val info = diagNetworkJson()
@@ -3079,11 +3673,20 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         portsObj.put("631", p631).put("9100", p9100).put("515", p515).put("80", p80)
         out.put("ports", portsObj)
 
-        if (!p631.optBoolean("open") && !p9100.optBoolean("open")) {
+        if (!p631.optBoolean("open") && !p9100.optBoolean("open") && !p515.optBoolean("open")) {
             return out.put("ok", true).put("reachable", false)
-                .put("recommendation", "Printer $ip did not answer on port 631 (IPP) or 9100 (raw/ESC/P-R). Check power, 2.4 GHz Wi-Fi / Wi-Fi Direct connection, and router AP Isolation (Privacy Separator).")
+                .put("recommendation", "Printer $ip did not answer on port 631 (IPP), 9100 (raw/ESC/P-R), or 515 (LPD). Check power, 2.4 GHz Wi-Fi / Wi-Fi Direct connection, and router AP Isolation (Privacy Separator).")
         }
         out.put("reachable", true)
+        val diagEntry = found.getOrPut(ip) { Entry(ip) }
+        if (p631.optBoolean("open") && diagEntry.ippPort <= 0) diagEntry.ippPort = 631
+        if (p9100.optBoolean("open") && diagEntry.rawPort <= 0) diagEntry.rawPort = 9100
+        if (p515.optBoolean("open") && diagEntry.lpdPort <= 0) diagEntry.lpdPort = 515
+        if (!p631.optBoolean("open")) {
+            val wm = fetchWebModel(diagEntry, force = true)
+            if (wm.isNotBlank()) out.put("webModel", wm)
+            else if (diagEntry.webHint.isNotBlank()) out.put("webModel", diagEntry.webHint)
+        }
 
         // Step 2: Full IPP Get-Printer-Attributes ("all")
         val ippObj = JSONObject()
@@ -3250,6 +3853,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         val rec = StringBuilder()
         if (p9100.optBoolean("open")) rec.append("Port 9100 (raw ESC/P-R) is OPEN. ")
         else rec.append("Port 9100 (raw ESC/P-R) is CLOSED. ")
+        if (p515.optBoolean("open")) rec.append("Port 515 (LPD /PASSTHRU) is OPEN. ")
         if (chosenPath.isNotEmpty()) {
             var cleanId = ""
             var anyOkId = ""
@@ -3262,19 +3866,21 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 if (id == "ipp-top-q5-glossy-scNone" && !r.optBoolean("ok")) oldStyleFailed = true
             }
             if (cleanId.isNotEmpty()) rec.append("Cleanest IPP Validate-Job winner: $cleanId (0 ignored attributes). ")
-            else if (anyOkId.isNotEmpty()) rec.append("IPP accepted $anyOkId but ignored some attributes — check unsupported list and also test ESC/P-R on port 9100. ")
-            else rec.append("IPP Validate-Job rejected photo options (or Validate-Job unsupported) — run a 1-sheet live test on IPP and ESC/P-R :9100. ")
+            else if (anyOkId.isNotEmpty()) rec.append("IPP accepted $anyOkId but ignored some attributes — check unsupported list and also test ESC/P-R on port 9100 or LPD :515. ")
+            else rec.append("IPP Validate-Job rejected photo options (or Validate-Job unsupported) — run a 1-sheet live test on IPP, ESC/P-R :9100, or LPD :515. ")
             if (oldStyleFailed) rec.append("Confirmed: old top-level media-type + scaling=none failed Validate-Job on this printer.")
+        } else if (p515.optBoolean("open") && !p9100.optBoolean("open")) {
+            rec.append("IPP port 631 and RAW port 9100 are closed — use LPD :515 (ESC/P-R PASSTHRU) preset below (photobooth4u also uses LPD :515 automatically when printing).")
         } else {
-            rec.append("IPP port 631 did not answer Get-Printer-Attributes — use ESC/P-R on port 9100 if open.")
+            rec.append("IPP port 631 did not answer Get-Printer-Attributes — use ESC/P-R on port 9100 or LPD :515.")
         }
         out.put("recommendation", rec.toString().trim())
         return out.put("ok", true)
     }
 
     /**
-     * Explicit 1-sheet live diagnostic print (either IPP Print-Job + Get-Job-Attributes polling,
-     * or raw ESC/P-R on port 9100 with explicit dpi/mediaCode/qualityCode/l8050Geo).
+     * Explicit 1-sheet live diagnostic print (IPP Print-Job + Get-Job-Attributes polling,
+     * raw ESC/P-R on port 9100, or RFC 1179 LPD :515 /PASSTHRU with explicit dpi/mediaCode/qualityCode/l8050Geo).
      */
     fun diagPrintSync(payload: JSONObject): JSONObject {
         val ip = payload.optString("ip", "").trim()
@@ -3289,6 +3895,44 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         val wMm = payload.optDouble("widthMm", 101.6)
         val hMm = payload.optDouble("heightMm", 152.4)
 
+        if (protocol == "lpd") {
+            val port = payload.optInt("port", 515)
+            val queue = payload.optString("queue", "PASSTHRU")
+            val dpi = payload.optInt("dpi", 360)
+            val mediaCode = payload.optInt("mediaCode", EscprJob.MEDIA_EPSON_GLOSSY)
+            val qualityCode = payload.optInt("qualityCode", 2)
+            val borderless = payload.optBoolean("borderless", true)
+            val l8050Geo = payload.optBoolean("l8050Geo", true)
+            val sendSetiChku = payload.optBoolean("sendSetiChku", true)
+            val sendSetm = payload.optBoolean("sendSetm", false)
+            val mono = payload.optBoolean("mono", false)
+            val bmp = android.graphics.BitmapFactory.decodeByteArray(jpegIn, 0, jpegIn.size)
+                ?: return out.put("ok", false).put("error", "Could not decode JPEG image.")
+            val cfg = EscprJob.Config(dpi, mediaCode, qualityCode, borderless, l8050Geo, sendSetiChku, mono, PrintColorAdj(), sendSetm)
+            val sendStart = System.currentTimeMillis()
+            try {
+                val (streamedBytes, usedQueue) = netLpdStream(ip, port, queue) { writeChunk ->
+                    EscprJob.streamWithConfig(bmp, wMm, hMm, cfg, writeChunk)
+                }
+                return out.put("ok", true)
+                    .put("port", port)
+                    .put("queue", usedQueue)
+                    .put("bytes", streamedBytes)
+                    .put("buildMs", 0L)
+                    .put("sendMs", System.currentTimeMillis() - sendStart)
+                    .put("config", JSONObject()
+                        .put("dpi", dpi).put("mediaHex", "0x%02x".format(mediaCode))
+                        .put("qualityCode", qualityCode).put("borderless", borderless)
+                        .put("l8050Geo", l8050Geo).put("sendSetiChku", sendSetiChku).put("sendSetm", sendSetm))
+            } catch (ex: Exception) {
+                return out.put("ok", false).put("error", ex.message ?: ex.javaClass.simpleName)
+                    .put("port", port).put("queue", queue)
+                    .put("sendMs", System.currentTimeMillis() - sendStart)
+            } finally {
+                try { bmp.recycle() } catch (_: Exception) {}
+            }
+        }
+
         if (protocol == "escpr") {
             val port = payload.optInt("port", 9100)
             val dpi = payload.optInt("dpi", 720)
@@ -3297,7 +3941,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             val borderless = payload.optBoolean("borderless", true)
             val l8050Geo = payload.optBoolean("l8050Geo", true)
             val sendSetiChku = payload.optBoolean("sendSetiChku", true)
-            val sendSetm = payload.optBoolean("sendSetm", l8050Geo)
+            val sendSetm = payload.optBoolean("sendSetm", false)
             val mono = payload.optBoolean("mono", false)
             val bmp = android.graphics.BitmapFactory.decodeByteArray(jpegIn, 0, jpegIn.size)
                 ?: return out.put("ok", false).put("error", "Could not decode JPEG image.")
@@ -3454,8 +4098,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             if (name.isNotBlank() && !list.contains(name)) list.add(name)
         }
         for (e in found.values) {
-            if (e.ippPort > 0 || e.rawPort > 0) {
-                val n = e.name.ifBlank { "Printer at ${e.ip}" }
+            if (e.ippPort > 0 || e.rawPort > 0 || e.lpdPort > 0) {
+                val n = e.name.ifBlank { e.model.ifBlank { "Printer at ${e.ip}" } }
                 if (!list.contains(n)) list.add(n)
             }
         }
@@ -3647,14 +4291,25 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                             try { bmp.recycle() } catch (_: Exception) {}
                         }
                     }
-                } else if (netMatch.ippPort == 0 && netMatch.rawPort > 0 && isL8050Name(netMatch.model + " " + netMatch.name)) {
-                    val l8050Cfg = l8050EscprConfig(JSONObject(), true, PrintColorAdj(), widthMm, heightMm)
+                } else if (netMatch.ippPort == 0 && (netMatch.rawPort > 0 || netMatch.lpdPort > 0)) {
+                    if (netMatch.model.isBlank()) fetchWebModel(netMatch)
+                    val isL8050 = isL8050Name(netMatch.model + " " + netMatch.name)
+                    val l8050Cfg = if (isL8050) l8050EscprConfig(JSONObject(), true, PrintColorAdj(), widthMm, heightMm) else null
                     for (i in 0 until pagesArr.length()) {
                         val jpeg = decode(pagesArr.getString(i))
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't decode photo for printing.")
                         try {
-                            netRawStream(netMatch.ip, netMatch.rawPort) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
+                            if (l8050Cfg != null) {
+                                if (netMatch.rawPort > 0) {
+                                    netRawStream(netMatch.ip, netMatch.rawPort) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
+                                } else {
+                                    netLpdStream(netMatch.ip, netMatch.lpdPort) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
+                                }
+                            } else {
+                                val data = EscprJob.build(bmp, widthMm, heightMm, false, borderless = true, photoMedia = true, epsonBorderless = true)
+                                if (netMatch.rawPort > 0) netRawJob(netMatch.ip, data) else netLpdBytes(netMatch.ip, data, netMatch.lpdPort)
+                            }
                         } finally {
                             try { bmp.recycle() } catch (_: Exception) {}
                         }

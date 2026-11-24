@@ -185,8 +185,9 @@ object EscprJob {
      * compare 360 vs 720 dpi, quality 0/1/2 (Draft/Standard/High), media codes (0x34 Epson Glossy,
      * 0x0B Premium Glossy, 0x0C Semi-Gloss, 0x05 Matte, 0x00 Plain), and L8050 vs L805 borderless geometry.
      *
-     * [sendSetm] emits the L8050 Windows driver's borderless/media setup commands (0x71 seti=01,
-     * 0x6d seti=00, 0x6d setm=0a <bl> 00 63 00 00 00, 0x75 chku=01 00, setq[6]=0x03).
+     * [sendSetm] optionally appends the L8050 4x6 media-mode command (0x6d seti + 0x6d setm) on top
+     * of the standard ESC/P-R dsnd 24-bit RGB header (setq[6]=0x00 EPS_CP_FULLCOLOR, 0x71 seti=0..0,
+     * 0x75 chku=01 01). Keep false by default because 0x03/setm come from the Windows bsnd driver.
      */
     data class Config(
         val dpi: Int = 360,
@@ -197,7 +198,7 @@ object EscprJob {
         val sendSetiChku: Boolean = true,
         val mono: Boolean = false,
         val adj: PrintColorAdj = PrintColorAdj(),
-        val sendSetm: Boolean = l8050Geo
+        val sendSetm: Boolean = false
     )
 
     private const val STREAM_STRIP_H = 64
@@ -336,19 +337,22 @@ object EscprJob {
 
         val media = cfg.mediaCode.coerceIn(0, 0xFF)
         val quality = cfg.qualityCode.coerceIn(0, 2)
+        // Byte 6 is colorPlane (cp): MUST be 0x00 (EPS_CP_FULLCOLOR = 24-bit RGB dsnd scanlines).
+        // Never send 0x03 here: 0x03 is the Windows driver's proprietary bsnd band plane and breaks dsnd jobs!
         hdr.put(bytes(0x1B, 0x71, 0x09, 0x00, 0x00, 0x00), ascii("setq"),
-            bytes(media, quality, if (cfg.mono) 1 else 0, 0, 0, 0, if (cfg.sendSetm) 0x03 else 0x00, 0x00, 0x00))
-        if (cfg.sendSetm) {
-            // Exact L8050 Windows driver borderless/media handshake (captured from e1wf1b0e.inf):
-            // 0x71 seti(01..), 0x6d seti(00), 0x6d setm(0a, borderless?01:00, 00, 63, 00, 00, 00), 0x75 chku(01, 00)
-            hdr.put(bytes(0x1B, 0x71, 0x0A, 0x00, 0x00, 0x00), ascii("seti"), bytes(0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+            bytes(media, quality, if (cfg.mono) 1 else 0, 0, 0, 0, 0x00, 0x00, 0x00))
+        if (cfg.borderless && cfg.sendSetiChku) {
+            // Standard epson-inkjet-printer-escpr dsnd borderless handshake:
+            //   0x71 seti = all zeros (keeps the printer's built-in 6-ink sRGB color engine active)
+            //   0x75 chku = 01 01 (enables negative-margin borderless in dsnd mode)
+            hdr.put(bytes(0x1B, 0x71, 0x0A, 0x00, 0x00, 0x00), ascii("seti"), ByteArray(10))
+            hdr.put(bytes(0x1B, 0x75, 0x02, 0x00, 0x00, 0x00), ascii("chku"), bytes(0x01, 0x01))
+        }
+        if (cfg.sendSetm && is4x6) {
+            // Optional 4x6 media-mode command (0x0A = 4x6 media size ID, byte 1 = borderless flag) for diagnostic A/B testing only.
             hdr.put(bytes(0x1B, 0x6D, 0x01, 0x00, 0x00, 0x00), ascii("seti"), bytes(0x00))
             hdr.put(bytes(0x1B, 0x6D, 0x07, 0x00, 0x00, 0x00), ascii("setm"),
                 bytes(0x0A, if (cfg.borderless) 0x01 else 0x00, 0x00, 0x63, 0x00, 0x00, 0x00))
-            hdr.put(bytes(0x1B, 0x75, 0x02, 0x00, 0x00, 0x00), ascii("chku"), bytes(0x01, 0x00))
-        } else if (cfg.borderless && cfg.sendSetiChku) {
-            hdr.put(bytes(0x1B, 0x71, 0x0A, 0x00, 0x00, 0x00), ascii("seti"), ByteArray(10))
-            hdr.put(bytes(0x1B, 0x75, 0x02, 0x00, 0x00, 0x00), ascii("chku"), bytes(0x01, 0x01))
         }
         val resByte = if (useDpi >= 720) 0x01 else 0x00
         hdr.put(bytes(0x1B, 0x6A, 0x16, 0x00, 0x00, 0x00), ascii("setj"),

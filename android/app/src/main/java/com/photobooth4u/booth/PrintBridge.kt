@@ -70,9 +70,16 @@ class PrintBridge(private val activity: Activity) {
             }
             val wMils = Math.round(widthMm / 25.4 * 1000).toInt().coerceAtLeast(1000)
             val hMils = Math.round(heightMm / 25.4 * 1000).toInt().coerceAtLeast(1000)
-            val size = PrintAttributes.MediaSize("pb_${wMils}x$hMils", "Booth ${widthMm.toInt()}x${heightMm.toInt()} mm", wMils, hMils)
+            val shortMils = minOf(wMils, hMils)
+            val longMils = maxOf(wMils, hMils)
+            val baseSize = when {
+                Math.abs(shortMils - 4000) <= 60 && Math.abs(longMils - 6000) <= 60 -> PrintAttributes.MediaSize.NA_INDEX_4X6
+                Math.abs(shortMils - 8268) <= 80 && Math.abs(longMils - 11693) <= 80 -> PrintAttributes.MediaSize.ISO_A4
+                Math.abs(shortMils - 8500) <= 80 && Math.abs(longMils - 11000) <= 80 -> PrintAttributes.MediaSize.NA_LETTER
+                else -> PrintAttributes.MediaSize("pb_${wMils}x$hMils", "Booth ${widthMm.toInt()}x${heightMm.toInt()} mm", wMils, hMils)
+            }
             val attrs = PrintAttributes.Builder()
-                .setMediaSize(if (hMils >= wMils) size.asPortrait() else size.asLandscape())
+                .setMediaSize(if (hMils >= wMils) baseSize.asPortrait() else baseSize.asLandscape())
                 .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
                 .setColorMode(PrintAttributes.COLOR_MODE_COLOR)
                 .build()
@@ -123,7 +130,8 @@ class PrintBridge(private val activity: Activity) {
                         val page = pdf.startPage(i)
                         if (bmp != null) {
                             val c = page.canvas
-                            c.drawBitmap(bmp, null, Rect(0, 0, c.width, c.height), null)
+                            val paint = android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG)
+                            c.drawBitmap(bmp, null, Rect(0, 0, c.width, c.height), paint)
                             bmp.recycle()
                         }
                         pdf.finishPage(page)

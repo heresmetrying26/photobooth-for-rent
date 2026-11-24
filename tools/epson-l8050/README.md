@@ -50,16 +50,20 @@ So the driver enlarges the page 5.28 % and the sheet only shows part of it. Of t
   at **600 dpi** (`2400 x 3600` sheet -> `2526 x 3666` bleed page) with `600 dpi` written into the JFIF header (`jpegAtDpi`);
   older APKs stay at 300 dpi. **Not tried on a real L8050.** If a real print shows the page is placed
   differently, change `GEO` in that file; `scripts/test-epson-l8050.mjs` ties it to the driver numbers above.
-* **Android, raw ESC/P-R** (`EscprJob.kt`, `NetPrintBridge.kt` `printEpsonL` / `printEscpr` / `printFromHelper` / `diagPrintSync`):
-  uses `EscprJob.streamWithConfig` (64-row strip streaming directly to USB bulk-OUT / TCP `:9100`, ~0.8 MB bitmap RAM) with the
-  exact Windows L8050 driver header sequence captured from `e1wf1b0e.inf`: `setq[6]=0x03`, `0x71 seti`, `0x6d seti`,
-  `0x6d setm` (`0a 01 00 63 00 00 00` borderless / `0a 00 00 63 00 00 00` bordered), `0x75 chku`, `setj`, media byte
-  (`0x34` Epson Glossy default, `0x0c` semi-gloss, `0x05` matte, `0x00` plain), and quality byte (`2` High default, `1` Normal,
-  `0` Draft). Default `High (360 dpi)` sends `360 dpi` (`1440 x 2160` sheet, `1516 x 2200` area, `-11, -38`); opt-in
+* **Android, raw ESC/P-R (USB, TCP `:9100`, and LPD `:515 /PASSTHRU`)** (`EscprJob.kt`, `NetPrintBridge.kt` `printEpsonL` / `printEscpr` / `printFromHelper` / `diagPrintSync`):
+  uses `EscprJob.streamWithConfig` (64-row strip streaming directly to USB bulk-OUT, TCP `:9100`, or RFC 1179 LPD `:515 /PASSTHRU`, ~0.8 MB bitmap RAM) with
+  pure standard `epson-inkjet-printer-escpr` `dsnd` 24-bit RGB commands: `setq[6]=0x00` (`EPS_CP_FULLCOLOR` — NEVER Windows `bsnd` `0x03`!),
+  `0x71 seti` (10 zero bytes so the L8050's built-in 6-ink RGB color engine stays active), `0x75 chku` (`01 01`), `setj`, media byte
+  (`0x34` Epson Glossy default, `0x0b` Premium Glossy, `0x0c` semi-gloss, `0x05` matte, `0x00` plain), and quality byte (`2` High default, `1` Normal,
+  `0` Draft). Default `High (360 dpi)` renders 4x6 at native 1:1 `360 dpi` (`1440 x 2160` sheet, `1516 x 2200` area, `-11, -38`); opt-in
   `High 720 dpi (L8050 4x6)` (`high720`, gated by `supportsL8050HiRes()`) renders a `2880 x 4320` canvas and streams `720 dpi`
-  `dsnd` RGB rows (`3032 x 4400` area, `-22, -76`). (The Windows driver itself emits proprietary 4-plane `bsnd` bands; `high720`
-  uses open ESC/P-R `dsnd` RGB rows and remains opt-in until verified on 1 physical sheet.) The L3210 4-ink 720/1440 dpi beta
-  raster (`PBEpsonRaster`) is blocked on L8050 so wrong nozzle offsets can never be sent to the 6-ink printhead.
+  `dsnd` RGB rows (`3032 x 4400` area, `-22, -76`). (Optional 4x6 `0x6d setm` is gated to diagnostic A/B preset `lpd_l8050_360_setm` and `is4x6` only.)
+  The L3210 4-ink 720/1440 dpi beta raster (`PBEpsonRaster`) is blocked on L8050 so wrong nozzle offsets can never be sent to the 6-ink printhead.
+  * **Real hardware note (2026-11-24, Xiaomi Pad 5 + L8050 Wi-Fi Direct `192.168.223.1`)**: diagnostic probe showed
+    `631:closed`, `9100:closed`, `515:OPEN(17ms)`, `80:OPEN(3ms)`. Android 1.2.15 adds hardcoded LPD `:515` discovery
+    (`_printer._tcp.` mDNS + subnet probe + SNMPv1 `hrDeviceDescr.1` / Port 80 Web Config model lookup) and spools
+    `EscprJob.streamWithConfig` to a temp file in `cacheDir` so exact RFC 1179 byte counts (`\x03<len> dfA...`) are sent
+    after the binary control file (`l` mode) on queue `PASSTHRU` (with `LPT1`/`lp`/`raw` fallback).
 
 ## Re-running it
 

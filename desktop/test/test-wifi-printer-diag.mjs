@@ -237,6 +237,9 @@ await test('wifi-diag.js calibration target, presets, report formatting, and off
   const wd = ctx._wifiDiag;
   assert.ok(wd && wd.isAvailable());
   assert.ok(wd.PRESETS.some((p) => p.id === 'ipp_rec' && p.mediaTypeMode === 'col' && p.scaling === ''));
+  assert.ok(wd.PRESETS.some((p) => p.id === 'lpd_l8050_360' && p.protocol === 'lpd' && p.port === 515 && p.queue === 'PASSTHRU' && p.dpi === 360 && p.mediaCode === 0x34 && p.sendSetm === false));
+  assert.ok(wd.PRESETS.some((p) => p.id === 'lpd_l8050_360_pg' && p.protocol === 'lpd' && p.port === 515 && p.mediaCode === 0x0b && p.sendSetm === false));
+  assert.ok(wd.PRESETS.some((p) => p.id === 'lpd_l8050_720' && p.protocol === 'lpd' && p.port === 515 && p.queue === 'PASSTHRU' && p.dpi === 720 && p.mediaCode === 0x34 && p.sendSetm === false));
   assert.ok(wd.PRESETS.some((p) => p.id === 'escpr_l8050_720' && p.dpi === 720 && p.mediaCode === 0x34 && p.qualityCode === 2));
 
   // Mock 2D canvas to verify buildCalibrationCanvas dimensions and drawing calls
@@ -267,6 +270,14 @@ await test('wifi-diag.js calibration target, presets, report formatting, and off
     recommendation: 'Cleanest IPP Validate-Job winner: ipp-col-q5-glossy-noSc'
   }, [{ presetId: 'escpr_l8050_720', protocol: 'escpr', ok: true, bytes: 950000, sendMs: 320, buildMs: 410, replyBytes: 0, config: { dpi: 720, mediaHex: '0x34', qualityCode: 2 } }]);
   assert.ok(report.includes('EPSON L8050 Series') && report.includes('[CLEAN] ipp-col-q5-glossy-noSc') && report.includes('escpr_l8050_720'));
+  const lpdReport = wd.formatReport({
+    ip: '192.168.223.1', route: 'bound-network:wlan0(192.168.223.11/24)',
+    ports: { 631: { open: false, ms: 17 }, 9100: { open: false, ms: 17 }, 515: { open: true, ms: 17 }, 80: { open: true, ms: 3 } },
+    webModel: 'EPSON L8050 Series',
+    ipp: { answered: false },
+    recommendation: 'Port 515 (LPD /PASSTHRU) is OPEN.'
+  }, [{ presetId: 'lpd_l8050_360', protocol: 'lpd', port: 515, queue: 'PASSTHRU', ok: true, bytes: 1850000, sendMs: 2400, config: { dpi: 360, mediaHex: '0x34', qualityCode: 2, sendSetm: true } }]);
+  assert.ok(lpdReport.includes('Model (SNMP/Web): EPSON L8050 Series') && lpdReport.includes('via LPD :515/PASSTHRU') && lpdReport.includes('lpd_l8050_360'));
   wd.saveLastReport(report);
   assert.equal(wd.loadLastReport(), report);
 });

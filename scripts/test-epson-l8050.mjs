@@ -127,6 +127,7 @@ test('L8050 on Wi-Fi (Android): High quality + photo paper sent, Borderless turn
   assert.ok(m, 'epsonLUsbIpp found in the booth page');
   const known = new Function('EPSON_L_PIDS', m[0] + '; return epsonLUsbIpp;')({ 2150: 'L8050', 58993: 'L3210', 17498: 'L3276' });
   assert.equal(known({ ipp: true, usb: false, name: 'EPSON L8050 Series' }), true, 'Wi-Fi L8050');
+  assert.equal(known({ ipp: true, usb: false, name: 'EPSON_L8050_Series' }), true, 'underscore mDNS/USB L8050');
   assert.equal(known({ ipp: true, usb: true, vid: 1208, pid: 2150, name: 'Epson L8050 (USB)' }), true, 'USB L8050');
   assert.equal(known({ ipp: true, usb: false, name: 'EPSON L18050 Series' }), false, 'L18050 is another printer');
   assert.equal(known({ ipp: true, usb: false, name: 'EPSON L3210 Series' }), false, 'L3210 is left alone');
@@ -265,24 +266,26 @@ test('L8050 USB/Wi-Fi ESC/P-R: L3210 720/1440dpi beta raster blocked, stale rnor
   assert.equal(mkDpiFn({ ios: false, win: newApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'normal' } }).l8050DpiFor(p4x6), 0, 'L8050 IPP Normal stays 300 dpi');
   assert.equal(mkDpiFn({ ios: false, win: newApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'high720' } }).l8050DpiFor(p4x6), 720, 'L8050 Wi-Fi high720 4x6 gets 720 dpi');
   assert.equal(mkDpiFn({ ios: false, win: newApk, printer: l8050Usb, wo: { quality: 'high720' } }).l8050DpiFor(p4x6), 720, 'L8050 USB ESC/P-R high720 4x6 gets 720 dpi');
-  assert.equal(mkDpiFn({ ios: false, win: newApk, printer: l8050Usb, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 0, 'L8050 USB ESC/P-R default high (360 dpi) keeps 300 dpi canvas');
+  assert.equal(mkDpiFn({ ios: false, win: newApk, printer: l8050Usb, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 360, 'L8050 USB ESC/P-R default high renders at 1:1 native 360 dpi');
+  assert.equal(mkDpiFn({ ios: false, win: newApk, printer: { ip: '192.168.223.1', ipp: false, escpr: true, lpd: true, epsonModel: 'L8050', name: 'EPSON L8050 Series' }, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 360, 'L8050 LPD :515 default high renders at 1:1 native 360 dpi');
   assert.equal(mkDpiFn({ ios: false, win: newApk, printer: l8050Usb, wo: { quality: 'high720' } }).l8050DpiFor(p5x7), 0, '5x7 stays at 300 dpi');
   assert.equal(mkDpiFn({ ios: false, win: newApk, printer: l8050Usb, wo: { quality: 'high720' } }).l8050DpiFor(pHagaki), 0, 'Hagaki 100x148 stays at 300 dpi (matches 1.5mm tolerance)');
 
-  // Android EscprJob.kt: seam-free strip streaming + captured Windows L8050 setm borderless handshake
+  // Android EscprJob.kt: seam-free strip streaming + pure dsnd RGB color plane (setq[6]=0x00, NEVER bsnd 0x03!)
   const escKt = readFileSync(join(ROOT, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'EscprJob.kt'), 'utf8');
   assert.ok(/fun streamWithConfig\(/.test(escKt), 'EscprJob.streamWithConfig present');
   assert.ok(/private fun packBitsInto\(/.test(escKt), 'zero-allocation packBitsInto present');
-  assert.ok(/val sendSetm: Boolean = l8050Geo/.test(escKt), 'EscprJob.Config supports sendSetm');
-  assert.ok(/bytes\(0x1B, 0x6D, 0x07, 0x00, 0x00, 0x00\), ascii\("setm"\)/.test(escKt) && /0x0A, if \(cfg\.borderless\) 0x01 else 0x00, 0x00, 0x63/.test(escKt), 'EscprJob emits exact L8050 Windows driver setm borderless command');
-  assert.ok(/bytes\(0x1B, 0x71, 0x0A, 0x00, 0x00, 0x00\), ascii\("seti"\)/.test(escKt) && /bytes\(0x1B, 0x6D, 0x01, 0x00, 0x00, 0x00\), ascii\("seti"\)/.test(escKt) && /bytes\(0x1B, 0x75, 0x02, 0x00, 0x00, 0x00\), ascii\("chku"\)/.test(escKt), 'EscprJob emits L8050 seti + chku handshake');
+  assert.ok(/val sendSetm: Boolean = false/.test(escKt), 'EscprJob.Config defaults sendSetm=false (pure dsnd mode)');
+  assert.ok(/bytes\(media, quality, if \(cfg\.mono\) 1 else 0, 0, 0, 0, 0x00, 0x00, 0x00\)/.test(escKt), 'EscprJob always sets setq[6]=0x00 (EPS_CP_FULLCOLOR 24-bit RGB dsnd, never bsnd 0x03)');
+  assert.ok(/bytes\(0x1B, 0x71, 0x0A, 0x00, 0x00, 0x00\), ascii\("seti"\), ByteArray\(10\)/.test(escKt) && /bytes\(0x1B, 0x75, 0x02, 0x00, 0x00, 0x00\), ascii\("chku"\), bytes\(0x01, 0x01\)/.test(escKt), 'EscprJob emits standard dsnd seti(0..0) + chku(01 01) borderless handshake');
+  assert.ok(/if \(cfg\.sendSetm && is4x6\)/.test(escKt) && /bytes\(0x1B, 0x6D, 0x07, 0x00, 0x00, 0x00\), ascii\("setm"\)/.test(escKt), 'optional setm is gated to 4x6 only');
 
   // Android NetPrintBridge.kt: capability flag, streaming USB & TCP, high720, dynamic JFIF DPI
   const kt = readFileSync(join(ROOT, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'NetPrintBridge.kt'), 'utf8');
   assert.ok(/@JavascriptInterface\s+fun supportsL8050HiRes\(\): Boolean = true/.test(kt), 'supportsL8050HiRes JS bridge method exposed');
   assert.ok(/private fun usbRawStream\(/.test(kt) && /private fun netRawStream\(/.test(kt), 'streaming USB & TCP raw writers present');
   assert.ok(/private fun jpegAtDpi\(j: ByteArray, dpi: Int = 300\)/.test(kt) && /jpegAtDpi\(jpegIn, opts\.dpi\)/.test(kt), 'dynamic JFIF DPI writer wired in sendIppJob');
-  assert.ok(/private fun l8050EscprConfig\(/.test(kt) && /qStr == "high720" && is4x6/.test(kt) && /sendSetm = true/.test(kt), 'l8050EscprConfig routes high720 to 720 dpi on 4x6 and enables sendSetm');
+  assert.ok(/private fun l8050EscprConfig\(/.test(kt) && /qStr == "high720" && is4x6/.test(kt) && /sendSetm = false/.test(kt), 'l8050EscprConfig routes high720 to 720 dpi on 4x6 and uses pure dsnd (sendSetm=false)');
   const streamCalls = (kt.match(/EscprJob\.streamWithConfig\(/g) || []).length;
   assert.ok(streamCalls >= 5, 'EscprJob.streamWithConfig wired into printEscpr (net/usb), printEpsonL, diagPrintSync, and printFromHelper (found ' + streamCalls + ')');
 });
@@ -415,8 +418,77 @@ test('Epson L8050 Direct USB, Wi-Fi LAN, and Wi-Fi Direct reliability: relinking
   // 4. NetPrintBridge.kt Wi-Fi Direct socket refresh, addByIp wake retry, and netRawStream connect/mid-stream separation
   const kt = readFileSync(join(ROOT, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'NetPrintBridge.kt'), 'utf8');
   assert.ok(/System\.currentTimeMillis\(\) - netsAt > 500/.test(kt), 'matchLocalNet refreshes localNets on subnet miss for instant Wi-Fi Direct binding');
-  assert.ok(/if \(e\.ippPort == 0 && e\.rawPort == 0\)\s*\{\s*\/\/ Sleeping Wi-Fi \/ Wi-Fi Direct/.test(kt), 'addByIp retries once to wake sleeping Wi-Fi Direct printers');
+  assert.ok(/if \(e\.ippPort == 0 && e\.rawPort == 0 && e\.lpdPort == 0\)\s*\{\s*\/\/ Sleeping Wi-Fi \/ Wi-Fi Direct/.test(kt), 'addByIp retries once to wake sleeping Wi-Fi Direct printers');
   assert.ok(/Could not reach printer at \$ip on port \$port/.test(kt) && /stopped answering while receiving photo/.test(kt), 'netRawStream separates pre-connect errors from mid-stream errors');
+});
+
+test('Epson L8050 Wi-Fi Direct LPD Port 515 (/PASSTHRU): discovery, SNMP/Web model lookup, RFC 1179 streaming, relinking, and borderless defaults', () => {
+  const html = assemble().html;
+  const kt = readFileSync(join(ROOT, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'NetPrintBridge.kt'), 'utf8');
+
+  // 1. Kotlin LPD discovery, SNMP/HTTP model lookup, and RFC 1179 binary passthrough streaming
+  assert.ok(/if \(e\.lpdPort == 0 && open\(e\.ip, 515, timeoutMs\)\) e\.lpdPort = 515/.test(kt), 'probeInto probes LPD port 515');
+  assert.ok(/type\.startsWith\("_printer"\)/.test(kt) && /e\.lpdQueue = rp\.trimStart\('\/'\)/.test(kt), 'mDNS _printer._tcp. populates lpdPort and lpdQueue');
+  assert.ok(/private fun snmpQueryModel\(ip: String\)/.test(kt) && /intArrayOf\(1, 3, 6, 1, 2, 1, 25, 3, 2, 1, 3, 1\)/.test(kt), 'SNMPv1 hrDeviceDescr.1 query present');
+  assert.ok(/private fun httpProbeModel\(ip: String\)/.test(kt) && /\/PRESENTATION\/HTML\/TOP\/INDEX\.HTML/.test(kt), 'HTTP :80 Epson Web Config model probe present');
+  assert.ok(/private fun netLpdStream\(/.test(kt) && /File\.createTempFile\("pb_lpd_", "\.prn", activity\.cacheDir\)/.test(kt), 'netLpdStream spools to cacheDir temp file for exact RFC 1179 byte count');
+  assert.ok(/queues\.add\("PASSTHRU"\)/.test(kt) && /queues\.add\("LPT1"\)/.test(kt), 'LPD tries PASSTHRU then LPT1/lp/raw');
+  assert.ok(/l\$dfName\\nU\$dfName\\n/.test(kt), 'LPD control file uses lowercase l (binary passthrough)');
+  assert.ok(/bos\.write\(0x03\)\s*bos\.write\("\$dataLen \$dfName\\n"/.test(kt), 'LPD sends exact dataLen in 0x03 data-file header');
+  assert.ok(/if \(protocol == "lpd"\)/.test(kt) && /netLpdStream\(ip, port, queue\)/.test(kt), 'diagPrintSync supports LPD :515 test prints');
+  assert.ok(/\.put\("lpd", it\.lpdPort > 0\)/.test(kt) && /\.put\("lpdPort", it\.lpdPort\)/.test(kt), 'list() exposes lpd and lpdPort flags');
+  assert.ok(/if \(isL8050\) obj\.put\("epsonModel", "L8050"\)/.test(kt), 'list() attaches epsonModel=L8050 for discovered Wi-Fi/LPD L8050');
+
+  // 2. booth.html wires lpd flag through wifiSave, printViaWifiRaw, wifiPhotoJob, wifiRelink, and auto-selects lpd_l8050_360 on 515-only probe
+  assert.ok(/escpr: !!p\.escpr, lpd: !!p\.lpd,/.test(html), 'wifiSave preserves lpd flag');
+  assert.ok(/lpd: !!\(p\.lpd && !p\.raw\)/.test(html), 'escprOpts forwards lpd flag to printEscpr');
+  assert.ok(/if \(!o631 && !o9100 && o515\) presetEl\.value = 'lpd_l8050_360';/.test(html), 'diagnostic probe auto-selects lpd_l8050_360 when only port 515 is open');
+
+  // 3. LPD-only Wi-Fi Direct L8050 (192.168.223.1) enables borderless, High quality, and Photo glossy defaults
+  const a = html.indexOf('const WIFI_OPTS_KEY'), b = html.indexOf('function wifiOpts(printer) {');
+  const mem = {};
+  const store = { getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = String(v); } };
+  const api = new Function('localStorage', 'IOS_APP', 'printSize', 'paperFor', 'printerKey',
+    html.slice(a, b) + '; return { isEpsonL8050, epsonEscprBorderlessModel, printerBorderlessKnown, wifiOptEff };')(
+    store, false, '4r', () => ({ w: 101.6, h: 152.4 }), () => 'k'
+  );
+  const lpdL8050 = { ip: '192.168.223.1', name: 'EPSON L8050 Series', ipp: false, raw: false, escpr: true, lpd: true, epsonModel: 'L8050' };
+  const lpdGenericWfd = { ip: '192.168.223.1', name: 'Epson Wi-Fi Direct (192.168.223.1)', ipp: false, raw: false, escpr: true, lpd: true };
+  assert.equal(api.isEpsonL8050(lpdL8050), true, 'LPD L8050 recognized as L8050');
+  assert.equal(api.printerBorderlessKnown(lpdL8050), true, 'LPD L8050 enables borderless default');
+  assert.equal(api.wifiOptEff(lpdL8050, 'quality'), 'high', 'LPD L8050 defaults to high quality');
+  assert.equal(api.wifiOptEff(lpdL8050, 'media'), 'photo', 'LPD L8050 defaults to glossy photo paper');
+  assert.equal(api.epsonEscprBorderlessModel(lpdGenericWfd), true, 'fallback Epson Wi-Fi Direct LPD on 192.168.223.1 still allows borderless');
+
+  // 4. wifiRelink upgrades a saved Router IPP L8050 cleanly when switched to Wi-Fi Direct LPD :515
+  const rlIdx = html.indexOf('function wifiRelink(d) {'), rlEnd = html.indexOf('function pbDebug()', rlIdx);
+  const wifiSizeMap = {
+    '4r': { ip: '192.168.1.45', name: 'EPSON L8050 Series', ipp: true, usb: false, escpr: false, lpd: false }
+  };
+  let wifiDefault = wifiSizeMap['4r'], wifiPrinter = wifiSizeMap['4r'];
+  const runRelink = new Function(
+    'localStorage', 'IOS_APP', 'wifiNetAvailable', 'wifiList', 'wifiSizeMap', 'WIFI_SIZE_MAP_KEY', 'WIFI_PRINTER_KEY', 'wifiDefault', 'wifiPrinter',
+    html.slice(rlIdx, rlEnd) + '; return (d) => wifiRelink(d);'
+  )(store, false, () => true, () => ({ printers: [] }), wifiSizeMap, 'k1', 'k2', wifiDefault, wifiPrinter);
+  runRelink({ printers: [lpdL8050] });
+  assert.equal(wifiSizeMap['4r'].ip, '192.168.223.1', 'relinked from router IP to Wi-Fi Direct 192.168.223.1');
+  assert.equal(wifiSizeMap['4r'].ipp, false, 'switched off IPP when only LPD is open');
+  assert.equal(wifiSizeMap['4r'].escpr, true, 'enabled ESC/P-R');
+  assert.equal(wifiSizeMap['4r'].lpd, true, 'enabled LPD flag');
+  assert.equal(wifiSizeMap['4r'].epsonModel, 'L8050', 'synced epsonModel=L8050');
+
+  // 5. wifiRelink upgrades placeholder name at same IP once SNMP/HTTP resolves "EPSON L8050 Series"
+  const wifiSizeMap2 = {
+    '4r': { ip: '192.168.223.1', name: 'Epson Wi-Fi Direct (192.168.223.1)', ipp: false, usb: false, escpr: true, lpd: true, epsonModel: '' }
+  };
+  let wd2 = wifiSizeMap2['4r'], wp2 = wifiSizeMap2['4r'];
+  const runRelink2 = new Function(
+    'localStorage', 'IOS_APP', 'wifiNetAvailable', 'wifiList', 'wifiSizeMap', 'WIFI_SIZE_MAP_KEY', 'WIFI_PRINTER_KEY', 'wifiDefault', 'wifiPrinter',
+    html.slice(rlIdx, rlEnd) + '; return (d) => wifiRelink(d);'
+  )(store, false, () => true, () => ({ printers: [] }), wifiSizeMap2, 'k1', 'k2', wd2, wp2);
+  runRelink2({ printers: [lpdL8050] });
+  assert.equal(wifiSizeMap2['4r'].name, 'EPSON L8050 Series', 'placeholder Wi-Fi Direct name upgraded once model resolved');
+  assert.equal(wifiSizeMap2['4r'].epsonModel, 'L8050', 'epsonModel upgraded at same IP');
 });
 
 console.log(passed + ' passed' + (process.exitCode ? ', some FAILED' : ''));

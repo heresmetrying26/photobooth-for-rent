@@ -89,6 +89,66 @@
       scaling: ''
     },
     {
+      id: 'lpd_l8050_360',
+      label: 'LPD :515 · L8050 High Glossy 360 dpi Borderless (PASSTHRU, 0x34, q=2)',
+      shortLabel: 'LPD :515 360dpi 0x34 q=2 L8050-BL',
+      protocol: 'lpd',
+      port: 515,
+      queue: 'PASSTHRU',
+      dpi: 360,
+      mediaCode: 0x34,
+      qualityCode: 2,
+      borderless: true,
+      l8050Geo: true,
+      sendSetiChku: true,
+      sendSetm: false
+    },
+    {
+      id: 'lpd_l8050_360_pg',
+      label: 'LPD :515 · L8050 Premium Glossy 360 dpi Borderless (PASSTHRU, 0x0B, q=2)',
+      shortLabel: 'LPD :515 360dpi 0x0B q=2 L8050-BL',
+      protocol: 'lpd',
+      port: 515,
+      queue: 'PASSTHRU',
+      dpi: 360,
+      mediaCode: 0x0b,
+      qualityCode: 2,
+      borderless: true,
+      l8050Geo: true,
+      sendSetiChku: true,
+      sendSetm: false
+    },
+    {
+      id: 'lpd_l8050_720',
+      label: 'LPD :515 · L8050 High Glossy 720 dpi Borderless (PASSTHRU, 0x34, q=2)',
+      shortLabel: 'LPD :515 720dpi 0x34 q=2 L8050-BL',
+      protocol: 'lpd',
+      port: 515,
+      queue: 'PASSTHRU',
+      dpi: 720,
+      mediaCode: 0x34,
+      qualityCode: 2,
+      borderless: true,
+      l8050Geo: true,
+      sendSetiChku: true,
+      sendSetm: false
+    },
+    {
+      id: 'lpd_l8050_360_setm',
+      label: 'LPD :515 · L8050 360 dpi Borderless + setm A/B test (0x34, q=2)',
+      shortLabel: 'LPD :515 360dpi 0x34 q=2 setm',
+      protocol: 'lpd',
+      port: 515,
+      queue: 'PASSTHRU',
+      dpi: 360,
+      mediaCode: 0x34,
+      qualityCode: 2,
+      borderless: true,
+      l8050Geo: true,
+      sendSetiChku: true,
+      sendSetm: true
+    },
+    {
       id: 'escpr_l8050_720',
       label: 'ESC/P-R :9100 · L8050 High Glossy 720 dpi Borderless (0x34, q=2)',
       shortLabel: 'ESCPR :9100 720dpi 0x34 q=2 L8050-BL',
@@ -99,7 +159,8 @@
       qualityCode: 2,
       borderless: true,
       l8050Geo: true,
-      sendSetiChku: true
+      sendSetiChku: true,
+      sendSetm: false
     },
     {
       id: 'escpr_l8050_360',
@@ -112,7 +173,8 @@
       qualityCode: 2,
       borderless: true,
       l8050Geo: true,
-      sendSetiChku: true
+      sendSetiChku: true,
+      sendSetm: false
     },
     {
       id: 'escpr_l805_360',
@@ -461,6 +523,9 @@
         });
         lines.push('Ports: ' + ps.join('  '));
       }
+      if (probeRes.webModel) {
+        lines.push('Model (SNMP/Web): ' + probeRes.webModel);
+      }
       if (probeRes.ipp && probeRes.ipp.answered) {
         var ipp = probeRes.ipp;
         var a = ipp.attrs || {};
@@ -507,7 +572,11 @@
       for (var j = 0; j < printLog.length; j++) {
         var pr = printLog[j];
         var hdr = '  [' + (pr.ok ? 'OK  ' : 'FAIL') + '] ' + (pr.presetId || pr.protocol) + ' -> ';
-        if (pr.protocol === 'escpr') {
+        if (pr.protocol === 'lpd') {
+          hdr += pr.ok
+            ? ('sent ' + pr.bytes + 'B via LPD :' + (pr.port || 515) + '/' + (pr.queue || 'PASSTHRU') + ' in ' + pr.sendMs + 'ms cfg=' + JSON.stringify(pr.config || {}))
+            : ('error: ' + (pr.error || 'failed'));
+        } else if (pr.protocol === 'escpr') {
           hdr += pr.ok
             ? ('sent ' + pr.bytes + 'B in ' + pr.sendMs + 'ms (build ' + pr.buildMs + 'ms, reply ' + pr.replyBytes + 'B) cfg=' + JSON.stringify(pr.config || {}))
             : ('error: ' + (pr.error || 'failed'));

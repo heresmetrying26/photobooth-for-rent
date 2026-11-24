@@ -2477,7 +2477,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             }
 
             var bodyData = Data()
-            if contentLength > 0 && contentLength < 10 * 1024 * 1024 {
+            if contentLength > 0 && contentLength < 16 * 1024 * 1024 {
                 while pending.count < contentLength {
                     let n = Darwin.read(clientSock, &chunk, chunk.count)
                     if n < 0 && errno == EINTR { continue }
@@ -2802,14 +2802,13 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             sendJson(clientSock, status: 400, json: ["ok": false, "error": "Bad URL"])
             return
         }
-        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15.0)
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 25.0)
         req.httpMethod = method
         if let ct = headers["content-type"] { req.setValue(ct, forHTTPHeaderField: "Content-Type") }
         if !body.isEmpty {
             if path.hasPrefix("/api/setup"),
                let lic = AppLicence.shared.currentLicenceString(), !lic.isEmpty,
-               var obj = (try? JSONSerialization.jsonObject(with: body, options: [])) as? [String: Any],
-               obj["licence"] == nil {
+               var obj = (try? JSONSerialization.jsonObject(with: body, options: [])) as? [String: Any] {
                 obj["licence"] = lic
                 obj["mid"] = AppLicence.shared.machineId()
                 req.httpBody = (try? JSONSerialization.data(withJSONObject: obj, options: [])) ?? body
@@ -2832,7 +2831,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             sema.signal()
         }.resume()
 
-        _ = sema.wait(timeout: .now() + 16.0)
+        _ = sema.wait(timeout: .now() + 26.0)
         sendResponse(clientSock, status: statusCode, type: contentType, body: outData)
     }
 

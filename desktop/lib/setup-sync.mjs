@@ -69,6 +69,7 @@ let syncState = {
   dirtySetups: {},
   dirtyProfiles: false,
   dirtyThemes: false,
+  dirtyFrames: false,
   lastSyncAt: 0
 };
 
@@ -86,6 +87,7 @@ function loadSyncState() {
         dirtySetups: (raw.dirtySetups && typeof raw.dirtySetups === 'object') ? raw.dirtySetups : {},
         dirtyProfiles: !!raw.dirtyProfiles,
         dirtyThemes: !!raw.dirtyThemes,
+        dirtyFrames: !!raw.dirtyFrames,
         lastSyncAt: Number(raw.lastSyncAt) || 0
       };
     }
@@ -168,7 +170,8 @@ async function pushLocalAssets(ids) {
   return allOk;
 }
 
-// Downloads any assets in `ids` that aren't in the laptop's local store yet, so synced profiles/setups work offline later.
+// Downloads any assets in `ids` that aren't in the laptop's local store yet, so synced profiles/setups/frames work offline later.
+// Fetches 1 asset per request (3 concurrent) so large PNG frames never exceed Netlify Functions' 6 MB response cap.
 async function pullRemoteAssets(ids) {
   const unique = [...new Set((Array.isArray(ids) ? ids : []).filter((id) => ASSET_ID_RE.test(String(id || ''))))];
   if (!unique.length) return;
@@ -180,17 +183,22 @@ async function pullRemoteAssets(ids) {
     else syncState.syncedAssets[aid] = 1;
   }
   if (!missing.length) { saveSyncState(); return; }
-  for (let i = 0; i < missing.length; i += 6) {
-    const batch = missing.slice(i, i + 6);
-    const r = await remotePost({ action: 'asset-get', ids: batch }, 15000);
-    if (!r || !r.ok || !r.j || !r.j.assets) break;
-    for (const aid of Object.keys(r.j.assets)) {
-      if (ASSET_ID_RE.test(aid) && r.j.assets[aid]) {
+  let cursor = 0;
+  let offline = false;
+  const worker = async () => {
+    while (!offline) {
+      const idx = cursor++;
+      if (idx >= missing.length) return;
+      const aid = missing[idx];
+      const r = await remotePost({ action: 'asset-get', ids: [aid] }, 18000);
+      if (!r) { offline = true; return; }
+      if (r.ok && r.j && r.j.assets && r.j.assets[aid]) {
         await store.set(LOCAL_OWNER_ID + '_a_' + aid, r.j.assets[aid]);
         syncState.syncedAssets[aid] = 1;
       }
     }
-  }
+  };
+  await Promise.all([worker(), worker(), worker()]);
   saveSyncState();
 }
 
@@ -244,19 +252,52 @@ export async function handleSetupRequest(req) {
     const wanted = (Array.isArray(b.ids) ? b.ids : []).map(String).filter((x) => ASSET_ID_RE.test(x)).slice(0, 12);
     const missing = wanted.filter((id) => !assets[id]);
     if (missing.length) {
-      const r = await remotePost({ action: 'asset-get', ids: missing }, 12000);
-      if (r && r.ok && r.j && r.j.assets) {
-        for (const aid of Object.keys(r.j.assets)) {
-          if (ASSET_ID_RE.test(aid) && r.j.assets[aid]) {
+      let cursor = 0;
+      let offline = false;
+      const worker = async () => {
+        while (!offline) {
+          const idx = cursor++;
+          if (idx >= missing.length) return;
+          const aid = missing[idx];
+          const r = await remotePost({ action: 'asset-get', ids: [aid] }, 18000);
+          if (!r) { offline = true; return; }
+          if (r.ok && r.j && r.j.assets && r.j.assets[aid]) {
             assets[aid] = r.j.assets[aid];
             await store.set(LOCAL_OWNER_ID + '_a_' + aid, r.j.assets[aid]);
             syncState.syncedAssets[aid] = 1;
           }
         }
-        saveSyncState();
-      }
+      };
+      await Promise.all([worker(), worker(), worker()]);
+      saveSyncState();
     }
     return jsonRes({ ok: true, assets });
+  }
+
+  // 2b. Account-level uploaded frames library (two-way timestamp + tombstone merge across all devices & events)
+  if (b.action === 'frames-get' || b.action === 'frames-save') {
+    const loc = await localCall(b);
+    if (!loc.ok) return loc.res;
+    const localDoc = (await store.get(LOCAL_OWNER_ID + '_frames', { type: 'json' })) || {};
+    const localFrames = Array.isArray(localDoc.frames) ? localDoc.frames : (Array.isArray(loc.j.frames) ? loc.j.frames : []);
+    const localDeleted = (localDoc.deleted && typeof localDoc.deleted === 'object') ? localDoc.deleted : (loc.j.deleted || {});
+
+    await pushLocalAssets(collectAssetIds(localFrames));
+    const r = await remotePost({ action: 'frames-save', frames: localFrames, deleted: localDeleted }, 15000);
+    if (r && r.ok && Array.isArray(r.j.frames)) {
+      const merged = { frames: r.j.frames, deleted: r.j.deleted || {}, updatedAt: r.j.updatedAt || Date.now(), rescued: true };
+      await store.setJSON(LOCAL_OWNER_ID + '_frames', merged);
+      syncState.dirtyFrames = false;
+      syncState.lastSyncAt = Date.now();
+      saveSyncState();
+      pullRemoteAssets(collectAssetIds(merged.frames)).catch(() => { });
+      return jsonRes({ ok: true, frames: merged.frames, deleted: merged.deleted, updatedAt: merged.updatedAt, synced: true });
+    }
+    if (b.action === 'frames-save') {
+      syncState.dirtyFrames = true;
+      saveSyncState();
+    }
+    return jsonRes({ ok: true, frames: localFrames, deleted: localDeleted, updatedAt: localDoc.updatedAt || 0, synced: false });
   }
 
   // 3. Saved profiles (two-way timestamp + tombstone merge across all devices on the code)
@@ -510,6 +551,21 @@ export async function syncAllNow() {
       await store.setJSON(LOCAL_OWNER_ID + '_themes', { themes: tr.j.themes, deleted: tr.j.deleted || {}, updatedAt: Date.now() });
       syncState.dirtyThemes = false;
       await pullRemoteAssets(collectAssetIds(tr.j.themes));
+    }
+
+    // 5. Two-way merge Account Uploaded Frames
+    const frLoc = await localCall({ action: 'frames-get' });
+    const frDoc = (await store.get(LOCAL_OWNER_ID + '_frames', { type: 'json' })) || {};
+    const localFrames = Array.isArray(frDoc.frames) ? frDoc.frames : (Array.isArray(frLoc.j && frLoc.j.frames) ? frLoc.j.frames : []);
+    const localFrDel = (frDoc.deleted && typeof frDoc.deleted === 'object') ? frDoc.deleted : ((frLoc.j && frLoc.j.deleted) || {});
+    await pushLocalAssets(collectAssetIds(localFrames));
+    const fr = await remotePost({ action: 'frames-save', frames: localFrames, deleted: localFrDel }, 15000);
+    if (fr && fr.ok && Array.isArray(fr.j.frames)) {
+      const sig = (arr) => (arr || []).map((f) => f.id + '@' + (f.savedAt || 0)).sort().join('|');
+      if (sig(fr.j.frames) !== sig(localFrames)) changed = true;
+      await store.setJSON(LOCAL_OWNER_ID + '_frames', { frames: fr.j.frames, deleted: fr.j.deleted || {}, updatedAt: fr.j.updatedAt || Date.now(), rescued: true });
+      syncState.dirtyFrames = false;
+      await pullRemoteAssets(collectAssetIds(fr.j.frames));
     }
 
     syncState.lastSyncAt = Date.now();

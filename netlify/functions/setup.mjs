@@ -1,5 +1,5 @@
 import { safe, json, checkLicense, verifyToken, licenses, setupsStore, cleanEventName, setupKeyFor as keyFor } from '../lib/core.mjs';
-import { mergeProfiles, mergeThemes } from '../lib/profiles-merge.mjs';
+import { mergeProfiles, mergeThemes, mergeFrames } from '../lib/profiles-merge.mjs';
 import { readLicence, readMap, appDevice } from '../lib/license.mjs';
 
 // Saves and loads the booth's Setup (layout, theme, backdrop, event name,
@@ -10,13 +10,16 @@ import { readLicence, readMap, appDevice } from '../lib/license.mjs';
 //   lifetime code       -> one setup per event name
 // Also keeps, per customer (booking / lifetime code):
 //   assets  -> uploaded frame overlays, logos and props (images), and own shutter / countdown sounds (short WAV)
+//   frames  -> uploaded frames library (spots, names, tiers, overlays), shared across all events & devices
 //   themes  -> "My themes" saved from the booth
 // Trials keep everything on the device only.
-const MAX_SETTINGS = 120000;         // bytes of setup JSON
+const MAX_SETTINGS = 350000;         // bytes of setup JSON (supports up to 100 frames + 6 guest designs)
 const MAX_IMAGE = 3500000;           // characters of one image (data URL)
 const MAX_THEMES_JSON = 400000;      // all of a customer's saved themes (incl. small thumbnails)
 const MAX_THEMES = 40;
+const MAX_FRAMES_JSON = 1500000;     // all of a customer's uploaded frames metadata (up to 100 frames)
 const MAX_PROFILES_JSON = 3000000;   // all of a customer's saved profiles (each is one setup, up to 40 KB, plus a small thumbnail)
+const MAX_ASSET_BATCH_BYTES = 4400000; // safely below Netlify Functions' 6 MB HTTP response limit
 const IMAGE_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 const ASSET_IMAGE_RE = /^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/;   // uploaded pictures may also be small animated GIFs
 // Own shutter / countdown sounds: the booth trims them to a short WAV before uploading.
@@ -75,6 +78,57 @@ export default safe(async (req) => {
   const id = keyFor(scope);
   const ownerId = keyFor('own|' + owner);
   const store = setupsStore();
+
+  // Ensures the account-level frames store (`ownerId + '_frames'`) exists and rescues any legacy
+  // frames stored inside event setups or saved profiles so previously uploaded frames reappear automatically.
+  async function loadAccountFramesDoc() {
+    const existing = await store.get(ownerId + '_frames', { type: 'json' });
+    if (existing && existing.rescued) {
+      return {
+        frames: Array.isArray(existing.frames) ? existing.frames : [],
+        deleted: existing.deleted && typeof existing.deleted === 'object' ? existing.deleted : {},
+        updatedAt: existing.updatedAt || 0,
+        rescued: true
+      };
+    }
+    const rescued = [];
+    const seenDocIds = new Set();
+    const pushFromSetup = (doc) => {
+      const list = doc && doc.settings && Array.isArray(doc.settings.frames) ? doc.settings.frames : [];
+      for (const f of list) {
+        if (f && typeof f === 'object') rescued.push({ ...f, savedAt: Number(f.savedAt) || Number(doc.updatedAt) || 1 });
+      }
+    };
+    const trySetupDoc = async (docId) => {
+      if (!docId || seenDocIds.has(docId)) return;
+      seenDocIds.add(docId);
+      const d = await store.get(docId, { type: 'json' }).catch(() => null);
+      if (d) pushFromSetup(d);
+    };
+    await trySetupDoc(id);
+    if (folderPrefix) {
+      const latest = await store.get(ownerId + '_latest', { type: 'json' }).catch(() => null);
+      if (latest && latest.docId) await trySetupDoc(latest.docId);
+      await trySetupDoc(keyFor(owner + '|_'));
+    }
+    await trySetupDoc(keyFor(owner));
+    const profDoc = await store.get(ownerId + '_profiles', { type: 'json' }).catch(() => null);
+    if (profDoc && Array.isArray(profDoc.profiles)) {
+      for (const p of profDoc.profiles) {
+        if (p && p.settings && Array.isArray(p.settings.frames)) {
+          for (const f of p.settings.frames) {
+            if (f && typeof f === 'object') rescued.push({ ...f, savedAt: Number(f.savedAt) || Number(p.savedAt) || 1 });
+          }
+        }
+      }
+    }
+    const merged = mergeFrames(existing && existing.frames, existing && existing.deleted, rescued, {});
+    const out = { frames: merged.frames, deleted: merged.deleted, updatedAt: (existing && existing.updatedAt) || Date.now(), rescued: true };
+    if (merged.frames.length || (existing && existing.frames)) {
+      await store.setJSON(ownerId + '_frames', out).catch(() => {});
+    }
+    return out;
+  }
 
   switch (b.action) {
     case 'get': {
@@ -144,9 +198,23 @@ export default safe(async (req) => {
         }
       }
       const updatedAt = Math.max(now, (old && old.updatedAt ? old.updatedAt + 1 : 0));
-      await store.setJSON(id, { settings: JSON.parse(raw), updatedAt, hasImage });
+      const parsedSettings = JSON.parse(raw);
+      await store.setJSON(id, { settings: parsedSettings, updatedAt, hasImage });
       if (folderPrefix) {
         await store.setJSON(ownerId + '_latest', { docId: id, event: cleanEv, updatedAt });
+      }
+      // Passively preserve any uploaded frames inside the account-level library (merge-only, never deletes).
+      if (Array.isArray(parsedSettings.frames) && parsedSettings.frames.length) {
+        try {
+          const curFrames = await loadAccountFramesDoc();
+          // Keep explicit savedAt when present; default to 1 (not Date.now()) so an older client saving an
+          // outdated event setup can preserve never-deleted frames without resurrecting newly deleted ones.
+          const incoming = parsedSettings.frames.map((f) => ({ ...f, savedAt: Number(f && f.savedAt) || 1 }));
+          const mergedF = mergeFrames(curFrames.frames, curFrames.deleted, incoming, {});
+          if (JSON.stringify(mergedF).length <= MAX_FRAMES_JSON) {
+            await store.setJSON(ownerId + '_frames', { frames: mergedF.frames, deleted: mergedF.deleted, updatedAt: Date.now(), rescued: true });
+          }
+        } catch { /* non-fatal */ }
       }
       return json({ ok: true, updatedAt });
     }
@@ -171,11 +239,36 @@ export default safe(async (req) => {
     case 'asset-get': {
       const ids = (Array.isArray(b.ids) ? b.ids : []).map(String).filter((x) => ASSET_ID_RE.test(x)).slice(0, 12);
       const assets = {};
-      await Promise.all(ids.map(async (aid) => {
-        const v = await store.get(ownerId + '_a_' + aid);
-        if (v) assets[aid] = v;
-      }));
-      return json({ ok: true, assets });
+      const fetched = await Promise.all(ids.map(async (aid) => [aid, await store.get(ownerId + '_a_' + aid)]));
+      let totalBytes = 0;
+      let truncated = false;
+      for (const [aid, v] of fetched) {
+        if (!v) continue;
+        // Keep response safely under Netlify Functions' 6 MB HTTP response ceiling.
+        if (totalBytes > 0 && totalBytes + v.length > MAX_ASSET_BATCH_BYTES) {
+          truncated = true;
+          break;
+        }
+        assets[aid] = v;
+        totalBytes += v.length;
+      }
+      return json({ ok: true, assets, ...(truncated ? { truncated: true } : {}) });
+    }
+
+    // ---- Account-level uploaded frames library (persists across all events, devices & updates) ----
+    case 'frames-get': {
+      const doc = await loadAccountFramesDoc();
+      return json({ ok: true, frames: doc.frames, deleted: doc.deleted, updatedAt: doc.updatedAt });
+    }
+    case 'frames-save': {
+      if (!Array.isArray(b.frames)) return json({ error: 'Bad frames' }, 400);
+      const old = await loadAccountFramesDoc();
+      const merged = mergeFrames(old.frames, old.deleted, b.frames, b.deleted);
+      const raw = JSON.stringify(merged);
+      if (raw.length > MAX_FRAMES_JSON) return json({ error: 'Too many uploaded frames — remove a few first.' }, 413);
+      const updatedAt = Date.now();
+      await store.setJSON(ownerId + '_frames', { frames: merged.frames, deleted: merged.deleted, updatedAt, rescued: true });
+      return json({ ok: true, frames: merged.frames, deleted: merged.deleted, updatedAt });
     }
 
     // ---- Lock booth PIN: one per code (bonus codes share their booking's) ----

@@ -83,6 +83,18 @@ class MainActivity : AppCompatActivity() {
     private var gateButton: Button? = null
     private var gateReason: String = ""
     private val checkinHandler = Handler(Looper.getMainLooper())
+    private var netCallback: ConnectivityManager.NetworkCallback? = null
+    private var pendingNetEvent: Runnable? = null
+    private fun dispatchNetSyncEvent(eventName: String, delayMs: Long = 700L) {
+        pendingNetEvent?.let { checkinHandler.removeCallbacks(it) }
+        val task = Runnable {
+            if (::webView.isInitialized && offlineLoaded) {
+                webView.evaluateJavascript("try{window.dispatchEvent(new Event('$eventName'));}catch(e){}", null)
+            }
+        }
+        pendingNetEvent = task
+        checkinHandler.postDelayed(task, delayMs)
+    }
     private val expiryCheck = Runnable {
         if (::licence.isInitialized && !licence.status().ok) {
             bootWithLicence()
@@ -343,19 +355,21 @@ class MainActivity : AppCompatActivity() {
         }
         try {
             val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            cm?.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+            val cb = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) {
+                    dispatchNetSyncEvent("online", 700L)
+                }
                 override fun onCapabilitiesChanged(network: android.net.Network, caps: NetworkCapabilities) {
-                    if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-                    ) {
-                        runOnUiThread {
-                            if (::webView.isInitialized && offlineLoaded) {
-                                webView.evaluateJavascript("try{window.dispatchEvent(new Event('online'));}catch(e){}", null)
-                            }
-                        }
+                    if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                        dispatchNetSyncEvent("online", 700L)
                     }
                 }
-            })
+                override fun onLost(network: android.net.Network) {
+                    dispatchNetSyncEvent("offline", 400L)
+                }
+            }
+            netCallback = cb
+            cm?.registerDefaultNetworkCallback(cb)
         } catch (_: Exception) { }
 
         // 6. Request camera permissions if needed
@@ -624,6 +638,9 @@ class MainActivity : AppCompatActivity() {
         if (isAutoUpdatePopupEnabled()) {
             checkForAppUpdate()
         }
+        if (::webView.isInitialized && offlineLoaded && isNetworkAvailable()) {
+            dispatchNetSyncEvent("pb-app-resume", 500L)
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -635,6 +652,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        try {
+            netCallback?.let { cb ->
+                val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                cm?.unregisterNetworkCallback(cb)
+            }
+            netCallback = null
+        } catch (_: Exception) { }
         netPrintBridge?.shutdown()
         esp32Bridge?.shutdown()
         btBridge.shutdown()          // keeps the chosen printer (disconnect() would forget it)
@@ -1041,12 +1065,13 @@ class MainActivity : AppCompatActivity() {
 
     // A real connectivity check, not just a saved preference — the operator may have set
     // a live URL while testing and then taken the tablet to a venue with no Wi-Fi.
+    // Do not require NET_CAPABILITY_VALIDATED: hotspots and venue routers often lag or fail
+    // Android's gstatic validation probe even when photobooth4u.netlify.app is reachable.
     private fun isNetworkAvailable(): Boolean {
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
         val network = cm.activeNetwork ?: return false
         val caps = cm.getNetworkCapabilities(network) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     private fun getSavedUrl(): String {

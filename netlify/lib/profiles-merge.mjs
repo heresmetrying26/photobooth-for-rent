@@ -3,7 +3,9 @@
 // adding / renaming / deleting profiles never overwrite each other.
 export const MAX_PROFILES = 12;
 export const MAX_THEMES = 40;
+export const MAX_FRAMES = 100;
 export const MAX_TOMBS = 60;
+export const MAX_FRAME_TOMBS = 200;
 
 const ASSET_ID_RE = /^a[A-Za-z0-9]{8,32}$/;
 const THUMB_RE = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/;
@@ -122,6 +124,61 @@ export function mergeThemes(a, ta, b, tb) {
     .sort((x, y) => y.savedAt - x.savedAt)
     .slice(0, MAX_THEMES);
   return { themes, deleted: tombs };
+}
+
+export function cleanFrameTombs(t) {
+  const out = {};
+  if (t && typeof t === 'object' && !Array.isArray(t)) {
+    for (const k of Object.keys(t).slice(0, 400)) {
+      if (ASSET_ID_RE.test(k) && Number(t[k]) > 0) out[k] = Number(t[k]);
+    }
+  }
+  return out;
+}
+
+// Uploaded frames belong to the account (never lost across events, profiles or devices).
+// Keeps only well-formed frame definitions while preserving every layout / spot / section / overlay field.
+export function cleanFrames(list) {
+  return (Array.isArray(list) ? list : [])
+    .filter((f) => f && typeof f === 'object' && typeof f.id === 'string' && ASSET_ID_RE.test(f.id)
+      && Array.isArray(f.spots) && f.spots.length > 0)
+    .map((f) => {
+      const out = { ...f, id: f.id, savedAt: Math.max(0, Number(f.savedAt) || 0) };
+      if (typeof out.name === 'string') out.name = out.name.trim().slice(0, 40) || undefined;
+      return out;
+    });
+}
+
+// Two-way timestamp + tombstone merge for account-level uploaded frames.
+// An empty device (frames: [], deleted: {}) NEVER wipes existing account frames.
+// Explicit user removal records a tombstone timestamp; a newer edit or re-upload beats an older delete.
+export function mergeFrames(a, ta, b, tb) {
+  const tomb = {};
+  for (const t of [cleanFrameTombs(ta), cleanFrameTombs(tb)]) {
+    for (const k of Object.keys(t)) tomb[k] = Math.max(tomb[k] || 0, t[k]);
+  }
+  const keep = Object.keys(tomb).sort((x, y) => tomb[y] - tomb[x]).slice(0, MAX_FRAME_TOMBS);
+  const tombs = {};
+  for (const k of keep) tombs[k] = tomb[k];
+
+  const order = [];
+  const byId = {};
+  for (const f of cleanFrames(a).concat(cleanFrames(b))) {
+    const o = byId[f.id];
+    if (!o) {
+      order.push(f.id);
+      byId[f.id] = f;
+    } else if (f.savedAt > o.savedAt) {
+      byId[f.id] = f;
+    } else if (f.savedAt === o.savedAt && !o.name && f.name) {
+      byId[f.id] = f;
+    }
+  }
+  const frames = order
+    .map((id) => byId[id])
+    .filter((f) => f && !(tombs[f.id] && tombs[f.id] >= (f.savedAt || 0)))
+    .slice(0, MAX_FRAMES);
+  return { frames, deleted: tombs };
 }
 
 // Finds every asset id (aXXXXXXXX...) referenced inside a setup, profile or theme object.

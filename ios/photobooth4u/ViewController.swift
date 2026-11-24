@@ -75,13 +75,44 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             AppLicence.shared.checkin(force: false) { result in
                 if result == "revoked" {
                     self?.bootWithLicence()
+                } else if result == "ok" {
+                    self?.pushAuthAndSyncEvent(eventName: "online")
                 }
             }
         }
+
+        // 6. Trigger seamless cloud sync whenever the iPad wakes or returns to the app
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
     }
 
     deinit {
         checkinTimer?.invalidate()
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    private func pushAuthAndSyncEvent(eventName: String) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, let wv = self.webView else { return }
+            let online = PBLocal.shared.isOnline()
+            let flag = online ? "true" : "false"
+            var authJs = ""
+            if let lic = AppLicence.shared.currentLicenceString(), !lic.isEmpty,
+               let data = try? JSONSerialization.data(withJSONObject: ["licence": lic, "mid": AppLicence.shared.machineId()], options: []),
+               let json = String(data: data, encoding: .utf8) {
+                authJs = "window.__PB=window.__PB||{};window.__PB.appAuth=\(json);"
+            }
+            let evJs = online ? "window.dispatchEvent(new Event('\(eventName)'));" : ""
+            wv.evaluateJavaScript("try{window.__pbIosOnline=\(flag);\(authJs)\(evJs)}catch(e){}", completionHandler: nil)
+        }
+    }
+
+    @objc private func handleAppDidBecomeActive() {
+        pushAuthAndSyncEvent(eventName: "pb-app-resume")
     }
 
     private func requestMediaPermissionsAndBoot() {
@@ -276,7 +307,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
           };
 
           window.__PBUpdate = {
-            version: function() { return window.__pbIosAppVer || '1.1.24'; },
+            version: function() { return window.__pbIosAppVer || '1.1.25'; },
             check: function() {
               try { window.webkit.messageHandlers.pbUpdateCheck.postMessage({}); } catch (e) {}
             },

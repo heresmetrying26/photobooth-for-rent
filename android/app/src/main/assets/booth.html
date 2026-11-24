@@ -69556,34 +69556,55 @@ function fxWavUrl(kind) {
         clearTimeout(setupSaveTimer);
         setupSaveTimer = setTimeout(saveSetupNow, 1200);
       }
-      async function saveSetupNow(forceSync) {
+      async function saveSetupNow(forceSync, opts) {
         if (typeof deskApplyingRemoteSetup !== 'undefined' && deskApplyingRemoteSetup) return;
         clearTimeout(setupSaveTimer);
+        setupSaveTimer = null;
+        var ifNewer = !!(opts && opts.ifNewer);
         var settings = snapshotSetup(), json = JSON.stringify(settings);
         var key = localSetupKey();
-        var wasDirty = false;
-        try { wasDirty = localStorage.getItem(key + '#dirty') === '1'; } catch (e) { }
+        var wasDirty = false, existingLocalTs = 0;
+        try {
+          wasDirty = localStorage.getItem(key + '#dirty') === '1';
+          var locRaw = JSON.parse(localStorage.getItem(key) || 'null');
+          if (locRaw && locRaw.updatedAt) existingLocalTs = Number(locRaw.updatedAt) || 0;
+        } catch (e) { }
         if (!forceSync && !wasDirty && json === lastSavedJson && !imageDirty) return;
         var sendImage = imageDirty || (wasDirty && !!bgImageDataUrl);
-        var nowTs = Date.now();
-        saveLocalCopy(key, settings, nowTs, bgImageDataUrl, sendImage);
-        try { if (typeof deskNotifySetupChanged === 'function') deskNotifySetupChanged(); } catch (e) { }
+        var saveTs = (ifNewer && existingLocalTs > 0) ? existingLocalTs : Date.now();
+        if (!ifNewer) {
+          saveLocalCopy(key, settings, saveTs, bgImageDataUrl, sendImage);
+          try { if (typeof deskNotifySetupChanged === 'function') deskNotifySetupChanged(); } catch (e) { }
+        }
         lastSavedJson = json;
         imageDirty = false;
         if (!canSyncServer()) { setSaveNote('Saved on this device ✓', 'ok'); return; }
-        var extra = { action: 'save', settings: settings, updatedAt: nowTs };
+        var extra = { action: 'save', settings: settings, updatedAt: saveTs };
+        if (ifNewer) extra.ifNewer = true;
         if (sendImage) extra.image = bgImageDataUrl || null;
         setSaveNote('Saving…', '');
         try {
+          var assetSyncRes = { allOk: true, offline: false };
           if (typeof syncPendingAssets === 'function' && typeof collectAllAssetIds === 'function') {
-            await syncPendingAssets(collectAllAssetIds(settings));
+            assetSyncRes = await syncPendingAssets(collectAllAssetIds(settings));
           }
-          var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody(extra) });
+          var fetchOpts = { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody(extra) };
+          if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') fetchOpts.signal = AbortSignal.timeout(20000);
+          var r = await fetch('/api/setup', fetchOpts);
           var j = await r.json().catch(function () { return {}; });
           if (!r.ok) throw new Error(j.error || 'Save failed');
-          setupUpdatedAt = j.updatedAt;
-          saveLocalCopy(key, settings, j.updatedAt, null, false);
-          if (j.synced === false) {
+          if (j.outdated && j.settings) {
+            applySetup(j.settings, j.image || null);
+            lastSavedJson = JSON.stringify(j.settings);
+            setupUpdatedAt = j.updatedAt || 0;
+            saveLocalCopy(key, j.settings, j.updatedAt, j.image || null, true);
+            try { localStorage.removeItem(key + '#dirty'); } catch (e) { }
+            setSaveNote('Latest setup synced ✓', 'ok');
+            return;
+          }
+          setupUpdatedAt = j.updatedAt || saveTs;
+          saveLocalCopy(key, settings, setupUpdatedAt, null, false);
+          if (j.synced === false || (assetSyncRes && !assetSyncRes.allOk)) {
             try { localStorage.setItem(key + '#dirty', '1'); } catch (e) { }
             setSaveNote((DESKTOP ? 'Saved on this laptop ✓' : 'Saved on this device ✓') + ' Syncs when connected to Wi-Fi.', 'ok');
           } else {
@@ -69599,7 +69620,7 @@ function fxWavUrl(kind) {
             // Not a connection problem: the setup itself is over the server's size limit, so it will never sync until something is removed.
             setSaveNote('Saved on this device only: the setup is too big to sync. Remove some stickers, props or extra frames.', 'warn');
             if (!window._setupBigShown) { window._setupBigShown = true; showToast('Your setup is too big to sync to your other devices. Remove some stickers, props or extra frames.', 7000); }
-          } else if (em && !/fetch|network|load failed|failed to load|json|offline/i.test(em)) {
+          } else if (em && !/fetch|network|load failed|failed to load|json|offline|timeout|abort/i.test(em)) {
             setSaveNote('Saved on this device. Couldn’t sync: ' + em.slice(0, 90), 'warn');
           } else {
             setSaveNote((DESKTOP ? 'Saved on this laptop ✓' : 'Saved on this device ✓') + ' Syncs when connected to Wi-Fi.', 'ok');
@@ -69607,7 +69628,9 @@ function fxWavUrl(kind) {
         }
       }
       async function fetchServerSetup() {
-        var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'get' }) });
+        var fetchOpts = { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'get' }) };
+        if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') fetchOpts.signal = AbortSignal.timeout(15000);
+        var r = await fetch('/api/setup', fetchOpts);
         var j = await r.json().catch(function () { return {}; });
         if (!r.ok) throw new Error(j.error || 'Load failed');
         return j;
@@ -69716,7 +69739,7 @@ function fxWavUrl(kind) {
               imageDirty = !!localImg;
               lastSavedJson = null;
               setupReady = true;
-              saveSetupNow();
+              saveSetupNow(true, { ifNewer: true });
             }
           } catch (e) { /* offline: keep the device copy */ }
         } else if (!local && carryOver) {
@@ -69778,15 +69801,17 @@ function fxWavUrl(kind) {
           setWelcomePaletteUI(j.startPalette);
         }
         if (adminIsNewer) {
-          saveLocalCopy(key, snapshotSetup(), Date.now(), localImg, true);
+          saveLocalCopy(key, snapshotSetup(), setupUpdatedAt || (local && local.updatedAt) || 0, localImg, false);
           if (typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
         }
       }
 
       async function syncAdminPresetIfChanged() {
-        if (!canSyncServer()) return;
+        if (!canSyncServer() || !setupReady) return;
         try {
-          var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'get' }) });
+          var fetchOpts = { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'get' }) };
+          if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') fetchOpts.signal = AbortSignal.timeout(12000);
+          var r = await fetch('/api/setup', fetchOpts);
           var j = await r.json().catch(function () { return {}; });
           if (!r.ok || !j) return;
           var key = localSetupKey();
@@ -69807,7 +69832,7 @@ function fxWavUrl(kind) {
               if (wInpCard) wInpCard.value = synName;
             }
             localStorage.setItem(key + '#adminPresetTs', String(serverAdminTs));
-            saveLocalCopy(key, snapshotSetup(), Date.now(), null, true);
+            saveLocalCopy(key, snapshotSetup(), setupUpdatedAt || 0, null, false);
             if (typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
           }
         } catch (e) { }
@@ -69823,7 +69848,7 @@ function fxWavUrl(kind) {
       window.addEventListener('pageshow', function (e) {
         if (e.persisted) syncAdminPresetIfChanged();
       });
-      setInterval(syncAdminPresetIfChanged, 12000);
+      setInterval(syncAdminPresetIfChanged, 30000);
       // A frame Admin made for this renter: added once to Your frames (and used as the layout on a brand-new setup).
       // The renter can delete it; it is not added again because the setup remembers it (sfDone).
       async function applyStartFrame(sf, fresh) {
@@ -69835,7 +69860,8 @@ function fxWavUrl(kind) {
           var spots = detectSpots(img);
           startFrameDone = sf.id;
           if (!spots.length || (spots.length === 1 && spots[0].w * spots[0].h > 0.75) || myFrames.length >= MAX_FRAMES) { scheduleSetupSave(); return; }
-          var sfObj = { id: sf.id, name: String(sf.name || '').slice(0, 40) || undefined, w: img.width, h: img.height, spots: spots, overlays: [] };
+          if (typeof frameTomb !== 'undefined' && frameTomb) delete frameTomb[sf.id];
+          var sfObj = { id: sf.id, name: String(sf.name || '').slice(0, 40) || undefined, w: img.width, h: img.height, spots: spots, overlays: [], savedAt: Date.now() };
           myFrames.push(sfObj);
           if (fresh) { activeFrameId = sf.id; setupLayout = 'myframe'; layoutPicked = true; if (chooseIds.indexOf(sf.id) < 0) chooseIds.push(sf.id); }
           framesChanged(fresh ? { layout: 'myframe' } : {});
@@ -69888,6 +69914,7 @@ function fxWavUrl(kind) {
       ['input', 'change', 'click'].forEach(function (type) {
         tabSetup.addEventListener(type, function (e) {
           if (e.target === driveFolderKeyInput) return;
+          if (type === 'click' && e.target && e.target.closest && e.target.closest('summary, .step-tab, .seg-tabs button, .pb-tip-btn, #startSave, #setupSaveNote')) return;
           scheduleSetupSave();
         }, true);
       });
@@ -69899,22 +69926,8 @@ function fxWavUrl(kind) {
           if (localSetupKey() !== setupLoadedKey && cleanEventName(driveFolderKeyInput.value)) { saveSetupNow(); loadSetup(true); }
         }, 900);
       });
-      // Coming back to the booth (another device may have changed the design).
-      document.addEventListener('visibilitychange', async function () {
-        if (document.hidden || !setupReady || !canSyncServer() || state !== 'idle') return;
-        if (lastSavedJson !== JSON.stringify(snapshotSetup())) return;   // unsaved local edits win
-        try {
-          var key = localSetupKey(), j = await fetchServerSetup();
-          if (key === setupLoadedKey && j.settings && (j.updatedAt || 0) > setupUpdatedAt) {
-            applySetup(j.settings, j.image || null);
-            lastSavedJson = JSON.stringify(j.settings); setupUpdatedAt = j.updatedAt;
-            saveLocalCopy(key, j.settings, j.updatedAt, j.image || null, true);
-            setSaveNote('Latest setup loaded ✓', 'ok');
-          }
-        } catch (e) { }
-      });
       document.getElementById('resetSetupBtn').addEventListener('click', function () {
-        if (!confirm('Reset the whole setup to the defaults? Your event name, theme, background and settings will be cleared on every device using this code.')) return;
+        if (!confirm('Reset this event setup to the defaults? Your event name, theme, background and settings will be cleared on every device using this code. (Your uploaded frames stay saved in your account.)')) return;
         clearCustomPhoto();
         applySetup(DEFAULT_SETUP, null);
         imageDirty = true; lastSavedJson = null;
@@ -70392,10 +70405,20 @@ function fxWavUrl(kind) {
         return rec;
       }
       function assetImg(id) { return ASSETS[id] && ASSETS[id].img; }
-      var _syncedAssetsMap = null;
+      function syncedAssetsKey() {
+        var pb = window.__PB || {};
+        var base = pb.folderPrefix || pb.folderKey || 'default';
+        return 'pb_assets_synced:' + base;
+      }
+      var _syncedAssetsMap = null, _syncedAssetsMapKey = '';
       function syncedAssetsMap() {
-        if (_syncedAssetsMap) return _syncedAssetsMap;
-        try { _syncedAssetsMap = JSON.parse(localStorage.getItem('pb_assets_synced') || '{}') || {}; } catch (e) { _syncedAssetsMap = {}; }
+        var k = syncedAssetsKey();
+        if (_syncedAssetsMap && _syncedAssetsMapKey === k) return _syncedAssetsMap;
+        _syncedAssetsMapKey = k;
+        try {
+          var raw = localStorage.getItem(k);
+          _syncedAssetsMap = raw ? (JSON.parse(raw) || {}) : {};
+        } catch (e) { _syncedAssetsMap = {}; }
         return _syncedAssetsMap;
       }
       function markAssetSynced(id) {
@@ -70403,7 +70426,7 @@ function fxWavUrl(kind) {
         var m = syncedAssetsMap();
         if (!m[id]) {
           m[id] = 1;
-          try { localStorage.setItem('pb_assets_synced', JSON.stringify(m)); } catch (e) { }
+          try { localStorage.setItem(syncedAssetsKey(), JSON.stringify(m)); } catch (e) { }
         }
       }
       function collectAllAssetIds(root) {
@@ -70428,34 +70451,52 @@ function fxWavUrl(kind) {
         return Object.keys(found);
       }
       // Upload once to the server (rental / lifetime codes) so other devices get it.
+      // Returns { ok, offline, status }.
       async function pushAsset(id, url, silent) {
-        if (!canSyncServer()) return true;
+        if (!canSyncServer()) return { ok: true, offline: false, status: 200 };
         try {
-          var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'asset-put', id: id, data: url }) });
+          var opts = { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'asset-put', id: id, data: url }) };
+          if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') opts.signal = AbortSignal.timeout(22000);
+          var r = await fetch('/api/setup', opts);
           var j = await r.json().catch(function () { return {}; });
           if (!r.ok) {
             if (!silent && r.status !== 503) showToast(j.error || 'Couldn’t save that image to the server.', 4500);
-            return false;
+            return { ok: false, offline: r.status === 503 || r.status >= 500, status: r.status };
           }
           if (j.synced !== false) markAssetSynced(id);
-          return true;
-        } catch (e) { return false; }
+          return { ok: j.synced !== false, offline: j.synced === false, status: r.status };
+        } catch (e) { return { ok: false, offline: true, status: 0 }; }
       }
       // Pushes any locally cached assets in `ids` that haven't been synced to the server yet (e.g. uploaded while offline).
+      // Uploads up to 2 assets concurrently and keeps going past single bad/oversized items; only stops early if offline.
       async function syncPendingAssets(ids) {
-        if (!canSyncServer() || !Array.isArray(ids) || !ids.length) return;
+        if (!canSyncServer() || !Array.isArray(ids) || !ids.length) return { allOk: true, offline: false };
         var m = syncedAssetsMap();
-        var pending = ids.filter(function (id) { return id && /^a[A-Za-z0-9]{8,32}$/.test(id) && !m[id]; });
-        if (!pending.length) return;
+        var seen = {};
+        var pending = [];
+        ids.forEach(function (id) {
+          if (id && /^a[A-Za-z0-9]{8,32}$/.test(id) && !m[id] && !seen[id]) { seen[id] = 1; pending.push(id); }
+        });
+        if (!pending.length) return { allOk: true, offline: false };
         var fromIdb = await idbAssetGet(pending);
-        for (var i = 0; i < pending.length; i++) {
-          var id = pending[i];
-          var url = (ASSETS[id] && ASSETS[id].url) || fromIdb[id] || null;
-          if (!url) { try { url = localStorage.getItem('pb_asset:' + id); } catch (e) { } }
-          if (!url) continue;
-          var ok = await pushAsset(id, url, true);
-          if (!ok) break; // stop early if offline
+        var cursor = 0, offline = false, allOk = true;
+        async function worker() {
+          while (!offline) {
+            var idx = cursor++;
+            if (idx >= pending.length) return;
+            var id = pending[idx];
+            var url = (ASSETS[id] && ASSETS[id].url) || fromIdb[id] || null;
+            if (!url) { try { url = localStorage.getItem('pb_asset:' + id); } catch (e) { } }
+            if (!url) continue;
+            var res = await pushAsset(id, url, true);
+            if (!res.ok) {
+              allOk = false;
+              if (res.offline) { offline = true; return; }
+            }
+          }
         }
+        await Promise.all([worker(), worker()]);
+        return { allOk: allOk, offline: offline };
       }
       async function addAsset(url, wantedId) {
         var id = wantedId || newAssetId();
@@ -70463,11 +70504,14 @@ function fxWavUrl(kind) {
         await pushAsset(id, url);
         return id;
       }
-      // Makes sure every image the current design needs is loaded.
+      // Makes sure every image the current design / account frames need is loaded.
+      // Downloads 1 asset per request (3 concurrent) so large PNG frames never exceed Netlify Functions' 6 MB response cap.
+      var _assetInFlight = {};
       async function ensureAssets(ids) {
-        var missing = [];
-        ids.forEach(function (id) {
-          if (!id || ASSETS[id]) return;
+        var missing = [], seen = {};
+        (Array.isArray(ids) ? ids : []).forEach(function (id) {
+          if (!id || !/^a[A-Za-z0-9]{8,32}$/.test(id) || seen[id] || ASSETS[id]) return;
+          seen[id] = 1;
           var local = null; try { local = localStorage.getItem('pb_asset:' + id); } catch (e) { }
           if (local) {
             registerAsset(id, local);
@@ -70481,13 +70525,43 @@ function fxWavUrl(kind) {
           missing = still;
         }
         if (!missing.length || !canSyncServer()) return;
-        for (var i = 0; i < missing.length; i += 10) {
-          try {
-            var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'asset-get', ids: missing.slice(i, i + 10) }) });
-            var j = await r.json();
-            Object.keys(j.assets || {}).forEach(function (id) { registerAsset(id, j.assets[id]); cacheAssetLocal(id, j.assets[id]); markAssetSynced(id); });
-          } catch (e) { }
+        var cursor = 0, offline = false;
+        async function fetchOne(id) {
+          if (ASSETS[id]) return true;
+          if (_assetInFlight[id]) return _assetInFlight[id];
+          var p = (async function () {
+            try {
+              var opts = { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'asset-get', ids: [id] }) };
+              if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') opts.signal = AbortSignal.timeout(18000);
+              var r = await fetch('/api/setup', opts);
+              if (r.status === 503) { offline = true; return false; }
+              if (!r.ok) return false;
+              var j = await r.json().catch(function () { return {}; });
+              var data = j && j.assets && j.assets[id];
+              if (data) {
+                registerAsset(id, data);
+                cacheAssetLocal(id, data);
+                markAssetSynced(id);
+                return true;
+              }
+              return false;
+            } catch (e) { offline = true; return false; }
+            finally { delete _assetInFlight[id]; }
+          })();
+          _assetInFlight[id] = p;
+          return p;
         }
+        async function worker() {
+          while (!offline) {
+            var idx = cursor++;
+            if (idx >= missing.length) return;
+            await fetchOne(missing[idx]);
+          }
+        }
+        var nWorkers = Math.min(3, missing.length);
+        var pool = [];
+        for (var w = 0; w < nWorkers; w++) pool.push(worker());
+        await Promise.all(pool);
       }
       function designAssetIds() {
         var ids = [];
@@ -72092,50 +72166,91 @@ function fxWavUrl(kind) {
         } catch (e) { return false; }
       }
 
-      // ---- Automatic cloud sync on Wi-Fi reconnect / tab focus / background check-in ----
-      var _cloudSyncBusy = false;
-      async function syncCloudNow() {
+      // ---- Automatic cloud sync on Wi-Fi reconnect / tab focus / app resume / background poll ----
+      var _cloudSyncBusy = false, _lastAutoSyncAt = 0;
+      async function syncCloudNow(manual) {
         if (_cloudSyncBusy || !canSyncServer() || !setupReady || state !== 'idle') return;
-        if (navigator.onLine === false && !DESKTOP) return;
+        if (!manual && navigator.onLine === false && !DESKTOP) return;
+        if (!manual && Date.now() - _lastAutoSyncAt < 4000) return;
         _cloudSyncBusy = true;
+        _lastAutoSyncAt = Date.now();
+        var pulled = false, syncErr = false, didPush = false;
+        if (manual) setSaveNote('Syncing…', '');
         try {
+          if (manual && DESKTOP && window.pb4u && typeof window.pb4u.syncNow === 'function') {
+            try { await window.pb4u.syncNow(); } catch (e) { }
+          }
           var key = localSetupKey();
           var isDirty = false;
           try { isDirty = localStorage.getItem(key + '#dirty') === '1'; } catch (e) { }
           if (isDirty) {
-            await saveSetupNow(true);
-          } else if (lastSavedJson === JSON.stringify(snapshotSetup())) {
+            didPush = true;
+            await saveSetupNow(true, { ifNewer: true });
+          } else if (!setupSaveTimer) {
             try {
               var j = await fetchServerSetup();
               if (key === setupLoadedKey && j.settings && (j.updatedAt || 0) > setupUpdatedAt) {
                 applySetup(j.settings, j.image || null);
                 lastSavedJson = JSON.stringify(j.settings);
-                setupUpdatedAt = j.updatedAt;
+                setupUpdatedAt = j.updatedAt || 0;
                 saveLocalCopy(key, j.settings, j.updatedAt, j.image || null, true);
                 setSaveNote('Latest setup synced ✓', 'ok');
+                pulled = true;
               }
-            } catch (e) { }
+            } catch (e) { syncErr = true; }
           }
-          await loadProfiles();
-          await loadMyThemes();
+          if (typeof loadAccountFrames === 'function') {
+            try { var fOk = await loadAccountFrames(); if (!fOk) syncErr = true; } catch (e) { syncErr = true; }
+          }
+          try { await loadProfiles(); } catch (e) { }
+          try { await loadMyThemes(); } catch (e) { }
+          if (manual) {
+            if (syncErr && !pulled && !didPush) {
+              setSaveNote((DESKTOP ? 'Offline — saved on this laptop.' : 'Offline — saved on this device.'), 'warn');
+              showToast('Could not reach cloud — changes stay saved on this device.', 3500);
+            } else if (pulled) {
+              showToast('Latest setup & frames synced ✓', 2500);
+            } else if (!didPush) {
+              setSaveNote('Synced ✓ All devices up to date.', 'ok');
+              showToast('Synced with cloud ✓', 2000);
+            }
+          }
         } finally {
           _cloudSyncBusy = false;
         }
       }
+      window.pbSyncNow = function () { return syncCloudNow(true); };
       window.addEventListener('online', function () {
+        _lastAutoSyncAt = 0;
         if (DESKTOP && window.pb4u && typeof window.pb4u.syncNow === 'function') {
-          window.pb4u.syncNow().then(function () { syncCloudNow(); }).catch(function () { syncCloudNow(); });
+          window.pb4u.syncNow().then(function () { syncCloudNow(false); }).catch(function () { syncCloudNow(false); });
         } else {
-          syncCloudNow();
+          syncCloudNow(false);
         }
       });
       document.addEventListener('visibilitychange', function () {
-        if (!document.hidden) syncCloudNow();
+        if (!document.hidden) syncCloudNow(false);
+      });
+      window.addEventListener('focus', function () {
+        syncCloudNow(false);
+      });
+      window.addEventListener('pb-app-resume', function () {
+        _lastAutoSyncAt = 0;
+        syncCloudNow(false);
       });
       if (DESKTOP && window.pb4u && typeof window.pb4u.onSetupSynced === 'function') {
-        window.pb4u.onSetupSynced(function () { syncCloudNow(); });
+        window.pb4u.onSetupSynced(function () { _lastAutoSyncAt = 0; syncCloudNow(false); });
       }
-      setInterval(function () { syncCloudNow(); }, 2 * 60000);
+      setInterval(function () { syncCloudNow(false); }, 30000);
+      [document.getElementById('startSave'), document.getElementById('setupSaveNote')].forEach(function (el) {
+        if (!el) return;
+        el.style.cursor = 'pointer';
+        el.title = 'Tap to sync with your other devices now';
+        el.addEventListener('click', function (e) {
+          e.stopPropagation();
+          syncCloudNow(true);
+        });
+      });
       function profileWhen(t) {
         try { return 'Saved ' + new Date(t).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; }
       }
@@ -72584,7 +72699,10 @@ function fxWavUrl(kind) {
       // frame's design is drawn over them, so a Canva frame with white boxes
       // just works. A frame with no boxes stays a plain overlay on top.
       // =====================================================================
-      var myFrames = [];            // [{ id, w, h, spots: [{ x, y, w, h }] }]  (spots as 0-1 of the frame)
+      var myFrames = [];            // [{ id, w, h, spots: [{ x, y, w, h }], savedAt }]  (spots as 0-1 of the frame)
+      var frameTomb = {};           // { frameId: deletedAtMs } — explicit deletions only (never wipes on empty setup)
+      var frameSaveTimer = null, _framesSyncBusy = false, _framesSavePending = false;
+      var _wantedActiveFrameId = null, _wantedChooseIds = null;
       var activeFrameId = null;     // the frame used by the "My frame" layout
       var startFrameDone = '';      // id of the Admin-made starting frame this setup already received
       var startLogoDone = '';       // id of the Admin-made starting logo this setup already received
@@ -74067,9 +74185,11 @@ function fxWavUrl(kind) {
             h: cv.height,
             spots: newSpots,
             tier: f.tier || 'all',
-            color: f.color
+            color: f.color,
+            savedAt: Date.now()
           };
           if (f.key) nf.key = { c: f.key.c.slice(), t: f.key.t };
+          delete frameTomb[aid];
           myFrames.push(nf);
           created.push(nf);
         }
@@ -74952,6 +75072,15 @@ function fxWavUrl(kind) {
         else if (!frameById(activeFrameId)) { activeFrameId = myFrames[0].id; selFrameOv = -1; }
         if (myFrames.length && !frameById(setupActiveFrameId)) setupActiveFrameId = activeFrameId;
         if (layoutEdit && !frameById(layoutEdit.f)) layoutEdit = null;
+        if (!opts.quiet && !opts.skipTouch) {
+          var touchNow = Date.now();
+          if (opts.touchAll) {
+            myFrames.forEach(function (fr) { fr.savedAt = touchNow; });
+          } else {
+            var afTouch = activeFrame();
+            if (afTouch) afTouch.savedAt = touchNow;
+          }
+        }
         if (opts.spotOnly && myFrames.length && currentLayout === 'myframe') {
           var afSpot = activeFrame();
           if (afSpot) updateActiveFrameCard(afSpot);
@@ -74963,7 +75092,11 @@ function fxWavUrl(kind) {
           renderSetupPreview();
           if (typeof scheduleSpotPostRefresh === 'function') scheduleSpotPostRefresh();
           if (typeof scheduleSetupNav === 'function') scheduleSetupNav();
-          if (!opts.quiet) scheduleSetupSave();
+          if (!opts.quiet) {
+            if (typeof framesCacheLocal === 'function') framesCacheLocal();
+            if (typeof scheduleAccountFramesSave === 'function') scheduleAccountFramesSave();
+            scheduleSetupSave();
+          }
           return;
         }
         sheet.items = sheet.items.filter(function (it) { return frameById(it.f); });
@@ -74975,7 +75108,11 @@ function fxWavUrl(kind) {
         setLayout(opts.layout || (isFrameLayout() && !myFrames.length ? 'strip' : currentLayout));
         refreshFrameUI();
         if (typeof scheduleSetupNav === 'function') scheduleSetupNav();
-        if (!opts.quiet) scheduleSetupSave();
+        if (!opts.quiet) {
+          if (typeof framesCacheLocal === 'function') framesCacheLocal();
+          if (typeof scheduleAccountFramesSave === 'function') scheduleAccountFramesSave();
+          scheduleSetupSave();
+        }
       }
       function refreshFrameUI() {
         frameListEl.innerHTML = '';
@@ -74999,7 +75136,10 @@ function fxWavUrl(kind) {
           nameInput.addEventListener('blur', function () { nameInput.style.borderColor = 'var(--line)'; });
           nameInput.addEventListener('change', function () {
             f.name = nameInput.value.trim() || ('Frame ' + (myFrames.indexOf(f) + 1));
+            f.savedAt = Date.now();
             buildLayoutPicker();
+            if (typeof framesCacheLocal === 'function') framesCacheLocal();
+            if (typeof scheduleAccountFramesSave === 'function') scheduleAccountFramesSave();
             scheduleSetupSave();
           });
           nameInput.addEventListener('keydown', function (e) {
@@ -75031,9 +75171,12 @@ function fxWavUrl(kind) {
           tierSel.addEventListener('change', function () {
             if (tierSplitOn() && f.color && f.tier !== 'receipt' && tierSel.value !== 'photo') { tierSel.value = 'photo'; showToast('A frame with colour can only print on the colour printer.', 3500); return; }
             f.tier = tierSel.value;
+            f.savedAt = Date.now();
             if (tierSplitOn()) { framesChanged({ layout: 'myframe' }); return; }      // re-routes the paper and the printer for this frame
             buildLayoutPicker();
             if (typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
+            if (typeof framesCacheLocal === 'function') framesCacheLocal();
+            if (typeof scheduleAccountFramesSave === 'function') scheduleAccountFramesSave();
             scheduleSetupSave();
           });
           var showTierInline = splitOn || (typeof payActive === 'function' && payActive() && payCfg && payCfg.dual);
@@ -75110,14 +75253,17 @@ function fxWavUrl(kind) {
           prevBtn.addEventListener('click', function () { if (window.pbDockPreview) window.pbDockPreview(true); });
           var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'remove-link'; rm.textContent = 'Remove frame'; rm.style.cssText = 'display:inline;margin:0 0 0 auto;';
           rm.addEventListener('click', function () {
-            if (!confirm('Remove this frame?')) return;
+            if (!confirm('Remove this frame from your account?')) return;
+            frameTomb[f.id] = Date.now();
             dropFrameCache(f.id);
             myFrames = myFrames.filter(function (x) { return x.id !== f.id; });
             chooseIds = chooseIds.filter(function (id) { return id !== f.id; });
             if (spotEdit && spotEdit.f === f.id) spotEdit = null;
             if (layoutEdit && layoutEdit.f === f.id) layoutEdit = null;
             selFrameOv = -1;
-            framesChanged();
+            if (typeof framesCacheLocal === 'function') framesCacheLocal();
+            if (typeof saveAccountFrames === 'function') saveAccountFrames();
+            framesChanged({ skipTouch: true });
           });
           btns.append(ed, ovBtn, prevBtn, rm);
           ctx.append(top, btns);
@@ -75146,7 +75292,7 @@ function fxWavUrl(kind) {
                     if (tierSplitOn() && fr.tier !== 'receipt') fr.tier = 'photo';
                   }
                 });
-                framesChanged({ layout: 'myframe' });
+                framesChanged({ layout: 'myframe', touchAll: true });
                 showToast('Overlays applied to all ' + myFrames.length + ' frames \u2713', 3000);
               },
               onRemoveAllFrames: function () {
@@ -75158,7 +75304,7 @@ function fxWavUrl(kind) {
                   if (baseIm && typeof frameHasColour === 'function') fr.color = frameHasColour(baseIm, fr.key);
                 });
                 selFrameOv = -1;
-                framesChanged({ layout: 'myframe' });
+                framesChanged({ layout: 'myframe', touchAll: true });
                 showToast('Overlays removed from all ' + myFrames.length + ' frames.', 3000);
               },
               onRecalcColor: function () {
@@ -76880,7 +77026,7 @@ function fxWavUrl(kind) {
                 if (tierSplitOn() && fr.tier !== 'receipt') fr.tier = 'photo';
               }
             });
-            framesChanged({ layout: 'myframe' });
+            framesChanged({ layout: 'myframe', touchAll: true });
             renderSetupPreview();
             showToast('Applied overlays to all ' + myFrames.length + ' frames! ✓', 3000);
           });
@@ -76913,7 +77059,8 @@ function fxWavUrl(kind) {
               // Has this frame got colour? (Frames with coloured photo windows are checked once the window colour is picked.)
               var hasCol = needPick ? undefined : frameHasColour(img);
               if (hasCol && tierSplitOn()) autoTier = 'photo';          // B&W / colour separated: a colour frame is never tagged thermal
-              var newFrame = { id: id, name: initName, w: img.width, h: img.height, spots: spots, tier: autoTier, color: hasCol, overlays: [] };
+              delete frameTomb[id];
+              var newFrame = { id: id, name: initName, w: img.width, h: img.height, spots: spots, tier: autoTier, color: hasCol, overlays: [], savedAt: Date.now() };
               myFrames.push(newFrame);
               added.push(newFrame);
               if (needPick) added[added.length - 1]._pick = true;
@@ -77487,60 +77634,11 @@ function fxWavUrl(kind) {
         }
       }
 
-      // ---- Saved with the setup ----
+      // ---- Saved with the setup + account-level uploaded frames library ----
       function framesSnapshot() {
         var r4 = function (v) { return Math.round(v * 10000) / 10000; };
         return {
-          frames: myFrames.map(function (f) {
-            var o = {
-              id: f.id, w: f.w, h: f.h,
-              spots: f.spots.map(function (s) {
-                var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) };
-                if (s.a) q.a = Math.round(s.a * 10) / 10;
-                var sr = normalizeSpotRot(s.r); if (sr) q.r = sr;
-                if (s.z) q.z = s.z;
-                if (s.s >= 1) q.s = s.s;
-                return q;
-              })
-            };
-            if (typeof f.name === 'string' && f.name.trim()) o.name = f.name.trim().slice(0, 40);
-            if (typeof f.copy === 'boolean') o.copy = f.copy;
-            if (frameRepeat(f)) o.rep = frameRepeat(f);
-            if (f.one === false) o.one = false;
-            if (f.tl) o.tl = r4(f.tl); if (f.tr) o.tr = r4(f.tr); if (f.tb) o.tb = r4(f.tb);
-            if (f.key) o.key = { c: f.key.c.slice(), t: f.key.t };
-            if (f.tier) o.tier = f.tier;
-            if (typeof f.color === 'boolean') o.color = f.color;
-            if (Array.isArray(f.sections) && f.sections.length > 1) {
-              o.sections = f.sections.map(function (sec) {
-                var so = {
-                  id: String(sec.id || '').slice(0, 20),
-                  name: String(sec.name || 'Section').slice(0, 32),
-                  kind: sec.kind || 'card',
-                  x: r4(sec.x), y: r4(sec.y), w: r4(sec.w), h: r4(sec.h),
-                  r: normalizeSpotRot(sec.r),
-                  spots: Array.isArray(sec.spots) ? sec.spots.slice() : []
-                };
-                var ar = normalizeSpotRot(sec.artRot);
-                if (ar) so.artRot = ar;
-                if (typeof sec.dx === 'number' && isFinite(sec.dx)) so.dx = r4(sec.dx);
-                if (typeof sec.dy === 'number' && isFinite(sec.dy)) so.dy = r4(sec.dy);
-                if (sec.z) so.z = Math.round(sec.z);
-                return so;
-              });
-            }
-            if (f.saveCuts) o.saveCuts = true;
-            var fOvs = frameOverlayList(f);
-            if (fOvs.length) {
-              o.overlays = fOvs.map(function (ov) {
-                var qo = { id: ov.id, x: r4(ov.x), y: r4(ov.y), s: r4(ov.s), r: Math.round(ov.r || 0) };
-                if (ov.knockoutWhite) qo.knockoutWhite = true;
-                if (ov.full) qo.full = true;
-                return qo;
-              });
-            }
-            return o;
-          }),
+          frames: serializeFramesList(myFrames),
           activeFrame: activeFrameId,
           frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
           sheet: (function () {
@@ -77583,58 +77681,364 @@ function fxWavUrl(kind) {
           activeSheetPresetId: activeSheetPresetId
         };
       }
-      function applyFramesSetup(s) {
-        var okId = function (id) { return typeof id === 'string' && /^a[A-Za-z0-9]{8,32}$/.test(id); };
-        var num = function (v, lo, hi, d) { v = Number(v); return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
-        myFrames = (Array.isArray(s.frames) ? s.frames : []).filter(function (f) { return f && okId(f.id) && Array.isArray(f.spots) && f.spots.length; }).slice(0, MAX_FRAMES).map(function (f) {
-          var key = f.key && Array.isArray(f.key.c) && f.key.c.length === 3 ? { c: f.key.c.map(function (v) { return Math.round(num(v, 0, 255, 0)); }), t: Math.round(num(f.key.t, 4, 100, 36)) } : null;
-          var name = typeof f.name === 'string' && f.name.trim() ? f.name.trim().slice(0, 40) : undefined;
-          var parsedSpots = f.spots.slice(0, MAX_SPOTS).map(function (p) {
-            var a = num(p.a, -45, 45, 0), z = Math.round(num(p.z, 0, 50, 0)), sr = normalizeSpotRot(p.r), o;
-            if (a) { var tw = num(p.w, 0.01, 1, 0.3), th = num(p.h, 0.01, 1, 0.3); o = { x: num(p.x, -0.5, 1, 0), y: num(p.y, -0.5, 1, 0), w: tw, h: th, a: a }; }
-            else { var x = num(p.x, 0, 1, 0), y = num(p.y, 0, 1, 0); o = { x: x, y: y, w: num(p.w, 0.01, 1 - x, 0.3), h: num(p.h, 0.01, 1 - y, 0.3) }; }
-            if (sr) o.r = sr;
-            if (z) o.z = z;
-            var sn = Math.round(num(p.s, 0, MAX_SPOTS, 0)); if (sn >= 1) o.s = sn;
-            return o;
-          });
-          var sections = (Array.isArray(f.sections) && f.sections.length > 1) ? f.sections.slice(0, 20).map(function (sec, si) {
-            var sx = num(sec && sec.x, 0, 1, 0), sy = num(sec && sec.y, 0, 1, 0);
-            var sw = num(sec && sec.w, 0.04, 1 - sx, 0.5), sh = num(sec && sec.h, 0.04, 1 - sy, 0.5);
-            var spList = Array.isArray(sec && sec.spots) ? sec.spots.map(function (i) { return Math.round(Number(i)); }).filter(function (i) { return i >= 0 && i < parsedSpots.length; }) : [];
-            var ar = normalizeSpotRot(sec && sec.artRot);
-            var so = {
-              id: typeof (sec && sec.id) === 'string' && sec.id ? sec.id.slice(0, 20) : ('sec_' + (si + 1)),
-              name: typeof (sec && sec.name) === 'string' && sec.name.trim() ? sec.name.trim().slice(0, 32) : ('Section ' + (si + 1)),
-              kind: (sec && ['polaroid', 'wallet', 'strip', 'card'].indexOf(sec.kind) >= 0) ? sec.kind : 'card',
-              x: sx, y: sy, w: sw, h: sh,
-              r: normalizeSpotRot(sec && sec.r),
-              spots: spList
-            };
-            if (ar) so.artRot = ar;
-            if (sec && typeof sec.dx === 'number' && isFinite(sec.dx)) so.dx = num(sec.dx, 0, 1, sx + sw / 2);
-            if (sec && typeof sec.dy === 'number' && isFinite(sec.dy)) so.dy = num(sec.dy, 0, 1, sy + sh / 2);
-            var sz = Math.round(num(sec && sec.z, 0, 50, 0));
-            if (sz) so.z = sz;
-            return so;
-          }).filter(function (sec) { return sec.spots.length > 0; }) : undefined;
-          if (sections && sections.length <= 1) sections = undefined;
-          var parsedOvs = cleanFrameOverlays(f.overlays, f.overlay);
-          return {
-            id: f.id, name: name, w: num(f.w, 1, 10000, 1200), h: num(f.h, 1, 10000, 1800), key: key, spots: parsedSpots,
-            copy: typeof f.copy === 'boolean' ? f.copy : undefined,
-            rep: Math.round(num(f.rep, 0, MAX_SPOTS, 0)) || undefined,
-            one: f.one === false ? false : undefined,
-            tl: Math.round(num(f.tl, -0.1, 0.1, 0) * 10000) / 10000 || undefined, tr: Math.round(num(f.tr, -0.1, 0.1, 0) * 10000) / 10000 || undefined, tb: Math.round(num(f.tb, -0.1, 0.1, 0) * 10000) / 10000 || undefined,
-            tier: (f.tier === 'receipt' || f.tier === 'photo' || f.tier === 'all') ? f.tier : undefined,
-            color: typeof f.color === 'boolean' ? f.color : undefined,       // does the frame picture carry colour? (checked once; decides if it can print on thermal)
-            sections: sections,
-            saveCuts: f.saveCuts === true ? true : undefined,
-            overlays: parsedOvs
+      function okFrameAssetId(id) { return typeof id === 'string' && /^a[A-Za-z0-9]{8,32}$/.test(id); }
+      function serializeFramesList(list) {
+        var r4 = function (v) { return Math.round(v * 10000) / 10000; };
+        return (Array.isArray(list) ? list : []).map(function (f) {
+          var o = {
+            id: f.id, w: f.w, h: f.h,
+            spots: f.spots.map(function (s) {
+              var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) };
+              if (s.a) q.a = Math.round(s.a * 10) / 10;
+              var sr = normalizeSpotRot(s.r); if (sr) q.r = sr;
+              if (s.z) q.z = s.z;
+              if (s.s >= 1) q.s = s.s;
+              return q;
+            })
           };
+          if (typeof f.name === 'string' && f.name.trim()) o.name = f.name.trim().slice(0, 40);
+          if (typeof f.copy === 'boolean') o.copy = f.copy;
+          if (frameRepeat(f)) o.rep = frameRepeat(f);
+          if (f.one === false) o.one = false;
+          if (f.tl) o.tl = r4(f.tl); if (f.tr) o.tr = r4(f.tr); if (f.tb) o.tb = r4(f.tb);
+          if (f.key) o.key = { c: f.key.c.slice(), t: f.key.t };
+          if (f.tier) o.tier = f.tier;
+          if (typeof f.color === 'boolean') o.color = f.color;
+          if (f.savedAt) o.savedAt = Math.max(0, Math.floor(Number(f.savedAt) || 0));
+          if (Array.isArray(f.sections) && f.sections.length > 1) {
+            o.sections = f.sections.map(function (sec) {
+              var so = {
+                id: String(sec.id || '').slice(0, 20),
+                name: String(sec.name || 'Section').slice(0, 32),
+                kind: sec.kind || 'card',
+                x: r4(sec.x), y: r4(sec.y), w: r4(sec.w), h: r4(sec.h),
+                r: normalizeSpotRot(sec.r),
+                spots: Array.isArray(sec.spots) ? sec.spots.slice() : []
+              };
+              var ar = normalizeSpotRot(sec.artRot);
+              if (ar) so.artRot = ar;
+              if (typeof sec.dx === 'number' && isFinite(sec.dx)) so.dx = r4(sec.dx);
+              if (typeof sec.dy === 'number' && isFinite(sec.dy)) so.dy = r4(sec.dy);
+              if (sec.z) so.z = Math.round(sec.z);
+              return so;
+            });
+          }
+          if (f.saveCuts) o.saveCuts = true;
+          var fOvs = frameOverlayList(f);
+          if (fOvs.length) {
+            o.overlays = fOvs.map(function (ov) {
+              var qo = { id: ov.id, x: r4(ov.x), y: r4(ov.y), s: r4(ov.s), r: Math.round(ov.r || 0) };
+              if (ov.knockoutWhite) qo.knockoutWhite = true;
+              if (ov.full) qo.full = true;
+              return qo;
+            });
+          }
+          return o;
         });
+      }
+      function sanitizeFrameObj(f) {
+        if (!f || !okFrameAssetId(f.id) || !Array.isArray(f.spots) || !f.spots.length) return null;
+        var num = function (v, lo, hi, d) { v = Number(v); return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
+        var key = f.key && Array.isArray(f.key.c) && f.key.c.length === 3 ? { c: f.key.c.map(function (v) { return Math.round(num(v, 0, 255, 0)); }), t: Math.round(num(f.key.t, 4, 100, 36)) } : null;
+        var name = typeof f.name === 'string' && f.name.trim() ? f.name.trim().slice(0, 40) : undefined;
+        var parsedSpots = f.spots.slice(0, MAX_SPOTS).map(function (p) {
+          var a = num(p.a, -45, 45, 0), z = Math.round(num(p.z, 0, 50, 0)), sr = normalizeSpotRot(p.r), o;
+          if (a) { var tw = num(p.w, 0.01, 1, 0.3), th = num(p.h, 0.01, 1, 0.3); o = { x: num(p.x, -0.5, 1, 0), y: num(p.y, -0.5, 1, 0), w: tw, h: th, a: a }; }
+          else { var x = num(p.x, 0, 1, 0), y = num(p.y, 0, 1, 0); o = { x: x, y: y, w: num(p.w, 0.01, 1 - x, 0.3), h: num(p.h, 0.01, 1 - y, 0.3) }; }
+          if (sr) o.r = sr;
+          if (z) o.z = z;
+          var sn = Math.round(num(p.s, 0, MAX_SPOTS, 0)); if (sn >= 1) o.s = sn;
+          return o;
+        });
+        var sections = (Array.isArray(f.sections) && f.sections.length > 1) ? f.sections.slice(0, 20).map(function (sec, si) {
+          var sx = num(sec && sec.x, 0, 1, 0), sy = num(sec && sec.y, 0, 1, 0);
+          var sw = num(sec && sec.w, 0.04, 1 - sx, 0.5), sh = num(sec && sec.h, 0.04, 1 - sy, 0.5);
+          var spList = Array.isArray(sec && sec.spots) ? sec.spots.map(function (i) { return Math.round(Number(i)); }).filter(function (i) { return i >= 0 && i < parsedSpots.length; }) : [];
+          var ar = normalizeSpotRot(sec && sec.artRot);
+          var so = {
+            id: typeof (sec && sec.id) === 'string' && sec.id ? sec.id.slice(0, 20) : ('sec_' + (si + 1)),
+            name: typeof (sec && sec.name) === 'string' && sec.name.trim() ? sec.name.trim().slice(0, 32) : ('Section ' + (si + 1)),
+            kind: (sec && ['polaroid', 'wallet', 'strip', 'card'].indexOf(sec.kind) >= 0) ? sec.kind : 'card',
+            x: sx, y: sy, w: sw, h: sh,
+            r: normalizeSpotRot(sec && sec.r),
+            spots: spList
+          };
+          if (ar) so.artRot = ar;
+          if (sec && typeof sec.dx === 'number' && isFinite(sec.dx)) so.dx = num(sec.dx, 0, 1, sx + sw / 2);
+          if (sec && typeof sec.dy === 'number' && isFinite(sec.dy)) so.dy = num(sec.dy, 0, 1, sy + sh / 2);
+          var sz = Math.round(num(sec && sec.z, 0, 50, 0));
+          if (sz) so.z = sz;
+          return so;
+        }).filter(function (sec) { return sec.spots.length > 0; }) : undefined;
+        if (sections && sections.length <= 1) sections = undefined;
+        var parsedOvs = cleanFrameOverlays(f.overlays, f.overlay);
+        return {
+          id: f.id, name: name, w: num(f.w, 1, 10000, 1200), h: num(f.h, 1, 10000, 1800), key: key, spots: parsedSpots,
+          copy: typeof f.copy === 'boolean' ? f.copy : undefined,
+          rep: Math.round(num(f.rep, 0, MAX_SPOTS, 0)) || undefined,
+          one: f.one === false ? false : undefined,
+          tl: Math.round(num(f.tl, -0.1, 0.1, 0) * 10000) / 10000 || undefined, tr: Math.round(num(f.tr, -0.1, 0.1, 0) * 10000) / 10000 || undefined, tb: Math.round(num(f.tb, -0.1, 0.1, 0) * 10000) / 10000 || undefined,
+          tier: (f.tier === 'receipt' || f.tier === 'photo' || f.tier === 'all') ? f.tier : undefined,
+          color: typeof f.color === 'boolean' ? f.color : undefined,
+          sections: sections,
+          saveCuts: f.saveCuts === true ? true : undefined,
+          overlays: parsedOvs,
+          savedAt: Math.max(0, Math.floor(Number(f.savedAt) || 0))
+        };
+      }
+      function framesAccountBase() {
+        var pb = window.__PB || {};
+        return pb.folderPrefix || pb.folderKey || 'local';
+      }
+      function framesAccountKey() { return 'pb_frames:' + framesAccountBase(); }
+      function cleanFrameTombLocal(t) {
+        var out = {};
+        if (!t || typeof t !== 'object') return out;
+        var pairs = [];
+        Object.keys(t).forEach(function (id) {
+          var v = Math.floor(Number(t[id]) || 0);
+          if (okFrameAssetId(id) && v > 0) pairs.push([id, v]);
+        });
+        pairs.sort(function (x, y) { return y[1] - x[1]; });
+        pairs.slice(0, 200).forEach(function (p) { out[p[0]] = p[1]; });
+        return out;
+      }
+      function mergeFrameLists(a, ta, b, tb) {
+        var tomb = cleanFrameTombLocal(ta);
+        var tbClean = cleanFrameTombLocal(tb);
+        Object.keys(tbClean).forEach(function (id) {
+          if (!tomb[id] || tbClean[id] > tomb[id]) tomb[id] = tbClean[id];
+        });
+        tomb = cleanFrameTombLocal(tomb);
+        var byId = {}, order = [];
+        function addList(list) {
+          if (!Array.isArray(list)) return;
+          for (var i = 0; i < list.length; i++) {
+            var c = sanitizeFrameObj(list[i]);
+            if (!c) continue;
+            var prev = byId[c.id];
+            if (!prev) {
+              byId[c.id] = c;
+              order.push(c.id);
+            } else if ((c.savedAt || 0) > (prev.savedAt || 0)) {
+              byId[c.id] = c;
+            }
+          }
+        }
+        addList(a);
+        addList(b);
+        var out = [];
+        for (var j = 0; j < order.length; j++) {
+          var fr = byId[order[j]];
+          if (tomb[fr.id] && tomb[fr.id] >= (fr.savedAt || 0)) continue;
+          out.push(fr);
+          if (out.length >= MAX_FRAMES) break;
+        }
+        return { list: out, tomb: tomb };
+      }
+      function framesReadLocal() {
+        var k = framesAccountKey(), base = framesAccountBase();
+        var list = [], tomb = {};
+        try {
+          var raw = JSON.parse(localStorage.getItem(k) || 'null');
+          if (raw && Array.isArray(raw.frames)) {
+            var m0 = mergeFrameLists(raw.frames, raw.del || {}, [], {});
+            list = m0.list; tomb = m0.tomb;
+          }
+        } catch (e) { }
+        // One-time rescue of frames stranded in local event setups or profiles for this account.
+        var rescuedFlag = k + '#rescued';
+        try {
+          if (localStorage.getItem(rescuedFlag) !== '1') {
+            var setupExact = 'pb_setup:' + base, setupPref = 'pb_setup:' + base + '|';
+            var profKeys = ['pb_profiles:device', 'pb_profiles:' + base];
+            var foundAny = false;
+            for (var i = 0; i < localStorage.length; i++) {
+              var sk = localStorage.key(i);
+              if (!sk) continue;
+              if ((sk === setupExact || sk.indexOf(setupPref) === 0) && sk.indexOf('#') < 0) {
+                try {
+                  var sv = JSON.parse(localStorage.getItem(sk) || 'null');
+                  var sf = sv && sv.settings && Array.isArray(sv.settings.frames) ? sv.settings.frames : null;
+                  if (sf && sf.length) {
+                    var ms = mergeFrameLists(list, tomb, sf, {});
+                    list = ms.list; tomb = ms.tomb; foundAny = true;
+                  }
+                } catch (err) { }
+              } else if (profKeys.indexOf(sk) >= 0) {
+                try {
+                  var pv = JSON.parse(localStorage.getItem(sk) || 'null');
+                  var plist = Array.isArray(pv) ? pv : (pv && Array.isArray(pv.profiles) ? pv.profiles : []);
+                  plist.forEach(function (p) {
+                    var pf = p && p.settings && Array.isArray(p.settings.frames) ? p.settings.frames : null;
+                    if (pf && pf.length) {
+                      var mp = mergeFrameLists(list, tomb, pf, {});
+                      list = mp.list; tomb = mp.tomb; foundAny = true;
+                    }
+                  });
+                } catch (err) { }
+              }
+            }
+            if (foundAny) {
+              localStorage.setItem(k, JSON.stringify({ frames: serializeFramesList(list), del: tomb }));
+            }
+            localStorage.setItem(rescuedFlag, '1');
+          }
+        } catch (e) { }
+        return { list: list, tomb: tomb };
+      }
+      function framesCacheLocal() {
+        try {
+          localStorage.setItem(framesAccountKey(), JSON.stringify({ frames: serializeFramesList(myFrames), del: frameTomb }));
+        } catch (e) { }
+      }
+      function frameAssetIds(list) {
+        var ids = [], seen = {};
+        (Array.isArray(list) ? list : myFrames).forEach(function (f) {
+          if (!f) return;
+          if (f.id && !seen[f.id]) { seen[f.id] = 1; ids.push(f.id); }
+          if (f.overlay && f.overlay.id && !seen[f.overlay.id]) { seen[f.overlay.id] = 1; ids.push(f.overlay.id); }
+          if (Array.isArray(f.overlays)) f.overlays.forEach(function (o) {
+            if (o && o.id && !seen[o.id]) { seen[o.id] = 1; ids.push(o.id); }
+          });
+        });
+        return ids;
+      }
+      function framesSig(list) {
+        return (Array.isArray(list) ? list : []).map(function (f) {
+          var nOv = Array.isArray(f.overlays) ? f.overlays.length : (f.overlay ? 1 : 0);
+          var nSec = Array.isArray(f.sections) ? f.sections.length : 0;
+          return f.id + '@' + (f.savedAt || 0) + '@' + (f.name || '') + '@' + (f.spots ? f.spots.length : 0) + '@' + nOv + '@' + nSec + '@' + (f.tier || '');
+        }).join('|');
+      }
+      function refreshFramesAfterSync() {
+        if (_wantedActiveFrameId && frameById(_wantedActiveFrameId) && (!activeFrameId || !frameById(activeFrameId))) {
+          activeFrameId = _wantedActiveFrameId;
+          setupActiveFrameId = activeFrameId;
+        } else if (myFrames.length && (!activeFrameId || !frameById(activeFrameId))) {
+          activeFrameId = myFrames[0].id;
+          setupActiveFrameId = activeFrameId;
+        } else if (!myFrames.length) {
+          activeFrameId = null; setupActiveFrameId = null;
+        }
+        if (Array.isArray(_wantedChooseIds) && _wantedChooseIds.length) {
+          _wantedChooseIds.forEach(function (id) {
+            if (frameById(id) && chooseIds.indexOf(id) < 0) chooseIds.push(id);
+          });
+        }
+        chooseIds = chooseIds.filter(function (id) { return frameById(id); });
+        if (myFrames.length && !liveSheetItems().length) applyPattern(sheet.pattern);
+        if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
+        if (typeof refreshFrameUI === 'function') refreshFrameUI();
+        if (typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
+        if (typeof renderSetupPreview === 'function') renderSetupPreview();
+      }
+      function scheduleAccountFramesSave() {
+        clearTimeout(frameSaveTimer);
+        frameSaveTimer = setTimeout(function () { saveAccountFrames(); }, 500);
+      }
+      async function saveAccountFrames() {
+        framesCacheLocal();
+        if (!canSyncServer()) return false;
+        if (_framesSyncBusy) { _framesSavePending = true; return false; }
+        _framesSyncBusy = true;
+        try {
+          var ids = frameAssetIds(myFrames);
+          if (ids.length && typeof syncPendingAssets === 'function') {
+            await syncPendingAssets(ids);
+          }
+          var opts = {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: setupBody({ action: 'frames-save', frames: serializeFramesList(myFrames), deleted: frameTomb })
+          };
+          if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') opts.signal = AbortSignal.timeout(20000);
+          var r = await fetch('/api/setup', opts);
+          var j = await r.json().catch(function () { return {}; });
+          if (!r.ok) return false;
+          if (Array.isArray(j.frames)) {
+            var beforeSig = framesSig(myFrames);
+            var m = mergeFrameLists(myFrames, frameTomb, j.frames, j.deleted || {});
+            myFrames = m.list; frameTomb = m.tomb;
+            framesCacheLocal();
+            var afterSig = framesSig(myFrames);
+            ensureAssets(frameAssetIds(myFrames)).then(function () {
+              if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
+              if (typeof refreshFrameUI === 'function') refreshFrameUI();
+              if (typeof renderSetupPreview === 'function') renderSetupPreview();
+            }).catch(function () { });
+            if (beforeSig !== afterSig) refreshFramesAfterSync();
+          }
+          return true;
+        } catch (e) { return false; }
+        finally {
+          _framesSyncBusy = false;
+          if (_framesSavePending) {
+            _framesSavePending = false;
+            setTimeout(function () { saveAccountFrames(); }, 250);
+          }
+        }
+      }
+      async function loadAccountFrames() {
+        var beforeLocalSig = framesSig(myFrames);
+        var loc = framesReadLocal();
+        var mLoc = mergeFrameLists(loc.list, loc.tomb, myFrames, frameTomb);
+        myFrames = mLoc.list; frameTomb = mLoc.tomb;
+        if (framesSig(myFrames) !== beforeLocalSig) {
+          framesCacheLocal();
+          refreshFramesAfterSync();
+          ensureAssets(frameAssetIds(myFrames)).then(function () {
+            if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
+            if (typeof refreshFrameUI === 'function') refreshFrameUI();
+            if (typeof renderSetupPreview === 'function') renderSetupPreview();
+          }).catch(function () { });
+        }
+        if (!canSyncServer()) return true;
+        try {
+          var opts = {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: setupBody({ action: 'frames-get' })
+          };
+          if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') opts.signal = AbortSignal.timeout(15000);
+          var r = await fetch('/api/setup', opts);
+          var j = await r.json().catch(function () { return {}; });
+          if (!r.ok || !Array.isArray(j.frames)) return false;
+          var beforeSig = framesSig(myFrames);
+          var m = mergeFrameLists(myFrames, frameTomb, j.frames, j.deleted || {});
+          var srvClean = mergeFrameLists(j.frames, j.deleted || {}, [], {});
+          var srvSig = framesSig(srvClean.list), mergedSig = framesSig(m.list);
+          myFrames = m.list; frameTomb = m.tomb;
+          framesCacheLocal();
+          if (srvSig !== mergedSig || Object.keys(frameTomb).length > Object.keys(j.deleted || {}).length) {
+            saveAccountFrames();
+          }
+          ensureAssets(frameAssetIds(myFrames)).then(function () {
+            if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
+            if (typeof refreshFrameUI === 'function') refreshFrameUI();
+            if (typeof renderSetupPreview === 'function') renderSetupPreview();
+          }).catch(function () { });
+          if (beforeSig !== mergedSig) refreshFramesAfterSync();
+          return true;
+        } catch (e) { return false; }
+      }
+
+      function applyFramesSetup(s) {
+        var okId = okFrameAssetId;
+        var num = function (v, lo, hi, d) { v = Number(v); return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
+        // Merge account-level frames with incoming setup frames (respecting explicit delete tombstones) so switching
+        // events, loading profiles, or resetting a setup NEVER wipes the user's uploaded frame library.
+        var loc = framesReadLocal();
+        var mBase = mergeFrameLists(loc.list, loc.tomb, myFrames, frameTomb);
+        var incomingFrames = Array.isArray(s.frames) ? s.frames : [];
+        var mAll = mergeFrameLists(mBase.list, mBase.tomb, incomingFrames, {});
+        myFrames = mAll.list;
+        frameTomb = mAll.tomb;
+        framesCacheLocal();
         startFrameDone = okId(s.sfDone) ? s.sfDone : '';
         startLogoDone = okId(s.slDone) ? s.slDone : '';
+        _wantedActiveFrameId = okId(s.activeFrame) ? s.activeFrame : null;
+        _wantedChooseIds = Array.isArray(s.chooseIds) ? s.chooseIds.filter(okId).slice(0, MAX_FRAMES) : null;
         activeFrameId = okId(s.activeFrame) && frameById(s.activeFrame) ? s.activeFrame : (myFrames[0] ? myFrames[0].id : null);
         setupActiveFrameId = activeFrameId;
         // Older setups with several frames were always "all on one sheet".
@@ -77866,6 +78270,7 @@ function fxWavUrl(kind) {
       refreshGuestLayoutChoices();
       markFilterChips();
       scheduleWelcomeRender();
+      var framesLoadPromise = loadAccountFrames();
       var setupLoadPromise = loadSetup(false);
 
       // =====================================================================

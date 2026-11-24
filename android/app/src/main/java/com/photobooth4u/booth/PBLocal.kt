@@ -159,15 +159,14 @@ class PBLocal(private val ctx: Context) {
         return if (port > 0) "http://127.0.0.1:$port" else ""
     }
 
-    /** Returns true if this tablet has an active validated internet connection. */
+    /** Returns true if this tablet has an active internet-capable network connection. */
     @JavascriptInterface
     fun isOnline(): Boolean {
         return try {
             val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return false
             val network = cm.activeNetwork ?: return false
             val caps = cm.getNetworkCapabilities(network) ?: return false
-            caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
         } catch (_: Throwable) {
             false
         }

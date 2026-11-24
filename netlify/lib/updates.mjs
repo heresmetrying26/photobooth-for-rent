@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.102', date: '2026-11-24' },
   { version: '1.1.101', date: '2026-11-24' },
   { version: '1.1.100', date: '2026-11-23' },
   { version: '1.1.99', date: '2026-11-23' },
@@ -244,7 +245,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.24', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.24/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.25', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.25/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -297,6 +298,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-24', title: 'Desktop 1.1.102, Android 1.2.11, iPad 1.1.25 & Website: Account-Wide Uploaded Frames & Seamless Cloud Sync', for: ['website', 'app'],
+    items: [
+      '🖼️ **Uploaded frames stay in your account**: Moved uploaded frames to a permanent account-wide library (`frames-get` / `frames-save`) with two-way merge and explicit delete tracking, plus automatic rescue of frames previously saved in older event setups and profiles. Switching events, loading a profile, updating the app, or resetting Setup never wipes your frames.',
+      '🔄 **Seamless Android, iPad, Desktop & Web syncing**: Fixed false offline blocks on Android hotspots/venue Wi-Fi, refreshed iPad credentials on every `/api/setup` call, triggered automatic sync on app resume/focus/Wi-Fi reconnect and every 30 s, and added tap-to-sync on the save status label.',
+      '⚡ **Reliable large-frame downloads & bigger setups**: Switched frame image downloads to 1 asset per request (3 concurrent) with a 4.4 MB server batch cap so large PNG frames never fail on Netlify, raised setup size limits (`120 KB` → `350 KB`), and fixed the timestamp clobber bug where an empty tablet could overwrite newer cloud setups.'
+    ]
+  },
   {
     date: '2026-11-24', title: 'Desktop 1.1.101, Android 1.2.10, iPad 1.1.24 & Website: Simpler Setup, Live Hover Layout Previews & Faster Mobile Preview', for: ['website', 'app'],
     items: [

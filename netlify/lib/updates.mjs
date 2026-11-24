@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.104', date: '2026-11-24' },
   { version: '1.1.103', date: '2026-11-24' },
   { version: '1.1.102', date: '2026-11-24' },
   { version: '1.1.101', date: '2026-11-24' },
@@ -246,7 +247,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.26', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.26/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.27', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.27/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -299,6 +300,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-24', title: 'Desktop 1.1.104, Android 1.2.13, iPad 1.1.27 & Website: Simpler Photo Spot Editor, Working Frame Search & Filters, No Scroll Jump & Overlay Upload Fix', for: ['website', 'app'],
+    items: [
+      '✨ **Cleaner, faster Edit photo spots & More frame options**: Added a 1-click **Repeat N per strip / All separate** bar inside **Edit photo spots**, simplified Photo # chips to only active shots + `+ #next`, kept **More frame options** collapsed with a live summary, grouped advanced spot tools into neat cards, and rendered resize/tilt handles only on the selected box.',
+      '🔍 **Working frame search & category tabs**: Fixed the **Your frames** search bar and **All / Selected / Strips / 4R / Full** filter tabs with live counts and a quick **Show all frames** reset.',
+      '📍 **No more scroll-to-top jump**: Selecting an uploaded frame near the bottom of **Your frames** now keeps your exact scroll position instead of jumping back to the top.',
+      '🧩 **Overlays always appear right away**: Fixed a sync race and over-aggressive white-background removal that could leave newly uploaded PNG/Canva overlays invisible after the "Overlay added!" message.'
+    ]
+  },
   {
     date: '2026-11-24', title: 'Desktop 1.1.103, Android 1.2.12, iPad 1.1.26 & Website: Restored Layout Picker & Uploaded Frames Startup Sync', for: ['website', 'app'],
     items: [

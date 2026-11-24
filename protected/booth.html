@@ -9552,6 +9552,15 @@
       color: var(--ink-dim);
       padding: 16px 8px;
       margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .layout-btn[hidden],
+    .fp-tile[hidden] {
+      display: none !important;
     }
 
     .layout-btn {
@@ -11475,15 +11484,133 @@
       -webkit-user-select: none;
     }
 
+    .spot-edit-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .spot-edit-head-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .spot-edit-title {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .spot-quick-bar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 8px 0 0;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+
+    .spot-quick-lbl {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-dim);
+      margin-right: 2px;
+    }
+
+    .spot-quick-chip {
+      border: 1.5px solid var(--line);
+      background: var(--panel-2);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 5px 11px;
+      font: 700 12px/1.2 'Manrope', sans-serif;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .spot-quick-chip.active {
+      background: var(--blue-deep);
+      border-color: var(--blue-deep);
+      color: #fff;
+    }
+
     .spot-photo-row {
       display: flex;
       flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+      padding: 10px 11px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1.5px solid var(--line);
+    }
+
+    .spot-box-acts {
+      display: flex;
+      flex-wrap: wrap;
       gap: 6px;
-      margin-top: 10px;
+      padding-top: 6px;
+      border-top: 1px solid var(--line);
+    }
+
+    .spot-box-acts .action-btn {
+      width: auto;
+      margin: 0;
+      padding: 6px 11px;
+      font-size: 12px;
+    }
+
+    .spot-adv-card {
       padding: 9px 10px;
       border-radius: 10px;
       background: #fff;
-      border: 1.5px solid var(--line);
+      border: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .spot-adv-card .sub-label {
+      margin: 0;
+      font-size: 11.5px;
+      letter-spacing: 0.02em;
+    }
+
+    .spot-adv-card .decor-btns {
+      gap: 6px;
+    }
+
+    .spot-adv-card .decor-btns .action-btn {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    .spot-shot-chip.is-new {
+      border-style: dashed;
+      color: var(--blue-deep);
+    }
+
+    .frame-crop-sub {
+      margin-top: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 5px 8px;
+    }
+
+    .frame-crop-sub > summary {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-dim);
+      cursor: pointer;
     }
 
     .spot-photo-head {
@@ -20571,28 +20698,23 @@
           <div class="frame-details-wrap" id="frameDetailsWrap" style="display:none;">
             <div class="frame-ctx" id="frameCtx" style="display:none;"></div>
             <div class="decor-sel" id="spotEditControls" style="display:none;">
-              <p class="panel-hint" style="margin:0 0 8px;">Tap a box to select it, then drag to move or drag its corner
-                to resize. The numbers are the photo order (1 = first shot).</p>
-              <div class="decor-btns"><button type="button" class="action-btn" id="spotAdd">+ Add spot</button><button
-                  type="button" class="action-btn primary" id="spotDupSame"
-                  title="Duplicate this spot sharing the exact same Photo # (no extra photo taken)">Duplicate (same
-                  photo)</button><button type="button" class="action-btn" id="spotCopy"
-                  title="Make another box the same size and tilt as a new shot">Copy as new shot</button><button
-                  type="button" class="action-btn" id="spotDel" style="color:#c0392b;">Remove spot</button><button
-                  type="button" class="action-btn" id="spotRedetect">Find again</button><button type="button"
-                  class="action-btn primary" id="spotDone">Done</button></div>
-              <p class="sub-label" style="margin:10px 0 4px;">Selected box</p>
-              <div class="decor-btns">
-                <button type="button" class="action-btn primary" id="spotSnap"
-                  title="Fit this box to the photo window under it: edges, size and tilt">&#129522; Snap to
-                  window</button>
-                <button type="button" class="action-btn" id="spotEarlier">&#9664; Earlier shot</button>
-                <button type="button" class="action-btn" id="spotLater">Later shot &#9654;</button>
+              <div class="spot-edit-head">
+                <div class="spot-edit-head-left">
+                  <span class="spot-edit-title">Edit photo spots</span>
+                  <span class="spot-shot-badge" id="spotShotBadge">1 shot · 1 spot</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <button type="button" class="action-btn" id="spotAdd" style="width:auto;margin:0;padding:6px 11px;font-size:12px;">+ Add box</button>
+                  <button type="button" class="action-btn primary" id="spotDone" style="width:auto;margin:0;padding:6px 14px;">&#10003; Done</button>
+                </div>
               </div>
+              <p class="panel-hint" style="margin:0;">Tap a box on the preview to move, resize, or choose which photo goes in it.</p>
+              <div class="spot-quick-bar" id="spotQuickRepeat" style="display:none;"></div>
+              <p class="panel-hint" id="spotNoSelHint" style="display:none;margin:8px 0 0;padding:8px 10px;border-radius:10px;background:#fff;border:1px dashed var(--line);">Tap any numbered box on the preview to adjust it, or tap <b>+ Add box</b> above.</p>
               <div class="spot-photo-row" id="spotPhotoRow" style="display:none;">
                 <div class="spot-photo-head">
-                  <span class="spot-photo-lbl" id="spotSelectedLbl">Box 1</span>
-                  <span class="spot-shot-badge" id="spotShotBadge">1 shot · 1 spot</span>
+                  <span class="spot-photo-lbl" id="spotSelectedLbl">Box 1 · Photo #1</span>
+                  <button type="button" class="remove-link" id="spotDel" style="display:inline;margin:0;font-size:12px;">Remove box</button>
                 </div>
                 <div class="spot-photo-ctrl">
                   <span class="spot-shot-title">Photo #</span>
@@ -20603,25 +20725,81 @@
                   </div>
                   <div class="spot-shot-chips" id="spotShotChips"></div>
                 </div>
-                <p class="panel-hint" style="margin:0; font-size:11.5px;">Give two boxes the same <b>Photo #</b> to
-                  duplicate a shot (e.g. 6-spot strip taking only 4 shots).</p>
-              </div>
-              <div class="spot-rot-row" id="spotRotRow" style="display:none; width:100%; margin-top:8px;">
-                <span style="font-size:12px;font-weight:700;color:var(--ink-dim);">Photo rotation:</span>
-                <button type="button" class="spot-rot-btn" data-spot-rot="0">0&deg; Upright</button>
-                <button type="button" class="spot-rot-btn" data-spot-rot="90">+90&deg; &#8635;</button>
-                <button type="button" class="spot-rot-btn" data-spot-rot="180">180&deg;</button>
-                <button type="button" class="spot-rot-btn" data-spot-rot="270">-90&deg; &#8634;</button>
+                <p class="panel-hint" style="margin:-2px 0 0;font-size:11.5px;">Boxes with the same number show the same photo.</p>
+                <div class="spot-box-acts">
+                  <button type="button" class="action-btn" id="spotSnap"
+                    title="Fit this box to the photo window under it: edges, size and tilt">&#129522; Fit to window</button>
+                  <button type="button" class="action-btn" id="spotDupSame"
+                    title="Duplicate this box sharing the exact same Photo # (no extra photo taken)">Duplicate (same #)</button>
+                </div>
+                <div class="spot-rot-row" id="spotRotRow" style="display:none; width:100%; margin-top:2px;">
+                  <span style="font-size:12px;font-weight:700;color:var(--ink-dim);">Rotate photo:</span>
+                  <button type="button" class="spot-rot-btn" data-spot-rot="0">0&deg;</button>
+                  <button type="button" class="spot-rot-btn" data-spot-rot="90">+90&deg; &#8635;</button>
+                  <button type="button" class="spot-rot-btn" data-spot-rot="180">180&deg;</button>
+                  <button type="button" class="spot-rot-btn" data-spot-rot="270">-90&deg; &#8634;</button>
+                </div>
               </div>
               <details class="pb-more" id="spotAdvDetails" style="margin-top:10px;">
-                <summary>More spot &amp; multi-layout tools <small>4-in-1 sections, split box, link shots, window colour</small></summary>
-                <div class="pb-more-body">
-                  <div class="spot-sec-box" id="spotSecBox" style="margin-top:2px;">
-                    <p class="sub-label" style="margin:0 0 6px;">Auto-section &amp; multi-layout (4-in-1, strips)</p>
+                <summary>Advanced spot tools <small>Auto-detect, split, exact position, 4-in-1, window colour</small></summary>
+                <div class="pb-more-body" style="gap:8px;">
+                  <div class="spot-adv-card">
+                    <p class="sub-label">Auto-detect &amp; window colour</p>
+                    <div class="decor-btns key-row">
+                      <button type="button" class="action-btn" id="spotRedetect">Find spots again</button>
+                      <button type="button" class="action-btn" id="spotPickColor">&#127919; Pick window colour</button>
+                      <span class="key-swatch" id="spotKeySwatch" title="Photo window colour"></span>
+                      <label class="key-tol" id="spotKeyTolWrap" style="display:none;">Match <input type="range"
+                          id="spotKeyTol" min="6" max="90" step="2"></label>
+                      <button type="button" class="action-btn" id="spotKeyClear" style="display:none;">White / see-through only</button>
+                    </div>
+                    <p class="panel-hint" id="spotPickHint"
+                      style="display:none; margin:0; color:#C93D27; font-weight:700;">Tap one photo window on the preview to pick its colour.</p>
+                    <label class="toggle-row" style="margin:0;font-size:12px;"><input type="checkbox" id="spotShowWin" checked>
+                      Highlight photo windows (blue)</label>
+                  </div>
+                  <div class="spot-adv-card">
+                    <p class="sub-label">Copy, split &amp; overlap</p>
+                    <div class="decor-btns">
+                      <button type="button" class="action-btn" id="spotCopy"
+                        title="Make another box the same size and tilt as a new shot">Copy as new shot</button>
+                      <button type="button" class="action-btn" id="spotSplitX">Split 2 &#8596;</button>
+                      <button type="button" class="action-btn" id="spotSplitY">Split 2 &#8597;</button>
+                      <button type="button" class="action-btn" id="spotSplit4">Split 4</button>
+                      <button type="button" class="action-btn" id="spotFront"
+                        title="This photo shows on top where boxes overlap">&#11014; Front</button>
+                      <button type="button" class="action-btn" id="spotBack"
+                        title="This photo goes under the others where boxes overlap">&#11015; Back</button>
+                    </div>
+                    <div class="decor-btns">
+                      <button type="button" class="action-btn" id="spotEarlier" title="Swap this box earlier in the box list">&#9664; Earlier box</button>
+                      <button type="button" class="action-btn" id="spotLater" title="Swap this box later in the box list">Later box &#9654;</button>
+                      <button type="button" class="action-btn" id="spotCopyStrip"
+                        title="Make the selected box's strip show the same photos as another strip">Copy another strip&hellip;</button>
+                      <button type="button" class="action-btn" id="spotShotAuto">Reset photo #s</button>
+                    </div>
+                  </div>
+                  <div class="spot-adv-card" id="spotSizeCard">
+                    <p class="sub-label">Exact position &amp; tilt</p>
+                    <div class="spot-size" id="spotSize"
+                      style="display:none; gap:8px; flex-wrap:wrap; align-items:center; font-size:12px; font-weight:700;">
+                      <label>Left % <input type="number" id="spotX" min="0" max="100" step="0.5" style="width:58px;"></label>
+                      <label>Top % <input type="number" id="spotY" min="0" max="100" step="0.5" style="width:58px;"></label>
+                      <label>W % <input type="number" id="spotW" min="2" max="100" step="0.5" style="width:58px;"></label>
+                      <label>H % <input type="number" id="spotH" min="2" max="100" step="0.5" style="width:58px;"></label>
+                      <label>Tilt &deg; <input type="number" id="spotA" min="-45" max="45" step="0.5" style="width:56px;"></label>
+                      <button type="button" class="action-btn" id="spotTurnL" style="width:auto; margin:0; padding:5px 8px;"
+                        title="Tilt 1° left">&#8634; 1&deg;</button>
+                      <button type="button" class="action-btn" id="spotTurnR" style="width:auto; margin:0; padding:5px 8px;"
+                        title="Tilt 1° right">1&deg; &#8635;</button>
+                    </div>
+                  </div>
+                  <div class="spot-adv-card spot-sec-box" id="spotSecBox">
+                    <p class="sub-label">4-in-1 &amp; cuttable sections</p>
                     <div class="decor-btns" style="align-items:center;">
-                      <button type="button" class="action-btn primary" id="spotAutoSec" style="width:auto;margin:0;"
-                        title="Detect cuttable sections (Polaroid, Mini Wallet, Mini Strips), auto-rotate sideways ones and link duplicate strips">&#10024; Auto-section</button>
-                      <select class="mini-select" id="spotSecPreset" aria-label="Section blueprint" style="width:auto;max-width:190px;height:34px;font-size:12px;">
+                      <button type="button" class="action-btn" id="spotAutoSec" style="width:auto;margin:0;"
+                        title="Detect cuttable sections (Polaroid, Mini Wallet, Mini Strips), auto-rotate sideways ones and link duplicate strips">&#10024; Auto-detect sections</button>
+                      <select class="mini-select" id="spotSecPreset" aria-label="Section blueprint" style="width:auto;max-width:190px;height:32px;font-size:12px;">
                         <option value="">Apply blueprint&hellip;</option>
                         <option value="4in1-land">4-in-1 (6&times;4 Landscape)</option>
                         <option value="4in1-port">4-in-1 (4&times;6 Portrait)</option>
@@ -20644,7 +20822,7 @@
                       <button type="button" class="spot-rot-btn" data-sec-rot="180">180&deg;</button>
                       <button type="button" class="spot-rot-btn" data-sec-rot="270">-90&deg; &#8634;</button>
                     </div>
-                    <div class="decor-btns" id="spotSecRecipes" style="display:none;margin-top:8px;">
+                    <div class="decor-btns" id="spotSecRecipes" style="display:none;">
                       <button type="button" class="action-btn" id="spotRec3" style="width:auto;margin:0;font-size:11.5px;"
                         title="Strips share photos 1-2-3; Polaroid and Wallet show photo 1">3 shots (linked)</button>
                       <button type="button" class="action-btn" id="spotRec4" style="width:auto;margin:0;font-size:11.5px;"
@@ -20652,52 +20830,9 @@
                       <button type="button" class="action-btn" id="spotRecAll" style="width:auto;margin:0;font-size:11.5px;"
                         title="Every spot takes its own separate photo">All separate</button>
                     </div>
-                    <label class="toggle-row" id="spotShowSecRow" style="display:none;margin-top:6px;"><input type="checkbox" id="spotShowSec" checked>
+                    <label class="toggle-row" id="spotShowSecRow" style="display:none;margin:0;font-size:12px;"><input type="checkbox" id="spotShowSec" checked>
                       Show section cut guides</label>
                   </div>
-                  <p class="sub-label" style="margin:6px 0 2px;">Split or layer selected box</p>
-                  <div class="decor-btns">
-                    <button type="button" class="action-btn" id="spotSplitX">Split in 2 &#8596;</button>
-                    <button type="button" class="action-btn" id="spotSplitY">Split in 2 &#8597;</button>
-                    <button type="button" class="action-btn" id="spotSplit4">Split in 4</button>
-                    <button type="button" class="action-btn" id="spotFront"
-                      title="This photo shows on top where boxes overlap">&#11014; Bring to front</button>
-                    <button type="button" class="action-btn" id="spotBack"
-                      title="This photo goes under the others where boxes overlap">&#11015; Send to back</button>
-                  </div>
-                  <div class="spot-size" id="spotSize"
-                    style="display:none; margin-top:6px; gap:8px; flex-wrap:wrap; align-items:center; font-size:12.5px; font-weight:700;">
-                    <label>Left % <input type="number" id="spotX" min="0" max="100" step="0.5" style="width:64px;"></label>
-                    <label>Top % <input type="number" id="spotY" min="0" max="100" step="0.5" style="width:64px;"></label>
-                    <label>Width % <input type="number" id="spotW" min="2" max="100" step="0.5" style="width:64px;"></label>
-                    <label>Height % <input type="number" id="spotH" min="2" max="100" step="0.5"
-                        style="width:64px;"></label>
-                    <label>Tilt ° <input type="number" id="spotA" min="-45" max="45" step="0.5" style="width:64px;"></label>
-                    <button type="button" class="action-btn" id="spotTurnL" style="width:auto; margin:0;"
-                      title="Tilt 1° left">&#8634; 1°</button>
-                    <button type="button" class="action-btn" id="spotTurnR" style="width:auto; margin:0;"
-                      title="Tilt 1° right">1° &#8635;</button>
-                  </div>
-                  <p class="sub-label" style="margin:6px 0 2px;">Link photos by hand</p>
-                  <div class="decor-btns"><button type="button" class="action-btn" id="spotCopyStrip"
-                      title="Make the selected box's strip show the same photos as another strip">Copy a strip's
-                      photos&hellip;</button><button type="button" class="action-btn" id="spotShotAuto">Back to
-                      automatic</button></div>
-                  <p class="panel-hint" style="margin:4px 0 0;">Boxes with the same <b>Photo #</b> show the same photo.</p>
-                  <p class="sub-label" style="margin:6px 0 2px;">Photo windows</p>
-                  <div class="decor-btns key-row">
-                    <button type="button" class="action-btn" id="spotPickColor">&#127919; Pick window colour</button>
-                    <span class="key-swatch" id="spotKeySwatch" title="Photo window colour"></span>
-                    <label class="key-tol" id="spotKeyTolWrap" style="display:none;">Match <input type="range"
-                        id="spotKeyTol" min="6" max="90" step="2"></label>
-                    <button type="button" class="action-btn" id="spotKeyClear" style="display:none;">White / see-through
-                      only</button>
-                  </div>
-                  <p class="panel-hint" id="spotPickHint"
-                    style="display:none; margin:4px 0 0; color:#C93D27; font-weight:700;">Tap a photo window in the preview
-                    to pick its colour.</p>
-                  <label class="toggle-row" style="margin-top:4px;"><input type="checkbox" id="spotShowWin" checked>
-                    Highlight the photo windows (blue)</label>
                 </div>
               </details>
             </div>
@@ -38150,43 +38285,128 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         return l;
       }
       var frameGridFilter = { q: '', mode: 'all' };
-      function frameMatchesGridFilter(f) {
+      function isFrameSelectedInGrid(f) {
+        if (!f) return false;
+        if (typeof activeFrameId !== 'undefined' && f.id === activeFrameId) return true;
+        if (typeof guestPickOn !== 'undefined' && guestPickOn && typeof chooseIds !== 'undefined' && chooseIds.indexOf(f.id) >= 0) return true;
+        return false;
+      }
+      function frameMatchesGridFilter(f, modeOverride) {
         if (!f) return true;
+        var mode = modeOverride !== undefined ? modeOverride : frameGridFilter.mode;
         var q = (frameGridFilter.q || '').trim().toLowerCase();
         if (q) {
           var nm = (f.name || ('Frame ' + (myFrames.indexOf(f) + 1))).toLowerCase();
-          var shape = frameShapeLabel(f).toLowerCase();
-          if (nm.indexOf(q) < 0 && shape.indexOf(q) < 0) return false;
+          var shape = frameShapeLabel(f).replace(/<[^>]*>/g, '').toLowerCase();
+          var shots = typeof frameShotCount === 'function' ? (frameShotCount(f) + ' shot') : '';
+          if (nm.indexOf(q) < 0 && shape.indexOf(q) < 0 && shots.indexOf(q) < 0) return false;
         }
-        if (frameGridFilter.mode === 'selected') {
-          var isSel = (typeof activeFrameId !== 'undefined' && f.id === activeFrameId) || (typeof chooseIds !== 'undefined' && chooseIds.indexOf(f.id) >= 0);
-          if (!isSel) return false;
-        } else if (frameGridFilter.mode === 'strip') {
+        if (mode === 'selected') {
+          if (!isFrameSelectedInGrid(f)) return false;
+        } else if (mode === 'strip') {
           if (f.h / Math.max(1, f.w) < 1.8) return false;
-        } else if (frameGridFilter.mode === 'card4r') {
+        } else if (mode === 'card4r') {
           if (f.h / Math.max(1, f.w) >= 1.8) return false;
         }
         return true;
       }
-      function applyFrameGridFilter() {
+      function refreshFrameGridFilterChips() {
+        var wrap = layoutGrid && layoutGrid.querySelector('.lay-group-frames');
+        if (!wrap || !myFrames || !myFrames.length) return;
+        var cntAll = myFrames.length, cntSel = 0, cntStrip = 0, cnt4r = 0;
+        myFrames.forEach(function (f) {
+          if (isFrameSelectedInGrid(f)) cntSel++;
+          if (f.h / Math.max(1, f.w) >= 1.8) cntStrip++;
+          else cnt4r++;
+        });
+        var labels = {
+          all: 'All (' + cntAll + ')',
+          selected: 'Selected (' + cntSel + ')',
+          strip: 'Strips (' + cntStrip + ')',
+          card4r: '4R / Full (' + cnt4r + ')'
+        };
+        [].forEach.call(wrap.querySelectorAll('.lay-frame-chip[data-fgmode]'), function (cb) {
+          var m = cb.dataset.fgmode;
+          if (labels[m]) cb.textContent = labels[m];
+          cb.classList.toggle('active', frameGridFilter.mode === m);
+        });
+      }
+      function applyFrameGridFilter(resetScroll) {
         var grid = layoutGrid.querySelector('.lay-group-frames .layout-grid');
         if (!grid) return;
+        var q = (frameGridFilter.q || '').trim().toLowerCase();
+        var mode = frameGridFilter.mode || 'all';
+        var filtering = !!(q || mode !== 'all');
         var shown = 0;
-        [].forEach.call(grid.querySelectorAll('.layout-btn[data-layout^="frame:"]'), function (b) {
-          var f = frameById(b.dataset.layout.slice(6));
-          var ok = frameMatchesGridFilter(f);
-          b.hidden = !ok;
-          if (ok) shown++;
+        [].forEach.call(grid.querySelectorAll('.layout-btn'), function (b) {
+          var k = b.dataset.layout || '';
+          if (k === 'add') {
+            b.hidden = filtering;
+            return;
+          }
+          if (k.indexOf('frame:') === 0) {
+            var f = frameById(k.slice(6));
+            var ok = frameMatchesGridFilter(f);
+            b.hidden = !ok;
+            if (ok) shown++;
+            return;
+          }
+          if (k === 'framesheet' || k.indexOf('sheet:') === 0) {
+            var sheetOk = true;
+            if (mode === 'strip' || mode === 'card4r') sheetOk = false;
+            else if (mode === 'selected') {
+              sheetOk = (typeof isGuestKey === 'function' && isGuestKey(k)) || (typeof layoutCardKey === 'function' && layoutCardKey() === k);
+            }
+            if (sheetOk && q) {
+              var txt = (b.textContent || '').toLowerCase();
+              if (txt.indexOf(q) < 0) sheetOk = false;
+            }
+            b.hidden = !sheetOk;
+            if (sheetOk && filtering) shown++;
+          }
         });
+        refreshFrameGridFilterChips();
+        if (resetScroll) grid.scrollTop = 0;
         var em = grid.querySelector('.lay-frame-empty');
-        if (!shown && frameGridFilter.q) {
-          if (!em) { em = document.createElement('p'); em.className = 'lay-frame-empty'; em.textContent = 'No frames match "' + frameGridFilter.q + '".'; grid.appendChild(em); }
-          else em.textContent = 'No frames match "' + frameGridFilter.q + '".';
+        if (!shown && filtering) {
+          var modeNames = { selected: 'Selected', strip: 'Strips', card4r: '4R / Full' };
+          var msg = q
+            ? ('No frames match "' + frameGridFilter.q.trim() + '"' + (mode !== 'all' ? (' in ' + (modeNames[mode] || mode)) : '') + '.')
+            : ('No frames in ' + (modeNames[mode] || mode) + '.');
+          if (!em) {
+            em = document.createElement('div');
+            em.className = 'lay-frame-empty';
+            grid.appendChild(em);
+          }
+          em.innerHTML = '';
+          var sp = document.createElement('span'); sp.textContent = msg;
+          var rst = document.createElement('button'); rst.type = 'button'; rst.className = 'action-btn mini';
+          rst.style.cssText = 'width:auto;margin:0;';
+          rst.textContent = 'Show all frames';
+          rst.addEventListener('click', function () {
+            frameGridFilter.q = '';
+            frameGridFilter.mode = 'all';
+            var sIn = layoutGrid.querySelector('.lay-frame-search');
+            if (sIn) sIn.value = '';
+            applyFrameGridFilter(true);
+          });
+          em.append(sp, rst);
         } else if (em) {
           em.remove();
         }
       }
       function buildLayoutPicker() {
+        const prevGrid = layoutGrid.querySelector('.lay-group-frames .layout-grid');
+        const prevGridScrollTop = prevGrid ? prevGrid.scrollTop : 0;
+        const prevGridScrollLeft = prevGrid ? prevGrid.scrollLeft : 0;
+        const prevSearchEl = layoutGrid.querySelector('.lay-frame-search');
+        const wasSearchFocused = !!(prevSearchEl && document.activeElement === prevSearchEl);
+        const prevSearchSelStart = wasSearchFocused ? prevSearchEl.selectionStart : null;
+        const prevSearchSelEnd = wasSearchFocused ? prevSearchEl.selectionEnd : null;
+        const prevWinScrollY = window.scrollY;
+        const prevWinScrollX = window.scrollX;
+        const prevH = layoutGrid.offsetHeight;
+        if (prevH > 0) layoutGrid.style.minHeight = prevH + 'px';
         const fdw = document.getElementById('frameDetailsWrap');
         if (fdw && fdw.parentNode) fdw.parentNode.removeChild(fdw);
         layoutGrid.innerHTML = '';
@@ -38214,16 +38434,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               const sIn = document.createElement('input'); sIn.type = 'search'; sIn.className = 'lay-frame-search';
               sIn.placeholder = 'Search ' + myFrames.length + ' frames…'; sIn.value = frameGridFilter.q || '';
               sIn.setAttribute('aria-label', 'Search uploaded frames');
-              sIn.addEventListener('input', function () { frameGridFilter.q = sIn.value; applyFrameGridFilter(); });
+              sIn.addEventListener('input', function () { frameGridFilter.q = sIn.value; applyFrameGridFilter(true); });
               const chips = document.createElement('div'); chips.className = 'lay-frame-chips';
               [['all', 'All'], ['selected', 'Selected'], ['strip', 'Strips'], ['card4r', '4R / Full']].forEach(function (cfg) {
                 const cb = document.createElement('button'); cb.type = 'button';
+                cb.dataset.fgmode = cfg[0];
                 cb.className = 'lay-frame-chip' + (frameGridFilter.mode === cfg[0] ? ' active' : '');
                 cb.textContent = cfg[1];
                 cb.addEventListener('click', function () {
                   frameGridFilter.mode = cfg[0];
-                  chips.querySelectorAll('.lay-frame-chip').forEach(function (x, xi) { x.classList.toggle('active', xi === ['all', 'selected', 'strip', 'card4r'].indexOf(cfg[0])); });
-                  applyFrameGridFilter();
+                  applyFrameGridFilter(true);
                 });
                 chips.appendChild(cb);
               });
@@ -38245,7 +38465,6 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               grid.appendChild(addFrameCard());
             }
             wrap.appendChild(grid);
-            if (hasFrames && myFrames.length >= 6) applyFrameGridFilter();
             if (fdw) wrap.appendChild(fdw);
           } else {
             g.keys.forEach(k => grid.appendChild(layoutCard(k)));
@@ -38254,12 +38473,31 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           layoutGrid.appendChild(wrap);
         });
         if (fdw && !fdw.parentNode) layoutGrid.appendChild(fdw);
+        if (hasFrames && myFrames.length >= 6) applyFrameGridFilter(false);
         const ak = layoutCardKey();
         [...layoutGrid.querySelectorAll('.layout-btn')].forEach(b => { const on = b.dataset.layout === ak; b.classList.toggle('active', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
         layoutHint.textContent = layoutDef().hint;
         if (typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
         if (typeof ltCache !== 'undefined' && ltCache) { applyCachedLayoutThumbs(); markLayoutThumbsDirty(); }
         try { refreshTierUI(); } catch (e) { }
+        const newGrid = layoutGrid.querySelector('.lay-group-frames .layout-grid');
+        if (newGrid && (prevGridScrollTop > 0 || prevGridScrollLeft > 0)) {
+          newGrid.scrollTop = prevGridScrollTop;
+          newGrid.scrollLeft = prevGridScrollLeft;
+        }
+        layoutGrid.style.minHeight = '';
+        if (wasSearchFocused) {
+          const newSearchEl = layoutGrid.querySelector('.lay-frame-search');
+          if (newSearchEl) {
+            try { newSearchEl.focus({ preventScroll: true }); } catch (e) { try { newSearchEl.focus(); } catch (e2) { } }
+            if (prevSearchSelStart !== null && newSearchEl.setSelectionRange) {
+              try { newSearchEl.setSelectionRange(prevSearchSelStart, prevSearchSelEnd); } catch (e) { }
+            }
+          }
+        }
+        if (Math.abs(window.scrollY - prevWinScrollY) > 2) {
+          window.scrollTo(prevWinScrollX, prevWinScrollY);
+        }
       }
       const fdwInit = document.getElementById('frameDetailsWrap');
       if (fdwInit) fdwInit.addEventListener('click', (e) => e.stopPropagation());
@@ -38286,18 +38524,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (typeof selFrameOv !== 'undefined') selFrameOv = -1;
           setupLayout = 'myframe';
           if (guestPickOn && chooseIds.indexOf(activeFrameId) < 0) chooseIds.push(activeFrameId);
-          framesChanged({ layout: 'myframe' });
+          framesChanged({ layout: 'myframe', selectOnly: true });
           return;
         }
         if (/^sheet:/.test(key)) {
           keepPrevMain();
-          loadSheetPreset(key.slice(6));
           if (typeof layoutEdit !== 'undefined') layoutEdit = null;
           if (typeof selFrameOv !== 'undefined') selFrameOv = -1;
           setupLayout = 'framesheet';
           setupActiveSheetPresetId = key.slice(6);
           if (guestPickOn && guestLayoutSet.indexOf(key) < 0) guestLayoutSet.push(key);
-          framesChanged({ layout: 'framesheet' });
+          loadSheetPreset(key.slice(6));
           return;
         }
         if (typeof layoutEdit !== 'undefined') layoutEdit = null;
@@ -63983,6 +64220,7 @@ function renderTabletBridgeSetup(info) {
           tickAllLayoutsBtn.textContent = allLayoutsTicked() ? 'Only main layout' : 'Tick all layouts';
         }
         if (guestDesigns.length) renderGuestDesignBar();
+        if (typeof refreshFrameGridFilterChips === 'function') refreshFrameGridFilterChips();
         if (!guestPickOn) {
           var selName = (main === 'myframe' || /^frame:/.test(main))
             ? (function () { var fid = /^frame:/.test(main) ? main.slice(6) : activeFrameId; var f = (myFrames || []).find(function (fr) { return fr.id === fid; }); return f ? (f.name || ('Frame ' + ((myFrames.indexOf(f)) + 1))) : 'Your frame'; })()
@@ -70390,15 +70628,25 @@ function fxWavUrl(kind) {
         if (!rec.thumbUrl && rec.img) rec.thumbUrl = makeAssetThumbUrl(rec.img, rec.url);
         return rec.thumbUrl || rec.url || '';
       }
-      function registerAsset(id, url) {
-        if (ASSETS[id] && ASSETS[id].url === url) return ASSETS[id];
-        var rec = { url: url, img: null, thumbUrl: '' };
+      function registerAsset(id, url, preloadedImg) {
+        if (ASSETS[id] && ASSETS[id].url === url) {
+          if (preloadedImg && !ASSETS[id].img && (preloadedImg.naturalWidth || preloadedImg.width)) ASSETS[id].img = preloadedImg;
+          return ASSETS[id];
+        }
+        var hasPre = !!(preloadedImg && (preloadedImg.naturalWidth || preloadedImg.width));
+        var rec = { url: url, img: hasPre ? preloadedImg : null, thumbUrl: '' };
         ASSETS[id] = rec;
-        if (/^data:audio\//.test(url)) return rec;          // own shutter / countdown sound
+        if (/^data:audio\//.test(url) || hasPre) return rec;          // own shutter / countdown sound or already decoded
         var im = new Image();
         im.onload = function () {
           rec.img = im;
-          var isActiveNow = (typeof activeFrameId !== 'undefined' && id === activeFrameId) || (overlay && id === overlay.id) || (logo && id === logo.id);
+          var isOvNow = false;
+          try {
+            var afNow = typeof activeFrame === 'function' ? activeFrame() : null;
+            if (afNow && typeof frameOverlayList === 'function' && frameOverlayList(afNow).some(function (o) { return o && o.id === id; })) isOvNow = true;
+            if (!isOvNow && typeof sheet !== 'undefined' && sheet && Array.isArray(sheet.overlays) && sheet.overlays.some(function (o) { return o && o.id === id; })) isOvNow = true;
+          } catch (e) { }
+          var isActiveNow = isOvNow || (typeof activeFrameId !== 'undefined' && id === activeFrameId) || (overlay && id === overlay.id) || (logo && id === logo.id);
           scheduleAssetRedraw(isActiveNow);
         };
         im.src = url;
@@ -70498,9 +70746,9 @@ function fxWavUrl(kind) {
         await Promise.all([worker(), worker()]);
         return { allOk: allOk, offline: offline };
       }
-      async function addAsset(url, wantedId) {
+      async function addAsset(url, wantedId, preloadedImg) {
         var id = wantedId || newAssetId();
-        registerAsset(id, url); cacheAssetLocal(id, url);
+        registerAsset(id, url, preloadedImg); cacheAssetLocal(id, url);
         await pushAsset(id, url);
         return id;
       }
@@ -72762,7 +73010,7 @@ function fxWavUrl(kind) {
         buildSheetPatterns();
         buildFramePick();
         buildSheetPresetUI();
-        framesChanged({ layout: 'framesheet' });
+        framesChanged({ layout: 'framesheet', selectOnly: true });
         if (!skipSave && typeof scheduleSetupSave === 'function') scheduleSetupSave();
       }
       function saveCurrentAsNewPreset(customName) {
@@ -72980,11 +73228,14 @@ function fxWavUrl(kind) {
       }
       // Removes only white background connected to the outer edges (for Canva Free overlays),
       // keeping solid white fills enclosed inside dark outlines (e.g. white doodles, cups, text).
-      function knockoutOuterWhite(img) {
+      // Also computes remaining visible bounds so a sticker exported on a huge white page stays
+      // crisp and well-sized when dragged, and never turns an all-white graphic completely invisible.
+      function knockoutOuterWhiteInfo(img) {
         var W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
         var c = document.createElement('canvas'); c.width = W; c.height = H;
         var x = c.getContext('2d');
         x.drawImage(img, 0, 0, W, H);
+        var info = { canvas: c, trimmed: null, removedRatio: 0, keptPixels: W * H, keptRatio: 1, tooEmpty: false };
         try {
           var id = x.getImageData(0, 0, W, H), d = id.data, n = W * H;
           var vis = new Uint8Array(n);
@@ -73031,21 +73282,56 @@ function fxWavUrl(kind) {
               }
             }
           }
+          var removed = 0, kept = 0, minX = W, minY = H, maxX = -1, maxY = -1;
           for (var p = 0; p < n; p++) {
-            if (vis[p]) { d[p * 4 + 3] = 0; continue; }
+            if (vis[p]) {
+              if (d[p * 4 + 3] >= 20) removed++;
+              d[p * 4 + 3] = 0;
+              continue;
+            }
             var px = p % W, py = (p - px) / W;
             var touches = (px > 0 && vis[p - 1]) || (px < W - 1 && vis[p + 1]) || (py > 0 && vis[p - W]) || (py < H - 1 && vis[p + W]);
-            if (!touches) continue;
-            var k = p * 4, r = d[k], g = d[k + 1], b = d[k + 2];
-            var mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
-            var mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
-            if (mx - mn <= 28 && mn >= 200) {
-              d[k + 3] = Math.round(d[k + 3] * Math.max(0, 236 - mn) / 36);
+            if (touches) {
+              var k = p * 4, r = d[k], g = d[k + 1], b = d[k + 2];
+              var mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+              var mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
+              if (mx - mn <= 28 && mn >= 200) {
+                d[k + 3] = Math.round(d[k + 3] * Math.max(0, 236 - mn) / 36);
+              }
+            }
+            if (d[p * 4 + 3] >= 24) {
+              kept++;
+              if (px < minX) minX = px;
+              if (px > maxX) maxX = px;
+              if (py < minY) minY = py;
+              if (py > maxY) maxY = py;
             }
           }
+          info.removedRatio = n ? (removed / n) : 0;
+          info.keptPixels = kept;
+          info.keptRatio = n ? (kept / n) : 0;
+          if (kept < Math.max(25, Math.floor(n * 0.002))) {
+            info.tooEmpty = true;
+            return info;
+          }
           x.putImageData(id, 0, 0);
+          if (maxX > minX && maxY > minY) {
+            var pad = 2;
+            var tx0 = Math.max(0, minX - pad), ty0 = Math.max(0, minY - pad);
+            var tw = Math.min(W - tx0, maxX - tx0 + 1 + pad);
+            var th = Math.min(H - ty0, maxY - ty0 + 1 + pad);
+            if (tw >= 4 && th >= 4 && (tw < W * 0.88 || th < H * 0.88)) {
+              var tc = document.createElement('canvas'); tc.width = tw; tc.height = th;
+              tc.getContext('2d').drawImage(c, tx0, ty0, tw, th, 0, 0, tw, th);
+              info.trimmed = tc;
+            }
+          }
         } catch (e) { }
-        return c;
+        return info;
+      }
+      function knockoutOuterWhite(img) {
+        var info = knockoutOuterWhiteInfo(img);
+        return info.tooEmpty ? img : info.canvas;
       }
       function frameOverlaySource(ov) {
         if (!ov || !ov.id) return null;
@@ -73053,10 +73339,12 @@ function fxWavUrl(kind) {
         if (!img) return null;
         if (!ov.knockoutWhite) return img;
         var rec = FRAME_OV_CACHE[ov.id];
-        if (rec && rec.img === img) return rec.out;
-        var out = knockoutOuterWhite(img);
-        FRAME_OV_CACHE[ov.id] = { img: img, out: out };
-        return out;
+        if (!rec || rec.img !== img) {
+          rec = { img: img, info: knockoutOuterWhiteInfo(img) };
+          FRAME_OV_CACHE[ov.id] = rec;
+        }
+        if (rec.info.tooEmpty) return img;
+        return (!ov.full && rec.info.trimmed) ? rec.info.trimmed : rec.info.canvas;
       }
       function frameOverlayBox(ov, x, y, w, h) {
         var src = frameOverlaySource(ov);
@@ -75085,17 +75373,19 @@ function fxWavUrl(kind) {
       }
       function framesChanged(opts) {
         opts = opts || {};
+        var isSelectOnly = !!opts.selectOnly;
+        var keepGrid = !!(opts.keepGrid || isSelectOnly);
         if (!myFrames.length) { activeFrameId = null; setupActiveFrameId = null; sheet.items = []; sheet.overlays = []; selFrameOv = -1; spotEdit = null; layoutEdit = null; }
         else if (!frameById(activeFrameId)) { activeFrameId = myFrames[0].id; selFrameOv = -1; }
         if (myFrames.length && !frameById(setupActiveFrameId)) setupActiveFrameId = activeFrameId;
         if (layoutEdit && !frameById(layoutEdit.f)) layoutEdit = null;
-        if (!opts.quiet && !opts.skipTouch) {
+        if (!opts.quiet && !opts.skipTouch && !isSelectOnly) {
           var touchNow = Date.now();
           if (opts.touchAll) {
-            myFrames.forEach(function (fr) { fr.savedAt = touchNow; });
+            myFrames.forEach(function (fr) { fr.savedAt = Math.max(touchNow, (fr.savedAt || 0) + 1); });
           } else {
             var afTouch = activeFrame();
-            if (afTouch) afTouch.savedAt = touchNow;
+            if (afTouch) afTouch.savedAt = Math.max(touchNow, (afTouch.savedAt || 0) + 1);
           }
         }
         if (opts.spotOnly && myFrames.length && currentLayout === 'myframe') {
@@ -75120,21 +75410,32 @@ function fxWavUrl(kind) {
         chooseIds = chooseIds.filter(function (id) { return frameById(id); });
         if (myFrames.length && !liveSheetItems().length) applyPattern(sheet.pattern);   // Frame collage card shows a real sheet
         if (isFrameLayout() && !myFrames.length) { setupLayout = 'strip'; }
-        buildLayoutPicker();
+        var hasExistingGrid = !!(keepGrid && myFrames.length && layoutGrid && layoutGrid.querySelector('.lay-group-frames .layout-grid'));
+        if (hasExistingGrid) {
+          var afKeep = activeFrame();
+          if (afKeep && !isSelectOnly) updateActiveFrameCard(afKeep);
+        } else {
+          buildLayoutPicker();
+        }
         if (typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
         setLayout(opts.layout || (isFrameLayout() && !myFrames.length ? 'strip' : currentLayout));
         refreshFrameUI();
         if (typeof scheduleSetupNav === 'function') scheduleSetupNav();
         if (!opts.quiet) {
-          if (typeof framesCacheLocal === 'function') framesCacheLocal();
-          if (typeof scheduleAccountFramesSave === 'function') scheduleAccountFramesSave();
+          if (!isSelectOnly) {
+            if (typeof framesCacheLocal === 'function') framesCacheLocal();
+            if (typeof scheduleAccountFramesSave === 'function') scheduleAccountFramesSave();
+          }
           scheduleSetupSave();
         }
       }
+      var _frameMoreOpen = {};
       function refreshFrameUI() {
         frameListEl.innerHTML = '';
         // The selected frame: its spots, Edit photo spots, Remove, and "same photos on both strips".
         var ctx = document.getElementById('frameCtx'), f = currentLayout === 'myframe' ? activeFrame() : null;
+        var prevCtxH = ctx ? ctx.offsetHeight : 0;
+        if (ctx && f && prevCtxH > 0) ctx.style.minHeight = prevCtxH + 'px';
         ctx.innerHTML = ''; ctx.style.display = f ? '' : 'none';
         if (f) {
           var top = document.createElement('div'); top.className = 'frame-ctx-top';
@@ -75153,8 +75454,10 @@ function fxWavUrl(kind) {
           nameInput.addEventListener('blur', function () { nameInput.style.borderColor = 'var(--line)'; });
           nameInput.addEventListener('change', function () {
             f.name = nameInput.value.trim() || ('Frame ' + (myFrames.indexOf(f) + 1));
-            f.savedAt = Date.now();
-            buildLayoutPicker();
+            f.savedAt = Math.max(Date.now(), (f.savedAt || 0) + 1);
+            if (!updateActiveFrameCard(f)) buildLayoutPicker();
+            else if (typeof applyFrameGridFilter === 'function') applyFrameGridFilter(false);
+            if (typeof refreshPreviewFrameSelect === 'function') refreshPreviewFrameSelect();
             if (typeof framesCacheLocal === 'function') framesCacheLocal();
             if (typeof scheduleAccountFramesSave === 'function') scheduleAccountFramesSave();
             scheduleSetupSave();
@@ -75214,7 +75517,7 @@ function fxWavUrl(kind) {
           if (hasSecs || f.spots.length >= 2) {
             layEd = document.createElement('button'); layEd.type = 'button';
             layEd.className = 'action-btn mini' + (isLayEdit ? ' primary' : '');
-            layEd.textContent = isLayEdit ? 'Done editing layout' : '\uD83D\uDCD0 Split / rotate sections in frame';
+            layEd.textContent = isLayEdit ? 'Done editing layout' : '\uD83D\uDCD0 Arrange 4-in-1 / cut sections';
             layEd.title = hasSecs
               ? 'Move and rotate spliced sections directly in the preview frame (size locked so print cuts stay accurate)'
               : 'Slice this layout into cuttable sections (e.g. strips, 4-in-1) to move and rotate them';
@@ -75480,12 +75783,97 @@ function fxWavUrl(kind) {
           var fMore = document.createElement('details');
           fMore.className = 'pb-more';
           fMore.style.marginTop = '8px';
-          if (frameManual(f) || frameRepeat(f) || f.one === false) fMore.open = true;
+          fMore.open = !!( !spotEdit && _frameMoreOpen[f.id] );
+          fMore.addEventListener('toggle', function () { if (!spotEdit) _frameMoreOpen[f.id] = !!fMore.open; });
+          var fShotsNow = frameShotCount(f);
+          var fMoreParts = [];
+          if (f.spots.length > fShotsNow) fMoreParts.push(fShotsNow + ' shots across ' + f.spots.length + ' spots');
+          if (frameStripCropBase(f) && f.one !== false) fMoreParts.push('Welcome shows 1 strip');
+          var fMoreSub = fMoreParts.length ? fMoreParts.join(' · ') : 'Repeat strips, 4-in-1 sections, printer & welcome crop';
           var fMoreSum = document.createElement('summary');
-          fMoreSum.innerHTML = 'More frame options <small>Duplicate strips, split sections, welcome crop</small>';
+          fMoreSum.innerHTML = 'More frame options <small>' + fMoreSub + '</small>';
           var fMoreBody = document.createElement('div');
           fMoreBody.className = 'pb-more-body';
           fMore.append(fMoreSum, fMoreBody);
+          if (f.spots.length >= 2) {
+            var repRow = document.createElement('div');
+            repRow.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12.5px;font-weight:600;';
+            var isManualNow = frameManual(f);
+            var isRepNow = !!frameRepeat(f);
+            if (!isManualNow && !isRepNow && framePairsGeom(f)) {
+              var cp = document.createElement('label');
+              cp.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;';
+              var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!framePairs(f);
+              cb.addEventListener('change', function () { f.copy = cb.checked; framesChanged({ layout: 'myframe', keepGrid: true }); if (isFrameLayout()) setLayout(currentLayout); });
+              cp.append(cb, document.createTextNode('Same photos on both strips (' + (f.spots.length / 2) + ' shots instead of ' + f.spots.length + ')'));
+              repRow.appendChild(cp);
+            } else {
+              var rp = document.createElement('label');
+              rp.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:6px;cursor:pointer;';
+              var rcb = document.createElement('input'); rcb.type = 'checkbox'; rcb.checked = isRepNow;
+              var rin = document.createElement('input'); rin.type = 'number'; rin.min = 1; rin.max = f.spots.length - 1; rin.step = 1;
+              rin.value = frameRepeat(f) || frameStripGuess(f); rin.style.cssText = 'width:52px;padding:3px 6px;';
+              var applyRep = function () {
+                var n = Math.max(1, Math.min(f.spots.length - 1, Math.round(Number(rin.value)) || 1));
+                f.spots.forEach(function (sp) { delete sp.s; });
+                f.rep = rcb.checked ? n : undefined;
+                if (!rcb.checked) f.copy = false;
+                framesChanged({ layout: 'myframe', keepGrid: true });
+                if (isFrameLayout()) setLayout(currentLayout);
+              };
+              rcb.addEventListener('change', applyRep);
+              rin.addEventListener('change', function () { if (rcb.checked) applyRep(); });
+              rp.append(rcb, document.createTextNode('Repeat the same '), rin, document.createTextNode(' photos on every strip'));
+              repRow.appendChild(rp);
+            }
+            if (isManualNow) {
+              var mt = document.createElement('span');
+              mt.style.cssText = 'font-size:11.5px;color:var(--ink-dim);';
+              mt.textContent = 'Custom photo #s (' + fShotsNow + ' shot' + (fShotsNow === 1 ? '' : 's') + ')';
+              var mb = document.createElement('button'); mb.type = 'button'; mb.className = 'action-btn mini';
+              mb.style.cssText = 'width:auto;margin:0;padding:3px 9px;font-size:11.5px;';
+              mb.textContent = 'Reset to automatic';
+              mb.addEventListener('click', function () {
+                f.spots.forEach(function (sp) { delete sp.s; });
+                framesChanged({ layout: 'myframe', keepGrid: true });
+                if (isFrameLayout()) setLayout(currentLayout);
+              });
+              repRow.append(mt, mb);
+            }
+            fMoreBody.appendChild(repRow);
+          }
+          if (frameStripCropBase(f)) {
+            // Every strip shows the same photos: the welcome screen can show one strip instead of the whole sheet.
+            var wl = document.createElement('label');
+            wl.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;cursor:pointer;';
+            var wcb = document.createElement('input'); wcb.type = 'checkbox'; wcb.checked = f.one !== false;
+            var wRefresh = function () { framesChanged({ layout: 'myframe', keepGrid: true }); try { renderWelcome(); } catch (e) { } };
+            wcb.addEventListener('change', function () { f.one = wcb.checked ? undefined : false; wRefresh(); });
+            wl.append(wcb, document.createTextNode('Show 1 strip on welcome screen (instead of whole sheet)'));
+            fMoreBody.appendChild(wl);
+            if (f.one !== false) {
+              var hasTrim = !!(f.tl || f.tr || f.tb);
+              var wSub = document.createElement('details');
+              wSub.className = 'frame-crop-sub';
+              if (hasTrim) wSub.open = true;
+              var wSum = document.createElement('summary');
+              wSum.textContent = hasTrim ? 'Welcome strip crop edges (adjusted)' : 'Adjust welcome strip crop edges';
+              var wt = document.createElement('div');
+              wt.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12px;font-weight:600;margin-top:6px;';
+              [['tl', 'Left %'], ['tr', 'Right %'], ['tb', 'Bottom %']].forEach(function (d) {
+                var lb = document.createElement('label'), inp = document.createElement('input');
+                inp.type = 'number'; inp.min = -10; inp.max = 10; inp.step = 0.5; inp.style.cssText = 'width:56px;padding:3px 6px;';
+                inp.value = Math.round((f[d[0]] || 0) * 1000) / 10;
+                inp.addEventListener('change', function () {
+                  var v = Math.max(-10, Math.min(10, Number(inp.value) || 0)) / 100;
+                  f[d[0]] = v || undefined; wRefresh();
+                });
+                lb.append(document.createTextNode(d[1] + ' '), inp); wt.appendChild(lb);
+              });
+              wSub.append(wSum, wt);
+              fMoreBody.appendChild(wSub);
+            }
+          }
           if (layEd && !hasSecs && !isLayEdit) {
             var layRow = document.createElement('div');
             layRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
@@ -75500,66 +75888,9 @@ function fxWavUrl(kind) {
             tierWrap.append(document.createTextNode('Printer tier: '), tierSel);
             fMoreBody.appendChild(tierWrap);
           }
-          if (frameManual(f)) {
-            var mn = document.createElement('div');
-            mn.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12.5px;font-weight:600;margin-top:4px;';
-            var mt = document.createElement('span'); mt.textContent = 'Photos linked by hand: ' + frameShotCount(f) + ' photo' + (frameShotCount(f) === 1 ? '' : 's') + ' taken for ' + f.spots.length + ' spots.';
-            var mb = document.createElement('button'); mb.type = 'button'; mb.className = 'action-btn mini'; mb.textContent = 'Back to automatic';
-            mb.addEventListener('click', function () { f.spots.forEach(function (sp) { delete sp.s; }); framesChanged(); if (isFrameLayout()) setLayout(currentLayout); });
-            mn.append(mt, mb); fMoreBody.appendChild(mn);
-          } else if (f.spots.length >= 2) {
-            // Many spots, few photos: only the first N photos are taken, every later spot repeats them.
-            var rp = document.createElement('label');
-            rp.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:12.5px;font-weight:600;margin-top:4px;cursor:pointer;';
-            var rcb = document.createElement('input'); rcb.type = 'checkbox'; rcb.checked = !!frameRepeat(f);
-            var rin = document.createElement('input'); rin.type = 'number'; rin.min = 1; rin.max = f.spots.length - 1; rin.step = 1;
-            rin.value = frameRepeat(f) || frameStripGuess(f); rin.style.cssText = 'width:56px;padding:3px 6px;';
-            var applyRep = function () {
-              var n = Math.max(1, Math.min(f.spots.length - 1, Math.round(Number(rin.value)) || 1));
-              f.rep = rcb.checked ? n : undefined;
-              framesChanged(); if (isFrameLayout()) setLayout(currentLayout);
-            };
-            rcb.addEventListener('change', applyRep);
-            rin.addEventListener('change', function () { if (rcb.checked) applyRep(); });
-            rp.append(rcb, document.createTextNode('Every strip repeats the same '), rin, document.createTextNode(' photos, top to bottom (take only that many)'));
-            fMoreBody.appendChild(rp);
-          }
-          if (!frameManual(f) && !frameRepeat(f) && framePairsGeom(f)) {
-            var cp = document.createElement('label');
-            cp.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;margin-top:4px;cursor:pointer;';
-            var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!framePairs(f);
-            cb.addEventListener('change', function () { f.copy = cb.checked; framesChanged(); if (isFrameLayout()) setLayout(currentLayout); });
-            cp.append(cb, document.createTextNode('Same photos on both strips (' + (f.spots.length / 2) + ' shots instead of ' + f.spots.length + ')'));
-            fMoreBody.appendChild(cp);
-          }
-          if (frameStripCropBase(f)) {
-            // Every strip shows the same photos: the welcome screen can show one strip instead of the whole sheet.
-            var wl = document.createElement('label');
-            wl.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;margin-top:4px;cursor:pointer;';
-            var wcb = document.createElement('input'); wcb.type = 'checkbox'; wcb.checked = f.one !== false;
-            var wRefresh = function () { framesChanged(); try { renderWelcome(); } catch (e) { } };
-            wcb.addEventListener('change', function () { f.one = wcb.checked ? undefined : false; wRefresh(); });
-            wl.append(wcb, document.createTextNode('Show one strip on the welcome screen (not the whole sheet)'));
-            fMoreBody.appendChild(wl);
-            if (f.one !== false) {
-              var wt = document.createElement('div');
-              wt.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12px;font-weight:600;margin-top:4px;';
-              wt.appendChild(document.createTextNode('Fine-tune the cut (% of the frame, + cuts more off, − shows more):'));
-              [['tl', 'Left'], ['tr', 'Right'], ['tb', 'Bottom']].forEach(function (d) {
-                var lb = document.createElement('label'), inp = document.createElement('input');
-                inp.type = 'number'; inp.min = -10; inp.max = 10; inp.step = 0.5; inp.style.cssText = 'width:60px;padding:3px 6px;';
-                inp.value = Math.round((f[d[0]] || 0) * 1000) / 10;
-                inp.addEventListener('change', function () {
-                  var v = Math.max(-10, Math.min(10, Number(inp.value) || 0)) / 100;
-                  f[d[0]] = v || undefined; wRefresh();
-                });
-                lb.append(document.createTextNode(d[1] + ' '), inp); wt.appendChild(lb);
-              });
-              fMoreBody.appendChild(wt);
-            }
-          }
           if (fMoreBody.children.length > 0) ctx.appendChild(fMore);
         }
+        if (ctx) ctx.style.minHeight = '';
         buildFramePick();
         sheetPanel.style.display = currentLayout === 'framesheet' ? '' : 'none';
         if (currentLayout === 'framesheet') {
@@ -75601,6 +75932,7 @@ function fxWavUrl(kind) {
         });
       }
       function buildFramePick() {
+        var prevPickScroll = framePickEl ? framePickEl.scrollTop : 0;
         var on = currentLayout === 'framesheet' && myFrames.length;
         myFramesPanel.style.display = on ? '' : 'none';
         framePickEl.innerHTML = '';
@@ -75648,6 +75980,7 @@ function fxWavUrl(kind) {
           framePickEl.appendChild(add);
         }
         if (framePickQuery) applyFramePickFilter();
+        if (prevPickScroll > 0 && framePickEl) framePickEl.scrollTop = prevPickScroll;
       }
       document.getElementById('frameModeChips').addEventListener('click', function (e) {
         var b = e.target.closest('[data-fmode]'); if (!b || b.dataset.fmode === frameMode) return;
@@ -76002,12 +76335,70 @@ function fxWavUrl(kind) {
         if (!spotSizeEl) return;
         var f = spotEdit && frameById(spotEdit.f), sp = f && f.spots[spotEdit.sel];
         spotSizeEl.style.display = sp ? 'flex' : 'none';
+        var sizeCard = document.getElementById('spotSizeCard');
+        if (sizeCard) sizeCard.style.display = sp ? '' : 'none';
         var photoRow = document.getElementById('spotPhotoRow');
         if (photoRow) photoRow.style.display = sp ? 'flex' : 'none';
+        var noSelHint = document.getElementById('spotNoSelHint');
+        if (noSelHint) noSelHint.style.display = (f && !sp) ? '' : 'none';
         var rotRow = document.getElementById('spotRotRow');
         if (rotRow) rotRow.style.display = sp ? 'flex' : 'none';
+        var advDet = document.getElementById('spotAdvDetails');
+        if (advDet && spotEdit && spotEdit.pick) advDet.open = true;
         try { refreshKeyUI(); } catch (e) { }
         try { refreshSpotSecUI(); } catch (e) { }
+        var totalShots = f ? frameShotCount(f) : 0;
+        var badge = document.getElementById('spotShotBadge');
+        if (badge && f) {
+          var dupCnt = Math.max(0, f.spots.length - totalShots);
+          badge.textContent = totalShots + ' shot' + (totalShots === 1 ? '' : 's') + ' · ' + f.spots.length + ' spot' + (f.spots.length === 1 ? '' : 's') + (dupCnt ? ' (' + dupCnt + ' repeated)' : '');
+        }
+        var qBar = document.getElementById('spotQuickRepeat');
+        if (qBar) {
+          qBar.innerHTML = '';
+          if (f && f.spots.length >= 2) {
+            var guessN = frameStripGuess(f);
+            var canRepStrip = guessN >= 1 && guessN < f.spots.length;
+            var hasRepeatOrManual = !!(frameRepeat(f) || frameManual(f) || framePairs(f));
+            if (canRepStrip || hasRepeatOrManual) {
+              qBar.style.display = 'flex';
+              var ql = document.createElement('span'); ql.className = 'spot-quick-lbl'; ql.textContent = 'Photos:';
+              qBar.appendChild(ql);
+              if (canRepStrip) {
+                var repOn = totalShots === guessN && f.spots.length > guessN;
+                var bRep = document.createElement('button'); bRep.type = 'button';
+                bRep.className = 'spot-quick-chip' + (repOn ? ' active' : '');
+                bRep.textContent = 'Repeat ' + guessN + ' per strip';
+                bRep.title = 'Take ' + guessN + ' photo' + (guessN === 1 ? '' : 's') + ' and repeat them top-to-bottom on every strip';
+                bRep.addEventListener('click', function () {
+                  f.spots.forEach(function (o) { delete o.s; });
+                  f.rep = guessN;
+                  delete f.copy;
+                  framesChanged({ layout: 'myframe', spotOnly: true });
+                  showToast('Every strip now repeats ' + guessN + ' photo' + (guessN === 1 ? '' : 's') + '.', 2400);
+                });
+                qBar.appendChild(bRep);
+              }
+              var sepOn = totalShots === f.spots.length;
+              var bSep = document.createElement('button'); bSep.type = 'button';
+              bSep.className = 'spot-quick-chip' + (sepOn ? ' active' : '');
+              bSep.textContent = 'All ' + f.spots.length + ' separate';
+              bSep.title = 'Every box takes its own separate photo';
+              bSep.addEventListener('click', function () {
+                f.spots.forEach(function (o) { delete o.s; });
+                delete f.rep;
+                f.copy = false;
+                framesChanged({ layout: 'myframe', spotOnly: true });
+                showToast('Every box now takes its own photo (' + f.spots.length + ' shots).', 2400);
+              });
+              qBar.appendChild(bSep);
+            } else {
+              qBar.style.display = 'none';
+            }
+          } else {
+            qBar.style.display = 'none';
+          }
+        }
         if (!sp) return;
         Object.keys(spotNum).forEach(function (k) { var el = document.getElementById(spotNum[k]); if (document.activeElement !== el) el.value = Math.round(sp[k] * 1000) / 10; });
         var ae = document.getElementById('spotA'); if (ae && document.activeElement !== ae) ae.value = sp.a || 0;
@@ -76017,28 +76408,33 @@ function fxWavUrl(kind) {
         });
         var pm = framePairs(f);
         var curShot = (pm ? pm[spotEdit.sel] : spotEdit.sel) + 1;
-        var totalShots = frameShotCount(f);
         var pe = document.getElementById('spotShot');
         if (pe && document.activeElement !== pe) pe.value = curShot;
         var selLbl = document.getElementById('spotSelectedLbl');
-        if (selLbl) selLbl.textContent = 'Box ' + (spotEdit.sel + 1) + ' → Photo #' + curShot;
-        var badge = document.getElementById('spotShotBadge');
-        if (badge) {
-          var dupCnt = Math.max(0, f.spots.length - totalShots);
-          badge.textContent = totalShots + ' shot' + (totalShots === 1 ? '' : 's') + ' · ' + f.spots.length + ' spot' + (f.spots.length === 1 ? '' : 's') + (dupCnt ? ' (' + dupCnt + ' duplicated)' : '');
-        }
+        if (selLbl) selLbl.textContent = 'Box ' + (spotEdit.sel + 1) + ' · Photo #' + curShot;
         var chipsEl = document.getElementById('spotShotChips');
         if (chipsEl) {
-          var maxChip = Math.min(12, Math.max(totalShots + 1, f.spots.length));
+          var maxExisting = Math.min(12, Math.max(curShot, totalShots));
+          var canAddNew = totalShots < Math.min(12, f.spots.length) && maxExisting < 12;
           chipsEl.innerHTML = '';
-          for (var c = 1; c <= maxChip; c++) {
+          for (var c = 1; c <= maxExisting; c++) {
             var ch = document.createElement('button');
             ch.type = 'button';
             ch.className = 'spot-shot-chip' + (c === curShot ? ' active' : '');
             ch.dataset.shotNum = String(c);
             ch.textContent = String(c);
-            ch.title = c > totalShots ? ('Assign as new Photo #' + c) : ('Use Photo #' + c);
+            ch.title = 'Use Photo #' + c;
             chipsEl.appendChild(ch);
+          }
+          if (canAddNew) {
+            var nextNum = maxExisting + 1;
+            var nch = document.createElement('button');
+            nch.type = 'button';
+            nch.className = 'spot-shot-chip is-new';
+            nch.dataset.shotNum = String(nextNum);
+            nch.textContent = '+ #' + nextNum;
+            nch.title = 'Assign as new Photo #' + nextNum;
+            chipsEl.appendChild(nch);
           }
         }
         var cb2 = document.getElementById('spotCopyStrip'); if (cb2) cb2.classList.toggle('primary', !!spotEdit.copyFrom);
@@ -76640,43 +77036,64 @@ function fxWavUrl(kind) {
       async function handleFrameOverlayFiles(files, target) {
         if (!files || !files.length) return;
         var isSheet = !!(target && target.kind === 'sheet');
-        var f = isSheet ? null : ((target && target.id ? frameById(target.id) : null) || activeFrame());
-        if (!isSheet && !f) { showToast('Select a frame first.', 3000); return; }
-        var list = isSheet
-          ? (Array.isArray(sheet.overlays) ? sheet.overlays : (sheet.overlays = []))
-          : frameOverlayList(f);
-        var offsets = [[0, 0], [0.1, 0.08], [-0.1, 0.08], [0.1, -0.08], [-0.1, -0.08], [0, 0.14], [0, -0.14]];
-        var addedCnt = 0, anyOpaque = false;
+        var targetId = isSheet ? null : ((target && target.id) || activeFrameId);
+        var fCheck = isSheet ? null : ((targetId ? frameById(targetId) : null) || activeFrame());
+        if (!isSheet && !fCheck) { showToast('Select a frame first.', 3000); return; }
+        var curCount = isSheet
+          ? (Array.isArray(sheet.overlays) ? sheet.overlays.length : 0)
+          : frameOverlayList(fCheck).length;
+        var prepared = [];
         for (var i = 0; i < files.length; i++) {
-          if (list.length >= MAX_FRAME_OVS) {
+          if (curCount + prepared.length >= MAX_FRAME_OVS) {
             showToast('Up to ' + MAX_FRAME_OVS + ' overlays per frame — remove one first.', 3500);
             break;
           }
           try {
             var url = await readImageFile(files[i], LOCALSHARE ? 3600 : 2400);
             var img = await loadImageUrl(url);
-            var oid = await addAsset(url);
+            var oid = await addAsset(url, null, img);
+            if (ASSETS[oid] && !ASSETS[oid].img) ASSETS[oid].img = img;
             var opaque = seeThroughShare(img) < 0.03;
-            if (opaque) anyOpaque = true;
-            var off = offsets[list.length % offsets.length];
-            var ov = {
-              id: oid,
-              x: Math.round(Math.max(0.14, Math.min(0.86, 0.5 + off[0])) * 1000) / 1000,
-              y: Math.round(Math.max(0.14, Math.min(0.86, 0.46 + off[1])) * 1000) / 1000,
-              s: 0.24,
-              r: 0
-            };
-            if (opaque) ov.knockoutWhite = true;
-            list.push(ov);
-            addedCnt++;
-            if (!isSheet && typeof frameHasColour === 'function' && frameHasColour(img)) {
-              f.color = true;
-              if (tierSplitOn() && f.tier !== 'receipt') f.tier = 'photo';
+            var useKnockout = false;
+            if (opaque) {
+              var koInfo = knockoutOuterWhiteInfo(img);
+              FRAME_OV_CACHE[oid] = { img: img, info: koInfo };
+              if (!koInfo.tooEmpty && koInfo.removedRatio >= 0.01) useKnockout = true;
             }
+            var hasCol = !isSheet && typeof frameHasColour === 'function' ? frameHasColour(img) : false;
+            prepared.push({ id: oid, knockoutWhite: useKnockout, hasCol: hasCol });
           } catch (e) {
             showToast((e && e.message) || 'That overlay image could not be opened.', 4500);
           }
         }
+        if (!prepared.length) return;
+        // Re-fetch live frame AFTER awaits so background sync never detaches our target reference.
+        var f = isSheet ? null : ((targetId ? frameById(targetId) : null) || activeFrame());
+        if (!isSheet && !f) { showToast('Select a frame first.', 3000); return; }
+        var list = isSheet
+          ? (Array.isArray(sheet.overlays) ? sheet.overlays : (sheet.overlays = []))
+          : frameOverlayList(f);
+        var offsets = [[0, 0], [0.1, 0.08], [-0.1, 0.08], [0.1, -0.08], [-0.1, -0.08], [0, 0.14], [0, -0.14]];
+        var initS = (!isSheet && f && f.h / Math.max(1, f.w) >= 1.8) ? 0.52 : 0.34;
+        var addedCnt = 0, anyKnockout = false;
+        prepared.forEach(function (item) {
+          if (list.length >= MAX_FRAME_OVS) return;
+          var off = offsets[list.length % offsets.length];
+          var ov = {
+            id: item.id,
+            x: Math.round(Math.max(0.14, Math.min(0.86, 0.5 + off[0])) * 1000) / 1000,
+            y: Math.round(Math.max(0.14, Math.min(0.86, 0.46 + off[1])) * 1000) / 1000,
+            s: initS,
+            r: 0
+          };
+          if (item.knockoutWhite) { ov.knockoutWhite = true; anyKnockout = true; }
+          list.push(ov);
+          addedCnt++;
+          if (!isSheet && item.hasCol) {
+            f.color = true;
+            if (tierSplitOn() && f.tier !== 'receipt') f.tier = 'photo';
+          }
+        });
         if (!addedCnt) return;
         spotEdit = null;
         layoutEdit = null;
@@ -76685,13 +77102,17 @@ function fxWavUrl(kind) {
         selFrameOv = list.length - 1;
         if (isSheet) {
           syncActivePresetOverlay();
-          framesChanged({ layout: 'framesheet' });
+          framesChanged({ layout: 'framesheet', keepGrid: true });
         } else {
+          activeFrameId = f.id;
+          setupActiveFrameId = f.id;
+          setupLayout = 'myframe';
           delete f.overlay;
-          framesChanged({ layout: 'myframe' });
+          f.savedAt = Math.max(Date.now(), (f.savedAt || 0) + 1);
+          framesChanged({ layout: 'myframe', keepGrid: true });
         }
         if (window.innerWidth < 900 && window.pbDockPreview) window.pbDockPreview(true);
-        var koNote = anyOpaque ? ' Outer white background removed automatically.' : '';
+        var koNote = anyKnockout ? ' Outer white background removed automatically.' : '';
         showToast(
           (addedCnt === 1 ? 'Overlay added!' : (addedCnt + ' overlays added!')) + koNote
           + ' Drag in preview to move, corners to resize, or tap Duplicate to copy it.',
@@ -76754,7 +77175,7 @@ function fxWavUrl(kind) {
           activeFrameId = prevFrameSelEl.value;
           setupActiveFrameId = activeFrameId;
           setupLayout = 'myframe';
-          framesChanged({ layout: 'myframe' });
+          framesChanged({ layout: 'myframe', selectOnly: true });
           renderSetupPreview();
         });
       }
@@ -77069,7 +77490,7 @@ function fxWavUrl(kind) {
             if (!spots.length && seeThroughShare(img) < 0.03) { spots = [{ x: 0.3, y: 0.3, w: 0.4, h: 0.4 }]; needPick = true; }
             if (spots.length) {
               if (myFrames.length >= MAX_FRAMES) { showToast('Up to ' + MAX_FRAMES + ' frames — remove one first.', 4000); break; }
-              var id = await addAsset(url);
+              var id = await addAsset(url, null, img);
               var initName = (files[i].name || '').replace(/\.[^/.]+$/, '').trim().slice(0, 40) || ('Frame ' + (myFrames.length + 1));
               var isTallReceipt = (img.height / img.width >= 2.2);
               var autoTier = isTallReceipt || /thermal|receipt|b&w|bw/i.test(initName) ? 'receipt' : 'all';
@@ -77082,7 +77503,7 @@ function fxWavUrl(kind) {
               added.push(newFrame);
               if (needPick) added[added.length - 1]._pick = true;
             } else {
-              var oid = await addAsset(url);
+              var oid = await addAsset(url, null, img);
               noSpotOverlays.push({ id: oid, color: typeof frameHasColour === 'function' ? frameHasColour(img) : false });
             }
           } catch (e) { showToast(e.message, 4000); }
@@ -77152,6 +77573,7 @@ function fxWavUrl(kind) {
           if (currentLayout === 'myframe' && activeFrame()) {
             var af = activeFrame();
             var afl = frameOverlayList(af);
+            var initS2 = (af && af.h / Math.max(1, af.w) >= 1.8) ? 0.52 : 0.34;
             noSpotOverlays.forEach(function (nov) {
               if (afl.length >= MAX_FRAME_OVS) return;
               var off = ovOffsets[afl.length % ovOffsets.length];
@@ -77159,7 +77581,7 @@ function fxWavUrl(kind) {
                 id: nov.id,
                 x: Math.round(Math.max(0.14, Math.min(0.86, 0.5 + off[0])) * 1000) / 1000,
                 y: Math.round(Math.max(0.14, Math.min(0.86, 0.46 + off[1])) * 1000) / 1000,
-                s: 0.24,
+                s: initS2,
                 r: 0
               });
               if (nov.color) {
@@ -77169,7 +77591,8 @@ function fxWavUrl(kind) {
             });
             spotEdit = null; layoutEdit = null; selFrameOv = -1; selDecor = -1; selItem = -1;
             selFrameOv = afl.length - 1;
-            framesChanged({ layout: 'myframe' });
+            af.savedAt = Math.max(Date.now(), (af.savedAt || 0) + 1);
+            framesChanged({ layout: 'myframe', keepGrid: true });
             showToast('Overlay added on \u201C' + (af.name || 'your frame') + '\u201D \u2014 drag in preview to move, corners to resize, or Duplicate to copy.', 5500);
           } else if (currentLayout === 'framesheet') {
             var shl = Array.isArray(sheet.overlays) ? sheet.overlays : (sheet.overlays = []);
@@ -77209,15 +77632,17 @@ function fxWavUrl(kind) {
       }
       function spotAt(f, pt) {
         var W = f.w, H = f.h, u = Math.max(W, H), ord = spotOrder(f).reverse(), k, i, g, L;
-        for (k = 0; k < ord.length; k++) {
-          i = ord[k]; g = spotPx(f.spots[i], W, H); L = spotLocal(g, pt.x * W, pt.y * H);
+        // Only the currently selected box exposes its tilt & corner resize handles so stacked boxes never steal taps.
+        var selI = (spotEdit && spotEdit.f === f.id && typeof spotEdit.sel === 'number' && f.spots[spotEdit.sel]) ? spotEdit.sel : -1;
+        if (selI >= 0) {
+          g = spotPx(f.spots[selI], W, H); L = spotLocal(g, pt.x * W, pt.y * H);
           var th = spotTiltHandle(g, u, H);
-          if (Math.hypot(L.x - th.x, L.y - th.y) <= th.r * 1.35) return { i: i, tilt: true };
+          if (Math.hypot(L.x - th.x, L.y - th.y) <= th.r * 1.35) return { i: selI, tilt: true };
+          var selCorner = Math.abs(L.x - g.w / 2) < u * 0.032 && Math.abs(L.y - g.h / 2) < u * 0.032;
+          if (selCorner) return { i: selI, corner: true };
         }
         for (k = 0; k < ord.length; k++) {
           i = ord[k]; g = spotPx(f.spots[i], W, H); L = spotLocal(g, pt.x * W, pt.y * H);
-          var corner = Math.abs(L.x - g.w / 2) < u * 0.03 && Math.abs(L.y - g.h / 2) < u * 0.03;
-          if (corner) return { i: i, corner: true };
           if (Math.abs(L.x) <= g.w / 2 && Math.abs(L.y) <= g.h / 2) return { i: i, corner: false };
         }
         return null;
@@ -77567,13 +77992,17 @@ function fxWavUrl(kind) {
             drawSectionSpliceGuides(ctx, f, W, H, sEditIdx, false);
           }
           ctx.save();
-          var repMap = frameRepeat(f) || frameManual(f) ? framePairs(f) : null;   // repeating / numbered by hand: each box shows the photo it takes
+          var repMap = framePairs(f);   // always show the actual photo # taken for each box
           var shotFreq = {};
           f.spots.forEach(function (_, idx) {
             var n = repMap ? repMap[idx] + 1 : idx + 1;
             shotFreq[n] = (shotFreq[n] || 0) + 1;
           });
-          spotOrder(f).forEach(function (i) {
+          // Draw unselected boxes first, then selected box last so its resize & tilt handles stay cleanly on top.
+          var drawOrd = spotOrder(f).slice().sort(function (a, b) {
+            return (a === spotEdit.sel ? 1 : 0) - (b === spotEdit.sel ? 1 : 0);
+          });
+          drawOrd.forEach(function (i) {
             var s = f.spots[i];
             var on = i === spotEdit.sel, g = spotPx(s, W, H), x = -g.w / 2, y = -g.h / 2, w = g.w, h = g.h, u = Math.max(W, H);
             var sRot = normalizeSpotRot(s.r);
@@ -77613,23 +78042,25 @@ function fxWavUrl(kind) {
               ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
               ctx.fillText(rTxt, x + w - rtw / 2 - 4, y + 4 + rth / 2);
             }
-            ctx.fillStyle = on ? '#C93D27' : '#1C1A1E'; ctx.fillRect(x + w - r * 0.9, y + h - r * 0.9, r * 0.9, r * 0.9);   // resize handle
-            // tilt handle: a round "turn" button at the bottom middle
-            var th = spotTiltHandle(g, u, H);
-            if (th.outside) { ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(0, th.y - th.r); ctx.lineWidth = Math.max(1.5, u * 0.003); ctx.strokeStyle = on ? '#C93D27' : 'rgba(28,26,30,.82)'; ctx.stroke(); }
-            ctx.beginPath(); ctx.arc(th.x, th.y, th.r, 0, Math.PI * 2);
-            ctx.fillStyle = on ? '#C93D27' : 'rgba(28,26,30,.82)'; ctx.fill();
-            ctx.lineWidth = Math.max(1.5, th.r * 0.16); ctx.strokeStyle = '#fff'; ctx.stroke();
-            ctx.beginPath(); ctx.arc(th.x, th.y, th.r * 0.5, -Math.PI * 0.85, Math.PI * 0.55);
-            ctx.lineWidth = Math.max(1.5, th.r * 0.17); ctx.lineCap = 'round'; ctx.stroke();
-            var ax = th.x + th.r * 0.5 * Math.cos(Math.PI * 0.55), ay = th.y + th.r * 0.5 * Math.sin(Math.PI * 0.55);
-            ctx.beginPath(); ctx.moveTo(ax - th.r * 0.34, ay - th.r * 0.02); ctx.lineTo(ax, ay); ctx.lineTo(ax + th.r * 0.06, ay - th.r * 0.36);
-            ctx.lineJoin = 'round'; ctx.stroke(); ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
-            if (on && fdrag && fdrag.kind === 'tilt') {
-              ctx.font = '800 ' + Math.round(r * 1.1) + 'px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-              var lab = (s.a || 0) + '\u00b0', tw = ctx.measureText(lab).width + r;
-              ctx.fillStyle = 'rgba(28,26,30,.85)'; ctx.fillRect(th.x - tw / 2, th.y - th.r * 1.3 - r * 1.4, tw, r * 1.35);
-              ctx.fillStyle = '#fff'; ctx.fillText(lab, th.x, th.y - th.r * 1.3 - r * 0.08);
+            // Only show resize square & round tilt handle on the selected box so stacked boxes stay clean & uncluttered.
+            if (on) {
+              ctx.fillStyle = '#C93D27'; ctx.fillRect(x + w - r * 0.95, y + h - r * 0.95, r * 0.95, r * 0.95);
+              var th = spotTiltHandle(g, u, H);
+              if (th.outside) { ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(0, th.y - th.r); ctx.lineWidth = Math.max(1.5, u * 0.003); ctx.strokeStyle = '#C93D27'; ctx.stroke(); }
+              ctx.beginPath(); ctx.arc(th.x, th.y, th.r, 0, Math.PI * 2);
+              ctx.fillStyle = '#C93D27'; ctx.fill();
+              ctx.lineWidth = Math.max(1.5, th.r * 0.16); ctx.strokeStyle = '#fff'; ctx.stroke();
+              ctx.beginPath(); ctx.arc(th.x, th.y, th.r * 0.5, -Math.PI * 0.85, Math.PI * 0.55);
+              ctx.lineWidth = Math.max(1.5, th.r * 0.17); ctx.lineCap = 'round'; ctx.stroke();
+              var ax = th.x + th.r * 0.5 * Math.cos(Math.PI * 0.55), ay = th.y + th.r * 0.5 * Math.sin(Math.PI * 0.55);
+              ctx.beginPath(); ctx.moveTo(ax - th.r * 0.34, ay - th.r * 0.02); ctx.lineTo(ax, ay); ctx.lineTo(ax + th.r * 0.06, ay - th.r * 0.36);
+              ctx.lineJoin = 'round'; ctx.stroke(); ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
+              if (fdrag && fdrag.kind === 'tilt') {
+                ctx.font = '800 ' + Math.round(r * 1.1) + 'px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+                var lab = (s.a || 0) + '\u00b0', tw = ctx.measureText(lab).width + r;
+                ctx.fillStyle = 'rgba(28,26,30,.85)'; ctx.fillRect(th.x - tw / 2, th.y - th.r * 1.3 - r * 1.4, tw, r * 1.35);
+                ctx.fillStyle = '#fff'; ctx.fillText(lab, th.x, th.y - th.r * 1.3 - r * 0.08);
+              }
             }
             ctx.restore();
           });
@@ -77976,15 +78407,22 @@ function fxWavUrl(kind) {
           if (Array.isArray(j.frames)) {
             var beforeSig = framesSig(myFrames);
             var m = mergeFrameLists(myFrames, frameTomb, j.frames, j.deleted || {});
-            myFrames = m.list; frameTomb = m.tomb;
+            var afterSig = framesSig(m.list);
+            var sigChanged = beforeSig !== afterSig;
+            if (sigChanged) {
+              myFrames = m.list;
+            }
+            frameTomb = m.tomb;
             framesCacheLocal();
-            var afterSig = framesSig(myFrames);
-            ensureAssets(frameAssetIds(myFrames)).then(function () {
-              if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
-              if (typeof refreshFrameUI === 'function') refreshFrameUI();
-              if (typeof renderSetupPreview === 'function') renderSetupPreview();
-            }).catch(function () { });
-            if (beforeSig !== afterSig) refreshFramesAfterSync();
+            var needIds = frameAssetIds(myFrames).filter(function (aid) { return !ASSETS[aid]; });
+            if (needIds.length) {
+              ensureAssets(needIds).then(function () {
+                if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
+                if (typeof refreshFrameUI === 'function' && !(document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('frame-name-input'))) refreshFrameUI();
+                if (typeof renderSetupPreview === 'function') renderSetupPreview();
+              }).catch(function () { });
+            }
+            if (sigChanged) refreshFramesAfterSync();
           }
           return true;
         } catch (e) { return false; }
@@ -78025,17 +78463,22 @@ function fxWavUrl(kind) {
           var m = mergeFrameLists(myFrames, frameTomb, j.frames, j.deleted || {});
           var srvClean = mergeFrameLists(j.frames, j.deleted || {}, [], {});
           var srvSig = framesSig(srvClean.list), mergedSig = framesSig(m.list);
-          myFrames = m.list; frameTomb = m.tomb;
+          var sigChanged = beforeSig !== mergedSig;
+          if (sigChanged) myFrames = m.list;
+          frameTomb = m.tomb;
           framesCacheLocal();
           if (srvSig !== mergedSig || Object.keys(frameTomb).length > Object.keys(j.deleted || {}).length) {
             saveAccountFrames();
           }
-          ensureAssets(frameAssetIds(myFrames)).then(function () {
-            if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
-            if (typeof refreshFrameUI === 'function') refreshFrameUI();
-            if (typeof renderSetupPreview === 'function') renderSetupPreview();
-          }).catch(function () { });
-          if (beforeSig !== mergedSig) refreshFramesAfterSync();
+          var needLoadIds = frameAssetIds(myFrames).filter(function (aid) { return !ASSETS[aid]; });
+          if (needLoadIds.length) {
+            ensureAssets(needLoadIds).then(function () {
+              if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
+              if (typeof refreshFrameUI === 'function' && !(document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('frame-name-input'))) refreshFrameUI();
+              if (typeof renderSetupPreview === 'function') renderSetupPreview();
+            }).catch(function () { });
+          }
+          if (sigChanged) refreshFramesAfterSync();
           return true;
         } catch (e) { return false; }
       }

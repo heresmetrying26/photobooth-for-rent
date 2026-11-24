@@ -520,11 +520,15 @@ console.log('9. Testing multi-color 4-in-1 (different colored mini strips)...');
   // Verify new UI & performance controls exist across built booth bundle
   for (const id of [
     'spotDupSame', 'spotPhotoRow', 'spotShotDec', 'spotShotInc', 'spotShotChips',
+    'spotQuickRepeat', 'knockoutOuterWhiteInfo', 'refreshFrameGridFilterChips',
     'pmSpDupSame', 'FRAME_CACHE_PREV', 'evictFrameCache', 'lay-frame-toolbar',
     'LT_IDB_KEY', 'assetThumbUrl', 'scheduleSpotPostRefresh',
   ]) {
     assert.ok(html.includes(id), 'Expected symbol/UI id in booth.html: ' + id);
   }
+  assert.ok(/\.layout-btn\[hidden\],\s*\.fp-tile\[hidden\]\s*\{\s*display:\s*none\s*!important;\s*\}/.test(html), 'Missing [hidden] CSS rule for .layout-btn and .fp-tile');
+  assert.ok(html.includes("framesChanged({ layout: 'myframe', selectOnly: true })"), 'Uploaded frame click must keep grid scroll via selectOnly');
+  assert.ok(html.includes('// Re-fetch live frame AFTER awaits'), 'Overlay upload must re-fetch live frame after awaits');
 }
 
 console.log('ALL PHASE 1-3 ROTATION & AUTO-SECTION TESTS PASSED! ✓');

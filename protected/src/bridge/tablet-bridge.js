@@ -34,7 +34,8 @@ var tabletBridge = {
   aspKey: '',
   buildSeq: 0,      // each picture of the screen that is built gets the next number...
   pushedSeq: 0,     // ...and an older one is never sent after a newer one went out
-  reviewSrc: ''     // the photo just taken, shown between shots (Setup: show each photo after it is taken)
+  reviewSrc: '',    // the photo just taken, shown between shots (Setup: show each photo after it is taken)
+  wasUsingCam: false // remembers tablet camera across a brief Wi-Fi drop so it auto-reclaims on reconnect
 };
 
 function activeBridgeApi() { return (window.pb4u && window.pb4u.bridge) || (tabletBridge && tabletBridge.api) || null; }
@@ -241,7 +242,7 @@ function openTabletCameraStream() {
   const ctx = canvas.getContext('2d');
   const stream = canvas.captureStream(24);
   const track = stream.getVideoTracks()[0];
-  let alive = true, seq = 0, fails = 0;
+  let alive = true, seq = 0, fails = 0, dropAt = 0;
   const origStop = track.stop.bind(track);
   const stopAll = () => {
     if (!alive) return;
@@ -252,14 +253,27 @@ function openTabletCameraStream() {
   track.stop = stopAll;
   tabletBridge.pumpStop = stopAll;
   tabletBridge.stream = stream;
+  tabletBridge.wasUsingCam = true;
   try { const a0 = activeBridgeApi(); if (a0) a0.camCmd({ type: 'live', on: true }); } catch (e) { }
 
   (async function pump() {
     while (alive) {
       if (!tabletBridge.camConnected) {
+        if (!dropAt) dropAt = Date.now();
+        // Survive brief 1–4s Wi-Fi/Huawei reconnect blips without kicking the booth back to the laptop webcam.
+        if (Date.now() - dropAt < 4500) {
+          await wait(200);
+          continue;
+        }
+        tabletBridge.wasUsingCam = true;
         stopAll();
         try { track.dispatchEvent(new Event('ended')); } catch (e) { }
         return;
+      }
+      if (dropAt) {
+        dropAt = 0;
+        seq = 0; // fetch the latest frame immediately after a brief reconnect
+        try { const a1 = activeBridgeApi(); if (a1) a1.camCmd({ type: 'live', on: true }); } catch (e) { }
       }
       try {
         const r = await fetch(localBase + '/frame?after=' + seq + '&wait=900', {
@@ -281,7 +295,8 @@ function openTabletCameraStream() {
         }
       } catch (e) {
         if (!alive) return;
-        if (++fails > 25 || !tabletBridge.camConnected) {
+        if (++fails > 25) {
+          tabletBridge.wasUsingCam = true;
           stopAll();
           try { track.dispatchEvent(new Event('ended')); } catch (e2) { }
           return;
@@ -791,12 +806,16 @@ function renderTabletBridgeSetup(info) {
         tabletEnsureOption();
         if (currentDeviceId !== TABLET_CAM_ID) {
           const saved = savedCamera();
-          if ((saved && saved.id === TABLET_CAM_ID) || !streamActive) {
+          if ((saved && saved.id === TABLET_CAM_ID) || !streamActive || tabletBridge.wasUsingCam) {
+            tabletBridge.wasUsingCam = true;
             cameraSelect.value = TABLET_CAM_ID;
             initCamera(TABLET_CAM_ID);
           }
         }
       } catch (e) { }
+    } else if (currentDeviceId === TABLET_CAM_ID) {
+      // Remember that the tablet camera was active so a brief Wi-Fi drop auto-reclaims it on reconnect.
+      tabletBridge.wasUsingCam = true;
     }
     // Then fill in the rest of the list (and drop the tablet from it when it goes away) once the system answers.
     enumerateCameras().catch(() => { });

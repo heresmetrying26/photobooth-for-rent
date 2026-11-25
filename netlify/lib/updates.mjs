@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.109', date: '2026-11-25' },
   { version: '1.1.108', date: '2026-11-25' },
   { version: '1.1.107', date: '2026-11-25' },
   { version: '1.1.106', date: '2026-11-25' },
@@ -251,7 +252,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.27', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.27/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.28', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.28/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -305,6 +306,16 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-25', title: 'Desktop 1.1.109, Android 1.2.18, iPad 1.1.28 & Website: Thermal voucher printing, Flipbook borders & overlays, printer fixes & Tablet Bridge reconnect', for: ['website', 'app', 'android', 'ipad'], app: '1.1.109', android: '1.2.18', ipad: '1.1.28',
+    items: [
+      '🧾 Print vouchers on thermal receipt printers (58 mm & 80 mm): Tap Print tickets in Setup › Session › Payment & vouchers to print clean black-and-white voucher slips straight to your Bluetooth, USB, Wi-Fi, or laptop thermal printer (or A4 sheets). Choose Next 1, a custom batch, or all unused codes, pick auto-cut or continuous tear strips, track which codes were already printed, and automatically include your event date when enabled.',
+      '📖 Flipbook borders, custom PNG frame overlays & live Setup preview: Add clean borders around every flipbook card, upload your own transparent frame overlay, pick a wider left binding margin for stapling or binding, and preview changes right inside Setup.',
+      '🖨️ Cleaner thermal prints & reliable Canon SELPHY printing (Android, iPad & Laptop): Removed grainy speckling on thermal receipt photos across Rongta, VOZY, and 58 mm / 80 mm models, protected 58 mm printers from cut-command glitches, and improved multi-sheet Canon SELPHY CP1300 / CP1500 printing on Android, iPad, and laptop.',
+      '📱 Stronger Tablet Bridge reconnect on Huawei & Android tablets: Survives brief Wi-Fi drops without kicking back to the laptop webcam, automatically reconnects the tablet camera when Wi-Fi returns, and adds Huawei Wi-Fi+ troubleshooting steps to the setup guide.',
+      '📶 New Offline QR Sharing & Booth Wi-Fi guide: Added a visual step-by-step guide explaining how guests download photos over your booth Wi-Fi when the venue has no internet.'
+    ]
+  },
   {
     date: '2026-11-25', title: 'Desktop 1.1.108 & Website: Wi-Fi & USB Mac Epson L8050 Auto-Glossy + High Quality fix', for: ['website', 'app'], app: '1.1.108',
     items: [

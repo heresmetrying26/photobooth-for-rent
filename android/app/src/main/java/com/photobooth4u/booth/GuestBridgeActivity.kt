@@ -138,14 +138,16 @@ class GuestBridgeActivity : AppCompatActivity() {
     private val netExec = Executors.newCachedThreadPool()
     private val camConnected = AtomicBoolean(false)
     private val previewSending = AtomicBoolean(false)
+    private val cameraOpening = AtomicBoolean(false)
     private val lastFrameAt = AtomicLong(0L)
     private val rng = SecureRandom()
 
     private var camThread: HandlerThread? = null
     private var camHandler: Handler? = null
+    @Volatile private var camRestartRunnable: Runnable? = null
     private var cameraManager: CameraManager? = null
-    private var cameraDevice: CameraDevice? = null
-    private var captureSession: CameraCaptureSession? = null
+    @Volatile private var cameraDevice: CameraDevice? = null
+    @Volatile private var captureSession: CameraCaptureSession? = null
     private var previewReader: ImageReader? = null
     private var stillReader: ImageReader? = null
 
@@ -157,8 +159,9 @@ class GuestBridgeActivity : AppCompatActivity() {
     // The spoken countdown: the laptop sends the words, this tablet says them (page: window.__PBVoice, same as the booth app).
     private var voiceBridge: VoiceBridge? = null
     private var sensorOrientation = 0
-    private var previewSize = Size(1280, 960)
+    private var previewSize = Size(960, 720)
     private var stillSize = Size(1920, 1440)
+    @Volatile private var stillCapMaxW = 3264
 
     @Volatile private var latestUprightJpeg: ByteArray? = null
     @Volatile private var pendingShotId: String? = null
@@ -172,10 +175,11 @@ class GuestBridgeActivity : AppCompatActivity() {
     @Volatile private var activeLocalAddr: Inet4Address? = null
     private var lastScannedCandidates: List<String> = emptyList()
     private var webReloadRunnable: Runnable? = null
-    private var wsSocket: Socket? = null
-    private var wsOut: OutputStream? = null
+    @Volatile private var wsSocket: Socket? = null
+    @Volatile private var wsOut: OutputStream? = null
     private val wsWriteLock = Any()
     private val wsRunning = AtomicBoolean(false)
+    private val wsGen = AtomicLong(0L)
     @Volatile private var sessionActive = false
 
     // Preview rect from WebView
@@ -900,6 +904,7 @@ class GuestBridgeActivity : AppCompatActivity() {
         activeBaseUrl = normalizeBridgeBase(baseUrl)
         activeNetwork = network
         activeLocalAddr = localAddr
+        stillCapMaxW = 3264
         urlInput.setText(activeBaseUrl)
         getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_BASE_URL, activeBaseUrl).apply()
         sessionActive = true
@@ -920,6 +925,7 @@ class GuestBridgeActivity : AppCompatActivity() {
     private fun stopBridgeSession() {
         sessionActive = false
         wsRunning.set(false)
+        wsGen.incrementAndGet()
         webReloadRunnable?.let { mainHandler.removeCallbacks(it) }
         webReloadRunnable = null
         try { wsSocket?.close() } catch (_: Exception) { }
@@ -982,11 +988,27 @@ class GuestBridgeActivity : AppCompatActivity() {
         camHandler = null
     }
 
+    private fun scheduleCameraRestart(delayMs: Long = 1200L) {
+        if (!sessionActive) return
+        camRestartRunnable?.let { mainHandler.removeCallbacks(it) }
+        val r = Runnable {
+            camRestartRunnable = null
+            if (sessionActive && hasCamPerm() && cameraDevice == null) {
+                startCameraIfReady()
+            }
+        }
+        camRestartRunnable = r
+        mainHandler.postDelayed(r, delayMs)
+    }
+
     @SuppressLint("MissingPermission")
     private fun startCameraIfReady() {
         if (!sessionActive || !hasCamPerm() || !previewView.isAvailable || cameraDevice != null) return
-        val cm = cameraManager ?: return
-        val camId = (if (desiredFacing == "back") backCamId else frontCamId) ?: frontCamId ?: backCamId ?: return
+        if (!cameraOpening.compareAndSet(false, true)) return
+        val cm = cameraManager
+        if (cm == null) { cameraOpening.set(false); return }
+        val camId = (if (desiredFacing == "back") backCamId else frontCamId) ?: frontCamId ?: backCamId
+        if (camId == null) { cameraOpening.set(false); return }
         activeCamId = camId
         try {
             val chars = cm.getCameraCharacteristics(camId)
@@ -995,28 +1017,42 @@ class GuestBridgeActivity : AppCompatActivity() {
             val map = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
             if (map != null) {
                 val yuvSizes = map.getOutputSizes(ImageFormat.YUV_420_888) ?: emptyArray()
-                previewSize = chooseBestSize(yuvSizes, 1280, 960, 4.0 / 3.0)
+                // Keep live preview YUV stream <= 960x720 so Huawei Kirin / Android Camera2 HAL stays smooth
+                // while stillSize remains full-resolution (up to 3264x2448 / 8MP) for crisp prints.
+                previewSize = chooseBestSize(yuvSizes, 960, 720, 4.0 / 3.0)
                 val jpegSizes = map.getOutputSizes(ImageFormat.JPEG) ?: yuvSizes
-                stillSize = chooseBestSize(jpegSizes, 3264, 2448, previewSize.width.toDouble() / max(1, previewSize.height))
+                stillSize = chooseBestSize(jpegSizes, stillCapMaxW, (stillCapMaxW * 3) / 4, previewSize.width.toDouble() / max(1, previewSize.height))
             }
             ensureCamThread()
             cm.openCamera(camId, object : CameraDevice.StateCallback() {
                 override fun onOpened(dev: CameraDevice) {
+                    cameraOpening.set(false)
+                    if (!sessionActive) {
+                        try { dev.close() } catch (_: Exception) { }
+                        return
+                    }
                     cameraDevice = dev
                     createSession(dev)
                 }
                 override fun onDisconnected(dev: CameraDevice) {
-                    dev.close()
+                    cameraOpening.set(false)
+                    try { dev.close() } catch (_: Exception) { }
                     if (cameraDevice == dev) cameraDevice = null
+                    Log.w(TAG, "Camera disconnected — scheduling restart")
+                    scheduleCameraRestart(1200L)
                 }
                 override fun onError(dev: CameraDevice, error: Int) {
-                    dev.close()
+                    cameraOpening.set(false)
+                    try { dev.close() } catch (_: Exception) { }
                     if (cameraDevice == dev) cameraDevice = null
-                    Log.e(TAG, "Camera error $error")
+                    Log.e(TAG, "Camera error $error — scheduling restart")
+                    scheduleCameraRestart(1500L)
                 }
             }, camHandler)
         } catch (e: Exception) {
+            cameraOpening.set(false)
             Log.e(TAG, "openCamera failed", e)
+            scheduleCameraRestart(1800L)
         }
     }
 
@@ -1026,16 +1062,22 @@ class GuestBridgeActivity : AppCompatActivity() {
         return pool.minWithOrNull(compareBy<Size> {
             val a = it.width.toDouble() / max(1, it.height)
             abs(a - targetAspect)
-        }.thenByDescending { it.width * it.height }) ?: Size(1280, 720)
+        }.thenByDescending { it.width * it.height }) ?: Size(960, 720)
     }
 
     private fun createSession(dev: CameraDevice) {
-        val st = previewView.surfaceTexture ?: return
+        val st = previewView.surfaceTexture
+        if (st == null) {
+            try { dev.close() } catch (_: Exception) { }
+            if (cameraDevice == dev) cameraDevice = null
+            scheduleCameraRestart(800L)
+            return
+        }
         st.setDefaultBufferSize(previewSize.width, previewSize.height)
         val texSurface = Surface(st)
 
         previewReader?.close()
-        previewReader = ImageReader.newInstance(previewSize.width, previewSize.height, ImageFormat.YUV_420_888, 2).apply {
+        previewReader = ImageReader.newInstance(previewSize.width, previewSize.height, ImageFormat.YUV_420_888, 3).apply {
             setOnImageAvailableListener({ reader ->
                 val img = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
                 try {
@@ -1078,16 +1120,26 @@ class GuestBridgeActivity : AppCompatActivity() {
                     mainHandler.post { applyPreviewTransform() }
                     sendCameraHello()
                 } catch (e: Exception) {
-                    Log.e(TAG, "setRepeatingRequest failed", e)
+                    Log.e(TAG, "setRepeatingRequest failed — restarting camera", e)
+                    try { dev.close() } catch (_: Exception) { }
+                    if (cameraDevice == dev) cameraDevice = null
+                    scheduleCameraRestart(1500L)
                 }
             }
             override fun onConfigureFailed(session: CameraCaptureSession) {
-                Log.e(TAG, "createCaptureSession failed")
+                Log.e(TAG, "createCaptureSession failed — retrying with smaller still size")
+                if (stillCapMaxW > 1920) stillCapMaxW = 1920
+                try { dev.close() } catch (_: Exception) { }
+                if (cameraDevice == dev) cameraDevice = null
+                scheduleCameraRestart(1500L)
             }
         }, camHandler)
     }
 
     private fun stopCamera() {
+        camRestartRunnable?.let { mainHandler.removeCallbacks(it) }
+        camRestartRunnable = null
+        cameraOpening.set(false)
         try { captureSession?.close() } catch (_: Exception) { }
         captureSession = null
         try { cameraDevice?.close() } catch (_: Exception) { }
@@ -1184,29 +1236,36 @@ class GuestBridgeActivity : AppCompatActivity() {
     private fun onPreviewImage(img: Image) {
         val now = System.currentTimeMillis()
         if (now - lastFrameAt.get() < PREVIEW_FRAME_INTERVAL_MS) return
-        if (!camConnected.get() || previewSending.get()) return
+        if (!camConnected.get() || !previewSending.compareAndSet(false, true)) return
         lastFrameAt.set(now)
-        previewSending.set(true)
         try {
-            val nv21 = yuv420ToNv21(img)
-            val baos = ByteArrayOutputStream()
-            YuvImage(nv21, ImageFormat.NV21, img.width, img.height, null)
-                .compressToJpeg(Rect(0, 0, img.width, img.height), 72, baos)
-            var jpg = baos.toByteArray()
+            // Copy raw YUV bytes quickly on camHandler so img.close() returns the HAL buffer right away
+            // (prevents Huawei Kirin / Camera2 ImageReader starvation), then encode & transmit off-thread.
+            val w = img.width
+            val h = img.height
             val rot = jpegRotationDeg()
-            if (rot != 0) {
-                jpg = rotateJpeg(jpg, rot)
-            }
-            latestUprightJpeg = jpg
+            val nv21 = yuv420ToNv21(img)
             netExec.execute {
                 try {
-                    sendWsFrame(0x2, jpg)
+                    val baos = ByteArrayOutputStream()
+                    YuvImage(nv21, ImageFormat.NV21, w, h, null)
+                        .compressToJpeg(Rect(0, 0, w, h), 72, baos)
+                    var jpg = baos.toByteArray()
+                    if (rot != 0) {
+                        jpg = rotateJpeg(jpg, rot)
+                    }
+                    latestUprightJpeg = jpg
+                    if (camConnected.get()) {
+                        sendWsFrame(0x2, jpg)
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "preview encode/send error", e)
                 } finally {
                     previewSending.set(false)
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "preview encode error", e)
+            Log.w(TAG, "preview copy error", e)
             previewSending.set(false)
         }
     }
@@ -1239,18 +1298,22 @@ class GuestBridgeActivity : AppCompatActivity() {
                 pos += w
             }
         }
-        val uvRowStride = vPlane.rowStride
-        val uvPixStride = vPlane.pixelStride
+        val vRowStride = vPlane.rowStride
+        val vPixStride = vPlane.pixelStride
+        val uRowStride = uPlane.rowStride
+        val uPixStride = uPlane.pixelStride
         val halfH = h / 2
         val halfW = w / 2
         val vLim = vBuf.limit()
         val uLim = uBuf.limit()
         for (r in 0 until halfH) {
-            val base = r * uvRowStride
+            val vBase = r * vRowStride
+            val uBase = r * uRowStride
             for (c in 0 until halfW) {
-                val off = base + c * uvPixStride
-                out[pos++] = if (off < vLim) vBuf.get(off) else 128.toByte()
-                out[pos++] = if (off < uLim) uBuf.get(off) else 128.toByte()
+                val vOff = vBase + c * vPixStride
+                val uOff = uBase + c * uPixStride
+                out[pos++] = if (vOff < vLim) vBuf.get(vOff) else 128.toByte()
+                out[pos++] = if (uOff < uLim) uBuf.get(uOff) else 128.toByte()
             }
         }
         return out
@@ -1389,9 +1452,11 @@ class GuestBridgeActivity : AppCompatActivity() {
 
     // ---------- Minimal RFC-6455 WebSocket client for Camera2 ----------
     private fun startCameraWebSocket() {
+        val myGen = wsGen.incrementAndGet()
         wsRunning.set(true)
         netExec.execute {
-            while (wsRunning.get() && sessionActive) {
+            while (wsRunning.get() && sessionActive && wsGen.get() == myGen) {
+                var sock: Socket? = null
                 try {
                     val uri = URI(activeBaseUrl)
                     val host = uri.host ?: break
@@ -1399,22 +1464,27 @@ class GuestBridgeActivity : AppCompatActivity() {
                     val path = (uri.rawPath ?: "") + "/ws?role=cam"
 
                     val (net, localAddr) = bestNetworkForHost(host)
-                    if (!wsRunning.get() || !sessionActive) break
+                    if (!wsRunning.get() || !sessionActive || wsGen.get() != myGen) break
                     if (net != activeNetwork) {
                         activeNetwork = net
                         bindBridgeNetwork(net)
                     }
                     activeLocalAddr = localAddr
 
-                    val sock = createBridgeSocket(net, localAddr)
-                    sock.connect(InetSocketAddress(host, port), 4000)
-                    sock.tcpNoDelay = true
-                    sock.keepAlive = true
-                    sock.soTimeout = 30000
-                    wsSocket = sock
-                    val out = sock.getOutputStream()
+                    val s = createBridgeSocket(net, localAddr)
+                    sock = s
+                    s.connect(InetSocketAddress(host, port), 4000)
+                    s.tcpNoDelay = true
+                    s.keepAlive = true
+                    s.soTimeout = 30000
+                    if (!wsRunning.get() || !sessionActive || wsGen.get() != myGen) {
+                        try { s.close() } catch (_: Exception) { }
+                        break
+                    }
+                    wsSocket = s
+                    val out = s.getOutputStream()
                     wsOut = out
-                    val inp = sock.getInputStream()
+                    val inp = s.getInputStream()
 
                     val keyBytes = ByteArray(16).also { rng.nextBytes(it) }
                     val wsKey = Base64.encodeToString(keyBytes, Base64.NO_WRAP)
@@ -1428,7 +1498,7 @@ class GuestBridgeActivity : AppCompatActivity() {
                     out.flush()
 
                     if (!readHttpUpgradeHeaders(inp)) {
-                        sock.close()
+                        s.close()
                         Thread.sleep(1500)
                         continue
                     }
@@ -1440,12 +1510,16 @@ class GuestBridgeActivity : AppCompatActivity() {
                     // Refresh network binding on reconnect in case Wi-Fi bounced or changed.
                     activeNetwork = null
                 } finally {
-                    camConnected.set(false)
-                    try { wsSocket?.close() } catch (_: Exception) { }
-                    wsSocket = null
-                    wsOut = null
+                    try { sock?.close() } catch (_: Exception) { }
+                    if (wsGen.get() == myGen) {
+                        camConnected.set(false)
+                        if (wsSocket === sock) {
+                            wsSocket = null
+                            wsOut = null
+                        }
+                    }
                 }
-                if (wsRunning.get() && sessionActive) {
+                if (wsRunning.get() && sessionActive && wsGen.get() == myGen) {
                     try { Thread.sleep(1500) } catch (_: InterruptedException) { break }
                 }
             }

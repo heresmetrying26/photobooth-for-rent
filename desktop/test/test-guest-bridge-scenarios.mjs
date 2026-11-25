@@ -517,6 +517,114 @@ console.log('--- Deep Scenario & Stress Tests (Online + Offline Tablet Bridge) -
   statusCb({ port: 47777, token: desktopTok, primaryUrl: `http://127.0.0.1:47777/bridge/${desktopTok}`, adbUrl: `http://127.0.0.1:47777/bridge/${desktopTok}`, addresses: [], connected: false, camConnected: false, guestConnected: false });
   assert(scC.els.tabletBridgeUrl.textContent.includes('127.0.0.1:47777'), 'Zero-LAN state falls back gracefully to ADB URL');
 
+  // Scenario D2: Auto-reclaim tablet camera after a Wi-Fi blip even if laptop fell back to built-in webcam
+  {
+    const initCalls = [];
+    let statusCb2 = null;
+    const scR = runTabletBridgeClient({
+      DESKTOP: true,
+      electronApi: {
+        info: async () => desktopInfo(),
+        renew: async () => desktopInfo(),
+        onStatus: (fn) => { statusCb2 = fn; },
+        onAction: () => { },
+        pushState: () => { },
+        sendEvent: () => { },
+        camCmd: () => { }
+      }
+    });
+    scR.ctx.currentDeviceId = 'webcam-builtin';
+    scR.ctx.streamActive = false;
+    scR.ctx.savedCamera = () => ({ id: 'webcam-builtin', label: 'Integrated Webcam' });
+    scR.ctx.initCamera = (id) => { initCalls.push(id); scR.ctx.currentDeviceId = id; scR.ctx.streamActive = true; };
+    await new Promise((r) => setTimeout(r, 20));
+    // 1) Tablet connects -> auto-picked because streamActive was false
+    statusCb2({ ...desktopInfo(), connected: true, camConnected: true, guestConnected: true, deviceName: 'HUAWEI MRX-AL09', facing: 'front' });
+    assert.deepEqual(initCalls, ['tablet-bridge'], 'Initial tablet connect selects tablet-bridge');
+    // 2) Brief Wi-Fi drop -> laptop falls back to built-in webcam (streamActive = true, currentDeviceId = webcam)
+    statusCb2({ ...desktopInfo(), connected: false, camConnected: false, guestConnected: false });
+    assert.equal(scR.ctx.tabletBridge.wasUsingCam, true, 'Remembers tablet camera was active when connection drops');
+    scR.ctx.currentDeviceId = 'webcam-builtin';
+    scR.ctx.streamActive = true;
+    // 3) Tablet reconnects -> auto-reclaims tablet-bridge even though webcam is active and savedCamera is webcam
+    statusCb2({ ...desktopInfo(), connected: true, camConnected: true, guestConnected: true, deviceName: 'HUAWEI MRX-AL09', facing: 'front' });
+    assert.deepEqual(initCalls, ['tablet-bridge', 'tablet-bridge'], 'Auto-reclaims tablet camera after Wi-Fi reconnect');
+  }
+
+  // Scenario D3: openTabletCameraStream() 4.5s grace window survives brief Wi-Fi blip without ending video track
+  {
+    const camCmds = [];
+    let frameCalls = 0;
+    let drawnFrames = 0;
+    let endedCount = 0;
+    let fakeNow = 1000000;
+    const scG = runTabletBridgeClient({
+      DESKTOP: true,
+      electronApi: {
+        info: async () => ({ ...desktopInfo(), connected: true, camConnected: true, guestConnected: true }),
+        renew: async () => desktopInfo(),
+        onStatus: () => { },
+        onAction: () => { },
+        pushState: () => { },
+        sendEvent: () => { },
+        camCmd: (c) => camCmds.push(c)
+      },
+      fetchImpl: async (u) => {
+        if (u.includes('/frame')) {
+          await new Promise((r) => setTimeout(r, 8));
+          frameCalls++;
+          return {
+            status: 200,
+            headers: { get: (k) => (k.toLowerCase() === 'x-pb-seq' ? String(frameCalls) : null) },
+            blob: async () => new Uint8Array([0xff, 0xd8, 0xff, 0xd9])
+          };
+        }
+        return { ok: true, status: 200, json: async () => ({ ok: true }) };
+      }
+    });
+    const fakeTrack = {
+      stopped: false,
+      stop() { this.stopped = true; },
+      dispatchEvent(ev) { if (ev && ev.type === 'ended') endedCount++; }
+    };
+    scG.ctx.Event = class Event { constructor(t) { this.type = t; } };
+    scG.ctx.Date = Object.assign(function () { return new Date(fakeNow); }, { now: () => fakeNow });
+    scG.ctx.createImageBitmap = async () => ({ width: 960, height: 720, close() { } });
+    scG.ctx.document.createElement = () => ({
+      width: 0, height: 0,
+      getContext: () => ({ drawImage() { drawnFrames++; } }),
+      captureStream: () => ({ getVideoTracks: () => [fakeTrack] })
+    });
+    scG.ctx.wait = () => new Promise((r) => setTimeout(r, 10));
+    await new Promise((r) => setTimeout(r, 25));
+    const strm = scG.ctx.openTabletCameraStream();
+    assert(strm, 'openTabletCameraStream returns stream');
+    await new Promise((r) => setTimeout(r, 35));
+    assert(drawnFrames >= 1, 'Draws live frames before blip');
+
+    // Brief 1.5s Wi-Fi blip (< 4.5s grace window)
+    scG.ctx.tabletBridge.camConnected = false;
+    fakeNow += 1500;
+    await new Promise((r) => setTimeout(r, 35));
+    assert.equal(endedCount, 0, 'Track does NOT fire ended during brief <4.5s Wi-Fi blip');
+
+    // Tablet reconnects -> resumes seamlessly and re-sends { type: "live", on: true }
+    const beforeResumeFrames = drawnFrames;
+    scG.ctx.tabletBridge.camConnected = true;
+    await new Promise((r) => setTimeout(r, 35));
+    assert.equal(endedCount, 0, 'Track stays alive after brief reconnect');
+    assert(drawnFrames > beforeResumeFrames, 'Resumes drawing frames immediately after blip');
+    assert(camCmds.filter((c) => c.type === 'live').length >= 2, 'Re-sends live command after transient blip');
+
+    // Prolonged >4.5s drop -> cleanly ends track & sets wasUsingCam=true for auto-reclaim
+    scG.ctx.tabletBridge.camConnected = false;
+    await new Promise((r) => setTimeout(r, 25)); // latches dropAt
+    fakeNow += 5000;
+    await new Promise((r) => setTimeout(r, 35));
+    assert.equal(endedCount, 1, 'Prolonged >4.5s drop ends track cleanly');
+    assert.equal(scG.ctx.tabletBridge.wasUsingCam, true, 'Sets wasUsingCam=true on prolonged drop');
+  }
+
   // Scenario E: Mobile browser running Online Web Booth -> bridge box stays hidden, zero localhost probes
   const scE = runTabletBridgeClient({ DESKTOP: false, isMobile: true });
   await new Promise((r) => setTimeout(r, 30));

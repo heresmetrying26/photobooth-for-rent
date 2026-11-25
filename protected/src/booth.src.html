@@ -23474,7 +23474,7 @@
               <ul>
                 <li><b>Windows Firewall:</b> Set your Wi-Fi network profile to <b>Private</b> in Windows Settings → Wi-Fi (or click <b>Allow</b> for both Private &amp; Public when Windows Firewall asks for photobooth4u / Print Helper).</li>
                 <li><b>Router setting:</b> Turn <b>AP / Client Isolation OFF</b> so devices on the Wi-Fi can talk to each other.</li>
-                <li><b>Offline tablet with SIM:</b> Turn <b>Airplane Mode ON → Wi-Fi back ON</b>, and tap <b>Stay connected</b> on &ldquo;No internet&rdquo;.</li>
+                <li><b>Offline / Huawei tablet (&ldquo;Avoided poor Internet connection&rdquo;):</b> Turn <b>Airplane Mode ON → Wi-Fi back ON</b>; on Huawei open <b>Wi-Fi → More settings → Wi-Fi+ OFF</b>, tap <b>(i) → Forget</b> on the booth Wi-Fi if it says &ldquo;Avoided poor Internet&rdquo;, reconnect, and tap <b>Stay connected</b>.</li>
               </ul>
               <p class="tb-g-foot"><a href="/how-to-tablet-camera/" target="_blank" rel="noopener">Open full visual Tablet Bridge guide ↗</a></p>
             </div>
@@ -33550,10 +33550,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         // Start screen splash: definitely idle
         const ss = document.getElementById('startScreen');
         if (ss && !ss.classList.contains('gone') && ss.style.display !== 'none') return false;
-        // Setup: only the Camera step shows the picture, or step 7 if hands-free is enabled
+        // Setup: keep camera live on the Camera step, and on Step 7 when hands-free is on or Tablet Bridge camera just paired
         if (!tabSetup.classList.contains('hidden')) {
           const st = usbSetupStep();
-          return (st === '4' || (st === '7' && fx.hands !== 'off')) && Date.now() - usbTouchAt < USB_SETUP_LIVE_MS;
+          const tabBridgeLive = typeof TABLET_CAM_ID !== 'undefined' && currentDeviceId === TABLET_CAM_ID && typeof tabletCamAvailable === 'function' && tabletCamAvailable();
+          return (st === '4' || (st === '7' && (fx.hands !== 'off' || tabBridgeLive))) && Date.now() - usbTouchAt < USB_SETUP_LIVE_MS;
         }
         if (state === 'result') return false;                                  // QR, print, share: the guest is done
         if (pickOpen || (typeof btPickOpen !== 'undefined' && btPickOpen)) return false; // keep camera asleep while choosing layout/template
@@ -34252,6 +34253,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       });
 
       cameraSelect.addEventListener('change', () => {
+        if (typeof tabletBridge !== 'undefined' && tabletBridge && typeof TABLET_CAM_ID !== 'undefined') {
+          tabletBridge.wasUsingCam = (cameraSelect.value === TABLET_CAM_ID);
+        }
         setTimeout(() => { try { refreshCamFab(); } catch (e) { } }, 0);
         saveCamera();
         initCamera(cameraSelect.value);

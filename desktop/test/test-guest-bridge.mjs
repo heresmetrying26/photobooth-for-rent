@@ -340,8 +340,11 @@ assert(bridgeKt.includes('bindBridgeNetwork(null)'), 'GuestBridgeActivity releas
 assert(bridgeKt.includes('registerOfflineLanCallbacks'), 'GuestBridgeActivity tracks offline Wi-Fi/Ethernet via NetworkCallback');
 assert(bridgeKt.includes('removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)'), 'GuestBridgeActivity requests offline Wi-Fi without requiring internet capability');
 assert(bridgeKt.includes('probeViaBoundSocket'), 'GuestBridgeActivity binds source IP for USB Tether / Wi-Fi Direct probes');
-assert(bridgeKt.includes('sock.keepAlive = true') && bridgeKt.includes('sock.soTimeout = 30000'), 'GuestBridgeActivity sets TCP keepalive + read timeout to heal zombie offline sockets');
+assert(/\.keepAlive = true\b/.test(bridgeKt) && /\.soTimeout = 30000\b/.test(bridgeKt), 'GuestBridgeActivity sets TCP keepalive + read timeout to heal zombie offline sockets');
 assert(bridgeKt.includes('pvMirror != activeLensFront'), 'GuestBridgeActivity accounts for Camera2 native front-camera TextureView mirroring (no double-flip)');
+assert(bridgeKt.includes('scheduleCameraRestart') && bridgeKt.includes('cameraOpening'), 'GuestBridgeActivity auto-restarts Camera2 on HAL disconnect/error and prevents double-open races');
+assert(bridgeKt.includes('ImageFormat.YUV_420_888, 3') && bridgeKt.includes('chooseBestSize(yuvSizes, 960, 720'), 'GuestBridgeActivity caps live preview to 960x720 with 3 ImageReader buffers to prevent Kirin/HAL starvation');
+assert(bridgeKt.includes('private val wsGen = AtomicLong(0L)') && bridgeKt.includes('@Volatile private var cameraDevice') && bridgeKt.includes('@Volatile private var wsSocket'), 'GuestBridgeActivity guards WS generation and ARM64 cross-thread visibility');
 const gbSrc = readFileSync(join(ROOT, 'desktop', 'lib', 'guest-bridge.mjs'), 'utf8');
 assert(gbSrc.includes('ensureHeartbeat') && gbSrc.includes('setKeepAlive') && gbSrc.includes('forceReconnect') && gbSrc.includes('lastHbAt'), 'guest-bridge.mjs runs WS heartbeat + keepalive + guest watchdog');
 

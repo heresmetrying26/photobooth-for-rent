@@ -2039,7 +2039,7 @@ class RovingBridgeActivity : AppCompatActivity() {
     }
 
     private fun syncWakeLock() {
-        synchronized(wakeLockSync) {
+        synchronized<Unit>(wakeLockSync) {
             val pocketOn = ::pocketLockOverlay.isInitialized && pocketLockOverlay.visibility == View.VISIBLE
             val shouldHold = !isFinishing && !isDestroyed && (pocketOn || pendingCount() > 0)
             try {
@@ -2063,11 +2063,12 @@ class RovingBridgeActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.w(TAG, "WakeLock sync error: ${e.message}")
             }
+            Unit
         }
     }
 
     private fun releaseWakeLock() {
-        synchronized(wakeLockSync) {
+        synchronized<Unit>(wakeLockSync) {
             try {
                 val wl = wakeLock
                 if (wl != null && wl.isHeld) {
@@ -2077,6 +2078,7 @@ class RovingBridgeActivity : AppCompatActivity() {
             } finally {
                 wakeLock = null
             }
+            Unit
         }
     }
 

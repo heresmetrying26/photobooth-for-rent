@@ -26,12 +26,14 @@ import { spawn } from 'node:child_process';
 import { freeCamera, guardCamera } from './camfree.mjs';
 import {
   startHelperBridge, stopHelperBridge, helperBridgeStatus, handleBridgeCtrl,
-  getLanStationInfo, rotateLanStationPin, renderStationDashboardHtml
+  getLanStationInfo, rotateLanStationPin, renderStationDashboardHtml,
+  recordStationJob, createStationTestPngDataUrl
 } from './bridge-ctrl.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.23';
+const VERSION = '1.1.24';
 const PORT = 17321;
+const OPEN_STATION_ON_START = process.argv.includes('--station');
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',
   'http://localhost:8888',            // netlify dev
@@ -42,6 +44,22 @@ const ALLOWED_ORIGINS = new Set([
 const IS_WIN = platform() === 'win32';
 const IS_MAC = platform() === 'darwin';
 const MAX_BODY = 80 * 1024 * 1024;     // 80 MB of page images per job
+
+function stationUrl() { return 'http://127.0.0.1:' + PORT + '/station'; }
+
+function openStationBrowser() {
+  const target = stationUrl();
+  try {
+    const p = IS_WIN
+      ? spawn('cmd', ['/c', 'start', '', target], { detached: true, stdio: 'ignore', windowsHide: true })
+      : IS_MAC
+      ? spawn('open', [target], { detached: true, stdio: 'ignore' })
+      : spawn('xdg-open', [target], { detached: true, stdio: 'ignore' });
+    p.on('error', () => { });
+    p.unref();
+    return true;
+  } catch { return false; }
+}
 
 function run(cmd, args, input) {
   return new Promise((resolve) => {
@@ -741,7 +759,7 @@ async function enqueuePrintBody(body) {
   }
 }
 
-const server = Bun.serve({
+const serverCfg = {
   idleTimeout: 60,                     // a camera photo can take a while
   hostname: '127.0.0.1',
   port: PORT,
@@ -858,6 +876,32 @@ const server = Bun.serve({
       if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);
       return json({ ok: true, pin: rotateLanStationPin() }, 200, origin);
     }
+    if (req.method === 'POST' && url.pathname === '/station/test-print') {
+      if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);
+      let body = {};
+      try { body = await req.json(); } catch (e) { }
+      const name = String(body.printer || '').trim();
+      const twoUp = !!body.twoUp;
+      if (!name) return json({ ok: false, error: 'Choose a printer first.' }, 400, origin);
+      const dataUrl = createStationTestPngDataUrl({ twoUp });
+      const out = await enqueuePrintBody({
+        printer: name,
+        quality: 'best',
+        twoUp,
+        widthMm: 101.6,
+        heightMm: 152.4,
+        pages: [dataUrl]
+      });
+      recordStationJob({
+        printer: name,
+        pages: 1,
+        paper: twoUp ? '2x6 strips (cut)' : '4x6 test',
+        from: 'Laptop Test',
+        ok: !!(out && out.status === 200 && out.body && out.body.ok),
+        error: out && out.body && out.body.error ? out.body.error : ''
+      });
+      return json(out.body, out.status, origin);
+    }
 
     if (req.method === 'GET' && url.pathname === '/paper') {
       const name = String(url.searchParams.get('printer') || '').trim();
@@ -893,9 +937,44 @@ const server = Bun.serve({
     return json({ ok: false, error: 'Not found' }, 404, origin);
   },
   error(e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
-});
+};
+
+let server;
+try {
+  server = Bun.serve(serverCfg);
+} catch (bindErr) {
+  let alreadyUp = false;
+  try {
+    const r = await fetch('http://127.0.0.1:' + PORT + '/station/info', { signal: AbortSignal.timeout(1500) });
+    alreadyUp = r.ok;
+  } catch { }
+  if (alreadyUp) {
+    console.log('');
+    console.log('  photobooth4u Print Helper is already running on 127.0.0.1:' + PORT + '.');
+    console.log('  Opening Laptop Print Station dashboard (' + stationUrl() + ')...');
+    openStationBrowser();
+    await new Promise(r => setTimeout(r, 400));
+    process.exit(0);
+  }
+  throw bindErr;
+}
 
 function log(msg) { console.log('[' + new Date().toLocaleTimeString() + '] ' + msg); }
+
+function printStationBanner(bp) {
+  const ls = getLanStationInfo();
+  const ips = (ls.addresses || []).map(a => a.ip + (bp !== 47777 ? ':' + bp : '') + ' (' + a.kind + ')');
+  console.log('  ------------------------------------------------------------------');
+  console.log('  OFFLINE IPAD PRINT STATION (Wi-Fi / No Internet Needed)');
+  console.log('    Laptop IP  : ' + (ips.length ? ips.join('  |  ') : ('Connect Wi-Fi or Hotspot (port ' + bp + ')')));
+  console.log('    6-Digit PIN: ' + ls.pin);
+  console.log('    Dashboard  : ' + stationUrl());
+  console.log('  ------------------------------------------------------------------');
+  console.log('    Press [O] + Enter -> Open Print Station Dashboard in Browser');
+  console.log('    Press [N] + Enter -> New 6-Digit PIN');
+  console.log('    Press [R] + Enter -> Refresh Printers & Wi-Fi IP');
+  console.log('  ------------------------------------------------------------------\n');
+}
 
 console.log('');
 console.log('  photobooth4u Helper ' + VERSION + ' (printing' + (CAMERA_OK ? ' + Nikon / Canon / Sony camera over USB' : '') + (IS_MAC ? ' + frees USB cameras for the browser' : '') + ')');
@@ -923,16 +1002,33 @@ startHelperBridge({
 }).then((bp) => {
   if (bp) {
     const st = helperBridgeStatus();
-    const ls = getLanStationInfo();
-    const firstIp = (ls.addresses && ls.addresses[0]) ? ls.addresses[0].ip : '';
     log('Tablet Bridge ready on port ' + bp + (st.primaryUrl ? ' (' + st.primaryUrl + ')' : '') + ' — allow Windows Firewall (Private & Public) if asked.');
-    console.log('  ------------------------------------------------------------------');
-    console.log('  OFFLINE IPAD PRINT STATION (Wi-Fi / No Internet Needed)');
-    console.log('    Laptop IP  : ' + (firstIp || 'Connect Wi-Fi or Hotspot') + (bp !== 47777 ? ':' + bp : ' (port ' + bp + ')'));
-    console.log('    6-Digit PIN: ' + ls.pin);
-    console.log('    Laptop Page: http://127.0.0.1:' + PORT + '/station');
-    console.log('  ------------------------------------------------------------------\n');
+    printStationBanner(bp);
+    if (OPEN_STATION_ON_START) {
+      log('Opening Laptop Print Station in your browser (' + stationUrl() + ')...');
+      openStationBrowser();
+    }
   }
 }).catch(() => { });
+if (process.stdin && typeof process.stdin.on === 'function' && process.stdin.isTTY) {
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', async (chunk) => {
+    const cmd = String(chunk || '').trim().toLowerCase();
+    if (!cmd) return;
+    if (cmd === 'o' || cmd === 'open' || cmd === 's' || cmd === 'station') {
+      log('Opening ' + stationUrl() + ' in your browser...');
+      openStationBrowser();
+    } else if (cmd === 'n' || cmd === 'pin' || cmd === 'new') {
+      const next = rotateLanStationPin();
+      console.log('  New 6-Digit PIN: ' + next + '\n');
+    } else if (cmd === 'r' || cmd === 'refresh') {
+      const list = await printers(true).catch(() => []);
+      console.log('  Printers on this computer:');
+      (list.length ? list : ['(none found)']).forEach(n => console.log('   - ' + n));
+      const bp = helperBridgeStatus().port || 47777;
+      printStationBanner(bp);
+    }
+  });
+}
 // Windows: get the camera part ready now, so the booth finds the camera quickly.
 if (IS_WIN) camStart().catch(e => log(String(e && e.message || e)));

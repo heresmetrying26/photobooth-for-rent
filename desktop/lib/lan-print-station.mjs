@@ -8,6 +8,7 @@ import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { hostname, networkInterfaces } from 'node:os';
 import { dirname } from 'node:path';
+import { deflateSync } from 'node:zlib';
 import { allBridgeUrls } from './guest-bridge.mjs';
 
 const FAIL_MAX = 10;
@@ -196,7 +197,7 @@ function readJsonBody(req, maxBytes) {
   });
 }
 
-function recordJob(entry) {
+export function recordStationJob(entry) {
   jobLog.unshift({
     at: Date.now(),
     printer: String(entry.printer || ''),
@@ -207,6 +208,64 @@ function recordJob(entry) {
     error: entry.error ? String(entry.error) : ''
   });
   if (jobLog.length > MAX_LOGS) jobLog.length = MAX_LOGS;
+}
+
+const PNG_CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+
+function pngChunk(type, data) {
+  const tb = Buffer.from(type, 'ascii');
+  const len = Buffer.allocUnsafe(4);
+  len.writeUInt32BE(data.length, 0);
+  let c = 0xffffffff;
+  for (let i = 0; i < 4; i++) c = PNG_CRC_TABLE[(c ^ tb[i]) & 0xff] ^ (c >>> 8);
+  for (let i = 0; i < data.length; i++) c = PNG_CRC_TABLE[(c ^ data[i]) & 0xff] ^ (c >>> 8);
+  const crc = Buffer.allocUnsafe(4);
+  crc.writeUInt32BE((c ^ 0xffffffff) >>> 0, 0);
+  return Buffer.concat([len, tb, data, crc]);
+}
+
+/** Generate a pure-JS RGBA PNG test print image (no native canvas/sharp dependency). */
+export function createStationTestPngDataUrl({ twoUp = false } = {}) {
+  const w = twoUp ? 300 : 600;
+  const h = 900;
+  const stride = 1 + w * 4;
+  const raw = Buffer.allocUnsafe(stride * h);
+  for (let y = 0; y < h; y++) {
+    const rowStart = y * stride;
+    raw[rowStart] = 0;
+    const isBorder = xBorderBand(y, h);
+    for (let x = 0; x < w; x++) {
+      const p = rowStart + 1 + x * 4;
+      let r = 248, g = 244, b = 237;
+      if (x < 18 || x >= w - 18 || isBorder) { r = 201; g = 61; b = 39; }
+      else if (y >= 90 && y < 380 && x >= 36 && x < w - 36) { r = 28; g = 26; b = 30; }
+      else if (y >= 420 && y < 740 && x >= 36 && x < w - 36) { r = 31; g = 111; b = 98; }
+      raw[p] = r; raw[p + 1] = g; raw[p + 2] = b; raw[p + 3] = 255;
+    }
+  }
+  const ihdr = Buffer.allocUnsafe(13);
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8; ihdr[9] = 6; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+  const png = Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    pngChunk('IHDR', ihdr),
+    pngChunk('IDAT', deflateSync(raw)),
+    pngChunk('IEND', Buffer.alloc(0))
+  ]);
+  return 'data:image/png;base64,' + png.toString('base64');
+}
+
+function xBorderBand(y, h) {
+  return y < 18 || y >= h - 18;
 }
 
 /**
@@ -290,16 +349,16 @@ export async function handleLanStationHttp(req, res, url) {
     try {
       const resPrint = await cfg.printJob(body || {});
       if (resPrint && resPrint.ok) {
-        recordJob({ printer, pages: pagesCount, paper: paperLabel, from: fromIp, ok: true });
+        recordStationJob({ printer, pages: pagesCount, paper: paperLabel, from: fromIp, ok: true });
         log('Printed ' + pagesCount + ' page(s) on "' + printer + '" from iPad/tablet ' + fromIp);
         return sendJson(res, 200, resPrint);
       }
       const errMsg = (resPrint && resPrint.error) || 'Print failed.';
-      recordJob({ printer, pages: pagesCount, paper: paperLabel, from: fromIp, ok: false, error: errMsg });
+      recordStationJob({ printer, pages: pagesCount, paper: paperLabel, from: fromIp, ok: false, error: errMsg });
       return sendJson(res, 500, { ok: false, error: errMsg });
     } catch (e) {
       const errMsg = (e && e.message) || 'Print failed.';
-      recordJob({ printer, pages: pagesCount, paper: paperLabel, from: fromIp, ok: false, error: errMsg });
+      recordStationJob({ printer, pages: pagesCount, paper: paperLabel, from: fromIp, ok: false, error: errMsg });
       return sendJson(res, 500, { ok: false, error: errMsg });
     }
   }
@@ -319,18 +378,24 @@ export function renderStationDashboardHtml() {
   :root{--bg:#f5f1ea;--card:#fff;--ink:#1c1a1e;--dim:#6b666c;--line:#e4dccf;--red:#c93d27;--ok:#1f6f62;--okbg:#e6f4f1;}
   *{box-sizing:border-box}
   body{margin:0;padding:24px;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
-  .wrap{max-width:780px;margin:0 auto;}
+  .wrap{max-width:820px;margin:0 auto;}
   h1{margin:0 0 6px;font-size:28px;letter-spacing:-.02em;}
   .sub{margin:0 0 18px;color:var(--dim);}
   .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:14px;}
   .pinbox{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;background:#1c1a1e;color:#fff;border-radius:14px;padding:16px 20px;}
   .pin{font:800 36px/1 ui-monospace,Consolas,monospace;letter-spacing:.14em;color:#ffd166;}
   .ip{font:700 17px/1.4 ui-monospace,Consolas,monospace;color:#7ee787;}
-  .btn{border:1px solid var(--line);background:#fff;color:var(--ink);font:700 13.5px inherit;padding:9px 14px;border-radius:999px;cursor:pointer;}
-  .btn:hover{border-color:var(--red);color:var(--red);}
+  .btn{border:1px solid var(--line);background:#fff;color:var(--ink);font:700 13px inherit;padding:8px 13px;border-radius:999px;cursor:pointer;}
+  .btn:hover:not(:disabled){border-color:var(--red);color:var(--red);}
+  .btn:disabled{opacity:.55;cursor:default;}
   .btn.dark{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3);color:#fff;}
+  .msg{display:none;margin:10px 0 0;padding:10px 13px;border-radius:10px;background:var(--okbg);color:var(--ok);font-size:13.5px;font-weight:700;}
+  .msg.err{background:#fdecea;color:#9b2c1f;}
   ul.pr{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:8px;}
-  ul.pr li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#faf8f4;}
+  ul.pr li{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#faf8f4;}
+  .pr-acts{display:flex;gap:6px;flex-wrap:wrap;}
+  ol.steps{margin:8px 0 0;padding-left:20px;color:var(--dim);font-size:14px;line-height:1.65;}
+  ol.steps b{color:var(--ink);}
   table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px;}
   th,td{text-align:left;padding:8px 6px;border-top:1px solid var(--line);}
   th{border-top:0;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);}
@@ -341,7 +406,7 @@ export function renderStationDashboardHtml() {
 <body>
 <div class="wrap">
   <h1>Offline iPad Print Station</h1>
-  <p class="sub">Keep this helper open on the laptop plugged into your printer. On the iPad app, go to <b>Setup &rsaquo; Printer &rsaquo; Laptop Print Station (Offline Wi-Fi)</b> and connect with an address and PIN below.</p>
+  <p class="sub">Keep Print Helper open on the laptop plugged into your printer (zero internet and zero extra device slots needed). Pair the iPad app using the Wi-Fi address and PIN below.</p>
   <div class="card">
     <div class="pinbox">
       <div>
@@ -354,9 +419,10 @@ export function renderStationDashboardHtml() {
       </div>
       <button class="btn dark" id="newPinBtn" type="button">New PIN</button>
     </div>
+    <div class="msg" id="dashMsg" role="status"></div>
   </div>
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
       <b>Installed Printers on This Laptop</b>
       <button class="btn" id="refPrBtn" type="button">Refresh Printers</button>
     </div>
@@ -367,9 +433,20 @@ export function renderStationDashboardHtml() {
     <table><thead><tr><th>Time</th><th>From</th><th>Printer</th><th>Size</th><th>Status</th></tr></thead>
     <tbody id="jobBody"><tr><td colspan="5" style="color:var(--dim)">Waiting for prints…</td></tr></tbody></table>
   </div>
+  <div class="card">
+    <b>Where to Click on the iPad App</b>
+    <ol class="steps">
+      <li>Join the <b>same Wi-Fi router</b> or <b>Windows Mobile Hotspot</b> on both this laptop and your iPad.</li>
+      <li>If using a DSLR on the iPad (e.g. Canon 550D), plug it into the iPad via USB and choose it in <b>Setup &rarr; Camera</b>.</li>
+      <li>Open <b>Setup &rarr; Printer</b> on the iPad app, pick <b>4&times;6</b> or <b>2&times;6 strips</b>, and switch on <b>Laptop Print Station (Wi-Fi &middot; Offline USB printer)</b>.</li>
+      <li>Tap <b>Find Laptop on Wi-Fi</b> (or type the IP above), enter the <b>6-Digit PIN</b>, and tap <b>Connect</b>.</li>
+      <li>Under <b>Printer 1</b>, pick your Mitsubishi / DNP / HiTi printer and turn on <b>Auto-print</b> if desired.</li>
+    </ol>
+  </div>
 </div>
 <script>
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function say(msg,isErr){const el=document.getElementById('dashMsg');el.textContent=msg;el.className='msg'+(isErr?' err':'');el.style.display=msg?'block':'none';}
 async function load(refresh){
   try{
     const r = await fetch('/station/info' + (refresh ? '?refresh=1' : ''), { cache:'no-store' });
@@ -378,21 +455,52 @@ async function load(refresh){
     const ips = (j.addresses || []).map(a => a.ip + (a.port && a.port !== 47777 ? ':' + a.port : '') + ' (' + a.kind + ')');
     document.getElementById('ipList').innerHTML = ips.length ? ips.map(esc).join('<br>') : ('Port ' + (j.port || 47777) + ' (join Wi-Fi or Hotspot)');
     const prs = j.printers || [];
-    document.getElementById('prList').innerHTML = prs.length ? prs.map(p => '<li><span>'+esc(p)+'</span><button class="btn" data-cfg="'+esc(p)+'" type="button">Driver Preferences</button></li>').join('') : '<li>No printers found.</li>';
+    document.getElementById('prList').innerHTML = prs.length ? prs.map(p =>
+      '<li><span><b>'+esc(p)+'</b></span><span class="pr-acts">' +
+      '<button class="btn" data-cfg="'+esc(p)+'" type="button">Driver Preferences</button>' +
+      '<button class="btn" data-test="'+esc(p)+'" data-twoup="0" type="button">Test 4\u00d76</button>' +
+      '<button class="btn" data-test="'+esc(p)+'" data-twoup="1" type="button">Test 2\u00d76 Cut</button>' +
+      '</span></li>'
+    ).join('') : '<li>No printers found. Connect the printer via USB and install its Windows/Mac driver, then click Refresh Printers.</li>';
     const jobs = j.jobs || [];
     document.getElementById('jobBody').innerHTML = jobs.length ? jobs.map(x => '<tr><td>'+new Date(x.at).toLocaleTimeString()+'</td><td>'+esc(x.from)+'</td><td>'+esc(x.printer)+'</td><td>'+esc(x.paper)+'</td><td><span class="tag '+(x.ok?'':'err')+'">'+(x.ok?'Printed':esc(x.error||'Error'))+'</span></td></tr>').join('') : '<tr><td colspan="5" style="color:var(--dim)">Waiting for prints…</td></tr>';
   }catch(e){}
 }
 document.getElementById('newPinBtn').onclick = async () => {
-  await fetch('/station/new-pin', { method:'POST' });
+  const r = await fetch('/station/new-pin', { method:'POST' });
+  const j = await r.json().catch(() => ({}));
+  say(r.ok && j.ok ? ('New 6-digit PIN generated: ' + j.pin) : (j.error || 'Could not update PIN.'), !(r.ok && j.ok));
   load(false);
 };
-document.getElementById('refPrBtn').onclick = () => load(true);
+document.getElementById('refPrBtn').onclick = async () => {
+  say('Refreshing printers…');
+  await load(true);
+  say('Printer list refreshed.');
+};
 document.getElementById('prList').onclick = async (e) => {
-  const b = e.target.closest('[data-cfg]'); if (!b) return;
-  b.disabled = true;
-  try { await fetch('/printer/configure', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ printer: b.dataset.cfg }) }); }
-  finally { b.disabled = false; }
+  const cfgBtn = e.target.closest('[data-cfg]');
+  if (cfgBtn) {
+    cfgBtn.disabled = true;
+    say('Opening Driver Preferences for ' + cfgBtn.dataset.cfg + '…');
+    try {
+      const r = await fetch('/printer/configure', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ printer: cfgBtn.dataset.cfg }) });
+      const j = await r.json().catch(() => ({}));
+      say(r.ok && j.ok ? (j.message || 'Driver Preferences opened.') : (j.error || 'Could not open Driver Preferences.'), !(r.ok && j.ok));
+    } finally { cfgBtn.disabled = false; }
+    return;
+  }
+  const tstBtn = e.target.closest('[data-test]');
+  if (tstBtn) {
+    const twoUp = tstBtn.dataset.twoup === '1';
+    tstBtn.disabled = true;
+    say('Sending ' + (twoUp ? '2\u00d76 cut' : '4\u00d76') + ' test print to ' + tstBtn.dataset.test + '…');
+    try {
+      const r = await fetch('/station/test-print', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ printer: tstBtn.dataset.test, twoUp }) });
+      const j = await r.json().catch(() => ({}));
+      say(r.ok && j.ok ? ('Test print sent to ' + tstBtn.dataset.test + ' \u2713') : (j.error || 'Test print failed.'), !(r.ok && j.ok));
+      await load(false);
+    } finally { tstBtn.disabled = false; }
+  }
 };
 load(true);
 setInterval(() => load(false), 3000);

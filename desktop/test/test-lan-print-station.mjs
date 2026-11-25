@@ -9,12 +9,15 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import {
+  createStationTestPngDataUrl,
   getLanStationInfo,
   handleLanStationHttp,
   initLanStation,
+  recordStationJob,
   renderStationDashboardHtml,
   rotateLanStationPin
 } from '../lib/lan-print-station.mjs';
+import { startHelperBridge, stopHelperBridge } from '../../tools/print-helper/bridge-ctrl.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const pinFile = join(tmpdir(), 'pb4u-lan-station-test-' + process.pid + '.json');
@@ -132,20 +135,93 @@ try {
     assert.equal(getLanStationInfo().jobs[0].ok, true);
   });
 
-  await check('local station dashboard HTML and inline script parse cleanly', () => {
+  await check('pure-JS test print generator builds valid 4x6 and 2x6 PNGs and records station jobs', () => {
+    for (const [twoUp, expectW] of [[false, 600], [true, 300]]) {
+      const url = createStationTestPngDataUrl({ twoUp });
+      assert.ok(url.startsWith('data:image/png;base64,'));
+      const buf = Buffer.from(url.slice('data:image/png;base64,'.length), 'base64');
+      assert.equal(buf.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+      assert.equal(buf.readUInt32BE(16), expectW);
+      assert.equal(buf.readUInt32BE(20), 900);
+    }
+    recordStationJob({ printer: 'Mitsubishi CP-D80DW', pages: 1, paper: '4x6 test', from: 'Laptop Test', ok: true });
+    assert.equal(getLanStationInfo().jobs[0].from, 'Laptop Test');
+  });
+
+  await check('local station dashboard HTML includes Test Print buttons and inline script parses cleanly', () => {
     const html = renderStationDashboardHtml();
+    assert.match(html, /Test 4\u00d76/);
+    assert.match(html, /Test 2\u00d76 Cut/);
+    assert.match(html, /Driver Preferences/);
+    assert.match(html, /Where to Click on the iPad App/);
     const m = /<script>([\s\S]*?)<\/script>/.exec(html);
     assert.ok(m, 'dashboard script must exist');
     new vm.Script(m[1]);
   });
 
-  await check('built booth bundle includes Offline Laptop Print Station UI & helperFetch', () => {
+  await check('built booth bundle keeps iPad DSLR camera local and routes iPad/gallery prints to Laptop Print Station', () => {
     const built = readFileSync(join(root, 'protected', 'booth.html'), 'utf8');
     assert.match(built, /id="lanStationRow"/);
     assert.match(built, /function lanStationActive\(/);
     assert.match(built, /function helperFetch\(/);
     assert.match(built, /'x-pb-pin': lanStationCfg\.pin/);
     assert.ok(!/fetch\(HELPER_URL\s*\+/.test(built), 'all helper fetches must go through helperFetch()');
+    assert.match(built, /const CAM_HELPER = \(DESKTOP \|\| LANREMOTE\) \? '\/helper' : IOS_APP \? 'http:\/\/localhost:17321' : 'http:\/\/127\.0\.0\.1:17321';/);
+    assert.match(built, /if \(LAPTOP_PRINT \|\| TABLET_LOCAL\) printRoute = 'here';/);
+    assert.match(built, /if \(\(LAPTOP_PRINT \|\| lanStationActive\(\)\) && route === 'dialog'\)/);
+    assert.match(built, /if \(LAPTOP_PRINT \|\| lanStationActive\(\) \|\| route !== 'dialog'\)/);
+  });
+
+  await check('end-to-end helper bridge relays discovery, PIN auth, paper match, and 2x6 cut prints from iPad', async () => {
+    server.close();
+    const relayJobs = [];
+    const pinFile2 = join(tmpdir(), 'pb4u-lan-bridge-test-' + process.pid + '.json');
+    try {
+      const bp = await startHelperBridge({
+        ports: [47891, 47892],
+        lanStation: {
+          appKind: 'print-helper',
+          version: '1.1.24',
+          pinFile: pinFile2,
+          getPrinters: async () => ['Mitsubishi CP-D80DW', 'Mitsubishi 2x6 cut'],
+          getPaper: async ({ printer, twoUp }) => ({ ok: true, known: true, match: { name: twoUp ? '6x4(2x6*2)' : 'PR(4x6)', borderless: true, isDefault: false }, printer }),
+          printJob: async (body) => { relayJobs.push(body); return { ok: true }; }
+        }
+      });
+      assert.ok(bp >= 47891, 'bridge must bind test port');
+      const bUrl = 'http://127.0.0.1:' + bp;
+      const hello = await (await fetch(bUrl + '/lan-station/hello')).json();
+      assert.equal(hello.ok, true);
+      assert.equal(hello.version, '1.1.24');
+
+      const st = getLanStationInfo();
+      const status = await (await fetch(bUrl + '/lan-station/status?refresh=1', { headers: { 'x-pb-pin': st.pin } })).json();
+      assert.deepEqual(status.printers, ['Mitsubishi CP-D80DW', 'Mitsubishi 2x6 cut']);
+
+      const testPng = createStationTestPngDataUrl({ twoUp: false });
+      const pr = await fetch(bUrl + '/lan-station/print', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-pb-pin': st.pin },
+        body: JSON.stringify({
+          printer: 'Mitsubishi 2x6 cut',
+          quality: 'best',
+          twoUp: true,
+          widthMm: 50.8,
+          heightMm: 152.4,
+          pages: [testPng, testPng]
+        })
+      });
+      const pj = await pr.json();
+      assert.equal(pr.status, 200);
+      assert.equal(pj.ok, true);
+      assert.equal(relayJobs.length, 1);
+      assert.equal(relayJobs[0].twoUp, true);
+      assert.equal(relayJobs[0].pages.length, 2);
+      assert.equal(getLanStationInfo().jobs[0].printer, 'Mitsubishi 2x6 cut');
+    } finally {
+      stopHelperBridge();
+      try { rmSync(pinFile2, { force: true }); } catch { }
+    }
   });
 } finally {
   server.close();

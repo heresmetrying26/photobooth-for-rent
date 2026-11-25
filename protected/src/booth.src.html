@@ -44504,7 +44504,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       const ROUTE_KEY = 'pb_print_route';
       let printRoute = 'here';
       try { printRoute = localStorage.getItem(ROUTE_KEY) === 'station' ? 'station' : 'here'; } catch (e) { }
-      if (LAPTOP_PRINT) printRoute = 'here';            // the printer is on this laptop (or the laptop this iPad is talking to)
+      if (LAPTOP_PRINT || TABLET_LOCAL) printRoute = 'here';            // printer is on this device/laptop, never hidden web Cloud Print Station
       let station = { online: false, lastSeen: 0, checked: 0 };
       function isTrialBooth() { return !!(window.__PB && window.__PB.type === 'trial'); }
       function useStation() { return printRoute === 'station' && (isRentalBooth() || isTrialBooth()); }
@@ -56622,7 +56622,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!paper) return { ok: false, error: 'Choose a valid paper size.' };
         var route = opts.printer ? String(opts.printer) : reprintDefaultPrinterForSize(sizeKey);
         if (!route) return { ok: false, error: 'No printer selected. Connect a printer and tap Refresh, or open Print settings.' };
-        if (LAPTOP_PRINT && route === 'dialog') return { ok: false, error: 'Choose a printer from the list above (or tap Refresh).' };
+        if ((LAPTOP_PRINT || lanStationActive()) && route === 'dialog') return { ok: false, error: 'Choose a printer from the list above (or tap Refresh).' };
         if (!hasBoothPrint && route !== 'dialog') return { ok: false, error: 'Printing isn’t turned on for this booth.' };
         // Bluetooth thermal requires a receipt roll paper definition so raster width matches 58mm/80mm.
         if (route === 'bt' && !paper.receipt) {
@@ -56792,7 +56792,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             return { ok: false, error: 'Couldn’t open printing: ' + (nr.error || 'unknown error') };
           }
 
-          if (LAPTOP_PRINT || route !== 'dialog') {
+          if (LAPTOP_PRINT || lanStationActive() || route !== 'dialog') {
             return { ok: false, error: 'Choose a printer from the list above (or tap Refresh).' };
           }
 

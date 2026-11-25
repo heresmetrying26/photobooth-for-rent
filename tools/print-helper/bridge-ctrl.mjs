@@ -23,7 +23,9 @@ import {
   handleLanStationHttp,
   getLanStationInfo,
   rotateLanStationPin,
-  renderStationDashboardHtml
+  renderStationDashboardHtml,
+  recordStationJob,
+  createStationTestPngDataUrl
 } from '../../desktop/lib/lan-print-station.mjs';
 
 const BRIDGE_PORTS = [47777, 47778, 47779, 47787, 47797];
@@ -115,7 +117,13 @@ export function startHelperBridge({ logger = () => { }, ports = BRIDGE_PORTS, la
   });
 }
 
-export { getLanStationInfo, rotateLanStationPin, renderStationDashboardHtml };
+export {
+  getLanStationInfo,
+  rotateLanStationPin,
+  renderStationDashboardHtml,
+  recordStationJob,
+  createStationTestPngDataUrl
+};
 
 export function stopHelperBridge() {
   const s = bridgeServer;

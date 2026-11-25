@@ -691,7 +691,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     $('payBatchList').addEventListener('click', function(e){
       var b = e.target.closest('button[data-vb]'); if(!b) return;
       var bt = batches[Number(b.dataset.vb)]; if(!bt) return;
-      try{ localStorage.setItem('pb_ticket_print', JSON.stringify({ event: bt.evName || data.label, price: bt.price, prints: bt.prints, codes: bt.codes.filter(function(x){ return !x.used && !x.voided; }).map(function(x){ return x.c; }), at: Date.now() })); }catch(err){}
+      try{ localStorage.setItem('pb_ticket_print', JSON.stringify({ event: bt.evName || data.label, price: bt.price, prints: bt.prints, tier: bt.tier, label: bt.label, codes: bt.codes.filter(function(x){ return !x.used && !x.voided; }).map(function(x){ return x.c; }), at: Date.now() })); }catch(err){}
       window.open('/pay/tickets.html', '_blank');
     });
     $('payKeyShow').addEventListener('click', function(){ var k = $('payKey'); k.type = k.type === 'password' ? 'text' : 'password'; this.textContent = k.type === 'password' ? 'Show' : 'Hide'; });

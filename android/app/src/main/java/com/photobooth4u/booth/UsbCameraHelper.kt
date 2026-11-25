@@ -431,7 +431,12 @@ class UsbCameraHelper(private val ctx: Context) {
                 reply(out, 400, "application/json", err("NOPAGES", "No pages to print").toByteArray())
                 return
             }
-            val err = pb.printFromHelper(printer, widthMm, heightMm, pages, fit, req.optJSONObject("receipt"))
+            val receiptObj = req.optJSONObject("receipt") ?: if (fit == "width") {
+                JSONObject()
+                    .put("quality", req.optString("quality", "best").ifBlank { "best" })
+                    .put("band", if (widthMm <= 55.0) 32 else 256)
+            } else null
+            val err = pb.printFromHelper(printer, widthMm, heightMm, pages, fit, receiptObj)
             if (err == null) {
                 json(out, JSONObject())
             } else {

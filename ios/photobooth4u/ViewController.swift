@@ -1440,12 +1440,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 if let c = known, let note = IppNet.problem(c) { self.emitIppWarn(note) }
 
                 var ids: [Int] = []
+                let totalSheets = sets * pages.count
+                var sentSheets = 0
                 for _ in 0..<sets {
                     for p in pages {
+                        var acceptedId: Int? = nil
                         do {
                             if let id = try IppNet.printPage(ip: host, port: 631, jpegIn: p, job: "Photobooth", wMm: widthMm, hMm: heightMm,
                                                              quality: quality, color: color, media: media, borderless: borderless, known: known) {
                                 ids.append(id)
+                                acceptedId = id
                             }
                         } catch let f as IppNet.Failure where f.unreached {
                             // The printer dropped off the network between the check and the send, so this photo never reached it:
@@ -1456,7 +1460,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                             if let id = try IppNet.printPage(ip: host, port: 631, jpegIn: p, job: "Photobooth", wMm: widthMm, hMm: heightMm,
                                                              quality: quality, color: color, media: media, borderless: borderless, known: known) {
                                 ids.append(id)
+                                acceptedId = id
                             }
+                        }
+                        sentSheets += 1
+                        if sentSheets < totalSheets, let c = known, IppNet.isSelphy(c) {
+                            IppNet.waitJobIdle(ip: host, port: 631, path: c.path, jobId: acceptedId, maxSeconds: 75)
                         }
                     }
                 }
@@ -1873,6 +1882,8 @@ enum IppNet {
         var qualities: [Int] = []
         var colorModes: [String] = []
         var mediaTypes: [String] = []
+        var mediaSupported: [String] = []
+        var mediaReady: [String] = []
         var stateReasons: [String] = []          // printer-state-reasons: "media-empty-error", "media-jam-error" ...
         var serviceName = ""                     // printer-dns-sd-name: how the printer is listed by name on the network (Bonjour)
     }
@@ -1914,13 +1925,13 @@ enum IppNet {
         w.attr(0x45, "printer-uri", uri)
         w.attr(0x44, "requested-attributes", "printer-make-and-model")
         let wanted = ["document-format-supported", "print-quality-supported", "print-color-mode-supported", "media-type-supported",
-                      "printer-state-reasons", "printer-dns-sd-name"]
+                      "media-supported", "media-ready", "printer-state-reasons", "printer-dns-sd-name"]
         for n in wanted { w.u8(0x44); w.u16(0); w.str(n) }
         w.u8(0x03)
         return w.d
     }
 
-    static func printJobRequest(uri: String, job: String, doc: Data, wMm: Double, hMm: Double, quality: Int,
+    static func printJobRequest(uri: String, job: String, doc: Data, wMm: Double, hMm: Double, mediaName: String = "", quality: Int,
                                 colorMode: String, mediaType: String, scaling: String, marginMm100: Int) -> Data {
         var w = Writer()
         w.u16(0x0200); w.u16(0x0002); w.u32(1)                    // IPP 2.0, Print-Job, request id 1
@@ -1933,7 +1944,10 @@ enum IppNet {
         w.attr(0x49, "document-format", "image/jpeg")
         w.u8(0x02)
         let margin = max(0, marginMm100)
-        if wMm > 0 {
+        if !mediaName.isEmpty {
+            w.attr(0x44, "media", mediaName)
+            if !mediaType.isEmpty { w.attr(0x44, "media-type", mediaType) }
+        } else if wMm > 0 {
             w.u8(0x34); w.str("media-col"); w.u16(0)             // begCollection
             w.member("media-size")
             w.u8(0x34); w.u16(0); w.u16(0)                        // nested begCollection
@@ -2063,6 +2077,8 @@ enum IppNet {
                 if name == "print-quality-supported" && tag == 0x23 && raw.count == 4 { c.qualities.append(Int(raw[3])) }
                 if name == "print-color-mode-supported" && tag == 0x44 { c.colorModes.append(value) }
                 if name == "media-type-supported" && (tag == 0x44 || tag == 0x42) { c.mediaTypes.append(value) }
+                if name == "media-supported" && (tag == 0x44 || tag == 0x42) { c.mediaSupported.append(value) }
+                if name == "media-ready" && (tag == 0x44 || tag == 0x42) { c.mediaReady.append(value) }
                 if name == "printer-state-reasons" && tag == 0x44 { c.stateReasons.append(value) }
                 if name == "printer-dns-sd-name" && (tag == 0x41 || tag == 0x42) && c.serviceName.isEmpty { c.serviceName = value }
             }
@@ -2139,37 +2155,127 @@ enum IppNet {
         }
     }
 
+    static func isSelphy(_ c: Caps) -> Bool {
+        let s = (c.model + " " + c.serviceName).lowercased()
+        if s.contains("selphy") { return true }
+        for code in ["cp820", "cp910", "cp1000", "cp1200", "cp1300", "cp1500",
+                     "cp 820", "cp 910", "cp 1000", "cp 1200", "cp 1300", "cp 1500",
+                     "cp-820", "cp-910", "cp-1000", "cp-1200", "cp-1300", "cp-1500",
+                     "cp_820", "cp_910", "cp_1000", "cp_1200", "cp_1300", "cp_1500"] {
+            if s.contains(code) { return true }
+        }
+        return false
+    }
+
+    static func mediaDimsMm(_ rawName: String) -> (Double, Double)? {
+        var s = rawName.lowercased()
+        for suf in ["_borderless", "-borderless", ".borderless", "_fullbleed", "-fullbleed", "_full-bleed", "-full-bleed"] {
+            if s.hasSuffix(suf) { s = String(s.dropLast(suf.count)); break }
+        }
+        var unit = 0.0
+        if s.hasSuffix("mm") { unit = 1.0; s = String(s.dropLast(2)) }
+        else if s.hasSuffix("in") { unit = 25.4; s = String(s.dropLast(2)) }
+        else { return nil }
+        guard let us = s.lastIndex(of: "_") else { return nil }
+        let dimPart = s[s.index(after: us)...]
+        let parts = dimPart.split(separator: "x")
+        guard parts.count == 2, let a = Double(parts[0]), let b = Double(parts[1]), a > 0, b > 0 else { return nil }
+        let w = a * unit, h = b * unit
+        return (min(w, h), max(w, h))
+    }
+
+    /// Matches the booth's requested mm size (e.g. 4x6 = 101.6x152.4 mm) to the printer's own loaded/supported paper within 6 mm
+    /// (e.g. Canon SELPHY CP1300 / CP1500 Postcard jpn_hagaki_100x148mm = 100x148 mm).
+    static func selphyMedia(_ c: Caps, wMm: Double, hMm: Double) -> (name: String, w: Double, h: Double)? {
+        guard wMm > 0, hMm > 0 else { return nil }
+        let wantW = min(wMm, hMm), wantH = max(wMm, hMm)
+        func best(in list: [String]) -> (String, Double, Double)? {
+            var found: (String, Double, Double)? = nil
+            var bestDiff = 6.0
+            for n in list {
+                guard let (mw, mh) = mediaDimsMm(n) else { continue }
+                let d = max(abs(mw - wantW), abs(mh - wantH))
+                if d <= bestDiff && (found == nil || d < bestDiff - 0.01) {
+                    bestDiff = d
+                    found = (n, mw, mh)
+                }
+            }
+            return found
+        }
+        if let r = best(in: c.mediaReady) { return (r.0, r.1, r.2) }
+        if let s = best(in: c.mediaSupported) { return (s.0, s.1, s.2) }
+        if isSelphy(c) {
+            if abs(wantW - 54) < 8 && abs(wantH - 86) < 8 { return ("om_card_54x86mm", 54, 86) }
+            if abs(wantW - 89) < 8 && abs(wantH - 119) < 8 { return ("oe_photo-l_3.5x5in", 89, 119) }
+            if abs(wantW - 100) < 8 && abs(wantH - 148) < 8 { return ("jpn_hagaki_100x148mm", 100, 148) }
+        }
+        return nil
+    }
+
+    private struct JobAttempt {
+        let wMm: Double
+        let hMm: Double
+        let mediaName: String
+        let useOpts: Bool
+        let scaling: String
+    }
+
     /// Prints one photo. Tries the page size with the quality / paper settings first, then drops them one at a time if the
-    /// printer refuses. A printer that cannot be reached, or that goes quiet mid-job, throws at once: nothing is sent twice.
+    /// printer refuses. Retries the same request when a dye-sub printer answers 0x0507 (server-error-busy) mid-ribbon-cycle.
     @discardableResult
     static func printPage(ip: String, port: Int, jpegIn: Data, job: String, wMm: Double, hMm: Double,
                           quality: String, color: String, media: String, borderless: Bool, known: Caps? = nil) throws -> Int? {
         let jpeg = jpegAt300Dpi(jpegIn)
         let found: Caps? = known ?? fetchCaps(ip: ip, port: port)
         let caps = found ?? Caps()
-        let hardEpsonL = caps.model.range(of: "L8050", options: .caseInsensitive) != nil
+        let selphy = isSelphy(caps)
+        let hardEpsonL = !selphy && caps.model.range(of: "L8050", options: .caseInsensitive) != nil
         var q = 0
-        if quality == "draft" { q = 3 } else if quality == "normal" { q = 4 } else if quality == "high" { q = 5 }
+        if !selphy {
+            if quality == "draft" { q = 3 } else if quality == "normal" { q = 4 } else if quality == "high" { q = 5 }
+        }
         let qv = (q != 0 && (caps.qualities.contains(q) || hardEpsonL)) ? q : 0
         var cm = ""
         if color == "mono" && caps.colorModes.contains("monochrome") { cm = "monochrome" }
         else if color == "color" && caps.colorModes.contains("color") { cm = "color" }
-        let mt = mediaTypeKeyword(media, caps.mediaTypes, hardEpsonL)
+        let mt = selphy ? "" : mediaTypeKeyword(media, caps.mediaTypes, hardEpsonL)
         let hasOpts = qv != 0 || !cm.isEmpty || !mt.isEmpty
-        let ownScaling = borderless ? "none" : "fill"
-        let attempts: [(Bool, Bool, String)] = hasOpts
-            ? [(true, true, ownScaling), (true, true, ""), (true, false, ownScaling), (true, false, ""), (false, true, ""), (false, false, "")]
-            : [(true, false, ownScaling), (true, false, ""), (false, false, "")]
+        var attempts: [JobAttempt] = []
+        if selphy, let matched = selphyMedia(caps, wMm: wMm, hMm: hMm) {
+            // Canon SELPHY CP1300 / CP1500 fullbleed over IPP uses its exact paper dimensions (e.g. 100x148 mm) with 0 margins and scaling=fill.
+            attempts = [
+                JobAttempt(wMm: matched.w, hMm: matched.h, mediaName: "", useOpts: false, scaling: "fill"),
+                JobAttempt(wMm: matched.w, hMm: matched.h, mediaName: "", useOpts: false, scaling: ""),
+                JobAttempt(wMm: 0, hMm: 0, mediaName: matched.name, useOpts: false, scaling: "fill"),
+                JobAttempt(wMm: 0, hMm: 0, mediaName: matched.name, useOpts: false, scaling: ""),
+                JobAttempt(wMm: 0, hMm: 0, mediaName: "", useOpts: false, scaling: "")
+            ]
+        } else {
+            let ownScaling = borderless ? "none" : "fill"
+            let rawAttempts: [(Bool, Bool, String)] = hasOpts
+                ? [(true, true, ownScaling), (true, true, ""), (true, false, ownScaling), (true, false, ""), (false, true, ""), (false, false, "")]
+                : [(true, false, ownScaling), (true, false, ""), (false, false, "")]
+            attempts = rawAttempts.map { JobAttempt(wMm: $0.0 ? wMm : 0, hMm: hMm, mediaName: "", useOpts: $0.1, scaling: $0.2) }
+        }
         let pathList: [String] = found == nil ? paths : [caps.path]
         var lastErr = "The printer didn't accept the job."
         for at in attempts {
             for path in pathList {
                 let uri = "ipp://\(ip):\(port)\(path)"
-                let body = printJobRequest(uri: uri, job: job, doc: jpeg, wMm: at.0 ? wMm : 0, hMm: hMm,
-                                           quality: at.1 ? qv : 0, colorMode: at.1 ? cm : "", mediaType: at.1 ? mt : "",
-                                           scaling: at.2, marginMm100: 0)
-                let r = try post(ip: ip, port: port, path: path, body: body, timeout: 90)
+                let body = printJobRequest(uri: uri, job: job, doc: jpeg, wMm: at.wMm, hMm: at.hMm, mediaName: at.mediaName,
+                                           quality: at.useOpts ? qv : 0, colorMode: at.useOpts ? cm : "", mediaType: at.useOpts ? mt : "",
+                                           scaling: at.scaling, marginMm100: 0)
+                var r = try post(ip: ip, port: port, path: path, body: body, timeout: 90)
+                var busyTries = 0
+                while r.http == 200 && r.ipp == 0x0507 && busyTries < 24 {
+                    Thread.sleep(forTimeInterval: 2.5)
+                    r = try post(ip: ip, port: port, path: path, body: body, timeout: 90)
+                    busyTries += 1
+                }
                 if r.http == 200 && r.ipp >= 0 && r.ipp <= 2 { return jobId(r.body) }
+                if r.http == 200 && r.ipp == 0x0507 {
+                    throw Failure("The printer is still busy with the previous photo (code 0x507). Wait for it to finish, then print again.")
+                }
                 if r.http == 200 && r.ipp == 0x406 {
                     lastErr = "The printer says it has no print queue (code 0x406). Check that IPP / AirPrint is turned on for it."
                 } else if r.http == 200 {
@@ -2230,6 +2336,26 @@ enum IppNet {
             if name == "job-state" && tag == 0x23 && raw.count == 4 { st = Int(raw[3]) }
         }
         return st == 0 ? .gone : .state(st)
+    }
+
+    /// Waits between multi-sheet IPP prints on a Canon SELPHY so the next sheet does not collide with the 4-pass dye-sub cycle.
+    static func waitJobIdle(ip: String, port: Int, path: String, jobId: Int?, maxSeconds: TimeInterval = 75) {
+        Thread.sleep(forTimeInterval: 1.5)
+        guard let id = jobId, id > 0 else {
+            Thread.sleep(forTimeInterval: 4.0)
+            return
+        }
+        let started = Date()
+        while Date().timeIntervalSince(started) < maxSeconds {
+            switch jobCheck(ip: ip, port: port, path: path, jobId: id) {
+            case .gone:
+                return
+            case .state(let st) where st >= 7:
+                return
+            case .unreachable, .state:
+                Thread.sleep(forTimeInterval: 2.0)
+            }
+        }
     }
 
     /// Follows the photos after the printer took them. Returns a plain-language warning when one did not print, and nil when

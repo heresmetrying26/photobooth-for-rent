@@ -295,7 +295,14 @@ export function pickMediaName(caps, wMm, hMm, borderless = true) {
     }
     return ready;
   }
-  return pick(caps.mediaSupported);
+  const fromSupported = pick(caps.mediaSupported);
+  if (fromSupported) return fromSupported;
+  if (/selphy|\bcp[\s_-]?(?:820|910|1000|1200|1300|1500)\b/i.test(caps.model || '')) {
+    if (Math.abs(want[0] - 54) < 8 && Math.abs(want[1] - 86) < 8) return 'om_card_54x86mm';
+    if (Math.abs(want[0] - 89) < 8 && Math.abs(want[1] - 119) < 8) return 'oe_photo-l_3.5x5in';
+    if (Math.abs(want[0] - 100) < 8 && Math.abs(want[1] - 148) < 8) return 'jpn_hagaki_100x148mm';
+  }
+  return '';
 }
 
 /** The size in mm that a paper name carries ("jpn_hagaki_100x148mm" -> [100, 148], "na_index-4x6_4x6in" -> [101.6, 152.4]), or null. */

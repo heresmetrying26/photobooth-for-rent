@@ -266,7 +266,8 @@
     var baseKey = String(paper.key || '').replace(/^strip:/, '');
     for(var s = 0; s < out.length; s += 20){
       // Receipt rolls: full width, length follows the picture (Print Helper 1.1.4+).
-      var r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, twoUp: typeof twoUp === 'boolean' ? twoUp : /^strip:/.test(paper.key || ''), fit: /^receipt/.test(baseKey) ? 'width' : undefined, pages: out.slice(s, s + 20) }) });
+      var isRec = /^receipt/.test(baseKey);
+      var r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, twoUp: typeof twoUp === 'boolean' ? twoUp : /^strip:/.test(paper.key || ''), fit: isRec ? 'width' : undefined, receipt: isRec ? { quality: 'best', band: (paper.w && paper.w <= 55) ? 32 : 256, toneDone: !!paper.toneDone } : undefined, pages: out.slice(s, s + 20) }) });
       var j = await r.json().catch(function(){ return {}; });
       if(!r.ok || !j.ok) throw new Error(j.error || ('Print Helper error ' + r.status));
     }

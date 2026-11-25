@@ -15104,6 +15104,168 @@
       color: #fff;
     }
 
+    /* ---- Print voucher tickets modal (Thermal 80mm / 58mm / A4) ---- */
+    .copies-sheet .vprint-card {
+      width: min(440px, 100%);
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+      padding: 22px 20px 18px;
+      text-align: left;
+    }
+
+    .vprint-card .cs-title {
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    .vprint-sub {
+      margin: 0 0 14px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-dim);
+    }
+
+    .vprint-segs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .vprint-seg {
+      min-height: 44px;
+      padding: 8px 6px;
+      border-radius: 12px;
+      border: 1.5px solid var(--line);
+      background: #faf7f2;
+      color: var(--ink);
+      font: 700 12.5px/1.2 'Manrope', sans-serif;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+
+    .vprint-seg.active {
+      background: #1C1A1E;
+      border-color: #1C1A1E;
+      color: #fff;
+    }
+
+    .vprint-row {
+      margin-bottom: 12px;
+    }
+
+    .vprint-row > label {
+      display: block;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--ink-dim);
+      margin-bottom: 6px;
+    }
+
+    .vprint-row select {
+      width: 100%;
+      min-height: 42px;
+    }
+
+    .vprint-hint {
+      margin: 5px 0 0;
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--ink-dim);
+    }
+
+    .vprint-link {
+      background: none;
+      border: 0;
+      padding: 0;
+      color: var(--blue-deep, #1f5fd6);
+      font: 700 12px 'Manrope', sans-serif;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .vprint-counts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .vprint-cnt {
+      min-height: 36px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1.5px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      font: 700 12.5px 'Manrope', sans-serif;
+      cursor: pointer;
+    }
+
+    .vprint-cnt.active {
+      background: #C93D27;
+      border-color: #C93D27;
+      color: #fff;
+    }
+
+    .vprint-preview-wrap {
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 14px;
+      background: #f2ece3;
+      border: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .vprint-preview-wrap canvas {
+      display: block;
+      max-width: 190px;
+      width: auto;
+      height: auto;
+      max-height: 210px;
+      background: #fff;
+      border-radius: 4px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .14);
+    }
+
+    .vprint-preview-cap {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--ink-dim);
+    }
+
+    .vprint-prog {
+      margin-top: 12px;
+    }
+
+    .vprint-prog-bar {
+      height: 8px;
+      border-radius: 8px;
+      background: #eee6da;
+      overflow: hidden;
+    }
+
+    .vprint-prog-bar i {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: #C93D27;
+      transition: width .2s;
+    }
+
+    .vprint-prog-txt {
+      margin: 6px 0 0;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
     /* ---- Guest payments: welcome pill + pay sheet ---- */
     .pay-badge {
       position: fixed;
@@ -19549,6 +19711,93 @@
         return (sp === 'safe' || lv === 1) ? 1.5 : 1;
       }
 
+      // Shared edge-preserving 3x3 bilateral denoise + dot-gain lift + smooth Hermite highlight roll-off + optional noise-cored unsharp.
+      function applyThermalTone(lum, dotW, dotH, q) {
+        var n = dotW * dotH, x, y, i;
+        var clean = new Float32Array(n);
+        clean.set(lum);
+        var invT2 = 1 / 144;
+        for (y = 1; y < dotH - 1; y++) {
+          var rm = (y - 1) * dotW, r0 = y * dotW, rp = (y + 1) * dotW;
+          for (x = 1; x < dotW - 1; x++) {
+            var c0 = lum[r0 + x];
+            if (c0 <= 8 || c0 >= 248) continue;
+            var s = c0, sw = 1, v, df, wt;
+            v = lum[rm + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            v = lum[rm + x];     df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            v = lum[rm + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            v = lum[r0 + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            v = lum[r0 + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            v = lum[rp + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            v = lum[rp + x];     df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            v = lum[rp + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+            clean[r0 + x] = s / sw;
+          }
+        }
+        lum.set(clean);
+        var lift = dotW <= 384 ? 0.78 : 0.82;
+        var lut = new Float32Array(256);
+        for (i = 0; i < 256; i++) {
+          var u = Math.pow(i / 255, lift);
+          if (u > 0.82) {
+            var t = (u - 0.82) / (1.0 - 0.82);
+            u = 0.82 + (1.0 - 0.82) * (3 * t * t - 2 * t * t * t);
+            if (u >= 0.96) u = 1.0;
+          }
+          lut[i] = Math.max(0, Math.min(255, u * 255));
+        }
+        for (i = 0; i < n; i++) {
+          var ki = (lum[i] + 0.5) | 0;
+          lum[i] = lut[ki < 0 ? 0 : ki > 255 ? 255 : ki];
+        }
+        if (q === 'best') {
+          var blur = new Float32Array(n);
+          for (y = 0; y < dotH; y++) {
+            var y0 = y > 0 ? y - 1 : 0, y1 = y + 1 < dotH ? y + 1 : dotH - 1;
+            for (x = 0; x < dotW; x++) {
+              var x0 = x > 0 ? x - 1 : 0, x1 = x + 1 < dotW ? x + 1 : dotW - 1;
+              var sum = 0, cnt = 0, yy, xx;
+              for (yy = y0; yy <= y1; yy++) for (xx = x0; xx <= x1; xx++) { sum += lum[yy * dotW + xx]; cnt++; }
+              blur[y * dotW + x] = sum / cnt;
+            }
+          }
+          for (i = 0; i < n; i++) {
+            if (lum[i] <= 12 || lum[i] >= 242) continue;
+            var df2 = lum[i] - blur[i], adf = df2 < 0 ? -df2 : df2;
+            if (adf > 6.0) {
+              var mag = adf - 6.0; if (mag > 20) mag = 20;
+              lum[i] = Math.max(0, Math.min(255, lum[i] + (df2 < 0 ? -mag : mag) * 0.40));
+            }
+          }
+        }
+      }
+
+      // Clean denoised + highlight-rolled-off grayscale canvas for Windows/Mac thermal drivers (non-receipt layouts on a receipt roll).
+      function toReceiptGray(src, dotW, quality) {
+        dotW = dotW || 576;
+        var q = (quality === 'best' || quality === 'normal' || quality === 'draft') ? quality : 'best';
+        var scale = dotW / src.width;
+        var dotH = Math.max(1, Math.round(src.height * scale));
+        var dst = document.createElement('canvas');
+        dst.width = dotW; dst.height = dotH;
+        var ctx = dst.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, dotW, dotH);
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(src, 0, 0, dotW, dotH);
+        var id = ctx.getImageData(0, 0, dotW, dotH), d = id.data;
+        var n = dotW * dotH, lum = new Float32Array(n), i;
+        for (i = 0; i < n; i++) lum[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+        if (q !== 'draft') applyThermalTone(lum, dotW, dotH, q);
+        for (i = 0; i < n; i++) {
+          var v = Math.max(0, Math.min(255, Math.round(lum[i])));
+          d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v; d[i * 4 + 3] = 255;
+        }
+        ctx.putImageData(id, 0, 0);
+        dst._pbToneDone = true;
+        return dst;
+      }
+
       // quality: 'best' (serpentine Atkinson halftoning + edge-preserving bilateral denoise + highlight roll-off + dot-gain lift),
       //          'normal' (serpentine Atkinson halftoning + bilateral denoise + dot-gain lift, balanced shading), 'draft' (coarse ordered dots: fast, light, saves heat).
       function toReceiptCanvas(src, dotW, brightness, quality) {
@@ -19578,65 +19827,7 @@
         // Non-receipt layouts printed on a thermal roll get edge-preserving denoise, highlight roll-off, dot-gain lift and edge sharpening here.
         var toneDone = !!(src && src._pbToneDone);
         if (!toneDone && q !== 'draft') {
-          // 1. Edge-preserving 3x3 bilateral denoise: removes camera sensor noise & skin pore roughness without softening eye/hair edges.
-          var clean = new Float32Array(n);
-          clean.set(lum);
-          var invT2 = 1 / 144;
-          for (y = 1; y < dotH - 1; y++) {
-            var rm = (y - 1) * dotW, r0 = y * dotW, rp = (y + 1) * dotW;
-            for (x = 1; x < dotW - 1; x++) {
-              var c0 = lum[r0 + x];
-              if (c0 <= 8 || c0 >= 248) continue;
-              var s = c0, sw = 1, v, df, wt;
-              v = lum[rm + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-              v = lum[rm + x];     df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-              v = lum[rm + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-              v = lum[r0 + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-              v = lum[r0 + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-              v = lum[rp + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-              v = lum[rp + x];     df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-              v = lum[rp + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-              clean[r0 + x] = s / sw;
-            }
-          }
-          lum = clean;
-          // 2. Dot-gain lift + smooth highlight roll-off: keeps walls and skin highlights clean white (no pepper dots).
-          var lift = dotW <= 384 ? 0.78 : 0.82;
-          var lut = new Float32Array(256);
-          for (i = 0; i < 256; i++) {
-            var u = Math.pow(i / 255, lift);
-            if (u > 0.82) {
-              var t = (u - 0.82) / (1.0 - 0.82);
-              u = 0.82 + (1.0 - 0.82) * (3 * t * t - 2 * t * t * t);
-              if (u >= 0.96) u = 1.0;
-            }
-            lut[i] = Math.max(0, Math.min(255, u * 255));
-          }
-          for (i = 0; i < n; i++) {
-            var ki = (lum[i] + 0.5) | 0;
-            lum[i] = lut[ki < 0 ? 0 : ki > 255 ? 255 : ki];
-          }
-          if (q === 'best') {
-            // Noise-cored 3x3 unsharp mask: sharpens real facial contours and hair without amplifying flat noise.
-            var blur = new Float32Array(n);
-            for (y = 0; y < dotH; y++) {
-              var y0 = y > 0 ? y - 1 : 0, y1 = y + 1 < dotH ? y + 1 : dotH - 1;
-              for (x = 0; x < dotW; x++) {
-                var x0 = x > 0 ? x - 1 : 0, x1 = x + 1 < dotW ? x + 1 : dotW - 1;
-                var sum = 0, cnt = 0, yy, xx;
-                for (yy = y0; yy <= y1; yy++) for (xx = x0; xx <= x1; xx++) { sum += lum[yy * dotW + xx]; cnt++; }
-                blur[y * dotW + x] = sum / cnt;
-              }
-            }
-            for (i = 0; i < n; i++) {
-              if (lum[i] <= 12 || lum[i] >= 242) continue;
-              var df = lum[i] - blur[i], adf = df < 0 ? -df : df;
-              if (adf > 6.0) {
-                var mag = adf - 6.0; if (mag > 20) mag = 20;
-                lum[i] = Math.max(0, Math.min(255, lum[i] + (df < 0 ? -mag : mag) * 0.40));
-              }
-            }
-          }
+          applyThermalTone(lum, dotW, dotH, q);
         }
         var out = new Uint8Array(n);
         if (q === 'draft') {
@@ -20206,6 +20397,7 @@
         isKnown58mmPrinter: isKnown58mmPrinter,
         PAPER_WIDTHS: PAPER_WIDTHS,
         toReceiptCanvas: toReceiptCanvas,
+        toReceiptGray: toReceiptGray,
         btPrinter: btPrinter,
         isBtAvailable: isBtAvailable,
         isNativeAndroid: isNativeAndroid,
@@ -22443,8 +22635,8 @@
             <div class="pay-status" id="payQrStatus"></div>
             <div class="pay-vbox" id="payVoucherBox">
               <p class="sub-label" style="margin:0;">Vouchers for this event</p>
-              <p class="panel-hint" style="margin:4px 0 0;">Each voucher works once. Print, cut and sell them at the
-                booth table; guests type the 8 digits on the screen.</p>
+              <p class="panel-hint" style="margin:4px 0 0;">Each voucher works once. Print on a thermal receipt printer
+                (58 mm / 80 mm) or A4 sheet and sell them at the booth table; guests type the 8 digits on the screen.</p>
               <div class="pay-make">
                 <select class="mini-select pillify" id="payMakeTier" aria-label="Which voucher"
                   style="max-width:180px;">
@@ -24329,6 +24521,52 @@
       <p class="cs-title" id="pbChoiceTitle"></p>
       <p class="cs-left" id="pbChoiceBody"></p>
       <div class="pb-choice-btns" id="pbChoiceBtns"></div>
+    </div>
+  </div>
+  <div class="copies-sheet" id="vPrintSheet" hidden>
+    <div class="cs-card vprint-card" role="dialog" aria-modal="true" aria-labelledby="vPrintTitle">
+      <p class="cs-title" id="vPrintTitle">Print voucher tickets</p>
+      <p class="vprint-sub" id="vPrintSub"></p>
+      <div class="vprint-segs" id="vPrintFmt" role="radiogroup" aria-label="Paper format">
+        <button type="button" class="vprint-seg" data-fmt="thermal80" aria-pressed="false">🧾 Thermal 80 mm</button>
+        <button type="button" class="vprint-seg" data-fmt="thermal58" aria-pressed="false">🧾 Thermal 58 mm</button>
+        <button type="button" class="vprint-seg" data-fmt="a4" aria-pressed="false">📄 A4 (10/page)</button>
+      </div>
+      <div id="vPrintThermalOpts">
+        <div class="vprint-row">
+          <label for="vPrintPrinter">Thermal printer</label>
+          <select class="mini-select pillify" id="vPrintPrinter" aria-label="Thermal printer"></select>
+          <p class="vprint-hint" id="vPrintPrinterHint"></p>
+        </div>
+        <div class="vprint-row">
+          <label>How many to print</label>
+          <div class="vprint-counts" id="vPrintCounts"></div>
+          <p class="vprint-hint" id="vPrintCountHint"></p>
+        </div>
+        <div class="vprint-row">
+          <label class="switch-row" style="margin:0; width:100%;">
+            <span>Cut after each voucher</span>
+            <input type="checkbox" id="vPrintCutEach" checked>
+          </label>
+          <p class="vprint-hint" id="vPrintCutHint"></p>
+        </div>
+        <div class="vprint-preview-wrap" id="vPrintPrevWrap">
+          <canvas id="vPrintPreview"></canvas>
+          <span class="vprint-preview-cap" id="vPrintPrevCap"></span>
+        </div>
+      </div>
+      <div id="vPrintA4Opts" hidden>
+        <p class="vprint-hint" id="vPrintA4Hint" style="text-align:center; margin:8px 0 4px;">10 tickets per A4 page.
+          Print at 100% scale and cut along the dashed lines.</p>
+      </div>
+      <div class="vprint-prog" id="vPrintProg" hidden>
+        <div class="vprint-prog-bar"><i id="vPrintProgFill"></i></div>
+        <p class="vprint-prog-txt" id="vPrintProgTxt"></p>
+      </div>
+      <div class="cs-btns">
+        <button type="button" id="vPrintCancel">Cancel</button>
+        <button type="button" class="go" id="vPrintGo">Print</button>
+      </div>
     </div>
   </div>
   <div class="printing-note" id="printingNote" role="status" aria-live="polite" hidden></div>
@@ -40670,13 +40908,19 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const fine = receiptBoxBlur(toned, w, h, 1);
         const med = clarAmt > 0 ? receiptBoxBlur(toned, w, h, 3) : null;
         for (let i = 0, j = 0; j < n; i += 4, j++) {
-          let df = toned[j] - fine[j];
+          const tj = toned[j];
+          if (tj <= 12 || tj >= 242) {
+            const v0 = tj <= 0 ? 0 : (tj >= 255 ? 255 : Math.round(tj));
+            d[i] = d[i + 1] = d[i + 2] = v0; d[i + 3] = 255;
+            continue;
+          }
+          let df = tj - fine[j];
           const adf = df < 0 ? -df : df;
           if (adf <= 6.0) df = 0;
           else { const c = adf - 6.0; df = (df < 0 ? -1 : 1) * (c > 22 ? 22 : c); }
           let dmSafe = 0;
-          if (med) { const dm = toned[j] - med[j]; dmSafe = dm / (1 + (dm / 28) * (dm / 28)); }
-          const v = Math.max(0, Math.min(255, Math.round(toned[j] + fineAmt * df + clarAmt * dmSafe)));
+          if (med) { const dm = tj - med[j]; dmSafe = dm / (1 + (dm / 28) * (dm / 28)); }
+          const v = Math.max(0, Math.min(255, Math.round(tj + fineAmt * df + clarAmt * dmSafe)));
           d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
         }
         ctx.putImageData(im, x, y);
@@ -43967,17 +44211,28 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const sendW = autoTwoUp4x6 ? 101.6 : paper.w;
           const sendH = autoTwoUp4x6 ? 152.4 : paper.h;
           const isCustom = !autoTwoUp4x6 && (ownSizes().some(k => { const op = paperFor(k); return !!op && Math.abs(op.w - paper.w) < 0.6 && Math.abs(op.h - paper.h) < 0.6; }) || !Object.keys(PAPER).some(k => Math.abs(PAPER[k].w - paper.w) < 0.6 && Math.abs(PAPER[k].h - paper.h) < 0.6));
+          const Tbt = window._btThermal;
+          const force58H = !!(paper.receipt && Tbt && Tbt.isKnown58mmPrinter && Tbt.isKnown58mmPrinter(name));
+          const receiptW = ((paper.w && paper.w <= 55) || force58H) ? 384 : 576;
+          const receiptQ = (opt && opt.thermalQuality) || (printPrefs && printPrefs.thermalQuality) || 'best';
+          const helperPages = pages.map(c => {
+            if (paper.receipt && c && !c._pbToneDone && Tbt && typeof Tbt.toReceiptGray === 'function') {
+              return Tbt.toReceiptGray(c, receiptW, receiptQ);
+            }
+            return c;
+          });
           const body = JSON.stringify({
             printer: name,
             quality: (opt && opt.quality) || helperQualityFor(name),
             mediaType,
             paperName: explicitPaper,
             twoUp: !!twoUpFlag,
-            widthMm: sendW,
+            widthMm: force58H ? Math.min(sendW || 48, 48) : sendW,
             heightMm: sendH,
             fit: paper.receipt ? 'width' : undefined,
+            receipt: paper.receipt ? { quality: receiptQ, band: receiptW <= 384 ? 32 : 256, toneDone: true } : undefined,
             custom: isCustom,
-            pages: pages.map(c => c && c._pbJpeg ? c.toDataURL('image/jpeg', 0.94) : c.toDataURL('image/png'))
+            pages: helperPages.map(c => c && c._pbJpeg ? c.toDataURL('image/jpeg', 0.94) : c.toDataURL('image/png'))
           });
           const r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
           const j = await r.json().catch(() => ({}));
@@ -45201,16 +45456,20 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         for (let i = 0; i < pages.length; i++) {
           // Lossless PNG when within the upload budget for razor-sharp overlays & dye-sub skin tones;
           // otherwise high-quality JPEG (0.96 -> 0.92 -> ...).
-          let url = pages[i].toDataURL('image/png');
+          const Tst = window._btThermal;
+          const stPage = (paper.receipt && pages[i] && !pages[i]._pbToneDone && Tst && typeof Tst.toReceiptGray === 'function')
+            ? Tst.toReceiptGray(pages[i], (paper.w && paper.w <= 55) ? 384 : 576, (printPrefs && printPrefs.thermalQuality) || 'best')
+            : pages[i];
+          let url = stPage.toDataURL('image/png');
           if (url.length > 4200000) {
             let q = 0.96;
-            url = pages[i].toDataURL('image/jpeg', q);
-            while (url.length > 4400000 && q > 0.5) { q = Math.round((q - 0.08) * 100) / 100; url = pages[i].toDataURL('image/jpeg', q); }
+            url = stPage.toDataURL('image/jpeg', q);
+            while (url.length > 4400000 && q > 0.5) { q = Math.round((q - 0.08) * 100) / 100; url = stPage.toDataURL('image/jpeg', q); }
           }
           const r = await postApi('/api/printjobs', {
             action: 'add', page: url, copies: copies, group: group, index: i, total: pages.length,
             twoUp: isTwoUp,
-            paper: { key: routeKey || printSize, name: sendName, w: sendW, h: sendH }
+            paper: { key: routeKey || printSize, name: sendName, w: sendW, h: sendH, toneDone: !!(paper.receipt && stPage && stPage._pbToneDone) }
           }, 30000);
           if (r.status !== 200) throw new Error(r.j.error || ('error ' + r.status));
           if (typeof r.j.online === 'boolean') station.online = r.j.online;
@@ -67269,21 +67528,45 @@ async function cashStopLink(keepEnabled) {
       }
 
       var payBatches = [];
+      var VPRINT_DONE_KEY = 'pb_vprint_done';
+      var VPRINT_FMT_KEY = 'pb_vprint_fmt';
+      var VPRINT_PRINTER_KEY = 'pb_vprint_printer';
+      var VPRINT_CUT_KEY = 'pb_vprint_cut';
+      function vPrintDoneList() {
+        try { var a = JSON.parse(localStorage.getItem(VPRINT_DONE_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+      }
+      function vPrintDoneSet() { return new Set(vPrintDoneList()); }
+      function vPrintMarkPrinted(codes) {
+        if (!Array.isArray(codes) || !codes.length) return;
+        var list = vPrintDoneList();
+        var set = new Set(list);
+        codes.forEach(function (c) { if (c && !set.has(c)) { set.add(c); list.push(c); } });
+        if (list.length > 2000) list = list.slice(list.length - 2000);
+        try { localStorage.setItem(VPRINT_DONE_KEY, JSON.stringify(list)); } catch (e) { }
+      }
+      function vPrintClearPrinted(codes) {
+        if (!Array.isArray(codes) || !codes.length) return;
+        var drop = new Set(codes);
+        var list = vPrintDoneList().filter(function (c) { return !drop.has(c); });
+        try { localStorage.setItem(VPRINT_DONE_KEY, JSON.stringify(list)); } catch (e) { }
+      }
       function fmtShortDate(t) { try { return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); } catch (e) { return ''; } }
       function renderPayBatches() {
         var box = document.getElementById('payBatches'); if (!box) return;
         if (!payBatches.length) { box.innerHTML = '<p class="panel-hint" style="margin:10px 0 0;">No vouchers yet for this event.</p>'; return; }
+        var doneSet = vPrintDoneSet();
         box.innerHTML = payBatches.map(function (bt) {
           var total = typeof bt.total === 'number' ? bt.total : (bt.codes ? bt.codes.length : 0);
           var usedCount = typeof bt.usedCount === 'number' ? bt.usedCount : (bt.codes ? bt.codes.filter(function (x) { return x.used; }).length : 0);
           var voidCount = typeof bt.voidCount === 'number' ? bt.voidCount : (bt.codes ? bt.codes.filter(function (x) { return x.voided && !x.used; }).length : 0);
           var left = Math.max(0, total - usedCount - voidCount);
+          var printedLeft = (bt.codes || []).filter(function (x) { return !x.used && !x.voided && doneSet.has(x.c); }).length;
           var optMatch = payCfg.options && payCfg.options.find(function (o) { return (bt.label && o.label === bt.label) || o.tier === bt.tier; });
           var optTitle = (optMatch && optMatch.label) || bt.label || (bt.tier === 'receipt' ? 'Thermal' : (bt.tier === 'photo' ? 'Coloured' : ''));
           var tierBadge = bt.tier === 'receipt' ? (' · 🧾 ' + (optTitle || 'Thermal')) : (bt.tier === 'photo' ? (' · 🎨 ' + (optTitle || 'Coloured')) : (optTitle ? (' · ' + optTitle) : ''));
           return '<div class="pay-batch" data-id="' + payEsc(bt.id) + '"><div class="bi"><b>' + total + ' vouchers' + payEsc(tierBadge) + ' · ' + usedCount + ' used</b><small>' +
             (optTitle ? payEsc(optTitle) + ' · ' : '') +
-            (bt.price ? payEsc(peso(bt.price)) + ' · ' : '') + 'made ' + fmtShortDate(bt.at) + (bt.by === 'admin' ? ' by photobooth4u' : '') + (voidCount ? ' · ' + voidCount + ' cancelled' : '') + '</small>' +
+            (bt.price ? payEsc(peso(bt.price)) + ' · ' : '') + 'made ' + fmtShortDate(bt.at) + (bt.by === 'admin' ? ' by photobooth4u' : '') + (voidCount ? ' · ' + voidCount + ' cancelled' : '') + (printedLeft ? ' · ' + printedLeft + ' printed' : '') + '</small>' +
             '<div class="meter"><i style="width:' + Math.round((total ? usedCount / total : 0) * 100) + '%"></i></div></div>' +
             (left > 0 ? '<button type="button" class="action-btn" data-act="print">Print tickets</button><button type="button" class="action-btn" data-act="void">Cancel unused</button>' : '') +
             '<button type="button" class="action-btn" data-act="del" style="color:#e05252; margin-left:auto;" title="Delete this voucher batch">Delete</button></div>';
@@ -67421,6 +67704,471 @@ async function cashStopLink(keepEnabled) {
         btn.disabled = false; btn.textContent = 'Make vouchers';
       });
 
+      // ---- Voucher ticket helpers (Thermal 80mm / 58mm + A4 sheet) ----
+      function isThermalPrinterName(name) {
+        if (!name) return false;
+        return /(?:xp[-_ ]?(?:58|80|t80|n160|q\d|c\d|v\d)|xprinter|pos[-_ ]?(?:58|80|printer)|tm[-_ ]?[tm]\d|thermal|receipt|bixolon|star\s*tsp|vo[zx]y|rpp[-_ ]?\d|mp[-_ ]?210|pt[-_ ]?(?:210|280)|mtp[-_ ]?(?:ii|iii|2|3)|gp[-_ ]?(?:58|80)|rongta|zywell|munbyn|hprt|sewoo|citizen\s*ct|(?:58|80)\s*mm|\bp50\b|c19|liotog|cat\s*printer|luck)/i.test(String(name));
+      }
+      function voucherTicketMeta(data) {
+        var optMatch = payCfg.options && payCfg.options.find(function (o) { return (data.label && o.label === data.label) || o.tier === data.tier; });
+        var optName = data.label || (optMatch && optMatch.label) || (data.tier === 'receipt' ? 'Thermal' : (data.tier === 'photo' ? 'Coloured' : ''));
+        var optPr = optMatch && typeof optMatch.prints === 'number' ? optMatch.prints : null;
+        var tkPrints = optPr === null ? data.prints : optPr;
+        var incStr = (optName && optName !== '1 photo session' ? optName : '1 photo session') + (optPr === 0 ? ' · softcopy only' : (tkPrints ? ' · ' + tkPrints + ' print' + (tkPrints > 1 ? 's' : '') : ''));
+        var badgeText = data.tier === 'receipt' ? ((optName ? optName.toUpperCase() : 'THERMAL') + ' ONLY') : (data.tier === 'photo' ? ((optName ? optName.toUpperCase() : 'COLOR') + ' ONLY') : (optName && optName !== '1 photo session' ? optName.toUpperCase() : ''));
+        return { optName: optName, tkPrints: tkPrints, incStr: incStr, badgeText: badgeText };
+      }
+      function vDrawRoundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+      }
+      function vWrapLines(ctx, text, maxW, maxLines) {
+        var words = String(text || '').trim().split(/\s+/).filter(Boolean);
+        if (!words.length) return ['Photo booth'];
+        var lines = [], cur = words[0];
+        for (var i = 1; i < words.length; i++) {
+          var next = cur + ' ' + words[i];
+          if (ctx.measureText(next).width <= maxW) { cur = next; }
+          else { lines.push(cur); cur = words[i]; }
+        }
+        lines.push(cur);
+        if (lines.length > maxLines) {
+          lines = lines.slice(0, maxLines);
+          var last = lines[maxLines - 1];
+          while (last.length > 1 && ctx.measureText(last + '…').width > maxW) last = last.slice(0, -1);
+          lines[maxLines - 1] = last + '…';
+        } else {
+          for (var j = 0; j < lines.length; j++) {
+            var ln = lines[j];
+            if (ctx.measureText(ln).width > maxW) {
+              while (ln.length > 1 && ctx.measureText(ln + '…').width > maxW) ln = ln.slice(0, -1);
+              lines[j] = ln + '…';
+            }
+          }
+        }
+        return lines;
+      }
+      function vFitText(ctx, text, maxW, weight, maxPx, minPx, family) {
+        var sz = maxPx;
+        while (sz > minPx) {
+          ctx.font = (weight ? weight + ' ' : '') + sz + 'px ' + family;
+          if (ctx.measureText(text).width <= maxW) break;
+          sz -= 2;
+        }
+        ctx.font = (weight ? weight + ' ' : '') + sz + 'px ' + family;
+        return sz;
+      }
+
+      // Renders ONE crisp pure-B&W thermal voucher ticket canvas at native 203 DPI (576px for 80mm, 384px for 58mm).
+      // Strictly portrait (height > width) so CUPS, AirPrint, and Android print services never rotate it sideways.
+      function buildThermalVoucherCanvas(data, code, opts) {
+        opts = opts || {};
+        var is58 = opts.dotW === 384 || opts.format === 'thermal58';
+        var W = is58 ? 384 : 576;
+        var showCut = !!opts.showCutLine;
+        var H = is58 ? (showCut ? 426 : 398) : (showCut ? 616 : 584);
+        var cv = document.createElement('canvas');
+        cv.width = W; cv.height = H;
+        cv._pbToneDone = true;     // pure crisp B&W text/borders: skip photo bilateral denoise/halftone blur
+        var ctx = cv.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, W, H);
+
+        var meta = voucherTicketMeta(data);
+        var pesoStr = data.price ? ('₱' + Number(data.price || 0).toLocaleString('en-PH')) : '';
+        var codeStr = String(code || '');
+        var codeFmt = codeStr.length === 8 ? (codeStr.slice(0, 4) + ' ' + codeStr.slice(4)) : codeStr;
+
+        var pad = is58 ? 10 : 16;
+        var cardX = pad, cardY = is58 ? 10 : 14;
+        var cardW = W - pad * 2;
+        var cardH = is58 ? 376 : 552;
+        var innerW = cardW - (is58 ? 28 : 44);
+        var cx = W / 2;
+
+        // Crisp black outer ticket frame
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = is58 ? 3 : 4;
+        vDrawRoundRect(ctx, cardX, cardY, cardW, cardH, is58 ? 12 : 18);
+        ctx.stroke();
+
+        // Kicker
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.font = 'bold ' + (is58 ? 13 : 18) + 'px sans-serif';
+        ctx.fillText('PHOTOBOOTH4U · VOUCHER', cx, cardY + (is58 ? 28 : 42));
+
+        // Top hairline divider
+        ctx.fillRect(cardX + (is58 ? 16 : 24), cardY + (is58 ? 38 : 56), cardW - (is58 ? 32 : 48), 2);
+
+        // Event name (up to 2 lines)
+        var evText = (data.event || 'Photo booth').trim() || 'Photo booth';
+        ctx.font = 'bold ' + (is58 ? 23 : 34) + 'px Georgia, serif';
+        var evLines = vWrapLines(ctx, evText, innerW, 2);
+        var evLineH = is58 ? 26 : 38;
+        var evStartY = evLines.length === 1 ? (cardY + (is58 ? 72 : 108)) : (cardY + (is58 ? 64 : 94));
+        for (var ei = 0; ei < evLines.length; ei++) {
+          ctx.fillText(evLines[ei], cx, evStartY + ei * evLineH);
+        }
+
+        // Price and/or Tier badge row
+        var rowY = cardY + (is58 ? 126 : 186);
+        if (pesoStr && meta.badgeText) {
+          ctx.font = 'bold ' + (is58 ? 24 : 36) + 'px sans-serif';
+          var pW = ctx.measureText(pesoStr).width;
+          ctx.font = 'bold ' + (is58 ? 12 : 17) + 'px sans-serif';
+          var bTxt = meta.badgeText;
+          var maxBadgeW = innerW - pW - (is58 ? 24 : 36);
+          while (bTxt.length > 4 && ctx.measureText(bTxt).width > maxBadgeW) bTxt = bTxt.slice(0, -2) + '…';
+          var bPadX = is58 ? 10 : 14, bH = is58 ? 24 : 34;
+          var bW = ctx.measureText(bTxt).width + bPadX * 2;
+          var gap = is58 ? 10 : 14;
+          var totalW = pW + gap + bW;
+          var startX = cx - totalW / 2;
+          ctx.textAlign = 'left';
+          ctx.font = 'bold ' + (is58 ? 24 : 36) + 'px sans-serif';
+          ctx.fillText(pesoStr, startX, rowY + (is58 ? 6 : 10));
+          var pillX = startX + pW + gap, pillY = rowY - (is58 ? 14 : 20);
+          vDrawRoundRect(ctx, pillX, pillY, bW, bH, bH / 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.font = 'bold ' + (is58 ? 12 : 17) + 'px sans-serif';
+          ctx.fillText(bTxt, pillX + bW / 2, pillY + (is58 ? 16 : 23));
+          ctx.fillStyle = '#000000';
+        } else if (pesoStr) {
+          ctx.font = 'bold ' + (is58 ? 28 : 42) + 'px sans-serif';
+          ctx.fillText(pesoStr, cx, rowY + (is58 ? 8 : 12));
+        } else if (meta.badgeText) {
+          vFitText(ctx, meta.badgeText, innerW - 24, 'bold', is58 ? 14 : 20, 11, 'sans-serif');
+          var bW2 = ctx.measureText(meta.badgeText).width + (is58 ? 22 : 30);
+          var bH2 = is58 ? 26 : 36;
+          var pillY2 = rowY - (is58 ? 14 : 20);
+          vDrawRoundRect(ctx, cx - bW2 / 2, pillY2, bW2, bH2, bH2 / 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(meta.badgeText, cx, pillY2 + (is58 ? 18 : 25));
+          ctx.fillStyle = '#000000';
+        }
+
+        // Hero Voucher Code Box (high contrast black border on white paper)
+        var boxX = cardX + (is58 ? 14 : 22);
+        var boxW = cardW - (is58 ? 28 : 44);
+        var boxY = cardY + (is58 ? 152 : 228);
+        var boxH = is58 ? 92 : 128;
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = is58 ? 4 : 5;
+        vDrawRoundRect(ctx, boxX, boxY, boxW, boxH, is58 ? 10 : 14);
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.font = 'bold ' + (is58 ? 11 : 15) + 'px sans-serif';
+        ctx.fillText('VOUCHER CODE', cx, boxY + (is58 ? 20 : 28));
+
+        vFitText(ctx, codeFmt, boxW - (is58 ? 18 : 28), 'bold', is58 ? 44 : 66, is58 ? 24 : 34, 'monospace');
+        ctx.fillText(codeFmt, cx, boxY + (is58 ? 70 : 98));
+
+        // Includes line
+        vFitText(ctx, meta.incStr, innerW, 'bold', is58 ? 16 : 23, is58 ? 12 : 15, 'sans-serif');
+        ctx.fillText(meta.incStr, cx, boxY + boxH + (is58 ? 32 : 48));
+
+        // Dashed separator inside ticket
+        var sepY = boxY + boxH + (is58 ? 48 : 72);
+        ctx.save();
+        ctx.setLineDash(is58 ? [6, 5] : [8, 6]);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(boxX, sepY);
+        ctx.lineTo(boxX + boxW, sepY);
+        ctx.stroke();
+        ctx.restore();
+
+        // Guest instructions
+        ctx.font = 'bold ' + (is58 ? 14 : 20) + 'px sans-serif';
+        ctx.fillText('Tap screen → "I have a voucher"', cx, sepY + (is58 ? 28 : 42));
+        ctx.font = (is58 ? 14 : 20) + 'px sans-serif';
+        ctx.fillText('Enter the 8 digits · Valid once', cx, sepY + (is58 ? 50 : 74));
+
+        // Optional cut/tear line below ticket (for continuous strip printing)
+        if (showCut) {
+          var cutY = H - (is58 ? 16 : 22);
+          ctx.save();
+          ctx.setLineDash(is58 ? [8, 6] : [12, 8]);
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#000000';
+          ctx.beginPath();
+          ctx.moveTo(8, cutY);
+          ctx.lineTo(W - 8, cutY);
+          ctx.stroke();
+          ctx.restore();
+          ctx.font = 'bold ' + (is58 ? 12 : 15) + 'px sans-serif';
+          var cutLbl = 'CUT HERE';
+          var cutLw = ctx.measureText(cutLbl).width + (is58 ? 16 : 22);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(cx - cutLw / 2, cutY - (is58 ? 9 : 11), cutLw, is58 ? 18 : 22);
+          ctx.fillStyle = '#000000';
+          ctx.fillText(cutLbl, cx, cutY + (is58 ? 4 : 5));
+        }
+
+        return cv;
+      }
+
+      // Packs tickets into continuous-strip pages capped safely below 210mm so Windows -FitWidth never shrinks them.
+      function buildThermalVoucherStripPages(data, codes, dotW) {
+        var maxPerPage = dotW <= 384 ? 3 : 2;
+        var pages = [];
+        for (var i = 0; i < codes.length; i += maxPerPage) {
+          var slice = codes.slice(i, i + maxPerPage);
+          var parts = slice.map(function (c, idx) {
+            var isVeryLast = (i + idx) === (codes.length - 1);
+            return buildThermalVoucherCanvas(data, c, { dotW: dotW, showCutLine: !isVeryLast });
+          });
+          var totalH = parts.reduce(function (sum, p) { return sum + p.height; }, 0);
+          var page = document.createElement('canvas');
+          page.width = dotW;
+          page.height = totalH;
+          page._pbToneDone = true;
+          var g = page.getContext('2d');
+          g.fillStyle = '#ffffff';
+          g.fillRect(0, 0, dotW, totalH);
+          var y = 0;
+          parts.forEach(function (p) { g.drawImage(p, 0, y); y += p.height; });
+          pages.push({ canvas: page, codes: slice });
+        }
+        return pages;
+      }
+
+      // Discovers every thermal/receipt printer target available on this device (Bluetooth, USB/Wi-Fi raw, Print Helper, OS/browser fallback).
+      function voucherThermalTargets() {
+        var out = [];
+        var seen = new Set();
+        var T = window._btThermal;
+        var check58 = function (nm) {
+          return !!(nm && ((T && T.isKnown58mmPrinter && T.isKnown58mmPrinter(nm)) || (typeof is58mmPrinterName === 'function' && is58mmPrinterName(nm))));
+        };
+
+        // 1. Bluetooth thermal printer (Android RFCOMM SPP, iPad BLE, Chrome Web Bluetooth)
+        if (typeof isBtThermalAvailable === 'function' && isBtThermalAvailable()) {
+          var bp = T && T.btPrinter;
+          var btConn = !!(bp && bp.connected);
+          var btName = (bp && bp.name) || (typeof pwBtName === 'function' ? pwBtName() : '');
+          var btCan = !!(bp && typeof bp.canReconnect === 'function' && bp.canReconnect());
+          var btLabel = btConn ? ('Bluetooth · ' + (btName || 'Thermal printer') + ' (ready)')
+            : btCan ? ('Bluetooth · ' + (btName || 'Thermal printer') + ' (auto-reconnect)')
+              : 'Bluetooth thermal printer (connect on print)';
+          out.push({
+            id: 'bt',
+            kind: 'bt',
+            name: btName || 'Bluetooth thermal printer',
+            label: btLabel,
+            is58: check58(btName) || (bp && bp._paperWidth && bp._paperWidth <= 384 && btConn),
+            preferred: btConn || !!btThermalOn || btCan
+          });
+        }
+
+        // 2. Android / iPad USB OTG or Wi-Fi/LAN (:9100) raw ESC/POS printers
+        if (typeof wifiNetAvailable === 'function' && wifiNetAvailable()) {
+          try { wifiRelink(); } catch (e) { }
+          var rawPool = [];
+          try { rawPool = rawPool.concat((wifiList().printers) || []); } catch (e) { }
+          try { if (wifiSizeMap && wifiSizeMap.receipt80) rawPool.push(wifiSizeMap.receipt80); } catch (e) { }
+          try { if (wifiSizeMap && wifiSizeMap.receipt58) rawPool.push(wifiSizeMap.receipt58); } catch (e) { }
+          try { if (wifiPrinter) rawPool.push(wifiPrinter); } catch (e) { }
+          try { if (wifiDefault) rawPool.push(wifiDefault); } catch (e) { }
+          rawPool.forEach(function (p) {
+            if (!p || !p.raw || p.dialog || p.ipp) return;
+            var k = 'raw:' + (typeof wifiPKey === 'function' ? wifiPKey(p) : (p.name || p.ip || ''));
+            if (seen.has(k)) return;
+            seen.add(k);
+            var is58Raw = check58(p.name) || !!(wifiSizeMap && wifiSizeMap.receipt58 && wifiPKey(wifiSizeMap.receipt58) === wifiPKey(p));
+            out.push({
+              id: k,
+              kind: 'raw',
+              name: p.name || p.ip || 'Thermal printer',
+              label: (p.usb ? 'USB · ' : 'Wi-Fi · ') + (p.name || p.ip),
+              printerObj: p,
+              is58: is58Raw,
+              preferred: true
+            });
+          });
+        }
+
+        // 3. Laptop App (Windows / Mac) or Chrome + Print Helper
+        if (helperOn && helper && Array.isArray(helper.printers) && helper.printers.length) {
+          var assignedReceipt = new Set();
+          try {
+            if (printerFor('receipt80')) assignedReceipt.add(printerFor('receipt80'));
+            if (printerFor('receipt58')) assignedReceipt.add(printerFor('receipt58'));
+            if (typeof tierPrinters !== 'undefined' && tierPrinters && tierPrinters.receipt) assignedReceipt.add(tierPrinters.receipt);
+            if (typeof activeExtraPrinters === 'function') {
+              activeExtraPrinters().forEach(function (x) { if (x && x.name && isReceiptPaper(x.size)) assignedReceipt.add(x.name); });
+            }
+          } catch (e) { }
+          var thermalHelper = [], otherHelper = [];
+          helper.printers.forEach(function (pn) {
+            if (!pn) return;
+            var isRec = assignedReceipt.has(pn) || isThermalPrinterName(pn);
+            var entry = {
+              id: 'helper:' + pn,
+              kind: 'helper',
+              name: pn,
+              label: (isRec ? '🧾 ' : '') + pn,
+              is58: (pn === printerFor('receipt58')) || check58(pn),
+              preferred: isRec
+            };
+            if (isRec) thermalHelper.push(entry); else otherHelper.push(entry);
+          });
+          thermalHelper.forEach(function (t) { out.push(t); });
+          otherHelper.forEach(function (t) { out.push(t); });
+        }
+
+        // 4. Fallback: Android/iPad OS print dialog or Browser print page (/pay/tickets.html)
+        if (window.__PBPrint && typeof window.__PBPrint.print === 'function') {
+          out.push({
+            id: 'dialog',
+            kind: 'dialog',
+            name: IOS_APP ? 'AirPrint' : 'Android print dialog',
+            label: IOS_APP ? 'AirPrint (system print dialog)' : 'Android print dialog (any printer)',
+            is58: false,
+            preferred: false
+          });
+        } else {
+          out.push({
+            id: 'browser',
+            kind: 'browser',
+            name: 'Browser print',
+            label: 'Browser print page (choose thermal printer in dialog)',
+            is58: false,
+            preferred: false
+          });
+        }
+        return out;
+      }
+
+      // Sends voucher tickets to the chosen thermal printer target. Returns { printed: string[], stopped: boolean }.
+      async function printThermalVouchers(data, codes, opts, onProgress, isCancelled) {
+        var fmt = opts.format === 'thermal58' ? 'thermal58' : 'thermal80';
+        var rollKey = fmt === 'thermal58' ? 'receipt58' : 'receipt80';
+        var dotW = fmt === 'thermal58' ? 384 : 576;
+        var rollW = fmt === 'thermal58' ? '58mm' : '80mm';
+        var basePaper = PAPER[rollKey] || { name: fmt === 'thermal58' ? 'Receipt 58 mm' : 'Receipt 80 mm', w: fmt === 'thermal58' ? 48 : 72, h: 195, receipt: true };
+        var cutEach = !!opts.cutEach;
+        var target = opts.target;
+        var printed = [];
+        var total = codes.length;
+        var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+
+        if (!target || !total) return { printed: [], stopped: false };
+
+        // Route 1: Bluetooth thermal printer (Android RFCOMM, iPad BLE, Web Bluetooth)
+        if (target.kind === 'bt') {
+          for (var bi = 0; bi < total; bi++) {
+            if (isCancelled && isCancelled()) return { printed: printed, stopped: true };
+            var isLastBt = bi === total - 1;
+            var cvBt = buildThermalVoucherCanvas(data, codes[bi], { dotW: dotW, showCutLine: !cutEach && !isLastBt });
+            var doCutBt = cutEach || isLastBt;
+            await window._btThermal.printViaBluetooth(cvBt, rollW, { brightness: 0, quality: 'normal', cut: doCutBt, feed: doCutBt ? 1 : 0 });
+            printed.push(codes[bi]);
+            vPrintMarkPrinted([codes[bi]]);
+            if (onProgress) onProgress(bi + 1, total);
+            if (!isLastBt) await sleep(dotW <= 384 ? 700 : 350);
+          }
+          try { if (typeof pwSet === 'function') pwSet('bt', 'ready'); } catch (e) { }
+          return { printed: printed, stopped: false };
+        }
+
+        // Route 2: Android / iPad USB OTG or Wi-Fi/LAN (:9100) raw ESC/POS printer
+        if (target.kind === 'raw') {
+          try { wifiRelink(); } catch (e) { }
+          var wp = target.printerObj;
+          var baseWo = (typeof wifiOpts === 'function' ? wifiOpts(wp) : {}) || {};
+          for (var ri = 0; ri < total; ri++) {
+            if (isCancelled && isCancelled()) return { printed: printed, stopped: true };
+            var isLastRaw = ri === total - 1;
+            var cvRaw = buildThermalVoucherCanvas(data, codes[ri], { dotW: dotW, showCutLine: !cutEach && !isLastRaw });
+            var doCutRaw = cutEach || isLastRaw;
+            var paperRaw = Object.assign({}, basePaper, { h: Math.round(cvRaw.height / RECEIPT_DPI * 254) / 10 });
+            var woRaw = Object.assign({}, baseWo, { thermalQuality: 'normal', noCut: !doCutRaw, feed: doCutRaw ? 2 : 1 });
+            await printViaWifi([cvRaw], paperRaw, wp, woRaw);
+            printed.push(codes[ri]);
+            vPrintMarkPrinted([codes[ri]]);
+            if (onProgress) onProgress(ri + 1, total);
+            if (!isLastRaw) await sleep(dotW <= 384 ? 600 : 350);
+          }
+          return { printed: printed, stopped: false };
+        }
+
+        // Route 3: Laptop App (Windows / Mac) or Chrome + Print Helper
+        if (target.kind === 'helper') {
+          if (cutEach) {
+            // Send 1 voucher per job so Windows/Mac thermal drivers trigger their auto-cutter after each voucher.
+            for (var hi = 0; hi < total; hi++) {
+              if (isCancelled && isCancelled()) return { printed: printed, stopped: true };
+              var cvH = buildThermalVoucherCanvas(data, codes[hi], { dotW: dotW, showCutLine: false });
+              var paperH = Object.assign({}, basePaper, { h: Math.round(cvH.height / RECEIPT_DPI * 254) / 10 });
+              var okH = await printViaHelper([cvH], paperH, target.name, { sizeKey: rollKey, twoUp: false });
+              if (!okH) throw new Error('Could not send voucher ' + (hi + 1) + ' to ' + target.name + '.');
+              printed.push(codes[hi]);
+              vPrintMarkPrinted([codes[hi]]);
+              if (onProgress) onProgress(hi + 1, total);
+            }
+            return { printed: printed, stopped: false };
+          }
+          // Continuous strip: pack 2–3 tickets per page (height safely under 210mm so Windows -FitWidth never shrinks).
+          var stripPages = buildThermalVoucherStripPages(data, codes, dotW);
+          for (var pi = 0; pi < stripPages.length; pi++) {
+            if (isCancelled && isCancelled()) return { printed: printed, stopped: true };
+            var sp = stripPages[pi];
+            var paperS = Object.assign({}, basePaper, { h: Math.round(sp.canvas.height / RECEIPT_DPI * 254) / 10 });
+            var okS = await printViaHelper([sp.canvas], paperS, target.name, { sizeKey: rollKey, twoUp: false });
+            if (!okS) throw new Error('Could not send vouchers to ' + target.name + '.');
+            printed = printed.concat(sp.codes);
+            vPrintMarkPrinted(sp.codes);
+            if (onProgress) onProgress(printed.length, total);
+          }
+          return { printed: printed, stopped: false };
+        }
+
+        // Route 4: Android / iPad native OS print dialog
+        if (target.kind === 'dialog' && window.__PBPrint && typeof window.__PBPrint.print === 'function') {
+          var dlgCanvases = cutEach
+            ? codes.map(function (c) { return buildThermalVoucherCanvas(data, c, { dotW: dotW, showCutLine: false }); })
+            : buildThermalVoucherStripPages(data, codes, dotW).map(function (p) { return p.canvas; });
+          var hMm = Math.round(dlgCanvases[0].height / RECEIPT_DPI * 254) / 10;
+          var imgs = dlgCanvases.map(function (c) { return c.toDataURL('image/png'); });
+          var resDlg = JSON.parse(window.__PBPrint.print('Voucher tickets · ' + (data.event || 'Photo booth'), basePaper.w, hMm, JSON.stringify(imgs)) || '{}');
+          if (!resDlg.ok) throw new Error(resDlg.error || 'Couldn’t open the print dialog.');
+          printed = codes.slice();
+          vPrintMarkPrinted(printed);
+          if (onProgress) onProgress(total, total);
+          return { printed: printed, stopped: false };
+        }
+
+        // Route 5: Browser print page (/pay/tickets.html) in thermal 80mm / 58mm mode
+        try {
+          localStorage.setItem('pb_ticket_print', JSON.stringify({
+            event: data.event, price: data.price, prints: data.prints, tier: data.tier, label: data.label,
+            codes: codes, format: fmt, cutEach: cutEach, autoPrint: true, at: Date.now()
+          }));
+        } catch (err) { }
+        var w = window.open('/pay/tickets.html', '_blank');
+        if (!w) throw new Error('Allow pop-ups to print the tickets.');
+        printed = codes.slice();
+        vPrintMarkPrinted(printed);
+        if (onProgress) onProgress(total, total);
+        return { printed: printed, stopped: false };
+      }
+
       // ---- Android-compatible A4 ticket sheet printer ----
       async function renderVoucherTicketsForAndroid(data) {
         if (!data || !data.codes || !data.codes.length) { showToast('No codes to print.', 3000); return; }
@@ -67541,18 +68289,341 @@ async function cashStopLink(keepEnabled) {
             // Width: 210mm, Height: 297mm (Standard ISO A4)
             var result = JSON.parse(window.__PBPrint.print('Voucher tickets · ' + (data.event || 'Photo booth'), 210, 297, JSON.stringify(pages)) || '{}');
             if (!result.ok) showToast(result.error || 'Couldn’t open the print dialog.', 4000);
+            else vPrintMarkPrinted(data.codes);
           } else {
             // Fallback for desktop / browser: localStorage + popup
             try {
-              localStorage.setItem('pb_ticket_print', JSON.stringify({ event: data.event, price: data.price, prints: data.prints, tier: data.tier, label: data.label, codes: data.codes, at: Date.now() }));
+              localStorage.setItem('pb_ticket_print', JSON.stringify({ event: data.event, price: data.price, prints: data.prints, tier: data.tier, label: data.label, codes: data.codes, format: 'a4', autoPrint: true, at: Date.now() }));
             } catch (err) { }
             var w = window.open('/pay/tickets.html', '_blank');
             if (!w) showToast('Allow pop-ups to print the tickets.', 4000);
+            else vPrintMarkPrinted(data.codes);
           }
         } catch (err) {
           showToast('Print error: ' + (err.message || err), 4000);
         }
       }
+
+      // ---- Print voucher tickets modal (Thermal 80mm / Thermal 58mm / A4) ----
+      var vPrintState = { data: null, format: 'thermal80', targets: [], targetId: '', countMode: 'all', cutEach: true, busy: false, abort: false };
+      function vPrintSavedFmt() {
+        try { var f = localStorage.getItem(VPRINT_FMT_KEY); if (f === 'thermal80' || f === 'thermal58' || f === 'a4') return f; } catch (e) { }
+        return '';
+      }
+      function vPrintSavedCut(fmt) {
+        try {
+          var v = localStorage.getItem(VPRINT_CUT_KEY + '_' + fmt);
+          if (v === '1') return true;
+          if (v === '0') return false;
+        } catch (e) { }
+        return fmt === 'thermal80';     // 80mm printers usually have an auto-cutter; 58mm printers usually have a tear bar
+      }
+      function vPrintFreshCodes(data) {
+        var done = vPrintDoneSet();
+        return (data && data.codes ? data.codes : []).filter(function (c) { return !done.has(c); });
+      }
+      function vPrintPickCodes() {
+        var d = vPrintState.data;
+        if (!d || !d.codes || !d.codes.length) return [];
+        if (vPrintState.format === 'a4') return d.codes.slice();
+        var fresh = vPrintFreshCodes(d);
+        var pool = fresh.length ? fresh : d.codes;
+        var m = vPrintState.countMode;
+        if (m === 'all') return d.codes.slice();
+        if (m === 'unprinted') return fresh.length ? fresh.slice() : d.codes.slice();
+        var n = Number(m) || 1;
+        return pool.slice(0, Math.min(n, pool.length));
+      }
+      function vPrintRefreshPreview() {
+        var prevCv = document.getElementById('vPrintPreview');
+        var cap = document.getElementById('vPrintPrevCap');
+        var d = vPrintState.data;
+        if (!prevCv || !d || !d.codes || !d.codes.length || vPrintState.format === 'a4') return;
+        var codes = vPrintPickCodes();
+        var sampleCode = codes[0] || d.codes[0];
+        var dotW = vPrintState.format === 'thermal58' ? 384 : 576;
+        var built = buildThermalVoucherCanvas(d, sampleCode, { dotW: dotW, showCutLine: !vPrintState.cutEach && codes.length > 1 });
+        prevCv.width = built.width;
+        prevCv.height = built.height;
+        prevCv.getContext('2d').drawImage(built, 0, 0);
+        if (cap) {
+          var mmW = vPrintState.format === 'thermal58' ? '58 mm' : '80 mm';
+          cap.textContent = 'Preview (' + mmW + ' roll · ' + codes.length + ' ticket' + (codes.length === 1 ? '' : 's') + (vPrintState.cutEach ? ' · cut each' : ' · continuous strip') + ')';
+        }
+      }
+      function vPrintRefreshUI() {
+        var d = vPrintState.data;
+        if (!d) return;
+        var isThermal = vPrintState.format !== 'a4';
+        var fresh = vPrintFreshCodes(d);
+        var printedAlready = d.codes.length - fresh.length;
+        var sub = document.getElementById('vPrintSub');
+        if (sub) {
+          sub.textContent = (d.event || 'Photo booth') + ' · ' + d.codes.length + ' unused' + (d.price ? ' · ' + peso(d.price) : '') + (printedAlready ? ' (' + printedAlready + ' printed)' : '');
+        }
+        document.querySelectorAll('#vPrintFmt .vprint-seg').forEach(function (btn) {
+          var on = btn.dataset.fmt === vPrintState.format;
+          btn.classList.toggle('active', on);
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        var tBox = document.getElementById('vPrintThermalOpts');
+        var aBox = document.getElementById('vPrintA4Opts');
+        if (tBox) tBox.hidden = !isThermal;
+        if (aBox) aBox.hidden = isThermal;
+
+        if (isThermal) {
+          // Populate printer list
+          var sel = document.getElementById('vPrintPrinter');
+          var targets = vPrintState.targets;
+          if (sel) {
+            sel.innerHTML = targets.map(function (t) {
+              return '<option value="' + payEsc(t.id) + '">' + payEsc(t.label) + '</option>';
+            }).join('');
+            if (!targets.some(function (t) { return t.id === vPrintState.targetId; })) {
+              vPrintState.targetId = targets[0] ? targets[0].id : '';
+            }
+            sel.value = vPrintState.targetId;
+          }
+          var curTarget = targets.find(function (t) { return t.id === vPrintState.targetId; }) || null;
+          var pHint = document.getElementById('vPrintPrinterHint');
+          if (pHint) {
+            if (!curTarget || curTarget.kind === 'browser' || curTarget.kind === 'dialog') {
+              pHint.innerHTML = 'No direct thermal printer connected yet. You can still print via the print dialog, or <button type="button" class="vprint-link" id="vPrintOpenSettings">connect a thermal printer in Printer settings</button>.';
+            } else if (curTarget.kind === 'bt') {
+              pHint.textContent = 'Prints straight to your Bluetooth thermal printer.';
+            } else if (curTarget.kind === 'raw') {
+              pHint.textContent = 'Prints straight to your ' + (curTarget.printerObj && curTarget.printerObj.usb ? 'USB' : 'Wi-Fi') + ' thermal printer.';
+            } else if (curTarget.kind === 'helper') {
+              pHint.textContent = 'Prints silently to ' + curTarget.name + ' without a pop-up dialog.';
+            }
+          }
+
+          // Quantity chips
+          var cBox = document.getElementById('vPrintCounts');
+          var avail = fresh.length || d.codes.length;
+          var opts = [];
+          if (avail > 1) opts.push({ id: '1', lbl: fresh.length ? 'Next 1' : '1 ticket' });
+          if (avail > 5) opts.push({ id: '5', lbl: fresh.length ? 'Next 5' : '5 tickets' });
+          if (avail > 10) opts.push({ id: '10', lbl: fresh.length ? 'Next 10' : '10 tickets' });
+          if (fresh.length > 0 && fresh.length < d.codes.length) opts.push({ id: 'unprinted', lbl: 'All unprinted (' + fresh.length + ')' });
+          opts.push({ id: 'all', lbl: 'All unused (' + d.codes.length + ')' });
+          if (!opts.some(function (o) { return o.id === vPrintState.countMode; })) {
+            vPrintState.countMode = (fresh.length > 0 && fresh.length < d.codes.length) ? 'unprinted' : 'all';
+          }
+          if (cBox) {
+            cBox.innerHTML = opts.map(function (o) {
+              return '<button type="button" class="vprint-cnt' + (o.id === vPrintState.countMode ? ' active' : '') + '" data-cnt="' + o.id + '">' + payEsc(o.lbl) + '</button>';
+            }).join('');
+          }
+          var cHint = document.getElementById('vPrintCountHint');
+          if (cHint) {
+            if (printedAlready > 0) {
+              cHint.innerHTML = printedAlready + ' of ' + d.codes.length + ' unused codes were already printed on this device. <button type="button" class="vprint-link" id="vPrintResetDone">Reset printed mark</button>';
+            } else {
+              cHint.textContent = 'Print 1 at a time as guests pay, or print the whole batch ahead of time.';
+            }
+          }
+
+          var cutIn = document.getElementById('vPrintCutEach');
+          if (cutIn) cutIn.checked = !!vPrintState.cutEach;
+          var cutHint = document.getElementById('vPrintCutHint');
+          if (cutHint) {
+            cutHint.textContent = vPrintState.cutEach
+              ? 'Cuts after every voucher (best for 80 mm printers with an auto-cutter).'
+              : 'Prints as one continuous strip with dashed CUT HERE lines (best for 58 mm printers or fast batches).';
+          }
+          vPrintRefreshPreview();
+        }
+
+        var goBtn = document.getElementById('vPrintGo');
+        var cancelBtn = document.getElementById('vPrintCancel');
+        var progBox = document.getElementById('vPrintProg');
+        if (progBox) progBox.hidden = !vPrintState.busy;
+        if (goBtn) {
+          goBtn.disabled = vPrintState.busy;
+          var selCodes = vPrintPickCodes();
+          goBtn.textContent = vPrintState.busy ? 'Printing…'
+            : (vPrintState.format === 'a4'
+              ? ('Print A4 (' + selCodes.length + ')')
+              : ('Print ' + selCodes.length + ' voucher' + (selCodes.length === 1 ? '' : 's')));
+        }
+        if (cancelBtn) {
+          cancelBtn.textContent = vPrintState.busy ? (vPrintState.abort ? 'Stopping…' : 'Stop') : 'Cancel';
+          cancelBtn.disabled = vPrintState.busy && vPrintState.abort;
+        }
+      }
+      function openVoucherPrintModal(printData) {
+        var sheet = document.getElementById('vPrintSheet');
+        if (!sheet || !printData || !printData.codes || !printData.codes.length) {
+          showToast('No unused vouchers to print.', 3000);
+          return;
+        }
+        vPrintState.data = printData;
+        vPrintState.busy = false;
+        vPrintState.abort = false;
+        vPrintState.targets = voucherThermalTargets();
+
+        var savedTarget = '';
+        try { savedTarget = localStorage.getItem(VPRINT_PRINTER_KEY) || ''; } catch (e) { }
+        var prefTarget = vPrintState.targets.find(function (t) { return t.id === savedTarget; })
+          || vPrintState.targets.find(function (t) { return t.preferred; })
+          || vPrintState.targets[0] || null;
+        vPrintState.targetId = prefTarget ? prefTarget.id : '';
+
+        var savedFmt = vPrintSavedFmt();
+        if (savedFmt) {
+          vPrintState.format = savedFmt;
+        } else if (prefTarget && prefTarget.preferred) {
+          vPrintState.format = prefTarget.is58 ? 'thermal58' : 'thermal80';
+        } else if ((typeof printSize !== 'undefined' && isReceiptPaper(printSize)) || printData.tier === 'receipt') {
+          vPrintState.format = printSize === 'receipt58' ? 'thermal58' : 'thermal80';
+        } else {
+          vPrintState.format = 'a4';
+        }
+        vPrintState.cutEach = vPrintSavedCut(vPrintState.format);
+        var fresh = vPrintFreshCodes(printData);
+        vPrintState.countMode = (fresh.length > 0 && fresh.length < printData.codes.length) ? 'unprinted' : 'all';
+
+        vPrintRefreshUI();
+        sheet.hidden = false;
+
+        // Refresh Print Helper printer list in the background so newly plugged-in thermal printers show up right away
+        if (helperOn && typeof checkHelper === 'function') {
+          checkHelper(true).then(function () {
+            if (sheet.hidden || vPrintState.busy) return;
+            vPrintState.targets = voucherThermalTargets();
+            if (!vPrintState.targets.some(function (t) { return t.id === vPrintState.targetId && t.preferred; })) {
+              var better = vPrintState.targets.find(function (t) { return t.id === savedTarget; }) || vPrintState.targets.find(function (t) { return t.preferred; });
+              if (better) {
+                vPrintState.targetId = better.id;
+                if (!savedFmt && vPrintState.format === 'a4') {
+                  vPrintState.format = better.is58 ? 'thermal58' : 'thermal80';
+                  vPrintState.cutEach = vPrintSavedCut(vPrintState.format);
+                }
+              }
+            }
+            vPrintRefreshUI();
+          }).catch(function () { });
+        }
+      }
+      function closeVoucherPrintModal() {
+        if (vPrintState.busy) return;
+        var sheet = document.getElementById('vPrintSheet');
+        if (sheet) sheet.hidden = true;
+      }
+      (function wireVoucherPrintModal() {
+        var sheet = document.getElementById('vPrintSheet');
+        if (!sheet) return;
+        sheet.addEventListener('click', function (e) {
+          if (e.target === sheet && !vPrintState.busy) closeVoucherPrintModal();
+          if (e.target.closest('#vPrintOpenSettings')) {
+            closeVoucherPrintModal();
+            try { if (typeof openPrintModal === 'function') openPrintModal(); } catch (err) { }
+            return;
+          }
+          if (e.target.closest('#vPrintResetDone')) {
+            if (vPrintState.data && vPrintState.data.codes) {
+              vPrintClearPrinted(vPrintState.data.codes);
+              renderPayBatches();
+              vPrintRefreshUI();
+              showToast('Printed mark cleared for this batch.', 2500);
+            }
+            return;
+          }
+        });
+        var fmtBox = document.getElementById('vPrintFmt');
+        if (fmtBox) fmtBox.addEventListener('click', function (e) {
+          if (vPrintState.busy) return;
+          var btn = e.target.closest('[data-fmt]'); if (!btn) return;
+          vPrintState.format = btn.dataset.fmt;
+          vPrintState.cutEach = vPrintSavedCut(vPrintState.format);
+          try { localStorage.setItem(VPRINT_FMT_KEY, vPrintState.format); } catch (err) { }
+          vPrintRefreshUI();
+        });
+        var prSel = document.getElementById('vPrintPrinter');
+        if (prSel) prSel.addEventListener('change', function () {
+          vPrintState.targetId = prSel.value;
+          try { localStorage.setItem(VPRINT_PRINTER_KEY, vPrintState.targetId); } catch (err) { }
+          var t = vPrintState.targets.find(function (x) { return x.id === vPrintState.targetId; });
+          if (t && t.is58 && vPrintState.format === 'thermal80') {
+            vPrintState.format = 'thermal58';
+            vPrintState.cutEach = vPrintSavedCut('thermal58');
+          }
+          vPrintRefreshUI();
+        });
+        var cntBox = document.getElementById('vPrintCounts');
+        if (cntBox) cntBox.addEventListener('click', function (e) {
+          if (vPrintState.busy) return;
+          var btn = e.target.closest('[data-cnt]'); if (!btn) return;
+          vPrintState.countMode = btn.dataset.cnt;
+          vPrintRefreshUI();
+        });
+        var cutIn = document.getElementById('vPrintCutEach');
+        if (cutIn) cutIn.addEventListener('change', function () {
+          vPrintState.cutEach = !!cutIn.checked;
+          try { localStorage.setItem(VPRINT_CUT_KEY + '_' + vPrintState.format, vPrintState.cutEach ? '1' : '0'); } catch (err) { }
+          vPrintRefreshUI();
+        });
+        var cancelBtn = document.getElementById('vPrintCancel');
+        if (cancelBtn) cancelBtn.addEventListener('click', function () {
+          if (vPrintState.busy) {
+            vPrintState.abort = true;
+            vPrintRefreshUI();
+          } else {
+            closeVoucherPrintModal();
+          }
+        });
+        var goBtn = document.getElementById('vPrintGo');
+        if (goBtn) goBtn.addEventListener('click', async function () {
+          if (vPrintState.busy || !vPrintState.data) return;
+          var codes = vPrintPickCodes();
+          if (!codes.length) { showToast('No vouchers to print.', 3000); return; }
+          if (vPrintState.format === 'a4') {
+            var a4Data = Object.assign({}, vPrintState.data, { codes: codes });
+            closeVoucherPrintModal();
+            await renderVoucherTicketsForAndroid(a4Data);
+            renderPayBatches();
+            return;
+          }
+          var target = vPrintState.targets.find(function (t) { return t.id === vPrintState.targetId; }) || vPrintState.targets[0];
+          if (!target) { showToast('No printer selected.', 3500); return; }
+          vPrintState.busy = true;
+          vPrintState.abort = false;
+          var fill = document.getElementById('vPrintProgFill');
+          var txt = document.getElementById('vPrintProgTxt');
+          if (fill) fill.style.width = '0%';
+          if (txt) txt.textContent = 'Sending 1 of ' + codes.length + ' to ' + target.name + '…';
+          vPrintRefreshUI();
+          try {
+            var res = await printThermalVouchers(vPrintState.data, codes, {
+              format: vPrintState.format,
+              cutEach: vPrintState.cutEach,
+              target: target
+            }, function (doneN, totalN) {
+              if (fill) fill.style.width = Math.round((doneN / totalN) * 100) + '%';
+              if (txt) txt.textContent = doneN < totalN ? ('Printed ' + doneN + ' of ' + totalN + '…') : ('Done! ' + doneN + ' voucher' + (doneN === 1 ? '' : 's') + ' sent.');
+            }, function () { return vPrintState.abort; });
+            renderPayBatches();
+            if (res.stopped) {
+              showToast('Stopped after printing ' + res.printed.length + ' of ' + codes.length + ' voucher' + (codes.length === 1 ? '' : 's') + '.', 4500);
+            } else {
+              showToast('Printed ' + res.printed.length + ' voucher' + (res.printed.length === 1 ? '' : 's') + ' on ' + target.name + '.', 4000);
+            }
+            vPrintState.busy = false;
+            vPrintState.abort = false;
+            closeVoucherPrintModal();
+          } catch (err) {
+            vPrintState.busy = false;
+            vPrintState.abort = false;
+            renderPayBatches();
+            vPrintRefreshUI();
+            showToast('Thermal voucher print failed: ' + ((err && err.message) || err), 6000);
+          }
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && !sheet.hidden && !vPrintState.busy) closeVoucherPrintModal();
+        });
+      })();
 
       document.getElementById('payBatches').addEventListener('click', async function (e) {
         var b = e.target.closest('button[data-act]'); if (!b) return;
@@ -67568,7 +68639,7 @@ async function cashStopLink(keepEnabled) {
             codes: codes,
             at: Date.now()
           };
-          await renderVoucherTicketsForAndroid(printData);
+          openVoucherPrintModal(printData);
           return;
         }
         if (b.dataset.act === 'void') {

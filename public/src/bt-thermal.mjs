@@ -177,6 +177,91 @@
   // Uses edge-preserving smoothing, highlight roll-off and 75% error diffusion
   // so highlights stay pure clean white (no pepper grain), midtones are smooth and retro,
   // and text/borders stay crisp.
+  function applyThermalTone(lum, dotW, dotH, q) {
+    var n = dotW * dotH, x, y, i;
+    var clean = new Float32Array(n);
+    clean.set(lum);
+    var invT2 = 1 / 144;
+    for (y = 1; y < dotH - 1; y++) {
+      var rm = (y - 1) * dotW, r0 = y * dotW, rp = (y + 1) * dotW;
+      for (x = 1; x < dotW - 1; x++) {
+        var c0 = lum[r0 + x];
+        if (c0 <= 8 || c0 >= 248) continue;
+        var s = c0, sw = 1, v, df, wt;
+        v = lum[rm + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+        v = lum[rm + x];     df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+        v = lum[rm + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+        v = lum[r0 + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+        v = lum[r0 + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+        v = lum[rp + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+        v = lum[rp + x];     df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+        v = lum[rp + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
+        clean[r0 + x] = s / sw;
+      }
+    }
+    lum.set(clean);
+    var lift = dotW <= 384 ? 0.78 : 0.82;
+    var lut = new Float32Array(256);
+    for (i = 0; i < 256; i++) {
+      var u = Math.pow(i / 255, lift);
+      if (u > 0.82) {
+        var t = (u - 0.82) / (1.0 - 0.82);
+        u = 0.82 + (1.0 - 0.82) * (3 * t * t - 2 * t * t * t);
+        if (u >= 0.96) u = 1.0;
+      }
+      lut[i] = Math.max(0, Math.min(255, u * 255));
+    }
+    for (i = 0; i < n; i++) {
+      var ki = (lum[i] + 0.5) | 0;
+      lum[i] = lut[ki < 0 ? 0 : ki > 255 ? 255 : ki];
+    }
+    if (q === 'best') {
+      var blur = new Float32Array(n);
+      for (y = 0; y < dotH; y++) {
+        var y0 = y > 0 ? y - 1 : 0, y1 = y + 1 < dotH ? y + 1 : dotH - 1;
+        for (x = 0; x < dotW; x++) {
+          var x0 = x > 0 ? x - 1 : 0, x1 = x + 1 < dotW ? x + 1 : dotW - 1;
+          var sum = 0, cnt = 0, yy, xx;
+          for (yy = y0; yy <= y1; yy++) for (xx = x0; xx <= x1; xx++) { sum += lum[yy * dotW + xx]; cnt++; }
+          blur[y * dotW + x] = sum / cnt;
+        }
+      }
+      for (i = 0; i < n; i++) {
+        if (lum[i] <= 12 || lum[i] >= 242) continue;
+        var df2 = lum[i] - blur[i], adf = df2 < 0 ? -df2 : df2;
+        if (adf > 6.0) {
+          var mag = adf - 6.0; if (mag > 20) mag = 20;
+          lum[i] = Math.max(0, Math.min(255, lum[i] + (df2 < 0 ? -mag : mag) * 0.40));
+        }
+      }
+    }
+  }
+
+  function toReceiptGray(src, dotW, quality) {
+    dotW = dotW || 576;
+    var q = (quality === 'best' || quality === 'normal' || quality === 'draft') ? quality : 'best';
+    var scale = dotW / src.width;
+    var dotH  = Math.max(1, Math.round(src.height * scale));
+    var dst   = document.createElement('canvas');
+    dst.width = dotW; dst.height = dotH;
+    var ctx = dst.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, dotW, dotH);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, dotW, dotH);
+    var id = ctx.getImageData(0, 0, dotW, dotH), d = id.data;
+    var n = dotW * dotH, lum = new Float32Array(n), i;
+    for (i = 0; i < n; i++) lum[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+    if (q !== 'draft') applyThermalTone(lum, dotW, dotH, q);
+    for (i = 0; i < n; i++) {
+      var v = Math.max(0, Math.min(255, Math.round(lum[i])));
+      d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v; d[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(id, 0, 0);
+    dst._pbToneDone = true;
+    return dst;
+  }
+
   function toReceiptCanvas(src, dotW, brightness, quality) {
     dotW = dotW || 576;
     var q = (quality === 'best' || quality === 'normal' || quality === 'draft') ? quality : 'best';
@@ -199,62 +284,7 @@
 
     var toneDone = !!(src && src._pbToneDone);
     if (!toneDone && q !== 'draft') {
-      var clean = new Float32Array(n);
-      clean.set(lum);
-      var invT2 = 1 / 144;
-      for (y = 1; y < dotH - 1; y++) {
-        var rm = (y - 1) * dotW, r0 = y * dotW, rp = (y + 1) * dotW;
-        for (x = 1; x < dotW - 1; x++) {
-          var c0 = lum[r0 + x];
-          if (c0 <= 8 || c0 >= 248) continue;
-          var s = c0, sw = 1, v, df, wt;
-          v = lum[rm + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-          v = lum[rm + x];     df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-          v = lum[rm + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-          v = lum[r0 + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-          v = lum[r0 + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-          v = lum[rp + x - 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-          v = lum[rp + x];     df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-          v = lum[rp + x + 1]; df = v - c0; wt = 1 / (1 + df * df * invT2); s += v * wt; sw += wt;
-          clean[r0 + x] = s / sw;
-        }
-      }
-      lum = clean;
-      var lift = dotW <= 384 ? 0.78 : 0.82;
-      var lut = new Float32Array(256);
-      for (i = 0; i < 256; i++) {
-        var u = Math.pow(i / 255, lift);
-        if (u > 0.82) {
-          var t = (u - 0.82) / (1.0 - 0.82);
-          u = 0.82 + (1.0 - 0.82) * (3 * t * t - 2 * t * t * t);
-          if (u >= 0.96) u = 1.0;
-        }
-        lut[i] = Math.max(0, Math.min(255, u * 255));
-      }
-      for (i = 0; i < n; i++) {
-        var ki = (lum[i] + 0.5) | 0;
-        lum[i] = lut[ki < 0 ? 0 : ki > 255 ? 255 : ki];
-      }
-      if (q === 'best') {
-        var blur = new Float32Array(n);
-        for (y = 0; y < dotH; y++) {
-          var y0 = y > 0 ? y - 1 : 0, y1 = y + 1 < dotH ? y + 1 : dotH - 1;
-          for (x = 0; x < dotW; x++) {
-            var x0 = x > 0 ? x - 1 : 0, x1 = x + 1 < dotW ? x + 1 : dotW - 1;
-            var sum = 0, cnt = 0, yy, xx;
-            for (yy = y0; yy <= y1; yy++) for (xx = x0; xx <= x1; xx++) { sum += lum[yy * dotW + xx]; cnt++; }
-            blur[y * dotW + x] = sum / cnt;
-          }
-        }
-        for (i = 0; i < n; i++) {
-          if (lum[i] <= 12 || lum[i] >= 242) continue;
-          var df2 = lum[i] - blur[i], adf = df2 < 0 ? -df2 : df2;
-          if (adf > 6.0) {
-            var mag = adf - 6.0; if (mag > 20) mag = 20;
-            lum[i] = Math.max(0, Math.min(255, lum[i] + (df2 < 0 ? -mag : mag) * 0.40));
-          }
-        }
-      }
+      applyThermalTone(lum, dotW, dotH, q);
     }
 
     var out = new Uint8Array(n);
@@ -638,12 +668,13 @@
    * @param {'80mm'|'58mm'} paper
    */
   function printViaBluetooth(canvas, paper, opts) {
-    btPrinter._paperWidth = isKnown58mmPrinter(btPrinter._name) ? 384 : (PAPER_WIDTHS[paper || '80mm'] || 576);
+    var targetW = PAPER_WIDTHS[paper || '80mm'] || 576;
+    btPrinter._paperWidth = (btPrinter.connected && isKnown58mmPrinter(btPrinter._name)) ? 384 : targetW;
     var p = btPrinter.connected
       ? Promise.resolve()
       : btPrinter.connect();
     return p.then(function() {
-      if (isKnown58mmPrinter(btPrinter._name)) btPrinter._paperWidth = 384;
+      btPrinter._paperWidth = isKnown58mmPrinter(btPrinter._name) ? 384 : targetW;
       return btPrinter.printCanvas(canvas, opts);
     });
   }
@@ -657,6 +688,7 @@
     isKnown58mmPrinter: isKnown58mmPrinter,
     PAPER_WIDTHS     : PAPER_WIDTHS,
     toReceiptCanvas  : toReceiptCanvas,
+    toReceiptGray    : toReceiptGray,
     btPrinter        : btPrinter,
     isBtAvailable    : isBtAvailable,
     isNativeAndroid  : isNativeAndroid,

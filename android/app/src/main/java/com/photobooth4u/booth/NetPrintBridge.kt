@@ -1429,22 +1429,27 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     private object VozyReceiptModels {
         // VIDs VOZY / VOXY units are known to use across batches
         private val VENDOR_IDS = setOf(0x28e9, 0x0416, 0x6868, 0x0483, 0x0fe6, 0x1fc9, 0x4b43)
+        private val INKJET_VIDS = setOf(0x04b8, 0x04a9, 0x03f0, 0x04f9)
+        private val MODEL_CODE_RX = Regex("(?<![A-Z0-9])(?:G80|V80|P50|MP[-_ ]?210)(?![0-9])")
+
+        private fun safeProdUpper(d: android.hardware.usb.UsbDevice): String =
+            try { (d.productName ?: "").uppercase() } catch (_: Exception) { "" }
 
         fun isKnown(d: android.hardware.usb.UsbDevice): Boolean {
+            if (d.vendorId in INKJET_VIDS) return false
+            val name = safeProdUpper(d)
+            if (name.contains("VOZY") || name.contains("VOXY")) return true
             if (d.vendorId !in VENDOR_IDS) return false
-            // Match on product name containing VOZY / VOXY model identifiers (G80, V80, P50, MP210)
-            val name = (d.productName ?: "").uppercase()
-            return name.contains("VOZY") || name.contains("VOXY") || name.contains("G80") ||
-                   name.contains("V80") || name.contains("P50") || name.contains("MP210")
+            return MODEL_CODE_RX.containsMatchIn(name)
         }
 
         fun modelName(d: android.hardware.usb.UsbDevice): String {
-            val name = (d.productName ?: "").uppercase()
+            val name = safeProdUpper(d)
             return when {
                 name.contains("V80")  -> "VOZY V80"
                 name.contains("G80")  -> "VOZY G80"
                 name.contains("P50")  -> "VOZY P50"
-                name.contains("MP210") -> "VOZY MP210"
+                name.contains("MP210") || name.contains("MP-210") || name.contains("MP 210") -> "VOZY MP210"
                 else -> "VOZY printer"
             }
         }
@@ -1466,7 +1471,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     private fun usbIfaces(d: UsbDevice): List<UsbInterface> = (0 until d.interfaceCount).map { d.getInterface(it) }
     private fun usbIsPrinter(d: UsbDevice) = usbIfaces(d).any { it.interfaceClass == UsbConstants.USB_CLASS_PRINTER } ||
-        (d.vendorId == CanonSelphyJob.VENDOR_ID && (d.productId in CanonSelphyJob.PRODUCT_IDS || (d.productName ?: "").contains("SELPHY", true))) ||
+        (d.vendorId == CanonSelphyJob.VENDOR_ID && (d.productId in CanonSelphyJob.PRODUCT_IDS || (try { d.productName ?: "" } catch (_: Exception) { "" }).contains("SELPHY", true))) ||
         DnpJob.isKnown(d)
     /** True when this interface (alternate setting) has both a bulk OUT and a bulk IN endpoint. */
     private fun hasBulkPair(i: UsbInterface): Boolean {
@@ -1546,7 +1551,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         fun match(d: UsbDevice): String? {
             if (d.vendorId != VENDOR_ID) return null
             MODELS[d.productId]?.let { return it }
-            val prod = (d.productName ?: "")
+            val prod = try { d.productName ?: "" } catch (_: Exception) { "" }
             if (prod.contains("L121", ignoreCase = true)) return "L121"
             if (prod.contains("L120", ignoreCase = true)) return "L120"
             return null
@@ -2250,6 +2255,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
      * Rongta RP / RPP series (RP30, RPP30, RP326, RP80, RPP300 ...), HPRT, Gprinter, iDPRT, Zjiang, Goojprt, Munbyn, Netum.
      */
     private val receiptNameRx = Regex("(?i)(^|[^a-z])rpp?[- ]?\\d|rongta|hprt|gprinter|idprt|zjiang|goojprt|munbyn|netum|arcticbreeze|vo[zx]y|(?<![a-z0-9])(?:g80|v80|p50|mp[- ]?210)(?![0-9])")
+    private val known58mmNameRx = Regex("(?i)(?:^|[^a-z0-9])(?:vo[zx]y[\\s_-]*(?:p50|50)|p50|mp[-_ ]?210|pt[-_ ]?210|mpt[-_ ]?(?:ii|iii|2|3)|rpp[-_ ]?(?:02n?|200)|xp[-_ ]?58[a-z0-9]*|pos[-_ ]?58[a-z0-9]*|t[-_ ]?58[a-z0-9]*|gzm?[-_ ]?58|58\\s*mm)(?![a-z0-9])")
+    private fun isKnown58mmName(name: String?): Boolean = !name.isNullOrBlank() && known58mmNameRx.containsMatchIn(name)
     // Many white-label 80 mm POS printers (ArcticBreeze RP30 and others) only call themselves "USB Printer Port" over USB.
     // Treated as a receipt printer unless the maker is a known inkjet / laser brand (Epson, Canon, HP, Brother), which have their own paths.
     private val genericPortNameRx = Regex("(?i)^usb[ -]?printer[ -]?port$")
@@ -3063,10 +3070,25 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             return
         }
         val deadline = System.currentTimeMillis() + 75_000L
+        var misses = 0
         while (System.currentTimeMillis() < deadline) {
             try { Thread.sleep(2500) } catch (_: InterruptedException) { return }
-            val js = queryJobStateOnce(e, path, jobId) ?: return
-            if (js.state >= 7) return   // 7 canceled, 8 aborted, 9 completed
+            val r = try { doPost(e, path, ippGetJobAttributes(ippUri(e, path), jobId)) } catch (_: Exception) {
+                if (++misses >= 6) return
+                continue
+            }
+            if (r.http != 200) return
+            if (r.ipp == 0x0406 || r.ipp == 0x0501) return   // job purged (done) or Get-Job-Attributes unsupported
+            if (r.ipp !in 0..2) {
+                if (++misses >= 4) return
+                continue
+            }
+            misses = 0
+            var st = 0
+            parseIppGrouped(r.body) { grp, name, tag, raw ->
+                if (grp != 0x05 && name == "job-state" && tag == 0x23 && raw.size == 4) st = raw[3].toInt() and 0xFF
+            }
+            if (st == 0 || st >= 7) return   // 7 canceled, 8 aborted, 9 completed
         }
     }
 
@@ -3233,6 +3255,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                             lastErr = "The printer says it has no print queue at the addresses tried (" +
                                 ippPaths(e).joinToString(", ") + "; code 0x406). Add it by its IP address again, or check it has IPP / AirPrint turned on."
                         }
+                        r.http == 200 && r.ipp == 0x0507 -> {
+                            throw IllegalStateException("The printer is still busy with the previous photo (code 0x507). Wait for it to finish, then print again.")
+                        }
                         r.http == 200 -> {
                             lastErr = "The printer refused the photo (code 0x" + Integer.toHexString(r.ipp) +
                                 (if (unsup.isNotEmpty()) "; unsupported: ${unsup.take(4).joinToString(", ")}" else "") + ")."
@@ -3296,7 +3321,13 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             }
             return ready
         }
-        return pick(e.mediaSupported)
+        pick(e.mediaSupported)?.let { return it }
+        if (isSelphy(e)) {
+            if (Math.abs(want[0] - 54.0) < 8.0 && Math.abs(want[1] - 86.0) < 8.0) return "om_card_54x86mm"
+            if (Math.abs(want[0] - 89.0) < 8.0 && Math.abs(want[1] - 119.0) < 8.0) return "oe_photo-l_3.5x5in"
+            if (Math.abs(want[0] - 100.0) < 8.0 && Math.abs(want[1] - 148.0) < 8.0) return "jpn_hagaki_100x148mm"
+        }
+        return null
     }
 
     /** The JPEG with the requested DPI (default 300) written into its JFIF header, so a printer printing at actual size (no scaling) gets the exact sheet dimensions. */
@@ -4291,13 +4322,17 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         }
                     }
                     raw -> {
+                        val is58 = widthMm <= 55.0 || isKnown58mmName(usbName(d))
+                        val rollW = if (is58) 384 else 576
+                        val effOpt = if (is58 && (receiptOpt.bandRows <= 0 || receiptOpt.bandRows > 32)) {
+                            ReceiptRaster.Options(receiptOpt.dither, receiptOpt.threshold, 32, receiptOpt.brightness, receiptOpt.sharpen, receiptOpt.slowPrint, receiptOpt.toneLift, receiptOpt.toneDone)
+                        } else receiptOpt
                         for (i in 0 until pagesArr.length()) {
                             val jpeg = decode(pagesArr.getString(i))
                             val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                                 ?: throw IllegalStateException("Couldn't decode photo for printing.")
                             try {
-                                val rollW = if (widthMm <= 55.0) 384 else 576
-                                val escpos = ReceiptRaster.build(bmp, rollW, receiptOpt)
+                                val escpos = ReceiptRaster.build(bmp, rollW, effOpt)
                                 usbRaw(id, escpos, paced = rollW <= 384)
                             } finally {
                                 try { bmp.recycle() } catch (_: Exception) {}
@@ -4310,7 +4345,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val e = usbEntry(id)
                         for (i in 0 until pagesArr.length()) {
                             val data = decode(pagesArr.getString(i))
-                            sendIppJob(e, "helper_" + System.currentTimeMillis(), data, widthMm, heightMm, opts)
+                            val (jid, jpath) = sendIppJob(e, "helper_" + System.currentTimeMillis(), data, widthMm, heightMm, opts)
+                            if (i < pagesArr.length() - 1 && isSelphy(e)) {
+                                awaitSelphyIppIdle(e, jpath, jid)
+                            }
                         }
                     }
                     else -> {
@@ -4329,13 +4367,17 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             }
             if (netMatch != null) {
                 if (netMatch.rawPort > 0 && fit == "width") {
+                    val is58 = widthMm <= 55.0 || isKnown58mmName(netMatch.name)
+                    val rollW = if (is58) 384 else 576
+                    val effOpt = if (is58 && (receiptOpt.bandRows <= 0 || receiptOpt.bandRows > 32)) {
+                        ReceiptRaster.Options(receiptOpt.dither, receiptOpt.threshold, 32, receiptOpt.brightness, receiptOpt.sharpen, receiptOpt.slowPrint, receiptOpt.toneLift, receiptOpt.toneDone)
+                    } else receiptOpt
                     for (i in 0 until pagesArr.length()) {
                         val jpeg = decode(pagesArr.getString(i))
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't decode photo for printing.")
                         try {
-                            val rollW = if (widthMm <= 55.0) 384 else 576
-                            val escpos = ReceiptRaster.build(bmp, rollW, receiptOpt)
+                            val escpos = ReceiptRaster.build(bmp, rollW, effOpt)
                             newSocket(netMatch.ip).use { s ->
                                 s.connect(InetSocketAddress(netMatch.ip, netMatch.rawPort), 5000)
                                 s.soTimeout = 15000
@@ -4373,7 +4415,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     val opts = if (isL8050) Opts("high", "", "photo", true) else Opts("", "", "", true)
                     for (i in 0 until pagesArr.length()) {
                         val data = decode(pagesArr.getString(i))
-                        sendIppJob(netMatch, "helper_" + System.currentTimeMillis(), data, widthMm, heightMm, opts)
+                        val (jid, jpath) = sendIppJob(netMatch, "helper_" + System.currentTimeMillis(), data, widthMm, heightMm, opts)
+                        if (i < pagesArr.length() - 1 && isSelphy(netMatch)) {
+                            awaitSelphyIppIdle(netMatch, jpath, jid)
+                        }
                     }
                 }
                 return null

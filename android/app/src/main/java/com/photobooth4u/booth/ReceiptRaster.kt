@@ -32,25 +32,29 @@ object ReceiptRaster {
         val slowPrint: Boolean = false,
         /** Edge-preserving bilateral denoise + dot-gain lift + highlight roll-off ("best" and "normal"). */
         val toneLift: Boolean = sharpen,
+        /** True when the caller already applied thermal denoise/dot-gain lift/roll-off (e.g. ditherRegion or toReceiptGray). */
+        val toneDone: Boolean = false,
     ) {
         companion object {
             val LEGACY = Options()
+            val DEFAULT_THERMAL = Options(Dither.ATKINSON, 160, 256, 0, sharpen = true, slowPrint = false, toneLift = true, toneDone = false)
 
             /**
              * Reads the optional "receipt" object of a print request:
-             * { "quality": "best" | "normal" | "draft", "band": 256, "brightness": 0, "slow": false }.
-             * Missing or unknown fields keep the original behaviour.
+             * { "quality": "best" | "normal" | "draft" | "threshold", "band": 256, "brightness": 0, "slow": false, "toneDone": false }.
+             * Missing fields default to smooth Serpentine Atkinson + blank-row bands (prevents harsh threshold grain on RP30 / VOZY).
              */
             fun fromJson(o: JSONObject?): Options {
-                if (o == null) return LEGACY
-                val band = o.optInt("band", 0)
+                if (o == null) return DEFAULT_THERMAL
+                val band = o.optInt("band", 256)
                 val bright = o.optInt("brightness", 0).coerceIn(-100, 100)
                 val slow = o.optBoolean("slow", false)
-                return when (o.optString("quality", "")) {
-                    "best" -> Options(Dither.ATKINSON, 160, band, bright, sharpen = true, slowPrint = slow, toneLift = true)
-                    "normal" -> Options(Dither.ATKINSON, 160, band, bright, sharpen = false, slowPrint = slow, toneLift = true)
-                    "draft" -> Options(Dither.ORDERED, 160, band, bright, slowPrint = slow)
-                    else -> Options(Dither.THRESHOLD, 160, band, bright, slowPrint = slow)
+                val toneDone = o.optBoolean("toneDone", false)
+                return when (o.optString("quality", "best").lowercase()) {
+                    "normal" -> Options(Dither.ATKINSON, 160, band, bright, sharpen = false, slowPrint = slow, toneLift = true, toneDone = toneDone)
+                    "draft" -> Options(Dither.ORDERED, 160, band, bright, slowPrint = slow, toneDone = toneDone)
+                    "threshold" -> Options(Dither.THRESHOLD, 160, band, bright, slowPrint = slow, toneDone = toneDone)
+                    else -> Options(Dither.ATKINSON, 160, band, bright, sharpen = true, slowPrint = slow, toneLift = true, toneDone = toneDone)
                 }
             }
         }
@@ -119,9 +123,11 @@ object ReceiptRaster {
             try { scaled.recycle() } catch (_: Exception) {}
         }
 
-        // Feed 4 lines and cut: ESC d 4, GS V 66 0
+        // Feed 4 lines; emit GS V 66 0 cut only on 80 mm rolls (58 mm portable printers have no cutter and print garbage on GS V).
         out.write(byteArrayOf(0x1B, 0x64, 0x04))
-        out.write(byteArrayOf(0x1D, 0x56, 0x42, 0x00))
+        if (targetW > 384) {
+            out.write(byteArrayOf(0x1D, 0x56, 0x42, 0x00))
+        }
         return out.toByteArray()
     }
 
@@ -136,7 +142,7 @@ object ReceiptRaster {
             lum[i] = (((p shr 16) and 0xFF) * 299 + ((p shr 8) and 0xFF) * 587 + (p and 0xFF) * 114) / 1000f
         }
 
-        if (opt.toneLift || opt.sharpen) sharpenAndLift(lum, w, h, opt.sharpen)
+        if ((opt.toneLift || opt.sharpen) && !opt.toneDone) sharpenAndLift(lum, w, h, opt.sharpen)
         val offset = opt.brightness * 1.28f
         val black = BooleanArray(n)
 

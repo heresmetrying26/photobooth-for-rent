@@ -5,31 +5,36 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description"
-    content="photobooth4u — a DIY photobooth on your own laptop or tablet. Ready-made designs, your own Canva frames, prints on the spot, and an online gallery guests open with one QR scan.">
-  <title>About Us | photobooth4u</title>
+    content="photobooth4u — the all-in-one offline & online photobooth app for Windows, Mac, Android, and iPad. Real-time QR softcopies, LumaShare Sharing Station, Receipt & Retro Box booths, Roving Photoman, Multi-Printer & 360 Studio.">
+  <title>photobooth4u — Offline &amp; Online Photobooth App (Windows, Mac, Android &amp; iPad)</title>
   <link rel="canonical" href="https://photobooth4u.netlify.app/about-us/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="photobooth4u">
-  <meta property="og:title" content="photobooth4u — the photobooth, without the booth">
+  <meta property="og:title" content="photobooth4u — The Photobooth App Guests Love">
   <meta property="og:description"
-    content="Use your own laptop or tablet. Guests pose, scan a QR code, and take their photos home.">
+    content="Instant real-time QR softcopies (even 100% offline), LumaShare Sharing Station, Receipt & Retro Box booths, multi-printer support, Roving Photoman, GIFs, Flipbook & 360 Studio. Now on Android, Windows/Mac & iPad.">
   <meta property="og:url" content="https://photobooth4u.netlify.app/about-us/">
-  <meta property="og:image" content="https://photobooth4u.netlify.app/about-us/assets/pb4u-02-layouts-v2.jpg">
+  <meta property="og:image" content="https://photobooth4u.netlify.app/about-us/assets/hero-smiling-guests.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
   <style>
     :root {
       --ink: #1C1A1E;
-      --muted: #6B666C;
+      --muted: #655F66;
       --red: #C93D27;
       --red-dark: #A9301D;
       --tint: #FBEDEA;
       --paper: #F5F1EA;
+      --card: #FFFFFF;
       --line: #E4DCCF;
+      --green: #1D6E60;
+      --green-tint: #E5F4F0;
       --blue: #0866FF;
+      --shadow-sm: 0 8px 24px rgba(34, 24, 18, .06);
+      --shadow-md: 0 20px 48px rgba(34, 24, 18, .11);
     }
 
     * {
@@ -43,37 +48,34 @@
     body {
       margin: 0;
       color: var(--ink);
-      font-family: 'Manrope', Arial, sans-serif;
+      font-family: 'Manrope', system-ui, -apple-system, sans-serif;
       background: var(--paper);
-      line-height: 1.5
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
     }
 
     a {
       color: inherit
     }
 
+    img {
+      max-width: 100%;
+      display: block
+    }
+
     .wrap {
-      width: min(980px, calc(100% - 32px));
+      width: min(1060px, calc(100% - 32px));
       margin: 0 auto
     }
 
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0 0 0 0);
-      white-space: nowrap
-    }
-
-    /* top navigation (same on the lock screen, About us and My events) */
+    /* Navigation */
     .topnav {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px 16px;
       flex-wrap: wrap;
-      padding: 18px 0
+      padding: 18px 0;
     }
 
     .nbrand {
@@ -81,7 +83,7 @@
       align-items: center;
       gap: 9px;
       text-decoration: none;
-      color: var(--ink)
+      color: var(--ink);
     }
 
     .nmark {
@@ -90,21 +92,21 @@
       gap: 3px;
       width: 24px;
       height: 24px;
-      flex: none
+      flex: none;
     }
 
     .nmark i {
       background: var(--ink);
-      border-radius: 4px
+      border-radius: 4px;
     }
 
     .nmark i:nth-child(2) {
-      background: var(--red)
+      background: var(--red);
     }
 
     .nword {
       display: flex;
-      align-items: flex-start
+      align-items: flex-start;
     }
 
     .nword b {
@@ -112,7 +114,7 @@
       font-weight: 600;
       font-size: 23px;
       letter-spacing: -.035em;
-      line-height: 1
+      line-height: 1;
     }
 
     .nword em {
@@ -125,1025 +127,58 @@
       font-weight: 800;
       font-size: 11px;
       line-height: 1;
-      transform: rotate(-7deg)
+      transform: rotate(-7deg);
     }
 
     .navlinks {
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      gap: 4px
+      gap: 4px;
     }
 
     .navlinks a {
-      font-size: 14px;
+      font-size: 13.5px;
       font-weight: 700;
       color: var(--muted);
       text-decoration: none;
-      padding: 9px 13px;
+      padding: 8px 12px;
       border-radius: 999px;
       white-space: nowrap;
-      transition: background .2s, color .2s
+      transition: background .18s, color .18s;
     }
 
     .navlinks a:hover,
     .navlinks a:focus-visible {
       color: var(--ink);
       background: #fff;
-      outline: none
+      outline: none;
     }
 
     .navlinks a[aria-current="page"] {
       color: var(--ink);
-      background: #fff
+      background: #fff;
     }
 
     .navlinks a.cta {
       margin-left: 4px;
       color: #fff;
-      background: var(--red)
+      background: var(--red);
     }
 
     .navlinks a.cta:hover,
     .navlinks a.cta:focus-visible {
       background: var(--red-dark);
-      color: #fff
-    }
-
-    .hero {
-      text-align: center;
-      padding: 30px 0 30px
-    }
-
-    h1 {
-      margin: 0 0 12px;
-      font-family: 'Fraunces', Georgia, serif;
-      font-weight: 600;
-      font-size: clamp(38px, 6.4vw, 68px);
-      line-height: 1.02;
-      letter-spacing: -.04em
-    }
-
-    h1 em {
-      font-style: italic;
-      font-weight: 500;
-      color: var(--red)
-    }
-
-    .hero p {
-      margin: 0 auto;
-      max-width: 480px;
-      font-size: 17px;
-      color: var(--muted)
-    }
-
-    .hero-actions {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 22px
-    }
-
-    /* slider: images only, centred */
-    .slider {
-      position: relative;
-      max-width: 620px;
-      margin: 0 auto;
-      border-radius: 22px;
-      background: #fff;
-      border: 1px solid var(--line);
-      overflow: hidden
-    }
-
-    .slides {
-      position: relative;
-      aspect-ratio: 1/1;
-      background: var(--paper)
-    }
-
-    .slide {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .5s ease
-    }
-
-    .slide.active {
-      opacity: 1;
-      pointer-events: auto
-    }
-
-    .slide img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      display: block
-    }
-
-    .slide-caption {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0 0 0 0)
-    }
-
-    .arrow {
-      position: absolute;
-      z-index: 2;
-      top: 50%;
-      display: grid;
-      place-items: center;
-      width: 40px;
-      height: 40px;
-      border: 0;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, .92);
-      color: var(--ink);
-      font-size: 24px;
-      line-height: 1;
-      cursor: pointer;
-      box-shadow: 0 2px 10px rgba(28, 26, 30, .12);
-      transform: translateY(-50%);
-      transition: .2s
-    }
-
-    .arrow:hover,
-    .arrow:focus-visible {
-      background: var(--red);
       color: #fff;
-      outline: none
     }
 
-    .prev {
-      left: 12px
-    }
-
-    .next {
-      right: 12px
-    }
-
-    .slider-footer {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      padding: 12px;
-      border-top: 1px solid var(--line)
-    }
-
-    .dots {
-      display: flex;
-      gap: 7px
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      padding: 0;
-      border: 0;
-      border-radius: 50%;
-      background: #DCD3C6;
-      cursor: pointer;
-      transition: .2s
-    }
-
-    .dot[aria-current="true"] {
-      width: 22px;
-      border-radius: 8px;
-      background: var(--red)
-    }
-
-    .counter {
-      display: none
-    }
-
-    section.block {
-      padding: 56px 0 0;
-      scroll-margin-top: 12px
-    }
-
-    .label {
-      margin: 0 0 10px;
-      text-align: center;
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: .22em;
-      text-transform: uppercase;
-      color: var(--red)
-    }
-
-    h2 {
-      margin: 0 0 6px;
-      font-family: 'Fraunces', Georgia, serif;
-      font-weight: 600;
-      font-size: clamp(26px, 3.6vw, 34px);
-      letter-spacing: -.025em;
-      line-height: 1.1;
-      text-align: center
-    }
-
-    .sub {
-      margin: 0 auto 22px;
-      text-align: center;
-      color: var(--muted);
-      max-width: 520px
-    }
-
-    /* online vs the offline apps */
-    .vers {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px
-    }
-
-    .ver {
-      padding: 20px;
-      border-radius: 18px;
-      background: #fff;
-      border: 1px solid var(--line)
-    }
-
-    .ver .where {
-      margin: 0 0 6px;
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-      color: var(--red)
-    }
-
-    .ver h3 {
-      margin: 0 0 4px;
-      font-family: 'Fraunces', Georgia, serif;
-      font-weight: 600;
-      font-size: 22px;
-      letter-spacing: -.02em
-    }
-
-    .ver .net {
-      margin: 0 0 12px;
-      font-size: 14px;
-      color: var(--muted)
-    }
-
-    .ver ul {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      display: grid;
-      gap: 8px;
-      font-size: 14px
-    }
-
-    .ver li {
-      position: relative;
-      padding-left: 20px
-    }
-
-    .ver li::before {
-      content: "\2713";
-      position: absolute;
-      left: 0;
-      font-weight: 800;
-      color: var(--red)
-    }
-
-    .ver li.no::before {
-      content: "\2013";
-      color: var(--muted)
-    }
-
-    .ver-note {
-      margin: 14px auto 0;
-      max-width: 640px;
-      text-align: center;
-      font-size: 14px;
-      color: var(--muted)
-    }
-
-    .ver-note b,
-    .ver-note a {
-      color: var(--ink)
-    }
-
-    @media (max-width: 760px) {
-      .vers {
-        grid-template-columns: 1fr
-      }
-    }
-
-    /* features */
-    .features {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px
-    }
-
-    .feat {
-      padding: 20px;
-      border-radius: 18px;
-      background: #fff;
-      border: 1px solid var(--line)
-    }
-
-    .feat .ic {
-      display: grid;
-      place-items: center;
-      width: 40px;
-      height: 40px;
-      margin-bottom: 12px;
-      border-radius: 12px;
-      background: var(--tint);
-      color: var(--red)
-    }
-
-    .feat .ic svg {
-      width: 22px;
-      height: 22px
-    }
-
-    .feat h3 {
-      margin: 0 0 4px;
-      font-size: 16.5px;
-      line-height: 1.3
-    }
-
-    .feat p {
-      margin: 0;
-      font-size: 14.5px;
-      color: var(--muted)
-    }
-
-    /* how it works */
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      counter-reset: s
-    }
-
-    .steps li {
-      position: relative;
-      padding: 20px 18px 18px;
-      border-radius: 18px;
-      background: #fff;
-      border: 1px solid var(--line);
-      counter-increment: s
-    }
-
-    .steps li::before {
-      content: counter(s);
-      display: grid;
-      place-items: center;
-      width: 30px;
-      height: 30px;
-      margin-bottom: 10px;
-      border-radius: 50%;
-      background: var(--ink);
-      color: #fff;
-      font-weight: 800;
-      font-size: 14px
-    }
-
-    .steps b {
-      display: block;
-      font-size: 15.5px;
-      margin-bottom: 2px
-    }
-
-    .steps span {
-      font-size: 14px;
-      color: var(--muted)
-    }
-
-    .plans {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 12px
-    }
-
-    .plans .plan {
-      grid-column: span 2
-    }
-
-    .plans .plan.wide {
-      grid-column: span 3
-    }
-
-    .plans .plan.event {
-      grid-column: span 3
-    }
-
-    .plans .plan.event.solo {
-      grid-column: 2 / span 4
-    }
-
-    .plan {
-      display: flex;
-      flex-direction: column;
-      padding: 22px;
-      border-radius: 18px;
-      background: #fff;
-      border: 1px solid var(--line)
-    }
-
-    .plan.pro {
-      border: 2px solid var(--red)
-    }
-
-    .plan.life {
-      background: var(--ink);
-      border-color: var(--ink);
-      color: #fff
-    }
-
-    .plan h3 {
-      margin: 0;
-      font-size: 18px
-    }
-
-    .plan .for {
-      margin: 2px 0 12px;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--muted)
-    }
-
-    .plan.life .for {
-      color: #BDB6AE
-    }
-
-    .price {
-      margin: auto 0 0;
-      font-family: 'Fraunces', Georgia, serif;
-      font-weight: 600;
-      font-size: 36px;
-      letter-spacing: -.02em;
-      line-height: 1
-    }
-
-    .price small {
-      font-family: 'Manrope', Arial, sans-serif;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--muted);
-      letter-spacing: 0
-    }
-
-    .plan.life .price small {
-      color: #BDB6AE
-    }
-
-    .plan.life a {
-      color: #fff;
-      text-decoration: none;
-      border-bottom: 2px solid var(--red);
-      padding-bottom: 2px
-    }
-
-    .plan.life a:hover {
-      color: #F2B8AC
-    }
-
-    .plan .tag {
-      align-self: flex-start;
-      margin: 0 0 10px;
-      padding: 3px 9px;
-      border-radius: 999px;
-      background: var(--tint);
-      color: var(--red);
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: .06em;
-      text-transform: uppercase
-    }
-
-    .plan.life .tag {
-      background: var(--red);
-      color: #fff
-    }
-
-    .plan .life-link {
-      margin: 10px 0 0;
-      font-size: 13.5px;
-      font-weight: 800
-    }
-
-    .addons {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-top: 12px
-    }
-
-    .addon {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px 12px;
-      padding: 12px 16px;
-      border-radius: 14px;
-      background: transparent;
-      border: 1.5px dashed var(--line)
-    }
-
-    .addon .addon-ic {
-      display: grid;
-      place-items: center;
-      flex: none;
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
-      background: var(--tint);
-      color: var(--red);
-      font-weight: 800;
-      font-size: 17px;
-      line-height: 1
-    }
-
-    .addon .addon-body {
-      flex: 1 1 auto;
-      min-width: 0
-    }
-
-    .addon b {
-      display: block;
-      font-size: 14.5px
-    }
-
-    .addon small {
-      display: block;
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--muted);
-      line-height: 1.35
-    }
-
-    .addon .addon-price {
-      flex: none;
-      font-family: 'Fraunces', Georgia, serif;
-      font-weight: 600;
-      font-size: 20px;
-      letter-spacing: -.01em
-    }
-
-    .offline-note {
-      margin: 14px auto 0;
-      max-width: 640px;
-      text-align: center;
-      font-size: 14px;
-      color: var(--muted)
-    }
-
-    .offline-note b {
-      color: var(--ink)
-    }
-
-    /* monthly subscription plans */
-    .plans-monthly {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
-      margin: 20px 0;
-    }
-
-    .plan.monthly {
-      border: 1.5px solid var(--line);
-      transition: transform .2s, box-shadow .2s;
-    }
-
-    .plan.monthly:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 32px rgba(60, 40, 20, .08);
-    }
-
-    .plan.monthly.best {
-      border: 2.5px solid var(--red);
-      box-shadow: 0 12px 36px rgba(201, 61, 39, .12);
-      position: relative;
-    }
-
-    .plan-list {
-      margin: 14px 0 20px;
-      padding: 0;
-      list-style: none;
-      display: grid;
-      gap: 9px;
-      font-size: 13.5px;
-    }
-
-    .plan-list li {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      line-height: 1.35;
-      color: var(--ink);
-    }
-
-    .plan-list li::before {
-      content: "✓";
-      color: var(--red);
-      font-weight: 800;
-      flex: none;
-    }
-
-    .plan-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-top: auto;
-      padding-top: 14px;
-      border-top: 1px solid var(--line);
-    }
-
-    .plan.life .plan-footer {
-      border-top-color: rgba(255, 255, 255, .15);
-    }
-
-    .plan-footer .price {
-      margin: 0;
-      font-size: 28px;
-    }
-
-    .plan-cta {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      text-decoration: none;
-      flex: none;
-      background: none;
-      border: 1.5px solid currentColor;
-      color: var(--red);
-      border-radius: 999px;
-      font: inherit;
-      font-size: 12.5px;
-      font-weight: 800;
-      letter-spacing: .01em;
-      padding: 7px 14px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background .15s, color .15s;
-    }
-
-    .plan-cta:hover {
-      background: var(--red);
-      color: #fff;
-      border-color: var(--red);
-    }
-
-    .plan.life .plan-cta {
-      color: #fff;
-      border-color: rgba(255, 255, 255, .5);
-    }
-
-    .plan.life .plan-cta:hover {
-      background: #fff;
-      color: var(--ink);
-      border-color: #fff;
-    }
-
-    .addon-cta {
-      flex: none;
-      margin-left: auto;
-    }
-
-    .plan-btn {
-      width: 100%;
-      margin-top: auto;
-    }
-
-    .renew-banner {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      padding: 12px 18px;
-      border-radius: 14px;
-      background: #fff;
-      border: 1.5px dashed var(--line);
-      margin: 12px 0 32px;
-      font-size: 14px;
-      color: var(--muted);
-    }
-
-    .renew-link {
-      background: none;
-      border: none;
-      color: var(--red);
-      font: inherit;
-      font-weight: 800;
-      cursor: pointer;
-      padding: 0;
-      text-decoration: underline;
-    }
-
-    .renew-link:hover {
-      color: var(--red-dark);
-    }
-
-    .pkg-divider {
-      margin: 36px 0 20px;
-      text-align: center;
-    }
-
-    .pkg-divider.first {
-      margin-top: 28px;
-    }
-
-    .plans-event {
-      max-width: 620px;
-      margin: 0 auto;
-    }
-
-    .addons-d {
-      margin-top: 14px;
-    }
-
-    .addons-d summary {
-      cursor: pointer;
-      font-size: 14px;
-      color: var(--muted);
-      padding: 4px 0;
-    }
-
-    .addons-d[open] summary {
-      margin-bottom: 4px;
-    }
-
-    .pkg-divider h3 {
-      font-family: 'Fraunces', Georgia, serif;
-      font-weight: 600;
-      font-size: 22px;
-      margin: 0 0 4px;
-    }
-
-    .pkg-divider p {
-      margin: 0;
-      font-size: 14px;
-      color: var(--muted);
-    }
-
-    /* guides */
-    .guides {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px
-    }
-
-    .guide {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      padding: 20px;
-      border-radius: 18px;
-      background: #fff;
-      border: 1px solid var(--line);
-      text-decoration: none;
-      color: var(--ink);
-      transition: border-color .2s, transform .2s
-    }
-
-    .guide:hover,
-    .guide:focus-visible {
-      border-color: var(--red);
-      transform: translateY(-2px);
-      outline: none
-    }
-
-    .guide .ic {
-      display: grid;
-      place-items: center;
-      width: 40px;
-      height: 40px;
-      margin-bottom: 6px;
-      border-radius: 12px;
-      background: var(--tint);
-      color: var(--red)
-    }
-
-    .guide .ic svg {
-      width: 22px;
-      height: 22px
-    }
-
-    .guide.off .ic {
-      background: var(--ink);
-      color: #fff
-    }
-
-    .guide h3 {
-      margin: 0;
-      font-size: 16.5px;
-      line-height: 1.3
-    }
-
-    .guide .for {
-      margin: 0;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--red)
-    }
-
-    .guide p {
-      margin: 0;
-      font-size: 14px;
-      color: var(--muted)
-    }
-
-    .guide .open {
-      margin-top: auto;
-      padding-top: 10px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--ink)
-    }
-
-    .guide .open svg {
-      width: 16px;
-      height: 16px
-    }
-
-    .pg-list {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px
-    }
-
-    .pg-list a {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      padding: 14px 18px;
-      border-radius: 14px;
-      background: #fff;
-      border: 1px solid var(--line);
-      color: var(--ink);
-      text-decoration: none;
-      transition: border-color .15s, transform .15s
-    }
-
-    .pg-list a:hover,
-    .pg-list a:focus-visible {
-      border-color: var(--red);
-      transform: translateY(-1px)
-    }
-
-    .pg-list a b {
-      font-size: 15.5px
-    }
-
-    .pg-list a span {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--muted)
-    }
-
-    .pg-list a.pg-all {
-      grid-column: 1 / -1;
-      border: 2px solid var(--red)
-    }
-
-    .guide:hover .open {
-      color: var(--red)
-    }
-
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 8px;
-      margin: 16px 0 0;
-      padding: 0;
-      list-style: none
-    }
-
-    .chips li {
-      padding: 7px 13px;
-      border-radius: 999px;
-      background: #fff;
-      border: 1px solid var(--line);
-      font-size: 13px;
-      font-weight: 700
-    }
-
-    /* my events */
-    .events {
-      display: grid;
-      grid-template-columns: 1.3fr 1fr;
-      gap: 22px;
-      align-items: center;
-      padding: 26px;
-      border-radius: 20px;
-      background: var(--ink);
-      color: #fff
-    }
-
-    .events h2 {
-      text-align: left;
-      color: #fff
-    }
-
-    .events p {
-      margin: 0 0 16px;
-      color: #CFC8C0
-    }
-
-    .events ul {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      display: grid;
-      gap: 8px
-    }
-
-    .events li {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      font-size: 14.5px;
-      color: #EDE7E0
-    }
-
-    .events li::before {
-      content: "";
-      flex: none;
-      width: 8px;
-      height: 8px;
-      margin-top: 7px;
-      border-radius: 2px;
-      background: var(--red)
-    }
-
-    .book {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      grid-template-areas: "intro form" "actions form";
-      column-gap: 22px;
-      row-gap: 4px;
-      align-items: start;
-      padding: 26px;
-      border-radius: 20px;
-      background: #fff;
-      border: 1px solid var(--line)
-    }
-
-    .book-intro {
-      grid-area: intro
-    }
-
-    .book .form-card {
-      grid-area: form;
-      align-self: center
-    }
-
-    .book .actions {
-      grid-area: actions
-    }
-
-    .book h2 {
-      text-align: left
-    }
-
-    .book .sub {
-      text-align: left;
-      margin: 0 0 16px
-    }
-
-    .form-card {
-      margin: 0;
-      padding: 16px 18px;
-      border-radius: 14px;
-      background: var(--paper);
-      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-      font-size: 14.5px;
-      line-height: 1.9;
-      white-space: pre-wrap
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center
-    }
-
+    /* Buttons */
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 12px 18px;
+      padding: 12px 20px;
       border-radius: 999px;
       font: inherit;
       font-size: 14.5px;
@@ -1153,232 +188,900 @@
       border: 1.5px solid var(--line);
       background: #fff;
       color: var(--ink);
-      transition: .2s
+      transition: transform .15s, background .18s, border-color .18s, color .18s;
     }
 
     .btn:hover,
     .btn:focus-visible {
-      border-color: var(--red);
-      color: var(--red);
-      outline: none
-    }
-
-    .btn.primary {
-      background: var(--blue);
-      border-color: var(--blue);
-      color: #fff
-    }
-
-    .btn.primary:hover,
-    .btn.primary:focus-visible {
-      background: #0653CC;
-      border-color: #0653CC;
-      color: #fff
+      border-color: var(--ink);
+      transform: translateY(-1px);
+      outline: none;
     }
 
     .btn.red {
       background: var(--red);
       border-color: var(--red);
-      color: #fff
+      color: #fff;
     }
 
     .btn.red:hover,
     .btn.red:focus-visible {
       background: var(--red-dark);
       border-color: var(--red-dark);
-      color: #fff
+      color: #fff;
     }
 
-    .events .btn {
-      background: transparent;
-      border-color: #57525A;
-      color: #fff
+    .btn.primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
     }
 
-    .events .btn:hover,
-    .events .btn:focus-visible {
-      border-color: #fff;
-      color: #fff
-    }
-
-    .events .btn.red {
-      background: var(--red);
-      border-color: var(--red)
+    .btn.primary:hover,
+    .btn.primary:focus-visible {
+      background: #0754d1;
+      border-color: #0754d1;
+      color: #fff;
     }
 
     .btn svg {
-      width: 18px;
-      height: 18px;
-      flex: none
+      width: 17px;
+      height: 17px;
+      flex: none;
+    }
+
+    /* Hero */
+    .hero {
+      display: grid;
+      grid-template-columns: 1.02fr 1.08fr;
+      gap: 34px;
+      align-items: center;
+      padding: 20px 0 36px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin: 0 0 14px;
+      padding: 6px 13px;
+      border-radius: 999px;
+      background: var(--tint);
+      color: var(--red);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .04em;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--red);
+    }
+
+    .hero h1 {
+      margin: 0 0 14px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(36px, 4.9vw, 56px);
+      line-height: 1.04;
+      letter-spacing: -.035em;
+    }
+
+    .hero h1 em {
+      font-style: italic;
+      font-weight: 500;
+      color: var(--red);
+    }
+
+    .hero .lead {
+      margin: 0 0 22px;
+      font-size: 16px;
+      color: var(--muted);
+      max-width: 490px;
+    }
+
+    .hero .lead b {
+      color: var(--ink);
+    }
+
+    .hero-cta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .hero-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 20px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .hero-pills li {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--ink);
+      background: rgba(255, 255, 255, .82);
+      border: 1px solid var(--line);
+      padding: 5px 11px;
+      border-radius: 999px;
+    }
+
+    .hero-media {
+      position: relative;
+    }
+
+    .hero-photo-wrap {
+      border-radius: 26px;
+      overflow: hidden;
+      background: #1C1A1E;
+      border: 5px solid #fff;
+      box-shadow: var(--shadow-md);
+      aspect-ratio: 16 / 10;
+    }
+
+    .hero-photo-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 14%;
+    }
+
+    .float-badge {
+      position: relative;
+      z-index: 2;
+      margin: -22px 18px 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 15px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, .97);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 12px 28px rgba(20, 15, 12, .14);
+      border: 1px solid var(--line);
+    }
+
+    .float-badge .dot-g {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #1B9E5A;
+      box-shadow: 0 0 0 4px rgba(27, 158, 90, .18);
+      flex: none;
+    }
+
+    .float-badge strong {
+      display: block;
+      font-size: 13px;
+      line-height: 1.15;
+    }
+
+    .float-badge span {
+      display: block;
+      font-size: 11.5px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    /* Section scaffold */
+    section.block {
+      padding: 52px 0 0;
+      scroll-margin-top: 16px;
+    }
+
+    .sec-head {
+      text-align: center;
+      margin: 0 auto 26px;
+      max-width: 650px;
+    }
+
+    .label {
+      margin: 0 0 7px;
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--red);
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(27px, 3.8vw, 38px);
+      line-height: 1.08;
+      letter-spacing: -.03em;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15.5px;
+    }
+
+    /* Event Moments Photo Showcase (dslrBooth style) */
+    .moments {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .moment {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      transition: transform .2s, box-shadow .2s;
+    }
+
+    .moment:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .moment-img {
+      position: relative;
+      aspect-ratio: 4 / 2.75;
+      overflow: hidden;
+      background: #231F20;
+    }
+
+    .moment-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 22%;
+      transition: transform .35s ease;
+    }
+
+    .moment:hover .moment-img img {
+      transform: scale(1.03);
+    }
+
+    .moment-tag {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: rgba(28, 26, 30, .82);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      backdrop-filter: blur(6px);
+    }
+
+    .moment-body {
+      padding: 18px 20px 20px;
+    }
+
+    .moment-body h3 {
+      margin: 0 0 6px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: -.015em;
+    }
+
+    .moment-body p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    /* Compact Feature Grid */
+    .feat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .feat {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 20px;
+    }
+
+    .feat .ic {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: var(--tint);
+      color: var(--red);
+      display: grid;
+      place-items: center;
+      margin-bottom: 12px;
+    }
+
+    .feat .ic svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .feat h3 {
+      margin: 0 0 6px;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -.01em;
+    }
+
+    .feat p {
+      margin: 0;
+      font-size: 13.5px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .extra-bar {
+      margin-top: 16px;
+      padding: 16px 20px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--line);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .extra-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .extra-tags span {
+      font-size: 12.5px;
+      font-weight: 700;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    .extra-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 13.5px;
+      font-weight: 800;
+    }
+
+    .extra-links a {
+      color: var(--red);
+      text-decoration: none;
+    }
+
+    .extra-links a:hover {
+      text-decoration: underline;
+    }
+
+    /* Pricing */
+    .discount-banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 8px 14px;
+      margin: 0 auto 22px;
+      padding: 10px 18px;
+      max-width: 720px;
+      border-radius: 999px;
+      background: var(--ink);
+      color: #fff;
+      font-size: 13.5px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .discount-banner span.tag {
+      background: var(--red);
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .pricing-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .price-group {
+      background: var(--card);
+      border: 1.5px solid var(--line);
+      border-radius: 24px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .price-group.featured {
+      border-color: var(--red);
+      box-shadow: 0 18px 40px rgba(201, 61, 39, .12);
+    }
+
+    .pg-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .pg-top h3 {
+      margin: 0 0 3px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 24px;
+      line-height: 1.15;
+    }
+
+    .pg-top p {
+      margin: 0;
+      font-size: 13.5px;
+      color: var(--muted);
+    }
+
+    .badge-pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      white-space: nowrap;
+      background: var(--tint);
+      color: var(--red);
+    }
+
+    .price-group.featured .badge-pill {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .tier-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .tier-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+    }
+
+    .tier-row.hot {
+      background: #FFF7F5;
+      border-color: #F0C4BA;
+    }
+
+    .tier-info strong {
+      display: block;
+      font-size: 15.5px;
+      line-height: 1.2;
+    }
+
+    .tier-info span {
+      display: block;
+      font-size: 12.5px;
+      color: var(--muted);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .tier-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: none;
+    }
+
+    .tier-price {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -.02em;
+      white-space: nowrap;
+    }
+
+    .tier-cta {
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: var(--ink);
+      color: #fff;
+      font-size: 12.5px;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background .15s, transform .15s;
+    }
+
+    .tier-cta:hover {
+      background: var(--red);
+      transform: translateY(-1px);
+    }
+
+    .price-group.featured .tier-row.hot .tier-cta {
+      background: var(--red);
+    }
+
+    .price-group.featured .tier-row.hot .tier-cta:hover {
+      background: var(--red-dark);
+    }
+
+    .pg-foot {
+      margin: 14px 0 0;
+      padding-top: 12px;
+      border-top: 1px dashed var(--line);
+      font-size: 12.5px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .more-plans {
+      margin-top: 16px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px 20px;
+    }
+
+    .more-plans summary {
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 14.5px;
+      color: var(--ink);
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .more-plans summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .more-plans summary::after {
+      content: "+";
+      color: var(--red);
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .more-plans[open] summary::after {
+      content: "−";
+    }
+
+    .alt-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .alt-card {
+      padding: 15px 16px;
+      border-radius: 14px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .alt-card h4 {
+      margin: 0 0 4px;
+      font-size: 15px;
+    }
+
+    .alt-card p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .alt-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .alt-bottom b {
+      font-size: 15px;
+      color: var(--ink);
+    }
+
+    .life-note {
+      margin: 14px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .life-note a {
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    /* Platforms & Guides */
+    .plat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .plat {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .plat .p-badge {
+      display: inline-block;
+      margin-bottom: 8px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--green-tint);
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .plat .p-badge.web {
+      background: var(--tint);
+      color: var(--red);
+    }
+
+    .plat h3 {
+      margin: 0 0 6px;
+      font-size: 16.5px;
+      font-weight: 800;
+    }
+
+    .plat p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .guides-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .g-link {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 13px 15px;
+      text-decoration: none;
+      transition: border-color .15s, transform .15s;
+    }
+
+    .g-link:hover {
+      border-color: var(--red);
+      transform: translateY(-1px);
+    }
+
+    .g-link b {
+      display: block;
+      font-size: 14px;
+      color: var(--ink);
+    }
+
+    .g-link span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* Book / Avail card */
+    .book {
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      gap: 24px;
+      align-items: center;
+      padding: 28px;
+      border-radius: 26px;
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .book h2 {
+      color: #fff;
+      text-align: left;
+      margin: 0 0 8px;
+    }
+
+    .book .sub {
+      color: #CFC8C0;
+      text-align: left;
+      margin-bottom: 18px;
+    }
+
+    .book .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .book .btn.ghost {
+      background: transparent;
+      border-color: #555059;
+      color: #fff;
+    }
+
+    .book .btn.ghost:hover {
+      border-color: #fff;
     }
 
     .copied {
       display: none;
       font-size: 13px;
       font-weight: 700;
-      color: #1F6F62
+      color: #8DE4B3;
+      width: 100%;
     }
 
     .copied.show {
-      display: inline
+      display: block;
     }
 
+    .form-card {
+      margin: 0;
+      padding: 18px 20px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .07);
+      border: 1px solid rgba(255, 255, 255, .14);
+      color: #F4EFE8;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+    }
+
+    /* Footer */
     footer {
       display: flex;
       flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      margin: 56px 0 0;
+      margin: 50px 0 0;
       padding: 22px 0 40px;
       border-top: 1px solid var(--line);
-      font-size: 14px;
-      color: var(--muted)
+      font-size: 13.5px;
+      color: var(--muted);
     }
 
-    footer code {
-      padding: 2px 7px;
-      border-radius: 6px;
+    .fmeta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      align-items: center;
+    }
+
+    .fmeta code {
       background: #fff;
       border: 1px solid var(--line);
-      color: var(--ink);
-      font-weight: 700;
-      font-family: ui-monospace, Consolas, monospace
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 800;
+      color: var(--red);
     }
 
     footer nav {
       display: flex;
       flex-wrap: wrap;
-      gap: 16px
+      gap: 14px;
     }
 
     footer nav a {
       font-weight: 700;
       color: var(--ink);
-      text-decoration: none
+      text-decoration: none;
     }
 
     footer nav a:hover {
-      color: var(--red)
+      color: var(--red);
     }
 
-    .fmeta {
-      display: flex;
-      flex-direction: column;
-      gap: 4px
-    }
-
-    @media (max-width:860px) {
-      .features {
-        grid-template-columns: 1fr 1fr
-      }
-
-      .plans {
-        grid-template-columns: 1fr 1fr
-      }
-
-      .plans-monthly {
-        grid-template-columns: 1fr
-      }
-
-      .plans .plan,
-      .plans .plan.wide,
-      .plans .plan.event {
-        grid-column: auto
-      }
-
-      .plans .plan.life,
-      .plans .plan.event.solo {
-        grid-column: 1 / -1
-      }
-
-      .guides {
-        grid-template-columns: 1fr
-      }
-
-      .pg-list {
-        grid-template-columns: 1fr
-      }
-
-      .steps {
-        grid-template-columns: 1fr 1fr
-      }
-    }
-
-    @media (max-width:520px) {
-      .plans {
-        grid-template-columns: 1fr
-      }
-
-      .addons {
-        grid-template-columns: 1fr
-      }
-
-      .events {
+    @media (max-width: 920px) {
+      .hero {
         grid-template-columns: 1fr;
-        padding: 22px
+        gap: 24px;
+        padding-top: 10px;
       }
 
+      .pricing-split,
       .book {
         grid-template-columns: 1fr;
-        grid-template-areas: "intro" "form" "actions";
-        row-gap: 14px;
-        padding: 20px
       }
 
-      .book .actions .btn {
-        flex: 1 1 100%
+      .feat-grid,
+      .alt-grid {
+        grid-template-columns: 1fr 1fr;
       }
 
-      .copied.show {
-        display: block;
-        width: 100%;
-        text-align: center
-      }
-
-      .hero {
-        padding: 22px 0 22px
-      }
-
-      section.block {
-        padding-top: 44px
+      .plat-grid,
+      .guides-strip {
+        grid-template-columns: 1fr 1fr;
       }
     }
 
-    @media (max-width:640px) {
+    @media (max-width: 640px) {
       .topnav {
         justify-content: center;
-        padding: 16px 0 4px
+        padding: 14px 0 4px;
       }
 
       .navlinks {
         width: 100%;
         justify-content: center;
-        gap: 2px
+        gap: 2px;
       }
 
       .navlinks a {
-        font-size: 13.5px;
-        padding: 8px 10px
+        font-size: 13px;
+        padding: 7px 10px;
       }
 
-      .navlinks a.cta {
-        margin-left: 2px
+      .moments,
+      .feat-grid,
+      .alt-grid,
+      .plat-grid,
+      .guides-strip {
+        grid-template-columns: 1fr;
       }
-    }
 
-    @media (max-width:520px) {
-
-      .features,
-      .steps {
-        grid-template-columns: 1fr
+      .tier-row {
+        flex-wrap: wrap;
       }
-    }
 
-    @media (prefers-reduced-motion:reduce) {
-      * {
-        scroll-behavior: auto !important;
-        transition-duration: .01ms !important
+      .float-badge {
+        display: flex;
+        margin: -16px 10px 0;
+        padding: 9px 12px;
+      }
+
+      .book {
+        padding: 22px 18px;
       }
     }
   </style>
@@ -1387,786 +1090,487 @@
 <body>
   <div class="wrap">
     <header class="topnav">
-      <a class="nbrand" href="/about-us/" aria-label="photobooth4u home"><span class="nmark"
-          aria-hidden="true"><i></i><i></i><i></i><i></i></span><span
-          class="nword"><b>photobooth</b><em>4u</em></span></a>
+      <a class="nbrand" href="/about-us/" aria-label="photobooth4u home">
+        <span class="nmark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="nword"><b>photobooth</b><em>4u</em></span>
+      </a>
       <nav class="navlinks" aria-label="Main">
         <a href="/about-us/" aria-current="page">About us</a>
         <a href="/features/">Features</a>
         <a href="/compare/">Compare</a>
-        <a href="/about-us/#packages">Pricing</a>
+        <a href="#packages">Pricing</a>
+        <a href="/downloads/">Downloads</a>
         <a href="/faq/">FAQ</a>
         <a href="/lifetime/">My events</a>
-        <a href="/">Open booth</a>
-        <a class="cta" href="/about-us/#avail">Book now</a>
+        <a class="cta" href="#avail">Book now</a>
       </nav>
     </header>
 
+    <!-- HERO -->
     <section class="hero">
-      <h1>The photobooth, <em>without</em> the booth.</h1>
-      <p>Use your own laptop or tablet. Guests pose, scan a QR code, and take their photos home.</p>
-    </section>
-
-    <section class="slider" aria-label="How photobooth4u works" aria-roledescription="carousel">
-      <div class="slides">
-        <article class="slide active" id="slide-2" aria-label="Slide 1 of 6">
-          <img src="assets/pb4u-02-layouts-v2.jpg"
-            alt="Sample prints in different layouts, with the twelve layout names plus My frame and Frame collage listed below">
-          <div class="slide-caption"><strong>12 layouts, plus your own</strong><span>Strips, grids, polaroids, a big
-              hero shot, film and landscape layouts — or upload your own Canva frames.</span></div>
-        </article>
-        <article class="slide" id="slide-3" aria-label="Slide 2 of 6">
-          <img src="assets/pb4u-03-make-it-yours.jpg"
-            alt="Event name settings with a calendar button for the date, next to a finished print">
-          <div class="slide-caption"><strong>Your event, your style</strong><span>Add your event name and date, pick
-              fonts, backdrops and frames, and see it in the live preview.</span></div>
-        </article>
-        <article class="slide" id="slide-4" aria-label="Slide 3 of 6">
-          <img src="assets/pb4u-04-countdown.jpg"
-            alt="Countdown ring over the live camera, with 3, 5, 7 and 10 second options">
-          <div class="slide-caption"><strong>Countdown your way</strong><span>3, 5, 7 or 10 seconds, fine-tuned in half
-              seconds, with a smooth ring guests can follow.</span></div>
-        </article>
-        <article class="slide" id="slide-5" aria-label="Slide 4 of 6">
-          <img src="assets/pb4u-05-all-you-need.jpg"
-            alt="What you need: a tablet or phone, photobooth4u in the browser, and a tripod">
-          <div class="slide-caption"><strong>Bring only the essentials</strong><span>An iPad or Android device,
-              photobooth4u and a tripod. Add a photo printer for prints on the spot.</span></div>
-        </article>
-        <article class="slide" id="slide-6" aria-label="Slide 5 of 6">
-          <img src="assets/pb4u-07-share-photos-v3.jpg"
-            alt="An all-photos QR code, sample prints, calendar days one to seven, and a Your photo QR code shown after every session">
-          <div class="slide-caption"><strong>Your photos, ready to share</strong><span>Every photo goes to your event's
-              online gallery. Each guest gets a QR for their own photo. Photos stay up for seven days.</span></div>
-        </article>
-        <article class="slide" id="slide-7" aria-label="Slide 6 of 6">
-          <img src="assets/pb4u-06-traditional-booth.jpg"
-            alt="Laptop running the setup and print controls, connected to a monitor showing guests the camera and countdown">
-          <div class="slide-caption"><strong>Prefer a classic booth?</strong><span>Use a laptop with a second monitor
-              for guests. After the first print, every session prints automatically.</span></div>
-        </article>
-      </div>
-      <button class="arrow prev" type="button" aria-label="Show previous slide">‹</button>
-      <button class="arrow next" type="button" aria-label="Show next slide">›</button>
-      <div class="slider-footer">
-        <div class="dots" aria-label="Choose a slide">
-          <button class="dot" type="button" aria-label="Show slide 1" aria-controls="slide-2"
-            aria-current="true"></button>
-          <button class="dot" type="button" aria-label="Show slide 2" aria-controls="slide-3"
-            aria-current="false"></button>
-          <button class="dot" type="button" aria-label="Show slide 3" aria-controls="slide-4"
-            aria-current="false"></button>
-          <button class="dot" type="button" aria-label="Show slide 4" aria-controls="slide-5"
-            aria-current="false"></button>
-          <button class="dot" type="button" aria-label="Show slide 5" aria-controls="slide-6"
-            aria-current="false"></button>
-          <button class="dot" type="button" aria-label="Show slide 6" aria-controls="slide-7"
-            aria-current="false"></button>
+      <div>
+        <p class="eyebrow">Discount Season &middot; Windows, Mac, Android &amp; iPad</p>
+        <h1>The photobooth app guests <em>love</em> to smile for.</h1>
+        <p class="lead">Run a <b>Traditional DSLR Booth</b>, <b>Receipt Photobooth</b>, <b>Photobooth-in-a-Box / Retro
+            Box</b>, <b>Roving Photoman</b>, or <b>360 Video Booth</b> from one app—with <b>real-time QR softcopies</b>
+          and a built-in <b>LumaShare Sharing Station</b> that work even <b>100% offline</b>.</p>
+        <div class="hero-cta">
+          <a class="btn red" href="#packages">See Discount Season Pricing</a>
+          <a class="btn" id="heroTrialBtn" href="/">Try Free Trial</a>
         </div>
-        <p class="counter" aria-live="polite"><span id="current">01</span> / 06</p>
+        <ul class="hero-pills" aria-label="Key highlights">
+          <li>Real-Time QR Softcopies</li>
+          <li>100% Offline Ready</li>
+          <li>Receipt &amp; Retro Box Ready</li>
+          <li>Multi-Printer Mix &amp; Match</li>
+        </ul>
+      </div>
+
+      <div class="hero-media">
+        <div class="hero-photo-wrap">
+          <img src="assets/hero-smiling-guests.jpg?v=2"
+            alt="Smiling Gen Z friends in aesthetic outfits holding colorful four-cut photobooth strips">
+        </div>
+        <div class="float-badge">
+          <span class="dot-g" aria-hidden="true"></span>
+          <div>
+            <strong>Auto-Scan QR &middot; Instant Softcopies</strong>
+            <span>Built-in LumaShare Sharing Station &middot; Zero venue Wi-Fi needed</span>
+          </div>
+        </div>
       </div>
     </section>
 
+    <!-- SAMPLE EVENT PHOTOS -->
+    <section class="block" id="showcase" aria-labelledby="sc">
+      <div class="sec-head">
+        <p class="label">Built for real events</p>
+        <h2 id="sc">Smiles, prints &amp; instant scans—every session</h2>
+        <p class="sub">From aesthetic pop-up cafes and retro boxes to debuts, birthdays, weddings, and brand activations.</p>
+      </div>
+
+      <div class="moments">
+        <article class="moment">
+          <div class="moment-img">
+            <img src="assets/sample-qr-scan.jpg?v=2" loading="lazy"
+              alt="Smiling Gen Z friends scanning a QR code on a tablet Sharing Station at a modern pop-up cafe">
+            <span class="moment-tag">Instant QR + LumaShare</span>
+          </div>
+          <div class="moment-body">
+            <h3>Auto-Scan QR &amp; Built-In Sharing Station</h3>
+            <p>Guests scan and save prints, solo shots, and GIFs in real time—even 100% offline via built-in hotspot.
+              Pair a separate tablet/phone as a dedicated <b>LumaShare Sharing Station</b> so booth lines keep moving.</p>
+          </div>
+        </article>
+
+        <article class="moment">
+          <div class="moment-img">
+            <img src="assets/sample-retro-receipt.jpg?v=2" loading="lazy"
+              alt="Laughing Gen Z friends beside a wooden retro photobooth-in-a-box holding black-and-white receipt and pink photo strips">
+            <span class="moment-tag">Receipt &amp; Retro Box Ready</span>
+          </div>
+          <div class="moment-body">
+            <h3>Receipt Booth, Retro Box &amp; Multi-Printer Mix</h3>
+            <p>Built for <b>Receipt Photobooths</b> and <b>Photobooth-in-a-Box / Retro Box</b> setups. Mix thermal
+              (58/80mm BT/USB), inkjets (Epson L8050, Canon G), Canon SELPHY USB/Wi-Fi, Instax &amp; DNP/HiTi—even
+              auto-split B&amp;W thermal vs. Coloured prints!</p>
+          </div>
+        </article>
+
+        <article class="moment">
+          <div class="moment-img">
+            <img src="assets/sample-booth-smiles.jpg?v=2" loading="lazy"
+              alt="Three smiling Gen Z best friends posing with finger hearts and peace signs in front of a pastel pink photobooth backdrop">
+            <span class="moment-tag">Frames, GIFs &amp; Flipbook</span>
+          </div>
+          <div class="moment-body">
+            <h3>Ready Designs, Canva Frames, GIFs &amp; Guestbook</h3>
+            <p>Pick ready-made event templates or upload up to 100 Canva frames + PNG overlays. Offer <b>Life4Cuts</b>,
+              <b>Boomerang</b>, <b>Single Frame</b> &amp; <b>Slideshow GIFs</b>, <b>Video Guestbook</b>, <b>Flipbook</b>,
+              filters, stickers &amp; green screen.</p>
+          </div>
+        </article>
+
+        <article class="moment">
+          <div class="moment-img">
+            <img src="assets/sample-roving-photoman.jpg?v=2" loading="lazy"
+              alt="Stylish Gen Z couple smiling at a night party while a roving photographer captures them with a DSLR tethered to a phone">
+            <span class="moment-tag">Roving Photoman + 360</span>
+          </div>
+          <div class="moment-body">
+            <h3>Solid Roving Photoman &amp; Enhanced 360 Booth</h3>
+            <p>Tether DSLR to Android to queue shots to your laptop, adjust brightness on the station, and rely on
+              <b>offline auto-queue</b> if Wi-Fi drops—plus a <b>Photoman Template Maker</b> &amp; gyro-triggered
+              <b>360 Video Booth</b>.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ALL FEATURES AT A GLANCE -->
     <section class="block" id="features" aria-labelledby="ft">
-      <p class="label">What you get</p>
-      <h2 id="ft">Everything in one booth</h2>
-      <p class="sub">Set it up in minutes on the device you already have. Your design is saved, so it's ready again on
-        the day.</p>
-      <div class="features">
+      <div class="sec-head">
+        <p class="label">All-in-one toolkit</p>
+        <h2 id="ft">Everything you need—already included</h2>
+        <p class="sub">No complicated plugins or juggling five apps. Set up once and run on Windows, Mac, Android, or
+          iPad.</p>
+      </div>
+
+      <div class="feat-grid">
         <article class="feat">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="7" height="7" rx="1.5" />
-              <rect x="14" y="3" width="7" height="7" rx="1.5" />
-              <rect x="3" y="14" width="7" height="7" rx="1.5" />
-              <rect x="14" y="14" width="7" height="7" rx="1.5" />
-            </svg></span>
-          <h3>Ready-made designs</h3>
-          <p>20 themes and 10 templates for weddings, birthdays, debuts, kids' parties, christenings, graduations,
-            Christmas and more.</p>
-        </article>
-        <article class="feat">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="4" y="3" width="16" height="18" rx="2" />
-              <rect x="7.5" y="6.5" width="9" height="6" rx="1" />
-              <path d="M8 16h8" />
-            </svg></span>
-          <h3>Canva frames, PNG overlays &amp; B&amp;W split</h3>
-          <p>Upload up to 100 frames (up to 40 spots), layer PNG overlays with white-doodle protection, edit collages in
-            place, or split B&amp;W thermal vs Coloured photo designs.</p>
-        </article>
-        <article class="feat">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8L3.5 9.2l5.9-.9z" />
-            </svg></span>
-          <h3>Logo, 10 sticker packs, FX &amp; green screen</h3>
-          <p>Add your logo, pick 10 themed sticker packs, vintage filters, green screen, or interactive Trading Card,
-            Certificate, GIF Slideshow &amp; Flipbook modes.</p>
-        </article>
-        <article class="feat">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="3" width="7" height="7" rx="1" />
               <rect x="14" y="3" width="7" height="7" rx="1" />
               <rect x="3" y="14" width="7" height="7" rx="1" />
               <path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3" />
             </svg></span>
-          <h3>Online gallery, local QR &amp; Cloud Sync</h3>
-          <p>Guests scan a QR for their photo—online in 7-day galleries OR offline over booth Wi-Fi—with optional Cloud
-            Sync to upload offline events once back on Wi-Fi.</p>
+          <h3>Real-Time QR &amp; LumaShare Station</h3>
+          <p>Guests scan right away for prints, solo shots &amp; GIFs—100% offline over booth hotspot with optional auto
+            Cloud Sync later.</p>
         </article>
+
         <article class="feat">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2.5" />
+              <path d="M3 9h18M9 21V9" />
+            </svg></span>
+          <h3>Templates, Canva Frames &amp; Overlays</h3>
+          <p>14 ready-made event categories (incl. Receipt Booth), upload up to 100 Canva frames (40 spots), PNG overlays
+            with white-doodle protection &amp; in-place layout editor.</p>
+        </article>
+
+        <article class="feat">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <path d="M7 8V3h10v5" />
               <rect x="3" y="8" width="18" height="9" rx="2" />
               <path d="M7 14h10v7H7z" />
             </svg></span>
-          <h3>Pro printing &amp; 2&times;6 split routing</h3>
-          <p>DNP, HiTi, driverless USB SELPHY, 58/80mm thermal, Epson L8050 IPP, secondary 2&times;6 auto-cut printer
-            routing, 2.5&times;7.5&Prime; keychains &amp; XL banners up to 48&Prime;.</p>
+          <h3>Multi-Printer &amp; Split Routing</h3>
+          <p>Combine thermal (58/80mm BT/USB), Epson L8050 (USB &amp; Wi-Fi Direct/IPP), Canon SELPHY (driverless USB),
+            Instax BLE &amp; DNP/HiTi—with B&amp;W vs. Colour &amp; 2&times;6 split cut.</p>
         </article>
+
         <article class="feat">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="4" width="13" height="9" rx="1.5" />
-              <path d="M5 17h7" />
-              <rect x="17" y="7" width="5" height="12" rx="1.5" />
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3" />
             </svg></span>
-          <h3>Tablet Bridge, DSLR, iPad &amp; Offline</h3>
-          <p>Run on Windows, Mac, Android, or iPad Offline—or pair an Android/Huawei tablet to your laptop as a live
-            Guest Screen + Bridge Camera with 0 extra license slots (<a href="/features/">all features</a> &middot; <a
-              href="/compare/">compare</a>).</p>
+          <h3>GIFs, Video Guestbook &amp; Flipbook</h3>
+          <p>Life4Cuts / Story Replay, Multi-Box Boomerang, Single Frame &amp; Final Shots Slideshow GIFs, 15/30/60s
+            Video Guestbook, and printed cut-and-bind Flipbooks.</p>
         </article>
+
+        <article class="feat">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="13" r="4" />
+              <path d="M5 7h3l2-2h4l2 2h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" />
+            </svg></span>
+          <h3>Roving Photoman &amp; Enhanced 360</h3>
+          <p>DSLR-to-Android USB OTG with <b>offline auto-queue</b>, laptop brightness editor &amp; Photoman Template
+            Maker—plus 360 Video Studio with iPhone gyro trigger, DSLR/GoPro &amp; Live TV Wall.</p>
+        </article>
+
+        <article class="feat">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg></span>
+          <h3>Self-Service Cash, Bridge &amp; Extras</h3>
+          <p>Offline ESP32 Cash Acceptor (coins/bills + relay lighting), GCash/Maya QR, Vouchers, Tablet Guest + Camera
+            Bridge (0 extra slots), Trading Cards, Keychains, XL Print &amp; Rush ID.</p>
+        </article>
+      </div>
+
+      <div class="extra-bar">
+        <div class="extra-tags">
+          <span>Green Screen &amp; No-Cloth AI</span>
+          <span>10 Sticker Packs &amp; Filters</span>
+          <span>XL Print up to 48&Prime;</span>
+          <span>2.5&times;7.5&Prime; Keychains</span>
+          <span>AR Moving Pictures</span>
+          <span>EN &amp; Tagalog Voice</span>
+          <span>One-Tap PIN Kiosk Lock</span>
+        </div>
+        <div class="extra-links">
+          <a href="/features/">All features &rarr;</a>
+          <a href="/compare/">Compare 4 platforms &rarr;</a>
+        </div>
       </div>
     </section>
 
-    <section class="block" id="how" aria-labelledby="hw">
-      <p class="label">How it works</p>
-      <h2 id="hw">From booking to photos</h2>
-      <p class="sub">No booth to rent, no one to send. Just your code and your device.</p>
-      <ol class="steps">
-        <li><b>Book</b><span>Message us with your event date. You get your booth code, and you can try the free trial
-            first.</span></li>
-        <li><b>Set up</b><span>Open the booth, enter your code, and pick a design, layout and countdown.</span></li>
-        <li><b>Snap</b><span>Guests tap, pose and get their photo — printed on the spot if you have a printer.</span>
-        </li>
-        <li><b>Share</b><span>Everyone scans for the gallery. Download your favourites within 7 days.</span></li>
-      </ol>
-    </section>
-
-    <section class="block" id="versions" aria-labelledby="vs">
-      <p class="label">Online or offline</p>
-      <h2 id="vs">Which one do you need?</h2>
-      <p class="sub">The same booth, four ways to run it. Pick by the internet at your venue, your camera/tablet setup,
-        and the printer you bring (<a href="/compare/">full 4-platform compare &rarr;</a>).
-      </p>
-      <div class="vers">
-        <article class="ver">
-          <p class="where">Online &middot; website</p>
-          <h3>In a browser</h3>
-          <p class="net">Needs internet at the venue</p>
-          <ul>
-            <li>Nothing to install: iPad, Android tablet, phone or laptop</li>
-            <li>Guests scan a QR and open their photos online for 7 days</li>
-            <li>PayMongo GCash / Maya / ShopeePay QR + Print via AirPrint, Mopria, or Print Helper</li>
-            <li>Custom frames (up to 40 spots), PNG overlays, B&amp;W vs Coloured split picker, Trading Cards &amp;
-              Certificates, GIF Slideshow, Flipbook, &amp; Video Guestbook</li>
-            <li>360 desk shares raw clips online (editing runs in the Desktop app)</li>
-            <li>Free trial mode to test first</li>
-          </ul>
-        </article>
-        <article class="ver">
-          <p class="where">Offline &middot; laptop app</p>
-          <h3>Windows &amp; Mac</h3>
-          <p class="net">No internet needed + Cloud Sync</p>
-          <ul>
-            <li>Photos save locally, guests scan QR over 1-click booth hotspot, &amp; Cloud Sync uploads later</li>
-            <li>Canon / Nikon / Sony / Insta360 USB + <b>Android/Huawei Tablet Bridge</b> (guest screen &amp; camera, 0
-              extra slots) or HDMI 2nd monitor</li>
-            <li>Silent auto-print: DNP, HiTi (incl. secondary 2&times;6 split cut), Citizen, Mitsubishi, Sinfonia,
-              driverless USB SELPHY, Canon G-series, Epson L8050 IPP, &amp; 58/80mm thermal</li>
-            <li>Photoman Studio, Roving DSLR Bridge, Rush ID Station, ESP32 Cash Acceptor, &amp; XL Print up to 48&Prime;</li>
-            <li>Full 360 Video Studio add-on (Record 360 DSLR/GoPro/HDMI + 30 presets + Beat-Drop + 3D LUTs + Live TV
-              Wall)</li>
-          </ul>
-        </article>
-        <article class="ver">
-          <p class="where">Offline &middot; Android app</p>
-          <h3>Android tablet</h3>
-          <p class="net">No internet needed + Bridge mode</p>
-          <ul>
-            <li>Runs standalone OR switches to <b>Laptop Guest + Camera Bridge</b> (guest touch + Camera2 ~22 fps stream +
-              TTS voice to laptop)</li>
-            <li>Canon EOS, Nikon &amp; Sony Alpha DSLRs, UVC USB webcams, and GoPro HERO9+ supported over USB OTG</li>
-            <li>Direct Bluetooth &amp; USB 58/80 mm thermal receipts, Wi-Fi AirPrint/Mopria/IPP (with B&amp;W vs
-              Coloured split routing), Instax Link BLE, &amp; USB OTG for DNP RX1/DS620/DS40, SELPHY &amp; Epson L-series</li>
-            <li>ESP32 Coin/Bill Cash Acceptor (BLE/USB/HID), built-in tablet hotspot, &amp; full Android kiosk lockdown</li>
-            <li class="no">HiTi, Citizen, Mitsubishi and Sinfonia need a laptop or Print Station</li>
-          </ul>
-        </article>
-        <article class="ver">
-          <p class="where">Offline &middot; iPad app</p>
-          <h3>iPad Offline</h3>
-          <p class="net">No internet needed + Free 360 Arm Cam</p>
-          <ul>
-            <li>Standalone offline IPA app with smooth 4:3 GPU camera pipeline (even on iPad A16) &amp; UVC USB-C capture</li>
-            <li>Prints wirelessly via AirPrint, direct non-AirPrint IPP (such as Epson L8050 Wi-Fi), LAN 9100 receipts, or
-              a laptop Print Station (4&times;6 + 2&times;6 split)</li>
-            <li>Offline local QR &amp; AirDrop guest downloads over Personal Hotspot or pocket Wi-Fi + Cloud Sync</li>
-            <li>Can pair with a laptop via Camo/Iriun USB virtual webcam or Safari LAN Guest Bridge</li>
-            <li>Includes the <b>Free iOS 360 Arm Camera Companion</b> (CoreMotion gyro auto-start, 0.5&times; 60/120 fps,
-              Screen Shield)</li>
-          </ul>
-        </article>
-      </div>
-      <p class="ver-note"><b>Online plans</b> open the booth in a browser. <b>Offline plans</b> unlock Windows, Mac,
-        Android, and iPad Offline apps on one code, and <b>Online + Offline</b> gives you everything.
-        Get the installers on the <a href="/downloads/">Downloads page</a>, compare platforms on <a href="/compare/">Compare</a>, or read the <a href="/features/">Complete Features Guide &rarr;</a>.</p>
-    </section>
-
+    <!-- DISCOUNT SEASON PRICING -->
     <section class="block" id="packages" aria-labelledby="pk">
-      <h2 id="pk">Pricing</h2>
-      <p class="sub">Pick a plan and message us on Messenger to avail. We'll send your access code + setup guide right
-        away.</p>
-
-      <div class="pkg-divider first">
-        <h3>Monthly</h3>
-        <p>Unlimited events for 30 days. Cancel anytime.</p>
-      </div>
-      <div class="plans-monthly" aria-label="Monthly plans">
-        <article class="plan monthly">
-          <span class="tag">Monthly</span>
-          <h3>Online</h3>
-          <p class="for">iPad, tablet, phone or laptop browser &middot; needs internet</p>
-          <ul class="plan-list">
-            <li>Unlimited photo sessions &amp; events for 30 days</li>
-            <li>Online photo gallery for guests (7-day storage)</li>
-            <li>Custom frames, PNG overlays, B&amp;W split, Trading Cards &amp; stickers</li>
-            <li>Print wirelessly with AirPrint, Mopria, or Print Helper</li>
-          </ul>
-          <div class="plan-footer">
-            <p class="price">&#8369;799 <small>/ month</small></p>
-            <a class="plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer"
-              data-plan="Monthly Online (₱799/mo)">Message to Avail &rarr;</a>
-          </div>
-        </article>
-
-        <article class="plan monthly">
-          <span class="tag">Monthly</span>
-          <h3>Offline (Desktop + Android + iPad)</h3>
-          <p class="for">Windows / Mac, Android tablet &amp; iPad Offline &middot; zero venue internet needed</p>
-          <ul class="plan-list">
-            <li>Works 100% offline with no internet at the venue + auto Cloud Sync</li>
-            <li>Guests get photos over booth Wi-Fi, no internet needed</li>
-            <li>Laptop (DSLR &amp; Tablet Bridge, SELPHY, 2&times;6 split) or Android/iPad Offline</li>
-            <li>Offline apps activated for 30 days</li>
-          </ul>
-          <div class="plan-footer">
-            <p class="price">&#8369;999 <small>/ month</small></p>
-            <a class="plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer"
-              data-plan="Monthly Offline (₱999/mo)">Message to Avail &rarr;</a>
-          </div>
-        </article>
-
-        <article class="plan monthly best">
-          <span class="tag" style="background:var(--red);color:#fff;">Best value</span>
-          <h3>Online + Offline</h3>
-          <p class="for">Online booth plus Windows, Mac, Android &amp; iPad Offline apps</p>
-          <ul class="plan-list">
-            <li>Everything in Online + Cloud Sync &amp; My Events</li>
-            <li>Offline apps: works with no internet + Tablet Guest/Camera Bridge</li>
-            <li>Guests get photos over booth Wi-Fi, no internet needed</li>
-            <li>DSLR &amp; webcam support (auto-print on laptop; Nikon/Canon/Sony OTG on Android; IPP/Print Station on iPad)</li>
-          </ul>
-          <div class="plan-footer">
-            <p class="price">&#8369;1,399 <small>/ month</small></p>
-            <a class="plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer"
-              data-plan="Monthly Online + Offline (₱1,399/mo)">Message to Avail &rarr;</a>
-          </div>
-        </article>
+      <div class="sec-head">
+        <p class="label">Pricing</p>
+        <h2 id="pk">Simple Discount Season Pricing</h2>
+        <p class="sub">Run offline on <b>Android</b>, <b>Laptop (Windows / Mac)</b>, and <b>iPad</b>—with unlimited
+          events and snaps.</p>
       </div>
 
-      <div class="renew-banner">
-        <span>Already have an active monthly code?</span>
-        <a class="renew-link" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer"
-          data-plan="Renewal / Extension (+30 days)">Renew or extend your existing code (+30 days) &rarr;</a>
+      <div class="discount-banner">
+        <span class="tag">Discount Season</span>
+        <span>Promo rates are still live! Lock in Single-Device or Multi-Device Offline App plans today.</span>
       </div>
 
-      <div class="pkg-divider">
-        <h3>Lifetime</h3>
-        <p>Pay once. Every event, never expires, up to 5 devices. <a href="/faq/">Lifetime FAQ &rarr;</a></p>
+      <div class="pricing-split">
+        <!-- Multi-Device -->
+        <article class="price-group featured">
+          <div class="pg-top">
+            <div>
+              <h3>Multi-Device (Offline App)</h3>
+              <p>Windows, Mac, Android &amp; iPad &middot; Mix platforms on one code</p>
+            </div>
+            <span class="badge-pill">Most Popular</span>
+          </div>
+
+          <div class="tier-list">
+            <div class="tier-row">
+              <div class="tier-info">
+                <strong>Monthly</strong>
+                <span>Up to 2 devices &middot; 30 days unlimited events</span>
+              </div>
+              <div class="tier-right">
+                <span class="tier-price">&#8369;999</span>
+                <a class="tier-cta plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank"
+                  rel="noopener noreferrer" data-plan="Multi-Device Offline Monthly — ₱999 (up to 2 devices)">Avail &rarr;</a>
+              </div>
+            </div>
+
+            <div class="tier-row hot">
+              <div class="tier-info">
+                <strong>Yearly</strong>
+                <span>Up to 3 devices &middot; Best value for active booths</span>
+              </div>
+              <div class="tier-right">
+                <span class="tier-price">&#8369;1,999</span>
+                <a class="tier-cta plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank"
+                  rel="noopener noreferrer" data-plan="Multi-Device Offline Yearly — ₱1,999 (up to 3 devices)">Avail &rarr;</a>
+              </div>
+            </div>
+
+            <div class="tier-row">
+              <div class="tier-info">
+                <strong>Lifetime</strong>
+                <span>Up to 5 devices &middot; One-time payment, never expires</span>
+              </div>
+              <div class="tier-right">
+                <span class="tier-price">&#8369;3,999</span>
+                <a class="tier-cta plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank"
+                  rel="noopener noreferrer" data-plan="Multi-Device Offline Lifetime — ₱3,999 (up to 5 devices)">Avail &rarr;</a>
+              </div>
+            </div>
+          </div>
+
+          <p class="pg-foot">100% offline + real-time QR softcopies, LumaShare Station, Roving Photoman, multi-printer,
+            GIFs, Flipbook, Cash Acceptor &amp; 360 Studio included.</p>
+        </article>
+
+        <!-- Single Device -->
+        <article class="price-group">
+          <div class="pg-top">
+            <div>
+              <h3>Single Device (Offline App)</h3>
+              <p>Perfect for solo booths, Receipt Booths &amp; Retro Boxes (1 device)</p>
+            </div>
+            <span class="badge-pill">Starter Friendly</span>
+          </div>
+
+          <div class="tier-list">
+            <div class="tier-row">
+              <div class="tier-info">
+                <strong>Monthly</strong>
+                <span>1 device &middot; 30 days unlimited events</span>
+              </div>
+              <div class="tier-right">
+                <span class="tier-price">&#8369;699</span>
+                <a class="tier-cta plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank"
+                  rel="noopener noreferrer" data-plan="Single Device Offline Monthly — ₱699 (1 device)">Avail &rarr;</a>
+              </div>
+            </div>
+
+            <div class="tier-row hot">
+              <div class="tier-info">
+                <strong>Yearly</strong>
+                <span>1 device &middot; Full year of unlimited events</span>
+              </div>
+              <div class="tier-right">
+                <span class="tier-price">&#8369;1,499</span>
+                <a class="tier-cta plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank"
+                  rel="noopener noreferrer" data-plan="Single Device Offline Yearly — ₱1,499 (1 device)">Avail &rarr;</a>
+              </div>
+            </div>
+
+            <div class="tier-row">
+              <div class="tier-info">
+                <strong>Lifetime</strong>
+                <span>1 device &middot; Pay once, unlimited events forever</span>
+              </div>
+              <div class="tier-right">
+                <span class="tier-price">&#8369;2,999</span>
+                <a class="tier-cta plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank"
+                  rel="noopener noreferrer" data-plan="Single Device Offline Lifetime — ₱2,999 (1 device)">Avail &rarr;</a>
+              </div>
+            </div>
+          </div>
+
+          <p class="pg-foot">Includes all offline booth features on Windows, Mac, Android, or iPad—plus free Tablet
+            Bridge / Sharing Station companions.</p>
+        </article>
       </div>
-      <div class="plans">
-        <article class="plan">
-          <span class="tag">Lifetime</span>
-          <h3>Lifetime Online</h3>
-          <p class="for">Tablet or laptop in the browser &middot; every event &middot; never expires</p>
-          <div class="plan-footer">
-            <p class="price">&#8369;3,299 <small>one-time</small></p>
-            <a class="plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer"
-              data-plan="Lifetime Online (₱3,299)">Message to Avail &rarr;</a>
+
+      <!-- Optional Online / Combo / Event Pass -->
+      <details class="more-plans">
+        <summary>Need the Online Web Booth, Online + Offline Combo, or a 24-hr Event Pass?</summary>
+        <div class="alt-grid">
+          <div class="alt-card">
+            <div>
+              <h4>Online Web Booth</h4>
+              <p>Runs in Chrome/Safari with 7-day online galleries, My Events &amp; live PayMongo QR.</p>
+            </div>
+            <div class="alt-bottom">
+              <b>&#8369;799/mo &middot; &#8369;3,299 Lifetime</b>
+              <a class="tier-cta plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank"
+                rel="noopener noreferrer" data-plan="Online Web Booth (₱799/mo or ₱3,299 Lifetime)">Inquire</a>
+            </div>
           </div>
-        </article>
-        <article class="plan">
-          <span class="tag">Lifetime</span>
-          <h3>Lifetime Offline</h3>
-          <p class="for">Windows / Mac / Android / iPad Offline apps, works with no internet &middot; every event &middot; never
-            expires <span
-              style="display:block;margin-top:4px;font-size:12.5px;color:var(--muted);font-weight:600;">(excluding 360
-              booth)</span></p>
-          <div class="plan-footer">
-            <p class="price">&#8369;3,999 <small>one-time</small></p>
-            <a class="plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer"
-              data-plan="Lifetime Offline (₱3,999, excl. 360)">Message to Avail &rarr;</a>
+
+          <div class="alt-card">
+            <div>
+              <h4>Online + Offline Combo</h4>
+              <p>Everything in Online + Offline apps on one code (up to 5 devices on Lifetime).</p>
+            </div>
+            <div class="alt-bottom">
+              <b>&#8369;1,399/mo &middot; &#8369;4,999 Lifetime</b>
+              <a class="tier-cta plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank"
+                rel="noopener noreferrer" data-plan="Online + Offline Combo (₱1,399/mo or ₱4,999 Lifetime)">Inquire</a>
+            </div>
           </div>
-        </article>
-        <article class="plan life">
-          <span class="tag">Best value</span>
-          <h3>Lifetime Online + Offline</h3>
-          <p class="for">Both: the online booth and the offline apps that work with no internet <span
-              style="display:block;margin-top:4px;font-size:12.5px;color:var(--muted);font-weight:600;">(excluding 360
-              booth)</span></p>
-          <div class="plan-footer">
-            <p class="price">&#8369;4,999 <small>one-time</small></p>
-            <a class="plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer"
-              data-plan="Lifetime Online + Offline (₱4,999, excl. 360)">Message to Avail &rarr;</a>
-          </div>
-          <p class="life-link" style="margin-top:8px;"><a href="https://web.facebook.com/roktetnachi/" target="_blank"
-              rel="noopener noreferrer">Message us on Messenger &rarr;</a></p>
-        </article>
-      </div>
-      <p class="life-terms" style="margin:12px 0 0;font-size:13.5px;line-height:1.55;color:var(--muted);">
-        <b>What &ldquo;Lifetime&rdquo; means:</b> the code never expires and you are never charged again for the
-        features in your plan, for as long as
-        photobooth4u operates them. If we ever stop, you get at least 90 days' notice and a final Offline App that keeps
-        working with no
-        photobooth4u servers. Add-ons and any future paid features are separate. Read the
-        <a href="/agreement/" target="_blank" rel="noopener">Lifetime Access Agreement</a> and the <a href="/faq/"
-          target="_blank" rel="noopener">FAQ</a>.
-      </p>
-      <details class="addons-d">
-        <summary>Already a Lifetime owner? Add optional features or missing side</summary>
-        <div class="addons" aria-label="Add-ons for Lifetime owners">
-          <div class="addon">
-            <span class="addon-ic" aria-hidden="true">+</span>
-            <span class="addon-body"><b>Add 360 Video Desk</b><small>Optional add-on: 360 video recording, studio, slow-mo,
-                music &amp; QR sharing</small></span>
-            <span class="addon-price">&#8369;1,500</span>
-            <a class="addon-cta plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank"
-              rel="noopener noreferrer" data-plan="Add 360 Video Desk (₱1,500)">Message to Avail &rarr;</a>
-          </div>
-          <div class="addon">
-            <span class="addon-ic" aria-hidden="true">+</span>
-            <span class="addon-body"><b>Add Offline later</b><small>For Lifetime Online owners: Windows / Mac / Android /
-                iPad Offline apps</small></span>
-            <span class="addon-price">&#8369;2,200</span>
-            <a class="addon-cta plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank"
-              rel="noopener noreferrer" data-plan="Add Offline App later (₱2,200)">Message to Avail &rarr;</a>
-          </div>
-          <div class="addon">
-            <span class="addon-ic" aria-hidden="true">+</span>
-            <span class="addon-body"><b>Add Online later</b><small>For Lifetime Offline owners: the online
-                booth</small></span>
-            <span class="addon-price">&#8369;1,500</span>
-            <a class="addon-cta plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank"
-              rel="noopener noreferrer" data-plan="Add Online Booth later (₱1,500)">Message to Avail &rarr;</a>
+
+          <div class="alt-card">
+            <div>
+              <h4>24-Hour Event Pass &amp; Renewals</h4>
+              <p>One-day pass for a single event, or extend an existing Monthly code anytime.</p>
+            </div>
+            <div class="alt-bottom">
+              <b>&#8369;599 / event</b>
+              <a class="tier-cta plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank"
+                rel="noopener noreferrer" data-plan="24-hr Event Pass (₱599) or Monthly Renewal">Inquire</a>
+            </div>
           </div>
         </div>
       </details>
 
-      <div class="pkg-divider">
-        <h3>Single event</h3>
-        <p>Just one date? Book it for 24 hours.</p>
-      </div>
-      <div class="plans-event">
-        <article class="plan pro event">
-          <span class="tag">Per event</span>
-          <h3>Event Pass</h3>
-          <p class="for">Use it on a tablet or a laptop &middot; guest screen, auto-print &middot; online or offline app
-          </p>
-          <div class="plan-footer">
-            <p class="price">&#8369;599 <small>/ event</small></p>
-            <a class="plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer"
-              data-plan="Event Pass (₱599)">Message to Avail &rarr;</a>
-          </div>
-        </article>
-      </div>
-
-      <ul class="chips" aria-label="Included with every package">
-        <li>Event Pass: 24 hours on your event day</li>
-        <li>Unlimited snaps</li>
-        <li>Online gallery for 7 days</li>
-        <li>Free trial mode to test first</li>
-        <li>Vintage looks, flipbook, Trading Cards, Cash Acceptor &amp; Photoman Desk (360 video desk is an optional ₱1,500 add-on)</li>
-      </ul>
-      <p class="offline-note"><b>Offline apps</b> for Windows, Mac, Android tablets, and iPads: no internet needed at
-        the venue. Photos save on the device, sync via Cloud Sync later, and guests get theirs by scanning a QR over
-        the booth Wi-Fi.</p>
-    </section>
-
-    <section class="block" id="devices" aria-labelledby="dv">
-      <p class="label">Supported devices</p>
-      <h2 id="dv">What photobooth4u runs on</h2>
-      <p class="sub">The devices and versions we support today. Lifetime owners: this is the list your agreement refers
-        to.</p>
-      <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;font-size:15px;line-height:1.5;">
-          <thead>
-            <tr style="text-align:left;">
-              <th style="padding:10px 12px;border-bottom:2px solid var(--line);">Plan part</th>
-              <th style="padding:10px 12px;border-bottom:2px solid var(--line);">Device</th>
-              <th style="padding:10px 12px;border-bottom:2px solid var(--line);">What you need</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;"><b>Online booth</b>
-              </td>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">Windows or Mac
-                laptop</td>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">A current version of
-                Chrome (needed for a DSLR or USB camera). Internet at the venue.</td>
-            </tr>
-            <tr>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;"><b>Online booth</b>
-              </td>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">iPad or iPhone</td>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">A current version of
-                Safari. Printing over AirPrint. Internet at the venue.</td>
-            </tr>
-            <tr>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;"><b>Online booth</b>
-              </td>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">Android tablet or
-                phone</td>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">A current version of
-                Chrome. Printing over Mopria. Internet at the venue.</td>
-            </tr>
-            <tr>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;"><b>Offline App</b>
-              </td>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">Windows laptop</td>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">Windows 10 or later,
-                64-bit (x64).</td>
-            </tr>
-            <tr>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;"><b>Offline App</b>
-              </td>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">Mac laptop</td>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">macOS 11 (Big Sur)
-                or later, Apple Silicon or Intel.</td>
-            </tr>
-            <tr>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;"><b>Offline App</b></td>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">Android tablet</td>
-              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">Android 7.0 (Nougat) or later. Built-in tablet Wi-Fi hotspot option. Finds printers by itself
-                and prints with no dialog to: Wi-Fi printers that support AirPrint / Mopria (Epson, Canon, HP, Brother,
-                Canon Selphy); USB OTG driverless printers including DNP (DS-RX1/RX1HS, DS620/DS620A, DS40), Canon Selphy
-                (CP820&ndash;CP1500), and Epson L-series (L8050, L3210, L3276); Fujifilm Instax Link over Bluetooth; and
-                58/80 mm receipt printers over Bluetooth, Wi-Fi or USB. Colour, quality and paper type can be chosen for
-                printers that list them. Any other printer can print through the Android print dialog (one tap per print)
-                when its maker has an Android print service. DNP DS80/DS820/QW410, HiTi, Citizen, Mitsubishi, Sinfonia,
-                and older driver-only inkjets need the laptop app.</td>
-            </tr>
-            <tr>
-              <td style="padding:10px 12px;vertical-align:top;"><b>Offline App</b></td>
-              <td style="padding:10px 12px;vertical-align:top;">iPad (<a href="/how-to-ipad-offline/" style="color:var(--red);font-weight:700;">iPad Offline Guide</a>)</td>
-              <td style="padding:10px 12px;vertical-align:top;">iPadOS / iOS 15.0 or later (installed via Sideloadly). Runs offline with local Wi-Fi QR sharing, silent AirPrint, LAN thermal receipt printing (port 9100), and native USB DSLR / mirrorless tethering via a powered USB-C hub.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="sub" style="margin-top:12px;font-size:14px;">
-        Hardware (tablet, laptop, camera, printer, paper, ink) and internet are not included. We make reasonable efforts
-        to
-        support the current and previous major version of each browser and operating system. Support for versions more
-        than
-        5 years old may end with 90 days' notice, and new printer or camera models are not guaranteed. USB camera
-        control needs Chrome
-        or the laptop app on a laptop, the Android tablet app, or the iPad Offline App for Nikon, Canon EOS and Sony
-        Alpha cameras (Safari in a browser can't do it).
+      <p class="life-note">Try your exact camera &amp; printer first in Free Trial mode. Read our
+        <a href="/agreement/" target="_blank" rel="noopener">Lifetime Access Agreement</a> and
+        <a href="/faq/">FAQ</a>. Already have a code? <a class="renew-link" href="https://web.facebook.com/roktetnachi/"
+          target="_blank" rel="noopener noreferrer" data-plan="Renewal / Extension">Renew or extend via Messenger &rarr;</a>
       </p>
     </section>
 
+    <!-- SUPPORTED DEVICES -->
+    <section class="block" id="devices" aria-labelledby="dv">
+      <div class="sec-head">
+        <p class="label">Platforms</p>
+        <h2 id="dv">Available on Android, Laptop &amp; iPad</h2>
+        <p class="sub">Use the hardware you already own—cameras, tablets, and printers connect directly.</p>
+      </div>
+
+      <div class="plat-grid">
+        <article class="plat">
+          <span class="p-badge">Offline App</span>
+          <h3>Windows &amp; Mac</h3>
+          <p>Windows 10/11 (64-bit) &amp; macOS 11+. Native Canon/Nikon/Sony USB DSLR, Tablet Bridge host, silent
+            drivers, USB SELPHY, 2&times;6 split printers &amp; 360 Studio.</p>
+        </article>
+
+        <article class="plat">
+          <span class="p-badge">Offline App</span>
+          <h3>Android Tablet</h3>
+          <p>Android 7.0+. Standalone offline booth OR Laptop Camera Bridge, USB OTG DSLRs, direct Bluetooth thermal,
+            Epson L8050 Wi-Fi/USB, DNP OTG &amp; BLE Cash Acceptor.</p>
+        </article>
+
+        <article class="plat">
+          <span class="p-badge">Offline App</span>
+          <h3>iPad Offline</h3>
+          <p>iPadOS / iOS 15+. Smooth GPU camera (incl. iPad A16), AirPrint &amp; direct Wi-Fi IPP (Epson L8050),
+            Print Station relay, local QR/AirDrop &amp; Free 360 Arm Cam.</p>
+        </article>
+
+        <article class="plat">
+          <span class="p-badge web">Online Web</span>
+          <h3>Any Browser</h3>
+          <p>Current Chrome or Safari on laptop, tablet, or phone. Nothing to install—includes 7-day online galleries,
+            My Events &amp; live PayMongo GCash/Maya QR.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- QUICK GUIDES & RESOURCES -->
     <section class="block" id="guides" aria-labelledby="gd">
-      <p class="label">Guides</p>
-      <h2 id="gd">Step-by-step setup guides</h2>
-      <p class="sub">Pick the guide for your platform, bridge camera setup, specialty mode, or printer (<a
-          href="/features/">all features</a> &middot; <a href="/compare/">platform compare</a>).</p>
-      <div class="guides">
-        <a class="guide off" href="/how-to-tablet-camera/" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="4" y="3" width="16" height="12" rx="2" />
-              <rect x="7" y="17" width="10" height="4" rx="1" />
-            </svg></span>
-          <p class="for">Laptop + Android / Huawei tablet &middot; 0 extra slots</p>
-          <h3>Tablet Guest Screen + Camera Bridge</h3>
-          <p>Use an Android or Huawei tablet as your laptop's live touchscreen &amp; Camera2 bridge camera over USB-C or
-            local Wi-Fi.</p>
-          <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
-        <a class="guide off" href="/how-to-ipad-offline/" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="5" y="2.5" width="14" height="19" rx="2" />
-              <path d="M11 18h2" />
-            </svg></span>
-          <p class="for">Offline plans &middot; iPadOS 15+</p>
-          <h3>iPad Offline App Guide</h3>
-          <p>Install the offline IPA with Sideloadly, connect Wi-Fi/IPP or Print Station printers, and share QRs with zero
-            venue internet.</p>
-          <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
-        <a class="guide" href="/how-to-ipad-camera/" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 7h11v10H4z" />
-              <path d="m15 10 5-3v10l-5-3z" />
-            </svg></span>
-          <p class="for">iPad + Windows / Mac laptop</p>
-          <h3>iPad Extended Camera &amp; Bridge</h3>
-          <p>Use an iPad camera inside the laptop Desktop app via Camo/Iriun USB, Safari LAN Bridge, or Print Station
-            relay.</p>
-          <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
-        <a class="guide" href="/lifetime/photobooth4u-setup-guide.pdf" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="12" rx="1.5" />
-              <path d="M2 20h20" />
-            </svg></span>
-          <p class="for">Online plans &middot; Chrome on Windows or Mac</p>
-          <h3>Laptop guide</h3>
-          <p>Laptop Booth with a guest screen, DSLR over USB, silent printing, guest payments and the backup folder.</p>
-          <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
-        <a class="guide" href="/lifetime/photobooth4u-tablet-guide.pdf" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="5" y="2.5" width="14" height="19" rx="2" />
-              <path d="M11 18h2" />
-            </svg></span>
-          <p class="for">Online plans &middot; iPad &amp; Android</p>
-          <h3>Tablet guide</h3>
-          <p>Prepare the tablet, camera and position, guest-only mode, printing over AirPrint or Mopria, and weak
-            internet.</p>
-          <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
-        <a class="guide off" href="/lifetime/photobooth4u-offline-app-guide.pdf" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path
-                d="M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8A15 15 0 0 0 10.5 5.1M5.2 12.4a10 10 0 0 1 3.2-1.9M18.8 12.4a10 10 0 0 0-2.4-1.6M8.8 15.9a5 5 0 0 1 6.4 0M12 19.5h.01M3 3l18 18" />
-            </svg></span>
-          <p class="for">Offline plans &middot; Windows, Mac, Android &amp; iPad</p>
-          <h3>Offline app guide</h3>
-          <p>Install and activate on a laptop or tablet, camera and printing, and sharing guests' photos over
-            the booth Wi-Fi with no internet.</p>
-          <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
-        <a class="guide" href="/how-to-360/" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12a9 9 0 1 1-3-6.7" />
-              <path d="M21 4v5h-5" />
-              <circle cx="12" cy="12" r="2.5" />
-            </svg></span>
-          <p class="for">360 booth &middot; Laptop app &amp; iOS 360 Arm</p>
-          <h3>360 video guide</h3>
-          <p>Camera settings for the arm (<a href="/how-to-360-arm/">iOS 360 Arm guide</a>), Record 360 DSLR/GoPro, 30
-            presets, slow-mo, music, &amp; Live Wall.</p>
-          <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
-        <a class="guide" href="/how-to-photoman/" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="13" r="4" />
-              <path d="M5 7h3l2-2h4l2 2h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" />
-            </svg></span>
-          <p class="for">Included &middot; Roaming photography</p>
-          <h3>Photoman &amp; Roving DSLR</h3>
-          <p>Phone QR uploads, wired USB OTG Roving DSLR Bridge, Template Maker, Auto-Frame, Photo Editor, and Phone
-            Remote Control.</p>
-          <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
-        <a class="guide" href="/how-to-extras/" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.5 6.8 19.2l1-5.9L3.5 9.2l5.9-.8z" />
-            </svg></span>
-          <p class="for">Included with every package</p>
-          <h3>Booth extras &amp; Keychains</h3>
-          <p>Vintage looks, overlays, flipbooks, video guestbook, and <a href="/keychain-guide/">2.5&times;7.5&Prime;
-              acrylic keychains</a> plus <a href="/rush/">Rush ID Station</a>.</p>
-          <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
-        <a class="guide" href="/lifetime/photobooth4u-card-certificate-guide.pdf" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="6" y="2.5" width="12" height="19" rx="2" />
-              <circle cx="12" cy="9.5" r="2.5" />
-              <path d="M9 16h6M9 18.5h4" />
-            </svg></span>
-          <p class="for">Included &middot; Collectible &amp; Award modes</p>
-          <h3>Trading card &amp; certificate guide</h3>
-          <p>The Booth type switch, built-in styles, your own templates in groups, the back of the card, guest
-            questions, printing both sides, and the holo viewer.</p>
-          <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
+      <div class="sec-head">
+        <p class="label">Guides &amp; downloads</p>
+        <h2 id="gd">Quick setup guides &amp; tools</h2>
+      </div>
+
+      <div class="guides-strip" id="printer-guides">
+        <a class="g-link" href="/downloads/"><b>Downloads &amp; Installers</b><span>Win, Mac, Android, iPad &amp; 360 Arm</span></a>
+        <a class="g-link" href="/printers/"><b>Supported Printers</b><span>Thermal, SELPHY, Epson, DNP, HiTi</span></a>
+        <a class="g-link" href="/how-to-tablet-camera/"><b>Tablet Camera Bridge</b><span>Android/Huawei + Laptop (0 extra slots)</span></a>
+        <a class="g-link" href="/how-to-ipad-offline/"><b>iPad Offline Guide</b><span>Install, Wi-Fi IPP &amp; Print Station</span></a>
+        <a class="g-link" href="/how-to-photoman/"><b>Roving Photoman Guide</b><span>DSLR OTG auto-queue &amp; Template Maker</span></a>
+        <a class="g-link" href="/how-to-360/"><b>360 Video Studio Guide</b><span>iPhone gyro arm, DSLR &amp; Live Wall</span></a>
+        <a class="g-link" href="/how-to-print-selphy/"><b>Canon SELPHY Guide</b><span>Driverless USB &amp; Wi-Fi setup</span></a>
+        <a class="g-link" href="/lifetime/"><b>My Events Portal</b><span>View past galleries, QR codes &amp; setup PDFs</span></a>
       </div>
     </section>
 
-    <section class="block" id="printer-guides" aria-labelledby="pg">
-      <p class="label">Printers</p>
-      <h2 id="pg">Printer guides</h2>
-      <p class="sub">Pick your printer for setup steps. Desktop handles all drivers + secondary 2&times;6 split cut;
-        Android handles Wi-Fi, USB OTG &amp; Bluetooth thermal; iPad supports AirPrint, direct IPP (Epson L8050) &amp;
-        Print Station.</p>
-      <div class="pg-list">
-        <a class="pg-all" href="/printers/" target="_blank" rel="noopener"><b>Which printers work</b><span>Every brand
-            in one table</span></a>
-        <a href="/printer-test/" target="_blank" rel="noopener"><b>Wi-Fi Printer Test</b><span>Test IPP / AirPrint &amp;
-            2&times;6/4&times;6</span></a>
-        <a href="/how-to-print-selphy/" target="_blank" rel="noopener"><b>Canon SELPHY</b><span>CP800–CP1500 driverless
-            USB &amp; Wi-Fi</span></a>
-        <a href="/printers/#everyday" target="_blank" rel="noopener"><b>Epson, Brother, HP, Canon</b><span>Everyday
-            inkjet and laser printers work too</span></a>
-        <a href="/how-to-print-dnp/" target="_blank" rel="noopener"><b>DNP</b><span>RX1HS, DS620, DS820, DS40,
-            QW410</span></a>
-        <a href="/how-to-print-hiti/" target="_blank" rel="noopener"><b>HiTi</b><span>P510S, P520L, P525L, P720L,
-            2&times;6 split</span></a>
-        <a href="/how-to-print-citizen/" target="_blank" rel="noopener"><b>Citizen</b><span>CX-02, CX-02W, CY-02,
-            CZ-01</span></a>
-        <a href="/how-to-print-mitsubishi/" target="_blank" rel="noopener"><b>Mitsubishi</b><span>CP-D70DW to CP-D90DW,
-            CP-K60DW-S</span></a>
-        <a href="/how-to-print-sinfonia/" target="_blank" rel="noopener"><b>Sinfonia</b><span>Color Stream CS2, S2145,
-            S3</span></a>
-        <a href="/how-to-print-thermal/" target="_blank" rel="noopener"><b>Thermal receipt</b><span>80 / 58 mm,
-            Bluetooth on Android</span></a>
-        <a href="/how-to-print-android/" target="_blank" rel="noopener"><b>Android tablet app</b><span>Wi-Fi and USB
-            printers, found by the app</span></a>
-      </div>
-    </section>
-
-    <section class="block" id="my-events" aria-labelledby="me">
-      <div class="events">
-        <div>
-          <h2 id="me">My events</h2>
-          <p>Every event you've run, in one place — on any phone or computer.</p>
-          <ul>
-            <li>Find each event's photos, QR code and gallery link again</li>
-            <li>See how many sessions were taken and the "download by" date</li>
-            <li>Lifetime customers: a separate folder for every event, plus the setup guide</li>
-          </ul>
-        </div>
-        <div class="actions">
-          <a class="btn red" href="/lifetime/">Open My events</a>
-          <a class="btn" href="/">Open photo booth</a>
-        </div>
-      </div>
-    </section>
-
+    <!-- BOOK / MESSAGE CTA -->
     <section class="block" id="avail" aria-labelledby="bk">
       <div class="book">
-        <div class="book-intro">
-          <h2 id="bk">Hi! Wanna avail?</h2>
-          <p class="sub">Copy the form, send it on Messenger, and we'll send your codes.</p>
-        </div>
-        <div class="actions">
-          <a class="btn primary" id="messengerBtn" href="https://web.facebook.com/roktetnachi/" target="_blank"
-            rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="currentColor"
-                d="M12 2C6.36 2 2 6.13 2 11.7c0 2.91 1.2 5.42 3.14 7.16.16.15.26.35.27.57l.05 1.78a.8.8 0 0 0 1.12.71l1.98-.87a.8.8 0 0 1 .53-.04c.91.25 1.88.39 2.91.39 5.64 0 10-4.13 10-9.7S17.64 2 12 2Zm6 7.46-2.94 4.66a1.5 1.5 0 0 1-2.17.4l-2.34-1.75a.6.6 0 0 0-.72 0l-3.16 2.4c-.42.32-.97-.18-.69-.63l2.94-4.66a1.5 1.5 0 0 1 2.17-.4l2.34 1.75a.6.6 0 0 0 .72 0l3.16-2.4c.42-.32.97.18.69.63Z" />
-            </svg>Copy form &amp; message us</a>
-          <button class="btn" type="button" id="copyFormBtn">Copy form</button>
-          <span class="copied" id="copiedNote" role="status">Copied! Paste it in Messenger.</span>
+        <div>
+          <h2 id="bk">Ready to run your next event?</h2>
+          <p class="sub">Copy the quick form, send it on Messenger, and we’ll set up your access code + guide right away.</p>
+          <div class="actions">
+            <a class="btn primary" id="messengerBtn" href="https://web.facebook.com/roktetnachi/" target="_blank"
+              rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor"
+                  d="M12 2C6.36 2 2 6.13 2 11.7c0 2.91 1.2 5.42 3.14 7.16.16.15.26.35.27.57l.05 1.78a.8.8 0 0 0 1.12.71l1.98-.87a.8.8 0 0 1 .53-.04c.91.25 1.88.39 2.91.39 5.64 0 10-4.13 10-9.7S17.64 2 12 2Zm6 7.46-2.94 4.66a1.5 1.5 0 0 1-2.17.4l-2.34-1.75a.6.6 0 0 0-.72 0l-3.16 2.4c-.42.32-.97-.18-.69-.63l2.94-4.66a1.5 1.5 0 0 1 2.17-.4l2.34 1.75a.6.6 0 0 0 .72 0l3.16-2.4c.42-.32.97.18.69.63Z" />
+              </svg>Copy form &amp; message us</a>
+            <button class="btn ghost" type="button" id="copyFormBtn">Copy form</button>
+            <span class="copied" id="copiedNote" role="status">Copied! Paste it in Messenger.</span>
+          </div>
         </div>
         <pre class="form-card" id="availForm">Name:
-Setup Type: Tablet / Laptop / Lifetime Online / Lifetime Offline / Lifetime Online + Offline
-Event Date:</pre>
+Plan: Single Device (₱699 / ₱1,499 / ₱2,999) or Multi-Device (₱999 / ₱1,999 / ₱3,999)
+Device(s): Android / Windows / Mac / iPad
+Printer / Camera:</pre>
       </div>
     </section>
 
     <footer>
       <div class="fmeta">
-        <span><b style="color:var(--ink)">photobooth4u.netlify.app</b> · Cebu</span>
-        <span id="trialNote" hidden>Try it free with code <code id="trialCode"></code></span>
+        <span><b style="color:var(--ink)">photobooth4u.netlify.app</b> &middot; Cebu</span>
+        <span id="trialNote" hidden>Free trial code: <code id="trialCode"></code></span>
       </div>
       <nav aria-label="Footer">
-        <a href="/">Open photo booth</a>
-        <a href="/features/">App &amp; features</a>
-        <a href="/compare/">Platform compare</a>
-        <a href="/lifetime/">My events</a>
-        <a href="/about-us/#packages">Pricing</a>
-        <a href="/about-us/#guides">Guides</a>
-        <a href="/downloads/">Downloads &amp; installers</a>
-        <a href="/app/">Laptop app</a>
+        <a href="/">Open booth</a>
+        <a href="/features/">Features</a>
+        <a href="/compare/">Compare</a>
+        <a href="#packages">Pricing</a>
+        <a href="/downloads/">Downloads</a>
+        <a href="/printers/">Printers</a>
         <a href="/updates/">What’s new</a>
+        <a href="/faq/">FAQ</a>
         <a href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer">Messenger</a>
       </nav>
     </footer>
   </div>
 
-  <script>
-    (function () {
-      var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
-      var dots = Array.prototype.slice.call(document.querySelectorAll('.dot'));
-      var current = document.getElementById('current');
-      var carousel = document.querySelector('.slider');
-      var index = 0, timer, pause = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      function show(next) {
-        index = (next + slides.length) % slides.length;
-        slides.forEach(function (slide, i) { slide.classList.toggle('active', i === index); });
-        dots.forEach(function (dot, i) { dot.setAttribute('aria-current', i === index ? 'true' : 'false'); });
-        current.textContent = String(index + 1).padStart(2, '0');
-      }
-      function stop() { window.clearInterval(timer); }
-      function start() { stop(); if (!pause) timer = window.setInterval(function () { show(index + 1); }, 6000); }
-      document.querySelector('.prev').addEventListener('click', function () { show(index - 1); start(); });
-      document.querySelector('.next').addEventListener('click', function () { show(index + 1); start(); });
-      dots.forEach(function (dot, i) { dot.addEventListener('click', function () { show(i); start(); }); });
-      carousel.addEventListener('mouseenter', stop);
-      carousel.addEventListener('mouseleave', start);
-      carousel.addEventListener('focusin', stop);
-      carousel.addEventListener('focusout', function () { window.setTimeout(function () { if (!carousel.contains(document.activeElement)) start(); }, 0); });
-      document.addEventListener('visibilitychange', function () { if (document.hidden) stop(); else start(); });
-      start();
-    })();
-  </script>
   <script>
     (function () {
       var form = document.getElementById('availForm'), note = document.getElementById('copiedNote'), t;
@@ -2177,45 +1581,42 @@ Event Date:</pre>
         clearTimeout(t);
         t = setTimeout(function () { note.classList.remove('show'); }, 4000);
       }
-      function copyForm() {
-        var text = 'Hi! I\'d like to avail of photobooth4u.\n\n' + form.textContent;
+      function copyText(text, successMsg) {
         try {
           if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(function () { showNote('Copied! Paste it in Messenger.'); }, function () { });
+            navigator.clipboard.writeText(text).then(function () { showNote(successMsg); }, function () { });
             return;
           }
         } catch (e) { }
         try {
           var ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', '');
           ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
-          if (document.execCommand('copy')) showNote('Copied! Paste it in Messenger.');
+          if (document.execCommand('copy')) showNote(successMsg);
           document.body.removeChild(ta);
         } catch (e) { }
+      }
+      function copyForm() {
+        copyText("Hi! I'd like to avail of photobooth4u.\n\n" + form.textContent, 'Copied! Paste it in Messenger.');
       }
       document.getElementById('copyFormBtn').addEventListener('click', copyForm);
       document.getElementById('messengerBtn').addEventListener('click', copyForm);
 
-      // Copy plan template on click of plan-cta or renew-link
       Array.prototype.forEach.call(document.querySelectorAll('a.plan-cta, a.renew-link'), function (a) {
         a.addEventListener('click', function () {
           var plan = a.getAttribute('data-plan') || '';
-          var text = "Hi! I'd like to avail of photobooth4u.\nPlan: " + plan + "\n\nName:\nSetup Type: " + plan + "\nEvent Date:";
-          try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              navigator.clipboard.writeText(text);
-              showNote('Order details copied! Opening Messenger…');
-            }
-          } catch (e) { }
+          var text = "Hi! I'd like to avail of photobooth4u.\nPlan: " + plan + "\n\nName:\nDevice(s): Android / Windows / Mac / iPad\nPrinter / Camera:";
+          copyText(text, 'Plan copied! Opening Messenger…');
         });
       });
+
+      fetch('/api/trial').then(function (r) { return r.json(); }).then(function (d) {
+        if (!d || !d.enabled || !d.code) return;
+        document.getElementById('trialCode').textContent = d.code;
+        document.getElementById('trialNote').hidden = false;
+        var hb = document.getElementById('heroTrialBtn');
+        if (hb) hb.href = '/?code=' + encodeURIComponent(d.code);
+      }).catch(function () { });
     })();
-  </script>
-  <script>
-    fetch('/api/trial').then(function (r) { return r.json(); }).then(function (d) {
-      if (!d || !d.enabled || !d.code) return;
-      document.getElementById('trialCode').textContent = d.code;
-      document.getElementById('trialNote').hidden = false;
-    }).catch(function () { });
   </script>
 </body>
 

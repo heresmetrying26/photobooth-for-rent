@@ -9,10 +9,12 @@ import { _helperTest } from '../lib/helper.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const {
+  decodePpdString,
   parsePpdChoiceLabels,
   parseCupsOptionsOutput,
   pickGlossyMediaType,
   pickCupsDriverQualityOptions,
+  isAirPrintFromInfo,
   MAC_EPSON_L8050_CHOICE_LABELS
 } = _helperTest;
 
@@ -153,7 +155,7 @@ test('pickGlossyMediaType selects Photo Paper Glossy (145) over Ultra Glossy (92
   assert.equal(pickGlossyMediaType(mt.choices.filter((c) => c.value !== '145')), '13');
 });
 
-test('pickCupsDriverQualityOptions matches Epson L8050 presets for Best, Normal, and Draft', () => {
+test('pickCupsDriverQualityOptions matches Epson L8050 presets for Best, Normal, Draft, and empty default', () => {
   const opts = parseCupsOptionsOutput(REAL_LPOPTIONS_OUT, REAL_L8050_PPD, 'EPSON_L8050_Series');
   assert.deepEqual(pickCupsDriverQualityOptions(opts, 'best', '145'), ['-o', 'EPIJ_Qual=306', '-o', 'Resolution=720x720dpi']);
   assert.deepEqual(pickCupsDriverQualityOptions(opts, 'best', '13'), ['-o', 'EPIJ_Qual=306', '-o', 'Resolution=720x720dpi']);
@@ -162,14 +164,44 @@ test('pickCupsDriverQualityOptions matches Epson L8050 presets for Best, Normal,
   assert.deepEqual(pickCupsDriverQualityOptions(opts, 'normal', '145'), ['-o', 'EPIJ_Qual=305', '-o', 'Resolution=720x720dpi']);
   assert.deepEqual(pickCupsDriverQualityOptions(opts, 'normal', '0'), ['-o', 'EPIJ_Qual=303', '-o', 'Resolution=360x360dpi']);
   assert.deepEqual(pickCupsDriverQualityOptions(opts, 'draft', '145'), ['-o', 'EPIJ_Qual=308', '-o', 'Resolution=360x360dpi']);
-  assert.deepEqual(pickCupsDriverQualityOptions(opts, '', '145'), []);
+  // Empty quality (e.g. Print Station / iPad LAN remote) defaults to Best, matching Windows & AirPrint
+  assert.deepEqual(pickCupsDriverQualityOptions(opts, '', '145'), ['-o', 'EPIJ_Qual=306', '-o', 'Resolution=720x720dpi']);
+  // Driver default (activeMediaVal=''): reads selected media type from queue (factory *0 Plain -> Fine 304)
+  assert.deepEqual(pickCupsDriverQualityOptions(opts, 'best', ''), ['-o', 'EPIJ_Qual=304', '-o', 'Resolution=720x720dpi']);
+  // Driver default when operator saved *145 Glossy in Configure printer (both MediaType & EPIJ_Medi synced) -> High Quality 306
+  const savedGlossyOut = REAL_LPOPTIONS_OUT.replaceAll('*0 142', '0 142').replaceAll('15 145 75', '15 *145 75');
+  const savedOpts = parseCupsOptionsOutput(savedGlossyOut, REAL_L8050_PPD, 'EPSON_L8050_Series');
+  assert.deepEqual(pickCupsDriverQualityOptions(savedOpts, 'best', ''), ['-o', 'EPIJ_Qual=306', '-o', 'Resolution=720x720dpi']);
+  // Non-Epson printer without EPIJ_Qual is left untouched
+  const nonEpson = parseCupsOptionsOutput('PageSize/Media Size: *4x6\nResolution/Resolution: *300dpi 600dpi', '', 'DNP_DS620');
+  assert.deepEqual(pickCupsDriverQualityOptions(nonEpson, 'best', ''), []);
 });
 
-test('built booth.html displays choice labels (not raw numbers), promotes EPIJ_Qual, and syncs MediaType/EPIJ_Medi', () => {
+test('isAirPrintFromInfo distinguishes Wi-Fi Bonjour official Epson driver from true AirPrint queues', () => {
+  const bonjourUri = 'device for EPSON_L8050_Series: dnssd://EPSON%20L8050%20Series._printer._tcp.local./?bidi';
+  const usbUri = 'device for EPSON_L8050_Series: usb://EPSON/L8050%20Series?serial=12345';
+  const airPrintPpd = '*NickName: "EPSON L8050 Series-AirPrint"\n*APAirPrint: True\n';
+  assert.equal(isAirPrintFromInfo(usbUri, REAL_L8050_PPD), false, 'USB Epson driver is not AirPrint');
+  assert.equal(isAirPrintFromInfo(bonjourUri, REAL_L8050_PPD), false, 'Wi-Fi Bonjour Epson official driver (EPIJ_Medi/EPIJ_Qual) is NOT AirPrint');
+  assert.equal(isAirPrintFromInfo(bonjourUri, '*cupsFilter: "application/vnd.cups-raster 0 /Library/Printers/EPSON/InkjetPrinter2/Filter/rastertoescpII.app"\n'), false, 'Epson InkjetPrinter2 filter path is NOT AirPrint');
+  assert.equal(isAirPrintFromInfo(bonjourUri, airPrintPpd), true, 'True AirPrint PPD stays AirPrint');
+  assert.equal(isAirPrintFromInfo(bonjourUri, ''), true, 'Driverless dnssd queue without PPD stays AirPrint');
+});
+
+test('decodePpdString decodes CUPS UTF-8 hex escapes cleanly', () => {
+  assert.equal(decodePpdString('4 <C3><97> 6 in (Borderless)'), '4 × 6 in (Borderless)');
+  assert.equal(decodePpdString('Photo Paper Glossy'), 'Photo Paper Glossy');
+});
+
+test('built booth.html and helper.mjs keep UI labels, sync, cache invalidation, and AirPrint guards intact', () => {
   const html = readFileSync(join(ROOT, 'protected', 'booth.html'), 'utf8');
+  const helperSrc = readFileSync(join(ROOT, 'desktop', 'lib', 'helper.mjs'), 'utf8');
   assert.ok(html.includes('op.textContent = c.label || c.value;'), 'pbCupsOptionsUI renders c.label || c.value');
   assert.ok(html.includes("'EPIJ_Qual', 'Resolution'"), 'pbCupsOptionsUI promotes EPIJ_Qual alongside Resolution');
   assert.ok(html.includes("o.key === 'MediaType' ? 'EPIJ_Medi'"), 'pbCupsOptionsUI keeps MediaType and EPIJ_Medi synced');
+  assert.ok(html.includes('delete paperChecks[k]'), 'pbCupsOptionsUI clears paperChecks after saving');
+  assert.ok(helperSrc.includes('airPrintQualityOptions(printer, quality, !!(reqMediaType || keepDriverMedia))'), 'AirPrint respects explicit MediaType and Driver default');
+  assert.ok(helperSrc.includes('PAPER_CACHE.delete(name);') && helperSrc.includes('CAPS_CACHE.delete(name);'), 'POST /printer/options invalidates server caches');
 });
 
 console.log(passed + ' passed' + (process.exitCode ? ', some FAILED' : ''));

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.108', date: '2026-11-25' },
   { version: '1.1.107', date: '2026-11-25' },
   { version: '1.1.106', date: '2026-11-25' },
   { version: '1.1.105', date: '2026-11-25' },
@@ -304,6 +305,13 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-25', title: 'Desktop 1.1.108 & Website: Wi-Fi & USB Mac Epson L8050 Auto-Glossy + High Quality fix', for: ['website', 'app'], app: '1.1.108',
+    items: [
+      '📶 Fixed Wi-Fi Mac Epson L8050 printing: Epson L8050 printers connected over Wi-Fi using Epson’s Mac driver now get automatic Photo Paper Glossy and High Quality at 720 dpi just like USB.',
+      '🖨️ Print Station & iPad printing through a Mac: Remote prints sent through a Mac laptop to an Epson L8050 now default to Best quality, saving Configure printer refreshes paper slots right away, and AirPrint queues keep your chosen paper type.'
+    ]
+  },
   {
     date: '2026-11-25', title: 'Desktop 1.1.107 & Website: Mac Epson L8050 readable paper & quality names + automatic Glossy High Quality', for: ['website', 'app'], app: '1.1.107',
     items: [

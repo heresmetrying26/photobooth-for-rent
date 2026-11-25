@@ -50385,7 +50385,11 @@ function renderTabletBridgeSetup(info) {
             var rr = await fetch(HELPER_URL + '/printer/options', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name, options: changed }) });
             var jj = await rr.json(); if (!rr.ok || !jj.ok) throw new Error(jj.error || 'Could not save');
             changed = {}; showToast('Printer settings saved.', 2500);
-            try { if (typeof capsChecks === 'object' && capsChecks) { delete capsChecks[name]; fetchPrinterCaps(name); } } catch (e) { }
+            try {
+              if (typeof capsChecks === 'object' && capsChecks) { delete capsChecks[name]; fetchPrinterCaps(name); }
+              if (typeof paperChecks === 'object' && paperChecks) { Object.keys(paperChecks).forEach(function (k) { if (k.indexOf(name + '|') === 0) delete paperChecks[k]; }); }
+              if (typeof refreshPhotoFitUI === 'function') refreshPhotoFitUI();
+            } catch (e) { }
           } catch (e) { showToast('Could not save printer settings: ' + (e.message || e), 4000); }
           finally { save.disabled = false; }
         });

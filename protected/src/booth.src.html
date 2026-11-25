@@ -46771,18 +46771,27 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
       // Mac: the driver's paper / media / quality choices shown inside the app (macOS has no Windows-style preferences window).
       function pbCupsOptionsUI(box, name, options) {
-        var pri = ['PageSize', 'MediaType', 'Resolution', 'cupsPrintQuality', 'ColorModel', 'print-color-mode', 'InputSlot'];
+        var hasMediaType = options.some(function (o) { return o.key === 'MediaType'; });
+        var pri = ['PageSize', 'MediaType'].concat(hasMediaType ? [] : ['EPIJ_Medi'], ['EPIJ_Qual', 'Resolution', 'cupsPrintQuality', 'ColorModel', 'print-color-mode', 'InputSlot']);
         var rank = function (o) { var i = pri.indexOf(o.key); return i < 0 ? 99 : i; };
-        var list = options.slice().sort(function (a, b) { return rank(a) - rank(b); }), changed = {};
+        var list = options.slice().sort(function (a, b) { return rank(a) - rank(b); }), changed = {}, selsByKey = {};
         box.textContent = ''; box.style.display = 'block';
         var h = document.createElement('div'); h.style.cssText = 'font-weight:700;margin-bottom:6px;'; h.textContent = 'Printer settings for ' + name; box.appendChild(h);
         var more = document.createElement('details'), ms = document.createElement('summary'); ms.textContent = 'More options'; ms.style.cssText = 'cursor:pointer;margin-top:6px;'; more.appendChild(ms);
         list.forEach(function (o) {
           var row = document.createElement('label'); row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0;font-size:12.5px;';
-          var t = document.createElement('span'); t.textContent = o.label || o.key;
+          var t = document.createElement('span'); t.textContent = (o.label === 'MediaType' ? 'Media Type' : (o.label || o.key));
           var sel = document.createElement('select'); sel.style.cssText = 'padding:4px 6px;border-radius:6px;border:1px solid var(--line);max-width:55%;';
-          o.choices.forEach(function (c) { var op = document.createElement('option'); op.value = c.value; op.textContent = c.value; if (c.selected) op.selected = true; sel.appendChild(op); });
-          sel.addEventListener('change', function () { changed[o.key] = sel.value; });
+          o.choices.forEach(function (c) { var op = document.createElement('option'); op.value = c.value; op.textContent = c.label || c.value; if (c.selected) op.selected = true; sel.appendChild(op); });
+          selsByKey[o.key] = sel;
+          sel.addEventListener('change', function () {
+            changed[o.key] = sel.value;
+            var peer = o.key === 'MediaType' ? 'EPIJ_Medi' : (o.key === 'EPIJ_Medi' ? 'MediaType' : '');
+            if (peer && selsByKey[peer] && Array.prototype.some.call(selsByKey[peer].options, function (op) { return op.value === sel.value; })) {
+              selsByKey[peer].value = sel.value;
+              changed[peer] = sel.value;
+            }
+          });
           row.append(t, sel); (rank(o) < 99 ? box : more).appendChild(row);
         });
         if (more.children.length > 1) box.appendChild(more);
@@ -46795,6 +46804,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             var rr = await fetch(HELPER_URL + '/printer/options', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name, options: changed }) });
             var jj = await rr.json(); if (!rr.ok || !jj.ok) throw new Error(jj.error || 'Could not save');
             changed = {}; showToast('Printer settings saved.', 2500);
+            try { if (typeof capsChecks === 'object' && capsChecks) { delete capsChecks[name]; fetchPrinterCaps(name); } } catch (e) { }
           } catch (e) { showToast('Could not save printer settings: ' + (e.message || e), 4000); }
           finally { save.disabled = false; }
         });

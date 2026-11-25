@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.107', date: '2026-11-25' },
   { version: '1.1.106', date: '2026-11-25' },
   { version: '1.1.105', date: '2026-11-25' },
   { version: '1.1.104', date: '2026-11-24' },
@@ -303,6 +304,13 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-25', title: 'Desktop 1.1.107 & Website: Mac Epson L8050 readable paper & quality names + automatic Glossy High Quality', for: ['website', 'app'], app: '1.1.107',
+    items: [
+      '🖨️ Readable English printer settings on Mac: Paper types, print quality, and driver options in Configure printer and Paper / media type now show real names like Photo Paper Glossy, Epson Premium Glossy, Matte, and High Quality instead of driver code numbers.',
+      '✨ Automatic Glossy photo paper & High Quality on Mac Epson L8050: Borderless prints on Epson L8050 now automatically select Photo Paper Glossy and High Quality at 720 dpi when Print quality is set to Best, with Print Quality placed right at the top of Configure printer.'
+    ]
+  },
   {
     date: '2026-11-25', title: 'Desktop 1.1.106, Android 1.2.17, Print Helper 1.1.22 & Website: Tablet Bridge live-preview mirror fix + updated setup guide', for: ['website', 'app', 'android', 'helper'], app: '1.1.106', android: '1.2.17', helper: '1.1.22',
     items: [

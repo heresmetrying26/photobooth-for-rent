@@ -209,15 +209,99 @@ async function addDirectPrinter({ ip, port, path, name }) {
   return { ok: true, printer: full, direct: true };
 }
 
+// Verified English labels from Epson's official macOS L8050 PPD (/etc/cups/ppd/EPSON_L8050_Series.ppd).
+// Used as a fallback whenever the PPD file cannot be read or leaves a numeric choice unlabeled; the PPD's own
+// translation strings always win first so every Mac printer (L8050, L3210, Canon, Brother, HiTi, DNP...) gets
+// its exact driver text instead of raw codes like "0", "145", or "306".
+const MAC_EPSON_L8050_MEDIA_LABELS = {
+  '0': 'Plain paper',
+  '2': 'Epson Photo Quality Ink Jet',
+  '12': 'Epson Matte',
+  '13': 'Epson Premium Glossy',
+  '15': 'Epson Premium Semigloss',
+  '26': 'Disc Label',
+  '75': 'Epson Photo Stickers',
+  '92': 'Epson Ultra Glossy',
+  '93': 'Envelope',
+  '142': 'Letterhead',
+  '145': 'Photo Paper Glossy',
+  '198': 'PVC ID Card (Borders)',
+  '199': 'PVC ID Card (Borderless)'
+};
+const MAC_EPSON_L8050_QUALITY_LABELS = {
+  '302': 'Economy',
+  '303': 'Normal',
+  '304': 'Fine',
+  '305': 'Quality',
+  '306': 'High Quality',
+  '308': 'Draft'
+};
+const MAC_EPSON_L8050_CHOICE_LABELS = {
+  MediaType: MAC_EPSON_L8050_MEDIA_LABELS,
+  EPIJ_Medi: MAC_EPSON_L8050_MEDIA_LABELS,
+  EPIJ_Qual: MAC_EPSON_L8050_QUALITY_LABELS
+};
+
+function decodePpdString(s) {
+  return String(s || '')
+    .replace(/(?:<[0-9A-Fa-f]{2}>)+/g, (m) => {
+      try { return Buffer.from(m.replace(/[<>]/g, ''), 'hex').toString('utf8'); } catch { return m; }
+    })
+    .trim();
+}
+
+function parsePpdChoiceLabels(ppd) {
+  const byKey = Object.create(null);
+  const put = (key, val, rawLabel, prefer) => {
+    const label = decodePpdString(rawLabel);
+    if (!key || !val || !label) return;
+    const map = byKey[key] || (byKey[key] = Object.create(null));
+    if (!map[val] || prefer || /^\d+$/.test(map[val])) map[val] = label;
+  };
+  for (const line of String(ppd || '').split(/\r?\n/)) {
+    let m = /^\*en(?:_[A-Za-z]{2})?\.([A-Za-z0-9_-]+)\s+([^\s/:]+)\/([^:\r\n]+):/.exec(line);
+    if (m) { put(m[1], m[2], m[3], true); continue; }
+    m = /^\*([A-Za-z0-9_-]+)\s+([^\s/:]+)\/([^:\r\n]+):/.exec(line);
+    if (m) put(m[1], m[2], m[3], false);
+  }
+  return byKey;
+}
+
+function fallbackChoiceLabel(printer, key, val) {
+  if (/^EPIJ_Qual$/i.test(key) && MAC_EPSON_L8050_QUALITY_LABELS[val]) return MAC_EPSON_L8050_QUALITY_LABELS[val];
+  if (EPSON_L8050.test(String(printer || ''))) {
+    const map = MAC_EPSON_L8050_CHOICE_LABELS[key];
+    if (map && map[val]) return map[val];
+  }
+  return '';
+}
+
+function parseCupsOptionsOutput(lpoptionsOut, ppdText, printer) {
+  const ppdLabels = ppdText ? parsePpdChoiceLabels(ppdText) : Object.create(null);
+  return String(lpoptionsOut || '').split(/\r?\n/).flatMap((line) => {
+    const m = /^([^/:]+)\/([^:]*):\s*(.*)$/.exec(line);
+    if (!m) return [];
+    const key = m[1];
+    const optLabels = ppdLabels[key] || null;
+    const choices = m[3].trim().split(/\s+/).filter(Boolean).map((v) => {
+      const value = v.replace(/^\*/, '');
+      let label = (optLabels && optLabels[value]) || '';
+      if (!label || /^\d+$/.test(label)) {
+        const fb = fallbackChoiceLabel(printer, key, value);
+        if (fb) label = fb;
+      }
+      return { value, label: label || value, selected: v.startsWith('*') };
+    });
+    return choices.length ? [{ key, label: decodePpdString(m[2]) || key, choices }] : [];
+  });
+}
+
 async function cupsPrinterOptions(printer) {
   const r = await run('lpoptions', ['-p', printer, '-l']);
   if (r.code !== 0) throw new Error((r.err || r.out || 'Could not read printer options').trim());
-  return r.out.split(/\r?\n/).flatMap((line) => {
-    const m = /^([^/:]+)\/([^:]*):\s*(.*)$/.exec(line);
-    if (!m) return [];
-    const choices = m[3].trim().split(/\s+/).filter(Boolean).map((v) => ({ value: v.replace(/^\*/, ''), selected: v.startsWith('*') }));
-    return choices.length ? [{ key: m[1], label: m[2].trim() || m[1], choices }] : [];
-  });
+  let ppd = '';
+  try { ppd = await readFile('/etc/cups/ppd/' + printer + '.ppd', 'utf8'); } catch { ppd = ''; }
+  return parseCupsOptionsOutput(r.out, ppd, printer);
 }
 
 function launchDetached(cmd, args) {
@@ -415,8 +499,20 @@ async function printerCaps(printer) {
       caps = await winPrinterCaps(printer);
     } else {
       const opts = await cupsPrinterOptions(printer);
-      const mt = opts.find((o) => /^media-?type$/i.test(o.key));
-      if (mt) caps = { mediaKey: mt.key, mediaTypes: mt.choices.map((ch) => ({ value: ch.value, label: formatCapsLabel(ch.value), selected: !!ch.selected })) };
+      const mt = opts.find((o) => /^media-?type$/i.test(o.key)) || opts.find((o) => /^EPIJ_Medi$/i.test(o.key));
+      const epij = opts.find((o) => /^EPIJ_Medi$/i.test(o.key));
+      const pInfo = await paperSizes(printer).catch(() => ({ sizes: [] }));
+      const borderless = Array.isArray(pInfo.sizes) && pInfo.sizes.some((s) => s.borderless);
+      if (mt) {
+        caps = {
+          mediaKey: mt.key,
+          ...(epij && epij.key !== mt.key ? { epijMediaKey: epij.key } : {}),
+          borderless,
+          mediaTypes: mt.choices.map((ch) => ({ value: ch.value, label: formatCapsLabel(ch.value, ch.label && ch.label !== ch.value ? ch.label : ''), selected: !!ch.selected }))
+        };
+      } else {
+        caps = { mediaTypes: [], borderless };
+      }
     }
   } catch { caps = { mediaTypes: [] }; }
   CAPS_CACHE.set(printer, { at: Date.now(), caps });
@@ -432,6 +528,12 @@ export function pickGlossyMediaType(list) {
   const bare = (m) => String(m.value).replace(/^[a-z0-9]+:/i, '');
   const prefs = [/^EpsonPhotoPaperGlossy$/i, /^PhotographicGlossy$/i, /^PhotoPaperPlusGlossy\d*$/i, /^GlossyPaperStandard$/i, /^PhotographicHighGloss$/i];
   for (const re of prefs) { const hit = items.find((m) => re.test(bare(m))); if (hit) return hit.value; }
+  // macOS PPD labels (e.g. Epson L8050 lists "Epson Ultra Glossy" before "Photo Paper Glossy"): prefer standard Photo Paper Glossy,
+  // then Premium Glossy, before falling back to any other glossy paper.
+  const stdGlossy = items.find((m) => /^(?:epson\s+)?photo\s+paper\s+glossy$/i.test(String(m.label || '').trim()));
+  if (stdGlossy) return stdGlossy.value;
+  const premGlossy = items.find((m) => /premium.*gloss/i.test(String(m.label || '')) && !/semi|ultra|matte|luster|lustre/i.test(String(m.label || '')));
+  if (premGlossy) return premGlossy.value;
   const generic = items.find((m) => /gloss/i.test(bare(m) + ' ' + (m.label || '')) && !/semi|contents|post.?card|hagaki|matte|luster|lustre|silky|plain|bond|bp71/i.test(bare(m) + ' ' + (m.label || '')));
   return generic ? generic.value : '';
 }
@@ -635,6 +737,76 @@ async function airPrintQualityOptions(printer, want) {
       if (photo) { out.push('-o', type.key + '=' + photo.value); notes.push(type.key + '=' + photo.value); }
     }
     if (notes.length) log('AirPrint quality: ' + notes.join(', '));
+    return out;
+  } catch { return []; }
+}
+
+// ---------- photo quality for Epson macOS driver queues (EPIJ_Qual + Resolution) ----------
+// Official Epson macOS drivers (e.g. L8050) default to Normal (303) and 360x360dpi, and are not AirPrint queues
+// so airPrintQualityOptions above skips them. Match the booth's Best / Normal / Draft choice to the driver's real
+// EPIJ_Qual and Resolution options, respecting Epson's own presets (e.g. Plain paper uses Fine 304 rather than High Quality 306).
+function pickCupsDriverQualityOptions(opts, want, activeMediaVal) {
+  if (!want || !Array.isArray(opts) || !opts.length) return [];
+  const qualOpt = opts.find((o) => /^EPIJ_Qual$/i.test(o.key));
+  if (!qualOpt || !qualOpt.choices || !qualOpt.choices.length) return [];
+  const resOpt = opts.find((o) => /^Resolution$/i.test(o.key));
+  const mediaOpt = opts.find((o) => /^EPIJ_Medi$/i.test(o.key)) || opts.find((o) => /^media-?type$/i.test(o.key));
+  const activeChoice = (activeMediaVal && mediaOpt && mediaOpt.choices.find((c) => c.value === activeMediaVal))
+    || (mediaOpt && mediaOpt.choices.find((c) => c.selected)) || null;
+  const mediaText = activeChoice ? String(activeChoice.label || activeChoice.value) : '';
+  const isPlain = !!(activeChoice && (activeChoice.value === '0' || /\bplain\b|letterhead|envelope/i.test(mediaText)));
+  const isSticker = !!(activeChoice && (activeChoice.value === '75' || /sticker/i.test(mediaText)));
+
+  let qRanks;
+  if (want === 'draft') {
+    qRanks = [/^draft$/i, /^economy$/i, /draft|economy|fast/i, /^normal$/i];
+  } else if (want === 'normal') {
+    qRanks = isPlain
+      ? [/^normal$/i, /^standard$/i, /^fine$/i, /^quality$/i]
+      : [/^quality$/i, /^fine$/i, /^normal$/i, /^high\s*quality$/i];
+  } else {
+    // best
+    qRanks = isPlain
+      ? [/^fine$/i, /^quality$/i, /^normal$/i]
+      : isSticker
+        ? [/^quality$/i, /^fine$/i, /^high\s*quality$/i]
+        : [/^high\s*quality$/i, /^best/i, /^photo/i, /^quality$/i, /^fine$/i];
+  }
+  let pickedQual = null;
+  for (const re of qRanks) {
+    pickedQual = qualOpt.choices.find((c) => re.test(String(c.label || c.value).trim()));
+    if (pickedQual) break;
+  }
+
+  const out = [];
+  if (pickedQual) out.push('-o', qualOpt.key + '=' + pickedQual.value);
+
+  if (resOpt && Array.isArray(resOpt.choices) && resOpt.choices.length) {
+    const parsed = resOpt.choices.map((c) => {
+      const m = /(\d+)\s*x\s*(\d+)\s*dpi/i.exec(c.value) || /(\d+)\s*dpi/i.exec(c.value);
+      return { choice: c, dpi: m ? Number(m[1]) : 0 };
+    }).filter((x) => x.dpi > 0).sort((a, b) => a.dpi - b.dpi);
+    if (parsed.length) {
+      let pickedRes;
+      if (want === 'draft' || (want === 'normal' && isPlain)) {
+        pickedRes = parsed.find((x) => x.dpi >= 300 && x.dpi <= 400) || parsed.find((x) => x.dpi >= 300) || parsed[0];
+      } else {
+        const capped = parsed.filter((x) => x.dpi <= 1440);
+        pickedRes = (capped.length ? capped : parsed)[(capped.length ? capped : parsed).length - 1];
+      }
+      if (pickedRes) out.push('-o', resOpt.key + '=' + pickedRes.choice.value);
+    }
+  }
+  return out;
+}
+
+async function cupsDriverQualityOptions(printer, want, activeMediaVal) {
+  try {
+    if (!want || DYE_SUB.test(printer)) return [];
+    if (await isAirPrintQueue(printer)) return [];
+    const opts = await cupsPrinterOptions(printer);
+    const out = pickCupsDriverQualityOptions(opts, want, activeMediaVal);
+    if (out.length) log('Driver quality: ' + out.filter((x) => x !== '-o').join(', '));
     return out;
   } catch { return []; }
 }
@@ -1137,13 +1309,15 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, c
           const mkey = caps.mediaKey || 'media-type';
           if (caps.mediaTypes && caps.mediaTypes.some((m) => m.value === reqMediaType)) {
             mopts.push('-o', mkey + '=' + reqMediaType);
-            log('Media type: ' + mkey + '=' + reqMediaType);
+            if (caps.epijMediaKey && caps.epijMediaKey !== mkey) mopts.push('-o', caps.epijMediaKey + '=' + reqMediaType);
+            log('Media type: ' + mopts.filter((x) => x !== '-o').join(', '));
           }
         } catch { }
       }
       const cutOpts = await dyeSubCupsCutOptions(printer, twoUp, pick);
       const qopts = await airPrintQualityOptions(printer, quality);
-      r = await run('lp', ['-d', printer, ...media, ...cutOpts, ...mopts, ...qopts, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
+      const dqopts = qopts.length ? [] : await cupsDriverQualityOptions(printer, quality, reqMediaType);
+      r = await run('lp', ['-d', printer, ...media, ...cutOpts, ...mopts, ...qopts, ...dqopts, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
     }
     if (r.code !== 0) throw new Error((r.err || r.out || ('exit ' + r.code)).trim().slice(0, 300));
     for (const line of String(r.out || '').split(/\r?\n/)) {
@@ -1496,9 +1670,12 @@ export async function handleHelper(req, path, search) {
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);
     if (directTarget(name)) return json({ ok: true });
     if (IS_WIN) return json(await openPrinterSettings(name));
-    const selected = body.options && typeof body.options === 'object' ? body.options : {};
+    const selected = body.options && typeof body.options === 'object' ? { ...body.options } : {};
     try {
       const available = await cupsPrinterOptions(name), args = ['-p', name];
+      // Epson macOS drivers expose both MediaType and EPIJ_Medi with identical codes; keep them in sync unless both were sent explicitly.
+      if (selected.MediaType !== undefined && selected.EPIJ_Medi === undefined) selected.EPIJ_Medi = selected.MediaType;
+      else if (selected.EPIJ_Medi !== undefined && selected.MediaType === undefined) selected.MediaType = selected.EPIJ_Medi;
       for (const [key, value] of Object.entries(selected)) {
         const option = available.find((x) => x.key === key);
         if (!option || !option.choices.some((x) => x.value === value)) continue;
@@ -1507,6 +1684,8 @@ export async function handleHelper(req, path, search) {
       if (args.length > 2) {
         const r = await run('lpoptions', args);
         if (r.code !== 0) throw new Error((r.err || r.out || 'Could not save printer options').trim());
+        PAPER_CACHE.delete(name);
+        CAPS_CACHE.delete(name);
       }
       return json({ ok: true });
     } catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
@@ -1703,4 +1882,4 @@ export function stopHelper() {
   gopro.reset().catch(() => { });
   if (macCamP) macCamP.then((m) => m.reset()).catch(() => { });
 }
-export const _helperTest = { pickPaper, sizeFromName, formatCapsLabel, pickGlossyMediaType, isSplitPaperName, DYE_SUB, refreshUsbDirect, installedAs, usbDirect, PAPER_CACHE, CAPS_CACHE };
+export const _helperTest = { pickPaper, sizeFromName, formatCapsLabel, pickGlossyMediaType, parsePpdChoiceLabels, parseCupsOptionsOutput, pickCupsDriverQualityOptions, MAC_EPSON_L8050_CHOICE_LABELS, isSplitPaperName, DYE_SUB, refreshUsbDirect, installedAs, usbDirect, PAPER_CACHE, CAPS_CACHE };

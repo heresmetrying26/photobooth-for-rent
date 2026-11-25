@@ -918,18 +918,39 @@
           href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/roving-v1.1.3/roving-dslr-bridge-android.apk">Download
           APK</a>
       </div>
+      <div class="helper" style="background:#f2f6ff;border-color:#d0defa;margin-top:14px;">
+        <div>
+          <span class="tag" id="rovingIosTag" style="background:#dce7fe;color:#1d4ed8;">iOS / iPadOS 15+ &middot; Standalone IPA &middot;
+            version 1.0.0</span>
+          <h3>Roving DSLR Bridge for iPhone &amp; iPad (.ipa)</h3>
+          <p>Separate standalone iOS companion app (<code>com.photobooth4u.rovingbridge</code>) that installs beside the
+            kiosk app with zero booth license code needed. Uses Apple <code>ImageCaptureCore</code> over USB-C (iPhone
+            15/16/17 or USB-C iPad) to detect physical shutter clicks on Canon EOS / R-series (including EOS R50),
+            Nikon, and Sony Alpha cameras and stream full-res JPEGs to the laptop Photographer Desk over local Wi-Fi.</p>
+          <p><b>Canon EOS R50 / R-series setting:</b> Set <i>Menu &rsaquo; Wrench &rsaquo; Choose USB connection app</i>
+            to <b>Photo Import/Remote Control</b> (not <i>Canon app(s) for iPhone</i>), turn camera Wi-Fi OFF, and use
+            a data-capable USB-C cable. Keep Pocket Lock open on screen (do not press the iPhone side lock button).</p>
+        </div>
+        <a class="download" id="rovingIosIpa" style="background:#1d4ed8;"
+          href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/roving-ios-v1.0.0/roving-dslr-bridge-ios.ipa">Download
+          iOS .IPA</a>
+      </div>
       <div class="install">
         <div class="callout">
           <b>Quick Setup</b>
-          <p>1. Open Photographer Desk on the laptop (base station).<br>2. Open Roving DSLR Bridge on your Android phone
-            and tap <b>📷 Scan QR Code</b>.<br>3. Point phone at the laptop screen. When it flashes green, connect your
-            DSLR via USB and shoot away!</p>
+          <p>1. Open Photographer Desk on the laptop (base station).<br>2. Open Roving DSLR Bridge on your Android or
+            iPhone and tap <b>📷 Scan QR Code</b>.<br>3. Point phone at the laptop screen. When it flashes green,
+            connect your DSLR via USB and shoot away!</p>
         </div>
         <div class="callout">
-          <b>Installing on Android</b>
-          <p>Download the APK on your phone, tap it in your notifications or Files app, and choose <b>Install</b>. It
-            installs as a separate app labeled <b>Roving DSLR Bridge</b>.</p>
-          <p><a href="/photobooth4u-roving-dslr-guide.pdf" target="_blank"
+          <b>Installing on Android or iPhone</b>
+          <p><b>Android:</b> Download the APK on your phone, tap it in your notifications or Files app, and choose
+            <b>Install</b>.<br><b>iPhone / iPad:</b> Sideload <code>roving-dslr-bridge-ios.ipa</code> via <a
+              href="https://sideloadly.io/" target="_blank" rel="noopener"
+              style="color:#1d4ed8;font-weight:800;">Sideloadly</a> or build the <code>RovingDSLRBridge</code> Xcode
+            target directly onto your phone.</p>
+          <p><a href="/how-to-roving-bridge/"
+              style="color:#1d4ed8;font-weight:800;">📖 Step-by-Step Install Guide (iPhone &amp; Android) →</a> &nbsp;&bull;&nbsp; <a href="/photobooth4u-roving-dslr-guide.pdf" target="_blank"
               style="color:var(--red);font-weight:800;">Download 4-page Roving DSLR PDF Guide →</a></p>
         </div>
       </div>
@@ -1138,6 +1159,11 @@
           curRov = rv.ver;
           const el = document.getElementById('rovingApk'); if (el) el.href = rv.url;
           const rt = document.getElementById('rovingTag'); if (rt) rt.innerHTML = rt.innerHTML.replace(/\d+\.\d+\.\d+/, rv.ver);
+        }
+        const rvIos = latestTagAsset(rList, /^roving-ios-v(\d+(?:\.\d+)*)$/, 'roving-dslr-bridge-ios.ipa');
+        if (rvIos) {
+          const el = document.getElementById('rovingIosIpa'); if (el) el.href = rvIos.url;
+          const rt = document.getElementById('rovingIosTag'); if (rt) rt.innerHTML = rt.innerHTML.replace(/\d+\.\d+\.\d+/, rvIos.ver);
         }
       }).catch(() => { });
       if (isIPad) {

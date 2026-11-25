@@ -51,7 +51,14 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     private var capturingNow = false
     private var cachedOpen = false
     private var cachedName = ""
+    private var cachedBattery = -1
+    private var cachedLastError = ""
     private var lastBrowserKickAt: UInt64 = 0
+    private var cachedRovingPassive = false
+    private var cachedRovingBrand = ""
+    private var cachedCatalogReady = false
+    private var rovingPassiveOpenedAt: UInt64 = 0
+    private var recentActiveDeliveries: [(size: Int, atMs: UInt64)] = []
 
     private func setCapturing(_ on: Bool) {
         stateLock.lock()
@@ -80,6 +87,75 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         return v
     }
 
+    private func setCachedBattery(_ b: Int) {
+        stateLock.lock()
+        cachedBattery = b
+        stateLock.unlock()
+    }
+
+    private func getCachedBattery() -> Int {
+        stateLock.lock()
+        let v = cachedBattery
+        stateLock.unlock()
+        return v
+    }
+
+    private func setCachedLastError(_ s: String) {
+        stateLock.lock()
+        cachedLastError = s
+        stateLock.unlock()
+    }
+
+    private func getCachedLastError() -> String {
+        stateLock.lock()
+        let v = cachedLastError
+        stateLock.unlock()
+        return v
+    }
+
+    private func setPassiveWatch(enabled: Bool, brandName: String = "", catalogReady: Bool, openedAt: UInt64 = 0) {
+        stateLock.lock()
+        cachedRovingPassive = enabled
+        cachedRovingBrand = brandName
+        cachedCatalogReady = catalogReady
+        rovingPassiveOpenedAt = openedAt
+        if !enabled { recentActiveDeliveries.removeAll() }
+        stateLock.unlock()
+    }
+
+    private func markCatalogReady() {
+        stateLock.lock()
+        cachedCatalogReady = true
+        stateLock.unlock()
+    }
+
+    private func recordActiveDelivery(size: Int) {
+        let now = nowMs()
+        stateLock.lock()
+        recentActiveDeliveries.removeAll { now > $0.atMs + 10_000 }
+        recentActiveDeliveries.append((size: size, atMs: now))
+        stateLock.unlock()
+    }
+
+    private func wasRecentlyDeliveredActive(size: Int) -> Bool {
+        let now = nowMs()
+        stateLock.lock()
+        recentActiveDeliveries.removeAll { now > $0.atMs + 10_000 }
+        let matched = recentActiveDeliveries.contains { abs($0.size - size) <= 256 && now <= $0.atMs + 8_000 }
+        stateLock.unlock()
+        return matched
+    }
+
+    private func passiveWatchState() -> (active: Bool, brandName: String, openedAt: UInt64) {
+        let now = nowMs()
+        stateLock.lock()
+        let ready = cachedRovingPassive && (cachedCatalogReady || (rovingPassiveOpenedAt > 0 && now >= rovingPassiveOpenedAt + 3000))
+        let bName = cachedRovingBrand
+        let openedAt = rovingPassiveOpenedAt
+        stateLock.unlock()
+        return (ready, bName, openedAt)
+    }
+
     // ---- Open camera state (accessed only on camQueue) ----
     private enum Brand: String {
         case none = ""
@@ -103,10 +179,13 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     private var diag = ""
     private var lastShutterMs = 0
     private var classicNikon = false
+    private var rovingMode = false
+    private var lastBatteryPollAt: UInt64 = 0
     private var shotFocus = ""
 
     // Canon state
     private var eosVals: [UInt16: UInt32] = [:]
+    private var eosAvail: [UInt16: [UInt32]] = [:]
     private var canonNew: [(handle: UInt32, event: UInt32, format: UInt16, size: UInt32)] = []
     private var liveAt: UInt64 = 0
     private var keepAt: UInt64 = 0
@@ -126,10 +205,12 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     private var sonyVer = 2
     private var sonyDestBlocked = false
 
-    // Generic PTP / didAdd capture waiter
+    // Generic PTP / didAdd capture waiter & passive roving download queue
     private let genericLock = NSLock()
     private var genericWaiters: [((Result<Data, Error>) -> Void)] = []
     private var genericPendingFile: ICCameraFile?
+    private var passiveRovingPhotos: [Data] = []
+    private var passiveInFlightFiles: [String: URL] = [:]
 
     // PTP Transaction ID
     private var ptpTid: UInt32 = 1
@@ -267,6 +348,56 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         return cams
     }
 
+    func startCameraBrowserOnly() {
+        DispatchQueue.main.async {
+            if #available(iOS 14.0, *) {
+                let cAuth = self.browser.contentsAuthorizationStatus
+                let ctrlAuth = self.browser.controlAuthorizationStatus
+                if cAuth == .denied || cAuth == .restricted || ctrlAuth == .denied || ctrlAuth == .restricted {
+                    self.setCachedLastError("iOS Camera Accessory permission is denied. Open iPhone Settings → Privacy & Security → Accessories (or Roving DSLR Bridge) and allow access.")
+                }
+            }
+            self.browser.requestContentsAuthorization { [weak self] status in
+                guard let self = self else { return }
+                self.log("ICDeviceBrowser contents auth: \(status.rawValue)")
+                if status == .authorized && !self.browser.isBrowsing {
+                    self.browser.start()
+                }
+            }
+            self.browser.requestControlAuthorization { [weak self] status in
+                guard let self = self else { return }
+                self.log("ICDeviceBrowser control auth: \(status.rawValue)")
+                if status == .authorized {
+                    self.devicesLock.lock()
+                    let empty = self.availableCameras.isEmpty
+                    self.devicesLock.unlock()
+                    if empty {
+                        self.browser.stop()
+                        self.browser.start()
+                    }
+                } else if status == .denied || status == .restricted {
+                    self.setCachedLastError("USB camera control permission was denied. Allow it in iPhone Settings → Privacy & Security.")
+                }
+            }
+            if !self.browser.isBrowsing {
+                self.browser.start()
+            }
+        }
+        log("USB camera browser started (roving mode)")
+    }
+
+    func stopCameraBrowserOnly() {
+        DispatchQueue.main.async {
+            if self.browser.isBrowsing {
+                self.browser.stop()
+            }
+        }
+        camQueue.async { [weak self] in
+            self?.closeCamera()
+        }
+    }
+
+    #if !ROVING_STANDALONE
     func start() {
         guard !isRunning else { return }
         isRunning = true
@@ -314,6 +445,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             log("Restarted local booth HTTP listeners after background suspend")
         }
     }
+    #endif
 
     // MARK: - ICDeviceBrowserDelegate
 
@@ -371,7 +503,10 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     func cameraDevice(_ camera: ICCameraDevice, didRenameItems items: [ICCameraItem]) {}
     func cameraDeviceDidChangeCapability(_ camera: ICCameraDevice) {}
     func cameraDevice(_ camera: ICCameraDevice, didReceivePTPEvent eventData: Data) {}
-    func deviceDidBecomeReady(withCompleteContentCatalog device: ICCameraDevice) {}
+    func deviceDidBecomeReady(withCompleteContentCatalog device: ICCameraDevice) {
+        markCatalogReady()
+        log("Content catalog ready: \(device.name ?? "")")
+    }
     func cameraDeviceDidRemoveAccessRestriction(_ device: ICDevice) {}
     func cameraDeviceDidEnableAccessRestriction(_ device: ICDevice) {}
 
@@ -379,34 +514,97 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         genericLock.lock()
         let hasWaiter = !genericWaiters.isEmpty
         genericLock.unlock()
-        guard hasWaiter else { return }
 
-        // Pick JPEG over RAW if multiple files arrive (e.g. Fujifilm / Olympus / Pentax RAW+JPEG)
         let files = items.compactMap { $0 as? ICCameraFile }
         guard !files.isEmpty else { return }
-        let picked = files.first(where: {
-            let n = ($0.name ?? "").lowercased()
-            return n.hasSuffix(".jpg") || n.hasSuffix(".jpeg")
-        }) ?? files[0]
+
+        if hasWaiter {
+            // Pick JPEG over RAW if multiple files arrive (e.g. Fujifilm / Olympus / Pentax RAW+JPEG)
+            let picked = files.first(where: {
+                let n = ($0.name ?? "").lowercased()
+                return n.hasSuffix(".jpg") || n.hasSuffix(".jpeg")
+            }) ?? files[0]
+
+            let tempDir = FileManager.default.temporaryDirectory
+            let filename = picked.name ?? "capture-\(nowMs()).jpg"
+            let options: [ICDownloadOption: Any] = [
+                .downloadsDirectoryURL: tempDir,
+                .saveAsFilename: filename,
+                .overwrite: true
+            ]
+            genericLock.lock()
+            genericPendingFile = picked
+            genericLock.unlock()
+
+            camera.requestDownloadFile(
+                picked,
+                options: options,
+                downloadDelegate: self,
+                didDownloadSelector: #selector(didDownloadFile(_:error:options:contextInfo:)),
+                contextInfo: nil
+            )
+            return
+        }
+
+        // Passive roving watch: primary capture path for Olympus / Fujifilm / Pentax / Generic PTP,
+        // and delayed fallback for Nikon (D5300/D5600 MTP) / Canon if ImageCaptureCore consumes ObjectAdded before GetEvent.
+        let pw = passiveWatchState()
+        guard pw.active else { return }
+        let cutoffDate = Date(timeIntervalSince1970: Double(pw.openedAt) / 1000.0 - 8.0)
+        let jpegs = files.filter { file in
+            let n = (file.name ?? "").lowercased()
+            guard n.hasSuffix(".jpg") || n.hasSuffix(".jpeg") else { return false }
+            if let created = file.creationDate {
+                if created < cutoffDate { return false }
+            } else if pw.brandName == "canon" || pw.brandName == "nikon" {
+                // Require creationDate on Canon/Nikon fallback so initial catalog items lacking dates never trigger
+                return false
+            }
+            return true
+        }
+        guard !jpegs.isEmpty else { return }
 
         let tempDir = FileManager.default.temporaryDirectory
-        let filename = picked.name ?? "capture-\(nowMs()).jpg"
-        let options: [ICDownloadOption: Any] = [
-            .downloadsDirectoryURL: tempDir,
-            .saveAsFilename: filename,
-            .overwrite: true
-        ]
-        genericLock.lock()
-        genericPendingFile = picked
-        genericLock.unlock()
+        let isActiveBrand = (pw.brandName == "canon" || pw.brandName == "nikon")
+        for picked in jpegs {
+            let expectedSize = Int(picked.fileSize)
+            if isActiveBrand && expectedSize > 0 && wasRecentlyDeliveredActive(size: expectedSize) {
+                continue
+            }
+            let enqueueDownload = { [weak self, weak camera] in
+                guard let self = self, let cam = camera else { return }
+                let still = self.passiveWatchState()
+                guard still.active else { return }
+                if isActiveBrand && expectedSize > 0 && self.wasRecentlyDeliveredActive(size: expectedSize) {
+                    return
+                }
+                let origName = picked.name ?? "capture.jpg"
+                let uniqueName = "rove_\(self.nowMs())_\(origName)"
+                let destUrl = tempDir.appendingPathComponent(uniqueName)
+                let key = "\(origName)#\(picked.fileSize)"
+                self.genericLock.lock()
+                self.passiveInFlightFiles[key] = destUrl
+                self.genericLock.unlock()
 
-        camera.requestDownloadFile(
-            picked,
-            options: options,
-            downloadDelegate: self,
-            didDownloadSelector: #selector(didDownloadFile(_:error:options:contextInfo:)),
-            contextInfo: nil
-        )
+                let options: [ICDownloadOption: Any] = [
+                    .downloadsDirectoryURL: tempDir,
+                    .saveAsFilename: uniqueName,
+                    .overwrite: true
+                ]
+                cam.requestDownloadFile(
+                    picked,
+                    options: options,
+                    downloadDelegate: self,
+                    didDownloadSelector: #selector(self.didDownloadFile(_:error:options:contextInfo:)),
+                    contextInfo: nil
+                )
+            }
+            if isActiveBrand {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.85, execute: enqueueDownload)
+            } else {
+                enqueueDownload()
+            }
+        }
     }
 
     @objc func didDownloadFile(
@@ -415,25 +613,60 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         options: [String: Any],
         contextInfo: UnsafeMutableRawPointer?
     ) {
+        let key = "\(file.name ?? "capture.jpg")#\(file.fileSize)"
         genericLock.lock()
         let waiters = genericWaiters
-        genericWaiters.removeAll()
-        genericPendingFile = nil
+        if !waiters.isEmpty {
+            genericWaiters.removeAll()
+            genericPendingFile = nil
+        }
+        let passiveUrl = passiveInFlightFiles.removeValue(forKey: key)
         genericLock.unlock()
-        guard !waiters.isEmpty else { return }
 
-        if let err = error {
-            for w in waiters { w(.failure(CamErr("CAPTURE", err.localizedDescription))) }
+        if !waiters.isEmpty {
+            if let err = error {
+                for w in waiters { w(.failure(CamErr("CAPTURE", err.localizedDescription))) }
+                return
+            }
+
+            let tempDir = FileManager.default.temporaryDirectory
+            let savedName = (options[ICDownloadOption.savedFilename.rawValue] as? String) ?? (file.name ?? "capture.jpg")
+            let downloadedUrl = tempDir.appendingPathComponent(savedName)
+            if let data = try? Data(contentsOf: downloadedUrl), !data.isEmpty {
+                try? FileManager.default.removeItem(at: downloadedUrl)
+                for w in waiters { w(.success(data)) }
+            } else {
+                for w in waiters { w(.failure(CamErr("CAPTURE", "Downloaded file is empty or missing."))) }
+            }
             return
         }
 
+        guard error == nil else {
+            if let u = passiveUrl { try? FileManager.default.removeItem(at: u) }
+            return
+        }
         let tempDir = FileManager.default.temporaryDirectory
-        let downloadedUrl = tempDir.appendingPathComponent(file.name ?? "capture.jpg")
-        if let data = try? Data(contentsOf: downloadedUrl), !data.isEmpty {
-            try? FileManager.default.removeItem(at: downloadedUrl)
-            for w in waiters { w(.success(data)) }
+        let savedName = options[ICDownloadOption.savedFilename.rawValue] as? String
+        let targetUrl: URL
+        if let sn = savedName {
+            targetUrl = tempDir.appendingPathComponent(sn)
+        } else if let pu = passiveUrl {
+            targetUrl = pu
         } else {
-            for w in waiters { w(.failure(CamErr("CAPTURE", "Downloaded file is empty or missing."))) }
+            targetUrl = tempDir.appendingPathComponent(file.name ?? "capture.jpg")
+        }
+        if let data = try? Data(contentsOf: targetUrl), data.count > 4, data[0] == 0xFF, data[1] == 0xD8 {
+            try? FileManager.default.removeItem(at: targetUrl)
+            let pw = passiveWatchState()
+            if (pw.brandName == "canon" || pw.brandName == "nikon") && wasRecentlyDeliveredActive(size: data.count) {
+                return
+            }
+            genericLock.lock()
+            passiveRovingPhotos.append(data)
+            genericLock.unlock()
+            log("Passive roving photo received: \(file.name ?? "photo") (\(data.count / 1024) KB)")
+        } else {
+            try? FileManager.default.removeItem(at: targetUrl)
         }
     }
 
@@ -504,12 +737,13 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         var outErr: Error?
 
         cam.requestSendPTPCommand(cmd, outData: outData) { [weak self] d1, d2, err in
-            if let err = err {
-                outErr = err
-            } else if let self = self {
+            if let self = self {
                 let parsed = self.parsePtpCompletion(d1, d2)
                 outResp = parsed.resp
                 outPayload = parsed.data
+            }
+            if let err = err {
+                outErr = err
             }
             sema.signal()
         }
@@ -522,7 +756,8 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             throw CamErr("ERROR", "Camera timed out on \(hex(code)).", transient: true)
         }
 
-        if let err = outErr {
+        let hasType3Resp = outResp.count >= 12 && le32(outResp, 0) == UInt32(outResp.count) && le16(outResp, 4) == 3
+        if let err = outErr, !hasType3Resp {
             if !isCameraStillPresent(cam) {
                 resetCameraState()
                 throw CamErr("GONE", "The camera was unplugged.")
@@ -687,7 +922,10 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         live = false
         setupNote = ""
         diag = ""
+        rovingMode = false
+        lastBatteryPollAt = 0
         eosVals.removeAll()
+        eosAvail.removeAll()
         canonNew.removeAll()
         gotFrame = false
         canonAspectChanged = false
@@ -698,6 +936,12 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         sonyDestBlocked = false
         shotFocus = ""
         setCachedCamera(open: false, name: "")
+        setCachedBattery(-1)
+        setPassiveWatch(enabled: false, catalogReady: false)
+        genericLock.lock()
+        passiveRovingPhotos.removeAll()
+        passiveInFlightFiles.removeAll()
+        genericLock.unlock()
     }
 
     private func closeCamera() {
@@ -773,7 +1017,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         ]
     }
 
-    private func openCamera(fresh: Bool, classic: Bool) throws -> [String: Any] {
+    private func openCamera(fresh: Bool, classic: Bool, roving: Bool = false) throws -> [String: Any] {
         classicNikon = classic
         if fresh { recoverNext = true }
 
@@ -790,7 +1034,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             }
         }
 
-        var cams = rescanCamerasIfEmpty(waitMs: 1100)
+        var cams = rescanCamerasIfEmpty(waitMs: roving ? 600 : 1100)
         if cams.isEmpty {
             devicesLock.lock()
             cams = availableCameras
@@ -798,13 +1042,16 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         }
 
         guard !cams.isEmpty else {
-            throw CamErr("NOCAMERA", "No camera found. Plug your camera into the iPad using a USB data cable and powered USB-C hub, switch it on (Wi-Fi OFF on Canon M50), and allow camera access if iPadOS asks.")
+            let hint = roving
+                ? "No DSLR detected on USB. Plug your camera into this iPhone/iPad with a USB data cable, turn it on, set Canon R-series USB app to 'Photo Import/Remote Control', and turn camera Wi-Fi OFF."
+                : "No camera found. Plug your camera into the iPad using a USB data cable and powered USB-C hub, switch it on (Wi-Fi OFF on Canon M50), and allow camera access if iPadOS asks."
+            throw CamErr("NOCAMERA", hint)
         }
 
         var lastErr: CamErr?
         for cam in cams {
             do {
-                return try openOne(cam)
+                return try openOne(cam, roving: roving)
             } catch let e as CamErr {
                 log("Skipped \(cam.name ?? "camera"): \(e.message)")
                 if lastErr == nil || (lastErr?.code == "NOCAMERA" && e.code != "NOCAMERA") {
@@ -820,8 +1067,9 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         throw CamErr("NOCAMERA", "No supported camera found on USB.")
     }
 
-    private func openOne(_ cam: ICCameraDevice) throws -> [String: Any] {
+    private func openOne(_ cam: ICCameraDevice, roving: Bool = false) throws -> [String: Any] {
         activeCamera = cam
+        rovingMode = roving
         cam.delegate = self
 
         func ensureSessionOpen(retryOnFail: Bool) throws {
@@ -855,7 +1103,12 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
 
         try ensureSessionOpen(retryOnFail: true)
 
-        var gotInfo = (try? readInfo()) ?? false
+        var gotInfo = false
+        for attempt in 0..<3 {
+            gotInfo = (try? readInfo()) ?? false
+            if gotInfo { break }
+            if attempt < 2 { Thread.sleep(forTimeInterval: 0.25) }
+        }
         if !gotInfo {
             let cs = DispatchSemaphore(value: 0)
             cam.requestCloseSession(options: nil) { _ in cs.signal() }
@@ -874,29 +1127,38 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         case .nikon:
             let cleanModel = camModel.replacingOccurrences(of: "NIKON", with: "").replacingOccurrences(of: "Nikon", with: "").trimmingCharacters(in: .whitespaces)
             camName = (camMaker.lowercased().hasPrefix("nikon") ? "Nikon " : "\(camMaker) ") + cleanModel
-            log("Opened \(camName)")
+            log("Opened \(camName)\(roving ? " (roving)" : "")")
             try prepareNikon()
         case .canon:
             let cleanModel = camModel.replacingOccurrences(of: "Canon", with: "", options: .caseInsensitive).trimmingCharacters(in: .whitespaces)
             camName = "Canon \(cleanModel)".trimmingCharacters(in: .whitespaces)
-            log("Opened \(camName)")
+            log("Opened \(camName)\(roving ? " (roving)" : "")")
             try prepareCanon()
         case .sony:
             camName = sonyName(camModel)
-            log("Opened \(camName)")
+            log("Opened \(camName)\(roving ? " (roving)" : "")")
             try prepareSony()
         case .olympus:
             camName = "\(camMaker) \(camModel)".trimmingCharacters(in: .whitespaces)
             if camName.isEmpty { camName = cam.name ?? "Olympus camera" }
-            log("Opened \(camName)")
+            log("Opened \(camName)\(roving ? " (roving)" : "")")
             try prepareOlympus()
         case .generic, .none:
             let rawName = "\(camMaker) \(camModel)".trimmingCharacters(in: .whitespaces)
             camName = rawName.isEmpty ? (cam.name ?? "USB Camera") : rawName
-            log("Opened \(camName) (generic PTP)")
+            log("Opened \(camName) (generic PTP\(roving ? ", roving" : ""))")
             try prepareGeneric()
         }
+        if roving && (brand == .generic || brand == .olympus || brand == .nikon || brand == .canon) {
+            setPassiveWatch(enabled: true, brandName: brand.rawValue, catalogReady: false, openedAt: nowMs())
+        } else {
+            setPassiveWatch(enabled: false, brandName: "", catalogReady: false)
+        }
         setCachedCamera(open: true, name: camName)
+        let bat = batteryNow()
+        setCachedBattery(bat)
+        lastBatteryPollAt = nowMs()
+        setCachedLastError("")
         return infoJson()
     }
 
@@ -1081,12 +1343,13 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     }
 
     private func downloadObject(handle: UInt32, sizeIn: UInt32, notes: inout [String], pieceOp: UInt16 = 0x101B) throws -> Data {
-        var size = sizeIn
+        var size = sizeIn > 0x10000000 ? 0 : sizeIn
         if size == 0 {
             do {
                 let oi = try opRead(0x1008, handle)
                 if oi.code == PTP_OK && oi.data.count >= 12 {
-                    size = le32(oi.data, 8)
+                    let s = le32(oi.data, 8)
+                    size = s > 0x10000000 ? 0 : s
                 }
                 notes.append("info \(hex(oi.code)) \(size) B")
             } catch let e as CamErr {
@@ -1109,11 +1372,11 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
 
         if (r != PTP_OK || img.count < 4 || (size > 0 && img.count < Int(size))) && size > 0 {
             var collected = Data()
-            collected.reserveCapacity(Int(size))
+            collected.reserveCapacity(min(Int(size), 64 * 1024 * 1024))
             var off: UInt32 = 0
             var pr: UInt16 = 0
             while off < size {
-                let chunkLen = min(UInt32(1_048_576), size - off)
+                let chunkLen = min(UInt32(524_288), size - off)
                 let g = try opRead(pieceOp, handle, off, chunkLen, timeout: 25.0)
                 pr = g.code
                 if pr != PTP_OK || g.data.isEmpty { break }
@@ -1195,6 +1458,36 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     }
 
     private func prepareNikon() throws {
+        if rovingMode {
+            // In roving mode, keep SD card recording so the photographer keeps card backups and physical
+            // shutter release works at full speed on Nikon D5300/D5600/D3xxx/Z-series. Only use SDRAM if no card is present.
+            var hasCard = true
+            if let sr = try? opRead(0x1004), sr.code == PTP_OK && sr.data.count >= 4 {
+                let cnt = Int(le32(sr.data, 0))
+                hasCard = (cnt > 0 && sr.data.count >= 8)
+            }
+            if let rm = try? propDesc(0xD10B) {
+                if hasCard && rm.current == "1" && rm.choices.contains("0") {
+                    if (try? setProp(0xD10B, type: rm.type, value: "0")) == true {
+                        setupNote += "Records to SD card. "
+                        log("Recording media -> SD card (roving)")
+                    }
+                } else if !hasCard && rm.current != "1" && rm.choices.contains("1") {
+                    if (try? setProp(0xD10B, type: rm.type, value: "1")) == true {
+                        setupNote += "No SD card: records to camera memory. "
+                        log("Recording media -> camera memory (no SD card)")
+                    }
+                }
+            }
+            if ops.contains(0x90C2) {
+                _ = try? op(0x90C2, 0)
+            }
+            _ = try? nikonEvents()
+            live = false
+            afRefusedLogged = false
+            return
+        }
+
         do {
             if let rm = try propDesc(0xD10B), rm.current != "1" {
                 if try setProp(0xD10B, type: rm.type, value: "1") {
@@ -1465,13 +1758,33 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             let end = off + size
             if type == 0xC189 && size >= 16 {
                 eosVals[UInt16(le32(d, off + 8) & 0xFFFF)] = le32(d, off + 12)
+            } else if type == 0xC18A && size >= 20 {
+                let prop = UInt16(le32(d, off + 8) & 0xFFFF)
+                if prop == 0xD11C || prop == 0xD101 || prop == 0xD102 || prop == 0xD103 || prop == 0xD109 || prop == 0xD1B8 {
+                    let cnt = Int(le32(d, off + 16))
+                    let room = size - 20
+                    if cnt > 0 && cnt <= 128 && room > 0 && room % cnt == 0 {
+                        let es = room / cnt
+                        if es == 1 || es == 2 || es == 4 {
+                            var vals: [UInt32] = []
+                            for k in 0..<cnt {
+                                let p = off + 20 + k * es
+                                let v = es == 4 ? le32(d, p) : es == 2 ? UInt32(le16(d, p)) : UInt32(d[p])
+                                vals.append(v)
+                            }
+                            eosAvail[prop] = vals
+                        }
+                    }
+                }
             } else if (type == 0xC181 || type == 0xC1A7) && size >= 12 {
                 let fmt = off + 0x12 <= end ? le16(d, off + 0x10) : 0
-                let sz = off + 0x20 <= end ? le32(d, off + 0x1C) : 0
+                let rawSz = off + 0x20 <= end ? le32(d, off + 0x1C) : 0
+                let sz = rawSz > 0x10000000 ? 0 : rawSz
                 canonNew.append((le32(d, off + 8), type, fmt, sz))
-            } else if type == 0xC186 && size >= 12 {
+            } else if (type == 0xC186 || type == 0xC1A9 || type == 0xC1B8) && size >= 12 {
                 let fmt = off + 0x0E <= end ? le16(d, off + 0x0C) : 0
-                let sz = off + 0x18 <= end ? le32(d, off + 0x14) : 0
+                let rawSz = off + 0x18 <= end ? le32(d, off + 0x14) : 0
+                let sz = rawSz > 0x10000000 ? 0 : rawSz
                 canonNew.append((le32(d, off + 8), type, fmt, sz))
             }
             off = end
@@ -1525,6 +1838,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
 
     private func prepareCanon() throws {
         eosVals.removeAll()
+        eosAvail.removeAll()
         canonNew.removeAll()
         gotFrame = false
         pollAt = 0
@@ -1554,23 +1868,42 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             log("SetRemoteMode retry: \(hex(r)) / \(hex(r2))")
         }
         if r != PTP_OK && r2 != PTP_OK {
-            throw CamErr("UNSUPPORTED", "The \(camName) didn't accept remote control (\(hex(r))). Turn Wi-Fi/Bluetooth OFF on the camera, set mode dial to P, Tv, Av or M, and use a USB data cable.")
+            throw CamErr("UNSUPPORTED", "The \(camName) didn't accept remote control (\(hex(r))). On Canon R50/R-series set USB connection app to 'Photo Import/Remote Control', turn Wi-Fi/Bluetooth OFF, set mode dial to P/Tv/Av/M, and use a USB data cable.")
         }
 
         try canonPoll()
         _ = try readInfo()
         try canonPoll()
 
-        if !has(0x9153) {
-            throw CamErr("UNSUPPORTED", "The \(camName) doesn't send live view over USB.")
-        }
-        if !has(0x910F) && !has(0x9128) {
-            throw CamErr("UNSUPPORTED", "The \(camName) doesn't take photos over USB.")
+        if !rovingMode {
+            if !has(0x9153) {
+                throw CamErr("UNSUPPORTED", "The \(camName) doesn't send live view over USB.")
+            }
+            if !has(0x910F) && !has(0x9128) {
+                throw CamErr("UNSUPPORTED", "The \(camName) doesn't take photos over USB.")
+            }
+            try canonSingleShot()
+            try canonAspect32()
+        } else {
+            // If an earlier tether app left SaveTo on Host (4), restore Card (2 or 1) so the physical
+            // shutter keeps saving to SD card; if Host mode remains active, send PCHDDCapacity so AvailShots > 0.
+            if let saveTo = eosVals[0xD11C], saveTo == 4 {
+                let av = eosAvail[0xD11C] ?? []
+                let cardVal: UInt32 = (!av.isEmpty && !av.contains(2) && av.contains(1)) ? 1 : 2
+                let sr = try? setEos(0xD11C, cardVal)
+                if sr == PTP_OK {
+                    _ = try? canonPoll()
+                    log("Canon SaveTo restored to Card (\(cardVal)) for roving")
+                }
+            }
+            if eosVals[0xD11C] == 4 && has(0x911A) {
+                _ = try? opRetry(0x911A, 0x0FFFFFFF, 0x00001000, 1)
+            }
+            // Drain any stale pre-connection object events so only new physical shutter shots stream
+            canonNew.removeAll()
         }
 
         lastShutterMs = 0
-        try canonSingleShot()
-        try canonAspect32()
         keepAt = nowMs()
     }
 
@@ -1959,15 +2292,16 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         let dest = info.val
         if dest == 0x01 { sonyDestBlocked = false; return }
         if sonyDestBlocked && dest != 0x10 { return }
-        if dest >= 0 && dest != 0x01 {
+        if dest >= 0 && dest != (rovingMode ? 0x11 : 0x01) {
             var ok = false
-            for want in [UInt16(0x01), UInt16(0x11)] {
+            let prefs: [UInt16] = rovingMode ? [0x11, 0x01] : [0x01, 0x11]
+            for want in prefs {
                 let d = sonyScalarData(UInt32(want), type: info.type == 0 ? 4 : info.type)
                 if let wr = try? opWrite(0x9205, data: d, 0xD222), wr == PTP_OK,
                    let checkProps = try? sonyProps(), sonyVal(checkProps, code: 0xD222) == Int64(want) {
                     ok = true
                     sonyDestBlocked = (want != 0x01)
-                    setupNote += (want == 0x01) ? "Photos go to the iPad only (no memory card needed). " : "Photos go to the iPad and the card. "
+                    setupNote += (want == 0x01) ? "Photos go to the iPhone/iPad only (no memory card needed). " : "Photos go to the iPhone/iPad and the card. "
                     log("Save destination -> \(hex(want))")
                     break
                 }
@@ -2221,8 +2555,10 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     // MARK: - Olympus / OM System (OM-D PTP)
 
     private func prepareOlympus() throws {
-        guard ops.contains(0x9481) || ops.contains(0x100E) else {
-            throw CamErr("UNSUPPORTED", "\(camName) is not in USB Tether/PC Control mode. Set USB Mode to Tether/Control on the camera, or use an HDMI capture card.")
+        if !rovingMode {
+            guard ops.contains(0x9481) || ops.contains(0x100E) else {
+                throw CamErr("UNSUPPORTED", "\(camName) is not in USB Tether/PC Control mode. Set USB Mode to Tether/Control on the camera, or use an HDMI capture card.")
+            }
         }
         live = ops.contains(0x9484)
     }
@@ -2260,8 +2596,10 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     // MARK: - Generic / Fujifilm / Pentax / Ricoh / Standard PTP Fallback
 
     private func prepareGeneric() throws {
-        guard ops.contains(0x100E) || ops.contains(0x900C) else {
-            throw CamErr("UNSUPPORTED", "Found \(camName), which does not expose remote capture over USB PTP (\(diag)). For Fujifilm/Panasonic/Insta360 cameras, switch the camera to USB Webcam / USB Streaming mode or use an HDMI capture card.")
+        if !rovingMode {
+            guard ops.contains(0x100E) || ops.contains(0x900C) else {
+                throw CamErr("UNSUPPORTED", "Found \(camName), which does not expose remote capture over USB PTP (\(diag)). For Fujifilm/Panasonic/Insta360/DJI Osmo cameras, switch the camera to USB Webcam / USB Streaming mode or use an HDMI capture card.")
+            }
         }
         live = ops.contains(0x902C) || ops.contains(0x900C)
     }
@@ -2326,6 +2664,269 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         return data
     }
 
+    // MARK: - Roving DSLR Bridge (Physical Shutter Polling & Public API)
+
+    private func canonDownloadRovingFiles(_ files: [(handle: UInt32, event: UInt32, format: UInt16, size: UInt32)]) throws -> [Data] {
+        var resolved: [(handle: UInt32, event: UInt32, format: UInt16, size: UInt32)] = []
+        for var o in files {
+            if o.format == 0 {
+                if let oi = try? opRead(0x1008, o.handle), oi.code == PTP_OK && oi.data.count >= 12 {
+                    o.format = le16(oi.data, 4)
+                    if o.size == 0 {
+                        let s = le32(oi.data, 8)
+                        o.size = s > 0x10000000 ? 0 : s
+                    }
+                }
+            }
+            if o.format != 0x3001 {
+                resolved.append(o)
+            }
+        }
+        guard !resolved.isEmpty else { return [] }
+
+        var notes = ["files " + resolved.map { "\(hex32($0.handle))/\(hex($0.format))" }.joined(separator: ",")]
+        let jpegs = resolved.filter { $0.format == 0x3801 }
+        let others = resolved.filter { $0.format != 0x3801 && $0.format != 0xB101 && $0.format != 0xB103 && $0.format != 0xB108 && $0.format != 0x3000 && $0.format != 0x3800 }
+        let targets = !jpegs.isEmpty ? jpegs : others
+        let pieceOp: UInt16 = has(0x9107) ? 0x9107 : 0x101B
+
+        var downloadedHandle: UInt32 = 0
+        defer {
+            for o in resolved where o.event == 0xC186 || o.event == 0xC1A9 || o.event == 0xC1B8 {
+                let doneOp: UInt16 = (o.handle != downloadedHandle && has(0x9118)) ? 0x9118 : 0x9117
+                _ = try? op(doneOp, o.handle)
+            }
+        }
+
+        var photos: [Data] = []
+        for o in targets {
+            let b = try downloadObject(handle: o.handle, sizeIn: o.size, notes: &notes, pieceOp: pieceOp)
+            if b.count > 4 && b[0] == 0xFF && b[1] == 0xD8 {
+                downloadedHandle = o.handle
+                photos.append(b)
+            }
+        }
+        if !photos.isEmpty || targets.isEmpty {
+            log("Canon roving download (\(photos.count) JPEG): \(notes.joined(separator: "; "))")
+        }
+        return photos
+    }
+
+    private func canonPollNew() throws -> [Data] {
+        try canonPoll()
+        if nowMs() - keepAt > 10_000 {
+            _ = try? op(0x911D)
+            keepAt = nowMs()
+        }
+        guard !canonNew.isEmpty else { return [] }
+        let files = canonNew.filter { $0.format != 0x3001 }
+        canonNew.removeAll()
+        guard !files.isEmpty else { return [] }
+        return try canonDownloadRovingFiles(files)
+    }
+
+    private func nikonPollNew() throws -> [Data] {
+        let handles = try nikonEvents()
+        guard !handles.isEmpty else { return [] }
+
+        var jpegs: [UInt32] = []
+        var unknown: [UInt32] = []
+        var skippedRaw = 0
+        for h in handles {
+            if h == SDRAM_HANDLE {
+                jpegs.append(h)
+                continue
+            }
+            if let oi = try? opRead(0x1008, h), oi.code == PTP_OK && oi.data.count >= 6 {
+                let fmt = le16(oi.data, 4)
+                if fmt == 0x3801 {
+                    jpegs.append(h)
+                } else if fmt == 0 {
+                    unknown.append(h)
+                } else if fmt != 0x3001 {
+                    skippedRaw += 1
+                }
+            } else {
+                unknown.append(h)
+            }
+        }
+        let chosen = !jpegs.isEmpty ? jpegs : unknown
+        if chosen.isEmpty {
+            if skippedRaw > 0 { log("Nikon roving skipped \(skippedRaw) non-JPEG object(s) (set camera to JPEG or RAW+JPEG)") }
+            return []
+        }
+
+        var photos: [Data] = []
+        for h in chosen {
+            var notes = ["handle \(hex32(h))"]
+            let img = try downloadObject(handle: h, sizeIn: 0, notes: &notes)
+            log("Nikon roving download: \(notes.joined(separator: "; "))")
+            if img.count > 4 && img[0] == 0xFF && img[1] == 0xD8 {
+                photos.append(img)
+            }
+        }
+        return photos
+    }
+
+    private func sonyPollNew() throws -> [Data] {
+        let p = try sonyProps()
+        guard sonyVal(p, code: 0xD215) >= 0x8000 else { return [] }
+
+        var photos: [Data] = []
+        for _ in 0..<4 {
+            let info = try sonyInfo()
+            var notes = ["sony_poll; info \(hex(info.code)) fmt \(hex(info.fmt)) \(info.size) B"]
+            if info.fmt != 0 && info.fmt != 0x3801 {
+                var junk: [String] = []
+                _ = try? downloadObject(handle: SONY_PHOTO, sizeIn: info.size, notes: &junk)
+                log("Skipped non-JPEG Sony roving object \(hex(info.fmt))")
+                if sonyVal(try sonyProps(), code: 0xD215) < 0x8000 { break }
+                continue
+            }
+            let img = try downloadObject(handle: SONY_PHOTO, sizeIn: info.size, notes: &notes)
+            log("Sony roving download: \(notes.joined(separator: "; "))")
+            if img.count > 4 && img[0] == 0xFF && img[1] == 0xD8 {
+                photos.append(img)
+            }
+            if sonyVal(try sonyProps(), code: 0xD215) < 0x8000 { break }
+        }
+        return photos
+    }
+
+    private func passivePollNew() -> [Data] {
+        genericLock.lock()
+        let out = passiveRovingPhotos
+        passiveRovingPhotos.removeAll()
+        genericLock.unlock()
+        return out
+    }
+
+    func isCameraOpen() -> Bool {
+        return getCachedCamera().open
+    }
+
+    func cameraName() -> String {
+        let name = getCachedCamera().name
+        return name.isEmpty ? "DSLR Camera" : name
+    }
+
+    func cameraBattery() -> Int {
+        return getCachedBattery()
+    }
+
+    func lastErrorText() -> String {
+        return getCachedLastError()
+    }
+
+    func diagLogs() -> [String] {
+        return recentLogs()
+    }
+
+    func discoveredCameraNames() -> [String] {
+        devicesLock.lock()
+        let names = availableCameras.map { $0.name ?? "USB Camera" }
+        devicesLock.unlock()
+        return names
+    }
+
+    func ensureOpenRoving() -> Bool {
+        if isCapturing() { return isCameraOpen() }
+        return camQueue.sync {
+            if let ac = activeCamera {
+                if isCameraStillPresent(ac) {
+                    do {
+                        try alive()
+                        let now = nowMs()
+                        if now >= lastBatteryPollAt + 10_000 {
+                            setCachedBattery(batteryNow())
+                            lastBatteryPollAt = now
+                        }
+                        return true
+                    } catch {
+                        closeCamera()
+                    }
+                } else {
+                    closeCamera()
+                }
+            }
+            do {
+                _ = try openCamera(fresh: false, classic: false, roving: true)
+                return activeCamera != nil
+            } catch let e as CamErr {
+                setCachedLastError(e.message)
+                return false
+            } catch {
+                setCachedLastError(error.localizedDescription)
+                return false
+            }
+        }
+    }
+
+    /// Polls the tethered camera for any new photos taken with the physical shutter button.
+    func pollNewPhotos() -> [Data] {
+        if isCapturing() { return [] }
+        return camQueue.sync {
+            guard let ac = activeCamera else { return [] }
+            guard isCameraStillPresent(ac) else {
+                resetCameraState()
+                return []
+            }
+            do {
+                var photos: [Data]
+                switch brand {
+                case .canon:
+                    photos = try canonPollNew()
+                    for p in photos { recordActiveDelivery(size: p.count) }
+                    photos.append(contentsOf: passivePollNew())
+                case .nikon:
+                    photos = try nikonPollNew()
+                    for p in photos { recordActiveDelivery(size: p.count) }
+                    photos.append(contentsOf: passivePollNew())
+                case .sony:
+                    photos = try sonyPollNew()
+                case .olympus, .generic:
+                    photos = passivePollNew()
+                case .none:
+                    photos = []
+                }
+                let now = nowMs()
+                if photos.isEmpty && now >= lastBatteryPollAt + 10_000 {
+                    setCachedBattery(batteryNow())
+                    lastBatteryPollAt = now
+                }
+                return photos
+            } catch let e as CamErr {
+                log("pollNewPhotos: \(e.message)")
+                if e.code == "GONE" {
+                    resetCameraState()
+                }
+                return []
+            } catch {
+                log("pollNewPhotos: \(error.localizedDescription)")
+                return []
+            }
+        }
+    }
+
+    func triggerRovingCapture() throws -> Data {
+        setCapturing(true)
+        defer { setCapturing(false) }
+        do {
+            return try camQueue.sync {
+                try self.capturePhoto(classic: false)
+            }
+        } catch let e as CamErr {
+            throw NSError(domain: "IccCameraHelper", code: e.httpStatus, userInfo: [NSLocalizedDescriptionKey: e.message])
+        }
+    }
+
+    func closeRovingCamera() {
+        camQueue.async { [weak self] in
+            self?.closeCamera()
+        }
+    }
+
+    #if !ROVING_STANDALONE
     // MARK: - Dual-Stack Localhost HTTP Server (127.0.0.1:17321 & [::1]:17321)
 
     private func startHttpServers() {
@@ -2934,4 +3535,5 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         }
         return true
     }
+    #endif
 }

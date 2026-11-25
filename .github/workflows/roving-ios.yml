@@ -1,0 +1,76 @@
+# Builds the standalone Roving DSLR Bridge iPhone / iPad IPA:
+# A dedicated lightweight companion app for roaming photographers wired to a DSLR via USB-C / Camera Adapter.
+# Run it from the Actions tab ("Roving DSLR Bridge iOS app" -> Run workflow),
+# or push a tag like roving-ios-v1.0.0 to attach the IPA to a GitHub release.
+name: Roving DSLR Bridge iOS app
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['roving-ios-v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Show Xcode Version
+        run: xcodebuild -version
+
+      - name: Resolve version
+        id: ver
+        run: |
+          RAW="${GITHUB_REF_NAME#roving-ios-v}"
+          if echo "$RAW" | grep -Eq '^[0-9]+(\.[0-9]+)*$'; then
+            echo "version=$RAW" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=1.0.0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build RovingDSLRBridge Xcode Target
+        run: |
+          xcodebuild -project ios/photobooth4u.xcodeproj \
+            -scheme RovingDSLRBridge \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_STYLE=Manual \
+            MARKETING_VERSION="${{ steps.ver.outputs.version }}" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}"
+
+      - name: Package IPA
+        run: |
+          mkdir -p dist/Payload
+          APP_PATH=$(find build -name "RovingDSLRBridge.app" -type d | head -n 1)
+          echo "Found app at: $APP_PATH"
+          test -n "$APP_PATH"
+          cp -r "$APP_PATH" dist/Payload/
+          cd dist
+          zip -qr roving-dslr-bridge-ios.ipa Payload
+          rm -rf Payload
+          echo "Built roving-dslr-bridge-ios.ipa ($(stat -f%z roving-dslr-bridge-ios.ipa) bytes)"
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: roving-dslr-bridge-ios-ipa
+          path: dist/roving-dslr-bridge-ios.ipa
+
+      - name: Attach IPA to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/roving-ios-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: dist/roving-dslr-bridge-ios.ipa
+          make_latest: false

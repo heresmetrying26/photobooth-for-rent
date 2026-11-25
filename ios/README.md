@@ -98,3 +98,15 @@ booth.html (WKWebView)
 5. Select your iPad as the target device and click **Run** (`Cmd + R`).
 6. For distribution, select **Product → Archive** and upload to **TestFlight**.
 
+---
+
+## Standalone Target: Roving DSLR Bridge (`RovingDSLRBridge`)
+
+The Xcode project also includes a separate standalone app target **`RovingDSLRBridge`** (`com.photobooth4u.rovingbridge`, source in `ios/roving/`), equivalent to Android's `roving-dslr-bridge-android.apk`:
+
+- **No booth license code / no WebView / no kiosk lock** — installs independently beside `photobooth4u`.
+- **Direct USB PTP physical-shutter polling** via shared `IccCameraHelper.swift` (`ROVING_STANDALONE` compilation flag): Canon EOS / R-series (incl. EOS R50), Nikon, Sony Alpha, and passive `ImageCaptureCore` fallback.
+- **1-Second QR Pairing & Offline Disk Queue** — scans the laptop Photographer Desk QR code, monitors local Wi-Fi/Ethernet via `NWPathMonitor`, queues full-res JPEGs safely if Wi-Fi drops, and gives haptic confirmation on delivery.
+- **Canon EOS R50 Setup:** Set *Menu → Wrench → Choose USB connection app* to **Photo Import/Remote Control** (not *Canon app(s) for iPhone*), turn Wi-Fi/Bluetooth OFF, and connect with a USB-C data cable on iPhone 15/16/17 (or Apple Lightning to USB 3 Camera Adapter + external power on older Lightning iPhones).
+- **CI Build:** `.github/workflows/roving-ios.yml` builds `roving-dslr-bridge-ios.ipa` (scheme `RovingDSLRBridge`, tags `roving-ios-v*`).
+

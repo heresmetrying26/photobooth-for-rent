@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Roving DSLR Bridge Install Guide (iPhone &amp; Android) · photobooth4u</title>
+<meta name="description" content="Step-by-step guide to install Roving DSLR Bridge on iPhone, iPad (.ipa via Sideloadly), and Android (.apk), and tether Canon EOS R50, Nikon D5300/D5600, and Sony Alpha DSLRs over USB to your laptop base station.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500..700;1,500..700&family=Manrope:wght@400..800&display=swap">
+<style>
+  :root{ --bg:#f6f1ea; --card:#fffdf9; --ink:#1f1a1d; --dim:#5d555b; --line:#e4ddd3; --red:#c8402a; --red-soft:#fbeee9; --blue:#1d4ed8; --blue-soft:#eef3ff; --dark:#1f1a1d; --green:#21764d; --green-soft:#eef6ef; --amber:#b86c12; --amber-soft:#fef5e7; }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;}
+  a{color:var(--red);}
+  .wrap{max-width:900px; margin:0 auto; padding:0 16px;}
+  header.hero{background:var(--dark); color:#f6f1ea; padding:44px 0 52px;}
+  .brand{display:flex; align-items:center; gap:10px; font:600 22px 'Fraunces',Georgia,serif; color:#f6f1ea; text-decoration:none;}
+  .brand .mark{display:grid; grid-template-columns:repeat(2,9px); gap:3px;}
+  .brand .mark i{width:9px; height:9px; border-radius:2px; background:#f6f1ea;} .brand .mark i:nth-child(2){background:var(--red);}
+  .eyebrow{font-size:13px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:#e8715a; margin:26px 0 8px;}
+  h1{font:600 clamp(30px,6vw,48px)/1.08 'Fraunces',Georgia,serif; margin:0 0 14px;}
+  h1 em{color:#e8715a; font-style:italic;}
+  .lead{color:#d9cfc6; font-size:17px; max-width:680px; margin:0 0 22px;}
+  .hero-actions{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:46px; padding:11px 20px; border-radius:999px; font-weight:800; font-size:15px; text-decoration:none; background:var(--red); color:#fff;}
+  .btn.ios{background:var(--blue); color:#fff;}
+  .btn.alt{background:transparent; border:1.5px solid #6b615b; color:#f6f1ea;}
+  nav.toc{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:-24px 0 8px; position:relative;}
+  nav.toc a{display:block; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; text-decoration:none; color:var(--ink); box-shadow:0 8px 20px rgba(70,45,25,.08);}
+  nav.toc b{display:block; color:var(--red); font-size:11px; letter-spacing:.14em; text-transform:uppercase;}
+  nav.toc span{font-weight:700; font-size:14px;}
+  section.part{padding:34px 0 6px; scroll-margin-top:16px;}
+  section.part h2{font:600 clamp(24px,4.2vw,32px)/1.15 'Fraunces',Georgia,serif; margin:0 0 6px;}
+  .part .kicker{font-size:12px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:var(--red); margin:0 0 4px;}
+  .part .kicker.blue{color:var(--blue);}
+  .part .why{color:var(--dim); margin:0 0 14px;}
+  ol.steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
+  ol.steps > li{display:grid; grid-template-columns:40px 1fr; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  ol.steps .n{width:40px; height:40px; border-radius:50%; background:var(--red); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  ol.steps.ios .n{background:var(--blue);}
+  ol.steps h3{margin:4px 0 4px; font-size:17px;}
+  ol.steps p{margin:0; color:var(--dim);}
+  ol.steps p + p{margin-top:6px;}
+  ol.steps ul{margin:6px 0 0; padding-left:18px; color:var(--dim);}
+  code{font:600 13.5px ui-monospace,'SF Mono',Menlo,Consolas,monospace; background:#efe7dd; border-radius:6px; padding:1px 6px; color:var(--ink); word-break:break-word;}
+  table{width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; font-size:15px;}
+  th, td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); background:#f3ece3;}
+  tr:last-child td{border-bottom:0;}
+  td:first-child{font-weight:700; width:28%;}
+  .callout{background:var(--red-soft); border:1px solid #f1cfc5; border-radius:16px; padding:16px 18px; margin-top:14px;}
+  .callout h3{margin:0 0 4px; font-size:16px;} .callout p{margin:0; color:var(--dim);}
+  .callout.ok{background:var(--green-soft); border-color:#cfe5d2;} .callout.ok h3{color:var(--green);}
+  .callout.blue{background:var(--blue-soft); border-color:#cddcf8;} .callout.blue h3{color:var(--blue);}
+  .callout.warn{background:var(--amber-soft); border-color:#f2d8ae;} .callout.warn h3{color:var(--amber);}
+  .wiring{background:#1f1a1d; color:#f6f1ea; border-radius:16px; padding:16px 18px; font:600 13.5px/1.6 ui-monospace,'SF Mono',Menlo,Consolas,monospace; margin:12px 0; overflow-x:auto;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  .card h3{margin:0 0 6px; font-size:17px;}
+  .card p, .card ul{margin:0; color:var(--dim); font-size:14.5px;}
+  .card ul{padding-left:18px; margin-top:6px;}
+  .badge{display:inline-block; font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; padding:3px 9px; border-radius:999px; margin-bottom:6px;}
+  .badge.blue{background:#dce7fe; color:var(--blue);}
+  .badge.red{background:#fce8e6; color:var(--red);}
+  footer{padding:40px 0 60px; color:var(--dim); font-size:14px;}
+  .help{display:flex; align-items:center; justify-content:space-between; gap:16px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px; margin-bottom:18px;}
+  .help h3{margin:0 0 2px;} .help p{margin:0;}
+  @media (max-width:720px){ nav.toc{grid-template-columns:1fr 1fr;} .grid2{grid-template-columns:1fr;} td:first-child{width:auto;} .help{flex-direction:column; align-items:flex-start;} }
+</style>
+</head>
+<body>
+<header class="hero"><div class="wrap">
+  <a class="brand" href="/"><span class="mark"><i></i><i></i><i></i><i></i></span>photobooth4u</a>
+  <p class="eyebrow">Roving DSLR Bridge · Install &amp; Setup Guide</p>
+  <h1>Install <em>Roving DSLR Bridge</em> on iPhone &amp; Android</h1>
+  <p class="lead">Wire your Canon EOS (including R50), Nikon (D5300 / D5600 / Z-series), or Sony Alpha camera to a pocket phone. Every shot from the camera&rsquo;s physical shutter button streams wirelessly over local Wi-Fi into your laptop&rsquo;s Photographer Desk queue—with zero booth license code needed on the phone.</p>
+  <div class="hero-actions">
+    <a class="btn ios" id="iosIpaBtn" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/roving-ios-v1.0.0/roving-dslr-bridge-ios.ipa">Download iPhone / iPad (.ipa) &middot; <span id="iosIpaVer">v1.0.0</span></a>
+    <a class="btn" id="androidApkBtn" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/roving-v1.1.3/roving-dslr-bridge-android.apk">Download Android (.apk) &middot; <span id="androidApkVer">v1.1.3</span></a>
+    <a class="btn alt" href="https://sideloadly.io/" target="_blank" rel="noopener">Get Sideloadly (iOS Installer)</a>
+    <a class="btn alt" href="/photobooth4u-roving-dslr-guide.pdf" target="_blank">4-Page Field PDF</a>
+  </div>
+</div></header>
+
+<main class="wrap">
+  <nav class="toc">
+    <a href="#hardware"><b>Step 0</b><span>Cables &amp; Gear</span></a>
+    <a href="#install-ios"><b>iPhone / iPad</b><span>Install .IPA (Sideloadly)</span></a>
+    <a href="#install-android"><b>Android</b><span>Install .APK</span></a>
+    <a href="#cameras"><b>DSLRs &amp; Pairing</b><span>R50, Nikon &amp; Shooting</span></a>
+  </nav>
+
+  <!-- ====================================================== HARDWARE -->
+  <section class="part" id="hardware">
+    <p class="kicker">Before you start</p>
+    <h2>What you need for wired DSLR roving</h2>
+    <p class="why">Your phone acts as a pocket USB-to-Wi-Fi bridge. Choose the cable that matches your phone and camera.</p>
+
+    <div class="wiring">[Canon / Nikon / Sony DSLR] &lt;-- Short USB Data Cable --&gt; [iPhone or Android Phone] ~~~ 5GHz Local Wi-Fi ~~~&gt; [Laptop Photographer Desk]</div>
+
+    <div class="grid2">
+      <div class="card">
+        <span class="badge blue">Apple iPhone / iPad (iOS 15+)</span>
+        <h3>iPhone Hardware</h3>
+        <ul>
+          <li><b>iPhone 15 / 16 / 17 or USB-C iPad (Recommended):</b> Connect directly with a short <b>USB-C to USB-C data cable</b> (or USB-C to Mini/Micro-USB for older DSLRs). Avoid charge-only cables.</li>
+          <li><b>iPhone 14 &amp; older (Lightning):</b> Generic cheap OTG adapters fail with <i>&ldquo;Accessory requires too much power&rdquo;</i>. Use the official <b>Apple Lightning to USB 3 Camera Adapter</b> with a small power bank plugged into its Lightning port.</li>
+          <li><b>Install tool (once):</b> Windows PC or Mac with free <a href="https://sideloadly.io/" target="_blank" rel="noopener">Sideloadly</a> and any Apple ID.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="badge red">Android Phone (Android 7+)</span>
+        <h3>Android Hardware</h3>
+        <ul>
+          <li>Any Android phone with <b>USB OTG</b> support.</li>
+          <li><b>USB OTG cable/adapter</b> matching your camera port (ensure the <i>Host/OTG</i> side plugs into the Android phone).</li>
+          <li>No PC needed to install—download and open the <code>.apk</code> directly on the phone.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout ok">
+      <h3>Zero extra license fee on the phone</h3>
+      <p><b>Roving DSLR Bridge</b> installs as its own separate app (<code>com.photobooth4u.rovingbridge</code>) beside the photobooth app. It does not require a booth code on the phone—only the laptop base station needs Photographer Desk enabled.</p>
+    </div>
+  </section>
+
+  <!-- ====================================================== INSTALL IOS -->
+  <section class="part" id="install-ios">
+    <p class="kicker blue">Option 1 · Apple iPhone &amp; iPad</p>
+    <h2>Install Roving DSLR Bridge on iPhone (.ipa via Sideloadly)</h2>
+    <p class="why">Because the standalone iOS bridge is distributed as a direct <code>.ipa</code> outside the App Store, install it once from a Windows PC or Mac in ~5 minutes using Sideloadly.</p>
+
+    <ol class="steps ios">
+      <li><span class="n">1</span><div>
+        <h3>Download Sideloadly and <code>roving-dslr-bridge-ios.ipa</code></h3>
+        <p>On your computer, install <b><a href="https://sideloadly.io/" target="_blank" rel="noopener">Sideloadly</a></b> (Windows: also install Apple&rsquo;s non-Microsoft-Store <b>iTunes</b> linked on sideloadly.io; Mac: drag Sideloadly into <b>Applications</b>). Then click <b>Download iPhone / iPad (.ipa)</b> at the top of this page. <b>Do not unzip the .ipa file.</b></p>
+        <p><b>On Mac:</b> If macOS shows <i>&ldquo;Sideloadly&rdquo; Not Opened</i>, click <b>Done</b> (never Move to Trash), open <b>System Settings &rarr; Privacy &amp; Security</b>, and click <b>Open Anyway</b>.</p>
+      </div></li>
+
+      <li><span class="n">2</span><div>
+        <h3>Connect your iPhone to your computer</h3>
+        <p>Plug your iPhone (or iPad) into the Windows PC or Mac via USB, unlock the screen, and tap <b>Trust This Computer</b> if prompted.</p>
+      </div></li>
+
+      <li><span class="n">3</span><div>
+        <h3>Sideload the <code>.ipa</code> with Sideloadly</h3>
+        <p>Open <b>Sideloadly</b>, confirm your iPhone shows under <b>iDevice</b>, drag <code>roving-dslr-bridge-ios.ipa</code> into the <b>IPA</b> icon on the left, enter your <b>Apple ID</b> email (a regular free Apple ID works), and click <b>Start</b>. Enter your Apple ID password and 2FA code if asked.</p>
+      </div></li>
+
+      <li><span class="n">4</span><div>
+        <h3>Trust Developer Certificate &amp; enable Developer Mode (iOS 16+)</h3>
+        <p>When Sideloadly finishes and <b>Roving DSLR Bridge</b> appears on your Home Screen:</p>
+        <ul>
+          <li>Open iPhone <b>Settings &rarr; General &rarr; VPN &amp; Device Management</b>, tap your Apple ID under <i>Developer App</i>, and tap <b>Trust</b>.</li>
+          <li>On iOS 16 or newer, go to <b>Settings &rarr; Privacy &amp; Security &rarr; Developer Mode</b>, switch it <b>ON</b>, restart the iPhone, and confirm <b>Turn On</b>.</li>
+        </ul>
+      </div></li>
+
+      <li><span class="n">5</span><div>
+        <h3>Allow iOS permissions on first launch</h3>
+        <p>Open <b>Roving DSLR Bridge</b> and allow all three system prompts so QR scanning, local Wi-Fi uploads, and USB cameras work:</p>
+        <ul>
+          <li><b>Camera Access</b> (to scan the laptop Photographer Desk QR code)</li>
+          <li><b>Local Network</b> (to send photos directly to your laptop over offline booth Wi-Fi)</li>
+          <li><b>Camera / Accessory Access</b> (when you plug your DSLR into the USB-C port)</li>
+        </ul>
+      </div></li>
+    </ol>
+
+    <div class="callout">
+      <h3>Free Apple ID 7-day refresh reminder</h3>
+      <p>Apps signed with a free Apple ID stay active for <b>7 days</b>. Before an event, connect the iPhone to your computer (or over Wi-Fi), open Sideloadly, and click <b>Start</b> again (~30 seconds) <b>without deleting the app</b> to refresh the 7-day timer while keeping your settings.</p>
+    </div>
+  </section>
+
+  <!-- ====================================================== INSTALL ANDROID -->
+  <section class="part" id="install-android">
+    <p class="kicker">Option 2 · Android Phone</p>
+    <h2>Install Roving DSLR Bridge on Android (.apk)</h2>
+    <p class="why">Android installs directly on the phone with no computer required.</p>
+
+    <ol class="steps">
+      <li><span class="n">1</span><div>
+        <h3>Download <code>roving-dslr-bridge-android.apk</code></h3>
+        <p>Open this page (or <code>/downloads/#roving-bridge</code>) on your Android phone and tap <b>Download Android (.apk)</b>.</p>
+      </div></li>
+      <li><span class="n">2</span><div>
+        <h3>Allow unknown apps &amp; install</h3>
+        <p>Tap the finished APK in Chrome downloads or your Files app and choose <b>Install</b>. If Android prompts for your browser/file manager, allow <b>Install unknown apps</b>. It appears in your app drawer as <b>📷 Roving DSLR Bridge</b>.</p>
+      </div></li>
+      <li><span class="n">3</span><div>
+        <h3>Grant USB OTG permission once</h3>
+        <p>When you plug in your DSLR via USB OTG, check <b>Always allow</b> and tap <b>OK</b> on the Android USB popup so the bridge connects automatically next time.</p>
+      </div></li>
+    </ol>
+  </section>
+
+  <!-- ====================================================== CAMERAS & PAIRING -->
+  <section class="part" id="cameras">
+    <p class="kicker">Camera Setup &amp; Pairing</p>
+    <h2>Configure your DSLR, pair QR, and shoot</h2>
+    <p class="why">Set these camera menus once before plugging the USB cable into your phone.</p>
+
+    <table>
+      <tr><th>Camera Model</th><th>Required Settings Before Plugging USB</th></tr>
+      <tr>
+        <td><b>Canon EOS R50 / R-series</b><br><small>(R50, R10, R100, R8, RP, M50)</small></td>
+        <td>
+          <b>1.</b> Open <b>Menu &rarr; Wrench (Set-up) &rarr; Choose USB connection app</b> &rarr; select <b>Photo Import/Remote Control</b>.<br>
+          <span style="color:var(--red);font-weight:700;">Do NOT choose &ldquo;Canon app(s) for iPhone&rdquo; or &ldquo;Video calls/streaming&rdquo;.</span><br>
+          <b>2.</b> Turn <b>Wi-Fi / Bluetooth OFF</b>.<br>
+          <b>3.</b> Mode dial on <b>M, Av, Tv, or P</b> (not Video), <b>JPEG</b> (or RAW+JPEG), formatted <b>SD card inserted</b>.<br>
+          <b>4.</b> Set <b>Auto Power Off</b> to Off or long so USB stays awake while walking.
+        </td>
+      </tr>
+      <tr>
+        <td><b>Canon EOS DSLRs</b><br><small>(60D, 70D, 80D, 90D, Rebel / 1500D / 2000D, 5D / 6D)</small></td>
+        <td>Turn <b>Wi-Fi / NFC OFF</b>. Mode dial on <b>M, Av, Tv, or P</b> (not Video). Image quality: <b>JPEG</b> (or RAW+JPEG). Insert an SD card with free space and close any open camera menu.</td>
+      </tr>
+      <tr>
+        <td><b>Nikon D5300 / D5600 / D- &amp; Z-series</b></td>
+        <td>Turn <b>Airplane mode ON</b> (or disable SnapBridge Wi-Fi). Insert a formatted <b>SD card</b>. Set Image quality to <b>JPEG Fine/Normal</b> (or RAW+JPEG). Set USB mode to <b>MTP/PTP</b> if shown in Setup menu. Close camera menus before plugging in.</td>
+      </tr>
+      <tr>
+        <td><b>Sony Alpha</b><br><small>(A6000–A6700, A7 II/III/IV, ZV-E10)</small></td>
+        <td>Set <b>Setup &rarr; USB &rarr; USB Connection: PC Remote</b>, <b>Still Img. Save Dest.: PC + Camera</b>, and <b>Release w/o Card: Enable</b>. File format: <b>JPEG</b> (or RAW+JPEG). Turn off Smartphone Connection / Imaging Edge.</td>
+      </tr>
+    </table>
+
+    <ol class="steps" style="margin-top:16px;">
+      <li><span class="n">1</span><div>
+        <h3>Put laptop and phone on the same Wi-Fi</h3>
+        <p>On the laptop base station, open <b>Setup &rarr; Share &amp; start</b> and switch on <b>Make this laptop the booth Wi-Fi</b> (or connect both devices to the same 5GHz router / hotspot—no internet required).</p>
+      </div></li>
+      <li><span class="n">2</span><div>
+        <h3>Scan the Photographer Desk QR</h3>
+        <p>Open <b>Tools &rarr; Photographer desk &rarr; Connect &amp; QR</b> on the laptop. In <b>Roving DSLR Bridge</b> on your phone, tap <b>📷 Scan QR Code on Laptop</b> and point at the laptop screen until it flashes green <code>✅ Connected! Laptop ready.</code></p>
+      </div></li>
+      <li><span class="n">3</span><div>
+        <h3>Plug in the DSLR &amp; verify <code>● READY</code></h3>
+        <p>Turn the DSLR on and plug the USB data cable into your phone. Wait 1–2 seconds for <code>● READY</code> (with camera name &amp; battery). Tap <b>📸 Test Shutter</b> once to confirm the full pipeline to the laptop queue.</p>
+      </div></li>
+      <li><span class="n">4</span><div>
+        <h3>Engage Pocket Mode &amp; shoot with the camera shutter</h3>
+        <p>Tap <b>🔒 Pocket Mode</b> before slipping the phone into your pocket or holster—the screen dims to OLED black and blocks accidental taps while buzzing on every photo sent to the laptop.</p>
+      </div></li>
+    </ol>
+
+    <div class="callout warn">
+      <h3>Important for iPhone Pocket Mode</h3>
+      <p>Keep the app open on screen inside <b>🔒 Pocket Mode</b>—do <b>not</b> press the iPhone&rsquo;s physical side sleep/lock button! iOS suspends USB camera access if the iPhone is locked or switched to another app. (To prevent accidental side-button locks, turn on iPhone <b>Guided Access</b> before walking the floor.)</p>
+    </div>
+  </section>
+
+  <!-- ====================================================== TROUBLESHOOTING -->
+  <section class="part" id="fix">
+    <p class="kicker">Troubleshooting</p>
+    <h2>Quick fixes</h2>
+    <table>
+      <tr><th>What you see</th><th>How to fix it</th></tr>
+      <tr><td>Canon R50 stays on <code>WAITING</code> on iPhone</td><td>Make sure R50 <b>Choose USB connection app</b> is set to <b>Photo Import/Remote Control</b> (not <i>Canon app(s) for iPhone</i>), turn camera Wi-Fi OFF, switch the camera off &amp; on, and verify your USB-C cable supports data transfer (not charging-only).</td></tr>
+      <tr><td>iPhone asks for permissions or camera won&rsquo;t open</td><td>Check iPhone <b>Settings &rarr; Privacy &amp; Security</b>: allow <b>Camera</b>, <b>Local Network</b>, and <b>Accessories</b> for <b>Roving DSLR Bridge</b>. Tap the <b>🩺</b> diagnostics button inside the app to inspect live USB/PTP logs.</td></tr>
+      <tr><td>Lightning iPhone shows <i>&ldquo;Accessory requires too much power&rdquo;</i></td><td>DSLRs draw more current than unpowered Lightning ports supply. Use an official <b>Apple Lightning to USB 3 Camera Adapter</b> with a USB power bank plugged into its charging port (or use a USB-C iPhone 15/16/17).</td></tr>
+      <tr><td>Laptop URL test fails even on the same Wi-Fi</td><td>On Windows laptop, switch the Wi-Fi network profile from Public to <b>Private</b> (or allow photobooth4u through Windows Firewall). On iPhone, ensure <b>Local Network</b> permission is enabled for Roving DSLR Bridge.</td></tr>
+      <tr><td>Photos shot out of Wi-Fi range</td><td>Keep shooting! Unsent full-res JPEGs stay queued safely on phone storage and upload automatically in order as soon as Wi-Fi signal returns.</td></tr>
+    </table>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="help"><div><h3>Need help pairing your camera?</h3><p>Tap <b>🩺</b> in Roving DSLR Bridge, tap <b>Copy</b>, and send us your camera model &amp; phone model.</p></div><a class="btn" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener">Message us</a></div>
+  photobooth4u &middot; <a href="/how-to-photoman/">Roving Photoman Workflow Guide</a> &middot; <a href="/photobooth4u-roving-dslr-guide.pdf" target="_blank">4-Page Field PDF</a> &middot; <a href="/how-to-ipad-offline/">iPad Offline Guide</a> &middot; <a href="/downloads/">All Downloads</a>
+</footer>
+
+<script>
+  (function () {
+    function verNewer(a, b) {
+      var x = String(a).split('.').map(function (n) { return parseInt(n, 10) || 0; });
+      var y = String(b).split('.').map(function (n) { return parseInt(n, 10) || 0; });
+      for (var i = 0; i < Math.max(x.length, y.length); i++) {
+        var p = x[i] || 0, q = y[i] || 0;
+        if (p !== q) return p > q;
+      }
+      return false;
+    }
+    function latestAsset(rs, tagRe, assetName) {
+      var best = null;
+      for (var i = 0; i < rs.length; i++) {
+        var rel = rs[i];
+        var m = tagRe.exec(rel.tag_name || '');
+        if (!m || rel.draft) continue;
+        var assets = rel.assets || [];
+        var hit = null;
+        for (var j = 0; j < assets.length; j++) {
+          if (assets[j].name === assetName) { hit = assets[j]; break; }
+        }
+        if (!hit) continue;
+        if (!best || verNewer(m[1], best.ver)) best = { ver: m[1], url: hit.browser_download_url };
+      }
+      return best;
+    }
+    fetch('https://api.github.com/repos/heresmetrying26/photobooth-for-rent/releases?per_page=60')
+      .then(function (r) { return r.json(); })
+      .then(function (rs) {
+        if (!Array.isArray(rs)) return;
+        var iosRel = latestAsset(rs, /^roving-ios-v(\d+(?:\.\d+)*)$/, 'roving-dslr-bridge-ios.ipa');
+        if (iosRel) {
+          var b = document.getElementById('iosIpaBtn'); if (b) b.href = iosRel.url;
+          var v = document.getElementById('iosIpaVer'); if (v) v.textContent = 'v' + iosRel.ver;
+        }
+        var andRel = latestAsset(rs, /^roving-v(\d+(?:\.\d+)*)$/, 'roving-dslr-bridge-android.apk');
+        if (andRel) {
+          var b2 = document.getElementById('androidApkBtn'); if (b2) b2.href = andRel.url;
+          var v2 = document.getElementById('androidApkVer'); if (v2) v2.textContent = 'v' + andRel.ver;
+        }
+      })
+      .catch(function () { });
+  })();
+</script>
+</body>
+</html>

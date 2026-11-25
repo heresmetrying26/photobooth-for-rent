@@ -19,6 +19,7 @@ import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
 import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinSaveVideo, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinArmStateNow, spinArmCmdPush, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, roveStateSet, roveCmdTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, setPrintNowConfig, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
 import { initBridge, getBridgeInfo, renewBridgeToken, pushBridgeState, sendBridgeEvent, sendCamCommand } from './lib/guest-bridge.mjs';
+import { initLanStation, getLanStationInfo } from './lib/lan-print-station.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import { probeSensor, startSensor, stopSensor, latestSensor } from './lib/winsensor.mjs';
 import { makeShrinkPage, makePngToJpeg } from './lib/pageshrink.mjs';
@@ -882,7 +883,31 @@ app.whenReady().then(async () => {
     onStatus: (info) => { if (win && !win.isDestroyed()) win.webContents.send('pb4u:bridgeStatus', info); },
     onAction: (act) => { if (win && !win.isDestroyed()) win.webContents.send('pb4u:bridgeAction', act); }
   });
+  initLanStation({
+    getPort: sharePortNow,
+    pinFile: join(dataDir(), 'lan-station.json'),
+    appKind: 'desktop',
+    version: app.getVersion(),
+    logger: (m) => console.log(m),
+    getPrinters: async (refresh) => {
+      const r = await handleHelper(new Request('app://booth/helper/status' + (refresh ? '?refresh=1' : '')), '/status', new URLSearchParams(refresh ? 'refresh=1' : ''));
+      const j = await r.json().catch(() => ({}));
+      return Array.isArray(j.printers) ? j.printers : [];
+    },
+    getPaper: async ({ printer, widthMm, heightMm, twoUp }) => {
+      const qs = new URLSearchParams({ printer: printer || '', w: String(widthMm || 0), h: String(heightMm || 0) });
+      if (typeof twoUp === 'boolean') qs.set('twoUp', twoUp ? '1' : '0');
+      const r = await handleHelper(new Request('app://booth/helper/paper?' + qs.toString()), '/paper', qs);
+      return await r.json().catch(() => ({ ok: false }));
+    },
+    printJob: async (body) => {
+      const r = await handleHelper(new Request('app://booth/helper/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) }), '/print', new URLSearchParams());
+      return await r.json().catch(() => ({ ok: false, error: 'Print error' }));
+    }
+  });
   await startShareServer();
+  const lanInfo = getLanStationInfo();
+  if (lanInfo && lanInfo.port) console.log('[LAN Print Station] port ' + lanInfo.port + ' PIN: ' + lanInfo.pin);
   initHotspot({
     get: () => (settings.hotspot = settings.hotspot || {}), save: saveSettings, logger: (m) => console.log('[hotspot] ' + m),
     dir: app.getPath('userData'),   // where the "hotspot is starting" crash marker lives

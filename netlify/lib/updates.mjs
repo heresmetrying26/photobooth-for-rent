@@ -219,7 +219,7 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.22', date: '2026-11-25' };
+export const HELPER = { version: '1.1.23', date: '2026-11-25' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
@@ -307,6 +307,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-25', title: 'Print Helper 1.1.23 & iPad App (OTA): Offline Laptop Print Station for Mitsubishi, DNP & HiTi USB Printers', for: ['website', 'ipad', 'helper'], helper: '1.1.23',
+    items: [
+      '🖨️ Offline Laptop Print Station (iPad & Android Apps): Print directly over your booth Wi-Fi or laptop hotspot to a Mitsubishi D80, DNP, HiTi, Canon, or Epson USB printer plugged into a Windows or Mac laptop — with zero internet and zero pop-ups.',
+      '🔎 1-tap Wi-Fi detection & 6-digit PIN pairing: Open Print Helper 1.1.23 on the laptop (uses zero extra device slots), tap Find Laptop on Wi-Fi in Setup → Printer on your iPad app, enter the 6-digit PIN, and pick your printer for 4×6 or 2×6 strips.',
+      '📋 Built-in Laptop Dashboard: View your laptop Wi-Fi address, rotate your 6-digit PIN, open driver preferences, and watch incoming iPad prints live right on your laptop.'
+    ]
+  },
   {
     date: '2026-11-25', title: 'Roving DSLR Bridge v1.1.4 (Android) & Android 1.2.19: Pick-to-Send Review Mode, Brightness Before Sending & Photoman Polaroid/Landscape Designer', for: ['website', 'android'], android: '1.2.19',
     items: [

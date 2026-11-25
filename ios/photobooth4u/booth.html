@@ -24413,6 +24413,30 @@
           <!-- Print options host for Android / iPad / Print Station (when desktop Printer 1 card is hidden) -->
           <div class="ps-group" id="mobilePrintOpts" style="display:none;"></div>
 
+          <!-- Offline Laptop Print Station (Wi-Fi / LAN · native tablet app -> Windows/Mac Print Helper) -->
+          <div class="printer-pick" id="lanStationRow" style="display:none;margin-top:10px;">
+            <div class="ps-group" style="margin:0;">
+              <label class="switch-row" style="margin:2px 0 4px;">
+                <span>Laptop Print Station (Wi-Fi · Offline USB printer)</span>
+                <input type="checkbox" id="lanStationToggle">
+              </label>
+              <p class="panel-hint" id="lanStationStatus" style="margin:2px 0 8px;">Send prints over local Wi-Fi straight to a Mitsubishi, DNP, or HiTi printer plugged into a Windows or Mac laptop running Print Helper (zero internet needed).</p>
+              <div id="lanStationForm" style="display:none;">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">
+                  <input type="text" id="lanStationHost" class="printer-input" placeholder="Laptop IP (e.g. 192.168.1.50)" inputmode="decimal" autocomplete="off" spellcheck="false" style="flex:2;min-width:165px;">
+                  <input type="text" id="lanStationPin" class="printer-input" placeholder="6-digit PIN" inputmode="numeric" maxlength="6" autocomplete="off" style="flex:1;min-width:105px;letter-spacing:.12em;text-align:center;">
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                  <button type="button" class="action-btn" id="lanStationConnectBtn" style="width:auto;margin:0;">Connect</button>
+                  <button type="button" class="action-btn" id="lanStationScanBtn" style="width:auto;margin:0;">Find Laptop on Wi-Fi</button>
+                  <button type="button" class="action-btn" id="lanStationDiscBtn" style="display:none;width:auto;margin:0;">Disconnect</button>
+                </div>
+                <div id="lanStationFound" style="display:none;flex-direction:column;gap:6px;margin-top:8px;"></div>
+                <p class="panel-hint" style="margin:6px 0 0;">On the laptop, open <b>photobooth4u Print Helper</b> (or photobooth4u Desktop) and enter its IP and 6-digit PIN here.</p>
+              </div>
+            </div>
+          </div>
+
           <!-- Card 1 · Printer 1 & ALL options for Printer 1 -->
           <div class="printer-pick" id="printerPick">
             <details class="pr-card" id="printer1Card" open>
@@ -44026,13 +44050,53 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // booth app. Without it, the booth says which printer to pick in the dialog.
       // The helper is only contacted when the switch is on, because Chrome asks
       // permission the first time a site talks to the computer itself.
-      const PRINTER_MAP_KEY = 'pb_printer_map', HELPER_KEY = 'pb_print_helper';
-      const HELPER_URL = LAPTOP_PRINT ? '/helper' : 'http://127.0.0.1:17321';
+      const PRINTER_MAP_KEY = 'pb_printer_map', HELPER_KEY = 'pb_print_helper', LAN_STATION_KEY = 'pb_lan_station_cfg';
+      const LAN_STATION_PORTS = [47777, 47778, 47779, 47787, 47797];
+      function loadLanStationCfg() {
+        try {
+          const j = JSON.parse(localStorage.getItem(LAN_STATION_KEY) || 'null');
+          if (j && typeof j === 'object') {
+            return {
+              enabled: !!j.enabled,
+              host: String(j.host || '').trim(),
+              port: Number(j.port) || 47777,
+              pin: String(j.pin || '').trim(),
+              hostName: String(j.hostName || '').trim()
+            };
+          }
+        } catch (e) { }
+        return { enabled: false, host: '', port: 47777, pin: '', hostName: '' };
+      }
+      let lanStationCfg = loadLanStationCfg();
+      function saveLanStationCfg() { try { localStorage.setItem(LAN_STATION_KEY, JSON.stringify(lanStationCfg)); } catch (e) { } }
+      function parseLanStationAddr(raw) {
+        const cleaned = String(raw || '').trim().replace(/^https?:\/\//i, '').split('/')[0].trim();
+        const m = /^(\d{1,3}(?:\.\d{1,3}){3})(?::(\d{1,5}))?$/.exec(cleaned);
+        if (!m) return null;
+        return { host: m[1], port: Math.max(1, Math.min(65535, Number(m[2]) || 47777)) };
+      }
+      function lanStationSupported() {
+        return !LAPTOP_PRINT && (IOS_APP || ANDROID_APP || location.protocol === 'http:') && isMobileOS();
+      }
+      function lanStationActive() {
+        return !!(lanStationSupported() && lanStationCfg.enabled && typeof useStation === 'function' && !useStation() && lanStationCfg.host && /^\d{6}$/.test(lanStationCfg.pin));
+      }
+      function helperBaseUrl() {
+        if (lanStationActive()) return 'http://' + lanStationCfg.host + ':' + (lanStationCfg.port || 47777) + '/lan-station';
+        return LAPTOP_PRINT ? '/helper' : 'http://127.0.0.1:17321';
+      }
+      function helperFetch(path, init) {
+        const opts = Object.assign({}, init || {});
+        if (lanStationActive()) {
+          opts.headers = Object.assign({}, opts.headers || {}, { 'x-pb-pin': lanStationCfg.pin });
+        }
+        return fetch(helperBaseUrl() + path, opts);
+      }
       let printerMap = {};
       try { printerMap = JSON.parse(localStorage.getItem(PRINTER_MAP_KEY) || '{}') || {}; } catch (e) { printerMap = {}; }
       let helperOn = false;
       try { helperOn = localStorage.getItem(HELPER_KEY) === '1'; } catch (e) { }
-      if (LAPTOP_PRINT) helperOn = true;                // built into the app (or the laptop this iPad's booth page came from)
+      if (LAPTOP_PRINT || lanStationActive()) helperOn = true;                // built into the app (or paired offline Laptop Print Station)
       let helper = { ok: false, printers: [], checked: 0 };
       const printerNameInput = document.getElementById('printerNameInput');
       const printerList = document.getElementById('printerList');
@@ -44082,7 +44146,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!name || !helperOn || isInstaxPrinter(name) || capsChecks[name]) return capsChecks[name] || null;
         capsChecks[name] = { state: 'loading' };
         try {
-          const r = await fetch(HELPER_URL + '/printer/caps?printer=' + encodeURIComponent(name), { cache: 'no-store' });
+          const r = await helperFetch('/printer/caps?printer=' + encodeURIComponent(name), { cache: 'no-store' });
           const j = r.ok ? await r.json().catch(() => null) : null;
           capsChecks[name] = j && j.ok && j.known
             ? { state: 'ok', mediaTypes: Array.isArray(j.mediaTypes) ? j.mediaTypes : [], mediaLabels: j.mediaLabels || {}, mediaDefault: j.mediaDefault || '', autoMedia: j.autoMedia || '' }
@@ -44092,8 +44156,121 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         try { if (typeof refreshSecondPrinterOptsUI === 'function') refreshSecondPrinterOptsUI(); } catch (e) { }
         return capsChecks[name];
       }
+      function refreshLanStationUI() {
+        const row = document.getElementById('lanStationRow');
+        if (!row) return;
+        const allow = !!(lanStationSupported() && printSize && !(typeof useStation === 'function' && useStation()));
+        row.style.display = allow ? '' : 'none';
+        if (!allow) return;
+        const tgl = document.getElementById('lanStationToggle');
+        const form = document.getElementById('lanStationForm');
+        const stEl = document.getElementById('lanStationStatus');
+        const hostIn = document.getElementById('lanStationHost');
+        const pinIn = document.getElementById('lanStationPin');
+        const discBtn = document.getElementById('lanStationDiscBtn');
+        if (tgl) tgl.checked = !!lanStationCfg.enabled;
+        if (form) form.style.display = lanStationCfg.enabled ? 'block' : 'none';
+        if (hostIn && document.activeElement !== hostIn) {
+          hostIn.value = lanStationCfg.host ? (lanStationCfg.host + (lanStationCfg.port && lanStationCfg.port !== 47777 ? ':' + lanStationCfg.port : '')) : '';
+        }
+        if (pinIn && document.activeElement !== pinIn) pinIn.value = lanStationCfg.pin || '';
+        if (discBtn) discBtn.style.display = lanStationActive() ? '' : 'none';
+        if (stEl) {
+          if (!lanStationCfg.enabled) {
+            stEl.textContent = 'Send prints over local Wi-Fi straight to a Mitsubishi, DNP, or HiTi printer plugged into a Windows or Mac laptop running Print Helper (zero internet needed).';
+          } else if (lanStationActive() && helper && helper.ok) {
+            const label = lanStationCfg.hostName ? (lanStationCfg.hostName + ' (' + lanStationCfg.host + ')') : lanStationCfg.host;
+            stEl.textContent = 'Connected to ' + label + ' \u2713 — ' + helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' ready. Pick your printer in Printer 1 below.';
+          } else if (lanStationActive() && helper && helper.err === 'pin') {
+            stEl.textContent = helper.errMsg || 'Wrong PIN. Check the 6-digit PIN shown in Print Helper on the laptop.';
+          } else if (lanStationActive() && helper && helper.checked) {
+            stEl.textContent = helper.errMsg || ('Can\u2019t reach laptop ' + lanStationCfg.host + ':' + (lanStationCfg.port || 47777) + '. Check Print Helper is open and both devices are on the same Wi-Fi.');
+          } else {
+            stEl.textContent = 'Enter your laptop\u2019s Wi-Fi IP and 6-digit PIN (or tap Find Laptop on Wi-Fi).';
+          }
+        }
+      }
+      async function probeLanHello(ip, port, ms) {
+        const ctl = new AbortController();
+        const t = setTimeout(() => ctl.abort(), ms || 550);
+        try {
+          const r = await fetch('http://' + ip + ':' + port + '/lan-station/hello', { signal: ctl.signal, cache: 'no-store' });
+          const j = r.ok ? await r.json().catch(() => null) : null;
+          if (j && j.ok && j.app === 'photobooth4u-lan-station') return { ip, port: Number(j.port) || port, host: j.host || ip, kind: j.kind || 'laptop', version: j.version || '' };
+        } catch (e) { }
+        finally { clearTimeout(t); }
+        return null;
+      }
+      async function scanLanStations() {
+        const btn = document.getElementById('lanStationScanBtn');
+        const foundBox = document.getElementById('lanStationFound');
+        const stEl = document.getElementById('lanStationStatus');
+        if (btn) { btn.disabled = true; btn.textContent = 'Searching Wi-Fi…'; }
+        if (foundBox) { foundBox.style.display = 'none'; foundBox.textContent = ''; }
+        try {
+          const prefixes = [];
+          const pushPfx = (ip) => {
+            const m = /^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$/.exec(String(ip || ''));
+            if (m && !prefixes.includes(m[1] + '.')) prefixes.push(m[1] + '.');
+          };
+          try {
+            const lb = lanBaseNow();
+            const m = /https?:\/\/(\d{1,3}(?:\.\d{1,3}){3})/.exec(String(lb || ''));
+            if (m) pushPfx(m[1]);
+          } catch (e) { }
+          if (lanStationCfg.host) pushPfx(lanStationCfg.host);
+          ['192.168.137.', '192.168.1.', '192.168.0.', '172.20.10.'].forEach(p => { if (!prefixes.includes(p)) prefixes.push(p); });
+          const primaryPfx = prefixes[0];
+          const cands = [];
+          const seen = new Set();
+          const addCand = (ip, port) => { const k = ip + ':' + port; if (!seen.has(k)) { seen.add(k); cands.push([ip, port]); } };
+          if (lanStationCfg.host) LAN_STATION_PORTS.forEach(pt => addCand(lanStationCfg.host, pt));
+          // Try hotspot/router gateway IPs across all ports first, then full primary /24 subnet on default port.
+          ['192.168.137.1', primaryPfx + '1', '192.168.1.1', '192.168.0.1'].forEach(ip => LAN_STATION_PORTS.forEach(pt => addCand(ip, pt)));
+          for (let i = 1; i <= 254; i++) addCand(primaryPfx + i, 47777);
+          const hits = [], hitKeys = new Set();
+          const BATCH = 32;
+          for (let i = 0; i < cands.length; i += BATCH) {
+            const res = await Promise.all(cands.slice(i, i + BATCH).map(([ip, pt]) => probeLanHello(ip, pt, 550)));
+            res.forEach(h => {
+              if (!h) return;
+              const hk = h.ip + ':' + h.port;
+              if (!hitKeys.has(hk)) { hitKeys.add(hk); hits.push(h); }
+            });
+            if (hits.length && i >= 64) break;
+          }
+          if (!hits.length) {
+            if (stEl) stEl.textContent = 'No Laptop Print Station found on Wi-Fi. Check Print Helper is open on the laptop and Windows Firewall allows port 47777, or type the IP shown in Print Helper.';
+            return;
+          }
+          if (foundBox) {
+            foundBox.style.display = 'flex';
+            hits.forEach(h => {
+              const b = document.createElement('button');
+              b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:100%;margin:0;text-align:left;';
+              b.textContent = '💻 ' + h.host + ' · ' + h.ip + (h.port !== 47777 ? ':' + h.port : '') + (h.kind === 'desktop' ? ' (Desktop App)' : ' (Print Helper)');
+              b.addEventListener('click', () => {
+                const hostIn = document.getElementById('lanStationHost'), pinIn = document.getElementById('lanStationPin');
+                if (hostIn) hostIn.value = h.ip + (h.port !== 47777 ? ':' + h.port : '');
+                if (pinIn) pinIn.focus();
+                showToast('Filled laptop IP ' + h.ip + '. Enter the 6-digit PIN and tap Connect.', 3500);
+              });
+              foundBox.appendChild(b);
+            });
+          }
+          if (hits.length === 1) {
+            const hostIn = document.getElementById('lanStationHost'), pinIn = document.getElementById('lanStationPin');
+            if (hostIn && !hostIn.value.trim()) hostIn.value = hits[0].ip + (hits[0].port !== 47777 ? ':' + hits[0].port : '');
+            if (pinIn && !pinIn.value.trim()) pinIn.focus();
+            if (stEl) stEl.textContent = 'Found ' + hits[0].host + ' (' + hits[0].ip + '). Enter its 6-digit PIN and tap Connect.';
+          }
+        } finally {
+          if (btn) { btn.disabled = false; btn.textContent = 'Find Laptop on Wi-Fi'; }
+        }
+      }
       async function checkHelper(force) {
-        if (!helperOn) { helper = { ok: false, printers: [], checked: 0 }; refreshPrinterHint(); try { updateAutoPrintUI(); } catch (e) { } return helper; }
+        if (lanStationSupported() && !LAPTOP_PRINT && !useStation()) helperOn = lanStationActive();
+        if (!helperOn) { helper = { ok: false, printers: [], checked: 0 }; refreshPrinterHint(); refreshLanStationUI(); try { updateAutoPrintUI(); } catch (e) { } return helper; }
         if (!force && helper.checked && Date.now() - helper.checked < 15000) return helper;
         if (force) {
           Object.keys(capsChecks).forEach(k => delete capsChecks[k]);
@@ -44103,11 +44280,21 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         try {
           const ctl = new AbortController();
           const t = setTimeout(() => ctl.abort(), 8000);      // Windows can take a few seconds to list printers
-          const r = await fetch(HELPER_URL + '/status' + (force ? '?refresh=1' : ''), { signal: ctl.signal, cache: 'no-store' });
+          const r = await helperFetch('/status' + (force ? '?refresh=1' : ''), { signal: ctl.signal, cache: 'no-store' });
           clearTimeout(t);
-          const j = await r.json();
-          // Instax Link printers (Bluetooth) are listed beside the printers of this computer; the booth prints to them itself.
-          helper = { ok: !!j.ok, printers: (Array.isArray(j.printers) ? j.printers.slice(0, 60).map(String) : []).concat(instaxNames()), checked: Date.now(), version: String(j.version || '') };
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            helper = { ok: false, printers: [], checked: Date.now(), err: (j && j.reason) || 'auth', errMsg: (j && j.error) || ('Error ' + r.status) };
+          } else {
+            const remotePrinters = Array.isArray(j.printers) ? j.printers.slice(0, 60).map(String) : [];
+            if (lanStationActive() && j.host) {
+              lanStationCfg.hostName = String(j.host);
+              saveLanStationCfg();
+            }
+            // Instax Link printers (Bluetooth) are listed beside the printers of this computer; the booth prints to them itself.
+            const mergedPrinters = lanStationActive() ? remotePrinters : remotePrinters.concat(instaxNames());
+            helper = { ok: !!j.ok, printers: mergedPrinters, checked: Date.now(), version: String(j.version || '') };
+          }
         } catch (e) {
           helper = { ok: false, printers: [], checked: Date.now(), err: e && e.name === 'AbortError' ? 'timeout' : 'blocked' };
         }
@@ -44115,11 +44302,60 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         helper.printers.forEach(n => { const o = document.createElement('option'); o.value = n; printerList.appendChild(o); });
         fillPrinterSelect();
         refreshPrinterHint();
+        refreshLanStationUI();
         try { updateAutoPrintUI(); } catch (e) { }
         try { refreshPhotoFitUI(); } catch (e) { }
         try { if (typeof refreshSecondPrinterUI === 'function') refreshSecondPrinterUI(); } catch (e) { }
         return helper;
       }
+      // Bind Offline LAN Laptop Print Station UI events
+      (function () {
+        const tgl = document.getElementById('lanStationToggle');
+        const cBtn = document.getElementById('lanStationConnectBtn');
+        const sBtn = document.getElementById('lanStationScanBtn');
+        const dBtn = document.getElementById('lanStationDiscBtn');
+        if (tgl) tgl.addEventListener('change', async () => {
+          lanStationCfg.enabled = !!tgl.checked;
+          if (!lanStationCfg.enabled && !LAPTOP_PRINT) helperOn = false;
+          saveLanStationCfg();
+          helper = { ok: false, printers: [], checked: 0 };
+          refreshLanStationUI();
+          if (lanStationCfg.enabled && !lanStationCfg.host) scanLanStations();
+          else if (lanStationActive()) { helperOn = true; await checkHelper(true); }
+          try { refreshPrintUI(); } catch (e) { }
+        });
+        if (cBtn) cBtn.addEventListener('click', async () => {
+          const addr = parseLanStationAddr((document.getElementById('lanStationHost') || {}).value);
+          const pin = String((document.getElementById('lanStationPin') || {}).value || '').trim();
+          if (!addr) { showToast('Type the Laptop Wi-Fi IP address first (e.g. 192.168.1.50).', 4000); return; }
+          if (!/^\d{6}$/.test(pin)) { showToast('Enter the 6-digit PIN shown in Print Helper on the laptop.', 4000); return; }
+          cBtn.disabled = true; cBtn.textContent = 'Connecting…';
+          try {
+            lanStationCfg.enabled = true;
+            lanStationCfg.host = addr.host;
+            lanStationCfg.port = addr.port;
+            lanStationCfg.pin = pin;
+            saveLanStationCfg();
+            helperOn = true;
+            helper = { ok: false, printers: [], checked: 0 };
+            await checkHelper(true);
+            refreshPrintUI();
+            if (helper.ok) showToast('Connected to Laptop Print Station! Choose your printer below.', 4500);
+            else showToast(helper.errMsg || 'Could not reach laptop — check Wi-Fi & 6-digit PIN.', 5500);
+          } finally {
+            cBtn.disabled = false; cBtn.textContent = 'Connect';
+          }
+        });
+        if (sBtn) sBtn.addEventListener('click', scanLanStations);
+        if (dBtn) dBtn.addEventListener('click', () => {
+          lanStationCfg.enabled = false;
+          saveLanStationCfg();
+          if (!LAPTOP_PRINT) helperOn = false;
+          helper = { ok: false, printers: [], checked: 0 };
+          refreshPrintUI();
+          showToast('Disconnected from Laptop Print Station.', 3000);
+        });
+      })();
       // The printers come from the Print Helper, so they're picked, not typed.
       const printerSelect = document.getElementById('printerSelect');
       const printerSetupBtn = document.getElementById('printerSetupBtn');
@@ -44132,7 +44368,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           bluetoothPrinterBtn.disabled = true; printerOptionsBox.style.display = 'block';
           printerOptionsBox.textContent = 'Opening Bluetooth settings…';
           try {
-            const rr = await fetch(HELPER_URL + '/printer/bluetooth', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }); const jj = await rr.json();
+            const rr = await helperFetch('/printer/bluetooth', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }); const jj = await rr.json();
             if (!rr.ok || !jj.ok) throw new Error(jj.error || 'Could not open Bluetooth settings.');
             printerOptionsBox.textContent = (jj.message || 'Pair the printer in Bluetooth settings, then add it in Printers & scanners.') + ' When it appears in the system printer list, return here and choose Refresh printer list.';
           } catch (e) { printerOptionsBox.textContent = e.message || 'Could not open Bluetooth settings.'; }
@@ -44143,7 +44379,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         refreshPrintersBtn.style.display = DESKTOP || helperOn ? '' : 'none';
         refreshPrintersBtn.addEventListener('click', async function () {
           refreshPrintersBtn.disabled = true; refreshPrintersBtn.textContent = 'Refreshing…';
-          try { await checkHelper(true); printerOptionsBox.style.display = 'block'; printerOptionsBox.textContent = helper.ok ? (helper.printers.length ? 'Printer list refreshed. Choose the Bluetooth printer from the list above.' : 'No system printers found yet. Finish adding the printer and install its driver, then refresh again.') : 'Print Helper is unavailable. Open it, then refresh the printer list.'; }
+          try { await checkHelper(true); printerOptionsBox.style.display = 'block'; printerOptionsBox.textContent = helper.ok ? (helper.printers.length ? 'Printer list refreshed. Pick a printer from the list above.' : 'No system printers found yet. Finish adding the printer and install its driver, then refresh again.') : (lanStationActive() ? 'Laptop Print Station is unreachable. Check Print Helper is open on the laptop and both devices are on the same Wi-Fi.' : 'Print Helper is unavailable. Open it, then refresh the printer list.'); }
           finally { refreshPrintersBtn.disabled = false; refreshPrintersBtn.textContent = 'Refresh printer list'; }
         });
       }
@@ -44178,7 +44414,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               try {
                 if (selphyDirect) {
                   st.textContent = 'Connecting to ' + (p.name || p.ip) + '…';
-                  const dr = await fetch(HELPER_URL + '/printer/add', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ip: p.ip, port: p.port, path: p.path, name: p.name, direct: true }) });
+                  const dr = await helperFetch('/printer/add', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ip: p.ip, port: p.port, path: p.path, name: p.name, direct: true }) });
                   let dj = null; try { dj = await dr.json(); } catch (e) { }
                   if (!dj || !dj.ok) { st.textContent = (dj && dj.error) || 'Could not connect to the printer. Update the app and try again.'; return; }
                   await pickInstalled(dj.printer);
@@ -44187,7 +44423,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                 }
                 if (p.installed) { await pickInstalled(p.installed); return; }
                 st.textContent = 'Adding ' + (p.name || p.ip) + '… this can take a little while.';
-                const rr = await fetch(HELPER_URL + '/printer/add', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ip: p.ip, port: p.port, path: p.path, name: p.name }) });
+                const rr = await helperFetch('/printer/add', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ip: p.ip, port: p.port, path: p.path, name: p.name }) });
                 let jj = null; try { jj = await rr.json(); } catch (e) { }
                 if (!jj || !jj.ok) { st.textContent = (jj && jj.error) || 'Could not add the printer. Update the app to 1.0.60 or newer and try again.'; return; }
                 st.textContent = jj.direct
@@ -44232,7 +44468,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           box.style.display = 'block'; list.textContent = '';
           st.textContent = 'Asking every address on this network which ones are printers. About 10 seconds…';
           try {
-            const rr = await fetch(HELPER_URL + '/printer/discover' + (ip ? '?ip=' + encodeURIComponent(ip) : ''));
+            const rr = await helperFetch('/printer/discover' + (ip ? '?ip=' + encodeURIComponent(ip) : ''));
             let jj = null; try { jj = await rr.json(); } catch (e) { }
             // An app older than 1.0.60 has no network search and answers with something that is not this reply.
             if (!jj || rr.status === 404 || rr.status === 501) throw new Error('This version of the app can’t search the network yet. Update the app to 1.0.60 or newer, then try again.');
@@ -44340,7 +44576,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (isInstaxPrinter(name)) { printerOptionsBox.style.display = 'block'; printerOptionsBox.textContent = 'An Instax printer has no driver settings. Its film size is fixed; use Connect Instax printer if it lost the link.'; return; }
           printerSetupBtn.disabled = true; printerOptionsBox.style.display = 'block'; printerOptionsBox.textContent = 'Loading printer settings\u2026';
           try {
-            const rr = await fetch(HELPER_URL + '/printer/configure', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name }) }); const jj = await rr.json();
+            const rr = await helperFetch('/printer/configure', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name }) }); const jj = await rr.json();
             if (!rr.ok || !jj.ok) throw new Error(jj.error || 'Could not open printer settings.');
             if (jj.options && jj.options.length) { pbCupsOptionsUI(printerOptionsBox, name, jj.options); return; }
             printerOptionsBox.textContent = jj.message || 'Printer settings opened. Choose the loaded paper and desired print quality, then save or apply.';
@@ -44545,24 +44781,28 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         if (printSize) printerPickSize.textContent = paperFor(printSize).name + (printerKey(printSize) !== printSize ? ' \u00b7 strip layouts (2 strips, cut)' : '');
         if (printerSetupBtn) {
-          const canOpen = DESKTOP || (helperOn && helper.ok && helperAtLeast('1.1.7') && !!name && helper.printers.includes(name));
+          const canOpen = DESKTOP || (!lanStationActive() && helperOn && helper.ok && helperAtLeast('1.1.7') && !!name && helper.printers.includes(name));
           printerSetupBtn.style.display = canOpen ? '' : 'none';
           printerSetupBtn.textContent = 'Configure printer';
         }
-        if (bluetoothPrinterBtn) bluetoothPrinterBtn.style.display = (DESKTOP || (helperOn && helper.ok && helperAtLeast('1.1.8'))) ? '' : 'none';
-        if (refreshPrintersBtn) refreshPrintersBtn.style.display = (DESKTOP || (helperOn && helper.ok && helperAtLeast('1.1.8'))) ? '' : 'none';
+        if (bluetoothPrinterBtn) bluetoothPrinterBtn.style.display = (DESKTOP || (!lanStationActive() && helperOn && helper.ok && helperAtLeast('1.1.8'))) ? '' : 'none';
+        if (refreshPrintersBtn) refreshPrintersBtn.style.display = (DESKTOP || (helperOn && helper.ok && (lanStationActive() || helperAtLeast('1.1.8')))) ? '' : 'none';
+        const p1Find = document.getElementById('printerFindDetails');
+        if (p1Find) p1Find.style.display = lanStationActive() ? 'none' : '';
         if (helperOn && helper.ok) {
           if (LAPTOP_PRINT && !helper.printers.length) printerHelperHint.textContent = 'No printers found on this computer. For Bluetooth, pair the printer in system settings and install its driver if required.';
-          else if (!name) printerHelperHint.textContent = 'Print Helper connected. Choose the printer for this paper size.';
-          else if (helper.printers.length && !helper.printers.includes(name)) printerHelperHint.textContent = 'No printer on this computer is called “' + name + '”. Pick one from the list.';
-          else printerHelperHint.textContent = 'Prints go straight to “' + name + '” — no dialog.';
+          else if (!name) printerHelperHint.textContent = (lanStationActive() ? 'Laptop Print Station connected. ' : 'Print Helper connected. ') + 'Choose the printer for this paper size.';
+          else if (helper.printers.length && !helper.printers.includes(name)) printerHelperHint.textContent = 'No printer on ' + (lanStationActive() ? 'that laptop' : 'this computer') + ' is called “' + name + '”. Pick one from the list.';
+          else printerHelperHint.textContent = lanStationActive()
+            ? 'Prints go over Wi-Fi straight to “' + name + '” on the laptop — zero pop-ups.'
+            : 'Prints go straight to “' + name + '” — no dialog.';
           // Print Helper 1.0.0 for Windows couldn't print one-page jobs (fixed in 1.0.1).
-          if (/Windows/i.test(navigator.userAgent) && helper.version === '1.0.0')
+          if (!lanStationActive() && /Windows/i.test(navigator.userAgent) && helper.version === '1.0.0')
             printerHelperHint.innerHTML = '<div class="helper-help"><b>Please update the Print Helper.</b> This Windows version (1.0.0) can\u2019t print. Close it, <a href="/downloads/" target="_blank" rel="noopener">download the new one</a>, and open it again.</div>';
-          else if (!LAPTOP_PRINT && name && !helperAtLeast('1.1.7'))
+          else if (!LAPTOP_PRINT && !lanStationActive() && name && !helperAtLeast('1.1.7'))
             printerHelperHint.innerHTML = 'Update the Print Helper to open printer settings here. <a href="/downloads/" target="_blank" rel="noopener">Download the latest helper</a>.';
         } else if (helperOn && helper.checked) {
-          printerHelperHint.innerHTML = DESKTOP ? 'Printing isn\u2019t ready yet. Close and reopen the app.' : LANREMOTE ? 'Can\u2019t reach the laptop\u2019s printing service. Check the laptop app is open with iPad sharing on (Setup \u2192 Share &amp; start) and this iPad is on the laptop\u2019s Wi-Fi, then reload this page.' : helperTroubleHtml();
+          printerHelperHint.innerHTML = DESKTOP ? 'Printing isn\u2019t ready yet. Close and reopen the app.' : lanStationActive() ? 'Can\u2019t reach the Laptop Print Station. Check Print Helper is open on the laptop and both devices are on the same Wi-Fi.' : LANREMOTE ? 'Can\u2019t reach the laptop\u2019s printing service. Check the laptop app is open with iPad sharing on (Setup \u2192 Share &amp; start) and this iPad is on the laptop\u2019s Wi-Fi, then reload this page.' : helperTroubleHtml();
         } else {
           printerHelperHint.innerHTML = name ? 'In the print dialog, pick “' + name + '”.' : 'Without the helper, prints go through Chrome’s print dialog. To pick a printer for each size, open the Print Helper and switch it on. <a href="/downloads/" target="_blank" rel="noopener">Download it</a>';
         }
@@ -44601,7 +44841,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (paperChecks[k] || isInstaxPrinter(name)) return paperChecks[k] || null;
         paperChecks[k] = { state: 'loading' };
         try {
-          const r = await fetch(HELPER_URL + '/paper?printer=' + encodeURIComponent(name) + '&w=' + paper.w.toFixed(1) + '&h=' + paper.h.toFixed(1) + '&twoUp=' + (allowTwoUp ? '1' : '0'), { cache: 'no-store' });
+          const r = await helperFetch('/paper?printer=' + encodeURIComponent(name) + '&w=' + paper.w.toFixed(1) + '&h=' + paper.h.toFixed(1) + '&twoUp=' + (allowTwoUp ? '1' : '0'), { cache: 'no-store' });
           const j = r.ok ? await r.json() : null;
           if (!j || !j.ok || !j.known) paperChecks[k] = { state: 'unknown' };
           else if (j.match) paperChecks[k] = { state: 'ok', name: j.match.name, borderless: j.match.borderless, isDefault: j.match.isDefault, paperList: Array.isArray(j.paperList) ? j.paperList : [] };
@@ -44652,6 +44892,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         else if (isBtThermalRoute() && printSize && isReceiptPaper(printSize)) steps = [
           { done: !!(window._btThermal && window._btThermal.btPrinter.connected), t: 'Connect the Bluetooth thermal printer', s: (window._btThermal && window._btThermal.btPrinter.connected) ? '\u2713 Connected: ' + window._btThermal.btPrinter.name : 'Tap <b>Connect Bluetooth Printer</b> below. Ensure printer is powered on and paired in Bluetooth settings.' },
           { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> — the receipt prints directly without a dialog.' }
+        ];
+        else if (lanStationActive()) steps = [
+          { done: connected && helper.printers.length > 0, t: 'Connect Laptop Print Station', s: connected ? ('Connected to <b>' + escHtml(lanStationCfg.hostName || lanStationCfg.host) + '</b> (' + helper.printers.length + ' printers found).') : 'Open Print Helper on the laptop and tap <b>Connect</b> above.' },
+          (function () {
+            const ok = connected && !!name && helper.printers.includes(name);
+            const pl = ok && printSize ? paperLine(name, paperFor(printSize), sizeName) : '';
+            return { done: ok && pl.indexOf('paper-bad') < 0, t: 'Pick your printer for ' + escHtml(sizeName), s: (name ? sizeName + ' \u2192 <b>' + escHtml(name) + '</b>' : 'Choose your Mitsubishi / photo printer in <b>Printer 1</b> below.') + pl };
+          })(),
+          { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> after a photo session — prints over Wi-Fi with zero pop-ups.' }
         ];
         else if (IOS_APP) {
           const apInfo = (() => { try { return (window.__PBPrint && typeof window.__PBPrint.savedAirPrint === 'function') ? JSON.parse(window.__PBPrint.savedAirPrint() || '{}') : {}; } catch (e) { return {}; } })();
@@ -45251,11 +45500,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const cfgBtn = document.createElement('button'); cfgBtn.type = 'button'; cfgBtn.className = 'action-btn'; cfgBtn.style.cssText = 'width:auto;margin:0;'; cfgBtn.textContent = 'Configure printer';
           const refBtn = document.createElement('button'); refBtn.type = 'button'; refBtn.className = 'action-btn'; refBtn.style.cssText = 'width:auto;margin:0;'; refBtn.textContent = 'Refresh printer list';
           const stHint = document.createElement('p'); stHint.className = 'panel-hint'; stHint.style.cssText = 'margin:6px 0 0;display:none;';
-          if (on && !isInstaxPrinter(sel.value) && (DESKTOP || helperAtLeast('1.1.7'))) {
+          if (on && !lanStationActive() && !isInstaxPrinter(sel.value) && (DESKTOP || helperAtLeast('1.1.7'))) {
             cfgBtn.addEventListener('click', async () => {
               cfgBtn.disabled = true; stHint.style.display = 'block'; stHint.textContent = 'Loading printer settings…';
               try {
-                const rr = await fetch(HELPER_URL + '/printer/configure', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: sel.value }) });
+                const rr = await helperFetch('/printer/configure', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: sel.value }) });
                 const jj = await rr.json();
                 if (!rr.ok || !jj.ok) throw new Error(jj.error || 'Could not open printer settings.');
                 if (jj.options && jj.options.length) { pbCupsOptionsUI(stHint, sel.value, jj.options); return; }
@@ -45488,7 +45737,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!pname) return;
         stripPrinterSetupBtn.disabled = true;
         try {
-          const rr = await fetch(HELPER_URL + '/printer/configure', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: pname }) });
+          const rr = await helperFetch('/printer/configure', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: pname }) });
           const jj = await rr.json();
           if (!rr.ok || !jj.ok) throw new Error(jj.error || 'Could not open printer settings.');
           if (jj.options && jj.options.length && printerOptionsBox) {
@@ -45587,16 +45836,18 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (isInstaxPrinter(name)) return printViaInstax(pages, paper, name);
         let h = await checkHelper(true);
         // The built-in helper can be slow to list printers right after the app starts: ask again before giving up.
-        for (let i = 0; LAPTOP_PRINT && i < 3 && (!h.ok || !(h.printers || []).includes(name)); i++) {
+        for (let i = 0; (LAPTOP_PRINT || lanStationActive()) && i < 3 && (!h.ok || !(h.printers || []).includes(name)); i++) {
           await new Promise(r => setTimeout(r, 1500));
           h = await checkHelper(true);
         }
         if (!h.ok) {
           if (DESKTOP) showToast('The app can’t reach its printing service. Close and reopen photobooth4u, then try again.', 6500);
+          else if (lanStationActive()) showToast(h.errMsg || ('Can’t reach Laptop Print Station (' + lanStationCfg.host + '). Check Print Helper is open on the laptop and both devices are on the same Wi-Fi.'), 6500);
           else if (LANREMOTE) showToast('Can’t reach the laptop’s printer. Check the laptop app is open with iPad sharing on, and this iPad is on its Wi-Fi.', 6500);
           return false;
         }
-        const dlg = LAPTOP_PRINT ? '' : ' Opening the print dialog instead.';
+        const noDialog = LAPTOP_PRINT || lanStationActive();
+        const dlg = noDialog ? '' : ' Opening the print dialog instead.';
         // Older Windows helpers stretch the picture to the driver's page; Mac (CUPS) already keeps its shape.
         if (paper.receipt && /Win/i.test(navigator.platform || '') && !helperAtLeast('1.1.4')) {
           showToast('Receipts need Print Helper 1.1.4 or newer (download it again from photobooth4u.netlify.app/downloads). Opening the print dialog instead.', 7000);
@@ -45634,15 +45885,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             custom: isCustom,
             pages: helperPages.map(c => c && c._pbJpeg ? c.toDataURL('image/jpeg', 0.94) : c.toDataURL('image/png'))
           });
-          const r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+          const r = await helperFetch('/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
           const j = await r.json().catch(() => ({}));
           if (r.ok && j.ok) {
             if (Array.isArray(j.warnings) && j.warnings.length) showToast(j.warnings.join(' '), 7500);
             return true;
           }
-          showToast((LAPTOP_PRINT ? 'Couldn’t print on ' + name : 'Print Helper couldn’t print') + ' (' + (j.error || ('error ' + r.status)) + ').' + (LAPTOP_PRINT ? ' Check the printer is on and has paper, then print again.' : dlg), 6500);
+          showToast((noDialog ? 'Couldn’t print on ' + name : 'Print Helper couldn’t print') + ' (' + (j.error || ('error ' + r.status)) + ').' + (noDialog ? ' Check the printer on the laptop is on and has paper, then print again.' : dlg), 6500);
         } catch (e) {
-          showToast((LAPTOP_PRINT ? 'Lost the printing service.' : 'Lost the Print Helper.') + dlg, 4500);
+          showToast((lanStationActive() ? 'Lost connection to Laptop Print Station.' : (LAPTOP_PRINT ? 'Lost the printing service.' : 'Lost the Print Helper.')) + dlg, 4500);
         }
         return false;
       }
@@ -47636,7 +47887,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         try { wifiSyncForSize(); } catch (e) { }
         const row = document.getElementById('wifiPrinterRow');
         if (!row) return;
-        row.style.display = wifiNetAvailable() && printSize && !useStation() ? '' : 'none';
+        row.style.display = wifiNetAvailable() && printSize && !useStation() && !lanStationActive() ? '' : 'none';
         const st = document.getElementById('wifiPrinterStatus'), forget = document.getElementById('wifiPrinterForgetBtn');
         if (forget) forget.style.display = wifiPrinter ? '' : 'none';
         const tst = document.getElementById('wifiPrinterTestBtn');
@@ -49081,8 +49332,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             }
             sent = await printSheets(all, paper, pname);
             if (extraJob) await extraJob;
-            // The app never falls back to the Windows print dialog once a printer is chosen: a guest session must not stall behind it.
-            if (!sent && LAPTOP_PRINT) return false;
+            // The app never falls back to the OS print dialog once a laptop/station printer is chosen: a guest session must not stall behind it.
+            if (!sent && (LAPTOP_PRINT || lanStationActive())) return false;
             if (sent) {
               showToast((auto === true ? 'Auto-printing on ' : 'Printing on ') + allPrintersLabel + ' (' + label + ').');
               armAutoPrintAfterFirst(auto === true);
@@ -49146,8 +49397,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               return false;
             }
           }
-          if (LAPTOP_PRINT && (pname || auto === true)) {
-            // Auto-print (or a chosen printer that was not reachable) must never open the Windows dialog.
+          if ((LAPTOP_PRINT || lanStationActive()) && (pname || auto === true)) {
+            // Auto-print (or a chosen printer that was not reachable) must never open an OS print sheet.
             showToast('No printer is chosen for ' + paper.name + '. Open Printer settings and pick one.', 6500);
             return false;
           }
@@ -49215,8 +49466,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         el.classList.toggle('out', !!parts.length && printsLeft() < sheetsPerCopy(printSize));
         printRouteSelect.value = printRoute;
         printRouteSelect.querySelector('option[value="station"]').disabled = !(isRentalBooth() || isTrialBooth());
-        // The Print Helper is a computer app: never offered on iPad / Android, except an iPad whose booth page came from the laptop app (its printers are the laptop's).
-        const showDesktopPick = !!(printSize && !useStation() && (!isMobileOS() || LANREMOTE));
+        refreshLanStationUI();
+        // The Print Helper is a computer app: never offered on iPad / Android, except when opened from the laptop app OR connected to Laptop Print Station over Wi-Fi.
+        const showDesktopPick = !!(printSize && !useStation() && (!isMobileOS() || LANREMOTE || lanStationActive()));
         document.getElementById('printerPick').style.display = showDesktopPick ? '' : 'none';
         // Keep Lightness & Colour Correction, photo fit / borderless / edges, and thermal quality visible on Android, iPad & Print Station.
         const p1Opts = document.getElementById('printer1OptsBody');
@@ -49246,7 +49498,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const btPaperHint = document.getElementById('btThermalPaperHint');
         if (btRow) {
           const showBt = (isMobileOS() || !helperOn || isReceiptPaper(printSize) || btThermalOn || (window._btThermal && window._btThermal.isNativeAndroid()))
-            && isBtThermalAvailable() && !useStation();
+            && isBtThermalAvailable() && !useStation() && !lanStationActive();
           btRow.style.display = showBt ? '' : 'none';
           if (btToggle) btToggle.checked = btThermalOn;
           const conn = !!(window._btThermal && window._btThermal.btPrinter.connected);
@@ -51587,7 +51839,7 @@ function renderTabletBridgeSetup(info) {
           if (!Object.keys(changed).length) { showToast('Nothing changed.', 2000); return; }
           save.disabled = true;
           try {
-            var rr = await fetch(HELPER_URL + '/printer/options', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name, options: changed }) });
+            var rr = await helperFetch('/printer/options', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name, options: changed }) });
             var jj = await rr.json(); if (!rr.ok || !jj.ok) throw new Error(jj.error || 'Could not save');
             changed = {}; showToast('Printer settings saved.', 2500);
             try {
@@ -59904,7 +60156,7 @@ function renderTabletBridgeSetup(info) {
         }
         // Keep printing inside the app: Desktop never shows the OS print dialog. On tablets, include Silent AirPrint (zero dialog),
         // or the tablet print service only when chosen in Setup / no direct in-app printer exists; on plain web, only when no direct printer exists.
-        if (!LAPTOP_PRINT) {
+        if (!LAPTOP_PRINT && !lanStationActive()) {
           if (IOS_APP && window.__PBPrint && typeof window.__PBPrint.print === 'function') {
             var apInfo = {};
             try { apInfo = (typeof window.__PBPrint.savedAirPrint === 'function') ? JSON.parse(window.__PBPrint.savedAirPrint() || '{}') : {}; } catch (e) { }
@@ -61213,7 +61465,7 @@ function renderTabletBridgeSetup(info) {
         configurePrinter: async function (name) {
           if (!name) return { ok: false, msg: 'No printer selected.' };
           try {
-            var rr = await fetch(HELPER_URL + '/printer/configure', {
+            var rr = await helperFetch('/printer/configure', {
               method: 'POST',
               headers: { 'content-type': 'application/json' },
               body: JSON.stringify({ printer: name })

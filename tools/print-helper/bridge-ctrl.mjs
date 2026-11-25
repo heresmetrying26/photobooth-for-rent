@@ -18,6 +18,13 @@ import {
   captureBridgeShot,
   setBridgeMedia
 } from '../../desktop/lib/guest-bridge.mjs';
+import {
+  initLanStation,
+  handleLanStationHttp,
+  getLanStationInfo,
+  rotateLanStationPin,
+  renderStationDashboardHtml
+} from '../../desktop/lib/lan-print-station.mjs';
 
 const BRIDGE_PORTS = [47777, 47778, 47779, 47787, 47797];
 const MAX_MEDIA_BYTES = 20 * 1024 * 1024;
@@ -37,7 +44,7 @@ function wakePollers() {
   }
 }
 
-export function startHelperBridge({ logger = () => { }, ports = BRIDGE_PORTS } = {}) {
+export function startHelperBridge({ logger = () => { }, ports = BRIDGE_PORTS, lanStation = null } = {}) {
   if (bridgeServer && bridgePort) return Promise.resolve(bridgePort);
   initBridge({
     getPort: () => bridgePort,
@@ -53,6 +60,13 @@ export function startHelperBridge({ logger = () => { }, ports = BRIDGE_PORTS } =
       wakePollers();
     }
   });
+  if (lanStation) {
+    initLanStation({
+      ...lanStation,
+      getPort: () => bridgePort,
+      logger
+    });
+  }
   return new Promise((resolve) => {
     let idx = 0;
     const tryNext = () => {
@@ -69,7 +83,10 @@ export function startHelperBridge({ logger = () => { }, ports = BRIDGE_PORTS } =
           res.end('Bad request');
           return;
         }
-        handleBridgeHttp(req, res, u).then((handled) => {
+        handleLanStationHttp(req, res, u).then((lanHandled) => {
+          if (lanHandled) return true;
+          return handleBridgeHttp(req, res, u);
+        }).then((handled) => {
           if (!handled && !res.writableEnded) {
             res.writeHead(404, { 'content-type': 'text/plain' });
             res.end('Not found');
@@ -97,6 +114,8 @@ export function startHelperBridge({ logger = () => { }, ports = BRIDGE_PORTS } =
     tryNext();
   });
 }
+
+export { getLanStationInfo, rotateLanStationPin, renderStationDashboardHtml };
 
 export function stopHelperBridge() {
   const s = bridgeServer;

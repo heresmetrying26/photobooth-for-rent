@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 import { hotspotInfo } from './hotspot.mjs';
 import { attachBridgeUpgrade, handleBridgeHttp } from './guest-bridge.mjs';
+import { handleLanStationHttp } from './lan-print-station.mjs';
 
 const QR_JS_PATH = fileURLToPath(new URL('qr.js', import.meta.url));
 let QR_JS_CODE = '';
@@ -2776,6 +2777,7 @@ async function handleShare(req, res) {
   if (lanHandler && await lanHandler(req, res)) return;
   let url;
   try { url = new URL(req.url, 'http://x'); } catch { return send(res, 400, 'text/plain', 'Bad request'); }
+  if (await handleLanStationHttp(req, res, url)) return;
   if (await handleBridgeHttp(req, res, url)) return;
   if (url.pathname === '/qr.js') {
     if (QR_JS_CODE) {

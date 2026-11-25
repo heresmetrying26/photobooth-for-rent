@@ -89,9 +89,9 @@ try {
   const built = readFileSync(join(root, 'protected', 'booth.html'), 'utf8');
   await check('the built booth page prints through the laptop when opened from it', () => {
     assert.match(built, /const LAPTOP_PRINT = DESKTOP \|\| LANREMOTE;/);
-    assert.match(built, /const HELPER_URL = LAPTOP_PRINT \? '\/helper' : 'http:\/\/127\.0\.0\.1:17321';/);
-    assert.match(built, /if \(LAPTOP_PRINT\) helperOn = true;/);
-    assert.match(built, /\(!isMobileOS\(\) \|\| LANREMOTE\)\);/, 'the printer list must be shown on an iPad that uses the laptop');
+    assert.match(built, /return LAPTOP_PRINT \? '\/helper' : 'http:\/\/127\.0\.0\.1:17321';/);
+    assert.match(built, /if \(LAPTOP_PRINT \|\| lanStationActive\(\)\) helperOn = true;/);
+    assert.match(built, /\(!isMobileOS\(\) \|\| LANREMOTE \|\| lanStationActive\(\)\)\);/, 'the printer list must be shown on an iPad that uses the laptop');
   });
 
   await check('LANREMOTE can only be true when the page came from the laptop (other devices behave as before)', () => {

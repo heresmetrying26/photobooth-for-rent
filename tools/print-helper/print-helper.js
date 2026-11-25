@@ -19,19 +19,24 @@
 //   bun build --compile --target=bun-darwin-x64   print-helper.js --outfile photobooth4u-print-helper-mac-intel
 //   bun build --compile --target=bun-windows-x64  print-helper.js --outfile photobooth4u-print-helper-windows.exe
 
-import { tmpdir, platform, release as osRelease } from 'node:os';
+import { tmpdir, platform, release as osRelease, homedir } from 'node:os';
 import { join } from 'node:path';
 import { writeFile, rm, mkdtemp, mkdir, readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { freeCamera, guardCamera } from './camfree.mjs';
-import { startHelperBridge, stopHelperBridge, helperBridgeStatus, handleBridgeCtrl } from './bridge-ctrl.mjs';
+import {
+  startHelperBridge, stopHelperBridge, helperBridgeStatus, handleBridgeCtrl,
+  getLanStationInfo, rotateLanStationPin, renderStationDashboardHtml
+} from './bridge-ctrl.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.22';
+const VERSION = '1.1.23';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',
   'http://localhost:8888',            // netlify dev
+  'http://127.0.0.1:' + PORT,         // local Print Station dashboard
+  'http://localhost:' + PORT,
   ...(process.env.PB_ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
 ]);
 const IS_WIN = platform() === 'win32';
@@ -678,6 +683,64 @@ async function openPrinterSettings(printer) {
 
 let queue = Promise.resolve();   // one job at a time
 
+async function lookupPaperInfo(name, w, h, twoUp) {
+  if (!name || !(await printers(false)).includes(name)) return { ok: false, error: 'No printer called "' + name + '"' };
+  const info = await paperSizes(name);
+  const pick = await pickPaper(name, Number(w) || 0, Number(h) || 0, twoUp);
+  const def = info.def && info.sizes.find((x) => x.key === info.def);
+  return {
+    ok: true,
+    known: info.sizes.length > 0,
+    match: pick ? { name: pick.name, borderless: !!pick.borderless, isDefault: !!pick.keep } : null,
+    def: def ? def.name : (info.def || ''),
+    sizes: info.sizes.slice(0, 40).map((x) => x.name),
+    paperList: info.sizes.slice(0, 80).map((x) => ({
+      key: x.key, name: x.name, w: Math.round(x.w * 10) / 10, h: Math.round(x.h * 10) / 10, borderless: !!x.borderless
+    }))
+  };
+}
+
+async function enqueuePrintBody(body) {
+  const name = String((body && body.printer) || '').trim();
+  const pages = Array.isArray(body && body.pages) ? body.pages : [];
+  if (!name) return { status: 400, body: { ok: false, error: 'No printer chosen' } };
+  if (!pages.length || pages.length > 20) return { status: 400, body: { ok: false, error: 'No pages' } };
+  let list = await printers(false);
+  if (!list.includes(name)) list = await printers(true);       // a printer added just now
+  if (!list.includes(name)) return { status: 404, body: { ok: false, error: 'No printer called "' + name + '"' } };
+  const buffers = [];
+  for (const p of pages) {
+    const m = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(String(p));
+    if (!m) return { status: 400, body: { ok: false, error: 'Pages must be PNG or JPEG images' } };
+    buffers.push({ buf: Buffer.from(m[2], 'base64'), ext: m[1] === 'jpeg' ? 'jpg' : 'png' });
+  }
+  const fit = body.fit === 'width' ? 'width' : '';
+  const quality = ['draft', 'normal', 'best'].includes(body.quality) ? body.quality : '';
+  const opts = {
+    twoUp: typeof body.twoUp === 'boolean' ? body.twoUp : undefined,
+    paperName: typeof body.paperName === 'string' ? body.paperName.slice(0, 120) : ''
+  };
+  const wMm = Number(body.widthMm) || 0, hMm = Number(body.heightMm) || 0;
+  const job = queue.then(async () => {
+    // A Canon SELPHY (CP1500 / CP1300...) can stall, print only yellow, or freeze the print queue when several
+    // photos reach it in one job, so each page goes as its own single-page job, one after the other.
+    if (buffers.length > 1 && /selphy|canon.*\bCP\s?\d{3,4}\b/i.test(name)) {
+      for (const it of buffers) await printPages(name, [it], fit, wMm, hMm, quality, opts);
+      return;
+    }
+    await printPages(name, buffers, fit, wMm, hMm, quality, opts);
+  });
+  queue = job.catch(() => { });
+  try {
+    await job;
+    log('Printed ' + buffers.length + ' page(s) on ' + name);
+    return { status: 200, body: { ok: true } };
+  } catch (e) {
+    log('Print failed on ' + name + ': ' + (e && e.message || e));
+    return { status: 500, body: { ok: false, error: String(e && e.message || e) } };
+  }
+}
+
 const server = Bun.serve({
   idleTimeout: 60,                     // a camera photo can take a while
   hostname: '127.0.0.1',
@@ -784,14 +847,24 @@ const server = Bun.serve({
       return json({ ok: false, error: 'Not found' }, 404, origin);
     }
 
+    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/station')) {
+      return new Response(renderStationDashboardHtml(), { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
+    }
+    if (req.method === 'GET' && url.pathname === '/station/info') {
+      const pr = await printers(url.searchParams.get('refresh') === '1');
+      return json({ ...getLanStationInfo(), printers: pr }, 200, origin);
+    }
+    if (req.method === 'POST' && url.pathname === '/station/new-pin') {
+      if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);
+      return json({ ok: true, pin: rotateLanStationPin() }, 200, origin);
+    }
+
     if (req.method === 'GET' && url.pathname === '/paper') {
       const name = String(url.searchParams.get('printer') || '').trim();
-      if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404, origin);
       const twoUpQ = url.searchParams.get('twoUp');
       const twoUp = twoUpQ === '1' ? true : twoUpQ === '0' ? false : undefined;
-      const info = await paperSizes(name), pick = await pickPaper(name, Number(url.searchParams.get('w')) || 0, Number(url.searchParams.get('h')) || 0, twoUp);
-      const def = info.def && info.sizes.find((x) => x.key === info.def);
-      return json({ ok: true, known: info.sizes.length > 0, match: pick ? { name: pick.name, borderless: !!pick.borderless, isDefault: !!pick.keep } : null, def: def ? def.name : (info.def || ''), sizes: info.sizes.slice(0, 40).map((x) => x.name), paperList: info.sizes.slice(0, 80).map((x) => ({ key: x.key, name: x.name, w: Math.round(x.w * 10) / 10, h: Math.round(x.h * 10) / 10, borderless: !!x.borderless })) }, 200, origin);
+      const out = await lookupPaperInfo(name, url.searchParams.get('w'), url.searchParams.get('h'), twoUp);
+      return json(out, out.ok ? 200 : 404, origin);
     }
     if (req.method === 'POST' && url.pathname === '/printer/configure') {
       if (!origin) return json({ ok: false, error: 'Missing origin' }, 403);
@@ -814,44 +887,8 @@ const server = Bun.serve({
       if (!origin) return json({ ok: false, error: 'Missing origin' }, 403);
       let body;
       try { body = await req.json(); } catch (e) { return json({ ok: false, error: 'Bad request' }, 400, origin); }
-      const name = String(body.printer || '').trim();
-      const pages = Array.isArray(body.pages) ? body.pages : [];
-      if (!name) return json({ ok: false, error: 'No printer chosen' }, 400, origin);
-      if (!pages.length || pages.length > 20) return json({ ok: false, error: 'No pages' }, 400, origin);
-      let list = await printers(false);
-      if (!list.includes(name)) list = await printers(true);       // a printer added just now
-      if (!list.includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404, origin);
-      const buffers = [];
-      for (const p of pages) {
-        const m = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(String(p));
-        if (!m) return json({ ok: false, error: 'Pages must be PNG or JPEG images' }, 400, origin);
-        buffers.push({ buf: Buffer.from(m[2], 'base64'), ext: m[1] === 'jpeg' ? 'jpg' : 'png' });
-      }
-      const fit = body.fit === 'width' ? 'width' : '';
-      const quality = ['draft', 'normal', 'best'].includes(body.quality) ? body.quality : '';
-      const opts = {
-        twoUp: typeof body.twoUp === 'boolean' ? body.twoUp : undefined,
-        paperName: typeof body.paperName === 'string' ? body.paperName.slice(0, 120) : ''
-      };
-      const wMm = Number(body.widthMm) || 0, hMm = Number(body.heightMm) || 0;
-      const job = queue.then(async () => {
-        // A Canon SELPHY (CP1500 / CP1300...) can stall, print only yellow, or freeze the print queue when several
-        // photos reach it in one job, so each page goes as its own single-page job, one after the other.
-        if (buffers.length > 1 && /selphy|canon.*\bCP\s?\d{3,4}\b/i.test(name)) {
-          for (const it of buffers) await printPages(name, [it], fit, wMm, hMm, quality, opts);
-          return;
-        }
-        await printPages(name, buffers, fit, wMm, hMm, quality, opts);
-      });
-      queue = job.catch(() => { });
-      try {
-        await job;
-        log('Printed ' + buffers.length + ' page(s) on ' + name);
-        return json({ ok: true }, 200, origin);
-      } catch (e) {
-        log('Print failed on ' + name + ': ' + (e && e.message || e));
-        return json({ ok: false, error: String(e && e.message || e) }, 500, origin);
-      }
+      const out = await enqueuePrintBody(body);
+      return json(out.body, out.status, origin);
     }
     return json({ ok: false, error: 'Not found' }, 404, origin);
   },
@@ -872,11 +909,29 @@ printers(true).then(list => {
   if (CAMERA_OK) console.log('  Camera: plug in a Nikon or Canon EOS camera, switch it on, and pick it in the booth.\n');
 }).catch(() => { });
 process.on('exit', () => { try { cam.proc && cam.proc.kill(); } catch (e) { } try { stopHelperBridge(); } catch (e) { } });
-// Start LAN Tablet Bridge (ports 47777-47797) so the online Web Booth can pair with an Android/Huawei tablet.
-startHelperBridge({ logger: log }).then((bp) => {
+// Start LAN server (ports 47777-47797) for Offline iPad Print Station & Tablet Bridge.
+startHelperBridge({
+  logger: log,
+  lanStation: {
+    appKind: 'print-helper',
+    version: VERSION,
+    pinFile: join(homedir(), '.photobooth4u-lan-station.json'),
+    getPrinters: printers,
+    getPaper: ({ printer, widthMm, heightMm, twoUp }) => lookupPaperInfo(printer, widthMm, heightMm, twoUp),
+    printJob: async (body) => (await enqueuePrintBody(body)).body
+  }
+}).then((bp) => {
   if (bp) {
     const st = helperBridgeStatus();
+    const ls = getLanStationInfo();
+    const firstIp = (ls.addresses && ls.addresses[0]) ? ls.addresses[0].ip : '';
     log('Tablet Bridge ready on port ' + bp + (st.primaryUrl ? ' (' + st.primaryUrl + ')' : '') + ' — allow Windows Firewall (Private & Public) if asked.');
+    console.log('  ------------------------------------------------------------------');
+    console.log('  OFFLINE IPAD PRINT STATION (Wi-Fi / No Internet Needed)');
+    console.log('    Laptop IP  : ' + (firstIp || 'Connect Wi-Fi or Hotspot') + (bp !== 47777 ? ':' + bp : ' (port ' + bp + ')'));
+    console.log('    6-Digit PIN: ' + ls.pin);
+    console.log('    Laptop Page: http://127.0.0.1:' + PORT + '/station');
+    console.log('  ------------------------------------------------------------------\n');
   }
 }).catch(() => { });
 // Windows: get the camera part ready now, so the booth finds the camera quickly.

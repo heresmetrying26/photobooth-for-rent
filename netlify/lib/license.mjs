@@ -18,7 +18,7 @@
 // / "Mac app"), so removing that device in Admin or My Events cancels it at the
 // laptop's next check-in.
 import { createPrivateKey, createPublicKey, sign as edSign, verify as edVerify, randomBytes } from 'node:crypto';
-import { meta, normPrint, extrasOf, LIFETIME_EXP, FINAL_EXP, maxDevicesOf, devicesOf, addDevice, setDevices, displayCode } from './core.mjs';
+import { meta, licenses, normPrint, extrasOf, LIFETIME_EXP, FINAL_EXP, maxDevicesOf, devicesOf, addDevice, setDevices, displayCode, cleanDeviceLabel } from './core.mjs';
 
 export const LIC_PREFIX = 'PB4U-LIC1';
 export const CHECK_DAYS = 75;          // a lifetime laptop checks in this often (when it has internet)
@@ -26,6 +26,24 @@ export const GRACE_DAYS = 30;          // …and keeps working this long past it
 const DAY = 86400000;
 export const MID_RE = /^[A-Za-z0-9-]{8,64}$/;
 export const APP_KINDS = { win: 'Windows app', mac: 'Mac app', android: 'Android app', ios: 'iPad app' };
+export const DEVICE_MODES = ['offline', 'online', 'both'];
+
+// Per-device booth mode: dev.mode overrides the code default without affecting other devices on the same code.
+// Defaults keep existing behaviour: offlineOpt / offlineOnly codes default to 'offline', while online-only codes
+// running on the Windows / Mac Desktop app default to 'online'.
+export function effectiveDeviceMode(rec, dev) {
+  if (dev && DEVICE_MODES.includes(dev.mode)) return dev.mode;
+  if (rec && (rec.offlineOnly || rec.offlineOpt)) return 'offline';
+  return 'online';
+}
+export function deviceAllowsOnline(rec, dev) {
+  const m = effectiveDeviceMode(rec, dev);
+  return m === 'online' || m === 'both';
+}
+export function deviceAllowsOffline(rec, dev) {
+  const m = effectiveDeviceMode(rec, dev);
+  return m === 'offline' || m === 'both';
+}
 
 function privateKey() {
   const s = process.env.PB_LICENSE_KEY;
@@ -58,7 +76,8 @@ export function readLicence(lic) {
 }
 
 // Same add-ons the web booth gets from checkLicense().
-export function featuresOf(rec, deviceNo) {
+export function featuresOf(rec, deviceNo, dev) {
+  const devLabel = dev ? cleanDeviceLabel(dev.label || (dev.app && dev.app.name) || '') : '';
   return {
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes, rec.print),
     traditional: rec.traditional !== false, retakeOpt: !!rec.retakeOpt, typesOpt: !!rec.typesOpt, lockOpt: !!rec.lockOpt, debugOpt: !!rec.debugOpt,
@@ -66,11 +85,13 @@ export function featuresOf(rec, deviceNo) {
     gifOpt: rec.gifOpt !== false,
     ipadOpt: !!rec.ipadOpt,                      // an iPad may use this laptop's camera over Wi-Fi (off by default unless Admin turns it on)
     extras: extrasOf(rec),
-    vouchers: !!rec.payOpt,                       // offline: vouchers only (QR payments need internet)
+    vouchers: !!rec.payOpt,                       // offline: vouchers only; online mode also enables PayMongo QR
     folderKey: rec.lifetime ? null : ((rec.folderName || rec.label || '').trim() || null),
     folderPrefix: rec.lifetime ? ((rec.folderName || rec.label || rec.code || '').trim() || null) : null,
     defaultTheme: rec.defaultTheme || null,
-    deviceNo: deviceNo || 1, multiDevice: maxDevicesOf(rec) > 1, pinResetAt: rec.pinResetAt || 0
+    deviceNo: deviceNo || 1, multiDevice: maxDevicesOf(rec) > 1, pinResetAt: rec.pinResetAt || 0,
+    appMode: effectiveDeviceMode(rec, dev),
+    deviceLabel: devLabel
   };
 }
 const maskCode = (key) => { const c = displayCode(key); return c.slice(0, 3) + '••••-••••-' + c.slice(-4); };
@@ -84,10 +105,13 @@ export function licenceFor(key, rec, dev, now, final) {
   // Lifetime: must check in now and then. A code with an end date (event, 6-Month
   // Pass) works offline right up to that date; Admin changes reach it if it goes online.
   const hard = isFinal ? FINAL_EXP : (exp || chk + GRACE_DAYS * DAY);
+  const feat = { ...featuresOf(rec, dev.no, dev), final: isFinal };
+  if (isFinal) feat.appMode = 'offline';
   return signLicence({
     v: 1, typ: 'pb4u-desktop', lid: dev.app.lid, mid: dev.app.mid, os: dev.app.os, name: dev.app.name || '',
+    label: dev.label || '',
     renter: rec.label || rec.folderName || '', code: maskCode(key), lifetime: !!rec.lifetime,
-    exp, iat: now, chk, hard, feat: { ...featuresOf(rec, dev.no), final: isFinal }
+    exp, iat: now, chk, hard, feat
   });
 }
 
@@ -117,7 +141,8 @@ export function trialLicence(settings, { mid, name, os, ver }, now) {
       traditional: !!settings.trialTraditional, retakeOpt: !!settings.trialRetakeOpt, typesOpt: !!settings.trialTypesOpt, lockOpt: !!settings.trialLockOpt, debugOpt: false,
       orientation: 'either', gifOpt: settings.trialGifOpt !== false, ipadOpt: false,
       extras: extrasOf({}), vouchers: true,
-      folderKey: folder, folderPrefix: null, defaultTheme: null, deviceNo: 1, multiDevice: false, pinResetAt: 0, final: false
+      folderKey: folder, folderPrefix: null, defaultTheme: null, deviceNo: 1, multiDevice: false, pinResetAt: 0, final: false,
+      appMode: 'offline', deviceLabel: clean(name, 40)
     }
   });
 }
@@ -129,15 +154,56 @@ export async function dropMap(lid) { try { await meta().delete(mapKey(lid)); } c
 
 export const appDevice = (rec, pred) => devicesOf(rec).find((d) => d.app && pred(d.app));
 
+// Verifies a Desktop / App cloud request carrying { licence, mid }.
+// Returns null when no Desktop licence was provided (caller falls back to web token auth).
+export async function verifyDesktopAppAuth(b, { requireOnline = false } = {}) {
+  if (!(b && b.licence && b.mid && process.env.PB_LICENSE_KEY)) return null;
+  const lp = readLicence(b.licence);
+  const mid = String(b.mid || '').trim().toUpperCase();
+  if (!lp || lp.typ !== 'pb4u-desktop' || lp.mid !== mid) {
+    return { ok: false, status: 401, error: 'locked', reason: 'invalid' };
+  }
+  const map = await readMap(lp.lid);
+  const rec = map ? await licenses().get(map.key, { type: 'json' }) : null;
+  const dev = rec && appDevice(rec, (a) => a.lid === lp.lid && a.mid === mid);
+  if (!rec || !dev) return { ok: false, status: 401, error: 'locked', reason: 'device-removed' };
+  if (rec.status === 'revoked') return { ok: false, status: 401, error: 'locked', reason: 'revoked' };
+  if (rec.status !== 'active' || rec.expiresAt <= Date.now()) return { ok: false, status: 401, error: 'locked', reason: 'expired' };
+  const mode = effectiveDeviceMode(rec, dev);
+  if (requireOnline && !deviceAllowsOnline(rec, dev)) {
+    return { ok: false, status: 403, error: 'Online mode isn’t enabled for this device. Ask Admin to switch this device to Online or Both.', reason: 'offline-only' };
+  }
+  const parentRec = (rec.kind === 'bonus' && rec.parent) ? ((await licenses().get(rec.parent, { type: 'json' })) || rec) : rec;
+  const owner = (rec.kind === 'bonus' && rec.parent) ? rec.parent : map.key;
+  return {
+    ok: true,
+    key: map.key,
+    owner,
+    rec,
+    parentRec,
+    dev,
+    mode,
+    allowsOnline: deviceAllowsOnline(rec, dev),
+    allowsOffline: deviceAllowsOffline(rec, dev),
+    deviceNo: dev.no || 1,
+    folderKey: rec.lifetime ? null : ((rec.folderName || rec.label || '').trim() || null),
+    folderPrefix: rec.lifetime ? ((rec.folderName || rec.label || rec.code || '').trim() || null) : null,
+    subfolder: rec.kind === 'bonus' ? (rec.subfolder || 'Bonus') : null,
+    exp: rec.expiresAt
+  };
+}
+
 // Adds (or refreshes) this laptop's activation on the code. Returns
 // { dev } or { error, status }. The caller saves rec.
-export function activateOn(rec, { mid, name, os, ver }, now) {
+export function activateOn(rec, { mid, name, os, ver, label }, now) {
   const osKey = os === 'mac' ? 'mac' : os === 'android' ? 'android' : os === 'ios' ? 'ios' : 'win';
   const clean = (v, n) => String(v || '').replace(/[<>"\u0000-\u001f]/g, '').trim().slice(0, n);
+  const cleanLbl = cleanDeviceLabel(label);
   let dev = appDevice(rec, (a) => a.mid === mid);
   if (dev) {
     dev.app = { ...dev.app, name: clean(name, 60) || dev.app.name, os: osKey, ver: clean(ver, 20), seen: now };
     dev.kind = APP_KINDS[osKey];
+    if (cleanLbl) dev.label = cleanLbl;
     setDevices(rec, devicesOf(rec).map((d) => (d.id === dev.id ? dev : d)));
     return { dev };
   }
@@ -147,7 +213,7 @@ export function activateOn(rec, { mid, name, os, ver }, now) {
     return { status: 403, error: 'All ' + max + ' device slot' + (max === 1 ? ' is' : 's are') + ' in use on this code. Remove a device in My Events (or ask us), then activate again.' };
   }
   const lid = randomBytes(10).toString('hex');
-  addDevice(rec, 'app:' + lid, now, APP_KINDS[osKey]);
+  addDevice(rec, 'app:' + lid, now, APP_KINDS[osKey], cleanLbl);
   const list = devicesOf(rec);
   dev = list[list.length - 1];
   dev.app = { lid, mid, name: clean(name, 60), os: osKey, ver: clean(ver, 20), seen: now };

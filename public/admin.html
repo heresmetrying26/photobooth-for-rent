@@ -442,6 +442,19 @@
       border-radius: 999px;
     }
 
+    .devmode-sel {
+      font: 700 11px inherit;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1.5px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .devmode-sel.m-online { background: #e8f1fc; border-color: #235ea8; color: #1a4780; }
+    .devmode-sel.m-both { background: #e4f5f1; border-color: #196f60; color: #125247; }
+    .devmode-sel.m-offline { background: #f5f1ea; border-color: #c9bfb0; color: #524b50; }
+
     #newDays:disabled {
       opacity: .45;
     }
@@ -2366,7 +2379,22 @@
         return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + flags + (l.email ? 'Email: <b>' + esc(l.email) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
           '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>GIF mode: <b>' + (l.gifOpt ? 'Yes (Photo + GIF &amp; GIF-only options)' : 'No (Photo only)') + '</b><br>Rush ID &amp; Photo Print station (/rush): <b>' + (l.rushOpt ? 'On' : 'Off') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Card &amp; certificate booths: <b>' + (l.typesOpt ? 'Yes (Booth type switch in Setup)' : 'No') + '</b><br>Debug tools (Android printer IDs, colour tests): <b>' + (l.debugOpt ? 'On' : 'Off') + '</b><br>Android screen orientation: <b>' + (l.orientation === 'portrait' ? 'Portrait' : l.orientation === 'either' ? 'Either (renter picks in Setup)' : 'Landscape') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? (l.offlineOnly ? 'Laptop app only' : 'Yes') + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
           '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
-          (devs.length ? '<div class="devlist">' + devs.map(function (d) { return '<span class="devchip">Device ' + d.no + (d.kind ? ' · ' + esc(d.kind) : '') + (d.app && d.app.name ? ' · ' + esc(d.app.name) : '') + appVerChip(d) + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + (d.app && d.app.seen ? ' · checked in ' + new Date(d.app.seen).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="' + (d.app ? 'Deactivate this laptop (stops at its next check-in)' : 'Remove this device') + '">' + (d.app ? 'Deactivate' : 'Remove') + '</button></span>'; }).join('') + '</div>' : '') +
+          (devs.length ? '<div class="devlist">' + devs.map(function (d) {
+            var isDeskApp = !!(d.app && (d.app.os === 'win' || d.app.os === 'mac'));
+            var codeDef = (l.offlineOnly || l.offlineOpt) ? 'offline' : 'online';
+            var curMode = (d.mode === 'offline' || d.mode === 'online' || d.mode === 'both') ? d.mode : '';
+            var effMode = curMode || codeDef;
+            var lblText = d.label ? (' · <b>' + esc(d.label) + '</b>' + (d.app && d.app.name && d.app.name !== d.label ? ' (' + esc(d.app.name) + ')' : '')) : (d.app && d.app.name ? ' · ' + esc(d.app.name) : '');
+            var modeCtrl = isDeskApp
+              ? '<select class="devmode-sel m-' + effMode + '" data-devmode-for="' + c + '" data-n="' + d.no + '" title="Set Offline / Online / Both for this specific device (overrides code default)">' +
+                '<option value=""' + (!curMode ? ' selected' : '') + '>Default (' + (codeDef === 'online' ? 'Online' : 'Offline') + ')</option>' +
+                '<option value="offline"' + (curMode === 'offline' ? ' selected' : '') + '>Offline</option>' +
+                '<option value="online"' + (curMode === 'online' ? ' selected' : '') + '>Online</option>' +
+                '<option value="both"' + (curMode === 'both' ? ' selected' : '') + '>Both</option>' +
+                '</select>'
+              : '';
+            return '<span class="devchip"><b>Device ' + d.no + '</b>' + lblText + (d.kind ? ' · ' + esc(d.kind) : '') + appVerChip(d) + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + (d.app && d.app.seen ? ' · checked in ' + new Date(d.app.seen).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + modeCtrl + '<button class="small" data-a="devlabel" data-n="' + d.no + '" data-c="' + c + '" title="Set a label so you can tell devices apart">' + (d.label ? 'Rename' : 'Label') + '</button><button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="' + (d.app ? 'Deactivate this laptop (stops at its next check-in)' : 'Remove this device') + '">' + (d.app ? 'Deactivate' : 'Remove') + '</button></span>';
+          }).join('') + '</div>' : '') +
           '</div>' +
           (bonus ? '' : '<div class="themerow">Starting theme <select class="sel" data-theme-for="' + c + '">' + themeOptions(l.defaultTheme || '') + '</select>' +
             '&nbsp; Starting frame <button class="small" data-a="sframe" data-c="' + c + '" title="A PNG with the photo spots left white or see-through. It appears in the renter’s Your frames.">' + (l.startFrame ? esc(l.startFrame.name || l.startFrame) + ' &middot; replace' : 'Upload') + '</button>' +
@@ -2554,6 +2582,20 @@
             await api({ action: 'theme', code: code, theme: ts.value || null });
             toast(ts.value ? 'Starting theme: ' + (THEME_NAME[ts.value] || ts.value) : 'Starting theme cleared');
           } catch (err) { if (err.message !== 'auth') toast(err.message, true); }
+          return;
+        }
+        var dm = e.target.closest('[data-devmode-for]');
+        if (dm) {
+          var dCode = dm.dataset.devmodeFor, dNo = Number(dm.dataset.n), dVal = dm.value;
+          dm.disabled = true;
+          try {
+            var rdm = await api({ action: 'devmode', code: dCode, deviceNo: dNo, mode: dVal || null });
+            var eff = (rdm && rdm.effectiveMode) || dVal || 'offline';
+            dm.className = 'devmode-sel m-' + eff;
+            toast('Device ' + dNo + ' → ' + (dVal ? dVal.toUpperCase() : 'Default (' + eff + ')') + ' · applies on check-in');
+            openRow(dCode, true);
+          } catch (err) { if (err.message !== 'auth') toast(err.message, true); openRow(dCode, true); }
+          finally { dm.disabled = false; }
         }
       });
 
@@ -2671,6 +2713,15 @@
               toast('Could not open preview: ' + e.message, true);
             }
             return;
+          }
+          if (a === 'devlabel') {
+            var dn = Number(b.dataset.n);
+            var curDev = (LIC[code] && devicesOf(LIC[code]).find(function (x) { return (x.no || 1) === dn; })) || {};
+            var nextLbl = prompt('Label for Device ' + dn + ' on ' + code + ' (leave blank to clear):', curDev.label || (curDev.app && curDev.app.name) || '');
+            if (nextLbl === null) return;
+            await api({ action: 'devlabel', code: code, deviceNo: dn, label: nextLbl });
+            toast(nextLbl.trim() ? 'Device ' + dn + ' labelled “' + nextLbl.trim() + '”' : 'Device ' + dn + ' label cleared');
+            openRow(code, true); return;
           }
           if (a === 'rmdev') {
             var n = Number(b.dataset.n);

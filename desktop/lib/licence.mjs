@@ -176,18 +176,19 @@ function store(lic) {
   touchClock(); save();
 }
 
-export async function activate(fetchFn, code) {
+export async function activate(fetchFn, code, label) {
   const c = String(code || '').trim();
   if (!c) return { ok: false, error: 'Type your code first.' };
+  const lbl = String(label || '').replace(/[<>"\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
   let r;
-  try { r = await post(fetchFn, { action: 'activate', code: c, mid: machineId(), name: computerName(), os: osKey(), ver }, 20000); }
+  try { r = await post(fetchFn, { action: 'activate', code: c, mid: machineId(), name: computerName(), label: lbl, os: osKey(), ver, onlineCapable: true }, 20000); }
   catch { return { ok: false, offline: true, error: 'Can’t reach photobooth4u. Check the internet, or use “Activate without internet”.' }; }
   if (r.status !== 200 || !r.j.ok || !readLicence(r.j.licence)) return { ok: false, error: r.j.error || ('Activation failed (' + r.status + ').'), code: r.j.code };
   clockFrom(r.date);
   store(r.j.licence);
   noteLatest(r.j.app);
   save();
-  return { ok: true };
+  return { ok: true, deviceNo: r.j.deviceNo || 1, deviceLabel: r.j.deviceLabel || lbl || '', appMode: r.j.appMode || 'offline' };
 }
 // Pasted licence from Admin ("Offline activation key").
 export function activateOffline(text) {
@@ -209,7 +210,7 @@ export async function checkin(fetchFn, force) {
   if (!force && Date.now() - (state.lastTry || 0) < CHECK_EVERY && !state.skew) return 'skip';
   state.lastTry = Date.now(); save();
   let r;
-  try { r = await post(fetchFn, { action: 'checkin', licence: state.lic, mid: machineId(), ver }, 15000); }
+  try { r = await post(fetchFn, { action: 'checkin', licence: state.lic, mid: machineId(), ver, onlineCapable: true }, 15000); }
   catch { return 'offline'; }
   clockFrom(r.date);
   if (r.status === 200 && r.j.ok && readLicence(r.j.licence)) { store(r.j.licence); noteLatest(r.j.app); return 'ok'; }
@@ -245,15 +246,33 @@ export async function deactivate(fetchFn) {
   state.lic = null; state.revoked = null; save();
   return { ok: true };
 }
+export async function renameDevice(fetchFn, label) {
+  if (!state.lic) return { ok: false, error: 'This laptop isn’t activated yet.' };
+  const lbl = String(label || '').replace(/[<>"\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  let r;
+  try { r = await post(fetchFn, { action: 'rename', licence: state.lic, mid: machineId(), label: lbl, ver, onlineCapable: true }, 15000); }
+  catch { return { ok: false, offline: true, error: 'Connect to the internet to update this device’s label.' }; }
+  if (r.status !== 200 || !r.j.ok || !readLicence(r.j.licence)) return { ok: false, error: r.j.error || ('Could not save label (' + r.status + ').') };
+  clockFrom(r.date);
+  store(r.j.licence);
+  noteLatest(r.j.app);
+  save();
+  return { ok: true, deviceNo: r.j.deviceNo || 1, deviceLabel: r.j.deviceLabel || '', appMode: r.j.appMode || 'offline' };
+}
 export function forget() { state.lic = null; state.revoked = null; save(); }
 export function info() {
   const s = status();
   const p = s.p || (state.lic ? readLicence(state.lic) : null);
+  const feat = (p && p.feat) || null;
+  const appMode = (feat && (feat.appMode === 'online' || feat.appMode === 'both' || feat.appMode === 'offline')) ? feat.appMode : 'offline';
   return {
     ok: s.ok, reason: s.reason || '', message: s.message || '', warn: s.warn || '',
     mid: machineId(), name: computerName(), os: osKey(),
+    deviceNo: (feat && feat.deviceNo) || 1,
+    deviceLabel: (feat && feat.deviceLabel) || (p && p.label) || '',
+    appMode,
     renter: p ? p.renter : '', code: p ? p.code : '', lifetime: p ? !!p.lifetime : false,
-    exp: p ? p.exp : null, hard: p ? p.hard : null, chk: p ? p.chk : null, lastCheck: state.lastCheck || 0, feat: p ? p.feat : null,
+    exp: p ? p.exp : null, hard: p ? p.hard : null, chk: p ? p.chk : null, lastCheck: state.lastCheck || 0, feat,
     latest: state.latest || ''
   };
 }

@@ -1,4 +1,5 @@
 import { safe, json, checkLicense, signTicket, cleanEventName, TICKET_MS } from '../lib/core.mjs';
+import { verifyDesktopAppAuth } from '../lib/license.mjs';
 
 // Gives an unlocked booth a short-lived, signed ticket for the ONE Drive folder
 // it is allowed to use. The Apps Script refuses uploads without a valid ticket
@@ -11,8 +12,15 @@ export default safe(async (req) => {
   const b = await req.json().catch(() => null);
   if (!b) return json({ error: 'Bad request' }, 400);
 
-  const lic = await checkLicense(b.token, String(b.deviceId || ''));
-  if (!lic.valid) return json({ error: 'locked', reason: lic.reason }, 401);
+  let lic = null;
+  const desk = await verifyDesktopAppAuth(b, { requireOnline: true });
+  if (desk) {
+    if (!desk.ok) return json({ error: desk.error, reason: desk.reason }, desk.status);
+    lic = { valid: true, folderKey: desk.folderKey, folderPrefix: desk.folderPrefix, subfolder: desk.subfolder, exp: desk.exp };
+  } else {
+    lic = await checkLicense(b.token, String(b.deviceId || ''));
+    if (!lic.valid) return json({ error: 'locked', reason: lic.reason }, 401);
+  }
 
   const asked = String(b.folderKey || '').trim();
   let folder;

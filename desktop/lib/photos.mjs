@@ -898,6 +898,10 @@ let roveDeskState = {
   layoutMode: 'match',
   fillMode: 'multi',
   autoOn: false,
+  favorites: [],
+  orientMode: false,
+  tplPort: 'solo',
+  tplLand: 'solo',
   need: 1,
   rawShots: 1,
   activeLabel: 'Solo (1 shot)',
@@ -915,15 +919,22 @@ export function roveStateSet(st) {
     shots: numIn(l && l.shots, 1, 12, 1),
     group: cleanText(l && l.group, 40)
   })).filter((l) => l.key && l.label);
-  const queue = (Array.isArray(st.queue) ? st.queue : []).slice(0, 40).map((q) => ({
-    id: Number.isInteger(Number(q && q.id)) && Number(q.id) >= 1 && Number(q.id) <= 9999999 ? Number(q.id) : 0,    // not numIn(): that would turn a bad id into 1, a real photo's id
-    name: cleanText(q && q.name, 80),
-    thumb: /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]{10,160000}$/.test(String((q && q.thumb) || '')) ? String(q.thumb) : '',
-    used: !!(q && q.used),
-    phone: !!(q && q.phone),
-    edited: !!(q && q.edited),
-    selOrder: numIn(q && q.selOrder, 0, 12, 0)
-  })).filter((q) => q.id > 0);
+  const favorites = (Array.isArray(st.favorites) ? st.favorites : []).slice(0, 12)
+    .map((k) => cleanText(k, 80)).filter(Boolean);
+  const queue = (Array.isArray(st.queue) ? st.queue : []).slice(0, 40).map((q) => {
+    const rawOr = String((q && q.orient) || '');
+    const orient = (rawOr === 'portrait' || rawOr === 'landscape' || rawOr === 'square') ? rawOr : '';
+    return {
+      id: Number.isInteger(Number(q && q.id)) && Number(q.id) >= 1 && Number(q.id) <= 9999999 ? Number(q.id) : 0,    // not numIn(): that would turn a bad id into 1, a real photo's id
+      name: cleanText(q && q.name, 80),
+      thumb: /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]{10,160000}$/.test(String((q && q.thumb) || '')) ? String(q.thumb) : '',
+      used: !!(q && q.used),
+      phone: !!(q && q.phone),
+      edited: !!(q && q.edited),
+      orient,
+      selOrder: numIn(q && q.selOrder, 0, 12, 0)
+    };
+  }).filter((q) => q.id > 0);
   let lastResult = null;
   if (st.lastResult && typeof st.lastResult === 'object') {
     const lr = st.lastResult;
@@ -940,6 +951,10 @@ export function roveStateSet(st) {
     layoutMode: cleanText(st.layoutMode, 80) || 'match',
     fillMode: st.fillMode === 'repeat1' ? 'repeat1' : 'multi',
     autoOn: !!st.autoOn,
+    favorites,
+    orientMode: !!st.orientMode,
+    tplPort: cleanText(st.tplPort, 80) || 'solo',
+    tplLand: cleanText(st.tplLand, 80) || 'solo',
     need: numIn(st.need, 1, 12, 1),
     rawShots: numIn(st.rawShots, 1, 12, 1),
     activeLabel: cleanText(st.activeLabel, 80) || 'Solo (1 shot)',
@@ -981,6 +996,10 @@ function handleRoveControl(req, res, url, kind) {
     if (q.has('layoutMode')) cmd.layoutMode = cleanText(q.get('layoutMode'), 80);
     if (q.has('fillMode')) cmd.fillMode = q.get('fillMode') === 'repeat1' ? 'repeat1' : 'multi';
     if (q.has('autoOn')) cmd.autoOn = q.get('autoOn') === '1';
+    if (q.has('favToggle')) cmd.favToggle = cleanText(q.get('favToggle'), 80);
+    if (q.has('orientMode')) cmd.orientMode = q.get('orientMode') === '1';
+    if (q.has('tplPort')) cmd.tplPort = cleanText(q.get('tplPort'), 80);
+    if (q.has('tplLand')) cmd.tplLand = cleanText(q.get('tplLand'), 80);
   }
   if (roveCmdQueue.length >= 60) roveCmdQueue.shift();
   roveCmdQueue.push(cmd);
@@ -1003,14 +1022,30 @@ p{color:#6B666C;margin:4px 0}
 .field{margin-top:8px}
 .field label{display:block;font-size:12px;font-weight:700;color:#6B666C;margin-bottom:3px}
 .field select{width:100%;padding:9px 10px;border-radius:10px;border:1.5px solid #DED6C8;font:600 14px inherit;background:#fff;color:#1C1A1E}
+.sel-row{display:flex;gap:6px;align-items:center}
+.sel-row select{flex:1;min-width:0}
+.fav-btn{flex:none;padding:9px 12px;border-radius:10px;border:1.5px solid #DED6C8;background:#fff;color:#4a444d;font:800 14px inherit;cursor:pointer}
+.fav-btn.on{background:#fff3d1;border-color:#e3b242;color:#7c4d00}
+.fav-bar{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px;border-radius:11px;background:#fffbf2;border:1.5px solid #f0dfb8;margin-bottom:8px}
+.fav-bar[hidden]{display:none}
+.fav-chip{border:1.5px solid #e6d3a7;background:#fff;color:#1C1A1E;border-radius:99px;padding:5px 10px;font:700 12px inherit;cursor:pointer}
+.fav-chip.active{background:#C93D27;border-color:#C93D27;color:#fff}
 .chk-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding:9px 11px;border-radius:11px;background:#FAF6F0;border:1px solid #EAE3D5;font-size:13.5px;font-weight:700;cursor:pointer}
 .chk-row input{width:18px;height:18px;accent-color:#C93D27}
+.qf-bar{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 4px}
+.qf-btn{border:1.5px solid #DED6C8;background:#fff;color:#4a444d;border-radius:99px;padding:4px 10px;font:700 12px inherit;cursor:pointer}
+.qf-btn.active{background:#1C1A1E;border-color:#1C1A1E;color:#fff}
+.qf-btn.active.port{background:#5b4bd6;border-color:#5b4bd6}
+.qf-btn.active.land{background:#0d7c66;border-color:#0d7c66}
 .q-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
-.q-item{position:relative;aspect-ratio:1;border-radius:11px;overflow:hidden;border:2.5px solid transparent;background:#F4EFE6;padding:0;cursor:pointer}
-.q-item img{width:100%;height:100%;object-fit:cover;display:block}
+.q-item{position:relative;aspect-ratio:1;border-radius:11px;overflow:hidden;border:2.5px solid #ded6c8;background:#1e1c21;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.q-item img{width:100%;height:100%;object-fit:contain;display:block}
 .q-item.sel{border-color:#C93D27;box-shadow:0 0 0 2px rgba(201,61,39,.25)}
 .q-item.used{opacity:.62}
 .q-badge{position:absolute;top:5px;right:5px;min-width:22px;height:22px;border-radius:99px;background:#C93D27;color:#fff;font:800 12px/22px inherit;text-align:center;padding:0 5px;box-shadow:0 2px 5px rgba(0,0,0,.3)}
+.q-orient{position:absolute;top:5px;left:5px;padding:1px 6px;border-radius:99px;font:800 10px/1.3 inherit;color:#fff;background:rgba(28,26,30,.8)}
+.q-orient.portrait{background:rgba(91,75,214,.92)}
+.q-orient.landscape{background:rgba(13,124,102,.92)}
 .q-done{position:absolute;bottom:4px;left:4px;right:4px;background:rgba(28,26,30,.75);color:#fff;font-size:10px;font-weight:700;padding:2px 4px;border-radius:5px;text-align:center}
 .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .btn{flex:1;min-width:120px;padding:12px 14px;border-radius:12px;border:0;font:800 14px inherit;cursor:pointer;text-align:center;text-decoration:none}
@@ -1049,9 +1084,13 @@ input[type=file]{display:none}
 
 <div class="card">
   <div class="card-h"><span>🖼️ Photoman Template &amp; Flow</span><span class="pill brand" id="needPill">1 shot</span></div>
+  <div class="fav-bar" id="favBar" hidden></div>
   <div class="field">
     <label for="laySel">Template / Frame for Photoman</label>
-    <select id="laySel"><option value="match">Match Photobooth Layout</option><option value="solo">Solo (1 photo — built-in design)</option></select>
+    <div class="sel-row">
+      <select id="laySel"><option value="match">Match Photobooth Layout</option><option value="solo">Solo (1 photo — built-in design)</option></select>
+      <button type="button" class="fav-btn" id="favBtn" title="Pin/unpin Favorite">☆</button>
+    </div>
   </div>
   <div class="field" id="fillWrap" hidden>
     <label for="fillSel">When template has multiple photo spots</label>
@@ -1061,6 +1100,10 @@ input[type=file]{display:none}
     </select>
   </div>
   <label class="chk-row">
+    <span>📐 Auto-switch template (Portrait / Landscape)</span>
+    <input type="checkbox" id="orientChk">
+  </label>
+  <label class="chk-row">
     <span>⚡ Auto-frame incoming DSLR / phone shots</span>
     <input type="checkbox" id="autoChk">
   </label>
@@ -1069,6 +1112,11 @@ input[type=file]{display:none}
 
 <div class="card">
   <div class="card-h"><span>📥 Laptop Photographer Queue</span><span class="pill" id="qCount">0 photos</span></div>
+  <div class="qf-bar" id="qfBar">
+    <button type="button" class="qf-btn active" data-qf="all" id="qfAll">All (0)</button>
+    <button type="button" class="qf-btn port" data-qf="portrait" id="qfPort">▯ Portrait (0)</button>
+    <button type="button" class="qf-btn land" data-qf="landscape" id="qfLand">▭ Landscape (0)</button>
+  </div>
   <div class="hint" id="qHint">Tap photo(s) below in order, then tap Make Print + QR.</div>
   <div class="q-grid" id="qGrid"></div>
   <div class="btn-row">
@@ -1089,7 +1137,7 @@ input[type=file]{display:none}
 <script src="/qr.js"></script>
 <script>
 var T=location.pathname.replace(/[/]+$/,"").replace(/[/]photos$/,"");
-var st=null,sel=[],lastLaySig="",lastResSig="";
+var st=null,sel=[],qFilter="all",lastLaySig="",lastResSig="";
 function $(i){return document.getElementById(i)}
 function cmd(q){return fetch(T+"/rove-cmd?"+q,{method:"POST"}).then(function(r){return r.json().catch(function(){return{}})}).then(function(j){setTimeout(poll,250);return j})}
 
@@ -1108,11 +1156,28 @@ function applyState(s){
   st=s;
   var need=Math.max(1,Number(s.need)||1),rawShots=Math.max(1,Number(s.rawShots)||need);
   $("needPill").textContent=need===1?"1 shot per print":(need+" shots per print");
+  var lays=(s.layouts&&s.layouts.length)?s.layouts:[{key:"match",label:"Match Photobooth Layout"},{key:"solo",label:"Solo (1 photo)"}];
+  var layByKey={};lays.forEach(function(l){layByKey[l.key]=l});
+  var favs=Array.isArray(s.favorites)?s.favorites.filter(function(k){return !!layByKey[k]}):[];
+  var favBar=$("favBar");
+  favBar.hidden=!favs.length;
+  favBar.innerHTML="";
+  favs.forEach(function(k){
+    var info=layByKey[k];
+    var b=document.createElement("button");b.type="button";
+    b.className="fav-chip"+(k===s.layoutMode?" active":"");
+    b.textContent="⭐ "+info.label+(info.shots>1?" · "+info.shots:"");
+    b.onclick=function(){cmd("do=config&layoutMode="+encodeURIComponent(k))};
+    favBar.appendChild(b);
+  });
+  var isFav=favs.indexOf(s.layoutMode)>=0;
+  $("favBtn").className="fav-btn"+(isFav?" on":"");
+  $("favBtn").textContent=isFav?"★":"☆";
+
   var lsig=JSON.stringify(s.layouts||[])+"|"+s.layoutMode;
   if(lsig!==lastLaySig){
     lastLaySig=lsig;
     var selEl=$("laySel");selEl.innerHTML="";
-    var lays=(s.layouts&&s.layouts.length)?s.layouts:[{key:"match",label:"Match Photobooth Layout"},{key:"solo",label:"Solo (1 photo)"}];
     var curG=null,gEl=null;
     lays.forEach(function(l){
       var o=document.createElement("option");o.value=l.key;o.textContent=l.label+(l.shots>1?" · "+l.shots+" photos":"");if(l.key===s.layoutMode)o.selected=true;
@@ -1121,27 +1186,43 @@ function applyState(s){
   }
   $("fillWrap").hidden=rawShots<=1;
   $("fillSel").value=s.fillMode==="repeat1"?"repeat1":"multi";
+  $("orientChk").checked=!!s.orientMode;
   $("autoChk").checked=!!s.autoOn;
   $("flowHint").textContent=s.autoOn
-    ?("⚡ Auto-Frame is ON: Every "+(need===1?"1 new shot is":(need+" new shots are"))+" automatically placed into "+(s.activeLabel||"your template")+" with QR & print.")
-    :("Manual mode: Tap up to "+need+" photo"+(need>1?"s":"")+" in the queue below (picking 1 photo fills all spots), then tap Make Print + QR.");
+    ?(s.orientMode
+      ?"⚡ Auto-Frame by Orientation is ON: Portrait and Landscape shots automatically use their assigned templates."
+      :("⚡ Auto-Frame is ON: Every "+(need===1?"1 new shot is":(need+" new shots are"))+" automatically placed into "+(s.activeLabel||"your template")+" with QR & print."))
+    :(s.orientMode
+      ?"📐 Orientation Auto-Switch is ON: Tapping Portrait or Landscape photos automatically switches to the matching template."
+      :("Manual mode: Tap up to "+need+" photo"+(need>1?"s":"")+" in the queue below (picking 1 photo fills all spots), then tap Make Print + QR."));
 
   var q=s.queue||[];
-  var validIds={};q.forEach(function(it){validIds[it.id]=1});
+  var validIds={},nPort=0,nLand=0;
+  q.forEach(function(it){validIds[it.id]=1;if(it.orient==="portrait")nPort++;else if(it.orient==="landscape")nLand++});
   sel=sel.filter(function(id){return !!validIds[id]});
   if(sel.length>need)sel=sel.slice(-need);
+
+  $("qfAll").textContent="All ("+q.length+")";$("qfAll").className="qf-btn"+(qFilter==="all"?" active":"");
+  $("qfPort").textContent="▯ Portrait ("+nPort+")";$("qfPort").className="qf-btn port"+(qFilter==="portrait"?" active":"");
+  $("qfLand").textContent="▭ Landscape ("+nLand+")";$("qfLand").className="qf-btn land"+(qFilter==="landscape"?" active":"");
 
   $("qCount").textContent=q.length+(q.length===1?" photo":" photos");
   $("qHint").textContent=q.length
     ?(need>1?"Tap up to "+need+" photos in order (1 photo repeats in all boxes), then Make Print + QR.":"Tap a photo below, then tap Make Print + QR.")
     :"No photos in queue yet. Shoot with your DSLR or use Take a Photo below.";
 
+  var shown=q.filter(function(it){
+    if(qFilter==="portrait")return it.orient==="portrait";
+    if(qFilter==="landscape")return it.orient==="landscape";
+    return true;
+  });
   var grid=$("qGrid");grid.innerHTML="";
-  q.forEach(function(it){
+  shown.forEach(function(it){
     var b=document.createElement("button");b.type="button";
     var si=sel.indexOf(it.id);
     b.className="q-item"+(si>=0?" sel":"")+(it.used?" used":"");
     if(it.thumb){var im=new Image();im.src=it.thumb;im.alt=it.name||"photo";b.appendChild(im)}
+    if(it.orient){var ob=document.createElement("span");ob.className="q-orient "+it.orient;ob.textContent=it.orient==="portrait"?"▯ Port":(it.orient==="landscape"?"▭ Land":"▢ Sq");b.appendChild(ob)}
     if(si>=0){var bd=document.createElement("span");bd.className="q-badge";bd.textContent=String(si+1);b.appendChild(bd)}
     if(it.used){var dn=document.createElement("span");dn.className="q-done";dn.textContent="Printed ✓";b.appendChild(dn)}
     b.onclick=function(){
@@ -1181,8 +1262,11 @@ function poll(){
 }
 
 $("laySel").onchange=function(){cmd("do=config&layoutMode="+encodeURIComponent(this.value))};
+$("favBtn").onclick=function(){if(st&&st.layoutMode)cmd("do=config&favToggle="+encodeURIComponent(st.layoutMode))};
 $("fillSel").onchange=function(){cmd("do=config&fillMode="+encodeURIComponent(this.value))};
+$("orientChk").onchange=function(){cmd("do=config&orientMode="+(this.checked?"1":"0"))};
 $("autoChk").onchange=function(){cmd("do=config&autoOn="+(this.checked?"1":"0"))};
+$("qfBar").onclick=function(e){var b=e.target.closest&&e.target.closest("[data-qf]");if(!b)return;qFilter=b.getAttribute("data-qf")||"all";if(st)applyState(st)};
 $("makeBtn").onclick=function(){
   if(!sel.length)return;
   var ids=sel.slice();sel=[];

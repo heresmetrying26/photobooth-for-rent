@@ -3,8 +3,8 @@
 //   POST { action: 'checkin',    licence, mid, ver }                     -> { ok, licence } | { ok: false, revoked, reason, error }
 //   POST { action: 'deactivate', licence, mid }                          -> { ok }   (frees this laptop's device slot)
 //   GET  /api/license?pub=1                                              -> the public key the app checks licences with
-import { safe, json, licenses, normCode, throttle, recordFail, clearFail, DAY, MIN, fmtWhen, LIFETIME_EXP, devicesOf, setDevices, putLicense, windowEnd, getShutdown, swapBlocked, logSwap, SWAP_MSG, alertDeviceFreed, getSettings } from '../lib/core.mjs';
-import { readLicence, licenceFor, activateOn, saveMap, readMap, dropMap, appDevice, publicKeyInfo, MID_RE, isTrialCode, trialLicence } from '../lib/license.mjs';
+import { safe, json, licenses, normCode, throttle, recordFail, clearFail, DAY, MIN, fmtWhen, LIFETIME_EXP, devicesOf, setDevices, putLicense, windowEnd, getShutdown, swapBlocked, logSwap, SWAP_MSG, alertDeviceFreed, getSettings, cleanDeviceLabel } from '../lib/core.mjs';
+import { readLicence, licenceFor, activateOn, saveMap, readMap, dropMap, appDevice, publicKeyInfo, MID_RE, isTrialCode, trialLicence, effectiveDeviceMode, deviceAllowsOffline } from '../lib/license.mjs';
 import { liveApp } from '../lib/updates.mjs';
 
 const NO_ADDON = 'The offline app isn’t included in your plan yet. Message us to add it to your code.';
@@ -49,28 +49,37 @@ export default safe(async (req, context) => {
     if (rec.status === 'revoked') return json({ error: 'This code has been disabled. Please contact us.' }, 403);
     if (rec.kind === 'bonus') return json({ error: 'Bonus codes work in the web booth only. Use your main booking code.' }, 400);
     // In shutdown mode every Lifetime code gets the Offline App (agreement s.6).
+    // Online-capable Windows / Mac Desktop apps (onlineCapable: true) can also activate Online-only codes
+    // (running in Online Mode with Google Drive & PayMongo). Older offline-only desktop builds and Android / iPad
+    // apps still require offlineOpt (or an Admin per-device Offline/Both override on this device).
     const sd = await getShutdown();
-    if (!rec.offlineOpt && !(sd.on && rec.lifetime)) return json({ error: NO_ADDON, code: 'no-addon' }, 403);
+    const isDesktopOs = b.os === 'win' || b.os === 'mac';
+    const existingDev = appDevice(rec, (a) => a.mid === mid);
+    const allowsOff = !!(rec.offlineOpt || (existingDev && deviceAllowsOffline(rec, existingDev)));
+    const canOnlineDesktop = isDesktopOs && b.onlineCapable === true;
+    if (!allowsOff && !(sd.on && rec.lifetime) && !canOnlineDesktop) return json({ error: NO_ADDON, code: 'no-addon' }, 403);
     if (rec.status !== 'active') {
       const why = startCode(rec, now);
       if (why) return json({ error: why }, 403);
     } else if (rec.expiresAt <= now) return json({ error: 'This code has expired.' }, 403);
     if (rec.traditional !== true) rec.traditional = true;
     if (!rec.orientation || rec.orientation === 'landscape') rec.orientation = 'either';
-    const r = activateOn(rec, { mid, name: b.name, os: b.os, ver: b.ver }, now);
+    const r = activateOn(rec, { mid, name: b.name, os: b.os, ver: b.ver, label: b.label }, now);
     if (r.error) return json({ error: r.error }, r.status || 400);
     await putLicense(store, key, rec);
     if (r.isNew) await saveMap(r.dev.app.lid, key, mid);
-    return json({ ok: true, licence: licenceFor(key, rec, r.dev, now, sd.on), deviceNo: r.dev.no, app: await liveApp() });
+    const appMode = (sd.on && rec.lifetime) ? 'offline' : effectiveDeviceMode(rec, r.dev);
+    return json({ ok: true, licence: licenceFor(key, rec, r.dev, now, sd.on), deviceNo: r.dev.no, deviceLabel: r.dev.label || '', appMode, app: await liveApp() });
   }
 
-  if (b.action === 'checkin' || b.action === 'deactivate') {
+  if (b.action === 'checkin' || b.action === 'deactivate' || b.action === 'rename') {
     const p = readLicence(b.licence);
     const mid = String(b.mid || '').trim().toUpperCase();
     if (!p || p.typ !== 'pb4u-desktop' || p.mid !== mid) return json({ ok: false, revoked: true, reason: 'invalid', error: 'This licence isn’t valid on this computer.' }, 403);
     // A free-trial licence has no code record: it just runs to its own end date (and stops if the trial is switched off).
     if (p.feat && p.feat.trial) {
       if (b.action === 'deactivate') return json({ ok: true });
+      if (b.action === 'rename') return json({ ok: false, error: 'Device labels work with rental and lifetime codes.' }, 400);
       const ts = await getSettings();
       if (!ts.trialEnabled) return json({ ok: false, revoked: true, reason: 'disabled', error: 'The free trial has been switched off. Message us for a rental code.' });
       if (!p.exp || p.exp <= now) return json({ ok: false, revoked: true, reason: 'expired', error: 'Your free trial has ended. Message us to book.' });
@@ -93,15 +102,24 @@ export default safe(async (req, context) => {
     if (!rec || !dev) return json({ ok: false, revoked: true, reason: 'removed', error: 'This computer was removed from your code. Activate it again with your code.' });
     if (rec.status === 'revoked') return json({ ok: false, revoked: true, reason: 'disabled', error: 'This code has been disabled. Please contact us.' });
     const sd = await getShutdown();
-    if (!rec.offlineOpt && !(sd.on && rec.lifetime)) return json({ ok: false, revoked: true, reason: 'no-addon', error: NO_ADDON });
+    const isDesktopOs = p.os === 'win' || p.os === 'mac';
+    const allowsOff = !!(rec.offlineOpt || deviceAllowsOffline(rec, dev));
+    const canOnlineDesktop = isDesktopOs && b.onlineCapable === true;
+    if (!allowsOff && !(sd.on && rec.lifetime) && !canOnlineDesktop) return json({ ok: false, revoked: true, reason: 'no-addon', error: NO_ADDON });
     if (rec.expiresAt <= now) return json({ ok: false, revoked: true, reason: 'expired', error: 'This code has expired.' });
     dev.app.seen = now; dev.seen = now;
     if (b.ver) dev.app.ver = String(b.ver).slice(0, 20);
+    if (b.action === 'rename' || typeof b.label === 'string') {
+      const cleanLbl = cleanDeviceLabel(b.label);
+      if (cleanLbl) dev.label = cleanLbl;
+      else if (b.action === 'rename') delete dev.label;
+    }
     if (rec.traditional !== true) rec.traditional = true;
     if (!rec.orientation || rec.orientation === 'landscape') rec.orientation = 'either';
     setDevices(rec, devicesOf(rec).map((d) => (d.id === dev.id ? dev : d)));
     await putLicense(store, map.key, rec);
-    return json({ ok: true, licence: licenceFor(map.key, rec, dev, now, sd.on), app: await liveApp() });
+    const appMode = (sd.on && rec.lifetime) ? 'offline' : effectiveDeviceMode(rec, dev);
+    return json({ ok: true, licence: licenceFor(map.key, rec, dev, now, sd.on), deviceNo: dev.no, deviceLabel: dev.label || '', appMode, app: await liveApp() });
   }
 
   return json({ error: 'Unknown action' }, 400);

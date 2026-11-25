@@ -1,19 +1,29 @@
 import { safe, json, licenses, verifyToken, devicesOf, eventsStore, isDriveUrl, MAX_EVENTS, BONUS_SUBFOLDER } from '../lib/core.mjs';
+import { verifyDesktopAppAuth } from '../lib/license.mjs';
 
 // Called by the booth after it sets up a Drive folder and after each photo
 // session, so the /lifetime page can list every event folder with its link.
-// Only a valid, unlocked booth (token + its device) can report, and only
-// folders that belong to its own code.
+// Only a valid, unlocked booth (token + its device, or Desktop app in Online Mode)
+// can report, and only folders that belong to its own code.
 export default safe(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   const b = await req.json().catch(() => null);
   if (!b) return json({ error: 'Bad request' }, 400);
 
-  const p = verifyToken(b.token);
-  if (!p || p.t !== 'rental') return json({ error: 'locked' }, 401);
-  const rec = await licenses().get(p.k, { type: 'json' });
-  if (!rec || rec.status !== 'active' || rec.expiresAt <= Date.now()) return json({ error: 'locked' }, 401);
-  if (!devicesOf(rec).some((d) => d.id === p.d) || p.d !== String(b.deviceId || '')) return json({ error: 'locked' }, 401);
+  let rec = null, codeKey = null;
+  const desk = await verifyDesktopAppAuth(b, { requireOnline: true });
+  if (desk) {
+    if (!desk.ok) return json({ error: desk.error, reason: desk.reason }, desk.status);
+    rec = desk.rec;
+    codeKey = desk.key;
+  } else {
+    const p = verifyToken(b.token);
+    if (!p || p.t !== 'rental') return json({ error: 'locked' }, 401);
+    rec = await licenses().get(p.k, { type: 'json' });
+    if (!rec || rec.status !== 'active' || rec.expiresAt <= Date.now()) return json({ error: 'locked' }, 401);
+    if (!devicesOf(rec).some((d) => d.id === p.d) || p.d !== String(b.deviceId || '')) return json({ error: 'locked' }, 401);
+    codeKey = p.k;
+  }
 
   const folderKey = String(b.folderKey || '').trim().slice(0, 200);
   const folderUrl = String(b.folderUrl || '').trim();
@@ -34,7 +44,7 @@ export default safe(async (req) => {
   }
 
   // Bonus codes file their folder under the booking they belong to.
-  const owner = bonus && rec.parent ? rec.parent : p.k;
+  const owner = bonus && rec.parent ? rec.parent : codeKey;
   const store = eventsStore();
   const doc = (await store.get(owner, { type: 'json' })) || { events: [] };
   const now = Date.now();

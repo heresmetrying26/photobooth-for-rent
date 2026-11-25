@@ -6,6 +6,7 @@ import {
   hookUrl, setupWebhook, QR_SECONDS, PRICE_MIN, PRICE_MAX, payKey, createQr, VOUCHER_RE, batchKey, voucherHash,
   listJSON, usedMap, batchView, createBatch, redeemVoucher, usedKey
 } from '../lib/pay.mjs';
+import { verifyDesktopAppAuth } from '../lib/license.mjs';
 
 // Guest payments (an add-on Admin switches on per code: "payOpt").
 //
@@ -110,18 +111,27 @@ export default safe(async (req, context) => {
   }
 
   // ---------------- booth ----------------
-  const lic = await checkLicense(b.token, String(b.deviceId || ''));
-  if (!lic.valid) return json({ error: 'locked', reason: lic.reason }, 401);
-  if (lic.type !== 'rental') return json({ error: 'Guest payments work with rental codes, not trials.' }, 403);
-  const p = verifyToken(b.token);
-  const L = licenses();
-  let rec = await L.get(p.k, { type: 'json' });
-  if (rec && rec.kind === 'bonus' && rec.parent) rec = (await L.get(rec.parent, { type: 'json' })) || rec;
-  if (!rec) return json({ error: 'locked' }, 401);
+  let rec = null, dev = 1, deskAuth = null;
+  const desk = await verifyDesktopAppAuth(b, { requireOnline: false });
+  if (desk) {
+    if (!desk.ok) return json({ error: desk.error, reason: desk.reason }, desk.status);
+    deskAuth = desk;
+    rec = desk.parentRec;
+    dev = desk.deviceNo || 1;
+  } else {
+    const lic = await checkLicense(b.token, String(b.deviceId || ''));
+    if (!lic.valid) return json({ error: 'locked', reason: lic.reason }, 401);
+    if (lic.type !== 'rental') return json({ error: 'Guest payments work with rental codes, not trials.' }, 403);
+    const p = verifyToken(b.token);
+    const L = licenses();
+    rec = await L.get(p.k, { type: 'json' });
+    if (rec && rec.kind === 'bonus' && rec.parent) rec = (await L.get(rec.parent, { type: 'json' })) || rec;
+    if (!rec) return json({ error: 'locked' }, 401);
+    dev = lic.deviceNo || 1;
+  }
   const oid = ownerId(rec.key);
   const ev = eventKeyOf(!!rec.lifetime, b.event);
   const evName = rec.lifetime ? cleanEventName(b.event || '') : (rec.folderName || rec.label || '');
-  const dev = lic.deviceNo || 1;
 
   if (b.action === 'config') {
     return json({ ok: true, payOpt: !!rec.payOpt, vault: vaultReady(), acct: acctPublic(rec.payOpt ? await getAcct(oid) : null) });
@@ -225,6 +235,7 @@ export default safe(async (req, context) => {
   }
 
   if (b.action === 'qr') {
+    if (deskAuth && !deskAuth.allowsOnline) return json({ error: 'QR payments require Online mode on this device.' }, 403);
     const acct = await getAcct(oid);
     if (!acct || !acct.enc) return json({ error: 'PayMongo isn’t connected. Connect it on the My Events page.', notConnected: true }, 409);
     if (!vaultReady()) return json({ error: 'Payments aren’t set up on the server yet.' }, 503);
@@ -247,6 +258,7 @@ export default safe(async (req, context) => {
     return json({ ok: true, id: qr.id, image: qr.image, expiresAt: exp, tier, test: acct.mode !== 'live' });
   }
   if (b.action === 'status' || b.action === 'simulate') {
+    if (deskAuth && !deskAuth.allowsOnline) return json({ error: 'QR payments require Online mode on this device.' }, 403);
     const id = String(b.id || '');
     if (!/^pi_[A-Za-z0-9]{6,60}$/.test(id)) return json({ error: 'Bad id' }, 400);
     const k = payKey(oid, id);

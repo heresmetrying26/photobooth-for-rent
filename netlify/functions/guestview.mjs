@@ -1,4 +1,5 @@
 import { safe, json, checkLicense, verifyToken, hmac, cleanEventName, guestViewStore, guestViewMode, opKeyOf, printReqOn, printReqGuest, clientIp } from '../lib/core.mjs';
+import { verifyDesktopAppAuth } from '../lib/license.mjs';
 
 // What a guest sees after scanning their QR: their own photos, GIFs and flipbook, with (only when the booth allows it)
 // a button to the whole event gallery.
@@ -23,10 +24,18 @@ const sigOf = (id) => hmac('gallery|' + id).slice(0, 22);
 const cKey = (c) => 'c:' + c;
 
 async function boothAuth(b) {
-  const lic = await checkLicense(b.token, String(b.deviceId || ''));
-  if (!lic.valid) return { res: json({ error: 'locked', reason: lic.reason }, 401) };
-  const p = verifyToken(b.token);
-  const owner = String(p.k || ('trial:' + p.d));
+  let lic = null, owner = '';
+  const desk = await verifyDesktopAppAuth(b, { requireOnline: true });
+  if (desk) {
+    if (!desk.ok) return { res: json({ error: desk.error, reason: desk.reason }, desk.status) };
+    lic = { valid: true, folderKey: desk.folderKey, folderPrefix: desk.folderPrefix, exp: desk.exp };
+    owner = String(desk.owner);
+  } else {
+    lic = await checkLicense(b.token, String(b.deviceId || ''));
+    if (!lic.valid) return { res: json({ error: 'locked', reason: lic.reason }, 401) };
+    const p = verifyToken(b.token);
+    owner = String(p.k || ('trial:' + p.d));
+  }
   // The booth may only use its own event's folder (same rule as /api/ticket).
   const asked = String(b.folderKey || '').trim();
   if (lic.folderPrefix) {

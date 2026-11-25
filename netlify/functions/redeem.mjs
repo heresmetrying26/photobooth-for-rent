@@ -1,4 +1,4 @@
-import { safe, json, licenses, getSettings, sign, normCode, throttle, recordFail, clearFail, shortId, DAY, MIN, fmtWhen, windowEnd, LIFETIME_EXP, devicesOf, maxDevicesOf, addDevice, setDevices, STALE_DEVICE_DAYS , putLicense, delLicense, deviceKindOf, logSwap, alertDeviceFreed } from '../lib/core.mjs';
+import { safe, json, licenses, getSettings, sign, normCode, throttle, recordFail, clearFail, shortId, DAY, MIN, fmtWhen, windowEnd, LIFETIME_EXP, devicesOf, maxDevicesOf, addDevice, setDevices, STALE_DEVICE_DAYS , putLicense, delLicense, deviceKindOf, cleanDeviceLabel, logSwap, alertDeviceFreed } from '../lib/core.mjs';
 
 export default safe(async (req, context) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -7,6 +7,7 @@ export default safe(async (req, context) => {
 
   const input = String(body.code || '').trim();
   const deviceId = String(body.deviceId || '').slice(0, 80);
+  const deviceLabel = cleanDeviceLabel(body.label);
   if (!input || !deviceId) return json({ error: 'Please enter your password.' }, 400);
 
   const t = await throttle('redeem', context.ip, 10);
@@ -41,18 +42,26 @@ export default safe(async (req, context) => {
         if (stale) { setDevices(rec, devs.filter((d) => d !== stale)); logSwap(rec, now); replacedStale = stale; }
       }
       if (!mine && devicesOf(rec).length < maxDevicesOf(rec)) {
-        addDevice(rec, deviceId, now, deviceKindOf(body.dk, req.headers.get('user-agent')));
+        const no = addDevice(rec, deviceId, now, deviceKindOf(body.dk, req.headers.get('user-agent')), deviceLabel);
         await putLicense(store, key, rec);
-        mine = true;
+        mine = { id: deviceId, no };
         if (replacedStale) await alertDeviceFreed(rec, replacedStale, 'replaced', now);   // email to the owner; never blocks
       }
-      if (mine && mine !== true && !mine.kind) {          // older devices: learn their type once
-        const k = deviceKindOf(body.dk, req.headers.get('user-agent'));
-        if (k) { setDevices(rec, devicesOf(rec).map((d) => (d.id === deviceId ? { ...d, kind: k } : d))); await putLicense(store, key, rec); }
+      if (mine && (!mine.kind || (deviceLabel && mine.label !== deviceLabel))) {          // learn device type / update label
+        const k = mine.kind || deviceKindOf(body.dk, req.headers.get('user-agent'));
+        let changed = false;
+        setDevices(rec, devicesOf(rec).map((d) => {
+          if (d.id !== deviceId) return d;
+          const next = { ...d };
+          if (k && !next.kind) { next.kind = k; changed = true; }
+          if (deviceLabel && next.label !== deviceLabel) { next.label = deviceLabel; changed = true; }
+          return next;
+        }));
+        if (changed) await putLicense(store, key, rec);
       }
       if (mine) {
         await clearFail(t);
-        return json({ ok: true, type: 'rental', kind: rec.kind || 'rental', lifetime: !!rec.lifetime, exp: rec.expiresAt, token: sign({ t: 'rental', k: key, d: deviceId, exp: rec.expiresAt }) });
+        return json({ ok: true, type: 'rental', kind: rec.kind || 'rental', lifetime: !!rec.lifetime, exp: rec.expiresAt, deviceNo: mine.no || 1, token: sign({ t: 'rental', k: key, d: deviceId, exp: rec.expiresAt }) });
       }
       const max = maxDevicesOf(rec);
       return json({ error: max > 1 ? 'This code is already in use on ' + max + ' devices (its limit). Please contact the owner to add or switch a device.' : 'This code has already been used on another device.' }, 403);
@@ -79,10 +88,10 @@ export default safe(async (req, context) => {
     rec.status = 'active';
     rec.redeemedAt = now;
     rec.expiresAt = exp;
-    addDevice(rec, deviceId, now, deviceKindOf(body.dk, req.headers.get('user-agent')));
+    const no = addDevice(rec, deviceId, now, deviceKindOf(body.dk, req.headers.get('user-agent')), deviceLabel);
     await putLicense(store, key, rec);
     await clearFail(t);
-    return json({ ok: true, type: 'rental', kind: rec.kind || 'rental', lifetime: !!rec.lifetime, exp, days: rec.days, minutes: rec.minutes || null, scheduled: !!rec.startsAt, token: sign({ t: 'rental', k: key, d: deviceId, exp }) });
+    return json({ ok: true, type: 'rental', kind: rec.kind || 'rental', lifetime: !!rec.lifetime, exp, days: rec.days, minutes: rec.minutes || null, scheduled: !!rec.startsAt, deviceNo: no, token: sign({ t: 'rental', k: key, d: deviceId, exp }) });
   }
 
   // ---- Trial password ----

@@ -1,10 +1,11 @@
 import {
   safe, json, licenses, verifyToken, normCode, throttle, recordFail, clearFail,
   devicesOf, maxDevicesOf, eventsStore, isDriveUrl, DAY, EVENT_KEEP_DAYS, BONUS_KEEP_DAYS, getSettings,
-  normPrint, putLicense, readIndex, sendMail, codeEmail, EMAIL_RE, setDevices,
+  normPrint, putLicense, readIndex, sendMail, codeEmail, EMAIL_RE, setDevices, cleanDeviceLabel,
   swapBlocked, logSwap, swapsLimited, swapsThisMonth, SWAP_LIMIT, SWAP_MSG,
   emailLocked, logEmailChange, EMAIL_LOCKED_MSG, alertDeviceFreed
 } from '../lib/core.mjs';
+import { effectiveDeviceMode } from '../lib/license.mjs';
 
 // Backs the /lifetime customer page: sign in with the rental code (or, on a
 // booth device, the booth's own saved token) and get every event folder this
@@ -99,6 +100,23 @@ export default safe(async (req, context) => {
     return json({ ok: true });
   }
 
+  // Give a device a friendly label (e.g. "Studio Main Laptop") so it's easy to tell apart on multi-device codes.
+  if (b.action === 'device.rename') {
+    const no = Math.floor(Number(b.no) || 0);
+    const list = devicesOf(rec);
+    if (!list.some((d) => (d.no || 1) === no)) return json({ error: 'That device isn’t on your code any more.' }, 404);
+    const cleanLbl = cleanDeviceLabel(b.label);
+    setDevices(rec, list.map((d) => {
+      if ((d.no || 1) !== no) return d;
+      const copy = { ...d };
+      if (cleanLbl) copy.label = cleanLbl;
+      else delete copy.label;
+      return copy;
+    }));
+    await putLicense(store, rec.key, rec);
+    return json({ ok: true, no, label: cleanLbl });
+  }
+
   // Lifetime codes manage their own paper sizes and print limits (once Admin
   // has switched printing on for them). Booths pick it up within ~5 minutes.
   if (b.action === 'print.save') {
@@ -141,7 +159,17 @@ export default safe(async (req, context) => {
     folderPrefix: rec.lifetime ? (rec.folderName || rec.label || rec.code) : null,
     devices: { used: devicesOf(rec).length, max: maxDevicesOf(rec),
       swaps: swapsLimited(rec) ? { used: swapsThisMonth(rec, now), limit: SWAP_LIMIT } : null,
-      list: devicesOf(rec).map((d) => ({ no: d.no || 1, kind: d.kind || null, at: d.at || null, seen: d.seen || null, me: !!(meDevice && d.id === meDevice) })) },
+      list: devicesOf(rec).map((d) => ({
+        no: d.no || 1,
+        kind: d.kind || null,
+        label: d.label || (d.app && d.app.name) || null,
+        mode: d.mode || null,
+        appMode: d.app ? effectiveDeviceMode(rec, d) : 'online',
+        isApp: !!d.app,
+        at: d.at || null,
+        seen: d.seen || null,
+        me: !!(meDevice && d.id === meDevice)
+      })) },
     email: rec.email || '',
     emailLocked: emailLocked(rec),
     keepDays: EVENT_KEEP_DAYS,

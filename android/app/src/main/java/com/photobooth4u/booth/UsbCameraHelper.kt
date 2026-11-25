@@ -52,8 +52,10 @@ class UsbCameraHelper(private val ctx: Context) {
         private const val VENDOR_CANON = 0x04a9
         private const val VENDOR_SONY = 0x054c
         private const val VENDOR_INSTA360 = 0x2e1a
+        private const val VENDOR_DJI = 0x2ca3
         private const val VENDOR_GOPRO = 0x2672   // a GoPro is driven over its network (see GoProCamera), never as a PTP camera
         private const val INSTA360_HINT = "Insta360: on the camera set the USB mode to Webcam (camera screen > Settings > USB mode), then unplug and replug it. The Camera menu will then list it as \"USB webcam\"."
+        private const val DJI_HINT = "DJI Osmo: unplug and replug the USB-C cable, then tap Webcam on the camera screen. The Camera menu will then list it as \"USB webcam\"."
         private val CAMERA_VENDORS = intArrayOf(VENDOR_NIKON, VENDOR_CANON, VENDOR_SONY, 0x04cb, 0x07b4, 0x04da, 0x0a17, 0x05ca)   // + Fujifilm, Olympus, Panasonic, Pentax, Ricoh
 
         private const val OK = 0x2001
@@ -730,7 +732,10 @@ class UsbCameraHelper(private val ctx: Context) {
             closeCamera()
         }
         val all = usb.deviceList.values.filter { isCamera(it) }
-        if (all.isEmpty()) throw CamErr("NOCAMERA", "No camera found. Plug the camera into the tablet with a data USB cable (not charge-only) and switch it on.")
+        if (all.isEmpty()) {
+            if (usb.deviceList.values.any { it.vendorId == VENDOR_DJI }) throw CamErr("NOCAMERA", "The DJI Osmo is plugged in, but the tablet app cannot remote-control it as a DSLR. $DJI_HINT")
+            throw CamErr("NOCAMERA", "No camera found. Plug the camera into the tablet with a data USB cable (not charge-only) and switch it on.")
+        }
         var seen = ""
         var brandErr: CamErr? = null
         for (d in all) {
@@ -748,6 +753,7 @@ class UsbCameraHelper(private val ctx: Context) {
         }
         brandErr?.let { throw it }
         if (all.any { it.vendorId == VENDOR_INSTA360 }) throw CamErr("NOCAMERA", "The Insta360 is plugged in, but the tablet app cannot remote-control it as a camera. $INSTA360_HINT")
+        if (all.any { it.vendorId == VENDOR_DJI }) throw CamErr("NOCAMERA", "The DJI Osmo is plugged in, but the tablet app cannot remote-control it as a DSLR. $DJI_HINT")
         if (seen.isNotEmpty()) throw CamErr("NOCAMERA", "Found $seen, but the tablet app can only control Nikon, Canon EOS and Sony Alpha cameras. For another make, switch the camera to its USB webcam mode (or use an HDMI capture card): it then shows up in the Camera list by itself.")
         throw CamErr("NOCAMERA", "No camera found. Plug the camera into the tablet with a data USB cable (not charge-only) and switch it on.")
     }
@@ -759,6 +765,7 @@ class UsbCameraHelper(private val ctx: Context) {
         if (itf == null) {
             if (d.vendorId == VENDOR_SONY) throw CamErr("MODE", "The Sony camera is connected as a file-transfer drive, not for remote control. $SONY_HINT")
             if (d.vendorId == VENDOR_INSTA360) throw CamErr("MODE", "The Insta360 is not in webcam mode, so the tablet cannot use it. $INSTA360_HINT")
+            if (d.vendorId == VENDOR_DJI) throw CamErr("MODE", "The DJI Osmo is not in webcam mode, so the tablet cannot use it. $DJI_HINT")
             throw CamErr("UNSUPPORTED", "This camera is not in a USB mode the booth can control. Set its USB mode to PTP / MTP (Nikon: Setup menu > USB; Canon: Photo Import / Remote Control), then plug it in again.")
         }
         requestPermission(d)

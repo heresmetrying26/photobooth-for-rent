@@ -36,6 +36,8 @@ const PAGES = join(HERE, 'pages');
 const ORIGIN = 'app://booth';
 const VERSION = app.getVersion();
 const KEY_A = 'pb4u·desk·7f3c1e9a';
+const DRIVE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxv0WfF9rxFY9QlseCoSjrA7vePwHE-Uc8QTURZYyN6yIzcTj4SIlktEWT6Xnaw6Pv9OA/exec';
+const CLOUD_API_PATHS = new Set(['/api/ticket', '/api/guestview', '/api/events', '/api/printreq', '/api/pay', '/api/gallery']);
 
 // Graphics. Chromium keeps its own list of graphics drivers that crash or glitch and switches the risky features
 // off for them, so the app no longer overrides that list (ignore-gpu-blocklist) or forces zero-copy: an old laptop
@@ -94,16 +96,34 @@ function decryptBooth() {
 }
 
 // ---------- licence state -> local code record ----------
+function allowedAppMode() {
+  const s = L.status();
+  const m = s.p && s.p.feat && s.p.feat.appMode;
+  return (m === 'online' || m === 'both' || m === 'offline') ? m : 'offline';
+}
+function isOnlineMode() {
+  const m = allowedAppMode();
+  if (m === 'online') return true;
+  if (m === 'both') return settings.boothMode === 'online';
+  return false;
+}
 async function refreshRecord() {
   const s = L.status();
   if (s.p) await syncRecord(s.p, L.deviceId(), s.ok);
   return s;
 }
 async function checkinNow(force) {
+  const prevOnline = isOnlineMode();
+  const prevMode = allowedAppMode();
   const r = await L.checkin(net.fetch.bind(net), force);
   if (r === 'ok' || r === 'revoked') await refreshRecord();
   if (r === 'ok') syncAllNow().catch(() => { });
-  if (r === 'revoked') broadcastWin('pb4u:licence', L.info());
+  const nextOnline = isOnlineMode();
+  const nextMode = allowedAppMode();
+  if (!prevOnline && nextOnline) { try { hotspotStop().catch(() => { }); } catch { } }
+  if (r === 'revoked' || prevOnline !== nextOnline || prevMode !== nextMode) {
+    broadcastWin('pb4u:licence', { ...L.info(), appMode: nextMode, online: nextOnline, modeChanged: prevOnline !== nextOnline });
+  }
   return r;
 }
 
@@ -123,13 +143,24 @@ const htmlRes = (html, extra) => new Response(html, { status: 200, headers: { 'c
 const jsonRes = (o, s) => new Response(JSON.stringify(o), { status: s || 200, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 
 function desktopHead() {
-  const d = { v: VERSION, os: L.osKey(), server: L.SERVER };
   const s = L.status();
-  const trialWm = !!(s.p && s.p.feat && s.p.feat.trial && s.p.feat.watermark !== false);
+  const feat = (s.p && s.p.feat) || {};
+  const onlineNow = isOnlineMode();
+  const d = {
+    v: VERSION,
+    os: L.osKey(),
+    server: L.SERVER,
+    appMode: allowedAppMode(),
+    online: onlineNow,
+    deviceNo: feat.deviceNo || 1,
+    deviceLabel: feat.deviceLabel || (s.p && s.p.label) || ''
+  };
+  const trialWm = !!(feat.trial && feat.watermark !== false);
   return '<script>window.__PB=window.__PB||{};window.__PB.desktop=' + JSON.stringify(d).replace(/</g, '\\u003c') + ';' +
     (trialWm ? 'window.__PB.watermark=true;' : '') +
-    // Everything the booth needs is on this laptop, so "offline" never blocks saving.
-    'try{Object.defineProperty(Navigator.prototype,"onLine",{get:function(){return true;},configurable:true});}catch(e){}' +
+    // In Offline Mode, everything the booth needs is on this laptop so "offline" never blocks saving.
+    // In Online Mode, keep real navigator.onLine so temporary Wi-Fi drops queue uploads to Google Drive cleanly.
+    (onlineNow ? '' : 'try{Object.defineProperty(Navigator.prototype,"onLine",{get:function(){return true;},configurable:true});}catch(e){}') +
     'try{sessionStorage.removeItem("pb_open_tries");}catch(e){}</script>';
 }
 
@@ -161,6 +192,53 @@ async function camDiagForward(req) {
   } catch { return jsonRes({ ok: false, offline: true, workerLog }, 503); }
 }
 
+// Online Mode proxy: forwards cloud API calls (/api/ticket, /api/pay, /api/guestview, /api/events, /api/printreq,
+// /api/gallery) to photobooth4u.netlify.app authenticated with this laptop's signed PB4U-LIC1 licence + machine ID.
+async function cloudApiForward(req, pathWithQuery) {
+  const lic = L.currentLicence();
+  if (!lic || !L.status().ok) return jsonRes({ error: 'locked', reason: 'invalid' }, 401);
+  if (!isOnlineMode()) return jsonRes({ error: 'Online mode is not active on this device.' }, 403);
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 25000);
+  try {
+    const init = { method: req.method, headers: {}, signal: ctl.signal };
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      let bodyObj = {};
+      try { bodyObj = JSON.parse(await req.text()) || {}; } catch { bodyObj = {}; }
+      init.headers['content-type'] = 'application/json';
+      init.body = JSON.stringify({ ...bodyObj, licence: lic, mid: L.machineId() });
+    }
+    const r = await net.fetch(L.SERVER + pathWithQuery, init);
+    const ct = r.headers.get('content-type') || 'application/json';
+    const buf = Buffer.from(await r.arrayBuffer());
+    return new Response(buf, { status: r.status, headers: { 'content-type': ct, 'cache-control': 'no-store' } });
+  } catch (e) {
+    return jsonRes({ ok: false, error: 'No internet connection right now.' }, 503);
+  } finally { clearTimeout(t); }
+}
+
+// Online Mode proxy for Google Drive Apps Script relay (avoids CORS / redirect issues from app://booth).
+async function cloudDriveForward(req) {
+  if (!L.status().ok) return jsonRes({ ok: false, error: 'This laptop’s licence isn’t active.' }, 401);
+  if (!isOnlineMode()) return jsonRes({ ok: false, error: 'Online mode is not active on this device.' }, 403);
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 65000);
+  try {
+    const raw = await req.text();
+    const r = await net.fetch(DRIVE_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain;charset=utf-8' },
+      body: raw,
+      redirect: 'follow',
+      signal: ctl.signal
+    });
+    const text = await r.text();
+    return new Response(text, { status: r.status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+  } catch (e) {
+    return jsonRes({ ok: false, error: 'Failed to reach Google Drive. Check the internet and try again.' }, 503);
+  } finally { clearTimeout(t); }
+}
+
 async function handle(req) {
   const url = new URL(req.url);
   if (url.host !== 'booth') return new Response('Not found', { status: 404 });
@@ -173,11 +251,13 @@ async function handle(req) {
       if (!L.status().ok) return jsonRes({ error: 'locked', reason: 'invalid' }, 401);
       if (p === '/api/camdiag' && req.method === 'POST') return await camDiagForward(req);
       if (p === '/api/setup' && req.method === 'POST') return await handleSetupRequest(req);
+      if (isOnlineMode() && CLOUD_API_PATHS.has(p)) return await cloudApiForward(req, p + url.search);
       return await handleApi(req, p);
     }
+    if (p === '/cloud/drive' && req.method === 'POST') return await cloudDriveForward(req);
     if (p === '/local/drive' && req.method === 'POST') {
       if (!L.status().ok) return jsonRes({ ok: false, error: 'This laptop’s licence isn’t active.' }, 401);
-      hotspotWake();   // Option 1: photo saved = session active, wake hotspot if idle
+      if (!isOnlineMode()) hotspotWake();   // Option 1: photo saved = session active, wake hotspot if idle
       const ct = String(req.headers.get('content-type') || '').toLowerCase();
       if (ct && !ct.startsWith('text/plain') && !ct.startsWith('application/json')) {
         const sp = url.searchParams;
@@ -195,7 +275,7 @@ async function handle(req) {
     }
     if (p === '/local/spin-save' && req.method === 'POST') {
       if (!L.status().ok) return jsonRes({ ok: false, error: 'This laptop’s licence isn’t active.' }, 401);
-      hotspotWake();
+      if (!isOnlineMode()) hotspotWake();
       const buf = Buffer.from(await req.arrayBuffer());
       const r = await spinSaveVideo({ filename: url.searchParams.get('filename') || '', buffer: buf });
       return jsonRes(r, r.ok ? 200 : 400);
@@ -416,7 +496,7 @@ function wireIpc() {
   });
   // The booth's own Wi-Fi (Windows' Mobile hotspot, see lib/hotspot.mjs)
   ipcMain.handle('pb4u:hotspot', () => hotspotInfo());
-  ipcMain.handle('pb4u:hotspotWake', () => { hotspotWake(); return hotspotInfo(); });   // Option 1: UI signals session start
+  ipcMain.handle('pb4u:hotspotWake', () => { if (!isOnlineMode()) hotspotWake(); return hotspotInfo(); });   // Option 1: UI signals session start
   ipcMain.handle('pb4u:hotspotSet', (e, on) => (on ? hotspotStart() : hotspotStop()));
   ipcMain.handle('pb4u:hotspotAuto', (e, on) => hotspotSetAuto(!!on));
   ipcMain.handle('pb4u:hotspotCreds', (e, ssid, pass) => {
@@ -425,10 +505,11 @@ function wireIpc() {
   });
   ipcMain.handle('pb4u:hotspotSetup', async () => { const r = await hotspotSetup(); return { ...r, info: hotspotInfo() }; });
   ipcMain.handle('pb4u:info', async () => ({
-    licence: L.info(), version: VERSION, update: U.info(), photos: photosRoot(), share: shareBase(), lanIp: lanAddress(), port: sharePortNow(), server: L.SERVER
+    licence: L.info(), version: VERSION, update: U.info(), photos: photosRoot(), share: shareBase(), lanIp: lanAddress(), port: sharePortNow(), server: L.SERVER,
+    appMode: allowedAppMode(), onlineMode: isOnlineMode()
   }));
-  ipcMain.handle('pb4u:activate', async (e, code) => {
-    const r = await L.activate(net.fetch.bind(net), code);
+  ipcMain.handle('pb4u:activate', async (e, code, label) => {
+    const r = await L.activate(net.fetch.bind(net), code, label);
     if (r.ok) await refreshRecord();
     return r;
   });
@@ -437,7 +518,26 @@ function wireIpc() {
     if (r.ok) await refreshRecord();
     return r;
   });
-  ipcMain.handle('pb4u:checkin', async () => { const r = await checkinNow(true); return { result: r, licence: L.info() }; });
+  ipcMain.handle('pb4u:renameDevice', async (e, label) => {
+    const r = await L.renameDevice(net.fetch.bind(net), label);
+    if (r.ok) await refreshRecord();
+    return { ...r, licence: L.info() };
+  });
+  ipcMain.handle('pb4u:setMode', async (e, mode) => {
+    const allowed = allowedAppMode();
+    if (allowed !== 'both') return { ok: false, error: 'This device’s mode is set to ' + allowed + ' in Admin.', appMode: allowed, online: isOnlineMode() };
+    const next = mode === 'online' ? 'online' : 'offline';
+    const prevOnline = isOnlineMode();
+    settings.boothMode = next;
+    saveSettings();
+    if (next === 'online') { try { hotspotStop().catch(() => { }); } catch { } }
+    return { ok: true, appMode: allowed, online: isOnlineMode(), changed: prevOnline !== isOnlineMode() };
+  });
+  ipcMain.handle('pb4u:checkin', async () => {
+    const prevOnline = isOnlineMode();
+    const r = await checkinNow(true);
+    return { result: r, licence: L.info(), appMode: allowedAppMode(), online: isOnlineMode(), modeChanged: prevOnline !== isOnlineMode() };
+  });
   ipcMain.handle('pb4u:syncNow', () => syncAllNow());
   ipcMain.handle('pb4u:deactivate', async () => {
     const r = await L.deactivate(net.fetch.bind(net));
@@ -786,13 +886,14 @@ app.whenReady().then(async () => {
   initHotspot({
     get: () => (settings.hotspot = settings.hotspot || {}), save: saveSettings, logger: (m) => console.log('[hotspot] ' + m),
     dir: app.getPath('userData'),   // where the "hotspot is starting" crash marker lives
+    skipAuto: isOnlineMode(),
     // The page hears about every change (on, off, locked), so its Join QR stays right without polling.
     onChange: (i) => { broadcastWin('pb4u:hotspotChanged', i); }
   });
   if (settings.hotspot && settings.hotspot.ssid) setExternalWifi(settings.hotspot.ssid, settings.hotspot.pass);
   // Never sleep with the hotspot running (a common cause of Wi-Fi driver crashes on wake); it comes back after wake.
   powerMonitor.on('suspend', () => { try { hotspotSuspend(); } catch { /* ignore */ } });
-  powerMonitor.on('resume', () => { try { hotspotResume(); } catch { /* ignore */ } });
+  powerMonitor.on('resume', () => { try { if (!isOnlineMode()) hotspotResume(); } catch { /* ignore */ } });
   protocol.handle('app', handle);
   setupSession();
   buildMenu();

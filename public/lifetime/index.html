@@ -482,9 +482,14 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       var dv = data.devices || { used: 0, max: 1, list: [] };
       $('devSub').innerHTML = '<b style="color:var(--ink)">' + dv.used + ' of ' + dv.max + '</b> device' + (dv.max === 1 ? '' : 's') + ' in use. Changed tablets or phones? Remove the old one here, then enter your code on the new device.';
       $('devList').innerHTML = (dv.list || []).map(function(d){
-        return '<div class="vb"><p><b>Device ' + d.no + (d.kind ? ' · ' + esc(d.kind) : '') + '</b>' + (d.me ? ' <span class="mini" style="background:var(--ok-bg);color:#174F46">This device</span>' : '') +
+        var modeTag = d.isApp
+          ? (d.appMode === 'both' ? ' <span class="mini" style="background:#e4f5f1;color:#125247">Online + Offline</span>'
+            : d.appMode === 'online' ? ' <span class="mini" style="background:#e8f1fc;color:#1a4780">Online</span>'
+            : ' <span class="mini" style="background:#f1ece3;color:#524b50">Offline</span>')
+          : '';
+        return '<div class="vb"><p><b>Device ' + d.no + (d.label ? ' · ' + esc(d.label) : '') + (d.kind ? ' · ' + esc(d.kind) : '') + '</b>' + modeTag + (d.me ? ' <span class="mini" style="background:var(--ok-bg);color:#174F46">This device</span>' : '') +
           '<br><small>Added ' + esc(fmt(d.at)) + (d.seen ? ' · last used ' + esc(ago(d.seen)) : '') + '</small></p>' +
-          '<button class="btn" type="button" data-rmdev="' + d.no + '">Remove</button></div>';
+          '<span style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn" type="button" data-rendev="' + d.no + '">' + (d.label ? 'Rename' : 'Label') + '</button><button class="btn" type="button" data-rmdev="' + d.no + '">Remove</button></span></div>';
       }).join('') || '<p class="sub" style="margin-top:8px">No devices yet. Enter your code in the booth on each tablet or computer you use.</p>';
     }
     $('accSave').addEventListener('click', async function(){
@@ -503,6 +508,21 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       toast('Details saved');
     });
     $('devList').addEventListener('click', async function(e){
+      var rb = e.target.closest('button[data-rendev]');
+      if(rb){
+        var rno = Number(rb.dataset.rendev), rd = (data.devices.list || []).find(function(x){ return x.no === rno; }) || {};
+        var lbl = prompt('Label for Device ' + rno + ' (e.g. Studio Main, Backup Laptop):', rd.label || '');
+        if(lbl === null) return;
+        rb.disabled = true;
+        var rr, rj = {};
+        try{ rr = await fetch('/api/portal', { method: 'POST', headers: { 'content-type': 'application/json' }, cache: 'no-store', body: JSON.stringify(Object.assign({ action: 'device.rename', no: rno, label: lbl }, auth || {})) }); rj = await rr.json().catch(function(){ return {}; }); }
+        catch(err){ rr = { ok: false }; rj = { error: 'Can’t reach the server.' }; }
+        rb.disabled = false;
+        if(!rr.ok){ toast(rj.error || 'Couldn’t save label.'); return; }
+        toast(rj.label ? 'Device ' + rno + ' labelled “' + rj.label + '”' : 'Device ' + rno + ' label cleared');
+        load(auth, true);
+        return;
+      }
       var b = e.target.closest('button[data-rmdev]'); if(!b) return;
       var no = Number(b.dataset.rmdev), d = (data.devices.list || []).find(function(x){ return x.no === no; }) || {};
       if(!b.classList.contains('primary')){

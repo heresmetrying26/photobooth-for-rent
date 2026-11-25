@@ -7,11 +7,11 @@ import {
 import { timingSafeEqual, createHash, randomBytes } from 'node:crypto';
 import { setupsStore, setupKeyFor } from '../lib/core.mjs';
 import { ownerId, eventKeyOf, getAcct, acctPublic, acctKey, payStore, unseal, pm, listJSON, usedMap, batchView, createBatch, batchKey, KEY_RE } from '../lib/pay.mjs';
-import { cleanEventName, sendMail, codeEmail, upgradeEmail, PLAN_DEVICES, EMAIL_RE, logEmailChange, REVOKE_REASONS, eventsStore, getShutdown, setShutdown, trashDriveFolder, isDriveUrl, AGREEMENT_VERSION, SUBHOOK_EVENTS } from '../lib/core.mjs';
+import { cleanEventName, cleanDeviceLabel, sendMail, codeEmail, upgradeEmail, PLAN_DEVICES, EMAIL_RE, logEmailChange, REVOKE_REASONS, eventsStore, getShutdown, setShutdown, trashDriveFolder, isDriveUrl, AGREEMENT_VERSION, SUBHOOK_EVENTS } from '../lib/core.mjs';
 import { printerDiagStore, camDiagStore } from '../lib/core.mjs';
 import { replaceLifetimeCode } from '../lib/replace.mjs';
 import { buildBackup, backupName, runDriveBackup } from '../lib/backup.mjs';
-import { licenceFor, activateOn, saveMap, dropMap, licenceReady, MID_RE } from '../lib/license.mjs';
+import { licenceFor, activateOn, saveMap, dropMap, licenceReady, MID_RE, DEVICE_MODES, effectiveDeviceMode } from '../lib/license.mjs';
 import { ALL_PLANS, fulfillPlanPayment, getPlanDeliverables } from '../lib/plans.mjs';
 
 // Thank-you email after an upgrade. Never blocks or fails the upgrade: 'sent' | 'noemail' | 'failed'.
@@ -746,6 +746,48 @@ export default safe(async (req, context) => {
       if (rec.offlineOnly) rec.offlineOpt = true;
       await putLicense(store, key, rec);
       return json({ ok: true, offlineOnly: rec.offlineOnly, offlineOpt: !!rec.offlineOpt });
+    }
+
+    case 'devmode': { // per-device Online / Offline / Both override (not tied to the whole code)
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      const no = Math.floor(Number(b.deviceNo) || 0);
+      const list = devicesOf(rec);
+      const dev = list.find((d) => (d.no || 1) === no);
+      if (!dev) return json({ error: 'Device ' + no + ' not found on this code.' }, 404);
+      const raw = String(b.mode || '').trim().toLowerCase();
+      const next = DEVICE_MODES.includes(raw) ? raw : null;
+      const updated = list.map((d) => {
+        if ((d.no || 1) !== no) return d;
+        const copy = { ...d };
+        if (next) copy.mode = next;
+        else delete copy.mode;
+        return copy;
+      });
+      setDevices(rec, updated);
+      await putLicense(store, key, rec);
+      const finalDev = updated.find((d) => (d.no || 1) === no);
+      return json({ ok: true, deviceNo: no, mode: finalDev.mode || null, effectiveMode: effectiveDeviceMode(rec, finalDev) });
+    }
+
+    case 'devlabel': { // edit a specific device's human-readable label (e.g. "Studio Main Laptop")
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      const no = Math.floor(Number(b.deviceNo) || 0);
+      const list = devicesOf(rec);
+      const dev = list.find((d) => (d.no || 1) === no);
+      if (!dev) return json({ error: 'Device ' + no + ' not found on this code.' }, 404);
+      const cleanLbl = cleanDeviceLabel(b.label);
+      const updated = list.map((d) => {
+        if ((d.no || 1) !== no) return d;
+        const copy = { ...d };
+        if (cleanLbl) copy.label = cleanLbl;
+        else delete copy.label;
+        return copy;
+      });
+      setDevices(rec, updated);
+      await putLicense(store, key, rec);
+      return json({ ok: true, deviceNo: no, label: cleanLbl });
     }
 
     case 'offlinekey': { // activate a laptop with no internet: its Machine ID in, a licence key out

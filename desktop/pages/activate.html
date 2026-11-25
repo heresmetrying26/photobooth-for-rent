@@ -49,10 +49,11 @@
 
     <section id="online">
       <h2 id="title">Activate this laptop</h2>
-      <p class="lead" id="lead">Type your photobooth4u code. You need the internet just this once; after that the booth works offline.</p>
+      <p class="lead" id="lead">Type your photobooth4u code and an optional label so you can tell this laptop apart in multi-device setups.</p>
       <p class="who hidden" id="who"></p>
       <form id="form" autocomplete="off">
         <input id="code" placeholder="PB-XXXX-XXXX-XXXX" maxlength="24" autocapitalize="characters" spellcheck="false" aria-label="Your code">
+        <input id="label" placeholder="Device label (optional, e.g. Studio Main)" maxlength="40" spellcheck="false" aria-label="Device label" style="margin-top:8px;text-transform:none;letter-spacing:0;font-size:14px;">
         <button id="go" type="submit">Activate</button>
       </form>
       <button id="retry" class="alt hidden" type="button">Try again</button>
@@ -74,7 +75,7 @@
       <button class="link" id="toOnline" type="button">Back to activating with a code</button>
     </section>
 
-    <p class="hint" id="foot">The offline app is an add-on to your code. Each laptop uses one of your code’s device slots.</p>
+    <p class="hint" id="foot">Works with both Online and Offline codes (no Chrome or Print Helper needed). Each laptop uses one of your code’s device slots.</p>
   </div>
 <script>
 (function(){
@@ -103,6 +104,7 @@
   api.info().then(function(info){
     var L = info.licence || {};
     $('mid').textContent = L.mid || '—';
+    if($('label') && !$('label').value && (L.deviceLabel || L.name)) $('label').placeholder = 'Device label (optional, e.g. ' + (L.deviceLabel || L.name) + ')';
     if(L.ok){ openBooth(); return; }
     var text = L.message || NOTICES[notice] || '';
     if(text){ $('notice').textContent = text; show($('notice'), true); }
@@ -118,11 +120,16 @@
   $('form').addEventListener('submit', function(e){
     e.preventDefault();
     var code = $('code').value.trim();
+    var label = $('label') ? $('label').value.trim() : '';
     if(!code){ say($('msg'), 'Type your code first.', 'error'); return; }
     $('go').disabled = true; say($('msg'), 'Activating…');
-    api.activate(code).then(function(r){
+    api.activate(code, label).then(function(r){
       $('go').disabled = false;
-      if(r.ok){ say($('msg'), 'Activated ✓ Opening the booth…', 'ok'); setTimeout(openBooth, 600); return; }
+      if(r.ok){
+        var tag = 'Device ' + (r.deviceNo || 1) + (r.deviceLabel ? ' · ' + r.deviceLabel : '');
+        say($('msg'), 'Activated ✓ ' + tag + ' — Opening the booth…', 'ok');
+        setTimeout(openBooth, 700); return;
+      }
       say($('msg'), r.error || 'Activation failed.', r.code === 'no-addon' ? 'warn' : 'error');
       if(r.offline) show($('toOffline'), true);
     }).catch(function(){ $('go').disabled = false; say($('msg'), 'Something went wrong. Try again.', 'error'); });

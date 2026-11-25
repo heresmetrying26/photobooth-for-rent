@@ -62,11 +62,17 @@ export function deviceKindOf(hint, ua) {
   if (/Linux/.test(u)) return 'Linux computer';
   return null;
 }
-export function addDevice(rec, id, now, kind) {
+export function cleanDeviceLabel(v) {
+  return String(v || '').replace(/[<>"\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
+}
+export function addDevice(rec, id, now, kind, label) {
   const list = devicesOf(rec).slice();
   const used = list.reduce((m, d) => Math.max(m, d.no || 0), 0);
   const no = Math.max(rec.nextDeviceNo || 1, used + 1);
-  list.push(kind ? { id, no, at: now, kind } : { id, no, at: now });
+  const dev = kind ? { id, no, at: now, kind } : { id, no, at: now };
+  const cleanLbl = cleanDeviceLabel(label);
+  if (cleanLbl) dev.label = cleanLbl;
+  list.push(dev);
   rec.devices = list;
   rec.nextDeviceNo = no + 1;
   rec.deviceId = list[0].id; // kept for older code paths / display

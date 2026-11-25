@@ -23,7 +23,8 @@ try {
   const script = /<script>\s*var T=([\s\S]*)<\/script>/.exec(html);
   assert(script, 'the page script is there');
   assert.doesNotThrow(() => new Function('var T=' + script[1]), 'the page script is valid JavaScript');
-  for (const id of ['laySel', 'fillSel', 'autoChk', 'qGrid', 'makeBtn', 'origBtn', 'resCard', 'resPrintBtn', 'resNextBtn']) assert(html.includes('id="' + id + '"'), 'page has #' + id);
+  for (const id of ['laySel', 'favBar', 'favBtn', 'fillSel', 'orientChk', 'autoChk', 'qfBar', 'qGrid', 'makeBtn', 'origBtn', 'resCard', 'resPrintBtn', 'resNextBtn']) assert(html.includes('id="' + id + '"'), 'page has #' + id);
+  assert(html.includes('object-fit:contain'), 'phone queue thumbnails are uncropped so portrait vs landscape is visible');
   assert(html.includes('since'), 'the page asks only for what changed');
   console.log('PASS: phone page served and its script parses');
 
@@ -38,16 +39,21 @@ try {
   // 3. the desk pushes its state, the phone reads it
   assert.equal(P.roveStateSet({
     layoutMode: 'frame:abc', fillMode: 'repeat1', autoOn: true, need: 1, rawShots: 2, activeLabel: 'Two-photo 4R',
+    favorites: ['frame:abc', 'solo'], orientMode: true, tplPort: 'frame:abc', tplLand: 'solo',
     layouts: [{ key: 'match', label: 'Same as the booth', shots: 3, group: 'Photobooth' }, { key: 'frame:abc', label: 'Two-photo 4R', shots: 2, group: 'My frames' }, { key: '', label: 'dropped' }],
-    queue: [{ id: 7, name: 'a.jpg', thumb: THUMB, used: false, phone: true }, { id: 6, name: '<b>b</b>.jpg', thumb: 'javascript:alert(1)', used: true }, { id: 0, name: 'no id' }],
+    queue: [{ id: 7, name: 'a.jpg', thumb: THUMB, used: false, phone: true, orient: 'portrait' }, { id: 6, name: '<b>b</b>.jpg', thumb: 'javascript:alert(1)', used: true, orient: 'landscape' }, { id: 0, name: 'no id' }],
     lastResult: { sessionNumber: 4, qrUrl: 'http://192.168.1.5/x', thumb: THUMB, label: 'Two-photo 4R', printing: true, at: 1 }
   }), true);
   const s1 = (await j(T + '/rove-state')).body;
   assert(s1.ok && s1.layoutMode === 'frame:abc' && s1.fillMode === 'repeat1' && s1.autoOn === true && s1.need === 1 && s1.rawShots === 2, 'choices come back as pushed');
+  assert.deepEqual(s1.favorites, ['frame:abc', 'solo'], 'favorite templates come back as pushed');
+  assert(s1.orientMode === true && s1.tplPort === 'frame:abc' && s1.tplLand === 'solo', 'orientation routing config comes back');
   assert.equal(s1.layouts.length, 2, 'a layout with no key is dropped');
   assert.deepEqual(s1.layouts.map((l) => l.group), ['Photobooth', 'My frames'], 'the groups are kept');
   assert.equal(s1.queue.length, 2, 'a photo with no id is dropped');
   assert.equal(s1.queue[0].thumb, THUMB, 'a good thumbnail is kept');
+  assert.equal(s1.queue[0].orient, 'portrait', 'portrait orientation is kept');
+  assert.equal(s1.queue[1].orient, 'landscape', 'landscape orientation is kept');
   assert.equal(s1.queue[1].thumb, '', 'a thumbnail that is not an image data URL is dropped');
   assert(!/[<>]/.test(s1.queue[1].name), 'tags are stripped from names');
   assert(s1.lastResult && s1.lastResult.printing === true && s1.lastResult.qrUrl === 'http://192.168.1.5/x', 'the last print and its QR link come back');
@@ -57,8 +63,9 @@ try {
   const same = (await j(T + '/rove-state?since=' + s1.updatedAt)).body;
   assert(same.ok && same.same === true && !same.queue, 'unchanged: no queue sent again');
   P.roveStateSet({ layoutMode: 'frame:abc', fillMode: 'repeat1', autoOn: true, need: 1, rawShots: 2, activeLabel: 'Two-photo 4R',
+    favorites: ['frame:abc', 'solo'], orientMode: true, tplPort: 'frame:abc', tplLand: 'solo',
     layouts: [{ key: 'match', label: 'Same as the booth', shots: 3, group: 'Photobooth' }, { key: 'frame:abc', label: 'Two-photo 4R', shots: 2, group: 'My frames' }],
-    queue: [{ id: 7, name: 'a.jpg', thumb: THUMB, used: false, phone: true }, { id: 6, name: '<b>b</b>.jpg', thumb: 'javascript:alert(1)', used: true }],
+    queue: [{ id: 7, name: 'a.jpg', thumb: THUMB, used: false, phone: true, orient: 'portrait' }, { id: 6, name: '<b>b</b>.jpg', thumb: 'javascript:alert(1)', used: true, orient: 'landscape' }],
     lastResult: { sessionNumber: 4, qrUrl: 'http://192.168.1.5/x', thumb: THUMB, label: 'Two-photo 4R', printing: true, at: 1 } });
   assert.equal((await j(T + '/rove-state')).body.updatedAt, s1.updatedAt, 'the same state pushed again keeps its stamp');
   await new Promise((r) => setTimeout(r, 5));
@@ -71,14 +78,14 @@ try {
   assert.deepEqual(P.roveCmdTake(), [], 'nothing waiting at first');
   assert.equal((await post('do=make&ids=3,2')).body.ok, true);
   assert.equal((await post('do=make&original=1&ids=5')).body.ok, true);
-  assert.equal((await post('do=config&layoutMode=frame%3Aabc&fillMode=repeat1&autoOn=1')).body.ok, true);
+  assert.equal((await post('do=config&layoutMode=frame%3Aabc&fillMode=repeat1&autoOn=1&favToggle=frame%3Aabc&orientMode=1')).body.ok, true);
   assert.equal((await post('do=config&autoOn=0')).body.ok, true);
   for (const a of ['print', 'next', 'clear']) assert.equal((await post('do=' + a)).body.ok, true);
   const cmds = P.roveCmdTake();
   assert.deepEqual(cmds.map((c) => c.do), ['make', 'make', 'config', 'config', 'print', 'next', 'clear']);
   assert.deepEqual(cmds[0].ids, [3, 2]); assert.equal(cmds[0].original, false);
   assert.equal(cmds[1].original, true);
-  assert.deepEqual({ l: cmds[2].layoutMode, f: cmds[2].fillMode, a: cmds[2].autoOn }, { l: 'frame:abc', f: 'repeat1', a: true });
+  assert.deepEqual({ l: cmds[2].layoutMode, f: cmds[2].fillMode, a: cmds[2].autoOn, fav: cmds[2].favToggle, om: cmds[2].orientMode }, { l: 'frame:abc', f: 'repeat1', a: true, fav: 'frame:abc', om: true });
   assert.equal(cmds[3].autoOn, false); assert(!('layoutMode' in cmds[3]), 'a config command carries only what was sent');
   assert.deepEqual(P.roveCmdTake(), [], 'each command is taken once');
   assert.equal((await post('do=make')).status, 400, 'make with no photo is refused');

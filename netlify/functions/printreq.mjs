@@ -1,4 +1,5 @@
 import { safe, json, checkLicense, verifyToken, hmac, cleanEventName, printReqStore, printReqGuest, clientIp } from '../lib/core.mjs';
+import { verifyDesktopAppAuth } from '../lib/license.mjs';
 
 // Guests asking for a print from the online gallery. Off until the booth turns it on for its own event.
 //
@@ -32,10 +33,18 @@ export default safe(async (req) => {
   }
 
   // ---------- the booth ----------
-  const lic = await checkLicense(b.token, String(b.deviceId || ''));
-  if (!lic.valid) return json({ error: 'locked', reason: lic.reason }, 401);
-  const p = verifyToken(b.token);
-  const owner = String(p.k || ('trial:' + p.d));
+  let lic = null, owner = '';
+  const desk = await verifyDesktopAppAuth(b, { requireOnline: true });
+  if (desk) {
+    if (!desk.ok) return json({ error: desk.error, reason: desk.reason }, desk.status);
+    lic = { valid: true, folderKey: desk.folderKey, folderPrefix: desk.folderPrefix, exp: desk.exp };
+    owner = String(desk.owner);
+  } else {
+    lic = await checkLicense(b.token, String(b.deviceId || ''));
+    if (!lic.valid) return json({ error: 'locked', reason: lic.reason }, 401);
+    const p = verifyToken(b.token);
+    owner = String(p.k || ('trial:' + p.d));
+  }
   // The booth may only use its own event's folder (same rule as /api/ticket).
   const asked = String(b.folderKey || '').trim();
   if (lic.folderPrefix) {

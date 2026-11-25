@@ -274,7 +274,7 @@ export function hotspotUp() {
 }
 
 // ---------- what main.mjs uses ----------
-export function initHotspot({ get, save, logger, dir, onChange }) {
+export function initHotspot({ get, save, logger, dir, onChange, skipAuto }) {
   if (logger) log = logger;
   if (typeof onChange === 'function') notify = onChange;
   cfgStore = { get, save };
@@ -314,7 +314,7 @@ export function initHotspot({ get, save, logger, dir, onChange }) {
         log('hotspot locked: this laptop went down twice while starting it');
       } else if (crashed) {
         st.error = CRASH_WARN;
-      } else if (c.auto) {
+      } else if (c.auto && !skipAuto) {
         // Option 1: start once at launch, then stay idle until a photo session wakes it.
         hotspotStart().catch(() => {});
       }

@@ -88,6 +88,7 @@
 
     <div class="form">
       <input id="code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Password or rental code">
+      <input id="devLabel" type="text" maxlength="40" autocomplete="off" spellcheck="false" placeholder="Device label (optional, e.g. Main iPad)" style="text-transform:none;letter-spacing:0;font-size:14px;">
       <button id="unlockBtn">Unlock</button>
     </div>
     <div class="msg" id="msg"></div>
@@ -160,7 +161,7 @@
       var r = await fetch('/api/redeem', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ code: code, deviceId: deviceId(), dk: (function(){ var ua = navigator.userAgent || '', touch = navigator.maxTouchPoints > 1;
+        body: JSON.stringify({ code: code, deviceId: deviceId(), label: (document.getElementById('devLabel') ? document.getElementById('devLabel').value.trim() : ''), dk: (function(){ var ua = navigator.userAgent || '', touch = navigator.maxTouchPoints > 1;
           if(/iPad/.test(ua) || (/Macintosh/.test(ua) && touch)) return 'iPad'; if(/iPhone/.test(ua)) return 'iPhone';
           if(/Android/.test(ua)) return /Mobile/.test(ua) ? 'Android phone' : 'Android tablet'; if(/CrOS/.test(ua)) return 'Chromebook';
           if(/Windows/.test(ua)) return 'Windows computer'; if(/Macintosh/.test(ua)) return 'Mac'; return ''; })() })

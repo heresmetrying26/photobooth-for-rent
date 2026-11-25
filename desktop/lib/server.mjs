@@ -63,6 +63,7 @@ export async function syncRecord(p, deviceId, ok) {
     print: feat.print || { enabled: false, sizes: [] },
     traditional: feat.traditional !== false, retakeOpt: feat.retakeOpt !== false, typesOpt: !!feat.typesOpt, payOpt: !!feat.vouchers, lockOpt: feat.lockOpt !== false,
     gifOpt: feat.gifOpt !== false,
+    printStationOpt: !!feat.printStationOpt,
     extras: feat.extras || old.extras,
     pinResetAt: feat.pinResetAt || 0, defaultTheme: feat.defaultTheme || null,
     maxDevices: feat.multiDevice ? 10 : 1,

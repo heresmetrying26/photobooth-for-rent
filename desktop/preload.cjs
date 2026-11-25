@@ -132,5 +132,11 @@ contextBridge.exposeInMainWorld('pb4u', {
       return () => ipcRenderer.removeListener('pb4u:sensorData', h);
     }
   },
+  lanStation: {
+    info: (refresh) => ipcRenderer.invoke('pb4u:lanStationInfo', !!refresh),
+    newPin: () => ipcRenderer.invoke('pb4u:lanStationNewPin'),
+    testPrint: (printer, twoUp) => ipcRenderer.invoke('pb4u:lanStationTestPrint', String(printer || ''), !!twoUp),
+    onJob: (fn) => { ipcRenderer.on('pb4u:lanStationJob', (e, info) => { try { fn(info); } catch (err) { /* ignore */ } }); }
+  },
   onLicence: (fn) => { ipcRenderer.on('pb4u:licence', (e, info) => { try { fn(info); } catch (err) { /* ignore */ } }); }
 });

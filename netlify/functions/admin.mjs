@@ -110,7 +110,7 @@ function bonusRecord(key, parent, minutes) {
   return {
     key, code: displayCode(key), kind: 'bonus', parent: parent.key,
     label: (parent.label || parent.code) + ' · Bonus', folderName: parent.folderName, subfolder: BONUS_SUBFOLDER,
-    minutes, days: 0, startsAt: null, print: parent.print, traditional: !!parent.traditional, gifOpt: !!parent.gifOpt, retakeOpt: !!parent.retakeOpt, typesOpt: !!parent.typesOpt, payOpt: !!parent.payOpt, lockOpt: !!parent.lockOpt, ipadOpt: !!parent.ipadOpt, defaultTheme: parent.defaultTheme || null,
+    minutes, days: 0, startsAt: null, print: parent.print, traditional: !!parent.traditional, gifOpt: !!parent.gifOpt, retakeOpt: !!parent.retakeOpt, typesOpt: !!parent.typesOpt, payOpt: !!parent.payOpt, lockOpt: !!parent.lockOpt, ipadOpt: !!parent.ipadOpt, printStationOpt: !!parent.printStationOpt, defaultTheme: parent.defaultTheme || null,
     status: 'unused', createdAt: Date.now() + 1, redeemedAt: null, expiresAt: null, deviceId: null
   };
 }
@@ -386,6 +386,7 @@ export default safe(async (req, context) => {
           traditional: b.traditional !== false,
           gifOpt: b.gifOpt !== false,
           rushOpt: !!b.rushOpt,
+          printStationOpt: !!b.printStationOpt,
           extras: normExtras(b.extras),
           retakeOpt: b.retakeOpt !== false,
           typesOpt: !!b.typesOpt,
@@ -620,6 +621,15 @@ export default safe(async (req, context) => {
       await putLicense(store, key, rec);
       await syncBonus(rec, { ipadOpt: rec.ipadOpt });
       return json({ ok: true, ipadOpt: rec.ipadOpt });
+    }
+
+    case 'printstationopt': { // Built-in Offline Print Station panel in Laptop App Tools & Setup menu (off by default)
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      rec.printStationOpt = !!b.printStationOpt;
+      await putLicense(store, key, rec);
+      await syncBonus(rec, { printStationOpt: rec.printStationOpt });
+      return json({ ok: true, printStationOpt: rec.printStationOpt });
     }
 
     case 'pinreset': { // forgotten lock PIN: the booth clears it and unlocks within ~5 minutes

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.111', date: '2026-11-25' },
   { version: '1.1.110', date: '2026-11-25' },
   { version: '1.1.109', date: '2026-11-25' },
   { version: '1.1.108', date: '2026-11-25' },
@@ -307,6 +308,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-25', title: 'Desktop 1.1.111 & iPad App (OTA): Setup More Menu Tools, Gated Offline Print Station & Faster Wi-Fi Printing', for: ['website', 'app', 'ipad'], app: '1.1.111',
+    items: [
+      '🧰 Tools inside Setup More menu (⋯): Open Photographer desk, 360 desk, Print requests, Arrange & Print, Video guestbook, All photos, Backup folder, and Booth Wi-Fi directly from Setup without starting a session first (keeps Camera, Printer, and resize controls focused inside Photo Session).',
+      '🖨️ Built-in Offline Print Station in Laptop App Tools: Admin can enable Print Station per client code in Admin. Once enabled, it appears inside both Setup → ⋯ and Photo Session → Tools with your Laptop Wi-Fi address, 6-digit PIN, Mobile Hotspot switch, Driver Preferences, Test 4×6 / Test 2×6 Cut buttons, and live incoming iPad prints (while pausing laptop camera preview to save CPU).',
+      '⚡ Faster iPad-to-laptop Wi-Fi printing: Photo sheets are sent as lightweight high-quality images and use cached printer status checks, cutting wireless send time per print.'
+    ]
+  },
   {
     date: '2026-11-25', title: 'Print Helper 1.1.24 & iPad App (OTA): Offline Laptop Print Station for Mitsubishi, DNP & HiTi USB Printers', for: ['website', 'ipad', 'helper'], helper: '1.1.24',
     items: [

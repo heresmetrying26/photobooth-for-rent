@@ -20,9 +20,11 @@ const jobLog = [];
 
 let cfg = {
   getPort: () => 0,
+  isEnabled: () => true,
   getPrinters: async () => [],
   getPaper: async () => ({ ok: false, error: 'Unsupported' }),
   printJob: async () => ({ ok: false, error: 'Unsupported' }),
+  onJob: () => { },
   pinFile: '',
   appKind: 'print-helper',
   version: '',
@@ -67,9 +69,11 @@ function log(msg) {
 export function initLanStation(options = {}) {
   cfg = {
     getPort: typeof options.getPort === 'function' ? options.getPort : () => 0,
+    isEnabled: typeof options.isEnabled === 'function' ? options.isEnabled : () => true,
     getPrinters: typeof options.getPrinters === 'function' ? options.getPrinters : async () => [],
     getPaper: typeof options.getPaper === 'function' ? options.getPaper : async () => ({ ok: false, error: 'Unsupported' }),
     printJob: typeof options.printJob === 'function' ? options.printJob : async () => ({ ok: false, error: 'Unsupported' }),
+    onJob: typeof options.onJob === 'function' ? options.onJob : () => { },
     pinFile: typeof options.pinFile === 'string' ? options.pinFile : '',
     appKind: typeof options.appKind === 'string' ? options.appKind : 'print-helper',
     version: typeof options.version === 'string' ? options.version : '',
@@ -208,6 +212,7 @@ export function recordStationJob(entry) {
     error: entry.error ? String(entry.error) : ''
   });
   if (jobLog.length > MAX_LOGS) jobLog.length = MAX_LOGS;
+  try { cfg.onJob(getLanStationInfo()); } catch { /* ignore */ }
 }
 
 const PNG_CRC_TABLE = (() => {
@@ -280,6 +285,10 @@ export async function handleLanStationHttp(req, res, url) {
     res.writeHead(204, corsHeaders({ 'cache-control': 'no-store' }));
     res.end();
     return true;
+  }
+
+  if (!cfg.isEnabled()) {
+    return sendJson(res, 403, { ok: false, reason: 'disabled', error: 'Print Station is not enabled on this laptop licence. Ask your admin to turn it on.' });
   }
 
   // Unauthenticated LAN discovery beacon: exposes no printers and no PIN.

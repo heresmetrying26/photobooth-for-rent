@@ -19,7 +19,7 @@ import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
 import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinSaveVideo, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinArmStateNow, spinArmCmdPush, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, roveStateSet, roveCmdTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, setPrintNowConfig, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
 import { initBridge, getBridgeInfo, renewBridgeToken, pushBridgeState, sendBridgeEvent, sendCamCommand } from './lib/guest-bridge.mjs';
-import { initLanStation, getLanStationInfo } from './lib/lan-print-station.mjs';
+import { initLanStation, getLanStationInfo, rotateLanStationPin, recordStationJob, createStationTestPngDataUrl } from './lib/lan-print-station.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import { probeSensor, startSensor, stopSensor, latestSensor } from './lib/winsensor.mjs';
 import { makeShrinkPage, makePngToJpeg } from './lib/pageshrink.mjs';
@@ -108,6 +108,7 @@ function isOnlineMode() {
   if (m === 'both') return settings.boothMode === 'online';
   return false;
 }
+const printStationAllowed = () => { const s = L.status(); return !!(s.p && s.p.feat && s.p.feat.printStationOpt === true); };
 async function refreshRecord() {
   const s = L.status();
   if (s.p) await syncRecord(s.p, L.deviceId(), s.ok);
@@ -116,14 +117,16 @@ async function refreshRecord() {
 async function checkinNow(force) {
   const prevOnline = isOnlineMode();
   const prevMode = allowedAppMode();
+  const prevPs = printStationAllowed();
   const r = await L.checkin(net.fetch.bind(net), force);
   if (r === 'ok' || r === 'revoked') await refreshRecord();
   if (r === 'ok') syncAllNow().catch(() => { });
   const nextOnline = isOnlineMode();
   const nextMode = allowedAppMode();
+  const nextPs = printStationAllowed();
   if (!prevOnline && nextOnline) { try { hotspotStop().catch(() => { }); } catch { } }
-  if (r === 'revoked' || prevOnline !== nextOnline || prevMode !== nextMode) {
-    broadcastWin('pb4u:licence', { ...L.info(), appMode: nextMode, online: nextOnline, modeChanged: prevOnline !== nextOnline });
+  if (r === 'revoked' || prevOnline !== nextOnline || prevMode !== nextMode || prevPs !== nextPs) {
+    broadcastWin('pb4u:licence', { ...L.info(), appMode: nextMode, online: nextOnline, modeChanged: prevOnline !== nextOnline, printStationOpt: nextPs, printStationChanged: prevPs !== nextPs });
   }
   return r;
 }
@@ -153,6 +156,7 @@ function desktopHead() {
     server: L.SERVER,
     appMode: allowedAppMode(),
     online: onlineNow,
+    printStationOpt: !!feat.printStationOpt,
     deviceNo: feat.deviceNo || 1,
     deviceLabel: feat.deviceLabel || (s.p && s.p.label) || ''
   };
@@ -801,6 +805,45 @@ function wireIpc() {
   ipcMain.handle('pb4u:bridgeState', (e, state) => pushBridgeState(state));
   ipcMain.handle('pb4u:bridgeEvent', (e, ev) => sendBridgeEvent(ev));
   ipcMain.handle('pb4u:bridgeCamCmd', (e, cmd) => sendCamCommand(cmd));
+  ipcMain.handle('pb4u:lanStationInfo', async (e, refresh) => {
+    const allowed = printStationAllowed();
+    let pr = [];
+    if (allowed) {
+      const r = await handleHelper(new Request('app://booth/helper/status' + (refresh ? '?refresh=1' : '')), '/status', new URLSearchParams(refresh ? 'refresh=1' : ''));
+      const j = await r.json().catch(() => ({}));
+      pr = Array.isArray(j.printers) ? j.printers : [];
+    }
+    return { ...getLanStationInfo(), allowed, printers: pr };
+  });
+  ipcMain.handle('pb4u:lanStationNewPin', () => {
+    if (!printStationAllowed()) return { ok: false, error: 'Print Station is not enabled on this licence.' };
+    const pin = rotateLanStationPin();
+    return { ok: true, pin, ...getLanStationInfo() };
+  });
+  ipcMain.handle('pb4u:lanStationTestPrint', async (e, printer, twoUp) => {
+    if (!printStationAllowed()) return { ok: false, error: 'Print Station is not enabled on this licence.' };
+    const name = String(printer || '').trim();
+    if (!name) return { ok: false, error: 'Choose a printer first.' };
+    const body = {
+      printer: name,
+      quality: 'best',
+      twoUp: !!twoUp,
+      widthMm: 101.6,
+      heightMm: 152.4,
+      pages: [createStationTestPngDataUrl({ twoUp: !!twoUp })]
+    };
+    const r = await handleHelper(new Request('app://booth/helper/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), '/print', new URLSearchParams());
+    const j = await r.json().catch(() => ({ ok: false, error: 'Print error' }));
+    recordStationJob({
+      printer: name,
+      pages: 1,
+      paper: twoUp ? '2x6 strips (cut)' : '4x6 test',
+      from: 'Laptop Test',
+      ok: !!j.ok,
+      error: j.error || ''
+    });
+    return j;
+  });
 }
 
 let isQuitting = false;
@@ -885,10 +928,12 @@ app.whenReady().then(async () => {
   });
   initLanStation({
     getPort: sharePortNow,
+    isEnabled: printStationAllowed,
     pinFile: join(dataDir(), 'lan-station.json'),
     appKind: 'desktop',
     version: app.getVersion(),
     logger: (m) => console.log(m),
+    onJob: (info) => { broadcastWin('pb4u:lanStationJob', info); },
     getPrinters: async (refresh) => {
       const r = await handleHelper(new Request('app://booth/helper/status' + (refresh ? '?refresh=1' : '')), '/status', new URLSearchParams(refresh ? 'refresh=1' : ''));
       const j = await r.json().catch(() => ({}));

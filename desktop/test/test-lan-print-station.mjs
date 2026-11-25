@@ -159,7 +159,7 @@ try {
     new vm.Script(m[1]);
   });
 
-  await check('built booth bundle keeps iPad DSLR camera local and routes iPad/gallery prints to Laptop Print Station', () => {
+  await check('built booth bundle keeps iPad DSLR camera local, includes Setup tools menu (without camera/printer/resize) and efficient JPEG prints', () => {
     const built = readFileSync(join(root, 'protected', 'booth.html'), 'utf8');
     assert.match(built, /id="lanStationRow"/);
     assert.match(built, /function lanStationActive\(/);
@@ -170,19 +170,33 @@ try {
     assert.match(built, /if \(LAPTOP_PRINT \|\| TABLET_LOCAL\) printRoute = 'here';/);
     assert.match(built, /if \(\(LAPTOP_PRINT \|\| lanStationActive\(\)\) && route === 'dialog'\)/);
     assert.match(built, /if \(LAPTOP_PRINT \|\| lanStationActive\(\) \|\| route !== 'dialog'\)/);
+    // Setup ⋯ menu tools & built-in Desktop Print Station (gated by printStationOpt)
+    assert.match(built, /id="setupMenuTools"/);
+    assert.match(built, /id="menuPrintStation"/);
+    assert.match(built, /id="printStationFab"/);
+    assert.match(built, /id="stationDeskOverlay"/);
+    assert.match(built, /function printStationAllowed\(\)/);
+    assert.ok(!/data-setup-tool="(?:camFab|printFab|pstatFab|scaleFab)"/.test(built), 'Setup tools menu must exclude Camera, Printer, and Resize UI');
+    // Efficiency optimizations: JPEG compression for photo prints & 60s cached helper status
+    assert.match(built, /toDataURL\('image\/jpeg', 0\.95\)/);
+    assert.match(built, /\(helper\.checked \|\| 0\)\) < 60000/);
   });
 
-  await check('end-to-end helper bridge relays discovery, PIN auth, paper match, and 2x6 cut prints from iPad', async () => {
+  await check('end-to-end helper bridge enforces isEnabled gating, fires onJob push, and relays 2x6 cut prints from iPad', async () => {
     server.close();
     const relayJobs = [];
+    const pushedJobs = [];
+    let enabled = false;
     const pinFile2 = join(tmpdir(), 'pb4u-lan-bridge-test-' + process.pid + '.json');
     try {
       const bp = await startHelperBridge({
         ports: [47891, 47892],
         lanStation: {
-          appKind: 'print-helper',
-          version: '1.1.24',
+          appKind: 'desktop',
+          version: '1.1.111',
           pinFile: pinFile2,
+          isEnabled: () => enabled,
+          onJob: (info) => pushedJobs.push(info),
           getPrinters: async () => ['Mitsubishi CP-D80DW', 'Mitsubishi 2x6 cut'],
           getPaper: async ({ printer, twoUp }) => ({ ok: true, known: true, match: { name: twoUp ? '6x4(2x6*2)' : 'PR(4x6)', borderless: true, isDefault: false }, printer }),
           printJob: async (body) => { relayJobs.push(body); return { ok: true }; }
@@ -190,9 +204,14 @@ try {
       });
       assert.ok(bp >= 47891, 'bridge must bind test port');
       const bUrl = 'http://127.0.0.1:' + bp;
+      const blocked = await fetch(bUrl + '/lan-station/hello');
+      assert.equal(blocked.status, 403);
+      assert.equal((await blocked.json()).reason, 'disabled');
+
+      enabled = true;
       const hello = await (await fetch(bUrl + '/lan-station/hello')).json();
       assert.equal(hello.ok, true);
-      assert.equal(hello.version, '1.1.24');
+      assert.equal(hello.version, '1.1.111');
 
       const st = getLanStationInfo();
       const status = await (await fetch(bUrl + '/lan-station/status?refresh=1', { headers: { 'x-pb-pin': st.pin } })).json();
@@ -218,6 +237,8 @@ try {
       assert.equal(relayJobs[0].twoUp, true);
       assert.equal(relayJobs[0].pages.length, 2);
       assert.equal(getLanStationInfo().jobs[0].printer, 'Mitsubishi 2x6 cut');
+      assert.equal(pushedJobs.length, 1);
+      assert.equal(pushedJobs[0].jobs[0].printer, 'Mitsubishi 2x6 cut');
     } finally {
       stopHelperBridge();
       try { rmSync(pinFile2, { force: true }); } catch { }

@@ -15,9 +15,15 @@ import android.net.NetworkRequest
 import android.net.Uri
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Matrix
+import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.media.ExifInterface
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -40,6 +46,7 @@ import android.widget.GridView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -49,6 +56,8 @@ import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.OutputStream
@@ -82,6 +91,11 @@ class RovingBridgeActivity : AppCompatActivity() {
         private const val PREFS = "photobooth_roving"
         private const val KEY_URL = "target_laptop_url"
         private const val KEY_VIBRATE = "vibrate_on_send"
+        private const val KEY_PICK_TO_SEND = "pick_to_send_mode"
+        private const val KEY_BRIGHTNESS = "brightness_adjust"
+        private const val BRIGHTNESS_MIN = -30
+        private const val BRIGHTNESS_MAX = 40
+        private const val BRIGHTNESS_RANGE = BRIGHTNESS_MAX - BRIGHTNESS_MIN
         private const val RETRY_DELAY_MS = 3500L
         private const val WAKE_LOCK_TIMEOUT_MS = 2L * 60L * 60L * 1000L
         private const val UPLOAD_OK = 0
@@ -96,8 +110,13 @@ class RovingBridgeActivity : AppCompatActivity() {
         val timeStr: String,
         @Volatile var success: Boolean,
         val sizeBytes: Long,
-        @Volatile var pendingFile: File? = null
-    )
+        @Volatile var pendingFile: File? = null,
+        @Volatile var stagedFile: File? = null,
+        @Volatile var brightness: Int = 0,
+        val orient: String = ""
+    ) {
+        fun isStaged(): Boolean = !success && stagedFile?.exists() == true
+    }
 
     private val isRunning = AtomicBoolean(false)
     private var workerThread: Thread? = null
@@ -121,6 +140,8 @@ class RovingBridgeActivity : AppCompatActivity() {
 
     private var targetUrl: String = ""
     private var vibrateOnSend: Boolean = true
+    @Volatile private var pickToSendMode: Boolean = false
+    @Volatile private var defaultBrightness: Int = 0
     private var sentPhotosCount: Int = 0
 
     // UI elements
@@ -130,13 +151,22 @@ class RovingBridgeActivity : AppCompatActivity() {
     private lateinit var cameraSub: TextView
     private lateinit var laptopInput: EditText
     private lateinit var connectionStatusText: TextView
+    private lateinit var modeAutoBtn: Button
+    private lateinit var modePickBtn: Button
+    private lateinit var modeHintText: TextView
+    private lateinit var mainBrightnessLabel: TextView
+    private lateinit var mainBrightnessSeek: SeekBar
     private lateinit var statsCountText: TextView
     private lateinit var lastSentText: TextView
     private lateinit var thumbnailView: ImageView
+    private lateinit var stagedBanner: LinearLayout
+    private lateinit var stagedBannerText: TextView
     private lateinit var pendingBanner: LinearLayout
     private lateinit var pendingBannerText: TextView
     private lateinit var triggerButton: Button
+    private lateinit var galleryOpenBtn: Button
     private lateinit var pocketLockOverlay: FrameLayout
+    private lateinit var pocketSubText: TextView
     private lateinit var pocketStatsText: TextView
 
     // Session Gallery & Preview Overlays
@@ -144,11 +174,33 @@ class RovingBridgeActivity : AppCompatActivity() {
     private lateinit var galleryGrid: GridView
     private lateinit var galleryEmptyText: TextView
     private lateinit var galleryTitleText: TextView
+    private lateinit var gallerySubHint: TextView
     private lateinit var galleryRetryBtn: Button
+    private lateinit var galleryFilterAllBtn: Button
+    private lateinit var galleryFilterPickBtn: Button
+    private lateinit var galleryFilterSentBtn: Button
+    private lateinit var gallerySelectBtn: Button
+    private lateinit var galleryBatchBar: LinearLayout
+    private lateinit var galleryBatchSendBtn: Button
+    private lateinit var galleryBatchDiscardBtn: Button
     private lateinit var photoPreviewOverlay: FrameLayout
+    private lateinit var previewNavRow: LinearLayout
+    private lateinit var previewPrevBtn: Button
+    private lateinit var previewNextBtn: Button
+    private lateinit var previewPosText: TextView
+    private lateinit var previewBrightnessRow: LinearLayout
+    private lateinit var previewBrightnessLabel: TextView
+    private lateinit var previewBrightnessSeek: SeekBar
+    private lateinit var previewSendStagedBtn: Button
+    private lateinit var previewDiscardBtn: Button
     private lateinit var previewRetryBtn: Button
+    private lateinit var previewQueueBtn: Button
     private var previewingPhoto: SessionPhoto? = null
+    private var previewSyncingSlider: Boolean = false
     private var galleryAdapter: GalleryGridAdapter? = null
+    private var galleryFilter: String = "all"
+    private var gallerySelectMode: Boolean = false
+    private val selectedStagedPaths = LinkedHashSet<String>()
 
     // Updates & Changelog Overlay
     private lateinit var updatesOverlay: FrameLayout
@@ -283,13 +335,193 @@ class RovingBridgeActivity : AppCompatActivity() {
         val p = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         targetUrl = p.getString(KEY_URL, "") ?: ""
         vibrateOnSend = p.getBoolean(KEY_VIBRATE, true)
+        pickToSendMode = p.getBoolean(KEY_PICK_TO_SEND, false)
+        defaultBrightness = p.getInt(KEY_BRIGHTNESS, 0).coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX)
     }
 
     private fun savePrefs() {
         getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_URL, targetUrl.trim())
             .putBoolean(KEY_VIBRATE, vibrateOnSend)
+            .putBoolean(KEY_PICK_TO_SEND, pickToSendMode)
+            .putInt(KEY_BRIGHTNESS, defaultBrightness.coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX))
             .apply()
+    }
+
+    private fun formatBrightness(b: Int): String = when {
+        b > 0 -> "+$b%"
+        b < 0 -> "$b%"
+        else -> "0% (Original)"
+    }
+
+    private fun brightnessColorFilter(brightness: Int): ColorMatrixColorFilter? {
+        val b = brightness.coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX)
+        if (b == 0) return null
+        val gain = 1f + (b / 100f) * 1.15f
+        val offset = b * 0.45f
+        return ColorMatrixColorFilter(ColorMatrix(floatArrayOf(
+            gain, 0f, 0f, 0f, offset,
+            0f, gain, 0f, 0f, offset,
+            0f, 0f, gain, 0f, offset,
+            0f, 0f, 0f, 1f, 0f
+        )))
+    }
+
+    private fun readExifOrientation(bytes: ByteArray): Int {
+        return try {
+            ExifInterface(ByteArrayInputStream(bytes))
+                .getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        } catch (_: Exception) {
+            ExifInterface.ORIENTATION_NORMAL
+        }
+    }
+
+    private fun readExifOrientation(file: File): Int {
+        return try {
+            ExifInterface(file.absolutePath)
+                .getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        } catch (_: Exception) {
+            ExifInterface.ORIENTATION_NORMAL
+        }
+    }
+
+    private fun applyExifRotation(bmp: Bitmap, orientation: Int): Bitmap {
+        val matrix = Matrix()
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+            ExifInterface.ORIENTATION_TRANSPOSE -> { matrix.postRotate(90f); matrix.postScale(-1f, 1f) }
+            ExifInterface.ORIENTATION_TRANSVERSE -> { matrix.postRotate(270f); matrix.postScale(-1f, 1f) }
+            else -> return bmp
+        }
+        return try {
+            Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, matrix, true).also {
+                if (it != bmp) bmp.recycle()
+            }
+        } catch (_: OutOfMemoryError) {
+            bmp
+        }
+    }
+
+    private fun classifyOrient(w: Int, h: Int): String {
+        if (w <= 0 || h <= 0) return ""
+        val ratio = w.toFloat() / h.toFloat()
+        return when {
+            ratio >= 1.08f -> "landscape"
+            ratio <= 0.92f -> "portrait"
+            else -> "square"
+        }
+    }
+
+    private fun computeSafeSampleSize(w: Int, h: Int, maxDim: Int = 3600): Int {
+        var sample = 1
+        val longest = maxOf(w, h)
+        while (longest / sample > maxDim) sample *= 2
+        return sample
+    }
+
+    /**
+     * Bakes brightness adjustment (+EXIF upright rotation) into a high-quality JPEG.
+     * When brightness == 0, returns the original camera bytes untouched (zero re-encoding).
+     */
+    private fun applyBrightnessToJpegBytes(bytes: ByteArray, brightness: Int): ByteArray {
+        val b = brightness.coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX)
+        if (b == 0) return bytes
+        return try {
+            val orient = readExifOrientation(bytes)
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+            val opts = BitmapFactory.Options().apply {
+                inSampleSize = computeSafeSampleSize(bounds.outWidth, bounds.outHeight, 3600)
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+            val raw = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts) ?: return bytes
+            val upright = applyExifRotation(raw, orient)
+            val filter = brightnessColorFilter(b)
+            val outBmp = Bitmap.createBitmap(upright.width, upright.height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(outBmp)
+            val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
+                colorFilter = filter
+            }
+            canvas.drawBitmap(upright, 0f, 0f, paint)
+            upright.recycle()
+            val baos = ByteArrayOutputStream(bytes.size.coerceAtMost(4 * 1024 * 1024))
+            outBmp.compress(Bitmap.CompressFormat.JPEG, 92, baos)
+            outBmp.recycle()
+            val out = baos.toByteArray()
+            if (out.isNotEmpty()) out else bytes
+        } catch (e: Throwable) {
+            Log.w(TAG, "Brightness adjust failed, using original JPEG: ${e.message}")
+            bytes
+        }
+    }
+
+    /**
+     * Writes srcFile into destFile, baking brightness when != 0 or moving/copying raw bytes untouched when == 0.
+     */
+    private fun promoteStagedToPendingFile(srcFile: File, destFile: File, brightness: Int): Boolean {
+        val b = brightness.coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX)
+        val tmp = File(destFile.parentFile, "${destFile.name}.tmp")
+        return try {
+            if (b == 0) {
+                if (srcFile.renameTo(destFile)) {
+                    true
+                } else {
+                    srcFile.copyTo(tmp, overwrite = true)
+                    val ok = tmp.renameTo(destFile) || run {
+                        tmp.copyTo(destFile, overwrite = true)
+                        tmp.delete()
+                        true
+                    }
+                    if (ok) try { srcFile.delete() } catch (_: Exception) { }
+                    ok
+                }
+            } else {
+                val orient = readExifOrientation(srcFile)
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeFile(srcFile.absolutePath, bounds)
+                val opts = BitmapFactory.Options().apply {
+                    inSampleSize = computeSafeSampleSize(bounds.outWidth, bounds.outHeight, 3600)
+                    inPreferredConfig = Bitmap.Config.ARGB_8888
+                }
+                val raw = BitmapFactory.decodeFile(srcFile.absolutePath, opts)
+                if (raw == null) {
+                    // Fallback to untouched copy if decode failed
+                    srcFile.copyTo(destFile, overwrite = true)
+                    try { srcFile.delete() } catch (_: Exception) { }
+                    true
+                } else {
+                    val upright = applyExifRotation(raw, orient)
+                    val filter = brightnessColorFilter(b)
+                    val outBmp = Bitmap.createBitmap(upright.width, upright.height, Bitmap.Config.ARGB_8888)
+                    val canvas = Canvas(outBmp)
+                    val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
+                        colorFilter = filter
+                    }
+                    canvas.drawBitmap(upright, 0f, 0f, paint)
+                    upright.recycle()
+                    tmp.outputStream().use { out ->
+                        outBmp.compress(Bitmap.CompressFormat.JPEG, 92, out)
+                        out.flush()
+                    }
+                    outBmp.recycle()
+                    val moved = tmp.renameTo(destFile) || run {
+                        tmp.copyTo(destFile, overwrite = true)
+                        tmp.delete()
+                        true
+                    }
+                    if (moved) try { srcFile.delete() } catch (_: Exception) { }
+                    moved
+                }
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Failed to promote staged photo: ${e.message}")
+            try { tmp.delete() } catch (_: Exception) { }
+            false
+        }
     }
 
     private fun cleanUrl(raw: String): String {
@@ -351,9 +583,9 @@ class RovingBridgeActivity : AppCompatActivity() {
 
         val versionStr = try {
             val pInfo = packageManager.getPackageInfo(packageName, 0)
-            "v" + (pInfo.versionName ?: "1.1.3")
+            "v" + (pInfo.versionName ?: "1.1.4")
         } catch (_: Exception) {
-            "v1.1.3"
+            "v1.1.4"
         }
 
         val sub = TextView(this).apply {
@@ -594,6 +826,151 @@ class RovingBridgeActivity : AppCompatActivity() {
         lapCard.addView(connectionStatusText)
         content.addView(lapCard)
 
+        // --- Send Mode & Brightness Card ---
+        val modeCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = makeCard(Color.WHITE, 16f)
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lp.topMargin = dp(14)
+            layoutParams = lp
+        }
+
+        val modeTitle = TextView(this).apply {
+            text = "🎛️ Send Mode & Brightness"
+            textSize = 14f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.parseColor("#1C1A1E"))
+        }
+        modeCard.addView(modeTitle)
+
+        val modeRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lp.topMargin = dp(10)
+            layoutParams = lp
+        }
+
+        modeAutoBtn = Button(this).apply {
+            text = "⚡ Auto-Send All"
+            textSize = 12.5f
+            setTypeface(typeface, Typeface.BOLD)
+            val lp = LinearLayout.LayoutParams(0, dp(42), 1f).apply { rightMargin = dp(6) }
+            layoutParams = lp
+            setOnClickListener {
+                pickToSendMode = false
+                savePrefs()
+                refreshSendModeUi()
+                refreshQueueUi()
+                Toast.makeText(this@RovingBridgeActivity, "Auto-Send ON: new DSLR shots stream right away", Toast.LENGTH_SHORT).show()
+            }
+        }
+        modeRow.addView(modeAutoBtn)
+
+        modePickBtn = Button(this).apply {
+            text = "☑️ Pick to Send"
+            textSize = 12.5f
+            setTypeface(typeface, Typeface.BOLD)
+            val lp = LinearLayout.LayoutParams(0, dp(42), 1f).apply { leftMargin = dp(6) }
+            layoutParams = lp
+            setOnClickListener {
+                pickToSendMode = true
+                savePrefs()
+                refreshSendModeUi()
+                refreshQueueUi()
+                Toast.makeText(this@RovingBridgeActivity, "Pick-to-Send ON: review & choose shots before sending", Toast.LENGTH_SHORT).show()
+            }
+        }
+        modeRow.addView(modePickBtn)
+        modeCard.addView(modeRow)
+
+        modeHintText = TextView(this).apply {
+            textSize = 11.5f
+            setTextColor(Color.parseColor("#6B666C"))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lp.topMargin = dp(6)
+            layoutParams = lp
+        }
+        modeCard.addView(modeHintText)
+
+        // Brightness adjustment before sending to laptop
+        val brightDivider = View(this).apply {
+            setBackgroundColor(Color.parseColor("#EFE9DF"))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply {
+                topMargin = dp(12)
+                bottomMargin = dp(10)
+            }
+            layoutParams = lp
+        }
+        modeCard.addView(brightDivider)
+
+        val brightHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+
+        mainBrightnessLabel = TextView(this).apply {
+            text = "☀️ Brightness before sending: ${formatBrightness(defaultBrightness)}"
+            textSize = 12.5f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.parseColor("#1C1A1E"))
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        brightHeader.addView(mainBrightnessLabel)
+        modeCard.addView(brightHeader)
+
+        mainBrightnessSeek = SeekBar(this).apply {
+            max = BRIGHTNESS_RANGE
+            progress = defaultBrightness - BRIGHTNESS_MIN
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(4)
+            }
+            layoutParams = lp
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    val v = (progress + BRIGHTNESS_MIN).coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX)
+                    defaultBrightness = v
+                    refreshMainBrightnessUi(updateSeek = false)
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) { }
+                override fun onStopTrackingTouch(seekBar: SeekBar?) { savePrefs() }
+            })
+        }
+        modeCard.addView(mainBrightnessSeek)
+
+        val presetRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(6)
+            }
+            layoutParams = lp
+        }
+        val brightPresets = listOf(-10 to "-10%", 0 to "Reset 0%", 10 to "+10%", 20 to "+20%", 30 to "+30%")
+        brightPresets.forEachIndexed { idx, (valB, lbl) ->
+            val pb = Button(this).apply {
+                text = lbl
+                textSize = 11f
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(Color.parseColor("#4A444D"))
+                background = makeCard(Color.parseColor("#F5F1EA"), 8f)
+                setPadding(dp(4), 0, dp(4), 0)
+                val lp = LinearLayout.LayoutParams(0, dp(32), 1f).apply {
+                    if (idx > 0) leftMargin = dp(5)
+                }
+                layoutParams = lp
+                setOnClickListener {
+                    defaultBrightness = valB
+                    savePrefs()
+                    refreshMainBrightnessUi(updateSeek = true)
+                }
+            }
+            presetRow.addView(pb)
+        }
+        modeCard.addView(presetRow)
+        content.addView(modeCard)
+        refreshSendModeUi()
+
         // --- Live Activity Stats Card ---
         val statsCard = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -605,16 +982,16 @@ class RovingBridgeActivity : AppCompatActivity() {
             layoutParams = lp
             isClickable = true
             isFocusable = true
-            setOnClickListener { showGalleryOverlay() }
+            setOnClickListener { showGalleryOverlay(if (stagedCount() > 0) "pick" else "all") }
         }
 
         thumbnailView = ImageView(this).apply {
-            background = makeCard(Color.parseColor("#E4DCCF"), 8f)
-            scaleType = ImageView.ScaleType.CENTER_CROP
+            background = makeCard(Color.parseColor("#1E1C21"), 8f)
+            scaleType = ImageView.ScaleType.FIT_CENTER
             layoutParams = LinearLayout.LayoutParams(dp(70), dp(70))
             isClickable = true
             isFocusable = true
-            setOnClickListener { showGalleryOverlay() }
+            setOnClickListener { showGalleryOverlay(if (stagedCount() > 0) "pick" else "all") }
         }
         statsCard.addView(thumbnailView)
 
@@ -644,7 +1021,7 @@ class RovingBridgeActivity : AppCompatActivity() {
         statsCol.addView(lastSentText)
 
         val tapHint = TextView(this).apply {
-            text = "🖼️ Tap to view all sent photos ➔"
+            text = "🖼️ Tap to review, pick & adjust photos ➔"
             textSize = 11f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.parseColor("#1D6FA5"))
@@ -656,6 +1033,58 @@ class RovingBridgeActivity : AppCompatActivity() {
 
         statsCard.addView(statsCol)
         content.addView(statsCard)
+
+        // --- Staged Pick-to-Send Review Banner ---
+        stagedBanner = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = makeCard(Color.parseColor("#EEF2FF"), 14f)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lp.topMargin = dp(10)
+            layoutParams = lp
+            visibility = View.GONE
+        }
+
+        stagedBannerText = TextView(this).apply {
+            text = "☑️ 0 photo(s) waiting for your pick"
+            textSize = 12f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.parseColor("#3730A3"))
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        stagedBanner.addView(stagedBannerText)
+
+        val reviewPickBtn = Button(this).apply {
+            text = "☑️ Review"
+            textSize = 12f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            background = makeCard(Color.parseColor("#4F46E5"), 10f)
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(36)).apply {
+                leftMargin = dp(8)
+            }
+            layoutParams = lp
+            setPadding(dp(12), 0, dp(12), 0)
+            setOnClickListener { showGalleryOverlay("pick") }
+        }
+        stagedBanner.addView(reviewPickBtn)
+
+        val sendAllBannerBtn = Button(this).apply {
+            text = "📤 All"
+            textSize = 12f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            background = makeCard(Color.parseColor("#2EA66B"), 10f)
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(36)).apply {
+                leftMargin = dp(6)
+            }
+            layoutParams = lp
+            setPadding(dp(10), 0, dp(10), 0)
+            setOnClickListener { confirmSendAllStaged() }
+        }
+        stagedBanner.addView(sendAllBannerBtn)
+        content.addView(stagedBanner)
 
         // --- Offline Queue & Auto-Retry Banner ---
         pendingBanner = LinearLayout(this).apply {
@@ -729,8 +1158,8 @@ class RovingBridgeActivity : AppCompatActivity() {
         actRow.addView(pocketBtn)
         content.addView(actRow)
 
-        val galleryBtn = Button(this).apply {
-            text = "🖼️ View Sent Photos Gallery"
+        galleryOpenBtn = Button(this).apply {
+            text = "🖼️ View Photos Gallery"
             textSize = 14f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.parseColor("#1C1A1E"))
@@ -739,9 +1168,9 @@ class RovingBridgeActivity : AppCompatActivity() {
                 topMargin = dp(10)
             }
             layoutParams = lp
-            setOnClickListener { showGalleryOverlay() }
+            setOnClickListener { showGalleryOverlay(if (stagedCount() > 0) "pick" else "all") }
         }
-        content.addView(galleryBtn)
+        content.addView(galleryOpenBtn)
 
         val updatesCard = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -814,6 +1243,47 @@ class RovingBridgeActivity : AppCompatActivity() {
         setContentView(rootLayout)
     }
 
+    private fun refreshSendModeUi() {
+        if (!::modeAutoBtn.isInitialized || !::modePickBtn.isInitialized) return
+        if (pickToSendMode) {
+            modeAutoBtn.background = makeCard(Color.parseColor("#F5F1EA"), 10f)
+            modeAutoBtn.setTextColor(Color.parseColor("#6B666C"))
+            modePickBtn.background = makeCard(Color.parseColor("#4F46E5"), 10f)
+            modePickBtn.setTextColor(Color.WHITE)
+            if (::modeHintText.isInitialized) {
+                modeHintText.text = "☑️ Shots stay on this phone first — review, adjust brightness & tap Send on the ones you want on the laptop."
+            }
+        } else {
+            modeAutoBtn.background = makeCard(Color.parseColor("#2EA66B"), 10f)
+            modeAutoBtn.setTextColor(Color.WHITE)
+            modePickBtn.background = makeCard(Color.parseColor("#F5F1EA"), 10f)
+            modePickBtn.setTextColor(Color.parseColor("#6B666C"))
+            if (::modeHintText.isInitialized) {
+                modeHintText.text = "⚡ Every DSLR shutter click streams straight to the laptop (or queues safely if Wi-Fi drops)."
+            }
+        }
+        if (::pocketSubText.isInitialized) {
+            pocketSubText.text = if (pickToSendMode) {
+                "Shutter is LIVE (Pick-to-Send mode).\nShots save on phone until you pick which to send."
+            } else {
+                "Shutter is LIVE. Clicks will beam to laptop\n(or queue safely if Wi-Fi drops)."
+            }
+        }
+    }
+
+    private fun refreshMainBrightnessUi(updateSeek: Boolean) {
+        val b = defaultBrightness.coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX)
+        if (::mainBrightnessLabel.isInitialized) {
+            mainBrightnessLabel.text = "☀️ Brightness before sending: ${formatBrightness(b)}"
+            mainBrightnessLabel.setTextColor(
+                if (b != 0) Color.parseColor("#C93D27") else Color.parseColor("#1C1A1E")
+            )
+        }
+        if (updateSeek && ::mainBrightnessSeek.isInitialized) {
+            mainBrightnessSeek.progress = b - BRIGHTNESS_MIN
+        }
+    }
+
     private fun buildPocketLockOverlay() {
         pocketLockOverlay = FrameLayout(this).apply {
             setBackgroundColor(Color.parseColor("#0A0A0C"))
@@ -849,8 +1319,12 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
         centerCol.addView(lockTitle)
 
-        val lockSub = TextView(this).apply {
-            text = "Shutter is LIVE. Clicks will beam to laptop\n(or queue safely if Wi-Fi drops)."
+        pocketSubText = TextView(this).apply {
+            text = if (pickToSendMode) {
+                "Shutter is LIVE (Pick-to-Send mode).\nShots save on phone until you pick which to send."
+            } else {
+                "Shutter is LIVE. Clicks will beam to laptop\n(or queue safely if Wi-Fi drops)."
+            }
             textSize = 13f
             setTextColor(Color.parseColor("#9A958F"))
             gravity = Gravity.CENTER
@@ -858,7 +1332,7 @@ class RovingBridgeActivity : AppCompatActivity() {
             lp.topMargin = dp(6)
             layoutParams = lp
         }
-        centerCol.addView(lockSub)
+        centerCol.addView(pocketSubText)
 
         pocketStatsText = TextView(this).apply {
             text = "Sent: 0"
@@ -936,7 +1410,7 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
 
         galleryTitleText = TextView(this).apply {
-            text = "📸 Sent Photos (0)"
+            text = "📸 Session Photos (0)"
             textSize = 18f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.parseColor("#1C1A1E"))
@@ -950,25 +1424,27 @@ class RovingBridgeActivity : AppCompatActivity() {
             setTextColor(Color.WHITE)
             setTypeface(typeface, Typeface.BOLD)
             background = makeCard(Color.parseColor("#D97706"), 14f)
-            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(38)).apply {
-                rightMargin = dp(8)
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(36)).apply {
+                rightMargin = dp(6)
             }
             layoutParams = lp
+            setPadding(dp(10), 0, dp(10), 0)
             visibility = View.GONE
             setOnClickListener { retryPendingNow() }
         }
         bar.addView(galleryRetryBtn)
 
         val queueInGalleryBtn = Button(this).apply {
-            text = "🖥️ Laptop Queue"
+            text = "🖥️ Queue"
             textSize = 12f
             setTextColor(Color.parseColor("#1D6FA5"))
             setTypeface(typeface, Typeface.BOLD)
             background = makeCard(Color.parseColor("#EAF3FA"), 14f)
-            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(38)).apply {
-                rightMargin = dp(8)
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(36)).apply {
+                rightMargin = dp(6)
             }
             layoutParams = lp
+            setPadding(dp(10), 0, dp(10), 0)
             setOnClickListener { openLaptopQueue() }
         }
         bar.addView(queueInGalleryBtn)
@@ -977,8 +1453,8 @@ class RovingBridgeActivity : AppCompatActivity() {
             text = "🗑️"
             textSize = 14f
             background = makeCard(Color.parseColor("#E4DCCF"), 14f)
-            val lp = LinearLayout.LayoutParams(dp(38), dp(38)).apply {
-                rightMargin = dp(8)
+            val lp = LinearLayout.LayoutParams(dp(36), dp(36)).apply {
+                rightMargin = dp(6)
             }
             layoutParams = lp
             setOnClickListener { clearSessionGallery() }
@@ -989,27 +1465,159 @@ class RovingBridgeActivity : AppCompatActivity() {
             text = "✕"
             textSize = 16f
             setTextColor(Color.parseColor("#6B666C"))
-            background = makeCard(Color.parseColor("#E4DCCF"), 19f)
-            layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
+            background = makeCard(Color.parseColor("#E4DCCF"), 18f)
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
             setOnClickListener { hideGalleryOverlay() }
         }
         bar.addView(closeBtn)
         container.addView(bar)
 
-        val subHint = TextView(this).apply {
-            text = "Tap any photo to enlarge • Unsent shots auto-upload when Wi-Fi reconnects."
-            textSize = 11f
-            setTextColor(Color.parseColor("#8E8884"))
-            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = dp(4)
-                bottomMargin = dp(12)
+        // Filter & Multi-Select Bar
+        val filterRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(8)
             }
             layoutParams = lp
         }
-        container.addView(subHint)
+
+        galleryFilterAllBtn = Button(this).apply {
+            text = "All (0)"
+            textSize = 11.5f
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding(dp(10), 0, dp(10), 0)
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(32)).apply {
+                rightMargin = dp(6)
+            }
+            layoutParams = lp
+            setOnClickListener {
+                galleryFilter = "all"
+                gallerySelectMode = false
+                selectedStagedPaths.clear()
+                notifyGalleryChanged()
+            }
+        }
+        filterRow.addView(galleryFilterAllBtn)
+
+        galleryFilterPickBtn = Button(this).apply {
+            text = "☑️ To Pick (0)"
+            textSize = 11.5f
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding(dp(10), 0, dp(10), 0)
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(32)).apply {
+                rightMargin = dp(6)
+            }
+            layoutParams = lp
+            setOnClickListener {
+                galleryFilter = "pick"
+                notifyGalleryChanged()
+            }
+        }
+        filterRow.addView(galleryFilterPickBtn)
+
+        galleryFilterSentBtn = Button(this).apply {
+            text = "✓ Sent (0)"
+            textSize = 11.5f
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding(dp(10), 0, dp(10), 0)
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(32)).apply {
+                rightMargin = dp(6)
+            }
+            layoutParams = lp
+            setOnClickListener {
+                galleryFilter = "sent"
+                gallerySelectMode = false
+                selectedStagedPaths.clear()
+                notifyGalleryChanged()
+            }
+        }
+        filterRow.addView(galleryFilterSentBtn)
+
+        val filterSpacer = View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
+        }
+        filterRow.addView(filterSpacer)
+
+        gallerySelectBtn = Button(this).apply {
+            text = "☑ Multi-Pick"
+            textSize = 11.5f
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding(dp(10), 0, dp(10), 0)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(32))
+            visibility = View.GONE
+            setOnClickListener {
+                gallerySelectMode = !gallerySelectMode
+                if (!gallerySelectMode) selectedStagedPaths.clear()
+                else if (galleryFilter == "sent") galleryFilter = "pick"
+                notifyGalleryChanged()
+            }
+        }
+        filterRow.addView(gallerySelectBtn)
+        container.addView(filterRow)
+
+        // Batch Actions Bar (Send All / Send Selected / Discard Selected)
+        galleryBatchBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = makeCard(Color.parseColor("#EEF2FF"), 12f)
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(8)
+            }
+            layoutParams = lp
+            visibility = View.GONE
+        }
+
+        galleryBatchSendBtn = Button(this).apply {
+            text = "📤 Send All (0)"
+            textSize = 12f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            background = makeCard(Color.parseColor("#2EA66B"), 10f)
+            val lp = LinearLayout.LayoutParams(0, dp(36), 1f)
+            layoutParams = lp
+            setOnClickListener {
+                if (gallerySelectMode) {
+                    sendSelectedStagedPhotos()
+                } else {
+                    confirmSendAllStaged()
+                }
+            }
+        }
+        galleryBatchBar.addView(galleryBatchSendBtn)
+
+        galleryBatchDiscardBtn = Button(this).apply {
+            text = "🗑️ Discard (0)"
+            textSize = 12f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            background = makeCard(Color.parseColor("#C93D27"), 10f)
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(36)).apply {
+                leftMargin = dp(8)
+            }
+            layoutParams = lp
+            setPadding(dp(12), 0, dp(12), 0)
+            visibility = View.GONE
+            setOnClickListener { discardSelectedStagedPhotos() }
+        }
+        galleryBatchBar.addView(galleryBatchDiscardBtn)
+        container.addView(galleryBatchBar)
+
+        gallerySubHint = TextView(this).apply {
+            text = "Tap any photo to preview, adjust brightness, or pick to send to laptop."
+            textSize = 11f
+            setTextColor(Color.parseColor("#8E8884"))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(6)
+                bottomMargin = dp(10)
+            }
+            layoutParams = lp
+        }
+        container.addView(gallerySubHint)
 
         galleryEmptyText = TextView(this).apply {
-            text = "No photos taken yet in this session.\n\nConnect your DSLR and snap photos with the camera shutter—they will stream to the laptop and appear here!"
+            text = "No photos taken yet in this session.\n\nConnect your DSLR and snap photos with the camera shutter—they will appear here!"
             textSize = 13f
             setTextColor(Color.parseColor("#8E8884"))
             gravity = Gravity.CENTER
@@ -1053,10 +1661,10 @@ class RovingBridgeActivity : AppCompatActivity() {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = makeCard(Color.parseColor("#1C1A1E"), 16f)
-            setPadding(dp(16), dp(16), dp(16), dp(16))
+            setPadding(dp(16), dp(14), dp(16), dp(14))
             val lp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 gravity = Gravity.CENTER
-                setMargins(dp(16), dp(24), dp(16), dp(24))
+                setMargins(dp(14), dp(18), dp(14), dp(18))
             }
             layoutParams = lp
             isClickable = true
@@ -1115,19 +1723,169 @@ class RovingBridgeActivity : AppCompatActivity() {
             tag = "preview_iv"
             scaleType = ImageView.ScaleType.FIT_CENTER
             background = makeCard(Color.BLACK, 10f)
-            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(320)).apply {
-                topMargin = dp(12)
-                bottomMargin = dp(12)
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(290)).apply {
+                topMargin = dp(10)
+                bottomMargin = dp(8)
             }
             layoutParams = lp
         }
         card.addView(iv)
 
+        // Prev / Next photo navigation bar
+        previewNavRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = dp(8)
+            }
+            layoutParams = lp
+        }
+
+        previewPrevBtn = Button(this).apply {
+            text = "‹ Prev"
+            textSize = 12f
+            setTextColor(Color.WHITE)
+            background = makeCard(Color.parseColor("#2D2932"), 8f)
+            layoutParams = LinearLayout.LayoutParams(dp(76), dp(34))
+            setOnClickListener { navigatePreview(-1) }
+        }
+        previewNavRow.addView(previewPrevBtn)
+
+        previewPosText = TextView(this).apply {
+            text = "1 / 1"
+            textSize = 12f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.parseColor("#C4BEB9"))
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        previewNavRow.addView(previewPosText)
+
+        previewNextBtn = Button(this).apply {
+            text = "Next ›"
+            textSize = 12f
+            setTextColor(Color.WHITE)
+            background = makeCard(Color.parseColor("#2D2932"), 8f)
+            layoutParams = LinearLayout.LayoutParams(dp(76), dp(34))
+            setOnClickListener { navigatePreview(1) }
+        }
+        previewNavRow.addView(previewNextBtn)
+        card.addView(previewNavRow)
+
+        // Live Brightness Adjustment Box (for staged photos before sending)
+        previewBrightnessRow = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = makeCard(Color.parseColor("#27242C"), 12f)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = dp(10)
+            }
+            layoutParams = lp
+            visibility = View.GONE
+        }
+
+        val pvBrightHead = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+
+        previewBrightnessLabel = TextView(this).apply {
+            text = "☀️ Brightness: 0% (Original)"
+            textSize = 12f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        pvBrightHead.addView(previewBrightnessLabel)
+
+        val pvQuickPresets = listOf(0 to "0%", 10 to "+10%", 20 to "+20%")
+        pvQuickPresets.forEach { (valB, lbl) ->
+            val qb = Button(this).apply {
+                text = lbl
+                textSize = 11f
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(Color.WHITE)
+                background = makeCard(Color.parseColor("#3B3642"), 8f)
+                setPadding(dp(8), 0, dp(8), 0)
+                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(28)).apply {
+                    leftMargin = dp(5)
+                }
+                layoutParams = lp
+                setOnClickListener {
+                    val p = previewingPhoto ?: return@setOnClickListener
+                    p.brightness = valB
+                    applyPreviewBrightnessUi(valB, updateSeek = true)
+                    notifyGalleryChanged()
+                }
+            }
+            pvBrightHead.addView(qb)
+        }
+        previewBrightnessRow.addView(pvBrightHead)
+
+        previewBrightnessSeek = SeekBar(this).apply {
+            max = BRIGHTNESS_RANGE
+            progress = -BRIGHTNESS_MIN
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(4)
+            }
+            layoutParams = lp
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    if (previewSyncingSlider) return
+                    val v = (progress + BRIGHTNESS_MIN).coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX)
+                    previewingPhoto?.brightness = v
+                    applyPreviewBrightnessUi(v, updateSeek = false)
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) { }
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                    notifyGalleryChanged()
+                }
+            })
+        }
+        previewBrightnessRow.addView(previewBrightnessSeek)
+        card.addView(previewBrightnessRow)
+
+        // Action Buttons Row
         val btnRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         }
+
+        previewSendStagedBtn = Button(this).apply {
+            text = "📤 Send to Laptop"
+            textSize = 13f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            background = makeCard(Color.parseColor("#2EA66B"), 10f)
+            val lp = LinearLayout.LayoutParams(0, dp(44), 1f).apply {
+                rightMargin = dp(8)
+            }
+            layoutParams = lp
+            visibility = View.GONE
+            setOnClickListener {
+                val p = previewingPhoto ?: return@setOnClickListener
+                approveStagedPhoto(p, advancePreview = true)
+            }
+        }
+        btnRow.addView(previewSendStagedBtn)
+
+        previewDiscardBtn = Button(this).apply {
+            text = "🗑️ Skip"
+            textSize = 13f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            background = makeCard(Color.parseColor("#C93D27"), 10f)
+            val lp = LinearLayout.LayoutParams(dp(92), dp(44))
+            layoutParams = lp
+            visibility = View.GONE
+            setOnClickListener {
+                val p = previewingPhoto ?: return@setOnClickListener
+                discardStagedPhoto(p, advancePreview = true)
+            }
+        }
+        btnRow.addView(previewDiscardBtn)
 
         previewRetryBtn = Button(this).apply {
             text = "🔄 Send Now"
@@ -1145,7 +1903,7 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
         btnRow.addView(previewRetryBtn)
 
-        val queueBtn = Button(this).apply {
+        previewQueueBtn = Button(this).apply {
             text = "🖥️ View on Laptop Queue"
             textSize = 13f
             setTypeface(typeface, Typeface.BOLD)
@@ -1161,14 +1919,14 @@ class RovingBridgeActivity : AppCompatActivity() {
                 openLaptopQueue()
             }
         }
-        btnRow.addView(queueBtn)
+        btnRow.addView(previewQueueBtn)
 
         val dismissBtn = Button(this).apply {
             text = "Close"
             textSize = 13f
             setTextColor(Color.WHITE)
             background = makeCard(Color.parseColor("#332F36"), 10f)
-            layoutParams = LinearLayout.LayoutParams(dp(80), dp(42))
+            layoutParams = LinearLayout.LayoutParams(dp(74), dp(42))
             setOnClickListener {
                 previewingPhoto = null
                 photoPreviewOverlay.visibility = View.GONE
@@ -1327,6 +2085,39 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
         container.addView(changelogTitle)
 
+        // Card v1.1.4
+        val card114 = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = makeCard(Color.WHITE, 14f)
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = dp(12)
+            }
+            layoutParams = lp
+        }
+
+        val header114 = TextView(this).apply {
+            text = "Version 1.1.4 (Current Release)"
+            textSize = 14f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.parseColor("#1B7358"))
+        }
+        card114.addView(header114)
+
+        val notes114 = TextView(this).apply {
+            text = "• ☑️ Pick-to-Send Mode: Switch between Auto-Send All and Pick to Send so DSLR shots wait on your phone for review — send only the best shots one by one, multi-pick batches, or skip blinks.\n" +
+                   "• ☀️ Brightness Adjustment Before Sending: Slide brightness (-30% to +40%) with live preview per photo or a default boost for dim venues (0% keeps the untouched original camera JPEG).\n" +
+                   "• 🖼️ Portrait & Landscape Review Gallery: Uncropped EXIF-upright thumbnails with Port/Land badges, To Pick / Sent filters, and Prev/Next review controls."
+            textSize = 12f
+            setTextColor(Color.parseColor("#423D44"))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(6)
+            }
+            layoutParams = lp
+        }
+        card114.addView(notes114)
+        container.addView(card114)
+
         // Card v1.1.3
         val card113 = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1339,10 +2130,10 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
 
         val header113 = TextView(this).apply {
-            text = "Version 1.1.3 (Current Release)"
+            text = "Version 1.1.3"
             textSize = 14f
             setTypeface(typeface, Typeface.BOLD)
-            setTextColor(Color.parseColor("#1B7358"))
+            setTextColor(Color.parseColor("#1C1A1E"))
         }
         card113.addView(header113)
 
@@ -1568,19 +2359,66 @@ class RovingBridgeActivity : AppCompatActivity() {
 
     private fun getCurrentVersionName(): String {
         return try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.3"
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.4"
         } catch (_: Exception) {
-            "1.1.3"
+            "1.1.4"
         }
     }
 
-    private fun showGalleryOverlay() {
+    private fun filteredGalleryPhotos(): List<SessionPhoto> = synchronized(sessionPhotos) {
+        when (galleryFilter) {
+            "pick" -> sessionPhotos.filter { it.isStaged() }
+            "sent" -> sessionPhotos.filter { !it.isStaged() }
+            else -> sessionPhotos.toList()
+        }
+    }
+
+    private fun showGalleryOverlay(initialFilter: String? = null) {
+        if (initialFilter != null) {
+            galleryFilter = initialFilter
+        } else if (stagedCount() > 0 && galleryFilter == "sent") {
+            galleryFilter = "pick"
+        }
+        gallerySelectMode = false
+        selectedStagedPaths.clear()
         notifyGalleryChanged()
         galleryOverlay.visibility = View.VISIBLE
     }
 
     private fun hideGalleryOverlay() {
+        gallerySelectMode = false
+        selectedStagedPaths.clear()
         galleryOverlay.visibility = View.GONE
+    }
+
+    private fun applyPreviewBrightnessUi(brightness: Int, updateSeek: Boolean) {
+        val b = brightness.coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX)
+        val iv = if (::photoPreviewOverlay.isInitialized) photoPreviewOverlay.findViewWithTag<ImageView>("preview_iv") else null
+        iv?.colorFilter = brightnessColorFilter(b)
+        if (::previewBrightnessLabel.isInitialized) {
+            previewBrightnessLabel.text = "☀️ Brightness: ${formatBrightness(b)}"
+            previewBrightnessLabel.setTextColor(
+                if (b != 0) Color.parseColor("#FBBF24") else Color.WHITE
+            )
+        }
+        if (updateSeek && ::previewBrightnessSeek.isInitialized) {
+            previewSyncingSlider = true
+            previewBrightnessSeek.progress = b - BRIGHTNESS_MIN
+            previewSyncingSlider = false
+        }
+    }
+
+    private fun navigatePreview(delta: Int) {
+        val current = previewingPhoto ?: return
+        val list = filteredGalleryPhotos()
+        if (list.isEmpty()) return
+        val idx = list.indexOf(current)
+        if (idx < 0) {
+            showPhotoPreview(list.first())
+            return
+        }
+        val next = (idx + delta).coerceIn(0, list.lastIndex)
+        if (next != idx) showPhotoPreview(list[next])
     }
 
     private fun showPhotoPreview(photo: SessionPhoto) {
@@ -1597,37 +2435,258 @@ class RovingBridgeActivity : AppCompatActivity() {
             iv?.setImageDrawable(null)
         }
 
+        val list = filteredGalleryPhotos()
+        val idx = list.indexOf(photo)
+        if (::previewNavRow.isInitialized) {
+            if (list.size > 1 && idx >= 0) {
+                previewNavRow.visibility = View.VISIBLE
+                previewPosText.text = "${idx + 1} / ${list.size}"
+                previewPrevBtn.isEnabled = idx > 0
+                previewPrevBtn.alpha = if (idx > 0) 1f else 0.4f
+                previewNextBtn.isEnabled = idx < list.lastIndex
+                previewNextBtn.alpha = if (idx < list.lastIndex) 1f else 0.4f
+            } else {
+                previewNavRow.visibility = View.GONE
+            }
+        }
+
         val mb = String.format(Locale.US, "%.1f MB", photo.sizeBytes / (1024.0 * 1024.0))
-        infoText?.text = "Captured at ${photo.timeStr} • $mb"
-        if (photo.success) {
-            statusText?.text = "● Sent to Laptop Base Station"
-            statusText?.setTextColor(Color.parseColor("#2EA66B"))
+        val orientTag = when (photo.orient) {
+            "portrait" -> " • ▯ Portrait"
+            "landscape" -> " • ▭ Landscape"
+            else -> ""
+        }
+        infoText?.text = "Captured at ${photo.timeStr} • $mb$orientTag"
+
+        if (photo.isStaged()) {
+            statusText?.text = "● Ready to review — adjust brightness & tap Send to Laptop"
+            statusText?.setTextColor(Color.parseColor("#A5B4FC"))
+            if (::previewBrightnessRow.isInitialized) previewBrightnessRow.visibility = View.VISIBLE
+            if (::previewSendStagedBtn.isInitialized) previewSendStagedBtn.visibility = View.VISIBLE
+            if (::previewDiscardBtn.isInitialized) previewDiscardBtn.visibility = View.VISIBLE
             if (::previewRetryBtn.isInitialized) previewRetryBtn.visibility = View.GONE
+            if (::previewQueueBtn.isInitialized) previewQueueBtn.visibility = View.GONE
+            applyPreviewBrightnessUi(photo.brightness, updateSeek = true)
+        } else if (photo.success) {
+            val bNote = if (photo.brightness != 0) " (${formatBrightness(photo.brightness)})" else ""
+            statusText?.text = "● Sent to Laptop Base Station$bNote"
+            statusText?.setTextColor(Color.parseColor("#2EA66B"))
+            if (::previewBrightnessRow.isInitialized) previewBrightnessRow.visibility = View.GONE
+            if (::previewSendStagedBtn.isInitialized) previewSendStagedBtn.visibility = View.GONE
+            if (::previewDiscardBtn.isInitialized) previewDiscardBtn.visibility = View.GONE
+            if (::previewRetryBtn.isInitialized) previewRetryBtn.visibility = View.GONE
+            if (::previewQueueBtn.isInitialized) previewQueueBtn.visibility = View.VISIBLE
+            iv?.colorFilter = null
         } else if (photo.pendingFile?.exists() == true) {
             statusText?.text = "● Queued — auto-uploads when Wi-Fi reconnects"
             statusText?.setTextColor(Color.parseColor("#F59E0B"))
+            if (::previewBrightnessRow.isInitialized) previewBrightnessRow.visibility = View.GONE
+            if (::previewSendStagedBtn.isInitialized) previewSendStagedBtn.visibility = View.GONE
+            if (::previewDiscardBtn.isInitialized) previewDiscardBtn.visibility = View.GONE
             if (::previewRetryBtn.isInitialized) previewRetryBtn.visibility = View.VISIBLE
+            if (::previewQueueBtn.isInitialized) previewQueueBtn.visibility = View.VISIBLE
+            iv?.colorFilter = null
         } else {
             statusText?.text = "● Upload Failed / Pending"
             statusText?.setTextColor(Color.parseColor("#C93D27"))
+            if (::previewBrightnessRow.isInitialized) previewBrightnessRow.visibility = View.GONE
+            if (::previewSendStagedBtn.isInitialized) previewSendStagedBtn.visibility = View.GONE
+            if (::previewDiscardBtn.isInitialized) previewDiscardBtn.visibility = View.GONE
             if (::previewRetryBtn.isInitialized) previewRetryBtn.visibility = View.GONE
+            if (::previewQueueBtn.isInitialized) previewQueueBtn.visibility = View.VISIBLE
+            iv?.colorFilter = null
         }
 
         photoPreviewOverlay.visibility = View.VISIBLE
     }
 
+    private fun nextStagedAfter(current: SessionPhoto): SessionPhoto? {
+        return synchronized(sessionPhotos) {
+            val staged = sessionPhotos.filter { it.isStaged() }
+            if (staged.isEmpty()) {
+                null
+            } else {
+                val idx = staged.indexOf(current)
+                if (idx >= 0 && idx + 1 < staged.size) staged[idx + 1]
+                else staged.firstOrNull { it != current }
+            }
+        }
+    }
+
+    private fun approveStagedPhoto(photo: SessionPhoto, advancePreview: Boolean) {
+        val srcFile = synchronized(sessionPhotos) {
+            val f = photo.stagedFile
+            if (f == null || !f.exists()) null
+            else {
+                photo.stagedFile = null
+                f
+            }
+        } ?: return
+        selectedStagedPaths.remove(srcFile.absolutePath)
+        val nextPhoto = if (advancePreview) nextStagedAfter(photo) else null
+        val adjBrightness = photo.brightness.coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX)
+
+        if (advancePreview) {
+            if (nextPhoto != null) {
+                showPhotoPreview(nextPhoto)
+            } else {
+                previewingPhoto = null
+                photoPreviewOverlay.visibility = View.GONE
+                Toast.makeText(this, "📤 Sending photo — all waiting shots reviewed!", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        ingestExecutor.execute {
+            val seq = pendingSeq.incrementAndGet() % 10000
+            val baseName = String.format(Locale.US, "rove_%013d_%04d.jpg", System.currentTimeMillis(), seq)
+            val destFile = File(getPendingDir(), baseName)
+            val ok = promoteStagedToPendingFile(srcFile, destFile, adjBrightness)
+            if (ok && destFile.exists()) {
+                photo.pendingFile = destFile
+                // Refresh thumbnail to reflect baked brightness when brightness != 0
+                if (adjBrightness != 0) {
+                    val fresh = saveThumbnailFromFile(destFile)
+                    if (fresh != null) {
+                        try {
+                            fresh.first.copyTo(photo.thumbFile, overwrite = true)
+                            fresh.first.delete()
+                        } catch (_: Exception) { }
+                    }
+                }
+                mainHandler.post {
+                    if (isFinishing || isDestroyed) return@post
+                    if (photo.thumbFile.exists()) updateThumbnailFromFile(photo.thumbFile, 0)
+                    lastSentText.text = if (targetUrl.trim().isEmpty()) {
+                        "⏳ Approved & queued — scan Laptop QR to send"
+                    } else {
+                        "📤 Sending selected photo" + (if (adjBrightness != 0) " (${formatBrightness(adjBrightness)})…" else "…")
+                    }
+                    refreshQueueUi()
+                    notifyGalleryChanged()
+                    if (targetUrl.trim().isNotEmpty()) scheduleDrain()
+                }
+            } else {
+                // Restore staged reference if disk promotion failed
+                if (srcFile.exists()) photo.stagedFile = srcFile
+                mainHandler.post {
+                    if (isFinishing || isDestroyed) return@post
+                    Toast.makeText(this, "Could not prepare photo for upload", Toast.LENGTH_SHORT).show()
+                    refreshQueueUi()
+                    notifyGalleryChanged()
+                }
+            }
+        }
+    }
+
+    private fun discardStagedPhoto(photo: SessionPhoto, advancePreview: Boolean) {
+        val nextPhoto = if (advancePreview) nextStagedAfter(photo) else null
+        synchronized(sessionPhotos) {
+            photo.stagedFile?.let { f ->
+                selectedStagedPaths.remove(f.absolutePath)
+                try { f.delete() } catch (_: Exception) { }
+            }
+            photo.stagedFile = null
+            try { photo.thumbFile.delete() } catch (_: Exception) { }
+            sessionPhotos.remove(photo)
+        }
+        if (advancePreview) {
+            if (nextPhoto != null) {
+                showPhotoPreview(nextPhoto)
+            } else {
+                previewingPhoto = null
+                photoPreviewOverlay.visibility = View.GONE
+            }
+        }
+        refreshQueueUi()
+        notifyGalleryChanged()
+        Toast.makeText(this, "Skipped photo (not sent to laptop)", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun confirmSendAllStaged() {
+        val staged = synchronized(sessionPhotos) { sessionPhotos.filter { it.isStaged() } }
+        if (staged.isEmpty()) {
+            Toast.makeText(this, "No waiting photos to send", Toast.LENGTH_SHORT).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Send All ${staged.size} Waiting Photo(s)?")
+            .setMessage("All ${staged.size} picked/waiting photo(s) will be sent to the laptop base station with their current brightness settings.")
+            .setPositiveButton("Send All (${staged.size})") { _, _ ->
+                approveStagedList(staged)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun sendSelectedStagedPhotos() {
+        val picked = synchronized(sessionPhotos) {
+            sessionPhotos.filter { p -> p.isStaged() && p.stagedFile?.absolutePath in selectedStagedPaths }
+        }
+        if (picked.isEmpty()) {
+            Toast.makeText(this, "Tap photos to select them first", Toast.LENGTH_SHORT).show()
+            return
+        }
+        gallerySelectMode = false
+        selectedStagedPaths.clear()
+        approveStagedList(picked)
+    }
+
+    private fun discardSelectedStagedPhotos() {
+        val picked = synchronized(sessionPhotos) {
+            sessionPhotos.filter { p -> p.isStaged() && p.stagedFile?.absolutePath in selectedStagedPaths }
+        }
+        if (picked.isEmpty()) return
+        AlertDialog.Builder(this)
+            .setTitle("Discard ${picked.size} Photo(s)?")
+            .setMessage("Selected photo(s) will be removed from this phone and not sent to the laptop.")
+            .setPositiveButton("Discard (${picked.size})") { _, _ ->
+                synchronized(sessionPhotos) {
+                    for (p in picked) {
+                        p.stagedFile?.let { f ->
+                            selectedStagedPaths.remove(f.absolutePath)
+                            try { f.delete() } catch (_: Exception) { }
+                        }
+                        p.stagedFile = null
+                        try { p.thumbFile.delete() } catch (_: Exception) { }
+                        sessionPhotos.remove(p)
+                    }
+                }
+                gallerySelectMode = false
+                selectedStagedPaths.clear()
+                refreshQueueUi()
+                notifyGalleryChanged()
+                Toast.makeText(this, "Discarded ${picked.size} photo(s)", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun approveStagedList(list: List<SessionPhoto>) {
+        if (list.isEmpty()) return
+        // Send oldest-first so photos land on laptop in capture order
+        val ordered = list.reversed()
+        for (p in ordered) {
+            approveStagedPhoto(p, advancePreview = false)
+        }
+        Toast.makeText(this, "📤 Queued ${ordered.size} photo(s) to send to laptop", Toast.LENGTH_SHORT).show()
+    }
+
     private fun clearSessionGallery() {
         val pending = pendingCount()
-        if (pending > 0) {
+        val staged = stagedCount()
+        if (pending > 0 || staged > 0) {
+            val parts = mutableListOf<String>()
+            if (staged > 0) parts.add("$staged waiting for your pick")
+            if (pending > 0) parts.add("$pending uploading")
             AlertDialog.Builder(this)
-                .setTitle("Unsent Photos Queued")
-                .setMessage("$pending photo(s) are still waiting to upload to the laptop.")
+                .setTitle("Unsent Photos Remaining")
+                .setMessage("${parts.joinToString(" and ")}.")
                 .setPositiveButton("Clear Sent Only") { _, _ ->
                     synchronized(sessionPhotos) {
                         val it = sessionPhotos.iterator()
                         while (it.hasNext()) {
                             val p = it.next()
-                            if (p.success || p.pendingFile?.exists() != true) {
+                            if (p.success || (p.pendingFile?.exists() != true && !p.isStaged())) {
                                 try { p.thumbFile.delete() } catch (_: Exception) { }
                                 it.remove()
                             }
@@ -1635,22 +2694,27 @@ class RovingBridgeActivity : AppCompatActivity() {
                     }
                     notifyGalleryChanged()
                     refreshQueueUi()
-                    Toast.makeText(this, "Cleared sent photos; kept $pending queued", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Cleared sent photos; kept unsent shots", Toast.LENGTH_SHORT).show()
                 }
                 .setNegativeButton("Delete All") { _, _ ->
                     for (f in listPendingFiles()) {
                         try { f.delete() } catch (_: Exception) { }
                     }
+                    for (f in listStagedFiles()) {
+                        try { f.delete() } catch (_: Exception) { }
+                    }
+                    selectedStagedPaths.clear()
                     synchronized(sessionPhotos) {
                         for (p in sessionPhotos) {
                             try { p.thumbFile.delete() } catch (_: Exception) { }
                             try { p.pendingFile?.delete() } catch (_: Exception) { }
+                            try { p.stagedFile?.delete() } catch (_: Exception) { }
                         }
                         sessionPhotos.clear()
                     }
                     notifyGalleryChanged()
                     refreshQueueUi()
-                    Toast.makeText(this, "All photos and pending queue cleared", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "All photos and queues cleared", Toast.LENGTH_SHORT).show()
                 }
                 .setNeutralButton("Cancel", null)
                 .show()
@@ -1669,12 +2733,82 @@ class RovingBridgeActivity : AppCompatActivity() {
     }
 
     private fun notifyGalleryChanged() {
-        val count = synchronized(sessionPhotos) { sessionPhotos.size }
+        val totalCount: Int
+        val stagedNum: Int
+        val sentNum: Int
+        synchronized(sessionPhotos) {
+            totalCount = sessionPhotos.size
+            stagedNum = sessionPhotos.count { it.isStaged() }
+            sentNum = totalCount - stagedNum
+            // Prune stale selection paths
+            val validPaths = sessionPhotos.mapNotNull { if (it.isStaged()) it.stagedFile?.absolutePath else null }.toSet()
+            selectedStagedPaths.retainAll(validPaths)
+        }
+        if (stagedNum == 0 && gallerySelectMode) {
+            gallerySelectMode = false
+            selectedStagedPaths.clear()
+        }
+        val visible = filteredGalleryPhotos()
+
         if (::galleryTitleText.isInitialized) {
-            galleryTitleText.text = "📸 Sent Photos ($count)"
+            galleryTitleText.text = if (stagedNum > 0) "☑️ Review & Pick ($stagedNum)" else "📸 Session Photos ($totalCount)"
+        }
+        if (::galleryFilterAllBtn.isInitialized) {
+            galleryFilterAllBtn.text = "All ($totalCount)"
+            galleryFilterAllBtn.background = makeCard(Color.parseColor(if (galleryFilter == "all") "#1C1A1E" else "#E4DCCF"), 10f)
+            galleryFilterAllBtn.setTextColor(if (galleryFilter == "all") Color.WHITE else Color.parseColor("#4A444D"))
+        }
+        if (::galleryFilterPickBtn.isInitialized) {
+            galleryFilterPickBtn.text = "☑️ To Pick ($stagedNum)"
+            galleryFilterPickBtn.background = makeCard(Color.parseColor(if (galleryFilter == "pick") "#4F46E5" else "#E4DCCF"), 10f)
+            galleryFilterPickBtn.setTextColor(if (galleryFilter == "pick") Color.WHITE else Color.parseColor("#3730A3"))
+        }
+        if (::galleryFilterSentBtn.isInitialized) {
+            galleryFilterSentBtn.text = "✓ Sent ($sentNum)"
+            galleryFilterSentBtn.background = makeCard(Color.parseColor(if (galleryFilter == "sent") "#2EA66B" else "#E4DCCF"), 10f)
+            galleryFilterSentBtn.setTextColor(if (galleryFilter == "sent") Color.WHITE else Color.parseColor("#166534"))
+        }
+        if (::gallerySelectBtn.isInitialized) {
+            gallerySelectBtn.visibility = if (stagedNum > 0) View.VISIBLE else View.GONE
+            gallerySelectBtn.text = if (gallerySelectMode) "Cancel Pick" else "☑ Multi-Pick"
+            gallerySelectBtn.background = makeCard(Color.parseColor(if (gallerySelectMode) "#4F46E5" else "#E4DCCF"), 10f)
+            gallerySelectBtn.setTextColor(if (gallerySelectMode) Color.WHITE else Color.parseColor("#1C1A1E"))
+        }
+        if (::galleryBatchBar.isInitialized) {
+            if (gallerySelectMode && stagedNum > 0) {
+                val selN = selectedStagedPaths.size
+                galleryBatchBar.visibility = View.VISIBLE
+                galleryBatchSendBtn.text = "📤 Send Selected ($selN)"
+                galleryBatchSendBtn.isEnabled = selN > 0
+                galleryBatchSendBtn.alpha = if (selN > 0) 1f else 0.5f
+                galleryBatchDiscardBtn.visibility = View.VISIBLE
+                galleryBatchDiscardBtn.text = "🗑️ Discard ($selN)"
+                galleryBatchDiscardBtn.isEnabled = selN > 0
+                galleryBatchDiscardBtn.alpha = if (selN > 0) 1f else 0.5f
+            } else if (stagedNum > 0 && (galleryFilter == "pick" || galleryFilter == "all")) {
+                galleryBatchBar.visibility = View.VISIBLE
+                galleryBatchSendBtn.text = "📤 Send All Waiting ($stagedNum)"
+                galleryBatchSendBtn.isEnabled = true
+                galleryBatchSendBtn.alpha = 1f
+                galleryBatchDiscardBtn.visibility = View.GONE
+            } else {
+                galleryBatchBar.visibility = View.GONE
+            }
+        }
+        if (::gallerySubHint.isInitialized) {
+            gallerySubHint.text = when {
+                gallerySelectMode -> "Tap waiting shots to check/uncheck them, then tap Send Selected."
+                stagedNum > 0 -> "Tap a photo to preview, adjust brightness & Send to Laptop — or long-press to multi-pick."
+                else -> "Tap any photo to enlarge • Unsent shots auto-upload when Wi-Fi reconnects."
+            }
         }
         if (::galleryEmptyText.isInitialized && ::galleryGrid.isInitialized) {
-            if (count == 0) {
+            if (visible.isEmpty()) {
+                galleryEmptyText.text = when {
+                    totalCount == 0 -> "No photos taken yet in this session.\n\nConnect your DSLR and snap photos with the camera shutter—they will appear here!"
+                    galleryFilter == "pick" -> "All caught up!\n\nNo photos waiting for review right now."
+                    else -> "No sent photos yet.\n\nSwitch to ☑️ To Pick to choose shots to send to the laptop."
+                }
                 galleryEmptyText.visibility = View.VISIBLE
                 galleryGrid.visibility = View.GONE
             } else {
@@ -1720,12 +2854,15 @@ class RovingBridgeActivity : AppCompatActivity() {
         } catch (_: Exception) { }
     }
 
-    private fun saveCompressedThumbnail(bytes: ByteArray): File? {
+    private fun saveCompressedThumbnail(bytes: ByteArray): Pair<File, String>? {
         return try {
+            val orientExif = readExifOrientation(bytes)
             val opts = BitmapFactory.Options().apply {
                 inSampleSize = 4 // read 1/4 width & height into memory for fast decoding
             }
-            val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts) ?: return null
+            val raw = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts) ?: return null
+            val bmp = applyExifRotation(raw, orientExif)
+            val orientLabel = classifyOrient(bmp.width, bmp.height)
             val maxDim = 480
             val w = bmp.width
             val h = bmp.height
@@ -1742,50 +2879,81 @@ class RovingBridgeActivity : AppCompatActivity() {
 
             val file = File(getThumbsDir(), "thumb_${System.currentTimeMillis()}_${(100..999).random()}.jpg")
             file.outputStream().use { out ->
-                scaled.compress(Bitmap.CompressFormat.JPEG, 75, out)
+                scaled.compress(Bitmap.CompressFormat.JPEG, 78, out)
                 out.flush()
             }
             scaled.recycle()
-            file
+            Pair(file, orientLabel)
         } catch (e: Exception) {
             Log.w(TAG, "Error saving compressed thumbnail: ${e.message}")
             null
         }
     }
 
-    private fun updateThumbnailFromFile(file: File) {
+    private fun updateThumbnailFromFile(file: File, previewBrightness: Int = 0) {
         try {
             val bmp = BitmapFactory.decodeFile(file.absolutePath) ?: return
             lastPhotoBitmap?.recycle()
             lastPhotoBitmap = bmp
             thumbnailView.setImageBitmap(bmp)
+            thumbnailView.colorFilter = brightnessColorFilter(previewBrightness)
         } catch (e: Exception) {
             Log.w(TAG, "Thumbnail display error: ${e.message}")
         }
     }
 
     private inner class GalleryGridAdapter : BaseAdapter() {
-        override fun getCount(): Int = synchronized(sessionPhotos) { sessionPhotos.size }
-        override fun getItem(position: Int): SessionPhoto = synchronized(sessionPhotos) { sessionPhotos[position] }
+        override fun getCount(): Int = filteredGalleryPhotos().size
+        override fun getItem(position: Int): SessionPhoto = filteredGalleryPhotos()[position]
         override fun getItemId(position: Int): Long = position.toLong()
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
-            val photo = getItem(position)
+            val list = filteredGalleryPhotos()
+            if (list.isEmpty()) return convertView ?: View(this@RovingBridgeActivity)
+            val photo = list[position.coerceIn(0, list.lastIndex)]
             val cell = (convertView as? FrameLayout) ?: FrameLayout(this@RovingBridgeActivity).apply {
-                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(110))
-                background = makeCard(Color.WHITE, 12f)
+                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(118))
+                background = makeCard(Color.parseColor("#1E1C21"), 12f)
                 clipToOutline = true
 
                 val iv = ImageView(this@RovingBridgeActivity).apply {
                     tag = "iv"
-                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    scaleType = ImageView.ScaleType.FIT_CENTER
                     layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                 }
                 addView(iv)
 
+                val orientBadge = TextView(this@RovingBridgeActivity).apply {
+                    tag = "orient_badge"
+                    textSize = 9.5f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                    setPadding(dp(5), dp(1), dp(5), dp(1))
+                    val olp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                        gravity = Gravity.TOP or Gravity.START
+                        setMargins(dp(4), dp(4), 0, 0)
+                    }
+                    layoutParams = olp
+                }
+                addView(orientBadge)
+
+                val selBadge = TextView(this@RovingBridgeActivity).apply {
+                    tag = "sel_badge"
+                    textSize = 11f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                    setPadding(dp(6), dp(2), dp(6), dp(2))
+                    val slp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                        gravity = Gravity.TOP or Gravity.END
+                        setMargins(0, dp(4), dp(4), 0)
+                    }
+                    layoutParams = slp
+                }
+                addView(selBadge)
+
                 val badge = TextView(this@RovingBridgeActivity).apply {
                     tag = "badge"
-                    textSize = 10f
+                    textSize = 9.5f
                     setTypeface(typeface, Typeface.BOLD)
                     setTextColor(Color.WHITE)
                     setPadding(dp(6), dp(2), dp(6), dp(2))
@@ -1799,19 +2967,61 @@ class RovingBridgeActivity : AppCompatActivity() {
             }
 
             val iv = cell.findViewWithTag<ImageView>("iv")
+            val orientBadge = cell.findViewWithTag<TextView>("orient_badge")
+            val selBadge = cell.findViewWithTag<TextView>("sel_badge")
             val badge = cell.findViewWithTag<TextView>("badge")
 
             if (iv != null) {
                 try {
                     val bmp = if (photo.thumbFile.exists()) BitmapFactory.decodeFile(photo.thumbFile.absolutePath) else null
                     iv.setImageBitmap(bmp)
+                    iv.colorFilter = if (photo.isStaged()) brightnessColorFilter(photo.brightness) else null
                 } catch (_: Exception) {
                     iv.setImageDrawable(null)
+                    iv.colorFilter = null
+                }
+            }
+
+            if (orientBadge != null) {
+                when (photo.orient) {
+                    "portrait" -> {
+                        orientBadge.text = "▯ Port"
+                        orientBadge.background = makeCard(Color.parseColor("#E65B4BD6"), 6f)
+                        orientBadge.visibility = View.VISIBLE
+                    }
+                    "landscape" -> {
+                        orientBadge.text = "▭ Land"
+                        orientBadge.background = makeCard(Color.parseColor("#E60D7C66"), 6f)
+                        orientBadge.visibility = View.VISIBLE
+                    }
+                    else -> orientBadge.visibility = View.GONE
+                }
+            }
+
+            val stagedPath = photo.stagedFile?.absolutePath
+            val isChecked = gallerySelectMode && photo.isStaged() && stagedPath != null && stagedPath in selectedStagedPaths
+            if (selBadge != null) {
+                if (gallerySelectMode && photo.isStaged()) {
+                    selBadge.text = if (isChecked) "✓" else "○"
+                    selBadge.background = makeCard(
+                        Color.parseColor(if (isChecked) "#4F46E5" else "#99000000"),
+                        10f
+                    )
+                    selBadge.visibility = View.VISIBLE
+                } else if (photo.isStaged() && photo.brightness != 0) {
+                    selBadge.text = "☀${if (photo.brightness > 0) "+" else ""}${photo.brightness}%"
+                    selBadge.background = makeCard(Color.parseColor("#CCF59E0B"), 6f)
+                    selBadge.visibility = View.VISIBLE
+                } else {
+                    selBadge.visibility = View.GONE
                 }
             }
 
             if (badge != null) {
-                if (photo.success) {
+                if (photo.isStaged()) {
+                    badge.text = "${photo.timeStr} ☑️"
+                    badge.background = makeCard(Color.parseColor("#E64F46E5"), 6f)
+                } else if (photo.success) {
                     badge.text = "${photo.timeStr} ✓"
                     badge.background = makeCard(Color.parseColor("#CC1B7358"), 6f)
                 } else if (photo.pendingFile?.exists() == true) {
@@ -1824,7 +3034,22 @@ class RovingBridgeActivity : AppCompatActivity() {
             }
 
             cell.setOnClickListener {
-                showPhotoPreview(photo)
+                if (gallerySelectMode && photo.isStaged() && stagedPath != null) {
+                    if (!selectedStagedPaths.add(stagedPath)) selectedStagedPaths.remove(stagedPath)
+                    notifyGalleryChanged()
+                } else {
+                    showPhotoPreview(photo)
+                }
+            }
+            cell.setOnLongClickListener {
+                if (photo.isStaged() && stagedPath != null) {
+                    gallerySelectMode = true
+                    selectedStagedPaths.add(stagedPath)
+                    notifyGalleryChanged()
+                    true
+                } else {
+                    false
+                }
             }
 
             return cell
@@ -1904,6 +3129,12 @@ class RovingBridgeActivity : AppCompatActivity() {
         return d
     }
 
+    private fun getStagedDir(): File {
+        val d = File(filesDir, "rove_staged")
+        if (!d.exists()) d.mkdirs()
+        return d
+    }
+
     private fun getFailedDir(): File {
         val d = File(filesDir, "rove_failed")
         if (!d.exists()) d.mkdirs()
@@ -1934,6 +3165,37 @@ class RovingBridgeActivity : AppCompatActivity() {
 
     private fun pendingCount(): Int = listPendingFiles().size
 
+    private fun listStagedFiles(): List<File> {
+        val dir = getStagedDir()
+        val files = dir.listFiles() ?: return emptyList()
+        return files.filter { it.isFile && it.name.endsWith(".jpg", ignoreCase = true) }
+            .sortedBy { it.name }
+    }
+
+    private fun stagedCount(): Int = listStagedFiles().size
+
+    private fun saveStagedPhotoFile(bytes: ByteArray): File? {
+        return try {
+            val dir = getStagedDir()
+            val seq = pendingSeq.incrementAndGet() % 10000
+            val baseName = String.format(Locale.US, "stage_%013d_%04d.jpg", System.currentTimeMillis(), seq)
+            val tmp = File(dir, "$baseName.tmp")
+            val dest = File(dir, baseName)
+            tmp.outputStream().use { out ->
+                out.write(bytes)
+                out.flush()
+            }
+            if (tmp.renameTo(dest)) dest else {
+                tmp.copyTo(dest, overwrite = true)
+                tmp.delete()
+                dest
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error saving staged photo: ${e.message}")
+            null
+        }
+    }
+
     private fun savePendingPhotoFile(bytes: ByteArray): File? {
         return try {
             val dir = getPendingDir()
@@ -1956,10 +3218,13 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
     }
 
-    private fun saveThumbnailFromFile(file: File): File? {
+    private fun saveThumbnailFromFile(file: File): Pair<File, String>? {
         return try {
+            val orientExif = readExifOrientation(file)
             val opts = BitmapFactory.Options().apply { inSampleSize = 4 }
-            val bmp = BitmapFactory.decodeFile(file.absolutePath, opts) ?: return null
+            val raw = BitmapFactory.decodeFile(file.absolutePath, opts) ?: return null
+            val bmp = applyExifRotation(raw, orientExif)
+            val orientLabel = classifyOrient(bmp.width, bmp.height)
             val maxDim = 480
             val w = bmp.width
             val h = bmp.height
@@ -1975,11 +3240,11 @@ class RovingBridgeActivity : AppCompatActivity() {
             }
             val thumb = File(getThumbsDir(), "thumb_${System.currentTimeMillis()}_${(100..999).random()}.jpg")
             thumb.outputStream().use { out ->
-                scaled.compress(Bitmap.CompressFormat.JPEG, 75, out)
+                scaled.compress(Bitmap.CompressFormat.JPEG, 78, out)
                 out.flush()
             }
             scaled.recycle()
-            thumb
+            Pair(thumb, orientLabel)
         } catch (e: Exception) {
             Log.w(TAG, "Error creating thumbnail from pending file: ${e.message}")
             null
@@ -1990,45 +3255,65 @@ class RovingBridgeActivity : AppCompatActivity() {
         ingestExecutor.execute {
             try {
                 // Clean up abandoned .tmp files left behind if the app was killed mid-write
-                val dir = getPendingDir()
                 val staleCutoff = System.currentTimeMillis() - 60_000L
-                dir.listFiles()?.forEach { f ->
-                    if (f.isFile && f.name.endsWith(".tmp") && f.lastModified() < staleCutoff) {
-                        try { f.delete() } catch (_: Exception) { }
+                listOf(getPendingDir(), getStagedDir()).forEach { dir ->
+                    dir.listFiles()?.forEach { f ->
+                        if (f.isFile && f.name.endsWith(".tmp") && f.lastModified() < staleCutoff) {
+                            try { f.delete() } catch (_: Exception) { }
+                        }
                     }
                 }
 
-                val files = listPendingFiles()
-                if (files.isEmpty()) {
+                val pendingFiles = listPendingFiles()
+                val stagedFiles = listStagedFiles()
+                if (pendingFiles.isEmpty() && stagedFiles.isEmpty()) {
                     mainHandler.post { refreshQueueUi() }
                     return@execute
                 }
                 val restored = mutableListOf<SessionPhoto>()
-                for (f in files) {
+                for (f in pendingFiles) {
                     if (!f.exists() || f.length() <= 0L) {
                         try { f.delete() } catch (_: Exception) { }
                         continue
                     }
                     val timeStr = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(f.lastModified()))
-                    val thumb = saveThumbnailFromFile(f) ?: File(getThumbsDir(), "missing_${f.name}")
-                    restored.add(0, SessionPhoto(thumb, timeStr, false, f.length(), f))
+                    val thPair = saveThumbnailFromFile(f)
+                    val thumb = thPair?.first ?: File(getThumbsDir(), "missing_${f.name}")
+                    val orient = thPair?.second ?: ""
+                    restored.add(0, SessionPhoto(thumb, timeStr, false, f.length(), pendingFile = f, stagedFile = null, brightness = 0, orient = orient))
+                }
+                for (f in stagedFiles) {
+                    if (!f.exists() || f.length() <= 0L) {
+                        try { f.delete() } catch (_: Exception) { }
+                        continue
+                    }
+                    val timeStr = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(f.lastModified()))
+                    val thPair = saveThumbnailFromFile(f)
+                    val thumb = thPair?.first ?: File(getThumbsDir(), "missing_${f.name}")
+                    val orient = thPair?.second ?: ""
+                    restored.add(0, SessionPhoto(thumb, timeStr, false, f.length(), pendingFile = null, stagedFile = f, brightness = defaultBrightness, orient = orient))
                 }
                 if (restored.isNotEmpty()) {
                     synchronized(sessionPhotos) {
                         sessionPhotos.addAll(restored)
                     }
                 }
-                val latestThumb = restored.firstOrNull()?.thumbFile
-                val count = restored.size
+                val latest = restored.firstOrNull()
+                val pCount = pendingFiles.size
+                val sCount = stagedFiles.size
                 mainHandler.post {
                     if (isFinishing || isDestroyed) return@post
-                    if (latestThumb != null && latestThumb.exists()) updateThumbnailFromFile(latestThumb)
-                    if (count > 0) {
-                        lastSentText.text = "⏳ $count queued photo(s) restored — waiting for laptop Wi-Fi…"
+                    if (latest != null && latest.thumbFile.exists()) {
+                        updateThumbnailFromFile(latest.thumbFile, if (latest.isStaged()) latest.brightness else 0)
+                    }
+                    if (sCount > 0) {
+                        lastSentText.text = "☑️ $sCount photo(s) waiting for your pick" + (if (pCount > 0) " • $pCount queued" else "")
+                    } else if (pCount > 0) {
+                        lastSentText.text = "⏳ $pCount queued photo(s) restored — waiting for laptop Wi-Fi…"
                     }
                     refreshQueueUi()
                     notifyGalleryChanged()
-                    if (count > 0 && targetUrl.trim().isNotEmpty()) {
+                    if (pCount > 0 && targetUrl.trim().isNotEmpty()) {
                         kickRetryQueue(300L)
                     }
                 }
@@ -2215,13 +3500,44 @@ class RovingBridgeActivity : AppCompatActivity() {
 
     private fun refreshQueueUi() {
         val pending = pendingCount()
+        val staged = stagedCount()
         if (::statsCountText.isInitialized) {
-            if (pending > 0) {
-                statsCountText.text = "$sentPhotosCount Sent • $pending Queued"
-                statsCountText.setTextColor(Color.parseColor("#D97706"))
+            when {
+                staged > 0 && pending > 0 -> {
+                    statsCountText.text = "$sentPhotosCount Sent • $staged To Pick • $pending Queued"
+                    statsCountText.setTextColor(Color.parseColor("#4F46E5"))
+                }
+                staged > 0 -> {
+                    statsCountText.text = "$sentPhotosCount Sent • $staged To Pick"
+                    statsCountText.setTextColor(Color.parseColor("#4F46E5"))
+                }
+                pending > 0 -> {
+                    statsCountText.text = "$sentPhotosCount Sent • $pending Queued"
+                    statsCountText.setTextColor(Color.parseColor("#D97706"))
+                }
+                else -> {
+                    statsCountText.text = "$sentPhotosCount Photos Sent"
+                    statsCountText.setTextColor(Color.parseColor("#2EA66B"))
+                }
+            }
+        }
+        if (::stagedBanner.isInitialized && ::stagedBannerText.isInitialized) {
+            if (staged > 0) {
+                stagedBannerText.text = "☑️ $staged photo(s) waiting for your pick"
+                stagedBanner.visibility = View.VISIBLE
             } else {
-                statsCountText.text = "$sentPhotosCount Photos Sent"
-                statsCountText.setTextColor(Color.parseColor("#2EA66B"))
+                stagedBanner.visibility = View.GONE
+            }
+        }
+        if (::galleryOpenBtn.isInitialized) {
+            if (staged > 0) {
+                galleryOpenBtn.text = "☑️ Review & Pick Photos ($staged waiting)"
+                galleryOpenBtn.setTextColor(Color.WHITE)
+                galleryOpenBtn.background = makeCard(Color.parseColor("#4F46E5"), 12f)
+            } else {
+                galleryOpenBtn.text = "🖼️ View Photos Gallery"
+                galleryOpenBtn.setTextColor(Color.parseColor("#1C1A1E"))
+                galleryOpenBtn.background = makeCard(Color.parseColor("#E4DCCF"), 12f)
             }
         }
         if (::pendingBanner.isInitialized && ::pendingBannerText.isInitialized) {
@@ -2246,11 +3562,10 @@ class RovingBridgeActivity : AppCompatActivity() {
             }
         }
         if (::pocketStatsText.isInitialized) {
-            pocketStatsText.text = if (pending > 0) {
-                "Sent: $sentPhotosCount • Queued: $pending (auto-retrying)"
-            } else {
-                "Sent: $sentPhotosCount"
-            }
+            val bits = mutableListOf("Sent: $sentPhotosCount")
+            if (staged > 0) bits.add("To Pick: $staged")
+            if (pending > 0) bits.add("Queued: $pending")
+            pocketStatsText.text = bits.joinToString(" • ")
         }
         syncWakeLock()
     }
@@ -2311,17 +3626,62 @@ class RovingBridgeActivity : AppCompatActivity() {
     private fun handlePhotoCaptured(bytes: ByteArray) {
         val timeStr = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
         val currentTarget = targetUrl.trim()
+        val isPickMode = pickToSendMode
+        val adjBrightness = defaultBrightness.coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX)
 
-        // 1. Cache lightweight thumbnail & persist full-res JPEG to disk queue so nothing is lost on disconnect
-        val thumbFile = saveCompressedThumbnail(bytes)
-        val pendingFile = savePendingPhotoFile(bytes)
+        // 1. Pick-to-Send mode: save full-res original to staged folder so photographer reviews,
+        //    optionally adjusts brightness, and chooses which shots to send to the laptop.
+        if (isPickMode) {
+            val thPair = saveCompressedThumbnail(bytes)
+            val thumbFile = thPair?.first
+            val orient = thPair?.second ?: ""
+            val stagedFile = saveStagedPhotoFile(bytes)
+            if (stagedFile == null) {
+                mainHandler.post {
+                    lastSentText.text = "Could not save photo to phone storage!"
+                    Toast.makeText(this, "Storage full — could not save photo for review!", Toast.LENGTH_SHORT).show()
+                    refreshQueueUi()
+                }
+                return
+            }
+            val displayThumb = thumbFile ?: File(getThumbsDir(), "missing_${stagedFile.name}")
+            val item = SessionPhoto(
+                thumbFile = displayThumb,
+                timeStr = timeStr,
+                success = false,
+                sizeBytes = bytes.size.toLong(),
+                pendingFile = null,
+                stagedFile = stagedFile,
+                brightness = adjBrightness,
+                orient = orient
+            )
+            synchronized(sessionPhotos) { sessionPhotos.add(0, item) }
+            val waitCount = stagedCount()
+            mainHandler.post {
+                if (isFinishing || isDestroyed) return@post
+                if (displayThumb.exists()) updateThumbnailFromFile(displayThumb, adjBrightness)
+                lastSentText.text = "☑️ Captured at $timeStr ($waitCount waiting for your pick)"
+                refreshQueueUi()
+                notifyGalleryChanged()
+                // If photographer already has Gallery open on Pick tab, keep live list fresh;
+                // if Preview isn't open and screen isn't pocket-locked, keep flow effortless.
+            }
+            return
+        }
+
+        // 2. Auto-Send mode: apply configured brightness boost if != 0, else keep raw DSLR JPEG untouched.
+        val outBytes = if (adjBrightness != 0) applyBrightnessToJpegBytes(bytes, adjBrightness) else bytes
+        val thPair = saveCompressedThumbnail(outBytes)
+        val thumbFile = thPair?.first
+        val orient = thPair?.second ?: ""
+        val pendingFile = savePendingPhotoFile(outBytes)
 
         if (pendingFile == null) {
             // Disk fallback: try direct in-memory upload if storage couldn't write
-            val res = if (currentTarget.isNotEmpty()) uploadBytesToLaptop(currentTarget, bytes) else UPLOAD_RETRY
+            val res = if (currentTarget.isNotEmpty()) uploadBytesToLaptop(currentTarget, outBytes) else UPLOAD_RETRY
             val ok = (res == UPLOAD_OK)
             if (thumbFile != null) {
-                val item = SessionPhoto(thumbFile, timeStr, ok, bytes.size.toLong(), null)
+                val item = SessionPhoto(thumbFile, timeStr, ok, outBytes.size.toLong(), pendingFile = null, stagedFile = null, brightness = adjBrightness, orient = orient)
                 synchronized(sessionPhotos) { sessionPhotos.add(0, item) }
             }
             mainHandler.post {
@@ -2333,7 +3693,7 @@ class RovingBridgeActivity : AppCompatActivity() {
                     lastSentText.text = "Could not save photo to phone storage!"
                     Toast.makeText(this, "Storage full — could not queue photo!", Toast.LENGTH_SHORT).show()
                 }
-                if (thumbFile != null && thumbFile.exists()) updateThumbnailFromFile(thumbFile)
+                if (thumbFile != null && thumbFile.exists()) updateThumbnailFromFile(thumbFile, 0)
                 refreshQueueUi()
                 notifyGalleryChanged()
             }
@@ -2341,17 +3701,18 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
 
         val displayThumb = thumbFile ?: File(getThumbsDir(), "missing_${pendingFile.name}")
-        val item = SessionPhoto(displayThumb, timeStr, false, bytes.size.toLong(), pendingFile)
+        val item = SessionPhoto(displayThumb, timeStr, false, outBytes.size.toLong(), pendingFile = pendingFile, stagedFile = null, brightness = adjBrightness, orient = orient)
         synchronized(sessionPhotos) { sessionPhotos.add(0, item) }
 
         mainHandler.post {
-            if (displayThumb.exists()) updateThumbnailFromFile(displayThumb)
+            if (displayThumb.exists()) updateThumbnailFromFile(displayThumb, 0)
             if (currentTarget.isEmpty()) {
                 lastSentText.text = "⏳ Queued on phone — scan Laptop QR to send"
                 Toast.makeText(this, "Photo queued! Scan Laptop QR to send.", Toast.LENGTH_SHORT).show()
             } else {
                 val qCount = pendingCount()
-                lastSentText.text = if (qCount > 1) "📤 Uploading ($qCount in queue)…" else "📤 Sending photo…"
+                val bTag = if (adjBrightness != 0) " (${formatBrightness(adjBrightness)})" else ""
+                lastSentText.text = if (qCount > 1) "📤 Uploading$bTag ($qCount in queue)…" else "📤 Sending photo$bTag…"
             }
             refreshQueueUi()
             notifyGalleryChanged()

@@ -308,6 +308,16 @@ export async function liveApp() {
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
   {
+    date: '2026-11-25', title: 'Roving DSLR Bridge v1.1.4 (Android) & Android 1.2.19: Pick-to-Send Review Mode, Brightness Before Sending & Photoman Polaroid/Landscape Designer', for: ['website', 'android'], android: '1.2.19',
+    items: [
+      '☑️ Pick-to-Send mode in Roving DSLR Bridge (Android): Switch between Auto-Send All and Pick to Send so DSLR shots stay on your phone for quick review — send only the best shots one by one, multi-select batches, or skip blinks before they reach the laptop.',
+      '☀️ Brightness slider before sending (Roving DSLR Bridge Android): Lighten or darken shots (-30% to +40%) with instant live preview on each photo or set a default brightness boost for dim venues, while leaving 0% photos untouched at original DSLR quality.',
+      '🖼️ Portrait & Landscape visibility everywhere: Uncropped photo thumbnails with Portrait and Landscape badges and filter pills in Roving Photoman Studio, Photographer Phone Control, and the Roving DSLR Bridge review gallery.',
+      '⭐ Favorite templates, 1-tap switching & automatic orientation routing: Pin your go-to templates (such as 4R 2-up Polaroid and 4R Landscape 1-Spot) to a quick-switch bar, or turn on Auto-switch by orientation so solo portrait shots and group landscape shots automatically pick the right layout.',
+      '🎨 Independent Photoman Landscape & Polaroid Template Maker: Design 2-up Polaroid and Landscape frames completely separately from your main booth setup with full patterns, decorative borders, florals, stickers with Mirror Half, rotated and outlined text, and 1-click Matching Pair creation.'
+    ]
+  },
+  {
     date: '2026-11-25', title: 'Desktop 1.1.110, iPad 1.1.29 & Website: Desktop Online Mode with Google Drive & PayMongo, Device Labels, iPad Wireless Printing & DJI Osmo Pocket 3', for: ['website', 'app', 'ipad'], app: '1.1.110', ipad: '1.1.29',
     items: [
       'Desktop Online Mode (Windows & Mac): Run your online booth right inside the photobooth4u desktop app with built-in silent printing, USB DSLR cameras, and HDMI guest screen — no browser or separate Print Helper needed. Every photo saves a local copy on your laptop and uploads straight to Google Drive at the same time, with an online QR guests can scan or snap a photo of to download at home.',

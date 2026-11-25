@@ -12662,7 +12662,59 @@
     }
     .lanst-prlist {
       display: grid;
+      gap: 7px;
+    }
+    .lanst-head,
+    .lanst-row {
+      display: flex;
+      align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
+    }
+    .lanst-head {
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .lanst-badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 700;
+      background: #efe7dd;
+      color: var(--ink-dim);
+    }
+    .lanst-badge.ok {
+      background: #e6f4f1;
+      color: #1f6f62;
+    }
+    .lanst-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+      padding: 8px 10px;
+      background: #faf8f4;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    .lanst-inp {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 6px 10px;
+      font: 13px 'Manrope', sans-serif;
+      background: #fff;
+      color: var(--ink);
+    }
+    .lanst-inp.grow {
+      flex: 1;
+      min-width: 160px;
+    }
+    .desk-btn.active {
+      background: #c93d27;
+      border-color: #c93d27;
+      color: #fff;
     }
     .lanst-prrow {
       display: flex;
@@ -12674,6 +12726,73 @@
       border: 1px solid var(--line);
       border-radius: 10px;
       background: #faf8f4;
+    }
+    .lanst-prrow.dim {
+      padding: 7px 12px;
+      background: #fff;
+      opacity: .84;
+    }
+    .lanst-chk {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      flex: 1;
+      min-width: 170px;
+    }
+    .lanst-chk input {
+      width: 17px;
+      height: 17px;
+      accent-color: #c93d27;
+      cursor: pointer;
+      flex: none;
+    }
+    .lanst-sizes {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+    }
+    .lanst-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #efe7dd;
+      font: 700 12px 'Manrope', sans-serif;
+    }
+    .lanst-chip button {
+      border: 0;
+      background: none;
+      padding: 0 2px;
+      font: 800 14px inherit;
+      line-height: 1;
+      color: var(--ink-dim);
+      cursor: pointer;
+    }
+    .lanst-chip button:hover {
+      color: #c93d27;
+    }
+    .lanst-addbox {
+      margin-top: 8px;
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #faf8f4;
+      display: grid;
+      gap: 9px;
+    }
+    .lanst-addbox[hidden] {
+      display: none;
+    }
+    .lanst-subttl {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--ink-dim);
+      margin-bottom: 4px;
     }
     .lanst-jobs {
       width: 100%;
@@ -26752,11 +26871,61 @@
         </div>
         <div class="lanst-msg" id="stationDeskMsg" role="status" hidden></div>
         <div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
-            <b>Installed Printers on This Laptop</b>
-            <button type="button" class="desk-btn" id="stationDeskRefBtn">Refresh Printers</button>
+          <div class="lanst-head">
+            <div class="lanst-row">
+              <b>Printers for Print Station</b>
+              <span class="lanst-badge" id="stationDeskPrCount">Loading&hellip;</span>
+            </div>
+            <div class="lanst-row">
+              <button type="button" class="desk-btn" id="stationDeskHideBtn">Hide unused</button>
+              <button type="button" class="desk-btn" id="stationDeskRefBtn">Refresh Printers</button>
+            </div>
+          </div>
+          <div class="lanst-toolbar" id="stationDeskPrTools">
+            <input type="search" class="lanst-inp grow" id="stationDeskPrSearch" placeholder="Search printers&hellip; (e.g. Mitsubishi, Epson, DNP)" autocomplete="off">
+            <button type="button" class="desk-btn" id="stationDeskUntickBtn">Untick all</button>
+            <button type="button" class="desk-btn" id="stationDeskTickBtn">Tick all</button>
           </div>
           <div class="lanst-prlist" id="stationDeskPrinters">Loading&hellip;</div>
+          <div class="lanst-sizes">
+            <div class="lanst-head" style="margin-bottom:4px;">
+              <div class="lanst-row">
+                <b style="font-size:13px;">Test paper sizes</b>
+                <div class="lanst-row" id="stationDeskSizeChips"></div>
+              </div>
+              <div class="lanst-row">
+                <button type="button" class="desk-btn" id="stationDeskResetSizesBtn" hidden>Reset defaults</button>
+                <button type="button" class="desk-btn" id="stationDeskAddSizeBtn">+ Add paper size</button>
+              </div>
+            </div>
+            <div class="lanst-addbox" id="stationDeskAddSizeBox" hidden>
+              <div>
+                <div class="lanst-subttl">Quick photo &amp; booth presets</div>
+                <div class="lanst-row" id="stationDeskPresetRow"></div>
+              </div>
+              <div>
+                <div class="lanst-subttl">Or pick directly from a printer&rsquo;s driver</div>
+                <div class="lanst-row">
+                  <select class="lanst-inp grow" id="stationDeskDrvPrinter" aria-label="Printer for driver sizes"></select>
+                  <button type="button" class="desk-btn" id="stationDeskLoadDrvBtn">Load driver sizes</button>
+                  <select class="lanst-inp grow" id="stationDeskDrvSize" aria-label="Driver paper size" hidden></select>
+                  <button type="button" class="desk-btn" id="stationDeskAddDrvBtn" hidden>Add size</button>
+                </div>
+              </div>
+              <div>
+                <div class="lanst-subttl">Or enter any custom size</div>
+                <div class="lanst-row">
+                  <input type="text" class="lanst-inp" id="stationDeskCsLabel" placeholder="Name (e.g. 5&times;7)" maxlength="32" style="width:140px;">
+                  <input type="number" class="lanst-inp" id="stationDeskCsW" min="0.5" max="1220" step="0.1" placeholder="W" style="width:74px;">
+                  <span>&times;</span>
+                  <input type="number" class="lanst-inp" id="stationDeskCsH" min="0.5" max="1220" step="0.1" placeholder="H" style="width:74px;">
+                  <select class="lanst-inp" id="stationDeskCsU" aria-label="Unit"><option value="in">in</option><option value="mm">mm</option></select>
+                  <label style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;"><input type="checkbox" id="stationDeskCsTwoUp"> 2-up cut</label>
+                  <button type="button" class="desk-btn active" id="stationDeskCsAddBtn">Add</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div>
           <b>Incoming Prints from iPad / Tablet</b>
@@ -26765,7 +26934,7 @@
             <tbody id="stationDeskJobs"><tr><td colspan="5" style="color:var(--ink-dim);">Waiting for prints&hellip;</td></tr></tbody>
           </table>
         </div>
-        <p class="panel-hint" style="margin:0;">On your <b>iPad App</b> (Setup &rarr; Printer), choose <b>4&times;6</b> or <b>2&times;6 strips</b>, switch ON <b>Laptop Print Station (Wi-Fi)</b>, tap <b>Find Laptop on Wi-Fi</b>, enter this <b>6-Digit PIN</b>, and pick your printer. Camera preview is paused while this Print Station screen stays open to save laptop power.</p>
+        <p class="panel-hint" style="margin:0;">On your <b>iPad / Android App</b> (Setup &rarr; Printer), choose your paper size (<b>4&times;6</b>, <b>2&times;6 strips</b>, <b>5&times;7</b>, <b>6&times;8</b>, <b>A4</b>, or <b>More paper sizes &rarr; Own size</b>), switch ON <b>Laptop Print Station (Wi-Fi)</b>, tap <b>Find Laptop on Wi-Fi</b>, enter this <b>6-Digit PIN</b>, and pick your printer. Camera preview pauses while this screen stays open to save laptop power.</p>
       </div>
     </div>
   </div>
@@ -44363,7 +44532,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             stEl.textContent = 'Send prints over local Wi-Fi straight to a Mitsubishi, DNP, or HiTi printer plugged into a Windows or Mac laptop running Print Helper (zero internet needed).';
           } else if (lanStationActive() && helper && helper.ok) {
             const label = lanStationCfg.hostName ? (lanStationCfg.hostName + ' (' + lanStationCfg.host + ')') : lanStationCfg.host;
-            stEl.textContent = 'Connected to ' + label + ' \u2713 — ' + helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' ready. Pick your printer in Printer 1 below.';
+            stEl.textContent = helper.printers.length === 0 && helper.filtered && helper.allPrintersCount > 0
+              ? ('Connected to ' + label + ' \u2713 — 0 printers ticked on Laptop Print Station. Tick your printer(s) there, then tap Refresh printer list.')
+              : ('Connected to ' + label + ' \u2713 — ' + helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' ready. Pick your printer in Printer 1 below.');
           } else if (lanStationActive() && helper && helper.err === 'pin') {
             stEl.textContent = helper.errMsg || 'Wrong PIN. Check the 6-digit PIN shown in Print Helper on the laptop.';
           } else if (lanStationActive() && helper && helper.checked) {
@@ -44476,7 +44647,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             }
             // Instax Link printers (Bluetooth) are listed beside the printers of this computer; the booth prints to them itself.
             const mergedPrinters = lanStationActive() ? remotePrinters : remotePrinters.concat(instaxNames());
-            helper = { ok: !!j.ok, printers: mergedPrinters, checked: Date.now(), version: String(j.version || '') };
+            helper = {
+              ok: !!j.ok,
+              printers: mergedPrinters,
+              checked: Date.now(),
+              version: String(j.version || ''),
+              filtered: !!j.filtered,
+              allPrintersCount: Number(j.allPrintersCount) || remotePrinters.length
+            };
           }
         } catch (e) {
           helper = { ok: false, printers: [], checked: Date.now(), err: e && e.name === 'AbortError' ? 'timeout' : 'blocked' };
@@ -44973,7 +45151,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const p1Find = document.getElementById('printerFindDetails');
         if (p1Find) p1Find.style.display = lanStationActive() ? 'none' : '';
         if (helperOn && helper.ok) {
-          if (LAPTOP_PRINT && !helper.printers.length) printerHelperHint.textContent = 'No printers found on this computer. For Bluetooth, pair the printer in system settings and install its driver if required.';
+          if (lanStationActive() && !helper.printers.length && helper.filtered && helper.allPrintersCount > 0) printerHelperHint.textContent = '0 printers are ticked on the Laptop Print Station. Tick your printer(s) on the laptop, then tap Refresh printer list.';
+          else if (LAPTOP_PRINT && !helper.printers.length) printerHelperHint.textContent = 'No printers found on this computer. For Bluetooth, pair the printer in system settings and install its driver if required.';
           else if (!name) printerHelperHint.textContent = (lanStationActive() ? 'Laptop Print Station connected. ' : 'Print Helper connected. ') + 'Choose the printer for this paper size.';
           else if (helper.printers.length && !helper.printers.includes(name)) printerHelperHint.textContent = 'No printer on ' + (lanStationActive() ? 'that laptop' : 'this computer') + ' is called “' + name + '”. Pick one from the list.';
           else printerHelperHint.textContent = lanStationActive()
@@ -45077,7 +45256,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> — the receipt prints directly without a dialog.' }
         ];
         else if (lanStationActive()) steps = [
-          { done: connected && helper.printers.length > 0, t: 'Connect Laptop Print Station', s: connected ? ('Connected to <b>' + escHtml(lanStationCfg.hostName || lanStationCfg.host) + '</b> (' + helper.printers.length + ' printers found).') : 'Open Print Helper on the laptop and tap <b>Connect</b> above.' },
+          { done: connected && helper.printers.length > 0, t: 'Connect Laptop Print Station', s: connected ? (helper.printers.length === 0 && helper.filtered && helper.allPrintersCount > 0 ? ('Connected to <b>' + escHtml(lanStationCfg.hostName || lanStationCfg.host) + '</b>, but 0 printers are ticked on the laptop. Tick your printer(s) in Offline Print Station.') : ('Connected to <b>' + escHtml(lanStationCfg.hostName || lanStationCfg.host) + '</b> (' + helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' ready).')) : 'Open Print Station on the laptop and tap <b>Connect</b> above.' },
           (function () {
             const ok = connected && !!name && helper.printers.includes(name);
             const pl = ok && printSize ? paperLine(name, paperFor(printSize), sizeName) : '';
@@ -45837,7 +46016,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           badge.className = 'pr-card-badge' + (ok ? ' ready' : '');
         }
         if (setupBtn) {
-          const canCfg = (DESKTOP || (helperOn && helper.ok && helperAtLeast('1.1.7'))) && !!effectiveStripP && list.includes(effectiveStripP) && !isInstaxPrinter(effectiveStripP);
+          const canCfg = (DESKTOP || (!lanStationActive() && helperOn && helper.ok && helperAtLeast('1.1.7'))) && !!effectiveStripP && list.includes(effectiveStripP) && !isInstaxPrinter(effectiveStripP);
           setupBtn.style.display = canCfg ? '' : 'none';
         }
         if (effectiveStripP && !isInstaxPrinter(effectiveStripP)) {
@@ -54118,7 +54297,25 @@ function renderTabletBridgeSetup(info) {
       var openPrintStationOverlay = (function () {
         var ov = document.getElementById('stationDeskOverlay');
         if (!ov) return function () { };
+        var STATION_PRESETS = [
+          { id: '3.5x5', label: '3.5\u00d75 (3R)', widthMm: 88.9, heightMm: 127, twoUp: false },
+          { id: '5x7', label: '5\u00d77 (5R)', widthMm: 127, heightMm: 177.8, twoUp: false },
+          { id: '6x8', label: '6\u00d78 (6R)', widthMm: 152.4, heightMm: 203.2, twoUp: false },
+          { id: '8x10', label: '8\u00d710 (8R)', widthMm: 203.2, heightMm: 254, twoUp: false },
+          { id: 'selphy', label: 'Postcard 100\u00d7148', widthMm: 100, heightMm: 148, twoUp: false },
+          { id: '2.5x7.5', label: 'Keychain 2.5\u00d77.5', widthMm: 63.5, heightMm: 190.5, twoUp: false },
+          { id: 'a6', label: 'A6', widthMm: 105, heightMm: 148, twoUp: false },
+          { id: 'a5', label: 'A5', widthMm: 148, heightMm: 210, twoUp: false },
+          { id: 'a4', label: 'A4', widthMm: 210, heightMm: 297, twoUp: false },
+          { id: 'letter', label: 'Letter', widthMm: 215.9, heightMm: 279.4, twoUp: false }
+        ];
+        var DEFAULT_TEST_SIZES = [
+          { id: '4x6', label: '4\u00d76', widthMm: 101.6, heightMm: 152.4, twoUp: false, builtin: true },
+          { id: '2x6-cut', label: '2\u00d76 Cut', widthMm: 101.6, heightMm: 152.4, twoUp: true, builtin: true }
+        ];
         var lastInfo = null;
+        var lastPrSig = '', lastSzSig = '', lastJobSig = '';
+        var prSaveSeq = 0, szSaveSeq = 0, prBusy = 0, szBusy = 0;
         function sayPs(msg, err) {
           var el = document.getElementById('stationDeskMsg');
           if (!el) return;
@@ -54126,36 +54323,140 @@ function renderTabletBridgeSetup(info) {
           el.className = 'lanst-msg' + (err ? ' err' : '');
           el.hidden = !msg;
         }
-        function renderStationData(info) {
+        function isSplitLabel(s) {
+          var lc = String(s || '').toLowerCase();
+          return /split|2[\s_-]?up|div2|2\s*[x\u00d7]\s*6/.test(lc);
+        }
+        function sizeSig(s) {
+          return Math.round(Number(s.widthMm) * 10) + '|' + Math.round(Number(s.heightMm) * 10) + '|' + (s.twoUp ? '1' : '0') + '|' + (s.paperName || '');
+        }
+        function currentTestSizes() {
+          return (lastInfo && Array.isArray(lastInfo.testSizes) && lastInfo.testSizes.length) ? lastInfo.testSizes : DEFAULT_TEST_SIZES;
+        }
+        function isPrTicked(name) {
+          var sel = lastInfo && lastInfo.selectedPrinters;
+          return !Array.isArray(sel) || sel.indexOf(name) >= 0;
+        }
+        function effectiveSelected() {
+          var all = (lastInfo && Array.isArray(lastInfo.printers)) ? lastInfo.printers : [];
+          var sel = lastInfo && lastInfo.selectedPrinters;
+          return Array.isArray(sel) ? sel.slice() : all.slice();
+        }
+        function renderSizesUi(force) {
+          var sizes = currentTestSizes();
+          var customized = !!(lastInfo && lastInfo.testSizesCustomized);
+          var sig = JSON.stringify(sizes) + '|' + customized;
+          if (!force && sig === lastSzSig) return;
+          lastSzSig = sig;
+          var rstBtn = document.getElementById('stationDeskResetSizesBtn');
+          if (rstBtn) rstBtn.hidden = !customized;
+          var chipsEl = document.getElementById('stationDeskSizeChips');
+          if (chipsEl) {
+            chipsEl.innerHTML = sizes.map(function (s, idx) {
+              var rm = sizes.length > 1 ? '<button type="button" data-ps-rm-size="' + idx + '" title="Remove ' + escHtml(s.label) + '">&times;</button>' : '';
+              return '<span class="lanst-chip">' + escHtml(s.label) + rm + '</span>';
+            }).join('');
+          }
+          var presetRow = document.getElementById('stationDeskPresetRow');
+          if (presetRow) {
+            var have = new Set(sizes.map(sizeSig));
+            presetRow.innerHTML = STATION_PRESETS.map(function (p, idx) {
+              var has = have.has(sizeSig(p));
+              return '<button type="button" class="desk-btn" data-ps-preset="' + idx + '"' + (has ? ' disabled' : '') + '>' + (has ? '\u2713 ' : '+ ') + escHtml(p.label) + '</button>';
+            }).join('');
+          }
+        }
+        function renderPrintersUi(force) {
+          var all = (lastInfo && Array.isArray(lastInfo.printers)) ? lastInfo.printers : [];
+          var hideUnused = !!(lastInfo && lastInfo.hideUnusedPrinters);
+          var searchEl = document.getElementById('stationDeskPrSearch');
+          var q = String((searchEl && searchEl.value) || '').trim().toLowerCase();
+          var sizes = currentTestSizes();
+          var tickedCount = all.filter(isPrTicked).length;
+          var hiddenCount = Math.max(0, all.length - tickedCount);
+          var cntEl = document.getElementById('stationDeskPrCount');
+          if (cntEl) {
+            cntEl.textContent = all.length ? (tickedCount + ' of ' + all.length + ' ticked' + (hideUnused && hiddenCount ? ' (' + hiddenCount + ' hidden)' : '')) : '0 found';
+            cntEl.className = 'lanst-badge' + (tickedCount > 0 ? ' ok' : '');
+          }
+          var hideBtn = document.getElementById('stationDeskHideBtn');
+          if (hideBtn) {
+            hideBtn.textContent = hideUnused ? ('Show all (' + all.length + ')') : 'Hide unused';
+            hideBtn.className = 'desk-btn' + (hideUnused ? ' active' : '');
+          }
+          var toolsEl = document.getElementById('stationDeskPrTools');
+          if (toolsEl) toolsEl.style.display = (all.length && !hideUnused) ? '' : 'none';
+          var sig = JSON.stringify([all, lastInfo && lastInfo.selectedPrinters, hideUnused, sizes, q]);
+          if (!force && sig === lastPrSig) return;
+          lastPrSig = sig;
+          var drvPr = document.getElementById('stationDeskDrvPrinter');
+          if (drvPr && document.activeElement !== drvPr) {
+            var prevDrv = drvPr.value;
+            var drvList = tickedCount ? all.filter(isPrTicked) : all;
+            drvPr.innerHTML = drvList.length
+              ? drvList.map(function (p) { return '<option value="' + escHtml(p) + '">' + escHtml(p) + '</option>'; }).join('')
+              : '<option value="">No printers found</option>';
+            if (prevDrv && drvList.indexOf(prevDrv) >= 0) drvPr.value = prevDrv;
+          }
+          var prEl = document.getElementById('stationDeskPrinters');
+          if (!prEl) return;
+          if (!all.length) {
+            prEl.innerHTML = '<p class="panel-hint" style="margin:0;">No printers found. Plug in your printer via USB, install its driver, and tap Refresh Printers.</p>';
+            return;
+          }
+          var ordered = all.slice().sort(function (a, b) {
+            var sa = isPrTicked(a) ? 0 : 1, sb = isPrTicked(b) ? 0 : 1;
+            return sa !== sb ? sa - sb : all.indexOf(a) - all.indexOf(b);
+          });
+          var visible = ordered.filter(function (p) {
+            if (hideUnused && !isPrTicked(p)) return false;
+            if (!hideUnused && q && p.toLowerCase().indexOf(q) < 0) return false;
+            return true;
+          });
+          if (!visible.length) {
+            prEl.innerHTML = hideUnused && tickedCount === 0
+              ? '<div class="lanst-prrow"><span>No printers are ticked yet.</span><button type="button" class="desk-btn active" id="stationDeskInlineShowAll">Show all (' + all.length + ')</button></div>'
+              : '<div class="lanst-prrow"><span>No printers match that filter.</span>' + (hideUnused ? '<button type="button" class="desk-btn" id="stationDeskInlineShowAll">Show all (' + all.length + ')</button>' : '') + '</div>';
+            return;
+          }
+          prEl.innerHTML = visible.map(function (p) {
+            var on = isPrTicked(p);
+            var acts = on
+              ? ('<span style="display:flex;gap:6px;flex-wrap:wrap;">' +
+                  '<button type="button" class="desk-btn" data-ps-cfg="' + escHtml(p) + '">Driver Preferences</button>' +
+                  sizes.map(function (s, idx) {
+                    return '<button type="button" class="desk-btn" data-ps-test="' + escHtml(p) + '" data-sidx="' + idx + '">Test ' + escHtml(s.label) + '</button>';
+                  }).join('') +
+                '</span>')
+              : '';
+            return '<div class="lanst-prrow' + (on ? '' : ' dim') + '"><label class="lanst-chk"><input type="checkbox" data-ps-sel="' + escHtml(p) + '"' + (on ? ' checked' : '') + '><span>' + escHtml(p) + '</span></label>' + acts + '</div>';
+          }).join('');
+        }
+        function renderStationData(info, force) {
           if (!info) return;
-          lastInfo = info;
+          var prevPrinters = lastInfo && Array.isArray(lastInfo.printers) ? lastInfo.printers : [];
+          lastInfo = Object.assign({}, lastInfo || {}, info, {
+            printers: Array.isArray(info.printers) ? info.printers : prevPrinters
+          });
           var stEl = document.getElementById('stationDeskState');
           var ipsEl = document.getElementById('stationDeskIps');
           var pinEl = document.getElementById('stationDeskPin');
-          var prEl = document.getElementById('stationDeskPrinters');
           var jobsEl = document.getElementById('stationDeskJobs');
           var hsBtn = document.getElementById('stationDeskHotspotBtn');
-          var addrs = Array.isArray(info.addresses) ? info.addresses : [];
-          if (stEl) stEl.textContent = addrs.length ? (' \u00b7 Ready on port ' + (info.port || 47777)) : ' \u00b7 Join Wi-Fi or turn Hotspot on';
+          var addrs = Array.isArray(lastInfo.addresses) ? lastInfo.addresses : [];
+          if (stEl) stEl.textContent = addrs.length ? (' \u00b7 Ready on port ' + (lastInfo.port || 47777)) : ' \u00b7 Join Wi-Fi or turn Hotspot on';
           if (ipsEl) {
             ipsEl.innerHTML = addrs.length
               ? addrs.map(function (a) { return escHtml(a.ip + (a.port && a.port !== 47777 ? ':' + a.port : '') + ' (' + a.kind + ')'); }).join('<br>')
-              : ('Port ' + (info.port || 47777) + ' (waiting for Wi-Fi / Hotspot)');
+              : ('Port ' + (lastInfo.port || 47777) + ' (waiting for Wi-Fi / Hotspot)');
           }
-          if (pinEl) pinEl.textContent = info.pin || '------';
-          if (Array.isArray(info.printers) && prEl) {
-            prEl.innerHTML = info.printers.length
-              ? info.printers.map(function (p) {
-                  return '<div class="lanst-prrow"><span><b>' + escHtml(p) + '</b></span><span style="display:flex;gap:6px;flex-wrap:wrap;">' +
-                    '<button type="button" class="desk-btn" data-ps-cfg="' + escHtml(p) + '">Driver Preferences</button>' +
-                    '<button type="button" class="desk-btn" data-ps-test="' + escHtml(p) + '" data-twoup="0">Test 4\u00d76</button>' +
-                    '<button type="button" class="desk-btn" data-ps-test="' + escHtml(p) + '" data-twoup="1">Test 2\u00d76 Cut</button>' +
-                    '</span></div>';
-                }).join('')
-              : '<p class="panel-hint" style="margin:0;">No printers found. Plug in your printer via USB, install its driver, and tap Refresh Printers.</p>';
-          }
-          var jobs = Array.isArray(info.jobs) ? info.jobs : [];
-          if (jobsEl) {
+          if (pinEl) pinEl.textContent = lastInfo.pin || '------';
+          renderSizesUi(force);
+          renderPrintersUi(force);
+          var jobs = Array.isArray(lastInfo.jobs) ? lastInfo.jobs : [];
+          var jSig = JSON.stringify(jobs);
+          if (jobsEl && (force || jSig !== lastJobSig)) {
+            lastJobSig = jSig;
             jobsEl.innerHTML = jobs.length
               ? jobs.map(function (x) {
                   var tag = x.ok ? '<span style="color:#1f6f62;font-weight:700;">Printed</span>' : '<span style="color:#9b2c1f;font-weight:700;">' + escHtml(x.error || 'Error') + '</span>';
@@ -54173,7 +54474,41 @@ function renderTabletBridgeSetup(info) {
           var api = window.pb4u && window.pb4u.lanStation;
           if (!api) return;
           var info = await api.info(!!refresh);
-          renderStationData(info);
+          if (info && prBusy > 0 && lastInfo) { info.selectedPrinters = lastInfo.selectedPrinters; info.hideUnusedPrinters = lastInfo.hideUnusedPrinters; }
+          if (info && szBusy > 0 && lastInfo) { info.testSizes = lastInfo.testSizes; info.testSizesCustomized = lastInfo.testSizesCustomized; }
+          renderStationData(info, true);
+        }
+        async function saveStationPrinters(nextSel, nextHide) {
+          var api = window.pb4u && window.pb4u.lanStation;
+          if (!api || typeof api.setPrinters !== 'function') return;
+          var opts = {};
+          if (!lastInfo) lastInfo = {};
+          if (nextSel !== undefined) { opts.selectedPrinters = nextSel; lastInfo.selectedPrinters = nextSel; }
+          if (typeof nextHide === 'boolean') { opts.hideUnusedPrinters = nextHide; lastInfo.hideUnusedPrinters = nextHide; }
+          if (lastInfo.selectedPrinters === null) lastInfo.hideUnusedPrinters = false;
+          renderStationData(lastInfo, true);
+          var seq = ++prSaveSeq;
+          prBusy++;
+          try {
+            var res = await api.setPrinters(opts);
+            if (seq !== prSaveSeq) return;
+            if (res && res.ok) renderStationData(res, true);
+            else sayPs((res && res.error) || 'Could not update printer list.', true);
+          } finally { prBusy--; }
+        }
+        async function saveStationSizes(nextSizes) {
+          var api = window.pb4u && window.pb4u.lanStation;
+          if (!api || typeof api.setTestSizes !== 'function') return;
+          if (!lastInfo) lastInfo = {};
+          if (Array.isArray(nextSizes)) { lastInfo.testSizes = nextSizes; lastInfo.testSizesCustomized = true; renderStationData(lastInfo, true); }
+          var seq = ++szSaveSeq;
+          szBusy++;
+          try {
+            var res = await api.setTestSizes(nextSizes === undefined ? null : nextSizes);
+            if (seq !== szSaveSeq) return;
+            if (res && res.ok) renderStationData(res, true);
+            else sayPs((res && res.error) || 'Could not update test sizes.', true);
+          } finally { szBusy--; }
         }
         function closeStation() {
           ov.hidden = true;
@@ -54184,10 +54519,128 @@ function renderTabletBridgeSetup(info) {
         ov.addEventListener('click', function (e) { if (e.target === ov) closeStation(); });
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !ov.hidden) closeStation(); });
         document.getElementById('stationDeskRefBtn').addEventListener('click', function () { sayPs('Refreshing printers\u2026'); loadStationData(true).then(function () { sayPs('Printer list updated.'); }); });
+        document.getElementById('stationDeskPrSearch').addEventListener('input', function () { renderPrintersUi(true); });
+        document.getElementById('stationDeskUntickBtn').addEventListener('click', function () {
+          sayPs('Unticked all printers. Tick only the printer(s) you use below.');
+          saveStationPrinters([], false).then(function () {
+            var s = document.getElementById('stationDeskPrSearch');
+            if (s) s.focus();
+          });
+        });
+        document.getElementById('stationDeskTickBtn').addEventListener('click', function () {
+          var all = (lastInfo && Array.isArray(lastInfo.printers)) ? lastInfo.printers.slice() : [];
+          sayPs('Ticked all printers.');
+          saveStationPrinters(all, !!(lastInfo && lastInfo.hideUnusedPrinters));
+        });
+        document.getElementById('stationDeskHideBtn').addEventListener('click', function () {
+          var nextHide = !(lastInfo && lastInfo.hideUnusedPrinters);
+          var nextSel = effectiveSelected();
+          var all = (lastInfo && Array.isArray(lastInfo.printers)) ? lastInfo.printers : [];
+          if (nextHide) {
+            var s = document.getElementById('stationDeskPrSearch');
+            if (s) s.value = '';
+          }
+          if (nextHide && all.length > 1 && nextSel.length === all.length) {
+            sayPs('All printers are still ticked. Click Untick all or uncheck unused printers first so only your booth printer(s) stay shown.');
+          }
+          saveStationPrinters(nextSel, nextHide);
+        });
+        document.getElementById('stationDeskDrvPrinter').addEventListener('change', function () {
+          var szSel = document.getElementById('stationDeskDrvSize');
+          var addBtn = document.getElementById('stationDeskAddDrvBtn');
+          if (szSel) { szSel.hidden = true; szSel._items = []; szSel.innerHTML = ''; }
+          if (addBtn) addBtn.hidden = true;
+        });
+        document.getElementById('stationDeskAddSizeBtn').addEventListener('click', function () {
+          var box = document.getElementById('stationDeskAddSizeBox');
+          if (box) box.hidden = !box.hidden;
+        });
+        document.getElementById('stationDeskResetSizesBtn').addEventListener('click', function () {
+          saveStationSizes(null).then(function () { sayPs('Restored default test sizes (4\u00d76 & 2\u00d76 Cut).'); });
+        });
+        document.getElementById('stationDeskSizeChips').addEventListener('click', function (e) {
+          var rm = e.target.closest('[data-ps-rm-size]');
+          if (!rm) return;
+          var idx = Number(rm.dataset.psRmSize);
+          var next = currentTestSizes().filter(function (_, i) { return i !== idx; });
+          if (next.length) saveStationSizes(next);
+        });
+        document.getElementById('stationDeskPresetRow').addEventListener('click', function (e) {
+          var b = e.target.closest('[data-ps-preset]');
+          if (!b) return;
+          var p = STATION_PRESETS[Number(b.dataset.psPreset)];
+          if (!p) return;
+          saveStationSizes(currentTestSizes().concat([p])).then(function () { sayPs('Added Test ' + p.label + '.'); });
+        });
+        document.getElementById('stationDeskLoadDrvBtn').addEventListener('click', async function () {
+          var pSel = document.getElementById('stationDeskDrvPrinter');
+          var pname = (pSel && pSel.value) || '';
+          if (!pname) return sayPs('Select a printer first.', true);
+          var btn = this; btn.disabled = true; btn.textContent = 'Loading\u2026';
+          try {
+            var r = await helperFetch('/paper?printer=' + encodeURIComponent(pname), { cache: 'no-store' });
+            var j = await r.json().catch(function () { return {}; });
+            var list = Array.isArray(j.paperList) ? j.paperList : [];
+            var szSel = document.getElementById('stationDeskDrvSize');
+            var addBtn = document.getElementById('stationDeskAddDrvBtn');
+            if (!list.length) {
+              sayPs('No paper list returned by ' + pname + ' driver. Enter width \u00d7 height below.', true);
+              if (szSel) szSel.hidden = true;
+              if (addBtn) addBtn.hidden = true;
+              return;
+            }
+            szSel.innerHTML = list.map(function (it, idx) {
+              return '<option value="' + idx + '">' + escHtml(it.name) + ' (' + Math.round(it.w) + '\u00d7' + Math.round(it.h) + ' mm)</option>';
+            }).join('');
+            szSel._items = list;
+            szSel.hidden = false;
+            if (addBtn) addBtn.hidden = false;
+            sayPs('Loaded ' + list.length + ' paper sizes from ' + pname + '.');
+          } finally { btn.disabled = false; btn.textContent = 'Load driver sizes'; }
+        });
+        document.getElementById('stationDeskAddDrvBtn').addEventListener('click', function () {
+          var szSel = document.getElementById('stationDeskDrvSize');
+          var it = szSel && szSel._items && szSel._items[Number(szSel.value)];
+          if (!it) return;
+          var spec = {
+            label: String(it.name || '').slice(0, 32),
+            widthMm: Number(it.w) || 101.6,
+            heightMm: Number(it.h) || 152.4,
+            twoUp: isSplitLabel(it.name),
+            paperName: String(it.name || '')
+          };
+          saveStationSizes(currentTestSizes().concat([spec])).then(function () { sayPs('Added driver size ' + spec.label + '.'); });
+        });
+        document.getElementById('stationDeskCsAddBtn').addEventListener('click', function () {
+          var w = Number(document.getElementById('stationDeskCsW').value);
+          var h = Number(document.getElementById('stationDeskCsH').value);
+          var u = document.getElementById('stationDeskCsU').value;
+          var lo = u === 'in' ? 0.5 : 10, hi = u === 'in' ? 48 : 1220;
+          if (!(w >= lo && w <= hi && h >= lo && h <= hi)) return sayPs('Size must be ' + lo + '\u2013' + hi + ' ' + u + ' on each side.', true);
+          var k = u === 'in' ? 25.4 : 1;
+          var labelRaw = document.getElementById('stationDeskCsLabel').value.trim();
+          var twoUp = !!document.getElementById('stationDeskCsTwoUp').checked;
+          var wMm = Math.round(w * k * 100) / 100, hMm = Math.round(h * k * 100) / 100;
+          var autoLbl = w + '\u00d7' + h + (u === 'mm' ? ' mm' : '') + (twoUp ? ' Cut' : '');
+          saveStationSizes(currentTestSizes().concat([{ label: (labelRaw || autoLbl).slice(0, 40), widthMm: wMm, heightMm: hMm, twoUp: twoUp }])).then(function () {
+            document.getElementById('stationDeskCsW').value = '';
+            document.getElementById('stationDeskCsH').value = '';
+            document.getElementById('stationDeskCsLabel').value = '';
+            document.getElementById('stationDeskCsTwoUp').checked = false;
+            sayPs('Added Test ' + (labelRaw || autoLbl) + '.');
+          });
+        });
+        document.getElementById('stationDeskPrinters').addEventListener('change', function (e) {
+          var cb = e.target.closest('input[data-ps-sel]');
+          if (!cb) return;
+          var cur = new Set(effectiveSelected());
+          if (cb.checked) cur.add(cb.dataset.psSel); else cur.delete(cb.dataset.psSel);
+          saveStationPrinters(Array.from(cur), !!(lastInfo && lastInfo.hideUnusedPrinters));
+        });
         document.getElementById('stationDeskNewPinBtn').addEventListener('click', async function () {
           var api = window.pb4u && window.pb4u.lanStation; if (!api) return;
           var res = await api.newPin();
-          if (res && res.ok) { renderStationData(res); sayPs('New 6-digit PIN generated: ' + res.pin); }
+          if (res && res.ok) { renderStationData(res, false); sayPs('New 6-digit PIN generated: ' + res.pin); }
           else sayPs((res && res.error) || 'Could not update PIN.', true);
         });
         document.getElementById('stationDeskCopyBtn').addEventListener('click', function () {
@@ -54207,6 +54660,10 @@ function renderTabletBridgeSetup(info) {
           } finally { b.disabled = false; }
         });
         document.getElementById('stationDeskPrinters').addEventListener('click', async function (e) {
+          if (e.target.closest('#stationDeskInlineShowAll')) {
+            saveStationPrinters(lastInfo && Array.isArray(lastInfo.selectedPrinters) ? lastInfo.selectedPrinters : [], false);
+            return;
+          }
           var cfgB = e.target.closest('[data-ps-cfg]');
           if (cfgB) {
             cfgB.disabled = true; sayPs('Opening Driver Preferences for ' + cfgB.dataset.psCfg + '\u2026');
@@ -54219,22 +54676,28 @@ function renderTabletBridgeSetup(info) {
           }
           var tstB = e.target.closest('[data-ps-test]');
           if (tstB) {
-            var twoUp = tstB.dataset.twoup === '1';
-            tstB.disabled = true; sayPs('Sending ' + (twoUp ? '2\u00d76 cut' : '4\u00d76') + ' test print to ' + tstB.dataset.psTest + '\u2026');
+            var spec = currentTestSizes()[Number(tstB.dataset.sidx)] || DEFAULT_TEST_SIZES[0];
+            tstB.disabled = true; sayPs('Sending ' + spec.label + ' test print to ' + tstB.dataset.psTest + '\u2026');
             try {
-              var tr = await window.pb4u.lanStation.testPrint(tstB.dataset.psTest, twoUp);
-              sayPs(tr && tr.ok ? ('Test print sent to ' + tstB.dataset.psTest + ' \u2713') : ((tr && tr.error) || 'Test print failed.'), !(tr && tr.ok));
+              var tr = await window.pb4u.lanStation.testPrint(tstB.dataset.psTest, spec);
+              sayPs(tr && tr.ok ? ('Test print (' + spec.label + ') sent to ' + tstB.dataset.psTest + ' \u2713') : ((tr && tr.error) || 'Test print failed.'), !(tr && tr.ok));
             } finally { tstB.disabled = false; }
           }
         });
         if (window.pb4u && window.pb4u.lanStation && typeof window.pb4u.lanStation.onJob === 'function') {
-          window.pb4u.lanStation.onJob(function (info) { if (!ov.hidden) renderStationData(info); });
+          window.pb4u.lanStation.onJob(function (info) {
+            if (ov.hidden || !info) return;
+            if (prBusy > 0 && lastInfo) { info = Object.assign({}, info, { selectedPrinters: lastInfo.selectedPrinters, hideUnusedPrinters: lastInfo.hideUnusedPrinters }); }
+            if (szBusy > 0 && lastInfo) { info = Object.assign({}, info, { testSizes: lastInfo.testSizes, testSizesCustomized: lastInfo.testSizesCustomized }); }
+            renderStationData(info, false);
+          });
         }
         return function () {
           if (!printStationAllowed()) return showToast('Print Station is not enabled for this booth code.', 4000);
           window.__pbStationPaused = true;
           try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
           sayPs('');
+          lastPrSig = ''; lastSzSig = ''; lastJobSig = '';
           ov.hidden = false;
           loadStationData(true);
         };

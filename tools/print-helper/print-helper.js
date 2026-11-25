@@ -26,12 +26,12 @@ import { spawn } from 'node:child_process';
 import { freeCamera, guardCamera } from './camfree.mjs';
 import {
   startHelperBridge, stopHelperBridge, helperBridgeStatus, handleBridgeCtrl,
-  getLanStationInfo, rotateLanStationPin, renderStationDashboardHtml,
-  recordStationJob, createStationTestPngDataUrl
+  getLanStationInfo, rotateLanStationPin, setStationPrinterFilter, setStationTestSizes,
+  buildStationTestJob, renderStationDashboardHtml, recordStationJob
 } from './bridge-ctrl.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.24';
+const VERSION = '1.1.25';
 const PORT = 17321;
 const OPEN_STATION_ON_START = process.argv.includes('--station');
 const ALLOWED_ORIGINS = new Set([
@@ -876,26 +876,32 @@ const serverCfg = {
       if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);
       return json({ ok: true, pin: rotateLanStationPin() }, 200, origin);
     }
+    if (req.method === 'POST' && url.pathname === '/station/printers') {
+      if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);
+      let body = {};
+      try { body = await req.json(); } catch (e) { }
+      const info = setStationPrinterFilter(body && typeof body === 'object' ? body : {});
+      return json({ ok: true, ...info }, 200, origin);
+    }
+    if (req.method === 'POST' && url.pathname === '/station/test-sizes') {
+      if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);
+      let body = {};
+      try { body = await req.json(); } catch (e) { }
+      const info = setStationTestSizes(body && body.testSizes !== undefined ? body.testSizes : null);
+      return json({ ok: true, ...info }, 200, origin);
+    }
     if (req.method === 'POST' && url.pathname === '/station/test-print') {
       if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);
       let body = {};
       try { body = await req.json(); } catch (e) { }
-      const name = String(body.printer || '').trim();
-      const twoUp = !!body.twoUp;
-      if (!name) return json({ ok: false, error: 'Choose a printer first.' }, 400, origin);
-      const dataUrl = createStationTestPngDataUrl({ twoUp });
-      const out = await enqueuePrintBody({
-        printer: name,
-        quality: 'best',
-        twoUp,
-        widthMm: 101.6,
-        heightMm: 152.4,
-        pages: [dataUrl]
-      });
+      const specOrTwoUp = (body && (body.widthMm || body.heightMm || body.label || body.paperName)) ? body : !!(body && body.twoUp);
+      const built = buildStationTestJob(body && body.printer, specOrTwoUp);
+      if (!built.ok) return json({ ok: false, error: built.error }, 400, origin);
+      const out = await enqueuePrintBody(built.printBody);
       recordStationJob({
-        printer: name,
+        printer: built.printer,
         pages: 1,
-        paper: twoUp ? '2x6 strips (cut)' : '4x6 test',
+        paper: built.jobLabel,
         from: 'Laptop Test',
         ok: !!(out && out.status === 200 && out.body && out.body.ok),
         error: out && out.body && out.body.error ? out.body.error : ''

@@ -19,7 +19,7 @@ import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
 import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinSaveVideo, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinArmStateNow, spinArmCmdPush, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, roveStateSet, roveCmdTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, setPrintNowConfig, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
 import { initBridge, getBridgeInfo, renewBridgeToken, pushBridgeState, sendBridgeEvent, sendCamCommand } from './lib/guest-bridge.mjs';
-import { initLanStation, getLanStationInfo, rotateLanStationPin, recordStationJob, createStationTestPngDataUrl } from './lib/lan-print-station.mjs';
+import { initLanStation, getLanStationInfo, rotateLanStationPin, setStationPrinterFilter, setStationTestSizes, buildStationTestJob, recordStationJob } from './lib/lan-print-station.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import { probeSensor, startSensor, stopSensor, latestSensor } from './lib/winsensor.mjs';
 import { makeShrinkPage, makePngToJpeg } from './lib/pageshrink.mjs';
@@ -820,24 +820,26 @@ function wireIpc() {
     const pin = rotateLanStationPin();
     return { ok: true, pin, ...getLanStationInfo() };
   });
-  ipcMain.handle('pb4u:lanStationTestPrint', async (e, printer, twoUp) => {
+  ipcMain.handle('pb4u:lanStationSetPrinters', (e, opts) => {
     if (!printStationAllowed()) return { ok: false, error: 'Print Station is not enabled on this licence.' };
-    const name = String(printer || '').trim();
-    if (!name) return { ok: false, error: 'Choose a printer first.' };
-    const body = {
-      printer: name,
-      quality: 'best',
-      twoUp: !!twoUp,
-      widthMm: 101.6,
-      heightMm: 152.4,
-      pages: [createStationTestPngDataUrl({ twoUp: !!twoUp })]
-    };
-    const r = await handleHelper(new Request('app://booth/helper/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), '/print', new URLSearchParams());
+    const info = setStationPrinterFilter(opts || {});
+    return { ok: true, ...info };
+  });
+  ipcMain.handle('pb4u:lanStationSetTestSizes', (e, sizes) => {
+    if (!printStationAllowed()) return { ok: false, error: 'Print Station is not enabled on this licence.' };
+    const info = setStationTestSizes(sizes === undefined ? null : sizes);
+    return { ok: true, ...info };
+  });
+  ipcMain.handle('pb4u:lanStationTestPrint', async (e, printer, specOrTwoUp) => {
+    if (!printStationAllowed()) return { ok: false, error: 'Print Station is not enabled on this licence.' };
+    const built = buildStationTestJob(printer, specOrTwoUp);
+    if (!built.ok) return { ok: false, error: built.error };
+    const r = await handleHelper(new Request('app://booth/helper/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(built.printBody) }), '/print', new URLSearchParams());
     const j = await r.json().catch(() => ({ ok: false, error: 'Print error' }));
     recordStationJob({
-      printer: name,
+      printer: built.printer,
       pages: 1,
-      paper: twoUp ? '2x6 strips (cut)' : '4x6 test',
+      paper: built.jobLabel,
       from: 'Laptop Test',
       ok: !!j.ok,
       error: j.error || ''

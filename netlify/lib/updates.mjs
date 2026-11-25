@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.112', date: '2026-11-25' },
   { version: '1.1.111', date: '2026-11-25' },
   { version: '1.1.110', date: '2026-11-25' },
   { version: '1.1.109', date: '2026-11-25' },
@@ -220,7 +221,7 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.24', date: '2026-11-25' };
+export const HELPER = { version: '1.1.25', date: '2026-11-25' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
@@ -308,6 +309,13 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-25', title: 'Desktop 1.1.112, Print Helper 1.1.25, Android 1.2.21 & iPad App (OTA): Clean Print Station Printer Picker & Dynamic Paper Sizes', for: ['website', 'app', 'android', 'ipad', 'helper'], app: '1.1.112', android: '1.2.21', helper: '1.1.25',
+    items: [
+      '☑️ Untick all, search & hide unused printers in Offline Print Station: Click Untick all, filter by printer name instead of scrolling past office or PDF printers, tick only the printer(s) you use, and click Hide unused so unneeded printers stay hidden on both the laptop screen and the paired iPad/Android dropdown.',
+      '📏 Dynamically add other paper sizes (+ Add paper size): Add 3.5×5 (3R), 5×7 (5R), 6×8 (6R), 8×10 (8R), Postcard, Keychain, A6, A5, A4, Letter, load sizes directly from your printer driver, or add custom inches/mm sizes (with optional 2-up cut) right alongside your 4×6 and 2×6 Cut test buttons.'
+    ]
+  },
   {
     date: '2026-11-25', title: 'Android 1.2.20: Offline Laptop Print Station over Booth Wi-Fi & Setup More Menu Tools', for: ['website', 'android'], android: '1.2.20',
     items: [

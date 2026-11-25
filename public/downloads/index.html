@@ -685,8 +685,8 @@
                 Helper release v1.1.22</a><span class="digest wait">Loading published asset digests…</span></li>
             <li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/rushid-v1.0.6">Rush ID
                 Station release v1.0.6</a><span class="digest wait">Loading published asset digests…</span></li>
-            <li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/roving-v1.1.2">Roving DSLR
-                Bridge release v1.1.2</a><span class="digest wait">Loading published asset digests…</span></li>
+            <li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/roving-v1.1.3">Roving DSLR
+                Bridge release v1.1.3</a><span class="digest wait">Loading published asset digests…</span></li>
           </ul>
         </div>
       </details>
@@ -903,7 +903,7 @@
       <div class="helper" style="background:#fef7f6;border-color:#f8dcd8;">
         <div>
           <span class="tag" id="rovingTag" style="background:#fce8e6;color:var(--red);">Standalone Companion &middot;
-            version 1.1.2</span>
+            version 1.1.3</span>
           <h3>Roving DSLR Bridge for Android phones</h3>
           <p>Wire your Android phone to your Canon EOS, Nikon, or Sony Alpha DSLR via a USB OTG cable. Every shot taken
             with your camera’s physical shutter streams instantly to the laptop base station’s Photographer Desk over
@@ -915,7 +915,7 @@
             Lock to prevent accidental touches while roaming.</p>
         </div>
         <a class="download" id="rovingApk" style="background:var(--red);"
-          href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/roving-v1.1.2/roving-dslr-bridge-android.apk">Download
+          href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/roving-v1.1.3/roving-dslr-bridge-android.apk">Download
           APK</a>
       </div>
       <div class="install">
@@ -1124,7 +1124,7 @@
         return best;
       }
       let curRush = '1.0.6';
-      let curRov = '1.1.2';
+      let curRov = '1.1.3';
       fetch('https://api.github.com/repos/heresmetrying26/photobooth-for-rent/releases?per_page=60').then(r => r.json()).then(function (rs) {
         const rList = Array.isArray(rs) ? rs : [];
         const rush = latestTagAsset(rList, /^rushid-v(\d+(?:\.\d+)*)$/, 'rush-id-station-android.apk');

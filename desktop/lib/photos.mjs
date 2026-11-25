@@ -1213,28 +1213,61 @@ function send(file){
 poll();setInterval(function(){if(!document.hidden)poll()},1600);
 </script></body></html>`;
 
+const roveRecentIds = new Map();
+const ROVE_DEDUP_TTL_MS = 30 * 60 * 1000;
+
 function handleRovePhoto(req, res, url) {
   const cors = { 'access-control-allow-origin': '*' };
-  if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'POST', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
+  if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'POST', 'access-control-allow-headers': 'content-type, x-rove-id', 'access-control-allow-private-network': 'true' });
   if (req.method !== 'POST') return send(res, 405, 'text/plain', 'Method not allowed', cors);
   const d = roveDirNow(); if (!d) return send(res, 503, 'text/plain', 'Not ready', cors);
+  sweepPartFiles(d);
+  const len = Number(req.headers['content-length'] || 0);
+  if (len > ROVE_MAX) return send(res, 413, 'application/json', JSON.stringify({ ok: false, error: 'Too big' }), cors);
+  const roveId = cleanText(req.headers['x-rove-id'] || url.searchParams.get('id'), 120);
+  if (roveId) {
+    const prev = roveRecentIds.get(roveId);
+    if (prev && (Date.now() - prev.at) < ROVE_DEDUP_TTL_MS) {
+      let dupGot = 0, dupDone = false;
+      const dupEnd = () => {
+        if (dupDone) return;
+        dupDone = true;
+        try { send(res, 200, 'application/json', JSON.stringify({ ok: true, name: prev.name, duplicate: true }), cors); } catch { /* closed */ }
+      };
+      req.on('data', (c) => { dupGot += c.length; if (dupGot > ROVE_MAX) { req.destroy(); dupDone = true; } });
+      req.on('error', () => { dupDone = true; });
+      req.on('end', dupEnd);
+      if (req.complete) dupEnd();
+      return;
+    }
+  }
   let name = basename(safeName(url.searchParams.get('name')) || ('photo-' + Date.now() + '.jpg'));
   if (!ROVE_RE.test(name)) name = name.replace(/\.[a-z0-9]{1,5}$/i, '') + '.jpg';
   name = Date.now().toString(36) + '_' + name;
-  const len = Number(req.headers['content-length'] || 0);
-  if (len > ROVE_MAX) return send(res, 413, 'application/json', JSON.stringify({ ok: false, error: 'Too big' }), cors);
   let out = name, i = 2; while (existsSync(join(d, out))) { out = name.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
   const part = join(d, '.' + out + '.part');
   const ws = createWriteStream(part);
-  let got = 0, dead = false;
+  let got = 0, dead = false, reqEnded = false;
   const fail = (code, msg) => { if (dead) return; dead = true; try { ws.destroy(); unlinkSync(part); } catch { /* ignore */ } try { send(res, code, 'application/json', JSON.stringify({ ok: false, error: msg }), cors); } catch { /* closed */ } };
   req.on('data', (c) => { got += c.length; if (got > ROVE_MAX) { req.destroy(); fail(413, 'Too big'); } });
+  req.on('end', () => { reqEnded = true; });
   req.on('error', () => fail(400, 'Interrupted'));
   req.on('aborted', () => fail(400, 'Interrupted'));
+  req.on('close', () => { if (!reqEnded && !req.complete) fail(400, 'Interrupted'); });
   ws.on('error', () => fail(500, 'Could not save'));
   ws.on('finish', () => {
     if (dead) return;
+    if ((!reqEnded && !req.complete) || got <= 0 || (len > 0 && got !== len)) {
+      return fail(400, 'Incomplete upload');
+    }
     try { renameSync(part, join(d, out)); } catch { return fail(500, 'Could not save'); }
+    if (roveId) {
+      roveRecentIds.set(roveId, { name: out, at: Date.now() });
+      if (roveRecentIds.size > 500) {
+        const oldest = roveRecentIds.keys().next().value;
+        if (oldest) roveRecentIds.delete(oldest);
+      }
+    }
     send(res, 200, 'application/json', JSON.stringify({ ok: true, name: out }), cors);
   });
   req.pipe(ws);

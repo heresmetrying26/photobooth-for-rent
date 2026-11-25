@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
+import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
@@ -21,6 +22,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.text.InputType
@@ -51,12 +53,19 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.OutputStream
 import java.net.HttpURLConnection
+import java.net.Inet4Address
+import java.net.InetAddress
+import java.net.URI
 import java.net.URL
 import java.text.SimpleDateFormat
+import java.util.Collections
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -74,9 +83,11 @@ class RovingBridgeActivity : AppCompatActivity() {
         private const val KEY_URL = "target_laptop_url"
         private const val KEY_VIBRATE = "vibrate_on_send"
         private const val RETRY_DELAY_MS = 3500L
+        private const val WAKE_LOCK_TIMEOUT_MS = 2L * 60L * 60L * 1000L
         private const val UPLOAD_OK = 0
         private const val UPLOAD_RETRY = 1
         private const val UPLOAD_TOO_BIG = 2
+        private val IPV4_RE = Regex("^\\d{1,3}(\\.\\d{1,3}){3}$")
     }
 
     /** Lightweight metadata for session photos history */
@@ -96,8 +107,15 @@ class RovingBridgeActivity : AppCompatActivity() {
     private val drainQueued = AtomicBoolean(false)
     private val isDraining = AtomicBoolean(false)
     private val pendingSeq = AtomicInteger(0)
+    private val restoreLatch = CountDownLatch(1)
     private var connectivityManager: ConnectivityManager? = null
-    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private val trackedLanNetworks: MutableSet<Network> =
+        Collections.newSetFromMap(ConcurrentHashMap<Network, Boolean>())
+    private val lanNetworkCallbacks = ArrayList<ConnectivityManager.NetworkCallback>()
+    @Volatile private var activeUploadConn: HttpURLConnection? = null
+    @Volatile private var activeUploadNetwork: Network? = null
+    private val wakeLockSync = Any()
+    private var wakeLock: PowerManager.WakeLock? = null
     private val retryRunnable = Runnable { kickRetryQueue(0L) }
     private var localCameraHelper: UsbCameraHelper? = null
 
@@ -199,11 +217,15 @@ class RovingBridgeActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        // Keep worker & auto-retry alive if pocket lock is active, otherwise pause timers cleanly
-        if (pocketLockOverlay.visibility != View.VISIBLE) {
+        // Keep USB shutter polling alive in Pocket Lock; keep queue auto-retry alive whenever photos are queued
+        val pocketOn = ::pocketLockOverlay.isInitialized && pocketLockOverlay.visibility == View.VISIBLE
+        if (!pocketOn) {
             stopWorker()
-            mainHandler.removeCallbacks(retryRunnable)
+            if (pendingCount() == 0) {
+                mainHandler.removeCallbacks(retryRunnable)
+            }
         }
+        syncWakeLock()
     }
 
     @Suppress("DEPRECATION")
@@ -231,6 +253,10 @@ class RovingBridgeActivity : AppCompatActivity() {
         stopWorker()
         mainHandler.removeCallbacks(retryRunnable)
         unregisterNetworkMonitor()
+        releaseWakeLock()
+        try { activeUploadConn?.disconnect() } catch (_: Exception) { }
+        activeUploadConn = null
+        activeUploadNetwork = null
         try { ingestExecutor.shutdownNow() } catch (_: Exception) { }
         try { uploadExecutor.shutdownNow() } catch (_: Exception) { }
         try {
@@ -325,9 +351,9 @@ class RovingBridgeActivity : AppCompatActivity() {
 
         val versionStr = try {
             val pInfo = packageManager.getPackageInfo(packageName, 0)
-            "v" + (pInfo.versionName ?: "1.1.2")
+            "v" + (pInfo.versionName ?: "1.1.3")
         } catch (_: Exception) {
-            "v1.1.2"
+            "v1.1.3"
         }
 
         val sub = TextView(this).apply {
@@ -875,6 +901,7 @@ class RovingBridgeActivity : AppCompatActivity() {
         val lp = window.attributes
         lp.screenBrightness = 0.05f
         window.attributes = lp
+        syncWakeLock()
         Toast.makeText(this, "Pocket Lock ON. Shutter is still live!", Toast.LENGTH_SHORT).show()
     }
 
@@ -883,6 +910,7 @@ class RovingBridgeActivity : AppCompatActivity() {
         val lp = window.attributes
         lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
         window.attributes = lp
+        syncWakeLock()
     }
 
     // ================================================================ SESSION GALLERY & PREVIEWS (OPTION A & 3)
@@ -1299,6 +1327,40 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
         container.addView(changelogTitle)
 
+        // Card v1.1.3
+        val card113 = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = makeCard(Color.WHITE, 14f)
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = dp(12)
+            }
+            layoutParams = lp
+        }
+
+        val header113 = TextView(this).apply {
+            text = "Version 1.1.3 (Current Release)"
+            textSize = 14f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.parseColor("#1B7358"))
+        }
+        card113.addView(header113)
+
+        val notes113 = TextView(this).apply {
+            text = "• 📶 Offline Wi-Fi Routing Fix: Binds local uploads directly to the booth Wi-Fi / hotspot even when mobile data (4G/5G) is enabled.\n" +
+                   "• ⚡ Instant Reconnect & Mid-Upload Recovery: Detects DHCP IPv4 ready events, aborts stalled sockets immediately on Wi-Fi drop, and uses fresh connections.\n" +
+                   "• 🔋 Screen-Off Pocket Reliability: Holds a partial wake lock while Pocket Mode or pending uploads are active so photos still capture & upload if the screen locks.\n" +
+                   "• 🛡️ Queue Hardening: Quarantines oversized (>80 MB) or corrupt files instead of stalling the queue, prevents startup restore races, and sends upload IDs to prevent duplicates."
+            textSize = 12f
+            setTextColor(Color.parseColor("#423D44"))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(6)
+            }
+            layoutParams = lp
+        }
+        card113.addView(notes113)
+        container.addView(card113)
+
         // Card v1.1.2
         val card112 = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1311,10 +1373,10 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
 
         val header112 = TextView(this).apply {
-            text = "Version 1.1.2 (Current Release)"
+            text = "Version 1.1.2"
             textSize = 14f
             setTypeface(typeface, Typeface.BOLD)
-            setTextColor(Color.parseColor("#1B7358"))
+            setTextColor(Color.parseColor("#1C1A1E"))
         }
         card112.addView(header112)
 
@@ -1506,9 +1568,9 @@ class RovingBridgeActivity : AppCompatActivity() {
 
     private fun getCurrentVersionName(): String {
         return try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.2"
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.3"
         } catch (_: Exception) {
-            "1.1.2"
+            "1.1.3"
         }
     }
 
@@ -1842,6 +1904,27 @@ class RovingBridgeActivity : AppCompatActivity() {
         return d
     }
 
+    private fun getFailedDir(): File {
+        val d = File(filesDir, "rove_failed")
+        if (!d.exists()) d.mkdirs()
+        return d
+    }
+
+    private fun quarantineFile(file: File): File? {
+        return try {
+            val dest = File(getFailedDir(), file.name)
+            if (file.renameTo(dest)) dest else {
+                file.copyTo(dest, overwrite = true)
+                file.delete()
+                dest
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not quarantine ${file.name}: ${e.message}")
+            try { file.delete() } catch (_: Exception) { }
+            null
+        }
+    }
+
     private fun listPendingFiles(): List<File> {
         val dir = getPendingDir()
         val files = dir.listFiles() ?: return emptyList()
@@ -1905,66 +1988,227 @@ class RovingBridgeActivity : AppCompatActivity() {
 
     private fun restorePendingQueue() {
         ingestExecutor.execute {
-            val files = listPendingFiles()
-            if (files.isEmpty()) {
-                mainHandler.post { refreshQueueUi() }
-                return@execute
-            }
-            val restored = mutableListOf<SessionPhoto>()
-            for (f in files) {
-                val timeStr = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(f.lastModified()))
-                val thumb = saveThumbnailFromFile(f) ?: File(getThumbsDir(), "missing_${f.name}")
-                restored.add(0, SessionPhoto(thumb, timeStr, false, f.length(), f))
-            }
-            synchronized(sessionPhotos) {
-                sessionPhotos.addAll(restored)
-            }
-            val latestThumb = restored.firstOrNull()?.thumbFile
-            mainHandler.post {
-                if (latestThumb != null && latestThumb.exists()) updateThumbnailFromFile(latestThumb)
-                lastSentText.text = "⏳ ${files.size} queued photo(s) restored — waiting for laptop Wi-Fi…"
-                refreshQueueUi()
-                notifyGalleryChanged()
-                if (targetUrl.trim().isNotEmpty()) {
-                    kickRetryQueue(400L)
+            try {
+                // Clean up abandoned .tmp files left behind if the app was killed mid-write
+                val dir = getPendingDir()
+                val staleCutoff = System.currentTimeMillis() - 60_000L
+                dir.listFiles()?.forEach { f ->
+                    if (f.isFile && f.name.endsWith(".tmp") && f.lastModified() < staleCutoff) {
+                        try { f.delete() } catch (_: Exception) { }
+                    }
                 }
+
+                val files = listPendingFiles()
+                if (files.isEmpty()) {
+                    mainHandler.post { refreshQueueUi() }
+                    return@execute
+                }
+                val restored = mutableListOf<SessionPhoto>()
+                for (f in files) {
+                    if (!f.exists() || f.length() <= 0L) {
+                        try { f.delete() } catch (_: Exception) { }
+                        continue
+                    }
+                    val timeStr = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(f.lastModified()))
+                    val thumb = saveThumbnailFromFile(f) ?: File(getThumbsDir(), "missing_${f.name}")
+                    restored.add(0, SessionPhoto(thumb, timeStr, false, f.length(), f))
+                }
+                if (restored.isNotEmpty()) {
+                    synchronized(sessionPhotos) {
+                        sessionPhotos.addAll(restored)
+                    }
+                }
+                val latestThumb = restored.firstOrNull()?.thumbFile
+                val count = restored.size
+                mainHandler.post {
+                    if (isFinishing || isDestroyed) return@post
+                    if (latestThumb != null && latestThumb.exists()) updateThumbnailFromFile(latestThumb)
+                    if (count > 0) {
+                        lastSentText.text = "⏳ $count queued photo(s) restored — waiting for laptop Wi-Fi…"
+                    }
+                    refreshQueueUi()
+                    notifyGalleryChanged()
+                    if (count > 0 && targetUrl.trim().isNotEmpty()) {
+                        kickRetryQueue(300L)
+                    }
+                }
+            } finally {
+                restoreLatch.countDown()
             }
         }
     }
 
-    private fun registerNetworkMonitor() {
-        try {
-            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
-            connectivityManager = cm
-            val req = NetworkRequest.Builder()
-                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build()
-            val cb = object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) {
-                    if (pendingCount() > 0) kickRetryQueue(400L)
+    private fun syncWakeLock() {
+        synchronized(wakeLockSync) {
+            val pocketOn = ::pocketLockOverlay.isInitialized && pocketLockOverlay.visibility == View.VISIBLE
+            val shouldHold = !isFinishing && !isDestroyed && (pocketOn || pendingCount() > 0)
+            try {
+                if (shouldHold) {
+                    if (wakeLock == null) {
+                        val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+                        wakeLock = pm?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "photobooth4u:RovingBridgeQueue")?.apply {
+                            setReferenceCounted(false)
+                        }
+                    }
+                    val wl = wakeLock
+                    if (wl != null && !wl.isHeld) {
+                        wl.acquire(WAKE_LOCK_TIMEOUT_MS)
+                    }
+                } else {
+                    val wl = wakeLock
+                    if (wl != null && wl.isHeld) {
+                        wl.release()
+                    }
                 }
-
-                override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-                    if (pendingCount() > 0) kickRetryQueue(400L)
-                }
+            } catch (e: Exception) {
+                Log.w(TAG, "WakeLock sync error: ${e.message}")
             }
-            networkCallback = cb
-            cm.registerNetworkCallback(req, cb)
-        } catch (e: Exception) {
-            Log.w(TAG, "Network monitor unavailable: ${e.message}")
+        }
+    }
+
+    private fun releaseWakeLock() {
+        synchronized(wakeLockSync) {
+            try {
+                val wl = wakeLock
+                if (wl != null && wl.isHeld) {
+                    wl.release()
+                }
+            } catch (_: Exception) {
+            } finally {
+                wakeLock = null
+            }
+        }
+    }
+
+    // ---------- Offline-safe Wi-Fi / Ethernet network binding ----------
+    // On offline routers or laptop hotspots (no internet), Android marks Wi-Fi unvalidated and routes
+    // default URL.openConnection() calls over mobile data (4G/5G), causing timeouts even when Wi-Fi
+    // is connected. Tracking Wi-Fi/Ethernet Network handles with NET_CAPABILITY_INTERNET removed lets
+    // us bind laptop HTTP traffic directly to the booth Wi-Fi interface.
+
+    private fun registerNetworkMonitor() {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
+        connectivityManager = cm
+        val transports = intArrayOf(NetworkCapabilities.TRANSPORT_WIFI, NetworkCapabilities.TRANSPORT_ETHERNET)
+        for (tr in transports) {
+            try {
+                val req = NetworkRequest.Builder()
+                    .addTransportType(tr)
+                    .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .build()
+                val cb = object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) {
+                        trackedLanNetworks.add(network)
+                        if (pendingCount() > 0) kickRetryQueue(400L)
+                    }
+
+                    override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                        trackedLanNetworks.add(network)
+                        if (pendingCount() > 0) kickRetryQueue(400L)
+                    }
+
+                    override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
+                        trackedLanNetworks.add(network)
+                        if (pendingCount() > 0) kickRetryQueue(250L)
+                    }
+
+                    override fun onLost(network: Network) {
+                        trackedLanNetworks.remove(network)
+                        if (activeUploadNetwork != null && activeUploadNetwork == network) {
+                            try { activeUploadConn?.disconnect() } catch (_: Exception) { }
+                        }
+                    }
+                }
+                cm.registerNetworkCallback(req, cb)
+                lanNetworkCallbacks.add(cb)
+            } catch (e: Exception) {
+                Log.w(TAG, "Network monitor unavailable for transport $tr: ${e.message}")
+            }
         }
     }
 
     private fun unregisterNetworkMonitor() {
-        try {
-            val cb = networkCallback ?: return
-            connectivityManager?.unregisterNetworkCallback(cb)
-        } catch (_: Exception) {
-        } finally {
-            networkCallback = null
-            connectivityManager = null
+        val cm = connectivityManager
+        if (cm != null) {
+            for (cb in lanNetworkCallbacks) {
+                try { cm.unregisterNetworkCallback(cb) } catch (_: Exception) { }
+            }
         }
+        lanNetworkCallbacks.clear()
+        trackedLanNetworks.clear()
+        connectivityManager = null
+    }
+
+    private fun ipLong(a: Inet4Address): Long =
+        a.address.fold(0L) { acc, b -> (acc shl 8) or (b.toLong() and 0xFF) }
+
+    private fun subnetMask(prefix: Int): Long =
+        if (prefix <= 0) 0L else (0xFFFFFFFFL shl (32 - prefix.coerceAtMost(32))) and 0xFFFFFFFFL
+
+    private fun hostOf(urlStr: String): String = try {
+        URI(urlStr).host ?: ""
+    } catch (_: Exception) {
+        ""
+    }
+
+    private fun isPrivateLanHost(host: String): Boolean {
+        val h = host.trim().lowercase(Locale.US)
+        if (h.isEmpty()) return false
+        if (h.endsWith(".local")) return true
+        if (!IPV4_RE.matches(h)) return false
+        val parts = h.split(".")
+        if (parts.size != 4) return false
+        val a = parts[0].toIntOrNull() ?: return false
+        val b = parts[1].toIntOrNull() ?: return false
+        return a == 10 || (a == 192 && b == 168) || (a == 172 && b in 16..31) || (a == 169 && b == 254)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun resolveLanNetwork(urlStr: String): Network? {
+        val host = hostOf(urlStr)
+        if (host.isBlank() || host == "127.0.0.1" || host == "localhost") return null
+        val cm = connectivityManager ?: (getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager) ?: return null
+        val allNets = LinkedHashSet<Network>()
+        allNets.addAll(trackedLanNetworks)
+        try { allNets.addAll(cm.allNetworks.toList()) } catch (_: Exception) { }
+
+        val targetIp = if (IPV4_RE.matches(host)) {
+            try { InetAddress.getByName(host) as? Inet4Address } catch (_: Exception) { null }
+        } else null
+        val targetLong = targetIp?.let { ipLong(it) }
+
+        var fallbackLan: Network? = null
+        for (n in allNets) {
+            val caps = try { cm.getNetworkCapabilities(n) } catch (_: Exception) { null } ?: continue
+            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) continue
+            if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                !caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+            ) continue
+            val lp = try { cm.getLinkProperties(n) } catch (_: Exception) { null } ?: continue
+            for (la in lp.linkAddresses) {
+                val addr = la.address
+                if (addr is Inet4Address && !addr.isLoopbackAddress) {
+                    if (fallbackLan == null) fallbackLan = n
+                    if (targetLong != null) {
+                        val mask = subnetMask(la.prefixLength)
+                        if ((ipLong(addr) and mask) == (targetLong and mask)) {
+                            return n
+                        }
+                    }
+                }
+            }
+        }
+        return if (isPrivateLanHost(host)) fallbackLan else null
+    }
+
+    private fun openLanConnection(url: URL, connectMs: Int, readMs: Int, forceDefault: Boolean = false): Pair<HttpURLConnection, Network?> {
+        val net = if (forceDefault) null else resolveLanNetwork(url.toString())
+        val conn = (if (net != null) net.openConnection(url) else url.openConnection()) as HttpURLConnection
+        conn.connectTimeout = connectMs
+        conn.readTimeout = readMs
+        conn.useCaches = false
+        conn.setRequestProperty("Connection", "close")
+        return Pair(conn, net)
     }
 
     private fun refreshQueueUi() {
@@ -2006,6 +2250,7 @@ class RovingBridgeActivity : AppCompatActivity() {
                 "Sent: $sentPhotosCount"
             }
         }
+        syncWakeLock()
     }
 
     private fun retryPendingNow() {
@@ -2116,6 +2361,11 @@ class RovingBridgeActivity : AppCompatActivity() {
 
     private fun drainPendingQueue() {
         drainQueued.set(false)
+        try {
+            restoreLatch.await(5, TimeUnit.SECONDS)
+        } catch (_: InterruptedException) {
+            return
+        }
         val initialFiles = listPendingFiles()
         if (initialFiles.isEmpty()) {
             mainHandler.post { refreshQueueUi() }
@@ -2135,9 +2385,10 @@ class RovingBridgeActivity : AppCompatActivity() {
             if (!isLaptopReachable(clean)) {
                 val n = pendingCount()
                 mainHandler.post {
+                    if (isFinishing || isDestroyed) return@post
                     lastSentText.text = "⏳ $n queued — waiting for laptop Wi-Fi…"
                     refreshQueueUi()
-                    if (n > 0 && (pocketLockOverlay.visibility == View.VISIBLE || !isFinishing)) {
+                    if (n > 0) {
                         kickRetryQueue(RETRY_DELAY_MS)
                     }
                 }
@@ -2145,22 +2396,47 @@ class RovingBridgeActivity : AppCompatActivity() {
             }
 
             val files = listPendingFiles()
+            var madeProgress = false
+            var urlChanged = false
             for ((idx, file) in files.withIndex()) {
+                if (isFinishing || isDestroyed) break
                 if (!file.exists()) continue
+                if (file.length() <= 0L) {
+                    val corruptPath = file.absolutePath
+                    try { file.delete() } catch (_: Exception) { }
+                    madeProgress = true
+                    mainHandler.post {
+                        synchronized(sessionPhotos) {
+                            for (p in sessionPhotos) {
+                                if (p.pendingFile?.absolutePath == corruptPath) {
+                                    p.success = false
+                                    p.pendingFile = null
+                                    break
+                                }
+                            }
+                        }
+                        refreshQueueUi()
+                        notifyGalleryChanged()
+                    }
+                    continue
+                }
                 val liveClean = cleanUrl(targetUrl.trim())
                 if (liveClean.isEmpty() || liveClean != clean) {
-                    if (liveClean.isNotEmpty()) kickRetryQueue(150L)
+                    urlChanged = liveClean.isNotEmpty()
                     break
                 }
 
                 val total = files.size
                 mainHandler.post {
-                    lastSentText.text = if (total > 1) "📤 Sending ${idx + 1}/$total queued photos…" else "📤 Sending photo…"
+                    if (!isFinishing && !isDestroyed) {
+                        lastSentText.text = if (total > 1) "📤 Sending ${idx + 1}/$total queued photos…" else "📤 Sending photo…"
+                    }
                 }
 
                 val t0 = System.currentTimeMillis()
                 val res = uploadFileToLaptop(clean, file)
                 if (res == UPLOAD_OK) {
+                    madeProgress = true
                     val elapsed = System.currentTimeMillis() - t0
                     val timeStr = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
                     val sentPath = file.absolutePath
@@ -2168,6 +2444,7 @@ class RovingBridgeActivity : AppCompatActivity() {
 
                     val remAfter = pendingCount()
                     mainHandler.post {
+                        if (isFinishing || isDestroyed) return@post
                         synchronized(sessionPhotos) {
                             for (p in sessionPhotos) {
                                 if (p.pendingFile?.absolutePath == sentPath) {
@@ -2192,25 +2469,44 @@ class RovingBridgeActivity : AppCompatActivity() {
                         }
                     }
                 } else if (res == UPLOAD_TOO_BIG) {
+                    val skippedPath = file.absolutePath
+                    quarantineFile(file)
+                    madeProgress = true
                     mainHandler.post {
-                        lastSentText.text = "Photo rejected by laptop (>80 MB limit)"
-                        Toast.makeText(this, "Photo too large for laptop (>80 MB)", Toast.LENGTH_LONG).show()
+                        if (isFinishing || isDestroyed) return@post
+                        synchronized(sessionPhotos) {
+                            for (p in sessionPhotos) {
+                                if (p.pendingFile?.absolutePath == skippedPath) {
+                                    p.success = false
+                                    p.pendingFile = null
+                                    break
+                                }
+                            }
+                        }
+                        lastSentText.text = "Skipped oversized photo (>80 MB, kept in local backup)"
+                        Toast.makeText(this, "Photo >80 MB kept in local backup; continuing queue", Toast.LENGTH_LONG).show()
                         refreshQueueUi()
+                        notifyGalleryChanged()
                     }
-                    break
+                    continue
                 } else {
                     val rem = pendingCount()
                     mainHandler.post {
+                        if (isFinishing || isDestroyed) return@post
                         lastSentText.text = "⏳ $rem queued — Wi-Fi lost, auto-retrying…"
                         refreshQueueUi()
-                        kickRetryQueue(RETRY_DELAY_MS)
+                        if (rem > 0) {
+                            kickRetryQueue(RETRY_DELAY_MS)
+                        }
                     }
                     return
                 }
             }
 
-            if (pendingCount() > 0 && cleanUrl(targetUrl.trim()).isNotEmpty()) {
-                kickRetryQueue(250L)
+            if (urlChanged) {
+                kickRetryQueue(150L)
+            } else if (pendingCount() > 0 && cleanUrl(targetUrl.trim()).isNotEmpty()) {
+                kickRetryQueue(if (madeProgress) 250L else RETRY_DELAY_MS)
             }
         } finally {
             isDraining.set(false)
@@ -2218,19 +2514,32 @@ class RovingBridgeActivity : AppCompatActivity() {
     }
 
     private fun isLaptopReachable(cleanBaseUrl: String): Boolean {
+        val pingUrl = try { URL("$cleanBaseUrl/hello") } catch (_: Exception) { return false }
         var conn: HttpURLConnection? = null
-        return try {
-            val pingUrl = URL("$cleanBaseUrl/hello")
-            conn = pingUrl.openConnection() as HttpURLConnection
-            conn.connectTimeout = 2000
-            conn.readTimeout = 2000
+        var usedNet: Network? = null
+        try {
+            val pair = openLanConnection(pingUrl, 2000, 2000)
+            conn = pair.first
+            usedNet = pair.second
             val code = conn.responseCode
-            code in 200..299
+            if (code in 200..299) return true
         } catch (_: Exception) {
-            false
+            // Fall through to default route only for non-private hosts
         } finally {
             try { conn?.disconnect() } catch (_: Exception) { }
         }
+        if (usedNet != null && !isPrivateLanHost(hostOf(cleanBaseUrl))) {
+            var fallback: HttpURLConnection? = null
+            try {
+                fallback = openLanConnection(pingUrl, 2000, 2000, forceDefault = true).first
+                return fallback.responseCode in 200..299
+            } catch (_: Exception) {
+                return false
+            } finally {
+                try { fallback?.disconnect() } catch (_: Exception) { }
+            }
+        }
+        return false
     }
 
     private fun uploadFileToLaptop(cleanBaseUrl: String, file: File): Int {
@@ -2239,13 +2548,15 @@ class RovingBridgeActivity : AppCompatActivity() {
             val len = file.length()
             if (len <= 0L) return UPLOAD_RETRY
             val target = URL("$cleanBaseUrl/photo?name=${file.name}")
-            conn = target.openConnection() as HttpURLConnection
+            val pair = openLanConnection(target, 5000, 20000)
+            conn = pair.first
+            activeUploadConn = conn
+            activeUploadNetwork = pair.second
             conn.requestMethod = "POST"
-            conn.connectTimeout = 5000
-            conn.readTimeout = 20000
             conn.doOutput = true
             conn.setFixedLengthStreamingMode(len)
             conn.setRequestProperty("Content-Type", "application/octet-stream")
+            conn.setRequestProperty("X-Rove-Id", file.name)
             conn.setRequestProperty("Access-Control-Allow-Origin", "*")
 
             FileInputStream(file).use { input ->
@@ -2269,6 +2580,8 @@ class RovingBridgeActivity : AppCompatActivity() {
             Log.w(TAG, "Failed to upload queued photo ${file.name}: ${e.message}")
             return UPLOAD_RETRY
         } finally {
+            activeUploadConn = null
+            activeUploadNetwork = null
             try { conn?.disconnect() } catch (_: Exception) { }
         }
     }
@@ -2279,13 +2592,15 @@ class RovingBridgeActivity : AppCompatActivity() {
             val clean = cleanUrl(baseUrl)
             val name = "rove_" + System.currentTimeMillis() + ".jpg"
             val target = URL("$clean/photo?name=$name")
-            conn = target.openConnection() as HttpURLConnection
+            val pair = openLanConnection(target, 5000, 20000)
+            conn = pair.first
+            activeUploadConn = conn
+            activeUploadNetwork = pair.second
             conn.requestMethod = "POST"
-            conn.connectTimeout = 5000
-            conn.readTimeout = 20000
             conn.doOutput = true
             conn.setFixedLengthStreamingMode(bytes.size)
             conn.setRequestProperty("Content-Type", "application/octet-stream")
+            conn.setRequestProperty("X-Rove-Id", name)
             conn.setRequestProperty("Access-Control-Allow-Origin", "*")
 
             conn.outputStream.use { it.write(bytes); it.flush() }
@@ -2299,6 +2614,8 @@ class RovingBridgeActivity : AppCompatActivity() {
             Log.w(TAG, "Failed to upload photo to laptop: ${e.message}")
             return UPLOAD_RETRY
         } finally {
+            activeUploadConn = null
+            activeUploadNetwork = null
             try { conn?.disconnect() } catch (_: Exception) { }
         }
     }
@@ -2343,28 +2660,46 @@ class RovingBridgeActivity : AppCompatActivity() {
         savePrefs()
 
         connectionStatusText.text = "Testing connection to $targetUrl…"
+        val testUrl = targetUrl
         Thread({
             var ok = false
             var msg = ""
+            var c: HttpURLConnection? = null
+            var usedNet: Network? = null
             try {
-                val pingUrl = URL("$targetUrl/hello")
-                val c = pingUrl.openConnection() as HttpURLConnection
-                c.connectTimeout = 4000
-                c.readTimeout = 4000
+                val pingUrl = URL("$testUrl/hello")
+                val pair = openLanConnection(pingUrl, 4000, 4000)
+                c = pair.first
+                usedNet = pair.second
                 val code = c.responseCode
                 ok = (code in 200..299)
                 msg = if (ok) "Connected! Laptop ready." else "Laptop answered HTTP $code"
             } catch (e: Exception) {
                 msg = "Could not reach laptop: ${e.message}"
+                if (usedNet != null && !isPrivateLanHost(hostOf(testUrl))) {
+                    var fb: HttpURLConnection? = null
+                    try {
+                        fb = openLanConnection(URL("$testUrl/hello"), 4000, 4000, forceDefault = true).first
+                        val code = fb.responseCode
+                        ok = (code in 200..299)
+                        msg = if (ok) "Connected! Laptop ready." else "Laptop answered HTTP $code"
+                    } catch (_: Exception) {
+                    } finally {
+                        try { fb?.disconnect() } catch (_: Exception) { }
+                    }
+                }
+            } finally {
+                try { c?.disconnect() } catch (_: Exception) { }
             }
 
             mainHandler.post {
+                if (isFinishing || isDestroyed) return@post
                 connectionStatusText.text = if (ok) "✅ $msg" else "❌ $msg"
                 connectionStatusText.setTextColor(if (ok) Color.parseColor("#2EA66B") else Color.parseColor("#C93D27"))
                 Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
                 refreshQueueUi()
-                if (ok && pendingCount() > 0) {
-                    kickRetryQueue(100L)
+                if (pendingCount() > 0) {
+                    kickRetryQueue(if (ok) 100L else RETRY_DELAY_MS)
                 }
             }
         }, "test-connection").start()

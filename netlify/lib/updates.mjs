@@ -307,6 +307,15 @@ export async function liveApp() {
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
   {
+    date: '2026-11-25', title: 'Roving DSLR Bridge v1.1.3 (Android): Offline Wi-Fi Routing, Screen-Off Queue Reliability & Duplicate-Safe Upload', for: ['website'],
+    items: [
+      '📶 Offline booth Wi-Fi / hotspot routing fix: binds local uploads and connection checks directly to the booth Wi-Fi interface (`Network.openConnection`) so reconnects succeed even when 4G/5G mobile data stays enabled.',
+      '⚡ Faster reconnect & mid-upload recovery: listens for DHCP IPv4 ready events (`onLinkPropertiesChanged`), aborts stalled sockets immediately on Wi-Fi loss, and disables keep-alive socket reuse after drops.',
+      '🔋 Screen-off Pocket Mode reliability: holds a partial wake lock while Pocket Mode or pending queue uploads are active so shutter capture and auto-retry keep running if the screen turns off.',
+      '🛡️ Queue & receiver hardening: quarantines oversized (>80 MB) or 0-byte files so they never block newer shots, closes startup restore races, arms auto-retry after failed Save & Test, and adds `X-Rove-Id` dedup + truncation checks on the laptop receiver.'
+    ]
+  },
+  {
     date: '2026-11-25', title: 'Desktop 1.1.109, Android 1.2.18, iPad 1.1.28 & Website: Thermal voucher printing, Flipbook borders & overlays, printer fixes & Tablet Bridge reconnect', for: ['website', 'app', 'android', 'ipad'], app: '1.1.109', android: '1.2.18', ipad: '1.1.28',
     items: [
       '🧾 Print vouchers on thermal receipt printers (58 mm & 80 mm): Tap Print tickets in Setup › Session › Payment & vouchers to print clean black-and-white voucher slips straight to your Bluetooth, USB, Wi-Fi, or laptop thermal printer (or A4 sheets). Choose Next 1, a custom batch, or all unused codes, pick auto-cut or continuous tear strips, track which codes were already printed, and automatically include your event date when enabled.',

@@ -31,6 +31,7 @@
   .t{position:relative; border:1px dashed #b9b0a3; margin:-0.5px; padding:5mm 6mm; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;}
   .t .top{display:flex; justify-content:space-between; align-items:flex-start; gap:4mm;}
   .t .ev{font:600 13pt/1.15 'Fraunces',Georgia,serif; max-width:58mm; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .t .ev-date{font:700 7.5pt 'Manrope',sans-serif; color:var(--muted); margin-top:.6mm;}
   .t .kick{font:800 6.5pt 'Manrope',sans-serif; letter-spacing:.16em; text-transform:uppercase; color:var(--muted);}
   .t .price{font:800 15pt 'Manrope',sans-serif; color:var(--red); white-space:nowrap;}
   .t .code{font:800 24pt 'Manrope',sans-serif; letter-spacing:.08em; font-variant-numeric:tabular-nums; text-align:center; padding:1.5mm 0; border-radius:3mm; background:#f6f1ea;}
@@ -44,10 +45,10 @@
   .rt{padding:2.2mm 2.2mm 2.5mm; color:#000; page-break-inside:avoid; break-inside:avoid;}
   .rt-box{border:1.8px solid #000; border-radius:2.5mm; padding:3mm 2.8mm; text-align:center;}
   .rt-kick{font:800 7pt 'Manrope',sans-serif; letter-spacing:.12em; text-transform:uppercase; padding-bottom:1.6mm; border-bottom:1px solid #000;}
-  .rt-ev{font:700 12pt/1.15 'Fraunces',Georgia,serif; margin:2.4mm 0 1.6mm; word-break:break-word;}
-  .rt-meta{display:flex; justify-content:center; align-items:center; gap:2mm; flex-wrap:wrap; margin-bottom:2.2mm;}
+  .rt-ev{font:700 12pt/1.15 'Fraunces',Georgia,serif; margin:2.4mm 0 1mm; word-break:break-word;}
+  .rt-date{font:800 8pt 'Manrope',sans-serif; margin:0 0 1.4mm;}
+  .rt-meta{display:flex; justify-content:center; align-items:center; gap:2mm; flex-wrap:wrap; margin:0.8mm 0 2mm;}
   .rt-price{font:800 14pt 'Manrope',sans-serif;}
-  .rt-pill{display:inline-block; background:#000; color:#fff; font:800 7pt 'Manrope',sans-serif; letter-spacing:.06em; padding:0.7mm 2.2mm; border-radius:999px; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
   .rt-code-wrap{border:2.2px solid #000; border-radius:2mm; padding:1.8mm 1.2mm 2mm; margin:1.6mm 0 2.2mm;}
   .rt-code-lbl{font:800 6pt 'Manrope',sans-serif; letter-spacing:.14em; text-transform:uppercase; margin-bottom:0.8mm;}
   .rt-code{font:800 20pt/1 'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace; letter-spacing:.06em; font-variant-numeric:tabular-nums;}
@@ -62,9 +63,9 @@
   .t-roll.r58 .rt{padding:1.6mm 1.4mm 1.8mm;}
   .t-roll.r58 .rt-box{border-width:1.4px; border-radius:2mm; padding:2.2mm 1.8mm;}
   .t-roll.r58 .rt-kick{font-size:5.6pt; letter-spacing:.08em; padding-bottom:1.2mm;}
-  .t-roll.r58 .rt-ev{font-size:9.5pt; margin:1.8mm 0 1.2mm;}
+  .t-roll.r58 .rt-ev{font-size:9.5pt; margin:1.8mm 0 0.8mm;}
+  .t-roll.r58 .rt-date{font-size:6.2pt; margin:0 0 1mm;}
   .t-roll.r58 .rt-price{font-size:11pt;}
-  .t-roll.r58 .rt-pill{font-size:5.6pt; padding:0.5mm 1.6mm;}
   .t-roll.r58 .rt-code-wrap{border-width:1.8px; padding:1.2mm 0.8mm 1.5mm; margin:1.2mm 0 1.6mm;}
   .t-roll.r58 .rt-code-lbl{font-size:5pt;}
   .t-roll.r58 .rt-code{font-size:14pt;}
@@ -112,12 +113,12 @@
     return;
   }
   var peso = function(n){ return '₱' + Number(n || 0).toLocaleString('en-PH'); };
+  var evDate = String(d.eventDate || '').trim();
   var inc = (d.label && d.label !== '1 photo session' ? d.label : '1 photo session') + (d.prints ? ' · ' + d.prints + ' print' + (d.prints > 1 ? 's' : '') : '');
   var tierName = d.tier === 'receipt' ? 'Thermal' : (d.tier === 'photo' ? 'Color' : '');
-  var badgePlain = d.tier === 'receipt' ? ((d.label ? d.label.toUpperCase() : 'THERMAL') + ' ONLY') : (d.tier === 'photo' ? ((d.label ? d.label.toUpperCase() : 'COLOR') + ' ONLY') : (d.label && d.label !== '1 photo session' ? d.label.toUpperCase() : ''));
   var kick = 'photobooth4u \u00b7 ' + (tierName ? tierName.toUpperCase() + ' VOUCHER' : 'VOUCHER');
   var tierBadge = d.tier === 'receipt' ? '<span style="display:inline-block; font-size:7pt; font-weight:800; background:#000; color:#fff; padding:1px 5px; border-radius:3px; margin-left:4px;">THERMAL</span>' : (d.tier === 'photo' ? '<span style="display:inline-block; font-size:7pt; font-weight:800; background:#0055ff; color:#fff; padding:1px 5px; border-radius:3px; margin-left:4px;">COLOR</span>' : '');
-  document.getElementById('ttl').textContent = (d.event || 'Photo booth') + ' · ' + d.codes.length + ' voucher' + (d.codes.length === 1 ? '' : 's') + (tierName ? ' (' + tierName + ')' : '');
+  document.getElementById('ttl').textContent = (d.event || 'Photo booth') + (evDate ? ' · ' + evDate : '') + ' · ' + d.codes.length + ' voucher' + (d.codes.length === 1 ? '' : 's');
 
   var FMT_KEY = 'pb_ticket_page_fmt';
   var fmt = (d.format === 'thermal80' || d.format === 'thermal58' || d.format === 'a4') ? d.format : '';
@@ -139,7 +140,7 @@
       for(var i = 0; i < d.codes.length; i += per){
         html += '<section class="sheet">' + d.codes.slice(i, i + per).map(function(c){
           var cFmt = c.length === 8 ? (c.slice(0, 4) + ' ' + c.slice(4)) : c;
-          return '<div class="t"><div class="top"><div><div class="kick">' + kick + tierBadge + '</div><div class="ev">' + esc(d.event || 'Photo booth') + '</div></div>' +
+          return '<div class="t"><div class="top"><div><div class="kick">' + kick + tierBadge + '</div><div class="ev">' + esc(d.event || 'Photo booth') + '</div>' + (evDate ? '<div class="ev-date">' + esc(evDate) + '</div>' : '') + '</div>' +
             (d.price ? '<div class="price">' + esc(peso(d.price)) + '</div>' : '') + '</div>' +
             '<div><div class="code">' + esc(cFmt) + '</div><div class="inc">' + esc(inc) + '</div></div>' +
             '<div class="how">Tap the booth screen → <b>I have a voucher</b> → type the 8 digits. Works once.</div>' +
@@ -157,7 +158,8 @@
         return '<article class="rt' + (cutEach ? ' cut-each' : '') + '"><div class="rt-box">' +
           '<div class="rt-kick">PHOTOBOOTH4U · VOUCHER</div>' +
           '<div class="rt-ev">' + esc(d.event || 'Photo booth') + '</div>' +
-          ((d.price || badgePlain) ? '<div class="rt-meta">' + (d.price ? '<span class="rt-price">' + esc(peso(d.price)) + '</span>' : '') + (badgePlain ? '<span class="rt-pill">' + esc(badgePlain) + '</span>' : '') + '</div>' : '') +
+          (evDate ? '<div class="rt-date">' + esc(evDate) + '</div>' : '') +
+          (d.price ? '<div class="rt-meta"><span class="rt-price">' + esc(peso(d.price)) + '</span></div>' : '') +
           '<div class="rt-code-wrap"><div class="rt-code-lbl">VOUCHER CODE</div><div class="rt-code">' + esc(cFmt) + '</div></div>' +
           '<div class="rt-inc">' + esc(inc) + '</div>' +
           '<div class="rt-how">Tap screen → “I have a voucher”<br>Enter the 8 digits · Valid once</div>' +

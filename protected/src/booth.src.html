@@ -63695,16 +63695,30 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // ---- Voucher ticket helpers (Thermal 80mm / 58mm + A4 sheet) ----
       function isThermalPrinterName(name) {
         if (!name) return false;
-        return /(?:xp[-_ ]?(?:58|80|t80|n160|q\d|c\d|v\d)|xprinter|pos[-_ ]?(?:58|80|printer)|tm[-_ ]?[tm]\d|thermal|receipt|bixolon|star\s*tsp|vo[zx]y|rpp[-_ ]?\d|mp[-_ ]?210|pt[-_ ]?(?:210|280)|mtp[-_ ]?(?:ii|iii|2|3)|gp[-_ ]?(?:58|80)|rongta|zywell|munbyn|hprt|sewoo|citizen\s*ct|(?:58|80)\s*mm|\bp50\b|c19|liotog|cat\s*printer|luck)/i.test(String(name));
+        return /(?:xp[-_ ]?(?:58|80|t80|n160|q\d|c\d|v\d|d\d|\d{3})|xprinter|pos[-_ ]?(?:58|80|printer)|tm[-_ ]?[tmu]\d|thermal|receipt|bixolon|srp[-_ ]?\d|spp[-_ ]?r|star\s*tsp|tsp\d{3}|mc[-_ ]?print|vo[zx]y|rpp?[-_ ]?\d|mp[-_ ]?210|pt[-_ ]?(?:210|280)|mtp[-_ ]?(?:ii|iii|2|3)|gp[-_ ]?(?:58|80|c\d)|gprinter|zj[-_ ]?(?:58|80)|zjiang|rongta|zywell|munbyn|hprt|sewoo|citizen\s*ct|gojprt|mht[-_ ]?p|peripage|phomemo|niimbot|arcticbreeze|(?:58|80)\s*mm|\bp50\b|c19|liotog|cat\s*printer|luck)/i.test(String(name));
+      }
+      function voucherEventDateStr() {
+        try {
+          if (typeof dateOn === 'undefined' || !dateOn) return '';
+          var raw = (typeof dateInput !== 'undefined' && dateInput && dateInput.value) ? String(dateInput.value).trim() : '';
+          var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+          if (m) {
+            var mos = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            var mo = mos[Number(m[2]) - 1];
+            if (mo) return mo + ' ' + Number(m[3]) + ', ' + m[1];
+          }
+          return typeof currentDateLabel === 'function' ? (currentDateLabel() || '') : '';
+        } catch (e) { return ''; }
       }
       function voucherTicketMeta(data) {
-        var optMatch = payCfg.options && payCfg.options.find(function (o) { return (data.label && o.label === data.label) || o.tier === data.tier; });
-        var optName = data.label || (optMatch && optMatch.label) || (data.tier === 'receipt' ? 'Thermal' : (data.tier === 'photo' ? 'Coloured' : ''));
+        var optMatch = (payCfg && payCfg.dual && Array.isArray(payCfg.options))
+          ? payCfg.options.find(function (o) { return (data.label && o.label === data.label) || (data.tier && data.tier !== 'all' && o.tier === data.tier); })
+          : null;
+        var optName = data.label || (optMatch && optMatch.label) || '';
         var optPr = optMatch && typeof optMatch.prints === 'number' ? optMatch.prints : null;
         var tkPrints = optPr === null ? data.prints : optPr;
         var incStr = (optName && optName !== '1 photo session' ? optName : '1 photo session') + (optPr === 0 ? ' · softcopy only' : (tkPrints ? ' · ' + tkPrints + ' print' + (tkPrints > 1 ? 's' : '') : ''));
-        var badgeText = data.tier === 'receipt' ? ((optName ? optName.toUpperCase() : 'THERMAL') + ' ONLY') : (data.tier === 'photo' ? ((optName ? optName.toUpperCase() : 'COLOR') + ' ONLY') : (optName && optName !== '1 photo session' ? optName.toUpperCase() : ''));
-        return { optName: optName, tkPrints: tkPrints, incStr: incStr, badgeText: badgeText };
+        return { optName: optName, tkPrints: tkPrints, incStr: incStr };
       }
       function vDrawRoundRect(ctx, x, y, w, h, r) {
         ctx.beginPath();
@@ -63794,66 +63808,61 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
         ctx.font = 'bold ' + (is58 ? 13 : 18) + 'px sans-serif';
-        ctx.fillText('PHOTOBOOTH4U · VOUCHER', cx, cardY + (is58 ? 28 : 42));
+        ctx.fillText('PHOTOBOOTH4U · VOUCHER', cx, cardY + (is58 ? 28 : 40));
 
         // Top hairline divider
-        ctx.fillRect(cardX + (is58 ? 16 : 24), cardY + (is58 ? 38 : 56), cardW - (is58 ? 32 : 48), 2);
+        ctx.fillRect(cardX + (is58 ? 16 : 24), cardY + (is58 ? 38 : 54), cardW - (is58 ? 32 : 48), 2);
 
-        // Event name (up to 2 lines)
+        // Header block (Event name + optional Event date + optional Price), dynamically centered above code box
         var evText = (data.event || 'Photo booth').trim() || 'Photo booth';
-        ctx.font = 'bold ' + (is58 ? 23 : 34) + 'px Georgia, serif';
-        var evLines = vWrapLines(ctx, evText, innerW, 2);
+        var evDate = (data.eventDate || '').trim();
+        var boxX = cardX + (is58 ? 14 : 22);
+        var boxW = cardW - (is58 ? 28 : 44);
+        var boxY = cardY + (is58 ? 154 : 226);
+        var boxH = is58 ? 92 : 128;
+
+        var evPx = is58 ? 23 : 34;
         var evLineH = is58 ? 26 : 38;
-        var evStartY = evLines.length === 1 ? (cardY + (is58 ? 72 : 108)) : (cardY + (is58 ? 64 : 94));
+        ctx.font = 'bold ' + evPx + 'px Georgia, serif';
+        var evLines = vWrapLines(ctx, evText, innerW, 2);
+        var denseHeader = evLines.length > 1 && !!evDate && !!pesoStr;
+        if (denseHeader) {
+          evPx = is58 ? 19 : 29;
+          evLineH = is58 ? 21 : 33;
+          ctx.font = 'bold ' + evPx + 'px Georgia, serif';
+          evLines = vWrapLines(ctx, evText, innerW, 2);
+        }
+        var datePx = is58 ? 13 : 20;
+        var pricePx = is58 ? (denseHeader ? 24 : 26) : (denseHeader ? 36 : 40);
+        var dateGap = is58 ? 7 : 11;
+        var priceGap = is58 ? 8 : 12;
+
+        var evBlockH = evPx + (evLines.length - 1) * evLineH;
+        var headerTotalH = evBlockH + (evDate ? (dateGap + datePx) : 0) + (pesoStr ? (priceGap + pricePx) : 0);
+        var zoneTop = cardY + (is58 ? 44 : 62);
+        var zoneH = Math.max(headerTotalH, boxY - zoneTop);
+        var curY = zoneTop + Math.round((zoneH - headerTotalH) / 2);
+
+        ctx.font = 'bold ' + evPx + 'px Georgia, serif';
         for (var ei = 0; ei < evLines.length; ei++) {
-          ctx.fillText(evLines[ei], cx, evStartY + ei * evLineH);
+          ctx.fillText(evLines[ei], cx, curY + evPx + ei * evLineH);
+        }
+        curY += evBlockH;
+
+        if (evDate) {
+          curY += dateGap;
+          ctx.font = 'bold ' + datePx + 'px sans-serif';
+          ctx.fillText(evDate, cx, curY + datePx);
+          curY += datePx;
         }
 
-        // Price and/or Tier badge row
-        var rowY = cardY + (is58 ? 126 : 186);
-        if (pesoStr && meta.badgeText) {
-          ctx.font = 'bold ' + (is58 ? 24 : 36) + 'px sans-serif';
-          var pW = ctx.measureText(pesoStr).width;
-          ctx.font = 'bold ' + (is58 ? 12 : 17) + 'px sans-serif';
-          var bTxt = meta.badgeText;
-          var maxBadgeW = innerW - pW - (is58 ? 24 : 36);
-          while (bTxt.length > 4 && ctx.measureText(bTxt).width > maxBadgeW) bTxt = bTxt.slice(0, -2) + '…';
-          var bPadX = is58 ? 10 : 14, bH = is58 ? 24 : 34;
-          var bW = ctx.measureText(bTxt).width + bPadX * 2;
-          var gap = is58 ? 10 : 14;
-          var totalW = pW + gap + bW;
-          var startX = cx - totalW / 2;
-          ctx.textAlign = 'left';
-          ctx.font = 'bold ' + (is58 ? 24 : 36) + 'px sans-serif';
-          ctx.fillText(pesoStr, startX, rowY + (is58 ? 6 : 10));
-          var pillX = startX + pW + gap, pillY = rowY - (is58 ? 14 : 20);
-          vDrawRoundRect(ctx, pillX, pillY, bW, bH, bH / 2);
-          ctx.fill();
-          ctx.fillStyle = '#ffffff';
-          ctx.textAlign = 'center';
-          ctx.font = 'bold ' + (is58 ? 12 : 17) + 'px sans-serif';
-          ctx.fillText(bTxt, pillX + bW / 2, pillY + (is58 ? 16 : 23));
-          ctx.fillStyle = '#000000';
-        } else if (pesoStr) {
-          ctx.font = 'bold ' + (is58 ? 28 : 42) + 'px sans-serif';
-          ctx.fillText(pesoStr, cx, rowY + (is58 ? 8 : 12));
-        } else if (meta.badgeText) {
-          vFitText(ctx, meta.badgeText, innerW - 24, 'bold', is58 ? 14 : 20, 11, 'sans-serif');
-          var bW2 = ctx.measureText(meta.badgeText).width + (is58 ? 22 : 30);
-          var bH2 = is58 ? 26 : 36;
-          var pillY2 = rowY - (is58 ? 14 : 20);
-          vDrawRoundRect(ctx, cx - bW2 / 2, pillY2, bW2, bH2, bH2 / 2);
-          ctx.fill();
-          ctx.fillStyle = '#ffffff';
-          ctx.fillText(meta.badgeText, cx, pillY2 + (is58 ? 18 : 25));
-          ctx.fillStyle = '#000000';
+        if (pesoStr) {
+          curY += priceGap;
+          ctx.font = 'bold ' + pricePx + 'px sans-serif';
+          ctx.fillText(pesoStr, cx, curY + pricePx);
         }
 
         // Hero Voucher Code Box (high contrast black border on white paper)
-        var boxX = cardX + (is58 ? 14 : 22);
-        var boxW = cardW - (is58 ? 28 : 44);
-        var boxY = cardY + (is58 ? 152 : 228);
-        var boxH = is58 ? 92 : 128;
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = is58 ? 4 : 5;
         vDrawRoundRect(ctx, boxX, boxY, boxW, boxH, is58 ? 10 : 14);
@@ -63868,10 +63877,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
         // Includes line
         vFitText(ctx, meta.incStr, innerW, 'bold', is58 ? 16 : 23, is58 ? 12 : 15, 'sans-serif');
-        ctx.fillText(meta.incStr, cx, boxY + boxH + (is58 ? 32 : 48));
+        ctx.fillText(meta.incStr, cx, boxY + boxH + (is58 ? 30 : 48));
 
         // Dashed separator inside ticket
-        var sepY = boxY + boxH + (is58 ? 48 : 72);
+        var sepY = boxY + boxH + (is58 ? 46 : 72);
         ctx.save();
         ctx.setLineDash(is58 ? [6, 5] : [8, 6]);
         ctx.lineWidth = 2;
@@ -64145,7 +64154,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         // Route 5: Browser print page (/pay/tickets.html) in thermal 80mm / 58mm mode
         try {
           localStorage.setItem('pb_ticket_print', JSON.stringify({
-            event: data.event, price: data.price, prints: data.prints, tier: data.tier, label: data.label,
+            event: data.event, eventDate: data.eventDate || '', price: data.price, prints: data.prints, tier: data.tier, label: data.label,
             codes: codes, format: fmt, cutEach: cutEach, autoPrint: true, at: Date.now()
           }));
         } catch (err) { }
@@ -64217,13 +64226,19 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                 ctx.textAlign = 'left';
               }
 
-              // Event name
+              // Event name (+ optional event date)
               var ev = data.event || 'Photo booth';
               if (ev.length > 24) ev = ev.slice(0, 23) + '…';
+              var evDateA4 = (data.eventDate || '').trim();
               ctx.fillStyle = '#1C1A1E';
               ctx.font = 'bold 20px Georgia, serif';
               ctx.textAlign = 'left';
-              ctx.fillText(ev, x + 24, y + 66);
+              ctx.fillText(ev, x + 24, y + (evDateA4 ? 62 : 66));
+              if (evDateA4) {
+                ctx.fillStyle = '#6B666C';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.fillText(evDateA4, x + 24, y + 81);
+              }
 
               // Price (if set)
               if (data.price) {
@@ -64281,7 +64296,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           } else {
             // Fallback for desktop / browser: localStorage + popup
             try {
-              localStorage.setItem('pb_ticket_print', JSON.stringify({ event: data.event, price: data.price, prints: data.prints, tier: data.tier, label: data.label, codes: data.codes, format: 'a4', autoPrint: true, at: Date.now() }));
+              localStorage.setItem('pb_ticket_print', JSON.stringify({ event: data.event, eventDate: data.eventDate || '', price: data.price, prints: data.prints, tier: data.tier, label: data.label, codes: data.codes, format: 'a4', autoPrint: true, at: Date.now() }));
             } catch (err) { }
             var w = window.open('/pay/tickets.html', '_blank');
             if (!w) showToast('Allow pop-ups to print the tickets.', 4000);
@@ -64347,7 +64362,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var printedAlready = d.codes.length - fresh.length;
         var sub = document.getElementById('vPrintSub');
         if (sub) {
-          sub.textContent = (d.event || 'Photo booth') + ' · ' + d.codes.length + ' unused' + (d.price ? ' · ' + peso(d.price) : '') + (printedAlready ? ' (' + printedAlready + ' printed)' : '');
+          sub.textContent = (d.event || 'Photo booth') + (d.eventDate ? ' · ' + d.eventDate : '') + ' · ' + d.codes.length + ' unused' + (d.price ? ' · ' + peso(d.price) : '') + (printedAlready ? ' (' + printedAlready + ' printed)' : '');
         }
         document.querySelectorAll('#vPrintFmt .vprint-seg').forEach(function (btn) {
           var on = btn.dataset.fmt === vPrintState.format;
@@ -64620,6 +64635,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var codes = bt.codes.filter(function (x) { return !x.used && !x.voided; }).map(function (x) { return x.c; });
           var printData = {
             event: (typeof labelInput !== 'undefined' && labelInput && labelInput.value ? labelInput.value.trim() : '') || setupScopeEvent() || bt.evName || 'Photo booth',
+            eventDate: voucherEventDateStr(),
             price: bt.price,
             prints: bt.prints,
             tier: bt.tier,

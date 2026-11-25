@@ -1,13 +1,11 @@
 # Session Context
 
-**Current Task**: Released Desktop 1.1.70 (Win/Mac), Android 1.1.82 (`versionCode 184`), and iPad 1.1.5 (`15`) for iPad front camera and live preview transparency fixes.
+**Current Task**: Released iPad 1.1.29 (`ios-v1.1.29`, build `39`) combining DJI Osmo Pocket 3 / USB-C webcam support and Epson L8050 Wi-Fi Direct (`192.168.223.1` LPD `:515` + ESC/P-R `360`/`720` dpi + IPP 4x6 borderless bleed).
 
 **Key Decisions**:
-- High-specificity CSS transparency rules placed at end of stylesheet to keep `#stageFrame` transparent over native AVCaptureSession preview layer during sessions.
-- Added `.builtInUltraWideCamera` to Swift discovery so 10th-gen / A16 iPad Center Stage front cameras open cleanly.
-- Added `nativeCamHasFrame()` guard to prevent blank/black canvas in Setup Step 4 before camera stream initializes.
+- Ported Android's 64-row ESC/P-R strip renderer, RFC 1179 LPD spooling, and `:631`/`:9100`/`:515` + SNMP/HTTP probing to `EscprLpdPrint.swift` and `ViewController.swift` with cellular disabled on TCP sockets.
+- Added `_printer._tcp` Bonjour discovery in `Info.plist`, `supportsL8050HiRes()` in native bridge, 1-tap `192.168.223.1` Wi-Fi Direct connect in `booth.src.html`, and iPad `bleedPage` / `600` dpi JFIF support.
 
 **Next Steps**:
-- Verify Netlify build deploys web updates so existing iPads on 1.1.3/1.1.4 get the live preview CSS fix on "Check for updates".
-- Verify GitHub Actions CI builds iPad 1.1.5 IPA for Ultra-Wide / Center Stage native support.
-- Test physical iPad on A16 Center Stage front camera.
+- Monitor `.github/workflows/ios.yml` for tag `ios-v1.1.29` to publish `photobooth4u-kiosk-ipad.ipa` on GitHub Releases.
+- Physical iPad test against Epson EcoTank L8050 Wi-Fi Direct (`192.168.223.1`) and router Wi-Fi (`360`/`600`/`720` dpi borderless 4x6).

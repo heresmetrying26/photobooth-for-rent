@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iPad + DJI Osmo Pocket 3 Setup Guide · photobooth4u</title>
+<style>
+  :root {
+    --bg: #f6f1ea;
+    --card: #fffdf9;
+    --ink: #1f1a1d;
+    --dim: #5d555b;
+    --line: #e4ddd3;
+    --red: #c8402a;
+    --red-soft: #fbeee9;
+    --red-line: #f1cfc5;
+    --ok: #1f6f62;
+    --ok-soft: #e6f4f1;
+    --ok-line: #bfe3da;
+    --blue: #1b63c7;
+    --blue-soft: #eef3fb;
+    --blue-line: #cfdcf2;
+    --amber: #995d13;
+    --amber-soft: #fef7eb;
+    --amber-line: #f3d9ae;
+    --dark: #1f1a1d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15.5px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--red); font-weight: 600; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 18px; }
+
+  /* Hero */
+  header.hero {
+    background: linear-gradient(135deg, #161a24 0%, #1f1a1d 60%, #2e2226 100%);
+    color: #f6f1ea;
+    padding: 40px 0 48px;
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font: 700 22px Georgia, "Times New Roman", serif;
+    color: #f6f1ea;
+    text-decoration: none;
+  }
+  .brand .mark { display: grid; grid-template-columns: repeat(2, 9px); gap: 3px; }
+  .brand .mark i { width: 9px; height: 9px; border-radius: 2px; background: #f6f1ea; display: block; }
+  .brand .mark i:nth-child(2) { background: var(--red); }
+  .brand .badge {
+    background: var(--red);
+    color: #fff;
+    font: 800 11px system-ui, sans-serif;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transform: translateY(-4px);
+  }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #f2846e;
+    margin: 24px 0 8px;
+  }
+  h1 {
+    font: 700 clamp(29px, 5.2vw, 46px)/1.08 Georgia, "Times New Roman", serif;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  h1 em { color: #f2846e; font-style: italic; }
+  .lead {
+    color: #ded5cc;
+    font-size: 16.5px;
+    max-width: 720px;
+    margin-bottom: 20px;
+  }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #f6f1ea;
+    border-radius: 999px;
+    padding: 5px 13px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .pill.accent { background: rgba(200, 64, 42, 0.36); border-color: rgba(242, 132, 110, 0.45); }
+  .pill.ok { background: rgba(31, 111, 98, 0.42); border-color: rgba(140, 217, 200, 0.4); }
+
+  /* Quick TOC */
+  nav.toc {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin: -24px 0 18px;
+    position: relative;
+  }
+  nav.toc a {
+    display: block;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    text-decoration: none;
+    color: var(--ink);
+    box-shadow: 0 8px 20px rgba(31, 26, 29, 0.07);
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  nav.toc a:hover { border-color: var(--red); transform: translateY(-1px); }
+  nav.toc b { display: block; color: var(--red); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  nav.toc span { font-weight: 700; font-size: 14px; }
+
+  /* Sections */
+  section.part { padding: 30px 0 6px; scroll-margin-top: 14px; }
+  .kicker {
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 4px;
+  }
+  h2 {
+    font: 700 clamp(23px, 3.6vw, 31px)/1.18 Georgia, "Times New Roman", serif;
+    margin-bottom: 8px;
+  }
+  .why { color: var(--dim); margin-bottom: 14px; }
+
+  /* Cards & Grids */
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 20px;
+  }
+  .card h3 { font-size: 16.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card p, .card li { color: var(--dim); font-size: 14.5px; }
+  .card ul, .card ol { padding-left: 20px; margin-top: 8px; }
+  .card li { margin: 5px 0; }
+  .card b { color: var(--ink); }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 2px 9px;
+  }
+  .tag.ok { background: var(--ok-soft); color: var(--ok); }
+  .tag.red { background: var(--red-soft); color: var(--red); }
+  .tag.blue { background: var(--blue-soft); color: var(--blue); }
+  .tag.amber { background: var(--amber-soft); color: var(--amber); }
+
+  /* Numbered Steps */
+  ol.steps { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+  ol.steps li {
+    display: grid;
+    grid-template-columns: 38px 1fr;
+    gap: 14px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 16px 18px;
+  }
+  ol.steps .n {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--red);
+    color: #fff;
+    font-weight: 800;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  ol.steps h3 { font-size: 16.5px; margin: 4px 0 4px; }
+  ol.steps p { color: var(--dim); font-size: 14.5px; }
+  ol.steps p + p { margin-top: 6px; }
+  ol.steps b { color: var(--ink); }
+
+  /* Wiring diagrams */
+  .diagram-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 18px;
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 14px;
+  }
+  .diagram-box {
+    background: #faf6f0;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .diagram-box.rec { background: var(--ok-soft); border-color: var(--ok-line); }
+  .diagram-box h4 { font-size: 15.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .diagram-box p { font-size: 13.5px; color: var(--dim); margin-top: 8px; }
+  .diagram-box svg { width: 100%; height: auto; display: block; margin-top: 6px; }
+
+  /* App UI Mockup */
+  .ui-mock {
+    background: var(--card);
+    border: 1.5px solid var(--line);
+    border-radius: 18px;
+    padding: 18px;
+    margin-top: 14px;
+    box-shadow: 0 10px 26px rgba(31, 26, 29, 0.06);
+  }
+  .ui-slot {
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 14px 16px;
+    background: #fff;
+    margin-bottom: 10px;
+  }
+  .ui-slot:last-child { margin-bottom: 0; }
+  .ui-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 9px;
+  }
+  .ui-title { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+  .ui-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .ui-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--ok-soft);
+    color: var(--ok);
+  }
+  .ui-label { font-size: 11.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin: 10px 0 4px; }
+  .ui-label:first-of-type { margin-top: 0; }
+  .ui-select {
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 9px;
+    border: 1px solid #d5cdc2;
+    background: #faf8f4;
+    font: 600 13.5px system-ui, sans-serif;
+    color: var(--ink);
+  }
+  .ui-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .ui-chip {
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid #d5cdc2;
+    background: #fff;
+    font: 700 12.5px system-ui, sans-serif;
+    color: var(--dim);
+  }
+  .ui-chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+  /* Code */
+  code {
+    font: 600 13px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: #efe7dd;
+    border-radius: 6px;
+    padding: 1px 6px;
+    color: var(--ink);
+  }
+
+  /* Callouts */
+  .callout {
+    background: var(--blue-soft);
+    border: 1px solid var(--blue-line);
+    border-left: 4px solid var(--blue);
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin-top: 14px;
+  }
+  .callout.amber { background: var(--amber-soft); border-color: var(--amber-line); border-left-color: var(--amber); }
+  .callout.ok { background: var(--ok-soft); border-color: var(--ok-line); border-left-color: var(--ok); }
+  .callout.red { background: var(--red-soft); border-color: var(--red-line); border-left-color: var(--red); }
+  .callout h3 { font-size: 15.5px; margin-bottom: 4px; }
+  .callout p { font-size: 14.5px; color: var(--dim); }
+  .callout p + p { margin-top: 6px; }
+  .callout b { color: var(--ink); }
+
+  /* Checklist grid */
+  .check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; }
+  .check-item {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 15px;
+    padding: 15px 16px;
+  }
+  .check-item .ico {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: var(--red-soft);
+    color: var(--red);
+    font-weight: 800;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+  .check-item h3 { font-size: 15px; margin-bottom: 4px; }
+  .check-item p { font-size: 13.5px; color: var(--dim); }
+  .check-item b { color: var(--ink); }
+
+  /* Tables */
+  .tbl-wrap { overflow-x: auto; margin-top: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); background: #f3ece3; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 700; width: 34%; }
+
+  /* Footer */
+  footer { padding: 36px 0 54px; color: var(--dim); font-size: 13.5px; }
+  .help-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+  }
+  .help-box h3 { font-size: 17px; margin-bottom: 3px; color: var(--ink); }
+  .help-box p { font-size: 14.5px; color: var(--dim); }
+  .help-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 10px 20px;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14.5px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 720px) {
+    .grid-2, .diagram-card { grid-template-columns: 1fr; }
+    td:first-child { width: auto; }
+    .help-box { flex-direction: column; align-items: flex-start; }
+  }
+  @media print {
+    body { background: #fff; font-size: 13px; }
+    header.hero { padding: 24px 0 28px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    nav.toc, .help-btn { display: none; }
+    .card, ol.steps li, .diagram-card, .ui-mock, .callout, .check-item, .tbl-wrap { break-inside: avoid; }
+    section.part { padding-top: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="brand">
+      <span class="mark"><i></i><i></i><i></i><i></i></span>
+      photobooth4u <span class="badge">iPad</span>
+    </div>
+    <p class="eyebrow">iPad + DJI Osmo Pocket 3 · Setup Guide</p>
+    <h1>Run your iPad booth with a <em>DJI Osmo Pocket 3</em></h1>
+    <p class="lead">Connect your DJI Osmo Pocket 3 straight to a USB-C iPad using built-in USB Webcam mode — no HDMI capture card and no laptop needed. Enjoy crisp 1-inch sensor quality for photos, GIFs, Boomerangs, and Video Guestbook.</p>
+    <div class="pills">
+      <span class="pill accent">USB-C iPad · iPadOS 17+</span>
+      <span class="pill ok">photobooth4u iPad App v1.1.29+</span>
+      <span class="pill">Direct USB-C Webcam Mode</span>
+      <span class="pill">No Capture Card Needed</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="toc">
+    <a href="#need"><b>Step 0</b><span>What You Need</span></a>
+    <a href="#wiring"><b>Part 1</b><span>Wiring &amp; Power</span></a>
+    <a href="#pocket3"><b>Part 2</b><span>Pocket 3 Setup</span></a>
+    <a href="#app"><b>Part 3</b><span>photobooth4u Setup</span></a>
+    <a href="#fixes"><b>Part 4</b><span>Event Tips &amp; Fixes</span></a>
+  </nav>
+
+  <!-- STEP 0: WHAT YOU NEED -->
+  <section class="part" id="need">
+    <p class="kicker">Before you start</p>
+    <h2>What you need</h2>
+    <p class="why">iPadOS 17 and newer natively accept USB-C webcams, so your DJI Osmo Pocket 3 plugs straight into your iPad and appears directly inside photobooth4u.</p>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>iPad &amp; App <span class="tag ok">Required</span></h3>
+        <ul>
+          <li><b>USB-C iPad</b> running <b>iPadOS 17.0 or newer</b> (iPad 10th gen / A16, iPad Air 4+, iPad mini 6+, or USB-C iPad Pro).</li>
+          <li><b>photobooth4u iPad Offline App</b> <b>(Strongly Recommended)</b> — talks directly to Apple&rsquo;s native USB-C camera system for reliable 1080p live view, auto hot-plug switching, offline QR downloads, and AirPrint.</li>
+          <li><i>Important:</i> <b>iPad Safari</b> frequently blocks or shows a black screen on USB-C cameras like the Osmo Pocket 3. Older <b>Lightning iPads</b> do not support USB webcams.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Camera, Power &amp; Light <span class="tag blue">Recommended</span></h3>
+        <ul>
+          <li><b>DJI Osmo Pocket 3</b> (update to the latest firmware via the <b>DJI Mimo</b> app before your event).</li>
+          <li><b>Powered USB-C Hub with Power Delivery (PD)</b> + a <b>30W&ndash;65W wall charger</b> so both the iPad and Pocket 3 stay powered all event.</li>
+          <li><b>USB-C data cable</b> (the cable included with the Pocket 3 works great — avoid cheap charge-only cables).</li>
+          <li><b>Continuous front lighting</b> (5500K daylight ring light or softbox) — webcam mode uses steady light, not a camera strobe/flash.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout ok">
+      <h3>Install or update to iPad Offline App v1.1.29+</h3>
+      <p><b>v1.1.29</b> adds automatic plug-and-play switching for the <b>DJI Osmo Pocket 3</b>, default <b>1080p</b> framing on portrait iPads, selfie mirroring, and auto-reconnect if the USB cable is bumped.</p>
+      <p>&bull; <a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/ios-v1.1.29/photobooth4u-kiosk-ipad.ipa" target="_blank" rel="noopener">Download photobooth4u iPad App v1.1.29 (.ipa)</a> &nbsp;&middot;&nbsp; <a href="https://photobooth4u.netlify.app/how-to-ipad-offline/" target="_blank" rel="noopener">Read iPad Sideloadly Install Guide &rarr;</a></p>
+    </div>
+  </section>
+
+  <!-- PART 1: WIRING & POWER -->
+  <section class="part" id="wiring">
+    <p class="kicker">Part 1 · Cables &amp; Power</p>
+    <h2>How to connect the Pocket 3 to your iPad</h2>
+    <p class="why">The Pocket 3 draws power over USB-C while streaming video. For full-length events (2+ hours), always route through a powered USB-C PD hub so neither device drains mid-party.</p>
+
+    <div class="diagram-card">
+      <div class="diagram-box rec">
+        <div>
+          <h4>Event Setup (All-Day Power) <span class="tag ok">Recommended</span></h4>
+          <svg viewBox="0 0 420 155" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Wall charger into powered USB-C hub connected to iPad and DJI Osmo Pocket 3">
+            <!-- Wall Charger -->
+            <rect x="8" y="14" width="110" height="44" rx="10" fill="#fffdf9" stroke="#1f6f62" stroke-width="1.8"/>
+            <text x="63" y="33" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11.5" font-weight="800" fill="#1f1a1d">Wall Charger</text>
+            <text x="63" y="48" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#5d555b">30W–65W USB-C PD</text>
+
+            <!-- Hub -->
+            <rect x="148" y="46" width="124" height="58" rx="12" fill="#1f1a1d"/>
+            <text x="210" y="71" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="800" fill="#fff">Powered USB-C Hub</text>
+            <text x="210" y="88" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#bfe3da">PD In + Data Port</text>
+
+            <!-- Pocket 3 -->
+            <rect x="8" y="92" width="110" height="48" rx="10" fill="#fffdf9" stroke="#c8402a" stroke-width="1.8"/>
+            <text x="63" y="113" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11.5" font-weight="800" fill="#1f1a1d">Osmo Pocket 3</text>
+            <text x="63" y="128" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#c8402a" font-weight="700">Webcam Mode</text>
+
+            <!-- iPad -->
+            <rect x="304" y="40" width="108" height="70" rx="12" fill="#fffdf9" stroke="#1f1a1d" stroke-width="2"/>
+            <text x="358" y="71" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12.5" font-weight="800" fill="#1f1a1d">USB-C iPad</text>
+            <text x="358" y="87" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#5d555b">photobooth4u</text>
+
+            <!-- Connectors -->
+            <path d="M118 36 H134 V64 H148" fill="none" stroke="#1f6f62" stroke-width="2.2"/>
+            <path d="M118 116 H134 V86 H148" fill="none" stroke="#c8402a" stroke-width="2.2"/>
+            <path d="M272 75 H304" fill="none" stroke="#1f1a1d" stroke-width="2.4"/>
+            <text x="288" y="67" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" font-weight="700" fill="#1f1a1d">USB-C</text>
+          </svg>
+        </div>
+        <p>Plug the charger into the hub&rsquo;s <b>PD power port</b>, the hub into your <b>iPad</b>, and the <b>Pocket 3</b> into a USB data port on the hub.</p>
+      </div>
+
+      <div class="diagram-box">
+        <div>
+          <h4>Quick Test Setup <span class="tag amber">Short Sessions</span></h4>
+          <svg viewBox="0 0 320 155" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Direct USB-C data cable between DJI Osmo Pocket 3 and iPad">
+            <rect x="10" y="42" width="118" height="66" rx="11" fill="#fffdf9" stroke="#c8402a" stroke-width="1.8"/>
+            <text x="69" y="71" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="800" fill="#1f1a1d">Osmo Pocket 3</text>
+            <text x="69" y="88" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#c8402a" font-weight="700">Webcam Mode</text>
+
+            <rect x="192" y="42" width="118" height="66" rx="11" fill="#fffdf9" stroke="#1f1a1d" stroke-width="2"/>
+            <text x="251" y="71" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12.5" font-weight="800" fill="#1f1a1d">USB-C iPad</text>
+            <text x="251" y="88" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#5d555b">photobooth4u</text>
+
+            <path d="M128 75 H192" fill="none" stroke="#1f1a1d" stroke-width="2.4"/>
+            <text x="160" y="66" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" font-weight="700" fill="#1f1a1d">USB-C Data</text>
+            <text x="160" y="90" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#5d555b">Direct Cable</text>
+          </svg>
+        </div>
+        <p>Works immediately for testing or short shoots — just start with both batteries charged to 100%.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 2: POCKET 3 SETUP -->
+  <section class="part" id="pocket3">
+    <p class="kicker">Part 2 · On the Camera</p>
+    <h2>Set up the DJI Osmo Pocket 3</h2>
+    <p class="why">Do these quick steps on the Pocket 3 every time you power on your booth.</p>
+
+    <ol class="steps">
+      <li>
+        <span class="n">1</span>
+        <div>
+          <h3>Mount the Pocket 3 at guest eye level</h3>
+          <p>Attach the included <b>1/4&quot; Thread Handle</b> (or Battery Handle) and mount the Pocket 3 on your tripod or booth stand facing the guests. Keep the camera body in open air — avoid sealing it inside a closed box so heat can escape.</p>
+        </div>
+      </li>
+      <li>
+        <span class="n">2</span>
+        <div>
+          <h3>Power ON first, then plug in the USB-C cable</h3>
+          <p>Rotate the Pocket 3 screen to turn it on, wait 2 seconds for the gimbal to stabilize, then plug the USB-C cable into your iPad (or powered USB-C hub).</p>
+        </div>
+      </li>
+      <li>
+        <span class="n">3</span>
+        <div>
+          <h3>Tap <b>Webcam</b> on the Pocket 3 screen</h3>
+          <p>A USB connection prompt will pop up on the Pocket 3 touchscreen. Tap <b>Webcam</b> (do <b>not</b> tap <i>File Transfer</i> or <i>Charging</i>).</p>
+          <p><i>Missed the prompt or tapped the wrong button?</i> Simply unplug the USB-C cable, wait 2 seconds, plug it back in, and tap <b>Webcam</b>.</p>
+        </div>
+      </li>
+      <li>
+        <span class="n">4</span>
+        <div>
+          <h3>Keep the screen in <b>Horizontal (Landscape)</b> orientation</h3>
+          <p>Leave the Pocket 3 in standard horizontal orientation so it sends a full, clean 16:9 picture without black side bars. photobooth4u automatically crops to fit portrait 4R, 2&times;6 strips, or square layouts cleanly.</p>
+        </div>
+      </li>
+      <li>
+        <span class="n">5</span>
+        <div>
+          <h3>Decide on ActiveTrack (Face Tracking)</h3>
+          <p>Pocket 3&rsquo;s gimbal face tracking still works in Webcam mode! Choose what fits your event:</p>
+          <p>&bull; <b>Group booths (3&ndash;6 guests):</b> Turn <b>ActiveTrack OFF</b> and <b>double-tap the joystick</b> to center-lock the gimbal on your backdrop so it doesn&rsquo;t wander toward one guest.<br>
+          &bull; <b>Solo / Couple booths:</b> Leaving <b>ActiveTrack ON</b> gently keeps guests centered even if tall or short guests step up.</p>
+        </div>
+      </li>
+    </ol>
+
+    <div class="callout amber">
+      <h3>Why 1080p is better than 4K for multi-hour events</h3>
+      <p>The Pocket 3&rsquo;s 1-inch sensor gets noticeably warm during continuous 4K USB streaming and can trigger thermal auto-shutoff in warm indoor or outdoor venues. Running at <b>1080p (Full HD)</b> keeps the camera much cooler while still producing sharp, clean photobooth prints all night.</p>
+    </div>
+  </section>
+
+  <!-- PART 3: PHOTOBOOTH4U IPAD SETUP -->
+  <section class="part" id="app">
+    <p class="kicker">Part 3 · Inside photobooth4u</p>
+    <h2>Select the Pocket 3 in photobooth4u</h2>
+    <p class="why">Once the Pocket 3 is in Webcam mode, open photobooth4u on your iPad and verify these settings in <b>Setup &rarr; Step 4 (Camera)</b>.</p>
+
+    <ol class="steps">
+      <li>
+        <span class="n">1</span>
+        <div>
+          <h3>Open the photobooth4u iPad app and allow camera access</h3>
+          <p>Launch the <b>photobooth4u</b> iPad Offline App. If iPadOS asks for Camera permission, tap <b>Allow</b>.</p>
+        </div>
+      </li>
+      <li>
+        <span class="n">2</span>
+        <div>
+          <h3>Go to <b>Setup &rarr; Step 4 · Camera</b> and confirm <b>Osmo Pocket 3</b></h3>
+          <p>The iPad app automatically switches to <b>Osmo Pocket 3</b> when plugged in and set to Webcam mode. If the iPad&rsquo;s built-in camera is still showing, tap the <b>Camera</b> dropdown and choose <b>Osmo Pocket 3</b>.</p>
+          <p><i>Do not choose the &ldquo;USB DSLR / Canon / Nikon / Sony&rdquo; option</i> — the Pocket 3 runs as a USB webcam, not a tethered DSLR.</p>
+        </div>
+      </li>
+      <li>
+        <span class="n">3</span>
+        <div>
+          <h3>Check <b>Live viewfinder resolution</b> (<b>Auto</b> or <b>1080p</b>)</h3>
+          <p>On the latest iPad app, <b>Auto</b> opens external USB-C cameras at crisp <b>1080p (Full HD)</b> automatically — sharp for 4R &amp; strip prints without overheating the Pocket 3. <i>(On older app versions where Auto defaults to 720p, pick <b>1080p (Full HD)</b> from the dropdown.)</i></p>
+        </div>
+      </li>
+      <li>
+        <span class="n">4</span>
+        <div>
+          <h3>Tap <b>Crop to layout</b> &amp; check <b>Photo clean-up</b></h3>
+          <p>Tap <b>Crop to layout</b> directly under the live preview box so you see the exact framing that will print on your strip or 4R sheet. Under <b>Webcam Image &amp; Focus Controls</b>, you can set <b>Photo clean-up</b> to <b>Auto</b> (or <b>Strong</b> in dim venues) for crisp print sharpening.</p>
+        </div>
+      </li>
+      <li>
+        <span class="n">5</span>
+        <div>
+          <h3>Take one full test session</h3>
+          <p>Tap <b>Start Booth</b>, run through a full countdown and shot set, and check the finished print/preview for framing, brightness, and sharpness before guests arrive.</p>
+        </div>
+      </li>
+    </ol>
+
+    <!-- Visual mockup of Setup Step 4 -->
+    <div class="ui-mock" aria-label="Recommended photobooth4u Setup Step 4 settings">
+      <div class="ui-slot">
+        <div class="ui-head">
+          <span class="ui-title"><span class="ui-num">4</span> Setup &rarr; Camera</span>
+          <span class="ui-badge">Recommended Pocket 3 Settings</span>
+        </div>
+
+        <div class="ui-label">Camera</div>
+        <div class="ui-select">Osmo Pocket 3 &#9662;</div>
+
+        <div class="ui-label">Live viewfinder resolution</div>
+        <div class="ui-select">1080p (Full HD) &#9662;</div>
+
+        <div class="ui-label">Framing &amp; Clean-up</div>
+        <div class="ui-chips">
+          <span class="ui-chip">Full frame</span>
+          <span class="ui-chip active">Crop to layout &#10003;</span>
+          <span class="ui-chip active">Photo clean-up: Auto &#10003;</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <h3>What works (and two things to keep in mind)</h3>
+      <p>&bull; <b>Fully supported on iPad:</b> Photo strips, 4R layouts, live filters, GIFs, Boomerangs, Video Guestbook, AirPrint, and offline guest QR downloads.</p>
+      <p>&bull; <b>Keep Background Swap / Green Screen OFF:</b> On iPad, Background Swap switches to the browser camera engine, which can fall back to the iPad&rsquo;s built-in camera instead of your Pocket 3. Use a physical backdrop with the Pocket 3.</p>
+      <p>&bull; <b>360 Video Booth note:</b> USB Webcam mode outputs at 25/30 fps, so live USB capture won&rsquo;t give ultra-smooth 60/120 fps slow motion. If you also run a 360 arm with the Pocket 3, record 60/120 fps clips directly onto its microSD card and drop them into the laptop app&rsquo;s <b>360 Inbox</b>.</p>
+    </div>
+  </section>
+
+  <!-- PART 4: CHECKLIST & TROUBLESHOOTING -->
+  <section class="part" id="fixes">
+    <p class="kicker">Part 4 · Event-Day Checklist &amp; Quick Fixes</p>
+    <h2>Event-Day Checklist &amp; Troubleshooting</h2>
+
+    <div class="check-grid">
+      <div class="check-item">
+        <div class="ico">1</div>
+        <h3>Lock Down Your iPad</h3>
+        <p>Set <b>Auto-Lock &rarr; Never</b>, turn on <b>Do Not Disturb</b> + <b>Orientation Lock</b>, and enable <b>Guided Access</b> (<i>Settings &rarr; Accessibility</i>) so guests can&rsquo;t exit the booth.</p>
+      </div>
+      <div class="check-item">
+        <div class="ico">2</div>
+        <h3>Use a Powered PD Hub</h3>
+        <p>Keep wall power plugged into your USB-C hub&rsquo;s <b>PD port</b> so neither the iPad nor the Pocket 3 drains during a long reception.</p>
+      </div>
+      <div class="check-item">
+        <div class="ico">3</div>
+        <h3>Steady 5500K Lighting</h3>
+        <p>Place a <b>ring light or softbox</b> facing the guests (not behind them). Steady front light makes the Pocket 3&rsquo;s 1-inch sensor look studio-sharp.</p>
+      </div>
+      <div class="check-item">
+        <div class="ico">4</div>
+        <h3>Keep It Cool &amp; Centered</h3>
+        <p>Use <b>1080p</b>, keep airflow around the Pocket 3 body, and <b>double-tap the joystick</b> to center the gimbal before starting.</p>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Problem</th>
+            <th>Quick Fix</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Osmo Pocket 3 doesn&rsquo;t appear in the Camera menu (or shows a black screen)</td>
+            <td>Use the <b>photobooth4u iPad Offline App</b> (not Safari), confirm a <b>USB-C iPad</b> on <b>iPadOS 17+</b>, and keep <b>Background Swap OFF</b>. Try powering the Pocket 3 ON first, replugging the original DJI USB-C data cable, and tapping <b>Webcam</b> immediately on the Pocket 3 screen.</td>
+          </tr>
+          <tr>
+            <td>Live view freezes or disconnects mid-event</td>
+            <td>Use a <b>powered USB-C PD hub</b> (the iPad port alone may drop power under load). Check if the Pocket 3 feels very hot — switch <b>Live viewfinder resolution</b> to <b>1080p</b> and give it airflow. Unplug and replug, tap <b>Webcam</b>, and tap <b>Try Again</b>.</td>
+          </tr>
+          <tr>
+            <td>Black bars appear on the left &amp; right of the photo</td>
+            <td>Rotate the Pocket 3 screen back to <b>Horizontal (Landscape)</b> orientation and tap <b>Crop to layout</b> in photobooth4u.</td>
+          </tr>
+          <tr>
+            <td>Camera keeps turning away from the group</td>
+            <td>Turn <b>ActiveTrack OFF</b> on the Pocket 3 screen, then <b>double-tap the joystick</b> to lock the gimbal centered on your backdrop.</td>
+          </tr>
+          <tr>
+            <td>Photos look slightly soft or dark indoors</td>
+            <td>Change <b>Live viewfinder resolution</b> from <i>Auto</i> to <b>1080p (Full HD)</b>, add a continuous ring light or softbox in front of guests, and set <b>Photo clean-up</b> to <b>Auto</b> or <b>Strong</b> under <i>Webcam Image &amp; Focus Controls</i>.</td>
+          </tr>
+          <tr>
+            <td>Selected &ldquo;USB DSLR&rdquo; and got a &ldquo;No camera found&rdquo; error</td>
+            <td>Do not use the USB DSLR option — that is only for Canon, Nikon, and Sony DSLRs. Choose <b>Osmo Pocket 3</b> directly in the <b>Camera</b> dropdown instead.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <div class="help-box">
+      <div>
+        <h3>Need help testing your iPad + Pocket 3 setup?</h3>
+        <p>Message us your iPad model, iPadOS version, and a screenshot of <b>Setup &rarr; Step 4 (Camera)</b> and we&rsquo;ll help you dial it in right away.</p>
+      </div>
+      <a class="help-btn" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener">Message photobooth4u</a>
+    </div>
+    photobooth4u &middot; iPad + DJI Osmo Pocket 3 Setup Guide &middot; Open in any browser, or press <b>Ctrl+P</b> / <b>Cmd+P</b> to save as PDF.
+  </footer>
+</main>
+
+</body>
+</html>

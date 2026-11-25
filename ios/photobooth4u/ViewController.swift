@@ -42,6 +42,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     private let airprintUrlKey = "pb4u_airprint_url"
     private let airprintNameKey = "pb4u_airprint_name"
     private let tcpPrintersKey = "pb4u_tcp_printers"
+    private var netAddNote = ""
+    private let netAddNoteLock = NSLock()
 
     override var prefersStatusBarHidden: Bool { return true }
     override var prefersHomeIndicatorAutoHidden: Bool { return true }
@@ -146,6 +148,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         userContent.add(self, name: "pbClearAirPrint")
         userContent.add(self, name: "pbPrintRawTcp")
         userContent.add(self, name: "pbPrintIpp")
+        userContent.add(self, name: "pbPrintEscpr")
         userContent.add(self, name: "pbBt")
         userContent.add(self, name: "pbSave")
         userContent.add(self, name: "pbCam")
@@ -287,13 +290,18 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 });
               } catch (e) {}
             },
-            // The iPad has no Epson ESC/P-R (port 9100 / LPD 515) path. Answer at once with a plain message instead of leaving the job to time out.
-            printEscpr: function(jobId) {
+            // Epson L-series ESC/P-R (LPD :515 / Raw :9100), including L8050 Wi-Fi Direct (192.168.223.1).
+            supportsL8050HiRes: function() { return true; },
+            printEscpr: function(jobId, ip, widthMm, heightMm, copies, pagesJson, optionsJson) {
               try {
-                if (window.__PBNetResult) window.__PBNetResult({
+                window.webkit.messageHandlers.pbPrintEscpr.postMessage({
                   job: String(jobId || ''),
-                  ok: false,
-                  error: 'This Epson only answers on its own direct port (9100 / 515), which the iPad app cannot use. Turn on AirPrint / Wi-Fi on the printer, or use an Android tablet or the laptop app.'
+                  ip: String(ip || ''),
+                  widthMm: Number(widthMm) || 0,
+                  heightMm: Number(heightMm) || 0,
+                  copies: Number(copies) || 1,
+                  pagesJson: String(pagesJson || '[]'),
+                  optionsJson: String(optionsJson || '{}')
                 });
               } catch (e) {}
             },
@@ -317,7 +325,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
           };
 
           window.__PBUpdate = {
-            version: function() { return window.__pbIosAppVer || '1.1.28'; },
+            version: function() { return window.__pbIosAppVer || '1.1.29'; },
             check: function() {
               try { window.webkit.messageHandlers.pbUpdateCheck.postMessage({}); } catch (e) {}
             },
@@ -438,6 +446,20 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         webView.scrollView.delaysContentTouches = false
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         NativeCameraBridge.shared.hostContainerView = view
+        NativeCameraBridge.shared.onDeviceEvent = { [weak self] kind, devId, label, isExternal in
+            guard let self = self, let wv = self.webView else { return }
+            let obj: [String: Any] = [
+                "type": kind,
+                "id": devId,
+                "label": label,
+                "isExternal": isExternal
+            ]
+            guard let data = try? JSONSerialization.data(withJSONObject: obj, options: []),
+                  let json = String(data: data, encoding: .utf8) else { return }
+            DispatchQueue.main.async {
+                wv.evaluateJavaScript("window.__pbCamEvent&&window.__pbCamEvent(\(json));", completionHandler: nil)
+            }
+        }
         view.addSubview(NativeCameraBridge.shared.previewView)
         view.addSubview(webView)
 
@@ -1190,8 +1212,20 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         }
     }
 
+    private func setNetAddNote(_ note: String) {
+        netAddNoteLock.lock()
+        netAddNote = note
+        netAddNoteLock.unlock()
+    }
+
+    private func getNetAddNote() -> String {
+        netAddNoteLock.lock()
+        defer { netAddNoteLock.unlock() }
+        return netAddNote
+    }
+
     private func tcpPrintersListJson() -> String {
-        let obj: [String: Any] = ["printers": loadTcpPrinters(), "scanning": false]
+        let obj: [String: Any] = ["printers": loadTcpPrinters(), "scanning": false, "addNote": getNetAddNote()]
         guard let data = try? JSONSerialization.data(withJSONObject: obj, options: []),
               let str = String(data: data, encoding: .utf8) else {
             return "{\"printers\":[],\"scanning\":false}"
@@ -1207,15 +1241,21 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         let parts = trimmed.split(separator: ":", maxSplits: 1)
         let octets = parts[0].split(separator: ".").compactMap { Int($0) }
         guard octets.count == 4, octets.allSatisfy({ $0 >= 0 && $0 <= 255 }) else { return "bad" }
-        var list = loadTcpPrinters().filter { ($0["ip"] as? String) != trimmed }
-        list.insert([
-            "ip": trimmed,
-            "name": "Receipt (\(trimmed))",
-            "raw": true,
-            "usb": false
-        ], at: 0)
+        setNetAddNote("")
+        var list = loadTcpPrinters()
+        if let idx = list.firstIndex(where: { ($0["ip"] as? String) == trimmed }) {
+            let existing = list.remove(at: idx)
+            list.insert(existing, at: 0)
+        } else {
+            list.insert([
+                "ip": trimmed,
+                "name": "Receipt (\(trimmed))",
+                "raw": true,
+                "usb": false
+            ], at: 0)
+        }
         saveTcpPrinters(list)
-        probeIppPrinter(trimmed)     // a photo printer that answers IPP (an Epson L8050, say) turns into a photo printer a moment later
+        probeNetworkPrinter(trimmed)     // checks IPP (:631), ESC/P-R (:9100), and LPD (:515) for Epson L8050 / Wi-Fi printers
         return "ok"
     }
 
@@ -1301,32 +1341,106 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         conn.start(queue: q)
     }
 
-    // MARK: - IPP photo printers on Wi-Fi (printers that are not AirPrint, e.g. Epson L8050)
+    // MARK: - IPP & ESC/P-R photo printers on Wi-Fi / Wi-Fi Direct (printers that are not AirPrint, e.g. Epson L8050)
 
-    /// After a printer is added by its IP: ask it over IPP what it is. One that answers and takes JPEG photos becomes a photo
-    /// printer, with the quality and paper types it lists; one that does not answer stays as it was (a receipt printer).
-    private func probeIppPrinter(_ ipPort: String) {
+    /// Probes 631 (IPP), 9100 (Raw / ESC/P-R) and 515 (LPD, e.g. Epson L8050 on Wi-Fi Direct 192.168.223.1).
+    /// When IPP answers with JPEG support it becomes an IPP photo printer; when LPD 515 or Epson L-series 9100 answers
+    /// without IPP it becomes a direct ESC/P-R photo printer; otherwise raw :9100 receipt printers stay Receipt.
+    private func probeNetworkPrinter(_ ipPort: String) {
         let host = String(ipPort.split(separator: ":", maxSplits: 1).first ?? Substring(ipPort))
         DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard let caps = IppNet.fetchCaps(ip: host, port: 631) else { return }
-            guard caps.formats.isEmpty || caps.formats.contains("image/jpeg") else { return }
-            DispatchQueue.main.async { self?.applyIppCaps(ipPort, caps) }
+            let ports = PrinterProbe.probePorts(ip: host)
+            if ports.ippPort > 0, let caps = IppNet.fetchCaps(ip: host, port: 631),
+               caps.formats.isEmpty || caps.formats.contains("image/jpeg") {
+                DispatchQueue.main.async {
+                    self?.applyIppCaps(ipPort, caps, lpdPort: ports.lpdPort, rawPort: ports.rawPort)
+                }
+                return
+            }
+            if ports.lpdPort > 0 || ports.rawPort > 0 {
+                let web = PrinterProbe.fetchWebModel(ip: host)
+                DispatchQueue.main.async {
+                    self?.applyEscprOrRawProbe(ipPort, host: host, ports: ports, model: web.model, vendorHint: web.vendorHint)
+                }
+                return
+            }
+            self?.setNetAddNote("Nothing at \(host) answered on the printing ports (631, 9100, 515). Check the printer is on, this iPad is on the same Wi-Fi, and Local Network access is allowed.")
         }
     }
 
-    private func applyIppCaps(_ ipPort: String, _ caps: IppNet.Caps) {
+    private func applyIppCaps(_ ipPort: String, _ caps: IppNet.Caps, lpdPort: Int = 0, rawPort: Int = 0) {
+        setNetAddNote("")
         var list = loadTcpPrinters()
         guard let i = list.firstIndex(where: { ($0["ip"] as? String) == ipPort }) else { return }
         var e = list[i]
         e["ipp"] = true
         e["raw"] = false
+        e["escpr"] = false
         e["usb"] = false
+        e["lpd"] = (lpdPort > 0)
+        e["lpdPort"] = lpdPort
+        e["rawPort"] = rawPort
         e["name"] = caps.model.isEmpty ? "Wi-Fi printer (\(ipPort))" : caps.model
         e["ippPath"] = caps.path
+        if PrinterProbe.isL8050Name(caps.model) { e["epsonModel"] = "L8050" }
         if !caps.serviceName.isEmpty { e["dnssd"] = caps.serviceName }      // lets the app find this printer again by name if its address changes
         e["qualities"] = caps.qualities
         e["colorModes"] = caps.colorModes
         e["mediaTypes"] = caps.mediaTypes
+        e["bcap"] = caps.borderlessCap
+        list[i] = e
+        saveTcpPrinters(list)
+    }
+
+    private func applyEscprOrRawProbe(_ ipPort: String, host: String, ports: PrinterProbe.PortResult, model: String, vendorHint: String) {
+        setNetAddNote("")
+        var list = loadTcpPrinters()
+        guard let i = list.firstIndex(where: { ($0["ip"] as? String) == ipPort }) else { return }
+        let modelLower = model.lowercased()
+        let hintLower = vendorHint.lowercased()
+        let isHp = modelLower.contains("hp") || modelLower.contains("hewlett") || hintLower.contains("hp")
+        let isBrother = modelLower.contains("brother") || hintLower.contains("brother") || host == "192.168.118.1"
+        let isEpson = !isHp && !isBrother && (
+            PrinterProbe.isEpsonLSeries(model) ||
+            modelLower.contains("epson") ||
+            hintLower.contains("epson") ||
+            host == "192.168.223.1"
+        )
+        let lpdOnly = (ports.ippPort == 0 && ports.rawPort == 0 && ports.lpdPort > 0)
+        let escprNet = !isHp && !isBrother && (
+            (ports.rawPort > 0 && PrinterProbe.isEpsonLSeries(model)) ||
+            (lpdOnly && (isEpson || (model.isEmpty && vendorHint.isEmpty)))
+        )
+        let isL8050 = PrinterProbe.isL8050Name(model)
+
+        let displayName: String
+        if !model.isEmpty {
+            displayName = model
+        } else if host == "192.168.223.1" {
+            displayName = isHp ? "HP Wi-Fi Direct (\(host))" : (lpdOnly ? "Epson Wi-Fi Direct (\(host))" : "Epson / HP Wi-Fi Direct (\(host))")
+        } else if escprNet {
+            displayName = "Epson printer (\(host))"
+        } else {
+            displayName = "Receipt (\(ipPort))"
+        }
+
+        var e = list[i]
+        e["ipp"] = false
+        e["usb"] = false
+        e["lpdPort"] = ports.lpdPort
+        e["rawPort"] = ports.rawPort
+        e["name"] = displayName
+        if escprNet {
+            e["raw"] = false
+            e["escpr"] = true
+            e["lpd"] = (ports.lpdPort > 0)
+            if isL8050 { e["epsonModel"] = "L8050" }
+            if !model.isEmpty { e["dnssd"] = model }
+        } else {
+            e["raw"] = true
+            e["escpr"] = false
+            e["lpd"] = false
+        }
         list[i] = e
         saveTcpPrinters(list)
     }
@@ -1421,6 +1535,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 let color = (opts["color"] as? String) ?? ""
                 let media = (opts["media"] as? String) ?? ""
                 let borderless = (opts["borderless"] as? Bool) ?? false
+                let dpi = (opts["dpi"] as? NSNumber)?.intValue ?? 300
                 let sets = max(1, min(copies, 20))
 
                 // First make sure the printer answers. One coming out of sleep needs several seconds, and one the router gave a
@@ -1447,7 +1562,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                         var acceptedId: Int? = nil
                         do {
                             if let id = try IppNet.printPage(ip: host, port: 631, jpegIn: p, job: "Photobooth", wMm: widthMm, hMm: heightMm,
-                                                             quality: quality, color: color, media: media, borderless: borderless, known: known) {
+                                                             quality: quality, color: color, media: media, borderless: borderless, dpi: dpi, known: known) {
                                 ids.append(id)
                                 acceptedId = id
                             }
@@ -1458,7 +1573,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                             host = fresh.host
                             if case .ok(let c) = fresh.probe { known = c } else { known = nil }
                             if let id = try IppNet.printPage(ip: host, port: 631, jpegIn: p, job: "Photobooth", wMm: widthMm, hMm: heightMm,
-                                                             quality: quality, color: color, media: media, borderless: borderless, known: known) {
+                                                             quality: quality, color: color, media: media, borderless: borderless, dpi: dpi, known: known) {
                                 ids.append(id)
                                 acceptedId = id
                             }
@@ -1474,6 +1589,111 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 if let c = known, !ids.isEmpty { self.watchIppJobs(host: host, path: c.path, ids: ids) }
             } catch let f as IppNet.Failure {
                 self.emitNetResult(job: job, ok: false, error: f.message)
+            } catch {
+                self.emitNetResult(job: job, ok: false, error: error.localizedDescription)
+            }
+        }
+    }
+
+    /// window.__PBNet.printEscpr: streams Epson ESC/P-R (L8050 360/720 dpi borderless or generic Epson) over LPD (:515) or Raw (:9100).
+    private func sendEscprPrint(job: String, ipPort: String, widthMm: Double, heightMm: Double, copies: Int, pagesJson: String, optionsJson: String) {
+        guard !job.isEmpty else { return }
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            do {
+                guard let pd = pagesJson.data(using: .utf8),
+                      let arr = try JSONSerialization.jsonObject(with: pd, options: []) as? [String],
+                      !arr.isEmpty else {
+                    throw EscprNet.Failure.message("Nothing to print.", unreached: true)
+                }
+                var pages: [Data] = []
+                for s in arr {
+                    var b64 = s
+                    if s.hasPrefix("data:"), let comma = s.firstIndex(of: ",") {
+                        b64 = String(s[s.index(after: comma)...])
+                    }
+                    guard let d = Data(base64Encoded: b64, options: .ignoreUnknownCharacters), !d.isEmpty else {
+                        throw EscprNet.Failure.message("Could not read the picture to print.", unreached: true)
+                    }
+                    pages.append(d)
+                }
+                var opts: [String: Any] = [:]
+                if let od = optionsJson.data(using: .utf8),
+                   let o = (try? JSONSerialization.jsonObject(with: od, options: [])) as? [String: Any] {
+                    opts = o
+                }
+
+                var host = self.ippTarget(ipPort)
+                let savedEntry = self.loadTcpPrinters().first(where: { ($0["ip"] as? String) == ipPort })
+                let savedRawPort = (savedEntry?["rawPort"] as? NSNumber)?.intValue ?? 0
+                let savedLpdPort = (savedEntry?["lpdPort"] as? NSNumber)?.intValue ?? 0
+                let rawPort = UInt16(savedRawPort > 0 ? savedRawPort : 9100)
+                let lpdPort = UInt16(savedLpdPort > 0 ? savedLpdPort : 515)
+
+                if !PrinterProbe.isPortOpen(ip: host, port: rawPort, timeout: 1.5) &&
+                   !PrinterProbe.isPortOpen(ip: host, port: lpdPort, timeout: 1.5) {
+                    Thread.sleep(forTimeInterval: 0.6)
+                    if !PrinterProbe.isPortOpen(ip: host, port: rawPort, timeout: 1.5) &&
+                       !PrinterProbe.isPortOpen(ip: host, port: lpdPort, timeout: 1.5) {
+                        let name = self.ippIdentity(ipPort)
+                        if !name.isEmpty,
+                           let fresh = IppNet.findByName(name, serviceType: "_printer._tcp", wait: 5.0),
+                           PrinterProbe.isPortOpen(ip: fresh, port: lpdPort, timeout: 1.5) || PrinterProbe.isPortOpen(ip: fresh, port: rawPort, timeout: 1.5) {
+                            host = fresh
+                            self.rememberIppAddress(ipPort, fresh)
+                        }
+                    }
+                }
+
+                let optModel = (opts["epsonModel"] as? String) ?? ""
+                let optName = (opts["printerName"] as? String) ?? ""
+                let savedName = (savedEntry?["name"] as? String) ?? ""
+                let savedModel = (savedEntry?["epsonModel"] as? String) ?? ""
+                var probedModel = ""
+                if optModel.caseInsensitiveCompare("L8050") != .orderedSame &&
+                   savedModel.caseInsensitiveCompare("L8050") != .orderedSame &&
+                   !PrinterProbe.isL8050Name(optName) &&
+                   !PrinterProbe.isL8050Name(savedName) {
+                    probedModel = PrinterProbe.fetchWebModel(ip: host).model
+                }
+                let isL8050 = optModel.caseInsensitiveCompare("L8050") == .orderedSame ||
+                    savedModel.caseInsensitiveCompare("L8050") == .orderedSame ||
+                    PrinterProbe.isL8050Name(optName) ||
+                    PrinterProbe.isL8050Name(savedName) ||
+                    PrinterProbe.isL8050Name(probedModel)
+
+                let borderless = (opts["borderless"] as? Bool) ?? false
+                let cfg = isL8050
+                    ? EscprNet.l8050EscprConfig(opts: opts, borderless: borderless, widthMm: widthMm, heightMm: heightMm)
+                    : EscprNet.genericEscprConfig(opts: opts, borderless: borderless)
+
+                let wantLpd = (opts["lpd"] as? Bool) ?? false
+                let useLpdFirst = wantLpd ||
+                    (savedRawPort == 0 && savedLpdPort > 0) ||
+                    (!PrinterProbe.isPortOpen(ip: host, port: rawPort, timeout: 1.2) && PrinterProbe.isPortOpen(ip: host, port: lpdPort, timeout: 1.2))
+
+                let sets = max(1, min(copies, 20))
+                for c in 0..<sets {
+                    for (i, jpeg) in pages.enumerated() {
+                        if c > 0 || i > 0 { Thread.sleep(forTimeInterval: 0.4) }
+                        if useLpdFirst {
+                            try EscprNet.netLpdStream(ip: host, port: lpdPort, jpegData: jpeg, widthMm: widthMm, heightMm: heightMm, cfg: cfg)
+                        } else {
+                            do {
+                                try EscprNet.netRawStream(ip: host, port: rawPort, jpegData: jpeg, widthMm: widthMm, heightMm: heightMm, cfg: cfg)
+                            } catch let f as EscprNet.Failure where f.unreached {
+                                if PrinterProbe.isPortOpen(ip: host, port: lpdPort, timeout: 1.5) {
+                                    try EscprNet.netLpdStream(ip: host, port: lpdPort, jpegData: jpeg, widthMm: widthMm, heightMm: heightMm, cfg: cfg)
+                                } else {
+                                    throw f
+                                }
+                            }
+                        }
+                    }
+                }
+                self.emitNetResult(job: job, ok: true)
+            } catch let f as EscprNet.Failure {
+                self.emitNetResult(job: job, ok: false, error: f.localizedDescription)
             } catch {
                 self.emitNetResult(job: job, ok: false, error: error.localizedDescription)
             }
@@ -1532,6 +1752,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             let pagesJson = (dict["pagesJson"] as? String) ?? "[]"
             let optionsJson = (dict["optionsJson"] as? String) ?? "{}"
             sendIppPrint(job: job, ipPort: ip, widthMm: widthMm, heightMm: heightMm, copies: copies, pagesJson: pagesJson, optionsJson: optionsJson)
+        } else if message.name == "pbPrintEscpr", let dict = message.body as? [String: Any] {
+            let job = (dict["job"] as? String) ?? ""
+            let ip = (dict["ip"] as? String) ?? ""
+            let widthMm = (dict["widthMm"] as? NSNumber)?.doubleValue ?? 0
+            let heightMm = (dict["heightMm"] as? NSNumber)?.doubleValue ?? 0
+            let copies = (dict["copies"] as? NSNumber)?.intValue ?? 1
+            let pagesJson = (dict["pagesJson"] as? String) ?? "[]"
+            let optionsJson = (dict["optionsJson"] as? String) ?? "{}"
+            sendEscprPrint(job: job, ipPort: ip, widthMm: widthMm, heightMm: heightMm, copies: copies, pagesJson: pagesJson, optionsJson: optionsJson)
         } else if message.name == "pbSave", let dict = message.body as? [String: Any] {
             // window.__PBLocal.driveAsync / saveImageAsync: write the file in the background, answer through window.__pbSaveResolve
             let id = (dict["id"] as? NSNumber)?.intValue ?? 0
@@ -1886,6 +2115,7 @@ enum IppNet {
         var mediaReady: [String] = []
         var stateReasons: [String] = []          // printer-state-reasons: "media-empty-error", "media-jam-error" ...
         var serviceName = ""                     // printer-dns-sd-name: how the printer is listed by name on the network (Bonjour)
+        var borderlessCap = false
     }
 
     struct Reply {
@@ -1925,7 +2155,8 @@ enum IppNet {
         w.attr(0x45, "printer-uri", uri)
         w.attr(0x44, "requested-attributes", "printer-make-and-model")
         let wanted = ["document-format-supported", "print-quality-supported", "print-color-mode-supported", "media-type-supported",
-                      "media-supported", "media-ready", "printer-state-reasons", "printer-dns-sd-name"]
+                      "media-supported", "media-ready", "printer-state-reasons", "printer-dns-sd-name",
+                      "media-top-margin-supported", "media-bottom-margin-supported", "media-left-margin-supported", "media-right-margin-supported"]
         for n in wanted { w.u8(0x44); w.u16(0); w.str(n) }
         w.u8(0x03)
         return w.d
@@ -2081,6 +2312,10 @@ enum IppNet {
                 if name == "media-ready" && (tag == 0x44 || tag == 0x42) { c.mediaReady.append(value) }
                 if name == "printer-state-reasons" && tag == 0x44 { c.stateReasons.append(value) }
                 if name == "printer-dns-sd-name" && (tag == 0x41 || tag == 0x42) && c.serviceName.isEmpty { c.serviceName = value }
+                if name.hasSuffix("-margin-supported") && tag == 0x21 && raw.count == 4 {
+                    let v = (Int(raw[0]) << 24) | (Int(raw[1]) << 16) | (Int(raw[2]) << 8) | Int(raw[3])
+                    if v == 0 { c.borderlessCap = true }
+                }
             }
             return .ok(c)
         }
@@ -2122,14 +2357,15 @@ enum IppNet {
 
     // MARK: printing
 
-    /// The JPEG says 300 dpi, so the printer does not take the picture for a small one.
-    static func jpegAt300Dpi(_ d: Data) -> Data {
+    /// Stamps the JFIF DPI header (300 or 600 dpi) so the printer does not take the picture for a small one.
+    static func jpegAtDpi(_ d: Data, dpi: Int = 300) -> Data {
+        let useDpi = max(72, min(2400, dpi > 0 ? dpi : 300))
         var b = [UInt8](d)
         guard b.count >= 20, b[0] == 0xFF, b[1] == 0xD8, b[2] == 0xFF, b[3] == 0xE0,
               b[6] == 0x4A, b[7] == 0x46, b[8] == 0x49, b[9] == 0x46 else { return d }      // "JFIF"
         b[13] = 1                                                  // dots per inch
-        b[14] = 1; b[15] = 44                                      // 300 = 0x012C
-        b[16] = 1; b[17] = 44
+        b[14] = UInt8((useDpi >> 8) & 0xFF); b[15] = UInt8(useDpi & 0xFF)
+        b[16] = UInt8((useDpi >> 8) & 0xFF); b[17] = UInt8(useDpi & 0xFF)
         return Data(b)
     }
 
@@ -2142,7 +2378,7 @@ enum IppNet {
             return first({ $0 == "stationery" }) ?? first({ $0.hasPrefix("stationery") }) ?? (hard ? "stationery" : "")
         case "inkjet":
             return first({ $0 == "stationery-inkjet" }) ?? first({ $0.lowercased().contains("inkjet") }) ?? ""
-        case "photo":
+        case "photo", "photopg":
             return first({ $0 == "photographic-glossy" }) ?? first({ $0.hasPrefix("photographic") }) ?? (hard ? "photographic-glossy" : "")
         case "photosg":
             return first({ $0 == "photographic-semi-gloss" }) ?? (hard ? "photographic-semi-gloss" : "")
@@ -2218,21 +2454,22 @@ enum IppNet {
         let mediaName: String
         let useOpts: Bool
         let scaling: String
+        let marginMm100: Int
     }
 
     /// Prints one photo. Tries the page size with the quality / paper settings first, then drops them one at a time if the
     /// printer refuses. Retries the same request when a dye-sub printer answers 0x0507 (server-error-busy) mid-ribbon-cycle.
     @discardableResult
     static func printPage(ip: String, port: Int, jpegIn: Data, job: String, wMm: Double, hMm: Double,
-                          quality: String, color: String, media: String, borderless: Bool, known: Caps? = nil) throws -> Int? {
-        let jpeg = jpegAt300Dpi(jpegIn)
+                          quality: String, color: String, media: String, borderless: Bool, dpi: Int = 300, known: Caps? = nil) throws -> Int? {
+        let jpeg = jpegAtDpi(jpegIn, dpi: dpi)
         let found: Caps? = known ?? fetchCaps(ip: ip, port: port)
         let caps = found ?? Caps()
         let selphy = isSelphy(caps)
         let hardEpsonL = !selphy && caps.model.range(of: "L8050", options: .caseInsensitive) != nil
         var q = 0
         if !selphy {
-            if quality == "draft" { q = 3 } else if quality == "normal" { q = 4 } else if quality == "high" { q = 5 }
+            if quality == "draft" { q = 3 } else if quality == "normal" { q = 4 } else if quality == "high" || quality == "high720" { q = 5 }
         }
         let qv = (q != 0 && (caps.qualities.contains(q) || hardEpsonL)) ? q : 0
         var cm = ""
@@ -2244,18 +2481,28 @@ enum IppNet {
         if selphy, let matched = selphyMedia(caps, wMm: wMm, hMm: hMm) {
             // Canon SELPHY CP1300 / CP1500 fullbleed over IPP uses its exact paper dimensions (e.g. 100x148 mm) with 0 margins and scaling=fill.
             attempts = [
-                JobAttempt(wMm: matched.w, hMm: matched.h, mediaName: "", useOpts: false, scaling: "fill"),
-                JobAttempt(wMm: matched.w, hMm: matched.h, mediaName: "", useOpts: false, scaling: ""),
-                JobAttempt(wMm: 0, hMm: 0, mediaName: matched.name, useOpts: false, scaling: "fill"),
-                JobAttempt(wMm: 0, hMm: 0, mediaName: matched.name, useOpts: false, scaling: ""),
-                JobAttempt(wMm: 0, hMm: 0, mediaName: "", useOpts: false, scaling: "")
+                JobAttempt(wMm: matched.w, hMm: matched.h, mediaName: "", useOpts: false, scaling: "fill", marginMm100: 0),
+                JobAttempt(wMm: matched.w, hMm: matched.h, mediaName: "", useOpts: false, scaling: "", marginMm100: 0),
+                JobAttempt(wMm: 0, hMm: 0, mediaName: matched.name, useOpts: false, scaling: "fill", marginMm100: 0),
+                JobAttempt(wMm: 0, hMm: 0, mediaName: matched.name, useOpts: false, scaling: "", marginMm100: 0),
+                JobAttempt(wMm: 0, hMm: 0, mediaName: "", useOpts: false, scaling: "", marginMm100: 0)
             ]
         } else {
             let ownScaling = borderless ? "none" : "fill"
-            let rawAttempts: [(Bool, Bool, String)] = hasOpts
-                ? [(true, true, ownScaling), (true, true, ""), (true, false, ownScaling), (true, false, ""), (false, true, ""), (false, false, "")]
-                : [(true, false, ownScaling), (true, false, ""), (false, false, "")]
-            attempts = rawAttempts.map { JobAttempt(wMm: $0.0 ? wMm : 0, hMm: hMm, mediaName: "", useOpts: $0.1, scaling: $0.2) }
+            let rawAttempts: [(Bool, Bool, String, Int)]
+            if hasOpts {
+                rawAttempts = borderless
+                    ? [(true, true, ownScaling, 0), (true, true, "", 0), (true, true, "fill", 300),
+                       (true, false, ownScaling, 0), (true, false, "", 0), (true, false, "fill", 300),
+                       (false, true, "", 0), (false, false, "", 0)]
+                    : [(true, true, ownScaling, 0), (true, true, "", 0), (true, false, ownScaling, 0),
+                       (true, false, "", 0), (false, true, "", 0), (false, false, "", 0)]
+            } else {
+                rawAttempts = borderless
+                    ? [(true, false, ownScaling, 0), (true, false, "", 0), (true, false, "fill", 300), (false, false, "", 0)]
+                    : [(true, false, ownScaling, 0), (true, false, "", 0), (false, false, "", 0)]
+            }
+            attempts = rawAttempts.map { JobAttempt(wMm: $0.0 ? wMm : 0, hMm: hMm, mediaName: "", useOpts: $0.1, scaling: $0.2, marginMm100: $0.3) }
         }
         let pathList: [String] = found == nil ? paths : [caps.path]
         var lastErr = "The printer didn't accept the job."
@@ -2264,7 +2511,7 @@ enum IppNet {
                 let uri = "ipp://\(ip):\(port)\(path)"
                 let body = printJobRequest(uri: uri, job: job, doc: jpeg, wMm: at.wMm, hMm: at.hMm, mediaName: at.mediaName,
                                            quality: at.useOpts ? qv : 0, colorMode: at.useOpts ? cm : "", mediaType: at.useOpts ? mt : "",
-                                           scaling: at.scaling, marginMm100: 0)
+                                           scaling: at.scaling, marginMm100: at.marginMm100)
                 var r = try post(ip: ip, port: port, path: path, body: body, timeout: 90)
                 var busyTries = 0
                 while r.http == 200 && r.ipp == 0x0507 && busyTries < 24 {
@@ -2422,13 +2669,13 @@ enum IppNet {
 
     /// Looks for the printer on the network by the name it is listed under (Bonjour), so a new address, when the router gave it a
     /// different one, is found again. Returns its IPv4 address, or nil when it is not seen within the wait.
-    static func findByName(_ name: String, wait: TimeInterval) -> String? {
+    static func findByName(_ name: String, serviceType: String = "_ipp._tcp", wait: TimeInterval) -> String? {
         let want = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if want.isEmpty { return nil }
         let box = FindBox()
         let q = DispatchQueue(label: "com.photobooth4u.ipp.find")
         let seen = DispatchSemaphore(value: 0)
-        let browser = NWBrowser(for: .bonjour(type: "_ipp._tcp", domain: nil), using: .tcp)
+        let browser = NWBrowser(for: .bonjour(type: serviceType, domain: nil), using: .tcp)
         browser.browseResultsChangedHandler = { results, _ in
             for r in results {
                 if case let .service(n, _, _, _) = r.endpoint {

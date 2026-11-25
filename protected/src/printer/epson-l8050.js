@@ -1,5 +1,5 @@
 /*
- * printer/epson-l8050.js: Epson L8050, 4 x 6 in (4R), borderless, sent over IPP (the Android app, USB or Wi-Fi).
+ * printer/epson-l8050.js: Epson L8050, 4 x 6 in (4R), borderless, sent over IPP (the Android and iPad apps, USB or Wi-Fi).
  *
  * One paste-in part of booth.src.html (see scripts/assemble-booth.mjs). It exposes window._epsonL8050.
  *
@@ -52,7 +52,7 @@
     return { pageW: L + w + R, pageH: T + h + B, left: L, top: T, right: R, bottom: B };
   }
 
-  // Applies to: a 4 x 6 in borderless job to an L8050 over IPP, on the Android app (the iPad app is left as it is).
+  // Applies to: a 4 x 6 in borderless job to an L8050 over IPP (Android and iPad apps).
   function applies(p, paper, wo, cv) {
     return isL8050(p) && !!(wo && wo.borderless) && is4x6(paper) && !!cv && !!layout(cv.width, cv.height);
   }

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.110', date: '2026-11-25' },
   { version: '1.1.109', date: '2026-11-25' },
   { version: '1.1.108', date: '2026-11-25' },
   { version: '1.1.107', date: '2026-11-25' },
@@ -252,7 +253,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.28', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.28/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.29', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.29/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -307,12 +308,23 @@ export async function liveApp() {
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
   {
+    date: '2026-11-25', title: 'Desktop 1.1.110, iPad 1.1.29 & Website: Desktop Online Mode with Google Drive & PayMongo, Device Labels, iPad Wireless Printing & DJI Osmo Pocket 3', for: ['website', 'app', 'ipad'], app: '1.1.110', ipad: '1.1.29',
+    items: [
+      'Desktop Online Mode (Windows & Mac): Run your online booth right inside the photobooth4u desktop app with built-in silent printing, USB DSLR cameras, and HDMI guest screen — no browser or separate Print Helper needed. Every photo saves a local copy on your laptop and uploads straight to Google Drive at the same time, with an online QR guests can scan or snap a photo of to download at home.',
+      'PayMongo QR Ph in the Desktop App: Connect your PayMongo account once in My Events on the website, and any desktop device running in Online Mode accepts live QR Ph payments automatically.',
+      'Per-device Online/Offline control & Device Labels: Give each laptop or tablet a friendly label (such as Main Booth or Studio Mac) when activating your code, in Setup, or on My Events so each slot is easy to tell apart on multi-device codes. Specific desktop devices can run in Online, Offline, or Both modes without affecting other devices on the same code.',
+      'Direct wireless printing from iPad (Epson EcoTank L8050 & Wi-Fi printers): Print borderless glossy 4x6 photos directly from the iPad app over Wi-Fi Direct or your event Wi-Fi router — even on printers without Apple AirPrint, with no laptop needed.',
+      'DJI Osmo Pocket 3 & external USB-C camera support on iPad: Plug a Pocket 3 into a USB-C iPad (iPadOS 17 or newer) and tap Webcam for automatic detection, crisp 1080p prints, proper framing on portrait stands, and automatic reconnect if bumped, plus a new step-by-step setup guide on the website.',
+      'Faster, sharper animated GIF slideshows and Photographer Desk upgrades: Pin favorite layouts, automatically match portrait or landscape templates to each incoming shot, and generate cleaner GIF slideshows faster.'
+    ]
+  },
+  {
     date: '2026-11-25', title: 'Roving DSLR Bridge v1.1.3 (Android): Offline Wi-Fi Routing, Screen-Off Queue Reliability & Duplicate-Safe Upload', for: ['website'],
     items: [
-      '📶 Offline booth Wi-Fi / hotspot routing fix: binds local uploads and connection checks directly to the booth Wi-Fi interface (`Network.openConnection`) so reconnects succeed even when 4G/5G mobile data stays enabled.',
-      '⚡ Faster reconnect & mid-upload recovery: listens for DHCP IPv4 ready events (`onLinkPropertiesChanged`), aborts stalled sockets immediately on Wi-Fi loss, and disables keep-alive socket reuse after drops.',
-      '🔋 Screen-off Pocket Mode reliability: holds a partial wake lock while Pocket Mode or pending queue uploads are active so shutter capture and auto-retry keep running if the screen turns off.',
-      '🛡️ Queue & receiver hardening: quarantines oversized (>80 MB) or 0-byte files so they never block newer shots, closes startup restore races, arms auto-retry after failed Save & Test, and adds `X-Rove-Id` dedup + truncation checks on the laptop receiver.'
+      '📶 Offline booth Wi-Fi / hotspot routing fix: binds local uploads and connection checks directly to the booth Wi-Fi network so reconnects succeed even when 4G/5G mobile data stays enabled.',
+      '⚡ Faster reconnect & mid-upload recovery: detects Wi-Fi readiness immediately, aborts stalled connections on Wi-Fi drops, and starts fresh connections after drops.',
+      '🔋 Screen-off Pocket Mode reliability: keeps the device awake while Pocket Mode or pending queue uploads are active so shutter capture and auto-retry keep running if the screen turns off.',
+      '🛡️ Queue & receiver hardening: quarantines oversized (>80 MB) or empty files so they never block newer shots, closes startup restore races, arms auto-retry after failed Save & Test, and prevents duplicate or cut-off uploads on the laptop receiver.'
     ]
   },
   {

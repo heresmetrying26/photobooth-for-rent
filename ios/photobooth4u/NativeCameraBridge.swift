@@ -121,7 +121,8 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             super.layoutSubviews()
             CATransaction.begin()
             CATransaction.setDisableActions(true)
-            previewLayer.frame = bounds
+            previewLayer.bounds = bounds
+            previewLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
             if let fv = filterView {
                 fv.frame = bounds
             }
@@ -206,8 +207,10 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
 
     let previewView = PreviewHostView(frame: .zero)
     weak var hostContainerView: UIView?
+    var onDeviceEvent: ((String, String, String, Bool) -> Void)?
 
     private let session = AVCaptureSession()
+    private var discoverySession: AVCaptureDevice.DiscoverySession?
     private let sessionQueue = DispatchQueue(label: "com.photobooth4u.avcam.session", qos: .userInitiated)
     private let videoOutputQueue = DispatchQueue(label: "com.photobooth4u.avcam.video", qos: .userInitiated)
     private let audioOutputQueue = DispatchQueue(label: "com.photobooth4u.avcam.audio", qos: .userInitiated)
@@ -226,6 +229,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
     private var orientationObserver: NSObjectProtocol?
     private var sessionRuntimeObserver: NSObjectProtocol?
     private var sessionInterruptionEndedObserver: NSObjectProtocol?
+    private var deviceConnectedObserver: NSObjectProtocol?
     private var deviceDisconnectedObserver: NSObjectProtocol?
 
     private let stateLock = NSLock()
@@ -273,6 +277,12 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         super.init()
         previewView.isHidden = true
         previewView.previewLayer.session = session
+        var discoveryTypes: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera, .builtInUltraWideCamera]
+        if #available(iOS 17.0, *) {
+            discoveryTypes.append(.external)
+        }
+        // Keep a strong DiscoverySession alive so iPadOS delivers wasConnected/wasDisconnected for external USB-C cameras.
+        discoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: discoveryTypes, mediaType: .video, position: .unspecified)
         orientationObserver = NotificationCenter.default.addObserver(
             forName: UIDevice.orientationDidChangeNotification,
             object: nil,
@@ -305,19 +315,44 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 self.session.startRunning()
             }
         }
+        deviceConnectedObserver = NotificationCenter.default.addObserver(
+            forName: .AVCaptureDeviceWasConnected,
+            object: nil,
+            queue: nil
+        ) { [weak self] note in
+            guard let self = self, let dev = note.object as? AVCaptureDevice, dev.hasMediaType(.video) else { return }
+            var ext = false
+            if #available(iOS 17.0, *) {
+                ext = (dev.deviceType == .external)
+            }
+            let devId = dev.uniqueID
+            let label = dev.localizedName
+            DispatchQueue.main.async {
+                self.onDeviceEvent?("connected", devId, label, ext)
+            }
+        }
         deviceDisconnectedObserver = NotificationCenter.default.addObserver(
             forName: .AVCaptureDeviceWasDisconnected,
             object: nil,
             queue: nil
         ) { [weak self] note in
-            guard let self = self, let lost = note.object as? AVCaptureDevice else { return }
+            guard let self = self, let lost = note.object as? AVCaptureDevice, lost.hasMediaType(.video) else { return }
+            var ext = false
+            if #available(iOS 17.0, *) {
+                ext = (lost.deviceType == .external)
+            }
+            let devId = lost.uniqueID
+            let label = lost.localizedName
             self.sessionQueue.async {
-                if self.currentDevice?.uniqueID == lost.uniqueID {
+                if self.currentDevice?.uniqueID == devId {
                     self.cancelActiveRecording()
                     if self.session.isRunning { self.session.stopRunning() }
                     self.stateLock.lock()
                     self.latestBuffer = nil
                     self.stateLock.unlock()
+                }
+                DispatchQueue.main.async {
+                    self.onDeviceEvent?("disconnected", devId, label, ext)
                 }
             }
         }
@@ -327,17 +362,23 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         if let obs = orientationObserver { NotificationCenter.default.removeObserver(obs) }
         if let obs = sessionRuntimeObserver { NotificationCenter.default.removeObserver(obs) }
         if let obs = sessionInterruptionEndedObserver { NotificationCenter.default.removeObserver(obs) }
+        if let obs = deviceConnectedObserver { NotificationCenter.default.removeObserver(obs) }
         if let obs = deviceDisconnectedObserver { NotificationCenter.default.removeObserver(obs) }
     }
 
     // MARK: - Device Discovery
 
     private func discoveredDevices() -> [AVCaptureDevice] {
-        var types: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera, .builtInUltraWideCamera]
-        if #available(iOS 17.0, *) {
-            types.append(.external)
+        let raw: [AVCaptureDevice]
+        if let ds = discoverySession {
+            raw = ds.devices
+        } else {
+            var types: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera, .builtInUltraWideCamera]
+            if #available(iOS 17.0, *) {
+                types.append(.external)
+            }
+            raw = AVCaptureDevice.DiscoverySession(deviceTypes: types, mediaType: .video, position: .unspecified).devices
         }
-        let raw = AVCaptureDevice.DiscoverySession(deviceTypes: types, mediaType: .video, position: .unspecified).devices
         let hasFrontWide = raw.contains { $0.position == .front && $0.deviceType == .builtInWideAngleCamera }
         let hasBackWide = raw.contains { $0.position == .back && $0.deviceType == .builtInWideAngleCamera }
         var seen = Set<String>()
@@ -639,6 +680,71 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         return bestFormat
     }
 
+    /// Picks a clean, high-frame-rate (24/25/30/60 fps) format for external USB-C UVC cameras (such as DJI Osmo Pocket 3
+    /// or HDMI capture cards). Defaults to 1080p on "auto" so UVC still captures print sharp without 4K overheating, and
+    /// supports both landscape (1920x1080) and native portrait (1080x1920) UVC descriptors.
+    private func pickExternalFormat(for dev: AVCaptureDevice, presetName: String) -> AVCaptureDevice.Format? {
+        let targetLong: Int
+        let minLong: Int
+        let maxLong: Int
+        switch presetName {
+        case "480":
+            targetLong = 640; minLong = 480; maxLong = 854
+        case "720":
+            targetLong = 1280; minLong = 960; maxLong = 1344
+        case "max", "yuyv":
+            targetLong = 3840; minLong = 1280; maxLong = 4096
+        default: // "auto", "1080", "high", "photo"
+            targetLong = 1920; minLong = 1280; maxLong = 1920
+        }
+
+        let wantUncompressed = (presetName == "yuyv")
+        var bestFormat: AVCaptureDevice.Format?
+        var bestScore = Int.min
+
+        for fmt in dev.formats {
+            let dims = CMVideoFormatDescriptionGetDimensions(fmt.formatDescription)
+            let w = Int(dims.width)
+            let h = Int(dims.height)
+            let longSide = max(w, h)
+            let shortSide = min(w, h)
+            guard longSide >= minLong && longSide <= maxLong && shortSide >= 360 else { continue }
+
+            let maxFps = fmt.videoSupportedFrameRateRanges.map { $0.maxFrameRate }.max() ?? 0
+            guard maxFps >= 14.9 else { continue }
+
+            let sub = CMFormatDescriptionGetMediaSubType(fmt.formatDescription)
+            let is420 = (sub == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange || sub == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange)
+            let is422 = (sub == kCVPixelFormatType_422YpCbCr8 || sub == kCVPixelFormatType_422YpCbCr8_yuvs)
+            let isMjpeg = (sub == kCMVideoCodecType_JPEG_OpenDML)
+            let is10Bit = (sub == kCVPixelFormatType_420YpCbCr10BiPlanarFullRange || sub == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange)
+
+            var score = 0
+            if maxFps >= 29.5 { score += 4_000 }
+            else if maxFps >= 23.9 { score += 3_500 } // covers 24/25 fps PAL modes
+            else { score += 500 }
+
+            if wantUncompressed {
+                if is422 || is420 { score += 2_000 }
+                else if isMjpeg { score += 500 }
+            } else {
+                if is420 { score += 1_200 }
+                else if is422 { score += 1_000 }
+                else if isMjpeg { score += 900 }
+                else if is10Bit { score -= 1_000 }
+            }
+
+            if !fmt.isVideoHDRSupported { score += 150 }
+            score -= abs(longSide - targetLong)
+
+            if score > bestScore {
+                bestScore = score
+                bestFormat = fmt
+            }
+        }
+        return bestFormat
+    }
+
     private func configureAndStart(deviceId: String?, presetName: String) throws -> [String: Any] {
         guard let dev = pickDevice(deviceId: deviceId) else {
             throw NSError(domain: "NativeCameraBridge", code: 404, userInfo: [NSLocalizedDescriptionKey: "No built-in or external USB camera found."])
@@ -708,18 +814,23 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             photoOutput = nil
         }
 
-        // Configure session preset / custom binned format AFTER all inputs and outputs are attached
+        // Configure session preset / custom format AFTER all inputs and outputs are attached
         // so AVCaptureSession validates the format cleanly against every output.
         var usedCustomFormat = false
-        if !ext, session.canSetSessionPreset(.inputPriority), let chosen = pickSmoothBuiltInFormat(for: dev, presetName: presetName) {
-            do {
-                session.sessionPreset = .inputPriority
-                try dev.lockForConfiguration()
-                dev.activeFormat = chosen
-                dev.unlockForConfiguration()
-                usedCustomFormat = true
-            } catch {
-                usedCustomFormat = false
+        if session.canSetSessionPreset(.inputPriority) {
+            let chosen = ext
+                ? pickExternalFormat(for: dev, presetName: presetName)
+                : pickSmoothBuiltInFormat(for: dev, presetName: presetName)
+            if let chosen = chosen {
+                do {
+                    session.sessionPreset = .inputPriority
+                    try dev.lockForConfiguration()
+                    defer { dev.unlockForConfiguration() }
+                    dev.activeFormat = chosen
+                    usedCustomFormat = true
+                } catch {
+                    usedCustomFormat = false
+                }
             }
         }
         if !usedCustomFormat {
@@ -732,9 +843,9 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             case "1080":
                 desiredPresets = [.hd1920x1080, .hd1280x720, .high]
             case "max", "yuyv":
-                desiredPresets = ext ? [.hd1920x1080, .hd1280x720, .high] : [.high, .hd1920x1080, .photo]
+                desiredPresets = ext ? [.hd4K3840x2160, .hd1920x1080, .high] : [.high, .hd1920x1080, .photo]
             default: // "auto", "high", "photo"
-                desiredPresets = ext ? [.hd1280x720, .hd1920x1080, .high] : [.high, .hd1280x720, .photo]
+                desiredPresets = ext ? [.hd1920x1080, .high, .hd1280x720] : [.high, .hd1280x720, .photo]
             }
             for p in desiredPresets where session.canSetSessionPreset(p) {
                 session.sessionPreset = p
@@ -803,7 +914,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         let dims = CMVideoFormatDescriptionGetDimensions(dev.activeFormat.formatDescription)
         let rawW = Int(dims.width)
         let rawH = Int(dims.height)
-        let effective = effectivePreviewDimensions(rawW: rawW, rawH: rawH)
+        let effective = effectivePreviewDimensions(rawW: rawW, rawH: rawH, isExternal: ext)
 
         stateLock.lock()
         isFrontCamera = (dev.position == .front)
@@ -830,7 +941,13 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         ]
     }
 
-    private func effectivePreviewDimensions(rawW: Int, rawH: Int) -> (w: Int, h: Int) {
+    private func effectivePreviewDimensions(rawW: Int, rawH: Int, isExternal: Bool) -> (w: Int, h: Int) {
+        if isExternal {
+            // External USB-C UVC cameras report captureRotationAngle = 0 regardless of iPad orientation;
+            // keep their true sensor orientation instead of swapping width/height on a portrait iPad.
+            if rawW > 0 && rawH > 0 { return (rawW, rawH) }
+            return (1920, 1080)
+        }
         let a = max(rawW, rawH)
         let b = min(rawW, rawH)
         if a == 0 || b == 0 { return (1280, 720) }
@@ -839,6 +956,25 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
     }
 
     // MARK: - Orientation / Rotation
+
+    private func applyPreviewMirror(_ mirror: Bool) {
+        if let conn = previewView.previewLayer.connection, conn.isVideoMirroringSupported {
+            if conn.automaticallyAdjustsVideoMirroring {
+                conn.automaticallyAdjustsVideoMirroring = false
+            }
+            if conn.isVideoMirrored != mirror {
+                conn.isVideoMirrored = mirror
+            }
+            if !previewView.previewLayer.affineTransform().isIdentity {
+                previewView.previewLayer.setAffineTransform(.identity)
+            }
+        } else {
+            let target = mirror ? CGAffineTransform(scaleX: -1, y: 1) : .identity
+            if previewView.previewLayer.affineTransform() != target {
+                previewView.previewLayer.setAffineTransform(target)
+            }
+        }
+    }
 
     private func clearRotationObservers() {
         rotationObserverPreview?.invalidate()
@@ -855,18 +991,11 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                abs(conn.videoRotationAngle - angle) > 0.01 {
                 conn.videoRotationAngle = angle
             }
-            if conn.isVideoMirroringSupported {
-                stateLock.lock()
-                let mir = latestMirrored
-                stateLock.unlock()
-                if conn.automaticallyAdjustsVideoMirroring {
-                    conn.automaticallyAdjustsVideoMirroring = false
-                }
-                if conn.isVideoMirrored != mir {
-                    conn.isVideoMirrored = mir
-                }
-            }
         }
+        stateLock.lock()
+        let mir = latestMirrored
+        stateLock.unlock()
+        applyPreviewMirror(mir)
     }
 
     @available(iOS 17.0, *)
@@ -1000,8 +1129,13 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 if self.previewView.frame != targetFrame {
                     self.previewView.frame = targetFrame
                 }
-                if self.previewView.previewLayer.frame != self.previewView.bounds {
-                    self.previewView.previewLayer.frame = self.previewView.bounds
+                let b = self.previewView.bounds
+                if self.previewView.previewLayer.bounds != b {
+                    self.previewView.previewLayer.bounds = b
+                }
+                let center = CGPoint(x: b.midX, y: b.midY)
+                if self.previewView.previewLayer.position != center {
+                    self.previewView.previewLayer.position = center
                 }
                 let rVal = max(0, radius)
                 if self.previewView.layer.cornerRadius != rVal {
@@ -1015,14 +1149,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                         fv.isHidden = true
                     }
                 }
-                if let conn = self.previewView.previewLayer.connection, conn.isVideoMirroringSupported {
-                    if conn.automaticallyAdjustsVideoMirroring {
-                        conn.automaticallyAdjustsVideoMirroring = false
-                    }
-                    if conn.isVideoMirrored != mirror {
-                        conn.isVideoMirrored = mirror
-                    }
-                }
+                self.applyPreviewMirror(mirror)
             } else {
                 if self.previewView.filterView?.isHidden == false {
                     self.previewView.filterView?.isHidden = true
@@ -1449,12 +1576,12 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 return
             }
 
-            // External UVC capture card path: grab latest video frame directly
+            // External UVC capture card / webcam path: grab latest video frame directly (up to 3000px for 4K sources)
             self.stateLock.lock()
             let pb = self.latestBuffer
             let rot = self.captureRotationAngle
             self.stateLock.unlock()
-            if let buf = pb, let j = self.jpegData(from: buf, rotationAngle: rot, maxSide: 2400, quality: 0.92) {
+            if let buf = pb, let j = self.jpegData(from: buf, rotationAngle: rot, maxSide: 3000, quality: 0.92) {
                 storeAndAnswer(j.data, j.w, j.h)
             } else {
                 DispatchQueue.main.async {

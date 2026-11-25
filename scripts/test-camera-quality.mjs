@@ -790,17 +790,116 @@ test('each brand file mentions only its own brand, and the shared file mentions 
 });
 
 // ---- webcam improvements ----
-test('isUsbWebcamOption identifies external USB webcams and rejects built-in, IR and virtual cameras', () => {
+test('isUsbWebcamOption identifies external USB webcams (incl. DJI Osmo / iPad external) and rejects built-in, IR and virtual cameras', () => {
   const sb = makeSandbox();
   sb.UVC_ID = 'pb-uvc-webcam'; sb.IS_ANDROID_APP = false; sb.window = {};
+  sb.nativeCam = { devicesById: { 'ipad-ext': { isExternal: true }, 'ipad-front': { isExternal: false } } };
   vm.runInContext(pageFunction('isUsbWebcamOption'), sb);
   const check = (id, label) => sb.get('isUsbWebcamOption')(id, label);
-  for (const ext of ['Logitech BRIO', 'HD Pro Webcam C920', 'Razer Kiyo Pro', 'Elgato Facecam', 'OBSBOT Tiny 2', 'Anker PowerConf C200', 'USB Video Capture HDMI']) {
+  for (const ext of ['Logitech BRIO', 'HD Pro Webcam C920', 'Razer Kiyo Pro', 'Elgato Facecam', 'OBSBOT Tiny 2', 'Anker PowerConf C200', 'USB Video Capture HDMI', 'Osmo Pocket 3', 'DJI Osmo Pocket 3', 'DJI Osmo Action 4', 'Pocket 3 (2ca3:0023)']) {
     assert.equal(check('dev-1', ext), true, 'expected external webcam: ' + ext);
   }
+  assert.equal(check('ipad-ext', 'Unlisted External Cam'), true, 'iPad native external UVC camera is always external');
+  assert.equal(check('ipad-front', 'Front Camera'), false, 'iPad front camera stays built-in');
   for (const skip of ['Microsoft Camera Front', 'Surface Camera Rear', 'Microsoft IR Camera Front', 'Windows Hello IR', 'Integrated Webcam', 'FaceTime HD Camera', 'OBS Virtual Camera']) {
     assert.equal(check('dev-2', skip), false, 'expected built-in/IR/virtual rejected: ' + skip);
   }
+});
+test('usbActionCamWhy gives plain-language hints for DJI Osmo and Insta360 USB modes on Android', () => {
+  const sb = makeSandbox();
+  vm.runInContext(pageFunction('usbActionCamWhy'), sb);
+  const why = j => sb.get('usbActionCamWhy')(j);
+  const djiStorage = why({ usb: [{ vid: 0x2ca3, pid: 0x0020, name: 'Osmo Pocket 3', ifaces: [8], perm: false }] });
+  assert(djiStorage.includes('USB drive (storage) mode') && djiStorage.includes('tap Webcam'), 'DJI storage hint: ' + djiStorage);
+  const djiPtp = why({ usb: [{ vid: 0x2ca3, pid: 0x0020, name: 'Osmo Pocket 3', ifaces: [6], perm: false }] });
+  assert(djiPtp.includes('picture-transfer mode') && djiPtp.includes('tap Webcam'), 'DJI PTP hint: ' + djiPtp);
+  const djiUvc = why({ native: false, usb: [{ vid: 0x2ca3, pid: 0x0023, name: 'Osmo Pocket 3', ifaces: [14], perm: true }] });
+  assert(djiUvc.includes('plugged in as a webcam') && djiUvc.includes('powered USB-C hub'), 'DJI UVC hint: ' + djiUvc);
+  const djiNative = why({ native: true, usb: [{ vid: 0x2ca3, pid: 0x0023, name: 'Osmo Pocket 3', ifaces: [14], perm: true }] });
+  assert(djiNative.includes('already offering it'), 'DJI native UVC hint: ' + djiNative);
+  const instaStorage = why({ usb: [{ vid: 0x2e1a, pid: 0x0001, name: 'Insta360 Ace Pro', ifaces: [8], perm: false }] });
+  assert(instaStorage.includes('Settings > USB mode'), 'Insta360 hint preserved: ' + instaStorage);
+  assert.equal(why({ usb: [{ vid: 0x046d, pid: 0x085e, name: 'Logitech BRIO', ifaces: [14], perm: true }] }), '');
+});
+test('isFrontCamera defaults to mirrored (true) for iPad external UVC cameras like DJI Osmo Pocket 3, while keeping back camera un-mirrored', () => {
+  const sb = makeSandbox();
+  sb.hasNativeCamBridge = () => true;
+  sb.nativeCam = {
+    active: true,
+    meta: { isFront: false, isExternal: true, position: 'external' },
+    devicesById: {
+      'dji-ext': { isFront: false, isExternal: true, position: 'external', label: 'Osmo Pocket 3' },
+      'ipad-back': { isFront: false, isExternal: false, position: 'back', label: 'Back Camera' },
+      'ipad-front': { isFront: true, isExternal: false, position: 'front', label: 'Front Camera' },
+    },
+  };
+  sb.cameraSelect = { selectedIndex: 0, options: [{ text: 'Osmo Pocket 3' }] };
+  vm.runInContext(pageFunction('isFrontCamera'), sb);
+  sb.currentDeviceId = 'dji-ext';
+  assert.equal(sb.get('isFrontCamera()'), true, 'external Osmo Pocket 3 mirrors by default');
+  sb.currentDeviceId = 'ipad-back';
+  assert.equal(sb.get('isFrontCamera()'), false, 'iPad back camera stays un-mirrored');
+  sb.currentDeviceId = 'ipad-front';
+  assert.equal(sb.get('isFrontCamera()'), true, 'iPad front camera mirrors by default');
+});
+await testAsync('handleNativeCamEvent auto-switches to hot-plugged DJI Osmo Pocket 3 on iPad, recovers from disconnects, and never interrupts mid-capture', async () => {
+  const sb = makeSandbox();
+  const opened = [], toasts = [];
+  let lostCalls = 0, layoutSyncs = 0;
+  sb.hasNativeCamBridge = () => true;
+  sb.nativeCam = { active: true, deviceId: 'ipad-front' };
+  sb.currentDeviceId = 'ipad-front';
+  sb.USB_CAM_ID = 'usb-remote';
+  sb.camSleeping = false;
+  sb.reconnectTimer = null;
+  sb.streamActive = true;
+  sb.state = 'ready';
+  sb.cameraSelect = { value: 'ipad-front', options: [{ value: 'ipad-front' }] };
+  sb.enumerateCameras = async () => {
+    sb.cameraSelect.options = [{ value: 'ipad-front' }, { value: 'dji-ext' }];
+  };
+  sb.initCamera = async (id) => { opened.push(id); sb.currentDeviceId = id; sb.nativeCam.active = true; sb.nativeCam.deviceId = id; sb.streamActive = true; return true; };
+  sb.showToast = (m) => toasts.push(m);
+  sb.syncNativeCamLayout = () => { layoutSyncs++; };
+  sb.cameraLost = () => { lostCalls++; sb.streamActive = false; sb.reconnectTimer = 123; };
+  vm.runInContext(pageFunction('handleNativeCamEvent'), sb);
+
+  // 1. Hot-plug DJI Osmo Pocket 3 while idle on iPad Front Camera -> switches automatically
+  await sb.get('handleNativeCamEvent')({ type: 'connected', id: 'dji-ext', label: 'Osmo Pocket 3', isExternal: true });
+  assert.deepEqual(opened, ['dji-ext'], 'auto-switched to Osmo Pocket 3');
+  assert(toasts.some(t => t.includes('Osmo Pocket 3')), 'showed switch toast');
+
+  // 2. Unplug Osmo Pocket 3 mid-event -> hides native layer and triggers cameraLost()
+  await sb.get('handleNativeCamEvent')({ type: 'disconnected', id: 'dji-ext', label: 'Osmo Pocket 3', isExternal: true });
+  assert.equal(sb.nativeCam.active, false);
+  assert.equal(lostCalls, 1, 'triggered cameraLost on active external disconnect');
+  assert.equal(layoutSyncs, 1, 'synced native layout on disconnect');
+
+  // 3. Replug Osmo Pocket 3 while reconnecting -> cancels timer and reopens immediately
+  await sb.get('handleNativeCamEvent')({ type: 'connected', id: 'dji-ext', label: 'Osmo Pocket 3', isExternal: true });
+  assert.deepEqual(opened, ['dji-ext', 'dji-ext'], 'reconnected immediately on replug');
+  assert.equal(sb.reconnectTimer, null, 'cleared reconnectTimer on reconnect');
+
+  // 4. Plugging in another external camera mid-capture must NOT interrupt active shots
+  sb.state = 'capturing';
+  sb.enumerateCameras = async () => { sb.cameraSelect.options = [{ value: 'ipad-front' }, { value: 'dji-ext' }, { value: 'dji-2' }]; };
+  await sb.get('handleNativeCamEvent')({ type: 'connected', id: 'dji-2', label: 'Osmo Pocket 3 #2', isExternal: true });
+  assert.equal(opened.length, 2, 'did not switch cameras mid-capture');
+});
+test('iOS NativeCameraBridge & ViewController include retained external UVC discovery, hot-plug events, format picker, orientation & mirror guards', () => {
+  const bridgeSwift = readFileSync(join(ROOT, 'ios', 'photobooth4u', 'NativeCameraBridge.swift'), 'utf8');
+  const vcSwift = readFileSync(join(ROOT, 'ios', 'photobooth4u', 'ViewController.swift'), 'utf8');
+  for (const needle of [
+    'private var discoverySession: AVCaptureDevice.DiscoverySession?',
+    '.AVCaptureDeviceWasConnected',
+    '.AVCaptureDeviceWasDisconnected',
+    'private func pickExternalFormat(for dev: AVCaptureDevice, presetName: String)',
+    'effectivePreviewDimensions(rawW: rawW, rawH: rawH, isExternal: ext)',
+    'private func applyPreviewMirror(_ mirror: Bool)',
+    'previewLayer.bounds = bounds',
+  ]) assert(bridgeSwift.includes(needle), 'NativeCameraBridge.swift missing: ' + needle);
+  assert(vcSwift.includes('NativeCameraBridge.shared.onDeviceEvent'), 'ViewController.swift missing onDeviceEvent bridge');
+  assert(vcSwift.includes('window.__pbCamEvent'), 'ViewController.swift missing window.__pbCamEvent dispatch');
 });
 test('CAM_Q.webcam + webcamMarkShot marks webcam shots for clean-up and print sharpen while keeping camQProfile null', () => {
   const sb = makeSandbox();

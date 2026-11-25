@@ -116,7 +116,7 @@ test('booth page: the part is included and the Wi-Fi/USB photo job uses it', () 
   const html = assemble().html;
   assert.ok(html.includes('G._epsonL8050 = {'), 'part file pasted into the page');
   assert.ok(/window\._epsonL8050\.applies\(p, paper, wo, cv\) \? window\._epsonL8050\.bleedPage\(cv\)/.test(html), 'ippRun hook');
-  assert.ok(/!IOS_APP && window\._epsonL8050/.test(html), 'iPad app left alone');
+  assert.ok(/window\._epsonL8050 && window\._epsonL8050\.applies\(p, paper, wo, cv\) \? window\._epsonL8050\.bleedPage\(cv\) : cv/.test(html), 'Android & iPad IPP 4x6 jobs apply bleedPage');
 });
 
 // A client's Xiaomi Pad 5 over Wi-Fi printed an L8050 with banding lines and a white border (plain paper, standard quality, Borderless
@@ -261,7 +261,10 @@ test('L8050 USB/Wi-Fi ESC/P-R: L3210 720/1440dpi beta raster blocked, stale rnor
   const newApk = { __PBNet: { supportsL8050HiRes: () => true } };
   const oldApk = { __PBNet: {} };
   assert.equal(mkDpiFn({ ios: false, win: oldApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 0, 'old APK stays at 300 dpi (returns 0)');
-  assert.equal(mkDpiFn({ ios: true, win: newApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 0, 'iOS stays untouched');
+  assert.equal(mkDpiFn({ ios: true, win: oldApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 0, 'old IPA without supportsL8050HiRes stays at 300 dpi');
+  assert.equal(mkDpiFn({ ios: true, win: newApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 600, 'iPad IPP High 4x6 gets 600 dpi when supportsL8050HiRes is true');
+  assert.equal(mkDpiFn({ ios: true, win: newApk, printer: { ip: '192.168.223.1', ipp: false, escpr: true, lpd: true, epsonModel: 'L8050', name: 'EPSON L8050 Series' }, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 360, 'iPad L8050 LPD :515 default high renders at 1:1 native 360 dpi');
+  assert.equal(mkDpiFn({ ios: true, win: newApk, printer: { ip: '192.168.223.1', ipp: false, escpr: true, lpd: true, epsonModel: 'L8050', name: 'EPSON L8050 Series' }, wo: { quality: 'high720' } }).l8050DpiFor(p4x6), 720, 'iPad L8050 LPD :515 high720 4x6 gets 720 dpi');
   assert.equal(mkDpiFn({ ios: false, win: newApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 600, 'L8050 IPP High 4x6 gets 600 dpi');
   assert.equal(mkDpiFn({ ios: false, win: newApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'normal' } }).l8050DpiFor(p4x6), 0, 'L8050 IPP Normal stays 300 dpi');
   assert.equal(mkDpiFn({ ios: false, win: newApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'high720' } }).l8050DpiFor(p4x6), 720, 'L8050 Wi-Fi high720 4x6 gets 720 dpi');
@@ -507,6 +510,36 @@ test('Wi-Fi Direct hardcoded connections: Brother 192.168.118.1, Epson/HP 192.16
   assert.ok(html.includes('data-ip="192.168.223.1"') && html.includes('data-ip="192.168.0.1"') && html.includes('data-ip="192.168.118.1"'), 'booth.html contains Wi-Fi Direct quick connect chips');
   assert.ok(html.includes('id="wdWfdCanonBtn"') && html.includes('id="wdWfdBrotherBtn"'), 'Diagnostic panel has dedicated Canon and Brother Wi-Fi Direct buttons');
   assert.ok(html.includes("detectedBrand = 'Brother'") && html.includes("detectedBrand = 'Epson / HP'") && !html.includes("detectedBrand = 'Canon'"), 'refreshWdNet auto-detects Brother & Epson/HP without hijacking 192.168.0.x routers');
+});
+
+test('iPad Epson L8050 Wi-Fi Direct LPD :515, ESC/P-R 360/720 dpi, IPP bleed & 600 dpi JFIF port', () => {
+  const html = assemble().html;
+  const escSwift = readFileSync(join(ROOT, 'ios', 'photobooth4u', 'EscprLpdPrint.swift'), 'utf8');
+  const vcSwift = readFileSync(join(ROOT, 'ios', 'photobooth4u', 'ViewController.swift'), 'utf8');
+  const plist = readFileSync(join(ROOT, 'ios', 'photobooth4u', 'Info.plist'), 'utf8');
+  const pbx = readFileSync(join(ROOT, 'ios', 'photobooth4u.xcodeproj', 'project.pbxproj'), 'utf8');
+
+  // 1. Swift ESC/P-R streaming & LPD :515 engine parity
+  assert.ok(/static func streamWithConfig\(/.test(escSwift), 'EscprJob.streamWithConfig present in Swift');
+  assert.ok(/private static func packBitsInto\(/.test(escSwift), 'zero-allocation packBitsInto present in Swift');
+  assert.ok(/var sendSetm: Bool = false/.test(escSwift), 'Swift EscprJob.Config defaults sendSetm=false');
+  assert.ok(/\[media, quality, cfg\.mono \? 1 : 0, 0, 0, 0, 0x00, 0x00, 0x00\]/.test(escSwift), 'Swift EscprJob always sets setq[6]=0x00 (24-bit RGB dsnd)');
+  assert.ok(/ascii\("seti"\)/.test(escSwift) && /ascii\("chku"\)/.test(escSwift), 'Swift EscprJob emits seti + chku borderless handshake');
+  assert.ok(/probePorts\(ip:/.test(escSwift) && /snmpQueryModel\(ip:/.test(escSwift) && /httpProbeModel\(ip:/.test(escSwift), 'Swift PrinterProbe checks ports, SNMP :161, and HTTP :80');
+  assert.ok(/static func netLpdStream\(/.test(escSwift) && /static func netRawStream\(/.test(escSwift), 'Swift EscprNet supports LPD :515 and Raw :9100');
+  assert.ok(/addQ\("PASSTHRU"\)/.test(escSwift) && /addQ\("LPT1"\)/.test(escSwift) && /l\\\(dfName\)\\nU\\\(dfName\)\\n/.test(escSwift), 'Swift LPD uses binary passthrough l flag and PASSTHRU/LPT1 queues');
+
+  // 2. ViewController.swift wiring, dynamic IPP DPI, 3mm fallback, and Info.plist / pbxproj registration
+  assert.ok(/supportsL8050HiRes:\s*function\(\)\s*\{\s*return true;\s*\}/.test(vcSwift), 'iOS __PBNet exposes supportsL8050HiRes()');
+  assert.ok(/userContent\.add\(self, name: "pbPrintEscpr"\)/.test(vcSwift) && /private func sendEscprPrint\(/.test(vcSwift), 'ViewController handles pbPrintEscpr');
+  assert.ok(/private func probeNetworkPrinter\(/.test(vcSwift) && /private func applyEscprOrRawProbe\(/.test(vcSwift), 'addTcpPrinterByIp probes IPP/RAW/LPD');
+  assert.ok(/static func jpegAtDpi\(_ d: Data, dpi: Int = 300\)/.test(vcSwift) && /\(true, (?:true|false), "fill", 300\)/.test(vcSwift) && /marginMm100: at\.marginMm100/.test(vcSwift), 'IppNet writes dynamic JFIF DPI and falls back to 3mm margins');
+  assert.ok(plist.includes('<string>_printer._tcp</string>'), 'Info.plist includes _printer._tcp Bonjour service');
+  assert.ok(pbx.includes('EscprLpdPrint.swift in Sources') && pbx.includes('path = EscprLpdPrint.swift'), 'EscprLpdPrint.swift registered in Xcode project');
+
+  // 3. booth.html iPad Wi-Fi Direct quick connect and escpr upgrade path
+  assert.ok(html.includes('Connect Epson L8050 · Wi-Fi Direct (192.168.223.1)'), 'iPad printer list includes 1-tap L8050 Wi-Fi Direct button');
+  assert.ok(/\(x\.ipp \|\| x\.escpr\)/.test(html), 'iosEnsureIppKind & fixIpp recognize both IPP and ESC/P-R (LPD :515)');
 });
 
 console.log(passed + ' passed' + (process.exitCode ? ', some FAILED' : ''));

@@ -1,5 +1,5 @@
       // ---- Webcam Pro: photo clean-up, multi-frame low-light stacking, live FPS warning, and hardware UVC controls ----
-      // Works with any standard USB / built-in webcam (Logitech, Razer, Elgato, OBSBOT, Insta360, Anker, Surface, etc.).
+      // Works with any standard USB / built-in webcam (Logitech, Razer, Elgato, OBSBOT, Insta360, DJI Osmo, Anker, Surface, etc.).
       // Registers CAM_Q.webcam with is: () => false so DSLR brand detection (camQProfile) stays untouched; webcam shots are
       // tagged explicitly via webcamMarkShot(canvas) when clean-up is enabled.
       CAM_Q.webcam = camQMakeProfile({

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Offline Laptop Print Station &amp; Setup Tools Guide · photobooth4u</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500..700;1,500..700&family=Manrope:wght@400..800&display=swap">
+<style>
+  :root{--bg:#f6f1ea;--card:#fffdf9;--ink:#1f1a1d;--dim:#5d555b;--line:#e4ddd3;--red:#c8402a;--red-soft:#fbeee9;--ok:#1f6f62;--ok-soft:#e6f4f1;--dark:#1f1a1d;--warn:#fff7e0;--warn-b:#edd38c;}
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif}
+  a{color:var(--red)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 16px}
+  header.hero{background:var(--dark);color:#f6f1ea;padding:44px 0 42px}
+  .brand{display:flex;align-items:center;gap:10px;font:600 22px 'Fraunces',Georgia,serif;color:#f6f1ea;text-decoration:none}
+  .brand .mark{display:grid;grid-template-columns:repeat(2,9px);gap:3px}
+  .brand .mark i{width:9px;height:9px;border-radius:2px;background:#f6f1ea}
+  .brand .mark i:nth-child(2){background:var(--red)}
+  .brand .badge{background:var(--red);color:#fff;font:800 12px 'Manrope',sans-serif;padding:2px 6px;border-radius:6px;transform:translateY(-6px)}
+  .eyebrow{font-size:12.5px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:#e8715a;margin:26px 0 8px}
+  h1{font:600 clamp(32px,6vw,54px)/1.05 'Fraunces',Georgia,serif;margin:0 0 14px}
+  h1 em{color:#e8715a;font-style:italic}
+  .lead{color:#d9cfc6;font-size:17.5px;max-width:670px;margin:0 0 22px}
+  .hero-btns{display:flex;flex-wrap:wrap;gap:10px}
+  .btn{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:9px 17px;border-radius:999px;font:800 14px 'Manrope',sans-serif;text-decoration:none;border:0;cursor:pointer}
+  .btn.primary{background:var(--red);color:#fff}
+  .btn.ghost{background:transparent;border:1.5px solid #5a5056;color:#f6f1ea}
+  .btn.light{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
+  .btn.light:hover{border-color:var(--red);color:var(--red)}
+  nav.toc{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:-22px 0 10px;position:relative}
+  nav.toc a{display:block;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;text-decoration:none;color:var(--ink);box-shadow:0 8px 20px rgba(70,45,25,.08)}
+  nav.toc b{display:block;color:var(--red);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase}
+  nav.toc span{font-weight:700;font-size:14.5px}
+  section.part{padding:34px 0 6px;scroll-margin-top:14px}
+  section.part h2{font:600 clamp(25px,4vw,33px)/1.15 'Fraunces',Georgia,serif;margin:0 0 6px}
+  .kicker{font-size:12px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--red);margin:0 0 4px}
+  .why{color:var(--dim);margin:0 0 16px}
+  .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
+  .flow .node{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;position:relative}
+  .flow .node b{display:block;font-size:15px;margin-bottom:3px}
+  .flow .node small{display:block;color:var(--dim);font-size:13px;line-height:1.45}
+  .flow .pill{display:inline-block;margin-bottom:6px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;background:var(--red-soft);color:var(--red)}
+  .flow .pill.ok{background:var(--ok-soft);color:var(--ok)}
+  .mode-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+  .tab-btn{min-height:42px;padding:9px 16px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:800 14px 'Manrope',sans-serif;cursor:pointer}
+  .tab-btn.active{background:var(--dark);border-color:var(--dark);color:#fff}
+  .tab-pane{display:none}
+  .tab-pane.active{display:block}
+  ol.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+  ol.steps li{display:grid;grid-template-columns:40px 1fr;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px 18px}
+  ol.steps .n{width:40px;height:40px;border-radius:50%;background:var(--red);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center}
+  ol.steps .n.ok{background:var(--ok)}
+  ol.steps h3{margin:5px 0 3px;font-size:17px}
+  ol.steps p{margin:0;color:var(--dim)}
+  code{font:600 13.5px ui-monospace,'SF Mono',Menlo,Consolas,monospace;background:#efe7dd;border-radius:6px;padding:1px 6px;color:var(--ink)}
+  .callout{background:var(--red-soft);border:1px solid #f1cfc5;border-radius:16px;padding:15px 18px;margin-top:14px}
+  .callout.ok{background:var(--ok-soft);border-color:#bfe3da}
+  .callout.warn{background:var(--warn);border-color:var(--warn-b)}
+  .callout h3{margin:0 0 4px;font-size:16px}
+  .callout p{margin:0;color:var(--dim)}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:14.5px;margin-top:10px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);background:#f3ece3}
+  tr:last-child td{border-bottom:0}
+  td:first-child{font-weight:700;width:32%}
+  .msgbox{background:var(--dark);color:#f6f1ea;border-radius:16px;padding:16px 18px;margin-top:12px}
+  .msgbox pre{margin:10px 0 0;white-space:pre-wrap;font:13.5px/1.6 'Manrope',system-ui,sans-serif;color:#ebe3d9}
+  .msg-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .tag-ok{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:800;background:var(--ok-soft);color:var(--ok)}
+  footer{margin:40px 0 0;padding:26px 0 44px;border-top:1px solid var(--line);color:var(--dim);font-size:14px}
+  footer .help{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:var(--dark);color:#f6f1ea;border-radius:16px;padding:18px 20px;margin-bottom:16px}
+  footer .help h3{margin:0;font:600 20px 'Fraunces',Georgia,serif}
+  footer .help p{margin:2px 0 0;color:#d9cfc6}
+  @media(max-width:780px){nav.toc,.flow{grid-template-columns:1fr 1fr}}
+  @media(max-width:560px){nav.toc,.flow{grid-template-columns:1fr}ol.steps li{grid-template-columns:34px 1fr;padding:14px}ol.steps .n{width:34px;height:34px;font-size:14px}td:first-child{width:auto}}
+  @media print{header.hero{background:none;color:var(--ink);padding:20px 0}.lead{color:var(--dim)}.hero-btns,nav.toc,.mode-tabs,.btn{display:none}.tab-pane{display:block!important;margin-bottom:18px}section.part{break-inside:avoid}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <a class="brand" href="/"><span class="mark"><i></i><i></i><i></i><i></i></span>photobooth<span class="badge">4u</span></a>
+    <p class="eyebrow">iPad + DSLR + USB Printer Guide</p>
+    <h1>Offline Laptop <em>Print Station</em></h1>
+    <p class="lead">Print silently over local Wi-Fi from your native <b>iPad</b> or <b>Android</b> booth app (including setups using a <b>Canon / Nikon / Sony DSLR</b> over USB) straight to a <b>Mitsubishi, DNP, HiTi, Canon, or Epson</b> printer plugged into a Windows or Mac laptop &mdash; with zero internet at the venue and zero pop-up print dialogs.</p>
+    <div class="hero-btns">
+      <a class="btn primary" href="/downloads/">Get Desktop 1.1.111+ or Print Helper 1.1.24+</a>
+      <a class="btn ghost" href="/how-to-print-mitsubishi/">Mitsubishi D80 / D90 Driver Guide</a>
+      <button type="button" class="btn ghost" onclick="window.print()">Print / Save PDF</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="toc" aria-label="Guide sections">
+    <a href="#how"><b>Overview</b><span>How it connects offline</span></a>
+    <a href="#choose"><b>Step 1 · Laptop</b><span>Built-in App vs Helper</span></a>
+    <a href="#ipad"><b>Step 2 · iPad + DSLR</b><span>Camera &amp; Wi-Fi print pairing</span></a>
+    <a href="#setup-tools"><b>Setup Menu</b><span>Tools in ⋯ &amp; speed tips</span></a>
+  </nav>
+
+  <section class="part" id="how">
+    <p class="kicker">How it works</p>
+    <h2>Separate USB camera + Wi-Fi print channels (zero conflict)</h2>
+    <p class="why">On the native iPad app, your USB DSLR talks straight to the iPad over USB, while print jobs travel wirelessly over local Wi-Fi to the laptop plugged into your dye-sub printer.</p>
+    <div class="flow">
+      <div class="node"><span class="pill">USB Cable</span><b>1. Canon / Nikon / Sony DSLR</b><small>Plugged into the iPad via USB-C or powered Lightning USB 3 adapter (M/Av mode, Auto Power Off disabled).</small></div>
+      <div class="node"><span class="pill">Local 17321</span><b>2. photobooth4u iPad App</b><small>Captures photos from the DSLR, applies your frame, and converts prints to fast lightweight JPEGs.</small></div>
+      <div class="node"><span class="pill ok">Booth Wi-Fi · PIN</span><b>3. Laptop on Port 47777</b><small>Receives jobs over your router or Windows Mobile Hotspot authenticated with a 6-digit PIN.</small></div>
+      <div class="node"><span class="pill ok">USB Printer</span><b>4. Mitsubishi / DNP / HiTi</b><small>Prints 4&times;6 or 2&times;6 cut strips silently through its Windows or Mac driver with zero pop-ups.</small></div>
+    </div>
+  </section>
+
+  <section class="part" id="choose">
+    <p class="kicker">Step 1 &middot; Pick your laptop Print Station method</p>
+    <h2>Where to click on Admin &amp; the Laptop</h2>
+    <p class="why">Choose <b>Option A</b> if you want Print Station built straight inside the photobooth4u Desktop App and gated per client code in Admin, or <b>Option B</b> if you want the free standalone Print Helper on a second laptop (uses 0 extra device slots).</p>
+
+    <table>
+      <tr><th></th><th>Option A: Built-in Laptop App (Desktop 1.1.111+)</th><th>Option B: Standalone Print Helper (v1.1.24+)</th></tr>
+      <tr><td>Who can see it</td><td><b>Only codes you turn ON in Admin</b> (off by default for regular clients)</td><td>Any laptop running the downloaded Print Helper</td></tr>
+      <tr><td>Where you open it</td><td>Inside photobooth4u Desktop App: <b>Setup &rarr; ⋯ &rarr; Offline Print Station</b> (or <b>Photo Session &rarr; Tools &rarr; Print Station</b>)</td><td>Double-click <b>Open Laptop Print Station.bat</b> (Windows) or <b>.command</b> (Mac)</td></tr>
+      <tr><td>License slots used</td><td>Uses 1 Desktop App activation on that code</td><td><b>0 extra license slots</b></td></tr>
+      <tr><td>Dashboard tools</td><td>Wi-Fi IP, 6-digit PIN, Copy IP, New PIN, <b>Turn On Booth Hotspot</b>, Driver Preferences, <b>Test 4&times;6 / Test 2&times;6 Cut</b>, live job table</td><td>Browser dashboard at <code>http://127.0.0.1:17321/station</code> with IP, PIN, New PIN, Driver Preferences, <b>Test 4&times;6 / Test 2×6 Cut</b>, live job table</td></tr>
+    </table>
+
+    <div class="mode-tabs" role="tablist">
+      <button type="button" class="tab-btn active" data-tab="optA">Option A · Built-in Desktop App (Admin-gated)</button>
+      <button type="button" class="tab-btn" data-tab="optB">Option B · Standalone Print Helper (0 slots)</button>
+    </div>
+
+    <div class="tab-pane active" id="optA">
+      <ol class="steps">
+        <li><span class="n">1</span><div><h3>Admin: turn on Print Station for the client’s code</h3><p>Open <b>Admin</b> (<code>/admin.html</code>), find the client’s code (or create a new code with <b>Built-in Print Station</b> ticked), and click <b>Turn on Print Station</b>. Without this enabled, the Print Station button stays hidden and port 47777 refuses incoming tablet print connections.</p></div></li>
+        <li><span class="n">2</span><div><h3>Open photobooth4u Desktop App 1.1.111+ on the laptop</h3><p>Plug the <b>Mitsubishi CP-D80DW</b> (or DNP / HiTi) into the laptop via USB with its driver installed. If asked by <b>Windows Firewall</b>, tick both <b>Private</b> and <b>Public</b> and click <b>Allow access</b>.</p></div></li>
+        <li><span class="n">3</span><div><h3>Where to click in the Laptop App</h3><p>Either on Setup tap <b>&ctdot;</b> (bottom right next to Profiles) &rarr; <b>Offline Print Station (iPad / Tablet)</b>, OR in Photo Session tap <b>Tools &rarr; Print Station</b>. Camera preview pauses automatically while Print Station is open so the laptop stays cool and fast.</p></div></li>
+        <li><span class="n ok">4</span><div><h3>Hotspot, Driver Check &amp; Test Print</h3><p>If you have no router, click <b>Turn On Booth Hotspot</b> right in the Print Station header. Then click <b>Driver Preferences</b> to verify your loaded roll size, and click <b>Test 4&times;6</b> or <b>Test 2&times;6 Cut</b> to test the D80 before pairing the iPad. Note the green <b>Laptop Wi-Fi Address</b> and yellow <b>6-Digit PIN</b>.</p></div></li>
+      </ol>
+    </div>
+
+    <div class="tab-pane" id="optB">
+      <ol class="steps">
+        <li><span class="n">1</span><div><h3>Download &amp; extract Print Helper 1.1.24+</h3><p>Go to <a href="/downloads/#helper-builds">/downloads/#helper-builds</a>, download the Windows (or Mac) Print Helper zip, and click <b>Extract All</b> into a folder (for example Desktop). Install your printer driver first (e.g. Mitsubishi CP-D80DW).</p></div></li>
+        <li><span class="n">2</span><div><h3>Connect laptop hotspot or booth router</h3><p>On Windows, open <b>Settings &rarr; Network &amp; internet &rarr; Mobile hotspot</b> and turn it on, or join a mini travel Wi-Fi router (internet is not needed).</p></div></li>
+        <li><span class="n">3</span><div><h3>Double-click <code>Open Laptop Print Station.bat</code></h3><p>This launches Print Helper and opens the clickable dashboard in Chrome/Edge at <code>http://127.0.0.1:17321/station</code>. Allow <b>Windows Firewall (Private &amp; Public)</b> if prompted. <i>(Inside the black Print Helper window, you can also press <b>O + Enter</b> anytime to reopen the page, <b>N + Enter</b> for a new PIN, or <b>R + Enter</b> to refresh printers.)</i></p></div></li>
+        <li><span class="n ok">4</span><div><h3>Click Driver Preferences &amp; Test Print</h3><p>Next to your Mitsubishi printer, click <b>Driver Preferences</b> to confirm 4&times;6 or 2&times;6 cut, then click <b>Test 4&times;6</b> or <b>Test 2&times;6 Cut</b>. Keep both windows open during the event and turn off Windows sleep on AC power.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="part" id="ipad">
+    <p class="kicker">Step 2 &middot; Update once, then connect offline</p>
+    <h2>Where to tap on the iPad App (+ Canon 550D DSLR)</h2>
+    <ol class="steps">
+      <li><span class="n">0</span><div><h3>One-time iPad OTA update (needs internet once)</h3><p>Open the native <b>photobooth4u</b> iPad app while online &rarr; tap <b>Setup &rarr; Check for updates</b> so it downloads the latest booth bundle over the air (no Sideloadly reinstall needed).</p></div></li>
+      <li><span class="n">1</span><div><h3>Join the laptop’s Wi-Fi or booth router on the iPad</h3><p>Open iPad <b>Settings &rarr; Wi-Fi</b> and connect to the laptop’s Mobile Hotspot or booth router. If iPadOS warns <i>“No Internet Connection”</i>, tap <b>Keep Trying Wi-Fi / Use Without Internet</b>.</p></div></li>
+      <li><span class="n">2</span><div><h3>Connect your DSLR camera (if using Canon 550D / EOS)</h3><p>Plug the Canon 550D into the iPad with a USB-C hub or Apple Lightning-to-USB 3 Camera Adapter (powered). Set the dial to <b>M</b> or <b>Av</b>, set <b>Auto Power Off &rarr; Disable</b> in camera menu, and select it in <b>Setup &rarr; Camera</b>. Live view and shutter run inside the iPad over USB with zero interference to Wi-Fi printing.</p></div></li>
+      <li><span class="n">3</span><div><h3>Pair Laptop Print Station in <b>Setup &rarr; Printer</b></h3><p>Pick your paper size (<b>4&times;6</b> or <b>2&times;6 strips</b>), switch ON <b>Laptop Print Station (Wi-Fi &middot; Offline USB printer)</b>, tap <b>Find Laptop on Wi-Fi</b> (or type the IP shown on the laptop), type the <b>6-Digit PIN</b>, and tap <b>Connect</b>.</p></div></li>
+      <li><span class="n ok">4</span><div><h3>Pick Printer 1 &amp; turn on Auto-print</h3><p>Under <b>1 · Printer 1</b>, pick your Mitsubishi printer (e.g. <code>Mitsubishi CP-D80DW</code> or <code>Mitsubishi 2x6 cut</code>). Turn on <b>Send a print automatically after each session</b> once your first test print looks right.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="part" id="setup-tools">
+    <p class="kicker">Setup &ctdot; Menu &amp; Performance</p>
+    <h2>Workspace tools in Setup &ctdot; &amp; built-in efficiency upgrades</h2>
+    <div class="callout ok">
+      <h3>What appears inside Setup’s bottom <b>&ctdot;</b> menu (Desktop 1.1.111+)</h3>
+      <p>Right beside <b>Profiles</b> and <b>Start photo session &rarr;</b>, tapping <b>&ctdot;</b> now includes quick access to your active booth workspace tools (<b>Offline Print Station</b> when enabled by Admin, <b>Photographer desk</b>, <b>360 desk</b>, <b>Print requests</b>, <b>Arrange &amp; Print</b>, <b>Video guestbook</b>, <b>All photos</b>, <b>Backup folder</b>, and <b>Booth Wi-Fi</b>) &mdash; while keeping <b>Camera</b>, <b>Printer</b>, and <b>Resize UI</b> uncluttered inside Photo Session.</p>
+    </div>
+    <table>
+      <tr><th>Efficiency optimization</th><th>Why it is faster</th></tr>
+      <tr><td>Lightweight photo encoding (JPEG 95%)</td><td>Photo print sheets transfer over local Wi-Fi at ~0.6&ndash;1.2 MB instead of 10&ndash;18 MB raw PNGs (~10&times; faster per session, while receipt rolls stay lossless PNG).</td></tr>
+      <tr><td>Cached 60 s printer status</td><td>Avoids re-scanning Windows PowerShell printer queues before every single print once your printer is verified.</td></tr>
+      <tr><td>Instant Desktop IPC job updates</td><td>When using built-in Print Station in the Laptop App, incoming iPad prints appear live immediately without polling, and laptop camera preview pauses to free CPU &amp; USB.</td></tr>
+    </table>
+
+    <div class="msgbox">
+      <div class="msg-head">
+        <b>Ready-to-Send Client Instructions (Taglish)</b>
+        <button type="button" class="btn light" id="copyClientMsg">Copy Taglish message</button>
+      </div>
+      <pre id="clientMsgTxt">Hi Sir! Ito na po yung guide para sa Offline Laptop Print Station (iPad App + DSLR &rarr; Windows Laptop + Mitsubishi D80, kahit walang internet sa venue):
+
+1. ONE-TIME UPDATE (kailangan muna may internet):
+&bull; Sa Windows Laptop: i-download at i-extract ang Print Helper v1.1.24 sa https://photobooth4u.netlify.app/downloads/ (or gamitin ang Desktop App 1.1.111+ kung naka-enable ang Print Station sa code mo). Siguraduhing installed ang Mitsubishi D80 driver.
+&bull; Sa iPad app: buksan habang online &rarr; Setup &rarr; Check for updates.
+
+2. SA LAPTOP (sa mismong event, offline):
+&bull; Isaksak ang Mitsubishi D80 via USB. Buksan ang Windows Mobile Hotspot (o router).
+&bull; Kung Print Helper: i-double click ang "Open Laptop Print Station.bat" (i-Allow sa Windows Firewall: Private + Public). Kung Laptop App (kapag enabled sa Admin): i-click ang &ctdot; &rarr; Offline Print Station.
+&bull; Sa dashboard: pwede mo i-click ang Driver Preferences at Test 4x6 / Test 2x6 Cut para ma-test agad si D80, at makikita mo yung Laptop IP + 6-Digit PIN.
+
+3. SA IPAD APP (+ Canon 550D DSLR):
+&bull; Ikonekta ang Wi-Fi ng iPad sa hotspot/router ng laptop (piliin Keep Trying Wi-Fi kung mag-warn na no internet).
+&bull; Isaksak ang Canon 550D via USB adapter sa iPad (M/Av mode, Auto Power Off: Disable) &rarr; piliin sa Setup &rarr; Camera.
+&bull; Punta sa Setup &rarr; Printer &rarr; piliin 4x6 o 2x6 strips &rarr; i-ON ang "Laptop Print Station (Wi-Fi)" &rarr; tap "Find Laptop on Wi-Fi" &rarr; ilagay ang 6-Digit PIN &rarr; Connect &rarr; piliin ang Mitsubishi printer sa Printer 1.
+&bull; Pwede na i-ON ang Auto-print &mdash; lalabas na agad sa D80 bawat shot kahit walang internet!</pre>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="help">
+    <div><h3>Printable Reference &amp; Downloads</h3><p>Save this page or keep it bookmarked for quick booth setup at events.</p></div>
+    <a class="btn primary" href="/downloads/">Downloads Page</a>
+  </div>
+  photobooth4u &middot; <a href="/printers/">All printers</a> &middot; <a href="/how-to-print-mitsubishi/">Mitsubishi guide</a> &middot; <a href="/how-to-ipad/">iPad + DSLR guide</a> &middot; <a href="/how-to-360-arm/">360 Arm guide</a>
+</footer>
+
+<script>
+(function () {
+  var tabs = document.querySelectorAll('.tab-btn[data-tab]');
+  tabs.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var target = btn.dataset.tab;
+      tabs.forEach(function (b) { b.classList.toggle('active', b === btn); });
+      document.querySelectorAll('.tab-pane').forEach(function (p) {
+        p.classList.toggle('active', p.id === target);
+      });
+    });
+  });
+  var copyBtn = document.getElementById('copyClientMsg');
+  var msgPre = document.getElementById('clientMsgTxt');
+  if (copyBtn && msgPre) {
+    copyBtn.addEventListener('click', function () {
+      var txt = msgPre.textContent || '';
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(function () {
+          copyBtn.textContent = 'Copied \u2713';
+          setTimeout(function () { copyBtn.textContent = 'Copy Taglish message'; }, 2200);
+        }).catch(function () { });
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

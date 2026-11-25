@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Laptop + Android / Huawei Tablet Extended Camera &amp; Guest Screen Guide · photobooth4u</title>
+<title>Laptop + Android / Huawei Tablet Bridge Guide (Online &amp; Offline) · photobooth4u</title>
 <style>
   :root {
     --bg: #f6f1ea;
@@ -14,8 +14,7 @@
     --line: #e4ddd3;
     --red: #c8402a;
     --red-soft: #fbeee9;
-    --purple: #7c3aed;
-    --purple-soft: #f3eeff;
+    --red-line: #efc4ba;
     --ok: #1f6f62;
     --ok-soft: #e6f4f1;
     --ok-line: #bfe3da;
@@ -36,13 +35,13 @@
     -webkit-font-smoothing: antialiased;
   }
   a { color: var(--red); font-weight: 600; }
-  .wrap { max-width: 960px; margin: 0 auto; padding: 0 18px; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 18px; }
 
   /* Hero */
   header.hero {
     background: linear-gradient(135deg, #172320 0%, #1f1a1d 60%, #2d2429 100%);
     color: #f6f1ea;
-    padding: 40px 0 48px;
+    padding: 38px 0 48px;
   }
   .brand {
     display: inline-flex;
@@ -66,21 +65,21 @@
   .eyebrow {
     font-size: 12px;
     font-weight: 800;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
     color: #6ee7b7;
-    margin: 24px 0 8px;
+    margin: 22px 0 8px;
   }
   h1 {
-    font: 700 clamp(30px, 5.2vw, 47px)/1.08 Georgia, "Times New Roman", serif;
+    font: 700 clamp(29px, 5vw, 45px)/1.1 Georgia, "Times New Roman", serif;
     letter-spacing: -0.02em;
     margin-bottom: 12px;
   }
   h1 em { color: #f2846e; font-style: italic; }
   .lead {
     color: #ded5cc;
-    font-size: 17px;
-    max-width: 740px;
+    font-size: 16.5px;
+    max-width: 760px;
     margin-bottom: 20px;
   }
   .pills { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -96,12 +95,12 @@
     font-size: 13px;
     font-weight: 600;
   }
-  .pill.ok { background: rgba(31, 111, 98, 0.42); border-color: rgba(110, 231, 183, 0.42); }
+  .pill.ok { background: rgba(31, 111, 98, 0.44); border-color: rgba(110, 231, 183, 0.42); }
 
   /* Quick TOC */
   nav.toc {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 10px;
     margin: -24px 0 18px;
     position: relative;
@@ -126,13 +125,13 @@
   .kicker {
     font-size: 11.5px;
     font-weight: 800;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--ok);
     margin-bottom: 4px;
   }
   h2 {
-    font: 700 clamp(23px, 3.6vw, 31px)/1.18 Georgia, "Times New Roman", serif;
+    font: 700 clamp(22px, 3.5vw, 30px)/1.18 Georgia, "Times New Roman", serif;
     margin-bottom: 8px;
   }
   .why { color: var(--dim); margin-bottom: 14px; }
@@ -146,61 +145,45 @@
     border-radius: 16px;
     padding: 18px 20px;
   }
-  .card h3 { font-size: 17px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card h3 { font-size: 16.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .card p, .card li { color: var(--dim); font-size: 14.5px; }
   .card ul, .card ol { padding-left: 20px; margin-top: 8px; }
   .card li { margin: 5px 0; }
   .card b { color: var(--ink); }
 
+  .panel-ok { background: var(--ok-soft); border: 1px solid var(--ok-line); border-radius: 16px; padding: 17px 20px; }
+  .panel-warm { background: #faf6f0; border: 1px solid var(--line); border-radius: 16px; padding: 17px 20px; }
+  .panel-blue { background: var(--blue-soft); border: 1px solid var(--blue-line); border-radius: 16px; padding: 17px 20px; }
+  .panel-red { background: var(--red-soft); border: 1px solid var(--red-line); border-radius: 16px; padding: 17px 20px; }
+  .panel-ok h3, .panel-warm h3, .panel-blue h3, .panel-red h3 {
+    font-size: 16.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .panel-ok ol, .panel-warm ol, .panel-blue ol, .panel-red ol,
+  .panel-ok ul, .panel-warm ul, .panel-blue ul, .panel-red ul {
+    padding-left: 20px; color: var(--dim); font-size: 14.5px; margin-top: 6px;
+  }
+  .panel-ok li, .panel-warm li, .panel-blue li, .panel-red li { margin: 6px 0; }
+  .panel-ok b, .panel-warm b, .panel-blue b, .panel-red b { color: var(--ink); }
+
   .tag {
     display: inline-block;
     font-size: 11px;
     font-weight: 800;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
     border-radius: 999px;
     padding: 2px 9px;
   }
-  .tag.ok { background: var(--ok-soft); color: var(--ok); }
-  .tag.red { background: var(--red-soft); color: var(--red); }
-  .tag.blue { background: var(--blue-soft); color: var(--blue); }
-  .tag.amber { background: var(--amber-soft); color: var(--amber); }
-
-  /* Visual diagram */
-  .diagram-card {
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 18px;
-    padding: 20px;
-    margin-top: 14px;
-  }
-  .diagram-box {
-    background: #faf6f0;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 18px 16px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
-  .diagram-box h4 { font-size: 16px; margin: 10px 0 4px; }
-  .diagram-box p { font-size: 13.5px; color: var(--dim); max-width: 560px; }
-
-  /* Platform Panels */
-  .os-and { background: var(--ok-soft); border: 1px solid var(--ok-line); border-radius: 16px; padding: 16px 20px; }
-  .os-mac { background: #faf6f0; border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; }
-  .os-and h3, .os-mac h3 { font-size: 16.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .os-and ul, .os-mac ul, .os-and ol, .os-mac ol { padding-left: 20px; color: var(--dim); font-size: 14.5px; }
-  .os-and li, .os-mac li { margin: 6px 0; }
-  .os-and b, .os-mac b { color: var(--ink); }
+  .tag.ok { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok-line); }
+  .tag.red { background: var(--red-soft); color: var(--red); border: 1px solid var(--red-line); }
+  .tag.blue { background: var(--blue-soft); color: var(--blue); border: 1px solid var(--blue-line); }
+  .tag.amber { background: var(--amber-soft); color: var(--amber); border: 1px solid var(--amber-line); }
 
   /* Numbered Steps */
   ol.steps { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
   ol.steps li {
     display: grid;
-    grid-template-columns: 38px 1fr;
+    grid-template-columns: 36px 1fr;
     gap: 14px;
     background: var(--card);
     border: 1px solid var(--line);
@@ -208,8 +191,8 @@
     padding: 15px 18px;
   }
   ol.steps .n {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: var(--ok);
     color: #fff;
@@ -220,11 +203,10 @@
     justify-content: center;
     flex: none;
   }
-  ol.steps h3 { font-size: 16px; margin: 3px 0 4px; }
+  ol.steps h3 { font-size: 16px; margin: 2px 0 4px; }
   ol.steps p { color: var(--dim); font-size: 14.5px; }
   ol.steps b { color: var(--ink); }
 
-  /* Code */
   code {
     font: 600 13px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     background: #efe7dd;
@@ -233,13 +215,13 @@
     color: var(--ink);
   }
 
-  /* App UI Preview Mockup */
+  /* Laptop UI Mockup */
   .ui-mock {
     background: var(--card);
     border: 1.5px solid var(--line);
     border-radius: 18px;
     padding: 18px;
-    margin-top: 12px;
+    margin-top: 14px;
     box-shadow: 0 10px 26px rgba(31, 26, 29, 0.06);
   }
   .ui-slot {
@@ -272,6 +254,18 @@
     font-size: 12px;
     font-weight: 800;
   }
+  .ui-q {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1.5px solid var(--red);
+    background: var(--red-soft);
+    color: var(--red);
+    font: 800 13px system-ui, sans-serif;
+  }
   .ui-badge {
     font-size: 12px;
     font-weight: 700;
@@ -296,8 +290,8 @@
   .ui-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); flex: none; }
   .ui-qr-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
   .ui-qr-box {
-    width: 82px;
-    height: 82px;
+    width: 84px;
+    height: 84px;
     border-radius: 10px;
     border: 1px solid var(--line);
     background: #fff;
@@ -329,6 +323,209 @@
   }
   .ui-btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
 
+  /* Realistic Tablet Screen Mockups */
+  .tablet-shell {
+    background: #1c1a1e;
+    border-radius: 22px;
+    padding: 12px;
+    box-shadow: 0 12px 28px rgba(31, 26, 29, 0.14);
+    margin-top: 12px;
+  }
+  .tablet-screen {
+    background: #f5f1ea;
+    border-radius: 14px;
+    padding: 18px 16px;
+    min-height: 295px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .tablet-screen.dark {
+    background: linear-gradient(160deg, #1b1920 0%, #100f13 100%);
+    color: #fff;
+  }
+  .t-title { font: 800 16px system-ui, sans-serif; color: #1c1a1e; margin-bottom: 5px; }
+  .t-sub { font-size: 12px; color: #6b666c; max-width: 280px; margin-bottom: 11px; line-height: 1.4; }
+  .t-input {
+    width: 82%;
+    max-width: 230px;
+    background: #fff;
+    border: 1px solid #d6cec1;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: #9b959c;
+    text-align: left;
+    margin-bottom: 8px;
+  }
+  .t-btn-gray {
+    background: #e4ddd3;
+    color: #5d555b;
+    border-radius: 8px;
+    padding: 6px 18px;
+    font: 700 12px system-ui, sans-serif;
+    margin-bottom: 10px;
+  }
+  .t-skip-note {
+    font-size: 11px;
+    font-weight: 700;
+    color: #8a5a19;
+    background: #fef7eb;
+    border: 1px dashed #e2b56e;
+    border-radius: 999px;
+    padding: 2px 10px;
+    margin-bottom: 10px;
+  }
+  .t-btn-rove {
+    width: 84%;
+    max-width: 235px;
+    background: #eaf7ef;
+    border: 1px solid #2ea66b;
+    color: #2ea66b;
+    border-radius: 9px;
+    padding: 7px 10px;
+    font: 700 12px system-ui, sans-serif;
+    margin-bottom: 8px;
+  }
+  .t-btn-bridge {
+    width: 84%;
+    max-width: 235px;
+    background: #fdeeeb;
+    border: 2px solid #c93d27;
+    color: #c93d27;
+    border-radius: 9px;
+    padding: 8px 10px;
+    font: 800 12.5px system-ui, sans-serif;
+    box-shadow: 0 0 0 4px rgba(201, 61, 39, 0.16);
+    position: relative;
+  }
+  .tap-badge {
+    display: inline-block;
+    margin-left: 6px;
+    background: #c93d27;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: 999px;
+    vertical-align: middle;
+  }
+
+  /* Android Operator Menu AlertDialog Mockup */
+  .t-booth-bg {
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(245, 241, 234, 0.5), rgba(226, 217, 205, 0.55));
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .t-booth-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 800;
+    color: #7c747a;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    padding-bottom: 6px;
+  }
+  .hold-ring {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    background: rgba(201, 61, 39, 0.94);
+    color: #fff;
+    font: 800 10.5px system-ui, sans-serif;
+    padding: 4px 9px;
+    border-radius: 999px;
+    box-shadow: 0 0 0 5px rgba(201, 61, 39, 0.24);
+    z-index: 3;
+  }
+  .android-dialog {
+    position: relative;
+    z-index: 2;
+    width: 92%;
+    max-width: 280px;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+    text-align: left;
+    overflow: hidden;
+    margin-top: 22px;
+    border: 1px solid #e6e0d8;
+  }
+  .android-dialog-head {
+    font: 800 14.5px system-ui, sans-serif;
+    color: #1c1a1e;
+    padding: 13px 15px 8px;
+  }
+  .android-dialog-list { list-style: none; padding: 0 8px 6px; }
+  .android-dialog-list li {
+    font-size: 12.2px;
+    color: #3f3a40;
+    padding: 7px 9px;
+    border-radius: 8px;
+    margin: 2px 0;
+  }
+  .android-dialog-list li.pick {
+    background: #fdeeeb;
+    border: 1.5px solid #c93d27;
+    color: #9e2917;
+    font-weight: 800;
+  }
+  .android-dialog-foot {
+    text-align: right;
+    padding: 6px 14px 10px;
+    font: 700 12px system-ui, sans-serif;
+    color: #6b666c;
+  }
+
+  /* Bridge Pairing & Top-Left Corner Mockup */
+  .t-scan-btn {
+    width: 88%;
+    max-width: 250px;
+    background: #c93d27;
+    color: #fff;
+    border-radius: 999px;
+    padding: 10px 14px;
+    font: 800 13px system-ui, sans-serif;
+    margin: 8px 0 10px;
+    box-shadow: 0 6px 16px rgba(201, 61, 39, 0.28);
+  }
+  .t-mini-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
+  .t-pill {
+    padding: 5px 12px;
+    border-radius: 999px;
+    font: 700 11.5px system-ui, sans-serif;
+    background: #e6dfd3;
+    color: #1c1a1e;
+  }
+  .t-pill.dark { background: #1c1a1e; color: #fff; }
+  .corner-zone {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 68px;
+    height: 68px;
+    border: 2px dashed #f2846e;
+    background: rgba(201, 61, 39, 0.26);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: 800 10px/1.2 system-ui, sans-serif;
+    color: #fff;
+    text-align: center;
+    padding: 4px;
+  }
+
   /* Callouts */
   .callout {
     background: var(--ok-soft);
@@ -340,6 +537,7 @@
   }
   .callout.amber { background: var(--amber-soft); border-color: var(--amber-line); border-left-color: var(--amber); }
   .callout.blue { background: var(--blue-soft); border-color: var(--blue-line); border-left-color: var(--blue); }
+  .callout.red { background: var(--red-soft); border-color: var(--red-line); border-left-color: var(--red); }
   .callout h3 { font-size: 15.5px; margin-bottom: 4px; }
   .callout p { font-size: 14.5px; color: var(--dim); }
   .callout b { color: var(--ink); }
@@ -350,7 +548,7 @@
   th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); background: #f3ece3; }
   tr:last-child td { border-bottom: 0; }
-  td:first-child { font-weight: 700; }
+  td:first-child { font-weight: 700; width: 32%; }
 
   /* Checklist grid */
   .check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 12px; }
@@ -410,14 +608,15 @@
     text-decoration: none;
   }
 
-  @media (max-width: 760px) {
+  @media (max-width: 780px) {
     .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    td:first-child { width: auto; }
   }
   @media print {
     body { background: #fff; font-size: 12.5px; }
     header.hero { background: #1f1a1d !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 24px 0; }
     nav.toc { display: none !important; }
-    section.part, .card, .callout, .ui-mock, tr { break-inside: avoid; }
+    section.part, .card, .callout, .ui-mock, .tablet-shell, tr { break-inside: avoid; }
   }
 </style>
 </head>
@@ -429,239 +628,110 @@
       <span class="mark"><i></i><i></i><i></i><i></i></span>
       photobooth<span class="badge">4u</span>
     </a>
-    <p class="eyebrow">Recommended &amp; Most Secure Setup · Built-In Tablet Bridge</p>
-    <h1>Laptop + <em>Android / Huawei Tablet</em><br>Extended Camera &amp; Guest Screen</h1>
+    <p class="eyebrow">Step-by-Step Setup Guide · Online &amp; Offline Ready</p>
+    <h1>Laptop &rarr; <em>Android / Huawei Tablet</em><br>Guest Screen &amp; Camera Bridge</h1>
     <p class="lead">
-      Turn any <b>Android or Huawei tablet</b> into a secure, private, zero-third-party-app <b>Extended Camera + Interactive Guest Screen</b>
-      for your Windows or Mac laptop — connected directly by <b>USB-C Tethering</b> or private <b>Booth Wi-Fi</b> with one QR scan.
+      Start from your <b>laptop</b> (Desktop App or Online Website + Print Helper), then open Bridge mode on your <b>Android or Huawei tablet</b> —
+      whether the tablet is on the <b>Activation screen</b> or <b>already activated</b> (long-press pop-up menu) — and pair with one QR scan.
     </p>
     <div class="pills">
-      <span class="pill ok">&#128274; 100% Local &amp; Token-Protected (No 3rd-Party Apps)</span>
-      <span class="pill ok">&#10003; Camera + Guest Screen + Audio All-in-One</span>
-      <span class="pill ok">&#10003; No 2nd Rental Code Needed on Tablet</span>
-      <span class="pill">Huawei MatePad · Samsung Tab · Xiaomi / Redmi Pad</span>
+      <span class="pill ok">&#10003; Works Online &amp; 100% Offline</span>
+      <span class="pill ok">&#10003; Desktop v1.1.105+ &amp; Online + Print Helper v1.1.21+</span>
+      <span class="pill ok">&#10003; Android / Huawei APK v1.2.17+</span>
+      <span class="pill">0 Extra License Code Needed on Tablet</span>
     </div>
   </div>
 </header>
 
 <main class="wrap">
   <nav class="toc" aria-label="Guide sections">
-    <a href="#why-secure"><b>Why Android</b><span>Security &amp; Diagram</span></a>
-    <a href="#connect"><b>Part 1</b><span>USB Tether vs Wi-Fi</span></a>
-    <a href="#steps"><b>Part 2</b><span>4-Step Pairing</span></a>
-    <a href="#controls"><b>Part 3</b><span>Camera &amp; Controls</span></a>
-    <a href="#fixes"><b>Part 4</b><span>Checklist &amp; Fixes</span></a>
+    <a href="#step-connect"><b>Step 1</b><span>Connect Wi-Fi</span></a>
+    <a href="#step-laptop"><b>Step 2</b><span>Open QR on Laptop</span></a>
+    <a href="#step-tablet"><b>Step 3</b><span>Open Bridge on Tablet</span></a>
+    <a href="#step-scan"><b>Step 4</b><span>Scan QR &amp; Controls</span></a>
+    <a href="#fixes"><b>Step 5</b><span>Offline &amp; Timeout Fixes</span></a>
   </nav>
 
-  <!-- WHY THIS IS THE MOST SECURE SETUP -->
-  <section class="part" id="why-secure">
-    <p class="kicker">Why This Setup Is Recommended</p>
-    <h2>Built-In, Private &amp; Event-Proof — Zero Third-Party Camera Apps</h2>
+  <!-- STEP 1: WI-FI CONNECTION -->
+  <section class="part" id="step-connect">
+    <p class="kicker">Step 1 · Link Laptop &amp; Tablet First</p>
+    <h2>Connect Both Devices on Wi-Fi (Online or Offline)</h2>
     <p class="why">
-      Unlike third-party webcam bridges, photobooth4u&rsquo;s <b>Laptop Guest + Camera Bridge</b> is built directly into the official
-      <b>photobooth4u Desktop</b> and <b>Android APK</b> apps. Everything stays strictly between your laptop and tablet on your own cable or local network.
-    </p>
-
-    <div class="diagram-card">
-      <div class="diagram-box">
-        <svg viewBox="0 0 560 128" width="540" height="122" style="max-width:100%;height:auto;" aria-label="Laptop connected directly to Android Tablet and USB Printer">
-          <rect x="8" y="24" width="112" height="58" rx="9" fill="#fff" stroke="#c8402a" stroke-width="2.5"/>
-          <rect x="22" y="34" width="46" height="22" rx="3" fill="#2d2429"/>
-          <rect x="74" y="36" width="30" height="18" rx="3" fill="#fbeee9" stroke="#c8402a" stroke-width="1.5"/>
-          <rect x="24" y="64" width="78" height="9" rx="2" fill="#e4ddd3"/>
-          <text x="64" y="100" text-anchor="middle" font-size="9.5" font-weight="800" fill="#1f1a1d">USB Printer</text>
-          <text x="64" y="112" text-anchor="middle" font-size="8" font-weight="600" fill="#5d555b">DNP / HiTi / Epson / SELPHY</text>
-
-          <line x1="124" y1="53" x2="176" y2="53" stroke="#5d555b" stroke-width="3"/>
-          <polygon points="124,53 133,48 133,58" fill="#5d555b"/>
-          <text x="150" y="44" text-anchor="middle" font-size="8.5" font-weight="800" fill="#5d555b">USB</text>
-
-          <rect x="180" y="20" width="136" height="62" rx="7" fill="#1f1a1d" stroke="#1b63c7" stroke-width="2.5"/>
-          <rect x="187" y="27" width="122" height="48" rx="3" fill="#eef3fb"/>
-          <rect x="172" y="82" width="152" height="9" rx="4" fill="#5d555b"/>
-          <text x="248" y="47" text-anchor="middle" font-size="10.5" font-weight="800" fill="#1b63c7">LAPTOP (HOST)</text>
-          <text x="248" y="61" text-anchor="middle" font-size="8.5" font-weight="700" fill="#1f1a1d">photobooth4u Desktop</text>
-          <text x="248" y="71" text-anchor="middle" font-size="7.5" font-weight="600" fill="#5d555b">Controls · Prints · Saves</text>
-
-          <line x1="322" y1="46" x2="404" y2="46" stroke="#1f6f62" stroke-width="3"/>
-          <polygon points="404,46 395,41 395,51" fill="#1f6f62"/>
-          <polygon points="322,46 331,41 331,51" fill="#1f6f62"/>
-          <text x="363" y="36" text-anchor="middle" font-size="8.5" font-weight="800" fill="#1f6f62">USB-C Tether</text>
-          <text x="363" y="61" text-anchor="middle" font-size="8" font-weight="700" fill="#5d555b">or Private Wi-Fi</text>
-          <text x="363" y="73" text-anchor="middle" font-size="7.5" font-weight="700" fill="#1f6f62">Token-Locked Bridge</text>
-
-          <rect x="408" y="14" width="142" height="76" rx="11" fill="#1f1a1d" stroke="#1f6f62" stroke-width="2.5"/>
-          <rect x="416" y="22" width="126" height="60" rx="5" fill="#e6f4f1"/>
-          <circle cx="479" cy="18" r="2.2" fill="#4ade80"/>
-          <text x="479" y="43" text-anchor="middle" font-size="10" font-weight="800" fill="#1f6f62">ANDROID TABLET</text>
-          <text x="479" y="57" text-anchor="middle" font-size="8.5" font-weight="700" fill="#1f1a1d">Full-Res Camera +</text>
-          <text x="479" y="69" text-anchor="middle" font-size="8.5" font-weight="700" fill="#1f1a1d">Guest Screen &amp; Voice</text>
-
-          <text x="479" y="106" text-anchor="middle" font-size="8.5" font-weight="800" fill="#1f6f62">0 Extra License Codes</text>
-        </svg>
-        <h4>Direct Laptop &harr; Android Tablet Bridge Architecture</h4>
-        <p>The laptop stays safely behind the booth table with your printer and setup controls, while guests interact directly with the mounted Android / Huawei tablet.</p>
-      </div>
-    </div>
-
-    <div class="grid-3" style="margin-top:14px;">
-      <div class="card">
-        <h3>&#128274; Local &amp; Token-Locked <span class="tag ok">Secure</span></h3>
-        <p>Video preview, full-res photos, and guest controls travel strictly over your local USB-C cable or private Wi-Fi using a unique random pairing token — zero cloud relays or third-party webcam drivers. Tap <b>New pairing code</b> anytime to revoke old links immediately.</p>
-      </div>
-      <div class="card">
-        <h3>&#128247; Full-Res Still Capture <span class="tag ok">Sharp Prints</span></h3>
-        <p>Live preview streams smoothly at ~22 fps, and every shutter snap triggers Android&rsquo;s native <b>Camera2 full-resolution still capture</b> (up to 8MP / 3264&times;2448) so prints come out crisp instead of blurry webcam screenshots.</p>
-      </div>
-      <div class="card">
-        <h3>&#128266; Guest Screen + Audio <span class="tag blue">All-in-One</span></h3>
-        <p>Guests tap to start, pick layouts &amp; looks, watch the countdown, hear spoken prompts (&ldquo;3, 2, 1, Smile!&rdquo;) and shutter clicks from the <b>tablet speakers</b>, review/retake shots, scan QR codes, and tap Print — all on the tablet.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- PART 1: CONNECTION OPTIONS -->
-  <section class="part" id="connect">
-    <p class="kicker">Part 1 · Choose Your Connection (Wired First)</p>
-    <h2>USB-C Tethering (Best &amp; Most Secure) vs. Private Booth Wi-Fi</h2>
-    <p class="why">
-      For paid events, always prefer <b>Option A (USB-C + USB Tethering)</b> — it creates a direct, isolated cable link between laptop and tablet with zero venue Wi-Fi risk.
+      Before scanning the QR code, connect your laptop and Android / Huawei tablet using <b>one</b> of these two reliable Wi-Fi methods:
     </p>
 
     <div class="grid-2">
-      <div class="os-and">
-        <h3>Option A · USB-C + USB Tethering <span class="tag ok">Most Secure · Offline</span></h3>
+      <div class="panel-ok">
+        <h3>Option A · Same Wi-Fi Router <span class="tag ok">Recommended · Online or Offline</span></h3>
         <ol>
-          <li>Connect your Android / Huawei tablet to your laptop with a reliable <b>USB-C data cable</b> (not a charge-only cable).</li>
-          <li>On the tablet, turn ON <b>USB Tethering</b>:
-            <br>&bull; <b>Huawei / HarmonyOS:</b> Settings &rarr; Mobile network &rarr; Personal hotspot &rarr; More &rarr; <b>USB tethering</b>
-            <br>&bull; <b>Samsung Galaxy Tab:</b> Settings &rarr; Connections &rarr; Mobile Hotspot and Tethering &rarr; <b>USB tethering</b>
-            <br>&bull; <b>Xiaomi / Redmi / Generic Android:</b> Settings &rarr; Portable hotspot &rarr; <b>USB tethering</b>
-          </li>
-          <li>Windows automatically creates a private wired link (often named <code>Ethernet 2</code> / <code>Ethernet 3</code> or <code>Remote NDIS</code>) — photobooth4u prioritizes it automatically in the pairing QR!</li>
+          <li>Connect <b>both the laptop and the Android / Huawei tablet</b> to the <b>exact same Wi-Fi router / SSID</b> (works with internet OR your own offline pocket router).</li>
+          <li>Avoid hotel/mall &ldquo;Guest Wi-Fi&rdquo; that blocks device-to-device traffic.</li>
+          <li><b>Offline router tip:</b> If the tablet pops up &ldquo;No internet — switch networks?&rdquo;, tap <b>Stay connected</b> (or turn Airplane Mode ON &rarr; Wi-Fi back ON).</li>
         </ol>
       </div>
 
-      <div class="os-mac">
-        <h3>Option B · Laptop Booth Wi-Fi / Same Router <span class="tag blue">Wireless</span></h3>
+      <div class="panel-blue">
+        <h3>Option B · Laptop Booth Wi-Fi / Mobile Hotspot <span class="tag blue">100% Offline · No Router Needed</span></h3>
         <ol>
-          <li>Use this if your tablet is on a separate kiosk stand away from the laptop, or if your Wi-Fi-only tablet hides the USB Tethering menu.</li>
-          <li><b>Best offline wireless:</b> Switch on your laptop&rsquo;s <b>Mobile Hotspot / Booth Wi-Fi</b> and connect the Android tablet to it.</li>
-          <li><b>Router wireless:</b> Connect both the laptop and tablet to your own dedicated pocket router. <i>(Avoid hotel/mall &ldquo;Guest Wi-Fi&rdquo; networks that isolate devices.)</i></li>
+          <li>Turn ON your laptop&rsquo;s <b>Mobile Hotspot / Booth Wi-Fi</b>.</li>
+          <li>Connect your Android / Huawei tablet to that laptop Wi-Fi name.</li>
+          <li>No venue router needed — stays private and works 100% offline.</li>
         </ol>
       </div>
     </div>
-
-    <div class="tbl-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Link Type</th>
-            <th>Security &amp; Isolation</th>
-            <th>Offline Ready?</th>
-            <th>Lag / Reliability</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>USB-C + USB Tethering</td>
-            <td><span class="tag ok">Highest · Point-to-Point Cable</span></td>
-            <td><span class="tag ok">Yes · 100% Offline</span></td>
-            <td>Lowest lag, immune to venue Wi-Fi congestion, keeps tablet charged.</td>
-          </tr>
-          <tr>
-            <td>Laptop Booth Wi-Fi / Hotspot</td>
-            <td><span class="tag ok">High · Private Password</span></td>
-            <td><span class="tag ok">Yes · 100% Offline</span></td>
-            <td>Very steady within 3&ndash;5 meters; zero venue router needed.</td>
-          </tr>
-          <tr>
-            <td>Dedicated Pocket Router</td>
-            <td><span class="tag blue">High · Own Network</span></td>
-            <td><span class="tag ok">Yes · Local LAN</span></td>
-            <td>Great for multi-device setups (tablet + Wi-Fi printer + sharing).</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- PART 2: 4-STEP PAIRING -->
-  <section class="part" id="steps">
-    <p class="kicker">Part 2 · Step-by-Step Setup (Under 2 Minutes)</p>
-    <h2>How to Pair Your Laptop &amp; Android Tablet</h2>
-
-    <ol class="steps">
-      <li>
-        <span class="n">1</span>
-        <div>
-          <h3>Install Both Apps (Activate Laptop Only)</h3>
-          <p>
-            Download and install <b>photobooth4u Desktop</b> on your Windows or Mac laptop and the <b>photobooth4u Android APK</b> on your tablet from
-            <a href="https://photobooth4u.netlify.app/downloads/" target="_blank" rel="noopener">photobooth4u.netlify.app/downloads</a>.
-            Enter and activate your rental code on the <b>laptop only</b> — the Android tablet needs <b>no separate license code</b> for Bridge mode.
-          </p>
-        </div>
-      </li>
-      <li>
-        <span class="n">2</span>
-        <div>
-          <h3>Open the Tablet Bridge QR Code on the Laptop</h3>
-          <p>
-            In photobooth4u Desktop, open <b>Setup &rarr; 7 Session &rarr; Screen &amp; lock</b> and scroll down to
-            <b>Guest screen &rarr; Huawei / Android Tablet Bridge (Guest Screen + Camera)</b>.
-            Leave the pairing QR code visible on screen.
-          </p>
-        </div>
-      </li>
-      <li>
-        <span class="n">3</span>
-        <div>
-          <h3>Launch Bridge Mode on the Android Tablet &amp; Scan QR</h3>
-          <p>
-            Open <b>photobooth4u</b> on your Android / Huawei tablet. Right on the activation/start screen, tap
-            <b>&#128421;&#65039; Laptop Guest + Camera Bridge</b> <i>(if the tablet is already activated, open the Operator Menu and tap the same button)</i>.
-            Tap <b>&#128247; Scan Pairing QR on Laptop</b>, allow camera permission, and scan the laptop&rsquo;s QR code.
-          </p>
-        </div>
-      </li>
-      <li>
-        <span class="n">4</span>
-        <div>
-          <h3>Verify Live Camera &amp; Guest Screen</h3>
-          <p>
-            Within 2 seconds the tablet switches into full-screen Guest Screen mode and the laptop shows a green status:
-            <b>Connected: [Tablet Name] (Guest Screen + Camera ready)</b>.
-            Open <b>Setup &rarr; 3 Camera</b> on the laptop and confirm <b>Tablet Camera &middot; [Tablet Name] (Front)</b> (or <b>(Rear)</b>) is selected and live!
-          </p>
-        </div>
-      </li>
-    </ol>
 
     <div class="callout amber">
-      <h3>Tip: Reconnecting Later Is One Tap</h3>
+      <h3>Two Quick Tips Before You Pair:</h3>
       <p>
-        The tablet remembers the last paired laptop address automatically. If you unplug or restart, just tap <b>Connect</b> on the tablet&rsquo;s Bridge screen — or tap
-        <b>New pairing code</b> on the laptop anytime you want a brand-new security token and QR code.
+        &bull; <b>Do not use USB Tethering:</b> Many Android / Huawei tablets either disable USB Tethering or block the Guest Screen over USB tethering. Always connect via <b>Same Wi-Fi Router</b> or <b>Laptop Booth Wi-Fi / Hotspot</b> (you can still plug a charger or power bank into the tablet to keep it at 100% battery).<br>
+        &bull; <b>If your tablet was used standalone before:</b> Make sure <b>&ldquo;Make this tablet the booth Wi-Fi&rdquo;</b> (in tablet Setup &rarr; 6 Share) is switched <b>OFF</b> so the tablet stays connected to your router or laptop Wi-Fi.
       </p>
     </div>
   </section>
 
-  <!-- PART 3: APP SETTINGS & CONTROLS -->
-  <section class="part" id="controls">
-    <p class="kicker">Part 3 · Inside photobooth4u Desktop &amp; Tablet Controls</p>
-    <h2>Exact Settings &amp; Operator Controls</h2>
+  <!-- STEP 2: START ON THE LAPTOP -->
+  <section class="part" id="step-laptop">
+    <p class="kicker">Step 2 · Start on the Laptop</p>
+    <h2>Open the Tablet Bridge Pairing QR Code on Your Laptop</h2>
     <p class="why">
-      Everything can be controlled quietly from the laptop without walking in front of guests:
+      Always open the pairing QR on your <b>laptop first</b>. This works on <b>both</b> the Desktop App (online or offline) and the Online Website (with Print Helper).
     </p>
 
-    <div class="ui-mock" aria-label="photobooth4u Desktop Tablet Bridge UI Preview">
+    <div class="grid-2">
+      <div class="panel-ok">
+        <h3>Option 1 · photobooth4u Desktop App <span class="tag ok">Online &amp; Offline</span></h3>
+        <ol>
+          <li>Install / update to <b>photobooth4u Desktop v1.1.105+</b> from <a href="https://photobooth4u.netlify.app/downloads/" target="_blank" rel="noopener">/downloads</a>.</li>
+          <li>Activate your rental code on the <b>laptop only</b> (tablet needs no extra code).</li>
+          <li>Open <b>Setup &rarr; 7 Session &rarr; Screen &amp; lock &rarr; Guest screen</b>.</li>
+          <li>Scroll to <b>Huawei / Android Tablet Bridge (Guest Screen + Camera)</b> — your QR code is ready immediately (works with or without internet).</li>
+        </ol>
+      </div>
+
+      <div class="panel-blue">
+        <h3>Option 2 · Online Website (Chrome / Edge) <span class="tag blue">Online</span></h3>
+        <ol>
+          <li>Start <b>photobooth4u Print Helper v1.1.21+</b> on the laptop first (keep its window open; allow Windows Firewall for <b>Private &amp; Public</b> if asked).</li>
+          <li>Open <a href="https://photobooth4u.netlify.app/app" target="_blank" rel="noopener">photobooth4u.netlify.app/app</a> on the laptop and unlock your code.</li>
+          <li>Open <b>Setup &rarr; 7 Session &rarr; Screen &amp; lock &rarr; Guest screen</b>.</li>
+          <li>The Tablet Bridge QR appears automatically (if you opened Print Helper afterwards, click <b>Check again</b>). <i>Once opened, the local bridge keeps running even if venue Wi-Fi loses internet mid-event!</i></li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="ui-mock" aria-label="Laptop Setup Step 7 Tablet Bridge Preview">
       <div class="ui-slot">
         <div class="ui-head">
           <span class="ui-title"><span class="ui-num">7</span> Setup &rarr; 7 Session &rarr; Screen &amp; lock &rarr; Guest screen</span>
-          <span class="ui-badge">Connected · Secure Token</span>
+          <span class="ui-badge">Leave This QR Open on Laptop</span>
         </div>
-        <div class="ui-status"><span class="ui-dot"></span>Connected: MatePad Pro (Guest Screen + Camera ready) &middot; over USB Tether</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+          <b style="font-size:14px;">Huawei / Android Tablet Bridge (Guest Screen + Camera)</b>
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--red);font-weight:700;">
+            Quick built-in guide &rarr; <span class="ui-q" title="Built-in ? guide button">?</span>
+          </span>
+        </div>
+        <div class="ui-status"><span class="ui-dot"></span>Not paired yet &mdash; scan QR inside the tablet app</div>
         <div class="ui-qr-row">
           <div class="ui-qr-box" aria-hidden="true">
             <i></i><i></i><i></i><i class="w"></i><i></i>
@@ -671,10 +741,9 @@
             <i></i><i class="w"></i><i></i><i></i><i></i>
           </div>
           <div style="flex:1;min-width:200px;font-size:13.5px;color:var(--dim);">
-            <b style="color:var(--ink);">Huawei / Android Tablet Bridge (Guest Screen + Camera)</b><br>
-            1. Connect via <b>USB-C + USB Tethering</b> or the laptop&rsquo;s booth Wi-Fi.<br>
-            2. Open <b>photobooth4u &rarr; Laptop Guest + Camera Bridge</b> on the tablet and scan this QR.<br>
-            <code>http://192.168.137.1:47777/bridge/a9f3...</code>
+            1. Connect both devices to the <b>same Wi-Fi router</b> (online or offline) or the laptop&rsquo;s <b>Booth Wi-Fi / Hotspot</b>.<br>
+            2. On the tablet, open <b>Laptop Guest + Camera Bridge</b> (Step 3 below) and scan this QR.<br>
+            <code>http://192.168.1.42:47777/bridge/a9f3...</code>
           </div>
         </div>
         <div class="ui-btns">
@@ -683,52 +752,172 @@
           <span class="ui-btn">New pairing code</span>
         </div>
       </div>
+    </div>
+  </section>
 
-      <div class="ui-slot">
-        <div class="ui-head">
-          <span class="ui-title"><span class="ui-num">3</span> Setup &rarr; 3 Camera</span>
-          <span class="ui-badge">Full-Res Native Still</span>
-        </div>
-        <div class="ui-select">Tablet Camera &middot; MatePad Pro (Front) &#9662;</div>
-        <div class="grid-2" style="margin-top:10px;">
-          <div style="font-size:13px;color:var(--dim);background:#faf8f4;border:1px solid var(--line);border-radius:10px;padding:10px 12px;">
-            <b style="color:var(--ink);">Switch Front &harr; Rear Lens</b><br>
-            Click <b>Flip tablet camera</b> in Step 7 on the laptop — or <b>long-press the top-left corner</b> of the tablet screen during a session to open the hidden <b>Tablet Bridge</b> menu.
+  <!-- STEP 3: ON THE TABLET — CHECK ACTIVATION MODE VS LONG-PRESS OPERATOR MENU -->
+  <section class="part" id="step-tablet">
+    <p class="kicker">Step 3 · On the Android / Huawei Tablet (Check Which Screen You See)</p>
+    <h2>Activation Screen vs. Already Activated (Long-Press Pop-Up Menu)</h2>
+    <p class="why">
+      Open the <b>photobooth4u</b> app (v1.2.17+) on your Android or Huawei tablet and <b>check which screen appears</b>.
+      Follow <b>Path A</b> if you see the activation screen, or <b>Path B</b> if the tablet is <b>not in activation mode</b> (already activated / showing the booth):
+    </p>
+
+    <div class="grid-2">
+      <!-- PATH A: ACTIVATION MODE -->
+      <div class="card" style="border-top:4px solid var(--ok);">
+        <h3>Path A · Tablet IS in Activation Mode <span class="tag ok">Not Activated Yet</span></h3>
+        <p>You see <b>&ldquo;Activate this tablet&rdquo;</b> asking for a rental code. <b>Do NOT enter a code</b> — Bridge mode is free and uses 0 extra license slots:</p>
+        <ol>
+          <li>Look at the bottom of the <b>Activate this tablet</b> screen.</li>
+          <li>Tap the red-bordered button: <b>&#128421;&#65039; Laptop Guest + Camera Bridge</b>.</li>
+        </ol>
+
+        <div class="tablet-shell" aria-label="Android tablet activation screen mockup">
+          <div class="tablet-screen">
+            <div class="t-title">Activate this tablet</div>
+            <div class="t-sub">Enter this tablet&rsquo;s rental code (or the free-trial password to try it).</div>
+            <div class="t-input">Rental code or trial password</div>
+            <div class="t-btn-gray">Activate</div>
+            <div class="t-skip-note">&uarr; Skip this! No code needed on tablet</div>
+            <div class="t-btn-rove">&#128247; Roving DSLR Bridge</div>
+            <div class="t-btn-bridge">&#128421;&#65039; Laptop Guest + Camera Bridge <span class="tap-badge">TAP</span></div>
           </div>
-          <div style="font-size:13px;color:var(--dim);background:#faf8f4;border:1px solid var(--line);border-radius:10px;padding:10px 12px;">
-            <b style="color:var(--ink);">Mirror &amp; Live Filters</b><br>
-            Mirror &ldquo;Auto&rdquo; automatically follows Front (mirrored) vs Rear (normal). Live filters, welcome screens, layout picker, retakes, QR codes, and Print buttons all sync instantly to the tablet.
+        </div>
+      </div>
+
+      <!-- PATH B: NOT IN ACTIVATION MODE -> LONG PRESS POP-UP -->
+      <div class="card" style="border-top:4px solid var(--red);">
+        <h3>Path B · Tablet is NOT in Activation Mode <span class="tag red">Already Activated</span></h3>
+        <p>Your tablet skips activation and opens straight into the booth (<b>Tap to start</b> or <b>Setup</b>). Use the <b>long-press gesture</b> to open the hidden pop-up menu:</p>
+        <ol>
+          <li><b>Press and hold (~1 second)</b> on an <b>open / empty area</b> of the booth screen or the <b>top header bar</b> <i>(avoid pressing inside a text input box)</i>.</li>
+          <li>The <b>Operator Menu</b> pop-up appears — tap the <b>first option</b>: <b>&#128421;&#65039; Laptop Guest + Camera Bridge</b>.</li>
+        </ol>
+
+        <div class="tablet-shell" aria-label="Android tablet long-press Operator Menu popup mockup">
+          <div class="tablet-screen">
+            <div class="t-booth-bg">
+              <div class="t-booth-bar"><span>photobooth4u · Booth Screen</span><span>Setup</span></div>
+              <div style="font-size:11px;color:#8e878c;">Tap to start (Activated Booth)</div>
+            </div>
+            <div class="hold-ring">&#128070; Long-press ~1s here</div>
+            <div class="android-dialog">
+              <div class="android-dialog-head">Operator Menu</div>
+              <ul class="android-dialog-list">
+                <li class="pick">&#128421;&#65039; Laptop Guest + Camera Bridge <span class="tap-badge">TAP</span></li>
+                <li>&#127760; Booth Mode &amp; URL (Online / Offline)</li>
+                <li>&#128640; Auto-Open on Boot: OFF</li>
+                <li>&#128274; Kiosk Home App: NOT SET</li>
+                <li>&#9881;&#65039; Open Tablet Settings</li>
+              </ul>
+              <div class="android-dialog-foot">Close</div>
+            </div>
           </div>
         </div>
       </div>
     </div>
+
+    <div class="callout blue">
+      <h3>Don&rsquo;t see the Operator Menu pop-up when long-pressing?</h3>
+      <p>
+        &bull; Hold your finger <b>still for 1 full second</b> on a blank background spot or the top logo/header area (not on a scrollable list, button, or text box).<br>
+        &bull; If you accidentally tapped <b>&#127760; Booth Mode &amp; URL (Online / Offline)</b> inside the Operator Menu, there is also an <b>&#128421;&#65039; Open Laptop Guest + Camera Bridge</b> button at the bottom of that pop-up too.<br>
+        &bull; Make sure you opened the installed <b>photobooth4u Android App</b> (not Chrome browser on the tablet) — the Operator Menu and Bridge scanner live inside the Android app.
+      </p>
+    </div>
   </section>
 
-  <!-- PART 4: CHECKLIST & TROUBLESHOOTING -->
+  <!-- STEP 4: SCAN QR & LIVE CONTROLS -->
+  <section class="part" id="step-scan">
+    <p class="kicker">Step 4 · Scan the Laptop QR &amp; Verify Camera</p>
+    <h2>Pair in 2 Seconds &amp; Control the Tablet From Your Laptop</h2>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>1. Scan Inside the Tablet Bridge Screen</h3>
+        <ol>
+          <li>Tap the big red <b>&#128247; Scan Pairing QR on Laptop</b> button.</li>
+          <li>Allow <b>Camera permission</b> when Android asks, then point the tablet at the laptop&rsquo;s QR code from Step 2.</li>
+          <li>Within 2 seconds, the tablet switches into full-screen <b>Guest Screen</b> mode and the laptop shows green: <b>Connected: [Tablet Name] (Guest Screen + Camera ready)</b>.</li>
+          <li>On the laptop, open <b>Setup &rarr; 3 Camera</b> and confirm <b>Tablet Camera &middot; [Tablet Name]</b> is selected.</li>
+        </ol>
+
+        <div class="tablet-shell" aria-label="Tablet Bridge pairing screen mockup">
+          <div class="tablet-screen" style="min-height:220px;">
+            <div class="t-title">Laptop Guest Screen + Camera Bridge</div>
+            <div class="t-scan-btn">&#128247; Scan Pairing QR on Laptop</div>
+            <div class="t-input" style="width:90%;max-width:260px;">http://192.168.1.42:47777/bridge/...</div>
+            <div class="t-mini-row">
+              <span class="t-pill dark">Connect</span>
+              <span class="t-pill">Camera: Front</span>
+              <span class="t-pill">Exit</span>
+            </div>
+            <div style="font-size:11px;color:#6b666c;margin-top:8px;">Tip: Next time, just tap <b>Connect</b> to reconnect!</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>2. How to Flip Camera, Re-Scan QR, or Exit Bridge Mode</h3>
+        <p>Once paired, the tablet runs full-screen so guests cannot accidentally leave the booth. To open the hidden <b>Tablet Bridge</b> menu anytime:</p>
+        <ul>
+          <li><b>From the Laptop:</b> Click <b>Flip tablet camera</b> in Step 7 (or <b>New pairing code</b> to revoke old links).</li>
+          <li><b>From the Tablet:</b> <b>Long-press the TOP-LEFT corner</b> of the tablet screen (or press Android <b>Back</b>) to pop up the <b>Tablet Bridge</b> menu!</li>
+        </ul>
+
+        <div class="tablet-shell" aria-label="Tablet Guest Screen top-left corner long-press mockup">
+          <div class="tablet-screen dark" style="min-height:220px;">
+            <div class="corner-zone">&#128070; Hold<br>Top-Left<br>Corner</div>
+            <div class="android-dialog" style="margin-top:26px;max-width:255px;">
+              <div class="android-dialog-head">Tablet Bridge</div>
+              <ul class="android-dialog-list">
+                <li>Switch Camera (now: Front)</li>
+                <li class="pick">Change Laptop / Re-scan QR</li>
+                <li>Exit Bridge</li>
+              </ul>
+              <div class="android-dialog-foot">Close</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout red">
+      <h3>Do NOT scan the pairing QR with your tablet&rsquo;s regular Camera app!</h3>
+      <p>
+        Scanning with the regular Camera app opens a browser tab without the tablet&rsquo;s native Camera2 feed or offline Wi-Fi binding.
+        Always scan using the red <b>&#128247; Scan Pairing QR on Laptop</b> button inside the <b>photobooth4u</b> app.
+      </p>
+    </div>
+  </section>
+
+  <!-- STEP 5: CHECKLIST & TIMEOUT FIXES -->
   <section class="part" id="fixes">
-    <p class="kicker">Part 4 · Event-Day Checklist &amp; Quick Fixes</p>
-    <h2>Pre-Event Checklist &amp; Troubleshooting</h2>
+    <p class="kicker">Step 5 · Event-Day Checklist &amp; Troubleshooting</p>
+    <h2>Offline Checklist &amp; Quick Timeout Fixes</h2>
 
     <div class="check-grid">
       <div class="check-item">
         <div class="ico">1</div>
-        <h3>Test Your USB-C Data Cable</h3>
-        <p>Some charging cables omit data pins. Plug in before the event and confirm <b>USB tethering</b> turns ON without greying out.</p>
+        <h3>Use Latest App Versions</h3>
+        <p>Update to <b>Desktop v1.1.105+</b> (or <b>Print Helper v1.1.21+</b> for online web) and <b>Android APK v1.2.17+</b> for full offline Wi-Fi &amp; auto-reconnect fixes.</p>
       </div>
       <div class="check-item">
         <div class="ico">2</div>
-        <h3>Allow Firewall Once</h3>
-        <p>On Windows, if a Defender Firewall prompt appears when opening photobooth4u, tick <b>Private and Public networks</b> and click <b>Allow access</b>.</p>
+        <h3>Allow Windows Firewall</h3>
+        <p>When Windows Defender Firewall asks for <b>photobooth4u</b> or <b>Print Helper</b>, tick both <b>Private &amp; Public</b> and click <b>Allow</b> (or set your Wi-Fi to <b>Private</b> in Windows Settings).</p>
       </div>
       <div class="check-item">
         <div class="ico">3</div>
-        <h3>Turn On Do Not Disturb</h3>
-        <p>Switch <b>Do Not Disturb</b> ON on the tablet so notifications and pop-ups never cover the guest camera screen. (Screen keep-awake is already automatic!)</p>
+        <h3>Do Not Disturb ON</h3>
+        <p>Switch <b>Do Not Disturb</b> ON on the tablet so pop-up notifications never cover the guest camera. (Screen stay-awake is already automatic.)</p>
       </div>
       <div class="check-item">
         <div class="ico">4</div>
-        <h3>Check Tablet Volume</h3>
-        <p>Raise the tablet&rsquo;s <b>Media Volume</b> so guests clearly hear the spoken countdown (&ldquo;3, 2, 1, Smile!&rdquo;) and shutter click from the booth.</p>
+        <h3>Raise Tablet Volume</h3>
+        <p>Turn up the tablet&rsquo;s <b>Media Volume</b> so guests hear the spoken countdown (&ldquo;3, 2, 1, Smile!&rdquo;) and shutter clicks from the tablet speakers.</p>
       </div>
     </div>
 
@@ -739,28 +928,49 @@
         </thead>
         <tbody>
           <tr>
-            <td>Tablet says &ldquo;Could not reach laptop&rdquo;</td>
-            <td>Verify <b>USB Tethering</b> is switched ON (or both devices are on the <b>same private Wi-Fi / Laptop Hotspot</b>). Check Windows Firewall allows <b>photobooth4u</b> on both Private &amp; Public profiles, then re-scan the QR code.</td>
+            <td>Tablet says &ldquo;Timed out reaching 192.168.x.x:47777&rdquo; (online or offline)</td>
+            <td>
+              1. Confirm both devices are on the <b>same Wi-Fi network</b> (or the tablet is connected to the laptop&rsquo;s <b>Booth Wi-Fi / Mobile Hotspot</b>), and keep <b>USB Tethering OFF</b>.<br>
+              2. On Windows, open <b>Settings &rarr; Network &amp; internet &rarr; Wi-Fi &rarr; [your Wi-Fi]</b> and change Network profile type to <b>Private</b> (or allow photobooth4u / Print Helper on both Private &amp; Public in Windows Firewall).<br>
+              3. On your router / pocket Wi-Fi, turn <b>AP Isolation / Client Isolation OFF</b>.<br>
+              4. On an offline tablet with a SIM card, turn <b>Airplane Mode ON &rarr; Wi-Fi back ON</b>, and tap <b>Stay connected</b> if Android says &ldquo;No internet&rdquo;.
+            </td>
           </tr>
           <tr>
-            <td>USB Tethering option is greyed out on a Wi-Fi-only tablet</td>
-            <td>Some Wi-Fi-only Android tablets hide USB Tethering until the USB cable is plugged in, or disable it in firmware. Switch to <b>Option B: Laptop Mobile Hotspot / Booth Wi-Fi</b> (still 100% offline and private!).</td>
+            <td>I don&rsquo;t see the Activation screen on my tablet (only the normal booth)</td>
+            <td>
+              Your tablet is already activated (<b>not in activation mode</b>). <b>Press and hold (~1 second)</b> on an empty background spot or the top header bar inside the photobooth4u app to pop up the <b>Operator Menu</b>, then tap <b>&#128421;&#65039; Laptop Guest + Camera Bridge</b>.
+            </td>
           </tr>
           <tr>
-            <td>Tablet is connected, but laptop still shows built-in webcam</td>
-            <td>Open <b>Setup &rarr; 3 Camera</b> on the laptop and select <b>Tablet Camera &middot; [Tablet Name]</b> from the Camera dropdown.</td>
+            <td>No QR code appears on the Online Website (Chrome / Edge)</td>
+            <td>
+              Start <b>photobooth4u Print Helper v1.1.21+</b> on the laptop, then click <b>Check again</b> in Setup &rarr; 7 Session &rarr; Guest screen. (If you have Print Helper v1.1.20 or older, download v1.1.21 from <a href="https://photobooth4u.netlify.app/downloads/" target="_blank" rel="noopener">/downloads</a>.)
+            </td>
           </tr>
           <tr>
             <td>Tablet says &ldquo;Bridge pairing expired&rdquo;</td>
-            <td>You clicked <b>New pairing code</b> or restarted the laptop app. Long-press the <b>top-left corner</b> on the tablet &rarr; <b>Change Laptop / Re-scan QR</b> and scan the new QR in Step 7.</td>
+            <td>
+              You tapped <b>New pairing code</b> or restarted the laptop app / Print Helper. <b>Long-press the top-left corner</b> of the tablet &rarr; <b>Change Laptop / Re-scan QR</b> and scan the new QR on the laptop.
+            </td>
           </tr>
           <tr>
-            <td>How do I exit Guest Screen mode on the tablet?</td>
-            <td><b>Long-press the top-left corner</b> of the tablet screen (or press Android Back) to open the <b>Tablet Bridge</b> operator menu: Switch Camera, Re-scan QR, or Exit Bridge.</td>
+            <td>Tablet is connected, but laptop still uses built-in webcam</td>
+            <td>
+              Open <b>Setup &rarr; 3 Camera</b> on the laptop and select <b>Tablet Camera &middot; [Tablet Name]</b> from the Camera dropdown (or tap <b>Use Tablet Camera</b> in Step 7).
+            </td>
+          </tr>
+          <tr>
+            <td>USB Tethering does not connect or times out</td>
+            <td>
+              Android / Huawei tablets restrict local Guest Screen traffic over USB Tethering. Turn <b>USB Tethering OFF</b> and use <b>Step 1 Option A (Same Wi-Fi Router — online or offline pocket router)</b> or <b>Option B (Laptop Booth Wi-Fi / Mobile Hotspot)</b> instead.
+            </td>
           </tr>
           <tr>
             <td>Countdown voice or shutter sounds still play on the laptop</td>
-            <td>Tap once anywhere on the tablet screen after pairing so audio activates, and verify the tablet&rsquo;s Media volume is up and not muted.</td>
+            <td>
+              Tap once anywhere on the tablet screen after pairing to unlock audio, and check that the tablet&rsquo;s <b>Media Volume</b> is turned up.
+            </td>
           </tr>
         </tbody>
       </table>
@@ -771,11 +981,11 @@
     <div class="help-box">
       <div>
         <h3>Need help pairing your Laptop &amp; Android / Huawei Tablet?</h3>
-        <p>Message us your laptop OS (Windows / Mac) and Android tablet model — we&rsquo;ll walk you through USB Tethering or Booth Wi-Fi in minutes.</p>
+        <p>Message us your laptop OS (Windows / Mac), online or offline setup, and tablet model — we&rsquo;ll get you connected in minutes.</p>
       </div>
       <a class="help-btn" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener">Message photobooth4u</a>
     </div>
-    photobooth4u &middot; Laptop + Android / Huawei Tablet Extended Camera Guide &middot; Press <b>Ctrl+P</b> (or <b>Cmd+P</b>) to save as PDF.
+    photobooth4u &middot; Laptop &rarr; Android / Huawei Tablet Bridge Guide (Desktop v1.1.105+ / Print Helper v1.1.21+ / Android v1.2.17+) &middot; Press <b>Ctrl+P</b> (or <b>Cmd+P</b>) to save as PDF.
   </footer>
 </main>
 

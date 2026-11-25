@@ -27,7 +27,7 @@ import { freeCamera, guardCamera } from './camfree.mjs';
 import { startHelperBridge, stopHelperBridge, helperBridgeStatus, handleBridgeCtrl } from './bridge-ctrl.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.21';
+const VERSION = '1.1.22';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',

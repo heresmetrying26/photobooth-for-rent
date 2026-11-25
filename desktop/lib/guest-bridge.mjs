@@ -849,10 +849,11 @@ body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);h
     var dpr = window.devicePixelRatio || 1;
     var left = Math.round(r.left * dpr), top = Math.round(r.top * dpr), w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
     var bg = st.psMode ? '#0d0c0e' : '#F5F1EA';
-    var sig = [left, top, w, h, showCam ? 1 : 0, st.mirror ? 1 : 0, bg].join('|');
+    var mir = (st.mirror !== undefined) ? !!st.mirror : true;
+    var sig = [left, top, w, h, showCam ? 1 : 0, mir ? 1 : 0, bg].join('|');
     if (sig !== lastRectSig) {
       lastRectSig = sig;
-      try { b.setPreviewRect(left, top, w, h, !!showCam, !!st.mirror, bg); } catch(e){}
+      try { b.setPreviewRect(left, top, w, h, !!showCam, mir, bg); } catch(e){}
     }
   }
   function startRemoteLoop(){

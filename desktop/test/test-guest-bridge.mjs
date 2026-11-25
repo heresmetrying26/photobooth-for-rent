@@ -341,6 +341,7 @@ assert(bridgeKt.includes('registerOfflineLanCallbacks'), 'GuestBridgeActivity tr
 assert(bridgeKt.includes('removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)'), 'GuestBridgeActivity requests offline Wi-Fi without requiring internet capability');
 assert(bridgeKt.includes('probeViaBoundSocket'), 'GuestBridgeActivity binds source IP for USB Tether / Wi-Fi Direct probes');
 assert(bridgeKt.includes('sock.keepAlive = true') && bridgeKt.includes('sock.soTimeout = 30000'), 'GuestBridgeActivity sets TCP keepalive + read timeout to heal zombie offline sockets');
+assert(bridgeKt.includes('pvMirror != activeLensFront'), 'GuestBridgeActivity accounts for Camera2 native front-camera TextureView mirroring (no double-flip)');
 const gbSrc = readFileSync(join(ROOT, 'desktop', 'lib', 'guest-bridge.mjs'), 'utf8');
 assert(gbSrc.includes('ensureHeartbeat') && gbSrc.includes('setKeepAlive') && gbSrc.includes('forceReconnect') && gbSrc.includes('lastHbAt'), 'guest-bridge.mjs runs WS heartbeat + keepalive + guest watchdog');
 

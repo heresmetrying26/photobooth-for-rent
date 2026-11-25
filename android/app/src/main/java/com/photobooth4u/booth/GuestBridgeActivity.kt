@@ -153,6 +153,7 @@ class GuestBridgeActivity : AppCompatActivity() {
     private var backCamId: String? = null
     private var activeCamId: String? = null
     private var desiredFacing: String = "front"
+    @Volatile private var activeLensFront: Boolean = true
     // The spoken countdown: the laptop sends the words, this tablet says them (page: window.__PBVoice, same as the booth app).
     private var voiceBridge: VoiceBridge? = null
     private var sensorOrientation = 0
@@ -214,6 +215,7 @@ class GuestBridgeActivity : AppCompatActivity() {
         registerOfflineLanCallbacks()
         val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         desiredFacing = prefs.getString(KEY_FACING, "front") ?: "front"
+        activeLensFront = (desiredFacing != "back")
         val savedUrl = prefs.getString(KEY_BASE_URL, "") ?: ""
 
         cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
@@ -382,7 +384,7 @@ class GuestBridgeActivity : AppCompatActivity() {
         }
 
         val tip = TextView(this).apply {
-            text = "1. Connect via USB-C + USB Tethering, the laptop's booth Wi-Fi, or the same Wi-Fi router.\n2. On the laptop, open Setup → 7 Session → Screen & lock → Guest screen and scan the QR above (or paste the link below)."
+            text = "1. Connect both devices to the same Wi-Fi router (online or offline) or the laptop's Booth Wi-Fi / Hotspot.\n2. On the laptop, open Setup → 7 Session → Screen & lock → Guest screen and scan the QR above (or paste the link below)."
             textSize = 13f
             setTextColor(Color.parseColor("#5A5560"))
             setPadding(0, dp(18), 0, dp(10))
@@ -853,7 +855,7 @@ class GuestBridgeActivity : AppCompatActivity() {
                     val msg = when {
                         expired -> "Bridge pairing code expired. Re-scan the new QR code in Setup → 7 Session on the laptop."
                         anyTimeout -> "Timed out reaching $triedLabel. Make sure both devices are on the same Wi-Fi, Router AP Isolation is off, and Windows Firewall allows photobooth4u (set the laptop Wi-Fi to Private)."
-                        else -> "Could not reach laptop ($triedLabel). Check USB Tethering, booth Wi-Fi, or router connection and try again."
+                        else -> "Could not reach laptop ($triedLabel). Make sure both devices are on the same Wi-Fi router or laptop Booth Wi-Fi / Hotspot and try again."
                     }
                     statusText.text = msg
                     Toast.makeText(this, if (expired) "Pairing expired — re-scan QR." else "Could not reach laptop.", Toast.LENGTH_LONG).show()
@@ -989,6 +991,7 @@ class GuestBridgeActivity : AppCompatActivity() {
         try {
             val chars = cm.getCameraCharacteristics(camId)
             sensorOrientation = chars.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
+            activeLensFront = (chars.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT)
             val map = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
             if (map != null) {
                 val yuvSizes = map.getOutputSizes(ImageFormat.YUV_420_888) ?: emptyArray()
@@ -1112,7 +1115,7 @@ class GuestBridgeActivity : AppCompatActivity() {
 
     private fun jpegRotationDeg(): Int {
         val devRot = displayRotationDeg()
-        return if (desiredFacing == "front") {
+        return if (activeLensFront) {
             (sensorOrientation + devRot) % 360
         } else {
             (sensorOrientation - devRot + 360) % 360
@@ -1164,9 +1167,15 @@ class GuestBridgeActivity : AppCompatActivity() {
         }
         val fillScale = max(viewW / max(1f, uprightW), viewH / max(1f, uprightH))
         m.postScale(fillScale, fillScale, cx, cy)
-        // The booth page decides (Setup > Camera > Mirror: On / Off, or Auto = front camera only) and sends the answer in setPreviewRect.
-        // This used to flip only when the tablet camera was on Front, so Mirror "On" did nothing on the rear camera.
-        if (pvMirror) {
+        // Android Camera2 (Camera3OutputStream / SurfaceFlinger) automatically mirrors TextureView horizontally
+        // for LENS_FACING_FRONT (NATIVE_WINDOW_TRANSFORM_FLIP_H), while LENS_FACING_BACK is un-mirrored.
+        // Raw ImageReader frames (laptop live preview + full-res JPEG stills) are never auto-mirrored.
+        // Flip TextureView only when the booth's desired mirror state differs from Android's native mirror:
+        //   Front + Mirror ON  -> already mirrored by Android (no extra flip)
+        //   Front + Mirror OFF -> undo Android's auto-mirror (-1)
+        //   Rear  + Mirror ON  -> apply mirror (-1)
+        //   Rear  + Mirror OFF -> keep un-mirrored (no flip)
+        if (pvMirror != activeLensFront) {
             m.postScale(-1f, 1f, cx, cy)
         }
         previewView.setTransform(m)

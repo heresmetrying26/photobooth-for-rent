@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.106', date: '2026-11-25' },
   { version: '1.1.105', date: '2026-11-25' },
   { version: '1.1.104', date: '2026-11-24' },
   { version: '1.1.103', date: '2026-11-24' },
@@ -214,7 +215,7 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.21', date: '2026-11-25' };
+export const HELPER = { version: '1.1.22', date: '2026-11-25' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
@@ -302,6 +303,13 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-25', title: 'Desktop 1.1.106, Android 1.2.17, Print Helper 1.1.22 & Website: Tablet Bridge live-preview mirror fix + updated setup guide', for: ['website', 'app', 'android', 'helper'], app: '1.1.106', android: '1.2.17', helper: '1.1.22',
+    items: [
+      '🪞 Fixed Tablet Bridge camera mirroring (Android): The live preview on Android and Huawei front cameras now matches the Mirror On/Off toggle and the saved photo instead of appearing flipped opposite.',
+      '📖 Updated visual Tablet Bridge guide: Clear step-by-step laptop-first Wi-Fi setup (Same Wi-Fi Router & Laptop Booth Wi-Fi) with visual mockups showing both the Activation screen and the long-press Operator Menu pop-up for already-activated tablets.'
+    ]
+  },
   {
     date: '2026-11-25', title: 'Desktop 1.1.105, Android 1.2.16, Print Helper 1.1.21 & Website: Reliable online & offline Tablet Bridge + built-in setup guide', for: ['website', 'app', 'android', 'helper'], app: '1.1.105', android: '1.2.16', helper: '1.1.21',
     items: [

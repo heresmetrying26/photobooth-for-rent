@@ -327,7 +327,7 @@ console.log('--- Deep Scenario & Stress Tests (Online + Offline Tablet Bridge) -
 // 2. Full Online Web Booth + Print Helper (/bridge-ctrl/*) session E2E + CORS/Origin security audit
 {
   const phSrc = readFileSync(join(ROOT, 'tools', 'print-helper', 'print-helper.js'), 'utf8');
-  assert(phSrc.includes("const VERSION = '1.1.21'"), 'Print Helper bumped to 1.1.21');
+  assert(/^const VERSION = '1\.1\.(2[1-9]|[3-9]\d)'/m.test(phSrc), 'Print Helper version is 1.1.21+');
   assert(phSrc.includes("'https://photobooth4u.netlify.app'"), 'Print Helper allows production Netlify origin');
   assert(phSrc.includes("'Access-Control-Allow-Private-Network': 'true'"), 'Print Helper allows Chrome Private Network Access');
   assert(phSrc.includes("'Access-Control-Expose-Headers': 'x-pb-seq'"), 'Print Helper exposes x-pb-seq header for frame stream');

@@ -309,6 +309,14 @@ export async function liveApp() {
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
   {
+    date: '2026-11-25', title: 'Android 1.2.20: Offline Laptop Print Station over Booth Wi-Fi & Setup More Menu Tools', for: ['website', 'android'], android: '1.2.20',
+    items: [
+      '🖨️ Offline Laptop Print Station (Android Tablet App): Connect your Android tablet over your booth router or laptop hotspot to print straight to a Mitsubishi D80, DNP, HiTi, Canon, or Epson USB printer plugged into a Windows or Mac laptop — with zero internet and zero pop-ups.',
+      '🔎 1-tap Wi-Fi detection & 6-digit PIN pairing: Open Laptop Print Station on the laptop (when enabled by your rental admin), tap Find Laptop on Wi-Fi in Setup → Printer on your Android tablet, enter the 6-digit PIN, and pick your printer for 4×6 or 2×6 cut strips.',
+      '🧰 Quick Setup Menu & Faster Wi-Fi Printing: Open workspace tools directly from the ⋯ menu in Setup and send prints over local Wi-Fi as lightweight high-quality images for faster sessions.'
+    ]
+  },
+  {
     date: '2026-11-25', title: 'Desktop 1.1.111 & iPad App (OTA): Setup More Menu Tools, Gated Offline Print Station & Faster Wi-Fi Printing', for: ['website', 'app', 'ipad'], app: '1.1.111',
     items: [
       '🧰 Tools inside Setup More menu (⋯): Open Photographer desk, 360 desk, Print requests, Arrange & Print, Video guestbook, All photos, Backup folder, and Booth Wi-Fi directly from Setup without starting a session first (keeps Camera, Printer, and resize controls focused inside Photo Session).',

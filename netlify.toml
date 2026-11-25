@@ -112,6 +112,11 @@
   status = 301
 
 [[redirects]]
+  from = "/offline-qr"
+  to = "/how-to-offline-qr/"
+  status = 301
+
+[[redirects]]
   from = "/how-to-print"
   to = "/how-to-print-hiti/"
   status = 301

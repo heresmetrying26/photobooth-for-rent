@@ -13291,6 +13291,44 @@
       border-left: 2px solid var(--line);
     }
 
+    /* Live flipbook card layout preview in Setup */
+    .fb-preview-wrap {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 10px;
+      background: var(--panel-2, #f5f3f7);
+      border: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .fb-preview-cv {
+      display: block;
+      width: 100%;
+      max-width: 280px;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    .fb-preview-meta {
+      margin: 0;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--ink-dim);
+      text-align: center;
+      line-height: 1.35;
+    }
+
+    .fb-swatch-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 2px;
+    }
+
     .s4-sum {
       display: flex;
       flex-wrap: wrap;
@@ -21723,7 +21761,72 @@
             </div>
 
             <div class="fb-card">
-              <p class="sub-label">3 · Printed sheets</p>
+              <p class="sub-label">3 · Card layout &amp; border</p>
+              <div class="fb-preview-wrap">
+                <canvas id="flipLayoutPreview" class="fb-preview-cv" width="560" height="390"
+                  aria-label="Live flipbook card layout preview"></canvas>
+                <p class="fb-preview-meta" id="flipLayoutPreviewMeta">4R (4×6) · 8/sheet · 12 mm left binding · Bordered</p>
+              </div>
+              <div class="fb-row"><span class="lbl">Card style</span>
+                <select id="flipCardLayoutSelect" class="pillify" aria-label="Flipbook card style">
+                  <option value="full">Full bleed</option>
+                  <option value="bordered" selected>Bordered</option>
+                  <option value="polaroid">Polaroid</option>
+                  <option value="overlay">Custom PNG</option>
+                </select>
+              </div>
+              <div id="flipOverlayWrap" class="fb-sub" style="display:none; margin-top:10px;">
+                <div class="bg-row">
+                  <img class="bg-thumb" id="flipOverlayThumb" alt="PNG border"
+                    style="display:none; max-width:80px; max-height:60px; border-radius:4px; object-fit:contain; background:repeating-conic-gradient(#e5e5e5 0% 25%, #fff 0% 50%) 50%/12px 12px;">
+                  <label class="upload-btn" for="flipOverlayInput" style="font-size:13px; padding:6px 12px;">Upload
+                    PNG border</label>
+                  <input type="file" id="flipOverlayInput" accept="image/png,image/webp,image/*">
+                </div>
+                <button type="button" class="remove-link" id="flipOverlayRemove"
+                  style="display:none; margin-top:6px;">Remove PNG border</button>
+                <p class="panel-hint" style="margin:6px 0 0;">Transparent PNG frame overlaid on every flipbook photo card
+                  (to the right of the left binding space).</p>
+                <label class="switch-row"><span>Add solid border around PNG</span><input type="checkbox"
+                    id="flipOverlayBorderToggle"></label>
+              </div>
+              <div id="flipBorderOpts" class="fb-sub">
+                <div class="fb-row"><span class="lbl">Border thickness</span>
+                  <select id="flipBorderSizeSelect" class="pillify" aria-label="Border thickness">
+                    <option value="thin">Thin</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="wide">Wide</option>
+                  </select>
+                </div>
+                <div class="fb-row"><span class="lbl">Border colour</span>
+                  <div class="fb-swatch-row" id="flipBorderColorRow">
+                    <button type="button" class="bd-swatch active" data-color="#ffffff" title="White"
+                      style="background:#ffffff;"></button>
+                    <button type="button" class="bd-swatch" data-color="#f6f1e6" title="Cream"
+                      style="background:#f6f1e6;"></button>
+                    <button type="button" class="bd-swatch" data-color="#e5e5e5" title="Light grey"
+                      style="background:#e5e5e5;"></button>
+                    <button type="button" class="bd-swatch" data-color="#1c1a1e" title="Black"
+                      style="background:#1c1a1e;"></button>
+                    <button type="button" class="bd-swatch" data-color="#f7d6e0" title="Blush"
+                      style="background:#f7d6e0;"></button>
+                    <button type="button" class="bd-swatch" data-color="#1e3a5f" title="Navy"
+                      style="background:#1e3a5f;"></button>
+                    <label class="bd-swatch bd-custom" id="flipBorderCustomSwatch" title="Custom colour"><input
+                        type="color" id="flipBorderColorInput" value="#ffffff"></label>
+                  </div>
+                </div>
+              </div>
+              <div id="flipPolaroidWrap" class="fb-sub" style="display:none;">
+                <div class="fb-row"><span class="lbl">Bottom caption</span>
+                  <input type="text" class="label-input" id="flipCardCaptionInput" maxlength="40"
+                    placeholder="Uses your event title">
+                </div>
+              </div>
+            </div>
+
+            <div class="fb-card">
+              <p class="sub-label">4 · Printed sheets</p>
               <div class="fb-row"><span class="lbl">Card order</span>
                 <select id="flipCollationSelect" class="pillify" aria-label="Card order">
                   <option value="stack" selected>Stack-cut</option>
@@ -21741,8 +21844,21 @@
               </div>
               <label class="switch-row"><span>Binding margin and staple dots</span><input type="checkbox"
                   id="flipGutterToggle" checked></label>
-              <label class="switch-row"><span>Page numbers in the margin</span><input type="checkbox"
-                  id="flipNumbersToggle" checked></label>
+              <div id="flipGutterDetails" class="fb-sub">
+                <div class="fb-row"><span class="lbl">Left binding space</span>
+                  <select id="flipGutterMmSelect" class="pillify" aria-label="Left binding space">
+                    <option value="6">6 mm</option>
+                    <option value="10">10 mm</option>
+                    <option value="12" selected>12 mm</option>
+                    <option value="15">15 mm</option>
+                    <option value="18">18 mm</option>
+                  </select>
+                </div>
+                <p class="panel-hint" style="margin:6px 0 0;">Extra room on the left of every card for stapling, clips,
+                  or binding tape.</p>
+                <label class="switch-row"><span>Page numbers in the margin</span><input type="checkbox"
+                    id="flipNumbersToggle" checked></label>
+              </div>
               <p class="panel-hint" style="margin:8px 0 0;">Paper and printer are chosen in the Printer tab.</p>
             </div>
 
@@ -30113,9 +30229,16 @@
       var outputMode = 'photo';    // 'photo' | 'gif' | 'both' | 'flipbook'
       var flipSec = 6, flipFrames = 24, flipCover = true, flipBack = true, flipbookResult = null;   // flipbook (included extra): clip length, frames, and the result on screen
       var flipCollation = 'stack'; // 'stack' (cut-and-stack) | 'grid' (sequential)
-      var flipGutter = true;       // 6mm binding gutter with staple dots & crease guide
+      var flipGutter = true;       // left binding margin with staple dots & crease guide
+      var flipGutterMm = 12;       // left binding space width in mm (6 | 10 | 12 | 15 | 18)
       var flipNumbers = true;      // frame numbering in the binding gutter
       var flipGridPreset = 'auto'; // 'auto' | '6up' | '8up': print grid preset
+      var flipCardLayout = 'bordered'; // 'full' | 'bordered' | 'polaroid' | 'overlay'
+      var flipBorderSize = 'medium';   // 'thin' | 'medium' | 'wide'
+      var flipBorderColor = '#ffffff'; // border / Polaroid card colour
+      var flipCardCaption = '';        // optional Polaroid bottom caption (defaults to event title)
+      var flipOverlayAssetId = null;   // asset ID for custom uploaded transparent PNG border/frame
+      var flipOverlayBorder = false;   // optional solid border around custom PNG overlay
       var flipPrinterPool = '';    // secondary printer name for multi-printer speed pooling
       var flipPoolMode = 'pages';  // 'pages' (alternate sheets) | 'copies' (alternate copies)
       var flipCoverStyle = 'title'; // 'title' | 'photo' | 'custom'
@@ -30254,6 +30377,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (gifOpts) gifOpts.style.display = (outputMode === 'gif' || outputMode === 'both') ? '' : 'none';
         var fbOpts = document.getElementById('flipbookOptions');
         if (fbOpts) fbOpts.style.display = outputMode === 'flipbook' ? '' : 'none';
+        if (outputMode === 'flipbook') { try { if (typeof drawFlipLayoutPreview === 'function') drawFlipLayoutPreview(); } catch (e) { } }
         try { updateReadySub(); } catch (e) { }
       }
 
@@ -30323,12 +30447,121 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (bDetails) bDetails.style.display = flipBack ? 'block' : 'none';
         }
         window.refreshFlipCoverUI = refreshFlipCoverUI;   // the saved-setup loader calls it from outside this block
+        function refreshFlipLayoutUI() {
+          var ovWrap = document.getElementById('flipOverlayWrap');
+          if (ovWrap) ovWrap.style.display = flipCardLayout === 'overlay' ? 'block' : 'none';
+          var showBorder = flipCardLayout === 'bordered' || flipCardLayout === 'polaroid' || (flipCardLayout === 'overlay' && flipOverlayBorder);
+          var bOpts = document.getElementById('flipBorderOpts');
+          if (bOpts) bOpts.style.display = showBorder ? 'block' : 'none';
+          var pWrap = document.getElementById('flipPolaroidWrap');
+          if (pWrap) pWrap.style.display = flipCardLayout === 'polaroid' ? 'block' : 'none';
+          var gDetails = document.getElementById('flipGutterDetails');
+          if (gDetails) gDetails.style.display = flipGutter ? 'block' : 'none';
+
+          var ovTh = document.getElementById('flipOverlayThumb'), ovRm = document.getElementById('flipOverlayRemove');
+          if (ovTh && ovRm) {
+            var oim = null, oUrl = '';
+            try { oim = (flipOverlayAssetId && typeof assetImg === 'function') ? assetImg(flipOverlayAssetId) : null; } catch (e) { }
+            try { oUrl = (oim && oim.src) || (flipOverlayAssetId && typeof assetThumbUrl === 'function' ? assetThumbUrl(flipOverlayAssetId) : ''); } catch (e) { }
+            if (oUrl) {
+              ovTh.src = oUrl; ovTh.style.display = 'block'; ovRm.style.display = 'inline-block';
+            } else {
+              ovTh.style.display = 'none'; ovRm.style.display = 'none';
+            }
+          }
+
+          var swRow = document.getElementById('flipBorderColorRow');
+          var swCust = document.getElementById('flipBorderCustomSwatch');
+          var swInp = document.getElementById('flipBorderColorInput');
+          if (swRow) {
+            var curC = String(flipBorderColor || '#ffffff').toLowerCase();
+            var match = null;
+            [].forEach.call(swRow.querySelectorAll('.bd-swatch'), function (b) {
+              if (b !== swCust && (b.dataset.color || '').toLowerCase() === curC) match = b;
+            });
+            if (!match && swCust) { match = swCust; if (swInp) swInp.value = curC; }
+            [].forEach.call(swRow.querySelectorAll('.bd-swatch'), function (b) { b.classList.toggle('active', b === match); });
+            if (swCust) swCust.style.background = (match === swCust) ? curC : '';
+          }
+
+          try { if (typeof drawFlipLayoutPreview === 'function') drawFlipLayoutPreview(); } catch (e) { }
+          try { if (flipbookResult && typeof drawFlipbookPreview === 'function') drawFlipbookPreview(); } catch (e) { }
+        }
+        window.refreshFlipLayoutUI = refreshFlipLayoutUI;
+
         var fcv = document.getElementById('flipCoverToggle'), fbk = document.getElementById('flipBackToggle');
         if (fcv) fcv.addEventListener('change', function () { flipCover = fcv.checked; refreshFlipCoverUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
         if (fbk) fbk.addEventListener('change', function () { flipBack = fbk.checked; refreshFlipCoverUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
         var fgt = document.getElementById('flipGutterToggle'), fnum = document.getElementById('flipNumbersToggle');
-        if (fgt) fgt.addEventListener('change', function () { flipGutter = fgt.checked; if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
-        if (fnum) fnum.addEventListener('change', function () { flipNumbers = fnum.checked; if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+        if (fgt) fgt.addEventListener('change', function () { flipGutter = fgt.checked; refreshFlipLayoutUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+        if (fnum) fnum.addEventListener('change', function () { flipNumbers = fnum.checked; refreshFlipLayoutUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+        var fgmm = document.getElementById('flipGutterMmSelect');
+        if (fgmm) fgmm.addEventListener('change', function () {
+          var v = Number(fgmm.value);
+          flipGutterMm = [6, 10, 12, 15, 18].indexOf(v) >= 0 ? v : 12;
+          refreshFlipLayoutUI();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+        var fcl = document.getElementById('flipCardLayoutSelect');
+        if (fcl) fcl.addEventListener('change', function () {
+          flipCardLayout = ['full', 'bordered', 'polaroid', 'overlay'].indexOf(fcl.value) >= 0 ? fcl.value : 'bordered';
+          refreshFlipLayoutUI();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+        var fbs = document.getElementById('flipBorderSizeSelect');
+        if (fbs) fbs.addEventListener('change', function () {
+          flipBorderSize = ['thin', 'medium', 'wide'].indexOf(fbs.value) >= 0 ? fbs.value : 'medium';
+          refreshFlipLayoutUI();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+        var fbcr = document.getElementById('flipBorderColorRow');
+        if (fbcr) fbcr.addEventListener('click', function (e) {
+          var b = e.target.closest('.bd-swatch');
+          if (!b || !b.dataset.color) return;
+          flipBorderColor = b.dataset.color;
+          refreshFlipLayoutUI();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+        var fbci = document.getElementById('flipBorderColorInput');
+        if (fbci) {
+          var onFlipBorderColorPick = function () {
+            flipBorderColor = fbci.value || '#ffffff';
+            refreshFlipLayoutUI();
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          };
+          fbci.addEventListener('input', onFlipBorderColorPick);
+          fbci.addEventListener('change', onFlipBorderColorPick);
+        }
+        var fcap = document.getElementById('flipCardCaptionInput');
+        if (fcap) fcap.addEventListener('input', function () {
+          flipCardCaption = fcap.value;
+          refreshFlipLayoutUI();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+        var fovb = document.getElementById('flipOverlayBorderToggle');
+        if (fovb) fovb.addEventListener('change', function () {
+          flipOverlayBorder = fovb.checked;
+          refreshFlipLayoutUI();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+        var fovi = document.getElementById('flipOverlayInput'), fovr = document.getElementById('flipOverlayRemove');
+        if (fovi) fovi.addEventListener('change', async function () {
+          var f = fovi.files && fovi.files[0]; fovi.value = '';
+          if (!f) return;
+          try {
+            var url = await readImageFile(f, 1200);
+            var preImg = await new Promise(function (res) {
+              var im = new Image();
+              im.onload = function () { res(im); };
+              im.onerror = function () { res(null); };
+              im.src = url;
+            });
+            flipOverlayAssetId = await addAsset(url, undefined, preImg);
+            refreshFlipLayoutUI();
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          } catch (e) { showToast(e.message || 'Could not load PNG border', 4000); }
+        });
+        if (fovr) fovr.addEventListener('click', function () { flipOverlayAssetId = null; refreshFlipLayoutUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
         var fcs = document.getElementById('flipCoverStyleSelect');
         if (fcs) fcs.addEventListener('change', function () { flipCoverStyle = fcs.value; refreshFlipCoverUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
         var fci = document.getElementById('flipCoverInput'), fcr = document.getElementById('flipCoverRemove');
@@ -30337,7 +30570,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (!f) return;
           try {
             var url = await readImageFile(f, 1200);
-            flipCoverAssetId = await addAsset(url);
+            var preImg = await new Promise(function (res) {
+              var im = new Image();
+              im.onload = function () { res(im); };
+              im.onerror = function () { res(null); };
+              im.src = url;
+            });
+            flipCoverAssetId = await addAsset(url, undefined, preImg);
             refreshFlipCoverUI();
             if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
           } catch (e) { showToast(e.message || 'Could not load cover image', 4000); }
@@ -30349,7 +30588,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var fcues = document.getElementById('flipCuesToggle');
         if (fcues) fcues.addEventListener('change', function () { flipCues = fcues.checked; if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
         var fgp = document.getElementById('flipGridPresetSelect');
-        if (fgp) fgp.addEventListener('change', function () { flipGridPreset = fgp.value; if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+        if (fgp) fgp.addEventListener('change', function () { flipGridPreset = fgp.value; refreshFlipLayoutUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
         var fpp = document.getElementById('flipPrinterPoolSelect');
         if (fpp) fpp.addEventListener('change', function () {
           flipPrinterPool = fpp.value;
@@ -30358,9 +30597,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         });
         var fpm = document.getElementById('flipPoolModeSelect');
         if (fpm) fpm.addEventListener('change', function () { flipPoolMode = fpm.value; if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+        if (typeof labelInput !== 'undefined' && labelInput) {
+          labelInput.addEventListener('input', function () { try { if (outputMode === 'flipbook' && typeof drawFlipLayoutPreview === 'function') drawFlipLayoutPreview(); } catch (e) { } });
+        }
         refreshGifUI();
         refreshOutputModeUI();
         refreshFlipCoverUI();
+        refreshFlipLayoutUI();
         // refreshFlipPoolUI() reads `helperOn`, declared later with `let` — calling it here
         // threw a TDZ error that aborted the whole script. fillPrinterSelect() calls it
         // once the helper state exists.
@@ -44485,6 +44728,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         refreshPrintExtras();
         try { refreshGuestPrintBtn(); } catch (e) { }
         try { if (typeof reprintSyncExternalConfig === 'function') reprintSyncExternalConfig(false); } catch (e) { }
+        try { if (typeof drawFlipLayoutPreview === 'function') drawFlipLayoutPreview(); } catch (e) { }
       }
       // iPad / Android pick the paper in their own print screen: it must match.
       function paperMatchTip() {
@@ -51112,8 +51356,44 @@ function renderTabletBridgeSetup(info) {
       }
       // Fill a box with a picture, cropping the overflow (like object-fit: cover).
       function drawCover(ctx, img, x, y, w, h) {
-        var iw = img.width, ih = img.height, k = Math.max(w / iw, h / ih), sw = w / k, sh = h / k;
+        var iw = img.width, ih = img.height;
+        if (!iw || !ih || w <= 0 || h <= 0) return;
+        var k = Math.max(w / iw, h / ih), sw = w / k, sh = h / k;
         ctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, x, y, w, h);
+      }
+      // Fit a picture wholly inside a box without cropping (like object-fit: contain).
+      function drawContain(ctx, img, x, y, w, h) {
+        var iw = img.width, ih = img.height;
+        if (!iw || !ih || w <= 0 || h <= 0) return;
+        var k = Math.min(w / iw, h / ih), dw = iw * k, dh = ih * k;
+        ctx.drawImage(img, 0, 0, iw, ih, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+      }
+      function getFlipGutterPx(cw, mm, gutterOn, gutterMm) {
+        if (!gutterOn) return 0;
+        var gMm = Number(gutterMm) || 12;
+        return Math.min(Math.max(1, Math.round(gMm * mm)), Math.round(cw * 0.45));
+      }
+      function getFlipBorderPadPx(rw, rh, mm, borderSize) {
+        var padMm = borderSize === 'thin' ? 1.2 : borderSize === 'wide' ? 3.5 : 2.2;
+        return Math.min(Math.max(1, Math.round(padMm * mm)), Math.round(Math.min(rw, rh) * 0.22));
+      }
+      function getFlipOverlayImg() {
+        try {
+          if (flipOverlayAssetId && typeof assetImg === 'function') {
+            var im = assetImg(flipOverlayAssetId);
+            if (im && im.width) return im;
+          }
+        } catch (e) { }
+        return null;
+      }
+      function getFlipPreviewPaper() {
+        try {
+          if (typeof printSize !== 'undefined' && printSize && typeof paperFor === 'function') {
+            var p = paperFor(printSize);
+            if (p && !p.receipt && p.w / p.h >= 0.45) return p;
+          }
+        } catch (e) { }
+        return { name: '4R (4\u00d76)', w: 101.6, h: 152.4 };
       }
       // Left binding gutter on each card: reserved for stapling and tape, with staple alignment marks, fold guide & numbering.
       function drawBindingGutter(x, cx, cy, gw, ch, it, mm) {
@@ -51131,8 +51411,8 @@ function renderTabletBridgeSetup(info) {
         x.stroke();
         x.restore();
 
-        // Staple placement alignment marks (subtle dots at 28% and 72% height)
-        var dotX = cx + Math.round(gw * 0.42);
+        // Staple placement alignment marks (kept near the outer spine so wider gutters leave extra page-bend room)
+        var dotX = cx + Math.min(Math.round(gw * 0.42), Math.round(5.5 * mm));
         var dotR = Math.max(1.5, Math.round(mm * 0.4));
         x.fillStyle = '#a0a0a0';
         x.beginPath();
@@ -51145,14 +51425,238 @@ function renderTabletBridgeSetup(info) {
         // Subtle frame numbering in gutter margin
         if (flipNumbers && it && it.label) {
           x.save();
-          x.translate(cx + Math.round(gw * 0.42), cy + Math.round(ch * 0.5));
+          x.translate(dotX, cy + Math.round(ch * 0.5));
           x.rotate(-Math.PI / 2);
           x.fillStyle = '#8e8e8e';
-          x.font = '600 ' + Math.max(9, Math.round(mm * 2.2)) + 'px Manrope, sans-serif';
+          var fPx = Math.max(8, Math.min(Math.round(mm * 2.2), Math.round(gw * 0.48)));
+          x.font = '600 ' + fPx + 'px Manrope, sans-serif';
           x.textAlign = 'center';
           x.textBaseline = 'middle';
           x.fillText(it.label, 0, 0);
           x.restore();
+        }
+      }
+      // Draws the card content area (to the right of any left binding gutter) with the active card style, border & PNG overlay.
+      function drawFlipCardContent(x, it, rx, ry, rw, rh, mm) {
+        if (rw <= 0 || rh <= 0) return;
+        var layout = flipCardLayout || 'bordered';
+        var bColor = (typeof isHex === 'function' && isHex(flipBorderColor)) ? flipBorderColor : '#ffffff';
+        var bDark = false;
+        try { bDark = lumOf(bColor) < 0.5; } catch (e) { }
+        var useBorder = layout === 'bordered' || layout === 'polaroid' || (layout === 'overlay' && !!flipOverlayBorder);
+        var pad = useBorder ? getFlipBorderPadPx(rw, rh, mm, flipBorderSize) : 0;
+        var hairline = bDark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.09)';
+        var hairlineW = Math.max(1, Math.round(mm * 0.12));
+
+        // Cover and Back cards: match outer border frame without cropping title text or QR code when the binding gutter is wide.
+        if (it.kind === 'cover' || it.kind === 'back') {
+          var isPhotoCover = it.kind === 'cover' && !!(it.c && it.c._flipPhotoCover);
+          if (isPhotoCover) {
+            x.fillStyle = useBorder ? bColor : '#ffffff';
+            x.fillRect(rx, ry, rw, rh);
+            drawCover(x, it.c, rx + pad, ry + pad, Math.max(1, rw - 2 * pad), Math.max(1, rh - 2 * pad));
+            if (useBorder) {
+              x.strokeStyle = hairline; x.lineWidth = hairlineW;
+              x.strokeRect(rx + pad + hairlineW / 2, ry + pad + hairlineW / 2, Math.max(1, rw - 2 * pad - hairlineW), Math.max(1, rh - 2 * pad - hairlineW));
+            }
+            return;
+          }
+          var cardDark = (it.c && typeof it.c._flipDark === 'boolean') ? it.c._flipDark : false;
+          if (!(it.c && typeof it.c._flipDark === 'boolean')) {
+            try { cardDark = lumOf(textColor) > 0.5; } catch (e) { }
+          }
+          var cardBg = cardDark ? '#1c1a1e' : '#fffaf2';
+          x.fillStyle = useBorder ? bColor : cardBg;
+          x.fillRect(rx, ry, rw, rh);
+          if (useBorder) {
+            x.fillStyle = cardBg;
+            x.fillRect(rx + pad, ry + pad, Math.max(1, rw - 2 * pad), Math.max(1, rh - 2 * pad));
+          }
+          drawContain(x, it.c, rx + pad, ry + pad, Math.max(1, rw - 2 * pad), Math.max(1, rh - 2 * pad));
+          var innerInset = Math.max(Math.round(mm * 1.4), 3);
+          var ix = rx + pad + innerInset, iy = ry + pad + innerInset;
+          var iw = rw - 2 * (pad + innerInset), ih = rh - 2 * (pad + innerInset);
+          if (iw > 8 && ih > 8) {
+            x.strokeStyle = cardDark ? 'rgba(255,255,255,0.32)' : 'rgba(0,0,0,0.16)';
+            x.lineWidth = Math.max(1, Math.round(mm * 0.16));
+            x.strokeRect(ix, iy, iw, ih);
+          }
+          if (useBorder) {
+            x.strokeStyle = hairline; x.lineWidth = hairlineW;
+            x.strokeRect(rx + pad + hairlineW / 2, ry + pad + hairlineW / 2, Math.max(1, rw - 2 * pad - hairlineW), Math.max(1, rh - 2 * pad - hairlineW));
+          }
+          return;
+        }
+
+        // Photo frames: Full bleed | Bordered | Polaroid | Custom PNG overlay
+        x.fillStyle = useBorder ? bColor : '#ffffff';
+        x.fillRect(rx, ry, rw, rh);
+
+        if (layout === 'polaroid') {
+          var bottomH = Math.min(Math.round(rh * 0.30), Math.max(Math.round(pad * 2.4), Math.round(rh * 0.21)));
+          var px = rx + pad, py = ry + pad;
+          var pw = Math.max(1, rw - 2 * pad), ph = Math.max(1, rh - pad - bottomH);
+          drawCover(x, it.c, px, py, pw, ph);
+          x.strokeStyle = hairline; x.lineWidth = hairlineW;
+          x.strokeRect(px + hairlineW / 2, py + hairlineW / 2, Math.max(1, pw - hairlineW), Math.max(1, ph - hairlineW));
+
+          var cap = (flipCardCaption || '').trim();
+          if (!cap) {
+            try { cap = (labelInput && labelInput.value || '').trim(); } catch (e) { }
+          }
+          if (!cap) {
+            try { cap = (typeof currentDateLabel === 'function' ? currentDateLabel() : '') || ''; } catch (e) { }
+          }
+          if (cap) {
+            var fontFam = (typeof currentFont === 'string' && currentFont) ? currentFont : 'Manrope, sans-serif';
+            var fontSize = Math.max(8, Math.round(bottomH * 0.56));
+            x.save();
+            x.fillStyle = bDark ? '#ffffff' : '#1c1a1e';
+            x.textAlign = 'center';
+            x.textBaseline = 'middle';
+            x.font = '700 ' + fontSize + 'px ' + fontFam;
+            var maxCapW = Math.max(12, pw * 0.94);
+            while (fontSize > 7 && x.measureText(cap).width > maxCapW) {
+              fontSize = Math.max(7, fontSize - 1);
+              x.font = '700 ' + fontSize + 'px ' + fontFam;
+            }
+            x.fillText(cap.slice(0, 44), rx + rw / 2, ry + rh - bottomH / 2);
+            x.restore();
+          }
+          return;
+        }
+
+        var fx = rx + pad, fy = ry + pad;
+        var fw = Math.max(1, rw - 2 * pad), fh = Math.max(1, rh - 2 * pad);
+        drawCover(x, it.c, fx, fy, fw, fh);
+
+        if (layout === 'overlay') {
+          var ovImg = getFlipOverlayImg();
+          if (ovImg) {
+            x.drawImage(ovImg, fx, fy, fw, fh);
+          }
+        }
+        if (useBorder) {
+          x.strokeStyle = hairline; x.lineWidth = hairlineW;
+          x.strokeRect(fx + hairlineW / 2, fy + hairlineW / 2, Math.max(1, fw - hairlineW), Math.max(1, fh - hairlineW));
+        }
+      }
+      function drawFlipbookCard(x, it, cx, cy, cw, ch, mm) {
+        x.save();
+        x.beginPath();
+        x.rect(cx, cy, cw, ch);
+        x.clip();
+        var gw = getFlipGutterPx(cw, mm, flipGutter, flipGutterMm);
+        drawFlipCardContent(x, it, cx + gw, cy, cw - gw, ch, mm);
+        if (gw > 0) {
+          drawBindingGutter(x, cx, cy, gw, ch, it, mm);
+        }
+        x.restore();
+      }
+      var _flipSamplePhotoCanvas = null;
+      function getFlipSamplePhoto() {
+        if (_flipSamplePhotoCanvas) return _flipSamplePhotoCanvas;
+        var c = document.createElement('canvas'); c.width = 400; c.height = 300;
+        var x = c.getContext('2d');
+        var g = x.createLinearGradient(0, 0, 400, 300);
+        g.addColorStop(0, '#f4a261'); g.addColorStop(0.55, '#e76f51'); g.addColorStop(1, '#264653');
+        x.fillStyle = g; x.fillRect(0, 0, 400, 300);
+        // Warm soft celebration bokeh
+        var spots = [[70, 62, 34, 0.22], [320, 54, 42, 0.18], [260, 120, 24, 0.16], [130, 145, 20, 0.14], [355, 195, 30, 0.16]];
+        spots.forEach(function (s) {
+          x.fillStyle = 'rgba(255,248,230,' + s[3] + ')';
+          x.beginPath(); x.arc(s[0], s[1], s[2], 0, Math.PI * 2); x.fill();
+        });
+        // Two cheerful silhouettes posing in center
+        x.fillStyle = 'rgba(28,26,30,0.72)';
+        x.beginPath(); x.arc(165, 132, 34, 0, Math.PI * 2); x.fill();
+        x.beginPath(); x.arc(240, 142, 31, 0, Math.PI * 2); x.fill();
+        x.beginPath(); x.ellipse(165, 255, 62, 82, 0, Math.PI, 0, false); x.fill();
+        x.beginPath(); x.ellipse(240, 260, 56, 78, 0, Math.PI, 0, false); x.fill();
+        _flipSamplePhotoCanvas = c;
+        return c;
+      }
+      function drawFlipLayoutPreview() {
+        var cv = document.getElementById('flipLayoutPreview');
+        if (!cv) return;
+        var x = cv.getContext('2d');
+        var W = cv.width, H = cv.height;
+        x.clearRect(0, 0, W, H);
+        x.fillStyle = '#ece9f1';
+        x.fillRect(0, 0, W, H);
+
+        var paper = getFlipPreviewPaper();
+        var g = flipGrid(paper);
+        var cardMmW = Math.max(20, (paper.w - 2 * FLIP_MARGIN) / g.cols);
+        var cardMmH = Math.max(20, (paper.h - 2 * FLIP_MARGIN) / g.rows);
+
+        var topPad = flipGutter ? 46 : 24, botPad = 22, sidePad = 28;
+        var maxW = W - sidePad * 2, maxH = H - topPad - botPad;
+        var scale = Math.min(maxW / cardMmW, maxH / cardMmH);
+        var cw = Math.round(cardMmW * scale), ch = Math.round(cardMmH * scale);
+        var cx = Math.round((W - cw) / 2), cy = Math.round(topPad + (maxH - ch) / 2);
+
+        // Subtle card shadow
+        x.save();
+        x.shadowColor = 'rgba(20,18,24,0.22)';
+        x.shadowBlur = 16;
+        x.shadowOffsetY = 6;
+        x.fillStyle = '#ffffff';
+        x.fillRect(cx, cy, cw, ch);
+        x.restore();
+
+        var sampleItem = { c: getFlipSamplePhoto(), kind: 'frame', num: 1, total: flipFrames, label: '01' };
+        drawFlipbookCard(x, sampleItem, cx, cy, cw, ch, scale);
+
+        // Prompt if Custom PNG is chosen without an uploaded file yet
+        var gw = getFlipGutterPx(cw, scale, flipGutter, flipGutterMm);
+        if (flipCardLayout === 'overlay' && !getFlipOverlayImg()) {
+          var ovPad = flipOverlayBorder ? getFlipBorderPadPx(cw - gw, ch, scale, flipBorderSize) : 0;
+          x.save();
+          x.strokeStyle = 'rgba(255,255,255,0.92)';
+          x.lineWidth = 3;
+          x.setLineDash([8, 6]);
+          x.strokeRect(cx + gw + ovPad + 8, cy + ovPad + 8, Math.max(10, cw - gw - 2 * ovPad - 16), Math.max(10, ch - 2 * ovPad - 16));
+          x.fillStyle = 'rgba(20,18,24,0.68)';
+          var bw = Math.min(180, Math.max(90, cw - gw - 24)), bh = 28;
+          drawRoundRect(x, cx + gw + (cw - gw - bw) / 2, cy + (ch - bh) / 2, bw, bh, 14);
+          x.fill();
+          x.fillStyle = '#ffffff';
+          x.font = '700 13px Manrope, sans-serif';
+          x.textAlign = 'center'; x.textBaseline = 'middle';
+          x.fillText('Upload PNG border', cx + gw + (cw - gw) / 2, cy + ch / 2);
+          x.restore();
+        }
+
+        // Crisp card cut border
+        x.strokeStyle = 'rgba(28,26,30,0.28)';
+        x.lineWidth = 1.5;
+        x.strokeRect(cx + 0.75, cy + 0.75, cw - 1.5, ch - 1.5);
+
+        // Binding dimension ruler above the left margin
+        if (flipGutter && gw > 0) {
+          var ry = cy - 14;
+          x.save();
+          x.strokeStyle = '#c93d27';
+          x.fillStyle = '#c93d27';
+          x.lineWidth = 2;
+          x.beginPath();
+          x.moveTo(cx, ry - 5); x.lineTo(cx, ry + 5);
+          x.moveTo(cx + gw, ry - 5); x.lineTo(cx + gw, ry + 5);
+          x.moveTo(cx, ry); x.lineTo(cx + gw, ry);
+          x.stroke();
+          x.font = '700 13px Manrope, sans-serif';
+          x.textAlign = 'center'; x.textBaseline = 'bottom';
+          var labelX = Math.max(cx + 48, Math.min(W - 48, cx + gw / 2));
+          x.fillText(flipGutterMm + ' mm binding', labelX, ry - 6);
+          x.restore();
+        }
+
+        var meta = document.getElementById('flipLayoutPreviewMeta');
+        if (meta) {
+          var styleNames = { full: 'Full bleed', bordered: 'Bordered', polaroid: 'Polaroid', overlay: 'Custom PNG' };
+          meta.textContent = paper.name + ' \u00b7 ' + g.per + '/sheet (' + Math.round(cardMmW) + '\u00d7' + Math.round(cardMmH) + ' mm) \u00b7 ' +
+            (flipGutter ? (flipGutterMm + ' mm left binding') : 'No binding margin') + ' \u00b7 ' + (styleNames[flipCardLayout] || 'Bordered');
         }
       }
       // Cover and back cards: light card with dark text, or a dark card when the booth's text colour is light.
@@ -51161,7 +51665,7 @@ function renderTabletBridgeSetup(info) {
         var x = c.getContext('2d'), dark = false;
         try { dark = lumOf(textColor) > 0.5; } catch (e) { }
         x.fillStyle = dark ? '#1c1a1e' : '#fffaf2'; x.fillRect(0, 0, W, H);
-        x.strokeStyle = dark ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.18)'; x.lineWidth = 4; x.strokeRect(24, 24, W - 48, H - 48);
+        c._flipDark = dark;
         return { c: c, x: x, W: W, H: H, dark: dark };
       }
       function flipLogo(x, W, top, maxW, maxH) {
@@ -51214,6 +51718,7 @@ function renderTabletBridgeSetup(info) {
             var ci = assetImg(flipCoverAssetId);
             if (ci && ci.width) {
               drawCover(x, ci, 0, 0, W, H);
+              b.c._flipPhotoCover = true;
               return b.c;
             }
           } catch (e) { }
@@ -51246,6 +51751,7 @@ function renderTabletBridgeSetup(info) {
             x.fillText(dt, W / 2, topY + 44);
             x.globalAlpha = 1;
           }
+          b.c._flipPhotoCover = true;
           return b.c;
         }
 
@@ -51268,27 +51774,27 @@ function renderTabletBridgeSetup(info) {
 
         // If QR code is enabled and we have a target URL, render interactive digital QR layout
         if (flipBackQr && targetUrl && typeof qrcode === 'function') {
-          var lh = flipLogo(x, W, 32, W * 0.28, H * 0.16);
+          var lh = flipLogo(x, W, 56, W * 0.28, H * 0.16);
           if (!lh) {
             x.fillStyle = b.dark ? '#ffffff' : '#1c1a1e';
             x.textAlign = 'center'; x.textBaseline = 'middle';
-            x.font = 'bold 44px Fraunces, Georgia, serif';
-            x.fillText('Thank you!', W / 2, 52);
+            x.font = 'bold 48px Fraunces, Georgia, serif';
+            x.fillText('Thank you!', W / 2, 86);
           }
 
           var q = null;
           try { q = qrcode(0, 'M'); q.addData(String(targetUrl)); q.make(); } catch (e) { }
           if (q) {
             var n = q.getModuleCount();
-            var qrBoxSize = 250;
+            var qrBoxSize = 280;
             var cell = Math.floor(qrBoxSize / (n + 2));
             var qs = cell * (n + 2);
             var ox = Math.round((W - qs) / 2);
-            var oy = lh ? Math.round(32 + lh + 14) : 92;
+            var oy = lh ? Math.round(56 + lh + 22) : 138;
 
             // Clean white rounded card background for QR
             x.fillStyle = '#ffffff';
-            drawRoundRect(x, ox - 10, oy - 10, qs + 20, qs + 20, 14);
+            drawRoundRect(x, ox - 12, oy - 12, qs + 24, qs + 24, 14);
             x.fill();
             x.strokeStyle = 'rgba(0,0,0,0.12)';
             x.lineWidth = 2.5;
@@ -51305,10 +51811,10 @@ function renderTabletBridgeSetup(info) {
             }
 
             // Call to action below QR
-            var ctaY = oy + qs + 30;
+            var ctaY = oy + qs + 40;
             x.fillStyle = b.dark ? '#ffffff' : '#1c1a1e';
             x.textAlign = 'center'; x.textBaseline = 'middle';
-            x.font = 'bold 24px Manrope, sans-serif';
+            x.font = 'bold 26px Manrope, sans-serif';
             var ctaTxt = (flipBackText || '').trim() || 'Scan to view & share your flipbook';
             x.fillText(ctaTxt, W / 2, ctaY);
 
@@ -51316,8 +51822,8 @@ function renderTabletBridgeSetup(info) {
             var t = (labelInput.value || '').trim() || currentDateLabel();
             if (t) {
               x.globalAlpha = 0.75;
-              x.font = '600 20px Manrope, sans-serif';
-              x.fillText(t.slice(0, 48), W / 2, ctaY + 32);
+              x.font = '600 22px Manrope, sans-serif';
+              x.fillText(t.slice(0, 48), W / 2, ctaY + 36);
               x.globalAlpha = 1;
             }
             return b.c;
@@ -51332,14 +51838,13 @@ function renderTabletBridgeSetup(info) {
         if (t) { x.globalAlpha = 0.75; x.font = '600 32px Manrope, sans-serif'; x.fillText(t.slice(0, 40), W / 2, y + 74); x.globalAlpha = 1; }
         return b.c;
       }
-      // One or more print sheets: cards arranged in stack-cut or sequential order, with binding gutters and cut lines.
+      // One or more print sheets: cards arranged in stack-cut or sequential order, with binding gutters, borders and cut lines.
       function buildFlipbookPages(paper) {
         var g = flipGrid(paper), mm = PRINT_DPI / 25.4, pages = [], items = flipbookItems();
         var W = Math.round(paper.w * mm), H = Math.round(paper.h * mm), m = FLIP_MARGIN * mm;
         var cw = (W - 2 * m) / g.cols, ch = (H - 2 * m) / g.rows;
         var totalSheets = Math.max(1, Math.ceil(items.length / g.per));
         var isStack = flipCollation === 'stack';
-        var gw = flipGutter ? Math.round(6 * mm) : 0;   // 6 mm binding gutter
 
         for (var s = 0; s < totalSheets; s++) {
           var c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -51352,11 +51857,7 @@ function renderTabletBridgeSetup(info) {
             var cx = m + col * cw, cy = m + row * ch;
             var it = items[itemIndex];
 
-            // Draw photo offset by binding gutter
-            drawCover(x, it.c, cx + gw, cy, cw - gw, ch);
-            if (flipGutter) {
-              drawBindingGutter(x, cx, cy, gw, ch, it, mm);
-            }
+            drawFlipbookCard(x, it, cx, cy, cw, ch, mm);
           }
 
           // Thin cut lines across the sheet
@@ -51414,7 +51915,7 @@ function renderTabletBridgeSetup(info) {
           x.font = 'bold 20px Manrope, sans-serif';
           x.textAlign = 'left'; x.textBaseline = 'middle';
           var it = items[flipCurrentCard];
-          var cardName = it.kind === 'cover' ? 'Cover' : it.kind === 'back' ? 'Back' : ('Page ' + it.label + ' of ' + (items.length - 2));
+          var cardName = it.kind === 'cover' ? 'Cover' : it.kind === 'back' ? 'Back' : ('Page ' + it.label + ' of ' + (it.total || flipbookResult.cards.length));
           x.fillText('📖 Flip book · ' + cardName, 40, 32);
 
           // View toggle pill: [ ▦ Sheet Grid ]
@@ -51428,6 +51929,10 @@ function renderTabletBridgeSetup(info) {
 
           // Center Booklet Stage
           var bw = 700, bh = 500, bx = Math.round((PW - bw) / 2), by = 58;
+          var pPaper = getFlipPreviewPaper();
+          var pGrid = flipGrid(pPaper);
+          var pCardMmW = Math.max(20, (pPaper.w - 2 * FLIP_MARGIN) / pGrid.cols);
+          var pMm = bw / pCardMmW;
 
           // 3D paper stack depth behind the card
           x.fillStyle = 'rgba(255,255,255,0.06)';
@@ -51441,8 +51946,8 @@ function renderTabletBridgeSetup(info) {
           x.clip();
           x.fillStyle = '#ffffff'; x.fillRect(bx, by, bw, bh);
 
-          // Spine binding on the left
-          var spineW = 54;
+          // Spine binding on the left (scales with chosen binding width)
+          var spineW = flipGutter ? Math.max(44, getFlipGutterPx(bw, pMm, true, flipGutterMm)) : 16;
           var spineGrad = x.createLinearGradient(bx, 0, bx + spineW, 0);
           spineGrad.addColorStop(0, '#1c1a1e');
           spineGrad.addColorStop(0.85, '#2b282e');
@@ -51451,13 +51956,16 @@ function renderTabletBridgeSetup(info) {
           x.fillRect(bx, by, spineW, bh);
 
           // Spine staple dots
-          x.fillStyle = '#949098';
-          var sR = 3;
-          x.beginPath(); x.arc(bx + spineW * 0.45, by + bh * 0.28, sR, 0, Math.PI * 2); x.fill();
-          x.beginPath(); x.arc(bx + spineW * 0.45, by + bh * 0.72, sR, 0, Math.PI * 2); x.fill();
+          if (flipGutter) {
+            x.fillStyle = '#949098';
+            var sR = 3.5;
+            var sDotX = bx + Math.min(Math.round(spineW * 0.42), Math.round(5.5 * pMm));
+            x.beginPath(); x.arc(sDotX, by + bh * 0.28, sR, 0, Math.PI * 2); x.fill();
+            x.beginPath(); x.arc(sDotX, by + bh * 0.72, sR, 0, Math.PI * 2); x.fill();
+          }
 
-          // Card content
-          drawCover(x, it.c, bx + spineW, by, bw - spineW, bh);
+          // Card content (reflects chosen border / Polaroid / PNG overlay)
+          drawFlipCardContent(x, it, bx + spineW, by, bw - spineW, bh, pMm);
           x.restore();
 
           // Card border
@@ -51533,16 +52041,23 @@ function renderTabletBridgeSetup(info) {
         x.textAlign = 'center';
         x.fillText('📖 Flip player', previewCanvas.width - 87, 27);
 
+        var gPaper = getFlipPreviewPaper();
+        var gGrid = flipGrid(gPaper);
+        var gCardMmW = Math.max(20, (gPaper.w - 2 * FLIP_MARGIN) / gGrid.cols);
+        var gCellMm = (cw - 2) / gCardMmW;
         items.forEach(function (it, i) {
           var cx = (i % cols) * cw, cy = pad + Math.floor(i / cols) * ch;
-          drawCover(x, it.c, cx + 1, cy + 1, cw - 2, ch - 2);
+          drawFlipbookCard(x, it, cx + 1, cy + 1, cw - 2, ch - 2, gCellMm);
+          x.strokeStyle = '#d5d5d5'; x.lineWidth = 1;
+          x.strokeRect(cx + 1.5, cy + 1.5, cw - 3, ch - 3);
           if (it.label) {
-            x.fillStyle = 'rgba(0,0,0,0.55)';
-            x.fillRect(cx + 2, cy + ch - 24, 46, 22);
+            x.fillStyle = 'rgba(20,18,22,0.68)';
+            drawRoundRect(x, cx + cw - 46, cy + 4, 42, 20, 6);
+            x.fill();
             x.fillStyle = '#ffffff';
-            x.font = 'bold 12px Manrope, sans-serif';
+            x.font = 'bold 11px Manrope, sans-serif';
             x.textAlign = 'center'; x.textBaseline = 'middle';
-            x.fillText(it.label, cx + 25, cy + ch - 13);
+            x.fillText(it.label, cx + cw - 25, cy + 14);
           }
         });
       }
@@ -70879,7 +71394,7 @@ function fxWavUrl(kind) {
           firstTimerSec: firstTimerSec, timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
           reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake, qrPop: qrPopOn, hideQr: hideQrOn, qrPopDelay: qrPopDelay, qrMatchWelcome: qrMatchWelcome,
           shareStation: shareStationOn, shareStationHandoff: shareStationHandoff, shareStationPrivacy: shareStationPrivacy,
-          outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, gifMotionStyle: gifMotionStyle, gifLoopMode: gifLoopMode, gifSlideCard: gifSlideCard, gifSlideBg: gifSlideBg, gifSlideFrame: gifSlideFrame, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipNumbers: flipNumbers, flipCues: flipCues, flipGridPreset: flipGridPreset, flipPrinterPool: flipPrinterPool, flipPoolMode: flipPoolMode, flipCoverStyle: flipCoverStyle, flipCoverAssetId: flipCoverAssetId, flipBackQr: flipBackQr, flipBackText: flipBackText,
+          outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, gifMotionStyle: gifMotionStyle, gifLoopMode: gifLoopMode, gifSlideCard: gifSlideCard, gifSlideBg: gifSlideBg, gifSlideFrame: gifSlideFrame, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipGutterMm: flipGutterMm, flipNumbers: flipNumbers, flipCues: flipCues, flipGridPreset: flipGridPreset, flipCardLayout: flipCardLayout, flipBorderSize: flipBorderSize, flipBorderColor: flipBorderColor, flipCardCaption: flipCardCaption, flipOverlayAssetId: flipOverlayAssetId, flipOverlayBorder: flipOverlayBorder, flipPrinterPool: flipPrinterPool, flipPoolMode: flipPoolMode, flipCoverStyle: flipCoverStyle, flipCoverAssetId: flipCoverAssetId, flipBackQr: flipBackQr, flipBackText: flipBackText,
           backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
           frameColorChoice: frameColorChoice, photoPlacement: photoPlacement, cropFocus: cropFocus,
           label: labelInput.value, font: currentFont, dateFont: currentDateFont, dateOn: dateOn, date: dateInput.value,
@@ -70957,6 +71472,7 @@ function fxWavUrl(kind) {
         btn.textContent = opt[1]; btn.style.fontFamily = opt[0];
         [...list.children].forEach(function (c) { c.classList.toggle('active', c.dataset.value === value); });
         if (which === 'date') currentDateFont = value; else currentFont = value;
+        try { if (outputMode === 'flipbook' && typeof drawFlipLayoutPreview === 'function') drawFlipLayoutPreview(); } catch (e) { }
       }
       function setTextColorUI(color) {
         textColor = color; textColorInput.value = color;
@@ -71056,7 +71572,19 @@ function fxWavUrl(kind) {
           if (typeof s.flipBack === 'boolean') { flipBack = s.flipBack; var fbEl = document.getElementById('flipBackToggle'); if (fbEl) fbEl.checked = flipBack; }
           if (s.flipCollation === 'stack' || s.flipCollation === 'grid') { flipCollation = s.flipCollation; var fcolEl = document.getElementById('flipCollationSelect'); if (fcolEl) fcolEl.value = flipCollation; }
           if (typeof s.flipGutter === 'boolean') { flipGutter = s.flipGutter; var fgEl = document.getElementById('flipGutterToggle'); if (fgEl) fgEl.checked = flipGutter; }
+          flipGutterMm = [6, 10, 12, 15, 18].indexOf(Number(s.flipGutterMm)) >= 0 ? Number(s.flipGutterMm) : 12;
+          var fgmEl = document.getElementById('flipGutterMmSelect'); if (fgmEl) fgmEl.value = String(flipGutterMm);
           if (typeof s.flipNumbers === 'boolean') { flipNumbers = s.flipNumbers; var fnEl = document.getElementById('flipNumbersToggle'); if (fnEl) fnEl.checked = flipNumbers; }
+          flipCardLayout = ['full', 'bordered', 'polaroid', 'overlay'].indexOf(s.flipCardLayout) >= 0 ? s.flipCardLayout : 'bordered';
+          var fclEl = document.getElementById('flipCardLayoutSelect'); if (fclEl) fclEl.value = flipCardLayout;
+          flipBorderSize = ['thin', 'medium', 'wide'].indexOf(s.flipBorderSize) >= 0 ? s.flipBorderSize : 'medium';
+          var fbsEl = document.getElementById('flipBorderSizeSelect'); if (fbsEl) fbsEl.value = flipBorderSize;
+          flipBorderColor = isHex(s.flipBorderColor) ? s.flipBorderColor : '#ffffff';
+          flipCardCaption = typeof s.flipCardCaption === 'string' ? s.flipCardCaption : '';
+          var fcapEl = document.getElementById('flipCardCaptionInput'); if (fcapEl) fcapEl.value = flipCardCaption;
+          flipOverlayAssetId = (typeof s.flipOverlayAssetId === 'string' && s.flipOverlayAssetId) ? s.flipOverlayAssetId : null;
+          flipOverlayBorder = typeof s.flipOverlayBorder === 'boolean' ? s.flipOverlayBorder : false;
+          var fovbEl = document.getElementById('flipOverlayBorderToggle'); if (fovbEl) fovbEl.checked = flipOverlayBorder;
           if (typeof s.flipCues === 'boolean') { flipCues = s.flipCues; var fcuEl = document.getElementById('flipCuesToggle'); if (fcuEl) fcuEl.checked = flipCues; }
           if (s.flipCoverStyle === 'title' || s.flipCoverStyle === 'photo' || s.flipCoverStyle === 'custom') {
             flipCoverStyle = s.flipCoverStyle;
@@ -71086,6 +71614,7 @@ function fxWavUrl(kind) {
           }
           if (typeof refreshFlipPoolUI === 'function') refreshFlipPoolUI();
           if (typeof refreshFlipCoverUI === 'function') refreshFlipCoverUI();
+          if (typeof refreshFlipLayoutUI === 'function') refreshFlipLayoutUI();
           refreshOutputModeUI();
           // gifSpeed is always auto (0); any previously saved manual value is ignored.
           filterKey = Object.prototype.hasOwnProperty.call(FILTERS, s.filter) ? s.filter : 'none';
@@ -71366,6 +71895,7 @@ function fxWavUrl(kind) {
             }
             refreshDecorUI(); refreshFrameUI(); redrawAll(); refreshBrandUI(); guestRender();
             if (typeof refreshFlipCoverUI === 'function') refreshFlipCoverUI();
+            if (typeof refreshFlipLayoutUI === 'function') refreshFlipLayoutUI();
             try { btRenderTpls(); } catch (e) { }
           });
           boothType = typesAllowed() && (s.boothType === 'card' || s.boothType === 'cert') ? s.boothType : 'photo';
@@ -72314,6 +72844,12 @@ function fxWavUrl(kind) {
             if (!isOvNow && typeof sheet !== 'undefined' && sheet && Array.isArray(sheet.overlays) && sheet.overlays.some(function (o) { return o && o.id === id; })) isOvNow = true;
           } catch (e) { }
           var isActiveNow = isOvNow || (typeof activeFrameId !== 'undefined' && id === activeFrameId) || (overlay && id === overlay.id) || (logo && id === logo.id);
+          if (typeof flipOverlayAssetId !== 'undefined' && id === flipOverlayAssetId && typeof refreshFlipLayoutUI === 'function') {
+            try { refreshFlipLayoutUI(); } catch (e) { }
+          }
+          if (typeof flipCoverAssetId !== 'undefined' && id === flipCoverAssetId && typeof refreshFlipCoverUI === 'function') {
+            try { refreshFlipCoverUI(); } catch (e) { }
+          }
           scheduleAssetRedraw(isActiveNow);
         };
         im.src = url;
@@ -72503,6 +73039,7 @@ function fxWavUrl(kind) {
         if (brand) { if (brand.c.id) ids.push(brand.c.id); if (brand.w.id) ids.push(brand.w.id); }
         if (typeof attractPosterId !== 'undefined' && attractPosterId) ids.push(attractPosterId);
         if (typeof flipCoverAssetId !== 'undefined' && flipCoverAssetId) ids.push(flipCoverAssetId);
+        if (typeof flipOverlayAssetId !== 'undefined' && flipOverlayAssetId) ids.push(flipOverlayAssetId);
         if (typeof guestDesigns !== 'undefined' && Array.isArray(guestDesigns) && guestDesigns.length) {
           collectAllAssetIds(guestDesigns).forEach(function (id) { ids.push(id); });
         }

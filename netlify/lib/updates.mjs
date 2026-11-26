@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.116', date: '2026-11-26' },
   { version: '1.1.115', date: '2026-11-26' },
   { version: '1.1.114', date: '2026-11-26' },
   { version: '1.1.113', date: '2026-11-26' },
@@ -258,7 +259,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.32', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.32/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.33', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.33/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -312,6 +313,16 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-26', title: 'Desktop 1.1.116, Android 1.2.25 & iPad 1.1.33: Epson L3210 Crisp 720 dpi Direct USB Printing, Edge-to-Edge Tablet Bridge & Rotation Sync, Centered Canva Overlay Bar & Lag-Free Design Picker', for: ['website', 'app', 'android', 'ipad'], app: '1.1.116', android: '1.2.25', ipad: '1.1.33',
+    items: [
+      '🖨️ Epson L3210 crisp 720 dpi & true colours on Android tablets (including Huawei): Calibrated direct USB photo printing for Epson L3210 with sharp 720 dpi default (plus 1440×720 Best, 360 dpi Normal, and Draft) tuned from the official Epson L3210 driver to prevent rainbow bands, shifted colours, and Borderless edge mismatches across 4×6, 3.5×5, 100×148 mm, and 16:9 paper.',
+      '⚡ Faster, stall-free printing on Android & Huawei Chrome: Streams high-resolution photo prints smoothly without freezing the booth or overflowing tablet memory, unlocks Epson L3210 Print Helper selection in Android Chrome when USB printing is running, shows a clearer tap prompt for Android USB permission, and supports wireless Epson L3210 printing through Laptop Print Station.',
+      '📱 True full-screen Tablet Bridge & instant rotation sync: Fills portrait and landscape Android tablets edge to edge in Welcome, design picker, live camera, and finished photo / QR views, and automatically refreshes orientation, framing, and sound when rotating the tablet or reconnecting.',
+      '🎨 Centered Canva overlay button: Centers the "+ Add Canva overlay / sticker" bar cleanly inside Preview across Laptop, Android, and iPad apps.',
+      '✨ Faster design chooser & smoother start: Opens layout choices right away without freezing while thumbnails load in the background, and jumps straight to Get Ready when a guest picks a design.'
+    ]
+  },
   {
     date: '2026-11-26', title: 'Desktop 1.1.115, Android 1.2.24, iPad 1.1.32, Print Helper 1.1.26 & Roving DSLR Bridge 1.1.5 / 1.0.2: Receipt Brightness & Compact Vouchers, Lag-Free Stickers & Text, Guided Flow & Camera SD Backup', for: ['website', 'app', 'android', 'ipad', 'helper'], app: '1.1.115', android: '1.2.24', ipad: '1.1.32', helper: '1.1.26',
     items: [

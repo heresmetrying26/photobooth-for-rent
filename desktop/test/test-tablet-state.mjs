@@ -33,7 +33,7 @@ function makeCtx(opts = {}) {
     parseFloat, encodeURIComponent, AbortSignal,
     DESKTOP: true, USB_SHOT_MAX: 3000,
     __ui: {},
-    window: { pb4u: { bridge: { pushState: (p) => pushed.push(p), info: () => new Promise(() => { }), onStatus() { }, onAction() { }, camCmd() { }, sendEvent() { }, renew() { } } } },
+    window: { pb4u: { bridge: { pushState: (p) => pushed.push(p), info: () => new Promise(() => { }), onStatus() { }, onAction(fn) { ctx._onAction = fn; }, camCmd() { }, sendEvent() { }, renew() { } } } },
     fetch: async (u, o) => {
       if (String(u).startsWith('data:')) return realFetch(u);
       const m = /bridge-local\/media\/([^?]+)/.exec(String(u));
@@ -443,6 +443,9 @@ await section(async () => {
   assert.equal(ctx.tabletBridge.soundOwn.shut, true); assert.equal(ctx.tabletBridge.soundOwn.tick, false);
   ctx.fx.sShut = null; ctx.tabletSoundSync();
   assert.equal(sent.length, 3); assert(sent[2].sounds.shut.length > 1000 && sent[2].sounds.shut !== 'data:audio/wav;base64,QUJD', 'own file removed: the built-in shutter goes back');
+  ctx.tabletBridge.viewport = { vw: 800, vh: 1280 };
+  ctx._onAction({ action: 'viewportCaps', vw: 800, vh: 1280, init: true });
+  assert.equal(sent.length, 4, 'init viewportCaps reconnect resyncs sounds even if guestConnected never dropped');
   console.log('PASS: beeps and the shutter come from the tablet when it can play them');
 });
 
@@ -766,20 +769,31 @@ await section(async () => {
   assert.equal(pPort.wa, 0.625, 'pushed state carries tablet viewport wa 0.625 for full-bleed cover');
   assert.equal(pPort.resFit, 'cover');
 
-  // b) JPEG picker thumbnails stay image/jpeg (not re-encoded to heavy PNG)
+  // b) JPEG picker thumbnails stay image/jpeg (not re-encoded to heavy PNG) and useRemoteStream stops during pickOpen
   ctx.pickOpen = true;
   ctx.pickKeys = ['a'];
   ctx.pickDesignMode = false;
+  ctx.currentDeviceId = 'webcam-1';
   ctx.layoutThumbUrl = () => JPEG('thumbA');
   await ctx.buildAndPushTabletState();
   assert.equal(uploadMimes[0], 'image/jpeg', 'JPEG picker thumbnail uploads as image/jpeg instead of PNG');
+  assert.equal(last(pushed).useRemoteStream, false, 'useRemoteStream pauses while full-screen design picker is open');
+
+  // b2) Tablet camera rotation flips width/height -> applyStageAspect runs; video resize handler syncs aspect & welcome
+  let rotAspectCalls = 0;
+  ctx.applyStageAspect = () => { rotAspectCalls++; };
+  ctx.tabletBridge.width = 960; ctx.tabletBridge.height = 720;
+  ctx.tabletBridge.camConnected = true; ctx.tabletBridge.guestConnected = true;
+  ctx.document.getElementById = () => null;
+  ctx.renderTabletBridgeSetup({ connected: true, camConnected: true, guestConnected: true, width: 720, height: 960, deviceName: 'Tablet', primaryUrl: 'http://192.168.1.2:4321/bridge/t' });
+  assert.equal(rotAspectCalls, 1, 'cam orientation flip in bridge info invokes applyStageAspect()');
+  assert(/video\.addEventListener\('resize',[\s\S]{0,360}applyStageAspect\(\)[\s\S]{0,200}scheduleWelcomeRender\(\)/.test(BOOTH), 'video resize triggers applyStageAspect and scheduleWelcomeRender');
 
   // c) Built booth.html contains centered .prev-ov-empty-bar, unconstrained GUEST_HTML fullscreen frames & lag optimizations
   const ovCss = /\.prev-ov-empty-bar\s*\{[^}]*flex-direction:\s*column;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/.test(BOOTH);
   assert(ovCss, '.prev-ov-empty-bar centers the Canva overlay add button and hint');
   assert(/body\.ps\.wel-full \.frame\{[^}]*max-width:none !important;max-height:none !important;/.test(BOOTH), 'GUEST_HTML wel-full frame clears max-width/max-height caps');
   assert(/body\.wel \.frame\{[^}]*width:min\(100vw,calc\(100vh \* var\(--wa,1\.3333\)\)\) !important;[^}]*max-width:none !important;/.test(BOOTH), 'GUEST_HTML body.wel .frame clears caps');
-  const pto = BOOTH.slice(BOOTH.indexOf('async function pickTopOptions('), BOOTH.indexOf('var _pickThumbGen', BOOTH.indexOf('async function pickTopOptions(') - 4000) > 0 ? BOOTH.indexOf('function pickLayout(') : BOOTH.indexOf('function pickLayout('));
   const ptoBody = BOOTH.slice(BOOTH.indexOf('async function pickTopOptions('), BOOTH.indexOf('function pickLayout('));
   assert(!/for\s*\(\s*var\s+i\s*=\s*0[\s\S]*await\s+designThumbUrl/.test(ptoBody), 'pickTopOptions opens immediately without sequential await loop');
   assert(ptoBody.includes('runDesignPickThumbPump'), 'pickTopOptions streams uncached thumbs asynchronously');
@@ -789,6 +803,143 @@ await section(async () => {
   assert(!/await\s+camLiveWake\(\);\s*\n[\s\S]{0,60}await\s+camEnsureLive\(\);\s*\n[\s\S]{0,300}waitForReadyTap/.test(ssBody), 'startSession overlaps camera wake instead of blocking waitForReadyTap');
   assert(typeof actionHandler === 'function' || true);
   console.log('PASS: viewport-matched welcome, JPEG picker thumbs, centered Canva bar & chooser/ready lag optimizations verified');
+});
+
+// 20. Runtime VM verification of renderWelcomeForViewport(), fastGuest applySetup, and non-blocking pickTopOptions
+await section(async () => {
+  const mk2d = () => {
+    const grad = { addColorStop() { } };
+    return {
+      save() { }, restore() { }, translate() { }, rotate() { }, scale() { },
+      beginPath() { }, closePath() { }, moveTo() { }, lineTo() { }, quadraticCurveTo() { }, bezierCurveTo() { }, arc() { }, ellipse() { },
+      rect() { }, roundRect() { }, clip() { }, fill() { }, stroke() { }, fillRect() { }, clearRect() { }, setLineDash() { },
+      drawImage() { }, fillText() { },
+      measureText: (t) => ({ width: String(t || '').length * 16 }),
+      createLinearGradient: () => grad, createRadialGradient: () => grad
+    };
+  };
+  const canvases = [];
+  const mkCanvas = () => {
+    const cv = { width: 0, height: 0, getContext: () => mk2d(), toDataURL: (m) => 'data:' + (m || 'image/jpeg') + ';base64,' + cv.width + 'x' + cv.height };
+    canvases.push(cv);
+    return cv;
+  };
+  // a) renderWelcomeForViewport generates tablet-sized cards without mutating laptop welcome state
+  const wStart = BOOTH.indexOf('function renderWelcomeSurface(opts)');
+  const wEnd = BOOTH.indexOf('// A soft pulse around "Tap to start"', wStart);
+  assert(wStart > 0 && wEnd > wStart, 'renderWelcomeSurface slice present');
+  const wCtx = {
+    console, Math, Number, String, Array, Object, Boolean,
+    window: { innerWidth: 1280, innerHeight: 720, __PB: { label: 'Booth' } },
+    document: { createElement: () => mkCanvas(), getElementById: () => null },
+    camAspect: () => 1.3333, syncWelcomeFitUI() { }, attractMode: 'card', fx: { hands: 'off' },
+    welcomeMsg: '', welcomeBtnOn: true, welcomeBtnColor: '#C93D27', welcomeBtnPos: 'bottom',
+    welcomeGeo: { W: 1600, H: 1200, mid: 0.5 }, welcomeDataUrl: 'data:laptop', welcomeBaseUrl: 'base',
+    welcomeCta: null, welcomeLogoRect: null, welcomeImg: { src: 'data:laptop' },
+    drawWelcomeBackdropLayer: () => ({ decoPrimary: '#fff', decoSecondary: '#F28DA0', decoAccent: '#111' }),
+    welcomeSampleOn: false, welcomeSampleLayout: 'strip', currentLayout: 'strip', LAYOUT_DEFS: { strip: { shots: 3 } },
+    welcomeCardBg: '', titleBgEnabled: false, titleBgColor: '', welcomeCardFontColor: '',
+    currentDateLabel: () => 'NOV 26', welcomeCustomOn: false, welcomeGreeting: '', labelInput: { value: 'Test' },
+    welcomeTitle: 'My Booth', welcomeFont: '', welcomeSub: '', currentDateFont: 'Manrope',
+    welcomeStepsOn: true, welcomeStepStyle: 'numbers', welcomeStep1: '', welcomeStep2: '', welcomeStep3: '',
+    welcomeCardRadius: 32, welcomeDecoStyle: 'none', roundRectPath() { }, fitFont: (c, t, f, sz) => sz,
+    fontString: (f, sz) => sz + 'px ' + f, lumOf: () => 0.2, hexToRgb: () => [201, 61, 39],
+    brandImgFor: () => null, brand: { w: {} }, BRAND_DEF_S: { w: 0.1 }, BRAND_MAXR: 3, brandFit: () => ({ w: 80, h: 40 }),
+    placeWelcomePulse() { }, brandPvLayout() { }, syncSetupVideoPreview() { }, renderResultBg() { }, guestRender() { },
+    welcomeCustomOn: false
+  };
+  vm.createContext(wCtx);
+  vm.runInContext(BOOTH.slice(wStart, wEnd), wCtx);
+  const portRes = wCtx.renderWelcomeForViewport(800, 1280);
+  const landRes = wCtx.renderWelcomeForViewport(1280, 800);
+  assert(portRes && portRes.wa === 0.625 && portRes.dataUrl.includes('1000x1600'), 'portrait tablet welcome card renders cleanly at 1000x1600 (wa 0.625)');
+  assert(landRes && landRes.wa === 1.6 && landRes.dataUrl.includes('1920x1200'), '16:10 landscape tablet welcome card renders cleanly at 1920x1200 (wa 1.6)');
+  assert.equal(wCtx.welcomeDataUrl, 'data:laptop', 'previewOnly tablet welcome never clobbers laptop welcomeDataUrl');
+  assert.equal(wCtx.welcomeImg.src, 'data:laptop', 'previewOnly tablet welcome never clobbers welcomeImg DOM');
+
+  // b) applySetup with skipDesignSync + fastGuest skips heavy Setup / localStorage / background / welcome rebuilds
+  const asStart = BOOTH.indexOf('var _pbBgImgCache =');
+  const asEnd = BOOTH.indexOf('function setupScopeEvent()', asStart);
+  assert(asStart > 0 && asEnd > asStart, 'applySetup slice present');
+  let framesCalls = 0, bgRepCalls = 0, fxCalls = 0, payCalls = 0, previewCalls = 0, welCalls = 0, buildGridCalls = 0;
+  const noop = () => { };
+  const dummyEl = () => ({ value: '', checked: false, style: {}, classList: { toggle: noop, add: noop, remove: noop, contains: () => false }, querySelectorAll: () => [], children: [] });
+  const aCtx = {
+    console, Math, Number, String, Array, Object, Boolean, JSON, Promise, setTimeout, clearTimeout,
+    setupApplying: false, state: 'idle', GUEST_SLOT_KEYS: ['themeId', 'label', 'filter'],
+    guestDesigns: [{ id: 'gd-1', name: 'D1', settings: { themeId: 't1', label: 'A', filter: 'normal' }, layout: 'strip' }],
+    activeDesignIdx: 0, guestLayoutSet: [], chooseIds: [], activeFrameId: 'f1', includeFramesInDesignPick: true,
+    snapshotSetup: () => ({ themeId: 't1', label: 'A', filter: 'normal', layout: 'strip', frames: [{ id: 'f1' }], bgRep: {}, fx: {}, pay: {} }),
+    designSlotFallbackLayout: () => 'strip', framesStandAlongsideDesigns: () => false, renderGuestDesignBar: noop,
+    ensureAssets: async () => { },
+    labelInput: dummyEl(), selectFont: noop, isHex: () => false, setTextColorUI: noop,
+    titleSizeSlider: dummyEl(), titleBgToggle: dummyEl(), titleBgColorWrap: dummyEl(), titleBgColorInput: dummyEl(),
+    outlineToggle: dummyEl(), outlineColorSelect: dummyEl(), shadowToggle: dummyEl(),
+    setTimer: noop, setFirstTimer: noop, setSelectValue: noop, refreshAdvanceUI: noop, reviewEachToggle: dummyEl(),
+    refreshQrPopUI: noop, refreshAfterThemeUI: noop, refreshShareStationUI: noop, refreshRetakeUI: noop,
+    updateColorAdjUI: noop, applyLiveFilter: noop, extraOn: () => false, isGifAllowed: () => false,
+    refreshGifLayoutUI: noop, refreshFlipPoolUI: noop, filterSelect: dummyEl(), applyFilter: noop,
+    softSkinToggle: dummyEl(), dateStampToggle: dummyEl(), setFrameColorUI: noop, photoPlacementSelect: dummyEl(),
+    ELEMENT_SETS: {}, setBackdropColorUI: noop, clearCustomPhoto: noop, BACKDROP_PRESETS: {}, ACCENTS: { gold: 1 },
+    markAccentChips: noop, STICKER_NAMES: {}, STICKER_PACKS: [], refreshGuestStickersUI: noop, TITLE_STYLES: [['classic']],
+    receiptNoteInput: null, validArt: () => '', validArtPal: () => '', refreshTitleUI: noop,
+    window: { _isPosterVideo: () => false, _isPosterGif: () => false },
+    applyPrintPrefs: noop, applyGbPrefs: noop, applyBgRepSetup: () => { bgRepCalls++; }, applyFxSetup: () => { fxCalls++; },
+    applyGvSetup: noop, refreshSoloUI: noop, cleanBrand: (b) => b || {}, applyPaySetup: () => { payCalls++; },
+    applyFramesSetup: () => { framesCalls++; }, applyTplsSetup: noop, okFrameAssetId: () => true, myFrames: [{ id: 'f1' }],
+    frameById: (id) => (id === 'f1' ? { id: 'f1' } : null), MAX_FRAMES: 30, buildLayoutPicker: () => { buildGridCalls++; },
+    boothType: 'photo', typesAllowed: () => false, btApplyCfg: noop, LAYOUT_DEFS: { strip: { name: 'Strip', shots: 3 } },
+    guestPickToggle: dummyEl(), syncBoothTypeUI: noop, setLayout: noop, refreshGuestLayoutChoices: noop,
+    dateInput: dummyEl(), setDateOn: noop, applyLabelInputFont: noop, setActivePresetBtn: noop,
+    updateBandPositionVisibility: noop, markThemeCards: noop, refreshDecorUI: noop,
+    renderComposite: noop, renderSetupPreview: () => { previewCalls++; }, refreshStartScreen: noop,
+    guestRender: noop, scheduleWelcomeRender: () => { welCalls++; }, refreshWelcome: () => { welCalls++; },
+    deskNotifySetupChanged: noop, document: { getElementById: () => null },
+    fontSelect: dummyEl(), dateFontSelect: dummyEl(), setAttractModeUI: noop, setWelcomeBtnColorUI: noop,
+    setWelcomeBtnPosUI: noop, setGuestStyleUI: noop, attractPosterFit: 'cover', attractPosterType: 'image',
+    attractRestoreSeq: 0, attractPlaylist: [], backgroundImg: null, bgThumb: dummyEl(), removeBgBtn: dummyEl(),
+    bgInput: dummyEl(), photoHue: 0, photoSat: 0, computeDominantColor: () => ({ h: 0, s: 0 }),
+    titleSizeMultiplier: 1, titleBgEnabled: false, titleBgColor: '', useOutline: false, outlineColor: '#000',
+    useShadow: false, betweenSec: 1, advanceMode: 'auto', reviewEach: false, qrPopOn: false, hideQrOn: false,
+    qrPopDelay: 3, qrMatchWelcome: true, shareStationOn: false, shareStationHandoff: '', shareStationPrivacy: '',
+    allowRetake: false, colorAdj: {}, outputMode: 'photo', gifLayoutMode: 'solo', gifMotionStyle: 'auto',
+    gifSlideCard: 'white', gifSlideBg: '', GIF_SLIDE_BGS: {}, gifSlideFrame: 'card', gifLoopMode: 'forward', flipSec: 5,
+    refreshOutputModeUI: noop, FILTERS: { normal: 1, bw: 1 }, GUEST_LOOK_MAX: 6, refreshGuestLooksUI: noop,
+    markFilterChips: noop, softSkinToggle: dummyEl(), dateStampToggle: dummyEl(), softSkin: false, dateStamp: false,
+    guestLookBase: null, welcomeToggle: dummyEl(), welcomeMsgInput: dummyEl(), welcomeBtnToggle: dummyEl(),
+    welcomeSampleToggle: dummyEl(), welcomeCustomToggle: dummyEl(), welcomeGreetingInput: dummyEl(),
+    welcomeTitleInput: dummyEl(), welcomeSubInput: dummyEl(), welcomeStep1Input: dummyEl(),
+    welcomeStep2Input: dummyEl(), welcomeStep3Input: dummyEl(), welcomeStepStyle: 'numbers', welcomePalette: 'warm',
+    saverDimMin: 0, saverOffMin: 0, guestLooksOn: false, guestLookSet: [], welcomeBtnOn: true, welcomeMsg: '',
+    flipFrames: 16, flipCover: false, flipBack: false, flipCollation: 'stack', flipGutter: false,
+    flipGutterMm: 12, flipNumbers: false, flipCardLayout: 'bordered', flipBorderSize: 'medium',
+    flipBorderColor: '#fff', flipCardCaption: '', flipOverlayAssetId: null, flipOverlayBorder: false,
+    flipCues: false, flipCoverStyle: 'title', flipCoverAssetId: null, flipBackQr: false, flipBackText: '',
+    flipGridPreset: 'auto', flipPrinterPool: '', flipPoolMode: 'pages', filterKey: 'normal', softSkinOn: false,
+    dateStampOn: false, welcomeOn: true, guestWelcomeStyle: 'photo', welcomeThemeId: null, welcomeBackdrop: '',
+    welcomeBgColor: '', welcomeDecoStyle: 'none', welcomeCardBg: '', welcomeCardFontColor: '', welcomeCardRadius: 32,
+    welcomeSampleOn: true, welcomeSampleLayout: 'strip', welcomeCustomOn: false, welcomeTitle: '', welcomeFont: '',
+    welcomeSub: '', welcomeStepsOn: true, welcomeStep1: '', welcomeStep2: '', welcomeStep3: '', welcomeBtnColor: '#C93D27',
+    welcomeBtnPos: 'bottom', attractMode: 'card', attractPosterId: '', attractSlideDuration: 6, attractVideoSound: false,
+    attractActiveKey: '', attractRestoreHold: null, frameColorChoice: 'auto', photoPlacement: 'band', cropFocus: 'center',
+    elementsChoice: 'auto', backdropColor: null, pendingCustom: false, backdropPreset: 'none', bgImageDataUrl: null,
+    accent: 'gold', overlay: null, logo: null, decor: [], guestStickersOn: false, stickerPacksOn: [],
+    guestStickerSec: 35, myProps: [], selDecor: -1, titleStyle: 'classic', kickerText: '', receiptCustomNote: '',
+    titleUpper: false, themeArt: '', artPal: '', saveSoloPhotos: true, brand: {}, setupLayout: 'strip',
+    guestPickOn: false, frameMode: 'choose', layoutPicked: true, dateOn: false, guestDesigns: [], activeDesignIdx: 0
+  };
+  aCtx.guestDesigns = [{ id: 'gd-1', name: 'D1', settings: { themeId: 't1', label: 'A', filter: 'normal' }, layout: 'strip' }];
+  vm.createContext(aCtx);
+  vm.runInContext(BOOTH.slice(BOOTH.indexOf('function applyDesignSlotSync'), BOOTH.indexOf('function designSlotChoiceCount')) + '\n' + BOOTH.slice(BOOTH.indexOf('function applySetup('), asEnd), aCtx);
+  aCtx.applyDesignSlotSync({ id: 'gd-2', name: 'D2', settings: { themeId: 't2', label: 'B', filter: 'bw' }, layout: 'strip', activeFrameId: 'f1' }, 0, true, { fastGuest: true });
+  assert.equal(framesCalls, 0, 'fastGuest skips heavy applyFramesSetup localStorage round-trip');
+  assert.equal(bgRepCalls, 0, 'fastGuest skips applyBgRepSetup background segmentation restart');
+  assert.equal(fxCalls, 0, 'fastGuest skips applyFxSetup sound/welcome rescheduling');
+  assert.equal(payCalls, 0, 'fastGuest skips applyPaySetup');
+  assert.equal(previewCalls, 0, 'fastGuest skips hidden Setup preview canvas redraw');
+  assert.equal(welCalls, 0, 'fastGuest skips welcome card re-render');
+  assert.equal(buildGridCalls, 0, 'fastGuest skips Setup layout grid rebuild');
+  console.log('PASS: runtime VM verified renderWelcomeForViewport portrait/landscape & zero-overhead fastGuest design switch');
 });
 
 if (failed) { console.log(failed + ' check(s) failed'); process.exit(1); }

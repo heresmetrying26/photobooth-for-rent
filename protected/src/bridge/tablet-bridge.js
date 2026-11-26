@@ -17,6 +17,8 @@ var tabletBridge = {
   guestConnected: false,
   deviceName: '',
   facing: 'front',
+  width: 0,
+  height: 0,
   voiceOk: false,   // the tablet said it can speak the countdown (its voice list came in as the "voiceCaps" action)
   voices: { en: [], fil: [] },   // the tablet's own voices: [{ name, lang, localService }]
   soundOk: false,   // the tablet has the sounds decoded and its audio is running (the "soundCaps" action)
@@ -440,12 +442,16 @@ async function buildAndPushTabletState() {
     (!!welcomeDataUrl || (attractMode === 'poster' && !!(attractPlaylist.length || attractPosterUrl)));
   const bgActive = !!(typeof bgGuestStream === 'function' && bgGuestStream());
   const filterCss = T('live filter', () => liveFilterCss(), '');
-  const useRemoteStream = (bgActive || (!!filterCss && currentDeviceId === TABLET_CAM_ID) || (currentDeviceId !== TABLET_CAM_ID)) && !result && !reviewing && !shotReview && (!welcome || attractMode === 'camera');
+  const useRemoteStream = (bgActive || (!!filterCss && currentDeviceId === TABLET_CAM_ID) || (currentDeviceId !== TABLET_CAM_ID)) && !pickOpen && !result && !reviewing && !shotReview && (!welcome || attractMode === 'camera');
 
   syncRemoteFrameToBridge(useRemoteStream, bgActive);
 
   let resSrc = '', resFit = 'contain';
   let welWa = welcomeGeo ? Number((welcomeGeo.W / welcomeGeo.H).toFixed(4)) : 1.3333;
+  let resBgPromise = Promise.resolve('');
+  if (result && typeof qrMatchWelcome !== 'undefined' && qrMatchWelcome && typeof getWelcomeThemeTokens === 'function' && typeof resultBgDataUrl === 'string' && resultBgDataUrl) {
+    resBgPromise = tabletBridgeUploadMedia('resbg', resultBgDataUrl, 'image/jpeg', 1400).catch(() => '');
+  }
   try {
   if (sess && sess.decorating) {
     resSrc = await tabletBridgeUploadMedia('result', previewCanvas.toDataURL('image/jpeg', 0.85), 'image/jpeg', 1600);
@@ -600,9 +606,7 @@ async function buildAndPushTabletState() {
   if (result && typeof qrMatchWelcome !== 'undefined' && qrMatchWelcome && typeof getWelcomeThemeTokens === 'function') {
     try {
       const rtok = getWelcomeThemeTokens();
-      const bgUrl = (typeof resultBgDataUrl === 'string' && resultBgDataUrl)
-        ? await tabletBridgeUploadMedia('resbg', resultBgDataUrl, 'image/jpeg', 1400)
-        : '';
+      const bgUrl = await resBgPromise;
       resTheme = {
         on: true,
         bg: bgUrl,
@@ -688,7 +692,7 @@ async function buildAndPushTabletState() {
     galleryQr: galleryIdle ? T('event gallery', () => (document.getElementById('galleryPopQr').src || ''), '') : ''
   }, printState);
 
-  if (buildSeq < tabletBridge.pushedSeq) return;   // a newer picture of the screen already went out while this one was being built
+  if (buildSeq < tabletBridge.pushedSeq || buildSeq !== tabletBridge.buildSeq) return;   // a newer picture of the screen is already pending or went out
   tabletBridge.pushedSeq = buildSeq;
   try {
     api.pushState(payload);
@@ -768,6 +772,8 @@ function renderTabletBridgeSetup(info) {
   const wasCam = tabletBridge.camConnected;
   const wasGuest = tabletBridge.guestConnected;
   const wasFacing = tabletBridge.facing;
+  const wasW = tabletBridge.width || 0;
+  const wasH = tabletBridge.height || 0;
   tabletBridge.info = info;
   tabletBridge.port = info.port || 0;
   tabletBridge.connected = !!info.connected;
@@ -775,6 +781,8 @@ function renderTabletBridgeSetup(info) {
   tabletBridge.guestConnected = !!info.guestConnected;
   tabletBridge.deviceName = info.deviceName || '';
   tabletBridge.facing = info.facing || 'front';
+  tabletBridge.width = Number(info.width) || 0;
+  tabletBridge.height = Number(info.height) || 0;
 
   const box = document.getElementById('tabletBridgeBox');
   const stEl = document.getElementById('tabletBridgeStatus');
@@ -882,6 +890,9 @@ function renderTabletBridgeSetup(info) {
       if (currentDeviceId === TABLET_CAM_ID) applyMirror();
     } catch (e) { }
   }
+  if (tabletBridge.camConnected && tabletBridge.width > 0 && tabletBridge.height > 0 && ((wasW > 0 && wasH > 0 && (wasW > wasH) !== (tabletBridge.width > tabletBridge.height)) || wasW === 0)) {
+    try { if (typeof applyStageAspect === 'function') applyStageAspect(); } catch (e) { }
+  }
 }
 
 (function initTabletBridgeClient() {
@@ -917,7 +928,15 @@ function renderTabletBridgeSetup(info) {
         const prevAr = prev && prev.vh ? (prev.vw / prev.vh) : 0;
         const nextAr = vw / vh;
         tabletBridge.viewport = { vw, vh };
-        if (!prev || Math.abs(prevAr - nextAr) > 0.015) tabletBridgeSync();
+        if (act.init) {
+          tabletSoundSync(true);
+          tabletBridgeSync();
+        } else if (!prev || Math.abs(prevAr - nextAr) > 0.015) {
+          tabletBridgeSync();
+        }
+      } else if (act.init) {
+        tabletSoundSync(true);
+        tabletBridgeSync();
       }
       return;
     }

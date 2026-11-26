@@ -739,7 +739,7 @@ body.ps.is-result .frame{position:relative;left:auto;top:auto;transform:none;wid
 body.ps.is-result .side-r-res{display:flex;flex-direction:column;align-items:center;gap:16px;z-index:10;max-width:34vw;}
 body.ps.is-result .qrs{position:relative;z-index:10;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:22px;padding:20px 24px;}
 body.ps.is-result .qrl{color:#fff;}
-body.ps.is-result:not(.has-qr):not(.has-res-actions) .frame{max-width:92vw;height:90vh !important;}body.ps.is-result:not(.has-qr):not(.has-res-actions) .side-r-res{display:none !important;}.qrtitle{display:none;margin:0 0 6px;font:600 clamp(22px,3.4vw,30px) Fraunces,Georgia,serif;text-align:center;color:var(--ink);}body.qrpop-wait .qrs,body.qrpop-wait .res-actions{display:none !important;}body.qrpop-show .g::after{content:"";position:fixed;inset:0;background:rgba(14,11,16,.62);z-index:55;pointer-events:none;}body.qrpop-show.is-result .side-r-res{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;max-width:none;width:min(640px,94vw);max-height:calc(100vh - 24px);overflow:auto;background:#fff;color:var(--ink);border-radius:26px;padding:26px 26px 20px;box-shadow:0 30px 90px rgba(0,0,0,.5);gap:12px;}body.qrpop-show .qrtitle{display:block;}body.qrpop-show.is-result .qrs{background:none;border:0;padding:0;backdrop-filter:none;flex-direction:row;flex-wrap:wrap;justify-content:center;gap:18px;}body.qrpop-show .qr{width:min(340px,74vw,46vh);min-width:0;box-shadow:none;border:1px solid #E6DED2;}body.qrpop-show .qrs.two .qr{width:min(260px,42vw,36vh);}body.qrpop-show.is-result .qrl{color:var(--red);}body.qrpop-show .gbtn{background:#fff;color:var(--ink);border:2px solid var(--ink);backdrop-filter:none;}body.qrpop-show .gbtn.strong{background:var(--red);border-color:var(--red);color:#fff;}
+body.ps.is-result:not(.has-qr):not(.has-res-actions) .frame{max-width:92vw;height:90vh !important;}body.ps.is-result:not(.has-qr):not(.has-res-actions) .side-r-res{display:none !important;}.qrtitle{display:none;margin:0 0 6px;font:600 clamp(22px,3.4vw,30px) Fraunces,Georgia,serif;text-align:center;color:var(--ink);}body.qrpop-wait .qrs,body.qrpop-wait .res-actions{display:none !important;}body.qrpop-wait.is-result .frame,body.qrpop-show.is-result .frame{max-width:92vw;max-height:90vh;}body.qrpop-show .g::after{content:"";position:fixed;inset:0;background:rgba(14,11,16,.62);z-index:55;pointer-events:none;}body.qrpop-show.is-result .side-r-res{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;max-width:none;width:min(640px,94vw);max-height:calc(100vh - 24px);overflow:auto;background:#fff;color:var(--ink);border-radius:26px;padding:26px 26px 20px;box-shadow:0 30px 90px rgba(0,0,0,.5);gap:12px;}body.qrpop-show .qrtitle{display:block;}body.qrpop-show.is-result .qrs{background:none;border:0;padding:0;backdrop-filter:none;flex-direction:row;flex-wrap:wrap;justify-content:center;gap:18px;}body.qrpop-show .qr{width:min(340px,74vw,46vh);min-width:0;box-shadow:none;border:1px solid #E6DED2;}body.qrpop-show .qrs.two .qr{width:min(260px,42vw,36vh);}body.qrpop-show.is-result .qrl{color:var(--red);}body.qrpop-show .gbtn{background:#fff;color:var(--ink);border:2px solid var(--ink);backdrop-filter:none;}body.qrpop-show .gbtn.strong{background:var(--red);border-color:var(--red);color:#fff;}
 body.ps.is-result.res-themed .g{background-color:#1C1A1E;background-image:var(--res-bg-img,none);background-size:cover;background-position:center;background-repeat:no-repeat;}
 body.ps.is-result.res-themed .frame{background:transparent;box-shadow:none;overflow:visible;}
 body.ps.is-result.res-themed .frame img.res{background:transparent;border-radius:12px;filter:drop-shadow(0 20px 48px rgba(28,26,30,.40));}
@@ -775,6 +775,7 @@ body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);w
   body:not(.ps):not(.wel) .qrs{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:3vw;}
   body:not(.ps):not(.wel) .qr{width:min(18vh,30vw);min-width:96px;}
   body.ps.is-result .g{flex-direction:column;gap:2vh;padding:2.5vh 4vw;}
+  body.ps.is-result .frame{max-width:92vw;max-height:90vh;}
   body.ps.is-result .side-r-res{max-width:92vw;width:auto;}
   body.ps.is-result .qrs{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:3vw;padding:14px 18px;}
   body.ps.is-result .qr{width:min(18vh,32vw);min-width:96px;}
@@ -1425,13 +1426,16 @@ body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);w
     }, 7000);
   }
   var lastVpSig = '', vpTimer = null;
-  function reportViewport(){
+  function reportViewport(forceInit){
     var vw = window.innerWidth || 0, vh = window.innerHeight || 0;
-    if (!vw || !vh) return;
+    if (!vw || !vh) {
+      if (forceInit) sendAction('viewportCaps', { vw: 0, vh: 0, init: true });
+      return;
+    }
     var sig = vw + 'x' + vh;
-    if (sig === lastVpSig) return;
+    if (!forceInit && sig === lastVpSig) return;
     lastVpSig = sig;
-    sendAction('viewportCaps', { vw: vw, vh: vh });
+    sendAction('viewportCaps', forceInit ? { vw: vw, vh: vh, init: true } : { vw: vw, vh: vh });
   }
   function connectWs(){
     var proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
@@ -1446,7 +1450,7 @@ body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);w
       els.conn.classList.add('hide');
       syncNativePreview();
       lastVpSig = '';
-      reportViewport();
+      reportViewport(true);
       voiceReports = 0;
       reportVoices();
       reportSound(true);

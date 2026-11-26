@@ -36932,11 +36932,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return false;
         }
       }
-      // A slow camera that starts sending frames later clears the "no picture" note.
+      // A slow camera that starts sending frames later (or a tablet rotating portrait <-> landscape) updates live size & stage shape.
       video.addEventListener('resize', () => {
         if (streamActive && video.videoWidth && !reconnectTimer) {
           cameraError.style.display = 'none';
           recDot.style.display = 'flex';
+        }
+        if (streamActive && video.videoWidth) {
+          try { if (typeof applyStageAspect === 'function') applyStageAspect(); } catch (e) { }
+          try { if (typeof scheduleWelcomeRender === 'function' && state === 'idle' && attractMode !== 'poster') scheduleWelcomeRender(); } catch (e) { }
         }
       });
 
@@ -39960,6 +39964,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             const ok = await camLiveWake();
             if (!ok) return;
           } else {
+            usbWantAt = Date.now() + 5000;
             readyWakePromise = camLiveWake().then(function (ok) {
               if (ok && state === 'capturing' && readyOverlay && readyOverlay.classList.contains('ready-active')) {
                 usbWantAt = Date.now() + 2500;
@@ -43637,6 +43642,34 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function lanStationActive() {
         return !!(lanStationSupported() && lanStationCfg.enabled && typeof useStation === 'function' && !useStation() && lanStationCfg.host && /^\d{6}$/.test(lanStationCfg.pin));
       }
+      let androidChromeHelper = false;
+      function probeAndroidChromeHelper() {
+        try {
+          if (ANDROID_APP || IOS_APP || LAPTOP_PRINT || !isMobileOS() || !/android/i.test(navigator.userAgent || '')) return;
+          if ((typeof useStation === 'function' && useStation()) || lanStationActive()) return;
+          const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+          const t = ctl ? setTimeout(() => ctl.abort(), 1200) : 0;
+          fetch('http://127.0.0.1:17321/status', { signal: ctl ? ctl.signal : undefined, cache: 'no-store' })
+            .then(r => (r && r.ok) ? r.json() : null)
+            .then(j => {
+              if (t) clearTimeout(t);
+              if (!j || !j.ok || !Array.isArray(j.printers)) return;
+              androidChromeHelper = true;
+              helperOn = true;
+              try { helperToggle.checked = true; } catch (e) { }
+              helper = {
+                ok: true,
+                printers: j.printers.slice(0, 60).map(String),
+                checked: Date.now(),
+                version: String(j.version || ''),
+                filtered: !!j.filtered,
+                allPrintersCount: Number(j.allPrintersCount) || j.printers.length
+              };
+              try { fillPrinterSelect(); refreshPrinterHint(); refreshPrintUI(); } catch (e) { }
+            }).catch(() => { if (t) clearTimeout(t); });
+        } catch (e) { }
+      }
+      if (!ANDROID_APP && isMobileOS()) setTimeout(probeAndroidChromeHelper, 250);
       function helperBaseUrl() {
         if (lanStationActive()) return 'http://' + lanStationCfg.host + ':' + (lanStationCfg.port || 47777) + '/lan-station';
         return LAPTOP_PRINT ? '/helper' : 'http://127.0.0.1:17321';
@@ -43827,7 +43860,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
       }
       async function checkHelper(force) {
-        if (lanStationSupported() && !LAPTOP_PRINT && !useStation()) helperOn = lanStationActive();
+        if (lanStationSupported() && !LAPTOP_PRINT && !useStation() && !androidChromeHelper) helperOn = lanStationActive();
         if (!helperOn) { helper = { ok: false, printers: [], checked: 0 }; refreshPrinterHint(); refreshLanStationUI(); try { updateAutoPrintUI(); } catch (e) { } return helper; }
         if (!force && helper.checked && Date.now() - helper.checked < 15000) return helper;
         if (force) {
@@ -46357,6 +46390,19 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return 0;
         } catch (e) { return 0; }
       }
+      // Epson L3210 on Android (hardcoded streaming ESC/P-Raster from the Windows L3210 driver):
+      //   - High 720 dpi / Best 1440 dpi / default: render 1:1 at 720 dpi on photo sizes <= 5x7 (<= 190 mm),
+      //     and cap A4/larger sheets at 360 dpi canvas so WebView stays fast while Kotlin streams 720 dpi bands.
+      //   - Normal (360 dpi) / Draft: render 1:1 at 360 dpi for streaming ESC/P-R (avoids 1.2x upscale blur).
+      function l3210DpiFor(paper) {
+        try {
+          const p = wifiPrinter;
+          if (!p || p.dialog || !paper || paper.receipt || !isEpsonL3210(p) || !l3210HiResAvailable(p)) return 0;
+          const o = wifiOpts(p);
+          if (o.quality === 'draft' || o.quality === 'normal') return 360;
+          return Math.max(paper.w, paper.h) <= 190 ? 720 : 360;
+        } catch (e) { return 0; }
+      }
       function buildPrintCanvas(key) {
         if (plainResult) return buildPlainPrint(key);          // "Print original" from the roving screen
         const paper = paperFor(key);
@@ -46392,7 +46438,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           src = r;
         }
         const useFastPoster = !!(helperOn && printPrefs && Number(printPrefs.posterDpi) === 200 && Math.max(paper.w, paper.h) >= 300 && !paper.receipt);
-        const dpi = useFastPoster ? 200 : (canonDpiFor(paper) || l8050DpiFor(paper) || PRINT_DPI);
+        const dpi = useFastPoster ? 200 : (canonDpiFor(paper) || l8050DpiFor(paper) || l3210DpiFor(paper) || PRINT_DPI);
         // Commercial dye-sub printers (HiTi, DNP, Citizen, Sinfonia, Mitsubishi...) cut 2x6 strips from a 4x6 sheet:
         // if narrow 2x6 paper is chosen for a dye-sub queue, pair two identical strips side by side on a 4x6 sheet
         // so the printer's center cutter slices cleanly between them instead of stretching or cutting through a face.
@@ -46423,12 +46469,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function buildStripPages(key) {
         const paper = paperFor(key);
         const dpi = canonDpiFor(paper) || l8050DpiFor(paper) || PRINT_DPI;
+        const sheetDpi = l3210DpiFor(paper) || dpi;
         return sheetStripItems().map(function (it) {
           const src = stampTrialMark(composeSingleFrame(frameById(it.f), shotCanvases, it));
           const c = document.createElement('canvas');
-          c.width = Math.round(paper.w / 25.4 * dpi);
-          c.height = Math.round(paper.h / 25.4 * dpi);
-          c._pbDpi = dpi;
+          c.width = Math.round(paper.w / 25.4 * sheetDpi);
+          c.height = Math.round(paper.h / 25.4 * sheetDpi);
+          c._pbDpi = sheetDpi;
           const ctx = c.getContext('2d');
           ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height);
           ctx.imageSmoothingQuality = 'high';
@@ -46662,6 +46709,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const a = document.getElementById('stationHint'), b = document.getElementById('ppRouteHint');
         const html = useStation() ? stationHtml() : (LANREMOTE
           ? 'The laptop sends jobs to the printer picked below without a print dialog. Plug the printer into the laptop and install its driver there.'
+          : (isMobileOS() && androidChromeHelper && helper.ok)
+          ? 'Android Print Helper (USB) sends jobs directly to the selected printer without a pop-up.'
           : isMobileOS()
           ? 'Prints open the AirPrint sheet on this device. Add the printer once in the sheet; it’s remembered.'
           : (DESKTOP ? 'The app sends jobs to the selected printer without a print dialog.' : helperOn
@@ -46954,13 +47003,24 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           (p.usb && p.vid === 1208 && p.pid === 2150) ||
           /(?:^|[^A-Za-z0-9])L8050(?![0-9])/i.test(String(p.name || ''))));
       }
-      // L3210-family 4-ink ESC i raster (720/1440 dpi beta) uses 59-nozzle CMYK offsets and must NEVER run on the 6-ink ESC/P-R L8050/L18050.
-      function epsonRasterBetaAllowed(p) {
-        return !!(p && p.epsonL && !isEpsonL8050(p) && !/\b(L\s?18050|ET-?18100)\b/i.test(String(p.name || '')));
+      function isEpsonL3210(p) {
+        return !!(p && (String(p.epsonModel || '').toUpperCase() === 'L3210' ||
+          (p.usb && p.vid === 1208 && p.pid === 58993) ||
+          /(?:^|[^A-Za-z0-9])L3210(?![0-9])/i.test(String(p.name || ''))));
       }
-      // Epson's own settings file for the L3200 / L3210 / L3230 / L1210 / L1230 / L1250 allows borderless only on these paper sizes (mm).
+      function l3210HiResAvailable(p) {
+        try {
+          const pbNet = typeof window !== 'undefined' ? window.__PBNet : null;
+          return !!((pbNet && typeof pbNet.supportsL3210HiRes === 'function' && pbNet.supportsL3210HiRes()) || (p && p.l3210HiRes));
+        } catch (e) { return false; }
+      }
+      // L3210-family 4-ink ESC i raster (720/1440 dpi beta) uses 59-nozzle CMYK offsets and must NEVER run on the 6-ink ESC/P-R L8050/L18050, nor when the APK's native Kotlin L3210 engine is present.
+      function epsonRasterBetaAllowed(p) {
+        return !!(p && p.epsonL && !isEpsonL8050(p) && !(isEpsonL3210(p) && l3210HiResAvailable(p)) && !/\b(L\s?18050|ET-?18100)\b/i.test(String(p.name || '')));
+      }
+      // Epson's own settings file for the L3200 / L3210 / L3230 / L3276 / L1210 / L1230 / L1250 allows borderless only on these paper sizes (mm).
       const EPSON_L_BORDERLESS = [[101.6, 152.4], [88.9, 127], [102, 181], [100, 148]];
-      function epsonLBorderlessModel(p) { return !!(p && /L(3200|3210|3230|1210|1230|1250)\b/i.test(p.name || '')); }
+      function epsonLBorderlessModel(p) { return !!(p && /L(3200|3210|3230|3276|1210|1230|1250)\b/i.test(p.name || '')); }
       function epsonLBorderlessOk(size) {
         const pp = size && paperFor(size);
         if (!pp) return true;
@@ -47113,6 +47173,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function wifiDefaultFor(p, key) {
         if (!printerBorderlessKnown(p)) return '';
         const qs = p.qualities || [], mt = p.mediaTypes || [];
+        if (isEpsonL3210(p) && l3210HiResAvailable(p)) {
+          if (key === 'quality') return 'high720';
+          if (key === 'media') return 'photo';
+          return '';
+        }
         if (key === 'quality') return (epsonLUsbIpp(p) || isEpsonL8050(p) || (p.ipp && qs.indexOf(5) >= 0)) ? 'high' : '';
         if (key === 'media') return (p.epsonL || epsonLUsbIpp(p) || isEpsonL8050(p) || (p.ipp && mt.some(m => m.indexOf('photographic') === 0))) ? 'photo' : '';
         return '';
@@ -47121,10 +47186,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // stored for it); the L8050 has no such choice, so it always has a value.
       function wifiOptEff(p, key) {
         let v = wifiOptsFor(p)[key] || '';
-        if (key === 'quality' && /^r(normal|best)$/.test(v) && (!pbDebug() || !epsonRasterBetaAllowed(p))) v = '';
+        const l3210Native = !!(isEpsonL3210(p) && l3210HiResAvailable(p));
+        if (key === 'quality' && /^r(normal|best)$/.test(v) && !l3210Native && (!pbDebug() || !epsonRasterBetaAllowed(p))) v = '';
+        if (key === 'quality' && v === 'rnormal' && l3210Native) v = 'high720';
         if (v) return v;
         const own = (p && (wifiOptsMap[wifiPKey(p)] || wifiOptsMap[p.ip])) || {};
-        return (epsonLUsbIpp(p) || isEpsonL8050(p) || !(key in own)) ? wifiDefaultFor(p, key) : '';
+        return (epsonLUsbIpp(p) || isEpsonL8050(p) || l3210Native || !(key in own)) ? wifiDefaultFor(p, key) : '';
       }
       // The sheet is a photo size (up to 8 x 10 in): the size a Borderless default is switched on for when only the printer's own list says
       // it can (an office inkjet printing A4 keeps its margins unless the operator turns Borderless on).
@@ -47136,8 +47203,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const o = { color: st.color || '', quality: wifiOptEff(p, 'quality'), media: wifiOptEff(p, 'media') };
         if (p && p.escp2 && !o.color) o.color = 'color';   // L120 / L121: colour enabled by default
         if (p && p.canon) o.canonMode = (st.canonMode === 'ivec' || st.canonMode === 'legacy') ? st.canonMode : '';   // Canon G-series page language: '' = automatic
-        if ((!pbDebug() || !epsonRasterBetaAllowed(p)) && /^r(normal|best)$/.test(o.quality)) o.quality = isEpsonL8050(p) ? 'high' : '';         // L3210 beta qualities are debug only and never for 6-ink L8050
-        if (o.quality === 'high720' && (!isEpsonL8050(p) || !l8050HiResAvailable())) o.quality = isEpsonL8050(p) ? 'high' : '';
+        const l3210Native = !!(isEpsonL3210(p) && l3210HiResAvailable(p));
+        if (!l3210Native && (!pbDebug() || !epsonRasterBetaAllowed(p)) && /^r(normal|best)$/.test(o.quality)) o.quality = isEpsonL8050(p) ? 'high' : '';         // L3210 beta qualities are debug only on legacy builds and never for 6-ink L8050
+        if (o.quality === 'high720' && !l3210Native && (!isEpsonL8050(p) || !l8050HiResAvailable())) o.quality = isEpsonL8050(p) ? 'high' : '';
         o.thermalQuality = (printPrefs && printPrefs.thermalQuality) || 'best';   // for receipt printers on Wi-Fi / USB
         o.cal = wifiCal;
         o.borderless = !!(printPrefs && printPrefs.borderless && window.__PBNet) && !(epsonLBorderlessModel(p) && !epsonLBorderlessOk(printSize));   // not on paper this Epson cannot print borderless
@@ -47174,6 +47242,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             qualCh = [['high', 'High (360 dpi \u00b7 recommended)'], ['normal', 'Normal'], ['draft', 'Draft (fast)']];
             if (l8050HiResAvailable()) qualCh.splice(1, 0, ['high720', 'High 720 dpi (L8050 4\u00d76)']);
           }
+          else if (p.epsonL && isEpsonL3210(p) && l3210HiResAvailable(p)) {
+            qualCh = [
+              ['high720', 'High 720 dpi (L3210 \u00b7 recommended)'],
+              ['rbest', 'Best 1440\u00d7720 dpi (slowest)'],
+              ['normal', 'Normal (360 dpi)'],
+              ['draft', 'Draft (fast)']
+            ];
+          }
           else if (p.epsonL) {
             qualCh = [['normal', 'Normal (360 dpi)'], ['draft', 'Draft (fast)']];
             if (pbDebug() && epsonRasterBetaAllowed(p)) qualCh.push(['rnormal', 'Normal 720 dpi (beta, 4\u00d76 glossy)'], ['rbest', 'Best 1440 dpi (beta, 4\u00d76 glossy)']);
@@ -47193,6 +47269,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (p.escp2) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper (glossy)'], ['matte', 'Matte / inkjet paper']];
           else if (p.canon) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper, glossy'], ['matte', 'Matte photo paper']];
           else if ((p.epsonL || p.escpr) && isEpsonL8050(p)) mediaCh = [['photo', 'Photo paper (glossy)'], ['photopg', 'Photo paper (premium glossy)'], ['photosg', 'Photo paper (semi-gloss)'], ['matte', 'Photo paper (matte)'], ['plain', 'Plain paper']];
+          else if (p.epsonL && isEpsonL3210(p) && l3210HiResAvailable(p)) mediaCh = [['photo', 'Photo paper (glossy)'], ['photopg', 'Photo paper (ultra glossy)'], ['photosg', 'Photo paper (semi-gloss)'], ['matte', 'Photo paper (matte)'], ['plain', 'Plain paper']];
           else if (p.epsonL) mediaCh = [['plain', 'Plain paper'], ['photo', 'Photo paper (glossy)']];
           else if (epsonLUsbIpp(p)) mediaCh = [['photo', 'Photo paper (glossy)'], ['photosg', 'Photo paper (semi-gloss)'], ['matte', 'Photo paper (matte)'], ['plain', 'Plain paper']];
           else if (p.dnp) mediaCh = [['', 'Glossy finish'], ['matte', 'Matte finish']];
@@ -47404,7 +47481,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               showToast(p.name + ' is detected, but requires the System Print Dialog or Print Station.' + idTxt, pbDebug() ? 10000 : 5000);
               return;
             }
-            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, lpd: !!p.lpd, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, dnp: !!p.dnp, dnpModel: p.dnpModel || '', epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, bcap: !!p.bcap, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
+            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, lpd: !!p.lpd, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, dnp: !!p.dnp, dnpModel: p.dnpModel || '', epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', l3210HiRes: !!p.l3210HiRes, borderless: !!p.borderless, bcap: !!p.bcap, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
             showToast('Printer selected: ' + p.name, 3000);
             wifiRenderList(wifiList());
             refreshPrintUI();
@@ -47783,9 +47860,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           try { ((wifiList().printers) || []).filter(q => q && q.raw && !q.ipp && !q.escpr && !q.usb && !q.forcedRaw).forEach(q => { iosEnsureIppKind(Object.assign({}, q)); }); } catch (e) { }
         }, 5000);
         // A USB printer plugged in (or out) while this panel is open shows up without pressing anything.
+        let _lastWifiPollSig = '';
         setInterval(() => {
           const row = document.getElementById('wifiPrinterRow');
-          if (row && row.style.display !== 'none' && wifiNetAvailable() && !wifiScanTimer) wifiRenderList(wifiList());
+          if (!row || row.style.display === 'none' || !wifiNetAvailable() || wifiScanTimer) return;
+          const d = wifiList();
+          const sig = JSON.stringify([!!(d && d.scanning), ((d && d.printers) || []).map(q => [q.ip, q.name, q.ipp, q.escpr, q.needsPermission, q.borderless, q.qualities && q.qualities.length]), wifiPrinter ? wifiPrinter.ip : '']);
+          if (sig !== _lastWifiPollSig) { _lastWifiPollSig = sig; wifiRenderList(d); }
         }, 3000);
         if (g) g.addEventListener('click', () => { if (IOS_APP && wifiPrinter && !wifiPrinter.dialog && !wifiPrinter.usb && wifiPrinter.ip && window.__PBNet && typeof window.__PBNet.forgetIp === 'function') { try { window.__PBNet.forgetIp(wifiPrinter.ip); } catch (e) { } } wifiSave(null); wifiRenderList(wifiList()); refreshPrintUI(); });
         if (a) a.addEventListener('click', () => {
@@ -48195,9 +48276,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         if (epsonRasterBetaAllowed(p) && /^r(normal|best)$/.test(wo.quality || '')) { await printEpsonRaster(all, paper, p, wo); return; }
         if (p.epsonL) {
-          // Hardcoded Epson L-series: L8050 (photo 6-ink), L3210, L3276 — direct USB ESC/P-R printing.
+          // Hardcoded Epson L-series: L8050 (6-ink ESC/P-R), L3210 (720/1440 dpi ESC/P-Raster + 360 dpi ESC/P-R), L3276.
           const packL = wifiPackPages(all, cv => cv.toDataURL('image/jpeg', 0.95));
-          const isBl = !!(p.borderless && (wo.borderless !== false));
+          const blPaperOk = !epsonLBorderlessModel(p) || EPSON_L_BORDERLESS.some(([w, h]) => Math.abs(Math.min(paper.w, paper.h) - w) <= 3.5 && Math.abs(Math.max(paper.w, paper.h) - h) <= 4);
+          const isBl = !!(p.borderless && (wo.borderless !== false) && blPaperOk);
           const epsonLOpts = Object.assign({}, wo, { borderless: isBl });
           await wifiJob(id => window.__PBNet.printEpsonL(id, p.ip, paper.w, paper.h, packL.copies, JSON.stringify(packL.pics), JSON.stringify(epsonLOpts)), packL.ms);
           return;
@@ -48231,7 +48313,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         wifiTesting = true;
         try {
           const paper = paperFor(printSize);
-          const dpi = paper.receipt ? RECEIPT_DPI : (canonDpiFor(paper) || l8050DpiFor(paper) || PRINT_DPI);
+          const dpi = paper.receipt ? RECEIPT_DPI : (canonDpiFor(paper) || l8050DpiFor(paper) || l3210DpiFor(paper) || PRINT_DPI);
           const hMm = paper.h || 100;
           const cv = document.createElement('canvas');
           cv.width = Math.round(paper.w / 25.4 * dpi); cv.height = Math.round(hMm / 25.4 * dpi);
@@ -48598,6 +48680,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (missing.length) {
           if (pw.usb.state !== 'off') pwSet('usb', 'off', missing.length < saved.length ? String(missing[0].name).replace(/\s*\(USB\)$/, '') + ' is not connected' : '');
           return false;
+        }
+        const needPerm = saved.some(sp => list.some(q => q && q.usb && q.needsPermission && (q.ip === sp.ip || q.name === sp.name || (sp.vid && q.vid === sp.vid && q.pid === sp.pid))));
+        if (needPerm) {
+          if (pw.usb.state !== 'reconnecting') pwSet('usb', 'reconnecting', 'Tap Allow on USB permission prompt');
+          return true;
         }
         if (pw.usb.state !== 'ready') pwSet('usb', 'ready');
         pwFlush('usb');
@@ -49040,8 +49127,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         printRouteSelect.value = printRoute;
         printRouteSelect.querySelector('option[value="station"]').disabled = !(isRentalBooth() || isTrialBooth());
         refreshLanStationUI();
-        // The Print Helper is a computer app: never offered on iPad / Android, except when opened from the laptop app OR connected to Laptop Print Station over Wi-Fi.
-        const showDesktopPick = !!(printSize && !useStation() && (!isMobileOS() || LANREMOTE || lanStationActive()));
+        // The Print Helper is a computer app (or Android's local USB PrintHelperService when opened in Chrome): never offered otherwise on mobile, except when opened from the laptop app or connected to Laptop Print Station over Wi-Fi.
+        const _showDesktopPickBase = !!(printSize && !useStation() && (!isMobileOS() || LANREMOTE || lanStationActive()));
+        const showDesktopPick = _showDesktopPickBase || !!(printSize && !useStation() && androidChromeHelper);
         document.getElementById('printerPick').style.display = showDesktopPick ? '' : 'none';
         // Keep Lightness & Colour Correction, photo fit / borderless / edges, and thermal quality visible on Android, iPad & Print Station.
         const p1Opts = document.getElementById('printer1OptsBody');
@@ -56845,7 +56933,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var rx2 = r.getContext('2d'); rx2.translate(r.width, 0); rx2.rotate(Math.PI / 2); rx2.drawImage(src, 0, 0);
           src = r;
         }
-        var dpi = canonDpiFor(paper) || l8050DpiFor(paper) || PRINT_DPI;
+        var dpi = canonDpiFor(paper) || l8050DpiFor(paper) || l3210DpiFor(paper) || PRINT_DPI;
         var c = document.createElement('canvas');
         c.width = Math.round(paper.w / 25.4 * dpi); c.height = Math.round(paper.h / 25.4 * dpi);
         c._pbDpi = dpi;
@@ -61171,7 +61259,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (p.needsPermission) { try { window.__PBNet.usbAllow(p.id); } catch (e) { } return { ok: false, msg: 'Allow USB access in the prompt, then tap the printer again.' }; }
             if (p.brotherNoIpp || (p.noDriver && p.usb && p.vid === 1273)) return { ok: false, msg: p.name + ' does not expose IPP-over-USB on this cable. Connect it to Wi-Fi or Wi-Fi Direct, or use Android print screen.' };
             if (p.noDriver) return { ok: false, msg: p.name + ' needs the booth Setup (Printer settings) to choose how to print.' };
-            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, lpd: !!p.lpd, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, dnp: !!p.dnp, dnpModel: p.dnpModel || '', epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, bcap: !!p.bcap, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
+            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, lpd: !!p.lpd, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, dnp: !!p.dnp, dnpModel: p.dnpModel || '', epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', l3210HiRes: !!p.l3210HiRes, borderless: !!p.borderless, bcap: !!p.bcap, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
             try { refreshPrintUI(); } catch (e) { }
             return { ok: true, msg: 'Printer selected: ' + p.name };
           } finally { printSize = old; }
@@ -73508,17 +73596,25 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (receiptNoteInput) receiptNoteInput.value = receiptCustomNote;
           titleUpper = !!s.upper; themeArt = validArt(s.art); artPal = validArtPal(s.artPal);
           refreshTitleUI();
-          if (s.printerProfiles && window._pfImport) window._pfImport(s.printerProfiles);
-          if (s.printPrefs) applyPrintPrefs(s.printPrefs);
-          if (s.guestbook) applyGbPrefs(s.guestbook);
-          applyBgRepSetup(s.bgRep, s.bgMine);
-          if (s.fx) applyFxSetup(s.fx);
-          applyGvSetup(s.guestView);
-          if (s.saveSolo !== undefined) { saveSoloPhotos = s.saveSolo !== false; refreshSoloUI(); }
-          brand = cleanBrand(s.brand);
-          applyPaySetup(s.pay);
-          applyFramesSetup(s);
-          applyTplsSetup(s.tpls);
+          if (!(skipHeavyUi && opts && opts.skipDesignSync)) {
+            if (s.printerProfiles && window._pfImport) window._pfImport(s.printerProfiles);
+            if (s.printPrefs) applyPrintPrefs(s.printPrefs);
+            if (s.guestbook) applyGbPrefs(s.guestbook);
+            applyBgRepSetup(s.bgRep, s.bgMine);
+            if (s.fx) applyFxSetup(s.fx);
+            applyGvSetup(s.guestView);
+            if (s.saveSolo !== undefined) { saveSoloPhotos = s.saveSolo !== false; refreshSoloUI(); }
+            brand = cleanBrand(s.brand);
+            applyPaySetup(s.pay);
+            applyFramesSetup(s);
+            applyTplsSetup(s.tpls);
+          } else {
+            var okF = typeof okFrameAssetId === 'function' ? okFrameAssetId : function () { return false; };
+            if (typeof myFrames !== 'undefined' && Array.isArray(myFrames)) {
+              activeFrameId = (s.activeFrame && okF(s.activeFrame) && typeof frameById === 'function' && frameById(s.activeFrame)) ? s.activeFrame : (myFrames[0] ? myFrames[0].id : null);
+              chooseIds = (Array.isArray(s.chooseIds) ? s.chooseIds : []).filter(function (id) { return okF(id) && typeof frameById === 'function' && frameById(id); }).slice(0, typeof MAX_FRAMES === 'number' ? MAX_FRAMES : 30);
+            }
+          }
           if (!skipHeavyUi) {
             buildLayoutPicker();
             ensureAssets(designAssetIds().concat(myProps)).then(function () {

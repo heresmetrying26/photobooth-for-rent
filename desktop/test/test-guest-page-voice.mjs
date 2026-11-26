@@ -335,9 +335,11 @@ const PACK = (sig) => ({ type: 'sounds', sig, sounds: { shut: WAV, b1: WAV, b2: 
   assert(/body\.ps \.frame\{[^}]*max-width:none !important;max-height:none !important;/.test(html), 'body.ps .frame removes 56vw/94vh cap');
   assert(/body\.ps\.wel-full \.frame\{[^}]*max-width:none !important;max-height:none !important;/.test(html), 'body.ps.wel-full .frame fills 100vw x 100vh without cap');
   assert(/body\.wel \.frame\{[^}]*width:min\(100vw,calc\(100vh \* var\(--wa,1\.3333\)\)\) !important;[^}]*max-width:none !important;max-height:none !important;/.test(html), 'body.wel .frame sets full width and clears 56vw/94vh cap');
+  assert(html.includes('body.qrpop-wait.is-result .frame,body.qrpop-show.is-result .frame{max-width:92vw;max-height:90vh;}'), 'qrpop result clears 60vw cap');
+  assert(html.includes('body.ps.is-result .frame{max-width:92vw;max-height:90vh;}'), 'portrait result clears 60vw cap');
   const vps = pg.actions().filter((a) => a.action === 'viewportCaps');
   assert.equal(vps.length, 1, 'guest page reports viewportCaps on connect');
-  assert.deepEqual({ vw: vps[0].vw, vh: vps[0].vh }, { vw: 800, vh: 1280 });
+  assert.deepEqual({ vw: vps[0].vw, vh: vps[0].vh, init: vps[0].init }, { vw: 800, vh: 1280, init: true });
   pg.msg({ type: 'state', state: { psMode: true, pickOpen: true, layouts: [{ k: 'd1', name: 'Design 1', shots: 'Strip', thumb: '' }, { k: 'd2', name: 'Design 2', shots: '4R', thumb: '' }] } });
   const firstBtn = pg.els.pkg.children[0];
   assert(firstBtn, 'picker renders buttons immediately even while thumbs are blank');

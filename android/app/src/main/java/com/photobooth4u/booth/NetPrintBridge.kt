@@ -127,6 +127,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     @JavascriptInterface
     fun supportsL8050HiRes(): Boolean = true
 
+    /** Advertises that this APK supports native streaming L3210 720/1440 dpi ESC/P-Raster and streaming 360 dpi ESC/P-R. */
+    @JavascriptInterface
+    fun supportsL3210HiRes(): Boolean = true
+
     fun shutdown() {
         stopDiscovery()
         holdMulticast(false)
@@ -2025,6 +2029,82 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     }
 
     /**
+     * Hardcoded Epson L3210 ESC/P-Raster config derived from the installed Windows
+     * "EPSON L3210 Series" driver (e_wf1yxe.inf v3.80.05.00). Returns null only when the caller
+     * explicitly requests 360 dpi Normal or Draft so those fast modes use streaming 360 dpi ESC/P-R.
+     */
+    private fun l3210RasterConfig(
+        optJson: JSONObject,
+        borderless: Boolean,
+        adj: PrintColorAdj,
+        widthMm: Double = 101.6,
+        heightMm: Double = 152.4
+    ): EpsonL3210RasterJob.Config? {
+        val qStr = optJson.optString("quality", "").lowercase()
+        if (qStr == "normal" || qStr == "draft") return null
+        val dpiH = if (qStr == "rbest" || qStr == "best1440" || qStr == "1440") 1440 else 720
+        val mono = optJson.optString("color", "color") == "mono"
+        val mediaStr = optJson.optString("media", "").lowercase()
+        val blAllowed = EpsonL3210RasterJob.isBorderlessSize(widthMm, heightMm)
+        val effectiveBl = borderless && blAllowed
+        val mediaCode = EpsonL3210RasterJob.mediaCodeFor(
+            mediaStr,
+            photoDefault = effectiveBl || mediaStr != "plain"
+        )
+        return EpsonL3210RasterJob.Config(
+            dpiH = dpiH,
+            mediaCode = mediaCode,
+            borderless = effectiveBl,
+            mono = mono,
+            adj = adj
+        )
+    }
+
+    /**
+     * Streaming 360 dpi / Draft ESC/P-R config for L3210 (when Normal/Draft chosen) and L3276,
+     * fixing borderless geometry, media byte, and setq[6]=0x00 / sendSetiChku / sendSetm=false.
+     */
+    private fun epsonL360EscprConfig(
+        model: String,
+        optJson: JSONObject,
+        borderless: Boolean,
+        photoMedia: Boolean,
+        adj: PrintColorAdj,
+        widthMm: Double = 101.6,
+        heightMm: Double = 152.4
+    ): EscprJob.Config {
+        val mono = optJson.optString("color", "color") == "mono"
+        val mediaStr = optJson.optString("media", "").lowercase()
+        val blAllowed = if (model == "L3210" || model == "L3276") EpsonL3210RasterJob.isBorderlessSize(widthMm, heightMm) else true
+        val effectiveBl = borderless && blAllowed
+        val mediaCode = when (mediaStr) {
+            "plain" -> EscprJob.MEDIA_PLAIN
+            "matte" -> EscprJob.MEDIA_MATTE
+            "photosg" -> EscprJob.MEDIA_SEMI_GLOSS
+            "photopg" -> EscprJob.MEDIA_PREMIUM_GLOSSY
+            "photo" -> EscprJob.MEDIA_EPSON_GLOSSY
+            else -> if (effectiveBl || photoMedia) EscprJob.MEDIA_EPSON_GLOSSY else EscprJob.MEDIA_PLAIN
+        }
+        val qStr = optJson.optString("quality", "").lowercase()
+        val qualityCode = when (qStr) {
+            "draft" -> 0
+            "normal" -> 1
+            else -> 2
+        }
+        return EscprJob.Config(
+            dpi = 360,
+            mediaCode = mediaCode,
+            qualityCode = qualityCode,
+            borderless = effectiveBl,
+            l8050Geo = false,
+            sendSetiChku = true,
+            mono = mono,
+            adj = adj,
+            sendSetm = false
+        )
+    }
+
+    /**
      * EXPERIMENTAL: prints JPEG pages to an Epson ESC/P-R USB printer (Epson L120 / L210 and similar).
      * Result arrives as window.__PBNetResult.
      *
@@ -2182,28 +2262,37 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val colour  = optJson.optString("color", "color") != "mono"
                 val borderless = (optJson.optBoolean("borderless", false) || optJson.optBoolean("bl", false)) && EpsonLModels.isBorderless(d)
                 val photoMedia = optJson.optString("media", "") == "photo" || borderless
-                val draft = optJson.optString("quality", "") == "draft"
                 val adj = PrintColorAdj.from(optJson)
                 val l8050Cfg = if (model == "L8050") l8050EscprConfig(optJson, borderless, adj, widthMm, heightMm) else null
+                val l3210Cfg = if (model == "L3210") l3210RasterConfig(optJson, borderless, adj, widthMm, heightMm) else null
+                val escprCfg = if (l8050Cfg == null && l3210Cfg == null) epsonL360EscprConfig(model, optJson, borderless, photoMedia, adj, widthMm, heightMm) else null
                 if (l8050Cfg != null) {
                     Log.i(TAG, "printEpsonL L8050 cfg: dpi=${l8050Cfg.dpi} bl=${l8050Cfg.borderless} media=0x%02x q=${l8050Cfg.qualityCode} setm=${l8050Cfg.sendSetm} copies=$copies".format(l8050Cfg.mediaCode))
+                } else if (l3210Cfg != null) {
+                    Log.i(TAG, "printEpsonL L3210 raster cfg: dpiH=${l3210Cfg.dpiH} bl=${l3210Cfg.borderless} media=0x%02x mono=${l3210Cfg.mono} copies=$copies".format(l3210Cfg.mediaCode))
+                } else if (escprCfg != null) {
+                    Log.i(TAG, "printEpsonL $model 360 cfg: bl=${escprCfg.borderless} media=0x%02x q=${escprCfg.qualityCode} copies=$copies".format(escprCfg.mediaCode))
                 }
 
+                val copyCount = copies.coerceIn(1, 20)
                 val arr = JSONArray(pagesJson)
-                for (c in 0 until copies.coerceIn(1, 20)) {
-                    for (i in 0 until arr.length()) {
-                        val jpeg = decode(arr.getString(i))
-                        val bmp  = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
-                            ?: throw IllegalStateException("Couldn't decode photo for printing.")
-                        try {
-                            if (l8050Cfg != null) {
-                                usbRawStream(id) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
-                            } else {
-                                usbRaw(id, EscprJob.build(bmp, widthMm, heightMm, !colour, borderless, photoMedia, draft, adj))
+                for (i in 0 until arr.length()) {
+                    val jpeg = decode(arr.getString(i))
+                    val bmp  = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+                        ?: throw IllegalStateException("Couldn't decode photo for printing.")
+                    try {
+                        for (c in 0 until copyCount) {
+                            when {
+                                l8050Cfg != null ->
+                                    usbRawStream(id) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
+                                l3210Cfg != null ->
+                                    usbRawStream(id) { writeChunk -> EpsonL3210RasterJob.stream(bmp, widthMm, heightMm, l3210Cfg, writeChunk) }
+                                escprCfg != null ->
+                                    usbRawStream(id) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, escprCfg, writeChunk) }
                             }
-                        } finally {
-                            try { bmp.recycle() } catch (_: Exception) {}
                         }
+                    } finally {
+                        try { bmp.recycle() } catch (_: Exception) {}
                     }
                 }
                 r.put("ok", true)
@@ -2324,6 +2413,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 .put("ipp", ipp).put("raw", raw).put("escpr", escpr || epsonL).put("usb", true)
                 .put("epsonL", epsonL)
                 .put("epsonModel", epsonModelName)
+                .put("l3210HiRes", epsonModelName == "L3210")
                 .put("borderless", epsonL && EpsonLModels.isBorderless(d))
                 .put("escp2", escp2)
                 .put("canon", canon)
@@ -4201,7 +4291,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         heightMm: Double,
         pagesArr: JSONArray,
         fit: String?,
-        receipt: JSONObject? = null
+        receipt: JSONObject? = null,
+        options: JSONObject? = null
     ): String? {
         try {
             val m = usb ?: throw IllegalStateException("USB service unavailable.")
@@ -4238,21 +4329,31 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
                 when {
                     epsonL || escpr -> {
-                        val borderless = (epsonL && EpsonLModels.isBorderless(d)) || escpr
-                        val isL8050 = EpsonLModels.match(d) == "L8050" || isL8050Name(usbName(d))
-                        val photoMedia = true
-                        val adj = PrintColorAdj()
-                        val l8050Cfg = if (isL8050) l8050EscprConfig(JSONObject(), borderless, adj, widthMm, heightMm) else null
+                        val optJson = options ?: JSONObject()
+                        val model = EpsonLModels.match(d) ?: ""
+                        val isL8050 = model == "L8050" || isL8050Name(usbName(d))
+                        val isL3210 = model == "L3210"
+                        val blReq = optJson.optBoolean("borderless", true)
+                        val borderless = blReq && (if (isL3210 || model == "L3276") EpsonL3210RasterJob.isBorderlessSize(widthMm, heightMm) else ((epsonL && EpsonLModels.isBorderless(d)) || escpr))
+                        val photoMedia = optJson.optString("media", "") != "plain"
+                        val adj = PrintColorAdj.from(optJson)
+                        val l8050Cfg = if (isL8050) l8050EscprConfig(optJson, borderless, adj, widthMm, heightMm) else null
+                        val l3210Cfg = if (isL3210) l3210RasterConfig(optJson, borderless, adj, widthMm, heightMm) else null
+                        val escprCfg = if (l8050Cfg == null && l3210Cfg == null) {
+                            epsonL360EscprConfig(model, optJson, borderless, photoMedia, adj, widthMm, heightMm)
+                        } else null
                         for (i in 0 until pagesArr.length()) {
                             val jpeg = decode(pagesArr.getString(i))
                             val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                                 ?: throw IllegalStateException("Couldn't decode photo for printing.")
                             try {
-                                if (l8050Cfg != null) {
-                                    usbRawStream(id) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
-                                } else {
-                                    val bytes = EscprJob.build(bmp, widthMm, heightMm, mono = false, borderless = borderless, photoMedia = photoMedia, draft = false, adj = adj)
-                                    usbRaw(id, bytes)
+                                when {
+                                    l8050Cfg != null ->
+                                        usbRawStream(id) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, l8050Cfg, writeChunk) }
+                                    l3210Cfg != null ->
+                                        usbRawStream(id) { writeChunk -> EpsonL3210RasterJob.stream(bmp, widthMm, heightMm, l3210Cfg, writeChunk) }
+                                    escprCfg != null ->
+                                        usbRawStream(id) { writeChunk -> EscprJob.streamWithConfig(bmp, widthMm, heightMm, escprCfg, writeChunk) }
                                 }
                             } finally {
                                 try { bmp.recycle() } catch (_: Exception) {}

@@ -39,8 +39,10 @@ class PBLocal {
     var guestView: String = "all"
 
     private let pathMonitor = NWPathMonitor()
+    private let onlineLock = NSLock()
     private var onlineNow = true
     var onOnlineChange: ((Bool) -> Void)?
+    var onNetworkUpdate: ((Bool, String, String) -> Void)?
 
     private init() {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -53,14 +55,18 @@ class PBLocal {
         loadCodes()
 
         pathMonitor.pathUpdateHandler = { [weak self] path in
+            guard let self = self else { return }
             let online = (path.status == .satisfied)
-            self?.lock.lock()
-            let changed = (self?.onlineNow != online)
-            self?.onlineNow = online
-            self?.lock.unlock()
-            if changed {
-                DispatchQueue.main.async {
-                    self?.onOnlineChange?(online)
+            self.onlineLock.lock()
+            let changed = (self.onlineNow != online)
+            self.onlineNow = online
+            self.onlineLock.unlock()
+            let lan = self.lanBase()
+            let loc = self.localBase()
+            DispatchQueue.main.async {
+                self.onNetworkUpdate?(online, lan, loc)
+                if changed {
+                    self.onOnlineChange?(online)
                 }
             }
         }
@@ -68,9 +74,9 @@ class PBLocal {
     }
 
     func isOnline() -> Bool {
-        lock.lock()
+        onlineLock.lock()
         let v = onlineNow
-        lock.unlock()
+        onlineLock.unlock()
         return v
     }
 
@@ -314,7 +320,7 @@ class PBLocal {
         noteGuestFile(code: dict["guestCode"] as? String, slug: folder.slug, file: candidate)
 
         // Save photos, animated GIFs, and videos directly to Apple Photos Library
-        saveToPhotosLibrary(fileUrl: destFile, rawData: imgData)
+        saveToPhotosLibrary(fileUrl: destFile)
 
         return jsonStr([
             "ok": true,
@@ -332,12 +338,12 @@ class PBLocal {
     func saveImage(fileName: String, base64: String) -> String {
         let name = safeName(fileName).isEmpty ? "photobooth4u.png" : safeName(fileName)
         guard let data = Data(base64Encoded: base64, options: .ignoreUnknownCharacters), !data.isEmpty,
-              let image = UIImage(data: data) else {
+              UIImage(data: data) != nil else {
             return jsonErr("Could not decode image.")
         }
         let dest = rootDir.appendingPathComponent(name)
         try? data.write(to: dest)
-        saveToPhotosLibrary(fileUrl: dest, rawData: data)
+        saveToPhotosLibrary(fileUrl: dest)
         return jsonStr(["ok": true, "dir": "Photos & Files"])
     }
 
@@ -353,7 +359,7 @@ class PBLocal {
         }
     }
 
-    private func saveToPhotosLibrary(fileUrl: URL, rawData: Data) {
+    private func saveToPhotosLibrary(fileUrl: URL) {
         let ext = fileUrl.pathExtension.lowercased()
         let isVideo = (ext == "mp4" || ext == "mov")
         let isImage = (ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "gif" || ext == "webp")
@@ -367,7 +373,9 @@ class PBLocal {
                     PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: fileUrl)
                 }
             }) { ok, _ in
-                if !ok && !isVideo && ext != "gif", let img = UIImage(data: rawData) {
+                if !ok && !isVideo && ext != "gif",
+                   let diskData = try? Data(contentsOf: fileUrl),
+                   let img = UIImage(data: diskData) {
                     DispatchQueue.main.async {
                         UIImageWriteToSavedPhotosAlbum(img, nil, nil, nil)
                     }

@@ -260,7 +260,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.34', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.34/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.35', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.35/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -314,6 +314,15 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-27', title: 'iPad 1.1.35 & Website: Fixes iPad Freezing on "Tap to start", Sharper Built-in Camera Photos & All-Day Smooth Memory Handling', for: ['website', 'ipad'], ipad: '1.1.35',
+    items: [
+      '🛡️ Fixes iPad app hanging on "Tap to start" after idle or extended use: Keeps background services, camera wake-up, and screen resume reliable across hours of event sessions, and recovers automatically if the iPad screen locks or goes to sleep.',
+      '📸 Sharper, cleaner built-in iPad & external USB-C camera photos: Enables full multi-frame camera processing, continuous auto white balance, and higher photo quality for crisper indoor event lighting and more natural skin tones.',
+      '⚡ Faster, freeze-free AirPrint & photo saving: Prepares high-resolution print pages in the background so tapping Print never pauses the screen, and adds a safety timeout so a slow printer never blocks the next guest.',
+      '🧹 Dramatically lower memory usage for long events & high-resolution DSLR sessions: Clears finished photo buffers immediately after each session and loads off-screen theme thumbnails only as you scroll, keeping both built-in iPad and USB DSLR sessions smooth from the first guest to the last.'
+    ]
+  },
   {
     date: '2026-11-26', title: 'Desktop 1.1.117, Android 1.2.26, iPad 1.1.34 & Print Helper 1.1.27: Print Station Queue & Review Controls, Per-Job Printer/Copies Switching & Smarter Coin/Cash Acceptor Sync', for: ['website', 'app', 'android', 'ipad', 'helper'], app: '1.1.117', android: '1.2.26', ipad: '1.1.34', helper: '1.1.27',
     items: [

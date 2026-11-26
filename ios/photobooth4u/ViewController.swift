@@ -33,6 +33,13 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     private var checkinTimer: Timer?
     private var updateBusy = false
     private var loadedViaOta = false
+    private var boothLoadedOnce = false
+    private var pendingReloadOnActive = false
+    private var navRetryCount = 0
+    private var navRetryWorkItem: DispatchWorkItem?
+    private var loadStartedAt: Date?
+    private var loadWatchdogWorkItem: DispatchWorkItem?
+    private var livenessCheckId = 0
     private var airPrintBusy = false
     private var airPrintQueue: [(jobName: String, ptW: Double, ptH: Double, pdfData: Data)] = []
     // Photo saves run here, one at a time and off the main thread, so the camera picture and the screen keep moving.
@@ -48,6 +55,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     override var prefersStatusBarHidden: Bool { return true }
     override var prefersHomeIndicatorAutoHidden: Bool { return true }
 
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        NativeCameraBridge.shared.clearMemoryCaches()
+        URLCache.shared.removeAllCachedResponses()
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0) // #F5F1EA
@@ -61,7 +74,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         // 2. Setup WKWebView
         setupWebView()
 
-        // 3. Push network state asynchronously to JS (avoids synchronous prompt IPC in navigator.onLine)
+        // 3. Push network & LAN state asynchronously to JS (avoids synchronous prompt IPC)
+        PBLocal.shared.onNetworkUpdate = { [weak self] online, lan, loc in
+            self?.pushNetworkAddressesToJs(online: online, lanBase: lan, localBase: loc)
+        }
         PBLocal.shared.onOnlineChange = { [weak self] online in
             let flag = online ? "true" : "false"
             let ev = online ? "online" : "offline"
@@ -83,7 +99,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             }
         }
 
-        // 6. Trigger seamless cloud sync whenever the iPad wakes or returns to the app
+        // 6. Trigger seamless cloud sync and WebView liveness verification whenever the iPad wakes or returns to the app
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleAppDidBecomeActive),
@@ -94,7 +110,63 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
     deinit {
         checkinTimer?.invalidate()
+        navRetryWorkItem?.cancel()
+        loadWatchdogWorkItem?.cancel()
         NotificationCenter.default.removeObserver(self)
+    }
+
+    private func jsStringLiteral(_ str: String) -> String {
+        if let data = try? JSONSerialization.data(withJSONObject: [str], options: []),
+           let arr = String(data: data, encoding: .utf8), arr.count >= 2 {
+            let inner = String(arr.dropFirst().dropLast())
+            return inner
+                .replacingOccurrences(of: "</", with: "<\\/")
+                .replacingOccurrences(of: "\u{2028}", with: "\\u2028")
+                .replacingOccurrences(of: "\u{2029}", with: "\\u2029")
+        }
+        return "\"\""
+    }
+
+    private func pushNetworkAddressesToJs(online: Bool, lanBase: String, localBase: String) {
+        DispatchQueue.main.async { [weak self] in
+            guard let wv = self?.webView else { return }
+            let flag = online ? "true" : "false"
+            let lanLit = self?.jsStringLiteral(lanBase) ?? "\"\""
+            let locLit = self?.jsStringLiteral(localBase) ?? "\"\""
+            wv.evaluateJavaScript("try{window.__pbIosOnline=\(flag);window.__pbIosLanBase=\(lanLit);window.__pbIosLocalBase=\(locLit);window.dispatchEvent(new Event('pb-lan-change'));}catch(e){}", completionHandler: nil)
+        }
+    }
+
+    private func pushNetPrintersState() {
+        let jsonStrVal = tcpPrintersListJson()
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, let wv = self.webView else { return }
+            let lit = self.jsStringLiteral(jsonStrVal)
+            wv.evaluateJavaScript("try{window.__pbIosNetList=\(lit);}catch(e){}", completionHandler: nil)
+        }
+    }
+
+    private func pushCachedBridgeState() {
+        let apLit = jsStringLiteral(savedAirPrintJson())
+        let netLit = jsStringLiteral(tcpPrintersListJson())
+        webView?.evaluateJavaScript("try{window.__pbIosAirPrint=\(apLit);window.__pbIosNetList=\(netLit);}catch(e){}", completionHandler: nil)
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
+            let online = PBLocal.shared.isOnline()
+            let lan = PBLocal.shared.lanBase()
+            let loc = PBLocal.shared.localBase()
+            let enVoices = VoiceBridge.shared.voicesJson(lang: "en")
+            let filVoices = VoiceBridge.shared.voicesJson(lang: "fil")
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self, let wv = self.webView else { return }
+                let flag = online ? "true" : "false"
+                let lanLit = self.jsStringLiteral(lan)
+                let locLit = self.jsStringLiteral(loc)
+                let enLit = self.jsStringLiteral(enVoices)
+                let filLit = self.jsStringLiteral(filVoices)
+                wv.evaluateJavaScript("try{window.__pbIosOnline=\(flag);window.__pbIosLanBase=\(lanLit);window.__pbIosLocalBase=\(locLit);window.__pbIosVoices={en:\(enLit),fil:\(filLit)};window.dispatchEvent(new Event('pb-lan-change'));}catch(e){}", completionHandler: nil)
+            }
+        }
     }
 
     private func pushAuthAndSyncEvent(eventName: String) {
@@ -117,21 +189,79 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     }
 
     @objc private func handleAppDidBecomeActive() {
+        pushCachedBridgeState()
         pushAuthAndSyncEvent(eventName: "pb-app-resume")
+        verifyWebViewAliveOnResume()
+    }
+
+    private func verifyWebViewAliveOnResume() {
+        guard gateContainer == nil, boothLoadedOnce, let wv = webView else { return }
+        if pendingReloadOnActive {
+            pendingReloadOnActive = false
+            IccCameraHelper.shared.ensureListening(forceRestart: true)
+            LocalShareServer.shared.ensureListening(forceRestart: false)
+            loadBooth()
+            return
+        }
+        if wv.isLoading {
+            if let started = loadStartedAt, Date().timeIntervalSince(started) > 12.0 {
+                wv.stopLoading()
+                IccCameraHelper.shared.ensureListening(forceRestart: true)
+                LocalShareServer.shared.ensureListening(forceRestart: false)
+                loadBooth()
+            }
+            return
+        }
+        if wv.url == nil {
+            IccCameraHelper.shared.ensureListening(forceRestart: true)
+            LocalShareServer.shared.ensureListening(forceRestart: false)
+            loadBooth()
+            return
+        }
+        guard presentedViewController == nil else { return }
+        livenessCheckId &+= 1
+        let checkId = livenessCheckId
+        var answered = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak self] in
+            guard let self = self, !answered, self.livenessCheckId == checkId else { return }
+            guard self.gateContainer == nil, self.presentedViewController == nil, UIApplication.shared.applicationState == .active, self.webView?.isLoading == false else { return }
+            IccCameraHelper.shared.ensureListening(forceRestart: true)
+            LocalShareServer.shared.ensureListening(forceRestart: false)
+            self.loadBooth()
+        }
+        wv.evaluateJavaScript("document.readyState") { [weak self] val, err in
+            answered = true
+            guard let self = self, self.livenessCheckId == checkId else { return }
+            if err != nil || (val as? String) == nil {
+                guard self.gateContainer == nil, self.presentedViewController == nil, UIApplication.shared.applicationState == .active, self.webView?.isLoading == false else { return }
+                IccCameraHelper.shared.ensureListening(forceRestart: true)
+                LocalShareServer.shared.ensureListening(forceRestart: false)
+                self.loadBooth()
+            }
+        }
     }
 
     private func requestMediaPermissionsAndBoot() {
-        if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
-            AVCaptureDevice.requestAccess(for: .audio) { _ in }
+        let askAudioThenBoot = { [weak self] in
+            guard let self = self else { return }
+            if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+                AVCaptureDevice.requestAccess(for: .audio) { [weak self] _ in
+                    DispatchQueue.main.async {
+                        self?.bootWithLicence()
+                    }
+                }
+            } else {
+                self.bootWithLicence()
+            }
         }
         if AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined {
-            AVCaptureDevice.requestAccess(for: .video) { [weak self] _ in
+            AVCaptureDevice.requestAccess(for: .video) { _ in
                 DispatchQueue.main.async {
-                    self?.bootWithLicence()
+                    askAudioThenBoot()
                 }
             }
         } else {
-            bootWithLicence()
+            askAudioThenBoot()
         }
     }
 
@@ -168,10 +298,17 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
           function callSave(op, a, b) {
             return new Promise(function(resolve) {
               var id = ++saveSeq;
-              savePend[id] = resolve;
+              var timer = setTimeout(function() {
+                if (savePend[id]) {
+                  delete savePend[id];
+                  resolve('{"ok":false,"error":"Save timed out."}');
+                }
+              }, 30000);
+              savePend[id] = function(json) { clearTimeout(timer); resolve(json); };
               try {
                 window.webkit.messageHandlers.pbSave.postMessage({ id: id, op: op, a: a, b: b });
               } catch (e) {
+                clearTimeout(timer);
                 delete savePend[id];
                 var res = op === 'drive'
                   ? prompt('__PBLocal_drive_sync__', a)
@@ -190,12 +327,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
               return res || '{}';
             },
             lanBase: function() {
-              var res = prompt('__PBLocal_lanBase_sync__', '');
-              return res || '';
+              if (typeof window.__pbIosLanBase === 'string') return window.__pbIosLanBase;
+              var res = prompt('__PBLocal_lanBase_sync__', '') || '';
+              window.__pbIosLanBase = res;
+              return res;
             },
             localBase: function() {
-              var res = prompt('__PBLocal_localBase_sync__', '');
-              return res || '';
+              if (typeof window.__pbIosLocalBase === 'string') return window.__pbIosLocalBase;
+              var res = prompt('__PBLocal_localBase_sync__', '') || '';
+              window.__pbIosLocalBase = res;
+              return res;
             },
             photosPath: function() { return 'Files › On My iPad › photobooth4u'; },
             saveImage: function(fileName, base64) {
@@ -219,8 +360,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
           window.__PBVoice = {
             voices: function(lang) {
-              var res = prompt('__PBVoice_voices_sync__', String(lang || 'en'));
-              return res || '[]';
+              var k = /^(fil|tl)/i.test(String(lang || 'en')) ? 'fil' : 'en';
+              if (window.__pbIosVoices && typeof window.__pbIosVoices[k] === 'string') return window.__pbIosVoices[k];
+              var res = prompt('__PBVoice_voices_sync__', String(lang || 'en')) || '[]';
+              window.__pbIosVoices = window.__pbIosVoices || {};
+              window.__pbIosVoices[k] = res;
+              return res;
             },
             speak: function(text, voiceName, volume) {
               try {
@@ -255,23 +400,29 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
               try { window.webkit.messageHandlers.pbClearAirPrint.postMessage({}); } catch (e) {}
             },
             savedAirPrint: function() {
-              var res = prompt('__PBPrint_saved_sync__', '');
-              return res || '{}';
+              if (typeof window.__pbIosAirPrint === 'string') return window.__pbIosAirPrint;
+              var res = prompt('__PBPrint_saved_sync__', '') || '{}';
+              window.__pbIosAirPrint = res;
+              return res;
             }
           };
 
           window.__PBNet = {
             list: function() {
-              var res = prompt('__PBNet_list_sync__', '');
-              return res || '{"printers":[],"scanning":false}';
+              if (typeof window.__pbIosNetList === 'string') return window.__pbIosNetList;
+              var res = prompt('__PBNet_list_sync__', '') || '{"printers":[],"scanning":false}';
+              window.__pbIosNetList = res;
+              return res;
             },
             scan: function() {},
             addByIp: function(ip) {
               var res = prompt('__PBNet_addByIp_sync__', String(ip || ''));
+              delete window.__pbIosNetList;
               return res || 'Invalid IP';
             },
             forgetIp: function(ip) {
               try { prompt('__PBNet_forget_sync__', String(ip || '')); } catch (e) {}
+              delete window.__pbIosNetList;
             },
             printRaw: function(jobId, ip, b64) {
               try {
@@ -328,7 +479,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
           };
 
           window.__PBUpdate = {
-            version: function() { return window.__pbIosAppVer || '1.1.29'; },
+            version: function() { return window.__pbIosAppVer || '1.1.34'; },
             check: function() {
               try { window.webkit.messageHandlers.pbUpdateCheck.postMessage({}); } catch (e) {}
             },
@@ -382,10 +533,18 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             function callCam(op, args) {
               return new Promise(function(resolve) {
                 var id = ++camSeq;
-                camPend[id] = resolve;
+                var ms = (op === 'stopVideo') ? 25000 : 15000;
+                var timer = setTimeout(function() {
+                  if (camPend[id]) {
+                    delete camPend[id];
+                    resolve({ ok: false, name: 'TimeoutError', error: 'Camera did not respond in time.' });
+                  }
+                }, ms);
+                camPend[id] = function(obj) { clearTimeout(timer); resolve(obj || { ok: false }); };
                 try {
                   window.webkit.messageHandlers.pbCam.postMessage({ id: id, op: op, args: args || {} });
                 } catch (e) {
+                  clearTimeout(timer);
                   delete camPend[id];
                   resolve({ ok: false, error: 'Camera bridge unavailable' });
                 }
@@ -492,9 +651,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     @objc private func didTapBackToBooth() {
         backToBoothBtn?.isHidden = true
         webView.scrollView.isScrollEnabled = true
-        if let url = URL(string: "http://localhost:\(IccCameraHelper.port)/booth") {
-            webView.load(URLRequest(url: url))
-        }
+        loadBooth()
     }
 
     // MARK: - Licence & Booth Loading
@@ -582,6 +739,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         window.__PB.watermark=\(watermark ? "true" : "false");
         window.__PB.exp=\(expMs);
         window.__pbIosOnline=\(PBLocal.shared.isOnline() ? "true" : "false");
+        window.__pbIosLanBase=\(jsStringLiteral(PBLocal.shared.lanBase()));
+        window.__pbIosLocalBase=\(jsStringLiteral(PBLocal.shared.localBase()));
+        window.__pbIosAirPrint=\(jsStringLiteral(savedAirPrintJson()));
+        window.__pbIosNetList=\(jsStringLiteral(tcpPrintersListJson()));
         window.__pbIosAppVer=\(jsonStr(AppLicence.shared.appVersion()));
         window.__PB.print={enabled:\(printEnabled ? "true" : "false"),sizes:[\(sizesJs)]};
         </script>
@@ -631,6 +792,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     }
 
     private func loadBooth() {
+        navRetryWorkItem?.cancel()
+        navRetryWorkItem = nil
+        loadWatchdogWorkItem?.cancel()
+        loadWatchdogWorkItem = nil
         gateContainer?.removeFromSuperview()
         gateContainer = nil
 
@@ -640,9 +805,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             return
         }
         loadedViaOta = src.isOta
+        boothLoadedOnce = true
+        pendingReloadOnActive = false
 
-        IccCameraHelper.shared.ensureListening()
-        LocalShareServer.shared.ensureListening()
+        NativeCameraBridge.shared.resetForPageReload()
+        IccCameraHelper.shared.ensureListening(forceRestart: false)
+        LocalShareServer.shared.ensureListening(forceRestart: false)
 
         let pbConfig = buildPbConfigScript()
         let injected: String
@@ -654,7 +822,25 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
         IccCameraHelper.shared.setBoothHtml(injected)
         if let url = URL(string: "http://localhost:\(IccCameraHelper.port)/booth") {
-            webView.load(URLRequest(url: url))
+            loadStartedAt = Date()
+            let req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15.0)
+            webView.load(req)
+            let watch = DispatchWorkItem { [weak self] in
+                guard let self = self, self.gateContainer == nil else { return }
+                guard self.webView?.isLoading == true else { return }
+                if UIApplication.shared.applicationState == .background {
+                    self.pendingReloadOnActive = true
+                    return
+                }
+                guard self.navRetryCount < 5 else { return }
+                self.navRetryCount += 1
+                self.webView?.stopLoading()
+                IccCameraHelper.shared.ensureListening(forceRestart: true)
+                LocalShareServer.shared.ensureListening(forceRestart: false)
+                self.loadBooth()
+            }
+            loadWatchdogWorkItem = watch
+            DispatchQueue.main.asyncAfter(deadline: .now() + 15.0, execute: watch)
         }
     }
 
@@ -1012,7 +1198,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
               let obj = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: Any],
               let pagesJson = obj["pagesJson"] as? String,
               let pagesData = pagesJson.data(using: .utf8),
-              let pagesArr = (try? JSONSerialization.jsonObject(with: pagesData, options: [])) as? [String] else {
+              let pagesArr = (try? JSONSerialization.jsonObject(with: pagesData, options: [])) as? [String],
+              !pagesArr.isEmpty else {
             return "{\"ok\":false,\"error\":\"Bad print payload\"}"
         }
 
@@ -1022,47 +1209,46 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         let ptW = max(72.0, widthMm * 72.0 / 25.4)
         let ptH = max(72.0, heightMm * 72.0 / 25.4)
 
-        var images: [UIImage] = []
-        for item in pagesArr {
-            let b64: String
-            if let comma = item.firstIndex(of: ",") {
-                b64 = String(item[item.index(after: comma)...])
-            } else {
-                b64 = item
-            }
-            if let imgBytes = Data(base64Encoded: b64, options: .ignoreUnknownCharacters),
-               let img = UIImage(data: imgBytes) {
-                images.append(img)
-            }
-        }
-        guard !images.isEmpty else {
-            return "{\"ok\":false,\"error\":\"No printable pages\"}"
-        }
-
-        let pageBounds = CGRect(x: 0, y: 0, width: ptW, height: ptH)
-        let renderer = UIGraphicsPDFRenderer(bounds: pageBounds)
-        let pdfData = renderer.pdfData { ctx in
-            for img in images {
-                ctx.beginPage()
-                let iw = max(1.0, Double(img.size.width))
-                let ih = max(1.0, Double(img.size.height))
-                let imgRatio = iw / ih
-                let pageRatio = ptW / ptH
-                if abs(imgRatio - pageRatio) < 0.04 {
-                    img.draw(in: pageBounds)
-                } else {
-                    let scale = min(ptW / iw, ptH / ih)
-                    let dw = iw * scale, dh = ih * scale
-                    let rect = CGRect(x: (ptW - dw) / 2.0, y: (ptH - dh) / 2.0, width: dw, height: dh)
-                    img.draw(in: rect)
+        // Decode base64 pages and render the 300-DPI PDF off the main thread one page at a time so WKWebView stays responsive and peak RAM stays low.
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            let pageBounds = CGRect(x: 0, y: 0, width: ptW, height: ptH)
+            let renderer = UIGraphicsPDFRenderer(bounds: pageBounds)
+            var drawnCount = 0
+            let pdfData = renderer.pdfData { ctx in
+                for item in pagesArr {
+                    autoreleasepool {
+                        let b64: String
+                        if let comma = item.firstIndex(of: ",") {
+                            b64 = String(item[item.index(after: comma)...])
+                        } else {
+                            b64 = item
+                        }
+                        guard let imgBytes = Data(base64Encoded: b64, options: .ignoreUnknownCharacters),
+                              let img = UIImage(data: imgBytes) else { return }
+                        drawnCount += 1
+                        ctx.beginPage()
+                        let iw = max(1.0, Double(img.size.width))
+                        let ih = max(1.0, Double(img.size.height))
+                        let imgRatio = iw / ih
+                        let pageRatio = ptW / ptH
+                        if abs(imgRatio - pageRatio) < 0.04 {
+                            img.draw(in: pageBounds)
+                        } else {
+                            let scale = min(ptW / iw, ptH / ih)
+                            let dw = iw * scale, dh = ih * scale
+                            let rect = CGRect(x: (ptW - dw) / 2.0, y: (ptH - dh) / 2.0, width: dw, height: dh)
+                            img.draw(in: rect)
+                        }
+                    }
                 }
             }
-        }
-
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            self.airPrintQueue.append((jobName: jobName, ptW: ptW, ptH: ptH, pdfData: pdfData))
-            self.drainAirPrintQueue()
+            guard drawnCount > 0, !pdfData.isEmpty else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.airPrintQueue.append((jobName: jobName, ptW: ptW, ptH: ptH, pdfData: pdfData))
+                self.drainAirPrintQueue()
+            }
         }
         return "{\"ok\":true}"
     }
@@ -1082,13 +1268,22 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         airPrintPageSize = CGSize(width: next.ptW, height: next.ptH)
         controller.delegate = self
 
+        var finished = false
+        var timeoutItem: DispatchWorkItem?
         let finishJob: () -> Void = { [weak self] in
             DispatchQueue.main.async {
+                guard !finished else { return }
+                finished = true
+                timeoutItem?.cancel()
+                timeoutItem = nil
                 guard let self = self else { return }
                 self.airPrintBusy = false
                 self.drainAirPrintQueue()
             }
         }
+        let guardWork = DispatchWorkItem { finishJob() }
+        timeoutItem = guardWork
+        DispatchQueue.main.asyncAfter(deadline: .now() + 60.0, execute: guardWork)
 
         if let savedUrlStr = UserDefaults.standard.string(forKey: airprintUrlKey),
            !savedUrlStr.isEmpty,
@@ -1096,12 +1291,13 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             let targetPrinter = UIPrinter(url: savedUrl)
             targetPrinter.contactPrinter { [weak self] available in
                 DispatchQueue.main.async {
-                    guard let self = self else { return }
+                    guard let self = self, !finished else { return }
                     if available {
                         controller.print(to: targetPrinter) { [weak self] _, completed, err in
                             if !completed && err != nil {
                                 DispatchQueue.main.async {
-                                    self?.presentPrintController(controller, completion: finishJob)
+                                    guard let self = self, !finished else { return }
+                                    self.presentPrintController(controller, completion: finishJob)
                                 }
                             } else {
                                 finishJob()
@@ -1164,8 +1360,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         let obj: [String: Any] = ["name": name, "url": url]
         guard let d = try? JSONSerialization.data(withJSONObject: obj, options: []),
               let json = String(data: d, encoding: .utf8) else { return }
+        let lit = jsStringLiteral(json)
         DispatchQueue.main.async { [weak self] in
-            self?.webView?.evaluateJavaScript("window.__PBAirPrintEvent&&window.__PBAirPrintEvent(\(json));", completionHandler: nil)
+            self?.webView?.evaluateJavaScript("window.__pbIosAirPrint=\(lit);window.__PBAirPrintEvent&&window.__PBAirPrintEvent(\(json));", completionHandler: nil)
         }
     }
 
@@ -1215,12 +1412,14 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
            let str = String(data: data, encoding: .utf8) {
             UserDefaults.standard.set(str, forKey: tcpPrintersKey)
         }
+        pushNetPrintersState()
     }
 
     private func setNetAddNote(_ note: String) {
         netAddNoteLock.lock()
         netAddNote = note
         netAddNoteLock.unlock()
+        pushNetPrintersState()
     }
 
     private func getNetAddNote() -> String {
@@ -1773,13 +1972,14 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             let a = (dict["a"] as? String) ?? ""
             let b = (dict["b"] as? String) ?? ""
             saveQueue.async { [weak self] in
-                let result: String
-                if op == "drive" {
-                    result = PBLocal.shared.drive(body: a)
-                } else if op == "saveImage" {
-                    result = PBLocal.shared.saveImage(fileName: a, base64: b)
-                } else {
-                    result = "{\"ok\":false,\"error\":\"Unknown request\"}"
+                let result: String = autoreleasepool {
+                    if op == "drive" {
+                        return PBLocal.shared.drive(body: a)
+                    } else if op == "saveImage" {
+                        return PBLocal.shared.saveImage(fileName: a, base64: b)
+                    } else {
+                        return "{\"ok\":false,\"error\":\"Unknown request\"}"
+                    }
                 }
                 DispatchQueue.main.async {
                     guard let self = self, id != 0 else { return }
@@ -1902,29 +2102,70 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             forgetTcpPrinter(defaultText ?? "")
             completionHandler("ok")
         default:
+            var done = false
+            let finish: (String?) -> Void = { val in
+                guard !done else { return }
+                done = true
+                completionHandler(val)
+            }
+            guard let presenter = topAlertPresenter() else {
+                finish(nil)
+                return
+            }
             let alert = UIAlertController(title: nil, message: prompt, preferredStyle: .alert)
             alert.addTextField { $0.text = defaultText }
             alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
-                completionHandler(alert.textFields?.first?.text)
+                finish(alert.textFields?.first?.text)
             })
             alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
-                completionHandler(nil)
+                finish(nil)
             })
-            present(alert, animated: true)
+            presenter.present(alert, animated: true)
         }
     }
 
+    private func topAlertPresenter() -> UIViewController? {
+        guard view.window != nil else { return nil }
+        var top: UIViewController = self
+        while let next = top.presentedViewController {
+            if next.isBeingDismissed { return nil }
+            top = next
+        }
+        if top.isBeingPresented || top.isBeingDismissed { return nil }
+        return top
+    }
+
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+        var done = false
+        let finish = {
+            guard !done else { return }
+            done = true
+            completionHandler()
+        }
+        guard let presenter = topAlertPresenter() else {
+            finish()
+            return
+        }
         let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler() })
-        present(alert, animated: true)
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in finish() })
+        presenter.present(alert, animated: true)
     }
 
     func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+        var done = false
+        let finish: (Bool) -> Void = { val in
+            guard !done else { return }
+            done = true
+            completionHandler(val)
+        }
+        guard let presenter = topAlertPresenter() else {
+            finish(false)
+            return
+        }
         let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler(true) })
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(false) })
-        present(alert, animated: true)
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in finish(true) })
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in finish(false) })
+        presenter.present(alert, animated: true)
     }
 
     @available(iOS 15.0, *)
@@ -2066,13 +2307,34 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         return nil
     }
 
-    // The page was (re)loaded: tell it whether the Bluetooth printer is still connected.
+    // The page was (re)loaded: tell it whether the Bluetooth printer is still connected and sync cached native state.
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        navRetryCount = 0
+        navRetryWorkItem?.cancel()
+        navRetryWorkItem = nil
+        loadWatchdogWorkItem?.cancel()
+        loadWatchdogWorkItem = nil
+        loadStartedAt = nil
         BtPrinterBridge.shared.pushState()
+        pushCachedBridgeState()
     }
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-        loadBooth()
+        loadWatchdogWorkItem?.cancel()
+        loadWatchdogWorkItem = nil
+        loadStartedAt = nil
+        navRetryCount = 0
+        NativeCameraBridge.shared.resetForPageReload()
+        if UIApplication.shared.applicationState == .background {
+            pendingReloadOnActive = true
+            return
+        }
+        IccCameraHelper.shared.ensureListening(forceRestart: true)
+        LocalShareServer.shared.ensureListening(forceRestart: false)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            guard let self = self, self.gateContainer == nil else { return }
+            self.loadBooth()
+        }
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -2086,11 +2348,31 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     private func recoverIfOtaFailed(error: Error) {
         let nsErr = error as NSError
         if nsErr.domain == NSURLErrorDomain && nsErr.code == NSURLErrorCancelled { return }
-        IccCameraHelper.shared.ensureListening()
+        loadWatchdogWorkItem?.cancel()
+        loadWatchdogWorkItem = nil
+        loadStartedAt = nil
+        IccCameraHelper.shared.ensureListening(forceRestart: true)
         if loadedViaOta {
             clearOtaCache()
             loadBooth()
+            return
         }
+        guard gateContainer == nil, navRetryCount < 5 else { return }
+        navRetryCount += 1
+        let delays: [TimeInterval] = [0.35, 0.8, 1.5, 2.5, 4.0]
+        let delay = delays[min(navRetryCount - 1, delays.count - 1)]
+        navRetryWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self = self, self.gateContainer == nil else { return }
+            if UIApplication.shared.applicationState == .background {
+                self.pendingReloadOnActive = true
+                return
+            }
+            IccCameraHelper.shared.ensureListening(forceRestart: true)
+            self.loadBooth()
+        }
+        navRetryWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
     }
 }
 

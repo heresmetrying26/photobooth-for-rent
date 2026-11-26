@@ -49,6 +49,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         private let filterChain = NativeCameraBridge.LiveFilterChain()
         private let renderLock = NSLock()
         private var isRenderingFilter = false
+        private var isBackgrounded = false
         private var cachedVisible = false
         private var cachedWantsFilter = false
         private var cachedDrawableSize: CGSize = .zero
@@ -80,6 +81,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 self.cmdQueue = nil
             }
             super.init(frame: frame)
+            isUserInteractionEnabled = false
             backgroundColor = .black
             clipsToBounds = true
             previewLayer.videoGravity = .resizeAspectFill
@@ -130,10 +132,22 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             syncRenderState(visible: !isHidden, wantsFilter: wantsFilterOverlay, bounds: bounds)
         }
 
+        func setBackgrounded(_ bg: Bool) {
+            renderLock.lock()
+            isBackgrounded = bg
+            renderLock.unlock()
+        }
+
+        func clearCaches() {
+            filterRenderQueue.async { [weak self] in
+                self?.ciContext?.clearCaches()
+            }
+        }
+
         func renderFiltered(pixelBuffer: CVPixelBuffer, rotationAngle: CGFloat, mirrored: Bool, filter: String, softSkin: Bool) {
             guard let ml = metalLayer, let ctx = ciContext, let cq = cmdQueue else { return }
             renderLock.lock()
-            if isRenderingFilter || !cachedVisible || !cachedWantsFilter || cachedDrawableSize.width < 2 || cachedDrawableSize.height < 2 {
+            if isBackgrounded || isRenderingFilter || !cachedVisible || !cachedWantsFilter || cachedDrawableSize.width < 2 || cachedDrawableSize.height < 2 {
                 renderLock.unlock()
                 return
             }
@@ -152,7 +166,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 }
 
                 self.renderLock.lock()
-                let stillActive = self.cachedVisible && self.cachedWantsFilter
+                let stillActive = !self.isBackgrounded && self.cachedVisible && self.cachedWantsFilter
                 self.renderLock.unlock()
                 guard stillActive else { return }
 
@@ -177,6 +191,10 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                     img = self.filterChain.apply(to: img, filter: filter, softSkin: softSkin)
 
                     ctx.render(img, to: drawable.texture, commandBuffer: cmdBuf, bounds: targetBounds, colorSpace: NativeCameraBridge.srgbColorSpace)
+                    self.renderLock.lock()
+                    let canCommit = !self.isBackgrounded && self.cachedVisible && self.cachedWantsFilter
+                    self.renderLock.unlock()
+                    guard canCommit else { return }
                     cmdBuf.present(drawable)
                     cmdBuf.addCompletedHandler { [weak self] _ in
                         guard let self = self else { return }
@@ -222,6 +240,9 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
     private var audioInput: AVCaptureDeviceInput?
     private var audioDataOutput: AVCaptureAudioDataOutput?
     private var wantsAudio = false
+    private var sessionWantedRunning = false
+    private var lastRequestedDeviceId: String?
+    private var lastRequestedPreset: String = "auto"
 
     private var rotationObserverPreview: NSKeyValueObservation?
     private var rotationObserverCapture: NSKeyValueObservation?
@@ -298,9 +319,13 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             guard let self = self else { return }
             let err = note.userInfo?[AVCaptureSessionErrorKey] as? NSError
             self.sessionQueue.async {
-                guard let dev = self.currentDevice, dev.isConnected, !self.session.isRunning else { return }
-                if err?.code == AVError.mediaServicesWereReset.rawValue || err != nil {
+                self.failAllPendingPhotos("Camera runtime interruption.")
+                guard self.sessionWantedRunning else { return }
+                if !self.session.isRunning, let dev = self.currentDevice, dev.isConnected {
                     self.session.startRunning()
+                }
+                if !self.session.isRunning && err?.code == AVError.mediaServicesWereReset.rawValue {
+                    _ = try? self.configureAndStart(deviceId: self.lastRequestedDeviceId, presetName: self.lastRequestedPreset)
                 }
             }
         }
@@ -311,8 +336,13 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         ) { [weak self] _ in
             guard let self = self else { return }
             self.sessionQueue.async {
-                guard let dev = self.currentDevice, dev.isConnected, !self.session.isRunning else { return }
-                self.session.startRunning()
+                guard self.sessionWantedRunning else { return }
+                if !self.session.isRunning, let dev = self.currentDevice, dev.isConnected {
+                    self.session.startRunning()
+                }
+                if !self.session.isRunning {
+                    _ = try? self.configureAndStart(deviceId: self.lastRequestedDeviceId, presetName: self.lastRequestedPreset)
+                }
             }
         }
         deviceConnectedObserver = NotificationCenter.default.addObserver(
@@ -345,6 +375,8 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             let label = lost.localizedName
             self.sessionQueue.async {
                 if self.currentDevice?.uniqueID == devId {
+                    self.sessionWantedRunning = false
+                    self.failAllPendingPhotos("Camera disconnected.")
                     self.cancelActiveRecording()
                     if self.session.isRunning { self.session.stopRunning() }
                     self.stateLock.lock()
@@ -466,6 +498,54 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         }
     }
 
+    func setBackgrounded(_ bg: Bool) {
+        previewView.setBackgrounded(bg)
+        if !bg {
+            sessionQueue.async { [weak self] in
+                guard let self = self, self.sessionWantedRunning else { return }
+                if !self.session.isRunning, let dev = self.currentDevice, dev.isConnected {
+                    self.session.startRunning()
+                }
+                if !self.session.isRunning {
+                    _ = try? self.configureAndStart(deviceId: self.lastRequestedDeviceId, presetName: self.lastRequestedPreset)
+                }
+            }
+        }
+    }
+
+    func clearMemoryCaches() {
+        previewView.clearCaches()
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
+            self.jpegEncodeLock.lock()
+            self.frameCiContext.clearCaches()
+            self.jpegEncodeLock.unlock()
+            self.shotsLock.lock()
+            self.shotStore.removeAll()
+            self.shotsLock.unlock()
+        }
+    }
+
+    func resetForPageReload() {
+        stateLock.lock()
+        activeFilter = "none"
+        activeSoftSkin = false
+        stateLock.unlock()
+        stop(completion: nil)
+    }
+
+    private func failAllPendingPhotos(_ message: String) {
+        shotsLock.lock()
+        let pending = Array(pendingPhotoCompletions.values)
+        pendingPhotoCompletions.removeAll()
+        shotsLock.unlock()
+        guard !pending.isEmpty else { return }
+        let err = NSError(domain: "NativeCameraBridge", code: 503, userInfo: [NSLocalizedDescriptionKey: message])
+        for cb in pending {
+            cb(.failure(err))
+        }
+    }
+
     func stop(completion: (() -> Void)? = nil) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -477,6 +557,8 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         }
         sessionQueue.async { [weak self] in
             guard let self = self else { return }
+            self.sessionWantedRunning = false
+            self.failAllPendingPhotos("Camera stopped.")
             self.cancelActiveRecording()
             self.wantsAudio = false
             self.clearRotationObservers()
@@ -497,6 +579,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             self.currentHeight = 0
             self.captureRotationAngle = 0
             self.stateLock.unlock()
+            self.clearMemoryCaches()
             if let done = completion {
                 DispatchQueue.main.async { done() }
             }
@@ -750,6 +833,10 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             throw NSError(domain: "NativeCameraBridge", code: 404, userInfo: [NSLocalizedDescriptionKey: "No built-in or external USB camera found."])
         }
 
+        lastRequestedDeviceId = deviceId
+        lastRequestedPreset = presetName
+        failAllPendingPhotos("Camera reconfigured.")
+
         var ext = false
         if #available(iOS 17.0, *) {
             ext = (dev.deviceType == .external)
@@ -865,6 +952,9 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             } else {
                 pOut.isHighResolutionCaptureEnabled = true
             }
+            if #available(iOS 13.0, *) {
+                pOut.maxPhotoQualityPrioritization = .balanced
+            }
         }
 
         if wantsAudio {
@@ -907,6 +997,9 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 if dev.isExposureModeSupported(.continuousAutoExposure) {
                     dev.exposureMode = .continuousAutoExposure
                 }
+                if dev.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
+                    dev.whiteBalanceMode = .continuousAutoWhiteBalance
+                }
                 dev.unlockForConfiguration()
             } catch { }
         }
@@ -925,6 +1018,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         currentHeight = effective.h
         stateLock.unlock()
 
+        sessionWantedRunning = true
         session.startRunning()
 
         // Configure rotation coordinator only after session connections exist and state is initialized.
@@ -1273,7 +1367,9 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 img = img.oriented(.upMirrored)
             }
             img = recFilterChain.apply(to: img, filter: rFilter, softSkin: rSoft)
+            jpegEncodeLock.lock()
             frameCiContext.render(img, to: dstPb, bounds: targetRect, colorSpace: Self.srgbColorSpace)
+            jpegEncodeLock.unlock()
         }
 
         recLock.lock()
@@ -1298,12 +1394,12 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         let rot = captureRotationAngle
         stateLock.unlock()
         guard let buffer = pb else { return nil }
-        jpegEncodeLock.lock()
-        defer { jpegEncodeLock.unlock() }
         return jpegData(from: buffer, rotationAngle: rot, maxSide: maxSide, quality: quality)?.data
     }
 
     private func jpegData(from buffer: CVPixelBuffer, rotationAngle: CGFloat, maxSide: CGFloat, quality: CGFloat) -> (data: Data, w: Int, h: Int)? {
+        jpegEncodeLock.lock()
+        defer { jpegEncodeLock.unlock() }
         return autoreleasepool {
             var ci = Self.orientImage(CIImage(cvPixelBuffer: buffer), rotationAngle: rotationAngle)
             let ow = ci.extent.width
@@ -1546,7 +1642,9 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                     settings.isHighResolutionPhotoEnabled = pOut.isHighResolutionCaptureEnabled
                 }
                 if #available(iOS 13.0, *) {
-                    if pOut.maxPhotoQualityPrioritization.rawValue >= AVCapturePhotoOutput.QualityPrioritization.speed.rawValue {
+                    if pOut.maxPhotoQualityPrioritization.rawValue >= AVCapturePhotoOutput.QualityPrioritization.balanced.rawValue {
+                        settings.photoQualityPrioritization = .balanced
+                    } else if pOut.maxPhotoQualityPrioritization.rawValue >= AVCapturePhotoOutput.QualityPrioritization.speed.rawValue {
                         settings.photoQualityPrioritization = .speed
                     }
                 }
@@ -1562,7 +1660,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                         let pb = self.latestBuffer
                         let rot = self.captureRotationAngle
                         self.stateLock.unlock()
-                        if let buf = pb, let j = self.jpegData(from: buf, rotationAngle: rot, maxSide: 2400, quality: 0.92) {
+                        if let buf = pb, let j = self.jpegData(from: buf, rotationAngle: rot, maxSide: 2400, quality: 0.94) {
                             storeAndAnswer(j.data, j.w, j.h)
                         } else {
                             DispatchQueue.main.async {
@@ -1573,6 +1671,15 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 }
                 self.shotsLock.unlock()
                 pOut.capturePhoto(with: settings, delegate: self)
+                self.sessionQueue.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+                    guard let self = self else { return }
+                    self.shotsLock.lock()
+                    let timedOutCb = self.pendingPhotoCompletions.removeValue(forKey: uid)
+                    self.shotsLock.unlock()
+                    if let cb = timedOutCb {
+                        cb(.failure(NSError(domain: "NativeCameraBridge", code: 408, userInfo: [NSLocalizedDescriptionKey: "Photo capture timed out."])))
+                    }
+                }
                 return
             }
 
@@ -1581,7 +1688,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             let pb = self.latestBuffer
             let rot = self.captureRotationAngle
             self.stateLock.unlock()
-            if let buf = pb, let j = self.jpegData(from: buf, rotationAngle: rot, maxSide: 3000, quality: 0.92) {
+            if let buf = pb, let j = self.jpegData(from: buf, rotationAngle: rot, maxSide: 3000, quality: 0.94) {
                 storeAndAnswer(j.data, j.w, j.h)
             } else {
                 DispatchQueue.main.async {
@@ -1632,7 +1739,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                     if let cgImg = CGImageSourceCreateThumbnailAtIndex(src, 0, thumbOpts as CFDictionary) {
                         let destData = NSMutableData()
                         if let dest = CGImageDestinationCreateWithData(destData as CFMutableData, "public.jpeg" as CFString, 1, nil) {
-                            let saveOpts: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: 0.92]
+                            let saveOpts: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: 0.94]
                             CGImageDestinationAddImage(dest, cgImg, saveOpts as CFDictionary)
                             if CGImageDestinationFinalize(dest) {
                                 completion(.success((destData as Data, cgImg.width, cgImg.height)))
@@ -1643,6 +1750,17 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 }
                 completion(.success((raw, 0, 0)))
             }
+        }
+    }
+
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishCaptureFor resolvedSettings: AVCaptureResolvedPhotoSettings, error: Error?) {
+        let uid = resolvedSettings.uniqueID
+        shotsLock.lock()
+        let cb = pendingPhotoCompletions.removeValue(forKey: uid)
+        shotsLock.unlock()
+        if let completion = cb {
+            let err = error ?? NSError(domain: "NativeCameraBridge", code: 500, userInfo: [NSLocalizedDescriptionKey: "Photo capture did not produce an image."])
+            completion(.failure(err))
         }
     }
 

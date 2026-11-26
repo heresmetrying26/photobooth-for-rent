@@ -900,6 +900,44 @@ test('iOS NativeCameraBridge & ViewController include retained external UVC disc
   ]) assert(bridgeSwift.includes(needle), 'NativeCameraBridge.swift missing: ' + needle);
   assert(vcSwift.includes('NativeCameraBridge.shared.onDeviceEvent'), 'ViewController.swift missing onDeviceEvent bridge');
   assert(vcSwift.includes('window.__pbCamEvent'), 'ViewController.swift missing window.__pbCamEvent dispatch');
+  assert(vcSwift.includes('let askAudioThenBoot'), 'ViewController.swift serializes .video -> .audio permissions before booting');
+  const licSwift = readFileSync(join(ROOT, 'ios', 'photobooth4u', 'AppLicence.swift'), 'utf8');
+  assert(licSwift.includes('static let appVersion = "1.1.35"'), 'AppLicence.swift fallback version matches Xcode MARKETING_VERSION');
+});
+await testAsync('openCameraStream maps iPad external UVC camera for Greenscreen even after unlocking blank WebKit labels', async () => {
+  const sb = makeSandbox();
+  let gumCalls = [], unlocked = false, stoppedTracks = 0;
+  sb.hasNativeCamBridge = () => true;
+  sb.nativeCam = {
+    devicesById: {
+      'av-ext-1': { isFront: false, isExternal: true, position: 'external', label: 'DJI Osmo Pocket 3' }
+    }
+  };
+  sb.cameraSelect = { options: [{ value: 'av-ext-1', textContent: 'DJI Osmo Pocket 3' }] };
+  sb.webcamGumSize = () => ({ width: { ideal: 1280 }, height: { ideal: 720 } });
+  sb.wait = async () => { };
+  sb.navigator = {
+    mediaDevices: {
+      enumerateDevices: async () => unlocked
+        ? [
+          { kind: 'videoinput', deviceId: 'wk-front', label: 'Front Camera' },
+          { kind: 'videoinput', deviceId: 'wk-osmo', label: 'Osmo Pocket 3 UVC' }
+        ]
+        : [{ kind: 'videoinput', deviceId: 'wk-1', label: '' }],
+      getUserMedia: async (constraints) => {
+        gumCalls.push(constraints);
+        if (constraints.video === true && !unlocked) {
+          unlocked = true;
+          return { getTracks: () => [{ stop: () => { stoppedTracks++; } }] };
+        }
+        return { id: 'stream-for-' + (constraints.video && constraints.video.deviceId && constraints.video.deviceId.exact) };
+      }
+    }
+  };
+  vm.runInContext(pageFunction('openCameraStream'), sb);
+  const stream = await sb.get('openCameraStream')('av-ext-1');
+  assert.equal(stoppedTracks, 1, 'stopped temporary label-unlock stream cleanly');
+  assert.equal(stream.id, 'stream-for-wk-osmo', 'mapped NativeCameraBridge external UVC camera to WebKit UVC deviceId');
 });
 test('CAM_Q.webcam + webcamMarkShot marks webcam shots for clean-up and print sharpen while keeping camQProfile null', () => {
   const sb = makeSandbox();

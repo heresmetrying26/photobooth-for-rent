@@ -20,58 +20,143 @@ class LocalShareServer {
     static let shared = LocalShareServer()
     static let ports: [UInt16] = [47777, 47778, 47779, 47787, 47797]
 
+    private let serverLock = NSLock()
     private var serverSocket: Int32 = -1
-    private(set) var activePort: UInt16 = 0
+    private var _activePort: UInt16 = 0
+    var activePort: UInt16 {
+        serverLock.lock()
+        let p = _activePort
+        serverLock.unlock()
+        return p
+    }
     private var isRunning = false
-    private let serverQueue = DispatchQueue(label: "com.photobooth4u.shareserver", qos: .utility)
+    private var serverGeneration: Int = 0
+    private var restartScheduled = false
+    private let acceptQueue = DispatchQueue(label: "com.photobooth4u.shareserver.accept", qos: .utility, attributes: .concurrent)
+    private let clientQueue = DispatchQueue(label: "com.photobooth4u.shareserver.client", qos: .utility, attributes: .concurrent)
+    private let connLimit = DispatchSemaphore(value: 16)
 
     func start() -> UInt16 {
-        guard !isRunning else { return activePort }
+        serverLock.lock()
+        if isRunning && serverSocket >= 0 {
+            let p = _activePort
+            serverLock.unlock()
+            return p
+        }
+        isRunning = true
+        let p = restartListenerLocked()
+        serverLock.unlock()
+        return p
+    }
+
+    func stop() {
+        serverLock.lock()
+        isRunning = false
+        serverGeneration &+= 1
+        closeListenerLocked()
+        _activePort = 0
+        serverLock.unlock()
+    }
+
+    func ensureListening(forceRestart: Bool = false) {
+        serverLock.lock()
+        guard isRunning else {
+            serverLock.unlock()
+            _ = start()
+            return
+        }
+        var restartNeeded = forceRestart || serverSocket < 0
+        if !restartNeeded && serverSocket >= 0 {
+            var err: Int32 = 0
+            var len = socklen_t(MemoryLayout<Int32>.size)
+            if getsockopt(serverSocket, SOL_SOCKET, SO_ERROR, &err, &len) != 0 || err != 0 {
+                restartNeeded = true
+            }
+        }
+        if restartNeeded {
+            _ = restartListenerLocked()
+        }
+        serverLock.unlock()
+    }
+
+    private func closeListenerLocked() {
+        if serverSocket >= 0 {
+            let s = serverSocket
+            serverSocket = -1
+            Darwin.shutdown(s, SHUT_RDWR)
+            Darwin.close(s)
+        }
+    }
+
+    private func isCurrentListener(sock: Int32, generation: Int) -> Bool {
+        serverLock.lock()
+        let ok = isRunning && serverGeneration == generation && serverSocket == sock
+        serverLock.unlock()
+        return ok
+    }
+
+    @discardableResult
+    private func restartListenerLocked() -> UInt16 {
+        serverGeneration &+= 1
+        let gen = serverGeneration
+        closeListenerLocked()
+        _activePort = 0
 
         for port in LocalShareServer.ports {
-            if bindAndListen(port: port) {
-                activePort = port
-                isRunning = true
+            let sock = bindAndListen(port: port)
+            if sock >= 0 {
+                serverSocket = sock
+                _activePort = port
                 print("[LocalShareServer] Sharing photos on port \(port)")
-                serverQueue.async { [weak self] in
-                    self?.acceptConnections()
+                acceptQueue.async { [weak self] in
+                    self?.acceptConnections(sock: sock, generation: gen)
                 }
                 return port
             }
         }
 
         print("[LocalShareServer] Failed to bind to any share server port")
+        if isRunning && !restartScheduled {
+            restartScheduled = true
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.35) { [weak self] in
+                guard let self = self else { return }
+                self.serverLock.lock()
+                self.restartScheduled = false
+                if self.isRunning && self.serverSocket < 0 {
+                    _ = self.restartListenerLocked()
+                }
+                self.serverLock.unlock()
+            }
+        }
         return 0
     }
 
-    func stop() {
-        isRunning = false
-        if serverSocket >= 0 {
-            close(serverSocket)
-            serverSocket = -1
-        }
-        activePort = 0
-    }
-
-    func ensureListening() {
-        guard isRunning, serverSocket >= 0 else {
-            _ = start()
+    private func scheduleRestart() {
+        serverLock.lock()
+        if !isRunning || restartScheduled {
+            serverLock.unlock()
             return
         }
-        var err: Int32 = 0
-        var len = socklen_t(MemoryLayout<Int32>.size)
-        if getsockopt(serverSocket, SOL_SOCKET, SO_ERROR, &err, &len) != 0 || err != 0 {
-            stop()
-            _ = start()
+        restartScheduled = true
+        serverLock.unlock()
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.35) { [weak self] in
+            guard let self = self else { return }
+            self.serverLock.lock()
+            self.restartScheduled = false
+            if self.isRunning {
+                _ = self.restartListenerLocked()
+            }
+            self.serverLock.unlock()
         }
     }
 
-    private func bindAndListen(port: UInt16) -> Bool {
+    private func bindAndListen(port: UInt16) -> Int32 {
         let sock = socket(AF_INET, SOCK_STREAM, 0)
-        guard sock >= 0 else { return false }
+        guard sock >= 0 else { return -1 }
 
         var opt: Int32 = 1
         setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, socklen_t(MemoryLayout<Int32>.size))
+        setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &opt, socklen_t(MemoryLayout<Int32>.size))
 
         var addr = sockaddr_in()
         addr.sin_family = sa_family_t(AF_INET)
@@ -86,30 +171,46 @@ class LocalShareServer {
 
         if bindRes < 0 {
             close(sock)
-            return false
+            return -1
         }
 
         if listen(sock, 32) < 0 {
             close(sock)
-            return false
+            return -1
         }
 
-        serverSocket = sock
-        return true
+        return sock
     }
 
-    private func acceptConnections() {
-        while isRunning {
+    private func acceptConnections(sock: Int32, generation: Int) {
+        while sock >= 0 && isCurrentListener(sock: sock, generation: generation) {
             var clientAddr = sockaddr_in()
             var clientLen = socklen_t(MemoryLayout<sockaddr_in>.size)
             let clientSock = withUnsafeMutablePointer(to: &clientAddr) {
                 $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                    accept(self.serverSocket, $0, &clientLen)
+                    accept(sock, $0, &clientLen)
                 }
             }
 
-            guard clientSock >= 0 else { continue }
-            DispatchQueue.global(qos: .utility).async { [weak self] in
+            if clientSock < 0 {
+                let err = errno
+                if err == EINTR { continue }
+                if err == EAGAIN || err == EWOULDBLOCK || err == EMFILE || err == ENFILE {
+                    usleep(20_000)
+                    continue
+                }
+                if isCurrentListener(sock: sock, generation: generation) {
+                    scheduleRestart()
+                }
+                break
+            }
+            let limit = connLimit
+            if limit.wait(timeout: .now() + 0.5) == .timedOut {
+                close(clientSock)
+                continue
+            }
+            clientQueue.async { [weak self] in
+                defer { limit.signal() }
                 self?.handleRequest(clientSock)
             }
         }

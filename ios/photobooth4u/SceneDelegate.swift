@@ -3,6 +3,7 @@ import UIKit
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
+    private var wasBackgrounded = false
 
     func scene(
         _ scene: UIScene,
@@ -21,15 +22,26 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneDidDisconnect(_ scene: UIScene) {}
     func sceneDidBecomeActive(_ scene: UIScene) {
         UIApplication.shared.isIdleTimerDisabled = true
-        LocalShareServer.shared.ensureListening()
-        IccCameraHelper.shared.ensureListening()
+        let forceRebind = wasBackgrounded
+        wasBackgrounded = false
+        LocalShareServer.shared.ensureListening(forceRestart: forceRebind)
+        IccCameraHelper.shared.ensureListening(forceRestart: forceRebind)
+        NativeCameraBridge.shared.setBackgrounded(false)
     }
-    func sceneWillResignActive(_ scene: UIScene) {}
+    func sceneWillResignActive(_ scene: UIScene) {
+        NativeCameraBridge.shared.setBackgrounded(true)
+    }
     func sceneWillEnterForeground(_ scene: UIScene) {
         UIApplication.shared.isIdleTimerDisabled = true
-        LocalShareServer.shared.ensureListening()
-        IccCameraHelper.shared.ensureListening()
+        let forceRebind = wasBackgrounded
+        wasBackgrounded = false
+        LocalShareServer.shared.ensureListening(forceRestart: forceRebind)
+        IccCameraHelper.shared.ensureListening(forceRestart: forceRebind)
+        NativeCameraBridge.shared.setBackgrounded(false)
     }
-    func sceneDidEnterBackground(_ scene: UIScene) {}
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        wasBackgrounded = true
+        NativeCameraBridge.shared.setBackgrounded(true)
+    }
 }
 

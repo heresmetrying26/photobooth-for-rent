@@ -336,16 +336,23 @@
         const cache = img._cqCache || (img._cqCache = new Map());
         if (cache.has(key)) return cache.get(key);
         let cur = img, cx = sx, cy = sy, cw = sw, ch = sh;
+        const releaseRealCanvas = function (cv) {
+          if (cv && cv !== img && typeof HTMLCanvasElement !== 'undefined' && cv instanceof HTMLCanvasElement) {
+            try { cv.width = 0; cv.height = 0; } catch (e) { }
+          }
+        };
         while (cw > tw * 2 || ch > th * 2) {
           const nw = Math.max(tw, Math.ceil(cw / 2)), nh = Math.max(th, Math.ceil(ch / 2));
           const t = document.createElement('canvas'); t.width = nw; t.height = nh;
           const tx = t.getContext('2d'); tx.imageSmoothingEnabled = true; tx.imageSmoothingQuality = 'high';
           tx.drawImage(cur, cx, cy, cw, ch, 0, 0, nw, nh);
+          releaseRealCanvas(cur);
           cur = t; cx = 0; cy = 0; cw = nw; ch = nh;
         }
         const out = document.createElement('canvas'); out.width = tw; out.height = th;
         const ox = out.getContext('2d', { willReadFrequently: true }); ox.imageSmoothingEnabled = true; ox.imageSmoothingQuality = 'high';
         ox.drawImage(cur, cx, cy, cw, ch, 0, 0, tw, th);
+        releaseRealCanvas(cur);
         // Bigger output (2x) makes boxes bigger, so the cap is higher on a laptop (higher still when it only sharpens, which is
         // about twice as quick as the grain pass); a tablet's CPU keeps the lower one.
         const cqMax = (typeof DESKTOP !== 'undefined' && DESKTOP) ? (dk === 0 ? 10000000 : 6000000) : 4500000;
@@ -368,7 +375,12 @@
             }
           } catch (e) { }
         }
-        if (cache.size >= 8) cache.delete(cache.keys().next().value);
+        if (cache.size >= 8) {
+          const oldestKey = cache.keys().next().value;
+          const oldestCv = cache.get(oldestKey);
+          if (oldestCv) { try { oldestCv.width = 0; oldestCv.height = 0; } catch (e) { } }
+          cache.delete(oldestKey);
+        }
         cache.set(key, out);
         return out;
       }
@@ -399,7 +411,8 @@
           // The ISO decides how much grain removal this photo gets (camQDenoiseFor); a box or preview drawn before it was known is drawn again.
           if (canvas && ex && ex.iso > 0 && canvas._cqIso !== ex.iso) {
             canvas._cqIso = ex.iso;
-            canvas._cqCache = null;
+            if (typeof pbClearShotTileCache === 'function') pbClearShotTileCache(canvas);
+            else canvas._cqCache = null;
             try { if (typeof previewCanvas !== 'undefined' && previewCanvas) previewCanvas._renderedForLayout = ''; } catch (e) { }
           }
           usbLog(p.id + '-shot', { iso: ex && ex.iso, shutter: ex && ex.shutter, f: ex && ex.f, focusMiss: !!(file && file._focusMiss) });
@@ -416,13 +429,17 @@
       function camQPrewarm(p, finalShot) {
         if (finalShot || !p || p.cleanMode() === 'off') return;
         setTimeout(function () {
+          const cv = document.createElement('canvas');
           try {
             if (!Array.isArray(shotCanvases) || !shotCanvases.some(function (s) { return s && s._cq === p.id; })) return;
-            const t0 = performance.now(), cv = document.createElement('canvas');
+            const t0 = performance.now();
             cv._hiRes = true;
             composeCanvas(currentLayout, cv, shotCanvases);
             usbLog(p.id + '-prewarm', { ms: Math.round(performance.now() - t0), w: cv.width, h: cv.height });
           } catch (e) { }
+          finally {
+            try { cv.width = 0; cv.height = 0; } catch (e2) { }
+          }
         }, 120);
       }
 

@@ -32,11 +32,25 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     private let camQueue = DispatchQueue(label: "com.photobooth4u.camera.ptp", qos: .userInitiated)
 
     // HTTP server sockets (IPv4 127.0.0.1 + IPv6 ::1 so both localhost and 127.0.0.1 connect immediately)
+    private let serverLock = NSLock()
     private var serverSock4: Int32 = -1
     private var serverSock6: Int32 = -1
     private var isRunning = false
-    private let acceptQueue4 = DispatchQueue(label: "com.photobooth4u.http4", qos: .userInitiated)
-    private let acceptQueue6 = DispatchQueue(label: "com.photobooth4u.http6", qos: .userInitiated)
+    private var serverGeneration: Int = 0
+    private var restartScheduled = false
+    private var browserAuthRequested = false
+    private let acceptQueue = DispatchQueue(label: "com.photobooth4u.http.accept", qos: .userInitiated, attributes: .concurrent)
+    private let httpClientQueue = DispatchQueue(label: "com.photobooth4u.http.client", qos: .userInitiated, attributes: .concurrent)
+    private let httpConnLimit = DispatchSemaphore(value: 28)
+    private let proxySlotLimit = DispatchSemaphore(value: 8)
+    private lazy var proxySession: URLSession = {
+        let cfg = URLSessionConfiguration.ephemeral
+        cfg.timeoutIntervalForRequest = 10.0
+        cfg.timeoutIntervalForResource = 12.0
+        cfg.waitsForConnectivity = false
+        cfg.httpMaximumConnectionsPerHost = 6
+        return URLSession(configuration: cfg)
+    }()
 
     // Booth HTML served at /booth (set by ViewController)
     private let boothLock = NSLock()
@@ -311,8 +325,8 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     private func kickBrowser(force: Bool = false) {
         let now = nowMs()
         stateLock.lock()
-        let elapsed = now >= lastBrowserKickAt ? (now - lastBrowserKickAt) : 10000
-        if !force && elapsed < 6000 {
+        let elapsed = now >= lastBrowserKickAt ? (now - lastBrowserKickAt) : 60_000
+        if !force && elapsed < 30_000 {
             stateLock.unlock()
             return
         }
@@ -320,8 +334,11 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         stateLock.unlock()
 
         DispatchQueue.main.async {
-            self.browser.requestContentsAuthorization { _ in }
-            self.browser.requestControlAuthorization { _ in }
+            if force || !self.browserAuthRequested {
+                self.browserAuthRequested = true
+                self.browser.requestContentsAuthorization { _ in }
+                self.browser.requestControlAuthorization { _ in }
+            }
             if force {
                 self.browser.stop()
                 self.browser.start()
@@ -401,50 +418,148 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
 
     #if !ROVING_STANDALONE
     func start() {
-        guard !isRunning else { return }
+        serverLock.lock()
+        if isRunning {
+            serverLock.unlock()
+            return
+        }
         isRunning = true
+        restartHttpServersLocked()
+        serverLock.unlock()
 
         DispatchQueue.main.async {
+            self.browserAuthRequested = true
             self.browser.requestContentsAuthorization { _ in }
             self.browser.requestControlAuthorization { _ in }
-            self.browser.start()
+            if !self.browser.isBrowsing {
+                self.browser.start()
+            }
         }
 
-        startHttpServers()
         log("Camera helper & local booth server listening on port \(IccCameraHelper.port)")
     }
 
     func stop() {
+        serverLock.lock()
         isRunning = false
+        serverGeneration &+= 1
+        closeListenersLocked()
+        serverLock.unlock()
         DispatchQueue.main.async {
             self.browser.stop()
         }
-        if serverSock4 >= 0 { close(serverSock4); serverSock4 = -1 }
-        if serverSock6 >= 0 { close(serverSock6); serverSock6 = -1 }
         camQueue.async { [weak self] in
             self?.closeCamera()
         }
     }
 
-    func ensureListening() {
+    func ensureListening(forceRestart: Bool = false) {
+        serverLock.lock()
         guard isRunning else {
+            serverLock.unlock()
             start()
             return
         }
-        var restartNeeded = false
-        for s in [serverSock4, serverSock6] where s >= 0 {
-            var err: Int32 = 0
-            var len = socklen_t(MemoryLayout<Int32>.size)
-            if getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &len) != 0 || err != 0 {
+        var restartNeeded = forceRestart
+        if !restartNeeded {
+            if serverSock4 < 0 && serverSock6 < 0 {
                 restartNeeded = true
+            } else {
+                for s in [serverSock4, serverSock6] where s >= 0 {
+                    var err: Int32 = 0
+                    var len = socklen_t(MemoryLayout<Int32>.size)
+                    if getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &len) != 0 || err != 0 {
+                        restartNeeded = true
+                    }
+                }
             }
         }
-        if serverSock4 < 0 && serverSock6 < 0 { restartNeeded = true }
         if restartNeeded {
-            if serverSock4 >= 0 { close(serverSock4); serverSock4 = -1 }
-            if serverSock6 >= 0 { close(serverSock6); serverSock6 = -1 }
-            startHttpServers()
-            log("Restarted local booth HTTP listeners after background suspend")
+            restartHttpServersLocked()
+            serverLock.unlock()
+            log("Restarted local booth HTTP listeners (force=\(forceRestart))")
+        } else {
+            serverLock.unlock()
+        }
+    }
+
+    private func isServerRunning() -> Bool {
+        serverLock.lock()
+        let v = isRunning
+        serverLock.unlock()
+        return v
+    }
+
+    private func isCurrentListener(sock: Int32, generation: Int, isIPv6: Bool) -> Bool {
+        serverLock.lock()
+        let ok = isRunning && serverGeneration == generation && ((isIPv6 ? serverSock6 : serverSock4) == sock)
+        serverLock.unlock()
+        return ok
+    }
+
+    private func closeListenersLocked() {
+        if serverSock4 >= 0 {
+            let s = serverSock4
+            serverSock4 = -1
+            Darwin.shutdown(s, SHUT_RDWR)
+            Darwin.close(s)
+        }
+        if serverSock6 >= 0 {
+            let s = serverSock6
+            serverSock6 = -1
+            Darwin.shutdown(s, SHUT_RDWR)
+            Darwin.close(s)
+        }
+    }
+
+    private func restartHttpServersLocked() {
+        serverGeneration &+= 1
+        let gen = serverGeneration
+        closeListenersLocked()
+        let s4 = bindIPv4(port: IccCameraHelper.port)
+        let s6 = bindIPv6(port: IccCameraHelper.port)
+        serverSock4 = s4
+        serverSock6 = s6
+        if s4 >= 0 {
+            acceptQueue.async { [weak self] in
+                self?.acceptLoop(sock: s4, generation: gen, isIPv6: false)
+            }
+        }
+        if s6 >= 0 {
+            acceptQueue.async { [weak self] in
+                self?.acceptLoop(sock: s6, generation: gen, isIPv6: true)
+            }
+        }
+        if s4 < 0 && s6 < 0 && isRunning && !restartScheduled {
+            restartScheduled = true
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.35) { [weak self] in
+                guard let self = self else { return }
+                self.serverLock.lock()
+                self.restartScheduled = false
+                if self.isRunning && self.serverSock4 < 0 && self.serverSock6 < 0 {
+                    self.restartHttpServersLocked()
+                }
+                self.serverLock.unlock()
+            }
+        }
+    }
+
+    private func scheduleServerRestart() {
+        serverLock.lock()
+        if !isRunning || restartScheduled {
+            serverLock.unlock()
+            return
+        }
+        restartScheduled = true
+        serverLock.unlock()
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            guard let self = self else { return }
+            self.serverLock.lock()
+            self.restartScheduled = false
+            if self.isRunning {
+                self.restartHttpServersLocked()
+            }
+            self.serverLock.unlock()
         }
     }
     #endif
@@ -3026,28 +3141,12 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     #if !ROVING_STANDALONE
     // MARK: - Dual-Stack Localhost HTTP Server (127.0.0.1:17321 & [::1]:17321)
 
-    private func startHttpServers() {
-        serverSock4 = bindIPv4(port: IccCameraHelper.port)
-        if serverSock4 >= 0 {
-            acceptQueue4.async { [weak self] in
-                guard let self = self else { return }
-                self.acceptLoop(sock: self.serverSock4, isIPv6: false)
-            }
-        }
-        serverSock6 = bindIPv6(port: IccCameraHelper.port)
-        if serverSock6 >= 0 {
-            acceptQueue6.async { [weak self] in
-                guard let self = self else { return }
-                self.acceptLoop(sock: self.serverSock6, isIPv6: true)
-            }
-        }
-    }
-
     private func bindIPv4(port: UInt16) -> Int32 {
         let s = socket(AF_INET, SOCK_STREAM, 0)
         guard s >= 0 else { return -1 }
         var opt: Int32 = 1
         setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &opt, socklen_t(MemoryLayout<Int32>.size))
+        setsockopt(s, SOL_SOCKET, SO_REUSEPORT, &opt, socklen_t(MemoryLayout<Int32>.size))
 
         var addr = sockaddr_in()
         addr.sin_family = sa_family_t(AF_INET)
@@ -3068,6 +3167,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         guard s >= 0 else { return -1 }
         var opt: Int32 = 1
         setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &opt, socklen_t(MemoryLayout<Int32>.size))
+        setsockopt(s, SOL_SOCKET, SO_REUSEPORT, &opt, socklen_t(MemoryLayout<Int32>.size))
         var v6only: Int32 = 1
         setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, socklen_t(MemoryLayout<Int32>.size))
 
@@ -3085,8 +3185,8 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         return s
     }
 
-    private func acceptLoop(sock: Int32, isIPv6: Bool) {
-        while isRunning && sock >= 0 {
+    private func acceptLoop(sock: Int32, generation: Int, isIPv6: Bool) {
+        while sock >= 0 && isCurrentListener(sock: sock, generation: generation, isIPv6: isIPv6) {
             let clientSock: Int32
             if isIPv6 {
                 var ca = sockaddr_in6()
@@ -3101,8 +3201,33 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
                     $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { accept(sock, $0, &cl) }
                 }
             }
-            guard clientSock >= 0 else { continue }
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            if clientSock < 0 {
+                let err = errno
+                if err == EINTR { continue }
+                if err == EAGAIN || err == EWOULDBLOCK || err == EMFILE || err == ENFILE {
+                    usleep(20_000)
+                    continue
+                }
+                // Revoked or closed listening socket (EBADF, EINVAL, ECONNABORTED, ENETDOWN, ENOTSOCK):
+                // exit cleanly instead of spinning at 100% CPU, and rebind once if this listener is still active.
+                if isCurrentListener(sock: sock, generation: generation, isIPv6: isIPv6) {
+                    log("Local HTTP listener error (ipv6=\(isIPv6) errno=\(err)); scheduling restart")
+                    scheduleServerRestart()
+                }
+                break
+            }
+            let limit = httpConnLimit
+            if limit.wait(timeout: .now() + 0.5) == .timedOut {
+                var noSigPipe: Int32 = 1
+                setsockopt(clientSock, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, socklen_t(MemoryLayout<Int32>.size))
+                var sndTv = timeval(tv_sec: 1, tv_usec: 0)
+                setsockopt(clientSock, SOL_SOCKET, SO_SNDTIMEO, &sndTv, socklen_t(MemoryLayout<timeval>.size))
+                _ = sendJson(clientSock, status: 503, json: ["ok": false, "error": "busy"])
+                close(clientSock)
+                continue
+            }
+            httpClientQueue.async { [weak self] in
+                defer { limit.signal() }
                 self?.handleClient(clientSock)
             }
         }
@@ -3126,7 +3251,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         var reqCount = 0
         let maxKeepAliveReqs = 200
 
-        while isRunning && reqCount < maxKeepAliveReqs {
+        while isServerRunning() && reqCount < maxKeepAliveReqs {
             if reqCount > 0 && pending.isEmpty {
                 var pfd = pollfd(fd: clientSock, events: Int16(POLLIN), revents: 0)
                 let ready = Darwin.poll(&pfd, 1, 1500)
@@ -3214,7 +3339,9 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
                 continue
             }
 
-            let keepOpen = route(clientSock: clientSock, method: method, path: normPath, query: query, headers: reqHeaders, body: bodyData, keepAlive: allowKeepAlive)
+            let keepOpen = autoreleasepool {
+                route(clientSock: clientSock, method: method, path: normPath, query: query, headers: reqHeaders, body: bodyData, keepAlive: allowKeepAlive)
+            }
             if !keepOpen { break }
         }
     }
@@ -3471,21 +3598,33 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             return
         }
 
+        let slot = proxySlotLimit
+        if slot.wait(timeout: .now() + 1.5) == .timedOut {
+            sendResponse(clientSock, status: 503, type: "text/plain", body: Data("Busy".utf8))
+            return
+        }
+        defer { slot.signal() }
+
         let sema = DispatchSemaphore(value: 0)
         var outData: Data?
         var statusCode = 502
         var contentType = mimeForAsset(path)
 
-        URLSession.shared.dataTask(with: url) { data, resp, err in
+        let task = proxySession.dataTask(with: url) { data, resp, err in
             if err == nil, let http = resp as? HTTPURLResponse {
                 statusCode = http.statusCode
                 if let ct = http.value(forHTTPHeaderField: "Content-Type"), !ct.isEmpty { contentType = ct }
                 outData = data
             }
             sema.signal()
-        }.resume()
+        }
+        task.resume()
 
-        _ = sema.wait(timeout: .now() + 25.0)
+        if sema.wait(timeout: .now() + 13.0) == .timedOut {
+            task.cancel()
+            sendResponse(clientSock, status: 404, type: "text/plain", body: Data("Timeout".utf8))
+            return
+        }
         if statusCode == 200, let d = outData, !d.isEmpty {
             try? FileManager.default.createDirectory(at: fileUrl.deletingLastPathComponent(), withIntermediateDirectories: true)
             try? d.write(to: fileUrl)
@@ -3501,7 +3640,14 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             sendJson(clientSock, status: 400, json: ["ok": false, "error": "Bad URL"])
             return
         }
-        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 25.0)
+        let slot = proxySlotLimit
+        if slot.wait(timeout: .now() + 1.5) == .timedOut {
+            sendJson(clientSock, status: 503, json: ["ok": false, "error": "offline"])
+            return
+        }
+        defer { slot.signal() }
+
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10.0)
         req.httpMethod = method
         if let ct = headers["content-type"] { req.setValue(ct, forHTTPHeaderField: "Content-Type") }
         if !body.isEmpty {
@@ -3521,16 +3667,21 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         var statusCode = 503
         var contentType = "application/json"
 
-        URLSession.shared.dataTask(with: req) { data, resp, err in
+        let task = proxySession.dataTask(with: req) { data, resp, err in
             if err == nil, let http = resp as? HTTPURLResponse {
                 statusCode = http.statusCode
                 if let ct = http.value(forHTTPHeaderField: "Content-Type"), !ct.isEmpty { contentType = ct }
                 if let d = data { outData = d }
             }
             sema.signal()
-        }.resume()
+        }
+        task.resume()
 
-        _ = sema.wait(timeout: .now() + 26.0)
+        if sema.wait(timeout: .now() + 11.0) == .timedOut {
+            task.cancel()
+            sendJson(clientSock, status: 503, json: ["ok": false, "error": "offline"])
+            return
+        }
         sendResponse(clientSock, status: statusCode, type: contentType, body: outData)
     }
 

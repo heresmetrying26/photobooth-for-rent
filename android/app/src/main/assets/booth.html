@@ -30498,6 +30498,43 @@
       var btdOpen = false;                          // the name / title form is on screen
       let backgroundImg = null;
       let shotCanvases = new Array(shotsNeeded('strip')).fill(null);
+      function pbReleaseCanvas(cv) {
+        if (!cv) return;
+        try { cv.width = 0; cv.height = 0; } catch (e) { }
+      }
+      function pbClearShotTileCache(c) {
+        if (!c || !c._cqCache) return;
+        try {
+          if (typeof c._cqCache.forEach === 'function') {
+            c._cqCache.forEach(function (tile) { pbReleaseCanvas(tile); });
+          }
+          if (typeof c._cqCache.clear === 'function') c._cqCache.clear();
+        } catch (e) { }
+        c._cqCache = null;
+      }
+      function pbReleaseShotCanvas(c) {
+        if (!c) return;
+        pbClearShotTileCache(c);
+        if (c._raw && c._raw !== c) { pbReleaseCanvas(c._raw); c._raw = null; }
+        c._orig = null;
+        pbReleaseCanvas(c);
+      }
+      function pbReleaseShotList(arr) {
+        if (!Array.isArray(arr)) return;
+        for (var i = 0; i < arr.length; i++) {
+          if (arr[i]) { pbReleaseShotCanvas(arr[i]); arr[i] = null; }
+        }
+      }
+      function pbReleaseMotionClips() {
+        if (typeof shotMotionClips === 'undefined' || !Array.isArray(shotMotionClips)) return;
+        for (var i = 0; i < shotMotionClips.length; i++) {
+          var clip = shotMotionClips[i];
+          if (Array.isArray(clip)) {
+            for (var j = 0; j < clip.length; j++) pbReleaseCanvas(clip[j]);
+          }
+        }
+        shotMotionClips = [];
+      }
       let mainIndex = 0;
       let streamActive = false;
       let toastTimer = null;
@@ -32389,7 +32426,12 @@
         fctx.fillStyle = '#ffffff'; fctx.fillRect(0, 0, flat.width, flat.height);
         fctx.imageSmoothingEnabled = true; fctx.imageSmoothingQuality = 'high';
         fctx.drawImage(srcCanvas, 0, 0);
+        if (!canReusePreview && srcCanvas !== previewCanvas) pbReleaseCanvas(srcCanvas);
         const blob = await pbCanvasBlob(flat, 'image/jpeg', offlineJpegQuality('print'));
+        let flatRefs = 0;
+        const retainFlat = () => { flatRefs++; };
+        const releaseFlat = () => { if (--flatRefs <= 0) { flat._pbFlatDone = null; pbReleaseCanvas(flat); } };
+        flat._pbFlatDone = releaseFlat;
         const label = layoutDef(layoutKey).name + ' Layout';
         // e.g. "1_strip.jpg" / "2_grid.jpg" so files sort cleanly in the folder —
         // only the chosen format is ever uploaded, so the folder only ever
@@ -32431,9 +32473,11 @@
             if (layoutKey === 'myframe' && typeof activeFrame === 'function') {
               var cutF0 = activeFrame();
               if (cutF0 && cutF0.saveCuts && Array.isArray(cutF0.sections) && cutF0.sections.length > 1) {
-                try { saveSectionCutsAsync(sessionNumber || 1, flat, cutF0); } catch (e) { }
+                retainFlat();
+                try { Promise.resolve(saveSectionCutsAsync(sessionNumber || 1, flat, cutF0)).finally(releaseFlat); } catch (e) { releaseFlat(); }
               }
             }
+            if (flatRefs === 0) pbReleaseCanvas(flat);
             const err = lastErr || new Error('Upload failed');
             err.queued = queued;
             throw err;
@@ -32441,15 +32485,20 @@
           if (queueCount) scheduleQueue(1500);
           if (drive.folderUrl) rememberFolderUrl(drive.folderUrl);
           registerEvent(drive.folderUrl || getCachedFolderUrl(), true);
+          if (masterPngOn()) retainFlat();
           if (masterPngOn()) saveMasterPng(flat, filename, dest);   // not awaited: the guest's QR never waits for the master
           if (layoutKey === 'myframe' && typeof activeFrame === 'function') {
             var cutF = activeFrame();
             if (cutF && cutF.saveCuts && Array.isArray(cutF.sections) && cutF.sections.length > 1) {
-              try { saveSectionCutsAsync(sessionNumber || 1, flat, cutF); } catch (e) { }
+              retainFlat();
+              try { Promise.resolve(saveSectionCutsAsync(sessionNumber || 1, flat, cutF)).finally(releaseFlat); } catch (e) { releaseFlat(); }
             }
           }
+          if (flatRefs === 0) { flat._pbFlatDone = null; pbReleaseCanvas(flat); }
           return { label: label + ' (Google Drive)', url: drive.downloadUrl, fileId: drive.fileId };
         } else {
+          flat._pbFlatDone = null;
+          pbReleaseCanvas(flat);
           const url = await uploadToLitterbox(blob, filename, '1h');
           return { label: label, url: url };
         }
@@ -32483,6 +32532,9 @@
           }
           try { usbLog('master-png', { ok: ok, kb: Math.round(blob.size / 1024), name: name }); } catch (e) { }
         } catch (e) { }
+        finally {
+          if (canvas && typeof canvas._pbFlatDone === 'function') { try { canvas._pbFlatDone(); } catch (e2) { } }
+        }
       }
       (function () {
         const box = document.getElementById('masterBox'), t = document.getElementById('masterPngToggle');
@@ -32540,8 +32592,9 @@
           if (i > 0) await wait(20);
           try {
             var piece = renderUprightSection(flatCanvas, sec);
-            if (!piece || piece.width < 8 || piece.height < 8) continue;
+            if (!piece || piece.width < 8 || piece.height < 8) { pbReleaseCanvas(piece); continue; }
             var blob = await pbCanvasBlob(piece, 'image/jpeg', offlineJpegQuality('print'), 300);
+            pbReleaseCanvas(piece);
             if (!blob) continue;
             var slug = String(sec.name || ('sec' + (i + 1))).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 20) || ('sec' + (i + 1));
             var cutName = filePrefix() + num + '_cut_' + (i + 1) + '_' + slug + deviceTag() + '.jpg';
@@ -32584,14 +32637,18 @@
             var blob = await soloOriginal(sc);
             if (!blob) {
               var flat = document.createElement('canvas');
-              flat.width = sc.width; flat.height = sc.height;
-              var fctx = flat.getContext('2d');
-              fctx.fillStyle = '#ffffff';
-              fctx.fillRect(0, 0, flat.width, flat.height);
-              fctx.imageSmoothingEnabled = true;
-              fctx.imageSmoothingQuality = 'high';
-              fctx.drawImage(sc, 0, 0);
-              blob = await pbCanvasBlob(flat, 'image/jpeg', offlineJpegQuality('solo'), 300);
+              try {
+                flat.width = sc.width; flat.height = sc.height;
+                var fctx = flat.getContext('2d');
+                fctx.fillStyle = '#ffffff';
+                fctx.fillRect(0, 0, flat.width, flat.height);
+                fctx.imageSmoothingEnabled = true;
+                fctx.imageSmoothingQuality = 'high';
+                fctx.drawImage(sc, 0, 0);
+                blob = await pbCanvasBlob(flat, 'image/jpeg', offlineJpegQuality('solo'), 300);
+              } finally {
+                pbReleaseCanvas(flat);
+              }
             }
             if (!blob) continue;
             var soloFilename = filePrefix() + num + '_solo_' + (i + 1) + deviceTag() + '.jpg';
@@ -32620,6 +32677,9 @@
             }
           } catch (err) {
             console.warn('Failed saving solo photo ' + (i + 1) + ':', err);
+          } finally {
+            pbReleaseShotCanvas(sc);
+            shots[i] = null;
           }
         }
       }
@@ -32818,17 +32878,19 @@
           setTimeout(fin, 40);
           try { requestAnimationFrame(function () { setTimeout(fin, 0); }); } catch (e) { fin(); }
         });
-        if (myGeneration !== qrGeneration) { clearTimeout(slowTimer); return null; }
+        if (myGeneration !== qrGeneration) { clearTimeout(slowTimer); pbReleaseShotList(soloShotsSnapshot); return null; }
         let result = null, lastError = null;
         const onRetry = () => { if (myGeneration !== qrGeneration) return; if (evFolder) setCap('All photos \u00b7 weak internet, still uploading\u2026'); else failQrSlot('photo', 'Weak internet. Trying again\u2026'); };
         try { result = await uploadLayoutForQR(currentLayout, onRetry); }
         catch (err) { lastError = err; console.error('Photo upload failed:', err); }
         clearTimeout(slowTimer);
-        if (myGeneration !== qrGeneration) return null;
+        if (myGeneration !== qrGeneration) { pbReleaseShotList(soloShotsSnapshot); return null; }
 
         // Save solo photos AFTER the composite print layout has uploaded and registered its link
         if (saveSoloPhotos && soloShotsSnapshot && soloShotsSnapshot.length) {
           saveSoloPhotosAsync(soloSessionNum, soloShotsSnapshot);
+        } else {
+          pbReleaseShotList(soloShotsSnapshot);
         }
         if (!result && lastError && lastError.queued && !isPermanentUploadError(lastError)) {
           // Kept on this device; it uploads later. Give the guest the event's
@@ -34553,6 +34615,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         nativeCam._bgHexAt = now;
         return out;
       }
+      function isStartScreenCovering() {
+        try {
+          var ss = document.getElementById('startScreen');
+          return !!(ss && !ss.classList.contains('gone') && ss.style.display !== 'none');
+        } catch (e) { return false; }
+      }
       function isWelcomeCoveringCamera() {
         try {
           var welEl = document.getElementById('welcomeOverlay');
@@ -34581,7 +34649,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         try {
           var maxPx = nativeCam.pumpMax || 640;
           var qVal = nativeCam.pumpQ || 0.74;
-          var res = await fetch(nativeCamUrl('/avcam/frame?max=' + maxPx + '&q=' + qVal + '&t=' + Date.now()), { cache: 'no-store' });
+          var fetchOpts = { cache: 'no-store' };
+          if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') fetchOpts.signal = AbortSignal.timeout(5000);
+          var res = await fetch(nativeCamUrl('/avcam/frame?max=' + maxPx + '&q=' + qVal + '&t=' + Date.now()), fetchOpts);
           if (!res || res.status === 204 || !res.ok) return false;
           var blob = await res.blob();
           if (!blob || !blob.size) return false;
@@ -34602,7 +34672,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
       }
       function nativeCamPumpSpec() {
-        if (!nativeCam.active || document.hidden) return { ms: 0, max: 640, q: 0.74 };
+        if (!nativeCam.active || document.hidden || isStartScreenCovering()) return { ms: 0, max: 640, q: 0.74 };
         try { if (typeof vgIsOpen === 'function' && vgIsOpen()) return { ms: 0, max: 640, q: 0.74 }; } catch (e) { }
         if (nativeCam.flipCapturing) return { ms: 65, max: 640, q: 0.76 };
         if (nativeCam.motionCapturing) return { ms: (typeof gifMotionStyle !== 'undefined' && gifMotionStyle === 'session') ? 220 : 90, max: 640, q: 0.76 };
@@ -34613,10 +34683,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (typeof tabSession !== 'undefined' && tabSession && !tabSession.classList.contains('hidden') && state !== 'result' && !(sess && sess.reviewing) && !nativeCam.usingNativeStage && !isWelcomeCoveringCamera()) return { ms: 33, max: 640, q: 0.74 };
         } catch (e) { }
         try { if (typeof hfWanted === 'function' && hfWanted()) return { ms: 140, max: 320, q: 0.68 }; } catch (e) { }
-        try {
-          var qf = document.getElementById('quickFilters'), rf = document.getElementById('readyFilters');
-          if ((qf && qf.offsetParent !== null) || (rf && rf.offsetParent !== null)) return { ms: 280, max: 240, q: 0.65 };
-        } catch (e) { }
+        if (!isWelcomeCoveringCamera()) {
+          try {
+            var qf = document.getElementById('quickFilters'), rf = document.getElementById('readyFilters');
+            if ((qf && qf.offsetParent !== null) || (rf && rf.offsetParent !== null)) return { ms: 280, max: 240, q: 0.65 };
+          } catch (e) { }
+        }
         try { if (typeof guestOpen === 'function' && guestOpen() && typeof guestLookOpen !== 'undefined' && guestLookOpen) return { ms: 240, max: 240, q: 0.65 }; } catch (e) { }
         return { ms: 0, max: 640, q: 0.74 };
       }
@@ -34684,10 +34756,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return;
         }
         htmlEl.classList.remove('pb-nativecam-vg');
+        var startCovering = isStartScreenCovering();
         var inSetup4 = false;
-        try { inSetup4 = typeof tabSetup !== 'undefined' && tabSetup && !tabSetup.classList.contains('hidden') && typeof curStep !== 'undefined' && curStep === 4; } catch (e) { }
+        try { inSetup4 = !startCovering && typeof tabSetup !== 'undefined' && tabSetup && !tabSetup.classList.contains('hidden') && typeof curStep !== 'undefined' && curStep === 4; } catch (e) { }
         var inSession = false;
-        try { inSession = typeof tabSession !== 'undefined' && tabSession && !tabSession.classList.contains('hidden'); } catch (e) { }
+        try { inSession = !startCovering && typeof tabSession !== 'undefined' && tabSession && !tabSession.classList.contains('hidden'); } catch (e) { }
         var showingResult = false;
         try { showingResult = state === 'result' || !!(sess && sess.reviewing) || !!(typeof shotReview !== 'undefined' && shotReview && shotReview.classList.contains('on')) || (previewCanvas && previewCanvas.style.display !== 'none' && previewCanvas.width > 0 && state !== 'capturing'); } catch (e) { }
         var isEditing = false;
@@ -34704,6 +34777,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var vpH = window.innerHeight || 9999;
         var canUseNativeStage = inSession && !showingResult && !isEditing && !welCovering && rect && rect.width > 4 && rect.height > 4 && rect.bottom > 0 && rect.top < vpH;
         if (canUseNativeStage) {
+          nativeCam._rectRetryCount = 0;
           nativeCam.usingNativeStage = true;
           htmlEl.classList.add('pb-ios-nativecam', 'pb-nativecam-stage');
           if (nativeCam.stageCanvas && nativeCam.stageCanvas.style.display !== 'none') nativeCam.stageCanvas.style.display = 'none';
@@ -34731,9 +34805,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           });
         } else {
           nativeCam.usingNativeStage = false;
-          if (inSession && !showingResult && !isEditing && !welCovering && !nativeCam._rectRetry) {
+          var rectCollapsed = !rect || rect.width <= 4 || rect.height <= 4;
+          if (inSession && !showingResult && !isEditing && !welCovering && rectCollapsed && !nativeCam._rectRetry && (nativeCam._rectRetryCount || 0) < 8) {
             nativeCam._rectRetry = true;
+            nativeCam._rectRetryCount = (nativeCam._rectRetryCount || 0) + 1;
             requestAnimationFrame(function () { nativeCam._rectRetry = false; syncNativeCamLayout(); });
+          } else if (!inSession || showingResult || welCovering) {
+            nativeCam._rectRetryCount = 0;
           }
           htmlEl.classList.remove('pb-ios-nativecam', 'pb-nativecam-stage');
           nativeCamPostLayout({ visible: false, x: 0, y: 0, w: 0, h: 0, mirror: !!mir, radius: 0, bg: nativeCamPageBgHex() });
@@ -35487,9 +35565,21 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const nativeMeta = nativeCam.devicesById[deviceId];
           let mappedId = '';
           try {
-            const devs = await navigator.mediaDevices.enumerateDevices();
+            let devs = await navigator.mediaDevices.enumerateDevices();
+            if (!devs.some(d => d.kind === 'videoinput' && d.label)) {
+              const unlock = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }).catch(() => null);
+              if (unlock) {
+                unlock.getTracks().forEach(t => t.stop());
+                await wait(250);
+                devs = await navigator.mediaDevices.enumerateDevices();
+              }
+            }
+            const vids = devs.filter(d => d.kind === 'videoinput');
             const wantLbl = (nativeMeta.label || '').trim().toLowerCase();
-            const hit = devs.find(d => d.kind === 'videoinput' && d.label && d.label.trim().toLowerCase() === wantLbl);
+            const hit = (wantLbl && (
+              vids.find(d => d.label && d.label.trim().toLowerCase() === wantLbl)
+              || vids.find(d => d.label && (d.label.toLowerCase().includes(wantLbl) || wantLbl.includes(d.label.toLowerCase())))
+            )) || (nativeMeta.isExternal ? vids.find(d => d.label && !/front|back|ultra\s*wide|telephoto|triple|dual|truedepth|desk\s*view/i.test(d.label)) : null);
             if (hit && hit.deviceId) mappedId = hit.deviceId;
           } catch (e) { }
           if (mappedId) {
@@ -35871,21 +35961,27 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // helper, so ask every few seconds; a newly plugged-in camera takes over
       // from the laptop's own webcam between guests.
       if (usbCam.viaHelper || (DESKTOP && USB_MAC)) {
+        let _camHelperPollBusy = false;
         setInterval(async () => {
-          if (document.hidden || state === 'capturing' || reconnectTimer || usbCam.initing) return;
+          if (_camHelperPollBusy || document.hidden || state === 'capturing' || reconnectTimer || usbCam.initing) return;
           if (currentDeviceId === USB_CAM_ID && streamActive) return;
           if (!camHelperProbeOk()) return;
-          const was = usbCam.helperSees;
-          if (!(await camHelperProbe(3000)) || was) return;          // only when it newly appears
-          if (state === 'capturing' || reconnectTimer) return;
-          const cur = cameraSelect.options[cameraSelect.selectedIndex];
-          const saved = savedCamera();
-          const builtin = /front|facetime|macbook|built-in|integrated|isight|webcam|hd camera|user facing/i.test(cur ? cur.textContent : '');
-          if (streamActive && cur && cur.value !== USB_CAM_ID && !builtin && saved && saved.id !== USB_CAM_ID) return;   // a camera the operator chose
-          try { await enumerateCameras(); } catch (e) { }
-          if (!Array.from(cameraSelect.options).some(o => o.value === USB_CAM_ID)) return;
-          cameraSelect.value = USB_CAM_ID;
-          if (await initCamera(USB_CAM_ID)) showToast((usbCam.name || 'Camera') + ' connected.', 4000);
+          _camHelperPollBusy = true;
+          try {
+            const was = usbCam.helperSees;
+            if (!(await camHelperProbe(3000)) || was) return;          // only when it newly appears
+            if (state === 'capturing' || reconnectTimer) return;
+            const cur = cameraSelect.options[cameraSelect.selectedIndex];
+            const saved = savedCamera();
+            const builtin = /front|facetime|macbook|built-in|integrated|isight|webcam|hd camera|user facing/i.test(cur ? cur.textContent : '');
+            if (streamActive && cur && cur.value !== USB_CAM_ID && !builtin && saved && saved.id !== USB_CAM_ID) return;   // a camera the operator chose
+            try { await enumerateCameras(); } catch (e) { }
+            if (!Array.from(cameraSelect.options).some(o => o.value === USB_CAM_ID)) return;
+            cameraSelect.value = USB_CAM_ID;
+            if (await initCamera(USB_CAM_ID)) showToast((usbCam.name || 'Camera') + ' connected.', 4000);
+          } finally {
+            _camHelperPollBusy = false;
+          }
         }, 6000);
       }
       // Mac: when a camera is plugged in, let go of it (macOS grabs it first) and connect, like the Windows helper does.
@@ -37059,7 +37155,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           try {
             const preset = (typeof webcamRes !== 'undefined' && webcamRes && webcamRes.preview) ? String(webcamRes.preview) : 'auto';
             nativeCam.lastLayoutSig = '';
-            const res = await window.__PBCam.open(deviceId || '', preset);
+            const res = await Promise.race([
+              window.__PBCam.open(deviceId || '', preset),
+              new Promise(r => setTimeout(() => r({ ok: false, name: 'TimeoutError', error: 'Camera did not respond in time.' }), 15000))
+            ]);
             if (!res || !res.ok) {
               nativeCam.active = false;
               syncNativeCamLayout();
@@ -37795,6 +37894,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           applyFilterToCanvas(c);
         }
         c._isShot = true;
+        if (shotCanvases[index] && shotCanvases[index] !== c) pbReleaseShotCanvas(shotCanvases[index]);
         shotCanvases[index] = c;
         updateFilmTrack();
       }
@@ -38457,16 +38557,23 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const cache = img._cqCache || (img._cqCache = new Map());
         if (cache.has(key)) return cache.get(key);
         let cur = img, cx = sx, cy = sy, cw = sw, ch = sh;
+        const releaseRealCanvas = function (cv) {
+          if (cv && cv !== img && typeof HTMLCanvasElement !== 'undefined' && cv instanceof HTMLCanvasElement) {
+            try { cv.width = 0; cv.height = 0; } catch (e) { }
+          }
+        };
         while (cw > tw * 2 || ch > th * 2) {
           const nw = Math.max(tw, Math.ceil(cw / 2)), nh = Math.max(th, Math.ceil(ch / 2));
           const t = document.createElement('canvas'); t.width = nw; t.height = nh;
           const tx = t.getContext('2d'); tx.imageSmoothingEnabled = true; tx.imageSmoothingQuality = 'high';
           tx.drawImage(cur, cx, cy, cw, ch, 0, 0, nw, nh);
+          releaseRealCanvas(cur);
           cur = t; cx = 0; cy = 0; cw = nw; ch = nh;
         }
         const out = document.createElement('canvas'); out.width = tw; out.height = th;
         const ox = out.getContext('2d', { willReadFrequently: true }); ox.imageSmoothingEnabled = true; ox.imageSmoothingQuality = 'high';
         ox.drawImage(cur, cx, cy, cw, ch, 0, 0, tw, th);
+        releaseRealCanvas(cur);
         // Bigger output (2x) makes boxes bigger, so the cap is higher on a laptop (higher still when it only sharpens, which is
         // about twice as quick as the grain pass); a tablet's CPU keeps the lower one.
         const cqMax = (typeof DESKTOP !== 'undefined' && DESKTOP) ? (dk === 0 ? 10000000 : 6000000) : 4500000;
@@ -38489,7 +38596,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             }
           } catch (e) { }
         }
-        if (cache.size >= 8) cache.delete(cache.keys().next().value);
+        if (cache.size >= 8) {
+          const oldestKey = cache.keys().next().value;
+          const oldestCv = cache.get(oldestKey);
+          if (oldestCv) { try { oldestCv.width = 0; oldestCv.height = 0; } catch (e) { } }
+          cache.delete(oldestKey);
+        }
         cache.set(key, out);
         return out;
       }
@@ -38520,7 +38632,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           // The ISO decides how much grain removal this photo gets (camQDenoiseFor); a box or preview drawn before it was known is drawn again.
           if (canvas && ex && ex.iso > 0 && canvas._cqIso !== ex.iso) {
             canvas._cqIso = ex.iso;
-            canvas._cqCache = null;
+            if (typeof pbClearShotTileCache === 'function') pbClearShotTileCache(canvas);
+            else canvas._cqCache = null;
             try { if (typeof previewCanvas !== 'undefined' && previewCanvas) previewCanvas._renderedForLayout = ''; } catch (e) { }
           }
           usbLog(p.id + '-shot', { iso: ex && ex.iso, shutter: ex && ex.shutter, f: ex && ex.f, focusMiss: !!(file && file._focusMiss) });
@@ -38537,13 +38650,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function camQPrewarm(p, finalShot) {
         if (finalShot || !p || p.cleanMode() === 'off') return;
         setTimeout(function () {
+          const cv = document.createElement('canvas');
           try {
             if (!Array.isArray(shotCanvases) || !shotCanvases.some(function (s) { return s && s._cq === p.id; })) return;
-            const t0 = performance.now(), cv = document.createElement('canvas');
+            const t0 = performance.now();
             cv._hiRes = true;
             composeCanvas(currentLayout, cv, shotCanvases);
             usbLog(p.id + '-prewarm', { ms: Math.round(performance.now() - t0), w: cv.width, h: cv.height });
           } catch (e) { }
+          finally {
+            try { cv.width = 0; cv.height = 0; } catch (e2) { }
+          }
         }, 120);
       }
 
@@ -39397,10 +39514,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (nativeCam.active && currentDeviceId !== USB_CAM_ID) {
           const shots0 = shotCanvases;
           try {
-            const shot = await window.__PBCam.capture();
+            const shot = await Promise.race([
+              window.__PBCam.capture(),
+              new Promise(r => setTimeout(() => r({ ok: false, error: 'Capture timed out.' }), 12000))
+            ]);
             if (shotCanvases !== shots0 || (sess && sess.cancelled)) return;
             if (shot && shot.ok && shot.url) {
-              const resp = await fetch(nativeCamUrl(shot.url), { cache: 'no-store' });
+              const shotFetchOpts = { cache: 'no-store' };
+              if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') shotFetchOpts.signal = AbortSignal.timeout(10000);
+              const resp = await fetch(nativeCamUrl(shot.url), shotFetchOpts);
               if (resp && resp.ok) {
                 const blob = await resp.blob();
                 if (shotCanvases !== shots0 || (sess && sess.cancelled)) return;
@@ -39417,14 +39539,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                   } finally { try { bmp.close(); } catch (e) { } }
                 } else {
                   const tmp = document.createElement('canvas');
-                  await decodeBlobToCanvas(blob, tmp);
-                  c.width = tmp.width; c.height = tmp.height;
-                  const ctx = c.getContext('2d');
-                  if (mir) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
-                  ctx.drawImage(tmp, 0, 0);
-                  ctx.setTransform(1, 0, 0, 1, 0, 0);
+                  try {
+                    await decodeBlobToCanvas(blob, tmp);
+                    c.width = tmp.width; c.height = tmp.height;
+                    const ctx = c.getContext('2d');
+                    if (mir) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
+                    ctx.drawImage(tmp, 0, 0);
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                  } finally { pbReleaseCanvas(tmp); }
                 }
-                if (shotCanvases !== shots0 || (sess && sess.cancelled)) return;
+                if (shotCanvases !== shots0 || (sess && sess.cancelled)) { pbReleaseShotCanvas(c); return; }
                 finalizeShotCanvas(c, index);
                 return;
               }
@@ -39499,14 +39623,23 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           bmp.close();
           ctx.setTransform(1, 0, 0, 1, 0, 0);
           const bgSwapped = applyBgReplace(c);
-          var rawCopy = document.createElement('canvas');
-          rawCopy.width = c.width; rawCopy.height = c.height;
-          rawCopy.getContext('2d').drawImage(c, 0, 0);
-          c._raw = rawCopy;
-          applyFilterToCanvas(c);
+          if (filterKey !== 'none' || softSkin || dateStamp || (typeof guestLooksOn !== 'undefined' && guestLooksOn)) {
+            var rawCopy = document.createElement('canvas');
+            rawCopy.width = c.width; rawCopy.height = c.height;
+            rawCopy.getContext('2d').drawImage(c, 0, 0);
+            c._raw = rawCopy;
+            applyFilterToCanvas(c);
+          }
           c._isShot = true;
           if (DESKTOP && !mir && !bgSwapped) c._orig = file;   // the camera's own photo, for the solo shot (see soloOriginal)
-          if (shotCanvases === shots) { shotCanvases[index] = c; committed = true; updateFilmTrack(); if (qp) camQPrewarm(qp, finalShot); }
+          if (shotCanvases === shots) {
+            if (shotCanvases[index] && shotCanvases[index] !== c) pbReleaseShotCanvas(shotCanvases[index]);
+            shotCanvases[index] = c; committed = true; updateFilmTrack(); if (qp) camQPrewarm(qp, finalShot);
+            if (standIn) { pbReleaseCanvas(standIn); standIn = null; }
+          } else {
+            pbReleaseShotCanvas(c);
+            if (standIn) { pbReleaseCanvas(standIn); standIn = null; }
+          }
         } catch (err) {
           console.error('USB shot failed:', err);
           finishUsb();
@@ -41415,7 +41548,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (typeof cashSend === 'function') { try { cashSend('session_cancel'); } catch (e) { } }
         if (typeof stopFlipAutoPlay === 'function') stopFlipAutoPlay();
         stopGifSessionCapture(false); completedGifCapture = null;
-        stopShotMotionCapture(); shotMotionClips = [];
+        stopShotMotionCapture(); pbReleaseMotionClips();
         countingDown = false;
         hideShotReview();
         var gso = document.getElementById('guestStickerOverlay');
@@ -41431,7 +41564,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         setGettingReady(false);
         retakeBtn.hidden = true; doneBtn.hidden = true; reviewHint.hidden = true;
         video.style.display = 'block'; previewCanvas.style.display = 'none';
+        if (previewCanvas) { pbReleaseCanvas(previewCanvas); previewCanvas._renderedForLayout = ''; }
         state = 'idle';
+        pbReleaseShotList(shotCanvases);
         shotCanvases = new Array(shotsNeeded()).fill(null);
         sess = null;
         cancelSessionBtn.hidden = true;
@@ -41506,7 +41641,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!streamActive || camSleeping || camSleepPromise) {
           if (skipReady === true || !hasCamSel) {
             const ok = await camLiveWake();
-            if (!ok) return;
+            if (!ok) {
+              try { showToast('Camera is not ready. Check Setup → Camera or reconnect the camera.', 5000); } catch (e) { }
+              return;
+            }
           } else {
             usbWantAt = Date.now() + 5000;
             readyWakePromise = camLiveWake().then(function (ok) {
@@ -41528,8 +41666,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         resetSessionPrints();
         stageShot = 0;
         sess = { cancelled: false, retake: false, pick: null };
+        pbReleaseShotList(shotCanvases);
         shotCanvases = new Array(shotsNeeded()).fill(null);
-        shotMotionClips = [];
+        pbReleaseMotionClips();
         qrResults.innerHTML = '';
         lastRenderedFolderUrl = null;
         retakeBtn.hidden = true;
@@ -41576,8 +41715,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (sess.cancelled) break;
           if (sess.retake) {                         // redo this photo
             sess.retake = false;
+            pbReleaseShotCanvas(shotCanvases[i]);
             shotCanvases[i] = null;
-            if (shotMotionClips[i]) shotMotionClips[i] = [];
+            if (shotMotionClips[i]) {
+              for (var mi = 0; mi < shotMotionClips[i].length; mi++) pbReleaseCanvas(shotMotionClips[i][mi]);
+              shotMotionClips[i] = [];
+            }
             updateFilmTrack(); guestCall('shots');
             continue;
           }
@@ -44630,7 +44773,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const rNote = (typeof receiptCustomNote !== 'undefined' && receiptCustomNote ? receiptCustomNote.trim() : '');
         const rNoteH = rNote ? 34 : 0;
         // Measure the event name (wrapped to 2 lines at most, as big as fits).
-        const mx = document.createElement('canvas').getContext('2d');
+        if (!composeReceipt._mx) {
+          const mc = document.createElement('canvas'); mc.width = 1; mc.height = 1;
+          composeReceipt._mx = mc.getContext('2d');
+        }
+        const mx = composeReceipt._mx;
         let fs = 54, lines = [name];
         for (; fs >= 26; fs -= 2) {
           mx.font = '700 ' + fs + 'px ' + mono;
@@ -45014,7 +45161,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!BOX_PROBE && _phCache.key === key && _phCache.sample === previewSample && _phCache.list.length >= count) {
           return _phCache.list.slice(0, count);
         }
-        const reuse = (!BOX_PROBE && _phCache.key === key && _phCache.sample === previewSample) ? _phCache.list : [];
+        const sameKey = !BOX_PROBE && _phCache.key === key && _phCache.sample === previewSample;
+        if (!BOX_PROBE && !sameKey && _phCache.list && _phCache.list.length && typeof pbReleaseShotList === 'function') {
+          pbReleaseShotList(_phCache.list);
+        }
+        const reuse = sameKey ? _phCache.list : [];
         for (let i = reuse.length; i < count; i++) reuse.push(sampleShot(cw, ch, count > 1 ? i + 1 : 0));
         if (!BOX_PROBE) _phCache = { key: key, sample: previewSample, list: reuse };
         return reuse.slice(0, count);
@@ -46400,6 +46551,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       function isBtThermalRoute() {
         if (!btThermalOn || !isBtThermalAvailable()) return false;
+        if ((typeof useStation === 'function' && useStation()) || (typeof lanStationActive === 'function' && lanStationActive())) return false;
         if (isMobileOS() || !helperOn) return true;
         var bp = window._btThermal && window._btThermal.btPrinter;
         if (bp && (bp.connected || (typeof bp.canReconnect === 'function' && bp.canReconnect()))) return true;
@@ -46450,6 +46602,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       function lanStationActive() {
         return !!(lanStationSupported() && lanStationCfg.enabled && typeof useStation === 'function' && !useStation() && lanStationCfg.host && /^\d{6}$/.test(lanStationCfg.pin));
+      }
+      function lanStationQueueNoPrinter() {
+        return !!(lanStationActive() && lanStationCfg.stationMode === 'queue');
+      }
+      function lanStationMissingPrinterMsg(paperName) {
+        return 'Choose a printer for ' + (paperName || 'this paper size') + ' under Printer 1 first (or switch Laptop Print Station to Queue & view first).';
       }
       let androidChromeHelper = false;
       function probeAndroidChromeHelper() {
@@ -46652,6 +46810,22 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               if (!hitKeys.has(hk)) { hitKeys.add(hk); hits.push(h); }
             });
             if (hits.length && i >= 64) break;
+          }
+          if (!hits.length) {
+            const altCands = [];
+            for (let i = 1; i <= 254; i++) {
+              const k = primaryPfx + i + ':47778';
+              if (!seen.has(k)) { seen.add(k); altCands.push([primaryPfx + i, 47778]); }
+            }
+            for (let i = 0; i < altCands.length; i += BATCH) {
+              const res = await Promise.all(altCands.slice(i, i + BATCH).map(([ip, pt]) => probeLanHello(ip, pt, 420)));
+              res.forEach(h => {
+                if (!h) return;
+                const hk = h.ip + ':' + h.port;
+                if (!hitKeys.has(hk)) { hitKeys.add(hk); hits.push(h); }
+              });
+              if (hits.length) break;
+            }
           }
           if (!hits.length) {
             if (stEl) stEl.textContent = 'No Laptop Print Station found on Wi-Fi. Check Print Helper is open on the laptop and Windows Firewall allows port 47777, or type the IP shown in Print Helper.';
@@ -49302,7 +49476,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         receiptPrintGrey = !!paper.receipt;
         receiptPrint58 = !!(paper.receipt && paper.w <= 55);
         try { renderCompositeToCanvas(currentLayout, src); } finally { receiptPrintGrey = false; receiptPrint58 = false; }
+        const origSrc = src;
         src = btPrintCanvas(src, paper);          // card booth: front + back on one sheet
+        if (src !== origSrc) pbReleaseCanvas(origSrc);
         if (paper.receipt) {
           // Exactly the printer's dots across (80 mm roll: 576, 58 mm: 384), so the receipt is never resized on the way;
           // 72 mm x 203 dpi used to round to 575. As long as the receipt is.
@@ -49314,6 +49490,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           rx.imageSmoothingEnabled = rc.width !== src.width;
           rx.imageSmoothingQuality = 'high';
           rx.drawImage(src, 0, 0, rc.width, rc.height);
+          pbReleaseCanvas(src);
           // A black & white receipt layout already took the printer's Lightness when its photos were turned into dots
           // (ditherRegion); adding it again here would grey the black dots until a high setting wipes them out.
           // Receipt layouts (black & white or colour) already put the Lightness into their photos above; adding it to the whole
@@ -49326,6 +49503,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (turned) {
           const r = document.createElement('canvas'); r.width = src.height; r.height = src.width;
           const rx = r.getContext('2d'); rx.translate(r.width, 0); rx.rotate(Math.PI / 2); rx.drawImage(src, 0, 0);
+          pbReleaseCanvas(src);
           src = r;
         }
         const useFastPoster = !!(helperOn && printPrefs && Number(printPrefs.posterDpi) === 200 && Math.max(paper.w, paper.h) >= 300 && !paper.receipt);
@@ -49355,6 +49533,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         } else {
           drawPhotoOnSheet(ctx, src, c.width, c.height, dpi);
         }
+        pbReleaseCanvas(src);
         return c;
       }
       function buildStripPages(key) {
@@ -49371,6 +49550,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height);
           ctx.imageSmoothingQuality = 'high';
           drawFitted(ctx, src, 0, 0, c.width, c.height);
+          pbReleaseCanvas(src);
           return c;
         });
       }
@@ -49752,7 +49932,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         return pages;
       }
-      function closePrintPreview() { document.getElementById('ppvOverlay').hidden = true; ppv.pages = []; ppv.urls = []; }
+      function closePrintPreview() {
+        document.getElementById('ppvOverlay').hidden = true;
+        if (Array.isArray(ppv.pages)) ppv.pages.forEach(pbReleaseCanvas);
+        ppv.pages = []; ppv.urls = [];
+      }
       // Look at every page: arrows, numbered buttons, swipe, or the left / right keys. Pages are turned into pictures only when looked at.
       function ppvGo(i) {
         const n = ppv.pages.length; if (!n) return;
@@ -50815,8 +50999,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         // A USB printer plugged in (or out) while this panel is open shows up without pressing anything.
         let _lastWifiPollSig = '';
         setInterval(() => {
+          if (document.hidden) return;
           const row = document.getElementById('wifiPrinterRow');
-          if (!row || row.style.display === 'none' || !wifiNetAvailable() || wifiScanTimer) return;
+          if (!row || row.style.display === 'none' || row.offsetParent === null || !wifiNetAvailable() || wifiScanTimer) return;
           const d = wifiList();
           const sig = JSON.stringify([!!(d && d.scanning), ((d && d.printers) || []).map(q => [q.ip, q.name, q.ipp, q.escpr, q.needsPermission, q.borderless, q.qualities && q.qualities.length]), wifiPrinter ? wifiPrinter.ip : '']);
           if (sig !== _lastWifiPollSig) { _lastWifiPollSig = sig; wifiRenderList(d); }
@@ -51801,6 +51986,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (printing || !printSize || !(state === 'result' && shotCanvases.every(Boolean))) return false;
         const curPaper = paperFor(printSize);
         if (curPaper && curPaper.w <= 55 && printQueued > 0) return false;
+        if (!useStation() && lanStationActive() && !lanStationQueueNoPrinter() && !(forcedPrinterName() || printerFor(printSize))) {
+          showToast(lanStationMissingPrinterMsg(curPaper && curPaper.name), 6500);
+          return false;
+        }
         const per = sheetsPerCopy(printSize);
         let n = Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(copies) || printPrefs.copies || 1)));
         const room = maxCopies(printSize);
@@ -51919,7 +52108,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               return true;
             }
           }
-          if (helperOn && (pname || (lanStationActive() && lanStationCfg.stationMode === 'queue')) && !fpBt && !fpWifi) {
+          if (helperOn && (pname || lanStationQueueNoPrinter()) && !fpBt && !fpWifi) {
             let sent = true;
             const extras = fp ? [] : activeExtraPrinters();       // a linked printer prints on its own
             const extraJob = printExtraPrinters(extras);          // e.g. receipt / Instax / second photo size in parallel
@@ -51961,6 +52150,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               armAutoPrintAfterFirst(auto === true);
               return true;
             }
+          }
+          if (LAPTOP_PRINT || lanStationActive()) {
+            // Desktop & Laptop Print Station never fall back to local Wi-Fi printers or OS AirPrint dialogs.
+            showToast(lanStationActive() ? lanStationMissingPrinterMsg(paper.name) : ('No printer is chosen for ' + paper.name + '. Open Printer settings and pick one.'), 6500);
+            return false;
           }
           // Android tablet app with a Wi-Fi printer picked: the app finds it and prints straight to it.
           const wf = fpWifi || wifiPrinter;
@@ -52018,11 +52212,6 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               pdiagSend('print', { dialog: true }, { ok: false, error: 'Android print screen did not open: ' + (e2.message || e2), paper: { w: paper.w, h: paper.h, name: paper.name } });
               return false;
             }
-          }
-          if ((LAPTOP_PRINT || lanStationActive()) && (pname || auto === true)) {
-            // Auto-print (or a chosen printer that was not reachable) must never open an OS print sheet.
-            showToast('No printer is chosen for ' + paper.name + '. Open Printer settings and pick one.', 6500);
-            return false;
           }
           const urls = [];
           printArea.innerHTML = '';
@@ -54295,6 +54484,7 @@ function renderTabletBridgeSetup(info) {
         setTimeout(() => { startScreen.style.display = 'none'; }, 380);
         try { placeTimeChip(); } catch (e) { }
         try { if (typeof refreshWelcome === 'function') refreshWelcome(); } catch (e) { }
+        try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
       }
       startScreen.addEventListener('click', leaveStartScreen);
       startScreen.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); leaveStartScreen(); } });
@@ -54569,13 +54759,18 @@ function renderTabletBridgeSetup(info) {
       function reapplyFiltersToShots() {
         if (!Array.isArray(shotCanvases)) return;
         shotCanvases.forEach(function (c) {
-          if (c && c._raw) {
-            var ctx = c.getContext('2d');
-            ctx.clearRect(0, 0, c.width, c.height);
-            ctx.drawImage(c._raw, 0, 0);
-            applyFilterToCanvas(c);
-            c._cqCache = null;   // photo-quality tiles were made from the old pixels
+          if (!c || !c.width || !c.height) return;
+          if (!c._raw) {
+            var rawCopy = document.createElement('canvas');
+            rawCopy.width = c.width; rawCopy.height = c.height;
+            rawCopy.getContext('2d').drawImage(c, 0, 0);
+            c._raw = rawCopy;
           }
+          var ctx = c.getContext('2d');
+          ctx.clearRect(0, 0, c.width, c.height);
+          ctx.drawImage(c._raw, 0, 0);
+          applyFilterToCanvas(c);
+          pbClearShotTileCache(c);   // photo-quality tiles were made from the old pixels
         });
         if (state === 'result') {
           renderComposite();
@@ -54963,6 +55158,13 @@ function renderTabletBridgeSetup(info) {
       });
       var filterThumbTimer = null, filterThumbScratch = null;
       function drawFilterThumbs() {
+        if (document.hidden || isStartScreenCovering() || isWelcomeCoveringCamera()) {
+          if (nativeCam.active && drawFilterThumbs._on) {
+            drawFilterThumbs._on = false;
+            nativeCamSyncPump();
+          }
+          return;
+        }
         var rows = [quickFilters, readyFilters].filter(function (r) { return r.offsetParent !== null; });
         var hasRows = rows.length > 0;
         if (nativeCam.active && hasRows !== !!drawFilterThumbs._on) {
@@ -55541,6 +55743,9 @@ function renderTabletBridgeSetup(info) {
           loadSheetPreset(setupActiveSheetPresetId, true);
         }
         if (currentLayout !== setupLayout || hadGuestTier) setLayout(setupLayout);
+        if (typeof pbReleaseDecorBase === 'function') pbReleaseDecorBase(previewCanvas);
+        pbReleaseShotList(shotCanvases);
+        pbReleaseMotionClips();
         shotCanvases = new Array(shotsNeeded()).fill(null);
         qrResults.innerHTML = '';
         lastRenderedFolderUrl = null;
@@ -55550,6 +55755,7 @@ function renderTabletBridgeSetup(info) {
         cancelSessionBtn.hidden = true;
         video.style.display = 'block';
         previewCanvas.style.display = 'none';
+        if (previewCanvas) { pbReleaseCanvas(previewCanvas); previewCanvas._renderedForLayout = ''; }
         updateFilmTrack();
         updateUI();
         if (!keepCamAwake) { try { camSleepNow(); } catch (e) { } }
@@ -64185,6 +64391,15 @@ function renderTabletBridgeSetup(info) {
         var has = function (id) { return !printerIds || printerIds.indexOf(id) >= 0; };
         var paper = sizeKey ? paperFor(sizeKey) : null;
         if (useStation() && has('station')) return 'station';
+        if (lanStationActive()) {
+          var lanP = sizeKey ? printerFor(sizeKey) : '';
+          if (lanP && has('helper:' + lanP)) return 'helper:' + lanP;
+          if (lanStationQueueNoPrinter() && has('lan-station')) return 'lan-station';
+          if (helper && helper.ok && Array.isArray(helper.printers) && helper.printers.length && has('helper:' + helper.printers[0])) {
+            return 'helper:' + helper.printers[0];
+          }
+          return (printerIds && printerIds.length) ? printerIds[0] : '';
+        }
         if (paper && paper.receipt && isBtThermalRoute() && has('bt')) return 'bt';
         var pname = sizeKey ? printerFor(sizeKey) : '';
         if (pname && isInstaxPrinter(pname)) {
@@ -64226,7 +64441,10 @@ function renderTabletBridgeSetup(info) {
         if (useStation()) {
           addP({ id: 'station', label: 'Print station' + (station && station.online ? ' · online' : ''), kind: 'station' });
         }
-        if (isBtThermalAvailable()) {
+        if (lanStationQueueNoPrinter()) {
+          addP({ id: 'lan-station', label: 'Laptop Print Station queue' + (lanStationCfg.hostName ? ' (' + lanStationCfg.hostName + ')' : ''), kind: 'lan-station' });
+        }
+        if (!lanStationActive() && isBtThermalAvailable()) {
           var bp = window._btThermal && window._btThermal.btPrinter;
           var btConn = !!(bp && bp.connected);
           addP({ id: 'bt', label: '🧾 ' + btProfileName() + ' (Bluetooth thermal' + (btConn ? ' · connected' : '') + ')', kind: 'bt', receipt: true });
@@ -64250,14 +64468,16 @@ function renderTabletBridgeSetup(info) {
             });
           } catch (e) { }
         }
-        try {
-          instaxNames().forEach(function (n) {
-            if (!n || seen['helper:' + n]) return;
-            var sn = window._instax && n.indexOf(window._instax.VIRTUAL) === 0 ? n.slice(window._instax.VIRTUAL.length) : n;
-            addP({ id: 'instax:' + n, label: '📷 ' + sn + ' (Instax Bluetooth)', kind: 'instax' });
-          });
-        } catch (e) { }
-        if (wifiNetAvailable()) {
+        if (!lanStationActive()) {
+          try {
+            instaxNames().forEach(function (n) {
+              if (!n || seen['helper:' + n]) return;
+              var sn = window._instax && n.indexOf(window._instax.VIRTUAL) === 0 ? n.slice(window._instax.VIRTUAL.length) : n;
+              addP({ id: 'instax:' + n, label: '📷 ' + sn + ' (Instax Bluetooth)', kind: 'instax' });
+            });
+          } catch (e) { }
+        }
+        if (!lanStationActive() && wifiNetAvailable()) {
           var addWifi = function (p, savedTag) {
             if (!p || p.dialog || !p.ip || !p.name || p.noDriver) return;
             var conn = (p.name.indexOf('(USB)') >= 0) ? '' : (p.usb ? ' (USB)' : ' (Wi-Fi)');
@@ -64366,6 +64586,10 @@ function renderTabletBridgeSetup(info) {
           var singleOpt = (typeof opts.singleStrip === 'boolean') ? opts.singleStrip : !!(printPrefs && printPrefs.singleStrip);
           var buildOpt = { singleStrip: singleOpt };
           var isHelperRoute = route.indexOf('helper:') === 0;
+          var isLanQueueRoute = route === 'lan-station';
+          if (isLanQueueRoute && !lanStationQueueNoPrinter()) {
+            return { ok: false, error: 'Laptop Print Station is not in Queue & view first mode.' };
+          }
           var helperName = isHelperRoute ? route.slice(7) : '';
           var pages;
           if (isHelperRoute && helperName) {
@@ -64441,19 +64665,23 @@ function renderTabletBridgeSetup(info) {
             return { ok: false, error: 'The Instax printer did not accept the photo. Check it is turned on.' };
           }
 
-          // 4. Print Helper / Desktop built-in helper (coloured photo printers & USB/spooler thermal printers)
-          if (isHelperRoute && helperName) {
+          // 4. Print Helper / Desktop built-in helper / Laptop Print Station (coloured photo printers & USB/spooler thermal printers)
+          if (isLanQueueRoute || (isHelperRoute && helperName)) {
             var isStripImg = cv && cv.width && cv.height && (cv.width / cv.height < 0.45);
             var twoUpFlag = !singleOpt && isStripImg && !paper.receipt && paper.w / paper.h >= 0.5;
             var hOpt = { sizeKey: sizeKey, twoUp: twoUpFlag };
             if (paper.receipt && opts.thermalQuality) hOpt.quality = opts.thermalQuality;
-            var sent = await printChunks(all, paper, helperName, hOpt);
+            if (lanStationActive()) hOpt.copies = n;
+            var targetHelperName = isLanQueueRoute ? '' : helperName;
+            var sent = await printChunks(lanStationActive() ? pages : all, paper, targetHelperName, hOpt);
             if (sent) {
-              var hMsg = 'Printing on ' + helperName + ' (' + label + ').';
+              var hMsg = lastHelperPrintQueued
+                ? ('Queued on Laptop Print Station for review (' + (targetHelperName || 'choose printer on laptop') + ' \u00b7 ' + label + ').')
+                : ('Printing on ' + (targetHelperName || 'Laptop Print Station') + ' (' + label + ').');
               showToast(hMsg, 4000);
               return { ok: true, msg: hMsg };
             }
-            return { ok: false, error: '“' + helperName + '” didn’t take the photo. Check it is on and has paper, or choose another printer.' };
+            return { ok: false, error: (targetHelperName ? '“' + targetHelperName + '” didn’t take the photo.' : 'Laptop Print Station didn’t take the photo.') + ' Check the laptop is on and reachable, or choose another printer.' };
           }
 
           // 5. Android / iPad direct Wi-Fi or USB printer
@@ -65386,6 +65614,27 @@ function renderTabletBridgeSetup(info) {
       }
 
       // ---- Printing ----
+      async function sendViaHelperOrLanStation(pages, all, P, key, pname, sheets, label) {
+        var viaLanStation = lanStationActive();
+        if (!helperOn || (!pname && !(viaLanStation && lanStationQueueNoPrinter()))) return null;
+        var useLanCopies = viaLanStation && !activeExtraPrinters().some(function (x) { return x.mode === 'share'; });
+        var target = pname || '';
+        var sent = useLanCopies
+          ? await printSheets(pages, P, target, { sizeKey: key, copies: sheets })
+          : await printSheets(all, P, target, { sizeKey: key });
+        if (sent) {
+          return {
+            ok: true,
+            msg: lastHelperPrintQueued
+              ? ('Queued on Laptop Print Station for review (' + (target || 'choose printer on laptop') + ' \u00b7 ' + label + ').')
+              : ('Printing on ' + (target || 'Laptop Print Station') + ' (' + label + ').')
+          };
+        }
+        if (LAPTOP_PRINT || viaLanStation) {
+          return { ok: false, msg: (viaLanStation ? 'Laptop Print Station' : 'The printer') + ' didn\u2019t take the sheets. Check the printer is on and try again.' };
+        }
+        return null;
+      }
       async function stPrint() {
         if (ST.busy || printing) { if (printing) stSay('The booth is busy printing. Try again in a moment.', true); return; }
         var P = stPaper(); if (!P || !ST.items.length) return;
@@ -65394,8 +65643,11 @@ function renderTabletBridgeSetup(info) {
         try {
           printSize = key;          // the printer, colour and quality chosen for this paper size apply
           try { wifiRelink(); wifiSyncForSize(); } catch (e) { }
-          var viaStation = useStation(), pname = printerFor(key);
-          if (!viaStation && LAPTOP_PRINT && !pname) { stSay('Choose the printer for ' + P.name + ' above first.', true); return; }
+          var viaStation = useStation(), viaLanStation = lanStationActive(), pname = printerFor(key);
+          if (!viaStation && ((LAPTOP_PRINT && !pname) || (viaLanStation && !lanStationQueueNoPrinter() && !pname))) {
+            stSay(viaLanStation ? lanStationMissingPrinterMsg(P.name) : ('Choose the printer for ' + P.name + ' above first.'), true);
+            return;
+          }
           var lim = printLimits(), left = lim.ev && printCount && printCount.left != null ? printCount.left : Infinity;
           if (left < total) { stSay(left < 1 ? 'No prints left for this event.' : 'Only ' + left + ' print' + (left === 1 ? '' : 's') + ' left for this event, and this needs ' + total + '.', true); return; }
           var res = await reservePrints(total); if (!res.ok) { limitReached(); stSay('No prints left for this event.', true); return; }
@@ -65405,10 +65657,9 @@ function renderTabletBridgeSetup(info) {
           var label = total + (total === 1 ? ' sheet' : ' sheets') + ', ' + P.name;
           if (viaStation) { await sendToStation(pages, P, sheets); stSay('Sent to the print station (' + label + ').'); return; }
           var all = []; for (var c = 0; c < sheets; c++) all.push.apply(all, pages);
-          if (helperOn && pname) {
-            if (await printSheets(all, P, pname)) { stSay('Printing on ' + pname + ' (' + label + ').'); return; }
-            if (LAPTOP_PRINT) { stSay('The printer didn’t take the sheets. Check it is on and try again.', true); return; }
-          }
+          var hRes = await sendViaHelperOrLanStation(pages, all, P, key, pname, sheets, label);
+          if (hRes) { stSay(hRes.msg, !hRes.ok); return; }
+          if (viaLanStation) { stSay(lanStationMissingPrinterMsg(P.name), true); return; }
           var wf = wifiPrinter;
           if (wf && !wf.dialog && wifiNetAvailable()) {
             try { await printViaWifi(all, P, wf, wifiOpts(wf)); stSay('Printing on ' + wf.name + ' (' + label + ').'); return; }
@@ -65467,8 +65718,10 @@ function renderTabletBridgeSetup(info) {
         try {
           printSize = key;          // the printer, colour and quality chosen for this paper size apply
           try { wifiRelink(); wifiSyncForSize(); } catch (e) { }
-          var viaStation = useStation(), pname = printerFor(key);
-          if (!viaStation && LAPTOP_PRINT && !pname) return { ok: false, msg: 'Staff: choose the printer for ' + P.name + ' in Setup first.' };
+          var viaStation = useStation(), viaLanStation = lanStationActive(), pname = printerFor(key);
+          if (!viaStation && ((LAPTOP_PRINT && !pname) || (viaLanStation && !lanStationQueueNoPrinter() && !pname))) {
+            return { ok: false, msg: viaLanStation ? lanStationMissingPrinterMsg(P.name) : ('Staff: choose the printer for ' + P.name + ' in Setup first.') };
+          }
           var lim = printLimits(), left = lim.ev && printCount && printCount.left != null ? printCount.left : Infinity;
           if (left < total) return { ok: false, msg: left < 1 ? 'No prints left for this event.' : 'Only ' + left + ' print' + (left === 1 ? '' : 's') + ' left, and this needs ' + total + '.' };
           var res = await reservePrints(total); if (!res.ok) { limitReached(); return { ok: false, msg: 'No prints left for this event.' }; }
@@ -65479,10 +65732,9 @@ function renderTabletBridgeSetup(info) {
           var label = total + (total === 1 ? ' sheet' : ' sheets') + ', ' + P.name;
           if (viaStation) { await sendToStation(pages, P, sheets); return { ok: true, msg: 'Sent to the print station (' + label + ').' }; }
           var all = []; for (var c = 0; c < sheets; c++) all.push.apply(all, pages);
-          if (helperOn && pname) {
-            if (await printSheets(all, P, pname)) return { ok: true, msg: 'Printing on ' + pname + ' (' + label + ').' };
-            if (LAPTOP_PRINT) return { ok: false, msg: 'The printer did not take the sheets. Check it is on and try again.' };
-          }
+          var hRes = await sendViaHelperOrLanStation(pages, all, P, key, pname, sheets, label);
+          if (hRes) return hRes;
+          if (viaLanStation) return { ok: false, msg: lanStationMissingPrinterMsg(P.name) };
           var wf = wifiPrinter;
           if (wf && !wf.dialog && wifiNetAvailable()) {
             try { await printViaWifi(all, P, wf, wifiOpts(wf)); return { ok: true, msg: 'Printing on ' + wf.name + ' (' + label + ').' }; }
@@ -71044,6 +71296,7 @@ function renderTabletBridgeSetup(info) {
       // camera's shape so it fills the live view exactly.
       var welcomeCta = null;
       function renderWelcomeSurface(opts) {
+        var c = null;
         try {
           var previewOnly = !!(opts && opts.previewOnly);
           var hasVp = !!(opts && Number(opts.vw) > 0 && Number(opts.vh) > 0);
@@ -71486,6 +71739,7 @@ function renderTabletBridgeSetup(info) {
           }
           return { dataUrl: cardDataUrl, wa: outWa };
         } catch (e) { console.error('welcome', e); return null; }
+        finally { pbReleaseCanvas(c); }
       }
       function renderWelcome() { return renderWelcomeSurface(null); }
       function renderWelcomeForViewport(vw, vh) { return renderWelcomeSurface({ vw: vw, vh: vh, previewOnly: true }); }
@@ -79760,22 +80014,27 @@ function fxWavUrl(kind) {
       }
       function drawThemeThumb(canvas, t) {
         var big = document.createElement('canvas');
-        var lk = t.layout && LAYOUT_DEFS[t.layout] ? t.layout : 'hero';
-        withThemeState(t, function () { composeCanvas(lk, big, buildPlaceholderShots(260, shotsNeeded(lk))); });
-        var x;
-        if (big.width > big.height) {
-          // Landscape templates sit centered on a portrait card like the others.
-          canvas.width = 240; canvas.height = 360;
+        try {
+          var lk = t.layout && LAYOUT_DEFS[t.layout] ? t.layout : 'hero';
+          withThemeState(t, function () { composeCanvas(lk, big, buildPlaceholderShots(260, shotsNeeded(lk))); });
+          var x;
+          if (big.width > big.height) {
+            // Landscape templates sit centered on a portrait card like the others.
+            canvas.width = 240; canvas.height = 360;
+            x = canvas.getContext('2d'); x.imageSmoothingQuality = 'high';
+            x.fillStyle = '#efe9df'; x.fillRect(0, 0, 240, 360);
+            var h = Math.round(240 * big.height / big.width);
+            x.shadowColor = 'rgba(0,0,0,0.2)'; x.shadowBlur = 8; x.shadowOffsetY = 2;
+            x.drawImage(big, 0, Math.round((360 - h) / 2), 240, h);
+            return;
+          }
+          canvas.width = 240; canvas.height = Math.round(240 * big.height / big.width);
           x = canvas.getContext('2d'); x.imageSmoothingQuality = 'high';
-          x.fillStyle = '#efe9df'; x.fillRect(0, 0, 240, 360);
-          var h = Math.round(240 * big.height / big.width);
-          x.shadowColor = 'rgba(0,0,0,0.2)'; x.shadowBlur = 8; x.shadowOffsetY = 2;
-          x.drawImage(big, 0, Math.round((360 - h) / 2), 240, h);
-          return;
+          x.drawImage(big, 0, 0, canvas.width, canvas.height);
+        } finally {
+          if (typeof pbReleaseCanvas === 'function') pbReleaseCanvas(big);
+          else { big.width = 0; big.height = 0; }
         }
-        canvas.width = 240; canvas.height = Math.round(240 * big.height / big.width);
-        x = canvas.getContext('2d'); x.imageSmoothingQuality = 'high';
-        x.drawImage(big, 0, 0, canvas.width, canvas.height);
       }
       function buildThemeCats() {
         themeCatsEl.innerHTML = '';
@@ -79823,6 +80082,9 @@ function fxWavUrl(kind) {
           if (!q) return true;
           return (t.name + ' ' + t.cats.join(' ') + ' ' + t.tags).toLowerCase().indexOf(q) >= 0;
         });
+        if (typeof pbReleaseCanvas === 'function') {
+          themeGridEl.querySelectorAll('canvas').forEach(pbReleaseCanvas);
+        }
         themeGridEl.innerHTML = '';
         thumbQueue = [];
         if (thumbIO) thumbIO.disconnect();
@@ -79838,7 +80100,8 @@ function fxWavUrl(kind) {
             b.append(im, n, c, del);
             b.addEventListener('click', function () { applyMyTheme(t); });
           } else {
-            var cv = document.createElement('canvas'); cv.width = 240; cv.height = 360;
+            // Keep backing store 0x0 until IntersectionObserver scrolls this card into view (CSS aspect-ratio:2/3 reserves the box).
+            var cv = document.createElement('canvas'); cv.width = 0; cv.height = 0;
             b.append(cv, n, c);
             b.addEventListener('click', function () { openTemplatePreview(t); });
             queueThumb(cv, t);
@@ -88572,10 +88835,15 @@ function fxWavUrl(kind) {
       function drawTemplatePreview(t) {
         var lk = tplLayKey || currentLayout;
         var big = document.createElement('canvas');
-        withThemeState(t, function () { composeCanvas(lk, big, buildPlaceholderShots(360, shotsNeeded(lk))); });
-        var cv = document.getElementById('tplCanvas'), sc = Math.min(1, 900 / Math.max(big.width, big.height));
-        cv.width = Math.round(big.width * sc); cv.height = Math.round(big.height * sc);
-        var x = cv.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(big, 0, 0, cv.width, cv.height);
+        try {
+          withThemeState(t, function () { composeCanvas(lk, big, buildPlaceholderShots(360, shotsNeeded(lk))); });
+          var cv = document.getElementById('tplCanvas'), sc = Math.min(1, 900 / Math.max(big.width, big.height));
+          cv.width = Math.round(big.width * sc); cv.height = Math.round(big.height * sc);
+          var x = cv.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(big, 0, 0, cv.width, cv.height);
+        } finally {
+          if (typeof pbReleaseCanvas === 'function') pbReleaseCanvas(big);
+          else { big.width = 0; big.height = 0; }
+        }
       }
       function openTemplatePreview(t) {
         tplPending = t;
@@ -88604,7 +88872,11 @@ function fxWavUrl(kind) {
         tplModal.hidden = false;
         document.getElementById('tplUse').focus();
       }
-      function closeTemplatePreview() { tplModal.hidden = true; tplPending = null; }
+      function closeTemplatePreview() {
+        tplModal.hidden = true; tplPending = null;
+        var cv = document.getElementById('tplCanvas');
+        if (cv && typeof pbReleaseCanvas === 'function') pbReleaseCanvas(cv);
+      }
       document.getElementById('tplLayChips').addEventListener('click', function (e) {
         var b = e.target.closest('[data-k]'); if (!b || !tplPending) return;
         tplLayKey = b.dataset.k;
@@ -89369,6 +89641,9 @@ function fxWavUrl(kind) {
           if (!first) { try { if (rawFolderKey()) resolveDriveFolder(); } catch (e) { } }
         }
         renderLan();
+        window.addEventListener('pb-lan-change', function () {
+          if (state !== 'capturing') renderLan();
+        });
         setInterval(function () {
           if (document.hidden || state === 'capturing') return;
           renderLan();

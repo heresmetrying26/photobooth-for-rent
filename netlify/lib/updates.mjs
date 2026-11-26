@@ -318,7 +318,7 @@ export const NOTES = [
       '🎟️ Compact Thermal Vouchers: Shortens 80 mm and 58 mm paper vouchers by over half with a tighter top-to-bottom layout while keeping tall upright orientation on receipt printers.',
       '⚡ Faster, lag-free stickers and custom text: Keeps your photo collage cached while dragging, resizing, typing, or changing sticker and text sliders so edits feel instant even on tablets.',
       '🧭 Seamless guest flow & live text controls: Adds a clear step progress bar (Style, Take Photos, Decorate, Done), a Change layout back button on Get Ready, live font, size, and colour restyling on selected text, Undo and Clear buttons, and clear black-and-white receipt preview notices.',
-      '💾 Save Backup + RAW on Camera SD Card & Offline Queue Upgrades: Optional switch across booth apps, Print Helper 1.1.26, and Roving DSLR Bridge (Android 1.1.5 / iOS 1.0.1) keeps full RAW and JPEG copies on your camera card while streaming JPEGs, alongside automatic phone upload queuing and a simpler beginner view for 360 Booth.'
+      '💾 Save Backup + RAW on Camera SD Card & Offline Queue Upgrades: Optional switch across booth apps, Print Helper 1.1.26, and Roving DSLR Bridge (Android 1.1.5 / iOS 1.0.1) keeps full RAW and JPEG copies on your camera card while streaming JPEGs, alongside automatic phone upload queuing, reliable slow-Wi-Fi Photographer Desk processing, sharper Roving brightness export, mobile template-maker preview stacking, and a simpler beginner view for 360 Booth.'
     ]
   },
   {

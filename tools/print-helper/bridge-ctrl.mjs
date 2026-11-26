@@ -23,6 +23,9 @@ import {
   handleLanStationHttp,
   getLanStationInfo,
   rotateLanStationPin,
+  setStationPrinterFilter,
+  setStationTestSizes,
+  buildStationTestJob,
   renderStationDashboardHtml,
   recordStationJob,
   createStationTestPngDataUrl
@@ -120,6 +123,9 @@ export function startHelperBridge({ logger = () => { }, ports = BRIDGE_PORTS, la
 export {
   getLanStationInfo,
   rotateLanStationPin,
+  setStationPrinterFilter,
+  setStationTestSizes,
+  buildStationTestJob,
   renderStationDashboardHtml,
   recordStationJob,
   createStationTestPngDataUrl

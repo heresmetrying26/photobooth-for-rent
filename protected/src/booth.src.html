@@ -51549,6 +51549,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         ];
         var lastInfo = null;
         var lastPrSig = '', lastSzSig = '', lastJobSig = '';
+        var prSaveSeq = 0, szSaveSeq = 0, prBusy = 0, szBusy = 0;
         function sayPs(msg, err) {
           var el = document.getElementById('stationDeskMsg');
           if (!el) return;

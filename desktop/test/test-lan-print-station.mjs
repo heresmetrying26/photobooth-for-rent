@@ -9,13 +9,18 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import {
+  buildStationTestJob,
   createStationTestPngDataUrl,
+  filterStationPrinters,
   getLanStationInfo,
+  getStationTestSizes,
   handleLanStationHttp,
   initLanStation,
   recordStationJob,
   renderStationDashboardHtml,
-  rotateLanStationPin
+  rotateLanStationPin,
+  setStationPrinterFilter,
+  setStationTestSizes
 } from '../lib/lan-print-station.mjs';
 import { startHelperBridge, stopHelperBridge } from '../../tools/print-helper/bridge-ctrl.mjs';
 
@@ -135,31 +140,188 @@ try {
     assert.equal(getLanStationInfo().jobs[0].ok, true);
   });
 
-  await check('pure-JS test print generator builds valid 4x6 and 2x6 PNGs and records station jobs', () => {
-    for (const [twoUp, expectW] of [[false, 600], [true, 300]]) {
-      const url = createStationTestPngDataUrl({ twoUp });
+  await check('pure-JS test print generator builds proportional PNGs for 4x6, 2x6, 5x7, 8x10, A4 & buildStationTestJob works', () => {
+    const cases = [
+      [{ twoUp: false }, 600, 900],
+      [{ twoUp: true }, 300, 900],
+      [{ widthMm: 127, heightMm: 177.8, twoUp: false }, 643, 900],
+      [{ widthMm: 203.2, heightMm: 254, twoUp: false }, 720, 900],
+      [{ widthMm: 210, heightMm: 297, twoUp: false }, 636, 900]
+    ];
+    for (const [spec, expectW, expectH] of cases) {
+      const url = createStationTestPngDataUrl(spec);
       assert.ok(url.startsWith('data:image/png;base64,'));
       const buf = Buffer.from(url.slice('data:image/png;base64,'.length), 'base64');
       assert.equal(buf.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
       assert.equal(buf.readUInt32BE(16), expectW);
-      assert.equal(buf.readUInt32BE(20), 900);
+      assert.equal(buf.readUInt32BE(20), expectH);
     }
-    recordStationJob({ printer: 'Mitsubishi CP-D80DW', pages: 1, paper: '4x6 test', from: 'Laptop Test', ok: true });
+    const legacyJob = buildStationTestJob('Mitsubishi CP-D80DW', true);
+    assert.equal(legacyJob.ok, true);
+    assert.equal(legacyJob.printBody.twoUp, true);
+    assert.equal(legacyJob.printBody.widthMm, 101.6);
+    const customJob = buildStationTestJob('EPSON L8050', { widthMm: 127, heightMm: 177.8, label: '5×7 (5R)', paperName: 'PR(5x7)', twoUp: false });
+    assert.equal(customJob.ok, true);
+    assert.equal(customJob.printBody.widthMm, 127);
+    assert.equal(customJob.printBody.heightMm, 177.8);
+    assert.equal(customJob.printBody.paperName, 'PR(5x7)');
+    assert.equal(customJob.jobLabel, '5×7 (5R)');
+    recordStationJob({ printer: 'Mitsubishi CP-D80DW', pages: 1, paper: customJob.jobLabel, from: 'Laptop Test', ok: true });
     assert.equal(getLanStationInfo().jobs[0].from, 'Laptop Test');
   });
 
-  await check('local station dashboard HTML includes Test Print buttons and inline script parses cleanly', () => {
+  await check('printer allowlist filtering, hideUnusedPrinters & dynamic testSizes persist across reload and filter /lan-station/status', async () => {
+    const busyList = ['AnyDesk Printer', 'Brother MFC', 'Fax', 'Mitsubishi CP-D80DW', 'Sinfonia CS2'];
+    assert.deepEqual(filterStationPrinters(busyList), busyList);
+
+    // Untick all -> 0 visible, filtered: true
+    setStationPrinterFilter({ selectedPrinters: [], hideUnusedPrinters: false });
+    assert.deepEqual(filterStationPrinters(busyList), []);
+
+    // Tick only bottom printer(s) + Hide unused -> hides AnyDesk/Brother/Fax on both laptop & iPad /lan-station/status
+    setStationPrinterFilter({ selectedPrinters: ['Mitsubishi CP-D80DW'], hideUnusedPrinters: true });
+    assert.deepEqual(filterStationPrinters(busyList), ['Mitsubishi CP-D80DW']);
+
+    setStationTestSizes([
+      { id: '4x6', label: '4×6', widthMm: 101.6, heightMm: 152.4, twoUp: false, builtin: true },
+      { id: '5x7', label: '5×7 (5R)', widthMm: 127, heightMm: 177.8, twoUp: false },
+      { label: 'Custom 6x9', widthMm: 152.4, heightMm: 228.6, twoUp: false, paperName: '6x9 Photo' }
+    ]);
+
+    // Reload from disk with the same pinFile -> PIN, selectedPrinters, hideUnusedPrinters & custom testSizes must survive
+    initLanStation({
+      getPort: () => port,
+      pinFile,
+      appKind: 'desktop',
+      version: '1.1.112',
+      getPrinters: async () => busyList,
+      getPaper: async () => ({ ok: true }),
+      printJob: async () => ({ ok: true })
+    });
+    const reloaded = getLanStationInfo();
+    assert.equal(reloaded.pin, freshPin);
+    assert.deepEqual(reloaded.selectedPrinters, ['Mitsubishi CP-D80DW']);
+    assert.equal(reloaded.hideUnusedPrinters, true);
+    assert.equal(reloaded.testSizes.length, 3);
+    assert.equal(reloaded.testSizes[2].paperName, '6x9 Photo');
+    assert.equal(reloaded.testSizesCustomized, true);
+
+    const stRes = await fetch(base + '/lan-station/status', { headers: { 'x-pb-pin': freshPin } });
+    const stJson = await stRes.json();
+    assert.deepEqual(stJson.printers, ['Mitsubishi CP-D80DW']);
+    assert.equal(stJson.allPrintersCount, 5);
+    assert.equal(stJson.filtered, true);
+
+    // Restore clean test state
+    setStationPrinterFilter({ selectedPrinters: null, hideUnusedPrinters: false });
+    setStationTestSizes(null);
+    assert.equal(getStationTestSizes().length, 2);
+  });
+
+  await check('local station dashboard HTML includes filter toolbar, hide unused, dynamic sizes & runs clean workflow in VM', async () => {
     const html = renderStationDashboardHtml();
-    assert.match(html, /Test 4\u00d76/);
-    assert.match(html, /Test 2\u00d76 Cut/);
+    assert.match(html, /id="prSearch"/);
+    assert.match(html, /id="untickAllBtn"/);
+    assert.match(html, /id="tickAllBtn"/);
+    assert.match(html, /id="hideUnusedBtn"/);
+    assert.match(html, /id="toggleAddSizeBtn"/);
+    assert.match(html, /id="drvLoadBtn"/);
+    assert.match(html, /id="csAddBtn"/);
     assert.match(html, /Driver Preferences/);
     assert.match(html, /Where to Click on the iPad App/);
     const m = /<script>([\s\S]*?)<\/script>/.exec(html);
     assert.ok(m, 'dashboard script must exist');
-    new vm.Script(m[1]);
+
+    // Interactive DOM + fetch simulation in VM: Untick all -> search -> tick Mitsubishi -> Hide unused -> add custom size -> test print
+    const els = {};
+    const mkEl = (id) => ({
+      id, textContent: '', innerHTML: '', value: '', checked: false, disabled: false,
+      className: '', style: {}, dataset: {},
+      classList: { toggle: () => { }, add: () => { }, remove: () => { } },
+      focus: () => { }, closest: () => null
+    });
+    ['dashMsg', 'pinTxt', 'ipList', 'prCountBadge', 'hideUnusedBtn', 'refPrBtn', 'prToolbar', 'prSearch',
+      'untickAllBtn', 'tickAllBtn', 'prList', 'resetSizesBtn', 'sizeChips', 'toggleAddSizeBtn', 'addSizeBox',
+      'presetRow', 'drvPrSel', 'drvLoadBtn', 'drvSzSel', 'drvAddBtn', 'csLabel', 'csW', 'csH', 'csU', 'csTwoUp',
+      'csAddBtn', 'newPinBtn', 'jobBody'].forEach((id) => { els[id] = mkEl(id); });
+    els.csU.value = 'in';
+
+    let simState = {
+      pin: '123456',
+      port: 47777,
+      addresses: [{ ip: '192.168.137.1', kind: 'Hotspot', port: 47777 }],
+      printers: ['AnyDesk Printer', 'Brother MFC', 'Fax', 'Mitsubishi CP-D80DW', 'Samsung Laser'],
+      selectedPrinters: null,
+      hideUnusedPrinters: false,
+      testSizes: [{ id: '4x6', label: '4×6', widthMm: 101.6, heightMm: 152.4, twoUp: false, builtin: true }],
+      testSizesCustomized: false,
+      jobs: []
+    };
+    const postedPrints = [];
+    const sandbox = {
+      console, Set, Array, Object, String, Number, Math, JSON, Date, encodeURIComponent,
+      setInterval: () => 0,
+      document: {
+        activeElement: null,
+        getElementById: (id) => els[id] || (els[id] = mkEl(id))
+      },
+      fetch: async (url, init) => {
+        const body = init && init.body ? JSON.parse(init.body) : {};
+        if (String(url).startsWith('/station/info')) return { ok: true, json: async () => simState };
+        if (url === '/station/printers') {
+          simState = { ...simState, ...setStationPrinterFilter(body) };
+          return { ok: true, json: async () => ({ ok: true, ...simState }) };
+        }
+        if (url === '/station/test-sizes') {
+          simState = { ...simState, ...setStationTestSizes(body.testSizes) };
+          return { ok: true, json: async () => ({ ok: true, ...simState }) };
+        }
+        if (url === '/station/test-print') {
+          postedPrints.push(body);
+          return { ok: true, json: async () => ({ ok: true }) };
+        }
+        return { ok: false, json: async () => ({}) };
+      }
+    };
+    vm.runInNewContext(m[1], sandbox);
+    await new Promise((r) => setTimeout(r, 20));
+    assert.match(els.prList.innerHTML, /AnyDesk Printer/);
+    assert.match(els.prList.innerHTML, /Mitsubishi CP-D80DW/);
+
+    // Step 1: Untick all
+    await els.untickAllBtn.onclick();
+    await new Promise((r) => setTimeout(r, 10));
+    assert.deepEqual(simState.selectedPrinters, []);
+    assert.equal(simState.hideUnusedPrinters, false);
+
+    // Step 2: Search 'mits' -> hides A/B printers during pick
+    els.prSearch.value = 'mits';
+    els.prSearch.oninput();
+    assert.doesNotMatch(els.prList.innerHTML, /AnyDesk Printer/);
+    assert.match(els.prList.innerHTML, /Mitsubishi CP-D80DW/);
+
+    // Step 3: Tick Mitsubishi -> Hide unused (even with 'mits' previously typed in search!)
+    await els.prList.onchange({ target: { closest: () => ({ checked: true, dataset: { sel: 'Mitsubishi CP-D80DW' } }) } });
+    await els.hideUnusedBtn.onclick();
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(simState.hideUnusedPrinters, true);
+    assert.equal(els.prSearch.value, '', 'Hide unused clears stale search box');
+    assert.match(els.prList.innerHTML, /Mitsubishi CP-D80DW/);
+    assert.doesNotMatch(els.prList.innerHTML, /AnyDesk Printer/);
+    assert.match(els.prCountBadge.textContent, /1 of 5 ticked \(4 hidden\)/);
+
+    // Step 4: Dynamically add custom 6x9 size -> appears on Test button and posts exact dimensions
+    els.csW.value = '6'; els.csH.value = '9'; els.csU.value = 'in';
+    await els.csAddBtn.onclick();
+    await new Promise((r) => setTimeout(r, 10));
+    assert.match(els.prList.innerHTML, /Test 6×9/);
+    assert.equal(simState.testSizes.some((s) => Math.round(s.widthMm) === 152 && Math.round(s.heightMm) === 229), true);
+
+    setStationPrinterFilter({ selectedPrinters: null, hideUnusedPrinters: false });
+    setStationTestSizes(null);
   });
 
-  await check('built booth bundle keeps iPad DSLR camera local, includes Setup tools menu (without camera/printer/resize) and efficient JPEG prints', () => {
+  await check('built booth bundle keeps iPad DSLR camera local, includes filtered Print Station, Setup tools & JPEG prints', () => {
     const built = readFileSync(join(root, 'protected', 'booth.html'), 'utf8');
     assert.match(built, /id="lanStationRow"/);
     assert.match(built, /function lanStationActive\(/);
@@ -175,6 +337,14 @@ try {
     assert.match(built, /id="menuPrintStation"/);
     assert.match(built, /id="printStationFab"/);
     assert.match(built, /id="stationDeskOverlay"/);
+    assert.match(built, /id="stationDeskPrSearch"/);
+    assert.match(built, /id="stationDeskUntickBtn"/);
+    assert.match(built, /id="stationDeskHideBtn"/);
+    assert.match(built, /id="stationDeskAddSizeBtn"/);
+    assert.match(built, /id="stationDeskLoadDrvBtn"/);
+    assert.match(built, /id="stationDeskCsAddBtn"/);
+    assert.match(built, /pb4u\.lanStation\.setPrinters|api\.setPrinters/);
+    assert.match(built, /!lanStationActive\(\) && helperOn && helper\.ok && helperAtLeast\('1\.1\.7'\)/);
     assert.match(built, /function printStationAllowed\(\)/);
     assert.ok(!/data-setup-tool="(?:camFab|printFab|pstatFab|scaleFab)"/.test(built), 'Setup tools menu must exclude Camera, Printer, and Resize UI');
     // Efficiency optimizations: JPEG compression for photo prints & 60s cached helper status

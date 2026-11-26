@@ -11,6 +11,8 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.113', date: '2026-11-26' },
+  { version: '1.1.112', date: '2026-11-25' },
   { version: '1.1.111', date: '2026-11-25' },
   { version: '1.1.110', date: '2026-11-25' },
   { version: '1.1.109', date: '2026-11-25' },
@@ -220,13 +222,13 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.24', date: '2026-11-25' };
+export const HELPER = { version: '1.1.25', date: '2026-11-25' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
 // after about 60 s, so on a slower connection the 18 MB file never finished ("unexpected end of stream").
 // GitHub has no such limit. (The copy in public/downloads is still kept for the /downloads page.)
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-25', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-26', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
 // The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
 // /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new
@@ -254,7 +256,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.29', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.29/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.30', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.30/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -308,6 +310,30 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-26', title: 'Desktop 1.1.113, Android 1.2.22, iPad 1.1.30 & Website: Guided Photoman Template Maker, Guest Screen Aspect Fixes & Clean Menu Gating', for: ['website', 'app', 'android', 'ipad'], app: '1.1.113', android: '1.2.22', ipad: '1.1.30',
+    items: [
+      '🎨 Guided Photoman Template Maker with hover previews: Work through clean step tabs (Presets and PNG, Background and Decor, Spots Text and Logo), hover any starter preset card to preview how it looks right on the canvas before creating, and tap the question-mark guide button anytime for a 5-step walkthrough.',
+      '📷 Cleaner Photographer Desk: Switch cleanly between Queue, Template and Flow, Template Maker, and Connect and QR one view at a time, get guided Choose Photos and Connect buttons on an empty queue, and build custom frames directly inside Template Maker.',
+      '📺 Portrait Guest Screen & Tap to Start fixes: Keeps portrait and extended display frames proportioned without stretching, prevents welcome logo overlap, and allows guests or tablets to tap to start a photo session when ready.',
+      '🧰 Clean Setup menu visibility & Arrange and Print gating: Keeps Arrange and Print safely off unless enabled for a code in Admin, and keeps the Setup More menu clean across Desktop, Android, and iPad apps.'
+    ]
+  },
+  {
+    date: '2026-11-25', title: 'Desktop 1.1.112, Print Helper 1.1.25, Android 1.2.21 & iPad App (OTA): Clean Print Station Printer Picker & Dynamic Paper Sizes', for: ['website', 'app', 'android', 'ipad', 'helper'], app: '1.1.112', android: '1.2.21', helper: '1.1.25',
+    items: [
+      '☑️ Untick all, search & hide unused printers in Offline Print Station: Click Untick all, filter by printer name instead of scrolling past office or PDF printers, tick only the printer(s) you use, and click Hide unused so unneeded printers stay hidden on both the laptop screen and the paired iPad/Android dropdown.',
+      '📏 Dynamically add other paper sizes (+ Add paper size): Add 3.5×5 (3R), 5×7 (5R), 6×8 (6R), 8×10 (8R), Postcard, Keychain, A6, A5, A4, Letter, load sizes directly from your printer driver, or add custom inches/mm sizes (with optional 2-up cut) right alongside your 4×6 and 2×6 Cut test buttons.'
+    ]
+  },
+  {
+    date: '2026-11-25', title: 'Android 1.2.20: Offline Laptop Print Station over Booth Wi-Fi & Setup More Menu Tools', for: ['website', 'android'], android: '1.2.20',
+    items: [
+      '🖨️ Offline Laptop Print Station (Android Tablet App): Connect your Android tablet over your booth router or laptop hotspot to print straight to a Mitsubishi D80, DNP, HiTi, Canon, or Epson USB printer plugged into a Windows or Mac laptop — with zero internet and zero pop-ups.',
+      '🔎 1-tap Wi-Fi detection & 6-digit PIN pairing: Open Laptop Print Station on the laptop (when enabled by your rental admin), tap Find Laptop on Wi-Fi in Setup → Printer on your Android tablet, enter the 6-digit PIN, and pick your printer for 4×6 or 2×6 cut strips.',
+      '🧰 Quick Setup Menu & Faster Wi-Fi Printing: Open workspace tools directly from the ⋯ menu in Setup and send prints over local Wi-Fi as lightweight high-quality images for faster sessions.'
+    ]
+  },
   {
     date: '2026-11-25', title: 'Desktop 1.1.111 & iPad App (OTA): Setup More Menu Tools, Gated Offline Print Station & Faster Wi-Fi Printing', for: ['website', 'app', 'ipad'], app: '1.1.111',
     items: [

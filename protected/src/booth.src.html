@@ -10505,15 +10505,22 @@
 
     .prev-ov-empty-bar {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
       padding: 6px 0;
+      text-align: center;
+    }
+
+    .prev-ov-empty-bar .action-btn {
+      width: auto;
     }
 
     .prev-ov-hint {
       font-size: 11.5px;
       color: var(--ink-dim);
+      text-align: center;
     }
 
     .preview-dock-close {
@@ -12330,6 +12337,14 @@
       display: block;
       box-shadow: 0 6px 18px rgba(0, 0, 0, .35);
       object-fit: contain;
+    }
+
+    .pick-btn img:not([src]),
+    .pick-btn img[src=""] {
+      min-width: min(22vw, 110px);
+      min-height: min(22vh, 148px);
+      background: rgba(255, 255, 255, .10);
+      box-shadow: none;
     }
 
     .pick-name {
@@ -39938,11 +39953,23 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       async function startSession(skipReady, opts) {
         if (state === 'capturing') return;
         closeGalleryPop();
+        var hasCamSel = !!(typeof cameraSelect !== 'undefined' && cameraSelect && cameraSelect.value);
+        var readyWakePromise = null;
         if (!streamActive || camSleeping || camSleepPromise) {
-          const ok = await camLiveWake();
-          if (!ok) return;
+          if (skipReady === true || !hasCamSel) {
+            const ok = await camLiveWake();
+            if (!ok) return;
+          } else {
+            readyWakePromise = camLiveWake().then(function (ok) {
+              if (ok && state === 'capturing' && readyOverlay && readyOverlay.classList.contains('ready-active')) {
+                usbWantAt = Date.now() + 2500;
+              }
+              return ok;
+            }).catch(function () { return false; });
+          }
+        } else if (skipReady === true) {
+          await camEnsureLive();   // live view is only on while a guest is using the booth (battery saver)
         }
-        await camEnsureLive();   // live view is only on while a guest is using the booth (battery saver)
         // Show live feed again if we're coming from result state
         video.style.display = 'block';
         previewCanvas.style.display = 'none';
@@ -39978,6 +40005,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return '__back__';
         }
         if (sess.cancelled) { endCancelledSession(); return; }
+        if (readyWakePromise) {
+          const okWake = await readyWakePromise;
+          if (!okWake && !streamActive) { endCancelledSession(); return; }
+        }
         await camEnsureLive();       // the camera may have rested while "Get ready" waited for Start: bring the picture back before the countdown
         if (sess.cancelled) { endCancelledSession(); return; }
         consumePayCredit();          // the paid session is used once the countdown starts (Cancel at Get ready keeps it)
@@ -40835,21 +40866,25 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // Switches the layout everywhere (Setup grid, shot count, previews). Used by
       // the Setup grid, a restored saved setup, and the guests' layout picker.
       let setupLayout = 'strip', setupActiveFrameId = null;
-      function setLayout(key) {
+      function setLayout(key, opts) {
         if (!LAYOUT_DEFS[key]) return;
         if (layoutDef(key).kind === 'frame') {
           if (typeof myFrames === 'undefined' || !myFrames || !myFrames.length) key = 'strip';
           else if (key === 'framesheet' && !liveSheetItems().length) applyPattern(sheet.pattern);
         }
         currentLayout = key;
-        const activeKey = layoutCardKey();
-        [...layoutGrid.querySelectorAll('.layout-btn')].forEach(b => {
-          const on = b.dataset.layout === activeKey;
-          b.classList.toggle('active', on);
-          b.setAttribute('aria-pressed', on ? 'true' : 'false');
-        });
-        if (typeof refreshThemeLayoutNote === 'function') refreshThemeLayoutNote();
-        layoutHint.textContent = layoutDef().hint;
+        if (opts && opts.thumbOnly) return;
+        var skipPreview = !!(opts && opts.skipPreview);
+        if (!skipPreview) {
+          const activeKey = layoutCardKey();
+          [...layoutGrid.querySelectorAll('.layout-btn')].forEach(b => {
+            const on = b.dataset.layout === activeKey;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+          if (typeof refreshThemeLayoutNote === 'function') refreshThemeLayoutNote();
+          layoutHint.textContent = layoutDef().hint;
+        }
         applyStageAspect();
         // A finished session with a different shot count can't be re-laid out.
         if (shotCanvases.length !== shotsNeeded()) {
@@ -40857,14 +40892,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (state === 'result') state = 'idle';
           updateFilmTrack();
           updateUI();
-          if (typeof guestRender === 'function') guestRender();
+          if (!skipPreview && typeof guestRender === 'function') guestRender();
         }
-        setActivePresetBtn();
-        updateBandPositionVisibility();
-        updateReadySub();
+        if (!skipPreview) {
+          setActivePresetBtn();
+          updateBandPositionVisibility();
+          updateReadySub();
+        }
         renderComposite();
-        renderSetupPreview();
-        const mappedPaper = layoutPaperMap && layoutPaperMap[activeKey];
+        if (!skipPreview) renderSetupPreview();
+        const activeKeyNow = layoutCardKey();
+        const mappedPaper = layoutPaperMap && layoutPaperMap[activeKeyNow];
         if (mappedPaper && typeof paperFor === 'function' && paperFor(mappedPaper) && (typeof printSettings !== 'function' || (printSettings() || []).includes(mappedPaper))) {
           printSize = mappedPaper;
           try { localStorage.setItem('pb_print_paper', printSize); } catch (e) { }
@@ -40890,10 +40928,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           }
         }
         refreshPrintUI();
-        if (typeof refreshDecorUI === 'function' && typeof overlaySizeHint !== 'undefined' && overlaySizeHint) refreshDecorUI();
-        if (typeof frameListEl !== 'undefined' && frameListEl) refreshFrameUI();
-        if (typeof refreshGifLayoutUI === 'function') refreshGifLayoutUI();
-        try { refreshLayoutTierRow(); } catch (e) { }
+        if (!skipPreview) {
+          if (typeof refreshDecorUI === 'function' && typeof overlaySizeHint !== 'undefined' && overlaySizeHint) refreshDecorUI();
+          if (typeof frameListEl !== 'undefined' && frameListEl) refreshFrameUI();
+          if (typeof refreshGifLayoutUI === 'function') refreshGifLayoutUI();
+          try { refreshLayoutTierRow(); } catch (e) { }
+        }
       }
 
       var shotCrops = {};
@@ -49334,8 +49374,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         'body.ps .g{display:block;padding:0;}' +
         'body.ps .side-l,body.ps .side-r .chip,body.ps .clogo,body.ps .gallery-pill{display:none !important;}' +
         'body.ps .side-r{display:contents !important;}' +
-        'body.ps .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(100vw,calc(100vh * var(--ga,1.3333))) !important;height:min(100vh,calc(100vw / var(--ga,1.3333))) !important;aspect-ratio:var(--ga,1.3333) !important;border-radius:0;box-shadow:none;background:#000;}' +
-        'body.ps.wel-full .frame{left:0;top:0;transform:none;width:100vw !important;height:100vh !important;aspect-ratio:auto !important;}' +
+        'body.ps .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(100vw,calc(100vh * var(--ga,1.3333))) !important;height:min(100vh,calc(100vw / var(--ga,1.3333))) !important;max-width:none !important;max-height:none !important;aspect-ratio:var(--ga,1.3333) !important;border-radius:0;box-shadow:none;background:#000;}' +
+        'body.ps.wel-full .frame{left:0;top:0;transform:none;width:100vw !important;height:100vh !important;max-width:none !important;max-height:none !important;aspect-ratio:auto !important;}' +
         'body.ps .frame img.res{background:#000;}' +
         'body.ps .cd{position:fixed;top:max(20px,2.4vh);left:50%;right:auto;transform:translateX(-50%);z-index:46;padding:calc(10px * var(--ui-cd-scale,1)) calc(18px * var(--ui-cd-scale,1));border-radius:999px;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.2);}' +
         'body.ps .cdw{width:calc(clamp(56px,8vmin,84px) * var(--ui-cd-scale,1));}' +
@@ -49389,7 +49429,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         '.gcopies-btns button.go{background:var(--red);border-color:var(--red);color:#fff;}' +
         /* Classic "With logo & side text" mode: still hides chrome between guests when wel is set */
         'body.wel{background:#141216;}body.wel .g{display:block;padding:0;}body.wel .side,body.wel .clogo{display:none !important;}' +
-        'body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);height:min(100vh,calc(100vw / var(--wa,1.3333))) !important;aspect-ratio:var(--wa,1.3333) !important;border-radius:0;box-shadow:none;}' +
+        'body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(100vw,calc(100vh * var(--wa,1.3333))) !important;height:min(100vh,calc(100vw / var(--wa,1.3333))) !important;max-width:none !important;max-height:none !important;aspect-ratio:var(--wa,1.3333) !important;border-radius:0;box-shadow:none;}' +
         '@media (orientation:portrait){' +
         'body:not(.ps):not(.wel) .g{display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:1.4vh;padding:2vh 3vw;}' +
         'body:not(.ps):not(.wel) .side{width:100%;height:auto;flex:none;gap:.8vh;}' +
@@ -66545,23 +66585,28 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // of their layout, and the event name with "Tap to start". Drawn at the
       // camera's shape so it fills the live view exactly.
       var welcomeCta = null;
-      function renderWelcome() {
+      function renderWelcomeSurface(opts) {
         try {
+          var previewOnly = !!(opts && opts.previewOnly);
+          var hasVp = !!(opts && Number(opts.vw) > 0 && Number(opts.vh) > 0);
+          var vpW = hasVp ? Number(opts.vw) : window.innerWidth;
+          var vpH = hasVp ? Number(opts.vh) : window.innerHeight;
           var wa = 4 / 3;
           try { wa = Math.max(0.5, Math.min(2.4, camAspect())); } catch (e) { }
-          var isPort = (window.innerHeight && window.innerWidth) ? (window.innerHeight > window.innerWidth) : false;
-          if (attractMode === 'poster' && !isPort && window.innerWidth && window.innerHeight) {
-            wa = Math.max(0.8, Math.min(2.4, window.innerWidth / window.innerHeight));
+          var isPort = (vpH && vpW) ? (vpH > vpW) : false;
+          if (!isPort && (hasVp || attractMode === 'poster') && vpW && vpH) {
+            wa = Math.max(0.8, Math.min(2.4, vpW / vpH));
           }
           var land = !isPort && (wa >= 1.15);
           var H = isPort ? 1600 : 1200;
-          var portAspect = (window.innerHeight && window.innerWidth) ? (window.innerWidth / window.innerHeight) : 0.625;
+          var portAspect = (vpH && vpW) ? Math.max(0.4, Math.min(1.0, vpW / vpH)) : 0.625;
           var W = isPort ? Math.round(H * portAspect) : Math.round(H * wa);
           var c = document.createElement('canvas'); c.width = W; c.height = H;
           var ctx = c.getContext('2d');
-          syncWelcomeFitUI();
+          if (!previewOnly) syncWelcomeFitUI();
           var hfMode = typeof fx !== 'undefined' ? fx.hands : 'off';
           var btnText = welcomeMsg || (hfMode === 'wave' ? 'Wave to start' : hfMode === 'smile' ? 'Smile to start' : 'Tap to start');
+          var localCta = null, localBaseUrl = '', localLogoRect = null, localGeo = { W: W, H: H, mid: 0.5 }, outWa = Number((W / H).toFixed(4));
 
           // ---- Camera mode: transparent canvas with just a floating CTA button ----
           if (attractMode === 'camera') {
@@ -66581,20 +66626,24 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', 34, bw - 50, 18);
               ctx.font = '800 ' + bs + 'px Manrope, sans-serif';
               ctx.fillText(btnText, W / 2, by + bh / 2 + bs * 0.36);
-              welcomeCta = { l: bx / W * 100, t: by / H * 100, w: bw / W * 100, h: bh / H * 100 };
-            } else {
-              welcomeCta = null;
+              localCta = { l: bx / W * 100, t: by / H * 100, w: bw / W * 100, h: bh / H * 100 };
             }
-            welcomeGeo = { W: W, H: H, mid: 0.5 };
-            welcomeBaseUrl = ''; welcomeLogoRect = null;
-            placeWelcomePulse();
-            welcomeDataUrl = c.toDataURL('image/png');   // PNG for transparency
-            welcomeImg.src = welcomeDataUrl;
-            var prev = document.getElementById('welcomePreview'); if (prev) prev.src = welcomeDataUrl;
-            try { if (typeof syncSetupVideoPreview === 'function') syncSetupVideoPreview(); } catch (e) { }
-            renderResultBg();
-            guestRender();
-            return;
+            var camUrl = c.toDataURL('image/png');   // PNG for transparency
+            if (!previewOnly) {
+              welcomeCta = localCta;
+              welcomeGeo = localGeo;
+              welcomeBaseUrl = ''; welcomeLogoRect = null;
+              placeWelcomePulse();
+              welcomeDataUrl = camUrl;
+              welcomeImg.src = welcomeDataUrl;
+              var prev = document.getElementById('welcomePreview'); if (prev) prev.src = welcomeDataUrl;
+              try { if (typeof syncSetupVideoPreview === 'function') syncSetupVideoPreview(); } catch (e) { }
+              renderResultBg();
+              guestRender();
+            } else {
+              try { c.width = 0; c.height = 0; } catch (e) { }
+            }
+            return { dataUrl: camUrl, wa: outWa };
           }
 
           // ---- Poster mode: full-bleed uploaded image/video + CTA ----
@@ -66631,33 +66680,38 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               var bs2 = fitFont(ctx, btnText, 'Manrope, sans-serif', 34, bw2 - 50, 18);
               ctx.font = '800 ' + bs2 + 'px Manrope, sans-serif';
               ctx.fillText(btnText, W / 2, by2 + bh2 / 2 + bs2 * 0.36);
-              welcomeCta = { l: bx2 / W * 100, t: by2 / H * 100, w: bw2 / W * 100, h: bh2 / H * 100 };
-            } else {
-              welcomeCta = null;
+              localCta = { l: bx2 / W * 100, t: by2 / H * 100, w: bw2 / W * 100, h: bh2 / H * 100 };
             }
-            welcomeGeo = { W: W, H: H, mid: 0.5 };
-            welcomeBaseUrl = ''; welcomeLogoRect = null;
             // Draw brand logo if set
             var wl2 = brandImgFor('w'), wb2 = brand.w;
             if (wl2) {
-              welcomeBaseUrl = c.toDataURL('image/jpeg', 0.8);
+              if (!previewOnly) localBaseUrl = c.toDataURL('image/jpeg', 0.8);
               var lAuto2 = wb2.x == null, lbh2 = (wb2.s || BRAND_DEF_S.w) * H, lasp2 = wl2.naturalWidth / wl2.naturalHeight;
               var lf2 = brandFit(lasp2, lbh2, lAuto2 ? Math.min(lbh2 * BRAND_MAXR, W * 0.6) : lbh2 * BRAND_MAXR);
               var lcx2 = lAuto2 ? W / 2 : wb2.x * W, lcy2 = lAuto2 ? 80 + lf2.h / 2 : wb2.y * H;
               ctx.drawImage(wl2, lcx2 - lf2.w / 2, lcy2 - lf2.h / 2, lf2.w, lf2.h);
-              welcomeLogoRect = { x: lcx2 / W, y: lcy2 / H, w: lf2.w / W, h: lf2.h / H, s: lbh2 / H };
+              localLogoRect = { x: lcx2 / W, y: lcy2 / H, w: lf2.w / W, h: lf2.h / H, s: lbh2 / H };
             }
-            placeWelcomePulse();
-            welcomeDataUrl = c.toDataURL('image/jpeg', 0.88);
-            syncWelcomeFitUI();
-            if (typeof brandPvLayout === 'function') brandPvLayout();
-            welcomeImg.src = welcomeDataUrl;
-            var prev2 = document.getElementById('welcomePreview');
-            if (prev2) prev2.src = welcomeDataUrl;
-            try { if (typeof syncSetupVideoPreview === 'function') syncSetupVideoPreview(); } catch (e) { }
-            renderResultBg();
-            guestRender();
-            return;
+            var posterUrl = c.toDataURL('image/jpeg', 0.88);
+            if (!previewOnly) {
+              welcomeCta = localCta;
+              welcomeGeo = localGeo;
+              welcomeBaseUrl = localBaseUrl;
+              welcomeLogoRect = localLogoRect;
+              placeWelcomePulse();
+              welcomeDataUrl = posterUrl;
+              syncWelcomeFitUI();
+              if (typeof brandPvLayout === 'function') brandPvLayout();
+              welcomeImg.src = welcomeDataUrl;
+              var prev2 = document.getElementById('welcomePreview');
+              if (prev2) prev2.src = welcomeDataUrl;
+              try { if (typeof syncSetupVideoPreview === 'function') syncSetupVideoPreview(); } catch (e) { }
+              renderResultBg();
+              guestRender();
+            } else {
+              try { c.width = 0; c.height = 0; } catch (e) { }
+            }
+            return { dataUrl: posterUrl, wa: outWa };
           }
 
           // ---- Card mode (default): branded event card with sample print ----
@@ -66943,31 +66997,40 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', land ? 34 : 28, bw - 40, 16);
             ctx.font = '800 ' + bs + 'px Manrope, sans-serif';
             ctx.fillText(btnText, mid, by + bh / 2 + bs * 0.36);
-            welcomeCta = { l: bx / W * 100, t: by / H * 100, w: bw / W * 100, h: bh / H * 100 };
-          } else {
-            welcomeCta = null;
+            localCta = { l: bx / W * 100, t: by / H * 100, w: bw / W * 100, h: bh / H * 100 };
           }
-          welcomeGeo = { W: W, H: H, mid: mid / W };
-          welcomeBaseUrl = ''; welcomeLogoRect = null;
+          localGeo = { W: W, H: H, mid: mid / W };
           if (wl) {
-            welcomeBaseUrl = c.toDataURL('image/jpeg', 0.8);   // the preview in Setup drags the logo over this
+            if (!previewOnly) localBaseUrl = c.toDataURL('image/jpeg', 0.8);   // the preview in Setup drags the logo over this
             var lAuto = wb.x == null, lbh = (wb.s || BRAND_DEF_S.w) * H, lasp = wl.naturalWidth / wl.naturalHeight;
             var lf = brandFit(lasp, lbh, lAuto ? Math.min(lbh * BRAND_MAXR, cw - 80) : lbh * BRAND_MAXR);
             if (lAuto && box.slot > 0 && lf.h > box.slot - 16) lf = brandFit(lasp, Math.max(24, box.slot - 16), Math.min(lbh * BRAND_MAXR, cw - 80));
             var lcx = lAuto ? mid : wb.x * W, lcy = lAuto ? cy + (box.padY || 34) + lf.h / 2 + 4 : wb.y * H;
             ctx.drawImage(wl, lcx - lf.w / 2, lcy - lf.h / 2, lf.w, lf.h);
-            welcomeLogoRect = { x: lcx / W, y: lcy / H, w: lf.w / W, h: lf.h / H, s: lbh / H };
+            localLogoRect = { x: lcx / W, y: lcy / H, w: lf.w / W, h: lf.h / H, s: lbh / H };
           }
-          placeWelcomePulse();
-          welcomeDataUrl = c.toDataURL('image/jpeg', 0.88);
-          if (typeof brandPvLayout === 'function') brandPvLayout();
-          welcomeImg.src = welcomeDataUrl;
-          var prev = document.getElementById('welcomePreview'); if (prev) prev.src = welcomeDataUrl;
-          try { if (typeof syncSetupVideoPreview === 'function') syncSetupVideoPreview(); } catch (e) { }
-          renderResultBg();
-          guestRender();
-        } catch (e) { console.error('welcome', e); }
+          var cardDataUrl = c.toDataURL('image/jpeg', 0.88);
+          if (!previewOnly) {
+            welcomeCta = localCta;
+            welcomeGeo = localGeo;
+            welcomeBaseUrl = localBaseUrl;
+            welcomeLogoRect = localLogoRect;
+            placeWelcomePulse();
+            welcomeDataUrl = cardDataUrl;
+            if (typeof brandPvLayout === 'function') brandPvLayout();
+            welcomeImg.src = welcomeDataUrl;
+            var prev = document.getElementById('welcomePreview'); if (prev) prev.src = welcomeDataUrl;
+            try { if (typeof syncSetupVideoPreview === 'function') syncSetupVideoPreview(); } catch (e) { }
+            renderResultBg();
+            guestRender();
+          } else {
+            try { c.width = 0; c.height = 0; } catch (e) { }
+          }
+          return { dataUrl: cardDataUrl, wa: outWa };
+        } catch (e) { console.error('welcome', e); return null; }
       }
+      function renderWelcome() { return renderWelcomeSurface(null); }
+      function renderWelcomeForViewport(vw, vh) { return renderWelcomeSurface({ vw: vw, vh: vh, previewOnly: true }); }
       // A soft pulse around "Tap to start" (the only motion on the guest screen while idle).
       function placeWelcomePulse() {
         var p = document.getElementById('welcomePulse');
@@ -67083,6 +67146,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
         try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
         try { if (typeof usbSyncStageCanvases === 'function') usbSyncStageCanvases(); } catch (e) { }
+        if (typeof schedulePickThumbPrewarm === 'function') schedulePickThumbPrewarm(show);
       }
 
       // Smooth dismiss transition on tap
@@ -67397,19 +67461,24 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         ensureGuestDesigns();
         guestDesigns[activeDesignIdx] = captureCurrentDesignSlot(guestDesigns[activeDesignIdx]);
       }
-      async function applyDesignSlot(slot, idx, forGuest) {
+      var _pbBgImgCache = Object.create(null);
+      function preloadBgImage(url) {
+        if (!url) return Promise.resolve(null);
+        var cached = _pbBgImgCache[url];
+        if (cached && cached.complete && cached.naturalWidth > 0) return Promise.resolve(cached);
+        if (typeof Image === 'undefined') return Promise.resolve(null);
+        return new Promise(function (resolve) {
+          var im = new Image();
+          _pbBgImgCache[url] = im;
+          im.onload = function () { resolve(im); };
+          im.onerror = function () { resolve(null); };
+          im.src = url;
+        });
+      }
+      function applyDesignSlotSync(slot, idx, forGuest, opts) {
         if (!slot) return;
         if (typeof idx === 'number') activeDesignIdx = Math.max(0, Math.min(guestDesigns.length - 1, idx));
         var st = slot.settings || {};
-        var ids = [];
-        if (st.overlay && st.overlay.id) ids.push(st.overlay.id);
-        if (st.logo && st.logo.id) ids.push(st.logo.id);
-        (st.decor || []).forEach(function (d) { if (d.src && d.src.indexOf('a:') === 0) ids.push(d.src.slice(2)); });
-        (st.myProps || []).forEach(function (id) { ids.push(id); });
-        if (st.bgAssetId) ids.push(st.bgAssetId);
-        if (ids.length && typeof ensureAssets === 'function') {
-          try { await ensureAssets(ids); } catch (e) { }
-        }
         var bg = (st.bgAssetId && typeof ASSETS !== 'undefined' && ASSETS[st.bgAssetId]) ? ASSETS[st.bgAssetId].url : (st.bgAssetUrl || null);
         var base = snapshotSetup({ skipDesignSync: true });
         var targetLayout = (forGuest && framesStandAlongsideDesigns()) ? designSlotFallbackLayout(slot) : (slot.layout || base.layout);
@@ -67423,8 +67492,29 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           activeDesignIdx: activeDesignIdx,
           includeFramesInDesignPick: includeFramesInDesignPick
         });
-        applySetup(next, bg, { skipDesignSync: true });
-        if (!forGuest) renderGuestDesignBar();
+        var thumbOnly = !!(opts && opts.thumbOnly);
+        var fastGuest = !!((forGuest || (opts && opts.fastGuest)) && !thumbOnly);
+        applySetup(next, bg, { skipDesignSync: true, thumbOnly: thumbOnly, fastGuest: fastGuest });
+        if (!forGuest && !thumbOnly) renderGuestDesignBar();
+      }
+      async function applyDesignSlot(slot, idx, forGuest, opts) {
+        if (!slot) return;
+        var st = slot.settings || {};
+        var ids = [];
+        if (st.overlay && st.overlay.id) ids.push(st.overlay.id);
+        if (st.logo && st.logo.id) ids.push(st.logo.id);
+        (st.decor || []).forEach(function (d) { if (d.src && d.src.indexOf('a:') === 0) ids.push(d.src.slice(2)); });
+        (st.myProps || []).forEach(function (id) { ids.push(id); });
+        if (st.bgAssetId) ids.push(st.bgAssetId);
+        var missingIds = ids.filter(function (id) { return id && (typeof ASSETS === 'undefined' || !ASSETS[id]); });
+        if (missingIds.length && typeof ensureAssets === 'function') {
+          try { await ensureAssets(missingIds); } catch (e) { }
+        }
+        var bg = (st.bgAssetId && typeof ASSETS !== 'undefined' && ASSETS[st.bgAssetId]) ? ASSETS[st.bgAssetId].url : (st.bgAssetUrl || null);
+        if (bg && (!(_pbBgImgCache[bg] && _pbBgImgCache[bg].complete && _pbBgImgCache[bg].naturalWidth > 0))) {
+          try { await preloadBgImage(bg); } catch (e) { }
+        }
+        applyDesignSlotSync(slot, idx, forGuest, opts);
       }
       function designSlotChoiceCount(slot, idx) {
         if (idx === activeDesignIdx) return guestChoiceKeys().length;
@@ -67817,38 +67907,57 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function currentPickThumbSig() {
         return JSON.stringify(Object.assign({}, snapshotSetup({ skipDesignSync: true }), { activeFrame: null, guestDesigns: null })) + (backgroundImg ? backgroundImg.src.length : 0);
       }
+      function renderThumbBitmap(key, opts) {
+        var big = document.createElement('canvas');
+        big._thumbPreview = 420;
+        var keepSample = previewSample; previewSample = null;      // drawn sample couple, not a camera frame
+        var keepFrame = activeFrameId, lk = key;
+        var keepSheetJson = null;
+        if (/^frame:/.test(key)) { activeFrameId = key.slice(6); lk = 'myframe'; }
+        else if (/^sheet:/.test(key)) {
+          var pr = typeof presetById === 'function' ? presetById(key.slice(6)) : null;
+          if (pr) {
+            keepSheetJson = JSON.stringify(sheet);
+            sheet.pattern = pr.pattern || 'tall-one-two-strips';
+            sheet.items = (pr.items || []).map(function (it) { return Object.assign({}, it); });
+            sheet.overlays = typeof cloneFrameOverlays === 'function' ? cloneFrameOverlays(pr.overlays, pr.overlay) : [];
+            lk = 'framesheet';
+          }
+        }
+        try { composeCanvas(lk, big, buildPlaceholderShots(280, shotsNeeded(lk))); }
+        finally {
+          previewSample = keepSample; activeFrameId = keepFrame;
+          if (keepSheetJson) { try { sheet = JSON.parse(keepSheetJson); } catch (e) { } }
+        }
+        var small = document.createElement('canvas'), sc = 420 / Math.max(1, big.height);
+        small.width = Math.max(1, Math.round(big.width * sc)); small.height = 420;
+        var sctx = small.getContext('2d'); sctx.imageSmoothingQuality = 'high';
+        var wantGray = !!(opts && opts.gray);
+        if (wantGray && 'filter' in sctx) {
+          sctx.filter = 'grayscale(1) contrast(1.06)';
+          sctx.drawImage(big, 0, 0, small.width, small.height);
+          sctx.filter = 'none';
+        } else {
+          sctx.drawImage(big, 0, 0, small.width, small.height);
+          if (wantGray) {
+            try {
+              var id = sctx.getImageData(0, 0, small.width, small.height), d = id.data;
+              for (var i = 0; i < d.length; i += 4) {
+                var v = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+                d[i] = d[i + 1] = d[i + 2] = v;
+              }
+              sctx.putImageData(id, 0, 0);
+            } catch (e) { }
+          }
+        }
+        var out = small.toDataURL('image/jpeg', 0.85);
+        try { big.width = 0; big.height = 0; small.width = 0; small.height = 0; } catch (e) { }
+        return out;
+      }
       function layoutThumbUrl(key) {
         var sig = currentPickThumbSig();
         if (pickThumbs.sig !== sig) pickThumbs = { sig: sig, urls: {} };
-        if (!pickThumbs.urls[key]) {
-          var big = document.createElement('canvas');
-          big._thumbPreview = 420;
-          var keepSample = previewSample; previewSample = null;      // drawn sample couple, not a camera frame
-          var keepFrame = activeFrameId, lk = key;
-          var keepSheetJson = null;
-          if (/^frame:/.test(key)) { activeFrameId = key.slice(6); lk = 'myframe'; }
-          else if (/^sheet:/.test(key)) {
-            var pr = typeof presetById === 'function' ? presetById(key.slice(6)) : null;
-            if (pr) {
-              keepSheetJson = JSON.stringify(sheet);
-              sheet.pattern = pr.pattern || 'tall-one-two-strips';
-              sheet.items = (pr.items || []).map(function (it) { return Object.assign({}, it); });
-              sheet.overlays = typeof cloneFrameOverlays === 'function' ? cloneFrameOverlays(pr.overlays, pr.overlay) : [];
-              lk = 'framesheet';
-            }
-          }
-          try { composeCanvas(lk, big, buildPlaceholderShots(280, shotsNeeded(lk))); }
-          finally {
-            previewSample = keepSample; activeFrameId = keepFrame;
-            if (keepSheetJson) { try { sheet = JSON.parse(keepSheetJson); } catch (e) { } }
-          }
-          var small = document.createElement('canvas'), sc = 420 / big.height;
-          small.width = Math.round(big.width * sc); small.height = 420;
-          var sctx = small.getContext('2d'); sctx.imageSmoothingQuality = 'high';
-          sctx.drawImage(big, 0, 0, small.width, small.height);
-          pickThumbs.urls[key] = small.toDataURL('image/jpeg', 0.85);
-          try { big.width = 0; big.height = 0; small.width = 0; small.height = 0; } catch (e) { }
-        }
+        if (!pickThumbs.urls[key]) pickThumbs.urls[key] = renderThumbBitmap(key);
         return pickThumbs.urls[key];
       }
       function grayscaleThumbUrl(url) {
@@ -67861,13 +67970,19 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               c.width = im.naturalWidth || im.width || 240;
               c.height = im.naturalHeight || im.height || 360;
               var x = c.getContext('2d');
-              x.drawImage(im, 0, 0, c.width, c.height);
-              var id = x.getImageData(0, 0, c.width, c.height), d = id.data;
-              for (var i = 0; i < d.length; i += 4) {
-                var v = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
-                d[i] = d[i + 1] = d[i + 2] = v;
+              if ('filter' in x) {
+                x.filter = 'grayscale(1) contrast(1.06)';
+                x.drawImage(im, 0, 0, c.width, c.height);
+                x.filter = 'none';
+              } else {
+                x.drawImage(im, 0, 0, c.width, c.height);
+                var id = x.getImageData(0, 0, c.width, c.height), d = id.data;
+                for (var i = 0; i < d.length; i += 4) {
+                  var v = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+                  d[i] = d[i + 1] = d[i + 2] = v;
+                }
+                x.putImageData(id, 0, 0);
               }
-              x.putImageData(id, 0, 0);
               resolve(c.toDataURL('image/jpeg', 0.85));
             } catch (e) { resolve(url); }
           };
@@ -67875,19 +67990,40 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           im.src = url;
         });
       }
-      async function designThumbUrl(slot, idx, overrideLay) {
-        var lay = overrideLay || designSlotFallbackLayout(slot);
-        var sig = JSON.stringify(slot.settings) + '|' + lay;
-        if (!overrideLay && slot && slot._thumbUrl && slot._thumbSig === sig) return slot._thumbUrl;
-        var prevSlot = captureCurrentDesignSlot(guestDesigns[activeDesignIdx]);
-        var prevIdx = activeDesignIdx;
-        await applyDesignSlot(slot, idx, true);
-        var url = layoutThumbUrl(lay);
-        if (!overrideLay) {
-          slot._thumbUrl = url;
+      function getCachedDesignThumb(slot, overrideLay, gray) {
+        if (!slot || !slot.settings) return '';
+        var sig = slot._thumbSigStr || (slot._thumbSigStr = JSON.stringify(slot.settings));
+        if (slot._thumbSig !== sig || !slot._thumbs) {
           slot._thumbSig = sig;
+          slot._thumbs = Object.create(null);
         }
-        await applyDesignSlot(prevSlot, prevIdx, true);
+        var lay = overrideLay || designSlotFallbackLayout(slot);
+        return slot._thumbs[lay + (gray ? ':bw' : '')] || '';
+      }
+      function setCachedDesignThumb(slot, overrideLay, gray, url) {
+        if (!slot || !slot.settings || !url) return;
+        var sig = slot._thumbSigStr || (slot._thumbSigStr = JSON.stringify(slot.settings));
+        if (slot._thumbSig !== sig || !slot._thumbs) {
+          slot._thumbSig = sig;
+          slot._thumbs = Object.create(null);
+        }
+        var lay = overrideLay || designSlotFallbackLayout(slot);
+        slot._thumbs[lay + (gray ? ':bw' : '')] = url;
+        if (!overrideLay && !gray) slot._thumbUrl = url;
+      }
+      async function designThumbUrl(slot, idx, overrideLay, opts) {
+        var wantGray = !!(opts && opts.gray);
+        var cached = getCachedDesignThumb(slot, overrideLay, wantGray);
+        if (cached) return cached;
+        var lay = overrideLay || designSlotFallbackLayout(slot);
+        var noRestore = !!(opts && opts.noRestore);
+        var prevSlot = noRestore ? null : captureCurrentDesignSlot(guestDesigns[activeDesignIdx]);
+        var prevIdx = activeDesignIdx;
+        await applyDesignSlot(slot, idx, true, { thumbOnly: true });
+        var useGray = !!(wantGray && !(LAYOUT_DEFS[lay] && LAYOUT_DEFS[lay].kind === 'receipt' && !LAYOUT_DEFS[lay].color));
+        var url = renderThumbBitmap(lay, { gray: useGray });
+        setCachedDesignThumb(slot, overrideLay, wantGray, url);
+        if (!noRestore && prevSlot) await applyDesignSlot(prevSlot, prevIdx, true, { thumbOnly: true });
         return url;
       }
       function guestTopDesignOptions(tierFilter) {
@@ -68006,21 +68142,131 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           col: sideInfo(colTop, 'photo')
         };
       }
+      var _pickThumbGen = 0, _pickSavedSlot = null, _pickSavedIdx = 0;
+      function restorePickSavedSlotSync() {
+        if (_pickSavedSlot) {
+          var sl = _pickSavedSlot, ix = _pickSavedIdx;
+          _pickSavedSlot = null;
+          try { applyDesignSlotSync(sl, ix, true, { thumbOnly: true }); } catch (e) { }
+        }
+      }
+      function runDesignPickThumbPump(pending, gen) {
+        if (!pending.length) return;
+        var hasDesign = pending.some(function (it) { return !!it.slot; });
+        if (hasDesign && !_pickSavedSlot) {
+          _pickSavedSlot = captureCurrentDesignSlot(guestDesigns[activeDesignIdx]);
+          _pickSavedIdx = activeDesignIdx;
+        }
+        var doneCount = 0;
+        var pumpNext = async function () {
+          if (!pickOpen || gen !== _pickThumbGen || !pending.length) {
+            restorePickSavedSlotSync();
+            if (pickOpen && gen === _pickThumbGen && typeof tabletBridgeSync === 'function') {
+              try { tabletBridgeSync(); } catch (e) { }
+            }
+            return;
+          }
+          var item = pending.shift();
+          try {
+            var url = '';
+            if (item.slot) {
+              url = await designThumbUrl(item.slot, item.idx, item.lay, { gray: !!item.gray, noRestore: true });
+            } else if (item.lay) {
+              var baseUrl = layoutThumbUrl(item.lay);
+              url = item.gray && !(LAYOUT_DEFS[item.lay] && LAYOUT_DEFS[item.lay].kind === 'receipt' && !LAYOUT_DEFS[item.lay].color)
+                ? await grayscaleThumbUrl(baseUrl)
+                : baseUrl;
+            }
+            if (pickOpen && gen === _pickThumbGen && url && item.im) {
+              item.im.src = url;
+              try {
+                if (typeof G !== 'undefined' && G && G.pkg && G.pkg.children[item.i]) {
+                  var gim = G.pkg.children[item.i].querySelector('img');
+                  if (gim && gim.src !== url) gim.src = url;
+                }
+              } catch (e) { }
+            }
+          } catch (e) { }
+          doneCount++;
+          if (!pending.length) {
+            restorePickSavedSlotSync();
+            if (pickOpen && gen === _pickThumbGen && typeof tabletBridgeSync === 'function') {
+              try { tabletBridgeSync(); } catch (e) { }
+            }
+            return;
+          }
+          if (doneCount % 2 === 0 && pickOpen && gen === _pickThumbGen && typeof tabletBridgeSync === 'function') {
+            try { tabletBridgeSync(); } catch (e) { }
+          }
+          setTimeout(pumpNext, 0);
+        };
+        setTimeout(pumpNext, 0);
+      }
+      var _pickWarmTimer = null, _pickWarmGen = 0;
+      function schedulePickThumbPrewarm(active) {
+        clearTimeout(_pickWarmTimer);
+        ++_pickWarmGen;
+        if (!active || state !== 'idle' || pickOpen || flowBusy) return;
+        var warmGen = _pickWarmGen;
+        _pickWarmTimer = setTimeout(async function () {
+          if (warmGen !== _pickWarmGen || state !== 'idle' || pickOpen || flowBusy) return;
+          if (!welcomeOverlay || !welcomeOverlay.classList.contains('on')) return;
+          var tasks = [];
+          try {
+            var tierSum = typeof tierSplitSummary === 'function' ? tierSplitSummary() : null;
+            if (tierSum) {
+              if (tierSum.bw && tierSum.bw.repKey) tasks.push({ slot: tierSum.bw.repSlot || null, idx: tierSum.bw.repIdx || 0, lay: tierSum.bw.repKey, gray: true });
+              if (tierSum.col && tierSum.col.repKey) tasks.push({ slot: tierSum.col.repSlot || null, idx: tierSum.col.repIdx || 0, lay: tierSum.col.repKey, gray: false });
+            }
+            if (typeof framesStandAlongsideDesigns === 'function' ? true : false) {
+              var tops = typeof guestTopDesignOptions === 'function' ? guestTopDesignOptions() : [];
+              tops.forEach(function (o) {
+                if (o.kind === 'design') tasks.push({ slot: o.slot, idx: o.idx, lay: designSlotFallbackLayout(o.slot), gray: false });
+                else tasks.push({ slot: null, idx: 0, lay: o.key, gray: false });
+              });
+            }
+          } catch (e) { }
+          tasks = tasks.filter(function (t) {
+            if (t.slot) return !getCachedDesignThumb(t.slot, t.lay, !!t.gray);
+            var sig = currentPickThumbSig();
+            return !(pickThumbs.sig === sig && pickThumbs.urls[t.lay]);
+          });
+          if (!tasks.length) return;
+          var savedWarm = null, savedWarmIdx = 0;
+          try {
+            if (tasks.some(function (t) { return !!t.slot; })) {
+              savedWarm = captureCurrentDesignSlot(guestDesigns[activeDesignIdx]);
+              savedWarmIdx = activeDesignIdx;
+            }
+            for (var ti = 0; ti < tasks.length; ti++) {
+              if (warmGen !== _pickWarmGen || state !== 'idle' || pickOpen || flowBusy) break;
+              var t = tasks[ti];
+              if (t.slot) await designThumbUrl(t.slot, t.idx, t.lay, { gray: !!t.gray, noRestore: true });
+              else layoutThumbUrl(t.lay);
+              await new Promise(function (r) { setTimeout(r, 45); });
+            }
+          } catch (e) { }
+          finally {
+            if (savedWarm) {
+              try { applyDesignSlotSync(savedWarm, savedWarmIdx, true, { thumbOnly: true }); } catch (e) { }
+            }
+          }
+        }, 1100);
+      }
       async function pickTierChoice(summary) {
-        async function repThumb(info, makeGray) {
+        function cachedRepThumb(info, makeGray) {
           var u = '';
           if (info.repSlot && info.repKey) {
-            u = await designThumbUrl(info.repSlot, info.repIdx, info.repKey);
-          } else if (info.repKey) {
-            u = layoutThumbUrl(info.repKey);
+            u = getCachedDesignThumb(info.repSlot, info.repKey, !!makeGray);
+          } else if (info.repKey && !makeGray) {
+            var sig = currentPickThumbSig();
+            if (pickThumbs.sig === sig && pickThumbs.urls[info.repKey]) u = pickThumbs.urls[info.repKey];
           }
-          if (makeGray && u && !(LAYOUT_DEFS[info.repKey] && LAYOUT_DEFS[info.repKey].kind === 'receipt' && !LAYOUT_DEFS[info.repKey].color)) {
-            u = await grayscaleThumbUrl(u);
+          if (!u && info.repKey && /^frame:/.test(info.repKey) && typeof assetThumbUrl === 'function') {
+            u = assetThumbUrl(info.repKey.slice(6)) || '';
           }
-          return u;
+          return u || '';
         }
-        var bwUrl = await repThumb(summary.bw, true);
-        var colUrl = await repThumb(summary.col, false);
         var opts = [
           {
             key: 'tier:receipt',
@@ -68030,7 +68276,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             badgeText: '🧾 Black & white',
             badgeCls: 'thermal',
             cardCls: 'tier-bw',
-            thumb: bwUrl
+            repInfo: summary.bw,
+            makeGray: true,
+            thumb: cachedRepThumb(summary.bw, true)
           },
           {
             key: 'tier:photo',
@@ -68040,10 +68288,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             badgeText: '🎨 Full colour',
             badgeCls: 'color',
             cardCls: 'tier-col',
-            thumb: colUrl
+            repInfo: summary.col,
+            makeGray: false,
+            thumb: cachedRepThumb(summary.col, false)
           }
         ];
         return new Promise(function (resolve) {
+          var gen = ++_pickThumbGen;
           pickTierMode = true;
           pickDesignMode = true;
           pickTierFilter = null;
@@ -68058,11 +68309,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           pickGrid.classList.remove('tier-bw-step');
           pickIdx = -1;
           pickGrid.innerHTML = '';
-          opts.forEach(function (o) {
+          var pending = [];
+          opts.forEach(function (o, i) {
             var b = document.createElement('button');
             b.type = 'button';
             b.className = 'pick-btn tier-card-btn ' + o.cardCls;
-            var im = document.createElement('img'); im.alt = ''; im.src = o.thumb || '';
+            var im = document.createElement('img'); im.alt = '';
+            if (o.thumb) im.src = o.thumb;
+            else if (o.repInfo && o.repInfo.repKey) {
+              pending.push({ i: i, slot: o.repInfo.repSlot || null, idx: o.repInfo.repIdx || 0, lay: o.repInfo.repKey, gray: !!o.makeGray, im: im });
+            }
             var sp = document.createElement('span'); sp.className = 'pick-name'; sp.textContent = o.name;
             var shBadge = document.createElement('span'); shBadge.className = 'pick-shots'; shBadge.textContent = o.countText;
             var tTag = document.createElement('span'); tTag.className = 'pick-tier-tag ' + o.badgeCls; tTag.textContent = o.badgeText;
@@ -68078,29 +68334,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           try { refreshPrintFab(); } catch (e) { }
           refreshWelcome();
           guestRender();
+          if (pending.length) runDesignPickThumbPump(pending, gen);
         });
       }
       async function pickTopOptions(opts, uiOpts) {
         var tier = (uiOpts && uiOpts.tier) || null;
-        var urls = [];
-        for (var i = 0; i < opts.length; i++) {
-          var o = opts[i];
-          if (o.kind === 'design') {
-            var prefLay = (tier && Array.isArray(o.tierKeys) && o.tierKeys.length)
-              ? (o.tierKeys.find(function (k) { return layoutTier(k) === tier; }) || o.tierKeys[0])
-              : null;
-            var u = await designThumbUrl(o.slot, o.idx, prefLay);
-            if (tier === 'receipt' && u && !(prefLay && LAYOUT_DEFS[prefLay] && LAYOUT_DEFS[prefLay].kind === 'receipt' && !LAYOUT_DEFS[prefLay].color)) {
-              u = await grayscaleThumbUrl(u);
-            }
-            urls.push(u);
-          } else {
-            var fu = layoutThumbUrl(o.key);
-            if (tier === 'receipt' && fu) fu = await grayscaleThumbUrl(fu);
-            urls.push(fu);
-          }
-        }
         return new Promise(function (resolve) {
+          var gen = ++_pickThumbGen;
           pickTierMode = false;
           pickDesignMode = true;
           pickTierFilter = tier;
@@ -68115,9 +68355,36 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           pickGrid.classList.toggle('tier-bw-step', pickTierFilter === 'receipt');
           pickIdx = -1;
           pickGrid.innerHTML = '';
+          var curSig = currentPickThumbSig();
+          if (pickThumbs.sig !== curSig) pickThumbs = { sig: curSig, urls: {} };
+          var pending = [];
+          var wantGray = tier === 'receipt';
           opts.forEach(function (o, i) {
             var b = document.createElement('button'); b.type = 'button'; b.className = 'pick-btn';
-            var im = document.createElement('img'); im.alt = ''; im.src = urls[i] || '';
+            var im = document.createElement('img'); im.alt = ''; im.decoding = 'async';
+            var prefLay = null, cachedUrl = '';
+            if (o.kind === 'design') {
+              prefLay = (tier && Array.isArray(o.tierKeys) && o.tierKeys.length)
+                ? (o.tierKeys.find(function (k) { return layoutTier(k) === tier; }) || o.tierKeys[0])
+                : null;
+              cachedUrl = getCachedDesignThumb(o.slot, prefLay, wantGray);
+              if (cachedUrl) {
+                im.src = cachedUrl;
+              } else {
+                var quickFr = (o.slot && o.slot.activeFrameId && typeof assetThumbUrl === 'function') ? assetThumbUrl(o.slot.activeFrameId) : '';
+                if (quickFr) im.src = quickFr;
+                pending.push({ i: i, slot: o.slot, idx: o.idx, lay: prefLay || designSlotFallbackLayout(o.slot), gray: wantGray, im: im });
+              }
+            } else {
+              cachedUrl = !wantGray ? (pickThumbs.urls[o.key] || '') : '';
+              if (cachedUrl) {
+                im.src = cachedUrl;
+              } else {
+                var quick = /^frame:/.test(o.key) && typeof assetThumbUrl === 'function' ? assetThumbUrl(o.key.slice(6)) : '';
+                if (quick) im.src = quick;
+                pending.push({ i: i, slot: null, idx: 0, lay: o.key, gray: wantGray, im: im });
+              }
+            }
             var sp = document.createElement('span'); sp.className = 'pick-name'; sp.textContent = o.name;
             var shBadge = document.createElement('span'); shBadge.className = 'pick-shots';
             if (o.kind === 'design') {
@@ -68140,9 +68407,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           try { refreshPrintFab(); } catch (e) { }
           refreshWelcome();
           guestRender();
+          if (pending.length) runDesignPickThumbPump(pending, gen);
         });
       }
-      var _pickThumbGen = 0;
       function pickLayout(keys, uiOpts) {
         return new Promise(function (resolve) {
           var gen = ++_pickThumbGen;
@@ -68246,6 +68513,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       function finishPick(k) {
         if (!pickOpen) return;
+        ++_pickThumbGen;
+        restorePickSavedSlotSync();
         var wasDesign = pickDesignMode;
         var listRef = pickDesignsList;
         pickOpen = false;
@@ -68373,13 +68642,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                           key = 'frame:' + chosenTierTop.frameId;
                           break;
                         }
-                        await applyDesignSlot(chosenTierTop.slot, chosenTierTop.idx, true);
+                        await applyDesignSlot(chosenTierTop.slot, chosenTierTop.idx, true, { fastGuest: true });
                       } else if (tierTopOpts.length === 1) {
                         if (tierTopOpts[0].kind === 'frame') {
                           key = 'frame:' + tierTopOpts[0].frameId;
                           break;
                         }
-                        await applyDesignSlot(tierTopOpts[0].slot, tierTopOpts[0].idx, true);
+                        await applyDesignSlot(tierTopOpts[0].slot, tierTopOpts[0].idx, true, { fastGuest: true });
                       }
                       keys = guestChoiceKeys(chosenTier, false);
                       if (keys.length > 1) {
@@ -68415,7 +68684,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                   if (chosenOpt.kind === 'frame') {
                     key = 'frame:' + chosenOpt.frameId;
                   } else {
-                    await applyDesignSlot(chosenOpt.slot, chosenOpt.idx, true);
+                    await applyDesignSlot(chosenOpt.slot, chosenOpt.idx, true, { fastGuest: true });
                   }
                 }
               }
@@ -68428,13 +68697,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               resetForNextGuest();
               return;
             }
-            if (/^frame:/.test(key)) { activeFrameId = key.slice(6); key = 'myframe'; setLayout(key); }   // the guest's frame, this session
+            if (/^frame:/.test(key)) { activeFrameId = key.slice(6); key = 'myframe'; setLayout(key, { skipPreview: true }); }   // the guest's frame, this session
             else if (/^sheet:/.test(key)) {
               if (typeof loadSheetPreset === 'function') loadSheetPreset(key.slice(6), true);
               key = 'framesheet';
-              setLayout(key);
+              setLayout(key, { skipPreview: true });
             }
-            else if (key !== currentLayout || guestPickedTier) setLayout(key);
+            else if (key !== currentLayout || guestPickedTier) setLayout(key, { skipPreview: true });
             // Trading card / certificate booth: the guest types their name (and a title) first.
             if (boothType !== 'photo' && (!(await askGuestDesign()) || !(await askGuestDetails()))) {
               esp32LastCancelAt = Date.now();
@@ -72860,6 +73129,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // custom backdrop photo (data URL) or null.
       function applySetup(s, imageUrl, opts) {
         if (!s || typeof s !== 'object') return;
+        var thumbOnly = !!(opts && opts.thumbOnly);
+        var fastGuest = !!(opts && opts.fastGuest && !thumbOnly);
+        var skipHeavyUi = thumbOnly || fastGuest;
         setupApplying = true;
         try {
           themeId = typeof s.themeId === 'string' ? s.themeId : null;
@@ -73079,8 +73351,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var sndToggleEl = document.getElementById('attractVideoSoundToggle');
           if (sndToggleEl) sndToggleEl.checked = attractVideoSound;
 
-          // Restore the poster list: device store first, then the image store (this device's copy or the server's).
+          // Restore the poster list only when not running a lightweight guest design switch or thumbnail pass.
           var restoreSeq = ++attractRestoreSeq;
+          if (!skipHeavyUi) {
           var savedList = (Array.isArray(s.attractPlaylist) ? s.attractPlaylist : []).filter(function (x) { return x && typeof x.id === 'string' && x.id; }).map(function (x) {
             return { id: x.id, type: x.type, name: x.name || '', url: /^https?:/i.test(x.url || '') ? x.url : '' };
           });
@@ -73170,8 +73443,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               if (restoreSeq === attractRestoreSeq && attractPlaylist.length) attractRestoreHold = null;
             }
           })();
+          }
           setFrameColorUI(s.frameColorChoice === 'auto' || isHex(s.frameColorChoice) ? s.frameColorChoice : 'auto');
-          if (typeof setAndroidOrientationUI === 'function') {
+          if (!skipHeavyUi && typeof setAndroidOrientationUI === 'function') {
             setAndroidOrientationUI(typeof s.androidOrientation === 'string' ? s.androidOrientation : 'landscape');
           }
           photoPlacement = s.photoPlacement === 'background' ? 'background' : 'band';
@@ -73185,17 +73459,31 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             pendingCustom = s.backdropPreset === 'custom';
             backdropPreset = s.backdropPreset === 'custom' ? 'none' : (BACKDROP_PRESETS[s.backdropPreset] ? s.backdropPreset : 'none');
             bgImageDataUrl = imageUrl;
-            var img = new Image();
-            img.onload = function () {
-              backgroundImg = img;
-              var dom = computeDominantColor(img); photoHue = dom.h; photoSat = dom.s;
+            var cachedBgImg = (typeof _pbBgImgCache !== 'undefined') ? _pbBgImgCache[imageUrl] : null;
+            if (cachedBgImg && cachedBgImg.complete && cachedBgImg.naturalWidth > 0) {
+              backgroundImg = cachedBgImg;
+              var dom0 = cachedBgImg._pbDom || (cachedBgImg._pbDom = computeDominantColor(cachedBgImg));
+              photoHue = dom0.h; photoSat = dom0.s;
               if (pendingCustom) backdropPreset = 'custom';
               pendingCustom = false;
-              bgThumb.src = img.src; bgThumb.style.display = 'block'; removeBgBtn.style.display = 'inline';
-              setActivePresetBtn(); updateBandPositionVisibility(); renderComposite(); renderSetupPreview();
-            };
-            img.onerror = function () { pendingCustom = false; };
-            img.src = imageUrl;
+              if (!thumbOnly) { bgThumb.src = cachedBgImg.src; bgThumb.style.display = 'block'; removeBgBtn.style.display = 'inline'; }
+            } else {
+              var img = new Image();
+              if (typeof _pbBgImgCache !== 'undefined') _pbBgImgCache[imageUrl] = img;
+              img.onload = function () {
+                backgroundImg = img;
+                var dom = img._pbDom || (img._pbDom = computeDominantColor(img)); photoHue = dom.h; photoSat = dom.s;
+                if (pendingCustom) backdropPreset = 'custom';
+                pendingCustom = false;
+                if (thumbOnly) return;
+                bgThumb.src = img.src; bgThumb.style.display = 'block'; removeBgBtn.style.display = 'inline';
+                if (!fastGuest) { setActivePresetBtn(); updateBandPositionVisibility(); }
+                renderComposite();
+                if (!fastGuest) renderSetupPreview();
+              };
+              img.onerror = function () { pendingCustom = false; };
+              img.src = imageUrl;
+            }
           } else {
             clearCustomPhoto();
             backdropPreset = BACKDROP_PRESETS[s.backdropPreset] ? s.backdropPreset : 'none';
@@ -73231,18 +73519,20 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           applyPaySetup(s.pay);
           applyFramesSetup(s);
           applyTplsSetup(s.tpls);
-          buildLayoutPicker();
-          ensureAssets(designAssetIds().concat(myProps)).then(function () {
-            if (attractPosterId && typeof ASSETS !== 'undefined' && ASSETS[attractPosterId] && attractPosterUrl !== ASSETS[attractPosterId].url) {
-              if (typeof window._loadAttractPosterMedia === 'function') {
-                window._loadAttractPosterMedia(ASSETS[attractPosterId].url, attractPosterType, attractPosterId);
+          if (!skipHeavyUi) {
+            buildLayoutPicker();
+            ensureAssets(designAssetIds().concat(myProps)).then(function () {
+              if (attractPosterId && typeof ASSETS !== 'undefined' && ASSETS[attractPosterId] && attractPosterUrl !== ASSETS[attractPosterId].url) {
+                if (typeof window._loadAttractPosterMedia === 'function') {
+                  window._loadAttractPosterMedia(ASSETS[attractPosterId].url, attractPosterType, attractPosterId);
+                }
               }
-            }
-            refreshDecorUI(); refreshFrameUI(); redrawAll(); refreshBrandUI(); guestRender();
-            if (typeof refreshFlipCoverUI === 'function') refreshFlipCoverUI();
-            if (typeof refreshFlipLayoutUI === 'function') refreshFlipLayoutUI();
-            try { btRenderTpls(); } catch (e) { }
-          });
+              refreshDecorUI(); refreshFrameUI(); redrawAll(); refreshBrandUI(); guestRender();
+              if (typeof refreshFlipCoverUI === 'function') refreshFlipCoverUI();
+              if (typeof refreshFlipLayoutUI === 'function') refreshFlipLayoutUI();
+              try { btRenderTpls(); } catch (e) { }
+            });
+          }
           boothType = typesAllowed() && (s.boothType === 'card' || s.boothType === 'cert') ? s.boothType : 'photo';
           btApplyCfg(s.btCfg);
           if (LAYOUT_DEFS[s.layout]) setupLayout = (s.layout === 'trio' ? 'strip' : s.layout);   // Trio was removed
@@ -73253,17 +73543,22 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (s.guestPick === undefined && setupLayout === 'myframe' && frameMode === 'choose' && chooseIds.length > 1) { guestPickOn = true; guestPickToggle.checked = true; guestLayoutSet = []; }
           frameMode = 'choose';
           if (s.layout && s.layout !== 'strip') layoutPicked = true;
-          syncBoothTypeUI(true);
-          if (state !== 'capturing') setLayout(setupLayout);
-          refreshGuestLayoutChoices();
-          dateInput.value = /^\d{4}-\d{2}-\d{2}$/.test(s.date || '') ? s.date : '';
-          dateOn = false;
-          setDateOn(!!s.dateOn);
-          applyLabelInputFont();
-          setActivePresetBtn();
-          updateBandPositionVisibility();
-          if (typeof markThemeCards === 'function') markThemeCards();
-          refreshDecorUI();
+          if (!thumbOnly) syncBoothTypeUI(true);
+          if (state !== 'capturing') setLayout(setupLayout, thumbOnly ? { thumbOnly: true } : (fastGuest ? { skipPreview: true } : undefined));
+          if (!thumbOnly) {
+            refreshGuestLayoutChoices();
+            dateInput.value = /^\d{4}-\d{2}-\d{2}$/.test(s.date || '') ? s.date : '';
+            dateOn = false;
+            setDateOn(!!s.dateOn);
+            applyLabelInputFont();
+            setActivePresetBtn();
+            updateBandPositionVisibility();
+            if (typeof markThemeCards === 'function') markThemeCards();
+            refreshDecorUI();
+          } else {
+            dateInput.value = /^\d{4}-\d{2}-\d{2}$/.test(s.date || '') ? s.date : '';
+            dateOn = !!s.dateOn;
+          }
           if (!(opts && opts.skipDesignSync)) {
             includeFramesInDesignPick = typeof s.includeFramesInDesignPick === 'boolean' ? s.includeFramesInDesignPick : true;
             if (Array.isArray(s.guestDesigns) && s.guestDesigns.length) {
@@ -73288,9 +73583,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         } finally {
           setupApplying = false;
         }
-        if (!(opts && opts.skipDesignSync) && typeof renderGuestDesignBar === 'function') renderGuestDesignBar();
-        renderComposite(); renderSetupPreview(); refreshStartScreen(); guestRender(); scheduleWelcomeRender(); refreshWelcome();
-        try { if (typeof deskNotifySetupChanged === 'function') deskNotifySetupChanged(); } catch (e) { }
+        if (!thumbOnly) {
+          if (!(opts && opts.skipDesignSync) && typeof renderGuestDesignBar === 'function') renderGuestDesignBar();
+          renderComposite();
+          if (!fastGuest) {
+            renderSetupPreview(); refreshStartScreen(); guestRender(); scheduleWelcomeRender(); refreshWelcome();
+            try { if (typeof deskNotifySetupChanged === 'function') deskNotifySetupChanged(); } catch (e) { }
+          } else {
+            guestRender();
+          }
+        }
       }
 
       function setupScopeEvent() {

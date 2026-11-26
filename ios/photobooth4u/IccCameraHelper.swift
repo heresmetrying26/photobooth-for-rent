@@ -1498,8 +1498,10 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
                 do {
                     if props.contains(0x5004), let q = try propDesc(0x5004) {
                         let cur = Int(q.current) ?? 2
-                        if cur < 2 && q.choices.contains("2"), try setProp(0x5004, type: q.type, value: "2") {
-                            setupNote += "Set to JPEG Fine. "
+                        if cur < 2 && q.choices.contains("2") {
+                            if try setProp(0x5004, type: q.type, value: "2") {
+                                setupNote += "Set to JPEG Fine. "
+                            }
                         }
                     }
                 } catch let e as CamErr { if e.code == "GONE" { throw e } }
@@ -1683,7 +1685,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         if captureToCard {
             r = try op(0x9207, 0xFFFFFFFF, 0)
             if (r == NIKON_NOT_IN_LV || r == PTP_BUSY) && live {
-                nikonLiveOff()
+                try nikonLiveOff()
                 _ = try? waitNikonReady(ms: 2500)
                 r = try op(0x9207, 0xFFFFFFFF, 0)
             }

@@ -244,6 +244,11 @@ class GuestBridgeActivity : AppCompatActivity() {
         }
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) applyImmersiveMode()
+    }
+
     override fun onPause() {
         stopCamera()
         super.onPause()
@@ -261,6 +266,11 @@ class GuestBridgeActivity : AppCompatActivity() {
 
     private fun applyImmersiveMode() {
         try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                window.attributes = window.attributes.apply {
+                    layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                }
+            }
             WindowCompat.setDecorFitsSystemWindows(window, false)
             val ctrl = WindowInsetsControllerCompat(window, window.decorView)
             ctrl.hide(WindowInsetsCompat.Type.systemBars())

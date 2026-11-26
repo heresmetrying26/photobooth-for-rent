@@ -338,7 +338,7 @@ final class RovingBridgeViewController: UIViewController,
     }
 
     private func currentVersionName() -> String {
-        return (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0.1"
+        return (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0.2"
     }
 
     // MARK: - UI Builder
@@ -1424,11 +1424,12 @@ final class RovingBridgeViewController: UIViewController,
             return card
         }
 
-        let card101 = makeReleaseNoteCard(
-            title: "Version 1.0.1 (Current Release)",
+        let card102 = makeReleaseNoteCard(
+            title: "Version 1.0.2 (Current Release)",
             body: """
             • 💾 Save Backup + RAW on Camera SD Card: Keeps full RAW + JPEG copies safely on your camera SD card while sending JPEGs to your laptop.
             • 📶 Faster Reconnect Retry: Speeds up automatic upload retries when booth Wi-Fi briefly drops.
+            • 🛠️ Nikon Live View Capture Reliability: Ensures smoother transition from Live View to SD-card shutter capture.
             """
         )
 
@@ -1447,7 +1448,7 @@ final class RovingBridgeViewController: UIViewController,
         stack.addArrangedSubview(topBar)
         stack.addArrangedSubview(checkCard)
         stack.addArrangedSubview(notesHeader)
-        stack.addArrangedSubview(card101)
+        stack.addArrangedSubview(card102)
         stack.addArrangedSubview(card100)
 
         NSLayoutConstraint.activate([

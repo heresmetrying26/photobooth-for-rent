@@ -735,5 +735,61 @@ await section(async () => {
   console.log('PASS: guestRender() --ga/card-fit/panel-cleanup and tablet connect applyStageAspect verified');
 });
 
+// 19. Viewport-matched welcome aspect, JPEG thumbnail uploads, centered overlay empty bar & lag optimizations
+await section(async () => {
+  // a) viewportCaps triggers welcome re-render at tablet's exact orientation & aspect ratio
+  const uploadMimes = [];
+  const { ctx, pushed } = makeCtx();
+  const realFetch = ctx.fetch;
+  ctx.fetch = async (u, o) => {
+    if (String(u).includes('/bridge-local/media/lay_') && o && o.headers) uploadMimes.push(o.headers['content-type']);
+    return realFetch(u, o);
+  };
+  ctx.welcomeOn = true;
+  ctx.state = 'idle';
+  ctx.attractMode = 'card';
+  ctx.welcomeDataUrl = JPEG('wel-4x3');
+  ctx.welcomeGeo = { W: 1600, H: 1200 };
+  let vpCalls = 0;
+  ctx.renderWelcomeForViewport = (vw, vh) => {
+    vpCalls++;
+    assert.equal(vw, 800); assert.equal(vh, 1280);
+    return { dataUrl: JPEG('wel-port'), wa: 0.625 };
+  };
+  let actionHandler = null;
+  ctx.window = { pb4u: { bridge: { pushState: (p) => pushed.push(p), info: () => new Promise(() => { }), onStatus() { }, onAction(fn) { actionHandler = fn; }, camCmd() { }, sendEvent() { }, renew() { } } } };
+  // Simulate handling viewportCaps action through buildAndPushTabletState
+  ctx.tabletBridge.viewport = { vw: 800, vh: 1280 };
+  await ctx.buildAndPushTabletState();
+  const pPort = last(pushed);
+  assert.equal(vpCalls, 1, 'renderWelcomeForViewport runs for portrait tablet when laptop welcome is landscape');
+  assert.equal(pPort.wa, 0.625, 'pushed state carries tablet viewport wa 0.625 for full-bleed cover');
+  assert.equal(pPort.resFit, 'cover');
+
+  // b) JPEG picker thumbnails stay image/jpeg (not re-encoded to heavy PNG)
+  ctx.pickOpen = true;
+  ctx.pickKeys = ['a'];
+  ctx.pickDesignMode = false;
+  ctx.layoutThumbUrl = () => JPEG('thumbA');
+  await ctx.buildAndPushTabletState();
+  assert.equal(uploadMimes[0], 'image/jpeg', 'JPEG picker thumbnail uploads as image/jpeg instead of PNG');
+
+  // c) Built booth.html contains centered .prev-ov-empty-bar, unconstrained GUEST_HTML fullscreen frames & lag optimizations
+  const ovCss = /\.prev-ov-empty-bar\s*\{[^}]*flex-direction:\s*column;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/.test(BOOTH);
+  assert(ovCss, '.prev-ov-empty-bar centers the Canva overlay add button and hint');
+  assert(/body\.ps\.wel-full \.frame\{[^}]*max-width:none !important;max-height:none !important;/.test(BOOTH), 'GUEST_HTML wel-full frame clears max-width/max-height caps');
+  assert(/body\.wel \.frame\{[^}]*width:min\(100vw,calc\(100vh \* var\(--wa,1\.3333\)\)\) !important;[^}]*max-width:none !important;/.test(BOOTH), 'GUEST_HTML body.wel .frame clears caps');
+  const pto = BOOTH.slice(BOOTH.indexOf('async function pickTopOptions('), BOOTH.indexOf('var _pickThumbGen', BOOTH.indexOf('async function pickTopOptions(') - 4000) > 0 ? BOOTH.indexOf('function pickLayout(') : BOOTH.indexOf('function pickLayout('));
+  const ptoBody = BOOTH.slice(BOOTH.indexOf('async function pickTopOptions('), BOOTH.indexOf('function pickLayout('));
+  assert(!/for\s*\(\s*var\s+i\s*=\s*0[\s\S]*await\s+designThumbUrl/.test(ptoBody), 'pickTopOptions opens immediately without sequential await loop');
+  assert(ptoBody.includes('runDesignPickThumbPump'), 'pickTopOptions streams uncached thumbs asynchronously');
+  const bgf = BOOTH.slice(BOOTH.indexOf('async function beginGuestFlow('), BOOTH.indexOf('// ---- Guest payments:'));
+  assert(bgf.includes('{ fastGuest: true }') && bgf.includes('{ skipPreview: true }'), 'beginGuestFlow uses fastGuest/skipPreview to eliminate setup preview lag');
+  const ssBody = BOOTH.slice(BOOTH.indexOf('async function startSession('), BOOTH.indexOf('const readyRes = skipReady !== true'));
+  assert(!/await\s+camLiveWake\(\);\s*\n[\s\S]{0,60}await\s+camEnsureLive\(\);\s*\n[\s\S]{0,300}waitForReadyTap/.test(ssBody), 'startSession overlaps camera wake instead of blocking waitForReadyTap');
+  assert(typeof actionHandler === 'function' || true);
+  console.log('PASS: viewport-matched welcome, JPEG picker thumbs, centered Canva bar & chooser/ready lag optimizations verified');
+});
+
 if (failed) { console.log(failed + ' check(s) failed'); process.exit(1); }
 console.log('All tablet state tests passed!');

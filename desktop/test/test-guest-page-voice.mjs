@@ -32,7 +32,8 @@ function makeEl() {
     attrs: {}, children: [], textContent: '', innerHTML: '', disabled: false,
     setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }, removeAttribute(k) { delete this.attrs[k]; },
     appendChild(c) { this.children.push(c); return c; }, append(...cs) { cs.forEach((c) => this.children.push(c)); },
-    addEventListener() { }, getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }), querySelector: () => null,
+    addEventListener() { }, getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }),
+    querySelector(sel) { return sel === 'img' ? (this.children.find((c) => c && c.tagName === 'IMG') || null) : null; },
     has: (c) => classes.has(c)
   };
 }
@@ -60,7 +61,7 @@ function makePage({ native, web, audio, width = 0, height = 0 } = {}) {
     Image: function () { }, SpeechSynthesisUtterance: web ? web.Utt : undefined,
     document: {
       getElementById: (id) => els[id] || (els[id] = makeEl()),
-      createElement: () => makeEl(), addEventListener: (ev, fn) => { (listeners[ev] = listeners[ev] || []).push(fn); },
+      createElement: (tag) => Object.assign(makeEl(), { tagName: String(tag || '').toUpperCase() }), addEventListener: (ev, fn) => { (listeners[ev] = listeners[ev] || []).push(fn); },
       body: makeEl(), documentElement: makeEl()
     }
   };
@@ -328,7 +329,22 @@ const PACK = (sig) => ({ type: 'sounds', sig, sounds: { shut: WAV, b1: WAV, b2: 
   pg.msg({ type: 'state', state: { psMode: false, isWelcome: true, wa: 0.75, ga: 0.75 } });
   pg.listeners.click.forEach((fn) => fn());
   assert(pg.actions().some((a) => a.action === 'trigger'), 'tap on tablet welcome sends trigger action');
-  console.log('PASS: portrait panel layout, corner logo, welcome orientation guard, and tap trigger verified');
+
+  // Full-screen frame CSS resets max-width/max-height caps and reports viewportCaps + patches layout thumbs in place
+  assert(html.includes('body:not(.ps):not(.wel) .frame{max-width:56vw;max-height:94vh;}'), '56vw cap applies only to panel side-by-side mode');
+  assert(/body\.ps \.frame\{[^}]*max-width:none !important;max-height:none !important;/.test(html), 'body.ps .frame removes 56vw/94vh cap');
+  assert(/body\.ps\.wel-full \.frame\{[^}]*max-width:none !important;max-height:none !important;/.test(html), 'body.ps.wel-full .frame fills 100vw x 100vh without cap');
+  assert(/body\.wel \.frame\{[^}]*width:min\(100vw,calc\(100vh \* var\(--wa,1\.3333\)\)\) !important;[^}]*max-width:none !important;max-height:none !important;/.test(html), 'body.wel .frame sets full width and clears 56vw/94vh cap');
+  const vps = pg.actions().filter((a) => a.action === 'viewportCaps');
+  assert.equal(vps.length, 1, 'guest page reports viewportCaps on connect');
+  assert.deepEqual({ vw: vps[0].vw, vh: vps[0].vh }, { vw: 800, vh: 1280 });
+  pg.msg({ type: 'state', state: { psMode: true, pickOpen: true, layouts: [{ k: 'd1', name: 'Design 1', shots: 'Strip', thumb: '' }, { k: 'd2', name: 'Design 2', shots: '4R', thumb: '' }] } });
+  const firstBtn = pg.els.pkg.children[0];
+  assert(firstBtn, 'picker renders buttons immediately even while thumbs are blank');
+  pg.msg({ type: 'state', state: { psMode: true, pickOpen: true, layouts: [{ k: 'd1', name: 'Design 1', shots: 'Strip', thumb: '/media/lay_0_d1?v=1' }, { k: 'd2', name: 'Design 2', shots: '4R', thumb: '' }] } });
+  assert.equal(pg.els.pkg.children[0], firstBtn, 'progressive thumb update patches img src in place without rebuilding grid');
+  assert(firstBtn.children[0].src.endsWith('/media/lay_0_d1?v=1'), 'patched card image src points to arrived media URL');
+  console.log('PASS: portrait panel layout, corner logo, welcome orientation guard, fullscreen frame reset, viewportCaps, and tap trigger verified');
 }
 
 console.log('All guest page voice and label tests passed!');

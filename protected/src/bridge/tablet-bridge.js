@@ -35,7 +35,9 @@ var tabletBridge = {
   buildSeq: 0,      // each picture of the screen that is built gets the next number...
   pushedSeq: 0,     // ...and an older one is never sent after a newer one went out
   reviewSrc: '',    // the photo just taken, shown between shots (Setup: show each photo after it is taken)
-  wasUsingCam: false // remembers tablet camera across a brief Wi-Fi drop so it auto-reclaims on reconnect
+  wasUsingCam: false, // remembers tablet camera across a brief Wi-Fi drop so it auto-reclaims on reconnect
+  viewport: null,    // guest tablet WebView size { vw, vh } reported by viewportCaps
+  welCache: null     // cached welcome card rendered at tablet aspect { key, url, wa }
 };
 
 function activeBridgeApi() { return (window.pb4u && window.pb4u.bridge) || (tabletBridge && tabletBridge.api) || null; }
@@ -443,6 +445,7 @@ async function buildAndPushTabletState() {
   syncRemoteFrameToBridge(useRemoteStream, bgActive);
 
   let resSrc = '', resFit = 'contain';
+  let welWa = welcomeGeo ? Number((welcomeGeo.W / welcomeGeo.H).toFixed(4)) : 1.3333;
   try {
   if (sess && sess.decorating) {
     resSrc = await tabletBridgeUploadMedia('result', previewCanvas.toDataURL('image/jpeg', 0.85), 'image/jpeg', 1600);
@@ -456,7 +459,24 @@ async function buildAndPushTabletState() {
   } else if (welcome && attractMode !== 'video') {
     const slideList = attractPlaylist.length ? attractPlaylist : (attractPosterUrl ? [{ url: attractPosterUrl, type: attractPosterType }] : []);
     const curSlide = (attractMode === 'poster' && slideList.length) ? (slideList[attractPlayIndex] || slideList[0]) : null;
-    const rawWel = (curSlide && !welcomeBtnOn && !(typeof brandImgFor === 'function' && brandImgFor('w'))) ? curSlide.url : welcomeDataUrl;
+    let rawWel = (curSlide && !welcomeBtnOn && !(typeof brandImgFor === 'function' && brandImgFor('w'))) ? curSlide.url : welcomeDataUrl;
+    if (attractMode === 'card' && tabletBridge.viewport && tabletBridge.viewport.vw > 0 && tabletBridge.viewport.vh > 0 && typeof renderWelcomeForViewport === 'function') {
+      const vp = tabletBridge.viewport;
+      const vpAr = vp.vw / vp.vh;
+      if (Math.abs(vpAr - welWa) / Math.max(0.2, welWa) > 0.04) {
+        const wKey = tabletPicSig(welcomeDataUrl) + ':' + vp.vw + 'x' + vp.vh;
+        if (!tabletBridge.welCache || tabletBridge.welCache.key !== wKey) {
+          const rendered = renderWelcomeForViewport(vp.vw, vp.vh);
+          if (rendered && rendered.dataUrl) {
+            tabletBridge.welCache = { key: wKey, url: rendered.dataUrl, wa: rendered.wa || Number(vpAr.toFixed(4)) };
+          }
+        }
+        if (tabletBridge.welCache && tabletBridge.welCache.key === wKey && tabletBridge.welCache.url) {
+          rawWel = tabletBridge.welCache.url;
+          welWa = tabletBridge.welCache.wa;
+        }
+      }
+    }
     if (rawWel) {
       resSrc = await tabletBridgeUploadMedia('welcome', rawWel, attractMode === 'camera' ? 'image/png' : 'image/jpeg', 1920);
       resFit = (attractMode === 'poster') ? (attractPosterFit === 'contain' ? 'contain' : (attractPosterFit === 'stretch' ? 'fill' : 'cover')) : 'cover';
@@ -498,7 +518,8 @@ async function buildAndPushTabletState() {
         const nShots = isFr ? frameShotCount(fObj) : (isPr ? presetShotCount(prObj) : (LAYOUT_DEFS[k] ? LAYOUT_DEFS[k].shots : 4));
         sh = nShots + (nShots === 1 ? ' shot' : ' shots');
       }
-      const thumb = rawThumb ? await tabletBridgeUploadMedia('lay_' + i + '_' + k.replace(/[^A-Za-z0-9_-]/g, '_'), rawThumb, 'image/png', 480) : '';
+      const isJpeg = /^data:image\/jpe?g/i.test(rawThumb);
+      const thumb = rawThumb ? await tabletBridgeUploadMedia('lay_' + i + '_' + k.replace(/[^A-Za-z0-9_-]/g, '_'), rawThumb, isJpeg ? 'image/jpeg' : 'image/png', isJpeg ? 0 : 480) : '';
       return { k, name: nm, shots: sh, thumb, tag, tagCls };
     }));
   }
@@ -625,7 +646,7 @@ async function buildAndPushTabletState() {
     qrPop: qrPopPhase,
     qrTitle: (qrTitleEl && qrTitleEl.textContent || '').trim(),
     ga: Number(asp.ga.toFixed(4)),
-    wa: welcomeGeo ? Number((welcomeGeo.W / welcomeGeo.H).toFixed(4)) : 1.3333,
+    wa: welWa,
     boxAspect: Number(asp.film.toFixed(4)),
     welFull: !!(welcome && !psMode && welcomeGeo && guestWelcomeStyle !== 'panel'),
     welFullPs: !!(psMode && welcome),
@@ -889,6 +910,17 @@ function renderTabletBridgeSetup(info) {
     const a = act.action;
     if (a === 'voiceCaps') { tabletVoiceCaps(act); return; }
     if (a === 'soundCaps') { tabletSoundCaps(act); return; }
+    if (a === 'viewportCaps') {
+      const vw = Math.round(Number(act.vw) || 0), vh = Math.round(Number(act.vh) || 0);
+      if (vw > 0 && vh > 0) {
+        const prev = tabletBridge.viewport;
+        const prevAr = prev && prev.vh ? (prev.vw / prev.vh) : 0;
+        const nextAr = vw / vh;
+        tabletBridge.viewport = { vw, vh };
+        if (!prev || Math.abs(prevAr - nextAr) > 0.015) tabletBridgeSync();
+      }
+      return;
+    }
     if (a === 'trigger') { boothTrigger(true); return; }
     if (a === 'readyStart') { if (readyStartBtn) readyStartBtn.click(); return; }
     if (a === 'pickLayout' && act.key) { if (pickOpen) finishPick(act.key); return; }

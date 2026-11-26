@@ -694,4 +694,10 @@ assert(gbSrc.includes('ensureHeartbeat') && gbSrc.includes('setKeepAlive') && gb
 }
 
 console.log('PASS: Assembled booth.html and Android offline Wi-Fi bridge binding verified');
+{
+  const kt = readFileSync(join(ROOT, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'GuestBridgeActivity.kt'), 'utf8');
+  assert(kt.includes('LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES'), 'Android GuestBridgeActivity enables full cutout immersion');
+  assert(kt.includes('override fun onWindowFocusChanged(hasFocus: Boolean)'), 'Android GuestBridgeActivity re-applies immersive mode on focus change');
+  console.log('PASS: Android GuestBridgeActivity cutout & focus immersion verified');
+}
 console.log('All Guest Bridge tests passed!');

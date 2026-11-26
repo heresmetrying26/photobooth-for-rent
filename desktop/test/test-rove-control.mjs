@@ -126,6 +126,8 @@ try {
 
   const ktAct = readFileSync(new URL('android/app/src/main/java/com/photobooth4u/booth/RovingBridgeActivity.kt', rootUrl), 'utf8');
   assert(ktAct.includes('retryScheduler') && ktAct.includes('placeholderThumb'), 'Android RovingBridgeActivity has background retryScheduler and race-free queue item creation');
+  assert(ktAct.includes('nextRetryAtMs') && ktAct.includes('isQueued()') && ktAct.includes('writeAdjustedJpegFile'), 'Android RovingBridgeActivity guards worker retry backoff, promoting race state, and quality JPEG/EXIF export');
+  assert(ktAct.includes('Bitmap.CompressFormat.JPEG, 95') && ktAct.includes('copyShootingExif'), 'Android brightness export uses JPEG 95 and copies camera shooting EXIF');
   const ktSrv = readFileSync(new URL('android/app/src/main/java/com/photobooth4u/booth/LocalShareServer.kt', rootUrl), 'utf8');
   assert(ktSrv.includes('roveRecentIds') && ktSrv.includes('x-rove-id'), 'Android LocalShareServer deduplicates retried roving uploads');
   const swVc = readFileSync(new URL('ios/roving/RovingBridgeViewController.swift', rootUrl), 'utf8');

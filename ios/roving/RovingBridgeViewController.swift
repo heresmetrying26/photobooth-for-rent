@@ -338,7 +338,7 @@ final class RovingBridgeViewController: UIViewController,
     }
 
     private func currentVersionName() -> String {
-        return (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0.0"
+        return (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0.1"
     }
 
     // MARK: - UI Builder
@@ -1393,44 +1393,61 @@ final class RovingBridgeViewController: UIViewController,
         notesHeader.font = .boldSystemFont(ofSize: 15)
         notesHeader.textColor = UIColor(hex: "#1C1A1E")
 
-        let card100 = makeCardView(bg: .white, radius: 14)
-        let noteStack = UIStackView()
-        noteStack.axis = .vertical
-        noteStack.spacing = 6
-        noteStack.translatesAutoresizingMaskIntoConstraints = false
-        card100.addSubview(noteStack)
+        func makeReleaseNoteCard(title: String, body: String) -> UIView {
+            let card = makeCardView(bg: .white, radius: 14)
+            let noteStack = UIStackView()
+            noteStack.axis = .vertical
+            noteStack.spacing = 6
+            noteStack.translatesAutoresizingMaskIntoConstraints = false
+            card.addSubview(noteStack)
 
-        let h100 = UILabel()
-        h100.text = "Version 1.0.0 (Initial iOS Release)"
-        h100.font = .boldSystemFont(ofSize: 14)
-        h100.textColor = UIColor(hex: "#1B7358")
+            let h = UILabel()
+            h.text = title
+            h.font = .boldSystemFont(ofSize: 14)
+            h.textColor = UIColor(hex: "#1B7358")
 
-        let b100 = UILabel()
-        b100.text = """
-        • 🚀 Standalone iPhone & iPad Companion: Dedicated app (com.photobooth4u.rovingbridge) with zero booth code or kiosk lock.
-        • 🔌 Wired USB-C / PTP DSLR Support: Native ImageCaptureCore PTP for Canon EOS (incl. EOS R50 / R-series), Nikon, Sony Alpha, and passive PTP fallback.
-        • 🎯 1-Second QR Pairing: Scan the Photographer Desk QR on your laptop to connect immediately.
-        • 📶 Offline Booth Wi-Fi Routing: Keeps local LAN transfers strictly on Wi-Fi even with 4G/5G cellular data enabled.
-        • 📦 Offline Disk Queue & Auto-Retry: Saves full-res JPEGs safely on disk if Wi-Fi drops and resumes automatically on reconnect.
-        • 🔒 OLED Pocket Mode & Haptic Buzz: Pure black screen, dimmed brightness, 3-tap unlock, and pocket vibration on every delivery.
-        """
-        b100.font = .systemFont(ofSize: 12.5)
-        b100.textColor = UIColor(hex: "#423D44")
-        b100.numberOfLines = 0
+            let b = UILabel()
+            b.text = body
+            b.font = .systemFont(ofSize: 12.5)
+            b.textColor = UIColor(hex: "#423D44")
+            b.numberOfLines = 0
 
-        noteStack.addArrangedSubview(h100)
-        noteStack.addArrangedSubview(b100)
+            noteStack.addArrangedSubview(h)
+            noteStack.addArrangedSubview(b)
 
-        NSLayoutConstraint.activate([
-            noteStack.topAnchor.constraint(equalTo: card100.topAnchor, constant: 14),
-            noteStack.leadingAnchor.constraint(equalTo: card100.leadingAnchor, constant: 16),
-            noteStack.trailingAnchor.constraint(equalTo: card100.trailingAnchor, constant: -16),
-            noteStack.bottomAnchor.constraint(equalTo: card100.bottomAnchor, constant: -14)
-        ])
+            NSLayoutConstraint.activate([
+                noteStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
+                noteStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+                noteStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+                noteStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14)
+            ])
+            return card
+        }
+
+        let card101 = makeReleaseNoteCard(
+            title: "Version 1.0.1 (Current Release)",
+            body: """
+            • 💾 Save Backup + RAW on Camera SD Card: Keeps full RAW + JPEG copies safely on your camera SD card while sending JPEGs to your laptop.
+            • 📶 Faster Reconnect Retry: Speeds up automatic upload retries when booth Wi-Fi briefly drops.
+            """
+        )
+
+        let card100 = makeReleaseNoteCard(
+            title: "Version 1.0.0 (Initial iOS Release)",
+            body: """
+            • 🚀 Standalone iPhone & iPad Companion: Dedicated app (com.photobooth4u.rovingbridge) with zero booth code or kiosk lock.
+            • 🔌 Wired USB-C / PTP DSLR Support: Native ImageCaptureCore PTP for Canon EOS (incl. EOS R50 / R-series), Nikon, Sony Alpha, and passive PTP fallback.
+            • 🎯 1-Second QR Pairing: Scan the Photographer Desk QR on your laptop to connect immediately.
+            • 📶 Offline Booth Wi-Fi Routing: Keeps local LAN transfers strictly on Wi-Fi even with 4G/5G cellular data enabled.
+            • 📦 Offline Disk Queue & Auto-Retry: Saves full-res JPEGs safely on disk if Wi-Fi drops and resumes automatically on reconnect.
+            • 🔒 OLED Pocket Mode & Haptic Buzz: Pure black screen, dimmed brightness, 3-tap unlock, and pocket vibration on every delivery.
+            """
+        )
 
         stack.addArrangedSubview(topBar)
         stack.addArrangedSubview(checkCard)
         stack.addArrangedSubview(notesHeader)
+        stack.addArrangedSubview(card101)
         stack.addArrangedSubview(card100)
 
         NSLayoutConstraint.activate([

@@ -118,9 +118,11 @@ class RovingBridgeActivity : AppCompatActivity() {
         @Volatile var pendingFile: File? = null,
         @Volatile var stagedFile: File? = null,
         @Volatile var brightness: Int = 0,
-        @Volatile var orient: String = ""
+        @Volatile var orient: String = "",
+        @Volatile var promoting: Boolean = false
     ) {
         fun isStaged(): Boolean = !success && stagedFile?.exists() == true
+        fun isQueued(): Boolean = !success && (promoting || pendingFile?.exists() == true)
     }
 
     private val isRunning = AtomicBoolean(false)
@@ -130,6 +132,7 @@ class RovingBridgeActivity : AppCompatActivity() {
     private val uploadExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val retryScheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
     @Volatile private var pendingRetryFuture: ScheduledFuture<*>? = null
+    @Volatile private var nextRetryAtMs: Long = 0L
     private val drainQueued = AtomicBoolean(false)
     private val isDraining = AtomicBoolean(false)
     private val pendingSeq = AtomicInteger(0)
@@ -447,15 +450,87 @@ class RovingBridgeActivity : AppCompatActivity() {
         return sample
     }
 
+    private fun readExifFromBytes(bytes: ByteArray): ExifInterface? = try {
+        ExifInterface(ByteArrayInputStream(bytes))
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun readExifFromFile(file: File): ExifInterface? = try {
+        ExifInterface(file.absolutePath)
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun buildExposureLut(brightness: Int): IntArray {
+        val g = Math.pow(2.0, (brightness / 30.0) * 0.9)
+        val lut = IntArray(256)
+        for (i in 0..255) {
+            val t = i / 255.0
+            val v = ((t * g) / (1.0 + t * (g - 1.0)) * 255.0 + 0.5).toInt()
+            lut[i] = v.coerceIn(0, 255)
+        }
+        return lut
+    }
+
+    private fun copyShootingExif(src: ExifInterface?, destFile: File) {
+        if (src == null) return
+        try {
+            val outExif = ExifInterface(destFile.absolutePath)
+            val tags = arrayOf(
+                ExifInterface.TAG_MAKE,
+                ExifInterface.TAG_MODEL,
+                ExifInterface.TAG_EXPOSURE_TIME,
+                ExifInterface.TAG_F_NUMBER,
+                ExifInterface.TAG_ISO_SPEED_RATINGS,
+                ExifInterface.TAG_FLASH
+            )
+            for (tag in tags) {
+                val v = src.getAttribute(tag)
+                if (!v.isNullOrEmpty()) outExif.setAttribute(tag, v)
+            }
+            outExif.setAttribute(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL.toString())
+            outExif.saveAttributes()
+        } catch (_: Throwable) { }
+    }
+
+    private fun writeAdjustedJpegFile(raw: Bitmap, srcExif: ExifInterface?, orient: Int, brightness: Int, destFile: File): Boolean {
+        val upright = applyExifRotation(raw, orient)
+        val w = upright.width
+        val h = upright.height
+        val mutable = if (upright.isMutable && upright.config == Bitmap.Config.ARGB_8888) upright
+        else upright.copy(Bitmap.Config.ARGB_8888, true).also { if (it != upright) upright.recycle() }
+        val lut = buildExposureLut(brightness)
+        val pixels = IntArray(w * h)
+        mutable.getPixels(pixels, 0, w, 0, 0, w, h)
+        for (i in pixels.indices) {
+            val p = pixels[i]
+            val r = lut[(p ushr 16) and 0xFF]
+            val g = lut[(p ushr 8) and 0xFF]
+            val b = lut[p and 0xFF]
+            pixels[i] = (p and -0x1000000) or (r shl 16) or (g shl 8) or b
+        }
+        mutable.setPixels(pixels, 0, w, 0, 0, w, h)
+        destFile.outputStream().use { out ->
+            mutable.compress(Bitmap.CompressFormat.JPEG, 95, out)
+            out.flush()
+        }
+        mutable.recycle()
+        copyShootingExif(srcExif, destFile)
+        return destFile.exists() && destFile.length() > 0L
+    }
+
     /**
-     * Bakes brightness adjustment (+EXIF upright rotation) into a high-quality JPEG.
+     * Bakes non-clipping exposure adjustment (+EXIF upright rotation & shooting EXIF) into a JPEG.
      * When brightness == 0, returns the original camera bytes untouched (zero re-encoding).
      */
     private fun applyBrightnessToJpegBytes(bytes: ByteArray, brightness: Int): ByteArray {
         val b = brightness.coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX)
         if (b == 0) return bytes
+        var tmpFile: File? = null
         return try {
-            val orient = readExifOrientation(bytes)
+            val srcExif = readExifFromBytes(bytes)
+            val orient = srcExif?.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL) ?: ExifInterface.ORIENTATION_NORMAL
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
             val opts = BitmapFactory.Options().apply {
@@ -463,28 +538,21 @@ class RovingBridgeActivity : AppCompatActivity() {
                 inPreferredConfig = Bitmap.Config.ARGB_8888
             }
             val raw = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts) ?: return bytes
-            val upright = applyExifRotation(raw, orient)
-            val filter = brightnessColorFilter(b)
-            val outBmp = Bitmap.createBitmap(upright.width, upright.height, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(outBmp)
-            val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
-                colorFilter = filter
-            }
-            canvas.drawBitmap(upright, 0f, 0f, paint)
-            upright.recycle()
-            val baos = ByteArrayOutputStream(bytes.size.coerceAtMost(4 * 1024 * 1024))
-            outBmp.compress(Bitmap.CompressFormat.JPEG, 92, baos)
-            outBmp.recycle()
-            val out = baos.toByteArray()
-            if (out.isNotEmpty()) out else bytes
+            tmpFile = File.createTempFile("rove_adj_", ".jpg", cacheDir)
+            if (writeAdjustedJpegFile(raw, srcExif, orient, b, tmpFile)) {
+                val out = tmpFile.readBytes()
+                if (out.isNotEmpty()) out else bytes
+            } else bytes
         } catch (e: Throwable) {
             Log.w(TAG, "Brightness adjust failed, using original JPEG: ${e.message}")
             bytes
+        } finally {
+            try { tmpFile?.delete() } catch (_: Exception) { }
         }
     }
 
     /**
-     * Writes srcFile into destFile, baking brightness when != 0 or moving/copying raw bytes untouched when == 0.
+     * Writes srcFile into destFile, baking exposure when != 0 or moving/copying raw bytes untouched when == 0.
      */
     private fun promoteStagedToPendingFile(srcFile: File, destFile: File, brightness: Int): Boolean {
         val b = brightness.coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX)
@@ -504,7 +572,8 @@ class RovingBridgeActivity : AppCompatActivity() {
                     ok
                 }
             } else {
-                val orient = readExifOrientation(srcFile)
+                val srcExif = readExifFromFile(srcFile)
+                val orient = srcExif?.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL) ?: ExifInterface.ORIENTATION_NORMAL
                 val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 BitmapFactory.decodeFile(srcFile.absolutePath, bounds)
                 val opts = BitmapFactory.Options().apply {
@@ -518,20 +587,7 @@ class RovingBridgeActivity : AppCompatActivity() {
                     try { srcFile.delete() } catch (_: Exception) { }
                     true
                 } else {
-                    val upright = applyExifRotation(raw, orient)
-                    val filter = brightnessColorFilter(b)
-                    val outBmp = Bitmap.createBitmap(upright.width, upright.height, Bitmap.Config.ARGB_8888)
-                    val canvas = Canvas(outBmp)
-                    val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
-                        colorFilter = filter
-                    }
-                    canvas.drawBitmap(upright, 0f, 0f, paint)
-                    upright.recycle()
-                    tmp.outputStream().use { out ->
-                        outBmp.compress(Bitmap.CompressFormat.JPEG, 92, out)
-                        out.flush()
-                    }
-                    outBmp.recycle()
+                    writeAdjustedJpegFile(raw, srcExif, orient, b, tmp)
                     val moved = tmp.renameTo(destFile) || run {
                         tmp.copyTo(destFile, overwrite = true)
                         tmp.delete()
@@ -609,9 +665,9 @@ class RovingBridgeActivity : AppCompatActivity() {
 
         val versionStr = try {
             val pInfo = packageManager.getPackageInfo(packageName, 0)
-            "v" + (pInfo.versionName ?: "1.1.4")
+            "v" + (pInfo.versionName ?: "1.1.5")
         } catch (_: Exception) {
-            "v1.1.4"
+            "v1.1.5"
         }
 
         val sub = TextView(this).apply {
@@ -2164,6 +2220,38 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
         container.addView(changelogTitle)
 
+        // Card v1.1.5
+        val card115 = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = makeCard(Color.WHITE, 14f)
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = dp(12)
+            }
+            layoutParams = lp
+        }
+
+        val header115 = TextView(this).apply {
+            text = "Version 1.1.5 (Current Release)"
+            textSize = 14f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.parseColor("#1B7358"))
+        }
+        card115.addView(header115)
+
+        val notes115 = TextView(this).apply {
+            text = "• 💾 Save Backup + RAW on Camera SD Card: Optional toggle keeps full RAW + JPEG copies safely on your camera SD card while streaming JPEGs to your laptop.\n" +
+                   "• 🚀 Faster Gallery & Background Retry: Adds cached review thumbnails and smoother background reconnect retries when booth Wi-Fi fluctuates."
+            textSize = 12f
+            setTextColor(Color.parseColor("#423D44"))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(6)
+            }
+            layoutParams = lp
+        }
+        card115.addView(notes115)
+        container.addView(card115)
+
         // Card v1.1.4
         val card114 = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -2176,7 +2264,7 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
 
         val header114 = TextView(this).apply {
-            text = "Version 1.1.4 (Current Release)"
+            text = "Version 1.1.4"
             textSize = 14f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.parseColor("#1B7358"))
@@ -2438,9 +2526,9 @@ class RovingBridgeActivity : AppCompatActivity() {
 
     private fun getCurrentVersionName(): String {
         return try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.4"
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.5"
         } catch (_: Exception) {
-            "1.1.4"
+            "1.1.5"
         }
     }
 
@@ -2556,13 +2644,13 @@ class RovingBridgeActivity : AppCompatActivity() {
             if (::previewRetryBtn.isInitialized) previewRetryBtn.visibility = View.GONE
             if (::previewQueueBtn.isInitialized) previewQueueBtn.visibility = View.VISIBLE
             iv?.colorFilter = null
-        } else if (photo.pendingFile?.exists() == true) {
-            statusText?.text = "● Queued — auto-uploads when Wi-Fi reconnects"
+        } else if (photo.isQueued()) {
+            statusText?.text = if (photo.promoting) "● Preparing & queuing photo…" else "● Queued — auto-uploads when Wi-Fi reconnects"
             statusText?.setTextColor(Color.parseColor("#F59E0B"))
             if (::previewBrightnessRow.isInitialized) previewBrightnessRow.visibility = View.GONE
             if (::previewSendStagedBtn.isInitialized) previewSendStagedBtn.visibility = View.GONE
             if (::previewDiscardBtn.isInitialized) previewDiscardBtn.visibility = View.GONE
-            if (::previewRetryBtn.isInitialized) previewRetryBtn.visibility = View.VISIBLE
+            if (::previewRetryBtn.isInitialized) previewRetryBtn.visibility = if (photo.promoting) View.GONE else View.VISIBLE
             if (::previewQueueBtn.isInitialized) previewQueueBtn.visibility = View.VISIBLE
             iv?.colorFilter = null
         } else {
@@ -2598,6 +2686,7 @@ class RovingBridgeActivity : AppCompatActivity() {
             if (f == null || !f.exists()) null
             else {
                 photo.stagedFile = null
+                photo.promoting = true
                 f
             }
         } ?: return
@@ -2622,7 +2711,8 @@ class RovingBridgeActivity : AppCompatActivity() {
             val ok = promoteStagedToPendingFile(srcFile, destFile, adjBrightness)
             if (ok && destFile.exists()) {
                 photo.pendingFile = destFile
-                // Refresh thumbnail to reflect baked brightness when brightness != 0
+                photo.promoting = false
+                // Refresh thumbnail to reflect baked exposure when brightness != 0
                 if (adjBrightness != 0) {
                     val fresh = saveThumbnailFromFile(destFile)
                     if (fresh != null) {
@@ -2643,11 +2733,12 @@ class RovingBridgeActivity : AppCompatActivity() {
                     }
                     refreshQueueUi()
                     notifyGalleryChanged()
-                    if (targetUrl.trim().isNotEmpty()) scheduleDrain()
+                    if (targetUrl.trim().isNotEmpty()) kickRetryQueue(0L)
                 }
             } else {
                 // Restore staged reference if disk promotion failed
                 if (srcFile.exists()) photo.stagedFile = srcFile
+                photo.promoting = false
                 mainHandler.post {
                     if (isFinishing || isDestroyed) return@post
                     Toast.makeText(this, "Could not prepare photo for upload", Toast.LENGTH_SHORT).show()
@@ -2766,7 +2857,7 @@ class RovingBridgeActivity : AppCompatActivity() {
                         val it = sessionPhotos.iterator()
                         while (it.hasNext()) {
                             val p = it.next()
-                            if (p.success || (p.pendingFile?.exists() != true && !p.isStaged())) {
+                            if (p.success || (!p.isQueued() && !p.isStaged())) {
                                 try { p.thumbFile.delete() } catch (_: Exception) { }
                                 it.remove()
                             }
@@ -3112,7 +3203,7 @@ class RovingBridgeActivity : AppCompatActivity() {
                 } else if (photo.success) {
                     badge.text = "${photo.timeStr} ✓"
                     badge.background = makeCard(Color.parseColor("#CC1B7358"), 6f)
-                } else if (photo.pendingFile?.exists() == true) {
+                } else if (photo.isQueued()) {
                     badge.text = "${photo.timeStr} ⏳"
                     badge.background = makeCard(Color.parseColor("#CCD97706"), 6f)
                 } else {
@@ -3197,7 +3288,7 @@ class RovingBridgeActivity : AppCompatActivity() {
                             }
                         }
                     }
-                    if (!isDraining.get() && !drainQueued.get() && cleanUrl(targetUrl.trim()).isNotEmpty() && pendingCount() > 0) {
+                    if (!isDraining.get() && !drainQueued.get() && System.currentTimeMillis() >= nextRetryAtMs && cleanUrl(targetUrl.trim()).isNotEmpty() && pendingCount() > 0) {
                         scheduleDrain()
                     }
                 } catch (e: Exception) {
@@ -3725,9 +3816,11 @@ class RovingBridgeActivity : AppCompatActivity() {
         try { pendingRetryFuture?.cancel(false) } catch (_: Exception) { }
         if (isFinishing || isDestroyed) return
         if (delayMs > 0L) {
+            nextRetryAtMs = System.currentTimeMillis() + delayMs
             if (!retryScheduler.isShutdown && pendingCount() > 0 && targetUrl.trim().isNotEmpty()) {
                 try {
                     pendingRetryFuture = retryScheduler.schedule({
+                        nextRetryAtMs = 0L
                         if (!isFinishing && !isDestroyed && pendingCount() > 0 && targetUrl.trim().isNotEmpty()) {
                             scheduleDrain()
                         }
@@ -3737,6 +3830,7 @@ class RovingBridgeActivity : AppCompatActivity() {
                 }
             }
         } else {
+            nextRetryAtMs = 0L
             scheduleDrain()
         }
     }
@@ -3841,6 +3935,7 @@ class RovingBridgeActivity : AppCompatActivity() {
         val item = SessionPhoto(placeholderThumb, timeStr, false, outBytes.size.toLong(), pendingFile = pendingFile, stagedFile = null, brightness = adjBrightness, orient = "")
         synchronized(sessionPhotos) { sessionPhotos.add(0, item) }
         if (currentTarget.isNotEmpty()) {
+            nextRetryAtMs = 0L
             scheduleDrain()
         }
 
@@ -4109,7 +4204,7 @@ class RovingBridgeActivity : AppCompatActivity() {
         try {
             val clean = cleanUrl(baseUrl)
             val name = "rove_" + System.currentTimeMillis() + ".jpg"
-            val target = URL("$clean/photo?name=$name")
+            val target = URL("$clean/photo?name=$name&id=$name")
             val pair = openLanConnection(target, 5000, 20000)
             conn = pair.first
             activeUploadConn = conn

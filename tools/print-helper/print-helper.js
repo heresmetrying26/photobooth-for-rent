@@ -31,7 +31,7 @@ import {
 } from './bridge-ctrl.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.25';
+const VERSION = '1.1.26';
 const PORT = 17321;
 const OPEN_STATION_ON_START = process.argv.includes('--station');
 const ALLOWED_ORIGINS = new Set([

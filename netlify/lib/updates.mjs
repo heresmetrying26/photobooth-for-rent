@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.114', date: '2026-11-26' },
   { version: '1.1.113', date: '2026-11-26' },
   { version: '1.1.112', date: '2026-11-25' },
   { version: '1.1.111', date: '2026-11-25' },
@@ -222,7 +223,7 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.25', date: '2026-11-25' };
+export const HELPER = { version: '1.1.26', date: '2026-11-26' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
@@ -256,7 +257,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.30', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.30/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.31', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.31/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -310,6 +311,16 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-26', title: 'Desktop 1.1.114, Android 1.2.23, iPad 1.1.31, Print Helper 1.1.26 & Roving DSLR Bridge 1.1.5 / 1.0.1: Receipt Brightness & Compact Vouchers, Lag-Free Stickers & Text, Guided Flow & Camera SD Backup', for: ['website', 'app', 'android', 'ipad', 'helper'], app: '1.1.114', android: '1.2.23', ipad: '1.1.31', helper: '1.1.26',
+    items: [
+      '✨ Fine-tune print now visible for Thermal Receipt Printers: When Receipt 80 mm or Receipt 58 mm is chosen, Fine-tune print stays open so you can adjust Brightness, Contrast, Saturation, Shadows, Highlights, and Sharpen cleanly before printing.',
+      '🎟️ Compact Thermal Vouchers: Shortens 80 mm and 58 mm paper vouchers by over half with a tighter top-to-bottom layout while keeping tall upright orientation on receipt printers.',
+      '⚡ Faster, lag-free stickers and custom text: Keeps your photo collage cached while dragging, resizing, typing, or changing sticker and text sliders so edits feel instant even on tablets.',
+      '🧭 Seamless guest flow & live text controls: Adds a clear step progress bar (Style, Take Photos, Decorate, Done), a Change layout back button on Get Ready, live font, size, and colour restyling on selected text, Undo and Clear buttons, and clear black-and-white receipt preview notices.',
+      '💾 Save Backup + RAW on Camera SD Card & Offline Queue Upgrades: Optional switch across booth apps, Print Helper 1.1.26, and Roving DSLR Bridge (Android 1.1.5 / iOS 1.0.1) keeps full RAW and JPEG copies on your camera card while streaming JPEGs, alongside automatic phone upload queuing and a simpler beginner view for 360 Booth.'
+    ]
+  },
   {
     date: '2026-11-26', title: 'Desktop 1.1.113, Android 1.2.22, iPad 1.1.30 & Website: Guided Photoman Template Maker, Guest Screen Aspect Fixes & Clean Menu Gating', for: ['website', 'app', 'android', 'ipad'], app: '1.1.113', android: '1.2.22', ipad: '1.1.30',
     items: [

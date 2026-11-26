@@ -5177,21 +5177,47 @@
       flex: 1;
     }
 
-    @media (max-width: 760px) {
+    @media (max-width: 820px) {
       .desk-preview-tab-btn {
         display: inline-block !important;
+      }
+
+      .desk-studio-head {
+        padding: 8px 12px;
+        gap: 8px;
+      }
+
+      .desk-head-left {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .desk-head-sub {
+        display: none;
+      }
+
+      #deskHeadTabs {
+        order: 3;
+        width: 100%;
+        overflow-x: auto;
+        max-width: 100%;
       }
 
       .desk-guide-inner {
         grid-template-columns: 1fr;
       }
 
-      .desk-studio-body {
+      .desk-studio-body,
+      .desk-studio-ov.desk-maker-active .desk-studio-body {
         display: flex;
         flex-direction: column;
         overflow-y: auto;
         padding: 10px;
         gap: 12px;
+      }
+
+      .desk-studio-ov.desk-maker-active .desk-studio-preview {
+        order: -1;
       }
 
       .desk-studio-controls {
@@ -5204,6 +5230,29 @@
         height: auto;
         max-height: none;
         overflow-y: visible;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .desk-head-title-wrap {
+        display: none;
+      }
+
+      .desk-head-right {
+        gap: 6px;
+      }
+
+      .desk-head-right .desk-btn {
+        padding: 6px 10px;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .desk-pv-tab {
+        white-space: normal;
+        line-height: 1.25;
+        min-width: 0;
+        padding: 6px 8px;
       }
     }
 
@@ -31707,7 +31756,7 @@
       }
 
       // ---- Photos waiting to upload ----
-      var queueCount = 0, queueBusy = false, queueTimer = null;
+      var queueCount = 0, queueBusy = false, queueTimer = null, _driveNetDownAt = 0;
       function isPermanentUploadError(err) {
         const m = String((err && err.message) || err || '');
         return /only use its own event folder|locked|trial-ended|expired|Could not get permission|ticket/i.test(m);
@@ -31757,6 +31806,7 @@
             if (!LOCALSHARE && !navigator.onLine && !manual) break;
             try {
               const r = await uploadToDrive(it.blob, it.filename, { folderKey: it.folderKey, subfolder: it.subfolder });
+              _driveNetDownAt = 0;
               await dbDo('uploads', 'readwrite', st => st.delete(it.id));
               uploaded++;
               if (r.folderUrl && it.folderKey === rawFolderKey()) rememberFolderUrl(r.folderUrl);
@@ -31803,7 +31853,7 @@
         if (r) r.addEventListener('click', () => processQueue(true));
         const sv = document.getElementById('uploadSaveBtn');
         if (sv) sv.addEventListener('click', saveQueuedToComputer);
-        window.addEventListener('online', () => scheduleQueue(1000));
+        window.addEventListener('online', () => { _driveNetDownAt = 0; scheduleQueue(1000); });
         window.addEventListener('beforeunload', e => {
           if (queueCount && !queueBusy) { e.preventDefault(); e.returnValue = ''; }
         });
@@ -32071,12 +32121,18 @@
           let drive = null, lastErr = null;
           // Saving on this device (laptop / tablet app) never needs the internet.
           const online = LOCALSHARE || navigator.onLine !== false;
-          // Clearly offline: keep it for later straight away (no 5 s of retries).
+          // Clearly offline or recent dead-internet router fail: queue right away instead of burning 5.5s on retries.
           if (!online) lastErr = new Error('offline');
-          for (let attempt = 0; attempt < 3 && !drive && online; attempt++) {
+          const netRecentFail = !LOCALSHARE && _driveNetDownAt && (Date.now() - _driveNetDownAt) < 15000;
+          const maxAttempts = netRecentFail ? 1 : 3;
+          for (let attempt = 0; attempt < maxAttempts && !drive && online; attempt++) {
             if (attempt) { if (onRetry) onRetry(attempt); await wait(attempt === 1 ? 1500 : 4000); }
-            try { drive = await uploadToDrive(blob, filename, dest); }
-            catch (e) { lastErr = e; if (isPermanentUploadError(e)) break; }
+            try { drive = await uploadToDrive(blob, filename, dest); _driveNetDownAt = 0; }
+            catch (e) {
+              lastErr = e;
+              if (isPermanentUploadError(e)) break;
+              _driveNetDownAt = Date.now();
+            }
           }
           if (!drive) {
             let queued = false;
@@ -52996,7 +53052,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         window.addEventListener('pagehide', deskReleaseLeader);
       }
 
-      var _deskIdbPromise = null;
+      var _deskIdbPromise = null, _deskIdbDb = null;
       function deskIdbOpen() {
         if (_deskIdbPromise) return _deskIdbPromise;
         _deskIdbPromise = new Promise(function (res) {
@@ -53007,29 +53063,45 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               var db = req.result;
               if (!db.objectStoreNames.contains('queue')) db.createObjectStore('queue');
             };
-            req.onsuccess = function () { res(req.result); };
+            req.onsuccess = function () { _deskIdbDb = req.result; res(req.result); };
             req.onerror = function () { res(null); };
           } catch (e) { res(null); }
         });
         return _deskIdbPromise;
       }
       var deskIdbSaveTimer = null, deskSyncHold = false;
+      function deskIdbBuildPayload() {
+        var keep = deskQueue;
+        if (keep.length > 160) {
+          // Always preserve unprinted/pending shots ahead of older printed ones
+          var fresh = [], usedList = [];
+          for (var qi = 0; qi < keep.length; qi++) {
+            if (keep[qi] && !keep[qi].used) fresh.push(keep[qi]);
+            else usedList.push(keep[qi]);
+          }
+          var roomUsed = Math.max(0, 160 - fresh.length);
+          var trimmed = usedList.slice(usedList.length - roomUsed).concat(fresh.slice(-160));
+          var trimmedSet = typeof Set === 'function' ? new Set(trimmed) : null;
+          keep = trimmedSet ? keep.filter(function (x) { return trimmedSet.has(x); }) : keep.slice(-160);
+        }
+        return {
+          seq: deskSeq,
+          autoFrom: deskAutoFrom,
+          sel: deskSel.slice(),
+          items: keep.map(function (it) {
+            return {
+              id: it.id, name: it.name, blob: it.blob, used: !!it.used,
+              phone: !!it.phone, adj: it.adj || null, noAuto: !!it.noAuto, bad: !!it.bad,
+              w: Number(it.w) || 0, h: Number(it.h) || 0, orient: it.orient || '',
+              createdAt: it.createdAt || Date.now()
+            };
+          })
+        };
+      }
       async function deskIdbSaveNow(silentBroadcast) {
         try {
           var db = await deskIdbOpen(); if (!db) return;
-          var payload = {
-            seq: deskSeq,
-            autoFrom: deskAutoFrom,
-            sel: deskSel.slice(),
-            items: deskQueue.slice(-120).map(function (it) {
-              return {
-                id: it.id, name: it.name, blob: it.blob, used: !!it.used,
-                phone: !!it.phone, adj: it.adj || null, noAuto: !!it.noAuto, bad: !!it.bad,
-                w: Number(it.w) || 0, h: Number(it.h) || 0, orient: it.orient || '',
-                createdAt: it.createdAt || Date.now()
-              };
-            })
-          };
+          var payload = deskIdbBuildPayload();
           await new Promise(function (res) {
             var tx = db.transaction('queue', 'readwrite');
             tx.objectStore('queue').put(payload, 'active');
@@ -53039,10 +53111,21 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (!silentBroadcast) deskBroadcast({ type: 'queue-updated', seq: deskSeq, sel: deskSel });
         } catch (e) { }
       }
+      function deskIdbFlushSync() {
+        if (!deskIdbSaveTimer || deskSyncHold) return;
+        clearTimeout(deskIdbSaveTimer);
+        deskIdbSaveTimer = null;
+        try {
+          if (_deskIdbDb) _deskIdbDb.transaction('queue', 'readwrite').objectStore('queue').put(deskIdbBuildPayload(), 'active');
+          else deskIdbSaveNow(true);
+        } catch (e) { }
+      }
+      window.addEventListener('beforeunload', deskIdbFlushSync);
+      window.addEventListener('pagehide', deskIdbFlushSync);
       function deskScheduleIdbSave(silentBroadcast) {
         if (deskSyncHold) return;
         clearTimeout(deskIdbSaveTimer);
-        deskIdbSaveTimer = setTimeout(function () { deskIdbSaveNow(silentBroadcast); }, 120);
+        deskIdbSaveTimer = setTimeout(function () { deskIdbSaveTimer = null; deskIdbSaveNow(silentBroadcast); }, 120);
       }
       async function deskIdbLoad() {
         try {
@@ -54076,9 +54159,6 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
         try {
           var res = await deskRunWithBoothCtx(ctx, function () { return uploadLayoutForQR(resolvedLayoutKey); });
-          if (typeof saveSoloPhotos !== 'undefined' && saveSoloPhotos && soloSnap && soloSnap.length) {
-            try { saveSoloPhotosAsync(ctx.sessionNum, soloSnap); } catch (e) { }
-          }
           if (res && (res.fileId || res.url)) {
             var finalUrl = res.fileId ? fileShareUrl(res.fileId, true) : res.url;
             if (deskLast && deskLast.sessionNumber === ctx.sessionNum) {
@@ -54093,6 +54173,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (deskLast && deskLast.sessionNumber === ctx.sessionNum) {
             deskLast.qrErr = (err && err.queued) ? 'Saved locally · syncs online' : 'Saved locally';
             deskRenderResultCard();
+            deskRemoteMark();
+          }
+        } finally {
+          if (typeof saveSoloPhotos !== 'undefined' && saveSoloPhotos && soloSnap && soloSnap.length) {
+            try { saveSoloPhotosAsync(ctx.sessionNum, soloSnap); } catch (e) { }
           }
         }
       }
@@ -54164,7 +54249,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (typeof autoPrint !== 'undefined' && autoPrint) {
             await deskPrintCtx(ctx, true);
           }
-          await uploadTask;
+          // Unblock Queue / Auto-frame within 3.5s even on slow/dead-internet venue routers; uploadTask finishes queueing/QR in background.
+          await Promise.race([uploadTask, new Promise(function (r) { setTimeout(r, 3500); })]);
         } catch (e) {
           console.error('Desk photo failed:', e);
           if (auto) picks.forEach(function (p) { p.bad = true; p.noAuto = true; });
@@ -54599,7 +54685,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         function on() { deskEd.hold = true; deskEdSchedule(); } function off() { deskEd.hold = false; deskEdSchedule(); }
         hb.addEventListener('pointerdown', on); hb.addEventListener('pointerup', off); hb.addEventListener('pointerleave', off); hb.addEventListener('pointercancel', off);
       })();
-      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !deskEdOv.hidden) deskEdClose(); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        if (!deskEdOv.hidden) { e.stopPropagation(); deskEdClose(); return; }
+        var pmGm = document.getElementById('pmGuideModal');
+        if (pmGm && !pmGm.hidden) { e.stopPropagation(); pmGm.hidden = true; return; }
+        if (!DESK_STANDALONE && deskOverlay && !deskOverlay.hidden) { e.stopPropagation(); closeDesk(); }
+      });
 
       // ---- Desktop app: watch a folder the photographer's photos are saved to ----
       function deskWatchUI() {
@@ -56811,6 +56903,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var ms = roveLaptop() ? (open ? 450 : 900) : (open ? 8000 : 30000);
         roveTimer = setTimeout(async function () { await roveNow(); roveSchedule(); }, ms);
       }
+      window.addEventListener('online', function () {
+        if (roveAvailable()) {
+          if (!roveLaptop() && roveWebOn) roveNow();
+          roveSchedule();
+        }
+      });
       // The phone-upload QR code in the Photographer desk.
       function roveShowPhone() {
         var box = document.getElementById('deskPhoneQr'), note = document.getElementById('deskPhoneNote'), lnk = document.getElementById('deskPhoneLink');

@@ -126,12 +126,12 @@ const sampleData = {
   codes: ['12345678', '23456789', '34567890', '45678901', '56789012']
 };
 
-// Test A: Thermal voucher canvas — NO "ONLY" pill, optional eventDate, strictly portrait, pure B&W
+// Test A: Compact thermal voucher canvas — NO "ONLY" pill, optional eventDate, ~50% shorter height, pure B&W
 {
   const { sb } = makeSandbox();
   const c80 = sb.buildThermalVoucherCanvas(sampleData, '12345678', { dotW: 576, showCutLine: false });
   assert.equal(c80.width, 576);
-  assert.ok(c80.height > c80.width, '80mm single ticket must be strictly portrait to prevent CUPS/AirPrint rotation');
+  assert.ok(c80.height <= 300, '80mm compact ticket height (' + c80.height + 'px) must be ~50% shorter than old 584px');
   assert.equal(c80._pbToneDone, true, '80mm ticket must set _pbToneDone=true for crisp monochrome text');
   const texts80 = c80._ops.filter((o) => o[0] === 'fillText').map((o) => o[1]);
   assert.ok(texts80.includes('1234 5678'), '80mm ticket must draw formatted 8-digit code');
@@ -139,14 +139,17 @@ const sampleData = {
   assert.ok(texts80.some((t) => t.includes('₱100')), '80mm ticket must draw price');
   assert.ok(!texts80.some((t) => /\bONLY\b/i.test(t)), 'thermal ticket must NOT contain THERMAL/COLOR ONLY badge');
 
-  // Without eventDate: must not draw any date line
+  // Without eventDate: must not draw any date line, and single-line / two-line headers stay ultra-compact
   const noDate = sb.buildThermalVoucherCanvas({ ...sampleData, eventDate: '' }, '12345678', { dotW: 576, showCutLine: false });
+  assert.ok(noDate.height <= 280, '80mm 2-line ticket without date (' + noDate.height + 'px) must stay compact');
+  const shortOne = sb.buildThermalVoucherCanvas({ ...sampleData, event: "Nyl's Print", eventDate: '' }, '12345678', { dotW: 576, showCutLine: false });
+  assert.ok(shortOne.height <= 260, '80mm 1-line ticket without date (' + shortOne.height + 'px) must be under half the old 584px height');
   const noDateTexts = noDate._ops.filter((o) => o[0] === 'fillText').map((o) => o[1]);
   assert.ok(!noDateTexts.includes('Nov 25, 2026'), 'ticket must omit eventDate when not set');
 
   const c58 = sb.buildThermalVoucherCanvas(sampleData, '12345678', { dotW: 384, showCutLine: true });
   assert.equal(c58.width, 384);
-  assert.ok(c58.height > c58.width, '58mm single ticket must be strictly portrait');
+  assert.ok(c58.height <= 245, '58mm compact ticket with cut line (' + c58.height + 'px) must be ~50% shorter than old 426px');
   assert.equal(c58._pbToneDone, true);
   const texts58 = c58._ops.filter((o) => o[0] === 'fillText').map((o) => o[1]);
   assert.ok(texts58.includes('Nov 25, 2026'), '58mm ticket must draw eventDate when provided');
@@ -159,20 +162,28 @@ const sampleData = {
   const { sb } = makeSandbox();
   for (const dotW of [576, 384]) {
     const is58 = dotW === 384;
-    const dividerBottom = (is58 ? 10 + 38 : 14 + 54) + 2;
-    const boxTop = (is58 ? 10 + 154 : 14 + 226) - (is58 ? 2 : 2.5);
+    const dividerBottom = (is58 ? 3 + 20 : 4 + 26) + 2;
     for (const ev of ['My Event', 'Ana & Marco Grand Garden Wedding Celebration 2026']) {
       for (const eventDate of ['', 'Nov 25, 2026']) {
         for (const price of [0, 150]) {
           const cv = sb.buildThermalVoucherCanvas({ ...sampleData, event: ev, eventDate, price }, '12345678', { dotW, showCutLine: false });
-          const headerTexts = cv._ops.filter((o) => o[0] === 'fillText' && o[1] !== 'PHOTOBOOTH4U · VOUCHER' && o[2] === dotW / 2 && o[3] < boxTop + 10);
+          const codeLbl = cv._ops.find((o) => o[0] === 'fillText' && o[1] === 'VOUCHER CODE');
+          assert.ok(codeLbl, 'VOUCHER CODE label must be drawn');
+          const boxTop = codeLbl[3] - (is58 ? 14 : 18) - (is58 ? 2 : 2.5);
+          const headerTexts = cv._ops.filter((o) => o[0] === 'fillText' && o[1] !== 'PHOTOBOOTH4U · VOUCHER' && o[3] < boxTop + 5);
           assert.ok(headerTexts.length >= 1, 'header must draw at least event name');
+          const leftItems = headerTexts.filter((o) => !String(o[1]).startsWith('₱'));
+          const rightItems = headerTexts.filter((o) => String(o[1]).startsWith('₱'));
           let prevY = dividerBottom;
-          for (const item of headerTexts) {
+          for (const item of leftItems) {
             const y = item[3];
-            assert.ok(y > prevY + 8, `header overlap on ${dotW}px (${ev}/${eventDate}/${price}): ${item[1]} at y=${y} vs prev=${prevY}`);
+            assert.ok(y > prevY + 6, `header overlap on ${dotW}px (${ev}/${eventDate}/${price}): ${item[1]} at y=${y} vs prev=${prevY}`);
             assert.ok(y <= boxTop - 2, `header collided with code box on ${dotW}px (${ev}/${eventDate}/${price}): ${item[1]} at y=${y} vs boxTop=${boxTop}`);
             prevY = y;
+          }
+          for (const item of rightItems) {
+            const y = item[3];
+            assert.ok(y > dividerBottom + 6 && y <= boxTop - 2, `price collided on ${dotW}px (${ev}/${eventDate}/${price}): y=${y} vs [${dividerBottom}, ${boxTop}]`);
           }
         }
       }
@@ -197,13 +208,13 @@ const sampleData = {
 {
   const { sb } = makeSandbox();
   const pages80 = sb.buildThermalVoucherStripPages(sampleData, sampleData.codes, 576);
-  assert.equal(pages80.length, 3, '5 tickets at 2/page on 80mm -> 3 pages');
+  assert.equal(pages80.length, 2, '5 compact tickets at 4/page on 80mm -> 2 pages');
   pages80.forEach((p) => {
     const hMm = p.canvas.height / 203 * 25.4;
     assert.ok(hMm < 180, '80mm strip page height (' + hMm.toFixed(1) + 'mm) must stay well under 210mm');
   });
   const pages58 = sb.buildThermalVoucherStripPages(sampleData, sampleData.codes, 384);
-  assert.equal(pages58.length, 2, '5 tickets at 3/page on 58mm -> 2 pages');
+  assert.equal(pages58.length, 1, '5 compact tickets at 5/page on 58mm -> 1 page');
   pages58.forEach((p) => {
     const hMm = p.canvas.height / 203 * 25.4;
     assert.ok(hMm < 180, '58mm strip page height (' + hMm.toFixed(1) + 'mm) must stay well under 210mm');
@@ -288,7 +299,7 @@ const sampleData = {
 
   calls.helper.length = 0;
   await sb.printThermalVouchers(sampleData, ['20000001', '20000002', '20000003'], { format: 'thermal80', cutEach: false, target: helperTarget });
-  assert.equal(calls.helper.length, 2, 'continuous 80mm packs 2 + 1 tickets into 2 safe-height jobs');
+  assert.equal(calls.helper.length, 1, 'continuous 80mm packs 3 compact tickets into 1 safe-height job');
 
   const browserTarget = { id: 'browser', kind: 'browser', name: 'Browser print' };
   await sb.printThermalVouchers(sampleData, ['30000001', '30000002'], { format: 'thermal58', cutEach: false, target: browserTarget });
@@ -326,4 +337,72 @@ const sampleData = {
   assert.equal(dlgCalls[0].pages.length, 2);
 }
 
-console.log('OK: all thermal voucher triple-check tests passed (clean layout without ONLY badge, optional eventDate, 8-combo geometry check, strip packing, discovery, all 5 routes, cancel & printed tracking).');
+// Test G: Fine-tune print drawer (#pbMoreOptions) stays visible for receipt80 / receipt58 so Lightness & thermal test strips appear
+{
+  const fnStart = booth.indexOf('function refreshPhotoFitUI() {');
+  const fnEnd = booth.indexOf('const EDGE_SIDES =', fnStart);
+  assert.ok(fnStart > 0 && fnEnd > fnStart, 'could not locate refreshPhotoFitUI in protected/booth.html');
+  const mkClassList = () => {
+    const s = new Set();
+    return {
+      toggle: (k, force) => { if (force) s.add(k); else s.delete(k); },
+      contains: (k) => s.has(k)
+    };
+  };
+  const mkEl = () => ({ classList: mkClassList(), hidden: false, textContent: '', innerHTML: '', value: '', checked: false, appendChild() {} });
+  const els = {
+    photoFitBox: mkEl(),
+    thermalQualityBox: mkEl(),
+    thermalQualityHint: mkEl(),
+    printerQualityBox: mkEl(),
+    pbMoreOptions: mkEl(),
+    pbMoreSub: mkEl(),
+    photoSizeRow: mkEl(),
+    photoFitHint: mkEl(),
+    borderlessRow: mkEl(),
+    borderlessToggle: mkEl(),
+    borderlessHint: mkEl(),
+    edgeAdjGrid: { children: [1], querySelector: () => null },
+    edgeAdjHint: mkEl()
+  };
+  const sb2 = {
+    PAPER: {
+      receipt80: { name: 'Receipt 80 mm', w: 72, h: 290, receipt: true },
+      '4x6': { name: '4×6 in', w: 101.6, h: 152.4 }
+    },
+    printSize: 'receipt80',
+    paperFor: (k) => sb2.PAPER[k] || null,
+    isReceiptPaper: (k) => !!(sb2.PAPER[k] && sb2.PAPER[k].receipt),
+    printerFor: () => '',
+    helperOn: false,
+    isInstaxPrinter: () => false,
+    printPrefs: { thermalQuality: 'best', fit: 'auto', edges: { t: 0, b: 0, l: 0, r: 0 } },
+    cleanEdges: (e) => e,
+    photoSizeRow: els.photoSizeRow,
+    photoFitHint: els.photoFitHint,
+    borderlessToggle: els.borderlessToggle,
+    borderlessHint: els.borderlessHint,
+    wifiPrinter: null,
+    window: {},
+    schedulePrintThumb: () => {},
+    thermalSmoothUI: () => {},
+    document: {
+      getElementById: (id) => els[id] || null,
+      querySelectorAll: () => [],
+      createElement: () => mkEl()
+    }
+  };
+  vm.createContext(sb2);
+  vm.runInContext(booth.slice(fnStart, fnEnd), sb2);
+
+  sb2.refreshPhotoFitUI();
+  assert.equal(els.pbMoreOptions.hidden, false, 'Fine-tune print drawer must stay visible on receipt80');
+  assert.equal(els.thermalQualityBox.classList.contains('hidden'), false, 'thermalQualityBox must be visible on receipt80');
+  assert.equal(els.photoFitBox.classList.contains('hidden'), true, 'photoFitBox must stay hidden on receipt80');
+
+  sb2.printSize = null;
+  sb2.refreshPhotoFitUI();
+  assert.equal(els.pbMoreOptions.hidden, true, 'Fine-tune print drawer must hide when no paper size is selected');
+}
+
+console.log('OK: all thermal voucher & Fine-tune print tests passed.');

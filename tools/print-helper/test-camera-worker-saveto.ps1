@@ -164,11 +164,18 @@ Check 'newer Canon (0x9128) InfoJson: preFocus=true, olderCanon=false' ($infNew.
 $sMf = $listJson.Invoke($null, $null) | ConvertFrom-Json
 Check 'ListJson when lensMf=true clears focusInShot and noAfOff' ($sMf.lensMf -eq $true -and $sMf.focusInShot -eq $false -and $sMf.noAfOff -eq $false) ($sMf | ConvertTo-Json -Compress)
 
+$W.GetField('saveToCard', $flags).SetValue($null, $true)
+$W.GetField('canonToHost', $flags).SetValue($null, $false)
+$sSc = $listJson.Invoke($null, $null) | ConvertFrom-Json
+$infSc = $infoJson.Invoke($null, $null) | ConvertFrom-Json
+Check 'saveToCard=true suppresses toCard warning in ListJson and InfoJson' (-not $sSc.toCard -and -not $infSc.toCard) ($infSc | ConvertTo-Json -Compress)
+
 $ops.Clear()
 $vals.Clear()
 $W.GetField('canon', $flags).SetValue($null, $false)
 $W.GetField('canonNoAfBad', $flags).SetValue($null, $false)
 $W.GetField('canonFocusInShot', $flags).SetValue($null, $false)
+$W.GetField('saveToCard', $flags).SetValue($null, $false)
 $W.GetField('ptp', $flags).SetValue($null, $null)
 
 if ($fails -eq 0) { Write-Output 'PASS'; exit 0 } else { Write-Output "FAIL ($fails)"; exit 1 }

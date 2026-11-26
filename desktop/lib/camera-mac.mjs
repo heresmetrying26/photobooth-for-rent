@@ -41,7 +41,7 @@ const log = (m) => {
 const s = {
   ptp: null, entry: null, name: '', model: '', maker: '', vendorExt: 0, brand: 'canon', drv: null, battery: -1,   // drv: the Nikon / Sony driver (Canon is handled in this file)
   ops: [], props: [], live: false, gotFrame: false, setupNote: '', diag: '',
-  eosVals: new Map(), eosAvail: new Map(), newFiles: [], pollAt: 0, keepAt: 0, liveAt: 0, liveOffAt: 0, lastShutterMs: 0, recoverNext: false,
+  eosVals: new Map(), eosAvail: new Map(), newFiles: [], pollAt: 0, keepAt: 0, liveAt: 0, liveOffAt: 0, lastShutterMs: 0, recoverNext: false, saveToCard: false,
   toHost: false, hostGaveUp: false, hostWorked: false, destOrig: SAVETO_CARD, lastPollEvents: 0,
   aspectChanged: false, aspectCrop: false, aspectOrig: 0, movieRec: false, movieRestoredHost: false
 };
@@ -137,7 +137,7 @@ async function canonSendCapacity() {
 
 async function canonToHost() {
   s.toHost = false;
-  if (canonKeepCardAndLcd()) {
+  if (canonKeepCardAndLcd() || s.saveToCard) {
     if (s.eosVals.get(EOS_SAVETO) === SAVETO_HOST) {
       const avCard = s.eosAvail.get(EOS_SAVETO);
       const cardVal = avCard && !avCard.includes(SAVETO_CARD) && avCard.includes(1) ? 1 : SAVETO_CARD;
@@ -146,6 +146,7 @@ async function canonToHost() {
     } else {
       log('Save to: keeping SD card backup for ' + s.name);
     }
+    if (s.saveToCard) s.setupNote += 'Backup + RAW saved to camera SD card. ';
     return;
   }
   if (s.hostGaveUp) return;
@@ -479,7 +480,7 @@ async function capture() {
       s.newFiles = [];
       if (files.length > 0 && firstAt < 0) { firstAt = Date.now() - ew; if (attempt === 0) { s.lastShutterMs = Math.min(Date.now() - shutter, 10000); log('Shutter lag ' + s.lastShutterMs + ' ms'); } }
       const hasJpeg = files.some((o) => o[2] === 0x3801);
-      if (firstAt >= 0 && Date.now() - ew - firstAt > (hasJpeg ? 120 : 220)) break;
+      if (firstAt >= 0 && Date.now() - ew - firstAt > (hasJpeg ? 120 : ((s.saveToCard || !s.toHost) ? 1200 : 220))) break;
       await sleep(50);
     }
     if (files.length > 0 || attempt >= maxTry) break;
@@ -635,7 +636,7 @@ const infoJson = () => {
     name: s.name, model: s.model, maker: s.maker, brand: s.brand, vendor: s.vendorExt,
     liveview: s.drv ? s.drv.live : s.live, battery: s.battery, note: s.setupNote, diag: s.diag,
     shutterMs: s.lastShutterMs, preFocus: !cn || has(0x9128), olderCanon: older, lensMf: mf, canonDslr: dslr, canonKeepLive: keepLive,
-    saveTo: cn ? (s.toHost ? 'host' : 'card') : '', toCard: cn && !s.toHost && !keepLive, aspectCrop: cn && s.aspectCrop
+    saveTo: cn ? (s.toHost ? 'host' : 'card') : '', toCard: cn && !s.toHost && !keepLive && !s.saveToCard, aspectCrop: cn && s.aspectCrop
   });
 };
 
@@ -645,12 +646,14 @@ async function alive() {
   await s.ptp.opRead(0x1001);
 }
 
-async function open(recover) {
+async function open(recover, saveToCard = false) {
+  if (s.ptp && (s.saveToCard !== !!saveToCard || recover)) { try { await closeCamera(); } catch { /* ignore */ } }
   if (s.ptp) { try { await alive(); return infoJson(); } catch { /* reconnect below */ } await closeCamera(); }
   const cams = backend.list().filter((e) => BRANDS.has(e.vendor));
   if (!cams.length) throw new CamError('NOCAMERA No Canon, Nikon or Sony camera found on USB. Plug the camera into this ' + (process.platform === 'win32' ? 'PC' : 'Mac') + ' with a data USB cable (not charge-only) and switch it on. Canon: Photo Import / Remote Control. Nikon: PTP or MTP. Sony: PC Remote.');
   await backend.free();
   s.recoverNext = !!recover;
+  s.saveToCard = !!saveToCard;
   let lastErr = null;
   for (const entry of cams) {
     let p = null;
@@ -668,7 +671,7 @@ async function open(recover) {
         s.name = entry.vendor === SONY ? sonyName(s.model) : 'Nikon ' + s.model.replace(/nikon/gi, '').trim();
         log('Opened ' + s.name);
         s.setupNote = '';
-        const ctx = { ptp: p, ops: s.ops, props: s.props, name: s.name, model: s.model, product: entry.product, log, note: (t) => { s.setupNote += t; }, diag: () => s.diag, addDiag: (t) => { s.diag += '; ' + t; } };
+        const ctx = { ptp: p, ops: s.ops, props: s.props, name: s.name, model: s.model, product: entry.product, saveToCard: s.saveToCard, log, note: (t) => { s.setupNote += t; }, diag: () => s.diag, addDiag: (t) => { s.diag += '; ' + t; } };
         s.drv = entry.vendor === SONY ? createSony(ctx) : createNikon(ctx);
         await s.drv.prepare();
         s.battery = await s.drv.battery();
@@ -698,7 +701,7 @@ async function listJson() {
   const keepLive = cn && canonKeepCardAndLcd();
   return JSON.stringify({
     devices: devs, open: !!s.ptp, name: s.ptp ? s.name : '', shutterMs: s.lastShutterMs,
-    toCard: cn && !s.toHost && !keepLive, olderCanon: cn && !has(0x9128), lensMf: mf, canonDslr: cn && canonIsDslr(),
+    toCard: cn && !s.toHost && !keepLive && !s.saveToCard, olderCanon: cn && !has(0x9128), lensMf: mf, canonDslr: cn && canonIsDslr(),
     canonKeepLive: keepLive, aspectCrop: cn && s.aspectCrop
   });
 }
@@ -721,7 +724,10 @@ export async function call(cmd, arg) {
     if (cmd === 'ping') return reply('OK', 'J', '{"ok":true}');
     if (cmd === 'list') return reply('OK', 'J', await listJson());
     if (cmd === 'diag') return reply('OK', 'J', diagJson());
-    if (cmd === 'open') return reply('OK', 'J', await open(String(arg || '').split(' ').includes('recover')));
+    if (cmd === 'open') {
+      const args = String(arg || '').split(' ');
+      return reply('OK', 'J', await open(args.includes('recover'), args.includes('saveToCard')));
+    }
     if (!s.ptp) throw new GoneError('NOCAMERA The camera isn’t connected.');
     if (cmd === 'info') return reply('OK', 'J', infoJson());
     if (cmd === 'battery') { if (s.drv) s.battery = await s.drv.battery(); else if (s.brand === 'canon') s.battery = await canonBattery(); return reply('OK', 'J', JSON.stringify({ battery: s.battery })); }

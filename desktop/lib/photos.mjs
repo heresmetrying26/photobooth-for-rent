@@ -1252,13 +1252,14 @@ var since="";
 function poll(){
   fetch(T+"/rove-state"+(since?"?since="+encodeURIComponent(since):""),{cache:"no-store"}).then(function(r){return r.json()}).then(function(j){
     if(j&&j.ok){
-      var c=$("conn");c.className="st ok";c.textContent="✓ Connected · "+(j.activeLabel||(st&&st.activeLabel)||"Photoman Ready");
+      var c=$("conn");c.className="st ok";c.textContent="✓ Connected · "+(j.activeLabel||(st&&st.activeLabel)||"Photoman Ready")+(webQ.length?" · Uploading "+webQ.length+" queued…":"");
+      if(webQ.length&&!webDraining)drainWebQ();
       if(j.same)return;
       since=String(j.updatedAt||"");
       applyState(j);
     }
   }).catch(function(){
-    var c=$("conn");c.className="st bad";c.textContent="No connection to laptop. Join the Booth Wi-Fi.";
+    var c=$("conn");c.className="st bad";c.textContent="No connection to laptop. Join the Booth Wi-Fi."+(webQ.length?" ("+webQ.length+" queued — auto-sends on reconnect)":"");
   });
 }
 
@@ -1283,19 +1284,80 @@ $("origBtn").onclick=function(){
 $("resPrintBtn").onclick=function(){cmd("do=print")};
 $("resNextBtn").onclick=function(){cmd("do=next")};
 
-function pick(e){Array.prototype.forEach.call(e.target.files,send);e.target.value=""}
-$("f").addEventListener("change",pick);$("cam").addEventListener("change",pick);
-function send(file){
-  var row=document.createElement("div");row.className="row";row.innerHTML="<b></b><div class=bar><i></i></div><span></span>";
-  row.querySelector("b").textContent=file.name||"photo";$("list").insertBefore(row,$("list").firstChild);
-  var x=new XMLHttpRequest();x.open("POST",T+"/photo?name="+encodeURIComponent(file.name||"photo.jpg"));
-  x.setRequestHeader("content-type","application/octet-stream");
-  x.upload.onprogress=function(p){if(p.lengthComputable)row.querySelector("i").style.width=Math.round(p.loaded/p.total*100)+"%"};
-  x.onload=function(){var ok=x.status===200;row.querySelector("span").textContent=ok?"Sent ✓ Appearing in queue…":"Could not send ("+x.status+").";if(ok){row.querySelector("i").style.width="100%";setTimeout(poll,600)}};
-  x.onerror=function(){row.querySelector("span").textContent="No connection to the laptop. Are you on the booth Wi-Fi?"};
-  x.send(file);
+var webQ=[],webRows={},webDraining=false,webRetryT=0,idbP=null;
+function qDb(){
+  if(idbP)return idbP;
+  if(!window.indexedDB)return Promise.resolve(null);
+  idbP=new Promise(function(res){
+    try{
+      var req=indexedDB.open("pb4u_rove_web_q",1);
+      req.onupgradeneeded=function(){if(!req.result.objectStoreNames.contains("q"))req.result.createObjectStore("q",{keyPath:"id"})};
+      req.onsuccess=function(){res(req.result)};
+      req.onerror=function(){res(null)};
+    }catch(e){res(null)}
+  });
+  return idbP;
 }
-poll();setInterval(function(){if(!document.hidden)poll()},1600);
+function qPut(it){return qDb().then(function(db){if(!db)return;return new Promise(function(res){try{var tx=db.transaction("q","readwrite");tx.objectStore("q").put({id:it.id,name:it.name,blob:it.blob,at:it.at});tx.oncomplete=res;tx.onerror=res}catch(e){res()}})})}
+function qDel(id){return qDb().then(function(db){if(!db)return;return new Promise(function(res){try{var tx=db.transaction("q","readwrite");tx.objectStore("q").delete(id);tx.oncomplete=res;tx.onerror=res}catch(e){res()}})})}
+function qLoadAll(){return qDb().then(function(db){if(!db)return[];return new Promise(function(res){try{var tx=db.transaction("q","readonly"),r=tx.objectStore("q").getAll();r.onsuccess=function(){var a=r.result||[];a.sort(function(x,y){return(x.at||0)-(y.at||0)});res(a)};r.onerror=function(){res([])}}catch(e){res([])}})})}
+function mkRow(id,name,msg){
+  if(webRows[id])return webRows[id];
+  var row=document.createElement("div");row.className="row";row.innerHTML="<b></b><div class=bar><i></i></div><span></span>";
+  row.querySelector("b").textContent=name||"photo";row.querySelector("span").textContent=msg||"Queued…";
+  $("list").insertBefore(row,$("list").firstChild);
+  webRows[id]=row;return row;
+}
+function kickWebQ(ms){clearTimeout(webRetryT);if(webQ.length)webRetryT=setTimeout(drainWebQ,ms)}
+function uploadOne(it){
+  return new Promise(function(res){
+    var row=mkRow(it.id,it.name,"Sending…"),bar=row.querySelector("i"),sp=row.querySelector("span");
+    var x=new XMLHttpRequest();
+    x.open("POST",T+"/photo?name="+encodeURIComponent(it.name||"photo.jpg")+"&id="+encodeURIComponent(it.id));
+    x.timeout=25000;
+    x.setRequestHeader("content-type","application/octet-stream");
+    x.setRequestHeader("x-rove-id",it.id);
+    x.upload.onprogress=function(p){if(p.lengthComputable)bar.style.width=Math.round(p.loaded/p.total*100)+"%"};
+    x.onload=function(){
+      if(x.status===200){
+        bar.style.width="100%";sp.className="st ok";sp.textContent="Sent ✓ Appearing in queue…";
+        var c=$("conn");if(c){c.className="st ok";c.textContent="✓ Connected · "+((st&&st.activeLabel)||"Photoman Ready")+(webQ.length>1?" · Uploading "+(webQ.length-1)+" queued…":"")}
+        res("ok");
+      }
+      else if(x.status===413){sp.className="st bad";sp.textContent="Skipped: photo too large (>80 MB).";res("drop")}
+      else{sp.className="st";sp.textContent="⏳ Queued — waiting for Booth ("+x.status+")…";res("retry")}
+    };
+    x.onerror=x.ontimeout=function(){sp.className="st";sp.textContent="⏳ Offline queued — auto-sends once reconnected";res("retry")};
+    x.send(it.blob);
+  });
+}
+async function drainWebQ(){
+  if(webDraining||!webQ.length)return;
+  webDraining=true;
+  try{
+    while(webQ.length){
+      var it=webQ[0],stRes=await uploadOne(it);
+      if(stRes==="ok"||stRes==="drop"){webQ.shift();await qDel(it.id)}
+      else{kickWebQ(2200);break}
+    }
+    if(!webQ.length)poll();
+  }finally{webDraining=false}
+}
+function enqueueFile(file){
+  var id="web_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7);
+  var it={id:id,name:file.name||"photo.jpg",blob:file,at:Date.now()};
+  mkRow(id,it.name,"Queued to send…");
+  webQ.push(it);
+  qPut(it).then(function(){drainWebQ()});
+}
+function pick(e){Array.prototype.forEach.call(e.target.files,enqueueFile);e.target.value=""}
+$("f").addEventListener("change",pick);$("cam").addEventListener("change",pick);
+window.addEventListener("online",function(){poll();drainWebQ()});
+qLoadAll().then(function(items){
+  items.forEach(function(it){if(!it||!it.id||!it.blob)return;mkRow(it.id,it.name,"⏳ Restored queued photo — waiting to reconnect…");webQ.push(it)});
+  if(webQ.length)drainWebQ();
+});
+poll();setInterval(function(){if(!document.hidden){poll();if(webQ.length&&!webDraining)drainWebQ()}},1600);
 </script></body></html>`;
 
 const roveRecentIds = new Map();

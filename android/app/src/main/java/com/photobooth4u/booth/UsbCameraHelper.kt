@@ -102,7 +102,7 @@ class UsbCameraHelper(private val ctx: Context) {
     private var epIn: UsbEndpoint? = null
     private var epOut: UsbEndpoint? = null
     private var tid = 0
-    private var pend = ByteArray(65536)
+    private var pend = ByteArray(131072)
     private var pendLen = 0
     private val rbuf = ByteArray(16384)
 
@@ -118,6 +118,9 @@ class UsbCameraHelper(private val ctx: Context) {
     private var live = false
     private var setupNote = ""
     private var diag = ""
+    @Volatile private var rovingMode = false
+    @Volatile private var rovingSaveToCard = true
+    private var keepOnCard = false
 
     // Canon
     private val eosVals = HashMap<Int, Long>()
@@ -269,7 +272,7 @@ class UsbCameraHelper(private val ctx: Context) {
             method == "POST" && path == "/printer/diag/print" -> printerDiagPrint(out, body)
             method == "POST" && path == "/print" -> printJson(out, body)
             method == "GET" && path == "/camera" -> json(out, listAny())
-            method == "POST" && path == "/camera/open" -> json(out, openAny(query.contains("fresh=1")))
+            method == "POST" && path == "/camera/open" -> json(out, openAny(query.contains("fresh=1"), query.contains("saveToCard=1")))
             method == "POST" && path == "/camera/live" -> {
                 val on = !query.contains("on=0")
                 if (gopro.isOpen()) goTry { gopro.live(on) } else setLive(on)
@@ -491,7 +494,7 @@ class UsbCameraHelper(private val ctx: Context) {
         return o
     }
 
-    private fun openAny(fresh: Boolean): JSONObject {
+    private fun openAny(fresh: Boolean, saveToCard: Boolean = false): JSONObject {
         if (gopro.isOpen()) {
             if (fresh) gopro.close() else return goTry { gopro.open() }
         }
@@ -499,7 +502,7 @@ class UsbCameraHelper(private val ctx: Context) {
             val f = try { gopro.detect() } catch (_: Exception) { null }
             if (f != null) return goTry { gopro.open() }
         }
-        return openCamera(fresh)
+        return openCamera(fresh, roving = false, saveToCard = saveToCard)
     }
 
     private fun listJson(): JSONObject {
@@ -623,17 +626,25 @@ class UsbCameraHelper(private val ctx: Context) {
             val type = le16(pend, 4)
             val code = le16(pend, 6)
             val cTid = le(pend, 8)
-            val payload = pend.copyOfRange(12, len)
-            System.arraycopy(pend, len, pend, 0, pendLen - len)
-            pendLen -= len
-            if (type == 4) continue                                 // PTP event packet: ignore while awaiting response
-            if (cTid != t && cTid != 0) continue                    // stale packet from an earlier transaction
-            if (type == 2) {
-                if (dataOut == null) dataOut = java.io.ByteArrayOutputStream(payload.size)
-                dataOut.write(payload)
-            } else if (type == 3) {
-                return Resp(code, IntArray(payload.size / 4) { le(payload, it * 4) }, dataOut?.toByteArray())
+            val payloadLen = len - 12
+            val skip = (type == 4) || (cTid != t && cTid != 0)
+            if (!skip) {
+                if (type == 2) {
+                    if (dataOut == null) dataOut = java.io.ByteArrayOutputStream(payloadLen)
+                    if (payloadLen > 0) dataOut.write(pend, 12, payloadLen)
+                } else if (type == 3) {
+                    val params = IntArray(payloadLen / 4) { le(pend, 12 + it * 4) }
+                    val rem = pendLen - len
+                    if (rem > 0) System.arraycopy(pend, len, pend, 0, rem)
+                    pendLen = rem
+                    val outBytes = dataOut?.toByteArray()
+                    if (pendLen == 0 && pend.size > 4_194_304) pend = ByteArray(262144)
+                    return Resp(code, params, outBytes)
+                }
             }
+            val rem = pendLen - len
+            if (rem > 0) System.arraycopy(pend, len, pend, 0, rem)
+            pendLen = rem
         }
     }
 
@@ -722,15 +733,18 @@ class UsbCameraHelper(private val ctx: Context) {
 
     // fresh: the booth lost the picture. A camera that went to sleep can still be listed and answer "alive" with a dead
     // session, so close it and connect again (leaving remote mode first) instead of trusting it.
-    private fun openCamera(fresh: Boolean = false): JSONObject = synchronized(lock) {
+    private fun openCamera(fresh: Boolean = false, roving: Boolean = false, saveToCard: Boolean = false): JSONObject = synchronized(lock) {
         if (fresh) recoverNext = true
+        val wantCard = if (roving) rovingSaveToCard else saveToCard
         if (conn != null) {
             val d = dev
-            if (!fresh && d != null && usb.deviceList.containsKey(d.deviceName)) {
+            if (!fresh && d != null && usb.deviceList.containsKey(d.deviceName) && rovingMode == roving && keepOnCard == wantCard) {
                 try { alive(); return@synchronized infoJson() } catch (_: Exception) { }
             }
             closeCamera()
         }
+        rovingMode = roving
+        keepOnCard = wantCard
         val all = usb.deviceList.values.filter { isCamera(it) }
         if (all.isEmpty()) {
             if (usb.deviceList.values.any { it.vendorId == VENDOR_DJI }) throw CamErr("NOCAMERA", "The DJI Osmo is plugged in, but the tablet app cannot remote-control it as a DSLR. $DJI_HINT")
@@ -740,7 +754,7 @@ class UsbCameraHelper(private val ctx: Context) {
         var brandErr: CamErr? = null
         for (d in all) {
             try {
-                val r = openOne(d)
+                val r = openOne(d, roving, wantCard)
                 if (r != null) return@synchronized r
                 seen += (if (seen.isEmpty()) "" else ", ") + "$camMaker $camModel".trim()
                 closeCamera()
@@ -759,7 +773,9 @@ class UsbCameraHelper(private val ctx: Context) {
     }
 
     /** Opens one USB device. Returns the camera's info, or null when it is not a Nikon / Canon / Sony camera. */
-    private fun openOne(d: UsbDevice): JSONObject? {
+    private fun openOne(d: UsbDevice, roving: Boolean = false, wantCard: Boolean = false): JSONObject? {
+        rovingMode = roving
+        keepOnCard = wantCard
         var itf: UsbInterface? = null
         for (i in 0 until d.interfaceCount) if (d.getInterface(i).interfaceClass == 6) { itf = d.getInterface(i); break }
         if (itf == null) {
@@ -998,12 +1014,66 @@ class UsbCameraHelper(private val ctx: Context) {
 
     private fun widthOf(s: String): Int { val x = s.indexOf('x'); return if (x > 0) s.substring(0, x).toIntOrNull() ?: 0 else 0 }
 
-    /** Record to the camera's own memory (so no SD card is needed), JPEG, and the smallest size still >= ~2900 px wide. */
+    private fun isRawObjectFormat(fmt: Int): Boolean =
+        fmt == 0x3000 || fmt == 0xB101 || fmt == 0xB103 || fmt == 0xB108 || (fmt != 0 && fmt != 0x3801 && fmt != 0x3808)
+
+    private fun peekObjectFormat(handle: Int): Int {
+        for (attempt in 0 until 2) {
+            try {
+                val oi = opRead(0x1008, handle)
+                if (oi.code == BUSY && attempt == 0) { Thread.sleep(60); continue }
+                val b = oi.bytes
+                return if (oi.code == OK && b.size > 6) le16(b, 4) else 0
+            } catch (e: CamErr) { throw e } catch (_: Exception) { return 0 }
+        }
+        return 0
+    }
+
+    private fun peekIsJpegHeader(handle: Int): Boolean? {
+        if (!has(0x101B)) return null
+        return try {
+            val r = opRead(0x101B, handle, 0, 4)
+            val b = r.bytes
+            if (r.code == OK && b.size >= 2) (b[0] == 0xFF.toByte() && b[1] == 0xD8.toByte()) else null
+        } catch (e: CamErr) { throw e } catch (_: Exception) { null }
+    }
+
+    private fun hasStorageCard(): Boolean {
+        return try {
+            val r = opRead(0x1004)
+            val d = r.bytes
+            if (r.code != OK || d.size < 8) return false
+            val count = u32(d, 0).toInt()
+            var i = 0
+            while (i < count && 4 + (i + 1) * 4 <= d.size) {
+                val sid = u32(d, 4 + i * 4)
+                if (sid != 0L && sid != 0x00010000L) return true
+                i++
+            }
+            false
+        } catch (e: CamErr) { throw e } catch (_: Exception) { false }
+    }
+
+    /** Record to SDRAM when keepOnCard is off (fast booth mode), or SD Card preserving RAW + JPEG when keepOnCard is on. */
     private fun prepareNikon() {
         setupNote = ""
         try {
-            val rm = propDesc(0xD10B)                    // Nikon RecordingMedia
-            if (rm != null && rm.current != "1" && setProp(0xD10B, rm.type, "1")) { setupNote += "Records to camera memory. "; log("Recording media -> camera memory (SDRAM)") }
+            val rm = propDesc(0xD10B)                    // Nikon RecordingMedia (0 = SD Card, 1 = SDRAM)
+            if (keepOnCard) {
+                if (hasStorageCard()) {
+                    if (rm != null && rm.current != "0" && setProp(0xD10B, rm.type, "0")) {
+                        log("Recording media -> SD card (backup + RAW preserved)")
+                    }
+                    setupNote += "Backup + RAW saved to camera SD card. "
+                } else {
+                    if (rm != null && rm.current != "1" && setProp(0xD10B, rm.type, "1")) {
+                        log("No SD card found; recording media -> SDRAM")
+                    }
+                    setupNote += "No SD card in camera — photos saved on tablet only. "
+                }
+            } else {
+                if (rm != null && rm.current != "1" && setProp(0xD10B, rm.type, "1")) { setupNote += "Records to camera memory. "; log("Recording media -> camera memory (SDRAM)") }
+            }
         } catch (e: CamErr) { throw e } catch (e: Exception) { log("Recording media not changed: ${e.message}") }
         try {
             if (props.contains(0x5004)) {
@@ -1011,10 +1081,14 @@ class UsbCameraHelper(private val ctx: Context) {
                 if (q != null) {
                     val cur = q.current.toIntOrNull() ?: 0
                     // Nikon: 0 Basic, 1 Normal, 2 Fine (JPEG); higher values include RAW.
-                    if (cur > 2 && q.choices.contains("2") && setProp(0x5004, q.type, "2")) { setupNote += "Set to JPEG Fine. "; log("Image quality was RAW; set to JPEG Fine") }
+                    if (keepOnCard) {
+                        if (cur in 0..1 && q.choices.contains("2") && setProp(0x5004, q.type, "2")) { setupNote += "Set to JPEG Fine. "; log("Image quality upgraded -> JPEG Fine (RAW+JPEG preserved if set)") }
+                    } else {
+                        if (cur > 2 && q.choices.contains("2") && setProp(0x5004, q.type, "2")) { setupNote += "Set to JPEG Fine. "; log("Image quality was RAW; set to JPEG Fine") }
+                    }
                 }
             }
-            if (props.contains(0x5003)) {
+            if (!(rovingMode && keepOnCard) && props.contains(0x5003)) {
                 val s = propDesc(0x5003)
                 if (s != null && s.type == 0xFFFF && s.choices.size > 1) {
                     var best: String? = null
@@ -1024,6 +1098,11 @@ class UsbCameraHelper(private val ctx: Context) {
                 }
             }
         } catch (e: CamErr) { throw e } catch (e: Exception) { log("Photo size not changed: ${e.message}") }
+        if (rovingMode && has(0x90C2)) {
+            // Ensure Nikon body controls / physical shutter remain unlocked for roving shooting (D5300/D5600/Z-series)
+            try { op(0x90C2, 0) } catch (e: CamErr) { throw e } catch (_: Exception) { }
+        }
+        if (rovingMode) { try { nikonEvents() } catch (e: CamErr) { throw e } catch (_: Exception) { } }
     }
 
     private fun startLive() {
@@ -1092,39 +1171,53 @@ class UsbCameraHelper(private val ctx: Context) {
             for (k in 0 until cnt) {
                 if (o + 6 > d.size) break
                 val code = le16(d, o); val p = le(d, o + 2)
-                if (code == 0x4002 || code == 0xC101) l.add(p)
-                if (code == 0x4002 || code == 0xC101) l.add(if (p != 0) p else SDRAM_HANDLE)
+                if (code == 0x4002) l.add(p)
+                else if (code == 0xC101) l.add(if (p != 0) p else SDRAM_HANDLE)
                 o += 6
             }
         }
         return l
     }
 
-    private fun nikonDownloadHandles(handles: List<Int>): ByteArray? {
-        if (handles.isEmpty()) return null
-        var pick = handles[0]
-        if (handles.size > 1) {
-            // RAW + JPEG: take the JPEG
-            for (h in handles) {
-                try {
-                    val oi = opRead(0x1008, h)
-                    val b = oi.bytes
-                    if (oi.code == OK && b.size > 6 && le16(b, 4) == 0x3801) { pick = h; break }
-                } catch (e: CamErr) { throw e } catch (_: Exception) { }
+    private fun nikonCollectJpegs(handles: List<Int>, maxPhotos: Int = Int.MAX_VALUE, cachedFmt: Map<Int, Int>? = null): List<ByteArray> {
+        val out = ArrayList<ByteArray>()
+        if (handles.isEmpty()) return out
+        val jpegHandles = ArrayList<Int>()
+        val otherHandles = ArrayList<Int>()
+        for (h in handles) {
+            if (h == SDRAM_HANDLE) { jpegHandles.add(h); continue }
+            val fmt = cachedFmt?.get(h) ?: peekObjectFormat(h)
+            if (fmt == 0x3801 || fmt == 0x3808) jpegHandles.add(h)
+            else if (!isRawObjectFormat(fmt)) {
+                val magicOk = if (fmt == 0) peekIsJpegHeader(h) else null
+                if (magicOk == false) log("Skipping non-JPEG Nikon handle 0x${Integer.toHexString(h).uppercase()} (kept on card)")
+                else otherHandles.add(h)
+            } else log("Skipping RAW Nikon handle 0x${Integer.toHexString(h).uppercase()} (fmt ${hex(fmt)}, kept on card)")
+        }
+        val order = if (jpegHandles.isNotEmpty()) jpegHandles else otherHandles
+        if (order.isEmpty()) return out
+        val cd = StringBuilder("handles " + handles.joinToString(",") { Integer.toHexString(it).uppercase() })
+        for (pick in order) {
+            val img = downloadObject(pick, 0, cd)
+            log("Photo download: $cd")
+            if (img.size > 4 && img[0] == 0xFF.toByte() && img[1] == 0xD8.toByte()) {
+                out.add(img)
+                if (out.size >= maxPhotos) break
             }
         }
-        val cd = StringBuilder("handles " + handles.joinToString(",") { Integer.toHexString(it).uppercase() })
-        val img = downloadObject(pick, 0, cd)
-        log("Photo download: $cd")
-        if (img.size > 4 && img[0] == 0xFF.toByte() && img[1] == 0xD8.toByte()) return img
-        return null
+        return out
     }
 
-    private fun nikonPollNew(): ByteArray? {
+    private fun nikonDownloadHandles(handles: List<Int>, cachedFmt: Map<Int, Int>? = null): ByteArray? =
+        nikonCollectJpegs(handles, maxPhotos = 1, cachedFmt = cachedFmt).firstOrNull()
+
+    private fun nikonPollNewList(): List<ByteArray> {
         val handles = nikonEvents()
-        if (handles.isEmpty()) return null
-        return nikonDownloadHandles(handles)
+        if (handles.isEmpty()) return emptyList()
+        return nikonCollectJpegs(handles)
     }
+
+    private fun nikonPollNew(): ByteArray? = nikonPollNewList().firstOrNull()
 
     private fun nikonCapture(): ByteArray {
         val t0 = now()
@@ -1141,13 +1234,33 @@ class UsbCameraHelper(private val ctx: Context) {
         }
         try { nikonEvents() } catch (e: CamErr) { throw e } catch (_: Exception) { }      // drain old events
         val lagSw = now()
-        r = if (has(0x90C0)) op(0x90C0, ALL_ONES) else op(0x100E, 0, 0)              // InitiateCaptureRecInSdram / InitiateCapture
+        val captureToCard = keepOnCard && has(0x9207) && hasStorageCard()
+        var useCardOp = captureToCard
+        var shotToCard = false
+        if (captureToCard) {
+            r = op(0x9207, ALL_ONES, 0)                                               // InitiateCaptureRecInMedia -> SD card (RAW+JPEG)
+            // Nikon D5300/D5xxx can return 0xA00B or BUSY if 0x9207 runs while Live View is active: stop LV and retry once.
+            if ((r == 0xA00B || r == BUSY) && live) {
+                stopLive()
+                waitReady(2500)
+                r = op(0x9207, ALL_ONES, 0)
+            }
+            if (r == OK) shotToCard = true
+            else if (r == 0x2005 && has(0x90C0)) { useCardOp = false; r = op(0x90C0, ALL_ONES) }
+        } else {
+            r = if (has(0x90C0)) op(0x90C0, ALL_ONES) else op(0x100E, 0, 0)           // InitiateCaptureRecInSdram / InitiateCapture
+        }
         if (r == 0xA002 && has(0x9207)) {
             log("Out of focus; shooting without autofocus")
-            r = op(0x9207, ALL_ONES, 1)                                              // InitiateCaptureRecInMedia, no AF, to SDRAM
-            if (r != OK) r = op(0x9207, ALL_ONES, 0)
+            r = op(0x9207, ALL_ONES, if (useCardOp) 0 else 1)
+            if (r != OK && !useCardOp) r = op(0x9207, ALL_ONES, 0)
+            else if (r == OK && useCardOp) shotToCard = true
         }
-        if (r == BUSY) { waitReady(3000); r = op(0x90C0, ALL_ONES) }
+        if (r == BUSY) {
+            waitReady(3000)
+            if (useCardOp) { r = op(0x9207, ALL_ONES, 0); if (r == OK) shotToCard = true }
+            else r = op(0x90C0, ALL_ONES)
+        }
         if (r != OK) {
             if (r == 0xA002) throw CamErr("FOCUS", "The camera couldn't focus, so it didn't take the photo. Point it at something with detail, or set the lens to MF (manual focus).")
             if (r == 0xA00A || r == 0xA009) throw CamErr("CAPTURE", "The camera can't take a photo right now (${hex(r)}). Check the memory card isn't full or locked.")
@@ -1156,17 +1269,34 @@ class UsbCameraHelper(private val ctx: Context) {
         waitReady(10000)
         lastShutterMs = minOf(now() - lagSw, 10000L)
         val handles = ArrayList<Int>()
+        val checkedFmt = HashMap<Int, Int>()
         val e0 = now()
+        var foundJpeg = false
         while (now() - e0 < 8000) {
             for (h in nikonEvents()) if (!handles.contains(h)) handles.add(h)
-            if (handles.isNotEmpty()) { Thread.sleep(150); for (h in nikonEvents()) if (!handles.contains(h)) handles.add(h); break }
+            if (handles.isNotEmpty()) {
+                if (!shotToCard) {
+                    Thread.sleep(150); for (h in nikonEvents()) if (!handles.contains(h)) handles.add(h)
+                    break
+                }
+                for (h in handles) {
+                    if (checkedFmt.containsKey(h)) continue
+                    val f = peekObjectFormat(h)
+                    checkedFmt[h] = f
+                    if (f == 0x3801 || f == 0x3808) foundJpeg = true
+                }
+                if (foundJpeg || now() - e0 > 3500) {
+                    Thread.sleep(120); for (h in nikonEvents()) if (!handles.contains(h)) handles.add(h)
+                    break
+                }
+            }
             Thread.sleep(100)
         }
-        if (handles.isEmpty()) handles.add(SDRAM_HANDLE)                  // the photo in the camera's memory
+        if (handles.isEmpty() && !shotToCard) handles.add(SDRAM_HANDLE)               // the photo in the camera's memory
         val cd = StringBuilder("handles " + handles.joinToString(",") { Integer.toHexString(it).uppercase() })
-        val img = nikonDownloadHandles(handles)
-        if (img == null || img.size < 4) throw CamErr("CAPTURE", "The photo didn't come through from the camera ($cd).")
-        if (!(img[0] == 0xFF.toByte() && img[1] == 0xD8.toByte())) throw CamErr("CAPTURE", "The camera saved a RAW photo. Set Image quality to JPEG on the camera.")
+        val img = nikonDownloadHandles(handles, cachedFmt = checkedFmt)
+        if (img == null || img.size < 4) throw CamErr("CAPTURE", "The photo didn't come through from the camera ($cd). Make sure Image quality is JPEG or RAW+JPEG.")
+        if (!(img[0] == 0xFF.toByte() && img[1] == 0xD8.toByte())) throw CamErr("CAPTURE", "The camera saved a RAW photo. Set Image quality to JPEG or RAW + JPEG on the camera.")
         log("Photo ${img.size / 1024} KB in ${now() - t0} ms")
         // Live view resumes by itself on most models; nikonFrame() restarts it if not.
         return img
@@ -1313,9 +1443,23 @@ class UsbCameraHelper(private val ctx: Context) {
         canonPoll()                        // the first batch lists all settings
         readInfo()                         // in remote mode the camera lists more commands
         canonPoll()
+        for (t in 0 until 5) {
+            if (eosVals.containsKey(0xD11C) || eosVals.containsKey(0xD1B0)) break
+            Thread.sleep(50); canonPoll()
+        }
         if (!has(0x9153)) throw CamErr("UNSUPPORTED", "The $camName doesn't send live view over USB.")
         if (!has(0x910F) && !has(0x9128)) throw CamErr("UNSUPPORTED", "The $camName doesn't take photos over USB.")
         canonAspect32()
+        if (keepOnCard) {
+            // Keep Canon EOS saving RAW + JPEG to the camera's SD card instead of Host RAM-only (0xD11C = 4).
+            val curDest = eosVals[0xD11C]
+            if (curDest == 4L) {
+                var rDest = setEos(0xD11C, 2)
+                if (rDest != OK) rDest = setEos(0xD11C, 1)
+                log("Canon SaveTo restored from Host (4) -> Card (${hex(rDest)})")
+            }
+            setupNote += "Backup + RAW saved to camera SD card. "
+        }
         keepAt = now()
     }
 
@@ -1418,36 +1562,53 @@ class UsbCameraHelper(private val ctx: Context) {
         return CamErr("CAPTURE", "The camera refused the photo (${hex(r)}${if (res != 0L) ", result $res" else ""}). Close the camera's menu, set the mode dial to P, Tv, Av or M (not video), and check the SD card.")
     }
 
-    private fun canonDownloadFiles(files: List<LongArray>): ByteArray? {
-        val cd = StringBuilder("files " + files.joinToString(",") { java.lang.Long.toHexString(it[0]).uppercase() + "/" + java.lang.Long.toHexString(it[2]).uppercase() })
+    private fun canonCollectJpegs(files: List<LongArray>, maxPhotos: Int = Int.MAX_VALUE): List<ByteArray> {
+        val out = ArrayList<ByteArray>()
+        val resolved = ArrayList<Pair<LongArray, Int>>(files.size)
+        for (o in files) {
+            var fmt = o[2].toInt()
+            if (fmt == 0) fmt = peekObjectFormat(o[0].toInt())
+            resolved.add(Pair(o, fmt))
+        }
+        val cd = StringBuilder("files " + resolved.joinToString(",") { java.lang.Long.toHexString(it.first[0]).uppercase() + "/" + Integer.toHexString(it.second).uppercase() })
         // JPEG first, then anything else that isn't RAW (CRW / CR2 / CR3).
         val order = ArrayList<LongArray>()
-        for (o in files) if (o[2] == 0x3801L) order.add(o)
-        for (o in files) if (o[2] != 0x3801L && o[2] != 0xB101L && o[2] != 0xB103L && o[2] != 0xB108L) order.add(o)
-        var img: ByteArray? = null
+        for ((o, fmt) in resolved) if (fmt == 0x3801 || fmt == 0x3808) order.add(o)
+        for ((o, fmt) in resolved) if (fmt != 0x3801 && fmt != 0x3808 && !isRawObjectFormat(fmt)) {
+            val magicOk = if (fmt == 0) peekIsJpegHeader(o[0].toInt()) else null
+            if (magicOk != false) order.add(o)
+        }
         try {
             for (o in order) {
                 val b = downloadObject(o[0].toInt(), o[3].toInt(), cd)
-                if (b.size > 4 && b[0] == 0xFF.toByte() && b[1] == 0xD8.toByte()) { img = b; break }
+                if (b.size > 4 && b[0] == 0xFF.toByte() && b[1] == 0xD8.toByte()) {
+                    out.add(b)
+                    if (out.size >= maxPhotos) break
+                }
             }
         } finally {
             // Photos waiting in the camera's memory: tell it we're done so it frees them.
             for (o in files) if (o[1] == 0xC186L) { try { op(0x9117, o[0].toInt()) } catch (_: Exception) { } }
         }
         log("Photo download: $cd")
-        return img
+        return out
     }
 
-    private fun canonPollNew(): ByteArray? {
+    private fun canonDownloadFiles(files: List<LongArray>): ByteArray? =
+        canonCollectJpegs(files, maxPhotos = 1).firstOrNull()
+
+    private fun canonPollNewList(): List<ByteArray> {
         canonKeep()
         canonPoll()
-        if (canonNew.isEmpty()) return null
+        if (canonNew.isEmpty()) return emptyList()
         val files = ArrayList<LongArray>()
         for (o in canonNew) if (o[2] != 0x3001L) files.add(o)
         canonNew.clear()
-        if (files.isEmpty()) return null
-        return canonDownloadFiles(files)
+        if (files.isEmpty()) return emptyList()
+        return canonCollectJpegs(files)
     }
+
+    private fun canonPollNew(): ByteArray? = canonPollNewList().firstOrNull()
 
     private fun canonCapture(): ByteArray {
         val t0 = now()
@@ -1658,19 +1819,20 @@ class UsbCameraHelper(private val ctx: Context) {
     }
 
     private fun ensureSonySaveDest(p: ByteArray) {
-        // Photos go straight to the tablet ("PC Only"), so no memory card is needed: with PC + Camera or
-        // Camera Only some bodies refuse to shoot when the card is missing. 1 = PC Only, 0x11 = PC + Camera, 0x10 = Camera Only.
+        // 1 = PC Only (no card needed), 0x11 = PC + Camera (saves RAW + JPEG backup on camera SD card), 0x10 = Camera Only.
         val info = sonyPropInfo(p, 0xD222) ?: return
         val dest = info[0]
         val dtype = info[1].toInt()
-        if (dest >= 0 && dest != 0x01L && !sonyDestBlocked) {
+        val wantTarget = if (keepOnCard) 0x11L else 0x01L
+        if (dest >= 0 && dest != wantTarget && !sonyDestBlocked) {
             var ok = false
-            for (want in intArrayOf(0x01, 0x11)) {
+            val prefs = if (keepOnCard) intArrayOf(0x11, 0x01) else intArrayOf(0x01, 0x11)
+            for (want in prefs) {
                 try {
                     if (opWrite(0x9205, sonyScalarBytes(want, dtype), 0xD222) != OK) continue
                     if (sonyVal(sonyProps(), 0xD222) != want.toLong()) continue      // the camera must really have taken it
                     ok = true
-                    setupNote += if (want == 0x01) "Photos go to the tablet only (no memory card needed). " else "Photos go to the tablet and the card. "
+                    setupNote += if (want == 0x01) "Photos go to the tablet only (no memory card needed). " else "Backup + RAW saved to camera SD card (PC + Camera). "
                     log("Save destination 0x${java.lang.Long.toHexString(dest)} -> 0x${Integer.toHexString(want)}")
                     break
                 } catch (e: CamErr) { throw e } catch (e: Exception) { log("Save destination not changed: ${e.message}") }
@@ -1840,7 +2002,7 @@ class UsbCameraHelper(private val ctx: Context) {
             val info = sonyInfo()
             val ro = info[0]; val fmt = info[1]; val size = info[2]
             cd.append("; info ${hex(ro)} fmt ${hex(fmt)} $size B")
-            if (fmt != 0 && fmt != 0x3801) {
+            if (fmt != 0 && fmt != 0x3801 && fmt != 0x3808) {
                 sawRaw = true
                 downloadObject(SONY_PHOTO, size, StringBuilder())
                 log("Skipped non-JPEG Sony object ${hex(fmt)} ($size B)")
@@ -1862,7 +2024,7 @@ class UsbCameraHelper(private val ctx: Context) {
             for (k in 0 until 2) {
                 if (sonyVal(sonyProps(), 0xD215) < 0x8000) break
                 val info = sonyInfo()
-                if (info[0] != OK || (info[1] != 0 && info[1] != 0x3801)) {
+                if (info[0] != OK || (info[1] != 0 && info[1] != 0x3801 && info[1] != 0x3808)) {
                     downloadObject(SONY_PHOTO, info[2], StringBuilder())
                     log("Drained trailing Sony object ${hex(info[1])}")
                 } else break
@@ -1878,15 +2040,16 @@ class UsbCameraHelper(private val ctx: Context) {
         return img
     }
 
-    private fun sonyPollNew(): ByteArray? {
+    private fun sonyPollNewList(): List<ByteArray> {
+        val out = ArrayList<ByteArray>()
         val p = sonyProps()
         val mem = sonyVal(p, 0xD215)
         if (mem >= 0x8000) {
-            for (k in 0 until 2) {
+            for (k in 0 until 4) {
                 val info = sonyInfo()
                 val fmt = info[1]; val size = info[2]
                 val cd = StringBuilder("sony_poll; info ${hex(info[0])} fmt ${hex(fmt)} $size B")
-                if (fmt != 0 && fmt != 0x3801) {
+                if (fmt != 0 && fmt != 0x3801 && fmt != 0x3808) {
                     downloadObject(SONY_PHOTO, size, StringBuilder())
                     log("Skipped non-JPEG Sony roving object ${hex(fmt)}")
                     if (sonyVal(sonyProps(), 0xD215) < 0x8000) break
@@ -1894,12 +2057,14 @@ class UsbCameraHelper(private val ctx: Context) {
                 }
                 val img = downloadObject(SONY_PHOTO, size, cd)
                 log("Sony roving photo download: $cd")
-                if (img.size > 4 && img[0] == 0xFF.toByte() && img[1] == 0xD8.toByte()) return img
-                break
+                if (img.size > 4 && img[0] == 0xFF.toByte() && img[1] == 0xD8.toByte()) out.add(img)
+                if (sonyVal(sonyProps(), 0xD215) < 0x8000) break
             }
         }
-        return null
+        return out
     }
+
+    private fun sonyPollNew(): ByteArray? = sonyPollNewList().firstOrNull()
 
     // ================================================================ Roving DSLR Bridge Public API
 
@@ -1914,12 +2079,28 @@ class UsbCameraHelper(private val ctx: Context) {
         try { battery() } catch (_: Exception) { -1 }
     }
 
-    fun ensureOpen(): Boolean = synchronized(lock) {
+    fun cameraSetupNote(): String = synchronized(lock) { setupNote }
+
+    fun setRovingSaveToCard(enabled: Boolean) = synchronized(lock) {
+        val changed = rovingSaveToCard != enabled
+        rovingSaveToCard = enabled
+        if (changed && rovingMode && conn != null) {
+            closeCamera()
+        }
+    }
+
+    fun ensureOpen(roving: Boolean = true, saveToCard: Boolean = rovingSaveToCard): Boolean = synchronized(lock) {
+        rovingSaveToCard = saveToCard
+        val wantCard = if (roving) rovingSaveToCard else saveToCard
         if (conn != null) {
-            try { alive(); return true } catch (_: Exception) { closeCamera() }
+            if (rovingMode == roving && keepOnCard == wantCard) {
+                try { alive(); return true } catch (_: Exception) { closeCamera() }
+            } else {
+                closeCamera()
+            }
         }
         try {
-            openCamera(false)
+            openCamera(false, roving = roving, saveToCard = wantCard)
             conn != null
         } catch (_: Exception) {
             false
@@ -1927,20 +2108,21 @@ class UsbCameraHelper(private val ctx: Context) {
     }
 
     /**
-     * Polls the camera for new photos taken (e.g. by physical shutter button on camera body).
-     * Returns JPEG byte array if a new photo arrived, or null otherwise.
+     * Polls the camera for all newly captured JPEG photos (handles burst shots cleanly).
      */
-    fun pollNewPhoto(): ByteArray? = synchronized(lock) {
-        if (conn == null) return null
+    fun pollNewPhotos(): List<ByteArray> = synchronized(lock) {
+        if (conn == null) return emptyList()
         try {
-            if (canon) canonPollNew()
-            else if (sony) sonyPollNew()
-            else nikonPollNew()
+            if (canon) canonPollNewList()
+            else if (sony) sonyPollNewList()
+            else nikonPollNewList()
         } catch (e: Exception) {
-            log("pollNewPhoto: ${e.message}")
-            null
+            log("pollNewPhotos: ${e.message}")
+            emptyList()
         }
     }
+
+    fun pollNewPhoto(): ByteArray? = pollNewPhotos().firstOrNull()
 
     /**
      * Manually triggers camera capture and returns JPEG bytes.

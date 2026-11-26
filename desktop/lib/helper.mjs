@@ -1334,7 +1334,8 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, c
       const cutOpts = await dyeSubCupsCutOptions(printer, twoUp, pick);
       const qopts = fit === 'width' ? [] : await airPrintQualityOptions(printer, quality, !!(reqMediaType || keepDriverMedia));
       const dqopts = (fit === 'width' || qopts.length) ? [] : await cupsDriverQualityOptions(printer, quality, reqMediaType);
-      r = await run('lp', ['-d', printer, ...media, ...cutOpts, ...mopts, ...qopts, ...dqopts, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
+      const orientOpts = fit === 'width' ? ['-o', 'orientation-requested=3'] : [];
+      r = await run('lp', ['-d', printer, ...media, ...orientOpts, ...cutOpts, ...mopts, ...qopts, ...dqopts, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
     }
     if (r.code !== 0) throw new Error((r.err || r.out || ('exit ' + r.code)).trim().slice(0, 300));
     for (const line of String(r.out || '').split(/\r?\n/)) {
@@ -1723,7 +1724,8 @@ export async function handleHelper(req, path, search) {
       if (method === 'GET' && path === '/camera/info') { const r = await camCall('info', '', 8000); return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) })); }
       if (method === 'POST' && path === '/camera/open') {
         if (search.get('fresh') === '1') cam.recover = true;   // the booth lost the picture: start a clean camera session
-        const r = await camCall('open', [cam.recover ? 'recover' : '', classic].filter(Boolean).join(' '), 60000);
+        const saveCard = search.get('saveToCard') === '1' ? 'saveToCard' : '';
+        const r = await camCall('open', [cam.recover ? 'recover' : '', classic, saveCard].filter(Boolean).join(' '), 60000);
         cam.recover = false;
         return send(r, () => { cam.open = JSON.parse(r.body.toString('utf8')); log('Camera connected: ' + cam.open.name); return json({ ok: true, ...cam.open }); });
       }

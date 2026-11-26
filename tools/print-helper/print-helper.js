@@ -810,7 +810,8 @@ const serverCfg = {
           return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) }, 200, origin));
         }
         if (req.method === 'POST' && url.pathname === '/camera/open') {
-          const openArg = [url.searchParams.get('fresh') === '1' ? 'recover' : '', classic].filter(Boolean).join(' ');
+          const saveCard = url.searchParams.get('saveToCard') === '1' ? 'saveToCard' : '';
+          const openArg = [url.searchParams.get('fresh') === '1' ? 'recover' : '', classic, saveCard].filter(Boolean).join(' ');
           const r = await camCall('open', openArg, 60000);
           return send(r, () => { cam.open = JSON.parse(r.body.toString('utf8')); log('Camera connected: ' + cam.open.name); return json({ ok: true, ...cam.open }, 200, origin); });
         }

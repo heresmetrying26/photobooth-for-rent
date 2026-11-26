@@ -171,16 +171,18 @@ export function createSony(ctx) {
   }
 
   async function ensureSaveDest(curDest, destType = 4) {
-    if (curDest === 0x01) { destBlocked = false; return curDest; }
+    const wantTarget = ctx.saveToCard ? 0x11 : 0x01;
+    if (curDest === wantTarget) { destBlocked = false; return curDest; }
     if (destBlocked && curDest !== 0x10) return curDest;
     let ok = false;
-    for (const want of [0x01, 0x11]) {
+    const prefs = ctx.saveToCard ? [0x11, 0x01] : [0x01, 0x11];
+    for (const want of prefs) {
       try {
         if (await ptp.opWrite(0x9205, scalarBuf(want, destType || 4), 0xD222) !== OK) continue;
         if (sonyVal(await props(), 0xD222, ver) !== want) continue;   // the camera must really have taken it
         ok = true;
-        destBlocked = (want !== 0x01);
-        ctx.note(want === 0x01 ? 'Photos go to the computer only (no memory card needed). ' : 'Photos go to the computer and the card. ');
+        destBlocked = !ctx.saveToCard && (want !== 0x01);
+        ctx.note(want === 0x01 ? 'Photos go to the computer only (no memory card needed). ' : 'Backup + RAW saved to camera SD card (PC + Camera). ');
         log('Save destination 0x' + curDest.toString(16).toUpperCase() + ' -> 0x' + want.toString(16).toUpperCase());
         return want;
       } catch (e) { if (e instanceof GoneError) throw e; log('Save destination not changed: ' + e.message); }
@@ -235,7 +237,8 @@ export function createSony(ctx) {
     // Photos go straight to the computer ("PC Only"), so no memory card is needed: with PC + Camera or Camera Only some bodies
     // refuse to shoot when the card is missing. 1 = PC Only, 0x11 = PC + Camera, 0x10 = Camera Only.
     const dest = sonyProp(p, 0xD222, ver);
-    if (dest.val >= 0 && dest.val !== 0x01) await ensureSaveDest(dest.val, dest.type);
+    const wantTarget = ctx.saveToCard ? 0x11 : 0x01;
+    if (dest.val >= 0 && dest.val !== wantTarget) await ensureSaveDest(dest.val, dest.type);
     d.live = true;   // Sony live view has no start command: the frames are simply there
   };
 
@@ -276,7 +279,8 @@ export function createSony(ctx) {
       log("Cleared an old photo from the camera's memory");
     }
     const curDest = sonyProp(pre, 0xD222, ver);
-    if (curDest.val === 0x10 || (!destBlocked && curDest.val >= 0 && curDest.val !== 0x01)) {
+    const wantTarget = ctx.saveToCard ? 0x11 : 0x01;
+    if (curDest.val === 0x10 || (!destBlocked && curDest.val >= 0 && curDest.val !== wantTarget)) {
       await ensureSaveDest(curDest.val, curDest.type);
     }
     // Half press, full press (the camera focuses, then shoots).
@@ -326,7 +330,7 @@ export function createSony(ctx) {
           notes.push('info ' + hex(oi.resp) + ' fmt ' + hex(fmt) + ' ' + size + ' B');
         } else if (k > 0) break;
       } catch (e) { if (e instanceof GoneError) throw e; if (k > 0) break; }
-      if (fmt !== 0 && fmt !== 0x3801) {
+      if (fmt !== 0 && fmt !== 0x3801 && fmt !== 0x3808) {
         sawRaw = true;
         await downloadObject(ptp, SONY_PHOTO, size, notes);
         notes.push('skipped non-JPEG ' + hex(fmt));

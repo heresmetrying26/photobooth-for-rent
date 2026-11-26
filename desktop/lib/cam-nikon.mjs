@@ -64,19 +64,39 @@ export function createNikon(ctx) {
     return r === OK;
   }
 
-  // Record to the camera's own memory (so no SD card is needed), JPEG Fine, and the smallest photo size >= ~3900 px wide
-  // (enough for 675 DPI 4R boxes without upscaling; falls back to the largest size on older cameras).
+  async function hasStorageCard() {
+    try {
+      const { resp, data } = await ptp.opRead(0x1004);
+      if (resp !== OK || data.length < 8) return false;
+      const cnt = data.readUInt32LE(0);
+      for (let i = 0; i < cnt && 4 + (i + 1) * 4 <= data.length; i++) {
+        const sid = data.readUInt32LE(4 + i * 4);
+        if (sid !== 0 && sid !== 0x00010000) return true;
+      }
+      return false;
+    } catch (e) { if (e instanceof GoneError) throw e; return false; }
+  }
+
+  // Record to SDRAM when saveToCard is false (no SD card needed), or SD card preserving RAW+JPEG when saveToCard is true.
   d.prepare = async () => {
+    const saveToCard = !!ctx.saveToCard;
     try {
       const rm = await propDesc(0xD10B);   // RecordingMedia
-      if (rm && rm.current !== '1' && await setProp(0xD10B, rm.type, '1')) { ctx.note('Records to camera memory. '); log('Recording media -> camera memory (SDRAM)'); }
+      if (saveToCard && await hasStorageCard()) {
+        if (rm && rm.current !== '0' && await setProp(0xD10B, rm.type, '0')) { log('Recording media -> SD card (backup + RAW kept)'); }
+        ctx.note('Backup + RAW saved to camera SD card. ');
+      } else {
+        if (rm && rm.current !== '1' && await setProp(0xD10B, rm.type, '1')) { ctx.note('Records to camera memory. '); log('Recording media -> camera memory (SDRAM)'); }
+        if (saveToCard) ctx.note('No SD card in camera — saving on computer only. ');
+      }
     } catch (e) { if (e instanceof GoneError) throw e; log('Recording media not changed: ' + e.message); }
     try {
       if (ctx.props.includes(0x5004)) {
         const q = await propDesc(0x5004);
         // Nikon: 0 Basic, 1 Normal, 2 Fine (JPEG); higher values include RAW.
-        // Basic / Normal squeeze the JPEG hard (blocky at a high ISO), so always Fine.
-        if (q && parseInt(q.current, 10) !== 2 && q.choices.includes('2') && await setProp(0x5004, q.type, '2')) { ctx.note('Set to JPEG Fine. '); log('Image quality was ' + q.current + '; set to JPEG Fine'); }
+        const curQ = q ? parseInt(q.current, 10) : 2;
+        const shouldFine = saveToCard ? (curQ < 2) : (curQ !== 2);
+        if (q && shouldFine && q.choices.includes('2') && await setProp(0x5004, q.type, '2')) { ctx.note('Set to JPEG Fine. '); log('Image quality was ' + q.current + '; set to JPEG Fine'); }
       }
       if (ctx.props.includes(0x5003)) {
         const s = await propDesc(0x5003);
@@ -205,14 +225,34 @@ export function createNikon(ctx) {
       try { await nikonAf(); } catch (e) { if (e instanceof GoneError) throw e; }
     }
     await drain();
-    if (has(0x90C0)) r = await ptp.op(0x90C0, 0xFFFFFFFF);   // InitiateCaptureRecInSdram
-    else r = await ptp.op(0x100E, 0, 0);
+    const captureToCard = !!ctx.saveToCard && has(0x9207) && await hasStorageCard();
+    let useCardOp = captureToCard;
+    let shotToCard = false;
+    if (captureToCard) {
+      r = await ptp.op(0x9207, 0xFFFFFFFF, 0);
+      // Nikon D5300 / D5xxx often refuses 0x9207 while Live View is active (0xA00B / BUSY): stop LV, waitReady, retry once.
+      if ((r === NOT_IN_LIVE_VIEW || r === BUSY) && d.live) {
+        await d.liveOff();
+        await waitReady(2500);
+        r = await ptp.op(0x9207, 0xFFFFFFFF, 0);
+      }
+      if (r === OK) shotToCard = true;
+      else if (r === 0x2005 && has(0x90C0)) { useCardOp = false; r = await ptp.op(0x90C0, 0xFFFFFFFF); }
+    } else {
+      if (has(0x90C0)) r = await ptp.op(0x90C0, 0xFFFFFFFF);   // InitiateCaptureRecInSdram
+      else r = await ptp.op(0x100E, 0, 0);
+    }
     if (r === AF_FAILED && has(0x9207)) {
       log('Out of focus; shooting without autofocus');
-      r = await ptp.op(0x9207, 0xFFFFFFFF, 1);   // InitiateCaptureRecInMedia, no AF, to SDRAM
-      if (r !== OK) r = await ptp.op(0x9207, 0xFFFFFFFF, 0);
+      r = await ptp.op(0x9207, 0xFFFFFFFF, useCardOp ? 0 : 1);
+      if (r !== OK && !useCardOp) r = await ptp.op(0x9207, 0xFFFFFFFF, 0);
+      else if (r === OK && useCardOp) shotToCard = true;
     }
-    if (r === BUSY) { await waitReady(3000); r = await ptp.op(0x90C0, 0xFFFFFFFF); }
+    if (r === BUSY) {
+      await waitReady(3000);
+      if (useCardOp) { r = await ptp.op(0x9207, 0xFFFFFFFF, 0); if (r === OK) shotToCard = true; }
+      else r = await ptp.op(0x90C0, 0xFFFFFFFF);
+    }
     if (r !== OK) {
       if (r === AF_FAILED) throw new CamError("FOCUS The camera couldn't focus, so it didn't take the photo. Point it at something with detail, or set the lens to MF (manual focus).");
       if (r === 0xA00A || r === 0xA009) throw new CamError("CAPTURE The camera can't take a photo right now (" + hex(r) + "). Check the memory card isn't full or locked.");
@@ -220,29 +260,55 @@ export function createNikon(ctx) {
     }
     await waitReady(10000);
     const handles = [];
+    const checkedFmt = new Map();
     const add = (l) => { for (const h of l) if (!handles.includes(h)) handles.push(h); };
     const ew = Date.now();
+    let foundJpeg = false;
     while (Date.now() - ew < 8000) {
       add(await events());
       if (handles.length > 0) {
-        // From the start (so the autofocus above counts: it is most of a Nikon's delay) until the camera reports the photo.
-        // The booth fires the shutter that much earlier, so the photo lands on "Pose".
-        d.lastShutterMs = Math.min(Date.now() - t0, 10000);
-        log('Shutter lag ' + d.lastShutterMs + ' ms');
-        await sleep(150); add(await events()); break;
+        if (!shotToCard) {
+          // From the start (so the autofocus above counts: it is most of a Nikon's delay) until the camera reports the photo.
+          // The booth fires the shutter that much earlier, so the photo lands on "Pose".
+          d.lastShutterMs = Math.min(Date.now() - t0, 10000);
+          log('Shutter lag ' + d.lastShutterMs + ' ms');
+          await sleep(150); add(await events()); break;
+        }
+        for (const h of handles) {
+          if (checkedFmt.has(h)) continue;
+          try {
+            const oi = await ptp.opRead(0x1008, h);
+            const fmt = (oi.resp === OK && oi.data.length > 6) ? oi.data.readUInt16LE(4) : 0;
+            checkedFmt.set(h, fmt);
+            if (fmt === 0x3801 || fmt === 0x3808) foundJpeg = true;
+          } catch (e) { if (e instanceof GoneError) throw e; }
+        }
+        if (foundJpeg || Date.now() - ew > 3500) {
+          d.lastShutterMs = Math.min(Date.now() - t0, 10000);
+          log('Shutter lag ' + d.lastShutterMs + ' ms');
+          await sleep(120); add(await events()); break;
+        }
       }
       await sleep(100);
     }
-    if (handles.length === 0) handles.push(0xFFFF0001);   // the photo in the camera's memory
+    if (handles.length === 0 && !shotToCard) handles.push(0xFFFF0001);   // the photo in the camera's memory
+    if (handles.length === 0) throw new CamError("CAPTURE The photo didn't come through from the camera (no file announced). Check the SD card isn't full or write-protected.");
     let pick = handles[0];
     if (handles.length > 1) {
       // RAW + JPEG: take the JPEG
       for (const h of handles) {
+        if (checkedFmt.get(h) === 0x3801 || checkedFmt.get(h) === 0x3808) { pick = h; break; }
+        if (checkedFmt.has(h)) continue;
         try {
           const oi = await ptp.opRead(0x1008, h);
-          if (oi.resp === OK && oi.data.length > 6 && oi.data.readUInt16LE(4) === 0x3801) { pick = h; break; }
+          const f = (oi.resp === OK && oi.data.length > 6) ? oi.data.readUInt16LE(4) : 0;
+          if (f === 0x3801 || f === 0x3808) { pick = h; break; }
         } catch (e) { if (e instanceof GoneError) throw e; }
       }
+    }
+    const pickFmt = checkedFmt.get(pick) || 0;
+    if (pick !== 0xFFFF0001 && (pickFmt === 0x3000 || pickFmt === 0xB101 || pickFmt === 0xB103 || pickFmt === 0xB108)) {
+      throw new CamError('CAPTURE The camera saved a RAW photo. Set Image quality to JPEG or RAW + JPEG on the camera.');
     }
     const notes = ['handles ' + handles.map((h) => h.toString(16).toUpperCase()).join(',')];
     const img = await downloadObject(ptp, pick, 0, notes);

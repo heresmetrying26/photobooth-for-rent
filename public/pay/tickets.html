@@ -38,41 +38,44 @@
   .t .inc{font:700 8pt 'Manrope',sans-serif; text-align:center; margin-top:1mm;}
   .t .how{font:600 6.8pt/1.35 'Manrope',sans-serif; color:var(--muted); text-align:center;}
 
-  /* ---- Thermal receipt rolls (80mm / 58mm, pure high-contrast monochrome) ---- */
-  .t-roll{margin:20px auto; background:#fff; color:#000; box-shadow:0 8px 30px rgba(0,0,0,.1); padding:3mm 0;}
+  /* ---- Thermal receipt rolls (80mm / 58mm, pure high-contrast monochrome, compact paper-saving layout) ---- */
+  .t-roll{margin:20px auto; background:#fff; color:#000; box-shadow:0 8px 30px rgba(0,0,0,.1); padding:2mm 0;}
   .t-roll.r80{width:72mm;}
   .t-roll.r58{width:48mm;}
-  .rt{padding:2.2mm 2.2mm 2.5mm; color:#000; page-break-inside:avoid; break-inside:avoid;}
-  .rt-box{border:1.8px solid #000; border-radius:2.5mm; padding:3mm 2.8mm; text-align:center;}
-  .rt-kick{font:800 7pt 'Manrope',sans-serif; letter-spacing:.12em; text-transform:uppercase; padding-bottom:1.6mm; border-bottom:1px solid #000;}
-  .rt-ev{font:700 12pt/1.15 'Fraunces',Georgia,serif; margin:2.4mm 0 1mm; word-break:break-word;}
-  .rt-date{font:800 8pt 'Manrope',sans-serif; margin:0 0 1.4mm;}
-  .rt-meta{display:flex; justify-content:center; align-items:center; gap:2mm; flex-wrap:wrap; margin:0.8mm 0 2mm;}
-  .rt-price{font:800 14pt 'Manrope',sans-serif;}
-  .rt-code-wrap{border:2.2px solid #000; border-radius:2mm; padding:1.8mm 1.2mm 2mm; margin:1.6mm 0 2.2mm;}
-  .rt-code-lbl{font:800 6pt 'Manrope',sans-serif; letter-spacing:.14em; text-transform:uppercase; margin-bottom:0.8mm;}
-  .rt-code{font:800 20pt/1 'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace; letter-spacing:.06em; font-variant-numeric:tabular-nums;}
-  .rt-inc{font:800 8.5pt 'Manrope',sans-serif; margin-bottom:2mm;}
-  .rt-how{font:700 7.2pt/1.35 'Manrope',sans-serif; border-top:1px dashed #000; padding-top:1.8mm;}
-  .rt-cut{position:relative; margin:3.5mm 1mm 1mm; border-top:1.5px dashed #000; text-align:center; height:0;}
-  .rt-cut span{position:relative; top:-2.1mm; background:#fff; padding:0 2mm; font:800 6pt 'Manrope',sans-serif; letter-spacing:.12em;}
+  .rt{padding:1mm 1.5mm 1.2mm; color:#000; page-break-inside:avoid; break-inside:avoid;}
+  .rt-box{border:1.6px solid #000; border-radius:2mm; padding:1.6mm 2.2mm 1.4mm; text-align:center;}
+  .rt-kick{font:800 6.5pt 'Manrope',sans-serif; letter-spacing:.12em; text-transform:uppercase; padding-bottom:1mm; border-bottom:1px solid #000;}
+  .rt-head{display:flex; justify-content:space-between; align-items:center; gap:2mm; margin:1.2mm 0 1mm; text-align:left;}
+  .rt-head.no-price{justify-content:center; text-align:center;}
+  .rt-head-l{min-width:0; flex:1;}
+  .rt-ev{font:700 10.5pt/1.12 'Fraunces',Georgia,serif; margin:0; word-break:break-word;}
+  .rt-date{font:800 7pt 'Manrope',sans-serif; margin:0.4mm 0 0;}
+  .rt-price{font:800 12.5pt/1 'Manrope',sans-serif; white-space:nowrap; flex-shrink:0;}
+  .rt-code-wrap{border:2px solid #000; border-radius:1.6mm; padding:1mm 1mm 1.2mm; margin:0.8mm 0 1.1mm;}
+  .rt-code-lbl{font:800 5.5pt 'Manrope',sans-serif; letter-spacing:.14em; text-transform:uppercase; margin-bottom:0.4mm;}
+  .rt-code{font:800 18pt/1 'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace; letter-spacing:.06em; font-variant-numeric:tabular-nums;}
+  .rt-inc{font:800 8pt 'Manrope',sans-serif; margin-bottom:1mm;}
+  .rt-how{font:700 6.8pt/1.25 'Manrope',sans-serif; border-top:1px dashed #000; padding-top:1mm;}
+  .rt-cut{position:relative; margin:2.2mm 1mm 0.4mm; border-top:1.5px dashed #000; text-align:center; height:0;}
+  .rt-cut span{position:relative; top:-2mm; background:#fff; padding:0 2mm; font:800 5.5pt 'Manrope',sans-serif; letter-spacing:.12em;}
   .rt.cut-each{page-break-after:always; break-after:page;}
   .rt.cut-each:last-child{page-break-after:auto; break-after:auto;}
 
   /* 58mm compact typography */
-  .t-roll.r58 .rt{padding:1.6mm 1.4mm 1.8mm;}
-  .t-roll.r58 .rt-box{border-width:1.4px; border-radius:2mm; padding:2.2mm 1.8mm;}
-  .t-roll.r58 .rt-kick{font-size:5.6pt; letter-spacing:.08em; padding-bottom:1.2mm;}
-  .t-roll.r58 .rt-ev{font-size:9.5pt; margin:1.8mm 0 0.8mm;}
-  .t-roll.r58 .rt-date{font-size:6.2pt; margin:0 0 1mm;}
-  .t-roll.r58 .rt-price{font-size:11pt;}
-  .t-roll.r58 .rt-code-wrap{border-width:1.8px; padding:1.2mm 0.8mm 1.5mm; margin:1.2mm 0 1.6mm;}
-  .t-roll.r58 .rt-code-lbl{font-size:5pt;}
-  .t-roll.r58 .rt-code{font-size:14pt;}
-  .t-roll.r58 .rt-inc{font-size:6.8pt; margin-bottom:1.4mm;}
-  .t-roll.r58 .rt-how{font-size:5.8pt; padding-top:1.2mm;}
-  .t-roll.r58 .rt-cut{margin:2.8mm 0.5mm 0.8mm;}
-  .t-roll.r58 .rt-cut span{font-size:5pt; top:-1.8mm;}
+  .t-roll.r58 .rt{padding:0.8mm 1mm 1mm;}
+  .t-roll.r58 .rt-box{border-width:1.3px; border-radius:1.6mm; padding:1.2mm 1.5mm 1mm;}
+  .t-roll.r58 .rt-kick{font-size:5.2pt; letter-spacing:.08em; padding-bottom:0.8mm;}
+  .t-roll.r58 .rt-head{margin:0.8mm 0 0.8mm; gap:1.2mm;}
+  .t-roll.r58 .rt-ev{font-size:8.5pt;}
+  .t-roll.r58 .rt-date{font-size:5.8pt;}
+  .t-roll.r58 .rt-price{font-size:9.5pt;}
+  .t-roll.r58 .rt-code-wrap{border-width:1.6px; padding:0.8mm 0.6mm 1mm; margin:0.6mm 0 0.9mm;}
+  .t-roll.r58 .rt-code-lbl{font-size:4.8pt;}
+  .t-roll.r58 .rt-code{font-size:13pt;}
+  .t-roll.r58 .rt-inc{font-size:6.4pt; margin-bottom:0.8mm;}
+  .t-roll.r58 .rt-how{font-size:5.4pt; padding-top:0.8mm;}
+  .t-roll.r58 .rt-cut{margin:1.8mm 0.5mm 0.4mm;}
+  .t-roll.r58 .rt-cut span{font-size:4.8pt; top:-1.6mm;}
 
   .empty{max-width:520px; margin:60px auto; text-align:center; font-weight:700; color:var(--muted);}
   @media print{
@@ -157,9 +160,10 @@
         var isLast = idx === d.codes.length - 1;
         return '<article class="rt' + (cutEach ? ' cut-each' : '') + '"><div class="rt-box">' +
           '<div class="rt-kick">PHOTOBOOTH4U · VOUCHER</div>' +
+          '<div class="rt-head' + (d.price ? '' : ' no-price') + '"><div class="rt-head-l">' +
           '<div class="rt-ev">' + esc(d.event || 'Photo booth') + '</div>' +
           (evDate ? '<div class="rt-date">' + esc(evDate) + '</div>' : '') +
-          (d.price ? '<div class="rt-meta"><span class="rt-price">' + esc(peso(d.price)) + '</span></div>' : '') +
+          '</div>' + (d.price ? '<span class="rt-price">' + esc(peso(d.price)) + '</span>' : '') + '</div>' +
           '<div class="rt-code-wrap"><div class="rt-code-lbl">VOUCHER CODE</div><div class="rt-code">' + esc(cFmt) + '</div></div>' +
           '<div class="rt-inc">' + esc(inc) + '</div>' +
           '<div class="rt-how">Tap screen → “I have a voucher”<br>Enter the 8 digits · Valid once</div>' +

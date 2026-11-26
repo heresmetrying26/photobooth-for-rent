@@ -85,29 +85,78 @@
     var j = await r.json();
     if(!j || !j.ok) throw new Error((j && j.error) || 'Upload failed');
   }
-  async function send(file){
-    var row = document.createElement('div'); row.className = 'row';
-    row.innerHTML = '<b></b><div class="bar"><i></i></div><span class="st">Getting ready…</span>';
-    row.querySelector('b').textContent = file.name || 'photo';
-    $('list').insertBefore(row, $('list').firstChild);
-    var bar = row.querySelector('i'), st = row.querySelector('.st');
+  var cq=[], cRows={}, cDraining=false, cRetryT=0, cidbP=null;
+  function cqDb(){
+    if(cidbP)return cidbP;
+    if(!window.indexedDB)return Promise.resolve(null);
+    cidbP=new Promise(function(res){
+      try{
+        var req=indexedDB.open('pb4u_cloud_rove_q',1);
+        req.onupgradeneeded=function(){if(!req.result.objectStoreNames.contains('q'))req.result.createObjectStore('q',{keyPath:'id'});};
+        req.onsuccess=function(){res(req.result);};
+        req.onerror=function(){res(null);};
+      }catch(e){res(null);}
+    });
+    return cidbP;
+  }
+  function cqPut(it){return cqDb().then(function(db){if(!db)return;return new Promise(function(res){try{var tx=db.transaction('q','readwrite');tx.objectStore('q').put({id:it.id,name:it.name,label:it.label,b64:it.b64,at:it.at});tx.oncomplete=res;tx.onerror=res;}catch(e){res();}});});}
+  function cqDel(id){return cqDb().then(function(db){if(!db)return;return new Promise(function(res){try{var tx=db.transaction('q','readwrite');tx.objectStore('q').delete(id);tx.oncomplete=res;tx.onerror=res;}catch(e){res();}});});}
+  function cqLoadAll(){return cqDb().then(function(db){if(!db)return[];return new Promise(function(res){try{var tx=db.transaction('q','readonly'),r=tx.objectStore('q').getAll();r.onsuccess=function(){var a=r.result||[];a.sort(function(x,y){return(x.at||0)-(y.at||0);});res(a);};r.onerror=function(){res([]);};}catch(e){res([]);}});});}
+  function mkRow(id, label, msg){
+    if(cRows[id])return cRows[id];
+    var row=document.createElement('div'); row.className='row';
+    row.innerHTML='<b></b><div class="bar"><i></i></div><span class="st"></span>';
+    row.querySelector('b').textContent=label||'photo';
+    row.querySelector('.st').textContent=msg||'Getting ready…';
+    $('list').insertBefore(row,$('list').firstChild);
+    cRows[id]=row; return row;
+  }
+  async function drainCloud(){
+    if(cDraining||!cq.length)return;
+    cDraining=true;
     try{
-      var blob = await shrink(file); bar.style.width = '25%';
-      var b64 = await toBase64(blob); bar.style.width = '45%'; st.textContent = 'Sending…';
-      var name = 'rove_' + stamp() + '.jpg', err = null;
-      for(var a = 0; a < 3; a++){
-        try{ await post(name, b64); err = null; break; }
-        catch(e){ err = e; if(/ticket|not allowed|expired/i.test(String(e.message))) break; await wait(a ? 4000 : 1500); }
+      while(cq.length){
+        var it=cq[0], row=mkRow(it.id,it.label,'Sending…'), bar=row.querySelector('i'), st=row.querySelector('.st');
+        bar.style.width='55%'; st.className='st'; st.textContent='Sending…';
+        try{
+          await post(it.name, it.b64);
+          bar.style.width='100%'; st.className='st ok'; st.textContent='Sent. It will appear on the booth in a few seconds.';
+          cq.shift(); await cqDel(it.id);
+        }catch(e){
+          if(/ticket|not allowed|expired/i.test(String(e&&e.message))){
+            st.className='st bad'; st.textContent='This link has expired. Ask the booth to show the QR code again.';
+            cq.shift(); await cqDel(it.id);
+          }else{
+            st.className='st'; st.textContent='⏳ Offline queued — auto-sends once internet reconnects.';
+            clearTimeout(cRetryT); cRetryT=setTimeout(drainCloud, 4500);
+            break;
+          }
+        }
       }
-      if(err) throw err;
-      bar.style.width = '100%'; st.className = 'st ok'; st.textContent = 'Sent. It will appear on the booth in a few seconds.';
+    }finally{cDraining=false;}
+  }
+  async function prepareAndQueue(file){
+    var id='c_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7);
+    var label=file.name||'photo';
+    var row=mkRow(id,label,'Getting ready…'), bar=row.querySelector('i'), st=row.querySelector('.st');
+    try{
+      var blob=await shrink(file); bar.style.width='25%';
+      var b64=await toBase64(blob); bar.style.width='45%';
+      var it={id:id,name:'rove_'+stamp()+'.jpg',label:label,b64:b64,at:Date.now()};
+      cq.push(it); await cqPut(it);
+      drainCloud();
     }catch(e){
-      st.className = 'st bad';
-      st.textContent = /ticket|not allowed|expired/i.test(String(e && e.message)) ? 'This link has expired. Ask the booth to show the QR code again.' : 'Could not send. Check the internet and try again.';
+      st.className='st bad'; st.textContent='This photo could not be opened.';
     }
   }
-  function pick(e){ Array.prototype.forEach.call(e.target.files, send); e.target.value = ''; }
+  function pick(e){ Array.prototype.forEach.call(e.target.files, prepareAndQueue); e.target.value = ''; }
   $('f').addEventListener('change', pick); $('cam').addEventListener('change', pick);
+  window.addEventListener('online', drainCloud);
+  window.addEventListener('focus', function(){ if(cq.length) drainCloud(); });
+  cqLoadAll().then(function(items){
+    items.forEach(function(it){ if(!it||!it.id||!it.b64)return; mkRow(it.id,it.label,'⏳ Restored queued photo — waiting for connection…'); cq.push(it); });
+    if(cq.length) drainCloud();
+  });
 })();
 </script>
 </body>

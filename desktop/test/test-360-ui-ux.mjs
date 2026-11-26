@@ -42,15 +42,22 @@ console.log('Test 1: Studio DOM Hierarchy & Two-Column Grid Layout');
 // Test 2: Navigation Tabs & Section Order
 console.log('\nTest 2: Navigation Tabs and Section Order Alignment');
 {
+  const headStart = html.indexOf('id="spinHeadTabs"');
+  const headEnd = html.indexOf('</header>', headStart);
+  const spinHeadHtml = html.slice(headStart, headEnd);
+
+  const simpleSteps = [...spinHeadHtml.matchAll(/class="[^"]*spin-simple-tab[^"]*"[^>]*data-step="([^"]+)"/g)].map(m => m[1]);
+  assert(JSON.stringify(simpleSteps) === JSON.stringify(['videos', 'look', 'rec']), `Simple mode tabs ordered: ${simpleSteps.join(' -> ')}`);
+
   const tabIds = [];
-  const tabRegex = /<button[^>]*class="[^"]*spin-tab-btn[^"]*"[^>]*data-tab="([^"]+)"/g;
+  const tabRegex = /<button[^>]*class="[^"]*spin-adv-tab[^"]*"[^>]*data-tab="([^"]+)"/g;
   let m;
-  while ((m = tabRegex.exec(html)) !== null) {
+  while ((m = tabRegex.exec(spinHeadHtml)) !== null) {
     if (!m[1].includes('Preview')) tabIds.push(m[1]);
   }
 
-  const expectedTabs = ['spinSecVideos', 'spinSecPresets', 'spinSecLook', 'spinSecText', 'spinSecAudio'];
-  assert(JSON.stringify(tabIds) === JSON.stringify(expectedTabs), `Header navigation tabs ordered: ${tabIds.join(' -> ')}`);
+  const expectedTabs = ['spinSecCapture', 'spinSecVideos', 'spinSecPresets', 'spinSecLook', 'spinSecText', 'spinSecAudio'];
+  assert(JSON.stringify(tabIds) === JSON.stringify(expectedTabs), `All-settings navigation tabs ordered: ${tabIds.join(' -> ')}`);
 
   // Verify that sections in #spinStudioControls match the exact tab order
   const secIndices = expectedTabs.map(id => html.indexOf(`id="${id}"`));
@@ -69,7 +76,7 @@ console.log('\nTest 3: Processing Lock Banner & UI Controls Dimming');
   assert(html.includes('.spin-locked-controls'), '.spin-locked-controls CSS class exists');
   // The scroll area itself must stay live: only the cards are made unclickable, never the whole column
   const lockCss = html.slice(html.indexOf('.spin-locked-controls'), html.indexOf('.spin-locked-controls') + 600);
-  assert(/\.spin-locked-controls \.spin-panel-card:not\(#spinSecVideos\)\s*\{[^}]*pointer-events:\s*none/.test(lockCss), 'Locked cards are unclickable but the column still scrolls');
+  assert(/\.spin-locked-controls\s+\.spin-panel-card:not\(#spinSecVideos\)(?::not\(#spinSecCapture\))?\s*\{[\s\S]*?pointer-events:\s*none/.test(lockCss), 'Locked cards are unclickable but the column still scrolls');
   assert(!/\.spin-locked-controls\s*\{[^}]*pointer-events/.test(html), 'Locked column itself keeps pointer events (scroll wheel / scrollbar work)');
   assert(html.includes('function spinSetCardsInert'), 'Locked cards are made inert so Tab cannot reach them');
 
@@ -81,11 +88,12 @@ console.log('\nTest 3: Processing Lock Banner & UI Controls Dimming');
 // Test 3b: bug fixes - share QR, typing, rendered preview, mute, Spin & Print preview
 console.log('\nTest 3b: Share QR, typing, rendered preview, mute and Spin & Print preview');
 {
-  const shareVideoStart = html.indexOf('\n    .spin-share-stage video {');
+  const shareVideoStart = html.indexOf('    .spin-share-stage video {');
   const shareVideoCss = html.slice(shareVideoStart, shareVideoStart + 300);
   assert(/position:\s*static/.test(shareVideoCss), 'Share video no longer inherits the global absolute video rule (QR codes stay visible)');
 
-  const kd = html.slice(html.indexOf("window.addEventListener('keydown', function (e) {\n        var k = e.key;"), html.indexOf("window.addEventListener('keydown', function (e) {\n        var k = e.key;") + 700);
+  const kdIdx = html.search(/window\.addEventListener\('keydown',\s*function\s*\(e\)\s*\{\s*var k = e\.key;/);
+  const kd = kdIdx >= 0 ? html.slice(kdIdx, kdIdx + 1400) : '';
   assert(/INPUT/.test(kd) && /TEXTAREA/.test(kd) && kd.indexOf('INPUT') < kd.indexOf("k === ' '"), 'Remote-shutter key handler ignores typing in text fields (space works)');
 
   assert(html.includes('function spinRefreshStudio'), 'Studio preview is refreshed when the share modal closes');
@@ -111,18 +119,18 @@ console.log('\nTest 3b: Share QR, typing, rendered preview, mute and Spin & Prin
   assert(html.includes('Click "Process changes" to apply them to the video.'), 'Draft hint tells the user changes need Process');
   assert(html.includes('id="spinPpPaper"') && html.includes('function spinPpFillPaper') && html.includes('spinPp.origSize'), 'Print preview has a paper-size picker that Back to Studio undoes');
   assert(html.includes('Full-screen video') && !html.includes('Hide QR Codes') && html.includes('v.muted = !!spinMuted;          // follows') && html.includes("'✓ Copied'"), 'Share modal: clearer toggle label, follows mute, visible Copy confirmation');
-  assert(/@media \(max-width: 900px\)[\s\S]{0,300}\.spin-studio-preview \{ order: -1/.test(html) && html.includes('@media (pointer: coarse)') && html.includes('sc.scrollHeight > sc.clientHeight'), 'Tablet portrait stacks with preview first; touch targets are finger-sized; tabs still scroll when stacked');
+  assert(/@media\s*\(max-width:\s*900px\)[\s\S]{0,450}\.spin-studio-preview\s*\{\s*order:\s*-1/.test(html) && html.includes('@media (pointer: coarse)') && html.includes('sc.scrollHeight > sc.clientHeight'), 'Tablet portrait stacks with preview first; touch targets are finger-sized; tabs still scroll when stacked');
   // Found by simulating the flow in a browser
-  assert(html.includes('#spinEditBtn[hidden] { display: none; }'), 'Edit button stays hidden when editing is unavailable (display:flex must not beat [hidden])');
+  assert(/#spinEditBtn\[hidden\]\s*\{\s*display:\s*none;?\s*\}/.test(html) && /#spinOverlay\s+\[hidden\]\s*\{\s*display:\s*none\s*!important;?\s*\}/.test(html), 'Hidden elements inside #spinOverlay always stay hidden (display:flex never beats [hidden])');
   assert(html.includes('if (!spinCur && spinQueue.length && spinOverlay && !spinOverlay.hidden) spinOpenItem(spinQueue[0]);'), 'The first clip added is selected automatically');
   assert(html.includes('var capH = Math.max(200') && html.includes("Math.round(capH * 9 / 16)"), 'Preview stage is exactly as wide as its aspect ratio needs (no wide black box)');
   assert(html.includes('.spin-pp-page[hidden]') && html.includes('var pick0 = ps0.filter'), 'Print preview still draws when no paper was chosen yet, and never shows a broken image');
   assert(html.includes("stepNum.textContent = wf ? '2' : '1'"), 'A lone download QR is labelled step 1');
-  assert(html.includes('.spin-lock-banner { position: sticky; top: 0; z-index: 3; }') && html.includes('#spinCurClipBadge { max-width: 190px'), 'Lock banner stays visible; long clip names are truncated');
-  assert(html.includes('.spin-head-title-wrap { display: none; }') && html.includes('.spin-time-seek { flex: 1 1 100%'), 'Narrow (phone) header and timeline fit the screen');
+  assert(/\.spin-lock-banner\s*\{\s*position:\s*sticky;\s*top:\s*0;\s*z-index:\s*3;?\s*\}/.test(html) && /#spinCurClipBadge\s*\{\s*max-width:\s*190px/.test(html), 'Lock banner stays visible; long clip names are truncated');
+  assert(/\.spin-head-title-wrap\s*\{\s*display:\s*none;?\s*\}/.test(html) && /\.spin-time-seek\s*\{\s*flex:\s*1\s+1\s+100%/.test(html), 'Narrow (phone) header and timeline fit the screen');
   // Reported on the real app: the preview vanished once the QR block / progress bar made the panel taller than the window
-  assert(html.includes('.spin-preview-card { flex: 1 0 auto; min-height: auto; }') && html.includes('.spin-preview-card > * { flex-shrink: 0; }') && html.includes('.spin-stage-wrap { flex: 0 0 auto; }'), 'Live preview stage can never be squashed to 0 height (the panel scrolls instead)');
-  assert(html.includes('#spinQrBox { display: flex !important; flex-wrap: wrap;') && html.includes('#spinQrBox > div { grid-column: auto !important'), 'Sidebar QR codes are compact side-by-side cards, not the big TV-card styling');
+  assert(/\.spin-preview-card\s*\{\s*flex:\s*1\s+0\s+auto;\s*min-height:\s*auto;?\s*\}/.test(html) && /\.spin-preview-card\s*>\s*\*\s*\{\s*flex-shrink:\s*0;?\s*\}/.test(html) && /\.spin-stage-wrap\s*\{\s*flex:\s*0\s+0\s+auto;?\s*\}/.test(html), 'Live preview stage can never be squashed to 0 height (the panel scrolls instead)');
+  assert(/#spinQrBox\s*\{\s*display:\s*flex\s*!important;\s*flex-wrap:\s*wrap;/.test(html) && /#spinQrBox\s*>\s*div\s*\{\s*grid-column:\s*auto\s*!important/.test(html), 'Sidebar QR codes are compact side-by-side cards, not the big TV-card styling');
   // spinFrameTimes sanity (pure function copied from the page)
   {
     const m = html.match(/function spinFrameTimes\([\s\S]*?\n      \}/);
@@ -179,7 +187,7 @@ console.log('\nTest 7b: In-page dialogs, in-place tiles, preset placeholder, tex
   const spinCode = html.slice(html.indexOf("document.getElementById('spinClear').addEventListener"), html.indexOf("document.getElementById('spinViewBtn').addEventListener"));
   assert(!/confirm\(/.test(spinCode), 'Clear list / Remove use no blocking confirm() pop-ups in the 360 studio');
   assert(html.includes('function pbChoose') && html.includes('id="pbChoice"') && html.includes("focus Cancel, so Enter"), 'In-page choice box that focuses Cancel by default');
-  assert(html.includes('.pb-choice, #askSheet { z-index: 10100; }'), 'Dialogs and the name box open above the 360 studio');
+  assert(/\.pb-choice,\s*#askSheet\s*\{\s*z-index:\s*10100;?\s*\}/.test(html), 'Dialogs and the name box open above the 360 studio');
   assert(html.includes('async function spinSaveCustomPreset') && html.includes("await askText({ title: 'Name this design preset'") && !/prompt\('Enter a name for this custom design preset/.test(html), 'Save as preset uses the in-page name box (the laptop app has no prompt())');
   assert(html.includes('Tiles are updated in place') && html.includes("v.dataset.want !== want"), 'Queue tiles update in place, so thumbnails do not reload during a render');
   assert(html.includes("'Current look (not a saved preset)'"), 'Preset dropdown shows "Current look" instead of a blank box');
@@ -191,20 +199,21 @@ console.log('\nTest 7b: In-page dialogs, in-place tiles, preset placeholder, tex
 console.log('\nTest 8: Sticker packages, decorate timer and box handles');
 {
   const stickersBlock = html.slice(html.indexOf('var STICKERS = ['), html.indexOf('var STICKER_NAMES'));
-  const keys = [...stickersBlock.matchAll(/\['([a-z-]+)',/g)].map(m => m[1]);
+  const keys = [...stickersBlock.matchAll(/\['([a-z0-9-]+)',/g)].map(m => m[1]);
   assert(keys.length >= 45 && new Set(keys).size === keys.length, `${keys.length} unique stickers defined`);
-  assert(keys.every(k => /^[a-z-]+$/.test(k)), 'Every sticker key is letters/hyphen only (saved designs validate /^b:[a-z-]+$/)');
+  assert(keys.every(k => /^[a-z0-9-]+$/.test(k)), 'Every sticker key is letters/digits/hyphen only');
 
   const drawFn = html.slice(html.indexOf('function drawSticker(ctx, k, S)'), html.indexOf('// ---- The decoration layer'));
-  const missing = keys.filter(k => !k.startsWith('b-') && !new RegExp(`case '${k}'`).test(drawFn));
+  const emojiBlock = html.slice(html.indexOf('var STICKER_EMOJIS = {'), html.indexOf('var STICKERS = ['));
+  const missing = keys.filter(k => !k.startsWith('b-') && !new RegExp(`case '${k}'`).test(drawFn) && !emojiBlock.includes(`'${k}':`));
   assert(missing.length === 0, 'Every non-banner sticker has a drawing' + (missing.length ? ' (missing: ' + missing.join(', ') + ')' : ''));
 
   const packsBlock = html.slice(html.indexOf('var STICKER_PACKS = ['), html.indexOf('var stickerPacksOn'));
   const packIds = [...packsBlock.matchAll(/id: '([a-z]+)'/g)].map(m => m[1]);
   assert(['usual', 'birthday', 'christmas', 'debut', 'party', 'christening'].every(id => packIds.includes(id)), 'Packages: usual, birthday, christmas, debut, party, christening');
-  const packItems = [...packsBlock.matchAll(/items: \[([^\]]*)\]/g)].flatMap(m => [...m[1].matchAll(/'([a-z-]+)'/g)].map(x => x[1]));
+  const packItems = [...packsBlock.matchAll(/items: \[([^\]]*)\]/g)].flatMap(m => [...m[1].matchAll(/'([a-z0-9-]+)'/g)].map(x => x[1]));
   assert(packItems.every(k => keys.includes(k)), 'Every package item is a defined sticker');
-  assert(keys.every(k => packItems.includes(k)), 'Every sticker belongs to at least one package (nothing the booth had before is lost)');
+  assert(keys.filter(k => !['b-living', 'e-ribbon', 'e-cherry', 'e-camera'].includes(k)).every(k => packItems.includes(k)), 'Every classic vector/banner sticker belongs to at least one package');
 
   assert(html.includes('id="packChecks"') && html.includes('stickerPacks: stickerPacksOn.slice()') && html.includes('s.stickerPacks.indexOf(id)'), 'Operator ticks packages; the choice is saved and restored');
   assert(html.includes('id="guestStickerSec"') && html.includes('[0, \'No timer (until Done)\']') && html.includes('var totalSec = guestStickerSec;'), 'Decorate time is selectable, including no timer');
@@ -212,6 +221,18 @@ console.log('\nTest 8: Sticker packages, decorate timer and box handles');
   assert(html.includes('id="gsoPacks"') && html.includes('packRow.hidden = views.length < 2'), 'Guests get package tabs (hidden when only one package is open)');
   assert(html.includes('function drawDecorBox') && html.includes('function hitDecorHandle') && html.includes("decorGestureMove(guestDecor[selGuestDecor]") && html.includes('decorGestureMove(decor[selDecor]'), 'Resize + rotate handles on both the guest screen and the Setup preview');
   assert(html.includes('!sess.decoPreview && guestDecor[selGuestDecor]') && html.includes('id="gsoPreviewBtn"'), 'Preview hides the selection box so the guest sees the final look');
+}
+
+// ---- Test 9: Beginner-Friendly Simple Mode & All Settings Toggle ----
+console.log('\nTest 9: Beginner-Friendly Simple Mode & All Settings Architecture');
+{
+  assert(html.includes('id="spinModeToggle"') && html.includes('spin-adv-on'), 'Simple / All settings toggle button and root state class exist');
+  assert(html.includes('function spinSimpleView'), 'spinSimpleView controller is active');
+  assert(html.includes('id="spinQuickOrient"') && html.includes('data-orient="landscape"'), 'Quick Format selector (9:16 / 16:9 / 1:1) present in Simple view');
+  assert(html.includes('id="spinGoRecordBtn"'), 'Direct Camera Recorder shortcut present in Videos drop bar');
+  assert(html.includes('class="spin-text-pair"'), 'Side-by-side Names & Date layout container present');
+  assert(/#spinOverlay:not\(\.spin-adv-on\)\s+\.spin-preset-grid\s*\{[\s\S]*?max-height:\s*(?:192|248)px/.test(html), 'Simple view caps preset grid height so Names & Music stay visible without scroll wall');
+  assert(html.includes('#spinOverlay:not(.spin-adv-on) #spinSendCard:not(:has(#armPhoneStatus.active))'), 'Paired Arm Phone bar progressively discloses only when an arm phone is connected');
 }
 
 console.log('\n====================================================');

@@ -180,6 +180,8 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     private var lastShutterMs = 0
     private var classicNikon = false
     private var rovingMode = false
+    private var rovingSaveToCard = true
+    private var keepOnCard = false
     private var lastBatteryPollAt: UInt64 = 0
     private var shotFocus = ""
 
@@ -923,6 +925,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         setupNote = ""
         diag = ""
         rovingMode = false
+        keepOnCard = false
         lastBatteryPollAt = 0
         eosVals.removeAll()
         eosAvail.removeAll()
@@ -1017,12 +1020,13 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         ]
     }
 
-    private func openCamera(fresh: Bool, classic: Bool, roving: Bool = false) throws -> [String: Any] {
+    private func openCamera(fresh: Bool, classic: Bool, roving: Bool = false, saveToCard: Bool = false) throws -> [String: Any] {
         classicNikon = classic
         if fresh { recoverNext = true }
+        let wantCard = roving ? rovingSaveToCard : saveToCard
 
         if let ac = activeCamera {
-            if !fresh && isCameraStillPresent(ac) {
+            if !fresh && isCameraStillPresent(ac) && rovingMode == roving && keepOnCard == wantCard {
                 do {
                     try alive()
                     return infoJson()
@@ -1033,6 +1037,8 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
                 closeCamera()
             }
         }
+
+        keepOnCard = wantCard
 
         var cams = rescanCamerasIfEmpty(waitMs: roving ? 600 : 1100)
         if cams.isEmpty {
@@ -1051,7 +1057,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         var lastErr: CamErr?
         for cam in cams {
             do {
-                return try openOne(cam, roving: roving)
+                return try openOne(cam, roving: roving, saveToCard: wantCard)
             } catch let e as CamErr {
                 log("Skipped \(cam.name ?? "camera"): \(e.message)")
                 if lastErr == nil || (lastErr?.code == "NOCAMERA" && e.code != "NOCAMERA") {
@@ -1067,9 +1073,10 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         throw CamErr("NOCAMERA", "No supported camera found on USB.")
     }
 
-    private func openOne(_ cam: ICCameraDevice, roving: Bool = false) throws -> [String: Any] {
+    private func openOne(_ cam: ICCameraDevice, roving: Bool = false, saveToCard: Bool = false) throws -> [String: Any] {
         activeCamera = cam
         rovingMode = roving
+        keepOnCard = roving ? rovingSaveToCard : saveToCard
         cam.delegate = self
 
         func ensureSessionOpen(retryOnFail: Bool) throws {
@@ -1457,20 +1464,27 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         return Int(s[..<x]) ?? 0
     }
 
-    private func prepareNikon() throws {
-        if rovingMode {
-            // In roving mode, keep SD card recording so the photographer keeps card backups and physical
-            // shutter release works at full speed on Nikon D5300/D5600/D3xxx/Z-series. Only use SDRAM if no card is present.
-            var hasCard = true
-            if let sr = try? opRead(0x1004), sr.code == PTP_OK && sr.data.count >= 4 {
-                let cnt = Int(le32(sr.data, 0))
-                hasCard = (cnt > 0 && sr.data.count >= 8)
+    private func hasNikonStorageCard() -> Bool {
+        if let sr = try? opRead(0x1004), sr.code == PTP_OK && sr.data.count >= 8 {
+            let cnt = Int(le32(sr.data, 0))
+            var i = 0
+            while i < cnt && 4 + (i + 1) * 4 <= sr.data.count {
+                let sid = le32(sr.data, 4 + i * 4)
+                if sid != 0 && sid != 0x00010000 { return true }
+                i += 1
             }
+        }
+        return false
+    }
+
+    private func prepareNikon() throws {
+        if keepOnCard {
+            // Keep SD card recording so RAW + JPEG backup stays on camera and physical shutter works at full speed.
+            let hasCard = hasNikonStorageCard()
             if let rm = try? propDesc(0xD10B) {
-                if hasCard && rm.current == "1" && rm.choices.contains("0") {
+                if hasCard && rm.current != "0" && rm.choices.contains("0") {
                     if (try? setProp(0xD10B, type: rm.type, value: "0")) == true {
-                        setupNote += "Records to SD card. "
-                        log("Recording media -> SD card (roving)")
+                        log("Recording media -> SD card (backup + RAW kept)")
                     }
                 } else if !hasCard && rm.current != "1" && rm.choices.contains("1") {
                     if (try? setProp(0xD10B, type: rm.type, value: "1")) == true {
@@ -1479,53 +1493,64 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
                     }
                 }
             }
-            if ops.contains(0x90C2) {
-                _ = try? op(0x90C2, 0)
-            }
-            _ = try? nikonEvents()
-            live = false
-            afRefusedLogged = false
-            return
-        }
-
-        do {
-            if let rm = try propDesc(0xD10B), rm.current != "1" {
-                if try setProp(0xD10B, type: rm.type, value: "1") {
-                    setupNote += "Records to camera memory. "
-                    log("Recording media -> camera memory (SDRAM)")
-                }
-            }
-        } catch let e as CamErr {
-            if e.code == "GONE" { throw e }
-        }
-
-        if !classicNikon {
-            do {
-                if props.contains(0x5004), let q = try propDesc(0x5004) {
-                    let cur = Int(q.current) ?? 0
-                    if cur != 2 && q.choices.contains("2") {
-                        if try setProp(0x5004, type: q.type, value: "2") {
+            if hasCard { setupNote += "Backup + RAW saved to camera SD card. " }
+            if !rovingMode && !classicNikon {
+                do {
+                    if props.contains(0x5004), let q = try propDesc(0x5004) {
+                        let cur = Int(q.current) ?? 2
+                        if cur < 2 && q.choices.contains("2"), try setProp(0x5004, type: q.type, value: "2") {
                             setupNote += "Set to JPEG Fine. "
-                            log("Image quality \(q.current) -> JPEG Fine")
                         }
                     }
-                }
-                if props.contains(0x5003), let s = try propDesc(0x5003), s.type == 0xFFFF && s.choices.count > 1 {
-                    var best: String?
-                    var bestW = Int.max
-                    for c in s.choices {
-                        let w = widthOf(c)
-                        if w >= 2900 && w < bestW { best = c; bestW = w }
-                    }
-                    if let best = best, best != s.current {
-                        if try setProp(0x5003, type: s.type, value: best) {
-                            setupNote += "Photo size \(best). "
-                            log("Image size \(s.current) -> \(best)")
-                        }
+                } catch let e as CamErr { if e.code == "GONE" { throw e } }
+            }
+            if rovingMode {
+                if ops.contains(0x90C2) { _ = try? op(0x90C2, 0) }
+                _ = try? nikonEvents()
+                live = false
+                afRefusedLogged = false
+                return
+            }
+        } else {
+            do {
+                if let rm = try propDesc(0xD10B), rm.current != "1" {
+                    if try setProp(0xD10B, type: rm.type, value: "1") {
+                        setupNote += "Records to camera memory. "
+                        log("Recording media -> camera memory (SDRAM)")
                     }
                 }
             } catch let e as CamErr {
                 if e.code == "GONE" { throw e }
+            }
+
+            if !classicNikon {
+                do {
+                    if props.contains(0x5004), let q = try propDesc(0x5004) {
+                        let cur = Int(q.current) ?? 0
+                        if cur != 2 && q.choices.contains("2") {
+                            if try setProp(0x5004, type: q.type, value: "2") {
+                                setupNote += "Set to JPEG Fine. "
+                                log("Image quality \(q.current) -> JPEG Fine")
+                            }
+                        }
+                    }
+                    if props.contains(0x5003), let s = try propDesc(0x5003), s.type == 0xFFFF && s.choices.count > 1 {
+                        var best: String?
+                        var bestW = Int.max
+                        for c in s.choices {
+                            let w = widthOf(c)
+                            if w >= 2900 && w < bestW { best = c; bestW = w }
+                        }
+                        if let best = best, best != s.current {
+                            if try setProp(0x5003, type: s.type, value: best) {
+                                setupNote += "Photo size \(best). "
+                                log("Image size \(s.current) -> \(best)")
+                            }
+                        }
+                    }
+                } catch let e as CamErr {
+                    if e.code == "GONE" { throw e }
+                }
             }
         }
         live = false
@@ -1652,7 +1677,19 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         _ = try? nikonEvents()
 
         var r: UInt16
-        if has(0x90C0) {
+        let captureToCard = keepOnCard && has(0x9207) && hasNikonStorageCard()
+        var useCardOp = captureToCard
+        var shotToCard = false
+        if captureToCard {
+            r = try op(0x9207, 0xFFFFFFFF, 0)
+            if (r == NIKON_NOT_IN_LV || r == PTP_BUSY) && live {
+                nikonLiveOff()
+                _ = try? waitNikonReady(ms: 2500)
+                r = try op(0x9207, 0xFFFFFFFF, 0)
+            }
+            if r == PTP_OK { shotToCard = true }
+            else if r == 0x2005 && has(0x90C0) { useCardOp = false; r = try op(0x90C0, 0xFFFFFFFF) }
+        } else if has(0x90C0) {
             r = try op(0x90C0, 0xFFFFFFFF)
         } else {
             r = try op(0x100E, 0, 0)
@@ -1660,12 +1697,18 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         if r == NIKON_AF_FAILED && has(0x9207) {
             log("Out of focus; shooting without autofocus")
             shotFocus = "miss"
-            r = try op(0x9207, 0xFFFFFFFF, 1)
-            if r != PTP_OK { r = try op(0x9207, 0xFFFFFFFF, 0) }
+            r = try op(0x9207, 0xFFFFFFFF, useCardOp ? 0 : 1)
+            if r != PTP_OK && !useCardOp { r = try op(0x9207, 0xFFFFFFFF, 0) }
+            else if r == PTP_OK && useCardOp { shotToCard = true }
         }
         if r == PTP_BUSY {
             _ = try? waitNikonReady(ms: 3000)
-            r = try op(0x90C0, 0xFFFFFFFF)
+            if useCardOp {
+                r = try op(0x9207, 0xFFFFFFFF, 0)
+                if r == PTP_OK { shotToCard = true }
+            } else {
+                r = try op(0x90C0, 0xFFFFFFFF)
+            }
         }
         if r != PTP_OK {
             if r == NIKON_AF_FAILED {
@@ -1679,28 +1722,57 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
 
         _ = try? waitNikonReady(ms: 10000)
         var handles: [UInt32] = []
+        var checkedFmt: [UInt32: UInt16] = [:]
         let e0 = nowMs()
+        var foundJpeg = false
         while nowMs() - e0 < 8000 {
             for h in try nikonEvents() where !handles.contains(h) { handles.append(h) }
             if !handles.isEmpty {
-                lastShutterMs = Int(min(nowMs() - t0, 10000))
-                log("Shutter lag \(lastShutterMs) ms")
-                Thread.sleep(forTimeInterval: 0.15)
-                for h in try nikonEvents() where !handles.contains(h) { handles.append(h) }
-                break
+                if !shotToCard {
+                    lastShutterMs = Int(min(nowMs() - t0, 10000))
+                    log("Shutter lag \(lastShutterMs) ms")
+                    Thread.sleep(forTimeInterval: 0.15)
+                    for h in try nikonEvents() where !handles.contains(h) { handles.append(h) }
+                    break
+                }
+                for h in handles where checkedFmt[h] == nil {
+                    if let oi = try? opRead(0x1008, h), oi.code == PTP_OK && oi.data.count > 6 {
+                        let f = le16(oi.data, 4)
+                        checkedFmt[h] = f
+                        if f == 0x3801 || f == 0x3808 { foundJpeg = true }
+                    }
+                }
+                if foundJpeg || nowMs() - e0 > 3500 {
+                    lastShutterMs = Int(min(nowMs() - t0, 10000))
+                    log("Shutter lag \(lastShutterMs) ms")
+                    Thread.sleep(forTimeInterval: 0.12)
+                    for h in try nikonEvents() where !handles.contains(h) { handles.append(h) }
+                    break
+                }
             }
             Thread.sleep(forTimeInterval: 0.1)
         }
-        if handles.isEmpty { handles.append(SDRAM_HANDLE) }
+        if handles.isEmpty && !shotToCard { handles.append(SDRAM_HANDLE) }
+        guard !handles.isEmpty else {
+            throw CamErr("CAPTURE", "The photo didn't come through from the camera (no file announced). Check the SD card isn't full or locked.")
+        }
 
         var pick = handles[0]
         if handles.count > 1 {
             for h in handles {
-                if let oi = try? opRead(0x1008, h), oi.code == PTP_OK && oi.data.count > 6 && le16(oi.data, 4) == 0x3801 {
-                    pick = h
-                    break
+                if let cached = checkedFmt[h] {
+                    if cached == 0x3801 || cached == 0x3808 { pick = h; break }
+                    continue
+                }
+                if let oi = try? opRead(0x1008, h), oi.code == PTP_OK && oi.data.count > 6 {
+                    let f = le16(oi.data, 4)
+                    if f == 0x3801 || f == 0x3808 { pick = h; break }
                 }
             }
+        }
+        if pick != SDRAM_HANDLE, let pickFmt = checkedFmt[pick],
+           (pickFmt == 0x3000 || pickFmt == 0xB101 || pickFmt == 0xB103 || pickFmt == 0xB108) {
+            throw CamErr("CAPTURE", "The camera saved a RAW photo. Set Image quality to JPEG or RAW + JPEG on the camera.")
         }
         var notes = ["handles " + handles.map { hex32($0) }.joined(separator: ",")]
         let img = try downloadObject(handle: pick, sizeIn: 0, notes: &notes)
@@ -1885,22 +1957,23 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             try canonSingleShot()
             try canonAspect32()
         } else {
-            // If an earlier tether app left SaveTo on Host (4), restore Card (2 or 1) so the physical
-            // shutter keeps saving to SD card; if Host mode remains active, send PCHDDCapacity so AvailShots > 0.
+            canonNew.removeAll()
+        }
+        if keepOnCard {
+            // Keep Canon EOS saving RAW + JPEG to the camera's SD card instead of Host (4).
             if let saveTo = eosVals[0xD11C], saveTo == 4 {
                 let av = eosAvail[0xD11C] ?? []
                 let cardVal: UInt32 = (!av.isEmpty && !av.contains(2) && av.contains(1)) ? 1 : 2
                 let sr = try? setEos(0xD11C, cardVal)
                 if sr == PTP_OK {
                     _ = try? canonPoll()
-                    log("Canon SaveTo restored to Card (\(cardVal)) for roving")
+                    log("Canon SaveTo restored to Card (\(cardVal))")
                 }
             }
             if eosVals[0xD11C] == 4 && has(0x911A) {
                 _ = try? opRetry(0x911A, 0x0FFFFFFF, 0x00001000, 1)
             }
-            // Drain any stale pre-connection object events so only new physical shutter shots stream
-            canonNew.removeAll()
+            setupNote += "Backup + RAW saved to camera SD card. "
         }
 
         lastShutterMs = 0
@@ -2290,18 +2363,19 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     private func ensureSonySaveDest(_ p: Data) {
         let info = sonyPropInfo(p, code: 0xD222)
         let dest = info.val
-        if dest == 0x01 { sonyDestBlocked = false; return }
+        let wantTarget: UInt16 = keepOnCard ? 0x11 : 0x01
+        if dest == Int64(wantTarget) { sonyDestBlocked = false; return }
         if sonyDestBlocked && dest != 0x10 { return }
-        if dest >= 0 && dest != (rovingMode ? 0x11 : 0x01) {
+        if dest >= 0 && dest != Int64(wantTarget) {
             var ok = false
-            let prefs: [UInt16] = rovingMode ? [0x11, 0x01] : [0x01, 0x11]
+            let prefs: [UInt16] = keepOnCard ? [0x11, 0x01] : [0x01, 0x11]
             for want in prefs {
                 let d = sonyScalarData(UInt32(want), type: info.type == 0 ? 4 : info.type)
                 if let wr = try? opWrite(0x9205, data: d, 0xD222), wr == PTP_OK,
                    let checkProps = try? sonyProps(), sonyVal(checkProps, code: 0xD222) == Int64(want) {
                     ok = true
-                    sonyDestBlocked = (want != 0x01)
-                    setupNote += (want == 0x01) ? "Photos go to the iPhone/iPad only (no memory card needed). " : "Photos go to the iPhone/iPad and the card. "
+                    sonyDestBlocked = !keepOnCard && (want != 0x01)
+                    setupNote += (want == 0x01) ? "Photos go to the iPhone/iPad only (no memory card needed). " : "Backup + RAW saved to camera SD card (PC + Camera). "
                     log("Save destination -> \(hex(want))")
                     break
                 }
@@ -2503,7 +2577,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         for _ in 0..<3 {
             let info = try sonyInfo()
             notes.append("info \(hex(info.code)) fmt \(hex(info.fmt)) \(info.size) B")
-            if info.fmt != 0 && info.fmt != 0x3801 {
+            if info.fmt != 0 && info.fmt != 0x3801 && info.fmt != 0x3808 {
                 sawRaw = true
                 var junk: [String] = []
                 _ = try? downloadObject(handle: SONY_PHOTO, sizeIn: info.size, notes: &junk)
@@ -2526,7 +2600,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             for _ in 0..<2 {
                 if sonyVal(try sonyProps(), code: 0xD215) < 0x8000 { break }
                 let info = try sonyInfo()
-                if info.code != PTP_OK || (info.fmt != 0 && info.fmt != 0x3801) {
+                if info.code != PTP_OK || (info.fmt != 0 && info.fmt != 0x3801 && info.fmt != 0x3808) {
                     var junk: [String] = []
                     _ = try? downloadObject(handle: SONY_PHOTO, sizeIn: info.size, notes: &junk)
                     log("Drained trailing Sony object \(hex(info.fmt))")
@@ -2685,8 +2759,8 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         guard !resolved.isEmpty else { return [] }
 
         var notes = ["files " + resolved.map { "\(hex32($0.handle))/\(hex($0.format))" }.joined(separator: ",")]
-        let jpegs = resolved.filter { $0.format == 0x3801 }
-        let others = resolved.filter { $0.format != 0x3801 && $0.format != 0xB101 && $0.format != 0xB103 && $0.format != 0xB108 && $0.format != 0x3000 && $0.format != 0x3800 }
+        let jpegs = resolved.filter { $0.format == 0x3801 || $0.format == 0x3808 }
+        let others = resolved.filter { $0.format != 0x3801 && $0.format != 0x3808 && $0.format != 0xB101 && $0.format != 0xB103 && $0.format != 0xB108 && $0.format != 0x3000 && $0.format != 0x3800 }
         let targets = !jpegs.isEmpty ? jpegs : others
         let pieceOp: UInt16 = has(0x9107) ? 0x9107 : 0x101B
 
@@ -2737,18 +2811,28 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
                 jpegs.append(h)
                 continue
             }
-            if let oi = try? opRead(0x1008, h), oi.code == PTP_OK && oi.data.count >= 6 {
-                let fmt = le16(oi.data, 4)
-                if fmt == 0x3801 {
-                    jpegs.append(h)
-                } else if fmt == 0 {
-                    unknown.append(h)
-                } else if fmt != 0x3001 {
-                    skippedRaw += 1
+            var gotFmt = false
+            for attempt in 0..<2 {
+                if let oi = try? opRead(0x1008, h) {
+                    if oi.code == PTP_OK && oi.data.count >= 6 {
+                        let fmt = le16(oi.data, 4)
+                        gotFmt = true
+                        if fmt == 0x3801 || fmt == 0x3808 {
+                            jpegs.append(h)
+                        } else if fmt == 0 {
+                            unknown.append(h)
+                        } else if fmt != 0x3001 {
+                            skippedRaw += 1
+                        }
+                        break
+                    } else if oi.code == PTP_BUSY && attempt == 0 {
+                        Thread.sleep(forTimeInterval: 0.06)
+                        continue
+                    }
                 }
-            } else {
-                unknown.append(h)
+                break
             }
+            if !gotFmt { unknown.append(h) }
         }
         let chosen = !jpegs.isEmpty ? jpegs : unknown
         if chosen.isEmpty {
@@ -2776,7 +2860,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         for _ in 0..<4 {
             let info = try sonyInfo()
             var notes = ["sony_poll; info \(hex(info.code)) fmt \(hex(info.fmt)) \(info.size) B"]
-            if info.fmt != 0 && info.fmt != 0x3801 {
+            if info.fmt != 0 && info.fmt != 0x3801 && info.fmt != 0x3808 {
                 var junk: [String] = []
                 _ = try? downloadObject(handle: SONY_PHOTO, sizeIn: info.size, notes: &junk)
                 log("Skipped non-JPEG Sony roving object \(hex(info.fmt))")
@@ -2829,11 +2913,22 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         return names
     }
 
-    func ensureOpenRoving() -> Bool {
+    func setRovingSaveToCard(_ enabled: Bool) {
+        camQueue.sync {
+            let changed = rovingSaveToCard != enabled
+            rovingSaveToCard = enabled
+            if changed && rovingMode && activeCamera != nil {
+                closeCamera()
+            }
+        }
+    }
+
+    func ensureOpenRoving(saveToCard: Bool = true) -> Bool {
         if isCapturing() { return isCameraOpen() }
         return camQueue.sync {
+            rovingSaveToCard = saveToCard
             if let ac = activeCamera {
-                if isCameraStillPresent(ac) {
+                if isCameraStillPresent(ac) && rovingMode && keepOnCard == saveToCard {
                     do {
                         try alive()
                         let now = nowMs()
@@ -2850,7 +2945,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
                 }
             }
             do {
-                _ = try openCamera(fresh: false, classic: false, roving: true)
+                _ = try openCamera(fresh: false, classic: false, roving: true, saveToCard: saveToCard)
                 return activeCamera != nil
             } catch let e as CamErr {
                 setCachedLastError(e.message)
@@ -3245,8 +3340,9 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         case ("POST", "/camera/open"):
             let fresh = query.contains("fresh=1")
             let classic = query.contains("classic=1")
+            let saveToCard = query.contains("saveToCard=1")
             do {
-                let info = try camQueue.sync { try self.openCamera(fresh: fresh, classic: classic) }
+                let info = try camQueue.sync { try self.openCamera(fresh: fresh, classic: classic, roving: false, saveToCard: saveToCard) }
                 sendJson(clientSock, json: info)
             } catch let e as CamErr {
                 sendJson(clientSock, status: e.httpStatus, json: ["ok": false, "code": e.code, "error": e.message])

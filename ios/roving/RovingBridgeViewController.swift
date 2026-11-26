@@ -20,6 +20,7 @@ final class RovingBridgeViewController: UIViewController,
     private enum Keys {
         static let targetUrl = "pb4u_roving_target_laptop_url"
         static let vibrate = "pb4u_roving_vibrate_on_send"
+        static let saveToCard = "pb4u_roving_save_to_card"
     }
 
     private enum UploadOutcome {
@@ -28,7 +29,7 @@ final class RovingBridgeViewController: UIViewController,
         case tooBig
     }
 
-    private static let retryDelaySec: TimeInterval = 3.5
+    private static let retryDelaySec: TimeInterval = 2.0
     private static let maxUploadBytes: Int64 = 80 * 1024 * 1024
 
     final class SessionPhoto {
@@ -52,6 +53,7 @@ final class RovingBridgeViewController: UIViewController,
     private let stateLock = NSLock()
     private var targetUrl: String = ""
     private var vibrateOnSend: Bool = true
+    private var saveToCardEnabled: Bool = true
     private var sentPhotosCount: Int = 0
     private var sessionPhotos: [SessionPhoto] = []
     private var previewingPhoto: SessionPhoto?
@@ -69,6 +71,7 @@ final class RovingBridgeViewController: UIViewController,
     private var pendingSeq: Int = 0
     private var drainQueued = false
     private var isDraining = false
+    private var consecutiveUploadFails = 0
     private var retryWorkItem: DispatchWorkItem?
 
     private let activeTaskLock = NSLock()
@@ -116,6 +119,7 @@ final class RovingBridgeViewController: UIViewController,
     private let statusPill = PaddingLabel(inset: UIEdgeInsets(top: 4, left: 10, bottom: 4, right: 10))
     private let cameraTitleLabel = UILabel()
     private let cameraSubLabel = UILabel()
+    private let saveToCardSwitch = UISwitch()
 
     private let laptopInput = UITextField()
     private let connectionStatusLabel = UILabel()
@@ -263,17 +267,42 @@ final class RovingBridgeViewController: UIViewController,
         let ud = UserDefaults.standard
         let savedUrl = ud.string(forKey: Keys.targetUrl) ?? ""
         let vib = ud.object(forKey: Keys.vibrate) as? Bool ?? true
+        let saveCard = ud.object(forKey: Keys.saveToCard) as? Bool ?? true
         stateLock.lock()
         targetUrl = savedUrl
         vibrateOnSend = vib
+        saveToCardEnabled = saveCard
         stateLock.unlock()
     }
 
     private func savePrefs() {
-        let (url, vib) = currentPrefs()
+        stateLock.lock()
+        let url = targetUrl
+        let vib = vibrateOnSend
+        let saveCard = saveToCardEnabled
+        stateLock.unlock()
         let ud = UserDefaults.standard
         ud.set(url.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Keys.targetUrl)
         ud.set(vib, forKey: Keys.vibrate)
+        ud.set(saveCard, forKey: Keys.saveToCard)
+    }
+
+    private func currentSaveToCard() -> Bool {
+        stateLock.lock()
+        let v = saveToCardEnabled
+        stateLock.unlock()
+        return v
+    }
+
+    @objc private func saveToCardChanged(_ sender: UISwitch) {
+        let on = sender.isOn
+        stateLock.lock()
+        saveToCardEnabled = on
+        stateLock.unlock()
+        savePrefs()
+        DispatchQueue.global(qos: .userInitiated).async {
+            IccCameraHelper.shared.setRovingSaveToCard(on)
+        }
     }
 
     private func currentPrefs() -> (url: String, vibrate: Bool) {
@@ -490,6 +519,47 @@ final class RovingBridgeViewController: UIViewController,
         stack.addArrangedSubview(topRow)
         stack.addArrangedSubview(cameraTitleLabel)
         stack.addArrangedSubview(cameraSubLabel)
+
+        let div = UIView()
+        div.backgroundColor = UIColor(hex: "#ECE6DD")
+        div.translatesAutoresizingMaskIntoConstraints = false
+        div.heightAnchor.constraint(equalToConstant: 1).isActive = true
+
+        let sdRow = UIStackView()
+        sdRow.axis = .horizontal
+        sdRow.alignment = .center
+        sdRow.spacing = 10
+
+        let sdCol = UIStackView()
+        sdCol.axis = .vertical
+        sdCol.spacing = 2
+
+        let sdTitle = UILabel()
+        sdTitle.text = "💾 Save Backup + RAW on Camera SD Card"
+        sdTitle.font = .boldSystemFont(ofSize: 13)
+        sdTitle.textColor = UIColor(hex: "#1C1A1E")
+
+        let sdHint = UILabel()
+        sdHint.text = "Keeps full RAW (.CR3 / .NEF / .ARW) + JPEG on your camera SD card while sending JPEGs to Laptop."
+        sdHint.font = .systemFont(ofSize: 11.5)
+        sdHint.textColor = UIColor(hex: "#6B666C")
+        sdHint.numberOfLines = 0
+
+        sdCol.addArrangedSubview(sdTitle)
+        sdCol.addArrangedSubview(sdHint)
+
+        saveToCardSwitch.isOn = currentSaveToCard()
+        saveToCardSwitch.onTintColor = UIColor(hex: "#C93D27")
+        saveToCardSwitch.setContentHuggingPriority(.required, for: .horizontal)
+        saveToCardSwitch.setContentCompressionResistancePriority(.required, for: .horizontal)
+        saveToCardSwitch.addTarget(self, action: #selector(saveToCardChanged(_:)), for: .valueChanged)
+
+        sdRow.addArrangedSubview(sdCol)
+        sdRow.addArrangedSubview(saveToCardSwitch)
+
+        stack.setCustomSpacing(10, after: cameraSubLabel)
+        stack.addArrangedSubview(div)
+        stack.addArrangedSubview(sdRow)
 
         NSLayoutConstraint.activate([
             stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
@@ -1618,8 +1688,10 @@ final class RovingBridgeViewController: UIViewController,
         let cam = IccCameraHelper.shared
         while isWorkerActive(token: token) && !Thread.current.isCancelled {
             autoreleasepool {
+                let saveCard = currentSaveToCard()
+                IccCameraHelper.shared.setRovingSaveToCard(saveCard)
                 if !cam.isCameraOpen() {
-                    _ = cam.ensureOpenRoving()
+                    _ = cam.ensureOpenRoving(saveToCard: saveCard)
                 }
                 let connected = cam.isCameraOpen()
                 let name = connected ? cam.cameraName() : "No DSLR Connected"
@@ -1648,7 +1720,8 @@ final class RovingBridgeViewController: UIViewController,
             statusPill.textColor = UIColor(hex: "#2EA66B")
             statusPill.backgroundColor = UIColor(hex: "#EAF7EF")
             cameraTitleLabel.text = name
-            cameraSubLabel.text = battery >= 0 ? "Connected via USB • Battery \(battery)%" : "Connected via USB • Physical shutter is live"
+            let base = battery >= 0 ? "Connected via USB • Battery \(battery)%" : "Connected via USB • Physical shutter is live"
+            cameraSubLabel.text = currentSaveToCard() ? "\(base)\n💾 Backup + RAW saved to camera SD card" : base
             triggerButton.isEnabled = true
         } else {
             statusPill.text = seenNames.isEmpty ? "● WAITING" : "● CONNECTING"
@@ -2035,16 +2108,21 @@ final class RovingBridgeViewController: UIViewController,
             return
         }
 
-        if !isLaptopReachable(cleanBaseUrl: clean) {
-            let n = pendingCount()
-            DispatchQueue.main.async {
-                self.lastSentLabel.text = "⏳ \(n) queued — waiting for laptop Wi-Fi…"
-                self.refreshQueueUi()
-                if n > 0 {
-                    self.kickRetryQueue(delay: Self.retryDelaySec)
+        stateLock.lock()
+        let fails = consecutiveUploadFails
+        stateLock.unlock()
+        if fails > 0 || initialFiles.count > 2 {
+            if !isLaptopReachable(cleanBaseUrl: clean) {
+                let n = pendingCount()
+                DispatchQueue.main.async {
+                    self.lastSentLabel.text = "⏳ \(n) queued — waiting for laptop Wi-Fi…"
+                    self.refreshQueueUi()
+                    if n > 0 {
+                        self.kickRetryQueue(delay: Self.retryDelaySec)
+                    }
                 }
+                return
             }
-            return
         }
 
         let files = listPendingFiles()
@@ -2082,6 +2160,7 @@ final class RovingBridgeViewController: UIViewController,
                 let remAfter = pendingCount()
 
                 stateLock.lock()
+                consecutiveUploadFails = 0
                 sentPhotosCount += 1
                 for p in sessionPhotos where p.pendingUrl?.path == file.path {
                     p.success = true
@@ -2105,6 +2184,9 @@ final class RovingBridgeViewController: UIViewController,
             case .tooBig:
                 quarantineFile(file)
                 madeProgress = true
+                stateLock.lock()
+                consecutiveUploadFails = 0
+                stateLock.unlock()
                 markPhotoResult(path: file.path, success: false)
                 DispatchQueue.main.async {
                     self.lastSentLabel.text = "Skipped oversized photo (>80 MB, kept in local backup)"
@@ -2112,6 +2194,9 @@ final class RovingBridgeViewController: UIViewController,
                 }
 
             case .retry:
+                stateLock.lock()
+                consecutiveUploadFails += 1
+                stateLock.unlock()
                 let rem = pendingCount()
                 DispatchQueue.main.async {
                     self.lastSentLabel.text = "⏳ \(rem) queued — Wi-Fi lost, auto-retrying…"
@@ -2173,7 +2258,7 @@ final class RovingBridgeViewController: UIViewController,
         if len > Self.maxUploadBytes { return .tooBig }
 
         let encodedName = fileUrl.lastPathComponent.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? fileUrl.lastPathComponent
-        guard let url = URL(string: "\(cleanBaseUrl)/photo?name=\(encodedName)") else { return .retry }
+        guard let url = URL(string: "\(cleanBaseUrl)/photo?name=\(encodedName)&id=\(encodedName)") else { return .retry }
 
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20.0)
         req.httpMethod = "POST"

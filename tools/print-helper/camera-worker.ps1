@@ -1,4 +1,4 @@
-# photobooth4u Helper - camera worker (Windows)
+﻿# photobooth4u Helper - camera worker (Windows)
 # Started by the helper (photobooth4u-print-helper-windows.exe); not run by hand.
 # Talks to the camera through Windows' OWN camera driver (WPD / MTP), so no
 # Zadig / driver switch is needed: plug the camera in, switch it on, done.
@@ -731,7 +731,7 @@ namespace Pb4uCam
             sb.Append("],\"open\":" + (ptp != null ? "true" : "false") + ",\"name\":" + Js(ptp != null ? camName : "") + ",\"shutterMs\":" + lastShutterMs
                 + ",\"focusInShot\":" + (cn && canonFocusInShot && !mf ? "true" : "false")
                 + ",\"noAfOff\":" + (cn && canonNoAfBad && !mf ? "true" : "false")
-                + ",\"toCard\":" + (cn && !canonToHost && !keepLive ? "true" : "false")
+                + ",\"toCard\":" + (cn && !canonToHost && !keepLive && !saveToCard ? "true" : "false")
                 + ",\"olderCanon\":" + (older ? "true" : "false")
                 + ",\"lensMf\":" + (mf ? "true" : "false")
                 + ",\"canonDslr\":" + (dslr ? "true" : "false")
@@ -891,7 +891,7 @@ namespace Pb4uCam
                 + ",\"saveTo\":" + Js(canon ? (canonToHost ? "host" : "card") : "")
                 + ",\"focusInShot\":" + (canon && canonFocusInShot && !mf ? "true" : "false")
                 + ",\"noAfOff\":" + (canon && canonNoAfBad && !mf ? "true" : "false")
-                + ",\"toCard\":" + (canon && !canonToHost && !keepLive ? "true" : "false")
+                + ",\"toCard\":" + (canon && !canonToHost && !keepLive && !saveToCard ? "true" : "false")
                 + ",\"aspectCrop\":" + (canon && canonAspectCrop ? "true" : "false") + "}";
         }
 
@@ -934,19 +934,46 @@ namespace Pb4uCam
             return ptp.Op(0x90C8);
         }
 
+        static bool HasStorageCard()
+        {
+            try
+            {
+                byte[] b; uint r = ptp.OpRead(0x1004, out b);
+                if (r != Ptp.OK || b == null || b.Length < 8) return false;
+                uint cnt = (uint)(b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24));
+                for (uint i = 0; i < cnt && 4 + (i + 1) * 4 <= b.Length; i++)
+                {
+                    int off = (int)(4 + i * 4);
+                    uint sid = (uint)(b[off] | (b[off + 1] << 8) | (b[off + 2] << 16) | (b[off + 3] << 24));
+                    if (sid != 0 && sid != 0x00010000U) return true;
+                }
+                return false;
+            }
+            catch (GoneException) { throw; }
+            catch { return false; }
+        }
+
         // ---------- photo size: JPEG Fine, smallest size >= ~3900 px wide (fallback to largest) ----------
         // (3900 px is enough for 4R boxes at 675 DPI without enlarging; a camera with no size that big uses its largest)
         static void Prepare()
         {
             setupNote = "";
-            // Record to the camera's own memory (RAM), like the Mac booth does, so
-            // live view and photos work without an SD card (Nikon RecordingMedia 0xD10B).
+            // Record to SDRAM when saveToCard is false (no SD card needed), or to SD Card keeping RAW + JPEG when saveToCard is true.
             if (nikon)
             {
                 try
                 {
                     var rm = PropDesc(0xD10B);
-                    if (rm != null && rm.Current != "1" && SetProp(0xD10B, rm.Type, "1")) { setupNote += "Records to camera memory. "; Log("Recording media -> camera memory (SDRAM)"); }
+                    if (saveToCard && HasStorageCard())
+                    {
+                        if (rm != null && rm.Current != "0" && SetProp(0xD10B, rm.Type, "0")) { Log("Recording media -> SD card (backup + RAW kept)"); }
+                        setupNote += "Backup + RAW saved to camera SD card. ";
+                    }
+                    else
+                    {
+                        if (rm != null && rm.Current != "1" && SetProp(0xD10B, rm.Type, "1")) { setupNote += "Records to camera memory. "; Log("Recording media -> camera memory (SDRAM)"); }
+                        if (saveToCard) setupNote += "No SD card in camera — saving on laptop only. ";
+                    }
                 }
                 catch (GoneException) { throw; }
                 catch (Exception e) { Log("Recording media not changed: " + e.Message); }
@@ -961,7 +988,8 @@ namespace Pb4uCam
                         int cur; int.TryParse(q.Current, out cur);
                         // Nikon: 0 Basic, 1 Normal, 2 Fine (JPEG); higher values include RAW.
                         // Basic and Normal squeeze the JPEG hard: at a high ISO that shows as blocky, pixelated detail. Always use Fine.
-                        if ((classicNikon ? cur > 2 : cur != 2) && q.Choices.Contains("2") && SetProp(0x5004, q.Type, "2")) { setupNote += "Set to JPEG Fine. "; Log("Image quality was " + (cur > 2 ? "RAW" : cur == 1 ? "JPEG Normal" : "JPEG Basic") + "; set to JPEG Fine"); }
+                        bool shouldForceFine = saveToCard ? (cur < 2) : (classicNikon ? cur > 2 : cur != 2);
+                        if (shouldForceFine && q.Choices.Contains("2") && SetProp(0x5004, q.Type, "2")) { setupNote += "Set to JPEG Fine. "; Log("Image quality was " + (cur > 2 ? "RAW" : cur == 1 ? "JPEG Normal" : "JPEG Basic") + "; set to JPEG Fine"); }
                     }
                 }
                 if (props.Contains(0x5003))
@@ -1415,6 +1443,7 @@ namespace Pb4uCam
         static string shotFocus = "";
         // The booth's "Classic Nikon behaviour" switch (sent with open / af / capture): the Nikon keeps its old JPEG and autofocus behaviour.
         static bool classicNikon;
+        static bool saveToCard;
         // Nikon live view autofocus: start it and wait until the camera says it is ready again (not a fixed 1.2 s: a D5300 in
         // dim light needs longer), but never more than ~2 s in all (the booth fires the shutter earlier by the camera's whole
         // delay, and that has a limit). One more try if it reported no focus and there is time. true = focused (or not reported).
@@ -1498,16 +1527,40 @@ namespace Pb4uCam
                 catch (GoneException) { throw; } catch { }
             }
             DrainEvents();
-            if (Has(0x90C0)) r = ptp.Op(0x90C0, 0xFFFFFFFF);    // InitiateCaptureRecInSdram
-            else r = ptp.Op(0x100E, 0, 0);
+            bool captureToCard = saveToCard && Has(0x9207) && HasStorageCard();
+            bool useCardOp = captureToCard;
+            bool shotToCard = false;
+            if (captureToCard)
+            {
+                r = ptp.Op(0x9207, 0xFFFFFFFF, 0);    // InitiateCaptureRecInMedia -> SD card (keeps RAW + JPEG)
+                // Nikon D5300/D5xxx can return 0xA00B/BUSY if 0x9207 is called while Live View is active: end LV and retry once.
+                if ((r == 0xA00B || r == Ptp.BUSY) && live)
+                {
+                    StopLive(); WaitReady(2500);
+                    r = ptp.Op(0x9207, 0xFFFFFFFF, 0);
+                }
+                if (r == Ptp.OK) shotToCard = true;
+                else if (r == 0x2005 && Has(0x90C0)) { useCardOp = false; r = ptp.Op(0x90C0, 0xFFFFFFFF); }
+            }
+            else
+            {
+                if (Has(0x90C0)) r = ptp.Op(0x90C0, 0xFFFFFFFF);    // InitiateCaptureRecInSdram
+                else r = ptp.Op(0x100E, 0, 0);
+            }
             if (r == 0xA002 && Has(0x9207))
             {
                 if (!classicNikon) shotFocus = "miss";
                 Log("Out of focus; shooting without autofocus");
-                r = ptp.Op(0x9207, 0xFFFFFFFF, 1);    // InitiateCaptureRecInMedia, no AF, to SDRAM
-                if (r != Ptp.OK) r = ptp.Op(0x9207, 0xFFFFFFFF, 0);
+                r = ptp.Op(0x9207, 0xFFFFFFFF, useCardOp ? 0U : 1U);
+                if (r != Ptp.OK && !useCardOp) r = ptp.Op(0x9207, 0xFFFFFFFF, 0);
+                else if (r == Ptp.OK && useCardOp) shotToCard = true;
             }
-            if (r == Ptp.BUSY) { WaitReady(3000); r = ptp.Op(0x90C0, 0xFFFFFFFF); }
+            if (r == Ptp.BUSY)
+            {
+                WaitReady(3000);
+                if (useCardOp) { r = ptp.Op(0x9207, 0xFFFFFFFF, 0); if (r == Ptp.OK) shotToCard = true; }
+                else r = ptp.Op(0x90C0, 0xFFFFFFFF);
+            }
             if (r != Ptp.OK)
             {
                 if (r == 0xA002) throw new CamException("FOCUS The camera couldn't focus, so it didn't take the photo. Point it at something with detail, or set the lens to MF (manual focus).");
@@ -1516,35 +1569,69 @@ namespace Pb4uCam
             }
             WaitReady(10000);
             var handles = new List<uint>();
+            var checkedFmt = new Dictionary<uint, ushort>();
             var ew = Stopwatch.StartNew();
+            bool foundJpeg = false;
             while (ew.ElapsedMilliseconds < 8000)
             {
                 foreach (uint h in Events()) if (!handles.Contains(h)) handles.Add(h);
                 if (handles.Count > 0)
                 {
-                    // Same figure as the Canon's: from the shutter command (so the autofocus above counts too, it is most of a
-                    // Nikon's delay) until the camera reports the photo. The booth fires the shutter that much earlier.
-                    lastShutterMs = (int)Math.Min(sw.ElapsedMilliseconds, 10000);
-                    Log("Shutter lag " + lastShutterMs + " ms");
-                    Thread.Sleep(150); foreach (uint h in Events()) if (!handles.Contains(h)) handles.Add(h); break;
+                    if (!shotToCard)
+                    {
+                        lastShutterMs = (int)Math.Min(sw.ElapsedMilliseconds, 10000);
+                        Log("Shutter lag " + lastShutterMs + " ms");
+                        Thread.Sleep(150); foreach (uint h in Events()) if (!handles.Contains(h)) handles.Add(h); break;
+                    }
+                    foreach (uint h in handles)
+                    {
+                        if (checkedFmt.ContainsKey(h)) continue;
+                        try
+                        {
+                            byte[] oi; uint rfo = ptp.OpRead(0x1008, out oi, h);
+                            ushort f = (rfo == Ptp.OK && oi.Length > 6) ? (ushort)(oi[4] | (oi[5] << 8)) : (ushort)0;
+                            checkedFmt[h] = f;
+                            if (f == 0x3801 || f == 0x3808) foundJpeg = true;
+                        }
+                        catch (GoneException) { throw; } catch { }
+                    }
+                    if (foundJpeg || ew.ElapsedMilliseconds > 3500)
+                    {
+                        lastShutterMs = (int)Math.Min(sw.ElapsedMilliseconds, 10000);
+                        Log("Shutter lag " + lastShutterMs + " ms");
+                        Thread.Sleep(120); foreach (uint h in Events()) if (!handles.Contains(h)) handles.Add(h); break;
+                    }
                 }
                 Thread.Sleep(100);
             }
-            if (handles.Count == 0) handles.Add(0xFFFF0001);    // the photo in the camera's memory
+            if (handles.Count == 0 && !shotToCard) handles.Add(0xFFFF0001);    // the photo in the camera's memory
+            if (handles.Count == 0) throw new CamException("CAPTURE The photo didn't come through from the camera (no file announced). Check the SD card isn't full or locked.");
             uint pick = handles[0];
             if (handles.Count > 1)
             {
                 // RAW + JPEG: take the JPEG
                 foreach (uint h in handles)
                 {
+                    ushort cached;
+                    if (checkedFmt.TryGetValue(h, out cached))
+                    {
+                        if (cached == 0x3801 || cached == 0x3808) { pick = h; break; }
+                        continue;
+                    }
                     try
                     {
                         byte[] oi; uint rr = ptp.OpRead(0x1008, out oi, h);
-                        if (rr == Ptp.OK && oi.Length > 6 && (oi[4] | (oi[5] << 8)) == 0x3801) { pick = h; break; }
+                        ushort rf = (rr == Ptp.OK && oi.Length > 6) ? (ushort)(oi[4] | (oi[5] << 8)) : (ushort)0;
+                        if (rf == 0x3801 || rf == 0x3808) { pick = h; break; }
                     }
                     catch (GoneException) { throw; }
                     catch { }
                 }
+            }
+            ushort pickFmt = 0;
+            if (pick != 0xFFFF0001 && checkedFmt.TryGetValue(pick, out pickFmt) && (pickFmt == 0x3000 || pickFmt == 0xB101 || pickFmt == 0xB103 || pickFmt == 0xB108))
+            {
+                throw new CamException("CAPTURE The camera saved a RAW photo. Set Image quality to JPEG or RAW + JPEG on the camera.");
             }
             string cd = "handles " + string.Join(",", handles.ConvertAll(h => h.ToString("X")).ToArray());
             uint size = 0;
@@ -1911,9 +1998,18 @@ namespace Pb4uCam
             lastShutterMs = 0;
             CanonSingleShot();
             CanonAspect32();
-            try { CanonToHost(); }
-            catch (GoneException) { throw; }
-            catch (Exception e) { Log("Save to the computer not set: " + e.Message); }
+            if (saveToCard)
+            {
+                try { CanonToCard(false); setupNote += "Backup + RAW saved to camera SD card. "; }
+                catch (GoneException) { throw; }
+                catch (Exception e) { Log("Canon keep card not set: " + e.Message); }
+            }
+            else
+            {
+                try { CanonToHost(); }
+                catch (GoneException) { throw; }
+                catch (Exception e) { Log("Save to the computer not set: " + e.Message); }
+            }
             keepSw.Restart();
         }
 
@@ -2299,7 +2395,7 @@ namespace Pb4uCam
                     // Once a JPEG (0x3801) has arrived, wait only ~120 ms to catch any paired RAW event (so we can cancel/free it); otherwise ~220 ms.
                     bool hasJpeg = false;
                     foreach (var o in files) if (o[2] == 0x3801) { hasJpeg = true; break; }
-                    if (firstAt >= 0 && ew.ElapsedMilliseconds - firstAt > (hasJpeg ? 120 : 220)) break;
+                    if (firstAt >= 0 && ew.ElapsedMilliseconds - firstAt > (hasJpeg ? 120 : ((saveToCard || !canonToHost) ? 1200 : 220))) break;
                     Thread.Sleep(50);
                 }
                 skipWait = false;
@@ -2867,21 +2963,22 @@ namespace Pb4uCam
 
         static void EnsureSonySaveDest(byte[] props)
         {
-            // Photos go straight to the computer ("PC Only"), so no memory card is needed: with PC + Camera or
-            // Camera Only some bodies refuse to shoot when the card is missing. 1 = PC Only, 0x11 = PC + Camera, 0x10 = Camera Only.
+            // 1 = PC Only (no card needed), 0x11 = PC + Camera (keeps RAW + JPEG backup on camera SD card), 0x10 = Camera Only.
             long dest; ushort dtype;
             if (!SonyPropInfo(props, 0xD222, out dest, out dtype)) return;
-            if (dest >= 0 && dest != 0x01 && !sonyDestBlocked)
+            long wantTarget = saveToCard ? 0x11L : 0x01L;
+            if (dest >= 0 && dest != wantTarget && !sonyDestBlocked)
             {
                 bool ok = false;
-                foreach (ushort want in new ushort[] { 0x01, 0x11 })
+                ushort[] prefs = saveToCard ? new ushort[] { 0x11, 0x01 } : new ushort[] { 0x01, 0x11 };
+                foreach (ushort want in prefs)
                 {
                     try
                     {
                         if (ptp.OpWrite(0x9205, SonyScalarBytes(want, dtype), 0xD222) != Ptp.OK) continue;
                         if (SonyVal(SonyProps(), 0xD222) != want) continue;     // the camera must really have taken it
                         ok = true;
-                        setupNote += want == 0x01 ? "Photos go to the computer only (no memory card needed). " : "Photos go to the computer and the card. ";
+                        setupNote += want == 0x01 ? "Photos go to the computer only (no memory card needed). " : "Backup + RAW saved to camera SD card (PC + Camera). ";
                         Log("Save destination 0x" + dest.ToString("X") + " -> 0x" + want.ToString("X"));
                         break;
                     }
@@ -3223,7 +3320,7 @@ namespace Pb4uCam
             {
                 SonyInfo(out fmt, out size, out ro);
                 cd += "; info " + H(ro) + " fmt " + H(fmt) + " " + size + " B";
-                if (fmt != 0 && fmt != 0x3801)
+                if (fmt != 0 && fmt != 0x3801 && fmt != 0x3808)
                 {
                     sawRaw = true;
                     string junk = "";
@@ -3251,7 +3348,7 @@ namespace Pb4uCam
                     if (SonyVal(SonyProps(), 0xD215) < 0x8000) break;
                     ushort dfmt; uint dsize, dro;
                     SonyInfo(out dfmt, out dsize, out dro);
-                    if (dro != Ptp.OK || (dfmt != 0 && dfmt != 0x3801))
+                    if (dro != Ptp.OK || (dfmt != 0 && dfmt != 0x3801 && dfmt != 0x3808))
                     {
                         string junk = "";
                         CanonDownload(SONY_PHOTO, dsize, ref junk);
@@ -3325,7 +3422,7 @@ namespace Pb4uCam
                     {
                         case "ping": kind = "J"; body = Encoding.UTF8.GetBytes("{\"ok\":true}"); break;
                         case "list": kind = "J"; body = Encoding.UTF8.GetBytes(ListJson()); break;
-                        case "open": recoverNext = arg.IndexOf("recover") >= 0; kind = "J"; body = Encoding.UTF8.GetBytes(Open()); break;
+                        case "open": recoverNext = arg.IndexOf("recover") >= 0; saveToCard = arg.IndexOf("saveToCard") >= 0; kind = "J"; body = Encoding.UTF8.GetBytes(Open()); break;
                         case "info": Need(); kind = "J"; body = Encoding.UTF8.GetBytes(InfoJson()); break;
                         case "battery": Need(); kind = "J"; body = Encoding.UTF8.GetBytes("{\"battery\":" + Battery() + "}"); break;
                         case "props": Need(); kind = "J"; body = Encoding.UTF8.GetBytes(ExposureJson()); break;

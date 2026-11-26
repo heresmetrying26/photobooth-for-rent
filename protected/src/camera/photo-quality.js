@@ -451,11 +451,12 @@
         set('camQTipsName', 'Show ' + p.label + ' photo tips');
         set('camQClassicName', 'Classic ' + p.label + ' behaviour');
         set('camQClassicHint', p.classicHint || ('Turns all the ' + p.label + ' photo improvements off (clean-up and sharper shrink) and goes back to how the photos looked before. Use it if shots look different or feel slower.'));
-        const tips = document.getElementById('camQTipsChk'), classic = document.getElementById('camQClassicChk');
+        const tips = document.getElementById('camQTipsChk'), classic = document.getElementById('camQClassicChk'), saveCard = document.getElementById('camQSaveCardChk');
         const stored = camQStore(p.keys.clean);
         sel.value = (stored === 'off' || stored === 'strong' || stored === 'auto') ? stored : p.defaultClean;
         if (tips) tips.checked = camQStore(p.keys.tips) === '1';
         if (classic) classic.checked = p.classic();
+        if (saveCard) saveCard.checked = camQStore('pb_cam_save_card') === '1';
         const redraw = function () {
           if (Array.isArray(shotCanvases)) shotCanvases.forEach(function (s) { if (s) s._cqCache = null; });
           try { if (state === 'result') renderComposite(); } catch (e) { }
@@ -474,6 +475,10 @@
             q.tooSlow = false; redraw();
             try { usbLog(q.id + '-classic', { on: classic.checked }); } catch (e) { }
             showToast(classic.checked ? (q.classicOnToast || ('Classic ' + q.label + ' behaviour on: photos look as before.')) : q.label + ' photo improvements on.', 4000);
+          });
+          if (saveCard) saveCard.addEventListener('change', function () {
+            if (typeof window.pbSetCamSaveToCard === 'function') window.pbSetCamSaveToCard(saveCard.checked);
+            else camQSave('pb_cam_save_card', saveCard.checked ? '1' : '0');
           });
         }
       }

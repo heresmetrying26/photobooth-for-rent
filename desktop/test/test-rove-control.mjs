@@ -1,7 +1,7 @@
 // The photographer's phone page (Photoman control): the desk's state goes out, the phone's taps come back as commands.
 // Run from desktop/:  node test/test-rove-control.mjs
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import * as P from '../lib/photos.mjs';
@@ -94,6 +94,43 @@ try {
   assert.equal((await j(T + '/rove-cmd?do=clear')).status, 405, 'a command must be a POST');
   assert.deepEqual(P.roveCmdTake(), [], 'refused commands were not queued');
   console.log('PASS: phone commands reach the desk once, and bad ones are refused');
+
+  // 6. Roving upload dedup on reconnect retry (X-Rove-Id) + offline web queues
+  const jpg = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0xFF, 0xD9]);
+  const up1 = await j(T + '/photo?name=rove_retry_test.jpg&id=rove_retry_test.jpg', {
+    method: 'POST', headers: { 'content-type': 'application/octet-stream', 'x-rove-id': 'rove_retry_test.jpg' }, body: jpg
+  });
+  assert.equal(up1.status, 200);
+  assert.equal(up1.body && up1.body.ok, true);
+  assert.equal(P.roveList().length, 1);
+  const up2 = await j(T + '/photo?name=rove_retry_test.jpg&id=rove_retry_test.jpg', {
+    method: 'POST', headers: { 'content-type': 'application/octet-stream', 'x-rove-id': 'rove_retry_test.jpg' }, body: jpg
+  });
+  assert.equal(up2.status, 200);
+  assert.equal(up2.body && up2.body.duplicate, true, 'retry after Wi-Fi drop deduplicates via X-Rove-Id');
+  assert.equal(P.roveList().length, 1, 'still strictly 1 file saved in Roving inbox');
+  assert(html.includes('pb4u_rove_web_q') && html.includes('drainWebQ'), 'Laptop/desktop phone page includes IndexedDB offline auto-queue');
+
+  const rootUrl = new URL('../../', import.meta.url);
+  const tabletRove = readFileSync(new URL('android/app/src/main/assets/share/rove.html', rootUrl), 'utf8');
+  const tblScript = /<script>([\s\S]*)<\/script>/.exec(tabletRove);
+  assert(tblScript && tblScript[1]);
+  assert.doesNotThrow(() => new Function(tblScript[1]), 'Android tablet share/rove.html parses cleanly');
+  assert(tabletRove.includes('pb4u_tablet_rove_q') && tabletRove.includes('x-rove-id'), 'Android tablet share/rove.html has IndexedDB offline auto-queue & X-Rove-Id');
+
+  const cloudRove = readFileSync(new URL('public/rove/index.html', rootUrl), 'utf8');
+  const cldScript = /<script>([\s\S]*)<\/script>/.exec(cloudRove);
+  assert(cldScript && cldScript[1]);
+  assert.doesNotThrow(() => new Function(cldScript[1]), 'public/rove/index.html parses cleanly');
+  assert(cloudRove.includes('pb4u_cloud_rove_q') && cloudRove.includes('drainCloud'), 'Cloud /rove page has IndexedDB offline auto-queue & auto-retry');
+
+  const ktAct = readFileSync(new URL('android/app/src/main/java/com/photobooth4u/booth/RovingBridgeActivity.kt', rootUrl), 'utf8');
+  assert(ktAct.includes('retryScheduler') && ktAct.includes('placeholderThumb'), 'Android RovingBridgeActivity has background retryScheduler and race-free queue item creation');
+  const ktSrv = readFileSync(new URL('android/app/src/main/java/com/photobooth4u/booth/LocalShareServer.kt', rootUrl), 'utf8');
+  assert(ktSrv.includes('roveRecentIds') && ktSrv.includes('x-rove-id'), 'Android LocalShareServer deduplicates retried roving uploads');
+  const swVc = readFileSync(new URL('ios/roving/RovingBridgeViewController.swift', rootUrl), 'utf8');
+  assert(swVc.includes('consecutiveUploadFails') && swVc.includes('X-Rove-Id'), 'iOS RovingBridgeViewController optimizes offline queue drain and sends X-Rove-Id');
+  console.log('PASS: offline auto-queue, auto-upload on reconnect, and X-Rove-Id dedup verified across Laptop, Android Tablet, iOS & Web');
 } finally {
   try { P.stopShareServer(); } catch { /* ignore */ }
   try { rmSync(tmp, { recursive: true, force: true }); } catch { /* ignore */ }

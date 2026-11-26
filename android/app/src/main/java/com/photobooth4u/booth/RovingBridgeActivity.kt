@@ -33,6 +33,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.text.InputType
 import android.util.Log
+import android.util.LruCache
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -47,6 +48,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
+import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -74,6 +76,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -93,10 +97,11 @@ class RovingBridgeActivity : AppCompatActivity() {
         private const val KEY_VIBRATE = "vibrate_on_send"
         private const val KEY_PICK_TO_SEND = "pick_to_send_mode"
         private const val KEY_BRIGHTNESS = "brightness_adjust"
+        private const val KEY_SAVE_TO_CARD = "save_to_card_backup"
         private const val BRIGHTNESS_MIN = -30
         private const val BRIGHTNESS_MAX = 40
         private const val BRIGHTNESS_RANGE = BRIGHTNESS_MAX - BRIGHTNESS_MIN
-        private const val RETRY_DELAY_MS = 3500L
+        private const val RETRY_DELAY_MS = 1800L
         private const val WAKE_LOCK_TIMEOUT_MS = 2L * 60L * 60L * 1000L
         private const val UPLOAD_OK = 0
         private const val UPLOAD_RETRY = 1
@@ -106,14 +111,14 @@ class RovingBridgeActivity : AppCompatActivity() {
 
     /** Lightweight metadata for session photos history */
     data class SessionPhoto(
-        val thumbFile: File,
+        @Volatile var thumbFile: File,
         val timeStr: String,
         @Volatile var success: Boolean,
         val sizeBytes: Long,
         @Volatile var pendingFile: File? = null,
         @Volatile var stagedFile: File? = null,
         @Volatile var brightness: Int = 0,
-        val orient: String = ""
+        @Volatile var orient: String = ""
     ) {
         fun isStaged(): Boolean = !success && stagedFile?.exists() == true
     }
@@ -123,6 +128,8 @@ class RovingBridgeActivity : AppCompatActivity() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val ingestExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val uploadExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    private val retryScheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
+    @Volatile private var pendingRetryFuture: ScheduledFuture<*>? = null
     private val drainQueued = AtomicBoolean(false)
     private val isDraining = AtomicBoolean(false)
     private val pendingSeq = AtomicInteger(0)
@@ -142,6 +149,7 @@ class RovingBridgeActivity : AppCompatActivity() {
     private var vibrateOnSend: Boolean = true
     @Volatile private var pickToSendMode: Boolean = false
     @Volatile private var defaultBrightness: Int = 0
+    @Volatile private var saveToCardEnabled: Boolean = true
     private var sentPhotosCount: Int = 0
 
     // UI elements
@@ -156,6 +164,7 @@ class RovingBridgeActivity : AppCompatActivity() {
     private lateinit var modeHintText: TextView
     private lateinit var mainBrightnessLabel: TextView
     private lateinit var mainBrightnessSeek: SeekBar
+    private lateinit var saveToCardSwitch: Switch
     private lateinit var statsCountText: TextView
     private lateinit var lastSentText: TextView
     private lateinit var thumbnailView: ImageView
@@ -209,6 +218,17 @@ class RovingBridgeActivity : AppCompatActivity() {
 
     private val sessionPhotos = mutableListOf<SessionPhoto>()
     private var lastPhotoBitmap: Bitmap? = null
+    private val thumbCache = object : LruCache<String, Bitmap>(12 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap): Int = maxOf(1, value.byteCount / 1024)
+    }
+    @Volatile private var consecutiveUploadFails: Int = 0
+    private var lastUiConnected: Boolean? = null
+    private var lastUiName: String? = null
+    private var lastUiBattery: Int = Int.MIN_VALUE
+    private var lastUiSdHint: String? = null
+    private var lastUiPillConnected: Boolean? = null
+    private var lastWorkerBatteryAt: Long = 0L
+    private var cachedWorkerBattery: Int = -1
 
     private val qrScanLauncher = registerForActivityResult(ScanContract()) { result ->
         val raw = result.contents?.trim()
@@ -311,12 +331,14 @@ class RovingBridgeActivity : AppCompatActivity() {
         activeUploadNetwork = null
         try { ingestExecutor.shutdownNow() } catch (_: Exception) { }
         try { uploadExecutor.shutdownNow() } catch (_: Exception) { }
+        try { pendingRetryFuture?.cancel(true) } catch (_: Exception) { }
+        try { retryScheduler.shutdownNow() } catch (_: Exception) { }
         try {
             localCameraHelper?.stop()
             localCameraHelper = null
         } catch (_: Exception) { }
-        lastPhotoBitmap?.recycle()
         lastPhotoBitmap = null
+        thumbCache.evictAll()
         super.onDestroy()
     }
 
@@ -337,6 +359,7 @@ class RovingBridgeActivity : AppCompatActivity() {
         vibrateOnSend = p.getBoolean(KEY_VIBRATE, true)
         pickToSendMode = p.getBoolean(KEY_PICK_TO_SEND, false)
         defaultBrightness = p.getInt(KEY_BRIGHTNESS, 0).coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX)
+        saveToCardEnabled = p.getBoolean(KEY_SAVE_TO_CARD, true)
     }
 
     private fun savePrefs() {
@@ -345,6 +368,7 @@ class RovingBridgeActivity : AppCompatActivity() {
             .putBoolean(KEY_VIBRATE, vibrateOnSend)
             .putBoolean(KEY_PICK_TO_SEND, pickToSendMode)
             .putInt(KEY_BRIGHTNESS, defaultBrightness.coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX))
+            .putBoolean(KEY_SAVE_TO_CARD, saveToCardEnabled)
             .apply()
     }
 
@@ -555,10 +579,12 @@ class RovingBridgeActivity : AppCompatActivity() {
             isFillViewport = true
         }
 
+        val contentW = minOf(resources.displayMetrics.widthPixels, dp(720))
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(24), dp(20), dp(32))
             gravity = Gravity.CENTER_HORIZONTAL
+            layoutParams = FrameLayout.LayoutParams(contentW, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL)
         }
 
         // --- Top Bar ---
@@ -968,6 +994,53 @@ class RovingBridgeActivity : AppCompatActivity() {
             presetRow.addView(pb)
         }
         modeCard.addView(presetRow)
+
+        val cardDiv = View(this).apply {
+            setBackgroundColor(Color.parseColor("#ECE6DD"))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply {
+                topMargin = dp(12)
+                bottomMargin = dp(10)
+            }
+            layoutParams = lp
+        }
+        modeCard.addView(cardDiv)
+
+        val sdRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+        val sdTextCol = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                rightMargin = dp(10)
+            }
+        }
+        sdTextCol.addView(TextView(this).apply {
+            text = "💾 Save Backup + RAW on Camera SD Card"
+            textSize = 13.5f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.parseColor("#1C1A1E"))
+        })
+        sdTextCol.addView(TextView(this).apply {
+            text = "Keeps full RAW (.CR3 / .NEF / .ARW) + JPEG on your camera SD card while sending JPEGs to Laptop."
+            textSize = 11.5f
+            setTextColor(Color.parseColor("#6B666C"))
+        })
+        @SuppressLint("UseSwitchCompatOrMaterialCode")
+        saveToCardSwitch = Switch(this).apply {
+            isChecked = saveToCardEnabled
+            setOnCheckedChangeListener { _, isChecked ->
+                saveToCardEnabled = isChecked
+                savePrefs()
+                UsbCameraHelper.activeInstance?.setRovingSaveToCard(isChecked)
+                localCameraHelper?.setRovingSaveToCard(isChecked)
+            }
+        }
+        sdRow.addView(sdTextCol)
+        sdRow.addView(saveToCardSwitch)
+        modeCard.addView(sdRow)
+
         content.addView(modeCard)
         refreshSendModeUi()
 
@@ -1630,8 +1703,14 @@ class RovingBridgeActivity : AppCompatActivity() {
         container.addView(galleryEmptyText)
 
         galleryAdapter = GalleryGridAdapter()
+        val screenWidthDp = resources.displayMetrics.widthPixels / resources.displayMetrics.density
+        val gridCols = when {
+            screenWidthDp >= 840f -> 5
+            screenWidthDp >= 560f -> 4
+            else -> 3
+        }
         galleryGrid = GridView(this).apply {
-            numColumns = 3
+            numColumns = gridCols
             horizontalSpacing = dp(8)
             verticalSpacing = dp(8)
             stretchMode = GridView.STRETCH_COLUMN_WIDTH
@@ -2548,6 +2627,7 @@ class RovingBridgeActivity : AppCompatActivity() {
                     val fresh = saveThumbnailFromFile(destFile)
                     if (fresh != null) {
                         try {
+                            thumbCache.remove(photo.thumbFile.absolutePath)
                             fresh.first.copyTo(photo.thumbFile, overwrite = true)
                             fresh.first.delete()
                         } catch (_: Exception) { }
@@ -2854,6 +2934,15 @@ class RovingBridgeActivity : AppCompatActivity() {
         } catch (_: Exception) { }
     }
 
+    private fun loadCachedThumbnail(file: File): Bitmap? {
+        val key = file.absolutePath
+        thumbCache.get(key)?.let { if (!it.isRecycled) return it }
+        if (!file.exists()) return null
+        val bmp = try { BitmapFactory.decodeFile(key) } catch (_: Exception) { null } ?: return null
+        thumbCache.put(key, bmp)
+        return bmp
+    }
+
     private fun saveCompressedThumbnail(bytes: ByteArray): Pair<File, String>? {
         return try {
             val orientExif = readExifOrientation(bytes)
@@ -2882,7 +2971,7 @@ class RovingBridgeActivity : AppCompatActivity() {
                 scaled.compress(Bitmap.CompressFormat.JPEG, 78, out)
                 out.flush()
             }
-            scaled.recycle()
+            thumbCache.put(file.absolutePath, scaled)
             Pair(file, orientLabel)
         } catch (e: Exception) {
             Log.w(TAG, "Error saving compressed thumbnail: ${e.message}")
@@ -2892,8 +2981,7 @@ class RovingBridgeActivity : AppCompatActivity() {
 
     private fun updateThumbnailFromFile(file: File, previewBrightness: Int = 0) {
         try {
-            val bmp = BitmapFactory.decodeFile(file.absolutePath) ?: return
-            lastPhotoBitmap?.recycle()
+            val bmp = loadCachedThumbnail(file) ?: return
             lastPhotoBitmap = bmp
             thumbnailView.setImageBitmap(bmp)
             thumbnailView.colorFilter = brightnessColorFilter(previewBrightness)
@@ -2973,7 +3061,7 @@ class RovingBridgeActivity : AppCompatActivity() {
 
             if (iv != null) {
                 try {
-                    val bmp = if (photo.thumbFile.exists()) BitmapFactory.decodeFile(photo.thumbFile.absolutePath) else null
+                    val bmp = loadCachedThumbnail(photo.thumbFile)
                     iv.setImageBitmap(bmp)
                     iv.colorFilter = if (photo.isStaged()) brightnessColorFilter(photo.brightness) else null
                 } catch (_: Exception) {
@@ -3060,35 +3148,68 @@ class RovingBridgeActivity : AppCompatActivity() {
 
     private fun startWorker() {
         if (isRunning.getAndSet(true)) return
+        lastWorkerBatteryAt = 0L
         workerThread = Thread({
             Log.i(TAG, "Roving bridge worker started")
             while (isRunning.get()) {
+                var drainedAny = false
+                var connectedNow = false
                 try {
                     val cam = getCameraHelper()
+                    cam.setRovingSaveToCard(saveToCardEnabled)
                     if (!cam.isCameraOpen()) {
-                        cam.ensureOpen()
+                        cam.ensureOpen(roving = true, saveToCard = saveToCardEnabled)
+                        lastWorkerBatteryAt = 0L
                     }
 
                     val connected = cam.isCameraOpen()
+                    connectedNow = connected
                     val camName = if (connected) cam.cameraName() else "No DSLR Connected"
-                    val battery = if (connected) cam.cameraBattery() else -1
+                    val nowMs = System.currentTimeMillis()
+                    if (connected && (lastWorkerBatteryAt == 0L || nowMs - lastWorkerBatteryAt >= 5000L)) {
+                        cachedWorkerBattery = cam.cameraBattery()
+                        lastWorkerBatteryAt = nowMs
+                    } else if (!connected) {
+                        cachedWorkerBattery = -1
+                        lastWorkerBatteryAt = 0L
+                    }
+                    val battery = if (connected) cachedWorkerBattery else -1
+                    val note = if (connected) cam.cameraSetupNote().trim() else ""
+                    val sdHint = if (note.isNotEmpty()) note else if (saveToCardEnabled) "Backup + RAW saved to camera SD card" else ""
 
-                    mainHandler.post {
-                        updateCameraStatus(connected, camName, battery)
+                    if (lastUiConnected != connected || lastUiName != camName || lastUiBattery != battery || lastUiSdHint != sdHint) {
+                        lastUiConnected = connected
+                        lastUiName = camName
+                        lastUiBattery = battery
+                        lastUiSdHint = sdHint
+                        mainHandler.post {
+                            if (!isFinishing && !isDestroyed) updateCameraStatus(connected, camName, battery, note)
+                        }
                     }
 
                     if (connected) {
-                        // Check for newly captured photo from physical shutter press
-                        val jpegBytes = cam.pollNewPhoto()
-                        if (jpegBytes != null && jpegBytes.isNotEmpty()) {
-                            enqueueCapturedPhoto(jpegBytes)
+                        // Drain all newly captured JPEGs (including burst clicks) from the camera
+                        val photos = cam.pollNewPhotos()
+                        if (photos.isNotEmpty()) {
+                            drainedAny = true
+                            for (jpegBytes in photos) {
+                                if (jpegBytes.isNotEmpty()) enqueueCapturedPhoto(jpegBytes)
+                            }
                         }
+                    }
+                    if (!isDraining.get() && !drainQueued.get() && cleanUrl(targetUrl.trim()).isNotEmpty() && pendingCount() > 0) {
+                        scheduleDrain()
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "Error in worker loop: ${e.message}")
                 }
 
-                try { Thread.sleep(250) } catch (_: InterruptedException) { break }
+                val waitMs = when {
+                    drainedAny -> 15L
+                    connectedNow -> 80L
+                    else -> 250L
+                }
+                try { Thread.sleep(waitMs) } catch (_: InterruptedException) { break }
             }
             Log.i(TAG, "Roving bridge worker stopped")
         }, "roving-bridge-worker").apply {
@@ -3103,20 +3224,28 @@ class RovingBridgeActivity : AppCompatActivity() {
         workerThread = null
     }
 
-    private fun updateCameraStatus(connected: Boolean, name: String, battery: Int) {
+    private fun updateCameraStatus(connected: Boolean, name: String, battery: Int, note: String = "") {
         if (connected) {
-            statusPill.text = "● READY"
-            statusPill.setTextColor(Color.parseColor("#2EA66B"))
-            statusPill.background = makeCard(Color.parseColor("#EAF7EF"), 10f)
+            if (lastUiPillConnected != true) {
+                statusPill.text = "● READY"
+                statusPill.setTextColor(Color.parseColor("#2EA66B"))
+                statusPill.background = makeCard(Color.parseColor("#EAF7EF"), 10f)
+                lastUiPillConnected = true
+            }
             cameraTitle.text = name
-            cameraSub.text = if (battery >= 0) "Connected via USB • Battery $battery%" else "Connected via USB • Ready to shoot"
+            val base = if (battery >= 0) "Connected via USB • Battery $battery%" else "Connected via USB • Ready to shoot"
+            val sdHint = if (note.isNotEmpty()) note else if (saveToCardEnabled) "Backup + RAW saved to camera SD card" else ""
+            cameraSub.text = if (sdHint.isNotEmpty()) "$base\n💾 $sdHint" else base
             triggerButton.isEnabled = true
         } else {
-            statusPill.text = "● DISCONNECTED"
-            statusPill.setTextColor(Color.parseColor("#C93D27"))
-            statusPill.background = makeCard(Color.parseColor("#FBEBE8"), 10f)
+            if (lastUiPillConnected != false) {
+                statusPill.text = "● DISCONNECTED"
+                statusPill.setTextColor(Color.parseColor("#C93D27"))
+                statusPill.background = makeCard(Color.parseColor("#FBEBE8"), 10f)
+                lastUiPillConnected = false
+            }
             cameraTitle.text = "No DSLR Connected"
-            cameraSub.text = "Plug your Canon, Nikon, or Sony DSLR into this phone with a USB cable."
+            cameraSub.text = "Plug your Canon, Nikon, or Sony DSLR into this phone or tablet with a USB cable."
             triggerButton.isEnabled = false
         }
     }
@@ -3592,16 +3721,23 @@ class RovingBridgeActivity : AppCompatActivity() {
     }
 
     private fun kickRetryQueue(delayMs: Long = 0L) {
-        mainHandler.post {
-            mainHandler.removeCallbacks(retryRunnable)
-            if (isFinishing || isDestroyed) return@post
-            if (delayMs > 0L) {
-                if (pendingCount() > 0 && targetUrl.trim().isNotEmpty()) {
+        mainHandler.removeCallbacks(retryRunnable)
+        try { pendingRetryFuture?.cancel(false) } catch (_: Exception) { }
+        if (isFinishing || isDestroyed) return
+        if (delayMs > 0L) {
+            if (!retryScheduler.isShutdown && pendingCount() > 0 && targetUrl.trim().isNotEmpty()) {
+                try {
+                    pendingRetryFuture = retryScheduler.schedule({
+                        if (!isFinishing && !isDestroyed && pendingCount() > 0 && targetUrl.trim().isNotEmpty()) {
+                            scheduleDrain()
+                        }
+                    }, delayMs, TimeUnit.MILLISECONDS)
+                } catch (_: Exception) {
                     mainHandler.postDelayed(retryRunnable, delayMs)
                 }
-            } else {
-                scheduleDrain()
             }
+        } else {
+            scheduleDrain()
         }
     }
 
@@ -3671,13 +3807,13 @@ class RovingBridgeActivity : AppCompatActivity() {
 
         // 2. Auto-Send mode: apply configured brightness boost if != 0, else keep raw DSLR JPEG untouched.
         val outBytes = if (adjBrightness != 0) applyBrightnessToJpegBytes(bytes, adjBrightness) else bytes
-        val thPair = saveCompressedThumbnail(outBytes)
-        val thumbFile = thPair?.first
-        val orient = thPair?.second ?: ""
         val pendingFile = savePendingPhotoFile(outBytes)
 
         if (pendingFile == null) {
             // Disk fallback: try direct in-memory upload if storage couldn't write
+            val thPair = saveCompressedThumbnail(outBytes)
+            val thumbFile = thPair?.first
+            val orient = thPair?.second ?: ""
             val res = if (currentTarget.isNotEmpty()) uploadBytesToLaptop(currentTarget, outBytes) else UPLOAD_RETRY
             val ok = (res == UPLOAD_OK)
             if (thumbFile != null) {
@@ -3700,23 +3836,35 @@ class RovingBridgeActivity : AppCompatActivity() {
             return
         }
 
-        val displayThumb = thumbFile ?: File(getThumbsDir(), "missing_${pendingFile.name}")
-        val item = SessionPhoto(displayThumb, timeStr, false, outBytes.size.toLong(), pendingFile = pendingFile, stagedFile = null, brightness = adjBrightness, orient = orient)
+        // Register SessionPhoto BEFORE scheduleDrain() so fast LAN uploads never finish before item exists!
+        val placeholderThumb = File(getThumbsDir(), "missing_${pendingFile.name}")
+        val item = SessionPhoto(placeholderThumb, timeStr, false, outBytes.size.toLong(), pendingFile = pendingFile, stagedFile = null, brightness = adjBrightness, orient = "")
         synchronized(sessionPhotos) { sessionPhotos.add(0, item) }
+        if (currentTarget.isNotEmpty()) {
+            scheduleDrain()
+        }
+
+        val thPair = saveCompressedThumbnail(outBytes)
+        if (thPair != null) {
+            item.thumbFile = thPair.first
+            item.orient = thPair.second
+        }
+        val displayThumb = item.thumbFile
 
         mainHandler.post {
+            if (isFinishing || isDestroyed) return@post
             if (displayThumb.exists()) updateThumbnailFromFile(displayThumb, 0)
             if (currentTarget.isEmpty()) {
                 lastSentText.text = "⏳ Queued on phone — scan Laptop QR to send"
                 Toast.makeText(this, "Photo queued! Scan Laptop QR to send.", Toast.LENGTH_SHORT).show()
-            } else {
+            } else if (!item.success && item.pendingFile != null) {
                 val qCount = pendingCount()
                 val bTag = if (adjBrightness != 0) " (${formatBrightness(adjBrightness)})" else ""
                 lastSentText.text = if (qCount > 1) "📤 Uploading$bTag ($qCount in queue)…" else "📤 Sending photo$bTag…"
             }
             refreshQueueUi()
             notifyGalleryChanged()
-            if (currentTarget.isNotEmpty()) {
+            if (currentTarget.isNotEmpty() && pendingCount() > 0) {
                 scheduleDrain()
             }
         }
@@ -3745,17 +3893,20 @@ class RovingBridgeActivity : AppCompatActivity() {
 
         if (!isDraining.compareAndSet(false, true)) return
         try {
-            if (!isLaptopReachable(clean)) {
-                val n = pendingCount()
-                mainHandler.post {
-                    if (isFinishing || isDestroyed) return@post
-                    lastSentText.text = "⏳ $n queued — waiting for laptop Wi-Fi…"
-                    refreshQueueUi()
-                    if (n > 0) {
-                        kickRetryQueue(RETRY_DELAY_MS)
+            val preFiles = listPendingFiles()
+            if (consecutiveUploadFails > 0 || preFiles.size > 2) {
+                if (!isLaptopReachable(clean)) {
+                    val n = pendingCount()
+                    mainHandler.post {
+                        if (isFinishing || isDestroyed) return@post
+                        lastSentText.text = "⏳ $n queued — waiting for laptop Wi-Fi…"
+                        refreshQueueUi()
+                        if (n > 0) {
+                            kickRetryQueue(RETRY_DELAY_MS)
+                        }
                     }
+                    return
                 }
-                return
             }
 
             val files = listPendingFiles()
@@ -3799,6 +3950,7 @@ class RovingBridgeActivity : AppCompatActivity() {
                 val t0 = System.currentTimeMillis()
                 val res = uploadFileToLaptop(clean, file)
                 if (res == UPLOAD_OK) {
+                    consecutiveUploadFails = 0
                     madeProgress = true
                     val elapsed = System.currentTimeMillis() - t0
                     val timeStr = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
@@ -3832,6 +3984,7 @@ class RovingBridgeActivity : AppCompatActivity() {
                         }
                     }
                 } else if (res == UPLOAD_TOO_BIG) {
+                    consecutiveUploadFails = 0
                     val skippedPath = file.absolutePath
                     quarantineFile(file)
                     madeProgress = true
@@ -3853,6 +4006,7 @@ class RovingBridgeActivity : AppCompatActivity() {
                     }
                     continue
                 } else {
+                    consecutiveUploadFails++
                     val rem = pendingCount()
                     mainHandler.post {
                         if (isFinishing || isDestroyed) return@post
@@ -3910,7 +4064,8 @@ class RovingBridgeActivity : AppCompatActivity() {
         try {
             val len = file.length()
             if (len <= 0L) return UPLOAD_RETRY
-            val target = URL("$cleanBaseUrl/photo?name=${file.name}")
+            val encName = Uri.encode(file.name)
+            val target = URL("$cleanBaseUrl/photo?name=$encName&id=$encName")
             val pair = openLanConnection(target, 5000, 20000)
             conn = pair.first
             activeUploadConn = conn

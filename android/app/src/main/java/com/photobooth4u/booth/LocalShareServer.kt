@@ -97,6 +97,8 @@ class LocalShareServer(private val store: PBLocal) {
     }
 
     private val thumbLock = Any()
+    private val roveDedupLock = Any()
+    private val roveRecentIds = LinkedHashMap<String, Pair<String, Long>>()
     private var galleryHtml: ByteArray? = null
     private var roveHtml: ByteArray? = null
 
@@ -453,9 +455,37 @@ class LocalShareServer(private val store: PBLocal) {
             if (method != "POST") return sendJson(out, 405, "{\"ok\":false,\"error\":\"Method not allowed\"}")
             val len = headerValue(head, "content-length")?.toLongOrNull() ?: -1L
             if (len <= 0L || len > ROVE_MAX) return sendJson(out, 413, "{\"ok\":false,\"error\":\"Too big\"}")
+            val roveId = (headerValue(head, "x-rove-id") ?: queryParam(query, "id")?.let { Uri.decode(it) } ?: "").trim().take(120)
+            if (roveId.isNotEmpty()) {
+                val now = System.currentTimeMillis()
+                val prevName = synchronized(roveDedupLock) {
+                    val prev = roveRecentIds[roveId]
+                    if (prev != null && now - prev.second < 30L * 60L * 1000L) prev.first else null
+                }
+                if (prevName != null) {
+                    val skipBuf = ByteArray(65536)
+                    var left = len
+                    while (left > 0L) {
+                        val n = input.read(skipBuf, 0, minOf(skipBuf.size.toLong(), left).toInt())
+                        if (n <= 0) break
+                        left -= n.toLong()
+                    }
+                    return sendJson(out, 200, JSONObject().put("ok", true).put("name", prevName).put("duplicate", true).toString())
+                }
+            }
             val name = Uri.decode(queryParam(query, "name") ?: "")
             val saved = store.saveRovePhoto(name, input, len)
                 ?: return sendJson(out, 500, "{\"ok\":false,\"error\":\"Could not save\"}")
+            if (roveId.isNotEmpty()) {
+                val now = System.currentTimeMillis()
+                synchronized(roveDedupLock) {
+                    roveRecentIds[roveId] = Pair(saved, now)
+                    while (roveRecentIds.size > 500) {
+                        val oldest = roveRecentIds.keys.firstOrNull() ?: break
+                        roveRecentIds.remove(oldest)
+                    }
+                }
+            }
             return sendJson(out, 200, JSONObject().put("ok", true).put("name", saved).toString())
         }
         if (action == "upload") {
@@ -633,7 +663,7 @@ class LocalShareServer(private val store: PBLocal) {
         val s = "HTTP/1.1 204 No Content\r\n" +
             "Access-Control-Allow-Origin: *\r\n" +
             "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" +
-            "Access-Control-Allow-Headers: Content-Type, Range\r\n" +
+            "Access-Control-Allow-Headers: Content-Type, Range, X-Rove-Id\r\n" +
             "Access-Control-Allow-Private-Network: true\r\n" +
             "Connection: close\r\n\r\n"
         out.write(s.toByteArray(Charsets.ISO_8859_1))

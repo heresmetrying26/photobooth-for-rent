@@ -13199,6 +13199,13 @@
       cursor: pointer;
     }
 
+    .menu[hidden],
+    .menu button[hidden],
+    .menu-sep[hidden],
+    #setupMenuTools[hidden] {
+      display: none;
+    }
+
     .menu .menu-badge {
       padding: 1px 7px;
       border-radius: 999px;
@@ -24842,8 +24849,6 @@
                 <button type="button" data-setup-tool="reqFab" hidden><span>Print requests</span><span class="menu-badge" hidden></span></button>
                 <button type="button" data-setup-tool="studioFab" hidden><span>Arrange &amp; Print</span><span class="menu-badge" hidden></span></button>
                 <button type="button" data-setup-tool="vgFab" hidden><span>Video guestbook</span><span class="menu-badge" hidden></span></button>
-                <button type="button" data-setup-tool="galleryFab" hidden><span>All photos</span><span class="menu-badge" hidden></span></button>
-                <button type="button" data-setup-tool="backupFab" hidden><span>Backup folder</span><span class="menu-badge" hidden></span></button>
                 <button type="button" data-setup-tool="wifiFab" hidden><span>Booth Wi-Fi</span><span class="menu-badge" hidden></span></button>
                 <button type="button" data-setup-tool="roveBridgeFab" hidden><span>Roving DSLR</span><span class="menu-badge" hidden></span></button>
                 <button type="button" data-setup-tool="spinArmFab" hidden><span>360 Arm Cam</span><span class="menu-badge" hidden></span></button>
@@ -55114,14 +55119,14 @@ function renderTabletBridgeSetup(info) {
         var vgFab = document.getElementById('vgFab');
         if (vgFab) vgFab.hidden = !vgAvailable() || state === 'capturing';
         try { gbCardRefresh(); } catch (e) { }
-        var roveBridgeOn = !!(window.__PBLocal && typeof window.__PBLocal.openRoveBridge === 'function');
+        var roveBridgeOn = !!(IS_ANDROID_APP && window.__PBLocal && typeof window.__PBLocal.openRoveBridge === 'function');
         var roveBridgeFab = document.getElementById('roveBridgeFab');
         if (roveBridgeFab) roveBridgeFab.hidden = !roveBridgeOn || state === 'capturing';
         var deskOpenBridgeBtn = document.getElementById('deskOpenBridgeBtn');
         if (deskOpenBridgeBtn) deskOpenBridgeBtn.hidden = !roveBridgeOn;
         var roveBox = document.getElementById('androidRoveBridgeBox');
         if (roveBox) roveBox.style.display = roveBridgeOn ? 'block' : 'none';
-        var spinArmOn = !!(window.__PBLocal && typeof window.__PBLocal.openSpinArm === 'function');
+        var spinArmOn = !!(IS_IOS_APP && window.__PBLocal && typeof window.__PBLocal.openSpinArm === 'function');
         var spinArmFab = document.getElementById('spinArmFab');
         if (spinArmFab) spinArmFab.hidden = !spinArmOn || state === 'capturing';
         var iosSpinArmBox = document.getElementById('iosSpinArmBox');
@@ -62791,7 +62796,13 @@ function renderTabletBridgeSetup(info) {
       var ST = { src: '', folders: [], folder: '', list: [], items: [], sel: -1, paper: '', gap: 2, margin: 4, cut: true, sheets: 1, pos: {}, pages: [], cv: [], dpi: 40, busy: false, uid: 0, seq: 0, show: 60, err: '', loading: false, urls: [], io: null, drag: null };
       var stOverlay = document.getElementById('studioOverlay');
       var ST_MAX_ITEMS = 40;
-      function studioOn() { try { return !!printSettings(); } catch (e) { return false; } }
+      function arrangePrintAllowed() { return !!(window.__PB && window.__PB.arrangePrintOpt); }
+      function studioOn() { try { return arrangePrintAllowed() && !!printSettings(); } catch (e) { return false; } }
+      window.addEventListener('pb-arrange-print-change', function () {
+        try { refreshDeskBtn(); } catch (e) { }
+        try { if (!studioOn() && stOverlay && !stOverlay.hidden && typeof stClose === 'function') stClose(); } catch (e) { }
+      });
+      window.addEventListener('pb-print-change', function () { try { refreshDeskBtn(); } catch (e) { } });
       function stEl(id) { return document.getElementById(id); }
       function stInch(mm) { return Math.round(mm / 25.4 * 100) / 100; }
       function stMm(inch) { return inch * 25.4; }
@@ -86774,7 +86785,8 @@ function fxWavUrl(kind) {
           api.checkin().then(function (r) {
             b.disabled = false; b.textContent = 'Check for changes';
             var payChanged = !!(r.licence && r.licence.feat && (!!r.licence.feat.vouchers !== !!(window.__PB && window.__PB.payOpt)));
-            if ((r.licence && !r.licence.ok) || r.modeChanged || payChanged || (r.appMode && r.appMode !== DESKTOP_APP_MODE)) {
+            var arrangeChanged = !!(r.licence && r.licence.feat && (!!r.licence.feat.arrangePrintOpt !== !!(window.__PB && window.__PB.arrangePrintOpt)));
+            if ((r.licence && !r.licence.ok) || r.modeChanged || payChanged || arrangeChanged || (r.appMode && r.appMode !== DESKTOP_APP_MODE)) {
               showToast('Updated from photobooth4u — reloading…', 2500);
               setTimeout(function () { location.reload(); }, 600);
               return;
@@ -86797,9 +86809,9 @@ function fxWavUrl(kind) {
             showToast(r.error || 'Couldn\u2019t deactivate.', 6000);
           });
         });
-        // A check-in found this laptop removed / code disabled / mode or Print Station switched by Admin: reload (after any session in progress).
+        // A check-in found this laptop removed / code disabled / mode or Print Station / Arrange & Print switched by Admin: reload (after any session in progress).
         api.onLicence(function (info) {
-          if (info && info.ok && !info.modeChanged && !info.printStationChanged && (!info.appMode || info.appMode === DESKTOP_APP_MODE)) return;
+          if (info && info.ok && !info.modeChanged && !info.printStationChanged && !info.arrangePrintChanged && (!info.appMode || info.appMode === DESKTOP_APP_MODE)) return;
           (function reloadWhenFree() {
             if (document.querySelector('.app-shell.capturing')) { setTimeout(reloadWhenFree, 4000); return; }
             location.reload();

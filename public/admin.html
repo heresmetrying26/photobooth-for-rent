@@ -1473,6 +1473,7 @@
             <label class="toggle"><input type="checkbox" id="newRush"> Rush ID &amp; Photo Print station (opens at
               /rush)</label>
             <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newPrintStation"> Built-in Print Station (Tools &rarr; Print Station in Laptop App to receive iPad prints offline)</label>
+            <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newArrangePrint"> Arrange &amp; Print (Tools &rarr; Arrange &amp; Print to arrange &amp; crop strips onto a sheet; off by default)</label>
           </div>
           <div class="modebox">
             <label class="toggle"><input type="checkbox" id="newRetake" checked> Give retake</label>
@@ -1548,6 +1549,7 @@
               switch (“Allow retakes” in Setup)</label></div>
           <div class="modebox"><label class="toggle"><input type="checkbox" id="trialTypesOpt"> Trials get Trading card
               &amp; Certificate booths (the Booth type switch in Setup)</label></div>
+          <div class="modebox"><label class="toggle"><input type="checkbox" id="trialArrangePrintOpt"> Trials get Arrange &amp; Print (Tools &rarr; Arrange &amp; Print)</label></div>
           <div class="modebox"><label class="toggle"><input type="checkbox" id="trialLockOpt"> Trials get Lock booth
               (guest-only screen with a PIN)</label></div>
           <div class="modebox"><label class="toggle"><input type="checkbox" id="trialWatermark" checked> Watermark trial
@@ -2208,6 +2210,7 @@
         $('trialGifOpt').checked = s.trialGifOpt !== false;
         $('trialRetakeOpt').checked = !!s.trialRetakeOpt;
         $('trialTypesOpt').checked = !!s.trialTypesOpt;
+        if ($('trialArrangePrintOpt')) $('trialArrangePrintOpt').checked = !!s.trialArrangePrintOpt;
         $('trialLockOpt').checked = !!s.trialLockOpt;
         $('trialWatermark').checked = s.trialWatermark !== false;
         $('galleryQr').checked = s.galleryQr !== false;
@@ -2340,6 +2343,7 @@
         acts += '<button class="small" data-a="lockopt" data-c="' + c + '">' + (l.lockOpt ? 'Hide lock booth' : 'Give lock booth') + '</button>';
         if (l.offlineOpt || l.offlineOnly) acts += '<button class="small" data-a="ipadopt" data-c="' + c + '" title="Lets an iPad use the laptop app\'s camera over Wi-Fi (Setup → Share &amp; start)">' + (l.ipadOpt ? 'Turn off iPad camera' : 'Turn on iPad camera') + '</button>';
         if (l.offlineOpt || l.offlineOnly) acts += '<button class="small" data-a="printstationopt" data-c="' + c + '" title="Shows Tools → Print Station inside the Laptop App so an iPad/Android tablet can print to it offline over Wi-Fi">' + (l.printStationOpt ? 'Turn off Print Station' : 'Turn on Print Station') + '</button>';
+        acts += '<button class="small" data-a="arrangeprintopt" data-c="' + c + '" title="Shows Tools → Arrange &amp; Print so the renter can arrange, crop, and pack strips/photos onto a sheet">' + (l.arrangePrintOpt ? 'Turn off Arrange &amp; Print' : 'Turn on Arrange &amp; Print') + '</button>';
         [['vintage', 'vintage looks'], ['roving', 'photographer desk'], ['flipbook', 'flipbook'], ['video', 'video guestbook'], ['spin360', '360 video desk']].forEach(function (x) {
           var on = !(l.extras && l.extras[x[0]] === false);
           acts += '<button class="small" data-a="extra" data-x="' + x[0] + '" data-c="' + c + '">' + (on ? 'Hide ' : 'Give ') + x[1] + '</button>';
@@ -2379,7 +2383,7 @@
           (l.paymentReview ? '<span style="color:#b3261e;font-weight:700;">&#9888; Payment ' + esc(l.paymentReview.reason) + ' on ' + fmtDate(l.paymentReview.at) + ' &mdash; review this code (Disable it if the money was not kept).</span><br>' : '') +
           (l.lifetime && !bonus ? 'Agreement: <b>' + (l.agreement ? 'v' + esc(l.agreement) + ' accepted' + (l.agreementAt ? ' (' + fmtDate(l.agreementAt) + ')' : '') : 'not recorded') + '</b><br>' : '');
         return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + flags + (l.email ? 'Email: <b>' + esc(l.email) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
-          '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>GIF mode: <b>' + (l.gifOpt ? 'Yes (Photo + GIF &amp; GIF-only options)' : 'No (Photo only)') + '</b><br>Rush ID &amp; Photo Print station (/rush): <b>' + (l.rushOpt ? 'On' : 'Off') + '</b><br>Offline Print Station (Tools): <b>' + (l.printStationOpt ? 'On' : 'Off') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Card &amp; certificate booths: <b>' + (l.typesOpt ? 'Yes (Booth type switch in Setup)' : 'No') + '</b><br>Debug tools (Android printer IDs, colour tests): <b>' + (l.debugOpt ? 'On' : 'Off') + '</b><br>Android screen orientation: <b>' + (l.orientation === 'portrait' ? 'Portrait' : l.orientation === 'either' ? 'Either (renter picks in Setup)' : 'Landscape') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? (l.offlineOnly ? 'Laptop app only' : 'Yes') + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
+          '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>GIF mode: <b>' + (l.gifOpt ? 'Yes (Photo + GIF &amp; GIF-only options)' : 'No (Photo only)') + '</b><br>Rush ID &amp; Photo Print station (/rush): <b>' + (l.rushOpt ? 'On' : 'Off') + '</b><br>Offline Print Station (Tools): <b>' + (l.printStationOpt ? 'On' : 'Off') + '</b><br>Arrange &amp; Print: <b>' + (l.arrangePrintOpt ? 'On' : 'Off') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Card &amp; certificate booths: <b>' + (l.typesOpt ? 'Yes (Booth type switch in Setup)' : 'No') + '</b><br>Debug tools (Android printer IDs, colour tests): <b>' + (l.debugOpt ? 'On' : 'Off') + '</b><br>Android screen orientation: <b>' + (l.orientation === 'portrait' ? 'Portrait' : l.orientation === 'either' ? 'Either (renter picks in Setup)' : 'Landscape') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? (l.offlineOnly ? 'Laptop app only' : 'Yes') + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
           '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
           (devs.length ? '<div class="devlist">' + devs.map(function (d) {
             var isDeskApp = !!(d.app && (d.app.os === 'win' || d.app.os === 'mac'));
@@ -2912,6 +2916,13 @@
             refresh();
             return;
           }
+          if (a === 'arrangeprintopt') {
+            var ap = !(LIC[code] && LIC[code].arrangePrintOpt);
+            await api({ action: 'arrangeprintopt', code: code, arrangePrintOpt: ap });
+            toast((ap ? 'Arrange & Print turned on' : 'Arrange & Print turned off') + ' — an open booth updates within ~5 minutes');
+            refresh();
+            return;
+          }
           if (a === 'replacecode') {
             if (!confirm('Replace ' + code + '?\n\nA NEW code is made with the same events, saved booth setups, logos/frames, themes and lock PIN. This code is disabled and its email moves to the new code.\n\nGuest payments (PayMongo) do not carry over: the renter reconnects them with a new payments PIN.')) return;
             var rp = await api({ action: 'replacecode', code: code, reason: 'leak' });
@@ -3087,7 +3098,7 @@
         try {
           var np = readPrint($('newPrint'));
           var startsAt = readStartInputs($('newStartDate'), $('newStartTime'));
-          var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, agreementAccepted: $('newAgreed').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, typesOpt: $('newTypes').checked, rushOpt: $('newRush').checked, printStationOpt: !!($('newPrintStation') && $('newPrintStation').checked), lockOpt: $('newLock').checked, extras: { vintage: $('newXVintage').checked, roving: $('newXRoving').checked, flipbook: $('newXFlipbook').checked, video: $('newXVideo').checked, spin360: $('newXSpin').checked }, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null, orientation: (document.querySelector('[name="newOrientation"]:checked') || {}).value || 'either' };
+          var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, agreementAccepted: $('newAgreed').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, typesOpt: $('newTypes').checked, rushOpt: $('newRush').checked, printStationOpt: !!($('newPrintStation') && $('newPrintStation').checked), arrangePrintOpt: !!($('newArrangePrint') && $('newArrangePrint').checked), lockOpt: $('newLock').checked, extras: { vintage: $('newXVintage').checked, roving: $('newXRoving').checked, flipbook: $('newXFlipbook').checked, video: $('newXVideo').checked, spin360: $('newXSpin').checked }, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null, orientation: (document.querySelector('[name="newOrientation"]:checked') || {}).value || 'either' };
           var j;
           try { j = await api(createBody); }
           catch (e1) {
@@ -3125,7 +3136,7 @@
       $('saveTrialBtn').addEventListener('click', async function () {
         try {
           var tp = readPrint($('trialPrint'));
-          await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes, trialPrintEventLimit: tp.eventLimit, trialPrintSessionLimit: tp.sessionLimit, trialTraditional: $('trialTraditional').checked, trialGifOpt: $('trialGifOpt').checked, trialRetakeOpt: $('trialRetakeOpt').checked, trialTypesOpt: $('trialTypesOpt').checked, trialLockOpt: $('trialLockOpt').checked, trialWatermark: $('trialWatermark').checked });
+          await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes, trialPrintEventLimit: tp.eventLimit, trialPrintSessionLimit: tp.sessionLimit, trialTraditional: $('trialTraditional').checked, trialGifOpt: $('trialGifOpt').checked, trialRetakeOpt: $('trialRetakeOpt').checked, trialTypesOpt: $('trialTypesOpt').checked, trialArrangePrintOpt: !!($('trialArrangePrintOpt') && $('trialArrangePrintOpt').checked), trialLockOpt: $('trialLockOpt').checked, trialWatermark: $('trialWatermark').checked });
           toast('Trial settings saved');
         } catch (err) { if (err.message !== 'auth') toast(err.message, true); }
       });
@@ -3414,6 +3425,7 @@
         $('newTraditional').checked = p.traditional; $('newGif').checked = p.gif; $('newOffline').checked = p.offline; $('newOfflineOnly').checked = p.only;
         var orRadio = document.querySelector('[name="newOrientation"][value="either"]'); if (orRadio) orRadio.checked = true;
         $('newRetake').checked = true; $('newTypes').checked = false; $('newLock').checked = true; $('newPay').checked = true;
+        if ($('newArrangePrint')) $('newArrangePrint').checked = false;
         if (p.spin !== undefined) $('newXSpin').checked = p.spin;
         [].forEach.call(this.querySelectorAll('[data-pkg]'), function (x) { x.classList.toggle('primary', x === b); });
       });
@@ -3451,6 +3463,7 @@
           f.print = !!(r.print && r.print.enabled); f.sizes = r.print && r.print.sizes ? r.print.sizes.length : 0;
           f.opens = r.startsAt || 0;
           var ex = r.extras || {}; f.vintage = ex.vintage !== false; f.roving = ex.roving !== false; f.flipbook = ex.flipbook !== false; f.spin360 = ex.spin360 !== false;
+          f.arrangePrint = !!r.arrangePrintOpt;
           var term = f.lifetime ? 'Lifetime' : (f.days >= 28 && f.days <= 31) ? 'Monthly' : f.days === 1 ? 'Per Event' : f.days + '-Day';
           var model = f.offlineOnly ? (f.traditional ? 'Offline (Laptop App)' : 'Offline (Android Tablet App)') : f.offlineOpt ? 'Online + Offline' : (f.traditional ? 'Online (Laptop)' : 'Online (Tablet)');
           f.title = term + ' ' + model;
@@ -3460,6 +3473,7 @@
           f.gif = true; f.retake = true; f.lock = true; f.pay = true; f.print = true; f.sizes = 15; f.opens = 0;
           f.vintage = f.roving = f.flipbook = true;
           f.spin360 = p.spin360 !== false;
+          f.arrangePrint = false;
           f.title = p.title || 'Photobooth Package';
         }
         f.online = !f.offlineOnly;
@@ -3491,6 +3505,7 @@
         if (f.roving) a.push('Photographer desk');
         if (f.flipbook) a.push('Flipbook');
         if (f.spin360) a.push('360 video desk');
+        if (f.arrangePrint) a.push('Arrange & Print');
         if (f.print) a.push('Printing' + (f.sizes > 1 ? ' (' + f.sizes + ' paper sizes' + (f.lifetime ? ' + your own' : '') + ')' : ''));
         return a;
       }

@@ -110,7 +110,7 @@ function bonusRecord(key, parent, minutes) {
   return {
     key, code: displayCode(key), kind: 'bonus', parent: parent.key,
     label: (parent.label || parent.code) + ' · Bonus', folderName: parent.folderName, subfolder: BONUS_SUBFOLDER,
-    minutes, days: 0, startsAt: null, print: parent.print, traditional: !!parent.traditional, gifOpt: !!parent.gifOpt, retakeOpt: !!parent.retakeOpt, typesOpt: !!parent.typesOpt, payOpt: !!parent.payOpt, lockOpt: !!parent.lockOpt, ipadOpt: !!parent.ipadOpt, printStationOpt: !!parent.printStationOpt, defaultTheme: parent.defaultTheme || null,
+    minutes, days: 0, startsAt: null, print: parent.print, traditional: !!parent.traditional, gifOpt: !!parent.gifOpt, retakeOpt: !!parent.retakeOpt, typesOpt: !!parent.typesOpt, payOpt: !!parent.payOpt, lockOpt: !!parent.lockOpt, ipadOpt: !!parent.ipadOpt, printStationOpt: !!parent.printStationOpt, arrangePrintOpt: !!parent.arrangePrintOpt, defaultTheme: parent.defaultTheme || null,
     status: 'unused', createdAt: Date.now() + 1, redeemedAt: null, expiresAt: null, deviceId: null
   };
 }
@@ -387,6 +387,7 @@ export default safe(async (req, context) => {
           gifOpt: b.gifOpt !== false,
           rushOpt: !!b.rushOpt,
           printStationOpt: !!b.printStationOpt,
+          arrangePrintOpt: !!b.arrangePrintOpt,
           extras: normExtras(b.extras),
           retakeOpt: b.retakeOpt !== false,
           typesOpt: !!b.typesOpt,
@@ -630,6 +631,15 @@ export default safe(async (req, context) => {
       await putLicense(store, key, rec);
       await syncBonus(rec, { printStationOpt: rec.printStationOpt });
       return json({ ok: true, printStationOpt: rec.printStationOpt });
+    }
+
+    case 'arrangeprintopt': { // Arrange & Print tool in Setup ⋯ & Photo Session Tools (off by default)
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      rec.arrangePrintOpt = !!b.arrangePrintOpt;
+      await putLicense(store, key, rec);
+      await syncBonus(rec, { arrangePrintOpt: rec.arrangePrintOpt });
+      return json({ ok: true, arrangePrintOpt: rec.arrangePrintOpt });
     }
 
     case 'pinreset': { // forgotten lock PIN: the booth clears it and unlocks within ~5 minutes
@@ -1098,6 +1108,7 @@ export default safe(async (req, context) => {
         trialGifOpt: b.trialGifOpt !== false,
         trialRetakeOpt: !!b.trialRetakeOpt,
         trialTypesOpt: !!b.trialTypesOpt,
+        trialArrangePrintOpt: !!b.trialArrangePrintOpt,
         trialLockOpt: !!b.trialLockOpt,
         trialWatermark: b.trialWatermark !== false
       };

@@ -109,6 +109,7 @@ function isOnlineMode() {
   return false;
 }
 const printStationAllowed = () => { const s = L.status(); return !!(s.p && s.p.feat && s.p.feat.printStationOpt === true); };
+const arrangePrintAllowed = () => { const s = L.status(); return !!(s.p && s.p.feat && s.p.feat.arrangePrintOpt === true); };
 async function refreshRecord() {
   const s = L.status();
   if (s.p) await syncRecord(s.p, L.deviceId(), s.ok);
@@ -118,15 +119,17 @@ async function checkinNow(force) {
   const prevOnline = isOnlineMode();
   const prevMode = allowedAppMode();
   const prevPs = printStationAllowed();
+  const prevAp = arrangePrintAllowed();
   const r = await L.checkin(net.fetch.bind(net), force);
   if (r === 'ok' || r === 'revoked') await refreshRecord();
   if (r === 'ok') syncAllNow().catch(() => { });
   const nextOnline = isOnlineMode();
   const nextMode = allowedAppMode();
   const nextPs = printStationAllowed();
+  const nextAp = arrangePrintAllowed();
   if (!prevOnline && nextOnline) { try { hotspotStop().catch(() => { }); } catch { } }
-  if (r === 'revoked' || prevOnline !== nextOnline || prevMode !== nextMode || prevPs !== nextPs) {
-    broadcastWin('pb4u:licence', { ...L.info(), appMode: nextMode, online: nextOnline, modeChanged: prevOnline !== nextOnline, printStationOpt: nextPs, printStationChanged: prevPs !== nextPs });
+  if (r === 'revoked' || prevOnline !== nextOnline || prevMode !== nextMode || prevPs !== nextPs || prevAp !== nextAp) {
+    broadcastWin('pb4u:licence', { ...L.info(), appMode: nextMode, online: nextOnline, modeChanged: prevOnline !== nextOnline, printStationOpt: nextPs, printStationChanged: prevPs !== nextPs, arrangePrintOpt: nextAp, arrangePrintChanged: prevAp !== nextAp });
   }
   return r;
 }

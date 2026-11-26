@@ -356,6 +356,7 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
       retakeOpt: true,   // Give retake switch
       payOpt: true,      // Guest payment (vouchers; the GCash / Maya QR part needs the internet)
       lockOpt: true,     // Lock booth with PIN
+      arrangePrintOpt: false, // Off by default unless Admin enables it
       status: 'unused',
       createdAt: now,
       redeemedAt: null,

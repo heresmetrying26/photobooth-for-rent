@@ -110,6 +110,7 @@ class MainActivity : AppCompatActivity() {
                             activeFeat = st.payload.optJSONObject("feat")
                             val trad = activeFeat?.optBoolean("traditional", true) ?: true
                             val orient = activeFeat?.optString("orientation", "either") ?: "either"
+                            val arrangeOn = activeFeat?.optBoolean("arrangePrintOpt", false) ?: false
                             val savedPref = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString("pref_orientation", null)
                             if (orient == "either") {
                                 applyOrientation(savedPref ?: "either")
@@ -118,7 +119,7 @@ class MainActivity : AppCompatActivity() {
                             }
                             val licStr = licence.currentLicenceString() ?: ""
                             val midStr = licence.machineId()
-                            val js = "window.__PB=window.__PB||{};window.__PB.traditional=$trad;window.__PB.orientation=" + jsStr(orient) + ";window.__PB.appAuth={licence:" + jsStr(licStr) + ",mid:" + jsStr(midStr) + "};try{window.dispatchEvent(new Event('pb-mode-change'));window.dispatchEvent(new Event('pb-orientation-change'));window.dispatchEvent(new Event('online'));}catch(e){}"
+                            val js = "window.__PB=window.__PB||{};window.__PB.traditional=$trad;window.__PB.arrangePrintOpt=$arrangeOn;window.__PB.orientation=" + jsStr(orient) + ";window.__PB.appAuth={licence:" + jsStr(licStr) + ",mid:" + jsStr(midStr) + "};try{window.dispatchEvent(new Event('pb-mode-change'));window.dispatchEvent(new Event('pb-arrange-print-change'));window.dispatchEvent(new Event('pb-orientation-change'));window.dispatchEvent(new Event('online'));}catch(e){}"
                             runOnUiThread {
                                 webView.evaluateJavascript(js, null)
                             }
@@ -916,6 +917,7 @@ class MainActivity : AppCompatActivity() {
                 val retakeOpt = feat?.optBoolean("retakeOpt", true) ?: true
                 val lockOpt = feat?.optBoolean("lockOpt", true) ?: true
                 val typesOpt = feat?.optBoolean("typesOpt", false) ?: false
+                val arrangePrintOpt = feat?.optBoolean("arrangePrintOpt", false) ?: false
                 val debugOpt = feat?.optBoolean("debugOpt", false) ?: false     // Admin turns this on per code; off for everyone else
                 val payOpt = feat?.optBoolean("vouchers", false) ?: false
                 val traditional = feat?.optBoolean("traditional", true) ?: true
@@ -944,6 +946,7 @@ class MainActivity : AppCompatActivity() {
                     append("window.__PB.retakeOpt=").append(retakeOpt).append(";")
                     append("window.__PB.lockOpt=").append(lockOpt).append(";")
                     append("window.__PB.typesOpt=").append(typesOpt).append(";")
+                    append("window.__PB.arrangePrintOpt=").append(arrangePrintOpt).append(";")
                     append("window.__PB.debugOpt=").append(debugOpt).append(";")
                     append("window.__PB.payOpt=").append(payOpt).append(";")
                     append("window.__PB.traditional=").append(traditional).append(";")

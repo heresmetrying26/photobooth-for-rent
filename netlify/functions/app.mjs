@@ -80,6 +80,10 @@ const WATCHER = `
           L.printStationOpt = j.printStationOpt;
           window.dispatchEvent(new Event('pb-print-station-change'));
         }
+        if (typeof j.arrangePrintOpt === 'boolean' && j.arrangePrintOpt !== !!L.arrangePrintOpt) {
+          L.arrangePrintOpt = j.arrangePrintOpt;
+          window.dispatchEvent(new Event('pb-arrange-print-change'));
+        }
         // ...the extras (vintage looks, photographer desk, flipbook, video guestbook).
         if (j.extras && JSON.stringify(j.extras) !== JSON.stringify(L.extras)) {
           L.extras = j.extras;
@@ -128,7 +132,7 @@ export default safe(async (req) => {
   // reads it once at startup to fill in the Drive folder and show its QR. So it
   // goes in <head>. The watcher needs document.body, so it stays before </body>.
   // '<' is escaped so a folder name can never close the script tag early.
-  const pb = JSON.stringify({ type: res.type, exp: res.exp, folderKey: res.folderKey || null, label: res.label || null, lockFolder: !!res.folderKey, print: res.print || { enabled: false, sizes: [] }, traditional: !!res.traditional, gifOpt: !!res.gifOpt, rushOpt: !!res.rushOpt, printStationOpt: !!res.printStationOpt, extras: res.extras, retakeOpt: !!res.retakeOpt, typesOpt: !!res.typesOpt, payOpt: !!res.payOpt, lockOpt: !!res.lockOpt, orientation: res.orientation || 'landscape', pinResetAt: res.pinResetAt || 0, bonus: !!res.bonus, subfolder: res.subfolder || null, filePrefix: res.filePrefix || '', folderPrefix: res.folderPrefix || null, lifetime: !!res.lifetime, deviceNo: res.deviceNo || 1, multiDevice: !!res.multiDevice, defaultTheme: res.defaultTheme || null, qrTarget: settings.qrTarget === 'drive' ? 'drive' : 'gallery', watermark: res.type === 'trial' && settings.trialWatermark !== false }).replace(/</g, '\\u003c');
+  const pb = JSON.stringify({ type: res.type, exp: res.exp, folderKey: res.folderKey || null, label: res.label || null, lockFolder: !!res.folderKey, print: res.print || { enabled: false, sizes: [] }, traditional: !!res.traditional, gifOpt: !!res.gifOpt, rushOpt: !!res.rushOpt, printStationOpt: !!res.printStationOpt, arrangePrintOpt: !!res.arrangePrintOpt, extras: res.extras, retakeOpt: !!res.retakeOpt, typesOpt: !!res.typesOpt, payOpt: !!res.payOpt, lockOpt: !!res.lockOpt, orientation: res.orientation || 'landscape', pinResetAt: res.pinResetAt || 0, bonus: !!res.bonus, subfolder: res.subfolder || null, filePrefix: res.filePrefix || '', folderPrefix: res.folderPrefix || null, lifetime: !!res.lifetime, deviceNo: res.deviceNo || 1, multiDevice: !!res.multiDevice, defaultTheme: res.defaultTheme || null, qrTarget: settings.qrTarget === 'drive' ? 'drive' : 'gallery', watermark: res.type === 'trial' && settings.trialWatermark !== false }).replace(/</g, '\\u003c');
   const head = '<script>window.__PB=' + pb + ';</script>';
   const tail = '<script>' + WATCHER + '</script>';
   let html = booth;

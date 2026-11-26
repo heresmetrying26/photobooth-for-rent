@@ -334,7 +334,7 @@ export function summaryOf(rec) {
     kind: rec.kind || 'rental', parent: rec.parent || null, bonusKey: rec.bonusKey || null,
     lifetime: !!rec.lifetime, days: rec.days || 0, minutes: rec.minutes || null, startsAt: rec.startsAt || null,
     status: rec.status, redeemedAt: rec.redeemedAt || null, expiresAt: rec.expiresAt || null,
-    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: rec.traditional !== false, gifOpt: !!rec.gifOpt, rushOpt: !!rec.rushOpt, retakeOpt: !!rec.retakeOpt, typesOpt: !!rec.typesOpt, debugOpt: !!rec.debugOpt, payOpt: !!rec.payOpt, offlineOpt: !!rec.offlineOpt, offlineOnly: !!rec.offlineOnly, ipadOpt: !!rec.ipadOpt, printStationOpt: !!rec.printStationOpt, appsUsed: devicesOf(rec).filter((d) => d.app).length, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0, extras: extrasOf(rec), orientation: (rec.orientation && rec.orientation !== 'landscape') ? rec.orientation : 'either',
+    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: rec.traditional !== false, gifOpt: !!rec.gifOpt, rushOpt: !!rec.rushOpt, retakeOpt: !!rec.retakeOpt, typesOpt: !!rec.typesOpt, debugOpt: !!rec.debugOpt, payOpt: !!rec.payOpt, offlineOpt: !!rec.offlineOpt, offlineOnly: !!rec.offlineOnly, ipadOpt: !!rec.ipadOpt, printStationOpt: !!rec.printStationOpt, arrangePrintOpt: !!rec.arrangePrintOpt, appsUsed: devicesOf(rec).filter((d) => d.app).length, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0, extras: extrasOf(rec), orientation: (rec.orientation && rec.orientation !== 'landscape') ? rec.orientation : 'either',
     print: !!(rec.print && rec.print.enabled), createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null, startFrame: rec.startFrame || null, startLogo: rec.startLogo || null, startName: rec.startName || null, startCardOnly: !!rec.startCardOnly,
     revokeReason: rec.revokeReason || null, replacedBy: rec.replacedBy || null, replacedFrom: rec.replacedFrom || null, transferredAt: rec.transferredAt || null,
     agreement: rec.agreement ? rec.agreement.version : null, agreementAt: rec.agreement ? rec.agreement.acceptedAt || null : null,
@@ -576,6 +576,7 @@ export async function getSettings() {
     trialGifOpt: true,
     trialRetakeOpt: false,
     trialTypesOpt: false,
+    trialArrangePrintOpt: false,
     trialLockOpt: false,
     qrTarget: 'gallery',
     galleryQr: true,        // "open on your phone" QR on the gallery page
@@ -629,6 +630,7 @@ export async function checkLicense(token, deviceId) {
       gifOpt: !!rec.gifOpt,
       rushOpt: !!rec.rushOpt,
       printStationOpt: !!rec.printStationOpt,
+      arrangePrintOpt: !!rec.arrangePrintOpt,
       extras: extrasOf(rec),
       retakeOpt: !!rec.retakeOpt,
       typesOpt: !!rec.typesOpt,
@@ -650,7 +652,7 @@ export async function checkLicense(token, deviceId) {
     if (p.exp <= now) return { valid: false, reason: 'trial-ended' };
     const s = await getSettings();
     if (!s.trialEnabled) return { valid: false, reason: 'trial-disabled' };
-    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes, { eventLimit: s.trialPrintEventLimit, sessionLimit: s.trialPrintSessionLimit }), traditional: !!s.trialTraditional, gifOpt: s.trialGifOpt !== false, retakeOpt: !!s.trialRetakeOpt, typesOpt: !!s.trialTypesOpt, payOpt: true, lockOpt: !!s.trialLockOpt, extras: normExtras(null), pinResetAt: 0 };
+    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes, { eventLimit: s.trialPrintEventLimit, sessionLimit: s.trialPrintSessionLimit }), traditional: !!s.trialTraditional, gifOpt: s.trialGifOpt !== false, retakeOpt: !!s.trialRetakeOpt, typesOpt: !!s.trialTypesOpt, arrangePrintOpt: !!s.trialArrangePrintOpt, payOpt: true, lockOpt: !!s.trialLockOpt, extras: normExtras(null), pinResetAt: 0 };
   }
 
   const rec = await licenses().get(p.k, { type: 'json' });
@@ -684,7 +686,7 @@ export async function checkLicense(token, deviceId) {
     multiDevice: maxDevicesOf(rec) > 1,
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes, rec.print),
     traditional: rec.traditional !== false,
-    gifOpt: !!rec.gifOpt, rushOpt: !!rec.rushOpt, printStationOpt: !!rec.printStationOpt,
+    gifOpt: !!rec.gifOpt, rushOpt: !!rec.rushOpt, printStationOpt: !!rec.printStationOpt, arrangePrintOpt: !!rec.arrangePrintOpt,
     extras: extrasOf(rec),
     retakeOpt: !!rec.retakeOpt,
     typesOpt: !!rec.typesOpt,

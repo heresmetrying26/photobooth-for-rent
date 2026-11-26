@@ -85,6 +85,7 @@ export function featuresOf(rec, deviceNo, dev) {
     gifOpt: rec.gifOpt !== false,
     ipadOpt: !!rec.ipadOpt,                      // an iPad may use this laptop's camera over Wi-Fi (off by default unless Admin turns it on)
     printStationOpt: !!rec.printStationOpt,      // built-in Tools -> Print Station in Desktop App (off by default unless Admin turns it on)
+    arrangePrintOpt: !!rec.arrangePrintOpt,      // Arrange & Print tool in Setup ⋯ & Photo Session Tools (off by default unless Admin turns it on)
     extras: extrasOf(rec),
     vouchers: !!rec.payOpt,                       // offline: vouchers only; online mode also enables PayMongo QR
     folderKey: rec.lifetime ? null : ((rec.folderName || rec.label || '').trim() || null),
@@ -140,7 +141,7 @@ export function trialLicence(settings, { mid, name, os, ver }, now) {
       trial: true, watermark: settings.trialWatermark !== false, minutes,
       print: normPrint(settings.trialPrintEnabled, settings.trialPrintSizes, { eventLimit: settings.trialPrintEventLimit, sessionLimit: settings.trialPrintSessionLimit }),
       traditional: !!settings.trialTraditional, retakeOpt: !!settings.trialRetakeOpt, typesOpt: !!settings.trialTypesOpt, lockOpt: !!settings.trialLockOpt, debugOpt: false,
-      orientation: 'either', gifOpt: settings.trialGifOpt !== false, ipadOpt: false, printStationOpt: false,
+      orientation: 'either', gifOpt: settings.trialGifOpt !== false, ipadOpt: false, printStationOpt: false, arrangePrintOpt: !!settings.trialArrangePrintOpt,
       extras: extrasOf({}), vouchers: true,
       folderKey: folder, folderPrefix: null, defaultTheme: null, deviceNo: 1, multiDevice: false, pinResetAt: 0, final: false,
       appMode: 'offline', deviceLabel: clean(name, 40)

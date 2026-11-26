@@ -102,13 +102,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             guard let self = self, let wv = self.webView else { return }
             let online = PBLocal.shared.isOnline()
             let flag = online ? "true" : "false"
-            var authJs = ""
+            let st = AppLicence.shared.status()
+            let feat = (st.payload?["feat"] as? [String: Any]) ?? [:]
+            let arrangeOn = (feat["arrangePrintOpt"] as? NSNumber)?.boolValue ?? false
+            var authJs = "window.__PB=window.__PB||{};window.__PB.arrangePrintOpt=\(arrangeOn ? "true" : "false");"
             if let lic = AppLicence.shared.currentLicenceString(), !lic.isEmpty,
                let data = try? JSONSerialization.data(withJSONObject: ["licence": lic, "mid": AppLicence.shared.machineId()], options: []),
                let json = String(data: data, encoding: .utf8) {
-                authJs = "window.__PB=window.__PB||{};window.__PB.appAuth=\(json);"
+                authJs += "window.__PB.appAuth=\(json);"
             }
-            let evJs = online ? "window.dispatchEvent(new Event('\(eventName)'));" : ""
+            let evJs = "window.dispatchEvent(new Event('pb-arrange-print-change'));" + (online ? "window.dispatchEvent(new Event('\(eventName)'));" : "")
             wv.evaluateJavaScript("try{window.__pbIosOnline=\(flag);\(authJs)\(evJs)}catch(e){}", completionHandler: nil)
         }
     }
@@ -528,6 +531,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         let retakeOpt = (feat["retakeOpt"] as? NSNumber)?.boolValue ?? true
         let lockOpt = (feat["lockOpt"] as? NSNumber)?.boolValue ?? true
         let typesOpt = (feat["typesOpt"] as? NSNumber)?.boolValue ?? false
+        let arrangePrintOpt = (feat["arrangePrintOpt"] as? NSNumber)?.boolValue ?? false
         let debugOpt = (feat["debugOpt"] as? NSNumber)?.boolValue ?? false
         let payOpt = (feat["vouchers"] as? NSNumber)?.boolValue ?? false
         let traditional = (feat["traditional"] as? NSNumber)?.boolValue ?? true
@@ -564,6 +568,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         window.__PB.retakeOpt=\(retakeOpt ? "true" : "false");
         window.__PB.lockOpt=\(lockOpt ? "true" : "false");
         window.__PB.typesOpt=\(typesOpt ? "true" : "false");
+        window.__PB.arrangePrintOpt=\(arrangePrintOpt ? "true" : "false");
         window.__PB.debugOpt=\(debugOpt ? "true" : "false");
         window.__PB.payOpt=\(payOpt ? "true" : "false");
         window.__PB.traditional=\(traditional ? "true" : "false");

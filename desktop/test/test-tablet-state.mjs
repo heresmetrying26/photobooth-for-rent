@@ -494,5 +494,246 @@ await section(async () => {
   console.log('PASS: 2-step B&W vs Coloured picker state (Step 1 tags + Step 2 Back button) reaches the tablet');
 });
 
+// 15. Panel welcome mode sends isWelcome, welCard, and corner logo (clogo)
+await section(async () => {
+  const { ctx, pushed } = makeCtx();
+  ctx.guestWelcomeStyle = 'panel';
+  ctx.welcomeOn = true;
+  ctx.attractMode = 'card';
+  ctx.welcomeDataUrl = JPEG('welcome-card');
+  ctx.welcomeGeo = { W: 900, H: 1200 };
+  ctx.brand = { c: { on: true, id: 'logo1', x: null, y: null, s: 0.1 } };
+  ctx.brandImgFor = (k) => (k === 'c' ? { naturalWidth: 400, naturalHeight: 200 } : null);
+  ctx.brandId = () => 'logo1';
+  ctx.brandFit = (asp, h) => ({ w: h * asp, h });
+  ctx.BRAND_DEF_S = { c: 0.1, w: 0.09 };
+  ctx.BRAND_MAXR = 2.8;
+  ctx.ASSETS = { logo1: { url: JPEG('clogo') } };
+  ctx.tabletBridgeSync(); await wait(150);
+  const p = last(pushed);
+  assert.equal(p.psMode, false);
+  assert.equal(p.isWelcome, true);
+  assert.equal(p.welCard, true);
+  assert.equal(p.wa, 0.75);
+  assert(p.clogo && /^\/media\/clogo\?v=/.test(p.clogo.url), 'corner logo uploaded and included in state');
+  console.log('PASS: panel welcome state includes isWelcome, welCard, wa, and corner logo');
+});
+
+// 16. Tapping "Tap to start" on Guest Screen / Tablet Bridge force-starts Photo Session from Setup tab
+await section(async () => {
+  const startIdx = BOOTH.indexOf('function boothTrigger(fromGuest)');
+  const endIdx = BOOTH.indexOf('// Space / Enter / presenter-clicker keys');
+  assert(startIdx > 0 && endIdx > startIdx, 'boothTrigger is present in built booth.html');
+  const fnCode = BOOTH.slice(startIdx, endIdx);
+
+  const runTrigger = ({ fromGuest, folderKey = 'TestEvent', startGone = true, sessionHidden = true } = {}) => {
+    const events = [];
+    const sent = [];
+    let isSessionHidden = sessionHidden;
+    let isStartGone = startGone;
+    const ctx = {
+      layoutEditorActive: false,
+      sess: null,
+      startScreen: { classList: { contains: (c) => (c === 'gone' ? isStartGone : false) } },
+      leaveStartScreen: () => { isStartGone = true; events.push('leaveStartScreen'); },
+      pickOpen: false,
+      readyOverlay: { classList: { contains: () => false } },
+      state: 'idle',
+      printing: false,
+      flowBusy: false,
+      tabSession: { classList: { contains: (c) => (c === 'hidden' ? isSessionHidden : false) } },
+      rawFolderKey: () => folderKey,
+      goStep: (n) => events.push('goStep:' + n),
+      showDriveFolderError: (m) => events.push('folderErr:' + m),
+      showToast: (m) => events.push('toast:' + m),
+      activeBridgeApi: () => ({ sendEvent: (e) => sent.push(e) }),
+      tabletGuestOpen: () => true,
+      closePrintModal: () => events.push('closePrintModal'),
+      closeCamModal: () => events.push('closeCamModal'),
+      profilesSheet: { hidden: true },
+      closeProfiles: () => events.push('closeProfiles'),
+      switchTab: (tab, opts) => { if (tab === 'session') isSessionHidden = false; events.push('switchTab:' + tab + ':' + !!(opts && opts.keepCam)); },
+      beginGuestFlow: (skip) => events.push('beginGuestFlow:' + skip)
+    };
+    vm.runInNewContext(fnCode, ctx);
+    ctx.boothTrigger(fromGuest);
+    return { events, sent, isSessionHidden, isStartGone };
+  };
+
+  // Guest tap on Setup tab with folder ready -> force switches to session and starts
+  const r1 = runTrigger({ fromGuest: true, folderKey: 'Wedding2026', startGone: true, sessionHidden: true });
+  assert.equal(r1.isSessionHidden, false, 'tabSession becomes visible');
+  assert(r1.events.includes('switchTab:session:true'), 'switches to session keeping camera ready');
+  assert(r1.events.includes('beginGuestFlow:true'), 'starts photo session immediately');
+
+  // Guest tap while startScreen is still up + Setup tab hidden -> dismisses startScreen and starts session in one tap
+  const r2 = runTrigger({ fromGuest: true, folderKey: 'Wedding2026', startGone: false, sessionHidden: true });
+  assert.equal(r2.isStartGone, true);
+  assert(r2.events.includes('leaveStartScreen') && r2.events.includes('beginGuestFlow:true'), 'one tap dismisses start screen and starts session');
+
+  // Guest tap on Setup tab when folder name is missing -> jumps to Step 6 and alerts both laptop and tablet
+  const r3 = runTrigger({ fromGuest: true, folderKey: '', startGone: true, sessionHidden: true });
+  assert.equal(r3.isSessionHidden, true, 'stays in Setup when folder name missing');
+  assert(r3.events.includes('goStep:6'), 'navigates to Step 6');
+  assert(r3.sent.some((e) => e.type === 'toast'), 'sends toast to tablet');
+  assert(!r3.events.some((e) => e.startsWith('beginGuestFlow')), 'does not start without folder name');
+
+  // Keyboard press on Setup tab (!fromGuest) -> does NOT force start session
+  const r4 = runTrigger({ fromGuest: false, folderKey: 'Wedding2026', startGone: true, sessionHidden: true });
+  assert.equal(r4.isSessionHidden, true, 'keyboard trigger in Setup stays in Setup');
+  assert.equal(r4.events.length, 0);
+  console.log('PASS: boothTrigger(true) force-starts Photo Session from Setup when ready, and guides to Step 6 if folder missing');
+});
+
+// 17. Built booth.html prevents main-app & popup Guest Screen distortion when Guest Screen opens
+await section(async () => {
+  // CSS rules for main-app picking, getting-ready dock clearance, portrait result film-track & welcome
+  assert(BOOTH.includes('body.picking .app-shell .panel'), 'picking mode hides side panel when stage-full is off');
+  assert(BOOTH.includes('body.in-session.picking .app-shell'), 'picking mode collapses app-shell to 1 column');
+  assert(BOOTH.includes('body:not(.stage-full) .app-shell.getting-ready .session-controls'), 'getting-ready controls clear bottom dock bar');
+  assert(!/body\.welcome-on\.in-session:not\(\.shooting\)\s*\.stage-frame\s*,/.test(BOOTH), 'portrait non-full welcome stage does not force height:100%');
+  const portStart = BOOTH.indexOf('/* Shots preview: floating vertical stack on the right side, layered top-to-bottom */');
+  const portEnd = BOOTH.indexOf('.film-frame.pickable::after {', portStart);
+  assert(portStart > 0 && portEnd > portStart, 'portrait film-track rule section present');
+  const portBlock = BOOTH.slice(portStart, portEnd);
+  assert(!/body\.in-session\s+\.app-shell\s+\.film-track\s*[,{]/.test(portBlock), 'portrait rule does not override .result .film-track display:none');
+
+  // GUEST_HTML result aspect preservation & clean centering when no QR / actions
+  assert(BOOTH.includes('width:min(62vw,calc(86vh * var(--ga,0.8))) !important;height:min(86vh,calc(62vw / var(--ga,0.8))) !important;'), 'GUEST_HTML result frame keeps exact --ga aspect');
+  assert(BOOTH.includes('body.ps.is-result:not(.has-qr):not(.has-res-acts) .side-r-res{display:none !important;}'), 'GUEST_HTML hides empty side-r-res when no QR or buttons');
+  assert(BOOTH.includes('height:min(88vh,calc(92vw / var(--ga,0.8))) !important;aspect-ratio:var(--ga,0.8) !important;'), 'GUEST_HTML portrait no-QR result rule keeps exact --ga');
+
+  // openGuestScreen, guestWin.closed watcher, refreshTraditionalUI, and guestStyleChips invoke applyStageAspect
+  const ogsStart = BOOTH.indexOf('async function openGuestScreen()');
+  const ogsEnd = BOOTH.indexOf("guestOpenBtn.addEventListener('click', openGuestScreen);", ogsStart);
+  assert(ogsStart > 0 && ogsEnd > ogsStart && BOOTH.slice(ogsStart, ogsEnd).includes('applyStageAspect'), 'openGuestScreen calls applyStageAspect');
+  const pollLine = BOOTH.slice(BOOTH.indexOf('function updateGuestStatus()'), BOOTH.indexOf('const GUEST_HTML'));
+  assert(pollLine.includes('guestWin.closed') && pollLine.includes('applyStageAspect'), 'guestWin closed watcher calls applyStageAspect');
+  assert(/setGuestStyleUI\(b\.dataset\.style\);[\s\S]{0,160}applyStageAspect/.test(BOOTH), 'guestStyleChips change calls applyStageAspect');
+  console.log('PASS: main-app & popup Guest Screen layout CSS and stage-sync hooks verified in built booth.html');
+});
+
+// 18. Real guestRender() & tablet connect/disconnect stage sync in VM
+await section(async () => {
+  const gStart = BOOTH.indexOf('function guestRender()');
+  const gEnd = BOOTH.indexOf('var TABLET_CAM_ID =', gStart);
+  assert(gStart > 0 && gEnd > gStart, 'guestRender exists before tablet-bridge code');
+  const grCode = BOOTH.slice(gStart, gEnd);
+
+  const mkEl = () => {
+    const cls = new Set(['hide']);
+    const styleProps = {};
+    return {
+      style: {
+        setProperty(k, v) { styleProps[k] = v; },
+        getPropertyValue(k) { return styleProps[k] || ''; },
+        display: '', aspectRatio: '', height: '', objectFit: '', position: '', top: '', left: '', width: '', pointerEvents: '', background: '', color: ''
+      },
+      classList: {
+        toggle: (c, f) => (f ? cls.add(c) : cls.delete(c)),
+        add: (c) => cls.add(c),
+        remove: (c) => cls.delete(c),
+        contains: (c) => cls.has(c)
+      },
+      dataset: {},
+      textContent: '',
+      innerHTML: '',
+      _cls: cls
+    };
+  };
+
+  const frameEl = mkEl();
+  frameEl.style.aspectRatio = '0.7500';
+  frameEl.style.height = 'min(58vh, 122.67vw)';
+  const resEl = mkEl();
+  const vEl = mkEl();
+  const bodyEl = mkEl();
+  bodyEl.dataset = {};
+  const gCtx = {
+    guestOpen: () => true,
+    localGuestOpen: () => true,
+    tabletBridgeSync: () => { },
+    syncGuestUiScale: () => { },
+    guestFilm: () => { },
+    guestPickRender: () => { },
+    guestBrand: () => { },
+    guestButtons: () => { },
+    guestLooksRender: () => { },
+    brandImgFor: () => null,
+    layoutDef: () => ({ name: 'Strip' }),
+    shotsNeeded: () => 3,
+    currentDateLabel: () => 'NOV 26',
+    currentBoxAspect: () => 0.6667,
+    shotBoxAspect: () => 0.6667,
+    camAspect: () => 1.7778,
+    guestWelcomeStyle: 'full',
+    layoutEditorActive: false,
+    welcomeOn: true,
+    state: 'idle',
+    pickOpen: false,
+    sess: null,
+    shotCanvases: [],
+    previewCanvas: { width: 0, height: 0, style: { display: 'none' } },
+    attractMode: 'card',
+    attractPlaylist: [],
+    attractPosterUrl: '',
+    attractPosterType: 'image',
+    attractPlayIndex: 0,
+    attractPosterFit: 'cover',
+    welcomeDataUrl: 'data:image/jpeg;base64,WEL',
+    welcomeGeo: { W: 1600, H: 1200 },
+    welcomeBtnOn: true,
+    welcomeMsg: '',
+    welcomeBtnColor: '#C93D27',
+    welcomeBtnPos: 'bottom',
+    fx: { hands: 'off' },
+    stageShot: 0,
+    labelInput: { value: 'Event' },
+    qrResults: { querySelectorAll: () => [] },
+    printFirstHolding: false,
+    qrMatchWelcome: false,
+    readyOverlay: { classList: { contains: () => false } },
+    readySub: { textContent: '' },
+    document: { getElementById: () => null },
+    guestWin: { innerWidth: 1280, innerHeight: 720 },
+    G: {
+      d: { body: bodyEl, getElementById: (id) => (id === 'frame' ? frameEl : null), createElement: () => mkEl() },
+      v: vEl, gv: mkEl(), gCta: mkEl(), gCtaBtn: mkEl(), res: resEl, cd: mkEl(),
+      film: mkEl(), msg: mkEl(), sub: mkEl(), ev: mkEl(), dt: mkEl(), chip: mkEl(),
+      qrw: mkEl(), gReady: mkEl(), gReadySub: mkEl(), gReadyBtn: mkEl(), galleryPill: mkEl(), galleryCard: mkEl(),
+      wasRev: false
+    }
+  };
+  vm.createContext(gCtx);
+  vm.runInContext(grCode, gCtx);
+  gCtx.guestRender();
+
+  assert.equal(bodyEl.classList.contains('ps'), true, 'body has ps class in Photo session look');
+  assert.equal(bodyEl.style.getPropertyValue('--ga'), '1.7778', '--ga synced inside guestRender without waiting for applyStageAspect');
+  assert.equal(frameEl.style.getPropertyValue('--box-aspect'), '', 'film tracks box-aspect separately');
+  assert.equal(gCtx.G.film.style.getPropertyValue('--box-aspect'), '0.6667', 'G.film gets --box-aspect inside guestRender');
+  assert.equal(frameEl.style.aspectRatio, '', 'switching from panel clears stale inline aspectRatio');
+  assert.equal(frameEl.style.height, '', 'switching from panel clears stale inline height');
+  assert.equal(resEl.style.objectFit, 'contain', '4:3 welcome card inside 16:9 guestWin switches to contain instead of clipping top/bottom');
+
+  // Matching aspect keeps cover edge-to-edge
+  gCtx.guestWin.innerWidth = 1024;
+  gCtx.guestWin.innerHeight = 768;
+  gCtx.guestRender();
+  assert.equal(resEl.style.objectFit, 'cover', 'matching 4:3 card in 4:3 guestWin uses cover');
+
+  // Tablet connect/disconnect invokes applyStageAspect() so main-app stage-full and layoutSessionStage update immediately
+  let aspectCalls = 0;
+  const { ctx: tbCtx } = makeCtx();
+  tbCtx.applyStageAspect = () => { aspectCalls++; };
+  tbCtx.tabletBridge.guestConnected = false;
+  tbCtx.document.getElementById = () => null;
+  tbCtx.renderTabletBridgeSetup({ connected: true, camConnected: true, guestConnected: true, deviceName: 'Galaxy Tab', primaryUrl: 'http://192.168.1.2:4321/bridge/t' });
+  assert.equal(aspectCalls, 1, 'guestConnected -> true triggers applyStageAspect() on main app');
+  tbCtx.renderTabletBridgeSetup({ connected: false, camConnected: true, guestConnected: false, deviceName: 'Galaxy Tab', primaryUrl: 'http://192.168.1.2:4321/bridge/t' });
+  assert.equal(aspectCalls, 2, 'guestConnected -> false triggers applyStageAspect() on main app');
+  console.log('PASS: guestRender() --ga/card-fit/panel-cleanup and tablet connect applyStageAspect verified');
+});
+
 if (failed) { console.log(failed + ' check(s) failed'); process.exit(1); }
 console.log('All tablet state tests passed!');

@@ -458,7 +458,7 @@ async function buildAndPushTabletState() {
     const curSlide = (attractMode === 'poster' && slideList.length) ? (slideList[attractPlayIndex] || slideList[0]) : null;
     const rawWel = (curSlide && !welcomeBtnOn && !(typeof brandImgFor === 'function' && brandImgFor('w'))) ? curSlide.url : welcomeDataUrl;
     if (rawWel) {
-      resSrc = await tabletBridgeUploadMedia('welcome', rawWel, 'image/jpeg', 1920);
+      resSrc = await tabletBridgeUploadMedia('welcome', rawWel, attractMode === 'camera' ? 'image/png' : 'image/jpeg', 1920);
       resFit = (attractMode === 'poster') ? (attractPosterFit === 'contain' ? 'contain' : (attractPosterFit === 'stretch' ? 'fill' : 'cover')) : 'cover';
     }
   }
@@ -599,8 +599,25 @@ async function buildAndPushTabletState() {
     } catch (e) { }
   }
 
+  let clogo = null;
+  if (!psMode) {
+    try {
+      if (typeof brand !== 'undefined' && typeof brandImgFor === 'function' && typeof brandId === 'function' && typeof brandFit === 'function' && typeof ASSETS !== 'undefined') {
+        const b = brand && brand.c, im = brandImgFor('c'), id = brandId('c');
+        if (b && im && id && ASSETS[id] && ASSETS[id].url) {
+          const f = brandFit(im.naturalWidth / im.naturalHeight, (b.s || BRAND_DEF_S.c) * 100, (b.s || BRAND_DEF_S.c) * 100 * BRAND_MAXR);
+          const cUrl = await tabletBridgeUploadMedia('clogo', ASSETS[id].url, 'image/png', 800);
+          if (cUrl) clogo = { url: cUrl, x: b.x == null ? null : Number(b.x), y: b.y == null ? null : Number(b.y), w: Number(f.w.toFixed(2)), h: Number(f.h.toFixed(2)) };
+        }
+      }
+    } catch (e) { }
+  }
+
   const payload = Object.assign({
     psMode,
+    isWelcome: !!welcome,
+    welCard: !!(welcome && attractMode === 'card'),
+    clogo,
     isResult: result,
     resTheme,
     showQr,
@@ -822,7 +839,7 @@ function renderTabletBridgeSetup(info) {
   }
   if (wasGuest !== tabletBridge.guestConnected) {
     try { updateGuestStatus(); } catch (e) { }
-    try { updateFullStage(); } catch (e) { }
+    try { if (typeof applyStageAspect === 'function') applyStageAspect(); else if (typeof updateFullStage === 'function') updateFullStage(); } catch (e) { }
     if (tabletBridge.guestConnected) {
       tabletBridgeSync();
       tabletSoundSync(true);      // a tablet that just connected gets the sound files

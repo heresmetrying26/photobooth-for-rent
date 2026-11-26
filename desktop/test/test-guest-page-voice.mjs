@@ -13,8 +13,16 @@ assert(/\.gbtn\.printing/.test(html), 'the page has a style for the smaller "Pri
 
 function makeEl() {
   const classes = new Set();
+  const props = {};
   return {
-    style: { setProperty() { }, removeProperty() { }, cssText: '' },
+    offsetHeight: 0,
+    style: {
+      props,
+      setProperty(k, v) { props[k] = String(v); },
+      removeProperty(k) { delete props[k]; },
+      getPropertyValue(k) { return props[k] || ''; },
+      cssText: ''
+    },
     classList: {
       add: (...c) => c.forEach((x) => classes.add(x)),
       remove: (...c) => c.forEach((x) => classes.delete(x)),
@@ -29,7 +37,7 @@ function makeEl() {
   };
 }
 
-function makePage({ native, web, audio } = {}) {
+function makePage({ native, web, audio, width = 0, height = 0 } = {}) {
   const els = {};
   const listeners = {};
   const sockets = [];
@@ -39,6 +47,7 @@ function makePage({ native, web, audio } = {}) {
     send(d) { this.sent.push(JSON.parse(d)); }
   }
   const window = {
+    innerWidth: width, innerHeight: height,
     devicePixelRatio: 1, addEventListener() { }, AudioContext: audio ? audio.AC : undefined,
     __PBVoice: native || undefined,
     speechSynthesis: web ? web.synth : undefined,
@@ -60,11 +69,12 @@ function makePage({ native, web, audio } = {}) {
   assert.equal(sockets.length, 1, 'the page opens its socket to the laptop');
   const ws = sockets[0];
   return {
-    els, ws, timers, listeners,
+    els, ws, timers, listeners, window,
     soundCaps: () => ws.sent.filter((m) => m.type === 'action' && m.action === 'soundCaps'),
     open: () => ws.onopen(),
     msg: (o) => ws.onmessage({ data: JSON.stringify(o) }),
-    caps: () => ws.sent.filter((m) => m.type === 'action' && m.action === 'voiceCaps')
+    caps: () => ws.sent.filter((m) => m.type === 'action' && m.action === 'voiceCaps'),
+    actions: () => ws.sent.filter((m) => m.type === 'action')
   };
 }
 
@@ -232,6 +242,93 @@ const PACK = (sig) => ({ type: 'sounds', sig, sounds: { shut: WAV, b1: WAV, b2: 
   pg.msg(PACK('a')); pg.msg({ type: 'sound', kind: 'shut', vol: 1 });
   assert.equal(pg.soundCaps()[pg.soundCaps().length - 1].ok, false);
   console.log('PASS: a page with no audio stays quiet and reports it');
+}
+
+// 7. Portrait layout fitting, corner logo, welcome card aspect guard, and tap trigger
+{
+  assert(/@media\s*\(orientation:\s*portrait\)/.test(html), 'guest page includes portrait responsive CSS');
+  const pg = makePage({ width: 800, height: 1280 });
+  pg.open();
+  pg.els.sideL.offsetHeight = 140;
+  pg.els.sideR.offsetHeight = 130;
+  pg.els.sideRRes.offsetHeight = 220;
+
+  // Classic "With logo & side text" (!psMode) on portrait tablet fits frame cleanly between sideL and sideR
+  pg.msg({
+    type: 'state',
+    state: {
+      psMode: false,
+      isWelcome: true,
+      wa: 0.75,
+      ga: 1.3333,
+      resSrc: '/media/welcome?v=1',
+      resFit: 'cover',
+      clogo: { url: '/media/clogo?v=1', x: null, y: null, w: 12, h: 8 }
+    }
+  });
+  const fw = parseInt(pg.els.frame.style.getPropertyValue('width'), 10);
+  const fh = parseInt(pg.els.frame.style.getPropertyValue('height'), 10);
+  assert(fw > 0 && fw <= 752, 'portrait panel frame width fits inside 800px viewport: ' + fw);
+  assert(fh > 0 && fh <= (1280 * 0.92 - 140 - 130 + 2), 'portrait panel frame height leaves room for top & bottom bars: ' + fh);
+  assert(Math.abs(fw / fh - 0.75) < 0.02, 'portrait panel frame preserves wa aspect ratio 0.75: ' + (fw / fh));
+  assert.equal(pg.els.glogo.has('off'), false, 'corner logo shown in panel mode');
+  assert.equal(pg.els.lgImg.has('hide'), false);
+
+  // Photo session full-screen welcome card with landscape card on portrait tablet switches objectFit to contain
+  pg.msg({
+    type: 'state',
+    state: {
+      psMode: true,
+      welFullPs: true,
+      welCard: true,
+      wa: 1.3333,
+      ga: 1.3333,
+      resSrc: '/media/welcome?v=2',
+      resFit: 'cover'
+    }
+  });
+  assert.equal(pg.els.res.style.objectFit, 'contain', 'landscape welcome card on portrait tablet uses contain instead of cropping');
+  assert.equal(pg.els.frame.style.getPropertyValue('width'), '', 'CSS handles full-screen wel-full frame');
+
+  // Photo session full-screen welcome card with 4:3 card on 16:9 landscape screen switches objectFit to contain, matching 4:3 stays cover
+  const pg169 = makePage({ width: 1280, height: 720 });
+  pg169.open();
+  pg169.msg({ type: 'state', state: { psMode: true, welFullPs: true, welCard: true, wa: 1.3333, ga: 1.3333, resSrc: '/media/welcome?v=169', resFit: 'cover' } });
+  assert.equal(pg169.els.res.style.objectFit, 'contain', '4:3 welcome card on 16:9 guest screen uses contain instead of cropping top/bottom');
+  const pg43 = makePage({ width: 1024, height: 768 });
+  pg43.open();
+  pg43.msg({ type: 'state', state: { psMode: true, welFullPs: true, welCard: true, wa: 1.3333, ga: 1.3333, resSrc: '/media/welcome?v=43', resFit: 'cover' } });
+  assert.equal(pg43.els.res.style.objectFit, 'cover', 'matching 4:3 card on 4:3 screen keeps edge-to-edge cover');
+  assert(html.includes('body.ps.is-result:not(.has-qr):not(.has-res-actions) .side-r-res{display:none !important;}'), 'empty result side column is hidden in non-themed ps result');
+  // Live camera welcome overlay keeps res background transparent so live camera shows through CTA PNG
+  pg169.msg({ type: 'state', state: { psMode: true, welFullPs: true, hideCam: false, resSrc: '/media/welcome?v=cam', resFit: 'cover' } });
+  assert.equal(pg169.els.res.style.background, 'transparent', 'camera welcome keeps res background transparent over live camera');
+
+  // Photo session result screen on portrait tablet sizes frame above sideRRes at exact ga
+  pg.msg({
+    type: 'state',
+    state: {
+      psMode: true,
+      isResult: true,
+      showQr: true,
+      printShow: true,
+      nextShow: true,
+      ga: 0.6667,
+      resSrc: '/media/result?v=3',
+      resFit: 'contain'
+    }
+  });
+  const rw = parseInt(pg.els.frame.style.getPropertyValue('width'), 10);
+  const rh = parseInt(pg.els.frame.style.getPropertyValue('height'), 10);
+  assert(rw > 0 && rw <= 800 * 0.92 + 1, 'portrait result frame fits width');
+  assert(rh > 0 && rh <= 1280 * 0.91 - 220 + 2, 'portrait result frame leaves room for QR & Print/Done');
+  assert(Math.abs(rw / rh - 0.6667) < 0.02, 'portrait result frame keeps exact ga aspect ratio');
+
+  // Tap while on welcome sends trigger action
+  pg.msg({ type: 'state', state: { psMode: false, isWelcome: true, wa: 0.75, ga: 0.75 } });
+  pg.listeners.click.forEach((fn) => fn());
+  assert(pg.actions().some((a) => a.action === 'trigger'), 'tap on tablet welcome sends trigger action');
+  console.log('PASS: portrait panel layout, corner logo, welcome orientation guard, and tap trigger verified');
 }
 
 console.log('All guest page voice and label tests passed!');

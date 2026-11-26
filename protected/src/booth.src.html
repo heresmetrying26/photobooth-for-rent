@@ -2093,8 +2093,15 @@
     body.picking .brandbar,
     body.picking .topbar,
     body.picking .tab-bar,
-    body.picking #sessionControls {
+    body.picking #sessionControls,
+    body.picking .app-shell .panel {
       display: none !important;
+    }
+
+    body.in-session.picking .app-shell {
+      grid-template-columns: minmax(0, 1fr) !important;
+      max-width: calc(100vw - 16px) !important;
+      width: 100%;
     }
 
     .stage-frame.is-ready .countdown-overlay {
@@ -2127,6 +2134,7 @@
     body.in-session.shooting:not(.stage-full) .app-shell:not(.capturing) .stage-frame {
       width: min(calc(100vw - 20px), calc((var(--vh) - 54px) * var(--cam-aspect, 0.8))) !important;
       width: min(calc(100vw - 20px), calc((100dvh - 54px) * var(--cam-aspect, 0.8))) !important;
+      height: auto !important;
       max-height: calc(var(--vh) - 54px) !important;
       max-height: calc(100dvh - 54px) !important;
       margin: 0 auto !important;
@@ -2205,6 +2213,12 @@
       overflow-y: auto;
       overflow-x: hidden;
       scrollbar-width: none;
+    }
+
+    body:not(.stage-full) .app-shell.getting-ready .session-controls {
+      bottom: max(16px, calc(var(--dock-reserve, 0px) + 12px)) !important;
+      max-height: calc(var(--vh) - var(--dock-reserve, 0px) - 28px);
+      max-height: calc(100dvh - var(--dock-reserve, 0px) - 28px);
     }
 
     .app-shell.getting-ready .session-controls::-webkit-scrollbar {
@@ -3756,7 +3770,13 @@
       word-break: break-all;
     }
 
-    /* Photoman Template Maker */
+    /* Photoman Template Maker & Tabbed Photographer Desk */
+    .desk-studio-ov[data-desk-tab="deskSecQueue"] #deskSecTemplate,
+    .desk-studio-ov[data-desk-tab="deskSecQueue"] #deskSecConnect,
+    .desk-studio-ov[data-desk-tab="deskSecTemplate"] #deskSecQueue,
+    .desk-studio-ov[data-desk-tab="deskSecTemplate"] #deskSecConnect,
+    .desk-studio-ov[data-desk-tab="deskSecConnect"] #deskSecQueue,
+    .desk-studio-ov[data-desk-tab="deskSecConnect"] #deskSecTemplate,
     .desk-studio-ov.desk-maker-active #deskSecQueue,
     .desk-studio-ov.desk-maker-active #deskSecTemplate,
     .desk-studio-ov.desk-maker-active #deskSecConnect,
@@ -3767,15 +3787,227 @@
     }
 
     .desk-studio-ov.desk-maker-active .desk-studio-body {
-      grid-template-columns: minmax(360px, 0.96fr) minmax(360px, 1.04fr);
+      grid-template-columns: minmax(310px, 0.96fr) minmax(310px, 1.04fr);
+    }
+
+    .desk-empty-cta {
+      grid-column: 1 / -1;
+      border: 1.5px dashed #dcd2c4;
+      border-radius: 14px;
+      background: #fcfaf6;
+      padding: 20px 14px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .desk-empty-cta b {
+      font: 800 13.5px/1.3 'Manrope', sans-serif;
+      color: #1C1A1E;
+    }
+
+    .desk-empty-cta p {
+      margin: 0;
+      font: 500 12px/1.4 'Manrope', sans-serif;
+      color: #6B666C;
+      max-width: 340px;
+    }
+
+    .desk-empty-cta-btns {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 4px;
+    }
+
+    .desk-queue-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      border-radius: 11px;
+      background: #faf6f0;
+      border: 1px solid #e8dfd2;
+    }
+
+    .desk-queue-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .desk-qbar-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #dfd5c7;
+      background: #fff;
+      color: #1C1A1E;
+      font: 700 11.5px/1.2 'Manrope', sans-serif;
+      cursor: pointer;
+      max-width: 100%;
+      transition: border-color .15s, background .15s;
+    }
+
+    .desk-qbar-pill:hover {
+      border-color: #C93D27;
+      background: #fff6f4;
+    }
+
+    .desk-qbar-pill.auto-on {
+      background: #fff4db;
+      border-color: #ebc266;
+      color: #7c4d00;
+    }
+
+    .desk-panel-card.over {
+      outline: 2px dashed #C93D27;
+      outline-offset: -4px;
+      background: #fff9f7;
+    }
+
+    .desk-opt-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1 0 100%;
+      margin-top: 2px;
+    }
+
+    .desk-opt-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1.5px solid #ebe3d7;
+      background: #fcfaf6;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+
+    .desk-opt-row:hover {
+      border-color: #d8cbba;
+      background: #fff;
+    }
+
+    .desk-opt-row input[type="checkbox"] {
+      width: 17px;
+      height: 17px;
+      margin-top: 2px;
+      flex: none;
+      accent-color: var(--blue-deep, #C93D27);
+    }
+
+    .desk-opt-txt {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .desk-opt-txt b {
+      font: 700 12.5px/1.3 'Manrope', sans-serif;
+      color: #1C1A1E;
+    }
+
+    .desk-opt-txt small {
+      font: 500 11.5px/1.35 'Manrope', sans-serif;
+      color: #6B666C;
+    }
+
+    .pm-step-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 4px;
+      background: #f1eae1;
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid #e0d7cb;
+      margin: 2px 0 12px;
+    }
+
+    .pm-step-tab {
+      border: 0;
+      background: transparent;
+      padding: 7px 6px;
+      border-radius: 9px;
+      font: 700 11.5px/1.2 'Manrope', sans-serif;
+      color: #554e5c;
+      cursor: pointer;
+      transition: all .15s ease;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pm-step-tab:hover {
+      color: #1C1A1E;
+    }
+
+    .pm-step-tab.active {
+      background: #fff;
+      color: #1C1A1E;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
+    }
+
+    .pm-tab-pane[hidden] {
+      display: none !important;
     }
 
     .pm-row {
       display: flex;
-      gap: 8px;
+      gap: 7px;
       align-items: center;
       flex-wrap: wrap;
-      margin-bottom: 10px;
+      margin-bottom: 9px;
+    }
+
+    .pm-row.nowrap-bar {
+      flex-wrap: nowrap;
+    }
+
+    .pm-row.nowrap-bar .desk-btn {
+      flex: none;
+      white-space: nowrap;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    @media (max-width: 480px) {
+      .pm-row.nowrap-bar {
+        flex-wrap: wrap;
+      }
+
+      .pm-row.nowrap-bar select {
+        flex: 1 0 100% !important;
+      }
+    }
+
+    .pm-step-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #efe8de;
+    }
+
+    .pm-step-foot .sp {
+      flex: 1;
     }
 
     .pm-row:last-child {
@@ -3818,28 +4050,361 @@
       gap: 6px;
     }
 
-    .pm-presets {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
-      gap: 6px;
+    .pm-subhead:first-child {
+      margin-top: 2px;
+    }
+
+    .pm-preset-cats {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
       margin-bottom: 8px;
     }
 
-    .pm-preset-btn {
-      padding: 7px 8px;
-      border-radius: 10px;
+    .pm-pcat-btn {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1.5px solid #dfd7cc;
+      background: #fff;
+      color: #4a444d;
+      font: 700 11.5px/1.2 'Manrope', sans-serif;
+      cursor: pointer;
+      transition: all .15s ease;
+    }
+
+    .pm-pcat-btn:hover {
+      border-color: #C93D27;
+      color: #1C1A1E;
+    }
+
+    .pm-pcat-btn.active {
+      background: #1C1A1E;
+      border-color: #1C1A1E;
+      color: #fff;
+    }
+
+    .pm-presets {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 520px) {
+      .pm-presets {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .pm-presets.pulse {
+      animation: pmPulseHint 0.9s ease;
+    }
+
+    @keyframes pmPulseHint {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(201, 61, 39, 0); }
+      40% { box-shadow: 0 0 0 4px rgba(201, 61, 39, 0.22); border-radius: 12px; }
+    }
+
+    .pm-preset-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 9px;
+      border-radius: 12px;
       border: 1.5px solid #e6dfd5;
       background: #fffcf7;
       color: #1C1A1E;
-      font: 700 11.5px/1.25 'Manrope', sans-serif;
       text-align: left;
       cursor: pointer;
-      transition: border-color .15s, background .15s;
+      transition: border-color .15s, background .15s, transform .12s, box-shadow .15s;
+      min-width: 0;
     }
 
-    .pm-preset-btn:hover {
+    .pm-preset-card:hover,
+    .pm-preset-card:focus-visible,
+    .pm-preset-card.is-hovering {
       border-color: #C93D27;
       background: #fff5f2;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(201, 61, 39, .12);
+      outline: none;
+    }
+
+    .pm-preset-thumb {
+      width: 44px;
+      height: 52px;
+      flex: none;
+      border-radius: 6px;
+      background: #efe9df;
+      border: 1px solid #e0d6c8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .pm-preset-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .pm-preset-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .pm-preset-info b {
+      font: 700 12px/1.25 'Manrope', sans-serif;
+      color: #1C1A1E;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .pm-preset-info small {
+      font: 600 11px/1.2 'Manrope', sans-serif;
+      color: #6B666C;
+    }
+
+    .pm-action-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1.5px solid #ebe3d7;
+      background: #fcfaf6;
+      margin-top: 8px;
+    }
+
+    .pm-action-card-txt {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+      flex: 1 1 160px;
+    }
+
+    .pm-action-card-txt b {
+      font: 700 12.5px/1.25 'Manrope', sans-serif;
+      color: #1C1A1E;
+    }
+
+    .pm-action-card-txt small {
+      font: 500 11.5px/1.3 'Manrope', sans-serif;
+      color: #6B666C;
+    }
+
+    .pm-stage-wrap.is-hover-preview {
+      box-shadow: inset 0 0 0 2px #C93D27;
+    }
+
+    .pm-stage-hover-pill {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 12;
+      background: rgba(201, 61, 39, 0.94);
+      color: #fff;
+      font: 700 11.5px/1.2 'Manrope', sans-serif;
+      padding: 5px 12px;
+      border-radius: 999px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .3);
+      pointer-events: none;
+      white-space: nowrap;
+      max-width: calc(100% - 24px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pm-stage-hover-pill[hidden] {
+      display: none !important;
+    }
+
+    .pm-preset-hover-pop {
+      position: fixed;
+      z-index: 9800;
+      width: 190px;
+      padding: 8px;
+      border-radius: 12px;
+      background: #1C1A1E;
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, .18);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, .35);
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .pm-preset-hover-pop[hidden] {
+      display: none !important;
+    }
+
+    .pm-preset-hover-pop img {
+      width: 100%;
+      max-height: 185px;
+      object-fit: contain;
+      border-radius: 6px;
+      background: #2c2832;
+      display: block;
+    }
+
+    .pm-preset-hover-pop b {
+      font: 700 12px/1.2 'Manrope', sans-serif;
+      color: #fff;
+    }
+
+    .pm-preset-hover-pop small {
+      font: 600 10.5px/1.2 'Manrope', sans-serif;
+      color: #e4d9cc;
+    }
+
+    /* Template Maker Step-by-Step Guide Modal */
+    .pm-modal-ov {
+      position: fixed;
+      inset: 0;
+      z-index: 9700;
+      background: rgba(28, 26, 30, .58);
+      -webkit-backdrop-filter: blur(3px);
+      backdrop-filter: blur(3px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .pm-modal-ov[hidden] {
+      display: none !important;
+    }
+
+    .pm-modal-card {
+      width: min(560px, 100%);
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border-radius: 18px;
+      border: 1.5px solid #e6dfd5;
+      box-shadow: 0 22px 60px rgba(0, 0, 0, .32);
+      overflow: hidden;
+    }
+
+    .pm-modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid #efe8de;
+      background: #faf6f0;
+    }
+
+    .pm-modal-head h3 {
+      margin: 0;
+      font: 800 16px/1.25 'Manrope', sans-serif;
+      color: #1C1A1E;
+    }
+
+    .pm-modal-head p {
+      margin: 2px 0 0;
+      font: 600 12px/1.35 'Manrope', sans-serif;
+      color: #6B666C;
+    }
+
+    .pm-modal-close {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      border: 1.5px solid #dfd7cc;
+      background: #fff;
+      color: #1C1A1E;
+      font: 700 14px/1 'Manrope', sans-serif;
+      cursor: pointer;
+      flex: none;
+    }
+
+    .pm-modal-close:hover {
+      border-color: #C93D27;
+      color: #C93D27;
+    }
+
+    .pm-guide-steps {
+      padding: 14px 18px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .pm-guide-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 11px 13px;
+      border-radius: 12px;
+      border: 1.5px solid #ebe3d7;
+      background: #fffcf8;
+    }
+
+    .pm-guide-step-num {
+      flex: none;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: #C93D27;
+      color: #fff;
+      font: 800 11px/1.3 'Manrope', sans-serif;
+      white-space: nowrap;
+      margin-top: 1px;
+    }
+
+    .pm-guide-step-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .pm-guide-step-body b {
+      display: block;
+      font: 800 13px/1.3 'Manrope', sans-serif;
+      color: #1C1A1E;
+      margin-bottom: 3px;
+    }
+
+    .pm-guide-step-body p {
+      margin: 0;
+      font: 500 12px/1.45 'Manrope', sans-serif;
+      color: #554e5c;
+    }
+
+    .pm-guide-jump {
+      margin-top: 7px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #dfd7cc;
+      background: #fff;
+      color: #C93D27;
+      font: 700 11px/1.2 'Manrope', sans-serif;
+      cursor: pointer;
+    }
+
+    .pm-guide-jump:hover {
+      border-color: #C93D27;
+      background: #fff5f2;
+    }
+
+    .pm-modal-foot {
+      padding: 12px 18px;
+      border-top: 1px solid #efe8de;
+      background: #faf6f0;
+      display: flex;
+      justify-content: flex-end;
     }
 
     .pm-swatches {
@@ -4162,12 +4727,28 @@
       display: flex;
       gap: 6px;
       align-items: center;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
     }
 
     .desk-tpl-picker-row select {
-      flex: 1 1 200px;
+      flex: 1 1 0;
       min-width: 0;
+    }
+
+    .desk-tpl-picker-row .desk-btn {
+      flex: none;
+      white-space: nowrap;
+      padding: 7px 11px;
+      font-size: 12px;
+    }
+
+    @media (max-width: 560px) {
+      .desk-tpl-picker-row {
+        flex-wrap: wrap;
+      }
+      .desk-tpl-picker-row select {
+        flex: 1 0 100%;
+      }
     }
 
     /* Photoman Queue: uncropped true-aspect thumbnails, orientation badges & filter pills */
@@ -4306,6 +4887,16 @@
       border-radius: 12px;
       padding: 10px 12px;
       margin-bottom: 2px;
+    }
+
+    .desk-fav-sec.is-empty {
+      background: transparent;
+      border: 1px dashed #e3d9c8;
+      padding: 7px 10px;
+    }
+
+    .desk-fav-sec.is-empty .desk-fav-sec-head {
+      display: none;
     }
 
     .desk-fav-sec-head {
@@ -12608,6 +13199,13 @@
       cursor: pointer;
     }
 
+    .menu[hidden],
+    .menu button[hidden],
+    .menu-sep[hidden],
+    #setupMenuTools[hidden] {
+      display: none;
+    }
+
     .menu .menu-badge {
       padding: 1px 7px;
       border-radius: 999px;
@@ -12662,7 +13260,59 @@
     }
     .lanst-prlist {
       display: grid;
+      gap: 7px;
+    }
+    .lanst-head,
+    .lanst-row {
+      display: flex;
+      align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
+    }
+    .lanst-head {
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .lanst-badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 700;
+      background: #efe7dd;
+      color: var(--ink-dim);
+    }
+    .lanst-badge.ok {
+      background: #e6f4f1;
+      color: #1f6f62;
+    }
+    .lanst-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+      padding: 8px 10px;
+      background: #faf8f4;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    .lanst-inp {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 6px 10px;
+      font: 13px 'Manrope', sans-serif;
+      background: #fff;
+      color: var(--ink);
+    }
+    .lanst-inp.grow {
+      flex: 1;
+      min-width: 160px;
+    }
+    .desk-btn.active {
+      background: #c93d27;
+      border-color: #c93d27;
+      color: #fff;
     }
     .lanst-prrow {
       display: flex;
@@ -12674,6 +13324,73 @@
       border: 1px solid var(--line);
       border-radius: 10px;
       background: #faf8f4;
+    }
+    .lanst-prrow.dim {
+      padding: 7px 12px;
+      background: #fff;
+      opacity: .84;
+    }
+    .lanst-chk {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      flex: 1;
+      min-width: 170px;
+    }
+    .lanst-chk input {
+      width: 17px;
+      height: 17px;
+      accent-color: #c93d27;
+      cursor: pointer;
+      flex: none;
+    }
+    .lanst-sizes {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+    }
+    .lanst-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #efe7dd;
+      font: 700 12px 'Manrope', sans-serif;
+    }
+    .lanst-chip button {
+      border: 0;
+      background: none;
+      padding: 0 2px;
+      font: 800 14px inherit;
+      line-height: 1;
+      color: var(--ink-dim);
+      cursor: pointer;
+    }
+    .lanst-chip button:hover {
+      color: #c93d27;
+    }
+    .lanst-addbox {
+      margin-top: 8px;
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #faf8f4;
+      display: grid;
+      gap: 9px;
+    }
+    .lanst-addbox[hidden] {
+      display: none;
+    }
+    .lanst-subttl {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--ink-dim);
+      margin-bottom: 4px;
     }
     .lanst-jobs {
       width: 100%;
@@ -15752,7 +16469,7 @@
 
     .vprint-preview-wrap canvas {
       display: block;
-      max-width: 190px;
+      max-width: min(100%, 240px);
       width: auto;
       height: auto;
       max-height: 210px;
@@ -17263,8 +17980,7 @@
       /* Shots preview: floating vertical stack on the right side, layered top-to-bottom */
       body.stage-full .app-shell .film-track,
       body.stage-review .app-shell .film-track,
-      body.in-session .app-shell.capturing .film-track,
-      body.in-session .app-shell .film-track {
+      body.in-session .app-shell.capturing .film-track {
         position: fixed !important;
         top: 50% !important;
         transform: translateY(-50%) !important;
@@ -17290,8 +18006,7 @@
 
       body.stage-full .app-shell .film-track .film-frame,
       body.stage-review .app-shell .film-track .film-frame,
-      body.in-session .app-shell.capturing .film-track .film-frame,
-      body.in-session .app-shell .film-track .film-frame {
+      body.in-session .app-shell.capturing .film-track .film-frame {
         width: clamp(54px, 12vw, 84px) !important;
         height: auto !important;
         aspect-ratio: var(--box-aspect, 0.8) !important;
@@ -17373,7 +18088,6 @@
         max-height: calc(var(--vh, 100vh) - 160px) !important;
       }
 
-      body.welcome-on.in-session:not(.shooting) .stage-frame,
       body.stage-full.welcome-on .app-shell .stage-frame {
         max-height: 100% !important;
         height: 100% !important;
@@ -24135,8 +24849,6 @@
                 <button type="button" data-setup-tool="reqFab" hidden><span>Print requests</span><span class="menu-badge" hidden></span></button>
                 <button type="button" data-setup-tool="studioFab" hidden><span>Arrange &amp; Print</span><span class="menu-badge" hidden></span></button>
                 <button type="button" data-setup-tool="vgFab" hidden><span>Video guestbook</span><span class="menu-badge" hidden></span></button>
-                <button type="button" data-setup-tool="galleryFab" hidden><span>All photos</span><span class="menu-badge" hidden></span></button>
-                <button type="button" data-setup-tool="backupFab" hidden><span>Backup folder</span><span class="menu-badge" hidden></span></button>
                 <button type="button" data-setup-tool="wifiFab" hidden><span>Booth Wi-Fi</span><span class="menu-badge" hidden></span></button>
                 <button type="button" data-setup-tool="roveBridgeFab" hidden><span>Roving DSLR</span><span class="menu-badge" hidden></span></button>
                 <button type="button" data-setup-tool="spinArmFab" hidden><span>360 Arm Cam</span><span class="menu-badge" hidden></span></button>
@@ -26752,11 +27464,61 @@
         </div>
         <div class="lanst-msg" id="stationDeskMsg" role="status" hidden></div>
         <div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
-            <b>Installed Printers on This Laptop</b>
-            <button type="button" class="desk-btn" id="stationDeskRefBtn">Refresh Printers</button>
+          <div class="lanst-head">
+            <div class="lanst-row">
+              <b>Printers for Print Station</b>
+              <span class="lanst-badge" id="stationDeskPrCount">Loading&hellip;</span>
+            </div>
+            <div class="lanst-row">
+              <button type="button" class="desk-btn" id="stationDeskHideBtn">Hide unused</button>
+              <button type="button" class="desk-btn" id="stationDeskRefBtn">Refresh Printers</button>
+            </div>
+          </div>
+          <div class="lanst-toolbar" id="stationDeskPrTools">
+            <input type="search" class="lanst-inp grow" id="stationDeskPrSearch" placeholder="Search printers&hellip; (e.g. Mitsubishi, Epson, DNP)" autocomplete="off">
+            <button type="button" class="desk-btn" id="stationDeskUntickBtn">Untick all</button>
+            <button type="button" class="desk-btn" id="stationDeskTickBtn">Tick all</button>
           </div>
           <div class="lanst-prlist" id="stationDeskPrinters">Loading&hellip;</div>
+          <div class="lanst-sizes">
+            <div class="lanst-head" style="margin-bottom:4px;">
+              <div class="lanst-row">
+                <b style="font-size:13px;">Test paper sizes</b>
+                <div class="lanst-row" id="stationDeskSizeChips"></div>
+              </div>
+              <div class="lanst-row">
+                <button type="button" class="desk-btn" id="stationDeskResetSizesBtn" hidden>Reset defaults</button>
+                <button type="button" class="desk-btn" id="stationDeskAddSizeBtn">+ Add paper size</button>
+              </div>
+            </div>
+            <div class="lanst-addbox" id="stationDeskAddSizeBox" hidden>
+              <div>
+                <div class="lanst-subttl">Quick photo &amp; booth presets</div>
+                <div class="lanst-row" id="stationDeskPresetRow"></div>
+              </div>
+              <div>
+                <div class="lanst-subttl">Or pick directly from a printer&rsquo;s driver</div>
+                <div class="lanst-row">
+                  <select class="lanst-inp grow" id="stationDeskDrvPrinter" aria-label="Printer for driver sizes"></select>
+                  <button type="button" class="desk-btn" id="stationDeskLoadDrvBtn">Load driver sizes</button>
+                  <select class="lanst-inp grow" id="stationDeskDrvSize" aria-label="Driver paper size" hidden></select>
+                  <button type="button" class="desk-btn" id="stationDeskAddDrvBtn" hidden>Add size</button>
+                </div>
+              </div>
+              <div>
+                <div class="lanst-subttl">Or enter any custom size</div>
+                <div class="lanst-row">
+                  <input type="text" class="lanst-inp" id="stationDeskCsLabel" placeholder="Name (e.g. 5&times;7)" maxlength="32" style="width:140px;">
+                  <input type="number" class="lanst-inp" id="stationDeskCsW" min="0.5" max="1220" step="0.1" placeholder="W" style="width:74px;">
+                  <span>&times;</span>
+                  <input type="number" class="lanst-inp" id="stationDeskCsH" min="0.5" max="1220" step="0.1" placeholder="H" style="width:74px;">
+                  <select class="lanst-inp" id="stationDeskCsU" aria-label="Unit"><option value="in">in</option><option value="mm">mm</option></select>
+                  <label style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;"><input type="checkbox" id="stationDeskCsTwoUp"> 2-up cut</label>
+                  <button type="button" class="desk-btn active" id="stationDeskCsAddBtn">Add</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div>
           <b>Incoming Prints from iPad / Tablet</b>
@@ -26765,7 +27527,7 @@
             <tbody id="stationDeskJobs"><tr><td colspan="5" style="color:var(--ink-dim);">Waiting for prints&hellip;</td></tr></tbody>
           </table>
         </div>
-        <p class="panel-hint" style="margin:0;">On your <b>iPad App</b> (Setup &rarr; Printer), choose <b>4&times;6</b> or <b>2&times;6 strips</b>, switch ON <b>Laptop Print Station (Wi-Fi)</b>, tap <b>Find Laptop on Wi-Fi</b>, enter this <b>6-Digit PIN</b>, and pick your printer. Camera preview is paused while this Print Station screen stays open to save laptop power.</p>
+        <p class="panel-hint" style="margin:0;">On your <b>iPad / Android App</b> (Setup &rarr; Printer), choose your paper size (<b>4&times;6</b>, <b>2&times;6 strips</b>, <b>5&times;7</b>, <b>6&times;8</b>, <b>A4</b>, or <b>More paper sizes &rarr; Own size</b>), switch ON <b>Laptop Print Station (Wi-Fi)</b>, tap <b>Find Laptop on Wi-Fi</b>, enter this <b>6-Digit PIN</b>, and pick your printer. Camera preview pauses while this screen stays open to save laptop power.</p>
       </div>
     </div>
   </div>
@@ -26872,7 +27634,7 @@
           type="button" class="cap-go alt" id="vgSecond" hidden>Retake</button></div>
     </div>
   </div>
-  <div class="desk-studio-ov" id="deskOverlay" hidden role="dialog" aria-label="Photographer desk">
+  <div class="desk-studio-ov" id="deskOverlay" data-desk-tab="deskSecQueue" hidden role="dialog" aria-label="Photographer desk">
     <header class="desk-studio-head">
       <div class="desk-head-left">
         <button type="button" class="spin-back-btn" id="deskClose" title="Return to booth">
@@ -26884,29 +27646,29 @@
           <span id="deskCloseLabel">Back to Booth</span>
         </button>
         <div class="desk-head-title-wrap">
-          <h2 class="desk-head-title">📷 Photographer Studio &amp; Desk <span class="desk-sync-pill" id="deskSyncPill">Synced with Booth</span></h2>
-          <span class="desk-head-sub" id="deskHeadSub">Live Template Preview, Auto-Frame &amp; Roving DSLR Desk</span>
+          <h2 class="desk-head-title">📷 Photographer Desk <span class="desk-sync-pill" id="deskSyncPill">Synced</span></h2>
+          <span class="desk-head-sub" id="deskHeadSub">Live Template Preview &amp; Roving DSLR Desk</span>
         </div>
       </div>
       <div class="spin-head-nav" id="deskHeadTabs">
         <button type="button" class="spin-tab-btn active" data-tab="deskSecQueue">📥 Queue</button>
-        <button type="button" class="spin-tab-btn" data-tab="deskSecTemplate">🖼️ Template &amp; Auto</button>
+        <button type="button" class="spin-tab-btn" data-tab="deskSecTemplate">🖼️ Template &amp; Flow</button>
         <button type="button" class="spin-tab-btn" id="deskMakerTabBtn" data-tab="deskSecMaker">🎨 Template Maker</button>
         <button type="button" class="spin-tab-btn" data-tab="deskSecConnect">🔌 Connect &amp; QR</button>
         <button type="button" class="spin-tab-btn desk-preview-tab-btn" data-tab="deskStudioPreview">👁️ Live Preview</button>
       </div>
       <div class="desk-head-right">
         <button type="button" class="desk-btn" id="deskGuideBtn" title="Show or hide quick 3-step guide">? Guide</button>
-        <button type="button" class="desk-btn" id="deskPopBtn" title="Open Photographer Studio in its own window or browser tab">↗ Open Window / Tab</button>
+        <button type="button" class="desk-btn" id="deskPopBtn" title="Open Photographer Studio in its own window or browser tab">↗ Pop Out</button>
         <button type="button" class="desk-btn" id="deskDockBackBtn" hidden title="Return focus to the main photobooth">🔗 Focus Booth</button>
       </div>
     </header>
 
     <div class="desk-guide-strip" id="deskGuideStrip" hidden>
       <div class="desk-guide-inner">
-        <div class="desk-guide-step"><span class="desk-guide-num">1</span><div><b>Connect Camera or Phone</b>Scan the QR with the photographer&rsquo;s phone / Roving DSLR Bridge, choose a watched folder, or drop photos below.</div></div>
-        <div class="desk-guide-step"><span class="desk-guide-num">2</span><div><b>Pick Template &amp; Preview Live</b>Choose your Photoman template &amp; spot fill mode. Click photos in order — the live preview updates on the right before printing.</div></div>
-        <div class="desk-guide-step"><span class="desk-guide-num">3</span><div><b>Print + Share Guest QR</b>Click <b>Make print + QR</b> (or <b>Print original</b>) to print and show the Guest QR right here without interrupting the booth.</div></div>
+        <div class="desk-guide-step"><span class="desk-guide-num">1</span><div><b>Add or Stream Photos</b>Drop photos into Queue, choose a watched folder, or scan the QR in <b>Connect &amp; QR</b>.</div></div>
+        <div class="desk-guide-step"><span class="desk-guide-num">2</span><div><b>Pick Template &amp; Preview</b>Choose your template in <b>Template &amp; Flow</b> or build one in <b>Template Maker</b>. Tap photos to preview live.</div></div>
+        <div class="desk-guide-step"><span class="desk-guide-num">3</span><div><b>Print + Share Guest QR</b>Click <b>Make print + QR</b> (or <b>Print original</b>) to print and show the Guest QR right here.</div></div>
         <button type="button" class="desk-btn" id="deskGuideDismiss" style="padding:5px 12px;font-size:12px;">Got it</button>
       </div>
     </div>
@@ -26917,7 +27679,17 @@
         <div class="desk-panel-card" id="deskSecQueue">
           <div class="spin-card-title">
             <span>📥 Photographer Queue</span>
-            <span class="spin-pill" id="deskQueueBadge">0 photos</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <button type="button" class="desk-btn" id="deskQueueAddBtn" style="padding:4px 10px;font-size:11.5px;">+ Add photos</button>
+              <span class="spin-pill" id="deskQueueBadge">0 photos</span>
+            </div>
+          </div>
+          <div class="desk-queue-bar" id="deskQueueQuickBar">
+            <div class="desk-queue-bar-left">
+              <button type="button" class="desk-qbar-pill" id="deskQueueTplChip" title="Switch or configure Photoman template">🖼️ Template: <b id="deskQueueTplName">Solo</b></button>
+              <button type="button" class="desk-qbar-pill" id="deskQueueAutoChip" title="Toggle Auto-frame for incoming photos">⚡ Auto: <b id="deskQueueAutoState">OFF</b></button>
+            </div>
+            <button type="button" class="desk-qbar-pill" id="deskQueueNewTplChip" title="Design a custom template or import a PNG frame">✨ New Template</button>
           </div>
           <div class="desk-fav-bar" id="deskQueueFavBar" hidden>
             <span class="desk-fav-lbl">⭐ Quick switch</span>
@@ -26936,7 +27708,7 @@
           <div class="desk-card-foot">
             <button type="button" class="desk-btn" id="deskClear">Clear list</button>
             <span class="sp"></span>
-            <span style="font-size:11.5px;color:#6B666C;">Tap photo(s) in order to assign spots</span>
+            <span style="font-size:11.5px;color:#6B666C;">Drag &amp; drop photos anywhere here · tap in order to fill spots</span>
           </div>
         </div>
 
@@ -26947,48 +27719,68 @@
             <span class="spin-pill active" id="deskTplBadge">Solo</span>
           </div>
           <div class="desk-watch desk-tpl" id="deskSoloRow" style="margin-top:0;">
-            <div class="desk-fav-sec" id="deskFavSec">
+            <div class="desk-fav-sec is-empty" id="deskFavSec">
               <div class="desk-fav-sec-head">
                 <b>⭐ Favorite Templates</b>
                 <span>1-tap switch between your go-to templates</span>
               </div>
               <div class="desk-fav-chips" id="deskFavList"></div>
-              <div class="desk-fav-empty" id="deskFavEmpty">Pin your go-to templates (e.g. Portrait Polaroid &amp; 4R Landscape) with <b>☆ Favorite</b> below to switch between them in 1 tap.</div>
+              <div class="desk-fav-empty" id="deskFavEmpty">⭐ Tap <b>☆ Pin</b> beside a template to pin go-to layouts for 1-tap switching.</div>
             </div>
-            <div class="desk-tpl-l"><span>Photoman template</span>
+            <div class="desk-tpl-l"><span>Active template</span>
               <div class="desk-tpl-picker-row">
-                <select id="deskTpl" title="The layout or frame the photographer's prints use. It never changes the booth's own layout."></select>
-                <button type="button" class="desk-btn desk-fav-toggle" id="deskTplFavBtn" title="Add or remove this template from Favorites for 1-tap switching">☆ Favorite</button>
+                <select id="deskTpl" title="The layout or custom template Photoman prints use. Never changes the main booth layout."></select>
+                <button type="button" class="desk-btn desk-fav-toggle" id="deskTplFavBtn" title="Pin or unpin this template in Favorites">☆ Pin</button>
                 <button type="button" class="desk-btn" id="deskTplEditBtn" hidden title="Edit this custom Photoman template">✎ Edit</button>
-                <button type="button" class="desk-btn" id="deskTplNewBtn" title="Build your own Photoman template (4R, 2×6 strip, text, logo, or PNG frame)">✨ New Template</button>
+                <button type="button" class="desk-btn" id="deskTplNewBtn" title="Open Template Maker to build a template or import a PNG frame">+ New</button>
               </div>
             </div>
-            <label class="desk-tpl-l" for="deskFill" id="deskFillWrap" hidden><span>When the template has several photo spots</span>
+            <label class="desk-tpl-l" for="deskFill" id="deskFillWrap" hidden><span>Multi-spot fill mode</span>
               <select id="deskFill">
                 <option value="multi">Separate photos (tap one photo per spot)</option>
                 <option value="repeat1">One photo fills every spot</option>
               </select></label>
-            <label class="desk-tpl-chk" for="deskOrientMode" style="flex:1 0 100%;padding-bottom:2px;" title="Automatically picks your Portrait template for vertical photos and your Landscape template for horizontal photos (works in both Manual and Auto-frame)."><input type="checkbox" id="deskOrientMode"> <span>📐 Auto-switch template by orientation (Portrait / Landscape)</span></label>
-            <div class="desk-orient-panel" id="deskOrientPanel" hidden>
-              <div class="desk-orient-col">
-                <span class="desk-orient-tag portrait">▯ Portrait photos (solo / vertical)</span>
-                <select id="deskTplPort" title="Template used automatically for portrait (vertical) photos"></select>
-                <select id="deskFillPort" hidden title="How portrait photos fill multi-spot portrait templates">
-                  <option value="multi">Separate photos (one per spot)</option>
-                  <option value="repeat1">One photo fills every spot</option>
-                </select>
+            <div class="desk-opt-list">
+              <label class="desk-opt-row" for="deskOrientMode">
+                <input type="checkbox" id="deskOrientMode">
+                <span class="desk-opt-txt">
+                  <b>📐 Auto-switch by orientation (Portrait / Landscape)</b>
+                  <small>Automatically uses your Portrait template for vertical shots and Landscape template for horizontal shots.</small>
+                </span>
+              </label>
+              <div class="desk-orient-panel" id="deskOrientPanel" hidden>
+                <div class="desk-orient-col">
+                  <span class="desk-orient-tag portrait">▯ Portrait photos (vertical)</span>
+                  <select id="deskTplPort" title="Template used automatically for portrait (vertical) photos"></select>
+                  <select id="deskFillPort" hidden title="How portrait photos fill multi-spot portrait templates">
+                    <option value="multi">Separate photos (one per spot)</option>
+                    <option value="repeat1">One photo fills every spot</option>
+                  </select>
+                </div>
+                <div class="desk-orient-col">
+                  <span class="desk-orient-tag landscape">▭ Landscape photos (horizontal)</span>
+                  <select id="deskTplLand" title="Template used automatically for landscape (horizontal) photos"></select>
+                  <select id="deskFillLand" hidden title="How landscape photos fill multi-spot landscape templates">
+                    <option value="multi">Separate photos (one per spot)</option>
+                    <option value="repeat1">One photo fills every spot</option>
+                  </select>
+                </div>
               </div>
-              <div class="desk-orient-col">
-                <span class="desk-orient-tag landscape">▭ Landscape photos (group / horizontal)</span>
-                <select id="deskTplLand" title="Template used automatically for landscape (horizontal) photos"></select>
-                <select id="deskFillLand" hidden title="How landscape photos fill multi-spot landscape templates">
-                  <option value="multi">Separate photos (one per spot)</option>
-                  <option value="repeat1">One photo fills every spot</option>
-                </select>
-              </div>
+              <label class="desk-opt-row" for="deskAuto">
+                <input type="checkbox" id="deskAuto">
+                <span class="desk-opt-txt">
+                  <b>⚡ Auto-frame new photos</b>
+                  <small>Frames incoming camera / phone photos automatically and prepares the Guest QR.</small>
+                </span>
+              </label>
+              <label class="desk-opt-row" for="deskShowBooth">
+                <input type="checkbox" id="deskShowBooth">
+                <span class="desk-opt-txt">
+                  <b>📺 Also show result on Booth Screen</b>
+                  <small>When idle, finished Photoman prints also appear on the main guest booth display.</small>
+                </span>
+              </label>
             </div>
-            <label class="desk-tpl-chk" for="deskAuto" title="Frames new camera photos by itself and shows the guest's QR. Photos already in the list are left alone."><input type="checkbox" id="deskAuto"> <span>&#9889; Auto-frame new photos</span></label>
-            <label class="desk-tpl-chk" for="deskShowBooth" title="When on and the booth is idle, finished Photoman prints also appear on the main booth / guest screen."><input type="checkbox" id="deskShowBooth"> <span>📺 Also show result on Booth Screen</span></label>
             <div class="desk-tpl-note" id="deskTplNote"></div>
           </div>
         </div>
@@ -27029,21 +27821,24 @@
         <!-- SECTION 4: PHOTOMAN TEMPLATE MAKER -->
         <div class="desk-panel-card" id="deskSecMaker" hidden>
           <div class="spin-card-title">
-            <span>🎨 Photoman Template Maker</span>
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+              <span>🎨 Photoman Template Maker</span>
+              <button type="button" class="pb-guide-q" id="pmMakerGuideBtn" title="How to make a template (Step-by-step guide)" aria-label="How to make a Photoman template">?</button>
+            </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-              <button type="button" class="desk-btn desk-fav-toggle" id="pmFavBtn" style="padding:5px 10px;font-size:12px;" title="Pin or unpin this template in Favorites for 1-tap switching">☆ Favorite</button>
+              <button type="button" class="desk-btn desk-fav-toggle" id="pmFavBtn" style="padding:5px 10px;font-size:12px;" title="Pin or unpin this template in Favorites for 1-tap switching">☆ Pin</button>
               <button type="button" class="desk-btn primary" id="pmUseBtn" style="padding:5px 12px;font-size:12px;">✓ Use in Photoman</button>
             </div>
           </div>
-          <div class="pm-row">
-            <select class="pm-sel" id="pmTplSelect" style="flex:1 1 160px;min-width:0;" title="Choose an existing Photoman custom template to edit"></select>
-            <button type="button" class="desk-btn" id="pmNewBtn" title="Create a blank or preset template">+ New</button>
+
+          <div class="pm-row nowrap-bar">
+            <select class="pm-sel" id="pmTplSelect" style="flex:1 1 0;min-width:0;" title="Choose an existing Photoman custom template to edit"></select>
+            <button type="button" class="desk-btn" id="pmNewBtn" title="Choose a starter preset or import a PNG frame">+ New</button>
             <button type="button" class="desk-btn" id="pmDupBtn" title="Duplicate this template">Copy</button>
-            <button type="button" class="desk-btn" id="pmMakePairBtn" title="Create a matching companion template (2-up Polaroid ↔ 4R Landscape) using this same theme, background, fonts &amp; stickers">🔄 Matching Pair</button>
-            <button type="button" class="desk-btn" id="pmDelBtn" title="Delete this template">Delete</button>
+            <button type="button" class="desk-btn" id="pmDelBtn" title="Delete this template" style="color:#b42318;">Delete</button>
           </div>
           <div class="pm-row">
-            <input type="text" class="pm-in" id="pmNameInput" placeholder="Template name (e.g. Wedding 4R Polaroid)" style="flex:1 1 180px;" maxlength="60">
+            <input type="text" class="pm-in" id="pmNameInput" placeholder="Template name (e.g. Wedding 4R Polaroid)" style="flex:1 1 170px;min-width:0;" maxlength="60">
             <select class="pm-sel" id="pmSizePreset" title="Print paper / aspect ratio of this Photoman template">
               <option value="1200x1800">4R Portrait (4×6)</option>
               <option value="1800x1200">4R Landscape (6×4)</option>
@@ -27054,144 +27849,194 @@
             </select>
           </div>
 
-          <div class="pm-subhead"><span>Starter Presets &amp; PNG Import (Independent of Booth)</span></div>
-          <div class="pm-presets" id="pmPresets">
-            <button type="button" class="pm-preset-btn" data-preset="polaroid2up">📸 4R 2-up Polaroid</button>
-            <button type="button" class="pm-preset-btn" data-preset="land4r">🖼️ 4R Landscape 1-Spot</button>
-            <button type="button" class="pm-preset-btn" data-preset="polaroid2upFloral">💐 2-up Floral Polaroid</button>
-            <button type="button" class="pm-preset-btn" data-preset="land4rFloral">💐 Landscape Floral</button>
-            <button type="button" class="pm-preset-btn" data-preset="polaroid">📷 4R Single Polaroid</button>
-            <button type="button" class="pm-preset-btn" data-preset="hero4r">📄 4R Portrait Hero</button>
-            <button type="button" class="pm-preset-btn" data-preset="film2">🎞️ 4R 2-Shot Film</button>
-            <button type="button" class="pm-preset-btn" data-preset="hero3">🌟 4R Hero + 2</button>
-            <button type="button" class="pm-preset-btn" data-preset="grid4">🔲 4R 2×2 Grid</button>
-            <button type="button" class="pm-preset-btn" data-preset="strip3">🎞️ 2×6 3-Shot Strip</button>
-            <button type="button" class="pm-preset-btn" data-preset="square1">⬜ Square 1:1</button>
-            <button type="button" class="pm-preset-btn" data-preset="png">⬆️ Import PNG Frame</button>
+          <div class="pm-step-tabs" id="pmStepTabs" role="tablist" aria-label="Template Maker steps">
+            <button type="button" class="pm-step-tab active" data-pmtab="pmTabStart">1. Presets &amp; PNG</button>
+            <button type="button" class="pm-step-tab" data-pmtab="pmTabDesign">2. Background &amp; Decor</button>
+            <button type="button" class="pm-step-tab" data-pmtab="pmTabLayers">3. Spots, Text &amp; Logo</button>
           </div>
 
-          <div class="pm-subhead"><span>Background, Pattern &amp; Frame Decor</span></div>
-          <div class="pm-design-grid">
-            <label class="pm-field"><span>Background Style</span>
-              <select class="pm-sel" id="pmBgPreset">
-                <option value="none">Plain Colour</option>
-                <option value="cream">Cream Speckle</option>
-                <option value="gold">Gold Glitter</option>
-                <option value="sky">Pastel Sky</option>
-                <option value="stars">Black &amp; Gold</option>
-                <option value="maroon">Maroon &amp; Gold</option>
-                <option value="marble">White Marble</option>
-                <option value="blush">Blush Stripes</option>
-                <option value="sage">Sage Botanical</option>
-                <option value="chevron">Gold Chevron</option>
-                <option value="deco">Art Deco Navy</option>
-                <option value="blackgold">Black Gold Foil</option>
-                <option value="goldconfetti">Gold Confetti</option>
-                <option value="party">Party Pastel</option>
-                <option value="sunset">Sunset Glow</option>
-                <option value="neon">Neon Grid</option>
-                <option value="polka">Polka Dots</option>
-                <option value="gingham">Gingham Check</option>
-                <option value="midnight">Midnight Stars</option>
-                <option value="rustic">Rustic Wood</option>
-                <option value="angel">Angel Sky</option>
-                <option value="pine">Pine Evergreen</option>
-                <option value="diploma">Classic Cream</option>
-                <option value="grad">Navy Grad</option>
-              </select>
-            </label>
-            <label class="pm-field"><span>Sprinkles</span>
-              <select class="pm-sel" id="pmBgElements">
-                <option value="auto">Auto (style default)</option>
-                <option value="none">None</option>
-                <option value="florals">Florals</option>
-                <option value="glitter">Glitter</option>
-                <option value="goldstars">Gold stars</option>
-                <option value="hearts">Hearts</option>
-                <option value="confetti">Confetti</option>
-                <option value="bokeh">Bokeh</option>
-                <option value="balloons">Balloons</option>
-                <option value="butterflies">Butterflies</option>
-                <option value="snowflakes">Snowflakes</option>
-                <option value="clouds">Clouds &amp; stars</option>
-                <option value="speckle">Speckle</option>
-              </select>
-            </label>
-            <label class="pm-field"><span>Frame Border / Corners</span>
-              <select class="pm-sel" id="pmFrameDecor">
-                <option value="none">None</option>
-                <option value="double">Classic Double Border</option>
-                <option value="ornate">Ornate Lace / Filigree</option>
-                <option value="floral">Botanical Line Florals</option>
-                <option value="roses">Watercolor Roses</option>
-                <option value="pampas">Boho Pampas</option>
-                <option value="film">Retro Film Edge</option>
-              </select>
-            </label>
-            <label class="pm-field"><span>Metallic Accent</span>
-              <select class="pm-sel" id="pmBgAccent">
-                <option value="gold">Gold</option>
-                <option value="silver">Silver</option>
-                <option value="rosegold">Rose Gold</option>
-                <option value="champagne">Champagne</option>
-                <option value="white">White</option>
-                <option value="black">Black</option>
-              </select>
-            </label>
-          </div>
-          <div class="pm-row">
-            <label style="display:inline-flex;align-items:center;gap:5px;font:700 12px 'Manrope',sans-serif;color:#4a444d;">Bg <input type="color" id="pmBgColor" value="#ffffff" style="width:30px;height:26px;border:1px solid #d9d1c6;border-radius:6px;padding:0;background:#fff;cursor:pointer;"></label>
-            <div class="pm-swatches" id="pmBgSwatches">
-              <button type="button" class="pm-sw" data-col="#ffffff" style="background:#ffffff" title="White"></button>
-              <button type="button" class="pm-sw" data-col="#fbf6ef" style="background:#fbf6ef" title="Warm Cream"></button>
-              <button type="button" class="pm-sw" data-col="#1C1A1E" style="background:#1C1A1E" title="Charcoal"></button>
-              <button type="button" class="pm-sw" data-col="#f7e7eb" style="background:#f7e7eb" title="Blush"></button>
-              <button type="button" class="pm-sw" data-col="#e6efe8" style="background:#e6efe8" title="Sage"></button>
-              <button type="button" class="pm-sw" data-col="#f5ebd6" style="background:#f5ebd6" title="Champagne"></button>
+          <!-- TAB 1: STARTER PRESETS & PNG IMPORT -->
+          <div class="pm-tab-pane" id="pmTabStart">
+            <div class="pm-subhead">
+              <span>Starter Presets</span>
+              <span style="font-weight:600;text-transform:none;letter-spacing:0;color:#8a7f74;">Hover to preview · Click to create</span>
             </div>
-            <label style="display:inline-flex;align-items:center;gap:5px;font:700 12px 'Manrope',sans-serif;color:#4a444d;margin-left:auto;">Decor <input type="color" id="pmDecorColor" value="#8f7a5a" style="width:28px;height:24px;border:1px solid #d9d1c6;border-radius:6px;padding:0;background:#fff;cursor:pointer;"></label>
-          </div>
-          <div class="pm-row">
-            <button type="button" class="desk-btn" id="pmBgUpload">🖼️ Bg image</button>
-            <button type="button" class="desk-btn" id="pmBgClear" hidden>Clear Bg</button>
-            <input type="file" id="pmBgFile" accept="image/jpeg,image/png,image/webp" hidden>
-            <button type="button" class="desk-btn" id="pmOvUpload">🧩 PNG Overlay</button>
-            <button type="button" class="desk-btn" id="pmOvDetect" hidden title="Re-detect photo spots automatically from your PNG overlay">🔍 Detect spots</button>
-            <button type="button" class="desk-btn" id="pmOvClear" hidden>Clear Overlay</button>
-            <input type="file" id="pmOvFile" accept="image/png,image/webp,image/jpeg" hidden>
-          </div>
-          <div class="pm-row" style="gap:14px;">
-            <label class="desk-tpl-chk" for="pmSplitHalf" title="Repeats the border/floral frame cleanly on both the left and right halves of a 4R sheet (for 2-up cuttable Polaroids)."><input type="checkbox" id="pmSplitHalf"> <span>✂️ 2-up half-sheet frame decor</span></label>
-            <label class="desk-tpl-chk" for="pmPunchWhite" id="pmPunchWhiteWrap" hidden><input type="checkbox" id="pmPunchWhite"> <span>Knock out white boxes (Canva PNG)</span></label>
-            <label class="desk-tpl-chk" for="pmFilterChk"><input type="checkbox" id="pmFilterChk"> <span>Use booth colour filter</span></label>
+            <div class="pm-preset-cats" id="pmPresetCats" role="group" aria-label="Starter preset categories">
+              <button type="button" class="pm-pcat-btn active" data-pcat="polaroid">Polaroid &amp; 2-up</button>
+              <button type="button" class="pm-pcat-btn" data-pcat="single">Single 4R</button>
+              <button type="button" class="pm-pcat-btn" data-pcat="collage">Collage &amp; Strip</button>
+              <button type="button" class="pm-pcat-btn" data-pcat="all">All (11)</button>
+            </div>
+            <div class="pm-presets" id="pmPresets"></div>
+
+            <div class="pm-action-card">
+              <div class="pm-action-card-txt">
+                <b>🖼️ Custom Canva / PNG Frame</b>
+                <small>Auto-detects photo windows and knocks out white boxes.</small>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                <button type="button" class="desk-btn" id="pmImportPngBtn" style="padding:6px 11px;font-size:12px;" title="Create a new template from a Canva or PNG frame">⬆️ New from PNG</button>
+                <button type="button" class="desk-btn" id="pmOvUpload" style="padding:6px 11px;font-size:12px;" title="Apply a PNG overlay onto the template you are editing now">🧩 Put on Current</button>
+                <button type="button" class="desk-btn" id="pmOvDetect" hidden style="padding:6px 10px;font-size:12px;" title="Re-detect photo spots automatically from your PNG overlay">🔍 Detect spots</button>
+                <button type="button" class="desk-btn" id="pmOvClear" hidden style="padding:6px 10px;font-size:12px;color:#b42318;">Remove PNG</button>
+              </div>
+              <input type="file" id="pmOvFile" accept="image/png,image/webp,image/jpeg" hidden>
+              <label class="desk-tpl-chk" for="pmPunchWhite" id="pmPunchWhiteWrap" hidden style="flex:1 0 100%;padding:4px 0 0;font-size:12px;"><input type="checkbox" id="pmPunchWhite"> <span>Knock out white boxes (Canva Free PNG)</span></label>
+            </div>
+
+            <div class="pm-action-card">
+              <div class="pm-action-card-txt">
+                <b>🔄 Companion Orientation Pair</b>
+                <small>Builds a matching 4R Landscape ↔ 2-up Polaroid with your current fonts &amp; theme.</small>
+              </div>
+              <button type="button" class="desk-btn" id="pmMakePairBtn" style="padding:6px 11px;font-size:12px;" title="Create a matching companion template (2-up Polaroid ↔ 4R Landscape) using this same theme, background, fonts &amp; stickers">🔄 Make Pair</button>
+            </div>
+            <div class="pm-step-foot">
+              <button type="button" class="desk-btn" data-pmtab-next="pmTabLayers" style="padding:6px 11px;font-size:12px;">Skip to Spots &amp; Text →</button>
+              <span class="sp"></span>
+              <button type="button" class="desk-btn primary" data-pmtab-next="pmTabDesign" style="padding:6px 12px;font-size:12px;">Next: Background &amp; Decor →</button>
+            </div>
           </div>
 
-          <div class="pm-subhead">
-            <span>Layers (Click on canvas or pill to edit)</span>
-            <div style="display:flex;gap:5px;flex-wrap:wrap;">
-              <button type="button" class="desk-btn" id="pmAddSpotBtn" style="padding:3px 9px;font-size:11.5px;">+ Photo Spot</button>
-              <button type="button" class="desk-btn" id="pmAddTextBtn" style="padding:3px 9px;font-size:11.5px;">+ Text</button>
-              <button type="button" class="desk-btn" id="pmAddStickerBtn" style="padding:3px 9px;font-size:11.5px;">+ Sticker / Graphic</button>
-              <button type="button" class="desk-btn" id="pmLogoBtn" style="padding:3px 9px;font-size:11.5px;">+ Logo</button>
-              <input type="file" id="pmLogoFile" accept="image/png,image/webp,image/jpeg" hidden>
-              <input type="file" id="pmStickerFile" accept="image/png,image/webp,image/jpeg" hidden>
+          <!-- TAB 2: BACKGROUND, PATTERN & DECOR -->
+          <div class="pm-tab-pane" id="pmTabDesign" hidden>
+            <div class="pm-subhead"><span>Background, Pattern &amp; Frame Decor</span></div>
+            <div class="pm-design-grid">
+              <label class="pm-field"><span>Background Style</span>
+                <select class="pm-sel" id="pmBgPreset">
+                  <option value="none">Plain Colour</option>
+                  <option value="cream">Cream Speckle</option>
+                  <option value="gold">Gold Glitter</option>
+                  <option value="sky">Pastel Sky</option>
+                  <option value="stars">Black &amp; Gold</option>
+                  <option value="maroon">Maroon &amp; Gold</option>
+                  <option value="marble">White Marble</option>
+                  <option value="blush">Blush Stripes</option>
+                  <option value="sage">Sage Botanical</option>
+                  <option value="chevron">Gold Chevron</option>
+                  <option value="deco">Art Deco Navy</option>
+                  <option value="blackgold">Black Gold Foil</option>
+                  <option value="goldconfetti">Gold Confetti</option>
+                  <option value="party">Party Pastel</option>
+                  <option value="sunset">Sunset Glow</option>
+                  <option value="neon">Neon Grid</option>
+                  <option value="polka">Polka Dots</option>
+                  <option value="gingham">Gingham Check</option>
+                  <option value="midnight">Midnight Stars</option>
+                  <option value="rustic">Rustic Wood</option>
+                  <option value="angel">Angel Sky</option>
+                  <option value="pine">Pine Evergreen</option>
+                  <option value="diploma">Classic Cream</option>
+                  <option value="grad">Navy Grad</option>
+                </select>
+              </label>
+              <label class="pm-field"><span>Sprinkles</span>
+                <select class="pm-sel" id="pmBgElements">
+                  <option value="auto">Auto (style default)</option>
+                  <option value="none">None</option>
+                  <option value="florals">Florals</option>
+                  <option value="glitter">Glitter</option>
+                  <option value="goldstars">Gold stars</option>
+                  <option value="hearts">Hearts</option>
+                  <option value="confetti">Confetti</option>
+                  <option value="bokeh">Bokeh</option>
+                  <option value="balloons">Balloons</option>
+                  <option value="butterflies">Butterflies</option>
+                  <option value="snowflakes">Snowflakes</option>
+                  <option value="clouds">Clouds &amp; stars</option>
+                  <option value="speckle">Speckle</option>
+                </select>
+              </label>
+              <label class="pm-field"><span>Frame Border / Corners</span>
+                <select class="pm-sel" id="pmFrameDecor">
+                  <option value="none">None</option>
+                  <option value="double">Classic Double Border</option>
+                  <option value="ornate">Ornate Lace / Filigree</option>
+                  <option value="floral">Botanical Line Florals</option>
+                  <option value="roses">Watercolor Roses</option>
+                  <option value="pampas">Boho Pampas</option>
+                  <option value="film">Retro Film Edge</option>
+                </select>
+              </label>
+              <label class="pm-field"><span>Metallic Accent</span>
+                <select class="pm-sel" id="pmBgAccent">
+                  <option value="gold">Gold</option>
+                  <option value="silver">Silver</option>
+                  <option value="rosegold">Rose Gold</option>
+                  <option value="champagne">Champagne</option>
+                  <option value="white">White</option>
+                  <option value="black">Black</option>
+                </select>
+              </label>
+            </div>
+            <div class="pm-row">
+              <label style="display:inline-flex;align-items:center;gap:5px;font:700 12px 'Manrope',sans-serif;color:#4a444d;">Bg <input type="color" id="pmBgColor" value="#ffffff" style="width:30px;height:26px;border:1px solid #d9d1c6;border-radius:6px;padding:0;background:#fff;cursor:pointer;"></label>
+              <div class="pm-swatches" id="pmBgSwatches">
+                <button type="button" class="pm-sw" data-col="#ffffff" style="background:#ffffff" title="White"></button>
+                <button type="button" class="pm-sw" data-col="#fbf6ef" style="background:#fbf6ef" title="Warm Cream"></button>
+                <button type="button" class="pm-sw" data-col="#1C1A1E" style="background:#1C1A1E" title="Charcoal"></button>
+                <button type="button" class="pm-sw" data-col="#f7e7eb" style="background:#f7e7eb" title="Blush"></button>
+                <button type="button" class="pm-sw" data-col="#e6efe8" style="background:#e6efe8" title="Sage"></button>
+                <button type="button" class="pm-sw" data-col="#f5ebd6" style="background:#f5ebd6" title="Champagne"></button>
+              </div>
+              <label style="display:inline-flex;align-items:center;gap:5px;font:700 12px 'Manrope',sans-serif;color:#4a444d;margin-left:auto;">Decor <input type="color" id="pmDecorColor" value="#8f7a5a" style="width:28px;height:24px;border:1px solid #d9d1c6;border-radius:6px;padding:0;background:#fff;cursor:pointer;"></label>
+            </div>
+            <div class="pm-row">
+              <button type="button" class="desk-btn" id="pmBgUpload" style="padding:6px 12px;font-size:12px;">🖼️ Upload Bg Image</button>
+              <button type="button" class="desk-btn" id="pmBgClear" hidden style="padding:6px 11px;font-size:12px;color:#b42318;">Clear Bg Image</button>
+              <input type="file" id="pmBgFile" accept="image/jpeg,image/png,image/webp" hidden>
+            </div>
+            <div class="desk-opt-list" style="margin-top:8px;">
+              <label class="desk-opt-row" for="pmSplitHalf">
+                <input type="checkbox" id="pmSplitHalf">
+                <span class="desk-opt-txt">
+                  <b>✂️ 2-up half-sheet frame decor</b>
+                  <small>Repeats borders &amp; florals symmetrically on both halves of a 4R cuttable Polaroid.</small>
+                </span>
+              </label>
+              <label class="desk-opt-row" for="pmFilterChk">
+                <input type="checkbox" id="pmFilterChk">
+                <span class="desk-opt-txt">
+                  <b>🎨 Use booth colour filter</b>
+                  <small>Applies the booth&rsquo;s active look &amp; soft skin; turn off for natural DSLR colours.</small>
+                </span>
+              </label>
+            </div>
+            <div class="pm-step-foot">
+              <button type="button" class="desk-btn" data-pmtab-next="pmTabStart" style="padding:6px 11px;font-size:12px;">← Presets &amp; PNG</button>
+              <span class="sp"></span>
+              <button type="button" class="desk-btn primary" data-pmtab-next="pmTabLayers" style="padding:6px 12px;font-size:12px;">Next: Spots, Text &amp; Logo →</button>
             </div>
           </div>
-          <div class="pm-sticker-drawer" id="pmStickerDrawer" hidden>
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-              <b style="font-size:12px;color:#1C1A1E;">✨ Add Sticker or PNG Graphic</b>
-              <div style="display:flex;gap:5px;">
-                <button type="button" class="desk-btn" id="pmStickerUploadBtn" style="padding:3px 9px;font-size:11px;">⬆️ Upload PNG Sticker</button>
-                <button type="button" class="desk-btn" id="pmStickerDrawerClose" style="padding:3px 8px;font-size:11px;">Done</button>
+
+          <!-- TAB 3: LAYERS & INSPECTOR -->
+          <div class="pm-tab-pane" id="pmTabLayers" hidden>
+            <div class="pm-subhead">
+              <span>Add Elements</span>
+              <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                <button type="button" class="desk-btn" id="pmAddSpotBtn" style="padding:4px 9px;font-size:11.5px;">+ Spot</button>
+                <button type="button" class="desk-btn" id="pmAddTextBtn" style="padding:4px 9px;font-size:11.5px;">+ Text</button>
+                <button type="button" class="desk-btn" id="pmAddStickerBtn" style="padding:4px 9px;font-size:11.5px;">+ Sticker</button>
+                <button type="button" class="desk-btn" id="pmLogoBtn" style="padding:4px 9px;font-size:11.5px;">+ Logo</button>
+                <input type="file" id="pmLogoFile" accept="image/png,image/webp,image/jpeg" hidden>
+                <input type="file" id="pmStickerFile" accept="image/png,image/webp,image/jpeg" hidden>
               </div>
             </div>
-            <div class="pm-sticker-packs" id="pmStickerPacks"></div>
-            <div class="pm-sticker-grid" id="pmStickerGrid"></div>
-          </div>
-          <div class="pm-layers" id="pmLayerList"></div>
+            <div class="pm-sticker-drawer" id="pmStickerDrawer" hidden>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+                <b style="font-size:12px;color:#1C1A1E;">✨ Add Sticker or PNG Graphic</b>
+                <div style="display:flex;gap:5px;">
+                  <button type="button" class="desk-btn" id="pmStickerUploadBtn" style="padding:3px 9px;font-size:11px;">⬆️ Upload PNG Sticker</button>
+                  <button type="button" class="desk-btn" id="pmStickerDrawerClose" style="padding:3px 8px;font-size:11px;">Done</button>
+                </div>
+              </div>
+              <div class="pm-sticker-packs" id="pmStickerPacks"></div>
+              <div class="pm-sticker-grid" id="pmStickerGrid"></div>
+            </div>
+            <div class="pm-layers" id="pmLayerList"></div>
 
-          <div class="pm-inspector" id="pmInspector">
-            <div id="pmInspEmpty" style="font-size:12px;color:#6B666C;">Tap any photo spot, text block, sticker, or logo on the canvas right side to drag, resize, and edit its properties.</div>
+            <div class="pm-inspector" id="pmInspector">
+              <div id="pmInspEmpty" style="font-size:12px;color:#6B666C;">Tap any photo spot, text block, sticker, or logo on the canvas right side to drag, resize, and edit its properties.</div>
 
             <div id="pmInspSpot" hidden>
               <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -27346,6 +28191,12 @@
               </div>
             </div>
           </div>
+          <div class="pm-step-foot">
+            <button type="button" class="desk-btn" data-pmtab-next="pmTabDesign" style="padding:6px 11px;font-size:12px;">← Background &amp; Decor</button>
+            <span class="sp"></span>
+            <button type="button" class="desk-btn primary" id="pmLayerDoneUseBtn" style="padding:6px 12px;font-size:12px;">✓ Done — Use in Photoman</button>
+          </div>
+          </div>
         </div>
       </div>
 
@@ -27419,6 +28270,7 @@
             </label>
           </div>
           <div class="pm-stage-wrap" id="pmStageWrap">
+            <div class="pm-stage-hover-pill" id="pmStageHoverPill" hidden></div>
             <div class="pm-stage-box" id="pmStageBox">
               <canvas id="pmMakerCanvas"></canvas>
               <div class="pm-stage-ov" id="pmStageOverlay">
@@ -27431,6 +28283,67 @@
             <span>Drag spots, text or logo to move. Drag corner handles to resize. Auto-saves live.</span>
             <button type="button" class="desk-btn primary" id="pmUseBtn2">✓ Save &amp; Use Template</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pm-preset-hover-pop" id="pmPresetHoverPop" hidden aria-hidden="true">
+      <img id="pmPresetHoverImg" alt="">
+      <b id="pmPresetHoverTitle"></b>
+      <small id="pmPresetHoverMeta"></small>
+    </div>
+
+    <div class="pm-modal-ov" id="pmGuideModal" hidden role="dialog" aria-modal="true" aria-labelledby="pmGuideTitle">
+      <div class="pm-modal-card">
+        <div class="pm-modal-head">
+          <div>
+            <h3 id="pmGuideTitle">🎨 How to Make a Photoman Template</h3>
+            <p>Follow these quick steps — your template stays separate from the main booth.</p>
+          </div>
+          <button type="button" class="pm-modal-close" id="pmGuideClose" aria-label="Close guide">✕</button>
+        </div>
+        <div class="pm-guide-steps">
+          <div class="pm-guide-step">
+            <span class="pm-guide-step-num">Step 1</span>
+            <div class="pm-guide-step-body">
+              <b>Pick a Starter Preset or Import a PNG Frame</b>
+              <p>Hover any Starter Preset to preview how it looks on the canvas, then click to create — or import your own Canva / Photoshop PNG frame (white or transparent photo boxes are detected automatically).</p>
+              <button type="button" class="pm-guide-jump" data-pmjump="pmTabStart">Open 1. Presets &amp; PNG →</button>
+            </div>
+          </div>
+          <div class="pm-guide-step">
+            <span class="pm-guide-step-num">Step 2</span>
+            <div class="pm-guide-step-body">
+              <b>Name &amp; Choose Your Paper Size</b>
+              <p>Type a template name at the top (e.g. <i>Wedding 4R Polaroid</i>) and pick the print size (<i>4R Portrait 4×6</i>, <i>4R Landscape 6×4</i>, <i>2×6 Strip</i>, or <i>Square</i>).</p>
+            </div>
+          </div>
+          <div class="pm-guide-step">
+            <span class="pm-guide-step-num">Step 3</span>
+            <div class="pm-guide-step-body">
+              <b>Customize Background, Borders &amp; Filter</b>
+              <p>Choose a background colour or pattern, sprinkles, floral/film corners, or upload a background photo. Enable <b>2-up half-sheet frame decor</b> for cuttable 2-up Polaroids.</p>
+              <button type="button" class="pm-guide-jump" data-pmjump="pmTabDesign">Open 2. Background &amp; Decor →</button>
+            </div>
+          </div>
+          <div class="pm-guide-step">
+            <span class="pm-guide-step-num">Step 4</span>
+            <div class="pm-guide-step-body">
+              <b>Arrange Photo Spots, Text, Stickers &amp; Logo</b>
+              <p>Tap any box directly on the right canvas to drag or resize from its corners. Use <b>3. Spots, Text &amp; Logo</b> to add text, stickers, studio logos, or link multiple spots to the same Photo #.</p>
+              <button type="button" class="pm-guide-jump" data-pmjump="pmTabLayers">Open 3. Spots, Text &amp; Logo →</button>
+            </div>
+          </div>
+          <div class="pm-guide-step">
+            <span class="pm-guide-step-num">Step 5</span>
+            <div class="pm-guide-step-body">
+              <b>Use in Photoman (or Make a Matching Pair!)</b>
+              <p>Click <b>✓ Use in Photoman</b> to start framing and printing right away. Tap <b>☆ Pin</b> for 1-tap switching, or open <b>1. Presets &amp; PNG → 🔄 Make Pair</b> to build a matching Landscape ↔ 2-up Polaroid pair.</p>
+            </div>
+          </div>
+        </div>
+        <div class="pm-modal-foot">
+          <button type="button" class="desk-btn primary" id="pmGuideOk">Got it, let&rsquo;s design</button>
         </div>
       </div>
     </div>
@@ -27803,7 +28716,7 @@
       let currentFrameColor = '#ffffff';
 
       // ---- Tab switching ----
-      function switchTab(tab) {
+      function switchTab(tab, opts) {
         if (tab !== 'session' && document.body.classList.contains('booth-locked')) return;
         const toSession = tab === 'session';
         tabBtnSetup.classList.toggle('active', !toSession);
@@ -27837,7 +28750,7 @@
         if (toSession) {
           // Option 1: tell the app a session is starting so it can wake the hotspot if idle.
           try { if (window.pb4u && window.pb4u.hotspotWake) window.pb4u.hotspotWake(); } catch (e) { }
-          if (typeof camWantLive === 'function' && !camWantLive()) { try { camSleepNow(); } catch (e) { } }
+          if (!(opts && opts.keepCam) && typeof camWantLive === 'function' && !camWantLive()) { try { camSleepNow(); } catch (e) { } }
           if (typeof state !== 'undefined' && state === 'idle' && typeof cashSend === 'function' && typeof cashConnected === 'function' && cashConnected()) {
             try { cashSend('session_idle'); } catch (e) { }
           }
@@ -35543,7 +36456,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             G.d.body.style.setProperty('--ga', ga.toFixed(4));
             if (gf) {
               if (guestWelcomeStyle !== 'panel') { gf.style.aspectRatio = ''; gf.style.height = ''; }
-              else { gf.style.aspectRatio = ga.toFixed(4); gf.style.height = 'min(94vh, ' + (60 / ga).toFixed(2) + 'vw)'; }
+              else {
+                var readyElG = document.getElementById('readyOverlay');
+                var welPanelOn = welcomeOn && state === 'idle' && !pickOpen && !(sess && (sess.reviewing || sess.decorating)) && !(readyElG && readyElG.classList.contains('ready-active')) && welcomeGeo && welcomeGeo.W && welcomeGeo.H;
+                var panelAr = welPanelOn ? (welcomeGeo.W / welcomeGeo.H) : ga;
+                var gPort = !!(guestWin && guestWin.innerHeight > guestWin.innerWidth);
+                gf.style.aspectRatio = panelAr.toFixed(4);
+                gf.style.height = gPort ? ('min(58vh, ' + (92 / panelAr).toFixed(2) + 'vw)') : ('min(94vh, ' + (60 / panelAr).toFixed(2) + 'vw)');
+              }
             }
             placeGuide(G.d.getElementById('guide'), cam, box, false);
             G.film.style.setProperty('--box-aspect', filmBox.toFixed(4));
@@ -41839,7 +42759,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             stEl.textContent = 'Send prints over local Wi-Fi straight to a Mitsubishi, DNP, or HiTi printer plugged into a Windows or Mac laptop running Print Helper (zero internet needed).';
           } else if (lanStationActive() && helper && helper.ok) {
             const label = lanStationCfg.hostName ? (lanStationCfg.hostName + ' (' + lanStationCfg.host + ')') : lanStationCfg.host;
-            stEl.textContent = 'Connected to ' + label + ' \u2713 — ' + helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' ready. Pick your printer in Printer 1 below.';
+            stEl.textContent = helper.printers.length === 0 && helper.filtered && helper.allPrintersCount > 0
+              ? ('Connected to ' + label + ' \u2713 — 0 printers ticked on Laptop Print Station. Tick your printer(s) there, then tap Refresh printer list.')
+              : ('Connected to ' + label + ' \u2713 — ' + helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' ready. Pick your printer in Printer 1 below.');
           } else if (lanStationActive() && helper && helper.err === 'pin') {
             stEl.textContent = helper.errMsg || 'Wrong PIN. Check the 6-digit PIN shown in Print Helper on the laptop.';
           } else if (lanStationActive() && helper && helper.checked) {
@@ -41952,7 +42874,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             }
             // Instax Link printers (Bluetooth) are listed beside the printers of this computer; the booth prints to them itself.
             const mergedPrinters = lanStationActive() ? remotePrinters : remotePrinters.concat(instaxNames());
-            helper = { ok: !!j.ok, printers: mergedPrinters, checked: Date.now(), version: String(j.version || '') };
+            helper = {
+              ok: !!j.ok,
+              printers: mergedPrinters,
+              checked: Date.now(),
+              version: String(j.version || ''),
+              filtered: !!j.filtered,
+              allPrintersCount: Number(j.allPrintersCount) || remotePrinters.length
+            };
           }
         } catch (e) {
           helper = { ok: false, printers: [], checked: Date.now(), err: e && e.name === 'AbortError' ? 'timeout' : 'blocked' };
@@ -42449,7 +43378,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const p1Find = document.getElementById('printerFindDetails');
         if (p1Find) p1Find.style.display = lanStationActive() ? 'none' : '';
         if (helperOn && helper.ok) {
-          if (LAPTOP_PRINT && !helper.printers.length) printerHelperHint.textContent = 'No printers found on this computer. For Bluetooth, pair the printer in system settings and install its driver if required.';
+          if (lanStationActive() && !helper.printers.length && helper.filtered && helper.allPrintersCount > 0) printerHelperHint.textContent = '0 printers are ticked on the Laptop Print Station. Tick your printer(s) on the laptop, then tap Refresh printer list.';
+          else if (LAPTOP_PRINT && !helper.printers.length) printerHelperHint.textContent = 'No printers found on this computer. For Bluetooth, pair the printer in system settings and install its driver if required.';
           else if (!name) printerHelperHint.textContent = (lanStationActive() ? 'Laptop Print Station connected. ' : 'Print Helper connected. ') + 'Choose the printer for this paper size.';
           else if (helper.printers.length && !helper.printers.includes(name)) printerHelperHint.textContent = 'No printer on ' + (lanStationActive() ? 'that laptop' : 'this computer') + ' is called “' + name + '”. Pick one from the list.';
           else printerHelperHint.textContent = lanStationActive()
@@ -42553,7 +43483,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> — the receipt prints directly without a dialog.' }
         ];
         else if (lanStationActive()) steps = [
-          { done: connected && helper.printers.length > 0, t: 'Connect Laptop Print Station', s: connected ? ('Connected to <b>' + escHtml(lanStationCfg.hostName || lanStationCfg.host) + '</b> (' + helper.printers.length + ' printers found).') : 'Open Print Helper on the laptop and tap <b>Connect</b> above.' },
+          { done: connected && helper.printers.length > 0, t: 'Connect Laptop Print Station', s: connected ? (helper.printers.length === 0 && helper.filtered && helper.allPrintersCount > 0 ? ('Connected to <b>' + escHtml(lanStationCfg.hostName || lanStationCfg.host) + '</b>, but 0 printers are ticked on the laptop. Tick your printer(s) in Offline Print Station.') : ('Connected to <b>' + escHtml(lanStationCfg.hostName || lanStationCfg.host) + '</b> (' + helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' ready).')) : 'Open Print Station on the laptop and tap <b>Connect</b> above.' },
           (function () {
             const ok = connected && !!name && helper.printers.includes(name);
             const pl = ok && printSize ? paperLine(name, paperFor(printSize), sizeName) : '';
@@ -43313,7 +44243,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           badge.className = 'pr-card-badge' + (ok ? ' ready' : '');
         }
         if (setupBtn) {
-          const canCfg = (DESKTOP || (helperOn && helper.ok && helperAtLeast('1.1.7'))) && !!effectiveStripP && list.includes(effectiveStripP) && !isInstaxPrinter(effectiveStripP);
+          const canCfg = (DESKTOP || (!lanStationActive() && helperOn && helper.ok && helperAtLeast('1.1.7'))) && !!effectiveStripP && list.includes(effectiveStripP) && !isInstaxPrinter(effectiveStripP);
           setupBtn.style.display = canCfg ? '' : 'none';
         }
         if (effectiveStripP && !isInstaxPrinter(effectiveStripP)) {
@@ -43965,7 +44895,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         } catch (e) { }
         box.classList.toggle('hidden', !show);
         const moreBox = document.getElementById('pbMoreOptions');
-        if (moreBox) moreBox.hidden = !show;
+        if (moreBox) {
+          moreBox.hidden = !paper;
+          const moreSub = document.getElementById('pbMoreSub');
+          if (moreSub) moreSub.textContent = (paper && isReceiptPaper(printSize))
+            ? 'Quality, thermal test strips & lightness / colour'
+            : 'Quality, photo size, borderless, margins & colour';
+        }
         if (!show) return;
         const sizes = photoSizeChoices();
         if (printPrefs.fit === 'size' && !sizes.includes(printPrefs.photoSize)) printPrefs.fit = 'auto';      // that size does not fit this paper
@@ -47383,6 +48319,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         document.getElementById('brandSubtitle').textContent = on ? 'Snap · Print · Share — traditional booth' : 'Snap · Print · Share';
         if (!on && guestOpen()) { try { guestWin.close(); } catch (e) { } }
         updateGuestStatus();
+        try { if (typeof applyStageAspect === 'function') applyStageAspect(); } catch (e) { }
         updateAutoPrintUI();
         refreshStartScreen();
       }
@@ -47396,7 +48333,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         guestStatus.querySelector('span').textContent = tabOpen && localOpen ? 'Guest screen + Tablet Bridge open' : tabOpen ? 'Tablet Guest Screen connected' : localOpen ? 'Guest screen is open' : 'Not open yet';
         guestOpenBtn.innerHTML = localOpen ? '↻ Move / reopen guest screen' : ICON('monitor') + ' Open guest screen';
       }
-      setInterval(() => { if (guestWin && guestWin.closed) { guestWin = null; G = null; updateGuestStatus(); } }, 1500);
+      setInterval(() => { if (guestWin && guestWin.closed) { guestWin = null; G = null; updateGuestStatus(); try { if (typeof applyStageAspect === 'function') applyStageAspect(); } catch (e) { } } }, 1500);
       window.addEventListener('beforeunload', () => { try { if (guestWin) guestWin.close(); } catch (e) { } });
 
       const GUEST_HTML = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">' +
@@ -47405,8 +48342,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         '<style>' +
         ':root{--bg:#F5F1EA;--ink:#1C1A1E;--dim:#6B666C;--red:#C93D27;--ui-cd-scale:1;--ui-btn-scale:1;--ui-film-scale:1;--ui-cd-opacity:1;--ui-btn-opacity:1;--ui-film-opacity:1;}' +
         '*{box-sizing:border-box;}html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:Manrope,system-ui,sans-serif;overflow:hidden;user-select:none;}' +
-        '.g{position:fixed;inset:0;display:grid;grid-template-columns:1fr auto 1fr;gap:2.4vw;padding:3vh 2.4vw;align-items:center;}' +
-        '.side{height:100%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;text-align:center;gap:2vh;min-width:0;}' +
+        '.g{position:fixed;inset:0;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:2.4vw;padding:3vh 2.4vw;align-items:center;}' +
+        '.side{height:100%;width:100%;max-width:100%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;text-align:center;gap:2vh;min-width:0;overflow:hidden;}' +
         '.logo{display:flex;align-items:center;gap:.7vw;}' +
         '.mark{display:grid;grid-template-columns:1fr 1fr;gap:.25vw;width:2.2vw;height:2.2vw;min-width:22px;min-height:22px;}.mark i{background:var(--ink);border-radius:3px;}.mark i:nth-child(2){background:var(--red);}' +
         '.word{display:flex;align-items:flex-start;}.word b{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(20px,2.4vw,44px);letter-spacing:-.035em;line-height:1;}' +
@@ -47431,7 +48368,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         '.film div.pick{cursor:pointer;}' +
         '.film div.pick::after{content:"↺ Tap to retake";position:absolute;left:0;right:0;bottom:0;padding:.5vh .3vw;border-radius:0 0 6px 6px;background:rgba(20,16,22,.62);color:#fff;font:800 clamp(10px,.85vw,15px) Manrope,sans-serif;text-align:center;}' +
         '.film div.sel{outline:5px solid var(--red);outline-offset:3px;}.film div.sel::after{content:"✓ Will retake";background:var(--red);}' +
-        '.gb{display:flex;flex-direction:column;gap:calc(1.4vh * min(var(--ui-btn-scale,1),1.35));width:min(100%,calc(22vw * max(1,min(var(--ui-btn-scale,1),1.35))));min-width:180px;opacity:var(--ui-btn-opacity,1);}' +
+        '.gb{display:flex;flex-direction:column;gap:calc(1.4vh * min(var(--ui-btn-scale,1),1.35));width:min(100%,calc(22vw * max(1,min(var(--ui-btn-scale,1),1.35))));min-width:0;opacity:var(--ui-btn-opacity,1);}' +
         '.gbtn{min-height:calc(max(56px,7vh) * min(var(--ui-btn-scale,1),1.35));padding:calc(1vh * min(var(--ui-btn-scale,1),1.35)) calc(1.2vw * min(var(--ui-btn-scale,1),1.35));border-radius:99px;border:2px solid var(--ink);background:#fff;color:var(--ink);font:800 calc(clamp(15px,1.3vw,26px) * min(var(--ui-btn-scale,1),1.35)) Manrope,sans-serif;cursor:pointer;touch-action:manipulation;}' +
         '.gbtn.strong{background:var(--red);border-color:var(--red);color:#fff;}' +
         '.guide{position:absolute;z-index:2;display:none;pointer-events:none;border:3px dashed rgba(255,255,255,.9);border-radius:8px;box-shadow:0 0 0 9999px rgba(10,8,12,.45);}.guide.on{display:block;}' +
@@ -47482,11 +48419,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         'body.edit-preview .film{display:flex !important;}' +
         'body.edit-preview .film div.f{display:block !important;}' +
         'body.ps.is-result .g{display:flex;align-items:center;justify-content:center;gap:4vw;padding:4vh 4vw;}' +
-        'body.ps.is-result .frame{position:relative;left:auto;top:auto;transform:none;width:auto !important;height:86vh !important;max-width:62vw;border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.55);}' +
+        'body.ps.is-result .frame{position:relative;left:auto;top:auto;transform:none;width:min(62vw,calc(86vh * var(--ga,0.8))) !important;height:min(86vh,calc(62vw / var(--ga,0.8))) !important;max-width:none;aspect-ratio:var(--ga,0.8) !important;border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.55);}' +
         'body.ps.is-result .side-r-res{display:flex;flex-direction:column;align-items:center;gap:16px;z-index:10;}' +
         'body.ps.is-result .qrs{position:relative;z-index:10;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:22px;padding:24px 28px;backdrop-filter:blur(10px);}' +
         'body.ps.is-result .qrl{color:#fff;}' +
-        'body.ps.is-result:not(.has-qr):not(.has-res-acts) .frame{max-width:92vw;height:90vh !important;}' +
+        'body.ps.is-result:not(.has-qr):not(.has-res-acts) .frame{width:min(92vw,calc(90vh * var(--ga,0.8))) !important;height:min(90vh,calc(92vw / var(--ga,0.8))) !important;max-width:none;aspect-ratio:var(--ga,0.8) !important;}' +
+        'body.ps.is-result:not(.has-qr):not(.has-res-acts) .side-r-res{display:none !important;}' +
         'body.ps.is-result.res-themed{background-color:#1C1A1E;background-image:var(--res-bg-img,none);background-size:cover;background-position:center;background-repeat:no-repeat;}' +
         'body.ps.is-result.res-themed .frame{background:transparent;box-shadow:none;overflow:visible;}' +
         'body.ps.is-result.res-themed .frame img.res{background:transparent;border-radius:12px;filter:drop-shadow(0 20px 48px rgba(28,26,30,.40));}' +
@@ -47515,6 +48453,31 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         /* Classic "With logo & side text" mode: still hides chrome between guests when wel is set */
         'body.wel{background:#141216;}body.wel .g{display:block;padding:0;}body.wel .side,body.wel .clogo{display:none !important;}' +
         'body.wel .frame{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);height:min(100vh,calc(100vw / var(--wa,1.3333))) !important;aspect-ratio:var(--wa,1.3333) !important;border-radius:0;box-shadow:none;}' +
+        '@media (orientation:portrait){' +
+        'body:not(.ps):not(.wel) .g{display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:1.4vh;padding:2vh 3vw;}' +
+        'body:not(.ps):not(.wel) .side{width:100%;height:auto;flex:none;gap:.8vh;}' +
+        'body:not(.ps):not(.wel) .side-l{justify-content:center;gap:.5vh;padding:0 2vw;}' +
+        'body:not(.ps):not(.wel) .logo.off{display:none;}' +
+        'body:not(.ps):not(.wel) .msg{font-size:clamp(18px,4.6vw,34px);}' +
+        'body:not(.ps):not(.wel) .sub{font-size:clamp(10px,2.2vw,14px);letter-spacing:.16em;margin-top:.3vh;}' +
+        'body:not(.ps):not(.wel) .ev{font-size:clamp(15px,3.6vw,26px);}' +
+        'body:not(.ps):not(.wel) .dt{font-size:clamp(10px,2.1vw,13px);margin-top:.2vh;}' +
+        'body:not(.ps):not(.wel) .frame{flex:none;max-width:92vw;max-height:58vh;}' +
+        'body:not(.ps):not(.wel) .side-r{gap:1vh;}' +
+        'body:not(.ps):not(.wel) .film{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:2vw;}' +
+        'body:not(.ps):not(.wel) .film div{height:calc(clamp(44px,8vh,84px) * var(--ui-film-scale,1));max-height:10vh;}' +
+        'body:not(.ps):not(.wel) .gb{flex-direction:row;flex-wrap:wrap;justify-content:center;width:100%;min-width:0;}' +
+        'body:not(.ps):not(.wel) .qrs{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:3vw;}' +
+        'body:not(.ps):not(.wel) .qr{width:min(18vh,30vw);min-width:96px;}' +
+        'body.ps.is-result .g{flex-direction:column;gap:2vh;padding:2.5vh 4vw;}' +
+        'body.ps.is-result .frame{max-width:92vw;max-height:54vh;width:min(92vw,calc(54vh * var(--ga,0.8))) !important;height:min(54vh,calc(92vw / var(--ga,0.8))) !important;aspect-ratio:var(--ga,0.8) !important;}' +
+        'body.ps.is-result:not(.has-qr):not(.has-res-acts) .frame{max-width:92vw;max-height:88vh;width:min(92vw,calc(88vh * var(--ga,0.8))) !important;height:min(88vh,calc(92vw / var(--ga,0.8))) !important;aspect-ratio:var(--ga,0.8) !important;}' +
+        'body.ps.is-result .side-r-res{max-width:92vw;}' +
+        'body.ps.is-result .qrs{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:3vw;}' +
+        'body.ps.is-result .qr{width:min(18vh,32vw);min-width:96px;}' +
+        '.pkb img{height:auto;max-height:28vh;max-width:40vw;}' +
+        '.pkg.tier .pkb img{height:auto;max-height:32vh;max-width:42vw;}' +
+        '}' +
         '.logo .lg{display:block;object-fit:contain;}.logo.off{visibility:hidden;}' +
         '.clogo{position:fixed;z-index:3;object-fit:contain;pointer-events:none;transform:translate(-50%,-50%);}' +
         '.pwr{display:flex;align-items:center;justify-content:center;gap:.4em;margin-top:1.4vh;color:var(--dim);font-weight:700;font-size:clamp(9px,.72vw,14px);letter-spacing:.06em;}' +
@@ -47628,9 +48591,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           (el.requestFullscreen ? el.requestFullscreen() : Promise.reject()).catch(() => { });
         });
         d.addEventListener('fullscreenchange', () => G && G.fs.classList.toggle('hide', !!d.fullscreenElement));
-        // A tap on the background while reviewing or on result/layout picker doesn't auto-shoot.
-        d.addEventListener('click', () => { if ((typeof layoutEditorActive !== 'undefined' && layoutEditorActive) || (sess && sess.reviewing) || state === 'result' || pickOpen) return; boothTrigger(true); });
+        // A tap on the background while reviewing, decorating, typing details, or on result/layout picker doesn't auto-shoot.
+        d.addEventListener('click', () => { if ((typeof layoutEditorActive !== 'undefined' && layoutEditorActive) || (typeof btdOpen !== 'undefined' && btdOpen) || (sess && (sess.reviewing || sess.decorating)) || state === 'result' || pickOpen) return; boothTrigger(true); });
         d.addEventListener('keydown', onTriggerKey);
+        guestWin.addEventListener('resize', () => { try { applyStageAspect(); guestRender(); } catch (e) { } });
         syncGuestUiScale();
         guestCall('camera');
         guestRender();
@@ -47646,6 +48610,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         buildGuestDoc();
         updateGuestStatus();
+        try { if (typeof applyStageAspect === 'function') applyStageAspect(); } catch (e) { }
         // Chrome/Edge: move it onto the other monitor (asks once for "window management").
         let placed = false;
         if ('getScreenDetails' in window) {
@@ -47656,6 +48621,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               guestWin.moveTo(other.availLeft, other.availTop);
               guestWin.resizeTo(other.availWidth, other.availHeight);
               placed = true;
+              try { applyStageAspect(); guestRender(); } catch (e) { }
             }
           } catch (e) { /* permission denied or not supported: drag it over by hand */ }
         }
@@ -47864,6 +48830,20 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const psMode = guestWelcomeStyle !== 'panel';
           G.d.body.classList.toggle('ps', psMode);
           syncGuestUiScale();
+          const gf = G.d.getElementById('frame');
+          const resultPre = state === 'result' && shotCanvases.every(Boolean);
+          const reviewingPre = !!(sess && (sess.reviewing || sess.decorating));
+          const showingStripG = (resultPre || reviewingPre) && previewCanvas.width > 0 && previewCanvas.style.display !== 'none';
+          const camA = typeof camAspect === 'function' ? camAspect() : 4 / 3;
+          const shotBoxA = state === 'capturing' && typeof shotBoxAspect === 'function' ? shotBoxAspect(stageShot) : (typeof currentBoxAspect === 'function' ? currentBoxAspect() : 0.8);
+          const filmBoxA = typeof currentBoxAspect === 'function' ? currentBoxAspect() : 0.8;
+          const gaVal = showingStripG ? (previewCanvas.width / previewCanvas.height) : (state === 'capturing' ? shotBoxA : camA);
+          G.d.body.style.setProperty('--ga', gaVal.toFixed(4));
+          if (G.film) G.film.style.setProperty('--box-aspect', filmBoxA.toFixed(4));
+          if (gf && psMode) {
+            gf.style.aspectRatio = '';
+            gf.style.height = '';
+          }
           if (typeof layoutEditorActive !== 'undefined' && layoutEditorActive) {
             G.ev.textContent = (labelInput.value || '').trim();
             G.dt.textContent = currentDateLabel();
@@ -47938,11 +48918,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               if (G.gReadyBtn) G.gReadyBtn.textContent = readyOverlay.classList.contains('hands') ? (fx.hands === 'smile' ? 'Smile to start' : 'Wave to start') : 'Start';
             }
           }
-          const gf = G.d.getElementById('frame');
           if (welcome && welcomeGeo && !psMode) {
             const wa = (welcomeGeo.W / welcomeGeo.H).toFixed(4);
             G.d.body.style.setProperty('--wa', wa);
-            if (gf && gf.style.aspectRatio !== wa) { gf.style.aspectRatio = wa; gf.style.height = 'min(94vh, ' + (60 / Number(wa)).toFixed(2) + 'vw)'; }
+            const gPortW = !!(guestWin && guestWin.innerHeight > guestWin.innerWidth);
+            const wantH = gPortW ? ('min(58vh, ' + (92 / Number(wa)).toFixed(2) + 'vw)') : ('min(94vh, ' + (60 / Number(wa)).toFixed(2) + 'vw)');
+            if (gf && (gf.style.aspectRatio !== wa || gf.style.height !== wantH)) { gf.style.aspectRatio = wa; gf.style.height = wantH; }
+          } else if (gf && !psMode) {
+            const gaStr = gaVal.toFixed(4);
+            const gPortF = !!(guestWin && guestWin.innerHeight > guestWin.innerWidth);
+            const wantHF = gPortF ? ('min(58vh, ' + (92 / gaVal).toFixed(2) + 'vw)') : ('min(94vh, ' + (60 / gaVal).toFixed(2) + 'vw)');
+            if (gf.style.aspectRatio !== gaStr || gf.style.height !== wantHF) { gf.style.aspectRatio = gaStr; gf.style.height = wantHF; }
           }
           let showGuestVid = false;
           if (welcome) {
@@ -47997,7 +48983,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               G.res.style.left = '';
               G.res.style.width = '';
               G.res.style.height = '';
-              G.res.style.objectFit = psMode ? fitCss : '';
+              let resFitCss = fitCss;
+              if (psMode && guestWin && welcomeGeo && welcomeGeo.W && welcomeGeo.H) {
+                const gVw = guestWin.innerWidth || 0, gVh = guestWin.innerHeight || 0;
+                const waNum = welcomeGeo.W / welcomeGeo.H;
+                const gVpAr = (gVw && gVh) ? (gVw / gVh) : 0;
+                const isOrientationMismatch = !!(gVpAr && ((gVpAr < 1 && waNum > 1.05) || (gVpAr > 1 && waNum < 0.95)));
+                const isCardAspectMismatch = !!(attractMode === 'card' && gVpAr && Math.max(gVpAr / waNum, waNum / gVpAr) > 1.08);
+                if (isOrientationMismatch || isCardAspectMismatch) resFitCss = 'contain';
+              }
+              G.res.style.objectFit = psMode ? resFitCss : '';
               G.res.style.pointerEvents = '';
               G.res.style.display = 'block';
               G.v.style.display = 'none';
@@ -48056,7 +49051,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (typeof layoutEditorActive !== 'undefined' && layoutEditorActive) return;
         if (sess && sess.reviewEnd) { sess.reviewEnd('done'); return; }
         if (sess && sess.pauseEnd) { sess.pauseEnd(); return; }   // Space / clicker: next photo now (skips the wait)
-        if (!startScreen.classList.contains('gone')) { leaveStartScreen(); return; }
+        if (!startScreen.classList.contains('gone')) {
+          leaveStartScreen();
+          if (!fromGuest) return;
+        }
         if (pickOpen) {   // guests tap a layout; a clicker first shows the highlight, then picks it
           if (!fromGuest) { if (pickIdx < 0) { pickIdx = pickStart(); markPick(); } else finishPick(pickKeys[pickIdx]); }
           return;
@@ -48064,8 +49062,23 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (readyOverlay.classList.contains('ready-active')) { readyStartBtn.click(); return; }
         if (state === 'capturing' || printing || flowBusy) return;
         if (tabSession.classList.contains('hidden')) {
-          if (fromGuest) showToast('Finish Setup and open the Photo Session tab first.');
-          return;
+          if (!fromGuest) return;
+          if (!rawFolderKey()) {
+            if (typeof goStep === 'function') goStep(6);
+            showDriveFolderError('Type a folder name first.');
+            showToast('Add a folder name in Setup (Step 6) first.');
+            try {
+              const api = typeof activeBridgeApi === 'function' ? activeBridgeApi() : null;
+              if (api && typeof tabletGuestOpen === 'function' && tabletGuestOpen()) {
+                api.sendEvent({ type: 'toast', msg: 'Add a folder name in Setup (Step 6) first.' });
+              }
+            } catch (e) { }
+            return;
+          }
+          try { if (typeof closePrintModal === 'function') closePrintModal(); } catch (e) { }
+          try { if (typeof closeCamModal === 'function') closeCamModal(); } catch (e) { }
+          try { if (typeof closeProfiles === 'function' && typeof profilesSheet !== 'undefined' && profilesSheet && !profilesSheet.hidden) closeProfiles(); } catch (e) { }
+          switchTab('session', { keepCam: true });
         }
         if (!rawFolderKey()) return;
         beginGuestFlow(true);
@@ -50489,14 +51502,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var vgFab = document.getElementById('vgFab');
         if (vgFab) vgFab.hidden = !vgAvailable() || state === 'capturing';
         try { gbCardRefresh(); } catch (e) { }
-        var roveBridgeOn = !!(window.__PBLocal && typeof window.__PBLocal.openRoveBridge === 'function');
+        var roveBridgeOn = !!(IS_ANDROID_APP && window.__PBLocal && typeof window.__PBLocal.openRoveBridge === 'function');
         var roveBridgeFab = document.getElementById('roveBridgeFab');
         if (roveBridgeFab) roveBridgeFab.hidden = !roveBridgeOn || state === 'capturing';
         var deskOpenBridgeBtn = document.getElementById('deskOpenBridgeBtn');
         if (deskOpenBridgeBtn) deskOpenBridgeBtn.hidden = !roveBridgeOn;
         var roveBox = document.getElementById('androidRoveBridgeBox');
         if (roveBox) roveBox.style.display = roveBridgeOn ? 'block' : 'none';
-        var spinArmOn = !!(window.__PBLocal && typeof window.__PBLocal.openSpinArm === 'function');
+        var spinArmOn = !!(IS_IOS_APP && window.__PBLocal && typeof window.__PBLocal.openSpinArm === 'function');
         var spinArmFab = document.getElementById('spinArmFab');
         if (spinArmFab) spinArmFab.hidden = !spinArmOn || state === 'capturing';
         var iosSpinArmBox = document.getElementById('iosSpinArmBox');
@@ -50518,7 +51531,24 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var openPrintStationOverlay = (function () {
         var ov = document.getElementById('stationDeskOverlay');
         if (!ov) return function () { };
+        var STATION_PRESETS = [
+          { id: '3.5x5', label: '3.5\u00d75 (3R)', widthMm: 88.9, heightMm: 127, twoUp: false },
+          { id: '5x7', label: '5\u00d77 (5R)', widthMm: 127, heightMm: 177.8, twoUp: false },
+          { id: '6x8', label: '6\u00d78 (6R)', widthMm: 152.4, heightMm: 203.2, twoUp: false },
+          { id: '8x10', label: '8\u00d710 (8R)', widthMm: 203.2, heightMm: 254, twoUp: false },
+          { id: 'selphy', label: 'Postcard 100\u00d7148', widthMm: 100, heightMm: 148, twoUp: false },
+          { id: '2.5x7.5', label: 'Keychain 2.5\u00d77.5', widthMm: 63.5, heightMm: 190.5, twoUp: false },
+          { id: 'a6', label: 'A6', widthMm: 105, heightMm: 148, twoUp: false },
+          { id: 'a5', label: 'A5', widthMm: 148, heightMm: 210, twoUp: false },
+          { id: 'a4', label: 'A4', widthMm: 210, heightMm: 297, twoUp: false },
+          { id: 'letter', label: 'Letter', widthMm: 215.9, heightMm: 279.4, twoUp: false }
+        ];
+        var DEFAULT_TEST_SIZES = [
+          { id: '4x6', label: '4\u00d76', widthMm: 101.6, heightMm: 152.4, twoUp: false, builtin: true },
+          { id: '2x6-cut', label: '2\u00d76 Cut', widthMm: 101.6, heightMm: 152.4, twoUp: true, builtin: true }
+        ];
         var lastInfo = null;
+        var lastPrSig = '', lastSzSig = '', lastJobSig = '';
         function sayPs(msg, err) {
           var el = document.getElementById('stationDeskMsg');
           if (!el) return;
@@ -50526,36 +51556,140 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           el.className = 'lanst-msg' + (err ? ' err' : '');
           el.hidden = !msg;
         }
-        function renderStationData(info) {
+        function isSplitLabel(s) {
+          var lc = String(s || '').toLowerCase();
+          return /split|2[\s_-]?up|div2|2\s*[x\u00d7]\s*6/.test(lc);
+        }
+        function sizeSig(s) {
+          return Math.round(Number(s.widthMm) * 10) + '|' + Math.round(Number(s.heightMm) * 10) + '|' + (s.twoUp ? '1' : '0') + '|' + (s.paperName || '');
+        }
+        function currentTestSizes() {
+          return (lastInfo && Array.isArray(lastInfo.testSizes) && lastInfo.testSizes.length) ? lastInfo.testSizes : DEFAULT_TEST_SIZES;
+        }
+        function isPrTicked(name) {
+          var sel = lastInfo && lastInfo.selectedPrinters;
+          return !Array.isArray(sel) || sel.indexOf(name) >= 0;
+        }
+        function effectiveSelected() {
+          var all = (lastInfo && Array.isArray(lastInfo.printers)) ? lastInfo.printers : [];
+          var sel = lastInfo && lastInfo.selectedPrinters;
+          return Array.isArray(sel) ? sel.slice() : all.slice();
+        }
+        function renderSizesUi(force) {
+          var sizes = currentTestSizes();
+          var customized = !!(lastInfo && lastInfo.testSizesCustomized);
+          var sig = JSON.stringify(sizes) + '|' + customized;
+          if (!force && sig === lastSzSig) return;
+          lastSzSig = sig;
+          var rstBtn = document.getElementById('stationDeskResetSizesBtn');
+          if (rstBtn) rstBtn.hidden = !customized;
+          var chipsEl = document.getElementById('stationDeskSizeChips');
+          if (chipsEl) {
+            chipsEl.innerHTML = sizes.map(function (s, idx) {
+              var rm = sizes.length > 1 ? '<button type="button" data-ps-rm-size="' + idx + '" title="Remove ' + escHtml(s.label) + '">&times;</button>' : '';
+              return '<span class="lanst-chip">' + escHtml(s.label) + rm + '</span>';
+            }).join('');
+          }
+          var presetRow = document.getElementById('stationDeskPresetRow');
+          if (presetRow) {
+            var have = new Set(sizes.map(sizeSig));
+            presetRow.innerHTML = STATION_PRESETS.map(function (p, idx) {
+              var has = have.has(sizeSig(p));
+              return '<button type="button" class="desk-btn" data-ps-preset="' + idx + '"' + (has ? ' disabled' : '') + '>' + (has ? '\u2713 ' : '+ ') + escHtml(p.label) + '</button>';
+            }).join('');
+          }
+        }
+        function renderPrintersUi(force) {
+          var all = (lastInfo && Array.isArray(lastInfo.printers)) ? lastInfo.printers : [];
+          var hideUnused = !!(lastInfo && lastInfo.hideUnusedPrinters);
+          var searchEl = document.getElementById('stationDeskPrSearch');
+          var q = String((searchEl && searchEl.value) || '').trim().toLowerCase();
+          var sizes = currentTestSizes();
+          var tickedCount = all.filter(isPrTicked).length;
+          var hiddenCount = Math.max(0, all.length - tickedCount);
+          var cntEl = document.getElementById('stationDeskPrCount');
+          if (cntEl) {
+            cntEl.textContent = all.length ? (tickedCount + ' of ' + all.length + ' ticked' + (hideUnused && hiddenCount ? ' (' + hiddenCount + ' hidden)' : '')) : '0 found';
+            cntEl.className = 'lanst-badge' + (tickedCount > 0 ? ' ok' : '');
+          }
+          var hideBtn = document.getElementById('stationDeskHideBtn');
+          if (hideBtn) {
+            hideBtn.textContent = hideUnused ? ('Show all (' + all.length + ')') : 'Hide unused';
+            hideBtn.className = 'desk-btn' + (hideUnused ? ' active' : '');
+          }
+          var toolsEl = document.getElementById('stationDeskPrTools');
+          if (toolsEl) toolsEl.style.display = (all.length && !hideUnused) ? '' : 'none';
+          var sig = JSON.stringify([all, lastInfo && lastInfo.selectedPrinters, hideUnused, sizes, q]);
+          if (!force && sig === lastPrSig) return;
+          lastPrSig = sig;
+          var drvPr = document.getElementById('stationDeskDrvPrinter');
+          if (drvPr && document.activeElement !== drvPr) {
+            var prevDrv = drvPr.value;
+            var drvList = tickedCount ? all.filter(isPrTicked) : all;
+            drvPr.innerHTML = drvList.length
+              ? drvList.map(function (p) { return '<option value="' + escHtml(p) + '">' + escHtml(p) + '</option>'; }).join('')
+              : '<option value="">No printers found</option>';
+            if (prevDrv && drvList.indexOf(prevDrv) >= 0) drvPr.value = prevDrv;
+          }
+          var prEl = document.getElementById('stationDeskPrinters');
+          if (!prEl) return;
+          if (!all.length) {
+            prEl.innerHTML = '<p class="panel-hint" style="margin:0;">No printers found. Plug in your printer via USB, install its driver, and tap Refresh Printers.</p>';
+            return;
+          }
+          var ordered = all.slice().sort(function (a, b) {
+            var sa = isPrTicked(a) ? 0 : 1, sb = isPrTicked(b) ? 0 : 1;
+            return sa !== sb ? sa - sb : all.indexOf(a) - all.indexOf(b);
+          });
+          var visible = ordered.filter(function (p) {
+            if (hideUnused && !isPrTicked(p)) return false;
+            if (!hideUnused && q && p.toLowerCase().indexOf(q) < 0) return false;
+            return true;
+          });
+          if (!visible.length) {
+            prEl.innerHTML = hideUnused && tickedCount === 0
+              ? '<div class="lanst-prrow"><span>No printers are ticked yet.</span><button type="button" class="desk-btn active" id="stationDeskInlineShowAll">Show all (' + all.length + ')</button></div>'
+              : '<div class="lanst-prrow"><span>No printers match that filter.</span>' + (hideUnused ? '<button type="button" class="desk-btn" id="stationDeskInlineShowAll">Show all (' + all.length + ')</button>' : '') + '</div>';
+            return;
+          }
+          prEl.innerHTML = visible.map(function (p) {
+            var on = isPrTicked(p);
+            var acts = on
+              ? ('<span style="display:flex;gap:6px;flex-wrap:wrap;">' +
+                  '<button type="button" class="desk-btn" data-ps-cfg="' + escHtml(p) + '">Driver Preferences</button>' +
+                  sizes.map(function (s, idx) {
+                    return '<button type="button" class="desk-btn" data-ps-test="' + escHtml(p) + '" data-sidx="' + idx + '">Test ' + escHtml(s.label) + '</button>';
+                  }).join('') +
+                '</span>')
+              : '';
+            return '<div class="lanst-prrow' + (on ? '' : ' dim') + '"><label class="lanst-chk"><input type="checkbox" data-ps-sel="' + escHtml(p) + '"' + (on ? ' checked' : '') + '><span>' + escHtml(p) + '</span></label>' + acts + '</div>';
+          }).join('');
+        }
+        function renderStationData(info, force) {
           if (!info) return;
-          lastInfo = info;
+          var prevPrinters = lastInfo && Array.isArray(lastInfo.printers) ? lastInfo.printers : [];
+          lastInfo = Object.assign({}, lastInfo || {}, info, {
+            printers: Array.isArray(info.printers) ? info.printers : prevPrinters
+          });
           var stEl = document.getElementById('stationDeskState');
           var ipsEl = document.getElementById('stationDeskIps');
           var pinEl = document.getElementById('stationDeskPin');
-          var prEl = document.getElementById('stationDeskPrinters');
           var jobsEl = document.getElementById('stationDeskJobs');
           var hsBtn = document.getElementById('stationDeskHotspotBtn');
-          var addrs = Array.isArray(info.addresses) ? info.addresses : [];
-          if (stEl) stEl.textContent = addrs.length ? (' \u00b7 Ready on port ' + (info.port || 47777)) : ' \u00b7 Join Wi-Fi or turn Hotspot on';
+          var addrs = Array.isArray(lastInfo.addresses) ? lastInfo.addresses : [];
+          if (stEl) stEl.textContent = addrs.length ? (' \u00b7 Ready on port ' + (lastInfo.port || 47777)) : ' \u00b7 Join Wi-Fi or turn Hotspot on';
           if (ipsEl) {
             ipsEl.innerHTML = addrs.length
               ? addrs.map(function (a) { return escHtml(a.ip + (a.port && a.port !== 47777 ? ':' + a.port : '') + ' (' + a.kind + ')'); }).join('<br>')
-              : ('Port ' + (info.port || 47777) + ' (waiting for Wi-Fi / Hotspot)');
+              : ('Port ' + (lastInfo.port || 47777) + ' (waiting for Wi-Fi / Hotspot)');
           }
-          if (pinEl) pinEl.textContent = info.pin || '------';
-          if (Array.isArray(info.printers) && prEl) {
-            prEl.innerHTML = info.printers.length
-              ? info.printers.map(function (p) {
-                  return '<div class="lanst-prrow"><span><b>' + escHtml(p) + '</b></span><span style="display:flex;gap:6px;flex-wrap:wrap;">' +
-                    '<button type="button" class="desk-btn" data-ps-cfg="' + escHtml(p) + '">Driver Preferences</button>' +
-                    '<button type="button" class="desk-btn" data-ps-test="' + escHtml(p) + '" data-twoup="0">Test 4\u00d76</button>' +
-                    '<button type="button" class="desk-btn" data-ps-test="' + escHtml(p) + '" data-twoup="1">Test 2\u00d76 Cut</button>' +
-                    '</span></div>';
-                }).join('')
-              : '<p class="panel-hint" style="margin:0;">No printers found. Plug in your printer via USB, install its driver, and tap Refresh Printers.</p>';
-          }
-          var jobs = Array.isArray(info.jobs) ? info.jobs : [];
-          if (jobsEl) {
+          if (pinEl) pinEl.textContent = lastInfo.pin || '------';
+          renderSizesUi(force);
+          renderPrintersUi(force);
+          var jobs = Array.isArray(lastInfo.jobs) ? lastInfo.jobs : [];
+          var jSig = JSON.stringify(jobs);
+          if (jobsEl && (force || jSig !== lastJobSig)) {
+            lastJobSig = jSig;
             jobsEl.innerHTML = jobs.length
               ? jobs.map(function (x) {
                   var tag = x.ok ? '<span style="color:#1f6f62;font-weight:700;">Printed</span>' : '<span style="color:#9b2c1f;font-weight:700;">' + escHtml(x.error || 'Error') + '</span>';
@@ -50569,11 +51703,46 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             }).catch(function () { hsBtn.hidden = true; });
           }
         }
+        var prSaveSeq = 0, szSaveSeq = 0, prBusy = 0, szBusy = 0;
         async function loadStationData(refresh) {
           var api = window.pb4u && window.pb4u.lanStation;
           if (!api) return;
           var info = await api.info(!!refresh);
-          renderStationData(info);
+          if (info && prBusy > 0 && lastInfo) { info.selectedPrinters = lastInfo.selectedPrinters; info.hideUnusedPrinters = lastInfo.hideUnusedPrinters; }
+          if (info && szBusy > 0 && lastInfo) { info.testSizes = lastInfo.testSizes; info.testSizesCustomized = lastInfo.testSizesCustomized; }
+          renderStationData(info, true);
+        }
+        async function saveStationPrinters(nextSel, nextHide) {
+          var api = window.pb4u && window.pb4u.lanStation;
+          if (!api || typeof api.setPrinters !== 'function') return;
+          var opts = {};
+          if (!lastInfo) lastInfo = {};
+          if (nextSel !== undefined) { opts.selectedPrinters = nextSel; lastInfo.selectedPrinters = nextSel; }
+          if (typeof nextHide === 'boolean') { opts.hideUnusedPrinters = nextHide; lastInfo.hideUnusedPrinters = nextHide; }
+          if (lastInfo.selectedPrinters === null) lastInfo.hideUnusedPrinters = false;
+          renderStationData(lastInfo, true);
+          var seq = ++prSaveSeq;
+          prBusy++;
+          try {
+            var res = await api.setPrinters(opts);
+            if (seq !== prSaveSeq) return;
+            if (res && res.ok) renderStationData(res, true);
+            else sayPs((res && res.error) || 'Could not update printer list.', true);
+          } finally { prBusy--; }
+        }
+        async function saveStationSizes(nextSizes) {
+          var api = window.pb4u && window.pb4u.lanStation;
+          if (!api || typeof api.setTestSizes !== 'function') return;
+          if (!lastInfo) lastInfo = {};
+          if (Array.isArray(nextSizes)) { lastInfo.testSizes = nextSizes; lastInfo.testSizesCustomized = true; renderStationData(lastInfo, true); }
+          var seq = ++szSaveSeq;
+          szBusy++;
+          try {
+            var res = await api.setTestSizes(nextSizes === undefined ? null : nextSizes);
+            if (seq !== szSaveSeq) return;
+            if (res && res.ok) renderStationData(res, true);
+            else sayPs((res && res.error) || 'Could not update test sizes.', true);
+          } finally { szBusy--; }
         }
         function closeStation() {
           ov.hidden = true;
@@ -50584,10 +51753,128 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         ov.addEventListener('click', function (e) { if (e.target === ov) closeStation(); });
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !ov.hidden) closeStation(); });
         document.getElementById('stationDeskRefBtn').addEventListener('click', function () { sayPs('Refreshing printers\u2026'); loadStationData(true).then(function () { sayPs('Printer list updated.'); }); });
+        document.getElementById('stationDeskPrSearch').addEventListener('input', function () { renderPrintersUi(true); });
+        document.getElementById('stationDeskUntickBtn').addEventListener('click', function () {
+          sayPs('Unticked all printers. Tick only the printer(s) you use below.');
+          saveStationPrinters([], false).then(function () {
+            var s = document.getElementById('stationDeskPrSearch');
+            if (s) s.focus();
+          });
+        });
+        document.getElementById('stationDeskTickBtn').addEventListener('click', function () {
+          var all = (lastInfo && Array.isArray(lastInfo.printers)) ? lastInfo.printers.slice() : [];
+          sayPs('Ticked all printers.');
+          saveStationPrinters(all, !!(lastInfo && lastInfo.hideUnusedPrinters));
+        });
+        document.getElementById('stationDeskHideBtn').addEventListener('click', function () {
+          var nextHide = !(lastInfo && lastInfo.hideUnusedPrinters);
+          var nextSel = effectiveSelected();
+          var all = (lastInfo && Array.isArray(lastInfo.printers)) ? lastInfo.printers : [];
+          if (nextHide) {
+            var s = document.getElementById('stationDeskPrSearch');
+            if (s) s.value = '';
+          }
+          if (nextHide && all.length > 1 && nextSel.length === all.length) {
+            sayPs('All printers are still ticked. Click Untick all or uncheck unused printers first so only your booth printer(s) stay shown.');
+          }
+          saveStationPrinters(nextSel, nextHide);
+        });
+        document.getElementById('stationDeskDrvPrinter').addEventListener('change', function () {
+          var szSel = document.getElementById('stationDeskDrvSize');
+          var addBtn = document.getElementById('stationDeskAddDrvBtn');
+          if (szSel) { szSel.hidden = true; szSel._items = []; szSel.innerHTML = ''; }
+          if (addBtn) addBtn.hidden = true;
+        });
+        document.getElementById('stationDeskAddSizeBtn').addEventListener('click', function () {
+          var box = document.getElementById('stationDeskAddSizeBox');
+          if (box) box.hidden = !box.hidden;
+        });
+        document.getElementById('stationDeskResetSizesBtn').addEventListener('click', function () {
+          saveStationSizes(null).then(function () { sayPs('Restored default test sizes (4\u00d76 & 2\u00d76 Cut).'); });
+        });
+        document.getElementById('stationDeskSizeChips').addEventListener('click', function (e) {
+          var rm = e.target.closest('[data-ps-rm-size]');
+          if (!rm) return;
+          var idx = Number(rm.dataset.psRmSize);
+          var next = currentTestSizes().filter(function (_, i) { return i !== idx; });
+          if (next.length) saveStationSizes(next);
+        });
+        document.getElementById('stationDeskPresetRow').addEventListener('click', function (e) {
+          var b = e.target.closest('[data-ps-preset]');
+          if (!b) return;
+          var p = STATION_PRESETS[Number(b.dataset.psPreset)];
+          if (!p) return;
+          saveStationSizes(currentTestSizes().concat([p])).then(function () { sayPs('Added Test ' + p.label + '.'); });
+        });
+        document.getElementById('stationDeskLoadDrvBtn').addEventListener('click', async function () {
+          var pSel = document.getElementById('stationDeskDrvPrinter');
+          var pname = (pSel && pSel.value) || '';
+          if (!pname) return sayPs('Select a printer first.', true);
+          var btn = this; btn.disabled = true; btn.textContent = 'Loading\u2026';
+          try {
+            var r = await helperFetch('/paper?printer=' + encodeURIComponent(pname), { cache: 'no-store' });
+            var j = await r.json().catch(function () { return {}; });
+            var list = Array.isArray(j.paperList) ? j.paperList : [];
+            var szSel = document.getElementById('stationDeskDrvSize');
+            var addBtn = document.getElementById('stationDeskAddDrvBtn');
+            if (!list.length) {
+              sayPs('No paper list returned by ' + pname + ' driver. Enter width \u00d7 height below.', true);
+              if (szSel) szSel.hidden = true;
+              if (addBtn) addBtn.hidden = true;
+              return;
+            }
+            szSel.innerHTML = list.map(function (it, idx) {
+              return '<option value="' + idx + '">' + escHtml(it.name) + ' (' + Math.round(it.w) + '\u00d7' + Math.round(it.h) + ' mm)</option>';
+            }).join('');
+            szSel._items = list;
+            szSel.hidden = false;
+            if (addBtn) addBtn.hidden = false;
+            sayPs('Loaded ' + list.length + ' paper sizes from ' + pname + '.');
+          } finally { btn.disabled = false; btn.textContent = 'Load driver sizes'; }
+        });
+        document.getElementById('stationDeskAddDrvBtn').addEventListener('click', function () {
+          var szSel = document.getElementById('stationDeskDrvSize');
+          var it = szSel && szSel._items && szSel._items[Number(szSel.value)];
+          if (!it) return;
+          var spec = {
+            label: String(it.name || '').slice(0, 32),
+            widthMm: Number(it.w) || 101.6,
+            heightMm: Number(it.h) || 152.4,
+            twoUp: isSplitLabel(it.name),
+            paperName: String(it.name || '')
+          };
+          saveStationSizes(currentTestSizes().concat([spec])).then(function () { sayPs('Added driver size ' + spec.label + '.'); });
+        });
+        document.getElementById('stationDeskCsAddBtn').addEventListener('click', function () {
+          var w = Number(document.getElementById('stationDeskCsW').value);
+          var h = Number(document.getElementById('stationDeskCsH').value);
+          var u = document.getElementById('stationDeskCsU').value;
+          var lo = u === 'in' ? 0.5 : 10, hi = u === 'in' ? 48 : 1220;
+          if (!(w >= lo && w <= hi && h >= lo && h <= hi)) return sayPs('Size must be ' + lo + '\u2013' + hi + ' ' + u + ' on each side.', true);
+          var k = u === 'in' ? 25.4 : 1;
+          var labelRaw = document.getElementById('stationDeskCsLabel').value.trim();
+          var twoUp = !!document.getElementById('stationDeskCsTwoUp').checked;
+          var wMm = Math.round(w * k * 100) / 100, hMm = Math.round(h * k * 100) / 100;
+          var autoLbl = w + '\u00d7' + h + (u === 'mm' ? ' mm' : '') + (twoUp ? ' Cut' : '');
+          saveStationSizes(currentTestSizes().concat([{ label: (labelRaw || autoLbl).slice(0, 40), widthMm: wMm, heightMm: hMm, twoUp: twoUp }])).then(function () {
+            document.getElementById('stationDeskCsW').value = '';
+            document.getElementById('stationDeskCsH').value = '';
+            document.getElementById('stationDeskCsLabel').value = '';
+            document.getElementById('stationDeskCsTwoUp').checked = false;
+            sayPs('Added Test ' + (labelRaw || autoLbl) + '.');
+          });
+        });
+        document.getElementById('stationDeskPrinters').addEventListener('change', function (e) {
+          var cb = e.target.closest('input[data-ps-sel]');
+          if (!cb) return;
+          var cur = new Set(effectiveSelected());
+          if (cb.checked) cur.add(cb.dataset.psSel); else cur.delete(cb.dataset.psSel);
+          saveStationPrinters(Array.from(cur), !!(lastInfo && lastInfo.hideUnusedPrinters));
+        });
         document.getElementById('stationDeskNewPinBtn').addEventListener('click', async function () {
           var api = window.pb4u && window.pb4u.lanStation; if (!api) return;
           var res = await api.newPin();
-          if (res && res.ok) { renderStationData(res); sayPs('New 6-digit PIN generated: ' + res.pin); }
+          if (res && res.ok) { renderStationData(res, false); sayPs('New 6-digit PIN generated: ' + res.pin); }
           else sayPs((res && res.error) || 'Could not update PIN.', true);
         });
         document.getElementById('stationDeskCopyBtn').addEventListener('click', function () {
@@ -50607,6 +51894,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           } finally { b.disabled = false; }
         });
         document.getElementById('stationDeskPrinters').addEventListener('click', async function (e) {
+          if (e.target.closest('#stationDeskInlineShowAll')) {
+            saveStationPrinters(lastInfo && Array.isArray(lastInfo.selectedPrinters) ? lastInfo.selectedPrinters : [], false);
+            return;
+          }
           var cfgB = e.target.closest('[data-ps-cfg]');
           if (cfgB) {
             cfgB.disabled = true; sayPs('Opening Driver Preferences for ' + cfgB.dataset.psCfg + '\u2026');
@@ -50619,22 +51910,28 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           }
           var tstB = e.target.closest('[data-ps-test]');
           if (tstB) {
-            var twoUp = tstB.dataset.twoup === '1';
-            tstB.disabled = true; sayPs('Sending ' + (twoUp ? '2\u00d76 cut' : '4\u00d76') + ' test print to ' + tstB.dataset.psTest + '\u2026');
+            var spec = currentTestSizes()[Number(tstB.dataset.sidx)] || DEFAULT_TEST_SIZES[0];
+            tstB.disabled = true; sayPs('Sending ' + spec.label + ' test print to ' + tstB.dataset.psTest + '\u2026');
             try {
-              var tr = await window.pb4u.lanStation.testPrint(tstB.dataset.psTest, twoUp);
-              sayPs(tr && tr.ok ? ('Test print sent to ' + tstB.dataset.psTest + ' \u2713') : ((tr && tr.error) || 'Test print failed.'), !(tr && tr.ok));
+              var tr = await window.pb4u.lanStation.testPrint(tstB.dataset.psTest, spec);
+              sayPs(tr && tr.ok ? ('Test print (' + spec.label + ') sent to ' + tstB.dataset.psTest + ' \u2713') : ((tr && tr.error) || 'Test print failed.'), !(tr && tr.ok));
             } finally { tstB.disabled = false; }
           }
         });
         if (window.pb4u && window.pb4u.lanStation && typeof window.pb4u.lanStation.onJob === 'function') {
-          window.pb4u.lanStation.onJob(function (info) { if (!ov.hidden) renderStationData(info); });
+          window.pb4u.lanStation.onJob(function (info) {
+            if (ov.hidden || !info) return;
+            if (prBusy > 0 && lastInfo) { info = Object.assign({}, info, { selectedPrinters: lastInfo.selectedPrinters, hideUnusedPrinters: lastInfo.hideUnusedPrinters }); }
+            if (szBusy > 0 && lastInfo) { info = Object.assign({}, info, { testSizes: lastInfo.testSizes, testSizesCustomized: lastInfo.testSizesCustomized }); }
+            renderStationData(info, false);
+          });
         }
         return function () {
           if (!printStationAllowed()) return showToast('Print Station is not enabled for this booth code.', 4000);
           window.__pbStationPaused = true;
           try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
           sayPs('');
+          lastPrSig = ''; lastSzSig = ''; lastJobSig = '';
           ov.hidden = false;
           loadStationData(true);
         };
@@ -50701,7 +51998,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function deskTplValid(k) {
         if (k === 'match') return true;
         if (/^pm:/.test(k)) return !!pmTplById(k.slice(3));
-        if (/^frame:/.test(k)) { try { return !!frameById(k.slice(6)); } catch (e) { return false; } }
+        if (/^frame:/.test(k)) return false;
         var d = LAYOUT_DEFS[k];
         return !!d && d.kind !== 'frame' && d.kind !== 'card' && d.kind !== 'cert' && d.kind !== 'receipt';
       }
@@ -51133,7 +52430,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           txt.textContent = '\u26A1 Auto-frame ON: incoming photos frame automatically into ' + deskTplLabel() + (need > 1 ? ' (' + have + ' of ' + need + ' waiting)' : '') + ' — or tap photos manually anytime.';
         } else if (!deskQueue.length) {
           cue.className = 'desk-step-cue';
-          txt.textContent = 'Step 1: Scan the Roving QR below, watch a camera folder, or drop photos to start.';
+          txt.textContent = 'Step 1: Drop photos here, click + Add photos, or open Connect & QR to pair a camera / phone.';
         } else if (!deskSel.length) {
           cue.className = 'desk-step-cue';
           txt.textContent = deskOrientMode
@@ -51149,7 +52446,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function deskHint() {
         var n = deskNeed(), spots = deskSpots(), el = document.getElementById('deskHint');
         if (!el) return;
-        if (!deskQueue.length) { el.textContent = 'No photos yet. Scan the QR code in Connect & QR with a phone, drop / choose photos' + (window.pb4u && window.pb4u.deskScan ? ', or choose the folder their camera saves into.' : '.'); return; }
+        if (!deskQueue.length) { el.textContent = ''; return; }
         el.textContent = n > 1
           ? 'This template has ' + spots + ' photo spots. Tap up to ' + n + ' photos in order (tap 1 photo and it repeats in every spot).'
           : spots > 1
@@ -51245,11 +52542,6 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         ['solo'].concat(LAYOUT_ORDER.filter(function (k) { return k !== 'solo'; })).forEach(function (k) {
           if (deskTplValid(k)) add(g1, k, LAYOUT_DEFS[k].name + ' \u00B7 ' + deskPhotosText(LAYOUT_DEFS[k].shots));
         });
-        var fl = (typeof myFrames !== 'undefined' && myFrames) || [];
-        if (fl.length) {
-          var g2 = grp('My frames (uploaded in Setup)');
-          fl.forEach(function (f) { add(g2, 'frame:' + f.id, pickName('frame:' + f.id) + ' \u00B7 ' + deskPhotosText(Math.max(1, frameShotCount(f)))); });
-        }
         sel.value = deskValidOr(selectedVal, 'solo');
       }
       function deskTplOptions() {
@@ -51283,8 +52575,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var favBtn = document.getElementById('deskTplFavBtn');
         if (favBtn) {
           favBtn.classList.toggle('on', isFav);
-          favBtn.textContent = isFav ? '\u2605 Favorited' : '\u2606 Favorite';
+          favBtn.textContent = isFav ? '\u2605 Pinned' : '\u2606 Pin';
         }
+        var favSec = document.getElementById('deskFavSec');
+        if (favSec) favSec.classList.toggle('is-empty', favs.length === 0);
         function fillChips(container, allowUnpin) {
           if (!container) return;
           container.innerHTML = '';
@@ -51364,6 +52658,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var au = document.getElementById('deskAuto'); if (au) au.checked = deskAutoOn;
         var sb = document.getElementById('deskShowBooth'); if (sb) sb.checked = deskShowBooth;
         var tb = document.getElementById('deskTplBadge'); if (tb) tb.textContent = deskTplShortName();
+        var qt = document.getElementById('deskQueueTplName'); if (qt) qt.textContent = deskOrientMode ? 'Auto (Port / Land)' : deskTplShortName();
+        var qa = document.getElementById('deskQueueAutoState'); if (qa) qa.textContent = deskAutoOn ? 'ON' : 'OFF';
+        var qac = document.getElementById('deskQueueAutoChip'); if (qac) qac.classList.toggle('auto-on', !!deskAutoOn);
         deskTplNoteUi();
         deskStepCueUi();
       }
@@ -51574,9 +52871,37 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return true;
         });
 
+        var qBarEl = document.getElementById('deskQbar');
+        if (qBarEl) qBarEl.hidden = !deskQueue.length;
+        var clearBtnEl = document.getElementById('deskClear');
+        if (clearBtnEl) clearBtnEl.disabled = !deskQueue.length;
+
         deskGrid.innerHTML = '';
         if (!deskQueue.length) {
-          var e = document.createElement('div'); e.className = 'desk-empty'; e.textContent = 'Photos you add appear here.'; deskGrid.appendChild(e);
+          var ec = document.createElement('div');
+          ec.className = 'desk-empty-cta';
+          var eb = document.createElement('b');
+          eb.textContent = 'Ready for incoming photos';
+          var ep = document.createElement('p');
+          ep.textContent = 'Drop photos anywhere here, pick files from your computer, or connect your camera / phone.' + (window.pb4u && window.pb4u.deskScan ? ' You can also watch a tether folder in Connect & QR.' : '');
+          var ebtns = document.createElement('div');
+          ebtns.className = 'desk-empty-cta-btns';
+          var bAdd = document.createElement('button');
+          bAdd.type = 'button';
+          bAdd.className = 'desk-btn primary';
+          bAdd.textContent = '\uD83D\uDCC1 Choose Photos';
+          bAdd.addEventListener('click', function () { var df = document.getElementById('deskFile'); if (df) df.click(); });
+          var bConn = document.createElement('button');
+          bConn.type = 'button';
+          bConn.className = 'desk-btn';
+          bConn.textContent = '\uD83D\uDD0C Connect Camera / Phone';
+          bConn.addEventListener('click', function () { if (typeof deskSetTab === 'function') deskSetTab('deskSecConnect'); });
+          ebtns.appendChild(bAdd);
+          ebtns.appendChild(bConn);
+          ec.appendChild(eb);
+          ec.appendChild(ep);
+          ec.appendChild(ebtns);
+          deskGrid.appendChild(ec);
         } else if (!list.length) {
           var ef = document.createElement('div'); ef.className = 'desk-empty';
           ef.textContent = 'No ' + deskQueueFilter + ' photos in the queue yet. ';
@@ -51661,12 +52986,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
 
       // ---- Open / Close / Pop-Out Studio Window & Tab ----
+      var deskActiveTab = 'deskSecQueue';
       function deskGuideUi() {
         var strip = document.getElementById('deskGuideStrip'), btn = document.getElementById('deskGuideBtn');
         if (!strip) return;
-        var seen = false;
-        try { seen = localStorage.getItem('pb_desk_guide_seen') === '1'; } catch (e) { }
-        if (strip.dataset.toggled !== '1') strip.hidden = seen;
+        if (strip.dataset.toggled !== '1') strip.hidden = true;
         if (btn) btn.classList.toggle('primary', !strip.hidden);
       }
       function openDesk() {
@@ -51686,13 +53010,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var popBtn = document.getElementById('deskPopBtn'), dockBtn = document.getElementById('deskDockBackBtn');
         if (popBtn) {
           popBtn.hidden = DESK_STANDALONE;
-          popBtn.textContent = DESKTOP ? '\u2197 Pop Out Window' : '\u2197 Open in New Tab';
+          popBtn.textContent = DESKTOP ? '\u2197 Pop Out' : '\u2197 New Tab';
         }
         if (dockBtn) dockBtn.hidden = !DESK_STANDALONE;
         deskSyncPillUi();
         deskGuideUi();
         pmHydrateAssets();
-        if (typeof deskSetMakerMode === 'function') deskSetMakerMode(false);
+        if (typeof deskSetTab === 'function') deskSetTab('deskSecQueue');
+        else if (typeof deskSetMakerMode === 'function') deskSetMakerMode(false);
         deskTplUi();
         deskRender();
         deskWatchUI();
@@ -51702,9 +53027,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         deskPhoneUi();
         deskConnectRefresh();
         if (DESK_STANDALONE) deskBroadcast({ type: 'need-setup' });
-        try { if (typeof scheduleTips === 'function') scheduleTips(); } catch (e) { }
       }
       function closeDesk() {
+        var gm = document.getElementById('pmGuideModal');
+        if (gm) gm.hidden = true;
+        pmHoverPreset = '';
+        pmHidePresetHoverPop();
         if (DESK_STANDALONE) {
           if (window.pb4u && window.pb4u.focusBoothWindow) { window.pb4u.focusBoothWindow(); }
           try { window.close(); } catch (e) { }
@@ -52196,6 +53524,151 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var pmMakerSamples = null;
       var pmDrag = null;
       var pmStageRaf = 0;
+      var pmTab = 'pmTabStart';
+      var pmPresetCat = 'polaroid';
+      var pmHoverPreset = '';
+      var pmPresetThumbCache = Object.create(null);
+      var PM_PRESET_ITEMS = [
+        { kind: 'polaroid2up', cat: 'polaroid', title: '4R 2-up Polaroid', meta: '6\u00d74 \u00b7 2 spots' },
+        { kind: 'polaroid2upFloral', cat: 'polaroid', title: '2-up Floral Polaroid', meta: '6\u00d74 \u00b7 2 spots' },
+        { kind: 'polaroid', cat: 'polaroid', title: '4R Polaroid Classic', meta: '4\u00d76 \u00b7 1 spot' },
+        { kind: 'film2', cat: 'polaroid', title: '4R 2-Shot Film', meta: '4\u00d76 \u00b7 2 spots' },
+        { kind: 'land4r', cat: 'single', title: '4R Landscape 1-Spot', meta: '6\u00d74 \u00b7 1 spot' },
+        { kind: 'land4rFloral', cat: 'single', title: '4R Landscape Floral', meta: '6\u00d74 \u00b7 1 spot' },
+        { kind: 'hero4r', cat: 'single', title: '4R Portrait Hero', meta: '4\u00d76 \u00b7 1 spot' },
+        { kind: 'square1', cat: 'single', title: 'Square 1:1 Keepsake', meta: '1:1 \u00b7 1 spot' },
+        { kind: 'hero3', cat: 'collage', title: '4R Hero + 2 Shots', meta: '4\u00d76 \u00b7 3 spots' },
+        { kind: 'grid4', cat: 'collage', title: '4R 2\u00d72 Collage', meta: '4\u00d76 \u00b7 4 spots' },
+        { kind: 'strip3', cat: 'collage', title: '2\u00d76 3-Shot Strip', meta: '2\u00d76 \u00b7 3 spots' }
+      ];
+      function pmPresetThumbUrl(kind) {
+        if (pmPresetThumbCache[kind]) return pmPresetThumbCache[kind];
+        try {
+          var spec = pmPresetSpec(kind);
+          var c = document.createElement('canvas');
+          var shots = pmStageSamplesList(Math.max(1, (spec.spots || []).length));
+          composePmCanvas('pm:preset_' + kind, c, shots, { template: spec, wireframeOnly: false, previewMaxSide: 220 });
+          var url = c.toDataURL('image/png');
+          pmPresetThumbCache[kind] = url;
+          return url;
+        } catch (e) {
+          return '';
+        }
+      }
+      function pmHidePresetHoverPop() {
+        var pop = document.getElementById('pmPresetHoverPop');
+        if (pop) pop.hidden = true;
+      }
+      function pmShowPresetHoverPop(card, item) {
+        var pop = document.getElementById('pmPresetHoverPop');
+        var img = document.getElementById('pmPresetHoverImg');
+        var title = document.getElementById('pmPresetHoverTitle');
+        var meta = document.getElementById('pmPresetHoverMeta');
+        if (!pop || !img || !title || !meta || !card || !item) return;
+        // Show floating preview popover only when main stage canvas is stacked below / not comfortably visible
+        var stageCv = document.getElementById('pmMakerCanvas');
+        var stageRect = stageCv ? stageCv.getBoundingClientRect() : null;
+        var stageComfortablyInView = !!(stageRect && stageRect.width >= 160 && stageRect.height >= 120 && stageRect.top < window.innerHeight - 60 && stageRect.bottom > 80 && window.innerWidth > 760);
+        if (stageComfortablyInView) {
+          pop.hidden = true;
+          return;
+        }
+        var url = pmPresetThumbUrl(item.kind);
+        if (url) img.src = url;
+        title.textContent = item.title;
+        meta.textContent = item.meta + ' \u00b7 Click to create';
+        pop.hidden = false;
+        var r = card.getBoundingClientRect();
+        var pw = pop.offsetWidth || 190, ph = pop.offsetHeight || 220;
+        var left = r.right + 10;
+        if (left + pw > window.innerWidth - 10) left = r.left - pw - 10;
+        if (left < 10) left = Math.max(10, Math.min(window.innerWidth - pw - 10, r.left));
+        var top = Math.max(10, Math.min(window.innerHeight - ph - 10, r.top - 8));
+        pop.style.left = Math.round(left) + 'px';
+        pop.style.top = Math.round(top) + 'px';
+      }
+      function pmSetTab(tabId) {
+        var valid = ['pmTabStart', 'pmTabDesign', 'pmTabLayers'];
+        if (valid.indexOf(tabId) < 0) tabId = 'pmTabStart';
+        pmTab = tabId;
+        if (pmHoverPreset) {
+          pmHoverPreset = '';
+          pmHidePresetHoverPop();
+          pmScheduleStage();
+        }
+        document.querySelectorAll('#pmStepTabs [data-pmtab]').forEach(function (b) {
+          var on = b.dataset.pmtab === tabId;
+          b.classList.toggle('active', on);
+          b.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        valid.forEach(function (id) {
+          var pane = document.getElementById(id);
+          if (pane) pane.hidden = id !== tabId;
+        });
+        if (tabId === 'pmTabStart') pmRenderPresetsUi();
+      }
+      function pmPulsePresets() {
+        var box = document.getElementById('pmPresets');
+        if (!box) return;
+        box.classList.remove('pulse');
+        void box.offsetWidth;
+        box.classList.add('pulse');
+      }
+      function pmRenderPresetsUi() {
+        document.querySelectorAll('#pmPresetCats [data-pcat]').forEach(function (b) {
+          b.classList.toggle('active', (b.dataset.pcat || 'polaroid') === pmPresetCat);
+        });
+        var grid = document.getElementById('pmPresets');
+        if (!grid) return;
+        grid.innerHTML = '';
+        var list = PM_PRESET_ITEMS.filter(function (x) { return pmPresetCat === 'all' || x.cat === pmPresetCat; });
+        list.forEach(function (item) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'pm-preset-card' + (pmHoverPreset === item.kind ? ' is-hovering' : '');
+          btn.dataset.preset = item.kind;
+          var thumb = document.createElement('span');
+          thumb.className = 'pm-preset-thumb';
+          var url = pmPresetThumbUrl(item.kind);
+          if (url) {
+            var im = document.createElement('img');
+            im.src = url;
+            im.alt = '';
+            thumb.appendChild(im);
+          }
+          var info = document.createElement('span');
+          info.className = 'pm-preset-info';
+          var bEl = document.createElement('b'); bEl.textContent = item.title;
+          var sEl = document.createElement('small'); sEl.textContent = item.meta;
+          info.appendChild(bEl); info.appendChild(sEl);
+          btn.appendChild(thumb); btn.appendChild(info);
+
+          function enterPreview() {
+            pmHoverPreset = item.kind;
+            grid.querySelectorAll('.pm-preset-card').forEach(function (c) { c.classList.toggle('is-hovering', c === btn); });
+            pmScheduleStage();
+            pmShowPresetHoverPop(btn, item);
+          }
+          function leavePreview() {
+            btn.classList.remove('is-hovering');
+            if (pmHoverPreset === item.kind) {
+              pmHoverPreset = '';
+              pmHidePresetHoverPop();
+              pmScheduleStage();
+            }
+          }
+          btn.addEventListener('pointerenter', enterPreview);
+          btn.addEventListener('focus', enterPreview);
+          btn.addEventListener('pointerleave', leavePreview);
+          btn.addEventListener('blur', leavePreview);
+          btn.addEventListener('click', function () {
+            pmHoverPreset = '';
+            pmHidePresetHoverPop();
+            pmCreateFromPreset(item.kind);
+          });
+          grid.appendChild(btn);
+        });
+      }
 
       function pmMakeId() {
         return 'pm_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -52377,6 +53850,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         return t;
       }
       function pmCreateFromPreset(kind, silent) {
+        pmHoverPreset = '';
+        pmHidePresetHoverPop();
         if (kind === 'png') {
           pmOvImportAsNew = true;
           var ovf = document.getElementById('pmOvFile'); if (ovf) ovf.click();
@@ -52700,7 +54175,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!deskOverlay.classList.contains('desk-maker-active')) return;
         var wrap = document.getElementById('pmStageWrap'), sbox = document.getElementById('pmStageBox'), cv = document.getElementById('pmMakerCanvas');
         if (!wrap || !sbox || !cv) return;
-        var t = pmActive();
+        var isHoverPrev = !!(pmHoverPreset && typeof pmPresetSpec === 'function');
+        var t = isHoverPrev ? pmPresetSpec(pmHoverPreset) : pmActive();
         var baseW = Math.max(200, Number(t.w) || 1200), baseH = Math.max(200, Number(t.h) || 1800);
         var ww = Math.max(200, (wrap.clientWidth || 380) - 28);
         var wh = Math.max(220, (wrap.clientHeight || 420) - 28);
@@ -52709,13 +54185,25 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         sbox.style.width = bw + 'px';
         sbox.style.height = bh + 'px';
 
+        wrap.classList.toggle('is-hover-preview', isHoverPrev);
+        var hoverPill = document.getElementById('pmStageHoverPill');
+        if (hoverPill) {
+          hoverPill.hidden = !isHoverPrev;
+          if (isHoverPrev) hoverPill.textContent = '\uD83D\uDC41 Previewing: ' + (t.name || pmHoverPreset) + ' \u2014 click to create';
+        }
+
         var showPhotos = !document.getElementById('pmStageSamples') || document.getElementById('pmStageSamples').checked;
-        var shots = pmStageSamplesList(Math.max(1, pmSpotCount(t)));
-        composePmCanvas('pm:' + t.id, cv, shots, { template: t, wireframeOnly: !showPhotos, previewMaxSide: 840 });
+        var shots = pmStageSamplesList(Math.max(1, isHoverPrev ? ((t.spots || []).length || 1) : pmSpotCount(t)));
+        composePmCanvas(isHoverPrev ? ('pm:preset_' + pmHoverPreset) : ('pm:' + t.id), cv, shots, { template: t, wireframeOnly: !showPhotos, previewMaxSide: 840 });
 
         var meta = document.getElementById('pmStageMeta');
-        if (meta) meta.textContent = baseW + '\u00D7' + baseH + ' \u00B7 ' + (t.spots.length) + ' spot' + (t.spots.length === 1 ? '' : 's') + (t.strip ? ' \u00B7 2-up Strip' : (t.splitHalf ? ' \u00B7 2-up 4R' : ''));
-        if (!skipBoxRebuild) pmSyncOverlayBoxes(t);
+        if (meta) meta.textContent = baseW + '\u00D7' + baseH + ' \u00B7 ' + (t.spots.length) + ' spot' + (t.spots.length === 1 ? '' : 's') + (t.strip ? ' \u00B7 2-up Strip' : (t.splitHalf ? ' \u00B7 2-up 4R' : '')) + (isHoverPrev ? ' \u00B7 Hover preview' : '');
+        if (isHoverPrev) {
+          var ov = document.getElementById('pmStageOverlay');
+          if (ov) ov.querySelectorAll('.pm-box').forEach(function (el) { el.remove(); });
+        } else if (!skipBoxRebuild) {
+          pmSyncOverlayBoxes(t);
+        }
       }
       function pmScheduleStage(skipBoxes) {
         if (pmStageRaf) return;
@@ -52740,12 +54228,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (favBtn) {
           var isFav = deskValidFavs().indexOf('pm:' + t.id) >= 0;
           favBtn.classList.toggle('on', isFav);
-          favBtn.textContent = isFav ? '\u2605 Favorited' : '\u2606 Favorite';
+          favBtn.textContent = isFav ? '\u2605 Pinned' : '\u2606 Pin';
         }
         var pairBtn = document.getElementById('pmMakePairBtn');
         if (pairBtn) {
           var isTwo = !!t.splitHalf || ((t.spots || []).length === 2 && (t.w || 1200) > (t.h || 1800));
-          pairBtn.textContent = isTwo ? '\uD83D\uDD04 Make 4R Landscape Pair' : '\uD83D\uDD04 Make 2-up Polaroid Pair';
+          pairBtn.textContent = isTwo ? '\uD83D\uDD04 4R Landscape Pair' : '\uD83D\uDD04 2-up Polaroid Pair';
         }
         var ni = document.getElementById('pmNameInput'); if (ni && document.activeElement !== ni) ni.value = t.name || '';
         var sp = document.getElementById('pmSizePreset');
@@ -52908,14 +54396,19 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         pmRefreshInspector();
         pmSyncOverlayBoxes(pmActive());
       }
+      var deskLastWorkTab = 'deskSecQueue';
       function deskSetMakerMode(on, editTplId) {
         on = !!on;
+        pmHoverPreset = '';
+        pmHidePresetHoverPop();
         deskOverlay.classList.toggle('desk-maker-active', on);
+        if (!on && deskActiveTab === 'deskSecMaker') deskActiveTab = deskLastWorkTab || 'deskSecQueue';
+        deskOverlay.dataset.deskTab = on ? 'deskSecMaker' : (deskActiveTab || 'deskSecQueue');
         var mkCard = document.getElementById('deskSecMaker'), mkPv = document.getElementById('deskMakerPreviewCard');
         if (mkCard) mkCard.hidden = !on;
         if (mkPv) mkPv.hidden = !on;
         document.querySelectorAll('#deskHeadTabs .spin-tab-btn').forEach(function (b) {
-          b.classList.toggle('active', on ? b.id === 'deskMakerTabBtn' : b.dataset.tab === 'deskSecQueue');
+          b.classList.toggle('active', on ? b.id === 'deskMakerTabBtn' : b.dataset.tab === (deskActiveTab || 'deskSecQueue'));
         });
         if (on) {
           if (editTplId && pmTplById(editTplId)) pmActiveId = editTplId;
@@ -52923,7 +54416,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var act = pmEnsureOne();
           if (pmSel.kind === 'spot' && !act.spots[pmSel.idx]) pmSel = act.spots.length ? { kind: 'spot', idx: 0 } : { kind: 'none', idx: -1 };
           pmRefreshAllUi();
-          try { if (typeof scheduleTips === 'function') scheduleTips(); } catch (e) { }
+          pmSetTab(pmTab);
         } else {
           if (pmSaveTimer) pmSaveAll();
           deskTplUi();
@@ -52970,6 +54463,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           e.preventDefault();
           var kind = box.dataset.kind, idx = Number(box.dataset.idx);
           pmSelectLayer(kind, idx);
+          if (pmTab !== 'pmTabLayers') pmSetTab('pmTabLayers');
           var t = pmActive();
           var rect = sbox.getBoundingClientRect();
           if (!rect.width || !rect.height) return;
@@ -53136,8 +54630,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // Wire Maker toolbar, presets, inputs & layer actions
       (function () {
         function bind(id, ev, fn) { var el = document.getElementById(id); if (el) el.addEventListener(ev, fn); }
-        bind('deskTplNewBtn', 'click', function () { deskSetMakerMode(true); pmCreateFromPreset('polaroid2up'); });
-        bind('deskTplEditBtn', 'click', function () { deskSetMakerMode(true, deskTplKey().slice(3)); });
+        bind('deskTplNewBtn', 'click', function () { deskSetTab('deskSecMaker', { pmTab: 'pmTabStart' }); pmPulsePresets(); });
+        bind('deskTplEditBtn', 'click', function () { deskSetTab('deskSecMaker', { editTplId: deskTplKey().slice(3), pmTab: 'pmTabLayers' }); });
         bind('pmFavBtn', 'click', function () {
           var t = pmActive();
           deskToggleFav('pm:' + t.id);
@@ -53145,6 +54639,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         });
         bind('pmUseBtn', 'click', pmUseCurrentTemplate);
         bind('pmUseBtn2', 'click', pmUseCurrentTemplate);
+        bind('pmLayerDoneUseBtn', 'click', pmUseCurrentTemplate);
+        document.querySelectorAll('[data-pmtab-next]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            pmSetTab(b.dataset.pmtabNext || 'pmTabStart');
+            var sc = document.getElementById('deskStudioControls');
+            if (sc) sc.scrollTop = 0;
+          });
+        });
         bind('pmMakePairBtn', 'click', pmMakeMatchingPair);
         bind('pmTplSelect', 'change', function () {
           pmActiveId = this.value;
@@ -53152,7 +54654,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           pmSel = t.spots.length ? { kind: 'spot', idx: 0 } : { kind: 'none', idx: -1 };
           pmRefreshAllUi();
         });
-        bind('pmNewBtn', 'click', function () { pmCreateFromPreset('polaroid2up'); });
+        bind('pmNewBtn', 'click', function () {
+          pmSetTab('pmTabStart');
+          pmPulsePresets();
+          showToast('Hover any Starter Preset to preview, or click one to create.', 2600);
+        });
         bind('pmDupBtn', 'click', function () {
           var src = pmActive(), cp = JSON.parse(JSON.stringify(src));
           cp.id = pmMakeId(); cp.name = (src.name || 'Template') + ' Copy'; cp.updatedAt = Date.now();
@@ -53190,9 +54696,35 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           t.updatedAt = Date.now();
           pmSaveAll(); pmRefreshAllUi();
         });
-        document.querySelectorAll('#pmPresets .pm-preset-btn').forEach(function (b) {
-          b.addEventListener('click', function () { pmCreateFromPreset(b.dataset.preset); });
+        bind('pmImportPngBtn', 'click', function () { pmCreateFromPreset('png'); });
+        document.querySelectorAll('#pmStepTabs [data-pmtab]').forEach(function (b) {
+          b.addEventListener('click', function () { pmSetTab(b.dataset.pmtab); });
         });
+        document.querySelectorAll('#pmPresetCats [data-pcat]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            pmPresetCat = b.dataset.pcat || 'polaroid';
+            pmHoverPreset = '';
+            pmHidePresetHoverPop();
+            pmRenderPresetsUi();
+            pmScheduleStage();
+          });
+        });
+        (function () {
+          var gm = document.getElementById('pmGuideModal');
+          if (!gm) return;
+          function closePmGuide() { gm.hidden = true; }
+          bind('pmMakerGuideBtn', 'click', function () { gm.hidden = false; });
+          bind('pmGuideClose', 'click', closePmGuide);
+          bind('pmGuideOk', 'click', closePmGuide);
+          gm.addEventListener('click', function (e) { if (e.target === gm) closePmGuide(); });
+          gm.querySelectorAll('[data-pmjump]').forEach(function (jb) {
+            jb.addEventListener('click', function () {
+              closePmGuide();
+              pmSetTab(jb.dataset.pmjump || 'pmTabStart');
+            });
+          });
+          document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !gm.hidden) closePmGuide(); });
+        })();
         bind('pmBgPreset', 'change', function () {
           var t = pmActive(); t.bgPreset = this.value || 'none'; t.updatedAt = Date.now();
           pmSaveAll(); pmScheduleStage(true);
@@ -53533,28 +55065,47 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         window.addEventListener('beforeunload', function () { if (pmSaveTimer) pmSaveAll(); });
       })();
 
-      document.querySelectorAll('#deskHeadTabs .spin-tab-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          if (btn.id === 'deskMakerTabBtn') {
-            deskSetMakerMode(true);
-            return;
+      function deskSetTab(tabId, opts) {
+        opts = opts || {};
+        var validTabs = ['deskSecQueue', 'deskSecTemplate', 'deskSecMaker', 'deskSecConnect', 'deskStudioPreview'];
+        if (validTabs.indexOf(tabId) < 0) tabId = 'deskSecQueue';
+        if (tabId === 'deskStudioPreview') {
+          var pv = document.getElementById(deskOverlay.classList.contains('desk-maker-active') ? 'deskMakerPreviewCard' : 'deskStudioPreview');
+          if (pv) pv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+        if (tabId !== 'deskSecMaker') deskLastWorkTab = tabId;
+        deskActiveTab = tabId;
+        if (tabId === 'deskSecMaker') {
+          if (!deskOverlay.classList.contains('desk-maker-active') || opts.editTplId) {
+            deskSetMakerMode(true, opts.editTplId);
           }
+          if (opts.pmTab) pmSetTab(opts.pmTab);
+        } else {
           if (deskOverlay.classList.contains('desk-maker-active')) {
             deskSetMakerMode(false);
           }
-          document.querySelectorAll('#deskHeadTabs .spin-tab-btn').forEach(function (b) { b.classList.remove('active'); });
-          btn.classList.add('active');
-          var target = document.getElementById(btn.dataset.tab);
-          if (target) {
-            var sc = document.getElementById('deskStudioControls');
-            if (sc && sc.contains(target) && sc.scrollHeight > sc.clientHeight + 2) {
-              sc.scrollTo({ top: Math.max(0, target.offsetTop - sc.offsetTop - 12), behavior: 'smooth' });
-            } else {
-              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          }
+          deskOverlay.dataset.deskTab = tabId;
+          document.querySelectorAll('#deskHeadTabs .spin-tab-btn').forEach(function (b) {
+            b.classList.toggle('active', b.dataset.tab === tabId);
+          });
+          var sc = document.getElementById('deskStudioControls');
+          if (sc) sc.scrollTop = 0;
+        }
+      }
+      document.querySelectorAll('#deskHeadTabs .spin-tab-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          deskSetTab(btn.id === 'deskMakerTabBtn' ? 'deskSecMaker' : (btn.dataset.tab || 'deskSecQueue'));
         });
       });
+      var qAddBtn = document.getElementById('deskQueueAddBtn');
+      if (qAddBtn) qAddBtn.addEventListener('click', function () { var df = document.getElementById('deskFile'); if (df) df.click(); });
+      var qTplChip = document.getElementById('deskQueueTplChip');
+      if (qTplChip) qTplChip.addEventListener('click', function () { deskSetTab('deskSecTemplate'); });
+      var qAutoChip = document.getElementById('deskQueueAutoChip');
+      if (qAutoChip) qAutoChip.addEventListener('click', function () { deskSetAuto(!deskAutoOn); });
+      var qNewTplChip = document.getElementById('deskQueueNewTplChip');
+      if (qNewTplChip) qNewTplChip.addEventListener('click', function () { deskSetTab('deskSecMaker', { pmTab: 'pmTabStart' }); });
       var deskPopBtnEl = document.getElementById('deskPopBtn');
       if (deskPopBtnEl) deskPopBtnEl.addEventListener('click', deskPopOut);
       var deskDockBackBtnEl = document.getElementById('deskDockBackBtn');
@@ -53783,9 +55334,6 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         ['solo'].concat(LAYOUT_ORDER.filter(function (k) { return k !== 'solo'; })).forEach(function (k) {
           if (deskTplValid(k)) out.push({ key: k, label: LAYOUT_DEFS[k].name, shots: LAYOUT_DEFS[k].shots, group: 'Built-in layouts' });
         });
-        ((typeof myFrames !== 'undefined' && myFrames) || []).forEach(function (f) {
-          out.push({ key: 'frame:' + f.id, label: pickName('frame:' + f.id), shots: Math.max(1, frameShotCount(f)), group: 'My frames' });
-        });
         return out.slice(0, 60);
       }
       function deskRemoteState() {
@@ -53861,10 +55409,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         deskRemoteMark();
         if (DESK_STANDALONE && extraOn('roving') && deskOverlay.hidden) openDesk();
       });
-      var deskDrop = document.getElementById('deskDrop');
-      ['dragenter', 'dragover'].forEach(function (t) { deskDrop.addEventListener(t, function (e) { e.preventDefault(); deskDrop.classList.add('over'); }); });
-      ['dragleave', 'drop'].forEach(function (t) { deskDrop.addEventListener(t, function (e) { e.preventDefault(); deskDrop.classList.remove('over'); }); });
-      deskDrop.addEventListener('drop', function (e) { if (e.dataTransfer) deskAddFiles(e.dataTransfer.files); });
+      [document.getElementById('deskDrop'), document.getElementById('deskSecQueue')].forEach(function (zone) {
+        if (!zone) return;
+        ['dragenter', 'dragover'].forEach(function (t) { zone.addEventListener(t, function (e) { e.preventDefault(); zone.classList.add('over'); }); });
+        ['dragleave', 'drop'].forEach(function (t) { zone.addEventListener(t, function (e) { e.preventDefault(); zone.classList.remove('over'); }); });
+        zone.addEventListener('drop', function (e) { if (e.dataTransfer) deskAddFiles(e.dataTransfer.files); });
+      });
 
       // Load persisted queue on startup, and boot straight into Studio if launched in standalone window/tab mode
       deskIdbLoad();
@@ -57629,7 +59179,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var ST = { src: '', folders: [], folder: '', list: [], items: [], sel: -1, paper: '', gap: 2, margin: 4, cut: true, sheets: 1, pos: {}, pages: [], cv: [], dpi: 40, busy: false, uid: 0, seq: 0, show: 60, err: '', loading: false, urls: [], io: null, drag: null };
       var stOverlay = document.getElementById('studioOverlay');
       var ST_MAX_ITEMS = 40;
-      function studioOn() { try { return !!printSettings(); } catch (e) { return false; } }
+      function arrangePrintAllowed() { return !!(window.__PB && window.__PB.arrangePrintOpt); }
+      function studioOn() { try { return arrangePrintAllowed() && !!printSettings(); } catch (e) { return false; } }
+      window.addEventListener('pb-arrange-print-change', function () {
+        try { refreshDeskBtn(); } catch (e) { }
+        try { if (!studioOn() && stOverlay && !stOverlay.hidden && typeof stClose === 'function') stClose(); } catch (e) { }
+      });
+      window.addEventListener('pb-print-change', function () { try { refreshDeskBtn(); } catch (e) { } });
       function stEl(id) { return document.getElementById(id); }
       function stInch(mm) { return Math.round(mm / 25.4 * 100) / 100; }
       function stMm(inch) { return inch * 25.4; }
@@ -62107,6 +63663,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             var b = e.target.closest('[data-style]'); if (!b) return;
             setGuestStyleUI(b.dataset.style);
             try { guestRender(); } catch (err) { }
+            try { if (typeof applyStageAspect === 'function') applyStageAspect(); } catch (err) { }
             try { brandPvLayout(); } catch (err) { }
             if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
           });
@@ -63809,6 +65366,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                 pw = Math.round(pw * scale);
               }
               ch = Math.round(ch * scale);
+              slotH = Math.round(slotH * scale);
+              padY = Math.max(20, Math.round(padY * scale));
               stepH = Math.max(38, Math.round(stepH * scale));
               titleSize = Math.max(48, Math.round(titleSize * scale));
               gap = Math.round(gap * scale);
@@ -63823,7 +65382,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           };
           // The renter's welcome logo gets a space at the top of the card while it sits on the card.
           var wl = brandImgFor('w'), wb = brand.w;
-          var box = cardBox(wl ? 130 : 0);
+          var lAutoPre = !!(wl && wb.x == null);
+          var lbhPre = wl ? (wb.s || BRAND_DEF_S.w) * H : 0;
+          var maxCardWPre = land ? Math.min(W * 0.44, 720) : Math.min(W * 0.88, 720);
+          var lfPre = lAutoPre ? brandFit(wl.naturalWidth / wl.naturalHeight, lbhPre, Math.min(lbhPre * BRAND_MAXR, maxCardWPre - 80)) : null;
+          var slotForLogo = lAutoPre ? Math.max(116, Math.round(lfPre.h + 24)) : (wl ? 130 : 0);
+          var box = cardBox(slotForLogo);
           if (wl && wb.x != null) {
             var lx0 = wb.x * W, ly0 = wb.y * H;
             if (!(lx0 >= box.cx && lx0 <= box.cx + box.cw && ly0 >= box.cy && ly0 <= box.cy + box.ch)) box = cardBox(0);
@@ -63963,7 +65527,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             welcomeBaseUrl = c.toDataURL('image/jpeg', 0.8);   // the preview in Setup drags the logo over this
             var lAuto = wb.x == null, lbh = (wb.s || BRAND_DEF_S.w) * H, lasp = wl.naturalWidth / wl.naturalHeight;
             var lf = brandFit(lasp, lbh, lAuto ? Math.min(lbh * BRAND_MAXR, cw - 80) : lbh * BRAND_MAXR);
-            var lcx = lAuto ? mid : wb.x * W, lcy = lAuto ? cy + 48 + 55 : wb.y * H;
+            if (lAuto && box.slot > 0 && lf.h > box.slot - 16) lf = brandFit(lasp, Math.max(24, box.slot - 16), Math.min(lbh * BRAND_MAXR, cw - 80));
+            var lcx = lAuto ? mid : wb.x * W, lcy = lAuto ? cy + (box.padY || 34) + lf.h / 2 + 4 : wb.y * H;
             ctx.drawImage(wl, lcx - lf.w / 2, lcy - lf.h / 2, lf.w, lf.h);
             welcomeLogoRect = { x: lcx / W, y: lcy / H, w: lf.w / W, h: lf.h / H, s: lbh / H };
           }
@@ -66945,119 +68510,133 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         return sz;
       }
 
-      // Renders ONE crisp pure-B&W thermal voucher ticket canvas at native 203 DPI (576px for 80mm, 384px for 58mm).
-      // Strictly portrait (height > width) so CUPS, AirPrint, and Android print services never rotate it sideways.
+      // Renders ONE crisp pure-B&W compact thermal voucher ticket canvas at native 203 DPI (576px for 80mm, 384px for 58mm).
+      // Compact horizontal header layout cuts paper usage roughly in half while keeping the code and instructions crisp.
       function buildThermalVoucherCanvas(data, code, opts) {
         opts = opts || {};
         var is58 = opts.dotW === 384 || opts.format === 'thermal58';
         var W = is58 ? 384 : 576;
         var showCut = !!opts.showCutLine;
-        var H = is58 ? (showCut ? 426 : 398) : (showCut ? 616 : 584);
-        var cv = document.createElement('canvas');
-        cv.width = W; cv.height = H;
-        cv._pbToneDone = true;     // pure crisp B&W text/borders: skip photo bilateral denoise/halftone blur
-        var ctx = cv.getContext('2d');
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, W, H);
 
         var meta = voucherTicketMeta(data);
         var pesoStr = data.price ? ('₱' + Number(data.price || 0).toLocaleString('en-PH')) : '';
         var codeStr = String(code || '');
         var codeFmt = codeStr.length === 8 ? (codeStr.slice(0, 4) + ' ' + codeStr.slice(4)) : codeStr;
 
-        var pad = is58 ? 10 : 16;
-        var cardX = pad, cardY = is58 ? 10 : 14;
+        var pad = is58 ? 6 : 8;
+        var cardX = pad, cardY = is58 ? 3 : 4;
         var cardW = W - pad * 2;
-        var cardH = is58 ? 376 : 552;
-        var innerW = cardW - (is58 ? 28 : 44);
+        var boxPadX = is58 ? 10 : 14;
+        var boxX = cardX + boxPadX;
+        var boxW = cardW - boxPadX * 2;
+        var innerW = boxW;
         var cx = W / 2;
+
+        var cv = document.createElement('canvas');
+        cv.width = W;
+        var mCtx = cv.getContext('2d');
+
+        var evText = (data.event || 'Photo booth').trim() || 'Photo booth';
+        var evDate = (data.eventDate || '').trim();
+        var pricePx = is58 ? 20 : 30;
+        var priceGap = is58 ? 8 : 12;
+        var priceW = 0;
+        if (pesoStr) {
+          mCtx.font = 'bold ' + pricePx + 'px sans-serif';
+          priceW = Math.min(is58 ? 116 : 176, Math.ceil(mCtx.measureText(pesoStr).width) + priceGap);
+        }
+        var evMaxW = pesoStr ? Math.max(is58 ? 180 : 280, innerW - priceW) : innerW;
+        var evPx = is58 ? 17 : 24;
+        var evLineH = is58 ? 19 : 26;
+        mCtx.font = 'bold ' + evPx + 'px Georgia, serif';
+        var evLines = vWrapLines(mCtx, evText, evMaxW, 2);
+        var denseHeader = evLines.length > 1 && !!evDate;
+        if (denseHeader) {
+          evPx = is58 ? 15 : 21;
+          evLineH = is58 ? 17 : 23;
+          mCtx.font = 'bold ' + evPx + 'px Georgia, serif';
+          evLines = vWrapLines(mCtx, evText, evMaxW, 2);
+        }
+        var datePx = is58 ? 11 : 14;
+        var dateGap = is58 ? 2 : 3;
+        var evBlockH = evPx + (evLines.length - 1) * evLineH + (evDate ? (dateGap + datePx) : 0);
+        var headerH = Math.max(evBlockH, pesoStr ? pricePx : 0) + (is58 ? 4 : 6);
+
+        var kickerY = cardY + (is58 ? 15 : 20);
+        var divY = cardY + (is58 ? 20 : 26);
+        var zoneTop = divY + (is58 ? 4 : 6);
+        var boxY = zoneTop + headerH + (is58 ? 4 : 5);
+        var boxH = is58 ? 62 : 88;
+        var incY = boxY + boxH + (is58 ? 18 : 24);
+        var sepY = boxY + boxH + (is58 ? 25 : 34);
+        var howY1 = sepY + (is58 ? 15 : 21);
+        var howY2 = sepY + (is58 ? 29 : 40);
+        var cardBottom = sepY + (is58 ? 37 : 49);
+        var cardH = cardBottom - cardY;
+        var cutExtra = showCut ? (is58 ? 22 : 28) : 0;
+        var H = cardBottom + (is58 ? 3 : 4) + cutExtra;
+
+        cv.width = W; cv.height = H;
+        cv._pbToneDone = true;     // pure crisp B&W text/borders: skip photo bilateral denoise/halftone blur
+        var ctx = cv.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, W, H);
 
         // Crisp black outer ticket frame
         ctx.strokeStyle = '#000000';
-        ctx.lineWidth = is58 ? 3 : 4;
-        vDrawRoundRect(ctx, cardX, cardY, cardW, cardH, is58 ? 12 : 18);
+        ctx.lineWidth = is58 ? 2.5 : 3.5;
+        vDrawRoundRect(ctx, cardX, cardY, cardW, cardH, is58 ? 9 : 13);
         ctx.stroke();
 
         // Kicker
         ctx.fillStyle = '#000000';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
-        ctx.font = 'bold ' + (is58 ? 13 : 18) + 'px sans-serif';
-        ctx.fillText('PHOTOBOOTH4U · VOUCHER', cx, cardY + (is58 ? 28 : 40));
+        ctx.font = 'bold ' + (is58 ? 10 : 13) + 'px sans-serif';
+        ctx.fillText('PHOTOBOOTH4U · VOUCHER', cx, kickerY);
 
         // Top hairline divider
-        ctx.fillRect(cardX + (is58 ? 16 : 24), cardY + (is58 ? 38 : 54), cardW - (is58 ? 32 : 48), 2);
+        ctx.fillRect(boxX, divY, boxW, 2);
 
-        // Header block (Event name + optional Event date + optional Price), dynamically centered above code box
-        var evText = (data.event || 'Photo booth').trim() || 'Photo booth';
-        var evDate = (data.eventDate || '').trim();
-        var boxX = cardX + (is58 ? 14 : 22);
-        var boxW = cardW - (is58 ? 28 : 44);
-        var boxY = cardY + (is58 ? 154 : 226);
-        var boxH = is58 ? 92 : 128;
-
-        var evPx = is58 ? 23 : 34;
-        var evLineH = is58 ? 26 : 38;
-        ctx.font = 'bold ' + evPx + 'px Georgia, serif';
-        var evLines = vWrapLines(ctx, evText, innerW, 2);
-        var denseHeader = evLines.length > 1 && !!evDate && !!pesoStr;
-        if (denseHeader) {
-          evPx = is58 ? 19 : 29;
-          evLineH = is58 ? 21 : 33;
-          ctx.font = 'bold ' + evPx + 'px Georgia, serif';
-          evLines = vWrapLines(ctx, evText, innerW, 2);
-        }
-        var datePx = is58 ? 13 : 20;
-        var pricePx = is58 ? (denseHeader ? 24 : 26) : (denseHeader ? 36 : 40);
-        var dateGap = is58 ? 7 : 11;
-        var priceGap = is58 ? 8 : 12;
-
-        var evBlockH = evPx + (evLines.length - 1) * evLineH;
-        var headerTotalH = evBlockH + (evDate ? (dateGap + datePx) : 0) + (pesoStr ? (priceGap + pricePx) : 0);
-        var zoneTop = cardY + (is58 ? 44 : 62);
-        var zoneH = Math.max(headerTotalH, boxY - zoneTop);
-        var curY = zoneTop + Math.round((zoneH - headerTotalH) / 2);
-
+        // Compact header block: Event name (+ optional Event date) on left, Price on right (centered when no price)
+        var evStartY = zoneTop + Math.round((headerH - evBlockH) / 2);
+        ctx.textAlign = pesoStr ? 'left' : 'center';
+        var evX = pesoStr ? boxX : cx;
         ctx.font = 'bold ' + evPx + 'px Georgia, serif';
         for (var ei = 0; ei < evLines.length; ei++) {
-          ctx.fillText(evLines[ei], cx, curY + evPx + ei * evLineH);
+          ctx.fillText(evLines[ei], evX, evStartY + evPx + ei * evLineH);
         }
-        curY += evBlockH;
-
+        var afterEvY = evStartY + evPx + (evLines.length - 1) * evLineH;
         if (evDate) {
-          curY += dateGap;
-          ctx.font = 'bold ' + datePx + 'px sans-serif';
-          ctx.fillText(evDate, cx, curY + datePx);
-          curY += datePx;
+          vFitText(ctx, evDate, evMaxW, 'bold', datePx, is58 ? 9 : 11, 'sans-serif');
+          ctx.fillText(evDate, evX, afterEvY + dateGap + datePx);
         }
-
         if (pesoStr) {
-          curY += priceGap;
+          ctx.textAlign = 'right';
           ctx.font = 'bold ' + pricePx + 'px sans-serif';
-          ctx.fillText(pesoStr, cx, curY + pricePx);
+          ctx.fillText(pesoStr, boxX + boxW, zoneTop + Math.round((headerH + pricePx) / 2) - (is58 ? 1 : 2));
         }
 
         // Hero Voucher Code Box (high contrast black border on white paper)
         ctx.strokeStyle = '#000000';
-        ctx.lineWidth = is58 ? 4 : 5;
-        vDrawRoundRect(ctx, boxX, boxY, boxW, boxH, is58 ? 10 : 14);
+        ctx.lineWidth = is58 ? 3.5 : 4.5;
+        vDrawRoundRect(ctx, boxX, boxY, boxW, boxH, is58 ? 8 : 11);
         ctx.stroke();
 
         ctx.textAlign = 'center';
-        ctx.font = 'bold ' + (is58 ? 11 : 15) + 'px sans-serif';
-        ctx.fillText('VOUCHER CODE', cx, boxY + (is58 ? 20 : 28));
+        ctx.font = 'bold ' + (is58 ? 10 : 12) + 'px sans-serif';
+        ctx.fillText('VOUCHER CODE', cx, boxY + (is58 ? 14 : 18));
 
-        vFitText(ctx, codeFmt, boxW - (is58 ? 18 : 28), 'bold', is58 ? 44 : 66, is58 ? 24 : 34, 'monospace');
-        ctx.fillText(codeFmt, cx, boxY + (is58 ? 70 : 98));
+        vFitText(ctx, codeFmt, boxW - (is58 ? 16 : 24), 'bold', is58 ? 36 : 54, is58 ? 20 : 28, 'monospace');
+        ctx.fillText(codeFmt, cx, boxY + (is58 ? 49 : 70));
 
         // Includes line
-        vFitText(ctx, meta.incStr, innerW, 'bold', is58 ? 16 : 23, is58 ? 12 : 15, 'sans-serif');
-        ctx.fillText(meta.incStr, cx, boxY + boxH + (is58 ? 30 : 48));
+        vFitText(ctx, meta.incStr, innerW, 'bold', is58 ? 14 : 19, is58 ? 10 : 13, 'sans-serif');
+        ctx.fillText(meta.incStr, cx, incY);
 
         // Dashed separator inside ticket
-        var sepY = boxY + boxH + (is58 ? 46 : 72);
         ctx.save();
-        ctx.setLineDash(is58 ? [6, 5] : [8, 6]);
+        ctx.setLineDash(is58 ? [5, 4] : [7, 5]);
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(boxX, sepY);
@@ -67066,16 +68645,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         ctx.restore();
 
         // Guest instructions
-        ctx.font = 'bold ' + (is58 ? 14 : 20) + 'px sans-serif';
-        ctx.fillText('Tap screen → "I have a voucher"', cx, sepY + (is58 ? 28 : 42));
-        ctx.font = (is58 ? 14 : 20) + 'px sans-serif';
-        ctx.fillText('Enter the 8 digits · Valid once', cx, sepY + (is58 ? 50 : 74));
+        vFitText(ctx, 'Tap screen → "I have a voucher"', innerW, 'bold', is58 ? 12 : 16, is58 ? 10 : 12, 'sans-serif');
+        ctx.fillText('Tap screen → "I have a voucher"', cx, howY1);
+        ctx.font = (is58 ? 11.5 : 15) + 'px sans-serif';
+        ctx.fillText('Enter the 8 digits · Valid once', cx, howY2);
 
         // Optional cut/tear line below ticket (for continuous strip printing)
         if (showCut) {
-          var cutY = H - (is58 ? 16 : 22);
+          var cutY = H - (is58 ? 11 : 14);
           ctx.save();
-          ctx.setLineDash(is58 ? [8, 6] : [12, 8]);
+          ctx.setLineDash(is58 ? [7, 5] : [10, 7]);
           ctx.lineWidth = 2;
           ctx.strokeStyle = '#000000';
           ctx.beginPath();
@@ -67083,13 +68662,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           ctx.lineTo(W - 8, cutY);
           ctx.stroke();
           ctx.restore();
-          ctx.font = 'bold ' + (is58 ? 12 : 15) + 'px sans-serif';
+          ctx.font = 'bold ' + (is58 ? 10.5 : 13) + 'px sans-serif';
           var cutLbl = 'CUT HERE';
-          var cutLw = ctx.measureText(cutLbl).width + (is58 ? 16 : 22);
+          var cutLw = ctx.measureText(cutLbl).width + (is58 ? 14 : 18);
           ctx.fillStyle = '#ffffff';
-          ctx.fillRect(cx - cutLw / 2, cutY - (is58 ? 9 : 11), cutLw, is58 ? 18 : 22);
+          ctx.fillRect(cx - cutLw / 2, cutY - (is58 ? 8 : 9), cutLw, is58 ? 16 : 18);
           ctx.fillStyle = '#000000';
-          ctx.fillText(cutLbl, cx, cutY + (is58 ? 4 : 5));
+          ctx.fillText(cutLbl, cx, cutY + (is58 ? 3.5 : 4));
         }
 
         return cv;
@@ -67097,7 +68676,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
       // Packs tickets into continuous-strip pages capped safely below 210mm so Windows -FitWidth never shrinks them.
       function buildThermalVoucherStripPages(data, codes, dotW) {
-        var maxPerPage = dotW <= 384 ? 3 : 2;
+        var maxPerPage = dotW <= 384 ? 5 : 4;
         var pages = [];
         for (var i = 0; i < codes.length; i += maxPerPage) {
           var slice = codes.slice(i, i + maxPerPage);
@@ -67313,9 +68892,20 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
         // Route 4: Android / iPad native OS print dialog
         if (target.kind === 'dialog' && window.__PBPrint && typeof window.__PBPrint.print === 'function') {
-          var dlgCanvases = cutEach
+          var rawDlg = cutEach
             ? codes.map(function (c) { return buildThermalVoucherCanvas(data, c, { dotW: dotW, showCutLine: false }); })
             : buildThermalVoucherStripPages(data, codes, dotW).map(function (p) { return p.canvas; });
+          // Android PrintBridge & iPad AirPrint rotate pages sideways when height <= width: keep dialog pages strictly portrait.
+          var maxH = Math.max.apply(null, rawDlg.map(function (c) { return Math.max(c.height, c.width + 8); }));
+          var dlgCanvases = rawDlg.map(function (c) {
+            if (c.height >= maxH) return c;
+            var p = document.createElement('canvas');
+            p.width = c.width; p.height = maxH; p._pbToneDone = true;
+            var g = p.getContext('2d');
+            g.fillStyle = '#ffffff'; g.fillRect(0, 0, p.width, p.height);
+            g.drawImage(c, 0, 0);
+            return p;
+          });
           var hMm = Math.round(dlgCanvases[0].height / RECEIPT_DPI * 254) / 10;
           var imgs = dlgCanvases.map(function (c) { return c.toDataURL('image/png'); });
           var resDlg = JSON.parse(window.__PBPrint.print('Voucher tickets · ' + (data.event || 'Photo booth'), basePaper.w, hMm, JSON.stringify(imgs)) || '{}');
@@ -72307,11 +73897,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (e.button > 0) return;
         e.preventDefault(); e.stopPropagation();
         var el = brandOv(k), g = brandPvGeo; if (!g) return;
-        brandSel = k; brandPin(k);
+        var isSize = e.target.classList.contains('bpv-h');
+        brandSel = k;
+        if (!isSize || k === 'c') brandPin(k);
         var r = brandEls.pv.getBoundingClientRect();
         var px = e.clientX - r.left, py = e.clientY - r.top, cx = +el.dataset.cx, cy = +el.dataset.cy;
         brandDrag = {
-          k: k, id: e.pointerId, mode: e.target.classList.contains('bpv-h') ? 'size' : 'move', px: px, py: py, cx: cx, cy: cy,
+          k: k, id: e.pointerId, mode: isSize ? 'size' : 'move', px: px, py: py, cx: cx, cy: cy,
           d0: Math.max(8, Math.hypot(px - cx, py - cy)), s0: brand[k].s || BRAND_DEF_S[k], moved: false
         };
         try { el.setPointerCapture(e.pointerId); } catch (err) { }
@@ -72340,7 +73932,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var g = brandPvGeo, b = brand.w, im = brandImgFor('w'), el = brandOv('w');
         if (!g || !im) return;
         var sH = b.s * g.fh, f = brandFit(im.naturalWidth / im.naturalHeight, sH, sH * BRAND_MAXR);
-        brandPlace(el, im, g.fx + b.x * g.fw, g.fy + b.y * g.fh, f.w, f.h);
+        var bx = b.x == null ? (welcomeLogoRect ? welcomeLogoRect.x : 0.5) : b.x;
+        var by = b.y == null ? (welcomeLogoRect ? welcomeLogoRect.y : 0.3) : b.y;
+        brandPlace(el, im, g.fx + bx * g.fw, g.fy + by * g.fh, f.w, f.h);
       }
       function brandDrop(e) {
         var d = brandDrag; if (!d || (e && e.pointerId !== d.id)) return;
@@ -80815,7 +82409,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           api.checkin().then(function (r) {
             b.disabled = false; b.textContent = 'Check for changes';
             var payChanged = !!(r.licence && r.licence.feat && (!!r.licence.feat.vouchers !== !!(window.__PB && window.__PB.payOpt)));
-            if ((r.licence && !r.licence.ok) || r.modeChanged || payChanged || (r.appMode && r.appMode !== DESKTOP_APP_MODE)) {
+            var arrangeChanged = !!(r.licence && r.licence.feat && (!!r.licence.feat.arrangePrintOpt !== !!(window.__PB && window.__PB.arrangePrintOpt)));
+            if ((r.licence && !r.licence.ok) || r.modeChanged || payChanged || arrangeChanged || (r.appMode && r.appMode !== DESKTOP_APP_MODE)) {
               showToast('Updated from photobooth4u — reloading…', 2500);
               setTimeout(function () { location.reload(); }, 600);
               return;
@@ -80838,9 +82433,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             showToast(r.error || 'Couldn\u2019t deactivate.', 6000);
           });
         });
-        // A check-in found this laptop removed / code disabled / mode or Print Station switched by Admin: reload (after any session in progress).
+        // A check-in found this laptop removed / code disabled / mode or Print Station / Arrange & Print switched by Admin: reload (after any session in progress).
         api.onLicence(function (info) {
-          if (info && info.ok && !info.modeChanged && !info.printStationChanged && (!info.appMode || info.appMode === DESKTOP_APP_MODE)) return;
+          if (info && info.ok && !info.modeChanged && !info.printStationChanged && !info.arrangePrintChanged && (!info.appMode || info.appMode === DESKTOP_APP_MODE)) return;
           (function reloadWhenFree() {
             if (document.querySelector('.app-shell.capturing')) { setTimeout(reloadWhenFree, 4000); return; }
             location.reload();
@@ -81033,19 +82628,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         payVoucherPrinterToggle: 'Lets you assign a dedicated printer (with its own colour and quality settings) to each payment option or voucher. Synced with Printer settings.',
         welcomeToggle: 'Displays the attract / Tap to start welcome screen between guests when idle.',
         softSkinToggle: 'Applies a subtle smoothing glow to live camera & captured photos.',
-        dateStampToggle: 'Prints a vintage amber camera date stamp onto the corner of each shot.',
-        deskTpl: 'Chooses the layout or custom frame for Photoman prints only — never changes the main photobooth\u2019s own layout.',
-        deskFill: 'Separate photos assigns different shots in tap order to spots 1, 2, 3\u2026 One photo fills every spot repeats 1 shot into all boxes (great for 2\u00d76 strips).',
-        deskAuto: 'Automatically puts newly arriving DSLR or phone shots into the chosen template, generates the Guest QR, and prints if Auto-print is on.',
-        deskShowBooth: 'Off = Photoman prints and shows the Guest QR inside this studio without interrupting booth guests. On = pushes the result to the main booth screen when idle.',
-        deskWatchBtn: 'Automatically imports any new JPG/PNG/WEBP saved into this folder by camera tethering software (Canon EOS Utility, Nikon/Sony Imaging Edge, FTP).',
-        deskPopBtn: 'Opens Photographer Studio in its own window (Desktop) or separate browser tab (Web), staying synced with the booth in real time.',
-        deskOrig: 'Prints the selected photo full-bleed without any template frame. Hover or tap Original in the preview tabs above to inspect first.',
-        deskMake: 'Builds the framed template with your selected photo(s), uploads for the Guest QR, and prints.',
-        deskTplNewBtn: 'Opens Template Maker to design a custom 4R, 2\u00d76 strip, or PNG frame just for Photoman without changing the main booth.',
-        pmPunchWhite: 'Turn on when your PNG overlay from Canva Free or Photoshop has solid white photo boxes instead of see-through holes.',
-        pmFilterChk: 'When On, Photoman prints apply the booth\u2019s selected colour filter & soft skin. Turn Off to keep raw natural DSLR colours.',
-        pmSpShot: 'Maps which selected camera photo fills this box. Give two boxes the same Photo #1 to print duplicate 2\u00d76 strips on one 4R sheet.'
+        dateStampToggle: 'Prints a vintage amber camera date stamp onto the corner of each shot.'
       };
       var pop = null, activeBtn = null;
       function ensurePop() {
@@ -81093,28 +82676,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           Object.keys(CURATED_TIPS).forEach(function (id) {
             var el = document.getElementById(id);
             if (!el) return;
-            var host = el.closest('.switch-row, .toggle-row, .opt-row, .lay-head-acts, .desk-tpl-chk') ||
-              (el.closest('.desk-tpl-l') ? el.closest('.desk-tpl-l').querySelector('span') : null) ||
-              (el.closest('.pm-field') ? el.closest('.pm-field').querySelector('span') : null) ||
+            var host = el.closest('.switch-row, .toggle-row, .opt-row, .lay-head-acts') ||
               (el.parentElement && el.parentElement.querySelector('.panel-label, .sub-label'));
-            if (!host && (id === 'deskWatchBtn' || id === 'deskPopBtn' || id === 'deskOrig' || id === 'deskMake' || id === 'deskTplNewBtn')) host = el.parentElement;
             if (host) {
-              if (id === 'deskOrig' || id === 'deskMake' || id === 'deskWatchBtn' || id === 'deskPopBtn' || id === 'deskTplNewBtn') {
-                if (el.nextElementSibling && el.nextElementSibling.classList && el.nextElementSibling.classList.contains('pb-tip-btn')) return;
-                if (el.dataset.pbTipBound) return;
-                el.dataset.pbTipBound = '1';
-                var btn = document.createElement('button');
-                btn.type = 'button'; btn.className = 'pb-tip-btn'; btn.textContent = '?';
-                btn.setAttribute('aria-label', 'Help: ' + CURATED_TIPS[id].slice(0, 80));
-                btn.dataset.pbTipText = CURATED_TIPS[id];
-                btn.style.marginLeft = '4px'; btn.style.marginRight = '4px';
-                el.insertAdjacentElement('afterend', btn);
-                return;
-              }
               attachTipBtn(host, CURATED_TIPS[id]);
             }
           });
-          document.querySelectorAll('#tabSetup [data-tip], #printSection [data-tip], #deskOverlay [data-tip]').forEach(function (el) {
+          document.querySelectorAll('#tabSetup [data-tip], #printSection [data-tip]').forEach(function (el) {
             attachTipBtn(el.parentElement || el, el.dataset.tip);
           });
           document.querySelectorAll('#tabSetup .panel-hint:not([id]):not(.step-lead):not(.pb-tip-converted), #printSection .panel-hint:not([id]):not(.step-lead):not(.pb-tip-converted)').forEach(function (hint) {

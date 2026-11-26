@@ -448,7 +448,7 @@
     <div class="callout ok">
       <h3>Install or update to iPad Offline App v1.1.29+</h3>
       <p><b>v1.1.29</b> adds automatic plug-and-play switching for the <b>DJI Osmo Pocket 3</b>, default <b>1080p</b> framing on portrait iPads, selfie mirroring, and auto-reconnect if the USB cable is bumped.</p>
-      <p>&bull; <a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/ios-v1.1.29/photobooth4u-kiosk-ipad.ipa" target="_blank" rel="noopener">Download photobooth4u iPad App v1.1.29 (.ipa)</a> &nbsp;&middot;&nbsp; <a href="https://photobooth4u.netlify.app/how-to-ipad-offline/" target="_blank" rel="noopener">Read iPad Sideloadly Install Guide &rarr;</a></p>
+      <p>&bull; <a id="djiIpaLink" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/ios-v1.1.35/photobooth4u-kiosk-ipad.ipa" target="_blank" rel="noopener">Download photobooth4u iPad App <span id="djiIpaVer">v1.1.35</span> (.ipa)</a> &nbsp;&middot;&nbsp; <a href="https://photobooth4u.netlify.app/how-to-ipad-offline/" target="_blank" rel="noopener">Read iPad Sideloadly Install Guide &rarr;</a></p>
     </div>
   </section>
 
@@ -722,5 +722,31 @@
   </footer>
 </main>
 
+<script>
+  (function () {
+    function verNewer(a, b) {
+      var x = String(a).split('.').map(function (n) { return parseInt(n, 10) || 0; });
+      var y = String(b).split('.').map(function (n) { return parseInt(n, 10) || 0; });
+      for (var i = 0; i < Math.max(x.length, y.length); i++) {
+        var p = x[i] || 0, q = y[i] || 0;
+        if (p !== q) return p > q;
+      }
+      return false;
+    }
+    fetch('/api/updates', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j || !j.ios || !j.ios.version || !j.ios.url) return;
+        var a = document.getElementById('djiIpaLink');
+        var v = document.getElementById('djiIpaVer');
+        var cur = v ? String(v.textContent || '').replace(/^v/i, '').trim() : '';
+        var next = String(j.ios.version).replace(/^v/i, '').trim();
+        if (cur && next && verNewer(cur, next)) return;
+        if (a) a.href = j.ios.url;
+        if (v && next) v.textContent = 'v' + next;
+      })
+      .catch(function () { });
+  })();
+</script>
 </body>
 </html>

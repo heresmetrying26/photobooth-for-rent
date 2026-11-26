@@ -9,16 +9,24 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import {
+  approvePendingStationJob,
   buildStationTestJob,
+  clearPendingStationJobs,
   createStationTestPngDataUrl,
+  dismissAllPendingStationJobs,
+  dismissPendingStationJob,
   filterStationPrinters,
   getLanStationInfo,
+  getPendingStationJobImage,
+  getPendingStationJobPages,
   getStationTestSizes,
   handleLanStationHttp,
   initLanStation,
+  printAllPendingStationJobs,
   recordStationJob,
   renderStationDashboardHtml,
   rotateLanStationPin,
+  setStationMode,
   setStationPrinterFilter,
   setStationTestSizes
 } from '../lib/lan-print-station.mjs';
@@ -187,8 +195,9 @@ try {
       { id: '5x7', label: '5×7 (5R)', widthMm: 127, heightMm: 177.8, twoUp: false },
       { label: 'Custom 6x9', widthMm: 152.4, heightMm: 228.6, twoUp: false, paperName: '6x9 Photo' }
     ]);
+    setStationMode('queue');
 
-    // Reload from disk with the same pinFile -> PIN, selectedPrinters, hideUnusedPrinters & custom testSizes must survive
+    // Reload from disk with the same pinFile -> PIN, selectedPrinters, hideUnusedPrinters, custom testSizes & stationMode must survive
     initLanStation({
       getPort: () => port,
       pinFile,
@@ -205,16 +214,19 @@ try {
     assert.equal(reloaded.testSizes.length, 3);
     assert.equal(reloaded.testSizes[2].paperName, '6x9 Photo');
     assert.equal(reloaded.testSizesCustomized, true);
+    assert.equal(reloaded.stationMode, 'queue');
 
     const stRes = await fetch(base + '/lan-station/status', { headers: { 'x-pb-pin': freshPin } });
     const stJson = await stRes.json();
     assert.deepEqual(stJson.printers, ['Mitsubishi CP-D80DW']);
     assert.equal(stJson.allPrintersCount, 5);
     assert.equal(stJson.filtered, true);
+    assert.equal(stJson.stationMode, 'queue');
 
     // Restore clean test state
     setStationPrinterFilter({ selectedPrinters: null, hideUnusedPrinters: false });
     setStationTestSizes(null);
+    setStationMode('auto');
     assert.equal(getStationTestSizes().length, 2);
   });
 
@@ -255,9 +267,12 @@ try {
       hideUnusedPrinters: false,
       testSizes: [{ id: '4x6', label: '4×6', widthMm: 101.6, heightMm: 152.4, twoUp: false, builtin: true }],
       testSizesCustomized: false,
+      stationMode: 'auto',
+      pendingJobs: [],
       jobs: []
     };
     const postedPrints = [];
+    const approvedCalls = [];
     const sandbox = {
       console, Set, Array, Object, String, Number, Math, JSON, Date, encodeURIComponent,
       setInterval: () => 0,
@@ -268,6 +283,15 @@ try {
       fetch: async (url, init) => {
         const body = init && init.body ? JSON.parse(init.body) : {};
         if (String(url).startsWith('/station/info')) return { ok: true, json: async () => simState };
+        if (url === '/station/mode') {
+          simState.stationMode = body.mode === 'queue' ? 'queue' : 'auto';
+          return { ok: true, json: async () => ({ ok: true, ...simState }) };
+        }
+        if (url === '/station/job-approve') {
+          approvedCalls.push(body);
+          simState.pendingJobs = simState.pendingJobs.filter((x) => x.id !== body.id);
+          return { ok: true, json: async () => ({ ok: true, ...simState }) };
+        }
         if (url === '/station/printers') {
           simState = { ...simState, ...setStationPrinterFilter(body) };
           return { ok: true, json: async () => ({ ok: true, ...simState }) };
@@ -317,8 +341,26 @@ try {
     assert.match(els.prList.innerHTML, /Test 6×9/);
     assert.equal(simState.testSizes.some((s) => Math.round(s.widthMm) === 152 && Math.round(s.heightMm) === 229), true);
 
+    // Step 5: Switch to Queue & view first, render pending job, override printer & copies, approve print
+    simState.pendingJobs = [{
+      id: 'q-vm-1', at: Date.now(), from: '192.168.2.50', fromName: 'iPad 1',
+      printer: 'Mitsubishi CP-D80DW', paper: '4R (4×6)', copies: 1, pageCount: 1, thumb: 'data:image/png;base64,AA=='
+    }];
+    await els.modeQueueBtn.onclick();
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(simState.stationMode, 'queue');
+    assert.match(els.pendingList.innerHTML, /4R \(4×6\)/);
+    els.pendingList.onchange({ target: { closest: (sel) => (sel === 'select[data-job-printer]' ? { dataset: { jobPrinter: 'q-vm-1' }, value: 'Brother MFC' } : null) } });
+    await els.pendingList.onclick({ target: { closest: (sel) => (sel === '[data-job-cinc]' ? { dataset: { jobCinc: 'q-vm-1' } } : null) } });
+    await els.pendingList.onclick({ target: { closest: (sel) => (sel === '[data-approve-job]' ? { dataset: { approveJob: 'q-vm-1' }, disabled: false, textContent: 'Print' } : null) } });
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(approvedCalls.length, 1);
+    assert.equal(approvedCalls[0].printer, 'Brother MFC');
+    assert.equal(approvedCalls[0].copies, 2);
+
     setStationPrinterFilter({ selectedPrinters: null, hideUnusedPrinters: false });
     setStationTestSizes(null);
+    setStationMode('auto');
   });
 
   await check('built booth bundle keeps iPad DSLR camera local, includes filtered Print Station, Setup tools & JPEG prints', () => {
@@ -350,6 +392,17 @@ try {
     // Efficiency optimizations: JPEG compression for photo prints & 60s cached helper status
     assert.match(built, /toDataURL\('image\/jpeg', 0\.95\)/);
     assert.match(built, /\(helper\.checked \|\| 0\)\) < 60000/);
+    // Queue & view first + synced mode UI across Desktop Print Station, Offline iPad & Online Print Station
+    assert.match(built, /id="stationDeskModeAuto"/);
+    assert.match(built, /id="stationDeskModeQueue"/);
+    assert.match(built, /id="stationDeskPendingList"/);
+    assert.match(built, /id="stationDeskPvOverlay"/);
+    assert.match(built, /id="lanStationModeBox"/);
+    assert.match(built, /id="lanStationModeAutoBtn"/);
+    assert.match(built, /id="lanStationModeQueueBtn"/);
+    assert.match(built, /id="onlineStationModeWrap"/);
+    assert.match(built, /id="ppStationModeWrap"/);
+    assert.match(built, /function setOnlineStationMode\(/);
   });
 
   await check('end-to-end helper bridge enforces isEnabled gating, fires onJob push, and relays 2x6 cut prints from iPad', async () => {
@@ -409,6 +462,102 @@ try {
       assert.equal(getLanStationInfo().jobs[0].printer, 'Mitsubishi 2x6 cut');
       assert.equal(pushedJobs.length, 1);
       assert.equal(pushedJobs[0].jobs[0].printer, 'Mitsubishi 2x6 cut');
+
+      // Queue & view first: iPad switches mode -> laptop holds photo -> operator edits target printer & copies -> prints
+      clearPendingStationJobs();
+      relayJobs.length = 0;
+      const modeRes = await fetch(bUrl + '/lan-station/mode', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-pb-pin': st.pin },
+        body: JSON.stringify({ mode: 'queue' })
+      });
+      assert.equal(modeRes.status, 200);
+      assert.equal((await modeRes.json()).stationMode, 'queue');
+
+      const stQueue = await (await fetch(bUrl + '/lan-station/status', { headers: { 'x-pb-pin': st.pin } })).json();
+      assert.equal(stQueue.stationMode, 'queue');
+
+      const qRes = await fetch(bUrl + '/lan-station/print', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-pb-pin': st.pin },
+        body: JSON.stringify({
+          printer: 'Mitsubishi CP-D80DW',
+          widthMm: 101.6,
+          heightMm: 152.4,
+          paperLabel: '4R (4×6)',
+          copies: 2,
+          pages: [testPng]
+        })
+      });
+      const qJson = await qRes.json();
+      assert.equal(qRes.status, 200);
+      assert.equal(qJson.queued, true);
+      assert.equal(qJson.stationMode, 'queue');
+      assert.equal(qJson.pendingCount, 1);
+      assert.equal(relayJobs.length, 0, 'queued photo must NOT auto-print yet');
+
+      const infoPending = getLanStationInfo();
+      assert.equal(infoPending.pendingJobs.length, 1);
+      assert.equal(infoPending.pendingJobs[0].copies, 2);
+      const qId = infoPending.pendingJobs[0].id;
+      assert.equal(getPendingStationJobPages(qId).pages.length, 1);
+      assert.equal(getPendingStationJobImage(qId, 0).mime, 'image/png');
+
+      // Operator overrides target printer & changes copies from 2 -> 3, then clicks Print
+      const apRes = await approvePendingStationJob(qId, { printer: 'Mitsubishi 2x6 cut', copies: 3 });
+      assert.equal(apRes.ok, true);
+      assert.equal(apRes.pendingCount, 0);
+      assert.equal(relayJobs.length, 1);
+      assert.equal(relayJobs[0].printer, 'Mitsubishi 2x6 cut');
+      assert.equal(relayJobs[0].pages.length, 3);
+      assert.equal(getLanStationInfo().jobs[0].copies, 3);
+      assert.equal(getLanStationInfo().jobs[0].printer, 'Mitsubishi 2x6 cut');
+
+      // Queue another job, verify dismiss works cleanly, and verify stationMode persists across reload
+      const qRes2 = await (await fetch(bUrl + '/lan-station/print', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-pb-pin': st.pin },
+        body: JSON.stringify({ printer: '', pages: [testPng, testPng] }) // identical pages w/o copies -> normalized to 2 copies
+      })).json();
+      assert.equal(qRes2.queued, true);
+      assert.equal(getLanStationInfo().pendingJobs[0].copies, 2);
+      assert.equal(getLanStationInfo().pendingJobs[0].pageCount, 1);
+      const dRes = dismissPendingStationJob(qRes2.id);
+      assert.equal(dRes.pendingCount, 0);
+
+      // Print all & Dismiss all + auto mode copies expansion
+      await fetch(bUrl + '/lan-station/print', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-pb-pin': st.pin },
+        body: JSON.stringify({ printer: 'Mitsubishi CP-D80DW', copies: 1, pages: [testPng] })
+      });
+      await fetch(bUrl + '/lan-station/print', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-pb-pin': st.pin },
+        body: JSON.stringify({ printer: 'Mitsubishi CP-D80DW', copies: 1, pages: [testPng] })
+      });
+      const allRes = await printAllPendingStationJobs();
+      assert.equal(allRes.ok, true);
+      assert.equal(allRes.printedCount, 2);
+      assert.equal(getLanStationInfo().pendingCount, 0);
+
+      await fetch(bUrl + '/lan-station/print', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-pb-pin': st.pin },
+        body: JSON.stringify({ printer: 'Mitsubishi CP-D80DW', pages: [testPng] })
+      });
+      assert.equal(dismissAllPendingStationJobs().pendingCount, 0);
+
+      setStationMode('auto');
+      relayJobs.length = 0;
+      const autoCopiesRes = await (await fetch(bUrl + '/lan-station/print', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-pb-pin': st.pin },
+        body: JSON.stringify({ printer: 'Mitsubishi CP-D80DW', copies: 3, pages: [testPng] })
+      })).json();
+      assert.equal(autoCopiesRes.ok, true);
+      assert.equal(autoCopiesRes.queued, false);
+      assert.equal(relayJobs[0].pages.length, 3);
     } finally {
       stopHelperBridge();
       try { rmSync(pinFile2, { force: true }); } catch { }

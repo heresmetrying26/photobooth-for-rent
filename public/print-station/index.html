@@ -59,6 +59,27 @@
     th{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-top:0}
     .tag{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:800}
     .tag.ok{background:var(--ok-bg);color:var(--ok)}.tag.err{background:var(--warn-bg);color:var(--warn)}.tag.wait{background:#EEF0F4;color:#3D4656}
+    .modebar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#FAF8F4;margin-top:12px}
+    .seg{display:inline-flex;gap:6px;flex-wrap:wrap}
+    .q-list{display:grid;gap:10px;margin-top:10px}
+    .q-item{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;padding:12px;border:1px solid var(--line);border-radius:14px;background:#FAF8F4}
+    .q-thumb-btn{position:relative;border:1px solid var(--line);border-radius:10px;background:#fff;padding:4px;cursor:pointer;flex:none;width:104px;height:128px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .q-thumb-btn:hover{border-color:var(--red)}
+    .q-thumb-btn img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+    .q-pg{position:absolute;bottom:4px;right:4px;background:rgba(28,26,30,.82);color:#fff;font-size:10.5px;font-weight:800;padding:2px 6px;border-radius:999px}
+    .q-info{flex:1;min-width:220px;display:grid;gap:8px}
+    .q-meta{font-size:12.5px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .q-meta b{color:var(--ink);font-size:14px}
+    .q-ctrl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .q-ctrl select{min-height:36px;min-width:180px;flex:1}
+    .stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;background:#fff;overflow:hidden}
+    .stepper button{border:0;background:none;padding:5px 11px;font:800 15px inherit;cursor:pointer;color:var(--ink)}
+    .stepper button:hover:not(:disabled){color:var(--red)}
+    .stepper span{min-width:26px;text-align:center;font:800 13.5px inherit}
+    .pv-ov{position:fixed;inset:0;background:rgba(16,14,18,.82);display:none;align-items:center;justify-content:center;padding:20px;z-index:99}
+    .pv-ov.open{display:flex}
+    .pv-card{background:#fff;border-radius:18px;padding:16px;max-width:min(92vw,680px);max-height:92vh;display:grid;gap:10px;justify-items:center}
+    .pv-card img{max-width:100%;max-height:70vh;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#FAF8F4}
     #printArea{display:none}
     @media print{
       html,body{margin:0!important;padding:0!important;background:#fff!important}
@@ -99,11 +120,35 @@
       <h2>How to print</h2>
       <label class="switch"><span>Use the Print Helper (prints with no dialog)</span><input type="checkbox" id="helperToggle"></label>
       <div class="note" id="helperNote"></div>
+      <div class="modebar">
+        <div>
+          <b style="font-size:14px;">Incoming print handling</b>
+          <div id="modeHint" style="font-size:12.5px;color:var(--muted);">Incoming prints from the booth print automatically.</div>
+        </div>
+        <div class="seg" role="group" aria-label="Incoming print handling">
+          <button class="btn primary" id="modeAutoBtn" type="button" style="min-height:36px;padding:6px 14px;">Auto-print</button>
+          <button class="btn" id="modeQueueBtn" type="button" style="min-height:36px;padding:6px 14px;">Queue &amp; view first</button>
+        </div>
+      </div>
       <div id="printerRows" style="margin-top:12px;"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
         <button class="btn" type="button" id="testBtn">Test 4&times;6 whole</button>
         <button class="btn" type="button" id="testStripBtn">Test 2&times;6 strips (cut)</button>
       </div>
+    </div>
+
+    <div class="card hidden" id="pendingCard">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <h2 style="margin:0;">Pending Queue (View Before Printing)</h2>
+          <span class="tag wait" id="pendingBadge">0 waiting</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn primary hidden" id="printAllBtn" type="button" style="min-height:36px;padding:6px 14px;">Print all</button>
+          <button class="btn hidden" id="clearAllBtn" type="button" style="min-height:36px;padding:6px 14px;">Dismiss all</button>
+        </div>
+      </div>
+      <div class="q-list" id="pendingList"></div>
     </div>
 
     <div class="card">
@@ -113,6 +158,21 @@
     <p class="hint">Tips: plug the laptop in, keep this tab open (it can be behind other windows), and turn off sleep. Pages waiting more than 30 minutes are dropped.</p>
   </section>
 </main>
+<div class="pv-ov" id="pvModal" role="dialog" aria-modal="true" aria-label="Queued photo preview">
+  <div class="pv-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:10px;">
+      <b id="pvTitle">Queued Photo Preview</b>
+      <button class="btn" id="pvCloseBtn" type="button" style="min-height:34px;padding:5px 12px;">Close</button>
+    </div>
+    <img id="pvImg" alt="Queued photo preview">
+    <div style="display:none;align-items:center;gap:8px;" id="pvNav">
+      <button class="btn" id="pvPrevBtn" type="button" style="min-height:34px;padding:5px 12px;">&lsaquo; Prev</button>
+      <span id="pvPageTxt" style="font-size:13px;font-weight:700;"></span>
+      <button class="btn" id="pvNextBtn" type="button" style="min-height:34px;padding:5px 12px;">Next &rsaquo;</button>
+    </div>
+    <div id="pvMeta" style="font-size:12.5px;color:var(--muted);text-align:center;"></div>
+  </div>
+</div>
 <div id="printArea"></div>
 <style id="printPageStyle"></style>
 <script>
@@ -146,6 +206,14 @@
   var helper = { ok: false, printers: [], checked: 0 };
   var paused = false, busy = false, lastJobAt = 0, lastOkAt = 0, failures = 0;
   var stationId = Math.random().toString(36).slice(2, 10);
+  var stationMode = 'auto';
+  var modeSaveSeq = 0, modeBusy = 0;
+  var cachedJobs = {};              // id -> raw server job object
+  var jobEdits = {};                // groupKey -> { printer, copies }
+  var groupErrors = {};             // groupKey -> last error string
+  var printingGroups = {};          // groupKey -> true
+  var lastPendingSig = '';
+  var pvState = { groupKey: '', page: 0 };
   var log = [];
 
   // ---- sign in ----
@@ -159,6 +227,7 @@
       var j = await r.json().catch(function(){ return {}; });
       if(!r.ok) throw new Error(j.error || 'Could not sign in.');
       S = { stationToken: j.stationToken, label: j.label, code: j.code, sizes: j.sizes || [] };
+      stationMode = j.stationMode === 'queue' ? 'queue' : 'auto';
       save(KEY, S);
       showStation();
     }catch(err){ $('signinMsg').textContent = err.message; }
@@ -176,7 +245,9 @@
     $('signOut').classList.remove('hidden');
     $('stationTitle').textContent = S.label || 'Print station';
     $('helperToggle').checked = useHelper;
-    checkHelper().then(renderPrinters);
+    renderMode();
+    renderPending(true);
+    checkHelper().then(function(){ renderPrinters(); renderPending(true); });
     renderPrinters();
     keepAwake();
     tick();
@@ -296,6 +367,16 @@
     }
     return '';
   }
+  async function printPagesToTarget(pages, paper, targetPrinter, isTwoUp){
+    if(targetPrinter && targetPrinter !== '__dialog__' && useHelper){
+      if(!helper.ok || Date.now() - helper.checked > 20000) await checkHelper();
+      if(!helper.ok) throw new Error('Print Helper is not connected.');
+      await printWithHelper(pages, paper, targetPrinter, isTwoUp);
+      return targetPrinter;
+    }
+    await printWithDialog(pages, paper);
+    return '';
+  }
   async function printPages(pages, paper, twoUp){
     var isTwoUp = typeof twoUp === 'boolean' ? twoUp : /^strip:/.test(paper.key || '');
     var name = resolveStationPrinter(paper.key, isTwoUp);
@@ -306,6 +387,224 @@
     await printWithDialog(pages, paper);
     return '';
   }
+
+  // ---- mode & pending review queue ----
+  function renderMode(){
+    var qMode = stationMode === 'queue';
+    $('modeAutoBtn').classList.toggle('primary', !qMode);
+    $('modeQueueBtn').classList.toggle('primary', qMode);
+    $('modeHint').textContent = qMode
+      ? 'Incoming prints wait in the review queue below so you can view photos, change target printer or copies, and click Print.'
+      : 'Incoming prints from the booth print automatically.';
+  }
+  function pendingGroups(){
+    var byGroup = {};
+    Object.keys(cachedJobs).forEach(function(id){
+      var j = cachedJobs[id];
+      if(!j) return;
+      var gk = j.group || j.id;
+      if(!byGroup[gk]){
+        byGroup[gk] = {
+          groupKey: gk,
+          at: j.at || 0,
+          paper: j.paper || { key: '4x6', name: '4R (4×6)', w: 101.6, h: 152.4 },
+          twoUp: typeof j.twoUp === 'boolean' ? j.twoUp : /^strip:/.test((j.paper && j.paper.key) || ''),
+          copies: Math.max(1, Math.min(20, Number(j.copies) || 1)),
+          device: j.device || 1,
+          items: []
+        };
+      }
+      if((j.at || 0) > byGroup[gk].at) byGroup[gk].at = j.at || 0;
+      byGroup[gk].items.push(j);
+    });
+    var groups = Object.keys(byGroup).map(function(gk){
+      var g = byGroup[gk];
+      g.items.sort(function(a, b){ return (a.index || 0) - (b.index || 0); });
+      g.ids = g.items.map(function(x){ return x.id; });
+      g.pages = g.items.map(function(x){ return x.page; });
+      return g;
+    });
+    groups.sort(function(a, b){ return b.at - a.at; }); // newest first
+    return groups;
+  }
+  function editForGroup(g){
+    if(jobEdits[g.groupKey]) return jobEdits[g.groupKey];
+    var defP = resolveStationPrinter(g.paper.key, g.twoUp);
+    if(!defP && useHelper && helper.ok && helper.printers.length) defP = helper.printers[0];
+    return { printer: defP || '__dialog__', copies: g.copies };
+  }
+  function renderPending(force){
+    var groups = pendingGroups();
+    var card = $('pendingCard'), listEl = $('pendingList'), badge = $('pendingBadge');
+    var show = stationMode === 'queue' || groups.length > 0;
+    card.classList.toggle('hidden', !show);
+    badge.textContent = groups.length + ' waiting';
+    badge.className = 'tag ' + (groups.length ? 'ok' : 'wait');
+    $('printAllBtn').classList.toggle('hidden', groups.length < 2);
+    $('clearAllBtn').classList.toggle('hidden', groups.length < 2);
+    if(!show) return;
+    var active = document.activeElement;
+    if(!force && active && active.dataset && active.dataset.qPrinter) return;
+    var live = {}; groups.forEach(function(g){ live[g.groupKey] = 1; });
+    Object.keys(jobEdits).forEach(function(k){ if(!live[k]) delete jobEdits[k]; });
+    Object.keys(groupErrors).forEach(function(k){ if(!live[k]) delete groupErrors[k]; });
+    var prAvail = (useHelper && helper.ok) ? helper.printers : [];
+    var sig = JSON.stringify([groups.map(function(g){ return [g.groupKey, g.ids, g.copies, !!printingGroups[g.groupKey], groupErrors[g.groupKey] || '']; }), prAvail, jobEdits, useHelper]);
+    if(!force && sig === lastPendingSig) return;
+    lastPendingSig = sig;
+    if(!groups.length){
+      listEl.innerHTML = '<p class="hint" style="margin:6px 0 0;">Queue is empty. Photos sent from the booth will wait here for your preview before printing.</p>';
+      return;
+    }
+    listEl.innerHTML = groups.map(function(g){
+      var ed = editForGroup(g);
+      var busyItem = !!printingGroups[g.groupKey];
+      var err = groupErrors[g.groupKey] || '';
+      var pName = g.paper.name || g.paper.key || 'Photo';
+      var opts = prAvail.map(function(p){
+        return '<option value="' + esc(p) + '"' + (p === ed.printer ? ' selected' : '') + '>' + esc(p) + '</option>';
+      }).join('') + '<option value="__dialog__"' + (ed.printer === '__dialog__' || !prAvail.length ? ' selected' : '') + '>Browser print dialog</option>';
+      if(ed.printer && ed.printer !== '__dialog__' && prAvail.indexOf(ed.printer) < 0){
+        opts = '<option value="' + esc(ed.printer) + '" selected>' + esc(ed.printer) + ' (unavailable)</option>' + opts;
+      }
+      var pgBadge = g.pages.length > 1 ? '<span class="q-pg">' + g.pages.length + ' pages</span>' : '';
+      return '<div class="q-item">'
+        + '<button type="button" class="q-thumb-btn" data-q-view="' + esc(g.groupKey) + '" title="Click to view full photo">'
+        + '<img src="' + esc(g.pages[0]) + '" alt="Queued photo preview">' + pgBadge + '</button>'
+        + '<div class="q-info">'
+        + '<div class="q-meta"><b>' + esc(pName) + '</b><span>' + new Date(g.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }) + '</span><span>Booth #' + g.device + '</span></div>'
+        + (err ? '<div class="tag err">' + esc(err) + '</div>' : '')
+        + '<div class="q-ctrl">'
+        + '<select data-q-printer="' + esc(g.groupKey) + '" aria-label="Target printer"' + (busyItem ? ' disabled' : '') + '>' + opts + '</select>'
+        + '<span class="stepper"><button type="button" data-q-cdec="' + esc(g.groupKey) + '"' + (busyItem || ed.copies <= 1 ? ' disabled' : '') + '>&minus;</button><span>' + ed.copies + '</span><button type="button" data-q-cinc="' + esc(g.groupKey) + '"' + (busyItem || ed.copies >= 20 ? ' disabled' : '') + '>+</button></span>'
+        + '<button type="button" class="btn" data-q-view="' + esc(g.groupKey) + '" style="min-height:36px;padding:6px 12px;">View</button>'
+        + '<button type="button" class="btn primary" data-q-print="' + esc(g.groupKey) + '"' + (busyItem ? ' disabled' : '') + ' style="min-height:36px;padding:6px 14px;">' + (busyItem ? 'Printing…' : 'Print') + '</button>'
+        + '<button type="button" class="btn" data-q-dismiss="' + esc(g.groupKey) + '"' + (busyItem ? ' disabled' : '') + ' style="min-height:36px;padding:6px 12px;">Dismiss</button>'
+        + '</div></div></div>';
+    }).join('');
+  }
+  function openPvModal(groupKey, pageIdx){
+    var g = pendingGroups().find(function(x){ return x.groupKey === groupKey; });
+    if(!g) return;
+    var p = Math.max(0, Math.min(g.pages.length - 1, pageIdx || 0));
+    pvState = { groupKey: groupKey, page: p };
+    $('pvTitle').textContent = (g.paper.name || 'Queued Photo') + (g.pages.length > 1 ? ' (' + g.pages.length + ' pages)' : '');
+    $('pvImg').src = g.pages[p];
+    $('pvNav').style.display = g.pages.length > 1 ? 'flex' : 'none';
+    $('pvPageTxt').textContent = 'Page ' + (p + 1) + ' of ' + g.pages.length;
+    $('pvPrevBtn').disabled = p <= 0;
+    $('pvNextBtn').disabled = p >= g.pages.length - 1;
+    var ed = editForGroup(g);
+    $('pvMeta').textContent = 'Target printer: ' + (ed.printer === '__dialog__' ? 'Browser print dialog' : ed.printer) + ' · Copies: ' + ed.copies;
+    $('pvModal').classList.add('open');
+  }
+  async function setModeOnServer(nextMode){
+    stationMode = nextMode === 'queue' ? 'queue' : 'auto';
+    renderMode();
+    renderPending(true);
+    var seq = ++modeSaveSeq;
+    modeBusy++;
+    try{
+      var j = await api({ action: 'mode', mode: stationMode });
+      if(seq !== modeSaveSeq) return;
+      if(j.stationMode) stationMode = j.stationMode;
+      renderMode();
+      renderPending(true);
+      poll();
+    }catch(e){
+      if(e.message !== 'signin') setStatus('bad', 'Could not update mode', e.message || 'Try again.');
+    }finally{ modeBusy--; }
+  }
+  async function printQueuedGroup(g){
+    if(!g || printingGroups[g.groupKey]) return;
+    var ed = editForGroup(g);
+    printingGroups[g.groupKey] = true;
+    delete groupErrors[g.groupKey];
+    renderPending(true);
+    var paper = { key: g.paper.key, name: g.paper.name || g.paper.key, w: g.paper.w, h: g.paper.h, toneDone: !!g.paper.toneDone };
+    var allPages = [];
+    for(var c = 0; c < ed.copies; c++) allPages = allPages.concat(g.pages);
+    var used = '', ok = true, error = '';
+    try{
+      used = await printPagesToTarget(allPages, paper, ed.printer, g.twoUp);
+    }catch(e){
+      ok = false; error = e.message || String(e);
+    }
+    addLog({ at: Date.now(), paper: paper.name, copies: ed.copies, printer: used, ok: ok, error: error });
+    delete printingGroups[g.groupKey];
+    if(ok){
+      await api({ action: 'done', ids: g.ids }).catch(function(){});
+      g.ids.forEach(function(id){ delete cachedJobs[id]; });
+      delete jobEdits[g.groupKey];
+      delete groupErrors[g.groupKey];
+    }else{
+      groupErrors[g.groupKey] = error || 'Print failed.';
+    }
+    renderPending(true);
+    return ok;
+  }
+  async function dismissQueuedGroup(g){
+    if(!g || printingGroups[g.groupKey]) return;
+    await api({ action: 'done', ids: g.ids }).catch(function(){});
+    g.ids.forEach(function(id){ delete cachedJobs[id]; });
+    delete jobEdits[g.groupKey];
+    delete groupErrors[g.groupKey];
+    renderPending(true);
+  }
+  $('modeAutoBtn').addEventListener('click', function(){ setModeOnServer('auto'); });
+  $('modeQueueBtn').addEventListener('click', function(){ setModeOnServer('queue'); });
+  $('pvCloseBtn').addEventListener('click', function(){ $('pvModal').classList.remove('open'); });
+  $('pvModal').addEventListener('click', function(e){ if(e.target === this) this.classList.remove('open'); });
+  $('pvPrevBtn').addEventListener('click', function(){ openPvModal(pvState.groupKey, pvState.page - 1); });
+  $('pvNextBtn').addEventListener('click', function(){ openPvModal(pvState.groupKey, pvState.page + 1); });
+  $('pendingList').addEventListener('change', function(e){
+    var sel = e.target.closest('select[data-q-printer]');
+    if(!sel) return;
+    var gk = sel.dataset.qPrinter;
+    var g = pendingGroups().find(function(x){ return x.groupKey === gk; });
+    if(!g) return;
+    var ed = editForGroup(g);
+    jobEdits[gk] = { printer: sel.value, copies: ed.copies };
+  });
+  $('pendingList').addEventListener('click', function(e){
+    var dec = e.target.closest('[data-q-cdec]'), inc = e.target.closest('[data-q-cinc]');
+    if(dec || inc){
+      var gk = (dec || inc).dataset[dec ? 'qCdec' : 'qCinc'];
+      var g = pendingGroups().find(function(x){ return x.groupKey === gk; });
+      if(!g) return;
+      var ed = editForGroup(g);
+      jobEdits[gk] = { printer: ed.printer, copies: Math.max(1, Math.min(20, ed.copies + (dec ? -1 : 1))) };
+      renderPending(true);
+      return;
+    }
+    var vb = e.target.closest('[data-q-view]');
+    if(vb){ openPvModal(vb.dataset.qView, 0); return; }
+    var pb = e.target.closest('[data-q-print]');
+    if(pb){
+      var gp = pendingGroups().find(function(x){ return x.groupKey === pb.dataset.qPrint; });
+      if(gp) printQueuedGroup(gp);
+      return;
+    }
+    var db = e.target.closest('[data-q-dismiss]');
+    if(db){
+      var gd = pendingGroups().find(function(x){ return x.groupKey === db.dataset.qDismiss; });
+      if(gd) dismissQueuedGroup(gd);
+    }
+  });
+  $('printAllBtn').addEventListener('click', async function(){
+    var items = pendingGroups().slice().reverse();
+    this.disabled = true;
+    try{ for(var i = 0; i < items.length; i++) await printQueuedGroup(items[i]); }
+    finally{ this.disabled = false; }
+  });
+  $('clearAllBtn').addEventListener('click', async function(){
+    var items = pendingGroups().slice();
+    var allIds = []; items.forEach(function(g){ allIds = allIds.concat(g.ids); });
+    if(!allIds.length) return;
+    await api({ action: 'done', ids: allIds }).catch(function(){});
+    cachedJobs = {}; jobEdits = {}; groupErrors = {};
+    renderPending(true);
+  });
 
   // ---- jobs ----
   function addLog(entry){
@@ -321,16 +620,51 @@
     if(!r.ok) throw new Error(j.error || ('error ' + r.status));
     return j;
   }
+  async function syncQueueList(){
+    var more = true;
+    while(more){
+      var j = await api({ action: 'list', haveIds: Object.keys(cachedJobs) });
+      if(modeBusy === 0 && j.stationMode && j.stationMode !== stationMode){
+        stationMode = j.stationMode === 'queue' ? 'queue' : 'auto';
+        renderMode();
+      }
+      var keep = {};
+      (j.serverIds || []).forEach(function(id){ keep[id] = 1; });
+      Object.keys(cachedJobs).forEach(function(id){ if(!keep[id]) delete cachedJobs[id]; });
+      (j.newJobs || []).forEach(function(job){ if(job && job.id) cachedJobs[job.id] = job; });
+      more = !!j.more && stationMode === 'queue';
+    }
+    renderPending(false);
+  }
   async function poll(){
     if(busy || paused || !S) return;
     busy = true;
     try{
-      var j = await api({ action: 'take' });
+      if(stationMode === 'queue'){
+        await syncQueueList();
+        lastOkAt = Date.now(); failures = 0;
+        if(stationMode === 'queue'){
+          var pendN = pendingGroups().length;
+          setStatus('on', pendN ? (pendN + ' waiting for review') : 'Queue & view first active', pendN ? 'Inspect queued photos below, pick printer or copies, and press Print.' : 'Waiting for booth prints to arrive in the review queue.');
+          return;
+        }
+      }
+      var j = await api({ action: 'take', skipIds: Object.keys(cachedJobs) });
       lastOkAt = Date.now(); failures = 0;
+      if(modeBusy === 0 && j.stationMode && j.stationMode !== stationMode){
+        stationMode = j.stationMode === 'queue' ? 'queue' : 'auto';
+        renderMode();
+        if(stationMode === 'queue'){
+          await syncQueueList();
+          var pendN2 = pendingGroups().length;
+          setStatus('on', pendN2 ? (pendN2 + ' waiting for review') : 'Queue & view first active', pendN2 ? 'Inspect queued photos below, pick printer or copies, and press Print.' : 'Waiting for booth prints to arrive in the review queue.');
+          return;
+        }
+      }
       if(j.job){
         var job = j.job;
         lastJobAt = Date.now();
-        var paper = { key: job.paper.key, name: job.paper.name || job.paper.key, w: job.paper.w, h: job.paper.h };
+        var paper = { key: job.paper.key, name: job.paper.name || job.paper.key, w: job.paper.w, h: job.paper.h, toneDone: !!job.paper.toneDone };
         var isTwoUp = typeof job.twoUp === 'boolean' ? job.twoUp : /^strip:/.test(paper.key || '');
         var pages = []; for(var c = 0; c < (job.copies || 1); c++) pages.push(job.page);
         setStatus('on', 'Printing…', paper.name + (job.copies > 1 ? ' × ' + job.copies : '') + (j.waiting > 1 ? ' · ' + (j.waiting - 1) + ' more waiting' : ''));
@@ -340,6 +674,7 @@
         await api({ action: 'done', id: job.id }).catch(function(){});
         if(j.waiting > 1){ busy = false; return poll(); }
       }
+      renderPending(false);
       setStatus('on', 'Waiting for prints', 'Keep this page open while the event runs.' + (log.length ? ' Last print ' + new Date(log[0].at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '.' : ''));
     }catch(e){
       if(e.message === 'signin') return;

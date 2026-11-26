@@ -19,7 +19,7 @@ import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
 import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinSaveVideo, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinArmStateNow, spinArmCmdPush, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, roveStateSet, roveCmdTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, setPrintNowConfig, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
 import { initBridge, getBridgeInfo, renewBridgeToken, pushBridgeState, sendBridgeEvent, sendCamCommand } from './lib/guest-bridge.mjs';
-import { initLanStation, getLanStationInfo, rotateLanStationPin, setStationPrinterFilter, setStationTestSizes, buildStationTestJob, recordStationJob } from './lib/lan-print-station.mjs';
+import { initLanStation, getLanStationInfo, rotateLanStationPin, setStationPrinterFilter, setStationTestSizes, setStationMode, getPendingStationJobPages, approvePendingStationJob, dismissPendingStationJob, printAllPendingStationJobs, dismissAllPendingStationJobs, buildStationTestJob, recordStationJob } from './lib/lan-print-station.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import { probeSensor, startSensor, stopSensor, latestSensor } from './lib/winsensor.mjs';
 import { makeShrinkPage, makePngToJpeg } from './lib/pageshrink.mjs';
@@ -833,6 +833,31 @@ function wireIpc() {
     const info = setStationTestSizes(sizes === undefined ? null : sizes);
     return { ok: true, ...info };
   });
+  ipcMain.handle('pb4u:lanStationSetMode', (e, mode) => {
+    if (!printStationAllowed()) return { ok: false, error: 'Print Station is not enabled on this licence.' };
+    const info = setStationMode(mode);
+    return { ok: true, ...info };
+  });
+  ipcMain.handle('pb4u:lanStationJobPages', (e, id) => {
+    if (!printStationAllowed()) return { ok: false, error: 'Print Station is not enabled on this licence.' };
+    return getPendingStationJobPages(id);
+  });
+  ipcMain.handle('pb4u:lanStationApproveJob', async (e, id, opts) => {
+    if (!printStationAllowed()) return { ok: false, error: 'Print Station is not enabled on this licence.' };
+    return await approvePendingStationJob(id, opts || {});
+  });
+  ipcMain.handle('pb4u:lanStationDismissJob', (e, id) => {
+    if (!printStationAllowed()) return { ok: false, error: 'Print Station is not enabled on this licence.' };
+    return dismissPendingStationJob(id);
+  });
+  ipcMain.handle('pb4u:lanStationPrintAll', async () => {
+    if (!printStationAllowed()) return { ok: false, error: 'Print Station is not enabled on this licence.' };
+    return await printAllPendingStationJobs();
+  });
+  ipcMain.handle('pb4u:lanStationDismissAll', () => {
+    if (!printStationAllowed()) return { ok: false, error: 'Print Station is not enabled on this licence.' };
+    return dismissAllPendingStationJobs();
+  });
   ipcMain.handle('pb4u:lanStationTestPrint', async (e, printer, specOrTwoUp) => {
     if (!printStationAllowed()) return { ok: false, error: 'Print Station is not enabled on this licence.' };
     const built = buildStationTestJob(printer, specOrTwoUp);
@@ -939,6 +964,17 @@ app.whenReady().then(async () => {
     version: app.getVersion(),
     logger: (m) => console.log(m),
     onJob: (info) => { broadcastWin('pb4u:lanStationJob', info); },
+    makeThumb: (dataUrl) => {
+      try {
+        const m = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ''));
+        if (!m) return '';
+        const im = nativeImage.createFromBuffer(Buffer.from(m[2], 'base64'));
+        if (im.isEmpty()) return '';
+        const s = im.getSize();
+        const r = im.resize(s.width > s.height ? { height: 280, quality: 'good' } : { width: 280, quality: 'good' });
+        return 'data:image/jpeg;base64,' + r.toJPEG(74).toString('base64');
+      } catch { return ''; }
+    },
     getPrinters: async (refresh) => {
       const r = await handleHelper(new Request('app://booth/helper/status' + (refresh ? '?refresh=1' : '')), '/status', new URLSearchParams(refresh ? 'refresh=1' : ''));
       const j = await r.json().catch(() => ({}));

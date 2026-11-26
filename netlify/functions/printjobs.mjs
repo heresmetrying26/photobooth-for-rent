@@ -30,12 +30,25 @@ const ID_RE = /^[a-z0-9]{8,12}-[a-z0-9]{4}$/;
 
 const PAIR_MS = 10 * 60000;          // a pairing code works once, within 10 minutes
 const beatKey = (owner) => 'station-' + owner;
+const modeKey = (owner) => 'station-mode-' + owner;
 const pairKey = (code) => 'pair-' + code;
+const normMode = (m) => (String(m || '').trim().toLowerCase() === 'queue' ? 'queue' : 'auto');
 // A trial's print queue belongs to that one tablet + trial session (the trial
 // password is shared, so it can't be the key the way a rental code is).
 const trialOwner = (p) => 'trial-' + createHash('sha256').update(String(p.d || '') + '|' + String(p.f || '') + '|' + String(p.exp || '')).digest('hex').slice(0, 24);
 const isTrialOwner = (o) => /^trial-[0-9a-f]{24}$/.test(o);
 const newId = () => Date.now().toString(36).padStart(9, '0') + '-' + randomInt(36 ** 4).toString(36).padStart(4, '0');
+
+async function readStationMode(owner) {
+  const doc = await meta().get(modeKey(owner), { type: 'json' }).catch(() => null);
+  return normMode(doc && doc.mode);
+}
+
+async function writeStationMode(owner, mode) {
+  const m = normMode(mode);
+  await meta().setJSON(modeKey(owner), { mode: m, at: Date.now() });
+  return m;
+}
 
 export default safe(async (req, context) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -45,7 +58,7 @@ export default safe(async (req, context) => {
   const now = Date.now();
 
   // ---------- booth side ----------
-  if (b.action === 'add' || b.action === 'station' || b.action === 'pair') {
+  if (b.action === 'add' || b.action === 'station' || b.action === 'pair' || b.action === 'setMode') {
     const lic = await checkLicense(b.token, String(b.deviceId || ''));
     if (!lic.valid) return json({ error: 'locked', reason: lic.reason }, 401);
     const p = verifyToken(b.token);
@@ -53,7 +66,14 @@ export default safe(async (req, context) => {
     const owner = trial ? trialOwner(p) : jobOwner(await licenses().get(p.k, { type: 'json' }));
     const beat = await meta().get(beatKey(owner), { type: 'json' });
     const lastSeen = (beat && beat.at) || 0;
-    if (b.action === 'station') return json({ ok: true, online: now - lastSeen < STATION_ONLINE_MS, lastSeen, trial });
+    if (b.action === 'setMode') {
+      const rawMode = String(b.mode || '').trim().toLowerCase();
+      if (rawMode !== 'auto' && rawMode !== 'queue') return json({ error: 'Mode must be auto or queue.' }, 400);
+      const stationMode = await writeStationMode(owner, rawMode);
+      return json({ ok: true, stationMode, online: now - lastSeen < STATION_ONLINE_MS, lastSeen });
+    }
+    const stationMode = await readStationMode(owner);
+    if (b.action === 'station') return json({ ok: true, online: now - lastSeen < STATION_ONLINE_MS, lastSeen, trial, stationMode });
     if (b.action === 'pair') {
       if (!trial) return json({ error: 'Rental booths sign in on the laptop with their code.' }, 400);
       const t = await throttle('pair', context.ip, 30);
@@ -67,7 +87,7 @@ export default safe(async (req, context) => {
       if (!code) return json({ error: 'Please try again.' }, 503);
       const exp = Math.min(now + PAIR_MS, lic.exp);
       await meta().setJSON(pairKey(code), { owner, exp, trialEnd: lic.exp });
-      return json({ ok: true, code, exp, online: now - lastSeen < STATION_ONLINE_MS });
+      return json({ ok: true, code, exp, online: now - lastSeen < STATION_ONLINE_MS, stationMode });
     }
 
     if (!lic.print || !lic.print.enabled) return json({ error: 'Printing is off for this code.' }, 403);
@@ -81,13 +101,13 @@ export default safe(async (req, context) => {
     const id = newId();
     await jobs.setJSON(owner + '/' + id, {
       id, at: now, page,
-      paper: { key: String(paper.key || '').slice(0, 28), name: String(paper.name || '').slice(0, 56), w, h },
+      paper: { key: String(paper.key || '').slice(0, 28), name: String(paper.name || '').slice(0, 56), w, h, ...(paper.toneDone ? { toneDone: true } : {}) },
       twoUp: !!b.twoUp,
       copies: Math.max(1, Math.min(20, Math.floor(Number(b.copies) || 1))),
       group: String(b.group || id).slice(0, 40), index: Math.max(0, Math.floor(Number(b.index) || 0)), total: Math.max(1, Math.floor(Number(b.total) || 1)),
       device: lic.deviceNo || 1
     });
-    return json({ ok: true, id, online: now - lastSeen < STATION_ONLINE_MS });
+    return json({ ok: true, id, online: now - lastSeen < STATION_ONLINE_MS, stationMode });
   }
 
   // ---------- print station side ----------
@@ -105,7 +125,8 @@ export default safe(async (req, context) => {
       await clearFail(t);
       const s = await getSettings();
       const stationToken = sign({ t: 'station', k: pair.owner, exp: pair.trialEnd });
-      return json({ ok: true, stationToken, label: 'Trial booth', code: '', trial: true, sizes: (s.trialPrintEnabled && s.trialPrintSizes) || [] });
+      const stationMode = await readStationMode(pair.owner);
+      return json({ ok: true, stationToken, label: 'Trial booth', code: '', trial: true, sizes: (s.trialPrintEnabled && s.trialPrintSizes) || [], stationMode });
     }
     const key = normCode(b.code);
     let rec = key ? await licenses().get(key, { type: 'json' }) : null;
@@ -115,12 +136,63 @@ export default safe(async (req, context) => {
     if (rec.status === 'revoked') return json({ error: 'This code has been disabled. Please contact the owner.' }, 403);
     if (rec.status === 'active' && !rec.lifetime && rec.expiresAt <= now) return json({ error: 'This code has expired.' }, 403);
     const stationToken = sign({ t: 'station', k: rec.key, exp: now + 3 * DAY });
-    return json({ ok: true, stationToken, label: rec.label || rec.code, code: rec.code, sizes: (rec.print && rec.print.enabled && rec.print.sizes) || [] });
+    const stationMode = await readStationMode(rec.key);
+    return json({ ok: true, stationToken, label: rec.label || rec.code, code: rec.code, sizes: (rec.print && rec.print.enabled && rec.print.sizes) || [], stationMode });
   }
 
   const st = verifyToken(b.stationToken);
   if (!st || st.t !== 'station' || !(st.exp > now)) return json({ error: 'signin' }, 401);
   const owner = st.k;
+
+  if (b.action === 'mode') {
+    if (!isTrialOwner(owner)) {
+      const rec = await licenses().get(owner, { type: 'json' });
+      if (!rec || rec.status === 'revoked') return json({ error: 'signin' }, 401);
+    }
+    const rawMode = String(b.mode || '').trim().toLowerCase();
+    if (rawMode !== 'auto' && rawMode !== 'queue') return json({ error: 'Mode must be auto or queue.' }, 400);
+    const stationMode = await writeStationMode(owner, rawMode);
+    const beat = await meta().get(beatKey(owner), { type: 'json' });
+    if (!beat || now - beat.at > BEAT_MS) await meta().setJSON(beatKey(owner), { at: now });
+    return json({ ok: true, stationMode });
+  }
+
+  if (b.action === 'list') {
+    if (!isTrialOwner(owner)) {
+      const rec = await licenses().get(owner, { type: 'json' });
+      if (!rec || rec.status === 'revoked') return json({ error: 'signin' }, 401);
+    }
+    const beat = await meta().get(beatKey(owner), { type: 'json' });
+    if (!beat || now - beat.at > BEAT_MS) await meta().setJSON(beatKey(owner), { at: now });
+    const stationMode = await readStationMode(owner);
+    const haveIds = new Set(Array.isArray(b.haveIds) ? b.haveIds.map(String) : []);
+    const { blobs } = await jobs.list({ prefix: owner + '/' });
+    const keys = blobs.map((x) => x.key).sort();
+    const serverIds = [];
+    const newJobs = [];
+    let totalBytes = 0;
+    let more = false;
+    for (const k of keys) {
+      const id = k.slice(owner.length + 1);
+      if (!ID_RE.test(id)) continue;
+      const born = parseInt(id.split('-')[0], 36);
+      if (now - born > JOB_TTL) { await jobs.delete(k); await jobs.delete('claim/' + k); continue; }
+      serverIds.push(id);
+      if (!haveIds.has(id)) {
+        if (more) continue;
+        const job = await jobs.get(k, { type: 'json' });
+        if (!job) continue;
+        const approx = JSON.stringify(job).length;
+        if (newJobs.length > 0 && totalBytes + approx > 3800000) {
+          more = true;
+          continue;
+        }
+        newJobs.push(job);
+        totalBytes += approx;
+      }
+    }
+    return json({ ok: true, stationMode, serverIds, newJobs, more });
+  }
 
   if (b.action === 'take') {
     if (!isTrialOwner(owner)) {
@@ -129,11 +201,17 @@ export default safe(async (req, context) => {
     }
     const beat = await meta().get(beatKey(owner), { type: 'json' });
     if (!beat || now - beat.at > BEAT_MS) await meta().setJSON(beatKey(owner), { at: now });
+    const stationMode = await readStationMode(owner);
     const { blobs } = await jobs.list({ prefix: owner + '/' });
     const keys = blobs.map((x) => x.key).sort();
+    if (stationMode === 'queue') {
+      return json({ ok: true, job: null, waiting: keys.length, stationMode });
+    }
+    const skipIds = new Set(Array.isArray(b.skipIds) ? b.skipIds.map(String) : []);
     for (const k of keys) {
       const id = k.slice(owner.length + 1);
       if (!ID_RE.test(id)) continue;
+      if (skipIds.has(id)) continue;
       const born = parseInt(id.split('-')[0], 36);
       if (now - born > JOB_TTL) { await jobs.delete(k); await jobs.delete('claim/' + k); continue; }
       const claim = await jobs.get('claim/' + k, { type: 'json' });
@@ -141,16 +219,18 @@ export default safe(async (req, context) => {
       const job = await jobs.get(k, { type: 'json' });
       if (!job) continue;
       await jobs.setJSON('claim/' + k, { at: now, by: String(b.station || '').slice(0, 40) });
-      return json({ ok: true, job, waiting: keys.length });
+      return json({ ok: true, job, waiting: keys.length, stationMode });
     }
-    return json({ ok: true, job: null, waiting: 0 });
+    return json({ ok: true, job: null, waiting: 0, stationMode });
   }
 
   if (b.action === 'done') {
-    const id = String(b.id || '');
-    if (!ID_RE.test(id)) return json({ error: 'Bad id' }, 400);
-    await jobs.delete(owner + '/' + id);
-    await jobs.delete('claim/' + owner + '/' + id);
+    const ids = Array.isArray(b.ids) ? b.ids.map(String).slice(0, 20) : [String(b.id || '')];
+    if (!ids.length || !ids.every((id) => ID_RE.test(id))) return json({ error: 'Bad id' }, 400);
+    for (const id of ids) {
+      await jobs.delete(owner + '/' + id);
+      await jobs.delete('claim/' + owner + '/' + id);
+    }
     return json({ ok: true });
   }
 

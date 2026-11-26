@@ -91,6 +91,7 @@
           <tr><td><code>session_idle</code></td><td>Idle / welcome screen</td><td>Idle rainbow NeoPixel; cash disabled (Ch 1 OFF); Studio Light Ch 2 OFF</td></tr>
           <tr><td><code>template_selection</code></td><td>Guest choosing a template / layout</td><td>Template-selection cyan NeoPixel chase</td></tr>
           <tr><td><code>price{50}</code></td><td>Price selected (e.g. ₱50)</td><td>Records target price (<code>targetPesos = 50</code>)</td></tr>
+          <tr><td><code>credit{5}</code></td><td>Cash balance changes (on select, coin/bill pulse, payment, or idle expiry)</td><td>Records current booth credit in pesos (<code>creditPesos = 5</code>)</td></tr>
           <tr><td><code>cash_open</code></td><td>Cash payment screen opens</td><td>Enables coin/bill acceptors (Ch 1 ON); pulsing gold NeoPixel</td></tr>
           <tr><td><code>cash_close</code></td><td>Leaving cash screen or paid</td><td>Disables coin/bill acceptors (Ch 1 OFF)</td></tr>
           <tr><td><code>payment_success</code></td><td>Payment confirmed (Cash / QR / Voucher)</td><td>Green confirmation NeoPixel; cash disabled (Ch 1 OFF)</td></tr>
@@ -113,8 +114,8 @@
       <ul>
         <li><b>How many relay channels max on an ESP32?</b> Even with Coin Slot (<code>GPIO 27</code>), Bill Acceptor (<code>GPIO 26</code>), and NeoPixel Data (<code>GPIO 13</code>) connected, a standard 30-pin or 38-pin ESP32 DevKit has <b>8 clean, boot-glitch-free output GPIOs</b> (<code>GPIO 16, 17, 18, 19, 21, 22, 23, 25</code> &mdash; note: on ESP32-WROVER with PSRAM, swap <code>16/17</code> for <code>32/33</code>). You can wire a <b>4-channel or 8-channel relay module directly</b> (or <b>16+ channels</b> via an I2C PCF8575 / MCP23017 expander on <code>GPIO 21/22</code>).</li>
         <li><b>Default 4-Channel Relay Mapping:</b> Ch 1 = <code>GPIO 16</code> (Cash Acceptor Inhibit/Power), Ch 2 = <code>GPIO 17</code> (Studio / Ring Light), Ch 3 = <code>GPIO 18</code> (Strobe / Flash Trigger), Ch 4 = <code>GPIO 19</code> (Print Sign / Aux Light). Set <code>#define NUM_RELAYS 8</code> for an 8-channel board.</li>
-        <li><b>NeoPixel (WS2812B):</b> Connect Data In through a 330&ndash;470&nbsp;&Omega; resistor to <code>GPIO 13</code>, powered by an external 5V supply with <b>Common GND</b> tied to the ESP32. Set <code>#define USE_NEOPIXEL 0</code> if you only wired relays.</li>
-        <li><b>Cash Acceptor 3.3V safety:</b> Power coin/bill acceptors from their own <b>12V DC supply</b> with Common GND. Wire Coin to <code>GPIO 27</code> and Bill to <code>GPIO 26</code> (NO open-collector, or via PC817 optocoupler if active 5V/12V). Set <code>#define REQUIRE_CASH_OPEN 0</code> if you want coins accepted on the idle screen without needing <code>cash_open</code>.</li>
+        <li><b>NeoPixel (WS2812B):</b> WS2812B strips require 5V logic and cannot reliably run directly from an ESP32 3.3V pin. Buffer <code>GPIO 13</code> through an <b>SN74AHCT125N</b> (3.3V &rarr; 5V buffer / level-shifter IC powered at 5V), then feed the 5V data output through a <b>330&nbsp;&Omega;</b> resistor to the first WS2812B <code>Din</code>. Add a <b>1000&nbsp;&micro;F / 16V</b> electrolytic filter capacitor across <code>+5V</code> and <code>GND</code> on your external 5V PSU (e.g. Mean Well) with <b>Common GND</b> tied to the ESP32. Set <code>#define USE_NEOPIXEL 0</code> if you only wired relays.</li>
+        <li><b>Cash Acceptor 3.3V safety:</b> Power coin/bill acceptors from their own <b>12V DC supply</b> with Common GND. Wire Coin to <code>GPIO 27</code> and Bill to <code>GPIO 26</code> (NO open-collector, or isolated via an optocoupler such as <b>PC817</b> or <b>EL816 / EL816B</b> if active 5V/12V). Set <code>#define REQUIRE_CASH_OPEN 0</code> if you want coins accepted on the idle screen without needing <code>cash_open</code>.</li>
       </ul>
     </div>
 
@@ -129,10 +130,16 @@
       <pre style="margin-bottom:0;"><code>Bluetooth connected
 RX: session_idle
 RX: template_selection
-RX: price{50}
+RX: price{20}
+RX: credit{0}
 RX: cash_open
+TX: c10
+RX: credit{10}
+TX: c10
+RX: credit{20}
 RX: cash_close
 RX: payment_success
+RX: credit{0}
 RX: session_start
 RX: countdown_3
 RX: countdown_2
@@ -165,6 +172,7 @@ RX: session_end</code></pre>
  *        session_idle        Idle/welcome screen (idle NeoPixel effect; cash &amp; studio light off)
  *        template_selection  Guest picking a template/layout (selection NeoPixel effect)
  *        price{50}           Session price in pesos (records targetPesos = 50)
+ *        credit{5}           Current booth credit balance in pesos (records creditPesos = 5)
  *        cash_open           App ready for cash (enables coin/bill acceptors + Relay Ch 1 ON)
  *        cash_close          Stops accepting cash (disables acceptors + Relay Ch 1 OFF)
  *        payment_success     Payment confirmed (payment-success NeoPixel; Relay Ch 1 OFF)
@@ -194,6 +202,11 @@ RX: session_end</code></pre>
 // ---- NeoPixel (WS2812B LED ring / strip) ----
 // Set USE_NEOPIXEL to 1 and install "Adafruit NeoPixel" in Arduino Library Manager,
 // or set to 0 if using only a Relay Module without NeoPixels.
+// HARDWARE NOTE (WS2812B 5V logic): WS2812B strips require a 5V data signal and cannot
+// reliably run directly from 3.3V ESP32 GPIO. Buffer GPIO 13 through an SN74AHCT125N
+// (3.3V -&gt; 5V level shifter / buffer IC powered by 5V), then feed the 5V output
+// through a 330 ohm resistor to the first WS2812B Din. Place a 1000 uF / 16V filter
+// capacitor across +5V and GND on the 5V PSU (e.g. Mean Well) with Common GND.
 #define USE_NEOPIXEL       1
 #define NEOPIXEL_PIN       13
 #define NEOPIXEL_COUNT     16
@@ -225,7 +238,7 @@ const uint8_t RELAY_PINS[8] = {
 // ---- Cash Acceptor Pins &amp; Calibration ----
 // SAFETY: Coin/Bill acceptor signal lines must never exceed 3.3V on ESP32 GPIO.
 //   - Open-collector (NO to GND): connect directly to GPIO with INPUT_PULLUP + common GND.
-//   - Active 5V/12V output: isolate through a PC817 optocoupler or voltage divider.
+//   - Active 5V/12V output: isolate through an optocoupler (e.g. PC817 or EL816 / EL816B) or voltage divider.
 #define COIN_PIN              27     // Coin acceptor pulse wire
 #define BILL_PIN              26     // Bill acceptor pulse wire
 #define TEST_BTN_PIN          0      // Built-in BOOT button on ESP32 (press to test c10)
@@ -267,6 +280,7 @@ enum BoothState {
 BoothState boothState = ST_IDLE;
 uint32_t stateEnteredMs = 0;
 uint32_t targetPesos = 0;
+uint32_t creditPesos = 0;
 bool cashAccepting = false;
 bool flashRelayActive = false;
 uint32_t flashRelayOffAt = 0;
@@ -575,6 +589,9 @@ void handleAppCommand(String cmd) {
   } else if (cmd.startsWith("price{") &amp;&amp; cmd.endsWith("}")) {
     String numStr = cmd.substring(6, cmd.length() - 1);
     targetPesos = (uint32_t)numStr.toInt();
+  } else if (cmd.startsWith("credit{") &amp;&amp; cmd.endsWith("}")) {
+    String numStr = cmd.substring(7, cmd.length() - 1);
+    creditPesos = (uint32_t)numStr.toInt();
   } else if (cmd == "cash_open") {
     cashAccepting = true;
     setRelay(0, true);  // Ch 1 Cash Acceptor ON

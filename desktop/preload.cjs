@@ -137,6 +137,12 @@ contextBridge.exposeInMainWorld('pb4u', {
     newPin: () => ipcRenderer.invoke('pb4u:lanStationNewPin'),
     setPrinters: (opts) => ipcRenderer.invoke('pb4u:lanStationSetPrinters', opts || {}),
     setTestSizes: (sizes) => ipcRenderer.invoke('pb4u:lanStationSetTestSizes', sizes),
+    setMode: (mode) => ipcRenderer.invoke('pb4u:lanStationSetMode', String(mode || '')),
+    jobPages: (id) => ipcRenderer.invoke('pb4u:lanStationJobPages', String(id || '')),
+    approveJob: (id, opts) => ipcRenderer.invoke('pb4u:lanStationApproveJob', String(id || ''), opts || {}),
+    dismissJob: (id) => ipcRenderer.invoke('pb4u:lanStationDismissJob', String(id || '')),
+    printAll: () => ipcRenderer.invoke('pb4u:lanStationPrintAll'),
+    dismissAll: () => ipcRenderer.invoke('pb4u:lanStationDismissAll'),
     testPrint: (printer, specOrTwoUp) => ipcRenderer.invoke('pb4u:lanStationTestPrint', String(printer || ''), specOrTwoUp),
     onJob: (fn) => { ipcRenderer.on('pb4u:lanStationJob', (e, info) => { try { fn(info); } catch (err) { /* ignore */ } }); }
   },

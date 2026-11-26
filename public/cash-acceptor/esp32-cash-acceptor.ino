@@ -13,6 +13,7 @@
  *        session_idle        Idle/welcome screen (idle NeoPixel effect; cash & studio light off)
  *        template_selection  Guest picking a template/layout (selection NeoPixel effect)
  *        price{50}           Session price in pesos (records targetPesos = 50)
+ *        credit{5}           Current booth credit balance in pesos (records creditPesos = 5)
  *        cash_open           App ready for cash (enables coin/bill acceptors + Relay Ch 1 ON)
  *        cash_close          Stops accepting cash (disables acceptors + Relay Ch 1 OFF)
  *        payment_success     Payment confirmed (payment-success NeoPixel; Relay Ch 1 OFF)
@@ -42,6 +43,11 @@
 // ---- NeoPixel (WS2812B LED ring / strip) ----
 // Set USE_NEOPIXEL to 1 and install "Adafruit NeoPixel" in Arduino Library Manager,
 // or set to 0 if using only a Relay Module without NeoPixels.
+// HARDWARE NOTE (WS2812B 5V logic): WS2812B strips require a 5V data signal and cannot
+// reliably run directly from 3.3V ESP32 GPIO. Buffer GPIO 13 through an SN74AHCT125N
+// (3.3V -> 5V level shifter / buffer IC powered by 5V), then feed the 5V output
+// through a 330 ohm resistor to the first WS2812B Din. Place a 1000 uF / 16V filter
+// capacitor across +5V and GND on the 5V PSU (e.g. Mean Well) with Common GND.
 #define USE_NEOPIXEL       1
 #define NEOPIXEL_PIN       13
 #define NEOPIXEL_COUNT     16
@@ -73,7 +79,7 @@ const uint8_t RELAY_PINS[8] = {
 // ---- Cash Acceptor Pins & Calibration ----
 // SAFETY: Coin/Bill acceptor signal lines must never exceed 3.3V on ESP32 GPIO.
 //   - Open-collector (NO to GND): connect directly to GPIO with INPUT_PULLUP + common GND.
-//   - Active 5V/12V output: isolate through a PC817 optocoupler or voltage divider.
+//   - Active 5V/12V output: isolate through an optocoupler (e.g. PC817 or EL816 / EL816B) or voltage divider.
 #define COIN_PIN              27     // Coin acceptor pulse wire
 #define BILL_PIN              26     // Bill acceptor pulse wire
 #define TEST_BTN_PIN          0      // Built-in BOOT button on ESP32 (press to test c10)
@@ -115,6 +121,7 @@ enum BoothState {
 BoothState boothState = ST_IDLE;
 uint32_t stateEnteredMs = 0;
 uint32_t targetPesos = 0;
+uint32_t creditPesos = 0;
 bool cashAccepting = false;
 bool flashRelayActive = false;
 uint32_t flashRelayOffAt = 0;
@@ -423,6 +430,9 @@ void handleAppCommand(String cmd) {
   } else if (cmd.startsWith("price{") && cmd.endsWith("}")) {
     String numStr = cmd.substring(6, cmd.length() - 1);
     targetPesos = (uint32_t)numStr.toInt();
+  } else if (cmd.startsWith("credit{") && cmd.endsWith("}")) {
+    String numStr = cmd.substring(7, cmd.length() - 1);
+    creditPesos = (uint32_t)numStr.toInt();
   } else if (cmd == "cash_open") {
     cashAccepting = true;
     setRelay(0, true);  // Ch 1 Cash Acceptor ON

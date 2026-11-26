@@ -13644,6 +13644,130 @@
       letter-spacing: .08em;
       color: var(--ink-dim);
     }
+    .lanst-modebar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #faf8f4;
+    }
+    .lanst-qlist {
+      display: grid;
+      gap: 9px;
+      margin-top: 8px;
+    }
+    .lanst-qitem {
+      display: flex;
+      gap: 11px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #faf8f4;
+    }
+    .lanst-qthumb {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #fff;
+      padding: 4px;
+      cursor: pointer;
+      flex: none;
+      width: 96px;
+      height: 118px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .lanst-qthumb:hover {
+      border-color: #c93d27;
+    }
+    .lanst-qthumb img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .lanst-qpg {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      background: rgba(28, 26, 30, .82);
+      color: #fff;
+      font: 700 10px 'Manrope', sans-serif;
+      padding: 2px 6px;
+      border-radius: 999px;
+    }
+    .lanst-qinfo {
+      flex: 1;
+      min-width: 220px;
+      display: grid;
+      gap: 7px;
+    }
+    .lanst-qmeta {
+      font-size: 12px;
+      color: var(--ink-dim);
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .lanst-qmeta b {
+      color: var(--ink);
+      font-size: 13.5px;
+    }
+    .lanst-qctrl {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .lanst-stepper {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .lanst-stepper button {
+      border: 0;
+      background: none;
+      padding: 4px 9px;
+      font: 800 14px 'Manrope', sans-serif;
+      cursor: pointer;
+      color: var(--ink);
+    }
+    .lanst-stepper button:hover:not(:disabled) {
+      color: #c93d27;
+    }
+    .lanst-stepper span {
+      min-width: 24px;
+      text-align: center;
+      font: 800 12.5px 'Manrope', sans-serif;
+    }
+    .lanst-pv-card {
+      max-width: min(92vw, 680px);
+      max-height: 92vh;
+      padding: 16px;
+      display: grid;
+      gap: 10px;
+      justify-items: center;
+    }
+    .lanst-pv-card img {
+      max-width: 100%;
+      max-height: 70vh;
+      object-fit: contain;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #faf8f4;
+    }
 
     @media (hover:hover) {
       .menu button:hover {
@@ -16754,17 +16878,21 @@
       z-index: 47;
       display: none;
       align-items: center;
-      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      max-width: calc(100vw - 24px);
       padding: 12px 22px;
-      border-radius: 999px;
+      border-radius: 24px;
       background: rgba(20, 18, 22, .82);
       -webkit-backdrop-filter: blur(10px);
       backdrop-filter: blur(10px);
       color: #fff;
-      font: 800 clamp(15px, 2.1vmin, 20px) 'Manrope', sans-serif;
+      font: 800 clamp(15px, 2.1vmin, 20px)/1.3 'Manrope', sans-serif;
       box-shadow: 0 10px 30px rgba(0, 0, 0, .3);
       pointer-events: none;
-      white-space: nowrap;
+      white-space: normal;
+      text-align: center;
     }
 
     .pay-badge b {
@@ -16775,7 +16903,7 @@
       background: rgba(29, 107, 60, .92);
     }
 
-    body.welcome-on.pay-badge-on:not(.pay-open) .pay-badge {
+    body.in-session.welcome-on.pay-badge-on:not(.pay-open) .pay-badge {
       display: inline-flex;
     }
 
@@ -16844,6 +16972,7 @@
 
     .pay-kicker {
       margin: 0;
+      padding: 0 46px;
       font: 800 12px 'Manrope', sans-serif;
       letter-spacing: .14em;
       text-transform: uppercase;
@@ -16852,8 +16981,14 @@
 
     .pay-title {
       margin: 4px 0 0;
-      font: 600 clamp(40px, 7vmin, 56px)/1 'Fraunces', Georgia, serif;
+      padding: 0 46px;
+      font: 600 clamp(34px, 6.6vmin, 54px)/1.05 'Fraunces', Georgia, serif;
       letter-spacing: -.02em;
+    }
+
+    .pay-title.multi {
+      font-size: clamp(22px, 4.6vw, 34px);
+      line-height: 1.15;
     }
 
     .pay-sub {
@@ -16925,6 +17060,53 @@
       margin-top: 2px;
       font: 600 13.5px 'Manrope', sans-serif;
       color: #6b666c;
+    }
+
+    #payOptionsGrid .pay-opt {
+      margin-top: 0;
+      height: 100%;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      text-align: center;
+      gap: 3px;
+      padding: 14px 10px;
+    }
+
+    #payOptionsGrid .pay-opt .ico {
+      margin: 0 0 4px;
+      font-size: 22px;
+    }
+
+    .pay-opt-tier-pill {
+      display: inline-block;
+      margin-top: 5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: #f5efe6;
+      color: #5f5960;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      line-height: 1.25;
+    }
+
+    .pay-opt-credit {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #e9f6ee;
+      color: #1f6b3d;
+      font-size: 10.5px;
+      font-weight: 800;
+      line-height: 1.3;
+    }
+
+    .pay-opt-credit.need {
+      background: #fff5e2;
+      color: #8c5a00;
     }
 
     .pay-qr-box {
@@ -17223,6 +17405,10 @@
         font-size: 64px;
       }
 
+      .pay-title.multi {
+        font-size: 38px;
+      }
+
       .pay-sub {
         font-size: 18px;
       }
@@ -17247,6 +17433,10 @@
 
       .pay-title {
         font-size: 38px;
+      }
+
+      .pay-title.multi {
+        font-size: 24px;
       }
     }
 
@@ -17689,8 +17879,10 @@
     .pb-desktop-hw #backupBox,
     .pb-desktop-hw #ppRoute,
     .pb-desktop-hw #ppRouteHint,
+    .pb-desktop-hw #ppStationModeWrap,
     .pb-desktop-hw #printRouteSelect,
     .pb-desktop-hw #stationHint,
+    .pb-desktop-hw #onlineStationModeWrap,
     .pb-desktop-hw label[for="ppRoute"],
     .pb-desktop-hw label[for="printRouteSelect"],
     .pb-desktop-hw #printer1Card > .web-only {
@@ -23435,6 +23627,14 @@
                   <option value="station">Laptop print station (no pop-up)</option>
                 </select>
                 <p class="panel-hint web-only" id="ppRouteHint" style="margin:4px 0 0;"></p>
+                <div class="web-only" id="ppStationModeWrap" hidden style="margin-top:8px;">
+                  <p class="sub-label" style="margin:0 0 6px;">Laptop Print Station handling <small style="font-weight:500;color:var(--ink-dim);">(synced with /print-station)</small></p>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;" role="group" aria-label="Online Print Station handling">
+                    <button type="button" class="print-size-btn active" data-online-stmode="auto">Auto-print on laptop</button>
+                    <button type="button" class="print-size-btn" data-online-stmode="queue">Queue &amp; view on laptop first</button>
+                  </div>
+                  <p class="panel-hint" id="ppStationModeHint" style="margin:4px 0 0;"></p>
+                </div>
               </div>
             </details>
           </div>
@@ -24481,6 +24681,23 @@
             </div>
             <p class="panel-hint" id="payCashStats" style="margin:8px 0 0;"></p>
             <button type="button" class="pay-link" id="payCashStatsReset" style="margin:2px 0 0; padding:2px 0;">Start the cash count again</button>
+            <label class="switch-row" style="margin-top:10px;">
+              <span>Expire unused credit when idle</span>
+              <input type="checkbox" id="payCashExpireToggle">
+            </label>
+            <div class="opt-row" id="payCashExpireRow" style="display:none; margin-top:4px;">
+              <span class="lbl">Clear credit after</span>
+              <select class="mini-select pillify" id="payCashExpireMin" aria-label="Minutes idle before credit balance expires">
+                <option value="1">1 minute</option>
+                <option value="2">2 minutes</option>
+                <option value="5">5 minutes</option>
+                <option value="10" selected>10 minutes</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">60 minutes</option>
+              </select>
+            </div>
+            <p class="panel-hint" style="margin:2px 0 0;">Resets leftover coin/bill credit to ₱0 (and sends <code>credit{0}</code> to the ESP32) if no one uses the booth for this long.</p>
           </div>
           <details id="payWorkerDetails" style="margin-top:12px; border:1px solid var(--line); border-radius:10px; padding:8px 12px; background:var(--panel-2,#f4efe7);">
             <summary style="cursor:pointer; font-weight:700; font-size:13px;">Self-hosted PayMongo (your own Cloudflare Worker · optional)</summary>
@@ -24532,6 +24749,11 @@
                 <button type="button" class="step-btn" id="payPrintsPlus" aria-label="One print more">+</button>
               </span>
             </div>
+            <label class="switch-row" style="margin-top:10px;">
+              <span>Hide price &amp; options banner on welcome screen</span>
+              <input type="checkbox" id="payHideBadgeToggle">
+            </label>
+            <p class="panel-hint" style="margin:2px 0 0;">Hides the floating banner (e.g. Option 1 (₱20) or Option 2 (₱30) · Tap to start) on the welcome screen.</p>
             <div class="pay-status" id="payQrStatus"></div>
             <div class="pay-vbox" id="payVoucherBox">
               <p class="sub-label" style="margin:0;">Vouchers for this event</p>
@@ -24539,7 +24761,7 @@
                 (58 mm / 80 mm) or A4 sheet and sell them at the booth table; guests type the 8 digits on the screen.</p>
               <div class="pay-make">
                 <select class="mini-select pillify" id="payMakeTier" aria-label="Which voucher"
-                  style="max-width:180px;">
+                  style="flex:1 1 210px; min-width:190px; max-width:100%;">
                   <option value="all">Any layout</option>
                   <option value="tier1">Thermal (Option 1)</option>
                   <option value="tier2">Color (Option 2)</option>
@@ -25383,7 +25605,7 @@
             <button type="button" class="menu-btn" id="setupMenuBtn" aria-label="More" aria-haspopup="true">⋯</button>
             <div class="menu" id="setupMenu" hidden>
               <button type="button" id="menuMyEvents" hidden>My Events ↗ (links, payments, printing)</button>
-              <button type="button" id="menuPrintStation" hidden>Offline Print Station (iPad / Tablet)</button>
+              <button type="button" id="menuPrintStation" hidden><span>Offline Print Station (iPad / Tablet)</span><span class="menu-badge" id="menuPrintStationBadge" hidden></span></button>
               <div id="setupMenuTools" hidden>
                 <div class="menu-sep">Tools</div>
                 <button type="button" data-setup-tool="deskFab" hidden><span>Photographer desk</span><span class="menu-badge" hidden></span></button>
@@ -25763,6 +25985,14 @@
                   <option value="station">Send to a laptop print station</option>
                 </select>
                 <p class="panel-hint web-only" id="stationHint" style="margin:4px 0 2px;"></p>
+                <div class="web-only" id="onlineStationModeWrap" hidden style="margin-top:8px;">
+                  <p class="sub-label" style="margin:0 0 6px;">Laptop Print Station handling <small style="font-weight:500;color:var(--ink-dim);">(synced with /print-station)</small></p>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;" role="group" aria-label="Online Print Station handling">
+                    <button type="button" class="print-size-btn active" data-online-stmode="auto">Auto-print on laptop</button>
+                    <button type="button" class="print-size-btn" data-online-stmode="queue">Queue &amp; view on laptop first</button>
+                  </div>
+                  <p class="panel-hint" id="onlineStationModeHint" style="margin:4px 0 0;"></p>
+                </div>
               </div>
             </details>
 
@@ -25813,6 +26043,14 @@
                   <button type="button" class="action-btn" id="lanStationDiscBtn" style="display:none;width:auto;margin:0;">Disconnect</button>
                 </div>
                 <div id="lanStationFound" style="display:none;flex-direction:column;gap:6px;margin-top:8px;"></div>
+                <div id="lanStationModeBox" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--line,rgba(0,0,0,.1));">
+                  <p class="sub-label" style="margin:0 0 6px;">Laptop Print Station handling <small style="font-weight:500;color:var(--ink-dim);">(synced with laptop)</small></p>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;" role="group" aria-label="Laptop Print Station handling">
+                    <button type="button" class="print-size-btn active" id="lanStationModeAutoBtn" data-lan-mode="auto">Auto-print on laptop</button>
+                    <button type="button" class="print-size-btn" id="lanStationModeQueueBtn" data-lan-mode="queue">Queue &amp; view on laptop first</button>
+                  </div>
+                  <p class="panel-hint" id="lanStationModeHint" style="margin:4px 0 0;"></p>
+                </div>
                 <p class="panel-hint" style="margin:6px 0 0;">On the laptop, open <b>photobooth4u Print Helper</b> (or photobooth4u Desktop) and enter its IP and 6-digit PIN here.</p>
               </div>
             </div>
@@ -26519,14 +26757,14 @@
     <div class="pay-card">
       <button type="button" class="pay-back" id="payBack" aria-label="Other ways to pay" hidden>←</button>
       <button type="button" class="pay-x" id="payClose" aria-label="Close">✕</button>
-      <p class="pay-kicker">Photo session</p>
+      <p class="pay-kicker" id="payKicker">Photo session</p>
       <h2 class="pay-title" id="payTitle">₱100</h2>
       <p class="pay-sub" id="paySub">1 photo session</p>
       <div class="pay-view" id="payChoose">
         <div id="payDualChooseBox" style="display:none; margin-bottom:12px;">
-          <p class="panel-hint" style="margin:0 0 8px; font-weight:700; color:var(--ink);">Choose your print:</p>
+          <p class="panel-hint" style="margin:0 0 8px; font-weight:700; color:var(--ink);">Choose your package:</p>
           <div id="payOptionsGrid"
-            style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px;"></div>
+            style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px;"></div>
         </div>
         <button type="button" class="pay-opt" id="payOptQr"><span class="ico">QR</span><span><b>Pay with
               QR</b><small>GCash · Maya · any bank app</small></span></button>
@@ -28026,7 +28264,30 @@
             <button type="button" class="desk-btn" id="stationDeskNewPinBtn">New PIN</button>
           </div>
         </div>
+        <div class="lanst-modebar">
+          <div>
+            <b>Incoming print handling</b>
+            <div id="stationDeskModeHint" style="font-size:12px;color:var(--ink-dim);">Incoming prints from iPad / tablet print immediately.</div>
+          </div>
+          <div class="lanst-row" role="group" aria-label="Incoming print handling">
+            <button type="button" class="desk-btn active" id="stationDeskModeAuto">Auto-print</button>
+            <button type="button" class="desk-btn" id="stationDeskModeQueue">Queue &amp; view first</button>
+          </div>
+        </div>
         <div class="lanst-msg" id="stationDeskMsg" role="status" hidden></div>
+        <div id="stationDeskPendingWrap" hidden>
+          <div class="lanst-head">
+            <div class="lanst-row">
+              <b>Pending Queue (View Before Printing)</b>
+              <span class="lanst-badge" id="stationDeskPendingBadge">0 waiting</span>
+            </div>
+            <div class="lanst-row">
+              <button type="button" class="desk-btn active" id="stationDeskPrintAllBtn" hidden>Print all</button>
+              <button type="button" class="desk-btn" id="stationDeskClearAllBtn" hidden>Dismiss all</button>
+            </div>
+          </div>
+          <div class="lanst-qlist" id="stationDeskPendingList"></div>
+        </div>
         <div>
           <div class="lanst-head">
             <div class="lanst-row">
@@ -28093,6 +28354,21 @@
         </div>
         <p class="panel-hint" style="margin:0;">On your <b>iPad / Android App</b> (Setup &rarr; Printer), choose your paper size (<b>4&times;6</b>, <b>2&times;6 strips</b>, <b>5&times;7</b>, <b>6&times;8</b>, <b>A4</b>, or <b>More paper sizes &rarr; Own size</b>), switch ON <b>Laptop Print Station (Wi-Fi)</b>, tap <b>Find Laptop on Wi-Fi</b>, enter this <b>6-Digit PIN</b>, and pick your printer. Camera preview pauses while this screen stays open to save laptop power.</p>
       </div>
+    </div>
+  </div>
+  <div class="desk-ov" id="stationDeskPvOverlay" hidden role="dialog" aria-label="Queued photo preview" style="z-index:120;">
+    <div class="desk-card lanst-pv-card">
+      <div class="lanst-head" style="width:100%;margin-bottom:0;">
+        <b id="stationDeskPvTitle">Queued Photo Preview</b>
+        <button type="button" class="desk-btn" id="stationDeskPvClose">Close</button>
+      </div>
+      <img id="stationDeskPvImg" alt="Queued photo preview">
+      <div class="lanst-row" id="stationDeskPvNav" hidden>
+        <button type="button" class="desk-btn" id="stationDeskPvPrev">&lsaquo; Prev</button>
+        <span id="stationDeskPvPageTxt" style="font-size:12.5px;font-weight:700;"></span>
+        <button type="button" class="desk-btn" id="stationDeskPvNext">Next &rsaquo;</button>
+      </div>
+      <div id="stationDeskPvMeta" style="font-size:12px;color:var(--ink-dim);text-align:center;"></div>
     </div>
   </div>
   <div class="desk-ov" id="studioOverlay" hidden role="dialog" aria-label="Arrange and print">
@@ -39996,6 +40272,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         updateUI();
 
         payPrintAllow = 0;
+        if (typeof sessionOptionPrints !== 'undefined') sessionOptionPrints = 0;
         if (typeof sessionNoPrint !== 'undefined') sessionNoPrint = false;
         const readyRes = skipReady !== true ? await waitForReadyTap(opts) : null;
         if (readyRes === '__back__' || (sess && sess.readyBack)) {
@@ -43622,13 +43899,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               host: String(j.host || '').trim(),
               port: Number(j.port) || 47777,
               pin: String(j.pin || '').trim(),
-              hostName: String(j.hostName || '').trim()
+              hostName: String(j.hostName || '').trim(),
+              stationMode: j.stationMode === 'queue' ? 'queue' : 'auto',
+              pendingModeSync: !!j.pendingModeSync
             };
           }
         } catch (e) { }
-        return { enabled: false, host: '', port: 47777, pin: '', hostName: '' };
+        return { enabled: false, host: '', port: 47777, pin: '', hostName: '', stationMode: 'auto', pendingModeSync: false };
       }
       let lanStationCfg = loadLanStationCfg();
+      let lanModeBusy = 0, lanModeSeq = 0;
       function saveLanStationCfg() { try { localStorage.setItem(LAN_STATION_KEY, JSON.stringify(lanStationCfg)); } catch (e) { } }
       function parseLanStationAddr(raw) {
         const cleaned = String(raw || '').trim().replace(/^https?:\/\//i, '').split('/')[0].trim();
@@ -43757,8 +44037,21 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const hostIn = document.getElementById('lanStationHost');
         const pinIn = document.getElementById('lanStationPin');
         const discBtn = document.getElementById('lanStationDiscBtn');
+        const modeBox = document.getElementById('lanStationModeBox');
+        const modeAutoBtn = document.getElementById('lanStationModeAutoBtn');
+        const modeQueueBtn = document.getElementById('lanStationModeQueueBtn');
+        const modeHintEl = document.getElementById('lanStationModeHint');
+        const qMode = lanStationCfg.stationMode === 'queue';
         if (tgl) tgl.checked = !!lanStationCfg.enabled;
         if (form) form.style.display = lanStationCfg.enabled ? 'block' : 'none';
+        if (modeBox) modeBox.style.display = lanStationCfg.enabled ? '' : 'none';
+        if (modeAutoBtn) modeAutoBtn.classList.toggle('active', !qMode);
+        if (modeQueueBtn) modeQueueBtn.classList.toggle('active', qMode);
+        if (modeHintEl) {
+          modeHintEl.textContent = qMode
+            ? 'Queue & view first: incoming prints wait in the laptop Print Station queue so the operator can preview the photo, change printer or copies, and click Print.'
+            : 'Auto-print: incoming prints go straight to the laptop printer as soon as they arrive.';
+        }
         if (hostIn && document.activeElement !== hostIn) {
           hostIn.value = lanStationCfg.host ? (lanStationCfg.host + (lanStationCfg.port && lanStationCfg.port !== 47777 ? ':' + lanStationCfg.port : '')) : '';
         }
@@ -43769,9 +44062,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             stEl.textContent = 'Send prints over local Wi-Fi straight to a Mitsubishi, DNP, or HiTi printer plugged into a Windows or Mac laptop running Print Helper (zero internet needed).';
           } else if (lanStationActive() && helper && helper.ok) {
             const label = lanStationCfg.hostName ? (lanStationCfg.hostName + ' (' + lanStationCfg.host + ')') : lanStationCfg.host;
+            const modeTag = qMode ? ' · Queue & view first' : ' · Auto-print';
             stEl.textContent = helper.printers.length === 0 && helper.filtered && helper.allPrintersCount > 0
-              ? ('Connected to ' + label + ' \u2713 — 0 printers ticked on Laptop Print Station. Tick your printer(s) there, then tap Refresh printer list.')
-              : ('Connected to ' + label + ' \u2713 — ' + helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' ready. Pick your printer in Printer 1 below.');
+              ? ('Connected to ' + label + ' \u2713' + modeTag + ' — 0 printers ticked on Laptop Print Station. Tick your printer(s) there, then tap Refresh printer list.')
+              : ('Connected to ' + label + ' \u2713' + modeTag + ' — ' + helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' ready.' + (qMode ? ' Or choose target printer on the laptop when printing.' : ' Pick your printer in Printer 1 below.'));
           } else if (lanStationActive() && helper && helper.err === 'pin') {
             stEl.textContent = helper.errMsg || 'Wrong PIN. Check the 6-digit PIN shown in Print Helper on the laptop.';
           } else if (lanStationActive() && helper && helper.checked) {
@@ -43878,9 +44172,22 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             helper = { ok: false, printers: [], checked: Date.now(), err: (j && j.reason) || 'auth', errMsg: (j && j.error) || ('Error ' + r.status) };
           } else {
             const remotePrinters = Array.isArray(j.printers) ? j.printers.slice(0, 60).map(String) : [];
-            if (lanStationActive() && j.host) {
-              lanStationCfg.hostName = String(j.host);
-              saveLanStationCfg();
+            if (lanStationActive()) {
+              let cfgDirty = false;
+              if (j.host && lanStationCfg.hostName !== String(j.host)) {
+                lanStationCfg.hostName = String(j.host);
+                cfgDirty = true;
+              }
+              if (lanStationCfg.pendingModeSync) {
+                const pushMode = lanStationCfg.stationMode === 'queue' ? 'queue' : 'auto';
+                lanStationCfg.pendingModeSync = false;
+                cfgDirty = true;
+                helperFetch('/mode', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: pushMode }) }).catch(() => { });
+              } else if (lanModeBusy === 0 && (j.stationMode === 'auto' || j.stationMode === 'queue') && lanStationCfg.stationMode !== j.stationMode) {
+                lanStationCfg.stationMode = j.stationMode;
+                cfgDirty = true;
+              }
+              if (cfgDirty) saveLanStationCfg();
             }
             // Instax Link printers (Bluetooth) are listed beside the printers of this computer; the booth prints to them itself.
             const mergedPrinters = lanStationActive() ? remotePrinters : remotePrinters.concat(instaxNames());
@@ -43953,6 +44260,50 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           refreshPrintUI();
           showToast('Disconnected from Laptop Print Station.', 3000);
         });
+        async function setLanStationMode(nextMode) {
+          const clean = nextMode === 'queue' ? 'queue' : 'auto';
+          lanStationCfg.stationMode = clean;
+          if (!lanStationActive()) {
+            lanStationCfg.pendingModeSync = true;
+            saveLanStationCfg();
+            refreshLanStationUI();
+            try { updateAutoPrintUI(); } catch (e) { }
+            return;
+          }
+          lanStationCfg.pendingModeSync = false;
+          saveLanStationCfg();
+          refreshLanStationUI();
+          try { updateAutoPrintUI(); } catch (e) { }
+          const seq = ++lanModeSeq;
+          lanModeBusy++;
+          try {
+            const r = await helperFetch('/mode', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: clean }) });
+            const j = await r.json().catch(() => ({}));
+            if (seq !== lanModeSeq) return;
+            if (r.ok && j.ok && (j.stationMode === 'auto' || j.stationMode === 'queue')) {
+              lanStationCfg.stationMode = j.stationMode;
+              saveLanStationCfg();
+              refreshLanStationUI();
+              try { updateAutoPrintUI(); } catch (e) { }
+              showToast(j.stationMode === 'queue' ? 'Laptop Print Station set to Queue & view first.' : 'Laptop Print Station set to Auto-print.', 3200);
+            } else {
+              showToast((j && j.error) || 'Could not update Laptop Print Station mode.', 4000);
+            }
+          } catch (e) {
+            showToast('Could not reach Laptop Print Station to sync mode.', 4000);
+          } finally { lanModeBusy--; }
+        }
+        const mAuto = document.getElementById('lanStationModeAutoBtn');
+        const mQueue = document.getElementById('lanStationModeQueueBtn');
+        if (mAuto) mAuto.addEventListener('click', () => setLanStationMode('auto'));
+        if (mQueue) mQueue.addEventListener('click', () => setLanStationMode('queue'));
+        setInterval(() => {
+          if (!lanStationActive()) return;
+          const pm = document.getElementById('printModal');
+          const s4 = document.getElementById('step4Printer');
+          const visible = (pm && !pm.hidden) || (s4 && !s4.classList.contains('hidden') && setupOpen());
+          if (visible) checkHelper(true);
+        }, 10000);
       })();
       // The printers come from the Print Helper, so they're picked, not typed.
       const printerSelect = document.getElementById('printerSelect');
@@ -44712,9 +45063,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         });
       }
       // Sends sheets to Printer 1, or rotates them round-robin across all active 'share' printers (1 -> 2 -> 3...).
-      async function printSheets(all, paper, pname) {
+      async function printSheets(all, paper, pname, opt) {
         const shareList = [pname].concat(activeExtraPrinters().filter(x => x.mode === 'share').map(x => x.name));
-        if (shareList.length < 2) return printChunks(all, paper, pname);
+        if (shareList.length < 2) return printChunks(all, paper, pname, opt);
         const buckets = shareList.map(() => []);
         const idxs = shareList.map(() => []);
         all.forEach((c, i) => {
@@ -45431,12 +45782,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return false;
         }
       }
+      let lastHelperPrintQueued = false;
       async function printViaHelper(pages, paper, name, opt) {
+        lastHelperPrintQueued = false;
         if (isInstaxPrinter(name)) return printViaInstax(pages, paper, name);
-        const needFresh = !(helper && helper.ok && (Date.now() - (helper.checked || 0)) < 60000 && Array.isArray(helper.printers) && helper.printers.includes(name));
+        const allowQueueNoPrinter = !!(lanStationActive() && lanStationCfg.stationMode === 'queue' && !name);
+        const needFresh = !(helper && helper.ok && (Date.now() - (helper.checked || 0)) < 60000 && (allowQueueNoPrinter || (Array.isArray(helper.printers) && helper.printers.includes(name))));
         let h = await checkHelper(needFresh);
         // The built-in helper can be slow to list printers right after the app starts: ask again before giving up.
-        for (let i = 0; (LAPTOP_PRINT || lanStationActive()) && i < 3 && (!h.ok || !(h.printers || []).includes(name)); i++) {
+        for (let i = 0; (LAPTOP_PRINT || lanStationActive()) && i < 3 && (!h.ok || (!allowQueueNoPrinter && !(h.printers || []).includes(name))); i++) {
           await new Promise(r => setTimeout(r, 1500));
           h = await checkHelper(true);
         }
@@ -45477,6 +45831,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             quality: (opt && opt.quality) || helperQualityFor(name),
             mediaType,
             paperName: explicitPaper,
+            paperLabel: (lanStationActive() && paper && paper.name) ? paper.name : undefined,
+            copies: (lanStationActive() && opt && opt.copies) ? opt.copies : undefined,
             twoUp: !!twoUpFlag,
             widthMm: force58H ? Math.min(sendW || 48, 48) : sendW,
             heightMm: sendH,
@@ -45488,6 +45844,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const r = await helperFetch('/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
           const j = await r.json().catch(() => ({}));
           if (r.ok && j.ok) {
+            lastHelperPrintQueued = !!(j && j.queued);
+            if (lanStationActive() && (j.stationMode === 'auto' || j.stationMode === 'queue') && lanStationCfg.stationMode !== j.stationMode) {
+              lanStationCfg.stationMode = j.stationMode;
+              saveLanStationCfg();
+              refreshLanStationUI();
+            }
             if (Array.isArray(j.warnings) && j.warnings.length) showToast(j.warnings.join(' '), 7500);
             return true;
           }
@@ -46649,9 +47011,57 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       let printRoute = 'here';
       try { printRoute = localStorage.getItem(ROUTE_KEY) === 'station' ? 'station' : 'here'; } catch (e) { }
       if (LAPTOP_PRINT || TABLET_LOCAL) printRoute = 'here';            // printer is on this device/laptop, never hidden web Cloud Print Station
-      let station = { online: false, lastSeen: 0, checked: 0 };
+      let station = { online: false, lastSeen: 0, checked: 0, mode: 'auto' };
+      let stationModeBusy = 0, stationModeSeq = 0;
       function isTrialBooth() { return !!(window.__PB && window.__PB.type === 'trial'); }
       function useStation() { return printRoute === 'station' && (isRentalBooth() || isTrialBooth()); }
+      function refreshOnlineStationModeUI() {
+        const show = useStation();
+        const qMode = station.mode === 'queue';
+        const hintTxt = qMode
+          ? 'Queue & view first: incoming prints wait on /print-station so the operator can preview, change printer or copies, and click Print.'
+          : 'Auto-print: incoming prints print immediately when /print-station receives them.';
+        ['onlineStationModeWrap', 'ppStationModeWrap'].forEach(id => {
+          const wrap = document.getElementById(id);
+          if (!wrap) return;
+          wrap.hidden = !show;
+          wrap.querySelectorAll('[data-online-stmode]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.onlineStmode === (qMode ? 'queue' : 'auto'));
+          });
+        });
+        const h1 = document.getElementById('onlineStationModeHint'), h2 = document.getElementById('ppStationModeHint');
+        if (h1) h1.textContent = hintTxt;
+        if (h2) h2.textContent = hintTxt;
+      }
+      async function setOnlineStationMode(nextMode) {
+        const clean = nextMode === 'queue' ? 'queue' : 'auto';
+        station.mode = clean;
+        refreshOnlineStationModeUI();
+        try { updateAutoPrintUI(); } catch (e) { }
+        const seq = ++stationModeSeq;
+        stationModeBusy++;
+        try {
+          const r = await postApi('/api/printjobs', { action: 'setMode', mode: clean }, 8000);
+          if (seq !== stationModeSeq) return;
+          if (r.status === 200 && r.j && (r.j.stationMode === 'auto' || r.j.stationMode === 'queue')) {
+            station.mode = r.j.stationMode;
+            refreshOnlineStationModeUI();
+            refreshStationHints();
+            try { updateAutoPrintUI(); } catch (e) { }
+            showToast(station.mode === 'queue' ? 'Online Print Station set to Queue & view first.' : 'Online Print Station set to Auto-print.', 3200);
+          } else {
+            showToast((r.j && r.j.error) || 'Could not update Print Station mode.', 4000);
+          }
+        } catch (e) {
+          showToast('Could not reach server to update Print Station mode.', 4000);
+        } finally { stationModeBusy--; }
+      }
+      document.addEventListener('click', function (e) {
+        const b = e.target && e.target.closest && e.target.closest('[data-online-stmode]');
+        if (!b || !useStation()) return;
+        e.preventDefault();
+        setOnlineStationMode(b.dataset.onlineStmode);
+      });
       // Trials pair with the laptop by a 6-digit code (the trial password is shared,
       // so it can't be used to sign the laptop in). One code, once, for 10 minutes.
       let pair = { code: '', exp: 0, busy: false, err: '' };
@@ -46661,8 +47071,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         pair.busy = true; pair.err = '';
         try {
           const r = await postApi('/api/printjobs', { action: 'pair' }, 8000);
-          if (r.status === 200 && r.j.code) { pair.code = r.j.code; pair.exp = r.j.exp; station.online = !!r.j.online; }
-          else pair.err = r.j.error || 'Couldn’t get a pairing code. Check the internet and try again.';
+          if (r.status === 200 && r.j.code) {
+            pair.code = r.j.code; pair.exp = r.j.exp; station.online = !!r.j.online;
+            if (stationModeBusy === 0 && (r.j.stationMode === 'auto' || r.j.stationMode === 'queue')) station.mode = r.j.stationMode;
+          } else pair.err = r.j.error || 'Couldn’t get a pairing code. Check the internet and try again.';
         } catch (e) { pair.err = 'Couldn’t get a pairing code. Check the internet and try again.'; }
         pair.busy = false;
         refreshStationHints();
@@ -46680,16 +47092,26 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         try { refreshPrintUI(); refreshPrintSummary(); } catch (e) { }
       }
       async function checkStation() {
-        if (!useStation()) return station;
+        if (!useStation()) { refreshOnlineStationModeUI(); return station; }
         try {
           const r = await postApi('/api/printjobs', { action: 'station' }, 6000);
-          if (r.status === 200) station = { online: !!r.j.online, lastSeen: r.j.lastSeen || 0, checked: Date.now() };
+          if (r.status === 200) {
+            const nextMode = (stationModeBusy === 0 && (r.j.stationMode === 'auto' || r.j.stationMode === 'queue')) ? r.j.stationMode : (station.mode || 'auto');
+            station = { online: !!r.j.online, lastSeen: r.j.lastSeen || 0, checked: Date.now(), mode: nextMode };
+          }
         } catch (e) { station.checked = Date.now(); }
         if (isTrialBooth() && !station.online) newPairCode(false);
         refreshStationHints();
+        try { updateAutoPrintUI(); } catch (e) { }
         return station;
       }
       setInterval(() => { if (useStation() && printSettings()) checkStation(); }, 30000);
+      setInterval(() => {
+        if (!useStation() || !printSettings()) return;
+        const pm = document.getElementById('printModal'), s4 = document.getElementById('step4Printer');
+        const vis = (pm && !pm.hidden) || (s4 && !s4.classList.contains('hidden') && setupOpen());
+        if (vis) checkStation();
+      }, 10000);
       function stationHtml() {
         const link = '<a href="/print-station/" target="_blank" rel="noopener">photobooth4u.netlify.app/print-station</a>';
         if (isTrialBooth()) {
@@ -46718,6 +47140,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             : 'Prints open your browser or system print dialog. Enable Print Helper below to send jobs directly without that dialog.'));
         if (a) a.innerHTML = html;
         if (b) b.innerHTML = html;
+        refreshOnlineStationModeUI();
       }
       async function sendToStation(pages, paper, copies) {
         const group = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -46747,6 +47170,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           }, 30000);
           if (r.status !== 200) throw new Error(r.j.error || ('error ' + r.status));
           if (typeof r.j.online === 'boolean') station.online = r.j.online;
+          if (stationModeBusy === 0 && (r.j.stationMode === 'auto' || r.j.stationMode === 'queue')) station.mode = r.j.stationMode;
         }
         refreshStationHints();
       }
@@ -48878,7 +49302,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (useStation()) {
             try {
               await sendToStation(pages, paper, n);
-              showToast((auto === true ? 'Auto-print: sent to the print station (' : 'Sent to the print station (') + label + ').' + (station.online ? '' : ' It prints once the laptop’s print station is open.'), 4500);
+              const stQueued = station && station.mode === 'queue';
+              showToast(
+                stQueued
+                  ? ('Sent to Print Station queue for review (' + label + ').' + (station.online ? '' : ' Open /print-station on the laptop to view & print.'))
+                  : ((auto === true ? 'Auto-print: sent to the print station (' : 'Sent to the print station (') + label + ').' + (station.online ? '' : ' It prints once the laptop’s print station is open.')),
+                4500
+              );
             } catch (e) {
               showToast('Couldn’t reach the print station (' + (e.message || e) + '). Try again.', 5500);
               setPendingPrints(0);
@@ -48960,12 +49390,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               return true;
             }
           }
-          if (helperOn && pname && !fpBt && !fpWifi) {
+          if (helperOn && (pname || (lanStationActive() && lanStationCfg.stationMode === 'queue')) && !fpBt && !fpWifi) {
             let sent = true;
             const extras = fp ? [] : activeExtraPrinters();       // a linked printer prints on its own
             const extraJob = printExtraPrinters(extras);          // e.g. receipt / Instax / second photo size in parallel
-            const allPrintersLabel = [pname].concat(extras.map(x => x.name)).join(' & ');
-            if (!fp && flipbookResult && flipPrinterPool && flipPrinterPool !== pname && helper && Array.isArray(helper.printers) && helper.printers.indexOf(flipPrinterPool) >= 0) {
+            const allPrintersLabel = [pname || 'Laptop Print Station'].concat(extras.map(x => x.name)).join(' & ');
+            if (!fp && pname && flipbookResult && flipPrinterPool && flipPrinterPool !== pname && helper && Array.isArray(helper.printers) && helper.printers.indexOf(flipPrinterPool) >= 0) {
               const p1 = pname, p2 = flipPrinterPool;
               const p1Pages = [], p2Pages = [];
               if (flipPoolMode === 'copies' && n > 1) {
@@ -48990,12 +49420,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                 return true;
               }
             }
-            sent = await printSheets(all, paper, pname);
+            const useStationCopies = lanStationActive() && !activeExtraPrinters().some(x => x.mode === 'share');
+            sent = useStationCopies ? await printSheets(pages, paper, pname, { copies: n }) : await printSheets(all, paper, pname);
             if (extraJob) await extraJob;
             // The app never falls back to the OS print dialog once a laptop/station printer is chosen: a guest session must not stall behind it.
             if (!sent && (LAPTOP_PRINT || lanStationActive())) return false;
             if (sent) {
-              showToast((auto === true ? 'Auto-printing on ' : 'Printing on ') + allPrintersLabel + ' (' + label + ').');
+              showToast(lastHelperPrintQueued
+                ? ('Queued on Laptop Print Station for review (' + (pname || 'choose printer on laptop') + ' \u00b7 ' + label + ').')
+                : ((auto === true ? 'Auto-printing on ' : 'Printing on ') + allPrintersLabel + ' (' + label + ').'));
               armAutoPrintAfterFirst(auto === true);
               return true;
             }
@@ -49221,8 +49654,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // ---- Guest Print button + copies sheet ----
       const copiesSheet = document.getElementById('copiesSheet');
       let sheetCopies = 1, sheetMax = 1;
+      function defaultSessionPrintCopies() {
+        var c = (typeof payActive === 'function' && payActive() && typeof payCfg === 'object' && payCfg && payCfg.dual && typeof sessionOptionPrints === 'number' && sessionOptionPrints > 0)
+          ? sessionOptionPrints
+          : ((printPrefs && printPrefs.copies) || 1);
+        return Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(c) || 1)));
+      }
       function openCopiesSheet(max) {
-        sheetMax = max; sheetCopies = Math.max(1, Math.min(max, printPrefs.copies || 1));
+        sheetMax = max; sheetCopies = Math.max(1, Math.min(max, defaultSessionPrintCopies()));
         document.getElementById('copiesSheetTitle').textContent = printTxt('txtCopies');
         document.getElementById('copiesSheetGo').textContent = printTxt('txtPrint');
         renderCopiesSheet();
@@ -49249,7 +49688,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const max = maxCopies(printSize);
         if (max < 1) { limitReached(); return; }
         if (printPrefs.guestCopies && max > 1) openCopiesSheet(max);
-        else printCurrentPhoto(false, Math.min(printPrefs.copies || 1, max));
+        else printCurrentPhoto(false, Math.min(defaultSessionPrintCopies(), max));
       }
       function refreshGuestPrintBtn() {
         const pq = document.getElementById('printQuickBtn');
@@ -49290,7 +49729,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       let autoPrintPrompted = false;
       try { autoPrintPrompted = localStorage.getItem(AUTO_PRINT_PROMPT_KEY) === '1'; } catch (e) { }
       function autoPrintHintText() {
-        if (useStation()) return 'Each session goes to the laptop print station by itself.';
+        if (useStation()) return station.mode === 'queue' ? 'Each session goes to the laptop Print Station queue for review before printing.' : 'Each session goes to the laptop print station by itself.';
+        if (lanStationActive() && lanStationCfg.stationMode === 'queue') return 'Each session goes to the Laptop Print Station review queue (prints after you view & approve on the laptop).';
         if (helperOn && helper.ok && printSize && helper.printers.includes(printerFor(printSize))) return 'Each session sends a job to the selected printer with no dialog.';
         if (DESKTOP) return printSize && printerFor(printSize) ? 'The app is still looking for “' + printerFor(printSize) + '”. Tap Refresh printer list below. It will never open the Windows print dialog.' : 'Pick a printer for this paper size below and each session prints with no dialog.';
         if (helperOn && helper.ok) return 'Pick a printer for this paper size below and each session prints with no dialog.';
@@ -49307,7 +49747,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function updateAutoPrintUI() {
         setTimeout(function () { try { renderPrintSteps(); } catch (e) { } }, 0);
         const show = !!printSettings();
-        const canAuto = LAPTOP_PRINT || !!(helperOn && helper && helper.ok);
+        const canAuto = LAPTOP_PRINT || useStation() || !!(helperOn && helper && helper.ok);
         autoPrintRow.classList.toggle('hidden', !show || !canAuto);
         autoPrintHint.classList.toggle('hidden', !show || !canAuto);
         autoPrintToggle.checked = autoPrint;
@@ -49352,7 +49792,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!autoPrint || !printSize || !printSettings()) return;
         if (typeof noPrintSession === 'function' && noPrintSession()) return;
         if (!printSettings().includes(printSize) || !sizeFitsLayout(printSize)) return;
-        setTimeout(() => printCurrentPhoto(true, printPrefs.copies), 500);
+        setTimeout(() => printCurrentPhoto(true, defaultSessionPrintCopies()), 500);
       }
       window.addEventListener('pb-print-change', () => { printCount = null; refreshPrintCount(); });
       setTimeout(refreshPrintCount, 1200);
@@ -49607,7 +50047,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const max = maxCopies(printSize);
           if (max < 1) { limitReached(); return; }
           if (printPrefs.guestCopies && max > 1) {
-            G.gCopyMax = max; G.gCopyN = Math.max(1, Math.min(max, printPrefs.copies || 1));
+            G.gCopyMax = max; G.gCopyN = Math.max(1, Math.min(max, defaultSessionPrintCopies()));
             G.gCopiesTitle.textContent = printTxt('txtCopies');
             G.gCopiesGo.textContent = printTxt('txtPrint');
             const renderGStep = () => {
@@ -49621,7 +50061,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             G.gCopiesPlus.onclick = (ev) => { ev.stopPropagation(); if (G.gCopyN < G.gCopyMax) { G.gCopyN++; renderGStep(); } };
             G.gCopiesModal.classList.remove('hide');
           } else {
-            printCurrentPhoto(false, Math.min(printPrefs.copies || 1, max));
+            printCurrentPhoto(false, Math.min(defaultSessionPrintCopies(), max));
           }
         });
         if (G.gCopiesModal) G.gCopiesModal.addEventListener('click', (e) => { e.stopPropagation(); if (e.target === G.gCopiesModal) G.gCopiesModal.classList.add('hide'); });
@@ -51414,6 +51854,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (gso) gso.classList.add('hidden');
         if (gsoMounted() || document.body.classList.contains('decorating')) gsoUnmount();
         if (typeof sessionTier !== 'undefined') sessionTier = null;
+        if (typeof sessionPayLabel !== 'undefined') sessionPayLabel = '';
+        if (typeof sessionOptionPrints !== 'undefined') sessionOptionPrints = 0;
         var hadGuestTier = typeof guestPickedTier !== 'undefined' && !!guestPickedTier;
         if (typeof guestPickedTier !== 'undefined') guestPickedTier = null;
         if (typeof sessionNoPrint !== 'undefined' && sessionNoPrint) { sessionNoPrint = false; try { refreshPrintUI(); } catch (e) { } }
@@ -52520,7 +52962,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var menu = document.getElementById('setupMenu'), wrap = document.getElementById('setupMenuTools'), psBtn = document.getElementById('menuPrintStation');
         if (!menu || !wrap) return;
         var psOn = printStationAllowed();
-        if (psBtn) psBtn.hidden = !psOn;
+        if (psBtn) {
+          psBtn.hidden = !psOn;
+          var psBadge = document.getElementById('menuPrintStationBadge'), psSrc = document.getElementById('printStationFab');
+          if (psBadge) {
+            var psN = psSrc ? (Number(psSrc.dataset.n || 0) || 0) : 0;
+            psBadge.hidden = !(psN > 0);
+            if (psN > 0) psBadge.textContent = String(psN);
+          }
+        }
         var visibleCount = 0;
         wrap.querySelectorAll('[data-setup-tool]').forEach(function (item) {
           var src = document.getElementById(item.dataset.setupTool);
@@ -52613,8 +53063,134 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           { id: '2x6-cut', label: '2\u00d76 Cut', widthMm: 101.6, heightMm: 152.4, twoUp: true, builtin: true }
         ];
         var lastInfo = null;
-        var lastPrSig = '', lastSzSig = '', lastJobSig = '';
-        var prSaveSeq = 0, szSaveSeq = 0, prBusy = 0, szBusy = 0;
+        var lastPrSig = '', lastSzSig = '', lastJobSig = '', lastPendingSig = '';
+        var prSaveSeq = 0, szSaveSeq = 0, modeSaveSeq = 0, prBusy = 0, szBusy = 0, modeBusy = 0;
+        var jobEdits = {};
+        var lastSeenPendingCount = 0;
+        var pvState = { job: null, pages: [], page: 0 };
+        function syncStationBadges(info) {
+          var n = (info && Number(info.pendingCount)) || (info && Array.isArray(info.pendingJobs) ? info.pendingJobs.length : 0) || 0;
+          var psFab = document.getElementById('printStationFab');
+          if (psFab) psFab.dataset.n = String(n);
+          try { syncSetupToolsMenu(); } catch (e) { }
+          return n;
+        }
+        function availableTargetPrinters() {
+          var all = (lastInfo && Array.isArray(lastInfo.printers)) ? lastInfo.printers : [];
+          var ticked = all.filter(isPrTicked);
+          return ticked.length ? ticked : all;
+        }
+        function editForJob(j) {
+          if (jobEdits[j.id]) return jobEdits[j.id];
+          var list = availableTargetPrinters();
+          return { printer: j.printer || list[0] || '', copies: Math.max(1, Math.min(20, Number(j.copies) || 1)) };
+        }
+        function renderModeUi() {
+          var qMode = !!(lastInfo && lastInfo.stationMode === 'queue');
+          var bA = document.getElementById('stationDeskModeAuto');
+          var bQ = document.getElementById('stationDeskModeQueue');
+          var mh = document.getElementById('stationDeskModeHint');
+          if (bA) bA.className = 'desk-btn' + (qMode ? '' : ' active');
+          if (bQ) bQ.className = 'desk-btn' + (qMode ? ' active' : '');
+          if (mh) {
+            mh.textContent = qMode
+              ? 'Incoming photos wait in the review queue below so you can view them, change printer or copies, and click Print.'
+              : 'Incoming prints from iPad / tablet print immediately.';
+          }
+        }
+        function renderPendingUi(force) {
+          var list = (lastInfo && Array.isArray(lastInfo.pendingJobs)) ? lastInfo.pendingJobs : [];
+          var wrap = document.getElementById('stationDeskPendingWrap');
+          var box = document.getElementById('stationDeskPendingList');
+          var badge = document.getElementById('stationDeskPendingBadge');
+          var pAll = document.getElementById('stationDeskPrintAllBtn');
+          var cAll = document.getElementById('stationDeskClearAllBtn');
+          if (!wrap || !box) return;
+          var qMode = !!(lastInfo && lastInfo.stationMode === 'queue');
+          var show = qMode || list.length > 0;
+          wrap.hidden = !show;
+          if (badge) {
+            badge.textContent = list.length + ' waiting';
+            badge.className = 'lanst-badge' + (list.length ? ' ok' : '');
+          }
+          if (pAll) pAll.hidden = list.length < 2;
+          if (cAll) cAll.hidden = list.length < 2;
+          if (!show) return;
+          var active = document.activeElement;
+          if (!force && active && active.dataset && active.dataset.psJobPrinter) return;
+          var targets = availableTargetPrinters();
+          var live = {};
+          list.forEach(function (j) { live[j.id] = 1; });
+          Object.keys(jobEdits).forEach(function (id) { if (!live[id]) delete jobEdits[id]; });
+          var sig = JSON.stringify([list.map(function (j) { return [j.id, j.printer, j.copies, j.printing, j.lastError, j.pageCount]; }), targets, jobEdits]);
+          if (!force && sig === lastPendingSig) return;
+          lastPendingSig = sig;
+          if (!list.length) {
+            box.innerHTML = '<p class="panel-hint" style="margin:4px 0 0;">Queue is empty. Photos sent from iPad / tablet will wait here for your preview before printing.</p>';
+            return;
+          }
+          box.innerHTML = list.map(function (j) {
+            var ed = editForJob(j);
+            var prList = targets.slice();
+            if (ed.printer && prList.indexOf(ed.printer) < 0) prList.unshift(ed.printer);
+            var opts = prList.length
+              ? prList.map(function (p) { return '<option value="' + escHtml(p) + '"' + (p === ed.printer ? ' selected' : '') + '>' + escHtml(p) + '</option>'; }).join('')
+              : '<option value="">No printer available</option>';
+            var fromLabel = j.fromName ? (j.fromName + ' (' + j.from + ')') : j.from;
+            var pgBadge = j.pageCount > 1 ? '<span class="lanst-qpg">' + j.pageCount + ' pages</span>' : '';
+            var thumbHtml = j.thumb
+              ? '<img src="' + escHtml(j.thumb) + '" alt="Queued photo preview">'
+              : '<span style="font-size:11px;color:var(--ink-dim);text-align:center;padding:6px;">Tap View</span>';
+            var errHtml = j.lastError ? '<div style="color:#9b2c1f;font-size:12px;font-weight:700;">' + escHtml(j.lastError) + '</div>' : '';
+            return '<div class="lanst-qitem">' +
+              '<button type="button" class="lanst-qthumb" data-ps-view="' + escHtml(j.id) + '" title="Click to preview full photo">' + thumbHtml + pgBadge + '</button>' +
+              '<div class="lanst-qinfo">' +
+                '<div class="lanst-qmeta"><b>' + escHtml(j.paper || 'Photo') + '</b><span>' + new Date(j.at).toLocaleTimeString() + '</span><span>From ' + escHtml(fromLabel || 'iPad / tablet') + '</span></div>' +
+                errHtml +
+                '<div class="lanst-qctrl">' +
+                  '<select class="lanst-inp grow" data-ps-job-printer="' + escHtml(j.id) + '" aria-label="Target printer"' + (j.printing ? ' disabled' : '') + '>' + opts + '</select>' +
+                  '<span class="lanst-stepper"><button type="button" data-ps-cdec="' + escHtml(j.id) + '"' + (j.printing || ed.copies <= 1 ? ' disabled' : '') + '>&minus;</button><span>' + ed.copies + '</span><button type="button" data-ps-cinc="' + escHtml(j.id) + '"' + (j.printing || ed.copies >= 20 ? ' disabled' : '') + '>+</button></span>' +
+                  '<button type="button" class="desk-btn" data-ps-view="' + escHtml(j.id) + '">View</button>' +
+                  '<button type="button" class="desk-btn active" data-ps-approve="' + escHtml(j.id) + '"' + (j.printing ? ' disabled' : '') + '>' + (j.printing ? 'Printing\u2026' : 'Print') + '</button>' +
+                  '<button type="button" class="desk-btn" data-ps-dismiss="' + escHtml(j.id) + '"' + (j.printing ? ' disabled' : '') + '>Dismiss</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+        }
+        function showDeskPvPage(pageIdx) {
+          var pvOv = document.getElementById('stationDeskPvOverlay');
+          var job = pvState.job;
+          var pages = pvState.pages || [];
+          if (!pvOv || !job) return;
+          var total = Math.max(1, pages.length || job.pageCount || 1);
+          var p = Math.max(0, Math.min(total - 1, pageIdx || 0));
+          pvState.page = p;
+          document.getElementById('stationDeskPvTitle').textContent = (job.paper || 'Queued Photo') + (total > 1 ? ' (' + total + ' pages)' : '');
+          document.getElementById('stationDeskPvImg').src = pages[p] || job.thumb || '';
+          var nav = document.getElementById('stationDeskPvNav');
+          if (nav) nav.hidden = total < 2;
+          document.getElementById('stationDeskPvPageTxt').textContent = 'Page ' + (p + 1) + ' of ' + total;
+          document.getElementById('stationDeskPvPrev').disabled = p <= 0;
+          document.getElementById('stationDeskPvNext').disabled = p >= total - 1;
+          var ed = editForJob(job);
+          document.getElementById('stationDeskPvMeta').textContent = 'Target printer: ' + (ed.printer || 'Not chosen') + ' \u00b7 Copies: ' + ed.copies + ' \u00b7 From ' + (job.fromName || job.from || 'tablet');
+          pvOv.hidden = false;
+        }
+        async function openDeskPv(id) {
+          var job = (lastInfo && Array.isArray(lastInfo.pendingJobs)) ? lastInfo.pendingJobs.find(function (x) { return x.id === id; }) : null;
+          if (!job) return;
+          pvState = { job: job, pages: job.thumb ? [job.thumb] : [], page: 0 };
+          showDeskPvPage(0);
+          var api = window.pb4u && window.pb4u.lanStation;
+          if (api && typeof api.jobPages === 'function') {
+            var res = await api.jobPages(id).catch(function () { return null; });
+            if (res && res.ok && Array.isArray(res.pages) && res.pages.length && pvState.job && pvState.job.id === id) {
+              pvState.pages = res.pages;
+              showDeskPvPage(pvState.page);
+            }
+          }
+        }
         function sayPs(msg, err) {
           var el = document.getElementById('stationDeskMsg');
           if (!el) return;
@@ -52737,6 +53313,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           lastInfo = Object.assign({}, lastInfo || {}, info, {
             printers: Array.isArray(info.printers) ? info.printers : prevPrinters
           });
+          lastSeenPendingCount = syncStationBadges(lastInfo);
           var stEl = document.getElementById('stationDeskState');
           var ipsEl = document.getElementById('stationDeskIps');
           var pinEl = document.getElementById('stationDeskPin');
@@ -52750,6 +53327,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               : ('Port ' + (lastInfo.port || 47777) + ' (waiting for Wi-Fi / Hotspot)');
           }
           if (pinEl) pinEl.textContent = lastInfo.pin || '------';
+          renderModeUi();
+          renderPendingUi(force);
           renderSizesUi(force);
           renderPrintersUi(force);
           var jobs = Array.isArray(lastInfo.jobs) ? lastInfo.jobs : [];
@@ -52759,7 +53338,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             jobsEl.innerHTML = jobs.length
               ? jobs.map(function (x) {
                   var tag = x.ok ? '<span style="color:#1f6f62;font-weight:700;">Printed</span>' : '<span style="color:#9b2c1f;font-weight:700;">' + escHtml(x.error || 'Error') + '</span>';
-                  return '<tr><td>' + new Date(x.at).toLocaleTimeString() + '</td><td>' + escHtml(x.from) + '</td><td>' + escHtml(x.printer) + '</td><td>' + escHtml(x.paper) + '</td><td>' + tag + '</td></tr>';
+                  var cp = x.copies > 1 ? (' (' + x.copies + 'x)') : '';
+                  return '<tr><td>' + new Date(x.at).toLocaleTimeString() + '</td><td>' + escHtml(x.from) + '</td><td>' + escHtml(x.printer) + '</td><td>' + escHtml(x.paper) + cp + '</td><td>' + tag + '</td></tr>';
                 }).join('')
               : '<tr><td colspan="5" style="color:var(--ink-dim);">Waiting for prints from iPad / tablet\u2026</td></tr>';
           }
@@ -52769,14 +53349,36 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             }).catch(function () { hsBtn.hidden = true; });
           }
         }
-        var prSaveSeq = 0, szSaveSeq = 0, prBusy = 0, szBusy = 0;
         async function loadStationData(refresh) {
           var api = window.pb4u && window.pb4u.lanStation;
           if (!api) return;
           var info = await api.info(!!refresh);
           if (info && prBusy > 0 && lastInfo) { info.selectedPrinters = lastInfo.selectedPrinters; info.hideUnusedPrinters = lastInfo.hideUnusedPrinters; }
           if (info && szBusy > 0 && lastInfo) { info.testSizes = lastInfo.testSizes; info.testSizesCustomized = lastInfo.testSizesCustomized; }
+          if (info && modeBusy > 0 && lastInfo) { info.stationMode = lastInfo.stationMode; }
           renderStationData(info, true);
+        }
+        async function saveStationMode(nextMode) {
+          var api = window.pb4u && window.pb4u.lanStation;
+          if (!api || typeof api.setMode !== 'function') return;
+          var clean = nextMode === 'queue' ? 'queue' : 'auto';
+          if (!lastInfo) lastInfo = {};
+          lastInfo.stationMode = clean;
+          renderStationData(lastInfo, true);
+          var seq = ++modeSaveSeq;
+          modeBusy++;
+          try {
+            var res = await api.setMode(clean);
+            if (seq !== modeSaveSeq) return;
+            if (res && res.ok) {
+              renderStationData(res, true);
+              sayPs(res.stationMode === 'queue'
+                ? 'Queue & view first is ON. Incoming photos wait above for review before printing.'
+                : 'Auto-print is ON. Incoming photos print immediately.');
+            } else {
+              sayPs((res && res.error) || 'Could not update print mode.', true);
+            }
+          } finally { modeBusy--; }
         }
         async function saveStationPrinters(nextSel, nextHide) {
           var api = window.pb4u && window.pb4u.lanStation;
@@ -52817,7 +53419,94 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         document.getElementById('stationDeskClose').addEventListener('click', closeStation);
         ov.addEventListener('click', function (e) { if (e.target === ov) closeStation(); });
-        document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !ov.hidden) closeStation(); });
+        var pvOvEl = document.getElementById('stationDeskPvOverlay');
+        if (pvOvEl) {
+          document.getElementById('stationDeskPvClose').addEventListener('click', function () { pvOvEl.hidden = true; });
+          pvOvEl.addEventListener('click', function (e) { if (e.target === pvOvEl) pvOvEl.hidden = true; });
+          document.getElementById('stationDeskPvPrev').addEventListener('click', function () { showDeskPvPage(pvState.page - 1); });
+          document.getElementById('stationDeskPvNext').addEventListener('click', function () { showDeskPvPage(pvState.page + 1); });
+        }
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && pvOvEl && !pvOvEl.hidden) { pvOvEl.hidden = true; return; }
+          if (e.key === 'Escape' && !ov.hidden) closeStation();
+        });
+        document.getElementById('stationDeskModeAuto').addEventListener('click', function () { saveStationMode('auto'); });
+        document.getElementById('stationDeskModeQueue').addEventListener('click', function () { saveStationMode('queue'); });
+        document.getElementById('stationDeskPendingList').addEventListener('change', function (e) {
+          var sel = e.target.closest('select[data-ps-job-printer]');
+          if (!sel) return;
+          var id = sel.dataset.psJobPrinter;
+          var job = (lastInfo && Array.isArray(lastInfo.pendingJobs)) ? lastInfo.pendingJobs.find(function (x) { return x.id === id; }) : null;
+          if (!job) return;
+          var ed = editForJob(job);
+          jobEdits[id] = { printer: sel.value, copies: ed.copies };
+        });
+        document.getElementById('stationDeskPendingList').addEventListener('click', async function (e) {
+          var dec = e.target.closest('[data-ps-cdec]'), inc = e.target.closest('[data-ps-cinc]');
+          if (dec || inc) {
+            var id = (dec || inc).dataset[dec ? 'psCdec' : 'psCinc'];
+            var job = (lastInfo && Array.isArray(lastInfo.pendingJobs)) ? lastInfo.pendingJobs.find(function (x) { return x.id === id; }) : null;
+            if (!job) return;
+            var ed = editForJob(job);
+            jobEdits[id] = { printer: ed.printer, copies: Math.max(1, Math.min(20, ed.copies + (dec ? -1 : 1))) };
+            renderPendingUi(true);
+            return;
+          }
+          var vBtn = e.target.closest('[data-ps-view]');
+          if (vBtn) { openDeskPv(vBtn.dataset.psView); return; }
+          var apBtn = e.target.closest('[data-ps-approve]');
+          if (apBtn) {
+            var apId = apBtn.dataset.psApprove;
+            var apJob = (lastInfo && Array.isArray(lastInfo.pendingJobs)) ? lastInfo.pendingJobs.find(function (x) { return x.id === apId; }) : null;
+            if (!apJob) return;
+            var apEd = editForJob(apJob);
+            if (!apEd.printer) return sayPs('Choose a target printer first.', true);
+            apBtn.disabled = true; apBtn.textContent = 'Printing\u2026';
+            sayPs('Printing ' + apEd.copies + 'x on ' + apEd.printer + '\u2026');
+            try {
+              var res = await window.pb4u.lanStation.approveJob(apId, { printer: apEd.printer, copies: apEd.copies });
+              if (res && res.ok) {
+                delete jobEdits[apId];
+                renderStationData(res, true);
+                sayPs('Printed ' + apEd.copies + 'x on ' + apEd.printer + ' \u2713');
+              } else {
+                if (res) renderStationData(res, true);
+                sayPs((res && res.error) || 'Could not print queued photo.', true);
+              }
+            } finally { apBtn.disabled = false; }
+            return;
+          }
+          var dmBtn = e.target.closest('[data-ps-dismiss]');
+          if (dmBtn) {
+            var dmId = dmBtn.dataset.psDismiss;
+            dmBtn.disabled = true;
+            var dres = await window.pb4u.lanStation.dismissJob(dmId);
+            delete jobEdits[dmId];
+            if (dres) renderStationData(dres, true);
+            sayPs('Dismissed queued photo.');
+          }
+        });
+        document.getElementById('stationDeskPrintAllBtn').addEventListener('click', async function () {
+          var b = this; b.disabled = true; sayPs('Printing all queued photos\u2026');
+          try {
+            var items = (lastInfo && Array.isArray(lastInfo.pendingJobs)) ? lastInfo.pendingJobs.slice().reverse() : [];
+            var okN = 0, failN = 0, lastErr = '';
+            for (var i = 0; i < items.length; i++) {
+              var job = items[i], ed = editForJob(job);
+              if (!ed.printer) { failN++; lastErr = 'Choose a printer for ' + (job.paper || 'photo'); continue; }
+              var res = await window.pb4u.lanStation.approveJob(job.id, { printer: ed.printer, copies: ed.copies });
+              if (res && res.ok) { okN++; delete jobEdits[job.id]; if (res) renderStationData(res, true); }
+              else { failN++; lastErr = (res && res.error) || 'Print failed'; if (res) renderStationData(res, true); }
+            }
+            sayPs(failN ? ('Printed ' + okN + ', ' + failN + ' failed: ' + lastErr) : ('Printed all ' + okN + ' queued photos \u2713'), failN > 0);
+          } finally { b.disabled = false; }
+        });
+        document.getElementById('stationDeskClearAllBtn').addEventListener('click', async function () {
+          var res = await window.pb4u.lanStation.dismissAll();
+          jobEdits = {};
+          if (res) renderStationData(res, true);
+          sayPs('Dismissed all queued photos.');
+        });
         document.getElementById('stationDeskRefBtn').addEventListener('click', function () { sayPs('Refreshing printers\u2026'); loadStationData(true).then(function () { sayPs('Printer list updated.'); }); });
         document.getElementById('stationDeskPrSearch').addEventListener('input', function () { renderPrintersUi(true); });
         document.getElementById('stationDeskUntickBtn').addEventListener('click', function () {
@@ -52986,9 +53675,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         });
         if (window.pb4u && window.pb4u.lanStation && typeof window.pb4u.lanStation.onJob === 'function') {
           window.pb4u.lanStation.onJob(function (info) {
-            if (ov.hidden || !info) return;
+            if (!info) return;
+            var prevN = lastSeenPendingCount;
+            var nextN = syncStationBadges(info);
+            lastSeenPendingCount = nextN;
+            if (ov.hidden) {
+              if (nextN > prevN) showToast('New photo queued in Offline Print Station (' + nextN + ' waiting for review).', 4500);
+              return;
+            }
             if (prBusy > 0 && lastInfo) { info = Object.assign({}, info, { selectedPrinters: lastInfo.selectedPrinters, hideUnusedPrinters: lastInfo.hideUnusedPrinters }); }
             if (szBusy > 0 && lastInfo) { info = Object.assign({}, info, { testSizes: lastInfo.testSizes, testSizesCustomized: lastInfo.testSizesCustomized }); }
+            if (modeBusy > 0 && lastInfo) { info = Object.assign({}, info, { stationMode: lastInfo.stationMode }); }
             renderStationData(info, false);
           });
         }
@@ -52997,7 +53694,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           window.__pbStationPaused = true;
           try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
           sayPs('');
-          lastPrSig = ''; lastSzSig = ''; lastJobSig = '';
+          lastPrSig = ''; lastSzSig = ''; lastJobSig = ''; lastPendingSig = '';
           ov.hidden = false;
           loadStationData(true);
         };
@@ -67908,7 +68605,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         } else if (effTier === 'photo') {
           var pKeys = keys.filter(function (k) { return layoutFitsTier(k, 'photo'); });
           if (tierFilter) keys = pKeys;
-          else if (pKeys.length) keys = pKeys;
+          else keys = pKeys.length ? pKeys : ['strip'];
         }
         if (!tierFilter && keys.length === 1 && /^frame:/.test(keys[0])) {
           activeFrameId = keys[0].slice(6);
@@ -68132,8 +68829,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var includeDesigns = guestDesigns.length >= 2 || (standAloneFrames && filteredFrames.length > 0);
         if (includeDesigns) {
           guestDesigns.forEach(function (sl, i) {
-            var tks = tierFilter ? designSlotKeysForTier(sl, i, tierFilter) : null;
-            if (tierFilter && (!tks || !tks.length)) return;
+            var tks = effTier ? designSlotKeysForTier(sl, i, effTier) : null;
+            if (effTier && (!tks || !tks.length)) return;
             opts.push({
               key: 'gd:' + i,
               kind: 'design',
@@ -68535,13 +69232,21 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             var prObj = isPr && typeof presetById === 'function' ? presetById(k.slice(6)) : null;
             var shots = isFr ? frameShotCount(fObj) : (isPr ? presetShotCount(prObj) : (LAYOUT_DEFS[k] ? LAYOUT_DEFS[k].shots : 4));
             shBadge.textContent = shots + (shots === 1 ? ' shot' : ' shots');
-            var kt = layoutTier(k), isRc = kt === 'receipt';
+            var kt = effectiveLayoutTier(k), isRc = kt === 'receipt';
             b.append(im, sp, shBadge);
             if (typeof payActive === 'function' && payActive() && payCfg && payCfg.dual) {
               var tierTag = document.createElement('span');
-              tierTag.className = 'pick-tier-tag ' + (isRc ? 'thermal' : 'color');
-              var matchingOpt = payCfg.options && payCfg.options.find(function (o) { return o.tier === (isRc ? 'receipt' : 'photo'); });
-              tierTag.textContent = matchingOpt ? ((isRc ? '🧾 ' : '🎨 ') + matchingOpt.label) : (isRc ? ('🧾 ' + (payCfg.tier1 ? payCfg.tier1.label : 'Thermal')) : ('🎨 ' + (payCfg.tier2 ? payCfg.tier2.label : 'Coloured')));
+              tierTag.className = 'pick-tier-tag ' + (isRc ? 'thermal' : (kt === 'all' ? 'any' : 'color'));
+              if (typeof sessionPayLabel === 'string' && sessionPayLabel && (sessionTier === 'receipt' || sessionTier === 'photo')) {
+                tierTag.textContent = (isRc ? '🧾 ' : '🎨 ') + sessionPayLabel;
+              } else {
+                var sameTierOpts = (payCfg.options || []).filter(function (o) { return o.tier === (isRc ? 'receipt' : 'photo'); });
+                if (sameTierOpts.length === 1) {
+                  tierTag.textContent = (isRc ? '🧾 ' : '🎨 ') + sameTierOpts[0].label;
+                } else {
+                  tierTag.textContent = isRc ? '🧾 Thermal' : (kt === 'all' ? '✨ Any layout' : '🎨 Coloured');
+                }
+              }
               b.append(tierTag);
             } else if (!pickTierFilter && tierSplitOn() && keys.some(function (x) { return layoutTier(x) === 'receipt'; }) && keys.some(function (x) { return layoutTier(x) !== 'receipt'; })) {
               // B&W and colour are separated and the guest can pick either: say which is which.
@@ -68820,30 +69525,61 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       /*@include cash/cash-acceptor.js*/
       var ESP32_LIGHT_KEY = 'pb_esp32_light';
       var esp32CashIsOpen = false, esp32LastCancelAt = 0;
+      var esp32LastPriceVal = null, esp32LastPriceAt = 0;
+      var esp32LastCreditVal = null, esp32LastCreditAt = 0;
       function fxEsp32On() { try { return localStorage.getItem(ESP32_LIGHT_KEY) === '1'; } catch (e) { return false; } }
       function setFxEsp32On(on) { try { if (on) localStorage.setItem(ESP32_LIGHT_KEY, '1'); else localStorage.removeItem(ESP32_LIGHT_KEY); } catch (e) { } }
       function esp32Active() { return payCashOn() || fxEsp32On(); }
       function esp32SendPrice(price) {
         var p = Math.floor(Number(price) || 0);
         if (!(p > 0) || typeof cashSend !== 'function') return;
+        if (esp32LastPriceVal === p && Date.now() - esp32LastPriceAt < 500) return;
         var cmd = 'price{' + p + '}';
-        if (typeof cashLastCmd !== 'undefined' && cashLastCmd === cmd && Date.now() - (cashLastCmdAt || 0) < 600) return;
-        try { cashSend(cmd); } catch (e) { }
+        try {
+          if (cashSend(cmd)) { esp32LastPriceVal = p; esp32LastPriceAt = Date.now(); }
+        } catch (e) { }
+      }
+      function esp32SendCredit(amount, force) {
+        if (typeof payCashOn === 'function' && !payCashOn()) return;
+        if (typeof cashSend !== 'function') return;
+        var c = Math.max(0, Math.floor(Number(amount != null ? amount : cashBalance()) || 0));
+        if (!force && esp32LastCreditVal === c && Date.now() - esp32LastCreditAt < 350) return;
+        var cmd = 'credit{' + c + '}';
+        try {
+          if (cashSend(cmd)) { esp32LastCreditVal = c; esp32LastCreditAt = Date.now(); }
+        } catch (e) { }
       }
       cashStateHook = function () {
-        if (typeof payState !== 'undefined' && payState && payState.view === 'payCash' && typeof paySheet !== 'undefined' && paySheet && !paySheet.hidden) return 'cash_open';
-        if (typeof pickOpen !== 'undefined' && pickOpen) return 'template_selection';
-        if (typeof printing !== 'undefined' && printing) return 'start_print';
-        if (typeof state !== 'undefined' && state === 'capturing') return 'session_start';
-        return 'session_idle';
+        esp32LastPriceVal = null; esp32LastCreditVal = null;
+        var hasCash = typeof payCashOn === 'function' && payCashOn();
+        var balCmd = hasCash ? ('credit{' + cashBalance() + '}') : '';
+        if (typeof payState !== 'undefined' && payState && payState.view === 'payCash' && typeof paySheet !== 'undefined' && paySheet && !paySheet.hidden) {
+          var openCmds = [];
+          if (payState.cash && payState.cash.price > 0) openCmds.push('price{' + payState.cash.price + '}');
+          if (balCmd) openCmds.push(balCmd);
+          openCmds.push('cash_open');
+          return openCmds;
+        }
+        if (typeof pickOpen !== 'undefined' && pickOpen) return balCmd ? ['template_selection', balCmd] : 'template_selection';
+        if (typeof printing !== 'undefined' && printing) return balCmd ? ['start_print', balCmd] : 'start_print';
+        if (typeof state !== 'undefined' && state === 'capturing') return balCmd ? ['session_start', balCmd] : 'session_start';
+        return balCmd ? ['session_idle', balCmd] : 'session_idle';
       };
       // An add-on Admin switches on per code (window.__PB.payOpt). Mode, price and
       // prints included are saved per event with the setup. The renter's PayMongo
       // key never reaches this page: the server makes the QR and checks payment.
       var PAY_MODES = ['off', 'qr', 'voucher', 'both'];
+      function payTierText(tier) {
+        if (tier === 'receipt') return 'Thermal';
+        if (tier === 'photo') return 'Coloured';
+        return 'Any layout';
+      }
       var payCfg = {
         mode: 'off',
         cash: false,
+        cashExpire: false,
+        cashExpireMin: 10,
+        hideBadge: false,
         price: 100,
         prints: 0,
         dual: false,
@@ -68855,6 +69591,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         tier2: { id: 'opt_2', label: 'Option 2', placeholder: 'Coloured', price: 100, tier: 'photo' }
       };
       var sessionTier = null;
+      var sessionPayLabel = '';
+      var sessionOptionPrints = 0;
       var sessionPrinter = '';             // printer linked to the payment option this guest paid for / used a voucher of (only when "Link vouchers to printers" is on)
       var sessionNoPrint = false;          // this guest paid for / used a voucher of a "no print" option: softcopy only (QR, download, GIF), no paper
       function noPrintSession() { return !!(sessionNoPrint && payActive() && payCfg.dual); }
@@ -68867,6 +69605,28 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var o = payCfg.options.find(function (x) { return x.label === label; });
           return (o && typeof o.prints === 'number') ? o.prints : null;
         } catch (e) { return null; }
+      }
+      function payOptionByLabel(label) {
+        try {
+          if (!(payCfg.dual && label && Array.isArray(payCfg.options))) return null;
+          return payCfg.options.find(function (x) { return x.label === label; }) || null;
+        } catch (e) { return null; }
+      }
+      function payFindOptionForMeta(label, tier) {
+        try {
+          if (!(payCfg && payCfg.dual && Array.isArray(payCfg.options))) return null;
+          var lbl = label && label !== '1 photo session' ? String(label).trim() : '';
+          if (lbl) {
+            var byLabel = payCfg.options.find(function (o) { return o.label === lbl; })
+              || payCfg.options.find(function (o) { return (o.label || '').toLowerCase() === lbl.toLowerCase(); });
+            return byLabel || null;
+          }
+          if (tier && tier !== 'all') {
+            var sameTier = payCfg.options.filter(function (o) { return o.tier === tier; });
+            if (sameTier.length === 1) return sameTier[0];
+          }
+        } catch (e) { }
+        return null;
       }
       // Short guest-facing line for an option: "Softcopy only", "2 prints included" or '' (follows the event's print settings).
       function payOptionNote(opt) {
@@ -68886,6 +69646,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         // The chosen mode is kept as it is (also offline / on the desktop app), so it is still there, and saved, when the
         // tablet goes back online. What QR payments can do right now is worked out in payEffMode().
         var dual = !!p.dual;
+        var expMin = Math.floor(Number(p.cashExpireMin));
 
         var rawOpts = Array.isArray(p.options) && p.options.length ? p.options : null;
         if (!rawOpts && (p.tier1 || p.tier2)) {
@@ -68904,7 +69665,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           o = o && typeof o === 'object' ? o : {};
           var pr = Math.floor(Number(o.price));
           var t = (o.tier === 'receipt' || o.tier === 'photo' || o.tier === 'all') ? o.tier : (idx === 0 ? 'receipt' : 'photo');
-          var ph = o.placeholder || (idx === 0 ? 'Thermal' : (idx === 1 ? 'Coloured' : 'Any layout'));
+          var ph = payTierText(t);
           var defLbl = 'Option ' + (idx + 1);
           var lbl = String(o.label != null && o.label !== '' ? o.label : defLbl).slice(0, 30);
           // prints: null = follow the default Prints included; 0 = softcopy only (no print); 1-5 = prints included
@@ -68935,6 +69696,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         return {
           mode: mode,
           cash: !!p.cash,
+          cashExpire: !!p.cashExpire,
+          cashExpireMin: (expMin >= 1 && expMin <= 120) ? expMin : 10,
+          hideBadge: !!p.hideBadge,
           price: price >= 20 && price <= 20000 ? price : 100,
           prints: Math.max(0, Math.min(5, Math.floor(Number(p.prints) || 0))),
           dual: dual,
@@ -68991,12 +69755,20 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var CREDIT_KEY = 'pb_pay_credit';
       function payCredit() { try { return JSON.parse(localStorage.getItem(CREDIT_KEY) || 'null'); } catch (e) { return null; } }
       function setPayCredit(c) { try { if (c) localStorage.setItem(CREDIT_KEY, JSON.stringify(c)); else localStorage.removeItem(CREDIT_KEY); } catch (e) { } refreshPayBadge(); }
+      function applyPayCreditObj(c) {
+        if (!c) return;
+        payPrintAllow = c.prints || 0;
+        sessionOptionPrints = c.optPrints || 0;
+        sessionTier = c.tier || null;
+        sessionPayLabel = c.label || '';
+        sessionNoPrint = !!c.np;
+        var prevP = sessionPrinter; sessionPrinter = (printPrefs.voucherPrinter && c.printer) ? String(c.printer) : '';
+        if (prevP !== sessionPrinter || sessionNoPrint) { try { refreshPrintUI(); } catch (e) { } }
+      }
       function consumePayCredit() {
         var c = payCredit(); if (!c) return;
-        payPrintAllow = c.prints || 0; sessionTier = c.tier || null; sessionNoPrint = !!c.np;
-        var prevP = sessionPrinter; sessionPrinter = (printPrefs.voucherPrinter && c.printer) ? String(c.printer) : '';
+        applyPayCreditObj(c);
         setPayCredit(null);
-        if (prevP !== sessionPrinter || sessionNoPrint) { try { refreshPrintUI(); } catch (e) { } }
       }
       // The printer linked to a payment option (found by the option's label, which every voucher and QR payment carries).
       function payOptionPrinter(label) {
@@ -69040,7 +69812,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // ---- welcome pill ----
       function refreshPayBadge() {
         var el = document.getElementById('payBadge'); if (!el) return;
-        var on = payActive() && state !== 'capturing';
+        var on = payActive() && !payCfg.hideBadge && state !== 'capturing';
         document.body.classList.toggle('pay-badge-on', on);
         if (!on) return;
         var c = payCredit();
@@ -69184,7 +69956,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               if (typeof renderPayBatches === 'function') renderPayBatches();
             }
             if (navigator.onLine !== false) syncVouchers();
-            return { ok: true, prints: ob.prints || 1, tier: ob.tier || 'all', label: ob.label || '', offline: true };
+            return { ok: true, prints: (typeof ob.prints === 'number' && ob.prints >= 0) ? ob.prints : 0, tier: ob.tier || 'all', label: ob.label || '', offline: true };
           }
         }
 
@@ -69263,10 +70035,23 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         document.getElementById('payClose').hidden = view === 'payDone';
         payIdle();
       }
+      function paySetHeader(kicker, title, sub, isMulti) {
+        var kEl = document.getElementById('payKicker');
+        var tEl = document.getElementById('payTitle');
+        var sEl = document.getElementById('paySub');
+        if (kEl && kicker != null) kEl.textContent = kicker;
+        if (tEl && title != null) {
+          tEl.textContent = title;
+          if (tEl.classList && typeof tEl.classList.toggle === 'function') tEl.classList.toggle('multi', !!isMulti);
+        }
+        if (sEl && sub != null) sEl.textContent = sub;
+      }
+      function payOptionHeaderSub(label, opt) {
+        var note = opt ? payOptionNote(opt) : '';
+        return note ? (label + ' · ' + note) : label;
+      }
       // Fills the first screen of the pay sheet: the price (or the print options), and which ways to pay are offered.
       function payLayoutChoose() {
-        var titleEl = document.getElementById('payTitle');
-        var subEl = document.getElementById('paySub');
         var dualBox = document.getElementById('payDualChooseBox');
         var optQr = document.getElementById('payOptQr');
         var optCash = document.getElementById('payOptCash');
@@ -69274,8 +70059,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var pend = payState.pend;
         if (pend) {
           // A print option was picked and more than one way to pay needs it: ask how they pay.
-          titleEl.textContent = peso(pend.price);
-          subEl.textContent = pend.label;
+          paySetHeader('Template Price', peso(pend.price), payOptionHeaderSub(pend.label, payOptionByLabel(pend.label)));
           if (dualBox) dualBox.style.display = 'none';
           if (optQr) optQr.hidden = !payQrOn();
           if (optCash) optCash.hidden = !payCashOn();
@@ -69284,23 +70068,38 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         if (payCfg.dual && payCfg.options && payCfg.options.length) {
           var prices = payCfg.options.map(function (o) { return peso(o.price); });
-          titleEl.textContent = prices.join(' / ');
           var labels = payCfg.options.map(function (o, i) { return o.label || ('Option ' + (i + 1)); });
-          subEl.textContent = labels.join(' or ');
+          paySetHeader('Photo session', prices.join(' / '), labels.join(' or '), prices.length > 1);
           if (dualBox) {
             dualBox.style.display = '';
             var grid = document.getElementById('payOptionsGrid');
             if (grid) {
+              var optLen = payCfg.options.length;
+              if (grid.style) {
+                grid.style.gridTemplateColumns = (optLen === 2 || optLen === 4)
+                  ? 'repeat(2, minmax(0, 1fr))'
+                  : (optLen === 1 ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(132px, 1fr))');
+              }
+              var curCashBal = (payCashOn() && typeof cashBalance === 'function') ? cashBalance() : 0;
               grid.innerHTML = payCfg.options.map(function (opt, idx) {
                 var ico = opt.tier === 'receipt' ? '🧾' : (opt.tier === 'photo' ? '🎨' : '✨');
                 var lbl = opt.label || ('Option ' + (idx + 1));
-                var ph = opt.placeholder || (idx === 0 ? 'Thermal' : (idx === 1 ? 'Coloured' : ''));
-                return '<button type="button" class="pay-opt pay-dyn-opt" data-idx="' + idx + '" style="flex-direction:column; align-items:center; text-align:center; padding:12px 8px;">' +
-                  '<span class="ico" style="margin:0 0 4px; font-size:22px;">' + ico + '</span>' +
+                var ph = payTierText(opt.tier);
+                var note = payOptionNote(opt);
+                var balNote = '';
+                if (curCashBal > 0) {
+                  var rem = Math.max(0, (opt.price || 0) - curCashBal);
+                  balNote = rem === 0
+                    ? '<span class="pay-opt-credit">✓ Covered by ' + payEsc(peso(curCashBal)) + ' credit</span>'
+                    : '<span class="pay-opt-credit need">' + payEsc(peso(rem)) + ' more needed</span>';
+                }
+                return '<button type="button" class="pay-opt pay-dyn-opt" data-idx="' + idx + '">' +
+                  '<span class="ico">' + ico + '</span>' +
                   '<b style="font-size:14px; line-height:1.2;">' + payEsc(lbl) + '</b>' +
                   '<small style="font-weight:700; font-size:13px; color:var(--red,#C93D27); margin-top:2px;">' + payEsc(peso(opt.price)) + '</small>' +
-                  (payOptionNote(opt) ? '<span style="font-size:11px; color:var(--ink-dim); font-weight:600; margin-top:3px; line-height:1.25;">' + payEsc(payOptionNote(opt)) + '</span>' : '') +
-                  (ph ? '<span style="font-size:10px; color:var(--ink-dim); text-transform:uppercase; font-weight:700; margin-top:2px;">' + payEsc(ph) + '</span>' : '') +
+                  (note ? '<span style="font-size:11px; color:var(--ink-dim); font-weight:600; margin-top:2px; line-height:1.25;">' + payEsc(note) + '</span>' : '') +
+                  (ph ? '<span class="pay-opt-tier-pill">' + payEsc(ph) + '</span>' : '') +
+                  balNote +
                   '</button>';
               }).join('');
             }
@@ -69308,8 +70107,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (optQr) optQr.hidden = true;
           if (optCash) optCash.hidden = true;
         } else {
-          titleEl.textContent = peso(payCfg.price);
-          subEl.textContent = payIncludes();
+          paySetHeader('Photo session', peso(payCfg.price), payIncludes());
           if (dualBox) dualBox.style.display = 'none';
           if (optQr) optQr.hidden = !payQrOn();
           if (optCash) optCash.hidden = !payCashOn();
@@ -69317,7 +70115,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (optVoucher) optVoucher.hidden = !payVoucherOn();
       }
       function payGate() {
-        if (!payActive() || payCredit()) return Promise.resolve(true);
+        try { cashIdleTick(); } catch (e) { }
+        var curCredit = payCredit();
+        if (!payActive()) return Promise.resolve(true);
+        if (curCredit) { applyPayCreditObj(curCredit); return Promise.resolve(true); }
         // Cash already inserted covers a session (one price): no sheet needed.
         if (payCashOn() && !payCfg.dual && payCashAuto(false)) return Promise.resolve(true);
         return new Promise(function (resolve) {
@@ -69326,7 +70127,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           payLayoutChoose();
           paySheet.hidden = false;
           document.body.classList.add('pay-open');
-          if (!payCfg.dual && payCfg.price > 0) esp32SendPrice(payCfg.price);
+          if (!payCfg.dual && payCfg.price > 0) {
+            esp32SendPrice(payCfg.price);
+            if (payCashOn() && payMethodCount() === 1) { /* payStartCash below sends credit + cash_open */ }
+            else if (payCashOn()) esp32SendCredit(cashBalance());
+          }
           if (payCfg.dual || payMethodCount() > 1) payShow('payChoose');
           else if (payQrOn()) payStartQr();
           else if (payCashOn()) payStartCash();
@@ -69339,6 +70144,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           esp32CashIsOpen = false;
           if (typeof cashSend === 'function') { try { cashSend('cash_close'); } catch (e) { } }
         }
+        esp32LastPriceVal = null; esp32LastCreditVal = null;
         paySheet.hidden = true;
         document.body.classList.remove('pay-open');
         payState.qrId = null; payState.busy = false; payState.cash = null; payState.pend = null;
@@ -69359,17 +70165,26 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       async function payStartQr(tier, price, label) {
         payStopTimers();
-        payShow('payQr');
-        document.getElementById('payQrWait').hidden = false;
-        document.getElementById('payQrImg').hidden = true;
         var askPrice = (price && price >= 20) ? price : payCfg.price;
         var askLabel = label || '1 photo session';
         var askTier = (tier === 'receipt' || tier === 'photo') ? tier : 'all';
+        var optObj = payCfg.dual ? payOptionByLabel(askLabel) : null;
+        var optPrints = payOptionPrintsOf(askLabel);
+        var askPrints = (typeof optPrints === 'number') ? optPrints : payCfg.prints;
+        if (payCfg.dual && label && label !== '1 photo session') {
+          paySetHeader('Template Price', peso(askPrice), payOptionHeaderSub(askLabel, optObj));
+        } else {
+          paySetHeader('Photo session', peso(askPrice), payIncludes());
+        }
+        payShow('payQr');
+        document.getElementById('payQrWait').hidden = false;
+        document.getElementById('payQrImg').hidden = true;
         payState.tier = askTier; payState.label = askLabel; payState.price = askPrice;
         esp32SendPrice(askPrice);
+        if (payCashOn()) esp32SendCredit(cashBalance());
         var simEl = document.getElementById('paySim'); if (simEl) simEl.hidden = true;
         try {
-          var r = await payQrPost({ action: 'qr', amount: askPrice, prints: payCfg.prints, tier: askTier, label: askLabel }, 12000);
+          var r = await payQrPost({ action: 'qr', amount: askPrice, prints: askPrints, tier: askTier, label: askLabel }, 12000);
           if (r.status === 200 && r.j.image) {
             payState.qrId = r.j.id; payState.exp = r.j.expiresAt || (Date.now() + 180000); payState.test = !!r.j.test;
             var img = document.getElementById('payQrImg');
@@ -69395,7 +70210,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (r.status === 200 && r.j.status === 'paid') {
               clearInterval(payState.poll);
               document.getElementById('payDoneT').textContent = 'Payment received';
-              payPaid(payCfg.prints, r.j.tier || payState.tier, payState.label);
+              payPaid(r.j.prints != null ? r.j.prints : payCfg.prints, r.j.tier || payState.tier, payState.label);
             }
           } catch (e) { }
         }, 2500);
@@ -69405,9 +70220,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         // The option's own Prints setting wins over the voucher's / the default count; 0 means softcopy only.
         var optPrints = payOptionPrintsOf(label), np = optPrints === 0;
         payPrintAllow = np ? 0 : (optPrints > 0 ? optPrints : (prints || 0));
+        sessionOptionPrints = (!np && optPrints > 0) ? optPrints : 0;
         sessionTier = (tier === 'receipt' || tier === 'photo') ? tier : null;
+        sessionPayLabel = (payCfg.dual && label && label !== '1 photo session') ? String(label) : '';
         sessionPrinter = np ? '' : payOptionPrinter(label);
-        setPayCredit({ at: Date.now(), prints: payPrintAllow, tier: sessionTier, printer: sessionPrinter, np: np });
+        setPayCredit({ at: Date.now(), prints: payPrintAllow, optPrints: sessionOptionPrints, tier: sessionTier, label: sessionPayLabel, printer: sessionPrinter, np: np });
         try { refreshPrintUI(); } catch (e) { }
       }
       function payPaid(prints, tier, label) {
@@ -69417,6 +70234,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (typeof cashSend === 'function') { try { cashSend('cash_close'); } catch (e) { } }
         }
         if (typeof cashSend === 'function') { try { cashSend('payment_success'); } catch (e) { } }
+        if (payCashOn()) esp32SendCredit(cashBalance(), true);
         payGrant(prints, tier, label);
         payShow('payDone');
         setTimeout(function () { payFinish(true); }, 1500);
@@ -69431,6 +70249,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!payCashOn() || payCfg.dual || payCredit() || !cashSpend(payCfg.price)) return false;
         esp32SendPrice(payCfg.price);
         if (typeof cashSend === 'function') { try { cashSend('payment_success'); } catch (e) { } }
+        esp32SendCredit(cashBalance(), true);
         payGrant(payCfg.prints, 'all', '1 photo session');
         if (announce) { try { showToast('Cash received · ' + peso(payCfg.price) + ' · tap to start', 3000); } catch (e) { } }
         return true;
@@ -69451,8 +70270,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function payStartCash(tier, price, label) {
         payStopTimers();
         var pr = Math.floor(Number(price)) > 0 ? Math.floor(Number(price)) : payCfg.price;
-        payState.cash = { tier: (tier === 'receipt' || tier === 'photo') ? tier : 'all', price: pr, label: label || '1 photo session' };
+        var lbl = label || '1 photo session';
+        payState.cash = { tier: (tier === 'receipt' || tier === 'photo') ? tier : 'all', price: pr, label: lbl };
+        if (payCfg.dual && lbl !== '1 photo session') {
+          paySetHeader('Template Price', peso(pr), payOptionHeaderSub(lbl, payOptionByLabel(lbl)));
+        } else {
+          paySetHeader('Photo session', peso(pr), payIncludes());
+        }
         esp32SendPrice(pr);
+        esp32SendCredit(cashBalance());
         payShow('payCash');
         payRenderCash();
         cashStart(false);
@@ -69476,8 +70302,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       // The ESP32 reported a coin / bill.
       cashHooks.credit = function (n) {
-        if (payState.view === 'payCash' && !paySheet.hidden) { payIdle(); payRenderCash(); payCashCheck(); }
-        else if (!payCashAuto(true)) { try { showToast(peso(n) + ' received · ' + peso(cashBalance()) + ' credit', 2500); } catch (e) { } }
+        if (payState.view === 'payCash' && !paySheet.hidden) {
+          esp32SendCredit(cashBalance(), true);
+          payIdle(); payRenderCash(); payCashCheck();
+        } else {
+          esp32SendCredit(cashBalance(), true);
+          if (!payCashAuto(true)) { try { showToast(peso(n) + ' received · ' + peso(cashBalance()) + ' credit', 2500); } catch (e) { } }
+        }
         refreshPayBadge();
         try { refreshCashSetup(); } catch (e) { }
       };
@@ -69491,9 +70322,18 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         for (var i = 0; i < 8; i++) h += '<span class="' + (i < payState.code.length ? 'on' : '') + (i === 4 ? ' gap' : '') + '">' + (payState.code[i] || '') + '</span>';
         el.innerHTML = h;
       }
-      function payStartVoucher(note) {
+      function payStartVoucher(note, optMeta) {
         payStopTimers();
         payState.code = ''; payState.busy = false;
+        if (optMeta && optMeta.label) {
+          paySetHeader('Template Price', peso(optMeta.price), payOptionHeaderSub(optMeta.label, optMeta));
+        } else if (payCfg.dual && payState.cash && payState.cash.label && payState.cash.label !== '1 photo session') {
+          paySetHeader('Template Price', peso(payState.cash.price), payOptionHeaderSub(payState.cash.label, payOptionByLabel(payState.cash.label)));
+        } else if (payCfg.dual) {
+          paySetHeader('Photo session', 'Voucher', 'Enter your 8-digit code');
+        } else {
+          paySetHeader('Photo session', peso(payCfg.price), payIncludes());
+        }
         payShow('payVoucher');
         var err = document.getElementById('payErr');
         err.textContent = note || ''; err.classList.toggle('note', !!note);
@@ -69555,9 +70395,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var lbl = opt.label || ('Option ' + (idx + 1));
           var prc = opt.price || payCfg.price;
           var tier = opt.tier || 'all';
-          esp32SendPrice(prc);
           if (payQrOn() && payCashOn()) {
             // Both can pay for this option: ask which.
+            esp32SendPrice(prc);
+            esp32SendCredit(cashBalance());
             payState.pend = { tier: tier, price: prc, label: lbl };
             payLayoutChoose();
             payShow('payChoose');
@@ -69567,12 +70408,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           } else if (payCashOn()) {
             payStartCash(tier, prc, lbl);
           } else {
-            payStartVoucher('Enter ' + lbl + ' voucher:');
+            esp32SendPrice(prc);
+            payStartVoucher('Enter ' + lbl + ' voucher:', opt);
           }
         });
       }
       document.getElementById('payBack').addEventListener('click', function () {
         payStopTimers(); payState.qrId = null; payState.cash = null;
+        esp32LastPriceVal = null; esp32LastCreditVal = null;
         if (payState.pend && payState.view === 'payChoose') payState.pend = null;   // from the method choice back to the print options
         payLayoutChoose();
         payShow('payChoose');
@@ -69588,7 +70431,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var r = await payQrPost({ action: 'simulate', id: payState.qrId }, 8000);
           if (r.status === 200 && r.j && r.j.status === 'paid') {
             document.getElementById('payDoneT').textContent = 'Payment received (test)';
-            payPaid(payCfg.prints, r.j.tier || payState.tier, payState.label);
+            payPaid(r.j.prints != null ? r.j.prints : payCfg.prints, r.j.tier || payState.tier, payState.label);
           }
         } catch (e) { } finally { paySimBtn.disabled = false; }
       });
@@ -69613,18 +70456,20 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
         box.innerHTML = payCfg.options.map(function (opt, idx) {
           var optNum = idx + 1;
-          var title = 'OPTION ' + optNum;
-          var phText = opt.placeholder || (idx === 0 ? 'Thermal' : (idx === 1 ? 'Coloured' : 'Any layout'));
+          var phText = payTierText(opt.tier);
+          var tierShort = opt.tier === 'receipt' ? '🧾 Thermal' : (opt.tier === 'photo' ? '🎨 Coloured' : '✨ Any');
+          var printsBadge = opt.prints === 0 ? 'Softcopy' : (typeof opt.prints === 'number' && opt.prints > 0 ? (opt.prints + ' print' + (opt.prints > 1 ? 's' : '')) : (payCfg.prints ? payCfg.prints + ' print' + (payCfg.prints > 1 ? 's' : '') : 'Default prints'));
+          var title = 'OPTION ' + optNum + ' · ' + peso(opt.price || 50) + ' · ' + printsBadge + ' · ' + tierShort;
           var canRemove = payCfg.options.length > 1;
           return '<div class="pay-opt-card" data-idx="' + idx + '" style="background:var(--panel-2,#f4efe7); border:1px solid var(--line); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:8px;">' +
-            '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-            '<span style="font-size:11px; font-weight:800; letter-spacing:0.05em; color:var(--muted); text-transform:uppercase;">' + title + '</span>' +
-            (canRemove ? '<button type="button" class="pay-opt-del action-btn" data-idx="' + idx + '" style="font-size:11px; padding:2px 8px; height:auto; line-height:1.5; color:#e05252; background:none; border:none; cursor:pointer;" title="Remove this option">✕ Remove</button>' : '') +
+            '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">' +
+            '<span style="font-size:11px; font-weight:800; letter-spacing:0.04em; color:var(--muted);">' + payEsc(title) + '</span>' +
+            (canRemove ? '<button type="button" class="pay-opt-del action-btn" data-idx="' + idx + '" style="font-size:11px; padding:2px 8px; height:auto; line-height:1.5; color:#e05252; background:none; border:none; cursor:pointer; flex:none;" title="Remove this option">✕ Remove</button>' : '') +
             '</div>' +
             '<div style="display:grid; grid-template-columns:1fr 90px; gap:8px; align-items:center;">' +
             '<div>' +
-            '<label style="display:block; font-size:11px; color:var(--muted); margin-bottom:2px;">Label</label>' +
-            '<input type="text" class="mini-input pay-opt-label" data-idx="' + idx + '" value="' + payEsc(opt.label || ('Option ' + optNum)) + '" placeholder="' + payEsc(phText) + '" maxlength="30" style="width:100%; box-sizing:border-box;">' +
+            '<label style="display:block; font-size:11px; color:var(--muted); margin-bottom:2px;">Package / Voucher Label</label>' +
+            '<input type="text" class="mini-input pay-opt-label" data-idx="' + idx + '" value="' + payEsc(opt.label || ('Option ' + optNum)) + '" placeholder="e.g. Option ' + optNum + ', VIP 4R, Softcopy" maxlength="30" style="width:100%; box-sizing:border-box;">' +
             '</div>' +
             '<div>' +
             '<label style="display:block; font-size:11px; color:var(--muted); margin-bottom:2px;">Price (₱)</label>' +
@@ -69670,22 +70515,35 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function updatePayMakeTier() {
         var mt = document.getElementById('payMakeTier');
         if (!mt) return;
+        if (!mt._payBound && mt.addEventListener) {
+          mt._payBound = true;
+          mt.addEventListener('change', function () { if (mt.dataset) mt.dataset.userPicked = '1'; });
+        }
         var curVal = mt.value;
-        var optsHtml = '<option value="all">Any layout (' + peso(payCfg.price) + ')</option>';
-        if (Array.isArray(payCfg.options) && payCfg.options.length) {
+        var optsHtml = '';
+        if (payCfg.dual && Array.isArray(payCfg.options) && payCfg.options.length) {
           payCfg.options.forEach(function (opt, idx) {
             var lbl = opt.label || ('Option ' + (idx + 1));
             var prc = opt.price || payCfg.price;
             var tierBadge = opt.tier === 'receipt' ? '🧾 Thermal' : (opt.tier === 'photo' ? '🎨 Coloured' : '✨ Any');
-            optsHtml += '<option value="opt_' + idx + '">' + payEsc(lbl) + ' (' + peso(prc) + ') · ' + tierBadge + (opt.prints === 0 ? ' · no print' : '') + '</option>';
+            var prNote = opt.prints === 0 ? ' · softcopy only' : (typeof opt.prints === 'number' && opt.prints > 0 ? (' · ' + opt.prints + ' print' + (opt.prints > 1 ? 's' : '')) : '');
+            optsHtml += '<option value="opt_' + idx + '">' + payEsc(lbl) + ' (' + peso(prc) + ') · ' + tierBadge + prNote + '</option>';
           });
+          optsHtml += '<option value="all">Any package / General (' + peso(payCfg.price) + ')</option>';
+        } else {
+          optsHtml = '<option value="all">Single price (' + peso(payCfg.price) + ' · Any layout)</option>';
         }
         mt.innerHTML = optsHtml;
         if (curVal) {
           if (curVal === 'tier1') curVal = 'opt_0';
           else if (curVal === 'tier2') curVal = 'opt_1';
+          if (payCfg.dual && payCfg.options && payCfg.options.length && curVal === 'all' && !(mt.dataset && mt.dataset.userPicked === '1')) {
+            curVal = 'opt_0';
+          }
           mt.value = curVal;
-          if (!mt.value) mt.value = 'all';
+          if (!mt.value) mt.value = (payCfg.dual && payCfg.options && payCfg.options.length) ? 'opt_0' : 'all';
+        } else {
+          mt.value = (payCfg.dual && payCfg.options && payCfg.options.length) ? 'opt_0' : 'all';
         }
         if (typeof mt._pillRefresh === 'function') mt._pillRefresh();   // redraw the pills for the new option list
       }
@@ -69702,6 +70560,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var pv = document.getElementById('payPrintsVal'); if (pv) pv.textContent = payCfg.prints ? payCfg.prints + ' print' + (payCfg.prints > 1 ? 's' : '') : 'none';
         var pvl = document.getElementById('payPrintsLbl'); if (pvl) pvl.textContent = payCfg.dual ? 'Default prints included' : 'Prints included';
         var dt = document.getElementById('payDualToggle'); if (dt) dt.checked = !!payCfg.dual;
+        var hb = document.getElementById('payHideBadgeToggle'); if (hb) hb.checked = !!payCfg.hideBadge;
         var dr = document.getElementById('payDualRows'); if (dr) dr.style.display = payCfg.dual ? '' : 'none';
         var sr = document.getElementById('paySingleRow'); if (sr) sr.style.display = payCfg.dual ? 'none' : '';
         var pvpt = document.getElementById('payVoucherPrinterToggle');
@@ -69807,6 +70666,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var tr = document.getElementById('payCashSerialTestRow'); if (tr) tr.style.display = (modeNow === 'keyboard') ? 'none' : 'flex';
         var s = cashStats(), sx = document.getElementById('payCashStats');
         if (sx) sx.innerHTML = 'Credit waiting: <b>' + payEsc(peso(cashBalance())) + '</b> · Cash in: <b>' + payEsc(peso(s.inTotal)) + '</b> · Used for sessions: <b>' + payEsc(peso(s.sold)) + '</b> (' + s.sessions + ' session' + (s.sessions === 1 ? '' : 's') + ')' + (s.since ? ' · since ' + payEsc(fmtShortDate(s.since)) : '');
+        var cet = document.getElementById('payCashExpireToggle'); if (cet) cet.checked = !!payCfg.cashExpire;
+        var cer = document.getElementById('payCashExpireRow'); if (cer) cer.style.display = payCfg.cashExpire ? '' : 'none';
+        var cem = document.getElementById('payCashExpireMin');
+        if (cem) {
+          cem.value = String(payCfg.cashExpireMin || 10);
+          if (!cem.value) cem.value = '10';
+          if (typeof cem._pillRefresh === 'function') cem._pillRefresh();
+        }
       }
       // Starts the ESP32 link while cash OR ESP32 lighting is on; stops it otherwise.
       function cashApply() {
@@ -69815,9 +70682,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function payChanged() { refreshPayUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); if (payVoucherOn()) { refreshVoucherCache(); payLoadBatches(); } }
       function applyPaySetup(p) {
         payCfg = cleanPay(p);
-        if (!payActive()) { sessionTier = null; sessionPrinter = ''; setPayCredit(null); }
+        if (!payActive()) { sessionTier = null; sessionPayLabel = ''; sessionOptionPrints = 0; sessionPrinter = ''; setPayCredit(null); }
         refreshPayUI();
         cashApply();
+        try { cashIdleTick(); } catch (e) { }
         if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
         if (payVoucherOn()) setTimeout(function () { refreshVoucherCache(); payLoadBatches(); }, 800);
       }
@@ -69880,9 +70748,49 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var pcx = document.getElementById('payCashTestBtn');
       if (pcx) pcx.addEventListener('click', function () { cashCredit(10); });   // same path as a real coin
       var pcc = document.getElementById('payCashClearBtn');
-      if (pcc) pcc.addEventListener('click', function () { cashSetBalance(0); refreshCashSetup(); refreshPayBadge(); showToast('Cash credit cleared.', 2500); });
+      if (pcc) pcc.addEventListener('click', function () { cashSetBalance(0); esp32SendCredit(0, true); refreshCashSetup(); refreshPayBadge(); showToast('Cash credit cleared.', 2500); });
       var pcr = document.getElementById('payCashStatsReset');
       if (pcr) pcr.addEventListener('click', function () { cashStatsReset(); refreshCashSetup(); showToast('Cash count started again.', 2500); });
+      var pcet = document.getElementById('payCashExpireToggle');
+      if (pcet) pcet.addEventListener('change', function () {
+        payCfg.cashExpire = this.checked;
+        if (payCfg.cashExpire && cashBalance() > 0) cashTouchActivity();
+        payChanged();
+      });
+      var pcem = document.getElementById('payCashExpireMin');
+      if (pcem) pcem.addEventListener('change', function () {
+        var m = Math.floor(Number(this.value) || 10);
+        payCfg.cashExpireMin = (m >= 1 && m <= 120) ? m : 10;
+        if (cashBalance() > 0) cashTouchActivity();
+        payChanged();
+      });
+      function cashIdleTick() {
+        if (!payCashOn() || !payCfg.cashExpire) return;
+        var bal = cashBalance();
+        if (!(bal > 0)) return;
+        if ((typeof state !== 'undefined' && state !== 'idle') || (typeof pickOpen !== 'undefined' && pickOpen) || (typeof flowBusy !== 'undefined' && flowBusy)) {
+          cashTouchActivity();
+          return;
+        }
+        var limitMin = Math.max(1, Math.floor(Number(payCfg.cashExpireMin) || 10));
+        var lastAt = cashLastActivityAt();
+        if (lastAt > 0 && Date.now() - lastAt >= limitMin * 60000) {
+          cashSetBalance(0);
+          esp32SendCredit(0, true);
+          refreshPayBadge();
+          try { if (typeof payState !== 'undefined' && payState && payState.view === 'payCash' && typeof paySheet !== 'undefined' && paySheet && !paySheet.hidden) payRenderCash(); } catch (e) { }
+          try { refreshCashSetup(); } catch (e) { }
+          if (!document.body.classList.contains('in-session')) {
+            try { showToast('Unused cash credit (' + peso(bal) + ') expired after ' + limitMin + ' min idle.', 3500); } catch (e) { }
+          }
+        }
+      }
+      setInterval(cashIdleTick, 5000);
+      if (window.addEventListener) window.addEventListener('focus', function () { try { cashIdleTick(); } catch (e) { } });
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) { try { cashIdleTick(); } catch (e) { } } });
+      ['pointerdown', 'keydown'].forEach(function (ev) {
+        document.addEventListener(ev, function () { if (cashBalance() > 0) cashTouchActivity(); }, { capture: true, passive: true });
+      });
       var pws = document.getElementById('payWorkerSaveBtn');
       if (pws) pws.addEventListener('click', function () {
         var raw = (document.getElementById('payWorkerUrl').value || '').trim();
@@ -69946,9 +70854,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var pdt = document.getElementById('payDualToggle');
       if (pdt) pdt.addEventListener('change', function () {
         payCfg.dual = this.checked;
-        if (!payCfg.dual) { sessionTier = null; sessionPrinter = ''; }
+        if (!payCfg.dual) { sessionTier = null; sessionPayLabel = ''; sessionOptionPrints = 0; sessionPrinter = ''; }
+        var mtEl = document.getElementById('payMakeTier');
+        if (mtEl && mtEl.dataset) delete mtEl.dataset.userPicked;
         payChanged();
         if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
+      });
+      var phbt = document.getElementById('payHideBadgeToggle');
+      if (phbt) phbt.addEventListener('change', function () {
+        payCfg.hideBadge = this.checked;
+        payChanged();
       });
       var pvptEl = document.getElementById('payVoucherPrinterToggle');
       if (pvptEl) pvptEl.addEventListener('change', function () {
@@ -69965,7 +70880,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!Array.isArray(payCfg.options)) payCfg.options = [];
         var nextIdx = payCfg.options.length + 1;
         var nextTier = nextIdx % 2 === 1 ? 'receipt' : 'photo';
-        var nextPh = nextIdx === 1 ? 'Thermal' : (nextIdx === 2 ? 'Coloured' : 'Any layout');
+        var nextPh = payTierText(nextTier);
         payCfg.options.push({
           id: 'opt_' + nextIdx + '_' + Date.now().toString(36),
           label: 'Option ' + nextIdx,
@@ -70006,6 +70921,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             payChanged();
           } else if (target.classList.contains('pay-opt-tier')) {
             payCfg.options[idx].tier = target.value;
+            payCfg.options[idx].placeholder = payTierText(target.value);
             payChanged();
           } else if (target.classList.contains('pay-opt-prints')) {
             payCfg.options[idx].prints = target.value === '' ? null : Math.max(0, Math.min(5, Math.floor(Number(target.value))));
@@ -70080,12 +70996,23 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var voidCount = typeof bt.voidCount === 'number' ? bt.voidCount : (bt.codes ? bt.codes.filter(function (x) { return x.voided && !x.used; }).length : 0);
           var left = Math.max(0, total - usedCount - voidCount);
           var printedLeft = (bt.codes || []).filter(function (x) { return !x.used && !x.voided && doneSet.has(x.c); }).length;
-          var optMatch = payCfg.options && payCfg.options.find(function (o) { return (bt.label && o.label === bt.label) || o.tier === bt.tier; });
-          var optTitle = (optMatch && optMatch.label) || bt.label || (bt.tier === 'receipt' ? 'Thermal' : (bt.tier === 'photo' ? 'Coloured' : ''));
-          var tierBadge = bt.tier === 'receipt' ? (' · 🧾 ' + (optTitle || 'Thermal')) : (bt.tier === 'photo' ? (' · 🎨 ' + (optTitle || 'Coloured')) : (optTitle ? (' · ' + optTitle) : ''));
-          return '<div class="pay-batch" data-id="' + payEsc(bt.id) + '"><div class="bi"><b>' + total + ' vouchers' + payEsc(tierBadge) + ' · ' + usedCount + ' used</b><small>' +
-            (optTitle ? payEsc(optTitle) + ' · ' : '') +
-            (bt.price ? payEsc(peso(bt.price)) + ' · ' : '') + 'made ' + fmtShortDate(bt.at) + (bt.by === 'admin' ? ' by photobooth4u' : '') + (voidCount ? ' · ' + voidCount + ' cancelled' : '') + (printedLeft ? ' · ' + printedLeft + ' printed' : '') + '</small>' +
+          var optMatch = payFindOptionForMeta(bt.label, bt.tier);
+          var explicitLbl = (bt.label && bt.label !== '1 photo session') ? String(bt.label).trim() : '';
+          var optTitle = explicitLbl || (optMatch && optMatch.label) || '';
+          var tierTag = bt.tier === 'receipt' ? '🧾 Thermal' : (bt.tier === 'photo' ? '🎨 Coloured' : '✨ Any layout');
+          var headlineTag = optTitle ? (' · ' + optTitle) : (bt.tier === 'receipt' ? ' · 🧾 Thermal' : (bt.tier === 'photo' ? ' · 🎨 Coloured' : ''));
+          var btPr = (optMatch && typeof optMatch.prints === 'number') ? optMatch.prints : (typeof bt.prints === 'number' ? bt.prints : null);
+          var isSoftcopy = !!(optMatch && optMatch.prints === 0);
+          var prTxt = isSoftcopy ? 'Softcopy only' : (btPr > 0 ? (btPr + ' print' + (btPr > 1 ? 's' : '')) : '');
+          var metaParts = [];
+          if (bt.price) metaParts.push(payEsc(peso(bt.price)));
+          metaParts.push(tierTag);
+          if (prTxt) metaParts.push(prTxt);
+          metaParts.push('made ' + payEsc(fmtShortDate(bt.at)) + (bt.by === 'admin' ? ' by photobooth4u' : ''));
+          if (voidCount) metaParts.push(voidCount + ' cancelled');
+          if (printedLeft) metaParts.push(printedLeft + ' printed');
+          return '<div class="pay-batch" data-id="' + payEsc(bt.id) + '"><div class="bi"><b>' + total + ' voucher' + (total === 1 ? '' : 's') + payEsc(headlineTag) + ' · ' + usedCount + ' used</b><small>' +
+            metaParts.join(' · ') + '</small>' +
             '<div class="meter"><i style="width:' + Math.round((total ? usedCount / total : 0) * 100) + '%"></i></div></div>' +
             (left > 0 ? '<button type="button" class="action-btn" data-act="print">Print tickets</button><button type="button" class="action-btn" data-act="void">Cancel unused</button>' : '') +
             '<button type="button" class="action-btn" data-act="del" style="color:#e05252; margin-left:auto;" title="Delete this voucher batch">Delete</button></div>';
@@ -70155,7 +71082,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           ev: ev,
           evName: evName,
           price: price || 0,
-          prints: prints || 1,
+          prints: (typeof prints === 'number' && prints >= 0) ? prints : 0,
           tier: tier,
           label: label || '1 photo session',
           at: Date.now(),
@@ -70182,6 +71109,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var selVal = (tierSel && tierSel.value) || 'all';
         var bTier = 'all';
         var bPrice = payCfg.price;
+        var bPrints = payCfg.prints;
         var bLabel = '1 photo session';
         if (selVal.startsWith('opt_')) {
           var oIdx = Number(selVal.slice(4));
@@ -70189,35 +71117,39 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             var opt = payCfg.options[oIdx];
             bTier = opt.tier || 'all';
             bPrice = opt.price || payCfg.price;
+            bPrints = (typeof opt.prints === 'number') ? opt.prints : payCfg.prints;
             bLabel = opt.label || ('Option ' + (oIdx + 1));
           }
         } else if (selVal === 'tier1') {
           bTier = (payCfg.tier1 && payCfg.tier1.tier) || 'receipt';
           bPrice = (payCfg.tier1 && payCfg.tier1.price) || 50;
+          bPrints = (payCfg.tier1 && typeof payCfg.tier1.prints === 'number') ? payCfg.tier1.prints : payCfg.prints;
           bLabel = (payCfg.tier1 && payCfg.tier1.label) || 'Option 1';
         } else if (selVal === 'tier2') {
           bTier = (payCfg.tier2 && payCfg.tier2.tier) || 'photo';
           bPrice = (payCfg.tier2 && payCfg.tier2.price) || 100;
+          bPrints = (payCfg.tier2 && typeof payCfg.tier2.prints === 'number') ? payCfg.tier2.prints : payCfg.prints;
           bLabel = (payCfg.tier2 && payCfg.tier2.label) || 'Option 2';
         }
 
         btn.disabled = true; btn.textContent = 'Making…';
+        var batchTag = (bLabel && bLabel !== '1 photo session') ? (bLabel + ' ') : '';
         var serverOk = false;
         try {
-          var r = await postApi('/api/pay', { action: 'batch.create', count: n, prints: payCfg.prints, price: bPrice, label: bLabel, tier: bTier }, 15000);
+          var r = await postApi('/api/pay', { action: 'batch.create', count: n, prints: bPrints, price: bPrice, label: bLabel, tier: bTier }, 15000);
           if (r.status === 200 && r.j.batch) {
             payBatches.unshift(r.j.batch); renderPayBatches(); refreshVoucherCache();
-            showToast(n + ' ' + (bTier !== 'all' ? bLabel : '') + ' vouchers ready. Tap “Print tickets”.', 4000);
+            showToast(n + ' ' + batchTag + 'vouchers ready. Tap “Print tickets”.', 4000);
             serverOk = true;
           }
         } catch (e) { /* offline — fall through */ }
         if (!serverOk) {
           try {
-            var offBatch = await makeOfflineBatch(n, payCfg.prints, bPrice, bLabel, bTier);
+            var offBatch = await makeOfflineBatch(n, bPrints, bPrice, bLabel, bTier);
             payBatches.unshift(offBatch);
             renderPayBatches();
             refreshVoucherCache();
-            showToast(n + ' offline ' + (bTier !== 'all' ? bLabel : '') + ' vouchers ready. Tap “Print tickets”.', 4000);
+            showToast(n + ' offline ' + batchTag + 'vouchers ready. Tap “Print tickets”.', 4000);
           } catch (oe) { showToast('Could not generate vouchers: ' + (oe.message || oe), 4500); }
         }
         btn.disabled = false; btn.textContent = 'Make vouchers';
@@ -70242,13 +71174,24 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         } catch (e) { return ''; }
       }
       function voucherTicketMeta(data) {
-        var optMatch = (payCfg && payCfg.dual && Array.isArray(payCfg.options))
-          ? payCfg.options.find(function (o) { return (data.label && o.label === data.label) || (data.tier && data.tier !== 'all' && o.tier === data.tier); })
-          : null;
-        var optName = data.label || (optMatch && optMatch.label) || '';
+        var optMatch = null;
+        if (payCfg && payCfg.dual && Array.isArray(payCfg.options)) {
+          var lbl = data.label && data.label !== '1 photo session' ? String(data.label).trim() : '';
+          if (lbl) {
+            optMatch = payCfg.options.find(function (o) { return o.label === lbl; })
+              || payCfg.options.find(function (o) { return (o.label || '').toLowerCase() === lbl.toLowerCase(); })
+              || null;
+          } else if (data.tier && data.tier !== 'all') {
+            var sameTier = payCfg.options.filter(function (o) { return o.tier === data.tier; });
+            if (sameTier.length === 1) optMatch = sameTier[0];
+          }
+        }
+        var explicitLbl = (data.label && data.label !== '1 photo session') ? String(data.label).trim() : '';
+        var optName = explicitLbl || (optMatch && optMatch.label) || '';
         var optPr = optMatch && typeof optMatch.prints === 'number' ? optMatch.prints : null;
         var tkPrints = optPr === null ? data.prints : optPr;
-        var incStr = (optName && optName !== '1 photo session' ? optName : '1 photo session') + (optPr === 0 ? ' · softcopy only' : (tkPrints ? ' · ' + tkPrints + ' print' + (tkPrints > 1 ? 's' : '') : ''));
+        var isSoftcopy = optPr === 0;
+        var incStr = (optName || '1 photo session') + (isSoftcopy ? ' · softcopy only' : (tkPrints ? ' · ' + tkPrints + ' print' + (tkPrints > 1 ? 's' : '') : ''));
         return { optName: optName, tkPrints: tkPrints, incStr: incStr };
       }
       function vDrawRoundRect(ctx, x, y, w, h, r) {

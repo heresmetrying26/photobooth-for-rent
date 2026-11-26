@@ -629,6 +629,8 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == BoothWifi.REQ_PERMISSION) {
             boothWifi?.onPermissionResult(grantResults.isNotEmpty() && grantResults.any { it == PackageManager.PERMISSION_GRANTED })
+        } else if (requestCode == Esp32Bridge.REQ_PERMISSION) {
+            esp32Bridge?.onPermissionResult(grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED })
         }
     }
 

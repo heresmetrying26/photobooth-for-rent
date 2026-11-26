@@ -65,6 +65,7 @@ class Esp32Bridge(
         private const val KEY_ADDR = "address"
         private const val KEY_NAME = "name"
         private const val KEY_MODE = "mode" // "ble" | "spp"
+        const val REQ_PERMISSION = 1004
     }
 
     private data class Candidate(
@@ -105,6 +106,7 @@ class Esp32Bridge(
 
     @Volatile private var scanning = false
     @Volatile private var shuttingDown = false
+    @Volatile private var pendingPickAfterPerm = false
 
     private fun emit(obj: JSONObject) {
         if (shuttingDown) return
@@ -139,7 +141,22 @@ class Esp32Bridge(
         else
             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
         activity.runOnUiThread {
-            try { ActivityCompat.requestPermissions(activity, perms, 1004) } catch (_: Exception) {}
+            try {
+                ActivityCompat.requestPermissions(activity, perms, REQ_PERMISSION)
+            } catch (_: Exception) {
+                pendingPickAfterPerm = false
+                emitError("Allow Nearby devices (Bluetooth) for photobooth4u, then tap Connect again.")
+            }
+        }
+    }
+
+    fun onPermissionResult(granted: Boolean) {
+        val shouldPick = pendingPickAfterPerm
+        pendingPickAfterPerm = false
+        if (granted && hasPermission()) {
+            if (shouldPick) pick()
+        } else {
+            emitError("Allow Nearby devices (Bluetooth) for photobooth4u, then tap Connect again.")
         }
     }
 
@@ -199,8 +216,8 @@ class Esp32Bridge(
             return
         }
         if (!hasPermission()) {
+            pendingPickAfterPerm = true
             askPermission()
-            emitError("Allow Nearby devices (Bluetooth) for photobooth4u, then tap Connect again.")
             return
         }
         if (!ad.isEnabled) {
@@ -234,14 +251,16 @@ class Esp32Bridge(
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 val dev = result.device ?: return
                 val addr = dev.address ?: return
-                val nm = (try { dev.name ?: result.scanRecord?.deviceName } catch (_: Exception) { null }) ?: return
+                val rawName = try { dev.name ?: result.scanRecord?.deviceName } catch (_: Exception) { null }
                 val hasNus = try {
                     result.scanRecord?.serviceUuids?.any { it.uuid == NUS_SERVICE_UUID } == true
                 } catch (_: Exception) { false }
+                if (rawName.isNullOrBlank() && !hasNus) return
+                val nm = if (!rawName.isNullOrBlank()) rawName else "ESP32 ($addr)"
                 val rec = hasNus || matchesEsp32Name(nm)
                 synchronized(bleFound) {
                     val prev = bleFound[addr]
-                    if (prev == null || (rec && !prev.recommended)) {
+                    if (prev == null || (rec && !prev.recommended) || (prev.name.startsWith("ESP32 (") && !rawName.isNullOrBlank())) {
                         bleFound[addr] = Candidate(addr, nm, "ble", rec)
                     }
                 }
@@ -412,8 +431,8 @@ class Esp32Bridge(
             return
         }
         if (!hasPermission()) {
+            pendingPickAfterPerm = false
             askPermission()
-            emitError("Allow Nearby devices (Bluetooth) for photobooth4u, then tap Connect again.")
             return
         }
         if (!ad.isEnabled) {
@@ -510,14 +529,25 @@ class Esp32Bridge(
             try {
                 bleChunkSize = 20
                 gatt = dev.connectGatt(activity, false, object : BluetoothGattCallback() {
+                    @Volatile private var servicesDiscovered = false
                     override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
                         if (g !== gatt) {
                             try { g.close() } catch (_: Exception) {}
                             return
                         }
                         if (newState == BluetoothProfile.STATE_CONNECTED && status == BluetoothGatt.GATT_SUCCESS) {
-                            if (!g.requestMtu(247)) {
+                            servicesDiscovered = false
+                            val mtuQueued = try { g.requestMtu(247) } catch (_: Exception) { false }
+                            if (!mtuQueued) {
+                                servicesDiscovered = true
                                 g.discoverServices()
+                            } else {
+                                main.postDelayed({
+                                    if (g === gatt && !servicesDiscovered) {
+                                        servicesDiscovered = true
+                                        try { g.discoverServices() } catch (_: Exception) {}
+                                    }
+                                }, 1200)
                             }
                         } else if (newState == BluetoothProfile.STATE_DISCONNECTED || status != BluetoothGatt.GATT_SUCCESS) {
                             val wasConnected = connected
@@ -545,7 +575,10 @@ class Esp32Bridge(
                         if (status == BluetoothGatt.GATT_SUCCESS && mtu > 23) {
                             bleChunkSize = maxOf(20, minOf(240, mtu - 3))
                         }
-                        g.discoverServices()
+                        if (!servicesDiscovered) {
+                            servicesDiscovered = true
+                            g.discoverServices()
+                        }
                     }
 
                     override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
@@ -643,12 +676,13 @@ class Esp32Bridge(
     }
 
     private fun writeBleBytes(g: BluetoothGatt, ch: BluetoothGattCharacteristic, data: ByteArray) {
-        val supportsNoRsp = (ch.properties and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0
-        val writeType = if (supportsNoRsp) {
-            BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-        } else {
+        val hasWriteRsp = (ch.properties and BluetoothGattCharacteristic.PROPERTY_WRITE) != 0
+        val writeType = if (hasWriteRsp) {
             BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+        } else {
+            BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
         }
+        val waitMs = if (hasWriteRsp) 1200L else 120L
         synchronized(writeLock) {
             var off = 0
             while (off < data.size && connected && g === gatt) {
@@ -678,7 +712,7 @@ class Esp32Bridge(
                     }
                 }
                 if (!sent) break
-                gattWriteDone.tryAcquire(1200, TimeUnit.MILLISECONDS)
+                gattWriteDone.tryAcquire(waitMs, TimeUnit.MILLISECONDS)
                 off = end
             }
         }

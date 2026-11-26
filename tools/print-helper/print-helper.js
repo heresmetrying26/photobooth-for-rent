@@ -27,11 +27,13 @@ import { freeCamera, guardCamera } from './camfree.mjs';
 import {
   startHelperBridge, stopHelperBridge, helperBridgeStatus, handleBridgeCtrl,
   getLanStationInfo, rotateLanStationPin, setStationPrinterFilter, setStationTestSizes,
+  setStationMode, getPendingStationJobImage, approvePendingStationJob, dismissPendingStationJob,
+  printAllPendingStationJobs, dismissAllPendingStationJobs,
   buildStationTestJob, renderStationDashboardHtml, recordStationJob
 } from './bridge-ctrl.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.26';
+const VERSION = '1.1.27';
 const PORT = 17321;
 const OPEN_STATION_ON_START = process.argv.includes('--station');
 const ALLOWED_ORIGINS = new Set([
@@ -890,6 +892,45 @@ const serverCfg = {
       try { body = await req.json(); } catch (e) { }
       const info = setStationTestSizes(body && body.testSizes !== undefined ? body.testSizes : null);
       return json({ ok: true, ...info }, 200, origin);
+    }
+    if (req.method === 'POST' && url.pathname === '/station/mode') {
+      if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);
+      let body = {};
+      try { body = await req.json(); } catch (e) { }
+      const info = setStationMode(body && body.mode);
+      return json({ ok: true, ...info }, 200, origin);
+    }
+    if (req.method === 'GET' && url.pathname === '/station/job-image') {
+      const img = getPendingStationJobImage(url.searchParams.get('id'), url.searchParams.get('page'));
+      if (!img) return new Response('Not found', { status: 404 });
+      return new Response(img.buf, {
+        status: 200,
+        headers: { 'content-type': img.mime, 'cache-control': 'no-store' }
+      });
+    }
+    if (req.method === 'POST' && url.pathname === '/station/job-approve') {
+      if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);
+      let body = {};
+      try { body = await req.json(); } catch (e) { }
+      const out = await approvePendingStationJob(body && body.id, { printer: body && body.printer, copies: body && body.copies });
+      return json(out, out.ok ? 200 : 400, origin);
+    }
+    if (req.method === 'POST' && url.pathname === '/station/job-dismiss') {
+      if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);
+      let body = {};
+      try { body = await req.json(); } catch (e) { }
+      const out = dismissPendingStationJob(body && body.id);
+      return json(out, out.ok ? 200 : 404, origin);
+    }
+    if (req.method === 'POST' && url.pathname === '/station/jobs-print-all') {
+      if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);
+      const out = await printAllPendingStationJobs();
+      return json(out, out.ok ? 200 : 500, origin);
+    }
+    if (req.method === 'POST' && url.pathname === '/station/jobs-dismiss-all') {
+      if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);
+      const out = dismissAllPendingStationJobs();
+      return json(out, 200, origin);
     }
     if (req.method === 'POST' && url.pathname === '/station/test-print') {
       if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);

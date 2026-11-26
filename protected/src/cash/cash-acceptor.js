@@ -2,7 +2,7 @@
    1. ESP32 -> Booth (credits): reads coin/bill pulses and sends short messages:
         c<pesos>\n     e.g.  c5\n  (P5 coin)   c100\n  (P100 bill)
    2. Booth -> ESP32 (two-way status commands, newline-terminated):
-        session_idle, template_selection, price{50}, cash_open, cash_close,
+        session_idle, template_selection, price{50}, credit{5}, cash_open, cash_close,
         payment_success, session_start, countdown_3, countdown_2, countdown_1,
         shutter_flash, start_print, print_done, session_end, session_cancel
    How the ESP32 connects (chosen per device in Setup -> Guest payment / Light & sound):
@@ -12,7 +12,7 @@
      keyboard : BLE HID / USB keyboard typing c<pesos><Enter>. One-way (credits only; cannot receive relay commands).
    Credit is kept on this device (survives reload) and each session takes the price off it.
    Part file: pasted into the booth script, so top-level names are var / function, never const / let. */
-var CASH_BAL_KEY = 'pb_cash_bal', CASH_LINK_KEY = 'pb_cash_link', CASH_STATS_KEY = 'pb_cash_stats';
+var CASH_BAL_KEY = 'pb_cash_bal', CASH_ACT_KEY = 'pb_cash_act', CASH_LINK_KEY = 'pb_cash_link', CASH_STATS_KEY = 'pb_cash_stats';
 var CASH_MAX_ONE = 5000;                    // one coin / bill can't be worth more than this (a garbled message is dropped)
 var CASH_NUS = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 var CASH_NUS_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';   // App -> ESP32 (write)
@@ -87,7 +87,32 @@ function cashFeedText(text, source, customParser) {
 
 // ---- credit kept on this device ----
 function cashBalance() { try { return Math.max(0, Math.floor(Number(localStorage.getItem(CASH_BAL_KEY)) || 0)); } catch (e) { return 0; } }
-function cashSetBalance(n) { try { n = Math.max(0, Math.floor(Number(n) || 0)); if (n) localStorage.setItem(CASH_BAL_KEY, String(n)); else localStorage.removeItem(CASH_BAL_KEY); } catch (e) { } }
+function cashTouchActivity(ts) {
+  try {
+    if (cashBalance() > 0) localStorage.setItem(CASH_ACT_KEY, String(ts || Date.now()));
+    else localStorage.removeItem(CASH_ACT_KEY);
+  } catch (e) { }
+}
+function cashLastActivityAt() {
+  try {
+    if (!(cashBalance() > 0)) return 0;
+    var t = Math.floor(Number(localStorage.getItem(CASH_ACT_KEY)) || 0);
+    if (!(t > 0)) { t = Date.now(); localStorage.setItem(CASH_ACT_KEY, String(t)); }
+    return t;
+  } catch (e) { return 0; }
+}
+function cashSetBalance(n) {
+  try {
+    n = Math.max(0, Math.floor(Number(n) || 0));
+    if (n) {
+      localStorage.setItem(CASH_BAL_KEY, String(n));
+      localStorage.setItem(CASH_ACT_KEY, String(Date.now()));
+    } else {
+      localStorage.removeItem(CASH_BAL_KEY);
+      localStorage.removeItem(CASH_ACT_KEY);
+    }
+  } catch (e) { }
+}
 // What this booth has taken in cash: money in, money used for sessions, number of sessions. For the operator's count at the end of the day.
 function cashStats() {
   var s = null;
@@ -210,15 +235,19 @@ function cashSend(cmd) {
 if (typeof window !== 'undefined') window.esp32Send = cashSend;
 
 function cashSendCurrentState() {
-  var cmd = 'session_idle';
+  var cmds = ['session_idle'];
   if (typeof cashStateHook === 'function') {
     try {
       var c = cashStateHook();
-      if (c) cmd = c;
+      if (Array.isArray(c) && c.length) cmds = c;
+      else if (c) cmds = [c];
     } catch (e) { }
   }
   setTimeout(function () {
-    if (cashConnected()) cashSend(cmd);
+    if (!cashConnected()) return;
+    for (var i = 0; i < cmds.length; i++) {
+      if (cmds[i]) cashSend(cmds[i]);
+    }
   }, 150);
 }
 

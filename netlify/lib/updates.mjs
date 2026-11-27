@@ -265,7 +265,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.42', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.42/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.43', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.43/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -320,7 +320,7 @@ export async function liveApp() {
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
   {
-    date: '2026-11-27', title: 'Android 1.2.33, iPad 1.1.42 & Website: Android 360 Booth Mode with Gyro Auto-Start, Built-in Sharing Station & Admin 360 Control', for: ['website', 'android', 'ipad'], android: '1.2.33', ipad: '1.1.42',
+    date: '2026-11-27', title: 'Android 1.2.33, iPad 1.1.43 & Website: Android 360 Booth Mode with Gyro Auto-Start, Built-in Sharing Station & Admin 360 Control', for: ['website', 'android', 'ipad'], android: '1.2.33', ipad: '1.1.43',
     items: [
       '🎥 Full Standalone 360 Mode on Android: Phones and tablets can now run complete 360 video events directly on Android — or join a laptop 360 Desk for free by scanning the Desk QR code. Supports Slow-Mo, Super Slow, Speed Ramp, Boomerang, custom transparent frame overlays, custom colour LUT looks, and 9:16, 1:1, or 16:9 framing with smooth hardware video export and optional motion-sensor spin auto-start.',
       '📲 Built-in Android Sharing Station with Email & WhatsApp: Share finished 360 clips offline over the booth Wi-Fi QR code and local Sharing Station gallery, save or Quick Share on the spot, send via Email when online, or open WhatsApp in one tap to text guests directly.',

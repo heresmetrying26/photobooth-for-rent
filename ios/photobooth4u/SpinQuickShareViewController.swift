@@ -440,7 +440,7 @@ final class SpinQuickShareViewController: UIViewController, UITextFieldDelegate 
         if digits.hasPrefix("+") {
             digits.removeFirst()
         } else if digits.hasPrefix("09") && digits.count == 11 {
-            digits = "63" + digits.dropFirst()
+            digits = "63" + String(digits.dropFirst())
         } else if digits.hasPrefix("9") && digits.count == 10 {
             digits = "63" + digits
         } else {

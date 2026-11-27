@@ -274,7 +274,7 @@ final class SpinRenderer {
             let src = request.sourceImage
             let ext = src.extent
             guard ext.width > 0, ext.height > 0 else {
-                request.finish(with: src, context: sharedCIContext)
+                request.finish(with: src, context: SpinRenderer.sharedCIContext)
                 return
             }
 
@@ -287,13 +287,13 @@ final class SpinRenderer {
             let xform = CGAffineTransform(a: scale, b: 0, c: 0, d: scale, tx: tx, ty: ty)
 
             var outImg = src.transformed(by: xform).cropped(to: CGRect(origin: .zero, size: renderSize))
-            outImg = applyColorLook(colorLook, to: outImg)
+            outImg = SpinRenderer.applyColorLook(colorLook, to: outImg)
 
             if let ov = overlayCI {
                 outImg = ov.composited(over: outImg).cropped(to: CGRect(origin: .zero, size: renderSize))
             }
 
-            request.finish(with: outImg, context: sharedCIContext)
+            request.finish(with: outImg, context: SpinRenderer.sharedCIContext)
         }
         videoComp.renderSize = renderSize
         videoComp.frameDuration = CMTime(value: 1, timescale: 30)
@@ -569,7 +569,7 @@ final class SpinRenderer {
                     cursorOut = CMTimeAdd(cursorOut, safeDelta)
                 }
                 prevOrigTime = pts
-                adaptor.append(pb, withPresentationTime: cursorOut)
+                _ = adaptor.append(pb, withPresentationTime: cursorOut)
             }
             batch.removeAll()
         }

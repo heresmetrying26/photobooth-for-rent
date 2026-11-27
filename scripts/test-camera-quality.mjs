@@ -772,14 +772,16 @@ await testAsync("solo shot: the booth's own copy is used for a turned photo, a n
   assert.equal(await sb.soloOriginal({}), null); assert.equal(await sb.soloOriginal(null), null);
   assert.equal(await soloSandbox(false).soloOriginal({ _orig: new Blob([rotJpeg(1)], { type: 'image/jpeg' }) }), null, 'tablets / web booth keep their copy');
 });
-test('solo shot: the original is only kept when no mirror, background swap or look changed the picture', () => {
+test('solo shot: the original is only kept when no mirror, background swap or look changed the picture (date stamp is omitted on solo shots)', () => {
   for (const needle of [
     'if (DESKTOP && !mir && !bgSwapped) c._orig = file;',                                   // DSLR
     'if (DESKTOP && !mir && !bgSwapped) c._orig = blob;',                                   // webcam full-size still
-    "var lookFree = filterKey === 'none' && !softSkin && !dateStamp;",
-    'clone._orig = (lookFree && c._orig) || null;',
+    "var soloLookFree = (typeof filterKey === 'undefined' || filterKey === 'none') && !softSkin;",
+    'clone._orig = (soloLookFree && c._orig) || null;',
+    'applyFilterToCanvas(clone, { noDateStamp: true });',
     'var blob = await soloOriginal(sc);',
-    "if (filterKey === 'none' && !softSkin && !dateStamp) return;"                           // applyFilterToCanvas: the same test for "no look"
+    'var wantDate = !!(dateStamp && !(opts && opts.noDateStamp));',
+    "if (filterKey === 'none' && !softSkin && !wantDate) return;"                            // applyFilterToCanvas: the same test for "no look"
   ]) assert(page.includes(needle), 'missing: ' + needle);
 });
 
@@ -902,7 +904,7 @@ test('iOS NativeCameraBridge & ViewController include retained external UVC disc
   assert(vcSwift.includes('window.__pbCamEvent'), 'ViewController.swift missing window.__pbCamEvent dispatch');
   assert(vcSwift.includes('let askAudioThenBoot'), 'ViewController.swift serializes .video -> .audio permissions before booting');
   const licSwift = readFileSync(join(ROOT, 'ios', 'photobooth4u', 'AppLicence.swift'), 'utf8');
-  assert(licSwift.includes('static let appVersion = "1.1.42"'), 'AppLicence.swift fallback version matches Xcode MARKETING_VERSION');
+  assert(licSwift.includes('static let appVersion = "1.1.43"'), 'AppLicence.swift fallback version matches Xcode MARKETING_VERSION');
 });
 await testAsync('openCameraStream maps iPad external UVC camera for Greenscreen even after unlocking blank WebKit labels', async () => {
   const sb = makeSandbox();

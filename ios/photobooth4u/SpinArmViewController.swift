@@ -118,6 +118,7 @@ final class SpinArmViewController: UIViewController,
     private var skipQuickSharePopup: Bool = false
     private var activePickerKind: PickerKind = .overlayFile
     private var isQuickSharePresented: Bool = false
+    private weak var activeQuickShareVC: SpinQuickShareViewController?
     private var renderProgress: Float = 0.0
 
     private var lensChoice: LensChoice = .ultrawide
@@ -1248,8 +1249,9 @@ final class SpinArmViewController: UIViewController,
             let stationURL = PBLocal.shared.stationUrl()
 
             if self.skipQuickSharePopup {
+                self.activeQuickShareVC = nil
                 self.showToast("✓ 360 video ready on Sharing Station (\(self.sentCount))")
-                self.uploadRenderedVideoToDriveIfConfigured(fileURL: destURL, slug: saved.slug, filename: saved.filename, shareVC: nil)
+                self.uploadRenderedVideoToDriveIfConfigured(fileURL: destURL, slug: saved.slug, filename: saved.filename)
                 return
             }
 
@@ -1269,17 +1271,19 @@ final class SpinArmViewController: UIViewController,
             )
             vc.onDone = { [weak self] in
                 guard let self = self else { return }
+                self.activeQuickShareVC = nil
                 self.isQuickSharePresented = false
                 self.phase = .idle
                 self.updateUIState()
             }
+            self.activeQuickShareVC = vc
             self.isQuickSharePresented = true
             self.present(vc, animated: true)
-            self.uploadRenderedVideoToDriveIfConfigured(fileURL: destURL, slug: saved.slug, filename: saved.filename, shareVC: vc)
+            self.uploadRenderedVideoToDriveIfConfigured(fileURL: destURL, slug: saved.slug, filename: saved.filename)
         }
     }
 
-    private func uploadRenderedVideoToDriveIfConfigured(fileURL: URL, slug: String, filename: String, shareVC: SpinQuickShareViewController?) {
+    private func uploadRenderedVideoToDriveIfConfigured(fileURL: URL, slug: String, filename: String) {
         let ctx = PBLocal.shared.spinContext
         let licStr = ctx.licence.isEmpty ? (AppLicence.shared.currentLicenceString() ?? "") : ctx.licence
         let midStr = ctx.mid.isEmpty ? AppLicence.shared.machineId() : ctx.mid
@@ -1290,14 +1294,14 @@ final class SpinArmViewController: UIViewController,
 
         let size = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         guard size > 0 && size <= 27 * 1024 * 1024 else {
-            DispatchQueue.main.async {
-                shareVC?.setCloudSyncStatus("Clip too large for web cloud (>27 MB) — use Local Wi-Fi QR or AirDrop")
+            DispatchQueue.main.async { [weak self] in
+                self?.activeQuickShareVC?.setCloudSyncStatus("Clip too large for web cloud (>27 MB) — use Local Wi-Fi QR or AirDrop")
             }
             return
         }
 
-        DispatchQueue.main.async { [weak shareVC] in
-            shareVC?.setCloudSyncStatus("☁️ Syncing to cloud for WhatsApp & Email…")
+        DispatchQueue.main.async { [weak self] in
+            self?.activeQuickShareVC?.setCloudSyncStatus("☁️ Syncing to cloud for WhatsApp & Email…")
         }
 
         var ticketPayload: [String: Any] = ["folderKey": ctx.folderKey]
@@ -1318,18 +1322,18 @@ final class SpinArmViewController: UIViewController,
         tReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
         tReq.httpBody = ticketBody
 
-        URLSession.shared.dataTask(with: tReq) { [weak shareVC] data, resp, _ in
+        URLSession.shared.dataTask(with: tReq) { [weak self] data, resp, _ in
             guard let http = resp as? HTTPURLResponse, http.statusCode == 200,
                   let data = data,
                   let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
                   let ticket = obj["ticket"] as? String, !ticket.isEmpty else {
-                DispatchQueue.main.async { [weak shareVC] in
-                    shareVC?.setCloudSyncStatus("Offline/Local QR ready (could not reach cloud ticket)")
+                DispatchQueue.main.async { [weak self] in
+                    self?.activeQuickShareVC?.setCloudSyncStatus("Offline/Local QR ready (could not reach cloud ticket)")
                 }
                 return
             }
 
-            DispatchQueue.global(qos: .utility).async { [weak shareVC] in
+            DispatchQueue.global(qos: .utility).async { [weak self] in
                 guard let videoData = try? Data(contentsOf: fileURL),
                       let scriptURL = URL(string: "https://script.google.com/macros/s/AKfycbxv0WfF9rxFY9QlseCoSjrA7vePwHE-Uc8QTURZYyN6yIzcTj4SIlktEWT6Xnaw6Pv9OA/exec") else { return }
                 let b64 = videoData.base64EncodedString()
@@ -1346,21 +1350,21 @@ final class SpinArmViewController: UIViewController,
                 uReq.setValue("text/plain;charset=utf-8", forHTTPHeaderField: "Content-Type")
                 uReq.httpBody = upBody
 
-                URLSession.shared.dataTask(with: uReq) { [weak shareVC] uData, uResp, _ in
+                URLSession.shared.dataTask(with: uReq) { [weak self] uData, uResp, _ in
                     guard let uHttp = uResp as? HTTPURLResponse, uHttp.statusCode == 200,
                           let uData = uData,
                           let uJson = (try? JSONSerialization.jsonObject(with: uData)) as? [String: Any],
                           (uJson["ok"] as? Bool) == true,
                           let fileId = uJson["id"] as? String, !fileId.isEmpty else {
-                        DispatchQueue.main.async { [weak shareVC] in
-                            shareVC?.setCloudSyncStatus("Local QR & AirDrop ready (cloud upload busy)")
+                        DispatchQueue.main.async { [weak self] in
+                            self?.activeQuickShareVC?.setCloudSyncStatus("Local QR & AirDrop ready (cloud upload busy)")
                         }
                         return
                     }
                     let cloudShare = "\(AppLicence.serverUrl)/g/\(ctx.driveFolderId)#\(fileId)"
                     PBLocal.shared.setOnlineShareUrl(slug: slug, filename: filename, url: cloudShare)
-                    DispatchQueue.main.async { [weak shareVC] in
-                        shareVC?.setOnlineShareURL(cloudShare)
+                    DispatchQueue.main.async { [weak self] in
+                        self?.activeQuickShareVC?.setOnlineShareURL(cloudShare)
                     }
                 }.resume()
             }
@@ -1872,8 +1876,6 @@ final class SpinArmViewController: UIViewController,
     @objc private func didTapCloseSettings() {
         view.endEditing(true)
         commitTextFields()
-        view.endEditing(true)
-        commitTextFields()
         isSettingsOpen = false
         settingsOverlay.isHidden = true
         updateUIState()
@@ -2127,10 +2129,10 @@ final class SpinArmViewController: UIViewController,
             }
             return
         }
-        if item.canLoadObject(ofClass: UIImage.self) {
-            item.loadObject(ofClass: UIImage.self) { [weak self] obj, _ in
-                if let img = obj as? UIImage, let d = img.pngData() {
-                    DispatchQueue.main.async { self?.installOverlayImageData(d) }
+        if item.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+            item.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { [weak self] data, _ in
+                if let d = data, let img = UIImage(data: d), let png = img.pngData() {
+                    DispatchQueue.main.async { self?.installOverlayImageData(png) }
                 }
             }
         }

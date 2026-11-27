@@ -1270,15 +1270,13 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             let expected = dimension * dimension * dimension * 4
             if raw.count == expected {
                 var floats = [Float](repeating: 0, count: expected)
-                raw.withUnsafeBytes { ptr in
-                    if let bytes = ptr.bindMemory(to: UInt8.self).baseAddress {
-                        let inv: Float = 1.0 / 255.0
-                        for i in 0..<expected {
-                            floats[i] = Float(bytes[i]) * inv
-                        }
+                raw.withUnsafeBytes { (rawBuf: UnsafeRawBufferPointer) in
+                    let inv: Float = 1.0 / 255.0
+                    for i in 0..<expected {
+                        floats[i] = Float(rawBuf[i]) * inv
                     }
                 }
-                cubeData = floats.withUnsafeBufferPointer { Data(buffer: $0) }
+                cubeData = floats.withUnsafeBufferPointer { (buf: UnsafeBufferPointer<Float>) in Data(buffer: buf) }
             }
         }
         let validId = (cubeData != nil) ? id : ""

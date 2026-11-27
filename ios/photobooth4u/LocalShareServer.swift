@@ -289,7 +289,7 @@ class LocalShareServer {
             if n <= 0 { break }
             body.append(extra, count: n)
         }
-        return body.prefix(contentLength)
+        return Data(body.prefix(contentLength))
     }
 
     private func handleStationMailProxy(sock: Int32, bodyData: Data) {

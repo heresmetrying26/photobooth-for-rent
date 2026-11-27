@@ -220,3 +220,15 @@
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-cache"
+
+# Batch Date Stamp Remover utility (100% client-side in-browser, zero upload)
+[[redirects]]
+  from = "/remove-date"
+  to = "/remove-date/"
+  status = 301
+
+[[headers]]
+  for = "/remove-date/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-cache"

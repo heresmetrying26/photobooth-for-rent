@@ -1,0 +1,1971 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Batch Date Stamp Remover — photobooth4u</title>
+  <style>
+    :root {
+      --paper: #F5F1EA;
+      --card: #FFFFFF;
+      --ink: #1C1A1E;
+      --muted: #6B666C;
+      --line: #E2DACD;
+      --soft: #EFE9DF;
+      --red: #C93D27;
+      --red-dark: #A9301D;
+      --green: #1E7E4C;
+      --green-bg: #E7F6EE;
+      --amber: #B25D09;
+      --amber-bg: #FEF3E2;
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; min-height: 100vh; }
+    button, input, select { font: inherit; }
+    .app { max-width: 1320px; margin: 0 auto; padding: 20px 20px 44px; }
+
+    /* Header */
+    .top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .mark { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 26px; height: 26px; flex: none; }
+    .mark i { background: var(--ink); border-radius: 4px; display: block; }
+    .mark i:nth-child(2) { background: var(--red); }
+    .brand h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+    .brand p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--soft); color: var(--ink); border: 1px solid var(--line); }
+    .badge.ok { background: var(--green-bg); color: var(--green); border-color: #B9E5CC; }
+
+    /* Dropzone */
+    .dropzone {
+      background: var(--card); border: 2px dashed #CBBFAD; border-radius: var(--radius);
+      padding: 26px 20px; text-align: center; transition: border-color .15s, background .15s, transform .15s;
+      margin-bottom: 16px;
+    }
+    .dropzone.over { border-color: var(--red); background: #FFF8F6; transform: scale(1.004); }
+    .dropzone.compact { padding: 14px 18px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; text-align: left; }
+    .dropzone h2 { margin: 0 0 6px; font-size: 17px; font-weight: 800; }
+    .dropzone.compact h2 { margin: 0; font-size: 14.5px; }
+    .dropzone p { margin: 0 0 14px; font-size: 13.5px; color: var(--muted); }
+    .dropzone.compact p { margin: 2px 0 0; font-size: 12.5px; }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
+    .dropzone.compact .btn-row { justify-content: flex-end; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      min-height: 38px; padding: 8px 15px; border-radius: 999px; border: 1.5px solid var(--line);
+      background: var(--card); color: var(--ink); font-size: 13.5px; font-weight: 700; cursor: pointer;
+      transition: background .12s, border-color .12s, color .12s, opacity .12s;
+    }
+    .btn:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+    .btn.primary:hover:not(:disabled) { background: var(--red-dark); border-color: var(--red-dark); color: #fff; }
+    .btn.good { background: var(--green); border-color: var(--green); color: #fff; }
+    .btn.good:hover:not(:disabled) { background: #17653C; border-color: #17653C; color: #fff; }
+    .btn.sm { min-height: 32px; padding: 5px 12px; font-size: 12.5px; }
+    .btn.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .btn.active:hover:not(:disabled) { background: #333; border-color: #333; color: #fff; }
+
+    /* Settings bar */
+    .controls {
+      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 14px 16px; margin-bottom: 16px; display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px 18px; align-items: end;
+    }
+    .field label { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+    .field label span.val { color: var(--ink); text-transform: none; letter-spacing: 0; font-size: 12.5px; }
+    .field select, .field input[type="range"] { width: 100%; }
+    .field select { padding: 8px 10px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); font-size: 13px; font-weight: 600; }
+    .field input[type="range"] { accent-color: var(--red); margin: 4px 0; cursor: pointer; }
+    .chk-wrap { display: flex; align-items: center; gap: 8px; min-height: 36px; font-size: 13px; font-weight: 600; cursor: pointer; user-select: none; }
+    .chk-wrap input { width: 17px; height: 17px; accent-color: var(--red); cursor: pointer; }
+
+    /* Main workspace */
+    .workspace { display: grid; grid-template-columns: 340px 1fr; gap: 16px; align-items: start; }
+    @media (max-width: 920px) { .workspace { grid-template-columns: 1fr; } }
+
+    .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+    .panel-head {
+      padding: 12px 14px; border-bottom: 1px solid var(--line); background: #FAF7F2;
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .panel-head h3 { margin: 0; font-size: 14px; font-weight: 800; }
+    .panel-sub { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+    /* Queue list */
+    .queue-actions { padding: 10px 12px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .progress-wrap { width: 100%; display: none; margin-top: 4px; }
+    .progress-wrap.on { display: block; }
+    .progress-bar { width: 100%; height: 7px; border-radius: 999px; background: var(--soft); overflow: hidden; }
+    .progress-fill { height: 100%; width: 0%; background: var(--red); transition: width .12s; }
+    .progress-txt { font-size: 12px; color: var(--muted); margin-top: 5px; font-weight: 600; }
+
+    .list { max-height: 540px; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .item {
+      display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; align-items: center;
+      padding: 7px 9px; border-radius: 12px; border: 1.5px solid transparent; background: #FAF8F4;
+      cursor: pointer; text-align: left; width: 100%; transition: border-color .12s, background .12s;
+    }
+    .item:hover { background: #F3EDE3; }
+    .item.sel { border-color: var(--red); background: #FFF5F2; }
+    .item img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; background: var(--soft); display: block; }
+    .item-meta { min-width: 0; }
+    .item-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item-dim { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+    .tag { font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+    .tag.wait { background: var(--soft); color: var(--muted); }
+    .tag.busy { background: var(--amber-bg); color: var(--amber); }
+    .tag.done { background: var(--green-bg); color: var(--green); }
+    .tag.none { background: #EDF1F7; color: #4A5B75; }
+    .tag.err { background: #FDECEC; color: #B42318; }
+
+    /* Inspector */
+    .inspector-bar {
+      padding: 10px 14px; border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .stage-wrap {
+      position: relative; background: #18161A; min-height: 440px; max-height: 600px;
+      display: flex; align-items: center; justify-content: center; overflow: hidden; user-select: none;
+    }
+    .stage-empty { color: #A8A1AA; text-align: center; padding: 40px 24px; font-size: 14px; line-height: 1.5; max-width: 420px; }
+    .compare-box { position: relative; display: inline-block; line-height: 0; max-width: 100%; max-height: 580px; cursor: ew-resize; }
+    .compare-box.brush-mode { cursor: crosshair; }
+    .compare-box canvas { display: block; max-width: 100%; max-height: 580px; width: auto; height: auto; }
+    .compare-divider {
+      position: absolute; top: 0; bottom: 0; width: 2px; background: #FFFFFF;
+      box-shadow: 0 0 0 1px rgba(0,0,0,.45), 0 0 12px rgba(0,0,0,.5); pointer-events: none;
+    }
+    .compare-knob {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 34px; height: 34px; border-radius: 50%; background: #FFFFFF; color: var(--ink);
+      display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.45);
+    }
+    .compare-lbl {
+      position: absolute; top: 10px; padding: 4px 10px; border-radius: 999px;
+      background: rgba(20, 18, 22, 0.78); color: #fff; font-size: 11.5px; font-weight: 800;
+      letter-spacing: 0.04em; pointer-events: none;
+    }
+    .compare-lbl.left { left: 10px; }
+    .compare-lbl.right { right: 10px; }
+
+    .brush-bar {
+      padding: 10px 14px; border-top: 1px solid var(--line); background: #FAF7F2;
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .brush-group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .hint { font-size: 12px; color: var(--muted); line-height: 1.45; }
+    .footer-note {
+      margin-top: 16px; padding: 12px 16px; border-radius: 12px; background: #EFE9DF;
+      font-size: 12.5px; color: #4A454C; line-height: 1.5;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <div>
+          <h1>Batch Date Stamp Remover</h1>
+          <p>Removes the photobooth4u vintage orange corner stamp from already-taken solo photos — 100% offline in your browser.</p>
+        </div>
+      </div>
+      <div class="pill-row">
+        <span class="badge ok">100% Local · Zero Upload</span>
+        <span class="badge">Originals Never Overwritten</span>
+        <span class="badge">Full Resolution + EXIF/DPI Preserved</span>
+      </div>
+    </header>
+
+    <section class="dropzone" id="dropzone">
+      <div>
+        <h2>Drop a folder or solo photos here</h2>
+        <p>Select your event's <b>Solo Shots</b> folder (or any JPEGs/PNGs). Every photo is processed locally at full resolution.</p>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn primary" id="pickFolderBtn">Choose Folder</button>
+        <button type="button" class="btn" id="pickFilesBtn">Choose Photos</button>
+        <button type="button" class="btn hidden" id="clearAllBtn">Clear List</button>
+      </div>
+      <input type="file" id="folderInput" webkitdirectory directory multiple accept="image/jpeg,image/png,image/webp" class="hidden">
+      <input type="file" id="filesInput" multiple accept="image/jpeg,image/png,image/webp" class="hidden">
+    </section>
+
+    <section class="controls">
+      <div class="field">
+        <label for="methodSel">Reconstruction Method</label>
+        <select id="methodSel">
+          <option value="smart" selected>Smart Texture (PatchMatch — Best Quality)</option>
+          <option value="smooth">Smooth Fill (Fast — Best for Plain Backdrops)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="haloRange">Glow Halo Coverage <span class="val" id="haloVal">Standard (1.0×)</span></label>
+        <input type="range" id="haloRange" min="0.65" max="1.6" step="0.05" value="1.0">
+      </div>
+      <div class="field">
+        <label for="sensRange">Orange Detection Sensitivity <span class="val" id="sensVal">Balanced</span></label>
+        <input type="range" id="sensRange" min="1" max="3" step="1" value="2">
+      </div>
+      <div class="field">
+        <label for="exportFmt">Output Quality</label>
+        <select id="exportFmt">
+          <option value="jpg97" selected>JPEG 97% (Recommended · keeps EXIF &amp; 300 DPI)</option>
+          <option value="jpg100">JPEG 100% (Maximum JPEG · keeps EXIF &amp; 300 DPI)</option>
+          <option value="png">PNG (Lossless · larger file size)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Unstamped Photos</label>
+        <label class="chk-wrap" style="text-transform:none;letter-spacing:0;color:var(--ink);margin:0;">
+          <input type="checkbox" id="includeUnstamped" checked>
+          <span>Include originals in export unchanged</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Photos (<span id="countTotal">0</span>)</h3>
+          <span class="panel-sub" id="countStats">Add photos to start</span>
+        </div>
+        <div class="queue-actions">
+          <button type="button" class="btn primary sm" id="runAllBtn" disabled>Clean All Photos</button>
+          <button type="button" class="btn good sm" id="saveFolderBtn" disabled title="Writes cleaned copies directly into a folder you choose (Chrome/Edge)">Save to Folder</button>
+          <button type="button" class="btn sm" id="downloadZipBtn" disabled>Download ZIP</button>
+          <div class="progress-wrap" id="progressWrap">
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="progress-txt" id="progressTxt">Ready</div>
+          </div>
+        </div>
+        <div class="list" id="photoList"></div>
+      </div>
+
+      <div class="panel">
+        <div class="inspector-bar">
+          <div>
+            <strong id="inspTitle" style="font-size:14px;">Before / After Preview</strong>
+            <div class="panel-sub" id="inspSub">Select any photo on the left to inspect the bottom-right corner</div>
+          </div>
+          <div class="brush-group">
+            <button type="button" class="btn sm active" id="viewCornerBtn" disabled>Corner Zoom</button>
+            <button type="button" class="btn sm" id="viewFullBtn" disabled>Full Photo</button>
+            <label class="chk-wrap" style="min-height:32px;font-size:12.5px;">
+              <input type="checkbox" id="showMaskChk" disabled>
+              <span>Show Mask</span>
+            </label>
+            <button type="button" class="btn sm" id="peekOrigBtn" disabled>Hold: Original</button>
+            <button type="button" class="btn sm good" id="dlSingleBtn" disabled>Save Photo</button>
+          </div>
+        </div>
+
+        <div class="stage-wrap" id="stageWrap">
+          <div class="stage-empty" id="stageEmpty">
+            Drop your solo photos above, then click <b>Clean All Photos</b> (or click any single photo to preview).<br><br>
+            The preview zooms right into the bottom-right corner so you can drag the before/after slider and verify the result.
+          </div>
+          <div class="compare-box hidden" id="compareBox">
+            <canvas id="compareCanvas"></canvas>
+            <div class="compare-divider" id="compareDivider"><div class="compare-knob">↔</div></div>
+            <span class="compare-lbl left" id="lblLeft">ORIGINAL</span>
+            <span class="compare-lbl right" id="lblRight">CLEANED</span>
+          </div>
+        </div>
+
+        <div class="brush-bar">
+          <div class="brush-group">
+            <button type="button" class="btn sm active" id="toolCompareBtn" disabled>Split Compare</button>
+            <button type="button" class="btn sm" id="toolPaintBtn" disabled title="Paint extra areas onto the mask for this photo">Paint Mask +</button>
+            <button type="button" class="btn sm" id="toolEraseBtn" disabled title="Erase false areas from the mask for this photo">Erase Mask −</button>
+            <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted);">
+              Brush
+              <input type="range" id="brushSizeRange" min="4" max="42" value="14" style="width:74px;accent-color:var(--red);">
+            </label>
+            <button type="button" class="btn sm" id="resetMaskBtn" disabled>Auto-Detect Mask</button>
+            <button type="button" class="btn sm primary" id="recleanOneBtn" disabled>Re-Clean This Photo</button>
+          </div>
+          <span class="hint" id="inspHint">Only pixels inside the bottom-right mask are touched; the rest of the image is untouched.</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer-note">
+      <b>Tip for best quality:</b> When saving a large folder (50–500+ DSLR photos) in Chrome or Edge, click <b>Save to Folder</b> and choose a new empty folder (e.g. <code>Solo Shots Cleaned</code>). Files stream straight to disk one by one without filling browser memory, and your original photos are never modified.
+    </div>
+  </div>
+
+<script>
+(function () {
+  'use strict';
+
+  // =========================================================================
+  // 1. EXACT PHOTOBOOTH4U ORANGE STAMP GEOMETRY & DETECTION
+  // Matches protected/src/booth.src.html applyFilterToCanvas():
+  //   fs = Math.max(14, Math.round(Math.min(w, h) * 0.04));
+  //   font = 'bold ' + fs + 'px "Courier New", monospace';
+  //   textAlign = 'right'; textBaseline = 'bottom';
+  //   shadowColor = 'rgba(255,90,0,.75)'; shadowBlur = fs * 0.35;
+  //   fillStyle = '#ff9a2e';
+  //   fillText("'YY MM DD", w - fs * 0.9, h - fs * 0.7);
+  // =========================================================================
+
+  function stampRoiFor(w, h) {
+    var fs = Math.max(14, Math.round(Math.min(w, h) * 0.04));
+    // Generous search box covering the 9-char monospace string + shadowBlur across OS font metrics
+    var x0 = Math.max(0, Math.floor(w - fs * 7.5));
+    var x1 = Math.min(w, Math.ceil(w - fs * 0.25));
+    var y0 = Math.max(0, Math.floor(h - fs * 2.25));
+    var y1 = Math.min(h, Math.ceil(h - fs * 0.10));
+    // Tighter core character zone (prevents orange clothes further left/up from seeding false positives)
+    var cx0 = Math.max(x0, Math.floor(w - fs * 7.0));
+    var cx1 = Math.min(x1, Math.ceil(w - fs * 0.60));
+    var cy0 = Math.max(y0, Math.floor(h - fs * 1.92));
+    var cy1 = Math.min(y1, Math.ceil(h - fs * 0.42));
+    // Working ROI with clean surround for PatchMatch sampling & preview zoom
+    var pad = Math.max(40, Math.round(fs * 1.45));
+    var wx0 = Math.max(0, x0 - pad);
+    var wy0 = Math.max(0, y0 - pad);
+    var wx1 = Math.min(w, x1 + Math.round(fs * 0.45));
+    var wy1 = Math.min(h, y1 + Math.round(fs * 0.30));
+    return {
+      fs: fs,
+      roi: { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) },
+      charBox: { x0: cx0, y0: cy0, x1: cx1, y1: cy1 },
+      work: { x: wx0, y: wy0, w: Math.max(1, wx1 - wx0), h: Math.max(1, wy1 - wy0) }
+    };
+  }
+
+  function rgbToHueSatVal(r, g, b) {
+    var rf = r / 255, gf = g / 255, bf = b / 255;
+    var max = rf > gf ? (rf > bf ? rf : bf) : (gf > bf ? gf : bf);
+    var min = rf < gf ? (rf < bf ? rf : bf) : (gf < bf ? gf : bf);
+    var d = max - min;
+    var h = 0;
+    if (d > 1e-5) {
+      if (max === rf) h = 60 * (((gf - bf) / d) % 6);
+      else if (max === gf) h = 60 * ((bf - rf) / d + 2);
+      else h = 60 * ((rf - gf) / d + 4);
+      if (h < 0) h += 360;
+    }
+    var s = max > 1e-5 ? d / max : 0;
+    return [h, s, max];
+  }
+
+  // Computes a fast 2D box-averaged background color inside workRect using an integral image
+  function boxAverageRGB(rgba, w, h, rad) {
+    var n = w * h;
+    var ir = new Float64Array((w + 1) * (h + 1));
+    var ig = new Float64Array((w + 1) * (h + 1));
+    var ib = new Float64Array((w + 1) * (h + 1));
+    var stride = w + 1;
+    for (var y = 0; y < h; y++) {
+      var sr = 0, sg = 0, sb = 0;
+      var rowOut = (y + 1) * stride;
+      var rowPrev = y * stride;
+      var rowIn = y * w * 4;
+      for (var x = 0; x < w; x++) {
+        var idx = rowIn + x * 4;
+        sr += rgba[idx];
+        sg += rgba[idx + 1];
+        sb += rgba[idx + 2];
+        ir[rowOut + x + 1] = ir[rowPrev + x + 1] + sr;
+        ig[rowOut + x + 1] = ig[rowPrev + x + 1] + sg;
+        ib[rowOut + x + 1] = ib[rowPrev + x + 1] + sb;
+      }
+    }
+    var out = new Uint8Array(n * 3);
+    for (var y2 = 0; y2 < h; y2++) {
+      var ay0 = Math.max(0, y2 - rad), ay1 = Math.min(h, y2 + rad + 1);
+      for (var x2 = 0; x2 < w; x2++) {
+        var ax0 = Math.max(0, x2 - rad), ax1 = Math.min(w, x2 + rad + 1);
+        var area = (ay1 - ay0) * (ax1 - ax0);
+        var a = ay0 * stride + ax0, b = ay0 * stride + ax1, c = ay1 * stride + ax0, d = ay1 * stride + ax1;
+        var o = (y2 * w + x2) * 3;
+        out[o] = (ir[d] - ir[b] - ir[c] + ir[a]) / area;
+        out[o + 1] = (ig[d] - ig[b] - ig[c] + ig[a]) / area;
+        out[o + 2] = (ib[d] - ib[b] - ib[c] + ib[a]) / area;
+      }
+    }
+    return out;
+  }
+
+  // Exact 2-pass squared Euclidean distance transform (Felzenszwalb & Huttenlocher)
+  function edt1d(f, n, out) {
+    var v = new Int32Array(n);
+    var z = new Float32Array(n + 1);
+    var k = 0;
+    v[0] = 0;
+    z[0] = -1e12;
+    z[1] = 1e12;
+    for (var q = 1; q < n; q++) {
+      var s;
+      while (true) {
+        var vk = v[k];
+        s = ((f[q] + q * q) - (f[vk] + vk * vk)) / (2 * q - 2 * vk);
+        if (s <= z[k]) {
+          k--;
+          if (k < 0) { k = 0; break; }
+        } else {
+          break;
+        }
+      }
+      k++;
+      v[k] = q;
+      z[k] = s;
+      z[k + 1] = 1e12;
+    }
+    k = 0;
+    for (var q2 = 0; q2 < n; q2++) {
+      while (z[k + 1] < q2) k++;
+      var dx = q2 - v[k];
+      out[q2] = dx * dx + f[v[k]];
+    }
+  }
+
+  function distanceFromMask(mask, w, h) {
+    var INF = 1e9;
+    var tmp = new Float32Array(w * h);
+    var dist = new Float32Array(w * h);
+    var colIn = new Float32Array(h);
+    var colOut = new Float32Array(h);
+    for (var x = 0; x < w; x++) {
+      for (var y = 0; y < h; y++) colIn[y] = mask[y * w + x] ? 0 : INF;
+      edt1d(colIn, h, colOut);
+      for (var y2 = 0; y2 < h; y2++) tmp[y2 * w + x] = colOut[y2];
+    }
+    var rowIn = new Float32Array(w);
+    var rowOut = new Float32Array(w);
+    for (var y3 = 0; y3 < h; y3++) {
+      var off = y3 * w;
+      for (var x2 = 0; x2 < w; x2++) rowIn[x2] = tmp[off + x2];
+      edt1d(rowIn, w, rowOut);
+      for (var x3 = 0; x3 < w; x3++) dist[off + x3] = Math.sqrt(rowOut[x3]);
+    }
+    return dist;
+  }
+
+  // Fill tiny enclosed holes inside digits (like the interior loops of 0, 6, 8, 9) where orange glow sits
+  function fillSmallMaskHoles(mask, w, h, maxHoleArea) {
+    var visited = new Uint8Array(w * h);
+    var queue = new Int32Array(w * h);
+    var comp = new Int32Array(w * h);
+    for (var i = 0; i < w * h; i++) {
+      if (mask[i] || visited[i]) continue;
+      var head = 0, tail = 0, cLen = 0, touchesBorder = false;
+      queue[tail++] = i;
+      visited[i] = 1;
+      while (head < tail) {
+        var p = queue[head++];
+        comp[cLen++] = p;
+        var px = p % w, py = (p / w) | 0;
+        if (px === 0 || py === 0 || px === w - 1 || py === h - 1) touchesBorder = true;
+        if (px > 0) { var l = p - 1; if (!mask[l] && !visited[l]) { visited[l] = 1; queue[tail++] = l; } }
+        if (px + 1 < w) { var r = p + 1; if (!mask[r] && !visited[r]) { visited[r] = 1; queue[tail++] = r; } }
+        if (py > 0) { var u = p - w; if (!mask[u] && !visited[u]) { visited[u] = 1; queue[tail++] = u; } }
+        if (py + 1 < h) { var d = p + w; if (!mask[d] && !visited[d]) { visited[d] = 1; queue[tail++] = d; } }
+      }
+      if (!touchesBorder && cLen <= maxHoleArea) {
+        for (var k = 0; k < cLen; k++) mask[comp[k]] = 1;
+      }
+    }
+  }
+
+  // Detects the photobooth4u orange date stamp inside the working ROI.
+  // Returns { detected, mask (Uint8Array of work.w * work.h), coreCount, bounds }
+  function detectDateStampMask(workData, workW, workH, geom, opts) {
+    var fs = geom.fs;
+    var sens = opts.sensitivity || 2; // 1=strict, 2=balanced, 3=sensitive
+    var haloScale = opts.haloScale || 1.0;
+
+    // Local coordinates of charBox and roi inside workRect
+    var cx0 = Math.max(0, geom.charBox.x0 - geom.work.x);
+    var cy0 = Math.max(0, geom.charBox.y0 - geom.work.y);
+    var cx1 = Math.min(workW, geom.charBox.x1 - geom.work.x);
+    var cy1 = Math.min(workH, geom.charBox.y1 - geom.work.y);
+    var rx0 = Math.max(0, geom.roi.x - geom.work.x);
+    var ry0 = Math.max(0, geom.roi.y - geom.work.y);
+    var rx1 = Math.min(workW, geom.roi.x + geom.roi.w - geom.work.x);
+    var ry1 = Math.min(workH, geom.roi.y + geom.roi.h - geom.work.y);
+
+    // Coarse background reference (radius ~0.65 * fs smooths over thin strokes)
+    var bgRad = Math.max(8, Math.round(fs * 0.65));
+    var bg = boxAverageRGB(workData, workW, workH, bgRad);
+
+    // Thresholds tuned per sensitivity level
+    var minChroma = sens === 1 ? 82 : (sens === 3 ? 48 : 64);
+    var minSat = sens === 1 ? 0.42 : (sens === 3 ? 0.26 : 0.34);
+    var minRed = sens === 1 ? 155 : (sens === 3 ? 115 : 135);
+    var minRelBoost = sens === 1 ? 30 : (sens === 3 ? 12 : 20);
+
+    var core = new Uint8Array(workW * workH);
+    var rawCount = 0;
+    var minX = workW, maxX = -1, minY = workH, maxY = -1;
+
+    // Orange-ness metric: emphasizes #ff9a2e (R=255, G=154, B=46) and #ff5a00 glow
+    function orangeMetric(r, g, b) {
+      return (r - b) + 0.35 * (g - b) - Math.max(0, g - r) * 1.5;
+    }
+
+    // Pass 1: Detect core text & inner-glow pixels inside charBox
+    for (var y = cy0; y < cy1; y++) {
+      for (var x = cx0; x < cx1; x++) {
+        var pi = y * workW + x;
+        var i4 = pi * 4;
+        var r = workData[i4], g = workData[i4 + 1], b = workData[i4 + 2];
+        if (r < minRed) continue;
+        var rb = r - b;
+        var rg = r - g;
+        if (rb < minChroma || rg < 14) continue;
+
+        var hsv = rgbToHueSatVal(r, g, b);
+        var hue = hsv[0], sat = hsv[1];
+        // #ff9a2e is hue ~31°, #ff5a00 glow is hue ~21°; allow 7°–48° for JPEG / dark-bg shifts
+        if (hue < 7 || hue > 48 || sat < minSat) continue;
+
+        var b3 = pi * 3;
+        var bgM = orangeMetric(bg[b3], bg[b3 + 1], bg[b3 + 2]);
+        var pxM = orangeMetric(r, g, b);
+        var rel = pxM - bgM;
+
+        // Strong direct match to #ff9a2e text core (or clear local orange jump against warm backgrounds)
+        var strongCore = (r >= 205 && g >= 85 && g <= 205 && b <= 115 && rb >= 125 && sat >= 0.52 && rel >= 8);
+        var clearStroke = (rel >= minRelBoost && (r >= bg[b3] + 10 || b <= bg[b3 + 2] - 12));
+
+        if (strongCore || clearStroke) {
+          core[pi] = 1;
+          rawCount++;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    // Filter out tiny isolated noise specks (< 2 neighbors in 3x3)
+    var cleanCore = new Uint8Array(workW * workH);
+    var coreCount = 0;
+    minX = workW; maxX = -1; minY = workH; maxY = -1;
+    for (var y2 = cy0; y2 < cy1; y2++) {
+      for (var x2 = cx0; x2 < cx1; x2++) {
+        var p = y2 * workW + x2;
+        if (!core[p]) continue;
+        var nb = 0;
+        for (var dy = -1; dy <= 1; dy++) {
+          var ny = y2 + dy; if (ny < 0 || ny >= workH) continue;
+          for (var dx = -1; dx <= 1; dx++) {
+            var nx = x2 + dx; if (nx < 0 || nx >= workW) continue;
+            if (core[ny * workW + nx]) nb++;
+          }
+        }
+        if (nb >= 3) {
+          cleanCore[p] = 1;
+          coreCount++;
+          if (x2 < minX) minX = x2;
+          if (x2 > maxX) maxX = x2;
+          if (y2 < minY) minY = y2;
+          if (y2 > maxY) maxY = y2;
+        }
+      }
+    }
+
+    // Validate this looks like a photobooth4u date stamp (not random noise)
+    var spanX = maxX >= minX ? (maxX - minX + 1) : 0;
+    var spanY = maxY >= minY ? (maxY - minY + 1) : 0;
+    var minExpectedPixels = Math.max(18, Math.round(fs * fs * (sens === 3 ? 0.10 : 0.16)));
+    var minExpectedSpanX = fs * (sens === 3 ? 1.4 : 2.0);
+    var detected = coreCount >= minExpectedPixels && spanX >= minExpectedSpanX && spanY >= Math.max(6, fs * 0.25);
+
+    var mask = new Uint8Array(workW * workH);
+    if (!detected) {
+      return { detected: false, mask: mask, coreCount: coreCount, bounds: null };
+    }
+
+    // Pass 2: Distance transform from cleanCore -> adaptive glow-halo expansion
+    var dist = distanceFromMask(cleanCore, workW, workH);
+    var innerDilate = Math.max(2.2, fs * 0.16 * haloScale);
+    var midGlow = Math.max(4.0, fs * 0.30 * haloScale);
+    var outerGlow = Math.max(6.0, fs * 0.48 * haloScale);
+
+    // Tight band around detected characters (prevents bleeding far outside the text row)
+    var bx0 = Math.max(rx0, Math.floor(minX - outerGlow - 2));
+    var bx1 = Math.min(rx1, Math.ceil(maxX + outerGlow + 2));
+    var by0 = Math.max(ry0, Math.floor(minY - outerGlow - 2));
+    var by1 = Math.min(ry1, Math.ceil(maxY + outerGlow + 2));
+
+    for (var y3 = by0; y3 < by1; y3++) {
+      for (var x3 = bx0; x3 < bx1; x3++) {
+        var idx = y3 * workW + x3;
+        var d = dist[idx];
+        if (d <= innerDilate) {
+          mask[idx] = 1;
+        } else if (d <= outerGlow) {
+          var j4 = idx * 4;
+          var r3 = workData[j4], g3 = workData[j4 + 1], b3 = workData[j4 + 2];
+          var j3 = idx * 3;
+          var relO = orangeMetric(r3, g3, b3) - orangeMetric(bg[j3], bg[j3 + 1], bg[j3 + 2]);
+          if (d <= midGlow && (relO > 8 || (r3 - b3 > 34 && r3 > g3 + 6))) {
+            mask[idx] = 1;
+          } else if (relO > 16 && r3 > g3 + 8 && r3 - b3 > 26) {
+            mask[idx] = 1;
+          }
+        }
+      }
+    }
+
+    // Fill enclosed digit counter-holes (loops inside 0, 6, 8, 9) and apply 1px soft safety pad
+    fillSmallMaskHoles(mask, workW, workH, Math.round(fs * fs * 0.55));
+    var padMask = new Uint8Array(mask);
+    for (var y4 = Math.max(1, by0); y4 < Math.min(workH - 1, by1); y4++) {
+      for (var x4 = Math.max(1, bx0); x4 < Math.min(workW - 1, bx1); x4++) {
+        var k = y4 * workW + x4;
+        if (mask[k]) continue;
+        if (mask[k - 1] || mask[k + 1] || mask[k - workW] || mask[k + workW]) padMask[k] = 1;
+      }
+    }
+
+    return {
+      detected: true,
+      mask: padMask,
+      coreCount: coreCount,
+      bounds: { x0: bx0, y0: by0, x1: bx1, y1: by1 }
+    };
+  }
+
+  // =========================================================================
+  // 2. HIGH-QUALITY INPAINTING ENGINE (100% PURE JS, OFFLINE)
+  //   - Smooth Fill: Multi-grid harmonic diffusion + local grain matching
+  //   - Smart Texture: Coarse-to-fine PatchMatch (Barnes et al.) + patch voting
+  //     with boundary feathering; never touches pixels outside the mask!
+  // =========================================================================
+
+  function downsample2x(rgb, mask, w, h) {
+    var nw = Math.max(1, Math.ceil(w / 2));
+    var nh = Math.max(1, Math.ceil(h / 2));
+    var nrgb = new Float32Array(nw * nh * 3);
+    var nmask = new Uint8Array(nw * nh);
+    for (var y = 0; y < nh; y++) {
+      for (var x = 0; x < nw; x++) {
+        var sr = 0, sg = 0, sb = 0, cnt = 0;
+        var allMasked = true;
+        for (var dy = 0; dy < 2; dy++) {
+          var sy = Math.min(h - 1, y * 2 + dy);
+          for (var dx = 0; dx < 2; dx++) {
+            var sx = Math.min(w - 1, x * 2 + dx);
+            var si = sy * w + sx;
+            if (!mask[si]) {
+              allMasked = false;
+              var s3 = si * 3;
+              sr += rgb[s3]; sg += rgb[s3 + 1]; sb += rgb[s3 + 2];
+              cnt++;
+            }
+          }
+        }
+        var di = y * nw + x;
+        var d3 = di * 3;
+        if (allMasked) {
+          nmask[di] = 1;
+          var si0 = Math.min(h - 1, y * 2) * w + Math.min(w - 1, x * 2);
+          nrgb[d3] = rgb[si0 * 3]; nrgb[d3 + 1] = rgb[si0 * 3 + 1]; nrgb[d3 + 2] = rgb[si0 * 3 + 2];
+        } else {
+          nmask[di] = 0;
+          nrgb[d3] = sr / cnt; nrgb[d3 + 1] = sg / cnt; nrgb[d3 + 2] = sb / cnt;
+        }
+      }
+    }
+    return { rgb: nrgb, mask: nmask, w: nw, h: nh };
+  }
+
+  function upsampleIntoMask(srcRgb, sw, sh, dstRgb, dstMask, dw, dh) {
+    for (var y = 0; y < dh; y++) {
+      var fy = (y + 0.5) * sh / dh - 0.5;
+      var y0 = Math.max(0, Math.floor(fy)), y1 = Math.min(sh - 1, y0 + 1);
+      var wy = Math.max(0, Math.min(1, fy - y0));
+      for (var x = 0; x < dw; x++) {
+        var di = y * dw + x;
+        if (!dstMask[di]) continue;
+        var fx = (x + 0.5) * sw / dw - 0.5;
+        var x0 = Math.max(0, Math.floor(fx)), x1 = Math.min(sw - 1, x0 + 1);
+        var wx = Math.max(0, Math.min(1, fx - x0));
+        var i00 = (y0 * sw + x0) * 3, i10 = (y0 * sw + x1) * 3;
+        var i01 = (y1 * sw + x0) * 3, i11 = (y1 * sw + x1) * 3;
+        var w00 = (1 - wx) * (1 - wy), w10 = wx * (1 - wy), w01 = (1 - wx) * wy, w11 = wx * wy;
+        var d3 = di * 3;
+        dstRgb[d3]     = srcRgb[i00] * w00 + srcRgb[i10] * w10 + srcRgb[i01] * w01 + srcRgb[i11] * w11;
+        dstRgb[d3 + 1] = srcRgb[i00 + 1] * w00 + srcRgb[i10 + 1] * w10 + srcRgb[i01 + 1] * w01 + srcRgb[i11 + 1] * w11;
+        dstRgb[d3 + 2] = srcRgb[i00 + 2] * w00 + srcRgb[i10 + 2] * w10 + srcRgb[i01 + 2] * w01 + srcRgb[i11 + 2] * w11;
+      }
+    }
+  }
+
+  // Multi-grid Laplace harmonic relaxation (very fast & guarantees smooth, seam-free gradients)
+  function harmonicRelax(rgb, mask, w, h, iters) {
+    // Collect masked indices once
+    var mList = [];
+    for (var i = 0; i < w * h; i++) if (mask[i]) mList.push(i);
+    if (!mList.length) return;
+
+    // Seed any uninitialized masked pixels via outward-to-inward onion peel
+    var known = new Uint8Array(w * h);
+    for (var k = 0; k < w * h; k++) if (!mask[k]) known[k] = 1;
+    var rem = mList.length, guard = 0;
+    while (rem > 0 && guard++ < Math.max(w, h) * 2) {
+      var newly = [];
+      for (var j = 0; j < mList.length; j++) {
+        var p = mList[j];
+        if (known[p]) continue;
+        var px = p % w, py = (p / w) | 0;
+        var sr = 0, sg = 0, sb = 0, c = 0;
+        if (px > 0 && known[p - 1]) { var a = (p - 1) * 3; sr += rgb[a]; sg += rgb[a + 1]; sb += rgb[a + 2]; c++; }
+        if (px + 1 < w && known[p + 1]) { var b = (p + 1) * 3; sr += rgb[b]; sg += rgb[b + 1]; sb += rgb[b + 2]; c++; }
+        if (py > 0 && known[p - w]) { var u = (p - w) * 3; sr += rgb[u]; sg += rgb[u + 1]; sb += rgb[u + 2]; c++; }
+        if (py + 1 < h && known[p + w]) { var d = (p + w) * 3; sr += rgb[d]; sg += rgb[d + 1]; sb += rgb[d + 2]; c++; }
+        if (c > 0) {
+          var p3 = p * 3;
+          rgb[p3] = sr / c; rgb[p3 + 1] = sg / c; rgb[p3 + 2] = sb / c;
+          newly.push(p);
+        }
+      }
+      if (!newly.length) break;
+      for (var n = 0; n < newly.length; n++) known[newly[n]] = 1;
+      rem -= newly.length;
+    }
+
+    // Successive over-relaxation (SOR) Gauss-Seidel iterations
+    var omega = 1.65;
+    for (var it = 0; it < iters; it++) {
+      for (var m = 0; m < mList.length; m++) {
+        var idx = mList[m];
+        var x = idx % w, y = (idx / w) | 0;
+        var tr = 0, tg = 0, tb = 0, wsum = 0;
+        if (x > 0)     { var l3 = (idx - 1) * 3; tr += rgb[l3]; tg += rgb[l3 + 1]; tb += rgb[l3 + 2]; wsum++; }
+        if (x + 1 < w) { var r3 = (idx + 1) * 3; tr += rgb[r3]; tg += rgb[r3 + 1]; tb += rgb[r3 + 2]; wsum++; }
+        if (y > 0)     { var u3 = (idx - w) * 3; tr += rgb[u3]; tg += rgb[u3 + 1]; tb += rgb[u3 + 2]; wsum++; }
+        if (y + 1 < h) { var d3 = (idx + w) * 3; tr += rgb[d3]; tg += rgb[d3 + 1]; tb += rgb[d3 + 2]; wsum++; }
+        if (!wsum) continue;
+        var o3 = idx * 3;
+        rgb[o3]     += omega * (tr / wsum - rgb[o3]);
+        rgb[o3 + 1] += omega * (tg / wsum - rgb[o3 + 1]);
+        rgb[o3 + 2] += omega * (tb / wsum - rgb[o3 + 2]);
+      }
+    }
+  }
+
+  function multiGridHarmonicFill(rgb, mask, w, h) {
+    var pyr = [{ rgb: rgb, mask: mask, w: w, h: h }];
+    while (pyr[pyr.length - 1].w > 24 && pyr[pyr.length - 1].h > 24 && pyr.length < 5) {
+      var prev = pyr[pyr.length - 1];
+      var anyM = false;
+      for (var i = 0; i < prev.mask.length; i++) { if (prev.mask[i]) { anyM = true; break; } }
+      if (!anyM) break;
+      pyr.push(downsample2x(prev.rgb, prev.mask, prev.w, prev.h));
+    }
+    var top = pyr[pyr.length - 1];
+    harmonicRelax(top.rgb, top.mask, top.w, top.h, 40);
+    for (var lv = pyr.length - 2; lv >= 0; lv--) {
+      var cur = pyr[lv], coarse = pyr[lv + 1];
+      upsampleIntoMask(coarse.rgb, coarse.w, coarse.h, cur.rgb, cur.mask, cur.w, cur.h);
+      harmonicRelax(cur.rgb, cur.mask, cur.w, cur.h, lv === 0 ? 18 : 26);
+    }
+    return pyr;
+  }
+
+  // Deterministic fast PRNG for reproducible PatchMatch
+  function mulberry32(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // PatchMatch texture synthesis at one pyramid level
+  function patchMatchLevel(rgb, mask, w, h, patchRad, iterations, emPasses, prevNnf, maxSearchCap) {
+    var pr = patchRad;
+    var step = pr >= 4 ? 2 : 1; // stride inside patch distance for speed (still covers full footprint)
+
+    // Build valid source lookup: source center (sx, sy) is valid iff its entire patch contains 0 masked pixels
+    var validSrc = new Uint8Array(w * h);
+    var validList = [];
+    // Prefix sum of mask for O(1) validity check
+    var ms = new Int32Array((w + 1) * (h + 1));
+    var st = w + 1;
+    for (var y = 0; y < h; y++) {
+      var rowSum = 0;
+      for (var x = 0; x < w; x++) {
+        rowSum += mask[y * w + x] ? 1 : 0;
+        ms[(y + 1) * st + x + 1] = ms[y * st + x + 1] + rowSum;
+      }
+    }
+    for (var sy = pr; sy < h - pr; sy++) {
+      for (var sx = pr; sx < w - pr; sx++) {
+        var ax0 = sx - pr, ay0 = sy - pr, ax1 = sx + pr + 1, ay1 = sy + pr + 1;
+        var mCount = ms[ay1 * st + ax1] - ms[ay0 * st + ax1] - ms[ay1 * st + ax0] + ms[ay0 * st + ax0];
+        if (mCount === 0) {
+          validSrc[sy * w + sx] = 1;
+          validList.push(sy * w + sx);
+        }
+      }
+    }
+    if (validList.length < 16) return null;
+
+    // Active target pixels: any pixel whose patch overlaps the mask
+    var active = new Uint8Array(w * h);
+    var axMin = w, axMax = 0, ayMin = h, ayMax = 0;
+    for (var ty = pr; ty < h - pr; ty++) {
+      for (var tx = pr; tx < w - pr; tx++) {
+        var bx0 = tx - pr, by0 = ty - pr, bx1 = tx + pr + 1, by1 = ty + pr + 1;
+        var mc = ms[by1 * st + bx1] - ms[by0 * st + bx1] - ms[by1 * st + bx0] + ms[by0 * st + bx0];
+        if (mc > 0) {
+          active[ty * w + tx] = 1;
+          if (tx < axMin) axMin = tx;
+          if (tx > axMax) axMax = tx;
+          if (ty < ayMin) ayMin = ty;
+          if (ty > ayMax) ayMax = ty;
+        }
+      }
+    }
+    if (axMax < axMin) return null;
+
+    var rng = mulberry32((w * 73856093) ^ (h * 19349663) ^ (pr * 83492791));
+    var nnx = new Int16Array(w * h);
+    var nny = new Int16Array(w * h);
+    var nnd = new Float32Array(w * h);
+    nnx.fill(-1);
+
+    var maskWeight = 0.25;
+    function patchCost(tx, ty, sx, sy) {
+      var cost = 0, samples = 0;
+      for (var dy = -pr; dy <= pr; dy += step) {
+        var trOff = (ty + dy) * w;
+        var srOff = (sy + dy) * w;
+        for (var dx = -pr; dx <= pr; dx += step) {
+          var ti = trOff + tx + dx;
+          var si = srOff + sx + dx;
+          var t3 = ti * 3, s3 = si * 3;
+          var dr = rgb[t3] - rgb[s3];
+          var dg = rgb[t3 + 1] - rgb[s3 + 1];
+          var db = rgb[t3 + 2] - rgb[s3 + 2];
+          var wt = mask[ti] ? maskWeight : 2.0;
+          cost += (dr * dr + dg * dg + db * db) * wt;
+          samples += wt;
+        }
+      }
+      // Subtle spatial proximity preference keeps lighting gradients natural without fighting texture periodicity
+      var ddx = tx - sx, ddy = ty - sy;
+      return (cost / samples) + (ddx * ddx + ddy * ddy) * 0.0012;
+    }
+
+    // Initialize NNF (from upsampled coarser level if available, else random valid source)
+    for (var iy = ayMin; iy <= ayMax; iy++) {
+      for (var ix = axMin; ix <= axMax; ix++) {
+        var idx = iy * w + ix;
+        if (!active[idx]) continue;
+        var sx0 = -1, sy0 = -1;
+        if (prevNnf) {
+          var px = Math.min(prevNnf.w - 1, ix >> 1);
+          var py = Math.min(prevNnf.h - 1, iy >> 1);
+          var pi = py * prevNnf.w + px;
+          if (prevNnf.nnx[pi] >= 0) {
+            var cx = Math.min(w - pr - 1, Math.max(pr, prevNnf.nnx[pi] * 2 + (ix & 1)));
+            var cy = Math.min(h - pr - 1, Math.max(pr, prevNnf.nny[pi] * 2 + (iy & 1)));
+            if (validSrc[cy * w + cx]) { sx0 = cx; sy0 = cy; }
+          }
+        }
+        if (sx0 < 0) {
+          var pick = validList[(rng() * validList.length) | 0];
+          sx0 = pick % w;
+          sy0 = (pick / w) | 0;
+        }
+        nnx[idx] = sx0;
+        nny[idx] = sy0;
+        nnd[idx] = patchCost(ix, iy, sx0, sy0);
+      }
+    }
+
+    var maxRad = Math.min(maxSearchCap || 9999, Math.max(w, h) * 0.65);
+    var accR = new Float32Array(w * h);
+    var accG = new Float32Array(w * h);
+    var accB = new Float32Array(w * h);
+    var accW = new Float32Array(w * h);
+
+    for (var em = 0; em < emPasses; em++) {
+      maskWeight = prevNnf ? (em === 0 ? 0.75 : 1.0) : (em === 0 ? 0.20 : (em === 1 ? 0.65 : 1.0));
+      // Recompute current costs with updated image & maskWeight
+      for (var ry = ayMin; ry <= ayMax; ry++) {
+        for (var rx = axMin; rx <= axMax; rx++) {
+          var ri = ry * w + rx;
+          if (active[ri]) nnd[ri] = patchCost(rx, ry, nnx[ri], nny[ri]);
+        }
+      }
+
+      // PatchMatch propagation + random search
+      for (var it = 0; it < iterations; it++) {
+        var rev = (it & 1) === 1;
+        var yStart = rev ? ayMax : ayMin, yEnd = rev ? ayMin - 1 : ayMax + 1, yDir = rev ? -1 : 1;
+        var xStart = rev ? axMax : axMin, xEnd = rev ? axMin - 1 : axMax + 1, xDir = rev ? -1 : 1;
+
+        for (var y2 = yStart; y2 !== yEnd; y2 += yDir) {
+          for (var x2 = xStart; x2 !== xEnd; x2 += xDir) {
+            var p = y2 * w + x2;
+            if (!active[p]) continue;
+            var bestX = nnx[p], bestY = nny[p], bestD = nnd[p];
+
+            // Propagate from horizontal neighbor
+            var nx1 = x2 - xDir;
+            if (nx1 >= axMin && nx1 <= axMax) {
+              var np1 = y2 * w + nx1;
+              if (active[np1] && nnx[np1] >= 0) {
+                var cx1 = nnx[np1] + xDir, cy1 = nny[np1];
+                if (cx1 >= pr && cx1 < w - pr && validSrc[cy1 * w + cx1]) {
+                  var d1 = patchCost(x2, y2, cx1, cy1);
+                  if (d1 < bestD) { bestD = d1; bestX = cx1; bestY = cy1; }
+                }
+              }
+            }
+            // Propagate from vertical neighbor
+            var ny1 = y2 - yDir;
+            if (ny1 >= ayMin && ny1 <= ayMax) {
+              var np2 = ny1 * w + x2;
+              if (active[np2] && nnx[np2] >= 0) {
+                var cx2 = nnx[np2], cy2 = nny[np2] + yDir;
+                if (cy2 >= pr && cy2 < h - pr && validSrc[cy2 * w + cx2]) {
+                  var d2 = patchCost(x2, y2, cx2, cy2);
+                  if (d2 < bestD) { bestD = d2; bestX = cx2; bestY = cy2; }
+                }
+              }
+            }
+            // Random search around best match
+            for (var rad = maxRad; rad >= 2; rad *= 0.5) {
+              var rx2 = Math.round(bestX + (rng() * 2 - 1) * rad);
+              var ry2 = Math.round(bestY + (rng() * 2 - 1) * rad);
+              if (rx2 >= pr && rx2 < w - pr && ry2 >= pr && ry2 < h - pr && validSrc[ry2 * w + rx2]) {
+                var d3 = patchCost(x2, y2, rx2, ry2);
+                if (d3 < bestD) { bestD = d3; bestX = rx2; bestY = ry2; }
+              }
+            }
+            nnx[p] = bestX; nny[p] = bestY; nnd[p] = bestD;
+          }
+        }
+      }
+
+      // Patch Voting: reconstruct every masked pixel from overlapping best-matching clean patches
+      accR.fill(0); accG.fill(0); accB.fill(0); accW.fill(0);
+      var dSum = 0, dCnt = 0;
+      for (var dy0 = ayMin; dy0 <= ayMax; dy0++) {
+        for (var dx0 = axMin; dx0 <= axMax; dx0++) {
+          var di0 = dy0 * w + dx0;
+          if (active[di0]) { dSum += nnd[di0]; dCnt++; }
+        }
+      }
+      var sigma = Math.max(16, (dCnt ? dSum / dCnt : 120) * 0.45);
+
+      for (var vy = ayMin; vy <= ayMax; vy++) {
+        for (var vx = axMin; vx <= axMax; vx++) {
+          var vp = vy * w + vx;
+          if (!active[vp]) continue;
+          var sxv = nnx[vp], syv = nny[vp];
+          if (sxv < 0) continue;
+          var wt = Math.exp(-nnd[vp] / sigma) + 1e-5;
+          for (var oy = -pr; oy <= pr; oy++) {
+            var tyv = vy + oy, syv2 = syv + oy;
+            var tRow = tyv * w, sRow = syv2 * w;
+            for (var ox = -pr; ox <= pr; ox++) {
+              var ti = tRow + vx + ox;
+              if (!mask[ti]) continue;
+              var si3 = (sRow + sxv + ox) * 3;
+              accR[ti] += rgb[si3] * wt;
+              accG[ti] += rgb[si3 + 1] * wt;
+              accB[ti] += rgb[si3 + 2] * wt;
+              accW[ti] += wt;
+            }
+          }
+        }
+      }
+
+      for (var ui = 0; ui < w * h; ui++) {
+        if (mask[ui] && accW[ui] > 0) {
+          var u3 = ui * 3;
+          rgb[u3] = accR[ui] / accW[ui];
+          rgb[u3 + 1] = accG[ui] / accW[ui];
+          rgb[u3 + 2] = accB[ui] / accW[ui];
+        }
+      }
+    }
+
+    return { nnx: nnx, nny: nny, w: w, h: h };
+  }
+
+  // Estimates local sensor grain/noise sigma from clean pixels immediately outside the mask
+  function estimateLocalNoise(origData, mask, w, h) {
+    var sumSq = 0, cnt = 0;
+    for (var y = 2; y < h - 2; y += 2) {
+      for (var x = 2; x < w - 2; x += 2) {
+        var i = y * w + x;
+        if (mask[i] || mask[i - 1] || mask[i + 1] || mask[i - w] || mask[i + w]) continue;
+        var i4 = i * 4;
+        var lC = 0.299 * origData[i4] + 0.587 * origData[i4 + 1] + 0.114 * origData[i4 + 2];
+        var lL = 0.299 * origData[(i - 1) * 4] + 0.587 * origData[(i - 1) * 4 + 1] + 0.114 * origData[(i - 1) * 4 + 2];
+        var lR = 0.299 * origData[(i + 1) * 4] + 0.587 * origData[(i + 1) * 4 + 1] + 0.114 * origData[(i + 1) * 4 + 2];
+        var lU = 0.299 * origData[(i - w) * 4] + 0.587 * origData[(i - w) * 4 + 1] + 0.114 * origData[(i - w) * 4 + 2];
+        var lD = 0.299 * origData[(i + w) * 4] + 0.587 * origData[(i + w) * 4 + 1] + 0.114 * origData[(i + w) * 4 + 2];
+        var lap = lC - 0.25 * (lL + lR + lU + lD);
+        // Ignore strong edges so we measure sensor grain, not object outlines
+        if (Math.abs(lap) < 14) { sumSq += lap * lap; cnt++; }
+      }
+    }
+    return cnt > 20 ? Math.min(8, Math.sqrt(sumSq / cnt) * 1.15) : 0;
+  }
+
+  function inpaintROI(origRgba, mask, w, h, method) {
+    var rgb = new Float32Array(w * h * 3);
+    var anyMask = false;
+    for (var i = 0; i < w * h; i++) {
+      if (mask[i]) anyMask = true;
+      rgb[i * 3] = origRgba[i * 4];
+      rgb[i * 3 + 1] = origRgba[i * 4 + 1];
+      rgb[i * 3 + 2] = origRgba[i * 4 + 2];
+    }
+    var out = new Uint8ClampedArray(origRgba);
+    if (!anyMask) return out;
+
+    // Step 1: Multi-grid smooth harmonic fill (used directly for 'smooth', and as pyramid init for 'smart')
+    var pyr = multiGridHarmonicFill(rgb, mask, w, h);
+
+    if (method === 'smart') {
+      // Step 2: Coarse-to-fine PatchMatch texture synthesis
+      var prevNnf = null;
+      for (var lv = pyr.length - 1; lv >= 0; lv--) {
+        var cur = pyr[lv];
+        if (lv < pyr.length - 1) {
+          upsampleIntoMask(pyr[lv + 1].rgb, pyr[lv + 1].w, pyr[lv + 1].h, cur.rgb, cur.mask, cur.w, cur.h);
+        }
+        var largeFinest = (lv === 0 && cur.w * cur.h > 200000);
+        var pr = lv === 0 ? 4 : 3;
+        var iters = largeFinest ? 2 : (lv === 0 ? 3 : 4);
+        var em = lv === 0 ? 1 : 3;
+        var searchCap = largeFinest ? 24 : (lv === 0 ? 48 : 9999);
+        prevNnf = patchMatchLevel(cur.rgb, cur.mask, cur.w, cur.h, pr, iters, em, prevNnf, searchCap);
+      }
+      rgb = pyr[0].rgb;
+    } else {
+      // Smooth mode: add subtle matched local grain so plain backdrops don't look plastic-blurred
+      var sigma = estimateLocalNoise(origRgba, mask, w, h);
+      if (sigma > 0.6) {
+        var rng = mulberry32(w * 997 + h * 313);
+        for (var j = 0; j < w * h; j++) {
+          if (!mask[j]) continue;
+          var n = (rng() + rng() + rng() - 1.5) * sigma * 1.1;
+          var j3 = j * 3;
+          rgb[j3] += n; rgb[j3 + 1] += n; rgb[j3 + 2] += n;
+        }
+      }
+    }
+
+    // Step 3: Compute boundary distance inside mask for 1.5px soft feathering (zero hard seam!)
+    var invMask = new Uint8Array(w * h);
+    for (var k = 0; k < w * h; k++) invMask[k] = mask[k] ? 0 : 1;
+    var depth = distanceFromMask(invMask, w, h);
+
+    for (var p = 0; p < w * h; p++) {
+      if (!mask[p]) continue;
+      var a = depth[p] >= 2.0 ? 1.0 : Math.min(1.0, (depth[p] - 0.35) / 1.65);
+      if (a < 0.35) a = 0.35;
+      var p3 = p * 3, p4 = p * 4;
+      out[p4]     = Math.max(0, Math.min(255, Math.round(origRgba[p4] * (1 - a) + rgb[p3] * a)));
+      out[p4 + 1] = Math.max(0, Math.min(255, Math.round(origRgba[p4 + 1] * (1 - a) + rgb[p3 + 1] * a)));
+      out[p4 + 2] = Math.max(0, Math.min(255, Math.round(origRgba[p4 + 2] * (1 - a) + rgb[p3 + 2] * a)));
+      out[p4 + 3] = origRgba[p4 + 3];
+    }
+    return out;
+  }
+
+  // =========================================================================
+  // 3. JPEG METADATA PRESERVATION (EXIF + ICC + 300 DPI JFIF)
+  // =========================================================================
+
+  function resetExifOrientationInApp1(seg) {
+    // seg starts with FF E1 <lenHi> <lenLo> "Exif\0\0" ...
+    if (seg.length < 18) return seg;
+    if (seg[4] !== 0x45 || seg[5] !== 0x78 || seg[6] !== 0x69 || seg[7] !== 0x66 || seg[8] !== 0 || seg[9] !== 0) return seg;
+    var copy = new Uint8Array(seg);
+    var tiff = 10;
+    var le = copy[tiff] === 0x49 && copy[tiff + 1] === 0x49;
+    var be = copy[tiff] === 0x4D && copy[tiff + 1] === 0x4D;
+    if (!le && !be) return seg;
+    function r16(o) { return le ? (copy[o] | (copy[o + 1] << 8)) : ((copy[o] << 8) | copy[o + 1]); }
+    function r32(o) { return le ? ((copy[o] | (copy[o + 1] << 8) | (copy[o + 2] << 16) | (copy[o + 3] << 24)) >>> 0) : (((copy[o] << 24) | (copy[o + 1] << 16) | (copy[o + 2] << 8) | copy[o + 3]) >>> 0); }
+    function w16(o, v) { if (le) { copy[o] = v & 0xFF; copy[o + 1] = (v >> 8) & 0xFF; } else { copy[o] = (v >> 8) & 0xFF; copy[o + 1] = v & 0xFF; } }
+    if (tiff + 8 > copy.length) return seg;
+    var ifd0 = tiff + r32(tiff + 4);
+    if (ifd0 + 2 > copy.length) return seg;
+    var entries = r16(ifd0);
+    for (var i = 0; i < entries; i++) {
+      var eo = ifd0 + 2 + i * 12;
+      if (eo + 12 > copy.length) break;
+      if (r16(eo) === 0x0112) { // Orientation tag -> set to 1 (normal upright)
+        w16(eo + 8, 1);
+        break;
+      }
+    }
+    return copy;
+  }
+
+  function extractJpegMetaSegments(bytes) {
+    if (!bytes || bytes.length < 4 || bytes[0] !== 0xFF || bytes[1] !== 0xD8) return [];
+    var segs = [], i = 2;
+    while (i + 3 < bytes.length && bytes[i] === 0xFF) {
+      var marker = bytes[i + 1];
+      if (marker === 0xDA || marker === 0xD9) break; // SOS / EOI
+      if (marker === 0xFF) { i++; continue; }
+      if (marker >= 0xD0 && marker <= 0xD7) { i += 2; continue; }
+      var len = (bytes[i + 2] << 8) | bytes[i + 3];
+      if (len < 2 || i + 2 + len > bytes.length) break;
+      // Preserve JFIF (APP0, carries 300 DPI), EXIF/XMP (APP1), ICC Profile (APP2), IPTC (APP13), COM
+      if (marker === 0xE0 || marker === 0xE1 || marker === 0xE2 || marker === 0xED || marker === 0xFE) {
+        var seg = bytes.slice(i, i + 2 + len);
+        if (marker === 0xE1) seg = resetExifOrientationInApp1(seg);
+        segs.push({ marker: marker, data: seg });
+      }
+      i += 2 + len;
+    }
+    return segs;
+  }
+
+  async function spliceJpegMetadata(origFile, newJpegBlob) {
+    try {
+      var origBytes = new Uint8Array(await origFile.arrayBuffer());
+      var meta = extractJpegMetaSegments(origBytes);
+      if (!meta.length) return newJpegBlob;
+      var outBytes = new Uint8Array(await newJpegBlob.arrayBuffer());
+      if (outBytes.length < 4 || outBytes[0] !== 0xFF || outBytes[1] !== 0xD8) return newJpegBlob;
+
+      var hasOrigApp0 = meta.some(function (m) { return m.marker === 0xE0; });
+      // Find where newJpegBlob's non-APP0/APP1 data begins
+      var bodyOffset = 2;
+      if (hasOrigApp0 && outBytes[2] === 0xFF && outBytes[3] === 0xE0) {
+        var app0Len = (outBytes[4] << 8) | outBytes[5];
+        if (2 + 2 + app0Len < outBytes.length) bodyOffset = 2 + 2 + app0Len;
+      }
+
+      var total = 2 + (outBytes.length - bodyOffset);
+      for (var i = 0; i < meta.length; i++) total += meta[i].data.length;
+      var merged = new Uint8Array(total);
+      merged[0] = 0xFF; merged[1] = 0xD8;
+      var pos = 2;
+      for (var j = 0; j < meta.length; j++) {
+        merged.set(meta[j].data, pos);
+        pos += meta[j].data.length;
+      }
+      merged.set(outBytes.subarray(bodyOffset), pos);
+      return new Blob([merged], { type: 'image/jpeg' });
+    } catch (e) {
+      return newJpegBlob;
+    }
+  }
+
+  // =========================================================================
+  // 4. ZERO-DEPENDENCY STORE ZIP WRITER (OFFLINE, ANY BROWSER)
+  // =========================================================================
+
+  var CRC_TABLE = (function () {
+    var t = new Uint32Array(256);
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(bytes) {
+    var c = 0xFFFFFFFF;
+    for (var i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function buildZipBlob(entries) {
+    // entries: [{ name: string, bytes: Uint8Array }]
+    var enc = new TextEncoder();
+    var now = new Date();
+    var dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+    var dosDate = ((Math.max(1980, now.getFullYear()) - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+
+    var locals = [];
+    var centrals = [];
+    var offset = 0;
+
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      var nameBytes = enc.encode(e.name);
+      var crc = crc32(e.bytes);
+      var size = e.bytes.length;
+
+      var lh = new Uint8Array(30 + nameBytes.length);
+      var ldv = new DataView(lh.buffer);
+      ldv.setUint32(0, 0x04034B50, true);
+      ldv.setUint16(4, 20, true);
+      ldv.setUint16(6, 0x0800, true); // UTF-8 filename flag
+      ldv.setUint16(8, 0, true);      // Store (no compression — JPEGs are already compressed)
+      ldv.setUint16(10, dosTime, true);
+      ldv.setUint16(12, dosDate, true);
+      ldv.setUint32(14, crc, true);
+      ldv.setUint32(18, size, true);
+      ldv.setUint32(22, size, true);
+      ldv.setUint16(26, nameBytes.length, true);
+      ldv.setUint16(28, 0, true);
+      lh.set(nameBytes, 30);
+      locals.push(lh, e.bytes);
+
+      var ch = new Uint8Array(46 + nameBytes.length);
+      var cdv = new DataView(ch.buffer);
+      cdv.setUint32(0, 0x02014B50, true);
+      cdv.setUint16(4, 20, true);
+      cdv.setUint16(6, 20, true);
+      cdv.setUint16(8, 0x0800, true);
+      cdv.setUint16(10, 0, true);
+      cdv.setUint16(12, dosTime, true);
+      cdv.setUint16(14, dosDate, true);
+      cdv.setUint32(16, crc, true);
+      cdv.setUint32(20, size, true);
+      cdv.setUint32(24, size, true);
+      cdv.setUint16(28, nameBytes.length, true);
+      cdv.setUint16(30, 0, true);
+      cdv.setUint16(32, 0, true);
+      cdv.setUint16(34, 0, true);
+      cdv.setUint16(36, 0, true);
+      cdv.setUint32(38, 0, true);
+      cdv.setUint32(42, offset, true);
+      ch.set(nameBytes, 46);
+      centrals.push(ch);
+
+      offset += lh.length + size;
+    }
+
+    var cdSize = 0;
+    for (var j = 0; j < centrals.length; j++) cdSize += centrals[j].length;
+    var eocd = new Uint8Array(22);
+    var edv = new DataView(eocd.buffer);
+    edv.setUint32(0, 0x06054B50, true);
+    edv.setUint16(4, 0, true);
+    edv.setUint16(6, 0, true);
+    edv.setUint16(8, entries.length, true);
+    edv.setUint16(10, entries.length, true);
+    edv.setUint32(12, cdSize, true);
+    edv.setUint32(16, offset, true);
+    edv.setUint16(20, 0, true);
+
+    return new Blob(locals.concat(centrals, [eocd]), { type: 'application/zip' });
+  }
+
+  // =========================================================================
+  // 5. IMAGE LOADING, PROCESSING & EXPORT PIPELINE
+  // =========================================================================
+
+  async function decodeImage(file) {
+    if (typeof createImageBitmap === 'function') {
+      try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+      catch (e) { return await createImageBitmap(file); }
+    }
+    return await new Promise(function (resolve, reject) {
+      var u = URL.createObjectURL(file);
+      var im = new Image();
+      im.onload = function () { URL.revokeObjectURL(u); resolve(im); };
+      im.onerror = function (err) { URL.revokeObjectURL(u); reject(err); };
+      im.src = u;
+    });
+  }
+
+  function currentOpts() {
+    return {
+      method: document.getElementById('methodSel').value,
+      haloScale: parseFloat(document.getElementById('haloRange').value) || 1.0,
+      sensitivity: parseInt(document.getElementById('sensRange').value, 10) || 2,
+      exportFmt: document.getElementById('exportFmt').value
+    };
+  }
+
+  function outputFilenameFor(origName, exportFmt) {
+    if (exportFmt === 'png') return origName.replace(/\.(jpe?g|webp|png)$/i, '') + '.png';
+    if (!/\.(jpe?g)$/i.test(origName)) return origName.replace(/\.[^.]+$/, '') + '.jpg';
+    return origName;
+  }
+
+  function canvasToBlob(canvas, mime, quality) {
+    return new Promise(function (resolve, reject) {
+      canvas.toBlob(function (b) { if (b) resolve(b); else reject(new Error('Failed to encode image')); }, mime, quality);
+    });
+  }
+
+  // Processes one item: returns lightweight corner canvases & status; full-res blob can be generated on demand to save RAM
+  async function processPhotoItem(item, opts, useExistingMask) {
+    item.status = 'busy';
+    renderItemRow(item);
+
+    var bmp = await decodeImage(item.file);
+    try {
+      var w = bmp.width, h = bmp.height;
+      item.w = w; item.h = h;
+      var geom = stampRoiFor(w, h);
+      item.geom = geom;
+
+      // Extract ONLY the working ROI around the bottom-right corner
+      var roiCv = document.createElement('canvas');
+      roiCv.width = geom.work.w; roiCv.height = geom.work.h;
+      var rctx = roiCv.getContext('2d', { willReadFrequently: true });
+      rctx.drawImage(bmp, geom.work.x, geom.work.y, geom.work.w, geom.work.h, 0, 0, geom.work.w, geom.work.h);
+      var origImgData = rctx.getImageData(0, 0, geom.work.w, geom.work.h);
+
+      var det;
+      if (useExistingMask && item.mask && item.mask.length === geom.work.w * geom.work.h) {
+        var any = false;
+        for (var i = 0; i < item.mask.length; i++) { if (item.mask[i]) { any = true; break; } }
+        det = { detected: any, mask: item.mask };
+      } else {
+        det = detectDateStampMask(origImgData.data, geom.work.w, geom.work.h, geom, opts);
+        item.mask = det.mask;
+      }
+
+      item.origRoiData = origImgData;
+      item.detected = det.detected;
+
+      if (!det.detected) {
+        item.cleanedRoiData = new ImageData(new Uint8ClampedArray(origImgData.data), geom.work.w, geom.work.h);
+        item.status = 'none';
+      } else {
+        var cleanedBytes = inpaintROI(origImgData.data, item.mask, geom.work.w, geom.work.h, opts.method);
+        item.cleanedRoiData = new ImageData(cleanedBytes, geom.work.w, geom.work.h);
+        item.status = 'done';
+      }
+      item.optsSig = JSON.stringify({ m: opts.method, h: opts.haloScale, s: opts.sensitivity });
+    } finally {
+      if (bmp && typeof bmp.close === 'function') bmp.close();
+    }
+    renderItemRow(item);
+  }
+
+  // Produces the final full-resolution cleaned Blob (keeps 100% original pixels outside the corner ROI!)
+  async function renderFullOutputBlob(item, opts) {
+    if (item.status === 'none' && !item.customMask) {
+      // Truly untouched original file bytes (zero re-encoding!)
+      return { blob: item.file, name: item.name };
+    }
+    var bmp = await decodeImage(item.file);
+    try {
+      var full = document.createElement('canvas');
+      full.width = bmp.width; full.height = bmp.height;
+      var ctx = full.getContext('2d');
+      ctx.drawImage(bmp, 0, 0);
+
+      if (item.cleanedRoiData && item.geom) {
+        ctx.putImageData(item.cleanedRoiData, item.geom.work.x, item.geom.work.y);
+      }
+
+      var fmt = opts.exportFmt || 'jpg97';
+      var outName = outputFilenameFor(item.name, fmt);
+      var blob;
+      if (fmt === 'png') {
+        blob = await canvasToBlob(full, 'image/png');
+      } else {
+        var q = fmt === 'jpg100' ? 1.0 : 0.97;
+        blob = await canvasToBlob(full, 'image/jpeg', q);
+        if (/\.jpe?g$/i.test(item.name) || item.file.type === 'image/jpeg') {
+          blob = await spliceJpegMetadata(item.file, blob);
+        }
+      }
+      full.width = 1; full.height = 1;
+      return { blob: blob, name: outName };
+    } finally {
+      if (bmp && typeof bmp.close === 'function') bmp.close();
+    }
+  }
+
+  // =========================================================================
+  // 6. UI STATE, INSPECTOR, SPLIT COMPARE & MANUAL MASK BRUSH
+  // =========================================================================
+
+  var items = [];
+  var selectedId = null;
+  var seq = 0;
+  var busy = false;
+  var viewMode = 'corner'; // 'corner' | 'full'
+  var toolMode = 'compare'; // 'compare' | 'paint' | 'erase'
+  var splitPos = 0.5;
+  var peekingOriginal = false;
+  var selectedFullCache = null; // { id, origCanvas, cleanCanvas }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var dropzone = $('dropzone');
+  var photoList = $('photoList');
+  var compareBox = $('compareBox');
+  var compareCanvas = $('compareCanvas');
+  var compareDivider = $('compareDivider');
+
+  function setProgress(on, pct, text) {
+    $('progressWrap').classList.toggle('on', !!on);
+    $('progressFill').style.width = Math.max(0, Math.min(100, pct)) + '%';
+    $('progressTxt').textContent = text || '';
+  }
+
+  function updateSummary() {
+    $('countTotal').textContent = String(items.length);
+    var done = 0, none = 0, wait = 0, err = 0;
+    for (var i = 0; i < items.length; i++) {
+      var st = items[i].status;
+      if (st === 'done') done++;
+      else if (st === 'none') none++;
+      else if (st === 'err') err++;
+      else wait++;
+    }
+    if (!items.length) $('countStats').textContent = 'Add photos to start';
+    else $('countStats').textContent = done + ' cleaned · ' + none + ' no stamp' + (wait ? ' · ' + wait + ' pending' : '') + (err ? ' · ' + err + ' error' : '');
+
+    var hasAny = items.length > 0;
+    var hasExportable = items.some(function (it) { return it.status === 'done' || (it.status === 'none' && $('includeUnstamped').checked); });
+    dropzone.classList.toggle('compact', hasAny);
+    $('clearAllBtn').classList.toggle('hidden', !hasAny);
+    $('runAllBtn').disabled = !hasAny || busy;
+    $('saveFolderBtn').disabled = !hasExportable || busy || typeof window.showDirectoryPicker !== 'function';
+    if (typeof window.showDirectoryPicker !== 'function') {
+      $('saveFolderBtn').title = 'Direct folder saving requires Chrome or Edge — use Download ZIP in this browser';
+    }
+    $('downloadZipBtn').disabled = !hasExportable || busy;
+  }
+
+  function statusTagInfo(st) {
+    if (st === 'done') return ['done', 'Cleaned'];
+    if (st === 'none') return ['none', 'No stamp'];
+    if (st === 'busy') return ['busy', 'Cleaning…'];
+    if (st === 'err') return ['err', 'Error'];
+    return ['wait', 'Pending'];
+  }
+
+  function renderItemRow(item) {
+    var row = item._el;
+    if (!row) return;
+    row.classList.toggle('sel', item.id === selectedId);
+    var dim = row.querySelector('.item-dim');
+    if (dim) dim.textContent = item.w ? (item.w + ' × ' + item.h + ' px') : (Math.round(item.file.size / 1024) + ' KB');
+    var tag = row.querySelector('.tag');
+    if (tag) {
+      var info = statusTagInfo(item.status);
+      tag.className = 'tag ' + info[0];
+      tag.textContent = info[1];
+    }
+  }
+
+  function makeThumb(file, imgEl) {
+    var u = URL.createObjectURL(file);
+    imgEl.onload = function () { URL.revokeObjectURL(u); };
+    imgEl.onerror = function () { URL.revokeObjectURL(u); };
+    imgEl.src = u;
+  }
+
+  function addFiles(fileList) {
+    var added = [];
+    for (var i = 0; i < fileList.length; i++) {
+      var f = fileList[i];
+      if (!f || !(/\.(jpe?g|png|webp)$/i.test(f.name) || /^image\/(jpeg|png|webp)$/.test(f.type))) continue;
+      var item = {
+        id: ++seq,
+        file: f,
+        name: f.name,
+        w: 0, h: 0,
+        status: 'wait',
+        detected: false,
+        customMask: false,
+        geom: null,
+        mask: null,
+        origRoiData: null,
+        cleanedRoiData: null,
+        _el: null
+      };
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'item';
+      btn.innerHTML = '<img><div class="item-meta"><div class="item-name"></div><div class="item-dim"></div></div><span class="tag wait">Pending</span>';
+      btn.querySelector('.item-name').textContent = item.name;
+      btn.querySelector('.item-name').title = item.name;
+      makeThumb(f, btn.querySelector('img'));
+      (function (it) {
+        btn.addEventListener('click', function () { selectItem(it.id); });
+      })(item);
+      item._el = btn;
+      photoList.appendChild(btn);
+      items.push(item);
+      renderItemRow(item);
+      added.push(item);
+    }
+    updateSummary();
+    if (added.length && selectedId === null) {
+      selectItem(added[0].id);
+    }
+  }
+
+  async function selectItem(id) {
+    var prev = items.find(function (x) { return x.id === selectedId; });
+    selectedId = id;
+    if (prev) renderItemRow(prev);
+    var cur = items.find(function (x) { return x.id === id; });
+    if (!cur) return;
+    renderItemRow(cur);
+
+    // Auto-process selected photo immediately for instant preview
+    if (cur.status === 'wait' && !busy) {
+      try {
+        await processPhotoItem(cur, currentOpts(), false);
+      } catch (e) {
+        cur.status = 'err';
+        renderItemRow(cur);
+        console.error(e);
+      }
+      updateSummary();
+    }
+    selectedFullCache = null;
+    await renderInspector();
+  }
+
+  function updateInspectorButtons(cur) {
+    var has = !!cur && !!cur.origRoiData;
+    $('viewCornerBtn').disabled = !has;
+    $('viewFullBtn').disabled = !has;
+    $('showMaskChk').disabled = !has;
+    $('peekOrigBtn').disabled = !has;
+    $('dlSingleBtn').disabled = !has || busy;
+    $('toolCompareBtn').disabled = !has;
+    $('toolPaintBtn').disabled = !has || viewMode !== 'corner';
+    $('toolEraseBtn').disabled = !has || viewMode !== 'corner';
+    $('resetMaskBtn').disabled = !has || busy;
+    $('recleanOneBtn').disabled = !has || busy;
+
+    $('viewCornerBtn').classList.toggle('active', viewMode === 'corner');
+    $('viewFullBtn').classList.toggle('active', viewMode === 'full');
+    $('toolCompareBtn').classList.toggle('active', toolMode === 'compare');
+    $('toolPaintBtn').classList.toggle('active', toolMode === 'paint');
+    $('toolEraseBtn').classList.toggle('active', toolMode === 'erase');
+    compareBox.classList.toggle('brush-mode', toolMode !== 'compare' && viewMode === 'corner');
+  }
+
+  async function ensureFullPreviewCache(cur) {
+    if (selectedFullCache && selectedFullCache.id === cur.id && selectedFullCache.sig === cur.optsSig && selectedFullCache.cleanRef === cur.cleanedRoiData) {
+      return selectedFullCache;
+    }
+    var bmp = await decodeImage(cur.file);
+    try {
+      var maxSide = 960;
+      var sc = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+      var pw = Math.max(1, Math.round(bmp.width * sc));
+      var ph = Math.max(1, Math.round(bmp.height * sc));
+
+      var oc = document.createElement('canvas'); oc.width = pw; oc.height = ph;
+      oc.getContext('2d').drawImage(bmp, 0, 0, pw, ph);
+
+      var cc = document.createElement('canvas'); cc.width = pw; cc.height = ph;
+      var cctx = cc.getContext('2d');
+      cctx.drawImage(oc, 0, 0);
+      if (cur.cleanedRoiData && cur.geom) {
+        var tmp = document.createElement('canvas');
+        tmp.width = cur.geom.work.w; tmp.height = cur.geom.work.h;
+        tmp.getContext('2d').putImageData(cur.cleanedRoiData, 0, 0);
+        cctx.drawImage(tmp, cur.geom.work.x * sc, cur.geom.work.y * sc, cur.geom.work.w * sc, cur.geom.work.h * sc);
+      }
+      selectedFullCache = { id: cur.id, sig: cur.optsSig, cleanRef: cur.cleanedRoiData, orig: oc, clean: cc, scale: sc };
+      return selectedFullCache;
+    } finally {
+      if (bmp && typeof bmp.close === 'function') bmp.close();
+    }
+  }
+
+  async function renderInspector() {
+    var cur = items.find(function (x) { return x.id === selectedId; });
+    if (!cur || !cur.origRoiData) {
+      $('stageEmpty').classList.remove('hidden');
+      compareBox.classList.add('hidden');
+      $('inspTitle').textContent = 'Before / After Preview';
+      $('inspSub').textContent = 'Select any photo on the left to inspect the bottom-right corner';
+      updateInspectorButtons(null);
+      return;
+    }
+
+    $('stageEmpty').classList.add('hidden');
+    compareBox.classList.remove('hidden');
+    $('inspTitle').textContent = cur.name;
+    $('inspSub').textContent = cur.w + ' × ' + cur.h + ' px · ' + (cur.status === 'done' ? 'Orange date stamp detected & cleaned' : cur.status === 'none' ? 'No orange date stamp detected in bottom-right corner' : 'Processing…');
+    updateInspectorButtons(cur);
+
+    var showMask = $('showMaskChk').checked || (toolMode !== 'compare' && viewMode === 'corner');
+    var ctx = compareCanvas.getContext('2d');
+
+    if (viewMode === 'corner') {
+      var gw = cur.geom.work.w, gh = cur.geom.work.h;
+      // Display upscaled cleanly if corner ROI is small so details are super clear
+      var zoom = Math.min(3, Math.max(1, Math.floor(760 / Math.max(gw, 1))));
+      compareCanvas.width = gw * zoom;
+      compareCanvas.height = gh * zoom;
+      compareCanvas._zoom = zoom;
+
+      var origCv = document.createElement('canvas'); origCv.width = gw; origCv.height = gh;
+      origCv.getContext('2d').putImageData(cur.origRoiData, 0, 0);
+      var cleanCv = document.createElement('canvas'); cleanCv.width = gw; cleanCv.height = gh;
+      cleanCv.getContext('2d').putImageData(cur.cleanedRoiData || cur.origRoiData, 0, 0);
+
+      ctx.imageSmoothingEnabled = zoom === 1;
+      if (peekingOriginal || toolMode !== 'compare') {
+        ctx.drawImage(peekingOriginal ? origCv : (toolMode !== 'compare' ? origCv : cleanCv), 0, 0, compareCanvas.width, compareCanvas.height);
+        compareDivider.classList.add('hidden');
+        $('lblLeft').textContent = toolMode !== 'compare' ? (toolMode === 'paint' ? 'PAINTING MASK (+)' : 'ERASING MASK (−)') : 'ORIGINAL';
+        $('lblRight').classList.add('hidden');
+      } else {
+        var sx = Math.round(compareCanvas.width * splitPos);
+        ctx.drawImage(cleanCv, 0, 0, compareCanvas.width, compareCanvas.height);
+        ctx.save();
+        ctx.beginPath(); ctx.rect(0, 0, sx, compareCanvas.height); ctx.clip();
+        ctx.drawImage(origCv, 0, 0, compareCanvas.width, compareCanvas.height);
+        ctx.restore();
+        compareDivider.classList.remove('hidden');
+        compareDivider.style.left = (splitPos * 100) + '%';
+        $('lblLeft').textContent = 'ORIGINAL';
+        $('lblRight').textContent = cur.status === 'none' ? 'UNCHANGED' : 'CLEANED';
+        $('lblRight').classList.remove('hidden');
+      }
+
+      if (showMask && cur.mask) {
+        var mCv = document.createElement('canvas'); mCv.width = gw; mCv.height = gh;
+        var mCtx = mCv.getContext('2d');
+        var mImg = mCtx.createImageData(gw, gh);
+        for (var i = 0; i < cur.mask.length; i++) {
+          if (cur.mask[i]) {
+            mImg.data[i * 4] = 255;
+            mImg.data[i * 4 + 1] = 30;
+            mImg.data[i * 4 + 2] = 170;
+            mImg.data[i * 4 + 3] = 145;
+          }
+        }
+        mCtx.putImageData(mImg, 0, 0);
+        ctx.drawImage(mCv, 0, 0, compareCanvas.width, compareCanvas.height);
+      }
+    } else {
+      var cache = await ensureFullPreviewCache(cur);
+      compareCanvas.width = cache.orig.width;
+      compareCanvas.height = cache.orig.height;
+      if (peekingOriginal) {
+        ctx.drawImage(cache.orig, 0, 0);
+        compareDivider.classList.add('hidden');
+        $('lblLeft').textContent = 'ORIGINAL';
+        $('lblRight').classList.add('hidden');
+      } else {
+        var fx = Math.round(compareCanvas.width * splitPos);
+        ctx.drawImage(cache.clean, 0, 0);
+        ctx.save();
+        ctx.beginPath(); ctx.rect(0, 0, fx, compareCanvas.height); ctx.clip();
+        ctx.drawImage(cache.orig, 0, 0);
+        ctx.restore();
+        compareDivider.classList.remove('hidden');
+        compareDivider.style.left = (splitPos * 100) + '%';
+        $('lblLeft').textContent = 'ORIGINAL';
+        $('lblRight').textContent = cur.status === 'none' ? 'UNCHANGED' : 'CLEANED';
+        $('lblRight').classList.remove('hidden');
+      }
+    }
+  }
+
+  // Split drag & manual brush painting
+  var pointerDown = false;
+  function handleStagePointer(e) {
+    var cur = items.find(function (x) { return x.id === selectedId; });
+    if (!cur || !cur.origRoiData) return;
+    var rect = compareCanvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    if (toolMode === 'compare' || viewMode !== 'corner') {
+      splitPos = Math.max(0.02, Math.min(0.98, (e.clientX - rect.left) / rect.width));
+      renderInspector();
+    } else if (cur.mask) {
+      var gx = Math.floor(((e.clientX - rect.left) / rect.width) * cur.geom.work.w);
+      var gy = Math.floor(((e.clientY - rect.top) / rect.height) * cur.geom.work.h);
+      var r = parseInt($('brushSizeRange').value, 10) || 14;
+      var val = toolMode === 'paint' ? 1 : 0;
+      var w = cur.geom.work.w, h = cur.geom.work.h;
+      var r2 = r * r;
+      for (var dy = -r; dy <= r; dy++) {
+        var ny = gy + dy; if (ny < 0 || ny >= h) continue;
+        for (var dx = -r; dx <= r; dx++) {
+          if (dx * dx + dy * dy > r2) continue;
+          var nx = gx + dx; if (nx < 0 || nx >= w) continue;
+          cur.mask[ny * w + nx] = val;
+        }
+      }
+      cur.customMask = true;
+      renderInspector();
+    }
+  }
+
+  compareBox.addEventListener('pointerdown', function (e) {
+    pointerDown = true;
+    compareBox.setPointerCapture(e.pointerId);
+    handleStagePointer(e);
+  });
+  compareBox.addEventListener('pointermove', function (e) {
+    if (!pointerDown) return;
+    handleStagePointer(e);
+  });
+  compareBox.addEventListener('pointerup', function () { pointerDown = false; });
+  compareBox.addEventListener('pointercancel', function () { pointerDown = false; });
+
+  // =========================================================================
+  // 7. BATCH ACTIONS & EVENT LISTENERS
+  // =========================================================================
+
+  $('pickFolderBtn').addEventListener('click', function () { $('folderInput').click(); });
+  $('pickFilesBtn').addEventListener('click', function () { $('filesInput').click(); });
+  $('folderInput').addEventListener('change', function () { addFiles(this.files); this.value = ''; });
+  $('filesInput').addEventListener('change', function () { addFiles(this.files); this.value = ''; });
+
+  $('clearAllBtn').addEventListener('click', function () {
+    if (busy) return;
+    items = [];
+    selectedId = null;
+    selectedFullCache = null;
+    photoList.innerHTML = '';
+    setProgress(false, 0, '');
+    updateSummary();
+    renderInspector();
+  });
+
+  // Drag & drop (supports dropping whole folders recursively!)
+  async function readEntryFiles(entry, out) {
+    if (entry.isFile) {
+      await new Promise(function (res) { entry.file(function (f) { out.push(f); res(); }, res); });
+    } else if (entry.isDirectory) {
+      var reader = entry.createReader();
+      while (true) {
+        var batch = await new Promise(function (res) { reader.readEntries(res, function () { res([]); }); });
+        if (!batch || !batch.length) break;
+        for (var i = 0; i < batch.length; i++) await readEntryFiles(batch[i], out);
+      }
+    }
+  }
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    dropzone.addEventListener(ev, function (e) { e.preventDefault(); dropzone.classList.add('over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    dropzone.addEventListener(ev, function (e) { e.preventDefault(); dropzone.classList.remove('over'); });
+  });
+  dropzone.addEventListener('drop', async function (e) {
+    var dt = e.dataTransfer;
+    if (!dt) return;
+    if (dt.items && dt.items.length && typeof dt.items[0].webkitGetAsEntry === 'function') {
+      var gathered = [];
+      for (var i = 0; i < dt.items.length; i++) {
+        var entry = dt.items[i].webkitGetAsEntry();
+        if (entry) await readEntryFiles(entry, gathered);
+      }
+      if (gathered.length) { addFiles(gathered); return; }
+    }
+    if (dt.files && dt.files.length) addFiles(dt.files);
+  });
+
+  // Sliders & settings UI
+  $('haloRange').addEventListener('input', function () {
+    var v = parseFloat(this.value);
+    var lbl = v < 0.85 ? 'Tight' : v > 1.2 ? 'Wide' : 'Standard';
+    $('haloVal').textContent = lbl + ' (' + v.toFixed(2) + '×)';
+  });
+  $('sensRange').addEventListener('input', function () {
+    var v = parseInt(this.value, 10);
+    $('sensVal').textContent = v === 1 ? 'Strict' : v === 3 ? 'Sensitive' : 'Balanced';
+  });
+  $('includeUnstamped').addEventListener('change', updateSummary);
+
+  // View & brush buttons
+  $('viewCornerBtn').addEventListener('click', function () { viewMode = 'corner'; renderInspector(); });
+  $('viewFullBtn').addEventListener('click', function () { viewMode = 'full'; if (toolMode !== 'compare') toolMode = 'compare'; renderInspector(); });
+  $('showMaskChk').addEventListener('change', renderInspector);
+  $('toolCompareBtn').addEventListener('click', function () { toolMode = 'compare'; renderInspector(); });
+  $('toolPaintBtn').addEventListener('click', function () { viewMode = 'corner'; toolMode = 'paint'; renderInspector(); });
+  $('toolEraseBtn').addEventListener('click', function () { viewMode = 'corner'; toolMode = 'erase'; renderInspector(); });
+
+  var peekBtn = $('peekOrigBtn');
+  ['pointerdown', 'touchstart'].forEach(function (ev) {
+    peekBtn.addEventListener(ev, function () { peekingOriginal = true; renderInspector(); });
+  });
+  ['pointerup', 'pointerleave', 'pointercancel', 'touchend'].forEach(function (ev) {
+    peekBtn.addEventListener(ev, function () { if (peekingOriginal) { peekingOriginal = false; renderInspector(); } });
+  });
+
+  $('resetMaskBtn').addEventListener('click', async function () {
+    var cur = items.find(function (x) { return x.id === selectedId; });
+    if (!cur || busy) return;
+    cur.customMask = false;
+    await processPhotoItem(cur, currentOpts(), false);
+    selectedFullCache = null;
+    updateSummary();
+    renderInspector();
+  });
+
+  $('recleanOneBtn').addEventListener('click', async function () {
+    var cur = items.find(function (x) { return x.id === selectedId; });
+    if (!cur || busy) return;
+    toolMode = 'compare';
+    await processPhotoItem(cur, currentOpts(), cur.customMask);
+    selectedFullCache = null;
+    updateSummary();
+    renderInspector();
+  });
+
+  // Batch clean all photos
+  $('runAllBtn').addEventListener('click', async function () {
+    if (busy || !items.length) return;
+    busy = true;
+    updateSummary();
+    var opts = currentOpts();
+    var t0 = performance.now();
+    try {
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        setProgress(true, (i / items.length) * 100, 'Cleaning ' + (i + 1) + ' of ' + items.length + ': ' + it.name);
+        try {
+          await processPhotoItem(it, opts, it.customMask);
+        } catch (err) {
+          it.status = 'err';
+          renderItemRow(it);
+          console.error('Failed:', it.name, err);
+        }
+        if (it.id === selectedId) {
+          selectedFullCache = null;
+          await renderInspector();
+        }
+        await new Promise(function (r) { setTimeout(r, 0); });
+      }
+      var secs = ((performance.now() - t0) / 1000).toFixed(1);
+      setProgress(true, 100, 'Done! Processed ' + items.length + ' photos in ' + secs + 's.');
+    } finally {
+      busy = false;
+      updateSummary();
+      renderInspector();
+    }
+  });
+
+  // Save single inspected photo
+  $('dlSingleBtn').addEventListener('click', async function () {
+    var cur = items.find(function (x) { return x.id === selectedId; });
+    if (!cur || busy) return;
+    var res = await renderFullOutputBlob(cur, currentOpts());
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(res.blob);
+    a.download = res.name;
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+  });
+
+  function uniqueName(name, used) {
+    if (!used[name]) { used[name] = 1; return name; }
+    var dot = name.lastIndexOf('.');
+    var base = dot > 0 ? name.slice(0, dot) : name;
+    var ext = dot > 0 ? name.slice(dot) : '';
+    var n = ++used[name];
+    return base + '_' + n + ext;
+  }
+
+  function exportableItems() {
+    var keepUnstamped = $('includeUnstamped').checked;
+    return items.filter(function (it) { return it.status === 'done' || (it.status === 'none' && keepUnstamped); });
+  }
+
+  // Save all directly to a user-selected folder (File System Access API — streams 1 by 1, low RAM!)
+  $('saveFolderBtn').addEventListener('click', async function () {
+    if (busy || typeof window.showDirectoryPicker !== 'function') return;
+    var list = exportableItems();
+    if (!list.length) return;
+    var dirHandle;
+    try {
+      dirHandle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'pictures' });
+    } catch (e) {
+      return; // user cancelled
+    }
+    busy = true;
+    updateSummary();
+    var opts = currentOpts();
+    var used = {};
+    var saved = 0;
+    try {
+      for (var i = 0; i < list.length; i++) {
+        var it = list[i];
+        setProgress(true, (i / list.length) * 100, 'Saving ' + (i + 1) + ' of ' + list.length + ': ' + it.name);
+        var res = await renderFullOutputBlob(it, opts);
+        var outName = uniqueName(res.name, used);
+        var fh = await dirHandle.getFileHandle(outName, { create: true });
+        var wr = await fh.createWritable();
+        await wr.write(res.blob);
+        await wr.close();
+        saved++;
+        await new Promise(function (r) { setTimeout(r, 0); });
+      }
+      setProgress(true, 100, 'Saved ' + saved + ' full-resolution photos to "' + dirHandle.name + '".');
+    } catch (err) {
+      setProgress(true, 0, 'Save stopped: ' + (err && err.message || err));
+      console.error(err);
+    } finally {
+      busy = false;
+      updateSummary();
+    }
+  });
+
+  // Download all as a single ZIP
+  $('downloadZipBtn').addEventListener('click', async function () {
+    if (busy) return;
+    var list = exportableItems();
+    if (!list.length) return;
+    busy = true;
+    updateSummary();
+    var opts = currentOpts();
+    var used = {};
+    var entries = [];
+    try {
+      for (var i = 0; i < list.length; i++) {
+        var it = list[i];
+        setProgress(true, (i / list.length) * 90, 'Packing ZIP ' + (i + 1) + ' of ' + list.length + ': ' + it.name);
+        var res = await renderFullOutputBlob(it, opts);
+        var bytes = new Uint8Array(await res.blob.arrayBuffer());
+        entries.push({ name: uniqueName(res.name, used), bytes: bytes });
+        await new Promise(function (r) { setTimeout(r, 0); });
+      }
+      setProgress(true, 95, 'Building ZIP archive…');
+      var zipBlob = buildZipBlob(entries);
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(zipBlob);
+      a.download = 'solo-photos-cleaned-' + new Date().toISOString().slice(0, 10) + '.zip';
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 10000);
+      setProgress(true, 100, 'ZIP ready (' + entries.length + ' photos, ' + (zipBlob.size / (1024 * 1024)).toFixed(1) + ' MB).');
+    } catch (err) {
+      setProgress(true, 0, 'ZIP failed: ' + (err && err.message || err));
+      console.error(err);
+    } finally {
+      busy = false;
+      updateSummary();
+    }
+  });
+
+  // Expose internal functions for automated verification
+  window.__PBDateRemover = {
+    stampRoiFor: stampRoiFor,
+    detectDateStampMask: detectDateStampMask,
+    inpaintROI: inpaintROI,
+    spliceJpegMetadata: spliceJpegMetadata,
+    buildZipBlob: buildZipBlob
+  };
+})();
+</script>
+</body>
+</html>

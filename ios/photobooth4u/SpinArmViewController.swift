@@ -2607,48 +2607,21 @@ final class SpinArmViewController: UIViewController,
         ovInfoRow.alignment = .center
         ovInfoRow.spacing = 10
 
-        let makeMiniBtn: (String, Selector) -> UIButton = { label, sel in
-            let b = UIButton(type: .system)
-            b.setTitle(label, for: .normal)
-            b.setTitleColor(.white, for: .normal)
-            b.titleLabel?.font = .systemFont(ofSize: 12.5, weight: .bold)
-            b.backgroundColor = UIColor(white: 1, alpha: 0.14)
-            b.layer.cornerRadius = 9
-            b.contentEdgeInsets = UIEdgeInsets(top: 8, left: 10, bottom: 8, right: 10)
-            b.addTarget(self, action: sel, for: .touchUpInside)
-            return b
-        }
-
-        let ovPhotosBtn = makeMiniBtn("Photos PNG", #selector(didTapPickOverlayPhotos))
-        let ovFilesBtn = makeMiniBtn("Files PNG", #selector(didTapPickOverlayFiles))
-        let ovClearBtn = makeMiniBtn("Clear", #selector(didTapClearOverlay))
+        let ovPhotosBtn = makeSettingsMiniButton("Photos PNG", action: #selector(didTapPickOverlayPhotos))
+        let ovFilesBtn = makeSettingsMiniButton("Files PNG", action: #selector(didTapPickOverlayFiles))
+        let ovClearBtn = makeSettingsMiniButton("Clear", action: #selector(didTapClearOverlay))
         let ovBtnRow = UIStackView(arrangedSubviews: [ovPhotosBtn, ovFilesBtn, ovClearBtn])
         ovBtnRow.axis = .horizontal
         ovBtnRow.spacing = 6
         ovBtnRow.distribution = .fillEqually
 
-        let configureText: (UITextField, String) -> Void = { tf, ph in
-            tf.attributedPlaceholder = NSAttributedString(string: ph, attributes: [.foregroundColor: UIColor(white: 0.55, alpha: 1)])
-            tf.textColor = .white
-            tf.font = .systemFont(ofSize: 13.5, weight: .medium)
-            tf.backgroundColor = UIColor(white: 1, alpha: 0.08)
-            tf.layer.cornerRadius = 9
-            tf.layer.borderWidth = 1
-            tf.layer.borderColor = UIColor(white: 1, alpha: 0.14).cgColor
-            tf.returnKeyType = .done
-            tf.delegate = self
-            tf.addTarget(self, action: #selector(commitTextFields), for: .editingDidEnd)
-            tf.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 10))
-            tf.leftViewMode = .always
-            tf.heightAnchor.constraint(equalToConstant: 38).isActive = true
-        }
-        configureText(saTitleField, "Overlay Title (optional, e.g. Anna & Mark)")
-        configureText(saSubField, "Subtitle / Date (optional)")
+        configureSettingsTextField(saTitleField, placeholder: "Overlay Title (optional, e.g. Anna & Mark)")
+        configureSettingsTextField(saSubField, placeholder: "Subtitle / Date (optional)")
 
         musicStatusLabel.font = .systemFont(ofSize: 12.5, weight: .medium)
         musicStatusLabel.textColor = UIColor(white: 0.85, alpha: 1)
-        let musPickBtn = makeMiniBtn("🎵 Choose Music", #selector(didTapPickMusic))
-        let musClearBtn = makeMiniBtn("Clear", #selector(didTapClearMusic))
+        let musPickBtn = makeSettingsMiniButton("🎵 Choose Music", action: #selector(didTapPickMusic))
+        let musClearBtn = makeSettingsMiniButton("Clear", action: #selector(didTapClearMusic))
         let musRow = UIStackView(arrangedSubviews: [musPickBtn, musClearBtn])
         musRow.axis = .horizontal
         musRow.spacing = 6
@@ -2783,6 +2756,34 @@ final class SpinArmViewController: UIViewController,
             stack.trailingAnchor.constraint(equalTo: settingsScroll.contentLayoutGuide.trailingAnchor, constant: -16),
             stack.widthAnchor.constraint(equalTo: settingsScroll.frameLayoutGuide.widthAnchor, constant: -32)
         ])
+    }
+
+    private func makeSettingsMiniButton(_ label: String, action sel: Selector) -> UIButton {
+        let b = UIButton(type: .system)
+        b.setTitle(label, for: .normal)
+        b.setTitleColor(.white, for: .normal)
+        b.titleLabel?.font = .systemFont(ofSize: 12.5, weight: .bold)
+        b.backgroundColor = UIColor(white: 1, alpha: 0.14)
+        b.layer.cornerRadius = 9
+        b.contentEdgeInsets = UIEdgeInsets(top: 8, left: 10, bottom: 8, right: 10)
+        b.addTarget(self, action: sel, for: .touchUpInside)
+        return b
+    }
+
+    private func configureSettingsTextField(_ tf: UITextField, placeholder ph: String) {
+        tf.attributedPlaceholder = NSAttributedString(string: ph, attributes: [.foregroundColor: UIColor(white: 0.55, alpha: 1)])
+        tf.textColor = .white
+        tf.font = .systemFont(ofSize: 13.5, weight: .medium)
+        tf.backgroundColor = UIColor(white: 1, alpha: 0.08)
+        tf.layer.cornerRadius = 9
+        tf.layer.borderWidth = 1
+        tf.layer.borderColor = UIColor(white: 1, alpha: 0.14).cgColor
+        tf.returnKeyType = .done
+        tf.delegate = self
+        tf.addTarget(self, action: #selector(commitTextFields), for: .editingDidEnd)
+        tf.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 10))
+        tf.leftViewMode = .always
+        tf.heightAnchor.constraint(equalToConstant: 38).isActive = true
     }
 
     private func buildStationOverlay() {

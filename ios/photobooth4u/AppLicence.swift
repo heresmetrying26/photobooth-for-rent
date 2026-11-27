@@ -13,7 +13,7 @@ class AppLicence {
 
     static let shared = AppLicence()
 
-    static let appVersion = "1.1.43"
+    static let appVersion = "1.1.44"
     static let serverUrl = "https://photobooth4u.netlify.app"
     private static let prefix = "PB4U-LIC1"
     private static let checkEveryMs: Int64 = 10 * 60_000

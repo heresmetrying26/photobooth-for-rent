@@ -1722,7 +1722,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                         let pb = self.latestBuffer
                         let rot = self.captureRotationAngle
                         self.stateLock.unlock()
-                        let stillMax = NativeCameraBridge.isLowRamDevice ? 1920 : 2400
+                        let stillMax: CGFloat = NativeCameraBridge.isLowRamDevice ? 1920 : 2400
                         if let buf = pb, let j = self.jpegData(from: buf, rotationAngle: rot, maxSide: stillMax, quality: 0.94) {
                             storeAndAnswer(j.data, j.w, j.h)
                         } else {
@@ -1751,7 +1751,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             let pb = self.latestBuffer
             let rot = self.captureRotationAngle
             self.stateLock.unlock()
-            let uvcMax = NativeCameraBridge.isLowRamDevice ? 2048 : 3000
+            let uvcMax: CGFloat = NativeCameraBridge.isLowRamDevice ? 2048 : 3000
             if let buf = pb, let j = self.jpegData(from: buf, rotationAngle: rot, maxSide: uvcMax, quality: 0.94) {
                 storeAndAnswer(j.data, j.w, j.h)
             } else {

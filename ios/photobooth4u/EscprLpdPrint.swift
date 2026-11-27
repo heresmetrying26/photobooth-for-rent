@@ -183,8 +183,8 @@ enum EscprJob {
                     return thumb
                 }
             }
-            guard let uiImg = UIImage(data: jpegData), let cg = uprightCGImage(uiImg) else {
-                throw Failure.invalidImage
+            guard let uiImg = UIImage(data: jpegData), let cg = EscprJob.uprightCGImage(uiImg) else {
+                throw EscprJob.Failure.invalidImage
             }
             return cg
         }

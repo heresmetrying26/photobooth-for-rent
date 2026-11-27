@@ -232,3 +232,15 @@
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-cache"
+
+# Live iPad / Tablet Hang Debugger & Remote Trace Viewer
+[[redirects]]
+  from = "/ipad-debug"
+  to = "/ipad-debug/"
+  status = 301
+
+[[headers]]
+  for = "/ipad-debug/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"

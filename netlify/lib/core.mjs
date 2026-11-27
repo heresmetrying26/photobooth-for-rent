@@ -498,6 +498,8 @@ export const printJobsStore = () => getStore({ name: 'printjobs', consistency: '
 export const printerDiagStore = () => getStore({ name: 'printerdiag', consistency: 'strong' });
 // Camera diagnostics sent by the booth when a USB camera's photo fails (see functions/camdiag.mjs): one document per camera model.
 export const camDiagStore = () => getStore({ name: 'camdiag', consistency: 'strong' });
+// Live iPad/tablet hang diagnostic sessions (see functions/ipaddiag.mjs & public/ipad-debug/).
+export const ipadDiagStore = () => getStore({ name: 'ipaddiag', consistency: 'strong' });
 // Guests asking for a print from the online gallery (see functions/printreq.mjs): one document per gallery folder.
 export const printReqStore = () => getStore({ name: 'printreq', consistency: 'strong' });
 // The gallery asks this when it lists a folder, to know whether to show the "Ask for a print" button.

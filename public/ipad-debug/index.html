@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>photobooth4u · iPad Hang Debugger &amp; Live Trace</title>
+<style>
+  :root{
+    --bg:#f6f3ee; --card:#ffffff; --ink:#1d1a1f; --dim:#666068; --line:#e3dcd0;
+    --accent:#c93d27; --blue:#1d4ed8; --green:#15803d; --amber:#b45309; --red:#b91c1c;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.45;}
+  .wrap{max-width:1040px;margin:0 auto;padding:16px 16px 56px;}
+  header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand h1{margin:0;font-size:20px;font-weight:800;letter-spacing:-0.02em;}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#eef2ff;color:var(--blue);}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;}
+  .tab{border:1.5px solid var(--line);background:#fff;color:var(--ink);padding:8px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;}
+  .tab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 4px 16px rgba(30,20,10,.04);}
+  .card h2{margin:0 0 8px;font-size:16px;font-weight:800;}
+  .card h3{margin:0 0 6px;font-size:14px;font-weight:800;}
+  .muted{color:var(--dim);font-size:13px;}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+  .code-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:#faf7f2;border:1.5px dashed #d3c7b4;border-radius:14px;padding:12px 16px;margin:10px 0;}
+  .sid{font-family:var(--mono);font-size:28px;font-weight:900;letter-spacing:0.12em;color:var(--accent);}
+  .btn{border:1px solid var(--line);background:#fff;color:var(--ink);padding:10px 14px;border-radius:11px;font-size:13.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none;}
+  .btn:active{transform:scale(.98);}
+  .btn:disabled{opacity:.55;cursor:default;}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .btn.blue{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .btn.green{background:var(--green);color:#fff;border-color:var(--green);}
+  .btn.warn{background:#fef3c7;color:#92400e;border-color:#f59e0b;}
+  .btn.sm{padding:6px 11px;font-size:12.5px;border-radius:9px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;}
+  .stat{background:#faf7f2;border:1px solid var(--line);border-radius:12px;padding:10px 12px;}
+  .stat .k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);}
+  .stat .v{font-family:var(--mono);font-size:16px;font-weight:800;margin-top:2px;word-break:break-word;}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800;}
+  .pill.ok{background:#dcfce7;color:var(--green);}
+  .pill.warn{background:#fef3c7;color:var(--amber);}
+  .pill.bad{background:#fee2e2;color:var(--red);}
+  .pill.info{background:#e0e7ff;color:var(--blue);}
+  .banner{padding:12px 14px;border-radius:12px;margin-bottom:12px;font-size:13.5px;font-weight:600;border:1.5px solid transparent;}
+  .banner.bad{background:#fef2f2;border-color:#fca5a5;color:#991b1b;}
+  .banner.warn{background:#fffbeb;border-color:#fcd34d;color:#92400e;}
+  .banner.ok{background:#f0fdf4;border-color:#86efac;color:#166534;}
+  .test-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:10px;}
+  .test-card{border:1px solid var(--line);border-radius:13px;padding:12px;background:#fcfbf8;display:flex;flex-direction:column;justify-content:space-between;gap:8px;}
+  .test-card p{margin:0;font-size:12.5px;color:var(--dim);}
+  .cam-wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;margin-top:10px;}
+  video#testVideo{width:220px;max-width:100%;aspect-ratio:4/3;background:#111;border-radius:10px;object-fit:cover;}
+  canvas#testPreview{width:150px;max-width:100%;aspect-ratio:2/3;background:#eee;border:1px solid var(--line);border-radius:8px;}
+  .log-box{background:#121317;color:#e5e7eb;font-family:var(--mono);font-size:12px;border-radius:12px;padding:10px 12px;max-height:420px;overflow:auto;line-height:1.5;}
+  .log-row{display:grid;grid-template-columns:76px 56px 56px 1fr;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06);align-items:baseline;}
+  .log-row .t{color:#9ca3af;}
+  .log-row .dt{color:#93c5fd;text-align:right;}
+  .log-row .tag{font-weight:800;text-align:center;border-radius:5px;padding:1px 4px;font-size:10.5px;}
+  .tag-LAG,.tag-ERR,.tag-CRASH,.tag-FROZEN{background:#7f1d1d;color:#fecaca;}
+  .tag-PRINT{background:#1e3a8a;color:#bfdbfe;}
+  .tag-SAVE{background:#065f46;color:#a7f3d0;}
+  .tag-CAM{background:#581c87;color:#e9d5ff;}
+  .tag-MEM,.tag-TEST{background:#78350f;color:#fde68a;}
+  .tag-HB{background:#1f2937;color:#9ca3af;}
+  .tag-BOOT,.tag-STEP,.tag-INFO,.tag-MARK{background:#374151;color:#f3f4f6;}
+  .log-data{color:#9ca3af;font-size:11px;display:block;margin-top:2px;word-break:break-word;}
+  input.txt{padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;font-family:var(--mono);font-size:14px;font-weight:700;text-transform:uppercase;width:160px;background:#fff;}
+  .sess-item{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;margin-bottom:8px;background:#fcfbf8;cursor:pointer;}
+  .sess-item:hover{border-color:var(--blue);background:#f5f8ff;}
+  .sess-item.active{border-color:var(--blue);background:#eef2ff;}
+  .print-area{display:none;}
+  @media print{
+    body *{visibility:hidden !important;}
+    .print-area, .print-area *{visibility:visible !important; display:block !important;}
+    .print-area{position:fixed;inset:0;margin:0;padding:0;background:#fff;}
+    .print-area img{width:100%;height:auto;display:block;}
+  }
+  [hidden]{display:none !important;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>photobooth4u · iPad Hang Debugger</h1>
+      <span class="badge" id="envBadge">Detecting device…</span>
+    </div>
+    <div class="tabs">
+      <button type="button" class="tab active" id="tabClient">Run on iPad (Client)</button>
+      <button type="button" class="tab" id="tabViewer">Live Remote Viewer (Support)</button>
+    </div>
+  </header>
+
+  <!-- ==================== CLIENT / IPAD MODE ==================== -->
+  <section id="clientMode">
+    <div id="crashBanner" class="banner bad" hidden></div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <h2>1. Live Diagnostic Session Code</h2>
+          <p class="muted" style="margin:0;">Every test step streams live to the server BEFORE running, so even if the iPad freezes completely, support sees the exact step that stalled.</p>
+        </div>
+        <span class="pill ok" id="clientStatusPill">● Heartbeat OK</span>
+      </div>
+
+      <div class="code-box">
+        <div>
+          <div class="muted" style="font-size:11.5px;font-weight:700;text-transform:uppercase;">Give this code to support</div>
+          <div class="sid" id="clientSid">------</div>
+        </div>
+        <div class="row">
+          <button type="button" class="btn sm" id="copyCodeBtn">Copy Code</button>
+          <button type="button" class="btn sm blue" id="copyViewUrlBtn">Copy Viewer Link</button>
+          <button type="button" class="btn sm" id="newSidBtn">New Session</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:8px;">
+        <a class="btn primary" id="launchBoothBtn" href="/?diag=TEST">🚀 Open Real Booth With Live Trace</a>
+        <button type="button" class="btn warn" id="markHangBtn">🚩 Mark: It Lagged / Froze Here</button>
+        <button type="button" class="btn" id="flushNowBtn">Upload Log Now</button>
+      </div>
+      <p class="muted" style="margin:8px 0 0;">
+        <b>Using the installed iPad app (1.1.45)?</b> Open the app → <b>Setup › Share › App updates &amp; version checks</b> → tap <b>Check for updates</b> to load the latest booth, then tap <b>Start Live Hang Trace</b> right inside the app!
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>2. Live Health &amp; Device Telemetry</h2>
+      <div class="grid" id="healthGrid">
+        <div class="stat"><div class="k">Main-Thread FPS</div><div class="v" id="stFps">--</div></div>
+        <div class="stat"><div class="k">Max Stall / Lag</div><div class="v" id="stLag">0 ms</div></div>
+        <div class="stat"><div class="k">Worker Watchdog</div><div class="v" id="stWorker">Starting…</div></div>
+        <div class="stat"><div class="k">Active Canvases</div><div class="v" id="stCanvas">0 (0 MP)</div></div>
+        <div class="stat"><div class="k">Screen / DPR / Cores</div><div class="v" id="stScreen">--</div></div>
+        <div class="stat"><div class="k">GPU / Max Texture</div><div class="v" id="stGpu">--</div></div>
+        <div class="stat"><div class="k">Storage / App Flags</div><div class="v" id="stApp">--</div></div>
+        <div class="stat"><div class="k">Server Sync</div><div class="v" id="stSync">Ready</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. Isolated Hang Tests (Tap One at a Time)</h2>
+      <p class="muted" style="margin:0;">Run these in order to pinpoint whether the freeze is caused by GPU canvas RAM, Camera frames, JPEG Save/Download, or AirPrint.</p>
+
+      <div class="test-grid">
+        <div class="test-card">
+          <div>
+            <h3>A. Quick Safe Triage</h3>
+            <p>Runs Device Probe → 1–8 MP Canvas Ladder → 4R JPEG Encode (no camera/print dialog). Safe 10-second check.</p>
+          </div>
+          <button type="button" class="btn green" id="btnTriage">Run Quick Triage</button>
+        </div>
+
+        <div class="test-card">
+          <div>
+            <h3>B. Canvas Memory Ladder (1 → 24 MP)</h3>
+            <p>Tests single-canvas release AND simultaneous multi-canvas hold (4 shots + 4R composite + print page) to find the exact 3 GB iPad ceiling.</p>
+          </div>
+          <div class="row">
+            <button type="button" class="btn sm" id="btnCanvasSeq">Release Mode</button>
+            <button type="button" class="btn sm warn" id="btnCanvasHold">Simultaneous Hold</button>
+          </div>
+        </div>
+
+        <div class="test-card">
+          <div>
+            <h3>C. Camera Live + 5× Capture</h3>
+            <p>Starts iPad camera preview and captures 5 back-to-back stills, timing frame decode and memory spikes.</p>
+          </div>
+          <div class="row">
+            <button type="button" class="btn sm blue" id="btnCamStart">Start Camera</button>
+            <button type="button" class="btn sm" id="btnCam5" disabled>Capture 5×</button>
+            <button type="button" class="btn sm" id="btnCamStop" disabled>Stop</button>
+          </div>
+        </div>
+
+        <div class="test-card">
+          <div>
+            <h3>D. Save / JPEG Encode / Download</h3>
+            <p>Renders 1800×2700 &amp; 2400×3600 4R composites, benchmarks <code>toDataURL</code>, <code>toBlob</code>, base64 size, and triggers a test Save.</p>
+          </div>
+          <div class="row">
+            <button type="button" class="btn sm" id="btnSaveEncode">Encode Only</button>
+            <button type="button" class="btn sm blue" id="btnSaveDownload">Encode + Save File</button>
+          </div>
+        </div>
+
+        <div class="test-card">
+          <div>
+            <h3>E. AirPrint / Print Sheet Test</h3>
+            <p>Builds a 4R JPEG page and opens iPad printing (native <code>__PBPrint</code> if in app, else <code>window.print()</code>), watching 15s after return.</p>
+          </div>
+          <div class="row">
+            <button type="button" class="btn sm blue" id="btnPrint1">Print 1 Page</button>
+            <button type="button" class="btn sm warn" id="btnPrint2">Print 2 Pages</button>
+          </div>
+        </div>
+
+        <div class="test-card">
+          <div>
+            <h3>F. Exact Customer Flow: Save → Print</h3>
+            <p>Captures photo (or test pattern), renders 4R composite, saves JPEG, waits 300ms, then prints — logging every micro-step to the server.</p>
+          </div>
+          <button type="button" class="btn primary" id="btnFullCycle">Run Save → Print Cycle</button>
+        </div>
+      </div>
+
+      <div class="cam-wrap" id="mediaPreviewWrap" hidden>
+        <video id="testVideo" playsinline autoplay muted></video>
+        <canvas id="testPreview" width="300" height="450"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px;">
+        <h2 style="margin:0;">4. Live On-Device Event Log</h2>
+        <button type="button" class="btn sm" id="copyClientLogBtn">Copy Log</button>
+      </div>
+      <div class="log-box" id="clientLog"></div>
+    </div>
+  </section>
+
+  <!-- ==================== SUPPORT / REMOTE VIEWER MODE ==================== -->
+  <section id="viewerMode" hidden>
+    <div class="card">
+      <h2>Watch an iPad Live</h2>
+      <div class="row">
+        <input type="text" class="txt" id="viewSidInput" placeholder="CODE (e.g. K7M4P2)" maxlength="24">
+        <button type="button" class="btn primary" id="viewLoadBtn">Watch Session</button>
+        <button type="button" class="btn" id="viewPauseBtn">Pause Auto-Refresh</button>
+        <button type="button" class="btn blue" id="viewCopyReportBtn">Copy Full Report</button>
+        <button type="button" class="btn" id="viewRefreshListBtn">Refresh Sessions List</button>
+      </div>
+      <p class="muted" style="margin:8px 0 0;">Auto-refreshes every 2 seconds. If the iPad freezes while an action is running, the red banner shows the exact in-flight step where it locked up.</p>
+    </div>
+
+    <div class="card" id="recentSessionsCard">
+      <h3>Recent Debug Sessions (Last 30)</h3>
+      <div id="recentSessionsList" class="muted">Loading…</div>
+    </div>
+
+    <div id="viewerDetail" hidden>
+      <div id="viewerStatusBanner" class="banner ok">Waiting for data…</div>
+      <div id="viewerCrashBanner" class="banner bad" hidden></div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;margin-bottom:8px;">
+          <h2 style="margin:0;">Session <span id="vSid" style="font-family:var(--mono);color:var(--accent);"></span></h2>
+          <span class="muted" id="vUpdated">--</span>
+        </div>
+        <div class="grid" id="viewerMetaGrid"></div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;margin-bottom:8px;">
+          <h2 style="margin:0;">Live Timeline (<span id="vEvCount">0</span> events)</h2>
+          <div class="row" id="vFilterBar">
+            <button type="button" class="btn sm active-f" data-f="ALL">All</button>
+            <button type="button" class="btn sm" data-f="NOHB">Hide HB</button>
+            <button type="button" class="btn sm" data-f="ALERT">Stalls &amp; Errors</button>
+            <button type="button" class="btn sm" data-f="PRINT">Print</button>
+            <button type="button" class="btn sm" data-f="SAVE">Save</button>
+            <button type="button" class="btn sm" data-f="CAM">Camera</button>
+          </div>
+        </div>
+        <div class="log-box" id="viewerLog"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="print-area" id="printArea"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  var API = '/api/ipaddiag';
+  var SID_STORE_KEY = 'pb_diag_session';
+  var LAST_STORE_KEY = 'pb_ipad_dbg_last';
+  var params = new URLSearchParams(location.search);
+  var initialView = (params.get('view') || '').trim().toUpperCase();
+  var isViewerInit = !!initialView || params.get('viewer') === '1';
+
+  // ---- Utilities ----
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function genSid(){
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    var out = '';
+    for (var i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
+    return out;
+  }
+  function fmtTime(ms){
+    try {
+      var d = new Date(ms);
+      return d.toTimeString().slice(0, 8) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+    } catch (e) { return String(ms); }
+  }
+  function fmtAgo(ms){
+    if (ms < 1500) return 'just now';
+    if (ms < 60000) return Math.round(ms / 1000) + 's ago';
+    if (ms < 3600000) return Math.round(ms / 60000) + 'm ago';
+    return Math.round(ms / 3600000) + 'h ago';
+  }
+  function wait(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function nextFrame(){ return new Promise(function(r){ requestAnimationFrame(function(){ setTimeout(r, 0); }); }); }
+
+  function detectDevice(){
+    var ua = navigator.userAgent || '';
+    var isIpad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    var osMatch = ua.match(/OS (\d+[_\.\d]+)/i);
+    var osVer = osMatch ? osMatch[1].replace(/_/g, '.') : '';
+    var pb = window.__PB || {};
+    var gpu = 'unknown', maxTex = 0;
+    try {
+      var c = document.createElement('canvas');
+      var gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+      if (gl) {
+        maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 0;
+        var ext = gl.getExtension('WEBGL_debug_renderer_info');
+        gpu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : (gl.getParameter(gl.RENDERER) || 'webgl');
+        var lose = gl.getExtension('WEBGL_lose_context');
+        if (lose) lose.loseContext();
+      }
+      c.width = 0; c.height = 0;
+    } catch (e) {}
+    var lsBytes = 0;
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        lsBytes += (k ? k.length : 0) + ((localStorage.getItem(k) || '').length);
+      }
+    } catch (e) {}
+    return {
+      ua: ua.slice(0, 170),
+      uaShort: (isIpad ? 'iPad' : (/iPhone/.test(ua) ? 'iPhone' : (/Android/.test(ua) ? 'Android' : 'Desktop'))) + (osVer ? ' OS ' + osVer : '') + (pb.ios ? ' (App ' + ((pb.desktop && pb.desktop.v) || '?') + ')' : ' (Browser)'),
+      isIpad: isIpad,
+      osVer: osVer,
+      iosApp: !!pb.ios,
+      iosLowRam: pb.iosLowRam == null ? null : !!pb.iosLowRam,
+      appVer: (pb.desktop && pb.desktop.v) || '',
+      screen: screen.width + 'x' + screen.height + '@' + (window.devicePixelRatio || 1) + 'x',
+      viewport: window.innerWidth + 'x' + window.innerHeight,
+      cores: navigator.hardwareConcurrency || 0,
+      devMem: navigator.deviceMemory || 0,
+      gpu: String(gpu || '').slice(0, 60),
+      maxTex: maxTex,
+      lsKB: Math.round(lsBytes / 1024),
+      hasPBPrint: !!(window.__PBPrint && typeof window.__PBPrint.print === 'function'),
+      hasPBLocal: !!(window.__PBLocal && typeof window.__PBLocal.driveAsync === 'function'),
+      online: navigator.onLine !== false
+    };
+  }
+
+  function scanCanvases(extraList){
+    var nodes = Array.prototype.slice.call(document.querySelectorAll('canvas'));
+    if (Array.isArray(extraList)) {
+      extraList.forEach(function(c){ if (c && nodes.indexOf(c) < 0) nodes.push(c); });
+    }
+    var count = 0, px = 0;
+    for (var i = 0; i < nodes.length; i++) {
+      var w = nodes[i].width || 0, h = nodes[i].height || 0;
+      if (w > 0 && h > 0) { count++; px += w * h; }
+    }
+    return { canvases: count, canvasMp: Math.round((px / 1000000) * 100) / 100 };
+  }
+
+  // ---- Tab Switching ----
+  var tabClient = document.getElementById('tabClient');
+  var tabViewer = document.getElementById('tabViewer');
+  var secClient = document.getElementById('clientMode');
+  var secViewer = document.getElementById('viewerMode');
+  function setTab(mode){
+    var v = mode === 'viewer';
+    tabClient.classList.toggle('active', !v);
+    tabViewer.classList.toggle('active', v);
+    secClient.hidden = v;
+    secViewer.hidden = !v;
+    if (v) {
+      loadRecentSessions();
+      if (viewerSid) pollViewer();
+    }
+  }
+  tabClient.addEventListener('click', function(){ setTab('client'); });
+  tabViewer.addEventListener('click', function(){ setTab('viewer'); });
+
+  // ==================== CLIENT MODE ====================
+  var dev = detectDevice();
+  document.getElementById('envBadge').textContent = dev.uaShort;
+  document.getElementById('stScreen').textContent = dev.screen + ' · ' + (dev.cores || '?') + 'c';
+  document.getElementById('stGpu').textContent = dev.gpu + (dev.maxTex ? ' (' + dev.maxTex + 'px)' : '');
+  document.getElementById('stApp').textContent = (dev.iosApp ? 'iPad App ' + dev.appVer + (dev.iosLowRam ? ' [3GB]' : '') : 'Safari/Web') + ' · LS ' + dev.lsKB + 'KB';
+
+  function loadOrCreateSid(forceNew){
+    if (!forceNew) {
+      var q = (params.get('sid') || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+      if (q.length >= 4) return q;
+      try {
+        var saved = JSON.parse(localStorage.getItem(SID_STORE_KEY) || 'null');
+        if (saved && saved.sid && saved.exp > Date.now()) return saved.sid;
+      } catch (e) {}
+    }
+    var ns = genSid();
+    try { localStorage.setItem(SID_STORE_KEY, JSON.stringify({ sid: ns, exp: Date.now() + 24 * 3600000 })); } catch (e) {}
+    return ns;
+  }
+
+  var clientSid = loadOrCreateSid(false);
+  var queue = [];
+  var clientLogRows = [];
+  var lastEvAt = Date.now();
+  var maxLagMs = 0;
+  var inFlightStep = '';
+  var heldCanvases = [];
+  var sending = false;
+  var worker = null;
+
+  function syncSidUI(){
+    document.getElementById('clientSid').textContent = clientSid;
+    document.getElementById('launchBoothBtn').href = '/?diag=' + encodeURIComponent(clientSid);
+    try { localStorage.setItem(SID_STORE_KEY, JSON.stringify({ sid: clientSid, exp: Date.now() + 24 * 3600000 })); } catch (e) {}
+    if (worker) { try { worker.postMessage({ type: 'cfg', sid: clientSid, api: location.origin + API }); } catch (e) {} }
+  }
+  syncSidUI();
+
+  function saveLocalSurvivor(lastTag, lastMsg){
+    try {
+      var snap = {
+        sid: clientSid,
+        at: Date.now(),
+        inFlight: inFlightStep,
+        lastStep: lastTag + ': ' + lastMsg,
+        maxLagMs: maxLagMs,
+        tail: clientLogRows.slice(-8).map(function(x){ return x.tag + ': ' + x.msg; })
+      };
+      localStorage.setItem(LAST_STORE_KEY, JSON.stringify(snap));
+    } catch (e) {}
+  }
+
+  function renderClientLog(){
+    var box = document.getElementById('clientLog');
+    var slice = clientLogRows.slice(-100);
+    var html = '';
+    for (var i = slice.length - 1; i >= 0; i--) {
+      var r = slice[i];
+      html += '<div class="log-row"><span class="t">' + esc(fmtTime(r.t)) + '</span><span class="dt">+' + esc(r.dt) + 'ms</span><span class="tag tag-' + esc(r.tag) + '">' + esc(r.tag) + '</span><span>' + esc(r.msg) + (r.data ? '<span class="log-data">' + esc(JSON.stringify(r.data)) + '</span>' : '') + '</span></div>';
+    }
+    box.innerHTML = html;
+  }
+
+  function logEv(tag, msg, data, urgent){
+    var now = Date.now();
+    var dt = Math.max(0, now - lastEvAt);
+    lastEvAt = now;
+    var row = { t: now, dt: dt, tag: tag, msg: msg };
+    if (data != null) row.data = data;
+    if (data && data.state === 'start') {
+      inFlightStep = tag + ': ' + msg;
+      if (worker) { try { worker.postMessage({ type: 'step', inFlight: inFlightStep }); } catch (e) {} }
+    } else if (data && (data.state === 'end' || data.state === 'done' || data.state === 'error')) {
+      inFlightStep = '';
+      if (worker) { try { worker.postMessage({ type: 'step', inFlight: '' }); } catch (e) {} }
+    }
+    queue.push(row);
+    clientLogRows.push(row);
+    if (clientLogRows.length > 250) clientLogRows.shift();
+    if (tag !== 'HB') saveLocalSurvivor(tag, msg);
+    renderClientLog();
+    if (urgent) flushLogs(true);
+  }
+
+  function flushLogs(useBeacon){
+    if (!queue.length) return Promise.resolve();
+    var batch = queue.splice(0, 60);
+    var payload = JSON.stringify({ sid: clientSid, source: 'ipad-debug', device: dev, events: batch });
+    if (useBeacon && navigator.sendBeacon) {
+      try {
+        var ok = navigator.sendBeacon(API, new Blob([payload], { type: 'text/plain;charset=utf-8' }));
+        if (ok) {
+          document.getElementById('stSync').textContent = 'Beacon ' + fmtTime(Date.now()).slice(0, 8);
+          return Promise.resolve();
+        }
+      } catch (e) {}
+    }
+    if (sending && !useBeacon) {
+      queue = batch.concat(queue);
+      return Promise.resolve();
+    }
+    sending = true;
+    return fetch(API, { method: 'POST', headers: { 'content-type': 'text/plain;charset=utf-8' }, body: payload, keepalive: true })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        document.getElementById('stSync').textContent = (j && j.ok) ? ('Synced #' + j.count) : 'Err';
+      })
+      .catch(function(){
+        queue = batch.concat(queue).slice(-200);
+        document.getElementById('stSync').textContent = 'Offline (queued ' + queue.length + ')';
+      })
+      .finally(function(){ sending = false; });
+  }
+
+  // Check if previous page session died while an operation was inFlight!
+  function checkPreviousCrash(){
+    try {
+      var prev = JSON.parse(localStorage.getItem(LAST_STORE_KEY) || 'null');
+      if (prev && prev.inFlight && prev.at && (Date.now() - prev.at) < 12 * 3600000) {
+        var b = document.getElementById('crashBanner');
+        b.hidden = false;
+        b.innerHTML = '⚠️ Previous run did NOT finish cleanly — it was stuck in: <b>' + esc(prev.inFlight) + '</b> (' + esc(fmtAgo(Date.now() - prev.at)) + '). Uploaded crash survivor log to session <b>' + esc(clientSid) + '</b>.';
+        var payload = JSON.stringify({
+          sid: clientSid,
+          source: 'ipad-debug',
+          device: dev,
+          crashedPrev: prev,
+          events: [{ t: Date.now(), dt: 0, tag: 'CRASH', msg: 'Recovered pre-freeze survivor from previous run: ' + prev.inFlight, data: { prevStep: prev.lastStep, prevAt: prev.at } }]
+        });
+        fetch(API, { method: 'POST', headers: { 'content-type': 'text/plain;charset=utf-8' }, body: payload }).catch(function(){});
+      }
+      localStorage.removeItem(LAST_STORE_KEY);
+    } catch (e) {}
+  }
+
+  // ---- Web Worker Main-Thread Freeze Watchdog ----
+  // Even when the iPad UI thread is 100% locked up, this worker runs on a separate OS thread
+  // and beacons FROZEN to /api/ipaddiag after 1.8s of silence!
+  function startWorkerWatchdog(){
+    try {
+      var wSrc = [
+        'var sid="", api="", inFlight="", lastPong=Date.now(), alerted=false;',
+        'self.onmessage=function(e){',
+        '  var d=e.data||{};',
+        '  if(d.type==="cfg"){ sid=d.sid||sid; api=d.api||api; }',
+        '  else if(d.type==="step"){ inFlight=d.inFlight||""; }',
+        '  else if(d.type==="pong"){ lastPong=Date.now(); if(alerted){ alerted=false; send("LAG","Main thread recovered after freeze",{lagMs:d.lagMs||0}); } }',
+        '};',
+        'function send(tag,msg,data){',
+        '  if(!sid||!api) return;',
+        '  try{ fetch(api,{method:"POST",headers:{"content-type":"text/plain;charset=utf-8"},body:JSON.stringify({sid:sid,source:"ipad-debug-worker",events:[{t:Date.now(),dt:0,tag:tag,msg:msg,data:data}]})}).catch(function(){}); }catch(e){}',
+        '}',
+        'setInterval(function(){',
+        '  var gap=Date.now()-lastPong;',
+        '  self.postMessage({type:"ping",t:Date.now()});',
+        '  if(gap>1800 && !alerted){',
+        '    alerted=true;',
+        '    send("FROZEN","MAIN THREAD UNRESPONSIVE >"+gap+"ms while inFlight="+(inFlight||"idle"),{lagMs:gap,inFlight:inFlight||"idle"});',
+        '  }',
+        '}, 600);'
+      ].join('\n');
+      var blob = new Blob([wSrc], { type: 'application/javascript' });
+      worker = new Worker(URL.createObjectURL(blob));
+      worker.postMessage({ type: 'cfg', sid: clientSid, api: location.origin + API });
+      worker.onmessage = function(e){
+        if (e.data && e.data.type === 'ping') {
+          var lag = Math.max(0, Date.now() - (e.data.t || Date.now()));
+          worker.postMessage({ type: 'pong', lagMs: lag });
+          document.getElementById('stWorker').textContent = 'Armed (lag ' + lag + 'ms)';
+        }
+      };
+      document.getElementById('stWorker').textContent = 'Armed';
+    } catch (e) {
+      document.getElementById('stWorker').textContent = 'Unavailable';
+    }
+  }
+
+  // ---- Main-Thread Lag & FPS Watchdog ----
+  var lastTick = performance.now();
+  var rafFrames = 0, rafStart = performance.now();
+  function rafLoop(ts){
+    rafFrames++;
+    if (ts - rafStart >= 1000) {
+      var fps = Math.round(rafFrames * 1000 / (ts - rafStart));
+      document.getElementById('stFps').textContent = fps + ' fps';
+      rafFrames = 0; rafStart = ts;
+    }
+    requestAnimationFrame(rafLoop);
+  }
+
+  function startClientMonitors(){
+    checkPreviousCrash();
+    startWorkerWatchdog();
+    requestAnimationFrame(rafLoop);
+
+    logEv('BOOT', 'iPad Debug Lab started on ' + dev.uaShort, dev, true);
+
+    setInterval(function(){
+      var now = performance.now();
+      var lag = Math.round(now - lastTick - 250);
+      lastTick = now;
+      if (lag > 250) {
+        if (lag > maxLagMs) maxLagMs = lag;
+        document.getElementById('stLag').textContent = maxLagMs + ' ms';
+        var pill = document.getElementById('clientStatusPill');
+        pill.className = lag > 1000 ? 'pill bad' : 'pill warn';
+        pill.textContent = '● Lag spike ' + lag + 'ms';
+        var cs = scanCanvases(heldCanvases);
+        logEv('LAG', 'Main thread stalled for ' + lag + ' ms' + (inFlightStep ? ' during ' + inFlightStep : ''), { lagMs: lag, inFlight: inFlightStep, canvases: cs.canvases, canvasMp: cs.canvasMp }, lag > 800);
+      }
+    }, 250);
+
+    setInterval(function(){
+      var cs = scanCanvases(heldCanvases);
+      document.getElementById('stCanvas').textContent = cs.canvases + ' (' + cs.canvasMp + ' MP)';
+      logEv('HB', 'alive', { canvases: cs.canvases, canvasMp: cs.canvasMp, maxLagMs: maxLagMs, inFlight: inFlightStep || '' }, false);
+      flushLogs(false);
+    }, 2500);
+
+    window.addEventListener('error', function(e){
+      logEv('ERR', 'Window error: ' + (e.message || 'unknown'), { file: e.filename || '', line: e.lineno || 0 }, true);
+    });
+    window.addEventListener('unhandledrejection', function(e){
+      var r = e.reason;
+      logEv('ERR', 'Unhandled rejection: ' + ((r && r.message) || String(r || '')), null, true);
+    });
+    window.addEventListener('pb-memory-pressure', function(){
+      var cs = scanCanvases(heldCanvases);
+      logEv('MEM', 'iOS memory pressure warning received!', cs, true);
+    });
+    document.addEventListener('visibilitychange', function(){
+      logEv('STEP', 'Visibility changed: ' + document.visibilityState, null, true);
+    });
+    window.addEventListener('pagehide', function(){
+      logEv('STEP', 'Page hide / unloading', { inFlight: inFlightStep }, true);
+    });
+  }
+
+  // ---- Test Helpers ----
+  function releaseCanvas(c){
+    if (!c) return;
+    try { c.width = 0; c.height = 0; } catch (e) {}
+  }
+  function releaseHeld(){
+    while (heldCanvases.length) releaseCanvas(heldCanvases.pop());
+    var cs = scanCanvases(heldCanvases);
+    document.getElementById('stCanvas').textContent = cs.canvases + ' (' + cs.canvasMp + ' MP)';
+  }
+  function drawTestPhoto(canvas, title){
+    var ctx = canvas.getContext('2d', { alpha: false });
+    var w = canvas.width, h = canvas.height;
+    var g = ctx.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0, '#c93d27'); g.addColorStop(0.5, '#f59e0b'); g.addColorStop(1, '#1d4ed8');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(Math.round(w * 0.06), Math.round(h * 0.06), Math.round(w * 0.88), Math.round(h * 0.88));
+    // If live video is active, draw real camera frames into 4 photo cells!
+    var v = document.getElementById('testVideo');
+    var hasVid = v && v.srcObject && v.videoWidth > 0;
+    var pad = Math.round(w * 0.09), gap = Math.round(w * 0.03);
+    var cellW = Math.round((w - pad * 2 - gap) / 2);
+    var cellH = Math.round((h - pad * 2.6 - gap) / 2);
+    for (var i = 0; i < 4; i++) {
+      var cx = pad + (i % 2) * (cellW + gap);
+      var cy = pad + Math.floor(i / 2) * (cellH + gap);
+      if (hasVid) {
+        ctx.drawImage(v, cx, cy, cellW, cellH);
+      } else {
+        ctx.fillStyle = ['#111827','#1e3a8a','#065f46','#7c2d12'][i];
+        ctx.fillRect(cx, cy, cellW, cellH);
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.font = 'bold ' + Math.round(cellW * 0.14) + 'px sans-serif';
+        ctx.fillText('SHOT #' + (i + 1), cx + 20, cy + Math.round(cellH * 0.52));
+      }
+    }
+    ctx.fillStyle = '#1d1a1f';
+    ctx.font = 'bold ' + Math.round(w * 0.04) + 'px sans-serif';
+    ctx.fillText((title || 'iPad Debug 4R') + ' · ' + w + 'x' + h, pad, h - Math.round(pad * 0.55));
+  }
+
+  // Test B: Canvas Memory Ladder
+  async function runCanvasLadder(holdAll){
+    releaseHeld();
+    var steps = [
+      { label: '1 MP (1000x1000)', w: 1000, h: 1000 },
+      { label: '2 MP (1600x1200)', w: 1600, h: 1200 },
+      { label: '4 MP (2000x2000)', w: 2000, h: 2000 },
+      { label: '5 MP (1800x2700 4R 3GB)', w: 1800, h: 2700 },
+      { label: '8.6 MP (2400x3600 4R)', w: 2400, h: 3600 },
+      { label: '12 MP (3000x4000)', w: 3000, h: 4000 },
+      { label: '16 MP (4000x4000)', w: 4000, h: 4000 },
+      { label: '20 MP (4000x5000)', w: 4000, h: 5000 },
+      { label: '24 MP (4000x6000)', w: 4000, h: 6000 }
+    ];
+    logEv('MEM', 'Starting Canvas Ladder (' + (holdAll ? 'SIMULTANEOUS HOLD' : 'RELEASE EACH') + ')', { state: 'start' }, true);
+    await wait(120);
+    for (var i = 0; i < steps.length; i++) {
+      var s = steps[i];
+      var cs0 = scanCanvases(heldCanvases);
+      logEv('MEM', 'Allocating ' + s.label, { state: 'start', holdAll: holdAll, canvases: cs0.canvases, canvasMp: cs0.canvasMp }, true);
+      await nextFrame();
+      var t0 = performance.now();
+      var c = document.createElement('canvas');
+      c.width = s.w; c.height = s.h;
+      drawTestPhoto(c, s.label);
+      // Force GPU upload / readback of 1 pixel so WebKit actually backs the IOSurface!
+      var px = c.getContext('2d').getImageData(Math.floor(s.w / 2), Math.floor(s.h / 2), 1, 1).data;
+      var ms = Math.round(performance.now() - t0);
+      if (holdAll) heldCanvases.push(c);
+      var cs1 = scanCanvases(heldCanvases);
+      document.getElementById('stCanvas').textContent = cs1.canvases + ' (' + cs1.canvasMp + ' MP)';
+      logEv('MEM', 'Allocated ' + s.label + ' in ' + ms + 'ms (px=' + px[0] + ',' + px[1] + ',' + px[2] + ')', { state: 'end', ms: ms, canvases: cs1.canvases, canvasMp: cs1.canvasMp }, true);
+      if (!holdAll) releaseCanvas(c);
+      await wait(holdAll ? 500 : 250);
+    }
+    if (holdAll) {
+      logEv('MEM', 'Releasing all ' + heldCanvases.length + ' held canvases', { state: 'done' }, true);
+      releaseHeld();
+    } else {
+      logEv('MEM', 'Canvas Ladder completed cleanly', { state: 'done' }, true);
+    }
+  }
+
+  // Test C: Camera
+  var activeStream = null;
+  async function startCamera(){
+    stopCamera();
+    logEv('CAM', 'Requesting getUserMedia camera (1280x960)', { state: 'start' }, true);
+    var t0 = performance.now();
+    try {
+      activeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false });
+      var v = document.getElementById('testVideo');
+      document.getElementById('mediaPreviewWrap').hidden = false;
+      v.srcObject = activeStream;
+      await v.play();
+      var tr = activeStream.getVideoTracks()[0];
+      var set = (tr && tr.getSettings) ? tr.getSettings() : {};
+      document.getElementById('btnCam5').disabled = false;
+      document.getElementById('btnCamStop').disabled = false;
+      logEv('CAM', 'Camera started in ' + Math.round(performance.now() - t0) + 'ms (' + (set.width || v.videoWidth) + 'x' + (set.height || v.videoHeight) + ')', { state: 'end', w: set.width || v.videoWidth, h: set.height || v.videoHeight, label: tr ? tr.label : '' }, true);
+    } catch (e) {
+      logEv('CAM', 'Camera error: ' + ((e && e.message) || String(e)), { state: 'error' }, true);
+    }
+  }
+  function stopCamera(){
+    if (activeStream) {
+      activeStream.getTracks().forEach(function(t){ try { t.stop(); } catch (e) {} });
+      activeStream = null;
+      var v = document.getElementById('testVideo');
+      if (v) v.srcObject = null;
+      document.getElementById('btnCam5').disabled = true;
+      document.getElementById('btnCamStop').disabled = true;
+      logEv('CAM', 'Camera stopped', { state: 'done' }, true);
+    }
+  }
+  async function captureFive(){
+    var v = document.getElementById('testVideo');
+    if (!v || !v.srcObject) return;
+    logEv('CAM', 'Starting 5x consecutive frame capture', { state: 'start' }, true);
+    for (var i = 1; i <= 5; i++) {
+      var t0 = performance.now();
+      var c = document.createElement('canvas');
+      c.width = v.videoWidth || 1280; c.height = v.videoHeight || 960;
+      c.getContext('2d', { alpha: false }).drawImage(v, 0, 0, c.width, c.height);
+      var url = c.toDataURL('image/jpeg', 0.92);
+      var ms = Math.round(performance.now() - t0);
+      releaseCanvas(c);
+      logEv('CAM', 'Shot ' + i + '/5 captured & encoded in ' + ms + 'ms (' + Math.round(url.length / 1024) + ' KB)', { ms: ms, kb: Math.round(url.length / 1024) }, true);
+      await wait(350);
+    }
+    logEv('CAM', '5x capture finished cleanly', { state: 'done' }, true);
+  }
+
+  // Test D: Save / Encode / Download
+  async function runSaveTest(doDownload, w, h){
+    w = w || 1800; h = h || 2700;
+    logEv('SAVE', 'Building ' + w + 'x' + h + ' 4R canvas', { state: 'start', w: w, h: h }, true);
+    await nextFrame();
+    var t0 = performance.now();
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    drawTestPhoto(c, 'Save Test');
+    var drawMs = Math.round(performance.now() - t0);
+    // Show small preview
+    document.getElementById('mediaPreviewWrap').hidden = false;
+    var pv = document.getElementById('testPreview');
+    pv.getContext('2d').drawImage(c, 0, 0, pv.width, pv.height);
+
+    logEv('SAVE', 'Encoding toDataURL JPEG 0.92 (' + w + 'x' + h + ', draw=' + drawMs + 'ms)', { state: 'start', drawMs: drawMs }, true);
+    await nextFrame();
+    var t1 = performance.now();
+    var dataUrl = c.toDataURL('image/jpeg', 0.92);
+    var urlMs = Math.round(performance.now() - t1);
+
+    logEv('SAVE', 'Encoding toBlob JPEG 0.92 (toDataURL=' + urlMs + 'ms, ' + Math.round(dataUrl.length / 1024) + ' KB)', { state: 'start', urlMs: urlMs, kb: Math.round(dataUrl.length / 1024) }, true);
+    var t2 = performance.now();
+    var blob = await new Promise(function(res){ c.toBlob(res, 'image/jpeg', 0.92); });
+    var blobMs = Math.round(performance.now() - t2);
+    releaseCanvas(c);
+
+    logEv('SAVE', 'Encoded blob in ' + blobMs + 'ms (' + Math.round((blob ? blob.size : 0) / 1024) + ' KB)', { state: 'end', drawMs: drawMs, urlMs: urlMs, blobMs: blobMs, blobKB: Math.round((blob ? blob.size : 0) / 1024) }, true);
+
+    if (doDownload && blob) {
+      logEv('SAVE', 'Triggering browser download / share save', { state: 'start' }, true);
+      var objUrl = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = objUrl;
+      a.download = 'pb-ipad-debug-' + Date.now() + '.jpg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(objUrl); }, 8000);
+      logEv('SAVE', 'Download click dispatched', { state: 'done' }, true);
+    }
+    return { dataUrl: dataUrl, blob: blob };
+  }
+
+  // Test E: Print / AirPrint
+  async function runPrintTest(pageCount){
+    pageCount = pageCount || 1;
+    var w = 1800, h = 2700;
+    logEv('PRINT', 'Preparing ' + pageCount + 'x 4R page (' + w + 'x' + h + ')', { state: 'start', pages: pageCount, native: dev.hasPBPrint }, true);
+    await nextFrame();
+    var t0 = performance.now();
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    drawTestPhoto(c, 'Print Test');
+    var dataUrl = c.toDataURL('image/jpeg', 0.92);
+    var blob = await new Promise(function(res){ c.toBlob(res, 'image/jpeg', 0.92); });
+    releaseCanvas(c);
+    var prepMs = Math.round(performance.now() - t0);
+
+    if (dev.hasPBPrint) {
+      var pages = [];
+      for (var i = 0; i < pageCount; i++) pages.push(dataUrl);
+      logEv('PRINT', 'Calling native __PBPrint.print (' + pageCount + 'p, prep=' + prepMs + 'ms, ' + Math.round(dataUrl.length / 1024) + ' KB/p)', { state: 'start', prepMs: prepMs }, true);
+      await wait(60);
+      var t1 = performance.now();
+      var res = window.__PBPrint.print('Debug 4x6', 101.6, 152.4, JSON.stringify(pages));
+      var callMs = Math.round(performance.now() - t1);
+      logEv('PRINT', 'Native __PBPrint.print returned in ' + callMs + 'ms: ' + String(res), { state: 'done', callMs: callMs }, true);
+      return;
+    }
+
+    var area = document.getElementById('printArea');
+    area.innerHTML = '';
+    var urls = [];
+    for (var j = 0; j < pageCount; j++) {
+      var u = URL.createObjectURL(blob);
+      urls.push(u);
+      var img = new Image();
+      img.src = u;
+      await img.decode();
+      area.appendChild(img);
+    }
+    logEv('PRINT', 'Calling window.print() (' + pageCount + 'p, prep=' + prepMs + 'ms, ' + Math.round(blob.size / 1024) + ' KB)', { state: 'start', prepMs: prepMs }, true);
+    await wait(80);
+    var tp = performance.now();
+    window.print();
+    var printMs = Math.round(performance.now() - tp);
+    logEv('PRINT', 'window.print() returned after ' + printMs + 'ms — watching post-print stability for 10s', { state: 'done', printMs: printMs }, true);
+    setTimeout(function(){
+      area.innerHTML = '';
+      urls.forEach(function(u){ URL.revokeObjectURL(u); });
+      logEv('PRINT', 'Post-print cleanup finished cleanly', null, true);
+    }, 3000);
+  }
+
+  // Test F: Exact Customer Repro (Save -> Print)
+  async function runFullSavePrintCycle(){
+    logEv('TEST', '=== FULL SAVE -> PRINT REPRO CYCLE START ===', { state: 'start' }, true);
+    try {
+      await runSaveTest(true, 1800, 2700);
+      logEv('TEST', 'Waiting 400ms between Save and Print…', { state: 'start' }, true);
+      await wait(400);
+      await runPrintTest(1);
+      logEv('TEST', '=== FULL SAVE -> PRINT REPRO CYCLE FINISHED ===', { state: 'done' }, true);
+    } catch (e) {
+      logEv('ERR', 'Full cycle error: ' + ((e && e.message) || String(e)), { state: 'error' }, true);
+    }
+  }
+
+  // Test A: Quick Safe Triage
+  async function runQuickTriage(){
+    logEv('TEST', '=== QUICK SAFE TRIAGE START ===', { state: 'start' }, true);
+    try {
+      await runCanvasLadder(false);
+      await wait(250);
+      await runSaveTest(false, 1800, 2700);
+      await wait(250);
+      await runSaveTest(false, 2400, 3600);
+      logEv('TEST', '=== QUICK SAFE TRIAGE PASSED ===', { state: 'done' }, true);
+    } catch (e) {
+      logEv('ERR', 'Quick triage error: ' + ((e && e.message) || String(e)), { state: 'error' }, true);
+    }
+  }
+
+  // Bind client buttons
+  document.getElementById('copyCodeBtn').addEventListener('click', function(){
+    navigator.clipboard && navigator.clipboard.writeText(clientSid).catch(function(){});
+    this.textContent = 'Copied!'; var b = this; setTimeout(function(){ b.textContent = 'Copy Code'; }, 1500);
+  });
+  document.getElementById('copyViewUrlBtn').addEventListener('click', function(){
+    var u = location.origin + '/ipad-debug/?view=' + encodeURIComponent(clientSid);
+    navigator.clipboard && navigator.clipboard.writeText(u).catch(function(){});
+    this.textContent = 'Copied Link!'; var b = this; setTimeout(function(){ b.textContent = 'Copy Viewer Link'; }, 1500);
+  });
+  document.getElementById('newSidBtn').addEventListener('click', function(){
+    clientSid = loadOrCreateSid(true);
+    clientLogRows = []; queue = []; maxLagMs = 0; inFlightStep = '';
+    document.getElementById('stLag').textContent = '0 ms';
+    syncSidUI();
+    logEv('BOOT', 'New session started on ' + dev.uaShort, dev, true);
+  });
+  document.getElementById('markHangBtn').addEventListener('click', function(){
+    var cs = scanCanvases(heldCanvases);
+    logEv('MARK', 'USER TAPPED: It lagged / froze right around here!', { maxLagMs: maxLagMs, inFlight: inFlightStep, canvases: cs.canvases, canvasMp: cs.canvasMp }, true);
+  });
+  document.getElementById('flushNowBtn').addEventListener('click', function(){ flushLogs(false); });
+  document.getElementById('copyClientLogBtn').addEventListener('click', function(){
+    var txt = JSON.stringify({ sid: clientSid, device: dev, events: clientLogRows }, null, 2);
+    navigator.clipboard && navigator.clipboard.writeText(txt).catch(function(){});
+    this.textContent = 'Copied!'; var b = this; setTimeout(function(){ b.textContent = 'Copy Log'; }, 1500);
+  });
+  document.getElementById('btnTriage').addEventListener('click', runQuickTriage);
+  document.getElementById('btnCanvasSeq').addEventListener('click', function(){ runCanvasLadder(false); });
+  document.getElementById('btnCanvasHold').addEventListener('click', function(){ runCanvasLadder(true); });
+  document.getElementById('btnCamStart').addEventListener('click', startCamera);
+  document.getElementById('btnCam5').addEventListener('click', captureFive);
+  document.getElementById('btnCamStop').addEventListener('click', stopCamera);
+  document.getElementById('btnSaveEncode').addEventListener('click', function(){ runSaveTest(false, 1800, 2700); });
+  document.getElementById('btnSaveDownload').addEventListener('click', function(){ runSaveTest(true, 1800, 2700); });
+  document.getElementById('btnPrint1').addEventListener('click', function(){ runPrintTest(1); });
+  document.getElementById('btnPrint2').addEventListener('click', function(){ runPrintTest(2); });
+  document.getElementById('btnFullCycle').addEventListener('click', runFullSavePrintCycle);
+
+  // ==================== SUPPORT / REMOTE VIEWER MODE ====================
+  var viewerSid = initialView || '';
+  var viewerPaused = false;
+  var viewerFilter = 'ALL';
+  var lastViewerData = null;
+
+  function loadRecentSessions(){
+    fetch(API + '?list=1', { cache: 'no-store' })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        var el = document.getElementById('recentSessionsList');
+        if (!j || !j.ok || !Array.isArray(j.sessions) || !j.sessions.length) {
+          el.innerHTML = '<span class="muted">No diagnostic sessions recorded yet. Open <b>/ipad-debug/</b> on the iPad to start one.</span>';
+          return;
+        }
+        el.innerHTML = j.sessions.map(function(s){
+          var frozen = !!(s.inFlight && s.agoMs > 7000);
+          var badge = frozen ? '<span class="pill bad">FROZEN in ' + esc(s.inFlight) + '</span>'
+            : (s.stallCount > 0 || s.errorCount > 0) ? '<span class="pill warn">Stalls ' + s.stallCount + ' (max ' + s.maxLagMs + 'ms) · Err ' + s.errorCount + '</span>'
+            : (s.agoMs < 8000 ? '<span class="pill ok">LIVE</span>' : '<span class="pill info">Idle ' + esc(fmtAgo(s.agoMs)) + '</span>');
+          return '<div class="sess-item' + (s.sid === viewerSid ? ' active' : '') + '" data-sid="' + esc(s.sid) + '">'
+            + '<div><b style="font-family:var(--mono);font-size:15px;">' + esc(s.sid) + '</b> <span class="muted">· ' + esc(s.uaShort || s.source) + ' · ' + s.eventCount + ' events</span>'
+            + '<div class="muted" style="font-size:12px;">Last: ' + esc(s.lastStep || '—') + '</div></div>'
+            + '<div>' + badge + '</div></div>';
+        }).join('');
+        el.querySelectorAll('.sess-item').forEach(function(row){
+          row.addEventListener('click', function(){
+            viewerSid = row.dataset.sid;
+            document.getElementById('viewSidInput').value = viewerSid;
+            history.replaceState(null, '', '/ipad-debug/?view=' + encodeURIComponent(viewerSid));
+            pollViewer();
+          });
+        });
+      })
+      .catch(function(){
+        document.getElementById('recentSessionsList').textContent = 'Could not load sessions list.';
+      });
+  }
+
+  function renderViewer(j){
+    var detail = document.getElementById('viewerDetail');
+    if (!j || !j.found || !j.session) {
+      detail.hidden = false;
+      document.getElementById('vSid').textContent = viewerSid;
+      document.getElementById('viewerStatusBanner').className = 'banner warn';
+      document.getElementById('viewerStatusBanner').textContent = 'Waiting for session ' + viewerSid + ' to send its first heartbeat…';
+      document.getElementById('viewerLog').innerHTML = '';
+      return;
+    }
+    lastViewerData = j;
+    var s = j.session;
+    var d = s.device || {};
+    detail.hidden = false;
+    document.getElementById('vSid').textContent = s.sid;
+    document.getElementById('vUpdated').textContent = 'Last heartbeat ' + fmtAgo(j.aliveAgoMs) + ' · source: ' + (s.source || '?');
+
+    var sb = document.getElementById('viewerStatusBanner');
+    if (j.likelyFrozen) {
+      sb.className = 'banner bad';
+      sb.innerHTML = '🔴 LIKELY FROZEN — iPad stopped heartbeating ' + esc(fmtAgo(j.aliveAgoMs)) + ' while executing: <b>' + esc(s.inFlight) + '</b> (Last step: ' + esc(s.lastStep) + ')';
+    } else if (j.aliveAgoMs > 12000) {
+      sb.className = 'banner warn';
+      sb.innerHTML = '🟡 IDLE / DISCONNECTED (' + esc(fmtAgo(j.aliveAgoMs)) + ') — Last step: <b>' + esc(s.lastStep || 'none') + '</b> · Max lag: ' + (s.maxLagMs || 0) + 'ms · Stalls: ' + (s.stallCount || 0) + ' · Errors: ' + (s.errorCount || 0);
+    } else if ((s.stallCount || 0) > 0 || (s.errorCount || 0) > 0) {
+      sb.className = 'banner warn';
+      sb.innerHTML = '🟠 LIVE WITH STALLS/ERRORS — Max lag: <b>' + (s.maxLagMs || 0) + 'ms</b> (' + (s.stallCount || 0) + ' stalls, ' + (s.errorCount || 0) + ' errors) · Current: ' + esc(s.inFlight || s.lastStep || 'idle');
+    } else {
+      sb.className = 'banner ok';
+      sb.innerHTML = '🟢 LIVE &amp; RESPONSIVE — Heartbeat ' + esc(fmtAgo(j.aliveAgoMs)) + ' · Last step: ' + esc(s.lastStep || 'booted');
+    }
+
+    var cb = document.getElementById('viewerCrashBanner');
+    if (s.crashedPrev && s.crashedPrev.inFlight) {
+      cb.hidden = false;
+      cb.innerHTML = '💥 Previous Freeze Survivor Recovered: froze inside <b>' + esc(s.crashedPrev.inFlight) + '</b> (last step: ' + esc(s.crashedPrev.lastStep || '') + ')';
+    } else {
+      cb.hidden = true;
+    }
+
+    var metaItems = [
+      ['Device / OS', d.uaShort || d.ua || '—'],
+      ['iPad App / Low-RAM', (d.iosApp ? 'YES v' + (d.appVer || '?') : 'Browser') + ' · iosLowRam=' + String(d.iosLowRam)],
+      ['Screen / GPU', (d.screen || '—') + ' · ' + (d.gpu || '—')],
+      ['Canvases (Latest)', (s.lastCanvasCount || 0) + ' (' + (s.lastCanvasMp || 0) + ' MP)'],
+      ['Max Stall / Errors', (s.maxLagMs || 0) + ' ms · ' + (s.stallCount || 0) + ' stalls · ' + (s.errorCount || 0) + ' errs'],
+      ['In-Flight Action', s.inFlight || 'Idle'],
+      ['Printer / Paper', (d.printer || '—') + (d.printSize ? ' · ' + d.printSize : '')],
+      ['Camera / Layout', (d.camera || '—') + (d.layout ? ' · ' + d.layout : '')]
+    ];
+    document.getElementById('viewerMetaGrid').innerHTML = metaItems.map(function(p){
+      return '<div class="stat"><div class="k">' + esc(p[0]) + '</div><div class="v" style="font-size:13px;">' + esc(p[1]) + '</div></div>';
+    }).join('');
+
+    var evs = Array.isArray(s.events) ? s.events : [];
+    var filtered = evs.filter(function(ev){
+      if (viewerFilter === 'NOHB') return ev.tag !== 'HB';
+      if (viewerFilter === 'ALERT') return ev.tag === 'LAG' || ev.tag === 'ERR' || ev.tag === 'CRASH' || ev.tag === 'FROZEN' || ev.tag === 'MEM' || ev.tag === 'MARK';
+      if (viewerFilter === 'PRINT' || viewerFilter === 'SAVE' || viewerFilter === 'CAM') return ev.tag === viewerFilter || ev.tag === 'LAG' || ev.tag === 'ERR' || ev.tag === 'FROZEN';
+      return true;
+    });
+    document.getElementById('vEvCount').textContent = filtered.length + '/' + evs.length;
+    var html = '';
+    for (var i = filtered.length - 1; i >= 0; i--) {
+      var r = filtered[i];
+      html += '<div class="log-row"><span class="t">' + esc(fmtTime(r.t)) + '</span><span class="dt">' + (r.dt != null ? '+' + esc(r.dt) + 'ms' : '') + '</span><span class="tag tag-' + esc(r.tag) + '">' + esc(r.tag) + '</span><span>' + esc(r.msg) + (r.data ? '<span class="log-data">' + esc(JSON.stringify(r.data)) + '</span>' : '') + '</span></div>';
+    }
+    document.getElementById('viewerLog').innerHTML = html || '<div class="muted">No matching events.</div>';
+  }
+
+  function pollViewer(){
+    if (!viewerSid) return;
+    fetch(API + '?sid=' + encodeURIComponent(viewerSid), { cache: 'no-store' })
+      .then(function(r){ return r.json(); })
+      .then(renderViewer)
+      .catch(function(){});
+  }
+
+  document.getElementById('viewLoadBtn').addEventListener('click', function(){
+    var v = document.getElementById('viewSidInput').value.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+    if (v.length < 4) return;
+    viewerSid = v;
+    history.replaceState(null, '', '/ipad-debug/?view=' + encodeURIComponent(viewerSid));
+    pollViewer();
+    loadRecentSessions();
+  });
+  document.getElementById('viewPauseBtn').addEventListener('click', function(){
+    viewerPaused = !viewerPaused;
+    this.textContent = viewerPaused ? 'Resume Auto-Refresh' : 'Pause Auto-Refresh';
+  });
+  document.getElementById('viewRefreshListBtn').addEventListener('click', loadRecentSessions);
+  document.getElementById('viewCopyReportBtn').addEventListener('click', function(){
+    if (!lastViewerData || !lastViewerData.session) return;
+    var s = lastViewerData.session;
+    var compact = {
+      sid: s.sid,
+      source: s.source,
+      aliveAgoMs: lastViewerData.aliveAgoMs,
+      likelyFrozen: lastViewerData.likelyFrozen,
+      inFlight: s.inFlight,
+      lastStep: s.lastStep,
+      maxLagMs: s.maxLagMs,
+      stallCount: s.stallCount,
+      errorCount: s.errorCount,
+      crashedPrev: s.crashedPrev || null,
+      device: s.device,
+      events: (s.events || []).filter(function(e){ return e.tag !== 'HB'; }).slice(-120)
+    };
+    navigator.clipboard && navigator.clipboard.writeText(JSON.stringify(compact, null, 2)).catch(function(){});
+    this.textContent = 'Copied Report!'; var b = this; setTimeout(function(){ b.textContent = 'Copy Full Report'; }, 1500);
+  });
+  document.getElementById('vFilterBar').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-f]');
+    if (!b) return;
+    viewerFilter = b.dataset.f;
+    document.querySelectorAll('#vFilterBar button').forEach(function(x){ x.classList.toggle('primary', x === b); });
+    if (lastViewerData) renderViewer(lastViewerData);
+  });
+
+  setInterval(function(){
+    if (!secViewer.hidden && !viewerPaused) {
+      if (viewerSid) pollViewer();
+      loadRecentSessions();
+    }
+  }, 2000);
+
+  // ---- Boot ----
+  if (isViewerInit) {
+    if (initialView) document.getElementById('viewSidInput').value = initialView;
+    setTab('viewer');
+    if (initialView) pollViewer();
+  } else {
+    setTab('client');
+    startClientMonitors();
+  }
+})();
+</script>
+</body>
+</html>

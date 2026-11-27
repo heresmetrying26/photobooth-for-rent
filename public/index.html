@@ -198,6 +198,12 @@
   codeEl.addEventListener('keydown', function(e){ if(e.key === 'Enter') unlock(); });
 
   (async function boot(){
+    try{
+      var qDiag = ((new URLSearchParams(location.search)).get('diag') || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 24);
+      if(qDiag.length >= 4){
+        localStorage.setItem('pb_diag_session', JSON.stringify({ sid: qDiag, exp: Date.now() + 24 * 3600000 }));
+      }
+    }catch(e){}
     var notice = null;
     try{ notice = sessionStorage.getItem('pb_notice'); sessionStorage.removeItem('pb_notice'); }catch(e){}
     var token = localStorage.getItem(TOKEN_KEY);

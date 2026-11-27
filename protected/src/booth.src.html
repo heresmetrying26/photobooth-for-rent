@@ -24678,6 +24678,20 @@
                 session. Your activation, designs and photos stay.</p>
             </details>
           </div>
+          <!-- Live Hang Diagnostics: opt-in remote flight recorder for debugging iPad/tablet freezes -->
+          <div class="sub-group" id="hangDiagBox">
+            <details class="setup-tools-drawer" id="hangDiagDrawer" style="margin-top:0;">
+              <summary>Live hang diagnostics (support trace)</summary>
+              <p class="panel-hint" id="hangDiagText" style="margin:4px 0 8px;">Off by default. Turn this on only when troubleshooting a freeze with support — it sends step timings and memory numbers (never photos) to the live viewer so we can see the exact step where a tablet stalls.</p>
+              <div class="desk-row" style="align-items:center; gap:8px; flex-wrap:wrap;">
+                <button type="button" class="action-btn primary" id="hangDiagStart" style="width:auto; margin:0;">Start live hang trace</button>
+                <button type="button" class="action-btn" id="hangDiagStop" style="width:auto; margin:0; display:none;">Stop trace</button>
+                <button type="button" class="action-btn" id="hangDiagMark" style="width:auto; margin:0; display:none;">Mark lag here</button>
+                <span id="hangDiagCodeBadge" style="display:none; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-weight:800; font-size:15px; padding:4px 10px; border-radius:8px; background:#fef2f2; color:#b91c1c; border:1px solid #fca5a5;"></span>
+              </div>
+              <p class="panel-hint" id="hangDiagStatus" style="margin:6px 0 0;"></p>
+            </details>
+          </div>
         </div>
         <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="5">← Back</button><button
             type="button" class="action-btn primary next-btn" data-go="7">Next: Session →</button></div>
@@ -32922,6 +32936,8 @@
       }
 
       async function uploadLayoutForQR(layoutKey, onRetry) {
+        const _dgT0 = performance.now();
+        if (typeof window.pbDiag === 'function') window.pbDiag('SAVE', 'uploadLayoutForQR start (' + layoutKey + ')', { state: 'start', layout: layoutKey }, true);
         let srcCanvas = previewCanvas;
         const canReusePreview = (layoutKey === currentLayout && !btViewBack && previewCanvas && previewCanvas.width > 0 && previewCanvas.height > 0 &&
           previewCanvas._renderedForLayout === layoutKey && previewCanvas._renderedSession === (sessionNumber || 0) &&
@@ -32943,6 +32959,7 @@
         fctx.drawImage(srcCanvas, 0, 0);
         if (!canReusePreview && srcCanvas !== previewCanvas) pbReleaseCanvas(srcCanvas);
         const blob = await pbCanvasBlob(flat, 'image/jpeg', offlineJpegQuality('print'));
+        if (typeof window.pbDiag === 'function') window.pbDiag('SAVE', 'uploadLayoutForQR blob ready (' + flat.width + 'x' + flat.height + ', ' + Math.round((blob ? blob.size : 0) / 1024) + 'KB)', { state: 'start', ms: Math.round(performance.now() - _dgT0), w: flat.width, h: flat.height, reuse: canReusePreview }, true);
         let flatRefs = 0;
         const retainFlat = () => { flatRefs++; };
         const releaseFlat = () => { if (--flatRefs <= 0) { flat._pbFlatDone = null; pbReleaseCanvas(flat); } };
@@ -33166,6 +33183,7 @@
 
       async function saveSoloPhotosAsync(sessNum, shots) {
         if (!saveSoloPhotos || !shots || !shots.length) return;
+        if (typeof window !== 'undefined' && typeof window.pbDiag === 'function') window.pbDiag('SAVE', 'saveSoloPhotosAsync start (' + shots.length + ' shots)', { state: 'start', count: shots.length }, true);
         var num = sessNum || sessionNumber || 1;
         var dest = { folderKey: rawFolderKey(), subfolder: driveSubfolder() };
         var lowIos = isLowRamIos();
@@ -33174,6 +33192,7 @@
           if (!sc) continue;
           // Never collide solo-shot JPEG encoding + Photos import with active printing or AirPrint PDF spooling.
           if (typeof printing !== 'undefined' && printing) {
+            if (typeof window !== 'undefined' && typeof window.pbDiag === 'function') window.pbDiag('SAVE', 'saveSolo waiting for active print (shot ' + (i + 1) + ')', null, false);
             for (var pw = 0; pw < 80 && printing; pw++) await wait(150);
           }
           if ((IS_IOS_APP || lowIos) && typeof _pbLastPrintSentAt === 'number' && _pbLastPrintSentAt > 0) {
@@ -39349,6 +39368,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       /*@include camera/brand-sony.js*/
       /*@include camera/webcam-pro.js*/
       async function captureShot(index) {
+        if (typeof window.pbDiag === 'function') window.pbDiag('CAM', 'captureShot #' + ((index || 0) + 1) + (nativeCam && nativeCam.active ? ' (native)' : ' (web)'), { state: 'start', idx: index, native: !!(nativeCam && nativeCam.active) }, true);
         await usbEnsureLive();
         if (nativeCam.active && currentDeviceId !== USB_CAM_ID) {
           const shots0 = shotCanvases;
@@ -41684,6 +41704,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
       async function startSession(skipReady, opts) {
         if (state === 'capturing') return;
+        if (typeof window.pbDiag === 'function') window.pbDiag('STEP', 'startSession (layout=' + currentLayout + ', printSize=' + (printSize || 'none') + ', autoPrint=' + !!autoPrint + ')', { state: 'start', layout: currentLayout, printSize: printSize || '', autoPrint: !!autoPrint }, true);
         closeGalleryPop();
         var hasCamSel = !!(typeof cameraSelect !== 'undefined' && cameraSelect && cameraSelect.value);
         var readyWakePromise = null;
@@ -46073,7 +46094,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
       function renderComposite(opts) {
         if (!shotCanvases.every(Boolean)) return;
+        const _dgRc = performance.now();
+        if (typeof window.pbDiag === 'function') window.pbDiag('STEP', 'renderComposite start (' + currentLayout + ')', { state: 'start', layout: currentLayout }, true);
         renderCompositeToCanvas(currentLayout, previewCanvas, opts);
+        if (typeof window.pbDiag === 'function') window.pbDiag('STEP', 'renderComposite done (' + previewCanvas.width + 'x' + previewCanvas.height + ' in ' + Math.round(performance.now() - _dgRc) + 'ms)', { state: 'end', w: previewCanvas.width, h: previewCanvas.height, ms: Math.round(performance.now() - _dgRc) }, false);
       }
 
       // ---- Setup-tab live preview (uses placeholder shots before any photos exist) ----
@@ -51979,12 +52003,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (needsPrintPreview(auto === true)) { showPrintPreview(auto, n); return false; }        // nothing is counted or sent until the operator has seen the page
         printing = true;
         refreshPrintUI();
+        const _dgPrT0 = performance.now();
+        if (typeof window.pbDiag === 'function') window.pbDiag('PRINT', 'printCurrentPhoto start (size=' + printSize + ', copies=' + n + ', auto=' + (auto === true) + ')', { state: 'start', size: printSize, copies: n, auto: auto === true, hasActiveSave: !!_pbActiveSavePromise }, true);
         let espStartedPrint = false, espQueuedPrint = false;
         let pages = null, keepPagesForQueue = false;
         const releasePages = () => { if (pages) { pbReleaseCanvasList(pages); pages = null; } };
         try {
           if ((IS_IOS_APP || isLowRamIos()) && _pbActiveSavePromise) {
             // Let the composite photo save finish and release its flat canvas before allocating print canvases on 3 GB iPads.
+            if (typeof window.pbDiag === 'function') window.pbDiag('PRINT', 'waiting for active composite save before print canvas alloc', { state: 'start' }, true);
             try { await Promise.race([_pbActiveSavePromise.catch(() => { }), wait(3500)]); } catch (e) { }
             await wait(24);
           }
@@ -52001,7 +52028,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (typeof cashSend === 'function') { try { cashSend('start_print'); } catch (e) { } }
           showPrintingNote(printTxt('txtPrinting'), 4000);
           let paper = paperFor(printSize);
+          const _dgPg0 = performance.now();
           pages = printAdjustAll(flipbookResult ? buildFlipbookPages(paper) : keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)]);
+          if (typeof window.pbDiag === 'function') window.pbDiag('PRINT', 'print pages built (' + pages.length + 'p, ' + (pages[0] ? (pages[0].width + 'x' + pages[0].height) : '0x0') + ' in ' + Math.round(performance.now() - _dgPg0) + 'ms)', { state: 'start', pages: pages.length, w: pages[0] ? pages[0].width : 0, h: pages[0] ? pages[0].height : 0, ms: Math.round(performance.now() - _dgPg0) }, true);
           // Receipt rolls: the "page" is as long as the receipt.
           if (paper.receipt) paper = Object.assign({}, paper, { h: Math.round(pages[0].height / RECEIPT_DPI * 254) / 10 });
           const label = (n > 1 ? n + ' copies, ' : '') + paper.name;
@@ -52239,11 +52268,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return true;
         } catch (err) {
           console.error('Print failed:', err);
+          if (typeof window.pbDiag === 'function') window.pbDiag('ERR', 'printCurrentPhoto threw: ' + ((err && err.message) || String(err)), { state: 'error' }, true);
           showToast('Couldn’t print. Try again.', 4500);
           return false;
         } finally {
           if (!keepPagesForQueue) releasePages();
           printing = false;
+          if (typeof window.pbDiag === 'function') window.pbDiag('PRINT', 'printCurrentPhoto finished (' + Math.round(performance.now() - _dgPrT0) + 'ms)', { state: 'done', ms: Math.round(performance.now() - _dgPrT0), kept: keepPagesForQueue }, true);
           if (espStartedPrint && !espQueuedPrint && typeof cashSend === 'function') { try { cashSend('print_done'); } catch (e) { } }
           refreshPrintUI();
           if (printFirstHolding) finishPrintFirst();
@@ -89531,6 +89562,321 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scheduleTips); else scheduleTips();
       try { var tabSetup = document.getElementById('tabSetup'); if (tabSetup) new MutationObserver(scheduleTips).observe(tabSetup, { childList: true, subtree: true }); } catch (e) { }
       try { var deskOvTip = document.getElementById('deskOverlay'); if (deskOvTip) new MutationObserver(scheduleTips).observe(deskOvTip, { attributes: true, attributeFilter: ['hidden'] }); } catch (e) { }
+    })();
+  </script>
+  <script>
+    // ---- Opt-in Live Hang Flight Recorder (zero overhead when off) ----
+    (function () {
+      var SID_KEY = 'pb_diag_session';
+      var LAST_KEY = 'pb_diag_last';
+      var API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:')
+        ? 'https://photobooth4u.netlify.app/api/ipaddiag'
+        : '/api/ipaddiag';
+
+      var activeSid = '';
+      var started = false;
+      var queue = [];
+      var lastEvAt = Date.now();
+      var maxLagMs = 0;
+      var inFlight = '';
+      var sending = false;
+      var wrappedBridges = false;
+      var lagTimer = 0, hbTimer = 0, worker = null, pill = null;
+
+      function genSid() {
+        var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', s = '';
+        for (var i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+        return s;
+      }
+      function readSavedSid() {
+        try {
+          var q = ((new URLSearchParams(location.search)).get('diag') || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 24);
+          if (q.length >= 4) {
+            localStorage.setItem(SID_KEY, JSON.stringify({ sid: q, exp: Date.now() + 24 * 3600000 }));
+            return q;
+          }
+          var saved = JSON.parse(localStorage.getItem(SID_KEY) || 'null');
+          if (saved && saved.sid && saved.exp > Date.now()) return String(saved.sid).toUpperCase();
+        } catch (e) { }
+        return '';
+      }
+      function scanCanvases() {
+        var list = document.querySelectorAll('canvas'), n = 0, px = 0;
+        for (var i = 0; i < list.length; i++) {
+          var w = list[i].width || 0, h = list[i].height || 0;
+          if (w > 0 && h > 0) { n++; px += w * h; }
+        }
+        return { canvases: n, canvasMp: Math.round((px / 1000000) * 100) / 100 };
+      }
+      function deviceSnapshot() {
+        var ua = navigator.userAgent || '';
+        var pb = window.__PB || {};
+        var isIpad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+        var osM = ua.match(/OS (\d+[_\.\d]+)/i);
+        var osVer = osM ? osM[1].replace(/_/g, '.') : '';
+        var camEl = document.getElementById('cameraSelect');
+        var camLabel = (camEl && camEl.options && camEl.selectedIndex >= 0 && camEl.options[camEl.selectedIndex]) ? camEl.options[camEl.selectedIndex].textContent : '';
+        var prRoute = '';
+        try {
+          var prSel = document.getElementById('printRouteSelect');
+          if (prSel) prRoute = prSel.value || '';
+        } catch (e) { }
+        var apName = '';
+        try {
+          if (window.__PBPrint && typeof window.__PBPrint.savedAirPrint === 'function') {
+            apName = (JSON.parse(window.__PBPrint.savedAirPrint() || '{}').name) || '';
+          }
+        } catch (e) { }
+        return {
+          ua: ua.slice(0, 170),
+          uaShort: (isIpad ? 'iPad' : (/iPhone/.test(ua) ? 'iPhone' : (/Android/.test(ua) ? 'Android' : 'Desktop'))) + (osVer ? ' OS ' + osVer : '') + (pb.ios ? ' (iPad App ' + ((pb.desktop && pb.desktop.v) || '?') + ')' : ' (Web)'),
+          iosApp: !!pb.ios,
+          iosLowRam: pb.iosLowRam == null ? null : !!pb.iosLowRam,
+          appVer: (pb.desktop && pb.desktop.v) || '',
+          offline: !!pb.offline,
+          screen: screen.width + 'x' + screen.height + '@' + (window.devicePixelRatio || 1) + 'x',
+          cores: navigator.hardwareConcurrency || 0,
+          camera: String(camLabel || '').slice(0, 50),
+          printer: (apName ? 'AirPrint:' + apName : prRoute || 'default').slice(0, 60),
+          printSize: (typeof printSize === 'string' ? printSize : ''),
+          layout: (typeof currentLayout === 'string' ? currentLayout : '')
+        };
+      }
+      function updateUi(statusText) {
+        var bStart = document.getElementById('hangDiagStart');
+        var bStop = document.getElementById('hangDiagStop');
+        var bMark = document.getElementById('hangDiagMark');
+        var badge = document.getElementById('hangDiagCodeBadge');
+        var st = document.getElementById('hangDiagStatus');
+        var on = !!activeSid;
+        if (bStart) bStart.style.display = on ? 'none' : '';
+        if (bStop) bStop.style.display = on ? '' : 'none';
+        if (bMark) bMark.style.display = on ? '' : 'none';
+        if (badge) { badge.style.display = on ? '' : 'none'; badge.textContent = on ? ('Code: ' + activeSid) : ''; }
+        if (st && statusText != null) st.textContent = statusText;
+        if (on) {
+          if (!pill) {
+            pill = document.createElement('div');
+            pill.id = 'pbDiagPill';
+            pill.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:2147483000;background:rgba(185,28,28,0.92);color:#fff;font:700 12px/1.2 -apple-system,system-ui,sans-serif;padding:6px 10px;border-radius:999px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,.25);';
+            pill.innerHTML = '<span id="pbDiagPillTxt"></span><button type="button" id="pbDiagPillMark" style="background:rgba(255,255,255,.22);border:0;color:#fff;font:700 11px/1 sans-serif;padding:4px 7px;border-radius:999px;cursor:pointer;">Lag!</button><button type="button" id="pbDiagPillStop" style="background:rgba(0,0,0,.35);border:0;color:#fff;font:700 11px/1 sans-serif;padding:4px 7px;border-radius:999px;cursor:pointer;">Stop</button>';
+            document.body.appendChild(pill);
+            var pm = document.getElementById('pbDiagPillMark');
+            var ps = document.getElementById('pbDiagPillStop');
+            if (pm) pm.addEventListener('click', function () { pbDiag('MARK', 'User tapped Lag! pill', scanCanvases(), true); });
+            if (ps) ps.addEventListener('click', stopTrace);
+          }
+          var pt = document.getElementById('pbDiagPillTxt');
+          if (pt) pt.textContent = '● Trace ' + activeSid;
+          pill.style.display = 'flex';
+        } else if (pill) {
+          pill.style.display = 'none';
+        }
+      }
+      function saveSurvivor(tag, msg) {
+        try {
+          localStorage.setItem(LAST_KEY, JSON.stringify({ sid: activeSid, at: Date.now(), inFlight: inFlight, lastStep: tag + ': ' + msg, maxLagMs: maxLagMs }));
+        } catch (e) { }
+      }
+      function flush(useBeacon) {
+        if (!activeSid || !queue.length) return;
+        var batch = queue.splice(0, 60);
+        var payload = JSON.stringify({ sid: activeSid, source: (window.__PB && window.__PB.ios) ? 'ipad-app-booth' : 'web-booth', device: deviceSnapshot(), events: batch });
+        if (useBeacon && navigator.sendBeacon) {
+          try {
+            if (navigator.sendBeacon(API, new Blob([payload], { type: 'text/plain;charset=utf-8' }))) return;
+          } catch (e) { }
+        }
+        if (sending && !useBeacon) { queue = batch.concat(queue); return; }
+        sending = true;
+        fetch(API, { method: 'POST', headers: { 'content-type': 'text/plain;charset=utf-8' }, body: payload, keepalive: true })
+          .then(function (r) { return r.json(); })
+          .then(function (j) { if (j && j.ok) updateUi('Live trace active · synced ' + j.count + ' events · viewer: photobooth4u.netlify.app/ipad-debug/?view=' + activeSid); })
+          .catch(function () { queue = batch.concat(queue).slice(-200); })
+          .finally(function () { sending = false; });
+      }
+      function pbDiag(tag, msg, data, urgent) {
+        if (!activeSid) return;
+        var now = Date.now();
+        var dt = Math.max(0, now - lastEvAt);
+        lastEvAt = now;
+        var ev = { t: now, dt: dt, tag: String(tag || 'STEP').toUpperCase(), msg: String(msg || '') };
+        if (data != null) ev.data = data;
+        if (data && data.state === 'start') {
+          inFlight = ev.tag + ': ' + ev.msg;
+          if (worker) { try { worker.postMessage({ type: 'step', inFlight: inFlight }); } catch (e) { } }
+        } else if (data && (data.state === 'end' || data.state === 'done' || data.state === 'error')) {
+          inFlight = '';
+          if (worker) { try { worker.postMessage({ type: 'step', inFlight: '' }); } catch (e) { } }
+        }
+        queue.push(ev);
+        if (ev.tag !== 'HB') saveSurvivor(ev.tag, ev.msg);
+        if (urgent || queue.length >= 18) flush(!!urgent);
+      }
+      window.pbDiag = pbDiag;
+
+      function wrapBridgesOnce() {
+        if (wrappedBridges) return;
+        wrappedBridges = true;
+        function wrapFn(obj, name, tag, isAsync, urgent) {
+          if (!obj || typeof obj[name] !== 'function' || obj[name]._pbDiagWrapped) return;
+          var orig = obj[name];
+          var fn = function () {
+            if (!activeSid) return orig.apply(this, arguments);
+            var t0 = performance.now();
+            var argBytes = 0;
+            try { for (var i = 0; i < arguments.length; i++) argBytes += (typeof arguments[i] === 'string' ? arguments[i].length : 0); } catch (e) { }
+            pbDiag(tag, 'bridge ' + name + ' start (' + Math.round(argBytes / 1024) + 'KB)', { state: 'start', fn: name, kb: Math.round(argBytes / 1024) }, !!urgent);
+            try {
+              var out = orig.apply(this, arguments);
+              if (isAsync && out && typeof out.then === 'function') {
+                return out.then(function (val) {
+                  pbDiag(tag, 'bridge ' + name + ' ok (' + Math.round(performance.now() - t0) + 'ms)', { state: 'end', fn: name, ms: Math.round(performance.now() - t0) }, !!urgent);
+                  return val;
+                }, function (err) {
+                  pbDiag('ERR', 'bridge ' + name + ' failed (' + Math.round(performance.now() - t0) + 'ms): ' + ((err && err.message) || String(err)), { state: 'error', fn: name }, true);
+                  throw err;
+                });
+              }
+              pbDiag(tag, 'bridge ' + name + ' returned (' + Math.round(performance.now() - t0) + 'ms)', { state: 'end', fn: name, ms: Math.round(performance.now() - t0) }, !!urgent);
+              return out;
+            } catch (err) {
+              pbDiag('ERR', 'bridge ' + name + ' threw: ' + ((err && err.message) || String(err)), { state: 'error', fn: name }, true);
+              throw err;
+            }
+          };
+          fn._pbDiagWrapped = true;
+          obj[name] = fn;
+        }
+        if (window.__PBLocal) {
+          wrapFn(window.__PBLocal, 'driveAsync', 'SAVE', true, true);
+          wrapFn(window.__PBLocal, 'drive', 'SAVE', false, true);
+          wrapFn(window.__PBLocal, 'saveImageAsync', 'SAVE', true, true);
+          wrapFn(window.__PBLocal, 'saveImage', 'SAVE', false, true);
+        }
+        if (window.__PBPrint) {
+          wrapFn(window.__PBPrint, 'print', 'PRINT', false, true);
+          wrapFn(window.__PBPrint, 'savedAirPrint', 'PRINT', false, false);
+        }
+        if (window.__PBNet) {
+          wrapFn(window.__PBNet, 'printIpp', 'PRINT', false, true);
+          wrapFn(window.__PBNet, 'printEscpr', 'PRINT', false, true);
+          wrapFn(window.__PBNet, 'printRawTcp', 'PRINT', false, true);
+        }
+        if (window.__PBCam) {
+          wrapFn(window.__PBCam, 'capture', 'CAM', true, true);
+          wrapFn(window.__PBCam, 'start', 'CAM', true, false);
+        }
+        wrapFn(window, 'print', 'PRINT', false, true);
+      }
+
+      function startWorker() {
+        if (worker) return;
+        try {
+          var wSrc = [
+            'var sid="", api="", inFlight="", lastPong=Date.now(), alerted=false;',
+            'self.onmessage=function(e){',
+            '  var d=e.data||{};',
+            '  if(d.type==="cfg"){ sid=d.sid||sid; api=d.api||api; }',
+            '  else if(d.type==="step"){ inFlight=d.inFlight||""; }',
+            '  else if(d.type==="pong"){ lastPong=Date.now(); if(alerted){ alerted=false; send("LAG","Booth main thread recovered after freeze",{lagMs:d.lagMs||0}); } }',
+            '};',
+            'function send(tag,msg,data){',
+            '  if(!sid||!api) return;',
+            '  try{ fetch(api,{method:"POST",headers:{"content-type":"text/plain;charset=utf-8"},body:JSON.stringify({sid:sid,source:"booth-worker",events:[{t:Date.now(),dt:0,tag:tag,msg:msg,data:data}]})}).catch(function(){}); }catch(e){}',
+            '}',
+            'setInterval(function(){',
+            '  var gap=Date.now()-lastPong;',
+            '  self.postMessage({type:"ping",t:Date.now()});',
+            '  if(gap>1800 && !alerted){',
+            '    alerted=true;',
+            '    send("FROZEN","BOOTH MAIN THREAD FROZEN >"+gap+"ms while inFlight="+(inFlight||"idle"),{lagMs:gap,inFlight:inFlight||"idle"});',
+            '  }',
+            '}, 600);'
+          ].join('\n');
+          worker = new Worker(URL.createObjectURL(new Blob([wSrc], { type: 'application/javascript' })));
+          worker.postMessage({ type: 'cfg', sid: activeSid, api: API.charAt(0) === '/' ? (location.origin + API) : API });
+          worker.onmessage = function (e) {
+            if (e.data && e.data.type === 'ping') {
+              worker.postMessage({ type: 'pong', lagMs: Math.max(0, Date.now() - (e.data.t || Date.now())) });
+            }
+          };
+        } catch (e) { }
+      }
+
+      function startTrace(sid) {
+        activeSid = String(sid || genSid()).toUpperCase();
+        try { localStorage.setItem(SID_KEY, JSON.stringify({ sid: activeSid, exp: Date.now() + 24 * 3600000 })); } catch (e) { }
+        wrapBridgesOnce();
+        startWorker();
+        if (worker) { try { worker.postMessage({ type: 'cfg', sid: activeSid, api: API.charAt(0) === '/' ? (location.origin + API) : API }); } catch (e) { } }
+        if (!started) {
+          started = true;
+          // Upload any pre-freeze survivor from an earlier hung launch
+          try {
+            var prev = JSON.parse(localStorage.getItem(LAST_KEY) || 'null');
+            if (prev && prev.inFlight && prev.at && (Date.now() - prev.at) < 12 * 3600000) {
+              var pBody = JSON.stringify({
+                sid: activeSid,
+                source: (window.__PB && window.__PB.ios) ? 'ipad-app-booth' : 'web-booth',
+                device: deviceSnapshot(),
+                crashedPrev: prev,
+                events: [{ t: Date.now(), dt: 0, tag: 'CRASH', msg: 'Recovered pre-freeze survivor: ' + prev.inFlight, data: { prevStep: prev.lastStep, prevAt: prev.at } }]
+              });
+              fetch(API, { method: 'POST', headers: { 'content-type': 'text/plain;charset=utf-8' }, body: pBody }).catch(function () { });
+            }
+            localStorage.removeItem(LAST_KEY);
+          } catch (e) { }
+
+          var lastTick = performance.now();
+          lagTimer = setInterval(function () {
+            if (!activeSid) return;
+            var now = performance.now();
+            var lag = Math.round(now - lastTick - 250);
+            lastTick = now;
+            if (lag > 350) {
+              if (lag > maxLagMs) maxLagMs = lag;
+              var cs = scanCanvases();
+              pbDiag('LAG', 'Main thread stalled ' + lag + 'ms' + (inFlight ? ' during ' + inFlight : ''), { lagMs: lag, inFlight: inFlight, canvases: cs.canvases, canvasMp: cs.canvasMp }, lag > 900);
+            }
+          }, 250);
+
+          hbTimer = setInterval(function () {
+            if (!activeSid) return;
+            var cs = scanCanvases();
+            pbDiag('HB', 'alive', { canvases: cs.canvases, canvasMp: cs.canvasMp, maxLagMs: maxLagMs, inFlight: inFlight || '' }, false);
+            flush(false);
+          }, 3000);
+
+          window.addEventListener('error', function (e) { if (activeSid) pbDiag('ERR', 'Error: ' + (e.message || 'unknown'), { line: e.lineno || 0 }, true); });
+          window.addEventListener('unhandledrejection', function (e) { if (activeSid) pbDiag('ERR', 'Rejection: ' + ((e.reason && e.reason.message) || String(e.reason || '')), null, true); });
+          window.addEventListener('pb-memory-pressure', function () { if (activeSid) pbDiag('MEM', 'iOS memory pressure warning', scanCanvases(), true); });
+          document.addEventListener('visibilitychange', function () { if (activeSid) pbDiag('STEP', 'Visibility: ' + document.visibilityState, null, true); });
+          window.addEventListener('pagehide', function () { if (activeSid) pbDiag('STEP', 'Page hide', { inFlight: inFlight }, true); });
+        }
+        updateUi('Live trace active · code ' + activeSid + ' · open photobooth4u.netlify.app/ipad-debug/?view=' + activeSid);
+        pbDiag('BOOT', 'Booth live hang trace started', deviceSnapshot(), true);
+      }
+
+      function stopTrace() {
+        if (activeSid) pbDiag('STEP', 'Live hang trace stopped by user', { state: 'done' }, true);
+        activeSid = '';
+        inFlight = '';
+        try { localStorage.removeItem(SID_KEY); localStorage.removeItem(LAST_KEY); } catch (e) { }
+        if (worker) { try { worker.terminate(); } catch (e) { } worker = null; }
+        updateUi('Trace stopped.');
+      }
+
+      var bStart = document.getElementById('hangDiagStart');
+      var bStop = document.getElementById('hangDiagStop');
+      var bMark = document.getElementById('hangDiagMark');
+      if (bStart) bStart.addEventListener('click', function () { startTrace(genSid()); });
+      if (bStop) bStop.addEventListener('click', stopTrace);
+      if (bMark) bMark.addEventListener('click', function () { pbDiag('MARK', 'User tapped Mark lag here', scanCanvases(), true); });
+
+      var initSid = readSavedSid();
+      if (initSid) startTrace(initSid);
+      else updateUi('');
     })();
   </script>
 </body>

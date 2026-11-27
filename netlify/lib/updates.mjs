@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.119', date: '2026-11-27' },
   { version: '1.1.118', date: '2026-11-27' },
   { version: '1.1.117', date: '2026-11-26' },
   { version: '1.1.116', date: '2026-11-26' },
@@ -261,7 +262,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.36', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.36/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.37', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.37/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -315,6 +316,15 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-27', title: 'Desktop 1.1.119, Android 1.2.28, iPad 1.1.37 & Website: Reliable Photoman Template Maker Canvas, Huawei Tablet Camera Endurance & LAN Print Station Paper Sizes', for: ['website', 'app', 'android', 'ipad'], app: '1.1.119', android: '1.2.28', ipad: '1.1.37',
+    items: [
+      '🎨 Fixes Photoman Template Maker canvas errors & missing backgrounds: Fixes the zero-size drawing error when uploading backgrounds or custom frames, makes background colours and images fill the entire card cleanly without white box leftovers, and keeps custom PNG overlays visible in both the editor and Photographer Desk preview.',
+      '📷 Remembers your chosen front or back camera on Huawei & Android tablets: Keeps your selected built-in tablet camera saved cleanly between restarts, prevents USB printers from being mistaken for DSLRs, and resumes smoothly after granting camera permission.',
+      '🔋 Cooler, steadier multi-hour Android tablet sessions: Clears temporary frame buffers on low-memory alerts, matches iPad by turning heavy noise clean-up and stacking off by default on tablet cameras, and recovers cleanly if the screen needs a refresh mid-event.',
+      '🖨️ Supported printer paper types over LAN Print Station & clearer setup guides: Shows your connected laptop printer paper options inside Print Station and updates the Cash Acceptor, Features, and Lifetime portal guides to point directly to Setup › 7 Session › Payment & vouchers.'
+    ]
+  },
   {
     date: '2026-11-27', title: 'Desktop 1.1.118, Android 1.2.27, iPad 1.1.36 & Print Helper 1.1.28: Faster Instant Windows Printing, Driverless Desktop DNP USB, DNP Hot Folder Print & Reliable Windows Camera Start', for: ['website', 'app', 'android', 'ipad', 'helper'], app: '1.1.118', android: '1.2.27', ipad: '1.1.36', helper: '1.1.28',
     items: [

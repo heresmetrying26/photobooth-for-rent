@@ -2,6 +2,7 @@ package com.photobooth4u.booth
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ComponentCallbacks2
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -88,7 +89,7 @@ class MainActivity : AppCompatActivity() {
     private fun dispatchNetSyncEvent(eventName: String, delayMs: Long = 700L) {
         pendingNetEvent?.let { checkinHandler.removeCallbacks(it) }
         val task = Runnable {
-            if (::webView.isInitialized && offlineLoaded) {
+            if (::webView.isInitialized && !webViewDestroyed && offlineLoaded) {
                 webView.evaluateJavascript("try{window.dispatchEvent(new Event('$eventName'));}catch(e){}", null)
             }
         }
@@ -138,10 +139,19 @@ class MainActivity : AppCompatActivity() {
     private val BASE_URL   = "https://photobooth4u.netlify.app/"
     private val ASSET_BOOTH = "booth.html"
     private var offlineLoaded = false
+    @Volatile private var webViewDestroyed = false
     private var activeLifetime = false      // this tablet's code is a Lifetime code (the booth shows the same options as online)
     private var pageErrorToasts = 0
 
     private val REQ_CAMERA_PERMISSION = 2001
+    private val pendingWebPermRequests = mutableListOf<PermissionRequest>()
+    private var cameraPermPromptInFlight = false
+    private var hadCameraPermission = false
+
+    companion object {
+        private var lastRenderCrashAt: Long = 0L
+        private var rapidRenderCrashes: Int = 0
+    }
 
     // ---- New version prompt ----
     // By default, the app will not pop up update prompts automatically (operators prefer manual checks in Step 6 Share).
@@ -374,6 +384,7 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Exception) { }
 
         // 6. Request camera permissions if needed
+        hadCameraPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
         checkAndRequestPermissions()
 
         // 7. Prevent accidental exit by guests (back button confirmation)
@@ -627,10 +638,48 @@ class MainActivity : AppCompatActivity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == BoothWifi.REQ_PERMISSION) {
+        if (requestCode == REQ_CAMERA_PERMISSION) {
+            cameraPermPromptInFlight = false
+            val camGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+            val micGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+            val hadPending = pendingWebPermRequests.isNotEmpty()
+            flushPendingWebPermissions(camGranted, micGranted)
+            if (camGranted) {
+                val newlyGranted = !hadCameraPermission || hadPending
+                hadCameraPermission = true
+                if (newlyGranted) notifyCameraPermissionReady()
+            }
+        } else if (requestCode == BoothWifi.REQ_PERMISSION) {
             boothWifi?.onPermissionResult(grantResults.isNotEmpty() && grantResults.any { it == PackageManager.PERMISSION_GRANTED })
         } else if (requestCode == Esp32Bridge.REQ_PERMISSION) {
             esp32Bridge?.onPermissionResult(grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED })
+        }
+    }
+
+    private fun flushPendingWebPermissions(camGranted: Boolean, micGranted: Boolean) {
+        val pending = pendingWebPermRequests.toList()
+        pendingWebPermRequests.clear()
+        for (req in pending) {
+            try {
+                val allowed = req.resources.filter { res ->
+                    when (res) {
+                        PermissionRequest.RESOURCE_VIDEO_CAPTURE -> camGranted
+                        PermissionRequest.RESOURCE_AUDIO_CAPTURE -> micGranted
+                        else -> true
+                    }
+                }.toTypedArray()
+                if (allowed.isNotEmpty()) req.grant(allowed) else req.deny()
+            } catch (_: Throwable) { }
+        }
+    }
+
+    private fun notifyCameraPermissionReady() {
+        runOnUiThread {
+            if (::webView.isInitialized) {
+                try {
+                    webView.evaluateJavascript("try{window.dispatchEvent(new Event('pb-camera-permission'));}catch(e){}", null)
+                } catch (_: Throwable) { }
+            }
         }
     }
 
@@ -640,6 +689,16 @@ class MainActivity : AppCompatActivity() {
         updater.onResume()      // back from "Install unknown apps": carry on with the update
         if (isAutoUpdatePopupEnabled()) {
             checkForAppUpdate()
+        }
+        val camNow = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        if (camNow) {
+            val micNow = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+            val hadPending = pendingWebPermRequests.isNotEmpty()
+            if (hadPending) flushPendingWebPermissions(true, micNow)
+            if (!hadCameraPermission || hadPending) {
+                hadCameraPermission = true
+                notifyCameraPermissionReady()
+            }
         }
         if (::webView.isInitialized && offlineLoaded && isNetworkAvailable()) {
             dispatchNetSyncEvent("pb-app-resume", 500L)
@@ -653,8 +712,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+            runOnUiThread {
+                if (::webView.isInitialized && !webViewDestroyed && !isFinishing && !isDestroyed) {
+                    try { webView.clearCache(false) } catch (_: Throwable) { }
+                    if (offlineLoaded) {
+                        try {
+                            webView.evaluateJavascript("try{window.dispatchEvent(new Event('pb-memory-pressure'));}catch(e){}", null)
+                        } catch (_: Throwable) { }
+                    }
+                }
+            }
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        pendingWebPermRequests.clear()
         try {
             netCallback?.let { cb ->
                 val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
@@ -724,8 +800,14 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onPermissionRequest(request: PermissionRequest) {
-                // Automatically grant camera and microphone access to the booth
+                // Automatically grant camera and microphone access to the booth once Android runtime permission is ready
                 activityGrantPermissions(request)
+            }
+
+            override fun onPermissionRequestCanceled(request: PermissionRequest) {
+                runOnUiThread {
+                    pendingWebPermRequests.remove(request)
+                }
             }
 
             override fun onShowFileChooser(
@@ -876,9 +958,31 @@ class MainActivity : AppCompatActivity() {
 
             override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
                 val crashed = detail?.didCrash() ?: false
-                Log.e("PBMainActivity", "WebView render process gone (didCrash: $crashed)")
+                Log.e("PBMainActivity", "WebView render process gone (didCrash: $crashed) — recreating kiosk cleanly")
                 offlineLoaded = false
-                bootWithLicence()
+                // A WebView whose renderer died cannot load pages again; destroy it and recreate the Activity
+                // so a fresh WebView boots back into the saved event and sticky camera automatically.
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    webViewDestroyed = true
+                    try {
+                        root.removeView(webView)
+                        webView.destroy()
+                    } catch (_: Throwable) { }
+                    val now = System.currentTimeMillis()
+                    if (now - lastRenderCrashAt < 30_000L) {
+                        rapidRenderCrashes++
+                    } else {
+                        rapidRenderCrashes = 1
+                    }
+                    lastRenderCrashAt = now
+                    val delayMs = if (rapidRenderCrashes <= 1) 250L else if (rapidRenderCrashes <= 3) 2000L else 6000L
+                    checkinHandler.postDelayed({
+                        if (!isFinishing && !isDestroyed) {
+                            try { recreate() } catch (_: Throwable) { }
+                        }
+                    }, delayMs)
+                }
                 return true
             }
         }
@@ -1039,7 +1143,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun activityGrantPermissions(request: PermissionRequest) {
         runOnUiThread {
-            request.grant(request.resources)
+            val wantsVideo = request.resources.contains(PermissionRequest.RESOURCE_VIDEO_CAPTURE)
+            val hasCam = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+            if (wantsVideo && !hasCam) {
+                // Hold the WebView grant until Android's runtime CAMERA permission dialog finishes.
+                // Granting early on Huawei / HarmonyOS WebViews produces a black/dead stream ("not sending a picture").
+                pendingWebPermRequests.add(request)
+                if (!cameraPermPromptInFlight) {
+                    checkAndRequestPermissions()
+                }
+                return@runOnUiThread
+            }
+            try {
+                request.grant(request.resources)
+            } catch (_: Throwable) { }
         }
     }
 
@@ -1064,6 +1181,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (needed.isNotEmpty()) {
+            cameraPermPromptInFlight = true
             ActivityCompat.requestPermissions(this, needed.toTypedArray(), REQ_CAMERA_PERMISSION)
         }
     }

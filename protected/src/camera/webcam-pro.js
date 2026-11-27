@@ -7,9 +7,11 @@
         label: 'Webcam',
         is: function () { return false; },
         keys: { clean: 'pb_webcam_clean', tips: 'pb_webcam_tips', classic: 'pb_webcam_classic' },
-        // Photo clean-up (denoise + sharpen) runs pixel by pixel on every shot, right while the next countdown starts. The
-        // built-in iPad camera is clean without it, so on the iPad app it is off until the operator turns it on.
-        defaultClean: /PB4uIOS/.test(typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '') ? 'off' : 'auto',
+        // Photo clean-up (denoise + sharpen) runs pixel by pixel on every shot, right while the next countdown starts.
+        // Built-in iPad and Android tablet cameras already use hardware ISP noise reduction, and running JS bilateral
+        // denoise + full-page sharpen on every shot heats up mid-range tablet CPUs over multi-hour events. Off by
+        // default on iPad and Android apps until the operator turns it on (e.g. for a dim external USB webcam).
+        defaultClean: /PB4uIOS|PB4uAndroid/.test(typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '') ? 'off' : 'auto',
         tune: { denoise: [20, 34], sharpen: [0.65, 0.95], page: [0.35, 0.5] }
       });
 
@@ -17,15 +19,15 @@
       const WEBCAM_FPS_WARN_KEY = 'pb_webcam_fps_warn';
       const WEBCAM_UVC_PREFIX = 'pb4u.webcamUvc.';
       const WEBCAM_UVC_DEF_PREFIX = 'pb4u.webcamUvcDef.';
-      // Stacking copies a full camera picture to a CPU canvas about 25 times a second during the countdown and then blends
-      // them pixel by pixel when the photo is taken. That is worth it for a dim-room USB webcam, but on the iPad app it makes
-      // the live picture stutter while the guest is posing, and the built-in iPad camera is clean without it. So on the
-      // iPad app it is off until the operator ticks it.
+      // Stacking copies a full camera picture to a CPU canvas repeatedly during the countdown and then blends
+      // them pixel by pixel when the photo is taken. Worth it for a dim-room USB webcam on a laptop, but on iPad
+      // and Android tablets it adds GPU->CPU readback stutter, RAM pressure and heat over hours of use. Off by
+      // default on iPad and Android apps until the operator explicitly ticks it.
       function webcamStackOn() {
         const v = camQStore(WEBCAM_STACK_KEY);
         if (v === '1') return true;
         if (v === '0') return false;
-        try { if (/PB4uIOS/.test(navigator.userAgent || '')) return false; } catch (e) { }
+        try { if (/PB4uIOS|PB4uAndroid/.test(navigator.userAgent || '')) return false; } catch (e) { }
         return true;
       }
       function webcamTipsOn() { return camQStore(WEBCAM_FPS_WARN_KEY) !== '0'; }
@@ -53,6 +55,18 @@
           return { canvas: cv, ctx: cx, w: 0, h: 0, at: 0 };
         });
         return webcamRingPool;
+      }
+
+      function webcamReleaseRingPool() {
+        webcamFrameRing.length = 0;
+        if (!webcamRingPool) return;
+        for (let i = 0; i < webcamRingPool.length; i++) {
+          const s = webcamRingPool[i];
+          if (s && s.canvas) {
+            try { s.canvas.width = 0; s.canvas.height = 0; } catch (e) { }
+          }
+          if (s) { s.w = 0; s.h = 0; s.at = 0; }
+        }
       }
 
       function webcamPushFrame(v) {
@@ -599,7 +613,7 @@
             stackChk._pbBound = true;
             stackChk.addEventListener('change', function () {
               camQSave(WEBCAM_STACK_KEY, stackChk.checked ? '1' : '0');
-              if (!stackChk.checked) webcamFrameRing.length = 0;
+              if (!stackChk.checked) webcamReleaseRingPool();
             });
           }
         }

@@ -2,6 +2,8 @@ package com.photobooth4u.booth
 
 import android.content.ContentValues
 import android.content.Context
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -573,6 +575,64 @@ class PBLocal(private val ctx: Context) {
     fun setAutoBootEnabled(enabled: Boolean): Boolean {
         ctx.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE).edit().putBoolean("pref_auto_boot", enabled).apply()
         return true
+    }
+
+    /**
+     * Synchronous native persistence for the operator's last chosen camera (JSON from booth.html).
+     * Chromium WebView's localStorage flushes asynchronously to disk and can lose a change if the
+     * kiosk app is force-closed right after picking a camera.
+     */
+    @JavascriptInterface
+    fun getCameraPref(): String {
+        return try {
+            ctx.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE).getString("pb_saved_camera", "") ?: ""
+        } catch (_: Throwable) {
+            ""
+        }
+    }
+
+    @JavascriptInterface
+    fun setCameraPref(json: String?): Boolean {
+        return try {
+            val prefs = ctx.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE)
+            if (json.isNullOrBlank()) {
+                prefs.edit().remove("pb_saved_camera").commit()
+            } else {
+                prefs.edit().putString("pb_saved_camera", json.take(2048)).commit()
+            }
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    /**
+     * Lists Android Camera2 cameras with their facing ("front" | "back" | "external").
+     * On Huawei MatePad / HarmonyOS WebViews, navigator.mediaDevices.enumerateDevices() often
+     * strips camera labels (showing only "Camera 1", "Camera 2") and rotates hashed deviceIds
+     * across app restarts. Exposing Camera2 facing metadata lets the booth label cameras clearly,
+     * auto-mirror accurately, and stick to the operator's chosen camera across restarts.
+     */
+    @JavascriptInterface
+    fun listAndroidCameras(): String {
+        val arr = JSONArray()
+        try {
+            val cm = ctx.getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return "[]"
+            for (id in cm.cameraIdList) {
+                try {
+                    val chars = cm.getCameraCharacteristics(id)
+                    val caps = chars.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
+                    if (caps != null && !caps.contains(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE)) continue
+                    val facing = when (chars.get(CameraCharacteristics.LENS_FACING)) {
+                        CameraCharacteristics.LENS_FACING_FRONT -> "front"
+                        CameraCharacteristics.LENS_FACING_BACK -> "back"
+                        CameraCharacteristics.LENS_FACING_EXTERNAL -> "external"
+                        else -> ""
+                    }
+                    arr.put(JSONObject().put("id", id).put("facing", facing))
+                } catch (_: Throwable) { }
+            }
+        } catch (_: Throwable) { }
+        return arr.toString()
     }
 
     /**

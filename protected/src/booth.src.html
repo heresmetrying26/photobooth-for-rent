@@ -29609,11 +29609,12 @@
         tabSession.classList.toggle('hidden', !toSession);
         document.body.classList.toggle('in-session', toSession);   // smaller header: the camera gets the room
         try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
-        if (toSession && IS_IOS_APP && currentStream && currentDeviceId !== USB_CAM_ID) {
+        if (toSession && (IS_IOS_APP || IS_ANDROID_APP) && currentStream && currentDeviceId !== USB_CAM_ID) {
           try {
             if (video.srcObject !== currentStream) video.srcObject = currentStream;
             if (video.paused) { var vp = video.play(); if (vp && vp.catch) vp.catch(function () { }); }
             if (typeof listenVideoFrames === 'function') listenVideoFrames(video);
+            if (typeof camVerifyVisibleFrame === 'function') camVerifyVisibleFrame(video);
           } catch (e) { }
         }
         window.scrollTo(0, 0);
@@ -30517,6 +30518,16 @@
         if (!cv) return;
         try { cv.width = 0; cv.height = 0; } catch (e) { }
       }
+      function pbDrawableReady(src) {
+        if (!src) return false;
+        if (typeof HTMLImageElement !== 'undefined' && src instanceof HTMLImageElement) {
+          return !!(src.complete && src.naturalWidth > 0 && src.naturalHeight > 0);
+        }
+        if (typeof HTMLVideoElement !== 'undefined' && src instanceof HTMLVideoElement) {
+          return !!(src.videoWidth > 0 && src.videoHeight > 0);
+        }
+        return !!((src.naturalWidth || src.width) > 0 && (src.naturalHeight || src.height) > 0);
+      }
       function pbClearShotTileCache(c) {
         if (!c || !c._cqCache) return;
         try {
@@ -30550,6 +30561,42 @@
         }
         shotMotionClips = [];
       }
+      function pbReleaseFlipbookResult() {
+        if (typeof flipbookResult === 'undefined' || !flipbookResult) return;
+        try {
+          if (Array.isArray(flipbookResult.cards)) {
+            for (var i = 0; i < flipbookResult.cards.length; i++) pbReleaseCanvas(flipbookResult.cards[i]);
+          }
+          if (flipbookResult.cover) pbReleaseCanvas(flipbookResult.cover);
+          if (flipbookResult.back) pbReleaseCanvas(flipbookResult.back);
+        } catch (e) { }
+        flipbookResult = null;
+      }
+      window.addEventListener('pb-memory-pressure', function () {
+        try { if (typeof webcamReleaseRingPool === 'function') webcamReleaseRingPool(); } catch (e) { }
+        try {
+          if (typeof _pbBgImgCache !== 'undefined' && _pbBgImgCache) {
+            for (var k in _pbBgImgCache) {
+              if (_pbBgImgCache[k] !== backgroundImg) delete _pbBgImgCache[k];
+            }
+          }
+        } catch (e) { }
+        try {
+          if (typeof state !== 'undefined' && state === 'idle') {
+            if (typeof previewCanvas !== 'undefined' && previewCanvas && previewCanvas.style && previewCanvas.style.display === 'none') {
+              pbReleaseCanvas(previewCanvas);
+              previewCanvas._renderedForLayout = '';
+            }
+            if (typeof pbReleasePlaceholderCache === 'function') pbReleasePlaceholderCache();
+            else if (typeof _phCache !== 'undefined' && _phCache && Array.isArray(_phCache.list) && _phCache.list.length) {
+              pbReleaseShotList(_phCache.list);
+              _phCache.list = [];
+              _phCache.key = '';
+            }
+            if (typeof pmMakerSamples !== 'undefined') pmMakerSamples = null;
+          }
+        } catch (e) { }
+      });
       let mainIndex = 0;
       let streamActive = false;
       let toastTimer = null;
@@ -34392,7 +34439,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             showToast('Photo & GIF saved');
             if (flipbookResult && flipBack && typeof makeFlipBack === 'function') {
               var gifUrl = fileShareUrl(gifResult.fileId, true);
-              if (gifUrl) flipbookResult.back = makeFlipBack(gifUrl);
+              if (gifUrl) {
+                if (flipbookResult.back) pbReleaseCanvas(flipbookResult.back);
+                flipbookResult.back = makeFlipBack(gifUrl);
+              }
               if (typeof renderComposite === 'function') renderComposite();
             }
           }
@@ -34424,6 +34474,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (!oldLink) gifSlot.appendChild(link);
             showToast('GIF saved');
             if (flipbookResult && flipBack && typeof makeFlipBack === 'function') {
+              if (flipbookResult.back) pbReleaseCanvas(flipbookResult.back);
               flipbookResult.back = makeFlipBack(gifUrl);
               if (typeof renderComposite === 'function') renderComposite();
             }
@@ -34490,7 +34541,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       const IS_IOS_APP = /PB4uIOS/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.ios);
       function activeCamVideo() {
         if (IS_IOS_APP) { const gv = document.getElementById('vgVideo'), go = document.getElementById('vgOverlay'); if (gv && go && !go.hidden && gv.srcObject) return gv; }
-        return (IS_IOS_APP && typeof scpVideo !== 'undefined' && scpVideo && scpVideo.srcObject && typeof curStep !== 'undefined' && curStep === 4 && tabSetup && !tabSetup.classList.contains('hidden')) ? scpVideo : video;
+        return ((IS_IOS_APP || IS_ANDROID_APP) && typeof scpVideo !== 'undefined' && scpVideo && scpVideo.srcObject && typeof curStep !== 'undefined' && curStep === 4 && tabSetup && !tabSetup.classList.contains('hidden')) ? scpVideo : video;
       }
       const nativeCam = {
         active: false,
@@ -34936,7 +34987,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const l = String(label || '');
         if (/facetime|macbook|imac|built-in|integrated|isight|internal|surface camera|microsoft camera|ir camera|windows hello|depth|facing (front|back)|\b(front|back|rear) camera\b/i.test(l)) return false;
         if (/virtual|\bobs\b|teams|zoom|snap camera|mmhmm|manycam|xsplit|\bndi\b|desk view|iphone|ipad|vcam|camo|iriun|droidcam|epoccam/i.test(l)) return false;
-        if (IS_ANDROID_APP && window.__pbUvcInfo && window.__pbUvcInfo.native) return true;
+        if (IS_ANDROID_APP && window.__pbUvcInfo && window.__pbUvcInfo.native) {
+          const opt = typeof cameraSelect !== 'undefined' && cameraSelect && cameraSelect.options
+            ? Array.from(cameraSelect.options).find(o => o.value === id) : null;
+          const optFacing = opt && opt.dataset ? opt.dataset.facing : '';
+          if (optFacing === 'front' || optFacing === 'back') return false;
+          if (optFacing === 'external' || /external|usb/i.test(l)) return true;
+          if (/^camera\s*\d+$/i.test(l.trim())) return false;
+          return true;
+        }
         return /facing external|\bexternal\b|\busb\b|\buvc\b|video capture|webcam|logitech|logi\b|brio|c270|c310|c505|c615|c920|c922|c925|c930|streamcam|razer|kiyo|elgato|facecam|cam link|capture|hdmi|obsbot|tiny|meet|tail|insta\s*360|2e1a|ace\s*pro|\bdji\b|osmo|pocket\s*[23]|2ca3|anker|powerconf|nexigo|emeet|a4tech|aukey|papalook|depstech|creative|ausdom|vitade|svpro|arducam|aver|magewell|acasis|ugreen/i.test(l);
       }
       // Plain-language reason an Insta360 or DJI Osmo camera plugged into an Android tablet is (or is not) usable as a webcam,
@@ -35201,17 +35260,123 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       let currentDeviceId = null;
       let currentStream = null;
+      const EMPTY_CAM_PREFIX = 'pb-cam-idx:';
+      let camUserPickedId = '';
+      let camLabelProbed = false;
+      let camInitGen = 0;
+      let camInitInFlight = false;
 
-      // The camera the operator last picked (e.g. a Sony/Canon over the laptop's
-      // own webcam) is remembered on this device and chosen again on reload.
+      // Native Android Camera2 facing info (front / back / external), used when Huawei / HarmonyOS
+      // WebView strips navigator.mediaDevices.enumerateDevices() labels to empty strings ("Camera 1", "Camera 2").
+      function nativeAndroidCams() {
+        if (!IS_ANDROID_APP) return [];
+        try {
+          if (window.__PBLocal && typeof window.__PBLocal.listAndroidCameras === 'function') {
+            const parsed = JSON.parse(window.__PBLocal.listAndroidCameras() || '[]');
+            if (Array.isArray(parsed)) return parsed;
+          }
+        } catch (e) { }
+        return [];
+      }
+      function inferCamFacing(label, fallbackFacing) {
+        const l = String(label || '').toLowerCase();
+        if (/\bexternal\b|facing external|usb webcam/i.test(l)) return 'external';
+        if (/\bfront\b|facing front|\buser\b|selfie|facetime/i.test(l)) return 'front';
+        if (/\bback\b|\brear\b|facing back|environment/i.test(l)) return 'back';
+        return fallbackFacing || '';
+      }
+
+      // The camera the operator last picked (e.g. Camera 1, Camera 2, a USB webcam, or DSLR/USB)
+      // is remembered on this device (and synchronously in Android SharedPreferences) so it always sticks on reload/restart.
       const CAM_PREF_KEY = 'pb4u.camera';
       function savedCamera() {
-        try { return JSON.parse(localStorage.getItem(CAM_PREF_KEY) || 'null'); } catch (e) { return null; }
+        let loc = null, nat = null;
+        try { loc = JSON.parse(localStorage.getItem(CAM_PREF_KEY) || 'null'); } catch (e) { loc = null; }
+        try {
+          if (window.__PBLocal && typeof window.__PBLocal.getCameraPref === 'function') {
+            const raw = window.__PBLocal.getCameraPref();
+            if (raw) nat = JSON.parse(raw);
+          }
+        } catch (e) { nat = null; }
+        let best = null;
+        if (loc && nat) best = (Number(nat.savedAt) || 0) >= (Number(loc.savedAt) || 0) ? nat : loc;
+        else best = nat || loc;
+        if (best && !loc) {
+          try { localStorage.setItem(CAM_PREF_KEY, JSON.stringify(best)); } catch (e) { }
+        }
+        return best && typeof best === 'object' ? best : null;
+      }
+      function writeSavedCamera(rec) {
+        if (!rec || !rec.id) return;
+        const json = JSON.stringify(rec);
+        try { localStorage.setItem(CAM_PREF_KEY, json); } catch (e) { }
+        try {
+          if (window.__PBLocal && typeof window.__PBLocal.setCameraPref === 'function') {
+            window.__PBLocal.setCameraPref(json);
+          }
+        } catch (e) { }
       }
       function saveCamera() {
         const opt = cameraSelect.options[cameraSelect.selectedIndex];
         if (!opt || !opt.value) return;
-        try { localStorage.setItem(CAM_PREF_KEY, JSON.stringify({ id: opt.value, label: opt.textContent })); } catch (e) { }
+        const idxRaw = opt.dataset && opt.dataset.camIdx !== undefined ? Number(opt.dataset.camIdx) : -1;
+        const rawLabel = (opt.dataset && opt.dataset.rawLabel) ? opt.dataset.rawLabel : '';
+        const facing = (opt.dataset && opt.dataset.facing) ? opt.dataset.facing : inferCamFacing(rawLabel || opt.textContent, '');
+        writeSavedCamera({
+          id: opt.value,
+          label: opt.textContent,
+          rawLabel: rawLabel,
+          index: Number.isFinite(idxRaw) && idxRaw >= 0 ? idxRaw : -1,
+          facing: facing,
+          isUsb: opt.value === USB_CAM_ID,
+          savedAt: Date.now()
+        });
+      }
+      function matchSavedOption(saved, opts) {
+        if (!saved || !opts || !opts.length) return null;
+        const list = Array.from(opts).filter(o => o && o.value);
+        if (!list.length) return null;
+        if (saved.id === USB_CAM_ID) return list.find(o => o.value === USB_CAM_ID) || null;
+        if (typeof TABLET_CAM_ID !== 'undefined' && saved.id === TABLET_CAM_ID) return list.find(o => o.value === TABLET_CAM_ID) || null;
+        if (saved.id === UVC_ID) return list.find(o => o.value === UVC_ID) || null;
+        const videoOpts = list.filter(o => o.value !== USB_CAM_ID && (typeof TABLET_CAM_ID === 'undefined' || o.value !== TABLET_CAM_ID));
+        if (!videoOpts.length) return null;
+        // 1. Exact real deviceId match (skip synthetic pb-cam-idx: IDs here so real IDs/facing/index resolve cleanly)
+        if (saved.id && saved.id.indexOf(EMPTY_CAM_PREFIX) !== 0) {
+          const hitId = videoOpts.find(o => o.value === saved.id);
+          if (hitId) return hitId;
+        }
+        // 2. Exact non-empty raw MediaDeviceInfo label match
+        const rawLbl = (saved.rawLabel || '').trim();
+        if (rawLbl) {
+          const hitRaw = videoOpts.find(o => (o.dataset && o.dataset.rawLabel || '').trim() === rawLbl);
+          if (hitRaw) return hitRaw;
+        }
+        // 3. Exact rendered menu label match (handles "Camera 1", "Front camera (Camera 2)", "USB webcam (...)")
+        const dispLbl = (saved.label || '').trim();
+        if (dispLbl) {
+          const hitDisp = videoOpts.find(o => (o.textContent || '').trim() === dispLbl || (o.dataset && o.dataset.rawLabel || '').trim() === dispLbl);
+          if (hitDisp) return hitDisp;
+        }
+        // 4. Matching lens facing (front / back / external) when WebView rotated hashed deviceIds on restart
+        const wantFacing = saved.facing || inferCamFacing(rawLbl || dispLbl, '');
+        if (wantFacing) {
+          const facingMatches = videoOpts.filter(o => (o.dataset && o.dataset.facing) === wantFacing || inferCamFacing(o.textContent, '') === wantFacing);
+          if (facingMatches.length === 1) return facingMatches[0];
+          if (facingMatches.length > 1 && typeof saved.index === 'number' && saved.index >= 0) {
+            const byIdxAndFacing = facingMatches.find(o => Number(o.dataset && o.dataset.camIdx) === saved.index);
+            if (byIdxAndFacing) return byIdxAndFacing;
+            return facingMatches[0];
+          }
+        }
+        // 5. Saved camera slot index (for Huawei / HarmonyOS WebView where labels are empty & IDs rotate on restart)
+        const camNumMatch = /^Camera\s*(\d+)$/i.exec(dispLbl);
+        const wantIdx = (typeof saved.index === 'number' && saved.index >= 0) ? saved.index : (camNumMatch ? (Number(camNumMatch[1]) - 1) : -1);
+        if (wantIdx >= 0) {
+          const hitIdx = videoOpts.find(o => Number(o.dataset && o.dataset.camIdx) === wantIdx);
+          if (hitIdx) return hitIdx;
+        }
+        return null;
       }
 
       // The camera menu only matters with two or more cameras.
@@ -35235,8 +35400,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function camSysTimeout(p, ms, fallback) {
         return Promise.race([p, new Promise(res => setTimeout(() => res(fallback), ms))]);
       }
-      async function enumerateCameras() {
+      async function enumerateCameras(opts) {
+        const noProbe = !!(opts && opts.noProbe);
         const previous = cameraSelect.value;
+        const prevOpt = cameraSelect.options[cameraSelect.selectedIndex];
+        const prevIdx = prevOpt && prevOpt.dataset && prevOpt.dataset.camIdx !== undefined ? Number(prevOpt.dataset.camIdx) : -1;
+        const prevFacing = prevOpt && prevOpt.dataset ? (prevOpt.dataset.facing || '') : '';
         let videoDevices = [];
         if (hasNativeCamBridge()) {
           try {
@@ -35259,39 +35428,90 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           camListHung = listTimedOut;
           if (listTimedOut) { devices = []; try { usbLog('camlist-timeout', {}); } catch (e) { } }
           videoDevices = devices.filter(d => d.kind === 'videoinput');
-          if (webcamApi && !listTimedOut && (!videoDevices.length || videoDevices.some(d => !d.label))) {
+          // IMPORTANT: Never open a second getUserMedia() probe while a camera stream is already active (doing so evicts
+          // the active camera on Android / Huawei HarmonyOS Camera2 HAL, causing "isn't sending a picture" -> "disconnected").
+          // Also only probe once per session/permission grant so Huawei WebViews that strip labels don't thrash the camera HAL.
+          const hasLiveStream = !!(currentStream && currentStream !== usbCam.stream && currentStream.getVideoTracks && currentStream.getVideoTracks().some(t => t.readyState === 'live'));
+          if (!noProbe && !camLabelProbed && !hasLiveStream && !streamActive && webcamApi && !listTimedOut && (!videoDevices.length || videoDevices.some(d => !d.label))) {
+            camLabelProbed = true;
             try {
-              // Need permission first to get labels
+              // Need permission first to get labels; enumerateDevices() MUST run while tempStream is still open so
+              // Android / Huawei WebView exposes labels and real deviceIds before the stream stops.
               const gum = navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-              const tempStream = await camSysTimeout(gum, 6000, null);
-              if (tempStream) tempStream.getTracks().forEach(t => t.stop());
-              else gum.then(s => s.getTracks().forEach(t => t.stop()), () => { });   // it answered late: do not leave the camera on
-              await wait(300);
+              const tempStream = await camSysTimeout(gum, IS_ANDROID_APP ? 8000 : 6000, null);
+              if (tempStream) {
+                devices = (await camSysTimeout(navigator.mediaDevices.enumerateDevices(), 4000, null)) || devices;
+                videoDevices = devices.filter(d => d.kind === 'videoinput');
+                tempStream.getTracks().forEach(t => t.stop());
+                await wait(IS_ANDROID_APP ? 700 : 300);   // Huawei / HarmonyOS Camera2 HAL needs extra settle time to release cleanly
+              } else {
+                gum.then(s => s.getTracks().forEach(t => t.stop()), () => { });   // it answered late: do not leave the camera on
+                await wait(300);
+                devices = (await camSysTimeout(navigator.mediaDevices.enumerateDevices(), 4000, null)) || devices;
+                videoDevices = devices.filter(d => d.kind === 'videoinput');
+              }
             } catch (e) { /* permission denied — labels won't show */ }
-            devices = (await camSysTimeout(navigator.mediaDevices.enumerateDevices(), 4000, null)) || devices;
-            videoDevices = devices.filter(d => d.kind === 'videoinput');
           }
         }
 
         // Windows / Mac Desktop / tablet app: is a camera plugged in through the camera helper?
         if ((usbCam.viaHelper || (DESKTOP && USB_MAC)) && !(usbCam.active && usbCam.camera)) await camHelperProbe();
+        const saved = savedCamera();
+        const androidCams = IS_ANDROID_APP ? nativeAndroidCams() : [];
+        const builtInVideoCount = videoDevices.filter(d => d.deviceId !== UVC_ID && !d.isExternal).length;
         cameraSelect.innerHTML = '';
+        // If no built-in/webcam video devices are visible yet and the operator did NOT choose DSLR/USB (and no DSLR is plugged in),
+        // keep a waiting placeholder at index 0 so the <select> does not accidentally default to "DSLR / Mirrorless camera (USB)".
+        if (!videoDevices.length && usbCam.supported && !(saved && saved.id === USB_CAM_ID) && !usbCam.helperSees && camUserPickedId !== USB_CAM_ID) {
+          const ph = document.createElement('option');
+          ph.value = '';
+          ph.textContent = 'Waiting for camera…';
+          cameraSelect.appendChild(ph);
+        }
+        let builtInCursor = 0;
         videoDevices.forEach((d, i) => {
           const opt = document.createElement('option');
-          opt.value = d.deviceId;
-          opt.textContent = (ANDROID_APP && /facing external/i.test(d.label || '')) ? 'USB webcam (' + d.label + ')' : (d.label || 'Camera ' + (i + 1));
+          const rawLbl = String(d.label || '');
+          const syntheticId = d.deviceId || (EMPTY_CAM_PREFIX + i);
+          let fallbackFacing = d.position || '';
+          if (!fallbackFacing && IS_ANDROID_APP && d.deviceId !== UVC_ID && !d.isExternal) {
+            if (androidCams.length && builtInCursor < androidCams.length && (builtInVideoCount === androidCams.length || !rawLbl)) {
+              fallbackFacing = androidCams[builtInCursor].facing || '';
+            }
+            builtInCursor++;
+          }
+          const facing = inferCamFacing(rawLbl, fallbackFacing);
+          opt.value = syntheticId;
+          opt.dataset.rawLabel = rawLbl;
+          opt.dataset.camIdx = String(i);
+          opt.dataset.facing = facing;
+          if (ANDROID_APP && /facing external/i.test(rawLbl)) {
+            opt.textContent = 'USB webcam (' + rawLbl + ')';
+          } else if (rawLbl) {
+            opt.textContent = rawLbl;
+          } else if (facing === 'front') {
+            opt.textContent = 'Front camera (Camera ' + (i + 1) + ')';
+          } else if (facing === 'back') {
+            opt.textContent = 'Back camera (Camera ' + (i + 1) + ')';
+          } else if (facing === 'external') {
+            opt.textContent = 'USB webcam (Camera ' + (i + 1) + ')';
+          } else {
+            opt.textContent = 'Camera ' + (i + 1);
+          }
           cameraSelect.appendChild(opt);
         });
         if (usbCam.supported) {
           const opt = document.createElement('option');
           opt.value = USB_CAM_ID;
           opt.textContent = usbOptionLabel();
+          opt.dataset.camIdx = '-1';
           cameraSelect.appendChild(opt);
         }
         if (typeof tabletCamAvailable === 'function' && tabletCamAvailable()) {
           const opt = document.createElement('option');
           opt.value = TABLET_CAM_ID;
           opt.textContent = tabletCamOptionLabel();
+          opt.dataset.camIdx = '-1';
           cameraSelect.appendChild(opt);
         }
         // Say why the USB camera option is missing instead of silently hiding it.
@@ -35300,33 +35520,52 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
         refreshCameraMenu();
 
-        // Pick, in order: the camera already in use, the one the operator chose
-        // last time (same id, or same name if the id changed after re-plugging),
-        // then a front-facing camera.
-        const saved = savedCamera();
-        const byId = id => id && videoDevices.find(d => d.deviceId === id);
-        // Built-in names: "FaceTime HD Camera", "MacBook Air Camera", "Integrated Webcam"...
-        // Virtual cameras (OBS, Teams, Zoom…), Continuity iPhone and Desk View often
-        // show a black or cropped picture, so they're only used when picked.
-        const lbl = d => (d.label || '').toLowerCase();
+        // Pick, in strict sticky order:
+        // 1. The camera already explicitly chosen/streaming in this session (never an accidental empty-list USB fallback).
+        // 2. The operator's saved camera from last time (by id, raw label, display label, facing, or slot index) —
+        //    this MUST stick across app exits/restarts instead of reverting to DSLR/Mirrorless (USB).
+        // 3. Otherwise (no saved choice, or saved camera is gone): plugged-in DSLR/USB webcam, then front-facing camera,
+        //    then first usable video device (even if its label is empty).
+        const allOpts = Array.from(cameraSelect.options);
+        const videoOpts = allOpts.filter(o => o.value && o.value !== USB_CAM_ID && (typeof TABLET_CAM_ID === 'undefined' || o.value !== TABLET_CAM_ID));
+        const byOptId = id => id && allOpts.find(o => o.value === id);
+        const optLbl = o => ((o.dataset && o.dataset.rawLabel) || o.textContent || '').toLowerCase();
         const BUILTIN = /front|facetime|macbook|imac|built-in|integrated|isight|surface camera|microsoft camera/;
         const AVOID = IS_IOS_APP
           ? /virtual|\bobs\b|teams|zoom|snap camera|mmhmm|manycam|xsplit|\bndi\b|desk view|ir camera|windows hello|depth|vcam|camo|iriun|droidcam|epoccam/
           : /virtual|\bobs\b|teams|zoom|snap camera|mmhmm|manycam|xsplit|\bndi\b|desk view|iphone|ipad|ir camera|windows hello|depth|vcam|camo|iriun|droidcam|epoccam/;
-        // A camera plugged in through the camera helper is picked when nothing
-        // else was chosen in this visit (it's plugged in, so it's meant to be used).
-        const usbPick = usbCam.supported && (previous === USB_CAM_ID || (!previous && saved && saved.id === USB_CAM_ID) || (!previous && (usbCam.viaHelper || (DESKTOP && USB_MAC)) && usbCam.helperSees)) ? { deviceId: USB_CAM_ID } : null;
-        const tabletPick = (typeof tabletCamAvailable === 'function' && tabletCamAvailable() && (previous === TABLET_CAM_ID || (!previous && saved && saved.id === TABLET_CAM_ID))) ? { deviceId: TABLET_CAM_ID } : null;
-        const usbWebcamPick = videoDevices.find(d => !AVOID.test(lbl(d)) && isUsbWebcamOption(d.deviceId, d.label));
-        const pick = usbPick || tabletPick || byId(previous)
-          || (saved && (byId(saved.id) || (saved.label && videoDevices.find(d => d.label === saved.label))))
-          || ((ANDROID_APP || IS_IOS_APP) && videoDevices.find(d => d.deviceId === UVC_ID || d.isExternal || /external|usb webcam/i.test(d.label || '')))   // tablet app: a plugged-in USB webcam/HDMI capture beats the tablet's own cameras
-          || videoDevices.find(d => /insta\s*360|\bdji\b|osmo|pocket\s*[23]/i.test(d.label || ''))   // Insta360 / DJI Osmo in webcam mode: prefer it over built-ins
+
+        const previousIsIntentionalUsb = previous === USB_CAM_ID && (
+          camUserPickedId === USB_CAM_ID
+          || (currentDeviceId === USB_CAM_ID && streamActive)
+          || (saved && saved.id === USB_CAM_ID)
+        );
+        const previousOpt = previousIsIntentionalUsb
+          ? byOptId(USB_CAM_ID)
+          : (previous && previous !== USB_CAM_ID
+            ? (byOptId(previous) || (previous.indexOf(EMPTY_CAM_PREFIX) === 0 && (
+              (prevFacing && videoOpts.find(o => (o.dataset && o.dataset.facing) === prevFacing))
+              || (prevIdx >= 0 && videoOpts.find(o => Number(o.dataset && o.dataset.camIdx) === prevIdx))
+            )))
+            : null);
+        const savedOpt = matchSavedOption(saved, allOpts);
+        const usbPluggedAuto = usbCam.supported && !previousOpt && !savedOpt && (usbCam.viaHelper || (DESKTOP && USB_MAC)) && usbCam.helperSees
+          ? byOptId(USB_CAM_ID) : null;
+        const tabletAuto = (typeof tabletCamAvailable === 'function' && tabletCamAvailable() && previous === TABLET_CAM_ID)
+          ? byOptId(TABLET_CAM_ID) : null;
+        const usbWebcamPick = videoOpts.find(o => !AVOID.test(optLbl(o)) && isUsbWebcamOption(o.value, o.textContent));
+
+        const pickOpt = previousOpt
+          || tabletAuto
+          || savedOpt
+          || usbPluggedAuto
+          || ((ANDROID_APP || IS_IOS_APP) && videoOpts.find(o => o.value === UVC_ID || (o.dataset && o.dataset.facing === 'external') || /external|usb webcam/i.test(o.textContent || '')))
+          || videoOpts.find(o => /insta\s*360|\bdji\b|osmo|pocket\s*[23]/i.test(optLbl(o)))
           || usbWebcamPick
-          || videoDevices.find(d => BUILTIN.test(lbl(d)) && !AVOID.test(lbl(d)))
-          || videoDevices.find(d => d.label && !AVOID.test(lbl(d)))
-          || (typeof tabletCamAvailable === 'function' && tabletCamAvailable() ? { deviceId: TABLET_CAM_ID } : null);
-        if (pick) cameraSelect.value = pick.deviceId;
+          || videoOpts.find(o => ((o.dataset && o.dataset.facing === 'front') || BUILTIN.test(optLbl(o))) && !AVOID.test(optLbl(o)))
+          || videoOpts.find(o => !AVOID.test(optLbl(o)))
+          || (typeof tabletCamAvailable === 'function' && tabletCamAvailable() ? byOptId(TABLET_CAM_ID) : null);
+        if (pickOpt) cameraSelect.value = pickOpt.value;
 
         return videoDevices;
       }
@@ -35351,30 +35590,95 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function cameraLost() {
         if (reconnectTimer) return;
         streamActive = false;
+        // Release any dead/evicted non-USB stream immediately so Huawei / Android Camera2 HAL begins closing cleanly.
+        if (currentStream && currentStream !== usbCam.stream) {
+          const dead = currentStream;
+          currentStream = null;
+          try { dead.getTracks().forEach(t => t.stop()); } catch (e) { }
+          try { if (video && video.srcObject === dead) { video.pause(); video.srcObject = null; } } catch (e) { }
+          try { if (typeof scpVideo !== 'undefined' && scpVideo && scpVideo.srcObject === dead) { scpVideo.pause(); scpVideo.srcObject = null; } } catch (e) { }
+        }
         showReconnecting();
         const tryAgain = async () => {
           reconnectTimer = null;
-          try { await enumerateCameras(); } catch (e) { }
-          if (cameraSelect.options.length && cameraSelect.options[0].value) {
-            if (await initCamera(cameraSelect.value || null)) return;
+          if (camInitInFlight) {
+            reconnectTimer = setTimeout(tryAgain, 1500);
+            return;
+          }
+          try { await enumerateCameras({ noProbe: true }); } catch (e) { }
+          const target = cameraSelect.value || null;
+          if (target || (cameraSelect.options.length && !usbCam.helperSees)) {
+            if (await initCamera(target)) return;
           }
           showReconnecting();
           reconnectTimer = setTimeout(tryAgain, 2500);
         };
-        reconnectTimer = setTimeout(tryAgain, 800);
+        reconnectTimer = setTimeout(tryAgain, IS_ANDROID_APP ? 1200 : 800);
       }
       function watchTrack(stream) {
         const track = stream.getVideoTracks()[0];
         if (!track) return;
-        track.addEventListener('ended', () => { if (currentStream === stream) cameraLost(); });
+        track.addEventListener('ended', () => {
+          if (currentStream !== stream || camSleeping || camInitInFlight) return;
+          if (document.hidden) {
+            // OS revoked the camera while app was backgrounded: mark sleeping so returning to foreground wakes it cleanly.
+            currentStream = null;
+            streamActive = false;
+            camSleeping = true;
+            try { if (video && video.srcObject === stream) { video.pause(); video.srcObject = null; } } catch (e) { }
+            try { if (typeof scpVideo !== 'undefined' && scpVideo && scpVideo.srcObject === stream) { scpVideo.pause(); scpVideo.srcObject = null; } } catch (e) { }
+            return;
+          }
+          cameraLost();
+        });
         // A muted track has stopped sending frames (e.g. capture card lost HDMI).
+        // Android / Huawei tablets can briefly pause frames during focus/exposure changes, so give them a longer grace window.
         track.addEventListener('mute', () => {
           clearTimeout(muteTimer);
           muteTimer = setTimeout(() => {
-            if (currentStream === stream && track.muted && !document.hidden) cameraLost();
-          }, 4000);
+            if (currentStream === stream && track.muted && !camSleeping && !camInitInFlight && !document.hidden && streamActive) cameraLost();
+          }, IS_ANDROID_APP ? 6000 : 4000);
         });
         track.addEventListener('unmute', () => clearTimeout(muteTimer));
+      }
+      // Android app: release built-in camera immediately when backgrounded (before HarmonyOS / Android forcefully evicts it),
+      // and recover cleanly if the OS ended the track before visibilitychange resumed.
+      if (!DESK_STANDALONE && IS_ANDROID_APP && typeof document !== 'undefined' && document.addEventListener) {
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden) {
+            if (streamActive && !camSleeping && !camInitInFlight && currentDeviceId && currentDeviceId !== USB_CAM_ID && currentDeviceId !== UVC_ID && isBuiltInCamera()) {
+              try { camLiveSleep(); } catch (e) { }
+            }
+          } else {
+            if (currentStream && currentStream !== usbCam.stream && currentStream.getVideoTracks) {
+              const t = currentStream.getVideoTracks()[0];
+              if (t && t.readyState === 'ended') {
+                currentStream = null;
+                streamActive = false;
+                camSleeping = true;
+              }
+            }
+            if (camSleeping && !camWaking && !camInitInFlight && !reconnectTimer && cameraSelect && cameraSelect.value && cameraSelect.value !== USB_CAM_ID) {
+              setTimeout(() => {
+                if (!document.hidden && camSleeping && !camWaking && !camInitInFlight && !reconnectTimer) {
+                  try { camLiveWake(); } catch (e) { }
+                }
+              }, 450);
+            }
+          }
+        });
+      }
+      // Android app: when runtime CAMERA permission is granted (in the startup dialog or after returning from Settings),
+      // re-enumerate and open the operator's camera immediately without requiring an app restart.
+      if (!DESK_STANDALONE && typeof window !== 'undefined' && window.addEventListener) {
+        window.addEventListener('pb-camera-permission', async () => {
+          camLabelProbed = false;
+          if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+          try { await enumerateCameras(); } catch (e) { }
+          if (!streamActive && !camInitInFlight) {
+            await initCamera(cameraSelect.value || null);
+          }
+        });
       }
       // A camera that stops delivering pictures without ending its stream (a Canon in webcam mode that went to sleep, a loose
       // cable) leaves the last frame on screen, then black. The track stays "live" and never says "muted", so count the
@@ -35392,10 +35696,21 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const s = camLat.slice().sort((a, b) => a - b);
         return Math.round(s[s.length >> 1]);
       }
+      function stopVideoFrames(v) {
+        if (!v) return;
+        v._pbRvfcGen = (v._pbRvfcGen || 0) + 1;
+        if (v._pbRvfcId) {
+          try { if (typeof v.cancelVideoFrameCallback === 'function') v.cancelVideoFrameCallback(v._pbRvfcId); } catch (e) { }
+          v._pbRvfcId = 0;
+        }
+      }
       function listenVideoFrames(v) {
-        if (!v || !('requestVideoFrameCallback' in HTMLVideoElement.prototype)) return;
+        if (!v || typeof v.requestVideoFrameCallback !== 'function') return;
+        stopVideoFrames(v);
+        const gen = (v._pbRvfcGen = (v._pbRvfcGen || 0) + 1);
         camLat.length = 0;
         const cb = (now, meta) => {
+          if (v._pbRvfcGen !== gen) return;
           rvfcCount++;
           try { if (typeof webcamPushFrame === 'function') webcamPushFrame(v); } catch (e) { }
           try {
@@ -35404,11 +35719,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               if (lat > 0 && lat < 1500) { camLat.push(lat); if (camLat.length > 40) camLat.shift(); }   // anything else is a bad clock, not a delay
             }
           } catch (e) { }
-          if (streamActive && currentStream && !v.paused) {
-            try { v.requestVideoFrameCallback(cb); } catch (e) { }
+          if (v._pbRvfcGen === gen && streamActive && currentStream && !v.paused) {
+            try { v._pbRvfcId = v.requestVideoFrameCallback(cb); } catch (e) { }
+          } else if (v._pbRvfcGen === gen) {
+            v._pbRvfcId = 0;
           }
         };
-        try { v.requestVideoFrameCallback(cb); } catch (e) { }
+        try { v._pbRvfcId = v.requestVideoFrameCallback(cb); } catch (e) { }
       }
       let wcFrames = -1, wcAt = Date.now();
       setInterval(function () {
@@ -35447,20 +35764,21 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         navigator.mediaDevices.addEventListener('devicechange', () => {
           clearTimeout(deviceChangeTimer);
           deviceChangeTimer = setTimeout(async () => {
+            if (camInitInFlight) return;
             const before = currentDeviceId;
-            try { await enumerateCameras(); } catch (e) { return; }
-            if (reconnectTimer) return;                         // the retry loop handles it
+            try { await enumerateCameras({ noProbe: true }); } catch (e) { return; }
+            if (reconnectTimer || camInitInFlight) return;      // the retry loop / active open handles it
             if (camSleeping) return;                            // idle on purpose (battery saver): the next guest wakes it; a device change must not reopen the camera
             if (!streamActive) { if (cameraSelect.value) initCamera(cameraSelect.value); return; }
             const saved = savedCamera();
-            const preferred = saved && Array.from(cameraSelect.options).find(o => o.value === saved.id || o.textContent === saved.label);
+            const preferred = matchSavedOption(saved, cameraSelect.options);
             if (preferred && preferred.value !== before && state !== 'capturing') {
               cameraSelect.value = preferred.value;
               initCamera(preferred.value);
             } else {
               const extOpt = Array.from(cameraSelect.options).find(o => o.value !== before && isUsbWebcamOption(o.value, o.textContent));
               const forceAndroidUsb = ANDROID_APP && extOpt && (extOpt.value === UVC_ID || /facing external/i.test(extOpt.textContent));
-              const savedBuiltIn = saved && extOpt && isBuiltInCamera() && Array.from(cameraSelect.options).some(o => (o.value === saved.id || o.textContent === saved.label) && o.value === before);
+              const savedBuiltIn = !!(preferred && preferred.value === before && isBuiltInCamera());
               if (extOpt && before !== USB_CAM_ID && isBuiltInCamera() && (!savedBuiltIn || forceAndroidUsb) && state !== 'capturing') {
                 cameraSelect.value = extOpt.value;
                 await initCamera(extOpt.value);
@@ -35573,9 +35891,20 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // Mac cameras reject the 1080p request or a remembered camera id, so it
       // drops the size first, then the id if that camera no longer exists.
       // A busy or blocked camera is never swapped for a different one.
-      async function openCameraStream(deviceId) {
+      async function openCameraStream(deviceId, opts) {
         if (typeof TABLET_CAM_ID !== 'undefined' && deviceId === TABLET_CAM_ID) return openTabletCameraStream();
+        const loose = !!(opts && opts.loose);
+        const forceFacingOnly = !!(opts && opts.facingOnly);
+        const synPrefix = typeof EMPTY_CAM_PREFIX !== 'undefined' ? EMPTY_CAM_PREFIX : 'pb-cam-idx:';
+        const isAndroidNow = typeof IS_ANDROID_APP !== 'undefined' && IS_ANDROID_APP;
         let localFacing = '';
+        if (deviceId && (String(deviceId).indexOf(synPrefix) === 0 || forceFacingOnly)) {
+          const synOpt = Array.from(cameraSelect.options).find(o => o.value === deviceId);
+          const synFacing = synOpt && synOpt.dataset ? synOpt.dataset.facing : '';
+          if (synFacing === 'front') localFacing = 'user';
+          else if (synFacing === 'back') localFacing = 'environment';
+          if (String(deviceId).indexOf(synPrefix) === 0 || localFacing) deviceId = '';
+        }
         if (hasNativeCamBridge() && deviceId && nativeCam.devicesById[deviceId]) {
           const nativeMeta = nativeCam.devicesById[deviceId];
           let mappedId = '';
@@ -35584,9 +35913,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (!devs.some(d => d.kind === 'videoinput' && d.label)) {
               const unlock = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }).catch(() => null);
               if (unlock) {
+                devs = await navigator.mediaDevices.enumerateDevices().catch(() => devs);
                 unlock.getTracks().forEach(t => t.stop());
                 await wait(250);
-                devs = await navigator.mediaDevices.enumerateDevices();
               }
             }
             const vids = devs.filter(d => d.kind === 'videoinput');
@@ -35604,6 +35933,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             deviceId = '';
           }
         }
+        if (!deviceId && !localFacing && !(typeof vgForceFacing === 'string' && vgForceFacing) && typeof savedCamera === 'function') {
+          const sv = savedCamera();
+          if (sv && sv.id !== USB_CAM_ID) {
+            if (sv.facing === 'front') localFacing = 'user';
+            else if (sv.facing === 'back') localFacing = 'environment';
+          }
+        }
         const selOpt = deviceId && Array.from(cameraSelect.options).find(o => o.value === deviceId);
         const baseSize = webcamGumSize(deviceId);
         const sizeWithFps = Object.assign({}, baseSize, { frameRate: { ideal: 30 } });
@@ -35613,46 +35949,63 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         // The video guestbook's Flip camera asks for a side (front / back) by name when the phone does not list its cameras separately.
         const ff = (!deviceId && (localFacing || (typeof vgForceFacing === 'string' && vgForceFacing))) ? (localFacing || vgForceFacing) : '';
         const tries = deviceId
-          ? [
-            Object.assign({ deviceId: { exact: deviceId } }, sizeWithFps),
-            Object.assign({ deviceId: { exact: deviceId } }, baseSize),
-            { deviceId: { exact: deviceId } }
-          ]
-          : ff ? [
-            Object.assign({ facingMode: { exact: ff } }, baseSize),
-            { facingMode: { exact: ff } },
-            Object.assign({ facingMode: { ideal: ff } }, baseSize)
-          ]
+          ? (loose
+            ? [
+              { deviceId: { exact: deviceId } },
+              Object.assign({ deviceId: { ideal: deviceId } })
+            ]
             : [
-              Object.assign({ facingMode: 'user' }, sizeWithFps),
-              Object.assign({ facingMode: 'user' }, baseSize),
-              sizeWithFps,
-              baseSize
-            ];
+              Object.assign({ deviceId: { exact: deviceId } }, sizeWithFps),
+              Object.assign({ deviceId: { exact: deviceId } }, baseSize),
+              { deviceId: { exact: deviceId } }
+            ])
+          : ff
+            ? (loose
+              ? [
+                { facingMode: { exact: ff } },
+                { facingMode: { ideal: ff } }
+              ]
+              : [
+                Object.assign({ facingMode: { exact: ff } }, baseSize),
+                { facingMode: { exact: ff } },
+                Object.assign({ facingMode: { ideal: ff } }, baseSize)
+              ])
+            : (loose
+              ? [
+                { facingMode: 'user' },
+                true
+              ]
+              : [
+                Object.assign({ facingMode: 'user' }, sizeWithFps),
+                Object.assign({ facingMode: 'user' }, baseSize),
+                sizeWithFps,
+                baseSize
+              ]);
         for (const v of tries) {
           try { return await gum(v); }
           catch (e) {
             lastErr = e;
-            if (e && (e.name === 'NotReadableError' || e.name === 'TrackStartError')) {
-              // Insta360 / DJI Osmo in webcam mode can release slowly — retry up to 3× with growing delays
+            if (e && (e.name === 'NotReadableError' || e.name === 'TrackStartError' || e.name === 'AbortError')) {
+              // Insta360 / DJI Osmo / Huawei HarmonyOS Camera2 HAL can release slowly — retry with growing delays
               const isSlowCam = selOpt && /insta\s*360|\bdji\b|osmo|pocket\s*[23]/i.test(selOpt.textContent || '');
-              const delays = isSlowCam ? [600, 1200, 2000] : [350];
+              const delays = isSlowCam ? [600, 1200, 2000] : (isAndroidNow ? [500, 1000] : [350]);
               let ok = false;
               for (const ms of delays) {
                 await wait(ms);
-                try { return await gum(v); } catch (e2) { lastErr = e2; if (!e2 || (e2.name !== 'NotReadableError' && e2.name !== 'TrackStartError')) break; }
+                try { return await gum(v); } catch (e2) { lastErr = e2; if (!e2 || (e2.name !== 'NotReadableError' && e2.name !== 'TrackStartError' && e2.name !== 'AbortError')) break; }
               }
               if (ok) return;
             }
             if (stop(e)) throw e;
           }
         }
-        for (const v of [baseSize, true]) {
+        const fallbackTries = loose ? [true] : [baseSize, true];
+        for (const v of fallbackTries) {
           try { return await gum(v); }
           catch (e) {
             lastErr = e;
-            if (e && (e.name === 'NotReadableError' || e.name === 'TrackStartError')) {
-              await wait(350);
+            if (e && (e.name === 'NotReadableError' || e.name === 'TrackStartError' || e.name === 'AbortError')) {
+              await wait(isAndroidNow ? 600 : 350);
               try { return await gum(v); } catch (e2) { lastErr = e2; }
             }
             if (stop(e)) throw e;
@@ -35978,19 +36331,21 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       if (usbCam.viaHelper || (DESKTOP && USB_MAC)) {
         let _camHelperPollBusy = false;
         setInterval(async () => {
-          if (_camHelperPollBusy || document.hidden || state === 'capturing' || reconnectTimer || usbCam.initing) return;
+          if (_camHelperPollBusy || document.hidden || state === 'capturing' || reconnectTimer || usbCam.initing || camInitInFlight) return;
           if (currentDeviceId === USB_CAM_ID && streamActive) return;
           if (!camHelperProbeOk()) return;
           _camHelperPollBusy = true;
           try {
             const was = usbCam.helperSees;
             if (!(await camHelperProbe(3000)) || was) return;          // only when it newly appears
-            if (state === 'capturing' || reconnectTimer) return;
+            if (state === 'capturing' || reconnectTimer || camInitInFlight) return;
             const cur = cameraSelect.options[cameraSelect.selectedIndex];
             const saved = savedCamera();
             const builtin = /front|facetime|macbook|built-in|integrated|isight|webcam|hd camera|user facing/i.test(cur ? cur.textContent : '');
-            if (streamActive && cur && cur.value !== USB_CAM_ID && !builtin && saved && saved.id !== USB_CAM_ID) return;   // a camera the operator chose
-            try { await enumerateCameras(); } catch (e) { }
+            // On Android tablets, if the operator explicitly chose a non-USB camera, keep their choice sticky.
+            if (IS_ANDROID_APP && saved && saved.id && saved.id !== USB_CAM_ID && cur && cur.value !== USB_CAM_ID) return;
+            if ((streamActive || camSleeping) && cur && cur.value !== USB_CAM_ID && !builtin && saved && saved.id !== USB_CAM_ID) return;   // a camera the operator chose
+            try { await enumerateCameras({ noProbe: true }); } catch (e) { }
             if (!Array.from(cameraSelect.options).some(o => o.value === USB_CAM_ID)) return;
             cameraSelect.value = USB_CAM_ID;
             if (await initCamera(USB_CAM_ID)) showToast((usbCam.name || 'Camera') + ' connected.', 4000);
@@ -36604,12 +36959,33 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function usbSetupStep() { const t = document.querySelector('#stepBar .step-tab.on'); return t && t.dataset ? String(t.dataset.step) : ''; }
       // The guest's "Get ready" screen (waiting for Start), not the layout editor's preview of it.
       function camReadyWaiting() { return readyOverlay.classList.contains('ready-active') && !readyOverlay.classList.contains('hands') && !readyOverlay.classList.contains('edit-preview'); }
+      const ANDROID_BUILTIN_IDLE_MS = 5 * 60 * 1000;   // built-in Android camera: stay steady during active event use, rest cleanly after 5 min true idle to prevent multi-hour overheating
+      function isAndroidBuiltInSteady() {
+        if (!IS_ANDROID_APP || (typeof document !== 'undefined' && document.hidden)) return false;
+        if (!currentDeviceId || currentDeviceId === USB_CAM_ID || currentDeviceId === UVC_ID) return false;
+        if (typeof TABLET_CAM_ID !== 'undefined' && currentDeviceId === TABLET_CAM_ID) return false;
+        if (!isBuiltInCamera()) return false;
+        if ((typeof state !== 'undefined' && state === 'capturing') || (typeof flowBusy !== 'undefined' && flowBusy)) return true;
+        try {
+          var vgo = typeof document !== 'undefined' && document.getElementById ? document.getElementById('vgOverlay') : null;
+          if (vgo && !vgo.hidden) return true;
+        } catch (e) { }
+        if (typeof fx !== 'undefined' && fx && fx.hands !== 'off') return true;
+        var idleMs = (typeof ANDROID_BUILTIN_IDLE_MS === 'number') ? ANDROID_BUILTIN_IDLE_MS : (5 * 60 * 1000);
+        if (typeof usbTouchAt === 'number' && (Date.now() - usbTouchAt) >= idleMs) return false;
+        return true;
+      }
       function camWantLive() {
         if (DESK_STANDALONE) return false;
         if (!usbSaveOn()) return true;
         // iPad app, built-in camera: never let go of it between guests. Letting go and opening it again is what made the
         // picture arrive late (or stay frozen) when a guest pressed Start. The iPad is on a charger and its screen stays on.
         if (IS_IOS_APP && currentDeviceId !== USB_CAM_ID && (streamActive || camSleeping)) return true;
+        // Android app, built-in tablet camera (e.g. Huawei MatePad SE 11" / HarmonyOS Kirin 710A, Samsung Tab):
+        // keep the stream steady while the app is visible instead of tearing down and reopening Camera2 HAL every 2 s
+        // between Setup steps and guests (rapid open/close cycles cause "isn't sending a picture" / disconnect loops).
+        // Still sleeps cleanly when the app is backgrounded (document.hidden).
+        if (isAndroidBuiltInSteady() && (streamActive || camSleeping)) return true;
         if (usbCam.shooting) return true;
         // The video guestbook screen is open: the guest is looking at themselves and recording. If the camera rested here the
         // picture would go black, and a recording would stop by itself when the camera's track ends (cut at ~10 s, not 30).
@@ -36649,8 +37025,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var usbWantLive = camWantLive;
 
       async function camLiveSleep() {
-        if (camSleeping || usbCam.shooting || usbPowerBusy || camWaking) return;
+        if (camSleeping || usbCam.shooting || usbPowerBusy || camWaking || camInitInFlight) return;
         if (IS_IOS_APP && currentDeviceId !== USB_CAM_ID) return;   // iPad app: the built-in camera stays open (see camWantLive)
+        if (isAndroidBuiltInSteady()) return;                      // Android app: built-in camera stays steady while visible
         usbPowerBusy = true;
         camSleepPromise = (async function () {
           try {
@@ -36667,20 +37044,24 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               usbCam.vfOn = false;
               camSleptAt = Date.now();
             } else {
-              // Webcam: stop tracks so physical hardware LED indicator turns OFF and sensor is idle
-              if (currentStream && currentStream !== usbCam.stream) {
-                try { currentStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { }
-              }
+              // Webcam: clear currentStream/streamActive BEFORE stopping tracks so watchTrack's 'ended' handler never triggers cameraLost().
+              const prevStream = currentStream;
               currentStream = null;
               streamActive = false;
+              if (prevStream && prevStream !== usbCam.stream) {
+                try { prevStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { }
+              }
               if (video) {
+                stopVideoFrames(video);
                 try { video.pause(); } catch (e) { }
                 video.srcObject = null;
               }
               if (typeof scpVideo !== 'undefined' && scpVideo && scpVideo.srcObject) {
+                stopVideoFrames(scpVideo);
                 try { scpVideo.pause(); } catch (e) { }
                 scpVideo.srcObject = null;
               }
+              try { if (typeof webcamReleaseRingPool === 'function') webcamReleaseRingPool(); } catch (e) { }
             }
             if (recDot) recDot.style.display = 'none';
           } catch (e) {
@@ -36803,33 +37184,35 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
       setInterval(async function () {
         try {
-          const row = document.getElementById('camSaveRow');
-          const hasCam = !!(cameraSelect && cameraSelect.value);
-          if (row) row.style.display = hasCam ? '' : 'none';
-          const stEl = document.getElementById('camSaveState');
-          if (stEl && row && row.style.display !== 'none') {
-            stEl.textContent = camDeep
-              ? 'Camera: disconnected to rest (reconnects when needed).'
-              : camSleeping
-                ? 'Camera: asleep (idle).'
-                : 'Camera: on.';
-          }
           const helperNow = usbIsHelper();
-          const sdRow = document.getElementById('sonyDeepRow'), sdHint = document.getElementById('sonyDeepHint');
-          if (sdRow && sdHint) {
-            const showSd = !!(row && row.style.display !== 'none' && usbSaveOn() && currentDeviceId === USB_CAM_ID && (helperNow || (DESKTOP && USB_MAC && camDeep)) && (camDeep || camIsSony()));
-            sdRow.style.display = showSd ? '' : 'none'; sdHint.style.display = showSd ? '' : 'none';
+          if (typeof tabSetup === 'undefined' || !tabSetup || !tabSetup.classList.contains('hidden')) {
+            const row = document.getElementById('camSaveRow');
+            const hasCam = !!(cameraSelect && cameraSelect.value);
+            if (row) row.style.display = hasCam ? '' : 'none';
+            const stEl = document.getElementById('camSaveState');
+            if (stEl && row && row.style.display !== 'none') {
+              stEl.textContent = camDeep
+                ? 'Camera: disconnected to rest (reconnects when needed).'
+                : camSleeping
+                  ? 'Camera: asleep (idle).'
+                  : 'Camera: on.';
+            }
+            const sdRow = document.getElementById('sonyDeepRow'), sdHint = document.getElementById('sonyDeepHint');
+            if (sdRow && sdHint) {
+              const showSd = !!(row && row.style.display !== 'none' && usbSaveOn() && currentDeviceId === USB_CAM_ID && (helperNow || (DESKTOP && USB_MAC && camDeep)) && (camDeep || camIsSony()));
+              sdRow.style.display = showSd ? '' : 'none'; sdHint.style.display = showSd ? '' : 'none';
+            }
+            const focusBox = document.getElementById('usbCamFocusBox');
+            if (focusBox) focusBox.style.display = currentDeviceId === USB_CAM_ID ? 'block' : 'none';
+            const cdRow = document.getElementById('cdiagRow');
+            if (cdRow) cdRow.style.display = (currentDeviceId === USB_CAM_ID && !LANREMOTE) ? 'flex' : 'none';
           }
-          const focusBox = document.getElementById('usbCamFocusBox');
-          if (focusBox) focusBox.style.display = currentDeviceId === USB_CAM_ID ? 'block' : 'none';
-          const cdRow = document.getElementById('cdiagRow');
-          if (cdRow) cdRow.style.display = (currentDeviceId === USB_CAM_ID && !LANREMOTE) ? 'flex' : 'none';
-          if (usbPowerBusy) return;
+          if (usbPowerBusy || camInitInFlight) return;
           const want = camWantLive();
           if (want) {
             usbWantAt = Date.now();
             usbCam.shotsDone = false;
-            if (camSleeping || camSleepPromise || !streamActive) await camLiveWake();
+            if (camSleeping || camSleepPromise || (!streamActive && !reconnectTimer)) await camLiveWake();
             return;
           }
           // A Nikon refuses "live view off" while it is still saving the last photo, and some bodies go back into live view by
@@ -36920,7 +37303,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                 throw new Error('Camera not active');
               }
               try { usbAfterShot(); } catch (e) { }   // learns the camera's shutter delay (and brings live view back), like a real shot does
-              if (img) img.src = URL.createObjectURL(file);
+              if (img) {
+                try { if (img.src && img.src.indexOf('blob:') === 0) URL.revokeObjectURL(img.src); } catch (e) { }
+                img.src = URL.createObjectURL(file);
+              }
               let extra = '';
               const warnEl = document.getElementById('usbTestShotWarn'), cropWrap = document.getElementById('usbTestShotCropWrap'), cropCv = document.getElementById('usbTestShotCrop');
               if (warnEl) { warnEl.style.display = 'none'; warnEl.innerHTML = ''; }
@@ -37147,179 +37533,315 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
       }
 
-      async function initCamera(deviceId) {
-        if (deviceId === USB_CAM_ID) {
+      let camPendingVisibleCheck = false;
+      let camVisibleVerifyTimer = null;
+      function camVerifyVisibleFrame(vid) {
+        if (!camPendingVisibleCheck || !vid || vid.offsetParent === null) return;
+        if (vid.videoWidth > 0) {
+          camPendingVisibleCheck = false;
+          if (camVisibleVerifyTimer) { clearTimeout(camVisibleVerifyTimer); camVisibleVerifyTimer = null; }
+          return;
+        }
+        if (camVisibleVerifyTimer || camInitInFlight || !streamActive || currentDeviceId === USB_CAM_ID) return;
+        camVisibleVerifyTimer = setTimeout(async () => {
+          camVisibleVerifyTimer = null;
+          if (!camPendingVisibleCheck || camInitInFlight || !streamActive || currentDeviceId === USB_CAM_ID) return;
+          const activeV = (typeof activeCamVideo === 'function' ? activeCamVideo() : video) || video;
+          if ((activeV && activeV.videoWidth > 0) || (vid && vid.videoWidth > 0)) {
+            camPendingVisibleCheck = false;
+            return;
+          }
+          camPendingVisibleCheck = false;
+          if (activeV && activeV.offsetParent !== null) {
+            try { usbLog('cam-visible-stall-recover', { deviceId: currentDeviceId || '' }); } catch (e) { }
+            await initCamera(currentDeviceId || cameraSelect.value || null);
+          }
+        }, 2500);
+      }
+
+      function waitForVideoFrame(vid, ms) {
+        if (!vid || vid.videoWidth > 0) return Promise.resolve(true);
+        return new Promise(resolve => {
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            clearTimeout(timer);
+            clearInterval(poll);
+            ['loadeddata', 'loadedmetadata', 'canplay', 'playing', 'resize'].forEach(ev => {
+              try { vid.removeEventListener(ev, onEvt); } catch (e) { }
+            });
+            resolve(!!(vid && vid.videoWidth > 0));
+          };
+          const onEvt = () => { if (vid && vid.videoWidth > 0) finish(); };
+          const timer = setTimeout(finish, ms);
+          const poll = setInterval(() => { if (vid && vid.videoWidth > 0) finish(); }, 120);
+          ['loadeddata', 'loadedmetadata', 'canplay', 'playing', 'resize'].forEach(ev => {
+            try { vid.addEventListener(ev, onEvt); } catch (e) { }
+          });
+        });
+      }
+
+      async function initCamera(deviceId, initOpts) {
+        const myGen = ++camInitGen;
+        camInitInFlight = true;
+        try {
+          if (deviceId === USB_CAM_ID) {
+            if (nativeCam.active) {
+              nativeCam.active = false;
+              syncNativeCamLayout();
+              try { await window.__PBCam.stop(); } catch (e) { }
+            }
+            if (camInitGen !== myGen) return false;
+            return await initUsbCamera();
+          }
+          usbStopLive();
+          clearInterval(usbBattTimer); usbCamNote('');
+          // Stop any existing stream (clear currentStream/streamActive BEFORE stop() so watchTrack never fires cameraLost)
+          if (currentStream) {
+            const prevStream = currentStream;
+            currentStream = null;
+            streamActive = false;
+            if (prevStream !== usbCam.stream) {
+              try { prevStream.getTracks().forEach(t => t.stop()); } catch (e) { }
+              try { if (video && video.srcObject === prevStream) { video.pause(); video.srcObject = null; } } catch (e) { }
+              try { if (typeof scpVideo !== 'undefined' && scpVideo && scpVideo.srcObject === prevStream) { scpVideo.pause(); scpVideo.srcObject = null; } } catch (e) { }
+              await wait(IS_ANDROID_APP ? 600 : 250);
+            }
+            if (camInitGen !== myGen) return false;
+          }
+          if (hasNativeCamBridge() && !nativeCamBypassed(deviceId)) {
+            [video, document.getElementById('setupCamVideo')].forEach(el => {
+              if (el && el.srcObject) { try { el.pause(); } catch (e) { } el.srcObject = null; }
+            });
+            try {
+              const preset = (typeof webcamRes !== 'undefined' && webcamRes && webcamRes.preview) ? String(webcamRes.preview) : 'auto';
+              nativeCam.lastLayoutSig = '';
+              const res = await Promise.race([
+                window.__PBCam.open(deviceId || '', preset),
+                new Promise(r => setTimeout(() => r({ ok: false, name: 'TimeoutError', error: 'Camera did not respond in time.' }), 15000))
+              ]);
+              if (camInitGen !== myGen) return false;
+              if (!res || !res.ok) {
+                nativeCam.active = false;
+                syncNativeCamLayout();
+                streamActive = false;
+                showCameraError({ name: (res && res.name) || 'NotReadableError', message: (res && res.error) || 'Could not start native camera.' });
+                return false;
+              }
+              nativeCam.active = true;
+              nativeCam.frameTs = 0;
+              nativeCam.frameCanvas.width = 0;
+              nativeCam.frameCanvas.height = 0;
+              nativeCam.deviceId = res.id || deviceId || '';
+              nativeCam.w = res.width || 1280;
+              nativeCam.h = res.height || 960;
+              nativeCam.meta = res;
+              if (res.id && !nativeCam.devicesById[res.id]) {
+                nativeCam.devicesById[res.id] = {
+                  deviceId: res.id,
+                  label: res.label || res.id,
+                  kind: 'videoinput',
+                  position: res.isFront ? 'front' : (res.isExternal ? 'external' : 'back'),
+                  isExternal: !!res.isExternal
+                };
+              }
+              if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+              streamActive = true;
+              if (!cameraSelect.options.length || Array.from(cameraSelect.options).some(o => !o.value)) {
+                try { await enumerateCameras({ noProbe: true }); } catch (e) { }
+              }
+              currentDeviceId = nativeCam.deviceId || deviceId || null;
+              if (currentDeviceId && Array.from(cameraSelect.options).some(o => o.value === currentDeviceId)) cameraSelect.value = currentDeviceId;
+              applyMirror();
+              applyLiveFilter();
+              guestCall('camera');
+              syncNativeCamLayout();
+              try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
+              try { if (typeof applyStageAspect === 'function') applyStageAspect(); } catch (e) { }
+              cameraError.style.display = 'none';
+              recDot.style.display = 'flex';
+              camSleeping = false;
+              return true;
+            } catch (err) {
+              nativeCam.active = false;
+              syncNativeCamLayout();
+              streamActive = false;
+              showCameraError(err);
+              return false;
+            }
+          }
           if (nativeCam.active) {
             nativeCam.active = false;
             syncNativeCamLayout();
             try { await window.__PBCam.stop(); } catch (e) { }
+            if (camInitGen !== myGen) return false;
           }
-          return initUsbCamera();
-        }
-        usbStopLive();
-        clearInterval(usbBattTimer); usbCamNote('');
-        // Stop any existing stream
-        if (currentStream) {
-          if (currentStream !== usbCam.stream) { currentStream.getTracks().forEach(t => t.stop()); await wait(250); }
-          currentStream = null;
-        }
-        if (hasNativeCamBridge() && !nativeCamBypassed(deviceId)) {
-          [video, document.getElementById('setupCamVideo')].forEach(el => {
-            if (el && el.srcObject) { try { el.pause(); } catch (e) { } el.srcObject = null; }
-          });
+          const attachStreamToVideo = async (st) => {
+            currentStream = st;
+            watchTrack(st);
+            if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+            const setupCamStep = (IS_IOS_APP || IS_ANDROID_APP) && typeof curStep !== 'undefined' && curStep === 4 && tabSetup && !tabSetup.classList.contains('hidden') && typeof scpVideo !== 'undefined' && scpVideo;
+            const pv = setupCamStep ? scpVideo : video;
+            if (setupCamStep && video.srcObject) {
+              try { video.pause(); } catch (e) { }
+              video.srcObject = null;
+            }
+            pv.srcObject = st;
+            try { await pv.play(); } catch (e) { }
+            listenVideoFrames(pv);
+            await waitForVideoFrame(pv, IS_ANDROID_APP ? 5000 : 3000);
+            return pv;
+          };
           try {
-            const preset = (typeof webcamRes !== 'undefined' && webcamRes && webcamRes.preview) ? String(webcamRes.preview) : 'auto';
-            nativeCam.lastLayoutSig = '';
-            const res = await Promise.race([
-              window.__PBCam.open(deviceId || '', preset),
-              new Promise(r => setTimeout(() => r({ ok: false, name: 'TimeoutError', error: 'Camera did not respond in time.' }), 15000))
-            ]);
-            if (!res || !res.ok) {
-              nativeCam.active = false;
-              syncNativeCamLayout();
-              streamActive = false;
-              showCameraError({ name: (res && res.name) || 'NotReadableError', message: (res && res.error) || 'Could not start native camera.' });
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('no mediaDevices');
+            let stream = await openCameraStream(deviceId);
+            if (camInitGen !== myGen) {
+              try { stream.getTracks().forEach(t => t.stop()); } catch (e) { }
               return false;
             }
-            nativeCam.active = true;
-            nativeCam.frameTs = 0;
-            nativeCam.frameCanvas.width = 0;
-            nativeCam.frameCanvas.height = 0;
-            nativeCam.deviceId = res.id || deviceId || '';
-            nativeCam.w = res.width || 1280;
-            nativeCam.h = res.height || 960;
-            nativeCam.meta = res;
-            if (res.id && !nativeCam.devicesById[res.id]) {
-              nativeCam.devicesById[res.id] = {
-                deviceId: res.id,
-                label: res.label || res.id,
-                kind: 'videoinput',
-                position: res.isFront ? 'front' : (res.isExternal ? 'external' : 'back'),
-                isExternal: !!res.isExternal
-              };
+            let playVid = await attachStreamToVideo(stream);
+            if (camInitGen !== myGen || currentStream !== stream) return false;   // another camera was picked meanwhile
+
+            // Self-healing retry for Huawei / HarmonyOS / Android Camera2 HALs: if the camera opened
+            // (getUserMedia resolved) yet didn't deliver a frame under 1280x720@30fps constraints, cleanly release
+            // the sensor and reopen with unconstrained settings (and if needed, facingMode-only on Android) so the ISP
+            // chooses its native preview mode.
+            const trkFirst = stream.getVideoTracks()[0];
+            const firstHiddenLive = !playVid.videoWidth && playVid.offsetParent === null && trkFirst && trkFirst.readyState === 'live' && !trkFirst.muted;
+            if (!playVid.videoWidth && !firstHiddenLive && deviceId !== UVC_ID && (typeof TABLET_CAM_ID === 'undefined' || deviceId !== TABLET_CAM_ID)) {
+              const retryPlans = [{ loose: true }];
+              if (IS_ANDROID_APP && deviceId) {
+                const reqOpt = Array.from(cameraSelect.options).find(o => o.value === deviceId);
+                if (reqOpt && reqOpt.dataset && (reqOpt.dataset.facing === 'front' || reqOpt.dataset.facing === 'back')) {
+                  retryPlans.push({ loose: true, facingOnly: true });
+                }
+              }
+              for (const plan of retryPlans) {
+                try { usbLog('cam-no-picture-retry', { deviceId: deviceId || '', facingOnly: !!plan.facingOnly, android: !!IS_ANDROID_APP }); } catch (e) { }
+                currentStream = null;
+                streamActive = false;
+                try { stream.getTracks().forEach(t => t.stop()); } catch (e) { }
+                try { playVid.pause(); playVid.srcObject = null; } catch (e) { }
+                await wait(IS_ANDROID_APP ? 650 : 350);
+                if (camInitGen !== myGen) return false;
+                stream = await openCameraStream(deviceId, plan);
+                if (camInitGen !== myGen) {
+                  try { stream.getTracks().forEach(t => t.stop()); } catch (e) { }
+                  return false;
+                }
+                playVid = await attachStreamToVideo(stream);
+                if (camInitGen !== myGen || currentStream !== stream) return false;
+                if (playVid.videoWidth > 0) break;
+              }
             }
-            if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+
+            const trkNow = stream.getVideoTracks()[0];
+            const hiddenLiveOk = !playVid.videoWidth && playVid.offsetParent === null && trkNow && trkNow.readyState === 'live' && !trkNow.muted;
+            camPendingVisibleCheck = !!hiddenLiveOk;
+            if (!playVid.videoWidth && !hiddenLiveOk) {
+              // Cleanly tear down the stalled stream so watchTrack doesn't pile "Camera disconnected" on top of NoPicture.
+              currentStream = null;
+              streamActive = false;
+              try { stream.getTracks().forEach(t => t.stop()); } catch (e) { }
+              try { playVid.pause(); playVid.srcObject = null; } catch (e) { }
+              showCameraError({ name: 'NoPicture' });
+              cameraSection.classList.remove('hidden');
+              cameraSelect.style.display = cameraSelect.options.length > 1 ? '' : 'none';
+              return false;
+            }
+
             streamActive = true;
-            if (!cameraSelect.options.length || Array.from(cameraSelect.options).some(o => !o.value)) {
-              try { await enumerateCameras(); } catch (e) { }
+            // Now that a stream is open, refresh camera labels/IDs WITHOUT opening a second getUserMedia probe
+            // (opening a second stream while active evicts the Huawei / Android Camera2 HAL).
+            const isTabletCam = typeof TABLET_CAM_ID !== 'undefined' && deviceId === TABLET_CAM_ID;
+            if (!isTabletCam && (!cameraSelect.options.length || Array.from(cameraSelect.options).some(o => !o.value || o.value.indexOf(EMPTY_CAM_PREFIX) === 0 || /^Camera \d+$/i.test(o.textContent)))) {
+              try { await enumerateCameras({ noProbe: true }); } catch (e) { }
+              if (camInitGen !== myGen || currentStream !== stream) return false;
             }
-            currentDeviceId = nativeCam.deviceId || deviceId || null;
-            if (currentDeviceId && Array.from(cameraSelect.options).some(o => o.value === currentDeviceId)) cameraSelect.value = currentDeviceId;
+            const trkSettings = (trkNow && typeof trkNow.getSettings === 'function') ? (trkNow.getSettings() || {}) : {};
+            const opened = isTabletCam
+              ? TABLET_CAM_ID
+              : (trkSettings.deviceId || deviceId || (cameraSelect && cameraSelect.value && cameraSelect.value !== USB_CAM_ID ? cameraSelect.value : null));
+            // If startup auto-opened with !deviceId (before cameras were listed) and the operator had a different saved camera
+            // (e.g. a legacy saved "Camera 1" without facing metadata), switch cleanly to their saved camera once.
+            const svNow = savedCamera();
+            if (!deviceId && !(initOpts && initOpts._switchedSaved) && svNow && svNow.id !== USB_CAM_ID) {
+              const wantSv = matchSavedOption(svNow, cameraSelect.options);
+              if (wantSv && wantSv.value && wantSv.value !== USB_CAM_ID && wantSv.value !== opened && wantSv.value.indexOf(EMPTY_CAM_PREFIX) !== 0) {
+                cameraSelect.value = wantSv.value;
+                return await initCamera(wantSv.value, { _switchedSaved: true });
+              }
+            }
+            currentDeviceId = opened;
+            if (opened && Array.from(cameraSelect.options).some(o => o.value === opened)) {
+              cameraSelect.value = opened;
+            }
+            const selOptNow = cameraSelect.options[cameraSelect.selectedIndex];
+            if (selOptNow && selOptNow.dataset && !selOptNow.dataset.facing && (trkSettings.facingMode === 'user' || trkSettings.facingMode === 'environment')) {
+              selOptNow.dataset.facing = trkSettings.facingMode === 'user' ? 'front' : 'back';
+            }
+            // If the operator's saved camera used a temporary synthetic ID or lacked facing/rawLabel metadata,
+            // enrich it now that we know the real opened device (never overwrite an unrelated saved camera).
+            if (svNow && svNow.id !== USB_CAM_ID && selOptNow && selOptNow.value && selOptNow.value !== USB_CAM_ID) {
+              const matchedSv = matchSavedOption(svNow, cameraSelect.options);
+              if (matchedSv && matchedSv === selOptNow && (svNow.id !== selOptNow.value || (!svNow.facing && selOptNow.dataset.facing) || (!svNow.rawLabel && selOptNow.dataset.rawLabel))) {
+                saveCamera();
+              }
+            }
+            // Mirror the live preview for a natural selfie feel; captureFrame()
+            // un-mirrors it again so any text on props reads correctly in the
+            // final photo.
             applyMirror();
             applyLiveFilter();
             guestCall('camera');
-            syncNativeCamLayout();
-            try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
-            try { if (typeof applyStageAspect === 'function') applyStageAspect(); } catch (e) { }
             cameraError.style.display = 'none';
             recDot.style.display = 'flex';
             camSleeping = false;
+            try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
+            try { if (typeof webcamOnStreamReady === 'function') await webcamOnStreamReady(stream); } catch (e) { }
+            if (!camWantLive() && !camWaking) { try { camLiveSleep(); } catch (e) { } }
             return true;
           } catch (err) {
-            nativeCam.active = false;
-            syncNativeCamLayout();
+            console.error('Camera failed:', err);
             streamActive = false;
+            // On the desktop app (Windows/Mac), if the webcam is busy try to free it once and retry.
+            // This covers the Insta360 Ace Pro in webcam mode when Insta360 Studio is still running.
+            if (DESKTOP && err && (err.name === 'NotReadableError' || err.name === 'TrackStartError') && !err.__freed) {
+              try {
+                if (window.pb4u && window.pb4u.freeCamera) {
+                  const freedRes = await window.pb4u.freeCamera();
+                  const holders = (freedRes && Array.isArray(freedRes.holders)) ? freedRes.holders : [];   // Windows: apps still using the camera
+                  try { if (holders.length) err.holders = holders; } catch (e) { }
+                  await wait(1200);
+                  if (camInitGen !== myGen) return false;
+                  try {
+                    const stream = await openCameraStream(deviceId);
+                    if (camInitGen !== myGen) { try { stream.getTracks().forEach(t => t.stop()); } catch (e) { } return false; }
+                    currentStream = stream;
+                    watchTrack(stream);
+                    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+                    video.srcObject = stream;
+                    await video.play();
+                    listenVideoFrames(video);
+                    streamActive = true;
+                    const openedRetry = (stream.getVideoTracks()[0] && stream.getVideoTracks()[0].getSettings().deviceId) || deviceId || null;
+                    currentDeviceId = openedRetry;
+                    if (openedRetry && Array.from(cameraSelect.options).some(o => o.value === openedRetry)) cameraSelect.value = openedRetry;
+                    cameraError.style.display = 'none';
+                    recDot.style.display = 'flex';
+                    camSleeping = false;
+                    try { if (typeof webcamOnStreamReady === 'function') await webcamOnStreamReady(stream); } catch (e) { }
+                    return true;
+                  } catch (retryErr2) { var keepHolders = err && err.holders; err = retryErr2; try { if (keepHolders && err && !err.holders) err.holders = keepHolders; } catch (e) { } }
+                }
+              } catch (freeErr) { /* ignore */ }
+            }
             showCameraError(err);
             return false;
           }
-        }
-        if (nativeCam.active) {
-          nativeCam.active = false;
-          syncNativeCamLayout();
-          try { await window.__PBCam.stop(); } catch (e) { }
-        }
-        try {
-          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('no mediaDevices');
-          const stream = await openCameraStream(deviceId);
-          currentStream = stream;
-          watchTrack(stream);
-          if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
-          const setupCamStep = IS_IOS_APP && typeof curStep !== 'undefined' && curStep === 4 && tabSetup && !tabSetup.classList.contains('hidden') && typeof scpVideo !== 'undefined' && scpVideo;
-          const playVid = setupCamStep ? scpVideo : video;
-          if (setupCamStep && video.srcObject) {
-            try { video.pause(); } catch (e) { }
-            video.srcObject = null;
-          }
-          playVid.srcObject = stream;
-          await playVid.play();
-          listenVideoFrames(playVid);
-          // Safari can resolve play() before the first frame; give it a moment.
-          if (!playVid.videoWidth) {
-            await new Promise(r => {
-              const t = setTimeout(r, 3000);
-              playVid.addEventListener('loadeddata', () => { clearTimeout(t); r(); }, { once: true });
-            });
-          }
-          if (currentStream !== stream) return false;   // another camera was picked meanwhile
-          streamActive = true;
-          // The camera actually opened (may differ if the remembered one was gone).
-          // Before camera access is allowed (Safari on Mac especially) the camera
-          // list comes back blank or unnamed, so the menu stays hidden. Now that
-          // access works, list the cameras again so the menu appears.
-          // (The tablet camera is not a webcam: there are no labels to refresh, so it never waits for the system's camera list.)
-          const isTabletCam = typeof TABLET_CAM_ID !== 'undefined' && deviceId === TABLET_CAM_ID;
-          if (!isTabletCam && (!cameraSelect.options.length || Array.from(cameraSelect.options).some(o => !o.value || /^Camera \d+$/.test(o.textContent)))) {
-            try { await enumerateCameras(); } catch (e) { }
-          }
-          const opened = (typeof TABLET_CAM_ID !== 'undefined' && deviceId === TABLET_CAM_ID)
-            ? TABLET_CAM_ID
-            : ((stream.getVideoTracks()[0] && stream.getVideoTracks()[0].getSettings().deviceId) || deviceId || null);
-          currentDeviceId = opened;
-          if (opened && Array.from(cameraSelect.options).some(o => o.value === opened)) cameraSelect.value = opened;
-          // Mirror the live preview for a natural selfie feel; captureFrame()
-          // un-mirrors it again so any text on props reads correctly in the
-          // final photo.
-          applyMirror();
-          applyLiveFilter();
-          guestCall('camera');
-          if (!playVid.videoWidth) {
-            showCameraError({ name: 'NoPicture' });
-            cameraSection.classList.remove('hidden');
-            cameraSelect.style.display = cameraSelect.options.length > 1 ? '' : 'none';
-            return true;
-          }
-          cameraError.style.display = 'none';
-          recDot.style.display = 'flex';
-          camSleeping = false;
-          try { if (typeof webcamOnStreamReady === 'function') await webcamOnStreamReady(stream); } catch (e) { }
-          if (!camWantLive() && !camWaking) { try { camLiveSleep(); } catch (e) { } }
-          return true;
-        } catch (err) {
-          console.error('Camera failed:', err);
-          streamActive = false;
-          // On the desktop app (Windows/Mac), if the webcam is busy try to free it once and retry.
-          // This covers the Insta360 Ace Pro in webcam mode when Insta360 Studio is still running.
-          if (DESKTOP && err && (err.name === 'NotReadableError' || err.name === 'TrackStartError') && !err.__freed) {
-            try {
-              if (window.pb4u && window.pb4u.freeCamera) {
-                const freedRes = await window.pb4u.freeCamera();
-                const holders = (freedRes && Array.isArray(freedRes.holders)) ? freedRes.holders : [];   // Windows: apps still using the camera
-                try { if (holders.length) err.holders = holders; } catch (e) { }
-                await wait(1200);
-                const retryErr = Object.assign(Object.create(err), { __freed: true });
-                try {
-                  const stream = await openCameraStream(deviceId);
-                  currentStream = stream;
-                  watchTrack(stream);
-                  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
-                  video.srcObject = stream;
-                  await video.play();
-                  listenVideoFrames(video);
-                  streamActive = true;
-                  const openedRetry = (stream.getVideoTracks()[0] && stream.getVideoTracks()[0].getSettings().deviceId) || deviceId || null;
-                  currentDeviceId = openedRetry;
-                  if (openedRetry && Array.from(cameraSelect.options).some(o => o.value === openedRetry)) cameraSelect.value = openedRetry;
-                  cameraError.style.display = 'none';
-                  recDot.style.display = 'flex';
-                  camSleeping = false;
-                  try { if (typeof webcamOnStreamReady === 'function') await webcamOnStreamReady(stream); } catch (e) { }
-                  return true;
-                } catch (retryErr2) { var keepHolders = err && err.holders; err = retryErr2; try { if (keepHolders && err && !err.holders) err.holders = keepHolders; } catch (e) { } }
-              }
-            } catch (freeErr) { /* ignore */ }
-          }
-          showCameraError(err);
-          return false;
+        } finally {
+          if (camInitGen === myGen) camInitInFlight = false;
         }
       }
       // A slow camera that starts sending frames later (or a tablet rotating portrait <-> landscape) updates live size & stage shape.
@@ -37338,6 +37860,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (typeof tabletBridge !== 'undefined' && tabletBridge && typeof TABLET_CAM_ID !== 'undefined') {
           tabletBridge.wasUsingCam = (cameraSelect.value === TABLET_CAM_ID);
         }
+        camUserPickedId = cameraSelect.value || '';
         setTimeout(() => { try { refreshCamFab(); } catch (e) { } }, 0);
         saveCamera();
         initCamera(cameraSelect.value);
@@ -37346,6 +37869,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // Try Again re-lists the cameras first: after the operator allows access
       // (browser prompt or macOS System Settings) the names and the menu show up.
       retryCameraBtn.addEventListener('click', async () => {
+        camLabelProbed = false;
+        if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
         try { await enumerateCameras(); } catch (e) { }
         initCamera(cameraSelect.value || null);
       });
@@ -37885,7 +38410,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         // The tablet's camera: use the side the tablet itself reports (its menu name can be out of date after a flip).
         if (typeof TABLET_CAM_ID !== 'undefined' && currentDeviceId === TABLET_CAM_ID && typeof tabletBridge !== 'undefined' && tabletBridge) return tabletBridge.facing !== 'back';
-        const label = (cameraSelect.options[cameraSelect.selectedIndex]?.text || '').toLowerCase();
+        const selOpt = cameraSelect.options[cameraSelect.selectedIndex];
+        const optFacing = selOpt && selOpt.dataset ? selOpt.dataset.facing : '';
+        if (optFacing === 'front' || optFacing === 'external') return true;
+        if (optFacing === 'back') return false;
+        const trk = currentStream && currentStream.getVideoTracks && currentStream.getVideoTracks()[0];
+        const fm = trk && typeof trk.getSettings === 'function' ? trk.getSettings().facingMode : '';
+        if (fm === 'user') return true;
+        if (fm === 'environment') return false;
+        const label = (selOpt?.text || '').toLowerCase();
         // If label contains back/rear, don't mirror; otherwise default to mirroring
         return !label.includes('back') && !label.includes('rear') && !label.includes('environment');
       }
@@ -38108,6 +38641,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (hasBottomStreakArtifact(ctx, c.width, c.height)) {
             console.warn('Webcam max photo has bottom streak artifact, keeping clean live frame.');
             try { usbLog('webcam-bottom-smear', { msg: 'Bottom streak artifact detected; kept live frame' }); } catch (e) { }
+            pbReleaseCanvas(c);
             return;
           }
 
@@ -38121,7 +38655,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           applyFilterToCanvas(c);
           c._isShot = true;
           if (DESKTOP && !mir && !bgSwapped) c._orig = blob;   // the webcam's own full-size photo, for the solo shot (see soloOriginal)
-          if (shotCanvases === shots) { shotCanvases[index] = c; updateFilmTrack(); }
+          if (shotCanvases === shots) {
+            if (shotCanvases[index] && shotCanvases[index] !== c) pbReleaseShotCanvas(shotCanvases[index]);
+            shotCanvases[index] = c;
+            updateFilmTrack();
+          } else {
+            pbReleaseShotCanvas(c);
+          }
         } catch (err) {
           console.warn('Webcam max photo failed, live frame used:', err);
           try { usbLog('webcam-max-fail', { error: String(err && err.message || err) }); } catch (e) { }
@@ -38204,7 +38744,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (mirrorPreview()) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }   // match the live view, like the instant frame
             ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, c.width, c.height);
             ctx.setTransform(1, 0, 0, 1, 0, 0);
-            if (gone()) return;
+            if (gone()) { if (typeof pbReleaseCanvas === 'function') pbReleaseCanvas(c); return; }
             finalizeShotCanvas(c, index);   // puts it in the slot, with the same filters / clean-up marks as any other photo
             try { if (previewCanvas) previewCanvas._renderedForLayout = ''; } catch (e) { }   // a strip drawn with the small one must be drawn again
             tabletStill.fails = 0; tabletStill.lastW = c.width; tabletStill.lastH = c.height; tabletStill.lastMs = Date.now() - t0;
@@ -39304,6 +39844,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         for (; ;) {
           const pick = await reviewOnce();
           if (pick === 'done' || pick === 'cancel' || sess.cancelled) return;
+          if (shotCanvases[pick]) pbReleaseShotCanvas(shotCanvases[pick]);
           shotCanvases[pick] = null;
           updateFilmTrack(); guestCall('shots');
           countdownOverlay.style.display = 'flex';
@@ -40296,8 +40837,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         video.style.display = 'block'; previewCanvas.style.display = 'none';
         if (previewCanvas) { pbReleaseCanvas(previewCanvas); previewCanvas._renderedForLayout = ''; }
         state = 'idle';
+        pbReleaseFlipbookResult();
         pbReleaseShotList(shotCanvases);
         shotCanvases = new Array(shotsNeeded()).fill(null);
+        try { if (typeof webcamReleaseRingPool === 'function') webcamReleaseRingPool(); } catch (e) { }
         sess = null;
         cancelSessionBtn.hidden = true;
         updateFilmTrack();
@@ -40392,7 +40935,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         previewCanvas.style.display = 'none';
         state = 'capturing';
         if (typeof stopFlipAutoPlay === 'function') stopFlipAutoPlay();
-        flipbookResult = null;
+        pbReleaseFlipbookResult();
         resetSessionPrints();
         stageShot = 0;
         sess = { cancelled: false, retake: false, pick: null };
@@ -40778,6 +41321,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       bgInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        const prevBlobUrl = (backgroundImg && backgroundImg.src && backgroundImg.src.indexOf('blob:') === 0) ? backgroundImg.src : '';
         const img = new Image();
         img.onload = () => {
           backgroundImg = img;
@@ -40787,6 +41331,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           bgThumb.src = img.src;
           bgThumb.style.display = 'block';
           removeBgBtn.style.display = 'inline';
+          if (prevBlobUrl && prevBlobUrl !== img.src) { try { URL.revokeObjectURL(prevBlobUrl); } catch (e2) { } }
           setActivePresetBtn();
           updateBandPositionVisibility();
           qrResults.innerHTML = '';
@@ -40798,8 +41343,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       });
 
       removeBgBtn.addEventListener('click', () => {
+        try {
+          if (backgroundImg && backgroundImg.src && backgroundImg.src.indexOf('blob:') === 0) URL.revokeObjectURL(backgroundImg.src);
+        } catch (e) { }
         backgroundImg = null;
         backdropPreset = 'none';
+        bgThumb.src = '';
         bgThumb.style.display = 'none';
         removeBgBtn.style.display = 'none';
         bgInput.value = '';
@@ -41311,6 +41860,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         applyStageAspect();
         // A finished session with a different shot count can't be re-laid out.
         if (shotCanvases.length !== shotsNeeded()) {
+          pbReleaseShotList(shotCanvases);
           shotCanvases = new Array(shotsNeeded()).fill(null);
           if (state === 'result') state = 'idle';
           updateFilmTrack();
@@ -41388,8 +41938,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // ---- Canvas compositing ----
       function drawImageCover(ctx, img, x, y, w, h, focus) {
         if (BOX_PROBE && BOX_PROBE.set.has(img)) { if (!BOX_PROBE.aspect) BOX_PROBE.aspect = w / h; if (BOX_PROBE.per && !BOX_PROBE.per.has(img)) BOX_PROBE.per.set(img, w / h); }
+        if (!pbDrawableReady(img) || !(w > 0) || !(h > 0)) return;
         if (img && img._isShot && photoFit === 'whole' && !BOX_PROBE) { drawImageWhole(ctx, img, x, y, w, h); return; }
-        const iw = img.width, ih = img.height;
+        const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
         const imgRatio = iw / ih;
         const boxRatio = w / h;
         let sx, sy, sw, sh;
@@ -41430,7 +41981,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         if (img && img._cq && CAM_Q[img._cq] && !BOX_PROBE) {
           var nt = null; try { nt = camQTile(CAM_Q[img._cq], ctx, img, sx, sy, sw, sh, w, h); } catch (e) { nt = null; }
-          if (nt) { ctx.drawImage(nt, 0, 0, nt.width, nt.height, x, y, w, h); return; }
+          if (nt && nt.width && nt.height) { ctx.drawImage(nt, 0, 0, nt.width, nt.height, x, y, w, h); return; }
         }
         // Stepped halving shrink for high-res shots drawn into smaller output/receipt boxes (avoids 1-step aliasing).
         if (!BOX_PROBE && (receiptPrintGrey || isOutputTarget(ctx.canvas) || (ctx.canvas && ctx.canvas._stepShrink))) {
@@ -41459,20 +42010,25 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // space around it is a soft, blurred copy of the same photo.
       var photoFit = 'fill';   // photos always fill their box ("Whole photo" option removed)
       function drawImageWhole(ctx, img, x, y, w, h) {
-        var iw = img.width, ih = img.height;
+        if (!pbDrawableReady(img) || !(w > 0) || !(h > 0)) return;
+        var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
         var t = document.createElement('canvas'), tw = 24, th = Math.max(1, Math.round(24 * h / w));
         t.width = tw; t.height = th;
         var tx = t.getContext('2d'), br = iw / ih, bb = tw / th, sw, sh;
         if (br > bb) { sh = ih; sw = sh * bb; } else { sw = iw; sh = sw / bb; }
         tx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, tw, th);
         ctx.save();
-        ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
-        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(t, x, y, w, h);
-        ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(x, y, w, h);
-        var k = Math.min(w / iw, h / ih), dw = iw * k, dh = ih * k;
-        ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
-        ctx.restore();
+        try {
+          ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+          ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(t, x, y, w, h);
+          ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(x, y, w, h);
+          var k = Math.min(w / iw, h / ih), dw = iw * k, dh = ih * k;
+          ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+        } finally {
+          ctx.restore();
+          pbReleaseCanvas(t);
+        }
       }
       function drawPolaroid(ctx, img, cx, cy, w, h, rotDeg) {
         if (!img) return;
@@ -42356,20 +42912,21 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
       var PM_PUNCH_CACHE = {};
       function pmPunchedOverlay(t, ovImg, fastPreview) {
-        if (!t || !ovImg || !t.overlayAssetId) return ovImg;
+        if (!t || !pbDrawableReady(ovImg) || !t.overlayAssetId) return ovImg;
         var sig = (fastPreview ? 'p|' : 'f|') + t.overlayAssetId + '|' + (t.spots || []).map(function (s) {
           return [s.x, s.y, s.w, s.h, s.a || 0].map(function (v) { return Number(v || 0).toFixed(4); }).join(',');
         }).join(';');
         var slot = fastPreview ? 'pv' : 'full';
         var rec = PM_PUNCH_CACHE[t.id] || (PM_PUNCH_CACHE[t.id] = {});
-        if (rec[slot] && rec[slot].img === ovImg && rec[slot].sig === sig) return rec[slot].punched;
+        if (rec[slot] && rec[slot].img === ovImg && rec[slot].sig === sig && pbDrawableReady(rec[slot].punched)) return rec[slot].punched;
         var src = ovImg;
-        if (fastPreview && Math.max(ovImg.width || 0, ovImg.height || 0) > 900) {
-          if (!rec.smallOv || rec.smallSrc !== ovImg) {
-            var fk = 900 / Math.max(ovImg.width, ovImg.height);
+        var ow = ovImg.naturalWidth || ovImg.width || 0, oh = ovImg.naturalHeight || ovImg.height || 0;
+        if (fastPreview && Math.max(ow, oh) > 900) {
+          if (!rec.smallOv || rec.smallSrc !== ovImg || !pbDrawableReady(rec.smallOv)) {
+            var fk = 900 / Math.max(ow, oh);
             var scCv = document.createElement('canvas');
-            scCv.width = Math.max(4, Math.round(ovImg.width * fk));
-            scCv.height = Math.max(4, Math.round(ovImg.height * fk));
+            scCv.width = Math.max(4, Math.round(ow * fk));
+            scCv.height = Math.max(4, Math.round(oh * fk));
             var sx = scCv.getContext('2d');
             sx.imageSmoothingEnabled = true; sx.imageSmoothingQuality = 'high';
             sx.drawImage(ovImg, 0, 0, scCv.width, scCv.height);
@@ -42501,8 +43058,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (sc < 1) sc = 1;
         }
         var W = Math.max(2, Math.round(baseW * sc)), H = Math.max(2, Math.round(baseH * sc));
-        if (targetCanvas.width !== W || targetCanvas.height !== H) { targetCanvas.width = W; targetCanvas.height = H; }
+        if (targetCanvas._pmNeedsReset || targetCanvas.width !== W || targetCanvas.height !== H) { targetCanvas.width = W; targetCanvas.height = H; }
+        targetCanvas._pmNeedsReset = true;
         var ctx = targetCanvas.getContext('2d');
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
 
@@ -42521,21 +43086,24 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var canPmBaseCache = !hiRes && !!opts.previewMaxSide && typeof pbShotsMatch === 'function';
         var pmBaseSig = canPmBaseCache ? [t ? t.id : '', W, H, !!opts.wireframeOnly, pmBgPreset, pmBgEl, pmBgAcc, pmBgCol, (t && t.bgAssetId) || '', pmDecor, (t && t.decorColor) || '', !!(t && t.splitHalf), (t && t.overlayAssetId) || '', !!(t && t.punchWhite), JSON.stringify(spots)].join('|') : '';
         var pmBaseRec = canPmBaseCache ? targetCanvas._pmBase : null;
-        var pmBaseHit = !!(canPmBaseCache && pmBaseRec && pmBaseRec.cv && pmBaseRec.sig === pmBaseSig && pmBaseRec.bgIm === bgIm && pmBaseRec.ovIm === ovIm && pbShotsMatch(list, pmBaseRec.shots));
+        var pmBaseHit = !!(canPmBaseCache && pmBaseRec && pbDrawableReady(pmBaseRec.cv) && pmBaseRec.sig === pmBaseSig && pmBaseRec.bgIm === bgIm && pmBaseRec.ovIm === ovIm && pbShotsMatch(list, pmBaseRec.shots) && (!pmBaseRec.shots || pmBaseRec.shots.every(function (s) { return !s || pbDrawableReady(s); })));
 
         if (pmBaseHit) {
           ctx.save();
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.globalCompositeOperation = 'copy';
-          ctx.drawImage(pmBaseRec.cv, 0, 0);
-          ctx.restore();
+          try {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.globalCompositeOperation = 'copy';
+            ctx.drawImage(pmBaseRec.cv, 0, 0);
+          } finally {
+            ctx.restore();
+          }
         } else {
         var keepBc = typeof backdropColor !== 'undefined' ? backdropColor : '';
         var keepAcc = typeof accent !== 'undefined' ? accent : 'gold';
         var keepAccUsed = typeof accentUsed !== 'undefined' ? accentUsed : false;
         try {
           if (typeof accent !== 'undefined') accent = pmBgAcc;
-          if (bgIm && (bgIm.naturalWidth || bgIm.width)) {
+          if (pbDrawableReady(bgIm)) {
             ctx.fillStyle = pmBgCol;
             ctx.fillRect(0, 0, W, H);
             drawImageCover(ctx, bgIm, 0, 0, W, H);
@@ -42579,36 +43147,45 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             var shot = list.length ? (list[si] || list[si % list.length] || list[0]) : null;
 
             ctx.save();
-            ctx.translate(cx, cy);
-            if (ang) ctx.rotate(ang);
-            ctx.save();
-            if (rad > 0) roundRectPath(ctx, -sw / 2, -sh / 2, sw, sh, rad);
-            else { ctx.beginPath(); ctx.rect(-sw / 2, -sh / 2, sw, sh); }
-            ctx.clip();
-            if (shot && !opts.wireframeOnly) {
-              if (rotDeg) {
-                ctx.save();
-                ctx.rotate(rotDeg * Math.PI / 180);
-                drawImageCover(ctx, shot, -drawW / 2, -drawH / 2, drawW, drawH);
+            try {
+              ctx.translate(cx, cy);
+              if (ang) ctx.rotate(ang);
+              ctx.save();
+              try {
+                if (rad > 0) roundRectPath(ctx, -sw / 2, -sh / 2, sw, sh, rad);
+                else { ctx.beginPath(); ctx.rect(-sw / 2, -sh / 2, sw, sh); }
+                ctx.clip();
+                if (shot && pbDrawableReady(shot) && !opts.wireframeOnly) {
+                  if (rotDeg) {
+                    ctx.save();
+                    try {
+                      ctx.rotate(rotDeg * Math.PI / 180);
+                      drawImageCover(ctx, shot, -drawW / 2, -drawH / 2, drawW, drawH);
+                    } finally {
+                      ctx.restore();
+                    }
+                  } else {
+                    drawImageCover(ctx, shot, -sw / 2, -sh / 2, sw, sh);
+                  }
+                } else {
+                  ctx.fillStyle = (i % 2 === 0) ? '#eae4dc' : '#e1dad0';
+                  ctx.fillRect(-sw / 2, -sh / 2, sw, sh);
+                }
+              } finally {
                 ctx.restore();
-              } else {
-                drawImageCover(ctx, shot, -sw / 2, -sh / 2, sw, sh);
               }
-            } else {
-              ctx.fillStyle = (i % 2 === 0) ? '#eae4dc' : '#e1dad0';
-              ctx.fillRect(-sw / 2, -sh / 2, sw, sh);
-            }
-            ctx.restore();
 
-            var bw = Math.max(0, (Number(sp.borderW) || 0) * pxScale);
-            if (bw > 0) {
-              ctx.strokeStyle = sp.borderColor || '#ffffff';
-              ctx.lineWidth = bw;
-              if (rad > 0) roundRectPath(ctx, -sw / 2 + bw / 2, -sh / 2 + bw / 2, Math.max(1, sw - bw), Math.max(1, sh - bw), Math.max(0, rad - bw / 2));
-              else { ctx.beginPath(); ctx.rect(-sw / 2 + bw / 2, -sh / 2 + bw / 2, Math.max(1, sw - bw), Math.max(1, sh - bw)); }
-              ctx.stroke();
+              var bw = Math.max(0, (Number(sp.borderW) || 0) * pxScale);
+              if (bw > 0) {
+                ctx.strokeStyle = sp.borderColor || '#ffffff';
+                ctx.lineWidth = bw;
+                if (rad > 0) roundRectPath(ctx, -sw / 2 + bw / 2, -sh / 2 + bw / 2, Math.max(1, sw - bw), Math.max(1, sh - bw), Math.max(0, rad - bw / 2));
+                else { ctx.beginPath(); ctx.rect(-sw / 2 + bw / 2, -sh / 2 + bw / 2, Math.max(1, sw - bw), Math.max(1, sh - bw)); }
+                ctx.stroke();
+              }
+            } finally {
+              ctx.restore();
             }
-            ctx.restore();
           });
         } finally {
           if (typeof photoFit !== 'undefined') photoFit = prevFit;
@@ -42627,16 +43204,18 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
 
         // 3. Optional PNG frame overlay (supports white box knockout for Canva Free PNGs)
-        if (ovIm && (ovIm.naturalWidth || ovIm.width)) {
+        if (pbDrawableReady(ovIm)) {
           var ovSrc = (t.punchWhite && spots.length) ? pmPunchedOverlay(t, ovIm, !hiRes) : ovIm;
-          ctx.drawImage(ovSrc, 0, 0, W, H);
+          if (pbDrawableReady(ovSrc)) ctx.drawImage(ovSrc, 0, 0, W, H);
         }
 
         if (canPmBaseCache) {
           var bRec = targetCanvas._pmBase || (targetCanvas._pmBase = { cv: document.createElement('canvas') });
           if (bRec.cv.width !== W || bRec.cv.height !== H) { bRec.cv.width = W; bRec.cv.height = H; }
           var bx = bRec.cv.getContext('2d');
-          bx.save(); bx.setTransform(1, 0, 0, 1, 0, 0); bx.globalCompositeOperation = 'copy'; bx.drawImage(targetCanvas, 0, 0); bx.restore();
+          bx.save();
+          try { bx.setTransform(1, 0, 0, 1, 0, 0); bx.globalCompositeOperation = 'copy'; bx.drawImage(targetCanvas, 0, 0); }
+          finally { bx.restore(); }
           bRec.sig = pmBaseSig; bRec.bgIm = bgIm; bRec.ovIm = ovIm; bRec.shots = list.slice();
         }
         }
@@ -42654,20 +43233,23 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               var srot = (Number(st.rot) || 0) * Math.PI / 180;
               var sop = st.opacity == null ? 1 : Math.max(0.1, Math.min(1, Number(st.opacity)));
               ctx.save();
-              ctx.translate(sx, sy);
-              if (srot) ctx.rotate(srot);
-              if (st.flipX) ctx.scale(-1, 1);
-              ctx.globalAlpha = sop;
-              if (st.kind === 'asset' && st.assetId && typeof assetImg === 'function') {
-                var sim = assetImg(st.assetId);
-                if (sim && (sim.naturalWidth || sim.width)) {
-                  var sh = sw * (sim.naturalHeight || sim.height || 1) / Math.max(1, sim.naturalWidth || sim.width || 1);
-                  ctx.drawImage(sim, -sw / 2, -sh / 2, sw, sh);
+              try {
+                ctx.translate(sx, sy);
+                if (srot) ctx.rotate(srot);
+                if (st.flipX) ctx.scale(-1, 1);
+                ctx.globalAlpha = sop;
+                if (st.kind === 'asset' && st.assetId && typeof assetImg === 'function') {
+                  var sim = assetImg(st.assetId);
+                  if (pbDrawableReady(sim)) {
+                    var sh = sw * (sim.naturalHeight || sim.height || 1) / Math.max(1, sim.naturalWidth || sim.width || 1);
+                    ctx.drawImage(sim, -sw / 2, -sh / 2, sw, sh);
+                  }
+                } else if (st.key && typeof drawSticker === 'function') {
+                  drawSticker(ctx, st.key, sw);
                 }
-              } else if (st.key && typeof drawSticker === 'function') {
-                drawSticker(ctx, st.key, sw);
+              } finally {
+                ctx.restore();
               }
-              ctx.restore();
             });
           } finally {
             if (typeof accent !== 'undefined') accent = keepAccSt;
@@ -42683,61 +43265,68 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var fontPx = Math.max(8, Math.round((Number(tx.size) || 40) * pxScale));
           var fontStr = (tx.italic ? 'italic ' : '') + (tx.bold ? '700 ' : '400 ') + fontPx + 'px ' + (tx.font || "'Inter', sans-serif");
           ctx.save();
-          ctx.font = fontStr;
-          var align = tx.align === 'left' || tx.align === 'right' ? tx.align : 'center';
-          ctx.textAlign = align;
-          ctx.textBaseline = 'middle';
-          var x = (Number(tx.x) || 0.5) * W;
-          var y = (Number(tx.y) || 0.85) * H;
-          var rotDeg = Number(tx.rot) || 0;
-          ctx.translate(x, y);
-          if (rotDeg) ctx.rotate(rotDeg * Math.PI / 180);
-          var lineH = fontPx * 1.18;
-          var totalH = lines.length * lineH;
-          var maxW = 0;
-          lines.forEach(function (ln) { maxW = Math.max(maxW, ctx.measureText(ln).width); });
+          try {
+            ctx.font = fontStr;
+            var align = tx.align === 'left' || tx.align === 'right' ? tx.align : 'center';
+            ctx.textAlign = align;
+            ctx.textBaseline = 'middle';
+            var x = (Number(tx.x) || 0.5) * W;
+            var y = (Number(tx.y) || 0.85) * H;
+            var rotDeg = Number(tx.rot) || 0;
+            ctx.translate(x, y);
+            if (rotDeg) ctx.rotate(rotDeg * Math.PI / 180);
+            var lineH = fontPx * 1.18;
+            var totalH = lines.length * lineH;
+            var maxW = 0;
+            lines.forEach(function (ln) { maxW = Math.max(maxW, ctx.measureText(ln).width); });
 
-          if (tx.bgColor) {
-            var padX = fontPx * 0.42, padY = fontPx * 0.24;
-            var bx = align === 'center' ? (-maxW / 2 - padX) : align === 'right' ? (-maxW - padX) : (-padX);
-            var by = -totalH / 2 - padY;
-            ctx.fillStyle = tx.bgColor;
-            roundRectPath(ctx, bx, by, maxW + padX * 2, totalH + padY * 2, Math.min(20 * pxScale, fontPx * 0.45));
-            ctx.fill();
-          }
+            if (tx.bgColor) {
+              var padX = fontPx * 0.42, padY = fontPx * 0.24;
+              var bx = align === 'center' ? (-maxW / 2 - padX) : align === 'right' ? (-maxW - padX) : (-padX);
+              var by = -totalH / 2 - padY;
+              ctx.fillStyle = tx.bgColor;
+              roundRectPath(ctx, bx, by, maxW + padX * 2, totalH + padY * 2, Math.min(20 * pxScale, fontPx * 0.45));
+              ctx.fill();
+            }
 
-          if (tx.shadow) {
-            ctx.shadowColor = 'rgba(0,0,0,0.45)';
-            ctx.shadowBlur = Math.max(2, Math.round(6 * pxScale));
-            ctx.shadowOffsetY = Math.max(1, Math.round(2.5 * pxScale));
-          }
-          var startY = -(totalH - lineH) / 2;
-          var strokeW = Math.max(0, Number(tx.strokeW) || 0) * pxScale;
-          if (strokeW > 0) {
-            ctx.lineJoin = 'round';
-            ctx.lineWidth = strokeW * 2;
-            ctx.strokeStyle = tx.strokeColor || '#ffffff';
+            if (tx.shadow) {
+              ctx.shadowColor = 'rgba(0,0,0,0.45)';
+              ctx.shadowBlur = Math.max(2, Math.round(6 * pxScale));
+              ctx.shadowOffsetY = Math.max(1, Math.round(2.5 * pxScale));
+            }
+            var startY = -(totalH - lineH) / 2;
+            var strokeW = Math.max(0, Number(tx.strokeW) || 0) * pxScale;
+            if (strokeW > 0) {
+              ctx.lineJoin = 'round';
+              ctx.lineWidth = strokeW * 2;
+              ctx.strokeStyle = tx.strokeColor || '#ffffff';
+              lines.forEach(function (ln, li) {
+                ctx.strokeText(ln, 0, startY + li * lineH);
+              });
+            }
+            ctx.fillStyle = tx.color || '#1C1A1E';
             lines.forEach(function (ln, li) {
-              ctx.strokeText(ln, 0, startY + li * lineH);
+              ctx.fillText(ln, 0, startY + li * lineH);
             });
+          } finally {
+            ctx.restore();
           }
-          ctx.fillStyle = tx.color || '#1C1A1E';
-          lines.forEach(function (ln, li) {
-            ctx.fillText(ln, 0, startY + li * lineH);
-          });
-          ctx.restore();
         });
 
         // 5. Independent studio / client logo
         var lgIm = (t && t.logoAssetId && typeof assetImg === 'function') ? assetImg(t.logoAssetId) : null;
-        if (lgIm && (lgIm.naturalWidth || lgIm.width)) {
+        if (pbDrawableReady(lgIm)) {
           var lw = Math.max(16, (Number(t.logoW) || 0.22) * W);
           var lh = lw * (lgIm.naturalHeight || lgIm.height || 1) / Math.max(1, lgIm.naturalWidth || lgIm.width || 1);
           ctx.save();
-          ctx.globalAlpha = t.logoOpacity == null ? 1 : Math.max(0.1, Math.min(1, Number(t.logoOpacity)));
-          ctx.drawImage(lgIm, (Number(t.logoX) || 0.5) * W - lw / 2, (Number(t.logoY) || 0.9) * H - lh / 2, lw, lh);
-          ctx.restore();
+          try {
+            ctx.globalAlpha = t.logoOpacity == null ? 1 : Math.max(0.1, Math.min(1, Number(t.logoOpacity)));
+            ctx.drawImage(lgIm, (Number(t.logoX) || 0.5) * W - lw / 2, (Number(t.logoY) || 0.9) * H - lh / 2, lw, lh);
+          } finally {
+            ctx.restore();
+          }
         }
+        targetCanvas._pmNeedsReset = false;
         return targetCanvas;
       }
 
@@ -43859,10 +44448,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function sampleShot(w, h, n) {
         var c = document.createElement('canvas'); c.width = w; c.height = h;
         var x = c.getContext('2d');
-        var src = previewSample || drawnSample(w, h);
+        var src = pbDrawableReady(previewSample) ? previewSample : drawnSample(w, h);
         // cover-crop the source into this frame
-        var sr = src.width / src.height, dr = w / h, sw, sh, sx, sy;
-        if (sr > dr) { sh = src.height; sw = sh * dr; sx = (src.width - sw) / 2; sy = 0; } else { sw = src.width; sh = sw / dr; sx = 0; sy = (src.height - sh) / 2; }
+        var srcW = src.naturalWidth || src.width, srcH = src.naturalHeight || src.height;
+        var sr = srcW / srcH, dr = w / h, sw, sh, sx, sy;
+        if (sr > dr) { sh = srcH; sw = sh * dr; sx = (srcW - sw) / 2; sy = 0; } else { sw = srcW; sh = sw / dr; sx = 0; sy = (srcH - sh) / 2; }
         x.drawImage(src, sx, sy, sw, sh, 0, 0, w, h);
         if (typeof applyFilterToCanvas === 'function') applyFilterToCanvas(c);
         c._isShot = true;
@@ -43882,23 +44472,57 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         return c;
       }
 
-      var _phCache = { key: '', sample: null, list: [] };
+      var _phCache = { key: '', baseKey: '', sample: null, list: [], buckets: Object.create(null), order: [] };
+      function pbReleasePlaceholderCache() {
+        try {
+          if (_phCache && _phCache.buckets) {
+            Object.keys(_phCache.buckets).forEach(function (k) {
+              var lst = _phCache.buckets[k];
+              if (Array.isArray(lst) && lst.length && typeof pbReleaseShotList === 'function') pbReleaseShotList(lst);
+            });
+          }
+          if (_phCache && Array.isArray(_phCache.list) && _phCache.list.length && typeof pbReleaseShotList === 'function') {
+            pbReleaseShotList(_phCache.list);
+          }
+        } catch (e) { }
+        _phCache = { key: '', baseKey: '', sample: null, list: [], buckets: Object.create(null), order: [] };
+      }
       function buildPlaceholderShots(size, count) {
         const sa = photoFit === 'whole' ? (typeof camAspect === 'function' ? camAspect() : 1.5) : SHOT_ASPECT;
         const cw = Math.round(size * sa), ch = size;            // whole-photo previews use the camera's shape
         const ds = (typeof dateStamp !== 'undefined' && dateStamp) ? (typeof customDate !== 'undefined' ? customDate : '1') : 0;
-        const key = cw + 'x' + ch + '|' + (filterKey || '') + '|' + (softSkin ? 1 : 0) + '|' + ds;
-        if (!BOX_PROBE && _phCache.key === key && _phCache.sample === previewSample && _phCache.list.length >= count) {
-          return _phCache.list.slice(0, count);
+        const baseKey = (filterKey || '') + '|' + (softSkin ? 1 : 0) + '|' + ds;
+        const key = cw + 'x' + ch + '|' + baseKey;
+        const need = Math.max(0, Number(count) || 0);
+        if (!BOX_PROBE) {
+          if (_phCache.baseKey !== baseKey || _phCache.sample !== previewSample) {
+            _phCache = { key: '', baseKey: baseKey, sample: previewSample, list: [], buckets: Object.create(null), order: [] };
+          }
+          const buckets = _phCache.buckets || (_phCache.buckets = Object.create(null));
+          const order = _phCache.order || (_phCache.order = []);
+          let bucket = Array.isArray(buckets[key]) ? buckets[key] : null;
+          if (bucket) {
+            for (let i = 0; i < bucket.length; i++) {
+              if (!bucket[i] || !bucket[i].width || !bucket[i].height) bucket[i] = sampleShot(cw, ch, need > 1 ? i + 1 : 0);
+            }
+          } else {
+            bucket = buckets[key] = [];
+          }
+          const ordIdx = order.indexOf(key);
+          if (ordIdx >= 0) order.splice(ordIdx, 1);
+          order.push(key);
+          while (order.length > 3) {
+            const oldKey = order.shift();
+            if (oldKey && oldKey !== key && buckets[oldKey]) delete buckets[oldKey];
+          }
+          for (let i = bucket.length; i < need; i++) bucket.push(sampleShot(cw, ch, need > 1 ? i + 1 : 0));
+          _phCache.key = key;
+          _phCache.list = bucket;
+          return bucket.slice(0, need);
         }
-        const sameKey = !BOX_PROBE && _phCache.key === key && _phCache.sample === previewSample;
-        if (!BOX_PROBE && !sameKey && _phCache.list && _phCache.list.length && typeof pbReleaseShotList === 'function') {
-          pbReleaseShotList(_phCache.list);
-        }
-        const reuse = sameKey ? _phCache.list : [];
-        for (let i = reuse.length; i < count; i++) reuse.push(sampleShot(cw, ch, count > 1 ? i + 1 : 0));
-        if (!BOX_PROBE) _phCache = { key: key, sample: previewSample, list: reuse };
-        return reuse.slice(0, count);
+        const out = [];
+        for (let i = 0; i < need; i++) out.push(sampleShot(cw, ch, need > 1 ? i + 1 : 0));
+        return out;
       }
 
       var _spotPostTimer = 0;
@@ -52206,8 +52830,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         if (currentLayout !== setupLayout || hadGuestTier) setLayout(setupLayout);
         if (typeof pbReleaseDecorBase === 'function') pbReleaseDecorBase(previewCanvas);
+        pbReleaseFlipbookResult();
         pbReleaseShotList(shotCanvases);
         pbReleaseMotionClips();
+        completedGifCapture = null;
+        try { if (typeof webcamReleaseRingPool === 'function') webcamReleaseRingPool(); } catch (e) { }
         shotCanvases = new Array(shotsNeeded()).fill(null);
         qrResults.innerHTML = '';
         lastRenderedFolderUrl = null;
@@ -53264,6 +53891,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         flipViewMode = 'flip';
         startFlipAutoPlay();
         var rep0 = cards[Math.floor(cards.length / 2)]; rep0._isShot = true;
+        pbReleaseShotList(shotCanvases);
         shotCanvases = new Array(shotsNeeded()).fill(rep0);
         countingDown = false; cancelSessionBtn.hidden = true; sess = null;
         state = 'result';
@@ -54930,6 +55558,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                 if (waitRest) pvShots[i] = pvSh; else pvShots.push(pvSh);
                 if (gen !== deskPvGen) return;
               }
+              if (waitRest && pvShots.some(function (s, idx) { return idx >= shown.length && !pbDrawableReady(s); })) {
+                var freshPh = buildPlaceholderShots(400, spots);
+                for (var fi = shown.length; fi < spots; fi++) pvShots[fi] = freshPh[fi];
+              }
             }
             withDeskTemplateContext(tpl, function (resolvedLk) {
               composeCanvas(resolvedLk, outCv, pvShots);
@@ -55979,9 +56611,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       ];
       function pmPresetThumbUrl(kind) {
         if (pmPresetThumbCache[kind]) return pmPresetThumbCache[kind];
+        var c = document.createElement('canvas');
         try {
           var spec = pmPresetSpec(kind);
-          var c = document.createElement('canvas');
           var shots = pmStageSamplesList(Math.max(1, (spec.spots || []).length));
           composePmCanvas('pm:preset_' + kind, c, shots, { template: spec, wireframeOnly: false, previewMaxSide: 220 });
           var url = c.toDataURL('image/png');
@@ -55989,6 +56621,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return url;
         } catch (e) {
           return '';
+        } finally {
+          if (typeof pbReleaseCanvas === 'function') pbReleaseCanvas(c);
         }
       }
       function pmHidePresetHoverPop() {
@@ -56462,7 +57096,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         try {
           var dataUrl = await readImageFile(file, LOCALSHARE ? 3000 : 2200);
           var img = await loadImageUrl(dataUrl);
-          var aid = await addAsset(dataUrl);
+          var aid = await addAsset(dataUrl, null, img);
           var detected = pmDetectSpotsWithPairs(img);
           var hasWhite = pmSpotsHaveWhiteFill(img, detected);
           var isStrip = (img.width / Math.max(1, img.height)) < 0.45;
@@ -56527,10 +57161,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         showToast('Detected ' + detected.length + ' photo spot' + (detected.length === 1 ? '' : 's') + ' from PNG.', 2500);
       }
       function pmStageSamplesList(n) {
-        if (!pmMakerSamples || pmMakerSamples.length < n) {
-          pmMakerSamples = buildPlaceholderShots(360, Math.max(8, n));
-        }
-        return pmMakerSamples.slice(0, Math.max(1, n));
+        var need = Math.max(1, Number(n) || 1);
+        pmMakerSamples = (typeof buildPlaceholderShots === 'function') ? buildPlaceholderShots(400, need) : [];
+        return pmMakerSamples.slice(0, need);
       }
       function pmTextBoxNorm(t, tx) {
         var baseW = Math.max(200, Number(t.w) || 1200), baseH = Math.max(200, Number(t.h) || 1800);
@@ -57232,7 +57865,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (!file) return;
           try {
             var dataUrl = await readImageFile(file, LOCALSHARE ? 2600 : 2000);
-            var aid = await addAsset(dataUrl);
+            var img = await loadImageUrl(dataUrl);
+            var aid = await addAsset(dataUrl, null, img);
             var t = pmActive(); t.bgAssetId = aid; t.updatedAt = Date.now();
             pmSaveAll({ includeAssets: true }); pmRefreshAllUi();
           } catch (err) { showToast((err && err.message) || 'Couldn\u2019t load background image.', 3000); }
@@ -57279,7 +57913,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (!file) return;
           try {
             var dataUrl = await readImageFile(file, 1400);
-            var aid = await addAsset(dataUrl);
+            var img = await loadImageUrl(dataUrl);
+            var aid = await addAsset(dataUrl, null, img);
             var t = pmActive();
             if (!Array.isArray(t.stickers)) t.stickers = [];
             var nm = String(file.name || 'PNG').replace(/\.[^.]+$/, '').slice(0, 18) || 'PNG';
@@ -57296,7 +57931,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (!file) return;
           try {
             var dataUrl = await readImageFile(file, 1400);
-            var aid = await addAsset(dataUrl);
+            var img = await loadImageUrl(dataUrl);
+            var aid = await addAsset(dataUrl, null, img);
             var t = pmActive(); t.logoAssetId = aid; t.logoX = t.logoX || 0.5; t.logoY = t.logoY || 0.92; t.logoW = t.logoW || 0.22;
             pmSelectLayer('logo', 0);
             pmSaveAll({ includeAssets: true }); pmRefreshAllUi();
@@ -60815,6 +61451,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       async function reqDone(r) {
         try { if (reqLaptop()) await PBX.printReqDone(r.id); else await reqApi({ action: 'done', ids: [r.id] }); } catch (e) { console.error('Print request:', e); }
+        try { if (r && r.thumb && r.thumb.indexOf('blob:') === 0) URL.revokeObjectURL(r.thumb); } catch (e) { }
         reqList = reqList.filter(function (x) { return x.id !== r.id; });
       }
       async function reqPrint(r) {
@@ -62244,6 +62881,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         },
         setCamera: async function (id) {
           cameraSelect.value = id;
+          camUserPickedId = id || '';
           saveCamera();
           await initCamera(id);
           try { scheduleSetupNav(); } catch (e) { }
@@ -68642,10 +69280,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (cached && cached.complete && cached.naturalWidth > 0) return Promise.resolve(cached);
         if (typeof Image === 'undefined') return Promise.resolve(null);
         return new Promise(function (resolve) {
+          var keys = Object.keys(_pbBgImgCache);
+          if (keys.length >= 12) {
+            for (var ki = 0; ki < keys.length && Object.keys(_pbBgImgCache).length >= 12; ki++) {
+              if (_pbBgImgCache[keys[ki]] !== backgroundImg) delete _pbBgImgCache[keys[ki]];
+            }
+          }
           var im = new Image();
           _pbBgImgCache[url] = im;
           im.onload = function () { resolve(im); };
-          im.onerror = function () { resolve(null); };
+          im.onerror = function () { delete _pbBgImgCache[url]; resolve(null); };
           im.src = url;
         });
       }
@@ -75457,8 +76101,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var file = bgInput.files && bgInput.files[0];
         if (!file) return;
         var probe = new Image();
-        probe.onload = function () { bgImageDataUrl = downscaleToDataUrl(probe, 2000); imageDirty = true; scheduleSetupSave(); };
-        probe.src = URL.createObjectURL(file);
+        var objUrl = URL.createObjectURL(file);
+        probe.onload = function () {
+          try { bgImageDataUrl = downscaleToDataUrl(probe, 2000); imageDirty = true; scheduleSetupSave(); }
+          finally { try { URL.revokeObjectURL(objUrl); } catch (e) { } }
+        };
+        probe.onerror = function () { try { URL.revokeObjectURL(objUrl); } catch (e) { } };
+        probe.src = objUrl;
       });
       removeBgBtn.addEventListener('click', function () { bgImageDataUrl = null; imageDirty = true; });
 
@@ -76132,19 +76781,23 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // Reads a picked file, shrinks it (keeping transparency for PNG/WebP) and returns a data URL.
       function readImageFile(file, maxSide) {
         return new Promise(function (resolve, reject) {
-          if (!file || !/^image\//.test(file.type)) return reject(new Error('Please pick an image file (PNG or JPG).'));
+          var isImgType = file && (file.type ? /^image\//.test(file.type) : /\.(png|jpe?g|webp|gif)$/i.test(file.name || ''));
+          if (!isImgType) return reject(new Error('Please pick an image file (PNG or JPG).'));
           var url = URL.createObjectURL(file), im = new Image();
           im.onload = function () {
-            var sc = Math.min(1, maxSide / Math.max(im.width, im.height));
-            var keepAlpha = /png|webp/.test(file.type), out = '';
+            var iw = im.naturalWidth || im.width || 0, ih = im.naturalHeight || im.height || 0;
+            if (!iw || !ih) { URL.revokeObjectURL(url); return reject(new Error('That image could not be opened.')); }
+            var sc = Math.min(1, maxSide / Math.max(iw, ih));
+            var keepAlpha = /png|webp/i.test((file.type || '') + ' ' + (file.name || '')), out = '';
             // Keep the picture as big and sharp as the server's size limit allows: if it is too heavy, shrink it in
             // small steps (always from the original, smoothing on high), never one big blurry drop.
             for (var tries = 0; tries < 10; tries++) {
               var c = document.createElement('canvas');
-              c.width = Math.max(1, Math.round(im.width * sc)); c.height = Math.max(1, Math.round(im.height * sc));
+              c.width = Math.max(1, Math.round(iw * sc)); c.height = Math.max(1, Math.round(ih * sc));
               var x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(im, 0, 0, c.width, c.height);
               out = keepAlpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.88);
               if (out.length > 3400000 && !keepAlpha) out = c.toDataURL('image/jpeg', 0.78);
+              if (typeof pbReleaseCanvas === 'function') pbReleaseCanvas(c);
               if (out.length <= 3400000) break;
               sc *= 0.88;
             }
@@ -84031,8 +84684,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         camBtn.addEventListener('click', async function () {
           camBtn.disabled = true;
           try {
-            if (!streamActive || !video.videoWidth) await initCamera(cameraSelect.value || null);
-            await new Promise(function (r) { setTimeout(r, video.videoWidth ? 150 : 900); });
+            var avSample = (typeof activeCamVideo === 'function' ? activeCamVideo() : video) || video;
+            if (!streamActive || !avSample.videoWidth) await initCamera(cameraSelect.value || null);
+            avSample = (typeof activeCamVideo === 'function' ? activeCamVideo() : video) || video;
+            await new Promise(function (r) { setTimeout(r, avSample.videoWidth ? 150 : 900); });
             var c = grabCameraSample();
             if (!c) { showToast('Camera not ready. Allow camera access and try again.'); return; }
             previewSampleRaw = c;
@@ -85841,15 +86496,21 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var show = curStep === 4 && !tabSetup.classList.contains('hidden') && !window.__pbStationPaused;
         var useNative = nativeCam.active && !nativeCamBypassed();
         var stream = (!useNative && show) ? (currentStream || video.srcObject || scpVideo.srcObject) : null;
-        if (IS_IOS_APP && show && stream && currentDeviceId !== USB_CAM_ID) {
+        if ((IS_IOS_APP || IS_ANDROID_APP) && show && stream && currentDeviceId !== USB_CAM_ID) {
           if (video.srcObject === stream) { try { video.pause(); } catch (e) { } video.srcObject = null; }
         }
         if (scpVideo.srcObject !== stream) {
           if (!stream) { try { scpVideo.pause(); } catch (e) { } }
           scpVideo.srcObject = stream;
-          if (stream && IS_IOS_APP && currentDeviceId !== USB_CAM_ID && typeof listenVideoFrames === 'function') {
+          if (stream && (IS_IOS_APP || IS_ANDROID_APP) && currentDeviceId !== USB_CAM_ID && typeof listenVideoFrames === 'function') {
             listenVideoFrames(scpVideo);
           }
+        }
+        if (!show && (IS_IOS_APP || IS_ANDROID_APP) && currentStream && currentDeviceId !== USB_CAM_ID && !video.srcObject) {
+          try {
+            video.srcObject = currentStream;
+            if (video.paused) { var vp2 = video.play(); if (vp2 && vp2.catch) vp2.catch(function () { }); }
+          } catch (e) { }
         }
         if (show || scpRefresh._wasShown) {
           scpRefresh._wasShown = show;
@@ -85858,6 +86519,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         if (!show) return;
         if (stream && scpVideo.paused) { try { var pr = scpVideo.play(); if (pr && pr.catch) pr.catch(function () { }); } catch (e) { } }
+        if (stream && typeof camVerifyVisibleFrame === 'function') { try { camVerifyVisibleFrame(scpVideo); } catch (e) { } }
         scpVideo.style.transform = video.style.transform || '';
         scpVideo.style.filter = video.style.filter || '';
         var layout = scpFit === 'layout', a = camAspect();
@@ -85887,6 +86549,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         scpRefresh();
       });
       scpVideo.addEventListener('loadedmetadata', scpRefresh);
+      scpVideo.addEventListener('resize', function () {
+        if (streamActive && scpVideo.videoWidth && !reconnectTimer) {
+          cameraError.style.display = 'none';
+          recDot.style.display = 'flex';
+        }
+        scpRefresh();
+      });
       video.addEventListener('loadedmetadata', scpRefresh);
       video.addEventListener('resize', scpRefresh);
       cameraSelect.addEventListener('change', function () { scheduleSetupNav(); setTimeout(scpRefresh, 400); });

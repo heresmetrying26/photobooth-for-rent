@@ -996,6 +996,11 @@ app.whenReady().then(async () => {
       const r = await handleHelper(new Request('app://booth/helper/paper?' + qs.toString()), '/paper', qs);
       return await r.json().catch(() => ({ ok: false }));
     },
+    getCaps: async ({ printer }) => {
+      const qs = new URLSearchParams({ printer: printer || '' });
+      const r = await handleHelper(new Request('app://booth/helper/printer/caps?' + qs.toString()), '/printer/caps', qs);
+      return await r.json().catch(() => ({ ok: false }));
+    },
     printJob: async (body) => {
       const r = await handleHelper(new Request('app://booth/helper/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) }), '/print', new URLSearchParams());
       return await r.json().catch(() => ({ ok: false, error: 'Print error' }));

@@ -460,9 +460,12 @@ class UsbCameraHelper(private val ctx: Context) {
         return false
     }
 
-    /** A still-image (PTP) device; or a camera maker's device showing as a USB drive (Sony without PC Remote). */
+    /** A still-image (PTP) device; or a camera maker's device showing as a USB drive (Sony without PC Remote).
+     *  Excludes USB printers (class 7) so multifunction printers with scanner/PictBridge class 6 are never mistaken for a DSLR. */
     private fun isCamera(d: UsbDevice): Boolean =
-        d.vendorId != VENDOR_GOPRO && (hasInterfaceClass(d, 6) || (CAMERA_VENDORS.contains(d.vendorId) && hasInterfaceClass(d, 8)))
+        d.vendorId != VENDOR_GOPRO &&
+            !hasInterfaceClass(d, UsbConstants.USB_CLASS_PRINTER) &&
+            (hasInterfaceClass(d, 6) || (CAMERA_VENDORS.contains(d.vendorId) && hasInterfaceClass(d, 8)))
 
     // ---- GoPro: used when no DSLR / mirrorless camera is plugged in (see GoProCamera) ----
 

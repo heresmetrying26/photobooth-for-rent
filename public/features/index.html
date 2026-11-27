@@ -1372,13 +1372,15 @@
           <h3>Cash Acceptor, Relay Lighting, PayMongo QR &amp; Vouchers</h3>
           <ul class="list">
             <li><b>Offline ESP32 Cash Acceptor + Relay Lighting:</b> Connect an ESP32 bill/coin acceptor via two-way
-              <b>Bluetooth BLE / SPP</b> (Android), <b>USB Serial</b> (Desktop), or <b>Keyboard HID</b> (all devices)—tracks
-              live credit &amp; session sales with zero internet and drives 4–8 relay lighting / NeoPixel channels!</li>
+              <b>Bluetooth BLE / SPP</b> (Android, incl. Huawei tablets), <b>USB Serial</b> (Desktop), or <b>Keyboard HID</b>—syncs
+              live <code>price{}</code> &amp; <code>credit{}</code> status, supports configurable <b>idle credit expiry</b> (10 min default),
+              drives 4–8 relay lighting / NeoPixel channels (with <code>SN74AHCT125N</code> 5V buffer support), and works 100% offline! (<a href="/cash-acceptor/">Wiring &amp; sketch guide &rarr;</a>)</li>
             <li><b>PayMongo QR &amp; Self-Hosted Cloudflare Worker:</b> Accept GCash, Maya, &amp; ShopeePay QRs on
               Online booths—or point Desktop/Android at your own custom <b>Cloudflare Worker</b> URL.</li>
-            <li><b>Unlimited Payment Options &amp; Vouchers:</b> Create custom price options (incl. <i>No print:
-                softcopy only</i> or Thermal vs Coloured tiers), print single-use voucher batches, and link each option to
-              its own layout tier &amp; dedicated printer.</li>
+            <li><b>Unlimited Payment Options &amp; Vouchers:</b> Create custom-labeled packages (e.g. <i>Option 1–4</i>,
+              <i>No print: softcopy only</i>, or <i>Thermal</i> vs <i>Coloured</i> tiers), display selected <b>Template Price</b> &amp;
+              live waiting-credit badges on cards, print compact single-use voucher batches, hide the floating welcome banner when desired,
+              and link each option to its own layout tier &amp; dedicated printer.</li>
           </ul>
         </article>
 

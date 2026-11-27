@@ -47,6 +47,7 @@ let cfg = {
   isEnabled: () => true,
   getPrinters: async () => [],
   getPaper: async () => ({ ok: false, error: 'Unsupported' }),
+  getCaps: null,
   printJob: async () => ({ ok: false, error: 'Unsupported' }),
   makeThumb: null,
   onJob: () => { },
@@ -215,6 +216,7 @@ export function initLanStation(options = {}) {
     isEnabled: typeof options.isEnabled === 'function' ? options.isEnabled : () => true,
     getPrinters: typeof options.getPrinters === 'function' ? options.getPrinters : async () => [],
     getPaper: typeof options.getPaper === 'function' ? options.getPaper : async () => ({ ok: false, error: 'Unsupported' }),
+    getCaps: typeof options.getCaps === 'function' ? options.getCaps : null,
     printJob: typeof options.printJob === 'function' ? options.printJob : async () => ({ ok: false, error: 'Unsupported' }),
     makeThumb: typeof options.makeThumb === 'function' ? options.makeThumb : null,
     onJob: typeof options.onJob === 'function' ? options.onJob : () => { },
@@ -804,6 +806,20 @@ export async function handleLanStationHttp(req, res, url) {
       return sendJson(res, out && out.ok === false && /No printer called/i.test(out.error || '') ? 404 : 200, out || { ok: false });
     } catch (e) {
       return sendJson(res, 500, { ok: false, error: (e && e.message) || 'Paper lookup failed.' });
+    }
+  }
+
+  if (req.method === 'GET' && p === '/lan-station/printer/caps') {
+    const name = String(url.searchParams.get('printer') || '').trim();
+    if (!name) return sendJson(res, 400, { ok: false, error: 'Missing printer name.' });
+    if (typeof cfg.getCaps !== 'function') {
+      return sendJson(res, 200, { ok: true, known: false, mediaTypes: [], mediaLabels: {}, mediaDefault: '', autoMedia: '' });
+    }
+    try {
+      const out = await cfg.getCaps({ printer: name });
+      return sendJson(res, out && out.ok === false && /No printer called/i.test(out.error || '') ? 404 : 200, out || { ok: true, known: false, mediaTypes: [], mediaLabels: {}, mediaDefault: '', autoMedia: '' });
+    } catch (e) {
+      return sendJson(res, 200, { ok: true, known: false, mediaTypes: [], mediaLabels: {}, mediaDefault: '', autoMedia: '' });
     }
   }
 

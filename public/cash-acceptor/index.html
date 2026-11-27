@@ -148,6 +148,7 @@ RX: shutter_flash
 RX: start_print
 RX: print_done
 RX: session_end</code></pre>
+      <p style="margin:8px 0 0; font-size:13.5px; color:var(--dim);">If credit is already inserted before picking a package (e.g. ₱5 waiting when selecting a ₱50 template), the app sends <code>price{50}</code> and <code>credit{5}</code> together so your controller stays in sync; if existing credit already covers the chosen package price, <code>cash_open</code> is skipped and any change stays in <code>credit{&lt;remaining&gt;}</code>.</p>
     </div>
 
     <div class="code-head">
@@ -816,11 +817,13 @@ void loop() {
     <div class="card">
       <h3 style="margin-top:0;">Turn it on in photobooth4u</h3>
       <ol>
-        <li><b>For Cash Acceptor + Relays / NeoPixels:</b> Open <b>Setup → 7 Session → Pay &amp; photos → Guest payment</b>, switch on <b>Cash acceptor (coins / bills, ESP32)</b>, pick <b>Bluetooth serial</b> (or <b>USB cable, serial</b>), and tap <b>Connect ESP32</b> to choose <code>Photobooth4u-Cash</code>.</li>
-        <li><b>For Relays / NeoPixels only (free events):</b> Open <b>Setup → 7 Session → Light, sound and start</b>, switch on <b>ESP32 Relay Lighting &amp; NeoPixels</b>, pick <b>Bluetooth serial</b> (or USB), and tap <b>Connect ESP32</b>.</li>
+        <li><b>For Cash Acceptor + Relays / NeoPixels:</b> Open <b>Setup → 7 Session → Payment &amp; vouchers</b>, switch on <b>Cash acceptor (coins / bills, ESP32)</b>, pick <b>Bluetooth serial</b> (or <b>USB cable, serial</b>), and tap <b>Connect ESP32</b> to choose <code>Photobooth4u-Cash</code>. (Use <b>Free</b> for coins/bills only, or pair with <b>QR payment</b> / <b>Vouchers</b>.)</li>
+        <li><b>Multiple pricing tiers, prints &amp; printer routing:</b> Enable <b>Multiple payment options (e.g. Option 1 / Option 2)</b> to create custom-labeled tiers (e.g. <i>Option 1–4</i>, <i>Classic Strip</i>), set prices, included prints (<code>1–5</code> prints or <b>No print: softcopy only</b>), layout filters (<b>Thermal / Receipt</b>, <b>Normal / Coloured</b>, or <b>Any layout</b>), and optional dedicated printers per option. Selecting a tier displays it cleanly as <b>Template Price</b> and shows live <code>✓ Covered by ₱X credit</code> or <code>₱X more needed</code> badges when coin/bill balance is waiting.</li>
+        <li><b>Idle credit expiry &amp; welcome banner controls:</b> Keep <b>Expire unused credit when idle</b> enabled (<b>10 minutes</b> default, adjustable 1–60 min) to clear leftover coin/bill credit back to ₱0 and send <code>credit{0}</code> when idle, or switch it off to keep waiting balances indefinitely. Toggle <b>Hide price &amp; options banner on welcome screen</b> if you want a cleaner attract screen (the pill already hides outside the live Photo Session welcome view).</li>
+        <li><b>For Relays / NeoPixels only (free events):</b> Open <b>Setup → 7 Session → Sound &amp; lighting</b>, switch on <b>ESP32 Relay Lighting &amp; NeoPixels</b>, pick <b>Bluetooth serial</b> (or USB), and tap <b>Connect ESP32</b>.</li>
         <li>Use the built-in <b>Test Light ON</b> / <b>Test Flash</b> / <b>Test Cash Open</b> / <b>Test Idle</b> buttons (and <b>Test: add ₱10</b> or the ESP32 BOOT button) to verify your relays, LEDs, and coin/bill credits before switching to <b>Photo Session</b>.</li>
       </ol>
-      <p style="margin-bottom:0; font-size:14px; color:var(--dim);"><b>Android Tablet note:</b> Because the ESP32 uses its own dedicated Bluetooth bridge (<code>window.__Esp32Bridge</code>) inside the Android Offline App, you can stay connected to your ESP32 controller and a Bluetooth thermal printer at the exact same time.</p>
+      <p style="margin-bottom:0; font-size:14px; color:var(--dim);"><b>Android &amp; Huawei Tablet note (v1.2.26+):</b> Because the ESP32 uses its own dedicated Bluetooth bridge (<code>window.__Esp32Bridge</code>) inside the Android Offline App, you can stay connected to your ESP32 controller and a Bluetooth thermal printer at the exact same time. Nearby Devices permission prompts auto-resume discovery, and Huawei/EMUI tablets (including MatePad models) discover <code>Photobooth4u-Cash</code> reliably with fast two-way serial writes.</p>
     </div>
   </section>
 
@@ -880,7 +883,7 @@ npx wrangler secret put BOOTH_TOKEN</code></pre>
 
       <h4>Connect your Cloudflare Worker inside photobooth4u</h4>
       <ol style="margin-bottom:0;">
-        <li>Open photobooth4u (Web, Android Offline App, or Windows/Mac App) → <b>Setup → 7 Session → Pay &amp; photos → Guest payment</b>.</li>
+        <li>Open photobooth4u (Web, Android Offline App, or Windows/Mac App) → <b>Setup → 7 Session → Payment &amp; vouchers</b>.</li>
         <li>Expand <b>Self-hosted PayMongo (your own Cloudflare Worker · optional)</b>.</li>
         <li>Paste your Worker root URL (and <code>BOOTH_TOKEN</code> if set), tap <b>Test connection</b>, then tap <b>Save Worker</b>.</li>
         <li>Select <b>QR payment</b> (or <b>QR + vouchers</b>). Your Worker URL and token are stored <b>only on that device</b> — photobooth4u&rsquo;s servers never receive your PayMongo key.</li>

@@ -403,6 +403,27 @@ try {
     assert.match(built, /id="onlineStationModeWrap"/);
     assert.match(built, /id="ppStationModeWrap"/);
     assert.match(built, /function setOnlineStationMode\(/);
+    assert.match(built, /function lanStationQueueNoPrinter\(/);
+    assert.match(built, /function sendViaHelperOrLanStation\(/);
+    assert.match(built, /id: 'lan-station'/);
+    assert.match(built, /if \(LAPTOP_PRINT \|\| lanStationActive\(\)\) \{\s*\/\/ Desktop & Laptop Print Station never fall back/);
+    assert.match(built, /lanStationActive\(\)\)\) return false;/);
+    const mainSrc = readFileSync(join(root, 'desktop', 'main.mjs'), 'utf8');
+    assert.match(mainSrc, /getCaps:\s*async\s*\(\{\s*printer\s*\}\)/);
+  });
+
+  await check('GET /lan-station/printer/caps returns safe default or delegates to getCaps with PIN auth', async () => {
+    const curPin = getLanStationInfo().pin;
+    const rUnauth = await fetch(base + '/lan-station/printer/caps?printer=Mitsubishi%20CP-D80DW');
+    assert.equal(rUnauth.status, 401);
+    const rDef = await fetch(base + '/lan-station/printer/caps?printer=Mitsubishi%20CP-D80DW', {
+      headers: { 'x-pb-pin': curPin }
+    });
+    assert.equal(rDef.status, 200);
+    const jDef = await rDef.json();
+    assert.equal(jDef.ok, true);
+    assert.equal(jDef.known, false);
+    assert.deepEqual(jDef.mediaTypes, []);
   });
 
   await check('end-to-end helper bridge enforces isEnabled gating, fires onJob push, and relays 2x6 cut prints from iPad', async () => {
@@ -422,6 +443,7 @@ try {
           onJob: (info) => pushedJobs.push(info),
           getPrinters: async () => ['Mitsubishi CP-D80DW', 'Mitsubishi 2x6 cut'],
           getPaper: async ({ printer, twoUp }) => ({ ok: true, known: true, match: { name: twoUp ? '6x4(2x6*2)' : 'PR(4x6)', borderless: true, isDefault: false }, printer }),
+          getCaps: async ({ printer }) => ({ ok: true, known: true, mediaTypes: ['photographic-glossy'], mediaLabels: { 'photographic-glossy': 'Glossy Photo Paper' }, mediaDefault: '', autoMedia: 'photographic-glossy', printer }),
           printJob: async (body) => { relayJobs.push(body); return { ok: true }; }
         }
       });
@@ -439,6 +461,10 @@ try {
       const st = getLanStationInfo();
       const status = await (await fetch(bUrl + '/lan-station/status?refresh=1', { headers: { 'x-pb-pin': st.pin } })).json();
       assert.deepEqual(status.printers, ['Mitsubishi CP-D80DW', 'Mitsubishi 2x6 cut']);
+      const capsJson = await (await fetch(bUrl + '/lan-station/printer/caps?printer=' + encodeURIComponent('Mitsubishi CP-D80DW'), { headers: { 'x-pb-pin': st.pin } })).json();
+      assert.equal(capsJson.ok, true);
+      assert.equal(capsJson.known, true);
+      assert.equal(capsJson.autoMedia, 'photographic-glossy');
 
       const testPng = createStationTestPngDataUrl({ twoUp: false });
       const pr = await fetch(bUrl + '/lan-station/print', {

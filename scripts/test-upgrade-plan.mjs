@@ -1,6 +1,6 @@
 // Admin "Upgrade to monthly / yearly" (action: upgrade). Run from the repo root: node scripts/test-upgrade-plan.mjs
 import { pathToFileURL } from 'node:url';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -127,6 +127,17 @@ const uf = await post(admin, { action: 'upgrade', code: e3.code, plan: 'monthly'
 const rf = await core.licenses().get(e3.key, { type: 'json' });
 check('relay down: upgrade still done, reported as failed', uf.ok === true && uf.email === 'failed' && rf.upgrade && rf.upgrade.plan === 'monthly');
 relayOk = true;
+
+// 7. Tester -> lifetime + rename: the record the handout reads is up to date
+const t7 = (await post(admin, { action: 'create', days: 3, label: 'Tester Seven', folderName: 'Tester Seven', maxDevices: 1 }, T)).created[0];
+const ml = await post(admin, { action: 'makelifetime', code: t7.code }, T);
+check('makelifetime returns fresh record with upgrade', ml.ok && ml.rec && ml.rec.lifetime && ml.rec.upgrade && ml.rec.upgrade.plan === 'lifetime');
+const rn = await post(admin, { action: 'rename', code: t7.code, label: 'Maria Santos Studio' }, T);
+const g7 = await post(admin, { action: 'get', code: t7.code }, T);
+check('rename saved, Drive folder kept', rn.ok && g7.rec.label === 'Maria Santos Studio' && g7.rec.folderName === 'Tester Seven' && g7.rec.lifetime);
+check('empty rename refused', (await post(admin, { action: 'rename', code: t7.code, label: '  ' }, T)).status === 400);
+const html = readFileSync(join(repo, 'public/admin.html'), 'utf8');
+check('handout re-fetches latest record', /async function openFreshHandout/.test(html) && /fetchLatestRec\(code\)/.test(html));
 
 await server.stop();
 console.log(fails ? '\n' + fails + ' FAILED' : '\nALL PASSED');

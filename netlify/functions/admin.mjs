@@ -507,6 +507,18 @@ export default safe(async (req, context) => {
       return json({ ok: true });
     }
 
+    case 'rename': { // rename the account / client label (Drive folder name stays frozen so photos never move)
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      const label = String(b.label || '').replace(/[<>]/g, '').trim().slice(0, 80);
+      if (!label) return json({ error: 'Please type a name.' }, 400);
+      if (!rec.folderName) rec.folderName = rec.label || rec.code;
+      rec.label = label;
+      await putLicense(store, key, rec);
+      await syncBonus(rec, { label: label + ' · Bonus' });
+      return json({ ok: true, label: rec.label });
+    }
+
     case 'makelifetime': { // upgrade a booking to lifetime access
       const { key, rec } = await getRec();
       if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
@@ -514,8 +526,9 @@ export default safe(async (req, context) => {
       rec.lifetime = true;
       rec.maxDevices = Math.max(maxDevicesOf(rec), PLAN_DEVICES.lifetime);   // lifetime: up to 5 devices (raised, never lowered)
       if (rec.status === 'active') rec.expiresAt = LIFETIME_EXP;
+      rec.upgrade = { plan: 'lifetime', at: Date.now() };   // the Upgrade handout / message read this
       await putLicense(store, key, rec);
-      return json({ ok: true, email: await mailUpgrade(rec, 'lifetime', req), to: rec.email || null });
+      return json({ ok: true, rec, email: await mailUpgrade(rec, 'lifetime', req), to: rec.email || null });
     }
 
     case 'extend': {
@@ -525,8 +538,12 @@ export default safe(async (req, context) => {
       if (!rec) return json({ error: 'Code not found.' }, 404);
       if (rec.kind === 'bonus') return json({ error: 'For a bonus code, change its length in minutes instead.' }, 400);
       if (rec.lifetime) return json({ error: 'Lifetime codes never expire.' }, 400);
-      if (rec.status === 'active') rec.expiresAt = Math.max(rec.expiresAt, Date.now()) + add * DAY;
-      else if (rec.status === 'unused') rec.days += add;
+      if (rec.status === 'active') {
+        const now = Date.now();
+        const expired = !rec.expiresAt || rec.expiresAt <= now;
+        rec.expiresAt = Math.max(rec.expiresAt || 0, now) + add * DAY;
+        rec.days = expired ? add : (rec.days || 0) + add;
+      } else if (rec.status === 'unused') rec.days += add;
       else return json({ error: 'Restore this code before extending it.' }, 400);
       await putLicense(store, key, rec);
       return json({ ok: true });
@@ -540,8 +557,12 @@ export default safe(async (req, context) => {
       if (!rec) return json({ error: 'Code not found.' }, 404);
       if (rec.kind === 'bonus') return json({ error: 'A bonus code cannot be upgraded. Upgrade the main booking.' }, 400);
       if (rec.lifetime) return json({ error: 'Lifetime codes never expire.' }, 400);
-      if (rec.status === 'active') rec.expiresAt = Math.max(rec.expiresAt, Date.now()) + add * DAY;
-      else if (rec.status === 'unused') rec.days += add;
+      if (rec.status === 'active') {
+        const now = Date.now();
+        const expired = !rec.expiresAt || rec.expiresAt <= now;
+        rec.expiresAt = Math.max(rec.expiresAt || 0, now) + add * DAY;
+        rec.days = expired ? add : (rec.days || 0) + add;
+      } else if (rec.status === 'unused') rec.days += add;
       else return json({ error: 'Restore this code before upgrading it.' }, 400);
       rec.upgrade = { plan, days: add, at: Date.now() };   // the Upgrade handout / message read this
       rec.maxDevices = Math.max(maxDevicesOf(rec), PLAN_DEVICES[plan]);   // monthly 2, yearly 3 devices (raised, never lowered)
@@ -560,6 +581,7 @@ export default safe(async (req, context) => {
         const next = rec.expiresAt - sub * DAY;
         if (next <= Date.now()) return json({ error: 'That would end the code right now. Remove fewer days, or disable the code instead.' }, 400);
         rec.expiresAt = next;
+        rec.days = Math.max(1, (rec.days || 1) - sub);
       } else if (rec.status === 'unused') {
         if (rec.days - sub < 1) return json({ error: 'A code needs at least 1 day. It has ' + rec.days + ' day' + (rec.days === 1 ? '' : 's') + ' now, so remove ' + (rec.days - 1) + ' or fewer.' }, 400);
         rec.days -= sub;
@@ -1052,11 +1074,21 @@ export default safe(async (req, context) => {
       const planCfg = ALL_PLANS[planKey];
       if (!planCfg) return json({ error: 'Please choose a valid plan to simulate.' }, 400);
 
-      const name = String(b.name || 'Admin Test Booking').trim().slice(0, 80);
+      const rawName = String(b.name || '').trim().slice(0, 80);
       const email = String(b.email || '').trim().toLowerCase();
       const renewCode = b.renewCode ? normCode(b.renewCode) : null;
       if (email && !EMAIL_RE.test(email)) return json({ error: 'That email address doesn’t look right.' }, 400);
+      if (b.renewCode && !renewCode) return json({ error: 'Enter a valid existing code to renew or upgrade.' }, 400);
+      if (renewCode) {
+        const existing = await store.get(renewCode, { type: 'json' });
+        if (!existing || existing.kind === 'bonus') return json({ error: 'That existing code was not found.' }, 404);
+        if (existing.status === 'revoked') return json({ error: 'Restore this code before renewing or upgrading it.' }, 400);
+        if (email && (existing.lifetime || planCfg.category === 'lifetime') && Object.values((await readIndex()).rows).some((r) => r.lifetime && r.kind !== 'bonus' && r.key !== renewCode && String(r.email || '').toLowerCase() === email)) {
+          return json({ error: 'That email is already on another lifetime code (one email per lifetime code).' }, 409);
+        }
+      }
 
+      const name = renewCode ? rawName : (rawName || 'Admin Test Booking');
       const origin = process.env.URL || 'https://photobooth4u.netlify.app';
       const res = await fulfillPlanPayment({
         store,
@@ -1065,13 +1097,19 @@ export default safe(async (req, context) => {
         email,
         renewCode,
         now: Date.now(),
-        origin
+        origin,
+        updateLabel: !!(renewCode && rawName),
+        updateEmail: !!(renewCode && email)
       });
+      if (renewCode && rawName && res.rec && res.rec.bonusKey) {
+        await syncBonus(res.rec, { label: res.rec.label + ' · Bonus' });
+      }
 
       return json({
         ok: true,
         simulated: true,
         code: res.code,
+        rec: res.rec || null,
         renewed: res.renewed,
         plan: res.plan,
         files: res.files,

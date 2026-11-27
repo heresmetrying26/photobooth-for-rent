@@ -1,6 +1,6 @@
 import {
   newCode, displayCode, normCode, DAY, MIN, LIFETIME_EXP, MAX_DEVICES, BONUS_SUBFOLDER, PAPER_SIZES,
-  putLicense, sendMail, codeEmail, EMAIL_RE, normExtras
+  putLicense, sendMail, codeEmail, EMAIL_RE, normExtras, logEmailChange
 } from './core.mjs';
 
 export const ALL_PLANS = {
@@ -271,7 +271,7 @@ async function freshKey(store) {
   return key;
 }
 
-export async function fulfillPlanPayment({ store, planKey, name, email, renewCode, now, origin }) {
+export async function fulfillPlanPayment({ store, planKey, name, email, renewCode, now, origin, updateLabel = false, updateEmail = false }) {
   now = now || Date.now();
   const planCfg = ALL_PLANS[planKey] || ALL_PLANS.online;
   let code = null;
@@ -295,7 +295,7 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
         }
       } else if (planCfg.category === 'lifetime') {
         existing.lifetime = true;
-        existing.maxDevices = Math.max(existing.maxDevices || 1, 5);
+        existing.maxDevices = Math.max(existing.maxDevices || 1, planCfg.devices || 5);
         if (existing.status === 'active') existing.expiresAt = LIFETIME_EXP;
         if (planCfg.offlineOpt) existing.offlineOpt = true;
         if (planCfg.offlineOnly) existing.offlineOnly = true;
@@ -304,12 +304,49 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
           existing.extras = normExtras(existing.extras);
           existing.extras.spin360 = false;
         }
-      } else if (planCfg.category === 'monthly') {
-        existing.expiresAt = Math.max(existing.expiresAt || 0, now) + 30 * DAY;
-        existing.status = 'active';
+        existing.upgrade = { plan: 'lifetime', at: now };
+      } else if (planCfg.category === 'monthly' || planCfg.category === 'event') {
+        const addDays = planCfg.days || (planCfg.category === 'monthly' ? 30 : 1);
+        if (existing.status === 'active') {
+          const expired = !existing.expiresAt || existing.expiresAt <= now;
+          existing.expiresAt = Math.max(existing.expiresAt || 0, now) + addDays * DAY;
+          existing.days = expired ? addDays : (existing.days || 0) + addDays;
+        } else if (existing.status === 'unused') {
+          if (existing.startsAt && existing.startsAt + (existing.days || 0) * DAY <= now) existing.startsAt = null;
+          existing.days = (existing.days || 0) + addDays;
+        }
+        if (planCfg.category === 'monthly') existing.upgrade = { plan: 'monthly', days: addDays, at: now };
         if (planCfg.offlineOpt) existing.offlineOpt = true;
         if (planCfg.offlineOnly) existing.offlineOnly = true;
         if (!planCfg.offlineOnly) existing.offlineOnly = false;
+      }
+      // Optionally update account name / email on renewal (preserving Drive folderName so photos never move)
+      const cleanName = String(name || '').replace(/[<>]/g, '').trim().slice(0, 80);
+      if (updateLabel && cleanName) {
+        if (!existing.folderName) existing.folderName = existing.label || existing.code;
+        existing.label = cleanName;
+      } else if (planCfg.category !== 'addon' && existing.label) {
+        for (const p of Object.values(ALL_PLANS)) {
+          if (p.category === 'addon') continue;
+          if (existing.label.endsWith(' · ' + p.title)) {
+            if (!existing.folderName) existing.folderName = existing.label;
+            existing.label = existing.label.slice(0, -p.title.length) + planCfg.title;
+            break;
+          }
+          if (existing.label === p.title + ' · ' + existing.code) {
+            if (!existing.folderName) existing.folderName = existing.label;
+            existing.label = planCfg.title + ' · ' + existing.code;
+            break;
+          }
+        }
+      }
+      const cleanEmail = String(email || '').trim().toLowerCase();
+      if (cleanEmail && EMAIL_RE.test(cleanEmail) && (updateEmail || !existing.email)) {
+        logEmailChange(existing, cleanEmail, now, updateEmail ? 'admin' : 'payment');
+        existing.email = cleanEmail;
+      }
+      if (!existing.print) {
+        existing.print = { enabled: true, sizes: [...PAPER_SIZES], eventLimit: 0, sessionLimit: 0 };
       }
       // Always ensure the booth feature switches are on after any renewal/upgrade
       existing.retakeOpt = true;
@@ -388,6 +425,7 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
 
   return {
     code,
+    rec: mainRec,
     plan: planCfg,
     renewed,
     files: deliverables.files,

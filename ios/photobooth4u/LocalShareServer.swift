@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import ImageIO
 
 /**
  * photobooth4u — iOS Local Share Server
@@ -479,14 +480,30 @@ class LocalShareServer {
         if action == "t" {
             let lower = filename.lowercased()
             let isImg = lower.hasSuffix(".jpg") || lower.hasSuffix(".jpeg") || lower.hasSuffix(".png") || lower.hasSuffix(".webp")
-            if isImg, let srcData = try? Data(contentsOf: fileUrl), let img = UIImage(data: srcData) {
-                let maxSide: CGFloat = 640
-                let w = img.size.width, h = img.size.height
-                let scale = max(w, h) > maxSide ? maxSide / max(w, h) : 1.0
-                let sz = CGSize(width: max(1, (w * scale).rounded()), height: max(1, (h * scale).rounded()))
-                let r = UIGraphicsImageRenderer(size: sz)
-                let thumb = r.image { _ in img.draw(in: CGRect(origin: .zero, size: sz)) }
-                if let jpg = thumb.jpegData(compressionQuality: 0.78) {
+            if isImg {
+                let thumbJpg: Data? = autoreleasepool {
+                    if let src = CGImageSourceCreateWithURL(fileUrl as CFURL, nil) {
+                        let opts: [CFString: Any] = [
+                            kCGImageSourceCreateThumbnailFromImageAlways: true,
+                            kCGImageSourceCreateThumbnailWithTransform: true,
+                            kCGImageSourceShouldCache: false,
+                            kCGImageSourceShouldCacheImmediately: true,
+                            kCGImageSourceThumbnailMaxPixelSize: 640
+                        ]
+                        if let cgImg = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) {
+                            let destData = NSMutableData()
+                            if let dest = CGImageDestinationCreateWithData(destData as CFMutableData, "public.jpeg" as CFString, 1, nil) {
+                                let saveOpts: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: 0.78]
+                                CGImageDestinationAddImage(dest, cgImg, saveOpts as CFDictionary)
+                                if CGImageDestinationFinalize(dest) {
+                                    return destData as Data
+                                }
+                            }
+                        }
+                    }
+                    return nil
+                }
+                if let jpg = thumbJpg {
                     sendResponse(sock, status: 200, type: "image/jpeg", body: jpg, extraHeaders: ["Cache-Control: public, max-age=86400"], headOnly: headOnly)
                     return
                 }

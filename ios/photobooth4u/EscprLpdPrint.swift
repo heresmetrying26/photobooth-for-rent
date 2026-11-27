@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import CoreGraphics
+import ImageIO
 import Network
 
 /**
@@ -114,10 +115,6 @@ enum EscprJob {
         cfg: Config,
         writeChunk: ([UInt8], Int) throws -> Void
     ) throws -> Int64 {
-        guard let uiImg = UIImage(data: jpegData), let srcCG = uprightCGImage(uiImg) else {
-            throw Failure.invalidImage
-        }
-
         let useDpi = cfg.dpi >= 720 ? 720 : 360
         let scale = useDpi / 360
         let shortMm = min(widthMm, heightMm)
@@ -170,6 +167,27 @@ enum EscprJob {
             useBleed = false
         }
         guard areaW > 0 && areaH > 0 else { throw Failure.sheetTooSmall }
+
+        // Decode with ImageIO subsampling capped to the target print area so low-RAM iPads never allocate oversized bitmaps.
+        let srcCG: CGImage = try autoreleasepool {
+            let maxPx = max(areaW, areaH)
+            if let src = CGImageSourceCreateWithData(jpegData as CFData, nil) {
+                let opts: [CFString: Any] = [
+                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                    kCGImageSourceCreateThumbnailWithTransform: true,
+                    kCGImageSourceShouldCache: false,
+                    kCGImageSourceShouldCacheImmediately: true,
+                    kCGImageSourceThumbnailMaxPixelSize: maxPx
+                ]
+                if let thumb = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) {
+                    return thumb
+                }
+            }
+            guard let uiImg = UIImage(data: jpegData), let cg = uprightCGImage(uiImg) else {
+                throw Failure.invalidImage
+            }
+            return cg
+        }
 
         let l = useBleed ? max(0, min(blLeftPx, areaW - paperW)) : 0
         let t = useBleed ? max(0, min(blTopPx, areaH - paperH)) : 0
@@ -1305,7 +1323,9 @@ enum EscprNet {
         do {
             totalBytes = try EscprJob.streamWithConfig(jpegData: jpegData, widthMm: widthMm, heightMm: heightMm, cfg: cfg) { buf, len in
                 if len > 0 {
-                    try fh.write(contentsOf: Data(buf.prefix(len)))
+                    try autoreleasepool {
+                        try fh.write(contentsOf: Data(buf.prefix(len)))
+                    }
                 }
             }
             try fh.synchronize()
@@ -1408,9 +1428,13 @@ enum EscprNet {
                     let rf = try FileHandle(forReadingFrom: fileUrl)
                     defer { try? rf.close() }
                     while true {
-                        let slice = try rf.read(upToCount: 65536) ?? Data()
-                        if slice.isEmpty { break }
-                        try conn.send(slice, timeout: 30.0)
+                        let done: Bool = try autoreleasepool {
+                            let slice = try rf.read(upToCount: 65536) ?? Data()
+                            if slice.isEmpty { return true }
+                            try conn.send(slice, timeout: 30.0)
+                            return false
+                        }
+                        if done { break }
                     }
                     try conn.send(Data([0x00]), timeout: 30.0)
 

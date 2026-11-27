@@ -3,6 +3,7 @@ import WebKit
 import AVFoundation
 import CryptoKit
 import Network
+import ImageIO
 
 /**
  * photobooth4u — iOS / iPadOS Main View Controller
@@ -41,9 +42,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     private var loadWatchdogWorkItem: DispatchWorkItem?
     private var livenessCheckId = 0
     private var airPrintBusy = false
-    private var airPrintQueue: [(jobName: String, ptW: Double, ptH: Double, pdfData: Data)] = []
+    private var airPrintQueue: [(jobName: String, ptW: Double, ptH: Double, pdfUrl: URL)] = []
     // Photo saves run here, one at a time and off the main thread, so the camera picture and the screen keep moving.
     private let saveQueue = DispatchQueue(label: "com.photobooth4u.save", qos: .userInitiated)
+    // Print jobs (AirPrint PDF rendering, IPP, ESC/P-R) run serially off the main thread so concurrent jobs never spike RAM.
+    private let printQueue = DispatchQueue(label: "com.photobooth4u.print", qos: .userInitiated)
+    // 3.5 GiB threshold: catches 2 GB and 3 GB iPads (e.g. iPad 7th/8th/9th gen) without touching 4 GB+ iPad Air/Pro/A16.
+    private var isLowRamDevice: Bool {
+        return ProcessInfo.processInfo.physicalMemory <= 3_758_096_384
+    }
     private let otaHashKey = "pb4u_ota_hash"
     private let otaBundledHashKey = "pb4u_ota_bundled_hash"
     private let airprintUrlKey = "pb4u_airprint_url"
@@ -59,6 +66,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         super.didReceiveMemoryWarning()
         NativeCameraBridge.shared.clearMemoryCaches()
         URLCache.shared.removeAllCachedResponses()
+        DispatchQueue.main.async { [weak self] in
+            self?.webView?.evaluateJavaScript("try{window.dispatchEvent(new Event('pb-memory-pressure'));}catch(e){}", completionHandler: nil)
+        }
     }
 
     override func viewDidLoad() {
@@ -297,6 +307,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         userContent.add(self, name: "pbUpdateStart")
         userContent.add(self, name: "pbPickAirPrint")
         userContent.add(self, name: "pbClearAirPrint")
+        userContent.add(self, name: "pbPrintAirPrint")
         userContent.add(self, name: "pbPrintRawTcp")
         userContent.add(self, name: "pbPrintIpp")
         userContent.add(self, name: "pbPrintEscpr")
@@ -402,14 +413,24 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
           window.__PBPrint = {
             print: function(jobName, widthMm, heightMm, pagesJson) {
-              var payload = JSON.stringify({
-                jobName: String(jobName || 'Photobooth'),
-                widthMm: Number(widthMm) || 101.6,
-                heightMm: Number(heightMm) || 152.4,
-                pagesJson: String(pagesJson || '[]')
-              });
-              var res = prompt('__PBPrint_sync__', payload);
-              return res || '{"ok":false,"error":"Print failed"}';
+              try {
+                window.webkit.messageHandlers.pbPrintAirPrint.postMessage({
+                  jobName: String(jobName || 'Photobooth'),
+                  widthMm: Number(widthMm) || 101.6,
+                  heightMm: Number(heightMm) || 152.4,
+                  pagesJson: String(pagesJson || '[]')
+                });
+                return '{"ok":true}';
+              } catch (e) {
+                var payload = JSON.stringify({
+                  jobName: String(jobName || 'Photobooth'),
+                  widthMm: Number(widthMm) || 101.6,
+                  heightMm: Number(heightMm) || 152.4,
+                  pagesJson: String(pagesJson || '[]')
+                });
+                var res = prompt('__PBPrint_sync__', payload);
+                return res || '{"ok":false,"error":"Print failed"}';
+              }
             },
             pickAirPrint: function() {
               try { window.webkit.messageHandlers.pbPickAirPrint.postMessage({}); } catch (e) {}
@@ -735,6 +756,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         window.__PB.desktop={v:\(jsonStr(AppLicence.shared.appVersion())),os:'ios'};
         window.__PB.appAuth={licence:\(jsonStr(licStr)),mid:\(jsonStr(midStr))};
         window.__PB.ios=true;
+        window.__PB.iosLowRam=\(isLowRamDevice ? "true" : "false");
         window.__PB.offline=true;
         window.__PB.type='rental';
         window.__PB.gifOpt=\(gifOpt ? "true" : "false");
@@ -1212,28 +1234,67 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         guard UIPrintInteractionController.isPrintingAvailable else {
             return "{\"ok\":false,\"error\":\"AirPrint is not available on this iPad.\"}"
         }
-        guard let data = payloadJson.data(using: .utf8),
-              let obj = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: Any],
-              let pagesJson = obj["pagesJson"] as? String,
-              let pagesData = pagesJson.data(using: .utf8),
-              let pagesArr = (try? JSONSerialization.jsonObject(with: pagesData, options: [])) as? [String],
-              !pagesArr.isEmpty else {
-            return "{\"ok\":false,\"error\":\"Bad print payload\"}"
+        let lowRam = isLowRamDevice
+        // Parse the outer JSON payload off the main thread so fallback sync calls never block UIKit.
+        printQueue.async { [weak self] in
+            guard let self = self else { return }
+            var jobName = "Photobooth"
+            var widthMm = 101.6
+            var heightMm = 152.4
+            var pagesJson = ""
+            autoreleasepool {
+                guard let data = payloadJson.data(using: .utf8),
+                      let obj = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: Any],
+                      let pj = obj["pagesJson"] as? String else { return }
+                jobName = (obj["jobName"] as? String) ?? "Photobooth"
+                widthMm = (obj["widthMm"] as? NSNumber)?.doubleValue ?? 101.6
+                heightMm = (obj["heightMm"] as? NSNumber)?.doubleValue ?? 152.4
+                pagesJson = pj
+            }
+            guard !pagesJson.isEmpty else { return }
+            self.renderAndQueueAirPrintOnPrintQueue(jobName: jobName, widthMm: widthMm, heightMm: heightMm, pagesJson: pagesJson, lowRam: lowRam)
         }
+        return "{\"ok\":true}"
+    }
 
-        let jobName = (obj["jobName"] as? String) ?? "Photobooth"
-        let widthMm = (obj["widthMm"] as? NSNumber)?.doubleValue ?? 101.6
-        let heightMm = (obj["heightMm"] as? NSNumber)?.doubleValue ?? 152.4
+    private func enqueueNativePrint(jobName: String, widthMm: Double, heightMm: Double, pagesJson: String) {
+        guard UIPrintInteractionController.isPrintingAvailable else { return }
+        let lowRam = isLowRamDevice
+        printQueue.async { [weak self] in
+            self?.renderAndQueueAirPrintOnPrintQueue(jobName: jobName, widthMm: widthMm, heightMm: heightMm, pagesJson: pagesJson, lowRam: lowRam)
+        }
+    }
+
+    /// Runs on `printQueue`: decodes each JPEG via ImageIO subsampling into a temporary PDF file so peak RAM stays minimal on 3 GB iPads.
+    private func renderAndQueueAirPrintOnPrintQueue(jobName: String, widthMm: Double, heightMm: Double, pagesJson: String, lowRam: Bool) {
         let ptW = max(72.0, widthMm * 72.0 / 25.4)
         let ptH = max(72.0, heightMm * 72.0 / 25.4)
 
-        // Decode base64 pages and render the 300-DPI PDF off the main thread one page at a time so WKWebView stays responsive and peak RAM stays low.
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self else { return }
-            let pageBounds = CGRect(x: 0, y: 0, width: ptW, height: ptH)
-            let renderer = UIGraphicsPDFRenderer(bounds: pageBounds)
-            var drawnCount = 0
-            let pdfData = renderer.pdfData { ctx in
+        var pagesArr: [String] = []
+        autoreleasepool {
+            guard let pagesData = pagesJson.data(using: .utf8),
+                  let arr = (try? JSONSerialization.jsonObject(with: pagesData, options: [])) as? [String] else { return }
+            pagesArr = arr
+        }
+        guard !pagesArr.isEmpty else { return }
+
+        let tmpDir = FileManager.default.temporaryDirectory
+        if let items = try? FileManager.default.contentsOfDirectory(at: tmpDir, includingPropertiesForKeys: [.contentModificationDateKey], options: []) {
+            let cutoff = Date().addingTimeInterval(-600)
+            for u in items where u.lastPathComponent.hasPrefix("pb_airprint_") && u.pathExtension == "pdf" {
+                let mtime = (try? u.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date()
+                if mtime < cutoff { try? FileManager.default.removeItem(at: u) }
+            }
+        }
+
+        let pdfUrl = tmpDir.appendingPathComponent("pb_airprint_\(UUID().uuidString).pdf")
+        let pageBounds = CGRect(x: 0, y: 0, width: ptW, height: ptH)
+        let renderer = UIGraphicsPDFRenderer(bounds: pageBounds)
+        let maxPx = lowRam ? 2048 : 3600
+        var drawnCount = 0
+
+        do {
+            try renderer.writePDF(to: pdfUrl) { ctx in
                 for item in pagesArr {
                     autoreleasepool {
                         let b64: String
@@ -1242,8 +1303,36 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                         } else {
                             b64 = item
                         }
-                        guard let imgBytes = Data(base64Encoded: b64, options: .ignoreUnknownCharacters),
-                              let img = UIImage(data: imgBytes) else { return }
+                        guard let imgBytes = Data(base64Encoded: b64, options: .ignoreUnknownCharacters), !imgBytes.isEmpty else { return }
+                        // Keep native JPEG bytes when already within maxPx so UIGraphicsPDFRenderer embeds compact /DCTDecode
+                        // streams (~400 KB) instead of multi-MB uncompressed bitmaps. Downsample & re-encode only oversized pages.
+                        var pdfImgData: Data = imgBytes
+                        if let src = CGImageSourceCreateWithData(imgBytes as CFData, nil) {
+                            let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any]
+                            let pw = (props?[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue ?? 0
+                            let ph = (props?[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue ?? 0
+                            let orient = (props?[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
+                            if orient != 1 || max(pw, ph) > maxPx {
+                                let thumbOpts: [CFString: Any] = [
+                                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                                    kCGImageSourceCreateThumbnailWithTransform: true,
+                                    kCGImageSourceShouldCache: false,
+                                    kCGImageSourceShouldCacheImmediately: true,
+                                    kCGImageSourceThumbnailMaxPixelSize: maxPx
+                                ]
+                                if let cgImg = CGImageSourceCreateThumbnailAtIndex(src, 0, thumbOpts as CFDictionary) {
+                                    let outData = NSMutableData()
+                                    if let dest = CGImageDestinationCreateWithData(outData as CFMutableData, "public.jpeg" as CFString, 1, nil) {
+                                        let saveOpts: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: 0.92]
+                                        CGImageDestinationAddImage(dest, cgImg, saveOpts as CFDictionary)
+                                        if CGImageDestinationFinalize(dest), outData.length > 0 {
+                                            pdfImgData = outData as Data
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        guard let img = UIImage(data: pdfImgData) else { return }
                         drawnCount += 1
                         ctx.beginPage()
                         let iw = max(1.0, Double(img.size.width))
@@ -1261,14 +1350,24 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                     }
                 }
             }
-            guard drawnCount > 0, !pdfData.isEmpty else { return }
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                self.airPrintQueue.append((jobName: jobName, ptW: ptW, ptH: ptH, pdfData: pdfData))
-                self.drainAirPrintQueue()
-            }
+        } catch {
+            try? FileManager.default.removeItem(at: pdfUrl)
+            return
         }
-        return "{\"ok\":true}"
+
+        guard drawnCount > 0 else {
+            try? FileManager.default.removeItem(at: pdfUrl)
+            return
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else {
+                try? FileManager.default.removeItem(at: pdfUrl)
+                return
+            }
+            self.airPrintQueue.append((jobName: jobName, ptW: ptW, ptH: ptH, pdfUrl: pdfUrl))
+            self.drainAirPrintQueue()
+        }
     }
 
     private func drainAirPrintQueue() {
@@ -1282,7 +1381,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         info.outputType = .photo
         info.orientation = (next.ptW > next.ptH) ? .landscape : .portrait
         controller.printInfo = info
-        controller.printingItem = next.pdfData
+        if UIPrintInteractionController.canPrint(next.pdfUrl) {
+            controller.printingItem = next.pdfUrl
+        } else if let fallbackData = try? Data(contentsOf: next.pdfUrl), !fallbackData.isEmpty {
+            controller.printingItem = fallbackData
+        } else {
+            try? FileManager.default.removeItem(at: next.pdfUrl)
+            airPrintBusy = false
+            drainAirPrintQueue()
+            return
+        }
         airPrintPageSize = CGSize(width: next.ptW, height: next.ptH)
         controller.delegate = self
 
@@ -1294,6 +1402,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 finished = true
                 timeoutItem?.cancel()
                 timeoutItem = nil
+                controller.printingItem = nil
+                controller.delegate = nil
+                try? FileManager.default.removeItem(at: next.pdfUrl)
                 guard let self = self else { return }
                 self.airPrintBusy = false
                 self.drainAirPrintQueue()
@@ -1302,6 +1413,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         let guardWork = DispatchWorkItem { finishJob() }
         timeoutItem = guardWork
         DispatchQueue.main.asyncAfter(deadline: .now() + 60.0, execute: guardWork)
+
+        let cancelGuardOnInteractiveShow: () -> Void = {
+            timeoutItem?.cancel()
+            timeoutItem = nil
+        }
 
         if let savedUrlStr = UserDefaults.standard.string(forKey: airprintUrlKey),
            !savedUrlStr.isEmpty,
@@ -1315,19 +1431,19 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                             if !completed && err != nil {
                                 DispatchQueue.main.async {
                                     guard let self = self, !finished else { return }
-                                    self.presentPrintController(controller, completion: finishJob)
+                                    self.presentPrintController(controller, onPresented: cancelGuardOnInteractiveShow, completion: finishJob)
                                 }
                             } else {
                                 finishJob()
                             }
                         }
                     } else {
-                        self.presentPrintController(controller, completion: finishJob)
+                        self.presentPrintController(controller, onPresented: cancelGuardOnInteractiveShow, completion: finishJob)
                     }
                 }
             }
         } else {
-            presentPrintController(controller, completion: finishJob)
+            presentPrintController(controller, onPresented: cancelGuardOnInteractiveShow, completion: finishJob)
         }
     }
 
@@ -1352,15 +1468,35 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         return paperList.min { score($0) < score($1) } ?? paperList[0]      // iPadOS never sends an empty list
     }
 
-    private func presentPrintController(_ controller: UIPrintInteractionController, completion: (() -> Void)? = nil) {
+    private func presentPrintController(_ controller: UIPrintInteractionController, attempt: Int = 0, onPresented: (() -> Void)? = nil, completion: (() -> Void)? = nil) {
+        guard view.window != nil else {
+            completion?()
+            return
+        }
+        if presentedViewController != nil || isBeingPresented || isBeingDismissed {
+            if attempt < 20 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+                    self?.presentPrintController(controller, attempt: attempt + 1, onPresented: onPresented, completion: completion)
+                }
+            } else {
+                completion?()
+            }
+            return
+        }
         let doneHandler: UIPrintInteractionController.CompletionHandler = { _, _, _ in
             completion?()
         }
+        let shown: Bool
         if UIDevice.current.userInterfaceIdiom == .phone {
-            controller.present(animated: true, completionHandler: doneHandler)
+            shown = controller.present(animated: true, completionHandler: doneHandler)
         } else {
             let anchor = CGRect(x: view.bounds.midX, y: view.bounds.maxY - 80, width: 1, height: 1)
-            controller.present(from: anchor, in: view, animated: true, completionHandler: doneHandler)
+            shown = controller.present(from: anchor, in: view, animated: true, completionHandler: doneHandler)
+        }
+        if shown {
+            onPresented?()
+        } else {
+            completion?()
         }
     }
 
@@ -1729,24 +1865,29 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     /// through window.__PBNetResult, like the Android app does.
     private func sendIppPrint(job: String, ipPort: String, widthMm: Double, heightMm: Double, copies: Int, pagesJson: String, optionsJson: String) {
         guard !job.isEmpty else { return }
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        printQueue.async { [weak self] in
             guard let self = self else { return }
             do {
-                guard let pd = pagesJson.data(using: .utf8),
-                      let arr = try JSONSerialization.jsonObject(with: pd, options: []) as? [String],
-                      !arr.isEmpty else {
-                    throw IppNet.Failure("Nothing to print.")
-                }
-                var pages: [Data] = []
-                for s in arr {
-                    var b64 = s
-                    if s.hasPrefix("data:"), let comma = s.firstIndex(of: ",") {
-                        b64 = String(s[s.index(after: comma)...])
+                let pages: [Data] = try autoreleasepool {
+                    guard let pd = pagesJson.data(using: .utf8),
+                          let arr = try JSONSerialization.jsonObject(with: pd, options: []) as? [String],
+                          !arr.isEmpty else {
+                        throw IppNet.Failure("Nothing to print.")
                     }
-                    guard let d = Data(base64Encoded: b64, options: .ignoreUnknownCharacters), !d.isEmpty else {
-                        throw IppNet.Failure("Could not read the picture to print.")
+                    var out: [Data] = []
+                    for s in arr {
+                        try autoreleasepool {
+                            var b64 = s
+                            if s.hasPrefix("data:"), let comma = s.firstIndex(of: ",") {
+                                b64 = String(s[s.index(after: comma)...])
+                            }
+                            guard let d = Data(base64Encoded: b64, options: .ignoreUnknownCharacters), !d.isEmpty else {
+                                throw IppNet.Failure("Could not read the picture to print.")
+                            }
+                            out.append(d)
+                        }
                     }
-                    pages.append(d)
+                    return out
                 }
                 var opts: [String: Any] = [:]
                 if let od = optionsJson.data(using: .utf8),
@@ -1820,24 +1961,29 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     /// window.__PBNet.printEscpr: streams Epson ESC/P-R (L8050 360/720 dpi borderless or generic Epson) over LPD (:515) or Raw (:9100).
     private func sendEscprPrint(job: String, ipPort: String, widthMm: Double, heightMm: Double, copies: Int, pagesJson: String, optionsJson: String) {
         guard !job.isEmpty else { return }
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        printQueue.async { [weak self] in
             guard let self = self else { return }
             do {
-                guard let pd = pagesJson.data(using: .utf8),
-                      let arr = try JSONSerialization.jsonObject(with: pd, options: []) as? [String],
-                      !arr.isEmpty else {
-                    throw EscprNet.Failure.message("Nothing to print.", unreached: true)
-                }
-                var pages: [Data] = []
-                for s in arr {
-                    var b64 = s
-                    if s.hasPrefix("data:"), let comma = s.firstIndex(of: ",") {
-                        b64 = String(s[s.index(after: comma)...])
+                let pages: [Data] = try autoreleasepool {
+                    guard let pd = pagesJson.data(using: .utf8),
+                          let arr = try JSONSerialization.jsonObject(with: pd, options: []) as? [String],
+                          !arr.isEmpty else {
+                        throw EscprNet.Failure.message("Nothing to print.", unreached: true)
                     }
-                    guard let d = Data(base64Encoded: b64, options: .ignoreUnknownCharacters), !d.isEmpty else {
-                        throw EscprNet.Failure.message("Could not read the picture to print.", unreached: true)
+                    var out: [Data] = []
+                    for s in arr {
+                        try autoreleasepool {
+                            var b64 = s
+                            if s.hasPrefix("data:"), let comma = s.firstIndex(of: ",") {
+                                b64 = String(s[s.index(after: comma)...])
+                            }
+                            guard let d = Data(base64Encoded: b64, options: .ignoreUnknownCharacters), !d.isEmpty else {
+                                throw EscprNet.Failure.message("Could not read the picture to print.", unreached: true)
+                            }
+                            out.append(d)
+                        }
                     }
-                    pages.append(d)
+                    return out
                 }
                 var opts: [String: Any] = [:]
                 if let od = optionsJson.data(using: .utf8),
@@ -1959,6 +2105,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             pickSavedAirPrint()
         } else if message.name == "pbClearAirPrint" {
             clearSavedAirPrint()
+        } else if message.name == "pbPrintAirPrint", let dict = message.body as? [String: Any] {
+            let jobName = (dict["jobName"] as? String) ?? "Photobooth"
+            let widthMm = (dict["widthMm"] as? NSNumber)?.doubleValue ?? 101.6
+            let heightMm = (dict["heightMm"] as? NSNumber)?.doubleValue ?? 152.4
+            let pagesJson = (dict["pagesJson"] as? String) ?? "[]"
+            enqueueNativePrint(jobName: jobName, widthMm: widthMm, heightMm: heightMm, pagesJson: pagesJson)
         } else if message.name == "pbPrintRawTcp", let dict = message.body as? [String: Any] {
             let job = (dict["job"] as? String) ?? ""
             let ip = (dict["ip"] as? String) ?? ""
@@ -2303,10 +2455,20 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         }
         let alert = UIAlertController(title: "Could not save the file", message: "The file could not be downloaded. Please try again.", preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
-        (presentedViewController ?? self).present(alert, animated: true)
+        topAlertPresenter()?.present(alert, animated: true)
     }
 
-    private func presentShareSheet(for file: URL) {
+    private func presentShareSheet(for file: URL, attempt: Int = 0) {
+        guard let presenter = topAlertPresenter() else {
+            if attempt < 8 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+                    self?.presentShareSheet(for: file, attempt: attempt + 1)
+                }
+            } else {
+                try? FileManager.default.removeItem(at: file.deletingLastPathComponent())
+            }
+            return
+        }
         let sheet = UIActivityViewController(activityItems: [file], applicationActivities: nil)
         sheet.completionWithItemsHandler = { _, _, _, _ in
             try? FileManager.default.removeItem(at: file.deletingLastPathComponent())
@@ -2317,7 +2479,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
             pop.permittedArrowDirections = []
         }
-        (presentedViewController ?? self).present(sheet, animated: true)
+        presenter.present(sheet, animated: true)
     }
 
     // MARK: - Pop-up links (window.open)

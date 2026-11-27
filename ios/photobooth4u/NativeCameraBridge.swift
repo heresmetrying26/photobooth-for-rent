@@ -22,6 +22,8 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
 
     static let shared = NativeCameraBridge()
     static let srgbColorSpace = CGColorSpaceCreateDeviceRGB()
+    // 3.5 GiB threshold: catches 2 GB / 3 GB iPads (iPad 7th/8th/9th gen) without affecting 4 GB+ models.
+    static let isLowRamDevice: Bool = ProcessInfo.processInfo.physicalMemory <= 3_758_096_384
 
     static func orientImage(_ ci: CIImage, rotationAngle: CGFloat) -> CIImage {
         let deg = ((Int(rotationAngle.rounded()) % 360) + 360) % 360
@@ -702,6 +704,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
     /// that keeps full 4:3 FOV and high-res still photo capability (4032×3024 on iPad A16) without forcing the heavy
     /// .photo session preset or 10-bit HDR pipelines.
     private func pickSmoothBuiltInFormat(for dev: AVCaptureDevice, presetName: String) -> AVCaptureDevice.Format? {
+        let lowRam = NativeCameraBridge.isLowRamDevice
         let targetW: Int
         let minW: Int
         let maxW: Int
@@ -711,11 +714,11 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         case "720":
             targetW = 1280; minW = 960; maxW = 1344
         case "1080":
-            targetW = 1440; minW = 1280; maxW = 1920
+            targetW = lowRam ? 1280 : 1440; minW = lowRam ? 960 : 1280; maxW = lowRam ? 1440 : 1920
         case "max", "yuyv":
-            targetW = 1920; minW = 1280; maxW = 2160
+            targetW = lowRam ? 1440 : 1920; minW = 1280; maxW = lowRam ? 1920 : 2160
         default: // "auto", "high", "photo"
-            targetW = 1440; minW = 960; maxW = 1920
+            targetW = lowRam ? 1280 : 1440; minW = 960; maxW = lowRam ? 1440 : 1920
         }
 
         var centerStageWanted = false
@@ -1672,9 +1675,10 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 self.shotSeq += 1
                 let sid = self.shotSeq
                 self.shotStore[sid] = data
-                // Keep only the most recent 4 shots in temporary RAM
-                if self.shotStore.count > 4 {
-                    let drop = self.shotStore.keys.sorted().dropLast(4)
+                // Keep only the most recent shots in temporary RAM (2 on 3 GB iPads, 4 otherwise)
+                let maxKeep = NativeCameraBridge.isLowRamDevice ? 2 : 4
+                if self.shotStore.count > maxKeep {
+                    let drop = self.shotStore.keys.sorted().dropLast(maxKeep)
                     for k in drop { self.shotStore.removeValue(forKey: k) }
                 }
                 self.shotsLock.unlock()
@@ -1718,7 +1722,8 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                         let pb = self.latestBuffer
                         let rot = self.captureRotationAngle
                         self.stateLock.unlock()
-                        if let buf = pb, let j = self.jpegData(from: buf, rotationAngle: rot, maxSide: 2400, quality: 0.94) {
+                        let stillMax = NativeCameraBridge.isLowRamDevice ? 1920 : 2400
+                        if let buf = pb, let j = self.jpegData(from: buf, rotationAngle: rot, maxSide: stillMax, quality: 0.94) {
                             storeAndAnswer(j.data, j.w, j.h)
                         } else {
                             DispatchQueue.main.async {
@@ -1746,7 +1751,8 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             let pb = self.latestBuffer
             let rot = self.captureRotationAngle
             self.stateLock.unlock()
-            if let buf = pb, let j = self.jpegData(from: buf, rotationAngle: rot, maxSide: 3000, quality: 0.94) {
+            let uvcMax = NativeCameraBridge.isLowRamDevice ? 2048 : 3000
+            if let buf = pb, let j = self.jpegData(from: buf, rotationAngle: rot, maxSide: uvcMax, quality: 0.94) {
                 storeAndAnswer(j.data, j.w, j.h)
             } else {
                 DispatchQueue.main.async {
@@ -1781,7 +1787,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                     let pw = (props?[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue ?? 0
                     let ph = (props?[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue ?? 0
                     let orient = (props?[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
-                    let maxSide = 2400
+                    let maxSide = NativeCameraBridge.isLowRamDevice ? 1920 : 2400
 
                     if orient == 1 && pw > 0 && ph > 0 && max(pw, ph) <= maxSide {
                         completion(.success((raw, pw, ph)))

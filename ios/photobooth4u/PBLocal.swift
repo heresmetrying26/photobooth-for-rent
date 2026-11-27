@@ -42,6 +42,8 @@ class PBLocal {
     }
 
     private let lock = NSLock()
+    // Serialize Apple Photos imports so saving composite + 4 solo photos doesn't spawn 5 concurrent assetsd transactions.
+    private let photosQueue = DispatchQueue(label: "com.photobooth4u.photos", qos: .utility)
     private var folders: [String: Folder] = [:]
     private var codes: [String: GuestCode] = [:]
     private var onlineUrls: [String: String] = [:]
@@ -504,21 +506,29 @@ class PBLocal {
         let isImage = (ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "gif" || ext == "webp")
         guard isVideo || isImage else { return }
 
-        let performSave: () -> Void = {
-            PHPhotoLibrary.shared().performChanges({
-                if isVideo {
-                    PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: fileUrl)
-                } else {
-                    PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: fileUrl)
-                }
-            }) { ok, _ in
-                if !ok && !isVideo && ext != "gif",
-                   let diskData = try? Data(contentsOf: fileUrl),
-                   let img = UIImage(data: diskData) {
-                    DispatchQueue.main.async {
-                        UIImageWriteToSavedPhotosAlbum(img, nil, nil, nil)
+        let performSave: () -> Void = { [weak self] in
+            self?.photosQueue.async {
+                let sema = DispatchSemaphore(value: 0)
+                PHPhotoLibrary.shared().performChanges({
+                    if isVideo {
+                        PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: fileUrl)
+                    } else {
+                        PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: fileUrl)
                     }
+                }) { ok, _ in
+                    if !ok && !isVideo && ext != "gif" {
+                        autoreleasepool {
+                            if let diskData = try? Data(contentsOf: fileUrl),
+                               let img = UIImage(data: diskData) {
+                                DispatchQueue.main.async {
+                                    UIImageWriteToSavedPhotosAlbum(img, nil, nil, nil)
+                                }
+                            }
+                        }
+                    }
+                    sema.signal()
                 }
+                _ = sema.wait(timeout: .now() + 10.0)
             }
         }
 

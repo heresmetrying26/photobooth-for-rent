@@ -265,7 +265,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.44', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.44/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.45', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.45/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -319,6 +319,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-27', title: 'iPad 1.1.45 & Website: Smoother Save & Print on 3 GB iPads (No More Freeze After Printing)', for: ['website', 'ipad'], ipad: '1.1.45',
+    items: [
+      '🖨️ Smooth, non-freezing AirPrint & Wi-Fi printing on older iPads: Printing now prepares the print page smoothly in the background right after saving a photo, prevents AirPrint pop-up clashes with save alerts, and keeps Epson and direct Wi-Fi print jobs lined up cleanly so iPads like the 7th generation (3 GB memory) stay responsive session after session.',
+      '🧠 Lower memory use on 3 GB iPads during back-to-back sessions: Automatically tunes print image sizing, camera still storage, and local gallery thumbnails on 3 GB iPads, releases finished print buffers right after sending, and spaces out Photos library saves so saving and printing together never stalls the booth.',
+      '⚡ Fewer background pauses while running an event: Stops the booth from needlessly redrawing your saved themes and setups every 30 seconds when nothing changed, and ensures individual guest solo shots stay clean without an orange date stamp by default.'
+    ]
+  },
   {
     date: '2026-11-27', title: 'Android 1.2.33, iPad 1.1.44 & Website: Android 360 Booth Mode with Gyro Auto-Start, Built-in Sharing Station & Admin 360 Control', for: ['website', 'android', 'ipad'], android: '1.2.33', ipad: '1.1.44',
     items: [

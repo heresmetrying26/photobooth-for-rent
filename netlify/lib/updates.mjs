@@ -265,7 +265,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.45', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.45/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.46', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.46/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -319,6 +319,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-27', title: 'iPhone & iPad 1.1.46 & Website: Native Full-Screen iPhone Layout & Instant 360 Arm Cam Preview', for: ['website', 'ipad'], ipad: '1.1.46',
+    items: [
+      '📱 Full-screen native layout on iPhone (including iPhone 15 Pro Max): Removes the black letterbox bars and zoomed display on iPhones so Setup, Photo Session, and 360 Arm Cam fill the entire screen cleanly with proper notch and Dynamic Island spacing.',
+      '🎥 Instant 360 Arm Cam live camera on open: Releases the photo booth camera cleanly before opening 360 Arm Cam, skips conflicting HDR video modes on newer iPhones, and automatically recovers the live view if interrupted so the camera picture appears right away.',
+      '✨ Cleaner phone controls and menus: Keeps the More menu fully inside the screen on phones, prevents step-bar labels from overflowing their pills, and gives the 360 Arm Cam buttons and QR scanner more room in both portrait and landscape.'
+    ]
+  },
   {
     date: '2026-11-27', title: 'iPad 1.1.45 & Website: Smoother Save & Print on 3 GB iPads (No More Freeze After Printing)', for: ['website', 'ipad'], ipad: '1.1.45',
     items: [

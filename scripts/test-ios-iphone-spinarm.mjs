@@ -65,7 +65,7 @@ const bridge = readFileSync(join(ROOT, 'ios/photobooth4u/NativeCameraBridge.swif
 assert.ok(bridge.includes('if let vIn = self.currentInput { self.session.removeInput(vIn) }'), 'NativeCameraBridge.stop removes video input');
 const vc = readFileSync(join(ROOT, 'ios/photobooth4u/ViewController.swift'), 'utf8');
 assert.ok(vc.includes('private var isSpinArmOpen = false'), 'ViewController tracks isSpinArmOpen');
-assert.ok(vc.includes('let spinArmBusy = isSpinArmOpen || (presentedViewController is SpinArmViewController)'), 'ViewController blocks booth pbCam calls while 360 Arm Cam is open');
+assert.ok(/let spinArmBusy = isSpinArmOpen\b.*presentedViewController is SpinArmViewController/.test(vc), 'ViewController blocks booth pbCam calls while 360 Arm Cam is open');
 console.log('PASS: ViewController & NativeCameraBridge prevent booth camera hijacking during 360 Arm Cam');
 
 // 4. SpinArmViewController camera startup, 8-bit 4:2:0 filtering, clamped frame duration, fallback & recovery

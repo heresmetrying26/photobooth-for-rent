@@ -165,7 +165,11 @@ try {
   await send('Runtime.enable');
   await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   await send('Page.navigate', { url: `http://127.0.0.1:${port}/booth` });
-  await new Promise(r => setTimeout(r, 1400));
+  for (let i = 0; i < 60; i++) {
+    const ready = await evalJs(`!!document.getElementById('spinFab') && document.readyState !== 'loading'`);
+    if (ready) break;
+    await new Promise(r => setTimeout(r, 200));
+  }
 
   // Open 360 Desk via real spinFab click
   const initCheck = await evalJs(`(async () => {

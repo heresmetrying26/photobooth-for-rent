@@ -743,18 +743,35 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun releaseWebCameraNow() {
+    @Volatile private var activityVisible = false
+    private var pendingPauseTask: Runnable? = null
+
+    private fun pauseWebViewIfHidden() {
+        pendingPauseTask?.let { checkinHandler.removeCallbacks(it) }
+        pendingPauseTask = null
+        if (!activityVisible && ::webView.isInitialized && !webViewDestroyed) {
+            try { webView.onPause() } catch (_: Throwable) { }
+        }
+    }
+
+    private fun releaseWebCameraNow(onDone: (() -> Unit)? = null) {
         if (::webView.isInitialized && !webViewDestroyed) {
             try {
-                webView.evaluateJavascript("try{window.__pbReleaseCameraNow&&window.__pbReleaseCameraNow();}catch(e){}", null)
+                webView.evaluateJavascript("try{window.__pbReleaseCameraNow&&window.__pbReleaseCameraNow();}catch(e){}") {
+                    onDone?.invoke()
+                }
+                return
             } catch (_: Throwable) { }
         }
+        onDone?.invoke()
     }
 
     private fun destroyWebViewSafely() {
         if (!::webView.isInitialized || webViewDestroyed) return
         webViewDestroyed = true
         offlineLoaded = false
+        pendingPauseTask?.let { checkinHandler.removeCallbacks(it) }
+        pendingPauseTask = null
         try {
             webView.evaluateJavascript("try{window.__pbReleaseCameraNow&&window.__pbReleaseCameraNow();}catch(e){}", null)
         } catch (_: Throwable) { }
@@ -782,6 +799,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        activityVisible = true
+        pendingPauseTask?.let { checkinHandler.removeCallbacks(it) }
+        pendingPauseTask = null
         if (::webView.isInitialized && !webViewDestroyed) {
             try { webView.onResume() } catch (_: Throwable) { }
         }
@@ -789,6 +809,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        activityVisible = true
+        pendingPauseTask?.let { checkinHandler.removeCallbacks(it) }
+        pendingPauseTask = null
         hideSystemBars()
         if (::webView.isInitialized && !webViewDestroyed) {
             try { webView.onResume() } catch (_: Throwable) { }
@@ -817,10 +840,13 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         if (!isChangingConfigurations) {
-            releaseWebCameraNow()
-            if (::webView.isInitialized && !webViewDestroyed) {
-                try { webView.onPause() } catch (_: Throwable) { }
-            }
+            activityVisible = false
+            pendingPauseTask?.let { checkinHandler.removeCallbacks(it) }
+            val fallback = Runnable { pauseWebViewIfHidden() }
+            pendingPauseTask = fallback
+            checkinHandler.postDelayed(fallback, 150L)
+            // Let JS finish track.stop() before WebView suspends Blink timers/media.
+            releaseWebCameraNow { pauseWebViewIfHidden() }
         }
     }
 
@@ -860,10 +886,10 @@ class MainActivity : AppCompatActivity() {
             }
             netCallback = null
         } catch (_: Exception) { }
-        destroyWebViewSafely()
-        netPrintBridge?.shutdown()
         esp32Bridge?.shutdown()
         btBridge.shutdown()          // keeps the chosen printer (disconnect() would forget it)
+        netPrintBridge?.shutdown()
+        destroyWebViewSafely()
         voiceBridge?.shutdown()
         shareServer?.stop()
         boothWifi?.shutdown()

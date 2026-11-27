@@ -640,20 +640,26 @@ if (sIdx > 0 && eIdx > sIdx) {
     espKt.includes('private fun coalesceKey(') &&
     espKt.includes('BLE_CONNECT_TIMEOUT_MS') &&
     espKt.includes('consecutiveWriteTimeouts') &&
-    espKt.includes('ACTION_ACL_DISCONNECTED'),
-    'Esp32Bridge.kt uses async connExec, bounded coalescing writeQueue, BLE timeout watchdog, dead-link detection, and ACL disconnect listener'
+    espKt.includes('ACTION_ACL_DISCONNECTED') &&
+    espKt.includes('BluetoothAdapter.STATE_ON') &&
+    espKt.includes('if (scanning) return false'),
+    'Esp32Bridge.kt uses async connExec, bounded coalescing writeQueue, BLE timeout watchdog, dead-link detection, scan/in-flight guard, and ACL/adapter listener'
   );
   ok(
-    btKt.includes('fun writeAsync(') && btKt.includes('fun writePacedAsync(') && btKt.includes('"writeDone"'),
-    'BTBridge.kt provides non-blocking writeAsync / writePacedAsync so printing never stalls ESP32 JS events'
+    btKt.includes('fun writeAsync(') && btKt.includes('fun writePacedAsync(') && btKt.includes('"writeDone"') &&
+    boothHtml.includes("var dropMsg = ev.type === 'adapter' ? 'Bluetooth was turned off.' : 'Bluetooth printer disconnected.';"),
+    'BTBridge.kt provides non-blocking writeAsync / writePacedAsync and BtThermal rejects pending writes on Bluetooth disconnect/off'
   );
   ok(
     src.includes('cashNotifyStatusSoon') &&
     src.includes('cashScheduleNativeRetry') &&
     src.includes('cashNativeBridgeRef') &&
     boothHtml.includes('writePacedAsync') &&
-    boothHtml.includes('_cashSetupDirty = true'),
-    'cash-acceptor.js & booth.html coalesce status UI refreshes, cache native bridge check, use async BT writes, and defer Setup rebuilds in-session'
+    boothHtml.includes('_cashSetupDirty = true') &&
+    boothHtml.includes("if (payState.view === 'payDone') return;") &&
+    boothHtml.includes("if (payState.view === 'payChoose' && !paySheet.hidden) payLayoutChoose();") &&
+    boothHtml.includes('var waitingGuestUi ='),
+    'cash-acceptor.js & booth.html coalesce status UI refreshes, cache native bridge check, use async BT writes, defer Setup rebuilds in-session, and guard paySheet races'
   );
 }
 

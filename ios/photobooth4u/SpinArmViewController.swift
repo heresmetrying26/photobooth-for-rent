@@ -1528,6 +1528,7 @@ final class SpinArmViewController: UIViewController,
         switch phase {
         case .recording: reportedState = "recording"
         case .calibrating: reportedState = "calibrating"
+        case .rendering: reportedState = isUploadingNow ? "uploading" : "idle"
         case .cooldown: reportedState = "cooldown"
         case .idle: reportedState = isUploadingNow ? "uploading" : "idle"
         }

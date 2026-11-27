@@ -585,7 +585,7 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
                     ?: fpsList.filter { it.upper in 30..pvWant }.maxByOrNull { it.upper * 100 + it.lower }
                     ?: Range(30, 30)
 
-                val highRanges = try { map.highSpeedVideoFpsRanges } catch (_: Throwable) { emptyArray() }
+                val highRanges = try { map.highSpeedVideoFpsRanges } catch (_: Throwable) { emptyArray<Range<Int>>() }
                 val hsMatch = if (targetFps >= 120) {
                     highRanges.firstOrNull { it.upper >= 120 && it.lower >= 60 }
                 } else null
@@ -894,17 +894,15 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
                 centerTitleLabel.text = "Rendering ${(p * 100f).roundToInt()}%"
             }
         }) { res ->
-            val finalSrc: File
             val cleanupList = mutableListOf(rawFile)
-            res.onSuccess { rendered ->
-                finalSrc = rendered
-                cleanupList.add(rendered)
-                finishSaveAndShare(finalSrc, cleanupList)
-            }.onFailure { err ->
-                finalSrc = rawFile
+            val finalSrc = res.getOrElse { err ->
                 showToast("Render fallback (raw saved): ${err.message}")
-                finishSaveAndShare(finalSrc, cleanupList)
+                rawFile
             }
+            if (res.isSuccess) {
+                cleanupList.add(finalSrc)
+            }
+            finishSaveAndShare(finalSrc, cleanupList)
         }
     }
 
@@ -1161,15 +1159,16 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
                 try { conn?.disconnect() } catch (_: Exception) { }
             }
 
+            val parsedObj = obj
             mainHandler.post {
                 if (isFinishing || isDestroyed) return@post
-                if (ok && obj != null) {
+                if (ok && parsedObj != null) {
                     val urlChanged = sendUrl != baseSendUrl
                     sendUrl = baseSendUrl
                     deskConnected = true
-                    val cfg = obj.optJSONObject("config")
+                    val cfg = parsedObj.optJSONObject("config")
                     val rawName = cfg?.optString("laptop", "")?.ifBlank { null }
-                        ?: obj.optString("name", "").ifBlank { null }
+                        ?: parsedObj.optString("name", "").ifBlank { null }
                     deskLaptopName = rawName ?: "Laptop 360 Desk"
                     prefs().edit().putString(KEY_SEND_URL, baseSendUrl).apply()
                     if (urlChanged) {
@@ -1177,9 +1176,9 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
                         prefs().edit().putBoolean(KEY_STANDALONE, false).apply()
                     }
                     if (!isStandaloneMode) {
-                        val armObj = cfg?.optJSONObject("arm") ?: obj.optJSONObject("arm")
+                        val armObj = cfg?.optJSONObject("arm") ?: parsedObj.optJSONObject("arm")
                         armObj?.let { applyDeskConfig(it) }
-                        handleDeskCommands(obj.optJSONArray("cmds"))
+                        handleDeskCommands(parsedObj.optJSONArray("cmds"))
                     }
                     if (!silent) {
                         playTone(ToneGenerator.TONE_PROP_ACK)

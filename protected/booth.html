@@ -18572,6 +18572,23 @@
         margin: auto 0 !important;
       }
 
+      /* Portrait review with framing bar: keep photo clear of both framing bar and Cancel/Print row */
+      body.stage-review.stage-framing .app-shell .stage-wrap,
+      body.stage-review.stage-framing.in-session .app-shell.capturing .stage-wrap {
+        justify-content: flex-start !important;
+        padding-top: max(12px, env(safe-area-inset-top)) !important;
+        padding-bottom: 148px !important;
+      }
+
+      body.stage-review.stage-framing .app-shell .stage-frame,
+      body.stage-review.stage-framing.in-session.shooting .app-shell.capturing .stage-frame,
+      body.stage-review.stage-framing.has-film-shots .app-shell .stage-frame,
+      body.stage-review.stage-framing.has-film-shots.in-session.shooting .app-shell.capturing .stage-frame {
+        max-height: calc(var(--vh, 100dvh) - 164px) !important;
+        height: calc(var(--vh, 100dvh) - 164px) !important;
+        margin: 0 auto !important;
+      }
+
       /* Shots preview: floating vertical stack on the right side, layered top-to-bottom */
       body.stage-full .app-shell .film-track,
       body.stage-review .app-shell .film-track,
@@ -22273,6 +22290,12 @@
             if (ev.ok) { btPrinter._mode = 'bridge'; btPrinter._name = ev.name || btPrinter._name || 'Bluetooth Printer'; btPrinter._serviceUuid = ''; btPrinter._proto = ev.proto || ''; }
             btReconnectWaiters.splice(0).forEach(function (f) { try { f(ev); } catch (_) { } });
           } else if ((ev.type === 'link' || ev.type === 'adapter') && ev.on === false) {
+            var dropMsg = ev.type === 'adapter' ? 'Bluetooth was turned off.' : 'Bluetooth printer disconnected.';
+            Object.keys(btWriteWaiters).forEach(function (id) {
+              var fn = btWriteWaiters[id];
+              delete btWriteWaiters[id];
+              try { fn({ ok: false, error: dropMsg }); } catch (_) { }
+            });
             if (btPrinter._mode === 'bridge') btPrinter._onDisconnect();
           }
           if (typeof global.__pbBtEvent === 'function') global.__pbBtEvent(ev);
@@ -30455,7 +30478,7 @@
 
 
       function isOutputTarget(cv) {
-        return !!(cv && (cv === previewCanvas || cv._hiRes));
+        return !!(cv && ((cv === previewCanvas && !cv._fastPreview) || cv._hiRes));
       }
       // How much detail the camera really delivered, as a size for the finished picture: the shortest side of the biggest shot
       // measured against a box of `ref` px in the 1x design. A webcam or tablet photo gives under 2 (the base size is kept: more
@@ -36075,7 +36098,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         window.addEventListener('beforeunload', releaseBuiltInCameraNow);
       }
       let androidResumeCamTimer = null;
-      function scheduleAndroidCameraResume() {
+      function scheduleAndroidCameraResume(retry) {
         if (!IS_ANDROID_APP || DESK_STANDALONE || document.hidden) return;
         if (androidResumeCamTimer) clearTimeout(androidResumeCamTimer);
         androidResumeCamTimer = setTimeout(async () => {
@@ -36097,12 +36120,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             try { await enumerateCameras(); } catch (e) { }
             if (document.hidden || streamActive || camInitInFlight) return;
           }
+          let ok = false;
           if (camSleeping) {
-            try { await camLiveWake(); } catch (e) { }
+            try { ok = !!(await camLiveWake()); } catch (e) { }
           } else {
-            try { await initCamera((cameraSelect && cameraSelect.value) || null); } catch (e) { }
+            try { ok = !!(await initCamera((cameraSelect && cameraSelect.value) || null)); } catch (e) { }
           }
-        }, 450);
+          if (!ok && !retry && !document.hidden && !streamActive && !camInitInFlight && !reconnectTimer) {
+            scheduleAndroidCameraResume(true);
+          }
+        }, retry ? 1500 : 450);
       }
       if (!DESK_STANDALONE && IS_ANDROID_APP && typeof document !== 'undefined' && document.addEventListener) {
         document.addEventListener('visibilitychange', () => {
@@ -36324,6 +36351,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (name === 'NoPicture') {
           return 'The camera opened but isn\u2019t sending a picture. Pick another camera in the Camera menu, or unplug and replug it, then tap Try Again.';
         }
+        if (name === 'TimeoutError') {
+          return 'The camera did not respond in time. Tap Try Again (or pick another camera in the Camera menu).';
+        }
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           return 'This browser can\u2019t use the camera here. Open the booth in Chrome or Safari (not inside another app), then tap Try Again.';
         }
@@ -36392,15 +36422,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const baseSize = webcamGumSize(deviceId);
         const sizeWithFps = Object.assign({}, baseSize, { frameRate: { ideal: 30 } });
         const gumTimeoutMs = isAndroidNow ? 9000 : 12000;
-        const gum = video => new Promise((resolve, reject) => {
+        let gumTimedOut = false;
+        const gum = (video, msOverride) => new Promise((resolve, reject) => {
           let settled = false;
           const timer = setTimeout(() => {
             if (settled) return;
             settled = true;
             const err = new Error('Camera did not respond in time');
-            err.name = 'AbortError';
+            err.name = 'TimeoutError';
+            err._pbTimeout = true;
             reject(err);
-          }, gumTimeoutMs);
+          }, msOverride || gumTimeoutMs);
           navigator.mediaDevices.getUserMedia({ video, audio: false }).then(s => {
             clearTimeout(timer);
             if (settled) {
@@ -36457,6 +36489,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           try { return await gum(v); }
           catch (e) {
             lastErr = e;
+            if (e && e._pbTimeout) { gumTimedOut = true; break; }
             if (e && (e.name === 'NotReadableError' || e.name === 'TrackStartError' || e.name === 'AbortError')) {
               // Insta360 / DJI Osmo / Huawei HarmonyOS Camera2 HAL can release slowly — retry with growing delays
               const isSlowCam = selOpt && /insta\s*360|\bdji\b|osmo|pocket\s*[23]/i.test(selOpt.textContent || '');
@@ -36464,21 +36497,23 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               let ok = false;
               for (const ms of delays) {
                 await wait(ms);
-                try { return await gum(v); } catch (e2) { lastErr = e2; if (!e2 || (e2.name !== 'NotReadableError' && e2.name !== 'TrackStartError' && e2.name !== 'AbortError')) break; }
+                try { return await gum(v); } catch (e2) { lastErr = e2; if (e2 && e2._pbTimeout) { gumTimedOut = true; break; } if (!e2 || (e2.name !== 'NotReadableError' && e2.name !== 'TrackStartError' && e2.name !== 'AbortError')) break; }
               }
               if (ok) return;
+              if (gumTimedOut) break;
             }
             if (stop(e)) throw e;
           }
         }
-        const fallbackTries = loose ? [true] : [baseSize, true];
+        const fallbackTries = (loose || gumTimedOut) ? [true] : [baseSize, true];
         for (const v of fallbackTries) {
-          try { return await gum(v); }
+          try { return await gum(v, gumTimedOut ? (isAndroidNow ? 5000 : 6000) : 0); }
           catch (e) {
             lastErr = e;
+            if (e && e._pbTimeout) throw e;
             if (e && (e.name === 'NotReadableError' || e.name === 'TrackStartError' || e.name === 'AbortError')) {
               await wait(isAndroidNow ? 600 : 350);
-              try { return await gum(v); } catch (e2) { lastErr = e2; }
+              try { return await gum(v); } catch (e2) { lastErr = e2; if (e2 && e2._pbTimeout) throw e2; }
             }
             if (stop(e)) throw e;
           }
@@ -42247,6 +42282,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           sess.reviewing = true;
           if (sess.pick == null || sess.pick >= shotCanvases.length) sess.pick = shotCanvases.length - 1;
           var framing = !!reviewFramingOn;
+          if (framing) previewCanvas._fastPreview = true;
           renderComposite();
           video.style.display = 'none'; previewCanvas.style.display = 'block';
           try { if (typeof usbSyncStageCanvases === 'function') usbSyncStageCanvases(); } catch (e) { }
@@ -42271,15 +42307,37 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               ? (isReceiptLayoutNow() ? '\u2713 Print Receipt \u2192' : '\u2713 Print Photo \u2192')
               : '\u2713 Save Photo \u2192');
           updateFilmTrack();
-          var tick = null;        // no auto-save: waits for Done (or Space / clicker)
+          var tick = null;
+          // When Auto-return for next guest is enabled (unattended kiosk), auto-proceed if a guest walks away from Review.
+          // Resets on every touch/drag/key so guests actively framing or retaking are never rushed.
+          var reviewIdleTimer = null;
+          var reviewIdleSec = (typeof resultReviewSec === 'number' && resultReviewSec > 0) ? Math.max(45, resultReviewSec) : 0;
+          function bumpReviewIdle() {
+            if (!reviewIdleSec || !sess || !sess.reviewing) return;
+            clearTimeout(reviewIdleTimer);
+            reviewIdleTimer = setTimeout(function () {
+              if (sess && sess.reviewing && sess.reviewEnd) sess.reviewEnd('done');
+            }, reviewIdleSec * 1000);
+          }
+          if (reviewIdleSec) {
+            document.addEventListener('pointerdown', bumpReviewIdle, true);
+            document.addEventListener('keydown', bumpReviewIdle, true);
+            bumpReviewIdle();
+          }
           function finish(v) {
             clearInterval(tick);
+            clearTimeout(reviewIdleTimer);
+            if (reviewIdleSec) {
+              document.removeEventListener('pointerdown', bumpReviewIdle, true);
+              document.removeEventListener('keydown', bumpReviewIdle, true);
+            }
             rfClearPointers();
             document.body.classList.remove('stage-framing');
             var rfbEnd = document.getElementById('reviewFramingBar');
             if (rfbEnd) rfbEnd.hidden = true;
             previewCanvas.style.touchAction = '';
             previewCanvas.style.cursor = '';
+            previewCanvas._fastPreview = false;
             sess.reviewEnd = null; sess.reviewing = false;
             if (framing) { try { renderComposite(); } catch (e) { } }
             retakeBtn.hidden = true; doneBtn.hidden = true; reviewHint.hidden = true;
@@ -43623,6 +43681,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           e.stopPropagation();
           if (state === 'result' && Array.isArray(shotCanvases) && shotCanvases.some(Boolean)) {
             clearTimeout(resultTimer);
+            if (typeof runResultTimerBar === 'function') runResultTimerBar(0);
             if (!sess) sess = { cancelled: false, decorating: false };
             await guestStickersPhase({ fromResult: true });
             renderComposite();
@@ -45816,6 +45875,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // ---- Shared composite builder, used for both the real result and the
       // Setup tab's live preview, so they never fall out of sync. ----
       function composeCanvas(layoutKey, targetCanvas, shots) {
+        if (targetCanvas === previewCanvas && !BOX_PROBE) shotSlotBoxes = {};
         if (Array.isArray(shots)) {
           for (var si = 0; si < shots.length; si++) {
             if (shots[si]) {
@@ -76804,7 +76864,8 @@ function renderTabletBridgeSetup(info) {
       var flowBusy = false;
       var flowStartedAt = 0;
       async function beginGuestFlow(skipReady) {
-        if (flowBusy && state === 'idle' && Date.now() - flowStartedAt > 90000) {
+        var waitingGuestUi = (typeof paySheet !== 'undefined' && paySheet && !paySheet.hidden) || (typeof pickOpen !== 'undefined' && pickOpen) || (typeof btdOpen !== 'undefined' && btdOpen);
+        if (flowBusy && state === 'idle' && !waitingGuestUi && Date.now() - flowStartedAt > 90000) {
           // A start that never finished (camera not answering) must not lock the welcome screen for good.
           console.warn('Start was stuck for over 90 s: unlocking');
           flowBusy = false; try { readyOverlay.classList.remove('ready-active'); setGettingReady(false); } catch (e) { }
@@ -77212,16 +77273,16 @@ function cashSend(cmd) {
 if (typeof window !== 'undefined') window.esp32Send = cashSend;
 
 function cashSendCurrentState() {
-  var cmds = ['session_idle'];
-  if (typeof cashStateHook === 'function') {
-    try {
-      var c = cashStateHook();
-      if (Array.isArray(c) && c.length) cmds = c;
-      else if (c) cmds = [c];
-    } catch (e) { }
-  }
   setTimeout(function () {
     if (!cashConnected()) return;
+    var cmds = ['session_idle'];
+    if (typeof cashStateHook === 'function') {
+      try {
+        var c = cashStateHook();
+        if (Array.isArray(c) && c.length) cmds = c;
+        else if (c) cmds = [c];
+      } catch (e) { }
+    }
     for (var i = 0; i < cmds.length; i++) {
       if (cmds[i]) cashSend(cmds[i]);
     }
@@ -78232,6 +78293,7 @@ async function cashStopLink(keepEnabled) {
           payIdle(); payRenderCash(); payCashCheck();
         } else {
           esp32SendCredit(cashBalance(), true);
+          if (payState.view === 'payChoose' && !paySheet.hidden) payLayoutChoose();
           if (!payCashAuto(true)) { try { showToast(peso(n) + ' received · ' + peso(cashBalance()) + ' credit', 2500); } catch (e) { } }
         }
         refreshPayBadge();
@@ -78345,7 +78407,7 @@ async function cashStopLink(keepEnabled) {
         payLayoutChoose();
         payShow('payChoose');
       });
-      document.getElementById('payClose').addEventListener('click', function () { payFinish(false); });
+      document.getElementById('payClose').addEventListener('click', function () { if (payState.view === 'payDone') return; payFinish(false); });
       var payRetryBtn = document.getElementById('payRetry');
       if (payRetryBtn) payRetryBtn.addEventListener('click', function () { payStartQr(payState.tier, payState.price, payState.label); });
       var paySimBtn = document.getElementById('paySim');
@@ -88813,6 +88875,13 @@ function fxWavUrl(kind) {
           t.globalCompositeOperation = 'source-over';
           ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = fast ? 'medium' : 'high';
           ctx.drawImage(SPOT_TMP, 0, 0, tw, th, x + rx0, y + ry0, tw, th);
+          if (shot && typeof shot._shotIndex === 'number' && !BOX_PROBE && ctx.canvas === previewCanvas) {
+            ctx.save();
+            ctx.translate(x + g.cx, y + g.cy);
+            if (g.a || rotDeg) ctx.rotate(g.a + rotDeg * Math.PI / 180);
+            recordShotSlotBox(shot._shotIndex, ctx, -drawW / 2, -drawH / 2, drawW, drawH);
+            ctx.restore();
+          }
         });
         ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = fast ? 'medium' : 'high';
         if (art) ctx.drawImage(art.punched, x, y, w, h);

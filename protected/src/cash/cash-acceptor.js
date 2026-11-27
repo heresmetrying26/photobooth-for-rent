@@ -252,16 +252,16 @@ function cashSend(cmd) {
 if (typeof window !== 'undefined') window.esp32Send = cashSend;
 
 function cashSendCurrentState() {
-  var cmds = ['session_idle'];
-  if (typeof cashStateHook === 'function') {
-    try {
-      var c = cashStateHook();
-      if (Array.isArray(c) && c.length) cmds = c;
-      else if (c) cmds = [c];
-    } catch (e) { }
-  }
   setTimeout(function () {
     if (!cashConnected()) return;
+    var cmds = ['session_idle'];
+    if (typeof cashStateHook === 'function') {
+      try {
+        var c = cashStateHook();
+        if (Array.isArray(c) && c.length) cmds = c;
+        else if (c) cmds = [c];
+      } catch (e) { }
+    }
     for (var i = 0; i < cmds.length; i++) {
       if (cmds[i]) cashSend(cmds[i]);
     }

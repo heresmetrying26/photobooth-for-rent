@@ -142,6 +142,10 @@ class Esp32Bridge(
                     val st = i.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)
                     if (st == BluetoothAdapter.STATE_OFF || st == BluetoothAdapter.STATE_TURNING_OFF) {
                         handleLinkLost("Bluetooth was turned off.")
+                    } else if (st == BluetoothAdapter.STATE_ON) {
+                        main.postDelayed({
+                            if (!shuttingDown && !connected && !scanning) connectSaved()
+                        }, 800)
                     }
                     return
                 }
@@ -438,12 +442,13 @@ class Esp32Bridge(
 
     @JavascriptInterface
     fun connectSaved(): Boolean {
+        if (scanning) return false
         val prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val addr = prefs.getString(KEY_ADDR, "") ?: ""
         if (addr.isEmpty()) return false
         val ad = adapter ?: return false
         if (!hasPermission() || !ad.isEnabled) return false
-        if (connected && addr.equals(currentAddress, ignoreCase = true)) return true
+        if ((connected && addr.equals(currentAddress, ignoreCase = true)) || connectTimeoutTask != null || sppConnectingSocket != null) return true
         val name = prefs.getString(KEY_NAME, addr) ?: addr
         val mode = prefs.getString(KEY_MODE, "ble") ?: "ble"
         scheduleConnect(addr, name, mode, allowFallback = true, silent = true)

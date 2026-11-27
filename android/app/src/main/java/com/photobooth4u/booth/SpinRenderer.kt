@@ -704,8 +704,9 @@ object SpinRenderer {
                 aEnc.configure(aacFmt, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
                 aEnc.start()
 
-                muxer = MediaMuxer(outFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-                val outVTrack = muxer.addTrack(vFmt)
+                val m = MediaMuxer(outFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+                muxer = m
+                val outVTrack = m.addTrack(vFmt)
                 var outATrack = -1
 
                 // First drive audio encoder output format so both tracks register before MediaMuxer.start()
@@ -744,7 +745,7 @@ object SpinRenderer {
                         }
                         val oi = aEnc.dequeueOutputBuffer(aBufInfo, CODEC_TIMEOUT_US)
                         if (oi == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                            if (outATrack < 0) outATrack = muxer.addTrack(aEnc.outputFormat)
+                            if (outATrack < 0) outATrack = m.addTrack(aEnc.outputFormat)
                         } else if (oi >= 0) {
                             val ob = aEnc.getOutputBuffer(oi)
                             if (ob != null && (aBufInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0 && aBufInfo.size > 0) {
@@ -766,7 +767,7 @@ object SpinRenderer {
                 }
 
                 if (outATrack < 0 || encodedAudioFrames.isEmpty()) return false
-                muxer.start()
+                m.start()
                 muxStarted = true
 
                 val vBuf = ByteBuffer.allocate(512 * 1024)
@@ -778,11 +779,11 @@ object SpinRenderer {
                     vInfo.size = sz
                     vInfo.presentationTimeUs = vExt.sampleTime
                     vInfo.flags = vExt.sampleFlags
-                    muxer.writeSampleData(outVTrack, vBuf, vInfo)
+                    m.writeSampleData(outVTrack, vBuf, vInfo)
                     vExt.advance()
                 }
                 for ((bytes, bi) in encodedAudioFrames) {
-                    muxer.writeSampleData(outATrack, ByteBuffer.wrap(bytes), bi)
+                    m.writeSampleData(outATrack, ByteBuffer.wrap(bytes), bi)
                 }
                 return true
             } finally {

@@ -4,13 +4,13 @@ Generates Android mipmap launcher icons (ic_launcher.png + ic_launcher_round.png
 from a 1024×1024 source image.
 
 Usage:
-    python android/scripts/gen_icons.py <source.png|.jpg>
+    python android/scripts/gen_icons.py <source.png|.jpg> [bg_hex]
 
 The script writes into android/app/src/main/res/mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/.
 It also produces the adaptive icon foreground/background layers for API 26+
 in mipmap-anydpi-v26/.
 """
-import sys, os
+import sys, os, re
 from pathlib import Path
 from PIL import Image, ImageDraw
 
@@ -78,17 +78,29 @@ def main():
         canvas.save(out_dir / 'ic_launcher_foreground.png')
 
     # Background color
+    bg_hex = sys.argv[2] if len(sys.argv) > 2 else '#F5F1EA'
+    if not re.match(r'^#[0-9A-Fa-f]{6}$', bg_hex):
+        print(f'Invalid background color: {bg_hex}', file=sys.stderr)
+        sys.exit(1)
     values_dir = res_dir / 'values'
     values_dir.mkdir(parents=True, exist_ok=True)
     colors_path = values_dir / 'colors.xml'
     colors_content = colors_path.read_text() if colors_path.exists() else '<resources></resources>'
-    if 'ic_launcher_background' not in colors_content:
-        colors_content = colors_content.replace(
-            '</resources>',
-            '    <color name="ic_launcher_background">#F5F1EA</color>\n</resources>'
+    if 'ic_launcher_background' in colors_content:
+        colors_content = re.sub(
+            r'<color name="ic_launcher_background">[^<]*</color>',
+            f'<color name="ic_launcher_background">{bg_hex}</color>',
+            colors_content,
         )
         colors_path.write_text(colors_content)
-        print('  colors.xml: added ic_launcher_background  ✓')
+        print(f'  colors.xml: updated ic_launcher_background to {bg_hex}  ✓')
+    else:
+        colors_content = colors_content.replace(
+            '</resources>',
+            f'    <color name="ic_launcher_background">{bg_hex}</color>\n</resources>'
+        )
+        colors_path.write_text(colors_content)
+        print(f'  colors.xml: added ic_launcher_background ({bg_hex})  ✓')
 
     print('\nDone. All mipmap icons generated.')
 

@@ -30,6 +30,7 @@ final class SpinQuickShareViewController: UIViewController, UITextFieldDelegate 
     private let shareCard = UIView()
     private let qrImageView = UIImageView()
     private let qrSubLabel = UILabel()
+    private let linkCopyBtn = UIButton(type: .system)
     private let stationBadgeLabel = UILabel()
     private let airdropBtn = UIButton(type: .system)
 
@@ -228,6 +229,17 @@ final class SpinQuickShareViewController: UIViewController, UITextFieldDelegate 
             qrImageView.heightAnchor.constraint(equalToConstant: 168)
         ])
 
+        linkCopyBtn.setTitle("", for: .normal)
+        linkCopyBtn.titleLabel?.font = .monospacedSystemFont(ofSize: 11.5, weight: .semibold)
+        linkCopyBtn.titleLabel?.lineBreakMode = .byTruncatingMiddle
+        linkCopyBtn.setTitleColor(UIColor(red: 0.96, green: 0.945, blue: 0.918, alpha: 1), for: .normal)
+        linkCopyBtn.backgroundColor = UIColor(white: 1, alpha: 0.08)
+        linkCopyBtn.layer.cornerRadius = 10
+        linkCopyBtn.layer.borderWidth = 1
+        linkCopyBtn.layer.borderColor = UIColor(white: 1, alpha: 0.16).cgColor
+        linkCopyBtn.contentEdgeInsets = UIEdgeInsets(top: 8, left: 10, bottom: 8, right: 10)
+        linkCopyBtn.addTarget(self, action: #selector(didTapCopyShareLink), for: .touchUpInside)
+
         airdropBtn.setTitle("📤 Save / AirDrop Video", for: .normal)
         airdropBtn.titleLabel?.font = .systemFont(ofSize: 15, weight: .bold)
         airdropBtn.setTitleColor(.white, for: .normal)
@@ -297,9 +309,10 @@ final class SpinQuickShareViewController: UIViewController, UITextFieldDelegate 
         doneBtn.contentEdgeInsets = UIEdgeInsets(top: 12, left: 20, bottom: 12, right: 20)
         doneBtn.addTarget(self, action: #selector(didTapDone), for: .touchUpInside)
 
-        [qrHeading, qrSubLabel, qrBg, airdropBtn, onlineStatusLabel, onlineControlsStack, feedbackLabel, stationBadgeLabel, doneBtn].forEach {
+        [qrHeading, qrSubLabel, qrBg, linkCopyBtn, airdropBtn, onlineStatusLabel, onlineControlsStack, feedbackLabel, stationBadgeLabel, doneBtn].forEach {
             cardStack.addArrangedSubview($0)
         }
+        linkCopyBtn.widthAnchor.constraint(equalTo: cardStack.widthAnchor).isActive = true
         airdropBtn.widthAnchor.constraint(equalTo: cardStack.widthAnchor).isActive = true
         onlineControlsStack.widthAnchor.constraint(equalTo: cardStack.widthAnchor).isActive = true
         doneBtn.widthAnchor.constraint(equalTo: cardStack.widthAnchor).isActive = true
@@ -390,13 +403,17 @@ final class SpinQuickShareViewController: UIViewController, UITextFieldDelegate 
         let targetQR = (onlineShareURL?.isEmpty == false ? onlineShareURL : nil) ?? localPageURL
         if !targetQR.isEmpty {
             qrImageView.image = Self.generateQRCode(from: targetQR)
+            let display = targetQR.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "")
+            linkCopyBtn.setTitle("🔗 \(display)", for: .normal)
+            linkCopyBtn.isHidden = false
         } else {
             qrImageView.image = nil
+            linkCopyBtn.isHidden = true
         }
 
         let online = PBLocal.shared.isOnline()
         if let cloud = onlineShareURL, !cloud.isEmpty, online {
-            qrSubLabel.text = "Scan QR to save (cloud link ready)"
+            qrSubLabel.text = "Scan QR or type the link below (cloud ready)"
             onlineControlsStack.isHidden = false
             if onlineStatusLabel.text?.isEmpty != false {
                 onlineStatusLabel.text = "☁️ Online: WhatsApp & Email ready"
@@ -405,12 +422,12 @@ final class SpinQuickShareViewController: UIViewController, UITextFieldDelegate 
         } else {
             qrSubLabel.text = localPageURL.isEmpty
                 ? "Join Wi-Fi/Hotspot for QR download, or tap Save / AirDrop below"
-                : "Join booth Wi-Fi & scan QR to save directly in browser"
-            onlineControlsStack.isHidden = true
+                : "Scan QR or type the link below (booth Wi-Fi)"
+            onlineControlsStack.isHidden = localPageURL.isEmpty
             if onlineStatusLabel.text?.isEmpty != false {
-                onlineStatusLabel.text = online
-                    ? "Local Wi-Fi QR & AirDrop ready (set Drive folder in Setup for WhatsApp/Email links)"
-                    : "Offline mode — scan QR code, Save, or AirDrop"
+                onlineStatusLabel.text = localPageURL.isEmpty
+                    ? "Offline mode — Save or AirDrop directly"
+                    : "Booth Wi-Fi link ready — scan QR, type link, or send via WhatsApp / Email"
             }
             onlineStatusLabel.textColor = UIColor(white: 0.72, alpha: 1)
         }
@@ -451,6 +468,13 @@ final class SpinQuickShareViewController: UIViewController, UITextFieldDelegate 
 
     // MARK: - Actions
 
+    @objc private func didTapCopyShareLink() {
+        let target = (onlineShareURL?.isEmpty == false ? onlineShareURL : nil) ?? localPageURL
+        guard !target.isEmpty else { return }
+        UIPasteboard.general.string = target
+        feedbackLabel.text = "✓ Share link copied!"
+    }
+
     @objc private func didTapMute() {
         isMuted.toggle()
         player?.isMuted = isMuted
@@ -468,8 +492,9 @@ final class SpinQuickShareViewController: UIViewController, UITextFieldDelegate 
 
     @objc private func didTapWhatsApp() {
         dismissKeyboard()
-        guard PBLocal.shared.isOnline(), let shareUrl = onlineShareURL, !shareUrl.isEmpty else {
-            feedbackLabel.text = "Online link needed for WhatsApp."
+        let shareUrl = ((onlineShareURL?.isEmpty == false && PBLocal.shared.isOnline()) ? onlineShareURL : nil) ?? localPageURL
+        guard !shareUrl.isEmpty else {
+            feedbackLabel.text = "Join Wi-Fi or connect online to get a share link."
             return
         }
         let phone = Self.normalizeWhatsAppPhone(waField.text ?? "")
@@ -494,13 +519,28 @@ final class SpinQuickShareViewController: UIViewController, UITextFieldDelegate 
 
     @objc private func didTapSendEmail() {
         dismissKeyboard()
-        guard PBLocal.shared.isOnline(), let shareUrl = onlineShareURL, !shareUrl.isEmpty else {
-            feedbackLabel.text = "Online link needed to send email."
+        let hasCloud = (onlineShareURL?.isEmpty == false && PBLocal.shared.isOnline())
+        let shareUrl = hasCloud ? (onlineShareURL ?? "") : localPageURL
+        guard !shareUrl.isEmpty else {
+            feedbackLabel.text = "Join Wi-Fi or connect online to get a share link."
             return
         }
         let to = (mailField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard to.contains("@"), to.contains(".") else {
             feedbackLabel.text = "Enter a valid email address."
+            return
+        }
+
+        if !hasCloud {
+            let subj = "\(eventTitle.isEmpty ? "360 Video Booth" : eventTitle) — Your 360 Video"
+            let bodyTxt = "Watch and save your 360 video (connect to booth Wi-Fi):\n\n\(shareUrl)"
+            let sEnc = Self.encodeQueryValue(subj)
+            let bEnc = Self.encodeQueryValue(bodyTxt)
+            let tEnc = to.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? to
+            if let mailto = URL(string: "mailto:\(tEnc)?subject=\(sEnc)&body=\(bEnc)") {
+                UIApplication.shared.open(mailto, options: [:], completionHandler: nil)
+            }
+            feedbackLabel.text = "Opening Mail app with Wi-Fi link…"
             return
         }
 
@@ -575,6 +615,11 @@ final class SpinQuickShareViewController: UIViewController, UITextFieldDelegate 
 
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.resignFirstResponder()
+        if textField === waField {
+            didTapWhatsApp()
+        } else if textField === mailField {
+            didTapSendEmail()
+        }
         return true
     }
 

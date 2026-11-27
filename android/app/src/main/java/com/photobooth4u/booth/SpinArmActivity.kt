@@ -466,7 +466,12 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
     private fun prefs() = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     private fun normalizeSendUrl(raw: String): String? {
-        val m = SEND_URL_RE.find(raw.trim()) ?: return null
+        var s = raw.trim()
+        if (s.isEmpty()) return null
+        if (!s.startsWith("http://", ignoreCase = true) && !s.startsWith("https://", ignoreCase = true)) {
+            s = "http://$s"
+        }
+        val m = SEND_URL_RE.find(s) ?: return null
         return m.groupValues[1]
     }
 
@@ -1649,7 +1654,7 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
         }
         pairBtn = hudBtn("📱 Station", "#29FFFFFF") {
             if (isStandaloneMode) openStationModal()
-            else launchQrScanner()
+            else promptPairMethod()
         }
         for (b in listOf(calBtn, recBtn, lockBtn, pairBtn)) {
             b.layoutParams = LinearLayout.LayoutParams(0, px(42), 1f).apply { leftMargin = px(3); rightMargin = px(3) }
@@ -2102,6 +2107,16 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
     private fun openSettings() { isSettingsOpen = true; syncSettingsUI(); settingsOverlay.visibility = View.VISIBLE }
     private fun closeSettings() { isSettingsOpen = false; settingsOverlay.visibility = View.GONE }
 
+    private fun promptPairMethod() {
+        AlertDialog.Builder(this)
+            .setTitle("Pair with Laptop 360 Desk")
+            .setItems(arrayOf("📷 Scan Laptop QR Code", "⌨️ Type / Paste Laptop URL")) { _, which ->
+                if (which == 0) launchQrScanner() else promptManualUrl()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun launchQrScanner() {
         val opts = ScanOptions().apply {
             setDesiredBarcodeFormats(ScanOptions.QR_CODE)
@@ -2114,16 +2129,22 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
 
     private fun promptManualUrl() {
         val input = EditText(this).apply {
-            hint = "http://192.168.1.50:47777/send/xxxx"
+            hint = "192.168.1.50:47777/send/xxxx"
             setText(sendUrl)
+            isSingleLine = true
         }
         AlertDialog.Builder(this)
             .setTitle("Enter Laptop 360 Desk URL")
+            .setMessage("Type or paste the Send URL shown on your laptop's 360 Desk.")
             .setView(input)
             .setPositiveButton("Connect") { _, _ ->
                 val norm = normalizeSendUrl(input.text?.toString() ?: "")
-                if (norm == null) showToast("Invalid URL — copy from 360 Desk.")
-                else verifyPairAndFetchConfig(norm, silent = false)
+                if (norm == null) {
+                    showToast("Invalid URL — copy from 360 Desk.")
+                } else {
+                    if (isSettingsOpen) closeSettings()
+                    verifyPairAndFetchConfig(norm, silent = false)
+                }
             }
             .setNegativeButton("Cancel", null)
             .show()

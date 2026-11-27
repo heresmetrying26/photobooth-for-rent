@@ -137,6 +137,7 @@ export function status() {
   if (!state.lic) return { ok: false, reason: 'none' };
   const p = readLicence(state.lic);
   if (!p || p.mid !== machineId()) return { ok: false, reason: 'invalid', message: 'This licence isn’t for this computer. Activate with your code.' };
+  if (p.feat && p.feat.spin360Only) return { ok: false, reason: 'invalid', message: 'This licence is for the standalone 360 Arm Cam app only. Activate this booth with your regular code (without -360).' };
   if (state.revoked) return { ok: false, reason: 'revoked', p, message: state.revoked.error || 'This laptop’s licence was cancelled. Activate it again with your code.' };
   if (state.skew) return { ok: false, reason: 'clock', p, message: 'This computer’s date and time are wrong. Set them to automatic in the computer’s settings, then open the app again.' };
   if (now < (state.seen || 0) - CLOCK_SLACK || now < (p.iat || 0) - CLOCK_SLACK) {

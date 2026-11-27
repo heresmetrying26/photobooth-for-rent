@@ -212,6 +212,10 @@ class AppLicence(private val ctx: Context) {
         if (p.optString("mid") != machineId()) {
             return LicStatus(false, "invalid", "This licence isn’t for this tablet. Activate it again with your code.", null, "")
         }
+        val isSpinArmApp = ctx.packageName == "com.photobooth4u.spinarm"
+        if (!isSpinArmApp && p.optJSONObject("feat")?.optBoolean("spin360Only", false) == true) {
+            return LicStatus(false, "invalid", "This licence is for the standalone 360 Arm Cam app only. Activate this booth with your regular code (without -360).", null, "")
+        }
         revokedReason?.let {
             return LicStatus(false, "revoked", revokedError?.takeIf { e -> e.isNotBlank() } ?: "This tablet’s code was cancelled. Activate it again with your code.", p, "")
         }
@@ -283,14 +287,30 @@ class AppLicence(private val ctx: Context) {
     /** The signed licence text currently held by this tablet (for authenticating /api/setup cloud sync). */
     fun currentLicenceString(): String? = lic
 
-    /** Activates this tablet with a rental code. Needs Wi-Fi; calls back on the main thread. */
-    fun activate(code: String, cb: (ok: Boolean, error: String?) -> Unit) {
+    /** Returns true when this device holds an active licence with 360 Video Booth enabled. */
+    fun hasSpin360Entitlement(): Boolean {
+        val st = status()
+        val feat = st.payload?.optJSONObject("feat") ?: return false
+        if (!st.ok) return false
+        if (feat.optBoolean("spin360Only", false)) return true
+        return feat.optJSONObject("extras")?.optBoolean("spin360", false) == true
+    }
+
+    /** Clears the stored licence locally without contacting the server. */
+    fun clearLocal() {
+        lic = null; revokedReason = null; revokedError = null; lastCheck = 0L; lastTry = 0L; skew = 0L
+        saveState()
+    }
+
+    /** Activates this device with a rental code. Needs Wi-Fi; calls back on the main thread. */
+    fun activate(code: String, spin360Companion: Boolean = false, cb: (ok: Boolean, error: String?) -> Unit) {
         val c = code.trim()
         if (c.isEmpty()) { cb(false, "Type your code first."); return }
         thread(name = "pb-licence-activate") {
             val body = JSONObject()
                 .put("action", "activate").put("code", c).put("mid", machineId())
                 .put("name", deviceName()).put("os", "android").put("ver", appVersion())
+            if (spin360Companion) body.put("spin360Companion", true)
             val res = post(body, 20000)
             if (res == null) { mainHandler.post { cb(false, "Can’t reach photobooth4u. Check the Wi-Fi and try again.") }; return@thread }
             val licText = res.json.optString("licence", "")
@@ -301,6 +321,38 @@ class AppLicence(private val ctx: Context) {
             applyClockFrom(res.date)
             store(licText)
             mainHandler.post { cb(true, null) }
+        }
+    }
+
+    /** Deactivates the current licence on the server and clears local state. */
+    fun deactivate(cb: (ok: Boolean, error: String?) -> Unit) {
+        val l = lic
+        if (l.isNullOrBlank()) {
+            clearLocal()
+            mainHandler.post { cb(true, null) }
+            return
+        }
+        val isSpin360Only = readLicence(l)?.optJSONObject("feat")?.optBoolean("spin360Only", false) == true
+        thread(name = "pb-licence-deactivate") {
+            val body = JSONObject().put("action", "deactivate").put("licence", l).put("mid", machineId())
+            val res = post(body, 15000)
+            if (res == null) {
+                if (isSpin360Only) {
+                    clearLocal()
+                    mainHandler.post { cb(true, null) }
+                } else {
+                    mainHandler.post { cb(false, "Connect to Wi-Fi to release this device slot from your code.") }
+                }
+                return@thread
+            }
+            if ((res.status == 200 && res.json.optBoolean("ok", false)) ||
+                (res.status == 403 && res.json.optBoolean("revoked", false))
+            ) {
+                clearLocal()
+                mainHandler.post { cb(true, null) }
+                return@thread
+            }
+            mainHandler.post { cb(false, res.json.optString("error", "Could not deactivate (" + res.status + ").")) }
         }
     }
 

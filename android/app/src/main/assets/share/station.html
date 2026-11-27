@@ -519,6 +519,50 @@
       color: #FF7B6B
     }
 
+    .link-box {
+      width: 100%;
+      max-width: 260px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 10px;
+      padding: 6px 8px;
+      margin: -8px 0 10px
+    }
+
+    .link-box input {
+      flex: 1;
+      min-width: 0;
+      background: transparent;
+      border: 0;
+      color: #F5F1EA;
+      font: 600 11px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      outline: none
+    }
+
+    .link-copy {
+      flex-shrink: 0;
+      border: 0;
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+      font: 700 11px/1 inherit;
+      padding: 6px 9px;
+      cursor: pointer
+    }
+
+    .mode-btn {
+      background: rgba(255, 255, 255, 0.09);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #F5F1EA;
+      font: 700 11.5px/1 inherit;
+      border-radius: 99px;
+      padding: 6px 12px;
+      cursor: pointer
+    }
+
     .timer-bar {
       width: 100%;
       max-width: 260px;
@@ -597,7 +641,7 @@
       <h1>__TITLE__</h1>
       <div class="badge">📱 Sharing Station</div>
     </div>
-    <div class="stat"><span class="pulse"></span><span id="stCount">Live</span></div>
+    <div class="stat"><button type="button" class="mode-btn" id="stModeBtn">Gallery</button><span class="pulse"></span><span id="stCount">Live</span></div>
   </header>
 
   <div class="controls" id="stControls">
@@ -637,6 +681,10 @@
         <p>Point your phone’s camera at the QR code to open and save your photo.</p>
         <div id="mSessionPills" class="session-pills" style="display:none"></div>
         <div class="qr-frame"><img id="mQr" alt="QR Code"></div>
+        <div class="link-box" id="mLinkBox">
+          <input type="text" id="mLinkInput" readonly aria-label="Direct share link">
+          <button type="button" class="link-copy" id="mCopyLink">Copy</button>
+        </div>
         <div class="qr-session-note" id="mQrNote"
           style="display:none;font-size:11px;color:#8E8A93;margin:-6px 0 10px;text-align:center">1 QR saves all session
           photos (print, GIF & solos)</div>
@@ -653,7 +701,7 @@
           </div>
           <div class="share-msg" id="mShareMsg"></div>
         </div>
-        <div class="share-msg" id="mLocalNote" style="margin-bottom:8px;">Offline Wi-Fi · Scan QR or tap Save</div>
+        <div class="share-msg" id="mLocalNote" style="margin-bottom:8px;">Scan QR, type the link above, or enter WhatsApp / Email</div>
         <button type="button" class="btn alt" id="mDone">Done (Next guest)</button>
         <div class="timer-bar"><i id="mBar"></i></div>
         <div class="timer-text">Auto-closing in <span id="mSec">35</span>s</div>
@@ -663,26 +711,43 @@
 
   <script>
     var SLUG = "__SLUG__";
-    var files = [], currentFilter = 'all', activeItem = null, timerId = null, timeLeft = 35;
+    var files = [], currentFilter = 'all', activeItem = null, activePageUrl = '', timerId = null, timeLeft = 35;
     // Default mode is pure LumaShare Session Mode (Standby + auto-pop current session only).
-    // Only allow gallery grid if explicitly requested via ?gallery=1 or ?mode=gallery.
+    // Guests/operators can also toggle Gallery Mode anytime via the header button or ?gallery=1.
     var isGalleryMode = /[?&](gallery=1|mode=gallery)\b/i.test(location.search);
     var privacyOnly = !isGalleryMode;
     var hasLoaded = false, lastKnownTop = null;
     var emptyPollCount = 0;
 
-    if (isGalleryMode) {
-      document.getElementById('stControls').style.display = 'flex';
-      document.getElementById('stGrid').style.display = 'grid';
-      document.getElementById('standbyView').style.display = 'none';
-    } else {
-      document.getElementById('stControls').style.display = 'none';
-      document.getElementById('stGrid').style.display = 'none';
-      document.getElementById('standbyView').style.display = 'flex';
+    function applyStationViewMode() {
+      var modeBtn = document.getElementById('stModeBtn');
+      if (isGalleryMode) {
+        document.getElementById('stControls').style.display = 'flex';
+        document.getElementById('stGrid').style.display = 'grid';
+        document.getElementById('standbyView').style.display = 'none';
+        if (modeBtn) modeBtn.textContent = 'Standby';
+        render();
+      } else {
+        document.getElementById('stControls').style.display = 'none';
+        document.getElementById('stGrid').style.display = 'none';
+        document.getElementById('standbyView').style.display = 'flex';
+        if (modeBtn) modeBtn.textContent = 'Gallery';
+      }
+    }
+    applyStationViewMode();
+    if (!isGalleryMode) {
       setTimeout(function () {
         var b = document.getElementById('wrongEventBar');
         if (b && !hasLoaded) b.style.display = 'block';
       }, 15000);
+    }
+    var stModeBtnEl = document.getElementById('stModeBtn');
+    if (stModeBtnEl) {
+      stModeBtnEl.addEventListener('click', function () {
+        isGalleryMode = !isGalleryMode;
+        privacyOnly = !isGalleryMode;
+        applyStationViewMode();
+      });
     }
 
     function playChime() {
@@ -860,7 +925,7 @@
       sec.textContent = '35';
       timerId = setInterval(function () {
         var ae = document.activeElement;
-        if (ae && (ae.id === 'mWaInput' || ae.id === 'mMailInput')) return;
+        if (ae && (ae.id === 'mWaInput' || ae.id === 'mMailInput' || ae.id === 'mLinkInput')) return;
         timeLeft--;
         sec.textContent = String(timeLeft);
         bar.style.width = Math.round((timeLeft / 35) * 100) + '%';
@@ -894,20 +959,51 @@
     }
 
     function syncStationShareControls(it, localPageUrl) {
+      activePageUrl = localPageUrl || '';
       var shareBtn = document.getElementById('mShareFile');
       if (shareBtn) {
         shareBtn.style.display = (typeof navigator.share === 'function') ? 'inline-block' : 'none';
       }
       var onlineUrl = (it && it.onlineUrl) ? it.onlineUrl : '';
       var hasOnline = !!onlineUrl && navigator.onLine !== false;
+      var displayUrl = hasOnline ? onlineUrl : activePageUrl;
+      var linkIn = document.getElementById('mLinkInput');
+      var linkBox = document.getElementById('mLinkBox');
+      if (linkIn) linkIn.value = displayUrl ? displayUrl.replace(/^https?:\/\//i, '') : '';
+      if (linkBox) linkBox.style.display = displayUrl ? 'flex' : 'none';
       var onlineBox = document.getElementById('mOnlineShare');
       var localNote = document.getElementById('mLocalNote');
       var msgEl = document.getElementById('mShareMsg');
       if (msgEl) { msgEl.textContent = ''; msgEl.className = 'share-msg'; }
       var wIn = document.getElementById('mWaInput'); if (wIn) wIn.value = '';
       var mIn = document.getElementById('mMailInput'); if (mIn) mIn.value = '';
-      if (onlineBox) onlineBox.style.display = hasOnline ? 'flex' : 'none';
-      if (localNote) localNote.style.display = hasOnline ? 'none' : 'block';
+      if (onlineBox) onlineBox.style.display = displayUrl ? 'flex' : 'none';
+      if (localNote) {
+        localNote.textContent = hasOnline
+          ? 'Scan QR, type the link above, or send via WhatsApp / Email'
+          : 'Booth Wi-Fi · Scan QR, type the link above, or send via WhatsApp / Email';
+        localNote.style.display = 'block';
+      }
+    }
+
+    var mCopyLinkBtn = document.getElementById('mCopyLink');
+    if (mCopyLinkBtn) {
+      mCopyLinkBtn.addEventListener('click', async function () {
+        resetTimer();
+        var target = (activeItem && activeItem.onlineUrl && navigator.onLine !== false) ? activeItem.onlineUrl : activePageUrl;
+        if (!target) return;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(target);
+          } else {
+            var inp = document.getElementById('mLinkInput');
+            if (inp) { inp.focus(); inp.select(); document.execCommand('copy'); }
+          }
+          setShareMsg('Link copied ✓', 'ok');
+        } catch (e) {
+          setShareMsg('Select the link above to copy.', '');
+        }
+      });
     }
 
     var mShareFileBtn = document.getElementById('mShareFile');
@@ -933,13 +1029,13 @@
     if (mWaBtn) {
       mWaBtn.addEventListener('click', function () {
         resetTimer();
-        var onlineUrl = (activeItem && activeItem.onlineUrl) || '';
-        if (!onlineUrl || navigator.onLine === false) { setShareMsg('Online link needed for WhatsApp.', 'err'); return; }
+        var shareUrl = ((activeItem && activeItem.onlineUrl) && navigator.onLine !== false) ? activeItem.onlineUrl : activePageUrl;
+        if (!shareUrl) { setShareMsg('No share link available yet.', 'err'); return; }
         var phone = normalizeWhatsAppPhone(document.getElementById('mWaInput').value);
         if (!phone) { setShareMsg('Enter a valid WhatsApp number (e.g. 09171234567).', 'err'); return; }
         var evTitle = currentStationTitle();
         var kind = activeItem && activeItem.kind === 'video' ? '360 video' : 'photo';
-        var msg = 'Here is your ' + kind + ' from ' + evTitle + ': ' + onlineUrl;
+        var msg = 'Here is your ' + kind + ' from ' + evTitle + ': ' + shareUrl;
         var isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
         var target = (isMob ? 'whatsapp://send?phone=' : 'https://wa.me/') + encodeURIComponent(phone) + (isMob ? '&text=' : '?text=') + encodeURIComponent(msg);
         setShareMsg('Opening WhatsApp…', 'ok');
@@ -953,13 +1049,20 @@
       mMailBtn.addEventListener('click', async function () {
         resetTimer();
         var onlineUrl = (activeItem && activeItem.onlineUrl) || '';
-        if (!onlineUrl || navigator.onLine === false) { setShareMsg('Online link needed for email.', 'err'); return; }
+        var shareUrl = (onlineUrl && navigator.onLine !== false) ? onlineUrl : activePageUrl;
+        if (!shareUrl) { setShareMsg('No share link available yet.', 'err'); return; }
         var to = String(document.getElementById('mMailInput').value || '').trim();
         if (!/^[^\s@<>"']+@[^\s@<>"']+\.[A-Za-z]{2,24}$/.test(to)) {
           setShareMsg('Enter a valid email address.', 'err');
           return;
         }
         var evTitle = currentStationTitle();
+        var kind = activeItem && activeItem.kind === 'video' ? '360 video' : 'photo';
+        if (!onlineUrl || navigator.onLine === false) {
+          location.href = 'mailto:' + encodeURIComponent(to) + '?subject=' + encodeURIComponent(evTitle + ' — Your ' + kind) + '&body=' + encodeURIComponent(shareUrl);
+          setShareMsg('Opening Mail app with Wi-Fi link…', 'ok');
+          return;
+        }
         mMailBtn.disabled = true;
         mMailBtn.textContent = 'Sending…';
         try {
@@ -973,7 +1076,6 @@
             setShareMsg('Email sent to ' + to + ' ✓', 'ok');
             document.getElementById('mMailInput').value = '';
           } else {
-            var kind = activeItem && activeItem.kind === 'video' ? '360 video' : 'photo';
             location.href = 'mailto:' + encodeURIComponent(to) + '?subject=' + encodeURIComponent(evTitle + ' — Your ' + kind) + '&body=' + encodeURIComponent(onlineUrl);
             setShareMsg('Opening Mail app…', 'ok');
           }
@@ -985,6 +1087,11 @@
         }
       });
     }
+
+    var mWaInEl = document.getElementById('mWaInput');
+    if (mWaInEl) mWaInEl.addEventListener('keydown', function (e) { if (e.key === 'Enter' && mWaBtn) mWaBtn.click(); });
+    var mMailInEl = document.getElementById('mMailInput');
+    if (mMailInEl) mMailInEl.addEventListener('keydown', function (e) { if (e.key === 'Enter' && mMailBtn) mMailBtn.click(); });
 
     document.getElementById('mClose').addEventListener('click', closeModal);
     document.getElementById('mDone').addEventListener('click', closeModal);
@@ -1004,9 +1111,14 @@
 
     async function poll() {
       try {
-        var r = await fetch('/station/' + SLUG + '/list');
+        var r = await fetch(SLUG ? ('/station/' + encodeURIComponent(SLUG) + '/list') : '/station/list');
         var j = await r.json();
         if (j && j.ok && Array.isArray(j.files)) {
+          if (!SLUG && j.slug) SLUG = j.slug;
+          if (j.name) {
+            var h1 = document.querySelector('header h1');
+            if (h1 && h1.textContent === 'Sharing Station') h1.textContent = j.name;
+          }
           var isFirst = !hasLoaded;
           var newest = j.files[0];
           var changed = j.files.length !== files.length || (newest && files[0] && newest.name !== files[0].name);

@@ -1,5 +1,8 @@
 package com.photobooth4u.booth
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -193,6 +196,7 @@ class SpinQuickShareActivity : AppCompatActivity() {
     private lateinit var muteBtn: Button
     private lateinit var qrImage: ImageView
     private lateinit var qrSubLabel: TextView
+    private lateinit var linkCopyBtn: Button
     private lateinit var onlineStatusLabel: TextView
     private lateinit var onlineControlsBox: LinearLayout
     private lateinit var waInput: EditText
@@ -395,6 +399,28 @@ class SpinQuickShareActivity : AppCompatActivity() {
         }
         qrBg.addView(qrImage)
 
+        linkCopyBtn = Button(this).apply {
+            textSize = 11.5f
+            isAllCaps = false
+            typeface = Typeface.MONOSPACE
+            setTextColor(Color.parseColor("#F5F1EA"))
+            background = roundedBg("#18FFFFFF", 10, "#2CFFFFFF")
+            ellipsize = TextUtils.TruncateAt.MIDDLE
+            isSingleLine = true
+            setPadding(px(10), px(8), px(10), px(8))
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = px(10)
+            }
+            setOnClickListener {
+                val target = onlineShareUrl.ifEmpty { localPageUrl }
+                if (target.isNotEmpty()) {
+                    val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    cm.setPrimaryClip(ClipData.newPlainText("360 Video Link", target))
+                    feedbackLabel.text = "✓ Share link copied!"
+                }
+            }
+        }
+
         val shareSheetBtn = Button(this).apply {
             text = "📤 Save / Quick Share Video"
             textSize = 14.5f
@@ -518,6 +544,7 @@ class SpinQuickShareActivity : AppCompatActivity() {
         shareCard.addView(qrHeading)
         shareCard.addView(qrSubLabel)
         shareCard.addView(qrBg)
+        shareCard.addView(linkCopyBtn)
         shareCard.addView(shareSheetBtn)
         shareCard.addView(onlineStatusLabel)
         shareCard.addView(onlineControlsBox)
@@ -546,22 +573,28 @@ class SpinQuickShareActivity : AppCompatActivity() {
     private fun refreshShareState() {
         val qrTarget = onlineShareUrl.ifEmpty { localPageUrl }
         qrImage.setImageBitmap(generateQrBitmap(qrTarget))
+        if (qrTarget.isNotEmpty()) {
+            linkCopyBtn.text = "🔗 " + qrTarget.replaceFirst(Regex("^https?://", RegexOption.IGNORE_CASE), "")
+            linkCopyBtn.visibility = View.VISIBLE
+        } else {
+            linkCopyBtn.visibility = View.GONE
+        }
 
         val online = PBLocal.ensureActive(this).isOnline()
         if (onlineShareUrl.isNotEmpty() && online) {
-            qrSubLabel.text = "Scan QR to save (cloud link ready)"
+            qrSubLabel.text = "Scan QR or type the link below (cloud ready)"
             onlineControlsBox.visibility = View.VISIBLE
             onlineStatusLabel.text = "☁️ Online: WhatsApp & Email ready"
             onlineStatusLabel.setTextColor(Color.parseColor("#8CD9AD"))
         } else {
             qrSubLabel.text = if (localPageUrl.isEmpty())
                 "Join Wi-Fi/Hotspot for QR download, or tap Quick Share below"
-            else "Join booth Wi-Fi & scan QR to save in browser"
-            onlineControlsBox.visibility = View.GONE
+            else "Scan QR or type the link below (booth Wi-Fi)"
+            onlineControlsBox.visibility = if (localPageUrl.isEmpty()) View.GONE else View.VISIBLE
             if (onlineStatusLabel.text.isNullOrBlank()) {
-                onlineStatusLabel.text = if (online)
-                    "Local Wi-Fi QR ready (set Google Drive folder in Setup for WhatsApp/Email links)"
-                else "Offline mode — scan QR code, Save, or Quick Share"
+                onlineStatusLabel.text = if (localPageUrl.isEmpty())
+                    "Offline mode — Save or Quick Share directly"
+                else "Booth Wi-Fi link ready — scan QR, type link, or send via WhatsApp / Email"
             }
             onlineStatusLabel.setTextColor(Color.parseColor("#B8B4BE"))
         }
@@ -584,8 +617,9 @@ class SpinQuickShareActivity : AppCompatActivity() {
 
     private fun sendWhatsApp() {
         val online = PBLocal.ensureActive(this).isOnline()
-        if (!online || onlineShareUrl.isEmpty()) {
-            feedbackLabel.text = "Online link needed for WhatsApp."
+        val shareUrl = if (online && onlineShareUrl.isNotEmpty()) onlineShareUrl else localPageUrl
+        if (shareUrl.isEmpty()) {
+            feedbackLabel.text = "Join Wi-Fi or connect online to get a share link."
             return
         }
         val phone = normalizeWhatsAppPhone(waInput.text?.toString() ?: "")
@@ -593,7 +627,7 @@ class SpinQuickShareActivity : AppCompatActivity() {
             feedbackLabel.text = "Enter a valid WhatsApp number (e.g. 09171234567)."
             return
         }
-        val msg = "Here is your 360 video from $eventTitle: $onlineShareUrl"
+        val msg = "Here is your 360 video from $eventTitle: $shareUrl"
         val appUri = Uri.parse("whatsapp://send?phone=${encodeQueryValue(phone)}&text=${encodeQueryValue(msg)}")
         val webUri = Uri.parse("https://wa.me/${encodeQueryValue(phone)}?text=${encodeQueryValue(msg)}")
         try {
@@ -610,13 +644,27 @@ class SpinQuickShareActivity : AppCompatActivity() {
 
     private fun sendEmail() {
         val online = PBLocal.ensureActive(this).isOnline()
-        if (!online || onlineShareUrl.isEmpty()) {
-            feedbackLabel.text = "Online link needed to send email."
+        val hasCloud = online && onlineShareUrl.isNotEmpty()
+        val shareUrl = if (hasCloud) onlineShareUrl else localPageUrl
+        if (shareUrl.isEmpty()) {
+            feedbackLabel.text = "Join Wi-Fi or connect online to get a share link."
             return
         }
         val to = (mailInput.text?.toString() ?: "").trim()
         if (!MAIL_SIMPLE_RE.matches(to)) {
             feedbackLabel.text = "Enter a valid email address."
+            return
+        }
+        if (!hasCloud) {
+            val subj = "$eventTitle — Your 360 Video"
+            val bodyTxt = "Watch and save your 360 video (connect to booth Wi-Fi):\n\n$shareUrl"
+            val mailto = Uri.parse(
+                "mailto:${Uri.encode(to)}?subject=${encodeQueryValue(subj)}&body=${encodeQueryValue(bodyTxt)}"
+            )
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, mailto))
+            } catch (_: Exception) { }
+            feedbackLabel.text = "Opening Email app with Wi-Fi link…"
             return
         }
         mailBtn.isEnabled = false

@@ -253,6 +253,11 @@ class AppLicence {
         if (p["mid"] as? String) != machineId() {
             return Status(ok: false, reason: "invalid", message: "This licence isn't for this iPad. Activate it again with your code.", payload: nil, warn: "")
         }
+        #if !SPINARM_STANDALONE
+        if let feat = p["feat"] as? [String: Any], (feat["spin360Only"] as? NSNumber)?.boolValue == true {
+            return Status(ok: false, reason: "invalid", message: "This licence is for the standalone 360 Arm Cam app only. Activate this booth with your regular code (without -360).", payload: nil, warn: "")
+        }
+        #endif
         if currentRevReason != nil {
             let msg = (currentRevError?.isEmpty == false) ? currentRevError! : "This iPad's code was cancelled. Activate it again with your code."
             return Status(ok: false, reason: "revoked", message: msg, payload: p, warn: "")
@@ -330,13 +335,35 @@ class AppLicence {
         }.resume()
     }
 
-    func activate(code: String, completion: @escaping (_ ok: Bool, _ error: String?) -> Void) {
+    func hasSpin360Entitlement() -> Bool {
+        let st = status()
+        guard st.ok, let p = st.payload, let feat = p["feat"] as? [String: Any] else { return false }
+        if (feat["spin360Only"] as? NSNumber)?.boolValue == true { return true }
+        if let ex = feat["extras"] as? [String: Any] {
+            return (ex["spin360"] as? NSNumber)?.boolValue ?? false
+        }
+        return false
+    }
+
+    func clearLocal() {
+        stateLock.lock()
+        lic = nil
+        revokedReason = nil
+        revokedError = nil
+        lastCheck = 0
+        lastTry = 0
+        skew = 0
+        stateLock.unlock()
+        saveState()
+    }
+
+    func activate(code: String, spin360Companion: Bool = false, completion: @escaping (_ ok: Bool, _ error: String?) -> Void) {
         let c = code.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !c.isEmpty else {
             completion(false, "Type your rental code first.")
             return
         }
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "action": "activate",
             "code": c,
             "mid": machineId(),
@@ -344,6 +371,9 @@ class AppLicence {
             "os": "ios",
             "ver": appVersion()
         ]
+        if spin360Companion {
+            body["spin360Companion"] = true
+        }
         postLicense(body: body, timeout: 20.0) { [weak self] res in
             guard let self = self else { return }
             guard let res = res else {
@@ -366,6 +396,49 @@ class AppLicence {
             DispatchQueue.main.async {
                 completion(true, nil)
             }
+        }
+    }
+
+    func deactivate(completion: @escaping (_ ok: Bool, _ error: String?) -> Void) {
+        stateLock.lock()
+        let currentLic = lic
+        stateLock.unlock()
+        guard let l = currentLic, !l.isEmpty else {
+            clearLocal()
+            DispatchQueue.main.async { completion(true, nil) }
+            return
+        }
+        let body: [String: Any] = [
+            "action": "deactivate",
+            "licence": l,
+            "mid": machineId()
+        ]
+        let isSpin360Only = ((readLicence(l)?["feat"] as? [String: Any])?["spin360Only"] as? NSNumber)?.boolValue ?? false
+        postLicense(body: body, timeout: 15.0) { [weak self] res in
+            guard let self = self else { return }
+            guard let res = res else {
+                // Slot-free 360 licences don't occupy a device slot, so clearing locally offline is always safe.
+                if isSpin360Only {
+                    self.clearLocal()
+                    DispatchQueue.main.async { completion(true, nil) }
+                } else {
+                    DispatchQueue.main.async { completion(false, "Connect to Wi-Fi to release this device slot from your code.") }
+                }
+                return
+            }
+            let okFlag = (res.json["ok"] as? NSNumber)?.boolValue ?? false
+            if res.status == 200 && okFlag {
+                self.clearLocal()
+                DispatchQueue.main.async { completion(true, nil) }
+                return
+            }
+            if res.status == 403 && ((res.json["revoked"] as? NSNumber)?.boolValue ?? false) {
+                self.clearLocal()
+                DispatchQueue.main.async { completion(true, nil) }
+                return
+            }
+            let errMsg = (res.json["error"] as? String) ?? "Could not deactivate (\(res.status))."
+            DispatchQueue.main.async { completion(false, errMsg) }
         }
     }
 

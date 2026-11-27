@@ -484,8 +484,11 @@ final class SpinArmViewController: UIViewController,
     }
 
     private static func normalizeSendUrl(_ raw: String) -> String? {
-        let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !s.isEmpty else { return nil }
+        if !s.lowercased().hasPrefix("http://") && !s.lowercased().hasPrefix("https://") {
+            s = "http://" + s
+        }
         let pattern = #"^(https?://[^/\s]+/send/[A-Za-z0-9]+)"#
         guard let range = s.range(of: pattern, options: .regularExpression) else { return nil }
         return String(s[range])
@@ -2291,10 +2294,27 @@ final class SpinArmViewController: UIViewController,
     func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
         picker.dismiss(animated: true)
         guard let item = results.first?.itemProvider else { return }
+        let loadFallbackUIImage: () -> Void = { [weak self] in
+            if item.canLoadObject(ofClass: UIImage.self) {
+                item.loadObject(ofClass: UIImage.self) { [weak self] obj, _ in
+                    DispatchQueue.main.async {
+                        if let img = obj as? UIImage, let png = img.pngData() {
+                            self?.installOverlayImageData(png)
+                        } else {
+                            self?.showToast("Could not load selected image.")
+                        }
+                    }
+                }
+            } else {
+                DispatchQueue.main.async { self?.showToast("Could not load selected image.") }
+            }
+        }
         if item.hasItemConformingToTypeIdentifier(UTType.png.identifier) {
             item.loadDataRepresentation(forTypeIdentifier: UTType.png.identifier) { [weak self] data, _ in
-                if let d = data {
+                if let d = data, !d.isEmpty {
                     DispatchQueue.main.async { self?.installOverlayImageData(d) }
+                } else {
+                    loadFallbackUIImage()
                 }
             }
             return
@@ -2303,9 +2323,13 @@ final class SpinArmViewController: UIViewController,
             item.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { [weak self] data, _ in
                 if let d = data, let img = UIImage(data: d), let png = img.pngData() {
                     DispatchQueue.main.async { self?.installOverlayImageData(png) }
+                } else {
+                    loadFallbackUIImage()
                 }
             }
+            return
         }
+        loadFallbackUIImage()
     }
 
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
@@ -2315,8 +2339,10 @@ final class SpinArmViewController: UIViewController,
         let dir = PBLocal.shared.overlaysDirectory()
         switch activePickerKind {
         case .overlayFile:
-            if let data = try? Data(contentsOf: src) {
+            if let data = try? Data(contentsOf: src), !data.isEmpty {
                 installOverlayImageData(data)
+            } else {
+                showToast("Could not read selected PNG file.")
             }
         case .musicFile:
             if !saMusicFilename.isEmpty {

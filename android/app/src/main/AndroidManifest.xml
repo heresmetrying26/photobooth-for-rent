@@ -145,6 +145,17 @@
             android:screenOrientation="unspecified"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- Standalone 360 Arm Cam Activation Gate (only launcher in the standalone 360 Arm Cam variant) -->
+        <activity
+            android:name=".SpinArmGateActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:label="360 Arm Cam"
+            android:icon="@mipmap/ic_launcher"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- Standalone 360 Booth & Arm Camera Activity (Gyro auto-start + on-device video editing) -->
         <activity
             android:name=".SpinArmActivity"

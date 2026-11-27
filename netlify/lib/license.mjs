@@ -117,6 +117,57 @@ export function licenceFor(key, rec, dev, now, final) {
   });
 }
 
+// ---------- standalone 360 Arm Cam companion (-360 slot-free suffix) ----------
+// Adding "-360" to a rental or lifetime code activates the standalone 360 Arm Cam app
+// (iOS / Android) without occupying any booth device slot on the code's account.
+// Only accepted when the standalone 360 Arm Cam app sends spin360Companion: true and the
+// parent code has extras.spin360 enabled. Regular booth apps reject spin360Only licences.
+export function parseSpin360Code(raw) {
+  const s = String(raw || '').trim();
+  const dash = /^(.*?)\s*-\s*360$/i.exec(s);
+  if (dash) return { isSpin360Suffix: true, baseCode: dash[1].trim() };
+  // Standard PB codes are 14 chars (PB + 12 chars without '0'), so 17+ chars ending in 360 is also unambiguous.
+  const norm = s.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (norm.length >= 17 && norm.startsWith('PB') && norm.endsWith('360')) {
+    return { isSpin360Suffix: true, baseCode: norm.slice(0, -3) };
+  }
+  return { isSpin360Suffix: false, baseCode: s };
+}
+
+export function spin360CompanionLicence(key, rec, { lid, mid, name, os, ver }, now, final) {
+  const clean = (v, n) => String(v || '').replace(/[<>"\u0000-\u001f]/g, '').trim().slice(0, n);
+  const osKey = os === 'mac' ? 'mac' : os === 'android' ? 'android' : os === 'ios' ? 'ios' : 'win';
+  const isFinal = !!final && !!rec.lifetime;
+  const exp = rec.lifetime || rec.expiresAt >= LIFETIME_EXP ? null : rec.expiresAt;
+  const chk = isFinal ? FINAL_EXP : now + CHECK_DAYS * DAY;
+  const hard = isFinal ? FINAL_EXP : (exp || chk + GRACE_DAYS * DAY);
+  const licId = lid || randomBytes(10).toString('hex');
+  const label = clean(name, 40);
+  const feat = {
+    spin360Only: true,
+    extras: { vintage: false, roving: false, flipbook: false, video: false, spin360: true },
+    folderKey: rec.lifetime ? null : ((rec.folderName || rec.label || '').trim() || null),
+    folderPrefix: rec.lifetime ? ((rec.folderName || rec.label || rec.code || '').trim() || null) : null,
+    deviceNo: 0,
+    multiDevice: false,
+    pinResetAt: rec.pinResetAt || 0,
+    appMode: 'offline',
+    deviceLabel: label,
+    final: isFinal
+  };
+  return {
+    lid: licId,
+    licence: signLicence({
+      v: 1, typ: 'pb4u-desktop', lid: licId, mid, os: osKey, name: clean(name, 60), ver: clean(ver, 20),
+      label,
+      renter: rec.label || rec.folderName || '',
+      code: maskCode(key) + '-360',
+      lifetime: !!rec.lifetime,
+      exp, iat: now, chk, hard, feat
+    })
+  };
+}
+
 // ---------- free trial for the offline apps (Android / Windows / Mac) ----------
 // The shared trial password also activates an app, for the trial length set in Admin
 // (Trial password → minutes). No code record and no device slot is used: the licence is
@@ -162,7 +213,7 @@ export async function verifyDesktopAppAuth(b, { requireOnline = false } = {}) {
   if (!(b && b.licence && b.mid && process.env.PB_LICENSE_KEY)) return null;
   const lp = readLicence(b.licence);
   const mid = String(b.mid || '').trim().toUpperCase();
-  if (!lp || lp.typ !== 'pb4u-desktop' || lp.mid !== mid) {
+  if (!lp || lp.typ !== 'pb4u-desktop' || lp.mid !== mid || (lp.feat && lp.feat.spin360Only)) {
     return { ok: false, status: 401, error: 'locked', reason: 'invalid' };
   }
   const map = await readMap(lp.lid);

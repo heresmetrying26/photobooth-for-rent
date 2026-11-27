@@ -2159,7 +2159,7 @@ function openModal(it, sessionItems) {
   activePageUrl = pageUrl;
   var linkIn = document.getElementById('mLinkInput');
   var linkBox = document.getElementById('mLinkBox');
-  if (linkIn) linkIn.value = pageUrl ? pageUrl.replace(/^https?:\/\//i, '') : '';
+  if (linkIn) linkIn.value = pageUrl ? pageUrl.replace(/^https?:\\/\\//i, '') : '';
   if (linkBox) linkBox.style.display = pageUrl ? 'flex' : 'none';
   var msgEl = document.getElementById('mShareMsg');
   if (msgEl) { msgEl.textContent = ''; msgEl.className = 'share-msg'; }
@@ -2247,10 +2247,10 @@ function normalizeWhatsAppPhone(raw) {
   var digits = String(raw || '').replace(/[^0-9+]/g, '');
   if (!digits) return '';
   if (digits.charAt(0) === '+') digits = digits.slice(1);
-  else if (/^09\d{9}$/.test(digits)) digits = '63' + digits.slice(1);
-  else if (/^9\d{9}$/.test(digits)) digits = '63' + digits;
+  else if (/^09\\d{9}$/.test(digits)) digits = '63' + digits.slice(1);
+  else if (/^9\\d{9}$/.test(digits)) digits = '63' + digits;
   else if (digits.charAt(0) === '0') digits = digits.replace(/^0+/, '');
-  return /^\d{7,15}$/.test(digits) ? digits : '';
+  return /^\\d{7,15}$/.test(digits) ? digits : '';
 }
 function setShareMsg(text, cls) {
   var el = document.getElementById('mShareMsg');
@@ -2297,7 +2297,7 @@ if (mMailBtn) {
     resetTimer();
     if (!activePageUrl) { setShareMsg('No link available yet.', 'err'); return; }
     var to = String(document.getElementById('mMailInput').value || '').trim();
-    if (!/^[^\s@<>"']+@[^\s@<>"']+\.[A-Za-z]{2,24}$/.test(to)) {
+    if (!/^[^\\s@<>"']+@[^\\s@<>"']+\\.[A-Za-z]{2,24}$/.test(to)) {
       setShareMsg('Enter a valid email address.', 'err');
       return;
     }

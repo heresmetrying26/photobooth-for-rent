@@ -1,0 +1,78 @@
+# Builds the standalone "360 Arm Cam" iPhone / iPad IPA:
+# A dedicated standalone 360 Booth & Arm Camera app with its own bundle ID (com.photobooth4u.spinarm)
+# and dark charcoal / vermilion / cream 360 icon so it installs beside photobooth4u.
+# Supports slot-free activation (<CODE>-360) and free Laptop 360 Desk QR companion pairing.
+# Run it from the Actions tab ("360 Arm Cam iOS app" -> Run workflow),
+# or push a tag like spinarm-ios-v1.0.0 to attach the IPA to a GitHub release.
+name: 360 Arm Cam iOS app
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['spinarm-ios-v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Show Xcode Version
+        run: xcodebuild -version
+
+      - name: Resolve version
+        id: ver
+        run: |
+          RAW="${GITHUB_REF_NAME#spinarm-ios-v}"
+          if echo "$RAW" | grep -Eq '^[0-9]+(\.[0-9]+)*$'; then
+            echo "version=$RAW" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=1.0.0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build SpinArm360 Xcode Target
+        run: |
+          xcodebuild -project ios/photobooth4u.xcodeproj \
+            -scheme SpinArm360 \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_STYLE=Manual \
+            MARKETING_VERSION="${{ steps.ver.outputs.version }}" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}"
+
+      - name: Package IPA
+        run: |
+          mkdir -p dist/Payload
+          APP_PATH=$(find build -name "SpinArm360.app" -type d | head -n 1)
+          echo "Found app at: $APP_PATH"
+          test -n "$APP_PATH"
+          cp -r "$APP_PATH" dist/Payload/
+          cd dist
+          zip -qr photobooth4u-360-arm-cam-ios.ipa Payload
+          rm -rf Payload
+          echo "Built photobooth4u-360-arm-cam-ios.ipa ($(stat -f%z photobooth4u-360-arm-cam-ios.ipa) bytes)"
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: photobooth4u-360-arm-cam-ios-ipa
+          path: dist/photobooth4u-360-arm-cam-ios.ipa
+
+      - name: Attach IPA to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/spinarm-ios-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: dist/photobooth4u-360-arm-cam-ios.ipa
+          make_latest: false

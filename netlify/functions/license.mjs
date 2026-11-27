@@ -3,11 +3,13 @@
 //   POST { action: 'checkin',    licence, mid, ver }                     -> { ok, licence } | { ok: false, revoked, reason, error }
 //   POST { action: 'deactivate', licence, mid }                          -> { ok }   (frees this laptop's device slot)
 //   GET  /api/license?pub=1                                              -> the public key the app checks licences with
-import { safe, json, licenses, normCode, throttle, recordFail, clearFail, DAY, MIN, fmtWhen, LIFETIME_EXP, devicesOf, setDevices, putLicense, windowEnd, getShutdown, swapBlocked, logSwap, SWAP_MSG, alertDeviceFreed, getSettings, cleanDeviceLabel } from '../lib/core.mjs';
-import { readLicence, licenceFor, activateOn, saveMap, readMap, dropMap, appDevice, publicKeyInfo, MID_RE, isTrialCode, trialLicence, effectiveDeviceMode, deviceAllowsOffline } from '../lib/license.mjs';
+import { safe, json, licenses, normCode, throttle, recordFail, clearFail, DAY, MIN, fmtWhen, LIFETIME_EXP, devicesOf, setDevices, putLicense, windowEnd, getShutdown, swapBlocked, logSwap, SWAP_MSG, alertDeviceFreed, getSettings, cleanDeviceLabel, extrasOf } from '../lib/core.mjs';
+import { readLicence, licenceFor, activateOn, saveMap, readMap, dropMap, appDevice, publicKeyInfo, MID_RE, isTrialCode, trialLicence, effectiveDeviceMode, deviceAllowsOffline, parseSpin360Code, spin360CompanionLicence } from '../lib/license.mjs';
 import { liveApp } from '../lib/updates.mjs';
 
 const NO_ADDON = 'The offline app isn’t included in your plan yet. Message us to add it to your code.';
+const NO_SPIN360 = '360 Video Booth isn’t enabled on this code yet. Message us to add 360 Arm Cam to your code.';
+const SPIN360_CODE_WRONG_APP = 'Codes ending in -360 are for the standalone 360 Arm Cam app only. Enter your code without -360 here.';
 
 // First use of a code from the app starts it, the same way /api/redeem does.
 function startCode(rec, now) {
@@ -35,24 +37,50 @@ export default safe(async (req, context) => {
   if (b.action === 'activate') {
     const mid = String(b.mid || '').trim().toUpperCase();
     if (!MID_RE.test(mid)) return json({ error: 'This computer’s ID is missing. Please reinstall the app.' }, 400);
+    const { isSpin360Suffix, baseCode } = parseSpin360Code(b.code);
+    const isSpin360App = b.spin360Companion === true;
+    if (isSpin360Suffix && !isSpin360App) {
+      return json({ error: SPIN360_CODE_WRONG_APP, code: 'spin360-only-code' }, 403);
+    }
     // The shared free-trial password: a short, device-bound licence that works offline (no code record, no device slot).
     const tset = await getSettings();
-    if (isTrialCode(tset, b.code)) {
+    if (!isSpin360Suffix && isTrialCode(tset, baseCode)) {
+      if (isSpin360App) {
+        return json({ error: 'Standalone 360 requires a code with 360 Video Booth enabled. You can still tap “Pair to Laptop 360 Desk” below without a code.', code: 'no-spin360' }, 403);
+      }
       return json({ ok: true, trial: true, minutes: tset.trialMinutes, licence: trialLicence(tset, { mid, name: b.name, os: b.os, ver: b.ver }, now), app: await liveApp() });
     }
     const t = await throttle('appact', context.ip, 10);
     if (t.blocked) return json({ error: 'Too many wrong attempts. Please wait a few minutes and try again.' }, 429);
-    const key = normCode(b.code);
+    const key = normCode(baseCode);
     const rec = key ? await store.get(key, { type: 'json' }) : null;
     if (!rec) { await recordFail(t); return json({ error: 'That code is not valid.' }, 401); }
     await clearFail(t);
     if (rec.status === 'revoked') return json({ error: 'This code has been disabled. Please contact us.' }, 403);
     if (rec.kind === 'bonus') return json({ error: 'Bonus codes work in the web booth only. Use your main booking code.' }, 400);
+    const sd = await getShutdown();
+    // Slot-free 360 Arm Cam activation (<CODE>-360 from the standalone 360 Arm Cam app):
+    // Validates the parent code and extras.spin360, then issues a 360-only licence WITHOUT occupying any device slot.
+    if (isSpin360Suffix) {
+      if (!extrasOf(rec).spin360) return json({ error: NO_SPIN360, code: 'no-spin360' }, 403);
+      if (rec.status !== 'active') {
+        const why = startCode(rec, now);
+        if (why) return json({ error: why }, 403);
+        await putLicense(store, key, rec);
+      } else if (rec.expiresAt <= now) {
+        return json({ error: 'This code has expired.' }, 403);
+      }
+      const issued = spin360CompanionLicence(key, rec, { mid, name: b.name, os: b.os, ver: b.ver }, now, sd.on);
+      await saveMap(issued.lid, key, mid);
+      return json({ ok: true, licence: issued.licence, spin360Only: true, slotFree: true, appMode: 'offline', app: await liveApp() });
+    }
+    if (isSpin360App && !extrasOf(rec).spin360) {
+      return json({ error: NO_SPIN360, code: 'no-spin360' }, 403);
+    }
     // In shutdown mode every Lifetime code gets the Offline App (agreement s.6).
     // Online-capable Windows / Mac Desktop apps (onlineCapable: true) can also activate Online-only codes
     // (running in Online Mode with Google Drive & PayMongo). Older offline-only desktop builds and Android / iPad
     // apps still require offlineOpt (or an Admin per-device Offline/Both override on this device).
-    const sd = await getShutdown();
     const isDesktopOs = b.os === 'win' || b.os === 'mac';
     const existingDev = appDevice(rec, (a) => a.mid === mid);
     const allowsOff = !!(rec.offlineOpt || (existingDev && deviceAllowsOffline(rec, existingDev)));
@@ -84,6 +112,26 @@ export default safe(async (req, context) => {
       if (!ts.trialEnabled) return json({ ok: false, revoked: true, reason: 'disabled', error: 'The free trial has been switched off. Message us for a rental code.' });
       if (!p.exp || p.exp <= now) return json({ ok: false, revoked: true, reason: 'expired', error: 'Your free trial has ended. Message us to book.' });
       return json({ ok: true, licence: b.licence, app: await liveApp() });
+    }
+    // Slot-free 360 Arm Cam companion licence (<CODE>-360): never occupies rec.devices,
+    // but still enforces live parent code validity, revocation, expiry, and spin360 entitlement.
+    if (p.feat && p.feat.spin360Only) {
+      if (b.action === 'deactivate') {
+        await dropMap(p.lid);
+        return json({ ok: true, slotFree: true });
+      }
+      if (b.action === 'rename') {
+        return json({ ok: false, error: '360 Arm Cam (-360) activations don’t occupy a device slot.' }, 400);
+      }
+      const map = await readMap(p.lid);
+      const rec = (map && map.mid === mid) ? await store.get(map.key, { type: 'json' }) : null;
+      if (!rec) return json({ ok: false, revoked: true, reason: 'removed', error: 'This 360 Arm Cam activation is no longer valid. Activate it again with your code.' });
+      if (rec.status === 'revoked') return json({ ok: false, revoked: true, reason: 'disabled', error: 'This code has been disabled. Please contact us.' });
+      if (rec.status !== 'active' || rec.expiresAt <= now) return json({ ok: false, revoked: true, reason: 'expired', error: 'This code has expired.' });
+      if (!extrasOf(rec).spin360) return json({ ok: false, revoked: true, reason: 'no-spin360', error: NO_SPIN360 });
+      const sd = await getShutdown();
+      const issued = spin360CompanionLicence(map.key, rec, { lid: p.lid, mid, name: p.name, os: p.os, ver: b.ver || p.ver }, now, sd.on);
+      return json({ ok: true, licence: issued.licence, spin360Only: true, slotFree: true, appMode: 'offline', app: await liveApp() });
     }
     const map = await readMap(p.lid);
     const rec = map ? await store.get(map.key, { type: 'json' }) : null;

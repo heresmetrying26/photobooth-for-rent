@@ -28,11 +28,24 @@
 		100200012CE8000100000002 /* RovingSceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200200012CE8000100000002 /* RovingSceneDelegate.swift */; };
 		100200012CE8000100000003 /* RovingBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200200012CE8000100000003 /* RovingBridgeViewController.swift */; };
 		100200012CE8000100000004 /* IccCameraHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000004 /* IccCameraHelper.swift */; };
+		100300012CE8000100000001 /* SpinArmAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200300012CE8000100000001 /* SpinArmAppDelegate.swift */; };
+		100300012CE8000100000002 /* SpinArmSceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200300012CE8000100000002 /* SpinArmSceneDelegate.swift */; };
+		100300012CE8000100000003 /* SpinArmGateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200300012CE8000100000003 /* SpinArmGateViewController.swift */; };
+		100300012CE8000100000004 /* SpinArmViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000022 /* SpinArmViewController.swift */; };
+		100300012CE8000100000005 /* SpinRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000024 /* SpinRenderer.swift */; };
+		100300012CE8000100000006 /* SpinQuickShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000025 /* SpinQuickShareViewController.swift */; };
+		100300012CE8000100000007 /* LocalShareServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000005 /* LocalShareServer.swift */; };
+		100300012CE8000100000008 /* PBLocal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000006 /* PBLocal.swift */; };
+		100300012CE8000100000009 /* AppLicence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000008 /* AppLicence.swift */; };
+		100300012CE8000100000010 /* station.html in Resources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000026 /* station.html */; };
+		100300012CE8000100000011 /* qr.js in Resources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000027 /* qr.js */; };
+		100300012CE8000100000012 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 200300012CE8000100000005 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		200100012CE8000100000000 /* photobooth4u.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = photobooth4u.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		200200012CE8000100000000 /* RovingDSLRBridge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RovingDSLRBridge.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		200300012CE8000100000000 /* SpinArm360.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SpinArm360.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		200100012CE8000100000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		200100012CE8000100000002 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		200100012CE8000100000003 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -55,6 +68,11 @@
 		200200012CE8000100000002 /* RovingSceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RovingSceneDelegate.swift; sourceTree = "<group>"; };
 		200200012CE8000100000003 /* RovingBridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RovingBridgeViewController.swift; sourceTree = "<group>"; };
 		200200012CE8000100000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		200300012CE8000100000001 /* SpinArmAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpinArmAppDelegate.swift; sourceTree = "<group>"; };
+		200300012CE8000100000002 /* SpinArmSceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpinArmSceneDelegate.swift; sourceTree = "<group>"; };
+		200300012CE8000100000003 /* SpinArmGateViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpinArmGateViewController.swift; sourceTree = "<group>"; };
+		200300012CE8000100000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		200300012CE8000100000005 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +90,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		300300012CE8000100000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -80,6 +105,7 @@
 			children = (
 				400100012CE8000100000002 /* photobooth4u */,
 				400200012CE8000100000002 /* roving */,
+				400300012CE8000100000002 /* spinarm */,
 				400100012CE8000100000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -114,6 +140,7 @@
 			children = (
 				200100012CE8000100000000 /* photobooth4u.app */,
 				200200012CE8000100000000 /* RovingDSLRBridge.app */,
+				200300012CE8000100000000 /* SpinArm360.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -127,6 +154,18 @@
 				200200012CE8000100000004 /* Info.plist */,
 			);
 			path = roving;
+			sourceTree = "<group>";
+		};
+		400300012CE8000100000002 /* spinarm */ = {
+			isa = PBXGroup;
+			children = (
+				200300012CE8000100000001 /* SpinArmAppDelegate.swift */,
+				200300012CE8000100000002 /* SpinArmSceneDelegate.swift */,
+				200300012CE8000100000003 /* SpinArmGateViewController.swift */,
+				200300012CE8000100000004 /* Info.plist */,
+				200300012CE8000100000005 /* Assets.xcassets */,
+			);
+			path = spinarm;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -166,6 +205,23 @@
 			productReference = 200200012CE8000100000000 /* RovingDSLRBridge.app */;
 			productType = "com.apple.product-type.application";
 		};
+		500300012CE8000100000001 /* SpinArm360 */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 600300012CE8000100000001 /* Build configuration list for PBXNativeTarget "SpinArm360" */;
+			buildPhases = (
+				700300012CE8000100000001 /* Sources */,
+				300300012CE8000100000001 /* Frameworks */,
+				800300012CE8000100000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SpinArm360;
+			productName = SpinArm360;
+			productReference = 200300012CE8000100000000 /* SpinArm360.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -180,6 +236,9 @@
 						CreatedOnToolsVersion = 15.0;
 					};
 					500200012CE8000100000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+					500300012CE8000100000001 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
@@ -199,6 +258,7 @@
 			targets = (
 				500100012CE8000100000001 /* photobooth4u */,
 				500200012CE8000100000001 /* RovingDSLRBridge */,
+				500300012CE8000100000001 /* SpinArm360 */,
 			);
 		};
 /* End PBXProject section */
@@ -218,6 +278,16 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		800300012CE8000100000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100300012CE8000100000010 /* station.html in Resources */,
+				100300012CE8000100000011 /* qr.js in Resources */,
+				100300012CE8000100000012 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -253,6 +323,22 @@
 				100200012CE8000100000002 /* RovingSceneDelegate.swift in Sources */,
 				100200012CE8000100000003 /* RovingBridgeViewController.swift in Sources */,
 				100200012CE8000100000004 /* IccCameraHelper.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		700300012CE8000100000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100300012CE8000100000001 /* SpinArmAppDelegate.swift in Sources */,
+				100300012CE8000100000002 /* SpinArmSceneDelegate.swift in Sources */,
+				100300012CE8000100000003 /* SpinArmGateViewController.swift in Sources */,
+				100300012CE8000100000004 /* SpinArmViewController.swift in Sources */,
+				100300012CE8000100000005 /* SpinRenderer.swift in Sources */,
+				100300012CE8000100000006 /* SpinQuickShareViewController.swift in Sources */,
+				100300012CE8000100000007 /* LocalShareServer.swift in Sources */,
+				100300012CE8000100000008 /* PBLocal.swift in Sources */,
+				100300012CE8000100000009 /* AppLicence.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -407,6 +493,54 @@
 			};
 			name = Release;
 		};
+		A00300012CE8000100000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = spinarm/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.photobooth4u.spinarm;
+				PRODUCT_NAME = SpinArm360;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG SPINARM_STANDALONE";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A00300012CE8000100000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = spinarm/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.photobooth4u.spinarm;
+				PRODUCT_NAME = SpinArm360;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "SPINARM_STANDALONE";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -424,6 +558,15 @@
 			buildConfigurations = (
 				A00200012CE8000100000003 /* Debug */,
 				A00200012CE8000100000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		600300012CE8000100000001 /* Build configuration list for PBXNativeTarget "SpinArm360" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00300012CE8000100000003 /* Debug */,
+				A00300012CE8000100000004 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

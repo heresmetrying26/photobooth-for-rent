@@ -24401,7 +24401,7 @@
               <label class="switch-row"><span>Soft skin smoothing</span><input type="checkbox"
                   id="softSkinToggle"></label>
               <label class="switch-row" id="dateStampRow"><span>Date stamp (orange date on each photo)</span><input
-                  type="checkbox" id="dateStampToggle"></label>
+                  type="checkbox" id="dateStampToggle" autocomplete="off"></label>
               <label class="switch-row" id="guestLooksRow" hidden><span>Let guests choose a look on guest
                   screen</span><input type="checkbox" id="guestLooksToggle"></label>
             </div>
@@ -33124,6 +33124,23 @@
         }
       }
 
+      // Snapshots a captured shot canvas for Solo Photos: preserves any active look (filter / soft skin),
+      // while always omitting the vintage orange date stamp so solo downloads stay clean.
+      function cloneShotForSolo(c) {
+        if (!c) return null;
+        var soloLookFree = (typeof filterKey === 'undefined' || filterKey === 'none') && !softSkin;
+        var stripDate = !!(typeof dateStamp !== 'undefined' && dateStamp && c._raw);
+        var src = stripDate ? c._raw : c;
+        var clone = document.createElement('canvas');
+        clone.width = src.width; clone.height = src.height;
+        clone.getContext('2d').drawImage(src, 0, 0);
+        if (stripDate && !soloLookFree && !c._deskNoFilter && typeof applyFilterToCanvas === 'function') {
+          try { applyFilterToCanvas(clone, { noDateStamp: true }); } catch (e) { }
+        }
+        clone._orig = (soloLookFree && c._orig) || null;
+        return clone;
+      }
+
       async function saveSoloPhotosAsync(sessNum, shots) {
         if (!saveSoloPhotos || !shots || !shots.length) return;
         var num = sessNum || sessionNumber || 1;
@@ -33343,15 +33360,7 @@
         qrResults.innerHTML = '';
         lastRenderedFolderUrl = null;
         const isBoth = (outputMode === 'both');
-        var lookFree = filterKey === 'none' && !softSkin && !dateStamp;   // no look drawn on the shots (applyFilterToCanvas did nothing)
-        var soloShotsSnapshot = (saveSoloPhotos && shotCanvases) ? shotCanvases.map(function (c) {
-          if (!c) return null;
-          var clone = document.createElement('canvas');
-          clone.width = c.width; clone.height = c.height;
-          clone.getContext('2d').drawImage(c, 0, 0);
-          clone._orig = (lookFree && c._orig) || null;
-          return clone;
-        }) : null;
+        var soloShotsSnapshot = (saveSoloPhotos && shotCanvases) ? shotCanvases.map(cloneShotForSolo) : null;
         var soloSessionNum = sessionNumber || 1;
         qrSlot('photo', isBoth ? 'Your photo & GIF' : 'Your photo', isBoth ? 'Saving your photo & GIF…' : 'Saving your photo…');
         // Guests get a working QR straight away: the event's All photos page,
@@ -53608,10 +53617,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         out[0] = r; out[1] = g; out[2] = b;
         return out;
       }
-      function applyFilterToCanvas(c) {
+      function applyFilterToCanvas(c, opts) {
         var withAdj = false;          // colour correction is applied to prints only (printAdjust), never to the shots
-        if (filterKey === 'none' && !softSkin && !dateStamp) return;
-        if (!filterExists(filterKey) && !softSkin && !dateStamp) return;
+        var wantDate = !!(dateStamp && !(opts && opts.noDateStamp));
+        if (filterKey === 'none' && !softSkin && !wantDate) return;
+        if (!filterExists(filterKey) && !softSkin && !wantDate) return;
         var ctx = c.getContext('2d'), w = c.width, h = c.height;
         if (softSkin) {
           // A softly blurred copy laid lightly on top smooths skin and evens tone.
@@ -53662,7 +53672,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           }
           ctx.restore();
         }
-        if (dateStamp) {
+        if (wantDate) {
           // Orange camera-style date, bottom right: '26 10 29
           var dt = new Date(), pad2 = function (v) { return (v < 10 ? '0' : '') + v; };
           var txt = "'" + pad2(dt.getFullYear() % 100) + ' ' + pad2(dt.getMonth() + 1) + ' ' + pad2(dt.getDate());
@@ -54537,6 +54547,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var softSkinToggle = document.getElementById('softSkinToggle');
       softSkinToggle.addEventListener('change', function () { softSkin = softSkinToggle.checked; applyLiveFilter(); renderSetupPreview(); });
       var dateStampToggle = document.getElementById('dateStampToggle');
+      dateStampToggle.checked = false;
       dateStampToggle.addEventListener('change', function () { dateStamp = dateStampToggle.checked && extraOn('vintage'); renderSetupPreview(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
 
       // ---- Photo review ----
@@ -57877,7 +57888,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
         var ctx = c.getContext('2d', { willReadFrequently: true }); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(bmp, 0, 0, c.width, c.height); bmp.close();
         try { deskApplyAdj(c, it.adj); } catch (e) { }
-        if (useFilter) { try { applyFilterToCanvas(c); } catch (e) { } }
+        if (useFilter) {
+          if (typeof dateStamp !== 'undefined' && dateStamp) {
+            var rawCopy = document.createElement('canvas');
+            rawCopy.width = c.width; rawCopy.height = c.height;
+            rawCopy.getContext('2d').drawImage(c, 0, 0);
+            c._raw = rawCopy;
+          }
+          try { applyFilterToCanvas(c); } catch (e) { }
+        } else {
+          c._deskNoFilter = true;
+        }
         c._isShot = true; it.canvas = c; it._canvasSig = fSig;
         return c;
       }
@@ -58079,14 +58100,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var fallback = (evFolder && typeof qrFallbackUrl === 'function') ? qrFallbackUrl(evFolder) : '';
         if (fallback && deskLast && !deskLast.qrUrl) { deskLast.qrUrl = fallback; deskRenderResultCard(); deskRemoteMark(); }
 
-        var lookFree = (typeof filterKey === 'undefined' || filterKey === 'none') && !softSkin && !dateStamp;
-        var soloSnap = (typeof saveSoloPhotos !== 'undefined' && saveSoloPhotos && ctx.shots) ? ctx.shots.map(function (c) {
-          if (!c) return null;
-          var cl = document.createElement('canvas'); cl.width = c.width; cl.height = c.height;
-          cl.getContext('2d').drawImage(c, 0, 0);
-          cl._orig = (lookFree && c._orig) || null;
-          return cl;
-        }) : null;
+        var soloSnap = (typeof saveSoloPhotos !== 'undefined' && saveSoloPhotos && ctx.shots) ? ctx.shots.map(cloneShotForSolo) : null;
 
         try {
           var res = await deskRunWithBoothCtx(ctx, function () { return uploadLayoutForQR(resolvedLayoutKey); });
@@ -89277,7 +89291,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         payVoucherPrinterToggle: 'Lets you assign a dedicated printer (with its own colour and quality settings) to each payment option or voucher. Synced with Printer settings.',
         welcomeToggle: 'Displays the attract / Tap to start welcome screen between guests when idle.',
         softSkinToggle: 'Applies a subtle smoothing glow to live camera & captured photos.',
-        dateStampToggle: 'Prints a vintage amber camera date stamp onto the corner of each shot.'
+        dateStampToggle: 'Prints a vintage amber camera date stamp onto the corner of each shot in prints & collages (solo photos stay clean).'
       };
       var pop = null, activeBtn = null;
       function ensurePop() {

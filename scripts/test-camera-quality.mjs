@@ -781,7 +781,9 @@ test('solo shot: the original is only kept when no mirror, background swap or lo
     'applyFilterToCanvas(clone, { noDateStamp: true });',
     'var blob = await soloOriginal(sc);',
     'var wantDate = !!(dateStamp && !(opts && opts.noDateStamp));',
-    "if (filterKey === 'none' && !softSkin && !wantDate) return;"                            // applyFilterToCanvas: the same test for "no look"
+    "if (filterKey === 'none' && !softSkin && !wantDate) return;",                           // applyFilterToCanvas: the same test for "no look"
+    'var dateStamp = false;',
+    'dateStampToggle.checked = false;'
   ]) assert(page.includes(needle), 'missing: ' + needle);
 });
 

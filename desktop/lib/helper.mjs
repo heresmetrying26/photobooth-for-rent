@@ -10,8 +10,11 @@ import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSy
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { discoverNetworkPrinters, ippCaps, ippPrintDirect, waitIppIdle, pickMediaName, mediaSizeMm, directFormats, labelMediaType, diagNetworkInfo, ippDiagProbe, ippDiagPrint } from './netprinters.mjs';
-import { probeUsbPrinters, makeUsbIppTransport, usbSelphyPrint } from './usbipp.mjs';
+import { probeUsbPrinters, makeUsbIppTransport, usbSelphyPrint, usbDnpPrint, usbDnpStatus } from './usbipp.mjs';
 import { SELPHY_SPECS, selphySpecFor } from './selphyusb.mjs';
+import { DNP_SHEETS, dnpSheetFor } from './dnpusb.mjs';
+import { createHotFolderStore, detectDnpHotFolders, dropToHotFolder } from './hotfolder.mjs';
+import { createWinPrintWorker } from './winprint-worker.mjs';
 import * as gopro from './cam-gopro.mjs';
 
 export const HELPER_VERSION = '1.1.12-app';
@@ -24,12 +27,22 @@ let WORKER_PS = '';
 // port 0 ("The requested address is not valid in its context 127.0.0.1:0"). Desktop 1.1.87 shipped that way.
 export const psFileText = (src) => '﻿' + String(src == null ? '' : src).replace(/^﻿+/, '');
 let log = (m) => console.log('[helper] ' + m);
+let winPrintWorker = null;
+function getWinPrintWorker() {
+  if (!IS_WIN) return null;
+  if (!winPrintWorker) winPrintWorker = createWinPrintWorker({ logger: (m) => log(m) });
+  return winPrintWorker;
+}
 let shrinkPage = null;   // (png Buffer, scale) -> png Buffer of the same size, the picture smaller in the middle on white. Given by the app (Electron).
 
 let toJpeg = null;       // (png Buffer) -> jpeg Buffer. Given by the app (Electron). Needed for printing straight to a printer over IPP.
 let rasterize = null;    // (png / jpeg Buffer, page spec) -> PWG Raster Buffer. Given by the app (Electron). For printers that take only PWG Raster (Brother DCP-T420W).
 let buildSelphyJob = null;   // (png / jpeg Buffer, wMm, hMm, paperName) -> { data: Buffer, spec }. Given by Electron for native Canon SELPHY USB printing (Neo YUV444).
 let selphyPrintOpts = {};
+let buildDnpJob = null;      // (png / jpeg Buffer, opts) -> { data: Buffer, sheet, cut, matte }. Given by Electron for direct DNP USB printing (ESC 'P' YMC BMP).
+let dnpPrintOpts = {};
+let pickHotFolderDir = null; // () => Promise<string> native OS folder picker (Electron dialog)
+const hotFolderStore = createHotFolderStore('');
 let ippWaitOpts = {};
 let directFile = '';     // where the printers used without a driver are remembered between runs
 
@@ -37,8 +50,8 @@ let directFile = '';     // where the printers used without a driver are remembe
 // in the printer list under a name like "Brother DCP-T420W (direct 192.168.1.50)" and the booth picks them like any other.
 const direct = new Map();   // name -> { ip, port, path }
 // USB printers used straight over libusb when no OS print queue exists for them:
-// either driverless IPP-over-USB (7/1/4) or native Canon SELPHY Neo USB (CP820–CP1500).
-const usbDirect = new Map();   // name -> usbProbe entry (with usbMode: 'ipp' | 'selphy')
+// driverless IPP-over-USB (7/1/4), native Canon SELPHY Neo USB (CP820–CP1500), or native DNP ESC 'P' USB (DS-RX1 / DS620 / DS40).
+const usbDirect = new Map();   // name -> usbProbe entry (with usbMode: 'ipp' | 'selphy' | 'dnp')
 let usbDirectAt = 0;
 function loadDirect() {
   try {
@@ -52,6 +65,8 @@ function saveDirect() {
 }
 
 function directTarget(name) {
+  const hf = hotFolderStore.get(name);
+  if (hf) return { kind: 'hot-folder', entry: hf };
   if (direct.has(name)) {
     const d = direct.get(name);
     return { kind: 'wifi', ip: d.ip, port: d.port, path: d.path, transport: null };
@@ -59,6 +74,7 @@ function directTarget(name) {
   if (usbDirect.has(name)) {
     const entry = usbDirect.get(name);
     if (entry.usbMode === 'selphy') return { kind: 'usb-selphy', entry };
+    if (entry.usbMode === 'dnp') return { kind: 'usb-dnp', entry };
     return { kind: 'usb', ip: 'localhost', port: 631, path: '', entry, transport: makeUsbIppTransport(entry) };
   }
   return null;
@@ -73,15 +89,16 @@ async function refreshUsbDirect(sysList, force, preFound) {
     const sys = (sysList || []).map((n) => ({ name: n, port: '', host: '' }));
     for (const p of found) {
       const canSelphy = !!(p.isSelphy && p.hasSelphyUsb && buildSelphyJob);
+      const canDnp = !!(p.isDnp && p.hasDnpUsb && buildDnpJob);
       const canIpp = !!p.hasIppUsb;
-      if (!canSelphy && !canIpp) continue;
-      // On both Windows and macOS, if the OS already has a print queue for this model (e.g. macOS AirPrint/CUPS queue,
-      // Brother USB driver, or Microsoft IPP), keep using that OS queue rather than showing a duplicate "(USB direct)"
-      // entry that can conflict with the OS holding the USB interface.
+      if (!canSelphy && !canDnp && !canIpp) continue;
+      // On both Windows and macOS, if the OS already has a print queue for this model (e.g. official DNP Windows/macOS
+      // driver, macOS AirPrint/CUPS queue, Brother USB driver, or Microsoft IPP), keep using that OS queue rather than
+      // showing a duplicate "(USB direct)" entry that can conflict with the OS holding the USB interface.
       if (installedAs({ ip: '', name: p.name }, sys)) continue;
       const clean = String(p.name || 'USB printer').replace(/\s*\(USB[^)]*\)\s*$/i, '').replace(/[^\w .\-+]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 48) || 'USB printer';
       const label = clean + ' (USB direct)';
-      usbDirect.set(label, { ...p, usbMode: canSelphy ? 'selphy' : 'ipp' });
+      usbDirect.set(label, { ...p, usbMode: canSelphy ? 'selphy' : canDnp ? 'dnp' : 'ipp' });
     }
   } catch { /* libusb unavailable or no USB printers */ }
 }
@@ -126,7 +143,7 @@ function readMovieProgress() {
   };
 }
 
-export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, rasterize: raster, selphyJob, selphyPrintOpts: sOpts, ippWaitOpts: iOpts, directPrintersFile, spinInboxDir }) {
+export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, rasterize: raster, selphyJob, selphyPrintOpts: sOpts, dnpJob, dnpPrintOpts: dOpts, hotFoldersFile, pickHotFolder, ippWaitOpts: iOpts, directPrintersFile, spinInboxDir }) {
   if (logger) { log = logger; gopro.setLogger((m) => log('GoPro: ' + m)); }
   if (typeof shrink === 'function') shrinkPage = shrink;
   if (typeof jpeg === 'function') toJpeg = jpeg;
@@ -134,6 +151,12 @@ export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpe
   if (typeof selphyJob === 'function') buildSelphyJob = selphyJob;
   else if (selphyJob === null) buildSelphyJob = null;
   selphyPrintOpts = sOpts && typeof sOpts === 'object' ? sOpts : {};
+  if (typeof dnpJob === 'function') buildDnpJob = dnpJob;
+  else if (dnpJob === null) buildDnpJob = null;
+  dnpPrintOpts = dOpts && typeof dOpts === 'object' ? dOpts : {};
+  if (typeof pickHotFolder === 'function') pickHotFolderDir = pickHotFolder;
+  else if (pickHotFolder === null) pickHotFolderDir = null;
+  if (hotFoldersFile !== undefined) hotFolderStore.load(hotFoldersFile || '');
   ippWaitOpts = iOpts && typeof iOpts === 'object' ? iOpts : {};
   if (typeof spinInboxDir === 'function') getSpinInboxDir = spinInboxDir;
   else if (typeof spinInboxDir === 'string') getSpinInboxDir = () => spinInboxDir;
@@ -142,7 +165,10 @@ export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpe
   if (directPrintersFile) { directFile = directPrintersFile; loadDirect(); }
   try { WORKER_PS = readFileSync(workerPath, 'utf8').replace(/^\uFEFF+/, ''); } catch { WORKER_PS = ''; }   // no BOM here: the one written in front of it at start-up is the only one PowerShell may see (two broke every start in 1.1.87)
   refreshPrinters();
-  if (IS_WIN && WORKER_PS) camStart().catch((e) => log(String(e && e.message || e)));
+  if (IS_WIN && WORKER_PS) {
+    camStart().catch((e) => log(String(e && e.message || e)));
+    getWinPrintWorker()?.warm();
+  }
 }
 
 function run(cmd, args, input) {
@@ -184,11 +210,11 @@ async function systemPrinters(force) {
   if (Date.now() - printersCache.at > 10000) refreshPrinters();
   return printersCache.list;
 }
-// The computer's own printers, then Wi-Fi direct IPP printers, then IPP-over-USB direct printers.
+// The computer's own printers, then configured Hot Folders, then Wi-Fi direct IPP printers, then USB direct printers.
 async function printers(force) {
   const list = await systemPrinters(force);
   await refreshUsbDirect(list, force);
-  const extra = [...direct.keys(), ...usbDirect.keys()].filter((n) => !list.includes(n));
+  const extra = [...hotFolderStore.names(), ...direct.keys(), ...usbDirect.keys()].filter((n) => !list.includes(n));
   return extra.length ? [...list, ...extra] : list;
 }
 
@@ -358,6 +384,15 @@ function installedAs(printer, installed) {
   if (byHost) return byHost.name;
   const code = modelCode(printer.name);
   if (code.length >= 4) { const hit = installed.find((i) => normName(i.name).includes(code)); if (hit) return hit.name; }
+  // Short DNP model codes (DS-RX1, DS40, DS80) or renamed DNP queues ("DNP 4x6") have fewer than 3 digits.
+  if (/\bdnp\b|ds[\s_-]?(?:rx1|40|80|620|820)|qw[\s_-]?410/i.test(String(printer.name || ''))) {
+    const shortM = /(?:rx1|ds40|ds80|ds620|ds820|qw410)/i.exec(normName(printer.name));
+    const dnpHit = installed.find((i) => {
+      const n = normName(i.name);
+      return (shortM && n.includes(shortM[0].toLowerCase())) || /(?<![a-z])dnp(?![a-z])/i.test(i.name);
+    });
+    if (dnpHit) return dnpHit.name;
+  }
   return '';
 }
 async function usbProbeReport() {
@@ -374,6 +409,10 @@ async function usbProbeReport() {
       pidHex: p.pidHex,
       isSelphy: !!p.isSelphy,
       hasSelphyUsb: !!p.hasSelphyUsb,
+      isDnp: !!p.isDnp,
+      dnpModel: p.dnpModel || '',
+      hasDnpUsb: !!p.hasDnpUsb,
+      dnpUnsupportedReason: p.dnpUnsupportedReason || '',
       hasIppUsb: p.hasIppUsb,
       hasRawPrinter: p.hasRawPrinter,
       deviceId: p.deviceId,
@@ -473,6 +512,20 @@ $blo = @($cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageBorderle
 '@borderless|' + $(if ($blo.Count -gt 0) { '1' } else { '0' })
 `;
 async function winPrinterCaps(printer) {
+  const w = getWinPrintWorker();
+  if (w) {
+    try {
+      const res = await w.printerCaps(printer);
+      const mediaTypes = (res.mediaTypes || []).map((row) => {
+        const value = String(row[0] || '').trim();
+        return value ? { value, label: formatCapsLabel(value, row[1]), selected: Number(row[2]) === 1 } : null;
+      }).filter(Boolean);
+      return { mediaTypes, borderless: !!res.borderless };
+    } catch (e) {
+      if (!e || !e.workerTransport) throw e;
+      log('Warm print worker caps fallback: ' + (e.message || e));
+    }
+  }
   const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
   try {
     const ps1 = join(dir, 'caps.ps1');
@@ -604,6 +657,21 @@ if (-not $ps.IsValid) { throw "Printer not found: $Printer" }
 foreach ($p in $ps.PaperSizes) { '{0}|{1}|{2}' -f $p.PaperName, $p.Width, $p.Height }
 `;
 async function winPaperSizes(printer) {
+  const w = getWinPrintWorker();
+  if (w) {
+    try {
+      const res = await w.paperSizes(printer);
+      const sizes = (res.sizes || []).map((row) => {
+        const key = String(row[0] || '');
+        const rw = Number(row[1]), rh = Number(row[2]);
+        return (key && rw > 0 && rh > 0) ? { key, name: key, w: rw * 0.254, h: rh * 0.254, borderless: isBorderlessName(key) } : null;
+      }).filter(Boolean);
+      return { sizes, def: res.def || null };
+    } catch (e) {
+      if (!e || !e.workerTransport) throw e;
+      log('Warm print worker paper fallback: ' + (e.message || e));
+    }
+  }
   const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
   try {
     const ps1 = join(dir, 'paper.ps1');
@@ -634,7 +702,7 @@ async function paperSizes(printer) {
 // On dye-sub printers (HiTi, DNP, Citizen, Sinfonia, Mitsubishi...), also match split/2-UP paper slots
 // when twoUp is explicitly requested, and avoid split slots when a whole 4x6 print is requested.
 const near = (s, a, b, tol = 3) => { const sa = Math.min(s.w, s.h), sb = Math.max(s.w, s.h); return Math.abs(sa - a) <= tol && Math.abs(sb - b) <= tol; };
-const SPLIT_PAPER_NAME = /(?:(?:^|[^a-z0-9])(?:split|2[\s_-]?up|div2|2[\s_-]?in(?:ch)?[\s_-]?cut|2[\s_-]?strips?)(?=$|[^a-z0-9])|(?:^|[^0-9])(?:2\s*[x×]\s*6|6\s*[x×]\s*2)(?=$|[^0-9])|cut[\s_-]?2\s*[x×]\s*6)/i;
+const SPLIT_PAPER_NAME = /(?:(?:^|[^a-z0-9])(?:split|2[\s_-]?up|div2|2[\s_-]?in(?:ch)?[\s_-]?cut|2[\s_-]?cut|2[\s_-]?strips?)(?=$|[^a-z0-9])|(?:^|[^0-9])(?:2\s*[x×]\s*6|6\s*[x×]\s*2)(?=$|[^0-9])|cut[\s_-]?2\s*[x×]\s*6|(?:^|[^0-9])(?:4\s*[x×]\s*6|6\s*[x×]\s*4)\)?\s*[*×x]\s*2(?=$|[^0-9]))/i;
 export const isSplitPaperName = (s) => SPLIT_PAPER_NAME.test(String(s || ''));
 const isSplitPaper = (s) => !!(s && isSplitPaperName((s.key || '') + ' ' + (s.name || '')));
 async function pickPaper(printer, widthMm, heightMm, twoUp) {
@@ -691,6 +759,20 @@ async function pickPaper(printer, widthMm, heightMm, twoUp) {
   return best;
 }
 
+function pickDyeSubCupsCutOption(opts, twoUp) {
+  if (!Array.isArray(opts) || !opts.length || typeof twoUp !== 'boolean') return [];
+  const cutOpt = opts.find((o) => /^(?:(?:dnp(?:box)?|hiti)?[\s_-]?cut(?:ter(?:mode)?|2x6|mode|opt(?:ion)?|operation)?|split(?:mode)?|media-?cut|multi-?cut|2[\s_-]?in(?:ch)?[\s_-]?cut|two[\s_-]?inch[\s_-]?cut|strip-?cut)$/i.test(o.key));
+  if (!cutOpt || !cutOpt.choices || !cutOpt.choices.length) return [];
+  const textOf = (c) => String(c.value || '') + ' ' + String(c.label || '');
+  const pickChoice = twoUp
+    ? cutOpt.choices.find((c) => /(?:2\s*[x×]\s*6|2[\s_-]?in|2[\s_-]?cut|split|strip)/i.test(textOf(c)))
+      || cutOpt.choices.find((c) => /^(?:on|yes|true|1|enable|enabled|cut)$/i.test(c.value))
+    : cutOpt.choices.find((c) => /^(?:off|no|none|false|0|disable|disabled|normal|standard|uncut)$/i.test(c.value))
+      || cutOpt.choices.find((c) => /\b(?:off|disable|disabled|normal|standard|uncut|none)\b/i.test(String(c.label || '')));
+  if (!pickChoice || pickChoice.selected) return [];
+  return ['-o', cutOpt.key + '=' + pickChoice.value];
+}
+
 // macOS CUPS: when a single dye-sub queue exposes an explicit cut/split PPD option (not already encoded in PageSize
 // and not a dedicated "2x6 cut" queue whose saved defaults should stay untouched), toggle only the exact option the PPD lists.
 async function dyeSubCupsCutOptions(printer, twoUp, pick) {
@@ -699,15 +781,9 @@ async function dyeSubCupsCutOptions(printer, twoUp, pick) {
     if (pick && isSplitPaper(pick)) return [];
     if (twoUp === true && /(?:2\s*[x×]\s*6|split|strip|cut)/i.test(String(printer || ''))) return [];
     const opts = await cupsPrinterOptions(printer);
-    const cutOpt = opts.find((o) => /^(?:cut(?:ter|2x6|mode)?|split(?:mode)?|media-?cut|multi-?cut|hiti-?cut|2inch-?cut|strip-?cut)$/i.test(o.key));
-    if (!cutOpt || !cutOpt.choices.length) return [];
-    const pickChoice = twoUp
-      ? cutOpt.choices.find((c) => /(?:2\s*[x×]\s*6|2[\s_-]?in|split|strip)/i.test(c.value))
-        || cutOpt.choices.find((c) => /^(?:on|yes|true|1|enable|enabled|cut)$/i.test(c.value))
-      : cutOpt.choices.find((c) => /^(?:off|no|none|false|0|disable|disabled|normal|standard|uncut)$/i.test(c.value));
-    if (!pickChoice || pickChoice.selected) return [];
-    log('Dye-sub CUPS cut option: ' + cutOpt.key + '=' + pickChoice.value);
-    return ['-o', cutOpt.key + '=' + pickChoice.value];
+    const out = pickDyeSubCupsCutOption(opts, twoUp);
+    if (out.length) log('Dye-sub CUPS cut option: ' + out[1]);
+    return out;
   } catch { return []; }
 }
 
@@ -853,7 +929,7 @@ const MAC_EPSON_L8050_4X6 = { x: 0.9608, y: 0.9496, dx: 0.001, dy: -0.0045 };
 const EPSON_L8050 = /(?<![a-z0-9-])l[\s_-]?8050(?![0-9])/i;
 const L8050_WIN_GLOSSY = 'ns0000:EpsonPhotoPaperGlossy';       // the paper type name in the L8050's Windows driver (read from the driver on a real laptop)
 const EPSON = /epson|(?<![a-z0-9-])l[1-9]\d{2,4}(?![0-9])/i;
-const DYE_SUB = /selphy|(?<![a-z])cp[\s_-]?d?\d{2,4}(?![0-9])|(?<![a-z])dnp(?![a-z])|(?<![a-z])ds[\s_-]?(?:rx|\d)|hiti|mitsubishi|kodak|citizen|sinfonia|shinko|dye/i;
+const DYE_SUB = /selphy|(?<![a-z])cp[\s_-]?d?\d{2,4}(?![0-9])|(?<![a-z])dnp(?![a-z])|(?<![a-z])(?:dp[\s_-]?)?ds[\s_-]?(?:rx|\d)|(?<![a-z])(?:rx1(?:hs)?|(?:dp[\s_-]?)?qw[\s_-]?410|sl[\s_-]?620)(?![a-z0-9])|hiti|mitsubishi|kodak|citizen|sinfonia|shinko|dye/i;
 async function macBorderlessScale(printer, pick) {
   if (!shrinkPage || !pick || !pick.borderless || DYE_SUB.test(printer)) return 1;
   if (EPSON_L8050.test(printer) && near(pick, 101.6, 152.4)) return MAC_EPSON_L8050_4X6;
@@ -1293,18 +1369,50 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, c
     }
     const isDyeSub = DYE_SUB.test(String(printer || ''));
     if (IS_WIN) {
-      const ps1 = join(dir, 'print.ps1'), list = join(dir, 'pages.txt');
-      await writeFile(ps1, '﻿' + WIN_PRINT_PS, 'utf8');
-      await writeFile(list, files.join('\r\n'), 'utf8');
       // A renter's own size with no matching paper in the driver: ask for it as a custom size (hundredths of an inch).
-      const cust = custom && !pick && fit !== 'width' && widthMm > 0 && heightMm > 0
-        ? ['-CustomW', String(Math.round(Math.min(widthMm, heightMm) / 25.4 * 100)), '-CustomH', String(Math.round(Math.max(widthMm, heightMm) / 25.4 * 100))] : [];
-      if (cust.length) log('Paper: no match in the driver, asking for a custom ' + cust[1] + 'x' + cust[3] + ' (1/100 in)');
+      const customW = (custom && !pick && fit !== 'width' && widthMm > 0 && heightMm > 0) ? Math.round(Math.min(widthMm, heightMm) / 25.4 * 100) : 0;
+      const customH = (custom && !pick && fit !== 'width' && widthMm > 0 && heightMm > 0) ? Math.round(Math.max(widthMm, heightMm) / 25.4 * 100) : 0;
+      if (customW && customH) log('Paper: no match in the driver, asking for a custom ' + customW + 'x' + customH + ' (1/100 in)');
       // The booth's real paper size, so a sheet that is not the same shape is printed true to size and never stretched.
       // Only when no paper of the driver matched at all (a matched paper, including a strip on a 2x wider cut sheet, keeps its own handling).
-      const actual = !pick && fit !== 'width' && widthMm > 0 && heightMm > 0
-        ? ['-ActualW', String(Math.round(Math.min(widthMm, heightMm) / 25.4 * 100)), '-ActualH', String(Math.round(Math.max(widthMm, heightMm) / 25.4 * 100))] : [];
-      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(reqMediaType ? ['-MediaType', reqMediaType] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(isDyeSub ? ['-DyeSub'] : []), ...(pick && (!pick.keep || pick.explicit) ? ['-PaperName', pick.key] : []), ...(!isDyeSub && ((pick && (pick.borderless || !pick.explicit)) || cust.length) ? ['-Borderless'] : []), '-EpsonScale', String(WIN_EPSON_L3210_SCALE), ...cust, ...actual]);
+      const actualW = (!pick && fit !== 'width' && widthMm > 0 && heightMm > 0) ? Math.round(Math.min(widthMm, heightMm) / 25.4 * 100) : 0;
+      const actualH = (!pick && fit !== 'width' && widthMm > 0 && heightMm > 0) ? Math.round(Math.max(widthMm, heightMm) / 25.4 * 100) : 0;
+      const paperArg = (pick && (!pick.keep || pick.explicit)) ? pick.key : '';
+      const borderlessArg = !isDyeSub && !!((pick && (pick.borderless || !pick.explicit)) || (customW && customH));
+      const w = getWinPrintWorker();
+      let usedWarm = false;
+      if (w) {
+        try {
+          const wr = await w.print({
+            printer,
+            files,
+            fitWidth: fit === 'width',
+            paperName: paperArg,
+            quality: quality || 'best',
+            mediaType: reqMediaType || '',
+            borderless: borderlessArg,
+            dyeSub: isDyeSub,
+            customW,
+            customH,
+            actualW,
+            actualH,
+            epsonScale: WIN_EPSON_L3210_SCALE
+          });
+          r = { code: 0, out: (wr.logs || []).join('\n'), err: '' };
+          usedWarm = true;
+        } catch (e) {
+          if (!e || !e.workerTransport) throw e;
+          log('Warm print worker fallback (using one-shot PowerShell): ' + (e.message || e));
+        }
+      }
+      if (!usedWarm) {
+        const ps1 = join(dir, 'print.ps1'), list = join(dir, 'pages.txt');
+        await writeFile(ps1, '﻿' + WIN_PRINT_PS, 'utf8');
+        await writeFile(list, files.join('\r\n'), 'utf8');
+        const cust = (customW && customH) ? ['-CustomW', String(customW), '-CustomH', String(customH)] : [];
+        const actual = (actualW && actualH) ? ['-ActualW', String(actualW), '-ActualH', String(actualH)] : [];
+        r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(reqMediaType ? ['-MediaType', reqMediaType] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(isDyeSub ? ['-DyeSub'] : []), ...(paperArg ? ['-PaperName', paperArg] : []), ...(borderlessArg ? ['-Borderless'] : []), '-EpsonScale', String(WIN_EPSON_L3210_SCALE), ...cust, ...actual]);
+      }
     } else {
       const scale = fit === 'width' ? 1 : await macBorderlessScale(printer, pick);
       const perSide = !!scale && typeof scale === 'object';
@@ -1592,7 +1700,17 @@ export async function handleHelper(req, path, search) {
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404);
     const dt = directTarget(name);
     if (dt) {
-      if (dt.kind === 'usb-selphy') return json({ ok: true, known: false, mediaTypes: [], mediaLabels: {}, mediaDefault: '', autoMedia: '' });
+      if (dt.kind === 'usb-selphy' || dt.kind === 'hot-folder') return json({ ok: true, known: false, mediaTypes: [], mediaLabels: {}, mediaDefault: '', autoMedia: '' });
+      if (dt.kind === 'usb-dnp') {
+        return json({
+          ok: true,
+          known: true,
+          mediaTypes: ['glossy', 'matte'],
+          mediaLabels: { glossy: 'Glossy finish', matte: 'Matte finish' },
+          mediaDefault: 'glossy',
+          autoMedia: ''
+        });
+      }
       const cached = CAPS_CACHE.get(name);
       if (cached && Date.now() - cached.at < 120000) return json({ ok: true, ...cached.caps });
       const caps = await ippCaps(dt.ip, dt.port, dt.path, 3500, dt.transport).catch(() => null);
@@ -1623,12 +1741,53 @@ export async function handleHelper(req, path, search) {
     try { return json({ ok: true, platform: platform(), printers: await usbProbeReport() }); }
     catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
   }
+  if (method === 'GET' && path === '/printer/dnp-status') {
+    const name = String(search.get('printer') || '').trim();
+    if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404);
+    const dt = directTarget(name);
+    if (!dt || dt.kind !== 'usb-dnp') return json({ ok: false, error: 'Live DNP USB status is only available on direct-USB DNP printers.' }, 400);
+    try { return json(await usbDnpStatus(dt.entry, dnpPrintOpts)); }
+    catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
+  }
+  if (path === '/printer/hotfolder' && method === 'GET') {
+    return json({ ok: true, folders: hotFolderStore.list(), detected: detectDnpHotFolders(), canPick: typeof pickHotFolderDir === 'function' });
+  }
+  if (path === '/printer/hotfolder' && method === 'POST') {
+    let body;
+    try { body = await req.json(); } catch { return json({ ok: false, error: 'Bad request' }, 400); }
+    const res = hotFolderStore.add(body || {});
+    if (!res.ok) return json(res, 400);
+    log('Hot Folder added: ' + res.printer + ' -> ' + res.entry.dir);
+    return json({ ...res, folders: hotFolderStore.list() });
+  }
+  if (path === '/printer/hotfolder/remove' && method === 'POST') {
+    let body;
+    try { body = await req.json(); } catch { return json({ ok: false, error: 'Bad request' }, 400); }
+    const res = hotFolderStore.remove((body && (body.printer || body.name)) || '');
+    return json({ ...res, folders: hotFolderStore.list() });
+  }
+  if (path === '/printer/hotfolder/pick' && method === 'POST') {
+    if (typeof pickHotFolderDir !== 'function') return json({ ok: false, error: 'Folder picker is only available in the Laptop App. Type the folder path directly instead.' }, 501);
+    try {
+      const dir = await pickHotFolderDir();
+      return json({ ok: true, dir: dir || '' });
+    } catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
+  }
   if (path === '/printer/configure' && method === 'POST') {
     let body;
     try { body = await req.json(); } catch { return json({ ok: false, error: 'Bad request' }, 400); }
     const name = String(body.printer || '').trim();
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);
-    if (directTarget(name)) {
+    const dtCfg = directTarget(name);
+    if (dtCfg) {
+      if (dtCfg.kind === 'hot-folder') {
+        const openCmd = IS_WIN ? launchDetached('explorer.exe', [dtCfg.entry.dir]) : launchDetached('open', [dtCfg.entry.dir]);
+        await openCmd.catch(() => { });
+        return json({ ok: true, message: 'Opened Hot Folder: ' + dtCfg.entry.dir + '. Make sure DNP Hot Folder Print is running and watching this folder.' });
+      }
+      if (dtCfg.kind === 'usb-dnp') {
+        return json({ ok: true, message: 'This DNP printer is used straight over USB (no driver). Pick Glossy or Matte under Paper Type right here — 2×6 strips are cut automatically.' });
+      }
       const msg = /selphy/i.test(name)
         ? 'This printer is used straight from the app, with no driver, so there are no system settings to change. Choose Postcard 100×148 mm paper in the app and load the matching paper and ink cassette.'
         : 'This printer is used straight from the app with no driver needed. Choose paper size, Paper Type (pick Glossy Photo Paper for borderless photo prints) and Print Quality right here in Print settings.';
@@ -1797,6 +1956,29 @@ export async function handleHelper(req, path, search) {
     const twoUp = twoUpQ === '1' ? true : twoUpQ === '0' ? false : undefined;
     const dtPaper = directTarget(name);
     if (dtPaper) {
+      if (dtPaper.kind === 'hot-folder') {
+        return json({
+          ok: true,
+          known: true,
+          match: { name: 'Hot Folder (' + dtPaper.entry.dir + ')', borderless: true, isDefault: true },
+          def: dtPaper.entry.dir,
+          sizes: [],
+          paperList: []
+        });
+      }
+      if (dtPaper.kind === 'usb-dnp') {
+        const w = Number(search.get('w')) || 0, h = Number(search.get('h')) || 0;
+        const sheet = w > 0 && h > 0 ? dnpSheetFor(w, h) : null;
+        const paperList = DNP_SHEETS.map((s) => ({ key: s.key, name: s.name, w: s.wMm, h: s.hMm, borderless: true }));
+        return json({
+          ok: true,
+          known: true,
+          match: sheet ? { name: sheet.name + (twoUp ? ' · 2×6 auto-cut' : '') + ' (sent straight over USB)', borderless: true, isDefault: false } : null,
+          def: '',
+          sizes: paperList.map((s) => s.name),
+          paperList
+        });
+      }
       if (dtPaper.kind === 'usb-selphy') {
         const w = Number(search.get('w')) || 0, h = Number(search.get('h')) || 0;
         const spec = w > 0 && h > 0 ? selphySpecFor(w, h) : null;
@@ -1850,55 +2032,87 @@ export async function handleHelper(req, path, search) {
     };
     const dp = directTarget(name);
     const warnings = [];
-    const job = dp && dp.kind === 'usb-selphy'
+    let mediaRemaining = null;
+    const job = dp && dp.kind === 'hot-folder'
       ? prev.then(async () => {
-        if (!buildSelphyJob) throw new Error('Could not prepare the photo for the Canon SELPHY printer.');
-        const wMm = Number(body.widthMm) || 100, hMm = Number(body.heightMm) || 148;
-        const built = buffers.map((it) => buildSelphyJob(it.buf, wMm, hMm, opts.paperName));
-        await usbSelphyPrint(dp.entry, built.map((b) => b.data), selphyPrintOpts);
-        log('Direct USB SELPHY print on ' + name + ': ' + built[0].spec.name + ' (' + built.length + ' page' + (built.length === 1 ? '' : 's') + ')');
+        const res = await dropToHotFolder(dp.entry, buffers, { toJpeg });
+        log('Hot Folder drop on ' + name + ': ' + res.files.join(', '));
       })
-      : dp
+      : dp && dp.kind === 'usb-dnp'
         ? prev.then(async () => {
-          // No driver: each page goes straight over IPP (Wi-Fi or IPP-over-USB) as JPEG or PWG Raster.
-          for (let bi = 0; bi < buffers.length; bi++) {
-            const it = buffers[bi];
-            const jpeg = it.ext === 'jpg' ? it.buf : null;
-            if (!jpeg && !toJpeg && !rasterize) throw new Error('Could not prepare the photo for the printer.');
-            const r = await ippPrintDirect({
-              ip: dp.ip, port: dp.port, path: dp.path, transport: dp.transport,
-              jpeg, toJpeg, image: it.buf, widthMm: Number(body.widthMm) || 0, heightMm: Number(body.heightMm) || 0,
-              rasterize, quality, mediaType: opts.mediaType, paperName: opts.paperName,
-              borderless: typeof body.borderless === 'boolean' ? body.borderless : undefined,
-              ...(ippWaitOpts.busyWaitMs !== undefined ? { busyWaitMs: ippWaitOpts.busyWaitMs } : {}),
-              ...(ippWaitOpts.maxBusyRetries !== undefined ? { maxBusyRetries: ippWaitOpts.maxBusyRetries } : {})
-            });
-            log((dp.kind === 'usb' ? 'Direct USB print on ' : 'Direct print on ') + name + ': paper ' + r.media + (r.format === 'image/pwg-raster' ? ', PWG raster ' + r.dpi + ' dpi' + (r.mediaType ? ', ' + r.mediaType : '') : ', scaling ' + (r.scaling || 'printer default')));
-            if (bi < buffers.length - 1 && /selphy|\bcp[\s_-]?(?:820|910|1000|1200|1300|1500)\b/i.test(name + ' ' + (r.model || ''))) {
-              await waitIppIdle({ ip: dp.ip, port: dp.port, path: r.path || dp.path, jobId: r.jobId, transport: dp.transport, ...ippWaitOpts });
-            }
-          }
+          if (!buildDnpJob) throw new Error('Could not prepare the photo for the DNP USB printer.');
+          const wMm = Number(body.widthMm) || 101.6, hMm = Number(body.heightMm) || 152.4;
+          const matte = /matte/i.test(opts.mediaType || '');
+          const built = buffers.map((it) => buildDnpJob(it.buf, {
+            widthMm: wMm,
+            heightMm: hMm,
+            paperName: opts.paperName,
+            copies: 1,
+            matte,
+            stripCut: opts.twoUp === true
+          }));
+          const res = await usbDnpPrint(dp.entry, built.map((b) => b.data), dnpPrintOpts);
+          if (res && typeof res.mediaRemaining === 'number') mediaRemaining = res.mediaRemaining;
+          log('Direct USB DNP print on ' + name + ': ' + built[0].sheet.name + (built[0].cut ? ' (2×6 cut)' : '') + (matte ? ', matte' : ', glossy') + ' (' + built.length + ' page' + (built.length === 1 ? '' : 's') + (mediaRemaining !== null ? ', ~' + mediaRemaining + ' left' : '') + ')');
         })
-        : prev.then(async () => {
-          const wMm = Number(body.widthMm) || 0, hMm = Number(body.heightMm) || 0;
-          // A Canon SELPHY CP1500 can stop halfway, print only yellow or freeze the Windows print service when several photos reach it
-          // in one print job, so on a SELPHY each page goes as its own job, one after the other.
-          if (buffers.length > 1 && /selphy|\bcp[\s_-]?(?:820|910|1000|1200|1300|1500)\b|canon.*\bCP\s?\d{3,4}\b/i.test(name)) {
-            for (const it of buffers) { const res = await printPages(name, [it], fit, wMm, hMm, quality, body.custom === true, opts); if (res && res.warnings) warnings.push(...res.warnings); }
-            return;
-          }
-          const res = await printPages(name, buffers, fit, wMm, hMm, quality, body.custom === true, opts);
-          if (res && res.warnings) warnings.push(...res.warnings);
-        });
+        : dp && dp.kind === 'usb-selphy'
+          ? prev.then(async () => {
+            if (!buildSelphyJob) throw new Error('Could not prepare the photo for the Canon SELPHY printer.');
+            const wMm = Number(body.widthMm) || 100, hMm = Number(body.heightMm) || 148;
+            const built = buffers.map((it) => buildSelphyJob(it.buf, wMm, hMm, opts.paperName));
+            await usbSelphyPrint(dp.entry, built.map((b) => b.data), selphyPrintOpts);
+            log('Direct USB SELPHY print on ' + name + ': ' + built[0].spec.name + ' (' + built.length + ' page' + (built.length === 1 ? '' : 's') + ')');
+          })
+          : dp
+            ? prev.then(async () => {
+              // No driver: each page goes straight over IPP (Wi-Fi or IPP-over-USB) as JPEG or PWG Raster.
+              for (let bi = 0; bi < buffers.length; bi++) {
+                const it = buffers[bi];
+                const jpeg = it.ext === 'jpg' ? it.buf : null;
+                if (!jpeg && !toJpeg && !rasterize) throw new Error('Could not prepare the photo for the printer.');
+                const r = await ippPrintDirect({
+                  ip: dp.ip, port: dp.port, path: dp.path, transport: dp.transport,
+                  jpeg, toJpeg, image: it.buf, widthMm: Number(body.widthMm) || 0, heightMm: Number(body.heightMm) || 0,
+                  rasterize, quality, mediaType: opts.mediaType, paperName: opts.paperName,
+                  borderless: typeof body.borderless === 'boolean' ? body.borderless : undefined,
+                  ...(ippWaitOpts.busyWaitMs !== undefined ? { busyWaitMs: ippWaitOpts.busyWaitMs } : {}),
+                  ...(ippWaitOpts.maxBusyRetries !== undefined ? { maxBusyRetries: ippWaitOpts.maxBusyRetries } : {})
+                });
+                log((dp.kind === 'usb' ? 'Direct USB print on ' : 'Direct print on ') + name + ': paper ' + r.media + (r.format === 'image/pwg-raster' ? ', PWG raster ' + r.dpi + ' dpi' + (r.mediaType ? ', ' + r.mediaType : '') : ', scaling ' + (r.scaling || 'printer default')));
+                if (bi < buffers.length - 1 && /selphy|\bcp[\s_-]?(?:820|910|1000|1200|1300|1500)\b/i.test(name + ' ' + (r.model || ''))) {
+                  await waitIppIdle({ ip: dp.ip, port: dp.port, path: r.path || dp.path, jobId: r.jobId, transport: dp.transport, ...ippWaitOpts });
+                }
+              }
+            })
+            : prev.then(async () => {
+              const wMm = Number(body.widthMm) || 0, hMm = Number(body.heightMm) || 0;
+              // A Canon SELPHY CP1500 can stop halfway, print only yellow or freeze the Windows print service when several photos reach it
+              // in one print job, so on a SELPHY each page goes as its own job, one after the other.
+              if (buffers.length > 1 && /selphy|\bcp[\s_-]?(?:820|910|1000|1200|1300|1500)\b|canon.*\bCP\s?\d{3,4}\b/i.test(name)) {
+                for (const it of buffers) { const res = await printPages(name, [it], fit, wMm, hMm, quality, body.custom === true, opts); if (res && res.warnings) warnings.push(...res.warnings); }
+                return;
+              }
+              const res = await printPages(name, buffers, fit, wMm, hMm, quality, body.custom === true, opts);
+              if (res && res.warnings) warnings.push(...res.warnings);
+            });
     printQueues.set(name, job.catch(() => { }));
-    try { await job; log('Printed ' + buffers.length + ' page(s) on ' + name); return json({ ok: true, ...(warnings.length ? { warnings: Array.from(new Set(warnings)) } : {}) }); }
+    try {
+      await job;
+      log('Printed ' + buffers.length + ' page(s) on ' + name);
+      return json({
+        ok: true,
+        ...(warnings.length ? { warnings: Array.from(new Set(warnings)) } : {}),
+        ...(mediaRemaining !== null ? { mediaRemaining } : {})
+      });
+    }
     catch (e) { log('Print failed on ' + name + ': ' + (e && e.message || e)); return json({ ok: false, error: String(e && e.message || e) }, 500); }
   }
   return json({ ok: false, error: 'Not found' }, 404);
 }
 export function stopHelper() {
   try { cam.proc && cam.proc.kill(); } catch { /* gone */ }
+  try { if (winPrintWorker) { winPrintWorker.stop(); winPrintWorker = null; } } catch { /* ignore */ }
   gopro.reset().catch(() => { });
   if (macCamP) macCamP.then((m) => m.reset()).catch(() => { });
 }
-export const _helperTest = { pickPaper, sizeFromName, formatCapsLabel, pickGlossyMediaType, decodePpdString, parsePpdChoiceLabels, parseCupsOptionsOutput, pickCupsDriverQualityOptions, isAirPrintFromInfo, MAC_EPSON_L8050_CHOICE_LABELS, isSplitPaperName, DYE_SUB, refreshUsbDirect, installedAs, usbDirect, PAPER_CACHE, CAPS_CACHE };
+export const _helperTest = { pickPaper, sizeFromName, formatCapsLabel, pickGlossyMediaType, decodePpdString, parsePpdChoiceLabels, parseCupsOptionsOutput, pickCupsDriverQualityOptions, pickDyeSubCupsCutOption, isAirPrintFromInfo, MAC_EPSON_L8050_CHOICE_LABELS, isSplitPaperName, DYE_SUB, refreshUsbDirect, installedAs, usbDirect, hotFolderStore, PAPER_CACHE, CAPS_CACHE };

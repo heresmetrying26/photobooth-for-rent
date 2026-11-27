@@ -902,7 +902,7 @@ test('iOS NativeCameraBridge & ViewController include retained external UVC disc
   assert(vcSwift.includes('window.__pbCamEvent'), 'ViewController.swift missing window.__pbCamEvent dispatch');
   assert(vcSwift.includes('let askAudioThenBoot'), 'ViewController.swift serializes .video -> .audio permissions before booting');
   const licSwift = readFileSync(join(ROOT, 'ios', 'photobooth4u', 'AppLicence.swift'), 'utf8');
-  assert(licSwift.includes('static let appVersion = "1.1.35"'), 'AppLicence.swift fallback version matches Xcode MARKETING_VERSION');
+  assert(licSwift.includes('static let appVersion = "1.1.36"'), 'AppLicence.swift fallback version matches Xcode MARKETING_VERSION');
 });
 await testAsync('openCameraStream maps iPad external UVC camera for Greenscreen even after unlocking blank WebKit labels', async () => {
   const sb = makeSandbox();

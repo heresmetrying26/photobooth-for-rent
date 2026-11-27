@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.118', date: '2026-11-27' },
   { version: '1.1.117', date: '2026-11-26' },
   { version: '1.1.116', date: '2026-11-26' },
   { version: '1.1.115', date: '2026-11-26' },
@@ -226,13 +227,13 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.27', date: '2026-11-26' };
+export const HELPER = { version: '1.1.28', date: '2026-11-27' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
 // after about 60 s, so on a slower connection the 18 MB file never finished ("unexpected end of stream").
 // GitHub has no such limit. (The copy in public/downloads is still kept for the /downloads page.)
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-26', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-27', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
 // The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
 // /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new
@@ -260,7 +261,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.35', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.35/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.36', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.36/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -314,6 +315,15 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-27', title: 'Desktop 1.1.118, Android 1.2.27, iPad 1.1.36 & Print Helper 1.1.28: Faster Instant Windows Printing, Driverless Desktop DNP USB, DNP Hot Folder Print & Reliable Windows Camera Start', for: ['website', 'app', 'android', 'ipad', 'helper'], app: '1.1.118', android: '1.2.27', ipad: '1.1.36', helper: '1.1.28',
+    items: [
+      '⚡ Faster Windows direct printing with zero startup delay: Keeps the Windows printing service warmed up in the background on both the Desktop app and Print Helper so every print starts immediately instead of waiting a couple of seconds between guests.',
+      '🔌 Driverless USB printing for DNP printers on Windows & Mac Desktop: Plug in a DNP DS-RX1, DS-RX1HS, DS620, DS620A, or DS40 over USB and print 4x6 photos or auto-cut 2x6 strips with Glossy or Matte finish — plus a low-media reminder when the roll gets down to 25 prints or fewer.',
+      '📁 DNP Hot Folder Print support: Automatically detects your DNP Hot Folder watch folders (or lets you pick any folder) in the Desktop app and Print Helper so finished booth photos drop straight into DNP Hot Folder Print safely without half-written files.',
+      '🖨️ Smarter DNP printer recognition & updated setup guide: Automatically detects more DNP models (including DP-QW410, RX1HS, and Mac printer names), switches 2x6 split cutting cleanly on single-queue setups, improves the Windows USB camera startup reliability, and expands the DNP printing guide with every laptop, tablet, and wireless setup.'
+    ]
+  },
   {
     date: '2026-11-27', title: 'iPad 1.1.35 & Website: Fixes iPad Freezing on "Tap to start", Sharper Built-in Camera Photos & All-Day Smooth Memory Handling', for: ['website', 'ipad'], ipad: '1.1.35',
     items: [

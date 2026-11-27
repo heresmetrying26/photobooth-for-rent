@@ -24,6 +24,7 @@ import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import { probeSensor, startSensor, stopSensor, latestSensor } from './lib/winsensor.mjs';
 import { makeShrinkPage, makePngToJpeg } from './lib/pageshrink.mjs';
 import { makeSelphyJobBuilder } from './lib/selphyusb.mjs';
+import { makeDnpJobBuilder } from './lib/dnpusb.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { detectWifi } from './lib/wifi.mjs';
 import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetup, hotspotSetCreds, hotspotWake, hotspotSuspend, hotspotResume } from './lib/hotspot.mjs';
@@ -931,6 +932,15 @@ app.whenReady().then(async () => {
     shrinkPage: makeShrinkPage(nativeImage),
     toJpeg: makePngToJpeg(nativeImage),
     selphyJob: makeSelphyJobBuilder(nativeImage),
+    dnpJob: makeDnpJobBuilder(nativeImage),
+    hotFoldersFile: join(dataDir(), 'hot-folders.json'),
+    pickHotFolder: async () => {
+      const r = await dialog.showOpenDialog(win || undefined, {
+        title: 'Choose DNP Hot Folder Print watch folder (e.g. 4x6 or 2x6)',
+        properties: ['openDirectory', 'createDirectory']
+      });
+      return (!r.canceled && r.filePaths && r.filePaths[0]) ? r.filePaths[0] : '';
+    },
     directPrintersFile: join(dataDir(), 'direct-printers.json'),
     spinInboxDir: () => spinDirNow() || '',
     logger: (m) => {

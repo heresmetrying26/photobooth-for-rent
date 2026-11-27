@@ -41,7 +41,7 @@ const srv = createServer((req, res) => {
       window.__mockArm = { connected: false, paired: false };
       window.pb4u = {
         desktop: true,
-        version: '1.1.117',
+        version: '1.1.118',
         spinScan: async () => window.__mockInbox.slice(),
         spinInfo: async () => ({
           dir: 'C:\\\\Users\\\\Booth\\\\Videos\\\\360-Inbox',

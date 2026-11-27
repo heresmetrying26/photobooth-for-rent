@@ -4,262 +4,1019 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>How to print on DNP Photo Printers (RX1, RX1HS, DS620, DS40, QW410) · Windows, Mac &amp; Android · photobooth4u</title>
+<title>DNP Photo Printer Guide (DS620A, DS-RX1HS, DS40, QW410, DS820A) · 4×6 &amp; 2×6 Cut · photobooth4u</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500..700;1,500..700&family=Manrope:wght@400..800&display=swap">
 <style>
-  :root{ --bg:#f6f1ea; --card:#fffdf9; --ink:#1f1a1d; --dim:#5d555b; --line:#e4ddd3; --red:#c8402a; --red-soft:#fbeee9; --dark:#1f1a1d; }
-  *{box-sizing:border-box;}
-  html{scroll-behavior:smooth;}
-  body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;}
-  a{color:var(--red);}
-  .wrap{max-width:860px; margin:0 auto; padding:0 16px;}
-  header.hero{background:var(--dark); color:#f6f1ea; padding:44px 0 40px;}
-  .brand{display:flex; align-items:center; gap:10px; font:600 22px 'Fraunces',Georgia,serif; color:#f6f1ea; text-decoration:none;}
-  .brand .mark{display:grid; grid-template-columns:repeat(2,9px); gap:3px;}
-  .brand .mark i{width:9px; height:9px; border-radius:2px; background:#f6f1ea;} .brand .mark i:nth-child(2){background:var(--red);}
-  .brand .badge{background:var(--red); color:#fff; font:800 12px 'Manrope',sans-serif; padding:2px 6px; border-radius:6px; transform:translateY(-6px);}
-  .eyebrow{font-size:13px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:#e8715a; margin:28px 0 8px;}
-  h1{font:600 clamp(36px,7vw,60px)/1.05 'Fraunces',Georgia,serif; margin:0 0 14px;}
-  h1 em{color:#e8715a;}
-  .lead{color:#d9cfc6; font-size:18px; max-width:620px; margin:0 0 22px;}
-  .hero-btns{display:flex; flex-wrap:wrap; gap:10px;}
-  .btn{display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:10px 18px; border-radius:999px; font-weight:800; font-size:15px; text-decoration:none;}
-  .btn.primary{background:var(--red); color:#fff;} .btn.ghost{border:1.5px solid #5a5056; color:#f6f1ea;}
-  nav.toc{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:-22px 0 8px; position:relative;}
-  nav.toc a{display:block; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; text-decoration:none; color:var(--ink); box-shadow:0 8px 20px rgba(70,45,25,.08);}
-  nav.toc b{display:block; color:var(--red); font-size:12px; letter-spacing:.14em; text-transform:uppercase;} nav.toc span{font-weight:700; font-size:15px;}
-  section.part{padding:34px 0 6px; scroll-margin-top:12px;}
-  section.part h2{font:600 clamp(26px,4.5vw,34px)/1.15 'Fraunces',Georgia,serif; margin:0 0 6px;}
-  .part .kicker{font-size:12px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:var(--red); margin:0 0 4px;}
-  .part .why{color:var(--dim); margin:0 0 14px;}
-  ol.steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
-  ol.steps li{display:grid; grid-template-columns:40px 1fr; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
-  ol.steps .n{width:40px; height:40px; border-radius:50%; background:var(--red); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center;}
-  ol.steps h3{margin:6px 0 2px; font-size:17px;}
-  ol.steps p{margin:0; color:var(--dim);}
-  code, .kbd{font:600 14px ui-monospace,'SF Mono',Menlo,Consolas,monospace; background:#efe7dd; border-radius:6px; padding:1px 6px; color:var(--ink); white-space:nowrap;}
-  .codeblock{display:flex; align-items:center; gap:10px; background:var(--dark); color:#f6f1ea; border-radius:12px; padding:12px 14px; margin:8px 0 0; font:600 14px ui-monospace,Menlo,Consolas,monospace; overflow-x:auto;}
-  .codeblock span{flex:1; white-space:nowrap;}
-  .copy{flex:none; border:1px solid #5a5056; background:transparent; color:#f6f1ea; border-radius:999px; padding:4px 12px; font:700 12px 'Manrope',sans-serif; cursor:pointer;}
-  .term{background:var(--dark); color:#d9cfc6; border-radius:14px; padding:16px 18px; font:14px/1.7 ui-monospace,Menlo,Consolas,monospace; margin-top:12px;}
-  .term .hl{color:#e8715a;} .term .w{color:#f6f1ea;}
-  .sheet{display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-top:12px;}
-  .sheet .paper{display:flex; gap:6px; width:150px; height:100px; flex:none;}
-  .sheet .paper i{flex:1; background:#e9ded3; border-radius:6px;}
-  .sheet .paper b{width:3px; background:repeating-linear-gradient(180deg,var(--red) 0 7px,transparent 7px 12px);}
-  .sheet p{margin:0; color:var(--dim);}
-  table{width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; font-size:15px;}
-  th, td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top;}
-  th{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); background:#f3ece3;}
-  tr:last-child td{border-bottom:0;}
-  td:first-child{font-weight:700; width:38%;}
-  .win{background:#eef3fb; border:1px solid #cfdcf2; border-radius:16px; padding:14px 18px; margin-top:12px;}
-  .win h3{margin:0 0 4px; font-size:16px;} .win ol{margin:4px 0 0; padding-left:20px; color:var(--dim);} .win li{margin:3px 0;}
-  .callout{background:var(--red-soft); border:1px solid #f1cfc5; border-radius:16px; padding:16px 18px; margin-top:14px;}
-  .callout h3{margin:0 0 4px; font-size:17px;} .callout p{margin:0; color:var(--dim);}
-  .check{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px;}
-  .check div{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
-  .check b{display:block; font:600 30px 'Fraunces',Georgia,serif; color:var(--red); line-height:1;}
-  .check h3{margin:8px 0 2px; font-size:17px;} .check p{margin:0; color:var(--dim);}
-  footer{margin:40px 0 0; padding:26px 0 40px; border-top:1px solid var(--line); color:var(--dim); font-size:14px;}
-  footer .help{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; background:var(--dark); color:#f6f1ea; border-radius:16px; padding:18px 20px; margin-bottom:16px;}
-  footer .help h3{margin:0; font:600 20px 'Fraunces',Georgia,serif;} footer .help p{margin:2px 0 0; color:#d9cfc6;}
-  td code{white-space:normal; word-break:break-all;}
-  @media (max-width:760px){ nav.toc{grid-template-columns:1fr 1fr;} }
-  @media (max-width:560px){ ol.steps li{grid-template-columns:32px 1fr; padding:14px;} ol.steps .n{width:32px; height:32px; font-size:14px;} td:first-child{width:auto;} }
-  @media print{ header.hero{background:none; color:var(--ink);} .lead{color:var(--dim);} .hero-btns, nav.toc, .copy{display:none;} section.part{break-inside:avoid;} }
+  :root {
+    --bg: #f6f1ea;
+    --card: #fffdf9;
+    --ink: #1f1a1d;
+    --dim: #5d555b;
+    --line: #e4ddd3;
+    --red: #c8402a;
+    --red-soft: #fbeee9;
+    --purple: #7c3aed;
+    --purple-soft: #f3eeff;
+    --ok: #1f6f62;
+    --ok-soft: #e6f4f1;
+    --warn: #fff7e0;
+    --warn-line: #edd38c;
+    --blue-soft: #eef3fb;
+    --blue-line: #cfdcf2;
+    --dark: #1f1a1d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15.5px/1.6 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--red); font-weight: 600; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 18px; }
+
+  /* Hero */
+  header.hero {
+    background: linear-gradient(135deg, #1f1a1d 0%, #2d2429 100%);
+    color: #f6f1ea;
+    padding: 40px 0 48px;
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font: 600 22px 'Fraunces', Georgia, serif;
+    color: #f6f1ea;
+    text-decoration: none;
+  }
+  .brand .mark { display: grid; grid-template-columns: repeat(2, 9px); gap: 3px; }
+  .brand .mark i { width: 9px; height: 9px; border-radius: 2px; background: #f6f1ea; display: block; }
+  .brand .mark i:nth-child(2) { background: var(--red); }
+  .brand .badge {
+    background: var(--red);
+    color: #fff;
+    font: 800 11px 'Manrope', sans-serif;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transform: translateY(-4px);
+  }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #f2846e;
+    margin: 24px 0 8px;
+  }
+  h1 {
+    font: 600 clamp(30px, 5.5vw, 50px)/1.06 'Fraunces', Georgia, serif;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  h1 em { color: #f2846e; font-style: italic; }
+  .lead {
+    color: #ded5cc;
+    font-size: 17px;
+    max-width: 700px;
+    margin-bottom: 18px;
+  }
+  .hero-btns { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 9px 18px;
+    border-radius: 999px;
+    font: 800 14.5px 'Manrope', sans-serif;
+    text-decoration: none;
+    border: 0;
+    cursor: pointer;
+  }
+  .btn.primary { background: var(--red); color: #fff; }
+  .btn.ghost { background: transparent; border: 1.5px solid #6b6167; color: #f6f1ea; }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #f6f1ea;
+    border-radius: 999px;
+    padding: 5px 13px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .pill.ok { background: rgba(31, 111, 98, 0.35); border-color: rgba(74, 222, 128, 0.35); }
+
+  /* Quick TOC */
+  nav.toc {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(126px, 1fr));
+    gap: 10px;
+    margin: -24px 0 16px;
+    position: relative;
+  }
+  nav.toc a {
+    display: block;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 11px 13px;
+    text-decoration: none;
+    color: var(--ink);
+    box-shadow: 0 8px 20px rgba(31, 26, 29, 0.07);
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  nav.toc a:hover { border-color: var(--red); transform: translateY(-1px); }
+  nav.toc b { display: block; color: var(--red); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  nav.toc span { font-weight: 700; font-size: 13.5px; }
+
+  /* Sections */
+  section.part { padding: 30px 0 6px; scroll-margin-top: 14px; }
+  .kicker {
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 4px;
+  }
+  h2 {
+    font: 600 clamp(23px, 3.8vw, 32px)/1.16 'Fraunces', Georgia, serif;
+    margin-bottom: 8px;
+  }
+  .why { color: var(--dim); margin-bottom: 14px; }
+
+  /* Cards & Grids */
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 20px;
+  }
+  .card h3 { font-size: 16.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card p, .card li { color: var(--dim); font-size: 14.5px; }
+  .card ul, .card ol { padding-left: 20px; margin-top: 8px; }
+  .card li { margin: 5px 0; }
+  .card b { color: var(--ink); }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 2px 9px;
+    white-space: nowrap;
+  }
+  .tag.ok { background: var(--ok-soft); color: var(--ok); }
+  .tag.purple { background: var(--purple-soft); color: var(--purple); }
+  .tag.red { background: var(--red-soft); color: var(--red); }
+  .tag.warn { background: var(--warn); color: #855a07; }
+
+  /* Visual diagram */
+  .diagram-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 20px;
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    align-items: center;
+  }
+  .diagram-box {
+    background: #faf6f0;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+  }
+  .diagram-box h4 { font-size: 15px; margin: 10px 0 4px; }
+  .diagram-box p { font-size: 13.5px; color: var(--dim); }
+
+  /* Numbered Steps */
+  ol.steps { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+  ol.steps li {
+    display: grid;
+    grid-template-columns: 38px 1fr;
+    gap: 14px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 15px 18px;
+  }
+  ol.steps .n {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--red);
+    color: #fff;
+    font-weight: 800;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+  }
+  ol.steps .n.purple { background: var(--purple); }
+  ol.steps .n.ok { background: var(--ok); }
+  ol.steps h3 { font-size: 16px; margin: 3px 0 4px; }
+  ol.steps p { color: var(--dim); font-size: 14.5px; }
+
+  /* OS Panels */
+  .os-win { background: var(--blue-soft); border: 1px solid var(--blue-line); border-radius: 16px; padding: 16px 20px; }
+  .os-mac { background: #faf6f0; border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; }
+  .os-win h3, .os-mac h3 { font-size: 16px; margin-bottom: 6px; }
+  .os-win ol, .os-mac ol { padding-left: 20px; color: var(--dim); font-size: 14.5px; }
+  .os-win li, .os-mac li { margin: 6px 0; }
+  .os-win b, .os-mac b { color: var(--ink); }
+
+  /* Code & Copy */
+  code {
+    font: 600 13.5px ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    background: #efe7dd;
+    border-radius: 6px;
+    padding: 1px 6px;
+    color: var(--ink);
+  }
+  .codeblock {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--dark);
+    color: #f6f1ea;
+    border-radius: 11px;
+    padding: 10px 14px;
+    margin-top: 8px;
+    font: 600 13.5px ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    overflow-x: auto;
+  }
+  .codeblock span { flex: 1; white-space: nowrap; }
+  .copy {
+    flex: none;
+    border: 1px solid #6b6167;
+    background: transparent;
+    color: #f6f1ea;
+    border-radius: 999px;
+    padding: 4px 11px;
+    font: 700 12px 'Manrope', sans-serif;
+    cursor: pointer;
+  }
+  .copy:hover { border-color: #fff; }
+
+  /* App UI Preview Mockup */
+  .ui-mock {
+    background: var(--card);
+    border: 1.5px solid var(--line);
+    border-radius: 18px;
+    padding: 18px;
+    margin-top: 12px;
+    box-shadow: 0 10px 26px rgba(31, 26, 29, 0.06);
+  }
+  .ui-slot {
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 13px 15px;
+    background: #fff;
+    margin-bottom: 10px;
+  }
+  .ui-slot:last-child { margin-bottom: 0; }
+  .ui-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .ui-title { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+  .ui-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .ui-num.purple { background: var(--purple); }
+  .ui-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--ok-soft);
+    color: var(--ok);
+  }
+  .ui-select {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 9px;
+    border: 1px solid #d5cdc2;
+    background: #faf8f4;
+    font: 600 13.5px 'Manrope', sans-serif;
+    color: var(--ink);
+  }
+  .ui-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 9px; }
+  .ui-btn {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid #d5cdc2;
+    background: #fff;
+    font: 700 12.5px 'Manrope', sans-serif;
+    color: var(--ink);
+  }
+  .ui-btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+
+  /* Checklist cards */
+  .check { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 10px; }
+  .check div { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; }
+  .check b { display: block; font: 600 28px 'Fraunces', Georgia, serif; color: var(--red); line-height: 1; }
+  .check h3 { margin: 8px 0 4px; font-size: 16px; }
+  .check p { color: var(--dim); font-size: 14px; }
+
+  /* Callouts */
+  .callout {
+    background: var(--red-soft);
+    border: 1px solid #f1cfc5;
+    border-left: 4px solid var(--red);
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin-top: 14px;
+  }
+  .callout.ok { background: var(--ok-soft); border-color: #bfe3da; border-left-color: var(--ok); }
+  .callout.purple { background: var(--purple-soft); border-color: #d9c8ff; border-left-color: var(--purple); }
+  .callout.warn { background: var(--warn); border-color: var(--warn-line); border-left-color: #c2810a; }
+  .callout h3 { font-size: 15.5px; margin-bottom: 4px; }
+  .callout p, .callout li { font-size: 14.5px; color: var(--dim); }
+  .callout ul, .callout ol { padding-left: 20px; margin-top: 6px; }
+  .callout li { margin: 4px 0; }
+  .callout b { color: var(--ink); }
+
+  /* Tables */
+  .tbl-wrap { overflow-x: auto; margin-top: 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); background: #f3ece3; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 700; }
+  td code { white-space: normal; word-break: break-word; }
+
+  /* Footer */
+  footer {
+    margin-top: 38px;
+    padding: 24px 0 44px;
+    border-top: 1px solid var(--line);
+    color: var(--dim);
+    font-size: 13.5px;
+  }
+  .help-box {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--dark);
+    color: #f6f1ea;
+    border-radius: 16px;
+    padding: 18px 22px;
+    margin-bottom: 14px;
+  }
+  .help-box h3 { font: 600 20px 'Fraunces', Georgia, serif; margin-bottom: 2px; }
+  .help-box p { color: #d9cfc6; font-size: 14px; }
+  .help-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    text-decoration: none;
+  }
+
+  @media (max-width: 760px) {
+    .grid-2, .grid-3, .diagram-card { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    ol.steps li { grid-template-columns: 32px 1fr; padding: 14px; }
+    ol.steps .n { width: 32px; height: 32px; font-size: 14px; }
+  }
+  @media print {
+    body { background: #fff; font-size: 12.5px; }
+    header.hero { background: #1f1a1d !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 24px 0; }
+    .hero-btns, nav.toc, .copy { display: none !important; }
+    section.part, .card, .callout, .ui-mock, tr { break-inside: avoid; }
+  }
 </style>
 </head>
 <body>
+
 <header class="hero">
   <div class="wrap">
-    <a class="brand" href="/"><span class="mark"><i></i><i></i><i></i><i></i></span>photobooth<span class="badge">4u</span></a>
-    <p class="eyebrow">DNP Printing Guide · Windows, Mac &amp; Android</p>
-    <h1>How to print on<br><em>DNP Printers</em></h1>
-    <p class="lead">Compatible with <b>DNP DS-RX1 / RX1HS, DS620 / DS620A, DS40, and QW410</b>. 4×6 (4R) photos print in ~12 seconds, and 2×6 photo strips are automatically sliced down the middle by the DNP's built-in cutter. <b>New:</b> the Android tablet app (1.1.10 or newer) prints to the DNP over a USB cable, with no driver and no laptop.</p>
+    <a class="brand" href="/">
+      <span class="mark"><i></i><i></i><i></i><i></i></span>
+      photobooth<span class="badge">4u</span>
+    </a>
+    <p class="eyebrow">DNP Dye-Sub Printing Guide · Windows · macOS · iPad · Android</p>
+    <h1>How to print on<br><em>DNP Photo Printers</em></h1>
+    <p class="lead">
+      Optimized event workflow for <b>DNP DS620 / DS620A, DS-RX1 / DS-RX1HS, DS40, QW410, and DS80 / DS820A</b>.
+      Set up once in 10 minutes for silent, full-bleed 300 DPI printing — with automatic 4×6 whole &amp; 2×6 strip routing,
+      zero print dialogs, and <b>zero-internet Offline Print Station</b> support for iPad &amp; Android booths.
+    </p>
     <div class="hero-btns">
-      <a class="btn primary" href="/">Open Photo Booth</a>
-      <a class="btn ghost" href="#android">Android tablet steps</a>
-      <a class="btn ghost" href="/downloads/">Get Print Helper / Desktop App</a>
+      <a class="btn primary" href="/downloads/">Get Laptop App / Print Helper</a>
+      <a class="btn ghost" href="#ipad">iPad Offline Print Station</a>
+      <a class="btn ghost" href="#android">Android Direct USB</a>
+      <button type="button" class="btn ghost" onclick="window.print()">Print / Save PDF</button>
+    </div>
+    <div class="pills">
+      <span class="pill ok">&#10003; 300 DPI Full-Bleed</span>
+      <span class="pill ok">&#10003; Silent Auto-Print</span>
+      <span class="pill ok">&#10003; 2×6 Split Auto-Cut Routing</span>
+      <span class="pill ok">&#10003; Offline iPad / Android Print Station</span>
     </div>
   </div>
 </header>
 
 <main class="wrap">
-  <nav class="toc" aria-label="Parts">
-    <a href="#install"><b>Part 1</b><span>Install DNP Driver</span></a>
-    <a href="#strips"><b>Part 2</b><span>Set Up 2x6 Cut</span></a>
-    <a href="#booth"><b>Part 3</b><span>Choose In Booth</span></a>
-    <a href="#test"><b>Part 4</b><span>Test &amp; Auto-print</span></a>
-    <a href="#android"><b>Android</b><span>Plug into the tablet</span></a>
-    <a href="#ipad"><b>iPad</b><span>Laptop print station</span></a>
+  <nav class="toc" aria-label="Guide sections">
+    <a href="#models"><b>Start Here</b><span>Models &amp; Fastest Path</span></a>
+    <a href="#modes"><b>2×6 Setup</b><span>Dual-Queue vs Auto-Split</span></a>
+    <a href="#install"><b>Steps 1–2</b><span>Driver &amp; Cut Queue</span></a>
+    <a href="#booth"><b>Step 3</b><span>Booth Settings</span></a>
+    <a href="#test"><b>Step 4</b><span>Test &amp; Event Prep</span></a>
+    <a href="#ipad"><b>iPad / Tablet</b><span>Offline Print Station</span></a>
+    <a href="#android"><b>Android</b><span>Direct USB (Beta)</span></a>
     <a href="#fixes"><b>Help</b><span>Fixes &amp; Tips</span></a>
   </nav>
-  <div class="callout"><h3>Which steps are for you?</h3><p><b>Windows or Mac laptop booth:</b> Parts 1 to 4. &nbsp;<b>Android tablet booth:</b> skip the driver and go straight to <a href="#android">Android: plug the DNP into the tablet</a>. &nbsp;<b>iPad booth</b> (or a DS80, DS820 or QW410 on Android): use a <a href="#ipad">laptop print station</a>.</p></div>
 
+  <!-- FASTEST PATH & MODEL MATRIX -->
+  <section class="part" id="models">
+    <p class="kicker">Start Here · Pick the fastest path for your hardware</p>
+    <h2>Which DNP Setup Is Most Efficient for Your Booth?</h2>
+    <p class="why">
+      Every DNP model has slightly different speed, media capacity, and 2×6 cutting hardware. Pick the row that matches your booth device first, then confirm your DNP model below.
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:26%">Your Booth Device</th>
+            <th style="width:32%">Most Efficient Setup</th>
+            <th>Why It's Best</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Windows or Mac Laptop Booth</td>
+            <td><span class="tag ok">Best</span> <b>photobooth4u Laptop App</b> + USB DNP driver &rarr; <a href="#install">Steps 1–4</a></td>
+            <td>Silent printing is built right into the app (no separate Print Helper window, zero internet needed, private DNP driver settings protected).</td>
+          </tr>
+          <tr>
+            <td>Laptop Web Booth (Chrome)</td>
+            <td><b>photobooth4u.netlify.app</b> + <b>Print Helper 1.1.25+</b> &rarr; <a href="#install">Steps 1–4</a></td>
+            <td>Same silent dye-sub engine with automatic 4×6 / 2×6 routing and zero browser print dialogs.</td>
+          </tr>
+          <tr>
+            <td>iPad Booth (Offline · Zero Internet)</td>
+            <td><span class="tag ok">Best</span> <b>Offline Laptop Print Station</b> (Wi-Fi / Hotspot + 6-Digit PIN) &rarr; <a href="#ipad">iPad steps</a></td>
+            <td>Zero internet required, zero pop-ups, and uses <b>0 extra license slots</b> when run with Print Helper (or built straight into Laptop App 1.1.112+).</td>
+          </tr>
+          <tr>
+            <td>iPad Booth (No Laptop)</td>
+            <td><b>DNP WCM Plus</b> hardware AirPrint box &rarr; <a href="#ipad">iPad steps</a></td>
+            <td>Turns any DNP into an Apple AirPrint printer; pair once via <b>Pick Silent AirPrint printer</b> in the iPad app.</td>
+          </tr>
+          <tr>
+            <td>Android Tablet Booth</td>
+            <td><b>Direct USB OTG</b> (App 1.1.10+ · Beta) &rarr; <a href="#android">Android steps</a><br><small style="color:var(--dim);font-weight:500;">Or Offline Laptop Print Station for QW410 / DS80 / DS820A</small></td>
+            <td>For DS-RX1/RX1HS, DS620/DS620A &amp; DS40: plug straight into the tablet with zero laptop, zero driver, and zero second 2×6 queue.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tbl-wrap" style="margin-top:14px;">
+      <table>
+        <thead>
+          <tr>
+            <th>DNP Model</th>
+            <th>4×6 Speed &amp; Roll Capacity</th>
+            <th>2×6 Photo Strips</th>
+            <th>Supported Sizes</th>
+            <th>Android Direct USB</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>DS620 / DS620A</td>
+            <td><b>~8.4 sec</b> · 400 prints/roll</td>
+            <td><span class="tag ok">Built-in 2×6 Auto-Cut</span> (on 4×6 roll)</td>
+            <td>2×6, 3.5×5, 4×6, 5×7, 6×8, 6×9</td>
+            <td><span class="tag ok">Yes (Beta)</span></td>
+          </tr>
+          <tr>
+            <td>DS-RX1HS / DS-RX1</td>
+            <td><b>~12.4 sec</b> (RX1HS) / ~14.9s (RX1) · <b>700 prints/roll</b></td>
+            <td><span class="tag ok">Built-in 2×6 Auto-Cut</span> (on 4×6 roll)</td>
+            <td>2×6, 4×6, 6×8</td>
+            <td><span class="tag ok">Yes (Beta)</span></td>
+          </tr>
+          <tr>
+            <td>DS40</td>
+            <td><b>~8.9 sec</b> · 400 prints/roll</td>
+            <td><span class="tag ok">Built-in 2×6 Auto-Cut</span> (on 4×6 roll)</td>
+            <td>2×6, 4×6, 5×7, 6×8</td>
+            <td><span class="tag ok">Yes (Beta)</span></td>
+          </tr>
+          <tr>
+            <td>QW410 (Compact)</td>
+            <td><b>~19 sec</b> · 150 prints/roll</td>
+            <td><span class="tag warn">Perforated Media (No Cutter)</span><br><small style="color:var(--dim);font-weight:500;">Load <b>QW410 PD-2S</b> perforated 4×6 roll &amp; snap strips apart by hand</small></td>
+            <td>4×6, 2×6 (perforated), 4×4, 4.5×8</td>
+            <td><span class="tag red">Use Laptop / Station</span></td>
+          </tr>
+          <tr>
+            <td>DS80 / DS820 / DS820A</td>
+            <td>8-inch wide studio printer</td>
+            <td><span class="tag red">8-inch media only</span> (no 2×6 cut)</td>
+            <td>8×10, 8×12, A4, Panoramas</td>
+            <td><span class="tag red">Use Laptop / Station</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="diagram-card">
+      <div class="diagram-box">
+        <svg viewBox="0 0 220 140" width="180" height="114" aria-label="4x6 Whole Photo Diagram">
+          <rect x="20" y="10" width="180" height="120" rx="8" fill="#fff" stroke="#c8402a" stroke-width="3"/>
+          <rect x="32" y="22" width="72" height="46" rx="4" fill="#efe7dd"/>
+          <rect x="116" y="22" width="72" height="46" rx="4" fill="#efe7dd"/>
+          <rect x="32" y="76" width="72" height="42" rx="4" fill="#efe7dd"/>
+          <rect x="116" y="76" width="72" height="42" rx="4" fill="#efe7dd"/>
+          <text x="110" y="101" text-anchor="middle" font-size="11" font-weight="700" fill="#1f1a1d">4×6 WHOLE</text>
+        </svg>
+        <h4>4R (4×6) Whole Sheet</h4>
+        <p>Sent to <b>Printer 1</b> (<code>DNP 4x6</code>). Prints edge-to-edge at <b>300 DPI (1200×1800 px)</b>, uncut.</p>
+      </div>
+      <div class="diagram-box">
+        <svg viewBox="0 0 220 140" width="180" height="114" aria-label="2x6 Split Strips Diagram">
+          <rect x="20" y="10" width="84" height="120" rx="7" fill="#fff" stroke="#7c3aed" stroke-width="3"/>
+          <rect x="116" y="10" width="84" height="120" rx="7" fill="#fff" stroke="#7c3aed" stroke-width="3"/>
+          <rect x="30" y="20" width="64" height="26" rx="3" fill="#efe7dd"/>
+          <rect x="30" y="52" width="64" height="26" rx="3" fill="#efe7dd"/>
+          <rect x="30" y="84" width="64" height="26" rx="3" fill="#efe7dd"/>
+          <rect x="126" y="20" width="64" height="26" rx="3" fill="#efe7dd"/>
+          <rect x="126" y="52" width="64" height="26" rx="3" fill="#efe7dd"/>
+          <rect x="126" y="84" width="64" height="26" rx="3" fill="#efe7dd"/>
+          <line x1="110" y1="2" x2="110" y2="138" stroke="#c8402a" stroke-width="3" stroke-dasharray="6 5"/>
+          <text x="110" y="136" text-anchor="middle" font-size="10" font-weight="800" fill="#c8402a">AUTO-CUT</text>
+        </svg>
+        <h4>2×6 Split Strips (2 copies per sheet)</h4>
+        <p>Sent to <b>2×6 Split Printer</b> (<code>DNP 2x6 Strips</code>). Two strips side-by-side sliced down the exact center seam.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- DUAL-QUEUE VS SINGLE-QUEUE AUTO-SPLIT -->
+  <section class="part" id="modes">
+    <p class="kicker">Choose Your 2×6 Mode · Windows &amp; Mac</p>
+    <h2>Dual-Queue vs. Single-Queue Auto-Split</h2>
+    <p class="why">
+      photobooth4u supports <b>both</b> workflows automatically. Use <b>Dual-Queue</b> on Windows for 100% reliability across every DNP driver version, or <b>Single-Queue Auto-Split</b> when your driver already lists split paper sizes (common on macOS CUPS and newer drivers).
+    </p>
+
+    <div class="grid-2">
+      <div class="card" style="border-color: var(--red);">
+        <h3>Option A · Dual-Queue Driver <span class="tag ok">Best Default on Windows</span></h3>
+        <p>Install the same DNP twice on the exact same USB port: <code>DNP 4x6</code> (uncut) and <code>DNP 2x6 Strips</code> (2-inch cut enabled).</p>
+        <ul>
+          <li><b>Required when 2-inch cut is a driver checkbox</b> (most Windows DS-RX1HS, DS620A &amp; DS40 drivers store 2-inch cut under <i>Layout &rarr; Advanced</i> rather than as a separate paper size).</li>
+          <li><b>Independent tuning per mode:</b> separate Lightness, Colour Balance, Edges, and Glossy/Matte finish for 4×6 vs 2×6 strips.</li>
+          <li>Uses photobooth4u's <b>warm background Windows print worker</b> (zero cold PowerShell delay) while preserving private DNP driver settings.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Option B · Single-Queue Auto-Split <span class="tag purple">Fastest on Mac</span></h3>
+        <p>Keep just <b>one</b> printer queue (e.g. <code>DNP DS620</code> or <code>DNP DS-RX1</code>). Works whenever your driver lists both <code>4x6</code> and a split slot (e.g. <code>w288h432-div2</code>, <code>PR (4x6)*2</code>, <code>4x6 2-cut</code>, <code>(2) 2x6" cut</code>) or a macOS CUPS cut option.</p>
+        <ul>
+          <li>No duplicate printer queue needed.</li>
+          <li>photobooth4u switches to the split slot for 2×6 strip layouts and back to uncut 4×6 for full-sheet layouts automatically.</li>
+          <li><b>QW410 users:</b> always use a single queue (load perforated <code>PD-2S</code> 4×6 media — no cutter option exists).</li>
+        </ul>
+      </div>
+      <div class="card" style="border-color: var(--ok);">
+        <h3>Option C · DNP Hot Folder Print <span class="tag ok">Zero Spooler · Pro</span></h3>
+        <p>Already run DNP's official <b>Hot Folder Print (HFP)</b> app on Windows or Mac? Connect it directly inside photobooth4u under <b>Find a Wi-Fi, USB, Bluetooth, Hot Folder, or Instax printer &rarr; DNP Hot Folder Print</b>.</p>
+        <ul>
+          <li><b>1-click auto-detect</b> finds standard folders (e.g. <code>C:\DNP\Hot Folder\Prints\4x6</code>, <code>2x6</code>, or macOS <code>~/Documents/HotFolderPrint/Prints/</code>).</li>
+          <li><b>Atomic file drop</b> (<code>.tmp</code> &rarr; rename) bypasses the Windows/Mac print spooler completely, preserves DNP ICC profiles, and unlocks DS620A panoramics (<code>6×14</code>, <code>6×20</code>).</li>
+          <li>Appears as <code>Hot Folder: DNP 4x6</code> / <code>Hot Folder: DNP 2x6</code> — works with Printer 1, 2×6 Split Strips Printer, Auto-Print, and Offline Laptop Print Station!</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Option D · Desktop Direct-USB <span class="tag warn">No Driver · Beta</span></h3>
+        <p>On a fresh Windows or Mac laptop with <b>no DNP driver installed yet</b>, the Laptop App can print straight over USB to <b>DS-RX1 / RX1HS, DS620 / DS620A, and DS40</b>.</p>
+        <ul>
+          <li>Plug in USB &rarr; click <b>Find Wi-Fi / USB printers</b> &rarr; pick <code>DNP DS-RX1 (USB direct)</code>.</li>
+          <li>No driver, no second 2×6 queue, Glossy/Matte selectable under Paper Type, plus <b>live low-media alerts</b> from the printer's roll counter.</li>
+          <li>If you install DNP's official driver later, the app automatically prefers the official driver queue for factory ICC colour accuracy.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 1: INSTALL DRIVER -->
   <section class="part" id="install">
-    <p class="kicker">Part 1 · First time setup</p>
-    <h2>Install the DNP Printer on your computer</h2>
-    <div class="win" style="margin-top:0;">
-      <h3>On Windows (Recommended for DNP)</h3>
-      <ol>
-        <li>Download the official <b>DNP Windows Driver</b> for your model (e.g. <i>DS-RX1HS Driver</i> or <i>DS620 Driver</i>) from DNP's official support website.</li>
-        <li>Run the installer and follow the prompt. When asked, plug in the DNP's USB cable and turn the power on.</li>
-        <li>Open <b>Settings → Bluetooth &amp; devices → Printers &amp; scanners</b>. Click your DNP printer → <b>Printing preferences</b>.</li>
-        <li>Under <b>Paper / Quality</b>, verify paper size is <b>4x6 (102x152mm)</b> or <b>6x4</b>, and Orientation is set properly.</li>
-        <li>Under <b>Printer properties</b>, rename the printer to <code>DNP 4x6</code> so it's easy to identify.</li>
-      </ol>
+    <p class="kicker">Step 1 · One-time setup on your laptop</p>
+    <h2>Install the DNP Driver (Best-Practice Order)</h2>
+    <p class="why">
+      Always download the official driver from DNP's support site — never use Windows Generic or Apple Generic PostScript drivers. <b>Install the driver before plugging in the USB cable.</b>
+    </p>
+
+    <div class="grid-2">
+      <div class="os-win">
+        <h3>Windows 10 / 11 (Recommended for Events)</h3>
+        <ol>
+          <li><b>Unplug the DNP USB cable first.</b> Download and run the official DNP Windows Driver for your model (e.g. <i>DS-RX1HS</i>, <i>DS620A</i>, <i>DS40</i>, <i>QW410</i>). Restart if prompted.</li>
+          <li><b>Plug directly into a laptop USB port</b> (no unpowered USB hub; keep cable &le; 2 m / 6 ft) and power the printer ON. <i>Always use this exact same physical USB port at events so Windows doesn't create a duplicate "Copy 1" printer.</i></li>
+          <li>Open <b>Control Panel &rarr; Devices and Printers</b> (press <code>Win + R</code>, type <code>control printers</code>, Enter). Right-click your DNP &rarr; <b>Printer properties</b>.</li>
+          <li>On the <b>General</b> tab, rename it <code>DNP 4x6</code> (always keep <code>DNP</code>, <code>DS620</code>, <code>RX1</code>, or <code>QW410</code> in the name). Click <b>Preferences…</b>:
+            <br>&bull; <b>Paper Size:</b> <code>PR (4x6)</code> or <code>4x6 (102x152mm)</code>
+            <br>&bull; <b>Print Mode / Quality:</b> <b>High-Speed (300×300 dpi)</b> &mdash; <i>avoid 300×600 High-Res, which nearly doubles print time</i>
+            <br>&bull; <b>Finish / Overcoat:</b> <b>Glossy</b> (fastest) or <b>Matte</b>
+            <br>&bull; <b>2-inch cut:</b> <b>Disable</b> &rarr; Apply &amp; OK.</li>
+          <li><b>Windows 11 Fail-Safe:</b> In the same <b>Printer properties</b> window, open the <b>Advanced</b> tab &rarr; click <b>Printing Defaults…</b> and apply the exact same 4×6 / High-Speed / Disable 2-inch cut settings so Windows updates never reset them.</li>
+        </ol>
+      </div>
+
+      <div class="os-mac">
+        <h3>macOS (Apple Silicon &amp; Intel · macOS 11–15+)</h3>
+        <ol>
+          <li>Download and install the official <b>DNP macOS CUPS driver</b> for your model from DNP's website, then <b>restart your Mac</b>.</li>
+          <li>Load matching paper &amp; ribbon, plug the DNP directly into your Mac via USB, and turn it on.</li>
+          <li>Open <b>System Settings &rarr; Printers &amp; Scanners &rarr; Add Printer</b>. Select your DNP printer, confirm <b>Use</b> shows the official <b>DNP</b> driver (never <i>Generic PostScript</i>), name it <code>DNP 4x6</code>, and click <b>Add</b>.</li>
+          <li><b>Fastest way to configure on Mac:</b> In the <b>photobooth4u Laptop App</b>, select <code>DNP 4x6</code> and click <b>Configure printer</b> — the app shows your DNP's PPD options (Page Size, Finish, Cutter) right inside the booth with <b>no Terminal commands needed</b>.</li>
+          <li><i>Using two DNP printers on one Mac?</i> Enable <b>iSerial</b> in DNP's printer utility so macOS keeps each queue locked to the right unit across reboots.</li>
+        </ol>
+      </div>
     </div>
 
-    <div class="callout" style="background:var(--card); border:1px solid var(--line); margin-top:14px;">
-      <h3 style="color:var(--ink);">On Mac (macOS Big Sur 11, Monterey 12, Ventura 13, Sonoma 14, Sequoia 15)</h3>
-      <ol class="steps" style="margin-top:10px;">
-        <li><span class="n">1</span><div><h3>Install DNP Mac OS Driver</h3><p>Download the official DNP macOS driver (CUPS driver) for your model from DNP's website, install the package, and restart your Mac.</p></div></li>
-        <li><span class="n">2</span><div><h3>Add the Printer</h3><p>Open <b>System Settings → Printers &amp; Scanners → Add Printer</b>. Select your DNP printer. Ensure the <b>Use</b> dropdown shows the official DNP driver (not Generic PostScript). Name it <code>DNP 4x6</code> → click <b>Add</b>.</p></div></li>
-      </ol>
+    <div class="callout ok">
+      <h3>Pro Rule: Keep &ldquo;DNP&rdquo; (or the Model Code) in the Printer Name</h3>
+      <p>
+        Names like <code>DNP 4x6</code>, <code>DNP 2x6 Strips</code>, <code>DP-DS620</code>, <code>DS-RX1HS</code>, or <code>DP-QW410</code>
+        automatically activate photobooth4u's dedicated <b>dye-sub print engine</b> — locking your private driver cut/finish/color settings in place and preventing accidental inkjet scaling or white borders.
+      </p>
     </div>
   </section>
 
+  <!-- PART 2: 2x6 STRIP CUT QUEUE -->
   <section class="part" id="strips">
-    <p class="kicker">Part 2 · The 2×6 photo strip setup</p>
-    <h2>Add the DNP a second time for 2×6 strip cuts</h2>
-    <div class="sheet">
-      <div class="paper" aria-hidden="true"><i></i><b></b><i></i></div>
-      <p>Photobooth layouts with 2×6 strips automatically place <b>two strips side-by-side on one 4×6 sheet</b>. DNP printers have a physical blade inside that cleanly cuts the sheet into two 2×6 strips when the <b>2-inch cut</b> setting is enabled!</p>
-    </div>
+    <p class="kicker">Step 2 · 2×6 photo strip auto-cut setup</p>
+    <h2>Add the &ldquo;DNP 2x6 Strips&rdquo; Queue (Dual-Queue Mode)</h2>
+    <p class="why">
+      <b>DS620 / DS620A, DS-RX1 / DS-RX1HS, and DS40:</b> follow these steps once for rock-solid automatic strip cutting.
+      <i>(Skip this step if you have a <b>QW410</b> — it uses perforated <code>PD-2S</code> media on your single queue — or if you are using macOS Single-Queue Auto-Split or Android Direct USB.)</i>
+    </p>
 
-    <div class="win">
-      <h3>On Windows: Adding the "DNP 2x6 Strips" queue</h3>
-      <ol>
-        <li>Open <b>Control Panel → Devices and Printers</b> (or run <code>control printers</code>).</li>
-        <li>Click <b>Add a printer</b> → click <b>The printer that I want isn't listed</b>.</li>
-        <li>Select <b>Add a local printer or network printer with manual settings</b> → Next.</li>
-        <li>Choose <b>Use an existing port</b>: pick the exact USB port your DNP is plugged into (e.g., <code>USB001 (Virtual printer port for USB)</code>) → Next.</li>
-        <li>Select manufacturer <b>DNP</b> and pick your model's driver → select <b>Use the driver that is currently installed (recommended)</b> → Next.</li>
-        <li>Name the printer: <code>DNP 2x6 Strips</code> (or <code>DNP 2x6 Cut</code>) → Finish.</li>
-        <li>Right-click <b>DNP 2x6 Strips</b> → <b>Printing preferences</b> → find <b>Option / Advanced</b>:
-          <br>Enable <b>"2-inch cut"</b> (or <b>"2 inch cut: Cut"</b> / <b>"Multi-cut: 2-inch cut"</b>) → click OK.</li>
-      </ol>
-    </div>
+    <div class="grid-2">
+      <div class="os-win">
+        <h3>Windows: Add <code>DNP 2x6 Strips</code> on the Same USB Port</h3>
+        <ol>
+          <li>Open <b>Control Panel &rarr; Devices and Printers</b> (run <code>control printers</code>). Check which USB port <code>DNP 4x6</code> uses under <b>Printer properties &rarr; Ports</b> (e.g. <code>USB001</code>).</li>
+          <li>Click <b>Add a printer</b> &rarr; click <b>The printer that I want isn't listed</b>.</li>
+          <li>Select <b>Add a local printer or network printer with manual settings</b> &rarr; Next.</li>
+          <li>Choose <b>Use an existing port</b> &rarr; pick that exact same USB port (e.g. <code>USB001 (Virtual printer port for USB)</code>) &rarr; Next.</li>
+          <li>Pick manufacturer <b>DNP</b> and your model &rarr; choose <b>Use the driver that is currently installed (recommended)</b> &rarr; name it <code>DNP 2x6 Strips</code> &rarr; Finish.</li>
+          <li>Right-click <code>DNP 2x6 Strips</code> &rarr; <b>Printer properties</b>:
+            <br>&bull; <b>General &rarr; Preferences… &rarr; Layout:</b> Paper Size <code>PR (4x6)</code> &rarr; click <b>Advanced…</b> &rarr; set <b>2inch cut</b> (or <b>2-inch cut / Multi-cut</b>) to <b>Enable</b> &rarr; OK.
+            <br>&bull; <b>Advanced tab &rarr; Printing Defaults…:</b> set the exact same <b>2inch cut: Enable</b> + <b>High-Speed (300×300 dpi)</b> &rarr; Apply &amp; OK.</li>
+        </ol>
+      </div>
 
-    <div class="callout" style="background:var(--card); border:1px solid var(--line); margin-top:14px;">
-      <h3 style="color:var(--ink);">On Mac: Adding the 2-inch cut queue via CUPS</h3>
-      <ol class="steps" style="margin-top:10px;">
-        <li><span class="n">1</span><div><h3>Add the printer again</h3><p>In <b>Printers &amp; Scanners</b>, click <b>Add Printer</b> again, pick the same DNP, and name it <code>DNP 2x6 Strips</code>.</p></div></li>
-        <li><span class="n">2</span><div><h3>Enable CUPS Web Interface</h3><p>Open <b>Terminal</b> and run:</p>
-          <div class="codeblock"><span>cupsctl WebInterface=yes</span><button class="copy" type="button">Copy</button></div>
-          <p style="margin-top:8px;">Then open <a href="http://localhost:631/printers" target="_blank">http://localhost:631/printers</a> in Safari or Chrome.</p></div></li>
-        <li><span class="n">3</span><div><h3>Set 2-inch Cut Option</h3><p>Click on <b>DNP 2x6 Strips</b> → from the Administration dropdown, select <b>Set Default Options</b> → under Media / Page Size, select the 2-inch cut option (often named <code>(2) 2x6" cut</code>, <code>w288h432-div2</code>, or <code>4x6 2-cut</code>) → click <b>Set Default Options</b>.</p></div></li>
-      </ol>
+      <div class="os-mac">
+        <h3>macOS: Configure 2-Inch Cut (In-App or CUPS)</h3>
+        <ol>
+          <li><b>Try Single-Queue Auto-Split first:</b> On most DNP macOS drivers, photobooth4u detects <code>w288h432-div2</code> / <code>(2) 2x6" cut</code> / <code>4x6 2-cut</code> and switches automatically with just <code>DNP 4x6</code>. Run <b>Test 2×6 strips (cut)</b> in Step 4 to check!</li>
+          <li><b>Or add a dedicated 2nd queue:</b> In <b>System Settings &rarr; Printers &amp; Scanners</b>, click <b>Add Printer</b> again, pick the same DNP, and name it <code>DNP 2x6 Strips</code>.</li>
+          <li><b>In Laptop App:</b> Select <code>DNP 2x6 Strips</code> under <i>2×6 Split Strips Printer</i> &rarr; click <b>Configure 2×6 printer</b> &rarr; pick the 2-inch cut Page Size or Cutter option &rarr; click <b>Save printer settings</b>.</li>
+          <li><b>In Chrome + Print Helper (CUPS fallback):</b> Run in <b>Terminal</b>, then open <a href="http://localhost:631/printers" target="_blank" rel="noopener">http://localhost:631/printers</a> (sign in with your Mac username &amp; password):
+            <div class="codeblock"><span>cupsctl WebInterface=yes</span><button class="copy" type="button">Copy</button></div>
+            Click <b>DNP_2x6_Strips</b> &rarr; <b>Administration &rarr; Set Default Options</b> &rarr; pick <code>(2) 2x6" cut</code>, <code>w288h432-div2</code>, or <code>4x6 2-cut</code> (or enable the 2-inch cut option) &rarr; <b>Set Default Options</b>.
+          </li>
+        </ol>
+      </div>
     </div>
   </section>
 
+  <!-- PART 3: INSIDE PHOTOBOOTH4U -->
   <section class="part" id="booth">
-    <p class="kicker">Part 3 · Inside photobooth4u</p>
-    <h2>Choose your DNP printers in the booth</h2>
-    <p class="why">Once both queues are created, the booth switches between 4R sheets and 2×6 cut strips automatically. No manual driver switching during events!</p>
-    <ol class="steps">
-      <li><span class="n">1</span><div><h3>Open the Booth</h3><p>Open the offline desktop app (or open <b>photobooth4u.netlify.app</b> in Chrome with the Print Helper running).</p></div></li>
-      <li><span class="n">2</span><div><h3>Open Print Settings</h3><p>In <b>Photo Session</b>, tap the <b>&#128424; Print settings</b> button (or open <b>Setup &rarr; 4 Printer</b>) at the bottom left.</p></div></li>
-      <li><span class="n">3</span><div><h3>Assign Each Paper Size</h3><p>Pick the dedicated printer for each layout format:</p></div></li>
-    </ol>
-    <table style="margin-top:14px;">
-      <tr><th>Paper Size Format</th><th>Selected Printer</th><th>What the DNP Does</th></tr>
-      <tr><td><b>4R (4×6)</b></td><td><code>DNP 4x6</code></td><td>Prints 1 full 4×6 photo sheet, no cut</td></tr>
-      <tr><td><b>4R · strip layouts (2 strips, cut)</b></td><td><code>DNP 2x6 Strips</code></td><td>Prints and cuts into two separate 2×6 strips</td></tr>
-    </table>
-  </section>
+    <p class="kicker">Step 3 · Inside photobooth4u</p>
+    <h2>Assign Printer 1 (4×6) &amp; 2×6 Split Strips Printer</h2>
+    <p class="why">
+      Open the <b>photobooth4u Laptop App</b> (recommended — printing is built in) or open <b>photobooth4u.netlify.app</b> in Chrome with the <a href="/downloads/">Print Helper</a> running.
+      Go to <b>Setup &rarr; 4 Printer</b> (or tap <b>&#128424; Print settings</b> inside Photo Session).
+    </p>
 
-  <section class="part" id="test">
-    <p class="kicker">Part 4 · Before the event starts</p>
-    <h2>Test both sizes, then turn on Auto-print</h2>
-    <div class="check">
-      <div><b>1</b><h3>Test 4R (4×6)</h3><p>Take a test session with a 4R layout and hit Print. Verify a crisp, full-bleed 4×6 photo ejects without white borders.</p></div>
-      <div><b>2</b><h3>Test 2×6 Strips</h3><p>Switch to a classic 3-photo or 4-photo strip layout and hit Print. The DNP will print and automatically slice it into two 2×6 strips.</p></div>
-      <div><b>3</b><h3>Turn on Auto-Print</h3><p>In <b>Setup &rarr; 4 Printer</b> &rarr; <b>Automatic printing</b>, turn on <b>Print after each session</b>. Now every guest session prints by itself as soon as the photos are taken.</p></div>
+    <div class="ui-mock" aria-label="photobooth4u Print Settings preview">
+      <div class="ui-slot">
+        <div class="ui-head">
+          <span class="ui-title"><span class="ui-num">1</span> Printer 1 <small style="color:var(--dim);font-weight:600;">for 4R (4×6)</small></span>
+          <span class="ui-badge">DNP 4x6</span>
+        </div>
+        <div class="ui-select">DNP 4x6 &#9662;</div>
+        <div class="ui-btns">
+          <span class="ui-btn">Configure printer</span>
+          <span class="ui-btn">Lightness &amp; Colour</span>
+          <span class="ui-btn">Edges (margins)</span>
+        </div>
+      </div>
+
+      <div class="ui-slot" style="border-color:#d9c8ff; background:#fcfaff;">
+        <div class="ui-head">
+          <span class="ui-title"><span class="ui-num purple">2×6</span> 2×6 Split Strips Printer <small style="color:var(--dim);font-weight:600;">under Multiple printers &amp; 2×6 strip cutter</small></span>
+          <span class="ui-badge">DNP 2x6 Strips</span>
+        </div>
+        <div class="ui-select">DNP 2x6 Strips &#9662; <span style="color:var(--dim);font-weight:500;">&nbsp;(or "Same as 4×6 — auto-switch Split")</span></div>
+        <div class="ui-btns">
+          <span class="ui-btn">Configure 2×6 printer</span>
+          <span class="ui-btn primary">Test 4×6 whole</span>
+          <span class="ui-btn primary" style="background:var(--purple);border-color:var(--purple);">Test 2×6 strips (cut)</span>
+        </div>
+      </div>
+    </div>
+
+    <ol class="steps" style="margin-top:14px;">
+      <li>
+        <span class="n">1</span>
+        <div>
+          <h3>Keep Paper Size on 4R (4×6)</h3>
+          <p>Under <b>Paper size</b>, tap <b>4R (4×6)</b> (for both 4×6 photos and 2×6 strips). The booth automatically places two identical 2×6 strips side-by-side on one 4×6 sheet so the DNP cuts cleanly down the middle. <i>(Built-in safety net: even if narrow 2×6 paper is picked on a DNP, photobooth4u automatically pairs two strips onto a 4×6 sheet so a photo is never cut in half.)</i></p>
+        </div>
+      </li>
+      <li>
+        <span class="n">2</span>
+        <div>
+          <h3>Pick Printer 1 for Whole 4×6 Prints</h3>
+          <p>Under <b>Printer 1</b>, pick <code>DNP 4x6</code> (or your single DNP queue on macOS / QW410).</p>
+        </div>
+      </li>
+      <li>
+        <span class="n purple">3</span>
+        <div>
+          <h3>Pick Your 2×6 Split Strips Printer</h3>
+          <p>Expand <b>Multiple printers &amp; 2×6 strip cutter</b> &rarr; <b>2×6 Split Strips Printer</b>:<br>
+            &bull; <b>Dual-Queue (Windows recommended):</b> pick <code>DNP 2x6 Strips</code>. Its own independent <b>Configure 2×6 printer</b>, <b>Edges</b>, and <b>Lightness &amp; Colour</b> appear right inside this card.<br>
+            &bull; <b>Single-Queue Auto-Split (Mac / split-slot drivers):</b> leave on <b>Same as 4×6 (auto-switch Split)</b> — or pick your exact driver split slot under <b>2×6 split driver paper slot</b>.</p>
+        </div>
+      </li>
+    </ol>
+
+    <div class="tbl-wrap" style="margin-top:14px;">
+      <table>
+        <thead>
+          <tr><th>Booth Layout Chosen by Guest</th><th>Routed Printer</th><th>What the DNP Outputs</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><b>4R (4×6)</b> photo / postcard / grid</td><td><code>DNP 4x6</code> (Printer 1)</td><td>1 full-bleed 4×6 sheet, uncut</td></tr>
+          <tr><td><b>2×6 strip</b> layout (3-photo / 4-photo strip)</td><td><code>DNP 2x6 Strips</code> (or auto-split slot)</td><td>2 identical 2×6 strips sliced down the middle</td></tr>
+          <tr><td><b>5×7, 6×8, 8×10</b> (DS620 / DS40 / DS820A)</td><td>Assign that paper size under <b>Paper size</b></td><td>Full-bleed print matching the loaded roll</td></tr>
+        </tbody>
+      </table>
     </div>
   </section>
 
-  <section class="part" id="android">
-    <p class="kicker">Android tablet app · 1.1.10 or newer · Beta</p>
-    <h2>Plug the DNP straight into the Android tablet</h2>
-    <p class="why">The app sends prints to the DNP by itself: no driver, no laptop, no second &ldquo;2x6&rdquo; printer, and no internet needed (it works in offline mode). Works with the <b>DS-RX1 / RX1HS, DS620 / DS620A and DS40</b>. You can skip Parts 1 and 2.</p>
-    <ol class="steps">
-      <li><span class="n">1</span><div><h3>Update the app</h3><p>On the tablet, open <b>Setup › Share › App updates</b> and tap <b>Check for updates</b> until it shows <b>1.1.10</b> or newer. On older versions, install the new APK from the <a href="/downloads/">downloads page</a> over the old one. Your activation, designs and photos stay.</p></div></li>
-      <li><span class="n">2</span><div><h3>Connect the DNP</h3><p>Use the DNP's own USB cable with a <b>USB OTG adapter</b> (USB-C to USB-B, or a USB-C hub with a USB-A port). Load paper and ribbon, then turn the printer on. If the tablet charges through the same port, use a hub with power pass-through.</p></div></li>
-      <li><span class="n">3</span><div><h3>Pick the paper size</h3><p>Open <b>Setup &rarr; 4 Printer</b> and choose the paper size that matches the paper loaded, for example <b>4R (4×6)</b> for 4×6 media.</p></div></li>
-      <li><span class="n">4</span><div><h3>Choose the DNP</h3><p>Under <b>Find Wi-Fi &amp; USB printers</b>, tap <b>DNP DS-RX1 (USB) · Photo (DNP DS-RX1)</b> (the name shows your model). When Android asks to allow photobooth4u to use the printer, tap <b>OK</b>. Tick <b>Always open</b> first so it doesn't ask again.</p></div></li>
-      <li><span class="n">5</span><div><h3>Glossy or matte</h3><p>Under <b>Paper type</b>, pick <b>Glossy finish</b> or <b>Matte finish</b> to match the look you want. Both use the same DNP paper and ribbon.</p></div></li>
-      <li><span class="n">6</span><div><h3>Test print, then Auto-print</h3><p>Tap <b>Test print</b>, then print one real session with a 4R layout and one with a strip layout (see the table below). When both look right, turn on <b>Print after each session</b> as in <a href="#test">Part 4</a>.</p></div></li>
-    </ol>
-    <table style="margin-top:14px;">
-      <tr><th>What you print on the tablet</th><th>What the DNP does</th></tr>
-      <tr><td>4R (4×6), photo layout</td><td>One full 4×6 photo, edge to edge, no cut</td></tr>
-      <tr><td>4R (4×6), strip layout</td><td>Two strips side by side, cut into two 2×6 strips</td></tr>
-      <tr><td>2×6 strip paper size</td><td>The strip twice on one 4×6 sheet, cut into two identical 2×6 strips</td></tr>
-      <tr><td>3.5×5, 5×7, 6×8 or 6×9</td><td>Prints that size if your model and the paper loaded support it. Otherwise the booth shows <i>Paper definition error</i></td></tr>
-    </table>
-    <div class="win">
-      <h3>Good to know</h3>
+  <!-- PART 4: TEST & PRE-EVENT CHECKLIST -->
+  <section class="part" id="test">
+    <p class="kicker">Step 4 · 20-second check before guests arrive</p>
+    <h2>Test Both Modes, Turn On Auto-Print &amp; Lock Event Stability</h2>
+    <div class="check">
+      <div><b>1</b><h3>Tap &ldquo;Test 4×6 whole&rdquo;</h3><p>Inside <b>2×6 Split Strips Printer</b>, tap <b>Test 4×6 whole</b>. Confirm one crisp, full-bleed 4×6 sheet with zero white lines and accurate colour bars.</p></div>
+      <div><b>2</b><h3>Tap &ldquo;Test 2×6 strips (cut)&rdquo;</h3><p>Tap <b>Test 2×6 strips (cut)</b>. Confirm the DNP slices cleanly down the center dashed line into two separate 2×6 strips (or aligns with the perforation on QW410).</p></div>
+      <div><b>3</b><h3>Turn On Auto-Print</h3><p>Under <b>Automatic printing</b>, turn on <b>Print after each session</b> (or <b>Send a print automatically after each session</b>). Guests get instant prints with zero operator taps.</p></div>
+    </div>
+
+    <div class="callout warn">
+      <h3>5-Point Event-Day Efficiency Checklist (Prevents 95% of Mid-Event Issues)</h3>
+      <ul>
+        <li><b>Empty the scrap box</b> before every event — a full scrap tray stops the cutter and triggers a flashing red LED mid-queue.</li>
+        <li><b>Plug both laptop &amp; DNP into wall power</b> and set Windows/macOS <b>Sleep = Never</b> when plugged in.</li>
+        <li><b>Disable Windows USB Selective Suspend</b> (<i>Control Panel &rarr; Power Options &rarr; Change plan settings &rarr; Advanced &rarr; USB settings</i>) so the USB port never naps between quiet stretches.</li>
+        <li><b>Run 1 warmup print</b> before doors open — the first print warms the thermal head; after that, prints stay at full rated speed (8.4s DS620A / 12.4s RX1HS).</li>
+        <li><b>Avoid double colour profiling:</b> let the DNP driver use its factory colour table and do any minor skin-tone or brightness tweak inside photobooth4u's per-printer <b>Lightness &amp; Colour Correction</b> (guests' digital QR copies stay untouched).</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- IPAD & TABLET BOOTH -->
+  <section class="part" id="ipad">
+    <p class="kicker">iPad &amp; Tablet Booths · Zero Internet Needed</p>
+    <h2>Using a DNP Printer with an iPad (or Android Tablet)</h2>
+    <p class="why">
+      Bare DNP printers do not have built-in Wi-Fi or Apple AirPrint, and iPads cannot load Windows/Mac USB printer drivers.
+      photobooth4u gives you <b>three</b> seamless options — starting with our built-in <b>Offline Laptop Print Station</b> (zero internet, zero extra hardware).
+    </p>
+
+    <div class="grid-2">
+      <div class="card" style="border-color: var(--ok);">
+        <h3>Method 1 · Offline Laptop Print Station <span class="tag ok">Recommended · Zero Internet</span></h3>
+        <p>Print silently over a travel Wi-Fi router or Windows Mobile Hotspot with a <b>6-Digit PIN</b>. Works on iPad &amp; Android apps with <b>DS620A, RX1HS, DS40, QW410, DS80, and DS820A</b>.</p>
+        <ol>
+          <li>Connect the DNP to your Windows/Mac laptop via USB (Steps 1 &amp; 2 done).</li>
+          <li>On the laptop, open <b>Offline Print Station</b> inside <b>Laptop App 1.1.112+</b> (<i>Setup bottom bar &rarr; &ctdot; &rarr; Offline Print Station</i>) — <b>OR</b> run standalone <b>Print Helper 1.1.25+</b> (uses <b>0 license slots</b>!).</li>
+          <li>Turn on your travel router or click <b>Turn On Booth Hotspot</b>, tick only your DNP queues (click <b>Hide unused</b>), and run a test print.</li>
+          <li>On your iPad/Android app: join that Wi-Fi &rarr; open <b>Setup &rarr; 4 Printer</b> &rarr; turn ON <b>Laptop Print Station (Wi-Fi · Offline USB printer)</b> &rarr; tap <b>Find Laptop on Wi-Fi</b> &rarr; enter the <b>6-Digit PIN</b> &rarr; pick <code>DNP 4x6</code> &amp; <code>DNP 2x6 Strips</code>!</li>
+        </ol>
+        <p style="margin-top:8px;">Need step-by-step screenshots &amp; DSLR tips? See the <a href="/how-to-print-station/">full Offline Print Station guide &rarr;</a></p>
+      </div>
+
+      <div class="card">
+        <h3>Method 2 · DNP WCM Plus <span class="tag purple">No Laptop · Hardware AirPrint</span></h3>
+        <p>Already own a <b>DNP WCM Plus</b> wireless print server? It plugs into up to 3 DNP printers (DS-RX1HS, DS620A, QW410, DS820A, DS40, DS80) and turns them into standard Apple AirPrint printers.</p>
+        <ol>
+          <li>Plug your DNP printer(s) into the WCM Plus USB ports and join your iPad to the WCM Plus Wi-Fi (or bridge WCM Plus to your venue router for simultaneous internet sharing).</li>
+          <li>Configure 4×6 / 2×6 cut queues in the WCM Plus web portal.</li>
+          <li>In the photobooth4u iPad app (<b>Setup &rarr; 4 Printer</b>), tap <b>Pick Silent AirPrint printer</b> and pick your WCM Plus DNP queue once — prints go out with <b>zero AirPrint pop-ups</b>!</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h3>Method 3 · Cloud Print Station <span class="tag">Online · Different Wi-Fi Networks</span></h3>
+      <p>Use this when the tablet runs on cellular/hotspot and the laptop is on a separate internet connection (or when running the web booth in Safari/Chrome).</p>
       <ol>
-        <li>If the printer is switched off or unplugged, prints wait on the tablet and go out by themselves when it's back.</li>
-        <li>Paper end, ribbon end, an open door or the wrong paper show as a message on the booth, so you don't have to watch the printer's lights.</li>
-        <li>Not supported on the tablet yet: <b>DS80, DS820 and QW410</b>. For these, use a laptop with the DNP driver (Parts 1 to 4) or a <a href="#ipad">laptop print station</a>.</li>
-        <li>This is a beta. Run a test print before every event. If colours look wrong, the picture is reversed, or the strips are cut in the wrong place, message us a photo of the print.</li>
+        <li>On the laptop plugged into the DNP, start the <a href="/downloads/">Print Helper</a> and open <a href="/print-station/">photobooth4u.netlify.app/print-station/</a>, then sign in with your booth code (uses 0 extra device slots).</li>
+        <li>Pick your DNP printers right on the page: <b>4R (4×6)</b> &rarr; <code>DNP 4x6</code> and <b>4R (4×6) · 2×6 strips (cut)</b> &rarr; <code>DNP 2x6 Strips</code>. Choose <b>Auto-print</b> or <b>Queue &amp; view first</b>, then tap <b>Test 4×6 whole</b> and <b>Test 2×6 strips (cut)</b>.</li>
+        <li>On your iPad or Android tablet booth, open <b>Setup &rarr; 4 Printer &rarr; Send prints to &rarr; Send to a laptop print station</b>.</li>
       </ol>
     </div>
   </section>
 
+  <!-- ANDROID DIRECT USB (preserves #android anchor!) -->
+  <section class="part" id="android">
+    <p class="kicker">Android Tablet App · 1.1.10 or newer · Beta</p>
+    <h2>Plug the DNP Straight Into Your Android Tablet (No Laptop)</h2>
+    <p class="why">
+      The photobooth4u Android app speaks DNP's native USB print protocol directly — <b>no driver, no laptop, no second &ldquo;2x6&rdquo; printer queue, and no internet needed</b> (works fully offline).
+      Supports <b>DS-RX1 / RX1HS, DS620 / DS620A, and DS40</b>. You can skip Steps 1 and 2.
+    </p>
+    <ol class="steps">
+      <li><span class="n ok">1</span><div><h3>Update the Android App</h3><p>On the tablet, open <b>Setup &rsaquo; Share &rsaquo; App updates</b> and tap <b>Check for updates</b> (requires <b>1.1.10</b> or newer), or install the latest APK from the <a href="/downloads/">downloads page</a>. Your activation, designs, and photos stay intact.</p></div></li>
+      <li><span class="n ok">2</span><div><h3>Connect via USB OTG (Powered Hub Recommended)</h3><p>Plug the DNP's USB cable into the tablet with a <b>USB OTG adapter</b> (USB-C to USB-B, or a <b>USB-C hub with Power Delivery pass-through</b> so the tablet stays charged all event). Load paper and ribbon, then power the DNP ON.</p></div></li>
+      <li><span class="n ok">3</span><div><h3>Pick Matching Paper Size</h3><p>Open <b>Setup &rarr; 4 Printer</b> and choose the paper size that matches the loaded roll — for example <b>4R (4×6)</b> for 4×6 media.</p></div></li>
+      <li><span class="n ok">4</span><div><h3>Select the DNP &amp; Allow USB Access</h3><p>Under <b>Find Wi-Fi &amp; USB printers</b>, tap <b>DNP DS-RX1 (USB) · Photo (DNP DS-RX1)</b> (shows your detected model). Tick <b>Always open</b> and tap <b>OK</b> when Android asks for USB permission.</p></div></li>
+      <li><span class="n ok">5</span><div><h3>Choose Glossy or Matte &amp; Test Print</h3><p>Under <b>Paper type</b>, choose <b>Glossy finish</b> or <b>Matte finish</b> (same roll &amp; ribbon). Tap <b>Test print</b>, then verify one real 4R layout and one 2×6 strip layout before enabling <b>Print after each session</b>.</p></div></li>
+    </ol>
+
+    <div class="tbl-wrap" style="margin-top:14px;">
+      <table>
+        <thead><tr><th>What You Print on the Android Tablet</th><th>What the DNP Outputs Automatically</th></tr></thead>
+        <tbody>
+          <tr><td>4R (4×6), photo layout</td><td>One full-bleed 4×6 photo, uncut</td></tr>
+          <tr><td>4R (4×6), strip layout</td><td>Two 2×6 strips side-by-side, automatically cut in half</td></tr>
+          <tr><td>2×6 strip paper size</td><td>The strip doubled onto one 4×6 sheet, automatically cut into two identical 2×6 strips</td></tr>
+          <tr><td>3.5×5, 5×7, 6×8 or 6×9</td><td>Prints that size if your model &amp; loaded roll support it (otherwise shows <i>Paper definition error</i>)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <h3>Good to Know (Android Direct USB Beta)</h3>
+      <ul>
+        <li><b>Smart queue recovery:</b> if the DNP is powered off or unplugged briefly, prints wait on the tablet and resume automatically when reconnected.</li>
+        <li><b>Live hardware alerts on screen:</b> <i>Paper end</i>, <i>Ribbon end</i>, <i>Cover open</i>, <i>No scrap box</i>, and <i>Paper definition error</i> appear right inside the booth UI.</li>
+        <li><b>Need DS80, DS820A, QW410, or official DNP ICC color profiles?</b> Use <a href="#ipad">Offline Laptop Print Station</a> instead.</li>
+        <li><b>Beta note:</b> always run a test print before every event. If colour, orientation, or cut placement looks off, message us a photo of the print.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- UNDER THE HOOD QUALITY GUARANTEES -->
+  <section class="part" id="quality">
+    <p class="kicker">Under the Hood · Built-In DNP Engine</p>
+    <h2>Why This Workflow Is Optimized Specifically for DNP</h2>
+    <div class="grid-3">
+      <div class="card">
+        <h3>Instant Warm Print Worker</h3>
+        <p>On Windows, photobooth4u keeps a pre-warmed .NET print worker running in the background (with automatic fallback) — cutting ~1–2.5 seconds of cold startup lag off every single print job.</p>
+      </div>
+      <div class="card">
+        <h3>Private DNP Settings Protected</h3>
+        <p>photobooth4u detects DNP queues and skips Windows <code>PrintTicket</code> overrides — so your driver's <b>2-inch cut, matte/glossy overcoat, Lay-Flat de-curl, and factory colour LUT</b> are never reset mid-event.</p>
+      </div>
+      <div class="card">
+        <h3>True 300 DPI, Zero White Hairlines</h3>
+        <p>Every 4×6 and 2×6 dual-strip sheet renders at exact <b>300 DPI (1200×1800 px)</b> with an integer <code>600 + 600 px</code> seam, <code>TileFlipXY</code> edge wrapping, and full-bleed dye-sub framing.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TROUBLESHOOTING -->
   <section class="part" id="fixes">
     <p class="kicker">Troubleshooting</p>
     <h2>DNP Quick Fixes</h2>
-    <table>
-      <tr><th>Symptom</th><th>Quick Solution</th></tr>
-      <tr><td><b>Strips print on 4×6 but aren't cut</b></td><td>The strip layout is printing to <code>DNP 4x6</code> instead of <code>DNP 2x6 Strips</code>, or the 2-inch cut option wasn't saved in preferences. Go to booth Print Settings and ensure <i>4R strip layouts</i> is assigned to <code>DNP 2x6 Strips</code>.</td></tr>
-      <tr><td><b>Flashing Red LED on DNP</b></td><td>Flashing red means ribbon or paper issue: open the front hatch, tighten the ribbon spools (remove any slack), ensure the paper roll's scrap box is emptied, and snap the lever back firmly.</td></tr>
-      <tr><td><b>Thin white border on edge</b></td><td>In DNP printing preferences, check <b>Overscan / Borderless</b> to ensure full-bleed printing is activated. If a thin line is still left on one side, open the booth's <b>Print settings &rarr; Edges (this printer)</b> and press <b>+</b> on that side.</td></tr>
-      <tr><td><b>Printer says "Paused" or "Offline"</b></td><td>Unplug and re-plug the USB cable, or restart the DNP. Check Windows / Mac print queue to resume.</td></tr>
-      <tr><td><b>Android: the DNP isn't in the printer list</b></td><td>Check the app is 1.1.10 or newer, the printer is on, and the OTG adapter works (some cables only charge; try another one or a hub). Then tap <b>Refresh printer list</b>. If it only shows as an unknown USB printer, message us a screenshot.</td></tr>
-      <tr><td><b>Android: "Tap to allow USB access"</b></td><td>Tap the DNP in the list and tap <b>OK</b> in Android's pop-up. If the pop-up doesn't appear, unplug the USB cable and plug it back in.</td></tr>
-      <tr><td><b>Android: "Paper definition error"</b></td><td>The paper size picked in the booth doesn't match the paper in the printer. Choose the size that matches the paper loaded (4R for 4×6 media).</td></tr>
-      <tr><td><b>Android: "Paper end", "Ribbon end" or "Cover open"</b></td><td>Load a new paper roll or ribbon, or close the door firmly. Then print again.</td></tr>
-    </table>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th style="width:34%">Symptom</th><th>Fastest Fix</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Strips print on 4×6 but aren't cut</td>
+            <td>In photobooth4u, expand <b>Multiple printers &amp; 2×6 strip cutter</b> and verify <b>2×6 Split Strips Printer</b> is set to <code>DNP 2x6 Strips</code>. On Windows, open <code>DNP 2x6 Strips</code> &rarr; <b>Printer properties</b> and confirm <b>2inch cut: Enable</b> is saved in <b>both</b> <i>Preferences</i> and <i>Advanced &rarr; Printing Defaults</i>. <i>(QW410 has no cutter — use perforated <code>PD-2S</code> media.)</i></td>
+          </tr>
+          <tr>
+            <td>Whole 4×6 photo gets cut in half</td>
+            <td>Open <code>DNP 4x6</code> &rarr; <b>Printing preferences</b> &amp; <b>Printing Defaults</b> and set <b>2inch cut</b> to <b>Disable</b>. In Single-Queue mode, check <b>Driver paper size / slot</b> under Printer 1 is on <b>Auto match</b> or uncut <code>4x6</code>.</td>
+          </tr>
+          <tr>
+            <td>Thin white border on one edge (or edge slightly cropped)</td>
+            <td>Confirm the printer queue name includes <code>DNP</code> (or <code>DS620</code> / <code>RX1</code> / <code>QW410</code>) and borderless/overscan is enabled in the driver. Then open <b>Print settings &rarr; Edges (margins)</b> and tap <b>Print edge test</b>:<br>&bull; <b>Thin white line on a side:</b> press <b>&minus;</b> (minus) to push the image outward (0.5 mm per tap).<br>&bull; <b>Side slightly cut off:</b> press <b>+</b> (plus) to pull the image inward.</td>
+          </tr>
+          <tr>
+            <td>Prints are slow (~20–30 sec on DS620A / RX1HS)</td>
+            <td>Check driver <b>Print Mode</b> in <i>Printing Preferences</i> &amp; <i>Printing Defaults</i>: switch from <b>High-Resolution (300×600 dpi)</b> back to <b>High-Speed (300×300 dpi)</b>. Also plug USB directly into the laptop (remove passive USB hubs or cables over 2 m).</td>
+          </tr>
+          <tr>
+            <td>Flashing Red LED on DNP</td>
+            <td>Open the front hatch, tighten any slack in the ink ribbon spools, <b>empty the paper scrap box</b>, ensure the paper flanges sit flush on the roll, and close the door firmly until it latches.</td>
+          </tr>
+          <tr>
+            <td>Windows created &ldquo;DNP (Copy 1)&rdquo; or printer shows Offline</td>
+            <td>The USB cable was plugged into a different physical USB port than during setup. Move the cable back to the original USB port, or update the port on both <code>DNP 4x6</code> and <code>DNP 2x6 Strips</code> under <b>Printer properties &rarr; Ports</b>.</td>
+          </tr>
+          <tr>
+            <td>Prints look slightly dark, warm, or washed out</td>
+            <td>Open <b>Lightness &amp; Colour Correction</b> inside that printer's card in photobooth4u (independent per printer!) and nudge <b>Lightness</b> (e.g. <code>+10</code> to <code>+20</code>) or colour balance. Digital/QR copies stay unchanged. Avoid enabling ICC colour management in two apps at once.</td>
+          </tr>
+          <tr>
+            <td>Android: DNP isn't listed or asks for USB access</td>
+            <td>Confirm Android app is <b>1.1.10+</b>, printer is ON, and your USB-C cable/adapter supports OTG data (charge-only cables won't work). Tap <b>Refresh printer list</b>, tap the DNP, tick <b>Always open</b>, and tap <b>OK</b>.</td>
+          </tr>
+          <tr>
+            <td>Android: &ldquo;Paper definition error&rdquo; or &ldquo;Paper/Ribbon end&rdquo;</td>
+            <td>Match the booth's paper size to the physical media roll installed (e.g. 4R for 4×6 media). For paper/ribbon end or cover open, reload matching paper + ribbon and latch the front door firmly.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 
-  <section class="part" id="ipad">
-    <p class="kicker">iPad · Laptop print station</p>
-    <h2>Using DNP with an iPad booth</h2>
-    <div class="callout" style="background:var(--card); border:1px solid var(--line);">
-      <h3 style="color:var(--ink);">How to print from an iPad to a DNP (No AirPrint needed!)</h3>
-      <p style="margin:0 0 10px; color:var(--dim);">DNP printers don't have Apple AirPrint, and an iPad can't drive a USB printer. Instead, photobooth4u has a built-in <b>Laptop Print Station</b>. Use it on an Android tablet too if your DNP is a DS80, DS820 or QW410. For the RX1, DS620 and DS40, <a href="#android">plug the DNP into the Android tablet</a> instead.</p>
-      <ol style="margin:0; padding-left:20px; color:var(--dim);">
-        <li style="margin-bottom:6px;">Plug the DNP printer into any laptop (Windows or Mac) via USB and set up its driver (Parts 1 and 2 above).</li>
-        <li style="margin-bottom:6px;">On that laptop, start the <a href="/downloads/">Print Helper</a> so prints go out with no print pop-up.</li>
-        <li style="margin-bottom:6px;">In Chrome on the laptop, open <b>photobooth4u.netlify.app/print-station</b> and sign in with your booth code. Pick <b>DNP 4x6</b> and <b>DNP 2x6 Strips</b> for the paper sizes there.</li>
-        <li style="margin-bottom:6px;">On the iPad or Android tablet booth, open <b>Setup &rarr; 4 Printer</b> &rarr; <b>Send prints to</b> &rarr; <b>Laptop print station</b>. The booth shows <b>Print station is on</b> when the laptop is connected.</li>
-        <li>Prints are sent through photobooth4u online, so <b>both the tablet and the laptop need internet</b> (they don't need to be on the same Wi-Fi). It doesn't work in the Android app's offline mode.</li>
-      </ol>
-    </div>
+  <!-- PRINT HELPER TROUBLESHOOTING -->
+  <section class="part" id="helper-trouble">
+    <p class="kicker">Web Booth + Print Helper</p>
+    <h2>If Chrome Can't Reach the Print Helper</h2>
+    <p class="why">
+      If the Print Helper window lists your DNP printers but the browser booth says &ldquo;Can't reach the Print Helper&rdquo;, check these four steps (or switch to the <a href="/downloads/">photobooth4u Laptop App</a>, which has printing built in):
+    </p>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Open the live booth URL</h3><p>Always open <b>photobooth4u.netlify.app</b> (a saved <code>file://</code> copy cannot talk to the Print Helper).</p></div></li>
+      <li><span class="n">2</span><div><h3>Allow local network access (Chrome / Edge)</h3><p>Click the icon at the left of the address bar &rarr; <b>Site settings</b> &rarr; <b>Local network access</b> &rarr; <b>Allow</b>.</p></div></li>
+      <li><span class="n">3</span><div><h3>Brave browser: turn Shields off</h3><p>Click the <b>lion icon</b> on the address bar and turn <b>Shields off</b> for photobooth4u, and allow <code>localhost</code> access if prompted.</p></div></li>
+      <li><span class="n">4</span><div><h3>Reload &amp; recheck</h3><p>Reload the booth page, open <b>Print settings</b>, and tap <b>Check again</b>.</p></div></li>
+    </ol>
   </section>
 
   <footer>
-    <div class="help">
+    <div class="help-box">
       <div>
-        <h3>Need assistance setting up your DNP?</h3>
-        <p>Message us on Messenger anytime for quick driver tips.</p>
+        <h3>Need help tuning your DNP model?</h3>
+        <p>Message us your DNP model (DS620A, RX1HS, DS40, QW410, DS820A) and device — we'll help you verify your exact setup.</p>
       </div>
-      <a class="btn primary" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener">Message us on Messenger →</a>
+      <a class="help-btn" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener">Message photobooth4u &rarr;</a>
     </div>
-    photobooth4u · DNP Photo Printer Guide (RX1HS, DS620, DS40, QW410) · Windows, Mac &amp; Android
+    photobooth4u · <a href="/printers/">All printers</a> · <a href="/how-to-print-station/">Offline Print Station guide</a> · <a href="/how-to-print-hiti/">HiTi guide</a> · <a href="/print-station/">Cloud Print Station</a> · Print this page (Ctrl+P / Cmd+P) to save as PDF.
   </footer>
 </main>
 
 <script>
-  document.querySelectorAll('.copy').forEach(function(b){
-    b.addEventListener('click', function(){
-      var t = b.previousElementSibling.textContent;
-      try{ navigator.clipboard.writeText(t).then(function(){ b.textContent = 'Copied'; setTimeout(function(){ b.textContent = 'Copy'; }, 1500); }); }catch(e){}
+  document.querySelectorAll('.copy').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = b.previousElementSibling ? b.previousElementSibling.textContent : '';
+      if (!t) return;
+      try {
+        navigator.clipboard.writeText(t).then(function () {
+          b.textContent = 'Copied';
+          setTimeout(function () { b.textContent = 'Copy'; }, 1500);
+        });
+      } catch (e) { }
     });
   });
 </script>

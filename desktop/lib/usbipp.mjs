@@ -5,6 +5,7 @@
 // the probe reports the exact interfaces and IEEE-1284 ID so the app can guide the operator cleanly.
 import { createRequire } from 'node:module';
 import { isSelphyUsb, selphyModelName, selphyErrorDescription } from './selphyusb.mjs';
+import { isDnpUsb, dnpModelName, dnpUnsupportedReason, dnpCmd, dnpIsError, dnpStatusText, parseDnpIntReply, parseDnpMediaRemaining } from './dnpusb.mjs';
 
 const BROTHER_VID = 0x04f9;
 const HP_VID = 0x03f0;
@@ -21,7 +22,13 @@ const KNOWN_MODELS = new Map([
   ['04f9:0474', 'Brother DCP-T220'],
   ['04f9:0476', 'Brother DCP-T520W'],
   ['04f9:0477', 'Brother DCP-T720DW'],
-  ['04f9:0478', 'Brother DCP-T820DW']
+  ['04f9:0478', 'Brother DCP-T820DW'],
+  ['1343:0003', 'DNP DS40'],
+  ['1343:0004', 'DNP DS80'],
+  ['1343:0005', 'DNP DS-RX1 / RX1HS'],
+  ['1343:0008', 'DNP DS80D'],
+  ['1452:8b01', 'DNP DS620 / DS620A'],
+  ['1452:9001', 'DNP DS820 / DS820A']
 ]);
 
 const hex4 = (n) => Number(n || 0).toString(16).padStart(4, '0');
@@ -198,7 +205,7 @@ export async function probeUsbPrinters({ platform = process.platform, readDescri
     if (!d) continue;
     const vid = d.idVendor, pid = d.idProduct;
     const ifaces = inspectDeviceInterfaces(dev);
-    const isPrinter = ifaces.some((i) => i.cls === 7) || vid === BROTHER_VID || isSelphyUsb(vid, pid, '');
+    const isPrinter = ifaces.some((i) => i.cls === 7) || vid === BROTHER_VID || isSelphyUsb(vid, pid, '') || isDnpUsb(vid, pid, '');
     if (!isPrinter) continue;
     const ippIface = pickUsbIppInterface(vid, ifaces);
     const rawIface = pickUsbRawInterface(ifaces);
@@ -225,10 +232,19 @@ export async function probeUsbPrinters({ platform = process.platform, readDescri
     const selphy = isSelphyUsb(vid, pid, `${name} ${product} ${deviceId}`);
     const selphyIface = selphy ? pickUsbSelphyInterface(ifaces) : null;
 
+    const dnpModel = dnpModelName(vid, pid, `${name} ${product} ${deviceId}`);
+    const dnp = !!dnpModel;
+    const dnpUnsupported = dnp ? dnpUnsupportedReason(dnpModel) : '';
+    const dnpIface = (dnp && !dnpUnsupported) ? pickUsbSelphyInterface(ifaces) : null;
+
     const key = `usb:${dev.busNumber || 0}:${dev.deviceAddress || 0}:${idPair}`;
     let note = '';
     if (selphy && selphyIface) {
       note = 'Canon SELPHY detected on USB: the app can print straight to it over USB with no driver.';
+    } else if (dnp && dnpIface) {
+      note = `DNP ${dnpModel} detected on USB: the app can print straight to it over USB (driverless, auto 2×6 cut, glossy/matte & live remaining media counter) or through its official DNP driver.`;
+    } else if (dnp && dnpUnsupported) {
+      note = dnpUnsupported;
     } else if (ippIface) {
       note = 'Supports driverless IPP-over-USB (7/1/4): the app can print straight to it over USB.';
     } else if (vid === BROTHER_VID) {
@@ -248,6 +264,11 @@ export async function probeUsbPrinters({ platform = process.platform, readDescri
       isSelphy: selphy,
       hasSelphyUsb: !!selphyIface,
       selphyIface,
+      isDnp: dnp,
+      dnpModel,
+      dnpUnsupportedReason: dnpUnsupported,
+      hasDnpUsb: !!dnpIface,
+      dnpIface,
       hasIppUsb: !!ippIface,
       hasRawPrinter: !!rawIface,
       ippIface,
@@ -468,5 +489,180 @@ export function usbSelphyPrint(entry, jobBuffers, { pollMs = 500, idleTimeoutMs 
       if (claimed) { try { await call((cb) => claimed.release(true, cb)); } catch { /* ignore */ } }
       if (opened) { try { dev.close(); } catch { /* ignore */ } }
     }
+  });
+}
+
+async function dnpDrainIn(inEp) {
+  if (!inEp) return;
+  inEp.timeout = 60;
+  for (let i = 0; i < 8; i++) {
+    try {
+      const piece = await call((cb) => inEp.transfer(4096, cb));
+      if (!piece || !piece.length) break;
+    } catch { break; }
+  }
+}
+
+async function dnpQuery(outEp, inEp, group, name, timeoutMs = 4000) {
+  if (!outEp || !inEp) return null;
+  await dnpDrainIn(inEp);
+  const cmd = dnpCmd(group, name, null);
+  outEp.timeout = 5000;
+  await call((cb) => outEp.transfer(cmd, cb));
+  const chunks = [];
+  let total = 0;
+  const deadline = Date.now() + Math.max(500, timeoutMs);
+  inEp.timeout = Math.min(1500, Math.max(250, timeoutMs));
+  while (Date.now() < deadline) {
+    let piece = null;
+    try { piece = await call((cb) => inEp.transfer(4096, cb)); }
+    catch (e) {
+      if (isUsbTimeout(e)) {
+        if (total > 0) break;
+        continue;
+      }
+      return null;
+    }
+    if (piece && piece.length > 0) {
+      chunks.push(piece);
+      total += piece.length;
+      const all = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
+      if (all.length >= 8) {
+        const lenStr = all.subarray(0, 8).toString('ascii').trim();
+        const len = /^\d+$/.test(lenStr) ? Number(lenStr) : NaN;
+        if (!Number.isFinite(len)) return all.toString('ascii').trim();
+        if (all.length >= 8 + len) return all.subarray(8, 8 + len).toString('ascii').trim();
+      }
+    } else if (total > 0) {
+      break;
+    }
+  }
+  const all = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
+  return all.length > 8 ? all.subarray(8).toString('ascii').trim() : null;
+}
+
+async function withDnpUsbSession(entry, { writeTimeoutMs = 60000 } = {}, fn) {
+  const dev = findLiveDevice(entry);
+  if (!dev) throw new Error('The DNP USB printer is not connected. Check its USB cable and power.');
+  const ifaces = inspectDeviceInterfaces(dev);
+  const want = pickUsbSelphyInterface(ifaces);
+  if (!want) throw new Error('This DNP printer has no usable USB bulk printer interface.');
+  let opened = false, claimed = null;
+  try {
+    try {
+      dev.open();
+      opened = true;
+    } catch (e) {
+      throw new Error('Could not open DNP printer over USB (' + String((e && e.message) || e) + '). If Windows/macOS already installed the DNP driver queue, choose that printer name instead.');
+    }
+    const iface = dev.interface(want.num);
+    try { if (iface.isKernelDriverActive && iface.isKernelDriverActive()) iface.detachKernelDriver(); } catch { /* macOS / Windows */ }
+    try {
+      iface.claim();
+      claimed = iface;
+    } catch (e) {
+      throw new Error('DNP USB port is busy (' + String((e && e.message) || e) + '). Choose the installed DNP driver queue instead.');
+    }
+    const altCount = ifaces.filter((i) => i.num === want.num).length;
+    if ((want.alt !== 0 || altCount > 1) && typeof iface.setAltSetting === 'function') {
+      await call((cb) => iface.setAltSetting(want.alt, cb));
+    }
+    let outEp = null, inEp = null;
+    for (const ep of iface.endpoints || []) {
+      if (ep.transferType !== 2) continue;
+      if (ep.direction === 'out' && !outEp) outEp = ep;
+      if (ep.direction === 'in' && !inEp) inEp = ep;
+    }
+    if (!outEp) throw new Error('DNP printer has no USB data output endpoint.');
+    outEp.timeout = Math.max(10000, Number(writeTimeoutMs) || 60000);
+    return await fn(outEp, inEp);
+  } finally {
+    if (claimed) { try { await call((cb) => claimed.release(true, cb)); } catch { /* ignore */ } }
+    if (opened) { try { dev.close(); } catch { /* ignore */ } }
+  }
+}
+
+/**
+ * Queries live DNP status, free page buffers, and remaining media count (INFO MQTY) over USB.
+ */
+export function usbDnpStatus(entry, { queryTimeoutMs = 4000 } = {}) {
+  return enqueueUsb(entry.key || `${entry.vid}:${entry.pid}`, async () => {
+    return await withDnpUsbSession(entry, {}, async (outEp, inEp) => {
+      const stRaw = await dnpQuery(outEp, inEp, 'STATUS', '', queryTimeoutMs);
+      const statusCode = parseDnpIntReply(stRaw);
+      const fbRaw = await dnpQuery(outEp, inEp, 'INFO', 'FREE_PBUFFER', queryTimeoutMs);
+      const freeBuffers = parseDnpIntReply(fbRaw);
+      const mqtyRaw = await dnpQuery(outEp, inEp, 'INFO', 'MQTY', queryTimeoutMs);
+      const mediaRemaining = parseDnpMediaRemaining(mqtyRaw, entry.dnpModel || entry.name || '');
+      const mediaCode = await dnpQuery(outEp, inEp, 'INFO', 'MEDIA', queryTimeoutMs);
+      return {
+        ok: true,
+        model: entry.dnpModel || entry.name || 'DNP',
+        statusCode,
+        statusText: statusCode !== null ? dnpStatusText(statusCode) : 'Ready',
+        isError: statusCode !== null && dnpIsError(statusCode),
+        freeBuffers,
+        mediaRemaining,
+        mediaCode: mediaCode || ''
+      };
+    });
+  });
+}
+
+/**
+ * Sends one or more DNP ESC 'P' USB jobs directly over libusb bulk pipes.
+ * Mirrors android/app/src/main/java/com/photobooth4u/booth/DnpJob.send: checks STATUS and INFO FREE_PBUFFER
+ * before each sheet, writes bulk payload, waits for print completion, and reports live remaining prints (INFO MQTY).
+ */
+export function usbDnpPrint(entry, jobBuffers, {
+  pollMs = 1000,
+  busyTimeoutMs = 90000,
+  printTimeoutMs = 120000,
+  writeTimeoutMs = 60000,
+  settleAfterMs = 6000,
+  queryTimeoutMs = 4000
+} = {}) {
+  const jobs = Array.isArray(jobBuffers) ? jobBuffers.filter((b) => b && b.length) : [];
+  if (!jobs.length) return Promise.reject(new Error('No pages to print.'));
+  return enqueueUsb(entry.key || `${entry.vid}:${entry.pid}`, async () => {
+    return await withDnpUsbSession(entry, { writeTimeoutMs }, async (outEp, inEp) => {
+      const fail = (st) => { throw new Error('DNP printer: ' + dnpStatusText(st)); };
+      let answers = !!inEp;
+      for (const jobData of jobs) {
+        if (answers && inEp) {
+          const waitStart = Date.now();
+          while (true) {
+            const st = parseDnpIntReply(await dnpQuery(outEp, inEp, 'STATUS', '', queryTimeoutMs));
+            if (st === null) { answers = false; break; }
+            if (dnpIsError(st)) fail(st);
+            const fb = parseDnpIntReply(await dnpQuery(outEp, inEp, 'INFO', 'FREE_PBUFFER', queryTimeoutMs));
+            if (fb === null || fb > 0) break;
+            if (Date.now() - waitStart > Math.max(1000, busyTimeoutMs)) {
+              throw new Error('The DNP printer stayed busy for 90 seconds. Check it and retry.');
+            }
+            if (pollMs > 0) await sleep(pollMs);
+          }
+        }
+        await writeBulk(outEp, Buffer.isBuffer(jobData) ? jobData : Buffer.from(jobData));
+      }
+      let mediaRemaining = null;
+      if (answers && inEp) {
+        const doneStart = Date.now();
+        let started = false;
+        while (Date.now() - doneStart < Math.max(2000, printTimeoutMs)) {
+          if (pollMs > 0) await sleep(pollMs);
+          const st = parseDnpIntReply(await dnpQuery(outEp, inEp, 'STATUS', '', queryTimeoutMs));
+          if (st === null) break;
+          if (dnpIsError(st)) fail(st);
+          if (st === 1) started = true;
+          if ((st === 0 || st === 900) && (started || Date.now() - doneStart > settleAfterMs)) break;
+        }
+        try {
+          const mqtyRaw = await dnpQuery(outEp, inEp, 'INFO', 'MQTY', queryTimeoutMs);
+          mediaRemaining = parseDnpMediaRemaining(mqtyRaw, entry.dnpModel || entry.name || '');
+        } catch { /* optional telemetry */ }
+      }
+      return { ok: true, pages: jobs.length, mediaRemaining };
+    });
   });
 }

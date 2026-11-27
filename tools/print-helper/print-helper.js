@@ -32,8 +32,10 @@ import {
   buildStationTestJob, renderStationDashboardHtml, recordStationJob
 } from './bridge-ctrl.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
+import { createWinPrintWorker } from '../../desktop/lib/winprint-worker.mjs';
+import { createHotFolderStore, detectDnpHotFolders, dropToHotFolder } from '../../desktop/lib/hotfolder.mjs';
 
-const VERSION = '1.1.27';
+const VERSION = '1.1.28';
 const PORT = 17321;
 const OPEN_STATION_ON_START = process.argv.includes('--station');
 const ALLOWED_ORIGINS = new Set([
@@ -46,6 +48,8 @@ const ALLOWED_ORIGINS = new Set([
 const IS_WIN = platform() === 'win32';
 const IS_MAC = platform() === 'darwin';
 const MAX_BODY = 80 * 1024 * 1024;     // 80 MB of page images per job
+const winPrintWorker = IS_WIN ? createWinPrintWorker({ logger: (m) => log(m) }) : null;
+const hotFolderStore = createHotFolderStore(join(homedir(), '.photobooth4u-hot-folders.json'));
 
 function stationUrl() { return 'http://127.0.0.1:' + PORT + '/station'; }
 
@@ -177,6 +181,20 @@ if (-not $ps.IsValid) { throw "Printer not found: $Printer" }
 foreach ($p in $ps.PaperSizes) { '{0}|{1}|{2}' -f $p.PaperName, $p.Width, $p.Height }
 `;
 async function winPaperSizes(printer) {
+  if (winPrintWorker) {
+    try {
+      const res = await winPrintWorker.paperSizes(printer);
+      const sizes = (res.sizes || []).map((row) => {
+        const key = String(row[0] || '');
+        const rw = Number(row[1]), rh = Number(row[2]);
+        return (key && rw > 0 && rh > 0) ? { key, name: key, w: rw * 0.254, h: rh * 0.254, borderless: isBorderlessName(key) } : null;
+      }).filter(Boolean);
+      return { sizes, def: res.def || null };
+    } catch (e) {
+      if (!e || !e.workerTransport) throw e;
+      log('Warm print worker paper fallback: ' + (e.message || e));
+    }
+  }
   const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
   try {
     const ps1 = join(dir, 'paper.ps1');
@@ -207,8 +225,8 @@ async function paperSizes(printer) {
 // On dye-sub printers (HiTi, DNP, Citizen, Sinfonia, Mitsubishi...), also match split/2-UP paper slots
 // when twoUp is explicitly requested, and avoid split slots when a whole 4x6 print is requested.
 const near = (s, a, b, tol = 3) => { const sa = Math.min(s.w, s.h), sb = Math.max(s.w, s.h); return Math.abs(sa - a) <= tol && Math.abs(sb - b) <= tol; };
-const DYE_SUB = /selphy|(?<![a-z])cp[\s_-]?d?\d{2,4}(?![0-9])|(?<![a-z])dnp(?![a-z])|(?<![a-z])ds[\s_-]?(?:rx|\d)|hiti|mitsubishi|kodak|citizen|sinfonia|shinko|dye/i;
-const SPLIT_PAPER_NAME = /(?:(?:^|[^a-z0-9])(?:split|2[\s_-]?up|div2|2[\s_-]?in(?:ch)?[\s_-]?cut|2[\s_-]?strips?)(?=$|[^a-z0-9])|(?:^|[^0-9])(?:2\s*[x×]\s*6|6\s*[x×]\s*2)(?=$|[^0-9])|cut[\s_-]?2\s*[x×]\s*6)/i;
+const DYE_SUB = /selphy|(?<![a-z])cp[\s_-]?d?\d{2,4}(?![0-9])|(?<![a-z])dnp(?![a-z])|(?<![a-z])(?:dp[\s_-]?)?ds[\s_-]?(?:rx|\d)|(?<![a-z])(?:rx1(?:hs)?|(?:dp[\s_-]?)?qw[\s_-]?410|sl[\s_-]?620)(?![a-z0-9])|hiti|mitsubishi|kodak|citizen|sinfonia|shinko|dye/i;
+const SPLIT_PAPER_NAME = /(?:(?:^|[^a-z0-9])(?:split|2[\s_-]?up|div2|2[\s_-]?in(?:ch)?[\s_-]?cut|2[\s_-]?cut|2[\s_-]?strips?)(?=$|[^a-z0-9])|(?:^|[^0-9])(?:2\s*[x×]\s*6|6\s*[x×]\s*2)(?=$|[^0-9])|cut[\s_-]?2\s*[x×]\s*6|(?:^|[^0-9])(?:4\s*[x×]\s*6|6\s*[x×]\s*4)\)?\s*[*×x]\s*2(?=$|[^0-9]))/i;
 const isSplitPaper = (s) => !!(s && SPLIT_PAPER_NAME.test((s.key || '') + ' ' + (s.name || '')));
 async function pickPaper(printer, widthMm, heightMm, twoUp) {
   if (!(widthMm > 0 && heightMm > 0)) return null;
@@ -274,10 +292,10 @@ async function dyeSubCupsCutOptions(printer, twoUp, pick) {
       const m = /^([^/:]+)\/([^:]*):\s*(.*)$/.exec(line);
       if (m) opts.push({ key: m[1], choices: m[3].trim().split(/\s+/).filter(Boolean).map(v => ({ value: v.replace(/^\*/, ''), selected: v.startsWith('*') })) });
     }
-    const cutOpt = opts.find((o) => /^(?:cut(?:ter|2x6|mode)?|split(?:mode)?|media-?cut|multi-?cut|hiti-?cut|2inch-?cut|strip-?cut)$/i.test(o.key));
+    const cutOpt = opts.find((o) => /^(?:(?:dnp(?:box)?|hiti)?[\s_-]?cut(?:ter(?:mode)?|2x6|mode|opt(?:ion)?|operation)?|split(?:mode)?|media-?cut|multi-?cut|2[\s_-]?in(?:ch)?[\s_-]?cut|two[\s_-]?inch[\s_-]?cut|strip-?cut)$/i.test(o.key));
     if (!cutOpt || !cutOpt.choices.length) return [];
     const pickChoice = twoUp
-      ? cutOpt.choices.find((c) => /(?:2\s*[x×]\s*6|2[\s_-]?in|split|strip)/i.test(c.value))
+      ? cutOpt.choices.find((c) => /(?:2\s*[x×]\s*6|2[\s_-]?in|2[\s_-]?cut|split|strip)/i.test(c.value))
         || cutOpt.choices.find((c) => /^(?:on|yes|true|1|enable|enabled|cut)$/i.test(c.value))
       : cutOpt.choices.find((c) => /^(?:off|no|none|false|0|disable|disabled|normal|standard|uncut)$/i.test(c.value));
     if (!pickChoice || pickChoice.selected) return [];
@@ -513,10 +531,34 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, o
     if (pick) log('Paper: ' + pick.name + (pick.explicit ? ' (selected by operator)' : pick.keep ? ' (the printer\'s default)' : ''));
     let r;
     if (IS_WIN) {
-      const ps1 = join(dir, 'print.ps1'), list = join(dir, 'pages.txt');
-      await writeFile(ps1, '﻿' + WIN_PRINT_PS, 'utf8');
-      await writeFile(list, files.join('\r\n'), 'utf8');
-      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(isDyeSub ? ['-DyeSub'] : []), ...(pick && (!pick.keep || pick.explicit) ? ['-PaperName', pick.key] : []), ...(!isDyeSub && pick ? ['-Borderless'] : [])]);
+      const paperArg = (pick && (!pick.keep || pick.explicit)) ? pick.key : '';
+      const borderlessArg = !isDyeSub && !!pick;
+      let usedWarm = false;
+      if (winPrintWorker) {
+        try {
+          const wr = await winPrintWorker.print({
+            printer,
+            files,
+            fitWidth: fit === 'width',
+            paperName: paperArg,
+            quality: quality || 'best',
+            mediaType: '',
+            borderless: borderlessArg,
+            dyeSub: isDyeSub
+          });
+          r = { code: 0, out: (wr.logs || []).join('\n'), err: '' };
+          usedWarm = true;
+        } catch (e) {
+          if (!e || !e.workerTransport) throw e;
+          log('Warm print worker fallback (using one-shot PowerShell): ' + (e.message || e));
+        }
+      }
+      if (!usedWarm) {
+        const ps1 = join(dir, 'print.ps1'), list = join(dir, 'pages.txt');
+        await writeFile(ps1, '﻿' + WIN_PRINT_PS, 'utf8');
+        await writeFile(list, files.join('\r\n'), 'utf8');
+        r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(isDyeSub ? ['-DyeSub'] : []), ...(paperArg ? ['-PaperName', paperArg] : []), ...(borderlessArg ? ['-Borderless'] : [])]);
+      }
     } else {
       // Pages are already exactly paper-sized at 300 dpi; fit-to-page fills the
       // sheet. The paper size is the printer's own one that matches the booth's.
@@ -669,10 +711,15 @@ function refreshPrinters() {
   return printersCache.loading;
 }
 async function printers(force) {
-  if (force) return refreshPrinters();
-  if (!printersCache.at) return refreshPrinters();               // first time: wait for the list
-  if (Date.now() - printersCache.at > 10000) refreshPrinters();  // old: refresh for next time
-  return printersCache.list;
+  let list;
+  if (force) list = await refreshPrinters();
+  else if (!printersCache.at) list = await refreshPrinters();      // first time: wait for the list
+  else {
+    if (Date.now() - printersCache.at > 10000) refreshPrinters();  // old: refresh for next time
+    list = printersCache.list;
+  }
+  const extra = hotFolderStore.names().filter((n) => !list.includes(n));
+  return extra.length ? [...list, ...extra] : list;
 }
 
 function launchDetached(cmd, args) {
@@ -686,6 +733,11 @@ function launchDetached(cmd, args) {
 }
 
 async function openPrinterSettings(printer) {
+  const hf = hotFolderStore.get(printer);
+  if (hf) {
+    const r = IS_WIN ? await launchDetached('explorer.exe', [hf.dir]) : await launchDetached('open', [hf.dir]);
+    return r.ok ? { ok: true, message: 'Opened Hot Folder: ' + hf.dir + '. Make sure DNP Hot Folder Print is running and watching this folder.' } : r;
+  }
   if (IS_WIN) {
     const r = await launchDetached('rundll32.exe', ['printui.dll,PrintUIEntry', '/e', '/n', printer]);
     return r.ok ? { ok: true, message: 'Printer preferences opened. Set the loaded paper and print quality, then save or apply the changes.' } : r;
@@ -705,6 +757,17 @@ let queue = Promise.resolve();   // one job at a time
 
 async function lookupPaperInfo(name, w, h, twoUp) {
   if (!name || !(await printers(false)).includes(name)) return { ok: false, error: 'No printer called "' + name + '"' };
+  const hf = hotFolderStore.get(name);
+  if (hf) {
+    return {
+      ok: true,
+      known: true,
+      match: { name: 'Hot Folder (' + hf.dir + ')', borderless: true, isDefault: true },
+      def: hf.dir,
+      sizes: [],
+      paperList: []
+    };
+  }
   const info = await paperSizes(name);
   const pick = await pickPaper(name, Number(w) || 0, Number(h) || 0, twoUp);
   const def = info.def && info.sizes.find((x) => x.key === info.def);
@@ -741,7 +804,13 @@ async function enqueuePrintBody(body) {
     paperName: typeof body.paperName === 'string' ? body.paperName.slice(0, 120) : ''
   };
   const wMm = Number(body.widthMm) || 0, hMm = Number(body.heightMm) || 0;
+  const hf = hotFolderStore.get(name);
   const job = queue.then(async () => {
+    if (hf) {
+      const res = await dropToHotFolder(hf, buffers);
+      log('Hot Folder drop on ' + name + ': ' + res.files.join(', '));
+      return;
+    }
     // A Canon SELPHY (CP1500 / CP1300...) can stall, print only yellow, or freeze the print queue when several
     // photos reach it in one job, so each page goes as its own single-page job, one after the other.
     if (buffers.length > 1 && /selphy|canon.*\bCP\s?\d{3,4}\b/i.test(name)) {
@@ -958,6 +1027,25 @@ const serverCfg = {
       const out = await lookupPaperInfo(name, url.searchParams.get('w'), url.searchParams.get('h'), twoUp);
       return json(out, out.ok ? 200 : 404, origin);
     }
+    if (req.method === 'GET' && url.pathname === '/printer/hotfolder') {
+      return json({ ok: true, folders: hotFolderStore.list(), detected: detectDnpHotFolders(), canPick: false }, 200, origin);
+    }
+    if (req.method === 'POST' && url.pathname === '/printer/hotfolder') {
+      if (!origin) return json({ ok: false, error: 'Missing origin' }, 403);
+      let body;
+      try { body = await req.json(); } catch (e) { return json({ ok: false, error: 'Bad request' }, 400, origin); }
+      const res = hotFolderStore.add(body || {});
+      if (!res.ok) return json(res, 400, origin);
+      log('Hot Folder added: ' + res.printer + ' -> ' + res.entry.dir);
+      return json({ ...res, folders: hotFolderStore.list() }, 200, origin);
+    }
+    if (req.method === 'POST' && url.pathname === '/printer/hotfolder/remove') {
+      if (!origin) return json({ ok: false, error: 'Missing origin' }, 403);
+      let body;
+      try { body = await req.json(); } catch (e) { return json({ ok: false, error: 'Bad request' }, 400, origin); }
+      const res = hotFolderStore.remove((body && (body.printer || body.name)) || '');
+      return json({ ...res, folders: hotFolderStore.list() }, 200, origin);
+    }
     if (req.method === 'POST' && url.pathname === '/printer/configure') {
       if (!origin) return json({ ok: false, error: 'Missing origin' }, 403);
       let body;
@@ -1035,7 +1123,7 @@ printers(true).then(list => {
   console.log('');
   if (CAMERA_OK) console.log('  Camera: plug in a Nikon or Canon EOS camera, switch it on, and pick it in the booth.\n');
 }).catch(() => { });
-process.on('exit', () => { try { cam.proc && cam.proc.kill(); } catch (e) { } try { stopHelperBridge(); } catch (e) { } });
+process.on('exit', () => { try { cam.proc && cam.proc.kill(); } catch (e) { } try { winPrintWorker && winPrintWorker.stop(); } catch (e) { } try { stopHelperBridge(); } catch (e) { } });
 // Start LAN server (ports 47777-47797) for Offline iPad Print Station & Tablet Bridge.
 startHelperBridge({
   logger: log,
@@ -1078,5 +1166,8 @@ if (process.stdin && typeof process.stdin.on === 'function' && process.stdin.isT
     }
   });
 }
-// Windows: get the camera part ready now, so the booth finds the camera quickly.
-if (IS_WIN) camStart().catch(e => log(String(e && e.message || e)));
+// Windows: pre-warm both the camera part and the persistent .NET print worker so the very first print has zero cold-start lag.
+if (IS_WIN) {
+  camStart().catch(e => log(String(e && e.message || e)));
+  winPrintWorker && winPrintWorker.warm();
+}

@@ -42,8 +42,8 @@ const CRASH_LOCK = 'The booth Wi-Fi is switched off on this laptop: it shut down
 let hasSession = false;
 let lastSession = 0;
 
-// Called by main.mjs whenever a photo is saved to /local/drive or the booth
-// session tab is opened.  Wakes the hotspot if it went to sleep during idle.
+// Called by main.mjs whenever a photo is saved to /local/drive, a Print Station job arrives,
+// or the booth session tab is opened.  Wakes the hotspot if it went to sleep during idle.
 export function hotspotWake() {
   hasSession = true;
   lastSession = Date.now();
@@ -54,6 +54,12 @@ export function hotspotWake() {
     log('photo session active - waking hotspot from idle');
     hotspotStart().catch(() => {});
   }
+}
+
+// Marks Print Station / LAN activity without forcing a start when the operator never turned hotspot on.
+export function hotspotTouch() {
+  hasSession = true;
+  lastSession = Date.now();
 }
 
 // ---------- the PowerShell that talks to Windows ----------
@@ -109,7 +115,12 @@ try {
     if ($m.TetheringOperationalState -eq 'On') { $null = AwaitOp ($m.StopTetheringAsync()) $opResult }
     $cfg.Ssid = $Ssid
     $cfg.Passphrase = $Pass
-    try { $cfg.Band = 'TwoPointFourGigahertz' } catch { }
+    $band = 'TwoPointFourGigahertz'
+    try {
+      $wi = (& netsh wlan show interfaces 2>$null) -join [Environment]::NewLine
+      if (($wi -match 'State\s*:\s*connected' -and $wi -match 'Channel\s*:\s*(\d+)' -and [int]$Matches[1] -gt 14) -or ($wi -match ':\s*[56]\s*GHz')) { $band = 'Auto' }
+    } catch { }
+    try { $cfg.Band = $band } catch { }
     AwaitAct ($m.ConfigureAccessPointAsync($cfg))
     $r = AwaitOp ($m.StartTetheringAsync()) $opResult
     if ($r.Status -ne 'Success') { throw ('start-failed ' + $r.Status + ' ' + $r.AdditionalErrorMessage) }
@@ -128,10 +139,15 @@ $out = '@OUT@'
 $exe = '@EXE@'
 $res = @{ ok = $false; loopback = $false; firewall = $false; error = '' }
 try {
+  try {
+    Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue | Where-Object { $_.Program -eq $exe -or $_.Program -like '*photobooth4u*.exe' } | Get-NetFirewallRule -ErrorAction SilentlyContinue | Where-Object { $_.Direction -eq 'Inbound' -and $_.Action -eq 'Block' } | Remove-NetFirewallRule -ErrorAction SilentlyContinue
+  } catch { }
   netsh advfirewall firewall delete rule name="photobooth4u hotspot guests" | Out-Null
   netsh advfirewall firewall add rule name="photobooth4u hotspot guests" dir=in action=allow program="$exe" enable=yes profile=any remoteip=192.168.137.0/24 | Out-Null
   netsh advfirewall firewall delete rule name="photobooth4u local booth" | Out-Null
   netsh advfirewall firewall add rule name="photobooth4u local booth" dir=in action=allow program="$exe" protocol=TCP localport=47777-47797 enable=yes profile=any remoteip=192.168.0.0/16,10.0.0.0/8,172.16.0.0/12 | Out-Null
+  netsh advfirewall firewall delete rule name="photobooth4u local booth port" | Out-Null
+  netsh advfirewall firewall add rule name="photobooth4u local booth port" dir=in action=allow protocol=TCP localport=47777-47797 enable=yes profile=any remoteip=192.168.137.0/24,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12 | Out-Null
   $res.firewall = $true
   $have = Get-NetAdapter -IncludeHidden -ErrorAction SilentlyContinue | Where-Object { $_.InterfaceDescription -like '*Loopback*' }
   if (-not $have) {
@@ -174,6 +190,32 @@ public static class Pb4uLoop {
   }
   $res.loopback = $true
   # Option 1: disable Windows 10 mobile hotspot auto-off (stops hosting after ~5 min of idle).
+  try { Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters' -Name 'PeerlessTimeoutEnabled' -Value 0 -Type DWord -ErrorAction SilentlyContinue } catch { }
+  $res.ok = $true
+} catch { $res.error = [string]$_.Exception.Message }
+($res | ConvertTo-Json -Compress) | Set-Content -Path $out -Encoding UTF8
+`;
+
+// Firewall-only elevated fix (Windows): removes any auto-created Inbound Block rules (which override Allow on Public/Hotspot
+// profiles) and adds profile=any Allow rules for ports 47777-47797 + 192.168.137.0/24. Runs only when explicitly clicked.
+const FIX_FIREWALL_PS = String.raw`$ErrorActionPreference = 'Stop'
+$out = '@OUT@'
+$exe = '@EXE@'
+$res = @{ ok = $false; removedBlocks = 0; error = '' }
+try {
+  try {
+    $blocks = @(Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue | Where-Object { $_.Program -eq $exe -or $_.Program -like '*photobooth4u*.exe' } | Get-NetFirewallRule -ErrorAction SilentlyContinue | Where-Object { $_.Direction -eq 'Inbound' -and $_.Action -eq 'Block' })
+    foreach ($b in $blocks) {
+      Remove-NetFirewallRule -Name $b.Name -ErrorAction SilentlyContinue
+      $res.removedBlocks++
+    }
+  } catch { }
+  netsh advfirewall firewall delete rule name="photobooth4u hotspot guests" | Out-Null
+  netsh advfirewall firewall add rule name="photobooth4u hotspot guests" dir=in action=allow program="$exe" enable=yes profile=any remoteip=192.168.137.0/24 | Out-Null
+  netsh advfirewall firewall delete rule name="photobooth4u local booth" | Out-Null
+  netsh advfirewall firewall add rule name="photobooth4u local booth" dir=in action=allow program="$exe" protocol=TCP localport=47777-47797 enable=yes profile=any remoteip=192.168.0.0/16,10.0.0.0/8,172.16.0.0/12 | Out-Null
+  netsh advfirewall firewall delete rule name="photobooth4u local booth port" | Out-Null
+  netsh advfirewall firewall add rule name="photobooth4u local booth port" dir=in action=allow protocol=TCP localport=47777-47797 enable=yes profile=any remoteip=192.168.137.0/24,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12 | Out-Null
   try { Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters' -Name 'PeerlessTimeoutEnabled' -Value 0 -Type DWord -ErrorAction SilentlyContinue } catch { }
   $res.ok = $true
 } catch { $res.error = [string]$_.Exception.Message }
@@ -544,10 +586,10 @@ function keepAlive() {
     // Skip completely if not wanted, busy, locked, already up, or the fail cap is reached
     // (Option 4: stop hammering a broken driver).
     if (!c.on || st.busy || st.driverUnsupported || st.fails >= 2 || up) return;
-    // IDLE RULE: never restart before the first photo session has happened.
+    // IDLE RULE: never restart before the first photo session or Print Station activity has happened.
     if (!hasSession) return;
-    // IDLE RULE: go back to idle if no session for >20 minutes.
-    if (Date.now() - lastSession > 20 * 60 * 1000) return;
+    // IDLE RULE: keep hotspot alive through multi-hour events & dinner breaks (up to 4 hours since last session/print).
+    if (Date.now() - lastSession > 4 * 60 * 60 * 1000) return;
     log('hotspot went off during active event - restarting');
     hotspotStart().catch(() => {});
   }, 60000);   // 60 s check (was 20 s)
@@ -603,7 +645,7 @@ export async function hotspotSetup() {
     const cmd = "Start-Process -FilePath powershell.exe -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-EncodedCommand','" + enc + "'";
     const r = await runPs([...PS, '-Command', cmd], 120000);
     let res = null;
-    try { res = JSON.parse(readFileSync(outFile, 'utf8').replace(/^﻿/, '')); } catch { /* not written */ }
+    try { res = JSON.parse(readFileSync(outFile, 'utf8').replace(/^\uFEFF/, '')); } catch { /* not written */ }
     if (!res) {
       const declined = /canceled by the user|cancelled/i.test(r.err || '');
       st.error = declined ? 'Set-up was cancelled. Press the button again and choose Yes when Windows asks.' : 'Set-up didn’t finish (' + String(r.err || 'no answer').trim().slice(0, 120) + ').';
@@ -616,6 +658,37 @@ export async function hotspotSetup() {
   } catch (e) {
     st.error = 'Set-up failed: ' + String(e && e.message || e).slice(0, 160);
     return { ok: false, error: st.error };
+  } finally {
+    st.busy = false;
+    if (dir) { try { rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ } }
+  }
+}
+
+// On-demand elevated Windows Firewall repair for Offline Print Station / Hotspot (Public profile).
+export async function hotspotFixFirewall() {
+  if (!IS_WIN) return { ok: false, error: 'Firewall repair is only needed on Windows.' };
+  if (st.busy) return { ok: false, error: 'Busy. Try again in a moment.' };
+  st.busy = true;
+  let dir = '';
+  try {
+    dir = mkdtempSync(join(tmpdir(), 'pb4u-fw-'));
+    const outFile = join(dir, 'fw.json');
+    const q = (s) => String(s).replace(/'/g, "''");
+    const script = FIX_FIREWALL_PS.replace('@OUT@', () => q(outFile)).replace('@EXE@', () => q(process.execPath));
+    const enc = Buffer.from(script, 'utf16le').toString('base64');
+    const cmd = "Start-Process -FilePath powershell.exe -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-EncodedCommand','" + enc + "'";
+    const r = await runPs([...PS, '-Command', cmd], 90000);
+    let res = null;
+    try { res = JSON.parse(readFileSync(outFile, 'utf8').replace(/^\uFEFF/, '')); } catch { /* not written */ }
+    if (!res) {
+      const declined = /canceled by the user|cancelled/i.test(r.err || '');
+      return { ok: false, error: declined ? 'Cancelled. Click Fix Firewall again and choose Yes when Windows asks.' : 'Firewall update didn’t finish.' };
+    }
+    if (!res.ok) return { ok: false, error: 'Firewall update failed: ' + String(res.error || '').slice(0, 140) };
+    log('firewall repaired (removedBlocks=' + (res.removedBlocks || 0) + ')');
+    return { ok: true, removedBlocks: Number(res.removedBlocks) || 0 };
+  } catch (e) {
+    return { ok: false, error: 'Firewall update failed: ' + String(e && e.message || e).slice(0, 140) };
   } finally {
     st.busy = false;
     if (dir) { try { rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ } }

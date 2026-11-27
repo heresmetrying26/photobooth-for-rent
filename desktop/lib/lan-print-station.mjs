@@ -6,7 +6,7 @@
 // with zero internet and zero OS print dialogs.
 import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { hostname, networkInterfaces } from 'node:os';
+import { hostname, networkInterfaces, platform } from 'node:os';
 import { dirname } from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { allBridgeUrls } from './guest-bridge.mjs';
@@ -51,6 +51,8 @@ let cfg = {
   printJob: async () => ({ ok: false, error: 'Unsupported' }),
   makeThumb: null,
   onJob: () => { },
+  onActivity: () => { },
+  getHotspotWifi: null,
   pinFile: '',
   appKind: 'print-helper',
   version: '',
@@ -220,6 +222,8 @@ export function initLanStation(options = {}) {
     printJob: typeof options.printJob === 'function' ? options.printJob : async () => ({ ok: false, error: 'Unsupported' }),
     makeThumb: typeof options.makeThumb === 'function' ? options.makeThumb : null,
     onJob: typeof options.onJob === 'function' ? options.onJob : () => { },
+    onActivity: typeof options.onActivity === 'function' ? options.onActivity : () => { },
+    getHotspotWifi: typeof options.getHotspotWifi === 'function' ? options.getHotspotWifi : null,
     pinFile: typeof options.pinFile === 'string' ? options.pinFile : '',
     appKind: typeof options.appKind === 'string' ? options.appKind : 'print-helper',
     version: typeof options.version === 'string' ? options.version : '',
@@ -310,18 +314,58 @@ function summarizePendingJob(j) {
   };
 }
 
+/** Build a compact, fast-scanning QR URI containing all active laptop IPs, port, 6-digit PIN, host name, and optional Booth Hotspot creds. */
+export function buildLanStationQrPayload({ addresses = [], port = 47777, pin = '', host = '', wifiSsid = '', wifiPass = '' } = {}) {
+  const cleanPin = String(pin || '').trim();
+  if (!validStationPin(cleanPin)) return '';
+  const ips = [];
+  const seen = new Set();
+  for (const a of (Array.isArray(addresses) ? addresses : [])) {
+    const ip = String(typeof a === 'string' ? a : (a && a.ip) || '').trim();
+    if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip) || seen.has(ip)) continue;
+    const octs = ip.split('.').map(Number);
+    if (octs.some((n) => n < 0 || n > 255) || octs[0] === 0 || octs[0] === 127) continue;
+    seen.add(ip);
+    ips.push(ip);
+    if (ips.length >= 6) break;
+  }
+  if (!ips.length) return '';
+  const p = Number(port) || 47777;
+  const qs = new URLSearchParams();
+  qs.set('ips', ips.join(','));
+  if (p !== 47777) qs.set('port', String(p));
+  qs.set('pin', cleanPin);
+  const cleanHost = String(host || '').trim().slice(0, 48);
+  if (cleanHost) qs.set('host', cleanHost);
+  const cleanSsid = String(wifiSsid || '').trim().slice(0, 32);
+  if (cleanSsid) {
+    qs.set('ws', cleanSsid);
+    const cleanPass = String(wifiPass || '').slice(0, 63);
+    if (cleanPass) qs.set('wp', cleanPass);
+  }
+  return 'pb4u://lan-station?' + qs.toString();
+}
+
 /** Non-sensitive info + local dashboard summary (PIN included for local machine UI only). */
 export function getLanStationInfo() {
   const port = Number(cfg.getPort()) || 0;
+  const host = hostname();
+  const addresses = lanStationAddresses();
+  let hs = null;
+  try { hs = typeof cfg.getHotspotWifi === 'function' ? cfg.getHotspotWifi() : null; } catch { hs = null; }
+  const wifiSsid = hs && hs.ssid ? String(hs.ssid) : '';
+  const wifiPass = hs && hs.pass ? String(hs.pass) : '';
   return {
     enabled: true,
+    isWin: platform() === 'win32',
     kind: cfg.appKind,
     version: cfg.version,
-    host: hostname(),
+    host,
     port,
     pin: stationPin,
+    pairQr: buildLanStationQrPayload({ addresses, port, pin: stationPin, host, wifiSsid, wifiPass }),
     stationMode,
-    addresses: lanStationAddresses(),
+    addresses,
     pendingCount: pendingQueue.length,
     pendingJobs: pendingQueue.map(summarizePendingJob),
     jobs: jobLog.slice(0, MAX_LOGS),
@@ -350,9 +394,12 @@ function corsHeaders(extra) {
 }
 
 function sendJson(res, status, obj) {
+  // Always close /lan-station/* sockets cleanly after each response so iOS WKWebView / URLSession
+  // can never reuse a half-closed Node 5s keep-alive socket on Print #2 or after multi-hour idle gaps.
   res.writeHead(status, {
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store',
+    'connection': 'close',
     ...corsHeaders()
   });
   res.end(JSON.stringify(obj));
@@ -391,10 +438,13 @@ function readJsonBody(req, maxBytes) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let total = 0;
+    let settled = false;
+    const finish = (fn, val) => { if (!settled) { settled = true; fn(val); } };
     req.on('data', (c) => {
+      if (settled) return;
       total += c.length;
       if (total > maxBytes) {
-        reject(new Error('Request body too large'));
+        finish(reject, new Error('Request body too large'));
         try { req.destroy(); } catch { /* ignore */ }
         return;
       }
@@ -402,12 +452,14 @@ function readJsonBody(req, maxBytes) {
     });
     req.on('end', () => {
       try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'));
+        finish(resolve, JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'));
       } catch {
-        reject(new Error('Bad JSON body'));
+        finish(reject, new Error('Bad JSON body'));
       }
     });
-    req.on('error', reject);
+    req.on('aborted', () => finish(reject, new Error('Client disconnected mid-upload')));
+    req.on('close', () => { if (!req.complete) finish(reject, new Error('Connection closed early')); });
+    req.on('error', (err) => finish(reject, err));
   });
 }
 
@@ -723,7 +775,7 @@ export async function handleLanStationHttp(req, res, url) {
   if (p !== '/lan-station' && !p.startsWith('/lan-station/')) return false;
 
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, corsHeaders({ 'cache-control': 'no-store' }));
+    res.writeHead(204, corsHeaders({ 'cache-control': 'no-store', 'connection': 'close' }));
     res.end();
     return true;
   }
@@ -731,6 +783,8 @@ export async function handleLanStationHttp(req, res, url) {
   if (!cfg.isEnabled()) {
     return sendJson(res, 403, { ok: false, reason: 'disabled', error: 'Print Station is not enabled on this laptop licence. Ask your admin to turn it on.' });
   }
+
+  try { cfg.onActivity(); } catch { /* ignore */ }
 
   // Unauthenticated LAN discovery beacon: exposes no printers and no PIN.
   if (req.method === 'GET' && (p === '/lan-station/hello' || p === '/lan-station')) {
@@ -944,6 +998,7 @@ export function renderStationDashboardHtml() {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>photobooth4u · Offline Print Station</title>
+<script src="/station/qr.js"></script>
 <style>
   :root{--bg:#f5f1ea;--card:#fff;--ink:#1c1a1e;--dim:#6b666c;--line:#e4dccf;--red:#c93d27;--ok:#1f6f62;--okbg:#e6f4f1;}
   *{box-sizing:border-box}
@@ -955,6 +1010,9 @@ export function renderStationDashboardHtml() {
   .pinbox{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;background:#1c1a1e;color:#fff;border-radius:14px;padding:16px 20px;}
   .pin{font:800 36px/1 ui-monospace,Consolas,monospace;letter-spacing:.14em;color:#ffd166;}
   .ip{font:700 17px/1.4 ui-monospace,Consolas,monospace;color:#7ee787;}
+  .qrwrap{display:none;flex-direction:column;align-items:center;gap:4px;background:#fff;color:#1c1a1e;border-radius:12px;padding:7px;flex:none;}
+  .qrwrap img{width:108px;height:108px;display:block;image-rendering:pixelated;}
+  .qrwrap small{font:800 10.5px/1.15 system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:#5d555b;}
   .btn{border:1px solid var(--line);background:#fff;color:var(--ink);font:700 13px inherit;padding:7px 12px;border-radius:999px;cursor:pointer;}
   .btn:hover:not(:disabled){border-color:var(--red);color:var(--red);}
   .btn:disabled{opacity:.55;cursor:default;}
@@ -1026,7 +1084,11 @@ export function renderStationDashboardHtml() {
         <div style="font-size:12px;opacity:.75;text-transform:uppercase;letter-spacing:.12em;">6-Digit PIN</div>
         <div class="pin" id="pinTxt">------</div>
       </div>
-      <button class="btn dark" id="newPinBtn" type="button">New PIN</button>
+      <div class="qrwrap" id="pairQrWrap"><img id="pairQrImg" alt="Scan in iPad app to pair"><small>Scan in iPad App</small></div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <button class="btn dark" id="newPinBtn" type="button">New PIN</button>
+        <button class="btn dark" id="fixFwBtn" type="button" style="display:none;">Fix Hotspot Firewall</button>
+      </div>
     </div>
     <div class="modebar">
       <div>
@@ -1116,13 +1178,15 @@ export function renderStationDashboardHtml() {
     <tbody id="jobBody"><tr><td colspan="5" style="color:var(--dim)">Waiting for prints…</td></tr></tbody></table>
   </div>
   <div class="card">
-    <b>Where to Click on the iPad App</b>
+    <b>Where to Click on the iPad App (Hotspot &amp; Multi-Hour Guide)</b>
     <ol class="steps">
-      <li>Join the <b>same Wi-Fi router</b> or <b>Windows Mobile Hotspot</b> on both this laptop and your iPad.</li>
+      <li><b>Using this laptop&rsquo;s Mobile Hotspot (offline):</b> On the iPad, turn <b>Cellular Data OFF</b> (or Airplane Mode ON, then Wi-Fi ON), turn <b>Auto-Join OFF</b> on any venue/home Wi-Fi so the iPad stays locked to the hotspot, join the hotspot (tap <b>Use Without Internet</b>), and confirm <b>Settings &rarr; photobooth4u &rarr; Local Network</b> is <b>ON</b>. On Windows, click <b>Fix Hotspot Firewall</b> once above.</li>
+      <li><b>Using a shared Wi-Fi router:</b> Connect both this laptop and the iPad to the same Wi-Fi network (avoid Guest Wi-Fi).</li>
       <li>If using a DSLR on the iPad (e.g. Canon 550D), plug it into the iPad via USB and choose it in <b>Setup &rarr; Camera</b>.</li>
       <li>Open <b>Setup &rarr; Printer</b> on the iPad app, pick your paper size (e.g. <b>4&times;6</b>, <b>2&times;6 strips</b>, <b>5&times;7</b>, <b>6&times;8</b>, <b>A4</b>, or <b>More paper sizes &rarr; Own size</b>), and switch on <b>Laptop Print Station (Wi-Fi &middot; Offline USB printer)</b>.</li>
-      <li>Tap <b>Find Laptop on Wi-Fi</b> (or type the IP above), enter the <b>6-Digit PIN</b>, and tap <b>Connect</b>.</li>
+      <li>Tap <b>Scan Laptop QR</b> (instant 1-scan connect) or tap <b>Find Laptop on Wi-Fi</b> / type the IP + <b>6-Digit PIN</b> above and tap <b>Connect</b>.</li>
       <li>Under <b>Printer 1</b>, pick your Mitsubishi / DNP / HiTi printer and turn on <b>Auto-print</b> if desired.</li>
+      <li><b>For multi-hour events:</b> Plug this laptop into power and keep Print Helper open (it keeps Windows awake automatically; set lid-close action to &ldquo;Do nothing&rdquo; if you close the lid).</li>
     </ol>
   </div>
 </div>
@@ -1144,7 +1208,7 @@ export function renderStationDashboardHtml() {
 <script>
 const PRESETS = ${presetsJson};
 let state = { printers: [], selectedPrinters: null, hideUnusedPrinters: false, testSizes: [], testSizesCustomized: false, stationMode: 'auto', pendingJobs: [], jobs: [], addresses: [] };
-let lastPrSig = '', lastSzSig = '', lastJobSig = '', lastPendingSig = '';
+let lastPrSig = '', lastSzSig = '', lastJobSig = '', lastPendingSig = '', lastPairQr = '';
 let jobEdits = {};
 let pvState = { job: null, page: 0 };
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
@@ -1317,10 +1381,27 @@ function renderPrinters(force){
     return '<li class="'+(on?'':'dim')+'"><label class="pr-chk"><input type="checkbox" data-sel="'+esc(p)+'"'+(on?' checked':'')+'><span>'+esc(p)+'</span></label>'+btns+'</li>';
   }).join('');
 }
+function renderPairQr(){
+  const wrap=document.getElementById('pairQrWrap'),img=document.getElementById('pairQrImg');
+  if(!wrap||!img)return;
+  const payload=String(state.pairQr||'');
+  if(payload===lastPairQr)return;
+  lastPairQr=payload;
+  const qrFn=typeof qrcode==='function'?qrcode:null;
+  if(!payload||!qrFn){wrap.style.display='none';return;}
+  try{
+    const q=qrFn(0,'M');q.addData(payload);q.make();
+    img.src=q.createDataURL(4,2);
+    wrap.style.display='flex';
+  }catch(e){wrap.style.display='none';}
+}
 function renderAll(force){
   document.getElementById('pinTxt').textContent=state.pin||'------';
   const ips=(state.addresses||[]).map(function(a){return a.ip+(a.port&&a.port!==47777?':'+a.port:'')+' ('+a.kind+')';});
   document.getElementById('ipList').innerHTML=ips.length?ips.map(esc).join('<br>'):('Port '+(state.port||47777)+' (join Wi-Fi or Hotspot)');
+  const fwBtn=document.getElementById('fixFwBtn');
+  if(fwBtn)fwBtn.style.display=state.isWin?'':'none';
+  renderPairQr();
   renderMode();
   renderPending(force);
   renderSizes();
@@ -1393,6 +1474,15 @@ document.getElementById('newPinBtn').onclick=async function(){
   const j=await r.json().catch(function(){return{};});
   say(r.ok&&j.ok?('New 6-digit PIN generated: '+j.pin):(j.error||'Could not update PIN.'),!(r.ok&&j.ok));
   load(false);
+};
+document.getElementById('fixFwBtn').onclick=async function(){
+  const b=this;b.disabled=true;say('Allowing Print Station through Windows Firewall (Hotspot / Public)… Click Yes if Windows asks.');
+  try{
+    const r=await fetch('/station/fix-firewall',{method:'POST'});
+    const j=await r.json().catch(function(){return{};});
+    say(r.ok&&j.ok?('Windows Firewall updated \u2713'+(j.removedBlocks?(' (cleared '+j.removedBlocks+' block rule'+(j.removedBlocks===1?'':'s')+')'):'')+' — iPad can now connect over Hotspot or Wi-Fi.'):(j.error||'Could not update Windows Firewall.'),!(r.ok&&j.ok));
+  }catch(e){say('Could not update Windows Firewall.',true);}
+  finally{b.disabled=false;}
 };
 document.getElementById('refPrBtn').onclick=async function(){say('Refreshing printers…');await load(true);say('Printer list refreshed.');};
 document.getElementById('prSearch').oninput=function(){renderPrinters(true);};

@@ -13599,6 +13599,86 @@
       letter-spacing: .14em;
       color: #ffd166;
     }
+    .lanst-qrbox {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      background: #fff;
+      color: #1c1a1e;
+      border-radius: 12px;
+      padding: 6px;
+      flex: none;
+    }
+    .lanst-qrbox[hidden] {
+      display: none;
+    }
+    .lanst-qrbox img {
+      width: 102px;
+      height: 102px;
+      display: block;
+      image-rendering: pixelated;
+    }
+    .lanst-qrbox small {
+      font: 800 10px/1.15 'Manrope', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #5d555b;
+    }
+    .lanst-hsbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 10px 14px;
+      border: 1px solid #bfe3da;
+      border-radius: 12px;
+      background: #e6f4f1;
+      color: #1c1a1e;
+      font-size: 13px;
+    }
+    .lanst-hsbar[hidden] {
+      display: none;
+    }
+    .lanst-hsbar.warn {
+      background: #fef7eb;
+      border-color: #f3d9ae;
+    }
+    .lanst-hsbar code {
+      font: 800 13px ui-monospace, Consolas, monospace;
+      background: rgba(255, 255, 255, .85);
+      border: 1px solid rgba(28, 26, 30, .12);
+      border-radius: 6px;
+      padding: 1px 6px;
+      user-select: text;
+    }
+    .lanst-hsqr {
+      background: #fff;
+      border: 1px solid rgba(28, 26, 30, .12);
+      border-radius: 10px;
+      padding: 5px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      flex: none;
+    }
+    .lanst-hsqr[hidden] {
+      display: none;
+    }
+    .lanst-hsqr img {
+      width: 82px;
+      height: 82px;
+      display: block;
+      image-rendering: pixelated;
+    }
+    .lanst-hsqr small {
+      font: 800 9.5px/1.1 'Manrope', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #5d555b;
+    }
     .lanst-msg {
       padding: 9px 12px;
       border-radius: 10px;
@@ -26491,6 +26571,7 @@
                   <input type="text" id="lanStationPin" class="printer-input" placeholder="6-digit PIN" inputmode="numeric" maxlength="6" autocomplete="off" style="flex:1;min-width:105px;letter-spacing:.12em;text-align:center;">
                 </div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                  <button type="button" class="action-btn" id="lanStationScanQrBtn" style="display:none;width:auto;margin:0;background:var(--accent,#C93D27);color:#fff;border-color:transparent;">Scan Laptop QR</button>
                   <button type="button" class="action-btn" id="lanStationConnectBtn" style="width:auto;margin:0;">Connect</button>
                   <button type="button" class="action-btn" id="lanStationScanBtn" style="width:auto;margin:0;">Find Laptop on Wi-Fi</button>
                   <button type="button" class="action-btn" id="lanStationDiscBtn" style="display:none;width:auto;margin:0;">Disconnect</button>
@@ -26504,7 +26585,33 @@
                   </div>
                   <p class="panel-hint" id="lanStationModeHint" style="margin:4px 0 0;"></p>
                 </div>
-                <p class="panel-hint" style="margin:6px 0 0;">On the laptop, open <b>photobooth4u Print Helper</b> (or photobooth4u Desktop) and enter its IP and 6-digit PIN here.</p>
+                <p class="panel-hint" style="margin:6px 0 0;">On the laptop, open <b>photobooth4u Print Helper</b> (or photobooth4u Desktop &rarr; Offline Print Station) and tap <b>Scan Laptop QR</b> (or enter its IP and 6-digit PIN here).</p>
+                <details id="lanStationGuide" style="margin-top:8px;padding:8px 10px;border:1px solid var(--line,rgba(0,0,0,.12));border-radius:10px;background:rgba(28,26,30,.03);">
+                  <summary style="cursor:pointer;font-weight:700;font-size:12.5px;color:var(--ink,#1c1a1e);">Connection guide &amp; troubleshooting (Hotspot / Wi-Fi / multi-hour events)</summary>
+                  <div style="margin-top:7px;font-size:12px;line-height:1.5;color:var(--ink-dim,#555);">
+                    <div style="margin-bottom:6px;">
+                      <b style="color:var(--ink,#1c1a1e);">1. Direct Laptop Hotspot (no router / offline):</b>
+                      <ol style="margin:3px 0 0 18px;padding:0;">
+                        <li>On iPad <b>Settings &rarr; Cellular</b>, turn <b>Cellular Data OFF</b> (or turn <b>Airplane Mode ON</b>, then <b>Wi-Fi ON</b>) so traffic stays on the hotspot.</li>
+                        <li>In <b>Settings &rarr; Wi-Fi</b>, disconnect from any regular/venue Wi-Fi and tap <b>(i) &rarr; Auto-Join OFF</b> on it so the iPad won&rsquo;t switch back mid-event.</li>
+                        <li>Join the laptop&rsquo;s hotspot (scan its <b>Join Hotspot</b> QR with iPad Camera and tap <b>Use Without Internet</b>).</li>
+                        <li>Check <b>Settings &rarr; photobooth4u &rarr; Local Network</b> is <b>ON</b>.</li>
+                        <li>Come back here and tap <b>Scan Laptop QR</b> to connect right away.</li>
+                      </ol>
+                    </div>
+                    <div style="margin-bottom:6px;">
+                      <b style="color:var(--ink,#1c1a1e);">2. Shared Wi-Fi router:</b> Put both laptop and iPad on the same Wi-Fi (avoid Guest/isolated Wi-Fi), then tap <b>Scan Laptop QR</b> or <b>Find Laptop on Wi-Fi</b>.
+                    </div>
+                    <div>
+                      <b style="color:var(--ink,#1c1a1e);">3. Can&rsquo;t connect or stops after hours?</b>
+                      <ul style="margin:3px 0 0 18px;padding:0;">
+                        <li>Click <b>Fix Firewall</b> on the laptop&rsquo;s Print Station screen (choose <b>Yes</b> when Windows asks) and pause any antivirus firewall or VPN.</li>
+                        <li>Keep the laptop plugged into power with Windows Sleep set to <b>Never</b>; the paired IP &amp; PIN stay saved across hours.</li>
+                        <li>If the laptop changed Wi-Fi or restarted its hotspot, just tap <b>Scan Laptop QR</b> again.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </details>
               </div>
             </div>
           </div>
@@ -28735,9 +28842,27 @@
             <div style="font-size:11px;opacity:.75;text-transform:uppercase;letter-spacing:.12em;">6-Digit PIN</div>
             <div class="lanst-pin" id="stationDeskPin">------</div>
           </div>
+          <div class="lanst-qrbox" id="stationDeskPairQrWrap" hidden>
+            <img id="stationDeskPairQrImg" alt="Scan in iPad app to pair Print Station">
+            <small>Scan in iPad App</small>
+          </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button type="button" class="desk-btn" id="stationDeskCopyBtn">Copy IP</button>
             <button type="button" class="desk-btn" id="stationDeskNewPinBtn">New PIN</button>
+            <button type="button" class="desk-btn" id="stationDeskFwBtn" hidden title="Allow Print Station through Windows Firewall on Hotspot / Public networks">Fix Firewall</button>
+          </div>
+        </div>
+        <div class="lanst-hsbar" id="stationDeskHsBar" hidden>
+          <div style="flex:1;min-width:210px;">
+            <b id="stationDeskHsTitle">Booth Hotspot is ON</b>
+            <div id="stationDeskHsDetails" style="margin-top:3px;line-height:1.5;"></div>
+          </div>
+          <div class="lanst-row">
+            <button type="button" class="desk-btn active" id="stationDeskHsSetupBtn" hidden>Set up Hotspot (one time)</button>
+            <div class="lanst-hsqr" id="stationDeskHsQrWrap" hidden>
+              <img id="stationDeskHsQrImg" alt="Scan with iPad Camera to join Booth Hotspot">
+              <small>Join Hotspot</small>
+            </div>
           </div>
         </div>
         <div class="lanst-modebar">
@@ -28828,7 +28953,7 @@
             <tbody id="stationDeskJobs"><tr><td colspan="5" style="color:var(--ink-dim);">Waiting for prints&hellip;</td></tr></tbody>
           </table>
         </div>
-        <p class="panel-hint" style="margin:0;">On your <b>iPad / Android App</b> (Setup &rarr; Printer), choose your paper size (<b>4&times;6</b>, <b>2&times;6 strips</b>, <b>5&times;7</b>, <b>6&times;8</b>, <b>A4</b>, or <b>More paper sizes &rarr; Own size</b>), switch ON <b>Laptop Print Station (Wi-Fi)</b>, tap <b>Find Laptop on Wi-Fi</b>, enter this <b>6-Digit PIN</b>, and pick your printer. Camera preview pauses while this screen stays open to save laptop power.</p>
+        <p class="panel-hint" style="margin:0;"><b>Quick setup &amp; multi-hour tips:</b> Plug this laptop into power (Sleep = Never). If using Mobile Hotspot on Windows, click <b>Fix Firewall</b> once. On your <b>iPad</b>: turn <b>Cellular Data OFF</b> (or Airplane Mode ON + Wi-Fi ON), turn <b>Auto-Join OFF</b> on regular/venue Wi-Fi, join this Hotspot (tap <b>Use Without Internet</b>), then open <b>Setup &rarr; Printer &rarr; Laptop Print Station</b> and tap <b>Scan Laptop QR</b>. Camera preview pauses while this screen stays open to save laptop power.</p>
       </div>
     </div>
   </div>
@@ -30543,8 +30668,7 @@
               return new Blob([b], { type: blob.type || 'image/jpeg' });
             }
             const seg = new Uint8Array([0xFF, 0xE0, 0, 16, 0x4A, 0x46, 0x49, 0x46, 0, 1, 1, 1, d >> 8, d & 255, d >> 8, d & 255, 0, 0]);
-            const out = new Uint8Array(b.length + seg.length); out.set(b.subarray(0, 2), 0); out.set(seg, 2); out.set(b.subarray(2), 2 + seg.length);
-            return new Blob([out], { type: blob.type || 'image/jpeg' });
+            return new Blob([b.subarray(0, 2), seg, b.subarray(2)], { type: blob.type || 'image/jpeg' });
           }
           const sig = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
           if (b.length > 33 && sig.every(function (v, i) { return b[i] === v; })) {
@@ -30559,8 +30683,7 @@
             for (let k = 0; k < 4; k++) { chunk[8 + k] = (ppm >>> (24 - 8 * k)) & 255; chunk[12 + k] = (ppm >>> (24 - 8 * k)) & 255; }
             chunk[16] = 1;                                   // unit: metre
             const crc = pbCrc32(chunk, 4, 17); for (let k = 0; k < 4; k++) chunk[17 + k] = (crc >>> (24 - 8 * k)) & 255;
-            const out = new Uint8Array(b.length + 21); out.set(b.subarray(0, 33), 0); out.set(chunk, 33); out.set(b.subarray(33), 54);
-            return new Blob([out], { type: blob.type || 'image/png' });
+            return new Blob([b.subarray(0, 33), chunk, b.subarray(33)], { type: blob.type || 'image/png' });
           }
         } catch (e) { }
         return blob;
@@ -30685,6 +30808,7 @@
       function offlineJpegQuality(kind) {
         if (!LOCALSHARE) return 0.95;
         if (DESKTOP && (kind === 'print' || kind === 'solo')) return 1;
+        if (typeof window !== 'undefined' && window && window.__PB && window.__PB.iosLowRam) return kind === 'solo' ? 0.88 : 0.90;
         return DESKTOP || LANREMOTE ? 0.96 : 0.95;
       }
 
@@ -31016,6 +31140,9 @@
       }
       function pbReleaseShotList(arr) {
         if (!Array.isArray(arr)) return;
+        if (typeof pbSnapshotDeferredSoloShots === 'function') {
+          try { pbSnapshotDeferredSoloShots(arr); } catch (e) { }
+        }
         for (var i = 0; i < arr.length; i++) {
           if (arr[i]) { pbReleaseShotCanvas(arr[i]); arr[i] = null; }
         }
@@ -31059,6 +31186,32 @@
           if (typeof filterThumbScratch !== 'undefined' && filterThumbScratch) {
             pbReleaseCanvas(filterThumbScratch);
             filterThumbScratch = null;
+          }
+        } catch (e) { }
+        try {
+          if (typeof shotCanvases !== 'undefined' && Array.isArray(shotCanvases) && typeof pbClearShotTileCache === 'function') {
+            for (var si = 0; si < shotCanvases.length; si++) {
+              if (shotCanvases[si]) pbClearShotTileCache(shotCanvases[si]);
+            }
+          }
+        } catch (e) { }
+        try {
+          if (typeof document !== 'undefined' && document && (typeof qrPop === 'undefined' || !qrPop || !qrPop.phase)) {
+            var qpc = document.getElementById('qrPopPhoto');
+            if (qpc && (qpc.width || qpc.height)) pbReleaseCanvas(qpc);
+          }
+        } catch (e) { }
+        try {
+          if (typeof PM_PUNCH_CACHE !== 'undefined' && PM_PUNCH_CACHE) {
+            for (var pk in PM_PUNCH_CACHE) {
+              var rec = PM_PUNCH_CACHE[pk];
+              if (rec) {
+                if (rec.smallOv && rec.smallOv.getContext) pbReleaseCanvas(rec.smallOv);
+                if (rec.pv && rec.pv.punched && rec.pv.punched.getContext) pbReleaseCanvas(rec.pv.punched);
+                if (rec.full && rec.full.punched && rec.full.punched.getContext) pbReleaseCanvas(rec.full.punched);
+              }
+              delete PM_PUNCH_CACHE[pk];
+            }
           }
         } catch (e) { }
         try {
@@ -33089,15 +33242,21 @@
         addQrResult(label || 'Download', url);
       }
 
+      function canReusePreviewCanvas(layoutKey) {
+        return !!(layoutKey === currentLayout && !btViewBack && previewCanvas && previewCanvas.width > 0 && previewCanvas.height > 0 &&
+          !previewCanvas._fastPreview &&
+          previewCanvas._renderedForLayout === layoutKey && previewCanvas._renderedSession === (sessionNumber || 0) &&
+          !previewCanvas._renderedBack && !previewCanvas._hasCropOverlay &&
+          !(typeof tplEdit !== 'undefined' && tplEdit && tplEdit.side === 'back') &&
+          !(typeof sess !== 'undefined' && sess && sess.decorating && !sess.decoPreview && guestDecor && guestDecor[selGuestDecor]) &&
+          shotCanvases.every(Boolean));
+      }
+
       async function uploadLayoutForQR(layoutKey, onRetry) {
         const _dgT0 = performance.now();
         if (typeof window.pbDiag === 'function') window.pbDiag('SAVE', 'uploadLayoutForQR start (' + layoutKey + ')', { state: 'start', layout: layoutKey }, true);
         let srcCanvas = previewCanvas;
-        const canReusePreview = (layoutKey === currentLayout && !btViewBack && previewCanvas && previewCanvas.width > 0 && previewCanvas.height > 0 &&
-          previewCanvas._renderedForLayout === layoutKey && previewCanvas._renderedSession === (sessionNumber || 0) &&
-          !previewCanvas._renderedBack && !previewCanvas._hasCropOverlay &&
-          !(typeof sess !== 'undefined' && sess && sess.decorating && !sess.decoPreview && guestDecor && guestDecor[selGuestDecor]) &&
-          shotCanvases.every(Boolean));
+        const canReusePreview = canReusePreviewCanvas(layoutKey);
         if (!canReusePreview) {
           srcCanvas = document.createElement('canvas');
           srcCanvas._hiRes = true;
@@ -33112,12 +33271,22 @@
         fctx.imageSmoothingEnabled = true; fctx.imageSmoothingQuality = 'high';
         fctx.drawImage(srcCanvas, 0, 0);
         if (!canReusePreview && srcCanvas !== previewCanvas) pbReleaseCanvas(srcCanvas);
+        const flatW = flat.width, flatH = flat.height;
         const blob = await pbCanvasBlob(flat, 'image/jpeg', offlineJpegQuality('print'));
-        if (typeof window.pbDiag === 'function') window.pbDiag('SAVE', 'uploadLayoutForQR blob ready (' + flat.width + 'x' + flat.height + ', ' + Math.round((blob ? blob.size : 0) / 1024) + 'KB)', { state: 'start', ms: Math.round(performance.now() - _dgT0), w: flat.width, h: flat.height, reuse: canReusePreview }, true);
+        if (typeof window.pbDiag === 'function') window.pbDiag('SAVE', 'uploadLayoutForQR blob ready (' + flatW + 'x' + flatH + ', ' + Math.round((blob ? blob.size : 0) / 1024) + 'KB)', { state: 'start', ms: Math.round(performance.now() - _dgT0), w: flatW, h: flatH, reuse: canReusePreview }, true);
+        const cutFrame = (layoutKey === 'myframe' && typeof activeFrame === 'function') ? activeFrame() : null;
+        const hasCutSections = !!(cutFrame && cutFrame.saveCuts && Array.isArray(cutFrame.sections) && cutFrame.sections.length > 1);
+        const needsFlatAfterBlob = !!((driveReady() || LOCALSHARE) && (masterPngOn() || hasCutSections));
         let flatRefs = 0;
         const retainFlat = () => { flatRefs++; };
         const releaseFlat = () => { if (--flatRefs <= 0) { flat._pbFlatDone = null; pbReleaseCanvas(flat); } };
-        flat._pbFlatDone = releaseFlat;
+        if (needsFlatAfterBlob) {
+          flat._pbFlatDone = releaseFlat;
+        } else {
+          // Release the flattened composite canvas (~19 MB RGBA on 3 GB iPads) BEFORE base64 encoding and IPC upload.
+          flat._pbFlatDone = null;
+          pbReleaseCanvas(flat);
+        }
         const label = layoutDef(layoutKey).name + ' Layout';
         // e.g. "1_strip.jpg" / "2_grid.jpg" so files sort cleanly in the folder —
         // only the chosen format is ever uploaded, so the folder only ever
@@ -33335,72 +33504,126 @@
         return clone;
       }
 
-      async function saveSoloPhotosAsync(sessNum, shots) {
+      // Tracks lazy solo-photo jobs on low-RAM iPads so we clone one shot at a time AFTER printing finishes
+      // (instead of allocating 4x 1600x1200 = ~31 MB of cloned canvases simultaneously with print canvases).
+      // If the next guest starts before solo saving finishes, pbSnapshotDeferredSoloShots() snapshots only the
+      // remaining unsaved shots right before pbReleaseShotList() clears shotCanvases — zero solo photos lost.
+      var _pbDeferredSoloJobs = [];
+      function pbSnapshotDeferredSoloShots(arr) {
+        if (!Array.isArray(arr) || !_pbDeferredSoloJobs.length) return;
+        for (var j = 0; j < _pbDeferredSoloJobs.length; j++) {
+          var job = _pbDeferredSoloJobs[j];
+          if (!job || job.done || job.source !== arr) continue;
+          var snap = new Array(arr.length);
+          for (var k = 0; k < arr.length; k++) {
+            snap[k] = (k >= job.nextIndex && arr[k] && arr[k].width > 0 && arr[k].height > 0) ? cloneShotForSolo(arr[k]) : null;
+          }
+          job.snapshots = snap;
+          job.source = null;
+        }
+      }
+
+      async function saveSoloPhotosAsync(sessNum, shots, opts) {
         if (!saveSoloPhotos || !shots || !shots.length) return;
-        if (typeof window !== 'undefined' && typeof window.pbDiag === 'function') window.pbDiag('SAVE', 'saveSoloPhotosAsync start (' + shots.length + ' shots)', { state: 'start', count: shots.length }, true);
+        var lazy = !!(opts && opts.lazySource);
+        var count = shots.length;
+        if (typeof window !== 'undefined' && typeof window.pbDiag === 'function') window.pbDiag('SAVE', 'saveSoloPhotosAsync start (' + count + ' shots' + (lazy ? ', lazy' : '') + ')', { state: 'start', count: count, lazy: lazy }, true);
         var num = sessNum || sessionNumber || 1;
         var dest = { folderKey: rawFolderKey(), subfolder: driveSubfolder() };
         var lowIos = isLowRamIos();
-        for (var i = 0; i < shots.length; i++) {
-          var sc = shots[i];
-          if (!sc) continue;
-          // Never collide solo-shot JPEG encoding + Photos import with active printing or AirPrint PDF spooling.
-          if (typeof printing !== 'undefined' && printing) {
-            if (typeof window !== 'undefined' && typeof window.pbDiag === 'function') window.pbDiag('SAVE', 'saveSolo waiting for active print (shot ' + (i + 1) + ')', null, false);
-            for (var pw = 0; pw < 80 && printing; pw++) await wait(150);
-          }
-          if ((IS_IOS_APP || lowIos) && typeof _pbLastPrintSentAt === 'number' && _pbLastPrintSentAt > 0) {
-            var sincePrint = Date.now() - _pbLastPrintSentAt;
-            if (sincePrint >= 0 && sincePrint < 2500) await wait(2500 - sincePrint);
-          }
-          if (i > 0) await wait(lowIos ? 90 : 16);
-          try {
-            var blob = await soloOriginal(sc);
-            if (!blob) {
-              var flat = document.createElement('canvas');
-              try {
-                flat.width = sc.width; flat.height = sc.height;
-                var fctx = flat.getContext('2d');
-                fctx.fillStyle = '#ffffff';
-                fctx.fillRect(0, 0, flat.width, flat.height);
-                fctx.imageSmoothingEnabled = true;
-                fctx.imageSmoothingQuality = 'high';
-                fctx.drawImage(sc, 0, 0);
-                blob = await pbCanvasBlob(flat, 'image/jpeg', offlineJpegQuality('solo'), 300);
-              } finally {
-                pbReleaseCanvas(flat);
+        var job = lazy ? { source: shots, snapshots: null, nextIndex: 0, done: false } : null;
+        if (job) _pbDeferredSoloJobs.push(job);
+        try {
+          for (var i = 0; i < count; i++) {
+            if (job) job.nextIndex = i;
+            if (!lazy && !shots[i]) continue;
+            // If auto-print is scheduled to fire momentarily (500 ms timer), let auto-print start first before solo work.
+            if ((IS_IOS_APP || lowIos) && typeof _pbAutoPrintPendingUntil === 'number' && _pbAutoPrintPendingUntil > Date.now()) {
+              for (var aw = 0; aw < 12 && _pbAutoPrintPendingUntil > Date.now() && !(typeof printing !== 'undefined' && printing); aw++) await wait(100);
+            }
+            // Never collide solo-shot JPEG encoding + Photos import with active printing or AirPrint/Print-Station handoff.
+            if (typeof printing !== 'undefined' && printing) {
+              if (typeof window !== 'undefined' && typeof window.pbDiag === 'function') window.pbDiag('SAVE', 'saveSolo waiting for active print (shot ' + (i + 1) + ')', null, false);
+              for (var pw = 0; pw < 80 && printing; pw++) await wait(150);
+            }
+            if ((IS_IOS_APP || lowIos) && typeof _pbLastPrintSentAt === 'number' && _pbLastPrintSentAt > 0) {
+              var sincePrint = Date.now() - _pbLastPrintSentAt;
+              if (sincePrint >= 0 && sincePrint < 2500) await wait(2500 - sincePrint);
+            }
+            if (i > 0) await wait(lowIos ? 90 : 16);
+            var sc = null;
+            if (job) {
+              if (job.snapshots) {
+                sc = job.snapshots[i];
+                job.snapshots[i] = null;
+              } else if (job.source && job.source[i] && job.source[i].width > 0 && job.source[i].height > 0) {
+                sc = cloneShotForSolo(job.source[i]);
               }
+            } else {
+              sc = shots[i];
             }
-            if (!blob) continue;
-            var soloFilename = filePrefix() + num + '_solo_' + (i + 1) + deviceTag() + '.jpg';
-
-            if (backupDir && backupOk) {
-              try { await saveToBackupFolder(blob, soloFilename); } catch (e) { }
-            }
-            if (DESKTOP_ONLINE) {
-              saveDesktopLocalCopy(blob, soloFilename, dest);
-            }
-
-            if (driveReady() || LOCALSHARE) {
-              var online = LOCALSHARE || navigator.onLine !== false;
-              var uploaded = false;
-              if (online) {
+            if (!sc) continue;
+            try {
+              var blob = await soloOriginal(sc);
+              if (!blob) {
+                var flat = document.createElement('canvas');
                 try {
-                  await uploadToDrive(blob, soloFilename, dest);
-                  uploaded = true;
-                } catch (err) {
-                  console.warn('Solo photo direct upload failed, will queue:', err);
+                  flat.width = sc.width; flat.height = sc.height;
+                  var fctx = flat.getContext('2d');
+                  fctx.fillStyle = '#ffffff';
+                  fctx.fillRect(0, 0, flat.width, flat.height);
+                  fctx.imageSmoothingEnabled = true;
+                  fctx.imageSmoothingQuality = 'high';
+                  fctx.drawImage(sc, 0, 0);
+                  blob = await pbCanvasBlob(flat, 'image/jpeg', offlineJpegQuality('solo'), 300);
+                } finally {
+                  pbReleaseCanvas(flat);
                 }
               }
-              if (!uploaded) {
-                try { await queueUpload(blob, soloFilename, dest); } catch (e) { console.error('Queue solo photo failed:', e); }
+              if (!blob) continue;
+              var soloFilename = filePrefix() + num + '_solo_' + (i + 1) + deviceTag() + '.jpg';
+
+              if (backupDir && backupOk) {
+                try { await saveToBackupFolder(blob, soloFilename); } catch (e) { }
               }
+              if (DESKTOP_ONLINE) {
+                saveDesktopLocalCopy(blob, soloFilename, dest);
+              }
+
+              if (driveReady() || LOCALSHARE) {
+                var online = LOCALSHARE || navigator.onLine !== false;
+                var uploaded = false;
+                if (online) {
+                  try {
+                    await uploadToDrive(blob, soloFilename, dest);
+                    uploaded = true;
+                  } catch (err) {
+                    console.warn('Solo photo direct upload failed, will queue:', err);
+                  }
+                }
+                if (!uploaded) {
+                  try { await queueUpload(blob, soloFilename, dest); } catch (e) { console.error('Queue solo photo failed:', e); }
+                }
+              }
+            } catch (err) {
+              console.warn('Failed saving solo photo ' + (i + 1) + ':', err);
+            } finally {
+              pbReleaseShotCanvas(sc);
+              if (!job) shots[i] = null;
             }
-          } catch (err) {
-            console.warn('Failed saving solo photo ' + (i + 1) + ':', err);
-          } finally {
-            pbReleaseShotCanvas(sc);
-            shots[i] = null;
+          }
+        } finally {
+          if (job) {
+            job.done = true;
+            job.source = null;
+            if (Array.isArray(job.snapshots)) {
+              for (var r = 0; r < job.snapshots.length; r++) {
+                if (job.snapshots[r]) { pbReleaseShotCanvas(job.snapshots[r]); job.snapshots[r] = null; }
+              }
+              job.snapshots = null;
+            }
+            var ji = _pbDeferredSoloJobs.indexOf(job);
+            if (ji >= 0) _pbDeferredSoloJobs.splice(ji, 1);
           }
         }
       }
@@ -33561,6 +33784,7 @@
       let qrGeneration = 0;
       let _pbActiveSavePromise = null;
       var _pbLastPrintSentAt = 0;
+      var _pbAutoPrintPendingUntil = 0;
       async function showQRForCurrentPhoto() {
         if (!shotCanvases.every(Boolean)) return;
         const myGeneration = ++qrGeneration;
@@ -33603,11 +33827,12 @@
         clearTimeout(slowTimer);
         if (myGeneration !== qrGeneration) { pbReleaseShotList(soloShotsSnapshot); return null; }
 
+        // Save solo photos AFTER the composite print layout has uploaded and registered its link.
+        // On 3 GB iPads (deferSoloClone), pass shotCanvases lazily so saveSoloPhotosAsync waits for auto-print/printing
+        // to finish first and clones ONE shot at a time (~7.7 MB peak instead of ~31 MB overlapping with print).
         if (deferSoloClone && saveSoloPhotos && state === 'result' && shotCanvases && shotCanvases.every(Boolean)) {
-          soloShotsSnapshot = shotCanvases.map(cloneShotForSolo);
-        }
-        // Save solo photos AFTER the composite print layout has uploaded and registered its link
-        if (saveSoloPhotos && soloShotsSnapshot && soloShotsSnapshot.length) {
+          saveSoloPhotosAsync(soloSessionNum, shotCanvases, { lazySource: true });
+        } else if (saveSoloPhotos && soloShotsSnapshot && soloShotsSnapshot.length) {
           saveSoloPhotosAsync(soloSessionNum, soloShotsSnapshot);
         } else {
           pbReleaseShotList(soloShotsSnapshot);
@@ -35018,6 +35243,28 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         });
         if (myGen !== gifGeneration) return;
 
+        // On iOS / 3 GB iPads in Photo+GIF mode, let the composite photo save and active auto-print finish first
+        // so GIF framing + LZW encoding never collide with QR save or Print Station canvas allocation.
+        if (IS_IOS_APP || isLowRamIos()) {
+          if (_pbActiveSavePromise) {
+            try { await Promise.race([_pbActiveSavePromise.catch(function () { }), wait(4000)]); } catch (e) { }
+            if (myGen !== gifGeneration) return;
+          }
+          if (typeof _pbAutoPrintPendingUntil === 'number' && _pbAutoPrintPendingUntil > Date.now()) {
+            for (var gaw = 0; gaw < 12 && _pbAutoPrintPendingUntil > Date.now() && !printing && myGen === gifGeneration; gaw++) await wait(100);
+            if (myGen !== gifGeneration) return;
+          }
+          if (typeof printing !== 'undefined' && printing) {
+            for (var gpw = 0; gpw < 80 && printing && myGen === gifGeneration; gpw++) await wait(150);
+            if (myGen !== gifGeneration) return;
+          }
+          if (typeof _pbLastPrintSentAt === 'number' && _pbLastPrintSentAt > 0) {
+            var sinceGifPrint = Date.now() - _pbLastPrintSentAt;
+            if (sinceGifPrint >= 0 && sinceGifPrint < 2500) await wait(2500 - sinceGifPrint);
+            if (myGen !== gifGeneration) return;
+          }
+        }
+
         var framesObj;
         try {
           framesObj = completedGifCapture;
@@ -35394,7 +35641,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
       }
       function nativeCamPumpSpec() {
-        if (!nativeCam.active || document.hidden || isStartScreenCovering() || (typeof spinArmOpen !== 'undefined' && spinArmOpen)) return { ms: 0, max: 640, q: 0.74 };
+        if (!nativeCam.active || document.hidden || isStartScreenCovering() || (typeof spinArmOpen !== 'undefined' && spinArmOpen) || (typeof lanQrOpen !== 'undefined' && lanQrOpen)) return { ms: 0, max: 640, q: 0.74 };
         try { if (typeof vgIsOpen === 'function' && vgIsOpen()) return { ms: 0, max: 640, q: 0.74 }; } catch (e) { }
         if (nativeCam.flipCapturing) return { ms: 65, max: 640, q: 0.76 };
         if (nativeCam.motionCapturing) return { ms: (typeof gifMotionStyle !== 'undefined' && gifMotionStyle === 'session') ? 220 : 90, max: 640, q: 0.76 };
@@ -37717,7 +37964,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       function camWantLive() {
         if (DESK_STANDALONE) return false;
-        if (typeof spinArmOpen !== 'undefined' && spinArmOpen) return false;
+        if ((typeof spinArmOpen !== 'undefined' && spinArmOpen) || (typeof lanQrOpen !== 'undefined' && lanQrOpen)) return false;
         if (!usbSaveOn()) return true;
         // iPad app, built-in camera: never let go of it between guests. Letting go and opening it again is what made the
         // picture arrive late (or stay frozen) when a guest pressed Start. The iPad is on a charger and its screen stays on.
@@ -39011,18 +39258,27 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (shot._thumb && shot._thumbA === box) return shot._thumb;
         var t = document.createElement('canvas'), H = IS_IOS_APP ? 240 : 360, W = Math.round(H * box);
         if (W > 600) { W = 600; H = Math.round(W / box); }
-        t.width = W; t.height = H;
-        drawImageCover(t.getContext('2d'), shot, 0, 0, W, H);
-        shot._thumb = t.toDataURL('image/jpeg', 0.82); shot._thumbA = box;
-        return shot._thumb;
+        try {
+          t.width = W; t.height = H;
+          drawImageCover(t.getContext('2d'), shot, 0, 0, W, H);
+          shot._thumb = t.toDataURL('image/jpeg', 0.82); shot._thumbA = box;
+          return shot._thumb;
+        } finally {
+          pbReleaseCanvas(t);
+        }
       }
       function shotReviewUrl(shot, i) {
         var box = (typeof i === 'number' && typeof shotBoxAspect === 'function') ? shotBoxAspect(i) : currentBoxAspect();
-        var t = document.createElement('canvas'), H = 1000, W = Math.round(H * box);
-        if (W > 1400) { W = 1400; H = Math.round(W / box); }
-        t.width = W; t.height = H;
-        drawImageCover(t.getContext('2d'), shot, 0, 0, W, H);
-        return t.toDataURL('image/jpeg', 0.88);
+        var t = document.createElement('canvas'), H = isLowRamIos() ? 800 : 1000, W = Math.round(H * box);
+        var maxW = isLowRamIos() ? 1100 : 1400;
+        if (W > maxW) { W = maxW; H = Math.round(W / box); }
+        try {
+          t.width = W; t.height = H;
+          drawImageCover(t.getContext('2d'), shot, 0, 0, W, H);
+          return t.toDataURL('image/jpeg', isLowRamIos() ? 0.84 : 0.88);
+        } finally {
+          pbReleaseCanvas(t);
+        }
       }
 
       function updateUI() {
@@ -46630,12 +46886,155 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (lanStationActive()) return 'http://' + lanStationCfg.host + ':' + (lanStationCfg.port || 47777) + '/lan-station';
         return LAPTOP_PRINT ? '/helper' : 'http://127.0.0.1:17321';
       }
+      function lanHttpAvailable() {
+        return !!(window.__PBLanHttp && typeof window.__PBLanHttp.request === 'function');
+      }
+      function lanHttpFetch(url, init, timeoutMs) {
+        const o = init || {};
+        const method = String(o.method || 'GET').toUpperCase();
+        const isPrint = method === 'POST' && /\/print(?:\?|$)/.test(url);
+        const tMs = Number(timeoutMs) || (isPrint ? 30000 : 4000);
+        const sig = o.signal || null;
+        const abortErr = () => { const e = new Error('Aborted'); e.name = 'AbortError'; return e; };
+        if (sig && sig.aborted) return Promise.reject(abortErr());
+        if (lanHttpAvailable()) {
+          const headers = (o.headers && typeof o.headers === 'object') ? o.headers : {};
+          const body = (typeof o.body === 'string') ? o.body : '';
+          return new Promise((resolve, reject) => {
+            let done = false;
+            const onAbort = () => {
+              if (done) return;
+              done = true;
+              reject(abortErr());
+            };
+            if (sig && typeof sig.addEventListener === 'function') sig.addEventListener('abort', onAbort, { once: true });
+            window.__PBLanHttp.request({ url, method, headers, body, timeoutMs: tMs }).then(res => {
+              if (sig && typeof sig.removeEventListener === 'function') sig.removeEventListener('abort', onAbort);
+              if (done) return;
+              done = true;
+              if (!res || !res.status) {
+                const err = new Error((res && res.error) || 'Network error');
+                if (res && res.timeout) err.name = 'AbortError';
+                reject(err);
+                return;
+              }
+              const txt = String(res.text || '');
+              resolve({
+                ok: !!res.ok,
+                status: Number(res.status) || 0,
+                text: async () => txt,
+                json: async () => JSON.parse(txt || '{}')
+              });
+            }, err => {
+              if (sig && typeof sig.removeEventListener === 'function') sig.removeEventListener('abort', onAbort);
+              if (done) return;
+              done = true;
+              reject(err);
+            });
+          });
+        }
+        // Browser fetch fallback: always enforce a strict AbortController timeout so a firewalled hotspot IP never hangs 60-75s.
+        const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+        if (!ctl) return fetch(url, o);
+        const onOuterAbort = () => { try { ctl.abort(); } catch (e) { } };
+        if (sig && typeof sig.addEventListener === 'function') sig.addEventListener('abort', onOuterAbort, { once: true });
+        const timer = setTimeout(() => { try { ctl.abort(); } catch (e) { } }, tMs);
+        const fOpts = Object.assign({}, o, { signal: ctl.signal });
+        delete fOpts._timeoutMs;
+        return fetch(url, fOpts).finally(() => {
+          clearTimeout(timer);
+          if (sig && typeof sig.removeEventListener === 'function') sig.removeEventListener('abort', onOuterAbort);
+        });
+      }
       function helperFetch(path, init) {
         const opts = Object.assign({}, init || {});
         if (lanStationActive()) {
           opts.headers = Object.assign({}, opts.headers || {}, { 'x-pb-pin': lanStationCfg.pin });
+          return lanHttpFetch(helperBaseUrl() + path, opts, opts._timeoutMs);
         }
         return fetch(helperBaseUrl() + path, opts);
+      }
+      function deviceWifiIpNow() {
+        try {
+          const lb = lanBaseNow();
+          const m = /https?:\/\/(\d{1,3}(?:\.\d{1,3}){3})/.exec(String(lb || ''));
+          return m ? m[1] : '';
+        } catch (e) { return ''; }
+      }
+      function ipSubnet24(ip) {
+        const m = /^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$/.exec(String(ip || '').trim());
+        return m ? (m[1] + '.') : '';
+      }
+      function lanStationUnreachableMsg(host, port) {
+        const target = String(host || '').trim();
+        const pt = Number(port) || 47777;
+        const myIp = deviceWifiIpNow();
+        const myPfx = ipSubnet24(myIp);
+        const tgtPfx = ipSubnet24(target);
+        const hasQr = typeof window.__PBLanScanQr === 'function';
+        const scanCue = hasQr ? 'then tap Scan Laptop QR.' : 'then tap Find Laptop on Wi-Fi or Connect.';
+        if (IOS_APP && !myIp) {
+          return 'iPad isn\u2019t on Wi-Fi yet (or Local Network is off). Turn Cellular Data OFF (or Airplane Mode ON + Wi-Fi ON), join the laptop hotspot in Settings \u2192 Wi-Fi (tap Use Without Internet), ' + scanCue;
+        }
+        if (myPfx && tgtPfx && myPfx !== tgtPfx) {
+          if (tgtPfx === '192.168.137.' || tgtPfx === '192.168.2.') {
+            return 'This device is on regular Wi-Fi (' + myIp + '), not on the laptop hotspot (' + tgtPfx + 'x). Disconnect & turn Auto-Join OFF on your regular Wi-Fi, turn Cellular Data OFF, join the laptop hotspot, ' + scanCue;
+          }
+          return 'This device is on ' + myIp + ', a different Wi-Fi from ' + target + '. Disconnect from other Wi-Fi / turn Cellular Data OFF so both devices share one Wi-Fi or hotspot, ' + scanCue;
+        }
+        if (myPfx && tgtPfx && myPfx === tgtPfx) {
+          return 'On the same network (' + myIp + '), but laptop ' + target + ':' + pt + ' didn\u2019t answer. Click Fix Firewall on the laptop\u2019s Print Station screen' + (IOS_APP ? ', turn Cellular Data OFF on iPad, confirm Settings \u2192 photobooth4u \u2192 Local Network is ON, ' + scanCue : ' (and pause any antivirus firewall or VPN).');
+        }
+        return 'Can\u2019t reach laptop ' + target + ':' + pt + '. Turn Cellular Data OFF, disconnect from other Wi-Fi, join the laptop hotspot/Wi-Fi, click Fix Firewall on Windows, ' + scanCue;
+      }
+      function isValidLanIpv4(s) {
+        if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(s)) return false;
+        const p = s.split('.').map(Number);
+        return !p.some(n => n < 0 || n > 255) && p[0] !== 0 && p[0] !== 127;
+      }
+      function parseLanStationQr(raw) {
+        const text = String(raw || '').trim();
+        if (!text) return null;
+        if (/^WIFI:/i.test(text)) {
+          const unesc = (v) => String(v || '').replace(/\\([\\;,:"])/g, '$1');
+          const sm = /(?:^|;)S:((?:\\.|[^;])*)/.exec(text.slice(5));
+          const pm = /(?:^|;)P:((?:\\.|[^;])*)/.exec(text.slice(5));
+          return { isWifiQr: true, wifiSsid: sm ? unesc(sm[1]).trim().slice(0, 32) : '', wifiPass: pm ? unesc(pm[1]).slice(0, 63) : '' };
+        }
+        const cleanIps = (list) => {
+          const out = [], seen = new Set();
+          (Array.isArray(list) ? list : []).forEach(x => {
+            const s = String(x || '').trim();
+            if (isValidLanIpv4(s) && !seen.has(s)) { seen.add(s); out.push(s); }
+          });
+          return out;
+        };
+        if (/^pb4u:\/\/lan-station/i.test(text) || /^https?:\/\//i.test(text)) {
+          try {
+            const u = new URL(text);
+            const ips = cleanIps((u.searchParams.get('ips') || u.searchParams.get('ip') || '').split(','));
+            if (!ips.length && isValidLanIpv4(u.hostname || '')) ips.push(u.hostname);
+            const pin = String(u.searchParams.get('pin') || '').trim();
+            const port = Math.max(1, Math.min(65535, Number(u.searchParams.get('port') || u.port) || 47777));
+            const host = String(u.searchParams.get('host') || '').trim().slice(0, 60);
+            const wifiSsid = String(u.searchParams.get('ws') || '').trim().slice(0, 32);
+            const wifiPass = String(u.searchParams.get('wp') || '').slice(0, 63);
+            if (ips.length && /^\d{6}$/.test(pin)) return { ips, port, pin, host, wifiSsid, wifiPass };
+          } catch (e) { }
+        }
+        if (text.startsWith('{')) {
+          try {
+            const j = JSON.parse(text);
+            const ips = cleanIps(Array.isArray(j.ips) ? j.ips : (j.ip ? [j.ip] : []));
+            const pin = String(j.pin || '').trim();
+            const port = Math.max(1, Math.min(65535, Number(j.port) || 47777));
+            const host = String(j.host || '').trim().slice(0, 60);
+            const wifiSsid = String(j.ws || j.wifiSsid || '').trim().slice(0, 32);
+            const wifiPass = String(j.wp || j.wifiPass || '').slice(0, 63);
+            if (ips.length && /^\d{6}$/.test(pin)) return { ips, port, pin, host, wifiSsid, wifiPass };
+          } catch (e) { }
+        }
+        return null;
       }
       let printerMap = {};
       try { printerMap = JSON.parse(localStorage.getItem(PRINTER_MAP_KEY) || '{}') || {}; } catch (e) { printerMap = {}; }
@@ -46689,6 +47088,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       async function fetchPrinterCaps(name) {
         if (!name || !helperOn || isInstaxPrinter(name) || capsChecks[name]) return capsChecks[name] || null;
+        if (lanStationActive() && (!helper || !helper.ok)) return null;
         capsChecks[name] = { state: 'loading' };
         try {
           const r = await helperFetch('/printer/caps?printer=' + encodeURIComponent(name), { cache: 'no-store' });
@@ -46713,6 +47113,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const hostIn = document.getElementById('lanStationHost');
         const pinIn = document.getElementById('lanStationPin');
         const discBtn = document.getElementById('lanStationDiscBtn');
+        const qrBtn = document.getElementById('lanStationScanQrBtn');
         const modeBox = document.getElementById('lanStationModeBox');
         const modeAutoBtn = document.getElementById('lanStationModeAutoBtn');
         const modeQueueBtn = document.getElementById('lanStationModeQueueBtn');
@@ -46720,6 +47121,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const qMode = lanStationCfg.stationMode === 'queue';
         if (tgl) tgl.checked = !!lanStationCfg.enabled;
         if (form) form.style.display = lanStationCfg.enabled ? 'block' : 'none';
+        if (qrBtn) qrBtn.style.display = (typeof window.__PBLanScanQr === 'function') ? '' : 'none';
         if (modeBox) modeBox.style.display = lanStationCfg.enabled ? '' : 'none';
         if (modeAutoBtn) modeAutoBtn.classList.toggle('active', !qMode);
         if (modeQueueBtn) modeQueueBtn.classList.toggle('active', qMode);
@@ -46733,6 +47135,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         if (pinIn && document.activeElement !== pinIn) pinIn.value = lanStationCfg.pin || '';
         if (discBtn) discBtn.style.display = lanStationActive() ? '' : 'none';
+        const guideEl = document.getElementById('lanStationGuide');
+        if (guideEl) {
+          if (lanStationActive() && helper && helper.ok) {
+            guideEl.open = false;
+            guideEl.dataset.autoOpened = '';
+          } else if (lanStationActive() && helper && helper.checked && !helper.ok && helper.err !== 'pin' && !guideEl.dataset.autoOpened) {
+            guideEl.open = true;
+            guideEl.dataset.autoOpened = '1';
+          }
+        }
         if (stEl) {
           if (!lanStationCfg.enabled) {
             stEl.textContent = 'Send prints over local Wi-Fi straight to a Mitsubishi, DNP, or HiTi printer plugged into a Windows or Mac laptop running Print Helper (zero internet needed).';
@@ -46745,69 +47157,254 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           } else if (lanStationActive() && helper && helper.err === 'pin') {
             stEl.textContent = helper.errMsg || 'Wrong PIN. Check the 6-digit PIN shown in Print Helper on the laptop.';
           } else if (lanStationActive() && helper && helper.checked) {
-            stEl.textContent = helper.errMsg || ('Can\u2019t reach laptop ' + lanStationCfg.host + ':' + (lanStationCfg.port || 47777) + '. Check Print Helper is open and both devices are on the same Wi-Fi.');
+            stEl.textContent = helper.errMsg || lanStationUnreachableMsg(lanStationCfg.host, lanStationCfg.port);
           } else {
-            stEl.textContent = 'Enter your laptop\u2019s Wi-Fi IP and 6-digit PIN (or tap Find Laptop on Wi-Fi).';
+            stEl.textContent = (typeof window.__PBLanScanQr === 'function')
+              ? 'Tap Scan Laptop QR to connect right away, or enter the laptop\u2019s Wi-Fi IP and 6-digit PIN.'
+              : 'Enter your laptop\u2019s Wi-Fi IP and 6-digit PIN (or tap Find Laptop on Wi-Fi).';
           }
         }
       }
       async function probeLanHello(ip, port, ms) {
+        const waitMs = ms || 650;
+        const url = 'http://' + ip + ':' + port + '/lan-station/hello';
+        if (lanHttpAvailable()) {
+          try {
+            const r = await lanHttpFetch(url, { method: 'GET' }, waitMs);
+            const j = r.ok ? await r.json().catch(() => null) : null;
+            if (j && j.ok && j.app === 'photobooth4u-lan-station') return { ip, port: Number(j.port) || port, host: j.host || ip, kind: j.kind || 'laptop', version: j.version || '' };
+          } catch (e) { }
+          return null;
+        }
         const ctl = new AbortController();
-        const t = setTimeout(() => ctl.abort(), ms || 550);
+        const t = setTimeout(() => ctl.abort(), waitMs);
         try {
-          const r = await fetch('http://' + ip + ':' + port + '/lan-station/hello', { signal: ctl.signal, cache: 'no-store' });
+          const r = await fetch(url, { signal: ctl.signal, cache: 'no-store' });
           const j = r.ok ? await r.json().catch(() => null) : null;
           if (j && j.ok && j.app === 'photobooth4u-lan-station') return { ip, port: Number(j.port) || port, host: j.host || ip, kind: j.kind || 'laptop', version: j.version || '' };
         } catch (e) { }
         finally { clearTimeout(t); }
         return null;
       }
+      var lanQrOpen = false;
+      function probeFirstLanHello(ips, port, ms) {
+        if (!Array.isArray(ips) || !ips.length) return Promise.resolve(null);
+        return new Promise(resolve => {
+          let settled = false, pending = ips.length;
+          ips.forEach(ip => {
+            probeLanHello(ip, port, ms).then(hit => {
+              if (!settled && hit) {
+                settled = true;
+                resolve(hit);
+                return;
+              }
+              if (--pending === 0 && !settled) {
+                settled = true;
+                resolve(null);
+              }
+            }).catch(() => {
+              if (--pending === 0 && !settled) {
+                settled = true;
+                resolve(null);
+              }
+            });
+          });
+        });
+      }
+      async function scanLanStationQr() {
+        if (typeof window.__PBLanScanQr !== 'function') return;
+        cancelLanScan();
+        const qBtn = document.getElementById('lanStationScanQrBtn');
+        const stEl = document.getElementById('lanStationStatus');
+        const foundBox = document.getElementById('lanStationFound');
+        if (qBtn) { qBtn.disabled = true; qBtn.textContent = 'Opening camera\u2026'; }
+        // Pause built-in booth camera cleanly while native QR scanner owns AVFoundation, and resume it afterward.
+        const hadBuiltinNative = !!(typeof nativeCam !== 'undefined' && nativeCam && nativeCam.active);
+        const hadBuiltinStream = !!(typeof currentStream !== 'undefined' && currentStream && (!usbCam || currentStream !== usbCam.stream));
+        lanQrOpen = true;
+        try {
+          if (hadBuiltinNative) {
+            nativeCam.active = false;
+            if (typeof nativeCamSyncPump === 'function') nativeCamSyncPump();
+          }
+          if (hadBuiltinStream) {
+            currentStream.getTracks().forEach(t => { try { t.stop(); } catch (e) { } });
+            currentStream = null;
+            streamActive = false;
+          }
+        } catch (e) { }
+        let scan = null;
+        try {
+          scan = await window.__PBLanScanQr('Point camera at Laptop Print Station QR');
+        } finally {
+          lanQrOpen = false;
+          try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
+          if (hadBuiltinNative || hadBuiltinStream) {
+            setTimeout(() => {
+              try {
+                if (!lanQrOpen && !(typeof spinArmOpen !== 'undefined' && spinArmOpen) && typeof camWantLive === 'function' && camWantLive() && typeof initCamera === 'function') {
+                  const targetId = (typeof cameraSelect !== 'undefined' && cameraSelect && cameraSelect.value) ? cameraSelect.value : (typeof currentDeviceId !== 'undefined' ? currentDeviceId : null);
+                  initCamera(targetId);
+                }
+              } catch (e) { }
+            }, 250);
+          }
+        }
+        try {
+          if (!scan || scan.cancelled) return;
+          if (!scan.ok || !scan.value) {
+            showToast((scan && scan.error) || 'Could not scan QR code.', 4500);
+            return;
+          }
+          const parsed = parseLanStationQr(scan.value);
+          if (!parsed) {
+            showToast('Not a Laptop Print Station QR. Scan the "Scan in iPad App" QR on the laptop.', 5000);
+            return;
+          }
+          if (parsed.isWifiQr) {
+            if (parsed.wifiSsid && typeof window.__PBJoinWifi === 'function') {
+              if (qBtn) qBtn.textContent = 'Joining Wi-Fi\u2026';
+              if (stEl) stEl.textContent = 'Switching iPad to Booth Wi-Fi (' + parsed.wifiSsid + ')\u2026';
+              const jw = await window.__PBJoinWifi(parsed.wifiSsid, parsed.wifiPass || '');
+              if (jw && jw.ok) {
+                showToast('Joined Booth Wi-Fi ' + parsed.wifiSsid + ' \u2713 Now scan the "Scan in iPad App" QR to pair.', 5500);
+                return;
+              }
+            }
+            showToast('That is the Wi-Fi Join QR — scan it with the iPad Camera app (or join ' + (parsed.wifiSsid || 'the laptop hotspot') + ' in Settings \u2192 Wi-Fi), then scan the "Scan in iPad App" QR here.', 6500);
+            return;
+          }
+          if (qBtn) qBtn.textContent = 'Connecting\u2026';
+          if (foundBox) { foundBox.style.display = 'none'; foundBox.textContent = ''; }
+          let myPfx = ipSubnet24(deviceWifiIpNow());
+          let wifiSwitched = false;
+          let wifiFallbackHint = '';
+          // If the laptop's Booth Hotspot is ON and embedded in the QR, persistently switch iPad off regular Wi-Fi onto it.
+          if (parsed.wifiSsid && myPfx !== '192.168.137.' && typeof window.__PBJoinWifi === 'function') {
+            if (qBtn) qBtn.textContent = 'Joining Booth Wi-Fi\u2026';
+            if (stEl) stEl.textContent = 'Switching iPad persistently to Booth Wi-Fi (' + parsed.wifiSsid + ')\u2026';
+            const jw = await window.__PBJoinWifi(parsed.wifiSsid, parsed.wifiPass || '');
+            if (jw && jw.ok) {
+              wifiSwitched = true;
+              myPfx = '192.168.137.';
+            } else if (jw && jw.fallbackSettings) {
+              wifiFallbackHint = 'Join "' + parsed.wifiSsid + '"' + (parsed.wifiPass ? (' (Password: ' + parsed.wifiPass + ')') : '') + ' in iPad Settings \u2192 Wi-Fi (turn Cellular Data OFF & Auto-Join OFF on regular Wi-Fi, tap Use Without Internet) — photobooth4u will connect automatically when you return.';
+            }
+          }
+          if (qBtn) qBtn.textContent = 'Connecting\u2026';
+          const orderedIps = parsed.ips.slice().sort((a, b) => {
+            const sa = (myPfx && ipSubnet24(a) === myPfx) ? 0 : (a.startsWith('192.168.137.') ? 1 : 2);
+            const sb = (myPfx && ipSubnet24(b) === myPfx) ? 0 : (b.startsWith('192.168.137.') ? 1 : 2);
+            return sa - sb;
+          });
+          if (stEl) stEl.textContent = 'Connecting to ' + (parsed.host || orderedIps[0]) + '\u2026';
+          let hit = null;
+          if (wifiSwitched) {
+            // Wait up to ~7s for iPad DHCP on the newly joined Booth Hotspot (192.168.137.x) to settle.
+            for (let attempt = 0; attempt < 6 && !hit; attempt++) {
+              if (attempt > 0) await new Promise(r => setTimeout(r, 700));
+              hit = await probeFirstLanHello(orderedIps, parsed.port, 1100);
+            }
+          } else {
+            hit = await probeFirstLanHello(orderedIps, parsed.port, 1600);
+          }
+          const hsIp = parsed.ips.find(ip => ip.startsWith('192.168.137.')) || '';
+          const chosenIp = hit ? hit.ip : ((wifiFallbackHint && hsIp) ? hsIp : orderedIps[0]);
+          const chosenPort = hit ? hit.port : parsed.port;
+          const hostIn = document.getElementById('lanStationHost'), pinIn = document.getElementById('lanStationPin');
+          if (hostIn) hostIn.value = chosenIp + (chosenPort !== 47777 ? ':' + chosenPort : '');
+          if (pinIn) pinIn.value = parsed.pin;
+          lanStationCfg.enabled = true;
+          lanStationCfg.host = chosenIp;
+          lanStationCfg.port = chosenPort;
+          lanStationCfg.pin = parsed.pin;
+          if (parsed.host) lanStationCfg.hostName = parsed.host;
+          saveLanStationCfg();
+          helperOn = true;
+          helper = { ok: false, printers: [], checked: 0 };
+          await checkHelper(true);
+          refreshPrintUI();
+          if (helper.ok) {
+            showToast('Connected to ' + (lanStationCfg.hostName || chosenIp) + ' (' + chosenIp + ')' + (wifiSwitched ? ' via Booth Wi-Fi' : '') + ' \u2713', 4500);
+          } else {
+            showToast(wifiFallbackHint || helper.errMsg || lanStationUnreachableMsg(chosenIp, chosenPort), 7500);
+          }
+        } finally {
+          if (qBtn) { qBtn.disabled = false; qBtn.textContent = 'Scan Laptop QR'; }
+        }
+      }
+      let _lanScanGen = 0, _lanScanRunning = false;
+      function cancelLanScan() { _lanScanGen++; _lanScanRunning = false; }
+      function isLanStationPanelVisible() {
+        const pm = document.getElementById('printModal');
+        const s4 = document.getElementById('step4Printer');
+        return !!((pm && !pm.hidden) || (s4 && !s4.classList.contains('hidden') && typeof setupOpen === 'function' && setupOpen()));
+      }
       async function scanLanStations() {
         const btn = document.getElementById('lanStationScanBtn');
         const foundBox = document.getElementById('lanStationFound');
         const stEl = document.getElementById('lanStationStatus');
+        const gen = ++_lanScanGen;
+        _lanScanRunning = true;
         if (btn) { btn.disabled = true; btn.textContent = 'Searching Wi-Fi…'; }
         if (foundBox) { foundBox.style.display = 'none'; foundBox.textContent = ''; }
         try {
           const prefixes = [];
           const pushPfx = (ip) => {
-            const m = /^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$/.exec(String(ip || ''));
-            if (m && !prefixes.includes(m[1] + '.')) prefixes.push(m[1] + '.');
+            const p = ipSubnet24(ip);
+            if (p && !prefixes.includes(p)) prefixes.push(p);
           };
-          try {
-            const lb = lanBaseNow();
-            const m = /https?:\/\/(\d{1,3}(?:\.\d{1,3}){3})/.exec(String(lb || ''));
-            if (m) pushPfx(m[1]);
-          } catch (e) { }
+          const myIp = deviceWifiIpNow();
+          const myPfx = ipSubnet24(myIp);
+          if (myIp) pushPfx(myIp);
           if (lanStationCfg.host) pushPfx(lanStationCfg.host);
-          ['192.168.137.', '192.168.1.', '192.168.0.', '172.20.10.'].forEach(p => { if (!prefixes.includes(p)) prefixes.push(p); });
+          ['192.168.137.', '192.168.1.', '192.168.0.', '192.168.2.', '172.20.10.'].forEach(p => { if (!prefixes.includes(p)) prefixes.push(p); });
           const primaryPfx = prefixes[0];
+          // On a laptop's own hotspot (Windows 192.168.137.x or Mac 192.168.2.x), the laptop is always .1:
+          // never flood .2-.254 with 500+ dead probes that stall the iPad network stack.
+          const directHotspot = (myPfx === '192.168.137.' || myPfx === '192.168.2.');
           const cands = [];
           const seen = new Set();
           const addCand = (ip, port) => { const k = ip + ':' + port; if (!seen.has(k)) { seen.add(k); cands.push([ip, port]); } };
-          if (lanStationCfg.host) LAN_STATION_PORTS.forEach(pt => addCand(lanStationCfg.host, pt));
-          // Try hotspot/router gateway IPs across all ports first, then full primary /24 subnet on default port.
-          ['192.168.137.1', primaryPfx + '1', '192.168.1.1', '192.168.0.1'].forEach(ip => LAN_STATION_PORTS.forEach(pt => addCand(ip, pt)));
-          for (let i = 1; i <= 254; i++) addCand(primaryPfx + i, 47777);
+          if (directHotspot) {
+            LAN_STATION_PORTS.forEach(pt => addCand(myPfx + '1', pt));
+            if (lanStationCfg.host && ipSubnet24(lanStationCfg.host) === myPfx) {
+              LAN_STATION_PORTS.forEach(pt => addCand(lanStationCfg.host, pt));
+            }
+          } else {
+            if (lanStationCfg.host) LAN_STATION_PORTS.forEach(pt => addCand(lanStationCfg.host, pt));
+            // Try hotspot/router gateway IPs across all ports first, then full primary /24 subnet on default port.
+            ['192.168.137.1', primaryPfx + '1', '192.168.2.1', '192.168.1.1', '192.168.0.1'].forEach(ip => LAN_STATION_PORTS.forEach(pt => addCand(ip, pt)));
+          }
+          const priorityCount = cands.length;
+          if (!directHotspot) {
+            for (let i = 1; i <= 254; i++) addCand(primaryPfx + i, 47777);
+          }
           const hits = [], hitKeys = new Set();
-          const BATCH = 32;
+          // Keep batch aligned with iOS maxConcurrentOperationCount (8) and gentle on WKWebView fetch (16).
+          const BATCH = lanHttpAvailable() ? 8 : 16;
           for (let i = 0; i < cands.length; i += BATCH) {
-            const res = await Promise.all(cands.slice(i, i + BATCH).map(([ip, pt]) => probeLanHello(ip, pt, 550)));
+            if (gen !== _lanScanGen || (i >= priorityCount && (document.hidden || !isLanStationPanelVisible()))) return;
+            const probeMs = i < priorityCount ? 900 : 500;
+            const res = await Promise.all(cands.slice(i, i + BATCH).map(([ip, pt]) => probeLanHello(ip, pt, probeMs)));
+            if (gen !== _lanScanGen) return;
             res.forEach(h => {
               if (!h) return;
               const hk = h.ip + ':' + h.port;
               if (!hitKeys.has(hk)) { hitKeys.add(hk); hits.push(h); }
             });
-            if (hits.length && i >= 64) break;
+            if (hits.length && i + BATCH >= priorityCount) break;
           }
-          if (!hits.length) {
+          if (!hits.length && !directHotspot) {
             const altCands = [];
             for (let i = 1; i <= 254; i++) {
               const k = primaryPfx + i + ':47778';
               if (!seen.has(k)) { seen.add(k); altCands.push([primaryPfx + i, 47778]); }
             }
             for (let i = 0; i < altCands.length; i += BATCH) {
+              if (gen !== _lanScanGen || document.hidden || !isLanStationPanelVisible()) return;
               const res = await Promise.all(altCands.slice(i, i + BATCH).map(([ip, pt]) => probeLanHello(ip, pt, 420)));
+              if (gen !== _lanScanGen) return;
               res.forEach(h => {
                 if (!h) return;
                 const hk = h.ip + ':' + h.port;
@@ -46816,8 +47413,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               if (hits.length) break;
             }
           }
+          if (gen !== _lanScanGen) return;
           if (!hits.length) {
-            if (stEl) stEl.textContent = 'No Laptop Print Station found on Wi-Fi. Check Print Helper is open on the laptop and Windows Firewall allows port 47777, or type the IP shown in Print Helper.';
+            const guideEl = document.getElementById('lanStationGuide');
+            if (guideEl && !guideEl.dataset.autoOpened) { guideEl.open = true; guideEl.dataset.autoOpened = '1'; }
+            if (stEl) {
+              stEl.textContent = (myIp && myPfx === '192.168.137.')
+                ? 'On the laptop hotspot (' + myIp + '), but the laptop didn\u2019t answer on port 47777. Click Fix Firewall on the laptop\u2019s Print Station screen' + (IOS_APP ? ' (and check iPad Settings \u2192 photobooth4u \u2192 Local Network is ON).' : ' (and pause any antivirus firewall/VPN).')
+                : 'No Laptop Print Station found on Wi-Fi' + (myIp ? ' (' + myIp + ')' : '') + '. Confirm Print Station is open on the laptop, click Fix Firewall on Windows, or tap Scan Laptop QR.';
+            }
             return;
           }
           if (foundBox) {
@@ -46827,8 +47431,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:100%;margin:0;text-align:left;';
               b.textContent = '💻 ' + h.host + ' · ' + h.ip + (h.port !== 47777 ? ':' + h.port : '') + (h.kind === 'desktop' ? ' (Desktop App)' : ' (Print Helper)');
               b.addEventListener('click', () => {
-                const hostIn = document.getElementById('lanStationHost'), pinIn = document.getElementById('lanStationPin');
+                const hostIn = document.getElementById('lanStationHost'), pinIn = document.getElementById('lanStationPin'), cBtn = document.getElementById('lanStationConnectBtn');
                 if (hostIn) hostIn.value = h.ip + (h.port !== 47777 ? ':' + h.port : '');
+                if (pinIn && /^\d{6}$/.test(String(pinIn.value || '').trim()) && cBtn) {
+                  cBtn.click();
+                  return;
+                }
                 if (pinIn) pinIn.focus();
                 showToast('Filled laptop IP ' + h.ip + '. Enter the 6-digit PIN and tap Connect.', 3500);
               });
@@ -46837,83 +47445,132 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           }
           if (hits.length === 1) {
             const hostIn = document.getElementById('lanStationHost'), pinIn = document.getElementById('lanStationPin');
-            if (hostIn && !hostIn.value.trim()) hostIn.value = hits[0].ip + (hits[0].port !== 47777 ? ':' + hits[0].port : '');
+            const curAddr = hostIn ? parseLanStationAddr(hostIn.value) : null;
+            const curReachable = !!(curAddr && hits.some(h => h.ip === curAddr.host && h.port === curAddr.port));
+            if (hostIn && (!hostIn.value.trim() || !curReachable)) {
+              hostIn.value = hits[0].ip + (hits[0].port !== 47777 ? ':' + hits[0].port : '');
+            }
             if (pinIn && !pinIn.value.trim()) pinIn.focus();
             if (stEl) stEl.textContent = 'Found ' + hits[0].host + ' (' + hits[0].ip + '). Enter its 6-digit PIN and tap Connect.';
           }
         } finally {
-          if (btn) { btn.disabled = false; btn.textContent = 'Find Laptop on Wi-Fi'; }
+          if (gen === _lanScanGen) {
+            _lanScanRunning = false;
+            if (btn) { btn.disabled = false; btn.textContent = 'Find Laptop on Wi-Fi'; }
+          }
         }
+      }
+      let _checkHelperInFlight = null, _checkHelperTarget = '', _checkHelperCtl = null, _checkHelperSeq = 0;
+      function _helperTargetKey() {
+        return lanStationActive() ? (lanStationCfg.host + ':' + (lanStationCfg.port || 47777) + ':' + lanStationCfg.pin) : 'local';
       }
       async function checkHelper(force) {
         if (lanStationSupported() && !LAPTOP_PRINT && !useStation() && !androidChromeHelper) helperOn = lanStationActive();
-        if (!helperOn) { helper = { ok: false, printers: [], checked: 0 }; refreshPrinterHint(); refreshLanStationUI(); try { updateAutoPrintUI(); } catch (e) { } return helper; }
+        if (!helperOn) {
+          _checkHelperSeq++;
+          if (_checkHelperCtl) { try { _checkHelperCtl.abort(); } catch (e) { } _checkHelperCtl = null; }
+          _checkHelperInFlight = null;
+          helper = { ok: false, printers: [], checked: 0 };
+          refreshPrinterHint(); refreshLanStationUI();
+          try { updateAutoPrintUI(); } catch (e) { }
+          return helper;
+        }
+        const targetKey = _helperTargetKey();
+        if (_checkHelperInFlight) {
+          if (_checkHelperTarget === targetKey) return _checkHelperInFlight;
+          if (_checkHelperCtl) { try { _checkHelperCtl.abort(); } catch (e) { } _checkHelperCtl = null; }
+          _checkHelperInFlight = null;
+        }
         if (!force && helper.checked && Date.now() - helper.checked < 15000) return helper;
         if (force) {
           Object.keys(capsChecks).forEach(k => delete capsChecks[k]);
           if (typeof paperChecks === 'object' && paperChecks) Object.keys(paperChecks).forEach(k => delete paperChecks[k]);
         }
+        const seq = ++_checkHelperSeq;
+        const ctl = new AbortController();
+        _checkHelperCtl = ctl;
+        _checkHelperTarget = targetKey;
         helper.checked = Date.now();
-        try {
-          const ctl = new AbortController();
-          const t = setTimeout(() => ctl.abort(), 8000);      // Windows can take a few seconds to list printers
-          const r = await helperFetch('/status' + (force ? '?refresh=1' : ''), { signal: ctl.signal, cache: 'no-store' });
-          clearTimeout(t);
-          const j = await r.json().catch(() => ({}));
-          if (!r.ok) {
-            helper = { ok: false, printers: [], checked: Date.now(), err: (j && j.reason) || 'auth', errMsg: (j && j.error) || ('Error ' + r.status) };
-          } else {
-            const remotePrinters = Array.isArray(j.printers) ? j.printers.slice(0, 60).map(String) : [];
-            if (lanStationActive()) {
-              let cfgDirty = false;
-              if (j.host && lanStationCfg.hostName !== String(j.host)) {
-                lanStationCfg.hostName = String(j.host);
-                cfgDirty = true;
+        const isLan = lanStationActive();
+        const waitMs = isLan ? 4000 : 8000;
+        const job = (async () => {
+          const t = setTimeout(() => { try { ctl.abort(); } catch (e) { } }, waitMs);
+          try {
+            const r = await helperFetch('/status' + (force ? '?refresh=1' : ''), { signal: ctl.signal, cache: 'no-store', _timeoutMs: waitMs });
+            clearTimeout(t);
+            if (seq !== _checkHelperSeq) return helper;
+            const j = await r.json().catch(() => ({}));
+            if (seq !== _checkHelperSeq) return helper;
+            if (!r.ok) {
+              helper = { ok: false, printers: [], checked: Date.now(), err: (j && j.reason) || 'auth', errMsg: (j && j.error) || ('Error ' + r.status) };
+            } else {
+              const remotePrinters = Array.isArray(j.printers) ? j.printers.slice(0, 60).map(String) : [];
+              if (lanStationActive()) {
+                let cfgDirty = false;
+                if (j.host && lanStationCfg.hostName !== String(j.host)) {
+                  lanStationCfg.hostName = String(j.host);
+                  cfgDirty = true;
+                }
+                if (lanStationCfg.pendingModeSync) {
+                  const pushMode = lanStationCfg.stationMode === 'queue' ? 'queue' : 'auto';
+                  lanStationCfg.pendingModeSync = false;
+                  cfgDirty = true;
+                  helperFetch('/mode', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: pushMode }) }).catch(() => { });
+                } else if (lanModeBusy === 0 && (j.stationMode === 'auto' || j.stationMode === 'queue') && lanStationCfg.stationMode !== j.stationMode) {
+                  lanStationCfg.stationMode = j.stationMode;
+                  cfgDirty = true;
+                }
+                if (cfgDirty) saveLanStationCfg();
               }
-              if (lanStationCfg.pendingModeSync) {
-                const pushMode = lanStationCfg.stationMode === 'queue' ? 'queue' : 'auto';
-                lanStationCfg.pendingModeSync = false;
-                cfgDirty = true;
-                helperFetch('/mode', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: pushMode }) }).catch(() => { });
-              } else if (lanModeBusy === 0 && (j.stationMode === 'auto' || j.stationMode === 'queue') && lanStationCfg.stationMode !== j.stationMode) {
-                lanStationCfg.stationMode = j.stationMode;
-                cfgDirty = true;
-              }
-              if (cfgDirty) saveLanStationCfg();
+              // Instax Link printers (Bluetooth) are listed beside the printers of this computer; the booth prints to them itself.
+              const mergedPrinters = lanStationActive() ? remotePrinters : remotePrinters.concat(instaxNames());
+              helper = {
+                ok: !!j.ok,
+                printers: mergedPrinters,
+                checked: Date.now(),
+                version: String(j.version || ''),
+                filtered: !!j.filtered,
+                allPrintersCount: Number(j.allPrintersCount) || remotePrinters.length
+              };
             }
-            // Instax Link printers (Bluetooth) are listed beside the printers of this computer; the booth prints to them itself.
-            const mergedPrinters = lanStationActive() ? remotePrinters : remotePrinters.concat(instaxNames());
-            helper = {
-              ok: !!j.ok,
-              printers: mergedPrinters,
-              checked: Date.now(),
-              version: String(j.version || ''),
-              filtered: !!j.filtered,
-              allPrintersCount: Number(j.allPrintersCount) || remotePrinters.length
-            };
+          } catch (e) {
+            clearTimeout(t);
+            if (seq !== _checkHelperSeq) return helper;
+            helper = { ok: false, printers: [], checked: Date.now(), err: e && e.name === 'AbortError' ? 'timeout' : 'blocked' };
+          } finally {
+            if (seq === _checkHelperSeq) {
+              _checkHelperInFlight = null;
+              _checkHelperCtl = null;
+            }
           }
-        } catch (e) {
-          helper = { ok: false, printers: [], checked: Date.now(), err: e && e.name === 'AbortError' ? 'timeout' : 'blocked' };
-        }
-        printerList.innerHTML = '';
-        helper.printers.forEach(n => { const o = document.createElement('option'); o.value = n; printerList.appendChild(o); });
-        fillPrinterSelect();
-        refreshPrinterHint();
-        refreshLanStationUI();
-        try { updateAutoPrintUI(); } catch (e) { }
-        try { refreshPhotoFitUI(); } catch (e) { }
-        try { if (typeof refreshSecondPrinterUI === 'function') refreshSecondPrinterUI(); } catch (e) { }
-        return helper;
+          if (seq !== _checkHelperSeq) return helper;
+          printerList.innerHTML = '';
+          helper.printers.forEach(n => { const o = document.createElement('option'); o.value = n; printerList.appendChild(o); });
+          fillPrinterSelect();
+          refreshPrinterHint();
+          refreshLanStationUI();
+          try { updateAutoPrintUI(); } catch (e) { }
+          try { refreshPhotoFitUI(); } catch (e) { }
+          try { if (typeof refreshSecondPrinterUI === 'function') refreshSecondPrinterUI(); } catch (e) { }
+          return helper;
+        })();
+        _checkHelperInFlight = job;
+        return job;
       }
       // Bind Offline LAN Laptop Print Station UI events
       (function () {
         const tgl = document.getElementById('lanStationToggle');
+        const qBtn = document.getElementById('lanStationScanQrBtn');
         const cBtn = document.getElementById('lanStationConnectBtn');
         const sBtn = document.getElementById('lanStationScanBtn');
         const dBtn = document.getElementById('lanStationDiscBtn');
+        if (qBtn) qBtn.addEventListener('click', scanLanStationQr);
         if (tgl) tgl.addEventListener('change', async () => {
           lanStationCfg.enabled = !!tgl.checked;
-          if (!lanStationCfg.enabled && !LAPTOP_PRINT) helperOn = false;
+          if (!lanStationCfg.enabled) {
+            cancelLanScan();
+            if (!LAPTOP_PRINT) helperOn = false;
+          }
           saveLanStationCfg();
           helper = { ok: false, printers: [], checked: 0 };
           refreshLanStationUI();
@@ -46926,6 +47583,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const pin = String((document.getElementById('lanStationPin') || {}).value || '').trim();
           if (!addr) { showToast('Type the Laptop Wi-Fi IP address first (e.g. 192.168.1.50).', 4000); return; }
           if (!/^\d{6}$/.test(pin)) { showToast('Enter the 6-digit PIN shown in Print Helper on the laptop.', 4000); return; }
+          cancelLanScan();
           cBtn.disabled = true; cBtn.textContent = 'Connecting…';
           try {
             lanStationCfg.enabled = true;
@@ -46937,14 +47595,20 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             helper = { ok: false, printers: [], checked: 0 };
             await checkHelper(true);
             refreshPrintUI();
-            if (helper.ok) showToast('Connected to Laptop Print Station! Choose your printer below.', 4500);
-            else showToast(helper.errMsg || 'Could not reach laptop — check Wi-Fi & 6-digit PIN.', 5500);
+            if (helper.ok) {
+              const fb = document.getElementById('lanStationFound');
+              if (fb) { fb.style.display = 'none'; fb.textContent = ''; }
+              showToast('Connected to Laptop Print Station! Choose your printer below.', 4500);
+            } else {
+              showToast(helper.errMsg || lanStationUnreachableMsg(addr.host, addr.port), 6000);
+            }
           } finally {
             cBtn.disabled = false; cBtn.textContent = 'Connect';
           }
         });
         if (sBtn) sBtn.addEventListener('click', scanLanStations);
         if (dBtn) dBtn.addEventListener('click', () => {
+          cancelLanScan();
           lanStationCfg.enabled = false;
           saveLanStationCfg();
           if (!LAPTOP_PRINT) helperOn = false;
@@ -46989,12 +47653,38 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const mQueue = document.getElementById('lanStationModeQueueBtn');
         if (mAuto) mAuto.addEventListener('click', () => setLanStationMode('auto'));
         if (mQueue) mQueue.addEventListener('click', () => setLanStationMode('queue'));
-        setInterval(() => {
+        let lastLanStationPfx = ipSubnet24(deviceWifiIpNow());
+        let lastLanChangeCheckAt = 0;
+        window.addEventListener('pb-lan-change', () => {
+          const nextPfx = ipSubnet24(deviceWifiIpNow());
+          const pfxChanged = nextPfx !== lastLanStationPfx;
+          lastLanStationPfx = nextPfx;
           if (!lanStationActive()) return;
-          const pm = document.getElementById('printModal');
-          const s4 = document.getElementById('step4Printer');
-          const visible = (pm && !pm.hidden) || (s4 && !s4.classList.contains('hidden') && setupOpen());
-          if (visible) checkHelper(true);
+          const wasOk = !!(helper && helper.ok);
+          const matchesTarget = !!(nextPfx && nextPfx === ipSubnet24(lanStationCfg.host));
+          if (!pfxChanged && wasOk) return;
+          if (!pfxChanged && !matchesTarget) return;
+          const now = Date.now();
+          if (now - lastLanChangeCheckAt < 1500) return;
+          lastLanChangeCheckAt = now;
+          // Wi-Fi/hotspot network changed or rejoined target subnet while offline: re-verify and auto-reconnect.
+          helper.checked = 0;
+          if ((matchesTarget || isLanStationPanelVisible()) && !_checkHelperInFlight && !_lanScanRunning) {
+            checkHelper(true).then(h => {
+              if (!wasOk && h && h.ok) {
+                showToast('Connected to ' + (lanStationCfg.hostName || lanStationCfg.host) + ' \u2713', 4000);
+              }
+            }).catch(() => { });
+          } else {
+            refreshLanStationUI();
+          }
+        });
+        setInterval(() => {
+          if (!lanStationActive() || document.hidden || _checkHelperInFlight || _lanScanRunning) return;
+          if (!isLanStationPanelVisible()) return;
+          // Back off to 30s when the laptop is unreachable so dead hotspot probes never stack up.
+          if (helper && !helper.ok && helper.checked && (Date.now() - helper.checked) < 30000) return;
+          checkHelper(true);
         }, 10000);
       })();
       // The printers come from the Print Helper, so they're picked, not typed.
@@ -47617,6 +48307,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const allowTwoUp = twoUp !== false;
         const k = paperCheckKey(name, paper, allowTwoUp);
         if (paperChecks[k] || isInstaxPrinter(name)) return paperChecks[k] || null;
+        if (lanStationActive() && (!helper || !helper.ok)) return null;
         paperChecks[k] = { state: 'loading' };
         try {
           const r = await helperFetch('/paper?printer=' + encodeURIComponent(name) + '&w=' + paper.w.toFixed(1) + '&h=' + paper.h.toFixed(1) + '&twoUp=' + (allowTwoUp ? '1' : '0'), { cache: 'no-store' });
@@ -47929,10 +48620,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return await withPrinterContext(sec.name, sec.size, async () => {
             let ep = paperFor(sec.size);
             const c = printAdjust(buildPrintCanvas(sec.size));
-            if (ep.receipt) ep = Object.assign({}, ep, { h: Math.round(c.height / RECEIPT_DPI * 254) / 10 });
-            const ok = await printViaHelper([c], ep, sec.name, { sizeKey: sec.size, twoUp: stripTwoUp(sec.size) && !sizedPhoto() });
-            if (!ok) showToast('Printer “' + sec.name + '” did not print.', 5000);
-            return ok;
+            try {
+              if (ep.receipt) ep = Object.assign({}, ep, { h: Math.round(c.height / RECEIPT_DPI * 254) / 10 });
+              const ok = await printViaHelper([c], ep, sec.name, { sizeKey: sec.size, twoUp: stripTwoUp(sec.size) && !sizedPhoto() });
+              if (!ok) showToast('Printer “' + sec.name + '” did not print.', 5000);
+              return ok;
+            } finally {
+              pbReleaseCanvas(c);
+            }
           });
         } catch (e) { return false; }
       }
@@ -48617,14 +49312,20 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const allowQueueNoPrinter = !!(lanStationActive() && lanStationCfg.stationMode === 'queue' && !name);
         const needFresh = !(helper && helper.ok && (Date.now() - (helper.checked || 0)) < 60000 && (allowQueueNoPrinter || (Array.isArray(helper.printers) && helper.printers.includes(name))));
         let h = await checkHelper(needFresh);
-        // The built-in helper can be slow to list printers right after the app starts: ask again before giving up.
-        for (let i = 0; (LAPTOP_PRINT || lanStationActive()) && i < 3 && (!h.ok || (!allowQueueNoPrinter && !(h.printers || []).includes(name))); i++) {
-          await new Promise(r => setTimeout(r, 1500));
+        if (LAPTOP_PRINT) {
+          // The built-in desktop helper can be slow to list printers right after the app starts: ask again before giving up.
+          for (let i = 0; i < 3 && (!h.ok || (!allowQueueNoPrinter && !(h.printers || []).includes(name))); i++) {
+            await new Promise(r => setTimeout(r, 1500));
+            h = await checkHelper(true);
+          }
+        } else if (lanStationActive() && h.ok && !allowQueueNoPrinter && !(h.printers || []).includes(name)) {
+          // Laptop IS reachable over Wi-Fi/hotspot, but printer wasn't in the cached list yet: try once quickly.
+          await new Promise(r => setTimeout(r, 800));
           h = await checkHelper(true);
         }
         if (!h.ok) {
           if (DESKTOP) showToast('The app can’t reach its printing service. Close and reopen photobooth4u, then try again.', 6500);
-          else if (lanStationActive()) showToast(h.errMsg || ('Can’t reach Laptop Print Station (' + lanStationCfg.host + '). Check Print Helper is open on the laptop and both devices are on the same Wi-Fi.'), 6500);
+          else if (lanStationActive()) showToast(h.errMsg || lanStationUnreachableMsg(lanStationCfg.host, lanStationCfg.port), 6500);
           else if (LANREMOTE) showToast('Can’t reach the laptop’s printer. Check the laptop app is open with iPad sharing on, and this iPad is on its Wi-Fi.', 6500);
           return false;
         }
@@ -48654,6 +49355,19 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             }
             return c;
           });
+          const lanJpegQ = (lanStationActive() && typeof isLowRamIos === 'function' && isLowRamIos()) ? 0.90 : 0.94;
+          let encodedHelperPages;
+          try {
+            const seenPageUrls = new Map();
+            encodedHelperPages = helperPages.map(c => {
+              if (seenPageUrls.has(c)) return seenPageUrls.get(c);
+              const u = (c && c._pbJpeg) ? c.toDataURL('image/jpeg', lanJpegQ) : (paper.receipt ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', lanStationActive() ? lanJpegQ : 0.95));
+              seenPageUrls.set(c, u);
+              return u;
+            });
+          } finally {
+            helperPages.forEach((hc, idx) => { if (hc && hc !== pages[idx]) pbReleaseCanvas(hc); });
+          }
           const body = JSON.stringify({
             printer: name,
             quality: (opt && opt.quality) || helperQualityFor(name),
@@ -48667,11 +49381,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             fit: paper.receipt ? 'width' : undefined,
             receipt: paper.receipt ? { quality: receiptQ, band: receiptW <= 384 ? 32 : 256, toneDone: true } : undefined,
             custom: isCustom,
-            pages: helperPages.map(c => (c && c._pbJpeg) ? c.toDataURL('image/jpeg', 0.94) : (paper.receipt ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.95)))
+            pages: encodedHelperPages
           });
-          const r = await helperFetch('/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+          encodedHelperPages = null;
+          const r = await helperFetch('/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body, _timeoutMs: 30000 });
           const j = await r.json().catch(() => ({}));
           if (r.ok && j.ok) {
+            if (lanStationActive()) _pbLastPrintSentAt = Date.now();
             lastHelperPrintQueued = !!(j && j.queued);
             if (lanStationActive() && (j.stationMode === 'auto' || j.stationMode === 'queue') && lanStationCfg.stationMode !== j.stationMode) {
               lanStationCfg.stationMode = j.stationMode;
@@ -48684,7 +49400,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           }
           showToast((noDialog ? 'Couldn’t print on ' + name : 'Print Helper couldn’t print') + ' (' + (j.error || ('error ' + r.status)) + ').' + (noDialog ? ' Check the printer on the laptop is on and has paper, then print again.' : dlg), 6500);
         } catch (e) {
-          showToast((lanStationActive() ? 'Lost connection to Laptop Print Station.' : (LAPTOP_PRINT ? 'Lost the printing service.' : 'Lost the Print Helper.')) + dlg, 4500);
+          if (lanStationActive()) {
+            helper = { ok: false, printers: [], checked: Date.now(), err: e && e.name === 'AbortError' ? 'timeout' : 'blocked' };
+            try { refreshLanStationUI(); } catch (_) { }
+            showToast(lanStationUnreachableMsg(lanStationCfg.host, lanStationCfg.port), 6500);
+          } else {
+            showToast((LAPTOP_PRINT ? 'Lost the printing service.' : 'Lost the Print Helper.') + dlg, 4500);
+          }
         }
         return false;
       }
@@ -49599,14 +50321,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function buildPrintCanvas(key) {
         if (plainResult) return buildPlainPrint(key);          // "Print original" from the roving screen
         const paper = paperFor(key);
-        let src = document.createElement('canvas');
-        src._hiRes = true;
-        receiptPrintGrey = !!paper.receipt;
-        receiptPrint58 = !!(paper.receipt && paper.w <= 55);
-        try { renderCompositeToCanvas(currentLayout, src); } finally { receiptPrintGrey = false; receiptPrint58 = false; }
+        const reusePreview = !paper.receipt && typeof canReusePreviewCanvas === 'function' && canReusePreviewCanvas(currentLayout);
+        let src = reusePreview ? previewCanvas : document.createElement('canvas');
+        if (!reusePreview) {
+          src._hiRes = true;
+          receiptPrintGrey = !!paper.receipt;
+          receiptPrint58 = !!(paper.receipt && paper.w <= 55);
+          try { renderCompositeToCanvas(currentLayout, src); } finally { receiptPrintGrey = false; receiptPrint58 = false; }
+        }
         const origSrc = src;
         src = btPrintCanvas(src, paper);          // card booth: front + back on one sheet
-        if (src !== origSrc) pbReleaseCanvas(origSrc);
+        if (src !== origSrc && origSrc !== previewCanvas) pbReleaseCanvas(origSrc);
         if (paper.receipt) {
           // Exactly the printer's dots across (80 mm roll: 576, 58 mm: 384), so the receipt is never resized on the way;
           // 72 mm x 203 dpi used to round to 575. As long as the receipt is.
@@ -49618,7 +50343,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           rx.imageSmoothingEnabled = rc.width !== src.width;
           rx.imageSmoothingQuality = 'high';
           rx.drawImage(src, 0, 0, rc.width, rc.height);
-          pbReleaseCanvas(src);
+          if (src !== previewCanvas) pbReleaseCanvas(src);
           // A black & white receipt layout already took the printer's Lightness when its photos were turned into dots
           // (ditherRegion); adding it again here would grey the black dots until a high setting wipes them out.
           // Receipt layouts (black & white or colour) already put the Lightness into their photos above; adding it to the whole
@@ -49631,7 +50356,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (turned) {
           const r = document.createElement('canvas'); r.width = src.height; r.height = src.width;
           const rx = r.getContext('2d'); rx.translate(r.width, 0); rx.rotate(Math.PI / 2); rx.drawImage(src, 0, 0);
-          pbReleaseCanvas(src);
+          if (src !== previewCanvas) pbReleaseCanvas(src);
           src = r;
         }
         const useFastPoster = !!(helperOn && printPrefs && Number(printPrefs.posterDpi) === 200 && Math.max(paper.w, paper.h) >= 300 && !paper.receipt);
@@ -49661,7 +50386,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         } else {
           drawPhotoOnSheet(ctx, src, c.width, c.height, dpi);
         }
-        pbReleaseCanvas(src);
+        if (src !== previewCanvas) pbReleaseCanvas(src);
         return c;
       }
       function buildStripPages(key) {
@@ -49820,7 +50545,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return { ok: true };
         }
         try {
-          const r = await postApi('/api/prints', { action: 'use', n: n }, 6000);
+          const myPfx = typeof ipSubnet24 === 'function' && typeof deviceWifiIpNow === 'function' ? ipSubnet24(deviceWifiIpNow()) : '';
+          const reserveMs = (typeof lanStationActive === 'function' && lanStationActive() && (myPfx === '192.168.137.' || myPfx === '192.168.2.')) ? 2500 : 6000;
+          const r = await postApi('/api/prints', { action: 'use', n: n }, reserveMs);
           if (r.status === 200) { takeCount(r.j); return r.j.ok ? { ok: true } : { ok: false, left: r.j.left || 0 }; }
           if (r.status === 401 || r.status === 403) return { ok: false, left: 0 };
         } catch (e) { }
@@ -52155,7 +52882,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const room = maxCopies(printSize);
         if (room < 1) { limitReached(); return false; }
         n = Math.min(n, room);
-        if (needsPrintPreview(auto === true)) { showPrintPreview(auto, n); return false; }        // nothing is counted or sent until the operator has seen the page
+        if (needsPrintPreview(auto === true)) { _pbAutoPrintPendingUntil = 0; showPrintPreview(auto, n); return false; }        // nothing is counted or sent until the operator has seen the page
+        _pbAutoPrintPendingUntil = 0;
         printing = true;
         refreshPrintUI();
         const _dgPrT0 = performance.now();
@@ -52698,7 +53426,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!autoPrint || !printSize || !printSettings()) return;
         if (typeof noPrintSession === 'function' && noPrintSession()) return;
         if (!printSettings().includes(printSize) || !sizeFitsLayout(printSize)) return;
-        setTimeout(() => printCurrentPhoto(true, defaultSessionPrintCopies()), 500);
+        _pbAutoPrintPendingUntil = Date.now() + 850;
+        setTimeout(() => { _pbAutoPrintPendingUntil = 0; printCurrentPhoto(true, defaultSessionPrintCopies()); }, 500);
       }
       window.addEventListener('pb-print-change', () => { printCount = null; refreshPrintCount(); });
       setTimeout(refreshPrintCount, 1200);
@@ -55110,16 +55839,19 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // (#qrSection: QR, Print, Done, the timer) into a pop-up. With "Print first" the card shows Printing
       // until finishPrintFirst. qrPopEnd puts the card back; updateUI calls it when the result screen ends.
       var qrPop = { phase: '', timer: 0, draw: 0, home: null, next: null };
-      function qrPopDrawPhoto() {
+      function qrPopDrawPhoto(force) {
         var cv = document.getElementById('qrPopPhoto');
         if (!cv || !previewCanvas || !previewCanvas.width || !previewCanvas.height) return;
         var W = window.innerWidth * 0.96, H = window.innerHeight * 0.94, a = previewCanvas.width / previewCanvas.height;
         var w = Math.min(W, H * a), h = w / a;
-        var dpr = Math.min(2, window.devicePixelRatio || 1);
+        var dprCap = (typeof isLowRamIos === 'function' && isLowRamIos()) ? 1.5 : 2;
+        var dpr = Math.min(dprCap, window.devicePixelRatio || 1);
         var pw = Math.round(w * dpr), ph = Math.round(h * dpr);
+        var sig = pw + 'x' + ph + '|' + previewCanvas.width + 'x' + previewCanvas.height + '|' + (previewCanvas._renderedForLayout || '') + '|' + (previewCanvas._renderedSession || 0) + '|' + (previewCanvas._renderedBack ? 1 : 0);
+        if (!force && cv._pbQrPopSig === sig && cv.width === pw && cv.height === ph) return;
         if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
         cv.style.width = Math.round(w) + 'px'; cv.style.height = Math.round(h) + 'px';
-        try { cv.getContext('2d').drawImage(previewCanvas, 0, 0, pw, ph); } catch (e) { }
+        try { cv.getContext('2d').drawImage(previewCanvas, 0, 0, pw, ph); cv._pbQrPopSig = sig; } catch (e) { }
       }
       function qrPopBegin() {
         qrPopEnd();
@@ -55131,8 +55863,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         document.body.classList.add('qrpop-wait');
         ov.className = 'qrpop-ov wait' + (qrMatchWelcome ? ' res-themed' : ''); ov.hidden = false;
         try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
-        qrPopDrawPhoto();
-        qrPop.draw = setInterval(function () { if (window.matchMedia('(orientation: portrait)').matches) qrPopDrawPhoto(); }, 500);   // the photo may still be finishing
+        qrPopDrawPhoto(true);
+        qrPop.draw = setInterval(function () { if (window.matchMedia('(orientation: portrait)').matches) qrPopDrawPhoto(false); }, 500);   // only redraws if the photo changed
         try { applyStageAspect(); } catch (e) { }
         qrPop.timer = setTimeout(qrPopShow, Math.max(0, qrPopDelay) * 1000);
       }
@@ -55147,11 +55879,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         document.body.classList.remove('qrpop-wait');
         ov.className = 'qrpop-ov show' + (qrMatchWelcome ? ' res-themed' : '');
         try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
-        qrPopDrawPhoto();
+        qrPopDrawPhoto(false);
         if (!printFirstHolding) scheduleResultReset();
         try { refreshPanelSolo(); applyStageAspect(); } catch (e) { }
       }
       function qrPopEnd() {
+        var qpc = document.getElementById('qrPopPhoto');
+        if (qpc) {
+          qpc._pbQrPopSig = '';
+          if (qpc.width || qpc.height) pbReleaseCanvas(qpc);
+        }
         if (!qrPop.phase) return;
         clearTimeout(qrPop.timer); clearInterval(qrPop.draw);
         qrPop.timer = 0; qrPop.draw = 0; qrPop.phase = '';
@@ -55166,7 +55903,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (ov) { ov.hidden = true; ov.className = 'qrpop-ov' + (qrMatchWelcome ? ' res-themed' : ''); }
         try { refreshPanelSolo(); applyStageAspect(); } catch (e) { }
       }
-      window.addEventListener('resize', function () { if (qrPop.phase) qrPopDrawPhoto(); });
+      window.addEventListener('resize', function () { if (qrPop.phase) qrPopDrawPhoto(true); });
       function showShotReview(i) {
         if (!shotCanvases[i]) return;
         var url = shotReviewUrl(shotCanvases[i], i);
@@ -55232,6 +55969,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       function resetForNextGuest(keepCamAwake, opts) {
         var prevState = state;
+        _pbAutoPrintPendingUntil = 0;
         if (typeof stopFlipAutoPlay === 'function') stopFlipAutoPlay();
         clearTimeout(resultTimer);
         clearTimeout(shareStationHandoffTimer);
@@ -56463,7 +57201,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           { id: '2x6-cut', label: '2\u00d76 Cut', widthMm: 101.6, heightMm: 152.4, twoUp: true, builtin: true }
         ];
         var lastInfo = null;
-        var lastPrSig = '', lastSzSig = '', lastJobSig = '', lastPendingSig = '';
+        var lastPrSig = '', lastSzSig = '', lastJobSig = '', lastPendingSig = '', lastPairQr = '', lastHsQr = '';
         var prSaveSeq = 0, szSaveSeq = 0, modeSaveSeq = 0, prBusy = 0, szBusy = 0, modeBusy = 0;
         var jobEdits = {};
         var lastSeenPendingCount = 0;
@@ -56707,6 +57445,71 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             return '<div class="lanst-prrow' + (on ? '' : ' dim') + '"><label class="lanst-chk"><input type="checkbox" data-ps-sel="' + escHtml(p) + '"' + (on ? ' checked' : '') + '><span>' + escHtml(p) + '</span></label>' + acts + '</div>';
           }).join('');
         }
+        function renderPairQrUi(info) {
+          var wrap = document.getElementById('stationDeskPairQrWrap');
+          var img = document.getElementById('stationDeskPairQrImg');
+          if (!wrap || !img) return;
+          var payload = String((info && info.pairQr) || '');
+          if (!payload && info && /^\d{6}$/.test(String(info.pin || '')) && Array.isArray(info.addresses) && info.addresses.length) {
+            var qs = new URLSearchParams();
+            qs.set('ips', info.addresses.slice(0, 6).map(function (a) { return a.ip; }).filter(Boolean).join(','));
+            if (Number(info.port) && Number(info.port) !== 47777) qs.set('port', String(info.port));
+            qs.set('pin', String(info.pin));
+            if (info.host) qs.set('host', String(info.host).slice(0, 48));
+            payload = 'pb4u://lan-station?' + qs.toString();
+          }
+          if (payload === lastPairQr) return;
+          lastPairQr = payload;
+          if (!payload || typeof qrImageUrl !== 'function') { wrap.hidden = true; return; }
+          try {
+            var u = qrImageUrl(payload);
+            if (u) { img.src = u; wrap.hidden = false; }
+            else wrap.hidden = true;
+          } catch (e) { wrap.hidden = true; }
+        }
+        function renderHotspotUi(h) {
+          var hsBtn = document.getElementById('stationDeskHotspotBtn');
+          var hsBar = document.getElementById('stationDeskHsBar');
+          var hsTitle = document.getElementById('stationDeskHsTitle');
+          var hsDetails = document.getElementById('stationDeskHsDetails');
+          var hsSetupBtn = document.getElementById('stationDeskHsSetupBtn');
+          var hsQrWrap = document.getElementById('stationDeskHsQrWrap');
+          var hsQrImg = document.getElementById('stationDeskHsQrImg');
+          if (hsBtn) hsBtn.hidden = !(h && h.supported && !h.on && !h.busy && !h.driverUnsupported);
+          if (!hsBar) return;
+          if (!h || (!h.on && !h.needsSetup)) {
+            hsBar.hidden = true;
+            return;
+          }
+          if (h.on) {
+            hsBar.hidden = false;
+            hsBar.className = 'lanst-hsbar';
+            if (hsSetupBtn) hsSetupBtn.hidden = true;
+            if (h.external) {
+              if (hsTitle) hsTitle.textContent = 'Mac Internet Sharing is ON';
+              if (hsDetails) hsDetails.innerHTML = 'Join your Mac hotspot on the iPad (see System Settings &rarr; Sharing &rarr; Wi-Fi Options for its name &amp; password), then scan the <b>Scan in iPad App</b> QR above.';
+              if (hsQrWrap) hsQrWrap.hidden = true;
+            } else {
+              if (hsTitle) hsTitle.textContent = 'Step 1 \u00b7 Join Booth Hotspot on iPad';
+              if (hsDetails) hsDetails.innerHTML = 'Wi-Fi: <code>' + escHtml(h.ssid || '') + '</code> &nbsp; Password: <code>' + escHtml(h.pass || '') + '</code><br><small style="color:var(--ink-dim);">Scan the Join Hotspot QR with iPad Camera (tap <b>Use Without Internet</b>), then scan <b>Scan in iPad App</b> above inside photobooth4u.</small>';
+              var qrTxt = (h.ssid && typeof wifiQrText === 'function') ? wifiQrText({ ssid: h.ssid, pass: h.pass || '' }) : '';
+              if (qrTxt !== lastHsQr) {
+                lastHsQr = qrTxt;
+                if (qrTxt && typeof qrImageUrl === 'function' && hsQrImg) {
+                  try { hsQrImg.src = qrImageUrl(qrTxt); } catch (e) { }
+                }
+              }
+              if (hsQrWrap) hsQrWrap.hidden = !qrTxt;
+            }
+          } else if (h.needsSetup) {
+            hsBar.hidden = false;
+            hsBar.className = 'lanst-hsbar warn';
+            if (hsTitle) hsTitle.textContent = 'One-time offline hotspot setup needed';
+            if (hsDetails) hsDetails.textContent = h.error || 'Click Set up Hotspot (one time) and choose Yes so this laptop can host Wi-Fi without an internet connection.';
+            if (hsSetupBtn) hsSetupBtn.hidden = false;
+            if (hsQrWrap) hsQrWrap.hidden = true;
+          }
+        }
         function renderStationData(info, force) {
           if (!info) return;
           var prevPrinters = lastInfo && Array.isArray(lastInfo.printers) ? lastInfo.printers : [];
@@ -56718,7 +57521,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var ipsEl = document.getElementById('stationDeskIps');
           var pinEl = document.getElementById('stationDeskPin');
           var jobsEl = document.getElementById('stationDeskJobs');
-          var hsBtn = document.getElementById('stationDeskHotspotBtn');
+          var fwBtn = document.getElementById('stationDeskFwBtn');
           var addrs = Array.isArray(lastInfo.addresses) ? lastInfo.addresses : [];
           if (stEl) stEl.textContent = addrs.length ? (' \u00b7 Ready on port ' + (lastInfo.port || 47777)) : ' \u00b7 Join Wi-Fi or turn Hotspot on';
           if (ipsEl) {
@@ -56727,6 +57530,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               : ('Port ' + (lastInfo.port || 47777) + ' (waiting for Wi-Fi / Hotspot)');
           }
           if (pinEl) pinEl.textContent = lastInfo.pin || '------';
+          if (fwBtn) fwBtn.hidden = !(lastInfo.isWin && window.pb4u && typeof window.pb4u.hotspotFixFirewall === 'function');
+          renderPairQrUi(lastInfo);
           renderModeUi();
           renderPendingUi(force);
           renderSizesUi(force);
@@ -56743,10 +57548,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                 }).join('')
               : '<tr><td colspan="5" style="color:var(--ink-dim);">Waiting for prints from iPad / tablet\u2026</td></tr>';
           }
-          if (hsBtn && window.pb4u && typeof window.pb4u.hotspot === 'function') {
-            window.pb4u.hotspot().then(function (h) {
-              hsBtn.hidden = !(h && h.supported && !h.on && !h.busy);
-            }).catch(function () { hsBtn.hidden = true; });
+          if (window.pb4u && typeof window.pb4u.hotspot === 'function') {
+            window.pb4u.hotspot().then(renderHotspotUi).catch(function () { renderHotspotUi(null); });
           }
         }
         async function loadStationData(refresh) {
@@ -57043,11 +57846,55 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var b = this; b.disabled = true; sayPs('Starting Windows Mobile Hotspot\u2026');
           try {
             var r = await window.pb4u.hotspotSet(true);
-            if (r && r.on) sayPs('Booth Hotspot is ON (' + (r.ssid || 'Wi-Fi') + ').');
+            renderHotspotUi(r);
+            if (r && r.on) sayPs('Booth Hotspot is ON (' + (r.ssid || 'Wi-Fi') + (r.pass ? ' · Password: ' + r.pass : '') + ').');
             else sayPs((r && r.error) || 'Could not turn hotspot on.', !(r && r.on));
             await loadStationData(false);
           } finally { b.disabled = false; }
         });
+        var hsSetupBtnEl = document.getElementById('stationDeskHsSetupBtn');
+        if (hsSetupBtnEl) hsSetupBtnEl.addEventListener('click', async function () {
+          var b = this; b.disabled = true; sayPs('Setting up offline hotspot & Windows Firewall\u2026 Choose Yes when Windows asks.');
+          try {
+            var r = await window.pb4u.hotspotSetup();
+            if (r && r.ok) {
+              var h = await window.pb4u.hotspotSet(true);
+              renderHotspotUi(h);
+              sayPs(h && h.on ? ('Booth Hotspot is ON (' + (h.ssid || 'Wi-Fi') + (h.pass ? ' · Password: ' + h.pass : '') + ').') : ((h && h.error) || 'Setup finished.'));
+              await loadStationData(false);
+            } else {
+              renderHotspotUi(r && r.info);
+              sayPs((r && r.error) || 'Hotspot setup did not finish.', true);
+            }
+          } finally { b.disabled = false; }
+        });
+        var fwBtnEl = document.getElementById('stationDeskFwBtn');
+        if (fwBtnEl) fwBtnEl.addEventListener('click', async function () {
+          var b = this; b.disabled = true; sayPs('Allowing Print Station through Windows Firewall (Hotspot / Public)\u2026 Choose Yes when Windows asks.');
+          try {
+            var r = await window.pb4u.hotspotFixFirewall();
+            if (r && r.ok) {
+              sayPs('Windows Firewall updated \u2713' + (r.removedBlocks ? (' (cleared ' + r.removedBlocks + ' block rule' + (r.removedBlocks === 1 ? '' : 's') + ')') : '') + ' \u2014 iPad can now connect over Hotspot or Wi-Fi.');
+            } else {
+              sayPs((r && r.error) || 'Could not update Windows Firewall.', true);
+            }
+          } finally { b.disabled = false; }
+        });
+        var hsReloadTimer = null;
+        if (window.pb4u && typeof window.pb4u.onHotspot === 'function') {
+          window.pb4u.onHotspot(function (h) {
+            if (ov.hidden) return;
+            renderHotspotUi(h);
+            loadStationData(false).catch(function () { });
+            if (h && h.on) {
+              if (hsReloadTimer) clearTimeout(hsReloadTimer);
+              hsReloadTimer = setTimeout(function () {
+                hsReloadTimer = null;
+                if (!ov.hidden) loadStationData(false).catch(function () { });
+              }, 1500);
+            }
+          });
+        }
         document.getElementById('stationDeskPrinters').addEventListener('click', async function (e) {
           if (e.target.closest('#stationDeskInlineShowAll')) {
             saveStationPrinters(lastInfo && Array.isArray(lastInfo.selectedPrinters) ? lastInfo.selectedPrinters : [], false);
@@ -57094,7 +57941,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           window.__pbStationPaused = true;
           try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
           sayPs('');
-          lastPrSig = ''; lastSzSig = ''; lastJobSig = ''; lastPendingSig = '';
+          lastPrSig = ''; lastSzSig = ''; lastJobSig = ''; lastPendingSig = ''; lastPairQr = ''; lastHsQr = '';
           ov.hidden = false;
           loadStationData(true);
         };

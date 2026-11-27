@@ -265,7 +265,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.46', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.46/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.47', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.47/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -319,6 +319,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-28', title: 'iPad & iPhone 1.1.47 & Website: One-Scan Laptop Print Station Pairing & 3 GB iPad Speed Boost', for: ['website', 'ipad'], ipad: '1.1.47',
+    items: [
+      '📷 Scan QR to pair with Laptop Print Station right away: Tap Scan Laptop QR on your iPad to connect directly to your laptop USB printer over Booth Wi-Fi or venue Wi-Fi without typing addresses or PINs — and switch persistently onto the laptop Booth Wi-Fi for multi-hour events.',
+      '📶 Stay connected and freeze-free on offline hotspots: Routes Laptop Print Station traffic strictly over Wi-Fi so cellular data never blocks local printing, recovers cleanly between back-to-back prints, fails fast with clear troubleshooting steps if the laptop hotspot drops, and guides you through turning off cellular or disconnecting venue Wi-Fi when needed.',
+      '🧠 Much lighter photo, QR, and print memory use on 3 GB iPads (iPadOS 18): Reuses the finished photo canvas for printing instead of building a duplicate copy, saves individual guest solo shots one at a time after printing finishes (without dropping photos if the next guest starts right away), clears pop-up and review canvases right away, and shrinks QR and print transfer payloads so sessions stay smooth from start to finish.'
+    ]
+  },
   {
     date: '2026-11-27', title: 'iPhone & iPad 1.1.46 & Website: Native Full-Screen iPhone Layout & Instant 360 Arm Cam Preview', for: ['website', 'ipad'], ipad: '1.1.46',
     items: [

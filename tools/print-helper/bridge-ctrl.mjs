@@ -111,6 +111,8 @@ export function startHelperBridge({ logger = () => { }, ports = BRIDGE_PORTS, la
           } catch { /* closed */ }
         });
       });
+      s.requestTimeout = 120_000;
+      s.headersTimeout = 30_000;
       s.once('error', () => {
         try { s.close(); } catch { /* ignore */ }
         tryNext();

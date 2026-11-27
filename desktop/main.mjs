@@ -27,7 +27,7 @@ import { makeSelphyJobBuilder } from './lib/selphyusb.mjs';
 import { makeDnpJobBuilder } from './lib/dnpusb.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { detectWifi } from './lib/wifi.mjs';
-import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetup, hotspotSetCreds, hotspotWake, hotspotSuspend, hotspotResume } from './lib/hotspot.mjs';
+import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetup, hotspotFixFirewall, hotspotSetCreds, hotspotWake, hotspotTouch, hotspotSuspend, hotspotResume } from './lib/hotspot.mjs';
 import { freeCamera, guardCamera, stopGuardCamera } from './lib/camfree.mjs';
 import { scanUsb } from './lib/usbscan.mjs';
 import * as U from './lib/updater.mjs';
@@ -513,6 +513,7 @@ function wireIpc() {
     return hotspotSetCreds(String(ssid || ''), String(pass || ''));
   });
   ipcMain.handle('pb4u:hotspotSetup', async () => { const r = await hotspotSetup(); return { ...r, info: hotspotInfo() }; });
+  ipcMain.handle('pb4u:hotspotFixFirewall', async () => { const r = await hotspotFixFirewall(); return { ...r, info: hotspotInfo() }; });
   ipcMain.handle('pb4u:info', async () => ({
     licence: L.info(), version: VERSION, update: U.info(), photos: photosRoot(), share: shareBase(), lanIp: lanAddress(), port: sharePortNow(), server: L.SERVER,
     appMode: allowedAppMode(), onlineMode: isOnlineMode()
@@ -815,6 +816,7 @@ function wireIpc() {
   ipcMain.handle('pb4u:bridgeEvent', (e, ev) => sendBridgeEvent(ev));
   ipcMain.handle('pb4u:bridgeCamCmd', (e, cmd) => sendCamCommand(cmd));
   ipcMain.handle('pb4u:lanStationInfo', async (e, refresh) => {
+    hotspotTouch();
     const allowed = printStationAllowed();
     let pr = [];
     if (allowed) {
@@ -978,7 +980,12 @@ app.whenReady().then(async () => {
     appKind: 'desktop',
     version: app.getVersion(),
     logger: (m) => console.log(m),
-    onJob: (info) => { broadcastWin('pb4u:lanStationJob', info); },
+    onActivity: () => { hotspotTouch(); },
+    getHotspotWifi: () => {
+      const h = hotspotInfo();
+      return (h && h.on && !h.external && h.ssid) ? { ssid: h.ssid, pass: h.pass || '' } : null;
+    },
+    onJob: (info) => { hotspotTouch(); broadcastWin('pb4u:lanStationJob', info); },
     makeThumb: (dataUrl) => {
       try {
         const m = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ''));
@@ -1024,7 +1031,7 @@ app.whenReady().then(async () => {
   if (settings.hotspot && settings.hotspot.ssid) setExternalWifi(settings.hotspot.ssid, settings.hotspot.pass);
   // Never sleep with the hotspot running (a common cause of Wi-Fi driver crashes on wake); it comes back after wake.
   powerMonitor.on('suspend', () => { try { hotspotSuspend(); } catch { /* ignore */ } });
-  powerMonitor.on('resume', () => { try { if (!isOnlineMode()) hotspotResume(); } catch { /* ignore */ } });
+  powerMonitor.on('resume', () => { try { hotspotResume(); } catch { /* ignore */ } });
   protocol.handle('app', handle);
   setupSession();
   buildMenu();

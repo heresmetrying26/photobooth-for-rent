@@ -624,10 +624,14 @@ class LocalShareServer {
             var remaining = length
             while remaining > 0 {
                 let chunkSize = min(65536, remaining)
-                let chunk = fh.readData(ofLength: chunkSize)
-                if chunk.isEmpty { break }
-                writeAll(sock, data: chunk)
-                remaining -= chunk.count
+                let sentBytes: Int = autoreleasepool {
+                    let chunk = fh.readData(ofLength: chunkSize)
+                    if chunk.isEmpty { return 0 }
+                    writeAll(sock, data: chunk)
+                    return chunk.count
+                }
+                if sentBytes <= 0 { break }
+                remaining -= sentBytes
             }
         } catch {
             // Connection closed or seek failed

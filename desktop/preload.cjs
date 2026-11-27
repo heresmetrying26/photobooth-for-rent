@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('pb4u', {
   // Saves the operator's own booth Wi-Fi name and password (Windows): { ok, error, info }
   hotspotCreds: (ssid, pass) => ipcRenderer.invoke('pb4u:hotspotCreds', String(ssid || ''), String(pass || '')),
   hotspotSetup: () => ipcRenderer.invoke('pb4u:hotspotSetup'),
+  hotspotFixFirewall: () => ipcRenderer.invoke('pb4u:hotspotFixFirewall'),
   info: () => ipcRenderer.invoke('pb4u:info'),
   activate: (code, label) => ipcRenderer.invoke('pb4u:activate', String(code || ''), String(label || '')),
   activateOffline: (text) => ipcRenderer.invoke('pb4u:activateOffline', String(text || '')),

@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import {
   approvePendingStationJob,
+  buildLanStationQrPayload,
   buildStationTestJob,
   clearPendingStationJobs,
   createStationTestPngDataUrl,
@@ -410,6 +411,84 @@ try {
     assert.match(built, /lanStationActive\(\)\)\) return false;/);
     const mainSrc = readFileSync(join(root, 'desktop', 'main.mjs'), 'utf8');
     assert.match(mainSrc, /getCaps:\s*async\s*\(\{\s*printer\s*\}\)/);
+    assert.match(mainSrc, /pb4u:hotspotFixFirewall/);
+    assert.match(mainSrc, /hotspotTouch\(\)/);
+
+    // 1-scan QR pairing + Hotspot creds/Join QR + Windows Firewall repair + iPad Wi-Fi-only HTTP bridge
+    const qrPayload = buildLanStationQrPayload({
+      addresses: [{ ip: '192.168.137.1' }, { ip: '192.168.1.109' }, { ip: '192.168.137.1' }],
+      port: 47777,
+      pin: '959481',
+      host: 'LAPTOP-7I03INHA'
+    });
+    assert.equal(qrPayload, 'pb4u://lan-station?ips=192.168.137.1%2C192.168.1.109&pin=959481&host=LAPTOP-7I03INHA');
+    const qrWithWifi = buildLanStationQrPayload({
+      addresses: [{ ip: '192.168.137.1' }],
+      port: 47777,
+      pin: '959481',
+      host: 'LAPTOP-7I03INHA',
+      wifiSsid: 'photobooth4u-ABCD',
+      wifiPass: 'pass123456'
+    });
+    assert.ok(qrWithWifi.includes('ws=photobooth4u-ABCD') && qrWithWifi.includes('wp=pass123456'), 'QR encodes optional Booth Hotspot SSID & password');
+    assert.equal(buildLanStationQrPayload({ addresses: [{ ip: '192.168.137.1' }], port: 47778, pin: '123456' }),
+      'pb4u://lan-station?ips=192.168.137.1&port=47778&pin=123456');
+    assert.equal(buildLanStationQrPayload({ addresses: [{ ip: '999.1.2.3' }, { ip: '127.0.0.1' }, { ip: '0.0.0.0' }], port: 47777, pin: '123456' }), '');
+    assert.equal(buildLanStationQrPayload({ addresses: [], port: 47777, pin: '123456' }), '');
+    assert.match(built, /id="stationDeskPairQrWrap"/);
+    assert.match(built, /id="stationDeskHsBar"/);
+    assert.match(built, /id="stationDeskFwBtn"/);
+    assert.match(built, /id="lanStationScanQrBtn"/);
+    assert.match(built, /function parseLanStationQr\(/);
+    assert.match(built, /function probeFirstLanHello\(/);
+    assert.match(built, /var lanQrOpen = false;/);
+    assert.match(built, /function lanHttpFetch\(/);
+    assert.match(built, /function lanStationUnreachableMsg\(/);
+    assert.match(built, /function cancelLanScan\(/);
+    assert.match(built, /const directHotspot = \(myPfx === '192\.168\.137\.' \|\| myPfx === '192\.168\.2\.'\);/);
+    assert.match(built, /const BATCH = lanHttpAvailable\(\) \? 8 : 16;/);
+    assert.match(built, /let _checkHelperInFlight = null/);
+    assert.match(built, /const waitMs = isLan \? 4000 : 8000;/);
+    assert.match(built, /helperFetch\('\/print'[\s\S]{0,140}_timeoutMs: 30000/);
+    assert.match(built, /id="lanStationGuide"/);
+    assert.match(built, /Cellular Data OFF/);
+    assert.match(built, /Auto-Join OFF/);
+    assert.match(built, /if \(lanStationActive\(\)\) _pbLastPrintSentAt = Date\.now\(\);/);
+    const swiftSrc = readFileSync(join(root, 'ios', 'photobooth4u', 'ViewController.swift'), 'utf8');
+    assert.match(swiftSrc, /userContent\.add\(self, name: "pbLanHttp"\)/);
+    assert.match(swiftSrc, /userContent\.add\(self, name: "pbScanQr"\)/);
+    assert.match(swiftSrc, /userContent\.add\(self, name: "pbJoinWifi"\)/);
+    assert.match(swiftSrc, /NEHotspotConfigurationManager\.shared\.apply/);
+    assert.match(swiftSrc, /cfg\.joinOnce = false/);
+    assert.match(swiftSrc, /cfg\.allowsCellularAccess = false/);
+    assert.match(swiftSrc, /class LanQrScannerViewController/);
+    assert.match(swiftSrc, /private var isLanQrOpen = false/);
+    assert.match(swiftSrc, /AVCaptureDevice\.requestAccess\(for: \.video\)/);
+    assert.match(swiftSrc, /private func finishWith\(value: String\?, error: String\?\)/);
+    assert.match(swiftSrc, /override func viewDidDisappear\(_ animated: Bool\)/);
+    const nshSrc = readFileSync(join(root, 'desktop', 'resources', 'installer.nsh'), 'utf8');
+    assert.match(nshSrc, /Get-NetFirewallApplicationFilter/);
+    assert.match(nshSrc, /Remove-NetFirewallRule/);
+    // Validate every nsExec::Exec line in installer.nsh is a single properly quoted NSIS string
+    for (const line of nshSrc.split(/\r?\n/)) {
+      const t = line.trim();
+      if (!t.startsWith('nsExec::Exec ')) continue;
+      const arg = t.slice('nsExec::Exec '.length);
+      const q = arg[0];
+      assert.ok(q === "'" || q === '"' || q === '`', 'nsExec::Exec arg must be quoted: ' + t);
+      let end = -1;
+      for (let i = 1; i < arg.length; i++) {
+        if (arg[i] === '$' && arg[i + 1] === '\\' && arg[i + 2]) { i += 2; continue; }
+        if (arg[i] === q) { end = i; break; }
+      }
+      assert.equal(end, arg.length - 1, 'NSIS quote terminated early in installer.nsh: ' + t);
+    }
+    const hsSrc = readFileSync(join(root, 'desktop', 'lib', 'hotspot.mjs'), 'utf8');
+    assert.match(hsSrc, /export async function hotspotFixFirewall\(/);
+    assert.match(hsSrc, /Remove-NetFirewallRule/);
+    const phSrc = readFileSync(join(root, 'tools', 'print-helper', 'print-helper.js'), 'utf8');
+    assert.match(phSrc, /\/station\/fix-firewall/);
+    assert.match(phSrc, /\/station\/qr\.js/);
   });
 
   await check('GET /lan-station/printer/caps returns safe default or delegates to getCaps with PIN auth', async () => {

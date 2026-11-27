@@ -32,6 +32,7 @@ import {
   buildStationTestJob, renderStationDashboardHtml, recordStationJob
 } from './bridge-ctrl.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
+import QR_JS from '../../desktop/lib/qr.js' with { type: 'text' };
 import { createWinPrintWorker } from '../../desktop/lib/winprint-worker.mjs';
 import { createHotFolderStore, detectDnpHotFolders, dropToHotFolder } from '../../desktop/lib/hotfolder.mjs';
 
@@ -48,7 +49,7 @@ const ALLOWED_ORIGINS = new Set([
 const IS_WIN = platform() === 'win32';
 const IS_MAC = platform() === 'darwin';
 const MAX_BODY = 80 * 1024 * 1024;     // 80 MB of page images per job
-const winPrintWorker = IS_WIN ? createWinPrintWorker({ logger: (m) => log(m) }) : null;
+const winPrintWorker = IS_WIN ? createWinPrintWorker({ logger: (m) => log(m), preventSleep: true }) : null;
 const hotFolderStore = createHotFolderStore(join(homedir(), '.photobooth4u-hot-folders.json'));
 
 function stationUrl() { return 'http://127.0.0.1:' + PORT + '/station'; }
@@ -93,6 +94,60 @@ async function listPrinters() {
   }
   const r = await run('lpstat', ['-e']);
   return r.out.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+}
+
+const FIX_HELPER_FW_PS = String.raw`$ErrorActionPreference = 'Stop'
+$out = '@OUT@'
+$exe = '@EXE@'
+$res = @{ ok = $false; removedBlocks = 0; error = '' }
+try {
+  try {
+    $blocks = @(Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue | Where-Object { $_.Program -eq $exe -or $_.Program -like '*photobooth4u-print-helper*.exe' } | Get-NetFirewallRule -ErrorAction SilentlyContinue | Where-Object { $_.Direction -eq 'Inbound' -and $_.Action -eq 'Block' })
+    foreach ($b in $blocks) {
+      Remove-NetFirewallRule -Name $b.Name -ErrorAction SilentlyContinue
+      $res.removedBlocks++
+    }
+  } catch { }
+  netsh advfirewall firewall delete rule name="photobooth4u print helper hotspot" | Out-Null
+  netsh advfirewall firewall add rule name="photobooth4u print helper hotspot" dir=in action=allow program="$exe" enable=yes profile=any remoteip=192.168.137.0/24 | Out-Null
+  netsh advfirewall firewall delete rule name="photobooth4u print helper lan" | Out-Null
+  netsh advfirewall firewall add rule name="photobooth4u print helper lan" dir=in action=allow program="$exe" protocol=TCP localport=47777-47797 enable=yes profile=any remoteip=192.168.0.0/16,10.0.0.0/8,172.16.0.0/12 | Out-Null
+  netsh advfirewall firewall delete rule name="photobooth4u local booth port" | Out-Null
+  netsh advfirewall firewall add rule name="photobooth4u local booth port" dir=in action=allow protocol=TCP localport=47777-47797 enable=yes profile=any remoteip=192.168.137.0/24,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12 | Out-Null
+  try { Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters' -Name 'PeerlessTimeoutEnabled' -Value 0 -Type DWord -ErrorAction SilentlyContinue } catch { }
+  $res.ok = $true
+} catch { $res.error = [string]$_.Exception.Message }
+($res | ConvertTo-Json -Compress) | Set-Content -Path $out -Encoding UTF8
+`;
+
+let fwBusy = false;
+async function fixHelperFirewall() {
+  if (!IS_WIN) return { ok: false, error: 'Firewall repair is only needed on Windows.' };
+  if (fwBusy) return { ok: false, error: 'Firewall update already in progress.' };
+  fwBusy = true;
+  const dir = await mkdtemp(join(tmpdir(), 'pb4u-fw-'));
+  try {
+    const outFile = join(dir, 'fw.json');
+    const q = (s) => String(s).replace(/'/g, "''");
+    const script = FIX_HELPER_FW_PS.replace('@OUT@', () => q(outFile)).replace('@EXE@', () => q(process.execPath));
+    const enc = Buffer.from(script, 'utf16le').toString('base64');
+    const cmd = "Start-Process -FilePath powershell.exe -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-EncodedCommand','" + enc + "'";
+    const r = await run('powershell.exe', [...PS, '-Command', cmd]);
+    let res = null;
+    try { res = JSON.parse((await readFile(outFile, 'utf8')).replace(/^\uFEFF/, '')); } catch { /* not written */ }
+    if (!res) {
+      const declined = /canceled by the user|cancelled/i.test(r.err || '');
+      return { ok: false, error: declined ? 'Cancelled. Click Fix Hotspot Firewall again and choose Yes.' : 'Firewall update did not finish.' };
+    }
+    if (!res.ok) return { ok: false, error: 'Firewall update failed: ' + String(res.error || '').slice(0, 140) };
+    log('Windows Firewall updated for Print Station (removedBlocks=' + (res.removedBlocks || 0) + ')');
+    return { ok: true, removedBlocks: Number(res.removedBlocks) || 0 };
+  } catch (e) {
+    return { ok: false, error: 'Firewall update failed: ' + String(e && e.message || e).slice(0, 140) };
+  } finally {
+    fwBusy = false;
+    rm(dir, { recursive: true, force: true }).catch(() => { });
+  }
 }
 
 async function openBluetoothSettings() {
@@ -940,6 +995,9 @@ const serverCfg = {
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/station')) {
       return new Response(renderStationDashboardHtml(), { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
     }
+    if (req.method === 'GET' && url.pathname === '/station/qr.js') {
+      return new Response(QR_JS, { status: 200, headers: { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' } });
+    }
     if (req.method === 'GET' && url.pathname === '/station/info') {
       const pr = await printers(url.searchParams.get('refresh') === '1');
       return json({ ...getLanStationInfo(), printers: pr }, 200, origin);
@@ -947,6 +1005,11 @@ const serverCfg = {
     if (req.method === 'POST' && url.pathname === '/station/new-pin') {
       if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);
       return json({ ok: true, pin: rotateLanStationPin() }, 200, origin);
+    }
+    if (req.method === 'POST' && url.pathname === '/station/fix-firewall') {
+      if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);
+      const out = await fixHelperFirewall();
+      return json(out, out.ok ? 200 : 400, origin);
     }
     if (req.method === 'POST' && url.pathname === '/station/printers') {
       if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: 'Not allowed' }, 403);

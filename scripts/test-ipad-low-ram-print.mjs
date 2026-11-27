@@ -436,6 +436,183 @@ test('booth.html: pb-memory-pressure handler reclaims idle canvases and caches w
   assert.equal(pmSamples, null, 'pmMakerSamples cleared');
 });
 
+test('booth.html: offlineJpegQuality trims 3 GB iPad QR/solo payloads (0.90/0.88) while keeping 4 GB+ iPads & Desktop intact', () => {
+  const a = html.indexOf('function offlineJpegQuality(');
+  const b = html.indexOf('const STRIP_W =', a);
+  assert.ok(a > 0 && b > a, 'offlineJpegQuality block found');
+  const runQ = (opts, kind) => new Function(
+    'window', 'LOCALSHARE', 'DESKTOP', 'LANREMOTE',
+    html.slice(a, b) + '; return offlineJpegQuality(arguments[4]);'
+  )(opts.win, opts.localshare, opts.desktop, opts.lanremote, kind);
+
+  assert.equal(runQ({ win: { __PB: { ios: true, iosLowRam: true } }, localshare: true, desktop: false, lanremote: false }, 'print'), 0.90, '3 GB iPad composite QR JPEG quality is 0.90');
+  assert.equal(runQ({ win: { __PB: { ios: true, iosLowRam: true } }, localshare: true, desktop: false, lanremote: false }, 'solo'), 0.88, '3 GB iPad solo JPEG quality is 0.88');
+  assert.equal(runQ({ win: { __PB: { ios: true, iosLowRam: false } }, localshare: true, desktop: false, lanremote: false }, 'print'), 0.95, '4 GB+ iPad keeps 0.95');
+  assert.equal(runQ({ win: { __PB: { ios: true, iosLowRam: false } }, localshare: true, desktop: false, lanremote: false }, 'solo'), 0.95, '4 GB+ iPad solo keeps 0.95');
+  assert.equal(runQ({ win: {}, localshare: true, desktop: true, lanremote: false }, 'print'), 1, 'Desktop keeps 1.0');
+  assert.equal(runQ({ win: { __PB: { ios: true, iosLowRam: true } }, localshare: false, desktop: false, lanremote: false }, 'print'), 0.95, 'Online mode keeps 0.95');
+});
+
+test('booth.html: lazy deferred solo saves clone 1-at-a-time AFTER printing and snapshot remaining shots if Next Guest interrupts', async () => {
+  const a = html.indexOf('function cloneShotForSolo(c)');
+  const b = html.indexOf('var GV_CODE_RE =', a);
+  assert.ok(a > 0 && b > a, 'solo save block found');
+
+  let liveClones = 0, peakClones = 0, clonedDuringPrint = 0;
+  const mkCanvas = (w = 0, h = 0, tag = '') => ({
+    width: w, height: h, tag,
+    getContext: () => ({ fillStyle: '', imageSmoothingEnabled: true, imageSmoothingQuality: '', fillRect() {}, drawImage() {} })
+  });
+  const doc = {
+    createElement: () => {
+      const cv = mkCanvas(0, 0, 'temp');
+      return cv;
+    }
+  };
+  const st = { printing: true, lastPrintAt: 0, autoPendingUntil: 0, uploaded: [], liveShotsReleased: false };
+  const api = new Function(
+    'document', 'isLowRamIos', 'IS_IOS_APP', 'saveSoloPhotos', 'sessionNumber', 'rawFolderKey', 'driveSubfolder',
+    'filePrefix', 'deviceTag', 'soloOriginal', 'pbCanvasBlob', 'offlineJpegQuality', 'pbReleaseCanvas', 'pbReleaseShotCanvas',
+    'backupDir', 'backupOk', 'DESKTOP_ONLINE', 'driveReady', 'LOCALSHARE', 'navigator', 'uploadToDrive', 'queueUpload',
+    'wait', 'softSkin', 'filterKey', 'dateStamp', 'getState', 'onCloneStart', 'onCloneRelease',
+    'var printing, _pbLastPrintSentAt, _pbAutoPrintPendingUntil;' +
+    html.slice(a, b)
+      .replace(/if \(typeof printing !== 'undefined' && printing\)/g, 'if (getState().printing)')
+      .replace(/for \(var pw = 0; pw < 80 && printing; pw\+\+\)/g, 'for (var pw = 0; pw < 80 && getState().printing; pw++)')
+      .replace(/typeof _pbLastPrintSentAt === 'number' && _pbLastPrintSentAt > 0/g, 'getState().lastPrintAt > 0')
+      .replace(/Date\.now\(\) - _pbLastPrintSentAt/g, 'Date.now() - getState().lastPrintAt')
+      .replace(/typeof _pbAutoPrintPendingUntil === 'number' && _pbAutoPrintPendingUntil > Date\.now\(\)/g, 'getState().autoPendingUntil > Date.now()')
+      .replace(/_pbAutoPrintPendingUntil > Date\.now\(\) && !\(typeof printing !== 'undefined' && printing\)/g, 'getState().autoPendingUntil > Date.now() && !getState().printing')
+      .replace(/return clone;/, 'onCloneStart(clone); return clone;') +
+    '; return { cloneShotForSolo, saveSoloPhotosAsync, pbSnapshotDeferredSoloShots };'
+  )(
+    doc, () => true, true, true, 12, () => 'ev', () => '', () => '', () => '',
+    async () => null, async () => ({ size: 100 }), () => 0.88,
+    (cv) => { if (cv) { cv.width = 0; cv.height = 0; } },
+    (cv) => { if (cv) { if (cv._isSoloClone) liveClones = Math.max(0, liveClones - 1); cv.width = 0; cv.height = 0; } },
+    null, false, false, () => true, true, { onLine: true },
+    async (_blob, name) => {
+      st.uploaded.push({ name, printingDuringUpload: st.printing, liveClones });
+      // After shot 1 uploads, simulate the guest immediately tapping "Next guest" (releasing shotCanvases!)
+      if (st.uploaded.length === 1 && st.onAfterFirstUpload) st.onAfterFirstUpload();
+    },
+    async () => {},
+    (ms) => new Promise((r) => setTimeout(r, Math.min(ms, 4))),
+    false, 'none', false, () => st,
+    (cv) => { cv._isSoloClone = true; liveClones++; if (liveClones > peakClones) peakClones = liveClones; if (st.printing) clonedDuringPrint++; },
+    () => { liveClones = Math.max(0, liveClones - 1); }
+  );
+
+  // Scenario A: normal 4-shot lazy solo save while printing is active -> 0 clones during print, peak 1 clone after print!
+  const shotsA = [mkCanvas(1920, 1440, 's1'), mkCanvas(1920, 1440, 's2'), mkCanvas(1920, 1440, 's3'), mkCanvas(1920, 1440, 's4')];
+  setTimeout(() => { st.printing = false; st.lastPrintAt = Date.now() - 2600; }, 10);
+  await api.saveSoloPhotosAsync(12, shotsA, { lazySource: true });
+  assert.equal(clonedDuringPrint, 0, 'ZERO solo canvases cloned while printing is true');
+  assert.equal(peakClones, 1, 'peak concurrent solo clone count is 1 (not 4) during normal lazy save');
+  assert.equal(liveClones, 0, 'all solo clones released after completion');
+  assert.equal(st.uploaded.length, 4, 'all 4 solo shots saved');
+  assert.ok(shotsA.every((s) => s.width === 1920), 'live shotCanvases were NOT zeroed by lazy solo save');
+
+  // Scenario B: guest taps Next Guest right after solo #1 finishes -> remaining 3 shots are snapshotted before shotCanvases are zeroed!
+  st.uploaded = [];
+  liveClones = 0; peakClones = 0; clonedDuringPrint = 0;
+  const shotsB = [mkCanvas(1920, 1440, 'b1'), mkCanvas(1920, 1440, 'b2'), mkCanvas(1920, 1440, 'b3'), mkCanvas(1920, 1440, 'b4')];
+  st.onAfterFirstUpload = () => {
+    st.onAfterFirstUpload = null;
+    api.pbSnapshotDeferredSoloShots(shotsB);
+    for (let k = 0; k < shotsB.length; k++) { shotsB[k].width = 0; shotsB[k].height = 0; shotsB[k] = null; }
+  };
+  await api.saveSoloPhotosAsync(13, shotsB, { lazySource: true });
+  assert.equal(st.uploaded.length, 4, 'all 4 solo shots still saved even when Next Guest cleared shotCanvases after shot 1');
+  assert.equal(liveClones, 0, 'all pre-release snapshotted solo clones released cleanly');
+});
+
+test('booth.html: buildPrintCanvas reuses previewCanvas without duplicate composite allocation or zeroing previewCanvas', () => {
+  const a = html.indexOf('function buildPrintCanvas(key)');
+  const b = html.indexOf('function buildStripPages(key)', a);
+  assert.ok(a > 0 && b > a, 'buildPrintCanvas block found');
+
+  let renderCompositeCalls = 0, canvasesCreated = 0, previewReleased = false;
+  const preview = { width: 1800, height: 2700, _renderedForLayout: 'grid4', _renderedSession: 5 };
+  const doc = {
+    createElement: () => {
+      canvasesCreated++;
+      return {
+        width: 0, height: 0,
+        getContext: () => ({ fillStyle: '', imageSmoothingQuality: '', fillRect() {}, drawImage() {}, translate() {}, rotate() {} })
+      };
+    }
+  };
+  const buildPrintCanvas = new Function(
+    'plainResult', 'paperFor', 'canReusePreviewCanvas', 'currentLayout', 'previewCanvas', 'document',
+    'renderCompositeToCanvas', 'btPrintCanvas', 'pbReleaseCanvas', 'RECEIPT_W', 'layoutDef',
+    'helperOn', 'printPrefs', 'canonDpiFor', 'l8050DpiFor', 'l3210DpiFor', 'PRINT_DPI',
+    'sizedPhoto', 'isDyeSubPrinter', 'printerFor', 'stripTwoUp', 'drawFitted', 'drawPhotoOnSheet',
+    'var receiptPrintGrey = false, receiptPrint58 = false; ' + html.slice(a, b) + '; return buildPrintCanvas;'
+  )(
+    false, () => ({ w: 101.6, h: 152.4, receipt: false }), () => true, 'grid4', preview, doc,
+    () => { renderCompositeCalls++; }, (s) => s,
+    (cv) => { if (cv === preview) previewReleased = true; if (cv) { cv.width = 0; cv.height = 0; } },
+    576, () => ({ kind: 'sheet' }), false, {}, () => 0, () => 0, () => 0, 300,
+    () => false, () => false, () => '', () => false, () => {}, () => {}
+  );
+
+  const page = buildPrintCanvas('4x6');
+  assert.equal(renderCompositeCalls, 0, 'buildPrintCanvas skips redundant renderCompositeToCanvas when previewCanvas matches');
+  assert.equal(canvasesCreated, 1, 'only allocates the 1 final print sheet canvas (not a duplicate 1800x2700 src)');
+  assert.equal(page.width, 1200);
+  assert.equal(page.height, 1800);
+  assert.equal(previewReleased, false, 'buildPrintCanvas NEVER releases previewCanvas');
+  assert.equal(preview.width, 1800, 'previewCanvas stays intact for screen display');
+});
+
+test('booth.html: qrPopDrawPhoto caps dpr<=1.5 on 3 GB iPads, skips unchanged redraws, and qrPopEnd releases #qrPopPhoto', () => {
+  const a = html.indexOf('var qrPop = { phase:');
+  const b = html.indexOf('function showShotReview(i)', a);
+  assert.ok(a > 0 && b > a, 'qrPop block found');
+
+  let draws = 0;
+  const qpc = { width: 0, height: 0, style: {}, getContext: () => ({ drawImage() { draws++; } }) };
+  const ov = { hidden: true, className: '' };
+  const preview = { width: 1800, height: 2700, _renderedForLayout: 'grid4', _renderedSession: 2, _renderedBack: false };
+  const api = new Function(
+    'document', 'window', 'previewCanvas', 'isLowRamIos', 'pbReleaseCanvas', 'qrPopOn', 'state',
+    'qrMatchWelcome', 'qrPopDelay', 'qrSection', 'printFirstHolding', 'scheduleResultReset',
+    'refreshPanelSolo', 'applyStageAspect', 'syncResultTheme', 'runResultTimerBar', 'resultTimer',
+    html.slice(a, b) + '; return { qrPopDrawPhoto, qrPopEnd, qrPop };'
+  )(
+    { getElementById: (id) => (id === 'qrPopPhoto' ? qpc : id === 'qrPopOv' ? ov : null), body: { classList: { add() {}, remove() {} } } },
+    { innerWidth: 810, innerHeight: 1080, devicePixelRatio: 2, addEventListener() {} },
+    preview, () => true, (cv) => { cv.width = 0; cv.height = 0; },
+    true, 'result', false, 3, { parentNode: null }, false, () => {}, () => {}, () => {}, () => {}, () => {}, 0
+  );
+
+  api.qrPopDrawPhoto(true);
+  assert.equal(draws, 1, 'initial draw paints #qrPopPhoto once');
+  // 810*0.96=777.6, 1080*0.94=1015.2, a=2/3 -> w=676.8, h=1015.2 -> at dpr=1.5: pw=1015, ph=1523 (vs 1354x2030 at dpr=2)
+  assert.ok(qpc.width <= 1050 && qpc.height <= 1550, '3 GB iPad caps #qrPopPhoto to dpr<=1.5 (' + qpc.width + 'x' + qpc.height + ')');
+  api.qrPopDrawPhoto(false);
+  api.qrPopDrawPhoto(false);
+  assert.equal(draws, 1, 'unchanged 500ms interval ticks skip redundant GPU drawImage');
+  api.qrPopEnd();
+  assert.equal(qpc.width, 0, 'qrPopEnd releases #qrPopPhoto width');
+  assert.equal(qpc.height, 0, 'qrPopEnd releases #qrPopPhoto height');
+});
+
+test('booth.html & Swift: early flat release, GIF collision guard, temp canvas releases, and Swift autoreleasepool hygiene', () => {
+  assert.ok(/if \(needsFlatAfterBlob\) \{\s*flat\._pbFlatDone = releaseFlat;\s*\} else \{\s*\/\/ Release the flattened composite canvas[\s\S]*?pbReleaseCanvas\(flat\);/.test(html), 'uploadLayoutForQR frees flat canvas BEFORE base64 & pbSave IPC when master/cuts not needed');
+  assert.ok(/saveSoloPhotosAsync\(soloSessionNum, shotCanvases, \{ lazySource: true \}\)/.test(html), 'showQRForCurrentPhoto uses lazy solo saving on 3 GB iPads');
+  assert.ok(/if \(typeof pbSnapshotDeferredSoloShots === 'function'\)/.test(html), 'pbReleaseShotList snapshots pending lazy solo shots before zeroing');
+  assert.ok(/function showQRForCurrentGIF\(\)[\s\S]*?if \(IS_IOS_APP \|\| isLowRamIos\(\)\)[\s\S]*?_pbActiveSavePromise[\s\S]*?_pbLastPrintSentAt/.test(html), 'showQRForCurrentGIF yields to active composite save & print on iOS/low-RAM iPads');
+  assert.ok(/function shotThumb\(shot\)[\s\S]*?finally \{\s*pbReleaseCanvas\(t\);\s*\}/.test(html), 'shotThumb releases temp canvas');
+  assert.ok(/function shotReviewUrl\(shot, i\)[\s\S]*?finally \{\s*pbReleaseCanvas\(t\);\s*\}/.test(html), 'shotReviewUrl releases temp canvas');
+  assert.ok(/async function printExtraSheet\(sec\)[\s\S]*?finally \{\s*pbReleaseCanvas\(c\);\s*\}/.test(html), 'printExtraSheet releases sheet canvas');
+  assert.ok(/helperPages\.forEach\(\(hc, idx\) => \{ if \(hc && hc !== pages\[idx\]\) pbReleaseCanvas\(hc\); \}\);/.test(html), 'printViaHelper releases receipt gray temp canvases');
+  assert.ok(/let outcome: DriveOutcome = autoreleasepool \{/.test(localSwift), 'PBLocal.drive isolates base64/JSON/disk write inside tight autoreleasepool');
+  assert.ok(/let req: URLRequest = autoreleasepool \{[\s\S]*?r\.httpBody = b\.data\(using: \.utf8\)/.test(vcSwift), 'ViewController.handleLanHttpRequest scopes POST UTF-8 encoding inside autoreleasepool');
+  assert.ok(/let sentBytes: Int = autoreleasepool \{[\s\S]*?fh\.readData\(ofLength: chunkSize\)/.test(shareSwift), 'LocalShareServer.sendFileResponse wraps per-chunk FileHandle reads in autoreleasepool');
+});
+
 for (const { name, fn } of asyncQueue) {
   try {
     await fn();

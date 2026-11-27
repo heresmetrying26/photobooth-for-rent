@@ -334,77 +334,102 @@ class PBLocal {
     // MARK: - Drive Save Operation (window.__PBLocal.drive)
 
     func drive(body: String) -> String {
-        guard let data = body.data(using: .utf8),
-              let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: Any] else {
-            return jsonErr("Bad request")
+        // Parse JSON, decode base64, and write to disk inside a tight autoreleasepool so the multi-megabyte
+        // UTF-8 body, parsed NSDictionary, base64 NSString, and decoded JPEG Data are all released BEFORE
+        // guest-code metadata indexing and Apple Photos Library import begin (critical on 3 GB iPads).
+        enum DriveOutcome {
+            case earlyReturn(String)
+            case saved(folderSlug: String, folderUrl: String, shownName: String, dirPath: String, candidate: String, destFile: URL, guestCode: String?)
         }
 
-        let folder = folderFor(folderKey: dict["folderKey"] as? String, subfolder: dict["subfolder"] as? String)
-        let dir = dirOf(folder: folder)
-        let folderUrl = "pb4u-local:\(folder.slug)"
-        let shownName = folder.sub.isEmpty ? folder.name : "\(folder.name) / \(folder.sub)"
+        let outcome: DriveOutcome = autoreleasepool {
+            guard let data = body.data(using: .utf8),
+                  let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: Any] else {
+                return .earlyReturn(jsonErr("Bad request"))
+            }
 
-        if let resolveOnly = dict["resolveOnly"] as? Bool, resolveOnly {
+            let folder = folderFor(folderKey: dict["folderKey"] as? String, subfolder: dict["subfolder"] as? String)
+            let dir = dirOf(folder: folder)
+            let folderUrl = "pb4u-local:\(folder.slug)"
+            let shownName = folder.sub.isEmpty ? folder.name : "\(folder.name) / \(folder.sub)"
+
+            if let resolveOnly = dict["resolveOnly"] as? Bool, resolveOnly {
+                return .earlyReturn(jsonStr([
+                    "ok": true,
+                    "folderUrl": folderUrl,
+                    "folderName": shownName,
+                    "nextSessionNumber": nextSessionNumber(in: dir),
+                    "folderPath": dir.path
+                ]))
+            }
+
+            guard let b64 = dict["imageBase64"] as? String, !b64.isEmpty,
+                  let imgData = Data(base64Encoded: b64, options: .ignoreUnknownCharacters), !imgData.isEmpty else {
+                return .earlyReturn(jsonErr("No photo data"))
+            }
+
+            var rawName = safeName(dict["filename"] as? String)
+            if rawName.isEmpty { rawName = "photo-\(Int64(Date().timeIntervalSince1970 * 1000)).jpg" }
+            let extRegex = "\\.(jpe?g|png|webp|gif|mp4|webm)$"
+            if rawName.range(of: extRegex, options: [.regularExpression, .caseInsensitive]) == nil {
+                rawName += ".jpg"
+            }
+
+            let cat = categoryOf(rawName)
+            let targetDir = dir.appendingPathComponent(cat)
+            try? FileManager.default.createDirectory(at: targetDir, withIntermediateDirectories: true)
+
+            var candidate = rawName
+            var idx = 2
+            lock.lock()
+            while FileManager.default.fileExists(atPath: targetDir.appendingPathComponent(candidate).path) ||
+                  FileManager.default.fileExists(atPath: dir.appendingPathComponent(candidate).path) {
+                let base = (rawName as NSString).deletingPathExtension
+                let ext = (rawName as NSString).pathExtension
+                candidate = "\(base) (\(idx)).\(ext)"
+                idx += 1
+            }
+            let destFile = targetDir.appendingPathComponent(candidate)
+            do {
+                try imgData.write(to: destFile)
+            } catch {
+                lock.unlock()
+                return .earlyReturn(jsonErr("Write failed: \(error.localizedDescription)"))
+            }
+            lock.unlock()
+
+            return .saved(
+                folderSlug: folder.slug,
+                folderUrl: folderUrl,
+                shownName: shownName,
+                dirPath: dir.path,
+                candidate: candidate,
+                destFile: destFile,
+                guestCode: dict["guestCode"] as? String
+            )
+        }
+
+        switch outcome {
+        case .earlyReturn(let reply):
+            return reply
+        case .saved(let slug, let folderUrl, let shownName, let dirPath, let candidate, let destFile, let guestCode):
+            noteGuestFile(code: guestCode, slug: slug, file: candidate)
+
+            // Save photos, animated GIFs, and videos directly to Apple Photos Library
+            saveToPhotosLibrary(fileUrl: destFile)
+
             return jsonStr([
                 "ok": true,
+                "fileId": "\(slug)/\(candidate)",
+                "downloadUrl": "pb4u-local:\(slug)/\(candidate)",
                 "folderUrl": folderUrl,
                 "folderName": shownName,
-                "nextSessionNumber": nextSessionNumber(in: dir),
-                "folderPath": dir.path
+                "folderPath": dirPath,
+                "filename": candidate,
+                "url": "/e/\(slug)/f/\(candidate)",
+                "pageUrl": "/e/\(slug)/p/\(candidate)"
             ])
         }
-
-        guard let b64 = dict["imageBase64"] as? String, !b64.isEmpty,
-              let imgData = Data(base64Encoded: b64, options: .ignoreUnknownCharacters), !imgData.isEmpty else {
-            return jsonErr("No photo data")
-        }
-
-        var rawName = safeName(dict["filename"] as? String)
-        if rawName.isEmpty { rawName = "photo-\(Int64(Date().timeIntervalSince1970 * 1000)).jpg" }
-        let extRegex = "\\.(jpe?g|png|webp|gif|mp4|webm)$"
-        if rawName.range(of: extRegex, options: [.regularExpression, .caseInsensitive]) == nil {
-            rawName += ".jpg"
-        }
-
-        let cat = categoryOf(rawName)
-        let targetDir = dir.appendingPathComponent(cat)
-        try? FileManager.default.createDirectory(at: targetDir, withIntermediateDirectories: true)
-
-        var candidate = rawName
-        var idx = 2
-        lock.lock()
-        while FileManager.default.fileExists(atPath: targetDir.appendingPathComponent(candidate).path) ||
-              FileManager.default.fileExists(atPath: dir.appendingPathComponent(candidate).path) {
-            let base = (rawName as NSString).deletingPathExtension
-            let ext = (rawName as NSString).pathExtension
-            candidate = "\(base) (\(idx)).\(ext)"
-            idx += 1
-        }
-        let destFile = targetDir.appendingPathComponent(candidate)
-        do {
-            try imgData.write(to: destFile)
-        } catch {
-            lock.unlock()
-            return jsonErr("Write failed: \(error.localizedDescription)")
-        }
-        lock.unlock()
-
-        noteGuestFile(code: dict["guestCode"] as? String, slug: folder.slug, file: candidate)
-
-        // Save photos, animated GIFs, and videos directly to Apple Photos Library
-        saveToPhotosLibrary(fileUrl: destFile)
-
-        return jsonStr([
-            "ok": true,
-            "fileId": "\(folder.slug)/\(candidate)",
-            "downloadUrl": "pb4u-local:\(folder.slug)/\(candidate)",
-            "folderUrl": folderUrl,
-            "folderName": shownName,
-            "folderPath": dir.path,
-            "filename": candidate,
-            "url": "/e/\(folder.slug)/f/\(candidate)",
-            "pageUrl": "/e/\(folder.slug)/p/\(candidate)"
-        ])
     }
 
     struct SavedVideoResult {

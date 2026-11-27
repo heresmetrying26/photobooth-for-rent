@@ -33,7 +33,11 @@ if (-not ('PB4U.K32' -as [type])) {
 [DllImport("kernel32.dll")] public static extern bool GlobalUnlock(IntPtr h);
 [DllImport("kernel32.dll")] public static extern UIntPtr GlobalSize(IntPtr h);
 [DllImport("kernel32.dll")] public static extern IntPtr GlobalFree(IntPtr h);
+[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint esFlags);
 '@ -Name K32 -Namespace PB4U
+}
+if ($env:PB4U_PREVENT_SLEEP -eq '1') {
+  try { [void][PB4U.K32]::SetThreadExecutionState([uint32]2147483649) } catch { }
 }
 
 function Send-Frame($obj) {
@@ -396,7 +400,7 @@ while ($true) {
  * Creates a persistent warm Windows .NET print worker controller.
  * Safe to instantiate on any OS (all operations fail cleanly with unsupported on non-Windows).
  */
-export function createWinPrintWorker({ logger = () => { }, bootTimeoutMs = 25000 } = {}) {
+export function createWinPrintWorker({ logger = () => { }, bootTimeoutMs = 25000, preventSleep = false } = {}) {
   let proc = null;
   let scriptDir = '';
   let starting = null;
@@ -468,7 +472,8 @@ export function createWinPrintWorker({ logger = () => { }, bootTimeoutMs = 25000
       const markReady = () => { if (!readyDone) { readyDone = true; readyResolve(); } };
       const failReady = (err) => { if (!readyDone) { readyDone = true; readyReject(err); } };
 
-      const child = spawn('powershell.exe', [...PS_ARGS, '-File', ps1], { windowsHide: true });
+      const childEnv = preventSleep ? { ...process.env, PB4U_PREVENT_SLEEP: '1' } : process.env;
+      const child = spawn('powershell.exe', [...PS_ARGS, '-File', ps1], { windowsHide: true, env: childEnv });
       proc = child;
       scriptDir = dir;
       buf = '';

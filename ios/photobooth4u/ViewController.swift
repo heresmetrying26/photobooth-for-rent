@@ -3,6 +3,7 @@ import WebKit
 import AVFoundation
 import CryptoKit
 import Network
+import NetworkExtension
 import ImageIO
 
 /**
@@ -42,6 +43,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     private var loadWatchdogWorkItem: DispatchWorkItem?
     private var livenessCheckId = 0
     private var isSpinArmOpen = false
+    private var isLanQrOpen = false
     private var airPrintBusy = false
     private var airPrintQueue: [(jobName: String, ptW: Double, ptH: Double, pdfUrl: URL)] = []
     // Photo saves run here, one at a time and off the main thread, so the camera picture and the screen keep moving.
@@ -59,6 +61,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     private let tcpPrintersKey = "pb4u_tcp_printers"
     private var netAddNote = ""
     private let netAddNoteLock = NSLock()
+    private let lanHttpLock = NSLock()
+    private var _lanStationSession: URLSession?
 
     override var prefersStatusBarHidden: Bool { return true }
     override var prefersHomeIndicatorAutoHidden: Bool { return true }
@@ -123,6 +127,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         checkinTimer?.invalidate()
         navRetryWorkItem?.cancel()
         loadWatchdogWorkItem?.cancel()
+        _lanStationSession?.invalidateAndCancel()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -316,6 +321,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         userContent.add(self, name: "pbSave")
         userContent.add(self, name: "pbCam")
         userContent.add(self, name: "pbSpinArm")
+        userContent.add(self, name: "pbLanHttp")
+        userContent.add(self, name: "pbScanQr")
+        userContent.add(self, name: "pbJoinWifi")
 
         let bridgeJs = """
         (function(){
@@ -612,6 +620,95 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
               setCustomLut: function(opts) {
                 try { window.webkit.messageHandlers.pbCam.postMessage({ id: 0, op: 'customLut', args: opts || {} }); } catch (e) {}
               }
+            };
+          })();
+
+          // Wi-Fi-only native HTTP bridge for Offline Laptop Print Station (allowsCellularAccess = false, zero CORS preflight).
+          (function() {
+            var lanPend = {}, lanSeq = 0;
+            window.__pbLanHttpResolve = function(id, obj) {
+              var f = lanPend[id];
+              if (f) { delete lanPend[id]; f(obj || { ok: false, status: 0, text: '', error: 'No response' }); }
+            };
+            window.__PBLanHttp = {
+              request: function(opts) {
+                return new Promise(function(resolve) {
+                  var o = opts || {};
+                  var id = ++lanSeq;
+                  var tMs = Math.max(300, Math.min(60000, Number(o.timeoutMs) || 8000));
+                  var timer = setTimeout(function() {
+                    if (lanPend[id]) {
+                      delete lanPend[id];
+                      resolve({ ok: false, status: 0, text: '', timeout: true, error: 'Timed out' });
+                    }
+                  }, tMs + 4000);
+                  lanPend[id] = function(res) { clearTimeout(timer); resolve(res); };
+                  try {
+                    window.webkit.messageHandlers.pbLanHttp.postMessage({
+                      id: id,
+                      url: String(o.url || ''),
+                      method: String(o.method || 'GET'),
+                      headers: (o.headers && typeof o.headers === 'object') ? o.headers : {},
+                      body: (typeof o.body === 'string') ? o.body : '',
+                      timeoutMs: tMs
+                    });
+                  } catch (e) {
+                    clearTimeout(timer);
+                    delete lanPend[id];
+                    resolve({ ok: false, status: 0, text: '', error: 'Bridge unavailable' });
+                  }
+                });
+              }
+            };
+
+            var qrPend = {}, qrSeq = 0;
+            window.__pbScanQrResolve = function(id, obj) {
+              var f = qrPend[id];
+              if (f) { delete qrPend[id]; f(obj || { ok: false, cancelled: true }); }
+            };
+            window.__PBLanScanQr = function(promptText) {
+              return new Promise(function(resolve) {
+                var id = ++qrSeq;
+                qrPend[id] = resolve;
+                try {
+                  window.webkit.messageHandlers.pbScanQr.postMessage({
+                    id: id,
+                    prompt: String(promptText || 'Point camera at Laptop Print Station QR')
+                  });
+                } catch (e) {
+                  delete qrPend[id];
+                  resolve({ ok: false, error: 'QR scanner unavailable' });
+                }
+              });
+            };
+
+            var wifiPend = {}, wifiSeq = 0;
+            window.__pbJoinWifiResolve = function(id, obj) {
+              var f = wifiPend[id];
+              if (f) { delete wifiPend[id]; f(obj || { ok: false, error: 'Wi-Fi join failed' }); }
+            };
+            window.__PBJoinWifi = function(ssid, pass) {
+              return new Promise(function(resolve) {
+                var id = ++wifiSeq;
+                var timer = setTimeout(function() {
+                  if (wifiPend[id]) {
+                    delete wifiPend[id];
+                    resolve({ ok: false, timeout: true, fallbackSettings: true, error: 'Timed out waiting for Wi-Fi switch.' });
+                  }
+                }, 22000);
+                wifiPend[id] = function(res) { clearTimeout(timer); resolve(res); };
+                try {
+                  window.webkit.messageHandlers.pbJoinWifi.postMessage({
+                    id: id,
+                    ssid: String(ssid || ''),
+                    pass: String(pass || '')
+                  });
+                } catch (e) {
+                  clearTimeout(timer);
+                  delete wifiPend[id];
+                  resolve({ ok: false, fallbackSettings: true, error: 'Wi-Fi auto-join unavailable.' });
+                }
+              });
             };
           })();
 
@@ -1177,6 +1274,249 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             }
             self.present(vc, animated: true)
         }
+    }
+
+    // MARK: - Wi-Fi-Only LAN Print Station HTTP Bridge & QR Scanner
+
+    private func getLanStationSession() -> URLSession {
+        lanHttpLock.lock()
+        defer { lanHttpLock.unlock() }
+        if let existing = _lanStationSession { return existing }
+        let cfg = URLSessionConfiguration.ephemeral
+        cfg.allowsCellularAccess = false
+        cfg.waitsForConnectivity = false
+        cfg.requestCachePolicy = .reloadIgnoringLocalCacheData
+        cfg.urlCache = nil
+        cfg.httpShouldSetCookies = false
+        cfg.httpCookieStorage = nil
+        cfg.httpMaximumConnectionsPerHost = 6
+        let q = OperationQueue()
+        q.name = "com.photobooth4u.lanstation.http"
+        q.maxConcurrentOperationCount = 8
+        let s = URLSession(configuration: cfg, delegate: nil, delegateQueue: q)
+        _lanStationSession = s
+        return s
+    }
+
+    private func isAllowedLanStationUrl(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == "http" else { return false }
+        let port = url.port ?? 80
+        guard (47777...47797).contains(port) else { return false }
+        let path = url.path
+        guard path == "/lan-station" || path.hasPrefix("/lan-station/") else { return false }
+        guard let host = url.host else { return false }
+        let parts = host.split(separator: ".", omittingEmptySubsequences: false)
+        guard parts.count == 4 else { return false }
+        var octs: [Int] = []
+        for p in parts {
+            guard let v = Int(p), v >= 0, v <= 255 else { return false }
+            octs.append(v)
+        }
+        if octs[0] == 192 && octs[1] == 168 { return true }
+        if octs[0] == 10 { return true }
+        if octs[0] == 172 && octs[1] >= 16 && octs[1] <= 31 { return true }
+        return false
+    }
+
+    private func safeJsJson(_ payload: [String: Any], fallback: String) -> String {
+        let raw = (try? JSONSerialization.data(withJSONObject: payload, options: []))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? fallback
+        return raw
+            .replacingOccurrences(of: "\u{2028}", with: "\\u2028")
+            .replacingOccurrences(of: "\u{2029}", with: "\\u2029")
+    }
+
+    private func resolveLanHttp(id: Int, payload: [String: Any]) {
+        guard id != 0 else { return }
+        let json = safeJsJson(payload, fallback: "{\"ok\":false,\"status\":0,\"text\":\"\",\"error\":\"Encode error\"}")
+        DispatchQueue.main.async { [weak self] in
+            self?.webView?.evaluateJavaScript("window.__pbLanHttpResolve && window.__pbLanHttpResolve(\(id), \(json));", completionHandler: nil)
+        }
+    }
+
+    private func handleLanHttpRequest(dict: [String: Any]) {
+        let id = (dict["id"] as? NSNumber)?.intValue ?? 0
+        guard id != 0 else { return }
+        let urlStr = (dict["url"] as? String) ?? ""
+        guard let url = URL(string: urlStr), isAllowedLanStationUrl(url) else {
+            resolveLanHttp(id: id, payload: ["ok": false, "status": 0, "text": "", "error": "Invalid LAN Print Station address."])
+            return
+        }
+        let rawMethod = ((dict["method"] as? String) ?? "GET").uppercased()
+        let method = (rawMethod == "POST") ? "POST" : "GET"
+        let timeoutMs = max(300, min(60000, (dict["timeoutMs"] as? NSNumber)?.intValue ?? 8000))
+        let timeoutSec = TimeInterval(timeoutMs) / 1000.0
+        var safeHeaders: [(String, String)] = []
+        if let hdrs = dict["headers"] as? [String: Any] {
+            for (k, v) in hdrs {
+                let lk = k.lowercased()
+                if lk == "content-type" || lk == "x-pb-pin" || lk == "accept" {
+                    safeHeaders.append((k, String(describing: v)))
+                }
+            }
+        }
+        let rawBody: String? = (method == "POST") ? (dict["body"] as? String) : nil
+
+        // Encode POST payload & start dataTask off the main thread so large print jobs never hitch the UI.
+        // rawBody is only held during synchronous URLRequest construction inside autoreleasepool, not across the upload.
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            let req: URLRequest = autoreleasepool {
+                var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeoutSec)
+                r.httpMethod = method
+                r.allowsCellularAccess = false
+                for (k, v) in safeHeaders {
+                    r.setValue(v, forHTTPHeaderField: k)
+                }
+                if let b = rawBody, !b.isEmpty {
+                    r.httpBody = b.data(using: .utf8)
+                }
+                return r
+            }
+
+            let task = self.getLanStationSession().dataTask(with: req) { [weak self] data, response, error in
+                guard let self = self else { return }
+                if let err = error as NSError? {
+                    let isTimeout = (err.domain == NSURLErrorDomain && err.code == NSURLErrorTimedOut)
+                    self.resolveLanHttp(id: id, payload: [
+                        "ok": false,
+                        "status": 0,
+                        "text": "",
+                        "timeout": isTimeout,
+                        "error": err.localizedDescription
+                    ])
+                    return
+                }
+                let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                let text: String = autoreleasepool {
+                    guard let d = data, !d.isEmpty else { return "" }
+                    let slice = d.count > 262_144 ? d.prefix(262_144) : d
+                    return String(data: slice, encoding: .utf8) ?? ""
+                }
+                self.resolveLanHttp(id: id, payload: [
+                    "ok": (status >= 200 && status < 300),
+                    "status": status,
+                    "text": text,
+                    "timeout": false,
+                    "error": ""
+                ])
+            }
+            task.resume()
+        }
+    }
+
+    private func resolveScanQr(id: Int, payload: [String: Any]) {
+        guard id != 0 else { return }
+        let json = safeJsJson(payload, fallback: "{\"ok\":false,\"cancelled\":true}")
+        DispatchQueue.main.async { [weak self] in
+            self?.webView?.evaluateJavaScript("window.__pbScanQrResolve && window.__pbScanQrResolve(\(id), \(json));", completionHandler: nil)
+        }
+    }
+
+    private func resolveJoinWifi(id: Int, payload: [String: Any]) {
+        guard id != 0 else { return }
+        let json = safeJsJson(payload, fallback: "{\"ok\":false,\"fallbackSettings\":true,\"error\":\"Encode error\"}")
+        DispatchQueue.main.async { [weak self] in
+            self?.webView?.evaluateJavaScript("window.__pbJoinWifiResolve && window.__pbJoinWifiResolve(\(id), \(json));", completionHandler: nil)
+        }
+    }
+
+    private func handleJoinWifi(dict: [String: Any]) {
+        let id = (dict["id"] as? NSNumber)?.intValue ?? 0
+        guard id != 0 else { return }
+        let ssid = ((dict["ssid"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let pass = (dict["pass"] as? String) ?? ""
+        guard !ssid.isEmpty, ssid.count <= 64 else {
+            resolveJoinWifi(id: id, payload: ["ok": false, "error": "Missing Wi-Fi network name."])
+            return
+        }
+        // Persistent hotspot join (joinOnce = false): forces iOS off regular Wi-Fi and keeps
+        // the iPad persistently locked to the laptop's Booth Wi-Fi across multi-hour events.
+        let cfg: NEHotspotConfiguration = pass.isEmpty
+            ? NEHotspotConfiguration(ssid: ssid)
+            : NEHotspotConfiguration(ssid: ssid, passphrase: pass, isWEP: false)
+        cfg.joinOnce = false
+        cfg.lifeTimeInDays = NSNumber(value: 7)
+        NEHotspotConfigurationManager.shared.apply(cfg) { [weak self] err in
+            guard let self = self else { return }
+            if let nsErr = err as NSError? {
+                if nsErr.domain == NEHotspotConfigurationErrorDomain {
+                    let code = NEHotspotConfigurationError(rawValue: nsErr.code)
+                    if code == .alreadyAssociated {
+                        self.resolveJoinWifi(id: id, payload: ["ok": true, "alreadyJoined": true, "ssid": ssid])
+                        return
+                    }
+                    if code == .userDenied {
+                        self.resolveJoinWifi(id: id, payload: ["ok": false, "cancelled": true, "ssid": ssid, "error": "Tapped Cancel on Join Wi-Fi prompt."])
+                        return
+                    }
+                }
+                // Missing hotspot-configuration entitlement (free sideload) or OS refusal -> clean Settings fallback.
+                self.resolveJoinWifi(id: id, payload: [
+                    "ok": false,
+                    "fallbackSettings": true,
+                    "ssid": ssid,
+                    "error": nsErr.localizedDescription
+                ])
+                return
+            }
+            self.resolveJoinWifi(id: id, payload: ["ok": true, "ssid": ssid])
+        }
+    }
+
+    private func openLanQrScanner(id: Int, promptText: String) {
+        if isLanQrOpen || (presentedViewController is LanQrScannerViewController) {
+            resolveScanQr(id: id, payload: ["ok": false, "cancelled": true])
+            return
+        }
+        let presentScanner: () -> Void = { [weak self] in
+            guard let self = self else { return }
+            NativeCameraBridge.shared.stop { [weak self] in
+                guard let self = self else { return }
+                let vc = LanQrScannerViewController(promptText: promptText)
+                vc.modalPresentationStyle = .fullScreen
+                vc.onResult = { [weak self] scanned, errMsg in
+                    guard let self = self else { return }
+                    self.isLanQrOpen = false
+                    if let val = scanned, !val.isEmpty {
+                        self.resolveScanQr(id: id, payload: ["ok": true, "value": val])
+                    } else if let e = errMsg, !e.isEmpty {
+                        self.resolveScanQr(id: id, payload: ["ok": false, "error": e])
+                    } else {
+                        self.resolveScanQr(id: id, payload: ["ok": false, "cancelled": true])
+                    }
+                }
+                if let presented = self.presentedViewController {
+                    presented.dismiss(animated: false) { [weak self] in
+                        guard let self = self else { return }
+                        self.present(vc, animated: true)
+                    }
+                } else {
+                    self.present(vc, animated: true)
+                }
+            }
+        }
+        let camStatus = AVCaptureDevice.authorizationStatus(for: .video)
+        if camStatus == .denied || camStatus == .restricted {
+            resolveScanQr(id: id, payload: ["ok": false, "error": "Camera permission is off. Allow Camera in iPad Settings to scan QR codes."])
+            return
+        }
+        isLanQrOpen = true
+        if camStatus == .notDetermined {
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    if granted {
+                        presentScanner()
+                    } else {
+                        self.isLanQrOpen = false
+                        self.resolveScanQr(id: id, payload: ["ok": false, "error": "Camera permission is off. Allow Camera in iPad Settings to scan QR codes."])
+                    }
+                }
+            }
+            return
+        }
+        presentScanner()
     }
 
     @objc private func dismissGateKeyboard() {
@@ -2185,7 +2525,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 }
             }
 
-            let spinArmBusy = isSpinArmOpen || (presentedViewController is SpinArmViewController)
+            let spinArmBusy = isSpinArmOpen || isLanQrOpen || (presentedViewController is SpinArmViewController) || (presentedViewController is LanQrScannerViewController)
 
             switch op {
             case "list":
@@ -2277,6 +2617,14 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             }
             PBLocal.shared.spinContext = ctx
             openSpinArmCamera()
+        } else if message.name == "pbLanHttp", let dict = message.body as? [String: Any] {
+            handleLanHttpRequest(dict: dict)
+        } else if message.name == "pbScanQr", let dict = message.body as? [String: Any] {
+            let id = (dict["id"] as? NSNumber)?.intValue ?? 0
+            let promptText = (dict["prompt"] as? String) ?? "Point camera at Laptop Print Station QR"
+            openLanQrScanner(id: id, promptText: promptText)
+        } else if message.name == "pbJoinWifi", let dict = message.body as? [String: Any] {
+            handleJoinWifi(dict: dict)
         }
     }
 
@@ -3228,5 +3576,246 @@ enum IppNet {
         _ = done.wait(timeout: .now() + 6)
         conn.cancel()
         return box.address
+    }
+}
+
+// MARK: - Lightweight Native QR Scanner (Offline Print Station 1-Scan Pairing)
+
+private final class LanQrScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
+
+    var onResult: ((String?, String?) -> Void)?
+
+    private let promptText: String
+    private let session = AVCaptureSession()
+    private let sessionQueue = DispatchQueue(label: "com.photobooth4u.lan.qr", qos: .userInitiated)
+    private var previewLayer: AVCaptureVideoPreviewLayer?
+    private var currentPosition: AVCaptureDevice.Position = .back
+    private var didFinish = false
+
+    init(promptText: String) {
+        self.promptText = promptText
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        self.promptText = "Point camera at Laptop Print Station QR"
+        super.init(coder: coder)
+    }
+
+    override var prefersStatusBarHidden: Bool { return true }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .black
+
+        let preview = AVCaptureVideoPreviewLayer(session: session)
+        preview.videoGravity = .resizeAspectFill
+        preview.frame = view.bounds
+        view.layer.addSublayer(preview)
+        previewLayer = preview
+
+        let reticle = UIView()
+        reticle.layer.borderColor = UIColor(red: 0.18, green: 0.65, blue: 0.42, alpha: 1.0).cgColor
+        reticle.layer.borderWidth = 3.0
+        reticle.layer.cornerRadius = 18.0
+        reticle.backgroundColor = .clear
+        reticle.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(reticle)
+
+        let promptWrap = UIView()
+        promptWrap.backgroundColor = UIColor.black.withAlphaComponent(0.72)
+        promptWrap.layer.cornerRadius = 12.0
+        promptWrap.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(promptWrap)
+
+        let prompt = UILabel()
+        prompt.text = promptText
+        prompt.font = UIFont.systemFont(ofSize: 15, weight: .bold)
+        prompt.textColor = .white
+        prompt.textAlignment = .center
+        prompt.numberOfLines = 0
+        prompt.translatesAutoresizingMaskIntoConstraints = false
+        promptWrap.addSubview(prompt)
+
+        let controls = UIStackView()
+        controls.axis = .horizontal
+        controls.spacing = 12
+        controls.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(controls)
+
+        let flipBtn = UIButton(type: .system)
+        flipBtn.setTitle("Flip Camera", for: .normal)
+        flipBtn.setTitleColor(.white, for: .normal)
+        flipBtn.titleLabel?.font = UIFont.systemFont(ofSize: 15, weight: .bold)
+        flipBtn.backgroundColor = UIColor.black.withAlphaComponent(0.75)
+        flipBtn.layer.cornerRadius = 22.0
+        flipBtn.layer.borderWidth = 1.0
+        flipBtn.layer.borderColor = UIColor.white.withAlphaComponent(0.3).cgColor
+        flipBtn.contentEdgeInsets = UIEdgeInsets(top: 10, left: 18, bottom: 10, right: 18)
+        flipBtn.addTarget(self, action: #selector(flipCameraTapped), for: .touchUpInside)
+        controls.addArrangedSubview(flipBtn)
+
+        let cancelBtn = UIButton(type: .system)
+        cancelBtn.setTitle("Cancel", for: .normal)
+        cancelBtn.setTitleColor(.white, for: .normal)
+        cancelBtn.titleLabel?.font = UIFont.systemFont(ofSize: 15, weight: .bold)
+        cancelBtn.backgroundColor = UIColor(red: 0.79, green: 0.24, blue: 0.15, alpha: 0.92)
+        cancelBtn.layer.cornerRadius = 22.0
+        cancelBtn.contentEdgeInsets = UIEdgeInsets(top: 10, left: 22, bottom: 10, right: 22)
+        cancelBtn.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
+        controls.addArrangedSubview(cancelBtn)
+
+        NSLayoutConstraint.activate([
+            reticle.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            reticle.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -16),
+            reticle.widthAnchor.constraint(equalToConstant: 250),
+            reticle.heightAnchor.constraint(equalToConstant: 250),
+
+            promptWrap.bottomAnchor.constraint(equalTo: reticle.topAnchor, constant: -20),
+            promptWrap.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            promptWrap.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 24),
+            promptWrap.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -24),
+
+            prompt.topAnchor.constraint(equalTo: promptWrap.topAnchor, constant: 10),
+            prompt.bottomAnchor.constraint(equalTo: promptWrap.bottomAnchor, constant: -10),
+            prompt.leadingAnchor.constraint(equalTo: promptWrap.leadingAnchor, constant: 16),
+            prompt.trailingAnchor.constraint(equalTo: promptWrap.trailingAnchor, constant: -16),
+
+            controls.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -24),
+            controls.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            flipBtn.heightAnchor.constraint(equalToConstant: 44),
+            cancelBtn.heightAnchor.constraint(equalToConstant: 44)
+        ])
+
+        startSession(position: .back)
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        previewLayer?.frame = view.bounds
+        updatePreviewOrientation()
+    }
+
+    private func updatePreviewOrientation() {
+        guard let conn = previewLayer?.connection, conn.isVideoOrientationSupported,
+              let io = view.window?.windowScene?.interfaceOrientation else { return }
+        switch io {
+        case .landscapeLeft: conn.videoOrientation = .landscapeLeft
+        case .landscapeRight: conn.videoOrientation = .landscapeRight
+        case .portraitUpsideDown: conn.videoOrientation = .portraitUpsideDown
+        default: conn.videoOrientation = .portrait
+        }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        stopAndCleanupSession()
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        if !didFinish && (isBeingDismissed || presentingViewController == nil) {
+            didFinish = true
+            let cb = onResult
+            onResult = nil
+            cb?(nil, nil)
+        }
+    }
+
+    private func finishWith(value: String?, error: String?) {
+        guard !didFinish else { return }
+        didFinish = true
+        stopAndCleanupSession()
+        let cb = onResult
+        onResult = nil
+        dismiss(animated: true) {
+            cb?(value, error)
+        }
+    }
+
+    private func pickDevice(for position: AVCaptureDevice.Position) -> AVCaptureDevice? {
+        if let dev = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position) {
+            return dev
+        }
+        let fallback: AVCaptureDevice.Position = (position == .back) ? .front : .back
+        if let dev = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: fallback) {
+            currentPosition = fallback
+            return dev
+        }
+        return AVCaptureDevice.default(for: .video)
+    }
+
+    private func startSession(position: AVCaptureDevice.Position) {
+        sessionQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.currentPosition = position
+            guard let device = self.pickDevice(for: position),
+                  let input = try? AVCaptureDeviceInput(device: device) else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.finishWith(value: nil, error: "No camera available to scan QR.")
+                }
+                return
+            }
+            self.session.beginConfiguration()
+            for oldIn in self.session.inputs { self.session.removeInput(oldIn) }
+            for oldOut in self.session.outputs { self.session.removeOutput(oldOut) }
+            if self.session.canAddInput(input) {
+                self.session.addInput(input)
+            }
+            let meta = AVCaptureMetadataOutput()
+            if self.session.canAddOutput(meta) {
+                self.session.addOutput(meta)
+                meta.setMetadataObjectsDelegate(self, queue: DispatchQueue.main)
+                if meta.availableMetadataObjectTypes.contains(.qr) {
+                    meta.metadataObjectTypes = [.qr]
+                }
+            }
+            self.session.commitConfiguration()
+            if !self.session.isRunning {
+                self.session.startRunning()
+            }
+            DispatchQueue.main.async { [weak self] in
+                self?.updatePreviewOrientation()
+            }
+        }
+    }
+
+    private func stopAndCleanupSession() {
+        sessionQueue.async { [weak self] in
+            guard let self = self else { return }
+            if self.session.isRunning {
+                self.session.stopRunning()
+            }
+            self.session.beginConfiguration()
+            for oldIn in self.session.inputs { self.session.removeInput(oldIn) }
+            for oldOut in self.session.outputs { self.session.removeOutput(oldOut) }
+            self.session.commitConfiguration()
+        }
+    }
+
+    @objc private func flipCameraTapped() {
+        guard !didFinish else { return }
+        sessionQueue.async { [weak self] in
+            guard let self = self else { return }
+            let next: AVCaptureDevice.Position = (self.currentPosition == .back) ? .front : .back
+            self.startSession(position: next)
+        }
+    }
+
+    func metadataOutput(
+        _ output: AVCaptureMetadataOutput,
+        didOutput metadataObjects: [AVMetadataObject],
+        from connection: AVCaptureConnection
+    ) {
+        guard !didFinish else { return }
+        guard let obj = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
+              let val = obj.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !val.isEmpty else { return }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        finishWith(value: val, error: nil)
+    }
+
+    @objc private func cancelTapped() {
+        finishWith(value: nil, error: nil)
     }
 }

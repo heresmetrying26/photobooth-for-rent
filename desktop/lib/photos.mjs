@@ -1909,6 +1909,19 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
 .qr-frame img{display:block;width:200px;height:200px}
 .btn{display:inline-block;padding:13px 24px;border-radius:12px;background:#C93D27;color:#fff;font-weight:800;text-decoration:none;font-size:14px;border:0;cursor:pointer;width:100%;max-width:260px;margin-bottom:8px;text-align:center;font-family:inherit}
 .btn.alt{background:rgba(255,255,255,0.08);color:#fff}
+.link-box{width:100%;max-width:260px;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:10px;padding:6px 8px;margin:-10px 0 10px}
+.link-box input{flex:1;min-width:0;background:transparent;border:0;color:#F5F1EA;font:600 11px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;outline:none}
+.link-copy{flex-shrink:0;border:0;border-radius:7px;background:rgba(255,255,255,0.14);color:#fff;font:700 11px/1 inherit;padding:6px 9px;cursor:pointer}
+.share-box{width:100%;max-width:260px;display:flex;flex-direction:column;gap:8px;margin:4px 0 8px}
+.share-row{display:flex;gap:6px;width:100%}
+.share-row input{flex:1;min-width:0;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.07);color:#fff;border-radius:10px;padding:9px 10px;font-size:13px;font-family:inherit;outline:none}
+.share-row input:focus{border-color:#C93D27}
+.share-send{flex-shrink:0;border:0;border-radius:10px;padding:0 12px;background:rgba(255,255,255,0.16);color:#fff;font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit}
+.share-send.wa{background:#1F8E4D}
+.share-msg{font-size:11.5px;color:#A49FA9;min-height:14px;line-height:1.35}
+.share-msg.ok{color:#4BD38B}
+.share-msg.err{color:#FF7B6B}
+.mode-btn{background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.16);color:#F5F1EA;font:700 11.5px/1 inherit;border-radius:99px;padding:6px 12px;cursor:pointer}
 .timer-bar{width:100%;max-width:260px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;margin-top:16px}
 .timer-bar i{display:block;height:100%;width:100%;background:#C93D27;transition:width .2s linear}
 .timer-text{font-size:11px;color:#7A7580;margin-top:6px}
@@ -1930,7 +1943,7 @@ ${QR_JS_CODE ? `<script>${QR_JS_CODE}</script>` : `<script src="/qr.js"></script
     <h1>${esc(evName)}</h1>
     <div class="badge">📱 Sharing Station</div>
   </div>
-  <div class="stat"><span class="pulse"></span><span id="stCount">Live</span></div>
+  <div class="stat"><button type="button" class="mode-btn" id="stModeBtn">Gallery</button><span class="pulse"></span><span id="stCount">Live</span></div>
 </header>
 
 <div class="controls" id="stControls">
@@ -1964,11 +1977,26 @@ ${QR_JS_CODE ? `<script>${QR_JS_CODE}</script>` : `<script src="/qr.js"></script
     <div class="modal-media" id="mMedia"></div>
     <div class="modal-share">
       <h2>Scan to save</h2>
-      <p>Point your phone’s camera at the QR code to open and save your photo.</p>
+      <p>Point your phone’s camera at the QR code or type the link below.</p>
       <div id="mSessionPills" class="session-pills" style="display:none"></div>
       <div class="qr-frame"><img id="mQr" alt="QR Code"></div>
+      <div class="link-box" id="mLinkBox">
+        <input type="text" id="mLinkInput" readonly aria-label="Direct share link">
+        <button type="button" class="link-copy" id="mCopyLink">Copy</button>
+      </div>
       <div class="qr-session-note" id="mQrNote" style="display:none;font-size:11px;color:#8E8A93;margin:-6px 0 10px;text-align:center">1 QR saves all session photos (print, GIF & solos)</div>
       <a class="btn" id="mDl" download>Save Photo</a>
+      <div class="share-box" id="mOnlineShare">
+        <div class="share-row">
+          <input type="tel" id="mWaInput" placeholder="WhatsApp (09xx...)" autocomplete="tel">
+          <button type="button" class="share-send wa" id="mWaBtn">WhatsApp</button>
+        </div>
+        <div class="share-row">
+          <input type="email" id="mMailInput" placeholder="Email (optional)" autocomplete="email">
+          <button type="button" class="share-send" id="mMailBtn">Send</button>
+        </div>
+        <div class="share-msg" id="mShareMsg"></div>
+      </div>
       <button type="button" class="btn alt" id="mDone">Done (Next guest)</button>
       <div class="timer-bar"><i id="mBar"></i></div>
       <div class="timer-text">Auto-closing in <span id="mSec">35</span>s</div>
@@ -1978,26 +2006,43 @@ ${QR_JS_CODE ? `<script>${QR_JS_CODE}</script>` : `<script src="/qr.js"></script
 
 <script>
 var SLUG = ${JSON.stringify(slug)};
-var files = [], currentFilter = 'all', activeItem = null, timerId = null, timeLeft = 35;
+var files = [], currentFilter = 'all', activeItem = null, activePageUrl = '', timerId = null, timeLeft = 35;
 // Default mode is pure LumaShare Session Mode (Standby + auto-pop current session only).
-// Only allow gallery grid if explicitly requested via ?gallery=1 or ?mode=gallery.
+// Guests/operators can also toggle Gallery Mode anytime via the header button or ?gallery=1.
 var isGalleryMode = /[?&](gallery=1|mode=gallery)\b/i.test(location.search);
 var privacyOnly = !isGalleryMode;
 var hasLoaded = false, lastKnownTop = null;
 var emptyPollCount = 0;
 
-if (isGalleryMode) {
-  document.getElementById('stControls').style.display = 'flex';
-  document.getElementById('stGrid').style.display = 'grid';
-  document.getElementById('standbyView').style.display = 'none';
-} else {
-  document.getElementById('stControls').style.display = 'none';
-  document.getElementById('stGrid').style.display = 'none';
-  document.getElementById('standbyView').style.display = 'flex';
+function applyStationViewMode() {
+  var modeBtn = document.getElementById('stModeBtn');
+  if (isGalleryMode) {
+    document.getElementById('stControls').style.display = 'flex';
+    document.getElementById('stGrid').style.display = 'grid';
+    document.getElementById('standbyView').style.display = 'none';
+    if (modeBtn) modeBtn.textContent = 'Standby';
+    render();
+  } else {
+    document.getElementById('stControls').style.display = 'none';
+    document.getElementById('stGrid').style.display = 'none';
+    document.getElementById('standbyView').style.display = 'flex';
+    if (modeBtn) modeBtn.textContent = 'Gallery';
+  }
+}
+applyStationViewMode();
+if (!isGalleryMode) {
   setTimeout(function() {
     var b = document.getElementById('wrongEventBar');
     if (b && !hasLoaded) b.style.display = 'block';
   }, 15000);
+}
+var stModeBtnEl = document.getElementById('stModeBtn');
+if (stModeBtnEl) {
+  stModeBtnEl.addEventListener('click', function() {
+    isGalleryMode = !isGalleryMode;
+    privacyOnly = !isGalleryMode;
+    applyStationViewMode();
+  });
 }
 
 function playChime() {
@@ -2111,6 +2156,15 @@ function openModal(it, sessionItems) {
   }
   dl.href = it.url + (it.url.indexOf('?') >= 0 ? '&dl=1' : '?dl=1');
   dl.setAttribute('download', it.name);
+  activePageUrl = pageUrl;
+  var linkIn = document.getElementById('mLinkInput');
+  var linkBox = document.getElementById('mLinkBox');
+  if (linkIn) linkIn.value = pageUrl ? pageUrl.replace(/^https?:\/\//i, '') : '';
+  if (linkBox) linkBox.style.display = pageUrl ? 'flex' : 'none';
+  var msgEl = document.getElementById('mShareMsg');
+  if (msgEl) { msgEl.textContent = ''; msgEl.className = 'share-msg'; }
+  var wIn = document.getElementById('mWaInput'); if (wIn) wIn.value = '';
+  var mIn = document.getElementById('mMailInput'); if (mIn) mIn.value = '';
   var qrData = makeQr(pageUrl);
   if (qrData) {
     qr.src = qrData;
@@ -2177,6 +2231,8 @@ function resetTimer() {
   bar.style.width = '100%';
   sec.textContent = '35';
   timerId = setInterval(function(){
+    var ae = document.activeElement;
+    if (ae && (ae.id === 'mWaInput' || ae.id === 'mMailInput' || ae.id === 'mLinkInput')) return;
     timeLeft--;
     sec.textContent = String(timeLeft);
     bar.style.width = Math.round((timeLeft / 35) * 100) + '%';
@@ -2186,6 +2242,75 @@ function resetTimer() {
     }
   }, 1000);
 }
+
+function normalizeWhatsAppPhone(raw) {
+  var digits = String(raw || '').replace(/[^0-9+]/g, '');
+  if (!digits) return '';
+  if (digits.charAt(0) === '+') digits = digits.slice(1);
+  else if (/^09\d{9}$/.test(digits)) digits = '63' + digits.slice(1);
+  else if (/^9\d{9}$/.test(digits)) digits = '63' + digits;
+  else if (digits.charAt(0) === '0') digits = digits.replace(/^0+/, '');
+  return /^\d{7,15}$/.test(digits) ? digits : '';
+}
+function setShareMsg(text, cls) {
+  var el = document.getElementById('mShareMsg');
+  if (!el) return;
+  el.textContent = text || '';
+  el.className = 'share-msg' + (cls ? ' ' + cls : '');
+}
+var mCopyLinkBtn = document.getElementById('mCopyLink');
+if (mCopyLinkBtn) {
+  mCopyLinkBtn.addEventListener('click', async function() {
+    resetTimer();
+    if (!activePageUrl) return;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(activePageUrl);
+      } else {
+        var inp = document.getElementById('mLinkInput');
+        if (inp) { inp.focus(); inp.select(); document.execCommand('copy'); }
+      }
+      setShareMsg('Link copied ✓', 'ok');
+    } catch (e) { setShareMsg('Select the link above to copy.', ''); }
+  });
+}
+var mWaBtn = document.getElementById('mWaBtn');
+if (mWaBtn) {
+  mWaBtn.addEventListener('click', function() {
+    resetTimer();
+    if (!activePageUrl) { setShareMsg('No link available yet.', 'err'); return; }
+    var phone = normalizeWhatsAppPhone(document.getElementById('mWaInput').value);
+    if (!phone) { setShareMsg('Enter a valid WhatsApp number (e.g. 09171234567).', 'err'); return; }
+    var evTitle = (document.querySelector('header h1') && document.querySelector('header h1').textContent) || '360 Video Booth';
+    var kind = activeItem && activeItem.kind === 'video' ? '360 video' : 'photo';
+    var msg = 'Here is your ' + kind + ' from ' + evTitle + ': ' + activePageUrl;
+    var isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+    var target = (isMob ? 'whatsapp://send?phone=' : 'https://wa.me/') + encodeURIComponent(phone) + (isMob ? '&text=' : '?text=') + encodeURIComponent(msg);
+    setShareMsg('Opening WhatsApp…', 'ok');
+    if (isMob) location.href = target;
+    else window.open(target, '_blank', 'noopener');
+  });
+}
+var mMailBtn = document.getElementById('mMailBtn');
+if (mMailBtn) {
+  mMailBtn.addEventListener('click', function() {
+    resetTimer();
+    if (!activePageUrl) { setShareMsg('No link available yet.', 'err'); return; }
+    var to = String(document.getElementById('mMailInput').value || '').trim();
+    if (!/^[^\s@<>"']+@[^\s@<>"']+\.[A-Za-z]{2,24}$/.test(to)) {
+      setShareMsg('Enter a valid email address.', 'err');
+      return;
+    }
+    var evTitle = (document.querySelector('header h1') && document.querySelector('header h1').textContent) || '360 Video Booth';
+    var kind = activeItem && activeItem.kind === 'video' ? '360 video' : 'photo';
+    location.href = 'mailto:' + encodeURIComponent(to) + '?subject=' + encodeURIComponent(evTitle + ' — Your ' + kind) + '&body=' + encodeURIComponent(activePageUrl);
+    setShareMsg('Opening Mail app…', 'ok');
+  });
+}
+var mWaInEl = document.getElementById('mWaInput');
+if (mWaInEl) mWaInEl.addEventListener('keydown', function(e) { if (e.key === 'Enter' && mWaBtn) mWaBtn.click(); });
+var mMailInEl = document.getElementById('mMailInput');
+if (mMailInEl) mMailInEl.addEventListener('keydown', function(e) { if (e.key === 'Enter' && mMailBtn) mMailBtn.click(); });
 
 document.getElementById('mClose').addEventListener('click', closeModal);
 document.getElementById('mDone').addEventListener('click', closeModal);
@@ -3058,6 +3183,8 @@ export function startShareServer() {
       if (i >= SHARE_PORTS.length) { sharePort = 0; resolve(0); return; }
       const port = SHARE_PORTS[i++];
       const s = http.createServer((req, res) => { handleShare(req, res).catch(() => { try { send(res, 500, 'text/plain', 'Error'); } catch { /* closed */ } }); });
+      s.requestTimeout = 120_000;
+      s.headersTimeout = 30_000;
       s.once('error', () => { try { s.close(); } catch { /* ignore */ } tryNext(); });
       s.listen(port, '0.0.0.0', () => { server = s; sharePort = port; attachBridgeUpgrade(s); resolve(port); });
     };

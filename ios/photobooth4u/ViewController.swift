@@ -169,6 +169,23 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         }
     }
 
+    private func hasSpin360Entitlement() -> Bool {
+        let st = AppLicence.shared.status()
+        guard st.ok,
+              let feat = st.payload?["feat"] as? [String: Any],
+              let ex = feat["extras"] as? [String: Any] else { return false }
+        return (ex["spin360"] as? NSNumber)?.boolValue ?? false
+    }
+
+    private func buildExtrasJsObject(from feat: [String: Any]) -> String {
+        let exObj = feat["extras"] as? [String: Any] ?? [:]
+        return ["vintage", "roving", "flipbook", "video", "spin360"].map { key in
+            let def = (key != "spin360")
+            let on = (exObj[key] as? NSNumber)?.boolValue ?? def
+            return "\(key):\(on ? "true" : "false")"
+        }.joined(separator: ",")
+    }
+
     private func pushAuthAndSyncEvent(eventName: String) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let wv = self.webView else { return }
@@ -177,13 +194,14 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             let st = AppLicence.shared.status()
             let feat = (st.payload?["feat"] as? [String: Any]) ?? [:]
             let arrangeOn = (feat["arrangePrintOpt"] as? NSNumber)?.boolValue ?? false
-            var authJs = "window.__PB=window.__PB||{};window.__PB.arrangePrintOpt=\(arrangeOn ? "true" : "false");"
+            let extrasJs = self.buildExtrasJsObject(from: feat)
+            var authJs = "window.__PB=window.__PB||{};window.__PB.arrangePrintOpt=\(arrangeOn ? "true" : "false");window.__PB.extras={\(extrasJs)};"
             if let lic = AppLicence.shared.currentLicenceString(), !lic.isEmpty,
                let data = try? JSONSerialization.data(withJSONObject: ["licence": lic, "mid": AppLicence.shared.machineId()], options: []),
                let json = String(data: data, encoding: .utf8) {
                 authJs += "window.__PB.appAuth=\(json);"
             }
-            let evJs = "window.dispatchEvent(new Event('pb-arrange-print-change'));" + (online ? "window.dispatchEvent(new Event('\(eventName)'));" : "")
+            let evJs = "window.dispatchEvent(new Event('pb-arrange-print-change'));window.dispatchEvent(new Event('pb-extras-change'));" + (online ? "window.dispatchEvent(new Event('\(eventName)'));" : "")
             wv.evaluateJavaScript("try{window.__pbIosOnline=\(flag);\(authJs)\(evJs)}catch(e){}", completionHandler: nil)
         }
     }
@@ -697,11 +715,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         let traditional = (feat["traditional"] as? NSNumber)?.boolValue ?? true
         let orientation = (feat["orientation"] as? String) ?? "either"
 
-        let exObj = feat["extras"] as? [String: Any] ?? [:]
-        let extrasJs = ["vintage", "roving", "flipbook", "video", "spin360"].map { key in
-            let on = (exObj[key] as? NSNumber)?.boolValue ?? true
-            return "\(key):\(on ? "true" : "false")"
-        }.joined(separator: ",")
+        let extrasJs = buildExtrasJsObject(from: feat)
 
         let expMs = (p["exp"] as? NSNumber)?.int64Value ?? 253402300799000
         let lifetime = (p["lifetime"] as? NSNumber)?.boolValue ?? false
@@ -1063,7 +1077,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         container.addSubview(spinArmBtn)
 
         let spinArmNote = UILabel()
-        spinArmNote.text = "Standalone 360 (PNG overlays & Sharing Station) or Laptop Desk · No licence needed"
+        spinArmNote.text = "Pairs via QR to Laptop 360 Desk · Standalone 360 off unless enabled in Admin"
         spinArmNote.font = UIFont.systemFont(ofSize: 12, weight: .medium)
         spinArmNote.textColor = UIColor(red: 0.42, green: 0.40, blue: 0.42, alpha: 1.0)
         spinArmNote.textAlignment = .center
@@ -1118,6 +1132,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     }
 
     @objc private func didTapOpenSpinArm() {
+        PBLocal.shared.spinContext = PBLocal.SpinCloudContext(standaloneAllowed: hasSpin360Entitlement())
         openSpinArmCamera()
     }
 
@@ -2073,16 +2088,17 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 reply(["ok": false, "error": "Unknown camera command"])
             }
         } else if message.name == "pbSpinArm" {
+            var ctx = PBLocal.SpinCloudContext()
+            ctx.licence = AppLicence.shared.currentLicenceString() ?? ""
+            ctx.mid = AppLicence.shared.machineId()
+            ctx.standaloneAllowed = hasSpin360Entitlement()
             if let dict = message.body as? [String: Any] {
-                var ctx = PBLocal.SpinCloudContext()
                 ctx.folderKey = (dict["folderKey"] as? String) ?? ""
                 ctx.eventName = (dict["eventName"] as? String) ?? ""
                 ctx.driveFolderId = (dict["driveFolderId"] as? String) ?? ""
                 ctx.opKey = (dict["opKey"] as? String) ?? ""
-                ctx.licence = AppLicence.shared.currentLicenceString() ?? ""
-                ctx.mid = AppLicence.shared.machineId()
-                PBLocal.shared.spinContext = ctx
             }
+            PBLocal.shared.spinContext = ctx
             openSpinArmCamera()
         }
     }

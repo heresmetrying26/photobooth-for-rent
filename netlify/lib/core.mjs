@@ -319,12 +319,12 @@ export const STALE_DEVICE_DAYS = 7;
 // (or delLicense()) which keeps the index in step. If it is ever missing or
 // out of date, Admin -> "Rebuild index" (or the first list) rebuilds it.
 const INDEX_KEY = 'index-v1';
-// Extras every package includes: vintage looks, photographer desk, flipbook, video guestbook, 360 video.
-// Missing = on, so every old code has them; an admin can switch one off for a client.
+// Extras every package includes: vintage looks, photographer desk, flipbook, video guestbook.
+// Missing = on for classic extras; spin360 is OFF by default and only enabled explicitly in Admin (or add-on).
 export const EXTRA_KEYS = ['vintage', 'roving', 'flipbook', 'video', 'spin360'];
 export function normExtras(x) {
   const o = {};
-  for (const k of EXTRA_KEYS) o[k] = !(x && x[k] === false);
+  for (const k of EXTRA_KEYS) o[k] = k === 'spin360' ? !!(x && x[k] === true) : !(x && x[k] === false);
   return o;
 }
 export const extrasOf = (rec) => normExtras(rec && rec.extras);

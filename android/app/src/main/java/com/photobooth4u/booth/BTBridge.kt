@@ -962,6 +962,43 @@ class BTBridge(
     }
 
     /**
+     * Non-blocking thermal write: runs on the background Bluetooth worker thread so printing
+     * never freezes the WebView JS thread or stalls incoming ESP32 cash acceptor events.
+     * Emits window.__BTEvent({ type: "writeDone", id, ok, error }) when finished.
+     */
+    @JavascriptInterface
+    fun writeAsync(reqId: String, base64Data: String): Boolean {
+        return try {
+            worker.execute {
+                val raw = write(base64Data)
+                val ev = try { JSONObject(raw) } catch (_: Exception) { JSONObject().put("ok", false).put("error", "Write failed") }
+                ev.put("type", "writeDone").put("id", reqId)
+                emit(ev)
+            }
+            true
+        } catch (e: Exception) {
+            emit(JSONObject().put("type", "writeDone").put("id", reqId).put("ok", false).put("error", e.message ?: "Write failed"))
+            false
+        }
+    }
+
+    @JavascriptInterface
+    fun writePacedAsync(reqId: String, base64Data: String, chunkSize: Int, delayMs: Int): Boolean {
+        return try {
+            worker.execute {
+                val raw = writePaced(base64Data, chunkSize, delayMs)
+                val ev = try { JSONObject(raw) } catch (_: Exception) { JSONObject().put("ok", false).put("error", "Write failed") }
+                ev.put("type", "writeDone").put("id", reqId)
+                emit(ev)
+            }
+            true
+        } catch (e: Exception) {
+            emit(JSONObject().put("type", "writeDone").put("id", reqId).put("ok", false).put("error", e.message ?: "Write failed"))
+            false
+        }
+    }
+
+    /**
      * Closes the link but keeps the chosen printer remembered (used after a failed print).
      */
     @JavascriptInterface

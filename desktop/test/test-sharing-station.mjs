@@ -16,18 +16,30 @@ assert(photosCode.includes('openModal(newest)'), 'Auto-pop logic exists in photo
 assert(photosCode.includes('privacyOnly'), 'Privacy mode support exists in photos.mjs');
 console.log('PASS: Desktop lib/photos.mjs contains auto-pop, audio chime, and privacy mode');
 
-// 2. Verify Android LocalShareServer & Assets
+// 2. Verify Android LocalShareServer, Assets & Standalone 360 files
 const androidServer = readFileSync(join(ROOT, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'LocalShareServer.kt'), 'utf8');
 assert(androidServer.includes('/qr.js'), 'LocalShareServer.kt handles /qr.js');
 assert(androidServer.includes('share/station.html'), 'LocalShareServer.kt loads share/station.html');
+assert(androidServer.includes('"/station-mail"'), 'LocalShareServer.kt handles /station-mail proxy');
+assert(androidServer.includes('"onlineUrl"'), 'LocalShareServer.kt includes onlineUrl in /station/list');
 assert(existsSync(join(ROOT, 'android', 'app', 'src', 'main', 'assets', 'share', 'station.html')), 'Android asset share/station.html exists');
 assert(existsSync(join(ROOT, 'android', 'app', 'src', 'main', 'assets', 'share', 'qr.js')), 'Android asset share/qr.js exists');
+assert(existsSync(join(ROOT, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'SpinArmActivity.kt')), 'Android SpinArmActivity.kt exists');
+assert(existsSync(join(ROOT, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'SpinQuickShareActivity.kt')), 'Android SpinQuickShareActivity.kt exists');
+assert(existsSync(join(ROOT, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'SpinRenderer.kt')), 'Android SpinRenderer.kt exists');
+
+const androidManifest = readFileSync(join(ROOT, 'android', 'app', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
+assert(androidManifest.includes('.SpinArmActivity'), 'AndroidManifest registers .SpinArmActivity');
+assert(androidManifest.includes('.SpinQuickShareActivity'), 'AndroidManifest registers .SpinQuickShareActivity');
+assert(androidManifest.includes('android:scheme="whatsapp"'), 'AndroidManifest declares whatsapp scheme query');
 
 const androidStationHtml = readFileSync(join(ROOT, 'android', 'app', 'src', 'main', 'assets', 'share', 'station.html'), 'utf8');
 assert(androidStationHtml.includes('playChime()'), 'Android station.html has playChime');
 assert(androidStationHtml.includes('openModal(newest)'), 'Android station.html has auto-pop');
 assert(androidStationHtml.includes('privacyOnly'), 'Android station.html has privacy mode');
-console.log('PASS: Android LocalShareServer & assets support auto-pop, audio chime, and privacy mode');
+assert(androidStationHtml.includes('normalizeWhatsAppPhone'), 'Android station.html has WhatsApp redirect helper');
+assert(androidStationHtml.includes('/station-mail'), 'Android station.html calls /station-mail');
+console.log('PASS: Android LocalShareServer, Standalone 360 & WhatsApp/Email station verified');
 
 // 3. Verify Online Sharing Station (public/station/index.html & netlify.toml)
 assert(existsSync(join(ROOT, 'public', 'station', 'index.html')), 'public/station/index.html exists');
@@ -58,14 +70,26 @@ assert(iosStationHtml.includes('openModal(newest)'), 'iOS station.html has auto-
 assert(iosStationHtml.includes('privacyOnly'), 'iOS station.html has privacy mode');
 
 const pbxproj = readFileSync(join(ROOT, 'ios', 'photobooth4u.xcodeproj', 'project.pbxproj'), 'utf8');
-['SpinRenderer.swift', 'SpinQuickShareViewController.swift', 'station.html', 'qr.js'].forEach(f => {
+['SpinRenderer.swift', 'SpinQuickShareViewController.swift', 'SpinArmViewController.swift', 'station.html', 'qr.js'].forEach(f => {
   assert(pbxproj.includes(f), `project.pbxproj registers ${f}`);
 });
+
+const iosView = readFileSync(join(ROOT, 'ios', 'photobooth4u', 'ViewController.swift'), 'utf8');
+assert(iosView.includes('hasSpin360Entitlement()'), 'iOS ViewController gates Standalone 360 on spin360 licence extra');
+assert(iosView.includes('pb-extras-change'), 'iOS ViewController pushes live pb-extras-change updates on check-in');
+const iosArm = readFileSync(join(ROOT, 'ios', 'photobooth4u', 'SpinArmViewController.swift'), 'utf8');
+assert(iosArm.includes('standaloneAllowed'), 'SpinArmViewController enforces standaloneAllowed lock when 360 is off');
+assert(iosArm.includes('startAccessingSecurityScopedResource'), 'SpinArmViewController handles iOS/iPadOS scoped file URLs');
+const iosQuick = readFileSync(join(ROOT, 'ios', 'photobooth4u', 'SpinQuickShareViewController.swift'), 'utf8');
+assert(iosQuick.includes('popoverPresentationController'), 'SpinQuickShareViewController sets iPad popover anchor for UIActivityViewController');
+
+const coreMjs = readFileSync(join(ROOT, 'netlify', 'lib', 'core.mjs'), 'utf8');
+assert(coreMjs.includes("k === 'spin360'"), 'normExtras defaults spin360 off unless explicitly enabled');
 
 assert(existsSync(join(ROOT, 'netlify', 'functions', 'station-mail.mjs')), 'netlify/functions/station-mail.mjs exists');
 assert(publicStationHtml.includes('/api/station-mail'), 'Online station calls /api/station-mail');
 assert(publicStationHtml.includes('normalizeWhatsAppPhone'), 'Online station includes WhatsApp redirect helper');
-console.log('PASS: iOS Sharing Station, 360 Standalone files, and Online Email/WhatsApp verified');
+console.log('PASS: iOS/iPadOS Sharing Station, 360 Standalone files, Admin OFF default, and Online Email/WhatsApp verified');
 
 // 4. Verify Booth Engine (protected/booth.html)
 const boothHtml = readFileSync(join(ROOT, 'protected', 'booth.html'), 'utf8');
@@ -77,6 +101,14 @@ assert(boothHtml.includes('id="shareStationHandoffOverlay"'), 'shareStationHando
 assert(boothHtml.includes('id="shareStationModal"'), 'shareStationModal exists in booth.html');
 assert(boothHtml.includes('triggerShareStationHandoff()'), 'triggerShareStationHandoff exists in booth.html');
 assert(boothHtml.includes('shareStation: shareStationOn'), 'snapshotSetup includes shareStation');
+assert(boothHtml.includes('IS_IOS_APP || IS_ANDROID_APP'), 'booth.html enables 360 Arm Cam on both iOS and Android');
+assert(boothHtml.includes("extraOn('spin360') && window.__PBLocal"), 'booth.html gates 360 Arm Cam on extraOn(spin360)');
+assert(boothHtml.includes('JSON.stringify(spinPayload)'), 'booth.html serializes spinPayload for Android @JavascriptInterface');
+
+const adminHtml = readFileSync(join(ROOT, 'public', 'admin.html'), 'utf8');
+assert(adminHtml.includes('id="newXSpin">'), 'admin.html keeps 360 Video Desk unchecked by default');
+assert(!adminHtml.includes('id="newXSpin" checked'), 'admin.html does not pre-check #newXSpin');
+assert(!adminHtml.includes('spin: true'), 'admin.html presets keep 360 mode off by default');
 console.log('PASS: Booth engine (booth.html) UI controls, modal, and handoff logic verified');
 
 // 5. Verify QR Code generation across all platforms (classic script safe, no ESM syntax error)

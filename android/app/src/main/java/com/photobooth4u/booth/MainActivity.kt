@@ -112,6 +112,11 @@ class MainActivity : AppCompatActivity() {
                             val trad = activeFeat?.optBoolean("traditional", true) ?: true
                             val orient = activeFeat?.optString("orientation", "either") ?: "either"
                             val arrangeOn = activeFeat?.optBoolean("arrangePrintOpt", false) ?: false
+                            val exObj = activeFeat?.optJSONObject("extras")
+                            val extrasJs = listOf("vintage", "roving", "flipbook", "video", "spin360").joinToString(",") {
+                                val def = (it != "spin360")
+                                it + ":" + (exObj?.optBoolean(it, def) ?: def)
+                            }
                             val savedPref = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString("pref_orientation", null)
                             if (orient == "either") {
                                 applyOrientation(savedPref ?: "either")
@@ -120,9 +125,11 @@ class MainActivity : AppCompatActivity() {
                             }
                             val licStr = licence.currentLicenceString() ?: ""
                             val midStr = licence.machineId()
-                            val js = "window.__PB=window.__PB||{};window.__PB.traditional=$trad;window.__PB.arrangePrintOpt=$arrangeOn;window.__PB.orientation=" + jsStr(orient) + ";window.__PB.appAuth={licence:" + jsStr(licStr) + ",mid:" + jsStr(midStr) + "};try{window.dispatchEvent(new Event('pb-mode-change'));window.dispatchEvent(new Event('pb-arrange-print-change'));window.dispatchEvent(new Event('pb-orientation-change'));window.dispatchEvent(new Event('online'));}catch(e){}"
+                            val js = "window.__PB=window.__PB||{};window.__PB.traditional=$trad;window.__PB.arrangePrintOpt=$arrangeOn;window.__PB.extras={$extrasJs};window.__PB.orientation=" + jsStr(orient) + ";window.__PB.appAuth={licence:" + jsStr(licStr) + ",mid:" + jsStr(midStr) + "};try{window.dispatchEvent(new Event('pb-mode-change'));window.dispatchEvent(new Event('pb-arrange-print-change'));window.dispatchEvent(new Event('pb-extras-change'));window.dispatchEvent(new Event('pb-orientation-change'));window.dispatchEvent(new Event('online'));}catch(e){}"
                             runOnUiThread {
-                                webView.evaluateJavascript(js, null)
+                                if (::webView.isInitialized && !webViewDestroyed) {
+                                    try { webView.evaluateJavascript(js, null) } catch (_: Throwable) { }
+                                }
                             }
                         }
                     }
@@ -191,7 +198,9 @@ class MainActivity : AppCompatActivity() {
     private fun reportUpdate(state: String, latest: String = "") {
         val j = JSONObject().put("state", state).put("latest", latest).put("current", myVersion()).toString()
         runOnUiThread {
-            try { webView.evaluateJavascript("window.__PBUpdateEvent&&window.__PBUpdateEvent($j)", null) } catch (e: Exception) { }
+            if (::webView.isInitialized && !webViewDestroyed) {
+                try { webView.evaluateJavascript("window.__PBUpdateEvent&&window.__PBUpdateEvent($j)", null) } catch (e: Exception) { }
+            }
         }
     }
 
@@ -331,6 +340,7 @@ class MainActivity : AppCompatActivity() {
         webView.addJavascriptInterface(voice, "__PBVoice")
         val share = LocalShareServer(pbLocal)
         shareServer = share
+        PBLocal.activeShareServer = share
         Thread {
             try { share.start() } catch (e: Exception) { /* guests just won't get a QR */ }
         }.start()
@@ -390,11 +400,26 @@ class MainActivity : AppCompatActivity() {
         // 7. Prevent accidental exit by guests (back button confirmation)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (webView.canGoBack()) {
-                    webView.goBack()
-                } else {
-                    showExitConfirmation()
+                if (::webView.isInitialized && !webViewDestroyed) {
+                    val curUrl = webView.url ?: ""
+                    val isLocalShare = curUrl.startsWith("http://127.0.0.1:") || curUrl.startsWith("http://localhost:")
+                    if (isLocalShare) {
+                        val list = try { webView.copyBackForwardList() } catch (_: Throwable) { null }
+                        val prevUrl = if (list != null && list.currentIndex > 0) list.getItemAtIndex(list.currentIndex - 1)?.url ?: "" else ""
+                        if (prevUrl.startsWith("http://127.0.0.1:") || prevUrl.startsWith("http://localhost:")) {
+                            webView.goBack()
+                        } else {
+                            // Returning from local share page back to offline loadDataWithBaseURL booth
+                            bootWithLicence()
+                        }
+                        return
+                    }
+                    if (webView.canGoBack()) {
+                        webView.goBack()
+                        return
+                    }
                 }
+                showExitConfirmation()
             }
         })
 
@@ -608,6 +633,41 @@ class MainActivity : AppCompatActivity() {
         }
         container.addView(bridgeBtn)
 
+        val spinArmBtn = Button(this).apply {
+            text = "🎥 360 Arm Camera (Free Companion)"
+            textSize = 13f
+            setTextColor(Color.WHITE)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = px(10).toFloat()
+                setColor(Color.parseColor("#1F3A52"))
+            }
+            val sp = LinearLayout.LayoutParams(px(280), px(44)).apply {
+                topMargin = px(10)
+            }
+            layoutParams = sp
+            setOnClickListener {
+                val st = licence.status()
+                val ex = if (st.ok) st.payload?.optJSONObject("feat")?.optJSONObject("extras") else null
+                val allowStandalone = ex?.optBoolean("spin360", false) == true
+                PBLocal.spinContext = PBLocal.SpinCloudContext(standaloneAllowed = allowStandalone)
+                startActivity(Intent(this@MainActivity, SpinArmActivity::class.java))
+            }
+        }
+        container.addView(spinArmBtn)
+
+        val spinArmNote = TextView(this).apply {
+            text = "Pairs via QR to Laptop 360 Desk · Standalone 360 off unless enabled in Admin"
+            textSize = 11f
+            setTextColor(Color.parseColor("#6B666C"))
+            gravity = Gravity.CENTER
+            val snp = LinearLayout.LayoutParams(px(460), LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = px(5)
+            }
+            layoutParams = snp
+        }
+        container.addView(spinArmNote)
+
         return container
     }
 
@@ -675,7 +735,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun notifyCameraPermissionReady() {
         runOnUiThread {
-            if (::webView.isInitialized) {
+            if (::webView.isInitialized && !webViewDestroyed) {
                 try {
                     webView.evaluateJavascript("try{window.dispatchEvent(new Event('pb-camera-permission'));}catch(e){}", null)
                 } catch (_: Throwable) { }
@@ -683,9 +743,56 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun releaseWebCameraNow() {
+        if (::webView.isInitialized && !webViewDestroyed) {
+            try {
+                webView.evaluateJavascript("try{window.__pbReleaseCameraNow&&window.__pbReleaseCameraNow();}catch(e){}", null)
+            } catch (_: Throwable) { }
+        }
+    }
+
+    private fun destroyWebViewSafely() {
+        if (!::webView.isInitialized || webViewDestroyed) return
+        webViewDestroyed = true
+        offlineLoaded = false
+        try {
+            webView.evaluateJavascript("try{window.__pbReleaseCameraNow&&window.__pbReleaseCameraNow();}catch(e){}", null)
+        } catch (_: Throwable) { }
+        try { webView.stopLoading() } catch (_: Throwable) { }
+        try { webView.onPause() } catch (_: Throwable) { }
+        try {
+            // Navigating to about:blank forces Blink Document::Shutdown so Chromium's
+            // MediaStreamManager releases Camera2 HAL immediately even if the process stays alive.
+            webView.loadUrl("about:blank")
+        } catch (_: Throwable) { }
+        try { webView.clearHistory() } catch (_: Throwable) { }
+        for (iface in listOf(
+            "__BTBridge", "__Esp32Bridge", "__InstaxBridge", "__PBPrint", "__PBNet",
+            "__PBLocal", "__PBVoice", "__PBWifi", "__PBUpdate", "__PBScreen"
+        )) {
+            try { webView.removeJavascriptInterface(iface) } catch (_: Throwable) { }
+        }
+        try { webView.webChromeClient = null } catch (_: Throwable) { }
+        try { webView.webViewClient = WebViewClient() } catch (_: Throwable) { }
+        try { webView.setOnLongClickListener(null) } catch (_: Throwable) { }
+        try { root.removeView(webView) } catch (_: Throwable) { }
+        try { webView.removeAllViews() } catch (_: Throwable) { }
+        try { webView.destroy() } catch (_: Throwable) { }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (::webView.isInitialized && !webViewDestroyed) {
+            try { webView.onResume() } catch (_: Throwable) { }
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         hideSystemBars()
+        if (::webView.isInitialized && !webViewDestroyed) {
+            try { webView.onResume() } catch (_: Throwable) { }
+        }
         updater.onResume()      // back from "Install unknown apps": carry on with the update
         if (isAutoUpdatePopupEnabled()) {
             checkForAppUpdate()
@@ -700,8 +807,20 @@ class MainActivity : AppCompatActivity() {
                 notifyCameraPermissionReady()
             }
         }
-        if (::webView.isInitialized && offlineLoaded && isNetworkAvailable()) {
-            dispatchNetSyncEvent("pb-app-resume", 500L)
+        // Always notify the booth page on resume (even when offline) so built-in camera
+        // and ESP32 Cash Acceptor recover cleanly after backgrounding.
+        if (::webView.isInitialized && !webViewDestroyed && offlineLoaded) {
+            dispatchNetSyncEvent("pb-app-resume", 450L)
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) {
+            releaseWebCameraNow()
+            if (::webView.isInitialized && !webViewDestroyed) {
+                try { webView.onPause() } catch (_: Throwable) { }
+            }
         }
     }
 
@@ -729,8 +848,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
+        val pending = pendingWebPermRequests.toList()
         pendingWebPermRequests.clear()
+        for (req in pending) {
+            try { req.deny() } catch (_: Throwable) { }
+        }
         try {
             netCallback?.let { cb ->
                 val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
@@ -738,6 +860,7 @@ class MainActivity : AppCompatActivity() {
             }
             netCallback = null
         } catch (_: Exception) { }
+        destroyWebViewSafely()
         netPrintBridge?.shutdown()
         esp32Bridge?.shutdown()
         btBridge.shutdown()          // keeps the chosen printer (disconnect() would forget it)
@@ -748,6 +871,7 @@ class MainActivity : AppCompatActivity() {
         checkinHandler.removeCallbacksAndMessages(null)
         updateHandler.removeCallbacksAndMessages(null)
         updater.cancel()
+        super.onDestroy()
     }
 
     private fun hideSystemBars() {
@@ -1028,9 +1152,12 @@ class MainActivity : AppCompatActivity() {
                 val payOpt = feat?.optBoolean("vouchers", false) ?: false
                 val traditional = feat?.optBoolean("traditional", true) ?: true
                 val orientationOpt = feat?.optString("orientation", "either") ?: "either"
-                // Extras every package includes (missing = on): vintage looks, photographer desk, flipbook, video guestbook
+                // Classic extras default on; spin360 defaults OFF unless explicitly enabled in Admin
                 val exObj = feat?.optJSONObject("extras")
-                val extrasJs = listOf("vintage", "roving", "flipbook", "video", "spin360").joinToString(",") { it + ":" + (exObj?.optBoolean(it, true) ?: true) }
+                val extrasJs = listOf("vintage", "roving", "flipbook", "video", "spin360").joinToString(",") {
+                    val def = (it != "spin360")
+                    it + ":" + (exObj?.optBoolean(it, def) ?: def)
+                }
                 // null means a lifetime code (desktop's own "never expires" sentinel, matching netlify/lib/core.mjs LIFETIME_EXP)
                 val expMs = activeExp ?: 253402300799000L
 
@@ -1112,7 +1239,7 @@ class MainActivity : AppCompatActivity() {
         ) {
             // When internet is available, allow /api/setup (for syncing setup, profiles, themes and assets),
             // /api/camdiag, /api/printerdiag and /api/updates. Vouchers (/api/pay) and print counts (/api/prints) stay separate per device.
-            if (isNetworkAvailable() && (path.startsWith("/api/setup") || path.startsWith("/api/camdiag") || path.startsWith("/api/printerdiag") || path.startsWith("/api/updates"))) {
+            if (isNetworkAvailable() && (path.startsWith("/api/setup") || path.startsWith("/api/camdiag") || path.startsWith("/api/printerdiag") || path.startsWith("/api/updates") || path.startsWith("/api/ticket") || path.startsWith("/api/station-mail"))) {
                 return null
             }
             return webResponse(
@@ -1384,7 +1511,13 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Exit Photo Booth?")
             .setMessage("Are you sure you want to exit the kiosk application?")
             .setPositiveButton("Exit") { _, _ ->
-                finish()
+                releaseWebCameraNow()
+                PrintHelperService.stop(this)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    finishAndRemoveTask()
+                } else {
+                    finish()
+                }
             }
             .setNeutralButton("Tablet Settings") { _, _ ->
                 openTabletSettings()
@@ -1412,10 +1545,14 @@ class MainActivity : AppCompatActivity() {
                 intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
             }
             Log.i("PBMainActivity", "USB device attached: ${dev?.productName ?: dev?.deviceName}")
-            webView.evaluateJavascript(
-                "window.dispatchEvent(new CustomEvent('pb-usb-attached', { detail: { name: '${(dev?.productName ?: dev?.deviceName ?: "").replace("'", "\\'")}' } }));",
-                null
-            )
+            if (::webView.isInitialized && !webViewDestroyed) {
+                try {
+                    webView.evaluateJavascript(
+                        "window.dispatchEvent(new CustomEvent('pb-usb-attached', { detail: { name: '${(dev?.productName ?: dev?.deviceName ?: "").replace("'", "\\'")}' } }));",
+                        null
+                    )
+                } catch (_: Throwable) { }
+            }
         }
     }
 

@@ -20,9 +20,10 @@
           };
         }
       } catch (e) { }
-      // Marks the page as running inside the iPad / iPhone app, so the style sheet can switch off effects the iPad cannot
-      // draw smoothly on top of a live camera picture (see "html.pb-ios" in the style sheet).
+      // Marks the page as running inside the iPad / iPhone or Android tablet app, so the style sheet can switch off
+      // heavy blur/glass effects that budget tablet GPUs cannot composite smoothly over a live 30fps camera feed.
       try { if (/PB4uIOS/.test(navigator.userAgent || '')) document.documentElement.classList.add('pb-ios'); } catch (e) { }
+      try { if (/PB4uAndroid/.test(navigator.userAgent || '') || (window.__PB && window.__PB.android)) document.documentElement.classList.add('pb-android'); } catch (e) { }
     })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -48,17 +49,21 @@
       }
     }
 
-    /* iPad / iPhone app: a blurred "glass" layer over the live camera picture (the dock, the countdown, the film strip,
-       the control buttons) makes the iPad re-blur every camera frame, and the picture stutters. The same layers stay as
-       plain translucent panels, which look almost the same and cost nothing. Endless glow animations are off too. */
+    /* iPad / iPhone & Android tablet apps: a blurred "glass" layer over the live camera picture (the cash payment sheet,
+       dock, countdown, film strip, QR popup) forces Mali / mobile GPUs to re-blur every camera frame, causing heavy lag
+       and thermal throttling. Plain translucent panels look nearly identical and composite at full speed. */
     html.pb-ios *,
     html.pb-ios *::before,
-    html.pb-ios *::after {
+    html.pb-ios *::after,
+    html.pb-android *,
+    html.pb-android *::before,
+    html.pb-android *::after {
       -webkit-backdrop-filter: none !important;
       backdrop-filter: none !important;
     }
 
-    html.pb-ios .marquee-bulbs span {
+    html.pb-ios .marquee-bulbs span,
+    html.pb-android .marquee-bulbs span {
       animation: none !important;
     }
 
@@ -16587,6 +16592,70 @@
       width: clamp(80px, 12vmin, 160px) !important;
     }
 
+    /* Review screen direct reposition & resize bar */
+    .sc-framing-bar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 6px 10px;
+      margin-bottom: 6px;
+      border-radius: 999px;
+      background: rgba(18, 16, 20, .86);
+      border: 1px solid rgba(255, 255, 255, .2);
+      color: #fff;
+      font: 700 13px 'Manrope', sans-serif;
+    }
+
+    .sc-framing-bar[hidden] {
+      display: none !important;
+    }
+
+    .sc-framing-bar .sc-frame-tag {
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(0, 229, 255, .2);
+      color: #7df3ff;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .sc-framing-bar .sc-frame-zoom {
+      min-width: 42px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+    }
+
+    .sc-framing-bar .sc-frame-btn {
+      min-width: 34px;
+      height: 34px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, .24);
+      background: rgba(255, 255, 255, .12);
+      color: #fff;
+      font: 800 15px/1 'Manrope', sans-serif;
+      cursor: pointer;
+    }
+
+    .sc-framing-bar .sc-frame-btn.sc-frame-reset {
+      font-size: 12px;
+      padding: 0 11px;
+    }
+
+    .sc-framing-bar .sc-frame-tip {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, .74);
+      padding: 0 4px;
+    }
+
+    body.stage-review.stage-framing .app-shell .stage-frame {
+      width: min(calc(100vw - 2 * clamp(96px, calc(9vmin + 40px), 152px)), calc((var(--vh) - 196px) * var(--cam-aspect, .8))) !important;
+    }
+
     /* Full screen: the rest of the camera picture fills the black around the photo, dimmed,
      lined up with the live view, so the screen looks full but guests still see the photo's edges. */
     .stage-surround {
@@ -22188,10 +22257,18 @@
         return !!(saved && typeof navigator !== 'undefined' && navigator.bluetooth && typeof navigator.bluetooth.getDevices === 'function');
       };
       var btReconnectWaiters = [];
-      // Events from the Android app: { type: 'reconnect' | 'link' | 'adapter', ... }
+      var btWriteWaiters = Object.create(null);
+      var btWriteSeq = 0;
+      // Events from the Android app: { type: 'reconnect' | 'link' | 'adapter' | 'writeDone', ... }
       global.__BTEvent = function (ev) {
         try {
           if (!ev) return;
+          if (ev.type === 'writeDone' && ev.id && btWriteWaiters[ev.id]) {
+            var w = btWriteWaiters[ev.id];
+            delete btWriteWaiters[ev.id];
+            try { w(ev); } catch (_) { }
+            return;
+          }
           if (ev.type === 'reconnect') {
             if (ev.ok) { btPrinter._mode = 'bridge'; btPrinter._name = ev.name || btPrinter._name || 'Bluetooth Printer'; btPrinter._serviceUuid = ''; btPrinter._proto = ev.proto || ''; }
             btReconnectWaiters.splice(0).forEach(function (f) { try { f(ev); } catch (_) { } });
@@ -22266,8 +22343,39 @@
             }
             if (r && r.ok === false) throw new Error(r.error || 'Write failed');
           };
+          var runAsyncBridge = function (invoke) {
+            return new Promise(function (resolve, reject) {
+              var id = 'w' + (++btWriteSeq);
+              var to = setTimeout(function () {
+                if (btWriteWaiters[id]) {
+                  delete btWriteWaiters[id];
+                  reject(new Error('Bluetooth printer timed out.'));
+                }
+              }, 90000);
+              btWriteWaiters[id] = function (ev) {
+                clearTimeout(to);
+                if (ev && ev.ok === false) reject(new Error(ev.error || 'Write failed'));
+                else resolve();
+              };
+              try {
+                if (invoke(id) === false && btWriteWaiters[id]) {
+                  clearTimeout(to);
+                  delete btWriteWaiters[id];
+                  reject(new Error('Write failed'));
+                }
+              } catch (e) {
+                clearTimeout(to);
+                delete btWriteWaiters[id];
+                reject(e);
+              }
+            });
+          };
           if (pace && pace.chunk) {
-            // Newer Android app: the tablet app sends the pieces itself (steady timing, off the page's thread).
+            // Non-blocking Android app path: runs off the JS thread so UI & ESP32 cash credits never freeze while printing.
+            if (typeof B.writePacedAsync === 'function') {
+              return runAsyncBridge(function (id) { return B.writePacedAsync(id, uint8ToBase64(data), pace.chunk, pace.delay); });
+            }
+            // Newer Android app: the tablet app sends the pieces itself (steady timing).
             if (typeof B.writePaced === 'function') {
               return Promise.resolve(B.writePaced(uint8ToBase64(data), pace.chunk, pace.delay)).then(check);
             }
@@ -22282,6 +22390,9 @@
               });
             };
             return stepB();
+          }
+          if (typeof B.writeAsync === 'function') {
+            return runAsyncBridge(function (id) { return B.writeAsync(id, uint8ToBase64(data)); });
           }
           return Promise.resolve(B.write(uint8ToBase64(data))).then(check);
         }
@@ -23629,7 +23740,7 @@
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <div>
                 <b style="color:#1f3a52; font-size:13.5px; display:block;">🎥 360 Booth &amp; Arm Camera (Standalone or Laptop)</b>
-                <span style="color:#42566b; font-size:12px;">Use Standalone 360 with PNG overlays, slow-mo &amp; Sharing Station directly on this iPhone/iPad, or pair with a Laptop 360 Desk.</span>
+                <span style="color:#42566b; font-size:12px;">Use Standalone 360 with PNG overlays, slow-mo &amp; Sharing Station directly on this phone/tablet, or pair with a Laptop 360 Desk.</span>
               </div>
               <button type="button" class="action-btn" id="iosOpenSpinArmBtn"
                 style="width:auto; margin:0; padding:6px 14px; background:#1f3a52; color:#fff; border:0; border-radius:8px; font-weight:700; font-size:12.5px;">Launch 360 Camera →</button>
@@ -24151,11 +24262,12 @@
 
             <div class="fb-card" style="margin-top:12px;">
               <label class="switch-row" id="guestStickersRow" style="margin:0;">
-                <span>Customise stickers post photo session</span>
+                <span>Customise stickers, text &amp; photo framing before printing</span>
                 <input type="checkbox" id="guestStickersToggle">
               </label>
-              <p class="panel-hint" id="guestStickersHint" style="margin:4px 0 0;">When turned on, guests can add and
-                place stickers on their photo right after taking photos, before printing.</p>
+              <p class="panel-hint" id="guestStickersHint" style="margin:4px 0 0;">When turned on, guests can add
+                stickers or text and reposition/resize each shot (Photo Framing tab) right after taking photos, before
+                printing.</p>
               <div id="guestStickerOpts"
                 style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--line);">
                 <p class="sub-label" style="margin:0 0 6px;">Sticker packages guests can use</p>
@@ -24637,9 +24749,10 @@
                 id="allowRetakeToggle" checked> Allow retakes</label>
             <p class="panel-hint" id="allowRetakeHint" style="display:none; margin:2px 0 0;">On: guests can redo any
               photo (events). Off: guests can only Cancel and start over (bazaars, pay per print).</p>
-            <select id="resultReviewSelect" hidden>
-              <option value="0" selected>Until tap</option>
-            </select>
+            <label class="toggle-row" id="reviewFramingRow" style="margin-top:6px;"><input type="checkbox"
+                id="reviewFramingToggle"> Reposition &amp; resize shots before printing</label>
+            <p class="panel-hint" id="reviewFramingHint" style="margin:2px 0 0;">On: on the preview screen before
+              printing, guests can drag any photo to reposition it and pinch (or tap − / +) to zoom/resize it.</p>
           </details>
         </div>
         <div class="panel-section d7-pane" data-d7="share" id="afterSection">
@@ -24704,6 +24817,20 @@
           <p class="panel-hint" id="afterPrintFirstHint" style="margin:2px 0 8px;">Synced with Automatic printing in the Printer tab. Waits
             until auto-print finishes before revealing the download QR (or switches Print &amp; Done straight to Ready).
           </p>
+          <div class="opt-row" id="resultReviewRow" style="margin-top:8px;">
+            <span class="lbl">Auto-return for next guest</span>
+            <select class="mini-select pillify" id="resultReviewSelect" aria-label="Auto-return to welcome screen after photo is ready">
+              <option value="0" selected>Until tap</option>
+              <option value="15">15s</option>
+              <option value="30">30s</option>
+              <option value="45">45s</option>
+              <option value="60">1 min</option>
+              <option value="90">1½ min</option>
+              <option value="120">2 min</option>
+            </select>
+          </div>
+          <p class="panel-hint" id="resultReviewHint" style="margin:2px 0 8px;">Automatically leaves the QR / Done screen
+            and returns to the welcome screen if a guest walks away without tapping &ldquo;Done &middot; Next Guest&rdquo;.</p>
           <div id="shareStationOptions" style="display:none;margin-top:8px;">
             <div class="opt-row">
               <span class="lbl">Booth screen after photos</span>
@@ -26003,6 +26130,14 @@
         <div class="session-controls" id="sessionControls">
           <div class="ready-below">
             <p class="ready-summary" id="readySummary"></p>
+          </div>
+          <div class="sc-framing-bar" id="reviewFramingBar" hidden>
+            <span class="sc-frame-tag" id="rfShotLabel">Photo 1</span>
+            <button type="button" class="sc-frame-btn" id="rfZoomOut" aria-label="Zoom out">&minus;</button>
+            <span class="sc-frame-zoom" id="rfZoomVal">1.0&times;</span>
+            <button type="button" class="sc-frame-btn" id="rfZoomIn" aria-label="Zoom in">+</button>
+            <button type="button" class="sc-frame-btn sc-frame-reset" id="rfReset" aria-label="Reset shot framing">&#8634; Reset</button>
+            <span class="sc-frame-tip">Drag photo to move &middot; pinch or +/&minus; to zoom</span>
           </div>
           <div class="sc-row">
             <button type="button" class="sc-btn sc-danger" id="cancelSessionBtn" hidden>&#10005; Cancel</button>
@@ -29760,6 +29895,7 @@
           if (typeof applyStageAspect === 'function') requestAnimationFrame(function () { applyStageAspect(); });
         } else {
           try { if (typeof refreshWelcome === 'function') refreshWelcome(); } catch (e) { }
+          try { if (typeof _cashSetupDirty !== 'undefined' && _cashSetupDirty && typeof refreshCashSetup === 'function') refreshCashSetup(true); } catch (e) { }
         }
         try { if (typeof syncSetupVideoPreview === 'function') syncSetupVideoPreview(); } catch (e) { }
         try { refreshPrintFab(); refreshPanelSolo(); } catch (e) { }
@@ -31964,16 +32100,8 @@
         cap.className = 'qr-caption';
         cap.textContent = label;
 
-        const link = document.createElement('a');
-        link.href = fileUrl;
-        link.target = '_blank';
-        link.rel = 'noopener';
-        link.className = 'qr-link';
-        link.textContent = 'Open link';
-
         wrap.appendChild(img);
         wrap.appendChild(cap);
-        wrap.appendChild(link);
         qrResults.appendChild(wrap);
         guestRender();
       }
@@ -33176,9 +33304,7 @@
         }
         const img = document.createElement('img'); img.className = 'qr-img'; img.src = qrImageUrl(url); img.alt = wrap.querySelector('.qr-caption').textContent + ' QR code';
         box.appendChild(img);
-        let link = wrap.querySelector('.qr-link');
-        if (!link) { link = document.createElement('a'); link.className = 'qr-link'; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Open'; wrap.appendChild(link); }
-        link.href = url;
+        const oldLink = wrap.querySelector('.qr-link'); if (oldLink) oldLink.remove();
         guestRender();
       }
       function failQrSlot(kind, text) {
@@ -34755,9 +34881,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               img.alt = 'GIF QR code';
               gifBox.appendChild(img);
             }
-            var link = oldLink || document.createElement('a');
-            link.className = 'qr-link'; link.href = gifUrl; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Open GIF';
-            if (!oldLink) gifSlot.appendChild(link);
+            if (oldLink) oldLink.remove();
             showToast('GIF saved');
             if (flipbookResult && flipBack && typeof makeFlipBack === 'function') {
               if (flipbookResult.back) pbReleaseCanvas(flipbookResult.back);
@@ -35928,30 +36052,67 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         });
         track.addEventListener('unmute', () => clearTimeout(muteTimer));
       }
-      // Android app: release built-in camera immediately when backgrounded (before HarmonyOS / Android forcefully evicts it),
-      // and recover cleanly if the OS ended the track before visibilitychange resumed.
+      // Android app: release built-in camera immediately when backgrounded or exiting (before HarmonyOS / Android
+      // forcefully evicts or locks Camera2 HAL), and recover cleanly on foreground resume.
+      function releaseBuiltInCameraNow() {
+        if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+        if (muteTimer) { clearTimeout(muteTimer); muteTimer = null; }
+        if (currentStream && currentStream !== usbCam.stream) {
+          const oldStream = currentStream;
+          currentStream = null;
+          streamActive = false;
+          camSleeping = true;
+          try { oldStream.getTracks().forEach(t => { try { t.stop(); } catch (e) { } }); } catch (e) { }
+          try { if (video) { stopVideoFrames(video); video.pause(); video.srcObject = null; } } catch (e) { }
+          try { if (typeof scpVideo !== 'undefined' && scpVideo) { stopVideoFrames(scpVideo); scpVideo.pause(); scpVideo.srcObject = null; } } catch (e) { }
+          try { if (typeof webcamReleaseRingPool === 'function') webcamReleaseRingPool(); } catch (e) { }
+          try { if (recDot) recDot.style.display = 'none'; } catch (e) { }
+        }
+      }
+      if (!DESK_STANDALONE && typeof window !== 'undefined') {
+        window.__pbReleaseCameraNow = releaseBuiltInCameraNow;
+        window.addEventListener('pagehide', releaseBuiltInCameraNow);
+        window.addEventListener('beforeunload', releaseBuiltInCameraNow);
+      }
+      let androidResumeCamTimer = null;
+      function scheduleAndroidCameraResume() {
+        if (!IS_ANDROID_APP || DESK_STANDALONE || document.hidden) return;
+        if (androidResumeCamTimer) clearTimeout(androidResumeCamTimer);
+        androidResumeCamTimer = setTimeout(async () => {
+          androidResumeCamTimer = null;
+          if (document.hidden || camWaking || camInitInFlight || reconnectTimer) return;
+          if (currentStream && currentStream !== usbCam.stream && currentStream.getVideoTracks) {
+            const t = currentStream.getVideoTracks()[0];
+            if (t && t.readyState === 'ended') {
+              currentStream = null;
+              streamActive = false;
+              camSleeping = true;
+            }
+          }
+          if (streamActive) return;
+          if (cameraSelect && cameraSelect.value === USB_CAM_ID) return;
+          if (typeof state !== 'undefined' && state === 'result') return;
+          if (!cameraSelect || !cameraSelect.value) {
+            camLabelProbed = false;
+            try { await enumerateCameras(); } catch (e) { }
+            if (document.hidden || streamActive || camInitInFlight) return;
+          }
+          if (camSleeping) {
+            try { await camLiveWake(); } catch (e) { }
+          } else {
+            try { await initCamera((cameraSelect && cameraSelect.value) || null); } catch (e) { }
+          }
+        }, 450);
+      }
       if (!DESK_STANDALONE && IS_ANDROID_APP && typeof document !== 'undefined' && document.addEventListener) {
         document.addEventListener('visibilitychange', () => {
           if (document.hidden) {
-            if (streamActive && !camSleeping && !camInitInFlight && currentDeviceId && currentDeviceId !== USB_CAM_ID && currentDeviceId !== UVC_ID && isBuiltInCamera()) {
-              try { camLiveSleep(); } catch (e) { }
+            if (androidResumeCamTimer) { clearTimeout(androidResumeCamTimer); androidResumeCamTimer = null; }
+            if (currentStream && currentStream !== usbCam.stream && currentDeviceId !== USB_CAM_ID && currentDeviceId !== UVC_ID) {
+              try { releaseBuiltInCameraNow(); } catch (e) { }
             }
           } else {
-            if (currentStream && currentStream !== usbCam.stream && currentStream.getVideoTracks) {
-              const t = currentStream.getVideoTracks()[0];
-              if (t && t.readyState === 'ended') {
-                currentStream = null;
-                streamActive = false;
-                camSleeping = true;
-              }
-            }
-            if (camSleeping && !camWaking && !camInitInFlight && !reconnectTimer && cameraSelect && cameraSelect.value && cameraSelect.value !== USB_CAM_ID) {
-              setTimeout(() => {
-                if (!document.hidden && camSleeping && !camWaking && !camInitInFlight && !reconnectTimer) {
-                  try { camLiveWake(); } catch (e) { }
-                }
-              }, 450);
-            }
+            scheduleAndroidCameraResume();
           }
         });
       }
@@ -36230,7 +36391,31 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const selOpt = deviceId && Array.from(cameraSelect.options).find(o => o.value === deviceId);
         const baseSize = webcamGumSize(deviceId);
         const sizeWithFps = Object.assign({}, baseSize, { frameRate: { ideal: 30 } });
-        const gum = video => navigator.mediaDevices.getUserMedia({ video, audio: false });
+        const gumTimeoutMs = isAndroidNow ? 9000 : 12000;
+        const gum = video => new Promise((resolve, reject) => {
+          let settled = false;
+          const timer = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            const err = new Error('Camera did not respond in time');
+            err.name = 'AbortError';
+            reject(err);
+          }, gumTimeoutMs);
+          navigator.mediaDevices.getUserMedia({ video, audio: false }).then(s => {
+            clearTimeout(timer);
+            if (settled) {
+              try { s.getTracks().forEach(t => t.stop()); } catch (e) { }
+              return;
+            }
+            settled = true;
+            resolve(s);
+          }, e => {
+            clearTimeout(timer);
+            if (settled) return;
+            settled = true;
+            reject(e);
+          });
+        });
         const stop = e => e && (e.uvcMsg || e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e.name === 'SecurityError');
         let lastErr = null;
         // The video guestbook's Flip camera asks for a side (front / back) by name when the phone does not list its cameras separately.
@@ -37321,10 +37506,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       var usbWantLive = camWantLive;
 
-      async function camLiveSleep() {
+      async function camLiveSleep(force) {
         if (camSleeping || usbCam.shooting || usbPowerBusy || camWaking || camInitInFlight) return;
         if (IS_IOS_APP && currentDeviceId !== USB_CAM_ID) return;   // iPad app: the built-in camera stays open (see camWantLive)
-        if (isAndroidBuiltInSteady()) return;                      // Android app: built-in camera stays steady while visible
+        if (!force && isAndroidBuiltInSteady()) return;            // Android app: built-in camera stays steady while visible
         usbPowerBusy = true;
         camSleepPromise = (async function () {
           try {
@@ -38649,8 +38834,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         frames.forEach((frame, i) => {
           const shot = shotCanvases[i];
           frame.classList.toggle('filled', !!shot);
-          frame.classList.toggle('pickable', !!(sess && sess.reviewing && shot && retakesAllowed()));
-          frame.classList.toggle('picked', !!(sess && sess.reviewing && sess.pick === i && retakesAllowed()));
+          const canPick = retakesAllowed() || !!(typeof reviewFramingOn !== 'undefined' && reviewFramingOn);
+          frame.classList.toggle('pickable', !!(sess && sess.reviewing && shot && canPick));
+          frame.classList.toggle('picked', !!(sess && sess.reviewing && sess.pick === i && canPick));
           frame.dataset.i = i;
           frame.style.display = shot ? '' : 'none';     // only taken photos show, one by one
           if (shot) {
@@ -40015,6 +40201,166 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       document.getElementById('allowRetakeToggle').addEventListener('change', function (e) { allowRetake = !!e.target.checked; });
       window.addEventListener('pb-retake-change', refreshRetakeUI);
       setTimeout(refreshRetakeUI, 0);
+      var reviewFramingOn = false;
+      var reviewFramingToggleEl = document.getElementById('reviewFramingToggle');
+      if (reviewFramingToggleEl) {
+        reviewFramingToggleEl.addEventListener('change', function (e) {
+          reviewFramingOn = !!e.target.checked;
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      var rfPtrs = {}, rfDrag = null, rfPinch = null, rfRaf = 0;
+      function rfPtrList() { return Object.keys(rfPtrs).map(function (k) { return rfPtrs[k]; }); }
+      function rfClearPointers() {
+        rfPtrs = {}; rfDrag = null; rfPinch = null;
+        if (rfRaf) { cancelAnimationFrame(rfRaf); rfRaf = 0; }
+      }
+      function rfPreviewPoint(e) {
+        var r = previewCanvas.getBoundingClientRect();
+        var cw = previewCanvas.width || 1, ch = previewCanvas.height || 1;
+        var sc = Math.min(r.width / cw, r.height / ch) || 1, w = cw * sc, h = ch * sc;
+        var l = r.left + (r.width - w) / 2, t = r.top + (r.height - h) / 2;
+        return { x: (e.clientX - l) / w, y: (e.clientY - t) / h, sc: sc };
+      }
+      function rfRefreshBar() {
+        var c = (typeof shotCrops !== 'undefined' && shotCrops && shotCrops[selCropShot]) || { zoom: 1, panX: 0, panY: 0 };
+        var z = Number(c.zoom) || 1;
+        var lbl = document.getElementById('rfShotLabel');
+        var zv = document.getElementById('rfZoomVal');
+        var zo = document.getElementById('rfZoomOut');
+        var zi = document.getElementById('rfZoomIn');
+        if (lbl) lbl.textContent = 'Photo ' + (selCropShot + 1);
+        if (zv) zv.textContent = z.toFixed(1) + '\u00D7';
+        if (zo) zo.disabled = z <= 1.001;
+        if (zi) zi.disabled = z >= 2.499;
+      }
+      function reviewFramingRedraw() {
+        renderComposite();
+        if (sess && sess.reviewing && !sess.decorating && reviewFramingOn && typeof drawCropSlotIndicator === 'function') {
+          drawCropSlotIndicator(previewCanvas.getContext('2d'), true);
+        }
+      }
+      function rfRedrawSoon() {
+        if (!rfRaf) rfRaf = requestAnimationFrame(function () { rfRaf = 0; reviewFramingRedraw(); });
+      }
+      function rfAdjustCrop(fn) {
+        if (!sess || !sess.reviewing || sess.decorating || !reviewFramingOn) return;
+        shotCrops[selCropShot] = shotCrops[selCropShot] || { zoom: 1, panX: 0, panY: 0 };
+        fn(shotCrops[selCropShot]);
+        rfRefreshBar();
+        reviewFramingRedraw();
+      }
+      (function wireReviewFramingInteractions() {
+        var zOut = document.getElementById('rfZoomOut');
+        var zIn = document.getElementById('rfZoomIn');
+        var rst = document.getElementById('rfReset');
+        if (zOut) zOut.addEventListener('click', function (e) {
+          e.stopPropagation();
+          rfAdjustCrop(function (c) { c.zoom = Math.max(1.0, Math.round(((c.zoom || 1) - 0.15) * 100) / 100); });
+        });
+        if (zIn) zIn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          rfAdjustCrop(function (c) { c.zoom = Math.min(2.5, Math.round(((c.zoom || 1) + 0.15) * 100) / 100); });
+        });
+        if (rst) rst.addEventListener('click', function (e) {
+          e.stopPropagation();
+          rfAdjustCrop(function (c) { c.zoom = 1; c.panX = 0; c.panY = 0; });
+        });
+        previewCanvas.addEventListener('pointerdown', function (e) {
+          if (!sess || !sess.reviewing || sess.decorating || !reviewFramingOn) return;
+          rfPtrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+          try { previewCanvas.setPointerCapture(e.pointerId); } catch (err) { }
+          e.preventDefault();
+          var ps = rfPtrList();
+          if (ps.length === 2) {
+            rfDrag = null;
+            rfPinch = {
+              dist: Math.max(10, Math.hypot(ps[1].x - ps[0].x, ps[1].y - ps[0].y)),
+              z0: (shotCrops[selCropShot] && shotCrops[selCropShot].zoom) || 1
+            };
+            return;
+          }
+          if (ps.length > 2) return;
+          var pt = rfPreviewPoint(e);
+          var hit = hitShotSlot(pt.x * previewCanvas.width, pt.y * previewCanvas.height);
+          if (hit >= 0 && shotCanvases[hit]) {
+            selCropShot = hit;
+            sess.pick = hit;
+            if (retakesAllowed()) retakeBtn.textContent = '\u21BA Retake photo ' + (hit + 1);
+            updateFilmTrack();
+          }
+          if (!shotCrops[selCropShot]) shotCrops[selCropShot] = { zoom: 1, panX: 0, panY: 0 };
+          var b = shotSlotBoxes[selCropShot];
+          var slotW = (b ? b.w : previewCanvas.width * 0.4) * pt.sc;
+          var slotH = (b ? b.h : previewCanvas.height * 0.4) * pt.sc;
+          rfDrag = {
+            id: e.pointerId,
+            startX: e.clientX,
+            startY: e.clientY,
+            panX0: shotCrops[selCropShot].panX || 0,
+            panY0: shotCrops[selCropShot].panY || 0,
+            slotW: Math.max(40, slotW),
+            slotH: Math.max(40, slotH),
+            rot: (b && b.rot) ? b.rot : 0
+          };
+          previewCanvas.style.cursor = 'grabbing';
+          rfRefreshBar();
+          reviewFramingRedraw();
+        });
+        previewCanvas.addEventListener('pointermove', function (e) {
+          if (!sess || !sess.reviewing || sess.decorating || !reviewFramingOn) return;
+          if (rfPtrs[e.pointerId]) { rfPtrs[e.pointerId].x = e.clientX; rfPtrs[e.pointerId].y = e.clientY; }
+          if (rfPinch) {
+            var ps = rfPtrList();
+            if (ps.length < 2) return;
+            var curDist = Math.hypot(ps[1].x - ps[0].x, ps[1].y - ps[0].y);
+            var ratio = curDist / (rfPinch.dist || 1);
+            if (!shotCrops[selCropShot]) shotCrops[selCropShot] = { zoom: 1, panX: 0, panY: 0 };
+            shotCrops[selCropShot].zoom = Math.max(1.0, Math.min(2.5, Math.round(rfPinch.z0 * ratio * 100) / 100));
+            rfRefreshBar();
+            rfRedrawSoon();
+            return;
+          }
+          if (rfDrag && e.pointerId === rfDrag.id) {
+            var dx = e.clientX - rfDrag.startX;
+            var dy = e.clientY - rfDrag.startY;
+            var rad = -(rfDrag.rot || 0) * Math.PI / 180;
+            var ldx = rad ? (dx * Math.cos(rad) - dy * Math.sin(rad)) : dx;
+            var ldy = rad ? (dx * Math.sin(rad) + dy * Math.cos(rad)) : dy;
+            var quarter = Math.round((rfDrag.rot || 0) / 90) % 2 !== 0;
+            var effW = quarter ? rfDrag.slotH : rfDrag.slotW;
+            var effH = quarter ? rfDrag.slotW : rfDrag.slotH;
+            var dPanX = -ldx / (effW * 0.6 || 100);
+            var dPanY = -ldy / (effH * 0.6 || 100);
+            if (!shotCrops[selCropShot]) shotCrops[selCropShot] = { zoom: 1, panX: 0, panY: 0 };
+            shotCrops[selCropShot].panX = Math.max(-1, Math.min(1, Math.round((rfDrag.panX0 + dPanX) * 100) / 100));
+            shotCrops[selCropShot].panY = Math.max(-1, Math.min(1, Math.round((rfDrag.panY0 + dPanY) * 100) / 100));
+            rfRedrawSoon();
+          }
+        });
+        function endRfDrag(e) {
+          if (e) delete rfPtrs[e.pointerId];
+          if (!sess || !sess.reviewing || sess.decorating || !reviewFramingOn) { rfClearPointers(); return; }
+          if (rfPinch) {
+            if (rfPtrList().length < 2) { rfPinch = null; reviewFramingRedraw(); }
+            return;
+          }
+          if (rfDrag && (!e || e.pointerId === rfDrag.id)) {
+            rfDrag = null;
+            previewCanvas.style.cursor = 'grab';
+            if (rfRaf) { cancelAnimationFrame(rfRaf); rfRaf = 0; }
+            reviewFramingRedraw();
+          }
+        }
+        previewCanvas.addEventListener('pointerup', endRfDrag);
+        previewCanvas.addEventListener('pointercancel', endRfDrag);
+        previewCanvas.addEventListener('wheel', function (e) {
+          if (!sess || !sess.reviewing || sess.decorating || !reviewFramingOn) return;
+          e.preventDefault();
+          var delta = e.deltaY < 0 ? 0.1 : -0.1;
+          rfAdjustCrop(function (c) { c.zoom = Math.max(1.0, Math.min(2.5, Math.round(((c.zoom || 1) + delta) * 100) / 100)); });
+        }, { passive: false });
+      })();
       const REVIEW_SEC = 12;     // the strip saves by itself after this (keeps queues moving)
       const cancelSessionBtn = document.getElementById('cancelSessionBtn');
       const retakeBtn = document.getElementById('retakeBtn');
@@ -40052,11 +40398,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       });
       filmTrack.addEventListener('click', function (e) {
         var fr = e.target.closest('.film-frame');
-        if (!fr || !sess || !sess.reviewing || !retakesAllowed()) return;
+        if (!fr || !sess || !sess.reviewing || (!retakesAllowed() && !reviewFramingOn)) return;
         var i = Number(fr.dataset.i);
         if (!shotCanvases[i]) return;
         sess.pick = i;
-        retakeBtn.textContent = '\u21BA Retake photo ' + (i + 1);
+        if (retakesAllowed()) retakeBtn.textContent = '\u21BA Retake photo ' + (i + 1);
+        if (reviewFramingOn) {
+          selCropShot = i;
+          rfRefreshBar();
+          reviewFramingRedraw();
+        }
         updateFilmTrack();
       });
       function isReceiptLayoutNow() {
@@ -40108,14 +40459,25 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         return new Promise(function (resolve) {
           sess.reviewing = true;
           if (sess.pick == null || sess.pick >= shotCanvases.length) sess.pick = shotCanvases.length - 1;
+          var framing = !!reviewFramingOn;
           renderComposite();
           video.style.display = 'none'; previewCanvas.style.display = 'block';
           try { if (typeof usbSyncStageCanvases === 'function') usbSyncStageCanvases(); } catch (e) { }
           countdownOverlay.style.display = 'none'; recDot.style.display = 'none';
-          setTimeout(applyStageAspect, 0);
           try { if (guestOpen()) guestCall('review', previewCanvas.toDataURL('image/jpeg', 0.85)); } catch (e) { }   // encode the whole strip only when a guest screen will show it
+          if (framing) {
+            selCropShot = sess.pick;
+            document.body.classList.add('stage-framing');
+            var rfb = document.getElementById('reviewFramingBar');
+            if (rfb) rfb.hidden = false;
+            previewCanvas.style.touchAction = 'none';
+            previewCanvas.style.cursor = 'grab';
+            rfRefreshBar();
+            reviewFramingRedraw();
+          }
+          setTimeout(applyStageAspect, 0);
           retakeBtn.textContent = '\u21BA Retake photo ' + (sess.pick + 1);
-          retakeBtn.hidden = !retakesAllowed(); doneBtn.hidden = false; reviewHint.hidden = shotCanvases.length < 2 || !retakesAllowed();
+          retakeBtn.hidden = !retakesAllowed(); doneBtn.hidden = false; reviewHint.hidden = framing || shotCanvases.length < 2 || !retakesAllowed();
           doneBtn.textContent = guestStickersOn
             ? 'Next: Customize \u2192'
             : ((typeof willAutoPrint === 'function' && willAutoPrint())
@@ -40125,7 +40487,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var tick = null;        // no auto-save: waits for Done (or Space / clicker)
           function finish(v) {
             clearInterval(tick);
+            rfClearPointers();
+            document.body.classList.remove('stage-framing');
+            var rfbEnd = document.getElementById('reviewFramingBar');
+            if (rfbEnd) rfbEnd.hidden = true;
+            previewCanvas.style.touchAction = '';
+            previewCanvas.style.cursor = '';
             sess.reviewEnd = null; sess.reviewing = false;
+            if (framing) { try { renderComposite(); } catch (e) { } }
             retakeBtn.hidden = true; doneBtn.hidden = true; reviewHint.hidden = true;
             video.style.display = 'block'; previewCanvas.style.display = 'none';
             try { applyStageAspect(); } catch (e) { }
@@ -40144,6 +40513,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (pick === 'done' || pick === 'cancel' || sess.cancelled) return;
           if (shotCanvases[pick]) pbReleaseShotCanvas(shotCanvases[pick]);
           shotCanvases[pick] = null;
+          if (shotCrops && shotCrops[pick]) delete shotCrops[pick];
           updateFilmTrack(); guestCall('shots');
           countdownOverlay.style.display = 'flex';
           await camEnsureLive();
@@ -40175,8 +40545,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         return -1;
       }
 
-      function drawCropSlotIndicator(ctx) {
-        if (gsoMode !== 'crop') return;
+      function drawCropSlotIndicator(ctx, force) {
+        if (!force && gsoMode !== 'crop') return;
         var b = shotSlotBoxes[selCropShot];
         if (!b) return;
         if (ctx && ctx.canvas) ctx.canvas._hasCropOverlay = true;
@@ -43664,6 +44034,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (shots[si]) {
               shots[si]._shotIndex = si;
               if (shotCrops && shotCrops[si]) shots[si]._crop = shotCrops[si];
+              else delete shots[si]._crop;
             }
           }
         }
@@ -52908,8 +53279,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         noir: 'grayscale(1) contrast(1.4) brightness(.94)'
       };
       var VINTAGE_KEYS = ['film', 'faded', 'retro', 'instant', 'noir'];
-      // Extras every package includes (admin can switch one off per client). Missing = on.
-      function extraOn(name) { return !(window.__PB && window.__PB.extras && window.__PB.extras[name] === false); }
+      // Extras every package includes (admin can switch one off per client); spin360 is opt-in (off by default unless Admin turns it on).
+      function extraOn(name) {
+        if (name === 'spin360') return !!(window.__PB && window.__PB.extras && window.__PB.extras.spin360 === true);
+        return !(window.__PB && window.__PB.extras && window.__PB.extras[name] === false);
+      }
       if (!extraOn('vintage')) VINTAGE_KEYS.forEach(function (k) { delete FILTERS[k]; });
 
       // ---- Custom .cube LUT library ----
@@ -54110,7 +54484,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var reviewEachToggle = document.getElementById('reviewEachToggle');
       reviewEachToggle.addEventListener('change', function () { reviewEach = reviewEachToggle.checked; });
       var resultReviewSelect = document.getElementById('resultReviewSelect');
-      resultReviewSelect.addEventListener('change', function () { resultReviewSec = Number(resultReviewSelect.value) || 0; });
+      if (resultReviewSelect) {
+        resultReviewSelect.addEventListener('change', function () {
+          resultReviewSec = Math.max(0, Math.min(300, Math.floor(Number(resultReviewSelect.value) || 0)));
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
       var qrPopToggle = document.getElementById('qrPopToggle'), qrPopDelaySelect = document.getElementById('qrPopDelaySelect');
       var hideQrToggle = document.getElementById('hideQrToggle');
       var afterModeChips = document.getElementById('afterModeChips');
@@ -54150,6 +54529,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var pfRow = document.getElementById('afterPrintFirstRow'), pfHint = document.getElementById('afterPrintFirstHint');
         if (pfRow) pfRow.style.display = (!hideQrOn && !st) ? '' : 'none';
         if (pfHint) pfHint.style.display = (!hideQrOn && !st) ? '' : 'none';
+        var rrRow = document.getElementById('resultReviewRow'), rrHint = document.getElementById('resultReviewHint');
+        if (rrRow) rrRow.style.display = !st ? '' : 'none';
+        if (rrHint) rrHint.style.display = !st ? '' : 'none';
         if (afterPrintFirstToggle && typeof printPrefs !== 'undefined') afterPrintFirstToggle.checked = !!printPrefs.printFirst;
         try { qrSection.classList.toggle('qr-off', hideQrOn); } catch (e) { }
         try { if (typeof scheduleAfterPreview === 'function') scheduleAfterPreview(); } catch (e) { }
@@ -54479,9 +54861,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         clearTimeout(resultTimer);
         runResultTimerBar(resultReviewSec || 0);
         if (!resultReviewSec) return;
+        var printWaitMs = 0;
         resultTimer = setTimeout(function tryReset() {
           if (state !== 'result') return;
-          if (printing) { resultTimer = setTimeout(tryReset, 1500); return; }
+          if (printing && printWaitMs < 45000) {
+            printWaitMs += 1500;
+            resultTimer = setTimeout(tryReset, 1500);
+            return;
+          }
           resetForNextGuest();
         }, resultReviewSec * 1000);
       }
@@ -55679,7 +56066,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (deskOpenBridgeBtn) deskOpenBridgeBtn.hidden = !roveBridgeOn;
         var roveBox = document.getElementById('androidRoveBridgeBox');
         if (roveBox) roveBox.style.display = roveBridgeOn ? 'block' : 'none';
-        var spinArmOn = !!(IS_IOS_APP && window.__PBLocal && typeof window.__PBLocal.openSpinArm === 'function');
+        var spinArmOn = !!((IS_IOS_APP || IS_ANDROID_APP) && extraOn('spin360') && window.__PBLocal && typeof window.__PBLocal.openSpinArm === 'function');
         var spinArmFab = document.getElementById('spinArmFab');
         if (spinArmFab) spinArmFab.hidden = !spinArmOn || state === 'capturing';
         var iosSpinArmBox = document.getElementById('iosSpinArmBox');
@@ -58275,7 +58662,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (!driveId && typeof gvFolderId === 'function') driveId = gvFolderId(getCachedFolderUrl()) || '';
           if (driveId) opKey = localStorage.getItem('pb_gvk:' + driveId) || '';
         } catch (e) { }
-        window.__PBLocal.openSpinArm({ folderKey: fKey, eventName: evName, driveFolderId: driveId, opKey: opKey });
+        var spinPayload = { folderKey: fKey, eventName: evName, driveFolderId: driveId, opKey: opKey };
+        if (IS_ANDROID_APP) window.__PBLocal.openSpinArm(JSON.stringify(spinPayload));
+        else window.__PBLocal.openSpinArm(spinPayload);
       }
       var spinArmFab = document.getElementById('spinArmFab');
       if (spinArmFab) spinArmFab.addEventListener('click', openIosSpinArm);
@@ -73460,18 +73849,23 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
       }
       // Setup cards for the ESP32 controller (Cash Acceptor + Relay Module + NeoPixels).
+      var _cashSetupDirty = false;
       function syncEsp32LinkSelect(sel, twoWayOnly) {
         if (!sel) return;
         var cur = cashChosenLink();
         if (twoWayOnly && cur === 'keyboard') cur = cashSupports('ble') ? 'ble' : 'serial';
-        sel.value = cur;
+        var changedOpts = false;
         Array.prototype.forEach.call(sel.options, function (o) {
-          var base = o.getAttribute('data-base') || o.textContent; o.setAttribute('data-base', base);
+          var base = o.getAttribute('data-base') || o.textContent;
+          if (!o.getAttribute('data-base')) o.setAttribute('data-base', base);
           var okHere = cashSupports(o.value);
-          o.disabled = !okHere;
-          o.textContent = okHere ? base : base + ' (not in this app)';
+          var wantDisabled = !okHere;
+          var wantText = okHere ? base : base + ' (not in this app)';
+          if (o.disabled !== wantDisabled) { o.disabled = wantDisabled; changedOpts = true; }
+          if (o.textContent !== wantText) { o.textContent = wantText; changedOpts = true; }
         });
-        if (typeof sel._pillRefresh === 'function') sel._pillRefresh();
+        if (sel.value !== cur) sel.value = cur;
+        if (changedOpts && typeof sel._pillRefresh === 'function') sel._pillRefresh();
       }
       function refreshFxEsp32UI() {
         var tg = document.getElementById('fxEsp32Toggle'); if (!tg) return;
@@ -73497,7 +73891,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var dBtn = document.getElementById('fxEsp32DisconnectBtn');
         if (dBtn) dBtn.hidden = !isCon && L.state !== 'ready';
       }
-      function refreshCashSetup() {
+      function refreshCashSetup(force) {
+        // Avoid rebuilding hidden Setup DOM controls on every ESP32 command/ACK during live Photo Sessions.
+        if (!force && typeof document !== 'undefined' && document.body && document.body.classList && document.body.classList.contains('in-session')) {
+          _cashSetupDirty = true;
+          return;
+        }
+        _cashSetupDirty = false;
         refreshFxEsp32UI();
         var tg = document.getElementById('payCashToggle'); if (!tg) return;
         tg.checked = !!payCfg.cash;
@@ -73524,9 +73924,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var cer = document.getElementById('payCashExpireRow'); if (cer) cer.style.display = payCfg.cashExpire ? '' : 'none';
         var cem = document.getElementById('payCashExpireMin');
         if (cem) {
-          cem.value = String(payCfg.cashExpireMin || 10);
-          if (!cem.value) cem.value = '10';
-          if (typeof cem._pillRefresh === 'function') cem._pillRefresh();
+          var wantMin = String(payCfg.cashExpireMin || 10);
+          if (cem.value !== wantMin) {
+            cem.value = wantMin;
+            if (!cem.value) cem.value = '10';
+          }
         }
       }
       // Starts the ESP32 link while cash OR ESP32 lighting is on; stops it otherwise.
@@ -73642,8 +74044,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       setInterval(cashIdleTick, 5000);
       if (window.addEventListener) window.addEventListener('focus', function () { try { cashIdleTick(); } catch (e) { } });
       document.addEventListener('visibilitychange', function () { if (!document.hidden) { try { cashIdleTick(); } catch (e) { } } });
+      var _cashTouchThrottleAt = 0;
       ['pointerdown', 'keydown'].forEach(function (ev) {
-        document.addEventListener(ev, function () { if (cashBalance() > 0) cashTouchActivity(); }, { capture: true, passive: true });
+        document.addEventListener(ev, function () {
+          var now = Date.now();
+          if (now - _cashTouchThrottleAt < 5000) return;
+          if (cashBalance() > 0) {
+            _cashTouchThrottleAt = now;
+            cashTouchActivity(now);
+          }
+        }, { capture: true, passive: true });
       });
       var pws = document.getElementById('payWorkerSaveBtn');
       if (pws) pws.addEventListener('click', function () {
@@ -76891,7 +77301,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           guestDesigns: cleanDesigns, activeDesignIdx: activeDesignIdx, includeFramesInDesignPick: includeFramesInDesignPick,
           boothType: boothType, btCfg: JSON.parse(JSON.stringify(btCfg)), tpls: tplsSnapshot(),
           firstTimerSec: firstTimerSec, timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
-          reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake, qrPop: qrPopOn, hideQr: hideQrOn, qrPopDelay: qrPopDelay, qrMatchWelcome: qrMatchWelcome,
+          reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake, reviewFraming: !!reviewFramingOn, qrPop: qrPopOn, hideQr: hideQrOn, qrPopDelay: qrPopDelay, qrMatchWelcome: qrMatchWelcome,
           shareStation: shareStationOn, shareStationHandoff: shareStationHandoff, shareStationPrivacy: shareStationPrivacy,
           outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, gifMotionStyle: gifMotionStyle, gifLoopMode: gifLoopMode, gifSlideCard: gifSlideCard, gifSlideBg: gifSlideBg, gifSlideFrame: gifSlideFrame, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipGutterMm: flipGutterMm, flipNumbers: flipNumbers, flipCues: flipCues, flipGridPreset: flipGridPreset, flipCardLayout: flipCardLayout, flipBorderSize: flipBorderSize, flipBorderColor: flipBorderColor, flipCardCaption: flipCardCaption, flipOverlayAssetId: flipOverlayAssetId, flipOverlayBorder: flipOverlayBorder, flipPrinterPool: flipPrinterPool, flipPoolMode: flipPoolMode, flipCoverStyle: flipCoverStyle, flipCoverAssetId: flipCoverAssetId, flipBackQr: flipBackQr, flipBackText: flipBackText,
           backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
@@ -77040,6 +77450,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (typeof s.betweenSec === 'number') { betweenSec = s.betweenSec; setSelectValue('betweenSelect', s.betweenSec); }
           if (s.advanceMode === 'tap' || s.advanceMode === 'auto') { advanceMode = s.advanceMode; setSelectValue('advanceSelect', s.advanceMode); refreshAdvanceUI(); }
           if (typeof s.reviewEach === 'boolean') { reviewEach = s.reviewEach; reviewEachToggle.checked = s.reviewEach; }
+          if (typeof s.resultReviewSec === 'number') { resultReviewSec = Math.max(0, Math.min(300, Math.floor(s.resultReviewSec) || 0)); setSelectValue('resultReviewSelect', resultReviewSec); }
+          if (typeof s.reviewFraming === 'boolean') { reviewFramingOn = s.reviewFraming; var rft = document.getElementById('reviewFramingToggle'); if (rft) rft.checked = reviewFramingOn; }
           if (typeof s.qrPop === 'boolean') { qrPopOn = s.qrPop; refreshQrPopUI(); }
           if (typeof s.hideQr === 'boolean') { hideQrOn = s.hideQr; refreshQrPopUI(); }
           if (typeof s.qrPopDelay === 'number') { qrPopDelay = Math.max(0, Math.min(15, s.qrPopDelay)); setSelectValue('qrPopDelaySelect', qrPopDelay); }
@@ -80690,8 +81102,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         syncCloudNow(false);
       });
       window.addEventListener('pb-app-resume', function () {
-        _lastAutoSyncAt = 0;
-        syncCloudNow(false);
+        if (typeof scheduleAndroidCameraResume === 'function') {
+          try { scheduleAndroidCameraResume(); } catch (e) { }
+        }
+        if (typeof cashLinkEnabled !== 'undefined' && cashLinkEnabled && typeof cashLink !== 'undefined' && cashLink && cashLink.mode === 'ble' && typeof cashConnected === 'function' && !cashConnected() && typeof cashStart === 'function') {
+          try { cashStart(false); } catch (e) { }
+        }
+        if (navigator.onLine !== false) {
+          _lastAutoSyncAt = 0;
+          syncCloudNow(false);
+        }
       });
       if (DESKTOP && window.pb4u && typeof window.pb4u.onSetupSynced === 'function') {
         window.pb4u.onSetupSynced(function () { _lastAutoSyncAt = 0; syncCloudNow(false); });
@@ -86834,10 +87254,26 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return;
         }
         try { await enumerateCameras(); } catch (e) { console.error('Listing cameras failed:', e); }
-        await initCamera(cameraSelect.value || null);
+        const bootOk = await initCamera(cameraSelect.value || null);
         updateUI();
         if (typeof camWantLive === 'function' && !camWantLive()) {
           try { camSleepNow(); } catch (e) { }
+        }
+        // Android tablet cold-start recovery: if the tablet was reopened immediately after exit while Camera2 HAL
+        // was still finishing closing, automatically re-enumerate and reopen without requiring Force Stop.
+        if (IS_ANDROID_APP && !bootOk && !streamActive && !camSleeping && cameraSelect.value !== USB_CAM_ID) {
+          const delays = [1000, 2200, 4000];
+          for (let ri = 0; ri < delays.length; ri++) {
+            await wait(delays[ri]);
+            if (document.hidden || streamActive || camSleeping || camInitInFlight || cameraSelect.value === USB_CAM_ID) break;
+            camLabelProbed = false;
+            try { await enumerateCameras(); } catch (e) { }
+            if (document.hidden || streamActive || camSleeping || camInitInFlight || cameraSelect.value === USB_CAM_ID) break;
+            if (await initCamera(cameraSelect.value || null)) {
+              updateUI();
+              break;
+            }
+          }
         }
       })();
       // Keep the screen from dimming or sleeping while the booth is open.
@@ -87712,7 +88148,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var ltCache = { sig: '', urls: {} }, ltQueue = [], ltDirty = true, ltTimer = null, ltBusy = false;
       function layoutDesignSig() {
         var s = snapshotSetup({ skipDesignSync: true });
-        ['layout', 'activeFrame', 'chooseIds', 'frameMode', 'guestPick', 'guestLayouts', 'guestDesigns', 'activeDesignIdx', 'firstTimerSec', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview', 'allowRetake', 'qrPop', 'qrPopDelay', 'qrMatchWelcome', 'shareStation', 'shareStationHandoff', 'shareStationPrivacy'].forEach(function (k) { delete s[k]; });
+        ['layout', 'activeFrame', 'chooseIds', 'frameMode', 'guestPick', 'guestLayouts', 'guestDesigns', 'activeDesignIdx', 'firstTimerSec', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview', 'resultReviewSec', 'allowRetake', 'reviewFraming', 'qrPop', 'qrPopDelay', 'qrMatchWelcome', 'shareStation', 'shareStationHandoff', 'shareStationPrivacy'].forEach(function (k) { delete s[k]; });
         return JSON.stringify(s) + '|' + (backgroundImg ? backgroundImg.src.length : 0) + '|' + labelInput.value;
       }
       function setLayoutThumb(btn, url) {
@@ -88691,8 +89127,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
     (function () {
       function isAndroidApp() { try { return /PB4uAndroid/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.android); } catch (e) { return false; } }
       function declutter() {
-        if (document.documentElement.classList.contains('pb-android')) return;
         document.documentElement.classList.add('pb-android');
+        if (window._pbDecluttered) return;
+        window._pbDecluttered = true;
         document.addEventListener('click', function (e) {
           var h = e.target && e.target.closest ? e.target.closest('.panel-hint:not([id])') : null;
           if (h) h.classList.toggle('pb-tip-open');

@@ -38,6 +38,7 @@ class PBLocal {
         var mid: String = ""
         var token: String = ""
         var deviceId: String = ""
+        var standaloneAllowed: Bool = false
     }
 
     private let lock = NSLock()

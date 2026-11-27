@@ -20,9 +20,19 @@ var CASH_NUS_TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';   // ESP32 -> App (not
 var cashLink = { mode: '', state: 'idle', name: '', note: '' };     // state: idle | connecting | ready | lost | unsupported
 var cashHooks = { credit: null, status: null };                    // set by the payment / setup code
 var cashKeyParser = null, cashKeyBound = false, cashBle = null, cashSerial = null, cashLinkEnabled = false;
-var cashSerialParser = null, cashNativeRetryTimer = null;
+var cashSerialParser = null, cashNativeRetryTimer = null, cashNativeRetryMs = 3000;
+var cashStatusTimer = null, cashNativeBridgeRef = null, cashNativeAvailCache = false;
 var cashLastCmd = '', cashLastCmdAt = 0, cashLastRx = '';
 var cashStateHook = null;
+
+function cashNotifyStatusSoon() {
+  if (typeof cashHooks.status !== 'function') return;
+  if (cashStatusTimer) return;
+  cashStatusTimer = setTimeout(function () {
+    cashStatusTimer = null;
+    if (typeof cashHooks.status === 'function') { try { cashHooks.status(cashLink); } catch (e) { } }
+  }, 80);
+}
 
 // Turns the text the ESP32 sends into credits.
 // opts: { strictLine: boolean, onLine: function(str) }
@@ -78,7 +88,7 @@ function cashFeedText(text, source, customParser) {
       strictLine: true,
       onLine: function (ln) {
         cashLastRx = ln;
-        if (typeof cashHooks.status === 'function') { try { cashHooks.status(cashLink); } catch (e) { } }
+        cashNotifyStatusSoon();
       }
     });
   }
@@ -146,9 +156,16 @@ function cashSpend(price) {
 
 // ---- link status ----
 function cashHasNativeBridge() {
-  return !!(typeof window !== 'undefined' && window.__Esp32Bridge &&
-    typeof window.__Esp32Bridge.isAvailable === 'function' &&
-    window.__Esp32Bridge.isAvailable());
+  if (typeof window === 'undefined' || !window.__Esp32Bridge || typeof window.__Esp32Bridge.isAvailable !== 'function') {
+    cashNativeBridgeRef = null;
+    cashNativeAvailCache = false;
+    return false;
+  }
+  if (cashNativeBridgeRef !== window.__Esp32Bridge) {
+    cashNativeBridgeRef = window.__Esp32Bridge;
+    try { cashNativeAvailCache = !!window.__Esp32Bridge.isAvailable(); } catch (e) { cashNativeAvailCache = false; }
+  }
+  return cashNativeAvailCache;
 }
 function cashSetLink(state, note, name) {
   cashLink.state = state; cashLink.note = note || ''; if (name != null) cashLink.name = name;
@@ -229,7 +246,7 @@ function cashSend(cmd) {
     } catch (e) { }
   }
 
-  if (typeof cashHooks.status === 'function') { try { cashHooks.status(cashLink); } catch (e) { } }
+  cashNotifyStatusSoon();
   return sent;
 }
 if (typeof window !== 'undefined') window.esp32Send = cashSend;
@@ -269,6 +286,18 @@ function cashKeyStart() {
   cashSetLink('ready', 'Listening for ESP32 keyboard (credits only; use BLE/USB serial for relays)', 'Keyboard');
 }
 
+function cashScheduleNativeRetry() {
+  if (!cashLinkEnabled || cashLink.mode !== 'ble' || !cashHasNativeBridge() || cashNativeRetryTimer) return;
+  var waitMs = cashNativeRetryMs;
+  cashNativeRetryMs = Math.min(15000, Math.round(cashNativeRetryMs * 1.6));
+  cashNativeRetryTimer = setTimeout(function () {
+    cashNativeRetryTimer = null;
+    if (cashLinkEnabled && cashLink.mode === 'ble' && cashHasNativeBridge() && !cashConnected()) {
+      try { window.__Esp32Bridge.connectSaved(); } catch (e) { }
+    }
+  }, waitMs);
+}
+
 // ---- Android native Bluetooth Bridge events (window.__Esp32Bridge -> window.__Esp32Event) ----
 if (typeof window !== 'undefined') {
   window.__Esp32Event = function (raw) {
@@ -277,6 +306,7 @@ if (typeof window !== 'undefined') {
     if (!ev || !ev.type) return;
     if (ev.type === 'connected') {
       if (cashNativeRetryTimer) { clearTimeout(cashNativeRetryTimer); cashNativeRetryTimer = null; }
+      cashNativeRetryMs = 3000;
       cashBle = { dev: null, onGone: null, rxChar: null, writeChain: Promise.resolve(), native: true, mode: ev.mode || 'ble', address: ev.address || '', name: ev.name || 'ESP32', twoWay: ev.twoWay !== false };
       var tag = ev.mode === 'spp' ? 'Classic BT connected' : 'Bluetooth connected';
       if (ev.twoWay !== false) tag += ' (two-way)';
@@ -289,22 +319,21 @@ if (typeof window !== 'undefined') {
         return;
       }
       cashSetLink('lost', ev.reason || 'Bluetooth disconnected. Reconnecting…', '');
-      if (cashHasNativeBridge() && !cashNativeRetryTimer) {
-        cashNativeRetryTimer = setTimeout(function () {
-          cashNativeRetryTimer = null;
-          if (cashLinkEnabled && cashLink.mode === 'ble' && cashHasNativeBridge() && !cashConnected()) {
-            try { window.__Esp32Bridge.connectSaved(); } catch (e) { }
-          }
-        }, 3000);
-      }
+      cashScheduleNativeRetry();
     } else if (ev.type === 'line') {
       if (ev.line != null) cashFeedText(String(ev.line) + '\n', 'ble');
     } else if (ev.type === 'error') {
       var msg = String(ev.error || 'Bluetooth error');
+      var isSilent = !!ev.silent;
       if (!cashConnected()) {
-        cashSetLink('idle', msg === 'Cancelled.' ? 'Tap “Connect” to pick the ESP32' : msg, '');
+        if (isSilent && cashLinkEnabled && cashLink.mode === 'ble') {
+          cashSetLink('lost', 'ESP32 offline — retrying automatically…', '');
+          cashScheduleNativeRetry();
+        } else {
+          cashSetLink('idle', msg === 'Cancelled.' ? 'Tap “Connect” to pick the ESP32' : msg, '');
+        }
       }
-      if (typeof showToast === 'function' && msg && msg !== 'Cancelled.') {
+      if (!isSilent && typeof showToast === 'function' && msg && msg !== 'Cancelled.') {
         try { showToast(msg, 4500); } catch (e) { }
       }
     }

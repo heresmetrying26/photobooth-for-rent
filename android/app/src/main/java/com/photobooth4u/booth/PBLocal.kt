@@ -38,12 +38,76 @@ class PBLocal(private val ctx: Context) {
 
     class Folder(val slug: String, val id: String, val name: String, val sub: String, val at: Long)
 
+    data class SpinCloudContext(
+        val folderKey: String = "",
+        val eventName: String = "",
+        val driveFolderId: String = "",
+        val opKey: String = "",
+        val licence: String = "",
+        val mid: String = "",
+        val standaloneAllowed: Boolean = false
+    )
+
+    data class SavedVideoResult(
+        val ok: Boolean,
+        val slug: String,
+        val eventTitle: String,
+        val filename: String,
+        val destFile: File?,
+        val url: String,
+        val pageUrl: String,
+        val sessionUrl: String,
+        val error: String?
+    )
+
     companion object {
         private const val TAG = "PBLocal"
-        val IMG_RE = Regex("\\.(jpe?g|png|webp|gif|mp4|webm)$", RegexOption.IGNORE_CASE)
+        val IMG_RE = Regex("\\.(jpe?g|png|webp|gif|mp4|webm|mov|m4v)$", RegexOption.IGNORE_CASE)
         val VIDEO_RE = Regex("\\.(mp4|webm|mov|m4v)$", RegexOption.IGNORE_CASE)
         val SOLO_RE = Regex("_solo_\\d+", RegexOption.IGNORE_CASE)
         val SUBDIRS = listOf("Prints", "Solo Shots", "GIFs", "360 Videos")
+
+        @Volatile
+        var activeInstance: PBLocal? = null
+
+        @Volatile
+        var activeShareServer: LocalShareServer? = null
+
+        @Volatile
+        var spinContext: SpinCloudContext = SpinCloudContext()
+
+        private val onlineUrls = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+        fun setOnlineShareUrl(slug: String, filename: String, url: String) {
+            if (slug.isEmpty() || filename.isEmpty() || url.isEmpty()) return
+            onlineUrls["$slug/$filename"] = url
+        }
+
+        fun onlineShareUrl(slug: String, filename: String): String {
+            return onlineUrls["$slug/$filename"] ?: ""
+        }
+
+        fun ensureActive(ctx: Context): PBLocal {
+            activeInstance?.let { return it }
+            return synchronized(this) {
+                activeInstance ?: PBLocal(ctx.applicationContext).also { activeInstance = it }
+            }
+        }
+
+        fun ensureShareServer(ctx: Context): LocalShareServer {
+            val local = ensureActive(ctx)
+            activeShareServer?.let { srv ->
+                if (local.sharePort <= 0) srv.start()
+                return srv
+            }
+            return synchronized(this) {
+                activeShareServer?.also { if (local.sharePort <= 0) it.start() }
+                    ?: LocalShareServer(local).also { srv ->
+                        srv.start()
+                        activeShareServer = srv
+                    }
+            }
+        }
 
         fun categoryOf(name: String): String {
             if (VIDEO_RE.containsMatchIn(name) || name.startsWith("360_", ignoreCase = true)) return "360 Videos"
@@ -125,6 +189,7 @@ class PBLocal(private val ctx: Context) {
     var onOrientationChange: ((String) -> Unit)? = null
 
     init {
+        activeInstance = this
         try { root.mkdirs() } catch (e: Exception) { Log.w(TAG, "Could not create $root", e) }
         loadIndex()
         loadCodes()
@@ -904,6 +969,44 @@ class PBLocal(private val ctx: Context) {
         return pickLanAddress(found)
     }
 
+    /** Launches the Standalone 360 Booth / Arm Camera activity with active event context. */
+    @JavascriptInterface
+    fun openSpinArm(optsJson: String?) {
+        try {
+            val o = if (!optsJson.isNullOrBlank()) try { JSONObject(optsJson) } catch (_: Throwable) { JSONObject() } else JSONObject()
+            var licStr = ""
+            var midStr = ""
+            try {
+                val rawAuth = appAuth()
+                if (rawAuth.isNotBlank()) {
+                    val a = JSONObject(rawAuth)
+                    licStr = a.optString("licence", "")
+                    midStr = a.optString("mid", "")
+                }
+            } catch (_: Throwable) { }
+            val lic = AppLicence(ctx.applicationContext)
+            if (midStr.isEmpty()) midStr = lic.machineId()
+            val st = lic.status()
+            val exObj = if (st.ok) st.payload?.optJSONObject("feat")?.optJSONObject("extras") else null
+            val allowStandalone = exObj?.optBoolean("spin360", false) == true
+            spinContext = SpinCloudContext(
+                folderKey = o.optString("folderKey", "").trim(),
+                eventName = o.optString("eventName", "").trim(),
+                driveFolderId = o.optString("driveFolderId", "").trim(),
+                opKey = o.optString("opKey", "").trim(),
+                licence = licStr,
+                mid = midStr,
+                standaloneAllowed = allowStandalone
+            )
+            val i = android.content.Intent(ctx, SpinArmActivity::class.java).apply {
+                flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            ctx.startActivity(i)
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not open SpinArmActivity", e)
+        }
+    }
+
     /** Opens the dedicated Roving DSLR Bridge activity */
     @JavascriptInterface
     fun openRoveBridge() {
@@ -914,6 +1017,103 @@ class PBLocal(private val ctx: Context) {
             ctx.startActivity(i)
         } catch (e: Exception) {
             Log.w(TAG, "Could not open RovingBridgeActivity", e)
+        }
+    }
+
+    // ---------- Standalone 360 Booth helpers ----------
+
+    fun stationUrl(): String {
+        val base = lanBase()
+        return if (base.isNotEmpty()) "$base/station" else ""
+    }
+
+    fun overlaysDirectory(): File {
+        val dir = File(root, "_360_assets")
+        if (!dir.exists()) dir.mkdirs()
+        return dir
+    }
+
+    fun ensureDefaultEventFolder(): Folder {
+        val ctxKey = safeName(spinContext.folderKey)
+        if (ctxKey.isNotEmpty()) return folderFor(ctxKey, null)
+        return latestFolder() ?: folderFor("Event " + today(), null)
+    }
+
+    fun findSessionFiles(dir: File, prefix: String): List<File> {
+        return photosIn(dir).filter {
+            it.name.startsWith(prefix + "_") || it.name.startsWith(prefix + ".")
+        }
+    }
+
+    fun saveVideoFile(sourceFile: File, folderKey: String?, subfolder: String?, filename: String?, saveToGallery: Boolean): SavedVideoResult {
+        val cleanKey = safeName(folderKey)
+        val f = if (cleanKey.isNotEmpty()) folderFor(cleanKey, subfolder) else ensureDefaultEventFolder()
+        val dir = dirOf(f)
+        val targetDir = File(dir, "360 Videos")
+        targetDir.mkdirs()
+
+        val sessionNum = nextSession(dir)
+        var rawName = safeName(filename).ifEmpty { "${sessionNum}_360_spin.mp4" }
+        rawName = File(rawName).name
+        if (!VIDEO_RE.containsMatchIn(rawName)) rawName += ".mp4"
+
+        val outName: String
+        val destFile: File
+        synchronized(lock) {
+            var candidate = rawName
+            var idx = 2
+            while (File(targetDir, candidate).exists() || File(dir, candidate).exists()) {
+                candidate = rawName.replace(EXT_RE, " ($idx)$1")
+                idx++
+            }
+            outName = candidate
+            destFile = File(targetDir, outName)
+            try {
+                sourceFile.copyTo(destFile, overwrite = true)
+            } catch (e: Exception) {
+                return SavedVideoResult(false, f.slug, galleryTitle(f), "", null, "", "", "", e.message ?: "Save failed")
+            }
+        }
+
+        if (saveToGallery) {
+            copyVideoToGallery(outName, f.name, destFile)
+        }
+
+        val prefix = outName.substringBefore('_')
+        val encName = android.net.Uri.encode(outName)
+        val encPref = android.net.Uri.encode(prefix)
+        return SavedVideoResult(
+            ok = true,
+            slug = f.slug,
+            eventTitle = galleryTitle(f),
+            filename = outName,
+            destFile = destFile,
+            url = "/e/${f.slug}/f/$encName",
+            pageUrl = "/e/${f.slug}/p/$encName",
+            sessionUrl = "/e/${f.slug}/s/$encPref",
+            error = null
+        )
+    }
+
+    private fun copyVideoToGallery(fileName: String, eventDir: String, src: File) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        val mime = when (fileName.substringAfterLast('.', "").lowercase(Locale.ROOT)) {
+            "mov" -> "video/quicktime"
+            "webm" -> "video/webm"
+            else -> "video/mp4"
+        }
+        try {
+            val values = ContentValues()
+            values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            values.put(MediaStore.MediaColumns.MIME_TYPE, mime)
+            values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/photobooth4u/$eventDir/360 Videos")
+            val resolver = ctx.contentResolver
+            val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values) ?: return
+            resolver.openOutputStream(uri)?.use { os ->
+                src.inputStream().use { ins -> ins.copyTo(os, 65536) }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not copy $fileName to Video Gallery", e)
         }
     }
 }

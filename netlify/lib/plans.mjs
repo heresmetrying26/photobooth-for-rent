@@ -223,7 +223,7 @@ export function getPlanDeliverables(planKey, code) {
     url: '/how-to-extras/',
     desc: 'Vintage looks, photographer desk, print preview and the printed flipbook'
   });
-  if (p.spin360 !== false) {
+  if (p.spin360 === true) {
     links.push({
       id: 'spin-guide',
       name: '360 Video Guide',
@@ -388,7 +388,7 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
       gifOpt: true,
       offlineOpt: !!planCfg.offlineOpt,
       offlineOnly: !!planCfg.offlineOnly,
-      extras: normExtras(planCfg.spin360 === false ? { spin360: false } : null),
+      extras: normExtras(planCfg.spin360 === true ? { spin360: true } : { spin360: false }),
       // Automatically enable all booth feature switches for every paid plan:
       retakeOpt: true,   // Give retake switch
       payOpt: true,      // Guest payment (vouchers; the GCash / Maya QR part needs the internet)

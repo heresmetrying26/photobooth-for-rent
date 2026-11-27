@@ -1498,8 +1498,8 @@
               (short clip printed as a flip book)</label>
             <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newXVideo" checked> Video guestbook
               (guests record a short message)</label>
-            <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newXSpin" checked> 360 video desk
-              (videos from the 360 arm &rarr; QR; editing in the laptop app)</label>
+            <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newXSpin"> 360 video desk
+              (videos from the 360 arm &rarr; QR; Standalone 360 on iOS/Android &amp; Laptop 360 Desk — off by default)</label>
           </div>
           <div class="modebox">
             <label class="toggle"><input type="checkbox" id="newOffline"> Offline app (Windows / Mac / Android)</label>
@@ -2358,7 +2358,7 @@
         if (l.offlineOpt || l.offlineOnly) acts += '<button class="small" data-a="printstationopt" data-c="' + c + '" title="Shows Tools → Print Station inside the Laptop App so an iPad/Android tablet can print to it offline over Wi-Fi">' + (l.printStationOpt ? 'Turn off Print Station' : 'Turn on Print Station') + '</button>';
         acts += '<button class="small" data-a="arrangeprintopt" data-c="' + c + '" title="Shows Tools → Arrange &amp; Print so the renter can arrange, crop, and pack strips/photos onto a sheet">' + (l.arrangePrintOpt ? 'Turn off Arrange &amp; Print' : 'Turn on Arrange &amp; Print') + '</button>';
         [['vintage', 'vintage looks'], ['roving', 'photographer desk'], ['flipbook', 'flipbook'], ['video', 'video guestbook'], ['spin360', '360 video desk']].forEach(function (x) {
-          var on = !(l.extras && l.extras[x[0]] === false);
+          var on = x[0] === 'spin360' ? !!(l.extras && l.extras[x[0]] === true) : !(l.extras && l.extras[x[0]] === false);
           acts += '<button class="small" data-a="extra" data-x="' + x[0] + '" data-c="' + c + '">' + (on ? 'Hide ' : 'Give ') + x[1] + '</button>';
         });
         if (!bonus) {
@@ -3449,9 +3449,9 @@
         monthoffline: { days: 30, devices: 1, lifetime: false, traditional: true, gif: true, offline: true, only: true },
         monthboth: { days: 30, devices: 1, lifetime: false, traditional: true, gif: true, offline: true, only: false },
         android: { days: 30, devices: 1, lifetime: false, traditional: true, gif: true, offline: true, only: true },
-        lifeonline: { days: 1, devices: 5, lifetime: true, traditional: true, gif: true, offline: false, only: false, spin: false },
-        lifeoffline: { days: 1, devices: 5, lifetime: true, traditional: true, gif: true, offline: true, only: true, spin: false },
-        lifetime: { days: 1, devices: 5, lifetime: true, traditional: true, gif: true, offline: true, only: false, spin: false }
+        lifeonline: { days: 1, devices: 5, lifetime: true, traditional: true, gif: true, offline: false, only: false },
+        lifeoffline: { days: 1, devices: 5, lifetime: true, traditional: true, gif: true, offline: true, only: true },
+        lifetime: { days: 1, devices: 5, lifetime: true, traditional: true, gif: true, offline: true, only: false }
       };
       $('newPackages').addEventListener('click', function (e) {
         var b = e.target.closest('[data-pkg]'); if (!b) return;
@@ -3462,7 +3462,7 @@
         var orRadio = document.querySelector('[name="newOrientation"][value="either"]'); if (orRadio) orRadio.checked = true;
         $('newRetake').checked = true; $('newTypes').checked = false; $('newLock').checked = true; $('newPay').checked = true;
         if ($('newArrangePrint')) $('newArrangePrint').checked = false;
-        if (p.spin !== undefined) $('newXSpin').checked = p.spin;
+        $('newXSpin').checked = (p.spin === true);
         [].forEach.call(this.querySelectorAll('[data-pkg]'), function (x) { x.classList.toggle('primary', x === b); });
       });
       $('newOfflineOnly').addEventListener('change', function () { if (this.checked) $('newOffline').checked = true; });
@@ -3505,7 +3505,7 @@
           f.gif = r.gifOpt !== false; f.retake = !!r.retakeOpt; f.lock = !!r.lockOpt; f.pay = !!r.payOpt;
           f.print = !!(r.print && r.print.enabled); f.sizes = r.print && r.print.sizes ? r.print.sizes.length : 0;
           f.opens = r.startsAt || 0;
-          var ex = r.extras || {}; f.vintage = ex.vintage !== false; f.roving = ex.roving !== false; f.flipbook = ex.flipbook !== false; f.spin360 = ex.spin360 !== false;
+          var ex = r.extras || {}; f.vintage = ex.vintage !== false; f.roving = ex.roving !== false; f.flipbook = ex.flipbook !== false; f.spin360 = ex.spin360 === true;
           f.arrangePrint = !!r.arrangePrintOpt;
           f.rush = !!r.rushOpt;
           f.printStation = !!r.printStationOpt;
@@ -3537,7 +3537,7 @@
           f.offlineOpt = !!p.offlineOpt; f.offlineOnly = !!p.offlineOnly; f.traditional = p.traditional !== false;
           f.gif = true; f.retake = true; f.lock = true; f.pay = true; f.print = true; f.sizes = 15; f.opens = 0;
           f.vintage = f.roving = f.flipbook = true;
-          f.spin360 = p.spin360 !== false;
+          f.spin360 = p.spin360 === true;
           f.arrangePrint = false;
           f.rush = false;
           f.printStation = false;

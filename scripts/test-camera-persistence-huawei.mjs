@@ -737,4 +737,30 @@ test('Endurance: pbReleaseFlipbookResult shrinks all flipbook canvases and setLa
   assert(page.includes('if (shotCanvases.length !== shotsNeeded()) {\n          pbReleaseShotList(shotCanvases);'), 'setLayout releases old shot canvases');
 });
 
+test('Android exit/reopen camera teardown, QR kiosk safety, auto-return timer, and review framing', () => {
+  const mainKt = readFileSync(join(ROOT, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'MainActivity.kt'), 'utf8');
+  const shareKt = readFileSync(join(ROOT, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'LocalShareServer.kt'), 'utf8');
+  // Camera teardown across exit / background / reopen (fixes Huawei camera lock until Force Stop)
+  assert(mainKt.includes('private fun destroyWebViewSafely()'), 'MainActivity defines destroyWebViewSafely');
+  assert(mainKt.includes('webView.loadUrl("about:blank")'), 'destroyWebViewSafely navigates to about:blank to trigger Blink MediaStream teardown');
+  assert(mainKt.includes('webView.destroy()'), 'destroyWebViewSafely destroys WebView in onDestroy');
+  assert(mainKt.includes('override fun onStop()') && mainKt.includes('releaseWebCameraNow()'), 'MainActivity releases camera onStop');
+  assert(mainKt.includes('PrintHelperService.stop(this)') && mainKt.includes('finishAndRemoveTask()'), 'Exit button stops PrintHelperService and removes task cleanly');
+  assert(mainKt.includes('dispatchNetSyncEvent("pb-app-resume", 450L)'), 'onResume dispatches pb-app-resume unconditionally (including offline kiosks)');
+  assert(mainKt.includes('val isLocalShare = curUrl.startsWith("http://127.0.0.1:")'), 'Back button on local share page returns cleanly to booth');
+  assert(shareKt.includes('← Back to booth'), 'LocalShareServer renders Back to booth button on own-tablet /o/ page');
+
+  // Booth JS camera timeout + teardown + cold-start recovery + Android backdrop-filter disable
+  assert(page.includes('window.__pbReleaseCameraNow = releaseBuiltInCameraNow'), 'booth exposes __pbReleaseCameraNow');
+  assert(page.includes('function scheduleAndroidCameraResume('), 'booth defines scheduleAndroidCameraResume');
+  assert(page.includes('Camera did not respond in time') && page.includes('const gumTimeoutMs ='), 'openCameraStream protects against hung getUserMedia on Android');
+  assert(page.includes('html.pb-android *') && page.includes('backdrop-filter: none !important;'), 'Android disables expensive backdrop-filter blur over live camera');
+
+  // Local QR "Open" link removed, auto-return timer visible & persisted, pre-print review framing wired
+  assert(!page.includes("a.className = 'qr-link'"), 'no clickable qr-link Open anchor is created under QR codes');
+  assert(page.includes('id="resultReviewSelect"') && !page.includes('<select id="resultReviewSelect" hidden>'), 'resultReviewSelect is visibly exposed');
+  assert(page.includes("setSelectValue('resultReviewSelect', resultReviewSec)"), 'applySetup restores resultReviewSec');
+  assert(page.includes('id="reviewFramingToggle"') && page.includes('id="reviewFramingBar"') && page.includes('function reviewFramingRedraw()'), 'pre-print review framing toggle, bar, and redraw are wired');
+});
+
 console.log('\n' + passed + ' checks passed' + (process.exitCode ? ', with failures' : ''));

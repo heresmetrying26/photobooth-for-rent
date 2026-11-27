@@ -217,6 +217,20 @@ class LocalShareServer(private val store: PBLocal) {
         val printM = PRINT_ROUTE.find(path)
         if (printM != null) return printRoute(printM, method, out, ip)
 
+        if (path == "/station-mail") {
+            if (method == "OPTIONS") return sendOptions(out)
+            if (method == "POST") {
+                val len = headerValue(head, "content-length")?.toIntOrNull() ?: 0
+                val bodyBytes = if (len in 1..8192) {
+                    val b = ByteArray(len); var off = 0
+                    while (off < len) { val r = input.read(b, off, len - off); if (r < 0) break; off += r }
+                    b
+                } else ByteArray(0)
+                return stationMailProxy(bodyBytes, out)
+            }
+            return sendJson(out, 405, "{\"ok\":false,\"error\":\"Method not allowed\"}")
+        }
+
         if (method != "GET" && !headOnly) return sendText(out, 405, "Method Not Allowed", "Method not allowed", false)
 
         if (path == "/stats" || path == "/api/stats") {
@@ -338,7 +352,8 @@ class LocalShareServer(private val store: PBLocal) {
                 val label = when { isVid && f.name.contains("_guestbook", ignoreCase = true) -> "Guestbook message"; isVid -> "360 Video"; isGif -> "GIF"; isSolo -> "Solo photo"; else -> "Print strip" }
                 val enc = Uri.encode(f.name)
                 sb.append("<div class=\"item\">")
-                if (!isVid) sb.append("<img src=\"/e/$slug/t/$enc\" alt=\"${esc(label)}\">")
+                if (isVid) sb.append("<video src=\"/e/$slug/f/$enc\" controls playsinline preload=\"metadata\" style=\"width:100%;max-height:360px;display:block;background:#000\"></video>")
+                else sb.append("<img src=\"/e/$slug/t/$enc\" alt=\"${esc(label)}\">")
                 sb.append("<div class=\"lbl\">${esc(label)}</div>")
                 sb.append("<a class=\"btn\" href=\"/e/$slug/f/$enc?dl=1\">Download</a>")
                 sb.append("</div>")
@@ -407,11 +422,13 @@ class LocalShareServer(private val store: PBLocal) {
     private fun sendJson(out: OutputStream, status: Int, body: String) {
         val reason = when (status) {
             200 -> "OK"
+            400 -> "Bad Request"
             403 -> "Forbidden"
             404 -> "Not Found"
             405 -> "Method Not Allowed"
             413 -> "Payload Too Large"
             429 -> "Too Many Requests"
+            502 -> "Bad Gateway"
             else -> "Internal Server Error"
         }
         sendBytes(out, status, reason, "application/json; charset=utf-8", body.toByteArray(Charsets.UTF_8), false, "no-store")
@@ -500,6 +517,53 @@ class LocalShareServer(private val store: PBLocal) {
         return sendText(out, 404, "Not Found", "Not found", false)
     }
 
+    private fun stationMailProxy(bodyBytes: ByteArray, out: OutputStream) {
+        val obj = try {
+            JSONObject(bodyBytes.toString(Charsets.UTF_8))
+        } catch (_: Exception) {
+            return sendJson(out, 400, "{\"ok\":false,\"error\":\"Bad request\"}")
+        }
+        val ctx = PBLocal.spinContext
+        if (ctx.driveFolderId.isNotEmpty() && !obj.has("folderId")) obj.put("folderId", ctx.driveFolderId)
+        if (ctx.opKey.isNotEmpty() && !obj.has("k")) obj.put("k", ctx.opKey)
+        var lic = ctx.licence
+        var mid = ctx.mid
+        if (lic.isEmpty() || mid.isEmpty()) {
+            try {
+                val a = JSONObject(store.appAuth())
+                if (lic.isEmpty()) lic = a.optString("licence", "")
+                if (mid.isEmpty()) mid = a.optString("mid", "")
+            } catch (_: Throwable) { }
+        }
+        if (lic.isNotEmpty() && !obj.has("licence")) obj.put("licence", lic)
+        if (mid.isNotEmpty() && !obj.has("mid")) obj.put("mid", mid)
+
+        var code = 502
+        var reply = "{\"ok\":false,\"error\":\"Could not reach email service\"}"
+        var conn: java.net.HttpURLConnection? = null
+        try {
+            val u = java.net.URL("${AppLicence.SERVER}/api/station-mail")
+            conn = (u.openConnection() as java.net.HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 12000
+                readTimeout = 15000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+            }
+            conn.outputStream.use { it.write(obj.toString().toByteArray(Charsets.UTF_8)) }
+            code = conn.responseCode
+            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+            if (stream != null) {
+                val txt = stream.bufferedReader(Charsets.UTF_8).readText()
+                if (txt.isNotBlank()) reply = txt
+            }
+        } catch (_: Exception) {
+        } finally {
+            try { conn?.disconnect() } catch (_: Exception) { }
+        }
+        sendBytes(out, code, if (code == 200) "OK" else "Error", "application/json; charset=utf-8", reply.toByteArray(Charsets.UTF_8), false, "no-store")
+    }
+
     // /e/<event>/print/<photo>: a guest asks for a print
     private fun printRoute(m: MatchResult, method: String, out: OutputStream, ip: String) {
         if (method != "POST") return sendJson(out, 405, "{\"ok\":false,\"error\":\"Method not allowed\"}")
@@ -569,6 +633,11 @@ class LocalShareServer(private val store: PBLocal) {
                 if (ra != rb) ra.compareTo(rb) else a.compareTo(b, ignoreCase = true)
             })
         val sb = StringBuilder()
+        if (store.isOwnAddress(ip) && store.sharePort > 0) {
+            sb.append("<div style=\"text-align:center;padding:6px 16px 2px\"><a class=\"btn alt\" style=\"margin:0;padding:10px 18px;font-size:14px\" href=\"http://127.0.0.1:")
+                .append(store.sharePort)
+                .append("/\">← Back to booth</a></div>")
+        }
         sb.append("<div style=\"text-align:center;padding:0 16px\"><h1>Your photos</h1><p class=\"sub\">").append(esc(store.galleryTitle(folder))).append("</p></div>")
         if (mine.isEmpty()) {
             sb.append("<p class=\"empty\">This photo isn’t here yet. Wait a moment and refresh.</p><script>setTimeout(function(){location.reload()},5000)</script>")
@@ -684,6 +753,7 @@ class LocalShareServer(private val store: PBLocal) {
                 val kind = if (isVid && f.name.contains("_guestbook", ignoreCase = true)) "guestbook" else if (isVid) "video" else if (isGif) "gif" else if (isSolo) "solo" else "photo"
                 // prefix = everything before the first underscore (the timestamp token)
                 val prefix = f.name.substringBefore('_')
+                val onlineUrl = PBLocal.onlineShareUrl(folder.slug, f.name)
                 arr.put(JSONObject()
                     .put("name", f.name)
                     .put("kind", kind)
@@ -691,6 +761,7 @@ class LocalShareServer(private val store: PBLocal) {
                     .put("thumbUrl", "/e/${folder.slug}/t/" + Uri.encode(f.name))
                     .put("pageUrl", "/e/${folder.slug}/p/" + Uri.encode(f.name))
                     .put("sessionUrl", "/e/${folder.slug}/s/" + Uri.encode(prefix))
+                    .put("onlineUrl", onlineUrl)
                     .put("mtime", f.lastModified())
                 )
             }

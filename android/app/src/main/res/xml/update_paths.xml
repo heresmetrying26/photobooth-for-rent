@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Only the update APKs that AppUpdater downloads are shared with the installer -->
+<!-- Shares downloaded update APKs and exported event videos/photos safely via FileProvider -->
 <paths>
     <cache-path name="updates" path="updates/" />
+    <files-path name="internal_pictures" path="Pictures/photobooth4u/" />
+    <external-files-path name="external_pictures" path="Pictures/photobooth4u/" />
 </paths>

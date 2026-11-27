@@ -58,10 +58,22 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
-    <!-- The spoken countdown asks the tablet's text-to-speech engine (needed to see it on Android 11+) -->
+    <!-- The spoken countdown asks the tablet's text-to-speech engine, plus WhatsApp & Mail handoffs on Android 11+ -->
     <queries>
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="whatsapp" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="mailto" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
         </intent>
     </queries>
 
@@ -128,6 +140,27 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:label="Laptop Guest + Camera Bridge"
+            android:icon="@mipmap/ic_launcher"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Standalone 360 Booth & Arm Camera Activity (Gyro auto-start + on-device video editing) -->
+        <activity
+            android:name=".SpinArmActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:label="360 Arm Camera"
+            android:icon="@mipmap/ic_launcher"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Post-Spin Quick Share Activity (Wi-Fi QR, Android Share, WhatsApp & Email) -->
+        <activity
+            android:name=".SpinQuickShareActivity"
+            android:exported="false"
+            android:label="Share 360 Video"
             android:icon="@mipmap/ic_launcher"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
             android:screenOrientation="unspecified"

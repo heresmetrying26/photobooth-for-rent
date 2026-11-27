@@ -630,6 +630,31 @@ if (sIdx > 0 && eIdx > sIdx) {
     manifestXml.includes('BLUETOOTH_SCAN') && manifestXml.includes('BLUETOOTH_CONNECT') && manifestXml.includes('ACCESS_FINE_LOCATION'),
     'AndroidManifest.xml declares BLUETOOTH_SCAN, BLUETOOTH_CONNECT, and ACCESS_FINE_LOCATION'
   );
+
+  // 9f. Anti-lag & anti-hang architecture checks (Esp32Bridge + BTBridge + booth/cash JS)
+  const btKt = readFileSync(join(repo, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'BTBridge.kt'), 'utf8');
+  ok(
+    espKt.includes('private val connExec:') &&
+    espKt.includes('private fun scheduleConnect(') &&
+    espKt.includes('MAX_WRITE_QUEUE') &&
+    espKt.includes('private fun coalesceKey(') &&
+    espKt.includes('BLE_CONNECT_TIMEOUT_MS') &&
+    espKt.includes('consecutiveWriteTimeouts') &&
+    espKt.includes('ACTION_ACL_DISCONNECTED'),
+    'Esp32Bridge.kt uses async connExec, bounded coalescing writeQueue, BLE timeout watchdog, dead-link detection, and ACL disconnect listener'
+  );
+  ok(
+    btKt.includes('fun writeAsync(') && btKt.includes('fun writePacedAsync(') && btKt.includes('"writeDone"'),
+    'BTBridge.kt provides non-blocking writeAsync / writePacedAsync so printing never stalls ESP32 JS events'
+  );
+  ok(
+    src.includes('cashNotifyStatusSoon') &&
+    src.includes('cashScheduleNativeRetry') &&
+    src.includes('cashNativeBridgeRef') &&
+    boothHtml.includes('writePacedAsync') &&
+    boothHtml.includes('_cashSetupDirty = true'),
+    'cash-acceptor.js & booth.html coalesce status UI refreshes, cache native bridge check, use async BT writes, and defer Setup rebuilds in-session'
+  );
 }
 
 if (fails) { console.error(fails + ' check(s) failed'); process.exit(1); }

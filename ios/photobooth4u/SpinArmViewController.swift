@@ -375,7 +375,9 @@ final class SpinArmViewController: UIViewController,
         if [30, 60, 120].contains(savedFps) { targetFps = savedFps }
         saveToPhotos = ud.bool(forKey: Keys.savePhotos)
 
-        if ud.object(forKey: Keys.standaloneMode) != nil {
+        if !PBLocal.shared.spinContext.standaloneAllowed {
+            isStandaloneMode = false
+        } else if ud.object(forKey: Keys.standaloneMode) != nil {
             isStandaloneMode = ud.bool(forKey: Keys.standaloneMode)
         } else {
             isStandaloneMode = sendUrl.isEmpty
@@ -1936,7 +1938,16 @@ final class SpinArmViewController: UIViewController,
     }
 
     @objc private func didChangeOperatingMode() {
-        isStandaloneMode = (modeSeg.selectedSegmentIndex == 0)
+        let wantStandalone = (modeSeg.selectedSegmentIndex == 0)
+        if wantStandalone && !PBLocal.shared.spinContext.standaloneAllowed {
+            modeSeg.selectedSegmentIndex = 1
+            isStandaloneMode = false
+            showToast("Standalone 360 is off by default — enable 360 on this code in Admin.")
+            refreshSettingsUI()
+            updateUIState()
+            return
+        }
+        isStandaloneMode = wantStandalone
         UserDefaults.standard.set(isStandaloneMode, forKey: Keys.standaloneMode)
         if isStandaloneMode {
             armConfig.trigger = saTrigger
@@ -2126,6 +2137,8 @@ final class SpinArmViewController: UIViewController,
 
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
         guard let src = urls.first else { return }
+        let scoped = src.startAccessingSecurityScopedResource()
+        defer { if scoped { src.stopAccessingSecurityScopedResource() } }
         let dir = PBLocal.shared.overlaysDirectory()
         switch activePickerKind {
         case .overlayFile:

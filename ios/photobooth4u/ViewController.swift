@@ -1989,12 +1989,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         let parts = ipPort.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: ":", maxSplits: 1)
         let host = String(parts[0])
         let portNum: UInt16 = (parts.count > 1 ? UInt16(parts[1]) : nil) ?? 9100
-        guard let nwPort = NWEndpoint.Port(rawValue: portNum), !host.isEmpty else {
+        guard let nwPort = Network.NWEndpoint.Port(rawValue: portNum), !host.isEmpty else {
             emitNetResult(job: job, ok: false, error: "Invalid printer address.")
             return
         }
 
-        let conn = NWConnection(host: NWEndpoint.Host(host), port: nwPort, using: .tcp)
+        let conn = Network.NWConnection(host: Network.NWEndpoint.Host(host), port: nwPort, using: .tcp)
         let q = DispatchQueue(label: "com.photobooth4u.rawtcp.\(job)")
         var finished = false
         let lock = NSLock()
@@ -3515,12 +3515,12 @@ enum IppNet {
 
     private final class FindBox {
         private let lock = NSLock()
-        private var ep: NWEndpoint?
+        private var ep: Network.NWEndpoint?
         private var addr: String?
-        var endpoint: NWEndpoint? { lock.lock(); defer { lock.unlock() }; return ep }
+        var endpoint: Network.NWEndpoint? { lock.lock(); defer { lock.unlock() }; return ep }
         var address: String? { lock.lock(); defer { lock.unlock() }; return addr }
         /// true the first time only
-        func setEndpoint(_ e: NWEndpoint) -> Bool {
+        func setEndpoint(_ e: Network.NWEndpoint) -> Bool {
             lock.lock(); defer { lock.unlock() }
             if ep != nil { return false }
             ep = e
@@ -3537,7 +3537,7 @@ enum IppNet {
         let box = FindBox()
         let q = DispatchQueue(label: "com.photobooth4u.ipp.find")
         let seen = DispatchSemaphore(value: 0)
-        let browser = NWBrowser(for: .bonjour(type: serviceType, domain: nil), using: .tcp)
+        let browser = Network.NWBrowser(for: .bonjour(type: serviceType, domain: nil), using: .tcp)
         browser.browseResultsChangedHandler = { results, _ in
             for r in results {
                 if case let .service(n, _, _, _) = r.endpoint {
@@ -3555,11 +3555,11 @@ enum IppNet {
         guard got == .success, let ep = box.endpoint else { return nil }
 
         // Connect to it once to learn which IPv4 address that name stands for right now.
-        let params = NWParameters.tcp
-        if let ipOpts = params.defaultProtocolStack.internetProtocol as? NWProtocolIP.Options { ipOpts.version = .v4 }
-        let conn = NWConnection(to: ep, using: params)
+        let params = Network.NWParameters.tcp
+        if let ipOpts = params.defaultProtocolStack.internetProtocol as? Network.NWProtocolIP.Options { ipOpts.version = .v4 }
+        let conn = Network.NWConnection(to: ep, using: params)
         let done = DispatchSemaphore(value: 0)
-        conn.stateUpdateHandler = { state in
+        conn.stateUpdateHandler = { (state: Network.NWConnection.State) in
             switch state {
             case .ready:
                 if let remote = conn.currentPath?.remoteEndpoint, case let .hostPort(host, _) = remote, case let .ipv4(a) = host {

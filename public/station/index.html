@@ -59,6 +59,17 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
 .qr-frame img{display:block;width:200px;height:200px}
 .btn{display:inline-block;padding:13px 24px;border-radius:12px;background:#C93D27;color:#fff;font-weight:800;text-decoration:none;font-size:14px;border:0;cursor:pointer;width:100%;max-width:260px;margin-bottom:8px;text-align:center;font-family:inherit}
 .btn.alt{background:rgba(255,255,255,0.08);color:#fff}
+.share-box{width:100%;max-width:280px;margin:4px 0 10px;display:flex;flex-direction:column;gap:7px}
+.share-row{display:flex;gap:6px;align-items:center}
+.share-row input{flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.07);color:#fff;font-size:13px;font-family:inherit;outline:none}
+.share-row input:focus{border-color:#C93D27}
+.share-row input::placeholder{color:#8E8994}
+.share-send{padding:10px 12px;border-radius:10px;border:0;background:rgba(255,255,255,0.14);color:#fff;font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap;font-family:inherit}
+.share-send.wa{background:#1F8E4D}
+.share-send:disabled{opacity:.55;cursor:default}
+.share-msg{font-size:11.5px;color:#A49FA9;min-height:14px;line-height:1.35}
+.share-msg.ok{color:#4BD38B}
+.share-msg.err{color:#FF7B6B}
 .timer-bar{width:100%;max-width:260px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;margin-top:16px}
 .timer-bar i{display:block;height:100%;width:100%;background:#C93D27;transition:width .2s linear}
 .timer-text{font-size:11px;color:#7A7580;margin-top:6px}
@@ -118,6 +129,18 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
       <div class="qr-frame"><img id="mQr" alt="QR Code"></div>
       <div class="qr-session-note" id="mQrNote" style="display:none;font-size:11px;color:#8E8A93;margin:-6px 0 10px;text-align:center">1 QR saves all session photos (print, GIF & solos)</div>
       <a class="btn" id="mDl" download>Save Photo</a>
+      <div class="share-box" id="mOnlineShare">
+        <div class="share-row" id="mWaRow">
+          <input type="tel" id="mWaInput" placeholder="WhatsApp (09xx...)" autocomplete="tel">
+          <button type="button" class="share-send wa" id="mWaBtn">WhatsApp</button>
+        </div>
+        <div class="share-row" id="mMailRow">
+          <input type="email" id="mMailInput" placeholder="Email (optional)" autocomplete="email">
+          <button type="button" class="share-send" id="mMailBtn">Send</button>
+        </div>
+        <div class="share-msg" id="mShareMsg"></div>
+      </div>
+      <div class="share-msg" id="mOfflineMsg" style="display:none;margin-bottom:8px;">Offline mode — scan QR code or tap Save</div>
       <button type="button" class="btn alt" id="mDone">Done (Next guest)</button>
       <div class="timer-bar"><i id="mBar"></i></div>
       <div class="timer-text">Auto-closing in <span id="mSec">35</span>s</div>
@@ -136,7 +159,8 @@ if (!folderId) {
 // Only allow gallery grid if explicitly requested via ?gallery=1 or ?mode=gallery.
 var isGalleryMode = /[?&](gallery=1|mode=gallery)\b/i.test(location.search);
 var privacyOnly = !isGalleryMode;
-var files = [], currentFilter = 'all', activeItem = null, timerId = null, timeLeft = 35;
+var files = [], currentFilter = 'all', activeItem = null, activeShareUrl = '', timerId = null, timeLeft = 35;
+var hideWa = /[?&](nowa=1)\b/i.test(location.search);
 var hasLoaded = false, lastKnownTop = null;
 var emptyPollCount = 0;
 
@@ -252,6 +276,14 @@ function openModal(it, sessionItems) {
   var sessionPrefix = getSessionPrefix(it.name);
   var sessionUrl = location.origin + '/g/' + folderId + '?session=' + encodeURIComponent(sessionPrefix) + (key ? '&k=' + encodeURIComponent(key) : '');
   var pageUrl = (items.length > 1) ? sessionUrl : (it.pageUrl ? (location.origin + it.pageUrl) : sessionUrl);
+  activeShareUrl = pageUrl;
+  var msgEl = document.getElementById('mShareMsg');
+  if (msgEl) { msgEl.textContent = ''; msgEl.className = 'share-msg'; }
+  var mailIn = document.getElementById('mMailInput');
+  var waIn = document.getElementById('mWaInput');
+  if (mailIn) mailIn.value = '';
+  if (waIn) waIn.value = '';
+  syncOnlineShareUI();
   if (qrNote) qrNote.style.display = (items.length > 1) ? 'block' : 'none';
   
   if (it.kind === 'video') {
@@ -335,6 +367,8 @@ function resetTimer() {
   bar.style.width = '100%';
   sec.textContent = '35';
   timerId = setInterval(function(){
+    var ae = document.activeElement;
+    if (ae && (ae.id === 'mWaInput' || ae.id === 'mMailInput')) return;
     timeLeft--;
     sec.textContent = String(timeLeft);
     bar.style.width = Math.round((timeLeft / 35) * 100) + '%';
@@ -344,6 +378,99 @@ function resetTimer() {
     }
   }, 1000);
 }
+
+function syncOnlineShareUI() {
+  var online = navigator.onLine !== false;
+  var box = document.getElementById('mOnlineShare');
+  var offMsg = document.getElementById('mOfflineMsg');
+  var waRow = document.getElementById('mWaRow');
+  if (box) box.style.display = online ? 'flex' : 'none';
+  if (offMsg) offMsg.style.display = online ? 'none' : 'block';
+  if (waRow) waRow.style.display = hideWa ? 'none' : 'flex';
+}
+window.addEventListener('online', syncOnlineShareUI);
+window.addEventListener('offline', syncOnlineShareUI);
+
+function normalizeWhatsAppPhone(raw) {
+  var digits = String(raw || '').replace(/[^0-9+]/g, '');
+  if (!digits) return '';
+  if (digits.charAt(0) === '+') digits = digits.slice(1);
+  else if (/^09\d{9}$/.test(digits)) digits = '63' + digits.slice(1);
+  else if (/^9\d{9}$/.test(digits)) digits = '63' + digits;
+  else if (digits.charAt(0) === '0') digits = digits.replace(/^0+/, '');
+  return /^\d{7,15}$/.test(digits) ? digits : '';
+}
+
+function setShareMsg(text, cls) {
+  var el = document.getElementById('mShareMsg');
+  if (!el) return;
+  el.textContent = text || '';
+  el.className = 'share-msg' + (cls ? ' ' + cls : '');
+}
+
+document.getElementById('mWaBtn').addEventListener('click', function() {
+  resetTimer();
+  if (navigator.onLine === false) { setShareMsg('Offline — use QR code or Save.', 'err'); return; }
+  var raw = document.getElementById('mWaInput').value;
+  var phone = normalizeWhatsAppPhone(raw);
+  if (!phone) { setShareMsg('Enter a valid WhatsApp number (e.g. 09171234567).', 'err'); return; }
+  var evTitle = (document.getElementById('stTitle').textContent || 'Your Event').trim();
+  var kind = activeItem && activeItem.kind === 'video' ? '360 video' : 'photo';
+  var msg = 'Here is your ' + kind + ' from ' + evTitle + ': ' + (activeShareUrl || location.href);
+  var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+  var target = (isMobile ? 'whatsapp://send?phone=' : 'https://wa.me/') + encodeURIComponent(phone) + (isMobile ? '&text=' : '?text=') + encodeURIComponent(msg);
+  setShareMsg('Opening WhatsApp…', 'ok');
+  if (isMobile) {
+    location.href = target;
+  } else {
+    window.open(target, '_blank', 'noopener');
+  }
+});
+
+document.getElementById('mMailBtn').addEventListener('click', async function() {
+  resetTimer();
+  if (navigator.onLine === false) { setShareMsg('Offline — use QR code or Save.', 'err'); return; }
+  var to = String(document.getElementById('mMailInput').value || '').trim();
+  if (!/^[^\s@<>"']+@[^\s@<>"']+\.[A-Za-z]{2,24}$/.test(to)) {
+    setShareMsg('Enter a valid email address.', 'err');
+    return;
+  }
+  var btn = document.getElementById('mMailBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  setShareMsg('', '');
+  var evTitle = (document.getElementById('stTitle').textContent || 'Your Event').trim();
+  var key = (/[?&]k=([A-Za-z0-9_-]{10,40})/.exec(location.search) || [])[1] || '';
+  try {
+    var r = await fetch('/api/station-mail', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        to: to,
+        shareUrl: activeShareUrl || location.href,
+        eventName: evTitle,
+        kind: activeItem ? activeItem.kind : 'photo',
+        folderId: folderId,
+        k: key
+      })
+    });
+    var j = await r.json().catch(function() { return {}; });
+    if (r.ok && j && j.ok) {
+      setShareMsg('Email sent to ' + to + ' ✓', 'ok');
+      document.getElementById('mMailInput').value = '';
+    } else {
+      var kind = activeItem && activeItem.kind === 'video' ? '360 video' : 'photo';
+      var mailto = 'mailto:' + encodeURIComponent(to) + '?subject=' + encodeURIComponent(evTitle + ' — Your ' + kind) + '&body=' + encodeURIComponent('View and save your ' + kind + ':\n\n' + (activeShareUrl || location.href));
+      setShareMsg((j && j.error) ? (j.error + ' Opening Mail app…') : 'Opening Mail app…', 'err');
+      location.href = mailto;
+    }
+  } catch (e) {
+    setShareMsg('Could not reach email service. Check internet or scan QR.', 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send';
+  }
+});
 
 document.getElementById('mClose').addEventListener('click', closeModal);
 document.getElementById('mDone').addEventListener('click', closeModal);

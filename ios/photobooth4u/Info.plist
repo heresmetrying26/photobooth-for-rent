@@ -62,6 +62,12 @@
     <string>photobooth4u connects to Bluetooth receipt and thermal printers.</string>
     <key>NSBluetoothPeripheralUsageDescription</key>
     <string>photobooth4u connects to Bluetooth receipt and thermal printers.</string>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>whatsapp</string>
+        <string>sms</string>
+        <string>mailto</string>
+    </array>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsArbitraryLoads</key>

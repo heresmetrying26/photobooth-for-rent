@@ -15842,6 +15842,106 @@
       line-height: 1.2;
     }
 
+    #filterChips .chip[data-custom-lut] .fl-swatch {
+      position: relative;
+      overflow: hidden;
+      background-size: cover;
+      background-position: center;
+    }
+
+    #filterChips .chip[data-custom-lut] .fl-lut-tag {
+      position: absolute;
+      right: 3px;
+      bottom: 3px;
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: rgba(20, 18, 22, .72);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      line-height: 1.2;
+    }
+
+    .lut-toolbar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .lut-active-bar {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .lut-strength-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12.5px;
+      font-weight: 700;
+    }
+
+    .lut-strength-row label {
+      white-space: nowrap;
+      color: var(--ink);
+    }
+
+    .lut-strength-row input[type="range"] {
+      flex: 1;
+      min-width: 90px;
+      accent-color: var(--blue-deep, #2f5fb3);
+    }
+
+    .lut-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .guest-look-cap-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-dim);
+    }
+
+    .guest-look-cap-wrap input[type="number"] {
+      width: 54px;
+      padding: 3px 6px;
+      border-radius: 8px;
+      border: 1.5px solid var(--line);
+      font: 700 12.5px 'Manrope', sans-serif;
+      color: var(--ink);
+      background: #fff;
+      text-align: center;
+    }
+
+    #spinLutStrengthWrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #spinLutStrengthWrap[hidden] {
+      display: none !important;
+    }
+
+    #spinLutStrengthWrap input[type="range"] {
+      width: 78px;
+    }
+
     .bg-mode-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -23528,11 +23628,11 @@
             style="display:none; margin-top:14px; padding:12px 14px; border-radius:12px; background:#eef3fb; border:1px solid #1f3a5240;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <div>
-                <b style="color:#1f3a52; font-size:13.5px; display:block;">🎥 360 Arm Camera (Motion Auto-Start)</b>
-                <span style="color:#42566b; font-size:12px;">Mount this iPhone/iPad on your 360 arm, calibrate sensitivity, and auto-record when it spins.</span>
+                <b style="color:#1f3a52; font-size:13.5px; display:block;">🎥 360 Booth &amp; Arm Camera (Standalone or Laptop)</b>
+                <span style="color:#42566b; font-size:12px;">Use Standalone 360 with PNG overlays, slow-mo &amp; Sharing Station directly on this iPhone/iPad, or pair with a Laptop 360 Desk.</span>
               </div>
               <button type="button" class="action-btn" id="iosOpenSpinArmBtn"
-                style="width:auto; margin:0; padding:6px 14px; background:#1f3a52; color:#fff; border:0; border-radius:8px; font-weight:700; font-size:12.5px;">Launch 360 Arm Camera →</button>
+                style="width:auto; margin:0; padding:6px 14px; background:#1f3a52; color:#fff; border:0; border-radius:8px; font-weight:700; font-size:12.5px;">Launch 360 Camera →</button>
             </div>
           </div>
         </div>
@@ -24146,6 +24246,22 @@
                   style="filter:grayscale(1) contrast(1.4) brightness(.94);"></span><span
                   class="fl-name">Noir</span></button>
             </div>
+            <div class="lut-toolbar">
+              <button type="button" class="btn btn-sm" id="addLutBtn">+ Add LUT (.cube)</button>
+              <input type="file" id="lutFileInput" accept=".cube" multiple hidden>
+              <span class="panel-hint" style="margin:0;">Import custom <code>.cube</code> color grades as filters.</span>
+            </div>
+            <div class="lut-active-bar" id="lutActiveBar" hidden>
+              <div class="lut-strength-row">
+                <label for="lutStrengthSlider">LUT strength</label>
+                <input type="range" id="lutStrengthSlider" min="0" max="100" step="1" value="100">
+                <span class="ex-badge" id="lutStrengthVal">100%</span>
+              </div>
+              <div class="lut-actions">
+                <button type="button" class="btn btn-sm" id="lutRenameBtn">Rename LUT</button>
+                <button type="button" class="btn btn-sm" id="lutDeleteBtn">Remove LUT</button>
+              </div>
+            </div>
             <div class="ex-switch-group">
               <label class="switch-row"><span>Soft skin smoothing</span><input type="checkbox"
                   id="softSkinToggle"></label>
@@ -24156,11 +24272,17 @@
             </div>
 
             <div id="guestLooksPick" class="fb-card" style="margin-top:10px;" hidden>
-              <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
                 <p class="sub-label" style="margin:0;">Looks offered to guests</p>
-                <span class="ex-badge" id="guestLooksCountBadge">0 / 6</span>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <label class="guest-look-cap-wrap" title="Maximum number of looks guests can switch between">
+                    <span>Max looks</span>
+                    <input type="number" id="guestLookMaxInput" min="1" max="20" step="1" value="6">
+                  </label>
+                  <span class="ex-badge" id="guestLooksCountBadge">0 / 6</span>
+                </div>
               </div>
-              <p class="panel-hint" style="margin:0 0 8px;">Pick up to 6 looks guests can switch between. Each next
+              <p class="panel-hint" id="guestLooksHint" style="margin:0 0 8px;">Pick up to 6 looks guests can switch between. Each next
                 guest resets to your chosen look above.</p>
               <div class="chip-row" id="guestLooksChips"></div>
             </div>
@@ -27669,7 +27791,14 @@
                   <option value="golden_hour">Golden Hour Warm Glow</option>
                   <option value="vibrant">Vibrant Pop</option>
                   <option value="vintage">Vintage Film</option>
-                </select></label>
+                </select>
+                <button type="button" class="desk-btn" id="spinAddLutBtn" title="Upload a custom .cube LUT file"
+                  style="padding:3px 8px;font-size:11px;margin-left:4px;">+ .cube</button>
+              </label>
+              <label id="spinLutStrengthWrap" hidden title="Custom LUT strength">Strength
+                <input type="range" id="spinLutStrength" min="0" max="100" step="1" value="100">
+                <span id="spinLutStrengthVal" style="font-size:11px;font-weight:700;min-width:32px;">100%</span>
+              </label>
               <label
                 title="Seconds into video where the slow motion speed ramp and flash hits (0 or empty = automatic middle)">Beat
                 drop (s) <input type="number" id="spinDropTime" min="0" max="30" step="0.1" placeholder="Auto"
@@ -27919,6 +28048,7 @@
           <!-- Video & Canvas Stage -->
           <div class="spin-stage-wrap" id="spinStageWrap">
             <video id="spinVideo" playsinline loop></video>
+            <canvas id="spinLutCanvas" aria-hidden="true" style="display:none;pointer-events:none;"></canvas>
             <canvas id="spinPreviewCanvas"></canvas>
           </div>
 
@@ -34866,6 +34996,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             var curLk = 'none'; try { curLk = vgCurLook(); } catch (e) { }
             var fkVg = curLk === 'booth' ? (filterKey || 'none') : (curLk || 'none');
             var skVg = curLk === 'booth' ? !!softSkin : (curLk === 'beauty' || curLk === 'glow' || curLk === 'rose');
+            try { if (typeof syncCustomLutToNative === 'function') syncCustomLutToNative(fkVg); } catch (e) { }
             try { window.__PBCam.setFilter(fkVg, skVg); } catch (e) { }
             nativeCamPostLayout({
               visible: true,
@@ -36921,6 +37052,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var showScp = live && inSetup4 && !vgOn && !hasErr;
         var mir = false; try { mir = mirrorPreview(); } catch (e) { }
         var filt = ''; try { filt = liveFilterCss(); } catch (e) { }
+        var usbLut = (typeof isCustomLutKey === 'function' && isCustomLutKey(filterKey) && typeof customLutData === 'function') ? customLutData(filterKey) : null;
+        var usbLutStr = usbLut && typeof customLutStrength === 'function' ? customLutStrength(filterKey) : 1;
+        var usbLutSig = usbLut ? (filterKey + '@' + Math.round(usbLutStr * 100) + '|' + (softSkin ? 1 : 0)) : '';
         var tfStr = mir ? 'scaleX(-1)' : 'scaleX(1)';
         var seq = usbCam.frameSeq || 0;
         var paintTarget = function (el, show) {
@@ -36933,11 +37067,18 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (el._filt !== filt) { el.style.filter = filt; el._filt = filt; }
           var resized = (el.width !== src.width || el.height !== src.height);
           if (resized) { el.width = src.width; el.height = src.height; }
-          if (!seq || el._drawnSeq !== seq || resized || !wasShown) {
+          if (!seq || el._drawnSeq !== seq || el._drawnLutSig !== usbLutSig || resized || !wasShown) {
             try {
               var ctx = el._ctx || (el._ctx = el.getContext('2d', { alpha: false }) || el.getContext('2d'));
-              if (ctx) ctx.drawImage(src, 0, 0);
+              if (ctx) {
+                ctx.drawImage(src, 0, 0);
+                if (usbLut && typeof lutApplyToCanvasWebgl === 'function') {
+                  var _uCl = customLutById(filterKey);
+                  lutApplyToCanvasWebgl(el, usbLut, filterKey + '|' + (_uCl ? _uCl.assetId : '') + '|' + usbLut.size, usbLutStr, !!softSkin);
+                }
+              }
               el._drawnSeq = seq;
+              el._drawnLutSig = usbLutSig;
             } catch (e) { }
           }
         };
@@ -38837,6 +38978,495 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         await Promise.race([Promise.all(Array.from(tabletStill.jobs)), new Promise(function (r) { tmr = setTimeout(r, TABLET_STILL_MAX_MS + 1500); })]);
         clearTimeout(tmr);
       }
+      // ---- 3D LUT (.cube) parser, packer, CPU fallback and WebGL GPU renderer ----
+      // Pure maths & parsing functions work in both the browser page and Node tests (scripts/test-lut-engine.mjs).
+      (function (root) {
+        function lutClamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+
+        function lutTrilinearFloat(data, size, r, g, b, out) {
+          var maxI = size - 1;
+          var fr = lutClamp01(r) * maxI, fg = lutClamp01(g) * maxI, fb = lutClamp01(b) * maxI;
+          var r0 = Math.floor(fr), g0 = Math.floor(fg), b0 = Math.floor(fb);
+          var r1 = r0 < maxI ? r0 + 1 : maxI, g1 = g0 < maxI ? g0 + 1 : maxI, b1 = b0 < maxI ? b0 + 1 : maxI;
+          var dr = fr - r0, dg = fg - g0, db = fb - b0;
+          var s2 = size * size;
+          var i000 = (b0 * s2 + g0 * size + r0) * 3;
+          var i100 = (b0 * s2 + g0 * size + r1) * 3;
+          var i010 = (b0 * s2 + g1 * size + r0) * 3;
+          var i110 = (b0 * s2 + g1 * size + r1) * 3;
+          var i001 = (b1 * s2 + g0 * size + r0) * 3;
+          var i101 = (b1 * s2 + g0 * size + r1) * 3;
+          var i011 = (b1 * s2 + g1 * size + r0) * 3;
+          var i111 = (b1 * s2 + g1 * size + r1) * 3;
+          for (var c = 0; c < 3; c++) {
+            var c00 = data[i000 + c] + (data[i100 + c] - data[i000 + c]) * dr;
+            var c10 = data[i010 + c] + (data[i110 + c] - data[i010 + c]) * dr;
+            var c01 = data[i001 + c] + (data[i101 + c] - data[i001 + c]) * dr;
+            var c11 = data[i011 + c] + (data[i111 + c] - data[i011 + c]) * dr;
+            var c0 = c00 + (c10 - c00) * dg;
+            var c1 = c01 + (c11 - c01) * dg;
+            out[c] = c0 + (c1 - c0) * db;
+          }
+          return out;
+        }
+
+        function lutSample1D(data1d, len, u, ch) {
+          var maxI = len - 1;
+          var f = lutClamp01(u) * maxI;
+          var i0 = Math.floor(f), i1 = i0 < maxI ? i0 + 1 : maxI, t = f - i0;
+          var v0 = data1d[i0 * 3 + ch], v1 = data1d[i1 * 3 + ch];
+          return v0 + (v1 - v0) * t;
+        }
+
+        /**
+         * Parse an Adobe/Iridas .cube LUT file (3D or 1D) and normalize to maxSize (default 33).
+         * @param {string} text Raw .cube file contents
+         * @param {{ maxSize?: number }} [opts]
+         * @returns {{ title: string, size: number, data: Float32Array }}
+         */
+        function lutParseCube(text, opts) {
+          if (typeof text !== 'string' || !text.trim()) throw new Error('Empty .cube file');
+          var maxSize = (opts && Number(opts.maxSize)) || 33;
+          var clean = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+          var lines = clean.split(/\r?\n/);
+          var title = '', size3d = 0, size1d = 0;
+          var dMin = [0, 0, 0], dMax = [1, 1, 1];
+          var raw = [];
+
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (!line || line.charCodeAt(0) === 35 /* # */) continue;
+            var hashIdx = line.indexOf('#');
+            if (hashIdx > 0) line = line.slice(0, hashIdx).trim();
+            if (!line) continue;
+
+            var upper = line.toUpperCase();
+            if (upper.indexOf('TITLE') === 0 && (line.length === 5 || /\s/.test(line.charAt(5)))) {
+              title = line.slice(5).trim().replace(/^["']|["']$/g, '');
+              continue;
+            }
+            if (upper.indexOf('LUT_3D_SIZE') === 0) {
+              size3d = parseInt(line.slice(11).trim(), 10) || 0;
+              continue;
+            }
+            if (upper.indexOf('LUT_1D_SIZE') === 0) {
+              size1d = parseInt(line.slice(11).trim(), 10) || 0;
+              continue;
+            }
+            if (upper.indexOf('DOMAIN_MIN') === 0) {
+              var mn = line.slice(10).trim().split(/\s+/);
+              if (mn.length >= 3) dMin = [parseFloat(mn[0]) || 0, parseFloat(mn[1]) || 0, parseFloat(mn[2]) || 0];
+              continue;
+            }
+            if (upper.indexOf('DOMAIN_MAX') === 0) {
+              var mx = line.slice(10).trim().split(/\s+/);
+              if (mx.length >= 3) dMax = [parseFloat(mx[0]), parseFloat(mx[1]), parseFloat(mx[2])];
+              continue;
+            }
+            if (/^[A-Za-z_]/.test(line)) continue; // other metadata keywords (e.g. LUT_1D_INPUT_RANGE)
+
+            var parts = line.split(/\s+/);
+            if (parts.length >= 3) {
+              var r = parseFloat(parts[0]), g = parseFloat(parts[1]), b = parseFloat(parts[2]);
+              if (isFinite(r) && isFinite(g) && isFinite(b)) {
+                raw.push(lutClamp01(r), lutClamp01(g), lutClamp01(b));
+              }
+            }
+          }
+
+          var spanR = (isFinite(dMax[0]) ? dMax[0] : 1) - dMin[0]; if (Math.abs(spanR) < 1e-6) spanR = 1;
+          var spanG = (isFinite(dMax[1]) ? dMax[1] : 1) - dMin[1]; if (Math.abs(spanG) < 1e-6) spanG = 1;
+          var spanB = (isFinite(dMax[2]) ? dMax[2] : 1) - dMin[2]; if (Math.abs(spanB) < 1e-6) spanB = 1;
+          var needDomain = (dMin[0] !== 0 || dMin[1] !== 0 || dMin[2] !== 0 || Math.abs(spanR - 1) > 1e-5 || Math.abs(spanG - 1) > 1e-5 || Math.abs(spanB - 1) > 1e-5);
+
+          if (size3d > 0) {
+            if (size3d < 2 || size3d > 128) throw new Error('Unsupported LUT_3D_SIZE: ' + size3d);
+            var needCount = size3d * size3d * size3d * 3;
+            if (raw.length < needCount) throw new Error('Incomplete .cube 3D LUT data');
+            var srcData = new Float32Array(raw.slice(0, needCount));
+            if (size3d <= maxSize && !needDomain) {
+              return { title: title, size: size3d, data: srcData };
+            }
+            var outSize = Math.min(size3d, maxSize);
+            var outData = new Float32Array(outSize * outSize * outSize * 3);
+            var tmp = [0, 0, 0], maxOut = outSize - 1, idx = 0;
+            for (var bi = 0; bi < outSize; bi++) {
+              var bv = needDomain ? ((bi / maxOut) - dMin[2]) / spanB : (bi / maxOut);
+              for (var gi = 0; gi < outSize; gi++) {
+                var gv = needDomain ? ((gi / maxOut) - dMin[1]) / spanG : (gi / maxOut);
+                for (var ri = 0; ri < outSize; ri++) {
+                  var rv = needDomain ? ((ri / maxOut) - dMin[0]) / spanR : (ri / maxOut);
+                  lutTrilinearFloat(srcData, size3d, rv, gv, bv, tmp);
+                  outData[idx++] = lutClamp01(tmp[0]);
+                  outData[idx++] = lutClamp01(tmp[1]);
+                  outData[idx++] = lutClamp01(tmp[2]);
+                }
+              }
+            }
+            return { title: title, size: outSize, data: outData };
+          }
+
+          if (size1d > 0) {
+            if (size1d < 2 || size1d > 4096) throw new Error('Unsupported LUT_1D_SIZE: ' + size1d);
+            var need1 = size1d * 3;
+            if (raw.length < need1) throw new Error('Incomplete .cube 1D LUT data');
+            var d1 = new Float32Array(raw.slice(0, need1));
+            var n3 = Math.min(33, maxSize), maxN3 = n3 - 1;
+            var cube = new Float32Array(n3 * n3 * n3 * 3), k = 0;
+            for (var b3 = 0; b3 < n3; b3++) {
+              var uB = needDomain ? ((b3 / maxN3) - dMin[2]) / spanB : (b3 / maxN3);
+              var cB = lutClamp01(lutSample1D(d1, size1d, uB, 2));
+              for (var g3 = 0; g3 < n3; g3++) {
+                var uG = needDomain ? ((g3 / maxN3) - dMin[1]) / spanG : (g3 / maxN3);
+                var cG = lutClamp01(lutSample1D(d1, size1d, uG, 1));
+                for (var r3 = 0; r3 < n3; r3++) {
+                  var uR = needDomain ? ((r3 / maxN3) - dMin[0]) / spanR : (r3 / maxN3);
+                  cube[k++] = lutClamp01(lutSample1D(d1, size1d, uR, 0));
+                  cube[k++] = cG;
+                  cube[k++] = cB;
+                }
+              }
+            }
+            return { title: title, size: n3, data: cube };
+          }
+
+          throw new Error('Missing LUT_3D_SIZE or LUT_1D_SIZE in .cube file');
+        }
+
+        /** Pack Float32 LUT [b][g][r] into 2D RGBA image of width=size*size, height=size. */
+        function lutPackRgba(lut) {
+          var size = lut.size, data = lut.data;
+          var w = size * size, h = size;
+          var rgba = new Uint8ClampedArray(w * h * 4);
+          var src = 0;
+          for (var b = 0; b < size; b++) {
+            for (var g = 0; g < size; g++) {
+              for (var r = 0; r < size; r++) {
+                var x = b * size + r;
+                var dst = (g * w + x) * 4;
+                rgba[dst] = Math.round(lutClamp01(data[src++]) * 255);
+                rgba[dst + 1] = Math.round(lutClamp01(data[src++]) * 255);
+                rgba[dst + 2] = Math.round(lutClamp01(data[src++]) * 255);
+                rgba[dst + 3] = 255;
+              }
+            }
+          }
+          return { width: w, height: h, size: size, rgba: rgba };
+        }
+
+        /** Unpack 2D RGBA image (width=size*size, height=size) into flat [b][g][r]*3 Uint8Array. */
+        function lutUnpackRgba(rgba, width, height) {
+          var size = height;
+          if (size < 2 || size > 128 || width !== size * size || !rgba || rgba.length < width * height * 4) return null;
+          var bytes = new Uint8Array(size * size * size * 3);
+          var u8 = (typeof Uint8ClampedArray !== 'undefined' && rgba instanceof Uint8ClampedArray)
+            ? new Uint8Array(rgba.buffer, rgba.byteOffset, width * height * 4)
+            : rgba;
+          var dst = 0;
+          for (var b = 0; b < size; b++) {
+            for (var g = 0; g < size; g++) {
+              for (var r = 0; r < size; r++) {
+                var x = b * size + r;
+                var src = (g * width + x) * 4;
+                bytes[dst++] = u8[src];
+                bytes[dst++] = u8[src + 1];
+                bytes[dst++] = u8[src + 2];
+              }
+            }
+          }
+          return { size: size, bytes: bytes, width: width, height: height, rgba: u8 };
+        }
+
+        /** Fast CPU trilinear interpolation on 0..255 inputs/outputs with strength in 0..1. */
+        function lutSampleCpu(bytes, size, r, g, b, strength, out) {
+          if (!bytes || size < 2 || strength <= 0) { out[0] = r; out[1] = g; out[2] = b; return out; }
+          var maxI = size - 1, scale = maxI / 255;
+          var fr = (r < 0 ? 0 : r > 255 ? 255 : r) * scale;
+          var fg = (g < 0 ? 0 : g > 255 ? 255 : g) * scale;
+          var fb = (b < 0 ? 0 : b > 255 ? 255 : b) * scale;
+          var r0 = fr | 0, g0 = fg | 0, b0 = fb | 0;
+          var r1 = r0 < maxI ? r0 + 1 : maxI, g1 = g0 < maxI ? g0 + 1 : maxI, b1 = b0 < maxI ? b0 + 1 : maxI;
+          var dr = fr - r0, dg = fg - g0, db = fb - b0;
+          var s2 = size * size;
+          var i000 = (b0 * s2 + g0 * size + r0) * 3;
+          var i100 = (b0 * s2 + g0 * size + r1) * 3;
+          var i010 = (b0 * s2 + g1 * size + r0) * 3;
+          var i110 = (b0 * s2 + g1 * size + r1) * 3;
+          var i001 = (b1 * s2 + g0 * size + r0) * 3;
+          var i101 = (b1 * s2 + g0 * size + r1) * 3;
+          var i011 = (b1 * s2 + g1 * size + r0) * 3;
+          var i111 = (b1 * s2 + g1 * size + r1) * 3;
+          var str = strength >= 1 ? 1 : strength;
+          var orig = [r, g, b];
+          for (var c = 0; c < 3; c++) {
+            var c00 = bytes[i000 + c] + (bytes[i100 + c] - bytes[i000 + c]) * dr;
+            var c10 = bytes[i010 + c] + (bytes[i110 + c] - bytes[i010 + c]) * dr;
+            var c01 = bytes[i001 + c] + (bytes[i101 + c] - bytes[i001 + c]) * dr;
+            var c11 = bytes[i011 + c] + (bytes[i111 + c] - bytes[i011 + c]) * dr;
+            var c0 = c00 + (c10 - c00) * dg;
+            var c1 = c01 + (c11 - c01) * dg;
+            var lr = c0 + (c1 - c0) * db;
+            out[c] = str === 1 ? lr : (orig[c] + (lr - orig[c]) * str);
+          }
+          return out;
+        }
+
+        /** Build pre-blended .cube text from packed LUT bytes (used for 360 Spin FFmpeg lut3d). */
+        function lutToCubeText(bytes, size, strength, title) {
+          var s = lutClamp01(strength == null ? 1 : strength);
+          var maxI = size - 1;
+          var out = [];
+          if (title) out.push('TITLE "' + String(title).replace(/["\r\n]/g, '') + '"');
+          out.push('LUT_3D_SIZE ' + size);
+          out.push('DOMAIN_MIN 0.0 0.0 0.0');
+          out.push('DOMAIN_MAX 1.0 1.0 1.0');
+          var idx = 0;
+          for (var b = 0; b < size; b++) {
+            var ib = b / maxI;
+            for (var g = 0; g < size; g++) {
+              var ig = g / maxI;
+              for (var r = 0; r < size; r++) {
+                var ir = r / maxI;
+                var lr = bytes[idx++] / 255, lg = bytes[idx++] / 255, lb = bytes[idx++] / 255;
+                var rr = ir + (lr - ir) * s, gg = ig + (lg - ig) * s, bb = ib + (lb - ib) * s;
+                out.push(rr.toFixed(6) + ' ' + gg.toFixed(6) + ' ' + bb.toFixed(6));
+              }
+            }
+          }
+          return out.join('\n') + '\n';
+        }
+
+        /** Build pre-blended RGBA Uint8Array (size^3 * 4) in [b][g][r] order for iOS CIColorCube. */
+        function lutToCubeRgbaBytes(bytes, size, strength) {
+          var s = lutClamp01(strength == null ? 1 : strength);
+          var maxI = size - 1;
+          var rgba = new Uint8Array(size * size * size * 4);
+          var src = 0, dst = 0;
+          for (var b = 0; b < size; b++) {
+            var ib = (b / maxI) * 255;
+            for (var g = 0; g < size; g++) {
+              var ig = (g / maxI) * 255;
+              for (var r = 0; r < size; r++) {
+                var ir = (r / maxI) * 255;
+                var lr = bytes[src++], lg = bytes[src++], lb = bytes[src++];
+                rgba[dst++] = Math.round(ir + (lr - ir) * s);
+                rgba[dst++] = Math.round(ig + (lg - ig) * s);
+                rgba[dst++] = Math.round(ib + (lb - ib) * s);
+                rgba[dst++] = 255;
+              }
+            }
+          }
+          return rgba;
+        }
+
+        function lutUint8ToBase64(u8) {
+          var chunks = [], step = 0x8000;
+          for (var i = 0; i < u8.length; i += step) {
+            chunks.push(String.fromCharCode.apply(null, u8.subarray(i, i + step)));
+          }
+          return btoa(chunks.join(''));
+        }
+
+        // ---- Browser-only helpers (PNG encode/decode & WebGL 3D LUT shader) ----
+        function lutToPngDataUrl(lut) {
+          var packed = lutPackRgba(lut);
+          var c = document.createElement('canvas');
+          c.width = packed.width; c.height = packed.height;
+          var ctx = c.getContext('2d');
+          var im = ctx.createImageData(packed.width, packed.height);
+          im.data.set(packed.rgba);
+          ctx.putImageData(im, 0, 0);
+          var url = c.toDataURL('image/png');
+          try { c.width = 0; c.height = 0; } catch (e) { }
+          return url;
+        }
+
+        function lutFromImage(img) {
+          if (!img) return null;
+          var w = img.naturalWidth || img.width || 0, h = img.naturalHeight || img.height || 0;
+          if (h < 2 || w !== h * h) return null;
+          var c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          var ctx = c.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          var rgba = ctx.getImageData(0, 0, w, h).data;
+          try { c.width = 0; c.height = 0; } catch (e) { }
+          return lutUnpackRgba(rgba, w, h);
+        }
+
+        var LUT_VS = [
+          'attribute vec2 aPos;',
+          'varying vec2 vUv;',
+          'void main() {',
+          '  vUv = vec2((aPos.x + 1.0) * 0.5, (1.0 - aPos.y) * 0.5);',
+          '  gl_Position = vec4(aPos, 0.0, 1.0);',
+          '}'
+        ].join('\n');
+
+        var LUT_FS = [
+          'precision highp float;',
+          'varying vec2 vUv;',
+          'uniform sampler2D uSrc;',
+          'uniform sampler2D uLut;',
+          'uniform float uSize;',
+          'uniform float uStrength;',
+          'uniform float uSoftBias;',
+          'vec3 sampleSlice(float slice, float r, float g) {',
+          '  float n = uSize;',
+          '  float u = (slice * n + 0.5 + r * (n - 1.0)) / (n * n);',
+          '  float v = (0.5 + g * (n - 1.0)) / n;',
+          '  return texture2D(uLut, vec2(u, v)).rgb;',
+          '}',
+          'void main() {',
+          '  vec4 src = texture2D(uSrc, vUv);',
+          '  vec3 c = clamp(src.rgb, 0.0, 1.0);',
+          '  float bScaled = c.b * (uSize - 1.0);',
+          '  float b0 = floor(bScaled);',
+          '  float b1 = min(uSize - 1.0, b0 + 1.0);',
+          '  float bf = bScaled - b0;',
+          '  vec3 l0 = sampleSlice(b0, c.r, c.g);',
+          '  vec3 l1 = sampleSlice(b1, c.r, c.g);',
+          '  vec3 graded = mix(c, mix(l0, l1, bf), uStrength);',
+          '  if (uSoftBias > 0.0) graded = clamp(graded * 1.02 + (3.0 / 255.0), 0.0, 1.0);',
+          '  gl_FragColor = vec4(graded, src.a);',
+          '}'
+        ].join('\n');
+
+        function lutCreateGlRunner(canvas) {
+          var state = { canvas: canvas || null, gl: null, prog: null, srcTex: null, lutTex: null, lutKey: '', broken: false };
+
+          function init() {
+            if (state.broken) return false;
+            if (state.gl && !state.gl.isContextLost()) return true;
+            try {
+              if (!state.canvas) state.canvas = document.createElement('canvas');
+              var opts = { alpha: true, antialias: false, depth: false, stencil: false, preserveDrawingBuffer: true, premultipliedAlpha: false };
+              var gl = state.canvas.getContext('webgl', opts) || state.canvas.getContext('experimental-webgl', opts);
+              if (!gl) { state.broken = true; return false; }
+
+              var compile = function (type, src) {
+                var sh = gl.createShader(type);
+                gl.shaderSource(sh, src);
+                gl.compileShader(sh);
+                if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) { gl.deleteShader(sh); return null; }
+                return sh;
+              };
+              var vs = compile(gl.VERTEX_SHADER, LUT_VS), fs = compile(gl.FRAGMENT_SHADER, LUT_FS);
+              if (!vs || !fs) { state.broken = true; return false; }
+              var prog = gl.createProgram();
+              gl.attachShader(prog, vs); gl.attachShader(prog, fs);
+              gl.linkProgram(prog);
+              if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { state.broken = true; return false; }
+
+              var buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+              var loc = gl.getAttribLocation(prog, 'aPos');
+              gl.enableVertexAttribArray(loc);
+              gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+              var mkTex = function () {
+                var t = gl.createTexture();
+                gl.bindTexture(gl.TEXTURE_2D, t);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                return t;
+              };
+
+              state.gl = gl;
+              state.maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 2048;
+              state.prog = prog;
+              state.srcTex = mkTex();
+              state.lutTex = mkTex();
+              state.lutKey = '';
+              state.uSrc = gl.getUniformLocation(prog, 'uSrc');
+              state.uLut = gl.getUniformLocation(prog, 'uLut');
+              state.uSize = gl.getUniformLocation(prog, 'uSize');
+              state.uStrength = gl.getUniformLocation(prog, 'uStrength');
+              state.uSoftBias = gl.getUniformLocation(prog, 'uSoftBias');
+              state.canvas.addEventListener('webglcontextlost', function (e) { e.preventDefault(); state.gl = null; state.lutKey = ''; }, false);
+              return true;
+            } catch (e) { state.broken = true; return false; }
+          }
+
+          return {
+            canvas: function () { return state.canvas; },
+            render: function (source, lutData, lutKey, strength, w, h, softBias) {
+              if (!source || !lutData || !lutData.rgba || !w || !h) return false;
+              if (!init()) return false;
+              var gl = state.gl;
+              if (w > state.maxTex || h > state.maxTex || lutData.width > state.maxTex || lutData.height > state.maxTex) return false;
+              try {
+                if (state.canvas.width !== w || state.canvas.height !== h) {
+                  state.canvas.width = w; state.canvas.height = h;
+                }
+                gl.viewport(0, 0, w, h);
+                gl.useProgram(state.prog);
+                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+                gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, state.srcTex);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+                gl.uniform1i(state.uSrc, 0);
+
+                gl.activeTexture(gl.TEXTURE1);
+                gl.bindTexture(gl.TEXTURE_2D, state.lutTex);
+                if (state.lutKey !== lutKey) {
+                  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, lutData.width, lutData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, lutData.rgba);
+                  state.lutKey = lutKey;
+                }
+                gl.uniform1i(state.uLut, 1);
+
+                gl.uniform1f(state.uSize, lutData.size);
+                gl.uniform1f(state.uStrength, lutClamp01(strength));
+                gl.uniform1f(state.uSoftBias, softBias ? 1.0 : 0.0);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                return true;
+              } catch (e) {
+                return false;
+              }
+            }
+          };
+        }
+
+        var _sharedGl = null;
+        function lutApplyToCanvasWebgl(c, lutData, lutKey, strength, softBias) {
+          if (!c || !c.width || !c.height || !lutData) return false;
+          if (!_sharedGl) _sharedGl = lutCreateGlRunner(null);
+          if (!_sharedGl.render(c, lutData, lutKey, strength, c.width, c.height, softBias)) return false;
+          var ctx = c.getContext('2d');
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.clearRect(0, 0, c.width, c.height);
+          ctx.drawImage(_sharedGl.canvas(), 0, 0, c.width, c.height);
+          ctx.restore();
+          return true;
+        }
+
+        var api = {
+          lutParseCube: lutParseCube,
+          lutPackRgba: lutPackRgba,
+          lutUnpackRgba: lutUnpackRgba,
+          lutSampleCpu: lutSampleCpu,
+          lutToCubeText: lutToCubeText,
+          lutToCubeRgbaBytes: lutToCubeRgbaBytes,
+          lutUint8ToBase64: lutUint8ToBase64,
+          lutToPngDataUrl: lutToPngDataUrl,
+          lutFromImage: lutFromImage,
+          lutCreateGlRunner: lutCreateGlRunner,
+          lutApplyToCanvasWebgl: lutApplyToCanvasWebgl
+        };
+
+        if (typeof module !== 'undefined' && module.exports) module.exports = api;
+        if (root) {
+          Object.keys(api).forEach(function (k) { root[k] = api[k]; });
+        }
+      })(typeof window !== 'undefined' ? window : null);
       // ---- Photo quality for cameras over USB: the part every brand shares ----
       // A camera's photo (e.g. 24 MP, noisy at a high ISO) is shrunk into its box in halving steps (the browser's one-step shrink
       // skips pixels: grainy, jagged), then lightly denoised and sharpened at the size it is printed. The printed page gets a final
@@ -54522,9 +55152,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!localGuestOpen()) return;
         try {
           if (what === 'camera') {
-            const gsrc = (typeof bgGuestStream === 'function' && bgGuestStream()) || currentStream;
+            const lutStream = (typeof lutGuestStream === 'function' && lutGuestStream()) || null;
+            const bgStream = (typeof bgGuestStream === 'function' && bgGuestStream()) || null;
+            const gsrc = lutStream || bgStream || currentStream;
             if (gsrc && G.v.srcObject !== gsrc) { G.v.srcObject = gsrc; G.v.play().catch(() => { }); }
-            G.v.style.transform = mirrorPreview() && gsrc === currentStream ? 'scaleX(-1)' : 'scaleX(1)';
+            const preMirrored = !!(gsrc === bgStream || (gsrc === lutStream && typeof lutLive !== 'undefined' && lutLive.activeBg));
+            G.v.style.transform = mirrorPreview() && !preMirrored ? 'scaleX(-1)' : 'scaleX(1)';
             G.v.style.filter = liveFilterCss();
           } else if (what === 'review') {
             G.cd.style.display = 'none';
@@ -55311,15 +55944,15 @@ function syncRemoteFrameToBridge(active, bgActive) {
     if (!tabletBridge.bgTimer) {
       tabletBridge.bgTimer = setInterval(() => {
         if (!tabletGuestOpen() || !tabletBridge.port || tabletBridge.bgSending) return;
-        const src = (bgActive && typeof bgLive !== 'undefined' && bgLive && bgLive.canvas && bgLive.canvas.style.display !== 'none')
-          ? bgLive.canvas
-          : (typeof camFrameSource === 'function' ? camFrameSource() : null);
+        const lutCv = (typeof lutLive !== 'undefined' && lutLive && lutLive.canvas && lutLive.canvas.style.display !== 'none') ? lutLive.canvas : null;
+        const bgCv = (bgActive && typeof bgLive !== 'undefined' && bgLive && bgLive.canvas && bgLive.canvas.style.display !== 'none') ? bgLive.canvas : null;
+        const src = lutCv || bgCv || (typeof camFrameSource === 'function' ? camFrameSource() : null);
         if (!src) return;
         const sw = src.videoWidth || src.width || 0;
         const sh = src.videoHeight || src.height || 0;
         if (!sw || !sh) return;
         let outCanvas = src;
-        if (src !== (typeof bgLive !== 'undefined' && bgLive && bgLive.canvas)) {
+        if (src !== bgCv && src !== lutCv) {
           if (!bridgeRemoteCanvas) bridgeRemoteCanvas = document.createElement('canvas');
           const scale = Math.min(1, 720 / Math.max(sw, sh));
           bridgeRemoteCanvas.width = Math.max(1, Math.round(sw * scale));
@@ -55371,7 +56004,8 @@ async function buildAndPushTabletState() {
     (!!welcomeDataUrl || (attractMode === 'poster' && !!(attractPlaylist.length || attractPosterUrl)));
   const bgActive = !!(typeof bgGuestStream === 'function' && bgGuestStream());
   const filterCss = T('live filter', () => liveFilterCss(), '');
-  const useRemoteStream = (bgActive || (!!filterCss && currentDeviceId === TABLET_CAM_ID) || (currentDeviceId !== TABLET_CAM_ID)) && !pickOpen && !result && !reviewing && !shotReview && (!welcome || attractMode === 'camera');
+  const customLutOn = T('custom lut', () => typeof isCustomLutKey === 'function' && isCustomLutKey(filterKey), false);
+  const useRemoteStream = (bgActive || ((!!filterCss || customLutOn) && currentDeviceId === TABLET_CAM_ID) || (currentDeviceId !== TABLET_CAM_ID)) && !pickOpen && !result && !reviewing && !shotReview && (!welcome || attractMode === 'camera');
 
   syncRemoteFrameToBridge(useRemoteStream, bgActive);
 
@@ -55522,7 +56156,7 @@ async function buildAndPushTabletState() {
   const asp = tabletGuestAspects();
 
   const looksShow = T('looks', () => !!(guestLooksOn && isTraditional() && !pickOpen && (ready || state === 'idle') && !(sess && sess.reviewing)), false);
-  const looks = looksShow ? T('looks', () => guestLookKeys().map(k => ({ k, label: FILTER_LABELS[k] || k })), []) : [];
+  const looks = looksShow ? T('looks', () => guestLookKeys().map(k => ({ k, label: typeof filterLabel === 'function' ? filterLabel(k) : (FILTER_LABELS[k] || k) })), []) : [];
   const galleryIdle = T('event gallery', () => !psMode && state === 'idle' && !pickOpen && !ready && !!currentFolderLink && !gvPrivate(), false);
   const printState = T('print buttons', () => tabletGuestPrintState(), { printShow: false, nextShow: false });
   const mirror = T('mirror', () => !!mirrorPreview(), true);
@@ -55608,7 +56242,7 @@ async function buildAndPushTabletState() {
     looksShow,
     looksOpen: !!guestLookOpen,
     lookKey: filterKey,
-    lookLabel: T('looks', () => FILTER_LABELS[filterKey] || filterKey, ''),
+    lookLabel: T('looks', () => typeof filterLabel === 'function' ? filterLabel(filterKey) : (FILTER_LABELS[filterKey] || filterKey), ''),
     looks,
     shots,
     retakeShow: ed || !!(sess && !retakeBtn.hidden),
@@ -56246,6 +56880,85 @@ function renderTabletBridgeSetup(info) {
       // Extras every package includes (admin can switch one off per client). Missing = on.
       function extraOn(name) { return !(window.__PB && window.__PB.extras && window.__PB.extras[name] === false); }
       if (!extraOn('vintage')) VINTAGE_KEYS.forEach(function (k) { delete FILTERS[k]; });
+
+      // ---- Custom .cube LUT library ----
+      var customLuts = [];         // [{ id, name, assetId, size, strength }]
+      var _lutCache = {};          // assetId -> { size, bytes, width, height, rgba }
+      var _lutSwatchCache = {};    // id + '@' + strength -> dataUrl
+      var _lastNativeLutSig = '';
+
+      function customLutById(k) {
+        if (!k || typeof k !== 'string' || k.indexOf('lut_') !== 0) return null;
+        for (var i = 0; i < customLuts.length; i++) if (customLuts[i] && customLuts[i].id === k) return customLuts[i];
+        return null;
+      }
+      function isCustomLutKey(k) { return !!customLutById(k); }
+      function filterExists(k) {
+        return !!k && (Object.prototype.hasOwnProperty.call(FILTERS, k) || isCustomLutKey(k));
+      }
+      function filterLabel(k) {
+        var cl = customLutById(k);
+        if (cl) return cl.name || k;
+        return (typeof FILTER_LABELS !== 'undefined' && FILTER_LABELS[k]) ? FILTER_LABELS[k] : k;
+      }
+      function customLutStrength(k) {
+        var cl = customLutById(k);
+        var s = cl && typeof cl.strength === 'number' && isFinite(cl.strength) ? cl.strength : 100;
+        return Math.max(0, Math.min(100, s)) / 100;
+      }
+      function ensureLutUnpacked(assetId) {
+        if (!assetId) return null;
+        if (_lutCache[assetId]) return _lutCache[assetId];
+        var rec = typeof ASSETS !== 'undefined' && ASSETS[assetId];
+        if (!rec || !rec.img || !(rec.img.naturalWidth || rec.img.width)) return null;
+        var parsed = typeof lutFromImage === 'function' ? lutFromImage(rec.img) : null;
+        if (parsed) _lutCache[assetId] = parsed;
+        return parsed;
+      }
+      function customLutData(k) {
+        var cl = customLutById(k);
+        return cl ? ensureLutUnpacked(cl.assetId) : null;
+      }
+      function customLutReady(k) { return !!customLutData(k); }
+      function syncCustomLutToNative(targetKey) {
+        if (typeof hasNativeCamBridge !== 'function' || !hasNativeCamBridge()) return;
+        if (!window.__PBCam || typeof window.__PBCam.setCustomLut !== 'function') return;
+        var k = targetKey !== undefined ? targetKey : filterKey;
+        var cl = customLutById(k);
+        if (!cl) {
+          if (_lastNativeLutSig) {
+            _lastNativeLutSig = '';
+            try { window.__PBCam.setCustomLut({ id: '', size: 0, strength: 1, rgba: '' }); } catch (e) { }
+          }
+          return;
+        }
+        var d = ensureLutUnpacked(cl.assetId);
+        if (!d || typeof lutToCubeRgbaBytes !== 'function' || typeof lutUint8ToBase64 !== 'function') return;
+        var str = customLutStrength(k);
+        var sig = cl.id + '@' + cl.assetId + '@' + Math.round(str * 100);
+        if (_lastNativeLutSig === sig) return;
+        _lastNativeLutSig = sig;
+        try {
+          var rgba = lutToCubeRgbaBytes(d.bytes, d.size, str);
+          window.__PBCam.setCustomLut({ id: cl.id, size: d.size, strength: str, rgba: lutUint8ToBase64(rgba) });
+        } catch (e) { }
+      }
+      function onLutAssetLoaded(assetId) {
+        if (!customLuts.some(function (l) { return l && l.assetId === assetId; })) return;
+        ensureLutUnpacked(assetId);
+        try { if (typeof rebuildCustomFilterChips === 'function') rebuildCustomFilterChips(); } catch (e) { }
+        try { if (typeof refreshGuestLooksUI === 'function') refreshGuestLooksUI(); } catch (e) { }
+        try { if (typeof refreshSpinLutOptions === 'function') refreshSpinLutOptions(); } catch (e) { }
+        if (customLuts.some(function (l) { return l && l.assetId === assetId && l.id === filterKey; })) {
+          try { applyLiveFilter(); } catch (e) { }
+          try { reapplyFiltersToShots(); } catch (e) { }
+          try { renderSetupPreview(); } catch (e) { }
+          try { guestRender(); } catch (e) { }
+        }
+        if (typeof spinLook !== 'undefined' && spinLook && customLuts.some(function (l) { return l && l.assetId === assetId && l.id === spinLook.lut; })) {
+          try { if (typeof spinUpdateStageAspect === 'function') spinUpdateStageAspect(); } catch (e) { }
+        }
+      }
       // Colour adjustment (Exposure / Lightness and RGB channels)
       var COLOR_ADJ_KEY = 'pb_color_adj';
       var colorAdj = { brightness: 0, red: 0, green: 0, blue: 0, hue: 0, sat: 0 };
@@ -56270,14 +56983,133 @@ function renderTabletBridgeSetup(info) {
         // Lightness / colour correction is for the printed photo only (see printAdjust): the guest's camera stays natural.
         return f.trim();
       }
+      // ---- Live WebGL LUT preview overlay (runs ONLY when a custom .cube LUT is selected) ----
+      var lutLive = { canvas: null, scpCanvas: null, gl: null, scpGl: null, raf: 0, last: 0, gap: 32, stream: null, activeBg: false };
+      (function () {
+        if (typeof video === 'undefined' || !video) return;
+        var c = document.createElement('canvas');
+        c.id = 'lutLiveCanvas';
+        c.setAttribute('aria-hidden', 'true');
+        c.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none; pointer-events:none;';
+        video.insertAdjacentElement('afterend', c);
+        lutLive.canvas = c;
+        var scv = document.getElementById('setupCamVideo');
+        if (scv) {
+          var sc = document.createElement('canvas');
+          sc.id = 'scpLutCanvas';
+          sc.setAttribute('aria-hidden', 'true');
+          sc.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none; pointer-events:none;';
+          scv.insertAdjacentElement('afterend', sc);
+          lutLive.scpCanvas = sc;
+        }
+      })();
+      function lutStageWanted() {
+        if (!lutLive.canvas || !isCustomLutKey(filterKey) || !customLutReady(filterKey)) return false;
+        if (typeof vgIsOpen === 'function' && vgIsOpen()) return false;
+        if (typeof nativeCam !== 'undefined' && nativeCam.active) return false;
+        if (typeof IS_IOS_APP !== 'undefined' && IS_IOS_APP && typeof usbCam !== 'undefined' && usbCam.active) return false;
+        var sz = typeof camVideoSize === 'function' ? camVideoSize() : { w: video.videoWidth, h: video.videoHeight };
+        return !!(typeof streamActive !== 'undefined' && streamActive && state !== 'result' && video.style.display !== 'none' && sz && sz.w && !document.hidden);
+      }
+      function lutScpWanted() {
+        if (!lutLive.scpCanvas || !isCustomLutKey(filterKey) || !customLutReady(filterKey)) return false;
+        if (typeof vgIsOpen === 'function' && vgIsOpen()) return false;
+        if (typeof nativeCam !== 'undefined' && nativeCam.active) return false;
+        if (typeof IS_IOS_APP !== 'undefined' && IS_IOS_APP && typeof usbCam !== 'undefined' && usbCam.active) return false;
+        var inSetup4 = typeof tabSetup !== 'undefined' && tabSetup && !tabSetup.classList.contains('hidden') && typeof curStep !== 'undefined' && curStep === 4;
+        if (!inSetup4 || document.hidden) return false;
+        var sv = document.getElementById('setupCamVideo');
+        return !!(sv && sv.srcObject && sv.videoWidth > 0 && sv.readyState >= 2);
+      }
+      function lutGuestStream() {
+        if (!lutLive.canvas || lutLive.canvas.style.display === 'none' || !lutLive.canvas.captureStream) return null;
+        if (!lutLive.stream) try { lutLive.stream = lutLive.canvas.captureStream(30); } catch (e) { return null; }
+        return lutLive.stream;
+      }
+      function stopLutLive() {
+        if (lutLive.raf) cancelAnimationFrame(lutLive.raf);
+        lutLive.raf = 0;
+        if (lutLive.canvas && lutLive.canvas.style.display !== 'none') {
+          lutLive.canvas.style.display = 'none';
+          try { guestCall('camera'); } catch (e) { }
+        }
+        if (lutLive.scpCanvas && lutLive.scpCanvas.style.display !== 'none') {
+          lutLive.scpCanvas.style.display = 'none';
+        }
+      }
+      function lutLiveTick(now) {
+        lutLive.raf = 0;
+        var wantStage = lutStageWanted(), wantScp = lutScpWanted();
+        if (!wantStage && !wantScp) { stopLutLive(); return; }
+        lutLive.raf = requestAnimationFrame(lutLiveTick);
+        if (now - lutLive.last < lutLive.gap) return;
+        lutLive.last = now;
+        var dLut = customLutData(filterKey), str = customLutStrength(filterKey);
+        if (!dLut || typeof lutCreateGlRunner !== 'function') { stopLutLive(); return; }
+        var _clLive = customLutById(filterKey);
+        var keySig = filterKey + '|' + (_clLive ? _clLive.assetId : '') + '|' + dLut.size, cssFilt = liveFilterCss();
+
+        if (wantStage) {
+          var bgOn = typeof bgLive !== 'undefined' && bgLive && bgLive.canvas && bgLive.canvas.style.display !== 'none';
+          var src = bgOn ? bgLive.canvas : (typeof camFrameSource === 'function' ? camFrameSource() : video);
+          var vw = (src && (src.videoWidth || src.width)) || 0, vh = (src && (src.videoHeight || src.height)) || 0;
+          if (vw && vh && !(src === video && video.readyState < 2)) {
+            var k = Math.min(1, 1080 / Math.max(vw, vh));
+            var w = Math.max(2, Math.round(vw * k)), h = Math.max(2, Math.round(vh * k));
+            if (!lutLive.gl) lutLive.gl = lutCreateGlRunner(lutLive.canvas);
+            if (lutLive.gl.render(src, dLut, keySig, str, w, h, false)) {
+              lutLive.activeBg = bgOn;
+              lutLive.canvas.style.transform = bgOn ? '' : (video.style.transform || '');
+              lutLive.canvas.style.filter = cssFilt;
+              if (lutLive.canvas.style.display === 'none') {
+                lutLive.canvas.style.display = 'block';
+                try { guestCall('camera'); } catch (e) { }
+              }
+            }
+          }
+        } else if (lutLive.canvas && lutLive.canvas.style.display !== 'none') {
+          lutLive.canvas.style.display = 'none';
+          try { guestCall('camera'); } catch (e) { }
+        }
+
+        if (wantScp) {
+          var sv = document.getElementById('setupCamVideo');
+          var sw = sv && sv.videoWidth, sh = sv && sv.videoHeight;
+          if (sv && sw && sh) {
+            var sk = Math.min(1, 960 / Math.max(sw, sh));
+            var cw = Math.max(2, Math.round(sw * sk)), ch = Math.max(2, Math.round(sh * sk));
+            if (!lutLive.scpGl) lutLive.scpGl = lutCreateGlRunner(lutLive.scpCanvas);
+            if (lutLive.scpGl.render(sv, dLut, keySig, str, cw, ch, false)) {
+              lutLive.scpCanvas.style.transform = sv.style.transform || (video.style.transform || '');
+              lutLive.scpCanvas.style.filter = cssFilt;
+              if (lutLive.scpCanvas.style.display === 'none') lutLive.scpCanvas.style.display = 'block';
+            }
+          }
+        } else if (lutLive.scpCanvas && lutLive.scpCanvas.style.display !== 'none') {
+          lutLive.scpCanvas.style.display = 'none';
+        }
+      }
+      function syncLutLiveLoop() {
+        if (lutStageWanted() || lutScpWanted()) {
+          if (!lutLive.raf) { lutLive.last = 0; lutLive.raf = requestAnimationFrame(lutLiveTick); }
+        } else {
+          stopLutLive();
+        }
+      }
+      setInterval(syncLutLiveLoop, 500);
+      document.addEventListener('visibilitychange', function () { if (document.hidden) stopLutLive(); });
+
       function applyLiveFilter() {
         video.style.filter = liveFilterCss();
         try { document.getElementById('surroundVideo').style.filter = video.style.filter; } catch (e) { }
+        try { syncCustomLutToNative(); } catch (e) { }
         try { if (hasNativeCamBridge()) window.__PBCam.setFilter(filterKey || 'none', !!softSkin); } catch (e) { }
         try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
         try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
         try { if (typeof usbSyncStageCanvases === 'function') usbSyncStageCanvases(); } catch (e) { }
         try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
+        try { syncLutLiveLoop(); } catch (e) { }
+        try { if (typeof refreshLutActiveBar === 'function') refreshLutActiveBar(); } catch (e) { }
         if (localGuestOpen()) { try { G.v.style.filter = liveFilterCss(); } catch (e) { } }
         if (typeof tabletBridgeSync === 'function') tabletBridgeSync();
       }
@@ -56287,6 +57119,10 @@ function renderTabletBridgeSetup(info) {
       // so stickers on a B&W photo are B&W, on a sepia photo sepia, and so on. out = [r, g, b] (not clamped).
       function filterColour(key, r, g, b, out) {
         var y;
+        if (isCustomLutKey(key)) {
+          var dLut = customLutData(key);
+          if (dLut && typeof lutSampleCpu === 'function') return lutSampleCpu(dLut.bytes, dLut.size, r, g, b, customLutStrength(key), out);
+        }
         if (key === 'bw') { y = (0.299 * r + 0.587 * g + 0.114 * b - 128) * 1.08 + 128; r = g = b = y; }
         else if (key === 'korean') {
           r = Math.min(255, (r - 128) * 1.06 + 135);
@@ -56310,6 +57146,7 @@ function renderTabletBridgeSetup(info) {
       function applyFilterToCanvas(c) {
         var withAdj = false;          // colour correction is applied to prints only (printAdjust), never to the shots
         if (filterKey === 'none' && !softSkin && !dateStamp) return;
+        if (!filterExists(filterKey) && !softSkin && !dateStamp) return;
         var ctx = c.getContext('2d'), w = c.width, h = c.height;
         if (softSkin) {
           // A softly blurred copy laid lightly on top smooths skin and evens tone.
@@ -56321,7 +57158,11 @@ function renderTabletBridgeSetup(info) {
           ctx.drawImage(s, 0, 0, w, h); ctx.restore();
         }
         var fx = VINTAGE_FX[filterKey] || null;
-        if (filterKey !== 'none' || softSkin || withAdj) {
+        var customLut = isCustomLutKey(filterKey) ? customLutData(filterKey) : null;
+        var _clCap = customLut ? customLutById(filterKey) : null;
+        if (customLut && !withAdj && typeof lutApplyToCanvasWebgl === 'function' && lutApplyToCanvasWebgl(c, customLut, filterKey + '|' + (_clCap ? _clCap.assetId : '') + '|' + customLut.size, customLutStrength(filterKey), !!softSkin)) {
+          // Graded on GPU via WebGL.
+        } else if (filterKey !== 'none' || softSkin || withAdj) {
           var img = ctx.getImageData(0, 0, w, h), d = img.data, i, r, g, b, y, n = 0;
           var seed = (w * 73856093) ^ (h * 19349663) ^ 0x9e3779b9, grain = fx ? fx.grain : 0;
           var bOff = withAdj ? (colorAdj.brightness || 0) * 2.55 : 0;
@@ -56789,33 +57630,223 @@ function renderTabletBridgeSetup(info) {
       }
       function markFilterChips() {
         [...filterChips.children].forEach(function (c) { c.classList.toggle('active', c.dataset.filter === filterKey); });
+        if (typeof refreshLutActiveBar === 'function') refreshLutActiveBar();
       }
       filterChips.addEventListener('click', function (e) {
         var c = e.target.closest('.chip'); if (!c) return;
         guestLookBase = null;        // the operator's own choice becomes the look each guest starts with
         filterKey = c.dataset.filter; markFilterChips(); applyLiveFilter(); renderSetupPreview();
+        if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
       });
       // Quick filter chips under the live view (same filters as Setup → Extras).
       var FILTER_LABELS = { none: 'Normal', korean: 'Korean', bw: 'B&W', sepia: 'Sepia', warm: 'Warm', cool: 'Cool', film: 'Film', faded: 'Faded', retro: '70s', instant: 'Instant', noir: 'Noir' };
       var quickFilters = document.getElementById('quickFilters');
-      Object.keys(FILTERS).forEach(function (k) {
-        var b = document.createElement('button'); b.type = 'button'; b.className = 'sc-filter'; b.dataset.filter = k;
-        var i = document.createElement('i'); i.style.filter = FILTERS[k] || 'none';
-        b.append(i, document.createTextNode(FILTER_LABELS[k] || k));
-        quickFilters.appendChild(b);
-      });
       var readyFilters = document.getElementById('readyFilters');
+      function makeQuickFilterBtn(k, label, cssFilt, isLut) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'sc-filter'; b.dataset.filter = k;
+        if (isLut) b.dataset.customLut = '1';
+        var i = document.createElement('i'); i.style.filter = 'none';
+        var cv = document.createElement('canvas'); cv.width = 96; cv.height = 96;
+        cv.dataset.filter = k;
+        if (!isLut) cv.style.filter = cssFilt || 'none';
+        i.appendChild(cv);
+        b.append(i, document.createTextNode(label));
+        return b;
+      }
+      Object.keys(FILTERS).forEach(function (k) {
+        quickFilters.appendChild(makeQuickFilterBtn(k, FILTER_LABELS[k] || k, FILTERS[k], false));
+      });
       readyFilters.innerHTML = quickFilters.innerHTML;          // same chips on the "Get ready" screen
-      // Each chip shows the live camera through its filter, so guests see how
-      // they'll look before choosing (runs only while chips are on screen).
       [quickFilters, readyFilters].forEach(function (row) {
         [...row.querySelectorAll('.sc-filter')].forEach(function (b) {
-          var i = b.querySelector('i'); if (!i) return;
-          var cv = document.createElement('canvas'); cv.width = 96; cv.height = 96;
-          cv.style.filter = FILTERS[b.dataset.filter] || 'none';
-          i.style.filter = 'none'; i.appendChild(cv);
+          var cv = b.querySelector('canvas'); if (cv) cv.dataset.filter = b.dataset.filter;
         });
       });
+
+      function lutSwatchUrl(cl) {
+        if (!cl) return '';
+        var key = cl.assetId + '@' + Math.round(customLutStrength(cl.id) * 100);
+        if (_lutSwatchCache[key]) return _lutSwatchCache[key];
+        var d = ensureLutUnpacked(cl.assetId);
+        if (!d) return '';
+        var c = document.createElement('canvas'); c.width = 96; c.height = 36;
+        var ctx = c.getContext('2d');
+        var gr = ctx.createLinearGradient(0, 0, 96, 36);
+        gr.addColorStop(0, '#f3a683'); gr.addColorStop(0.46, '#f7d794'); gr.addColorStop(1, '#778beb');
+        ctx.fillStyle = gr; ctx.fillRect(0, 0, 96, 36);
+        if (typeof lutApplyToCanvasWebgl === 'function') {
+          lutApplyToCanvasWebgl(c, d, cl.id + '|' + cl.assetId + '|' + d.size, customLutStrength(cl.id), false);
+        }
+        var url = c.toDataURL('image/png');
+        _lutSwatchCache[key] = url;
+        return url;
+      }
+
+      function rebuildCustomFilterChips() {
+        [...filterChips.querySelectorAll('[data-custom-lut]')].forEach(function (el) { el.remove(); });
+        [quickFilters, readyFilters].forEach(function (row) {
+          [...row.querySelectorAll('[data-custom-lut]')].forEach(function (el) { el.remove(); });
+        });
+        customLuts.forEach(function (cl) {
+          if (!cl || !cl.id) return;
+          var btn = document.createElement('button');
+          btn.type = 'button'; btn.className = 'chip'; btn.dataset.filter = cl.id; btn.dataset.customLut = '1';
+          var sw = document.createElement('span'); sw.className = 'fl-swatch';
+          var swUrl = lutSwatchUrl(cl);
+          if (swUrl) sw.style.backgroundImage = 'url("' + swUrl + '")';
+          var tag = document.createElement('span'); tag.className = 'fl-lut-tag'; tag.textContent = 'LUT';
+          sw.appendChild(tag);
+          var nm = document.createElement('span'); nm.className = 'fl-name'; nm.textContent = cl.name || cl.id;
+          btn.append(sw, nm);
+          filterChips.appendChild(btn);
+
+          quickFilters.appendChild(makeQuickFilterBtn(cl.id, cl.name || cl.id, 'none', true));
+          readyFilters.appendChild(makeQuickFilterBtn(cl.id, cl.name || cl.id, 'none', true));
+        });
+        markFilterChips();
+        markQuickFilters();
+      }
+
+      var lutActiveBar = document.getElementById('lutActiveBar');
+      var lutStrengthSlider = document.getElementById('lutStrengthSlider');
+      var lutStrengthVal = document.getElementById('lutStrengthVal');
+      var lutRenameBtn = document.getElementById('lutRenameBtn');
+      var lutDeleteBtn = document.getElementById('lutDeleteBtn');
+      var addLutBtn = document.getElementById('addLutBtn');
+      var lutFileInput = document.getElementById('lutFileInput');
+      var _lutStrengthTimer = 0;
+
+      function refreshLutActiveBar() {
+        if (!lutActiveBar) return;
+        var cl = customLutById(filterKey);
+        lutActiveBar.hidden = !cl;
+        if (!cl) return;
+        var pct = Math.round(customLutStrength(cl.id) * 100);
+        if (lutStrengthSlider && Number(lutStrengthSlider.value) !== pct) lutStrengthSlider.value = String(pct);
+        if (lutStrengthVal) lutStrengthVal.textContent = pct + '%';
+      }
+
+      async function importCubeFiles(fileList, targetTarget) {
+        var files = Array.prototype.slice.call(fileList || []);
+        if (!files.length) return;
+        var added = [], skipped = 0;
+        for (var fi = 0; fi < files.length; fi++) {
+          var f = files[fi];
+          if (!f) continue;
+          try {
+            if (f.size > 12 * 1024 * 1024) { skipped++; continue; }
+            var txt = await f.text();
+            var parsed = lutParseCube(txt, { maxSize: 33 });
+            var pngUrl = lutToPngDataUrl(parsed);
+            var assetId = await addAsset(pngUrl);
+            var im = new Image();
+            await new Promise(function (res) { im.onload = res; im.onerror = res; im.src = pngUrl; });
+            if (ASSETS[assetId]) ASSETS[assetId].img = im;
+            var unpacked = lutFromImage(im);
+            if (unpacked) _lutCache[assetId] = unpacked;
+            var baseName = (f.name || parsed.title || 'Custom LUT').replace(/\.cube$/i, '').replace(/[_-]+/g, ' ').trim().slice(0, 28) || 'Custom LUT';
+            var lutId = 'lut_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+            var item = { id: lutId, name: baseName, assetId: assetId, size: parsed.size, strength: 100 };
+            customLuts.push(item);
+            added.push(item);
+          } catch (err) {
+            skipped++;
+          }
+        }
+        if (added.length) {
+          var lastAdded = added[added.length - 1];
+          rebuildCustomFilterChips();
+          try { refreshGuestLooksUI(); } catch (e) { }
+          try { if (typeof refreshSpinLutOptions === 'function') refreshSpinLutOptions(); } catch (e) { }
+          if (targetTarget === 'spin') {
+            if (typeof spinLook !== 'undefined' && spinLook) {
+              spinLook.lut = lastAdded.id;
+              try { if (typeof spinLookToUI === 'function') spinLookToUI(); if (typeof spinLookFromUI === 'function') spinLookFromUI(true); } catch (e) { }
+            }
+          } else {
+            guestLookBase = null;
+            filterKey = lastAdded.id;
+            markFilterChips();
+            applyLiveFilter();
+            try { renderSetupPreview(); } catch (e) { }
+          }
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          showToast(added.length === 1 ? ('LUT added: ' + lastAdded.name) : (added.length + ' LUTs added'), 2600);
+        } else if (skipped) {
+          showToast('Could not read that .cube file. Make sure it is a valid 3D or 1D .cube LUT.', 3800);
+        }
+      }
+
+      if (addLutBtn && lutFileInput) {
+        addLutBtn.addEventListener('click', function () {
+          lutFileInput.dataset.target = 'booth';
+          lutFileInput.value = '';
+          lutFileInput.click();
+        });
+        lutFileInput.addEventListener('change', function () {
+          var tgt = lutFileInput.dataset.target || 'booth';
+          if (lutFileInput.files && lutFileInput.files.length) importCubeFiles(lutFileInput.files, tgt);
+        });
+      }
+      if (lutStrengthSlider) {
+        lutStrengthSlider.addEventListener('input', function () {
+          var cl = customLutById(filterKey);
+          if (!cl) return;
+          cl.strength = Math.max(0, Math.min(100, Math.round(Number(lutStrengthSlider.value) || 0)));
+          if (lutStrengthVal) lutStrengthVal.textContent = cl.strength + '%';
+          applyLiveFilter();
+          clearTimeout(_lutStrengthTimer);
+          _lutStrengthTimer = setTimeout(function () {
+            rebuildCustomFilterChips();
+            try { reapplyFiltersToShots(); } catch (e) { }
+            try { renderSetupPreview(); } catch (e) { }
+            try { if (typeof spinLook !== 'undefined' && spinLook && spinLook.lut === cl.id && typeof spinLookToUI === 'function') spinLookToUI(); } catch (e) { }
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          }, 90);
+        });
+      }
+      if (lutRenameBtn) {
+        lutRenameBtn.addEventListener('click', async function () {
+          var cl = customLutById(filterKey);
+          if (!cl) return;
+          var next = typeof askText === 'function'
+            ? await askText({ title: 'Rename LUT filter', hint: 'Shown on filter chips and guest look buttons.', value: cl.name || '', max: 28, ok: 'Save' })
+            : null;
+          if (!next) return;
+          next = next.trim().slice(0, 28);
+          if (!next) return;
+          cl.name = next;
+          rebuildCustomFilterChips();
+          try { refreshGuestLooksUI(); } catch (e) { }
+          try { if (typeof refreshSpinLutOptions === 'function') refreshSpinLutOptions(); } catch (e) { }
+          try { guestRender(); } catch (e) { }
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      if (lutDeleteBtn) {
+        lutDeleteBtn.addEventListener('click', function () {
+          var cl = customLutById(filterKey);
+          if (!cl) return;
+          var idx = customLuts.indexOf(cl);
+          if (idx >= 0) customLuts.splice(idx, 1);
+          guestLookSet = guestLookSet.filter(function (k) { return k !== cl.id; });
+          if (guestLookBase === cl.id) guestLookBase = 'none';
+          filterKey = 'none';
+          if (typeof spinLook !== 'undefined' && spinLook && spinLook.lut === cl.id) {
+            spinLook.lut = 'none';
+            try { if (typeof spinLookToUI === 'function') spinLookToUI(); if (typeof spinLookFromUI === 'function') spinLookFromUI(true); } catch (e) { }
+          }
+          rebuildCustomFilterChips();
+          try { refreshGuestLooksUI(); } catch (e) { }
+          try { if (typeof refreshSpinLutOptions === 'function') refreshSpinLutOptions(); } catch (e) { }
+          applyLiveFilter();
+          try { reapplyFiltersToShots(); } catch (e) { }
+          try { renderSetupPreview(); } catch (e) { }
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          showToast('LUT removed.', 2200);
+        });
+      }
+
       var filterThumbTimer = null, filterThumbScratch = null;
       function drawFilterThumbs() {
         if (document.hidden || isStartScreenCovering() || isWelcomeCoveringCamera()) {
@@ -56845,7 +57876,16 @@ function renderTabletBridgeSetup(info) {
         scx.restore();
         rows.forEach(function (r) {
           r.querySelectorAll('canvas').forEach(function (cv) {
-            try { cv.getContext('2d').drawImage(filterThumbScratch, 0, 0, cv.width, cv.height); } catch (e) { }
+            try {
+              cv.getContext('2d').drawImage(filterThumbScratch, 0, 0, cv.width, cv.height);
+              var fk = cv.dataset.filter || (cv.closest('.sc-filter') && cv.closest('.sc-filter').dataset.filter);
+              if (fk && isCustomLutKey(fk)) {
+                var dLut = customLutData(fk), _clThumb = customLutById(fk);
+                if (dLut && typeof lutApplyToCanvasWebgl === 'function') {
+                  lutApplyToCanvasWebgl(cv, dLut, fk + '|' + (_clThumb ? _clThumb.assetId : '') + '|' + dLut.size, customLutStrength(fk), false);
+                }
+              }
+            } catch (e) { }
           });
         });
       }
@@ -56869,26 +57909,49 @@ function renderTabletBridgeSetup(info) {
       // lasts for that guest: the look chosen in Setup comes back after their photos, or after 90 s with no one there.
       var guestLooksOn = false, guestLookSet = ['none', 'bw', 'warm', 'film', 'retro', 'noir'], guestLookBase = null, guestLookOpen = false, guestLookIdle = null, guestLookTick = null;
       var GUEST_LOOK_MAX = 6;
+      var guestLookMax = GUEST_LOOK_MAX;
       var guestLooksRow = document.getElementById('guestLooksRow'), guestLooksToggle = document.getElementById('guestLooksToggle');
       var guestLooksPick = document.getElementById('guestLooksPick'), guestLooksChips = document.getElementById('guestLooksChips');
+      var guestLookMaxInput = document.getElementById('guestLookMaxInput');
+      function clampGuestLookMax(v) {
+        var n = Math.round(Number(v));
+        return isFinite(n) && n >= 1 ? Math.min(20, n) : GUEST_LOOK_MAX;
+      }
       function guestLookKeys() {
-        var keys = guestLookSet.filter(function (k) { return Object.prototype.hasOwnProperty.call(FILTERS, k); });
+        var keys = guestLookSet.filter(function (k) { return filterExists(k); }).slice(0, guestLookMax);
         var base = guestLookBase !== null ? guestLookBase : filterKey;
-        if (keys.indexOf(base) < 0) keys.unshift(base);          // the look chosen in Setup is always one of the choices
+        if (filterExists(base) && keys.indexOf(base) < 0) keys.unshift(base);          // the look chosen in Setup is always one of the choices
         return keys;
       }
       function refreshGuestLooksUI() {
         guestLooksRow.hidden = !isTraditional();
         guestLooksToggle.checked = guestLooksOn;
         guestLooksPick.hidden = !guestLooksOn;
+        guestLookMax = clampGuestLookMax(guestLookMax);
+        if (guestLookSet.length > guestLookMax) guestLookSet = guestLookSet.slice(0, guestLookMax);
+        if (guestLookMaxInput && Number(guestLookMaxInput.value) !== guestLookMax) guestLookMaxInput.value = String(guestLookMax);
         var glc = document.getElementById('guestLooksCountBadge');
-        if (glc) glc.textContent = guestLookSet.length + ' / ' + GUEST_LOOK_MAX;
+        if (glc) glc.textContent = guestLookSet.length + ' / ' + guestLookMax;
+        var glh = document.getElementById('guestLooksHint');
+        if (glh) glh.textContent = 'Pick up to ' + guestLookMax + ' look' + (guestLookMax === 1 ? '' : 's') + ' guests can switch between. Each next guest resets to your chosen look above.';
         guestLooksChips.innerHTML = '';
-        Object.keys(FILTERS).forEach(function (k) {
+        var allKeys = Object.keys(FILTERS).concat(customLuts.map(function (l) { return l.id; }));
+        allKeys.forEach(function (k) {
           var b = document.createElement('button'); b.type = 'button'; b.dataset.look = k;
-          b.className = 'chip' + (guestLookSet.indexOf(k) >= 0 ? ' active' : ''); b.textContent = FILTER_LABELS[k] || k;
+          b.className = 'chip' + (guestLookSet.indexOf(k) >= 0 ? ' active' : '');
+          b.textContent = filterLabel(k) + (isCustomLutKey(k) ? ' (LUT)' : '');
           guestLooksChips.appendChild(b);
         });
+      }
+      if (guestLookMaxInput) {
+        var onCapChange = function () {
+          guestLookMax = clampGuestLookMax(guestLookMaxInput.value);
+          guestLookMaxInput.value = String(guestLookMax);
+          if (guestLookSet.length > guestLookMax) guestLookSet = guestLookSet.slice(0, guestLookMax);
+          refreshGuestLooksUI(); guestRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        };
+        guestLookMaxInput.addEventListener('change', onCapChange);
       }
       guestLooksToggle.addEventListener('change', function () {
         guestLooksOn = guestLooksToggle.checked;
@@ -56900,7 +57963,7 @@ function renderTabletBridgeSetup(info) {
         var c = e.target.closest('[data-look]'); if (!c) return;
         var k = c.dataset.look, i = guestLookSet.indexOf(k);
         if (i >= 0) guestLookSet.splice(i, 1);
-        else if (guestLookSet.length >= GUEST_LOOK_MAX) { showToast('Up to ' + GUEST_LOOK_MAX + ' looks. Untick one first.', 3000); return; }
+        else if (guestLookSet.length >= guestLookMax) { showToast('Up to ' + guestLookMax + ' looks. Untick one first or raise Max looks.', 3000); return; }
         else guestLookSet.push(k);
         refreshGuestLooksUI(); guestRender();
         if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
@@ -56911,11 +57974,11 @@ function renderTabletBridgeSetup(info) {
         clearTimeout(guestLookIdle);
         if (guestLookBase === null) return;
         var b = guestLookBase; guestLookBase = null;
-        if (Object.prototype.hasOwnProperty.call(FILTERS, b)) { filterKey = b; markFilterChips(); applyLiveFilter(); try { renderSetupPreview(); } catch (e) { } }
+        if (filterExists(b)) { filterKey = b; markFilterChips(); applyLiveFilter(); try { renderSetupPreview(); } catch (e) { } }
         guestLookOpen = false; guestRender();
       }
       function guestPickLook(k) {
-        if (!Object.prototype.hasOwnProperty.call(FILTERS, k)) return;
+        if (!filterExists(k)) return;
         if (guestLookBase === null) guestLookBase = filterKey;     // not saved: Setup keeps its own look
         filterKey = k; markFilterChips(); applyLiveFilter(); try { renderSetupPreview(); } catch (e) { }
         guestLookOpen = false;
@@ -56933,15 +57996,16 @@ function renderTabletBridgeSetup(info) {
           var show = guestLooksOn && isTraditional() && !pickOpen && (ready || state === 'idle') && !(sess && sess.reviewing);
           G.lk.classList.toggle('hide', !show);
           if (!show) { guestLookOpen = false; G.lkRow.classList.add('hide'); return; }
-          G.lkPill.textContent = '✨ Look: ' + (FILTER_LABELS[filterKey] || filterKey);
+          G.lkPill.textContent = '✨ Look: ' + filterLabel(filterKey);
           G.lkRow.classList.toggle('hide', !guestLookOpen);
-          var keys = guestLookKeys(), sig = keys.join(',');
+          var keys = guestLookKeys(), sig = keys.map(function (k) { return k + ':' + filterLabel(k); }).join(',');
           if (G.lkSig !== sig) {
             G.lkSig = sig; G.lkRow.innerHTML = '';
             keys.forEach(function (k) {
               var b = G.d.createElement('button'); b.type = 'button'; b.className = 'lkb'; b.dataset.k = k;
-              var cv = G.d.createElement('canvas'); cv.width = 96; cv.height = 96; cv.style.filter = FILTERS[k] || 'none';
-              var sp = G.d.createElement('span'); sp.textContent = FILTER_LABELS[k] || k;
+              var cv = G.d.createElement('canvas'); cv.width = 96; cv.height = 96; cv.dataset.k = k;
+              cv.style.filter = isCustomLutKey(k) ? 'none' : (FILTERS[k] || 'none');
+              var sp = G.d.createElement('span'); sp.textContent = filterLabel(k);
               b.append(cv, sp); G.lkRow.appendChild(b);
             });
           }
@@ -56950,17 +58014,34 @@ function renderTabletBridgeSetup(info) {
           if (!guestLookOpen && guestLookTick) { clearInterval(guestLookTick); guestLookTick = null; }
         } catch (e) { /* guest window closed */ }
       }
+      var _guestThumbHostCv = null, _guestThumbTmp = null;
       // Each preview shows the live camera through that look.
       function guestLooksThumbs() {
         var sz = camVideoSize(), src = camFrameSource();
         if (!guestOpen() || !guestLookOpen || !sz.w || (nativeCam.active && (!src || !src.width))) { if (guestLookTick && !guestOpen()) { clearInterval(guestLookTick); guestLookTick = null; } return; }
         try {
           var vw = nativeCam.active ? src.width : sz.w, vh = nativeCam.active ? src.height : sz.h, side = Math.min(vw, vh) * 0.8, sx = (vw - side) / 2, sy = (vh - side) / 2, mir = mirrorPreview();
+          if (!_guestThumbHostCv) { _guestThumbHostCv = document.createElement('canvas'); _guestThumbHostCv.width = 96; _guestThumbHostCv.height = 96; }
+          var hctx = _guestThumbHostCv.getContext('2d');
+          hctx.save();
+          hctx.setTransform(1, 0, 0, 1, 0, 0);
+          if (mir) { hctx.translate(96, 0); hctx.scale(-1, 1); }
+          try { hctx.drawImage(src, sx, sy, side, side, 0, 0, 96, 96); } catch (e) { }
+          hctx.restore();
           [].forEach.call(G.lkRow.querySelectorAll('canvas'), function (cv) {
-            var x = cv.getContext('2d'); x.save();
-            if (mir) { x.translate(cv.width, 0); x.scale(-1, 1); }
-            try { x.drawImage(src, sx, sy, side, side, 0, 0, cv.width, cv.height); } catch (e) { }
-            x.restore();
+            var x = cv.getContext('2d');
+            var lk = cv.dataset.k || (cv.parentNode && cv.parentNode.dataset.k);
+            if (lk && isCustomLutKey(lk)) {
+              var dLut = customLutData(lk), _clG = customLutById(lk);
+              if (dLut && typeof lutApplyToCanvasWebgl === 'function') {
+                if (!_guestThumbTmp) { _guestThumbTmp = document.createElement('canvas'); _guestThumbTmp.width = 96; _guestThumbTmp.height = 96; }
+                _guestThumbTmp.getContext('2d').drawImage(_guestThumbHostCv, 0, 0);
+                lutApplyToCanvasWebgl(_guestThumbTmp, dLut, lk + '|' + (_clG ? _clG.assetId : '') + '|' + dLut.size, customLutStrength(lk), false);
+                x.drawImage(_guestThumbTmp, 0, 0, cv.width, cv.height);
+                return;
+              }
+            }
+            x.drawImage(_guestThumbHostCv, 0, 0, cv.width, cv.height);
           });
         } catch (e) { }
       }
@@ -61147,10 +62228,28 @@ function renderTabletBridgeSetup(info) {
       if (deskOpenBridgeBtn) deskOpenBridgeBtn.addEventListener('click', function () { if (window.__PBLocal && typeof window.__PBLocal.openRoveBridge === 'function') window.__PBLocal.openRoveBridge(); });
       var androidOpenBridgeBtn = document.getElementById('androidOpenBridgeBtn');
       if (androidOpenBridgeBtn) androidOpenBridgeBtn.addEventListener('click', function () { if (window.__PBLocal && typeof window.__PBLocal.openRoveBridge === 'function') window.__PBLocal.openRoveBridge(); });
+      function openIosSpinArm() {
+        if (!(window.__PBLocal && typeof window.__PBLocal.openSpinArm === 'function')) return;
+        var fKey = '';
+        var evName = '';
+        var driveId = '';
+        var opKey = '';
+        try { fKey = (typeof rawFolderKey === 'function' ? rawFolderKey() : '') || ''; } catch (e) { }
+        try { evName = (typeof labelInput !== 'undefined' && labelInput ? String(labelInput.value || '').trim() : '') || fKey; } catch (e) { }
+        try {
+          var fk = (typeof currentFolderKey === 'function') ? currentFolderKey() : (fKey || 'default');
+          var onlineUrl = localStorage.getItem('photoBoothDrive:' + fk + ':folderUrl') || '';
+          var m = /[?&]id=([A-Za-z0-9_-]{10,80})/.exec(onlineUrl) || /\/folders\/([A-Za-z0-9_-]{10,80})/.exec(onlineUrl);
+          if (m) driveId = m[1];
+          if (!driveId && typeof gvFolderId === 'function') driveId = gvFolderId(getCachedFolderUrl()) || '';
+          if (driveId) opKey = localStorage.getItem('pb_gvk:' + driveId) || '';
+        } catch (e) { }
+        window.__PBLocal.openSpinArm({ folderKey: fKey, eventName: evName, driveFolderId: driveId, opKey: opKey });
+      }
       var spinArmFab = document.getElementById('spinArmFab');
-      if (spinArmFab) spinArmFab.addEventListener('click', function () { if (window.__PBLocal && typeof window.__PBLocal.openSpinArm === 'function') window.__PBLocal.openSpinArm(); });
+      if (spinArmFab) spinArmFab.addEventListener('click', openIosSpinArm);
       var iosOpenSpinArmBtn = document.getElementById('iosOpenSpinArmBtn');
-      if (iosOpenSpinArmBtn) iosOpenSpinArmBtn.addEventListener('click', function () { if (window.__PBLocal && typeof window.__PBLocal.openSpinArm === 'function') window.__PBLocal.openSpinArm(); });
+      if (iosOpenSpinArmBtn) iosOpenSpinArmBtn.addEventListener('click', openIosSpinArm);
       document.getElementById('spinFab').addEventListener('click', function () { openSpin(); });
       document.getElementById('deskClose').addEventListener('click', closeDesk);
       document.getElementById('deskPick').addEventListener('click', function () { document.getElementById('deskFile').click(); });
@@ -64072,6 +65171,55 @@ function renderTabletBridgeSetup(info) {
         badge.hidden = false;
         badge.textContent = item ? (item.blend === 'screen' ? '✨ Screen' : '🎨 Alpha') : 'Active';
       }
+      var _spinLutGl = null, _spinLutLastSig = '';
+      function refreshSpinLutOptions() {
+        var sel = document.getElementById('spinLut');
+        if (!sel) return;
+        var prev = (typeof spinLook !== 'undefined' && spinLook && spinLook.lut) || sel.value || 'none';
+        var oldGrp = sel.querySelector('optgroup[data-custom-luts]');
+        if (oldGrp) oldGrp.remove();
+        if (typeof customLuts !== 'undefined' && customLuts.length) {
+          var grp = document.createElement('optgroup');
+          grp.label = 'Custom LUTs (.cube)';
+          grp.setAttribute('data-custom-luts', '1');
+          customLuts.forEach(function (cl) {
+            if (!cl || !cl.id) return;
+            var opt = document.createElement('option');
+            opt.value = cl.id;
+            opt.textContent = cl.name || cl.id;
+            grp.appendChild(opt);
+          });
+          sel.appendChild(grp);
+        }
+        sel.value = prev;
+        if (sel.value !== prev) sel.value = 'none';
+      }
+      function renderSpinLutCanvas() {
+        var lc = document.getElementById('spinLutCanvas');
+        var v = document.getElementById('spinVideo');
+        if (!lc) return;
+        var lut = (typeof spinLook !== 'undefined' && spinLook && spinLook.lut) || 'none';
+        var viewingRendered = !!(typeof spinCur !== 'undefined' && spinCur && spinCur.edited && !spinCur.viewOrig && !spinCur.isDrafting);
+        var cl = typeof customLutById === 'function' ? customLutById(lut) : null;
+        var dLut = cl && typeof customLutData === 'function' ? customLutData(lut) : null;
+        if (!cl || !dLut || viewingRendered || !v || !v.src || v.style.display === 'none' || !v.videoWidth || v.readyState < 2 || typeof lutCreateGlRunner !== 'function') {
+          _spinLutLastSig = '';
+          if (lc.style.display !== 'none') lc.style.display = 'none';
+          return;
+        }
+        var str = customLutStrength(cl.id);
+        var vw = v.videoWidth, vh = v.videoHeight;
+        var sig = v.paused ? (v.currentSrc + '|' + v.currentTime.toFixed(3) + '|' + cl.id + '|' + cl.assetId + '@' + Math.round(str * 100) + '|' + vw + 'x' + vh + '|' + (v.style.objectFit || 'contain')) : '';
+        if (sig && _spinLutLastSig === sig && lc.style.display === 'block') return;
+        var k = Math.min(1, 960 / Math.max(vw, vh));
+        var w = Math.max(2, Math.round(vw * k)), h = Math.max(2, Math.round(vh * k));
+        if (!_spinLutGl) _spinLutGl = lutCreateGlRunner(lc);
+        if (_spinLutGl.render(v, dLut, cl.id + '|' + cl.assetId + '|' + dLut.size, str, w, h, false)) {
+          _spinLutLastSig = sig;
+          lc.style.objectFit = v.style.objectFit || 'contain';
+          if (lc.style.display !== 'block') lc.style.display = 'block';
+        }
+      }
       function spinUpdateStageAspect() {
         var stage = document.getElementById('spinStageWrap');
         var v = document.getElementById('spinVideo');
@@ -64104,14 +65252,29 @@ function renderTabletBridgeSetup(info) {
           vintage: 'sepia(35%) contrast(90%) brightness(95%)',
           none: 'none'
         };
-        var lut = (spinLook && spinLook.lut) || 'none';
-        var filt = lutFilters[lut] || 'none';
+        var viewingRendered = !!(typeof spinCur !== 'undefined' && spinCur && spinCur.edited && !spinCur.viewOrig && !spinCur.isDrafting);
+        var lut = viewingRendered ? 'none' : ((spinLook && spinLook.lut) || 'none');
+        var isCustom = typeof isCustomLutKey === 'function' && isCustomLutKey(lut);
+        var filt = isCustom ? 'none' : (lutFilters[lut] || 'none');
         if (v) v.style.filter = (filt !== 'none') ? filt : '';
         var c = document.getElementById('spinPreviewCanvas');
         if (c) c.style.filter = (filt !== 'none') ? filt : '';
+        var sw = document.getElementById('spinLutStrengthWrap');
+        if (sw) {
+          var cl = typeof customLutById === 'function' ? customLutById(spinLook && spinLook.lut) : null;
+          sw.hidden = !cl;
+          if (cl) {
+            var sl = document.getElementById('spinLutStrength'), sv = document.getElementById('spinLutStrengthVal');
+            var pct = Math.round(customLutStrength(cl.id) * 100);
+            if (sl && Number(sl.value) !== pct) sl.value = String(pct);
+            if (sv) sv.textContent = pct + '%';
+          }
+        }
+        renderSpinLutCanvas();
       }
       function spinLookToUI() {
         var g = function (id) { return document.getElementById(id); };
+        refreshSpinLutOptions();
         g('spinPreset').value = spinLook.preset; g('spinSpeed').value = spinLook.speed; g('spinSmooth').checked = !!spinLook.smooth; if (g('spinGpu')) g('spinGpu').checked = !!spinLook.gpu;
         if (g('spinZoom')) g('spinZoom').checked = spinLook.zoom !== undefined ? !!spinLook.zoom : true;
         if (g('spinFlash')) g('spinFlash').checked = spinLook.flash !== undefined ? !!spinLook.flash : true;
@@ -65787,10 +66950,11 @@ function renderTabletBridgeSetup(info) {
         var fx = [], v = (typeof VINTAGE_FX !== 'undefined') ? VINTAGE_FX[filterKey] : null;
         if (softSkin) fx.push({ t: 'soft', a: .26 });
         if (v) fx.push({ t: 'vig', a: v.vig });
-        return { n: 'Photo look', css: liveFilterCss(), fx: fx };
+        var lk = (typeof isCustomLutKey === 'function' && isCustomLutKey(filterKey)) ? filterKey : '';
+        return { n: 'Photo look', css: liveFilterCss(), lutKey: lk, fx: fx };
       }
       function vgLookDef(k) { return k === 'booth' ? vgBoothLook() : (VG_LOOKS[k] || null); }
-      function vgLookHas(d) { return !!(d && (d.css || (d.fx && d.fx.length))); }
+      function vgLookHas(d) { return !!(d && (d.css || d.lutKey || (d.fx && d.fx.length))); }
       function vgCurLook() { return (gbPrefs.pick && vg.look) || gbPrefs.look || 'none'; }
       // Needs canvas filters and canvas recording (Chrome / Android WebView / Edge). Where missing, looks are simply not offered.
       function vgCanFilter() {
@@ -65846,6 +67010,12 @@ function renderTabletBridgeSetup(info) {
           x.filter = d.css || 'none';
           if (vgFx.flip) { x.save(); x.translate(w, 0); x.scale(-1, 1); x.drawImage(v, 0, 0, w, h); x.restore(); } else x.drawImage(v, 0, 0, w, h);
           x.filter = 'none';
+          if (d.lutKey && typeof customLutData === 'function') {
+            var dLut = customLutData(d.lutKey), _clVg = customLutById(d.lutKey);
+            if (dLut && typeof lutApplyToCanvasWebgl === 'function') {
+              lutApplyToCanvasWebgl(cv, dLut, d.lutKey + '|' + (_clVg ? _clVg.assetId : '') + '|' + dLut.size, customLutStrength(d.lutKey), false);
+            }
+          }
           (d.fx || []).forEach(function (t) { vgLayer(x, w, h, t); });
           // Is the phone keeping up? Averaged over ~20 pictures, before recording only (never changed while recording).
           vgFx.ms = vgFx.ms ? vgFx.ms * 0.9 + (performance.now() - t0) * 0.1 : (performance.now() - t0); vgFx.n++;
@@ -68349,7 +69519,9 @@ function renderTabletBridgeSetup(info) {
           var v = document.getElementById('spinVideo');
           var isPlaying = v && !v.paused && !v.ended;
           var hasFx = spinLook && spinLook.fx && spinLook.fx !== 'none';
+          var hasCustomLut = !!(spinLook && typeof isCustomLutKey === 'function' && isCustomLutKey(spinLook.lut));
           var isDemo = !v || !v.src || v.style.display === 'none' || !spinCur;
+          if (hasCustomLut) renderSpinLutCanvas();
           if (isPlaying || hasFx || isDemo) {
             renderSpinModalPreview();
           }
@@ -68442,6 +69614,13 @@ function renderTabletBridgeSetup(info) {
         var hasVideo = v && v.src && v.style.display !== 'none' && v.videoWidth > 0 && it;
         if (!hasVideo) {
           drawSpinSampleStage(ctx, vw, vh);
+          var sampleLut = (spinLook && spinLook.lut) || 'none';
+          if (typeof isCustomLutKey === 'function' && isCustomLutKey(sampleLut) && typeof customLutData === 'function') {
+            var sdLut = customLutData(sampleLut), _clSp = customLutById(sampleLut);
+            if (sdLut && typeof lutApplyToCanvasWebgl === 'function') {
+              lutApplyToCanvasWebgl(cvs, sdLut, sampleLut + '|' + (_clSp ? _clSp.assetId : '') + '|' + sdLut.size, customLutStrength(sampleLut), false);
+            }
+          }
         }
 
         var frameSel = document.getElementById('spinFrameStyle') || document.getElementById('spinModalFrameStyle');
@@ -68594,6 +69773,12 @@ function renderTabletBridgeSetup(info) {
               flash: spinLook.flash !== undefined ? !!spinLook.flash : true,
               dropTime: (spinLook.dropTime != null && spinLook.dropTime > 0) ? Number(spinLook.dropTime) : null,
               lut: spinLook.lut || 'none',
+              lutCube: (function () {
+                if (typeof isCustomLutKey !== 'function' || !isCustomLutKey(spinLook.lut)) return null;
+                var cl = customLutById(spinLook.lut), dl = customLutData(spinLook.lut);
+                if (!cl || !dl || typeof lutToCubeText !== 'function') return null;
+                return lutToCubeText(dl.bytes, dl.size, customLutStrength(cl.id), cl.name || cl.id);
+              })(),
               textTiming: textOpt.textTiming
             }
           });
@@ -70520,6 +71705,37 @@ function renderTabletBridgeSetup(info) {
           spinLookFromUI(true);
         });
       });
+      var spinAddLutBtn = document.getElementById('spinAddLutBtn');
+      if (spinAddLutBtn && typeof lutFileInput !== 'undefined' && lutFileInput) {
+        spinAddLutBtn.addEventListener('click', function () {
+          lutFileInput.dataset.target = 'spin';
+          lutFileInput.value = '';
+          lutFileInput.click();
+        });
+      }
+      var spinLutStrengthEl = document.getElementById('spinLutStrength');
+      if (spinLutStrengthEl) {
+        spinLutStrengthEl.addEventListener('input', function () {
+          var cl = typeof customLutById === 'function' ? customLutById(spinLook && spinLook.lut) : null;
+          if (!cl) return;
+          cl.strength = Math.max(0, Math.min(100, Math.round(Number(spinLutStrengthEl.value) || 0)));
+          var sv = document.getElementById('spinLutStrengthVal');
+          if (sv) sv.textContent = cl.strength + '%';
+          spinUpdateStageAspect();
+          if (typeof renderSpinModalPreview === 'function') renderSpinModalPreview();
+          if (typeof filterKey !== 'undefined' && filterKey === cl.id) {
+            try { refreshLutActiveBar(); applyLiveFilter(); } catch (e) { }
+          }
+          clearTimeout(_lutStrengthTimer);
+          _lutStrengthTimer = setTimeout(function () {
+            try { rebuildCustomFilterChips(); } catch (e) { }
+            if (typeof filterKey !== 'undefined' && filterKey === cl.id) {
+              try { reapplyFiltersToShots(); renderSetupPreview(); } catch (e) { }
+            }
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          }, 90);
+        });
+      }
 
       // ---- Canvas Drag-to-Position and Corner-Resize for 360 Text ----
       (function () {
@@ -80441,8 +81657,11 @@ function fxWavUrl(kind) {
           textColor: textColor, titleSize: titleSizeMultiplier, titleBg: titleBgEnabled, titleBgColor: titleBgColor,
           outline: useOutline, outlineColor: outlineColor, shadow: useShadow,
           filter: guestLookBase !== null ? guestLookBase : filterKey, softSkin: softSkin, dateStamp: dateStamp,
+          customLuts: (typeof customLuts !== 'undefined' ? customLuts : []).map(function (l) {
+            return { id: l.id, name: l.name, assetId: l.assetId, size: l.size, strength: l.strength };
+          }),
           colorAdj: Object.assign({}, colorAdj),
-          guestLooks: guestLooksOn, guestLookSet: guestLookSet.slice(),
+          guestLooks: guestLooksOn, guestLookSet: guestLookSet.slice(), guestLookMax: typeof guestLookMax !== 'undefined' ? guestLookMax : 6,
           welcomeOn: welcomeOn,
           welcomeMsg: welcomeMsg,
           saverDimMin: saverDimMin, saverOffMin: saverOffMin,
@@ -80660,10 +81879,31 @@ function fxWavUrl(kind) {
           if (typeof refreshFlipLayoutUI === 'function') refreshFlipLayoutUI();
           refreshOutputModeUI();
           // gifSpeed is always auto (0); any previously saved manual value is ignored.
-          filterKey = Object.prototype.hasOwnProperty.call(FILTERS, s.filter) ? s.filter : 'none';
+          if (Array.isArray(s.customLuts) && typeof customLuts !== 'undefined') {
+            customLuts = s.customLuts.filter(function (l) {
+              return l && typeof l.id === 'string' && l.id.indexOf('lut_') === 0 && typeof l.assetId === 'string' && /^a[A-Za-z0-9]{8,32}$/.test(l.assetId);
+            }).slice(0, 30).map(function (l) {
+              var sz = Math.max(2, Math.min(64, Math.round(Number(l.size) || 33)));
+              var st = typeof l.strength === 'number' && isFinite(l.strength) ? Math.max(0, Math.min(100, Math.round(l.strength))) : 100;
+              return { id: l.id.slice(0, 48), name: String(l.name || 'Custom LUT').slice(0, 28), assetId: l.assetId, size: sz, strength: st };
+            });
+            var lutAids = customLuts.map(function (l) { return l.assetId; });
+            if (lutAids.length && typeof ensureAssets === 'function') { try { ensureAssets(lutAids); } catch (e) { } }
+            if (!skipHeavyUi) {
+              try { if (typeof rebuildCustomFilterChips === 'function') rebuildCustomFilterChips(); } catch (e) { }
+              try { if (typeof refreshSpinLutOptions === 'function') refreshSpinLutOptions(); } catch (e) { }
+              try { if (typeof spinLookToUI === 'function') spinLookToUI(); } catch (e) { }
+            }
+          }
+          if (typeof s.guestLookMax === 'number' && typeof guestLookMax !== 'undefined') {
+            guestLookMax = typeof clampGuestLookMax === 'function' ? clampGuestLookMax(s.guestLookMax) : Math.max(1, Math.min(20, Math.round(s.guestLookMax) || GUEST_LOOK_MAX));
+          }
+          var _hasF = typeof filterExists === 'function' ? filterExists(s.filter) : Object.prototype.hasOwnProperty.call(FILTERS, s.filter);
+          filterKey = _hasF ? s.filter : 'none';
           guestLookBase = null;
           if (typeof s.guestLooks === 'boolean') guestLooksOn = s.guestLooks;
-          if (Array.isArray(s.guestLookSet)) guestLookSet = s.guestLookSet.filter(function (k) { return typeof k === 'string'; }).slice(0, GUEST_LOOK_MAX);
+          var _capMax = typeof guestLookMax !== 'undefined' ? guestLookMax : GUEST_LOOK_MAX;
+          if (Array.isArray(s.guestLookSet)) guestLookSet = s.guestLookSet.filter(function (k) { return typeof k === 'string'; }).slice(0, _capMax);
           try { refreshGuestLooksUI(); } catch (e) { }
           markFilterChips();
           softSkin = !!s.softSkin; softSkinToggle.checked = softSkin;
@@ -82041,6 +83281,9 @@ function fxWavUrl(kind) {
           if (typeof flipCoverAssetId !== 'undefined' && id === flipCoverAssetId && typeof refreshFlipCoverUI === 'function') {
             try { refreshFlipCoverUI(); } catch (e) { }
           }
+          if (typeof onLutAssetLoaded === 'function') {
+            try { onLutAssetLoaded(id); } catch (e) { }
+          }
           scheduleAssetRedraw(isActiveNow);
         };
         im.src = url;
@@ -82790,7 +84033,8 @@ function fxWavUrl(kind) {
       function stickerTone(mono) {
         if (mono) return mono;
         var fk = typeof filterKey !== 'undefined' ? filterKey : 'none';
-        return fk && fk !== 'none' && typeof FILTERS !== 'undefined' && FILTERS[fk] ? 'f:' + fk : '';
+        var hasF = typeof filterExists === 'function' ? filterExists(fk) : (typeof FILTERS !== 'undefined' && !!FILTERS[fk]);
+        return fk && fk !== 'none' && hasF ? 'f:' + fk : '';
       }
       function tonedSticker(d, b, tone) {
         var isB = d.src.indexOf('b:') === 0;
@@ -82799,7 +84043,9 @@ function fxWavUrl(kind) {
         // Render size: exact for dots (one dot = one pixel), else in 64 px steps (up to 1400) so a resize re-renders rarely.
         var rs = dots ? Math.max(4, Math.round(big)) : Math.min(1400, Math.max(64, Math.ceil(big / 64) * 64));
         var k = rs / big, pad = isB ? 0.3 : 0.02;                       // text bubbles can be wider than their box
-        var key = tone + '|' + d.src + '|' + rs + '|' + (b.h / b.w).toFixed(3);
+        var strTag = (tone && tone.indexOf('f:') === 0 && typeof isCustomLutKey === 'function' && isCustomLutKey(tone.slice(2)) && typeof customLutStrength === 'function')
+          ? ('@' + Math.round(customLutStrength(tone.slice(2)) * 100)) : '';
+        var key = tone + strTag + '|' + d.src + '|' + rs + '|' + (b.h / b.w).toFixed(3);
         var hit = STK_TONE[key];
         if (hit) return hit;
         var c = document.createElement('canvas');

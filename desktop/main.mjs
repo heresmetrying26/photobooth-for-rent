@@ -731,6 +731,11 @@ function wireIpc() {
     const wantMusic = String((req && req.musicName) || '');
     const music = (wantMusic && musicLib().find((p) => basename(p) === wantMusic)) || (settings.spinMusic && existsSync(settings.spinMusic) ? settings.spinMusic : null);
     const options = { ...((req && req.options) || {}) };
+    if (typeof options.lutCube === 'string' && options.lutCube) {
+      const savedLut = SPIN.saveLutCube(options.lutCube);
+      if (savedLut) options.lutFile = savedLut;
+    }
+    delete options.lutCube;
     options.fxBakeDir = SPIN.fxBakePath(options.fxBake);     // only a folder this app made (by name), never a path from the page
     delete options.fxBake;
     const fx = SPIN.resolveFx((options && options.fx) || (options && options.fxId) || (req && req.fx), options.orientation);

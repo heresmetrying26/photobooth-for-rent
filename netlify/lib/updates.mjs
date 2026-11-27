@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.121', date: '2026-11-27' },
   { version: '1.1.120', date: '2026-11-27' },
   { version: '1.1.119', date: '2026-11-27' },
   { version: '1.1.118', date: '2026-11-27' },
@@ -317,6 +318,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-27', title: 'Desktop 1.1.121, Android 1.2.30, iPad 1.1.39 & Website: Custom Colour LUTs, Standalone iPhone/iPad 360 Mode & Sharing Station', for: ['website', 'app', 'android', 'ipad'], app: '1.1.121', android: '1.2.30', ipad: '1.1.39',
+    items: [
+      '🎞️ Custom colour LUT filters (.cube): Import your own 3D or 1D .cube look files in Setup › Camera and the 360 Desk, adjust LUT strength from 0% to 100%, rename or remove uploaded looks anytime, and save them inside your event setups with smooth hardware-accelerated live preview on laptop, Android, iPad, USB cameras, and Tablet Bridge.',
+      '🎥 Standalone iPhone & iPad 360 Mode: Run complete 360 events directly from your iPhone or iPad without a laptop — pick Slow-Mo, Super Slow, Speed Ramp, or Boomerang speeds, choose 9:16, 1:1, or 16:9 aspect ratio, add custom transparent PNG frame overlays and event titles, and export clips on the device with instant preview and AirDrop or Save.',
+      '📲 Built-in Sharing Station with Email & WhatsApp redirect: Share 360 videos and photos offline over your booth Wi-Fi QR code and local Sharing Station page, and automatically unlock direct Email sending and one-tap guest WhatsApp redirect whenever internet is available.'
+    ]
+  },
   {
     date: '2026-11-27', title: 'Desktop 1.1.120, Android 1.2.29, iPad 1.1.38 & Website: Music Player & Aesthetic Receipt Templates + Minimalist Studio 4-Cut Ready Designs', for: ['website', 'app', 'android', 'ipad'], app: '1.1.120', android: '1.2.29', ipad: '1.1.38',
     items: [

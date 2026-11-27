@@ -9,9 +9,14 @@ import UIKit
  * over local Wi-Fi.
  *
  * Endpoints:
+ *   /station            -> Sharing Station (auto-resolves latest event)
+ *   /station/list       -> JSON feed for Sharing Station
+ *   /qr.js              -> Bundled QR generator script
  *   /e/<slug>/          -> Event gallery page
  *   /e/<slug>/p/<file>  -> Single photo viewing page with Save button
  *   /e/<slug>/f/<file>  -> Direct file download (JPEG / PNG / GIF / MP4 / WebM)
+ *   /e/<slug>/t/<file>  -> Thumbnail preview
+ *   /e/<slug>/s/<pref>  -> Session landing page
  *   /e/<slug>/list.json -> JSON array of items in event
  *   /o/<code>           -> Guest's own session page
  */
@@ -236,12 +241,15 @@ class LocalShareServer {
         guard parts.count >= 2 else { return }
 
         var rangeHeader: String? = nil
+        var contentLength: Int = 0
         for h in reqLines.dropFirst() where !h.isEmpty {
             if let colon = h.firstIndex(of: ":") {
                 let k = h[..<colon].trimmingCharacters(in: .whitespaces).lowercased()
+                let v = h[h.index(after: colon)...].trimmingCharacters(in: .whitespaces)
                 if k == "range" {
-                    rangeHeader = h[h.index(after: colon)...].trimmingCharacters(in: .whitespaces)
-                    break
+                    rangeHeader = v
+                } else if k == "content-length" {
+                    contentLength = Int(v) ?? 0
                 }
             }
         }
@@ -252,6 +260,12 @@ class LocalShareServer {
         let path = String(comps[0])
         let query = comps.count > 1 ? String(comps[1]) : ""
 
+        if method == "POST" && path == "/station-mail" {
+            let bodyData = readHttpBody(sock: sock, initialBuffer: buffer, bytesRead: bytesRead, contentLength: contentLength)
+            handleStationMailProxy(sock: sock, bodyData: bodyData)
+            return
+        }
+
         if method != "GET" && method != "HEAD" {
             sendResponse(sock, status: 405, type: "text/plain", body: Data("Method Not Allowed".utf8))
             return
@@ -260,8 +274,138 @@ class LocalShareServer {
         route(sock: sock, path: path, query: query, rangeHeader: rangeHeader, headOnly: method == "HEAD")
     }
 
+    private func readHttpBody(sock: Int32, initialBuffer: [UInt8], bytesRead: Int, contentLength: Int) -> Data {
+        guard contentLength > 0, contentLength <= 8192 else { return Data() }
+        let raw = Data(initialBuffer[0..<bytesRead])
+        let sep = Data("\r\n\r\n".utf8)
+        var body = Data()
+        if let rng = raw.range(of: sep) {
+            body.append(raw[rng.upperBound...])
+        }
+        var extra = [UInt8](repeating: 0, count: 2048)
+        while body.count < contentLength {
+            let need = min(extra.count, contentLength - body.count)
+            let n = read(sock, &extra, need)
+            if n <= 0 { break }
+            body.append(extra, count: n)
+        }
+        return body.prefix(contentLength)
+    }
+
+    private func handleStationMailProxy(sock: Int32, bodyData: Data) {
+        guard let obj = (try? JSONSerialization.jsonObject(with: bodyData)) as? [String: Any] else {
+            sendResponse(sock, status: 400, type: "application/json", body: Data("{\"ok\":false,\"error\":\"Bad request\"}".utf8))
+            return
+        }
+        var payload = obj
+        let ctx = PBLocal.shared.spinContext
+        if !ctx.driveFolderId.isEmpty && payload["folderId"] == nil { payload["folderId"] = ctx.driveFolderId }
+        if !ctx.opKey.isEmpty && payload["k"] == nil { payload["k"] = ctx.opKey }
+        let licStr = ctx.licence.isEmpty ? (AppLicence.shared.currentLicenceString() ?? "") : ctx.licence
+        let midStr = ctx.mid.isEmpty ? AppLicence.shared.machineId() : ctx.mid
+        if !licStr.isEmpty && payload["licence"] == nil { payload["licence"] = licStr }
+        if !midStr.isEmpty && payload["mid"] == nil { payload["mid"] = midStr }
+        if !ctx.token.isEmpty && payload["token"] == nil { payload["token"] = ctx.token }
+        if !ctx.deviceId.isEmpty && payload["deviceId"] == nil { payload["deviceId"] = ctx.deviceId }
+
+        guard let outBody = try? JSONSerialization.data(withJSONObject: payload),
+              let url = URL(string: "\(AppLicence.serverUrl)/api/station-mail") else {
+            sendResponse(sock, status: 400, type: "application/json", body: Data("{\"ok\":false,\"error\":\"Invalid email payload\"}".utf8))
+            return
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 15
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = outBody
+
+        let sem = DispatchSemaphore(value: 0)
+        var respStatus = 502
+        var respData = Data("{\"ok\":false,\"error\":\"Could not reach email service\"}".utf8)
+        URLSession.shared.dataTask(with: req) { data, resp, _ in
+            if let http = resp as? HTTPURLResponse { respStatus = http.statusCode }
+            if let d = data, !d.isEmpty { respData = d }
+            sem.signal()
+        }.resume()
+        _ = sem.wait(timeout: .now() + 16)
+        sendResponse(sock, status: respStatus, type: "application/json; charset=utf-8", body: respData)
+    }
+
     private func route(sock: Int32, path: String, query: String, rangeHeader: String?, headOnly: Bool) {
         let components = path.split(separator: "/").map { String($0).removingPercentEncoding ?? String($0) }
+
+        if components.isEmpty {
+            sendResponse(sock, status: 200, type: "text/plain", body: Data("photobooth4u booth".utf8), headOnly: headOnly)
+            return
+        }
+
+        if components == ["qr.js"] {
+            if let qrUrl = Bundle.main.url(forResource: "qr", withExtension: "js"),
+               let qrData = try? Data(contentsOf: qrUrl) {
+                sendResponse(sock, status: 200, type: "application/javascript; charset=utf-8", body: qrData, extraHeaders: ["Cache-Control: public, max-age=86400"], headOnly: headOnly)
+                return
+            }
+            sendResponse(sock, status: 404, type: "text/plain", body: Data("qr.js missing".utf8), headOnly: headOnly)
+            return
+        }
+
+        // Sharing Station routes: /station, /station/list, /station/<slug>, /station/<slug>/list
+        if components[0] == "station" {
+            let isList = (components.count == 2 && components[1] == "list") || (components.count == 3 && components[2] == "list")
+            let rawSlug: String? = (components.count >= 2 && components[1] != "list") ? components[1] : nil
+            let folder = (rawSlug.flatMap { PBLocal.shared.folderBySlug($0) }) ?? PBLocal.shared.latestFolder()
+            if isList {
+                guard let f = folder else {
+                    sendResponse(sock, status: 200, type: "application/json; charset=utf-8", body: Data("{\"ok\":true,\"slug\":null,\"files\":[]}".utf8), headOnly: headOnly)
+                    return
+                }
+                let dir = PBLocal.shared.dirOf(folder: f)
+                let items = PBLocal.shared.photosIn(dir: dir)
+                var arr: [[String: Any]] = []
+                for fileUrl in items {
+                    let name = fileUrl.lastPathComponent
+                    let lower = name.lowercased()
+                    let isVid = lower.hasSuffix(".mp4") || lower.hasSuffix(".mov") || lower.hasSuffix(".webm") || lower.hasSuffix(".m4v")
+                    let isGif = lower.hasSuffix(".gif")
+                    let isSolo = lower.range(of: "_solo_\\d+", options: .regularExpression) != nil
+                    let kind = (isVid && lower.contains("_guestbook")) ? "guestbook" : isVid ? "video" : isGif ? "gif" : isSolo ? "solo" : "photo"
+                    let prefix = name.components(separatedBy: "_").first ?? name
+                    let encName = urlEsc(name)
+                    let encPref = urlEsc(prefix)
+                    let mtimeDate = (try? fileUrl.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date()
+                    let mtimeMs = Int64(mtimeDate.timeIntervalSince1970 * 1000)
+                    var row: [String: Any] = [
+                        "name": name,
+                        "kind": kind,
+                        "url": "/e/\(f.slug)/f/\(encName)",
+                        "thumbUrl": "/e/\(f.slug)/t/\(encName)",
+                        "pageUrl": "/e/\(f.slug)/p/\(encName)",
+                        "sessionUrl": "/e/\(f.slug)/s/\(encPref)",
+                        "mtime": mtimeMs
+                    ]
+                    if let onlineUrl = PBLocal.shared.onlineShareUrl(slug: f.slug, filename: name) {
+                        row["onlineUrl"] = onlineUrl
+                    }
+                    arr.append(row)
+                }
+                let jsonObj: [String: Any] = [
+                    "ok": true,
+                    "slug": f.slug,
+                    "name": PBLocal.shared.galleryTitle(folder: f),
+                    "count": arr.count,
+                    "files": arr
+                ]
+                let data = (try? JSONSerialization.data(withJSONObject: jsonObj)) ?? Data("{\"ok\":true,\"files\":[]}".utf8)
+                sendResponse(sock, status: 200, type: "application/json; charset=utf-8", body: data, headOnly: headOnly)
+                return
+            }
+
+            let slug = folder?.slug ?? ""
+            let title = folder.map { PBLocal.shared.galleryTitle(folder: $0) } ?? "Sharing Station"
+            let html = renderStationHtml(slug: slug, title: title)
+            sendResponse(sock, status: 200, type: "text/html; charset=utf-8", body: Data(html.utf8), headOnly: headOnly)
+            return
+        }
 
         // Guest own-photos link: /o/<code>
         if components.count >= 2 && components[0] == "o" {
@@ -316,30 +460,44 @@ class LocalShareServer {
         }
 
         let filename = components[3]
+
+        // /e/<slug>/s/<prefix> -> Session landing page for all items sharing prefix
+        if action == "s" {
+            let files = PBLocal.shared.findSessionFiles(in: dir, prefix: filename)
+            let showAll = PBLocal.shared.guestView != "only"
+            let html = renderGalleryHtml(folder: folder, files: files, showAllLink: showAll, headOnlyTitle: "Your Session — \(PBLocal.shared.galleryTitle(folder: folder))")
+            sendResponse(sock, status: 200, type: "text/html; charset=utf-8", body: Data(html.utf8), headOnly: headOnly)
+            return
+        }
+
         guard let fileUrl = PBLocal.shared.findFile(in: dir, name: filename) else {
             sendResponse(sock, status: 404, type: "text/plain", body: Data("File Not Found".utf8), headOnly: headOnly)
             return
         }
 
-        // /e/<slug>/f/<filename> -> Direct raw image/video (supports HTTP 206 Range for Safari video playback)
-        if action == "f" {
-            if let data = try? Data(contentsOf: fileUrl) {
-                let mime = mimeTypeFor(path: filename)
-                var extra: [String] = ["Accept-Ranges: bytes"]
-                if query.contains("dl=1") {
-                    let safeFile = filename.replacingOccurrences(of: "\"", with: "_")
-                    extra.append("Content-Disposition: attachment; filename=\"\(safeFile)\"")
+        // /e/<slug>/t/<filename> -> Thumbnail for images or direct stream for videos
+        if action == "t" {
+            let lower = filename.lowercased()
+            let isImg = lower.hasSuffix(".jpg") || lower.hasSuffix(".jpeg") || lower.hasSuffix(".png") || lower.hasSuffix(".webp")
+            if isImg, let srcData = try? Data(contentsOf: fileUrl), let img = UIImage(data: srcData) {
+                let maxSide: CGFloat = 640
+                let w = img.size.width, h = img.size.height
+                let scale = max(w, h) > maxSide ? maxSide / max(w, h) : 1.0
+                let sz = CGSize(width: max(1, (w * scale).rounded()), height: max(1, (h * scale).rounded()))
+                let r = UIGraphicsImageRenderer(size: sz)
+                let thumb = r.image { _ in img.draw(in: CGRect(origin: .zero, size: sz)) }
+                if let jpg = thumb.jpegData(compressionQuality: 0.78) {
+                    sendResponse(sock, status: 200, type: "image/jpeg", body: jpg, extraHeaders: ["Cache-Control: public, max-age=86400"], headOnly: headOnly)
+                    return
                 }
-                if !query.contains("dl=1"), let rng = parseByteRange(rangeHeader, total: data.count) {
-                    let slice = data.subdata(in: rng.start..<(rng.end + 1))
-                    extra.append("Content-Range: bytes \(rng.start)-\(rng.end)/\(data.count)")
-                    sendResponse(sock, status: 206, type: mime, body: slice, extraHeaders: extra, headOnly: headOnly)
-                } else {
-                    sendResponse(sock, status: 200, type: mime, body: data, extraHeaders: extra, headOnly: headOnly)
-                }
-            } else {
-                sendResponse(sock, status: 500, type: "text/plain", body: Data("Read Error".utf8), headOnly: headOnly)
             }
+            sendFileResponse(sock, fileUrl: fileUrl, filename: filename, query: "", rangeHeader: rangeHeader, headOnly: headOnly)
+            return
+        }
+
+        // /e/<slug>/f/<filename> -> Direct raw image/video (supports HTTP 206 Range streaming)
+        if action == "f" {
+            sendFileResponse(sock, fileUrl: fileUrl, filename: filename, query: query, rangeHeader: rangeHeader, headOnly: headOnly)
             return
         }
 
@@ -395,6 +553,70 @@ class LocalShareServer {
         return "application/octet-stream"
     }
 
+    private func renderStationHtml(slug: String, title: String) -> String {
+        if let url = Bundle.main.url(forResource: "station", withExtension: "html"),
+           let tpl = try? String(contentsOf: url, encoding: .utf8) {
+            return tpl
+                .replacingOccurrences(of: "__SLUG__", with: esc(slug))
+                .replacingOccurrences(of: "__TITLE__", with: esc(title))
+        }
+        return "<!doctype html><html><body style='font-family:sans-serif;background:#0F0E13;color:#fff;text-align:center;padding:40px'><h1>\(esc(title))</h1><p>Sharing Station ready.</p></body></html>"
+    }
+
+    private func sendFileResponse(_ sock: Int32, fileUrl: URL, filename: String, query: String, rangeHeader: String?, headOnly: Bool) {
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: fileUrl.path),
+              let sizeNum = attrs[.size] as? NSNumber else {
+            sendResponse(sock, status: 500, type: "text/plain", body: Data("Read Error".utf8), headOnly: headOnly)
+            return
+        }
+        let total = sizeNum.intValue
+        let mime = mimeTypeFor(path: filename)
+        var extra: [String] = ["Accept-Ranges: bytes"]
+        if query.contains("dl=1") {
+            let safeFile = filename.replacingOccurrences(of: "\"", with: "_")
+            extra.append("Content-Disposition: attachment; filename=\"\(safeFile)\"")
+        }
+
+        var start = 0
+        var end = max(0, total - 1)
+        var status = 200
+        if !query.contains("dl=1"), let rng = parseByteRange(rangeHeader, total: total) {
+            start = rng.start
+            end = rng.end
+            status = 206
+            extra.append("Content-Range: bytes \(start)-\(end)/\(total)")
+        }
+        let length = total > 0 ? (end - start + 1) : 0
+        let reason = status == 206 ? "Partial Content" : "OK"
+        let extraStr = extra.isEmpty ? "" : (extra.joined(separator: "\r\n") + "\r\n")
+        let header = "HTTP/1.1 \(status) \(reason)\r\n" +
+            "Content-Type: \(mime)\r\n" +
+            "Content-Length: \(length)\r\n" +
+            "Cache-Control: no-store\r\n" +
+            "Access-Control-Allow-Origin: *\r\n" +
+            extraStr +
+            "Connection: close\r\n\r\n"
+
+        if let headerData = header.data(using: .utf8) {
+            writeAll(sock, data: headerData)
+        }
+        guard !headOnly, length > 0, let fh = try? FileHandle(forReadingFrom: fileUrl) else { return }
+        defer { try? fh.close() }
+        do {
+            try fh.seek(toOffset: UInt64(start))
+            var remaining = length
+            while remaining > 0 {
+                let chunkSize = min(65536, remaining)
+                let chunk = fh.readData(ofLength: chunkSize)
+                if chunk.isEmpty { break }
+                writeAll(sock, data: chunk)
+                remaining -= chunk.count
+            }
+        } catch {
+            // Connection closed or seek failed
+        }
+    }
+
     private func renderGalleryHtml(folder: PBLocal.Folder, files: [URL], showAllLink: Bool, headOnlyTitle: String?) -> String {
         let title = PBLocal.shared.galleryTitle(folder: folder)
         var itemsHtml = ""
@@ -402,7 +624,8 @@ class LocalShareServer {
         for photo in files {
             let name = photo.lastPathComponent
             let encName = urlEsc(name)
-            let isVideo = name.lowercased().hasSuffix(".mp4") || name.lowercased().hasSuffix(".webm")
+            let lower = name.lowercased()
+            let isVideo = lower.hasSuffix(".mp4") || lower.hasSuffix(".webm") || lower.hasSuffix(".mov") || lower.hasSuffix(".m4v")
             if isVideo {
                 itemsHtml += """
                 <div class="card">

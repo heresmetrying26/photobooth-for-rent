@@ -20,7 +20,7 @@ class PBLocal {
         let id: String
         let name: String
         let sub: String
-        let at: Int64
+        var at: Int64
     }
 
     struct GuestCode: Codable {
@@ -29,11 +29,28 @@ class PBLocal {
         let first: Int64
     }
 
+    struct SpinCloudContext {
+        var folderKey: String = ""
+        var eventName: String = ""
+        var driveFolderId: String = ""
+        var opKey: String = ""
+        var licence: String = ""
+        var mid: String = ""
+        var token: String = ""
+        var deviceId: String = ""
+    }
+
     private let lock = NSLock()
     private var folders: [String: Folder] = [:]
     private var codes: [String: GuestCode] = [:]
+    private var onlineUrls: [String: String] = [:]
     private let indexFile: URL
     private let codesFile: URL
+    private var _spinContext = SpinCloudContext()
+    var spinContext: SpinCloudContext {
+        get { lock.lock(); defer { lock.unlock() }; return _spinContext }
+        set { lock.lock(); _spinContext = newValue; lock.unlock() }
+    }
 
     let rootDir: URL
     var guestView: String = "all"
@@ -113,6 +130,55 @@ class PBLocal {
         return folders[slug]
     }
 
+    func latestFolder() -> Folder? {
+        lock.lock()
+        defer { lock.unlock() }
+        return folders.values.max { $0.at < $1.at }
+    }
+
+    func ensureDefaultEventFolder(name: String? = nil) -> Folder {
+        let clean = safeName(name)
+        if !clean.isEmpty {
+            return folderFor(folderKey: clean, subfolder: nil)
+        }
+        let ctxKey = safeName(spinContext.folderKey)
+        if !ctxKey.isEmpty {
+            return folderFor(folderKey: ctxKey, subfolder: nil)
+        }
+        if let latest = latestFolder() {
+            return latest
+        }
+        return folderFor(folderKey: nil, subfolder: nil)
+    }
+
+    func setOnlineShareUrl(slug: String, filename: String, url: String) {
+        guard !slug.isEmpty, !filename.isEmpty, !url.isEmpty else { return }
+        lock.lock()
+        onlineUrls["\(slug)/\(filename)"] = url
+        lock.unlock()
+    }
+
+    func onlineShareUrl(slug: String, filename: String) -> String? {
+        lock.lock()
+        defer { lock.unlock() }
+        return onlineUrls["\(slug)/\(filename)"]
+    }
+
+    func overlaysDirectory() -> URL {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let dir = docs.appendingPathComponent("pb360_overlays", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    func findSessionFiles(in dir: URL, prefix: String) -> [URL] {
+        guard !prefix.isEmpty else { return [] }
+        return photosIn(dir: dir).filter {
+            let n = $0.lastPathComponent
+            return n.hasPrefix(prefix + "_") || n.hasPrefix(prefix + ".")
+        }
+    }
+
     func guestCode(_ code: String) -> GuestCode? {
         lock.lock()
         defer { lock.unlock() }
@@ -162,7 +228,7 @@ class PBLocal {
     }
 
     func photosIn(dir: URL) -> [URL] {
-        let exts = Set(["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm"])
+        let exts = Set(["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm", "mov", "m4v"])
         var out: [URL] = []
         var seen = Set<String>()
 
@@ -231,7 +297,10 @@ class PBLocal {
         let sub = safeName(subfolder)
         let id = (name + (sub.isEmpty ? "" : "/\(sub)")).lowercased()
 
-        if let existing = folders.values.first(where: { $0.id == id }) {
+        if var existing = folders.values.first(where: { $0.id == id }) {
+            existing.at = Int64(Date().timeIntervalSince1970 * 1000)
+            folders[existing.slug] = existing
+            saveIndex()
             let dir = dirOf(folder: existing)
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             return existing
@@ -335,6 +404,75 @@ class PBLocal {
         ])
     }
 
+    struct SavedVideoResult {
+        let ok: Bool
+        let slug: String
+        let eventTitle: String
+        let filename: String
+        let destURL: URL?
+        let url: String
+        let pageUrl: String
+        let sessionUrl: String
+        let error: String?
+    }
+
+    func saveVideoFile(from sourceURL: URL, folderKey: String?, subfolder: String?, filename: String?, saveToPhotos: Bool) -> SavedVideoResult {
+        let folder = (folderKey ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? ensureDefaultEventFolder()
+            : folderFor(folderKey: folderKey, subfolder: subfolder)
+        let dir = dirOf(folder: folder)
+        let targetDir = dir.appendingPathComponent("360 Videos", isDirectory: true)
+        try? FileManager.default.createDirectory(at: targetDir, withIntermediateDirectories: true)
+
+        let sessionNum = nextSessionNumber(in: dir)
+        var rawName = safeName(filename)
+        if rawName.isEmpty {
+            rawName = "\(sessionNum)_360_spin.mp4"
+        }
+        let extRegex = "\\.(mp4|mov|webm|m4v)$"
+        if rawName.range(of: extRegex, options: [.regularExpression, .caseInsensitive]) == nil {
+            rawName += ".mp4"
+        }
+
+        var candidate = rawName
+        var idx = 2
+        lock.lock()
+        while FileManager.default.fileExists(atPath: targetDir.appendingPathComponent(candidate).path) ||
+              FileManager.default.fileExists(atPath: dir.appendingPathComponent(candidate).path) {
+            let base = (rawName as NSString).deletingPathExtension
+            let ext = (rawName as NSString).pathExtension
+            candidate = "\(base) (\(idx)).\(ext)"
+            idx += 1
+        }
+        let destFile = targetDir.appendingPathComponent(candidate)
+        do {
+            try FileManager.default.copyItem(at: sourceURL, to: destFile)
+        } catch {
+            lock.unlock()
+            return SavedVideoResult(ok: false, slug: folder.slug, eventTitle: galleryTitle(folder: folder), filename: "", destURL: nil, url: "", pageUrl: "", sessionUrl: "", error: error.localizedDescription)
+        }
+        lock.unlock()
+
+        if saveToPhotos {
+            saveToPhotosLibrary(fileUrl: destFile)
+        }
+
+        let prefix = candidate.components(separatedBy: "_").first ?? candidate
+        let encName = candidate.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? candidate
+        let encPref = prefix.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? prefix
+        return SavedVideoResult(
+            ok: true,
+            slug: folder.slug,
+            eventTitle: galleryTitle(folder: folder),
+            filename: candidate,
+            destURL: destFile,
+            url: "/e/\(folder.slug)/f/\(encName)",
+            pageUrl: "/e/\(folder.slug)/p/\(encName)",
+            sessionUrl: "/e/\(folder.slug)/s/\(encPref)",
+            error: nil
+        )
+    }
+
     func saveImage(fileName: String, base64: String) -> String {
         let name = safeName(fileName).isEmpty ? "photobooth4u.png" : safeName(fileName)
         guard let data = Data(base64Encoded: base64, options: .ignoreUnknownCharacters), !data.isEmpty,
@@ -423,6 +561,11 @@ class PBLocal {
     func localBase() -> String {
         let port = LocalShareServer.shared.activePort
         return port > 0 ? "http://127.0.0.1:\(port)" : ""
+    }
+
+    func stationUrl() -> String {
+        let base = lanBase()
+        return base.isEmpty ? "" : "\(base)/station"
     }
 
     func photosPath() -> String {

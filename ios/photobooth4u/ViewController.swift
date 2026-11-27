@@ -347,8 +347,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             guestViewSet: function(mode) {
               try { window.webkit.messageHandlers.pbGuestViewSet.postMessage(String(mode || 'all')); } catch (e) {}
             },
-            openSpinArm: function() {
-              try { window.webkit.messageHandlers.pbSpinArm.postMessage({}); } catch (e) {}
+            openSpinArm: function(opts) {
+              try { window.webkit.messageHandlers.pbSpinArm.postMessage(opts || {}); } catch (e) {}
             },
             isOnline: function() {
               if (typeof window.__pbIosOnline === 'boolean') return window.__pbIosOnline;
@@ -568,6 +568,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
               },
               setFilter: function(filterKey, softSkin) {
                 try { window.webkit.messageHandlers.pbCam.postMessage({ id: 0, op: 'filter', args: { filter: String(filterKey || 'none'), softSkin: !!softSkin } }); } catch (e) {}
+              },
+              setCustomLut: function(opts) {
+                try { window.webkit.messageHandlers.pbCam.postMessage({ id: 0, op: 'customLut', args: opts || {} }); } catch (e) {}
               }
             };
           })();
@@ -1060,7 +1063,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         container.addSubview(spinArmBtn)
 
         let spinArmNote = UILabel()
-        spinArmNote.text = "Pairs via QR to your laptop's 360 Desk · No licence needed"
+        spinArmNote.text = "Standalone 360 (PNG overlays & Sharing Station) or Laptop Desk · No licence needed"
         spinArmNote.font = UIFont.systemFont(ofSize: 12, weight: .medium)
         spinArmNote.textColor = UIColor(red: 0.42, green: 0.40, blue: 0.42, alpha: 1.0)
         spinArmNote.textAlignment = .center
@@ -2040,6 +2043,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 let f = (args["filter"] as? String) ?? "none"
                 let soft = (args["softSkin"] as? Bool) ?? false
                 NativeCameraBridge.shared.setFilter(filterKey: f, softSkin: soft)
+            case "customLut":
+                let lutId = (args["id"] as? String) ?? ""
+                let size = (args["size"] as? NSNumber)?.intValue ?? 0
+                let rgba = (args["rgba"] as? String) ?? ""
+                NativeCameraBridge.shared.setCustomLut(id: lutId, dimension: size, rgbaBase64: rgba)
             case "prepareAudio":
                 NativeCameraBridge.shared.prepareAudio { res in
                     reply(res)
@@ -2065,6 +2073,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 reply(["ok": false, "error": "Unknown camera command"])
             }
         } else if message.name == "pbSpinArm" {
+            if let dict = message.body as? [String: Any] {
+                var ctx = PBLocal.SpinCloudContext()
+                ctx.folderKey = (dict["folderKey"] as? String) ?? ""
+                ctx.eventName = (dict["eventName"] as? String) ?? ""
+                ctx.driveFolderId = (dict["driveFolderId"] as? String) ?? ""
+                ctx.opKey = (dict["opKey"] as? String) ?? ""
+                ctx.licence = AppLicence.shared.currentLicenceString() ?? ""
+                ctx.mid = AppLicence.shared.machineId()
+                PBLocal.shared.spinContext = ctx
+            }
             openSpinArmCamera()
         }
     }
@@ -2203,6 +2221,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         }
 
         if url.scheme == "http" || url.scheme == "https" {
+            UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            decisionHandler(.cancel)
+            return
+        }
+
+        if let sch = url.scheme?.lowercased(), ["whatsapp", "sms", "mailto"].contains(sch) {
             UIApplication.shared.open(url, options: [:], completionHandler: nil)
             decisionHandler(.cancel)
             return

@@ -3,15 +3,21 @@ import AVFoundation
 import CoreMotion
 import AudioToolbox
 import Photos
+import PhotosUI
+import UniformTypeIdentifiers
 
-/// Native 360 Arm Camera Companion & Built-In Mode.
+/// Native 360 Arm Camera Companion & Standalone 360 Booth Mode.
 /// Mounts on the spinning 360 arm, reads CoreMotion rotation rate at 50 Hz,
 /// supports guided "Configure Sensitivity" calibration, records 1080p 60/120 fps,
-/// and streams clips offline over local booth Wi-Fi to the desktop 360 Desk.
+/// and either renders on-device (PNG overlay + slow-mo/speed ramp + music -> local /station Sharing Station)
+/// or streams raw clips offline over local booth Wi-Fi to the desktop 360 Desk.
 final class SpinArmViewController: UIViewController,
     AVCaptureFileOutputRecordingDelegate,
     AVCaptureMetadataOutputObjectsDelegate,
-    URLSessionDataDelegate {
+    URLSessionDataDelegate,
+    UIDocumentPickerDelegate,
+    PHPickerViewControllerDelegate,
+    UITextFieldDelegate {
 
     // MARK: - Persistence Keys
 
@@ -22,6 +28,18 @@ final class SpinArmViewController: UIViewController,
         static let lens = "pb4u_spin_arm_lens"
         static let fps = "pb4u_spin_arm_fps"
         static let savePhotos = "pb4u_spin_arm_save_photos"
+        static let standaloneMode = "pb4u_spin_standalone_mode"
+        static let motionPreset = "pb4u_spin_sa_motion"
+        static let outputAspect = "pb4u_spin_sa_aspect"
+        static let colorLook = "pb4u_spin_sa_look"
+        static let overlayFile = "pb4u_spin_sa_overlay"
+        static let musicFile = "pb4u_spin_sa_music"
+        static let overlayTitle = "pb4u_spin_sa_title"
+        static let overlaySub = "pb4u_spin_sa_sub"
+        static let saTrigger = "pb4u_spin_sa_trigger"
+        static let saStopMode = "pb4u_spin_sa_stop"
+        static let saFixedSec = "pb4u_spin_sa_fixed"
+        static let skipQuickShare = "pb4u_spin_sa_skip_share"
     }
 
     // MARK: - Desk Synced Settings & State Machine
@@ -40,7 +58,13 @@ final class SpinArmViewController: UIViewController,
         case idle
         case calibrating
         case recording
+        case rendering
         case cooldown
+    }
+
+    private enum PickerKind {
+        case overlayFile
+        case musicFile
     }
 
     private enum CalStep {
@@ -77,6 +101,24 @@ final class SpinArmViewController: UIViewController,
     private var isSettingsOpen: Bool = false
     private var isScreenLocked: Bool = false
     private var aeAfLocked: Bool = false
+
+    // Standalone 360 Mode state
+    private var isStandaloneMode: Bool = true
+    private var saMotion: SpinRenderer.MotionPreset = .slowMo
+    private var saAspect: SpinRenderer.OutputAspect = .portrait9x16
+    private var saLook: SpinRenderer.ColorLook = .natural
+    private var saOverlayFilename: String = ""
+    private var saOverlayImage: UIImage? = nil
+    private var saMusicFilename: String = ""
+    private var saTitleText: String = ""
+    private var saSubText: String = ""
+    private var saTrigger: String = "arm"
+    private var saStopMode: String = "follow"
+    private var saFixedSec: Double = 8.0
+    private var skipQuickSharePopup: Bool = false
+    private var activePickerKind: PickerKind = .overlayFile
+    private var isQuickSharePresented: Bool = false
+    private var renderProgress: Float = 0.0
 
     private var lensChoice: LensChoice = .ultrawide
     private var targetFps: Int = 60
@@ -152,6 +194,7 @@ final class SpinArmViewController: UIViewController,
     // MARK: - UI Elements
 
     private let previewContainer = UIView()
+    private let overlayPreviewView = UIImageView()
     private let topBar = UIView()
     private let connPill = UILabel()
     private let lensSeg = UISegmentedControl(items: ["0.5×", "1×", "Front"])
@@ -190,17 +233,39 @@ final class SpinArmViewController: UIViewController,
     private let recBtn = UIButton(type: .system)
     private let lockBtn = UIButton(type: .system)
     private let pairBtn = UIButton(type: .system)
+    private let lookQuickBtn = UIButton(type: .system)
     private let pendingBtn = UIButton(type: .system)
 
     // Settings Sheet
     private let settingsOverlay = UIView()
     private let settingsCard = UIView()
+    private let settingsScroll = UIScrollView()
+    private let modeSeg = UISegmentedControl(items: ["Standalone 360", "Laptop Desk"])
+    private let standaloneSettingsStack = UIStackView()
+    private let deskSettingsStack = UIStackView()
+    private let motionMenuBtn = UIButton(type: .system)
+    private let aspectSeg = UISegmentedControl(items: ["9:16", "1:1", "16:9"])
+    private let lookMenuBtn = UIButton(type: .system)
+    private let overlayThumbView = UIImageView()
+    private let overlayStatusLabel = UILabel()
+    private let saTitleField = UITextField()
+    private let saSubField = UITextField()
+    private let musicStatusLabel = UILabel()
+    private let saTriggerSeg = UISegmentedControl(items: ["Auto Spin", "Manual"])
+    private let saStopSeg = UISegmentedControl(items: ["Follow Arm", "Fixed 8s", "Fixed 12s"])
+    private let saFpsSeg = UISegmentedControl(items: ["60 FPS", "120 FPS"])
+    private let skipShareSwitch = UISwitch()
     private let threshSlider = UISlider()
     private let threshReadoutLabel = UILabel()
     private let liveGyroSettingsLabel = UILabel()
     private let savePhotosSwitch = UISwitch()
     private let deskCfgSummaryLabel = UILabel()
     private let settingsPendingBtn = UIButton(type: .system)
+
+    // Sharing Station QR Modal
+    private let stationOverlay = UIView()
+    private let stationQrView = UIImageView()
+    private let stationUrlLabel = UILabel()
 
     // Screen Lock Shield
     private let lockOverlay = UIView()
@@ -222,6 +287,8 @@ final class SpinArmViewController: UIViewController,
         refreshPendingQueueFromDisk()
 
         NotificationCenter.default.addObserver(self, selector: #selector(handleOrientationDidChange), name: UIDevice.orientationDidChangeNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleKeyboardNotification(_:)), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleKeyboardNotification(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
         orientationObserver = NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
             self?.syncOrientationIfIdle()
         }
@@ -307,6 +374,58 @@ final class SpinArmViewController: UIViewController,
         let savedFps = ud.integer(forKey: Keys.fps)
         if [30, 60, 120].contains(savedFps) { targetFps = savedFps }
         saveToPhotos = ud.bool(forKey: Keys.savePhotos)
+
+        if ud.object(forKey: Keys.standaloneMode) != nil {
+            isStandaloneMode = ud.bool(forKey: Keys.standaloneMode)
+        } else {
+            isStandaloneMode = sendUrl.isEmpty
+        }
+
+        if let rawMot = ud.string(forKey: Keys.motionPreset), let m = SpinRenderer.MotionPreset(rawValue: rawMot) {
+            saMotion = m
+        }
+        if let rawAsp = ud.string(forKey: Keys.outputAspect), let a = SpinRenderer.OutputAspect(rawValue: rawAsp) {
+            saAspect = a
+        }
+        if let rawLk = ud.string(forKey: Keys.colorLook), let l = SpinRenderer.ColorLook(rawValue: rawLk) {
+            saLook = l
+        }
+        saOverlayFilename = ud.string(forKey: Keys.overlayFile) ?? ""
+        if !saOverlayFilename.isEmpty {
+            let u = PBLocal.shared.overlaysDirectory().appendingPathComponent(saOverlayFilename)
+            if let data = try? Data(contentsOf: u), let img = UIImage(data: data) {
+                saOverlayImage = img
+            } else {
+                saOverlayFilename = ""
+            }
+        }
+        saMusicFilename = ud.string(forKey: Keys.musicFile) ?? ""
+        if !saMusicFilename.isEmpty {
+            let mu = PBLocal.shared.overlaysDirectory().appendingPathComponent(saMusicFilename)
+            if !FileManager.default.fileExists(atPath: mu.path) {
+                saMusicFilename = ""
+            }
+        }
+        saTitleText = ud.string(forKey: Keys.overlayTitle) ?? ""
+        if saTitleText.isEmpty {
+            saTitleText = PBLocal.shared.spinContext.eventName
+        }
+        saSubText = ud.string(forKey: Keys.overlaySub) ?? ""
+        if let stTrig = ud.string(forKey: Keys.saTrigger), ["arm", "manual"].contains(stTrig) {
+            saTrigger = stTrig
+        }
+        if let stStop = ud.string(forKey: Keys.saStopMode), ["follow", "fixed"].contains(stStop) {
+            saStopMode = stStop
+        }
+        let fx = ud.double(forKey: Keys.saFixedSec)
+        if fx >= 4 && fx <= 30 { saFixedSec = fx }
+        skipQuickSharePopup = ud.bool(forKey: Keys.skipQuickShare)
+
+        if isStandaloneMode {
+            armConfig.trigger = saTrigger
+            armConfig.stopMode = saStopMode
+            armConfig.fixedSec = saFixedSec
+        }
     }
 
     private func saveThresholds() {
@@ -390,12 +509,15 @@ final class SpinArmViewController: UIViewController,
     }
 
     private func bootCameraAndSensors() {
-        isPairingScan = sendUrl.isEmpty
+        _ = LocalShareServer.shared.start()
+        LocalShareServer.shared.ensureListening(forceRestart: false)
+        isPairingScan = (!isStandaloneMode && sendUrl.isEmpty)
         updateQRScanVisibility()
+        refreshLiveOverlayPreview()
         configureCameraSession()
         startMotionEngine()
         startHeartbeatTimer()
-        if !sendUrl.isEmpty {
+        if !isStandaloneMode && !sendUrl.isEmpty {
             verifyPairAndFetchConfig(url: sendUrl, silent: true)
             processNextUploadIfNeeded()
         }
@@ -752,13 +874,15 @@ final class SpinArmViewController: UIViewController,
             handleIdleMotionTick(now: now)
         case .recording:
             handleRecordingMotionTick(now: now)
+        case .rendering:
+            break
         case .cooldown:
             handleCooldownMotionTick(now: now)
         }
     }
 
     private func handleIdleMotionTick(now: CFTimeInterval) {
-        guard !isPairingScan, !isSettingsOpen, armConfig.trigger == "arm", !movieOutput.isRecording else {
+        guard !isPairingScan, !isSettingsOpen, !isQuickSharePresented, stationOverlay.isHidden, armConfig.trigger == "arm", !movieOutput.isRecording else {
             aboveThresholdSince = nil
             return
         }
@@ -834,6 +958,8 @@ final class SpinArmViewController: UIViewController,
             updateQRScanVisibility()
             configureCameraSession()
         }
+        view.endEditing(true)
+        commitTextFields()
         isSettingsOpen = false
         settingsOverlay.isHidden = true
 
@@ -1008,6 +1134,10 @@ final class SpinArmViewController: UIViewController,
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
+            if self.isStandaloneMode {
+                self.renderAndSaveStandaloneClip(rawURL: outputFileURL)
+                return
+            }
             if self.saveToPhotos {
                 let tmpURL = FileManager.default.temporaryDirectory
                     .appendingPathComponent("pb360_photos_\(UUID().uuidString).mov")
@@ -1033,6 +1163,206 @@ final class SpinArmViewController: UIViewController,
             self.updatePendingUI()
             self.processNextUploadIfNeeded()
         }
+    }
+
+    // MARK: - Standalone 360 On-Device Render + Sharing Station
+
+    private func currentRenderOptions() -> SpinRenderer.Options {
+        var musicURL: URL? = nil
+        if !saMusicFilename.isEmpty {
+            let u = PBLocal.shared.overlaysDirectory().appendingPathComponent(saMusicFilename)
+            if FileManager.default.fileExists(atPath: u.path) { musicURL = u }
+        }
+        return SpinRenderer.Options(
+            motion: saMotion,
+            aspect: saAspect,
+            colorLook: saLook,
+            overlayImage: saOverlayImage,
+            titleText: saTitleText,
+            subtitleText: saSubText,
+            musicURL: musicURL,
+            trimStartSec: 0.25,
+            maxSourceSec: 10.0
+        )
+    }
+
+    private func renderAndSaveStandaloneClip(rawURL: URL) {
+        phase = .rendering
+        renderProgress = 0.0
+        updateUIState()
+
+        let opts = currentRenderOptions()
+        let folderKey = PBLocal.shared.spinContext.folderKey
+        let wantPhotos = saveToPhotos
+
+        SpinRenderer.render(sourceURL: rawURL, options: opts, progress: { [weak self] p in
+            guard let self = self, self.phase == .rendering else { return }
+            self.renderProgress = p
+            self.centerProg.progress = p
+            self.centerTitleLabel.text = "Rendering \(Int((p * 100).rounded()))%"
+        }) { [weak self] result in
+            guard let self = self else {
+                try? FileManager.default.removeItem(at: rawURL)
+                return
+            }
+
+            let sourceToSave: URL
+            var removeAfterSave: [URL] = []
+            switch result {
+            case .success(let renderedURL):
+                sourceToSave = renderedURL
+                removeAfterSave = [rawURL, renderedURL]
+            case .failure(let err):
+                sourceToSave = rawURL
+                removeAfterSave = [rawURL]
+                self.showToast("Render fallback (raw saved): \(err.localizedDescription)")
+            }
+
+            let saved = PBLocal.shared.saveVideoFile(
+                from: sourceToSave,
+                folderKey: folderKey.isEmpty ? nil : folderKey,
+                subfolder: nil,
+                filename: nil,
+                saveToPhotos: wantPhotos
+            )
+            for u in removeAfterSave { try? FileManager.default.removeItem(at: u) }
+
+            guard saved.ok, let destURL = saved.destURL else {
+                self.phase = .idle
+                self.updateUIState()
+                self.showToast("Could not save 360 video: \(saved.error ?? "unknown error")")
+                return
+            }
+
+            LocalShareServer.shared.ensureListening(forceRestart: false)
+            self.sentCount += 1
+            self.phase = .cooldown
+            self.cooldownStartedAt = CACurrentMediaTime()
+            self.stillSince = nil
+            self.updateUIState()
+
+            let lanBase = PBLocal.shared.lanBase()
+            let localPageURL = lanBase.isEmpty ? "" : "\(lanBase)\(saved.pageUrl)"
+            let stationURL = PBLocal.shared.stationUrl()
+
+            if self.skipQuickSharePopup {
+                self.showToast("✓ 360 video ready on Sharing Station (\(self.sentCount))")
+                self.uploadRenderedVideoToDriveIfConfigured(fileURL: destURL, slug: saved.slug, filename: saved.filename, shareVC: nil)
+                return
+            }
+
+            if self.isScreenLocked {
+                self.isScreenLocked = false
+                self.lockOverlay.isHidden = true
+            }
+
+            let vc = SpinQuickShareViewController(
+                videoURL: destURL,
+                localPageURL: localPageURL,
+                stationURL: stationURL,
+                eventTitle: saved.eventTitle,
+                slug: saved.slug,
+                filename: saved.filename,
+                initialOnlineURL: PBLocal.shared.onlineShareUrl(slug: saved.slug, filename: saved.filename)
+            )
+            vc.onDone = { [weak self] in
+                guard let self = self else { return }
+                self.isQuickSharePresented = false
+                self.phase = .idle
+                self.updateUIState()
+            }
+            self.isQuickSharePresented = true
+            self.present(vc, animated: true)
+            self.uploadRenderedVideoToDriveIfConfigured(fileURL: destURL, slug: saved.slug, filename: saved.filename, shareVC: vc)
+        }
+    }
+
+    private func uploadRenderedVideoToDriveIfConfigured(fileURL: URL, slug: String, filename: String, shareVC: SpinQuickShareViewController?) {
+        let ctx = PBLocal.shared.spinContext
+        let licStr = ctx.licence.isEmpty ? (AppLicence.shared.currentLicenceString() ?? "") : ctx.licence
+        let midStr = ctx.mid.isEmpty ? AppLicence.shared.machineId() : ctx.mid
+        guard PBLocal.shared.isOnline(),
+              !ctx.driveFolderId.isEmpty,
+              !ctx.folderKey.isEmpty,
+              (!licStr.isEmpty || !ctx.token.isEmpty) else { return }
+
+        let size = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        guard size > 0 && size <= 27 * 1024 * 1024 else {
+            DispatchQueue.main.async {
+                shareVC?.setCloudSyncStatus("Clip too large for web cloud (>27 MB) — use Local Wi-Fi QR or AirDrop")
+            }
+            return
+        }
+
+        DispatchQueue.main.async { [weak shareVC] in
+            shareVC?.setCloudSyncStatus("☁️ Syncing to cloud for WhatsApp & Email…")
+        }
+
+        var ticketPayload: [String: Any] = ["folderKey": ctx.folderKey]
+        if !licStr.isEmpty {
+            ticketPayload["licence"] = licStr
+            ticketPayload["mid"] = midStr
+        } else {
+            ticketPayload["token"] = ctx.token
+            ticketPayload["deviceId"] = ctx.deviceId
+        }
+
+        guard let ticketURL = URL(string: "\(AppLicence.serverUrl)/api/ticket"),
+              let ticketBody = try? JSONSerialization.data(withJSONObject: ticketPayload) else { return }
+
+        var tReq = URLRequest(url: ticketURL)
+        tReq.httpMethod = "POST"
+        tReq.timeoutInterval = 15
+        tReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        tReq.httpBody = ticketBody
+
+        URLSession.shared.dataTask(with: tReq) { [weak shareVC] data, resp, _ in
+            guard let http = resp as? HTTPURLResponse, http.statusCode == 200,
+                  let data = data,
+                  let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+                  let ticket = obj["ticket"] as? String, !ticket.isEmpty else {
+                DispatchQueue.main.async { [weak shareVC] in
+                    shareVC?.setCloudSyncStatus("Offline/Local QR ready (could not reach cloud ticket)")
+                }
+                return
+            }
+
+            DispatchQueue.global(qos: .utility).async { [weak shareVC] in
+                guard let videoData = try? Data(contentsOf: fileURL),
+                      let scriptURL = URL(string: "https://script.google.com/macros/s/AKfycbxv0WfF9rxFY9QlseCoSjrA7vePwHE-Uc8QTURZYyN6yIzcTj4SIlktEWT6Xnaw6Pv9OA/exec") else { return }
+                let b64 = videoData.base64EncodedString()
+                let upObj: [String: Any] = [
+                    "filename": filename,
+                    "mimeType": "video/mp4",
+                    "imageBase64": b64,
+                    "ticket": ticket
+                ]
+                guard let upBody = try? JSONSerialization.data(withJSONObject: upObj) else { return }
+                var uReq = URLRequest(url: scriptURL)
+                uReq.httpMethod = "POST"
+                uReq.timeoutInterval = 90
+                uReq.setValue("text/plain;charset=utf-8", forHTTPHeaderField: "Content-Type")
+                uReq.httpBody = upBody
+
+                URLSession.shared.dataTask(with: uReq) { [weak shareVC] uData, uResp, _ in
+                    guard let uHttp = uResp as? HTTPURLResponse, uHttp.statusCode == 200,
+                          let uData = uData,
+                          let uJson = (try? JSONSerialization.jsonObject(with: uData)) as? [String: Any],
+                          (uJson["ok"] as? Bool) == true,
+                          let fileId = uJson["id"] as? String, !fileId.isEmpty else {
+                        DispatchQueue.main.async { [weak shareVC] in
+                            shareVC?.setCloudSyncStatus("Local QR & AirDrop ready (cloud upload busy)")
+                        }
+                        return
+                    }
+                    let cloudShare = "\(AppLicence.serverUrl)/g/\(ctx.driveFolderId)#\(fileId)"
+                    PBLocal.shared.setOnlineShareUrl(slug: slug, filename: filename, url: cloudShare)
+                    DispatchQueue.main.async { [weak shareVC] in
+                        shareVC?.setOnlineShareURL(cloudShare)
+                    }
+                }.resume()
+            }
+        }.resume()
     }
 
     // MARK: - QR Scanner Delegate
@@ -1190,7 +1520,7 @@ final class SpinArmViewController: UIViewController,
     }
 
     private func sendHeartbeat(force: Bool = false) {
-        guard !sendUrl.isEmpty, let url = URL(string: sendUrl + "/arm-state") else { return }
+        guard !isStandaloneMode, !sendUrl.isEmpty, let url = URL(string: sendUrl + "/arm-state") else { return }
         if !force && heartbeatInFlightCount > 0 { return }
         let reportedState: String
         switch phase {
@@ -1361,7 +1691,7 @@ final class SpinArmViewController: UIViewController,
     }
 
     @objc private func didTapPreviewTap(_ gr: UITapGestureRecognizer) {
-        guard !isPairingScan, !isScreenLocked, !isSettingsOpen else { return }
+        guard !isPairingScan, !isScreenLocked, !isSettingsOpen, stationOverlay.isHidden else { return }
         let pt = gr.location(in: previewContainer)
         let devPt = previewLayer.captureDevicePointConverted(fromLayerPoint: pt)
 
@@ -1402,12 +1732,22 @@ final class SpinArmViewController: UIViewController,
     @objc private func didTapCancelCal() { cancelCalibration() }
 
     @objc private func didTapRecord() {
+        if phase == .rendering { return }
         if phase == .recording {
             stopRecording(reason: "manual")
         } else {
             if phase == .cooldown { phase = .idle }
             beginRecording(reason: "manual")
         }
+    }
+
+    @objc private func handleKeyboardNotification(_ note: Notification) {
+        guard let info = note.userInfo,
+              let endFrame = info[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+        let showing = note.name == UIResponder.keyboardWillShowNotification
+        let inset = showing ? max(0, endFrame.height - view.safeAreaInsets.bottom + 12) : 0
+        settingsScroll.contentInset.bottom = inset
+        settingsScroll.verticalScrollIndicatorInsets.bottom = inset
     }
 
     @objc private func didTapLock() {
@@ -1426,6 +1766,10 @@ final class SpinArmViewController: UIViewController,
     }
 
     @objc private func didTapPairQR() {
+        if isStandaloneMode {
+            openStationModal()
+            return
+        }
         guard phase != .recording else {
             showToast("Stop recording before pairing.")
             return
@@ -1433,6 +1777,51 @@ final class SpinArmViewController: UIViewController,
         isPairingScan = true
         updateQRScanVisibility()
         configureCameraSession()
+    }
+
+    @objc private func didTapConnPill() {
+        didTapSettings()
+    }
+
+    @objc private func didTapQuickLook() {
+        didTapSettings()
+    }
+
+    private func openStationModal() {
+        _ = LocalShareServer.shared.start()
+        LocalShareServer.shared.ensureListening(forceRestart: false)
+        let url = PBLocal.shared.stationUrl()
+        if url.isEmpty {
+            stationUrlLabel.text = "Connect this iPhone/iPad to Wi-Fi or Personal Hotspot first, then open Sharing Station on any tablet or laptop."
+            stationQrView.image = nil
+        } else {
+            stationUrlLabel.text = url
+            stationQrView.image = SpinQuickShareViewController.generateQRCode(from: url)
+        }
+        stationOverlay.isHidden = false
+    }
+
+    @objc private func didTapCloseStationModal() {
+        stationOverlay.isHidden = true
+    }
+
+    @objc private func didTapCopyStationUrl() {
+        let url = PBLocal.shared.stationUrl()
+        guard !url.isEmpty else {
+            showToast("Connect to Wi-Fi or Hotspot first.")
+            return
+        }
+        UIPasteboard.general.string = url
+        showToast("✓ Sharing Station URL copied!")
+    }
+
+    @objc private func didTapOpenStationSafari() {
+        let urlStr = PBLocal.shared.stationUrl()
+        guard !urlStr.isEmpty, let u = URL(string: urlStr) else {
+            showToast("Connect to Wi-Fi or Hotspot first.")
+            return
+        }
+        UIApplication.shared.open(u, options: [:], completionHandler: nil)
     }
 
     @objc private func didTapCancelQR() {
@@ -1472,17 +1861,294 @@ final class SpinArmViewController: UIViewController,
 
     @objc private func didTapSettings() {
         isSettingsOpen = true
-        threshSlider.value = Float(startThresholdDps)
-        savePhotosSwitch.isOn = saveToPhotos
-        threshReadoutLabel.text = String(format: "%.0f°/s (Stop: %.0f°/s)", startThresholdDps, stopThresholdDps)
-        deskCfgSummaryLabel.text = "Desk sync: Start = \(armConfig.trigger), Stop = \(armConfig.stopMode == "fixed" ? "Fixed \(Int(armConfig.fixedSec))s" : "Follow arm + \(armConfig.tailSec)s tail"), \(targetFps) fps, Cooldown \(Int(armConfig.cooldownSec))s"
+        refreshSettingsUI()
         settingsOverlay.isHidden = false
         updatePendingUI()
     }
 
     @objc private func didTapCloseSettings() {
+        view.endEditing(true)
+        commitTextFields()
+        view.endEditing(true)
+        commitTextFields()
         isSettingsOpen = false
         settingsOverlay.isHidden = true
+        updateUIState()
+    }
+
+    private func refreshSettingsUI() {
+        modeSeg.selectedSegmentIndex = isStandaloneMode ? 0 : 1
+        standaloneSettingsStack.isHidden = !isStandaloneMode
+        deskSettingsStack.isHidden = isStandaloneMode
+
+        threshSlider.value = Float(startThresholdDps)
+        savePhotosSwitch.isOn = saveToPhotos
+        threshReadoutLabel.text = String(format: "%.0f°/s (Stop: %.0f°/s)", startThresholdDps, stopThresholdDps)
+        deskCfgSummaryLabel.text = "Desk sync: Start = \(armConfig.trigger), Stop = \(armConfig.stopMode == "fixed" ? "Fixed \(Int(armConfig.fixedSec))s" : "Follow arm + \(armConfig.tailSec)s tail"), \(targetFps) fps, Cooldown \(Int(armConfig.cooldownSec))s"
+
+        motionMenuBtn.setTitle("Motion: \(saMotion.label) ▾", for: .normal)
+        motionMenuBtn.menu = UIMenu(title: "Motion Effect", children: SpinRenderer.MotionPreset.allCases.map { preset in
+            UIAction(title: preset.label, state: preset == saMotion ? .on : .off) { [weak self] _ in
+                self?.selectMotionPreset(preset)
+            }
+        })
+
+        switch saAspect {
+        case .portrait9x16: aspectSeg.selectedSegmentIndex = 0
+        case .square1x1: aspectSeg.selectedSegmentIndex = 1
+        case .landscape16x9: aspectSeg.selectedSegmentIndex = 2
+        }
+
+        lookMenuBtn.setTitle("Color Look: \(saLook.label) ▾", for: .normal)
+        lookMenuBtn.menu = UIMenu(title: "Color Look", children: SpinRenderer.ColorLook.allCases.map { lk in
+            UIAction(title: lk.label, state: lk == saLook ? .on : .off) { [weak self] _ in
+                self?.selectColorLook(lk)
+            }
+        })
+
+        overlayThumbView.image = saOverlayImage
+        overlayThumbView.isHidden = (saOverlayImage == nil)
+        overlayStatusLabel.text = saOverlayImage == nil ? "No frame overlay (tap to add PNG)" : "Overlay active ✓"
+        saTitleField.text = saTitleText
+        saSubField.text = saSubText
+        musicStatusLabel.text = saMusicFilename.isEmpty ? "No background music" : "🎵 \(saMusicFilename)"
+        saTriggerSeg.selectedSegmentIndex = (saTrigger == "manual") ? 1 : 0
+        if saStopMode == "fixed" {
+            saStopSeg.selectedSegmentIndex = (saFixedSec >= 11.0) ? 2 : 1
+        } else {
+            saStopSeg.selectedSegmentIndex = 0
+        }
+        saFpsSeg.selectedSegmentIndex = (targetFps >= 120) ? 1 : 0
+        skipShareSwitch.isOn = skipQuickSharePopup
+    }
+
+    private func selectMotionPreset(_ preset: SpinRenderer.MotionPreset) {
+        saMotion = preset
+        UserDefaults.standard.set(preset.rawValue, forKey: Keys.motionPreset)
+        refreshSettingsUI()
+        updateUIState()
+    }
+
+    private func selectColorLook(_ look: SpinRenderer.ColorLook) {
+        saLook = look
+        UserDefaults.standard.set(look.rawValue, forKey: Keys.colorLook)
+        refreshSettingsUI()
+    }
+
+    @objc private func didChangeOperatingMode() {
+        isStandaloneMode = (modeSeg.selectedSegmentIndex == 0)
+        UserDefaults.standard.set(isStandaloneMode, forKey: Keys.standaloneMode)
+        if isStandaloneMode {
+            armConfig.trigger = saTrigger
+            armConfig.stopMode = saStopMode
+            armConfig.fixedSec = saFixedSec
+            if isPairingScan {
+                isPairingScan = false
+                updateQRScanVisibility()
+                configureCameraSession()
+            }
+        } else {
+            lastConfigSig = ""
+            if sendUrl.isEmpty {
+                isSettingsOpen = false
+                settingsOverlay.isHidden = true
+                isPairingScan = true
+                updateQRScanVisibility()
+                configureCameraSession()
+            } else {
+                verifyPairAndFetchConfig(url: sendUrl, silent: true)
+            }
+        }
+        refreshLiveOverlayPreview()
+        refreshSettingsUI()
+        updateUIState()
+    }
+
+    @objc private func didChangeAspect() {
+        switch aspectSeg.selectedSegmentIndex {
+        case 1: saAspect = .square1x1
+        case 2: saAspect = .landscape16x9
+        default: saAspect = .portrait9x16
+        }
+        UserDefaults.standard.set(saAspect.rawValue, forKey: Keys.outputAspect)
+        updateUIState()
+    }
+
+    @objc private func didChangeSaTrigger() {
+        saTrigger = (saTriggerSeg.selectedSegmentIndex == 1) ? "manual" : "arm"
+        UserDefaults.standard.set(saTrigger, forKey: Keys.saTrigger)
+        if isStandaloneMode { armConfig.trigger = saTrigger }
+        updateUIState()
+    }
+
+    @objc private func didChangeSaStopMode() {
+        switch saStopSeg.selectedSegmentIndex {
+        case 1:
+            saStopMode = "fixed"
+            saFixedSec = 8.0
+        case 2:
+            saStopMode = "fixed"
+            saFixedSec = 12.0
+        default:
+            saStopMode = "follow"
+        }
+        UserDefaults.standard.set(saStopMode, forKey: Keys.saStopMode)
+        UserDefaults.standard.set(saFixedSec, forKey: Keys.saFixedSec)
+        if isStandaloneMode {
+            armConfig.stopMode = saStopMode
+            armConfig.fixedSec = saFixedSec
+        }
+        updateUIState()
+    }
+
+    @objc private func didChangeSaFps() {
+        let nextFps = (saFpsSeg.selectedSegmentIndex == 1) ? 120 : 60
+        guard nextFps != targetFps else { return }
+        targetFps = nextFps
+        UserDefaults.standard.set(targetFps, forKey: Keys.fps)
+        if phase != .recording && !isPairingScan {
+            configureCameraSession()
+        }
+    }
+
+    @objc private func didToggleSkipShare() {
+        skipQuickSharePopup = skipShareSwitch.isOn
+        UserDefaults.standard.set(skipQuickSharePopup, forKey: Keys.skipQuickShare)
+    }
+
+    @objc private func commitTextFields() {
+        saTitleText = (saTitleField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        saSubText = (saSubField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        UserDefaults.standard.set(saTitleText, forKey: Keys.overlayTitle)
+        UserDefaults.standard.set(saSubText, forKey: Keys.overlaySub)
+    }
+
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        commitTextFields()
+        return true
+    }
+
+    @objc private func didTapPickOverlayPhotos() {
+        var cfg = PHPickerConfiguration(photoLibrary: .shared())
+        cfg.filter = .images
+        cfg.selectionLimit = 1
+        let picker = PHPickerViewController(configuration: cfg)
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+
+    @objc private func didTapPickOverlayFiles() {
+        activePickerKind = .overlayFile
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.png, .image], asCopy: true)
+        picker.delegate = self
+        picker.allowsMultipleSelection = false
+        present(picker, animated: true)
+    }
+
+    @objc private func didTapClearOverlay() {
+        if !saOverlayFilename.isEmpty {
+            try? FileManager.default.removeItem(at: PBLocal.shared.overlaysDirectory().appendingPathComponent(saOverlayFilename))
+        }
+        saOverlayFilename = ""
+        saOverlayImage = nil
+        UserDefaults.standard.set("", forKey: Keys.overlayFile)
+        refreshLiveOverlayPreview()
+        refreshSettingsUI()
+        updateUIState()
+    }
+
+    @objc private func didTapPickMusic() {
+        activePickerKind = .musicFile
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.audio], asCopy: true)
+        picker.delegate = self
+        picker.allowsMultipleSelection = false
+        present(picker, animated: true)
+    }
+
+    @objc private func didTapClearMusic() {
+        if !saMusicFilename.isEmpty {
+            try? FileManager.default.removeItem(at: PBLocal.shared.overlaysDirectory().appendingPathComponent(saMusicFilename))
+        }
+        saMusicFilename = ""
+        UserDefaults.standard.set("", forKey: Keys.musicFile)
+        refreshSettingsUI()
+    }
+
+    private func refreshLiveOverlayPreview() {
+        overlayPreviewView.image = saOverlayImage
+        overlayPreviewView.isHidden = (!isStandaloneMode || isPairingScan || saOverlayImage == nil)
+    }
+
+    private func installOverlayImageData(_ data: Data) {
+        guard let img = UIImage(data: data) else {
+            showToast("Could not read selected image.")
+            return
+        }
+        let dir = PBLocal.shared.overlaysDirectory()
+        if !saOverlayFilename.isEmpty {
+            try? FileManager.default.removeItem(at: dir.appendingPathComponent(saOverlayFilename))
+        }
+        let name = "overlay_\(Int64(Date().timeIntervalSince1970)).png"
+        let dest = dir.appendingPathComponent(name)
+        let pngData = (img.pngData()) ?? data
+        try? pngData.write(to: dest)
+        saOverlayFilename = name
+        saOverlayImage = UIImage(data: pngData) ?? img
+        UserDefaults.standard.set(name, forKey: Keys.overlayFile)
+        refreshLiveOverlayPreview()
+        refreshSettingsUI()
+        updateUIState()
+        showToast("✓ Overlay frame loaded")
+    }
+
+    // MARK: - PHPickerViewControllerDelegate & UIDocumentPickerDelegate
+
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        picker.dismiss(animated: true)
+        guard let item = results.first?.itemProvider else { return }
+        if item.hasItemConformingToTypeIdentifier(UTType.png.identifier) {
+            item.loadDataRepresentation(forTypeIdentifier: UTType.png.identifier) { [weak self] data, _ in
+                if let d = data {
+                    DispatchQueue.main.async { self?.installOverlayImageData(d) }
+                }
+            }
+            return
+        }
+        if item.canLoadObject(ofClass: UIImage.self) {
+            item.loadObject(ofClass: UIImage.self) { [weak self] obj, _ in
+                if let img = obj as? UIImage, let d = img.pngData() {
+                    DispatchQueue.main.async { self?.installOverlayImageData(d) }
+                }
+            }
+        }
+    }
+
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let src = urls.first else { return }
+        let dir = PBLocal.shared.overlaysDirectory()
+        switch activePickerKind {
+        case .overlayFile:
+            if let data = try? Data(contentsOf: src) {
+                installOverlayImageData(data)
+            }
+        case .musicFile:
+            if !saMusicFilename.isEmpty {
+                try? FileManager.default.removeItem(at: dir.appendingPathComponent(saMusicFilename))
+            }
+            let rawName = src.lastPathComponent
+            let clean = rawName.replacingOccurrences(of: "[^A-Za-z0-9._-]", with: "_", options: .regularExpression)
+            let dest = dir.appendingPathComponent(clean.isEmpty ? "music.mp3" : clean)
+            try? FileManager.default.removeItem(at: dest)
+            if (try? FileManager.default.copyItem(at: src, to: dest)) != nil {
+                saMusicFilename = dest.lastPathComponent
+                UserDefaults.standard.set(saMusicFilename, forKey: Keys.musicFile)
+                refreshSettingsUI()
+                showToast("✓ Music loaded: \(saMusicFilename)")
+            } else {
+                showToast("Could not copy audio file.")
+            }
+        }
     }
 
     @objc private func didSlideThreshold() {
@@ -1521,6 +2187,14 @@ final class SpinArmViewController: UIViewController,
         previewLayer.frame = previewContainer.bounds
         previewContainer.layer.addSublayer(previewLayer)
 
+        overlayPreviewView.frame = previewContainer.bounds
+        overlayPreviewView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        overlayPreviewView.contentMode = .scaleAspectFit
+        overlayPreviewView.alpha = 0.85
+        overlayPreviewView.isUserInteractionEnabled = false
+        overlayPreviewView.isHidden = true
+        previewContainer.addSubview(overlayPreviewView)
+
         focusReticle.frame = CGRect(x: 0, y: 0, width: 72, height: 72)
         focusReticle.layer.borderColor = UIColor(red: 1.0, green: 0.84, blue: 0.04, alpha: 1.0).cgColor
         focusReticle.layer.borderWidth = 2
@@ -1535,6 +2209,7 @@ final class SpinArmViewController: UIViewController,
         buildQROverlay()
         buildSettingsOverlay()
         buildLockOverlay()
+        buildStationOverlay()
 
         toastLabel.backgroundColor = UIColor(white: 0.1, alpha: 0.88)
         toastLabel.textColor = .white
@@ -1568,6 +2243,8 @@ final class SpinArmViewController: UIViewController,
         connPill.textAlignment = .center
         connPill.adjustsFontSizeToFitWidth = true
         connPill.minimumScaleFactor = 0.75
+        connPill.isUserInteractionEnabled = true
+        connPill.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(didTapConnPill)))
         connPill.translatesAutoresizingMaskIntoConstraints = false
 
         lensSeg.apportionsSegmentWidthsByContent = true
@@ -1745,12 +2422,21 @@ final class SpinArmViewController: UIViewController,
         btnRow.distribution = .fillEqually
         btnRow.spacing = 6
 
+        lookQuickBtn.setTitle("🎨 Look & Overlay", for: .normal)
+        lookQuickBtn.setTitleColor(.white, for: .normal)
+        lookQuickBtn.titleLabel?.font = .systemFont(ofSize: 12.5, weight: .bold)
+        lookQuickBtn.titleLabel?.lineBreakMode = .byTruncatingTail
+        lookQuickBtn.backgroundColor = UIColor(white: 1, alpha: 0.14)
+        lookQuickBtn.layer.cornerRadius = 10
+        lookQuickBtn.contentEdgeInsets = UIEdgeInsets(top: 7, left: 10, bottom: 7, right: 10)
+        lookQuickBtn.addTarget(self, action: #selector(didTapQuickLook), for: .touchUpInside)
+
         pendingBtn.setTitleColor(UIColor(red: 1.0, green: 0.84, blue: 0.04, alpha: 1), for: .normal)
         pendingBtn.titleLabel?.font = .systemFont(ofSize: 12, weight: .bold)
         pendingBtn.isHidden = true
         pendingBtn.addTarget(self, action: #selector(didTapRetryPending), for: .touchUpInside)
 
-        let stack = UIStackView(arrangedSubviews: [stateBanner, meterTrack, meterValueLabel, btnRow, pendingBtn])
+        let stack = UIStackView(arrangedSubviews: [stateBanner, meterTrack, meterValueLabel, lookQuickBtn, btnRow, pendingBtn])
         stack.axis = .vertical
         stack.spacing = 7
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -1844,8 +2530,13 @@ final class SpinArmViewController: UIViewController,
         settingsCard.translatesAutoresizingMaskIntoConstraints = false
         settingsOverlay.addSubview(settingsCard)
 
+        settingsScroll.alwaysBounceVertical = true
+        settingsScroll.keyboardDismissMode = .interactive
+        settingsScroll.translatesAutoresizingMaskIntoConstraints = false
+        settingsCard.addSubview(settingsScroll)
+
         let title = UILabel()
-        title.text = "360 Arm Motion Settings"
+        title.text = "360 Studio & Arm Settings"
         title.font = .systemFont(ofSize: 18, weight: .bold)
         title.textColor = .white
 
@@ -1854,6 +2545,130 @@ final class SpinArmViewController: UIViewController,
         note.font = .systemFont(ofSize: 12, weight: .regular)
         note.textColor = UIColor(white: 0.72, alpha: 1)
 
+        modeSeg.selectedSegmentTintColor = UIColor(red: 0.79, green: 0.24, blue: 0.15, alpha: 1)
+        modeSeg.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 13, weight: .bold)], for: .selected)
+        modeSeg.setTitleTextAttributes([.foregroundColor: UIColor(white: 0.85, alpha: 1), .font: UIFont.systemFont(ofSize: 13, weight: .semibold)], for: .normal)
+        modeSeg.backgroundColor = UIColor(white: 1, alpha: 0.10)
+        modeSeg.addTarget(self, action: #selector(didChangeOperatingMode), for: .valueChanged)
+
+        // Standalone 360 Studio Controls
+        standaloneSettingsStack.axis = .vertical
+        standaloneSettingsStack.spacing = 10
+
+        let stylePickerBtn: (UIButton) -> Void = { b in
+            b.setTitleColor(.white, for: .normal)
+            b.titleLabel?.font = .systemFont(ofSize: 14, weight: .bold)
+            b.backgroundColor = UIColor(white: 1, alpha: 0.12)
+            b.layer.cornerRadius = 10
+            b.contentEdgeInsets = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+            b.contentHorizontalAlignment = .left
+            b.showsMenuAsPrimaryAction = true
+        }
+        stylePickerBtn(motionMenuBtn)
+        stylePickerBtn(lookMenuBtn)
+
+        aspectSeg.selectedSegmentTintColor = UIColor(red: 0.79, green: 0.24, blue: 0.15, alpha: 1)
+        aspectSeg.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 12.5, weight: .bold)], for: .selected)
+        aspectSeg.setTitleTextAttributes([.foregroundColor: UIColor(white: 0.85, alpha: 1), .font: UIFont.systemFont(ofSize: 12.5, weight: .semibold)], for: .normal)
+        aspectSeg.backgroundColor = UIColor(white: 1, alpha: 0.10)
+        aspectSeg.addTarget(self, action: #selector(didChangeAspect), for: .valueChanged)
+
+        // Overlay PNG section
+        overlayThumbView.contentMode = .scaleAspectFit
+        overlayThumbView.backgroundColor = UIColor(white: 1, alpha: 0.08)
+        overlayThumbView.layer.cornerRadius = 8
+        overlayThumbView.clipsToBounds = true
+        overlayThumbView.translatesAutoresizingMaskIntoConstraints = false
+        overlayThumbView.widthAnchor.constraint(equalToConstant: 44).isActive = true
+        overlayThumbView.heightAnchor.constraint(equalToConstant: 44).isActive = true
+
+        overlayStatusLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        overlayStatusLabel.textColor = .white
+        overlayStatusLabel.numberOfLines = 2
+
+        let ovInfoRow = UIStackView(arrangedSubviews: [overlayThumbView, overlayStatusLabel])
+        ovInfoRow.axis = .horizontal
+        ovInfoRow.alignment = .center
+        ovInfoRow.spacing = 10
+
+        let makeMiniBtn: (String, Selector) -> UIButton = { label, sel in
+            let b = UIButton(type: .system)
+            b.setTitle(label, for: .normal)
+            b.setTitleColor(.white, for: .normal)
+            b.titleLabel?.font = .systemFont(ofSize: 12.5, weight: .bold)
+            b.backgroundColor = UIColor(white: 1, alpha: 0.14)
+            b.layer.cornerRadius = 9
+            b.contentEdgeInsets = UIEdgeInsets(top: 8, left: 10, bottom: 8, right: 10)
+            b.addTarget(self, action: sel, for: .touchUpInside)
+            return b
+        }
+
+        let ovPhotosBtn = makeMiniBtn("Photos PNG", #selector(didTapPickOverlayPhotos))
+        let ovFilesBtn = makeMiniBtn("Files PNG", #selector(didTapPickOverlayFiles))
+        let ovClearBtn = makeMiniBtn("Clear", #selector(didTapClearOverlay))
+        let ovBtnRow = UIStackView(arrangedSubviews: [ovPhotosBtn, ovFilesBtn, ovClearBtn])
+        ovBtnRow.axis = .horizontal
+        ovBtnRow.spacing = 6
+        ovBtnRow.distribution = .fillEqually
+
+        let configureText: (UITextField, String) -> Void = { tf, ph in
+            tf.attributedPlaceholder = NSAttributedString(string: ph, attributes: [.foregroundColor: UIColor(white: 0.55, alpha: 1)])
+            tf.textColor = .white
+            tf.font = .systemFont(ofSize: 13.5, weight: .medium)
+            tf.backgroundColor = UIColor(white: 1, alpha: 0.08)
+            tf.layer.cornerRadius = 9
+            tf.layer.borderWidth = 1
+            tf.layer.borderColor = UIColor(white: 1, alpha: 0.14).cgColor
+            tf.returnKeyType = .done
+            tf.delegate = self
+            tf.addTarget(self, action: #selector(commitTextFields), for: .editingDidEnd)
+            tf.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 10))
+            tf.leftViewMode = .always
+            tf.heightAnchor.constraint(equalToConstant: 38).isActive = true
+        }
+        configureText(saTitleField, "Overlay Title (optional, e.g. Anna & Mark)")
+        configureText(saSubField, "Subtitle / Date (optional)")
+
+        musicStatusLabel.font = .systemFont(ofSize: 12.5, weight: .medium)
+        musicStatusLabel.textColor = UIColor(white: 0.85, alpha: 1)
+        let musPickBtn = makeMiniBtn("🎵 Choose Music", #selector(didTapPickMusic))
+        let musClearBtn = makeMiniBtn("Clear", #selector(didTapClearMusic))
+        let musRow = UIStackView(arrangedSubviews: [musPickBtn, musClearBtn])
+        musRow.axis = .horizontal
+        musRow.spacing = 6
+        musRow.distribution = .fillProportionally
+
+        let trigLabel = UILabel()
+        trigLabel.text = "Spin Trigger & Duration"
+        trigLabel.font = .systemFont(ofSize: 12.5, weight: .bold)
+        trigLabel.textColor = UIColor(white: 0.82, alpha: 1)
+
+        [saTriggerSeg, saStopSeg, saFpsSeg].forEach { seg in
+            seg.selectedSegmentTintColor = UIColor(red: 0.12, green: 0.23, blue: 0.32, alpha: 1)
+            seg.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 12, weight: .bold)], for: .selected)
+            seg.setTitleTextAttributes([.foregroundColor: UIColor(white: 0.82, alpha: 1), .font: UIFont.systemFont(ofSize: 12, weight: .semibold)], for: .normal)
+            seg.backgroundColor = UIColor(white: 1, alpha: 0.10)
+        }
+        saTriggerSeg.addTarget(self, action: #selector(didChangeSaTrigger), for: .valueChanged)
+        saStopSeg.addTarget(self, action: #selector(didChangeSaStopMode), for: .valueChanged)
+        saFpsSeg.addTarget(self, action: #selector(didChangeSaFps), for: .valueChanged)
+
+        let skipLbl = UILabel()
+        skipLbl.text = "Send straight to Sharing Station (skip phone QR)"
+        skipLbl.font = .systemFont(ofSize: 12.5, weight: .medium)
+        skipLbl.textColor = .white
+        skipLbl.numberOfLines = 2
+        skipShareSwitch.addTarget(self, action: #selector(didToggleSkipShare), for: .valueChanged)
+        let skipRow = UIStackView(arrangedSubviews: [skipLbl, skipShareSwitch])
+        skipRow.axis = .horizontal
+        skipRow.alignment = .center
+        skipRow.spacing = 8
+
+        [motionMenuBtn, aspectSeg, lookMenuBtn, ovInfoRow, ovBtnRow, saTitleField, saSubField, musicStatusLabel, musRow, trigLabel, saTriggerSeg, saStopSeg, saFpsSeg, skipRow].forEach {
+            standaloneSettingsStack.addArrangedSubview($0)
+        }
+
+        // Motion sensitivity controls (both modes)
         threshReadoutLabel.font = .monospacedDigitSystemFont(ofSize: 14, weight: .bold)
         threshReadoutLabel.textColor = UIColor(red: 1.0, green: 0.84, blue: 0.04, alpha: 1)
 
@@ -1883,6 +2698,10 @@ final class SpinArmViewController: UIViewController,
         saveRow.axis = .horizontal
         saveRow.alignment = .center
 
+        // Laptop Desk controls
+        deskSettingsStack.axis = .vertical
+        deskSettingsStack.spacing = 10
+
         deskCfgSummaryLabel.font = .systemFont(ofSize: 12, weight: .regular)
         deskCfgSummaryLabel.textColor = UIColor(white: 0.78, alpha: 1)
         deskCfgSummaryLabel.numberOfLines = 0
@@ -1903,6 +2722,8 @@ final class SpinArmViewController: UIViewController,
         settingsPendingBtn.contentEdgeInsets = UIEdgeInsets(top: 9, left: 12, bottom: 9, right: 12)
         settingsPendingBtn.addTarget(self, action: #selector(didTapRetryPending), for: .touchUpInside)
 
+        [deskCfgSummaryLabel, urlBtn, settingsPendingBtn].forEach { deskSettingsStack.addArrangedSubview($0) }
+
         let doneBtn = UIButton(type: .system)
         doneBtn.setTitle("Done", for: .normal)
         doneBtn.setTitleColor(.white, for: .normal)
@@ -1913,13 +2734,14 @@ final class SpinArmViewController: UIViewController,
         doneBtn.addTarget(self, action: #selector(didTapCloseSettings), for: .touchUpInside)
 
         let stack = UIStackView(arrangedSubviews: [
-            title, note, threshReadoutLabel, threshSlider, liveGyroSettingsLabel,
-            calInSettingsBtn, saveRow, deskCfgSummaryLabel, urlBtn, settingsPendingBtn, doneBtn
+            title, note, modeSeg, standaloneSettingsStack,
+            threshReadoutLabel, threshSlider, liveGyroSettingsLabel,
+            calInSettingsBtn, saveRow, deskSettingsStack, doneBtn
         ])
         stack.axis = .vertical
         stack.spacing = 10
         stack.translatesAutoresizingMaskIntoConstraints = false
-        settingsCard.addSubview(stack)
+        settingsScroll.addSubview(stack)
 
         NSLayoutConstraint.activate([
             settingsOverlay.topAnchor.constraint(equalTo: view.topAnchor),
@@ -1929,14 +2751,129 @@ final class SpinArmViewController: UIViewController,
 
             settingsCard.centerXAnchor.constraint(equalTo: settingsOverlay.centerXAnchor),
             settingsCard.centerYAnchor.constraint(equalTo: settingsOverlay.centerYAnchor),
-            settingsCard.widthAnchor.constraint(lessThanOrEqualToConstant: 360),
-            settingsCard.leadingAnchor.constraint(greaterThanOrEqualTo: settingsOverlay.leadingAnchor, constant: 18),
-            settingsCard.trailingAnchor.constraint(lessThanOrEqualTo: settingsOverlay.trailingAnchor, constant: -18),
+            settingsCard.widthAnchor.constraint(lessThanOrEqualToConstant: 420),
+            settingsCard.leadingAnchor.constraint(greaterThanOrEqualTo: settingsOverlay.leadingAnchor, constant: 14),
+            settingsCard.trailingAnchor.constraint(lessThanOrEqualTo: settingsOverlay.trailingAnchor, constant: -14),
+            settingsCard.heightAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.heightAnchor, multiplier: 0.86),
 
-            stack.topAnchor.constraint(equalTo: settingsCard.topAnchor, constant: 18),
-            stack.bottomAnchor.constraint(equalTo: settingsCard.bottomAnchor, constant: -18),
-            stack.leadingAnchor.constraint(equalTo: settingsCard.leadingAnchor, constant: 18),
-            stack.trailingAnchor.constraint(equalTo: settingsCard.trailingAnchor, constant: -18)
+            settingsScroll.topAnchor.constraint(equalTo: settingsCard.topAnchor),
+            settingsScroll.bottomAnchor.constraint(equalTo: settingsCard.bottomAnchor),
+            settingsScroll.leadingAnchor.constraint(equalTo: settingsCard.leadingAnchor),
+            settingsScroll.trailingAnchor.constraint(equalTo: settingsCard.trailingAnchor),
+
+            stack.topAnchor.constraint(equalTo: settingsScroll.contentLayoutGuide.topAnchor, constant: 18),
+            stack.bottomAnchor.constraint(equalTo: settingsScroll.contentLayoutGuide.bottomAnchor, constant: -18),
+            stack.leadingAnchor.constraint(equalTo: settingsScroll.contentLayoutGuide.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: settingsScroll.contentLayoutGuide.trailingAnchor, constant: -16),
+            stack.widthAnchor.constraint(equalTo: settingsScroll.frameLayoutGuide.widthAnchor, constant: -32)
+        ])
+    }
+
+    private func buildStationOverlay() {
+        stationOverlay.backgroundColor = UIColor(white: 0, alpha: 0.72)
+        stationOverlay.isHidden = true
+        stationOverlay.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stationOverlay)
+
+        let card = UIView()
+        card.backgroundColor = UIColor(red: 0.11, green: 0.10, blue: 0.12, alpha: 1)
+        card.layer.cornerRadius = 20
+        card.layer.borderWidth = 1
+        card.layer.borderColor = UIColor(white: 1, alpha: 0.16).cgColor
+        card.translatesAutoresizingMaskIntoConstraints = false
+        stationOverlay.addSubview(card)
+
+        let title = UILabel()
+        title.text = "📱 Sharing Station"
+        title.font = .systemFont(ofSize: 20, weight: .heavy)
+        title.textColor = .white
+        title.textAlignment = .center
+
+        let sub = UILabel()
+        sub.text = "Connect an iPad, second iPhone, or laptop to the same Wi-Fi/Hotspot and scan this QR code to auto-display finished 360 videos."
+        sub.font = .systemFont(ofSize: 13, weight: .medium)
+        sub.textColor = UIColor(white: 0.78, alpha: 1)
+        sub.textAlignment = .center
+        sub.numberOfLines = 0
+
+        let qrBg = UIView()
+        qrBg.backgroundColor = .white
+        qrBg.layer.cornerRadius = 16
+        stationQrView.contentMode = .scaleAspectFit
+        stationQrView.translatesAutoresizingMaskIntoConstraints = false
+        qrBg.addSubview(stationQrView)
+        NSLayoutConstraint.activate([
+            stationQrView.topAnchor.constraint(equalTo: qrBg.topAnchor, constant: 10),
+            stationQrView.bottomAnchor.constraint(equalTo: qrBg.bottomAnchor, constant: -10),
+            stationQrView.leadingAnchor.constraint(equalTo: qrBg.leadingAnchor, constant: 10),
+            stationQrView.trailingAnchor.constraint(equalTo: qrBg.trailingAnchor, constant: -10),
+            stationQrView.widthAnchor.constraint(equalToConstant: 170),
+            stationQrView.heightAnchor.constraint(equalToConstant: 170)
+        ])
+
+        stationUrlLabel.font = .monospacedSystemFont(ofSize: 12.5, weight: .semibold)
+        stationUrlLabel.textColor = UIColor(red: 0.35, green: 0.78, blue: 0.98, alpha: 1)
+        stationUrlLabel.textAlignment = .center
+        stationUrlLabel.numberOfLines = 0
+
+        let openBtn = UIButton(type: .system)
+        openBtn.setTitle("Open in Safari", for: .normal)
+        openBtn.setTitleColor(.white, for: .normal)
+        openBtn.titleLabel?.font = .systemFont(ofSize: 14, weight: .bold)
+        openBtn.backgroundColor = UIColor(red: 0.12, green: 0.23, blue: 0.32, alpha: 1)
+        openBtn.layer.cornerRadius = 11
+        openBtn.contentEdgeInsets = UIEdgeInsets(top: 10, left: 14, bottom: 10, right: 14)
+        openBtn.addTarget(self, action: #selector(didTapOpenStationSafari), for: .touchUpInside)
+
+        let copyBtn = UIButton(type: .system)
+        copyBtn.setTitle("Copy URL", for: .normal)
+        copyBtn.setTitleColor(.white, for: .normal)
+        copyBtn.titleLabel?.font = .systemFont(ofSize: 14, weight: .bold)
+        copyBtn.backgroundColor = UIColor(white: 1, alpha: 0.16)
+        copyBtn.layer.cornerRadius = 11
+        copyBtn.contentEdgeInsets = UIEdgeInsets(top: 10, left: 14, bottom: 10, right: 14)
+        copyBtn.addTarget(self, action: #selector(didTapCopyStationUrl), for: .touchUpInside)
+
+        let btnRow = UIStackView(arrangedSubviews: [openBtn, copyBtn])
+        btnRow.axis = .horizontal
+        btnRow.spacing = 8
+        btnRow.distribution = .fillEqually
+
+        let closeStBtn = UIButton(type: .system)
+        closeStBtn.setTitle("Close", for: .normal)
+        closeStBtn.setTitleColor(.white, for: .normal)
+        closeStBtn.titleLabel?.font = .systemFont(ofSize: 15, weight: .bold)
+        closeStBtn.backgroundColor = UIColor(red: 0.79, green: 0.24, blue: 0.15, alpha: 1)
+        closeStBtn.layer.cornerRadius = 12
+        closeStBtn.contentEdgeInsets = UIEdgeInsets(top: 11, left: 14, bottom: 11, right: 14)
+        closeStBtn.addTarget(self, action: #selector(didTapCloseStationModal), for: .touchUpInside)
+
+        let stStack = UIStackView(arrangedSubviews: [title, sub, qrBg, stationUrlLabel, btnRow, closeStBtn])
+        stStack.axis = .vertical
+        stStack.alignment = .center
+        stStack.spacing = 12
+        stStack.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(stStack)
+
+        btnRow.widthAnchor.constraint(equalTo: stStack.widthAnchor).isActive = true
+        closeStBtn.widthAnchor.constraint(equalTo: stStack.widthAnchor).isActive = true
+
+        NSLayoutConstraint.activate([
+            stationOverlay.topAnchor.constraint(equalTo: view.topAnchor),
+            stationOverlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            stationOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            stationOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+
+            card.centerXAnchor.constraint(equalTo: stationOverlay.centerXAnchor),
+            card.centerYAnchor.constraint(equalTo: stationOverlay.centerYAnchor),
+            card.widthAnchor.constraint(lessThanOrEqualToConstant: 370),
+            card.leadingAnchor.constraint(greaterThanOrEqualTo: stationOverlay.leadingAnchor, constant: 18),
+            card.trailingAnchor.constraint(lessThanOrEqualTo: stationOverlay.trailingAnchor, constant: -18),
+
+            stStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
+            stStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -18),
+            stStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            stStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18)
         ])
     }
 
@@ -1978,7 +2915,8 @@ final class SpinArmViewController: UIViewController,
 
     private func updateQRScanVisibility() {
         qrOverlay.isHidden = !isPairingScan
-        qrCancelBtn.isHidden = sendUrl.isEmpty
+        qrCancelBtn.isHidden = !isStandaloneMode && sendUrl.isEmpty
+        refreshLiveOverlayPreview()
         updateUIState()
     }
 
@@ -1990,6 +2928,11 @@ final class SpinArmViewController: UIViewController,
     }
 
     private func updateConnPill() {
+        if isStandaloneMode {
+            connPill.text = " 📱 Standalone 360 "
+            connPill.backgroundColor = UIColor(red: 0.18, green: 0.65, blue: 0.42, alpha: 0.9)
+            return
+        }
         if sendUrl.isEmpty {
             connPill.text = " Not Paired "
             connPill.backgroundColor = UIColor(red: 0.72, green: 0.45, blue: 0.08, alpha: 0.9)
@@ -2003,6 +2946,11 @@ final class SpinArmViewController: UIViewController,
     }
 
     private func updatePendingUI() {
+        if isStandaloneMode {
+            pendingBtn.isHidden = true
+            settingsPendingBtn.isHidden = true
+            return
+        }
         let count = uploadQueue.count + (isUploadingNow ? 1 : 0)
         if isUploadingNow {
             pendingBtn.isHidden = false
@@ -2038,7 +2986,8 @@ final class SpinArmViewController: UIViewController,
         meterFill.backgroundColor = smoothedDps >= startThresholdDps
             ? UIColor(red: 0.18, green: 0.80, blue: 0.44, alpha: 1)
             : UIColor(red: 0.35, green: 0.78, blue: 0.98, alpha: 1)
-        meterValueLabel.text = String(format: "%.0f°/s  ·  Trigger: %.0f°/s  ·  Sent: %d", smoothedDps, startThresholdDps, sentCount)
+        let countLbl = isStandaloneMode ? "Clips" : "Sent"
+        meterValueLabel.text = String(format: "%.0f°/s  ·  Trigger: %.0f°/s  ·  %@: %d", smoothedDps, startThresholdDps, countLbl, sentCount)
     }
 
     private func updateUIState() {
@@ -2046,6 +2995,16 @@ final class SpinArmViewController: UIViewController,
         updatePendingUI()
         updateMeterLayout()
         updateMeterUI()
+
+        lookQuickBtn.isHidden = !isStandaloneMode
+        if isStandaloneMode {
+            let aspTag = saAspect == .portrait9x16 ? "9:16" : (saAspect == .square1x1 ? "1:1" : "16:9")
+            let ovTag = saOverlayImage != nil ? " · Overlay ✓" : ""
+            lookQuickBtn.setTitle("🎨 \(saMotion.shortLabel) · \(aspTag)\(ovTag) · Edit", for: .normal)
+            pairBtn.setTitle("📱 Station", for: .normal)
+        } else {
+            pairBtn.setTitle("📷 Pair QR", for: .normal)
+        }
 
         switch phase {
         case .calibrating:
@@ -2082,6 +3041,20 @@ final class SpinArmViewController: UIViewController,
             recBtn.isEnabled = true
             calBtn.isEnabled = false
             if isScreenLocked { lockStatusLabel.text = centerTitleLabel.text ?? "● REC" }
+        case .rendering:
+            centerOverlay.isHidden = false
+            centerCancelBtn.isHidden = true
+            centerProg.isHidden = false
+            centerProg.progress = renderProgress
+            centerIconLabel.text = "✨"
+            centerTitleLabel.text = "Rendering \(Int((renderProgress * 100).rounded()))%"
+            centerSubLabel.text = "Applying \(saMotion.shortLabel) & overlay…"
+            stateBanner.text = "Rendering 360 video…"
+            recBtn.setTitle("● Record", for: .normal)
+            recBtn.backgroundColor = UIColor(red: 0.79, green: 0.24, blue: 0.15, alpha: 1)
+            recBtn.isEnabled = false
+            calBtn.isEnabled = false
+            if isScreenLocked { lockStatusLabel.text = "RENDERING 360…" }
         case .cooldown:
             centerOverlay.isHidden = false
             centerCancelBtn.isHidden = true
@@ -2103,6 +3076,10 @@ final class SpinArmViewController: UIViewController,
             calBtn.isEnabled = true
             if isPairingScan {
                 stateBanner.text = "Scan the QR on your laptop's 360 Desk"
+            } else if isStandaloneMode {
+                stateBanner.text = armConfig.trigger == "arm"
+                    ? "● Standalone Armed — spin arm to auto-record"
+                    : "Standalone Ready — tap Record (or switch to Auto Spin)"
             } else if armConfig.trigger == "arm" {
                 stateBanner.text = "● Armed — recording auto-starts when the 360 arm spins"
             } else if armConfig.trigger == "desk" {

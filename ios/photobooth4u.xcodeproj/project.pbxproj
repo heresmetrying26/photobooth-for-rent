@@ -18,8 +18,12 @@
 		100100012CE8000100000021 /* NativeCameraBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000021 /* NativeCameraBridge.swift */; };
 		100100012CE8000100000022 /* SpinArmViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000022 /* SpinArmViewController.swift */; };
 		100100012CE8000100000023 /* EscprLpdPrint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000023 /* EscprLpdPrint.swift */; };
+		100100012CE8000100000024 /* SpinRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000024 /* SpinRenderer.swift */; };
+		100100012CE8000100000025 /* SpinQuickShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000025 /* SpinQuickShareViewController.swift */; };
 		100100012CE8000100000008 /* AppLicence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000008 /* AppLicence.swift */; };
 		100100012CE8000100000009 /* booth.html in Resources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000009 /* booth.html */; };
+		100100012CE8000100000026 /* station.html in Resources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000026 /* station.html */; };
+		100100012CE8000100000027 /* qr.js in Resources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000027 /* qr.js */; };
 		100200012CE8000100000001 /* RovingAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200200012CE8000100000001 /* RovingAppDelegate.swift */; };
 		100200012CE8000100000002 /* RovingSceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200200012CE8000100000002 /* RovingSceneDelegate.swift */; };
 		100200012CE8000100000003 /* RovingBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200200012CE8000100000003 /* RovingBridgeViewController.swift */; };
@@ -40,8 +44,12 @@
 		200100012CE8000100000021 /* NativeCameraBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCameraBridge.swift; sourceTree = "<group>"; };
 		200100012CE8000100000022 /* SpinArmViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpinArmViewController.swift; sourceTree = "<group>"; };
 		200100012CE8000100000023 /* EscprLpdPrint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EscprLpdPrint.swift; sourceTree = "<group>"; };
+		200100012CE8000100000024 /* SpinRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpinRenderer.swift; sourceTree = "<group>"; };
+		200100012CE8000100000025 /* SpinQuickShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpinQuickShareViewController.swift; sourceTree = "<group>"; };
 		200100012CE8000100000008 /* AppLicence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLicence.swift; sourceTree = "<group>"; };
 		200100012CE8000100000009 /* booth.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = booth.html; sourceTree = "<group>"; };
+		200100012CE8000100000026 /* station.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = station.html; sourceTree = "<group>"; };
+		200100012CE8000100000027 /* qr.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = qr.js; sourceTree = "<group>"; };
 		200100012CE8000100000010 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		200200012CE8000100000001 /* RovingAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RovingAppDelegate.swift; sourceTree = "<group>"; };
 		200200012CE8000100000002 /* RovingSceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RovingSceneDelegate.swift; sourceTree = "<group>"; };
@@ -90,8 +98,12 @@
 				200100012CE8000100000021 /* NativeCameraBridge.swift */,
 				200100012CE8000100000022 /* SpinArmViewController.swift */,
 				200100012CE8000100000023 /* EscprLpdPrint.swift */,
+				200100012CE8000100000024 /* SpinRenderer.swift */,
+				200100012CE8000100000025 /* SpinQuickShareViewController.swift */,
 				200100012CE8000100000008 /* AppLicence.swift */,
 				200100012CE8000100000009 /* booth.html */,
+				200100012CE8000100000026 /* station.html */,
+				200100012CE8000100000027 /* qr.js */,
 				200100012CE8000100000010 /* Info.plist */,
 			);
 			path = photobooth4u;
@@ -197,6 +209,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				100100012CE8000100000009 /* booth.html in Resources */,
+				100100012CE8000100000026 /* station.html in Resources */,
+				100100012CE8000100000027 /* qr.js in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -225,6 +239,8 @@
 				100100012CE8000100000021 /* NativeCameraBridge.swift in Sources */,
 				100100012CE8000100000022 /* SpinArmViewController.swift in Sources */,
 				100100012CE8000100000023 /* EscprLpdPrint.swift in Sources */,
+				100100012CE8000100000024 /* SpinRenderer.swift in Sources */,
+				100100012CE8000100000025 /* SpinQuickShareViewController.swift in Sources */,
 				100100012CE8000100000008 /* AppLicence.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -307,14 +323,14 @@
 				CODE_SIGN_STYLE = Manual;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 49;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = photobooth4u/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.38;
+				MARKETING_VERSION = 1.1.39;
 				PRODUCT_BUNDLE_IDENTIFIER = com.photobooth4u.booth;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -330,14 +346,14 @@
 				CODE_SIGN_STYLE = Manual;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 49;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = photobooth4u/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.38;
+				MARKETING_VERSION = 1.1.39;
 				PRODUCT_BUNDLE_IDENTIFIER = com.photobooth4u.booth;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;

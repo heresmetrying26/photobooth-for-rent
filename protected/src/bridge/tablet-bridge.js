@@ -382,15 +382,15 @@ function syncRemoteFrameToBridge(active, bgActive) {
     if (!tabletBridge.bgTimer) {
       tabletBridge.bgTimer = setInterval(() => {
         if (!tabletGuestOpen() || !tabletBridge.port || tabletBridge.bgSending) return;
-        const src = (bgActive && typeof bgLive !== 'undefined' && bgLive && bgLive.canvas && bgLive.canvas.style.display !== 'none')
-          ? bgLive.canvas
-          : (typeof camFrameSource === 'function' ? camFrameSource() : null);
+        const lutCv = (typeof lutLive !== 'undefined' && lutLive && lutLive.canvas && lutLive.canvas.style.display !== 'none') ? lutLive.canvas : null;
+        const bgCv = (bgActive && typeof bgLive !== 'undefined' && bgLive && bgLive.canvas && bgLive.canvas.style.display !== 'none') ? bgLive.canvas : null;
+        const src = lutCv || bgCv || (typeof camFrameSource === 'function' ? camFrameSource() : null);
         if (!src) return;
         const sw = src.videoWidth || src.width || 0;
         const sh = src.videoHeight || src.height || 0;
         if (!sw || !sh) return;
         let outCanvas = src;
-        if (src !== (typeof bgLive !== 'undefined' && bgLive && bgLive.canvas)) {
+        if (src !== bgCv && src !== lutCv) {
           if (!bridgeRemoteCanvas) bridgeRemoteCanvas = document.createElement('canvas');
           const scale = Math.min(1, 720 / Math.max(sw, sh));
           bridgeRemoteCanvas.width = Math.max(1, Math.round(sw * scale));
@@ -442,7 +442,8 @@ async function buildAndPushTabletState() {
     (!!welcomeDataUrl || (attractMode === 'poster' && !!(attractPlaylist.length || attractPosterUrl)));
   const bgActive = !!(typeof bgGuestStream === 'function' && bgGuestStream());
   const filterCss = T('live filter', () => liveFilterCss(), '');
-  const useRemoteStream = (bgActive || (!!filterCss && currentDeviceId === TABLET_CAM_ID) || (currentDeviceId !== TABLET_CAM_ID)) && !pickOpen && !result && !reviewing && !shotReview && (!welcome || attractMode === 'camera');
+  const customLutOn = T('custom lut', () => typeof isCustomLutKey === 'function' && isCustomLutKey(filterKey), false);
+  const useRemoteStream = (bgActive || ((!!filterCss || customLutOn) && currentDeviceId === TABLET_CAM_ID) || (currentDeviceId !== TABLET_CAM_ID)) && !pickOpen && !result && !reviewing && !shotReview && (!welcome || attractMode === 'camera');
 
   syncRemoteFrameToBridge(useRemoteStream, bgActive);
 
@@ -593,7 +594,7 @@ async function buildAndPushTabletState() {
   const asp = tabletGuestAspects();
 
   const looksShow = T('looks', () => !!(guestLooksOn && isTraditional() && !pickOpen && (ready || state === 'idle') && !(sess && sess.reviewing)), false);
-  const looks = looksShow ? T('looks', () => guestLookKeys().map(k => ({ k, label: FILTER_LABELS[k] || k })), []) : [];
+  const looks = looksShow ? T('looks', () => guestLookKeys().map(k => ({ k, label: typeof filterLabel === 'function' ? filterLabel(k) : (FILTER_LABELS[k] || k) })), []) : [];
   const galleryIdle = T('event gallery', () => !psMode && state === 'idle' && !pickOpen && !ready && !!currentFolderLink && !gvPrivate(), false);
   const printState = T('print buttons', () => tabletGuestPrintState(), { printShow: false, nextShow: false });
   const mirror = T('mirror', () => !!mirrorPreview(), true);
@@ -679,7 +680,7 @@ async function buildAndPushTabletState() {
     looksShow,
     looksOpen: !!guestLookOpen,
     lookKey: filterKey,
-    lookLabel: T('looks', () => FILTER_LABELS[filterKey] || filterKey, ''),
+    lookLabel: T('looks', () => typeof filterLabel === 'function' ? filterLabel(filterKey) : (FILTER_LABELS[filterKey] || filterKey), ''),
     looks,
     shots,
     retakeShow: ed || !!(sess && !retakeBtn.hidden),

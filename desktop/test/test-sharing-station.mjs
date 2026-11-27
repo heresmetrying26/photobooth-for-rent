@@ -42,6 +42,31 @@ const netlifyToml = readFileSync(join(ROOT, 'netlify.toml'), 'utf8');
 assert(netlifyToml.includes('from = "/station/*"'), 'netlify.toml redirects /station/* to /station/index.html');
 console.log('PASS: Online Sharing Station page and Netlify routing verified');
 
+// 3b. Verify iOS LocalShareServer, station.html, & Standalone 360 files
+const iosServer = readFileSync(join(ROOT, 'ios', 'photobooth4u', 'LocalShareServer.swift'), 'utf8');
+assert(iosServer.includes('components == ["qr.js"]'), 'LocalShareServer.swift handles /qr.js');
+assert(iosServer.includes('components[0] == "station"'), 'LocalShareServer.swift handles /station');
+assert(iosServer.includes('/station-mail'), 'LocalShareServer.swift handles /station-mail proxy');
+assert(existsSync(join(ROOT, 'ios', 'photobooth4u', 'station.html')), 'ios/photobooth4u/station.html exists');
+assert(existsSync(join(ROOT, 'ios', 'photobooth4u', 'qr.js')), 'ios/photobooth4u/qr.js exists');
+assert(existsSync(join(ROOT, 'ios', 'photobooth4u', 'SpinRenderer.swift')), 'ios/photobooth4u/SpinRenderer.swift exists');
+assert(existsSync(join(ROOT, 'ios', 'photobooth4u', 'SpinQuickShareViewController.swift')), 'ios/photobooth4u/SpinQuickShareViewController.swift exists');
+
+const iosStationHtml = readFileSync(join(ROOT, 'ios', 'photobooth4u', 'station.html'), 'utf8');
+assert(iosStationHtml.includes('playChime()'), 'iOS station.html has playChime');
+assert(iosStationHtml.includes('openModal(newest)'), 'iOS station.html has auto-pop');
+assert(iosStationHtml.includes('privacyOnly'), 'iOS station.html has privacy mode');
+
+const pbxproj = readFileSync(join(ROOT, 'ios', 'photobooth4u.xcodeproj', 'project.pbxproj'), 'utf8');
+['SpinRenderer.swift', 'SpinQuickShareViewController.swift', 'station.html', 'qr.js'].forEach(f => {
+  assert(pbxproj.includes(f), `project.pbxproj registers ${f}`);
+});
+
+assert(existsSync(join(ROOT, 'netlify', 'functions', 'station-mail.mjs')), 'netlify/functions/station-mail.mjs exists');
+assert(publicStationHtml.includes('/api/station-mail'), 'Online station calls /api/station-mail');
+assert(publicStationHtml.includes('normalizeWhatsAppPhone'), 'Online station includes WhatsApp redirect helper');
+console.log('PASS: iOS Sharing Station, 360 Standalone files, and Online Email/WhatsApp verified');
+
 // 4. Verify Booth Engine (protected/booth.html)
 const boothHtml = readFileSync(join(ROOT, 'protected', 'booth.html'), 'utf8');
 assert(boothHtml.includes('id="shareStationToggle"'), 'shareStationToggle exists in booth.html');
@@ -55,7 +80,7 @@ assert(boothHtml.includes('shareStation: shareStationOn'), 'snapshotSetup includ
 console.log('PASS: Booth engine (booth.html) UI controls, modal, and handoff logic verified');
 
 // 5. Verify QR Code generation across all platforms (classic script safe, no ESM syntax error)
-['desktop/lib/qr.js', 'android/app/src/main/assets/share/qr.js', 'public/qr.js'].forEach(rel => {
+['desktop/lib/qr.js', 'android/app/src/main/assets/share/qr.js', 'ios/photobooth4u/qr.js', 'public/qr.js'].forEach(rel => {
   const code = readFileSync(join(ROOT, rel), 'utf8');
   assert(!code.includes('export default'), `${rel} must not contain "export default" (breaks classic <script> tags)`);
   assert(!code.includes('export {'), `${rel} must not contain "export {" (breaks classic <script> tags)`);

@@ -846,6 +846,7 @@ await section(async () => {
     fontString: (f, sz) => sz + 'px ' + f, lumOf: () => 0.2, hexToRgb: () => [201, 61, 39],
     brandImgFor: () => null, brand: { w: {} }, BRAND_DEF_S: { w: 0.1 }, BRAND_MAXR: 3, brandFit: () => ({ w: 80, h: 40 }),
     placeWelcomePulse() { }, brandPvLayout() { }, syncSetupVideoPreview() { }, renderResultBg() { }, guestRender() { },
+    pbReleaseCanvas() { },
     welcomeCustomOn: false
   };
   vm.createContext(wCtx);
@@ -882,6 +883,7 @@ await section(async () => {
     softSkinToggle: dummyEl(), dateStampToggle: dummyEl(), setFrameColorUI: noop, photoPlacementSelect: dummyEl(),
     ELEMENT_SETS: {}, setBackdropColorUI: noop, clearCustomPhoto: noop, BACKDROP_PRESETS: {}, ACCENTS: { gold: 1 },
     markAccentChips: noop, STICKER_NAMES: {}, STICKER_PACKS: [], refreshGuestStickersUI: noop, TITLE_STYLES: [['classic']],
+    RECEIPT_STYLES: [['classic']], receiptStyle: 'classic',
     receiptNoteInput: null, validArt: () => '', validArtPal: () => '', refreshTitleUI: noop,
     window: { _isPosterVideo: () => false, _isPosterGif: () => false },
     applyPrintPrefs: noop, applyGbPrefs: noop, applyBgRepSetup: () => { bgRepCalls++; }, applyFxSetup: () => { fxCalls++; },

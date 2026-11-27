@@ -144,6 +144,10 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             }
         }
 
+        func setCustomLut(id: String, dimension: Int, cubeData: Data?) {
+            filterChain.setCustomLut(id: id, dimension: dimension, cubeData: cubeData)
+        }
+
         func renderFiltered(pixelBuffer: CVPixelBuffer, rotationAngle: CGFloat, mirrored: Bool, filter: String, softSkin: Bool) {
             guard let ml = metalLayer, let ctx = ciContext, let cq = cmdQueue else { return }
             renderLock.lock()
@@ -1259,6 +1263,30 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         }
     }
 
+    func setCustomLut(id: String, dimension: Int, rgbaBase64: String) {
+        var cubeData: Data? = nil
+        if !id.isEmpty, dimension >= 2, dimension <= 64, !rgbaBase64.isEmpty,
+           let raw = Data(base64Encoded: rgbaBase64) {
+            let expected = dimension * dimension * dimension * 4
+            if raw.count == expected {
+                var floats = [Float](repeating: 0, count: expected)
+                raw.withUnsafeBytes { ptr in
+                    if let bytes = ptr.bindMemory(to: UInt8.self).baseAddress {
+                        let inv: Float = 1.0 / 255.0
+                        for i in 0..<expected {
+                            floats[i] = Float(bytes[i]) * inv
+                        }
+                    }
+                }
+                cubeData = floats.withUnsafeBufferPointer { Data(buffer: $0) }
+            }
+        }
+        let validId = (cubeData != nil) ? id : ""
+        let validDim = (cubeData != nil) ? dimension : 0
+        previewView.setCustomLut(id: validId, dimension: validDim, cubeData: cubeData)
+        recFilterChain.setCustomLut(id: validId, dimension: validDim, cubeData: cubeData)
+    }
+
     func setFilter(filterKey: String, softSkin: Bool) {
         stateLock.lock()
         activeFilter = filterKey.isEmpty ? "none" : filterKey
@@ -1431,6 +1459,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
     /// Serial-queue-confined reusable CoreImage filter chain. Eliminates per-frame CIFilter & CIVector
     /// allocations at 30 fps while clearing input image references immediately after building each graph.
     final class LiveFilterChain {
+        private static let lutColorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? NativeCameraBridge.srgbColorSpace
         private static let blackImage = CIImage(color: .black)
         private static let vec5000 = CIVector(x: 5000, y: 0)
         private static let vec5200 = CIVector(x: 5200, y: 0)
@@ -1453,6 +1482,30 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         private lazy var noirFilter = CIFilter(name: "CIPhotoEffectNoir")
         private lazy var fadeFilter = CIFilter(name: "CIPhotoEffectFade")
         private lazy var bloomFilter = CIFilter(name: "CIBloom")
+        private lazy var colorCubeFilter = CIFilter(name: "CIColorCubeWithColorSpace")
+        private let lutLock = NSLock()
+        private var customLutId: String = ""
+        private var customLutDim: Int = 0
+        private var customLutData: Data? = nil
+
+        func setCustomLut(id: String, dimension: Int, cubeData: Data?) {
+            lutLock.lock()
+            customLutId = id
+            customLutDim = dimension
+            customLutData = cubeData
+            lutLock.unlock()
+        }
+
+        private func runColorCube(to img: CIImage, dimension: Int, cubeData: Data) -> CIImage {
+            guard let f = colorCubeFilter else { return img }
+            f.setValue(img, forKey: kCIInputImageKey)
+            f.setValue(dimension, forKey: "inputCubeDimension")
+            f.setValue(cubeData, forKey: "inputCubeData")
+            f.setValue(Self.lutColorSpace, forKey: "inputColorSpace")
+            let out = f.outputImage ?? img
+            f.setValue(nil, forKey: kCIInputImageKey)
+            return out
+        }
 
         private func runColorControls(_ f: CIFilter?, to img: CIImage, brightness: Double = 0, contrast: Double = 1, saturation: Double = 1) -> CIImage {
             guard let f = f else { return img }
@@ -1587,7 +1640,14 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 img = runColorControls(colorControlsFilter, to: img, brightness: 0.015, contrast: 1.10, saturation: 1.28)
                 img = runVignette(to: img, intensity: 0.6, extent: extent)
             default:
-                break
+                lutLock.lock()
+                let lutId = customLutId
+                let lutDim = customLutDim
+                let lutData = customLutData
+                lutLock.unlock()
+                if !lutId.isEmpty && filter == lutId, lutDim >= 2, let cubeData = lutData {
+                    img = runColorCube(to: img, dimension: lutDim, cubeData: cubeData)
+                }
             }
             return img.cropped(to: extent)
         }

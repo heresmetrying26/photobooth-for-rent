@@ -397,7 +397,8 @@ export function normOptions(o) {
     textFadeIn: o.textFadeIn != null ? Number(o.textFadeIn) : 0.6,
     textFadeOut: o.textFadeOut != null ? Number(o.textFadeOut) : 0.6,
     dropTime: o.dropTime != null && Number(o.dropTime) > 0 ? clamp(Number(o.dropTime), 0.5, 12) : null,
-    lut: ['glam_bw', 'teal_orange', 'golden_hour', 'vibrant', 'vintage', 'none'].includes(o.lut) ? o.lut : (o.lut || 'none')
+    lut: ['glam_bw', 'teal_orange', 'golden_hour', 'vibrant', 'vintage', 'none'].includes(o.lut) ? o.lut : (o.lut || 'none'),
+    lutFile: typeof o.lutFile === 'string' && LUT_RE.test(o.lutFile) ? o.lutFile : null
   };
 }
 // Particle-type effects take the Trajectory / Size / Wobble / Location settings. Frame-like effects (borders, grids, strobes, lasers, light leaks...)
@@ -473,7 +474,7 @@ export function outDuration(speed, d, o) {
   return d;
 }
 // { args, duration, W, H } for one clip. overlay / fx / music / intro / outro are file paths or null.
-export function buildArgs({ input, output, overlay, textOverlay, fx, music, intro, outro, options, hwEncoder }, info) {
+export function buildArgs({ input, output, overlay, textOverlay, fx, music, intro, outro, lutFile, options, hwEncoder }, info) {
   const o = normOptions(options);
   const introPath = (intro || o.intro) && existsSync(intro || o.intro) ? (intro || o.intro) : null;
   const outroPath = (outro || o.outro) && existsSync(outro || o.outro) ? (outro || o.outro) : null;
@@ -581,7 +582,11 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
     f.push(src + fit + ',fps=30[v0]');
   }
   let last = '[v0]';
-  if (o.lut && o.lut !== 'none') {
+  const customLutPath = (lutFile && existsSync(lutFile)) ? lutFile : (o.lutFile ? lutCubePath(o.lutFile) : null);
+  if (customLutPath) {
+    f.push(last + "lut3d=file='" + ffFilterPath(customLutPath) + "':interp=tetrahedral[v_lut]");
+    last = '[v_lut]';
+  } else if (o.lut && o.lut !== 'none') {
     let lutFilter = '';
     if (o.lut === 'glam_bw') {
       lutFilter = ',colorchannelmixer=.3:.4:.3:0:.3:.4:.3:0:.3:.4:.3,curves=all=\'0/0 0.18/0.08 0.72/0.86 1/1\',eq=contrast=1.18:brightness=0.02';
@@ -909,6 +914,20 @@ async function runJob(job, p) {
 
 // The transparent PNG (frame, logo, title) the booth page drew: saved to a temp file for ffmpeg.
 const OV_RE = /^pb4u-overlay-\d+-\d+\.png$/;
+const LUT_RE = /^pb4u-lut-\d+-\d+\.cube$/;
+const ffFilterPath = (p) => String(p || '').replace(/\\/g, '/').replace(/'/g, "'\\''").replace(/:/g, '\\:');
+export function saveLutCube(text) {
+  if (!tempDir || typeof text !== 'string' || !text.length || text.length > 8 * 1024 * 1024) return null;
+  if (!/LUT_(?:3D|1D)_SIZE\s+\d+/.test(text)) return null;
+  mkdirSync(tempDir, { recursive: true });
+  try {
+    for (const n of readdirSync(tempDir)) if (LUT_RE.test(n) && Date.now() - statSync(join(tempDir, n)).mtimeMs > 86400000) unlinkSync(join(tempDir, n));
+  } catch { /* ignore */ }
+  const name = 'pb4u-lut-' + Date.now() + '-' + (++seq) + '.cube';
+  writeFileSync(join(tempDir, name), text, 'utf8');
+  return name;
+}
+export function lutCubePath(name) { return tempDir && LUT_RE.test(String(name || '')) && existsSync(join(tempDir, name)) ? join(tempDir, name) : null; }
 export function saveOverlay(bytes) {
   if (!tempDir || !bytes || !bytes.length || bytes.length > 25 * 1024 * 1024) return null;
   mkdirSync(tempDir, { recursive: true });

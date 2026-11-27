@@ -22829,6 +22829,11 @@
             <input type="text" class="label-input" id="kickerInput" maxlength="40"
               style="font-family:'Manrope',sans-serif; font-size:14px;" aria-label="Small line">
           </div>
+          <div id="receiptStyleRow" style="display:none; margin-top:12px;">
+            <p class="sub-label">Receipt template style</p>
+            <select class="label-input" id="receiptStyleSelect" style="font-family:'Manrope',sans-serif; font-size:14px;" aria-label="Receipt template style"></select>
+            <p class="panel-hint" style="margin:2px 0 0;">Choose a thermal receipt layout (music player, zine, card, gazette, minimalist…).</p>
+          </div>
           <div id="receiptNoteRow" style="margin-top:12px;">
             <p class="sub-label">Receipt note &amp; social handle (optional)</p>
             <input type="text" class="label-input" id="receiptNoteInput" maxlength="45"
@@ -29703,7 +29708,9 @@
         ["'Amatic SC', cursive", 'Amatic SC'],
         ["'EB Garamond', serif", 'EB Garamond'],
         ["'Quicksand', sans-serif", 'Quicksand'],
-        ["'Comfortaa', sans-serif", 'Comfortaa']
+        ["'Comfortaa', sans-serif", 'Comfortaa'],
+        ["'Fraunces', serif", 'Fraunces'],
+        ["'Courier New', monospace", 'Courier Mono']
       ];
 
       function buildFontDropdown(btn, listEl, options, onPick) {
@@ -31562,11 +31569,67 @@
         for (var y = 0; y < h; y += s * 2) ctx.fillRect(0, y, w, s);
         ctx.globalAlpha = 1;
       }
+      function fillAura(ctx, w, h) {
+        var base = themeBase('#f4d2df');
+        var light = mixHex(base, '#ffffff', 0.65);
+        var deep = mixHex(base, '#8a6ad6', 0.28);
+        var warm = mixHex(base, '#ffdfba', 0.48);
+        ctx.fillStyle = vGrad(ctx, h, light, mixHex(base, '#ffffff', 0.35));
+        ctx.fillRect(0, 0, w, h);
+        var u = Math.max(w, h);
+        var orbs = [
+          [w * 0.18, h * 0.16, u * 0.58, base, 0.72],
+          [w * 0.88, h * 0.34, u * 0.54, deep, 0.45],
+          [w * 0.24, h * 0.78, u * 0.52, warm, 0.55],
+          [w * 0.78, h * 0.88, u * 0.48, base, 0.65]
+        ];
+        ctx.save();
+        orbs.forEach(function (o) {
+          var rgb = hexToRgbTriplet(o[3]);
+          var g = ctx.createRadialGradient(o[0], o[1], 0, o[0], o[1], o[2]);
+          g.addColorStop(0, 'rgba(' + rgb + ',' + o[4] + ')');
+          g.addColorStop(1, 'rgba(' + rgb + ',0)');
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, w, h);
+        });
+        ctx.restore();
+      }
+      function fillGridLines(ctx, w, h) {
+        var base = themeBase('#eef1f5');
+        ctx.fillStyle = base; ctx.fillRect(0, 0, w, h);
+        var dark = lumOf(base) < 0.4;
+        var step = Math.max(18, Math.round(w / 14));
+        ctx.save();
+        ctx.strokeStyle = dark ? 'rgba(255,255,255,0.08)' : 'rgba(18,24,38,0.065)';
+        ctx.lineWidth = Math.max(1, w * 0.0014);
+        for (var x = step / 2; x < w; x += step) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+        for (var y = step / 2; y < h; y += step) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+        ctx.restore();
+      }
+      function fillChecker(ctx, w, h) {
+        var base = themeBase('#f7f7f5');
+        var ink = lumOf(base) < 0.4 ? '#f3efe6' : '#18181b';
+        ctx.fillStyle = base; ctx.fillRect(0, 0, w, h);
+        var s = Math.max(8, Math.round(Math.min(w, h) * 0.022));
+        var rows = 2, cols = Math.ceil(w / s), vrows = Math.ceil(h / s);
+        ctx.save();
+        ctx.fillStyle = ink;
+        for (var r = 0; r < vrows; r++) {
+          for (var c = 0; c < cols; c++) {
+            var edge = r < rows || r >= vrows - rows || c < rows || c >= cols - rows;
+            if (edge && (r + c) % 2 === 0) ctx.fillRect(c * s, r * s, s, s);
+          }
+        }
+        ctx.restore();
+      }
       Object.assign(BACKDROP_PRESETS, {
         sunset: { fill: fillSunset, elements: 'none', base: '#ff9a62' },
         neon: { fill: fillNeon, elements: 'none', base: '#0c0a1c' },
         polka: { fill: fillPolka, elements: 'none', base: '#fde4ec' },
-        gingham: { fill: fillGingham, elements: 'none', base: '#cfe6ff' }
+        gingham: { fill: fillGingham, elements: 'none', base: '#cfe6ff' },
+        aura: { fill: fillAura, elements: 'none', base: '#f4d2df' },
+        gridlines: { fill: fillGridLines, elements: 'none', base: '#eef1f5' },
+        checker: { fill: fillChecker, elements: 'none', base: '#f7f7f5' }
       });
       Object.assign(BACKDROP_PRESETS, {
         grad: { fill: fillGraduation, elements: 'none', base: '#14254a' },
@@ -41902,6 +41965,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         refreshPrintUI();
         if (!skipPreview) {
+          if (typeof refreshTitleUI === 'function') refreshTitleUI();
           if (typeof refreshDecorUI === 'function' && typeof overlaySizeHint !== 'undefined' && overlaySizeHint) refreshDecorUI();
           if (typeof frameListEl !== 'undefined' && frameListEl) refreshFrameUI();
           if (typeof refreshGifLayoutUI === 'function') refreshGifLayoutUI();
@@ -42062,18 +42126,56 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
       }
 
+      function isMinimalFrameStyle() {
+        return typeof titleStyle === 'string' && (titleStyle === 'minimal' || titleStyle === 'editorial' || titleStyle === 'filmframe');
+      }
+      function drawStyledCell(ctx, img, x, y, w, h, k, padRatio, minPad, shadowAlpha) {
+        const flat = isMinimalFrameStyle();
+        if (flat && (typeof frameColorChoice === 'undefined' || frameColorChoice === 'auto')) {
+          if (img) drawImageCover(ctx, img, x, y, w, h);
+          const bgLum = (typeof backdropBaseColor === 'function' && typeof lumOf === 'function') ? lumOf(backdropBaseColor(backdropPreset)) : 1;
+          ctx.save();
+          ctx.strokeStyle = bgLum < 0.4 ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.09)';
+          ctx.lineWidth = Math.max(1, k);
+          ctx.strokeRect(x, y, w, h);
+          ctx.restore();
+          return;
+        }
+        ctx.save();
+        if (!flat) {
+          ctx.shadowColor = 'rgba(40,30,20,' + (shadowAlpha || 0.28) + ')';
+          ctx.shadowBlur = Math.round(16 * k);
+          ctx.shadowOffsetY = Math.round(5 * k);
+        }
+        ctx.fillStyle = currentFrameColor;
+        ctx.fillRect(x, y, w, h);
+        ctx.restore();
+        if (img) {
+          const pad = flat ? Math.max(2, Math.round(Math.min(w, h) * 0.014)) : Math.max(minPad || 6, Math.min(w, h) * (padRatio || 0.03));
+          drawImageCover(ctx, img, x + pad, y + pad, w - 2 * pad, h - 2 * pad);
+        }
+      }
+
       function renderTemplateStrip(ctx, shots, W, H, count) {
         const k = W / STRIP_W;
-        const m = W * 0.06, gap = W * 0.035;
-        const ch = (H - m - m * 0.4 - gap * (count - 1)) / count, cw = W - 2 * m;
+        const flat = isMinimalFrameStyle();
+        const sprock = typeof hasArt === 'function' && hasArt('sprockets');
+        const m = sprock ? W * 0.095 : (flat ? W * 0.068 : W * 0.06);
+        const gap = flat ? (count >= 4 ? W * 0.024 : W * 0.03) : W * 0.035;
+        const topM = flat ? (m * 0.85) : m;
+        const ch = (H - topM - m * 0.35 - gap * (count - 1)) / count, cw = W - 2 * m;
         for (let i = 0; i < count; i++) {
-          const y = m + i * (ch + gap);
-          ctx.save();
-          ctx.shadowColor = 'rgba(40,30,20,0.28)'; ctx.shadowBlur = Math.round(14 * k); ctx.shadowOffsetY = Math.round(4 * k);
-          ctx.fillStyle = currentFrameColor; ctx.fillRect(m, y, cw, ch);
-          ctx.restore();
-          const pad = Math.max(6, cw * 0.025);
-          if (shots[i]) drawImageCover(ctx, shots[i], m + pad, y + pad, cw - 2 * pad, ch - 2 * pad);
+          const y = topM + i * (ch + gap);
+          drawStyledCell(ctx, shots[i], m, y, cw, ch, k, 0.025, 6, 0.28);
+          if (titleStyle === 'filmframe') {
+            ctx.save();
+            ctx.font = '700 ' + Math.max(9, Math.round(12 * k)) + "px 'Courier New', monospace";
+            ctx.fillStyle = typeof textColor === 'string' ? textColor : '#ffffff';
+            ctx.globalAlpha = 0.65;
+            ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+            ctx.fillText(String(i + 1).padStart(2, '0') + 'A', m + cw - 4 * k, y + ch + 3 * k);
+            ctx.restore();
+          }
         }
       }
 
@@ -42125,18 +42227,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const k = W / SHEET_W;
         const cells = sheetCells(key, W, H);
         cells.forEach((c, i) => {
-          const img = shots[i];
-          ctx.save();
-          ctx.shadowColor = 'rgba(40,30,20,0.28)';
-          ctx.shadowBlur = Math.round(18 * k);
-          ctx.shadowOffsetY = Math.round(6 * k);
-          ctx.fillStyle = currentFrameColor;
-          ctx.fillRect(c.x, c.y, c.w, c.h);
-          ctx.restore();
-          if (img) {
-            const pad = Math.max(6, Math.min(c.w, c.h) * 0.035);
-            drawImageCover(ctx, img, c.x + pad, c.y + pad, c.w - pad * 2, c.h - pad * 2);
-          }
+          drawStyledCell(ctx, shots[i], c.x, c.y, c.w, c.h, k, 0.035, 6, 0.28);
         });
       }
 
@@ -43391,7 +43482,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const stripH = layoutKey === 'stripxl' ? layout.w * 4 : layout.w * 3;
         const sheetH = Math.round(SHEET_H * sc);
         const bandH = layout.templateStrip
-          ? Math.round(stripH * ({ wedding: 0.2, turns: 0.19, blocks: 0.21, monogram: 0.25, bignum: 0.21 }[titleStyle] || 0.2) * Math.min(1.25, growth))
+          ? Math.round(stripH * ({ wedding: 0.2, turns: 0.19, blocks: 0.21, monogram: 0.25, bignum: 0.21, minimal: 0.165, editorial: 0.175, filmframe: 0.17 }[titleStyle] || 0.2) * Math.min(1.25, growth))
           : hasBand ? Math.round(layout.w * (dateText ? LABEL_BAND_RATIO * 1.35 : LABEL_BAND_RATIO) * growth * styleBandFactor()) : minBottomMargin;
         // Theme artwork across the top (an awning) gets its own room above the shots.
         const artTop = bandPlacement ? 0 : themeArtTop(layout.w);
@@ -43473,7 +43564,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // teddy bear, bunny, line florals, roses, pampas) is drawn in vector so it
       // prints sharp at any size. All original drawings.
       // =====================================================================
-      var titleStyle = 'classic';      // classic | wedding | turns | blocks | monogram | bignum
+      var titleStyle = 'classic';      // classic | wedding | turns | blocks | monogram | bignum | minimal | editorial | filmframe
       var kickerText = '';             // the small line
       var titleUpper = false;          // event name in capitals (styled titles)
       var themeArt = [];               // artwork keys
@@ -43484,11 +43575,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         ['turns', 'Small line below — “Turns one”'],
         ['blocks', 'Letter blocks + small line'],
         ['monogram', 'Monogram (initials in a circle)'],
-        ['bignum', 'Big number behind the name (“18”)']
+        ['bignum', 'Big number behind the name (“18”)'],
+        ['minimal', 'Minimalist studio — clean hairline & flat frames'],
+        ['editorial', 'Editorial archive — magazine band & flat frames'],
+        ['filmframe', '35mm contact sheet — film frame stamps']
       ];
-      var ART_KEYS = ['awning', 'teddy', 'bunny', 'linefloral', 'roses', 'pampas'];
+      var ART_KEYS = ['awning', 'teddy', 'bunny', 'linefloral', 'roses', 'pampas', 'sprockets', 'crosshair', 'ribbon', 'sparklemin'];
       var BLOCK_FONT = "'Fredoka', 'Poppins', sans-serif";
-      function styleBandFactor() { return { classic: 1, wedding: 1.6, turns: 1.4, blocks: 1.65, monogram: 2, bignum: 1.6 }[titleStyle] || 1; }
+      function styleBandFactor() { return { classic: 1, wedding: 1.6, turns: 1.4, blocks: 1.65, monogram: 2, bignum: 1.6, minimal: 1.35, editorial: 1.45, filmframe: 1.4 }[titleStyle] || 1; }
       function hasArt(k) { return themeArt.indexOf(k) >= 0; }
       function themeArtTop(W) { return hasArt('awning') ? Math.round(W * 0.085) : 0; }
       function apal(k, d) { return artPal && artPal[k] ? artPal[k] : d; }
@@ -43527,6 +43621,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         else if (hasArt('bunny')) { cx = x + w * 0.38; maxW = w * 0.58; }
         else if (hasArt('linefloral') || hasArt('pampas')) maxW = w * 0.64;
         else if (hasArt('roses')) maxW = w * 0.74;
+        else if (hasArt('ribbon')) maxW = Math.min(maxW, w * 0.62);
+        else if (hasArt('sparklemin')) maxW = Math.min(maxW, w * 0.68);
+        else if (hasArt('sprockets')) maxW = Math.min(maxW, w * 0.76);
         var rows = [];
         var fit = function (font, text, size, min, sp) {
           ctx.font = fontString(font, Math.round(size));
@@ -43536,6 +43633,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         };
         var kick = function (sz) { if (k) rows.push({ t: kU, f: currentDateFont, s: fit(currentDateFont, kU, sz, sz * 0.5, 0.3), sp: 0.3 }); };
         var dateRow = function (sz) { if (dateText) rows.push({ t: dateText.toUpperCase(), f: currentDateFont, s: fit(currentDateFont, dateText.toUpperCase(), sz, sz * 0.6, 0.22), sp: 0.22, a: 0.85 }); };
+        var subCombinedRow = function (sz) {
+          var sub = (kU && dateText) ? (kU + '  ·  ' + dateText.toUpperCase()) : (kU || (dateText ? dateText.toUpperCase() : ''));
+          if (sub) rows.push({ t: sub, f: currentDateFont, s: fit(currentDateFont, sub, sz, Math.max(9, sz * 0.55), 0.24), sp: 0.24, a: 0.78 });
+        };
         var nameRow = function (sz, min) {
           if (!name) return;
           sz *= titleSizeMultiplier;
@@ -43567,6 +43668,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           case 'blocks': if (name) rows.push({ blocks: name.toUpperCase(), s: h * 0.36 }); kick(h * 0.11); dateRow(h * 0.07); break;
           case 'monogram': rows.push({ mono: initialsOf(nameRaw || 'A B'), s: h * 0.4 }); nameRow(h * 0.2, h * 0.1); dateRow(h * 0.07); break;
           case 'bignum': nameRow(h * 0.36, h * 0.16); dateRow(h * 0.08); break;
+          case 'minimal': nameRow(h * 0.38, h * 0.15); subCombinedRow(h * 0.105); break;
+          case 'editorial': kick(h * 0.095); nameRow(h * 0.36, h * 0.145); dateRow(h * 0.085); break;
+          case 'filmframe': kick(h * 0.095); nameRow(h * 0.34, h * 0.145); dateRow(h * 0.085); break;
           default: nameRow(h * 0.4, h * 0.16); dateRow(h * 0.08);
         }
         if (!rows.length) return;
@@ -43578,9 +43682,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         });
         var gap = function (r, prev) { return r.s * 0.3 + (prev ? prev.s * (prev.blocks ? 0.2 : prev.mono ? 0.12 : 0.04) : 0); };
         var total = rows.reduce(function (a, r, i) { return a + r.s + (i ? gap(r, rows[i - 1]) : 0); }, 0);
-        var scale = Math.min(1, (h * 0.9) / total);
+        var availFrac = (titleStyle === 'minimal' || titleStyle === 'editorial' || titleStyle === 'filmframe')
+          ? (backdropPreset === 'checker' ? 0.68 : 0.78)
+          : 0.9;
+        var scale = Math.min(1, (h * availFrac) / total);
         if (scale < 1) { rows.forEach(function (r) { r.s *= scale; }); total *= scale; }
-        var yy = y + (h - total) / 2;
+        var yy = y + (h - total) * (backdropPreset === 'checker' ? 0.42 : 0.5);
         // Busy backdrop behind the block (confetti, lines)? Soften it, like the classic title.
         var widest = 0;
         rows.forEach(function (r) {
@@ -43591,6 +43698,27 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         calmBox(ctx, cx, yy, yy + total, Math.min(maxW, widest) / 2, x, y, w, h);
         ctx.save();
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        if (titleStyle === 'minimal') {
+          var rulePad = w * 0.08;
+          ctx.strokeStyle = textColor; ctx.globalAlpha = 0.22; ctx.lineWidth = Math.max(1, h * 0.01);
+          ctx.beginPath(); ctx.moveTo(x + rulePad, y + h * 0.09); ctx.lineTo(x + w - rulePad, y + h * 0.09); ctx.stroke();
+          ctx.globalAlpha = 1;
+        } else if (titleStyle === 'editorial') {
+          var ePad = w * 0.08;
+          ctx.strokeStyle = textColor; ctx.globalAlpha = 0.24; ctx.lineWidth = Math.max(1, h * 0.01);
+          ctx.beginPath();
+          ctx.moveTo(x + ePad, y + h * 0.06); ctx.lineTo(x + w - ePad, y + h * 0.06);
+          ctx.moveTo(x + ePad, y + h * 0.94); ctx.lineTo(x + w - ePad, y + h * 0.94);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        } else if (titleStyle === 'filmframe') {
+          var fPad = w * 0.095;
+          ctx.strokeStyle = textColor; ctx.globalAlpha = 0.22; ctx.lineWidth = Math.max(1, h * 0.01);
+          ctx.beginPath();
+          ctx.moveTo(x + fPad, y + h * 0.08); ctx.lineTo(x + w - fPad, y + h * 0.08);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
         // Big number behind the name.
         if (titleStyle === 'bignum') {
           var num = (k.match(/\d+/) || nameRaw.match(/\d+/) || [k])[0];
@@ -43685,6 +43813,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var bb = band.y + band.h;
         if (hasArt('teddy')) { var ts = Math.min(band.h * 1.05, band.w * 0.4); drawTeddy(ctx, band.x + ts * 0.4, bb - ts * 0.03, ts); }
         if (hasArt('bunny')) { var bs = Math.min(band.h * 1.0, band.w * 0.4); drawBunny(ctx, band.x + band.w - bs * 0.4, bb - bs * 0.03, bs); }
+        if (hasArt('sprockets')) drawSprockets(ctx, W, H);
+        if (hasArt('crosshair')) drawCrosshairs(ctx, W, H, band);
+        if (hasArt('ribbon')) {
+          var rbs = Math.min(band.h * 0.17, band.w * 0.052);
+          drawMinimalRibbon(ctx, band.x + band.w - rbs * 1.35, band.y + band.h * 0.52, rbs);
+        }
+        if (hasArt('sparklemin')) drawMinimalSparkles(ctx, W, H, band);
         ctx.restore();
       }
       function drawAwning(ctx, W, ah) {
@@ -43867,6 +44002,64 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         });
         ctx.restore();
       }
+      function drawSprockets(ctx, W, H) {
+        var u = Math.min(W, H), sw = Math.max(8, u * 0.032), sh = sw * 1.35, step = sh * 1.75;
+        var lx = u * 0.025, rx = W - u * 0.025 - sw;
+        var bgLum = (typeof backdropBaseColor === 'function' && typeof lumOf === 'function') ? lumOf(backdropBaseColor(backdropPreset)) : 0;
+        ctx.save();
+        ctx.fillStyle = apal('sprocket', bgLum < 0.4 ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.14)');
+        for (var yy = step * 0.35; yy < H - sh * 0.6; yy += step) {
+          roundRect(ctx, lx, yy, sw, sh, sw * 0.22); ctx.fill();
+          roundRect(ctx, rx, yy, sw, sh, sw * 0.22); ctx.fill();
+        }
+        ctx.restore();
+      }
+      function drawCrosshairs(ctx, W, H, band) {
+        var col = apal('line', textColor), u = Math.min(W, H), m = u * 0.034, arm = u * 0.018;
+        ctx.save();
+        ctx.strokeStyle = col; ctx.globalAlpha = 0.55; ctx.lineWidth = Math.max(1, u * 0.0028);
+        [[m, m], [W - m, m], [m, H - m], [W - m, H - m]].forEach(function (pt) {
+          ctx.beginPath();
+          ctx.moveTo(pt[0] - arm, pt[1]); ctx.lineTo(pt[0] + arm, pt[1]);
+          ctx.moveTo(pt[0], pt[1] - arm); ctx.lineTo(pt[0], pt[1] + arm);
+          ctx.stroke();
+        });
+        var dotR = Math.max(2.5, u * 0.0075);
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.arc(W - m - u * 0.08, m, dotR, 0, Math.PI * 2); ctx.fill();
+        ctx.font = '700 ' + Math.max(9, Math.round(u * 0.018)) + "px 'Courier New', monospace";
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText('REC', W - m - u * 0.062, m);
+        ctx.restore();
+      }
+      function drawMinimalRibbon(ctx, cx, cy, r) {
+        var col = apal('line', textColor);
+        ctx.save();
+        ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.5, r * 0.09); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.globalAlpha = 0.85;
+        [-1, 1].forEach(function (s) {
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.bezierCurveTo(cx + s * r * 0.85, cy - r * 0.72, cx + s * r * 1.15, cy + r * 0.35, cx, cy + r * 0.06);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(cx, cy + r * 0.06);
+          ctx.quadraticCurveTo(cx + s * r * 0.38, cy + r * 0.55, cx + s * r * 0.62, cy + r * 1.05);
+          ctx.stroke();
+        });
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.arc(cx, cy + r * 0.04, r * 0.14, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+      function drawMinimalSparkles(ctx, W, H, band) {
+        var col = apal('line', textColor), u = Math.min(W, H), r = Math.min(band.h * 0.095, u * 0.028);
+        ctx.save();
+        ctx.fillStyle = col; ctx.globalAlpha = 0.65;
+        drawStar(ctx, band.x + band.w * 0.068, band.y + band.h * 0.34, r, 4, 0, col, 0.65);
+        drawStar(ctx, band.x + band.w * 0.932, band.y + band.h * 0.68, r * 0.72, 4, 0, col, 0.5);
+        drawStar(ctx, W * 0.07, H * 0.032, r * 0.68, 4, 0, col, 0.55);
+        ctx.restore();
+      }
 
       // ---- Landscape 4R layouts (event name in its own panel) ----
       function landscapeCells(key, W, H) {
@@ -43902,12 +44095,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         drawBackdrop(ctx, W, H);
         var L = landscapeCells(layoutKey, W, H);
         L.shots.forEach(function (c, i) {
-          ctx.save();
-          ctx.shadowColor = 'rgba(40,30,20,0.25)'; ctx.shadowBlur = Math.round(16 * sc); ctx.shadowOffsetY = Math.round(5 * sc);
-          ctx.fillStyle = currentFrameColor; ctx.fillRect(c.x, c.y, c.w, c.h);
-          ctx.restore();
-          var pad = Math.max(6, Math.min(c.w, c.h) * 0.03);
-          if (shots[i]) drawImageCover(ctx, shots[i], c.x + pad, c.y + pad, c.w - 2 * pad, c.h - 2 * pad);
+          drawStyledCell(ctx, shots[i], c.x, c.y, c.w, c.h, sc, 0.03, 6, 0.25);
         });
         var t = L.title;
         drawLabelBand(ctx, t.w, t.y, t.h, labelInput.value, t.x);
@@ -44073,16 +44261,32 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         ctx.putImageData(im, x, y);
       }
       var receiptCustomNote = '';
+      var receiptStyle = 'classic';
+      var RECEIPT_STYLES = [
+        ['classic', 'Classic POS Receipt'],
+        ['player', 'Now Playing (Music Player)'],
+        ['mixtape', 'Mixtape Tracklist'],
+        ['statcard', 'Collectible Stat Card'],
+        ['zine', 'Pop Zine Cover'],
+        ['gazette', 'Daily Gazette Front Page'],
+        ['editorial', 'Atelier Magazine Cover'],
+        ['wanted', 'Retro Bounty Poster'],
+        ['ticket', 'Vintage Admit-One Ticket'],
+        ['wedding', 'Keepsake Vow Receipt'],
+        ['minimal', 'Minimalist Studio Tag']
+      ];
       function composeReceipt(layoutKey, targetCanvas, shots) {
-        const W = RECEIPT_W, M = 34, inner = W - 2 * M, color = !!layoutDef(layoutKey).color;
+        const W = RECEIPT_W, color = !!layoutDef(layoutKey).color;
         const sc = (!receiptPrintGrey && isOutputTarget(targetCanvas)) ? 2 : 1;
+        const style = RECEIPT_STYLES.some(x => x[0] === receiptStyle) ? receiptStyle : 'classic';
         const mono = "'Courier New', Courier, 'Liberation Mono', monospace";
+        const sans = "'Inter', 'Manrope', system-ui, -apple-system, sans-serif";
+        const display = "'Bebas Neue', Impact, 'Arial Narrow', sans-serif";
+        const serif = "'Playfair Display', 'Times New Roman', Georgia, serif";
+        const roundF = "'Fredoka', 'Poppins', system-ui, sans-serif";
         const n = Math.max(1, layoutDef(layoutKey).shots);
-        let ph = Math.round(inner * 0.92), gap = 14;
-        if (n === 1) { ph = Math.round(inner * 1.15); gap = 0; }
-        else if (n === 2) { ph = Math.round(inner * 0.82); gap = 14; }
-        else if (n === 4) { ph = Math.round(inner * 0.72); gap = 12; }
-        const name = ((labelInput.value || '').trim() || 'PHOTO BOOTH').toUpperCase();
+        const nameRaw = (labelInput.value || '').trim() || 'PHOTO BOOTH';
+        const name = nameRaw.toUpperCase();
         const kick = (kickerText || '').trim().toUpperCase();
         const when = receiptTime(sessionNumber || 0);
         const pad2 = v => String(v).padStart(2, '0');
@@ -44090,83 +44294,744 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const timeTxt = when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toUpperCase();
         const order = '#' + String(sessionNumber || 1).padStart(4, '0');
         const rNote = (typeof receiptCustomNote !== 'undefined' && receiptCustomNote ? receiptCustomNote.trim() : '');
-        const rNoteH = rNote ? 34 : 0;
-        // Measure the event name (wrapped to 2 lines at most, as big as fits).
+        const rNoteU = rNote ? rNote.toUpperCase() : '';
+        const paperBg = (color && !receiptPrintGrey && typeof backdropColor === 'string' && backdropColor && typeof lumOf === 'function' && lumOf(backdropColor) > 0.72) ? backdropColor : '#ffffff';
+        const ink = (color && !receiptPrintGrey && typeof textColor === 'string' && textColor && typeof lumOf === 'function' && lumOf(textColor) < 0.35) ? textColor : '#000000';
+
         if (!composeReceipt._mx) {
           const mc = document.createElement('canvas'); mc.width = 1; mc.height = 1;
           composeReceipt._mx = mc.getContext('2d');
         }
         const mx = composeReceipt._mx;
-        let fs = 54, lines = [name];
-        for (; fs >= 26; fs -= 2) {
-          mx.font = '700 ' + fs + 'px ' + mono;
-          if (mx.measureText(name).width <= inner) { lines = [name]; break; }
-          const words = name.split(' '); let a = '', b = '';
-          for (const w of words) { if (!b && mx.measureText((a ? a + ' ' : '') + w).width <= inner) a = (a ? a + ' ' : '') + w; else b = (b ? b + ' ' : '') + w; }
-          if (a && b && mx.measureText(b).width <= inner) { lines = [a, b]; break; }
+        const fitText = (txt, fontTpl, maxW, startFs, minFs, allowWrap) => {
+          for (let fs = startFs; fs >= minFs; fs -= 2) {
+            mx.font = fontTpl.replace('{S}', fs);
+            if (mx.measureText(txt).width <= maxW) return { fs, lines: [txt] };
+            if (allowWrap) {
+              const words = txt.split(/\s+/); let a = '', b = '';
+              for (const w of words) {
+                if (!b && mx.measureText((a ? a + ' ' : '') + w).width <= maxW) a = (a ? a + ' ' : '') + w;
+                else b = (b ? b + ' ' : '') + w;
+              }
+              if (a && b && mx.measureText(b).width <= maxW) return { fs, lines: [a, b] };
+            }
+          }
+          mx.font = fontTpl.replace('{S}', minFs);
+          return { fs: minFs, lines: [txt] };
+        };
+
+        // Helper builders used after targetCanvas dimensions are set
+        const makeHelpers = (ctx) => {
+          const drawTxt = (t, fontTpl, sz, align, x, y, col) => {
+            ctx.fillStyle = col || ink;
+            ctx.font = fontTpl.replace('{S}', Math.round(sz));
+            ctx.textAlign = align || 'center';
+            ctx.fillText(t, x, y);
+          };
+          const drawBarcode = (x, y, w, h, seedSalt) => {
+            let seed = Math.imul((sessionNumber || 1) + (seedSalt || 0), 2654435761) >>> 0, bx = x;
+            const bend = x + w;
+            ctx.fillStyle = ink;
+            while (bx < bend) {
+              seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+              const bw = 2 + (seed >>> 28) % 4;
+              if ((seed >>> 8) & 1) ctx.fillRect(bx, y, Math.min(bw, bend - bx), h);
+              bx += bw + 1 + ((seed >>> 16) % 3);
+            }
+          };
+          const drawPhoto = (img, x, y, w, h, opts) => {
+            const o = opts || {};
+            if (o.offsetShadow) {
+              ctx.fillStyle = ink;
+              ctx.fillRect(x + o.offsetShadow, y + o.offsetShadow, w, h);
+            }
+            ctx.save();
+            if (o.radius) { roundRect(ctx, x, y, w, h, o.radius); ctx.clip(); }
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(x, y, w, h);
+            if (img) drawImageCover(ctx, img, x, y, w, h);
+            ctx.restore();
+            if (!color || receiptPrintGrey) ditherRegion(ctx, x * sc, y * sc, w * sc, h * sc);
+            if (o.border) {
+              ctx.save();
+              ctx.strokeStyle = ink; ctx.lineWidth = o.border;
+              if (o.radius) { roundRect(ctx, x, y, w, h, o.radius); ctx.stroke(); }
+              else ctx.strokeRect(x, y, w, h);
+              if (o.doubleInset) {
+                ctx.lineWidth = Math.max(1, o.border * 0.45);
+                ctx.strokeRect(x + o.doubleInset, y + o.doubleInset, w - 2 * o.doubleInset, h - 2 * o.doubleInset);
+              }
+              ctx.restore();
+            }
+            ctx.fillStyle = ink;
+          };
+          const drawDash = (M, inner, yy) => {
+            ctx.fillStyle = ink; ctx.font = '400 22px ' + mono; ctx.textAlign = 'left';
+            let t = ''; while (ctx.measureText(t + '- ').width <= inner) t += '- ';
+            ctx.fillText(t.trim(), M + (inner - ctx.measureText(t.trim()).width) / 2, yy);
+          };
+          const drawRule = (x1, x2, yy, lw) => {
+            ctx.save(); ctx.strokeStyle = ink; ctx.lineWidth = lw || 2;
+            ctx.beginPath(); ctx.moveTo(x1, yy); ctx.lineTo(x2, yy); ctx.stroke();
+            ctx.restore();
+          };
+          const drawHeart = (cx, cy, r, filled) => {
+            ctx.save(); ctx.translate(cx, cy);
+            ctx.beginPath();
+            ctx.moveTo(0, r * 0.72);
+            ctx.bezierCurveTo(-r * 1.15, r * 0.05, -r * 0.95, -r * 0.9, 0, -r * 0.3);
+            ctx.bezierCurveTo(r * 0.95, -r * 0.9, r * 1.15, r * 0.05, 0, r * 0.72);
+            ctx.closePath();
+            if (filled) { ctx.fillStyle = ink; ctx.fill(); }
+            else { ctx.strokeStyle = ink; ctx.lineWidth = Math.max(2, r * 0.16); ctx.stroke(); }
+            ctx.restore();
+          };
+          const drawStarburst = (cx, cy, r, pts, rot, fillCol, strokeCol, lw) => {
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot || 0);
+            ctx.beginPath();
+            for (let i = 0; i < pts * 2; i++) {
+              const rr = i % 2 ? r * 0.56 : r, a = (i * Math.PI) / pts;
+              if (i === 0) ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+              else ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+            }
+            ctx.closePath();
+            if (fillCol) { ctx.fillStyle = fillCol; ctx.fill(); }
+            if (strokeCol) { ctx.strokeStyle = strokeCol; ctx.lineWidth = lw || 2; ctx.stroke(); }
+            ctx.restore();
+          };
+          const drawHalftone = (x, y, w, h, step, rMax) => {
+            ctx.save(); ctx.fillStyle = ink;
+            for (let yy = y + step * 0.5; yy < y + h; yy += step) {
+              const row = Math.round((yy - y) / step);
+              const t = 1 - (yy - y) / Math.max(1, h);
+              const rad = Math.max(1, rMax * (0.35 + 0.65 * t));
+              for (let xx = x + (row % 2 ? step * 0.5 : 0) + 4; xx < x + w - 4; xx += step) {
+                ctx.beginPath(); ctx.arc(xx, yy, rad, 0, Math.PI * 2); ctx.fill();
+              }
+            }
+            ctx.restore();
+          };
+          return { drawTxt, drawBarcode, drawPhoto, drawDash, drawRule, drawHeart, drawStarburst, drawHalftone };
+        };
+
+        const initCanvas = (H) => {
+          targetCanvas.width = Math.round(W * sc); targetCanvas.height = Math.round(H * sc);
+          const ctx = targetCanvas.getContext('2d');
+          ctx.save();
+          if (sc !== 1) ctx.scale(sc, sc);
+          ctx.fillStyle = paperBg; ctx.fillRect(0, 0, W, H);
+          ctx.fillStyle = ink; ctx.textBaseline = 'alphabetic';
+          return ctx;
+        };
+        const finishCanvas = (ctx) => {
+          ctx.restore();
+          const ov = overlay; overlay = null;
+          const rMono = receiptPrintGrey ? 'grey' : (color ? '' : 'f:bw');
+          if (typeof pbCaptureDecorBase === 'function') pbCaptureDecorBase(targetCanvas, layoutKey, shots, rMono, true);
+          try { if (typeof drawDecorLayer === 'function') drawDecorLayer(ctx, targetCanvas.width, targetCanvas.height, rMono); } finally { overlay = ov; }
+          return targetCanvas;
+        };
+
+        // ---- 1. NOW PLAYING (MUSIC PLAYER) ----
+        if (style === 'player') {
+          const M = 32, inner = W - 2 * M;
+          const ph = n === 1 ? Math.round(inner * 1.02) : n === 2 ? Math.round(inner * 0.78) : n === 3 ? Math.round(inner * 0.66) : Math.round(inner * 0.54);
+          const gap = n === 1 ? 0 : 12;
+          const fitTitle = fitText(nameRaw, '700 {S}px ' + sans, inner - 64, 34, 20, true);
+          const titleBlockH = fitTitle.lines.length * fitTitle.fs * 1.15 + 34;
+          const rNoteH = rNoteU ? 30 : 0;
+          const H = Math.round(28 + 46 + 18 + n * ph + (n - 1) * gap + 28 + titleBlockH + 22 + 48 + 70 + 46 + rNoteH + 62 + 34);
+          const ctx = initCanvas(H), h = makeHelpers(ctx);
+          let y = 28;
+          // Top status bar: eq bars + NOW PLAYING + HI-FI · #0001
+          ctx.fillStyle = ink;
+          [10, 17, 13].forEach((bh, idx) => ctx.fillRect(M + idx * 6, y + 20 - bh, 4, bh));
+          h.drawTxt('NOW PLAYING', '800 {S}px ' + sans, 17, 'left', M + 24, y + 20);
+          h.drawTxt('HI-FI · ' + order, '700 {S}px ' + mono, 16, 'right', W - M, y + 20);
+          y += 34;
+          h.drawRule(M, W - M, y, 1.5);
+          y += 22;
+          // Photo album art(s)
+          for (let i = 0; i < n; i++) {
+            const py = y + i * (ph + gap);
+            h.drawPhoto(shots[i], M, py, inner, ph, { radius: 14, border: 2.5 });
+            if (n > 1) {
+              ctx.fillStyle = paperBg; ctx.fillRect(M + 10, py + 10, 34, 24);
+              ctx.strokeStyle = ink; ctx.lineWidth = 1.5; ctx.strokeRect(M + 10, py + 10, 34, 24);
+              h.drawTxt(pad2(i + 1), '700 {S}px ' + mono, 15, 'center', M + 27, py + 27);
+            }
+          }
+          y += n * ph + (n - 1) * gap + 32;
+          // Track title + artist/kicker + heart icon
+          const heartY = y + fitTitle.fs * 0.38;
+          h.drawHeart(W - M - 18, heartY, 15, true);
+          fitTitle.lines.forEach((ln, li) => {
+            h.drawTxt(ln, '800 {S}px ' + sans, fitTitle.fs, 'left', M, y + fitTitle.fs * 0.8 + li * fitTitle.fs * 1.15);
+          });
+          y += fitTitle.lines.length * fitTitle.fs * 1.15 + 8;
+          const subStr = (kick || 'LIVE MEMORY SESSION') + '  ·  ' + dateTxt;
+          const subFit = fitText(subStr, '600 {S}px ' + sans, inner - 56, 17, 13, false);
+          h.drawTxt(subFit.lines[0], '600 {S}px ' + sans, subFit.fs, 'left', M, y + 14);
+          y += 38;
+          // Scrubber progress bar
+          const pct = 0.34 + ((sessionNumber || 1) % 5) * 0.08;
+          const kx = M + inner * pct;
+          ctx.fillStyle = ink;
+          ctx.strokeStyle = ink; ctx.lineWidth = 2;
+          roundRect(ctx, M, y, inner, 6, 3); ctx.stroke();
+          roundRect(ctx, M, y, inner * pct, 6, 3); ctx.fill();
+          ctx.beginPath(); ctx.arc(kx, y + 3, 9, 0, Math.PI * 2); ctx.fill();
+          const playedSec = Math.round(204 * pct), totalSec = 204;
+          const fmtSec = s => pad2(Math.floor(s / 60)) + ':' + pad2(s % 60);
+          h.drawTxt(fmtSec(playedSec), '700 {S}px ' + mono, 15, 'left', M, y + 28);
+          h.drawTxt(fmtSec(totalSec), '700 {S}px ' + mono, 15, 'right', W - M, y + 28);
+          y += 56;
+          // Playback controls: Shuffle | Prev | Play/Pause Circle | Next | Repeat
+          const cx = W / 2, cy = y + 18;
+          ctx.strokeStyle = ink; ctx.fillStyle = ink; ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+          // Shuffle
+          const sx = cx - 172;
+          ctx.beginPath(); ctx.moveTo(sx - 12, cy - 7); ctx.lineTo(sx - 4, cy - 7); ctx.lineTo(sx + 6, cy + 7); ctx.lineTo(sx + 13, cy + 7);
+          ctx.moveTo(sx - 12, cy + 7); ctx.lineTo(sx - 4, cy + 7); ctx.lineTo(sx + 6, cy - 7); ctx.lineTo(sx + 13, cy - 7); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(sx + 9, cy - 11); ctx.lineTo(sx + 15, cy - 7); ctx.lineTo(sx + 9, cy - 3);
+          ctx.moveTo(sx + 9, cy + 3); ctx.lineTo(sx + 15, cy + 7); ctx.lineTo(sx + 9, cy + 11); ctx.stroke();
+          // Prev
+          const px0 = cx - 88;
+          ctx.fillRect(px0 - 13, cy - 11, 3.5, 22);
+          ctx.beginPath(); ctx.moveTo(px0 - 8, cy); ctx.lineTo(px0 + 11, cy - 11); ctx.lineTo(px0 + 11, cy + 11); ctx.closePath(); ctx.fill();
+          // Center Pause button
+          ctx.beginPath(); ctx.arc(cx, cy, 27, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = paperBg;
+          ctx.fillRect(cx - 8, cy - 10, 5.5, 20); ctx.fillRect(cx + 2.5, cy - 10, 5.5, 20);
+          // Next
+          ctx.fillStyle = ink;
+          const nx0 = cx + 88;
+          ctx.fillRect(nx0 + 9.5, cy - 11, 3.5, 22);
+          ctx.beginPath(); ctx.moveTo(nx0 + 8, cy); ctx.lineTo(nx0 - 11, cy - 11); ctx.lineTo(nx0 - 11, cy + 11); ctx.closePath(); ctx.fill();
+          // Repeat
+          const rx = cx + 172;
+          ctx.beginPath();
+          ctx.moveTo(rx - 11, cy - 2); ctx.lineTo(rx - 11, cy - 8); ctx.lineTo(rx + 10, cy - 8);
+          ctx.moveTo(rx + 11, cy + 2); ctx.lineTo(rx + 11, cy + 8); ctx.lineTo(rx - 10, cy + 8);
+          ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(rx + 6, cy - 12); ctx.lineTo(rx + 12, cy - 8); ctx.lineTo(rx + 6, cy - 4);
+          ctx.moveTo(rx - 6, cy + 4); ctx.lineTo(rx - 12, cy + 8); ctx.lineTo(rx - 6, cy + 12); ctx.stroke();
+          y += 66;
+          // Symmetrical audio waveform bars
+          const bars = 31, bw = 5, bgap = 5, waveW = bars * bw + (bars - 1) * bgap, wx0 = (W - waveW) / 2;
+          let wseed = (sessionNumber || 1) * 7919;
+          for (let b = 0; b < bars; b++) {
+            wseed = (wseed * 48271) % 2147483647;
+            const env = 1 - Math.abs(b - (bars - 1) / 2) / (bars / 2);
+            const bh = Math.max(6, Math.round((8 + (wseed % 20)) * (0.45 + 0.55 * env)));
+            ctx.fillRect(wx0 + b * (bw + bgap), y + (28 - bh) / 2, bw, bh);
+          }
+          y += 46;
+          if (rNoteU) { h.drawTxt(rNoteU, '700 {S}px ' + mono, 17, 'center', W / 2, y); y += rNoteH; }
+          h.drawBarcode((W - 320) / 2, y, 320, 40, 11);
+          y += 62;
+          h.drawTxt('ON REPEAT  ·  ' + order.replace('#', '') + '  ·  ' + timeTxt, '700 {S}px ' + mono, 15, 'center', W / 2, y);
+          return finishCanvas(ctx);
         }
+
+        // ---- 2. MIXTAPE TRACKLIST ----
+        if (style === 'mixtape') {
+          const M = 32, inner = W - 2 * M;
+          const ph = n === 1 ? Math.round(inner * 0.96) : n === 2 ? Math.round(inner * 0.78) : n === 3 ? Math.round(inner * 0.68) : Math.round(inner * 0.56);
+          const gap = n === 1 ? 0 : 12;
+          const fitTitle = fitText(name, '700 {S}px ' + mono, inner, 38, 22, true);
+          const headH = 128 + fitTitle.lines.length * fitTitle.fs * 1.12 + (kick ? 30 : 0) + 46;
+          const rNoteH = rNoteU ? 32 : 0;
+          const H = Math.round(headH + 46 + n * ph + (n - 1) * gap + 220 + rNoteH + 92);
+          const ctx = initCanvas(H), h = makeHelpers(ctx);
+          let y = 28;
+          // Vector Retro Audio Cassette
+          const cw = 166, ch = 96, cx0 = (W - cw) / 2;
+          ctx.strokeStyle = ink; ctx.fillStyle = ink; ctx.lineWidth = 3;
+          roundRect(ctx, cx0, y, cw, ch, 9); ctx.stroke();
+          ctx.lineWidth = 1.8;
+          roundRect(ctx, cx0 + 14, y + 12, cw - 28, 44, 4); ctx.stroke();
+          ctx.fillRect(cx0 + 14, y + 12, cw - 28, 12);
+          // Reels inside cassette window
+          [cx0 + 48, cx0 + cw - 48].forEach(rx => {
+            ctx.beginPath(); ctx.arc(rx, y + 40, 11, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(rx, y + 40, 4, 0, Math.PI * 2); ctx.fill();
+          });
+          ctx.fillRect(cx0 + 64, y + 36, cw - 128, 8);
+          // Bottom cassette trapezoid
+          ctx.beginPath();
+          ctx.moveTo(cx0 + 28, y + ch); ctx.lineTo(cx0 + 36, y + ch - 20);
+          ctx.lineTo(cx0 + cw - 36, y + ch - 20); ctx.lineTo(cx0 + cw - 28, y + ch);
+          ctx.stroke();
+          [cx0 + 52, cx0 + cw - 52].forEach(hx => { ctx.beginPath(); ctx.arc(hx, y + ch - 10, 3.5, 0, Math.PI * 2); ctx.fill(); });
+          y += ch + 32;
+          h.drawTxt('SIDE A  //  MIXTAPE RECEIPT', '700 {S}px ' + mono, 17, 'center', W / 2, y);
+          y += 10;
+          fitTitle.lines.forEach(ln => { y += fitTitle.fs; h.drawTxt(ln, '700 {S}px ' + mono, fitTitle.fs, 'center', W / 2, y); y += fitTitle.fs * 0.12; });
+          if (kick) { y += 30; h.drawTxt(kick, '700 {S}px ' + mono, 19, 'center', W / 2, y); }
+          y += 32;
+          h.drawTxt(dateTxt + '  ·  ' + timeTxt, '400 {S}px ' + mono, 18, 'center', W / 2, y);
+          y += 24; h.drawDash(M, inner, y); y += 22;
+          for (let i = 0; i < n; i++) {
+            const py = y + i * (ph + gap);
+            h.drawPhoto(shots[i], M, py, inner, ph, { border: 2 });
+            ctx.fillStyle = ink; ctx.fillRect(M, py, 44, 24);
+            h.drawTxt('A' + (i + 1), '700 {S}px ' + mono, 15, 'center', M + 22, py + 17, paperBg);
+          }
+          y += n * ph + (n - 1) * gap + 26;
+          h.drawDash(M, inner, y); y += 32;
+          h.drawTxt('NO.  TRACK', '700 {S}px ' + mono, 18, 'left', M, y);
+          h.drawTxt('TIME', '700 {S}px ' + mono, 18, 'right', W - M, y);
+          y += 18; h.drawRule(M, W - M, y, 1.5);
+          [['01   GOOD ENERGY', '02:18'], ['02   GOLDEN HOUR SNAP', '03:04'], ['03   CORE MEMORY (LIVE)', '02:41']].forEach(r => {
+            y += 34; h.drawTxt(r[0], '400 {S}px ' + mono, 20, 'left', M, y); h.drawTxt(r[1], '400 {S}px ' + mono, 20, 'right', W - M, y);
+          });
+          y += 24; h.drawDash(M, inner, y);
+          y += 38; h.drawTxt('RUNTIME', '700 {S}px ' + mono, 26, 'left', M, y); h.drawTxt('08:03  (INF)', '700 {S}px ' + mono, 26, 'right', W - M, y);
+          y += 22; h.drawDash(M, inner, y);
+          y += 18;
+          h.drawBarcode(M + 40, y, inner - 80, 52, 23);
+          y += 52 + 26;
+          if (rNoteU) { h.drawTxt(rNoteU, '700 {S}px ' + mono, 18, 'center', W / 2, y); y += rNoteH; }
+          h.drawTxt('TAPE ' + order + '  ·  KEEP ON REPLAY', '700 {S}px ' + mono, 17, 'center', W / 2, y);
+          return finishCanvas(ctx);
+        }
+
+        // ---- 3. COLLECTIBLE STAT CARD ----
+        if (style === 'statcard') {
+          const M = 18, cM = 34, cW = W - 2 * cM;
+          const ph = n === 1 ? Math.round(cW * 1.02) : n === 2 ? Math.round(cW * 0.74) : n === 3 ? Math.round(cW * 0.62) : Math.round(cW * 0.5);
+          const gap = n === 1 ? 0 : 10;
+          const titleFit = fitText(name, '800 {S}px ' + display, cW - 140, 44, 24, false);
+          const rNoteH = rNoteU ? 26 : 0;
+          const H = Math.round(36 + 76 + 34 + n * ph + (n - 1) * gap + 18 + 150 + 86 + 96 + rNoteH + 20);
+          const ctx = initCanvas(H), h = makeHelpers(ctx);
+          // Double frame + corner blocks
+          ctx.strokeStyle = ink; ctx.lineWidth = 4; ctx.strokeRect(M, M, W - 2 * M, H - 2 * M);
+          ctx.lineWidth = 1.5; ctx.strokeRect(M + 7, M + 7, W - 2 * (M + 7), H - 2 * (M + 7));
+          ctx.fillStyle = ink;
+          [[M, M], [W - M - 12, M], [M, H - M - 12], [W - M - 12, H - M - 12]].forEach(c => ctx.fillRect(c[0], c[1], 12, 12));
+          let y = 38;
+          // Top Card Banner + PWR Badge
+          ctx.fillStyle = ink; ctx.fillRect(cM, y, cW - 118, 56);
+          h.drawTxt(titleFit.lines[0], '700 {S}px ' + display, titleFit.fs, 'center', cM + (cW - 118) / 2, y + 40, paperBg);
+          ctx.strokeStyle = ink; ctx.lineWidth = 3; ctx.strokeRect(W - cM - 108, y, 108, 56);
+          h.drawTxt('PWR', '700 {S}px ' + mono, 13, 'center', W - cM - 54, y + 16);
+          h.drawTxt('100', '800 {S}px ' + display, 28, 'center', W - cM - 54, y + 47);
+          y += 74;
+          h.drawTxt('★ ' + (kick || 'COLLECTOR EDITION') + '  ·  ' + order, '700 {S}px ' + mono, 15, 'center', W / 2, y);
+          y += 16;
+          for (let i = 0; i < n; i++) {
+            const py = y + i * (ph + gap);
+            h.drawPhoto(shots[i], cM, py, cW, ph, { border: 3, offsetShadow: 4 });
+          }
+          y += n * ph + (n - 1) * gap + 24;
+          // Two Ability Rows
+          h.drawRule(cM, W - cM, y, 2);
+          const skills = [
+            ['RADIANT SMILE', 'Brightens every frame instantly', '90', 8],
+            ['ICONIC POSE', 'Unforgettable main moment', '100', 5]
+          ];
+          skills.forEach((sk, si) => {
+            const ry = y + 36;
+            h.drawStarburst(cM + 18, ry - 4, 14, sk[3], 0, null, ink, 2);
+            h.drawTxt(sk[0], '800 {S}px ' + sans, 19, 'left', cM + 42, ry - 4);
+            h.drawTxt(sk[1], '500 {S}px ' + sans, 14, 'left', cM + 42, ry + 16);
+            h.drawTxt(sk[2], '800 {S}px ' + display, 36, 'right', W - cM, ry + 10);
+            y += 66;
+            if (si === 0) h.drawDash(cM, cW, y + 4);
+          });
+          y += 16;
+          // 3 Stat Boxes
+          const bw = (cW - 16) / 3;
+          [['CHARM', '100'], ['STYLE', '100'], ['VIBE', '100']].forEach((st, idx) => {
+            const bx = cM + idx * (bw + 8);
+            ctx.strokeStyle = ink; ctx.lineWidth = 2;
+            roundRect(ctx, bx, y, bw, 62, 8); ctx.stroke();
+            h.drawTxt(st[0], '700 {S}px ' + mono, 13, 'center', bx + bw / 2, y + 20);
+            h.drawTxt(st[1], '800 {S}px ' + display, 32, 'center', bx + bw / 2, y + 52);
+          });
+          y += 82;
+          // Bottom serial + cute original pixel camera buddy
+          h.drawTxt('SERIES ' + dateTxt, '700 {S}px ' + mono, 14, 'left', cM, y + 14);
+          if (rNoteU) { h.drawTxt(rNoteU, '700 {S}px ' + mono, 15, 'left', cM, y + 36); }
+          h.drawBarcode(cM, y + (rNoteU ? 46 : 26), 270, 36, 37);
+          // Original pixel-inspired camera mascot on right
+          const mx0 = W - cM - 66, my0 = y + 6;
+          ctx.fillStyle = ink;
+          ctx.fillRect(mx0 + 14, my0, 36, 7);
+          ctx.strokeStyle = ink; ctx.lineWidth = 3;
+          roundRect(ctx, mx0, my0 + 7, 64, 46, 6); ctx.stroke();
+          ctx.beginPath(); ctx.arc(mx0 + 32, my0 + 30, 14, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = ink;
+          ctx.beginPath(); ctx.arc(mx0 + 32, my0 + 30, 6, 0, Math.PI * 2); ctx.fill();
+          ctx.fillRect(mx0 + 48, my0 + 13, 8, 6);
+          ctx.fillRect(mx0 + 16, my0 + 53, 6, 12); ctx.fillRect(mx0 + 42, my0 + 53, 6, 12);
+          return finishCanvas(ctx);
+        }
+
+        // ---- 4. POP ZINE / COMIC COVER ----
+        if (style === 'zine') {
+          const M = 22, inner = W - 2 * M;
+          const pM = 46, pW = W - 2 * pM;
+          const ph = n === 1 ? Math.round(pW * 1.1) : n === 2 ? Math.round(pW * 0.78) : n === 3 ? Math.round(pW * 0.66) : Math.round(pW * 0.54);
+          const gap = n === 1 ? 0 : 10;
+          const mastFit = fitText(name, '700 {S}px ' + display, inner - 36, 64, 34, false);
+          const rNoteH = rNoteU ? 30 : 0;
+          const H = Math.round(28 + 60 + 82 + 46 + 24 + n * ph + (n - 1) * gap + 56 + 68 + rNoteH + 40);
+          const ctx = initCanvas(H), h = makeHelpers(ctx);
+          ctx.strokeStyle = ink; ctx.lineWidth = 3.5; ctx.strokeRect(M, M, inner, H - 2 * M);
+          let y = 34;
+          // Halftone header backdrop below top badges
+          h.drawHalftone(M + 6, y + 48, inner - 12, 82, 13, 3.2);
+          // Corner Issue stamps
+          ctx.fillStyle = paperBg; ctx.fillRect(M + 10, y, 108, 46); ctx.fillRect(W - M - 118, y, 108, 46);
+          ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.strokeRect(M + 10, y, 108, 46); ctx.strokeRect(W - M - 118, y, 108, 46);
+          h.drawTxt('ISSUE', '700 {S}px ' + mono, 13, 'center', M + 64, y + 16);
+          h.drawTxt(order.replace('#', ''), '800 {S}px ' + display, 24, 'center', M + 64, y + 40);
+          h.drawTxt('SPECIAL', '700 {S}px ' + mono, 13, 'center', W - M - 64, y + 16);
+          h.drawTxt('EDITION', '700 {S}px ' + display, 22, 'center', W - M - 64, y + 40);
+          y += 126;
+          // Bold tilted outlined masthead
+          ctx.save(); ctx.translate(W / 2, y - 6); ctx.rotate(-0.045);
+          ctx.font = '700 ' + mastFit.fs + 'px ' + display; ctx.textAlign = 'center';
+          ctx.lineJoin = 'round';
+          ctx.strokeStyle = paperBg; ctx.lineWidth = 10; ctx.strokeText(mastFit.lines[0], 0, 0);
+          ctx.fillStyle = ink; ctx.fillText(mastFit.lines[0], 4, 4);
+          ctx.strokeStyle = ink; ctx.lineWidth = 4; ctx.strokeText(mastFit.lines[0], 0, 0);
+          ctx.fillStyle = paperBg; ctx.fillText(mastFit.lines[0], 0, 0);
+          ctx.restore();
+          y += 28;
+          // Sub-banner
+          ctx.fillStyle = ink; ctx.fillRect(M + 20, y, inner - 40, 34);
+          const subK = fitText(kick || 'EVERY MOMENT IS ICONIC', '700 {S}px ' + mono, inner - 60, 18, 12, false);
+          h.drawTxt(subK.lines[0], '700 {S}px ' + mono, subK.fs, 'center', W / 2, y + 23, paperBg);
+          y += 50;
+          // Action burst lines around photo box
+          const blockH = n * ph + (n - 1) * gap;
+          ctx.save();
+          ctx.beginPath(); ctx.rect(M + 6, y - 10, inner - 12, blockH + 20); ctx.clip();
+          ctx.strokeStyle = ink; ctx.lineWidth = 1.5;
+          const bcx = W / 2, bcy = y + blockH / 2;
+          for (let a = 0; a < 36; a++) {
+            const ang = (a / 36) * Math.PI * 2;
+            ctx.beginPath(); ctx.moveTo(bcx, bcy);
+            ctx.lineTo(bcx + Math.cos(ang) * 520, bcy + Math.sin(ang) * 520);
+            ctx.stroke();
+          }
+          ctx.restore();
+          for (let i = 0; i < n; i++) {
+            const py = y + i * (ph + gap);
+            h.drawPhoto(shots[i], pM, py, pW, ph, { border: 3.5 });
+          }
+          // Comic starburst badge AFTER ditherRegion so it stays crisp
+          const sx = W - pM - 28, sy = y + ph - 26;
+          h.drawStarburst(sx, sy, 48, 12, 0.15, paperBg, ink, 3);
+          h.drawTxt('SNAP!', '700 {S}px ' + display, 24, 'center', sx, sy + 8);
+          y += blockH + 26;
+          // Bottom headline banner + barcode
+          ctx.fillStyle = ink; ctx.fillRect(M + 14, y, inner - 28, 36);
+          h.drawTxt('STARRING: ' + (rNoteU || 'YOU & CREW'), '700 {S}px ' + display, 26, 'center', W / 2, y + 28, paperBg);
+          y += 50;
+          ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.strokeRect(M + 14, y, 250, 44);
+          h.drawTxt('DATE: ' + dateTxt, '700 {S}px ' + mono, 15, 'center', M + 139, y + 27);
+          h.drawBarcode(W - M - 230, y, 212, 44, 41);
+          return finishCanvas(ctx);
+        }
+
+        // ---- 5. DAILY GAZETTE FRONT PAGE ----
+        if (style === 'gazette') {
+          const M = 24, inner = W - 2 * M;
+          const ph = n === 1 ? Math.round(inner * 1.02) : n === 2 ? Math.round(inner * 0.78) : n === 3 ? Math.round(inner * 0.66) : Math.round(inner * 0.54);
+          const gap = n === 1 ? 0 : 12;
+          const mast = kick || 'THE DAILY CHRONICLE';
+          const mastFit = fitText(mast, '700 {S}px ' + serif, inner, 32, 18, false);
+          const headFit = fitText(name, '700 {S}px ' + display, inner, 58, 28, true);
+          const headH = 32 + 48 + 34 + headFit.lines.length * headFit.fs * 1.02 + 24;
+          const rNoteH = rNoteU ? 26 : 0;
+          const H = Math.round(headH + n * ph + (n - 1) * gap + 164 + rNoteH + 28);
+          const ctx = initCanvas(H), h = makeHelpers(ctx);
+          ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.strokeRect(M - 8, M - 8, inner + 16, H - 2 * (M - 8));
+          let y = 34;
+          h.drawTxt(mastFit.lines[0], '700 {S}px ' + serif, mastFit.fs, 'center', W / 2, y + 28);
+          y += 40;
+          h.drawRule(M, W - M, y, 2.5);
+          y += 22;
+          h.drawTxt('VOL. 01 · ' + order, '700 {S}px ' + mono, 13, 'left', M, y);
+          h.drawTxt(dateTxt, '700 {S}px ' + mono, 13, 'center', W / 2, y);
+          h.drawTxt('EXTRA EDITION', '700 {S}px ' + mono, 13, 'right', W - M, y);
+          y += 10; h.drawRule(M, W - M, y, 1.5);
+          y += 10;
+          headFit.lines.forEach(ln => { y += headFit.fs * 0.96; h.drawTxt(ln, '700 {S}px ' + display, headFit.fs, 'center', W / 2, y); });
+          y += 22;
+          for (let i = 0; i < n; i++) {
+            const py = y + i * (ph + gap);
+            h.drawPhoto(shots[i], M, py, inner, ph, { border: 2 });
+          }
+          y += n * ph + (n - 1) * gap + 22;
+          h.drawTxt('EXCLUSIVE FRONT PAGE CAPTURE  ·  ' + timeTxt, '700 {S}px ' + mono, 13, 'center', W / 2, y);
+          y += 12; h.drawRule(M, W - M, y, 1.5);
+          y += 24;
+          // 2-column footer
+          const colW = inner / 2 - 12;
+          ctx.save(); ctx.strokeStyle = ink; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(W / 2, y - 14); ctx.lineTo(W / 2, H - M - 8); ctx.stroke();
+          ctx.restore();
+          h.drawTxt('MEMORIES FOR KEEPS', '700 {S}px ' + serif, 17, 'left', M, y + 8);
+          h.drawTxt('Captured on location', '400 {S}px ' + sans, 14, 'left', M, y + 32);
+          h.drawTxt('and printed live.', '400 {S}px ' + sans, 14, 'left', M, y + 52);
+          if (rNoteU) h.drawTxt(rNoteU.slice(0, 22), '700 {S}px ' + mono, 14, 'left', M, y + 78);
+          h.drawBarcode(W / 2 + 14, y, colW - 8, 52, 53);
+          h.drawTxt('PAGE 01 · PRICELESS', '700 {S}px ' + mono, 13, 'center', W / 2 + 14 + (colW - 8) / 2, y + 74);
+          return finishCanvas(ctx);
+        }
+
+        // ---- 6. ATELIER EDITORIAL MAGAZINE COVER ----
+        if (style === 'editorial') {
+          const M = 26, inner = W - 2 * M;
+          const ph = n === 1 ? Math.round(inner * 1.18) : n === 2 ? Math.round(inner * 0.78) : n === 3 ? Math.round(inner * 0.66) : Math.round(inner * 0.54);
+          const gap = n === 1 ? 0 : 12;
+          const mastFit = fitText(name, '700 {S}px ' + serif, inner, 60, 28, false);
+          const rNoteH = rNoteU ? 26 : 0;
+          const H = Math.round(34 + mastFit.fs + 38 + n * ph + (n - 1) * gap + 124 + rNoteH);
+          const ctx = initCanvas(H), h = makeHelpers(ctx);
+          let y = 32 + mastFit.fs * 0.85;
+          h.drawTxt(mastFit.lines[0], '700 {S}px ' + serif, mastFit.fs, 'center', W / 2, y);
+          y += 14; h.drawRule(M, W - M, y, 2);
+          y += 20;
+          h.drawTxt('THE PORTRAIT ISSUE', '700 {S}px ' + sans, 13, 'left', M, y);
+          h.drawTxt('NO. ' + order.replace('#', ''), '700 {S}px ' + mono, 13, 'center', W / 2, y);
+          h.drawTxt(dateTxt, '700 {S}px ' + mono, 13, 'right', W - M, y);
+          y += 14;
+          for (let i = 0; i < n; i++) {
+            const py = y + i * (ph + gap);
+            h.drawPhoto(shots[i], M, py, inner, ph, { border: 1.5 });
+          }
+          y += n * ph + (n - 1) * gap + 28;
+          h.drawTxt(kick || 'SPECIAL FEATURE', '700 {S}px ' + sans, 13, 'left', M, y);
+          h.drawTxt('THE ICONIC', '700 {S}px ' + serif, 30, 'left', M, y + 32);
+          h.drawTxt('MOMENT', '700 {S}px ' + display, 36, 'left', M, y + 66);
+          if (rNoteU) h.drawTxt(rNoteU.slice(0, 26), '600 {S}px ' + mono, 14, 'left', M, y + 90);
+          h.drawBarcode(W - M - 188, y + 12, 188, 52, 67);
+          h.drawTxt('EDITION ' + order, '700 {S}px ' + mono, 13, 'center', W - M - 94, y + 82);
+          return finishCanvas(ctx);
+        }
+
+        // ---- 7. RETRO BOUNTY POSTER ----
+        if (style === 'wanted') {
+          const M = 22, inner = W - 2 * M, pM = 40, pW = W - 2 * pM;
+          const ph = n === 1 ? Math.round(pW * 1.05) : n === 2 ? Math.round(pW * 0.76) : n === 3 ? Math.round(pW * 0.64) : Math.round(pW * 0.52);
+          const gap = n === 1 ? 0 : 10;
+          const nameFit = fitText(name, '700 {S}px ' + serif, pW, 30, 18, false);
+          const rNoteH = rNoteU ? 26 : 0;
+          const H = Math.round(44 + 78 + 38 + n * ph + (n - 1) * gap + 150 + rNoteH + 34);
+          const ctx = initCanvas(H), h = makeHelpers(ctx);
+          ctx.strokeStyle = ink; ctx.lineWidth = 4; ctx.strokeRect(M, M, inner, H - 2 * M);
+          ctx.lineWidth = 1.5; ctx.strokeRect(M + 8, M + 8, inner - 16, H - 2 * (M + 8));
+          let y = 52;
+          h.drawTxt('★  ' + (kick || 'KEEPSAKE ARCHIVE BUREAU') + '  ★', '700 {S}px ' + mono, 15, 'center', W / 2, y);
+          y += 66;
+          h.drawTxt('WANTED', '700 {S}px ' + serif, 68, 'center', W / 2, y);
+          y += 30;
+          h.drawTxt('FOR STEALING THE SPOTLIGHT', '700 {S}px ' + mono, 17, 'center', W / 2, y);
+          y += 18;
+          for (let i = 0; i < n; i++) {
+            const py = y + i * (ph + gap);
+            h.drawPhoto(shots[i], pM, py, pW, ph, { border: 3, doubleInset: 5 });
+          }
+          y += n * ph + (n - 1) * gap + 36;
+          h.drawTxt(nameFit.lines[0], '700 {S}px ' + serif, nameFit.fs, 'center', W / 2, y);
+          y += 28;
+          h.drawTxt('★  REWARD: UNFORGETTABLE MEMORIES  ★', '700 {S}px ' + mono, 15, 'center', W / 2, y);
+          if (rNoteU) { y += 26; h.drawTxt(rNoteU, '700 {S}px ' + mono, 16, 'center', W / 2, y); }
+          y += 18;
+          h.drawBarcode((W - 280) / 2, y, 280, 40, 79);
+          y += 58;
+          h.drawTxt('ISSUED ' + dateTxt + '  ·  ' + order, '700 {S}px ' + mono, 14, 'center', W / 2, y);
+          return finishCanvas(ctx);
+        }
+
+        // ---- 8. VINTAGE ADMIT-ONE TICKET ----
+        if (style === 'ticket') {
+          const M = 22, inner = W - 2 * M, pM = 40, pW = W - 2 * pM;
+          const ph = n === 1 ? Math.round(pW * 1.05) : n === 2 ? Math.round(pW * 0.78) : n === 3 ? Math.round(pW * 0.66) : Math.round(pW * 0.54);
+          const gap = n === 1 ? 0 : 12;
+          const nameFit = fitText(name, '700 {S}px ' + display, pW, 44, 24, true);
+          const stubY = 104;
+          const bodyTop = stubY + 38 + nameFit.lines.length * nameFit.fs * 1.08 + 32;
+          const rNoteH = rNoteU ? 28 : 0;
+          const H = Math.round(bodyTop + n * ph + (n - 1) * gap + 148 + rNoteH + 28);
+          const ctx = initCanvas(H), h = makeHelpers(ctx);
+          // Ticket outline with corner & stub notches
+          ctx.strokeStyle = ink; ctx.lineWidth = 3; ctx.strokeRect(M, M, inner, H - 2 * M);
+          ctx.fillStyle = paperBg;
+          [[M, M], [W - M, M], [M, H - M], [W - M, H - M], [M, stubY], [W - M, stubY]].forEach(pt => {
+            ctx.beginPath(); ctx.arc(pt[0], pt[1], 11, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(pt[0], pt[1], 11, 0, Math.PI * 2); ctx.stroke();
+          });
+          // Clean outer border margin outside notches
+          ctx.fillStyle = paperBg;
+          ctx.fillRect(0, 0, M - 1, H); ctx.fillRect(W - M + 1, 0, M, H);
+          ctx.fillRect(0, 0, W, M - 1); ctx.fillRect(0, H - M + 1, W, M);
+          h.drawDash(M + 14, inner - 28, stubY + 6);
+          h.drawTxt('ADMIT ONE', '700 {S}px ' + display, 36, 'left', pM, 72);
+          h.drawTxt('ROW A · SEAT ' + order.replace('#', ''), '700 {S}px ' + mono, 17, 'right', W - pM, 62);
+          h.drawTxt(timeTxt, '700 {S}px ' + mono, 15, 'right', W - pM, 82);
+          let y = stubY + 34;
+          h.drawTxt(kick || 'VIP SCREENING · SPECIAL FEATURE', '700 {S}px ' + mono, 15, 'center', W / 2, y);
+          nameFit.lines.forEach(ln => { y += nameFit.fs * 1.02; h.drawTxt(ln, '700 {S}px ' + display, nameFit.fs, 'center', W / 2, y); });
+          y += 22;
+          for (let i = 0; i < n; i++) {
+            const py = y + i * (ph + gap);
+            h.drawPhoto(shots[i], pM, py, pW, ph, { border: 2.5 });
+          }
+          y += n * ph + (n - 1) * gap + 32;
+          h.drawTxt('★  ★  ★  ★  ★', '700 {S}px ' + mono, 20, 'center', W / 2, y);
+          y += 28;
+          h.drawTxt(dateTxt + '  ·  KEEP STUB FOR MEMORIES', '700 {S}px ' + mono, 15, 'center', W / 2, y);
+          if (rNoteU) { y += 28; h.drawTxt(rNoteU, '700 {S}px ' + mono, 16, 'center', W / 2, y); }
+          y += 18;
+          h.drawBarcode(pM + 20, y, pW - 40, 46, 89);
+          return finishCanvas(ctx);
+        }
+
+        // ---- 9. KEEPSAKE VOW RECEIPT (WEDDING) ----
+        if (style === 'wedding') {
+          const M = 28, inner = W - 2 * M, pM = 40, pW = W - 2 * pM;
+          const ph = n === 1 ? Math.round(pW * 1.08) : n === 2 ? Math.round(pW * 0.8) : n === 3 ? Math.round(pW * 0.68) : Math.round(pW * 0.56);
+          const gap = n === 1 ? 0 : 12;
+          const nameFit = fitText(nameRaw, '700 {S}px ' + serif, pW, 42, 22, true);
+          const headH = 56 + 34 + nameFit.lines.length * nameFit.fs * 1.12 + 46;
+          const rNoteH = rNoteU ? 28 : 0;
+          const H = Math.round(headH + n * ph + (n - 1) * gap + 230 + rNoteH + 34);
+          const ctx = initCanvas(H), h = makeHelpers(ctx);
+          ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.strokeRect(M, M, inner, H - 2 * M);
+          ctx.lineWidth = 1; ctx.strokeRect(M + 6, M + 6, inner - 12, H - 2 * (M + 6));
+          let y = 56;
+          h.drawHeart(W / 2 - 8, y, 10, false); h.drawHeart(W / 2 + 8, y, 10, true);
+          y += 32;
+          h.drawTxt(kick || 'THE WEDDING OF', '700 {S}px ' + mono, 16, 'center', W / 2, y);
+          nameFit.lines.forEach(ln => { y += nameFit.fs * 1.08; h.drawTxt(ln, '700 {S}px ' + serif, nameFit.fs, 'center', W / 2, y); });
+          y += 28;
+          h.drawTxt(dateTxt + '  ·  ' + order, '400 {S}px ' + serif, 19, 'center', W / 2, y);
+          y += 22;
+          for (let i = 0; i < n; i++) {
+            const py = y + i * (ph + gap);
+            h.drawPhoto(shots[i], pM, py, pW, ph, { border: 1.5 });
+          }
+          y += n * ph + (n - 1) * gap + 24;
+          h.drawDash(pM, pW, y);
+          [['1x FOREVER', 'PROMISED'], ['1x ALWAYS', 'KEPT'], ['1x LOVE', 'INFINITE']].forEach(r => {
+            y += 32; h.drawTxt(r[0], '400 {S}px ' + mono, 20, 'left', pM, y); h.drawTxt(r[1], '400 {S}px ' + mono, 20, 'right', W - pM, y);
+          });
+          y += 20; h.drawRule(pM, W - pM, y, 1.5);
+          y += 36; h.drawTxt('TOTAL', '700 {S}px ' + serif, 26, 'left', pM, y); h.drawTxt('A LIFETIME', '700 {S}px ' + serif, 26, 'right', W - pM, y);
+          y += 18;
+          h.drawBarcode((W - 280) / 2, y, 280, 42, 97);
+          y += 60;
+          if (rNoteU) { h.drawTxt(rNoteU, '700 {S}px ' + mono, 16, 'center', W / 2, y); y += rNoteH; }
+          h.drawTxt('WITH LOVE & GRATITUDE', '700 {S}px ' + mono, 15, 'center', W / 2, y);
+          return finishCanvas(ctx);
+        }
+
+        // ---- 10. MINIMALIST STUDIO TAG ----
+        if (style === 'minimal') {
+          const M = 32, inner = W - 2 * M;
+          const ph = n === 1 ? Math.round(inner * 1.15) : n === 2 ? Math.round(inner * 0.8) : n === 3 ? Math.round(inner * 0.68) : Math.round(inner * 0.56);
+          const gap = n === 1 ? 0 : 18;
+          const nameFit = fitText(name, '700 {S}px ' + sans, inner, 34, 20, true);
+          const rNoteH = rNoteU ? 26 : 0;
+          const H = Math.round(36 + 52 + n * ph + (n - 1) * gap + 40 + nameFit.lines.length * nameFit.fs * 1.15 + (kick ? 24 : 0) + rNoteH + 86);
+          const ctx = initCanvas(H), h = makeHelpers(ctx);
+          // Minimalist corner registration ticks (+)
+          ctx.strokeStyle = ink; ctx.lineWidth = 1.5;
+          [[18, 18], [W - 18, 18], [18, H - 18], [W - 18, H - 18]].forEach(pt => {
+            ctx.beginPath();
+            ctx.moveTo(pt[0] - 7, pt[1]); ctx.lineTo(pt[0] + 7, pt[1]);
+            ctx.moveTo(pt[0], pt[1] - 7); ctx.lineTo(pt[0], pt[1] + 7);
+            ctx.stroke();
+          });
+          let y = 50;
+          h.drawTxt('ARCHIVE // ' + order.replace('#', ''), '700 {S}px ' + mono, 16, 'left', M, y);
+          h.drawTxt(dateTxt, '600 {S}px ' + mono, 16, 'right', W - M, y);
+          y += 14; h.drawRule(M, W - M, y, 1.5);
+          y += 24;
+          for (let i = 0; i < n; i++) {
+            const py = y + i * (ph + gap);
+            h.drawPhoto(shots[i], M, py, inner, ph, { border: 1 });
+            h.drawTxt(pad2(i + 1), '700 {S}px ' + mono, 12, 'right', W - M, py + ph + 14);
+          }
+          y += n * ph + (n - 1) * gap + 28;
+          h.drawRule(M, W - M, y, 1.5);
+          nameFit.lines.forEach(ln => { y += nameFit.fs * 1.12; h.drawTxt(ln, '800 {S}px ' + sans, nameFit.fs, 'center', W / 2, y); });
+          if (kick) { y += 26; h.drawTxt(kick, '600 {S}px ' + mono, 15, 'center', W / 2, y); }
+          if (rNoteU) { y += 26; h.drawTxt(rNoteU, '600 {S}px ' + mono, 15, 'center', W / 2, y); }
+          y += 18;
+          h.drawBarcode((W - 240) / 2, y, 240, 38, 103);
+          y += 56;
+          h.drawTxt(timeTxt + '  ·  4-CUT ARCHIVE', '600 {S}px ' + mono, 13, 'center', W / 2, y);
+          return finishCanvas(ctx);
+        }
+
+        // ---- 11. CLASSIC POS RECEIPT (DEFAULT) ----
+        const M = 34, inner = W - 2 * M;
+        let ph = Math.round(inner * 0.92), gap = 14;
+        if (n === 1) { ph = Math.round(inner * 1.15); gap = 0; }
+        else if (n === 2) { ph = Math.round(inner * 0.82); gap = 14; }
+        else if (n === 4) { ph = Math.round(inner * 0.72); gap = 12; }
+        const rNoteH = rNoteU ? 34 : 0;
+        const nameFit = fitText(name, '700 {S}px ' + mono, inner, 54, 26, true);
+        const fs = nameFit.fs, lines = nameFit.lines;
         const headH = 40 + lines.length * fs * 1.1 + (kick ? 34 : 0) + 40 + 34;
         const H = Math.round(headH + 30 + 40 + 30 + n * ph + (n - 1) * gap + 30 + 3 * 36 + 30 + 50 + 30 + 76 + 34 + 30 + 46 + rNoteH + 32 + 44);
-        targetCanvas.width = Math.round(W * sc); targetCanvas.height = Math.round(H * sc);
-        const ctx = targetCanvas.getContext('2d');
-        ctx.save();
-        if (sc !== 1) ctx.scale(sc, sc);
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
-        ctx.fillStyle = '#000000'; ctx.textBaseline = 'alphabetic';
+        const ctx = initCanvas(H), h = makeHelpers(ctx);
         let y = 40;
-        const text = (t, size, weight, align, yy, x2) => { ctx.font = (weight || 400) + ' ' + size + 'px ' + mono; ctx.textAlign = align || 'center'; ctx.fillText(t, align === 'left' ? M : align === 'right' ? W - M : (x2 || W / 2), yy); };
+        const text = (t, size, weight, align, yy, x2) => { ctx.fillStyle = ink; ctx.font = (weight || 400) + ' ' + size + 'px ' + mono; ctx.textAlign = align || 'center'; ctx.fillText(t, align === 'left' ? M : align === 'right' ? W - M : (x2 || W / 2), yy); };
         const lr = (l, r, size, weight, yy) => { text(l, size, weight, 'left', yy); text(r, size, weight, 'right', yy); };
-        const dash = (yy) => { ctx.font = '400 22px ' + mono; ctx.textAlign = 'left'; let t = ''; while (ctx.measureText(t + '- ').width <= inner) t += '- '; ctx.fillText(t.trim(), M + (inner - ctx.measureText(t.trim()).width) / 2, yy); };
         lines.forEach(l => { y += fs; text(l, fs, 700, 'center', y); y += fs * 0.1; });
         if (kick) { y += 34; text(kick, 22, 700, 'center', y); }
         y += 40; text('* * *  PHOTO BOOTH  * * *', 22, 700, 'center', y);
         y += 34; text(dateTxt, 22, 400, 'center', y);
-        y += 30; dash(y);
+        y += 30; h.drawDash(M, inner, y);
         y += 40; lr('ORDER ' + order, timeTxt, 24, 700, y);
-        y += 30; dash(y);
+        y += 30; h.drawDash(M, inner, y);
         y += 18;
         for (let i = 0; i < n; i++) {
           const py = y + i * (ph + gap);
-          ctx.fillStyle = '#ffffff'; ctx.fillRect(M, py, inner, ph);
-          if (shots[i]) drawImageCover(ctx, shots[i], M, py, inner, ph);
-          // B&W receipts get clean plain grayscale on screen/QR/photo paper; thermal rolls get shadow-recovered thermal grey.
-          if (!color || receiptPrintGrey) ditherRegion(ctx, M * sc, py * sc, inner * sc, ph * sc);
+          h.drawPhoto(shots[i], M, py, inner, ph, {});
         }
-        ctx.fillStyle = '#000000';
         y += n * ph + (n - 1) * gap + 12;
-        y += 30; dash(y);
+        y += 30; h.drawDash(M, inner, y);
         [['1x SMILES', 'FREE'], ['1x GOOD VIBES', 'FREE'], ['1x MEMORIES', 'KEEP']].forEach(r => { y += 36; lr(r[0], r[1], 24, 400, y); });
-        y += 30; dash(y);
+        y += 30; h.drawDash(M, inner, y);
         y += 50; lr('TOTAL', 'PRICELESS', 34, 700, y);
-        y += 30; dash(y);
-        // A barcode made from the order number (just for the look).
+        y += 30; h.drawDash(M, inner, y);
         y += 18;
-        let seed = Math.imul(sessionNumber || 1, 2654435761) >>> 0, bx = M + 40;
-        const bend = W - M - 40;
-        while (bx < bend) {
-          seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
-          const bw = 2 + (seed >>> 28) % 4;
-          if ((seed >>> 8) & 1) ctx.fillRect(bx, y, Math.min(bw, bend - bx), 76);
-          bx += bw + 1 + ((seed >>> 16) % 3);
-        }
+        h.drawBarcode(M + 40, y, inner - 80, 76, 0);
         y += 76 + 34; text(order.replace('#', '') + ' ' + dateTxt.replace(/\D/g, ''), 20, 400, 'center', y);
         y += 46; text('THANK YOU!', 34, 700, 'center', y);
-        if (rNote) { y += 34; text(rNote.toUpperCase(), 20, 700, 'center', y); }
+        if (rNoteU) { y += 34; text(rNoteU, 20, 700, 'center', y); }
         y += 32; text('PLEASE COME AGAIN', 20, 400, 'center', y);
-        ctx.restore();
-        // The guest's stickers and the logo (a plain overlay frame would cover the receipt, so not that).
-        // Black & white receipt: smooth B&W on screen/QR/photo paper; thermal-safe grey when printing on a thermal roll.
-        const ov = overlay; overlay = null;
-        const rMono = receiptPrintGrey ? 'grey' : (color ? '' : 'f:bw');
-        if (typeof pbCaptureDecorBase === 'function') pbCaptureDecorBase(targetCanvas, layoutKey, shots, rMono, true);
-        try { if (typeof drawDecorLayer === 'function') drawDecorLayer(ctx, targetCanvas.width, targetCanvas.height, rMono); } finally { overlay = ov; }
-        return targetCanvas;
+        return finishCanvas(ctx);
       }
 
       // ---- Setup controls (Event name section) ----
       var titleStyleSelect = document.getElementById('titleStyleSelect');
       var kickerInput = document.getElementById('kickerInput');
+      var receiptStyleSelect = document.getElementById('receiptStyleSelect');
+      var receiptStyleRow = document.getElementById('receiptStyleRow');
       var receiptNoteInput = document.getElementById('receiptNoteInput');
+      if (receiptStyleSelect) {
+        RECEIPT_STYLES.forEach(function (s) {
+          var o = document.createElement('option'); o.value = s[0]; o.textContent = s[1];
+          receiptStyleSelect.appendChild(o);
+        });
+        receiptStyleSelect.addEventListener('change', function () {
+          receiptStyle = RECEIPT_STYLES.some(function (x) { return x[0] === receiptStyleSelect.value; }) ? receiptStyleSelect.value : 'classic';
+          _decorBaseEpoch++;
+          redrawAll();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
       if (receiptNoteInput) {
         receiptNoteInput.addEventListener('input', function () {
           receiptCustomNote = receiptNoteInput.value.slice(0, 45);
@@ -44178,9 +45043,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function refreshTitleUI() {
         titleStyleSelect.value = titleStyle;
         kickerInput.value = kickerText;
-        var needsKick = titleStyle === 'wedding' || titleStyle === 'turns' || titleStyle === 'blocks' || titleStyle === 'bignum';
+        var isRcLay = typeof layoutDef === 'function' && layoutDef() && layoutDef().kind === 'receipt';
+        if (receiptStyleRow) receiptStyleRow.style.display = isRcLay ? '' : 'none';
+        if (receiptStyleSelect) receiptStyleSelect.value = receiptStyle;
+        var needsKick = isRcLay || titleStyle === 'wedding' || titleStyle === 'turns' || titleStyle === 'blocks' || titleStyle === 'bignum' || titleStyle === 'minimal' || titleStyle === 'editorial' || titleStyle === 'filmframe';
         document.getElementById('kickerRow').style.display = needsKick ? '' : 'none';
-        kickerInput.placeholder = { wedding: 'e.g. THE WEDDING OF', turns: 'e.g. TURNS ONE', blocks: 'e.g. TURNS ONE', bignum: 'e.g. 18' }[titleStyle] || '';
+        kickerInput.placeholder = isRcLay ? 'e.g. LIVE SESSION · STEREO' : ({ wedding: 'e.g. THE WEDDING OF', turns: 'e.g. TURNS ONE', blocks: 'e.g. TURNS ONE', bignum: 'e.g. 18', minimal: 'e.g. STUDIO 4-CUT', editorial: 'e.g. THE ARCHIVE', filmframe: 'e.g. ISO 400 · ROLL 01' }[titleStyle] || '');
         markStyleTiles();
       }
       titleStyleSelect.addEventListener('change', function () { titleStyle = titleStyleSelect.value; refreshTitleUI(); redrawAll(); });
@@ -44258,12 +45126,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         rec.mono = mono || '';
         rec.suppressOverlay = !!suppressOverlay;
         rec.accentUsed = !!(typeof accentUsed !== 'undefined' && accentUsed);
+        rec.receiptStyle = typeof receiptStyle !== 'undefined' ? receiptStyle : 'classic';
       }
       function pbTryDrawFromDecorBase(layoutKey, cv, shots, wantFast) {
         if (!cv || (typeof BOX_PROBE !== 'undefined' && BOX_PROBE)) return false;
         var b = cv._decorBase;
         if (!b || !b.cv || !b.cv.width || b.w !== cv.width || b.h !== cv.height) return false;
         if (b.layout !== layoutKey || b.epoch !== _decorBaseEpoch) return false;
+        if (b.receiptStyle !== (typeof receiptStyle !== 'undefined' ? receiptStyle : 'classic')) return false;
         if (b.filter !== (typeof filterKey !== 'undefined' ? (filterKey || '') : '')) return false;
         if (b.session !== (typeof sessionNumber !== 'undefined' ? (sessionNumber || 0) : 0)) return false;
         if (b.back !== !!(typeof btViewBack !== 'undefined' && btViewBack)) return false;
@@ -69219,7 +70089,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // ---- Guests choose the layout & multi-design guest lineup ----
       var GUEST_SLOT_KEYS = ['themeId', 'backdropPreset', 'backdropColor', 'elementsChoice', 'accent', 'frameColorChoice', 'photoPlacement', 'cropFocus',
         'textColor', 'font', 'dateFont', 'titleSize', 'titleBg', 'titleBgColor', 'outline', 'outlineColor', 'shadow',
-        'filter', 'softSkin', 'dateStamp', 'overlay', 'logo', 'decor', 'myProps', 'titleStyle', 'kicker', 'upper', 'art', 'artPal', 'label', 'dateOn', 'date'];
+        'filter', 'softSkin', 'dateStamp', 'overlay', 'logo', 'decor', 'myProps', 'titleStyle', 'receiptStyle', 'receiptNote', 'kicker', 'upper', 'art', 'artPal', 'label', 'dateOn', 'date'];
       var guestDesigns = [];
       var activeDesignIdx = 0;
       var includeFramesInDesignPick = true;
@@ -75129,7 +75999,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           myProps: myProps.slice(),
           frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet, sfDone: startFrameDone, slDone: startLogoDone,
           frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
-          titleStyle: titleStyle, kicker: kickerText, receiptNote: receiptCustomNote, upper: titleUpper, art: themeArt.slice(), artPal: Object.assign({}, artPal),
+          titleStyle: titleStyle, receiptStyle: receiptStyle, kicker: kickerText, receiptNote: receiptCustomNote, upper: titleUpper, art: themeArt.slice(), artPal: Object.assign({}, artPal),
           printPrefs: Object.assign({}, printPrefs),
           guestbook: cleanGbPrefs(gbPrefs),
           printerProfiles: (window._pfExport ? window._pfExport() : null),
@@ -75567,6 +76437,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           myProps = Array.isArray(s.myProps) ? s.myProps.filter(assetOk).slice(0, 60) : [];
           selDecor = -1;
           titleStyle = TITLE_STYLES.some(function (x) { return x[0] === s.titleStyle; }) ? s.titleStyle : 'classic';
+          receiptStyle = RECEIPT_STYLES.some(function (x) { return x[0] === s.receiptStyle; }) ? s.receiptStyle : 'classic';
           kickerText = typeof s.kicker === 'string' ? s.kicker.slice(0, 40) : '';
           receiptCustomNote = typeof s.receiptNote === 'string' ? s.receiptNote.slice(0, 45) : '';
           if (receiptNoteInput) receiptNoteInput.value = receiptCustomNote;
@@ -76114,14 +76985,106 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // ---- Themes: ready-made designs (backdrop + colors + fonts) ----
       // Picking one sets the backdrop, Polaroid color, text color, fonts and text
       // style; everything can still be fine-tuned afterwards.
-      var THEME_CATS = ['All', 'Receipt', 'Wedding', 'Birthday', 'Debut', 'Kids Party', 'Baby Shower', 'Graduation', 'Christening', 'Christmas', 'New Year', 'Summer', 'Anniversary', 'Prom', 'Corporate'];
+      var THEME_CATS = ['All', 'Receipt', 'Minimalist', 'Wedding', 'Birthday', 'Debut', 'Kids Party', 'Baby Shower', 'Graduation', 'Christening', 'Christmas', 'New Year', 'Summer', 'Anniversary', 'Prom', 'Corporate'];
       var THEMES = [
         { id: 'charm-up', name: 'Charm Up (Cute Aesthetic)', cats: ['Birthday', 'Debut', 'Wedding', 'Corporate'], tags: 'charm up blush pink cute aesthetic pastel ribbon chic', preset: 'blush', color: '#FFF5F7', frame: '#ffffff', text: '#111827', font: "'Dancing Script', cursive", dateFont: "'Quicksand', sans-serif", titleBg: false, welcomeSampleOn: false, welcomeCardBg: '#ffffff', welcomeCardFontColor: '#111827', welcomeBtnColor: '#F28DA0', welcomeFont: "'Dancing Script', cursive", welcomeDecoStyle: 'ribbon-waves', welcomePalette: 'charm-pink' },
-        { id: 'cafe-receipt', name: 'Classic Cafe Receipt', cats: ['Receipt', 'Corporate'], tags: 'receipt thermal coffee cafe minimalist b&w retro barcode pos', layout: 'receipt', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Courier New', monospace", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'COFFEE & GOOD VIBES' },
-        { id: 'wedding-receipt', name: 'Wedding Love Receipt', cats: ['Receipt', 'Wedding'], tags: 'receipt thermal wedding love eternal vows couple the wedding of', layout: 'receipt', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Cinzel', serif", dateFont: "'Cinzel', serif", titleStyle: 'wedding', kicker: 'The wedding of' },
-        { id: 'cinema-ticket', name: 'Vintage Cinema Ticket', cats: ['Receipt', 'Birthday', 'Corporate'], tags: 'receipt thermal ticket admit one retro movie cinema barcode 1 shot', layout: 'receipt1', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Courier New', monospace", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'ADMIT ONE · VIP ACCESS' },
-        { id: 'party-thermal-4', name: 'Party Vibes 4-Shot Receipt', cats: ['Receipt', 'Birthday', 'Kids Party'], tags: 'receipt thermal party fun memories 4 shots strip tall birthday', layout: 'receipt4', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Fredoka', sans-serif", dateFont: "'Fredoka', sans-serif", titleStyle: 'turns', kicker: 'PARTY VIBES' },
-        { id: 'color-cafe-receipt', name: 'Pastel Cafe Colour Receipt', cats: ['Receipt', 'Birthday'], tags: 'receipt colour color photo pastel cafe aesthetic', layout: 'receiptc', preset: 'none', color: '#fefbf6', elements: 'none', frame: '#ffffff', text: '#2c221e', font: "'Courier New', monospace", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'SWEET MEMORIES' },
+        { id: 'music-player-receipt', name: 'Now Playing · Music Player', cats: ['Receipt', 'Minimalist', 'Birthday'], tags: 'receipt thermal music player now playing aesthetic song album vinyl audio 1 shot', sample: 'Golden Hour', layout: 'receipt1', receiptStyle: 'player', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Inter', sans-serif", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'LIVE MEMORY · STEREO' },
+        { id: 'music-strip-receipt', name: 'Now Playing · 3-Shot Strip', cats: ['Receipt', 'Minimalist'], tags: 'receipt thermal music player now playing aesthetic 3 shots strip track', sample: 'Our Soundtrack', layout: 'receipt', receiptStyle: 'player', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Inter', sans-serif", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'SOUNDTRACK SESSION' },
+        { id: 'music-color-receipt', name: 'Now Playing · Colour Card', cats: ['Receipt', 'Minimalist', 'Birthday'], tags: 'receipt colour color music player now playing aesthetic pastel album', sample: 'Afterglow', layout: 'receipt1c', receiptStyle: 'player', preset: 'none', color: '#faf8f5', elements: 'none', frame: '#ffffff', text: '#18181b', font: "'Inter', sans-serif", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'ON REPEAT · LIVE' },
+        { id: 'mixtape-receipt', name: 'Mixtape Tracklist Receipt', cats: ['Receipt', 'Minimalist', 'Birthday'], tags: 'receipt thermal music mixtape cassette playlist tracklist song retro', sample: 'Late Night Mix', layout: 'receipt', receiptStyle: 'mixtape', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Courier New', monospace", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'SIDE A · LIMITED' },
+        { id: 'stat-card-receipt', name: 'Collectible Stat Card', cats: ['Receipt', 'Birthday', 'Kids Party'], tags: 'receipt thermal trading card stats collectible rpg game aesthetic', sample: 'Main Character', layout: 'receipt1', receiptStyle: 'statcard', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Fredoka', sans-serif", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'SERIES 01 · RARE' },
+        { id: 'pop-zine-receipt', name: 'Pop Zine Comic Cover', cats: ['Receipt', 'Birthday', 'Kids Party'], tags: 'receipt thermal comic pop art zine magazine halftone burst retro', sample: 'Highlight!', layout: 'receipt1', receiptStyle: 'zine', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Bebas Neue', cursive", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'EVERY MOMENT IS ICONIC' },
+        { id: 'daily-gazette-receipt', name: 'The Daily Gazette', cats: ['Receipt', 'Wedding', 'Corporate'], tags: 'receipt thermal newspaper front page gazette press vintage news', sample: 'Stealing The Night', layout: 'receipt1', receiptStyle: 'gazette', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Playfair Display', serif", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'THE PHOTO CHRONICLE' },
+        { id: 'editorial-cover-receipt', name: 'Atelier Fashion Cover', cats: ['Receipt', 'Minimalist', 'Debut'], tags: 'receipt thermal magazine fashion editorial cover chic aesthetic', sample: 'ATELIER', layout: 'receipt1', receiptStyle: 'editorial', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Playfair Display', serif", dateFont: "'Inter', sans-serif", titleStyle: 'classic', kicker: 'THE PORTRAIT ISSUE' },
+        { id: 'wanted-poster-receipt', name: 'Retro Wanted Poster', cats: ['Receipt', 'Birthday', 'Prom'], tags: 'receipt thermal wanted western retro poster bounty fun', sample: 'Too Good To Forget', layout: 'receipt1', receiptStyle: 'wanted', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Cinzel', serif", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'KEEPSAKE BUREAU' },
+        { id: 'minimal-gallery-receipt', name: 'Minimalist Studio Receipt', cats: ['Receipt', 'Minimalist', 'Corporate'], tags: 'receipt thermal minimalist clean korean aesthetic gallery tag', sample: 'Good Times', layout: 'receipt', receiptStyle: 'minimal', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Inter', sans-serif", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'STUDIO ARCHIVE' },
+        { id: 'minimal-4cut-receipt', name: 'Minimalist 4-Cut Receipt', cats: ['Receipt', 'Minimalist'], tags: 'receipt thermal minimalist 4 cut 4cut strip clean archive', sample: 'Memory Roll', layout: 'receipt4', receiptStyle: 'minimal', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Inter', sans-serif", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: '4-SHOT ARCHIVE' },
+        { id: 'cafe-receipt', name: 'Classic Cafe Receipt', cats: ['Receipt', 'Corporate'], tags: 'receipt thermal coffee cafe minimalist b&w retro barcode pos', layout: 'receipt', receiptStyle: 'classic', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Courier New', monospace", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'COFFEE & GOOD VIBES' },
+        { id: 'wedding-receipt', name: 'Wedding Love Receipt', cats: ['Receipt', 'Wedding'], tags: 'receipt thermal wedding love eternal vows couple the wedding of', layout: 'receipt', receiptStyle: 'wedding', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Cinzel', serif", dateFont: "'Cinzel', serif", titleStyle: 'wedding', kicker: 'The wedding of' },
+        { id: 'cinema-ticket', name: 'Vintage Cinema Ticket', cats: ['Receipt', 'Birthday', 'Corporate'], tags: 'receipt thermal ticket admit one retro movie cinema barcode 1 shot', layout: 'receipt1', receiptStyle: 'ticket', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Courier New', monospace", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'ADMIT ONE · VIP ACCESS' },
+        { id: 'party-thermal-4', name: 'Party Vibes 4-Shot Receipt', cats: ['Receipt', 'Birthday', 'Kids Party'], tags: 'receipt thermal party fun memories 4 shots strip tall birthday', layout: 'receipt4', receiptStyle: 'classic', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Fredoka', sans-serif", dateFont: "'Fredoka', sans-serif", titleStyle: 'turns', kicker: 'PARTY VIBES' },
+        { id: 'color-cafe-receipt', name: 'Pastel Cafe Colour Receipt', cats: ['Receipt', 'Birthday'], tags: 'receipt colour color photo pastel cafe aesthetic', layout: 'receiptc', receiptStyle: 'classic', preset: 'none', color: '#fefbf6', elements: 'none', frame: '#ffffff', text: '#2c221e', font: "'Courier New', monospace", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'SWEET MEMORIES' },
+        // ---- Minimalist & Studio 4-Cut Ready Designs ----
+        {
+          id: 'studio-white-4cut', name: 'Studio Pure White (4-Cut)', cats: ['Minimalist', 'Wedding', 'Corporate'], tags: 'minimalist 4cut 4 cut korean studio white clean modern flat strip4', sample: 'Just Us', layout: 'strip4',
+          preset: 'none', color: '#ffffff', elements: 'none', frame: 'auto', text: '#141414', font: "'Inter', sans-serif", dateFont: "'Courier New', monospace", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'minimal', kicker: 'STUDIO ARCHIVE', upper: true
+        },
+        {
+          id: 'matte-noir-4cut', name: 'Matte Noir (4-Cut)', cats: ['Minimalist', 'Prom', 'Corporate'], tags: 'minimalist 4cut 4 cut korean studio black dark noir matte modern', sample: 'After Hours', layout: 'strip4',
+          preset: 'none', color: '#121214', elements: 'none', frame: 'auto', text: '#f4f4f0', font: "'Inter', sans-serif", dateFont: "'Courier New', monospace", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'minimal', kicker: 'NIGHT EDITION', upper: true
+        },
+        {
+          id: 'cobalt-studio-4cut', name: 'Cobalt Blue Studio (4-Cut)', cats: ['Minimalist', 'Birthday', 'Prom'], tags: 'minimalist 4cut 4 cut korean studio cobalt electric blue trendy viral', sample: 'Core Memory', layout: 'strip4',
+          preset: 'none', color: '#1b43b8', elements: 'none', frame: 'auto', text: '#ffffff', font: "'Montserrat', sans-serif", dateFont: "'Inter', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'minimal', kicker: 'BLUE ROOM · 04', upper: true
+        },
+        {
+          id: 'butter-cream-4cut', name: 'Buttercream Minimal (4-Cut)', cats: ['Minimalist', 'Birthday', 'Summer'], tags: 'minimalist 4cut 4 cut korean studio butter yellow cream aesthetic pastel', sample: 'Golden Days', layout: 'strip4',
+          preset: 'none', color: '#fbf1c7', elements: 'none', frame: 'auto', text: '#3a2d21', font: "'Fraunces', serif", dateFont: "'Inter', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'editorial', kicker: 'SUNNY SIDE'
+        },
+        {
+          id: 'oat-linen-minimal', name: 'Warm Oat Linen (4-Cut)', cats: ['Minimalist', 'Wedding', 'Anniversary'], tags: 'minimalist 4cut 4 cut beige oat linen neutral warm aesthetic editorial', sample: 'Weekend Edit', layout: 'strip4',
+          preset: 'none', color: '#f0eae0', elements: 'none', frame: 'auto', text: '#2c2723', font: "'Cormorant Garamond', serif", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'editorial', kicker: 'THE ARCHIVE'
+        },
+        {
+          id: 'sage-matcha-4cut', name: 'Matcha Sage Minimal (4-Cut)', cats: ['Minimalist', 'Wedding', 'Christening'], tags: 'minimalist 4cut 4 cut matcha sage green pastel studio aesthetic', sample: 'Soft Moments', layout: 'strip4',
+          preset: 'none', color: '#dce4d5', elements: 'none', frame: 'auto', text: '#243627', font: "'Playfair Display', serif", dateFont: "'Inter', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'minimal', kicker: 'GREENHOUSE'
+        },
+        {
+          id: 'cherry-wine-4cut', name: 'Cherry Espresso (4-Cut)', cats: ['Minimalist', 'Debut', 'Anniversary'], tags: 'minimalist 4cut 4 cut cherry burgundy wine trendy aesthetic editorial', sample: 'Cheers', layout: 'strip4',
+          preset: 'none', color: '#581623', elements: 'none', frame: 'auto', text: '#f9efe8', font: "'Playfair Display', serif", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'editorial', kicker: 'VELVET HOUR'
+        },
+        {
+          id: 'cloud-blue-4cut', name: 'Powder Cloud (4-Cut)', cats: ['Minimalist', 'Birthday', 'Summer'], tags: 'minimalist 4cut 4 cut powder sky baby blue pastel korean studio', sample: 'Daydream', layout: 'strip4',
+          preset: 'none', color: '#dcebfa', elements: 'none', frame: 'auto', text: '#1d3557', font: "'Quicksand', sans-serif", dateFont: "'Inter', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'minimal', kicker: 'CLOUD NINE'
+        },
+        {
+          id: 'aura-blush-4cut', name: 'Dreamy Aura Blush (4-Cut)', cats: ['Minimalist', 'Debut', 'Birthday'], tags: 'minimalist 4cut 4 cut aura gradient glow pink pastel aesthetic dreamy', sample: 'Soft Glow', layout: 'strip4',
+          preset: 'aura', color: '#f4cddb', elements: 'none', frame: 'auto', text: '#2f1e28', font: "'Inter', sans-serif", dateFont: "'Courier New', monospace", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'minimal', kicker: 'AURA EDITION', upper: true, art: ['sparklemin'], artPal: { line: '#4a2b3d' }
+        },
+        {
+          id: 'aura-lavender-grid', name: 'Dreamy Aura Lavender (Grid 4)', cats: ['Minimalist', 'Birthday', 'Prom'], tags: 'minimalist 4cut grid4 aura gradient glow lavender purple aesthetic', sample: 'Good Energy', layout: 'grid4',
+          preset: 'aura', color: '#d7cbf3', elements: 'none', frame: 'auto', text: '#231c3d', font: "'Playfair Display', serif", dateFont: "'Inter', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'editorial', kicker: 'DREAM STATE', art: ['sparklemin'], artPal: { line: '#3b2e66' }
+        },
+        {
+          id: 'chrome-grid-4cut', name: 'Y2K Silver Grid (4-Cut)', cats: ['Minimalist', 'Prom', 'Birthday'], tags: 'minimalist 4cut 4 cut y2k silver chrome grid crosshair aesthetic', sample: 'Pixel Mood', layout: 'strip4',
+          preset: 'gridlines', color: '#eceff4', elements: 'none', frame: 'auto', text: '#161a22', font: "'Courier New', monospace", dateFont: "'Inter', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'minimal', kicker: 'CAM // 2026', upper: true, art: ['crosshair'], artPal: { line: '#161a22' }
+        },
+        {
+          id: 'film-roll-4cut', name: '35mm Film Roll (4-Cut)', cats: ['Minimalist', 'Birthday', 'Corporate'], tags: 'minimalist 4cut 4 cut film 35mm analog camera sprocket dark', sample: 'Analog Days', layout: 'strip4',
+          preset: 'none', color: '#161618', elements: 'none', frame: 'auto', text: '#f3ede2', font: "'Courier New', monospace", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'filmframe', kicker: 'ISO 400 · EXP', upper: true, art: ['sprockets']
+        },
+        {
+          id: 'coquette-minimal-4cut', name: 'Dainty Bow Minimal (4-Cut)', cats: ['Minimalist', 'Debut', 'Birthday'], tags: 'minimalist 4cut 4 cut coquette ribbon bow dainty blush aesthetic', sample: 'Pretty Moments', layout: 'strip4',
+          preset: 'none', color: '#fdf5f7', elements: 'none', frame: 'auto', text: '#5c3745', font: "'Cormorant Garamond', serif", dateFont: "'Quicksand', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'editorial', kicker: 'SWEET NOTE', art: ['ribbon'], artPal: { line: '#c77d94' }
+        },
+        {
+          id: 'checker-mono-4cut', name: 'Mono Checker Minimal (4-Cut)', cats: ['Minimalist', 'Birthday', 'Prom'], tags: 'minimalist 4cut 4 cut checkerboard black white retro trendy', sample: 'Good Times', layout: 'strip4',
+          preset: 'checker', color: '#f7f7f5', elements: 'none', frame: '#ffffff', text: '#141414', font: "'Bebas Neue', cursive", dateFont: "'Courier New', monospace", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'minimal', kicker: 'CHECKPOINT', upper: true
+        },
+        {
+          id: 'studio-white-grid4', name: 'Studio Gallery (Grid 4)', cats: ['Minimalist', 'Wedding', 'Corporate'], tags: 'minimalist grid4 gallery white clean editorial modern', sample: 'Together', layout: 'grid4',
+          preset: 'none', color: '#ffffff', elements: 'none', frame: 'auto', text: '#151515', font: "'Playfair Display', serif", dateFont: "'Inter', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'editorial', kicker: 'EXHIBITION'
+        },
+        {
+          id: 'noir-film6', name: 'Noir Contact Sheet (6-Shot)', cats: ['Minimalist', 'Prom', 'Corporate'], tags: 'minimalist film6 6 shot contact sheet 35mm dark analog', sample: 'Roll 01', layout: 'film6',
+          preset: 'none', color: '#141416', elements: 'none', frame: 'auto', text: '#f2efe9', font: "'Courier New', monospace", dateFont: "'Inter', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'filmframe', kicker: 'CONTACT SHEET', upper: true, art: ['sprockets']
+        },
         { id: 'gold-chevron', name: 'Gold Chevron', cats: ['Wedding', 'Debut'], tags: 'elegant ivory zigzag', preset: 'chevron', frame: '#ffffff', text: '#9c7a2e', font: "'Great Vibes', cursive", dateFont: "'Cinzel', serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
         { id: 'art-deco', name: 'Art Deco Navy', cats: ['Wedding', 'Corporate', 'New Year'], tags: 'gatsby gala geometric gold blue', preset: 'deco', frame: '#e9cf8f', text: '#f0d48c', font: "'Cinzel', serif", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false },
         { id: 'white-marble', name: 'White Marble', cats: ['Wedding', 'Christening', 'Corporate'], tags: 'minimal gold veins elegant', preset: 'marble', frame: '#ffffff', text: '#8a6d2f', font: "'Parisienne', cursive", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: true, outlineColor: '#ffffff', shadow: false },
@@ -76299,7 +77262,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           'golden-anniversary': 'land2', 'silver-anniversary': 'land2t', 'new-year-cheers': 'land2t', 'navy-florals': 'land2',
           'candy-cane': 'land2', 'royal-gala': 'land2t', 'sunset-beach': 'land2', 'pool-party': 'land2', 'neon-night': 'land2t',
           'rose-gold-glam': 'land2', 'space-explorer': 'land2', 'rainbow-polka': 'land2', 'pastel-butterflies': 'land2',
-          'grad-forest': 'land2t', 'executive-black': 'land2t'
+          'grad-forest': 'land2t', 'executive-black': 'land2t',
+          'studio-white-4cut': 'land2', 'matte-noir-4cut': 'land2', 'cobalt-studio-4cut': 'land2', 'oat-linen-minimal': 'land2', 'aura-blush-4cut': 'land2'
         };
         var add = [];
         THEMES.forEach(function (t) {
@@ -76318,8 +77282,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function withThemeState(t, fn) {
         var saved = [backdropPreset, backdropColor, elementsChoice, frameColorChoice, textColor, currentFont, currentDateFont,
           titleBgEnabled, titleBgColor, useOutline, outlineColor, useShadow, labelInput.value, accent, overlay, logo, decor,
-          titleStyle, kickerText, titleUpper, themeArt, artPal];
+          titleStyle, kickerText, titleUpper, themeArt, artPal, receiptStyle];
         titleStyle = t.titleStyle || 'classic'; kickerText = t.kicker || ''; titleUpper = !!t.upper; themeArt = t.art || []; artPal = t.artPal || {};
+        receiptStyle = t.receiptStyle || 'classic';
         backdropPreset = t.preset; backdropColor = t.color || null; elementsChoice = t.elements || 'auto';
         accent = t.accent || 'gold'; overlay = null; logo = null; decor = [];
         frameColorChoice = t.frame || 'auto'; textColor = t.text; currentFont = t.font; currentDateFont = t.dateFont || t.font;
@@ -76332,7 +77297,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           textColor = saved[4]; currentFont = saved[5]; currentDateFont = saved[6]; titleBgEnabled = saved[7];
           titleBgColor = saved[8]; useOutline = saved[9]; outlineColor = saved[10]; useShadow = saved[11]; labelInput.value = saved[12];
           accent = saved[13]; overlay = saved[14]; logo = saved[15]; decor = saved[16];
-          titleStyle = saved[17]; kickerText = saved[18]; titleUpper = saved[19]; themeArt = saved[20]; artPal = saved[21];
+          titleStyle = saved[17]; kickerText = saved[18]; titleUpper = saved[19]; themeArt = saved[20]; artPal = saved[21]; receiptStyle = saved[22];
         }
       }
       function drawThemeThumb(canvas, t) {
@@ -76454,6 +77419,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         outlineColor = t.outlineColor || '#ffffff'; outlineColorSelect.value = outlineColor;
         useShadow = !!t.shadow; shadowToggle.checked = useShadow;
         titleStyle = t.titleStyle || 'classic'; kickerText = t.kicker || ''; titleUpper = !!t.upper;
+        receiptStyle = t.receiptStyle || 'classic';
         themeArt = (t.art || []).slice(); artPal = Object.assign({}, t.artPal || {});
         if (t.welcomeSampleOn !== undefined && typeof setWelcomeSampleUI === 'function') setWelcomeSampleUI(t.welcomeSampleOn);
         if (t.welcomeCardBg && typeof setWelcomeCardBgUI === 'function') setWelcomeCardBgUI(t.welcomeCardBg);
@@ -76464,13 +77430,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (t.welcomeStepStyle && typeof setWelcomeStepStyleUI === 'function') setWelcomeStepStyleUI(t.welcomeStepStyle);
         if (t.welcomeDecoStyle && typeof setWelcomeDecoStyleUI === 'function') setWelcomeDecoStyleUI(t.welcomeDecoStyle);
         if (t.welcomePalette && typeof setWelcomePaletteUI === 'function') setWelcomePaletteUI(t.welcomePalette);
-        refreshTitleUI();
         // opts.layout: the layout picked in the design preview (keep mine / the design's); else the design's own.
         var tl = opts && opts.layout !== undefined ? opts.layout : (t.layout && LAYOUT_DEFS[t.layout] ? t.layout : null);
         if (boothType === 'photo' && tl && LAYOUT_DEFS[tl] && tl !== currentLayout && state !== 'capturing') {
           setupLayout = tl; setLayout(tl);
           if (typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
         }
+        refreshTitleUI();
         applyLabelInputFont();
         setActivePresetBtn();
         updateBandPositionVisibility();
@@ -78268,7 +79234,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // ---- My themes (save the current design and reuse it) ----
       var DESIGN_KEYS = ['backdropPreset', 'backdropColor', 'elementsChoice', 'accent', 'frameColorChoice', 'photoPlacement', 'cropFocus',
         'textColor', 'font', 'dateFont', 'titleSize', 'titleBg', 'titleBgColor', 'outline', 'outlineColor', 'shadow',
-        'filter', 'softSkin', 'dateStamp', 'overlay', 'logo', 'decor', 'myProps', 'titleStyle', 'kicker', 'upper', 'art', 'artPal'];
+        'filter', 'softSkin', 'dateStamp', 'overlay', 'logo', 'decor', 'myProps', 'titleStyle', 'receiptStyle', 'kicker', 'upper', 'art', 'artPal'];
       var themeTomb = {};
       function myThemesKey() { return 'pb_mythemes:device'; }
       function myThemesDelKey() { return 'pb_mythemes_del:device'; }
@@ -84943,7 +85909,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         for (var i = 0; i < all.length; i++) if (all[i].id === themeId) return all[i];
         return null;
       }
-      var PRESET_NAMES = { none: 'Plain', gold: 'Gold Glitter', sky: 'Pastel Sky', stars: 'Black & Gold', cream: 'Cream', maroon: 'Maroon & Gold', custom: 'Your photo' };
+      var PRESET_NAMES = { none: 'Plain', gold: 'Gold Glitter', sky: 'Pastel Sky', stars: 'Black & Gold', cream: 'Cream', maroon: 'Maroon & Gold', aura: 'Aura Glow', gridlines: 'Studio Grid', checker: 'Checker Trim', custom: 'Your photo' };
       function extrasList() {
         var ex = [];
         if (typeof outputMode !== 'undefined' && outputMode !== 'photo') {
@@ -85159,7 +86125,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var el = document.getElementById('themeLayoutNote'); if (!el) return;
         var keeps = layoutKeepsOwnLook(setupLayout);
         el.hidden = !keeps;
-        if (keeps) el.textContent = 'Your layout is ' + layoutName(setupLayout) + ', which keeps its own look, so ready designs don\u2019t change it. Pick a design and it offers to switch to a built-in layout.';
+        if (keeps) {
+          var isRc = LAYOUT_DEFS[setupLayout] && LAYOUT_DEFS[setupLayout].kind === 'receipt';
+          el.textContent = isRc
+            ? ('Your layout is ' + layoutName(setupLayout) + '. Receipt designs apply to it; strip & 4R designs offer to switch layouts.')
+            : ('Your layout is ' + layoutName(setupLayout) + ', which keeps its own look, so ready designs don\u2019t change it. Pick a design and it offers to switch to a built-in layout.');
+        }
       }
       function drawTemplatePreview(t) {
         var lk = tplLayKey || currentLayout;
@@ -85177,9 +86148,24 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function openTemplatePreview(t) {
         tplPending = t;
         var mine = setupLayout, design = t.layout && LAYOUT_DEFS[t.layout] ? t.layout : null;
+        var isRcTheme = !!(t.receiptStyle || (design && LAYOUT_DEFS[design] && LAYOUT_DEFS[design].kind === 'receipt'));
+        var mineIsRc = !!(LAYOUT_DEFS[mine] && LAYOUT_DEFS[mine].kind === 'receipt');
         var row = document.getElementById('tplLay'), chips = document.getElementById('tplLayChips'), txt = document.getElementById('tplLayText');
         var opts = null;
-        if (layoutKeepsOwnLook(mine)) {
+        if (isRcTheme) {
+          if (mineIsRc && design && design !== mine) {
+            txt.textContent = 'This receipt design uses ' + layoutName(design) + ', and also works with ' + layoutName(mine) + '.';
+            opts = [[design, 'Use ' + layoutName(design)], [mine, 'Keep my ' + layoutName(mine)]];
+            tplLayKey = design;
+          } else if (!mineIsRc) {
+            var rcTarget = design || 'receipt1';
+            txt.textContent = 'This is a receipt design. Switch to ' + layoutName(rcTarget) + ' to use it.';
+            opts = [[rcTarget, 'Switch to ' + layoutName(rcTarget)]];
+            tplLayKey = rcTarget;
+          } else {
+            tplLayKey = null;
+          }
+        } else if (layoutKeepsOwnLook(mine)) {
           var target = design && !layoutKeepsOwnLook(design) ? design : 'strip';
           txt.textContent = 'Your layout (' + layoutName(mine) + ') keeps its own look, so this design only shows on a built-in layout.';
           opts = [[target, 'Switch to ' + layoutName(target)], [mine, 'Keep ' + layoutName(mine)]];
@@ -85219,7 +86205,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var t = tplPending, lay = tplLayKey; closeTemplatePreview();
         if (!t) return;
         applyTheme(t, { quiet: true, layout: lay || null });
-        if (lay && layoutKeepsOwnLook(lay)) setTimeout(function () { showToast(t.name + ' saved: it shows when you pick a built-in layout in 3 \u00b7 Layout.', 5500); }, 3400);
+        var isRcTheme = !!(t.receiptStyle || (t.layout && LAYOUT_DEFS[t.layout] && LAYOUT_DEFS[t.layout].kind === 'receipt'));
+        if (lay && layoutKeepsOwnLook(lay) && !isRcTheme) setTimeout(function () { showToast(t.name + ' saved: it shows when you pick a built-in layout in 3 \u00b7 Layout.', 5500); }, 3400);
         scheduleSetupSave();
         if (!labelInput.value.trim()) {
           labelInput.placeholder = 'e.g. ' + (t.sample || 'Sofia’s 7th Birthday');
@@ -85233,14 +86220,17 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       });
 
       // ---- Step 2: title style tiles ----
-      var STYLE_NAMES = { classic: 'Classic', wedding: 'Line above', turns: 'Line below', blocks: 'Letter blocks', monogram: 'Monogram', bignum: 'Big number' };
+      var STYLE_NAMES = { classic: 'Classic', wedding: 'Line above', turns: 'Line below', blocks: 'Letter blocks', monogram: 'Monogram', bignum: 'Big number', minimal: 'Minimalist', editorial: 'Editorial', filmframe: '35mm Film' };
       var STYLE_MOCKS = {
         classic: '<b>Name</b><i>10/11/26</i>',
         wedding: '<i>THE WEDDING OF</i><b>Name</b>',
         turns: '<b>Name</b><i>TURNS ONE</i>',
         blocks: '<span class="blk"><u>M</u><u>I</u><u>A</u></span><i>TURNS ONE</i>',
         monogram: '<span class="mono">A&amp;B</span>',
-        bignum: '<span class="bn">18</span><b>Name</b>'
+        bignum: '<span class="bn">18</span><b>Name</b>',
+        minimal: '<span style="width:65%;border-top:1px solid currentColor;opacity:.35;margin-bottom:3px"></span><b style="font-style:normal;font-family:Inter,sans-serif;font-size:14px">STUDIO</b><i>ARCHIVE · 26</i>',
+        editorial: '<i style="font-size:6px">THE ARCHIVE</i><b style="font-size:15px">Moment</b><span style="width:55%;border-top:1px solid currentColor;opacity:.3;margin-top:2px"></span>',
+        filmframe: '<i style="font-family:Courier New,monospace">01A · ISO400</i><b style="font-style:normal;font-family:Courier New,monospace;font-size:14px">ANALOG</b>'
       };
       var styleTilesEl = document.getElementById('titleStyleTiles');
       TITLE_STYLES.forEach(function (s) {
@@ -85250,7 +86240,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         b.addEventListener('click', function () {
           titleStyleSelect.value = s[0];
           titleStyleSelect.dispatchEvent(new Event('change', { bubbles: true }));
-          if (['wedding', 'turns', 'blocks', 'bignum'].indexOf(s[0]) >= 0 && !kickerInput.value.trim()) setTimeout(function () { kickerInput.focus(); }, 30);
+          if (['wedding', 'turns', 'blocks', 'bignum', 'minimal', 'editorial', 'filmframe'].indexOf(s[0]) >= 0 && !kickerInput.value.trim()) setTimeout(function () { kickerInput.focus(); }, 30);
         });
         styleTilesEl.appendChild(b);
       });
@@ -85262,8 +86252,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // ---- Step 2: fonts (pairs, then cards that show your own text) ----
       var FONT_GROUPS = {
         Script: ['Great Vibes', 'Dancing Script', 'Sacramento', 'Alex Brush', 'Satisfy', 'Parisienne', 'Allura', 'Italianno', 'Tangerine', 'Petit Formal Script', 'Marck Script', 'Cookie'],
-        Elegant: ['Playfair Display', 'Cormorant Garamond', 'Cinzel', 'EB Garamond', 'Merriweather', 'Abril Fatface', 'Times New Roman'],
-        Modern: ['Montserrat', 'Poppins', 'Josefin Sans', 'Raleway', 'Inter', 'Bebas Neue', 'Quicksand', 'Arial'],
+        Elegant: ['Playfair Display', 'Fraunces', 'Cormorant Garamond', 'Cinzel', 'EB Garamond', 'Merriweather', 'Abril Fatface', 'Times New Roman'],
+        Modern: ['Montserrat', 'Poppins', 'Josefin Sans', 'Raleway', 'Inter', 'Bebas Neue', 'Quicksand', 'Courier Mono', 'Arial'],
         Fun: ['Pacifico', 'Lobster', 'Fredoka', 'Caveat', 'Amatic SC', 'Comfortaa']
       };
       function fontVal(label) { var o = FONT_OPTIONS.find(function (f) { return f[1] === label; }); return o ? o[0] : null; }

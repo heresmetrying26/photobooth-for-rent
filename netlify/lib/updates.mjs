@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.120', date: '2026-11-27' },
   { version: '1.1.119', date: '2026-11-27' },
   { version: '1.1.118', date: '2026-11-27' },
   { version: '1.1.117', date: '2026-11-26' },
@@ -262,7 +263,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.37', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.37/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.38', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.38/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -316,6 +317,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-27', title: 'Desktop 1.1.120, Android 1.2.29, iPad 1.1.38 & Website: Music Player & Aesthetic Receipt Templates + Minimalist Studio 4-Cut Ready Designs', for: ['website', 'app', 'android', 'ipad'], app: '1.1.120', android: '1.2.29', ipad: '1.1.38',
+    items: [
+      '🎵 Music player & trendy new thermal receipt styles: Choose from 11 receipt templates under Setup › Design › Text or pick them straight from Ready designs › Receipt — including Now Playing music player cards (1-shot, 3-shot, and colour card), Mixtape cassette tracklists, Collectible Stat Cards, Pop Zine covers, The Daily Gazette, Atelier fashion covers, Retro Wanted posters, Minimalist Studio receipts, Vintage Cinema tickets, and Wedding Love receipts.',
+      '🤍 Minimalist & Korean 4-cut inspired studio designs: Adds a new Minimalist Ready designs category with 21 clean 4-cut strips, 4-grid sheets, 6-shot contact sheets, and sideways landscape twins — featuring flat borderless frames, editorial hairlines, aura glow gradients, silver gridlines, 35mm sprockets, dainty bows, and monochrome checker borders.',
+      '🧾 Easier receipt design workflow: Tapping any receipt design in Ready designs now lets you keep or switch among receipt layouts without leaving your receipt setup, and saves your chosen receipt template in Guest designs and Setup presets.'
+    ]
+  },
   {
     date: '2026-11-27', title: 'Desktop 1.1.119, Android 1.2.28, iPad 1.1.37 & Website: Reliable Photoman Template Maker Canvas, Huawei Tablet Camera Endurance & LAN Print Station Paper Sizes', for: ['website', 'app', 'android', 'ipad'], app: '1.1.119', android: '1.2.28', ipad: '1.1.37',
     items: [

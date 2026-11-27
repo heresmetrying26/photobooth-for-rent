@@ -571,10 +571,13 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             if self.session.isRunning {
                 self.session.stopRunning()
             }
-            if self.audioInput != nil || self.audioDataOutput != nil {
+            if self.currentInput != nil || self.audioInput != nil || self.audioDataOutput != nil {
                 self.session.beginConfiguration()
+                if let vIn = self.currentInput { self.session.removeInput(vIn) }
                 if let aIn = self.audioInput { self.session.removeInput(aIn) }
                 if let aOut = self.audioDataOutput { self.session.removeOutput(aOut) }
+                self.currentInput = nil
+                self.currentDevice = nil
                 self.audioInput = nil
                 self.audioDataOutput = nil
                 self.session.commitConfiguration()

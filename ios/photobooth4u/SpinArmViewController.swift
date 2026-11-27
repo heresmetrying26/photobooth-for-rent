@@ -175,7 +175,13 @@ final class SpinArmViewController: UIViewController,
     private var rotationObserverPreview: NSKeyValueObservation?
     private var rotationObserverCapture: NSKeyValueObservation?
     private var orientationObserver: NSObjectProtocol?
+    private var sessionRuntimeObserver: NSObjectProtocol?
+    private var sessionInterruptedObserver: NSObjectProtocol?
+    private var sessionInterruptionEndedObserver: NSObjectProtocol?
+    private var cameraRecoveryWorkItem: DispatchWorkItem?
     private var isSessionConfigured = false
+    private var hasBootedCameraAndSensors = false
+    private var hasRequestedAudioOnce = false
 
     private let motionManager = CMMotionManager()
     private let motionOpQueue: OperationQueue = {
@@ -292,6 +298,16 @@ final class SpinArmViewController: UIViewController,
         NotificationCenter.default.addObserver(self, selector: #selector(handleKeyboardNotification(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
         orientationObserver = NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
             self?.syncOrientationIfIdle()
+            self?.ensureCameraRunningIfNeeded()
+        }
+        sessionRuntimeObserver = NotificationCenter.default.addObserver(forName: AVCaptureSession.runtimeErrorNotification, object: session, queue: .main) { [weak self] _ in
+            self?.scheduleCameraRecovery(reconfigure: true)
+        }
+        sessionInterruptedObserver = NotificationCenter.default.addObserver(forName: AVCaptureSession.wasInterruptedNotification, object: session, queue: .main) { [weak self] _ in
+            self?.cameraRecoveryWorkItem?.cancel()
+        }
+        sessionInterruptionEndedObserver = NotificationCenter.default.addObserver(forName: AVCaptureSession.interruptionEndedNotification, object: session, queue: .main) { [weak self] _ in
+            self?.scheduleCameraRecovery(reconfigure: false)
         }
 
         requestPermissionsAndStart()
@@ -305,9 +321,22 @@ final class SpinArmViewController: UIViewController,
         UIDevice.current.isBatteryMonitoringEnabled = true
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        previewLayer?.frame = previewContainer.bounds
+        CATransaction.commit()
+        syncOrientationIfIdle()
+        ensureCameraRunningIfNeeded()
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         previewLayer?.frame = previewContainer.bounds
+        CATransaction.commit()
         updateMeterLayout()
     }
 
@@ -323,6 +352,9 @@ final class SpinArmViewController: UIViewController,
     deinit {
         NotificationCenter.default.removeObserver(self)
         if let obs = orientationObserver { NotificationCenter.default.removeObserver(obs) }
+        if let obs = sessionRuntimeObserver { NotificationCenter.default.removeObserver(obs) }
+        if let obs = sessionInterruptedObserver { NotificationCenter.default.removeObserver(obs) }
+        if let obs = sessionInterruptionEndedObserver { NotificationCenter.default.removeObserver(obs) }
         teardownRuntime()
     }
 
@@ -335,6 +367,20 @@ final class SpinArmViewController: UIViewController,
         recClockTimer = nil
         toastWorkItem?.cancel()
         toastWorkItem = nil
+        cameraRecoveryWorkItem?.cancel()
+        cameraRecoveryWorkItem = nil
+        if let obs = sessionRuntimeObserver {
+            NotificationCenter.default.removeObserver(obs)
+            sessionRuntimeObserver = nil
+        }
+        if let obs = sessionInterruptedObserver {
+            NotificationCenter.default.removeObserver(obs)
+            sessionInterruptedObserver = nil
+        }
+        if let obs = sessionInterruptionEndedObserver {
+            NotificationCenter.default.removeObserver(obs)
+            sessionInterruptionEndedObserver = nil
+        }
         motionManager.stopDeviceMotionUpdates()
         motionManager.stopGyroUpdates()
         rotationObserverPreview?.invalidate()
@@ -466,27 +512,18 @@ final class SpinArmViewController: UIViewController,
     // MARK: - Permissions & Boot
 
     private func requestPermissionsAndStart() {
-        let checkAudioAndStart: () -> Void = { [weak self] in
-            guard let self = self else { return }
-            let audioStatus = AVCaptureDevice.authorizationStatus(for: .audio)
-            if audioStatus == .notDetermined {
-                AVCaptureDevice.requestAccess(for: .audio) { _ in
-                    DispatchQueue.main.async { self.bootCameraAndSensors() }
-                }
-            } else {
-                DispatchQueue.main.async { self.bootCameraAndSensors() }
-            }
-        }
-
         let camStatus = AVCaptureDevice.authorizationStatus(for: .video)
         if camStatus == .authorized {
-            checkAudioAndStart()
+            bootCameraAndSensors()
         } else if camStatus == .notDetermined {
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-                if granted {
-                    checkAudioAndStart()
-                } else {
-                    DispatchQueue.main.async { self?.showCameraDeniedAlert() }
+                DispatchQueue.main.async {
+                    guard let self = self, !self.hasTornDown else { return }
+                    if granted {
+                        self.bootCameraAndSensors()
+                    } else {
+                        self.showCameraDeniedAlert()
+                    }
                 }
             }
         } else {
@@ -512,19 +549,93 @@ final class SpinArmViewController: UIViewController,
     }
 
     private func bootCameraAndSensors() {
-        _ = LocalShareServer.shared.start()
-        LocalShareServer.shared.ensureListening(forceRestart: false)
+        guard !hasBootedCameraAndSensors, !hasTornDown else { return }
+        hasBootedCameraAndSensors = true
         isPairingScan = (!isStandaloneMode && sendUrl.isEmpty)
+        // Start camera preview FIRST so live video appears immediately upon opening 360 Arm Cam.
+        configureCameraSession()
         updateQRScanVisibility()
         refreshLiveOverlayPreview()
-        configureCameraSession()
+        updateUIState()
+        _ = LocalShareServer.shared.start()
+        LocalShareServer.shared.ensureListening(forceRestart: false)
         startMotionEngine()
         startHeartbeatTimer()
         if !isStandaloneMode && !sendUrl.isEmpty {
             verifyPairAndFetchConfig(url: sendUrl, silent: true)
             processNextUploadIfNeeded()
         }
-        updateUIState()
+        // Request microphone permission in parallel without blocking initial live camera preview.
+        if !hasRequestedAudioOnce && AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+            hasRequestedAudioOnce = true
+            AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
+                guard granted else { return }
+                DispatchQueue.main.async {
+                    guard let self = self, !self.hasTornDown, !self.isPairingScan, self.phase != .recording else { return }
+                    self.attachAudioInputIfNeeded()
+                }
+            }
+        }
+    }
+
+    private func attachAudioInputIfNeeded() {
+        camQueue.async { [weak self] in
+            guard let self = self, !self.hasTornDown, self.audioInput == nil, !self.movieOutput.isRecording else { return }
+            guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized,
+                  let mic = AVCaptureDevice.default(for: .audio),
+                  let aIn = try? AVCaptureDeviceInput(device: mic) else { return }
+            let avs = AVAudioSession.sharedInstance()
+            try? avs.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetooth])
+            try? avs.setActive(true)
+            self.session.beginConfiguration()
+            if self.session.canAddInput(aIn) {
+                self.session.addInput(aIn)
+                self.audioInput = aIn
+            }
+            self.session.commitConfiguration()
+        }
+    }
+
+    private func scheduleCameraRecovery(reconfigure: Bool) {
+        guard !hasTornDown else { return }
+        cameraRecoveryWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self = self, !self.hasTornDown else { return }
+            guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized else { return }
+            if reconfigure {
+                self.configureCameraSession()
+            } else {
+                self.ensureCameraRunningIfNeeded()
+            }
+        }
+        cameraRecoveryWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
+    }
+
+    private func ensureCameraRunningIfNeeded() {
+        guard !hasTornDown, hasBootedCameraAndSensors else { return }
+        guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized else { return }
+        camQueue.async { [weak self] in
+            guard let self = self, !self.hasTornDown else { return }
+            if !self.isSessionConfigured {
+                DispatchQueue.main.async { [weak self] in
+                    self?.configureCameraSession()
+                }
+                return
+            }
+            if !self.session.isRunning {
+                self.session.startRunning()
+                if !self.session.isRunning {
+                    DispatchQueue.main.async { [weak self] in
+                        self?.configureCameraSession()
+                    }
+                    return
+                }
+            }
+            if let dev = self.currentDevice {
+                self.setupRotation(for: dev)
+            }
+        }
     }
 
     // MARK: - Camera Session (60/120 fps + QR Scanner)
@@ -561,38 +672,53 @@ final class SpinArmViewController: UIViewController,
         }
     }
 
-    private func bestFormat(for device: AVCaptureDevice, desiredFps: Int) -> (AVCaptureDevice.Format, Int)? {
+    private func bestFormat(for device: AVCaptureDevice, desiredFps: Int) -> (AVCaptureDevice.Format, Int, CMTime)? {
         let candidates = desiredFps >= 120 ? [120, 60, 30] : (desiredFps >= 60 ? [60, 30] : [30])
-        for fps in candidates {
-            var best1080: AVCaptureDevice.Format?
-            var best720: AVCaptureDevice.Format?
-            var bestAny: AVCaptureDevice.Format?
+        // Pass 1: strictly 8-bit 4:2:0 YUV (skips 10-bit HDR x420 / ProRes formats on iPhone 15 Pro Max that clash with H.264).
+        // Pass 2: fallback to any format only if no 8-bit 4:2:0 format matches.
+        for require8Bit420 in [true, false] {
+            for fps in candidates {
+                var best1080: (AVCaptureDevice.Format, CMTime, Int)?
+                var best720: (AVCaptureDevice.Format, CMTime, Int)?
+                var bestAny: (AVCaptureDevice.Format, CMTime, Int)?
 
-            for fmt in device.formats {
-                let dims = CMVideoFormatDescriptionGetDimensions(fmt.formatDescription)
-                let w = Int(dims.width), h = Int(dims.height)
-                guard w >= 1280 && h >= 720 else { continue }
-                let supportsFps = fmt.videoSupportedFrameRateRanges.contains { r in
-                    r.minFrameRate <= Double(fps) + 0.01 && r.maxFrameRate >= Double(fps) - 0.01
-                }
-                guard supportsFps else { continue }
+                for fmt in device.formats {
+                    let dims = CMVideoFormatDescriptionGetDimensions(fmt.formatDescription)
+                    let w = Int(dims.width), h = Int(dims.height)
+                    guard w >= 1280 && h >= 720 else { continue }
 
-                let sub = CMFormatDescriptionGetMediaSubType(fmt.formatDescription)
-                let is420 = (sub == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange || sub == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)
-                if !is420 && bestAny != nil { continue }
+                    let sub = CMFormatDescriptionGetMediaSubType(fmt.formatDescription)
+                    let is420 = (sub == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange || sub == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)
+                    if require8Bit420 && !is420 { continue }
 
-                if w == 1920 && h == 1080 {
-                    if best1080 == nil || (!fmt.isVideoBinned && (best1080?.isVideoBinned ?? true)) {
-                        best1080 = fmt
+                    guard let range = fmt.videoSupportedFrameRateRanges.first(where: { r in
+                        r.minFrameRate <= Double(fps) + 0.01 && r.maxFrameRate >= Double(fps) - 0.05
+                    }) else { continue }
+
+                    var dur = CMTime(value: 1, timescale: CMTimeScale(fps))
+                    if CMTimeCompare(dur, range.minFrameDuration) < 0 { dur = range.minFrameDuration }
+                    if CMTimeCompare(dur, range.maxFrameDuration) > 0 { dur = range.maxFrameDuration }
+
+                    // Prefer SDR (!isVideoHDRSupported) + unbinned 8-bit 4:2:0 for crisp, fast H.264 capture.
+                    let rank = (is420 ? 10 : 0) + (!fmt.isVideoHDRSupported ? 4 : 0) + (!fmt.isVideoBinned ? 2 : 0)
+
+                    if w == 1920 && h == 1080 {
+                        if best1080 == nil || rank > best1080!.2 {
+                            best1080 = (fmt, dur, rank)
+                        }
+                    } else if w == 1280 && h == 720 {
+                        if best720 == nil || rank > best720!.2 {
+                            best720 = (fmt, dur, rank)
+                        }
+                    } else if w <= 1920 {
+                        if bestAny == nil || rank > bestAny!.2 {
+                            bestAny = (fmt, dur, rank)
+                        }
                     }
-                } else if w == 1280 && h == 720 {
-                    if best720 == nil { best720 = fmt }
-                } else if w <= 1920 && bestAny == nil {
-                    bestAny = fmt
                 }
-            }
-            if let chosen = best1080 ?? best720 ?? bestAny {
-                return (chosen, fps)
+                if let chosen = best1080 ?? best720 ?? bestAny {
+                    return (chosen.0, fps, chosen.1)
+                }
             }
         }
         return nil
@@ -606,7 +732,7 @@ final class SpinArmViewController: UIViewController,
         let fallbackVo = currentLegacyVideoOrientation()
 
         camQueue.async { [weak self] in
-            guard let self = self else { return }
+            guard let self = self, !self.hasTornDown else { return }
             guard let device = self.pickCaptureDevice(for: choice, scanningQr: scanning) else {
                 DispatchQueue.main.async { self.showToast("No camera available on this device.") }
                 return
@@ -617,11 +743,6 @@ final class SpinArmViewController: UIViewController,
             }
 
             self.session.beginConfiguration()
-            if scanning {
-                self.session.sessionPreset = .high
-            } else {
-                self.session.sessionPreset = .inputPriority
-            }
 
             if let oldIn = self.currentVideoInput {
                 self.session.removeInput(oldIn)
@@ -636,17 +757,31 @@ final class SpinArmViewController: UIViewController,
                 self.metadataOutput = nil
             }
 
+            var activeDevice = device
             do {
                 let vIn = try AVCaptureDeviceInput(device: device)
                 if self.session.canAddInput(vIn) {
                     self.session.addInput(vIn)
                     self.currentVideoInput = vIn
                     self.currentDevice = device
+                } else {
+                    throw NSError(domain: "SpinArmCamera", code: 1)
                 }
             } catch {
-                self.session.commitConfiguration()
-                DispatchQueue.main.async { self.showToast("Could not open camera.") }
-                return
+                // Fallback to standard wide back camera if selected lens failed to attach
+                if let fallbackDev = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
+                    ?? AVCaptureDevice.default(for: .video),
+                   let vIn = try? AVCaptureDeviceInput(device: fallbackDev),
+                   self.session.canAddInput(vIn) {
+                    self.session.addInput(vIn)
+                    self.currentVideoInput = vIn
+                    self.currentDevice = fallbackDev
+                    activeDevice = fallbackDev
+                } else {
+                    self.session.commitConfiguration()
+                    DispatchQueue.main.async { self.showToast("Could not open camera.") }
+                    return
+                }
             }
 
             if !scanning && AVCaptureDevice.authorizationStatus(for: .audio) == .authorized {
@@ -666,20 +801,26 @@ final class SpinArmViewController: UIViewController,
             }
             self.movieOutput.movieFragmentInterval = .invalid
 
-            var chosenFormat: (AVCaptureDevice.Format, Int)? = nil
+            var chosenFormat: (AVCaptureDevice.Format, Int, CMTime)? = nil
             if !scanning {
-                chosenFormat = self.bestFormat(for: device, desiredFps: wantedFps)
-                if let (fmt, fps) = chosenFormat {
+                if self.session.canSetSessionPreset(.inputPriority),
+                   let match = self.bestFormat(for: activeDevice, desiredFps: wantedFps) {
+                    self.session.sessionPreset = .inputPriority
                     do {
-                        try device.lockForConfiguration()
-                        device.activeFormat = fmt
-                        let dur = CMTime(value: 1, timescale: CMTimeScale(fps))
-                        device.activeVideoMinFrameDuration = dur
-                        device.activeVideoMaxFrameDuration = dur
-                        device.unlockForConfiguration()
-                    } catch { /* fallback to default format */ }
+                        try activeDevice.lockForConfiguration()
+                        activeDevice.activeFormat = match.0
+                        activeDevice.activeVideoMinFrameDuration = match.2
+                        activeDevice.activeVideoMaxFrameDuration = match.2
+                        activeDevice.unlockForConfiguration()
+                        chosenFormat = match
+                    } catch {
+                        self.session.sessionPreset = .high
+                    }
+                } else {
+                    self.session.sessionPreset = .high
                 }
             } else {
+                self.session.sessionPreset = .high
                 let meta = AVCaptureMetadataOutput()
                 if self.session.canAddOutput(meta) {
                     self.session.addOutput(meta)
@@ -695,21 +836,20 @@ final class SpinArmViewController: UIViewController,
 
             // Re-apply frame duration after commitConfiguration() so AVFoundation does not revert to 30 fps.
             var finalFps = 30
-            if let (_, fps) = chosenFormat {
+            if let (_, fps, dur) = chosenFormat {
                 finalFps = fps
                 do {
-                    try device.lockForConfiguration()
-                    let dur = CMTime(value: 1, timescale: CMTimeScale(fps))
-                    device.activeVideoMinFrameDuration = dur
-                    device.activeVideoMaxFrameDuration = dur
+                    try activeDevice.lockForConfiguration()
+                    activeDevice.activeVideoMinFrameDuration = dur
+                    activeDevice.activeVideoMaxFrameDuration = dur
                     if !lockAeAf {
-                        if device.isFocusModeSupported(.continuousAutoFocus) { device.focusMode = .continuousAutoFocus }
-                        if device.isExposureModeSupported(.continuousAutoExposure) { device.exposureMode = .continuousAutoExposure }
+                        if activeDevice.isFocusModeSupported(.continuousAutoFocus) { activeDevice.focusMode = .continuousAutoFocus }
+                        if activeDevice.isExposureModeSupported(.continuousAutoExposure) { activeDevice.exposureMode = .continuousAutoExposure }
                     } else {
-                        if device.isFocusModeSupported(.locked) { device.focusMode = .locked }
-                        if device.isExposureModeSupported(.locked) { device.exposureMode = .locked }
+                        if activeDevice.isFocusModeSupported(.locked) { activeDevice.focusMode = .locked }
+                        if activeDevice.isExposureModeSupported(.locked) { activeDevice.exposureMode = .locked }
                     }
-                    device.unlockForConfiguration()
+                    activeDevice.unlockForConfiguration()
                 } catch { /* ignore */ }
             }
 
@@ -732,7 +872,35 @@ final class SpinArmViewController: UIViewController,
                 self.session.startRunning()
             }
 
-            self.setupRotation(for: device)
+            // Safety net: if custom format / audio / ultra-wide failed to start running, fall back cleanly to safe .high video-only so live preview appears immediately.
+            if !self.session.isRunning && !self.hasTornDown {
+                self.session.beginConfiguration()
+                if let oldAudio = self.audioInput {
+                    self.session.removeInput(oldAudio)
+                    self.audioInput = nil
+                }
+                if let fallbackDev = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
+                    ?? AVCaptureDevice.default(for: .video),
+                   fallbackDev.uniqueID != activeDevice.uniqueID,
+                   let vIn = try? AVCaptureDeviceInput(device: fallbackDev) {
+                    if let oldIn = self.currentVideoInput {
+                        self.session.removeInput(oldIn)
+                        self.currentVideoInput = nil
+                    }
+                    if self.session.canAddInput(vIn) {
+                        self.session.addInput(vIn)
+                        self.currentVideoInput = vIn
+                        self.currentDevice = fallbackDev
+                        activeDevice = fallbackDev
+                    }
+                }
+                self.session.sessionPreset = .high
+                self.session.commitConfiguration()
+                finalFps = 30
+                self.session.startRunning()
+            }
+
+            self.setupRotation(for: activeDevice)
 
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
@@ -1657,8 +1825,10 @@ final class SpinArmViewController: UIViewController,
     }
 
     private func dismissSelf() {
-        dismiss(animated: true) { [weak self] in
-            self?.onDismiss?()
+        let done = onDismiss
+        onDismiss = nil
+        dismiss(animated: true) {
+            done?()
         }
     }
 
@@ -2258,7 +2428,8 @@ final class SpinArmViewController: UIViewController,
         connPill.clipsToBounds = true
         connPill.textAlignment = .center
         connPill.adjustsFontSizeToFitWidth = true
-        connPill.minimumScaleFactor = 0.75
+        connPill.minimumScaleFactor = 0.72
+        connPill.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         connPill.isUserInteractionEnabled = true
         connPill.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(didTapConnPill)))
         connPill.translatesAutoresizingMaskIntoConstraints = false
@@ -2417,11 +2588,14 @@ final class SpinArmViewController: UIViewController,
         let styleBtn: (UIButton, String, UIColor) -> Void = { b, title, bg in
             b.setTitle(title, for: .normal)
             b.setTitleColor(.white, for: .normal)
-            b.titleLabel?.font = .systemFont(ofSize: 13, weight: .bold)
+            b.titleLabel?.font = .systemFont(ofSize: 12.5, weight: .bold)
             b.titleLabel?.numberOfLines = 1
+            b.titleLabel?.adjustsFontSizeToFitWidth = true
+            b.titleLabel?.minimumScaleFactor = 0.72
+            b.titleLabel?.lineBreakMode = .byClipping
             b.backgroundColor = bg
             b.layer.cornerRadius = 12
-            b.contentEdgeInsets = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+            b.contentEdgeInsets = UIEdgeInsets(top: 10, left: 5, bottom: 10, right: 5)
         }
         styleBtn(calBtn, "🎯 Calibrate", UIColor(red: 0.12, green: 0.23, blue: 0.32, alpha: 1))
         styleBtn(recBtn, "● Record", UIColor(red: 0.79, green: 0.24, blue: 0.15, alpha: 1))
@@ -2510,6 +2684,8 @@ final class SpinArmViewController: UIViewController,
         qrCancelBtn.translatesAutoresizingMaskIntoConstraints = false
         qrOverlay.addSubview(qrCancelBtn)
 
+        let qrBoxSize = qrBoxView.widthAnchor.constraint(equalToConstant: 210)
+        qrBoxSize.priority = .defaultHigh
         NSLayoutConstraint.activate([
             qrOverlay.topAnchor.constraint(equalTo: topBar.bottomAnchor, constant: 6),
             qrOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -2517,18 +2693,22 @@ final class SpinArmViewController: UIViewController,
             qrOverlay.bottomAnchor.constraint(equalTo: bottomBar.topAnchor, constant: -6),
 
             qrBoxView.centerXAnchor.constraint(equalTo: qrOverlay.centerXAnchor),
-            qrBoxView.centerYAnchor.constraint(equalTo: qrOverlay.centerYAnchor, constant: -24),
-            qrBoxView.widthAnchor.constraint(equalToConstant: 210),
-            qrBoxView.heightAnchor.constraint(equalToConstant: 210),
+            qrBoxView.centerYAnchor.constraint(equalTo: qrOverlay.centerYAnchor, constant: -16),
+            qrBoxSize,
+            qrBoxView.widthAnchor.constraint(lessThanOrEqualToConstant: 210),
+            qrBoxView.widthAnchor.constraint(lessThanOrEqualTo: qrOverlay.heightAnchor, multiplier: 0.48),
+            qrBoxView.heightAnchor.constraint(equalTo: qrBoxView.widthAnchor),
 
-            qrTitleLabel.bottomAnchor.constraint(equalTo: qrBoxView.topAnchor, constant: -16),
-            qrTitleLabel.leadingAnchor.constraint(equalTo: qrOverlay.leadingAnchor, constant: 24),
-            qrTitleLabel.trailingAnchor.constraint(equalTo: qrOverlay.trailingAnchor, constant: -24),
+            qrTitleLabel.bottomAnchor.constraint(equalTo: qrBoxView.topAnchor, constant: -12),
+            qrTitleLabel.topAnchor.constraint(greaterThanOrEqualTo: qrOverlay.topAnchor, constant: 8),
+            qrTitleLabel.leadingAnchor.constraint(equalTo: qrOverlay.leadingAnchor, constant: 20),
+            qrTitleLabel.trailingAnchor.constraint(equalTo: qrOverlay.trailingAnchor, constant: -20),
 
-            qrManualBtn.topAnchor.constraint(equalTo: qrBoxView.bottomAnchor, constant: 18),
+            qrManualBtn.topAnchor.constraint(equalTo: qrBoxView.bottomAnchor, constant: 14),
             qrManualBtn.centerXAnchor.constraint(equalTo: qrOverlay.centerXAnchor),
 
-            qrCancelBtn.topAnchor.constraint(equalTo: qrManualBtn.bottomAnchor, constant: 10),
+            qrCancelBtn.topAnchor.constraint(equalTo: qrManualBtn.bottomAnchor, constant: 8),
+            qrCancelBtn.bottomAnchor.constraint(lessThanOrEqualTo: qrOverlay.bottomAnchor, constant: -8),
             qrCancelBtn.centerXAnchor.constraint(equalTo: qrOverlay.centerXAnchor)
         ])
     }

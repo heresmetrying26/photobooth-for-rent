@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <title>__TITLE__ - Sharing Station</title>
   <style>
     * {
@@ -16,11 +16,12 @@
       background: #0F0E13;
       color: #F0EEF5;
       min-height: 100vh;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
       -webkit-tap-highlight-color: transparent
     }
 
     header {
-      padding: 16px 20px;
+      padding: max(16px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) 16px max(20px, env(safe-area-inset-left, 0px));
       display: flex;
       align-items: center;
       justify-content: space-between;

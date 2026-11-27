@@ -41,6 +41,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     private var loadStartedAt: Date?
     private var loadWatchdogWorkItem: DispatchWorkItem?
     private var livenessCheckId = 0
+    private var isSpinArmOpen = false
     private var airPrintBusy = false
     private var airPrintQueue: [(jobName: String, ptW: Double, ptH: Double, pdfUrl: URL)] = []
     // Photo saves run here, one at a time and off the main thread, so the camera picture and the screen keep moving.
@@ -1159,15 +1160,20 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     }
 
     private func openSpinArmCamera() {
+        if presentedViewController is SpinArmViewController { return }
+        isSpinArmOpen = true
         NativeCameraBridge.shared.stop { [weak self] in
             guard let self = self else { return }
+            if self.presentedViewController is SpinArmViewController { return }
             if let presented = self.presentedViewController {
                 presented.dismiss(animated: false)
             }
             let vc = SpinArmViewController()
             vc.modalPresentationStyle = .fullScreen
             vc.onDismiss = { [weak self] in
-                self?.webView?.evaluateJavaScript("window.dispatchEvent(new Event('pbSpinArmClosed'));", completionHandler: nil)
+                guard let self = self else { return }
+                self.isSpinArmOpen = false
+                self.webView?.evaluateJavaScript("window.dispatchEvent(new Event('pbSpinArmClosed'));", completionHandler: nil)
             }
             self.present(vc, animated: true)
         }
@@ -2179,10 +2185,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 }
             }
 
+            let spinArmBusy = isSpinArmOpen || (presentedViewController is SpinArmViewController)
+
             switch op {
             case "list":
                 reply(["ok": true, "devices": NativeCameraBridge.shared.listDevices()])
             case "open":
+                if spinArmBusy {
+                    reply(["ok": false, "name": "AbortError", "error": "360 Arm Camera is active."])
+                    return
+                }
                 let devId = args["deviceId"] as? String
                 let preset = (args["preset"] as? String) ?? "auto"
                 NativeCameraBridge.shared.open(deviceId: devId, presetName: preset) { res in
@@ -2193,10 +2205,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                     reply(["ok": true])
                 }
             case "capture":
+                if spinArmBusy {
+                    reply(["ok": false, "error": "360 Arm Camera is active."])
+                    return
+                }
                 NativeCameraBridge.shared.capturePhoto { res in
                     reply(res)
                 }
             case "layout":
+                if spinArmBusy { return }
                 let visible = (args["visible"] as? Bool) ?? false
                 let x = CGFloat((args["x"] as? NSNumber)?.doubleValue ?? 0)
                 let y = CGFloat((args["y"] as? NSNumber)?.doubleValue ?? 0)
@@ -2216,6 +2233,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 let rgba = (args["rgba"] as? String) ?? ""
                 NativeCameraBridge.shared.setCustomLut(id: lutId, dimension: size, rgbaBase64: rgba)
             case "prepareAudio":
+                if spinArmBusy {
+                    reply(["ok": false, "error": "360 Arm Camera is active."])
+                    return
+                }
                 NativeCameraBridge.shared.prepareAudio { res in
                     reply(res)
                 }
@@ -2224,6 +2245,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                     reply(["ok": true])
                 }
             case "startVideo":
+                if spinArmBusy {
+                    reply(["ok": false, "error": "360 Arm Camera is active."])
+                    return
+                }
                 let maxW = (args["maxWidth"] as? NSNumber)?.intValue ?? 1280
                 let br = (args["bitrate"] as? NSNumber)?.intValue ?? 2_200_000
                 let mir = (args["mirror"] as? Bool) ?? false

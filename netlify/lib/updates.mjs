@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.122', date: '2026-11-27' },
   { version: '1.1.121', date: '2026-11-27' },
   { version: '1.1.120', date: '2026-11-27' },
   { version: '1.1.119', date: '2026-11-27' },
@@ -264,7 +265,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.38', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.38/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.40', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.40/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -318,6 +319,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-27', title: 'Desktop 1.1.122, Android 1.2.31, iPad 1.1.40 & Website: 24 New Christmas Ready Designs (2x6 Strips, 4R Sheets & Landscape 2-Shot)', for: ['website', 'app', 'android', 'ipad'], app: '1.1.122', android: '1.2.31', ipad: '1.1.40',
+    items: [
+      '🎄 9 new Christmas 2x6 photo strip designs: Highland Tartan plaid, Emerald Velvet ornaments, Peppermint Candy stripes, Winter Frost wonderland, Minimalist Noel 4-cut, Cranberry Studio 4-cut, Starry Fairy Lights, Gingerbread Crew, and Champagne Noel Gala.',
+      '🖼️ 8 new Christmas portrait 4R templates: Highland Plaid 2x2 grid, Snowy Polaroids collage, North Pole Hero 1+3, Under the Mistletoe solo card, Scandi Kraft minimalist grid, Midnight Noel luxury 1+2, December Roll 6-shot film sheet, and Sugarplum Frosted 2x2.',
+      '❄️ 7 new Christmas Landscape 2-shot designs plus festive accents: Evergreen Baubles, Tartan Hearth, Frosted Postcard, Peppermint Duo, Starlit Cabin, Studio Scarlet, and Cream & Pine — complete with new holly leaves, pine boughs, hanging baubles, frosted gingerbread buddies, minimalist pine trees, tartan plaid, fairy lights, peppermint trim, and frost backdrops.'
+    ]
+  },
   {
     date: '2026-11-27', title: 'Desktop 1.1.121, Android 1.2.30, iPad 1.1.39 & Website: Custom Colour LUTs, Standalone iPhone/iPad 360 Mode & Sharing Station', for: ['website', 'app', 'android', 'ipad'], app: '1.1.121', android: '1.2.30', ipad: '1.1.39',
     items: [

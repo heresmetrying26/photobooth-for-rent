@@ -31752,6 +31752,95 @@
         }
         ctx.restore();
       }
+      function fillPeppermint(ctx, w, h) {
+        var base = themeBase('#c62828');
+        var cream = '#fffdf8';
+        var s = Math.max(10, Math.round(Math.min(w, h) * 0.032));
+        ctx.fillStyle = cream; ctx.fillRect(0, 0, w, h);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, w, h);
+        ctx.rect(s, s, w - 2 * s, h - 2 * s);
+        ctx.clip('evenodd');
+        ctx.fillStyle = cream; ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = base; ctx.lineWidth = s * 0.72;
+        var step = s * 1.65;
+        for (var d = -h; d < w + h; d += step) {
+          ctx.beginPath(); ctx.moveTo(d, 0); ctx.lineTo(d + h, h); ctx.stroke();
+        }
+        ctx.restore();
+        ctx.save();
+        ctx.strokeStyle = mixHex(base, '#7a1010', 0.25); ctx.lineWidth = Math.max(1.5, s * 0.14);
+        ctx.strokeRect(s + 3, s + 3, w - 2 * (s + 3), h - 2 * (s + 3));
+        ctx.restore();
+      }
+      function fillTartan(ctx, w, h) {
+        var base = themeBase('#8e1b22');
+        var forest = mixHex('#154731', base, 0.2);
+        var dark = mixHex(base, '#000000', 0.45);
+        var gold = '#f3d999';
+        ctx.fillStyle = base; ctx.fillRect(0, 0, w, h);
+        var u = Math.max(48, Math.round(Math.min(w, h) / 7));
+        ctx.save();
+        ctx.fillStyle = forest; ctx.globalAlpha = 0.46;
+        for (var x = 0; x < w; x += u) ctx.fillRect(x, 0, u * 0.44, h);
+        for (var y = 0; y < h; y += u) ctx.fillRect(0, y, w, u * 0.44);
+        ctx.fillStyle = dark; ctx.globalAlpha = 0.28;
+        for (var x2 = u * 0.55; x2 < w; x2 += u) ctx.fillRect(x2, 0, u * 0.14, h);
+        for (var y2 = u * 0.55; y2 < h; y2 += u) ctx.fillRect(0, y2, w, u * 0.14);
+        ctx.fillStyle = gold; ctx.globalAlpha = 0.42;
+        var lw = Math.max(1.5, u * 0.025);
+        for (var x3 = u * 0.21; x3 < w; x3 += u) ctx.fillRect(x3, 0, lw, h);
+        for (var y3 = u * 0.21; y3 < h; y3 += u) ctx.fillRect(0, y3, w, lw);
+        ctx.restore();
+      }
+      function fillFairyLights(ctx, w, h) {
+        var base = themeBase('#132238');
+        ctx.fillStyle = vGrad(ctx, h, base, mixHex(base, '#000000', 0.45));
+        ctx.fillRect(0, 0, w, h);
+        var u = Math.min(w, h), rand = seededRand(1225);
+        for (var i = 0; i < 24; i++) {
+          var bx = rand() * w, by = rand() * h, br = u * (0.02 + rand() * 0.055);
+          if (by > h * 0.06 && by < h * 0.80 && bx > w * 0.08 && bx < w * 0.92) continue;
+          var bg = ctx.createRadialGradient(bx, by, 0, bx, by, br);
+          bg.addColorStop(0, 'rgba(255,226,154,' + (0.24 + rand() * 0.22) + ')');
+          bg.addColorStop(1, 'rgba(255,226,154,0)');
+          ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
+        }
+        // Draped string of warm fairy bulbs right inside the top border margin
+        var topDrop = h * 0.024, segs = Math.max(3, Math.round(w / (u * 0.35)));
+        ctx.save();
+        ctx.strokeStyle = 'rgba(240,210,150,0.45)'; ctx.lineWidth = Math.max(1.2, u * 0.0025);
+        var sw = w / segs;
+        for (var s = 0; s < segs; s++) {
+          var x0 = s * sw, x1 = (s + 1) * sw, xm = (x0 + x1) / 2;
+          ctx.beginPath(); ctx.moveTo(x0, 0); ctx.quadraticCurveTo(xm, topDrop * 1.45, x1, 0); ctx.stroke();
+          [0.25, 0.5, 0.75].forEach(function (t, bi) {
+            var px = x0 + sw * t;
+            var py = 2 * t * (1 - t) * topDrop * 1.45;
+            var col = ['#ffe28a', '#ff7b7b', '#8ce99a'][bi % 3];
+            var g = ctx.createRadialGradient(px, py + u * 0.008, 0, px, py + u * 0.008, u * 0.022);
+            g.addColorStop(0, 'rgba(255,235,175,0.65)'); g.addColorStop(1, 'rgba(255,235,175,0)');
+            ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py + u * 0.008, u * 0.022, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(px, py + u * 0.009, u * 0.0055, u * 0.0085, 0, 0, Math.PI * 2); ctx.fill();
+          });
+        }
+        ctx.restore();
+      }
+      function fillFrost(ctx, w, h) {
+        var base = themeBase('#dcebf7');
+        ctx.fillStyle = vGrad(ctx, h, mixHex(base, '#9ec3e6', 0.25), base);
+        ctx.fillRect(0, 0, w, h);
+        var u = Math.max(w, h);
+        var cg = ctx.createRadialGradient(w * 0.5, h * 0.45, 0, w * 0.5, h * 0.45, u * 0.6);
+        cg.addColorStop(0, 'rgba(255,255,255,0.72)'); cg.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = cg; ctx.fillRect(0, 0, w, h);
+        var m = Math.min(w, h) * 0.032;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = Math.max(1.5, Math.min(w, h) * 0.003);
+        ctx.strokeRect(m, m, w - 2 * m, h - 2 * m);
+        ctx.restore();
+      }
       Object.assign(BACKDROP_PRESETS, {
         sunset: { fill: fillSunset, elements: 'none', base: '#ff9a62' },
         neon: { fill: fillNeon, elements: 'none', base: '#0c0a1c' },
@@ -31759,7 +31848,11 @@
         gingham: { fill: fillGingham, elements: 'none', base: '#cfe6ff' },
         aura: { fill: fillAura, elements: 'none', base: '#f4d2df' },
         gridlines: { fill: fillGridLines, elements: 'none', base: '#eef1f5' },
-        checker: { fill: fillChecker, elements: 'none', base: '#f7f7f5' }
+        checker: { fill: fillChecker, elements: 'none', base: '#f7f7f5' },
+        tartan: { fill: fillTartan, elements: 'none', base: '#8e1b22' },
+        fairlights: { fill: fillFairyLights, elements: 'goldstars', base: '#132238', pal: Object.assign({}, buildPalette('#132238'), { gold: '#ffe082' }) },
+        peppermint: { fill: fillPeppermint, elements: 'snowflakes', base: '#c62828', pal: Object.assign({}, DEFAULT_PAL, { snow: '#c62828' }) },
+        frost: { fill: fillFrost, elements: 'snowflakes', base: '#dcebf7', pal: Object.assign({}, buildPalette('#dcebf7'), { snow: '#ffffff' }) }
       });
       Object.assign(BACKDROP_PRESETS, {
         grad: { fill: fillGraduation, elements: 'none', base: '#14254a' },
@@ -42466,7 +42559,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         ctx.textBaseline = 'middle';
 
         const tx = xOffset + W / 2;
-        const maxTextWidth = W * 0.92;
+        const maxTextWidth = (typeof themeArt !== 'undefined' && themeArt.length) ? W * 0.64 : W * 0.92;
         // Title sits higher when a date subtitle follows it; centered alone otherwise.
         const titleY = dateText ? contentH + bandH * 0.40 : contentH + bandH * 0.54;
         // No backdrop at all (plain gradient, nothing uploaded/chosen) leaves more
@@ -43722,7 +43815,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         ['editorial', 'Editorial archive — magazine band & flat frames'],
         ['filmframe', '35mm contact sheet — film frame stamps']
       ];
-      var ART_KEYS = ['awning', 'teddy', 'bunny', 'linefloral', 'roses', 'pampas', 'sprockets', 'crosshair', 'ribbon', 'sparklemin'];
+      var ART_KEYS = ['awning', 'teddy', 'bunny', 'linefloral', 'roses', 'pampas', 'sprockets', 'crosshair', 'ribbon', 'sparklemin', 'holly', 'boughs', 'ornaments', 'gingerbread', 'xmastree'];
       var BLOCK_FONT = "'Fredoka', 'Poppins', sans-serif";
       function styleBandFactor() { return { classic: 1, wedding: 1.6, turns: 1.4, blocks: 1.65, monogram: 2, bignum: 1.6, minimal: 1.35, editorial: 1.45, filmframe: 1.4 }[titleStyle] || 1; }
       function hasArt(k) { return themeArt.indexOf(k) >= 0; }
@@ -43761,7 +43854,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var cx = x + w / 2, maxW = w * 0.86;
         if (hasArt('teddy')) { cx = x + w * 0.62; maxW = w * 0.58; }
         else if (hasArt('bunny')) { cx = x + w * 0.38; maxW = w * 0.58; }
-        else if (hasArt('linefloral') || hasArt('pampas')) maxW = w * 0.64;
+        else if (hasArt('gingerbread')) { cx = x + w * 0.60; maxW = w * 0.58; }
+        else if (hasArt('xmastree')) { cx = x + w * 0.59; maxW = w * 0.60; }
+        else if (hasArt('linefloral') || hasArt('pampas') || hasArt('holly') || hasArt('boughs') || hasArt('ornaments')) maxW = w * 0.64;
         else if (hasArt('roses')) maxW = w * 0.74;
         else if (hasArt('ribbon')) maxW = Math.min(maxW, w * 0.62);
         else if (hasArt('sparklemin')) maxW = Math.min(maxW, w * 0.68);
@@ -43824,12 +43919,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         });
         var gap = function (r, prev) { return r.s * 0.3 + (prev ? prev.s * (prev.blocks ? 0.2 : prev.mono ? 0.12 : 0.04) : 0); };
         var total = rows.reduce(function (a, r, i) { return a + r.s + (i ? gap(r, rows[i - 1]) : 0); }, 0);
+        var edgeRing = backdropPreset === 'checker' || backdropPreset === 'peppermint';
         var availFrac = (titleStyle === 'minimal' || titleStyle === 'editorial' || titleStyle === 'filmframe')
-          ? (backdropPreset === 'checker' ? 0.68 : 0.78)
-          : 0.9;
+          ? (edgeRing ? 0.68 : 0.78)
+          : (edgeRing ? 0.76 : 0.9);
         var scale = Math.min(1, (h * availFrac) / total);
         if (scale < 1) { rows.forEach(function (r) { r.s *= scale; }); total *= scale; }
-        var yy = y + (h - total) * (backdropPreset === 'checker' ? 0.42 : 0.5);
+        var yy = y + (h - total) * (edgeRing ? 0.42 : 0.5);
         // Busy backdrop behind the block (confetti, lines)? Soften it, like the classic title.
         var widest = 0;
         rows.forEach(function (r) {
@@ -43962,6 +44058,29 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           drawMinimalRibbon(ctx, band.x + band.w - rbs * 1.35, band.y + band.h * 0.52, rbs);
         }
         if (hasArt('sparklemin')) drawMinimalSparkles(ctx, W, H, band);
+        if (hasArt('holly')) {
+          var hr = Math.min(band.h * 0.25, band.w * 0.085);
+          drawHollyCluster(ctx, band.x + hr * 1.15, band.y + band.h * 0.54, hr, false);
+          drawHollyCluster(ctx, band.x + band.w - hr * 1.15, band.y + band.h * 0.54, hr, true);
+        }
+        if (hasArt('boughs')) {
+          var bgr = Math.min(band.h * 0.27, band.w * 0.09);
+          drawPineBough(ctx, band.x + bgr * 1.0, band.y + band.h * 0.54, bgr, false);
+          drawPineBough(ctx, band.x + band.w - bgr * 1.0, band.y + band.h * 0.54, bgr, true);
+        }
+        if (hasArt('ornaments')) {
+          var or = Math.min(band.h * 0.21, band.w * 0.068);
+          drawHangingOrnament(ctx, band.x + or * 1.5, band.y + band.h * 0.06, band.h * 0.52, or, apal('ornA', '#c62828'));
+          drawHangingOrnament(ctx, band.x + band.w - or * 1.5, band.y + band.h * 0.06, band.h * 0.46, or * 0.88, apal('ornB', '#d4af37'));
+        }
+        if (hasArt('gingerbread')) {
+          var gs = Math.min(band.h * 0.86, band.w * 0.28);
+          drawGingerbread(ctx, band.x + gs * 0.48, bb - gs * 0.06, gs);
+        }
+        if (hasArt('xmastree')) {
+          var xts = Math.min(band.h * 0.82, band.w * 0.25);
+          drawXmasTreeArt(ctx, band.x + xts * 0.52, bb - xts * 0.07, xts);
+        }
         ctx.restore();
       }
       function drawAwning(ctx, W, ah) {
@@ -44200,6 +44319,111 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         drawStar(ctx, band.x + band.w * 0.068, band.y + band.h * 0.34, r, 4, 0, col, 0.65);
         drawStar(ctx, band.x + band.w * 0.932, band.y + band.h * 0.68, r * 0.72, 4, 0, col, 0.5);
         drawStar(ctx, W * 0.07, H * 0.032, r * 0.68, 4, 0, col, 0.55);
+        ctx.restore();
+      }
+      function drawHollyCluster(ctx, cx, cy, r, flip) {
+        var leaf = apal('leaf', '#1f5e3b'), berry = apal('berry', '#c82333'), f = flip ? -1 : 1;
+        var drawLeaf = function (ang, sc) {
+          ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang * f); ctx.scale(sc, sc);
+          ctx.fillStyle = leaf;
+          ctx.beginPath(); ctx.moveTo(0, 0);
+          ctx.quadraticCurveTo(r * 0.35, -r * 0.42, r * 0.72, -r * 0.16);
+          ctx.quadraticCurveTo(r * 0.52, -r * 0.52, r * 1.05, -r * 0.24);
+          ctx.quadraticCurveTo(r * 0.78, 0, r * 1.05, r * 0.24);
+          ctx.quadraticCurveTo(r * 0.52, r * 0.52, r * 0.72, r * 0.16);
+          ctx.quadraticCurveTo(r * 0.35, r * 0.42, 0, 0);
+          ctx.fill();
+          ctx.strokeStyle = mixHex(leaf, '#ffffff', 0.3); ctx.lineWidth = Math.max(1, r * 0.045);
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(r * 0.85, 0); ctx.stroke();
+          ctx.restore();
+        };
+        ctx.save();
+        drawLeaf(-0.55, flip ? -0.95 : 0.95);
+        drawLeaf(0.45, flip ? -0.82 : 0.82);
+        [[-r * 0.1, -r * 0.14], [r * 0.12 * f, -r * 0.04], [-r * 0.02, r * 0.13]].forEach(function (b) {
+          ctx.fillStyle = berry;
+          ctx.beginPath(); ctx.arc(cx + b[0], cy + b[1], r * 0.16, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.45)';
+          ctx.beginPath(); ctx.arc(cx + b[0] - r * 0.05, cy + b[1] - r * 0.05, r * 0.045, 0, Math.PI * 2); ctx.fill();
+        });
+        ctx.restore();
+      }
+      function drawPineBough(ctx, cx, cy, r, flip) {
+        var pine = apal('leaf', '#1d5b3e'), berry = apal('berry', '#c82333'), f = flip ? -1 : 1;
+        ctx.save(); ctx.translate(cx, cy); ctx.scale(f, 1); ctx.lineCap = 'round';
+        [-0.35, 0.25].forEach(function (ang, bi) {
+          ctx.save(); ctx.rotate(ang);
+          var len = r * (bi === 0 ? 1.05 : 0.85);
+          ctx.strokeStyle = mixHex(pine, '#3a2210', 0.35); ctx.lineWidth = Math.max(1.4, r * 0.06);
+          ctx.beginPath(); ctx.moveTo(-len * 0.5, 0); ctx.lineTo(len * 0.5, 0); ctx.stroke();
+          ctx.strokeStyle = pine; ctx.lineWidth = Math.max(1.2, r * 0.04);
+          for (var t = -0.4; t <= 0.45; t += 0.14) {
+            var bx = t * len, nl = r * (0.38 - Math.abs(t) * 0.22);
+            ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx + r * 0.16, -nl);
+            ctx.moveTo(bx, 0); ctx.lineTo(bx + r * 0.16, nl); ctx.stroke();
+          }
+          ctx.restore();
+        });
+        [[-r * 0.16, -r * 0.12], [r * 0.06, r * 0.1], [-r * 0.24, r * 0.14]].forEach(function (pt) {
+          ctx.fillStyle = berry; ctx.beginPath(); ctx.arc(pt[0], pt[1], r * 0.12, 0, Math.PI * 2); ctx.fill();
+        });
+        ctx.restore();
+      }
+      function drawHangingOrnament(ctx, cx, topY, drop, r, col) {
+        var cy = topY + drop;
+        ctx.save();
+        ctx.strokeStyle = mixHex(col, '#fff4d2', 0.65); ctx.lineWidth = Math.max(1.2, r * 0.07);
+        ctx.beginPath(); ctx.moveTo(cx, topY); ctx.lineTo(cx, cy - r * 1.18); ctx.stroke();
+        ctx.fillStyle = '#e0b85c';
+        roundRect(ctx, cx - r * 0.24, cy - r * 1.18, r * 0.48, r * 0.24, r * 0.06); ctx.fill();
+        var g = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.32, r * 0.08, cx, cy, r);
+        g.addColorStop(0, mixHex(col, '#ffffff', 0.58)); g.addColorStop(0.65, col); g.addColorStop(1, mixHex(col, '#000000', 0.32));
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.42)'; ctx.lineWidth = Math.max(1, r * 0.07);
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.68, -0.3, Math.PI + 0.3, false); ctx.stroke();
+        ctx.restore();
+      }
+      function drawGingerbread(ctx, cx, by, S) {
+        var u = S / 100, cook = apal('cookie', '#b8743c'), icing = '#fff9f2', berry = apal('berry', '#d12c38');
+        var ell = function (x, y, rx, ry, rot, fill) { ctx.fillStyle = fill; ctx.beginPath(); ctx.ellipse(cx + x * u, by + y * u, rx * u, ry * u, rot || 0, 0, Math.PI * 2); ctx.fill(); };
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.22)'; ctx.shadowBlur = 7 * u; ctx.shadowOffsetY = 3 * u;
+        ell(-13, -12, 8.5, 13, 0.15, cook); ell(13, -12, 8.5, 13, -0.15, cook);
+        ell(-24, -44, 15, 7.5, -0.25, cook); ell(24, -44, 15, 7.5, 0.25, cook);
+        ell(0, -37, 17, 21, 0, cook);
+        ell(0, -72, 18, 17.5, 0, cook);
+        ctx.shadowColor = 'transparent';
+        ctx.strokeStyle = icing; ctx.lineWidth = 2.6 * u; ctx.lineCap = 'round';
+        [-1, 1].forEach(function (s) {
+          ctx.beginPath(); ctx.moveTo(cx + s * 28 * u, by - 49 * u); ctx.quadraticCurveTo(cx + s * 32 * u, by - 44 * u, cx + s * 28 * u, by - 40 * u); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(cx + s * 18 * u, by - 14 * u); ctx.quadraticCurveTo(cx + s * 12 * u, by - 18 * u, cx + s * 7 * u, by - 14 * u); ctx.stroke();
+        });
+        ell(-6.5, -75, 2.3, 2.6, 0, '#2a180d'); ell(6.5, -75, 2.3, 2.6, 0, '#2a180d');
+        ell(-5.8, -76, 0.8, 0.8, 0, '#ffffff'); ell(7.2, -76, 0.8, 0.8, 0, '#ffffff');
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.2 * u;
+        ctx.beginPath(); ctx.arc(cx, by - 69 * u, 6.5 * u, 0.25, Math.PI - 0.25); ctx.stroke();
+        // Cute bowtie + buttons
+        ctx.fillStyle = berry;
+        ctx.beginPath(); ctx.moveTo(cx, by - 55 * u); ctx.lineTo(cx - 8 * u, by - 60 * u); ctx.lineTo(cx - 8 * u, by - 50 * u); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(cx, by - 55 * u); ctx.lineTo(cx + 8 * u, by - 60 * u); ctx.lineTo(cx + 8 * u, by - 50 * u); ctx.closePath(); ctx.fill();
+        ell(0, -41, 3.2, 3.2, 0, berry); ell(0, -29, 3.2, 3.2, 0, '#2b7a4b');
+        ctx.restore();
+      }
+      function drawXmasTreeArt(ctx, cx, by, S) {
+        var col = apal('line', textColor), u = S / 100;
+        ctx.save();
+        ctx.fillStyle = col;
+        ctx.globalAlpha = 0.85;
+        ctx.fillRect(cx - 3.5 * u, by - 14 * u, 7 * u, 14 * u);
+        [[12, 30, 26], [30, 52, 21], [48, 74, 15]].forEach(function (t) {
+          ctx.beginPath();
+          ctx.moveTo(cx, by - t[1] * u);
+          ctx.lineTo(cx + t[2] * u, by - t[0] * u);
+          ctx.lineTo(cx - t[2] * u, by - t[0] * u);
+          ctx.closePath(); ctx.fill();
+        });
+        drawStar(ctx, cx, by - 82 * u, 8.5 * u, 5, 0, apal('star', '#d4af37'), 0.95);
         ctx.restore();
       }
 
@@ -78003,6 +78227,130 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         {
           id: 'l2-mint-baby', name: 'Landscape Mint Baby', cats: ['Baby Shower', 'Kids Party', 'Christening'], tags: 'landscape two photos 2 baby shower neutral mint green butterflies', sample: 'Baby Noah', layout: 'land2t',
           preset: 'gingham', color: '#cfeadb', elements: 'butterflies', frame: '#ffffff', text: '#3f6b4a', font: "'Allura', cursive", dateFont: "'Quicksand', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false
+        },
+        // ---- Christmas Collection: 2x6 Strips, 4R Sheets & Landscape 2-Shots ----
+        // 9 x 2x6 Strip Templates
+        {
+          id: 'xmas-nordic-plaid', name: 'Cozy Tartan Strip (2×6)', cats: ['Christmas', 'Corporate'], tags: 'christmas holiday tartan plaid red green 2x6 strip cozy merry bright holly', sample: 'Merry & Bright', layout: 'strip',
+          preset: 'tartan', color: '#8e1b22', elements: 'none', frame: '#fbf7ef', text: '#fcf4de', font: "'Playfair Display', serif", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'wedding', kicker: 'Holiday Season', art: ['holly'], artPal: { leaf: '#1d6b44', berry: '#e03545' }
+        },
+        {
+          id: 'xmas-velvet-emerald', name: 'Emerald Velvet Ornaments (2×6)', cats: ['Christmas', 'Corporate', 'Anniversary'], tags: 'christmas emerald pine green gold ornaments 4 cut strip4 2x6 winter eve', sample: 'Winter Eve', layout: 'strip4',
+          preset: 'pine', color: '#144232', elements: 'snowflakes', frame: '#f9f4ea', text: '#f6e2a5', font: "'Cinzel', serif", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'wedding', kicker: 'Season’s Greetings', art: ['ornaments'], artPal: { ornA: '#c62828', ornB: '#e3bf66' }
+        },
+        {
+          id: 'xmas-peppermint-strip', name: 'Peppermint Candy Strip (2×6)', cats: ['Christmas', 'Kids Party'], tags: 'christmas peppermint candy cane red white stripes 2x6 strip4 snow kids', sample: 'Candyland', layout: 'strip4',
+          preset: 'peppermint', color: '#c62828', elements: 'snowflakes', frame: '#ffffff', text: '#b71c1c', font: "'Cookie', cursive", dateFont: "'Quicksand', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'turns', kicker: 'Sweet Holidays', art: ['holly'], artPal: { leaf: '#1f5e3b', berry: '#c62828' }
+        },
+        {
+          id: 'xmas-frost-wonderland', name: 'Winter Frost Wonderland (2×6)', cats: ['Christmas', 'Wedding'], tags: 'christmas winter frost icy blue snowflakes ornaments 2x6 strip script', sample: 'Winter Wonderland', layout: 'strip',
+          preset: 'frost', color: '#dbeaf7', elements: 'snowflakes', frame: '#ffffff', text: '#1d3c5c', font: "'Great Vibes', cursive", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'wedding', kicker: 'Walking in a', art: ['ornaments'], artPal: { ornA: '#4a7fa8', ornB: '#9ec3e6' }
+        },
+        {
+          id: 'xmas-minimal-noel-4cut', name: 'Minimalist Noel (4-Cut 2×6)', cats: ['Christmas', 'Minimalist'], tags: 'christmas minimalist noel cream white 4cut 2x6 strip4 pine tree clean modern', sample: 'Noel', layout: 'strip4',
+          preset: 'none', color: '#faf7f2', elements: 'none', frame: 'auto', text: '#193b2d', font: "'Playfair Display', serif", dateFont: "'Courier New', monospace", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'minimal', kicker: 'DECEMBER ARCHIVE', art: ['xmastree'], artPal: { line: '#193b2d', star: '#d4af37' }
+        },
+        {
+          id: 'xmas-cranberry-4cut', name: 'Cranberry Studio (4-Cut 2×6)', cats: ['Christmas', 'Minimalist', 'Debut'], tags: 'christmas cranberry burgundy wine gold sparkle minimalist 4cut 2x6 strip4', sample: 'Warm Wishes', layout: 'strip4',
+          preset: 'none', color: '#6e1423', elements: 'none', frame: 'auto', text: '#f9efe6', font: "'Cormorant Garamond', serif", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'editorial', kicker: 'HOLIDAY EDITION', art: ['sparklemin'], artPal: { line: '#f5dfb8' }
+        },
+        {
+          id: 'xmas-fairy-lights-strip', name: 'Starry Fairy Lights (2×6)', cats: ['Christmas', 'New Year'], tags: 'christmas fairy lights string lights indigo midnight gold stars 2x6 strip', sample: 'Peace & Joy', layout: 'strip',
+          preset: 'fairlights', color: '#132238', elements: 'goldstars', frame: '#fcf6ea', text: '#f8e3a8', font: "'Parisienne', cursive", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'wedding', kicker: 'Silent Night'
+        },
+        {
+          id: 'xmas-gingerbread-strip', name: 'Gingerbread Crew (2×6)', cats: ['Christmas', 'Kids Party', 'Birthday'], tags: 'christmas gingerbread cookie kraft caramel snow kids blocks 2x6 strip4', sample: 'Sweet', layout: 'strip4',
+          preset: 'cream', color: '#d7b48c', elements: 'snowflakes', frame: '#fffaf3', text: '#5e3218', font: "'Fredoka', sans-serif", dateFont: "'Fredoka', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'blocks', kicker: 'North Pole', art: ['gingerbread'], artPal: { cookie: '#b56e35', berry: '#c82333', blocks: ['#b72b35', '#216341', '#fffaf3', '#d49a45'] }
+        },
+        {
+          id: 'xmas-champagne-gala', name: 'Champagne Noel Gala (2×6)', cats: ['Christmas', 'Corporate', 'New Year'], tags: 'christmas champagne gold glitter confetti boughs monogram 2x6 strip luxury', sample: 'Holly & Nick', layout: 'strip',
+          preset: 'goldconfetti', color: '#faf4e8', accent: 'gold', elements: 'glitter', frame: '#ffffff', text: '#6e4e1c', font: "'Great Vibes', cursive", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'monogram', kicker: 'Holiday Gala', art: ['boughs'], artPal: { leaf: '#2d6343', berry: '#b3202b' }
+        },
+        // 8 x 4R Portrait Templates
+        {
+          id: 'xmas-tartan-grid4', name: 'Highland Plaid (4R Grid 4)', cats: ['Christmas', 'Anniversary', 'Corporate'], tags: 'christmas 4r grid4 plaid tartan crimson forest holly family holiday', sample: 'The Holiday Edit', layout: 'grid4',
+          preset: 'tartan', color: '#7d1820', elements: 'none', frame: '#fbf7ef', text: '#fcf5e3', font: "'Cinzel', serif", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'wedding', kicker: 'Warmest Wishes', art: ['holly'], artPal: { leaf: '#1d6b44', berry: '#e03545' }
+        },
+        {
+          id: 'xmas-winter-polaroid4', name: 'Snowy Polaroids (4R Collage)', cats: ['Christmas', 'Kids Party'], tags: 'christmas 4r polaroid grid snowflakes frost winter blue pine boughs', sample: 'Let It Snow', layout: 'grid',
+          preset: 'frost', color: '#cde2f2', elements: 'snowflakes', frame: '#ffffff', text: '#1d3b58', font: "'Dancing Script', cursive", dateFont: "'Quicksand', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false,
+          art: ['boughs'], artPal: { leaf: '#1e5c40', berry: '#c62828' }
+        },
+        {
+          id: 'xmas-north-pole-hero', name: 'North Pole Hero (4R Hero 1+3)', cats: ['Christmas', 'Kids Party'], tags: 'christmas 4r hero peppermint candy gingerbread santa kids', sample: 'Oh What Fun', layout: 'hero',
+          preset: 'peppermint', color: '#c42026', elements: 'snowflakes', frame: '#ffffff', text: '#b71c1c', font: "'Fredoka', sans-serif", dateFont: "'Fredoka', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'turns', kicker: 'North Pole Post', art: ['gingerbread'], artPal: { cookie: '#b56e35', berry: '#c42026' }
+        },
+        {
+          id: 'xmas-mistletoe-solo', name: 'Under the Mistletoe (4R Solo)', cats: ['Christmas', 'Wedding', 'Anniversary'], tags: 'christmas 4r solo portrait card mistletoe pine green gold ornaments', sample: 'Merry Christmas', layout: 'solo',
+          preset: 'pine', color: '#163d2d', elements: 'snowflakes', frame: '#fbf7ef', text: '#f6e3a1', font: "'Great Vibes', cursive", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'wedding', kicker: 'Under the Mistletoe', art: ['ornaments'], artPal: { ornA: '#c82333', ornB: '#e3bf66' }
+        },
+        {
+          id: 'xmas-nordic-oat-grid4', name: 'Scandi Kraft Holiday (4R Grid 4)', cats: ['Christmas', 'Minimalist', 'Wedding'], tags: 'christmas minimalist 4r grid4 oat beige kraft nordic tree cozy', sample: 'Cozy Days', layout: 'grid4',
+          preset: 'none', color: '#ece4d7', elements: 'none', frame: 'auto', text: '#26382b', font: "'Fraunces', serif", dateFont: "'Inter', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'minimal', kicker: 'HOME FOR THE HOLIDAYS', upper: true, art: ['xmastree'], artPal: { line: '#26382b', star: '#c5983c' }
+        },
+        {
+          id: 'xmas-blackgold-eve', name: 'Midnight Noel (4R Feature 1+2)', cats: ['Christmas', 'New Year', 'Corporate', 'Prom'], tags: 'christmas 4r feature black gold luxury party gala ornaments', sample: 'Noel', layout: 'feature',
+          preset: 'blackgold', color: '#141414', accent: 'gold', elements: 'glitter', frame: '#f5e6c4', text: '#f4d98c', font: "'Cinzel', serif", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'editorial', kicker: 'FESTIVE SOIREE', upper: true, art: ['ornaments'], artPal: { ornA: '#d4af37', ornB: '#fff1c4' }
+        },
+        {
+          id: 'xmas-fairy-film6', name: 'December Roll (4R Film 6-Shot)', cats: ['Christmas', 'Minimalist', 'Birthday'], tags: 'christmas 4r film6 6 shot fairy lights green film roll december', sample: 'Merry Xmas', layout: 'film6',
+          preset: 'fairlights', color: '#112a22', elements: 'goldstars', frame: 'auto', text: '#faf3e6', font: "'Courier New', monospace", dateFont: "'Inter', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'filmframe', kicker: 'DECEMBER ROLL', upper: true, art: ['sprockets'], artPal: { sprocket: 'rgba(255,255,255,0.22)' }
+        },
+        {
+          id: 'xmas-blush-sugarplum', name: 'Sugarplum Frosted (4R Grid 4)', cats: ['Christmas', 'Debut', 'Minimalist'], tags: 'christmas 4r grid4 pink blush aura sugarplum coquette bow winter', sample: 'Sugarplum', layout: 'grid4',
+          preset: 'aura', color: '#edd4dc', elements: 'snowflakes', frame: '#ffffff', text: '#6e253b', font: "'Cormorant Garamond', serif", dateFont: "'Quicksand', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'editorial', kicker: 'SEASON OF JOY', art: ['ribbon'], artPal: { line: '#8a344f' }
+        },
+        // 7 x Landscape 2-Shot Templates
+        {
+          id: 'xmas-l2-pine-garland', name: 'Evergreen Baubles · Landscape 2', cats: ['Christmas', 'Corporate'], tags: 'christmas landscape two photos 2 land2t pine green gold ornaments', sample: 'Warm & Bright', layout: 'land2t',
+          preset: 'pine', color: '#144232', elements: 'snowflakes', frame: '#fbf7ef', text: '#f6e3a1', font: "'Playfair Display', serif", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'wedding', kicker: 'Merry Christmas', art: ['ornaments'], artPal: { ornA: '#c62828', ornB: '#e3bf66' }
+        },
+        {
+          id: 'xmas-l2-tartan-cozy', name: 'Tartan Hearth · Landscape 2', cats: ['Christmas', 'Anniversary'], tags: 'christmas landscape two photos 2 land2 tartan plaid red holly', sample: 'Happy Holidays', layout: 'land2',
+          preset: 'tartan', color: '#7d1820', elements: 'none', frame: '#fbf7ef', text: '#fcf5e3', font: "'Playfair Display', serif", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'wedding', kicker: 'Holiday Greetings', art: ['holly'], artPal: { leaf: '#1d6b44', berry: '#e03545' }
+        },
+        {
+          id: 'xmas-l2-frost-greeting', name: 'Frosted Postcard · Landscape 2', cats: ['Christmas', 'Wedding'], tags: 'christmas landscape two photos 2 land2 winter frost blue snowflakes boughs', sample: 'Winter Magic', layout: 'land2',
+          preset: 'frost', color: '#dbeaf7', elements: 'snowflakes', frame: '#ffffff', text: '#1b3554', font: "'Cormorant Garamond', serif", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'editorial', kicker: 'SEASON OF WONDER', art: ['boughs'], artPal: { leaf: '#1e5c40', berry: '#c62828' }
+        },
+        {
+          id: 'xmas-l2-peppermint-fun', name: 'Peppermint Duo · Landscape 2', cats: ['Christmas', 'Kids Party'], tags: 'christmas landscape two photos 2 land2t peppermint candy gingerbread kids', sample: 'Ho Ho Ho!', layout: 'land2t',
+          preset: 'peppermint', color: '#c62828', elements: 'snowflakes', frame: '#ffffff', text: '#b71c1c', font: "'Fredoka', sans-serif", dateFont: "'Fredoka', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'turns', kicker: 'Sweet Christmas', art: ['gingerbread'], artPal: { cookie: '#b56e35', berry: '#c62828' }
+        },
+        {
+          id: 'xmas-l2-fairylights', name: 'Starlit Cabin · Landscape 2', cats: ['Christmas', 'New Year', 'Anniversary'], tags: 'christmas landscape two photos 2 land2 fairy lights warm cocoa stars', sample: 'Joy to the World', layout: 'land2',
+          preset: 'fairlights', color: '#241815', elements: 'goldstars', frame: '#fbf5ea', text: '#f6dd9c', font: "'Great Vibes', cursive", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'wedding', kicker: 'Starry Night', art: ['sparklemin'], artPal: { line: '#f3d48a' }
+        },
+        {
+          id: 'xmas-l2-minimal-red', name: 'Studio Scarlet · Landscape 2', cats: ['Christmas', 'Minimalist', 'Debut'], tags: 'christmas landscape two photos 2 land2 minimalist scarlet red bow flat', sample: 'Season’s Greetings', layout: 'land2',
+          preset: 'none', color: '#9b1c26', elements: 'none', frame: 'auto', text: '#fdf6ec', font: "'Inter', sans-serif", dateFont: "'Courier New', monospace", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'minimal', kicker: 'CHRISTMAS EDITION', upper: true, art: ['ribbon'], artPal: { line: '#fdf6ec' }
+        },
+        {
+          id: 'xmas-l2-minimal-cream', name: 'Cream & Pine · Landscape 2', cats: ['Christmas', 'Minimalist', 'Corporate'], tags: 'christmas landscape two photos 2 land2 minimalist cream pine tree flat', sample: 'Happy Holidays', layout: 'land2',
+          preset: 'none', color: '#faf6ef', elements: 'none', frame: 'auto', text: '#1f4b38', font: "'Playfair Display', serif", dateFont: "'Inter', sans-serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'minimal', kicker: 'PEACE & JOY', upper: true, art: ['xmastree'], artPal: { line: '#1f4b38', star: '#c89b3c' }
         }
       ];
       // Landscape 2-photo twins of existing designs: the same look, laid out as two big shots on a sideways 4R sheet.
@@ -86666,7 +87014,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         for (var i = 0; i < all.length; i++) if (all[i].id === themeId) return all[i];
         return null;
       }
-      var PRESET_NAMES = { none: 'Plain', gold: 'Gold Glitter', sky: 'Pastel Sky', stars: 'Black & Gold', cream: 'Cream', maroon: 'Maroon & Gold', aura: 'Aura Glow', gridlines: 'Studio Grid', checker: 'Checker Trim', custom: 'Your photo' };
+      var PRESET_NAMES = { none: 'Plain', gold: 'Gold Glitter', sky: 'Pastel Sky', stars: 'Black & Gold', cream: 'Cream', maroon: 'Maroon & Gold', aura: 'Aura Glow', gridlines: 'Studio Grid', checker: 'Checker Trim', tartan: 'Holiday Tartan', fairlights: 'Fairy Lights', peppermint: 'Peppermint Trim', frost: 'Winter Frost', custom: 'Your photo' };
       function extrasList() {
         var ex = [];
         if (typeof outputMode !== 'undefined' && outputMode !== 'photo') {

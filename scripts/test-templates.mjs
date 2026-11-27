@@ -148,7 +148,7 @@ function loadTemplateRuntime(sb) {
     'function isStripLayout(k) { var d = layoutDef(k); return d && d.kind === "strip"; }',
     'function shotsNeeded(k) { return (layoutDef(k) && layoutDef(k).shots) || 3; }',
     extractBlock('function drawBackdrop(', 'async function uploadToLitterbox('),
-    extractBlock('function drawImageCover(', 'function renderGrid('),
+    extractBlock('function drawImageCover(', 'function renderGridSidePhoto('),
     extractBlock('function renderSheet(', 'function calmBehindText('),
     'function calmBehindText() {}',
     'function calmBox() {}',
@@ -163,7 +163,7 @@ function loadTemplateRuntime(sb) {
   return vm.runInContext(
     code + '\n' +
     'const LABEL_BAND_RATIO = 0.14;\n' +
-    'const LAYOUTS = { strip: { w: STRIP_W, contentH: STRIP_CONTENT_H }, strip4: { w: STRIP_W, contentH: STRIP4_CONTENT_H }, stripxl: { w: STRIP_W, contentH: STRIPXL_CONTENT_H }, grid: { w: GRID_W, contentH: GRID_H } };\n' +
+    'const LAYOUTS = { strip: { w: STRIP_W, contentH: STRIP_CONTENT_H }, strip4: { w: STRIP_W, contentH: STRIP4_CONTENT_H }, stripxl: { w: STRIP_W, contentH: STRIPXL_CONTENT_H }, grid: { w: GRID_W, contentH: GRID_H, render: renderGrid } };\n' +
     '({ FONT_OPTIONS, LAYOUT_DEFS, BACKDROP_PRESETS });',
     sb
   );
@@ -271,7 +271,34 @@ await test('all minimalist & 4-cut themes render cleanly across composeCanvas wi
   });
 });
 
-await test('public/admin.html THEME_LIST contains all new Receipt and Minimalist theme IDs', () => {
+await test('all Christmas themes (2x6, 4R, landscape 2-shot) render cleanly across composeCanvas', () => {
+  const sb = makeSandbox();
+  const rt = loadTemplateRuntime(sb);
+  const mockShot = { naturalWidth: 800, naturalHeight: 1000, width: 800, height: 1000 };
+  const shots = [mockShot, mockShot, mockShot, mockShot, mockShot, mockShot];
+
+  const xmas = sb.THEMES.filter((t) => t.cats.includes('Christmas'));
+  assert.ok(xmas.length >= 26, 'Expected >=26 Christmas themes total, got ' + xmas.length);
+
+  const strips = xmas.filter((t) => t.layout && rt.LAYOUT_DEFS[t.layout].kind === 'strip');
+  const sheets = xmas.filter((t) => t.layout && (rt.LAYOUT_DEFS[t.layout].kind === 'sheet' || rt.LAYOUT_DEFS[t.layout].kind === 'polaroid'));
+  const lands = xmas.filter((t) => t.layout === 'land2' || t.layout === 'land2t');
+  assert.ok(strips.length >= 9, 'Expected >=9 Christmas 2x6 strips, got ' + strips.length);
+  assert.ok(sheets.length >= 8, 'Expected >=8 Christmas 4R sheets, got ' + sheets.length);
+  assert.ok(lands.length >= 8, 'Expected >=8 Christmas landscape 2-shot designs, got ' + lands.length);
+
+  xmas.forEach((t) => {
+    const cv = sb._createCanvas();
+    const lk = t.layout || 'strip';
+    sb.withThemeState(t, () => {
+      sb.composeCanvas(lk, cv, shots);
+    });
+    assert.ok(cv.width > 0 && cv.height > 0, `Christmas theme ${t.id} rendered 0x0`);
+    assert.equal(cv.getContext('2d')._stackDepth, 0, `Christmas theme ${t.id} leaked ctx stack`);
+  });
+});
+
+await test('public/admin.html THEME_LIST contains all new Receipt, Minimalist, and Christmas theme IDs', () => {
   const sb = makeSandbox();
   loadTemplateRuntime(sb);
   const themeIds = new Set(sb.THEMES.map((t) => t.id));
@@ -281,7 +308,7 @@ await test('public/admin.html THEME_LIST contains all new Receipt and Minimalist
   const adminIds = new Set();
   list.forEach((grp) => grp[1].forEach(([id]) => adminIds.add(id)));
   adminIds.forEach((id) => assert.ok(themeIds.has(id), 'admin.html lists unknown theme id: ' + id));
-  ['music-player-receipt', 'mixtape-receipt', 'studio-white-4cut', 'matte-noir-4cut', 'cobalt-studio-4cut', 'aura-blush-4cut'].forEach((id) => {
+  ['music-player-receipt', 'mixtape-receipt', 'studio-white-4cut', 'matte-noir-4cut', 'cobalt-studio-4cut', 'aura-blush-4cut', 'xmas-nordic-plaid', 'xmas-tartan-grid4', 'xmas-l2-pine-garland', 'xmas-l2-minimal-cream'].forEach((id) => {
     assert.ok(adminIds.has(id), 'admin.html THEME_LIST missing ' + id);
   });
 });

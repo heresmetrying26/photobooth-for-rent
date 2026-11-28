@@ -176,6 +176,7 @@ function tabletUiVars() {
     o[k] = sc > 0 ? sc : 1;
     o[k + 'Op'] = op > 0 ? op : 1;
   });
+  o.filmPos = typeof getUiFilmPos === 'function' ? getUiFilmPos() : 'bottom';
   return o;
 }
 // Sends a picture to the laptop's bridge so the tablet can load it. A second request for the same picture waits for the one that is

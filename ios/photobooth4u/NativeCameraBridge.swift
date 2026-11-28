@@ -1425,7 +1425,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
 
             autoreleasepool {
                 let targetRect = CGRect(x: 0, y: 0, width: rw, height: rh)
-                var img = Self.orientImage(CIImage(cvPixelBuffer: pb), rotationAngle: rot)
+                var img = NativeCameraBridge.orientImage(CIImage(cvPixelBuffer: pb), rotationAngle: rot)
                 let sx = targetRect.width / max(1, img.extent.width)
                 let sy = targetRect.height / max(1, img.extent.height)
                 img = img
@@ -1438,7 +1438,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 if rFilter != "none" || rSoft {
                     img = self.recFilterChain.apply(to: img, filter: rFilter, softSkin: rSoft)
                 }
-                self.recCiContext.render(img, to: dstPb, bounds: targetRect, colorSpace: Self.srgbColorSpace)
+                self.recCiContext.render(img, to: dstPb, bounds: targetRect, colorSpace: NativeCameraBridge.srgbColorSpace)
             }
 
             self.recLock.lock()
@@ -1917,17 +1917,18 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 writer.shouldOptimizeForNetworkUse = true
                 let encW = canPassthrough ? rawBufW : rw
                 let encH = canPassthrough ? rawBufH : rh
+                let compressionProps: [String: Any] = [
+                    AVVideoAverageBitRateKey: max(1_200_000, bitrate),
+                    AVVideoExpectedSourceFrameRateKey: 30,
+                    AVVideoMaxKeyFrameIntervalKey: 30,
+                    AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
+                    AVVideoH264EntropyModeKey: AVVideoH264EntropyModeCABAC
+                ]
                 let vSettings: [String: Any] = [
                     AVVideoCodecKey: AVVideoCodecType.h264,
                     AVVideoWidthKey: encW,
                     AVVideoHeightKey: encH,
-                    AVVideoCompressionPropertiesKey: [
-                        AVVideoAverageBitRateKey: max(1_200_000, bitrate),
-                        AVVideoExpectedSourceFrameRateKey: 30,
-                        AVVideoMaxKeyFrameIntervalKey: 30,
-                        AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
-                        AVVideoH264EntropyModeKey: AVVideoH264EntropyModeCABAC
-                    ]
+                    AVVideoCompressionPropertiesKey: compressionProps
                 ]
                 let vIn = AVAssetWriterInput(mediaType: .video, outputSettings: vSettings)
                 vIn.expectsMediaDataInRealTime = true

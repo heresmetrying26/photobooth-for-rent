@@ -271,7 +271,7 @@ class LocalShareServer {
         let query = comps.count > 1 ? String(comps[1]) : ""
 
         if method == "POST" && path == "/station-mail" {
-            let bodyData = readHttpBody(sock: sock, initialBuffer: buffer, bytesRead: bytesRead, contentLength: contentLength)
+            let bodyData = readHttpBody(sock: sock, initialData: reqBytes, contentLength: contentLength)
             handleStationMailProxy(sock: sock, bodyData: bodyData)
             return
         }
@@ -284,13 +284,15 @@ class LocalShareServer {
         route(sock: sock, path: path, query: query, rangeHeader: rangeHeader, headOnly: method == "HEAD")
     }
 
-    private func readHttpBody(sock: Int32, initialBuffer: [UInt8], bytesRead: Int, contentLength: Int) -> Data {
+    private func readHttpBody(sock: Int32, initialData: Data, contentLength: Int) -> Data {
         guard contentLength > 0, contentLength <= 8192 else { return Data() }
-        let raw = Data(initialBuffer[0..<bytesRead])
-        let sep = Data("\r\n\r\n".utf8)
+        let crlfSep = Data("\r\n\r\n".utf8)
+        let lfSep = Data("\n\n".utf8)
         var body = Data()
-        if let rng = raw.range(of: sep) {
-            body.append(raw[rng.upperBound...])
+        if let rng = initialData.range(of: crlfSep) {
+            body.append(initialData[rng.upperBound...])
+        } else if let rng = initialData.range(of: lfSep) {
+            body.append(initialData[rng.upperBound...])
         }
         var extra = [UInt8](repeating: 0, count: 2048)
         while body.count < contentLength {

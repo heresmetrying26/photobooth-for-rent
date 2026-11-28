@@ -12344,6 +12344,8 @@
     }
     .welcome-editorial.is-preview {
       padding: 12px 68px 12px 14px;
+      z-index: 5;
+      pointer-events: none !important;
     }
     .welcome-editorial.is-preview .welcome-editorial-kicker { font-size: 7px; margin-bottom: 2px; }
     .welcome-editorial.is-preview .welcome-editorial-title { font-size: clamp(13px, 2.2vw, 18px); margin-bottom: 4px; }
@@ -12355,8 +12357,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: clamp(14px, 2.5vw, 28px);
+      gap: var(--wib-gap, clamp(14px, 2.5vw, 28px));
       pointer-events: none;
+      box-sizing: border-box;
       --wib-size: calc(clamp(68px, 9.6vmin, 104px) * min(max(var(--ui-btn-scale, 1), 0.85), 1.48));
       --wib-outer-ring: rgba(255, 255, 255, 0.52);
       --wib-inner-ring: rgba(255, 255, 255, 0.44);
@@ -12394,20 +12397,56 @@
       gap: clamp(12px, 2vh, 22px);
     }
     .welcome-icon-dock[data-pos="card"] {
-      transform: translate(-50%, -50%);
-      flex-wrap: wrap;
+      transform: none;
+      flex-wrap: nowrap;
+      overflow: visible;
+    }
+    .welcome-icon-dock[data-pos="card"][data-style="pill"] {
+      flex-direction: column;
+      gap: var(--wpill-row-gap, 6px);
+      justify-content: center;
+      align-items: center;
+    }
+    .wib-pill-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: nowrap;
+      width: 100%;
+      gap: var(--wpill-sub-gap, 6px);
+      min-width: 0;
     }
     .welcome-icon-dock.is-preview {
-      --wib-size: clamp(32px, 6.2vw, 44px);
-      gap: 7px;
-      z-index: 6;
+      --wib-size: clamp(24px, 4.4vw, 38px);
+      --wib-gap: 6px;
+      z-index: 5;
+      pointer-events: none !important;
+    }
+    .welcome-icon-dock.is-preview * {
+      pointer-events: none !important;
     }
     .welcome-icon-dock.is-preview[data-pos="right"] {
-      right: 10px;
-      gap: 6px;
+      right: 6px;
+      gap: 5px;
+      max-width: 24%;
+    }
+    .welcome-icon-dock.is-preview[data-pos="right"] .welcome-pill-btn {
+      padding: 3.5px 7px;
+      font-size: 7.5px;
+      gap: 3px;
+      max-width: 100%;
+    }
+    .welcome-icon-dock.is-preview[data-pos="right"] .welcome-pill-btn svg {
+      width: 8px;
+      height: 8px;
+    }
+    .welcome-icon-dock[data-pos="right"] .welcome-pill-btn {
+      max-width: 22vw;
+      padding: calc(10px * min(max(var(--ui-btn-scale, 1), 0.85), 1.35)) calc(18px * min(max(var(--ui-btn-scale, 1), 0.85), 1.35));
+      font-size: calc(clamp(12px, 1.45vw, 17px) * min(max(var(--ui-btn-scale, 1), 0.85), 1.35));
     }
     .welcome-icon-dock.is-preview[data-pos="bottom"] {
-      bottom: 10px;
+      bottom: 8px;
     }
     .welcome-icon-dock.wib-surface-light {
       --wib-outer-ring: rgba(28, 26, 30, 0.26);
@@ -12430,6 +12469,7 @@
       justify-content: center;
       position: relative;
       outline: none;
+      flex: 0 0 auto;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
     }
@@ -12438,7 +12478,7 @@
       width: var(--wib-size);
       height: var(--wib-size);
       border-radius: 50%;
-      padding: 4px;
+      padding: var(--wib-ring-pad, 4px);
       border: 1.5px solid var(--wib-outer-ring);
       box-sizing: border-box;
       display: flex;
@@ -12447,7 +12487,7 @@
       transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease, box-shadow 0.2s ease;
     }
     .welcome-icon-dock.is-preview .wib-ring {
-      padding: 2px;
+      padding: var(--wib-ring-pad, 2px);
       border-width: 1px;
     }
     .wib-btn.is-primary .wib-ring {
@@ -12462,6 +12502,10 @@
       opacity: 0;
       animation: wibHalo 2.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
       pointer-events: none;
+    }
+    .welcome-icon-dock.is-preview .wib-btn.is-primary .wib-ring::after {
+      inset: -2px;
+      border-width: 1px;
     }
     @keyframes wibHalo {
       0% { transform: scale(0.96); opacity: 0.75; }
@@ -12482,14 +12526,16 @@
       -webkit-backdrop-filter: blur(14px);
       backdrop-filter: blur(14px);
       color: var(--wib-fg);
-      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.22);
       box-sizing: border-box;
       padding: 6px;
+      overflow: hidden;
       transition: transform 0.16s ease, background 0.18s ease, box-shadow 0.18s ease;
     }
     .welcome-icon-dock.is-preview .wib-core {
-      padding: 3px;
+      padding: 2px;
       gap: 1px;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.22);
     }
     .wib-btn.is-primary.wib-tinted .wib-core {
       background: var(--wib-accent-bg, rgba(201, 61, 39, 0.92));
@@ -12513,23 +12559,31 @@
       flex: none;
     }
     .wib-btn.has-label svg {
-      width: 31%;
-      height: 31%;
+      width: 30%;
+      height: 30%;
     }
     .wib-lbl {
-      font: 700 clamp(9.5px, 1.3vmin, 12.5px) 'Manrope', -apple-system, sans-serif;
-      line-height: 1.1;
+      font: 700 var(--wib-lbl-fs, clamp(9.5px, 1.3vmin, 12.5px)) 'Manrope', -apple-system, sans-serif;
+      line-height: 1.06;
       letter-spacing: 0.01em;
       text-align: center;
-      max-width: 90%;
+      max-width: 92%;
       overflow: hidden;
+      text-overflow: ellipsis;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
     }
+    .welcome-icon-dock.is-preview .wib-btn.has-label .wib-core {
+      padding: 1.5px 1px;
+      gap: 0.5px;
+    }
     .welcome-icon-dock.is-preview .wib-lbl {
-      font-size: 6.5px;
-      line-height: 1.05;
+      font-size: var(--wib-lbl-fs, 5.5px);
+      line-height: 1.02;
+      max-width: 96%;
+      text-overflow: clip;
+      letter-spacing: -0.01em;
     }
 
     /* Pill style when shortcuts are enabled under Classic pill look */
@@ -12547,10 +12601,19 @@
       backdrop-filter: blur(12px);
       color: #ffffff;
       font: 800 calc(clamp(14px, 2vw, 20px) * min(max(var(--ui-btn-scale, 1), 0.85), 1.4)) 'Manrope', sans-serif;
+      line-height: 1.1;
+      white-space: nowrap;
+      max-width: 100%;
+      box-sizing: border-box;
       cursor: pointer;
       touch-action: manipulation;
       box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
       transition: transform 0.15s ease, background 0.15s ease;
+    }
+    .welcome-pill-btn span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .welcome-pill-btn.is-primary {
       background: var(--wib-accent-bg, #C93D27);
@@ -12558,10 +12621,10 @@
       border-color: transparent;
     }
     .welcome-icon-dock.wib-surface-light .welcome-pill-btn:not(.is-primary) {
-      background: rgba(28, 26, 30, 0.09);
+      background: rgba(28, 26, 30, 0.08);
       color: #1C1A1E;
-      border-color: rgba(28, 26, 30, 0.16);
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+      border-color: rgba(28, 26, 30, 0.15);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
     }
     .welcome-pill-btn svg {
       width: 18px;
@@ -12575,13 +12638,49 @@
     }
     .welcome-pill-btn:active { transform: scale(0.95); }
     .welcome-icon-dock.is-preview .welcome-pill-btn {
-      padding: 5px 10px;
-      font-size: 9px;
+      padding: 4px 9px;
+      font-size: 8.5px;
       gap: 4px;
+      border-width: 1px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.14);
     }
     .welcome-icon-dock.is-preview .welcome-pill-btn svg {
-      width: 10px;
-      height: 10px;
+      width: 9.5px;
+      height: 9.5px;
+    }
+    /* Slot-locked sizing inside Branded Card so pills never overflow card edges or overlap steps */
+    .welcome-icon-dock[data-pos="card"] .welcome-pill-btn {
+      min-width: 0;
+      height: var(--wpill-main-h, 44px);
+      padding: 0 var(--wpill-main-px, 18px);
+      font-size: var(--wpill-main-fs, 14px);
+      gap: var(--wpill-icon-gap, 6px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
+    }
+    .welcome-icon-dock[data-pos="card"] .welcome-pill-btn.is-primary {
+      min-width: min(72%, 260px);
+    }
+    .welcome-icon-dock[data-pos="card"] .wib-pill-row.is-sub .welcome-pill-btn {
+      flex: 0 1 auto;
+      height: var(--wpill-sub-h, 34px);
+      padding: 0 var(--wpill-sub-px, 12px);
+      font-size: var(--wpill-sub-fs, 11.5px);
+      font-weight: 700;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    }
+    .welcome-icon-dock[data-pos="card"] .welcome-pill-btn svg {
+      width: var(--wpill-icon-sz, 14px);
+      height: var(--wpill-icon-sz, 14px);
+    }
+    .welcome-icon-dock[data-pos="card"] .wib-pill-row.is-sub .welcome-pill-btn svg {
+      width: var(--wpill-sub-icon-sz, 12px);
+      height: var(--wpill-sub-icon-sz, 12px);
+    }
+    .welcome-icon-dock.is-preview[data-pos="card"] .welcome-pill-btn {
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    }
+    .welcome-icon-dock.is-preview[data-pos="card"] .welcome-pill-btn.is-primary {
+      min-width: min(68%, 120px);
     }
 
     .shot-review {
@@ -16549,6 +16648,10 @@
       border-radius: 14px;
       padding: 10px 12px 12px;
       margin: 12px 0;
+      box-sizing: border-box;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
       --pv-max-h: 240px;
     }
 
@@ -16558,12 +16661,22 @@
       justify-content: space-between;
       gap: 8px;
       margin-bottom: 8px;
+      min-width: 0;
     }
 
     .welcome-pv-head-r {
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      min-width: 0;
+      flex-shrink: 1;
+      overflow: hidden;
+    }
+
+    #welcomePvMeta {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       min-width: 0;
     }
 
@@ -16577,6 +16690,7 @@
       cursor: pointer;
       white-space: nowrap;
       line-height: 1.3;
+      flex: none;
     }
 
     .welcome-pv-ctl:active {
@@ -16610,6 +16724,20 @@
       pointer-events: none;
     }
 
+    .wpv-drag-canvas {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      display: block;
+      pointer-events: none;
+    }
+
+    .wpv-drag-canvas[hidden] {
+      display: none !important;
+    }
+
     .welcome-pv-card.pv-expanded {
       --pv-max-h: min(56vh, 470px);
     }
@@ -16623,11 +16751,11 @@
       margin-bottom: 0;
     }
 
-    /* Interactive drag & corner-resize overlay inside Welcome live preview */
+    /* Interactive drag & corner-resize overlay inside Welcome live preview (always above preview buttons) */
     .wpv-interact {
       position: absolute;
       inset: 0;
-      z-index: 4;
+      z-index: 10;
       pointer-events: auto;
       touch-action: none;
     }
@@ -16666,9 +16794,14 @@
       box-shadow: 0 0 6px rgba(47, 111, 237, 0.55);
     }
 
+    .wpv-guide-sib {
+      border-top-color: rgba(16, 185, 129, 0.92);
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+    }
+
     .wpv-box {
       position: absolute;
-      border: 1.5px dashed rgba(255, 255, 255, 0.55);
+      border: 1.5px dashed rgba(255, 255, 255, 0.62);
       border-radius: 8px;
       box-sizing: border-box;
       cursor: grab;
@@ -16678,13 +16811,18 @@
     }
 
     .wpv-box:hover {
-      border-color: rgba(124, 196, 255, 0.95);
+      border-color: rgba(96, 165, 250, 0.95);
     }
 
     .wpv-box.sel {
       border: 2px dashed #3b82f6;
-      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85), 0 0 12px rgba(59, 130, 246, 0.35);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85), 0 0 12px rgba(59, 130, 246, 0.32);
       z-index: 8;
+    }
+
+    .wpv-box.overlap {
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85), 0 0 12px rgba(245, 158, 11, 0.42);
     }
 
     .wpv-box.dragging {
@@ -16697,20 +16835,27 @@
 
     .wpv-tag {
       position: absolute;
-      top: 4px;
-      left: 6px;
-      padding: 2px 7px;
+      top: -4px;
+      left: 50%;
+      transform: translate(-50%, -100%);
+      padding: 1.5px 7px;
       border-radius: 999px;
-      background: rgba(24, 24, 27, 0.86);
-      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(24, 24, 27, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.28);
       color: #fff;
-      font: 700 10px/1.3 'Manrope', sans-serif;
+      font: 700 9.5px/1.3 'Manrope', sans-serif;
       letter-spacing: 0.02em;
       white-space: nowrap;
       pointer-events: none;
       opacity: 0;
       transition: opacity 0.12s ease;
       z-index: 9;
+    }
+
+    .wpv-box.tag-in .wpv-tag {
+      top: 4px;
+      left: 6px;
+      transform: none;
     }
 
     .wpv-box.sel .wpv-tag,
@@ -16739,6 +16884,10 @@
       pointer-events: auto;
     }
 
+    .wpv-box.overlap .wpv-h {
+      border-color: #d97706;
+    }
+
     .wpv-h:hover,
     .wpv-h:active {
       transform: scale(1.25);
@@ -16763,7 +16912,8 @@
       border-top: 1px solid var(--line);
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 6px;
+      min-width: 0;
     }
 
     .wpv-toolbar[hidden] {
@@ -16776,17 +16926,21 @@
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 6px;
+      min-width: 0;
     }
 
     .wpv-target-seg,
     .wpv-snap-group,
-    .wpv-size-group {
+    .wpv-size-group,
+    .wpv-act-group {
       display: inline-flex;
       align-items: center;
       gap: 4px;
+      flex-wrap: nowrap;
     }
 
-    .wpv-target-seg[hidden] {
+    .wpv-target-seg[hidden],
+    .wpv-pill[hidden] {
       display: none !important;
     }
 
@@ -16825,6 +16979,22 @@
       color: var(--ink-dim);
     }
 
+    .wpv-pill.wpv-reset:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .wpv-pill.wpv-tidy {
+      background: #fef3c7;
+      border-color: #f59e0b;
+      color: #92400e;
+    }
+
+    .wpv-pill.wpv-tidy:hover {
+      background: #fde68a;
+      border-color: #d97706;
+    }
+
     .wpv-pct {
       font: 800 11.5px 'Manrope', monospace;
       color: var(--ink);
@@ -16838,6 +17008,11 @@
       font: 600 11px 'Manrope', sans-serif;
       color: var(--ink-dim);
       text-align: center;
+      line-height: 1.35;
+    }
+
+    .wpv-tip.is-warn {
+      color: #b45309;
     }
 
     /* When editing Welcome or Result & QR, let Step 7 sub-tabs scroll away so sticky preview has full clear headroom */
@@ -16886,17 +17061,35 @@
         display: none !important;
       }
 
+      body.setup-welcome-pv .setup-shell > .step-bar,
+      body.setup-after-pv .setup-shell > .step-bar,
+      body.setup-welcome-pv .setup-shell > .bt-switch,
+      body.setup-after-pv .setup-shell > .bt-switch {
+        grid-column: 1 / -1;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      body.setup-welcome-pv .setup-shell > .step-bar,
+      body.setup-after-pv .setup-shell > .step-bar {
+        margin: 0;
+        padding: 8px 0;
+      }
+
       body.setup-welcome-pv .setup-shell > #step7,
       body.setup-after-pv .setup-shell > #step7 {
         grid-column: 1 / -1;
         width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
       }
 
       body.setup-welcome-pv #welcomeOpts {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(320px, 430px);
-        column-gap: 20px;
+        grid-template-columns: minmax(0, 1fr) minmax(300px, min(430px, 44%));
+        column-gap: 18px;
         align-items: start;
+        min-width: 0;
       }
 
       body.setup-welcome-pv #welcomeOpts > #welcomePvCard {
@@ -16905,27 +17098,32 @@
         position: sticky;
         top: calc(env(safe-area-inset-top, 0px) + 74px);
         margin: 0 !important;
+        min-width: 0;
         --pv-max-h: min(54vh, 450px);
       }
 
       body.setup-welcome-pv #welcomeOpts > #welcomeSubTabs {
         grid-column: 1;
         margin-top: 0;
+        min-width: 0;
       }
 
       body.setup-welcome-pv #welcomeOpts > .w7-pane {
         grid-column: 1;
+        min-width: 0;
       }
 
       body.setup-after-pv #afterSection {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(310px, 410px);
-        column-gap: 20px;
+        grid-template-columns: minmax(0, 1fr) minmax(300px, min(410px, 43%));
+        column-gap: 18px;
         align-items: start;
+        min-width: 0;
       }
 
       body.setup-after-pv #afterSection > *:not(#afterPvCard) {
         grid-column: 1;
+        min-width: 0;
       }
 
       body.setup-after-pv #afterSection > .panel-label,
@@ -16939,6 +17137,7 @@
         position: sticky;
         top: calc(env(safe-area-inset-top, 0px) + 74px);
         margin: 0 !important;
+        min-width: 0;
         --pv-max-h: min(54vh, 450px);
       }
 
@@ -17362,20 +17561,16 @@
       width: min(calc(100vw - 2 * (clamp(64px, 9vmin, 120px) + 28px)), calc(100dvh * var(--cam-aspect, .8))) !important;
     }
 
-    /* Default dslrBooth bottom preview bar: stage sits cleanly above the bottom shot bar & controls */
-    body.stage-full:not(.film-pos-side).has-film-shots .app-shell:not(.result) .stage-wrap,
-    body.stage-full:not(.film-pos-side).stage-review .app-shell:not(.result) .stage-wrap,
-    body.stage-full:not(.film-pos-side).layout-editing .app-shell .stage-wrap {
+    /* Final review reserve: keep finished composed print clear of bottom shot bar & Retake/Done.
+       During live capture & in-between pauses, camera stays full-screen size and previous shots float over the bottom only on pauses. */
+    body.stage-full:not(.film-pos-side).stage-review .app-shell:not(.result) .stage-wrap {
       box-sizing: border-box !important;
       padding-top: var(--stage-top-reserve, 0px) !important;
       padding-bottom: var(--stage-bottom-reserve, 0px) !important;
     }
 
-    body.stage-full:not(.film-pos-side).has-film-shots .app-shell:not(.result) .stage-frame,
-    body.stage-full:not(.film-pos-side).has-film-shots.in-session.shooting .app-shell.capturing .stage-frame,
     body.stage-full:not(.film-pos-side).stage-review .app-shell:not(.result) .stage-frame,
-    body.stage-full:not(.film-pos-side).stage-review.in-session.shooting .app-shell.capturing .stage-frame,
-    body.stage-full:not(.film-pos-side).layout-editing .app-shell .stage-frame {
+    body.stage-full:not(.film-pos-side).stage-review.in-session.shooting .app-shell.capturing .stage-frame {
       width: min(100vw, calc((var(--vh, 100dvh) - var(--stage-bottom-reserve, 0px) - var(--stage-top-reserve, 0px)) * var(--cam-aspect, .8))) !important;
       width: min(100vw, calc((100dvh - var(--stage-bottom-reserve, 0px) - var(--stage-top-reserve, 0px)) * var(--cam-aspect, .8))) !important;
       height: auto !important;
@@ -17441,10 +17636,23 @@
       box-sizing: border-box;
       scrollbar-width: thin;
       -webkit-overflow-scrolling: touch;
+      transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s ease;
     }
 
     body.stage-full .app-shell .film-track.is-scroll {
       justify-content: flex-start !important;
+    }
+
+    /* Hide previous shots during active countdown so guests see a clean full-size camera; reveal during in-between pauses & review */
+    body.stage-full.in-session.shooting:not(.stage-pause):not(.stage-review):not(.layout-editing) .app-shell .film-track {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      transform: translate(-50%, 18px) !important;
+    }
+
+    body.stage-full.film-pos-side.in-session.shooting:not(.stage-pause):not(.stage-review):not(.layout-editing) .app-shell .film-track {
+      transform: translateX(18px) !important;
     }
 
     /* Optional Right-Side mode (when operator chooses Right side in Display & monitor size / Resize Layout) */
@@ -19604,11 +19812,8 @@
         margin: auto 0 !important;
       }
 
-      body.stage-full:not(.film-pos-side).has-film-shots .app-shell:not(.result) .stage-frame,
-      body.stage-full:not(.film-pos-side).has-film-shots.in-session.shooting .app-shell.capturing .stage-frame,
       body.stage-full:not(.film-pos-side).stage-review .app-shell:not(.result) .stage-frame,
-      body.stage-full:not(.film-pos-side).stage-review.in-session.shooting .app-shell.capturing .stage-frame,
-      body.stage-full:not(.film-pos-side).layout-editing .app-shell .stage-frame {
+      body.stage-full:not(.film-pos-side).stage-review.in-session.shooting .app-shell.capturing .stage-frame {
         width: min(100vw, calc((100dvh - var(--stage-bottom-reserve, 0px) - var(--stage-top-reserve, 0px)) * var(--cam-aspect, .8))) !important;
         max-width: 100vw !important;
         max-height: calc(100dvh - var(--stage-bottom-reserve, 0px) - var(--stage-top-reserve, 0px)) !important;
@@ -26460,6 +26665,7 @@
                   <span>Live camera mirror</span>
                 </div>
                 <img id="welcomePreview" alt="Welcome screen preview">
+                <canvas id="welcomePvDragCanvas" class="wpv-drag-canvas" hidden></canvas>
                 <video id="welcomeVideoPreview" autoplay loop muted playsinline style="display:none;"></video>
                 <div class="welcome-editorial is-preview" id="welcomePvEditorial" hidden>
                   <p class="welcome-editorial-kicker" id="welcomePvEdKicker" hidden></p>
@@ -26470,6 +26676,7 @@
                 <div class="wpv-interact" id="welcomePvInteract" hidden>
                   <div class="wpv-guide wpv-guide-x" id="wpvGuideX"></div>
                   <div class="wpv-guide wpv-guide-y" id="wpvGuideY"></div>
+                  <div class="wpv-guide wpv-guide-y wpv-guide-sib" id="wpvGuideSibY"></div>
                   <div class="wpv-box" id="wpvSampleBox" data-wpv="sample" hidden>
                     <span class="wpv-tag">Sample</span>
                     <i class="wpv-h tl" data-corner="tl"></i>
@@ -26493,14 +26700,19 @@
                     <button type="button" class="wpv-pill" data-wpv-target="sample">Sample</button>
                   </div>
                   <div class="wpv-snap-group" id="wpvSnapGroup" aria-label="Quick vertical position">
-                    <button type="button" class="wpv-pill" data-wpv-pos="top" title="Place near top">Top</button>
-                    <button type="button" class="wpv-pill" data-wpv-pos="center" title="Center on screen">Center</button>
-                    <button type="button" class="wpv-pill" data-wpv-pos="bottom" title="Place near bottom">Bottom</button>
+                    <button type="button" class="wpv-pill" data-wpv-pos="top" title="Align near top">Top</button>
+                    <button type="button" class="wpv-pill" data-wpv-pos="center" title="Center vertically">Center</button>
+                    <button type="button" class="wpv-pill" data-wpv-pos="bottom" title="Align near bottom">Bottom</button>
                   </div>
+                </div>
+                <div class="wpv-tb-row">
                   <div class="wpv-size-group">
                     <button type="button" class="wpv-pill wpv-sq" id="wpvSizeDown" aria-label="Make smaller">&minus;</button>
                     <span class="wpv-pct" id="wpvSizeVal">100%</span>
                     <button type="button" class="wpv-pill wpv-sq" id="wpvSizeUp" aria-label="Make larger">+</button>
+                  </div>
+                  <div class="wpv-act-group">
+                    <button type="button" class="wpv-pill wpv-tidy" id="wpvTidyBtn" hidden title="Separate overlapping Card and Sample">Auto-space</button>
                     <button type="button" class="wpv-pill wpv-reset" id="wpvResetBtn" title="Reset position and size">Reset</button>
                   </div>
                 </div>
@@ -40250,10 +40462,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             ft.style.setProperty('--film-pady', m.padY + 'px');
             ft.classList.toggle('is-scroll', !!m.scrollable);
             var isResultNow = (typeof state !== 'undefined' && state === 'result') || shell.classList.contains('result');
-            var showBottom = !isWelcomeFull && !isResultNow && hasShotsNow && (capturing || isEditing || isReviewNow);
+            var reserveForReview = !isWelcomeFull && !isResultNow && isReviewNow && !isEditing;
             document.body.style.setProperty('--film-bottom-offset', ctrlOffset + 'px');
-            document.body.style.setProperty('--stage-bottom-reserve', showBottom ? (ctrlOffset + m.barH + 12) + 'px' : (isReviewNow && scVis ? ctrlOffset + 'px' : '0px'));
-            document.body.style.setProperty('--stage-top-reserve', (showBottom || (isReviewNow && scVis)) ? (isReviewNow ? '14px' : '8px') : '0px');
+            document.body.style.setProperty('--stage-bottom-reserve', reserveForReview ? (hasShotsNow ? (ctrlOffset + m.barH + 12) + 'px' : (scVis ? ctrlOffset + 'px' : '0px')) : '0px');
+            document.body.style.setProperty('--stage-top-reserve', reserveForReview ? '14px' : '0px');
           } else {
             ft.classList.remove('is-scroll');
             document.body.style.setProperty('--stage-bottom-reserve', '0px');
@@ -43693,6 +43905,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
 
       async function countdownThenCapture(index, noPause) {
+        document.body.classList.remove('stage-pause');
         stageShot = index;
         await usbEnsureLive();   // a retake after the camera went to sleep waits for the picture
         applyStageAspect();   // frame this shot's box
@@ -43765,6 +43978,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (reviewEach) showShotReview(index);
           popNum('', true);
           countdownOverlay.classList.add('pausing');        // no countdown circle between shots
+          document.body.classList.add('stage-pause');       // reveal previous shots bar during in-between pause only
           const tapMode = advanceMode === 'tap';
           const nextText = tapMode ? 'Tap for photo ' + (index + 2) + ' of ' + shotsNeeded() : 'Next: photo ' + (index + 2) + ' of ' + shotsNeeded();
           cdShot.textContent = nextText;
@@ -43773,6 +43987,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           retakeBtn.textContent = '\u21BA Retake this photo';
           retakeBtn.hidden = !retakesAllowed();
           if (tapMode) { doneBtn.textContent = 'Next photo \u25B6'; doneBtn.hidden = false; }
+          applyStageAspect();
+          try { if (typeof tabletBridgeSync === 'function') tabletBridgeSync(); } catch (e) { }
           // Tap mode: waits for Next / Space / clicker / a tap on the guest screen.
           // Auto: at least 4 s to look at the photo (and press Retake) before the next one; Space / clicker skips ahead.
           let pauseMs = tapMode ? 0 : betweenSec * 1000;   // the pause set in Setup
@@ -43780,10 +43996,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           // pause, so guests don't wait for it twice; the photo still stays up for USB_REVIEW_MIN_MS (or the whole pause, if shorter).
           if (pauseMs > 0 && usbIsHelper() && usbCam.active && currentDeviceId === USB_CAM_ID)
             pauseMs = Math.max(Math.min(pauseMs, USB_REVIEW_MIN_MS), pauseMs - (Date.now() - flashAt));
-          await sessPause(pauseMs);   // Space skips    // ends early on Retake, Next or Cancel
-          retakeBtn.hidden = true; doneBtn.hidden = true;
-          countdownOverlay.classList.remove('pausing');
-          hideShotReview();
+          try {
+            await sessPause(pauseMs);   // Space skips    // ends early on Retake, Next or Cancel
+          } finally {
+            retakeBtn.hidden = true; doneBtn.hidden = true;
+            countdownOverlay.classList.remove('pausing');
+            document.body.classList.remove('stage-pause');
+            hideShotReview();
+          }
           stageShot = index + 1;
           applyStageAspect();
         }
@@ -43982,6 +44202,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function cancelSession() {
         if (!sess || sess.cancelled) return;
         sess.cancelled = true;
+        document.body.classList.remove('stage-pause');
         if (sess.pauseEnd) sess.pauseEnd();
         if (sess.readyEnd) sess.readyEnd();
         if (sess.reviewEnd) sess.reviewEnd('cancel');
@@ -57912,11 +58133,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         'body.ps .cdw{width:calc(clamp(56px,8vmin,84px) * var(--ui-cd-scale,1));}' +
         'body.ps .num{font-size:calc(clamp(30px,4.6vmin,48px) * var(--ui-cd-scale,1));text-shadow:none;}' +
         'body.ps .num.word{font-size:calc(clamp(13px,1.8vmin,18px) * var(--ui-cd-scale,1));}' +
-        'body.ps .film{position:fixed;left:50%;right:auto;top:auto;bottom:max(16px,2vh);transform:translateX(-50%);z-index:50;display:flex !important;flex-direction:row;flex-wrap:nowrap;align-items:center;justify-content:safe center;gap:10px;padding:8px 10px;border-radius:18px;border:1px solid rgba(255,255,255,.16);background:rgba(12,11,16,.66);backdrop-filter:blur(10px);box-shadow:0 12px 32px rgba(0,0,0,.42);max-width:calc(100vw - 24px);overflow-x:auto;overflow-y:visible;box-sizing:border-box;}' +
+        'body.ps .film{position:fixed;left:50%;right:auto;top:auto;bottom:max(16px,2vh);transform:translateX(-50%);z-index:50;display:flex !important;flex-direction:row;flex-wrap:nowrap;align-items:center;justify-content:safe center;gap:10px;padding:8px 10px;border-radius:18px;border:1px solid rgba(255,255,255,.16);background:rgba(12,11,16,.66);backdrop-filter:blur(10px);box-shadow:0 12px 32px rgba(0,0,0,.42);max-width:calc(100vw - 24px);overflow-x:auto;overflow-y:visible;box-sizing:border-box;transition:opacity .2s ease,transform .22s cubic-bezier(.16,1,.3,1),visibility .2s ease;}' +
         'body.ps.is-result .film{display:none !important;}' +
         'body.ps.has-gb .film{bottom:calc(max(18px,2.4vh) + calc(56px * min(var(--ui-btn-scale,1),2)) + 14px);}' +
-        'body.ps.has-film-shots:not(.film-side):not(.wel-full):not(.is-result) .frame{top:calc((100vh - min(34vh, calc(18vh * var(--ui-film-scale,1) + 56px))) / 2);height:min(calc(100vh - min(34vh, calc(18vh * var(--ui-film-scale,1) + 56px))), calc(100vw / var(--ga,1.3333))) !important;width:min(100vw, calc((100vh - min(34vh, calc(18vh * var(--ui-film-scale,1) + 56px))) * var(--ga,1.3333))) !important;}' +
-        'body.ps.has-film-shots.has-gb:not(.film-side):not(.wel-full):not(.is-result) .frame{top:calc((100vh - min(44vh, calc(18vh * var(--ui-film-scale,1) + 126px))) / 2);height:min(calc(100vh - min(44vh, calc(18vh * var(--ui-film-scale,1) + 126px))), calc(100vw / var(--ga,1.3333))) !important;width:min(100vw, calc((100vh - min(44vh, calc(18vh * var(--ui-film-scale,1) + 126px))) * var(--ga,1.3333))) !important;}' +
+        'body.ps.is-shooting:not(.in-pause):not(.in-review):not(.edit-preview) .film{opacity:0 !important;visibility:hidden !important;pointer-events:none !important;transform:translate(-50%,18px) !important;}' +
+        'body.ps.film-side.is-shooting:not(.in-pause):not(.in-review):not(.edit-preview) .film{transform:translateX(18px) !important;}' +
         'body.ps.film-side .film{top:max(16px,2vh);right:max(16px,1.6vw);left:auto;bottom:auto;transform:none;flex-direction:column;gap:8px;padding:8px;border-radius:16px;border:0;background:rgba(0,0,0,.55);box-shadow:none;max-width:none;max-height:calc(100vh - 120px);overflow-y:auto;overflow-x:hidden;}' +
         'body.ps .film.no-shots{display:none !important;}' +
         'body.ps .film div{flex:0 0 auto;height:auto !important;width:max(64px, min(calc(clamp(90px, 15vh, 190px) * var(--box-aspect,.8) * var(--ui-film-scale,1)), calc((100vw - 56px) / min(var(--n,4), 8) - 10px), calc(28vh * var(--box-aspect,.8) * min(1.4, max(1, var(--ui-film-scale,1))))));aspect-ratio:var(--box-aspect,.8);border:2px solid rgba(255,255,255,.88);border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.38);}' +
@@ -58162,12 +58383,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             G.v.style.filter = liveFilterCss();
           } else if (what === 'review') {
             G.cd.style.display = 'none';
+            if (G.d && G.d.body) { G.d.body.classList.add('in-review'); G.d.body.classList.remove('in-pause'); }
             G.res.src = a; G.res.style.display = 'block'; G.v.style.display = 'none';
           } else if (what === 'reviewEnd') {
+            if (G.d && G.d.body) G.d.body.classList.remove('in-review');
             G.res.style.display = 'none'; G.v.style.display = 'block';
           } else if (what === 'tick') {
             G.cd.style.display = 'flex';
             G.cd.classList.toggle('pausing', a === '');
+            if (G.d && G.d.body) G.d.body.classList.toggle('in-pause', a === '');
             if (G.num.textContent !== a) G.num.textContent = a;
             G.num.classList.toggle('word', !!b);
             G.bar.style.strokeDashoffset = String(100 * (1 - c));
@@ -58175,6 +58399,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           } else if (what === 'flash') {
             G.flash.classList.add('on');
             G.cd.style.display = 'none';   // no "Pose" circle over the photo after the shot
+            if (G.d && G.d.body) G.d.body.classList.remove('in-pause');
             setTimeout(() => G && G.flash.classList.remove('on'), 180);
           } else if (what === 'screenflash') {
             G.flash.style.cssText = a ? 'position:fixed;inset:0;background:#fff;opacity:1;z-index:99999;transition:none;' : '';
@@ -58421,6 +58646,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             }
           }
           G.film.classList.toggle('hide', showQr);
+          if (G.d && G.d.body) {
+            G.d.body.classList.toggle('is-shooting', state === 'capturing');
+            G.d.body.classList.toggle('in-review', !!(sess && sess.reviewing));
+            G.d.body.classList.toggle('in-pause', document.body.classList.contains('stage-pause'));
+          }
           guestFilm();
           guestPickRender();
           guestBrand();
@@ -59235,6 +59465,9 @@ async function buildAndPushTabletState() {
     dt: dateLabel,
     msg, sub, chip,
     countingDown: !!(state === 'capturing' && countingDown),
+    isShooting: state === 'capturing',
+    inPause: document.body.classList.contains('stage-pause'),
+    inReview: !!(sess && sess.reviewing),
     showReady: !!(psMode && ready && !pickOpen),
     readySub: readySub ? readySub.textContent : '',
     readyBtn: readyOverlay.classList.contains('hands') ? (fx.hands === 'smile' ? 'Smile to start' : 'Wave to start') : 'Start',
@@ -76247,7 +76480,7 @@ function renderTabletBridgeSetup(info) {
           var activeOutKind = (typeof outputMode !== 'undefined' && (outputMode === 'gif' || outputMode === 'both')) ? 'gif'
             : ((typeof outputMode !== 'undefined' && outputMode === 'flipbook' && hasFlip) ? 'flipbook' : 'photo');
           var defShort = hfMode === 'wave' ? 'Wave'
-            : (hfMode === 'smile' ? 'Smile' : (activeOutKind === 'flipbook' ? 'Flipbook' : (activeOutKind === 'gif' ? 'GIF' : 'Take a Photo')));
+            : (hfMode === 'smile' ? 'Smile' : (activeOutKind === 'flipbook' ? 'Flipbook' : (activeOutKind === 'gif' ? 'GIF' : 'Photo')));
           var defPill = hfMode === 'wave' ? 'Wave to start' : (hfMode === 'smile' ? 'Smile to start' : 'Tap to start');
           items.push({
             id: 'start',
@@ -76275,6 +76508,51 @@ function renderTabletBridgeSetup(info) {
       function shouldUseWelcomeIconDock(forPreview) {
         return welcomeBtnStyle !== 'pill' || hasAnyActiveWelcomeShortcut(forPreview);
       }
+      function computeWelcomeCardBtnMetrics(cardW, land, style, itemCount) {
+        var n = Math.max(0, Number(itemCount) || 0);
+        if (!n) return { bh: 0, bw: 0, padTop: 0, padBottom: 0, rows: 0, isIcon: false };
+        var innerW = Math.max(220, cardW - (land ? 64 : 44));
+        if (style !== 'pill') {
+          var gap = Math.round(Math.max(12, Math.min(26, innerW * 0.038)));
+          var maxDiam = land ? (style === 'icon-label' ? 128 : 114) : (style === 'icon-label' ? 110 : 98);
+          var diam = Math.max(58, Math.min(maxDiam, Math.floor((innerW - gap * Math.max(0, n - 1)) / n)));
+          return {
+            bh: diam + 14,
+            bw: innerW,
+            padTop: land ? 32 : 20,
+            padBottom: land ? 40 : 24,
+            rows: 1,
+            diam: diam,
+            gap: gap,
+            isIcon: true
+          };
+        }
+        if (n === 1) {
+          return {
+            bh: land ? 92 : 78,
+            bw: innerW,
+            padTop: land ? 36 : 22,
+            padBottom: land ? 44 : 24,
+            rows: 1,
+            isIcon: false
+          };
+        }
+        // Classic pill with 2+ options: prominent primary CTA on row 1, secondary shortcuts neatly on row 2
+        var h1 = land ? 84 : 68;
+        var h2 = land ? 64 : 52;
+        var rGap = land ? 16 : 12;
+        return {
+          bh: h1 + rGap + h2,
+          bw: innerW,
+          padTop: land ? 30 : 20,
+          padBottom: land ? 38 : 22,
+          rows: 2,
+          h1: h1,
+          h2: h2,
+          rGap: rGap,
+          isIcon: false
+        };
+      }
       function syncWelcomeShortcutsUI() {
         var vgT = document.getElementById('welcomeVgBtnToggle');
         var sT = document.getElementById('welcome360BtnToggle');
@@ -76290,10 +76568,26 @@ function renderTabletBridgeSetup(info) {
         var mRow = document.getElementById('welcomeMsgRow');
         var cRow = document.getElementById('welcomeBtnColorRow');
         if (mRow) mRow.style.display = welcomeBtnOn ? '' : 'none';
-        if (cRow) cRow.style.display = welcomeBtnOn ? '' : 'none';
+        if (cRow) cRow.style.display = (welcomeBtnOn || anyAct) ? '' : 'none';
         var posRow = document.getElementById('welcomeBtnPosRow');
         if (posRow) {
           posRow.style.display = anyAct ? '' : 'none';
+          var posChips = document.getElementById('welcomeBtnPosChips');
+          if (posChips) {
+            var isCardM = (typeof attractMode !== 'undefined' && attractMode === 'card');
+            var effPos = (isCardM && welcomeBtnPos !== 'right') ? 'bottom' : welcomeBtnPos;
+            [].forEach.call(posChips.querySelectorAll('.chip'), function (c) {
+              var p = c.dataset.pos;
+              if (p === 'center' || p === 'lower') {
+                c.style.display = isCardM ? 'none' : '';
+              } else if (p === 'bottom') {
+                c.textContent = isCardM ? 'Inside card' : 'Bottom';
+              } else if (p === 'right') {
+                c.textContent = isCardM ? 'Right side stack' : 'Right stack (Editorial)';
+              }
+              c.classList.toggle('active', p === effPos);
+            });
+          }
         }
         var hint = document.getElementById('welcomeShortcutStatusHint');
         if (hint) {
@@ -76382,6 +76676,80 @@ function renderTabletBridgeSetup(info) {
         if (cardBg === 'glass') return true;
         return !(typeof lumOf === 'function' && lumOf(cardBg) <= 0.45);
       }
+      function clearWelcomeDockSlotStyles(dockEl) {
+        dockEl.style.left = '';
+        dockEl.style.top = '';
+        dockEl.style.width = '';
+        dockEl.style.height = '';
+        dockEl.style.maxWidth = '';
+        [
+          '--wib-size', '--wib-gap', '--wib-ring-pad', '--wib-lbl-fs',
+          '--wpill-row-gap', '--wpill-main-h', '--wpill-main-fs', '--wpill-main-px',
+          '--wpill-sub-h', '--wpill-sub-fs', '--wpill-sub-px', '--wpill-sub-gap',
+          '--wpill-icon-sz', '--wpill-sub-icon-sz', '--wpill-icon-gap'
+        ].forEach(function (prop) { dockEl.style.removeProperty(prop); });
+      }
+      function applyWelcomeDockSlotSizing(dockEl, isPreview, isPill, items) {
+        var host = dockEl.parentElement;
+        var hostRect = host ? host.getBoundingClientRect() : null;
+        var hostW = (hostRect && hostRect.width > 10) ? hostRect.width : (isPreview ? 360 : (window.innerWidth || 1280));
+        var hostH = (hostRect && hostRect.height > 10) ? hostRect.height : (isPreview ? 202 : (window.innerHeight || 720));
+        var slotW = Math.max(40, hostW * (welcomeCta.w / 100));
+        var slotH = Math.max(16, hostH * (welcomeCta.h / 100));
+        var n = Math.max(1, items.length);
+        if (!isPill) {
+          var gap = Math.max(isPreview ? 3 : 8, Math.min(isPreview ? 12 : 26, Math.round(slotW * 0.042)));
+          var maxDiamW = (slotW - gap * Math.max(0, n - 1)) / n;
+          var diam = Math.max(isPreview ? 16 : 44, Math.min(slotH * 0.94, maxDiamW));
+          dockEl.style.setProperty('--wib-size', diam.toFixed(1) + 'px');
+          dockEl.style.setProperty('--wib-gap', gap + 'px');
+          dockEl.style.setProperty('--wib-ring-pad', Math.max(1.2, Math.min(4, diam * 0.046)).toFixed(1) + 'px');
+          dockEl.style.setProperty('--wib-lbl-fs', Math.max(isPreview ? 4.8 : 8.5, Math.min(12.5, diam * 0.145)).toFixed(1) + 'px');
+        } else if (n === 1) {
+          var h1 = Math.max(isPreview ? 13 : 36, Math.min(slotH * 0.92, isPreview ? 34 : 74));
+          var fs1 = Math.max(isPreview ? 6.5 : 13, Math.min(isPreview ? 12 : 21, h1 * 0.36));
+          var px1 = Math.max(isPreview ? 7 : 16, Math.min(isPreview ? 16 : 32, h1 * 0.56));
+          var ic1 = Math.max(isPreview ? 7 : 13, Math.min(isPreview ? 13 : 20, h1 * 0.38));
+          dockEl.style.setProperty('--wpill-row-gap', '0px');
+          dockEl.style.setProperty('--wpill-main-h', h1.toFixed(1) + 'px');
+          dockEl.style.setProperty('--wpill-main-fs', fs1.toFixed(1) + 'px');
+          dockEl.style.setProperty('--wpill-main-px', px1.toFixed(1) + 'px');
+          dockEl.style.setProperty('--wpill-icon-sz', ic1.toFixed(1) + 'px');
+          dockEl.style.setProperty('--wpill-icon-gap', Math.max(2.5, Math.min(8, h1 * 0.14)).toFixed(1) + 'px');
+        } else {
+          var subItems = items.slice(1);
+          var subN = Math.max(1, subItems.length);
+          var rowGap = Math.max(isPreview ? 2.5 : 6, Math.min(isPreview ? 8 : 16, Math.round(slotH * 0.10)));
+          var availH = Math.max(20, slotH - rowGap);
+          var hMain = Math.max(isPreview ? 11 : 32, availH * 0.55);
+          var hSub = Math.max(isPreview ? 9.5 : 26, availH * 0.45);
+          var subGap = Math.max(isPreview ? 3 : 6, Math.min(isPreview ? 8 : 14, Math.round(slotW * 0.032)));
+          var fsMain = Math.max(isPreview ? 5.8 : 12, Math.min(isPreview ? 11.5 : 20, hMain * 0.40));
+          var pxMain = Math.max(isPreview ? 6 : 16, Math.min(isPreview ? 14 : 30, hMain * 0.56));
+          var icMain = Math.max(isPreview ? 6.5 : 12, Math.min(isPreview ? 12 : 19, hMain * 0.42));
+          var pxSub = Math.max(isPreview ? 4.5 : 10, Math.min(isPreview ? 10 : 20, hSub * 0.44));
+          var icSub = Math.max(isPreview ? 5.5 : 10, Math.min(isPreview ? 10 : 16, hSub * 0.42));
+          var icGap = Math.max(isPreview ? 2 : 5, Math.min(isPreview ? 5 : 8, hSub * 0.14));
+          var totalSubChars = 0;
+          for (var si = 0; si < subItems.length; si++) {
+            totalSubChars += String(subItems[si].pillLabel || subItems[si].shortLabel || '').length;
+          }
+          var textRoomW = Math.max(24, slotW - subGap * Math.max(0, subN - 1) - subN * (pxSub * 2 + icSub + icGap + 4));
+          var fsSubByW = totalSubChars > 0 ? (textRoomW / (totalSubChars * 0.58)) : hSub * 0.38;
+          var fsSub = Math.max(isPreview ? 5.2 : 10, Math.min(isPreview ? 9.5 : 16, hSub * 0.38, fsSubByW));
+          dockEl.style.setProperty('--wpill-row-gap', rowGap + 'px');
+          dockEl.style.setProperty('--wpill-main-h', hMain.toFixed(1) + 'px');
+          dockEl.style.setProperty('--wpill-main-fs', fsMain.toFixed(1) + 'px');
+          dockEl.style.setProperty('--wpill-main-px', pxMain.toFixed(1) + 'px');
+          dockEl.style.setProperty('--wpill-sub-h', hSub.toFixed(1) + 'px');
+          dockEl.style.setProperty('--wpill-sub-fs', fsSub.toFixed(1) + 'px');
+          dockEl.style.setProperty('--wpill-sub-px', pxSub.toFixed(1) + 'px');
+          dockEl.style.setProperty('--wpill-sub-gap', subGap + 'px');
+          dockEl.style.setProperty('--wpill-icon-sz', icMain.toFixed(1) + 'px');
+          dockEl.style.setProperty('--wpill-sub-icon-sz', icSub.toFixed(1) + 'px');
+          dockEl.style.setProperty('--wpill-icon-gap', icGap.toFixed(1) + 'px');
+        }
+      }
       function renderWelcomeDockInto(dockEl, edWrap, opts) {
         if (!dockEl) return false;
         opts = opts || {};
@@ -76402,22 +76770,35 @@ function renderTabletBridgeSetup(info) {
         var bInk = (typeof lumOf === 'function' && lumOf(bCol) > 0.6) ? '#1C1A1E' : '#ffffff';
         var bRgb = (typeof hexToRgb === 'function') ? hexToRgb(bCol) : [201, 61, 39];
         var lightSurface = welcomeLightCardCheck();
+        var isPill = welcomeBtnStyle === 'pill';
+        var showLbl = welcomeBtnStyle === 'icon-label';
         dockEl.classList.toggle('wib-surface-light', lightSurface);
+        dockEl.dataset.style = welcomeBtnStyle;
+        dockEl.dataset.count = String(items.length);
         dockEl.style.setProperty('--wib-accent-bg', bCol);
         dockEl.style.setProperty('--wib-accent-ink', bInk);
         dockEl.style.setProperty('--wib-primary-ring', lightSurface ? ('rgba(' + bRgb.join(',') + ',0.68)') : 'rgba(255,255,255,0.72)');
 
-        var useCardSlot = (attractMode === 'card' && welcomeBtnPos !== 'right' && welcomeBtnOn && welcomeCta && welcomeCardRect);
+        var useCardSlot = (attractMode === 'card' && welcomeBtnPos !== 'right' && welcomeCta && welcomeCardRect);
         if (useCardSlot) {
           dockEl.dataset.pos = 'card';
-          dockEl.style.left = (welcomeCta.l + welcomeCta.w / 2).toFixed(3) + '%';
-          dockEl.style.top = (welcomeCta.t + welcomeCta.h / 2).toFixed(3) + '%';
-          dockEl.style.maxWidth = Math.max(40, Math.round((welcomeCardRect.w || 0.6) * 90)) + '%';
+          dockEl.style.left = welcomeCta.l.toFixed(3) + '%';
+          dockEl.style.top = welcomeCta.t.toFixed(3) + '%';
+          dockEl.style.width = welcomeCta.w.toFixed(3) + '%';
+          dockEl.style.height = welcomeCta.h.toFixed(3) + '%';
+          dockEl.style.maxWidth = 'none';
+          applyWelcomeDockSlotSizing(dockEl, isPreview, isPill, items);
         } else {
           dockEl.dataset.pos = welcomeBtnPos || 'bottom';
-          dockEl.style.left = '';
-          dockEl.style.top = '';
-          dockEl.style.maxWidth = '';
+          clearWelcomeDockSlotStyles(dockEl);
+          if (isPreview) {
+            var hostP = dockEl.parentElement;
+            var hrP = hostP ? hostP.getBoundingClientRect() : null;
+            var minSideP = (hrP && hrP.width > 10 && hrP.height > 10) ? Math.min(hrP.width, hrP.height) : 202;
+            var pvDiam = Math.max(22, Math.min(38, minSideP * 0.165));
+            dockEl.style.setProperty('--wib-size', pvDiam.toFixed(1) + 'px');
+            dockEl.style.setProperty('--wib-lbl-fs', Math.max(5.2, Math.min(7.5, pvDiam * 0.17)).toFixed(1) + 'px');
+          }
         }
 
         // Editorial left typographic header when stacked on Right in Camera or Poster mode
@@ -76442,13 +76823,12 @@ function renderTabletBridgeSetup(info) {
           }
         }
 
-        var isPill = welcomeBtnStyle === 'pill';
-        var showLbl = welcomeBtnStyle === 'icon-label';
-        var sig = [welcomeBtnStyle, welcomeBtnPos, attractMode, bCol, lightSurface ? 1 : 0, isPreview ? 1 : 0, items.map(function (it) { return it.id + ':' + it.kind + ':' + it.shortLabel + ':' + it.pillLabel; }).join('|')].join('~');
+        var useCardPillRows = useCardSlot && isPill && items.length >= 2;
+        var sig = [welcomeBtnStyle, welcomeBtnPos, attractMode, useCardPillRows ? 1 : 0, bCol, lightSurface ? 1 : 0, isPreview ? 1 : 0, items.map(function (it) { return it.id + ':' + it.kind + ':' + it.shortLabel + ':' + it.pillLabel; }).join('|')].join('~');
         if (dockEl.dataset.sig !== sig) {
           dockEl.dataset.sig = sig;
           dockEl.innerHTML = '';
-          items.forEach(function (it) {
+          function buildDockBtn(it) {
             var btn = document.createElement('button');
             btn.type = 'button';
             btn.dataset.wibAction = it.id;
@@ -76466,13 +76846,40 @@ function renderTabletBridgeSetup(info) {
             } else {
               btn.tabIndex = -1;
             }
-            dockEl.appendChild(btn);
-          });
+            return btn;
+          }
+          if (useCardPillRows) {
+            var mainRow = document.createElement('div');
+            mainRow.className = 'wib-pill-row is-main';
+            mainRow.appendChild(buildDockBtn(items[0]));
+            var subRow = document.createElement('div');
+            subRow.className = 'wib-pill-row is-sub';
+            for (var bi = 1; bi < items.length; bi++) subRow.appendChild(buildDockBtn(items[bi]));
+            dockEl.appendChild(mainRow);
+            dockEl.appendChild(subRow);
+          } else {
+            items.forEach(function (it) { dockEl.appendChild(buildDockBtn(it)); });
+          }
         }
         dockEl.hidden = false;
         return true;
       }
+      var _wibResizeBound = false;
+      function bindWelcomeDockResize() {
+        if (_wibResizeBound) return;
+        _wibResizeBound = true;
+        if (typeof ResizeObserver !== 'undefined') {
+          var ro = new ResizeObserver(function () {
+            try { syncWelcomeIconDock(); } catch (e) { }
+          });
+          var pvFrame = document.getElementById('welcomePvFrame');
+          var welOv = document.getElementById('welcomeOverlay');
+          if (pvFrame) ro.observe(pvFrame);
+          if (welOv) ro.observe(welOv);
+        }
+      }
       function syncWelcomeIconDock() {
+        bindWelcomeDockResize();
         var liveDock = document.getElementById('welcomeIconDock');
         var liveEd = document.getElementById('welcomeEditorial');
         var liveShowing = renderWelcomeDockInto(liveDock, liveEd, { isPreview: false });
@@ -76584,50 +76991,88 @@ function renderTabletBridgeSetup(info) {
         var isPill = welcomeBtnStyle === 'pill';
         var showLbl = welcomeBtnStyle === 'icon-label';
         var n = items.length;
-        var baseR = opt.cardRect ? Math.min(54, Math.max(36, Math.round(48 * (opt.cardScale || 1)))) : Math.round(Math.min(W, H) * 0.056);
-        var gap = isPill ? 20 : Math.round(baseR * 0.45);
+        var slot = opt.cardCtaRect || null;
+        var baseR = opt.cardRect ? Math.min(54, Math.max(32, Math.round(48 * (opt.cardScale || 1)))) : Math.round(Math.min(W, H) * 0.056);
+        var gap = isPill ? 18 : Math.round(baseR * 0.42);
         ctx.save();
-        if (isPill) {
-          var ph = Math.round(baseR * 1.45), pw = Math.min(280, Math.max(170, Math.round(W * 0.19)));
+        function drawPillBox(it, x0, y0, pw, ph) {
+          roundRectPath(ctx, x0, y0, pw, ph, ph / 2);
+          ctx.fillStyle = it.primary ? bCol : (lightSurface ? 'rgba(28,26,30,0.08)' : 'rgba(20,18,24,0.68)');
+          ctx.fill();
+          if (!it.primary) {
+            ctx.strokeStyle = lightSurface ? 'rgba(28,26,30,0.16)' : 'rgba(255,255,255,0.36)';
+            ctx.lineWidth = 2; ctx.stroke();
+          }
+          var txt = it.pillLabel || it.shortLabel;
+          var fs = fitFont(ctx, txt, 'Manrope, sans-serif', Math.round(ph * 0.38), pw - 36, 12);
+          ctx.fillStyle = it.primary ? bInk : (lightSurface ? '#1C1A1E' : '#ffffff');
+          ctx.font = (it.primary ? '800 ' : '700 ') + fs + 'px Manrope, sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(txt, x0 + pw / 2, y0 + ph / 2 + 1);
+        }
+        if (isPill && slot) {
+          if (n === 1) {
+            var ph1 = Math.min(slot.h * 0.92, 92);
+            var pw1 = Math.min(slot.w, Math.max(slot.w * 0.68, 220));
+            drawPillBox(items[0], slot.x + (slot.w - pw1) / 2, slot.y + (slot.h - ph1) / 2, pw1, ph1);
+          } else {
+            var rGap = Math.max(8, Math.round(slot.h * 0.1));
+            var hMain = Math.max(30, (slot.h - rGap) * 0.55);
+            var hSub = Math.max(26, (slot.h - rGap) * 0.45);
+            var pwMain = Math.min(slot.w, Math.max(slot.w * 0.68, 200));
+            drawPillBox(items[0], slot.x + (slot.w - pwMain) / 2, slot.y, pwMain, hMain);
+            var subItems = items.slice(1);
+            var subGap = Math.max(10, Math.round(slot.w * 0.032));
+            var subW = Math.min((slot.w - subGap * (subItems.length - 1)) / subItems.length, slot.w * 0.48);
+            var rowW = subItems.length * subW + (subItems.length - 1) * subGap;
+            var sx0 = slot.x + (slot.w - rowW) / 2;
+            var sy0 = slot.y + hMain + rGap;
+            subItems.forEach(function (it, idx) {
+              drawPillBox(it, sx0 + idx * (subW + subGap), sy0, subW, hSub);
+            });
+          }
+        } else if (isPill) {
+          var ph = Math.round(baseR * 1.45);
+          var maxRowW = W * 0.88;
+          var pw = Math.min(280, Math.max(140, Math.floor((maxRowW - (n - 1) * gap) / n)));
           var totalW = n * pw + (n - 1) * gap;
           var startX = (opt.cardCta ? opt.cardCta.cx : W / 2) - totalW / 2;
           var cyP = opt.cardCta ? opt.cardCta.cy : (pos === 'center' ? H / 2 : (pos === 'lower' ? H * 0.8 : H - ph / 2 - 48));
           items.forEach(function (it, i) {
-            var x0 = startX + i * (pw + gap), y0 = cyP - ph / 2;
-            roundRectPath(ctx, x0, y0, pw, ph, ph / 2);
-            ctx.fillStyle = it.primary ? bCol : (lightSurface ? 'rgba(28,26,30,0.09)' : 'rgba(20,18,24,0.68)');
-            ctx.fill();
-            ctx.strokeStyle = it.primary ? 'transparent' : (lightSurface ? 'rgba(28,26,30,0.18)' : 'rgba(255,255,255,0.36)');
-            ctx.lineWidth = 2; ctx.stroke();
-            ctx.fillStyle = it.primary ? bInk : (lightSurface ? '#1C1A1E' : '#ffffff');
-            ctx.font = '800 ' + Math.round(ph * 0.34) + 'px Manrope, sans-serif';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(it.pillLabel || it.shortLabel, x0 + pw / 2, cyP + 1);
+            drawPillBox(it, startX + i * (pw + gap), cyP - ph / 2, pw, ph);
           });
         } else {
-          var step = baseR * 2 + gap;
-          var vertical = (pos === 'right');
-          var anchorX = opt.cardCta ? opt.cardCta.cx : (vertical ? (W - baseR - Math.round(W * 0.045)) : W / 2);
-          var anchorY = opt.cardCta ? opt.cardCta.cy : (vertical ? H / 2 : (pos === 'center' ? H / 2 : (pos === 'lower' ? H * 0.78 : H - baseR - 46)));
+          var vertical = (pos === 'right') && !slot;
+          var rIcon = baseR;
+          var iGap = gap;
+          if (slot) {
+            iGap = Math.max(10, Math.round(slot.w * 0.042));
+            var maxDiamSlot = Math.min(slot.h * 0.92, (slot.w - iGap * Math.max(0, n - 1)) / n);
+            rIcon = Math.max(22, maxDiamSlot / 2);
+          }
+          var step = rIcon * 2 + iGap;
+          var anchorX = slot ? (slot.x + slot.w / 2) : (opt.cardCta ? opt.cardCta.cx : (vertical ? (W - rIcon - Math.round(W * 0.045)) : W / 2));
+          var anchorY = slot ? (slot.y + slot.h / 2) : (opt.cardCta ? opt.cardCta.cy : (vertical ? H / 2 : (pos === 'center' ? H / 2 : (pos === 'lower' ? H * 0.78 : H - rIcon - 46))));
           items.forEach(function (it, i) {
             var cxI = vertical ? anchorX : (anchorX - ((n - 1) * step) / 2 + i * step);
             var cyI = vertical ? (anchorY - ((n - 1) * step) / 2 + i * step) : anchorY;
             var outerCol = lightSurface ? 'rgba(28,26,30,0.28)' : 'rgba(255,255,255,0.58)';
             var coreBg = (it.primary && lightSurface) ? bCol : (lightSurface ? 'rgba(255,255,255,0.88)' : 'rgba(20,18,26,0.44)');
             var fg = (it.primary && lightSurface) ? bInk : (lightSurface ? '#1C1A1E' : '#ffffff');
-            ctx.beginPath(); ctx.arc(cxI, cyI, baseR, 0, Math.PI * 2);
-            ctx.strokeStyle = outerCol; ctx.lineWidth = Math.max(2, baseR * 0.035); ctx.stroke();
-            ctx.beginPath(); ctx.arc(cxI, cyI, baseR * 0.87, 0, Math.PI * 2);
+            ctx.beginPath(); ctx.arc(cxI, cyI, rIcon, 0, Math.PI * 2);
+            ctx.strokeStyle = outerCol; ctx.lineWidth = Math.max(2, rIcon * 0.035); ctx.stroke();
+            ctx.beginPath(); ctx.arc(cxI, cyI, rIcon * 0.87, 0, Math.PI * 2);
             ctx.fillStyle = coreBg; ctx.fill();
             ctx.strokeStyle = lightSurface ? 'rgba(28,26,30,0.16)' : 'rgba(255,255,255,0.42)';
-            ctx.lineWidth = Math.max(1.5, baseR * 0.025); ctx.stroke();
+            ctx.lineWidth = Math.max(1.5, rIcon * 0.025); ctx.stroke();
             ctx.strokeStyle = fg; ctx.fillStyle = fg;
-            drawWelcomeCanvasIconGlyph(ctx, it.kind, cxI, showLbl ? (cyI - baseR * 0.16) : cyI, showLbl ? baseR * 0.72 : baseR * 0.94);
+            drawWelcomeCanvasIconGlyph(ctx, it.kind, cxI, showLbl ? (cyI - rIcon * 0.16) : cyI, showLbl ? rIcon * 0.72 : rIcon * 0.94);
             if (showLbl) {
               ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-              var lfs = Math.max(11, Math.round(baseR * 0.24));
+              var lblTxt = String(it.shortLabel || '').slice(0, 14);
+              var lfs = fitFont(ctx, lblTxt, 'Manrope, sans-serif', Math.max(10, Math.round(rIcon * 0.25)), rIcon * 1.45, 9);
               ctx.font = '700 ' + lfs + 'px Manrope, sans-serif';
-              ctx.fillText(String(it.shortLabel || '').slice(0, 14), cxI, cyI + baseR * 0.42);
+              ctx.fillText(lblTxt, cxI, cyI + rIcon * 0.42);
             }
           });
         }
@@ -77110,6 +77555,7 @@ function renderTabletBridgeSetup(info) {
         if (cardOpts) cardOpts.style.display = attractMode === 'card' ? '' : 'none';
         var sampleCardRow = document.getElementById('welcomeSampleCardRow');
         if (sampleCardRow) sampleCardRow.style.display = attractMode === 'card' ? '' : 'none';
+        try { if (typeof syncWelcomeShortcutsUI === 'function') syncWelcomeShortcutsUI(); } catch (e) { }
         try { if (typeof syncWelcomeFitUI === 'function') syncWelcomeFitUI(); } catch (e) { }
         try { syncSetupVideoPreview(); } catch (e) { }
       }
@@ -78196,7 +78642,7 @@ function renderTabletBridgeSetup(info) {
       // camera's shape so it fills the live view exactly.
       var welcomeCta = null;
       function renderWelcomeSurface(opts) {
-        var c = null;
+        var c = null, ownsCanvas = true;
         try {
           var previewOnly = !!(opts && opts.previewOnly);
           var fastDrag = !!(opts && opts.fastDrag);
@@ -78213,14 +78659,29 @@ function renderTabletBridgeSetup(info) {
           var H = isPort ? 1600 : 1200;
           var portAspect = (vpH && vpW) ? Math.max(0.4, Math.min(1.0, vpW / vpH)) : 0.625;
           var W = isPort ? Math.round(H * portAspect) : Math.round(H * wa);
-          var c = document.createElement('canvas'); c.width = W; c.height = H;
-          var ctx = c.getContext('2d');
+          var dragCanvas = (fastDrag && !previewOnly && attractMode === 'card') ? document.getElementById('welcomePvDragCanvas') : null;
+          var ctx = null;
+          if (dragCanvas) {
+            var dScale = 0.55;
+            var dW = Math.max(200, Math.round(W * dScale)), dH = Math.max(200, Math.round(H * dScale));
+            if (dragCanvas.width !== dW || dragCanvas.height !== dH) { dragCanvas.width = dW; dragCanvas.height = dH; }
+            c = dragCanvas;
+            ownsCanvas = false;
+            ctx = c.getContext('2d');
+            ctx.setTransform(dScale, 0, 0, dScale, 0, 0);
+          } else {
+            c = document.createElement('canvas'); c.width = W; c.height = H;
+            ownsCanvas = true;
+            ctx = c.getContext('2d');
+          }
           if (!previewOnly && !fastDrag) syncWelcomeFitUI();
           var hfMode = typeof fx !== 'undefined' ? fx.hands : 'off';
           var btnText = welcomeMsg || (hfMode === 'wave' ? 'Wave to start' : hfMode === 'smile' ? 'Smile to start' : 'Tap to start');
           var localCta = null, localBaseUrl = '', localLogoRect = null, localGeo = { W: W, H: H, mid: 0.5 }, outWa = Number((W / H).toFixed(4));
 
-          var domDockOn = shouldUseWelcomeIconDock(false);
+          var domDockLive = shouldUseWelcomeIconDock(false);
+          var domDockPv = shouldUseWelcomeIconDock(true);
+          var domDockOn = domDockLive || domDockPv;
 
           // ---- Camera mode: transparent canvas with just a floating CTA button ----
           if (attractMode === 'camera') {
@@ -78438,32 +78899,41 @@ function renderTabletBridgeSetup(info) {
             ];
           }
 
+          var dockItemsLive = welcomeShortcutItems(false);
+          var dockItemsPv = welcomeShortcutItems(true);
           var dockRightInCard = domDockOn && welcomeBtnPos === 'right';
-          var cardHasBottomBtn = !!welcomeBtnOn && !dockRightInCard;
-          var btnRoomL = cardHasBottomBtn ? (domDockOn ? (40 + 114) : (40 + 92)) : 0;
-          var btnRoomP = cardHasBottomBtn ? (domDockOn ? (24 + 98) : (24 + 80)) : 0;
+          var cardItemsN = domDockOn ? Math.max(dockItemsLive.length, dockItemsPv.length) : (welcomeBtnOn ? 1 : 0);
+          var cardHasBottomBtn = !dockRightInCard && cardItemsN > 0;
+          var rightReserve = dockRightInCard
+            ? (welcomeBtnStyle === 'pill' ? (land ? W * 0.26 : W * 0.28) : (land ? W * 0.18 : W * 0.20))
+            : 0;
+          var usableW = W - rightReserve;
           var cardBox = function (slotH) {
             if (land) {
+              var cwL = showSample ? Math.min(usableW * 0.45, 720) : Math.min(usableW * 0.68, 760);
+              var btnML = cardHasBottomBtn ? computeWelcomeCardBtnMetrics(cwL, true, welcomeBtnStyle, cardItemsN) : { bh: 0, bw: 0, padTop: 0, padBottom: 56, rows: 0 };
+              var padYL = 58;
+              var greetHL = hasGreeting ? 110 : 30;
+              var subHL = cardSub ? 54 : 0;
+              var stepHL = 64;
+              var stepsHL = (showSteps && steps.length) ? (40 + 50 + (steps.length - 1) * stepHL + 18) : 16;
+              var chL = padYL + 16 + slotH + greetHL + subHL + stepsHL + (cardHasBottomBtn ? (btnML.padTop + btnML.bh + btnML.padBottom) : 56);
               if (showSample) {
-                var area = { x: W * 0.04, y: H * 0.08, w: W * 0.38, h: H * 0.84 };
+                var area = { x: usableW * 0.04, y: H * 0.08, w: usableW * 0.38, h: H * 0.84 };
                 var pw = 0, ph = 0;
                 if (sample && sample.width) {
                   var k = Math.min(area.w / sample.width, area.h / sample.height);
                   pw = sample.width * k; ph = sample.height * k;
                 }
-                var ch = 64 + (hasGreeting ? 40 : 10) + (hasGreeting ? 110 : 80) + (cardSub ? 54 : 0) + (showSteps ? (40 + steps.length * 64) : 20) + btnRoomL + 56 + slotH;
-                var cw = Math.min(W * 0.44, 720);
                 var sampleRightEdge = (pw > 0) ? (area.x + area.w / 2 + pw / 2) : (area.x + area.w);
-                var cx = Math.max(W * 0.52, sampleRightEdge + W * 0.06);
-                var cy = (H - ch) / 2;
-                return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: 64, titleSize: 96, padY: 64, pw: pw, ph: ph, sampleX: area.x + area.w / 2, sampleY: area.y + area.h / 2 };
+                var cx = Math.min(usableW - cwL - usableW * 0.03, Math.max(usableW * 0.50, sampleRightEdge + usableW * 0.055));
+                var cy = (H - chL) / 2;
+                return { ch: chL, cw: cwL, cx: cx, cy: cy, slot: slotH, stepH: stepHL, titleSize: 96, padY: padYL, vScale: 1, btnM: btnML, pw: pw, ph: ph, sampleX: area.x + area.w / 2, sampleY: area.y + area.h / 2 };
               } else {
                 // Not tied to layout: perfectly centered aesthetic card
-                var ch = 64 + (hasGreeting ? 40 : 10) + (hasGreeting ? 110 : 80) + (cardSub ? 54 : 0) + (showSteps ? (40 + steps.length * 64) : 20) + btnRoomL + 56 + slotH;
-                var cw = Math.min(W * 0.68, 760);
-                var cx = (W - cw) / 2;
-                var cy = (H - ch) / 2;
-                return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: 64, titleSize: 96, padY: 64, pw: 0, ph: 0, sampleX: 0, sampleY: 0 };
+                var cxC = (usableW - cwL) / 2;
+                var cyC = (H - chL) / 2;
+                return { ch: chL, cw: cwL, cx: cxC, cy: cyC, slot: slotH, stepH: stepHL, titleSize: 96, padY: padYL, vScale: 1, btnM: btnML, pw: 0, ph: 0, sampleX: 0, sampleY: 0 };
               }
             }
 
@@ -78471,23 +78941,36 @@ function renderTabletBridgeSetup(info) {
             var safeTop = 130;
             var safeBottom = H - 130;
             var safeH = safeBottom - safeTop;
-            var cw = Math.min(W * 0.88, 720);
-            var cx = (W - cw) / 2;
-            var mid = W / 2;
+            var cw = Math.min(usableW * 0.88, 720);
+            var cx = (usableW - cw) / 2;
+            var midX = usableW / 2;
+            var btnMP = cardHasBottomBtn ? computeWelcomeCardBtnMetrics(cw, false, welcomeBtnStyle, cardItemsN) : { bh: 0, bw: 0, padTop: 0, padBottom: 32, rows: 0 };
             var stepCount = showSteps ? steps.length : 0;
             var stepH = 50;
             var titleSize = 78;
             var padY = 34;
-            var baseCardH = padY + (hasGreeting ? 32 : 10) + 72 + (cardSub ? 38 : 0) + (showSteps ? (22 + stepCount * stepH) : 10) + btnRoomP + 32 + slotH;
+            var greetHP = hasGreeting ? 54 : 15;
+            var subHP = cardSub ? 40 : 0;
+            var stepsHP = stepCount > 0 ? (24 + 34 + (stepCount - 1) * stepH + 16) : 12;
+            var baseCardH = padY + 16 + slotH + greetHP + subHP + stepsHP + (cardHasBottomBtn ? (btnMP.padTop + btnMP.bh + btnMP.padBottom) : 32);
             var ch = baseCardH;
+            var vScale = 1;
 
             if (!showSample) {
+              if (ch > safeH) {
+                vScale = safeH / ch;
+                ch = Math.round(ch * vScale);
+                slotH = Math.round(slotH * vScale);
+                padY = Math.max(18, Math.round(padY * vScale));
+                stepH = Math.max(36, Math.round(stepH * vScale));
+                titleSize = Math.max(46, Math.round(titleSize * vScale));
+              }
               var cy = Math.max(safeTop, Math.round((safeH - ch) / 2 + safeTop * 0.2));
-              return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: stepH, titleSize: titleSize, padY: padY, pw: 0, ph: 0, sampleX: 0, sampleY: 0 };
+              return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: stepH, titleSize: titleSize, padY: padY, vScale: vScale, btnM: btnMP, pw: 0, ph: 0, sampleX: 0, sampleY: 0 };
             }
 
-            var maxSampleH = Math.min(500, Math.max(260, safeH - ch - 36));
-            var maxSampleW = Math.min(W * 0.74, 560);
+            var maxSampleH = Math.min(500, Math.max(240, safeH - ch - 36));
+            var maxSampleW = Math.min(usableW * 0.74, 560);
             var pw = 0, ph = 0;
             if (sample && sample.width) {
               var k = Math.min(maxSampleW / sample.width, maxSampleH / sample.height);
@@ -78499,30 +78982,31 @@ function renderTabletBridgeSetup(info) {
             var totalH = ph + gap + ch;
             if (totalH > safeH) {
               var scale = safeH / totalH;
+              vScale = scale;
               if (ph > 0) {
                 ph = Math.round(ph * scale);
                 pw = Math.round(pw * scale);
               }
               ch = Math.round(ch * scale);
               slotH = Math.round(slotH * scale);
-              padY = Math.max(20, Math.round(padY * scale));
-              stepH = Math.max(38, Math.round(stepH * scale));
-              titleSize = Math.max(48, Math.round(titleSize * scale));
+              padY = Math.max(18, Math.round(padY * scale));
+              stepH = Math.max(36, Math.round(stepH * scale));
+              titleSize = Math.max(46, Math.round(titleSize * scale));
               gap = Math.round(gap * scale);
               totalH = ph + gap + ch;
             }
 
             var groupTop = safeTop + Math.max(0, Math.round((safeH - totalH) / 2));
-            var sampleX = mid;
+            var sampleX = midX;
             var sampleY = groupTop + ph / 2;
             var cy = groupTop + (ph > 0 ? (ph + gap) : 0);
-            return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: stepH, titleSize: titleSize, padY: padY, pw: pw, ph: ph, sampleX: sampleX, sampleY: sampleY };
+            return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: stepH, titleSize: titleSize, padY: padY, vScale: vScale, btnM: btnMP, pw: pw, ph: ph, sampleX: sampleX, sampleY: sampleY };
           };
           // The renter's welcome logo gets a space at the top of the card while it sits on the card.
           var wl = brandImgFor('w'), wb = brand.w;
           var lAutoPre = !!(wl && wb.x == null);
           var lbhPre = wl ? (wb.s || BRAND_DEF_S.w) * H : 0;
-          var maxCardWPre = land ? Math.min(W * 0.44, 720) : Math.min(W * 0.88, 720);
+          var maxCardWPre = land ? Math.min(usableW * 0.45, 720) : Math.min(usableW * 0.88, 720);
           var lfPre = lAutoPre ? brandFit(wl.naturalWidth / wl.naturalHeight, lbhPre, Math.min(lbhPre * BRAND_MAXR, maxCardWPre - 80)) : null;
           var slotForLogo = lAutoPre ? Math.max(116, Math.round(lfPre.h + 24)) : (wl ? 130 : 0);
           var box = cardBox(slotForLogo);
@@ -78534,7 +79018,7 @@ function renderTabletBridgeSetup(info) {
               cardTf = computeWelcomeBoxTransform(box.cx + box.cw / 2, box.cy + box.ch / 2, box.cw, box.ch, W, H, welcomeCardX, welcomeCardY, welcomeCardScale);
             }
           }
-          var ch = box.ch, cw = box.cw, cx = box.cx, cy = box.cy;
+          var ch = box.ch, cw = box.cw, cx = box.cx, cy = box.cy, vSc = box.vScale || 1;
           var pw = box.pw, ph = box.ph, sampleX = box.sampleX, sampleY = box.sampleY;
           var sampleTf = (showSample && sample && sample.width && pw > 0 && ph > 0)
             ? computeWelcomeBoxTransform(sampleX, sampleY, pw, ph, W, H, welcomeSampleX, welcomeSampleY, welcomeSampleScale)
@@ -78603,14 +79087,14 @@ function renderTabletBridgeSetup(info) {
           ctx.restore();
 
           ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-          var mid = cx + cw / 2, yy = cy + (box.padY || 34) + 16 + box.slot;
+          var mid = cx + cw / 2, yy = cy + (box.padY || 34) + Math.round(16 * vSc) + box.slot;
 
           if (hasGreeting) {
-            ctx.fillStyle = soft; ctx.font = (land ? '700 30px' : '700 24px') + ' Manrope, sans-serif';
+            ctx.fillStyle = soft; ctx.font = (land ? '700 30px' : ('700 ' + Math.max(18, Math.round(24 * vSc)) + 'px')) + ' Manrope, sans-serif';
             ctx.fillText(cardGreeting.trim(), mid, yy);
-            yy += land ? 110 : 54;
+            yy += land ? 110 : Math.round(54 * vSc);
           } else {
-            yy += land ? 30 : 15;
+            yy += land ? 30 : Math.round(15 * vSc);
           }
 
           ctx.fillStyle = ink;
@@ -78628,35 +79112,51 @@ function renderTabletBridgeSetup(info) {
             ctx.stroke();
             ctx.restore();
           }
-          if (cardSub) { yy += land ? 54 : 40; ctx.fillStyle = soft; ctx.font = fontString(cardSubFont, land ? 38 : 28); ctx.fillText(cardSub, mid, yy); }
+          if (cardSub) { yy += land ? 54 : Math.round(40 * vSc); ctx.fillStyle = soft; ctx.font = fontString(cardSubFont, land ? 38 : Math.max(20, Math.round(28 * vSc))); ctx.fillText(cardSub, mid, yy); }
 
+          var contentBottomY = yy + Math.round(16 * vSc);
           if (showSteps && steps.length) {
-            yy += land ? 40 : 24;
-            ctx.font = (land ? '700 31px' : '700 24px') + ' Manrope, sans-serif';
+            yy += land ? 40 : Math.round(24 * vSc);
+            var stepFs = land ? 31 : Math.max(18, Math.round(24 * vSc));
+            ctx.font = '700 ' + stepFs + 'px Manrope, sans-serif';
             var widest = Math.max.apply(null, steps.map(function (t) { return ctx.measureText(t).width; }));
-            var sx = mid - (widest + (land ? 62 : 48)) / 2;
+            var badgeRoom = land ? 62 : 48;
+            while (stepFs > 16 && (widest + badgeRoom) > (cw - 64)) {
+              stepFs -= 2;
+              ctx.font = '700 ' + stepFs + 'px Manrope, sans-serif';
+              widest = Math.max.apply(null, steps.map(function (t) { return ctx.measureText(t).width; }));
+            }
+            var sx = mid - (widest + badgeRoom) / 2;
             var stepH = box.stepH || (land ? 64 : 50);
             var stepCol = welcomeBtnColor || accent || '#F28DA0';
+            var firstStepOff = land ? 50 : Math.round(34 * vSc);
             steps.forEach(function (t, i) {
-              var sy = yy + (land ? 50 : 34) + i * stepH;
+              var sy = yy + firstStepOff + i * stepH;
               if (welcomeStepStyle === 'bullets') {
                 var r = land ? 7 : 5;
                 ctx.fillStyle = stepCol; ctx.beginPath(); ctx.arc(sx + (land ? 14 : 10), sy - (land ? 10 : 8), r, 0, Math.PI * 2); ctx.fill();
-                ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 ' + (land ? '31px' : '24px') + ' Manrope, sans-serif'; ctx.fillText(t, sx + (land ? 34 : 26), sy);
+                ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 ' + stepFs + 'px Manrope, sans-serif'; ctx.fillText(t, sx + (land ? 34 : 26), sy);
               } else {
-                var r = land ? 22 : 16;
+                var r = land ? 22 : Math.max(13, Math.round(16 * vSc));
                 ctx.fillStyle = stepCol; ctx.beginPath(); ctx.arc(sx + r, sy - (r * 0.5), r, 0, Math.PI * 2); ctx.fill();
                 ctx.fillStyle = (typeof lumOf === 'function' && lumOf(stepCol) > 0.6) ? '#1C1A1E' : '#ffffff';
-                ctx.font = '800 ' + (land ? '24px' : '18px') + ' Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + r, sy - 2);
-                ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 ' + (land ? '31px' : '24px') + ' Manrope, sans-serif'; ctx.fillText(t, sx + r * 2 + 14, sy);
+                ctx.font = '800 ' + (land ? '24px' : Math.max(14, Math.round(18 * vSc)) + 'px') + ' Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + r, sy - 2);
+                ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 ' + stepFs + 'px Manrope, sans-serif'; ctx.fillText(t, sx + r * 2 + 14, sy);
               }
+              contentBottomY = sy + Math.round(16 * vSc);
             });
           }
           if (cardHasBottomBtn) {
+            var bm = box.btnM || computeWelcomeCardBtnMetrics(cw, land, welcomeBtnStyle, cardItemsN);
+            var slotPadTop = Math.round((bm.padTop || (land ? 30 : 18)) * vSc);
+            var slotPadBot = Math.round((bm.padBottom || (land ? 40 : 22)) * vSc);
+            var bh = Math.max(48, Math.round((bm.bh || (land ? 92 : 78)) * vSc));
+            var availBtnH = Math.max(44, (cy + ch - slotPadBot) - (contentBottomY + slotPadTop));
+            if (bh > availBtnH) bh = availBtnH;
             ctx.font = '800 34px Manrope, sans-serif';
-            var bh = domDockOn ? (land ? 112 : 96) : (land ? 92 : 78);
-            var bw = Math.min(cw - 70, ctx.measureText(btnText).width + (land ? 130 : 100));
-            var bx = mid - bw / 2, by = cy + ch - bh - (land ? 48 : 24);
+            var bw = domDockOn ? (bm.bw || (cw - (land ? 64 : 44))) : Math.min(cw - 70, ctx.measureText(btnText).width + (land ? 130 : 100));
+            var bx = mid - bw / 2;
+            var by = Math.max(contentBottomY + slotPadTop, cy + ch - bh - slotPadBot);
             if (!domDockOn) {
               var bCol2 = welcomeBtnColor || '#F28DA0';
               ctx.save();
@@ -78672,7 +79172,7 @@ function renderTabletBridgeSetup(info) {
             }
             var ctaX = cardTf.centerX + (bx - baseCardMidX) * cardTf.scale;
             var ctaY = cardTf.centerY + (by - baseCardMidY) * cardTf.scale;
-            localCta = { l: ctaX / W * 100, t: ctaY / H * 100, w: (bw * cardTf.scale) / W * 100, h: (bh * cardTf.scale) / H * 100 };
+            localCta = { l: ctaX / W * 100, t: ctaY / H * 100, w: (bw * cardTf.scale) / W * 100, h: (bh * cardTf.scale) / H * 100, s: cardTf.scale };
           }
           ctx.restore();
           localGeo = { W: W, H: H, mid: cardTf.centerX / W };
@@ -78689,22 +79189,33 @@ function renderTabletBridgeSetup(info) {
             ctx.drawImage(wl, lcx - drawW / 2, lcy - drawH / 2, drawW, drawH);
             localLogoRect = { x: lcx / W, y: lcy / H, w: drawW / W, h: drawH / H, s: (lAuto ? lbh * cardTf.scale : lbh) / H };
           }
+          var nextCardRect = { x: cardTf.x / W, y: cardTf.y / H, w: cardTf.w / W, h: cardTf.h / H, cx: cardTf.centerX / W, cy: cardTf.centerY / H, s: cardTf.scale, custom: cardTf.custom };
+          var nextSampleRect = sampleTf ? { x: sampleTf.x / W, y: sampleTf.y / H, w: sampleTf.w / W, h: sampleTf.h / H, cx: sampleTf.centerX / W, cy: sampleTf.centerY / H, s: sampleTf.scale, custom: sampleTf.custom } : null;
+          if (!previewOnly && fastDrag && !ownsCanvas) {
+            c.hidden = false;
+            welcomeCardRect = nextCardRect;
+            welcomeSampleRect = nextSampleRect;
+            welcomeCta = localCta;
+            try { syncWelcomeIconDock(); } catch (e) { }
+            try { if (typeof syncWelcomePvOverlay === 'function') syncWelcomePvOverlay(); } catch (e) { }
+            return { dataUrl: '', wa: outWa };
+          }
           var cardDataUrl = c.toDataURL('image/jpeg', fastDrag ? 0.72 : 0.88);
           var cardGuestUrl = cardDataUrl;
-          var nextCardRect = { x: cardTf.x / W, y: cardTf.y / H, w: cardTf.w / W, h: cardTf.h / H, cx: cardTf.centerX / W, cy: cardTf.centerY / H, s: cardTf.scale, custom: cardTf.custom };
           if (domDockOn && !fastDrag) {
             drawWelcomeCanvasShortcuts(ctx, W, H, {
               pos: dockRightInCard ? 'right' : 'bottom',
               isLightSurface: !isDarkCard,
               cardRect: nextCardRect,
               cardScale: cardTf.scale,
-              cardCta: (!dockRightInCard && localCta) ? { cx: (localCta.l + localCta.w / 2) / 100 * W, cy: (localCta.t + localCta.h / 2) / 100 * H } : null
+              cardCta: (!dockRightInCard && localCta) ? { cx: (localCta.l + localCta.w / 2) / 100 * W, cy: (localCta.t + localCta.h / 2) / 100 * H } : null,
+              cardCtaRect: (!dockRightInCard && localCta) ? { x: localCta.l / 100 * W, y: localCta.t / 100 * H, w: localCta.w / 100 * W, h: localCta.h / 100 * H } : null
             });
             cardGuestUrl = c.toDataURL('image/jpeg', 0.88);
           }
           if (!previewOnly) {
             welcomeCardRect = nextCardRect;
-            welcomeSampleRect = sampleTf ? { x: sampleTf.x / W, y: sampleTf.y / H, w: sampleTf.w / W, h: sampleTf.h / H, cx: sampleTf.centerX / W, cy: sampleTf.centerY / H, s: sampleTf.scale, custom: sampleTf.custom } : null;
+            welcomeSampleRect = nextSampleRect;
             if (fastDrag) {
               welcomeCta = localCta;
               var prevFast = document.getElementById('welcomePreview');
@@ -78721,7 +79232,17 @@ function renderTabletBridgeSetup(info) {
               welcomeGuestDataUrl = domDockOn ? cardGuestUrl : '';
               if (typeof brandPvLayout === 'function') brandPvLayout();
               welcomeImg.src = welcomeDataUrl;
-              var prev = document.getElementById('welcomePreview'); if (prev) prev.src = welcomeDataUrl;
+              var prev = document.getElementById('welcomePreview');
+              var dragCvDone = document.getElementById('welcomePvDragCanvas');
+              if (prev) {
+                prev.src = welcomeDataUrl;
+                if (dragCvDone && !dragCvDone.hidden) {
+                  if (prev.complete) dragCvDone.hidden = true;
+                  else prev.addEventListener('load', function _hideDragCv() { prev.removeEventListener('load', _hideDragCv); if (!wpvDrag) dragCvDone.hidden = true; });
+                }
+              } else if (dragCvDone) {
+                dragCvDone.hidden = true;
+              }
               try { syncWelcomeIconDock(); } catch (e) { }
               try { if (typeof syncSetupVideoPreview === 'function') syncSetupVideoPreview(); } catch (e) { }
               try { if (typeof syncWelcomePvOverlay === 'function') syncWelcomePvOverlay(); } catch (e) { }
@@ -78733,7 +79254,7 @@ function renderTabletBridgeSetup(info) {
           }
           return { dataUrl: previewOnly ? cardGuestUrl : cardDataUrl, wa: outWa };
         } catch (e) { console.error('welcome', e); return null; }
-        finally { pbReleaseCanvas(c); }
+        finally { if (ownsCanvas) pbReleaseCanvas(c); }
       }
       function renderWelcome() { return renderWelcomeSurface(null); }
       function renderWelcomeForViewport(vw, vh) { return renderWelcomeSurface({ vw: vw, vh: vh, previewOnly: true }); }
@@ -78757,7 +79278,14 @@ function renderTabletBridgeSetup(info) {
       // ---- Interactive Welcome Preview: drag to move & corner-resize Card / Layout Sample ----
       var wpvSelected = 'card';
       var wpvDrag = null;
-      var _wpvFastTimer = 0;
+      var _wpvFastRaf = 0;
+
+      function wpvBoxesOverlap(a, b) {
+        if (!a || !b) return false;
+        var tol = 0.008;
+        return (a.x + tol < b.x + b.w) && (a.x + a.w - tol > b.x) &&
+               (a.y + tol < b.y + b.h) && (a.y + a.h - tol > b.y);
+      }
 
       function syncWelcomePvOverlay() {
         var interact = document.getElementById('welcomePvInteract');
@@ -78766,6 +79294,7 @@ function renderTabletBridgeSetup(info) {
         var sampleBoxEl = document.getElementById('wpvSampleBox');
         var targetSeg = document.getElementById('wpvTargetSeg');
         var sizeVal = document.getElementById('wpvSizeVal');
+        var tidyBtn = document.getElementById('wpvTidyBtn');
         var resetBtn = document.getElementById('wpvResetBtn');
         var tipEl = document.getElementById('wpvArrangeTip');
         var isCardMode = attractMode === 'card' && !!welcomeCardRect;
@@ -78775,6 +79304,7 @@ function renderTabletBridgeSetup(info) {
 
         var hasSample = !!(welcomeSampleOn !== false && welcomeSampleRect && welcomeSampleRect.w > 0 && welcomeSampleRect.h > 0);
         if (!hasSample && wpvSelected === 'sample') wpvSelected = 'card';
+        var isOverlapping = hasSample && wpvBoxesOverlap(welcomeCardRect, welcomeSampleRect);
 
         if (cardBoxEl && welcomeCardRect) {
           cardBoxEl.style.left = (welcomeCardRect.x * 100).toFixed(2) + '%';
@@ -78782,6 +79312,8 @@ function renderTabletBridgeSetup(info) {
           cardBoxEl.style.width = (welcomeCardRect.w * 100).toFixed(2) + '%';
           cardBoxEl.style.height = (welcomeCardRect.h * 100).toFixed(2) + '%';
           cardBoxEl.classList.toggle('sel', wpvSelected === 'card');
+          cardBoxEl.classList.toggle('tag-in', welcomeCardRect.y < 0.09);
+          cardBoxEl.classList.toggle('overlap', isOverlapping);
         }
         if (sampleBoxEl) {
           sampleBoxEl.hidden = !hasSample;
@@ -78791,6 +79323,8 @@ function renderTabletBridgeSetup(info) {
             sampleBoxEl.style.width = (welcomeSampleRect.w * 100).toFixed(2) + '%';
             sampleBoxEl.style.height = (welcomeSampleRect.h * 100).toFixed(2) + '%';
             sampleBoxEl.classList.toggle('sel', wpvSelected === 'sample');
+            sampleBoxEl.classList.toggle('tag-in', welcomeSampleRect.y < 0.09);
+            sampleBoxEl.classList.toggle('overlap', isOverlapping);
           }
         }
         if (targetSeg) {
@@ -78799,34 +79333,41 @@ function renderTabletBridgeSetup(info) {
             b.classList.toggle('on', b.dataset.wpvTarget === wpvSelected);
           });
         }
-        var activeScale = wpvSelected === 'sample' ? (Number(welcomeSampleScale) || 1) : (Number(welcomeCardScale) || 1);
+        var activeRect = wpvSelected === 'sample' ? welcomeSampleRect : welcomeCardRect;
+        var activeScale = (activeRect && activeRect.s > 0) ? activeRect.s : (wpvSelected === 'sample' ? (Number(welcomeSampleScale) || 1) : (Number(welcomeCardScale) || 1));
         if (sizeVal) sizeVal.textContent = Math.round(activeScale * 100) + '%';
+        if (tidyBtn) tidyBtn.hidden = !isOverlapping;
         var anyCustom = (welcomeCardX != null || welcomeCardY != null || Math.abs((Number(welcomeCardScale) || 1) - 1) > 0.005 ||
           welcomeSampleX != null || welcomeSampleY != null || Math.abs((Number(welcomeSampleScale) || 1) - 1) > 0.005);
         if (resetBtn) resetBtn.disabled = !anyCustom;
         if (tipEl) {
-          tipEl.textContent = hasSample
-            ? 'Drag Card or Sample on preview to move · drag corners to resize'
-            : 'Drag card on preview to move · drag corners to resize';
+          tipEl.classList.toggle('is-warn', isOverlapping);
+          tipEl.textContent = isOverlapping
+            ? 'Card & Sample overlap · drag apart or click Auto-space'
+            : (hasSample
+              ? 'Drag Card or Sample to move · drag corners to resize'
+              : 'Drag card on preview to move · drag corners to resize');
         }
       }
 
       function scheduleWpvFastRender() {
-        if (_wpvFastTimer) return;
-        _wpvFastTimer = setTimeout(function () {
-          _wpvFastTimer = 0;
+        if (_wpvFastRaf) return;
+        _wpvFastRaf = requestAnimationFrame(function () {
+          _wpvFastRaf = 0;
           renderWelcomeSurface({ fastDrag: true });
-        }, 36);
+        });
       }
 
       (function initWelcomePvInteract() {
         var interact = document.getElementById('welcomePvInteract');
         var guideX = document.getElementById('wpvGuideX');
         var guideY = document.getElementById('wpvGuideY');
+        var guideSibY = document.getElementById('wpvGuideSibY');
         var targetSeg = document.getElementById('wpvTargetSeg');
         var snapGroup = document.getElementById('wpvSnapGroup');
         var sizeDown = document.getElementById('wpvSizeDown');
         var sizeUp = document.getElementById('wpvSizeUp');
+        var tidyBtn = document.getElementById('wpvTidyBtn');
         var resetBtn = document.getElementById('wpvResetBtn');
         var sizeToggleBtn = document.getElementById('welcomePvSizeBtn');
         var hideToggleBtn = document.getElementById('welcomePvHideBtn');
@@ -78848,8 +79389,109 @@ function renderTabletBridgeSetup(info) {
         function getTargetRect(which) {
           return which === 'sample' ? welcomeSampleRect : welcomeCardRect;
         }
+        function getSiblingRect(which) {
+          return which === 'sample' ? welcomeCardRect : welcomeSampleRect;
+        }
         function getTargetScale(which) {
+          var rect = getTargetRect(which);
+          if (rect && rect.s > 0) return rect.s;
           return which === 'sample' ? (Number(welcomeSampleScale) || 1) : (Number(welcomeCardScale) || 1);
+        }
+        function nudgeAwayFromSibling(which, nextScale) {
+          var hasSample = !!(welcomeSampleOn !== false && welcomeSampleRect && welcomeCardRect);
+          if (!hasSample) return;
+          var rect = getTargetRect(which);
+          var sib = getSiblingRect(which);
+          if (!rect || !sib || !(rect.s > 0)) return;
+          var ratio = nextScale / rect.s;
+          if (!(ratio > 1.001)) return;
+          var nextW = rect.w * ratio, nextH = rect.h * ratio;
+          var isLand = !welcomeGeo || (welcomeGeo.W >= welcomeGeo.H);
+          var gap = 0.025;
+          if (isLand) {
+            var vertOv = (rect.cy - nextH / 2 < sib.y + sib.h) && (rect.cy + nextH / 2 > sib.y);
+            if (!vertOv) return;
+            var onRight = rect.cx >= sib.cx;
+            var curX = (which === 'sample' ? welcomeSampleX : welcomeCardX);
+            var curY = (which === 'sample' ? welcomeSampleY : welcomeCardY);
+            var baseX = curX != null ? curX : rect.cx;
+            var baseY = curY != null ? curY : rect.cy;
+            if (onRight) {
+              var needCx = sib.x + sib.w + gap + nextW / 2;
+              if (baseX < needCx) {
+                var maxCx = 0.98 - nextW / 2;
+                setTargetPos(which, Math.min(maxCx, needCx), baseY);
+              }
+            } else {
+              var needCxL = sib.x - gap - nextW / 2;
+              if (baseX > needCxL) {
+                var minCx = 0.02 + nextW / 2;
+                setTargetPos(which, Math.max(minCx, needCxL), baseY);
+              }
+            }
+          } else {
+            var horizOv = (rect.cx - nextW / 2 < sib.x + sib.w) && (rect.cx + nextW / 2 > sib.x);
+            if (!horizOv) return;
+            var isBelow = rect.cy >= sib.cy;
+            var curXp = (which === 'sample' ? welcomeSampleX : welcomeCardX);
+            var curYp = (which === 'sample' ? welcomeSampleY : welcomeCardY);
+            var baseXp = curXp != null ? curXp : rect.cx;
+            var baseYp = curYp != null ? curYp : rect.cy;
+            if (isBelow) {
+              var needCy = sib.y + sib.h + gap + nextH / 2;
+              if (baseYp < needCy) setTargetPos(which, baseXp, Math.min(0.98 - nextH / 2, needCy));
+            } else {
+              var needCyT = sib.y - gap - nextH / 2;
+              if (baseYp > needCyT) setTargetPos(which, baseXp, Math.max(0.02 + nextH / 2, needCyT));
+            }
+          }
+        }
+        function autoSeparateBoxes() {
+          if (!welcomeCardRect || !welcomeSampleRect) return;
+          var isLand = !welcomeGeo || (welcomeGeo.W >= welcomeGeo.H);
+          var gap = 0.032;
+          if (isLand) {
+            var sampleLeft = welcomeSampleRect.cx <= welcomeCardRect.cx;
+            var leftIsSample = sampleLeft;
+            var wL = leftIsSample ? welcomeSampleRect.w : welcomeCardRect.w;
+            var wR = leftIsSample ? welcomeCardRect.w : welcomeSampleRect.w;
+            var totalW = wL + wR + gap;
+            if (totalW > 0.94) {
+              var shrink = 0.94 / totalW;
+              setTargetScale('sample', getTargetScale('sample') * shrink);
+              setTargetScale('card', getTargetScale('card') * shrink);
+              wL *= shrink; wR *= shrink;
+            }
+            var startX = Math.max(0.03, (1 - (wL + wR + gap)) / 2);
+            var cxL = startX + wL / 2;
+            var cxR = startX + wL + gap + wR / 2;
+            var yS = welcomeSampleY != null ? welcomeSampleY : welcomeSampleRect.cy;
+            var yC = welcomeCardY != null ? welcomeCardY : welcomeCardRect.cy;
+            if (leftIsSample) { setTargetPos('sample', cxL, yS); setTargetPos('card', cxR, yC); }
+            else { setTargetPos('card', cxL, yC); setTargetPos('sample', cxR, yS); }
+          } else {
+            var sampleTop = welcomeSampleRect.cy <= welcomeCardRect.cy;
+            var hT = sampleTop ? welcomeSampleRect.h : welcomeCardRect.h;
+            var hB = sampleTop ? welcomeCardRect.h : welcomeSampleRect.h;
+            var totalH = hT + hB + gap;
+            if (totalH > 0.90) {
+              var shrinkP = 0.90 / totalH;
+              setTargetScale('sample', getTargetScale('sample') * shrinkP);
+              setTargetScale('card', getTargetScale('card') * shrinkP);
+              hT *= shrinkP; hB *= shrinkP;
+            }
+            var startY = Math.max(0.05, (1 - (hT + hB + gap)) / 2);
+            var cyT = startY + hT / 2;
+            var cyB = startY + hT + gap + hB / 2;
+            if (sampleTop) { setTargetPos('sample', 0.5, cyT); setTargetPos('card', 0.5, cyB); }
+            else { setTargetPos('card', 0.5, cyT); setTargetPos('sample', 0.5, cyB); }
+          }
+          renderWelcome();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        }
+        function syncScaleFromRect(which) {
+          var rect = getTargetRect(which);
+          if (rect && rect.s > 0) setTargetScale(which, rect.s);
         }
 
         if (interact) {
@@ -78869,7 +79511,7 @@ function renderTabletBridgeSetup(info) {
             var px = (e.clientX - r.left) / r.width;
             var py = (e.clientY - r.top) / r.height;
             var cx = rect.cx, cy = rect.cy;
-            var d0 = Math.max(0.03, Math.hypot((e.clientX - (r.left + cx * r.width)), (e.clientY - (r.top + cy * r.height))));
+            var d0 = Math.max(8, Math.hypot((e.clientX - (r.left + cx * r.width)), (e.clientY - (r.top + cy * r.height))));
             wpvDrag = {
               which: which,
               id: e.pointerId,
@@ -78893,19 +79535,28 @@ function renderTabletBridgeSetup(info) {
             var px = (e.clientX - r.left) / r.width;
             var py = (e.clientY - r.top) / r.height;
             if (Math.abs(px - d.px) + Math.abs(py - d.py) > 0.004) d.moved = true;
-            var snapX = false, snapY = false;
+            var snapX = false, snapY = false, snapSibY = false;
             if (d.mode === 'size') {
               var dist = Math.max(8, Math.hypot(e.clientX - (r.left + d.cx * r.width), e.clientY - (r.top + d.cy * r.height)));
-              setTargetScale(d.which, d.s0 * (dist / d.d0));
+              var nextSc = Math.max(0.45, Math.min(1.5, Math.round(d.s0 * (dist / d.d0) * 100) / 100));
+              setTargetScale(d.which, nextSc);
+              nudgeAwayFromSibling(d.which, nextSc);
             } else {
               var nx = d.cx + (px - d.px);
               var ny = d.cy + (py - d.py);
-              if (Math.abs(nx - 0.5) < 0.02) { nx = 0.5; snapX = true; }
-              if (Math.abs(ny - 0.5) < 0.02) { ny = 0.5; snapY = true; }
+              var sib = (welcomeSampleOn !== false) ? getSiblingRect(d.which) : null;
+              if (Math.abs(nx - 0.5) < 0.018) { nx = 0.5; snapX = true; }
+              if (Math.abs(ny - 0.5) < 0.018) { ny = 0.5; snapY = true; }
+              else if (sib && Math.abs(ny - sib.cy) < 0.018) {
+                ny = sib.cy;
+                snapSibY = true;
+                if (guideSibY) guideSibY.style.top = (sib.cy * 100).toFixed(2) + '%';
+              }
               setTargetPos(d.which, nx, ny);
             }
             if (guideX) guideX.classList.toggle('on', snapX);
             if (guideY) guideY.classList.toggle('on', snapY);
+            if (guideSibY) guideSibY.classList.toggle('on', snapSibY);
             scheduleWpvFastRender();
           });
 
@@ -78916,11 +79567,15 @@ function renderTabletBridgeSetup(info) {
             if (d.boxEl) d.boxEl.classList.remove('dragging');
             if (guideX) guideX.classList.remove('on');
             if (guideY) guideY.classList.remove('on');
-            clearTimeout(_wpvFastTimer); _wpvFastTimer = 0;
+            if (guideSibY) guideSibY.classList.remove('on');
+            if (_wpvFastRaf) { cancelAnimationFrame(_wpvFastRaf); _wpvFastRaf = 0; }
             if (d.moved) {
+              if (d.mode === 'size') syncScaleFromRect(d.which);
               renderWelcome();
               if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
             } else {
+              var dragCv = document.getElementById('welcomePvDragCanvas');
+              if (dragCv) dragCv.hidden = true;
               syncWelcomePvOverlay();
             }
           }
@@ -78932,7 +79587,8 @@ function renderTabletBridgeSetup(info) {
             var which = boxEl.dataset.wpv === 'sample' ? 'sample' : 'card';
             var rect = getTargetRect(which);
             if (!rect) return;
-            setTargetPos(which, 0.5, rect.cy);
+            var hasSample = !!(welcomeSampleOn !== false && welcomeSampleRect);
+            setTargetPos(which, hasSample ? rect.cx : 0.5, 0.5);
             renderWelcome();
             if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
           });
@@ -78950,12 +79606,13 @@ function renderTabletBridgeSetup(info) {
             var b = e.target.closest('[data-wpv-pos]'); if (!b) return;
             var pos = b.dataset.wpvPos;
             var rect = getTargetRect(wpvSelected);
+            var hasSample = !!(welcomeSampleOn !== false && welcomeSampleRect);
             var halfH = rect ? (rect.h / 2) : 0.18;
             var curX = (wpvSelected === 'sample' ? welcomeSampleX : welcomeCardX);
             var x = curX != null ? curX : (rect ? rect.cx : 0.5);
-            var y = pos === 'top' ? Math.min(0.46, Math.max(0.12, halfH + 0.06))
+            var y = pos === 'top' ? Math.min(0.46, Math.max(0.10, halfH + 0.05))
               : (pos === 'bottom' ? Math.max(0.54, Math.min(0.92, 1 - halfH - 0.045)) : 0.5);
-            if (pos === 'center') x = 0.5;
+            if (pos === 'center' && !hasSample) x = 0.5;
             setTargetPos(wpvSelected, x, y);
             renderWelcome();
             if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
@@ -78963,16 +79620,26 @@ function renderTabletBridgeSetup(info) {
         }
         if (sizeDown) {
           sizeDown.addEventListener('click', function () {
-            setTargetScale(wpvSelected, getTargetScale(wpvSelected) - 0.05);
+            var nextSc = Math.max(0.45, Math.round((getTargetScale(wpvSelected) - 0.05) * 100) / 100);
+            setTargetScale(wpvSelected, nextSc);
             renderWelcome();
+            syncScaleFromRect(wpvSelected);
             if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
           });
         }
         if (sizeUp) {
           sizeUp.addEventListener('click', function () {
-            setTargetScale(wpvSelected, getTargetScale(wpvSelected) + 0.05);
+            var nextSc = Math.min(1.5, Math.round((getTargetScale(wpvSelected) + 0.05) * 100) / 100);
+            setTargetScale(wpvSelected, nextSc);
+            nudgeAwayFromSibling(wpvSelected, nextSc);
             renderWelcome();
+            syncScaleFromRect(wpvSelected);
             if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
+        if (tidyBtn) {
+          tidyBtn.addEventListener('click', function () {
+            autoSeparateBoxes();
           });
         }
         if (resetBtn) {

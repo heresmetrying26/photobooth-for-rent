@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.125', date: '2026-11-28' },
   { version: '1.1.124', date: '2026-11-28' },
   { version: '1.1.122', date: '2026-11-27' },
   { version: '1.1.121', date: '2026-11-27' },
@@ -266,7 +267,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.49', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.49/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.50', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.50/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -320,6 +321,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-28', title: 'Desktop 1.1.125, Android 1.2.35, iPad 1.1.50 & Website: Seamless Welcome Card Branding & Full-Screen Camera During Countdown', for: ['website', 'app', 'android', 'ipad'], app: '1.1.125', android: '1.2.35', ipad: '1.1.50',
+    items: [
+      '✨ Cleaner Welcome screen buttons with zero overlap or overflow: Classic pills now place your main start button on top with extra shortcuts neatly lined up below it, and Circular icons and Icons + short label stay in one crisp row inside the card — never covering the 3-step instructions or spilling past the card border at any size.',
+      '🎨 Smoother Welcome screen drag & resize editor: Dragging and resizing the Welcome card and sample print now moves smoothly right under your finger or cursor, buttons on the preview no longer block dragging, Center snap keeps the card and sample cleanly separated, an Auto-space button fixes accidental overlaps in one tap, and the top step bar spans the full width while scrolling.',
+      '📸 Full-size live camera during countdown with pause-only shot previews: Your live camera now stays full screen throughout the entire photo session instead of shrinking after the first shot. Previous shots hide cleanly during each countdown so guests can pose without distractions, then slide in cleanly at the bottom during in-between pauses and final review across the main booth, second-monitor Guest Screen, and Tablet Bridge.'
+    ]
+  },
   {
     date: '2026-11-28', title: 'Desktop 1.1.124, Android 1.2.34, iPad 1.1.49, Print Helper 1.1.29 & Website: Fix Windows Freezes, Movable Welcome Card, Readable Mirror Prints, Wireless SELPHY Borderless, Offline QR & HD Video Guestbook', for: ['website', 'app', 'android', 'ipad', 'helper'], app: '1.1.124', android: '1.2.34', ipad: '1.1.49', helper: '1.1.29',
     items: [

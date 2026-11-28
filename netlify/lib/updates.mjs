@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.126', date: '2026-11-28' },
   { version: '1.1.125', date: '2026-11-28' },
   { version: '1.1.124', date: '2026-11-28' },
   { version: '1.1.122', date: '2026-11-27' },
@@ -267,7 +268,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.50', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.50/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.51', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.51/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -321,6 +322,19 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-28', title: 'Desktop 1.1.126, Android 1.2.36, iPad 1.1.51 & Website: Photoman Copies & Sync, Sharper SELPHY Prints, Mac USB Epson L805, Reliable Epson L8050 4R Printing, Separate Photoman Folders & Higher Wi-Fi Capacity', for: ['website', 'app', 'android', 'ipad'], app: '1.1.126', android: '1.2.36', ipad: '1.1.51',
+    items: [
+      '🖨️ Photoman copy selector & no more extra printouts: Choose the exact number of copies right next to the Print button in Photoman (automatically resetting to 1 for each new photo), see a clear Printed count badge after printing, and eliminate accidental duplicate prints from double-taps or using Show on Booth while Auto-Print is on.',
+      '🔄 Popped-out Photoman stays synced with your Main Booth printer: Changing your printer, paper size, or print settings on the main booth now updates the popped-out Photoman window automatically and displays the active printer name right on the Photoman screen before you print.',
+      '✨ Sharper Photoman prints on Canon SELPHY: Photoman now processes photos at higher detail with dedicated print-page sharpening and uncompressed local printing on Canon SELPHY so hard copies match the crispness of regular Photo Booth prints.',
+      '🔌 Plug-and-play Mac USB printing for Epson L805: Plugging an Epson L805 into a Mac over USB cable now shows up and prints directly from the app without downloading a separate Mac printer driver, and no longer conflicts when an Epson L8050 is also installed on the same computer.',
+      '🛠️ Reliable Epson L8050 4R & Strip printing on Android and iPad: Fixes the blinking printer-busy freeze when printing 4R layouts (such as Polaroid 4) and strips over Wi-Fi or wired USB by sending high-quality 300 dpi glossy photo prints that stay light on printer memory, keeps Strip and 4R printer choices in sync when switching between Wi-Fi and USB, prevents duplicate retry jobs while busy, and shows clear printer alerts if paper is empty or a stuck job needs clearing.',
+      '📁 Separate Photoman folder with Prints & Solo Shots subfolders: Roving Photoman photos now save into their own Photoman event folder with dedicated Prints and Solo Shots subfolders on Desktop (including Online Mode local backups), Android, iPad, and Chrome Backup Folders — keeping roving files cleanly separated from booth shots on disk while still sharing one combined Event Gallery and Sharing Station for guests. Framed Solo-layout prints also now sort neatly into Prints instead of Solo Shots.',
+      '📶 Higher Booth Wi-Fi crowd capacity & smart idle slot clearing (Windows laptop): Adds a one-time Boost limit option to raise Windows Booth Wi-Fi capacity from 8 up to 20 simultaneous phones without restarting, plus smart Auto-clear for lingering pocket phones that waits until active photo downloads finish and protects Sharing Stations and tablets.',
+      '🎨 Color receipt prints stay on photo paper & photo printers: Color receipt templates now consistently route to your photo printer and photo paper size instead of falling back to an 80 mm thermal printer, including across app reloads and Photoman template switches.'
+    ]
+  },
   {
     date: '2026-11-28', title: 'Desktop 1.1.125, Android 1.2.35, iPad 1.1.50 & Website: Seamless Welcome Card Branding & Full-Screen Camera During Countdown', for: ['website', 'app', 'android', 'ipad'], app: '1.1.125', android: '1.2.35', ipad: '1.1.50',
     items: [

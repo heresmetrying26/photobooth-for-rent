@@ -262,10 +262,10 @@ test('L8050 USB/Wi-Fi ESC/P-R: L3210 720/1440dpi beta raster blocked, stale rnor
   const oldApk = { __PBNet: {} };
   assert.equal(mkDpiFn({ ios: false, win: oldApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 0, 'old APK stays at 300 dpi (returns 0)');
   assert.equal(mkDpiFn({ ios: true, win: oldApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 0, 'old IPA without supportsL8050HiRes stays at 300 dpi');
-  assert.equal(mkDpiFn({ ios: true, win: newApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 600, 'iPad IPP High 4x6 gets 600 dpi when supportsL8050HiRes is true');
+  assert.equal(mkDpiFn({ ios: true, win: newApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 0, 'iPad IPP High 4x6 stays at safe 300 dpi so embedded L8050 JPEG decoder never stalls');
   assert.equal(mkDpiFn({ ios: true, win: newApk, printer: { ip: '192.168.223.1', ipp: false, escpr: true, lpd: true, epsonModel: 'L8050', name: 'EPSON L8050 Series' }, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 360, 'iPad L8050 LPD :515 default high renders at 1:1 native 360 dpi');
   assert.equal(mkDpiFn({ ios: true, win: newApk, printer: { ip: '192.168.223.1', ipp: false, escpr: true, lpd: true, epsonModel: 'L8050', name: 'EPSON L8050 Series' }, wo: { quality: 'high720' } }).l8050DpiFor(p4x6), 720, 'iPad L8050 LPD :515 high720 4x6 gets 720 dpi');
-  assert.equal(mkDpiFn({ ios: false, win: newApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 600, 'L8050 IPP High 4x6 gets 600 dpi');
+  assert.equal(mkDpiFn({ ios: false, win: newApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 0, 'Android L8050 IPP High 4x6 stays at safe 300 dpi (avoids 9.3 MP 600 dpi stall/0x507)');
   assert.equal(mkDpiFn({ ios: false, win: newApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'normal' } }).l8050DpiFor(p4x6), 0, 'L8050 IPP Normal stays 300 dpi');
   assert.equal(mkDpiFn({ ios: false, win: newApk, printer: { ipp: true, ip: '192.168.1.5', name: 'EPSON L8050 Series' }, wo: { quality: 'high720' } }).l8050DpiFor(p4x6), 720, 'L8050 Wi-Fi high720 4x6 gets 720 dpi');
   assert.equal(mkDpiFn({ ios: false, win: newApk, printer: l8050Usb, wo: { quality: 'high720' } }).l8050DpiFor(p4x6), 720, 'L8050 USB ESC/P-R high720 4x6 gets 720 dpi');
@@ -273,6 +273,14 @@ test('L8050 USB/Wi-Fi ESC/P-R: L3210 720/1440dpi beta raster blocked, stale rnor
   assert.equal(mkDpiFn({ ios: false, win: newApk, printer: { ip: '192.168.223.1', ipp: false, escpr: true, lpd: true, epsonModel: 'L8050', name: 'EPSON L8050 Series' }, wo: { quality: 'high' } }).l8050DpiFor(p4x6), 360, 'L8050 LPD :515 default high renders at 1:1 native 360 dpi');
   assert.equal(mkDpiFn({ ios: false, win: newApk, printer: l8050Usb, wo: { quality: 'high720' } }).l8050DpiFor(p5x7), 0, '5x7 stays at 300 dpi');
   assert.equal(mkDpiFn({ ios: false, win: newApk, printer: l8050Usb, wo: { quality: 'high720' } }).l8050DpiFor(pHagaki), 0, 'Hagaki 100x148 stays at 300 dpi (matches 1.5mm tolerance)');
+
+  // Verify wifiJobMayHavePrinted treats 0x507 / still busy as already-busy so wifiPhotoJob never piles a second raw ESC/P-R job onto a busy L8050
+  const mhpIdx = html.indexOf('function wifiJobMayHavePrinted('), nsIdx = html.indexOf('function wifiJobNeverSent(');
+  assert.ok(mhpIdx > 0 && nsIdx > mhpIdx, 'wifiJobMayHavePrinted found');
+  const wifiJobMayHavePrinted = new Function(html.slice(mhpIdx, nsIdx) + '; return wifiJobMayHavePrinted;')();
+  assert.equal(wifiJobMayHavePrinted(new Error('The printer is still busy with the previous photo (code 0x507).')), true, '0x507 busy prevents double-sending on raw :9100');
+  assert.equal(wifiJobMayHavePrinted(new Error('server-error-busy')), true, 'server-error-busy prevents fallback');
+  assert.equal(wifiJobMayHavePrinted(new Error('The printer refused the photo (code 0x40a).')), false, 'format/attribute refusal still allows fallback');
 
   // Android EscprJob.kt: seam-free strip streaming + pure dsnd RGB color plane (setq[6]=0x00, NEVER bsnd 0x03!)
   const escKt = readFileSync(join(ROOT, 'android', 'app', 'src', 'main', 'java', 'com', 'photobooth4u', 'booth', 'EscprJob.kt'), 'utf8');
@@ -289,6 +297,10 @@ test('L8050 USB/Wi-Fi ESC/P-R: L3210 720/1440dpi beta raster blocked, stale rnor
   assert.ok(/private fun usbRawStream\(/.test(kt) && /private fun netRawStream\(/.test(kt), 'streaming USB & TCP raw writers present');
   assert.ok(/private fun jpegAtDpi\(j: ByteArray, dpi: Int = 300\)/.test(kt) && /jpegAtDpi\(jpegIn, opts\.dpi\)/.test(kt), 'dynamic JFIF DPI writer wired in sendIppJob');
   assert.ok(/private fun l8050EscprConfig\(/.test(kt) && /qStr == "high720" && is4x6/.test(kt) && /sendSetm = false/.test(kt), 'l8050EscprConfig routes high720 to 720 dpi on 4x6 and uses pure dsnd (sendSetm=false)');
+  assert.ok(/val maxBusyRetries = if \(selphy\) 24 else 8/.test(kt) && /queryPrinterStateReasons\(e, path\)/.test(kt), 'sendIppJob caps non-SELPHY busy retries and queries printer-state-reasons on 0x0507');
+  assert.ok(/var writeErr: Exception\? = null/.test(kt) && /val stale = try \{ conn\.bulkTransfer\(inn/.test(kt), 'usbPost drains stale IN bytes and captures early IPP error reply when write fails');
+  const swift = readFileSync(join(ROOT, 'ios', 'photobooth4u', 'ViewController.swift'), 'utf8');
+  assert.ok(/let maxBusyTries = selphy \? 24 : 8/.test(swift) && /printerBusyHint\(ip: ip, port: port, path: path\)/.test(swift), 'iOS IppNet caps non-SELPHY busy retries and surfaces printer-state-reasons on 0x0507');
   const streamCalls = (kt.match(/EscprJob\.streamWithConfig\(/g) || []).length;
   assert.ok(streamCalls >= 5, 'EscprJob.streamWithConfig wired into printEscpr (net/usb), printEpsonL, diagPrintSync, and printFromHelper (found ' + streamCalls + ')');
 });
@@ -345,6 +357,16 @@ test('Android borderless: wifiSave preserves borderless when switching from anot
   assert.equal(borderlessToggle.checked, true, 'checkbox stays checked');
   assert.equal(printOptsMap['EPSON L8050 Series'].borderless, true, 'borderless=true persisted to L8050 profile');
   assert.equal(printOptsMap['Android print dialog'].borderless, false, 'previous printer profile untouched');
+
+  // Switching Wi-Fi -> USB on 4r also updates an existing non-DNP strip:4r sibling slot so Strip <-> 4R never jumps back to a stale printer
+  wifiSizeMap['strip:4r'] = { ip: '192.168.223.1', name: 'EPSON L8050 Series', ipp: true, usb: false };
+  runWifiSave({ ip: 'usb:/dev/bus/usb/001/009', name: 'EPSON L8050 Series', ipp: false, epsonL: true, usb: true, borderless: true });
+  assert.equal(wifiSizeMap['strip:4r'].ip, 'usb:/dev/bus/usb/001/009', 'strip:4r sibling updated to new USB L8050');
+  // A dedicated DNP dye-sub on strip:4r is preserved
+  wifiSizeMap['strip:4r'] = { ip: 'usb:dnp', name: 'DNP DS-RX1', dnp: true, usb: true };
+  runWifiSave({ ip: '192.168.1.50', name: 'EPSON L8050 Series', ipp: true, usb: false });
+  assert.equal(wifiSizeMap['strip:4r'].dnp, true, 'dedicated DNP dye-sub strip slot preserved');
+  assert.ok(/isEpsonL8050\(p\)\)\) \? 0\.95 : 0\.92/.test(html), 'L8050 300 dpi IPP encodes JPEG at 0.95 quality');
 
   // 2. Underscore mDNS name EPSON_L8050_Series matches epsonEscprBorderlessModel & epsonLNetPrinter
   const a = html.indexOf('const WIFI_OPTS_KEY'), b = html.indexOf('function wifiOpts(printer) {');

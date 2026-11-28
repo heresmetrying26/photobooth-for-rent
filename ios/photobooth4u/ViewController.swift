@@ -3391,15 +3391,18 @@ enum IppNet {
                                            quality: at.useOpts ? qv : 0, colorMode: at.useOpts ? cm : "", mediaType: at.useOpts ? mt : "",
                                            scaling: at.scaling, marginMm100: at.marginMm100)
                 var r = try post(ip: ip, port: port, path: path, body: body, timeout: 90)
+                let maxBusyTries = selphy ? 24 : 8
                 var busyTries = 0
-                while r.http == 200 && r.ipp == 0x0507 && busyTries < 24 {
+                while r.http == 200 && r.ipp == 0x0507 && busyTries < maxBusyTries {
                     Thread.sleep(forTimeInterval: 2.5)
                     r = try post(ip: ip, port: port, path: path, body: body, timeout: 90)
                     busyTries += 1
                 }
                 if r.http == 200 && r.ipp >= 0 && r.ipp <= 2 { return jobId(r.body) }
                 if r.http == 200 && r.ipp == 0x0507 {
-                    throw Failure("The printer is still busy with the previous photo (code 0x507). Wait for it to finish, then print again.")
+                    let hint = printerBusyHint(ip: ip, port: port, path: path)
+                    let extra = hint.isEmpty ? "" : " (\(hint))"
+                    throw Failure("The printer is still busy with the previous photo (code 0x507)\(extra). If its light keeps blinking, press the printer's Stop/Cancel button or turn it off and back on, then print again.")
                 }
                 if r.http == 200 && r.ipp == 0x406 {
                     lastErr = "The printer says it has no print queue (code 0x406). Check that IPP / AirPrint is turned on for it."
@@ -3439,6 +3442,37 @@ enum IppNet {
         w.attr(0x44, "requested-attributes", "job-state")
         w.u8(0x03)
         return w.d
+    }
+
+    static func printerBusyHint(ip: String, port: Int, path: String) -> String {
+        let uri = "ipp://\(ip):\(port)\(path)"
+        var w = Writer()
+        w.u16(0x0200); w.u16(0x000B); w.u32(3)                    // IPP 2.0, Get-Printer-Attributes
+        w.u8(0x01)
+        w.attr(0x47, "attributes-charset", "utf-8")
+        w.attr(0x48, "attributes-natural-language", "en")
+        w.attr(0x45, "printer-uri", uri)
+        w.attr(0x44, "requested-attributes", "printer-state-reasons")
+        w.u8(0x03)
+        guard let reply = try? post(ip: ip, port: port, path: path, body: w.d, timeout: 5),
+              reply.http == 200, reply.ipp >= 0, reply.ipp <= 2 else { return "" }
+        var out: [String] = []
+        parse(reply.body) { name, tag, raw in
+            guard name == "printer-state-reasons", tag == 0x44,
+                  let s = String(data: raw, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !s.isEmpty, s != "none", s != "other" else { return }
+            let low = s.lowercased()
+            let label: String
+            if low.contains("media-empty") || low.contains("media-needed") { label = "out of paper" }
+            else if low.contains("media-jam") { label = "paper jam" }
+            else if low.contains("cover-open") || low.contains("door-open") { label = "cover open" }
+            else if low.contains("marker-supply-empty") { label = "ink empty" }
+            else if low.contains("paused") { label = "printer paused" }
+            else if low.contains("spool-area-full") { label = "printer memory full" }
+            else { label = s.replacingOccurrences(of: "-error", with: "").replacingOccurrences(of: "-warning", with: "") }
+            if !out.contains(label) && out.count < 3 { out.append(label) }
+        }
+        return out.joined(separator: ", ")
     }
 
     enum JobCheck {

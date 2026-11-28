@@ -6,6 +6,7 @@
 import { createRequire } from 'node:module';
 import { isSelphyUsb, selphyModelName, selphyErrorDescription } from './selphyusb.mjs';
 import { isDnpUsb, dnpModelName, dnpUnsupportedReason, dnpCmd, dnpIsError, dnpStatusText, parseDnpIntReply, parseDnpMediaRemaining } from './dnpusb.mjs';
+import { isEpsonEscprUsb, epsonEscprModelName } from './escprusb.mjs';
 import { canScanUsbOffProcess, scanUsbOffProcess } from './usb-enum.mjs';
 
 const BROTHER_VID = 0x04f9;
@@ -158,7 +159,10 @@ export function pickUsbIppInterface(vid, interfaces) {
 }
 
 export function pickUsbRawInterface(interfaces) {
-  return interfaces.find((i) => i.cls === 7 && i.sub === 1 && (i.proto === 1 || i.proto === 2)) || null;
+  return interfaces.find((i) => i.cls === 7 && i.sub === 1 && i.proto === 2 && i.hasBulkPair)
+    || interfaces.find((i) => i.cls === 7 && i.sub === 1 && i.proto === 2)
+    || interfaces.find((i) => i.cls === 7 && i.sub === 1 && i.proto === 1)
+    || null;
 }
 
 export function pickUsbSelphyInterface(interfaces) {
@@ -210,6 +214,10 @@ function buildPrinterProbeEntry({ vid, pid, bus, address, interfaces, product, m
   const dnpUnsupported = dnp ? dnpUnsupportedReason(dnpModel) : '';
   const dnpIface = (dnp && !dnpUnsupported) ? pickUsbSelphyInterface(interfaces) : null;
 
+  const epsonEscprModel = (!selphy && !dnp) ? epsonEscprModelName(vid, pid, `${name} ${product}`, deviceId) : '';
+  const epsonEscpr = !!epsonEscprModel;
+  const escprIface = epsonEscpr ? (rawIface || pickUsbSelphyInterface(interfaces)) : null;
+
   const key = `usb:${bus || 0}:${address || 0}:${idPair}`;
   let note = '';
   if (selphy && selphyIface) {
@@ -220,6 +228,8 @@ function buildPrinterProbeEntry({ vid, pid, bus, address, interfaces, product, m
     note = dnpUnsupported;
   } else if (ippIface) {
     note = 'Supports driverless IPP-over-USB (7/1/4): the app can print straight to it over USB.';
+  } else if (epsonEscpr && escprIface) {
+    note = `Epson ${epsonEscprModel} detected on USB: the app can print straight to it over USB with no driver.`;
   } else if (vid === BROTHER_VID) {
     note = platform === 'win32'
       ? `${name} is connected on USB without an IPP-over-USB (7/1/4) interface. Install Brother’s Windows USB driver so it appears in your printer list, or connect it to Wi-Fi and use Find Wi-Fi / network printers for driverless printing.`
@@ -242,6 +252,10 @@ function buildPrinterProbeEntry({ vid, pid, bus, address, interfaces, product, m
     dnpUnsupportedReason: dnpUnsupported,
     hasDnpUsb: !!dnpIface,
     dnpIface,
+    isEpsonEscpr: epsonEscpr,
+    epsonEscprModel,
+    hasEscprUsb: !!escprIface,
+    escprIface,
     hasIppUsb: !!ippIface,
     hasRawPrinter: !!rawIface,
     ippIface,
@@ -692,5 +706,84 @@ export function usbDnpPrint(entry, jobBuffers, {
       }
       return { ok: true, pages: jobs.length, mediaRemaining };
     });
+  });
+}
+
+async function escprDrainInOnce(inEp) {
+  if (!inEp) return;
+  inEp.timeout = 40;
+  for (let i = 0; i < 4; i++) {
+    try {
+      const piece = await call((cb) => inEp.transfer(1024, cb));
+      if (!piece || !piece.length) break;
+    } catch { break; }
+  }
+}
+
+/**
+ * Sends one or more Epson ESC/P-R USB jobs directly over libusb bulk OUT pipes (7/1/2 or 7/1/1).
+ * Periodically drains bulk IN so the printer's bidirectional status buffer never fills and stalls writes.
+ */
+export function usbEscprPrint(entry, jobBuffers, {
+  writeTimeoutMs = 90000,
+  settleAfterMs = 400
+} = {}) {
+  const jobs = Array.isArray(jobBuffers) ? jobBuffers.filter((b) => b && b.length) : [];
+  if (!jobs.length) return Promise.reject(new Error('No pages to print.'));
+  return enqueueUsb(entry.key || `${entry.vid}:${entry.pid}`, async () => {
+    const dev = findLiveDevice(entry);
+    if (!dev) throw new Error('The Epson USB printer is not connected. Check its USB cable and power.');
+    const ifaces = inspectDeviceInterfaces(dev);
+    const want = pickUsbRawInterface(ifaces) || pickUsbSelphyInterface(ifaces);
+    if (!want) throw new Error('This Epson printer has no usable USB bulk printer interface.');
+    let opened = false, claimed = null;
+    try {
+      try {
+        dev.open();
+        opened = true;
+      } catch (e) {
+        throw new Error('Could not open Epson printer over USB (' + String((e && e.message) || e) + '). If macOS/Windows already added it as a system printer, choose that printer name instead.');
+      }
+      const iface = dev.interface(want.num);
+      try { if (iface.isKernelDriverActive && iface.isKernelDriverActive()) iface.detachKernelDriver(); } catch { /* macOS / Windows */ }
+      try {
+        iface.claim();
+        claimed = iface;
+      } catch (e) {
+        throw new Error('Epson USB port is busy (' + String((e && e.message) || e) + '). If it is already added in Printers & Scanners, choose that printer name instead.');
+      }
+      const altCount = ifaces.filter((i) => i.num === want.num).length;
+      if ((want.alt !== 0 || altCount > 1) && typeof iface.setAltSetting === 'function') {
+        await call((cb) => iface.setAltSetting(want.alt, cb));
+      }
+      let outEp = null, inEp = null;
+      for (const ep of iface.endpoints || []) {
+        if (ep.transferType !== 2) continue; // LIBUSB_TRANSFER_TYPE_BULK
+        if (ep.direction === 'out' && !outEp) outEp = ep;
+        if (ep.direction === 'in' && !inEp) inEp = ep;
+      }
+      if (!outEp) throw new Error('Epson printer has no USB data output endpoint.');
+      outEp.timeout = Math.max(15000, Number(writeTimeoutMs) || 90000);
+      await escprDrainInOnce(inEp);
+      const CHUNK = 32 * 1024;
+      for (let ji = 0; ji < jobs.length; ji++) {
+        const buf = Buffer.isBuffer(jobs[ji]) ? jobs[ji] : Buffer.from(jobs[ji]);
+        let chunksSinceDrain = 0;
+        for (let off = 0; off < buf.length; off += CHUNK) {
+          const slice = buf.subarray(off, Math.min(buf.length, off + CHUNK));
+          await call((cb) => outEp.transfer(slice, cb));
+          if (inEp && ++chunksSinceDrain >= 8) {
+            chunksSinceDrain = 0;
+            await escprDrainInOnce(inEp);
+          }
+        }
+        await escprDrainInOnce(inEp);
+        if (settleAfterMs > 0) await sleep(settleAfterMs);
+      }
+      return { ok: true, pages: jobs.length };
+    } finally {
+      if (claimed) { try { await call((cb) => claimed.release(true, cb)); } catch { /* ignore */ } }
+      if (opened) { try { dev.close(); } catch { /* ignore */ } }
+    }
   });
 }

@@ -26,6 +26,7 @@ import { probeSensor, startSensor, stopSensor, latestSensor } from './lib/winsen
 import { makeShrinkPage, makePngToJpeg } from './lib/pageshrink.mjs';
 import { makeSelphyJobBuilder } from './lib/selphyusb.mjs';
 import { makeDnpJobBuilder } from './lib/dnpusb.mjs';
+import { makeEscprJobBuilder } from './lib/escprusb.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { detectWifi } from './lib/wifi.mjs';
 import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetAutoRecycle, hotspotRecycle, hotspotRaiseLimit, hotspotSetup, hotspotFixFirewall, hotspotSetCreds, hotspotWake, hotspotTouch, hotspotSuspend, hotspotResume } from './lib/hotspot.mjs';
@@ -1090,6 +1091,7 @@ app.whenReady().then(async () => {
     toJpeg: makePngToJpeg(nativeImage),
     selphyJob: makeSelphyJobBuilder(nativeImage),
     dnpJob: makeDnpJobBuilder(nativeImage),
+    escprJob: makeEscprJobBuilder(nativeImage),
     hotFoldersFile: join(dataDir(), 'hot-folders.json'),
     pickHotFolder: async () => {
       const r = await dialog.showOpenDialog(win || undefined, {

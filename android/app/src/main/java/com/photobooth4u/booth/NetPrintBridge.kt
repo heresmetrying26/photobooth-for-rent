@@ -2790,18 +2790,33 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         return synchronized(usbLockFor("usb:" + d.deviceName)) {
             usbSession(d, iface) { conn, out, inn ->
                 if (inn == null) throw IllegalStateException("The USB printer has no reply port.")
-                val head = "POST $path HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/ipp\r\nContent-Length: ${body.size}\r\n\r\n"
-                usbWrite(conn, out, head.toByteArray(Charsets.ISO_8859_1))
-                if (body.isNotEmpty()) usbWrite(conn, out, body)
-                val buf = ByteArrayOutputStream()
                 val tmp = ByteArray(16384)
-                val deadline = System.currentTimeMillis() + 90_000
+                // Drain any leftover bytes from an earlier interrupted response before sending the next HTTP/IPP request.
+                for (i in 0 until 4) {
+                    val stale = try { conn.bulkTransfer(inn, tmp, tmp.size, 30) } catch (_: Exception) { -1 }
+                    if (stale <= 0) break
+                }
+                val head = "POST $path HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/ipp\r\nContent-Length: ${body.size}\r\n\r\n"
+                // A printer that rejects or stalls mid-job often answers early and stops reading bulk-OUT;
+                // keep any write error but still read the IN pipe to capture the printer's real IPP status code.
+                var writeErr: Exception? = null
+                try {
+                    usbWrite(conn, out, head.toByteArray(Charsets.ISO_8859_1))
+                    if (body.isNotEmpty()) usbWrite(conn, out, body)
+                } catch (ex: Exception) {
+                    writeErr = ex
+                }
+                val buf = ByteArrayOutputStream()
+                val deadline = System.currentTimeMillis() + (if (writeErr != null) 8_000L else 90_000L)
                 while (System.currentTimeMillis() < deadline) {
-                    val n = conn.bulkTransfer(inn, tmp, tmp.size, 3000)
+                    val n = conn.bulkTransfer(inn, tmp, tmp.size, if (writeErr != null) 1000 else 3000)
                     if (n > 0) buf.write(tmp, 0, n)
                     if (buf.size() > 0 && httpComplete(buf.toByteArray())) break
+                    if (writeErr != null && n <= 0 && buf.size() > 0) break
                 }
-                if (buf.size() == 0) throw IllegalStateException("Printer did not respond to status request.")
+                if (buf.size() == 0) {
+                    throw writeErr ?: IllegalStateException("Printer did not respond to status request.")
+                }
                 parseReply(buf.toByteArray())
             }
         }
@@ -3108,11 +3123,52 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         } catch (_: Exception) { null }
     }
 
+    /** Maps IPP printer-state-reasons keywords to plain-English causes for headless printers (e.g. blinking Epson L8050). */
+    private fun formatPrinterReasons(reasons: List<String>): String {
+        val out = LinkedHashSet<String>()
+        for (raw in reasons) {
+            val r = raw.lowercase().trim()
+            if (r.isEmpty() || r == "none" || r == "other") continue
+            when {
+                "media-empty" in r || "media-needed" in r -> out.add("out of paper")
+                "media-jam" in r -> out.add("paper jam")
+                "cover-open" in r || "door-open" in r || "interlock-open" in r -> out.add("cover open")
+                "marker-supply-empty" in r || "toner-empty" in r -> out.add("ink empty")
+                "marker-supply-low" in r || "toner-low" in r -> out.add("ink low")
+                "input-tray-missing" in r -> out.add("paper tray missing")
+                "output-area-full" in r -> out.add("output tray full")
+                "paused" in r -> out.add("printer paused")
+                "spool-area-full" in r -> out.add("printer memory full")
+                "media-mismatch" in r || "media-type" in r -> out.add("paper size/type mismatch")
+                else -> out.add(raw.removeSuffix("-error").removeSuffix("-warning").removeSuffix("-report"))
+            }
+        }
+        return out.take(3).joinToString(", ")
+    }
+
+    /** Queries printer-state-reasons on a busy/stalled IPP printer (both Wi-Fi and USB IPP) so headless blinking LEDs explain why. */
+    private fun queryPrinterStateReasons(e: Entry, path: String): List<String> {
+        return try {
+            val r = doPost(e, path, ippGetAttributes(ippUri(e, path)))
+            if (r.http != 200 || r.ipp !in 0..2) return emptyList()
+            val reasons = ArrayList<String>()
+            parseIppGrouped(r.body) { grp, name, tag, raw ->
+                if (grp != 0x05 && name == "printer-state-reasons" && tag == 0x44) {
+                    val v = String(raw, Charsets.UTF_8).trim()
+                    if (v.isNotEmpty() && v != "none") reasons.add(v)
+                }
+            }
+            if (reasons.isNotEmpty()) e.stateReasons = reasons
+            reasons
+        } catch (_: Exception) { emptyList() }
+    }
+
     /** Background job watcher after Print-Job returns HTTP 200: warns if the printer stops, cancels, or aborts the job. */
     private fun watchIppJob(e: Entry, path: String, jobId: Int) {
         try {
             val end = System.currentTimeMillis() + 25_000L
             var stoppedAt = 0L
+            var checkedPrinterReasons = false
             while (System.currentTimeMillis() < end) {
                 try { Thread.sleep(2500) } catch (_: InterruptedException) { return }
                 val js = queryJobStateOnce(e, path, jobId) ?: continue
@@ -3129,13 +3185,23 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 if (js.state == 6) {
                     if (stoppedAt == 0L) stoppedAt = System.currentTimeMillis()
                     else if (System.currentTimeMillis() - stoppedAt > 10_000L) {
+                        val pHint = formatPrinterReasons(queryPrinterStateReasons(e, path))
+                        val detail = listOf(reasonText, pHint).filter { it.isNotEmpty() }.distinct().joinToString("; ")
                         emitIppWarn("The printer paused the print" +
-                            (if (reasonText.isNotEmpty()) " ($reasonText)" else "") +
-                            ". Check paper tray / screen on the printer.")
+                            (if (detail.isNotEmpty()) " ($detail)" else "") +
+                            ". Check paper tray or press Stop/Cancel on the printer.")
                         return
                     }
                 } else {
                     stoppedAt = 0L
+                    if (!checkedPrinterReasons && js.state == 5 && (end - System.currentTimeMillis()) < 10_000L) {
+                        checkedPrinterReasons = true
+                        val pHint = formatPrinterReasons(queryPrinterStateReasons(e, path))
+                        if (pHint.isNotEmpty()) {
+                            emitIppWarn("The printer needs attention ($pHint). Check the printer and press Stop/Cancel if its light keeps blinking.")
+                            return
+                        }
+                    }
                 }
             }
         } catch (_: Exception) {}
@@ -3318,9 +3384,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         lastErr = nf.message ?: lastErr
                         break
                     }
-                    // Canon SELPHY (CP1300 / CP1500) and compact IPP printers return 0x0507 (server-error-busy) while finishing the previous sheet;
-                    // wait and retry the SAME attempt instead of dropping paper/borderless attributes.
-                    while (r.http == 200 && r.ipp == 0x0507 && busyRetries < 24) {
+                    // Canon SELPHY (CP1300 / CP1500) returns 0x0507 (server-error-busy) for ~45s while finishing the previous sheet;
+                    // non-SELPHY inkjets (e.g. Epson L8050) fail faster (~20s) and query printer-state-reasons to explain any blinking error.
+                    val maxBusyRetries = if (selphy) 24 else 8
+                    while (r.http == 200 && r.ipp == 0x0507 && busyRetries < maxBusyRetries) {
                         busyRetries++
                         try { Thread.sleep(2500) } catch (_: InterruptedException) { break }
                         r = try { doPost(e, path, body) } catch (nf: NetFail) {
@@ -3356,7 +3423,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                                 ippPaths(e).joinToString(", ") + "; code 0x406). Add it by its IP address again, or check it has IPP / AirPrint turned on."
                         }
                         r.http == 200 && r.ipp == 0x0507 -> {
-                            throw IllegalStateException("The printer is still busy with the previous photo (code 0x507). Wait for it to finish, then print again.")
+                            val reasonHint = formatPrinterReasons(queryPrinterStateReasons(e, path))
+                            val detail = if (reasonHint.isNotEmpty()) " ($reasonHint)" else ""
+                            throw IllegalStateException("The printer is still busy with the previous photo (code 0x507)$detail. If its light keeps blinking, press the printer's Stop/Cancel button or turn it off and back on, then print again.")
                         }
                         r.http == 200 -> {
                             lastErr = "The printer refused the photo (code 0x" + Integer.toHexString(r.ipp) +

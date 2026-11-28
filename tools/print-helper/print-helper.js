@@ -92,8 +92,16 @@ async function listPrinters() {
       '[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-CimInstance Win32_Printer | ForEach-Object { $_.Name }']);
     return r.out.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
   }
-  const r = await run('lpstat', ['-e']);
-  return r.out.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  const [eRes, aRes] = await Promise.all([run('lpstat', ['-e']), run('lpstat', ['-a'])]);
+  const seen = new Set();
+  const out = [];
+  const add = (n) => { const s = String(n || '').trim(); if (s && !seen.has(s)) { seen.add(s); out.push(s); } };
+  for (const line of eRes.out.split(/\r?\n/)) add(line);
+  for (const line of aRes.out.split(/\r?\n/)) {
+    const m = /^(\S+)\s+(?:not\s+)?accepting\b/i.exec(line.trim());
+    if (m) add(m[1]);
+  }
+  return out;
 }
 
 const FIX_HELPER_FW_PS = String.raw`$ErrorActionPreference = 'Stop'

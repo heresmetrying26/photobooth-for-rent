@@ -10,10 +10,11 @@ import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSy
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { discoverNetworkPrinters, ippCaps, ippPrintDirect, waitIppIdle, pickMediaName, mediaSizeMm, directFormats, labelMediaType, diagNetworkInfo, ippDiagProbe, ippDiagPrint } from './netprinters.mjs';
-import { probeUsbPrinters, makeUsbIppTransport, usbSelphyPrint, usbDnpPrint, usbDnpStatus } from './usbipp.mjs';
+import { probeUsbPrinters, makeUsbIppTransport, usbSelphyPrint, usbDnpPrint, usbDnpStatus, usbEscprPrint } from './usbipp.mjs';
 import { canScanUsbOffProcess, scanUsbOffProcess, stopUsbEnum } from './usb-enum.mjs';
 import { SELPHY_SPECS, selphySpecFor } from './selphyusb.mjs';
 import { DNP_SHEETS, dnpSheetFor } from './dnpusb.mjs';
+import { EPSON_BORDERLESS_PAPERS, epsonBorderlessPaper, isEpsonL8050Name } from './escprusb.mjs';
 import { createHotFolderStore, detectDnpHotFolders, dropToHotFolder } from './hotfolder.mjs';
 import { createWinPrintWorker } from './winprint-worker.mjs';
 import * as gopro from './cam-gopro.mjs';
@@ -42,6 +43,8 @@ let buildSelphyJob = null;   // (png / jpeg Buffer, wMm, hMm, paperName) -> { da
 let selphyPrintOpts = {};
 let buildDnpJob = null;      // (png / jpeg Buffer, opts) -> { data: Buffer, sheet, cut, matte }. Given by Electron for direct DNP USB printing (ESC 'P' YMC BMP).
 let dnpPrintOpts = {};
+let buildEscprJob = null;    // (png / jpeg Buffer, opts) -> { data: Buffer, geo, media, qualityCode }. Given by Electron for direct Epson ESC/P-R USB printing (L805, L8050...).
+let escprPrintOpts = {};
 let pickHotFolderDir = null; // () => Promise<string> native OS folder picker (Electron dialog)
 const hotFolderStore = createHotFolderStore('');
 let ippWaitOpts = {};
@@ -51,8 +54,9 @@ let directFile = '';     // where the printers used without a driver are remembe
 // in the printer list under a name like "Brother DCP-T420W (direct 192.168.1.50)" and the booth picks them like any other.
 const direct = new Map();   // name -> { ip, port, path }
 // USB printers used straight over libusb when no OS print queue exists for them:
-// driverless IPP-over-USB (7/1/4), native Canon SELPHY Neo USB (CP820–CP1500), or native DNP ESC 'P' USB (DS-RX1 / DS620 / DS40).
-const usbDirect = new Map();   // name -> usbProbe entry (with usbMode: 'ipp' | 'selphy' | 'dnp')
+// driverless IPP-over-USB (7/1/4), native Canon SELPHY Neo USB (CP820–CP1500), native DNP ESC 'P' USB (DS-RX1 / DS620 / DS40),
+// or native Epson ESC/P-R USB (L805, L8050, L3250...).
+const usbDirect = new Map();   // name -> usbProbe entry (with usbMode: 'ipp' | 'selphy' | 'dnp' | 'escpr')
 let usbDirectAt = 0;
 function loadDirect() {
   try {
@@ -76,6 +80,7 @@ function directTarget(name) {
     const entry = usbDirect.get(name);
     if (entry.usbMode === 'selphy') return { kind: 'usb-selphy', entry };
     if (entry.usbMode === 'dnp') return { kind: 'usb-dnp', entry };
+    if (entry.usbMode === 'escpr') return { kind: 'usb-escpr', entry };
     return { kind: 'usb', ip: 'localhost', port: 631, path: '', entry, transport: makeUsbIppTransport(entry) };
   }
   return null;
@@ -92,14 +97,15 @@ async function refreshUsbDirect(sysList, force, preFound) {
       const canSelphy = !!(p.isSelphy && p.hasSelphyUsb && buildSelphyJob);
       const canDnp = !!(p.isDnp && p.hasDnpUsb && buildDnpJob);
       const canIpp = !!p.hasIppUsb;
-      if (!canSelphy && !canDnp && !canIpp) continue;
+      const canEscpr = !!(p.isEpsonEscpr && p.hasEscprUsb && buildEscprJob);
+      if (!canSelphy && !canDnp && !canIpp && !canEscpr) continue;
       // On both Windows and macOS, if the OS already has a print queue for this model (e.g. official DNP Windows/macOS
       // driver, macOS AirPrint/CUPS queue, Brother USB driver, or Microsoft IPP), keep using that OS queue rather than
       // showing a duplicate "(USB direct)" entry that can conflict with the OS holding the USB interface.
       if (installedAs({ ip: '', name: p.name }, sys)) continue;
       const clean = String(p.name || 'USB printer').replace(/\s*\(USB[^)]*\)\s*$/i, '').replace(/[^\w .\-+]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 48) || 'USB printer';
       const label = clean + ' (USB direct)';
-      usbDirect.set(label, { ...p, usbMode: canSelphy ? 'selphy' : canDnp ? 'dnp' : 'ipp' });
+      usbDirect.set(label, { ...p, usbMode: canSelphy ? 'selphy' : canDnp ? 'dnp' : canIpp ? 'ipp' : 'escpr' });
     }
   } catch { /* libusb unavailable or no USB printers */ }
 }
@@ -158,7 +164,7 @@ function scheduleWarm(fn, delayMs) {
   warmTimers.push(t);
 }
 
-export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, rasterize: raster, selphyJob, selphyPrintOpts: sOpts, dnpJob, dnpPrintOpts: dOpts, hotFoldersFile, pickHotFolder, ippWaitOpts: iOpts, directPrintersFile, spinInboxDir, deferWarm = false }) {
+export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, rasterize: raster, selphyJob, selphyPrintOpts: sOpts, dnpJob, dnpPrintOpts: dOpts, escprJob, escprPrintOpts: eOpts, hotFoldersFile, pickHotFolder, ippWaitOpts: iOpts, directPrintersFile, spinInboxDir, deferWarm = false }) {
   clearWarmTimers();
   if (logger) { log = logger; gopro.setLogger((m) => log('GoPro: ' + m)); }
   if (typeof shrink === 'function') shrinkPage = shrink;
@@ -170,6 +176,9 @@ export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpe
   if (typeof dnpJob === 'function') buildDnpJob = dnpJob;
   else if (dnpJob === null) buildDnpJob = null;
   dnpPrintOpts = dOpts && typeof dOpts === 'object' ? dOpts : {};
+  if (typeof escprJob === 'function') buildEscprJob = escprJob;
+  else if (escprJob === null) buildEscprJob = null;
+  escprPrintOpts = eOpts && typeof eOpts === 'object' ? eOpts : {};
   if (typeof pickHotFolder === 'function') pickHotFolderDir = pickHotFolder;
   else if (pickHotFolder === null) pickHotFolderDir = null;
   if (hotFoldersFile !== undefined) hotFolderStore.load(hotFoldersFile || '');
@@ -218,8 +227,17 @@ async function listPrinters() {
     const r = await run('powershell.exe', [...PS, '-Command', '[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-CimInstance Win32_Printer | ForEach-Object { $_.Name }']);
     return r.out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
   }
-  const r = await run('lpstat', ['-e']);
-  return r.out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  // Merge both `lpstat -e` (CUPS/AirPrint destinations) and `lpstat -a` (local USB/driver queues) so macOS USB queues are never missed.
+  const [eRes, aRes] = await Promise.all([run('lpstat', ['-e']), run('lpstat', ['-a'])]);
+  const seen = new Set();
+  const out = [];
+  const add = (n) => { const s = String(n || '').trim(); if (s && !seen.has(s)) { seen.add(s); out.push(s); } };
+  for (const line of eRes.out.split(/\r?\n/)) add(line);
+  for (const line of aRes.out.split(/\r?\n/)) {
+    const m = /^(\S+)\s+(?:not\s+)?accepting\b/i.exec(line.trim());
+    if (m) add(m[1]);
+  }
+  return out;
 }
 function refreshPrinters() {
   if (printersCache.loading) return printersCache.loading;
@@ -406,11 +424,18 @@ async function installedPrinterHosts() {
 const normName = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 // "EPSON L14150 Series" -> "l14150": Windows names the same printer "EPSONC95FED (L14150 Series)", so match on the model code.
 const modelCode = (s) => { const m = String(s || '').match(/\b[A-Za-z]{0,4}-?[A-Za-z]?\d{3,}[A-Za-z0-9-]*\b/g); return m ? normName(m[m.length - 1]) : ''; };
+// Match model code with a trailing non-digit boundary so "l805" NEVER collides with "EPSON_L8050_Series".
+function codeMatchesQueueName(queueName, code) {
+  if (!queueName || !code) return false;
+  const pat = code.split('').map((ch) => ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[\\s_-]*');
+  const re = new RegExp((/^\d/.test(code) ? '(?<![0-9])' : '') + pat + '(?![0-9])', 'i');
+  return re.test(String(queueName));
+}
 function installedAs(printer, installed) {
   const byHost = printer.ip ? installed.find((i) => i.host === printer.ip || (i.port && i.port.includes(printer.ip))) : null;
   if (byHost) return byHost.name;
   const code = modelCode(printer.name);
-  if (code.length >= 4) { const hit = installed.find((i) => normName(i.name).includes(code)); if (hit) return hit.name; }
+  if (code.length >= 4) { const hit = installed.find((i) => codeMatchesQueueName(i.name, code)); if (hit) return hit.name; }
   // Short DNP model codes (DS-RX1, DS40, DS80) or renamed DNP queues ("DNP 4x6") have fewer than 3 digits.
   if (/\bdnp\b|ds[\s_-]?(?:rx1|40|80|620|820)|qw[\s_-]?410/i.test(String(printer.name || ''))) {
     const shortM = /(?:rx1|ds40|ds80|ds620|ds820|qw410)/i.exec(normName(printer.name));
@@ -440,6 +465,9 @@ async function usbProbeReport() {
       dnpModel: p.dnpModel || '',
       hasDnpUsb: !!p.hasDnpUsb,
       dnpUnsupportedReason: p.dnpUnsupportedReason || '',
+      isEpsonEscpr: !!p.isEpsonEscpr,
+      epsonEscprModel: p.epsonEscprModel || '',
+      hasEscprUsb: !!p.hasEscprUsb,
       hasIppUsb: p.hasIppUsb,
       hasRawPrinter: p.hasRawPrinter,
       deviceId: p.deviceId,
@@ -1789,6 +1817,22 @@ export async function handleHelper(req, path, search) {
           autoMedia: ''
         });
       }
+      if (dt.kind === 'usb-escpr') {
+        return json({
+          ok: true,
+          known: true,
+          mediaTypes: ['photo', 'photopg', 'photosg', 'matte', 'plain'],
+          mediaLabels: {
+            photo: 'Photo Paper Glossy',
+            photopg: 'Epson Premium Glossy',
+            photosg: 'Epson Semi-Gloss',
+            matte: 'Epson Matte',
+            plain: 'Plain paper'
+          },
+          mediaDefault: 'photo',
+          autoMedia: 'photo'
+        });
+      }
       const cached = CAPS_CACHE.get(name);
       if (cached && Date.now() - cached.at < 120000) return json({ ok: true, ...cached.caps });
       const caps = await ippCaps(dt.ip, dt.port, dt.path, 3500, dt.transport).catch(() => null);
@@ -1865,6 +1909,9 @@ export async function handleHelper(req, path, search) {
       }
       if (dtCfg.kind === 'usb-dnp') {
         return json({ ok: true, message: 'This DNP printer is used straight over USB (no driver). Pick Glossy or Matte under Paper Type right here — 2×6 strips are cut automatically.' });
+      }
+      if (dtCfg.kind === 'usb-escpr') {
+        return json({ ok: true, message: 'This Epson printer is used straight over USB with no driver needed. Choose your paper size (e.g. 4×6) and Paper Type right here in Print settings, then print a test.' });
       }
       const msg = /selphy/i.test(name)
         ? 'This printer is used straight from the app, with no driver, so there are no system settings to change. Choose Postcard 100×148 mm paper in the app and load the matching paper and ink cassette.'
@@ -2074,6 +2121,21 @@ export async function handleHelper(req, path, search) {
           paperList
         });
       }
+      if (dtPaper.kind === 'usb-escpr') {
+        const w = Number(search.get('w')) || 0, h = Number(search.get('h')) || 0;
+        const ep = w > 0 && h > 0 ? epsonBorderlessPaper(w, h) : null;
+        const paperList = EPSON_BORDERLESS_PAPERS.map((s) => ({ key: s.key, name: s.name, w: s.wMm, h: s.hMm, borderless: true }));
+        return json({
+          ok: true,
+          known: true,
+          match: ep
+            ? { name: ep.name + ' (sent straight over USB · borderless)', borderless: true, isDefault: false }
+            : (w > 0 && h > 0 ? { name: `${Math.round(Math.min(w, h))}×${Math.round(Math.max(w, h))} mm (sent straight over USB)`, borderless: false, isDefault: false } : null),
+          def: '',
+          sizes: paperList.map((s) => s.name),
+          paperList
+        });
+      }
       // A printer used straight over IPP (Wi-Fi or IPP-over-USB) names its own papers: say which one this booth size will go on.
       const caps = await ippCaps(dtPaper.ip, dtPaper.port, dtPaper.path, 3000, dtPaper.transport);
       if (!caps) return json({ ok: true, known: false });
@@ -2146,7 +2208,23 @@ export async function handleHelper(req, path, search) {
             await usbSelphyPrint(dp.entry, built.map((b) => b.data), selphyPrintOpts);
             log('Direct USB SELPHY print on ' + name + ': ' + built[0].spec.name + ' (' + built.length + ' page' + (built.length === 1 ? '' : 's') + ')');
           })
-          : dp
+          : dp && dp.kind === 'usb-escpr'
+            ? prev.then(async () => {
+              if (!buildEscprJob) throw new Error('Could not prepare the photo for the Epson USB printer.');
+              const wMm = Number(body.widthMm) || 101.6, hMm = Number(body.heightMm) || 152.4;
+              const isL8050 = isEpsonL8050Name(name + ' ' + ((dp.entry && dp.entry.name) || ''));
+              const built = buffers.map((it) => buildEscprJob(it.buf, {
+                widthMm: wMm,
+                heightMm: hMm,
+                borderless: opts.borderless !== false,
+                mediaType: opts.mediaType,
+                quality,
+                isL8050
+              }));
+              await usbEscprPrint(dp.entry, built.map((b) => b.data), escprPrintOpts);
+              log('Direct USB Epson ESC/P-R print on ' + name + ': ' + (built[0].geo.paper ? built[0].geo.paper.name : `${Math.round(wMm)}×${Math.round(hMm)} mm`) + (built[0].geo.useBleed ? ' (borderless)' : '') + ' (' + built.length + ' page' + (built.length === 1 ? '' : 's') + ')');
+            })
+            : dp
             ? prev.then(async () => {
               // No driver: each page goes straight over IPP (Wi-Fi or IPP-over-USB) as JPEG or PWG Raster.
               for (let bi = 0; bi < buffers.length; bi++) {
@@ -2200,4 +2278,4 @@ export function stopHelper() {
   gopro.reset().catch(() => { });
   if (macCamP) macCamP.then((m) => m.reset()).catch(() => { });
 }
-export const _helperTest = { pickPaper, sizeFromName, formatCapsLabel, pickGlossyMediaType, decodePpdString, parsePpdChoiceLabels, parseCupsOptionsOutput, pickCupsDriverQualityOptions, pickDyeSubCupsCutOption, isAirPrintFromInfo, MAC_EPSON_L8050_CHOICE_LABELS, isSplitPaperName, DYE_SUB, IS_SELPHY, refreshUsbDirect, installedAs, usbDirect, hotFolderStore, PAPER_CACHE, CAPS_CACHE };
+export const _helperTest = { pickPaper, sizeFromName, formatCapsLabel, pickGlossyMediaType, decodePpdString, parsePpdChoiceLabels, parseCupsOptionsOutput, pickCupsDriverQualityOptions, pickDyeSubCupsCutOption, isAirPrintFromInfo, MAC_EPSON_L8050_CHOICE_LABELS, isSplitPaperName, DYE_SUB, IS_SELPHY, refreshUsbDirect, installedAs, codeMatchesQueueName, directTarget, usbDirect, hotFolderStore, PAPER_CACHE, CAPS_CACHE };

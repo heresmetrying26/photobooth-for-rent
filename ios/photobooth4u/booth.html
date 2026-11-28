@@ -3848,6 +3848,81 @@
       word-break: break-all;
     }
 
+    .desk-res-printer {
+      font: 700 11.5px 'Manrope', sans-serif;
+      color: #16683f;
+      background: #e6f6ed;
+      border: 1px solid #c6e8d5;
+      border-radius: 8px;
+      padding: 5px 9px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .desk-res-printer.warn {
+      color: #8a4b00;
+      background: #fff4df;
+      border-color: #f3d299;
+    }
+
+    .desk-res-printbar {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+      flex-wrap: wrap;
+    }
+
+    .desk-copies-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff;
+      border: 1px solid #c6e8d5;
+      border-radius: 10px;
+      padding: 4px 7px;
+      flex: none;
+    }
+
+    .desk-copies-lbl {
+      font: 700 11.5px 'Manrope', sans-serif;
+      color: #4a444d;
+      padding-left: 2px;
+    }
+
+    .desk-copies-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid #d7d2db;
+      background: #faf9fb;
+      color: #1C1A1E;
+      font: 800 15px/1 'Manrope', sans-serif;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .desk-copies-btn:hover:not(:disabled) {
+      background: #f0ebf4;
+    }
+
+    .desk-copies-btn:disabled {
+      opacity: .42;
+      cursor: not-allowed;
+    }
+
+    .desk-copies-val {
+      min-width: 18px;
+      text-align: center;
+      font: 800 14px 'Manrope', sans-serif;
+      color: #1C1A1E;
+    }
+
     /* Photoman Template Maker & Tabbed Photographer Desk */
     .desk-studio-ov[data-desk-tab="deskSecQueue"] #deskSecTemplate,
     .desk-studio-ov[data-desk-tab="deskSecQueue"] #deskSecConnect,
@@ -30958,10 +31033,11 @@
           </div>
 
           <div class="desk-res-card" id="deskResCard" hidden>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
               <b style="font-size:13.5px;color:#145a35;" id="deskResTitle">🎉 Ready to Print &amp; Share</b>
               <span class="spin-pill" id="deskResMeta" style="background:#d6f1e2;color:#16683f;">Session #1</span>
             </div>
+            <div class="desk-res-printer" id="deskResPrinter" hidden></div>
             <div class="desk-res-row">
               <img class="desk-res-thumb" id="deskResThumb" alt="Finished print preview" hidden>
               <div class="desk-res-qrs">
@@ -30977,9 +31053,17 @@
                 </div>
               </div>
             </div>
+            <div class="desk-res-printbar">
+              <div class="desk-copies-wrap" id="deskResCopiesWrap" title="Choose how many copies to print">
+                <span class="desk-copies-lbl">Copies</span>
+                <button type="button" class="desk-copies-btn" id="deskResCopiesMinus" aria-label="Fewer copies">−</button>
+                <span class="desk-copies-val" id="deskResCopiesVal">1</span>
+                <button type="button" class="desk-copies-btn" id="deskResCopiesPlus" aria-label="More copies">+</button>
+              </div>
+              <button type="button" class="desk-btn primary" id="deskResPrintBtn" style="flex:1;min-width:120px;">🖨️ Print (1)</button>
+            </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button type="button" class="desk-btn primary" id="deskResPrintBtn" style="flex:1;min-width:110px;">🖨️ Print</button>
-              <button type="button" class="desk-btn" id="deskResShowBoothBtn" title="Send this result to the main booth screen">📺 Show on Booth</button>
+              <button type="button" class="desk-btn" id="deskResShowBoothBtn" style="flex:1;" title="Send this result to the main booth screen">📺 Show on Booth</button>
               <button type="button" class="desk-btn" id="deskResDoneBtn">Done</button>
             </div>
           </div>
@@ -51438,7 +51522,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       let lanStationCfg = loadLanStationCfg();
       let lanModeBusy = 0, lanModeSeq = 0;
-      function saveLanStationCfg() { try { localStorage.setItem(LAN_STATION_KEY, JSON.stringify(lanStationCfg)); } catch (e) { } }
+      function saveLanStationCfg() {
+        try { localStorage.setItem(LAN_STATION_KEY, JSON.stringify(lanStationCfg)); } catch (e) { }
+        try { if (typeof deskNotifyPrinterChanged === 'function') deskNotifyPrinterChanged(); } catch (e) { }
+      }
       function parseLanStationAddr(raw) {
         const cleaned = String(raw || '').trim().replace(/^https?:\/\//i, '').split('/')[0].trim();
         const m = /^(\d{1,3}(?:\.\d{1,3}){3})(?::(\d{1,5}))?$/.exec(cleaned);
@@ -51659,6 +51746,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         try { localStorage.setItem(PRINTER_MAP_KEY, JSON.stringify(printerMap)); } catch (e) { }
         try { if (typeof printPreviewOk !== 'undefined') delete printPreviewOk[printPreviewKey()]; printPrefs.preview = true; } catch (e) { }
         try { if (typeof reprintSyncExternalConfig === 'function') reprintSyncExternalConfig(false); } catch (e) { }
+        try { if (typeof deskNotifyPrinterChanged === 'function') deskNotifyPrinterChanged(); } catch (e) { }
       }
       function instaxNames() { try { return window._instax ? window._instax.names() : []; } catch (e) { return []; } }
       function isInstaxPrinter(n) { try { return !!(window._instax && window._instax.isInstaxName(n)); } catch (e) { return false; } }
@@ -51681,7 +51769,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (k !== plain && forceStrip !== true && driverPaperMap[plain]) return driverPaperMap[plain];
         return '';
       }
-      function saveDriverPaperMap() { try { localStorage.setItem(DRIVER_PAPER_KEY, JSON.stringify(driverPaperMap)); } catch (e) { } }
+      function saveDriverPaperMap() {
+        try { localStorage.setItem(DRIVER_PAPER_KEY, JSON.stringify(driverPaperMap)); } catch (e) { }
+        try { if (typeof deskNotifyPrinterChanged === 'function') deskNotifyPrinterChanged(); } catch (e) { }
+      }
       const capsChecks = {};
       // The first choice of the paper / media type list. Empty = Auto: a printer that prints borderless prints on its glossy photo paper type
       // (the app works it out, autoMedia says which), any other printer keeps the driver's own. 'driver' = leave the driver's paper type alone.
@@ -52377,7 +52468,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             const label = document.createElement('span');
             label.style.cssText = 'flex:1;min-width:160px;';
             if (u.usbDirectName) {
-              label.textContent = (u.name || 'USB Printer') + (u.isSelphy && !u.hasIppUsb ? ' · USB (driverless Canon SELPHY)' : u.isDnp && !u.hasIppUsb ? ' · USB (driverless DNP · auto 2×6 cut)' : ' · USB (driverless IPP-over-USB)');
+              label.textContent = (u.name || 'USB Printer') + (u.isSelphy && !u.hasIppUsb ? ' · USB (driverless Canon SELPHY)' : u.isDnp && !u.hasIppUsb ? ' · USB (driverless DNP · auto 2×6 cut)' : u.isEpsonEscpr && !u.hasIppUsb ? ' · USB (driverless Epson)' : ' · USB (driverless IPP-over-USB)');
               const b = document.createElement('button');
               b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;';
               b.textContent = 'Use this printer';
@@ -53024,6 +53115,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         helper = { ok: false, printers: [], checked: 0 };
         fillPrinterSelect();
         checkHelper(true);
+        try { if (typeof deskNotifyPrinterChanged === 'function') deskNotifyPrinterChanged(); } catch (e) { }
       });
       // Sends the pages to the Print Helper. Returns true if it printed.
       function helperAtLeast(v) {
@@ -53070,6 +53162,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (first) localStorage.setItem(SECOND_KEY, JSON.stringify(Object.assign({ open: true }, first)));
           else localStorage.removeItem(SECOND_KEY);
         } catch (e) { }
+        try { if (typeof deskNotifyPrinterChanged === 'function') deskNotifyPrinterChanged(); } catch (e) { }
       }
       function optsOfPrinter(name) {
         const map = typeof printOptsMap !== 'undefined' && printOptsMap ? printOptsMap : {};
@@ -53962,12 +54055,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             return c;
           });
           const lanJpegQ = (lanStationActive() && typeof isLowRamIos === 'function' && isLowRamIos()) ? 0.90 : 0.94;
+          const selphyLossless = !lanStationActive() && !paper.receipt && typeof isSelphyName === 'function' && isSelphyName(name);
           let encodedHelperPages;
           try {
             const seenPageUrls = new Map();
             encodedHelperPages = helperPages.map(c => {
               if (seenPageUrls.has(c)) return seenPageUrls.get(c);
-              const u = (c && c._pbJpeg) ? c.toDataURL('image/jpeg', lanJpegQ) : (paper.receipt ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', lanStationActive() ? lanJpegQ : 0.95));
+              const u = (c && c._pbJpeg) ? c.toDataURL('image/jpeg', lanJpegQ) : ((paper.receipt || selphyLossless) ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', lanStationActive() ? lanJpegQ : 0.95));
               seenPageUrls.set(c, u);
               return u;
             });
@@ -54284,6 +54378,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         printSize = b.dataset.size;
         try { localStorage.setItem('pb_print_paper', printSize); } catch (e) { }
         refreshPrintUI();
+        try { if (typeof deskNotifyPrinterChanged === 'function') deskNotifyPrinterChanged(); } catch (e) { }
       });
       function addOwnPaperKey(key) {
         if (!key || !paperFor(key)) return false;
@@ -54300,6 +54395,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (prevPrinter && !printerFor(key)) { printerMap[printerKey(key)] = prevPrinter; savePrinterMap(); }
         showToast(paperFor(key).name + ' is now the print size' + (prevPrinter ? ' on ' + prevPrinter : '') + '.' + (prevPrinter ? '' : ' Pick its printer below.'), 4500);
         refreshPrintUI();
+        try { if (typeof deskNotifyPrinterChanged === 'function') deskNotifyPrinterChanged(); } catch (e) { }
         return true;
       }
       document.getElementById('csAdd').addEventListener('click', () => {
@@ -54902,10 +54998,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return !!(window.__PBNet && typeof window.__PBNet.supportsL8050HiRes === 'function' && window.__PBNet.supportsL8050HiRes());
         } catch (e) { return false; }
       }
-      // Epson L8050 on Android, 4x6 sheet:
+      // Epson L8050 on Android / iPad, 4x6 sheet:
       //   - Opt-in "High 720 dpi (L8050 4x6)" on ESC/P-R (USB, Wi-Fi :9100, or LPD :515): render at 720 dpi (2880 x 4320, 1:1 with setj).
       //   - Default "High (360 dpi)" on ESC/P-R (USB, Wi-Fi :9100, or LPD :515): render at 360 dpi (1440 x 2160, 1:1 with setj — no 1.2x upscale blur).
-      //   - Default "High" on IPP (USB or Wi-Fi): render at 600 dpi (2400 x 3600) with 600 dpi JFIF header for sharper photo output.
+      //   - IPP (USB or Wi-Fi): stay at standard 300 dpi (1200 x 1800 -> 1264 x 1833 bleed). Sending 600 dpi (2526 x 3666, ~9.3 MP)
+      //     stalls the L8050's low-RAM embedded IPP JPEG decoder (blinking LED for 10+ min and 0x0507 server-error-busy on retries).
       function l8050DpiFor(paper) {
         try {
           const p = wifiPrinter;
@@ -54915,7 +55012,6 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const lowIos = !!(window && window.__PB && window.__PB.iosLowRam);
           if (o.quality === 'high720' && (p.epsonL || p.escpr || (p.ipp && epsonLNetPrinter(p)))) return lowIos ? 360 : 720;
           if ((p.epsonL || p.escpr) && !p.ipp && (o.quality === 'high' || !o.quality)) return 360;
-          if (p.ipp && (o.quality === 'high' || !o.quality)) return lowIos ? 0 : 600;
           return 0;
         } catch (e) { return 0; }
       }
@@ -55303,6 +55399,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         station.checked = 0;
         checkStation();
         try { refreshPrintUI(); refreshPrintSummary(); } catch (e) { }
+        try { if (typeof deskNotifyPrinterChanged === 'function') deskNotifyPrinterChanged(); } catch (e) { }
       }
       async function checkStation() {
         if (!useStation()) { refreshOnlineStationModeUI(); return station; }
@@ -55517,7 +55614,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (document.getElementById('ppvNever').checked) { printPrefs.preview = false; printPrefsChanged(); }
         const dCtx = ppv.deskCtx || null; ppv.deskCtx = null;
         closePrintPreview();
-        if (dCtx && typeof deskRunWithBoothCtx === 'function') {
+        if (dCtx && typeof deskPrintCtx === 'function') {
+          deskLastManualPrintAt = 0;
+          deskPrintCtx(dCtx, ppv.auto, ppv.copies);
+        } else if (dCtx && typeof deskRunWithBoothCtx === 'function') {
           deskRunWithBoothCtx(dCtx, () => printCurrentPhoto(ppv.auto, ppv.copies));
         } else {
           printCurrentPhoto(ppv.auto, ppv.copies);
@@ -55557,8 +55657,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function epsonLNetPrinter(p) { return !!(p && p.ip && !p.usb && !p.dialog && (isEpsonL8050(p) || EPSON_L_NET_NAME.test(p.name || ''))); }
       // Printers (by address) that refused the standard job but took Epson's own: later prints in this app session go straight to it.
       const wifiEscprFirst = {};
-      // An error that means the printer may already have the job (it was printing, or took too long): never send the photo twice.
-      function wifiJobMayHavePrinted(e) { return /stopped answering while printing|took too long to answer/i.test((e && e.message) || ''); }
+      // An error that means the printer may already have the job (it was printing, busy with a prior job, or took too long): never send the photo twice.
+      function wifiJobMayHavePrinted(e) { return /stopped answering while printing|took too long to answer|still busy|code 0x507|server-error-busy/i.test((e && e.message) || ''); }
       // An error that means nothing reached the printer: the other way of sending can still be tried.
       // ("connection reset" / "broken pipe" are NOT in this list: those happen after the photo started to go out.)
       function wifiJobNeverSent(e) { return /could not reach|failed to connect|connection refused|refused the connection|connect timed out|econnrefused|etimedout|ehostunreach|enetunreach|unreachable|no route to host|did not answer within/i.test((e && e.message) || ''); }
@@ -55574,9 +55674,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           // is 2.7 mm left of and 0.8 mm above the sheet, so the picture is sent on a page that size (printer/epson-l8050.js).
           const l8050Page = (cv) => { try { return window._epsonL8050 && window._epsonL8050.applies(p, paper, wo, cv) ? window._epsonL8050.bleedPage(cv) : cv; } catch (e) { return cv; } };
           const pageDpi = (all[0] && all[0]._pbDpi) || 0;
+          const ippJpegQ = (pageDpi >= 600 || (typeof isSelphyName === 'function' && isSelphyName(p && p.name)) || (typeof isEpsonL8050 === 'function' && isEpsonL8050(p))) ? 0.95 : 0.92;
           const pack = wifiPackPages(all, cv => {
             const pg = l8050Page(cv);
-            try { return pg.toDataURL('image/jpeg', pageDpi >= 600 ? 0.94 : 0.92); }
+            try { return pg.toDataURL('image/jpeg', ippJpegQ); }
             finally { if (pg && pg !== cv) pbReleaseCanvas(pg); }
           });
           const ippOpts = Object.assign({}, wo,
@@ -55587,7 +55688,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         };
         if (!epsonLNetPrinter(p) || typeof window.__PBNet.printEscpr !== 'function') return ippRun();
         const rawRun = () => {
-          const pack = wifiPackPages(all, cv => cv.toDataURL('image/jpeg', cv.width >= 2000 ? 0.95 : 0.92));
+          const pack = wifiPackPages(all, cv => cv.toDataURL('image/jpeg', (cv.width >= 2000 || isEpsonL8050(p)) ? 0.95 : 0.92));
           const escprOpts = Object.assign({}, wo, {
             borderless: !!(wo.borderless && epsonEscprBorderlessModel(Object.assign({}, p, { escpr: true })) && epsonEscprBorderlessOk(paper)),
             printerName: p.name || '',
@@ -55691,6 +55792,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         // own default (printerBorderlessKnown / wifiDefaultFor below) still applies to it; one chosen as "Printer default" stays ''.
         wifiOptsMap[k] = Object.assign({}, wifiOptsMap[k] || wifiOptsMap[p.ip] || {}, { [key]: val });
         try { localStorage.setItem(WIFI_OPTS_MAP_KEY, JSON.stringify(wifiOptsMap)); } catch (e) { }
+        try { if (typeof deskNotifyPrinterChanged === 'function') deskNotifyPrinterChanged(); } catch (e) { }
       }
       // The printer chosen for each paper size (Android). Sizes without their own printer use the last one picked.
       const WIFI_SIZE_MAP_KEY = 'pb_wifi_printer_by_size';
@@ -55940,9 +56042,22 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       function wifiSave(p) {
         // The printer is picked for the paper size on screen (so Brother can do A4 while the Epson does 4x6); the last one
         // picked also covers every size that has no printer of its own. Forgetting clears this size and the shared one.
+        // Also keep the strip:<size> <-> <size> sibling slot in sync when switching connections/modes on a non-DNP printer
+        // (e.g. Epson L8050 Wi-Fi <-> USB or IPP <-> ESC/P-R) so switching between Strip and 4R never jumps back to a stale printer.
         const sk = wifiSizeKey();
-        if (p) { if (sk) wifiSizeMap[sk] = p; wifiDefault = p; }
-        else { if (sk) delete wifiSizeMap[sk]; wifiDefault = null; }
+        const sib = sk ? (sk.startsWith('strip:') ? sk.slice(6) : ('strip:' + sk)) : '';
+        if (p) {
+          if (sk) {
+            wifiSizeMap[sk] = p;
+            const prevSib = sib ? wifiSizeMap[sib] : null;
+            if (prevSib && !prevSib.dnp && !p.dnp) wifiSizeMap[sib] = p;
+          }
+          wifiDefault = p;
+        } else {
+          if (sk) delete wifiSizeMap[sk];
+          if (sib && wifiSizeMap[sib]) delete wifiSizeMap[sib];
+          wifiDefault = null;
+        }
         wifiPrinter = p || null;
         try { localStorage.setItem(WIFI_SIZE_MAP_KEY, JSON.stringify(wifiSizeMap)); } catch (e) { }
         try { if (p) localStorage.setItem(WIFI_PRINTER_KEY, JSON.stringify(p)); else localStorage.removeItem(WIFI_PRINTER_KEY); } catch (e) { }
@@ -55955,6 +56070,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (p && (p.borderless || (printerBorderlessKnown(p) && (epsonLUsbIpp(p) || epsonLBorderlessModel(p) || epsonEscprBorderlessModel(p) || photoSheetSize())))) { printPrefs.borderless = true; try { borderlessToggle.checked = true; } catch (e) { } try { if (p.name && window._pfSeedBorderless) window._pfSeedBorderless(p.name); } catch (e) { } }
         if (p && p.ipp && !p.selphy && /selphy|\bcp[\s_-]?(?:820|910|1000|1200|1300|1500)\b|canon.*\bcp\s?\d{3,4}\b/i.test(p.name || '')) { printPrefs.borderless = true; try { borderlessToggle.checked = true; } catch (e) { } try { if (p.name && window._pfSeedBorderless) window._pfSeedBorderless(p.name); } catch (e) { } }
         try { printPrefsChanged(); } catch (e) { }
+        try { if (typeof deskNotifyPrinterChanged === 'function') deskNotifyPrinterChanged(); } catch (e) { }
       }
       // An Instax Link printer as the tablet's printer for a paper size (it is not found by the Wi-Fi / USB scan).
       function instaxWifiObj(name) {
@@ -56955,7 +57071,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (p.escpr) {
           // Epson ESC/P-R path (Epson L210 / L805 / L8050 and similar, over USB, Wi-Fi :9100, or LPD :515 /PASSTHRU): colour, 3 mm borders,
           // or borderless on photo paper when the Borderless switch is on and this model and paper size can do it.
-          const packE = wifiPackPages(all, cv => cv.toDataURL('image/jpeg', cv.width >= 2000 ? 0.95 : 0.92));
+          const packE = wifiPackPages(all, cv => cv.toDataURL('image/jpeg', (cv.width >= 2000 || isEpsonL8050(p)) ? 0.95 : 0.92));
           const escprOpts = Object.assign({}, wo, {
             borderless: !!(wo.borderless && epsonEscprBorderlessModel(p) && epsonEscprBorderlessOk(paper)),
             printerName: p.name || '',
@@ -58047,6 +58163,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (byUser) autoPrintDecided = true;
         updateAutoPrintUI();
         if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        try { if (typeof deskNotifyPrinterChanged === 'function') deskNotifyPrinterChanged(); } catch (e) { }
       }
       autoPrintToggle.addEventListener('change', () => {
         setAutoPrint(autoPrintToggle.checked, true);
@@ -60531,11 +60648,39 @@ function renderTabletBridgeSetup(info) {
         }
       }
 
+      // Active printer name for the current print target (used for output-specific print polish such as Canon SELPHY sharpening).
+      function activePrintTargetName(sizeKey) {
+        try {
+          var fp = (typeof scopedPrinterName !== 'undefined' && scopedPrinterName) ? scopedPrinterName : (typeof forcedPrinterName === 'function' ? forcedPrinterName() : '');
+          if (fp) return fp;
+          var sk = sizeKey || (typeof printSize !== 'undefined' ? printSize : '');
+          return (typeof printerFor === 'function' && sk ? (printerFor(sk) || '') : '') ||
+            (typeof tabletPrinterName === 'function' && sk ? (tabletPrinterName(sk) || '') : '');
+        } catch (e) { return ''; }
+      }
+      // Print-page output sharpening for Photoman prints and Canon SELPHY dye-sub prints when camQPrintSharpen did not already run.
+      // Matches the crispness of DSLR Photobooth hard copies without touching digital/QR saves or double-sharpening DSLR pages.
+      function pbPrintOutputSharpen(c) {
+        if (!c || c._pbSharp || c._pbToneDone || typeof pbSharpenPage !== 'function') return;
+        if (typeof printSize !== 'undefined' && printSize && typeof isReceiptPaper === 'function' && isReceiptPaper(printSize)) return;
+        if (c.width < 900 || c.height < 900 || c.width * c.height > 16000000) return;
+        var isPm = (typeof isPhotomanSave === 'function' && isPhotomanSave());
+        var targetName = activePrintTargetName(typeof printSize !== 'undefined' ? printSize : '');
+        var isSelphy = (typeof isSelphyName === 'function' && isSelphyName(targetName));
+        if (!isPm && !isSelphy) return;
+        var amount = (isPm && isSelphy) ? 0.45 : (isSelphy ? 0.38 : 0.35);
+        c._pbSharp = true;
+        var ctx = c.getContext('2d'), id = ctx.getImageData(0, 0, c.width, c.height);
+        pbSharpenPage(id.data, c.width, c.height, amount);
+        ctx.putImageData(id, 0, 0);
+      }
+
       // Lightness and colour correction, applied once to the page that goes to the printer and to the print preview.
       // Every page is a fresh canvas, so it is changed in place. The camera, the screen and the digital copies are untouched.
       function printAdjust(c) {
         try { edgeAdjust(c); } catch (e) { }
         try { camQPrintSharpen(c); } catch (e) { }
+        try { pbPrintOutputSharpen(c); } catch (e) { }
         if (!c || c._pbToneDone || !hasColorAdj()) return c;
         var ctx = c.getContext('2d'), w = c.width, h = c.height;
         if (!w || !h) return c;
@@ -60714,6 +60859,7 @@ function renderTabletBridgeSetup(info) {
       function saveProfileMaps() {
         try { localStorage.setItem(COLOR_ADJ_MAP_KEY, JSON.stringify(colorAdjMap)); } catch (e) { }
         try { localStorage.setItem(PRINT_OPTS_MAP_KEY, JSON.stringify(printOptsMap)); } catch (e) { }
+        try { if (typeof deskNotifyPrinterChanged === 'function') deskNotifyPrinterChanged(); } catch (e) { }
       }
       function profilePrinters() {
         var out = [], add = function (n) { if (n && out.indexOf(n) < 0) out.push(n); };
@@ -64153,6 +64299,150 @@ function renderTabletBridgeSetup(info) {
           }
         } catch (e) { }
       }
+      var DESK_PRINTER_STORAGE_KEYS = [
+        PRINTER_MAP_KEY, DRIVER_PAPER_KEY, EXTRAS_PRINTER_KEY, SECOND_KEY,
+        PRINT_OPTS_MAP_KEY, COLOR_ADJ_MAP_KEY, COLOR_ADJ_KEY,
+        WIFI_PRINTER_KEY, WIFI_SIZE_MAP_KEY, WIFI_OPTS_KEY, WIFI_OPTS_MAP_KEY,
+        HELPER_KEY, LAN_STATION_KEY, ROUTE_KEY, 'pb_print_paper'
+      ];
+      function deskBuildPrinterSnapshot() {
+        try {
+          return {
+            printerMap: Object.assign({}, printerMap || {}),
+            driverPaperMap: Object.assign({}, driverPaperMap || {}),
+            printOptsMap: JSON.parse(JSON.stringify(printOptsMap || {})),
+            colorAdjMap: JSON.parse(JSON.stringify(colorAdjMap || {})),
+            colorAdj: Object.assign(zeroAdj(), colorAdj || {}),
+            printSize: typeof printSize !== 'undefined' ? (printSize || '') : '',
+            printPrefs: typeof cleanPrintPrefs === 'function' ? cleanPrintPrefs(printPrefs) : Object.assign({}, printPrefs || {}),
+            autoPrint: !!(typeof autoPrint !== 'undefined' && autoPrint),
+            helperOn: !!(typeof helperOn !== 'undefined' && helperOn),
+            printRoute: typeof printRoute !== 'undefined' ? printRoute : 'here',
+            wifiPrinter: wifiPrinter ? Object.assign({}, wifiPrinter) : null,
+            wifiDefault: wifiDefault ? Object.assign({}, wifiDefault) : null,
+            wifiSizeMap: JSON.parse(JSON.stringify(wifiSizeMap || {})),
+            wifiOptsShared: Object.assign({ color: '', quality: '', media: '' }, wifiOptsShared || {}),
+            wifiOptsMap: JSON.parse(JSON.stringify(wifiOptsMap || {})),
+            lanStationCfg: typeof loadLanStationCfg === 'function' ? Object.assign({}, lanStationCfg || loadLanStationCfg()) : null
+          };
+        } catch (e) { return null; }
+      }
+      function deskActivePrinterLabel() {
+        try {
+          var sz = (typeof printSize !== 'undefined' && printSize) ? printSize : '';
+          var paper = sz && typeof paperFor === 'function' ? paperFor(sz) : null;
+          var pLabel = paper ? paper.name : (sz || '');
+          if (typeof useStation === 'function' && useStation()) return { ok: true, text: 'Print Station' + (pLabel ? ' \u00B7 ' + pLabel : '') };
+          var pname = typeof activePrintTargetName === 'function' ? activePrintTargetName(sz) : '';
+          if (pname) return { ok: true, text: pname + (pLabel ? ' \u00B7 ' + pLabel : '') };
+          if (typeof lanStationQueueNoPrinter === 'function' && lanStationQueueNoPrinter()) return { ok: true, text: 'Laptop Print Station (Queue)' + (pLabel ? ' \u00B7 ' + pLabel : '') };
+          if (pLabel) return { ok: false, text: 'No printer set for ' + pLabel + ' \u2014 pick one in Setup \u2192 Printer' };
+          return { ok: false, text: 'No paper size / printer selected in Setup \u2192 Printer' };
+        } catch (e) { return { ok: false, text: '' }; }
+      }
+      function deskUpdatePrinterBadge() {
+        var el = document.getElementById('deskResPrinter');
+        if (!el) return;
+        var info = deskActivePrinterLabel();
+        if (!info.text) { el.hidden = true; return; }
+        el.hidden = false;
+        el.className = 'desk-res-printer' + (info.ok ? '' : ' warn');
+        el.textContent = (info.ok ? '\uD83D\uDDA8\uFE0F Printer: ' : '\u26A0 ') + info.text;
+      }
+      function deskApplyPrinterSnapshot(snap) {
+        if (!snap || typeof snap !== 'object') return;
+        var prevGuard = deskApplyingRemoteSetup;
+        deskApplyingRemoteSetup = true;
+        try {
+          if (snap.printerMap && typeof snap.printerMap === 'object') printerMap = Object.assign({}, snap.printerMap);
+          if (snap.driverPaperMap && typeof snap.driverPaperMap === 'object') driverPaperMap = Object.assign({}, snap.driverPaperMap);
+          if (snap.printOptsMap && typeof snap.printOptsMap === 'object') printOptsMap = JSON.parse(JSON.stringify(snap.printOptsMap));
+          if (snap.colorAdjMap && typeof snap.colorAdjMap === 'object') colorAdjMap = JSON.parse(JSON.stringify(snap.colorAdjMap));
+          if (snap.colorAdj && typeof snap.colorAdj === 'object') {
+            colorAdj = Object.assign(zeroAdj(), snap.colorAdj);
+            window._colorAdj = colorAdj;
+          }
+          if (snap.wifiSizeMap && typeof snap.wifiSizeMap === 'object') wifiSizeMap = JSON.parse(JSON.stringify(snap.wifiSizeMap));
+          if (snap.wifiOptsShared && typeof snap.wifiOptsShared === 'object') wifiOptsShared = Object.assign({ color: '', quality: '', media: '' }, snap.wifiOptsShared);
+          if (snap.wifiOptsMap && typeof snap.wifiOptsMap === 'object') wifiOptsMap = JSON.parse(JSON.stringify(snap.wifiOptsMap));
+          if ('wifiDefault' in snap) wifiDefault = snap.wifiDefault ? Object.assign({}, snap.wifiDefault) : null;
+          if ('wifiPrinter' in snap) wifiPrinter = snap.wifiPrinter ? Object.assign({}, snap.wifiPrinter) : null;
+          if (snap.lanStationCfg && typeof snap.lanStationCfg === 'object') lanStationCfg = Object.assign({}, snap.lanStationCfg);
+          if (snap.printRoute === 'station' || snap.printRoute === 'here') printRoute = snap.printRoute;
+          if (typeof snap.helperOn === 'boolean') {
+            helperOn = (LAPTOP_PRINT || lanStationActive()) ? true : snap.helperOn;
+            try { if (helperToggle) helperToggle.checked = helperOn; } catch (e) { }
+          }
+          if (typeof snap.printSize === 'string' && snap.printSize) {
+            if (printSize !== snap.printSize) soloPaper = null;
+            printSize = snap.printSize;
+          }
+          if (snap.printPrefs && typeof snap.printPrefs === 'object') {
+            printPrefs = cleanPrintPrefs(snap.printPrefs);
+          }
+          if (typeof snap.autoPrint === 'boolean') {
+            autoPrint = snap.autoPrint;
+            printPrefs.auto = autoPrint;
+          }
+          colorAdjKeyNow = null;
+          try { if (typeof wifiSyncForSize === 'function') wifiSyncForSize(); } catch (e) { }
+          try { if (window._syncColorAdjToPrinter) window._syncColorAdjToPrinter(); } catch (e) { }
+          try { if (typeof refreshPrintUI === 'function') refreshPrintUI(); } catch (e) { }
+          try { if (typeof refreshPrintSummary === 'function') refreshPrintSummary(); } catch (e) { }
+          deskUpdatePrinterBadge();
+          if (typeof deskRenderResultCard === 'function') deskRenderResultCard();
+          if (helperOn && typeof checkHelper === 'function') {
+            var wantP = typeof printSize !== 'undefined' && printSize ? printerFor(printSize) : '';
+            if (wantP && (!helper || !helper.ok || !Array.isArray(helper.printers) || !helper.printers.includes(wantP))) {
+              checkHelper(true).catch(function () { });
+            }
+          }
+        } catch (e) { }
+        finally { deskApplyingRemoteSetup = prevGuard; }
+      }
+      function deskSyncPrinterStateFromStorage() {
+        try {
+          var rd = function (k, fb) {
+            try { var raw = localStorage.getItem(k); return raw ? JSON.parse(raw) : fb; } catch (e) { return fb; }
+          };
+          var savedPaper = '';
+          try { savedPaper = localStorage.getItem('pb_print_paper') || ''; } catch (e) { }
+          var savedHelper = null;
+          try { var hv = localStorage.getItem(HELPER_KEY); if (hv !== null) savedHelper = hv === '1'; } catch (e) { }
+          var savedRoute = '';
+          try { savedRoute = localStorage.getItem(ROUTE_KEY) || ''; } catch (e) { }
+          var wDef = rd(WIFI_PRINTER_KEY, null);
+          var snap = {
+            printerMap: rd(PRINTER_MAP_KEY, {}) || {},
+            driverPaperMap: rd(DRIVER_PAPER_KEY, {}) || {},
+            printOptsMap: rd(PRINT_OPTS_MAP_KEY, {}) || {},
+            colorAdjMap: rd(COLOR_ADJ_MAP_KEY, {}) || {},
+            colorAdj: rd(COLOR_ADJ_KEY, null),
+            wifiDefault: wDef,
+            wifiPrinter: wDef,
+            wifiSizeMap: rd(WIFI_SIZE_MAP_KEY, {}) || {},
+            wifiOptsShared: rd(WIFI_OPTS_KEY, {}) || {},
+            wifiOptsMap: rd(WIFI_OPTS_MAP_KEY, {}) || {},
+            lanStationCfg: typeof loadLanStationCfg === 'function' ? loadLanStationCfg() : null
+          };
+          if (savedPaper) snap.printSize = savedPaper;
+          if (savedHelper !== null) snap.helperOn = savedHelper;
+          if (savedRoute === 'station' || savedRoute === 'here') snap.printRoute = savedRoute;
+          deskApplyPrinterSnapshot(snap);
+        } catch (e) { }
+      }
+      var deskPrinterBroadcastTimer = null;
+      function deskNotifyPrinterChanged() {
+        if (deskApplyingRemoteSetup) return;
+        if (!DESK_STANDALONE) {
+          clearTimeout(deskPrinterBroadcastTimer);
+          deskPrinterBroadcastTimer = setTimeout(function () {
+            var ps = deskBuildPrinterSnapshot();
+            if (ps) deskBroadcast({ type: 'printer-sync', printerState: ps });
+          }, 60);
+        }
+        try { deskUpdatePrinterBadge(); } catch (e) { }
+      }
       function deskSetupPayload() {
         try {
           return {
@@ -64160,6 +64450,7 @@ function renderTabletBridgeSetup(info) {
             settings: typeof snapshotSetup === 'function' ? snapshotSetup() : null,
             bgImageDataUrl: typeof bgImageDataUrl !== 'undefined' ? bgImageDataUrl : null,
             printSize: typeof printSize !== 'undefined' ? printSize : '',
+            printerState: deskBuildPrinterSnapshot(),
             boothState: typeof state !== 'undefined' ? state : 'idle',
             folderUrl: typeof getCachedFolderUrl === 'function' ? (getCachedFolderUrl() || '') : '',
             frameAssets: deskFrameAssetsMap(),
@@ -64178,7 +64469,7 @@ function renderTabletBridgeSetup(info) {
           }, 180);
         }
         if (!deskOverlay.hidden) {
-          try { deskTplUi(); deskSchedulePreview(); deskConnectRefresh(); } catch (e) { }
+          try { deskTplUi(); deskSchedulePreview(); deskConnectRefresh(); deskUpdatePrinterBadge(); } catch (e) { }
           try { if (typeof pmRenderStage === 'function' && deskOverlay.classList.contains('desk-maker-active')) pmRenderStage(); } catch (e) { }
         }
       }
@@ -64210,6 +64501,7 @@ function renderTabletBridgeSetup(info) {
           if (msg.pmTemplates) pmApplyRemoteTemplates(msg.pmTemplates, msg.pmAssets);
           if (typeof applySetup === 'function') applySetup(msg.settings, msg.bgImageDataUrl || null, { skipDesignSync: false });
           if (msg.printSize && typeof printSize !== 'undefined') { printSize = msg.printSize; try { refreshPrintUI(); } catch (e) { } }
+          if (msg.printerState) deskApplyPrinterSnapshot(msg.printerState);
           if (msg.folderUrl && typeof rememberFolderUrl === 'function') { try { rememberFolderUrl(msg.folderUrl); } catch (e) { } }
           if (msg.boothState) deskMainBoothState = msg.boothState;
           deskLastSetupSyncAt = Date.now();
@@ -64219,6 +64511,17 @@ function renderTabletBridgeSetup(info) {
           deskConnectRefresh();
         } catch (e) { }
         finally { deskApplyingRemoteSetup = false; }
+      }
+      if (DESK_STANDALONE) {
+        window.addEventListener('storage', function (ev) {
+          if (!ev || !ev.key || DESK_PRINTER_STORAGE_KEYS.indexOf(ev.key) >= 0) {
+            deskSyncPrinterStateFromStorage();
+          }
+        });
+        window.addEventListener('focus', function () {
+          deskSyncPrinterStateFromStorage();
+          deskBroadcast({ type: 'need-setup' });
+        });
       }
       async function deskWithPrintLock(fn) {
         var deadline = Date.now() + 18000;
@@ -64244,6 +64547,10 @@ function renderTabletBridgeSetup(info) {
             var p = deskSetupPayload(); if (p) deskBroadcast(p);
           } else if (m.type === 'setup-snapshot' && DESK_STANDALONE) {
             deskApplyRemoteSetup(m);
+          } else if (m.type === 'printer-sync' && DESK_STANDALONE) {
+            deskApplyPrinterSnapshot(m.printerState);
+            deskLastSetupSyncAt = Date.now();
+            deskSyncPillUi();
           } else if (m.type === 'pm-templates') {
             pmApplyRemoteTemplates(m.templates, m.assets);
           } else if (m.type === 'queue-updated') {
@@ -64278,7 +64585,8 @@ function renderTabletBridgeSetup(info) {
                 for (var i = 0; i < spots; i++) shots.push(await deskCanvas(picks[Math.min(i, picks.length - 1)]));
                 if (m.original) { raw = await quickDecode(picks[0].blob); try { deskApplyAdj(raw, picks[0].adj); } catch (e) { } }
                 closeDesk();
-                startDeskResult(shots, m.original ? { solo: true, original: raw, qrUrl: m.qrUrl || '', back: false } : { tpl: tpl, qrUrl: m.qrUrl || '', back: false });
+                var noAuto = m.noAutoPrint !== false;
+                startDeskResult(shots, m.original ? { solo: true, original: raw, qrUrl: m.qrUrl || '', back: false, noAutoPrint: noAuto } : { tpl: tpl, qrUrl: m.qrUrl || '', back: false, noAutoPrint: noAuto });
               })();
             });
           }
@@ -64859,15 +65167,40 @@ function renderTabletBridgeSetup(info) {
       function deskAddFiles(files) {
         [].forEach.call(files || [], function (f) { if (/^image\/(jpeg|png|webp)$/.test(f.type) || /\.(jpe?g|png|webp)$/i.test(f.name || '')) deskAdd(f, f.name); });
       }
+      // Halving-step bitmap downscale so high-MP DSLR imports stay crisp instead of softening/aliasing in a single drawImage pass.
+      function pbSteppedDecodeBitmap(bmp, maxSide) {
+        var bw = bmp.width, bh = bmp.height;
+        var k = Math.min(1, maxSide / Math.max(1, bw, bh));
+        var tw = Math.max(1, Math.round(bw * k)), th = Math.max(1, Math.round(bh * k));
+        var cur = bmp, cw = bw, ch = bh;
+        try {
+          while (cw > tw * 2 && ch > th * 2) {
+            var nw = Math.max(tw, Math.ceil(cw / 2)), nh = Math.max(th, Math.ceil(ch / 2));
+            var step = document.createElement('canvas'); step.width = nw; step.height = nh;
+            var sctx = step.getContext('2d');
+            sctx.imageSmoothingEnabled = true; sctx.imageSmoothingQuality = 'high';
+            sctx.drawImage(cur, 0, 0, cw, ch, 0, 0, nw, nh);
+            if (cur !== bmp) pbReleaseCanvas(cur);
+            cur = step; cw = nw; ch = nh;
+          }
+          var out = document.createElement('canvas'); out.width = tw; out.height = th;
+          var octx = out.getContext('2d', { willReadFrequently: true });
+          octx.imageSmoothingEnabled = true; octx.imageSmoothingQuality = 'high';
+          octx.drawImage(cur, 0, 0, cw, ch, 0, 0, tw, th);
+          return out;
+        } finally {
+          if (cur !== bmp) pbReleaseCanvas(cur);
+        }
+      }
       async function deskCanvas(it, tplOverride) {
         var pt = deskActivePmTemplate(tplOverride), useFilter = !(pt && pt.applyBoothFilter === false);
         var fSig = (useFilter ? ((typeof filterKey !== 'undefined' ? filterKey : 'none') + '|' + (typeof softSkin !== 'undefined' && softSkin ? 1 : 0)) : 'raw') + '|' + (typeof dateStamp !== 'undefined' && dateStamp ? 1 : 0) + '|' + JSON.stringify(it.adj || null);
         if (it.canvas && it._canvasSig === fSig) return it.canvas;
         var bmp;
         try { bmp = await createImageBitmap(it.blob, { imageOrientation: 'from-image' }); } catch (e) { bmp = await createImageBitmap(it.blob); }
-        var k = Math.min(1, 2200 / Math.max(bmp.width, bmp.height)), c = document.createElement('canvas');
-        c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
-        var ctx = c.getContext('2d', { willReadFrequently: true }); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(bmp, 0, 0, c.width, c.height); bmp.close();
+        var maxSide = (typeof isLowRamIos === 'function' && isLowRamIos()) ? 1920 : (LOCALSHARE ? Math.min(3600, offlineShotMaxPx()) : 2400);
+        var c;
+        try { c = pbSteppedDecodeBitmap(bmp, maxSide); } finally { try { bmp.close(); } catch (e) { } }
         try { deskApplyAdj(c, it.adj); } catch (e) { }
         if (useFilter) {
           if (typeof dateStamp !== 'undefined' && dateStamp) {
@@ -64925,7 +65258,11 @@ function renderTabletBridgeSetup(info) {
         deskBroadcast({ type: 'dock-badge', unseen: 0 });
         deskPhoneUi();
         deskConnectRefresh();
-        if (DESK_STANDALONE) deskBroadcast({ type: 'need-setup' });
+        if (DESK_STANDALONE) {
+          deskSyncPrinterStateFromStorage();
+          deskBroadcast({ type: 'need-setup' });
+        }
+        deskUpdatePrinterBadge();
       }
       function closeDesk() {
         var gm = document.getElementById('pmGuideModal');
@@ -65023,6 +65360,20 @@ function renderTabletBridgeSetup(info) {
           printSize = sv.printSize;
         }
       }
+      var deskCopies = 1;
+      var deskPrintBusy = false;
+      var deskLastManualPrintAt = 0;
+      function deskMaxCopies() {
+        try {
+          var room = (typeof maxCopies === 'function' && typeof printSize !== 'undefined' && printSize) ? maxCopies(printSize) : MAX_COPIES;
+          return Math.max(1, Math.min(MAX_COPIES, room > 0 ? room : MAX_COPIES));
+        } catch (e) { return MAX_COPIES; }
+      }
+      function deskSetCopies(n) {
+        var lim = deskMaxCopies();
+        deskCopies = Math.max(1, Math.min(lim, Math.floor(Number(n) || 1)));
+        deskRenderResultCard();
+      }
       function deskRenderResultCard() {
         var card = document.getElementById('deskResCard'); if (!card) return;
         if (!deskLast || !deskLast.live) { card.hidden = true; return; }
@@ -65031,7 +65382,18 @@ function renderTabletBridgeSetup(info) {
         var qrBox = document.getElementById('deskResQr'), qrNote = document.getElementById('deskResQrNote');
         var wWrap = document.getElementById('deskResWifiQrWrap'), wQr = document.getElementById('deskResWifiQr'), wNm = document.getElementById('deskResWifiName');
         var pBtn = document.getElementById('deskResPrintBtn'), sBtn = document.getElementById('deskResShowBoothBtn');
-        if (meta) meta.textContent = deskLast.printing ? 'Printing\u2026' : ('Session #' + (deskLast.sessionNumber || 1));
+        var cVal = document.getElementById('deskResCopiesVal'), cMin = document.getElementById('deskResCopiesMinus'), cPls = document.getElementById('deskResCopiesPlus');
+        var isBusy = !!printing || !!deskPrintBusy || !!(deskLast && deskLast.printing);
+        var printedN = (deskLast && deskLast.printedCopies) || (deskLastCtx && deskLastCtx.printedCopies) || 0;
+        var lim = deskMaxCopies();
+        if (deskCopies > lim) deskCopies = lim;
+        if (deskCopies < 1) deskCopies = 1;
+        if (meta) {
+          meta.textContent = isBusy
+            ? 'Printing\u2026'
+            : ('Session #' + (deskLast.sessionNumber || 1) + (printedN > 0 ? (' \u00B7 \u2713 Printed ' + printedN) : ''));
+        }
+        deskUpdatePrinterBadge();
         if (th) {
           if (deskLast.thumb) { th.src = deskLast.thumb; th.hidden = false; }
           else th.hidden = true;
@@ -65058,24 +65420,48 @@ function renderTabletBridgeSetup(info) {
             wWrap.hidden = true;
           }
         }
+        if (cVal) cVal.textContent = String(deskCopies);
+        if (cMin) cMin.disabled = isBusy || deskCopies <= 1;
+        if (cPls) cPls.disabled = isBusy || deskCopies >= lim;
         if (pBtn) {
-          pBtn.disabled = !deskLastCtx || !!printing;
-          pBtn.textContent = deskLast.printing ? 'Printing\u2026' : '\uD83D\uDDA8\uFE0F Print';
+          pBtn.disabled = !deskLastCtx || isBusy;
+          pBtn.textContent = isBusy
+            ? 'Printing\u2026'
+            : (printedN > 0 ? ('\uD83D\uDDA8\uFE0F Print again (' + deskCopies + ')') : ('\uD83D\uDDA8\uFE0F Print (' + deskCopies + ')'));
         }
         if (sBtn) sBtn.hidden = !deskLastCtx;
       }
-      async function deskPrintCtx(ctx, isAuto) {
-        if (!ctx) return false;
-        if (typeof printSize === 'undefined' || !printSize || !printSettings() || !printSettings().includes(printSize) || !sizeFitsLayout(printSize)) {
-          if (!isAuto) showToast('Set a matching paper size in Setup \u2192 Printer first.', 4000);
-          return false;
-        }
+      async function deskPrintCtx(ctx, isAuto, copiesOverride) {
+        if (!ctx || deskPrintBusy || printing) return false;
+        if (!isAuto && Date.now() - deskLastManualPrintAt < 1500) return false;
+        deskPrintBusy = true;
+        if (!isAuto) deskLastManualPrintAt = Date.now();
         if (deskLast) { deskLast.printing = true; deskRenderResultCard(); deskRemoteMark(); }
         try {
-          return await deskWithPrintLock(async function () {
-            return await deskRunWithBoothCtx(ctx, function () { return printCurrentPhoto(isAuto === true, printPrefs.copies); });
+          if (DESK_STANDALONE) {
+            deskSyncPrinterStateFromStorage();
+            if (helperOn && !useStation() && typeof checkHelper === 'function') {
+              var syncP = typeof printSize !== 'undefined' && printSize ? printerFor(printSize) : '';
+              if (syncP && (!helper || !helper.ok || !Array.isArray(helper.printers) || !helper.printers.includes(syncP))) {
+                try { await checkHelper(true); } catch (e) { }
+              }
+            }
+          }
+          if (typeof printSize === 'undefined' || !printSize || !printSettings() || !printSettings().includes(printSize) || !sizeFitsLayout(printSize)) {
+            if (!isAuto) showToast('Set a matching paper size in Setup \u2192 Printer first.', 4000);
+            return false;
+          }
+          var wantCopies = Math.max(1, Math.min(deskMaxCopies(), Math.floor(Number(copiesOverride) || (isAuto ? (printPrefs.copies || 1) : deskCopies) || 1)));
+          var ok = await deskWithPrintLock(async function () {
+            return await deskRunWithBoothCtx(ctx, function () { return printCurrentPhoto(isAuto === true, wantCopies); });
           });
+          if (ok) {
+            ctx.printedCopies = (ctx.printedCopies || 0) + wantCopies;
+            if (deskLast && deskLast.sessionNumber === ctx.sessionNum) deskLast.printedCopies = ctx.printedCopies;
+          }
+          return ok;
         } finally {
+          deskPrintBusy = false;
           if (deskLast) { deskLast.printing = false; deskRenderResultCard(); deskRemoteMark(); }
         }
       }
@@ -65115,13 +65501,13 @@ function renderTabletBridgeSetup(info) {
       function deskPushResultToBooth(ctx) {
         if (!ctx) return;
         if (DESK_STANDALONE) {
-          deskBroadcast({ type: 'show-on-booth', ids: ctx.itemIds, tpl: ctx.tpl, original: !!ctx.original, qrUrl: ctx.qrUrl || '', sessionNumber: ctx.sessionNum });
+          deskBroadcast({ type: 'show-on-booth', ids: ctx.itemIds, tpl: ctx.tpl, original: !!ctx.original, qrUrl: ctx.qrUrl || '', sessionNumber: ctx.sessionNum, noAutoPrint: true });
           showToast('Sent to the main booth screen.', 2500);
           return;
         }
         if (state === 'capturing') { showToast('Booth is busy with a guest right now.', 3000); return; }
         closeDesk();
-        startDeskResult(ctx.shots, ctx.original ? { solo: true, original: ctx.original, qrUrl: ctx.qrUrl || '', back: 'desk' } : { tpl: ctx.tpl, qrUrl: ctx.qrUrl || '', back: 'desk' });
+        startDeskResult(ctx.shots, ctx.original ? { solo: true, original: ctx.original, qrUrl: ctx.qrUrl || '', back: 'desk', noAutoPrint: true } : { tpl: ctx.tpl, qrUrl: ctx.qrUrl || '', back: 'desk', noAutoPrint: true });
       }
 
       // original = true: print the photo as it is (no frame); its QR still opens the framed version.
@@ -65134,6 +65520,7 @@ function renderTabletBridgeSetup(info) {
         deskExecBusy = true;
         deskMakeBtn.disabled = true; deskOrigBtn.disabled = true;
         try {
+          if (DESK_STANDALONE) deskSyncPrinterStateFromStorage();
           var tpl = original ? 'solo' : ((tplOverride && deskTplValid(tplOverride)) ? tplOverride : deskTplKey());
           var spots = original ? 1 : deskSpots(tpl), shots = [], raw = null;
           for (var i = 0; i < spots; i++) shots.push(await deskCanvas(picks[Math.min(i, picks.length - 1)], tpl));
@@ -65141,11 +65528,12 @@ function renderTabletBridgeSetup(info) {
           var itemIds = picks.map(function (p) { return p.id; });
           picks.forEach(function (p) { p.used = true; p.noAuto = true; });
           deskSel = [];
+          deskCopies = 1;
           deskScheduleIdbSave();
 
           if (deskShowBooth && !DESK_STANDALONE && state !== 'capturing') {
             closeDesk();
-            deskLast = { live: true, sessionNumber: 0, qrUrl: '', thumb: '', label: original ? 'Original photo' : deskTplLabel(tpl), printing: false, at: Date.now() };
+            deskLast = { live: true, sessionNumber: 0, qrUrl: '', thumb: '', label: original ? 'Original photo' : deskTplLabel(tpl), printing: false, printedCopies: 0, at: Date.now() };
             startDeskResult(shots, original ? { solo: true, original: raw } : { tpl: tpl });
             deskLast.sessionNumber = sessionNumber || 1; deskLast.thumb = deskResultThumb(); deskLast.at = Date.now();
             deskRemoteMark();
@@ -65161,13 +65549,13 @@ function renderTabletBridgeSetup(info) {
             withDeskTemplateContext(tpl, function (lk) { composeCanvas(lk, previewOut, shots); });
           }
           // pv / isOriginal: the picture the Live Output Preview shows after this print is made (the framed result, or the original).
-          var ctx = { tpl: tpl, original: raw, shots: shots, itemIds: itemIds, sessionNum: sessNum, qrUrl: '', pv: previewOut, isOriginal: !!(original && raw) };
+          var ctx = { tpl: tpl, original: raw, shots: shots, itemIds: itemIds, sessionNum: sessNum, qrUrl: '', pv: previewOut, isOriginal: !!(original && raw), printedCopies: 0 };
           deskLastCtx = ctx;
           deskLast = {
             live: true, sessionNumber: sessNum, qrUrl: '', qrErr: '',
             thumb: deskResultThumbFrom(previewOut),
             label: original ? 'Original photo' : deskTplLabel(tpl),
-            printing: false, at: Date.now()
+            printing: false, printedCopies: 0, at: Date.now()
           };
           deskRender();
           deskRenderResultCard();
@@ -65233,7 +65621,7 @@ function renderTabletBridgeSetup(info) {
         else if (!opts.noQr) showQRForCurrentPhoto();
         scheduleResultReset();
         if (!LOCALSHARE && !DESKTOP && !opts.qrUrl && !opts.noQr) { showMultipleDownloadsHint(); saveToDevice(); }
-        maybeAutoPrint();
+        if (!opts.noAutoPrint) maybeAutoPrint();
       }
       var _resetForNextGuest = resetForNextGuest;
       resetForNextGuest = function () {
@@ -67447,8 +67835,12 @@ function renderTabletBridgeSetup(info) {
         el.addEventListener('focus', function () { if (!el.disabled) { deskHoverMode = mode; deskSchedulePreview(); } });
         el.addEventListener('blur', function () { if (deskHoverMode) { deskHoverMode = ''; deskSchedulePreview(); } });
       });
+      var resCopiesMinus = document.getElementById('deskResCopiesMinus');
+      var resCopiesPlus = document.getElementById('deskResCopiesPlus');
+      if (resCopiesMinus) resCopiesMinus.addEventListener('click', function () { deskSetCopies(deskCopies - 1); });
+      if (resCopiesPlus) resCopiesPlus.addEventListener('click', function () { deskSetCopies(deskCopies + 1); });
       var resPrintBtn = document.getElementById('deskResPrintBtn');
-      if (resPrintBtn) resPrintBtn.addEventListener('click', function () { if (deskLastCtx) deskPrintCtx(deskLastCtx, false); });
+      if (resPrintBtn) resPrintBtn.addEventListener('click', function () { if (deskLastCtx && !deskPrintBusy && !printing) deskPrintCtx(deskLastCtx, false, deskCopies); });
       var resShowBtn = document.getElementById('deskResShowBoothBtn');
       if (resShowBtn) resShowBtn.addEventListener('click', function () { if (deskLastCtx) deskPushResultToBooth(deskLastCtx); });
       var resDoneBtn = document.getElementById('deskResDoneBtn');
@@ -67681,7 +68073,9 @@ function renderTabletBridgeSetup(info) {
           deskSel = ids.slice(0, c.original ? 1 : Math.max(1, deskNeed()));
           await deskMake(c.original === true, false, remoteTpl);
         } else if (act === 'print') {
-          if (deskLast && deskLast.live && !deskOverlay.hidden && deskLastCtx) { await deskPrintCtx(deskLastCtx, false); }
+          if (deskLast && deskLast.live && !deskOverlay.hidden && deskLastCtx) {
+            if (!deskPrintBusy && !printing) await deskPrintCtx(deskLastCtx, false, Number(c.copies) || deskCopies);
+          }
           else if (state === 'result' && printBtn && !printBtn.hidden && !printBtn.disabled && !printing) printBtn.click();
         } else if (act === 'next') {
           if (deskLast && deskLast.live && !deskOverlay.hidden) { deskLast.live = false; deskRenderResultCard(); deskRemoteMark(); deskSchedulePreview(); }
@@ -67699,7 +68093,7 @@ function renderTabletBridgeSetup(info) {
           deskRemoteHold = [];
           cmds = cmds.concat((await window.pb4u.roveCmdTake()) || []);
           for (var i = 0; i < cmds.length; i++) { try { await deskRemoteDo(cmds[i]); } catch (e) { console.error('Phone command failed:', e); } }
-          var pr = !!printing;
+          var pr = !!printing || !!deskPrintBusy;
           if (deskLast && deskLast.live && deskLast.printing !== pr) { deskLast.printing = pr; deskRemoteDirty = true; }
           if (deskRemoteDirty) { deskRemoteDirty = false; await window.pb4u.roveStateSet(deskRemoteState()); }
         } catch (e) { }
@@ -67760,10 +68154,9 @@ function renderTabletBridgeSetup(info) {
       async function quickDecode(blob) {
         var bmp;
         try { bmp = await createImageBitmap(blob, { imageOrientation: 'from-image' }); } catch (e) { bmp = await createImageBitmap(blob); }
-        var maxSide = LOCALSHARE ? Math.min(3600, offlineShotMaxPx()) : 2400;
-        var k = Math.min(1, maxSide / Math.max(bmp.width, bmp.height)), c = document.createElement('canvas');
-        c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
-        var ctx = c.getContext('2d', { willReadFrequently: true }); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(bmp, 0, 0, c.width, c.height); bmp.close();
+        var maxSide = (typeof isLowRamIos === 'function' && isLowRamIos()) ? 1920 : (LOCALSHARE ? Math.min(3600, offlineShotMaxPx()) : 2400);
+        var c;
+        try { c = pbSteppedDecodeBitmap(bmp, maxSide); } finally { try { bmp.close(); } catch (e) { } }
         c._isShot = true;
         return c;
       }
@@ -98056,6 +98449,7 @@ function fxWavUrl(kind) {
         try { refreshPrintSummary(); refreshPrintUI(); } catch (e) { }
         try { if (window._pfSaveOpts) window._pfSaveOpts(); } catch (e) { }
         if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        try { if (typeof deskNotifyPrinterChanged === 'function') deskNotifyPrinterChanged(); } catch (e) { }
       }
       document.getElementById('ppGuestBtn').addEventListener('change', function () { printPrefs.guestBtn = this.checked; printPrefsChanged(); });
       document.getElementById('ppAuto').addEventListener('change', function () { setAutoPrint(this.checked, true); printPrefsChanged(); });

@@ -307,12 +307,12 @@ test('Canon SELPHY CP1500 & CP1300 (wired USB + wireless IPP): model IDs, 0x0507
   assert.ok(selphyKt.includes('0x3302 to "CP1500"') && selphyKt.includes('0x32db to "CP1300"'), 'CanonSelphyJob.kt maps CP1500 & CP1300 PIDs');
   assert.ok(netKt.includes('CanonSelphyJob.modelName(d.vendorId, d.productId)?.let { return "Canon SELPHY $it" }'), 'usbName names SELPHY before USB permission');
   assert.ok(netKt.includes('e.usbDev?.let { usbIsSelphy(it) } == true'), 'isSelphy detects CP1500 on IPP-over-USB via usbDev');
-  assert.ok(netKt.includes('r.http == 200 && r.ipp == 0x0507 && busyRetries < 24'), 'Android sendIppJob retries 0x0507 server-error-busy');
+  assert.ok(netKt.includes('val maxBusyRetries = if (selphy) 24 else 8') && netKt.includes('r.http == 200 && r.ipp == 0x0507 && busyRetries < maxBusyRetries'), 'Android sendIppJob retries 0x0507 server-error-busy (24x SELPHY, 8x inkjet)');
   assert.ok(netKt.includes('awaitSelphyIppIdle(e, jpath, jid)'), 'Android printIpp waits between multi-copy SELPHY sheets');
 
   // 2. iPad direct IPP SELPHY 100x148mm matching + 0x0507 busy retry + waitJobIdle
   assert.ok(iosSw.includes('static func selphyMedia(') && iosSw.includes('"jpn_hagaki_100x148mm"'), 'iPad IppNet matches 4x6 to jpn_hagaki_100x148mm');
-  assert.ok(iosSw.includes('r.http == 200 && r.ipp == 0x0507 && busyTries < 24'), 'iPad IppNet retries 0x0507 server-error-busy');
+  assert.ok(iosSw.includes('let maxBusyTries = selphy ? 24 : 8') && iosSw.includes('r.http == 200 && r.ipp == 0x0507 && busyTries < maxBusyTries'), 'iPad IppNet retries 0x0507 server-error-busy (24x SELPHY, 8x inkjet)');
   assert.ok(iosSw.includes('IppNet.waitJobIdle('), 'iPad sendIppPrint waits between multi-copy SELPHY sheets');
 
   // 3. Fallback media name when SELPHY omits media-supported on Wi-Fi Direct

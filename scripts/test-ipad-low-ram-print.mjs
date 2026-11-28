@@ -284,7 +284,7 @@ test('booth.html: l8050DpiFor avoids 600/720 dpi RAM spikes on 3 GB iPads while 
   const lpdL8050 = { ip: '192.168.223.1', ipp: false, escpr: true, lpd: true, name: 'EPSON L8050 Series' };
   assert.equal(run(true, ippL8050, { quality: 'high' }), 0, '3 GB iPad IPP stays at 300 dpi');
   assert.equal(run(true, lpdL8050, { quality: 'high720' }), 360, '3 GB iPad LPD caps high720 to 360 dpi');
-  assert.equal(run(false, ippL8050, { quality: 'high' }), 600, '4 GB+ iPad IPP keeps 600 dpi');
+  assert.equal(run(false, ippL8050, { quality: 'high' }), 0, '4 GB+ iPad IPP stays at safe 300 dpi so L8050 embedded decoder never stalls');
   assert.equal(run(false, lpdL8050, { quality: 'high720' }), 720, '4 GB+ iPad LPD keeps 720 dpi');
 });
 

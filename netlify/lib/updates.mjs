@@ -265,7 +265,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.47', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.47/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.48', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.48/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -319,6 +319,12 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'android' | 'ipad' | 'helper' (Print Helper).
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
+  {
+    date: '2026-11-28', title: 'iPad & iPhone 1.1.48: Official photobooth4u Home Screen App Icon', for: ['ipad'], ipad: '1.1.48',
+    items: [
+      '🎨 Official photobooth4u app icon on iPad & iPhone: Adds the full crisp camera-strip and 4u brand icon across the Home Screen, Dock, Spotlight Search, Settings, and Sideloadly installer so the booth app stands out cleanly on every iPad and iPhone.'
+    ]
+  },
   {
     date: '2026-11-28', title: 'iPad & iPhone 1.1.47 & Website: One-Scan Laptop Print Station Pairing & 3 GB iPad Speed Boost', for: ['website', 'ipad'], ipad: '1.1.47',
     items: [

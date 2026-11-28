@@ -24,6 +24,7 @@
 		100100012CE8000100000009 /* booth.html in Resources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000009 /* booth.html */; };
 		100100012CE8000100000026 /* station.html in Resources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000026 /* station.html */; };
 		100100012CE8000100000027 /* qr.js in Resources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000027 /* qr.js */; };
+		100100012CE8000100000028 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000028 /* Assets.xcassets */; };
 		100200012CE8000100000001 /* RovingAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200200012CE8000100000001 /* RovingAppDelegate.swift */; };
 		100200012CE8000100000002 /* RovingSceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200200012CE8000100000002 /* RovingSceneDelegate.swift */; };
 		100200012CE8000100000003 /* RovingBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200200012CE8000100000003 /* RovingBridgeViewController.swift */; };
@@ -64,6 +65,7 @@
 		200100012CE8000100000026 /* station.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = station.html; sourceTree = "<group>"; };
 		200100012CE8000100000027 /* qr.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = qr.js; sourceTree = "<group>"; };
 		200100012CE8000100000010 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		200100012CE8000100000028 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		200200012CE8000100000001 /* RovingAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RovingAppDelegate.swift; sourceTree = "<group>"; };
 		200200012CE8000100000002 /* RovingSceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RovingSceneDelegate.swift; sourceTree = "<group>"; };
 		200200012CE8000100000003 /* RovingBridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RovingBridgeViewController.swift; sourceTree = "<group>"; };
@@ -131,6 +133,7 @@
 				200100012CE8000100000026 /* station.html */,
 				200100012CE8000100000027 /* qr.js */,
 				200100012CE8000100000010 /* Info.plist */,
+				200100012CE8000100000028 /* Assets.xcassets */,
 			);
 			path = photobooth4u;
 			sourceTree = "<group>";
@@ -271,6 +274,7 @@
 				100100012CE8000100000009 /* booth.html in Resources */,
 				100100012CE8000100000026 /* station.html in Resources */,
 				100100012CE8000100000027 /* qr.js in Resources */,
+				100100012CE8000100000028 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -409,14 +413,14 @@
 				CODE_SIGN_STYLE = Manual;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = photobooth4u/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.47;
+				MARKETING_VERSION = 1.1.48;
 				PRODUCT_BUNDLE_IDENTIFIER = com.photobooth4u.booth;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -432,14 +436,14 @@
 				CODE_SIGN_STYLE = Manual;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = photobooth4u/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.47;
+				MARKETING_VERSION = 1.1.48;
 				PRODUCT_BUNDLE_IDENTIFIER = com.photobooth4u.booth;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;

@@ -98,6 +98,8 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
         private const val KEY_SEND_URL = "send_url"
         private const val KEY_START_THRESH = "start_thresh"
         private const val KEY_STOP_THRESH = "stop_thresh"
+        private const val KEY_THRESH_CALIBRATED = "thresh_calibrated"
+        private const val KEY_CAL_INTRO_SEEN = "cal_intro_seen"
         private const val KEY_LENS = "lens"
         private const val KEY_FPS = "fps"
         private const val KEY_SAVE_GALLERY = "save_gallery"
@@ -156,7 +158,7 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
     private var saMusicFilename: String = ""
     private var saTitleText: String = ""
     private var saSubText: String = ""
-    private var saTrigger: String = "arm"
+    private var saTrigger: String = "manual"
     private var saStopMode: String = "follow"
     private var saFixedSec: Double = 8.0
     private var skipQuickSharePopup: Boolean = false
@@ -185,6 +187,8 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
     // Motion state
     private var startThresholdDps: Double = 25.0
     private var stopThresholdDps: Double = 11.0
+    private var isThresholdCalibrated: Boolean = false
+    private var hasSeenCalibrationIntro: Boolean = false
     private var smoothedDps: Double = 0.0
     private var aboveThresholdSince: Long = 0L
     private var recordingStartedAt: Long = 0L
@@ -284,6 +288,7 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var stationUrlLabel: TextView
     private lateinit var lockOverlay: FrameLayout
     private lateinit var lockStatusLabel: TextView
+    private lateinit var calIntroOverlay: FrameLayout
 
     private var heartbeatRunnable: Runnable? = null
     private var recClockRunnable: Runnable? = null
@@ -405,6 +410,7 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
             verifyPairAndFetchConfig(sendUrl, silent = true)
             startHeartbeatIfNeeded()
         }
+        showCalibrationIntroIfNeeded()
     }
 
     // MARK: - Preferences
@@ -412,6 +418,12 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
     private fun loadPreferences() {
         val sp = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         sendUrl = normalizeSendUrl(sp.getString(KEY_SEND_URL, "") ?: "") ?: ""
+        isThresholdCalibrated = if (sp.contains(KEY_THRESH_CALIBRATED)) {
+            sp.getBoolean(KEY_THRESH_CALIBRATED, false)
+        } else {
+            sp.contains(KEY_START_THRESH)
+        }
+        hasSeenCalibrationIntro = sp.getBoolean(KEY_CAL_INTRO_SEEN, false) || isThresholdCalibrated
         startThresholdDps = sp.getFloat(KEY_START_THRESH, 25f).toDouble().coerceIn(10.0, 120.0)
         val rawStop = sp.getFloat(KEY_STOP_THRESH, (startThresholdDps * 0.45).toFloat()).toDouble()
         stopThresholdDps = if (rawStop >= 4.0 && rawStop < startThresholdDps) rawStop else max(5.0, startThresholdDps * 0.45)
@@ -449,8 +461,8 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
         saTitleText = sp.getString(KEY_TITLE, "") ?: ""
         if (saTitleText.isEmpty()) saTitleText = PBLocal.spinContext.eventName
         saSubText = sp.getString(KEY_SUBTITLE, "") ?: ""
-        val trig = sp.getString(KEY_TRIGGER, if (hasGyro) "arm" else "manual") ?: "arm"
-        saTrigger = if (trig in listOf("arm", "manual") && (trig != "arm" || hasGyro)) trig else "manual"
+        val trig = sp.getString(KEY_TRIGGER, "manual") ?: "manual"
+        saTrigger = if (trig == "arm" && hasGyro && isThresholdCalibrated) "arm" else "manual"
         val stop = sp.getString(KEY_STOP_MODE, "follow") ?: "follow"
         saStopMode = if (stop in listOf("follow", "fixed")) stop else "follow"
         saFixedSec = sp.getFloat(KEY_FIXED_SEC, 8f).toDouble().coerceIn(4.0, 30.0)
@@ -976,7 +988,13 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
     private fun processGyroSample(dps: Double) {
         val now = System.currentTimeMillis()
         updateMeterUI()
-        if (isSettingsOpen) liveGyroLabel.text = String.format(Locale.US, "Live gyro: %.1f°/s", dps)
+        if (isSettingsOpen) {
+            liveGyroLabel.text = if (isThresholdCalibrated) {
+                String.format(Locale.US, "Live gyro: %.1f°/s (trigger %.0f°/s)", dps, startThresholdDps)
+            } else {
+                String.format(Locale.US, "Live gyro: %.1f°/s (trigger not set)", dps)
+            }
+        }
 
         when (phase) {
             ArmPhase.CALIBRATING -> {
@@ -997,7 +1015,7 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
                 }
             }
             ArmPhase.IDLE -> {
-                if (armConfig.trigger != "arm") {
+                if (!isThresholdCalibrated || isSettingsOpen || stationOverlay.visibility == View.VISIBLE || calIntroOverlay.visibility == View.VISIBLE || armConfig.trigger != "arm") {
                     aboveThresholdSince = 0L
                     return
                 }
@@ -1052,6 +1070,12 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
     private fun startCalibration() {
         if (!hasGyro) { showToast("This phone has no hardware gyroscope sensor."); return }
         if (phase == ArmPhase.RECORDING || phase == ArmPhase.RENDERING) return
+        if (isSettingsOpen) closeSettings()
+        calIntroOverlay.visibility = View.GONE
+        if (!hasSeenCalibrationIntro) {
+            hasSeenCalibrationIntro = true
+            prefs().edit().putBoolean(KEY_CAL_INTRO_SEEN, true).apply()
+        }
         calStillSamples.clear()
         calSpinSamples.clear()
         calStep = CalStep.STILL
@@ -1068,22 +1092,43 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
         if (spinPeak <= noise + 8.0) {
             phase = ArmPhase.IDLE
             updateUIState()
-            showToast("Did not feel enough spin motion — keep threshold at ${startThresholdDps.roundToInt()}°/s.")
+            val msg = if (isThresholdCalibrated) {
+                "Did not feel enough spin motion — keeping trigger at ${startThresholdDps.roundToInt()}°/s."
+            } else {
+                "No spin detected — clamp phone on the 360 arm, tap Calibrate, and spin."
+            }
+            showToast(msg)
             return
         }
         val mid = noise + (spinPeak - noise) * 0.35
         startThresholdDps = mid.coerceIn(12.0, 90.0)
         stopThresholdDps = max(6.0, min(startThresholdDps * 0.45, noise + (startThresholdDps - noise) * 0.30))
-        prefs().edit()
+        isThresholdCalibrated = true
+        hasSeenCalibrationIntro = true
+        val ed = prefs().edit()
             .putFloat(KEY_START_THRESH, startThresholdDps.toFloat())
             .putFloat(KEY_STOP_THRESH, stopThresholdDps.toFloat())
-            .apply()
+            .putBoolean(KEY_THRESH_CALIBRATED, true)
+            .putBoolean(KEY_CAL_INTRO_SEEN, true)
+        if (isStandaloneMode) {
+            saTrigger = "arm"
+            armConfig.trigger = "arm"
+            ed.putString(KEY_TRIGGER, "arm")
+        }
+        ed.apply()
         threshSeek.progress = (startThresholdDps.roundToInt() - 10).coerceIn(0, 90)
         threshReadoutLabel.text = "Trigger threshold: ${startThresholdDps.roundToInt()}°/s"
+        syncSettingsUI()
         playTone(ToneGenerator.TONE_PROP_ACK)
         phase = ArmPhase.IDLE
         updateUIState()
-        showToast("✓ Calibrated! Triggers at ${startThresholdDps.roundToInt()}°/s.")
+        val autoNow = isStandaloneMode || armConfig.trigger == "arm"
+        val msg = if (autoNow) {
+            "✓ Calibrated & Auto-Spin ON! Triggers at ${startThresholdDps.roundToInt()}°/s."
+        } else {
+            "✓ Calibrated! Trigger set to ${startThresholdDps.roundToInt()}°/s."
+        }
+        showToast(msg)
     }
 
     // MARK: - Laptop 360 Desk Networking (Arm Telemetry + Remote Commands)
@@ -1188,6 +1233,7 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
                     if (!silent) {
                         playTone(ToneGenerator.TONE_PROP_ACK)
                         showToast("✓ Paired with $deskLaptopName")
+                        showCalibrationIntroIfNeeded()
                     }
                     startHeartbeatIfNeeded()
                     processNextUploadIfNeeded()
@@ -1650,7 +1696,8 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
         lockBtn = hudBtn("🔒 Lock", "#29FFFFFF") {
             isScreenLocked = true
             lockOverlay.visibility = View.VISIBLE
-            lockStatusLabel.text = if (phase == ArmPhase.RECORDING) centerTitleLabel.text else "● ARMED"
+            val autoArmed = isThresholdCalibrated && armConfig.trigger == "arm"
+            lockStatusLabel.text = if (phase == ArmPhase.RECORDING) centerTitleLabel.text else if (autoArmed) "● ARMED (MOTION)" else "READY (MANUAL)"
         }
         pairBtn = hudBtn("📱 Station", "#29FFFFFF") {
             if (isStandaloneMode) openStationModal()
@@ -1664,6 +1711,7 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
 
         buildSettingsOverlay(root)
         buildStationOverlay(root)
+        buildCalibrationIntroOverlay(root)
         buildLockOverlay(root)
     }
 
@@ -1829,6 +1877,28 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
         }
         trigAutoBtn = hudBtn("Auto Spin", "#C93D27") {
             if (!hasGyro) { showToast("No gyro sensor on this phone"); return@hudBtn }
+            if (!isThresholdCalibrated) {
+                AlertDialog.Builder(this)
+                    .setTitle("Calibrate 360 Arm First")
+                    .setMessage("Auto-Spin needs your 360 arm's rotation speed so normal bumps won't trigger recording.\n\nClamp your phone on the 360 arm and run the 5-second calibration, or enable it now with the default 25°/s threshold.")
+                    .setPositiveButton("🎯 Calibrate Now") { _, _ -> startCalibration() }
+                    .setNeutralButton("Use 25°/s Default") { _, _ ->
+                        isThresholdCalibrated = true
+                        hasSeenCalibrationIntro = true
+                        saTrigger = "arm"; armConfig.trigger = "arm"
+                        prefs().edit()
+                            .putFloat(KEY_START_THRESH, startThresholdDps.toFloat())
+                            .putFloat(KEY_STOP_THRESH, stopThresholdDps.toFloat())
+                            .putBoolean(KEY_THRESH_CALIBRATED, true)
+                            .putBoolean(KEY_CAL_INTRO_SEEN, true)
+                            .putString(KEY_TRIGGER, "arm")
+                            .apply()
+                        syncSettingsUI(); updateUIState()
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+                return@hudBtn
+            }
             saTrigger = "arm"; armConfig.trigger = "arm"
             prefs().edit().putString(KEY_TRIGGER, "arm").apply(); syncSettingsUI(); updateUIState()
         }
@@ -1902,7 +1972,7 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
 
         // Shared Gyro Sensitivity + Save Gallery
         threshReadoutLabel = TextView(this).apply {
-            text = "Trigger threshold: ${startThresholdDps.roundToInt()}°/s"
+            text = if (isThresholdCalibrated) "Trigger threshold: ${startThresholdDps.roundToInt()}°/s" else "Trigger threshold: Not set (calibrate or drag slider)"
             setTextColor(Color.WHITE)
             setPadding(0, px(12), 0, px(4))
         }
@@ -1914,10 +1984,14 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
                     if (!fromUser) return
                     startThresholdDps = (p + 10).toDouble()
                     stopThresholdDps = max(5.0, startThresholdDps * 0.45)
+                    isThresholdCalibrated = true
+                    hasSeenCalibrationIntro = true
                     threshReadoutLabel.text = "Trigger threshold: ${startThresholdDps.roundToInt()}°/s"
                     prefs().edit()
                         .putFloat(KEY_START_THRESH, startThresholdDps.toFloat())
                         .putFloat(KEY_STOP_THRESH, stopThresholdDps.toFloat())
+                        .putBoolean(KEY_THRESH_CALIBRATED, true)
+                        .putBoolean(KEY_CAL_INTRO_SEEN, true)
                         .apply()
                     updateUIState()
                 }
@@ -1926,6 +2000,8 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
             })
         }
         liveGyroLabel = TextView(this).apply { textSize = 11.5f; setTextColor(Color.parseColor("#A49FA9")) }
+        val calInSettingsBtn = hudBtn("🎯 Run Calibration Wizard", "#1E3B52") { startCalibration() }
+        calInSettingsBtn.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, px(40)).apply { topMargin = px(8); bottomMargin = px(8) }
         saveGallerySwitch = Switch(this).apply {
             text = "Save rendered clips to Phone Gallery"
             setTextColor(Color.WHITE)
@@ -1935,7 +2011,7 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
                 prefs().edit().putBoolean(KEY_SAVE_GALLERY, c).apply()
             }
         }
-        body.addView(threshReadoutLabel); body.addView(threshSeek); body.addView(liveGyroLabel); body.addView(saveGallerySwitch)
+        body.addView(threshReadoutLabel); body.addView(threshSeek); body.addView(liveGyroLabel); body.addView(calInSettingsBtn); body.addView(saveGallerySwitch)
 
         val cardW = min(px(390), max(px(280), resources.displayMetrics.widthPixels - px(24)))
         val cardH = min(px(560), max(px(260), resources.displayMetrics.heightPixels - px(24)))
@@ -1987,6 +2063,106 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
         val stCardW = min(px(340), max(px(260), resources.displayMetrics.widthPixels - px(24)))
         stationOverlay.addView(card, FrameLayout.LayoutParams(stCardW, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
         root.addView(stationOverlay)
+    }
+
+    private fun buildCalibrationIntroOverlay(root: FrameLayout) {
+        calIntroOverlay = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#B8000000"))
+            visibility = View.GONE
+            setOnClickListener { /* keep modal deliberate */ }
+        }
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            background = pillBg("#1C1A1E", 20, "#3A3540")
+            setPadding(px(20), px(20), px(20), px(18))
+            setOnClickListener { }
+        }
+        val icon = TextView(this).apply {
+            text = "🎯"
+            textSize = 34f
+            gravity = Gravity.CENTER
+        }
+        val title = TextView(this).apply {
+            text = "Calibrate Your 360 Arm"
+            textSize = 20f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.parseColor("#F5F1EA"))
+            gravity = Gravity.CENTER
+            setPadding(0, px(6), 0, px(8))
+        }
+        val body = TextView(this).apply {
+            text = "Auto-Spin is OFF right now so moving your phone won't accidentally start recording.\n\n" +
+                "Run a 5-second calibration once your phone is clamped on the 360 arm:\n" +
+                "• Step 1 (Hold Still): checks resting vibration so bumps won't trigger it.\n" +
+                "• Step 2 (Spin Arm): measures your arm's speed and sets the trigger threshold automatically.\n\n" +
+                "Or start in Manual Mode now and tap 🎯 Calibrate anytime later."
+            textSize = 13.5f
+            setTextColor(Color.parseColor("#D4CEC8"))
+            setLineSpacing(px(2).toFloat(), 1.15f)
+            setPadding(0, 0, 0, px(16))
+        }
+        val startCalBtn = hudBtn("🎯 Start Calibration", "#C93D27") {
+            hasSeenCalibrationIntro = true
+            prefs().edit().putBoolean(KEY_CAL_INTRO_SEEN, true).apply()
+            calIntroOverlay.visibility = View.GONE
+            startCalibration()
+        }
+        startCalBtn.textSize = 14.5f
+        startCalBtn.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, px(46)).apply { bottomMargin = px(8) }
+
+        val manualBtn = hudBtn("Start in Manual Mode", "#26FFFFFF") {
+            hasSeenCalibrationIntro = true
+            prefs().edit().putBoolean(KEY_CAL_INTRO_SEEN, true).apply()
+            calIntroOverlay.visibility = View.GONE
+            updateUIState()
+            showToast("Manual Mode ready — tap ● Record or 🎯 Calibrate anytime.")
+        }
+        manualBtn.textSize = 13.5f
+        manualBtn.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, px(42))
+
+        card.addView(icon)
+        card.addView(title)
+        card.addView(body)
+        card.addView(startCalBtn)
+        card.addView(manualBtn)
+
+        val cardW = min(px(360), max(px(270), resources.displayMetrics.widthPixels - px(28)))
+        val scroll = ScrollView(this).apply {
+            isFillViewport = false
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            addView(card, FrameLayout.LayoutParams(cardW, FrameLayout.LayoutParams.WRAP_CONTENT))
+        }
+        val scrollLp = FrameLayout.LayoutParams(cardW, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER).apply {
+            topMargin = px(16)
+            bottomMargin = px(16)
+        }
+        calIntroOverlay.addView(scroll, scrollLp)
+        root.addView(calIntroOverlay)
+    }
+
+    private fun showCalibrationIntroIfNeeded() {
+        if (!hasGyro || hasSeenCalibrationIntro || isThresholdCalibrated) return
+        if (!isStandaloneMode && sendUrl.isEmpty()) return
+        if (phase != ArmPhase.IDLE || isSettingsOpen || stationOverlay.visibility == View.VISIBLE) return
+        calIntroOverlay.visibility = View.VISIBLE
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        when {
+            isScreenLocked -> showToast("Long-press the lock screen to unlock.")
+            phase == ArmPhase.RECORDING -> showToast("Tap ■ Stop before closing.")
+            calIntroOverlay.visibility == View.VISIBLE -> {
+                hasSeenCalibrationIntro = true
+                prefs().edit().putBoolean(KEY_CAL_INTRO_SEEN, true).apply()
+                calIntroOverlay.visibility = View.GONE
+                updateUIState()
+            }
+            isSettingsOpen -> closeSettings()
+            stationOverlay.visibility == View.VISIBLE -> stationOverlay.visibility = View.GONE
+            else -> super.onBackPressed()
+        }
     }
 
     private fun buildLockOverlay(root: FrameLayout) {
@@ -2186,8 +2362,13 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
         }
         overlayStatusLabel.text = if (saOverlayFilename.isEmpty()) "Frame Overlay: None (clear PNG)" else "Frame Overlay: Active ✓"
         musicStatusLabel.text = if (saMusicFilename.isEmpty()) "Background Music: None" else "Background Music: $saMusicFilename"
-        trigAutoBtn.background = pillBg(if (saTrigger == "arm") "#C93D27" else "#26FFFFFF", 10)
-        trigManualBtn.background = pillBg(if (saTrigger == "manual") "#C93D27" else "#26FFFFFF", 10)
+        trigAutoBtn.background = pillBg(if (saTrigger == "arm" && isThresholdCalibrated) "#C93D27" else "#26FFFFFF", 10)
+        trigManualBtn.background = pillBg(if (saTrigger == "manual" || !isThresholdCalibrated) "#C93D27" else "#26FFFFFF", 10)
+        threshReadoutLabel.text = if (isThresholdCalibrated) {
+            "Trigger threshold: ${startThresholdDps.roundToInt()}°/s"
+        } else {
+            "Trigger threshold: Not set (calibrate or drag slider)"
+        }
         stopFollowBtn.background = pillBg(if (saStopMode == "follow") "#C93D27" else "#26FFFFFF", 10)
         stop8Btn.background = pillBg(if (saStopMode == "fixed" && abs(saFixedSec - 8.0) < 1.0) "#C93D27" else "#26FFFFFF", 10)
         stop12Btn.background = pillBg(if (saStopMode == "fixed" && saFixedSec >= 10.0) "#C93D27" else "#26FFFFFF", 10)
@@ -2199,18 +2380,30 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
 
     private fun updateMeterUI() {
         val w = meterTrack.width
+        val autoArmed = isThresholdCalibrated && armConfig.trigger == "arm"
+        meterThreshMark.visibility = if (isThresholdCalibrated) View.VISIBLE else View.GONE
         if (w > 10) {
             val maxDps = 120.0
             val flp = meterFill.layoutParams
             flp.width = max(4, ((smoothedDps / maxDps).coerceIn(0.0, 1.0) * w).roundToInt())
             meterFill.layoutParams = flp
-            val tlp = meterThreshMark.layoutParams as FrameLayout.LayoutParams
-            tlp.leftMargin = ((startThresholdDps / maxDps).coerceIn(0.0, 1.0) * (w - px(4))).roundToInt()
-            meterThreshMark.layoutParams = tlp
+            if (isThresholdCalibrated) {
+                val tlp = meterThreshMark.layoutParams as FrameLayout.LayoutParams
+                tlp.leftMargin = ((startThresholdDps / maxDps).coerceIn(0.0, 1.0) * (w - px(4))).roundToInt()
+                meterThreshMark.layoutParams = tlp
+            }
         }
-        meterFill.background = pillBg(if (smoothedDps >= startThresholdDps) "#2EA66B" else "#5AC8FA", 5)
+        meterFill.background = pillBg(if (autoArmed && smoothedDps >= startThresholdDps) "#2EA66B" else "#5AC8FA", 5)
         val lbl = if (isStandaloneMode) "Clips" else "Sent"
-        val gyroTxt = if (hasGyro) String.format(Locale.US, "%.0f°/s · Trigger: %.0f°/s", smoothedDps, startThresholdDps) else "No gyro"
+        val gyroTxt = if (!hasGyro) {
+            "No gyro"
+        } else if (!isThresholdCalibrated) {
+            String.format(Locale.US, "%.0f°/s · Trigger: Not set", smoothedDps)
+        } else if (armConfig.trigger != "arm") {
+            String.format(Locale.US, "%.0f°/s · Auto-Spin: Off (%.0f°/s)", smoothedDps, startThresholdDps)
+        } else {
+            String.format(Locale.US, "%.0f°/s · Trigger: %.0f°/s", smoothedDps, startThresholdDps)
+        }
         meterValueLabel.text = "$gyroTxt  ·  $lbl: $sentCount"
     }
 
@@ -2310,13 +2503,17 @@ class SpinArmActivity : AppCompatActivity(), SensorEventListener {
                 centerOverlay.visibility = View.GONE
                 recBtn.text = "● Record"; recBtn.background = pillBg("#C93D27", 12)
                 recBtn.isEnabled = true; calBtn.isEnabled = hasGyro
+                val autoArmed = isThresholdCalibrated && armConfig.trigger == "arm"
                 stateBanner.text = if (isStandaloneMode) {
-                    if (armConfig.trigger == "arm") "● Standalone Armed — spin arm to auto-record"
-                    else "Standalone Ready — tap Record"
+                    if (autoArmed) "● Standalone Armed — spin arm to auto-record"
+                    else if (!isThresholdCalibrated && hasGyro) "Auto-Spin OFF — tap 🎯 Calibrate to set trigger, or tap ● Record"
+                    else "Standalone Ready — tap ● Record"
                 } else {
-                    if (armConfig.trigger == "arm") "● Armed — auto-starts on spin" else "Ready — tap Record or start on Laptop"
+                    if (autoArmed) "● Armed — auto-starts on spin"
+                    else if (armConfig.trigger == "arm" && !isThresholdCalibrated && hasGyro) "Not calibrated — tap 🎯 Calibrate for Auto-Spin, or tap ● Record"
+                    else "Ready — tap ● Record or start on Laptop"
                 }
-                if (isScreenLocked) lockStatusLabel.text = if (armConfig.trigger == "arm") "● ARMED (MOTION)" else "READY"
+                if (isScreenLocked) lockStatusLabel.text = if (autoArmed) "● ARMED (MOTION)" else "READY"
             }
         }
     }

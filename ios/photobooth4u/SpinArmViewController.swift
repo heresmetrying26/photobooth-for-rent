@@ -25,6 +25,8 @@ final class SpinArmViewController: UIViewController,
         static let sendUrl = "pb4u_spin_arm_url"
         static let startThresh = "pb4u_spin_arm_thresh"
         static let stopThresh = "pb4u_spin_arm_stop_thresh"
+        static let threshCalibrated = "pb4u_spin_arm_thresh_calibrated"
+        static let calIntroSeen = "pb4u_spin_arm_cal_intro_seen"
         static let lens = "pb4u_spin_arm_lens"
         static let fps = "pb4u_spin_arm_fps"
         static let savePhotos = "pb4u_spin_arm_save_photos"
@@ -112,7 +114,7 @@ final class SpinArmViewController: UIViewController,
     private var saMusicFilename: String = ""
     private var saTitleText: String = ""
     private var saSubText: String = ""
-    private var saTrigger: String = "arm"
+    private var saTrigger: String = "manual"
     private var saStopMode: String = "follow"
     private var saFixedSec: Double = 8.0
     private var skipQuickSharePopup: Bool = false
@@ -128,6 +130,8 @@ final class SpinArmViewController: UIViewController,
 
     private var startThresholdDps: Double = 25.0
     private var stopThresholdDps: Double = 11.0
+    private var isThresholdCalibrated: Bool = false
+    private var hasSeenCalibrationIntro: Bool = false
     private var smoothedDps: Double = 0.0
 
     // Motion trigger & auto-stop tracking
@@ -279,6 +283,9 @@ final class SpinArmViewController: UIViewController,
     private let lockStatusLabel = UILabel()
     private let lockHintLabel = UILabel()
 
+    // First-open Calibration Intro Modal
+    private let calIntroOverlay = UIView()
+
     override var prefersStatusBarHidden: Bool { true }
     override var prefersHomeIndicatorAutoHidden: Bool { true }
 
@@ -329,6 +336,7 @@ final class SpinArmViewController: UIViewController,
         CATransaction.commit()
         syncOrientationIfIdle()
         ensureCameraRunningIfNeeded()
+        showCalibrationIntroIfNeeded()
     }
 
     override func viewDidLayoutSubviews() {
@@ -409,6 +417,13 @@ final class SpinArmViewController: UIViewController,
     private func loadPreferences() {
         let ud = UserDefaults.standard
         sendUrl = Self.normalizeSendUrl(ud.string(forKey: Keys.sendUrl) ?? "") ?? ""
+        let hasSavedThresh = ud.object(forKey: Keys.startThresh) != nil
+        if ud.object(forKey: Keys.threshCalibrated) != nil {
+            isThresholdCalibrated = ud.bool(forKey: Keys.threshCalibrated)
+        } else {
+            isThresholdCalibrated = hasSavedThresh
+        }
+        hasSeenCalibrationIntro = ud.bool(forKey: Keys.calIntroSeen) || isThresholdCalibrated
         let st = ud.double(forKey: Keys.startThresh)
         if st >= 10 && st <= 120 { startThresholdDps = st }
         let sp = ud.double(forKey: Keys.stopThresh)
@@ -461,7 +476,9 @@ final class SpinArmViewController: UIViewController,
         }
         saSubText = ud.string(forKey: Keys.overlaySub) ?? ""
         if let stTrig = ud.string(forKey: Keys.saTrigger), ["arm", "manual"].contains(stTrig) {
-            saTrigger = stTrig
+            saTrigger = (stTrig == "arm" && !isThresholdCalibrated) ? "manual" : stTrig
+        } else {
+            saTrigger = "manual"
         }
         if let stStop = ud.string(forKey: Keys.saStopMode), ["follow", "fixed"].contains(stStop) {
             saStopMode = stStop
@@ -481,6 +498,11 @@ final class SpinArmViewController: UIViewController,
         let ud = UserDefaults.standard
         ud.set(startThresholdDps, forKey: Keys.startThresh)
         ud.set(stopThresholdDps, forKey: Keys.stopThresh)
+        ud.set(isThresholdCalibrated, forKey: Keys.threshCalibrated)
+        if isThresholdCalibrated {
+            hasSeenCalibrationIntro = true
+            ud.set(true, forKey: Keys.calIntroSeen)
+        }
     }
 
     private static func normalizeSendUrl(_ raw: String) -> String? {
@@ -568,6 +590,7 @@ final class SpinArmViewController: UIViewController,
             verifyPairAndFetchConfig(url: sendUrl, silent: true)
             processNextUploadIfNeeded()
         }
+        showCalibrationIntroIfNeeded()
         // Request microphone permission in parallel without blocking initial live camera preview.
         if !hasRequestedAudioOnce && AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
             hasRequestedAudioOnce = true
@@ -1038,7 +1061,9 @@ final class SpinArmViewController: UIViewController,
 
         updateMeterUI()
         if isSettingsOpen {
-            liveGyroSettingsLabel.text = String(format: "Live rotation: %.0f°/s (trigger %.0f°/s)", smoothedDps, startThresholdDps)
+            liveGyroSettingsLabel.text = isThresholdCalibrated
+                ? String(format: "Live rotation: %.0f°/s (trigger %.0f°/s)", smoothedDps, startThresholdDps)
+                : String(format: "Live rotation: %.0f°/s (trigger not set)", smoothedDps)
         }
 
         switch phase {
@@ -1056,7 +1081,7 @@ final class SpinArmViewController: UIViewController,
     }
 
     private func handleIdleMotionTick(now: CFTimeInterval) {
-        guard !isPairingScan, !isSettingsOpen, !isQuickSharePresented, stationOverlay.isHidden, armConfig.trigger == "arm", !movieOutput.isRecording else {
+        guard isThresholdCalibrated, !isPairingScan, !isSettingsOpen, !isQuickSharePresented, stationOverlay.isHidden, calIntroOverlay.isHidden, armConfig.trigger == "arm", !movieOutput.isRecording else {
             aboveThresholdSince = nil
             return
         }
@@ -1136,6 +1161,11 @@ final class SpinArmViewController: UIViewController,
         commitTextFields()
         isSettingsOpen = false
         settingsOverlay.isHidden = true
+        calIntroOverlay.isHidden = true
+        if !hasSeenCalibrationIntro {
+            hasSeenCalibrationIntro = true
+            UserDefaults.standard.set(true, forKey: Keys.calIntroSeen)
+        }
 
         aboveThresholdSince = nil
         belowStopSince = nil
@@ -1191,9 +1221,19 @@ final class SpinArmViewController: UIViewController,
                 let newStop = min(newStart - 4.0, max(5.0, newStart * 0.45))
                 startThresholdDps = round(newStart)
                 stopThresholdDps = round(newStop)
+                isThresholdCalibrated = true
                 saveThresholds()
+                if isStandaloneMode {
+                    saTrigger = "arm"
+                    armConfig.trigger = "arm"
+                    UserDefaults.standard.set(saTrigger, forKey: Keys.saTrigger)
+                }
                 AudioServicesPlaySystemSound(1113)
-                showToast(String(format: "✓ Calibrated! Spin: %.0f°/s · Trigger: %.0f°/s", spinMedian, startThresholdDps))
+                let autoNow = (isStandaloneMode || armConfig.trigger == "arm")
+                let calMsg = autoNow
+                    ? String(format: "✓ Calibrated & Auto-Spin ON! Spin: %.0f°/s · Trigger: %.0f°/s", spinMedian, startThresholdDps)
+                    : String(format: "✓ Calibrated! Spin: %.0f°/s · Trigger: %.0f°/s", spinMedian, startThresholdDps)
+                showToast(calMsg)
                 phase = .cooldown
                 cooldownStartedAt = now
                 stillSince = nil
@@ -1678,6 +1718,7 @@ final class SpinArmViewController: UIViewController,
                     self.updateUIState()
                     self.sendHeartbeat()
                     self.processNextUploadIfNeeded()
+                    self.showCalibrationIntroIfNeeded()
                 } else {
                     self.deskConnected = false
                     if !silent {
@@ -1933,7 +1974,8 @@ final class SpinArmViewController: UIViewController,
     @objc private func didTapLock() {
         isScreenLocked = true
         lockOverlay.isHidden = false
-        lockStatusLabel.text = phase == .recording ? (centerTitleLabel.text ?? "● REC") : "ARMED · \(armConfig.trigger == "arm" ? "Motion Auto-Start" : "Manual")"
+        let autoArmed = isThresholdCalibrated && armConfig.trigger == "arm"
+        lockStatusLabel.text = phase == .recording ? (centerTitleLabel.text ?? "● REC") : (autoArmed ? "● ARMED · Motion Auto-Start" : "READY · Manual")
     }
 
     @objc private func handleUnlockLongPress(_ gr: UILongPressGestureRecognizer) {
@@ -2061,7 +2103,9 @@ final class SpinArmViewController: UIViewController,
 
         threshSlider.value = Float(startThresholdDps)
         savePhotosSwitch.isOn = saveToPhotos
-        threshReadoutLabel.text = String(format: "%.0f°/s (Stop: %.0f°/s)", startThresholdDps, stopThresholdDps)
+        threshReadoutLabel.text = isThresholdCalibrated
+            ? String(format: "Trigger: %.0f°/s (Stop: %.0f°/s)", startThresholdDps, stopThresholdDps)
+            : "Trigger: Not set — calibrate or drag slider"
         deskCfgSummaryLabel.text = "Desk sync: Start = \(armConfig.trigger), Stop = \(armConfig.stopMode == "fixed" ? "Fixed \(Int(armConfig.fixedSec))s" : "Follow arm + \(armConfig.tailSec)s tail"), \(targetFps) fps, Cooldown \(Int(armConfig.cooldownSec))s"
 
         motionMenuBtn.setTitle("Motion: \(saMotion.label) ▾", for: .normal)
@@ -2162,7 +2206,32 @@ final class SpinArmViewController: UIViewController,
     }
 
     @objc private func didChangeSaTrigger() {
-        saTrigger = (saTriggerSeg.selectedSegmentIndex == 1) ? "manual" : "arm"
+        let wantAuto = (saTriggerSeg.selectedSegmentIndex == 0)
+        if wantAuto && !isThresholdCalibrated {
+            saTriggerSeg.selectedSegmentIndex = 1
+            let ac = UIAlertController(
+                title: "Calibrate 360 Arm First",
+                message: "Auto-Spin needs your 360 arm's rotation speed so normal bumps won't trigger recording.\n\nClamp your phone on the 360 arm and run the 5-second calibration, or enable it now with the default 25°/s threshold.",
+                preferredStyle: .alert
+            )
+            ac.addAction(UIAlertAction(title: "🎯 Calibrate Now", style: .default) { [weak self] _ in
+                self?.startCalibration()
+            })
+            ac.addAction(UIAlertAction(title: "Use 25°/s Default", style: .default) { [weak self] _ in
+                guard let self = self else { return }
+                self.isThresholdCalibrated = true
+                self.saveThresholds()
+                self.saTrigger = "arm"
+                UserDefaults.standard.set(self.saTrigger, forKey: Keys.saTrigger)
+                if self.isStandaloneMode { self.armConfig.trigger = self.saTrigger }
+                self.refreshSettingsUI()
+                self.updateUIState()
+            })
+            ac.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+            present(ac, animated: true)
+            return
+        }
+        saTrigger = wantAuto ? "arm" : "manual"
         UserDefaults.standard.set(saTrigger, forKey: Keys.saTrigger)
         if isStandaloneMode { armConfig.trigger = saTrigger }
         updateUIState()
@@ -2366,9 +2435,10 @@ final class SpinArmViewController: UIViewController,
     @objc private func didSlideThreshold() {
         startThresholdDps = round(Double(threshSlider.value))
         stopThresholdDps = round(min(startThresholdDps - 4.0, max(5.0, startThresholdDps * 0.45)))
-        threshReadoutLabel.text = String(format: "%.0f°/s (Stop: %.0f°/s)", startThresholdDps, stopThresholdDps)
+        isThresholdCalibrated = true
+        threshReadoutLabel.text = String(format: "Trigger: %.0f°/s (Stop: %.0f°/s)", startThresholdDps, stopThresholdDps)
         saveThresholds()
-        updateMeterLayout()
+        updateUIState()
     }
 
     @objc private func didToggleSavePhotos() {
@@ -2420,8 +2490,9 @@ final class SpinArmViewController: UIViewController,
         buildBottomBar()
         buildQROverlay()
         buildSettingsOverlay()
-        buildLockOverlay()
         buildStationOverlay()
+        buildCalibrationIntroOverlay()
+        buildLockOverlay()
 
         toastLabel.backgroundColor = UIColor(white: 0.1, alpha: 0.88)
         toastLabel.textColor = .white
@@ -2866,6 +2937,7 @@ final class SpinArmViewController: UIViewController,
         // Motion sensitivity controls (both modes)
         threshReadoutLabel.font = .monospacedDigitSystemFont(ofSize: 14, weight: .bold)
         threshReadoutLabel.textColor = UIColor(red: 1.0, green: 0.84, blue: 0.04, alpha: 1)
+        threshReadoutLabel.numberOfLines = 0
 
         threshSlider.minimumValue = 10
         threshSlider.maximumValue = 120
@@ -3100,6 +3172,126 @@ final class SpinArmViewController: UIViewController,
         ])
     }
 
+    private func buildCalibrationIntroOverlay() {
+        calIntroOverlay.backgroundColor = UIColor(white: 0, alpha: 0.72)
+        calIntroOverlay.isHidden = true
+        calIntroOverlay.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(calIntroOverlay)
+
+        let card = UIView()
+        card.backgroundColor = UIColor(red: 0x1C / 255.0, green: 0x1A / 255.0, blue: 0x1E / 255.0, alpha: 1.0)
+        card.layer.cornerRadius = 20
+        card.layer.borderWidth = 1
+        card.layer.borderColor = UIColor(red: 0x3A / 255.0, green: 0x35 / 255.0, blue: 0x40 / 255.0, alpha: 1.0).cgColor
+        card.clipsToBounds = true
+        card.translatesAutoresizingMaskIntoConstraints = false
+        calIntroOverlay.addSubview(card)
+
+        let scroll = UIScrollView()
+        scroll.alwaysBounceVertical = false
+        scroll.showsVerticalScrollIndicator = true
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(scroll)
+
+        let icon = UILabel()
+        icon.text = "🎯"
+        icon.font = .systemFont(ofSize: 36)
+        icon.textAlignment = .center
+
+        let title = UILabel()
+        title.text = "Calibrate Your 360 Arm"
+        title.font = .systemFont(ofSize: 20, weight: .bold)
+        title.textColor = UIColor(red: 0xF5 / 255.0, green: 0xF1 / 255.0, blue: 0xEA / 255.0, alpha: 1.0)
+        title.textAlignment = .center
+        title.numberOfLines = 2
+
+        let body = UILabel()
+        body.text = "Auto-Spin is OFF right now so moving your phone won't accidentally start recording.\n\nRun a 5-second calibration once your phone is clamped on the 360 arm:\n• Step 1 (Hold Still): checks resting vibration so bumps won't trigger it.\n• Step 2 (Spin Arm): measures your arm's speed and sets the trigger threshold automatically.\n\nOr start in Manual Mode now and tap 🎯 Calibrate anytime later."
+        body.font = .systemFont(ofSize: 13.5, weight: .regular)
+        body.textColor = UIColor(red: 0xD4 / 255.0, green: 0xCE / 255.0, blue: 0xC8 / 255.0, alpha: 1.0)
+        body.numberOfLines = 0
+
+        let startBtn = UIButton(type: .system)
+        startBtn.setTitle("🎯 Start Calibration", for: .normal)
+        startBtn.setTitleColor(.white, for: .normal)
+        startBtn.titleLabel?.font = .systemFont(ofSize: 15.5, weight: .bold)
+        startBtn.backgroundColor = UIColor(red: 0xC9 / 255.0, green: 0x3D / 255.0, blue: 0x27 / 255.0, alpha: 1.0)
+        startBtn.layer.cornerRadius = 13
+        startBtn.contentEdgeInsets = UIEdgeInsets(top: 13, left: 16, bottom: 13, right: 16)
+        startBtn.addTarget(self, action: #selector(didTapStartCalFromIntro), for: .touchUpInside)
+
+        let skipBtn = UIButton(type: .system)
+        skipBtn.setTitle("Start in Manual Mode", for: .normal)
+        skipBtn.setTitleColor(UIColor(red: 0xF5 / 255.0, green: 0xF1 / 255.0, blue: 0xEA / 255.0, alpha: 1.0), for: .normal)
+        skipBtn.titleLabel?.font = .systemFont(ofSize: 14, weight: .semibold)
+        skipBtn.backgroundColor = UIColor(white: 1, alpha: 0.14)
+        skipBtn.layer.cornerRadius = 12
+        skipBtn.contentEdgeInsets = UIEdgeInsets(top: 11, left: 16, bottom: 11, right: 16)
+        skipBtn.addTarget(self, action: #selector(didTapSkipCalIntro), for: .touchUpInside)
+
+        let stack = UIStackView(arrangedSubviews: [icon, title, body, startBtn, skipBtn])
+        stack.axis = .vertical
+        stack.alignment = .fill
+        stack.spacing = 11
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        scroll.addSubview(stack)
+
+        let prefWidth = card.widthAnchor.constraint(equalTo: calIntroOverlay.safeAreaLayoutGuide.widthAnchor, constant: -36)
+        prefWidth.priority = .defaultHigh
+        let fitHeight = scroll.heightAnchor.constraint(equalTo: scroll.contentLayoutGuide.heightAnchor)
+        fitHeight.priority = .defaultHigh
+
+        NSLayoutConstraint.activate([
+            calIntroOverlay.topAnchor.constraint(equalTo: view.topAnchor),
+            calIntroOverlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            calIntroOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            calIntroOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+
+            card.centerXAnchor.constraint(equalTo: calIntroOverlay.safeAreaLayoutGuide.centerXAnchor),
+            card.centerYAnchor.constraint(equalTo: calIntroOverlay.safeAreaLayoutGuide.centerYAnchor),
+            card.widthAnchor.constraint(lessThanOrEqualToConstant: 360),
+            card.leadingAnchor.constraint(greaterThanOrEqualTo: calIntroOverlay.safeAreaLayoutGuide.leadingAnchor, constant: 18),
+            card.trailingAnchor.constraint(lessThanOrEqualTo: calIntroOverlay.safeAreaLayoutGuide.trailingAnchor, constant: -18),
+            card.heightAnchor.constraint(lessThanOrEqualTo: calIntroOverlay.safeAreaLayoutGuide.heightAnchor, constant: -24),
+            prefWidth,
+
+            scroll.topAnchor.constraint(equalTo: card.topAnchor),
+            scroll.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+            scroll.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            fitHeight,
+
+            stack.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor, constant: 20),
+            stack.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor, constant: -18),
+            stack.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor, constant: 18),
+            stack.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor, constant: -18),
+            stack.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor, constant: -36)
+        ])
+    }
+
+    private func showCalibrationIntroIfNeeded() {
+        guard hasBootedCameraAndSensors, !hasSeenCalibrationIntro, !isThresholdCalibrated, !isPairingScan, !isSettingsOpen, stationOverlay.isHidden, phase == .idle else {
+            return
+        }
+        guard motionManager.isDeviceMotionAvailable || motionManager.isGyroAvailable else { return }
+        calIntroOverlay.isHidden = false
+    }
+
+    @objc private func didTapStartCalFromIntro() {
+        hasSeenCalibrationIntro = true
+        UserDefaults.standard.set(true, forKey: Keys.calIntroSeen)
+        calIntroOverlay.isHidden = true
+        startCalibration()
+    }
+
+    @objc private func didTapSkipCalIntro() {
+        hasSeenCalibrationIntro = true
+        UserDefaults.standard.set(true, forKey: Keys.calIntroSeen)
+        calIntroOverlay.isHidden = true
+        updateUIState()
+        showToast("Manual Mode ready — tap ● Record or 🎯 Calibrate anytime.")
+    }
+
     private func buildLockOverlay() {
         lockOverlay.backgroundColor = UIColor(white: 0.0, alpha: 0.86)
         lockOverlay.isHidden = true
@@ -3193,6 +3385,7 @@ final class SpinArmViewController: UIViewController,
 
     private func updateMeterLayout() {
         let w = meterTrack.bounds.width
+        meterThreshMark.isHidden = !isThresholdCalibrated
         guard w > 10 else { return }
         let maxDps = 120.0
         let tx = CGFloat(min(1.0, max(0.0, startThresholdDps / maxDps))) * (w - 3)
@@ -3201,16 +3394,24 @@ final class SpinArmViewController: UIViewController,
 
     private func updateMeterUI() {
         let w = meterTrack.bounds.width
+        let autoArmed = isThresholdCalibrated && armConfig.trigger == "arm"
+        meterThreshMark.isHidden = !isThresholdCalibrated
         if w > 10 {
             let maxDps = 120.0
             let fw = CGFloat(min(1.0, max(0.0, smoothedDps / maxDps))) * w
             meterFillWidth.constant = fw
         }
-        meterFill.backgroundColor = smoothedDps >= startThresholdDps
+        meterFill.backgroundColor = (autoArmed && smoothedDps >= startThresholdDps)
             ? UIColor(red: 0.18, green: 0.80, blue: 0.44, alpha: 1)
             : UIColor(red: 0.35, green: 0.78, blue: 0.98, alpha: 1)
         let countLbl = isStandaloneMode ? "Clips" : "Sent"
-        meterValueLabel.text = String(format: "%.0f°/s  ·  Trigger: %.0f°/s  ·  %@: %d", smoothedDps, startThresholdDps, countLbl, sentCount)
+        if !isThresholdCalibrated {
+            meterValueLabel.text = String(format: "%.0f°/s  ·  Trigger: Not set  ·  %@: %d", smoothedDps, countLbl, sentCount)
+        } else if armConfig.trigger != "arm" {
+            meterValueLabel.text = String(format: "%.0f°/s  ·  Auto-Spin: Off (%.0f°/s)  ·  %@: %d", smoothedDps, startThresholdDps, countLbl, sentCount)
+        } else {
+            meterValueLabel.text = String(format: "%.0f°/s  ·  Trigger: %.0f°/s  ·  %@: %d", smoothedDps, startThresholdDps, countLbl, sentCount)
+        }
     }
 
     private func updateUIState() {
@@ -3297,21 +3498,28 @@ final class SpinArmViewController: UIViewController,
             recBtn.backgroundColor = UIColor(red: 0.79, green: 0.24, blue: 0.15, alpha: 1)
             recBtn.isEnabled = !isPairingScan
             calBtn.isEnabled = true
+            let autoArmed = isThresholdCalibrated && armConfig.trigger == "arm"
             if isPairingScan {
                 stateBanner.text = "Scan the QR on your laptop's 360 Desk"
             } else if isStandaloneMode {
-                stateBanner.text = armConfig.trigger == "arm"
-                    ? "● Standalone Armed — spin arm to auto-record"
-                    : "Standalone Ready — tap Record (or switch to Auto Spin)"
-            } else if armConfig.trigger == "arm" {
+                if autoArmed {
+                    stateBanner.text = "● Standalone Armed — spin arm to auto-record"
+                } else if !isThresholdCalibrated {
+                    stateBanner.text = "Auto-Spin OFF — tap 🎯 Calibrate to set trigger, or tap ● Record"
+                } else {
+                    stateBanner.text = "Standalone Ready — tap ● Record (or switch to Auto Spin)"
+                }
+            } else if autoArmed {
                 stateBanner.text = "● Armed — recording auto-starts when the 360 arm spins"
+            } else if armConfig.trigger == "arm" && !isThresholdCalibrated {
+                stateBanner.text = "Not calibrated — tap 🎯 Calibrate for Auto-Spin, or tap ● Record"
             } else if armConfig.trigger == "desk" {
                 stateBanner.text = "Ready — press Start on the laptop 360 Desk (or Record)"
             } else {
                 stateBanner.text = "Ready — tap Record or use remote"
             }
             if isScreenLocked {
-                lockStatusLabel.text = armConfig.trigger == "arm" ? "● ARMED (MOTION)" : "READY"
+                lockStatusLabel.text = autoArmed ? "● ARMED (MOTION)" : "READY"
             }
         }
     }

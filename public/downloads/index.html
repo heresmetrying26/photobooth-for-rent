@@ -691,10 +691,10 @@
                 Bridge (Android) release v1.1.5</a><span class="digest wait">Loading published asset digests…</span></li>
             <li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/roving-ios-v1.0.2">Roving DSLR
                 Bridge (iOS) release v1.0.2</a><span class="digest wait">Loading published asset digests…</span></li>
-            <li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/spinarm-ios-v1.0.0">360 Arm
-                Cam (iOS) release v1.0.0</a><span class="digest wait">Loading published asset digests…</span></li>
-            <li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/spinarm-android-v1.0.0">360 Arm
-                Cam (Android) release v1.0.0</a><span class="digest wait">Loading published asset digests…</span></li>
+            <li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/spinarm-ios-v1.0.1">360 Arm
+                Cam (iOS) release v1.0.1</a><span class="digest wait">Loading published asset digests…</span></li>
+            <li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/spinarm-android-v1.0.1">360 Arm
+                Cam (Android) release v1.0.1</a><span class="digest wait">Loading published asset digests…</span></li>
           </ul>
         </div>
       </details>
@@ -872,24 +872,24 @@
       </div>
       <div class="helper" style="background:#fdf6f4;border-color:#f1d5cf;">
         <div>
-          <span class="tag" id="spinarmIosTag" style="background:#fce8e6;color:var(--red);">New &middot; iOS / iPadOS 15+ &middot; Standalone IPA &middot; version 1.0.0</span>
+          <span class="tag" id="spinarmIosTag" style="background:#fce8e6;color:var(--red);">New &middot; iOS / iPadOS 15+ &middot; Standalone IPA &middot; version 1.0.1</span>
           <h3>360 Arm Cam for iPhone &amp; iPad (.ipa)</h3>
           <p><b>Separate App &amp; Distinct Dark 360 Icon:</b> Installs side-by-side with <code>photobooth4u</code> (<code>com.photobooth4u.spinarm</code>) using a dark charcoal icon with a red <b>360</b> badge so you can tell it apart at a glance. Opens straight to the full-screen 0.5&times; / 1&times; live camera preview (60/120fps) with <b>CoreMotion Gyro Auto-Start</b>, Slow-Mo / Super Slow / Speed Ramp / Boomerang effects, transparent <b>PNG frame overlays</b>, custom color looks, music tracks, and a built-in <b>Sharing Station</b> (QR scan + typable link, WhatsApp, and Email).</p>
           <p><b>Slot-Free Activation (<code>-360</code>):</b> Enter your existing access code with <b><code>-360</code></b> at the end (e.g. <code>PB-XXXX-XXXX-XXXX-360</code>, or tap <b>+ Add -360</b>) to unlock standalone 360 Booth mode using <b>0 booth device slots</b> (requires 360 mode enabled on your code). Or tap <b>Pair to Laptop 360 Desk (No Code Needed)</b> to pair over Wi-Fi via QR scan or typing the URL with no code needed on the phone.</p>
         </div>
         <a class="download" id="spinarmIosIpa" style="background:var(--red);"
-          href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/spinarm-ios-v1.0.0/photobooth4u-360-arm-cam-ios.ipa">Download
+          href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/spinarm-ios-v1.0.1/photobooth4u-360-arm-cam-ios.ipa">Download
           iOS .IPA</a>
       </div>
       <div class="helper" style="background:#f6f5f3;border-color:#dcd6cc;margin-top:14px;">
         <div>
-          <span class="tag" id="spinarmApkTag" style="background:#e7e3dc;color:var(--ink);">New &middot; Android 7.0+ &middot; Standalone APK &middot; version 1.0.0</span>
+          <span class="tag" id="spinarmApkTag" style="background:#e7e3dc;color:var(--ink);">New &middot; Android 7.0+ &middot; Standalone APK &middot; version 1.0.1</span>
           <h3>360 Arm Cam for Android phones &amp; tablets (.apk)</h3>
           <p>Dedicated standalone 360 app for Android (<code>com.photobooth4u.spinarm</code>) with the same dark <b>360</b> Home Screen icon so it installs beside <code>photobooth4u</code> without replacing it. Features instant Camera2 live preview, gyroscope spin auto-start, hardware-accelerated rendering (Slow-Mo, Super Slow, Speed Ramp, Boomerang, transparent PNG overlays, LUTs, and music), built-in Wi-Fi <b>Sharing Station</b> (QR + copyable link, WhatsApp, Email), and <b>Free Laptop 360 Desk</b> pairing via QR scan or typing the laptop URL.</p>
           <p><b>Same 0-Slot Activation:</b> Add <b><code>-360</code></b> to your access code for standalone 360 mode (0 booth slots used), or use <b>Pair to Laptop 360 Desk (No Code Needed)</b> with no activation code needed.</p>
         </div>
         <a class="download" id="spinarmApk" style="background:var(--ink);"
-          href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/spinarm-android-v1.0.0/photobooth4u-360-arm-cam-android.apk">Download
+          href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/spinarm-android-v1.0.1/photobooth4u-360-arm-cam-android.apk">Download
           Android .APK</a>
       </div>
       <div class="install">
@@ -1196,8 +1196,8 @@
       let curRush = '1.0.6';
       let curRov = '1.1.5';
       let curRovIos = '1.0.2';
-      let curSpinIos = '1.0.0';
-      let curSpinAnd = '1.0.0';
+      let curSpinIos = '1.0.1';
+      let curSpinAnd = '1.0.1';
       fetch('https://api.github.com/repos/heresmetrying26/photobooth-for-rent/releases?per_page=60').then(r => r.json()).then(function (rs) {
         const rList = Array.isArray(rs) ? rs : [];
         const rush = latestTagAsset(rList, /^rushid-v(\d+(?:\.\d+)*)$/, 'rush-id-station-android.apk');

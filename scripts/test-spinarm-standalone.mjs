@@ -274,4 +274,31 @@ await test('Android make-spinarm-variant.mjs and make-roving-variant.mjs both pa
   }
 });
 
+// 8. Calibration gate & first-open calibration intro parity (iOS & Android)
+await test('360 Arm Cam trigger stays unset until calibrated/enabled and shows first-open calibration intro (iOS & Android)', () => {
+  const swift = read('ios/photobooth4u/SpinArmViewController.swift');
+  const kt = read('android/app/src/main/java/com/photobooth4u/booth/SpinArmActivity.kt');
+  checkBalancedDelimiters(swift, 'SpinArmViewController.swift');
+  checkBalancedDelimiters(kt, 'SpinArmActivity.kt');
+
+  // Defaults to manual (Auto-Spin OFF) & uncalibrated threshold
+  assert.match(swift, /private var saTrigger: String = "manual"/);
+  assert.match(swift, /private var isThresholdCalibrated: Bool = false/);
+  assert.match(swift, /guard isThresholdCalibrated, !isPairingScan, !isSettingsOpen, !isQuickSharePresented, stationOverlay\.isHidden, calIntroOverlay\.isHidden, armConfig\.trigger == "arm"/);
+  assert.match(swift, /Trigger: Not set/);
+  assert.match(swift, /buildCalibrationIntroOverlay\(\)/);
+  assert.match(swift, /showCalibrationIntroIfNeeded\(\)/);
+  assert.match(swift, /didTapStartCalFromIntro/);
+  assert.match(swift, /didTapSkipCalIntro/);
+  assert.match(swift, /Calibrate 360 Arm First/);
+
+  assert.match(kt, /private var saTrigger: String = "manual"/);
+  assert.match(kt, /private var isThresholdCalibrated: Boolean = false/);
+  assert.match(kt, /if \(!isThresholdCalibrated \|\| isSettingsOpen \|\| stationOverlay\.visibility == View\.VISIBLE \|\| calIntroOverlay\.visibility == View\.VISIBLE \|\| armConfig\.trigger != "arm"\)/);
+  assert.match(kt, /Trigger: Not set/);
+  assert.match(kt, /buildCalibrationIntroOverlay\(root\)/);
+  assert.match(kt, /showCalibrationIntroIfNeeded\(\)/);
+  assert.match(kt, /Calibrate 360 Arm First/);
+});
+
 console.log(`\nALL ${passed} STANDALONE 360 ARM CAM CHECKS PASSED!`);

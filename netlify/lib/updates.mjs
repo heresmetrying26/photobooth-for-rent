@@ -12,7 +12,6 @@ export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
   { version: '1.1.124', date: '2026-11-28' },
-  { version: '1.1.123', date: '2026-11-28' },
   { version: '1.1.122', date: '2026-11-27' },
   { version: '1.1.121', date: '2026-11-27' },
   { version: '1.1.120', date: '2026-11-27' },
@@ -233,18 +232,18 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.28', date: '2026-11-27' };
+export const HELPER = { version: '1.1.29', date: '2026-11-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Hosted directly on Netlify CDN for fast, reliable delivery.
 // The tablet downloads the APK from the GitHub release, not from the website: Netlify cuts any single download
 // after about 60 s, so on a slower connection the 18 MB file never finished ("unexpected end of stream").
 // GitHub has no such limit. (The copy in public/downloads is still kept for the /downloads page.)
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-27', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-28', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
 // The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
 // /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new
 // release shows up by itself; RUSH_FALLBACK is only used if GitHub cannot be reached and has nothing cached.
-export const RUSH_FALLBACK = { version: '1.0.6', url: 'https://github.com/' + REPO + '/releases/download/rushid-v1.0.6/rush-id-station-android.apk' };
+export const RUSH_FALLBACK = { version: '1.0.7', url: 'https://github.com/' + REPO + '/releases/download/rushid-v1.0.7/rush-id-station-android.apk' };
 const verParts = (v) => String(v).split('.').map((n) => parseInt(n, 10) || 0);
 const verNewer = (a, b) => { const x = verParts(a), y = verParts(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { const p = x[i] || 0, q = y[i] || 0; if (p !== q) return p > q; } return false; };
 let liveR = { at: 0, ttl: 0, v: null };
@@ -267,7 +266,7 @@ export async function liveRush() {
 }
 
 // The newest iPad offline app (tag ios-v<version> on GitHub, asset photobooth4u-kiosk-ipad.ipa).
-export const IOS_FALLBACK = { version: '1.1.48', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.48/photobooth4u-kiosk-ipad.ipa' };
+export const IOS_FALLBACK = { version: '1.1.49', url: 'https://github.com/' + REPO + '/releases/download/ios-v1.1.49/photobooth4u-kiosk-ipad.ipa' };
 let liveI = { at: 0, ttl: 0, v: null };
 export async function liveIos() {
   if (liveI.v && Date.now() - liveI.at < liveI.ttl) return liveI.v;
@@ -322,21 +321,15 @@ export async function liveApp() {
 // Keep titles and items in plain client language (no markdown, hex codes, or internal symbols). Put technical notes in docs/dev-changelog.md.
 export const NOTES = [
   {
-    date: '2026-11-28', title: 'Desktop 1.1.124, Android 1.2.34, iPad 1.1.49 & Website: Readable Prints in Mirror Mode, Wireless Canon SELPHY Borderless, Reliable Offline QR & Smooth HD Video Guestbook', for: ['website', 'app', 'android', 'ipad'], app: '1.1.124', android: '1.2.34', ipad: '1.1.49',
+    date: '2026-11-28', title: 'Desktop 1.1.124, Android 1.2.34, iPad 1.1.49, Print Helper 1.1.29 & Website: Fix Windows Freezes, Movable Welcome Card, Readable Mirror Prints, Wireless SELPHY Borderless, Offline QR & HD Video Guestbook', for: ['website', 'app', 'android', 'ipad', 'helper'], app: '1.1.124', android: '1.2.34', ipad: '1.1.49', helper: '1.1.29',
     items: [
+      '🛡️ No more automatic “Not Responding” freezes on Windows laptops (including ASUS VivoBook): Uses a proven Windows display mode instead of the newer experimental graphics path that could freeze laptops with Intel or AMD integrated graphics, moves background USB scanning off the main window thread, staggers camera and printer startup, recovers automatically in Safe graphics mode if a graphics driver hangs, and adds a one-click Safe graphics toggle under Setup → This laptop’s licence & diagnostics.',
+      '✨ Movable & resizable Welcome card, sticky Setup preview & bottom shot bar: Drag and resize the Welcome card and layout sample directly on the live preview with Top, Center, and Bottom snap, see a live sticky preview while editing Setup Step 7, review taken shots in a clean auto-sizing bottom bar (with optional Bottom or Side toggle), keep guest output mode choices intact across designs, and scale guest action buttons up to 200%.',
       '🪞 Natural Mirror Live View with readable saved & printed photos: Keeping Mirror on lets guests pose comfortably like looking in a mirror on screen while automatically flipping final prints, saved photos, solo shots, and GIFs back to normal orientation so text and signs read the right way. An optional switch under Camera lets you mirror saved photos too if preferred, while Video Guestbook stays mirrored by default.',
-      '🖨️ Wireless Canon SELPHY borderless printing: Canon SELPHY printers (CP820–CP1500) now print full edge-to-edge borderless over Wi-Fi across Windows, Mac, Android, and iPad just like wired USB — no more unexpected white edges when switching to wireless.',
+      '🖨️ Wireless Canon SELPHY borderless printing & Print Helper 1.1.29: Canon SELPHY printers (CP820–CP1500) now print full edge-to-edge borderless over Wi-Fi across Windows, Mac, Android, and iPad just like wired USB — and Print Helper 1.1.29 adds smoother back-to-back Laptop Print Station printing, one-scan QR pairing support, and the same borderless SELPHY improvements on Windows.',
       '📱 Stronger Offline QR for iPhones & weak-signal venues: Laptop Booth Wi-Fi now stays steady independently of weak venue Wi-Fi, shows live connected phone counts with a warning near the 8-phone Windows limit, serves fast thumbnails, replaces hard Not Found screens with auto-reloading waiting pages, and shows iPhone guests a quick Mobile Data recovery tip plus a disconnect reminder after saving.',
       '🎬 Smooth Full HD 1080p Video Guestbook on DSLR, iPad, iPhone & Android: Connected Canon and Nikon DSLRs now record true 1080p Full HD directly on the camera (with optional laptop microphone sound and clean Photo-dial guidance) instead of blurry live-view captures, while iPads, iPhones, and modern Android phones record smooth hardware-accelerated HD video without lag.',
-      '🔎 Bigger Guest Screen buttons up to 200%: Raises the guest button size cap so action buttons on both the booth screen and tablet guest bridge scale larger cleanly without clipping.'
-    ]
-  },
-  {
-    date: '2026-11-28', title: 'Desktop 1.1.123 & Website: Fix Windows “Not Responding” Freezes on ASUS VivoBook & Integrated-Graphics Laptops', for: ['app', 'website'], app: '1.1.123',
-    items: [
-      '🛡️ No more automatic “Not Responding” freezes on Windows laptops (including ASUS VivoBook): Uses a proven Windows display mode instead of the newer experimental graphics path that could freeze laptops with Intel or AMD integrated graphics, and clears old graphics caches automatically if a driver hiccups.',
-      '⚡ Non-blocking camera & printer checks at startup and while running: Moves background USB device scanning out of the main window thread and staggers Windows camera and printer worker startup so slow or power-saving USB hubs never lock up the screen.',
-      '🔄 Automatic freeze recovery & one-click Safe graphics toggle: If a laptop’s graphics driver still hangs, the app recovers automatically in Safe graphics mode, and you can switch between Normal and Safe graphics anytime under Setup → This laptop’s licence & diagnostics.'
+      '📲 Updated standalone companion apps: 360 Arm Cam 1.0.2 (iPhone, iPad & Android) activates with your normal access code using 0 device slots automatically, Rush ID Station 1.0.7 brings wireless SELPHY borderless and printer improvements, and Roving DSLR Bridge (Android 1.1.6 & iOS 1.0.3) includes updated camera stability fixes.'
     ]
   },
   {

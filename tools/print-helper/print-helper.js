@@ -36,7 +36,7 @@ import QR_JS from '../../desktop/lib/qr.js' with { type: 'text' };
 import { createWinPrintWorker } from '../../desktop/lib/winprint-worker.mjs';
 import { createHotFolderStore, detectDnpHotFolders, dropToHotFolder } from '../../desktop/lib/hotfolder.mjs';
 
-const VERSION = '1.1.28';
+const VERSION = '1.1.29';
 const PORT = 17321;
 const OPEN_STATION_ON_START = process.argv.includes('--station');
 const ALLOWED_ORIGINS = new Set([

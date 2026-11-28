@@ -3458,9 +3458,9 @@ enum IppNet {
               reply.http == 200, reply.ipp >= 0, reply.ipp <= 2 else { return "" }
         var out: [String] = []
         parse(reply.body) { name, tag, raw in
-            guard name == "printer-state-reasons", tag == 0x44,
-                  let s = String(data: raw, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !s.isEmpty, s != "none", s != "other" else { return }
+            guard name == "printer-state-reasons", tag == 0x44 else { return }
+            let s = String(decoding: raw, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !s.isEmpty, s != "none", s != "other" else { return }
             let low = s.lowercased()
             let label: String
             if low.contains("media-empty") || low.contains("media-needed") { label = "out of paper" }
